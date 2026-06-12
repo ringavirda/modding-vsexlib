@@ -68,10 +68,7 @@
     {
       "label": "launch-prep (smex)",
       "dependsOrder": "sequence",
-      "dependsOn": [
-        "build-smex",
-        "stage-mods (exlib, ppex, smex)"
-      ],
+      "dependsOn": ["build-smex", "stage-mods (exlib, ppex, smex)"],
       "problemMatcher": []
     }
   ]

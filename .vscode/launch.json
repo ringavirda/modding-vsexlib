@@ -7,11 +7,7 @@
       "request": "launch",
       "preLaunchTask": "launch-prep (smex)",
       "program": "${env:VINTAGE_STORY}/Vintagestory.dll",
-      "args": [
-        "--tracelog",
-        "--addModPath",
-        "${workspaceFolder}/bin/Mods"
-      ],
+      "args": ["--tracelog", "--addModPath", "${workspaceFolder}/bin/Mods"],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "console": "internalConsole",
@@ -23,11 +19,7 @@
       "request": "launch",
       "preLaunchTask": "launch-prep (ppex)",
       "program": "${env:VINTAGE_STORY}/Vintagestory.dll",
-      "args": [
-        "--tracelog",
-        "--addModPath",
-        "${workspaceFolder}/bin/Mods"
-      ],
+      "args": ["--tracelog", "--addModPath", "${workspaceFolder}/bin/Mods"],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "console": "internalConsole",
