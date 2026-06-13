@@ -60,6 +60,17 @@
       "problemMatcher": []
     },
     {
+      "label": "Publish mods",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/CakeBuild/CakeBuild.csproj"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
       "label": "launch-prep (ppex)",
       "dependsOrder": "sequence",
       "dependsOn": ["build-ppex", "stage-mods (exlib, ppex)"],
