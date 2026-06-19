@@ -5,7 +5,10 @@
       "label": "build-exlib",
       "command": "dotnet",
       "type": "process",
-      "args": ["build", "${workspaceFolder}/ExpandedLib/ExpandedLib.csproj"],
+      "args": [
+        "build",
+        "${workspaceFolder}/src/ExpandedLib/ExpandedLib.csproj"
+      ],
       "problemMatcher": "$msCompile"
     },
     {
@@ -14,7 +17,7 @@
       "type": "process",
       "args": [
         "build",
-        "${workspaceFolder}/PipesAndPowerExpanded/PipesAndPowerExpanded.csproj"
+        "${workspaceFolder}/src/PipesAndPowerExpanded/PipesAndPowerExpanded.csproj"
       ],
       "problemMatcher": "$msCompile"
     },
@@ -24,7 +27,7 @@
       "type": "process",
       "args": [
         "build",
-        "${workspaceFolder}/SteelmakingExpanded/SteelmakingExpanded.csproj"
+        "${workspaceFolder}/src/SteelmakingExpanded/SteelmakingExpanded.csproj"
       ],
       "problemMatcher": "$msCompile"
     },
@@ -38,8 +41,8 @@
         "${workspaceFolder}/.vscode/stage-mods.ps1",
         "-Dest",
         "${workspaceFolder}/bin/Mods",
-        "exlib=${workspaceFolder}/ExpandedLib/bin/Debug/Mods/mod",
-        "ppex=${workspaceFolder}/PipesAndPowerExpanded/bin/Debug/Mods/mod"
+        "exlib=${workspaceFolder}/src/ExpandedLib/bin/Debug/Mods/mod",
+        "ppex=${workspaceFolder}/src/PipesAndPowerExpanded/bin/Debug/Mods/mod"
       ],
       "problemMatcher": []
     },
@@ -53,9 +56,9 @@
         "${workspaceFolder}/.vscode/stage-mods.ps1",
         "-Dest",
         "${workspaceFolder}/bin/Mods",
-        "exlib=${workspaceFolder}/ExpandedLib/bin/Debug/Mods/mod",
-        "smex=${workspaceFolder}/SteelmakingExpanded/bin/Debug/Mods/mod",
-        "ppex=${workspaceFolder}/PipesAndPowerExpanded/bin/Debug/Mods/mod"
+        "exlib=${workspaceFolder}/src/ExpandedLib/bin/Debug/Mods/mod",
+        "smex=${workspaceFolder}/src/SteelmakingExpanded/bin/Debug/Mods/mod",
+        "ppex=${workspaceFolder}/src/PipesAndPowerExpanded/bin/Debug/Mods/mod"
       ],
       "problemMatcher": []
     },
@@ -66,7 +69,7 @@
       "args": [
         "run",
         "--project",
-        "${workspaceFolder}/CakeBuild/CakeBuild.csproj"
+        "${workspaceFolder}/build/CakeBuild/CakeBuild.csproj"
       ],
       "problemMatcher": "$msCompile"
     },
