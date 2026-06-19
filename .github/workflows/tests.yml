@@ -1,0 +1,66 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      vs_version:
+        description: "Vintage Story version to build/test against"
+        required: false
+        default: "1.22.0"
+
+# The build references the game assemblies (VintagestoryAPI.dll, VSSurvivalMod.dll, VSEssentials.dll
+# and the Lib/*.dll), and the headless test harness resolves them at runtime from $VINTAGE_STORY.
+# Those assemblies ship in the freely-downloadable dedicated-server archive, so CI fetches that and
+# points VINTAGE_STORY at it - no game install or licence needed.
+env:
+  VS_VERSION: ${{ github.event.inputs.vs_version || '1.22.0' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Cache Vintage Story server assemblies
+        id: cache-vs
+        uses: actions/cache@v4
+        with:
+          path: vs_server
+          key: vs-server-${{ env.VS_VERSION }}
+
+      - name: Download Vintage Story server assemblies
+        if: steps.cache-vs.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p vs_server
+          url="https://cdn.vintagestory.at/gamefiles/stable/vs_server_linux-x64_${VS_VERSION}.tar.gz"
+          echo "Downloading $url"
+          curl -fsSL "$url" -o vs_server.tar.gz
+          tar -xzf vs_server.tar.gz -C vs_server
+          # Sanity-check the assemblies the build/tests need are present.
+          for f in VintagestoryAPI.dll Mods/VSSurvivalMod.dll Mods/VSEssentials.dll \
+                   Lib/0Harmony.dll Lib/Newtonsoft.Json.dll Lib/cairo-sharp.dll; do
+            test -f "vs_server/$f" || { echo "missing $f"; exit 1; }
+          done
+
+      - name: Export VINTAGE_STORY
+        run: echo "VINTAGE_STORY=$GITHUB_WORKSPACE/vs_server" >> "$GITHUB_ENV"
+
+      - name: Restore
+        run: dotnet restore VintageStory.sln
+
+      - name: Run tests
+        run: |
+          dotnet test ExpandedLib.Tests/ExpandedLib.Tests.csproj --no-restore -c Debug
+          dotnet test PipesAndPowerExpanded.Tests/PipesAndPowerExpanded.Tests.csproj --no-restore -c Debug
+          dotnet test SteelmakingExpanded.Tests/SteelmakingExpanded.Tests.csproj --no-restore -c Debug
