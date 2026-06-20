@@ -12,16 +12,6 @@
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "build-ppex",
-      "command": "dotnet",
-      "type": "process",
-      "args": [
-        "build",
-        "${workspaceFolder}/src/PipesAndPowerExpanded/PipesAndPowerExpanded.csproj"
-      ],
-      "problemMatcher": "$msCompile"
-    },
-    {
       "label": "build-smex",
       "command": "dotnet",
       "type": "process",
@@ -32,34 +22,30 @@
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "stage-mods (exlib, ppex)",
-      "type": "process",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile",
-        "-File",
-        "${workspaceFolder}/.vscode/stage-mods.ps1",
-        "-Dest",
-        "${workspaceFolder}/bin/Mods",
-        "exlib=${workspaceFolder}/src/ExpandedLib/bin/Debug/Mods/mod",
-        "ppex=${workspaceFolder}/src/PipesAndPowerExpanded/bin/Debug/Mods/mod"
-      ],
-      "problemMatcher": []
-    },
-    {
       "label": "stage-mods (exlib, ppex, smex)",
       "type": "process",
       "command": "pwsh",
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/.vscode/stage-mods.ps1",
+        "${workspaceFolder}/scripts/stage-mods.ps1",
         "-Dest",
         "${workspaceFolder}/bin/Mods",
         "exlib=${workspaceFolder}/src/ExpandedLib/bin/Debug/Mods/mod",
         "smex=${workspaceFolder}/src/SteelmakingExpanded/bin/Debug/Mods/mod",
         "ppex=${workspaceFolder}/src/PipesAndPowerExpanded/bin/Debug/Mods/mod"
       ],
+      "linux": {
+        "command": "bash",
+        "args": [
+          "${workspaceFolder}/scripts/stage-mods.sh",
+          "-Dest",
+          "${workspaceFolder}/bin/Mods",
+          "exlib=${workspaceFolder}/src/ExpandedLib/bin/Debug/Mods/mod",
+          "smex=${workspaceFolder}/src/SteelmakingExpanded/bin/Debug/Mods/mod",
+          "ppex=${workspaceFolder}/src/PipesAndPowerExpanded/bin/Debug/Mods/mod"
+        ]
+      },
       "problemMatcher": []
     },
     {
@@ -74,15 +60,217 @@
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "launch-prep (ppex)",
-      "dependsOrder": "sequence",
-      "dependsOn": ["build-ppex", "stage-mods (exlib, ppex)"],
+      "label": "link-game (1.22)",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/link-game.ps1",
+        "-Key",
+        "VINTAGE_STORY",
+        "-Link",
+        "bin/game-1.22"
+      ],
+      "linux": {
+        "command": "bash",
+        "args": [
+          "${workspaceFolder}/scripts/link-game.sh",
+          "-Key",
+          "VINTAGE_STORY",
+          "-Link",
+          "bin/game-1.22"
+        ]
+      },
       "problemMatcher": []
     },
     {
       "label": "launch-prep (smex)",
       "dependsOrder": "sequence",
-      "dependsOn": ["build-smex", "stage-mods (exlib, ppex, smex)"],
+      "dependsOn": [
+        "build-smex",
+        "stage-mods (exlib, ppex, smex)",
+        "link-game (1.22)"
+      ],
+      "problemMatcher": []
+    },
+
+    // ----------------------------------------------------------------------------------------
+    // Legacy game versions (1.21 -> net8.0, 1.20 -> net7.0). Opt-in multi-target via -p:Legacy.
+    // Install paths come from VINTAGE_STORY_121 / VINTAGE_STORY_120 in the environment, or from
+    // the repo-root .env file (see .env.example) - both builds and launch read them from there.
+    // build-smex pulls exlib + ppex via project references, so a single build covers the chain.
+    // ----------------------------------------------------------------------------------------
+    {
+      "label": "build-exlib (1.21)",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/src/ExpandedLib/ExpandedLib.csproj",
+        "-p:Legacy=true",
+        "-p:TargetFramework=net8.0"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build-smex (1.21)",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/src/SteelmakingExpanded/SteelmakingExpanded.csproj",
+        "-p:Legacy=true",
+        "-p:TargetFramework=net8.0"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build-exlib (1.20)",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/src/ExpandedLib/ExpandedLib.csproj",
+        "-p:Legacy=true",
+        "-p:TargetFramework=net7.0"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build-smex (1.20)",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/src/SteelmakingExpanded/SteelmakingExpanded.csproj",
+        "-p:Legacy=true",
+        "-p:TargetFramework=net7.0"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "stage-mods 1.21 (exlib, ppex, smex)",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/stage-mods.ps1",
+        "-Dest",
+        "${workspaceFolder}/bin/Mods-1.21",
+        "exlib=${workspaceFolder}/src/ExpandedLib/bin/Debug/net8.0/Mods/mod",
+        "ppex=${workspaceFolder}/src/PipesAndPowerExpanded/bin/Debug/net8.0/Mods/mod",
+        "smex=${workspaceFolder}/src/SteelmakingExpanded/bin/Debug/net8.0/Mods/mod"
+      ],
+      "linux": {
+        "command": "bash",
+        "args": [
+          "${workspaceFolder}/scripts/stage-mods.sh",
+          "-Dest",
+          "${workspaceFolder}/bin/Mods-1.21",
+          "exlib=${workspaceFolder}/src/ExpandedLib/bin/Debug/net8.0/Mods/mod",
+          "ppex=${workspaceFolder}/src/PipesAndPowerExpanded/bin/Debug/net8.0/Mods/mod",
+          "smex=${workspaceFolder}/src/SteelmakingExpanded/bin/Debug/net8.0/Mods/mod"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "stage-mods 1.20 (exlib, ppex, smex)",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/stage-mods.ps1",
+        "-Dest",
+        "${workspaceFolder}/bin/Mods-1.20",
+        "exlib=${workspaceFolder}/src/ExpandedLib/bin/Debug/net7.0/Mods/mod",
+        "ppex=${workspaceFolder}/src/PipesAndPowerExpanded/bin/Debug/net7.0/Mods/mod",
+        "smex=${workspaceFolder}/src/SteelmakingExpanded/bin/Debug/net7.0/Mods/mod"
+      ],
+      "linux": {
+        "command": "bash",
+        "args": [
+          "${workspaceFolder}/scripts/stage-mods.sh",
+          "-Dest",
+          "${workspaceFolder}/bin/Mods-1.20",
+          "exlib=${workspaceFolder}/src/ExpandedLib/bin/Debug/net7.0/Mods/mod",
+          "ppex=${workspaceFolder}/src/PipesAndPowerExpanded/bin/Debug/net7.0/Mods/mod",
+          "smex=${workspaceFolder}/src/SteelmakingExpanded/bin/Debug/net7.0/Mods/mod"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "link-game (1.21)",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/link-game.ps1",
+        "-Key",
+        "VINTAGE_STORY_121",
+        "-Link",
+        "bin/game-1.21"
+      ],
+      "linux": {
+        "command": "bash",
+        "args": [
+          "${workspaceFolder}/scripts/link-game.sh",
+          "-Key",
+          "VINTAGE_STORY_121",
+          "-Link",
+          "bin/game-1.21"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "link-game (1.20)",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/link-game.ps1",
+        "-Key",
+        "VINTAGE_STORY_120",
+        "-Link",
+        "bin/game-1.20"
+      ],
+      "linux": {
+        "command": "bash",
+        "args": [
+          "${workspaceFolder}/scripts/link-game.sh",
+          "-Key",
+          "VINTAGE_STORY_120",
+          "-Link",
+          "bin/game-1.20"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "launch-prep (smex 1.21)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "build-smex (1.21)",
+        "stage-mods 1.21 (exlib, ppex, smex)",
+        "link-game (1.21)"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "launch-prep (smex 1.20)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "build-smex (1.20)",
+        "stage-mods 1.20 (exlib, ppex, smex)",
+        "link-game (1.20)"
+      ],
       "problemMatcher": []
     }
   ]

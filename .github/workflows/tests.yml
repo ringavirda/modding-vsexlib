@@ -12,6 +12,10 @@ on:
         required: false
         default: "1.22.0"
 
+# Primary pipeline: builds + tests the mods against the CURRENT game version (the non-legacy
+# target), with coverage and the coverage gate. The older game versions are covered by a separate
+# workflow (tests-legacy.yml) so the two run as independent checks.
+#
 # The build references the game assemblies (VintagestoryAPI.dll, VSSurvivalMod.dll, VSEssentials.dll
 # and the Lib/*.dll), and the headless test harness resolves them at runtime from $VINTAGE_STORY.
 # Those assemblies ship in the freely-downloadable dedicated-server archive, so CI fetches that and

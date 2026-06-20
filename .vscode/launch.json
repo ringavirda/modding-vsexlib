@@ -6,7 +6,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "launch-prep (smex)",
-      "program": "${env:VINTAGE_STORY}/Vintagestory.dll",
+      "program": "${workspaceFolder}/bin/game-1.22/Vintagestory.dll",
       "args": ["--tracelog", "--addModPath", "${workspaceFolder}/bin/Mods"],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
@@ -14,12 +14,32 @@
       "requireExactSource": false
     },
     {
-      "name": "Pipes and Power Expanded",
+      "name": "Steelmaking Expanded (1.21)",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "launch-prep (ppex)",
-      "program": "${env:VINTAGE_STORY}/Vintagestory.dll",
-      "args": ["--tracelog", "--addModPath", "${workspaceFolder}/bin/Mods"],
+      "preLaunchTask": "launch-prep (smex 1.21)",
+      "program": "${workspaceFolder}/bin/game-1.21/Vintagestory.dll",
+      "args": [
+        "--tracelog",
+        "--addModPath",
+        "${workspaceFolder}/bin/Mods-1.21"
+      ],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "requireExactSource": false
+    },
+    {
+      "name": "Steelmaking Expanded (1.20)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "launch-prep (smex 1.20)",
+      "program": "${workspaceFolder}/bin/game-1.20/Vintagestory.dll",
+      "args": [
+        "--tracelog",
+        "--addModPath",
+        "${workspaceFolder}/bin/Mods-1.20"
+      ],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "console": "internalConsole",

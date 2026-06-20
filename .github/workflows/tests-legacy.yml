@@ -1,0 +1,82 @@
+name: Tests (legacy)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Legacy pipeline: runs the test suite against the OLDER supported game versions, opt-in via
+# -p:Legacy=true against each version's target framework. Kept separate from the primary Tests
+# workflow so the current-version build and the legacy builds report as independent checks.
+#
+# Each matrix entry fetches the matching freely-downloadable dedicated-server archive and points
+# that version's install env var at it (the build reads it for $(GamePath); the headless test
+# harness resolves the game assemblies from the same var at runtime). No coverage gate here - the
+# gate floors track the current build (see tests.yml).
+#
+# Adding a game version means a row HERE and in the src/Directory.Build.props manifest (CI YAML
+# can't read MSBuild) - the only place the version list is duplicated.
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: ${{ matrix.game }} (${{ matrix.tfm }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - game: "1.21.0"
+            tfm: net8.0
+            install_env: VINTAGE_STORY_121
+          - game: "1.20.0"
+            tfm: net7.0
+            install_env: VINTAGE_STORY_120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The legacy test host runs on the matching runtime, so install all SDKs the suite targets.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            7.0.x
+            8.0.x
+            10.0.x
+
+      - name: Cache Vintage Story server assemblies
+        id: cache-vs
+        uses: actions/cache@v4
+        with:
+          path: vs_server
+          key: vs-server-${{ matrix.game }}
+
+      - name: Download Vintage Story server assemblies
+        if: steps.cache-vs.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p vs_server
+          url="https://cdn.vintagestory.at/gamefiles/stable/vs_server_linux-x64_${{ matrix.game }}.tar.gz"
+          echo "Downloading $url"
+          curl -fsSL "$url" -o vs_server.tar.gz
+          tar -xzf vs_server.tar.gz -C vs_server
+          for f in VintagestoryAPI.dll Mods/VSSurvivalMod.dll Mods/VSEssentials.dll \
+                   Lib/0Harmony.dll Lib/Newtonsoft.Json.dll Lib/cairo-sharp.dll; do
+            test -f "vs_server/$f" || { echo "missing $f"; exit 1; }
+          done
+
+      - name: Point the install env var at the server folder
+        run: echo "${{ matrix.install_env }}=$GITHUB_WORKSPACE/vs_server" >> "$GITHUB_ENV"
+
+      - name: Test (legacy ${{ matrix.tfm }})
+        env:
+          TFM: ${{ matrix.tfm }}
+        run: |
+          for proj in ExpandedLib.Tests PipesAndPowerExpanded.Tests \
+                      SteelmakingExpanded.Tests Integration.Tests; do
+            echo "::group::$proj ($TFM)"
+            dotnet test "test/$proj/$proj.csproj" -p:Legacy=true -f "$TFM" -c Debug
+            echo "::endgroup::"
+          done

@@ -378,13 +378,15 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
+# Local environment file holding machine-specific install paths (see .env.example)
+.env
+
 # VS Code files for those working on multiple tools
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-!.vscode/stage-mods.ps1
 *.code-workspace
 
 # Local History for Visual Studio Code
