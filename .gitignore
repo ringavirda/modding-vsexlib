@@ -389,6 +389,9 @@ FodyWeavers.xsd
 # don't have the required .NET 7/8/10 installed system-wide.
 /.dotnet/
 
+# Local sources of third-party mods we maintain compatibility with (reference only, not ours).
+/.compat/
+
 # VS Code files for those working on multiple tools
 .vscode/*
 !.vscode/settings.json

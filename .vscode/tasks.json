@@ -55,7 +55,7 @@
       "args": [
         "run",
         "--project",
-        "${workspaceFolder}/build/CakeBuild/CakeBuild.csproj"
+        "${workspaceFolder}/dist/CakeBuild/CakeBuild.csproj"
       ],
       "problemMatcher": "$msCompile"
     },
