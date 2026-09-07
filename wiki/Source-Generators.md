@@ -95,3 +95,12 @@ Only the **primary** domain is fed: a mod packing a second tree (an absorbed mod
 - [Config System](Config-System) - the runtime side of `[ExConfigRegister]`.
 - [Registries](Registries) - `[BlockRegister]` / `[ItemRegister]` registration.
 - [Testing Harness](Testing-Harness) - the `exlib-testing` bundle these ship in.
+
+## Diagnostics
+
+| Id | Severity | Generator | Reported when |
+|----|----------|-----------|----------------|
+| `EXLIB0001` | Error | `ExConfigGenerator` | A class carries `[ExRecipeProfile]` with no companion `[ExConfigRegister]`, so no accessor is generated at all. |
+| `EXLIB0002` | Error | `ExConfigGenerator` | A class's `[ExRecipeProfile]` shape is invalid (missing catalogue property, missing `DefaultCatalogue`, missing or unregistered level property). Reported at the attribute's location alongside the `#error` the generated accessor still carries - the `#error` is what stops the build; this diagnostic only gives an IDE somewhere to navigate to. |
+| `EXLIB0003` | Warning | `ExLangKeyGenerator` | The consuming project sets `$(AssetDomain)` but no matching `assets/{domain}/lang/en.json` reached the compiler as an `AdditionalFiles` item, so `{Domain}Lang` is not generated. Not reported for a project with no `$(AssetDomain)` at all. |
+| `EXLIB0004` | Warning | `ExLangKeyGenerator` | Two lang keys sanitise to the same member name; the one that sorts later gets a numeric suffix instead of the plain name. |

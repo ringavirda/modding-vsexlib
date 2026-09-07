@@ -239,6 +239,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <AdditionalFiles Include="$(ModAssetsRoot)\$(AssetDomain)\lang\en.json" />
+    <CompilerVisibleProperty Include="AssetDomain" />
   </ItemGroup>
 
   <!-- One shared legacy-usings shim for every project that compiles mod code: the five mod projects,
