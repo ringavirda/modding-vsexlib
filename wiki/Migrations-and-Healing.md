@@ -110,9 +110,9 @@ start from default state; multiblock anchors re-detect their structure on the ne
 
 ## Side-band data
 
-A thin wrapper for state that belongs to neither a block entity's tree nor a ModConfig file - a
-migration completion flag, a per-world counter - keyed with an explicit domain so two mods'
-unqualified keys never collide:
+Two thin wrappers for state that belongs to neither a block entity's tree nor a ModConfig file - a
+migration completion flag, a per-world counter, a per-chunk marker - each key prefixed with an
+explicit domain so two mods' unqualified keys never collide:
 
 ```csharp
 public static class ExWorldData
@@ -121,10 +121,32 @@ public static class ExWorldData
     public static void Set<T>(ICoreServerAPI api, string domain, string key, T value);
     public static void OnSave(ICoreServerAPI api, Action action);   // subscribes to Event.GameWorldSave
 }
+
+public static class ExChunkData
+{
+    public static T Get<T>(IWorldChunk chunk, string domain, string key, T defaultValue = default!);
+    public static void Set<T>(IWorldChunk chunk, string domain, string key, T value);
+}
 ```
 
-`ExWorldData` wraps `ISaveGame.GetData`/`StoreData`. Write from an `OnSave` hook, not on every
+`ExWorldData` wraps `ISaveGame.GetData`/`StoreData`; `ExChunkData` wraps
+`IWorldChunk.GetModdata`/`SetModdata`. Write from `OnSave`/before the chunk is sent, not on every
 change.
+
+## The chunk-column sweep's completion marker
+
+`ChunkColumnSweeperModSystem` (the walk behind both migrations above) sweeps every loaded chunk
+column on every world load by default. A subclass that wants a column swept only once per version
+overrides `Version`:
+
+```csharp
+protected override string? Version => "1";
+```
+
+Once set, a column that already carries this sweeper's marker for that version - stamped through
+`ExChunkData`, keyed by the sweeper's type name and the mod id - is skipped; bumping `Version` drops
+the old marker's key and every column is swept once more. Leaving `Version` null or empty (the
+default) keeps today's behaviour exactly: every column, every load.
 
 ## Related pages
 

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Linq;
+using ExpandedLib.Helpers;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -75,6 +76,17 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
     int changed
   ) { }
 
+  /// <summary>
+  /// Completion-marker version for this sweeper. Null or empty (the default) means "no marker": every
+  /// column is scanned on every world load, exactly as before this was added. Set it to bump it - each
+  /// distinct value gets its own per-column marker (<see cref="ExChunkData"/>, keyed by
+  /// <see cref="ModSystem.Mod"/>'s id and this sweeper's type name) - so a column already marked at the
+  /// current version is skipped and changing the value re-sweeps every column once more.
+  /// </summary>
+  protected virtual string? Version => null;
+
+  private string MarkerKey => $"sweep.{GetType().Name}.{Version}";
+
   /// <summary>Builds the work table once via <see cref="BuildWork"/> and memoises whether this world
   /// has anything to do. Every entry point calls it, so the table is built exactly once regardless of
   /// which fires first.</summary>
@@ -102,15 +114,11 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
       long index2d in _sapi.WorldManager.AllLoadedMapchunks.Keys.ToArray()
     ) {
       Vec2i coord = _sapi.WorldManager.MapChunkPosFromChunkIndex2D(index2d);
-      int changed = 0;
+      IWorldChunk?[] chunks = new IWorldChunk?[chunksTall];
       for (int cy = 0; cy < chunksTall; cy++)
-        changed += ScanChunk(
-          coord.X,
-          cy,
-          coord.Y,
-          _sapi.WorldManager.GetChunk(coord.X, cy, coord.Y)
-        );
+        chunks[cy] = _sapi.WorldManager.GetChunk(coord.X, cy, coord.Y);
 
+      int changed = SweepColumn(coord.X, coord.Y, chunks);
       if (changed > 0)
         OnColumnSwept(coord.X, coord.Y, changed);
       total += changed;
@@ -132,12 +140,36 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
       return;
     }
 
-    int changed = 0;
-    for (int cy = 0; cy < chunks.Length; cy++)
-      changed += ScanChunk(chunkCoord.X, cy, chunkCoord.Y, chunks[cy]);
-
+    int changed = SweepColumn(chunkCoord.X, chunkCoord.Y, chunks);
     if (changed > 0)
       OnColumnStreamedIn(chunkCoord.X, chunkCoord.Y, changed);
+  }
+
+  /// <summary>
+  /// Scans one column's already-fetched chunk sections and returns how many changes were made. When
+  /// <see cref="Version"/> is set and the column already carries this sweeper's current-version
+  /// marker, the scan is skipped outright and this returns 0; otherwise the marker is (re)written on
+  /// whichever loaded section stands in for the column, after the scan.
+  /// </summary>
+  private int SweepColumn(int chunkX, int chunkZ, IWorldChunk?[] chunks) {
+    bool versioned = !string.IsNullOrEmpty(Version);
+    IWorldChunk? marker = chunks.FirstOrDefault(c => c != null);
+
+    if (
+      versioned
+      && marker != null
+      && ExChunkData.Get(marker, Mod.Info.ModID, MarkerKey, false)
+    )
+      return 0;
+
+    int changed = 0;
+    for (int cy = 0; cy < chunks.Length; cy++)
+      changed += ScanChunk(chunkX, cy, chunkZ, chunks[cy]);
+
+    if (versioned && marker != null)
+      ExChunkData.Set(marker, Mod.Info.ModID, MarkerKey, true);
+
+    return changed;
   }
 
   /// <summary>Scans one chunk section: visits every non-air cell that passes <see cref="ShouldVisit"/>,

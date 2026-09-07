@@ -285,6 +285,7 @@ Everything content-neutral that saves a modder a few lines: orientation, meshes,
 | Type | What it is for | Page |
 | --- | --- | --- |
 | `ExBlockAccess` | Typed block-entity lookups over `IBlockAccessor`: at a position, one step to a neighbour, or every matching neighbour around a position. | [Helpers-and-Renderers](Helpers-and-Renderers) |
+| `ExChunkData` | Typed per-chunk side-band data over `IWorldChunk.GetModdata`/`SetModdata`, keyed `{domain}:{key}`. | [Migrations-and-Healing](Migrations-and-Healing) |
 | `ExContentGate` | Config-gated "disable this content" toggle: hides registered blocks and items from the creative inventory and handbook. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `ExCreativeTabs` | Registers a mod's custom creative-inventory tab with the internal vanilla tab list. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `ExHighlightSlots` | Process-wide handout of distinct `world.HighlightBlocks` slot ids, so two features never collide by picking the same literal by hand. | [Helpers-and-Renderers](Helpers-and-Renderers) |
