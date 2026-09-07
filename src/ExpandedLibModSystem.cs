@@ -24,6 +24,11 @@ public class ExpandedLibModSystem : ModSystem {
   // Client-side Harmony instance for the handbook unit patch (see StartClientSide).
   private Harmony? _harmony;
 
+  // Above 0.03 so the module driver's phases - including the Industry module's metal catalogue
+  // load at AssetsFinalize - land first, and below the 0.1 every consumer inherits, so exlib's own
+  // AssetsFinalize below runs before theirs.
+  public override double ExecuteOrder() => 0.06;
+
   public override void Start(ICoreAPI api) {
     // Auto-register the library's [BlockRegister]/[BlockEntityRegister]/[BlockBehaviorRegister] classes
     // (filler block + entity, the MultiblockStructure behaviour) under the exlib domain.
@@ -54,8 +59,8 @@ public class ExpandedLibModSystem : ModSystem {
     LiquidCatalogueLoader.Load(api).Log(api.Logger);
     // The material-role catalogue (flux/fuel/ore/scrap/charge classification) and its mod-gated code
     // contributors. Must load after the metal and liquid registries - the domain layer's own IExModule.AssetsFinalize
-    // (ExecuteOrder 0.03) loads the metal registry before this default-order pass runs; exlib ships
-    // no role content itself.
+    // (ExecuteOrder 0.03) loads the metal registry before this pass, pinned at 0.06, runs; exlib
+    // ships no role content itself.
     MaterialRoleLoader.Load(api).Log(api.Logger);
 
     // The merged process-stage catalogue. Read again here rather than only at inject time so the

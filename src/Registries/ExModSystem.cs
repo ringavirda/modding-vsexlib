@@ -27,6 +27,10 @@ public abstract class ExModSystem : ModSystem {
   /// nothing for the check.</summary>
   protected virtual bool PatchHarmony => false;
 
+  // The consumer-facing end of exlib's pinned order: numerically the ModSystem default, stated
+  // explicitly so a subclass that overrides it knows what it is moving away from.
+  public override double ExecuteOrder() => 0.1;
+
   // Lazy so a phase called on its own (tests do this) still works without StartPre having run
   // first, and per instance so a rejoined world's ExModSystem drives fresh module instances rather
   // than a previous world's.
