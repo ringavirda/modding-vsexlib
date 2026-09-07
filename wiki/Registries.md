@@ -220,6 +220,47 @@ before you read or write it.
 The `Key` doubles as the lang-key stem: `"measure"` drives `command-measure-desc`,
 `pref-measure-label`, `pref-measure-metric`, etc.
 
+## Recipe registry
+
+A mod shipping its own recipe *type* (not just recipe files for an existing one) registers a
+`RecipeRegistryGeneric<T>`, the same rung vanilla's own recipe kinds use
+(`api.RegisterRecipeRegistry`), which is what gets a recipe client sync and a handbook entry for
+free:
+
+```csharp
+public static class ExRecipeRegistry
+{
+    public static List<T> Register<T>(ICoreAPI api, string code)
+        where T : IByteSerializable, new();
+
+    public static void LoadRecipes<T>(ICoreServerAPI sapi, string folder, List<T> into,
+        Action<T>? resolve = null) where T : IByteSerializable, new();
+}
+```
+
+`Register` runs identically on both sides, from `Start` - the `code` must be the same string on
+client and server, or the two can never sync the recipes it carries:
+
+```csharp
+public override void Start(ICoreAPI api)
+    => WidgetRecipes = ExRecipeRegistry.Register<WidgetRecipe>(api, "widgetrecipes");
+```
+
+`LoadRecipes` is server-only: it reads every JSON asset under `recipes/{folder}` (one recipe object,
+or an array of them) into the list `Register` returned, resolving each against its own asset's
+domain. Call it from `AssetsLoaded`, after `Register` has run on both sides:
+
+```csharp
+public override void AssetsLoaded(ICoreAPI api)
+{
+    if (api is ICoreServerAPI sapi)
+        ExRecipeRegistry.LoadRecipes(sapi, "widgets", WidgetRecipes, r => r.Resolve(sapi.World));
+}
+```
+
+`resolve` runs once per loaded recipe before it is added - an ingredient resolve, an `Enabled`
+check, whatever your recipe type needs done once loaded.
+
 ## Shipping more than one assembly
 
 One dll may declare as many mod systems as it likes. The limit is on files: **a mod folder may hold
