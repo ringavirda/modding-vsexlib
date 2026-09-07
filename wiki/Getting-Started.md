@@ -62,10 +62,20 @@ Reference the `ExpandedLib` NuGet package, with runtime assets excluded - the pl
 
 The package carries the config and lang source generators (as analyzers) and the whole
 `GamePath`/provisioning/asset-glob build behind it, so a project referencing only `ExpandedLib`
-needs no props of its own beyond a `TargetFramework` - no `$(GamePath)` to define, no `<Error>`
-target to write. `$(GamePath)` still resolves the same way the [Testing Harness](Testing-Harness)
-page assumes: from the `VINTAGE_STORY` environment variable, or `-p:GamePath=...` on the command
-line.
+needs no props of its own beyond a `TargetFramework` and an `<AssetDomain>` set to your modid - no
+`$(GamePath)` to define, no `<Error>` target to write:
+
+```xml
+<PropertyGroup>
+  <TargetFramework>net10.0</TargetFramework>
+  <AssetDomain>yourmod</AssetDomain>
+</PropertyGroup>
+```
+
+`$(AssetDomain)` is what turns on the asset copy (`assets/yourmod/**` into your mod's output) and
+the generated `{Domain}Lang` class (see [Source Generators](Source-Generators)); without it, both
+stay inert. `$(GamePath)` still resolves the same way the [Testing Harness](Testing-Harness) page
+assumes: from the `VINTAGE_STORY` environment variable, or `-p:GamePath=...` on the command line.
 
 Inside this monorepo the sample switches to a plain `ProjectReference` against the checkout instead
 (see `samples/HelloExpanded.csproj`) so exlib's own change history builds against itself without a

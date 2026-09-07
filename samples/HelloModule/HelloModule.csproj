@@ -47,6 +47,9 @@
     <Nullable>enable</Nullable>
     <AssemblyName>hellomodule</AssemblyName>
     <RootNamespace>HelloModule</RootNamespace>
+    <!-- This mod's asset domain; ExpandedLib.targets' shared globs pull in assets/hellomodule/
+         (Content + the en.json ExLangKeyGenerator feed) once this is set. -->
+    <AssetDomain>hellomodule</AssetDomain>
   </PropertyGroup>
 
   <ItemGroup>
@@ -91,23 +94,14 @@
   </ItemGroup>
 
   <!-- Imported last so the properties it needs from the project body ($(TargetFramework),
-       $(AssetDomain) - unset here, so its asset globs stay inert) are already evaluated; see
-       ExpandedLib.targets for what this pulls in (GamePath, provisioning, the capability
-       constants). This project carries no AssetDomain of its own, so its assets/ (a direct sibling
-       of the csproj, not one level up under src/) is still globbed by hand below. Source mode only,
-       same reason as the .props import above. -->
+       $(AssetDomain)) are already evaluated; see ExpandedLib.targets for what this pulls in
+       (GamePath, provisioning, the capability constants, and - since $(AssetDomain) is set above -
+       the assets/ content glob and the AdditionalFiles feed for ExLangKeyGenerator). Source mode
+       only, same reason as the .props import above. -->
   <Import
     Project="../../build/ExpandedLib.targets"
     Condition="'$(ExlibRoot)' != ''"
   />
-
-  <ItemGroup>
-    <Content Include="assets/**/*">
-      <Link>assets/%(RecursiveDir)%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <AdditionalFiles Include="assets/hellomodule/lang/en.json" />
-  </ItemGroup>
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 </Project>

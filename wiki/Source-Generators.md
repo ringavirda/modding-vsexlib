@@ -72,18 +72,16 @@ that project without a `using`.
 
 **The consuming csproj must feed it**, which is the step most easily missed - with no
 `AdditionalFiles` the generator runs, finds nothing and emits nothing, and the only symptom is that
-`{Domain}Lang` does not exist:
+`{Domain}Lang` does not exist. Setting `<AssetDomain>` (see [Getting Started](Getting-Started)) does
+this for you: the `ExpandedLib` package's own `build/ExpandedLib.targets` carries
 
 ```xml
-<ItemGroup>
-  <AdditionalFiles Include="assets/$(AssetDomain)/lang/en.json" />
-</ItemGroup>
+<AdditionalFiles Include="$(ModAssetsRoot)\$(AssetDomain)\lang\en.json" />
 ```
 
-In this repository that item lives once in `mods/Directory.Build.props`, keyed on `$(AssetDomain)`,
-so a mod project declares its domain and nothing else. Only the **primary** domain is fed: a mod
-packing a second tree (an absorbed mod's assets, or a `game:` override) should not emit typed
-constants for someone else's keys.
+conditioned on `$(AssetDomain)` being set, so a mod project declares its domain and nothing else.
+Only the **primary** domain is fed: a mod packing a second tree (an absorbed mod's assets, or a
+`game:` override) should not emit typed constants for someone else's keys.
 
 ## Notes
 
