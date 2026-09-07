@@ -87,10 +87,18 @@ public class ExConfigGeneratorFailureTests {
     return (generated, diagnostics);
   }
 
+  /// <summary>0-based line of the first occurrence of <paramref name="needle"/> in
+  /// <paramref name="source"/> - what <c>ClassDeclarationSyntax.GetLocation()</c> reports for a
+  /// class whose attribute lists start there, matching <see cref="Diagnostic.Location"/>'s own
+  /// line numbering.</summary>
+  private static int LineOf(string source, string needle) {
+    int index = source.IndexOf(needle, StringComparison.Ordinal);
+    return source[..index].Count(c => c == '\n');
+  }
+
   [Fact]
   public void A_config_with_no_catalogue_property_gets_an_error_naming_the_missing_member() {
-    (string? generated, _) = Run(
-      """
+    string source = """
       using ExpandedLib.Config;
 
       namespace GenTest;
@@ -100,19 +108,26 @@ public class ExConfigGeneratorFailureTests {
       public class BadConfig : IExVersionedConfig {
         public string? ConfigVersion { get; set; }
       }
-      """
-    );
+      """;
+    (string? generated, IReadOnlyList<Diagnostic> diagnostics) = Run(source);
 
     Assert.NotNull(generated);
     Assert.Contains("#error", generated);
     Assert.Contains("Dictionary<string, RecipeCostEntry>", generated);
     Assert.Contains("found none", generated);
+
+    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0002");
+    Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+    Assert.Contains("found none", diagnostic.GetMessage());
+    Assert.Equal(
+      LineOf(source, "[ExConfigRegister"),
+      diagnostic.Location.GetLineSpan().StartLinePosition.Line
+    );
   }
 
   [Fact]
   public void A_private_DefaultCatalogue_gets_an_error_instead_of_generating_an_inaccessible_call() {
-    (string? generated, _) = Run(
-      """
+    string source = """
       using System.Collections.Generic;
       using ExpandedLib.Config;
       using ExpandedLib.Registries;
@@ -127,18 +142,25 @@ public class ExConfigGeneratorFailureTests {
         public Dictionary<string, RecipeCostEntry> Recipes { get; set; } = new();
         private static Dictionary<string, RecipeCostEntry> DefaultCatalogue() => new();
       }
-      """
-    );
+      """;
+    (string? generated, IReadOnlyList<Diagnostic> diagnostics) = Run(source);
 
     Assert.NotNull(generated);
     Assert.Contains("#error", generated);
     Assert.Contains("DefaultCatalogue", generated);
+
+    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0002");
+    Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+    Assert.Contains("DefaultCatalogue", diagnostic.GetMessage());
+    Assert.Equal(
+      LineOf(source, "[ExConfigRegister"),
+      diagnostic.Location.GetLineSpan().StartLinePosition.Line
+    );
   }
 
   [Fact]
   public void A_wrongly_typed_DefaultCatalogue_gets_an_error_instead_of_generating_a_conversion_error() {
-    (string? generated, _) = Run(
-      """
+    string source = """
       using System.Collections.Generic;
       using ExpandedLib.Config;
       using ExpandedLib.Registries;
@@ -153,18 +175,25 @@ public class ExConfigGeneratorFailureTests {
         public Dictionary<string, RecipeCostEntry> Recipes { get; set; } = new();
         public static Dictionary<string, string> DefaultCatalogue() => new();
       }
-      """
-    );
+      """;
+    (string? generated, IReadOnlyList<Diagnostic> diagnostics) = Run(source);
 
     Assert.NotNull(generated);
     Assert.Contains("#error", generated);
     Assert.Contains("DefaultCatalogue", generated);
+
+    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0002");
+    Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+    Assert.Contains("DefaultCatalogue", diagnostic.GetMessage());
+    Assert.Equal(
+      LineOf(source, "[ExConfigRegister"),
+      diagnostic.Location.GetLineSpan().StartLinePosition.Line
+    );
   }
 
   [Fact]
   public void A_missing_RecipeLevel_property_gets_an_error_naming_it() {
-    (string? generated, _) = Run(
-      """
+    string source = """
       using System.Collections.Generic;
       using ExpandedLib.Config;
       using ExpandedLib.Registries;
@@ -178,18 +207,25 @@ public class ExConfigGeneratorFailureTests {
         public Dictionary<string, RecipeCostEntry> Recipes { get; set; } = new();
         public static Dictionary<string, RecipeCostEntry> DefaultCatalogue() => new();
       }
-      """
-    );
+      """;
+    (string? generated, IReadOnlyList<Diagnostic> diagnostics) = Run(source);
 
     Assert.NotNull(generated);
     Assert.Contains("#error", generated);
     Assert.Contains("'RecipeLevel'", generated);
+
+    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0002");
+    Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+    Assert.Contains("'RecipeLevel'", diagnostic.GetMessage());
+    Assert.Equal(
+      LineOf(source, "[ExConfigRegister"),
+      diagnostic.Location.GetLineSpan().StartLinePosition.Line
+    );
   }
 
   [Fact]
   public void A_LevelConfig_with_no_ExConfigRegister_gets_an_error_naming_it() {
-    (string? generated, _) = Run(
-      """
+    string source = """
       using System.Collections.Generic;
       using ExpandedLib.Config;
       using ExpandedLib.Registries;
@@ -207,13 +243,21 @@ public class ExConfigGeneratorFailureTests {
         public Dictionary<string, RecipeCostEntry> Recipes { get; set; } = new();
         public static Dictionary<string, RecipeCostEntry> DefaultCatalogue() => new();
       }
-      """
-    );
+      """;
+    (string? generated, IReadOnlyList<Diagnostic> diagnostics) = Run(source);
 
     Assert.NotNull(generated);
     Assert.Contains("#error", generated);
     Assert.Contains("PlainLevelHolder", generated);
     Assert.Contains("[ExConfigRegister]", generated);
+
+    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0002");
+    Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+    Assert.Contains("PlainLevelHolder", diagnostic.GetMessage());
+    Assert.Equal(
+      LineOf(source, "[ExConfigRegister"),
+      diagnostic.Location.GetLineSpan().StartLinePosition.Line
+    );
   }
 
   [Fact]

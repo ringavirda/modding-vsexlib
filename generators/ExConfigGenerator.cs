@@ -40,6 +40,20 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     isEnabledByDefault: true
   );
 
+  /// <summary>Reported alongside the <c>#error</c> <see cref="Emit"/> writes into the generated
+  /// accessor for an invalid <c>[ExRecipeProfile]</c> shape (missing catalogue property, missing
+  /// <c>DefaultCatalogue</c>, missing or unregistered level property): the <c>#error</c> is what
+  /// stops the build, unsuppressible, so this diagnostic never replaces it - it only gives an IDE
+  /// somewhere to navigate to, at the attribute's own location.</summary>
+  private static readonly DiagnosticDescriptor InvalidRecipeProfile = new(
+    id: "EXLIB0002",
+    title: "[ExRecipeProfile] shape is invalid",
+    messageFormat: "{0}",
+    category: "ExpandedLib.Config",
+    DiagnosticSeverity.Error,
+    isEnabledByDefault: true
+  );
+
   public void Initialize(IncrementalGeneratorInitializationContext context) {
     var models = context
       .SyntaxProvider.ForAttributeWithMetadataName(
@@ -66,6 +80,19 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
       orphanProfiles,
       static (spc, diagnostic) => spc.ReportDiagnostic(diagnostic!)
     );
+
+    var invalidProfiles = context
+      .SyntaxProvider.ForAttributeWithMetadataName(
+        RecipeProfileAttributeName,
+        predicate: static (node, _) => node is ClassDeclarationSyntax,
+        transform: static (ctx, _) => ExtractInvalidProfileDiagnostic(ctx)
+      )
+      .Where(static d => d is not null);
+
+    context.RegisterSourceOutput(
+      invalidProfiles,
+      static (spc, diagnostic) => spc.ReportDiagnostic(diagnostic!)
+    );
   }
 
   /// <summary>Flags a <c>[ExRecipeProfile]</c> class with no <c>[ExConfigRegister]</c> of its own -
@@ -82,6 +109,30 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
       return null;
 
     return Diagnostic.Create(OrphanRecipeProfile, ctx.TargetNode.GetLocation(), type.Name);
+  }
+
+  /// <summary>Flags a <c>[ExRecipeProfile]</c> class whose shape <see cref="ExtractRecipeProfile"/>
+  /// rejects, re-running that same check so the failure also lands as a diagnostic at the
+  /// attribute's own location for IDE navigation - the accessor pipeline (<see cref="Extract"/>,
+  /// <see cref="Emit"/>) still writes the unsuppressible <c>#error</c> regardless. Null when the
+  /// class has no [ExConfigRegister] (the orphan case, EXLIB0001) or its recipe-profile shape is
+  /// valid.</summary>
+  private static Diagnostic? ExtractInvalidProfileDiagnostic(
+    GeneratorAttributeSyntaxContext ctx
+  ) {
+    if (ctx.TargetSymbol is not INamedTypeSymbol type)
+      return null;
+
+    bool hasConfigRegister = type
+      .GetAttributes()
+      .Any(a => a.AttributeClass?.ToDisplayString() == AttributeName);
+    if (!hasConfigRegister)
+      return null;
+
+    if (ExtractRecipeProfile(type) is not { IsValid: false } profile)
+      return null;
+
+    return Diagnostic.Create(InvalidRecipeProfile, ctx.TargetNode.GetLocation(), profile.Error);
   }
 
   private static ConfigModel? Extract(GeneratorAttributeSyntaxContext ctx) {
