@@ -7,6 +7,14 @@ see the git history.
 
 ## [Unreleased]
 
+### Changed
+
+- The repository uses the standard .NET container layout: `src/ExpandedLib` (the mod, with its
+  assets), `src/ExpandedLib.Industry`, `src/ExpandedLib.Testing`, `src/ExpandedLib.Generators`,
+  `tests/ExpandedLib.Tests` with the test settings and coverage floors beside it; `samples/`,
+  `templates/`, `build/`, `docs/` and `wiki/` stay. Nothing in the packages, the namespaces or a
+  save changes; a source-mode consumer's project references follow the new paths.
+
 ## [0.8.0-preview.2] - 2026-09-07
 
 ### Added
