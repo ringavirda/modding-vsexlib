@@ -25,6 +25,15 @@ see the git history.
   error naming both types; the aliases themselves stay.
 - `ModSystemOrderTests`: every exlib ModSystem overriding `AssetsLoaded` or `AssetsFinalize`
   declares an `ExecuteOrder` below the 0.1 consumer default.
+- **`[ExCheckRegister]` and `ExCheckRegistry`**: a mod's own content check, a class exposing
+  `static CheckResult Run(ICheckSource, string)`, registers through the same assembly scan as
+  the other attributes and runs after the shipped checks in `AssetsFinalize` and `/exmod verify`,
+  each isolated so a throw is one reported error.
+- **`[ExRecipeProfile]`** beside `[ExConfigRegister]` on a recipe-cost config class: the config
+  generator emits the mod's `RecipeProfile` registration from the accessors it already emits.
+- `ExBlockDef` gains `GuiTransform`, `GroundTransform` and `FpHandTransform` with the item
+  builder's overloads, and `TpHandTransform` gains the ten-double and object overloads that emit
+  an origin; the seven-double overload keeps emitting translation, rotation and scale.
 
 ### Changed
 
@@ -32,7 +41,14 @@ see the git history.
   framework's `AssetsFinalize` (its five catalogue loads and the content checks) precedes every
   consumer's by order rather than by the dependency tie-break the Lifecycle page used to assert.
   The module driver stays at 0.03 and definition injection at 0.04.
-- Content-check errors are logged at Warning.
+- The content-check pass runs after exlib's own catalogue loads in `AssetsFinalize`, and its
+  errors are logged at Error.
+- `DeclareState` is virtual on `ExBlockEntity` and `ExBlockEntityContainer`, as on the other
+  state hosts; a subclass with only `[Persist]` members needs no override.
+- `JsonMultiblockLayout` no longer keeps every resolved block alive across worlds.
+- The wiki parity check in ExpandedLib.Testing also fails a snippet that declares a member
+  `virtual` or `override` where the code declares it `abstract`, and examines the containers
+  section of the block-entities page.
 - `IExModule.AssetsLoaded` is documented as running at the host's order, ahead of the JSON patch
   loader at 0.05, so an asset read there sees unpatched JSON; a catalogue read belongs in
   `AssetsFinalize`. The Lifecycle, Modules and Extending-Processes pages say the same, and the
