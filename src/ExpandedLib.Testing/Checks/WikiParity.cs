@@ -266,7 +266,9 @@ public static class WikiParity {
     // type when the fence shows only a signature list and no class line. This is deliberately not
     // `baseType` above - such a member is being declared on this type, not inherited from its base, so
     // looking it up on the base finds nothing and the check goes silently inert.
-    string? ownName = classMatch.Success ? classMatch.Groups["class"].Value : headingType;
+    string? ownName = classMatch.Success
+      ? classMatch.Groups["class"].Value
+      : headingType;
     types.TryGetValue(ownName ?? "", out Type? ownType);
 
     if (baseType == null && ownType == null)
@@ -319,7 +321,11 @@ public static class WikiParity {
     // walk would find that base member and call it abstract too. FindOwnDeclared only sees a
     // member ownType itself declares abstract - one it does not implement despite the page's claim.
     if (ownType != null)
-      foreach (Match m in VirtualDecl.Matches(block).Concat(OverrideDecl.Matches(block))) {
+      foreach (
+        Match m in VirtualDecl
+          .Matches(block)
+          .Concat(OverrideDecl.Matches(block))
+      ) {
         string name = m.Groups["name"].Value;
         MemberInfo? member = FindOwnDeclared(ownType, name);
         if (member == null)
@@ -362,7 +368,10 @@ public static class WikiParity {
   // look like ownType still declares it abstract.
   private static MemberInfo? FindOwnDeclared(Type ownType, string name) {
     const BindingFlags flags =
-      BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+      BindingFlags.Public
+      | BindingFlags.NonPublic
+      | BindingFlags.Instance
+      | BindingFlags.DeclaredOnly;
 
     MemberInfo[] found = ownType.GetMember(name, flags);
     return found.Length > 0 ? found[0] : null;

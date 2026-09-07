@@ -49,8 +49,10 @@ public class ExModuleHostTests : IDisposable {
 
   [Checks.ExCheckRegister]
   private sealed class TestHostCheck {
-    public static Checks.CheckResult Run(Checks.ICheckSource source, string domain) =>
-      new(nameof(TestHostCheck), domain, []);
+    public static Checks.CheckResult Run(
+      Checks.ICheckSource source,
+      string domain
+    ) => new(nameof(TestHostCheck), domain, []);
   }
 
   [PreferenceRegister]

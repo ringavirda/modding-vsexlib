@@ -132,12 +132,15 @@ public class RegistrationKeyTests : IDisposable {
     // shipped asset tree, and a mod that adds one without the other resolves keys into a domain it does
     // not ship.
     var missing = new List<string>();
+    int found = 0;
 
     foreach (
       string modinfo in RepoManifest
-        .Mods.Values.Select(d => Path.Combine(d, "src", "modinfo.json"))
+        .Mods.Keys.Select(RepoPaths.Src)
+        .Select(src => Path.Combine(src, "modinfo.json"))
         .Where(File.Exists)
     ) {
+      found++;
       string folder = Path.GetDirectoryName(modinfo)!;
       string modId = Regex
         .Match(File.ReadAllText(modinfo), @"""modid""\s*:\s*""([^""]+)""")
@@ -162,7 +165,10 @@ public class RegistrationKeyTests : IDisposable {
 
     // One mod project ships one; an empty corpus means the discovery broke, not that the rule
     // holds vacuously.
-    Assert.NotEmpty(RepoManifest.Mods);
+    Assert.True(
+      found > 0,
+      "Found no modinfo.json under any mod at all - the source walk is wrong."
+    );
     Assert.True(
       missing.Count == 0,
       "every mod assembly must carry [assembly: ExDomain(\"<its modid>\")]: "

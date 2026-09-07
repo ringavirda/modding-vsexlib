@@ -21,5 +21,7 @@ public class ExRecipeProfileTestConfig : IExVersionedConfig {
   public Dictionary<string, RecipeCostEntry> Recipes { get; set; } = new();
 
   public static Dictionary<string, RecipeCostEntry> DefaultCatalogue() =>
-    new() { ["stub"] = new RecipeCostEntry { Type = "grid", Match = "exlib:stub-*" } };
+    new() {
+      ["stub"] = new RecipeCostEntry { Type = "grid", Match = "exlib:stub-*" },
+    };
 }

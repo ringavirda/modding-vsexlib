@@ -94,7 +94,9 @@ public class ExlibChecksTests {
   // A declared network membership with no `networkType` - the behaviour has no other source for
   // one, so the cell logs an error and joins no graph.
   private static ExBlockDef NodeUntypedMembership() =>
-    ExBlockDef.Create(Domain, "stubmembership").EntityBehavior("BEBehaviorNetworkMember");
+    ExBlockDef
+      .Create(Domain, "stubmembership")
+      .EntityBehavior("BEBehaviorNetworkMember");
 
   // The concrete codes these seven defs actually register - what AssetCheckSource would read off
   // api.World.Blocks, matched by hand here since there is no game to ask. "stubghost" is deliberately
@@ -156,7 +158,8 @@ public class ExlibChecksTests {
 
     public IEnumerable<ExBlockDef> BlockDefinitions(string domain) =>
       domain == Domain
-        ? [
+        ?
+        [
           Node(),
           Wall(),
           Family(),

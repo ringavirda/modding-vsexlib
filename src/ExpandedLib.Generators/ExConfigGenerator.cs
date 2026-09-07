@@ -98,17 +98,22 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
   /// <summary>Flags a <c>[ExRecipeProfile]</c> class with no <c>[ExConfigRegister]</c> of its own -
   /// the only case <see cref="Extract"/> never sees, since its pipeline is driven by
   /// <c>[ExConfigRegister]</c>. Null when the class carries both attributes.</summary>
-  private static Diagnostic? ExtractOrphanDiagnostic(GeneratorAttributeSyntaxContext ctx) {
+  private static Diagnostic? ExtractOrphanDiagnostic(
+    GeneratorAttributeSyntaxContext ctx
+  ) {
     if (ctx.TargetSymbol is not INamedTypeSymbol type)
       return null;
 
-    bool hasConfigRegister = type
-      .GetAttributes()
+    bool hasConfigRegister = type.GetAttributes()
       .Any(a => a.AttributeClass?.ToDisplayString() == AttributeName);
     if (hasConfigRegister)
       return null;
 
-    return Diagnostic.Create(OrphanRecipeProfile, ctx.TargetNode.GetLocation(), type.Name);
+    return Diagnostic.Create(
+      OrphanRecipeProfile,
+      ctx.TargetNode.GetLocation(),
+      type.Name
+    );
   }
 
   /// <summary>Flags a <c>[ExRecipeProfile]</c> class whose shape <see cref="ExtractRecipeProfile"/>
@@ -123,8 +128,7 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     if (ctx.TargetSymbol is not INamedTypeSymbol type)
       return null;
 
-    bool hasConfigRegister = type
-      .GetAttributes()
+    bool hasConfigRegister = type.GetAttributes()
       .Any(a => a.AttributeClass?.ToDisplayString() == AttributeName);
     if (!hasConfigRegister)
       return null;
@@ -233,8 +237,7 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
   /// catalogue and its owning gameplay config do. Returns null when the config carries no
   /// <c>[ExRecipeProfile]</c>.</summary>
   private static RecipeProfileModel? ExtractRecipeProfile(INamedTypeSymbol type) {
-    var attr = type
-      .GetAttributes()
+    var attr = type.GetAttributes()
       .FirstOrDefault(a =>
         a.AttributeClass?.ToDisplayString() == RecipeProfileAttributeName
       );
@@ -242,8 +245,10 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
       return null;
 
     string levelProperty =
-      attr.NamedArguments.FirstOrDefault(na => na.Key == "RecipeLevelProperty")
-        .Value.Value as string ?? "RecipeLevel";
+      attr.NamedArguments.FirstOrDefault(na =>
+        na.Key == "RecipeLevelProperty"
+      ).Value.Value as string
+      ?? "RecipeLevel";
 
     var levelConfigArg = attr
       .NamedArguments.FirstOrDefault(na => na.Key == "LevelConfig")
@@ -252,10 +257,11 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
       levelConfigArg.Kind == TypedConstantKind.Type && !levelConfigArg.IsNull
         ? levelConfigArg.Value as INamedTypeSymbol
         : type;
-    string? levelAccessor = levelType is null ? null : ResolveAccessorName(levelType);
+    string? levelAccessor = levelType is null
+      ? null
+      : ResolveAccessorName(levelType);
 
-    var catalogueCandidates = type
-      .GetMembers()
+    var catalogueCandidates = type.GetMembers()
       .OfType<IPropertySymbol>()
       .Where(p =>
         !p.IsStatic
@@ -265,8 +271,7 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
       )
       .ToImmutableArray();
 
-    bool hasDefaultsMethod = type
-      .GetMembers("DefaultCatalogue")
+    bool hasDefaultsMethod = type.GetMembers("DefaultCatalogue")
       .OfType<IMethodSymbol>()
       .Any(m =>
         m.IsStatic
@@ -304,17 +309,17 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     }
 
     string levelTypeName = levelType?.Name ?? "LevelConfig";
-    string error = catalogueCandidates.Length == 0
-      ? "needs exactly one public Dictionary<string, RecipeCostEntry> property (found none)"
+    string error =
+      catalogueCandidates.Length == 0
+        ? "needs exactly one public Dictionary<string, RecipeCostEntry> property (found none)"
       : catalogueCandidates.Length > 1
         ? "needs exactly one public Dictionary<string, RecipeCostEntry> property (found more than one)"
-        : !hasDefaultsMethod
-          ? "needs a public static DefaultCatalogue() method returning Dictionary<string, RecipeCostEntry>"
-          : levelType is null
-            ? "LevelConfig must name a class"
-            : levelAccessor is null
-              ? $"LevelConfig {levelTypeName} needs its own [ExConfigRegister] attribute"
-              : $"needs a public string property named '{levelProperty}' with a getter and setter on {levelTypeName}";
+      : !hasDefaultsMethod
+        ? "needs a public static DefaultCatalogue() method returning Dictionary<string, RecipeCostEntry>"
+      : levelType is null ? "LevelConfig must name a class"
+      : levelAccessor is null
+        ? $"LevelConfig {levelTypeName} needs its own [ExConfigRegister] attribute"
+      : $"needs a public string property named '{levelProperty}' with a getter and setter on {levelTypeName}";
     return new RecipeProfileModel(
       IsValid: false,
       CatalogueProperty: string.Empty,
@@ -327,9 +332,11 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
   /// <summary>True when <paramref name="type"/> is <c>Dictionary&lt;string, RecipeCostEntry&gt;</c> -
   /// the shape both the catalogue property and <c>DefaultCatalogue()</c>'s return type must have.</summary>
   private static bool IsRecipeCostDictionary(ITypeSymbol type) =>
-    type is INamedTypeSymbol { Name: "Dictionary", TypeArguments.Length: 2 } dict
+    type
+      is INamedTypeSymbol { Name: "Dictionary", TypeArguments.Length: 2 } dict
     && dict.TypeArguments[0].SpecialType == SpecialType.System_String
-    && dict.TypeArguments[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+    && dict.TypeArguments[1]
+      .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
       == RecipeCostEntryType;
 
   /// <summary>Resolves the fully qualified name of the accessor <c>ExConfigGenerator</c> generates for
@@ -339,12 +346,15 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
   private static string? ResolveAccessorName(INamedTypeSymbol configType) {
     var registerAttr = configType
       .GetAttributes()
-      .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == AttributeName);
+      .FirstOrDefault(a =>
+        a.AttributeClass?.ToDisplayString() == AttributeName
+      );
     if (registerAttr is null)
       return null;
 
     string? accessorName =
-      registerAttr.NamedArguments.FirstOrDefault(na => na.Key == "AccessorName")
+      registerAttr
+        .NamedArguments.FirstOrDefault(na => na.Key == "AccessorName")
         .Value.Value as string;
     if (string.IsNullOrWhiteSpace(accessorName))
       accessorName = DefaultAccessorName(configType.Name);
@@ -352,7 +362,9 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     string? ns = configType.ContainingNamespace.IsGlobalNamespace
       ? null
       : configType.ContainingNamespace.ToDisplayString();
-    return ns is null ? $"global::{accessorName}" : $"global::{ns}.{accessorName}";
+    return ns is null
+      ? $"global::{accessorName}"
+      : $"global::{ns}.{accessorName}";
   }
 
   private static void Emit(SourceProductionContext spc, ConfigModel m) {
@@ -430,15 +442,15 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
       loadStatements.Add(
         "global::ExpandedLib.Registries.ExRecipeProfiles.Register("
       );
-      loadStatements.Add(
-        "  new global::ExpandedLib.Registries.RecipeProfile"
-      );
+      loadStatements.Add("  new global::ExpandedLib.Registries.RecipeProfile");
       loadStatements.Add("  {");
       loadStatements.Add($"    Code = \"{m.ModId}\",");
       loadStatements.Add(
         $"    Catalogue = () => _config.{profile.CatalogueProperty},"
       );
-      loadStatements.Add($"    Defaults = {m.ConfigTypeName}.DefaultCatalogue,");
+      loadStatements.Add(
+        $"    Defaults = {m.ConfigTypeName}.DefaultCatalogue,"
+      );
       loadStatements.Add(
         $"    GetLevel = () => {profile.LevelAccessor}.{profile.LevelProperty},"
       );

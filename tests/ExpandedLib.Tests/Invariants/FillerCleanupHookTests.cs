@@ -63,12 +63,13 @@ public class FillerCleanupHookTests {
     return null;
   }
 
-  // Every mod's own source tree - mods/*/src - the whole corpus this rule scans.
+  // Every mod's own source tree - <mod>/src when that folder holds it, else the mod's own folder
+  // (exlib's own project, flat under src/ExpandedLib) - the whole corpus this rule scans.
   private static IEnumerable<string> SourceFiles() {
     foreach (string mod in RepoManifest.Mods.Values) {
       string full = Path.Combine(mod, "src");
       if (!Directory.Exists(full))
-        continue;
+        full = mod;
       foreach (
         string path in Directory.EnumerateFiles(
           full,
@@ -94,8 +95,7 @@ public class FillerCleanupHookTests {
   private static string RepoRoot() {
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
     while (
-      dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
+      dir != null && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
     return dir?.FullName
@@ -116,6 +116,7 @@ public class FillerCleanupHookTests {
     // stranded in OnBlockBroken: the earlier file-wide check saw the OnBlockRemoved override and
     // stopped looking, certifying the file clean.
     var offenders = new List<string>();
+    int seen = 0;
     foreach (string f in SourceFiles()) {
       string text = File.ReadAllText(f);
       // The call syntax, not a bare mention: BlockStructureFiller's OnBlockBroken names
@@ -129,6 +130,7 @@ public class FillerCleanupHookTests {
       }
       if (!mentionsAny)
         continue;
+      seen++;
 
       string? brokenBody = MethodBody(text, BrokenSignature);
       if (brokenBody == null)
@@ -145,6 +147,10 @@ public class FillerCleanupHookTests {
       }
     }
 
+    Assert.True(
+      seen > 0,
+      "Found no files naming a cleanup call at all - the source walk is wrong."
+    );
     Assert.True(
       offenders.Count == 0,
       "these clear their footprint only on a player break: "

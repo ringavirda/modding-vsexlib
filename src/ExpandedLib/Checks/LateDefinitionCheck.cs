@@ -41,5 +41,5 @@ public static class LateDefinitionCheck {
 
   private static string Message(string kind, string name) =>
     $"{name} - {kind} definition registered too late to be built; register it from "
-      + "Start, or from an IExDefinitionContributor. Injection happens once, at AssetsLoaded 0.04.";
+    + "Start, or from an IExDefinitionContributor. Injection happens once, at AssetsLoaded 0.04.";
 }

@@ -58,7 +58,11 @@
       Pack="true"
       PackagePath="build/"
     />
-    <None Include="../../build/LegacyUsings.cs" Pack="true" PackagePath="build/" />
+    <None
+      Include="../../build/LegacyUsings.cs"
+      Pack="true"
+      PackagePath="build/"
+    />
   </ItemGroup>
 
   <!-- The shared glob in ../../Directory.Build.targets marks this mod's assets/modinfo/modicon as

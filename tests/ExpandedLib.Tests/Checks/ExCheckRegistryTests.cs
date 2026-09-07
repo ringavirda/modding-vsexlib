@@ -35,16 +35,18 @@ public class ExCheckRegistryTests : IDisposable {
     public IEnumerable<AssetLocation> BlockCodes => [];
     public IEnumerable<AssetLocation> ItemCodes => [];
 
-    public IEnumerable<(AssetLocation File, Newtonsoft.Json.Linq.JObject Json)> Recipes(
-      string domain
-    ) => [];
+    public IEnumerable<(
+      AssetLocation File,
+      Newtonsoft.Json.Linq.JObject Json
+    )> Recipes(string domain) => [];
 
     public IEnumerable<(string Locale, Newtonsoft.Json.Linq.JObject Json)> Lang(
       string domain
     ) => [];
 
-    public IEnumerable<Definitions.ExBlockDef> BlockDefinitions(string domain) =>
-      [];
+    public IEnumerable<Definitions.ExBlockDef> BlockDefinitions(
+      string domain
+    ) => [];
   }
 
   // Non-static: a static class compiles to abstract sealed, which the assembly scan behind
@@ -107,7 +109,10 @@ public class ExCheckRegistryTests : IDisposable {
     CheckResult thrown = results.Single(r => r.Check == nameof(ThrowingCheck));
     Assert.Single(thrown.Errors);
     Assert.Contains("InvalidOperationException", thrown.Errors[0]);
-    Assert.Equal(["seeded error"], results.Single(r => r.Check == "Passing").Errors);
+    Assert.Equal(
+      ["seeded error"],
+      results.Single(r => r.Check == "Passing").Errors
+    );
   }
 
   // The eight shipped checks, by the name their own CheckResult carries, in ExlibChecks._checks'
@@ -142,7 +147,11 @@ public class ExCheckRegistryTests : IDisposable {
   [Fact]
   public void A_static_class_is_dropped_before_the_attribute_is_ever_read() {
     var world = new TestWorld();
-    ExCheckRegistry.RegisterAll(world.Api, FakeMod(), typeof(StaticCheck).Assembly);
+    ExCheckRegistry.RegisterAll(
+      world.Api,
+      FakeMod(),
+      typeof(StaticCheck).Assembly
+    );
 
     Assert.DoesNotContain(
       ExCheckRegistry.Registered,
@@ -157,7 +166,11 @@ public class ExCheckRegistryTests : IDisposable {
   [Fact]
   public void A_wrong_signature_is_warned_about_and_skipped() {
     var world = new TestWorld();
-    ExCheckRegistry.RegisterAll(world.Api, FakeMod(), typeof(WrongSignatureCheck).Assembly);
+    ExCheckRegistry.RegisterAll(
+      world.Api,
+      FakeMod(),
+      typeof(WrongSignatureCheck).Assembly
+    );
 
     Assert.DoesNotContain(
       ExCheckRegistry.Registered,

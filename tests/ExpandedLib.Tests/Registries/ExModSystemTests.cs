@@ -45,8 +45,10 @@ public class ExModSystemTests : IDisposable {
 
   [Checks.ExCheckRegister]
   private sealed class TestSystemCheck {
-    public static Checks.CheckResult Run(Checks.ICheckSource source, string domain) =>
-      new(nameof(TestSystemCheck), domain, []);
+    public static Checks.CheckResult Run(
+      Checks.ICheckSource source,
+      string domain
+    ) => new(nameof(TestSystemCheck), domain, []);
   }
 
   [SubCommandRegister(Side = EnumAppSide.Server)]

@@ -34,7 +34,11 @@ public static class LangCoverageCheck {
   /// what every other locale falls back to); <see langword="true"/> checks every locale
   /// <see cref="ICheckSource.Lang"/> returns, the repository-build parity rule
   /// <c>ExpandedLib.Testing.LangCoverage.MissingNames</c> runs.</summary>
-  public static CheckResult Run(ICheckSource source, string domain, bool allLocales) {
+  public static CheckResult Run(
+    ICheckSource source,
+    string domain,
+    bool allLocales
+  ) {
     List<string> codes =
     [
       .. source

@@ -62,9 +62,15 @@ public class LangCoverageCheckTests {
       ("de", new JObject())
     );
 
-    Assert.Empty(LangCoverageCheck.Run(source, Domain, allLocales: false).Errors);
+    Assert.Empty(
+      LangCoverageCheck.Run(source, Domain, allLocales: false).Errors
+    );
 
-    CheckResult result = LangCoverageCheck.Run(source, Domain, allLocales: true);
+    CheckResult result = LangCoverageCheck.Run(
+      source,
+      Domain,
+      allLocales: true
+    );
     Assert.Single(result.Errors);
     Assert.Contains("de: block-stubblock", result.Errors);
   }

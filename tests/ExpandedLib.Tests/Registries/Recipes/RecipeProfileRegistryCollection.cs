@@ -9,5 +9,8 @@ namespace ExpandedLib.Tests;
 /// <c>[ExConfigRegister]</c> attribute rather than freshly random per test, so it cannot rely on
 /// <c>FreshCode</c> alone to stay invisible to a concurrently running class.
 /// </summary>
-[CollectionDefinition(nameof(RecipeProfileRegistryCollection), DisableParallelization = true)]
+[CollectionDefinition(
+  nameof(RecipeProfileRegistryCollection),
+  DisableParallelization = true
+)]
 public class RecipeProfileRegistryCollection { }

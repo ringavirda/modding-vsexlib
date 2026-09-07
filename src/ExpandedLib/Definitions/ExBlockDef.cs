@@ -334,7 +334,8 @@ public sealed class ExBlockDef : IExDef {
 
   /// <summary>Sets the <c>guiTransform</c> from a POCO/anonymous object/token. Block transforms are authored
   /// as objects because their shapes vary: some omit <c>rotation</c> or <c>origin</c>.</summary>
-  public ExBlockDef GuiTransform(object transform) => RootKey("guiTransform", transform);
+  public ExBlockDef GuiTransform(object transform) =>
+    RootKey("guiTransform", transform);
 
   /// <summary>Sets the <c>guiTransform</c> from translation, rotation, origin and uniform scale - the
   /// positional counterpart of <see cref="GuiTransform(object)"/>, for the common case of a fully
@@ -355,7 +356,8 @@ public sealed class ExBlockDef : IExDef {
 
   /// <summary>Sets the <c>fpHandTransform</c> (held in first person; deprecated in favour of
   /// <see cref="TpHandTransform(object)"/> but still read by the loader) from a POCO/anonymous object/token.</summary>
-  public ExBlockDef FpHandTransform(object transform) => RootKey("fpHandTransform", transform);
+  public ExBlockDef FpHandTransform(object transform) =>
+    RootKey("fpHandTransform", transform);
 
   /// <summary>Sets the <c>fpHandTransform</c> from translation, rotation, origin and uniform scale. Emits
   /// <c>{ translation, rotation, origin, scale }</c>.</summary>
@@ -374,7 +376,8 @@ public sealed class ExBlockDef : IExDef {
 
   /// <summary>Sets the <c>tpHandTransform</c> (the model transform applied when the block is held in third
   /// person) from a POCO/anonymous object/token.</summary>
-  public ExBlockDef TpHandTransform(object transform) => RootKey("tpHandTransform", transform);
+  public ExBlockDef TpHandTransform(object transform) =>
+    RootKey("tpHandTransform", transform);
 
   /// <summary>Sets the <c>tpHandTransform</c> from translation, XYZ rotation in degrees, and uniform scale,
   /// with no origin - emits <c>{ translation, rotation, scale }</c>. Use the ten-double or object overload
@@ -407,7 +410,8 @@ public sealed class ExBlockDef : IExDef {
   ) => TpHandTransform(Transform(tx, ty, tz, rx, ry, rz, ox, oy, oz, scale));
 
   /// <summary>Sets the <c>groundTransform</c> (dropped on the ground) from a POCO/anonymous object/token.</summary>
-  public ExBlockDef GroundTransform(object transform) => RootKey("groundTransform", transform);
+  public ExBlockDef GroundTransform(object transform) =>
+    RootKey("groundTransform", transform);
 
   /// <summary>Sets the <c>groundTransform</c> from translation, rotation, origin and uniform scale. Emits
   /// <c>{ translation, rotation, origin, scale }</c>.</summary>

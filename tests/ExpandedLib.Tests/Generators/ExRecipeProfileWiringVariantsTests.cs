@@ -52,7 +52,10 @@ public class ExRecipeProfileWiringVariantsTests : IDisposable {
     Assert.Equal("normal", profile.GetLevel());
     profile.SetLevel("cheap");
 
-    Assert.Equal("cheap", ExRecipeProfileCustomLevelPropertyTestValues.CostLevel);
+    Assert.Equal(
+      "cheap",
+      ExRecipeProfileCustomLevelPropertyTestValues.CostLevel
+    );
     Assert.Equal("cheap", profile.GetLevel());
   }
 

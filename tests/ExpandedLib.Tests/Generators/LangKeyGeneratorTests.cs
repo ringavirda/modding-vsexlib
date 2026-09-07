@@ -40,17 +40,20 @@ public class LangKeyGeneratorTests {
 
   /// <summary>An <c>AdditionalText</c> over an in-memory JSON blob, standing in for a fed
   /// <c>en.json</c>.</summary>
-  private sealed class FakeAdditionalText(string path, string content) : AdditionalText {
+  private sealed class FakeAdditionalText(string path, string content)
+    : AdditionalText {
     public override string Path { get; } = path;
 
-    public override SourceText GetText(CancellationToken cancellationToken = default) =>
-      SourceText.From(content, Encoding.UTF8);
+    public override SourceText GetText(
+      CancellationToken cancellationToken = default
+    ) => SourceText.From(content, Encoding.UTF8);
   }
 
   /// <summary>A flat <c>build_property.*</c> map, standing in for the analyzer config the SDK
   /// otherwise derives from <c>&lt;CompilerVisibleProperty&gt;</c> items.</summary>
-  private sealed class FakeAnalyzerConfigOptions(Dictionary<string, string> values)
-    : AnalyzerConfigOptions {
+  private sealed class FakeAnalyzerConfigOptions(
+    Dictionary<string, string> values
+  ) : AnalyzerConfigOptions {
     public override bool TryGetValue(string key, out string value) =>
       values.TryGetValue(key, out value!);
   }
@@ -59,9 +62,11 @@ public class LangKeyGeneratorTests {
     : AnalyzerConfigOptionsProvider {
     public override AnalyzerConfigOptions GlobalOptions { get; } = global;
 
-    public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => GlobalOptions;
+    public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) =>
+      GlobalOptions;
 
-    public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => GlobalOptions;
+    public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) =>
+      GlobalOptions;
   }
 
   private static IIncrementalGenerator NewGenerator() =>
@@ -85,7 +90,9 @@ public class LangKeyGeneratorTests {
     var values = new Dictionary<string, string>();
     if (assetDomain is not null)
       values["build_property.AssetDomain"] = assetDomain;
-    var options = new FakeOptionsProvider(new FakeAnalyzerConfigOptions(values));
+    var options = new FakeOptionsProvider(
+      new FakeAnalyzerConfigOptions(values)
+    );
     var texts = langFiles
       .Select(f => (AdditionalText)new FakeAdditionalText(f.Path, f.Json))
       .ToArray();
@@ -96,7 +103,11 @@ public class LangKeyGeneratorTests {
       CSharpParseOptions.Default,
       options
     );
-    driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out var diagnostics);
+    driver = driver.RunGeneratorsAndUpdateCompilation(
+      compilation,
+      out _,
+      out var diagnostics
+    );
     return diagnostics;
   }
 
@@ -104,7 +115,10 @@ public class LangKeyGeneratorTests {
   public void AssetDomain_with_no_matching_lang_file_reports_a_diagnostic() {
     IReadOnlyList<Diagnostic> diagnostics = Run("nomatch");
 
-    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0003");
+    Diagnostic diagnostic = Assert.Single(
+      diagnostics,
+      d => d.Id == "EXLIB0003"
+    );
     Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
     Assert.Contains("nomatch", diagnostic.GetMessage());
   }
@@ -126,7 +140,10 @@ public class LangKeyGeneratorTests {
       ("/proj/assets/gentest/lang/en.json", "not json")
     );
 
-    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0003");
+    Diagnostic diagnostic = Assert.Single(
+      diagnostics,
+      d => d.Id == "EXLIB0003"
+    );
     Assert.Contains("gentest", diagnostic.GetMessage());
   }
 
@@ -149,7 +166,10 @@ public class LangKeyGeneratorTests {
       )
     );
 
-    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0004");
+    Diagnostic diagnostic = Assert.Single(
+      diagnostics,
+      d => d.Id == "EXLIB0004"
+    );
     Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
     string message = diagnostic.GetMessage();
     Assert.Contains("foo bar", message);

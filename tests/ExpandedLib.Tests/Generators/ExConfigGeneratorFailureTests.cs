@@ -35,7 +35,9 @@ public class ExConfigGeneratorFailureTests {
       .Select(p => (MetadataReference)MetadataReference.CreateFromFile(p))
       .ToList();
     refs.Add(
-      MetadataReference.CreateFromFile(typeof(ExConfigRegisterAttribute).Assembly.Location)
+      MetadataReference.CreateFromFile(
+        typeof(ExConfigRegisterAttribute).Assembly.Location
+      )
     );
     return refs.ToArray();
   }
@@ -46,7 +48,9 @@ public class ExConfigGeneratorFailureTests {
   /// <summary>Runs <c>ExConfigGenerator</c> over a standalone source (no reference to this assembly's
   /// own fixtures), and returns the one <c>#error</c>-carrying accessor it emits alongside any
   /// diagnostics the generator itself reported.</summary>
-  private static (string? Generated, IReadOnlyList<Diagnostic> Diagnostics) Run(string source) {
+  private static (string? Generated, IReadOnlyList<Diagnostic> Diagnostics) Run(
+    string source
+  ) {
     var compilation = CSharpCompilation.Create(
       "ExConfigGeneratorFailureTest",
       new[] { CSharpSyntaxTree.ParseText(source) },
@@ -98,7 +102,10 @@ public class ExConfigGeneratorFailureTests {
     Assert.Contains("Dictionary<string, RecipeCostEntry>", generated);
     Assert.Contains("found none", generated);
 
-    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0002");
+    Diagnostic diagnostic = Assert.Single(
+      diagnostics,
+      d => d.Id == "EXLIB0002"
+    );
     Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     Assert.Contains("found none", diagnostic.GetMessage());
     Assert.Equal(
@@ -131,7 +138,10 @@ public class ExConfigGeneratorFailureTests {
     Assert.Contains("#error", generated);
     Assert.Contains("DefaultCatalogue", generated);
 
-    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0002");
+    Diagnostic diagnostic = Assert.Single(
+      diagnostics,
+      d => d.Id == "EXLIB0002"
+    );
     Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     Assert.Contains("DefaultCatalogue", diagnostic.GetMessage());
     Assert.Equal(
@@ -164,7 +174,10 @@ public class ExConfigGeneratorFailureTests {
     Assert.Contains("#error", generated);
     Assert.Contains("DefaultCatalogue", generated);
 
-    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0002");
+    Diagnostic diagnostic = Assert.Single(
+      diagnostics,
+      d => d.Id == "EXLIB0002"
+    );
     Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     Assert.Contains("DefaultCatalogue", diagnostic.GetMessage());
     Assert.Equal(
@@ -196,7 +209,10 @@ public class ExConfigGeneratorFailureTests {
     Assert.Contains("#error", generated);
     Assert.Contains("'RecipeLevel'", generated);
 
-    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0002");
+    Diagnostic diagnostic = Assert.Single(
+      diagnostics,
+      d => d.Id == "EXLIB0002"
+    );
     Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     Assert.Contains("'RecipeLevel'", diagnostic.GetMessage());
     Assert.Equal(
@@ -233,7 +249,10 @@ public class ExConfigGeneratorFailureTests {
     Assert.Contains("PlainLevelHolder", generated);
     Assert.Contains("[ExConfigRegister]", generated);
 
-    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0002");
+    Diagnostic diagnostic = Assert.Single(
+      diagnostics,
+      d => d.Id == "EXLIB0002"
+    );
     Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     Assert.Contains("PlainLevelHolder", diagnostic.GetMessage());
     Assert.Equal(
@@ -258,7 +277,10 @@ public class ExConfigGeneratorFailureTests {
     );
 
     Assert.Null(generated); // no [ExConfigRegister]: the accessor pipeline never runs at all
-    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0001");
+    Diagnostic diagnostic = Assert.Single(
+      diagnostics,
+      d => d.Id == "EXLIB0001"
+    );
     Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     Assert.Contains("OrphanConfig", diagnostic.GetMessage());
   }

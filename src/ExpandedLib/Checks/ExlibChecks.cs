@@ -53,7 +53,10 @@ public static class ExlibChecks {
   // Wraps a registered check the way ExModuleHost.Isolate wraps a module phase: a throw is caught and
   // reported as one error naming the check, rather than taking down every shipped check's result.
   private static CheckResult RunIsolated(
-    (System.Type Type, System.Func<ICheckSource, string, CheckResult> Run) check,
+    (
+      System.Type Type,
+      System.Func<ICheckSource, string, CheckResult> Run
+    ) check,
     ICheckSource source,
     string domain
   ) {

@@ -32,8 +32,9 @@ public class ExBlockNamesTests : IDisposable {
       .Returns(ci => ci.Arg<string>());
   }
 
-  private static Block BlockWith(params (string key, string value)[] variants) =>
-    TestBlocks.Configure(new Block(), "iiex:testblock", 1, variants);
+  private static Block BlockWith(
+    params (string key, string value)[] variants
+  ) => TestBlocks.Configure(new Block(), "iiex:testblock", 1, variants);
 
   private void AddVariantQualifier(string variantGroup, string langPrefix) {
     ExBlockNames.AddVariantQualifier(variantGroup, langPrefix);
@@ -98,24 +99,29 @@ public class ExBlockNamesTests : IDisposable {
 
     ExBlockNames.Decorate(block, "Piping");
 
-    TestLang
-      .Service.Received()
-      .Get("material-copper", Arg.Any<object[]>());
+    TestLang.Service.Received().Get("material-copper", Arg.Any<object[]>());
     TestLang
       .Service.Received()
       .Get(
         "exlib:blockname-suffixed",
-        Arg.Is<object[]>(a => (string)a[0] == "Piping" && (string)a[1] == "material-copper")
+        Arg.Is<object[]>(a =>
+          (string)a[0] == "Piping" && (string)a[1] == "material-copper"
+        )
       );
   }
 
   [Fact]
   public void Decorate_prefers_material_over_rock_when_both_are_set() {
-    Block block = BlockWith(("material", "copper"), ("rock", "basalt-precedence"));
+    Block block = BlockWith(
+      ("material", "copper"),
+      ("rock", "basalt-precedence")
+    );
 
     ExBlockNames.Decorate(block, "Piping");
 
-    TestLang.Service.DidNotReceive().Get("rock-basalt-precedence", Arg.Any<object[]>());
+    TestLang
+      .Service.DidNotReceive()
+      .Get("rock-basalt-precedence", Arg.Any<object[]>());
   }
 
   [Fact]
@@ -156,7 +162,9 @@ public class ExBlockNamesTests : IDisposable {
         var a = ci.Arg<object[]>();
         return $"{a[0]} ({a[1]})";
       });
-    TestLang.Service.Get("exlib:blockname-listsep", Arg.Any<object[]>()).Returns(", ");
+    TestLang
+      .Service.Get("exlib:blockname-listsep", Arg.Any<object[]>())
+      .Returns(", ");
     AddVariantQualifier("exblocknamestest-merge", "iiex:merge-");
     Block block = BlockWith(
       ("material", "steel"),

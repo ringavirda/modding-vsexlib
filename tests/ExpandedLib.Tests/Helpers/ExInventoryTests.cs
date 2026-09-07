@@ -91,7 +91,9 @@ public class ExInventoryTests {
   [Fact]
   public void CountHotbar_is_zero_when_there_is_no_hotbar_inventory() {
     TestPlayer player = new TestWorld().Player();
-    player.Player.InventoryManager.GetHotbarInventory().Returns((IInventory?)null);
+    player
+      .Player.InventoryManager.GetHotbarInventory()
+      .Returns((IInventory?)null);
 
     Assert.Equal(0, ExInventory.CountHotbar(player.Player, IsIron));
   }
@@ -110,7 +112,9 @@ public class ExInventoryTests {
   [Fact]
   public void TakeHotbar_is_zero_when_there_is_no_hotbar_inventory() {
     TestPlayer player = new TestWorld().Player();
-    player.Player.InventoryManager.GetHotbarInventory().Returns((IInventory?)null);
+    player
+      .Player.InventoryManager.GetHotbarInventory()
+      .Returns((IInventory?)null);
 
     Assert.Equal(0, ExInventory.TakeHotbar(player.Player, IsIron, 5));
   }

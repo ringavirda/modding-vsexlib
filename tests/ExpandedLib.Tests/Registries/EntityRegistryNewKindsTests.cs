@@ -31,7 +31,8 @@ public class EntityRegistryNewKindsTests : IDisposable {
   private sealed class TestEntity : Entity { }
 
   [EntityBehaviorRegister]
-  private sealed class TestEntityBehavior(Entity entity) : EntityBehavior(entity) {
+  private sealed class TestEntityBehavior(Entity entity)
+    : EntityBehavior(entity) {
     public override string PropertyName() => "testentitybehavior";
   }
 

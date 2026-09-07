@@ -51,7 +51,9 @@ public static class ExDefinitions {
   // AssetsLoaded stay false forever, which is what tells LateDefinitionCheck "nothing has run yet"
   // from "this def missed the window". Not singleplayer: the integrated server and the client share
   // this static, so the client sees InjectionRan turn true the moment the server's pass records it.
-  private static readonly HashSet<string> _injected = new(StringComparer.Ordinal);
+  private static readonly HashSet<string> _injected = new(
+    StringComparer.Ordinal
+  );
 
   /// <summary>Whether <see cref="ExDefinitionModSystem.AssetsLoaded"/> has recorded an injection
   /// pass in this process. Read by <see cref="Checks.LateDefinitionCheck"/>; reset by <see cref="Clear"/>.</summary>

@@ -306,8 +306,7 @@ public class MediumTaxonomyTests {
   private static string RepoRoot() {
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
     while (
-      dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
+      dir != null && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
     return dir?.FullName

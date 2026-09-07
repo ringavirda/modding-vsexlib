@@ -52,8 +52,7 @@ public class ExRecipeRegistryTests {
         """[{ "code": "b1" }, { "code": "b2" }]"""
       ),
     };
-    sapi
-      .Assets.GetMany<JToken>(Arg.Any<ILogger>(), "recipes/widgets")
+    sapi.Assets.GetMany<JToken>(Arg.Any<ILogger>(), "recipes/widgets")
       .Returns(assets);
 
     var into = new List<TestRecipe>();
@@ -74,8 +73,7 @@ public class ExRecipeRegistryTests {
         """{ "code": "a" }"""
       ),
     };
-    sapi
-      .Assets.GetMany<JToken>(Arg.Any<ILogger>(), "recipes/widgets")
+    sapi.Assets.GetMany<JToken>(Arg.Any<ILogger>(), "recipes/widgets")
       .Returns(assets);
 
     var resolved = new List<string>();
@@ -104,8 +102,7 @@ public class ExRecipeRegistryTests {
         """{ "code": "b" }"""
       ),
     };
-    sapi
-      .Assets.GetMany<JToken>(Arg.Any<ILogger>(), "recipes/widgets")
+    sapi.Assets.GetMany<JToken>(Arg.Any<ILogger>(), "recipes/widgets")
       .Returns(assets);
 
     var into = new List<TestRecipe>();

@@ -21,7 +21,8 @@ public class ExItemsTests {
     return world;
   }
 
-  private static Item ItemNamed(string code) => new() { Code = new AssetLocation(code) };
+  private static Item ItemNamed(string code) =>
+    new() { Code = new AssetLocation(code) };
 
   [Fact]
   public void WrenchStacks_returns_one_stack_per_item_whose_path_contains_wrench() {

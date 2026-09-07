@@ -56,7 +56,10 @@ public class ModSystemOrderTests {
   public void Every_ModSystem_reading_or_finalizing_assets_sits_below_the_default_order() {
     var offenders = new List<string>();
     foreach (Type t in ConcreteModSystems()) {
-      if (!OverridesPhase(t, nameof(ModSystem.AssetsLoaded)) && !OverridesPhase(t, nameof(ModSystem.AssetsFinalize)))
+      if (
+        !OverridesPhase(t, nameof(ModSystem.AssetsLoaded))
+        && !OverridesPhase(t, nameof(ModSystem.AssetsFinalize))
+      )
         continue;
 
       var instance = (ModSystem)Activator.CreateInstance(t)!;
@@ -73,11 +76,12 @@ public class ModSystemOrderTests {
 
   [Fact]
   public void ExpandedLibModSystem_sits_above_the_module_driver_and_definitions() {
-    var exlib = (ModSystem)Activator.CreateInstance(typeof(ExpandedLibModSystem))!;
-    var moduleDriver = (ModSystem)Activator.CreateInstance(typeof(ExModuleModSystem))!;
-    var definitions = (ModSystem)Activator.CreateInstance(
-      typeof(Definitions.ExDefinitionModSystem)
-    )!;
+    var exlib = (ModSystem)
+      Activator.CreateInstance(typeof(ExpandedLibModSystem))!;
+    var moduleDriver = (ModSystem)
+      Activator.CreateInstance(typeof(ExModuleModSystem))!;
+    var definitions = (ModSystem)
+      Activator.CreateInstance(typeof(Definitions.ExDefinitionModSystem))!;
 
     Assert.True(exlib.ExecuteOrder() > moduleDriver.ExecuteOrder());
     Assert.True(exlib.ExecuteOrder() > definitions.ExecuteOrder());

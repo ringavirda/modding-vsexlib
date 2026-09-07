@@ -22,9 +22,10 @@
     <!-- Assembly name matches the mod-relative dll the docs and the split plan name it by. -->
     <AssemblyName>exlib.industry</AssemblyName>
     <RootNamespace>ExpandedLib.Industry</RootNamespace>
-    <!-- Deliberately unset: the assets under ../ExpandedLib/assets/ are exlib's own domain and are already
-         globbed once by ExpandedLib.csproj (AssetDomain=exlib there). Setting it here would pull
-         the same Content items into this project too and ship them twice in the packaged zip. -->
+    <!-- Deliberately unset: the assets under ../ExpandedLib/assets/ are exlib's own domain and are
+         already globbed once by ExpandedLib.csproj (AssetDomain=exlib there). Setting it here
+         would pull the same Content items into this project too and ship them twice in the
+         packaged zip. -->
     <!-- ../../Directory.Build.props only wires GenerateDocumentationFile/NoWarn for a project with
          its own modinfo.json (one of the five mods); this project has none - it is not itself a
          mod, exlib's own project is - so it opts in for itself the same way

@@ -158,10 +158,10 @@
   </PropertyGroup>
 
   <!-- The icon, packed to the package root under its own name. ExpandedLib.csproj owns
-       src/ExpandedLib/modicon.png and declares this item itself, next to its own copy of the file (see the
-       comment there for why a plain Include here would collide with it and silently drop the icon
-       from the nupkg - NU5046). Industry and Testing carry no modicon.png of their own, so the
-       plain Include below is all they need. -->
+       src/ExpandedLib/modicon.png and declares this item itself, next to its own copy of the
+       file (see the comment there for why a plain Include here would collide with it and silently
+       drop the icon from the nupkg - NU5046). Industry and Testing carry no modicon.png of their
+       own, so the plain Include below is all they need. -->
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'ExpandedLib.Industry' or '$(MSBuildProjectName)' == 'ExpandedLib.Testing'">
     <None
       Include="$(MSBuildThisFileDirectory)src/ExpandedLib/modicon.png"

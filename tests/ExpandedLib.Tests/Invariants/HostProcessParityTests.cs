@@ -28,7 +28,10 @@ public class HostProcessParityTests {
       lines,
       l => l.Contains("private sealed class HostProcess(")
     );
-    Assert.True(classLine >= 0, $"{relativePath}: no 'HostProcess' nested class found.");
+    Assert.True(
+      classLine >= 0,
+      $"{relativePath}: no 'HostProcess' nested class found."
+    );
 
     // The doc comment is a contiguous run of "  /// " lines directly above the class; included so a
     // shim's comment can drift out of step the same way its body can.
@@ -39,9 +42,15 @@ public class HostProcessParityTests {
     // The class body ends at the first line back at the class's own two-space indent that closes
     // it - every member inside is indented four spaces or more.
     int end = classLine + 1;
-    while (end < lines.Length && !(lines[end].StartsWith("  }") && lines[end].Trim() == "}"))
+    while (
+      end < lines.Length
+      && !(lines[end].StartsWith("  }") && lines[end].Trim() == "}")
+    )
       end++;
-    Assert.True(end < lines.Length, $"{relativePath}: HostProcess class never closes.");
+    Assert.True(
+      end < lines.Length,
+      $"{relativePath}: HostProcess class never closes."
+    );
 
     var body = new string[end - start + 1];
     for (int i = 0; i <= end - start; i++)

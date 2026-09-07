@@ -90,7 +90,8 @@ public sealed class ExLangKeyGenerator : IIncrementalGenerator {
 
     context.RegisterSourceOutput(
       langs.Combine(rootNs).Combine(assetDomain),
-      static (spc, data) => Emit(spc, data.Left.Left!, data.Left.Right, data.Right)
+      static (spc, data) =>
+        Emit(spc, data.Left.Left!, data.Left.Right, data.Right)
     );
   }
 
@@ -226,7 +227,13 @@ public sealed class ExLangKeyGenerator : IIncrementalGenerator {
     for (int n = 2; !used.Add(unique); n++)
       unique = name + "_" + n;
     spc.ReportDiagnostic(
-      Diagnostic.Create(MemberNameCollision, Location.None, owners[name], key, unique)
+      Diagnostic.Create(
+        MemberNameCollision,
+        Location.None,
+        owners[name],
+        key,
+        unique
+      )
     );
     return unique;
   }

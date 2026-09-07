@@ -65,7 +65,10 @@ public class ShippedAssetJsonTests {
   /// under - the domain a repo-relative path segment count cannot reliably recover once a mod's own
   /// depth varies (a mod at the repo root, one under <c>samples/</c>).
   /// </summary>
-  private static IEnumerable<(string Relative, string Domain)> AssetFilesByDomain() {
+  private static IEnumerable<(
+    string Relative,
+    string Domain
+  )> AssetFilesByDomain() {
     string root = RepoRoot();
     foreach (string dir in ExpandedLib.Testing.RepoPaths.AllAssetTrees()) {
       string domain = new DirectoryInfo(dir).Name;
@@ -76,7 +79,10 @@ public class ShippedAssetJsonTests {
           SearchOption.AllDirectories
         )
       )
-        yield return (Path.GetRelativePath(root, file).Replace('\\', '/'), domain);
+        yield return (
+          Path.GetRelativePath(root, file).Replace('\\', '/'),
+          domain
+        );
     }
   }
 
@@ -174,8 +180,7 @@ public class ShippedAssetJsonTests {
   private static string RepoRoot() {
     DirectoryInfo? dir = new(AppContext.BaseDirectory);
     while (
-      dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
+      dir != null && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
     Assert.True(dir != null, "could not locate repo root (ExpandedLib.sln)");

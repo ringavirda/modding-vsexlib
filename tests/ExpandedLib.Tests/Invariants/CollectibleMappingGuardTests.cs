@@ -16,12 +16,13 @@ namespace ExpandedLib.Tests;
 public class CollectibleMappingGuardTests {
   #region Corpus
 
-  // Every mod's own source tree - the whole corpus this rule scans.
+  // Every mod's own source tree - <mod>/src when that folder holds it, else the mod's own folder
+  // (exlib's own project, flat under src/ExpandedLib) - the whole corpus this rule scans.
   private static IEnumerable<string> SourceFiles() {
     foreach (string mod in RepoManifest.Mods.Values) {
       string full = Path.Combine(mod, "src");
       if (!Directory.Exists(full))
-        continue;
+        full = mod;
       foreach (
         string path in Directory.EnumerateFiles(
           full,
@@ -47,8 +48,7 @@ public class CollectibleMappingGuardTests {
   private static string RepoRoot() {
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
     while (
-      dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
+      dir != null && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
     return dir?.FullName
@@ -75,7 +75,9 @@ public class CollectibleMappingGuardTests {
     // ItemStack.ToBytes writes the runtime id, so a stack stored without OnStore/OnLoad
     // CollectibleMappings resolves to whatever holds that id in the destination world.
     var offenders = new List<string>();
+    int files = 0;
     foreach (string f in SourceFiles()) {
+      files++;
       string text = File.ReadAllText(f);
       if (!text.Contains("class BlockEntity") || !StoresAStack(text))
         continue;
@@ -84,6 +86,11 @@ public class CollectibleMappingGuardTests {
       offenders.Add(Rel(f));
     }
 
+    Assert.True(
+      files > 0,
+      "Found no C# sources under any mod's own source tree - the source walk is wrong, and "
+        + "this rule would pass by scanning nothing."
+    );
     Assert.True(offenders.Count == 0, string.Join(", ", offenders));
   }
 }

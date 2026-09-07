@@ -22,8 +22,9 @@ public class MachineStationWindowTests {
 
     public SpyDialog? LastDialog;
 
-    protected override GuiDialogBlockEntity? CreateDialog(ICoreClientAPI capi) =>
-      LastDialog = new SpyDialog("test", Pos, capi);
+    protected override GuiDialogBlockEntity? CreateDialog(
+      ICoreClientAPI capi
+    ) => LastDialog = new SpyDialog("test", Pos, capi);
   }
 
   // Counts disposals; TryOpen's own duplicate refusal is exercised for real (by pre-populating
@@ -72,13 +73,17 @@ public class MachineStationWindowTests {
     station.ToggleWindow(player.Player);
     SpyDialog dialog = station.LastDialog!;
     Assert.True(dialog.IsOpened());
-    world.ClientApi.Network.Received(1).SendBlockEntityPacket(station.Pos, 1000, null);
+    world
+      .ClientApi.Network.Received(1)
+      .SendBlockEntityPacket(station.Pos, 1000, null);
 
     station.ToggleWindow(player.Player); // toggles the same window closed
 
     Assert.Equal(1, dialog.DisposeCalls);
     Assert.Null(ReflectionHelpers.GetField(station, "_dialog"));
-    world.ClientApi.Network.Received(1).SendBlockEntityPacket(station.Pos, 1001, null);
+    world
+      .ClientApi.Network.Received(1)
+      .SendBlockEntityPacket(station.Pos, 1001, null);
   }
 
   [Fact]
@@ -99,8 +104,8 @@ public class MachineStationWindowTests {
       station.Inventory.openedByPlayerGUIds
     );
     world.ClientApi.Network.DidNotReceive().SendPacketClient(Arg.Any<object>());
-    world.ClientApi.Network
-      .DidNotReceive()
+    world
+      .ClientApi.Network.DidNotReceive()
       .SendBlockEntityPacket(
         Arg.Any<BlockPos>(),
         Arg.Any<int>(),

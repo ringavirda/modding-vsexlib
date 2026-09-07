@@ -80,9 +80,10 @@ public class ExRecipeProfileGeneratorTests : IDisposable {
 
     profile.SaveCatalogue(); // must not throw
 
-    api.Received().StoreModConfig(
-      Arg.Any<Newtonsoft.Json.Linq.JObject>(),
-      "exrecipeprofiletest.json"
-    );
+    api.Received()
+      .StoreModConfig(
+        Arg.Any<Newtonsoft.Json.Linq.JObject>(),
+        "exrecipeprofiletest.json"
+      );
   }
 }

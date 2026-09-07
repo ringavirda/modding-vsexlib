@@ -30,7 +30,9 @@ public class ExRecipeProfileCrossClassLevelTestConfig : IExVersionedConfig {
   "exrecipeprofilecrossclasscatalogue.json",
   "exlib-recipeprofile-crossclass"
 )]
-[ExRecipeProfile(LevelConfig = typeof(ExRecipeProfileCrossClassLevelTestConfig))]
+[ExRecipeProfile(
+  LevelConfig = typeof(ExRecipeProfileCrossClassLevelTestConfig)
+)]
 public class ExRecipeProfileCrossClassCatalogueTestConfig : IExVersionedConfig {
   public string? ConfigVersion { get; set; }
 
