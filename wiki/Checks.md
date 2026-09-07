@@ -125,6 +125,42 @@ foreach (CheckResult result in results.Where(r => r.Errors.Count > 0))
 same checks against any source you build yourself - useful for a build-time script, a CI job, or a
 tool that reads from somewhere other than a running game.
 
+## Adding your own check
+
+The eight checks above are exlib's own; a mod's own content invariant - every machine's job table
+names a registered item, every diagram has a shape - gets the same three rungs with one line of its
+own, none of them a call.
+
+**Zero-config.** Nothing changes about the shipped checks: they keep running as Rung 1, 2 and 3
+above regardless of whether you add one of your own.
+
+**Declarative: `[ExCheckRegister]`.** Write a class exposing `static CheckResult Run(ICheckSource,
+string)` and mark it. Declare it a plain (non-`static`) class - the scan that finds it skips
+abstract types, and a C# `static class` compiles to one:
+
+```csharp
+[ExCheckRegister]
+public sealed class MyOwnCheck {
+    public static CheckResult Run(ICheckSource source, string domain) {
+        var errors = new List<string>();
+        // ... your rule against source.BlockCodes, source.Recipes(domain), etc.
+        return new CheckResult("MyOwn", domain, errors);
+    }
+}
+```
+
+`ExCheckRegistry.RegisterAll` scans for it the same way `EntityRegistry.RegisterAll` scans for
+`[BlockRegister]`, and runs automatically from a deriving `ExModSystem`'s or a module's own `Start` -
+there is nothing to call. A class carrying the attribute but not shaped exactly this way is warned
+about and skipped; the same class scanned twice (a rejoined world, a module and its host sharing an
+assembly) is registered once and every later scan is silently ignored.
+
+**Explicit: `ExlibChecks.All`.** Once registered, your check is appended after the eight shipped
+ones, in registration order, and runs at every rung above - the `AssetsFinalize` log line,
+`/exmod verify`, and `ExlibChecks.All` from your own code - with no further wiring. A throw from
+`Run` is caught and reported as one error naming your check, the way `ExModuleHost.Isolate` wraps a
+module phase, so one bad rule does not take the other checks down with it.
+
 ## Writing a custom `ICheckSource`
 
 Implement the five members - `Domains`, `BlockCodes`, `ItemCodes`, `Recipes(domain)`,

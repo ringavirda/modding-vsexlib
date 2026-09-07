@@ -8,7 +8,8 @@ namespace ExpandedLib.Checks;
 /// Runs every content check ExpandedLib ships against one <see cref="ICheckSource"/>, so a JSON-only
 /// modder gets "your recipe names a code that does not exist" as a log line, without ever opening
 /// xUnit. <see cref="ExpandedLibModSystem.AssetsFinalize"/> runs <see cref="All(ICoreAPI)"/> after the
-/// catalogues load; <c>/exmod verify</c> runs it on demand.
+/// catalogues load; <c>/exmod verify</c> runs it on demand. A mod's own <see cref="ExCheckRegisterAttribute"/>-decorated
+/// checks (see <see cref="ExCheckRegistry"/>) run after the eight shipped here, in registration order.
 /// </summary>
 public static class ExlibChecks {
   // One entry per check. Order is the order results and log lines come out in - cheapest and most
@@ -41,7 +42,31 @@ public static class ExlibChecks {
   public static IReadOnlyList<CheckResult> For(
     ICheckSource source,
     string domain
-  ) => [.. _checks.Select(run => run(source, domain))];
+  ) =>
+    [
+      .. _checks.Select(run => run(source, domain)),
+      .. ExCheckRegistry.Registered.Select(check =>
+        RunIsolated(check, source, domain)
+      ),
+    ];
+
+  // Wraps a registered check the way ExModuleHost.Isolate wraps a module phase: a throw is caught and
+  // reported as one error naming the check, rather than taking down every shipped check's result.
+  private static CheckResult RunIsolated(
+    (System.Type Type, System.Func<ICheckSource, string, CheckResult> Run) check,
+    ICheckSource source,
+    string domain
+  ) {
+    try {
+      return check.Run(source, domain);
+    } catch (System.Exception e) {
+      return new CheckResult(
+        check.Type.Name,
+        domain,
+        [$"{check.Type.FullName} threw {e.GetType().Name}: {e.Message}"]
+      );
+    }
+  }
 
   /// <summary>Runs every check against the live game state, over a fresh <see cref="AssetCheckSource"/>.</summary>
   public static IReadOnlyList<CheckResult> All(ICoreAPI api) =>

@@ -50,12 +50,14 @@ public abstract class ExModSystem : ModSystem {
 
   /// <summary>Loads every <c>[ExConfigRegister]</c> accessor in <see cref="Assembly"/> through
   /// <see cref="ExConfig.LoadAll"/>, then registers every <c>[BlockRegister]</c>/etc class and
-  /// code-first definition through <see cref="EntityRegistry.RegisterAll"/>, then registers and
-  /// starts every own module (see <see cref="IExModule"/>), then calls <see cref="OnStart"/>. Also
-  /// patches Harmony when <see cref="PatchHarmony"/> is true.</summary>
+  /// code-first definition through <see cref="EntityRegistry.RegisterAll"/>, then every
+  /// <c>[ExCheckRegister]</c> content check through <see cref="Checks.ExCheckRegistry.RegisterAll"/>,
+  /// then registers and starts every own module (see <see cref="IExModule"/>), then calls
+  /// <see cref="OnStart"/>. Also patches Harmony when <see cref="PatchHarmony"/> is true.</summary>
   public override void Start(ICoreAPI api) {
     ExConfig.LoadAll(api, Assembly);
     EntityRegistry.RegisterAll(api, Mod, Assembly);
+    Checks.ExCheckRegistry.RegisterAll(api, Mod, Assembly);
     if (PatchHarmony)
       ExHarmony.PatchOnce(Mod, Assembly);
     Modules(api).Start(api);

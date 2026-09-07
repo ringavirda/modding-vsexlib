@@ -32,3 +32,10 @@ public class ExDefinitionsCollection {
   // already belong to another collection (or none); each clears ExDefinitions.Contributors from its
   // own Dispose instead of joining this one.
 }
+
+[CollectionDefinition("ExCheckRegistry", DisableParallelization = true)]
+public class ExCheckRegistryCollection {
+  // Members: ExCheckRegistryTests (writes it). ExModuleHostTests and ExModSystemTests also register
+  // checks through RegisterAll but already belong to another collection; each clears
+  // ExCheckRegistry from its own Dispose instead of joining this one.
+}

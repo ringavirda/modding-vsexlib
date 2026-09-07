@@ -9,8 +9,8 @@ namespace ExpandedLib.Registries;
 /// <summary>
 /// Shared reflection helper for the attribute-driven registries
 /// (<see cref="EntityRegistry"/>, <see cref="CommandRegistry"/>,
-/// <see cref="PreferenceRegistry"/>) and for <c>BlockMigrationModSystem</c>'s
-/// cross-assembly discovery.
+/// <see cref="PreferenceRegistry"/>, <c>Checks.ExCheckRegistry</c>) and for
+/// <c>BlockMigrationModSystem</c>'s cross-assembly discovery.
 /// </summary>
 public static class ReflectionScan {
   /// <summary>
@@ -96,6 +96,27 @@ public static class ReflectionScan {
         continue;
 
       register(attr, instance);
+    }
+  }
+
+  /// <summary>
+  /// Finds every <typeparamref name="TAttr"/>-decorated class in <paramref name="assembly"/> and hands
+  /// back the type itself rather than an activated instance - for a rung whose classes are static, so
+  /// there is nothing to construct (a content check's <c>static Run</c>, say). The instance-activating
+  /// overload above covers <see cref="EntityRegistry"/>, <see cref="CommandRegistry"/> and
+  /// <see cref="PreferenceRegistry"/> instead.
+  /// </summary>
+  public static void ForEachAttributed<TAttr>(
+    Assembly assembly,
+    Action<TAttr, Type> register
+  )
+    where TAttr : Attribute {
+    foreach (Type type in GetCandidateTypes(assembly)) {
+      var attr = type.GetCustomAttribute<TAttr>();
+      if (attr == null)
+        continue;
+
+      register(attr, type);
     }
   }
 }

@@ -49,12 +49,14 @@ public sealed class ExModuleHost {
   }
 
   /// <summary>Per module, before its entry points: <see cref="ExConfig.LoadAll"/>,
-  /// <see cref="EntityRegistry.RegisterAll"/>, and Harmony when the module opted in (see
-  /// <see cref="ExModuleInfo.PatchHarmony"/>). Then every module's <see cref="IExModule.Start"/>.</summary>
+  /// <see cref="EntityRegistry.RegisterAll"/>, <see cref="Checks.ExCheckRegistry.RegisterAll"/>, and
+  /// Harmony when the module opted in (see <see cref="ExModuleInfo.PatchHarmony"/>). Then every
+  /// module's <see cref="IExModule.Start"/>.</summary>
   public void Start(ICoreAPI api) {
     foreach ((ExModuleInfo info, List<IExModule> instances) in _resolved) {
       ExConfig.LoadAll(api, info.Assembly);
       EntityRegistry.RegisterAll(api, _mod, info.Assembly);
+      Checks.ExCheckRegistry.RegisterAll(api, _mod, info.Assembly);
       if (info.PatchHarmony)
         ExHarmony.PatchOnce(info.HarmonyId, info.Assembly);
       foreach (IExModule module in instances)

@@ -31,7 +31,8 @@ public class ExModuleHostTests : IDisposable {
   // whichever mod id last registered it, which would break any other test's
   // EntityRegistry.KeyFor/DomainOf call against it. RegisterAll also discovers this file's
   // TestContributor-shaped types into ExDefinitions.Contributors (see DefinitionContributorTests'
-  // own cleanup); both are process-wide and must not leak into whatever test runs next.
+  // own cleanup) and its [ExCheckRegister]-decorated types into ExCheckRegistry; all are
+  // process-wide and must not leak into whatever test runs next.
   public void Dispose() {
     var field = typeof(EntityRegistry).GetField(
       "_domainByAssembly",
@@ -40,6 +41,7 @@ public class ExModuleHostTests : IDisposable {
     var map = (Dictionary<Assembly, string>)field.GetValue(null)!;
     map.Remove(typeof(ExModuleHostTests).Assembly);
     ExDefinitions.Clear();
+    Checks.ExCheckRegistry.Clear();
   }
 
   [BlockRegister]
