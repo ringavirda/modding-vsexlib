@@ -11,8 +11,11 @@ namespace ExpandedLib.Tests;
 /// <see cref="ExRecipeProfiles"/>'s registry and apply pipeline, and <see cref="RecipeProfile"/>'s
 /// level switch: registration by code, listing and lookup, and <see cref="ExRecipeProfiles.ApplyAll"/>
 /// running the derive/persist/apply cycle over a small hand-built catalogue (the same shape
-/// <see cref="ExRecipeCostsTests"/> exercises piece by piece).
+/// <see cref="ExRecipeCostsTests"/> exercises piece by piece). <c>ApplyAll</c> walks every registered
+/// profile, not just this class's own, so it joins <see cref="RecipeProfileRegistryCollection"/> along
+/// with the generator-driven tests that also register into <see cref="ExRecipeProfiles"/>.
 /// </summary>
+[Collection(nameof(RecipeProfileRegistryCollection))]
 public class RecipeProfilesTests {
   // Distinct per test so parallel test classes touching the same process-wide registry never collide
   // on a code, the same idiom ConfigSyncTests uses for ExConfigProfiles.

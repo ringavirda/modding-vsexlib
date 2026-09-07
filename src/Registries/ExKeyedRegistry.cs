@@ -28,6 +28,11 @@ public sealed class ExKeyedRegistry<T> {
   /// one process.</summary>
   public void Clear() => _items.Clear();
 
+  /// <summary>Drops one registered item by code, if present. Internal: a mod-keyed registry such as
+  /// <see cref="ExRecipeProfiles"/> only ever registers or replaces in production; this exists for a
+  /// test fixture bound to a fixed code to undo its own registration.</summary>
+  internal bool Remove(string code) => _items.Remove(code);
+
   /// <summary>Looks up an item by code (case-insensitive); <c>false</c> when none is registered.</summary>
   public bool TryGet(string code, out T item) =>
     _items.TryGetValue(code, out item!);

@@ -110,29 +110,41 @@ public static class ExRecipeCosts
 
 ## Registering declaratively with [ExRecipeProfile]
 
-A config that colocates the catalogue and the active level can skip the hand-written
-`ExRecipeProfiles.Register` call above entirely: add `[ExRecipeProfile]` next to `[ExConfigRegister]`
-and `ExConfigGenerator` emits the registration into the generated `Load(ICoreAPI)`.
+A config carrying the catalogue can skip the hand-written `ExRecipeProfiles.Register` call above
+entirely: add `[ExRecipeProfile]` next to `[ExConfigRegister]` and `ExConfigGenerator` emits the
+registration into the generated `Load(ICoreAPI)`. The catalogue (`Recipes`, `DefaultCatalogue`) and
+the active level (`RecipeLevel`) do not have to live on the same config - iiex ships them as two,
+the recipe catalogue and the mod's main gameplay config, and points `[ExRecipeProfile]` at the
+latter with `LevelConfig`:
 
 ```csharp
 [ExConfigRegister("ex_recipes.json", "iiex")]
-[ExRecipeProfile]
+[ExRecipeProfile(LevelConfig = typeof(IiexConfig))]
 public class IiexRecipeConfig : IExVersionedConfig
 {
     public string? ConfigVersion { get; set; }
-    public string RecipeLevel { get; set; } = "normal";                          // GetLevel/SetLevel
-    public Dictionary<string, RecipeCostEntry> Recipes { get; set; } = Defaults(); // Catalogue
+    public Dictionary<string, RecipeCostEntry> Recipes { get; set; } = DefaultCatalogue(); // Catalogue
 
-    public static Dictionary<string, RecipeCostEntry> DefaultCatalogue() => Defaults(); // Defaults
+    public static Dictionary<string, RecipeCostEntry> DefaultCatalogue() => new() { /* ... */ }; // Defaults
+}
+
+[ExConfigRegister("ex_values.json", "iiex")]
+public class IiexConfig : IExVersionedConfig
+{
+    public string? ConfigVersion { get; set; }
+    public string RecipeLevel { get; set; } = "normal"; // GetLevel/SetLevel, via IiexValues
 }
 ```
 
-The generator finds `Catalogue` as the config's sole `Dictionary<string, RecipeCostEntry>` property
-and `Defaults` as the matching static `DefaultCatalogue()`; `Code` is the mod id already passed to
-`[ExConfigRegister]`, and `SaveCatalogue` is the accessor's generated `Save`. `GetLevel`/`SetLevel`
-read and write the property named `RecipeLevel` by default - set
-`[ExRecipeProfile(RecipeLevelProperty = "...")]` when a config names it differently. A config missing
-one of these members fails the build with `#error`, naming what is missing.
+The generator finds `Catalogue` as `[ExRecipeProfile]`'s own config's sole
+`Dictionary<string, RecipeCostEntry>` property and `Defaults` as the matching static
+`DefaultCatalogue()`; `Code` is the mod id already passed to `[ExConfigRegister]`, and
+`SaveCatalogue` is the catalogue accessor's generated `Save`. `GetLevel`/`SetLevel` read and write a
+property named `RecipeLevel` by default, on `LevelConfig` when set, else on the same class - set
+`[ExRecipeProfile(RecipeLevelProperty = "...")]` when that config names it differently. A config
+missing one of these members fails the build with `#error`, naming what is missing; a class carrying
+`[ExRecipeProfile]` with no `[ExConfigRegister]` of its own reports build error `EXLIB0001` instead,
+since the generator never runs at all without it.
 
 ## Related pages
 

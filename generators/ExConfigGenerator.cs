@@ -27,6 +27,19 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     "global::ExpandedLib.Registries.RecipeCostEntry";
   private const string ConfigVersionProperty = "ConfigVersion";
 
+  /// <summary>Reported when a class carries <c>[ExRecipeProfile]</c> with no companion
+  /// <c>[ExConfigRegister]</c>: the recipe-profile pipeline only ever runs off the latter attribute, so
+  /// without it the class generates nothing at all rather than the intended registration.</summary>
+  private static readonly DiagnosticDescriptor OrphanRecipeProfile = new(
+    id: "EXLIB0001",
+    title: "[ExRecipeProfile] without [ExConfigRegister]",
+    messageFormat: "'{0}' carries [ExRecipeProfile] but no [ExConfigRegister], so no RecipeProfile "
+      + "registration will be generated. Add [ExConfigRegister] to the same class.",
+    category: "ExpandedLib.Config",
+    DiagnosticSeverity.Error,
+    isEnabledByDefault: true
+  );
+
   public void Initialize(IncrementalGeneratorInitializationContext context) {
     var models = context
       .SyntaxProvider.ForAttributeWithMetadataName(
@@ -40,6 +53,35 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
       models,
       static (spc, model) => Emit(spc, model!)
     );
+
+    var orphanProfiles = context
+      .SyntaxProvider.ForAttributeWithMetadataName(
+        RecipeProfileAttributeName,
+        predicate: static (node, _) => node is ClassDeclarationSyntax,
+        transform: static (ctx, _) => ExtractOrphanDiagnostic(ctx)
+      )
+      .Where(static d => d is not null);
+
+    context.RegisterSourceOutput(
+      orphanProfiles,
+      static (spc, diagnostic) => spc.ReportDiagnostic(diagnostic!)
+    );
+  }
+
+  /// <summary>Flags a <c>[ExRecipeProfile]</c> class with no <c>[ExConfigRegister]</c> of its own -
+  /// the only case <see cref="Extract"/> never sees, since its pipeline is driven by
+  /// <c>[ExConfigRegister]</c>. Null when the class carries both attributes.</summary>
+  private static Diagnostic? ExtractOrphanDiagnostic(GeneratorAttributeSyntaxContext ctx) {
+    if (ctx.TargetSymbol is not INamedTypeSymbol type)
+      return null;
+
+    bool hasConfigRegister = type
+      .GetAttributes()
+      .Any(a => a.AttributeClass?.ToDisplayString() == AttributeName);
+    if (hasConfigRegister)
+      return null;
+
+    return Diagnostic.Create(OrphanRecipeProfile, ctx.TargetNode.GetLocation(), type.Name);
   }
 
   private static ConfigModel? Extract(GeneratorAttributeSyntaxContext ctx) {
@@ -131,8 +173,11 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
 
   /// <summary>Reads the co-located <c>[ExRecipeProfile]</c> attribute, if any, and resolves the
   /// catalogue property (the config's sole <c>Dictionary&lt;string, RecipeCostEntry&gt;</c>
-  /// property) and the level property it names or defaults to. Returns null when the config carries
-  /// no <c>[ExRecipeProfile]</c>.</summary>
+  /// property), the level property it names or defaults to, and the generated accessor that owns that
+  /// level property - <paramref name="type"/> itself, or <see cref="ExRecipeProfileAttribute.LevelConfig"/>
+  /// when the two live on different <c>[ExConfigRegister]</c> configs, as the family mods' recipe
+  /// catalogue and its owning gameplay config do. Returns null when the config carries no
+  /// <c>[ExRecipeProfile]</c>.</summary>
   private static RecipeProfileModel? ExtractRecipeProfile(INamedTypeSymbol type) {
     var attr = type
       .GetAttributes()
@@ -146,6 +191,15 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
       attr.NamedArguments.FirstOrDefault(na => na.Key == "RecipeLevelProperty")
         .Value.Value as string ?? "RecipeLevel";
 
+    var levelConfigArg = attr
+      .NamedArguments.FirstOrDefault(na => na.Key == "LevelConfig")
+      .Value;
+    INamedTypeSymbol? levelType =
+      levelConfigArg.Kind == TypedConstantKind.Type && !levelConfigArg.IsNull
+        ? levelConfigArg.Value as INamedTypeSymbol
+        : type;
+    string? levelAccessor = levelType is null ? null : ResolveAccessorName(levelType);
+
     var catalogueCandidates = type
       .GetMembers()
       .OfType<IPropertySymbol>()
@@ -153,54 +207,98 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
         !p.IsStatic
         && p.DeclaredAccessibility == Accessibility.Public
         && p.GetMethod is not null
-        && p.Type is INamedTypeSymbol {
-          Name: "Dictionary",
-          TypeArguments.Length: 2,
-        } dict
-        && dict.TypeArguments[0].SpecialType == SpecialType.System_String
-        && dict.TypeArguments[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-          == RecipeCostEntryType
+        && IsRecipeCostDictionary(p.Type)
       )
       .ToImmutableArray();
 
     bool hasDefaultsMethod = type
       .GetMembers("DefaultCatalogue")
       .OfType<IMethodSymbol>()
-      .Any(m => m.IsStatic && m.Parameters.Length == 0);
-
-    bool hasLevelProperty = type
-      .GetMembers(levelProperty)
-      .OfType<IPropertySymbol>()
-      .Any(p =>
-        !p.IsStatic
-        && p.DeclaredAccessibility == Accessibility.Public
-        && p.GetMethod is not null
-        && p.SetMethod is not null
-        && p.Type.SpecialType == SpecialType.System_String
+      .Any(m =>
+        m.IsStatic
+        && m.DeclaredAccessibility == Accessibility.Public
+        && m.Parameters.Length == 0
+        && IsRecipeCostDictionary(m.ReturnType)
       );
 
-    if (catalogueCandidates.Length == 1 && hasDefaultsMethod && hasLevelProperty) {
+    bool hasLevelProperty =
+      levelType is not null
+      && levelType
+        .GetMembers(levelProperty)
+        .OfType<IPropertySymbol>()
+        .Any(p =>
+          !p.IsStatic
+          && p.DeclaredAccessibility == Accessibility.Public
+          && p.GetMethod is not null
+          && p.SetMethod is not null
+          && p.Type.SpecialType == SpecialType.System_String
+        );
+
+    if (
+      catalogueCandidates.Length == 1
+      && hasDefaultsMethod
+      && levelAccessor is not null
+      && hasLevelProperty
+    ) {
       return new RecipeProfileModel(
         IsValid: true,
         CatalogueProperty: catalogueCandidates[0].Name,
         LevelProperty: levelProperty,
+        LevelAccessor: levelAccessor,
         Error: string.Empty
       );
     }
 
+    string levelTypeName = levelType?.Name ?? "LevelConfig";
     string error = catalogueCandidates.Length == 0
       ? "needs exactly one public Dictionary<string, RecipeCostEntry> property (found none)"
       : catalogueCandidates.Length > 1
         ? "needs exactly one public Dictionary<string, RecipeCostEntry> property (found more than one)"
         : !hasDefaultsMethod
-          ? "needs a public static DefaultCatalogue() method returning the catalogue"
-          : $"needs a public string property named '{levelProperty}' with a getter and setter";
+          ? "needs a public static DefaultCatalogue() method returning Dictionary<string, RecipeCostEntry>"
+          : levelType is null
+            ? "LevelConfig must name a class"
+            : levelAccessor is null
+              ? $"LevelConfig {levelTypeName} needs its own [ExConfigRegister] attribute"
+              : $"needs a public string property named '{levelProperty}' with a getter and setter on {levelTypeName}";
     return new RecipeProfileModel(
       IsValid: false,
       CatalogueProperty: string.Empty,
       LevelProperty: levelProperty,
+      LevelAccessor: string.Empty,
       Error: error
     );
+  }
+
+  /// <summary>True when <paramref name="type"/> is <c>Dictionary&lt;string, RecipeCostEntry&gt;</c> -
+  /// the shape both the catalogue property and <c>DefaultCatalogue()</c>'s return type must have.</summary>
+  private static bool IsRecipeCostDictionary(ITypeSymbol type) =>
+    type is INamedTypeSymbol { Name: "Dictionary", TypeArguments.Length: 2 } dict
+    && dict.TypeArguments[0].SpecialType == SpecialType.System_String
+    && dict.TypeArguments[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+      == RecipeCostEntryType;
+
+  /// <summary>Resolves the fully qualified name of the accessor <c>ExConfigGenerator</c> generates for
+  /// <paramref name="configType"/>, by the same rule <see cref="Extract"/> applies when generating that
+  /// type's own accessor. Null when <paramref name="configType"/> carries no
+  /// <c>[ExConfigRegister]</c>.</summary>
+  private static string? ResolveAccessorName(INamedTypeSymbol configType) {
+    var registerAttr = configType
+      .GetAttributes()
+      .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == AttributeName);
+    if (registerAttr is null)
+      return null;
+
+    string? accessorName =
+      registerAttr.NamedArguments.FirstOrDefault(na => na.Key == "AccessorName")
+        .Value.Value as string;
+    if (string.IsNullOrWhiteSpace(accessorName))
+      accessorName = DefaultAccessorName(configType.Name);
+
+    string? ns = configType.ContainingNamespace.IsGlobalNamespace
+      ? null
+      : configType.ContainingNamespace.ToDisplayString();
+    return ns is null ? $"global::{accessorName}" : $"global::{ns}.{accessorName}";
   }
 
   private static void Emit(SourceProductionContext spc, ConfigModel m) {
@@ -288,10 +386,10 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
       );
       loadStatements.Add($"    Defaults = {m.ConfigTypeName}.DefaultCatalogue,");
       loadStatements.Add(
-        $"    GetLevel = () => _config.{profile.LevelProperty},"
+        $"    GetLevel = () => {profile.LevelAccessor}.{profile.LevelProperty},"
       );
       loadStatements.Add(
-        $"    SetLevel = level => Edit(c => c.{profile.LevelProperty} = level),"
+        $"    SetLevel = level => {profile.LevelAccessor}.Edit(c => c.{profile.LevelProperty} = level),"
       );
       loadStatements.Add("    SaveCatalogue = Save,");
       loadStatements.Add("  }");
@@ -380,13 +478,16 @@ internal sealed record ConfigModel(
 
 internal readonly record struct PropModel(string Type, string Name);
 
-/// <summary>Resolution of a config's <c>[ExRecipeProfile]</c> attribute: either the catalogue and
-/// level property names to emit the registration from, or the reason it could not be resolved (an
-/// <c>#error</c> in the generated source names it).</summary>
+/// <summary>Resolution of a config's <c>[ExRecipeProfile]</c> attribute: either the catalogue property,
+/// the level property, and the fully qualified generated accessor that owns the level property (the
+/// config's own, or <see cref="ExRecipeProfileAttribute.LevelConfig"/>'s) to emit the registration
+/// from, or the reason it could not be resolved (an <c>#error</c> in the generated source names
+/// it).</summary>
 internal sealed record RecipeProfileModel(
   bool IsValid,
   string CatalogueProperty,
   string LevelProperty,
+  string LevelAccessor,
   string Error
 );
 

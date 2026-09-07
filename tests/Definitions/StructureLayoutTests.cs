@@ -177,10 +177,12 @@ public class StructureLayoutTests {
   [Fact]
   public void FillerLayout_rejects_the_principal_marker_off_the_origin() {
     // '#' at col0 is the origin (skipped) and 'O' at col1 is (1,0,0), a misplaced principal marker.
-    // It throws rather than being dropped.
-    Assert.Throws<System.InvalidOperationException>(() =>
+    // It throws the misplaced-principal error rather than being dropped or falling through to the
+    // unregistered-symbol branch, which 'O' would also hit if it were never folded to '0'.
+    var ex = Assert.Throws<System.InvalidOperationException>(() =>
       StructureFootprint.Layout(f => f.Layer(0, "# O"))
     );
+    Assert.Contains("not the origin", ex.Message);
   }
 
   #endregion

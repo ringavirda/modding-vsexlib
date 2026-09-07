@@ -23,6 +23,12 @@ public static class ExRecipeProfiles {
   public static bool TryGet(string code, out RecipeProfile profile) =>
     _profiles.TryGet(code, out profile);
 
+  /// <summary>Removes a mod's profile, if registered. Internal, test-only: a generator-driven test
+  /// fixture registers under a mod id fixed by its own <c>[ExConfigRegister]</c> attribute and cannot
+  /// pick a fresh one per test, so it calls this in teardown rather than leaking into
+  /// <see cref="ApplyAll"/> for the rest of the process.</summary>
+  internal static void Unregister(string code) => _profiles.Remove(code);
+
   /// <summary>The registered mod codes, for listing in the command.</summary>
   public static IReadOnlyCollection<string> Codes => _profiles.Codes;
 

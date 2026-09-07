@@ -9,23 +9,27 @@ namespace ExpandedLib.Tests;
 /// <see cref="ContributedCatalogueLoader{TSet, TRegistry}"/> - <c>LiquidCatalogueLoader</c>,
 /// <c>MaterialRoleLoader</c> and industry's <c>MetalCatalogueLoader</c> - keep the same five-step
 /// <c>Load</c> shape: clear the registry, read the assets, merge them in, invoke the code
-/// contributors, return the report. Checked at source level, by the order the marker for each step
-/// first appears in the method, so a reordering fails here instead of drifting silently.
+/// contributors, return the report. Compared at source level, within each loader's own
+/// <c>Load(ICoreAPI)</c> method body, by the order in which the calls appear there, so a reordering
+/// fails here instead of drifting silently.
 /// </summary>
 public class HandRolledLoaderOrderTests {
-  // One loader's Load(ICoreAPI) source, and the five step markers in their expected order - each a
+  // One loader's absolute path, and the five step markers in their expected order - each a
   // substring unique to that loader's own spelling of the step (the merge step in particular is a
   // bare loop for liquids and a named call for the other two).
   private sealed record Loader(
     string Name,
-    string RelativePath,
+    string AbsolutePath,
     string[] StepMarkers
   );
 
   private static readonly Loader[] Loaders = [
     new Loader(
       "LiquidCatalogueLoader",
-      "src/Catalogues/Fluids/LiquidCatalogueLoader.cs",
+      Path.Combine(
+        RepoPaths.Src("exlib"),
+        "Catalogues/Fluids/LiquidCatalogueLoader.cs"
+      ),
       [
         "ExLiquids.Clear();",
         "AssetCatalogueLoader.Read<LiquidCatalogue>",
@@ -36,7 +40,10 @@ public class HandRolledLoaderOrderTests {
     ),
     new Loader(
       "MaterialRoleLoader",
-      "src/Catalogues/Materials/MaterialRoleLoader.cs",
+      Path.Combine(
+        RepoPaths.Src("exlib"),
+        "Catalogues/Materials/MaterialRoleLoader.cs"
+      ),
       [
         "MaterialRoleRegistry.Clear();",
         "AssetCatalogueLoader.Read<MaterialRoleCatalogue>",
@@ -47,7 +54,7 @@ public class HandRolledLoaderOrderTests {
     ),
     new Loader(
       "MetalCatalogueLoader",
-      "industry/Metals/MetalCatalogueLoader.cs",
+      Path.Combine(RepoPaths.Root, "industry/Metals/MetalCatalogueLoader.cs"),
       [
         "MetalRegistry.Clear();",
         "AssetCatalogueLoader.Read<MetalDef>",
@@ -66,20 +73,37 @@ public class HandRolledLoaderOrderTests {
     "report",
   ];
 
+  private const string LoadSignature =
+    "public static CatalogueLoadReport Load(ICoreAPI api) {";
+
+  /// <summary>Isolates one loader's <c>Load(ICoreAPI)</c> method body - the lines strictly between its
+  /// signature and the closing brace back at the method's own two-space indent - so a marker in a doc
+  /// comment or in another member cannot satisfy the order check.</summary>
+  private static string LoadMethodBody(string path) {
+    string[] lines = File.ReadAllLines(path);
+    int start = System.Array.FindIndex(lines, l => l.Contains(LoadSignature));
+    Assert.True(start >= 0, $"{path}: no 'Load(ICoreAPI)' method found.");
+
+    int end = start + 1;
+    while (end < lines.Length && lines[end] != "  }")
+      end++;
+    Assert.True(end < lines.Length, $"{path}: Load(ICoreAPI) never closes.");
+
+    return string.Join('\n', lines[(start + 1)..end]);
+  }
+
   [Fact]
   public void Each_loader_clears_reads_merges_invokes_contributors_then_reports_in_order() {
     foreach (Loader loader in Loaders) {
-      string text = File.ReadAllText(
-        Path.Combine(RepoPaths.Root, loader.RelativePath)
-      );
+      string body = LoadMethodBody(loader.AbsolutePath);
 
       int previous = -1;
       for (int step = 0; step < loader.StepMarkers.Length; step++) {
         string marker = loader.StepMarkers[step];
-        int at = text.IndexOf(marker, System.StringComparison.Ordinal);
+        int at = body.IndexOf(marker, System.StringComparison.Ordinal);
         Assert.True(
           at >= 0,
-          $"{loader.Name}: step '{StepNames[step]}' marker not found: \"{marker}\""
+          $"{loader.Name}: step '{StepNames[step]}' marker not found in Load: \"{marker}\""
         );
         Assert.True(
           at > previous,
