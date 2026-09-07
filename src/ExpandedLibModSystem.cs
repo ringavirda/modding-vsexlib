@@ -50,12 +50,6 @@ public class ExpandedLibModSystem : ModSystem {
   /// exlib's single dll means this fires once whatever is installed.
   /// </summary>
   public override void AssetsFinalize(ICoreAPI api) {
-    // The content guards - dangling recipe codes, uncovered lang, pinned network nodes and the rest -
-    // run here so a JSON-only mod gets them as a log line without ever opening the xUnit harness.
-    // Also available on demand with /exmod verify; ExlibConfig.RunChecksOnLoad opts out of this pass.
-    if (ExlibValues.RunChecksOnLoad)
-      Checks.ExlibChecks.Log(api.Logger, Checks.ExlibChecks.All(api));
-
     LiquidCatalogueLoader.Load(api).Log(api.Logger);
     // The material-role catalogue (flux/fuel/ore/scrap/charge classification) and its mod-gated code
     // contributors. Must load after the metal and liquid registries - the domain layer's own IExModule.AssetsFinalize
@@ -73,6 +67,14 @@ public class ExpandedLibModSystem : ModSystem {
     // What each store's items occupy. Also each store's whitelist: an item no rule names is one no rack
     // takes, so a missing file reads as an empty rack rather than as one that holds anything.
     BayOccupancyLoader.Load(api).Log(api.Logger);
+
+    // The content guards - dangling recipe codes, uncovered lang, pinned network nodes and the rest -
+    // run here, after exlib's own catalogue loads above (the metal catalogue loads through the module
+    // driver at 0.03, ahead of this pass either way), so a JSON-only mod gets them as a log line
+    // without ever opening the xUnit harness. Also available on demand with /exmod verify;
+    // ExlibConfig.RunChecksOnLoad opts out of this pass.
+    if (ExlibValues.RunChecksOnLoad)
+      Checks.ExlibChecks.Log(api.Logger, Checks.ExlibChecks.All(api));
   }
 
   public override void StartClientSide(ICoreClientAPI api) {

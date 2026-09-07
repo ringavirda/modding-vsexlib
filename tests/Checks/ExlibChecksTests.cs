@@ -207,7 +207,7 @@ public class ExlibChecksTests {
   }
 
   [Fact]
-  public void Log_writes_each_error_line_at_Warning_not_Notification() {
+  public void Log_writes_each_error_line_at_Error_not_Notification() {
     ILogger logger = Substitute.For<ILogger>();
     IReadOnlyList<CheckResult> results = Results();
 
@@ -215,7 +215,7 @@ public class ExlibChecksTests {
 
     int errorLines = logger
       .ReceivedCalls()
-      .Count(call => call.GetMethodInfo().Name == nameof(ILogger.Warning));
+      .Count(call => call.GetMethodInfo().Name == nameof(ILogger.Error));
     Assert.Equal(results.Sum(r => r.Errors.Count), errorLines);
   }
 
