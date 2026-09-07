@@ -41,7 +41,7 @@ public abstract class RegisterAttribute(string? code = null) : Attribute
 }
 ```
 
-Six sealed attributes inherit it, each validating the target's base type:
+Nine sealed attributes inherit it, each validating the target's base type:
 
 | Attribute | Target base type |
 | --- | --- |
@@ -51,6 +51,13 @@ Six sealed attributes inherit it, each validating the target's base type:
 | `[BlockBehaviorRegister]` | `BlockBehavior` |
 | `[BlockEntityBehaviorRegister]` | `BlockEntityBehavior` |
 | `[CollectibleBehaviorRegister]` | `CollectibleBehavior` |
+| `[EntityRegister]` | `Entity` |
+| `[EntityBehaviorRegister]` | `EntityBehavior` |
+| `[CropBehaviorRegister]` | `CropBehavior` |
+
+Entity renderers are `ICoreClientAPI`-only, and `RegisterMountable` takes a delegate rather than a
+class, so neither fits this rung's shape; register them with the raw `api.RegisterMountable(...)` /
+client-side call instead.
 
 ```csharp
 [BlockRegister]                         // -> "yourmod.BlockPipe"

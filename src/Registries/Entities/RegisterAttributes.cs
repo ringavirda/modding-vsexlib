@@ -49,3 +49,18 @@ public sealed class BlockEntityBehaviorRegisterAttribute(string? code = null)
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class CollectibleBehaviorRegisterAttribute(string? code = null)
   : RegisterAttribute(code);
+
+/// <summary>Registers a <see cref="Vintagestory.API.Common.Entities.Entity"/> class.</summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class EntityRegisterAttribute(string? code = null)
+  : RegisterAttribute(code);
+
+/// <summary>Registers a <see cref="Vintagestory.API.Common.Entities.EntityBehavior"/> class.</summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class EntityBehaviorRegisterAttribute(string? code = null)
+  : RegisterAttribute(code);
+
+/// <summary>Registers a <see cref="Vintagestory.API.Common.CropBehavior"/> class.</summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class CropBehaviorRegisterAttribute(string? code = null)
+  : RegisterAttribute(code);

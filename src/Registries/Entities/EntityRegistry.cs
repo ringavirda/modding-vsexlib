@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using ExpandedLib.Definitions;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 
 namespace ExpandedLib.Registries;
 
@@ -11,8 +12,9 @@ namespace ExpandedLib.Registries;
 /// Reflection-driven class registration for mods built on ExpandedLib. Scans an assembly for types
 /// carrying a <see cref="RegisterAttribute"/> (the kind-specific <c>[BlockRegister]</c>,
 /// <c>[ItemRegister]</c>, <c>[BlockEntityRegister]</c>, <c>[BlockBehaviorRegister]</c>,
-/// <c>[BlockEntityBehaviorRegister]</c>, <c>[CollectibleBehaviorRegister]</c>) and registers each
-/// with the game under the matching registry, keyed <c>{domain}.{ClassName}</c> by convention.
+/// <c>[BlockEntityBehaviorRegister]</c>, <c>[CollectibleBehaviorRegister]</c>, <c>[EntityRegister]</c>,
+/// <c>[EntityBehaviorRegister]</c>, <c>[CropBehaviorRegister]</c>) and registers each with the game
+/// under the matching registry, keyed <c>{domain}.{ClassName}</c> by convention.
 /// </summary>
 public static class EntityRegistry {
   /// <summary>Log sink for the cross-mod domain-fallback warning (see <see cref="DomainOf"/>); set
@@ -81,6 +83,18 @@ public static class EntityRegistry {
             "collectible behavior"
           ):
           api.RegisterCollectibleBehaviorClass(key, type);
+          break;
+        case EntityRegisterAttribute
+          when Validate<Entity>(api, modId, type, "entity"):
+          api.RegisterEntity(key, type);
+          break;
+        case EntityBehaviorRegisterAttribute
+          when Validate<EntityBehavior>(api, modId, type, "entity behavior"):
+          api.RegisterEntityBehaviorClass(key, type);
+          break;
+        case CropBehaviorRegisterAttribute
+          when Validate<CropBehavior>(api, modId, type, "crop behavior"):
+          api.RegisterCropBehavior(key, type);
           break;
       }
     }

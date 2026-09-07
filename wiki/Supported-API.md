@@ -33,6 +33,9 @@ For a modder registering blocks, items, behaviours, commands, preferences or rec
 | `BlockEntityRegisterAttribute` | Registers a BlockEntity class. | [Registries](Registries) |
 | `BlockRegisterAttribute` | Registers a Block class. | [Registries](Registries) |
 | `CollectibleBehaviorRegisterAttribute` | Registers a CollectibleBehavior class. | [Registries](Registries) |
+| `CropBehaviorRegisterAttribute` | Registers a CropBehavior class. | [Registries](Registries) |
+| `EntityBehaviorRegisterAttribute` | Registers an EntityBehavior class. | [Registries](Registries) |
+| `EntityRegisterAttribute` | Registers an Entity class. | [Registries](Registries) |
 | `EntityRegistry` | Reflection-driven class registration for mods built on ExpandedLib. | [Registries](Registries) |
 | `ExDomainAttribute` | Declares the asset domain an assembly's registered classes and code-first definitions are keyed under, so KeyFor can resolve a key from a Type alone rather than from the domain of whoever is asking. | [Registries](Registries) |
 | `ItemRegisterAttribute` | Registers an Item class. | [Registries](Registries) |
