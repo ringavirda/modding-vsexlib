@@ -1,6 +1,7 @@
 # Code style
 
-How the C# in `src/`, `industry/`, `testing/`, `generators/` and `tests/` is written and formatted.
+How the C# in `src/ExpandedLib/`, `src/ExpandedLib.Industry/`, `src/ExpandedLib.Testing/`,
+`src/ExpandedLib.Generators/` and `tests/ExpandedLib.Tests/` is written and formatted.
 Domain rules - units, invariants, network semantics - live in [conventions.md](docs/design/conventions.md);
 this file is about the code itself. The family's own rules (iiex, siex) are exmods' own
 CONTRIBUTING.md.

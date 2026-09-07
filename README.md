@@ -67,6 +67,23 @@ missing from that list has been hidden from IntelliSense with `[EditorBrowsable(
 the engine has to see it, not because a mod is meant to call it. `ExpandedLib.Industry` is also
 public, but it is the family's own content layer and changes without notice.
 
+## Layout
+
+```
+src/ExpandedLib/            the mod: ExpandedLib.csproj, modinfo.json, modicon.png, assets/, the framework sources
+src/ExpandedLib.Industry/   the family's content layer, packaged alongside the framework
+src/ExpandedLib.Testing/    the headless xUnit harness
+src/ExpandedLib.Generators/ the config/lang source generators, referenced as an analyzer
+tests/ExpandedLib.Tests/    the suite this repo's own gate runs
+build/                      the MSBuild plumbing the package ships (GamePath resolution, provisioning, asset globs)
+samples/                    HelloExpanded and HelloModule, third-party mods written against this library
+templates/                  the `dotnet new` templates a consumer installs (exlib-tests)
+docs/                       design pages for a contributor working on this repo's own mechanics
+wiki/                       the GitHub wiki source, guarded by tests so it cannot drift from the code
+scripts/                    the exmod launchers this repo checks in
+dist/                       release output (zips, NuGet packages) - not checked in
+```
+
 ## Packages
 
 The mod ships as one download - one modinfo, one folder, `exlib.dll` and `exlib.industry.dll` - and
@@ -106,8 +123,8 @@ stamping) that NuGet imports into the consuming project automatically. Central p
 at the repo root.
 
 ```sh
-dotnet build src/ExpandedLib.csproj              # the framework
-dotnet build industry/ExpandedLib.Industry.csproj # the family layer
+dotnet build src/ExpandedLib/ExpandedLib.csproj                   # the framework
+dotnet build src/ExpandedLib.Industry/ExpandedLib.Industry.csproj # the family layer
 ```
 
 Every repo task goes through `scripts/exmod.sh` (`scripts/exmod.ps1` on Windows), a launcher that
