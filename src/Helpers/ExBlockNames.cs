@@ -18,6 +18,11 @@ public static class ExBlockNames {
   private static readonly List<(string Group, string LangPrefix)> _qualifiers =
   [];
 
+  /// <summary>The registered variant groups, in the order <see cref="Decorate"/> applies them -
+  /// a test-only inspection point for <see cref="AddVariantQualifier"/>'s registration order and
+  /// replace-in-place behaviour.</summary>
+  internal static IReadOnlyList<(string Group, string LangPrefix)> Qualifiers => _qualifiers;
+
   /// <summary>
   /// Registers a variant group so <see cref="Decorate"/> also qualifies on it: a block whose
   /// <c>block.Variant[variantGroup]</c> is non-null gets a further parenthetical clause resolved

@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Reflection;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
 using ExpandedLib.Industry;
@@ -56,12 +54,6 @@ public class ExModuleModSystemTests {
 
     // IndustryModule.StartPre registers the "refractory" variant qualifier; observing it proves
     // the framework module's own StartPre ran, not just the notification line around it.
-    var field = typeof(ExBlockNames).GetField(
-      "_qualifiers",
-      BindingFlags.NonPublic | BindingFlags.Static
-    )!;
-    var qualifiers =
-      (List<(string Group, string LangPrefix)>)field.GetValue(null)!;
-    Assert.Contains(qualifiers, q => q.Group == "refractory");
+    Assert.Contains(ExBlockNames.Qualifiers, q => q.Group == "refractory");
   }
 }
