@@ -57,7 +57,8 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
   /// Builds this machine's window. Client-side; called on each open, so it may read whatever state
   /// the window should open on. Returning null leaves the machine windowless - a station whose
   /// slots exist but whose interactions are physical, which is what the rolling mill is until the
-  /// machining line gives it a face.
+  /// machining line gives it a face. The returned dialog is disposed when the window closes, so
+  /// every call must return a fresh instance rather than one reused from a previous open.
   /// </summary>
   protected virtual GuiDialogBlockEntity? CreateDialog(ICoreClientAPI capi) =>
     null;
@@ -138,18 +139,30 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
     if (_dialog == null)
       return;
 
-    _dialog.OnClosed += () => {
+    // TryOpen refuses a duplicate (GuiDialogBlockEntity.IsDuplicate) by returning false without
+    // opening anything. Left unchecked, the station would keep a never-opened dialog and send the
+    // open packet regardless, wedging every later toggle behind a window that can never show.
+    if (!_dialog.TryOpen()) {
+      _dialog.Dispose();
       _dialog = null;
-      capi.Network.SendBlockEntityPacket(Pos, PacketIdClose);
+      return;
+    }
+
+    // GuiDialogBlockEntity.OnGuiClosed already sends this same close packet to this same position, so
+    // the closure only tears down the client-side dialog.
+    _dialog.OnClosed += () => {
+      _dialog?.Dispose();
+      _dialog = null;
     };
-    _dialog.TryOpen();
 
     capi.Network.SendPacketClient(Inventory.Open(byPlayer));
     capi.Network.SendBlockEntityPacket(Pos, PacketIdOpen);
   }
 
   /// <summary>Closes and disposes the window, so a broken or unloaded machine cannot leave its GUI
-  /// bound to a dead block entity. Mirrors vanilla's <c>BEOpenableContainer.Dispose</c>.</summary>
+  /// bound to a dead block entity. Mirrors vanilla's <c>BEOpenableContainer.Dispose</c>. A subclass
+  /// that already disposed the dialog itself before calling this is harmless: <c>GuiDialog.Dispose</c>
+  /// tolerates being called on an already-disposed <c>GuiComposer</c>.</summary>
   protected virtual void CloseWindow() {
     if (_dialog?.IsOpened() == true)
       _dialog.TryClose();
