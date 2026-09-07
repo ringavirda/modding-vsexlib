@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,11 +9,10 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// A first-time modder's two entry paths - the test template and the wiki - each hand-pin a
-/// version of their own instead of reading <c>src/modinfo.json</c>, so nothing stops either from
-/// drifting stale the way both had (0.7.3 against a shipped 0.8.0-preview.1). This binds them: every
-/// <c>ExpandedLib*</c> package version under <c>templates/</c> and every <c>"exlib": "&lt;version&gt;"</c>
-/// dependency literal in <c>wiki/Getting-Started.md</c> must equal <see cref="ModinfoVersion"/>.
+/// Binds a first-time modder's two entry paths to <c>src/modinfo.json</c>: every
+/// <c>ExpandedLib*</c> package version under <c>templates/</c> and every
+/// <c>"exlib": "&lt;version&gt;"</c> dependency literal in <c>wiki/Getting-Started.md</c> must equal
+/// <see cref="ModinfoVersion"/>.
 /// </summary>
 public class VersionPinTests {
   private static string ModinfoVersion {
@@ -26,15 +26,18 @@ public class VersionPinTests {
     }
   }
 
-  private static readonly Regex PackageVersion = new(
-    @"<PackageReference\s+Include=""(ExpandedLib[^""]*)""\s+Version=""([^""]+)"""
-  );
+  // The element first, then its attributes, matched independently of order - Include and Version
+  // are not always adjacent (e.g. an ExcludeAssets attribute sitting between them).
+  private static readonly Regex PackageReferenceTag = new(@"<PackageReference\b([^>]*)>");
+  private static readonly Regex IncludeAttr = new(@"Include\s*=\s*""([^""]+)""");
+  private static readonly Regex VersionAttr = new(@"Version\s*=\s*""([^""]+)""");
 
   [Fact]
   public void Every_ExpandedLib_package_version_under_templates_matches_modinfo() {
     string version = ModinfoVersion;
     string templatesDir = Path.Combine(RepoPaths.Root, "templates");
 
+    int matched = 0;
     var stale = new List<string>();
     foreach (
       string file in Directory.EnumerateFiles(
@@ -43,13 +46,22 @@ public class VersionPinTests {
         SearchOption.AllDirectories
       )
     ) {
-      foreach (Match m in PackageVersion.Matches(File.ReadAllText(file))) {
-        string found = m.Groups[2].Value;
+      foreach (Match tag in PackageReferenceTag.Matches(File.ReadAllText(file))) {
+        string attrs = tag.Groups[1].Value;
+        Match include = IncludeAttr.Match(attrs);
+        if (!include.Success || !include.Groups[1].Value.StartsWith("ExpandedLib", StringComparison.Ordinal))
+          continue;
+        matched++;
+
+        Match ver = VersionAttr.Match(attrs);
+        Assert.True(ver.Success, $"{file}: {include.Groups[1].Value} names no Version.");
+        string found = ver.Groups[1].Value;
         if (found != version)
-          stale.Add($"{file}: {m.Groups[1].Value}={found}");
+          stale.Add($"{file}: {include.Groups[1].Value}={found}");
       }
     }
 
+    Assert.True(matched > 0, $"No ExpandedLib* PackageReference found under {templatesDir}.");
     Assert.True(
       stale.Count == 0,
       $"src/modinfo.json's version is {version}; stale pin(s):\n  "
@@ -63,8 +75,10 @@ public class VersionPinTests {
     string page = Path.Combine(RepoPaths.Root, "wiki", "Getting-Started.md");
     string text = File.ReadAllText(page);
 
-    var stale = Regex
-      .Matches(text, @"""exlib""\s*:\s*""([^""]+)""")
+    MatchCollection literals = Regex.Matches(text, @"""exlib""\s*:\s*""([^""]+)""");
+    Assert.True(literals.Count > 0, $"No \"exlib\" dependency literal found in {page}.");
+
+    var stale = literals
       .Select(m => m.Groups[1].Value)
       .Where(found => found != version)
       .ToList();

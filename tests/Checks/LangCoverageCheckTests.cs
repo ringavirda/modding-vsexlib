@@ -8,9 +8,10 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// <see cref="LangCoverageCheck"/> guards <c>en</c> only: a missing <c>en</c> key is the in-game
-/// defect (a raw key on screen), a missing key in any other shipped locale is a translation gap the
-/// repo build tracks instead (<c>ExpandedLib.Testing.LangCoverage</c>).
+/// <see cref="LangCoverageCheck"/> guards <c>en</c> by default: a missing <c>en</c> key is the
+/// in-game defect (a raw key on screen). <c>allLocales: true</c> extends the same rule to every
+/// shipped locale - the repo build's translation-parity check, run through
+/// <c>ExpandedLib.Testing.LangCoverage</c>.
 /// </summary>
 public class LangCoverageCheckTests {
   private const string Domain = "stub";

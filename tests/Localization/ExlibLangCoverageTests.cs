@@ -1,3 +1,4 @@
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using ExpandedLib.Testing;
@@ -31,5 +32,24 @@ public class ExlibLangCoverageTests {
         + "\n\nBase codes needing a key: "
         + string.Join(", ", LangCoverage.MissingBaseCodes(missing))
     );
+  }
+
+  [Fact]
+  public void A_key_present_in_en_but_missing_from_another_locale_is_reported() {
+    string langDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+    Directory.CreateDirectory(langDir);
+    try {
+      File.WriteAllText(
+        Path.Combine(langDir, "en.json"),
+        """{ "block-structurefiller": "Machine" }"""
+      );
+      File.WriteAllText(Path.Combine(langDir, "de.json"), "{ }");
+
+      var missing = LangCoverage.MissingNames(Domain, Mod, langDir);
+
+      Assert.Equal(["de: block-structurefiller"], missing);
+    } finally {
+      Directory.Delete(langDir, recursive: true);
+    }
   }
 }

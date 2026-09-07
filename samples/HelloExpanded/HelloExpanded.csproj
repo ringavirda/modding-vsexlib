@@ -47,8 +47,9 @@
     <Nullable>enable</Nullable>
     <AssemblyName>helloexpanded</AssemblyName>
     <RootNamespace>HelloExpanded</RootNamespace>
-    <!-- This mod's asset domain; ExpandedLib.targets' shared globs pull in assets/helloexpanded/
-         (Content + the en.json ExLangKeyGenerator feed) once this is set. -->
+    <!-- This mod's primary asset domain; setting it turns on ExpandedLib.targets' shared globs,
+         which pull in the whole assets/ tree (Content) and feed assets/helloexpanded/lang/en.json
+         to ExLangKeyGenerator. -->
     <AssetDomain>helloexpanded</AssetDomain>
   </PropertyGroup>
 

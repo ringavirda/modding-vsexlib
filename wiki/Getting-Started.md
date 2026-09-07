@@ -72,10 +72,12 @@ needs no props of its own beyond a `TargetFramework` and an `<AssetDomain>` set 
 </PropertyGroup>
 ```
 
-`$(AssetDomain)` is what turns on the asset copy (`assets/yourmod/**` into your mod's output) and
-the generated `{Domain}Lang` class (see [Source Generators](Source-Generators)); without it, both
-stay inert. `$(GamePath)` still resolves the same way the [Testing Harness](Testing-Harness) page
-assumes: from the `VINTAGE_STORY` environment variable, or `-p:GamePath=...` on the command line.
+`$(AssetDomain)` is what turns on the asset copy - the whole `assets/` tree, not just its own
+domain, since your `assets/` folder can hold overrides for other domains too - and selects which
+domain's `lang/en.json` feeds the generated `{Domain}Lang` class (see [Source
+Generators](Source-Generators)); without it, both stay inert. `$(GamePath)` still resolves the same
+way the [Testing Harness](Testing-Harness) page assumes: from the `VINTAGE_STORY` environment
+variable, or `-p:GamePath=...` on the command line.
 
 Inside this monorepo the sample switches to a plain `ProjectReference` against the checkout instead
 (see `samples/HelloExpanded.csproj`) so exlib's own change history builds against itself without a

@@ -10,10 +10,11 @@ using Microsoft.CodeAnalysis.Text;
 namespace ExpandedLib.Generators;
 
 /// <summary>
-/// Emits a typed <c>{Domain}Lang</c> class of <c>public const string</c> members, one per key in each
-/// <c>assets/{domain}/lang/en.json</c>, so a mistyped key is a compile error rather than a raw key
-/// rendered in-game. English is the source of truth. The consuming csproj must add
-/// <c>&lt;AdditionalFiles Include="assets/**/lang/en.json" /&gt;</c>. A bare file key <c>k</c> emits the
+/// Emits a typed <c>{Domain}Lang</c> class of <c>public const string</c> members, one per key in
+/// <c>assets/{AssetDomain}/lang/en.json</c>, so a mistyped key is a compile error rather than a raw key
+/// rendered in-game. English is the source of truth. The consuming csproj feeds the file by setting
+/// <c>&lt;AssetDomain&gt;</c>, which <c>build/ExpandedLib.targets</c> turns into the
+/// <c>AdditionalFiles</c> item this generator triggers on. A bare file key <c>k</c> emits the
 /// value <c>"{domain}:{k}"</c>; a key that is already domain-qualified (a vanilla override such as
 /// <c>"game:placefailure-..."</c>) emits verbatim.
 /// </summary>

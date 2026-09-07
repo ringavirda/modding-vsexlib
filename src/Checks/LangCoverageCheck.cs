@@ -13,10 +13,11 @@ namespace ExpandedLib.Checks;
 /// renders as the raw key in game regardless of the player's own locale, since <c>en</c> is what
 /// every other translation falls back to.
 /// <para>
-/// Parity of a non-<c>en</c> locale against <c>en</c> is a repository-time concern
-/// (<c>ExpandedLib.Testing.LangCoverage</c>, <c>LangParityTests</c>), not this one: a missing
-/// Ukrainian key falls back to English rather than showing raw, so it is a translation gap to track,
-/// not a defect to fail a server load over.
+/// Parity of a non-<c>en</c> locale against <c>en</c> is opt-in, via <c>allLocales</c> on
+/// the three-parameter overload: a missing Ukrainian key falls back to English rather than showing
+/// raw, so it is a translation gap to track at repository build time
+/// (<c>ExpandedLib.Testing.LangCoverage.MissingNames</c> runs it), not a defect that fails a server
+/// load over.
 /// </para>
 /// </summary>
 public static class LangCoverageCheck {
