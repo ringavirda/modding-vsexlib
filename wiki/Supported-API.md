@@ -2,7 +2,9 @@
 
 This page is the supported contract: every public type of `exlib.dll` is listed below, and a type not listed here has been marked `[EditorBrowsable(Never)]` because the game engine has to see it, not because a mod is meant to call it. The family's content layer ships as a second assembly, `exlib.industry.dll`, beside it in the same mod folder and as the `ExpandedLib.Industry` package; it is public and reusable but it changes without notice, and its types are listed at the bottom of this page under that heading rather than covered by the promise above. A public member on this page is removed only after one full release spent marked `[Obsolete]` naming its replacement, and every currently-obsolete member is listed at the very bottom for as long as it lasts.
 
-## `ExpandedLib`
+The sections below are grouped by what a modder is doing, not by namespace; each row still names its type.
+
+## Starting a mod
 
 Top-level, source-generated accessors that belong to no single activity folder.
 
@@ -11,7 +13,7 @@ Top-level, source-generated accessors that belong to no single activity folder.
 | `ExlibLang` | Source-generated typed lang-key class for `assets/exlib/lang/en.json`: one `public const string` member per key. | this page |
 | `ExlibValues` | Source-generated static accessor for `ExlibConfig`'s tunables: `ConfigFileName`, `Load(ICoreAPI)` and one read-only property per config value. | this page |
 
-## `ExpandedLib.Registries`
+## Registering classes and commands
 
 For a modder registering blocks, items, behaviours, commands, preferences or recipe profiles; asking about other mods; or patching with Harmony.
 
@@ -57,7 +59,7 @@ For a modder registering blocks, items, behaviours, commands, preferences or rec
 | `RecipeProfile` | A mod's registration with the shared recipe-cost framework: everything ExRecipeProfiles needs to read, fill, persist and apply that mod's cost catalogue, plus get and set the active level the `/exmod recipes <code> <level>` command flips. | [Recipe-Costs](Recipe-Costs) |
 | `RecipeProfileCost` | Everything one cost profile (e.g. `cheap`) changes for a single recipe, self-contained: a profile is the complete cost picture of that recipe at that level. | [Recipe-Costs](Recipe-Costs) |
 
-## `ExpandedLib.Config`
+## Configuring a mod
 
 For a modder declaring a config class, its ranges, migrations and live editing, or syncing it to clients.
 
@@ -78,7 +80,7 @@ For a modder declaring a config class, its ranges, migrations and live editing, 
 | `IExConfigAccess` | Non-generic view over a config store (ExConfigRegister<T>) that the `/exmod config` command uses to list, read and set a mod's tunables by name without knowing the concrete config type. | [Config-System](Config-System) |
 | `IExVersionedConfig` | A JSON config POCO that records the mod version it was last written under. | [Config-System](Config-System) |
 
-## `ExpandedLib.Definitions`
+## Defining blocks, items and recipes in code
 
 For a modder writing block, item, recipe and layout definitions in C#.
 
@@ -108,7 +110,7 @@ For a modder writing block, item, recipe and layout definitions in C#.
 | `StructureLayout` | Parses the ASCII layer diagrams the multiblock and filler DSLs are authored with. | [Code-First-Definitions](Code-First-Definitions) |
 | `VanillaCodes` | The catalogue of vanilla block codes the mod family's multiblock layouts are drawn from, named once here so that a typo in a Legend is a compile error rather than a `blockNumbers` entry matching no block, which throws nowhere and leaves the structure unable to complete. | [Code-First-Definitions](Code-First-Definitions) |
 
-## `ExpandedLib.Checks`
+## Checking content
 
 For a modder who wants the content guards - dangling codes, uncovered lang, pinned network nodes -
 to run against their own custom source, in code rather than through `/exmod verify`.
@@ -130,7 +132,7 @@ to run against their own custom source, in code rather than through `/exmod veri
 | `PinnedNetworkNodesCheck` | Checks that no shipped layout pins the orientation of a network node. | [Checks](Checks) |
 | `CodePrefixCollisionCheck` | Checks that no block's base code is a proper prefix of another's at a `-` boundary. | [Checks](Checks) |
 
-## `ExpandedLib.Blocks`
+## Writing a block entity and persisting its state
 
 For a modder writing a block entity: declared state, orientation, right-click construction.
 
@@ -151,7 +153,7 @@ For a modder writing a block entity: declared state, orientation, right-click co
 | `ExRightClickConstructable` | exlib-owned right-click construction behavior referenced by the mega-blocks (engines, boilers, bessemer converter) under the JSON behavior name `ExRightClickConstructable`. | [Construction](Construction) |
 | `ExRightClickConstruction` | Port of vanilla `RightClickConstruction`: the per-block construction state and logic (1.20 and 1.21 only). | [Construction](Construction) |
 
-## `ExpandedLib.Migrations`
+## Renaming and healing blocks
 
 For a modder renaming or removing codes in old saves, or healing lost block entities.
 
@@ -166,7 +168,7 @@ For a modder renaming or removing codes in old saves, or healing lost block enti
 | `IItemCodeMigration` | The item counterpart of IBlockCodeMigration: declares how item codes from an older version of a mod are rewritten to their current equivalents, for an item that was renamed or moved domain. | [Migrations-and-Healing](Migrations-and-Healing) |
 | `BlockEntityHealModSystem` | Server-side self-healer for orphaned block entities: a block still placed in the world whose BlockEntity was lost to a throwing deserialization or a desync, leaving it inert - no interaction, often unbreakable, impossible to build over. | [Migrations-and-Healing](Migrations-and-Healing) |
 
-## `ExpandedLib.Structures`
+## Building a structure
 
 For a modder building a multiblock or megablock.
 
@@ -205,7 +207,7 @@ For a modder building a multiblock or megablock.
 | `StructureFootprint` | Computes mega-block footprints (the `fillerOffsets` tables) from a compact description instead of listing every cell by hand. | [Multiblock-Structures](Multiblock-Structures) |
 | `SymbolLegend<T>` | Maps a grid's symbols to whatever a caller resolves them into, with one duplicate-mapping rule and the "declared but never drawn" check every layout DSL needs. | [Multiblock-Structures](Multiblock-Structures) |
 
-## `ExpandedLib.Machines`
+## Running a machine
 
 For a modder building a machine that ticks, with ports, readiness and stations.
 
@@ -223,7 +225,7 @@ For a modder building a machine that ticks, with ports, readiness and stations.
 | `ProductionProcess` | Drives the production process a machine carries, without naming the class that carries it. | [Production-Machines](Production-Machines) |
 | `ProductionReadiness` | Reads the readiness a machine publishes. | [Production-Machines](Production-Machines) |
 
-## `ExpandedLib.Networks`
+## Wiring a network
 
 For a modder building a connected network: the graph model and the engine-facing nodes together.
 
@@ -239,7 +241,7 @@ For a modder building a connected network: the graph model and the engine-facing
 | `BlockNetworkNode` | Base class for `Block` types that auto-orient from the surrounding blocks of the same network to form a connected run. | [Block-Networks](Block-Networks) |
 | `NetworkMembership` | Finds which network a cell belongs to. | [Block-Networks](Block-Networks) |
 
-## `ExpandedLib.Catalogues`
+## Loading a catalogue
 
 For a modder shipping or extending data catalogues: processes, materials, liquids, storage, their loaders, reports and contributors.
 
@@ -281,7 +283,7 @@ For a modder shipping or extending data catalogues: processes, materials, liquid
 | `BayOccupancySet` | One file's worth of occupancy rules, plus the store they are for. | [Registries](Registries) |
 | `BayRun` | One occupant of a bay row: the cell its run starts at and how many cells it spans. | [Registries](Registries) |
 
-## `ExpandedLib.Helpers`
+## Helpers
 
 Everything content-neutral that saves a modder a few lines: orientation, meshes, inventories, units, rendering.
 
@@ -314,7 +316,7 @@ Everything content-neutral that saves a modder a few lines: orientation, meshes,
 | `SurfaceRenderer` | Base for renderers that draw a flat, textured horizontal surface (a liquid line) inside a block: boiler water, molten metal in canals, taps and molds. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `ToggleAnimator` | Rendering helper for a block entity that animates through BEBehaviorAnimatable and BlockEntityAnimationUtil but is not raised via RightClickConstructable (`ExpandedLib.Blocks.ConstructedAnimator` is the constructed equivalent). | [Helpers-and-Renderers](Helpers-and-Renderers) |
 
-## `ExpandedLib.Legacy`
+## Supporting older game versions
 
 For supporting 1.20 and 1.21 from one source tree.
 
@@ -330,7 +332,7 @@ that target.
 | `LegacyAnimUtil` | The animation-utility overloads the 1.22 API gained, such as the five-argument `CreateMesh`, for the earlier game versions. | [Getting Started](Getting-Started) |
 | `LegacyLinq` | Polyfills of LINQ members added after net7.0, such as `Enumerable.Index()`. | [Getting Started](Getting-Started) |
 
-## ExpandedLib.Industry
+## Extending Industry
 
 A separate assembly and package, `exlib.industry.dll` / `ExpandedLib.Industry`, referenced alongside `ExpandedLib` by a mod that wants it. Public and reusable, but the family's content layer rather than the framework: it changes without notice, and the one-release deprecation promise above does not cover it.
 
