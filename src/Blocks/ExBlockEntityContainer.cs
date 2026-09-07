@@ -22,9 +22,10 @@ public abstract class ExBlockEntityContainer : BlockEntityContainer {
 
   /// <summary>
   /// Declares the fields this block entity persists, beyond the inventory <see cref="BlockEntityContainer"/>
-  /// already carries. Called once, lazily.
+  /// already carries. Called once, lazily. A subclass whose state is entirely <see cref="PersistAttribute"/>
+  /// fields leaves this alone.
   /// </summary>
-  protected abstract void DeclareState(ExBlockState state);
+  protected virtual void DeclareState(ExBlockState state) { }
 
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);

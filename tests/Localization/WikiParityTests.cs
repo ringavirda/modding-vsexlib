@@ -77,6 +77,54 @@ public class WikiParityTests {
     );
   }
 
+  /// <summary>Points at a throwaway markdown directory for a test and removes it afterwards, so the
+  /// declaration-shape checks run against a real but disposable page.</summary>
+  private sealed class TempWikiPage : System.IDisposable {
+    private readonly string _dir = Path.Combine(
+      Path.GetTempPath(),
+      "exlib_wikiparitytest_" + System.Guid.NewGuid().ToString("N")
+    );
+
+    public TempWikiPage(string contents) {
+      System.IO.Directory.CreateDirectory(_dir);
+      File.WriteAllText(Path.Combine(_dir, "Page.md"), contents);
+    }
+
+    public string Dir => _dir;
+
+    public void Dispose() {
+      try {
+        System.IO.Directory.Delete(_dir, recursive: true);
+      } catch { /* best-effort cleanup */
+      }
+    }
+  }
+
+  [Fact]
+  public void A_member_declared_virtual_where_the_code_declares_it_abstract_is_a_finding() {
+    // BlockEntityProductionMachine.CanRunProduction is abstract; a page reproducing the class's own
+    // declaration as virtual teaches a snippet with no body where one is required.
+    using var page = new TempWikiPage(
+      """
+      ## `BlockEntityProductionMachine`
+
+      ```csharp
+      public abstract class BlockEntityProductionMachine : BlockEntity
+      {
+          protected virtual bool CanRunProduction { get; }
+      }
+      ```
+      """
+    );
+
+    WikiParity.Report report = WikiParity.Check(page.Dir, typeof(ExDefinitions).Assembly);
+
+    Assert.Contains(
+      report.Findings,
+      f => f.Symbol == "BlockEntityProductionMachine.CanRunProduction"
+    );
+  }
+
   [Fact]
   public void The_guard_reads_the_wiki_and_reaches_real_api() {
     // Zero findings reads identically whether the wiki is correct or the extractor stopped seeing code

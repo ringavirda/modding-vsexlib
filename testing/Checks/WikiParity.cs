@@ -61,9 +61,10 @@ public static class WikiParity {
   // which is most of the interesting surface.
   private const string TypeRef = @"[\w\.\?\[\]]+(?:<[^;=\{\r\n]*>)?";
 
-  // `class MyPipe : BlockPipe` - the base a subsequent `override` in the same fence resolves against.
+  // `class MyPipe : BlockPipe` - the class itself, and the base a subsequent `override` in the same
+  // fence resolves against.
   private static readonly Regex ClassWithBase = new(
-    @"\bclass\s+\w+\s*:\s*(?<base>[A-Z][A-Za-z0-9_]*)",
+    @"\bclass\s+(?<class>\w+)\s*:\s*(?<base>[A-Z][A-Za-z0-9_]*)",
     RegexOptions.Compiled
   );
 
@@ -81,6 +82,14 @@ public static class WikiParity {
   // base actually implements teaches a consumer to write a member they do not have to.
   private static readonly Regex AbstractDecl = new(
     @"\babstract\s+" + TypeRef + @"\s+(?<name>\w+)",
+    RegexOptions.Compiled
+  );
+
+  // `protected virtual void DeclareState(...)` - the reverse claim: a page showing a type's own member
+  // as virtual (or, via OverrideDecl below, as an override) when the code actually declares it abstract
+  // teaches a snippet that does not compile, since neither form supplies the body abstract forbids.
+  private static readonly Regex VirtualDecl = new(
+    @"\bvirtual\s+" + TypeRef + @"\s+(?<name>\w+)",
     RegexOptions.Compiled
   );
 
@@ -243,55 +252,86 @@ public static class WikiParity {
     Dictionary<string, Type> types,
     List<Finding> findings
   ) {
-    // The base these declarations are measured against: the `class X : Base` inside the fence, or -
-    // for a bare signature list, which is where a doc's members drift furthest from the code - the type
-    // its own heading names ("Key `BlockNetworkNode` members to know").
-    Match baseMatch = ClassWithBase.Match(block);
-    string? baseName = baseMatch.Success
-      ? baseMatch.Groups["base"].Value
+    // The base an `override` is measured against: the `class X : Base` inside the fence, or - for a
+    // bare signature list, which is where a doc's members drift furthest from the code - the type its
+    // own heading names ("Key `BlockNetworkNode` members to know").
+    Match classMatch = ClassWithBase.Match(block);
+    string? baseName = classMatch.Success
+      ? classMatch.Groups["base"].Value
       : headingType;
-    if (baseName == null || !types.TryGetValue(baseName, out Type? baseType))
+    types.TryGetValue(baseName ?? "", out Type? baseType);
+
+    // The type a bare `abstract`/`virtual` member is measured against: the class the fence itself
+    // declares (`ExBlockEntity` in `class ExBlockEntity : BlockEntity`), falling back to the heading's
+    // type when the fence shows only a signature list and no class line. This is deliberately not
+    // `baseType` above - such a member is being declared on this type, not inherited from its base, so
+    // looking it up on the base finds nothing and the check goes silently inert.
+    string? ownName = classMatch.Success ? classMatch.Groups["class"].Value : headingType;
+    types.TryGetValue(ownName ?? "", out Type? ownType);
+
+    if (baseType == null && ownType == null)
       return 0;
 
     int examined = 0;
 
-    foreach (Match m in OverrideDecl.Matches(block)) {
-      string name = m.Groups["name"].Value;
-      MemberInfo? member = FindOverridable(baseType, name);
-      if (member == null)
-        continue;
+    if (baseType != null)
+      foreach (Match m in OverrideDecl.Matches(block)) {
+        string name = m.Groups["name"].Value;
+        MemberInfo? member = FindOverridable(baseType, name);
+        if (member == null)
+          continue;
 
-      examined++;
-      string wants = m.Groups["access"].Value;
-      string? actual = AccessibilityOf(member);
-      if (actual != null && wants != actual)
+        examined++;
+        string wants = m.Groups["access"].Value;
+        string? actual = AccessibilityOf(member);
+        if (actual != null && wants != actual)
+          findings.Add(
+            new Finding(
+              file,
+              startLine,
+              $"{baseName}.{name}",
+              $"declared '{wants} override' but {baseName} declares it '{actual}' (CS0507)"
+            )
+          );
+      }
+
+    if (baseType != null)
+      foreach (Match m in AbstractDecl.Matches(block)) {
+        string name = m.Groups["name"].Value;
+        MemberInfo? member = FindOverridable(baseType, name);
+        if (member == null)
+          continue;
+
+        examined++;
+        if (!IsAbstract(member))
+          findings.Add(
+            new Finding(
+              file,
+              startLine,
+              $"{baseName}.{name}",
+              $"declared abstract, but {baseName} implements it - a consumer need not write it"
+            )
+          );
+      }
+
+    if (ownType != null)
+      foreach (Match m in VirtualDecl.Matches(block).Concat(OverrideDecl.Matches(block))) {
+        string name = m.Groups["name"].Value;
+        MemberInfo? member = FindOverridable(ownType, name);
+        if (member == null || !IsAbstract(member))
+          continue;
+
+        examined++;
+        string form = m.Value.Contains("override") ? "override" : "virtual";
         findings.Add(
           new Finding(
             file,
             startLine,
-            $"{baseName}.{name}",
-            $"declared '{wants} override' but {baseName} declares it '{actual}' (CS0507)"
+            $"{ownName}.{name}",
+            $"declared '{form}' but {ownName} declares it abstract - neither form supplies a body"
           )
         );
-    }
-
-    foreach (Match m in AbstractDecl.Matches(block)) {
-      string name = m.Groups["name"].Value;
-      MemberInfo? member = FindOverridable(baseType, name);
-      if (member == null)
-        continue;
-
-      examined++;
-      if (!IsAbstract(member))
-        findings.Add(
-          new Finding(
-            file,
-            startLine,
-            $"{baseName}.{name}",
-            $"declared abstract, but {baseName} implements it - a consumer need not write it"
-          )
-        );
-    }
+      }
     return examined;
   }
 

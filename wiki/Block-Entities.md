@@ -56,7 +56,7 @@ A block entity based on `BlockEntityContainer` gets it through `ExBlockEntityCon
 public abstract class ExBlockEntityContainer : BlockEntityContainer
 {
     protected ExBlockState Persisted { get; }               // built lazily on first use
-    protected abstract void DeclareState(ExBlockState state);
+    protected virtual void DeclareState(ExBlockState state) { }
 }
 ```
 

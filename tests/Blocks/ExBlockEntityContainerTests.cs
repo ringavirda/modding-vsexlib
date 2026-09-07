@@ -24,8 +24,6 @@ public class ExBlockEntityContainerTests {
     public override InventoryBase Inventory => _inventory;
 
     public override string InventoryClassName => "exblockentitycontainertests";
-
-    protected override void DeclareState(ExBlockState state) { }
   }
 
   private static Container Place(TestWorld world, BlockPos pos) {

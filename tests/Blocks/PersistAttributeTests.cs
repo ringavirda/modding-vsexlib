@@ -64,29 +64,21 @@ public class PersistAttributeTests {
 
     [Persist]
     private readonly Wrapper _wrapper = new();
-
-    protected override void DeclareState(ExBlockState state) { }
   }
 
   private sealed class ExplicitKeyEntity : ExBlockEntity {
     [Persist("customKey")]
     private int _value;
-
-    protected override void DeclareState(ExBlockState state) { }
   }
 
   private sealed class RenamedEntity : ExBlockEntity {
     [Persist(Legacy = "oldName")]
     private int _value;
-
-    protected override void DeclareState(ExBlockState state) { }
   }
 
   private class BaseEntity : ExBlockEntity {
     [Persist]
     private int _baseValue;
-
-    protected override void DeclareState(ExBlockState state) { }
   }
 
   private sealed class DerivedEntity : BaseEntity {
@@ -97,8 +89,6 @@ public class PersistAttributeTests {
   private sealed class BadEntity : ExBlockEntity {
     [Persist]
     private object? _thing;
-
-    protected override void DeclareState(ExBlockState state) { }
   }
 
   private sealed class MixedEntity : ExBlockEntity {
@@ -114,8 +104,6 @@ public class PersistAttributeTests {
   private sealed class ScanEntity : ExBlockEntity {
     [Persist]
     private int _value;
-
-    protected override void DeclareState(ExBlockState state) { }
   }
 #pragma warning restore CS0169
 

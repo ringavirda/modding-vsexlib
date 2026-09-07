@@ -22,7 +22,8 @@ public abstract class ExBlockEntity : BlockEntity {
     BlockEntityStateHost.GetOrCreate(this, ref _state, DeclareState);
 
   /// <summary>
-  /// Declares the fields this block entity persists. Called once, lazily.
+  /// Declares the fields this block entity persists. Called once, lazily. A subclass whose state is
+  /// entirely <see cref="PersistAttribute"/> fields leaves this alone.
   /// <code>
   /// protected override void DeclareState(ExBlockState s) {
   ///   s.Float("temp", () =&gt; _tempC, v =&gt; _tempC = v)
@@ -30,7 +31,7 @@ public abstract class ExBlockEntity : BlockEntity {
   /// }
   /// </code>
   /// </summary>
-  protected abstract void DeclareState(ExBlockState state);
+  protected virtual void DeclareState(ExBlockState state) { }
 
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);
