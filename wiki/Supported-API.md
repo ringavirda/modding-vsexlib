@@ -115,6 +115,7 @@ to run against their own custom source, in code rather than through `/exmod veri
 | `CheckResult` | One check's findings for one domain: its name, the domain and the error lines found. | [Checks](Checks) |
 | `ExlibChecks` | Runs every content check against one `ICheckSource` (or the live game) and logs the results. | [Checks](Checks) |
 | `DefinitionCatalogueCheck` | Checks that every code-first block definition actually produced a registered block. | [Checks](Checks) |
+| `LateDefinitionCheck` | Checks that every registered block, item or recipe definition made the injection deadline. | [Checks](Checks) |
 | `MultiblockCodesCheck` | Checks that every `multiblockStructure` layout cell names a block some mod registers. | [Checks](Checks) |
 | `RecipeCodesCheck` | Checks that every grid recipe's block output names a block the mod registers. | [Checks](Checks) |
 | `LangCoverageCheck` | Checks that every block code resolves to a name in every locale shipped. | [Checks](Checks) |

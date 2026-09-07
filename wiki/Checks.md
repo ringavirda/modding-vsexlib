@@ -8,6 +8,12 @@ part of its contract. The rule for each lives in one class, parameterised only t
 the live game, against a repository tree, or against anything else you can describe in terms of
 codes, recipes, lang and definitions.
 
+`LateDefinitionCheck` is the odd one out: it names every block, item or recipe definition registered
+after `ExDefinitionModSystem` already injected (see [Code-First-Definitions](Code-First-Definitions)),
+which the loader then never builds. It reads `ExDefinitions` directly rather than `ICheckSource`, and
+reports nothing until injection has actually run once in the process - the client side never sees it,
+and neither does an `ICheckSource` built without replaying injection.
+
 `LangCoverageCheck` in this library only guards the `en` locale - an unresolved `en` key is the one
 that renders raw on screen, since every other translation falls back to it. Parity across a mod's
 other shipped locales (a missing Ukrainian key, say) is a repository-time concern instead: see

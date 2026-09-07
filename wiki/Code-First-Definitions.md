@@ -59,7 +59,8 @@ patchable by other mods; well below the object loader (0.2) that consumes them; 
 assets are already indexed. It is server-only, because `blocktypes`/`itemtypes` loading and the object
 loader are both server-only stages - **the client receives the resolved block and item types over the
 network**, the same way it receives any other asset the server built. See [Lifecycle](Lifecycle) for
-where this sits relative to everything else that happens at world load.
+where this sits relative to everything else that happens at world load. A definition registered after
+this deadline is never built; [`LateDefinitionCheck`](Checks) names it and the fix in the log.
 
 ## Definitions that depend on loaded assets
 

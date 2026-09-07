@@ -45,6 +45,17 @@ public static class ExDefinitions {
   // instantiated fresh by RunContributors, not held across worlds.
   private static readonly List<Type> _contributors = [];
 
+  // The location of every block, item and recipe def ExDefinitionModSystem.AssetsLoaded actually
+  // injected, recorded once by RecordInjected. Empty and InjectionRan false until then - the client
+  // side (ExDefinitionModSystem never loads there) and a harness path that skips AssetsLoaded stay
+  // false forever, which is what tells LateDefinitionCheck "nothing has run yet" from "this def
+  // missed the window".
+  private static readonly HashSet<string> _injected = new(StringComparer.Ordinal);
+
+  /// <summary>Whether <see cref="ExDefinitionModSystem.AssetsLoaded"/> has recorded an injection
+  /// pass in this process. Read by <see cref="Checks.LateDefinitionCheck"/>; reset by <see cref="Clear"/>.</summary>
+  internal static bool InjectionRan { get; private set; }
+
   /// <summary>Log sink for exlib's own definition diagnostics (the re-registration notification); set
   /// once by <see cref="Registries.ExModuleModSystem.StartPre"/> (0.03). Null before startup and in
   /// tests that never wire it, in which case diagnostics are silently skipped.
@@ -123,7 +134,25 @@ public static class ExDefinitions {
     _itemProviders.Clear();
     _recipeProviders.Clear();
     _contributors.Clear();
+    _injected.Clear();
+    InjectionRan = false;
   }
+
+  /// <summary>
+  /// Records that injection ran and which locations it covered, so a definition registered
+  /// afterward under the same location can be told apart from one that made the deadline. Called
+  /// once by <see cref="ExDefinitionModSystem.AssetsLoaded"/>, right after building every synthetic
+  /// asset.
+  /// </summary>
+  internal static void RecordInjected(IEnumerable<AssetLocation> locations) {
+    InjectionRan = true;
+    foreach (AssetLocation location in locations)
+      _injected.Add(location.ToString());
+  }
+
+  /// <summary>Whether <paramref name="location"/> was covered by the recorded injection pass.</summary>
+  internal static bool WasInjected(AssetLocation location) =>
+    _injected.Contains(location.ToString());
 
   /// <summary>
   /// Builds a <c>type -&gt; orientation states</c> map from a class's code-first defs - the single

@@ -99,6 +99,15 @@ public class ExDefinitionModSystem : ModSystem {
       recipes++;
     }
 
+    // Records the deadline this pass just closed, so a def registered afterward - LateDefinitionCheck's
+    // job - can be told apart from one that made it in.
+    ExDefinitions.RecordInjected(
+      ExDefinitions
+        .Blocks.Select(d => d.Location)
+        .Concat(ExDefinitions.Items.Select(d => d.Location))
+        .Concat(ExDefinitions.Recipes.Select(d => d.Location))
+    );
+
     if (blocks > 0)
       api.Logger.Notification(
         "[exlib] Injected {0} code-first block definition(s).",

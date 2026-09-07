@@ -20,6 +20,7 @@ public static class ExlibChecks {
   >[] _checks =
   [
     DefinitionCatalogueCheck.Run,
+    LateDefinitionCheck.Run,
     MultiblockCodesCheck.Run,
     RecipeCodesCheck.Run,
     LangCoverageCheck.Run,
@@ -48,8 +49,8 @@ public static class ExlibChecks {
 
   /// <summary>
   /// Logs <paramref name="results"/>: one Notification per check naming its domain and error count,
-  /// then each error on its own line. A modder scanning the log for "0 error(s)" on every line knows
-  /// everything passed without reading further.
+  /// then each error on its own Warning line. A modder scanning the log for "0 error(s)" on every
+  /// line knows everything passed without reading further.
   /// </summary>
   public static void Log(ILogger logger, IReadOnlyList<CheckResult> results) {
     foreach (CheckResult result in results) {
@@ -60,7 +61,7 @@ public static class ExlibChecks {
         result.Errors.Count
       );
       foreach (string error in result.Errors)
-        logger.Notification("[exlib]   {0}", error);
+        logger.Warning("[exlib]   {0}", error);
     }
   }
 }

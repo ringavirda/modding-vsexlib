@@ -11,12 +11,17 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// <see cref="ExlibChecks.All"/> over a hand-built <see cref="ICheckSource"/> proves the seven checks
+/// <see cref="ExlibChecks.All"/> over a hand-built <see cref="ICheckSource"/> proves the eight checks
 /// run and report independently: one seeded violation per rule that has one, and nothing for the
-/// clean two (<c>DefinitionCatalogue</c>, <c>NetworkNodeContract</c>) or for the clean parts of the
-/// domain the seeded violations sit in.
+/// clean three (<c>DefinitionCatalogue</c>, <c>LateDefinition</c>, <c>NetworkNodeContract</c>) or for
+/// the clean parts of the domain the seeded violations sit in. <see cref="LateDefinitionCheck"/> reads
+/// <see cref="ExDefinitions"/> directly, so this class shares the "ExDefinitions" collection with
+/// everything else that touches that static registry.
 /// </summary>
+[Collection("ExDefinitions")]
 public class ExlibChecksTests {
+  public ExlibChecksTests() => ExDefinitions.Clear();
+
   private const string Domain = "stub";
 
   // The network node every "pinned" and "clean network contract" assertion below is built against:
@@ -153,14 +158,15 @@ public class ExlibChecksTests {
   [Fact]
   public void Clean_checks_report_nothing() {
     Assert.Empty(ErrorsOf("DefinitionCatalogue"));
+    Assert.Empty(ErrorsOf("LateDefinition"));
     Assert.Empty(ErrorsOf("NetworkNodeContract"));
   }
 
   [Fact]
   public void All_examines_every_check_for_every_domain_and_nothing_more() {
     IReadOnlyList<CheckResult> results = Results();
-    // One CheckResult per (check, domain) pair - seven checks, one domain here.
-    Assert.Equal(7, results.Count);
+    // One CheckResult per (check, domain) pair - eight checks, one domain here.
+    Assert.Equal(8, results.Count);
     Assert.All(results, r => Assert.Equal(Domain, r.Domain));
     Assert.Equal(5, results.Sum(r => r.Errors.Count));
   }
