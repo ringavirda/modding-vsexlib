@@ -471,10 +471,10 @@ public class ExItemDefTests {
     ["Multiblock(Action<MultiblockBuilder>)"] = "megablocks are blocks; items cannot be part of one",
     ["MultiblockLayout(Action<MultiblockLayoutBuilder>)"] =
       "megablocks are blocks; items cannot be part of one",
-    // Emits { translation, rotation, scale }, no origin. The item builder only ever grew the
-    // ten-double, with-origin form.
+    // Emits { translation, rotation, scale }, no origin; the item builder has no seven-double
+    // overload.
     ["TpHandTransform(Double,Double,Double,Double,Double,Double,Double)"] =
-      "the no-origin shape; the item builder only grew the ten-double form",
+      "the no-origin shape; the item builder has no seven-double overload",
   };
 
   // Signatures only ExItemDef has.
