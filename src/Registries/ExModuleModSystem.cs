@@ -16,11 +16,11 @@ namespace ExpandedLib.Registries;
 /// </summary>
 /// <remarks>
 /// The execute order is what makes a module's phases usable rather than merely called. At 0.03 it
-/// sits below <c>ExDefinitionModSystem</c>'s 0.04, so a contributor's definitions exist before that
-/// system's <c>AssetsLoaded</c> injects them, and below <see cref="ExpandedLib.ExpandedLibModSystem"/>'s
-/// pinned 0.06, so the module driver's phases - a module's own <see cref="IExModule.AssetsLoaded"/>
-/// and <see cref="IExModule.AssetsFinalize"/> - run before the framework's. A mod of its own drives
-/// its modules from <see cref="ExModSystem"/> instead, at its own order.
+/// sits below the game's own JSON patch loader (0.05), so a module's own
+/// <see cref="IExModule.AssetsLoaded"/> reads unpatched JSON, and below
+/// <see cref="ExpandedLib.ExpandedLibModSystem"/>'s pinned 0.06, so a module's own
+/// <see cref="IExModule.AssetsFinalize"/> runs before the framework's. A mod of its own drives its
+/// modules from <see cref="ExModSystem"/> instead, at its own order.
 /// </remarks>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class ExModuleModSystem : ModSystem {

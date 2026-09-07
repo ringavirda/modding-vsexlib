@@ -122,6 +122,10 @@ on an itemtype.
 patch lands after generation. To add a stopping point, ship your own file — the merge puts it in the same
 family.
 
+⚠️ The same caveat applies to metals: a JSON patch to `config/metals/` reaches `MetalRegistry` at
+`AssetsFinalize`, but emits no item family - generation (`MetalFamilyEmitter`) runs at `AssetsLoaded`
+0.04, before patches. Ship your own `config/metals/` file instead.
+
 ---
 
 ## What gets built for you
@@ -211,10 +215,6 @@ the owning loader re-runs every registered contributor after its own JSON read, 
 MetalRegistry.Contributors.Register(api =>
     MetalRegistry.Register(new MetalDef { Code = "hadfield", MoltenItem = "yourmod:ingot-hadfield" }));
 ```
-
-⚠️ The same caveat applies to metals: a JSON patch to `config/metals/` reaches `MetalRegistry` at
-`AssetsFinalize`, but emits no item family - generation (`MetalFamilyEmitter`) runs at `AssetsLoaded`
-0.04, before patches. Ship your own `config/metals/` file instead.
 
 ```csharp
 ExLiquids.Contributors.Register(api => ExLiquids.Register(new LiquidDef { Code = "Brine" }));

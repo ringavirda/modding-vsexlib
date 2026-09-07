@@ -10,12 +10,11 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Repo-wide `ExecuteOrder` invariant: nothing in `exlib.dll` or `exlib.industry.dll` is allowed to
-/// read or finalize assets at the vendored 0.1 default, because exlib's own consumer contract rests
-/// on that default running strictly after the framework's own <c>AssetsFinalize</c>
-/// (<see cref="ExpandedLib.ExpandedLibModSystem"/>, pinned at 0.06). A ModSystem overriding
-/// <c>AssetsLoaded</c> or <c>AssetsFinalize</c> without also pinning below 0.1 would land at the same
-/// order as every consumer, reviving the tie-break the pinning was meant to retire.
+/// Repo-wide `ExecuteOrder` invariant: no non-<see cref="ExModSystem"/> ModSystem in `exlib.dll` or
+/// `exlib.industry.dll` is allowed to read or finalize assets at the vendored 0.1 default, because
+/// exlib's own consumer contract rests on that default running strictly after the framework's own
+/// `AssetsFinalize` (<see cref="ExpandedLib.ExpandedLibModSystem"/>, pinned at 0.06).
+/// <see cref="ExModSystem"/> itself sits at 0.1 by design and is exempt.
 /// </summary>
 public class ModSystemOrderTests {
   #region Corpus
@@ -27,18 +26,28 @@ public class ModSystemOrderTests {
   ];
 
   // Every concrete ModSystem the two assemblies declare, skipping the abstract bases (ExModSystem)
-  // that leave the choice to a subclass.
+  // that leave the choice to a subclass, and skipping ExModSystem's own descendants, which
+  // legitimately inherit its pinned 0.1.
   private static IEnumerable<Type> ConcreteModSystems() =>
     Assemblies
       .SelectMany(a => a.GetTypes())
-      .Where(t => typeof(ModSystem).IsAssignableFrom(t) && !t.IsAbstract);
+      .Where(t =>
+        typeof(ModSystem).IsAssignableFrom(t)
+        && !t.IsAbstract
+        && !typeof(ExModSystem).IsAssignableFrom(t)
+      );
 
+  // Walks t's base chain within the two assemblies above, so a concrete class that inherits its
+  // AssetsLoaded/AssetsFinalize override from an in-assembly abstract base (rather than declaring it
+  // itself) is still caught.
   private static bool OverridesPhase(Type t, string methodName) {
     MethodInfo? m = t.GetMethod(
       methodName,
       BindingFlags.Public | BindingFlags.Instance
     );
-    return m != null && m.DeclaringType == t;
+    if (m == null || m.DeclaringType == typeof(ModSystem))
+      return false;
+    return Assemblies.Contains(m.DeclaringType!.Assembly);
   }
 
   #endregion

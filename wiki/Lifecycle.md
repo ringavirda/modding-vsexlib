@@ -5,10 +5,14 @@ time it hands control to your mod, and what you may safely call at each point. P
 vanilla `ModSystem` hooks (`StartPre`, `Start`, `AssetsLoaded`, `AssetsFinalize`,
 `StartServerSide`/`StartClientSide`, `Dispose`); the game calls every mod's method for one phase, in
 `ExecuteOrder` order, before moving to the next phase. exlib is a runtime dependency, so its
-`ModSystem`s exist (are constructed) before your mod's `Start` runs, and its own systems pin
-`ExecuteOrder` explicitly rather than resting on a same-order tie-break: the module driver at 0.03,
-code-first definitions at 0.04, the game's own JSON patch loader at 0.05, exlib's own catalogue
-loads at 0.06, and every consumer left at the 0.1 default.
+`ModSystem`s exist (are constructed) before your mod's `Start` runs. The systems that need to run
+ahead of a rung other mods share pin `ExecuteOrder` explicitly: the module driver's `AssetsLoaded`
+and `AssetsFinalize` at 0.03, code-first definitions' `AssetsLoaded` at 0.04 (the game's own JSON
+patch loader runs its own `AssetsLoaded` at 0.05, in between), exlib's own catalogue loads at
+`AssetsFinalize` 0.06. `BlockNetworkModSystem`, `NetworkHighlightModSystem`, `ExConfigSyncModSystem`,
+`BlockMigrationModSystem` and `BlockEntityHealModSystem` take the vendored 0.1 default like any
+consumer, since nothing they do needs to run ahead of it. See the table below for what runs at each
+rung.
 
 | Phase | What exlib has done by then | What you may call here |
 | --- | --- | --- |
