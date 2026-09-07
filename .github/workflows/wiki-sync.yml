@@ -36,6 +36,13 @@ jobs:
           set -euo pipefail
           wiki_url="https://x-access-token:${GIT_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
 
+          # The wiki's git repository exists only once its first page has been created in the
+          # GitHub UI; until then there is nothing to publish to, and that is not a failure.
+          if ! git ls-remote --exit-code "$wiki_url" HEAD >/dev/null 2>&1; then
+            echo "No wiki repository yet: create the first wiki page in the GitHub UI, then re-run."
+            exit 0
+          fi
+
           # Cloned under a name distinct from the in-repo wiki/ it mirrors from, since both now
           # sit at the repo root.
           git clone "$wiki_url" wiki-repo
