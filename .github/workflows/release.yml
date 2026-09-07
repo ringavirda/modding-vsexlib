@@ -69,6 +69,7 @@ jobs:
           mkdir -p dist/assets
           find dist/Releases -name '*.zip' -exec cp {} dist/assets/ \;
           cp dist/nuget/*.nupkg dist/assets/
+          cp dist/nuget/*.snupkg dist/assets/
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
