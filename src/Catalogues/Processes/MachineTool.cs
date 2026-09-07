@@ -17,7 +17,7 @@ namespace ExpandedLib.Catalogues;
 /// </para>
 /// <para>
 /// A tool is recognised by carrying a tier that parses, never by its code, so a third party's tool needs
-/// no naming blessing from us. See docs/design/mechanics/machining-line.md.
+/// no naming blessing from us - the family's own machining line (exmods) is what fills the tier table.
 /// </para>
 /// </summary>
 public static class MachineTool {

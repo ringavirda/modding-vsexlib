@@ -32,8 +32,7 @@ public class MaterialRoleDef {
 
   /// <summary>Mod id this assignment waits on, or null to apply always. A def naming a mod that is not
   /// loaded is skipped silently - an absent mod is the ordinary case, not a defect - which is what lets
-  /// compatibility with another mod's ore, fuel or scrap ship as data rather than as a code contributor.
-  /// See docs/design/mechanics/material-roles.md.</summary>
+  /// compatibility with another mod's ore, fuel or scrap ship as data rather than as a code contributor.</summary>
   public string? RequiresMod { get; set; }
 }
 

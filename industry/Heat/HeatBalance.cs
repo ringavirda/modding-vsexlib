@@ -4,7 +4,7 @@ namespace ExpandedLib.Industry.Heat;
 
 /// <summary>One evaluation of a process heat balance, captured as the tick computed it so block info
 /// reads the contributors without recomputing. Shared by the shaft furnace (coke combustion) and the
-/// Bessemer converter (autothermal). See docs/design/mechanics/heat-balance.md.</summary>
+/// Bessemer converter (autothermal); the T_process = T_in - T_loss law and its per-branch derivation are the family's own model.</summary>
 /// <param name="TIn">Heat the burning or oxidising charge makes (C).</param>
 /// <param name="TLoss">Heat taken back by radiation, cold charge mass and a cold ambient (C).</param>
 /// <param name="TProcess">Settled temperature: <c>TIn - TLoss</c>, floored at ambient.</param>

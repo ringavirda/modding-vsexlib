@@ -1,17 +1,15 @@
 {
   "tools": "0.1.0",
-  "solution": "VintageStory.sln",
+  "solution": "ExpandedLib.sln",
   "series": ["1.22", "1.21", "1.20"],
   "mods": {
-    "exlib": { "path": "mods/exlib" },
-    "iiex":  { "path": "mods/iiex", "overlays": { "game": "iiex" } },
-    "siex":  { "path": "mods/siex" }
+    "exlib": { "path": "." }
   },
   "samples": {
     "helloexpanded": { "path": "samples/HelloExpanded", "tests": "samples/HelloExpanded.Tests" },
     "hellomodule":   { "path": "samples/HelloModule",   "tests": "samples/HelloModule.Tests" }
   },
   "tests": [],
-  "packages": ["mods/exlib/src", "mods/exlib/industry", "mods/exlib/testing"],
-  "depends": { "exlib": { "github": "ringavirda/exlib" } }
+  "packages": ["src", "industry", "testing"],
+  "depends": {}
 }

@@ -705,7 +705,7 @@ public class PipeNetwork : BlockNetwork {
   /// <summary>
   /// Passive cooling: a gas run always sheds heat toward ambient. There is no idle condition - a fed
   /// line stays hot because the volume-weighted blend in <see cref="TryProduceGas"/> pulls its
-  /// average back up. See docs/design/mechanics/gas-system.md.
+  /// average back up; the family's own gas grades and buffering price sit above this in exmods.
   /// <para>
   /// Do not gate this on <c>pass.Consumers == 0</c>. <c>Consumers</c> counts every node whose BE is
   /// an <see cref="IPipeNode"/> (<see cref="ClassifyOpenings"/>), so it is non-zero on any run that

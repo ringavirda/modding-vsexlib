@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+using ExpandedLib.Testing;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -39,8 +40,7 @@ public class TeardownSymmetryTests {
 
   // Every mod's own source tree - mods/*/src - the whole corpus this rule scans.
   private static IEnumerable<string> SourceFiles() {
-    string modsRoot = Path.Combine(RepoRoot(), "mods");
-    foreach (string mod in Directory.EnumerateDirectories(modsRoot)) {
+    foreach (string mod in RepoManifest.Mods.Values) {
       string full = Path.Combine(mod, "src");
       if (!Directory.Exists(full))
         continue;
@@ -70,12 +70,12 @@ public class TeardownSymmetryTests {
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
     while (
       dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "VintageStory.sln"))
+      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
     return dir?.FullName
       ?? throw new InvalidOperationException(
-        "Could not locate the repo root (VintageStory.sln) from "
+        "Could not locate the repo root (ExpandedLib.sln) from "
           + AppContext.BaseDirectory
       );
   }

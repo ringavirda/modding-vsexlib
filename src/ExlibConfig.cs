@@ -64,8 +64,8 @@ public class ExlibConfig : IExVersionedConfig {
   /// Degrees C per second a pipe run's gas sheds toward <see cref="PipeAmbientTemperature"/>. Applies
   /// whenever the run holds gas above ambient, not only when the line is idle. Run length affects cooling
   /// through the volume-weighted blend rather than through this rate: a longer main holds more gas, so an
-  /// injected second of hot gas is a smaller fraction of the total. See
-  /// <c>docs/design/mechanics/gas-system.md</c>.
+  /// injected second of hot gas is a smaller fraction of the total; the gas grades this cools between
+  /// are the family's own (exmods).
   /// </summary>
   public float PipeGasCoolPerSecond { get; set; } = 2.0f;
 

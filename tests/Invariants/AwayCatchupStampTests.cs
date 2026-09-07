@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+using ExpandedLib.Testing;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -33,8 +34,7 @@ public class AwayCatchupStampTests {
 
   // Every mod's own source tree - mods/*/src - the whole corpus a process host can live in.
   private static IEnumerable<string> SourceFiles() {
-    string modsRoot = Path.Combine(RepoRoot(), "mods");
-    foreach (string mod in Directory.EnumerateDirectories(modsRoot)) {
+    foreach (string mod in RepoManifest.Mods.Values) {
       string full = Path.Combine(mod, "src");
       if (!Directory.Exists(full))
         continue;
@@ -64,12 +64,12 @@ public class AwayCatchupStampTests {
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
     while (
       dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "VintageStory.sln"))
+      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
     return dir?.FullName
       ?? throw new InvalidOperationException(
-        "Could not locate the repo root (VintageStory.sln) from "
+        "Could not locate the repo root (ExpandedLib.sln) from "
           + AppContext.BaseDirectory
       );
   }
@@ -117,12 +117,10 @@ public class AwayCatchupStampTests {
     // lands in that file next.
     var stranded = new List<string>();
     var unexplained = new List<string>();
-    int marked = 0;
     foreach (string f in SourceFiles()) {
       string text = File.ReadAllText(f);
       if (!text.Contains(OptOut, StringComparison.Ordinal))
         continue;
-      marked++;
       if (!HostsAProcess.IsMatch(text))
         stranded.Add(Rel(f));
       foreach (string line in File.ReadAllLines(f)) {
@@ -132,10 +130,9 @@ public class AwayCatchupStampTests {
       }
     }
 
-    Assert.True(
-      marked > 0,
-      "Found no opt-out markers at all - the source walk is wrong."
-    );
+    // Unlike the corpus-integrity check above, marked == 0 is a legitimate outcome here: exlib's own
+    // process hosts round-trip the stamp outright (see the previous test), and the opt-out this rule
+    // polices is a family machine's to reach for, not the framework's.
     Assert.True(
       stranded.Count == 0,
       "These carry the \""

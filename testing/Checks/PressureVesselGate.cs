@@ -9,7 +9,7 @@ namespace ExpandedLib.Testing;
 /// The one place in the suite where a fastener is a gate rather than a substitution: a pressure vessel is
 /// riveted and nothing else will do. A rivet makes a joint that is strong and tight; a nail is strong and
 /// not tight, so a boiler that accepted nails would hold steam behind a joint that leaks.
-/// See docs/design/items/fasteners.md, the tier rule.
+/// the family's own fastener-by-tier rule (exmods): nails and bolts are the iron tier's, rivets the steam tier's.
 /// <para>
 /// The check is a negative match, which almost nothing else in the suite does. Every other definition
 /// check asks that something resolves; a careless widening of a boiler stage back onto nails would satisfy

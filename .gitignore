@@ -60,16 +60,16 @@ coverage*.info
 #
 
 # Downloaded Vintage Story installs + cached archives.
-/.game/
+/.game
 
 # Vintage Story data dir the game generates under the repo via --dataPath.
-/.gamedata/
+/.gamedata
 
 # Self-contained .NET (SDK + runtimes).
-/.dotnet/
+/.dotnet
 
 # Local sources of other mods to maintain compatibility with (reference only).
-/.compat/
+/.compat
 
 # Dependency mods provision resolves and caches: workspace siblings build their own, so this only
 # ever holds a release download.

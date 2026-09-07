@@ -1,9 +1,9 @@
 # Expanded Library (`exlib`)
 
 Shared framework mod for the *Expanded* family
-([Iron Industry Expanded](../iiex/README.md),
-[Steel Industry Expanded](../siex/README.md)). It ships no gameplay content
-of its own - install it because another mod depends on it.
+([Iron Industry Expanded](https://github.com/ringavirda/modding-vsexpanded/tree/main/mods/iiex),
+[Steel Industry Expanded](https://github.com/ringavirda/modding-vsexpanded/tree/main/mods/siex)). It
+ships no gameplay content of its own - install it because another mod depends on it.
 
 ## What it provides
 
@@ -56,7 +56,7 @@ of its own - install it because another mod depends on it.
 `samples/HelloExpanded` is a third-party mod written against this library end to end: a block, a
 saved counter, a config value and a command, plus two headless tests, all in the shapes the wiki's
 [Getting Started](wiki/Getting-Started.md) walk teaches. It builds and boots like any other mod
-here (`dotnet build VintageStory.sln`, `exmod smoke`) - read it alongside the wiki rather than typing
+here (`dotnet build ExpandedLib.sln`, `exmod smoke`) - read it alongside the wiki rather than typing
 its snippets by hand.
 
 ## What is supported
@@ -72,14 +72,17 @@ public, but it is the family's own content layer and changes without notice.
 The mod ships as one download - one modinfo, one folder, `exlib.dll` and `exlib.industry.dll` - and
 the module system means that is not a hard limit of two: any assembly, inside this folder or
 shipped as its own mod, can declare `[assembly: ExModule]` and join exlib's lifecycle without a
-`ModSystem` of its own. It ships as four NuGet packages a mod project references at compile time:
+`ModSystem` of its own. It ships as three NuGet packages a mod project references at compile time:
 
 | Package | What it is |
 | --- | --- |
 | `ExpandedLib` | the framework: `exlib.dll`, the config/lang source generators, and the build/ plumbing (`GamePath` resolution, provisioning, asset globs) - a consumer needs no props of its own beyond a `TargetFramework` |
 | `ExpandedLib.Industry` | this family's content layer: `exlib.industry.dll`, beside it in the same mod folder |
 | `ExpandedLib.Testing` | the headless xUnit harness, for a test project rather than a mod |
-| `ExpandedLib.Verify` | a .NET tool, `exlib-verify`, that checks a JSON-only mod's assets with no game running |
+
+`exlib-verify`, the JSON-only asset checker, is a .NET tool built from
+[extools](https://github.com/ringavirda/extools) rather than a package this repository ships - see
+the wiki's [Checks](wiki/Checks.md) page.
 
 They are built for the current Vintage Story version only. The mod zips on the GitHub releases
 page cover the older versions; the packages do not, because a mod targeting an older version
@@ -103,6 +106,20 @@ stamping) that NuGet imports into the consuming project automatically. Central p
 at the repo root.
 
 ```sh
-dotnet build mods/exlib/src/ExpandedLib.csproj        # the framework
-dotnet build mods/exlib/industry/ExpandedLib.Industry.csproj   # the family layer
+dotnet build src/ExpandedLib.csproj              # the framework
+dotnet build industry/ExpandedLib.Industry.csproj # the family layer
 ```
+
+Every repo task goes through `scripts/exmod.sh` (`scripts/exmod.ps1` on Windows), a launcher that
+forwards to the CLI in [extools](https://github.com/ringavirda/extools), a sibling repository
+checked out beside this one; see [CONTRIBUTING.md](CONTRIBUTING.md) for the command list and how
+the launcher finds it.
+
+## The workspace and the family
+
+This repository stands alone - it clones, builds and tests with nothing else present. The family
+mods that consume it, [Iron Industry Expanded and Steel Industry Expanded](https://github.com/ringavirda/modding-vsexpanded),
+live in their own repository and reference `ExpandedLib` as a NuGet package by default. A workspace
+that checks out both repositories side by side, with a `Directory.Build.props` above them setting
+`ExlibRoot`, switches the family's build onto this checkout's source instead - the daily loop for
+changing exlib and the family together with no release round-trip.

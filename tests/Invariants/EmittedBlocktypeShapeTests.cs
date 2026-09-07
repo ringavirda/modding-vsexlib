@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Vintagestory.API.Util;
+using ExpandedLib.Testing;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -86,41 +87,12 @@ public class EmittedBlocktypeShapeTests {
     );
   }
 
-  [Fact]
-  public void The_corpus_reaches_definitions_that_group_the_handbook() {
-    // Same reason as the shape guard below: with no groupBy in the corpus the theory returns early on
-    // every case and a clean run is indistinguishable from an inert one.
-    int grouping = GoldenBlocktypes()
-      .Count(p => {
-        using JsonDocument doc = Parse(p);
-        return HandbookGroups(doc.RootElement).Count > 0;
-      });
-
-    Assert.True(
-      grouping > 0,
-      "no golden blocktype carries a handbook groupBy - the guard is inert"
-    );
-  }
-
-  [Fact]
-  public void The_corpus_reaches_definitions_that_select_a_shape_by_type() {
-    // Without at least one shapeByType golden the theory above passes by returning early on every
-    // case, which reads identical to a clean run.
-    int selecting = GoldenBlocktypes()
-      .Count(p => {
-        using JsonDocument doc = Parse(p);
-        return doc.RootElement.ValueKind == JsonValueKind.Object
-          && doc.RootElement.EnumerateObject()
-            .Any(x =>
-              x.NameEquals("shapebytype") || x.NameEquals("shapeByType")
-            );
-      });
-
-    Assert.True(
-      selecting > 0,
-      "no golden blocktype carries a shapeByType map - the guard is inert"
-    );
-  }
+  // The two corpus-integrity checks that used to sit here (asserting at least one golden carries a
+  // handbook groupBy, and at least one a shapeByType map) are family territory: ExBlockDef exposes
+  // both as generic builder methods (see ExBlockDef.Handbook/ShapeByType), but exlib ships no
+  // gameplay block of its own that calls either, so the corpus is vacuously clean by construction
+  // here. The family mods (exmods) are where a golden actually carries one, and where the premise -
+  // and so these checks - belong.
 
   #region Corpus
 
@@ -191,9 +163,7 @@ public class EmittedBlocktypeShapeTests {
   private static List<string> GoldenBlocktypes() {
     string root = RepoRoot();
     var files = new List<string>();
-    foreach (
-      string mod in Directory.EnumerateDirectories(Path.Combine(root, "mods"))
-    ) {
+    foreach (string mod in RepoManifest.Mods.Values) {
       string tests = Path.Combine(mod, "tests");
       if (!Directory.Exists(tests))
         continue;
@@ -232,10 +202,10 @@ public class EmittedBlocktypeShapeTests {
     DirectoryInfo? dir = new(AppContext.BaseDirectory);
     while (
       dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "VintageStory.sln"))
+      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
-    Assert.True(dir != null, "could not locate repo root (VintageStory.sln)");
+    Assert.True(dir != null, "could not locate repo root (ExpandedLib.sln)");
     return dir!.FullName;
   }
 

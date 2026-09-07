@@ -13,7 +13,7 @@ namespace ExpandedLib.Industry.Metals;
 /// <c>{form}-{metalcode}</c> in the metal's owning domain (that of <see cref="MetalDef.MoltenItem"/>),
 /// built from the vanilla resource itemtypes parameterised by the metal's texture, density and melting
 /// point. Generated metals stay off the vanilla <c>block/metal</c> worldproperty, which would
-/// auto-create an anvil-forgeable <c>workitem-&lt;metal&gt;</c>. See docs/design/materials.md.
+/// auto-create an anvil-forgeable <c>workitem-&lt;metal&gt;</c> - the family's own metal timeline (exmods) decides which metals opt in.
 /// </summary>
 public static class MetalFamilyEmitter {
   // Iron-like fallbacks for a metal that opts in but leaves a field null.

@@ -46,7 +46,7 @@ your mod has definitions or an `assets/` tree - see `templates/exlib-tests/READM
 
 Reference the harness, xUnit, the test SDK and NSubstitute, plus the game API DLLs (with
 `<Private>false</Private>` so you don't copy them). Inside this monorepo, mirror
-`mods/exlib/tests/ExpandedLib.Tests.csproj`:
+`tests/ExpandedLib.Tests.csproj`:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -107,7 +107,7 @@ or C.
 `ExpandedLib`) as a git submodule or sibling checkout and `ProjectReference` the `.csproj`s, exactly
 as above. You track upstream changes and can debug into the harness.
 
-**C - The release bundle.** Each [GitHub release](https://github.com/ringavirda/modding-vsexpanded/releases)
+**C - The release bundle.** Each [GitHub release](https://github.com/ringavirda/exlib/releases)
 ships `exlib-testing_<version>.zip` (versioned in lockstep with exlib) containing
 `ExpandedLib.Testing.dll` + `exlib.dll` (built for the current game version, 1.22 / net10.0). Drop
 both into your repo and reference them with copy-local off, supplying the rest yourself:

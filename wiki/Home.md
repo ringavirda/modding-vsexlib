@@ -24,7 +24,7 @@ scratch:
 This wiki documents both libraries the family publishes for reuse:
 
 - **`exlib`** - the runtime framework mod other mods depend on and call. It ships as the Vintage
-  Story mod artifact (`exlib_<version>.zip`) on the [releases page](https://github.com/ringavirda/modding-vsexpanded/releases).
+  Story mod artifact (`exlib_<version>.zip`) on the [releases page](https://github.com/ringavirda/exlib/releases).
 - **`exlib.testing`** (`ExpandedLib.Testing`) - a headless xUnit harness that loads the real game
   assemblies and exercises network/block-entity logic under `dotnet test`, no game launch
   required. It's a build-/test-time developer library, not something installed in the game: you
@@ -36,7 +36,7 @@ This wiki documents both libraries the family publishes for reuse:
 
 - New here? Read **[Getting Started](Getting-Started)** - declare the dependency, set up a
   project reference, and register your first attribute-marked block. It walks
-  [`samples/HelloExpanded`](https://github.com/ringavirda/modding-vsexpanded/tree/main/samples/HelloExpanded),
+  [`samples/HelloExpanded`](https://github.com/ringavirda/exlib/tree/main/samples/HelloExpanded),
   a buildable, bootable, tested mod using the convenience layer end to end - read it alongside the page.
 - Wondering when exlib does what during world load, and what's safe to call where? **[Lifecycle](Lifecycle)**.
 - Wondering which types are the supported contract and which are internal plumbing? **[Supported
@@ -57,6 +57,6 @@ This wiki documents both libraries the family publishes for reuse:
 ## A note on accuracy
 
 These pages document the public surface a third-party mod consumes. Signatures are taken from
-the source in this repository; when in doubt, the code in `mods/exlib/src/` and
-`mods/exlib/testing/` is the source of truth. Game-version differences (1.20 / 1.21 / 1.22)
+the source in this repository; when in doubt, the code in `src/` and
+`testing/` is the source of truth. Game-version differences (1.20 / 1.21 / 1.22)
 are handled by the `Legacy/` shim and noted where they affect you.

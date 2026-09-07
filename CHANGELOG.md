@@ -427,6 +427,15 @@ see the git history.
   the two, the smoke lane's `root key '...' is not a ... key the game reads` warnings drop from
   several hundred to zero.
 
+### Repository
+
+- exlib is now its own repository, `ringavirda/exlib`, extracted with full history from the
+  `modding-vsexpanded` monorepo and flattened to the root (`src/`, `industry/`, `testing/`,
+  `generators/`, `tests/`, `build/`, `assets/`, `wiki/`, `docs/` beside it; `samples/` and
+  `templates/exlib-tests/` unchanged). The family mods (iiex, siex) stay in `modding-vsexpanded`,
+  now `exmods`, and reference this repository by NuGet package or, inside a workspace checking out
+  both, by project.
+
 ## [0.7.3] - 2026-08-13
 
 Six public subsystems landed between 0.7.0 and 0.7.2 without a changelog entry; they are

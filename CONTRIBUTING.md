@@ -1,7 +1,9 @@
 # Code style
 
-How the C# in `mods/*/src/` and `mods/*/tests/` is written and formatted. Domain rules - units, invariants,
-network semantics - live in [conventions.md](docs/design/conventions.md); this file is about the code itself.
+How the C# in `src/`, `industry/`, `testing/`, `generators/` and `tests/` is written and formatted.
+Domain rules - units, invariants, network semantics - live in [conventions.md](docs/design/conventions.md);
+this file is about the code itself. The family's own rules (iiex, siex) are exmods' own
+CONTRIBUTING.md.
 
 The mechanical parts are enforced, not trusted to review: formatting by `exmod format`, comment
 style by `CommentStyleGuards` in `ExpandedLib.Tests`. If a rule below is not enforced, it is a
@@ -98,9 +100,10 @@ directly - else a cached or freshly downloaded release, unpacked under `.exmod/m
 Every `PackageReference` version in the repo (exlib's own test projects, the harness, the
 generators, both samples) comes from `Directory.Packages.props` at the root - central package
 management, one number per package, no `Version` attribute at the reference site.
-`exlib.slnf` is the solution filter scoped to exlib itself: its projects, the generators, the
-harness, exlib's tests and both samples with their tests, none of `mods/iiex`, `mods/siex` or
-`infra/` - `dotnet build exlib.slnf` is the fast loop for exlib work alone.
+`ExpandedLib.sln` at the root carries the nine projects this repository builds - exlib itself, the
+generators, the harness, exlib's tests and both samples with their tests - so `dotnet build
+ExpandedLib.sln` is already the whole repo; no filter is needed the way `exmods` needs one to keep
+iiex and siex apart.
 
 A project referencing `ExpandedLib` builds in one of two modes, switched on `$(ExlibRoot)`: source
 mode (inside this repo, or a workspace checkout with `ExlibRoot` set) references the checked-out

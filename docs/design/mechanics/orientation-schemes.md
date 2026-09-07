@@ -83,7 +83,7 @@ directed ones, where the ordered step catches it first and the fallback is never
 ## What exists today
 
 **Built (U10, 2026-08-22).** The declared-scheme registry this page proposes below is
-`mods/exlib/src/Helpers/ExOrientations.cs`: twelve named schemes and the two-step `Rotate` (ordered
+`src/Helpers/ExOrientations.cs`: twelve named schemes and the two-step `Rotate` (ordered
 spelling first, face-set fallback second). Every concrete `BlockNetworkNode` def declares
 `{"mode":"network","scheme":"<Name>"}` through `ExBlockDef.NetworkOriented`, which reads the scheme off
 the block's own `orientation` states rather than taking a name - so the misspelling this page worried

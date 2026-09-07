@@ -164,7 +164,7 @@ public class IndustryBoundaryTests {
 
     Assert.True(
       hits.Count == 0,
-      "framework source under mods/exlib/src names ExpandedLib.Industry:\n"
+      "framework source under src names ExpandedLib.Industry:\n"
         + string.Join("\n", hits)
     );
   }

@@ -39,27 +39,36 @@ public class CommentStyleGuards {
     string[] Lines
   );
 
+  // The mod's own project folders - what used to sit inside mods/exlib/ before the split, so the
+  // scan keeps its old scope rather than picking up samples/ and templates/, which sit beside it.
+  private static readonly string[] ScannedFolders =
+  ["src", "industry", "testing", "generators", "tests"];
+
   private static IReadOnlyList<SourceFile> Sources() {
     string root = RepoRoot();
     var files = new List<SourceFile>();
-    string mods = Path.Combine(root, "mods");
-    foreach (
-      string path in Directory.EnumerateFiles(
-        mods,
-        "*.cs",
-        SearchOption.AllDirectories
-      )
-    ) {
-      // Generated sources are not hand-authored, so the style rules do not apply to them.
-      if (path.EndsWith(".g.cs", StringComparison.Ordinal))
+    foreach (string folder in ScannedFolders) {
+      string dir = Path.Combine(root, folder);
+      if (!Directory.Exists(dir))
         continue;
-      string rel = Path.GetRelativePath(root, path).Replace('\\', '/');
-      if (
-        rel.Contains("/bin/", StringComparison.Ordinal)
-        || rel.Contains("/obj/", StringComparison.Ordinal)
-      )
-        continue;
-      files.Add(new SourceFile(path, rel, File.ReadAllLines(path)));
+      foreach (
+        string path in Directory.EnumerateFiles(
+          dir,
+          "*.cs",
+          SearchOption.AllDirectories
+        )
+      ) {
+        // Generated sources are not hand-authored, so the style rules do not apply to them.
+        if (path.EndsWith(".g.cs", StringComparison.Ordinal))
+          continue;
+        string rel = Path.GetRelativePath(root, path).Replace('\\', '/');
+        if (
+          rel.Contains("/bin/", StringComparison.Ordinal)
+          || rel.Contains("/obj/", StringComparison.Ordinal)
+        )
+          continue;
+        files.Add(new SourceFile(path, rel, File.ReadAllLines(path)));
+      }
     }
     Assert.True(
       files.Count > 0,
@@ -86,12 +95,12 @@ public class CommentStyleGuards {
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
     while (
       dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "VintageStory.sln"))
+      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
     return dir?.FullName
       ?? throw new InvalidOperationException(
-        "Could not locate the repo root (VintageStory.sln) from "
+        "Could not locate the repo root (ExpandedLib.sln) from "
           + AppContext.BaseDirectory
       );
   }

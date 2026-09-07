@@ -1,7 +1,7 @@
 # exlib headless test project
 
 A `dotnet new` template for a headless xUnit test project against `ExpandedLib.Testing` - see the
-wiki's [Testing Harness](https://github.com/ringavirda/modding-vsexpanded/wiki/Testing-Harness).
+wiki's [Testing Harness](https://github.com/ringavirda/exlib/wiki/Testing-Harness).
 
 ```
 dotnet new install ./templates/exlib-tests

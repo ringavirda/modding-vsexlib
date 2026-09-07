@@ -93,7 +93,7 @@ public class WikiParityTests {
     );
     Assert.True(
       GeneratorTypeNames().Any(),
-      "no IIncrementalGenerator found in mods/exlib/generators - the generator names the wiki "
+      "no IIncrementalGenerator found in generators/ - the generator names the wiki "
         + "may cite would be resolved from an empty set, so any of them would read as valid"
     );
   }

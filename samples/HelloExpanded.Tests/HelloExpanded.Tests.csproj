@@ -1,5 +1,15 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="../../mods/Directory.Build.props" />
+<Project>
+  <!-- samples/ sits directly under this repo's root, so it would otherwise auto-inherit
+       Directory.Build.props/.targets the way every project below the root does; opted out
+       (ImportDirectoryBuildProps/Targets=false, and the explicit Sdk.props/Sdk.targets split that
+       lets the props half take effect) so the explicit import below is the only source, not a
+       second copy layered on top of the automatic one. -->
+  <PropertyGroup>
+    <ImportDirectoryBuildProps>false</ImportDirectoryBuildProps>
+    <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
+  </PropertyGroup>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  <Import Project="../../Directory.Build.props" />
 
   <PropertyGroup>
     <TargetFramework>$(CurrentGameTfm)</TargetFramework>
@@ -10,7 +20,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Private=true, same as mods/iiex/tests: the vstest discoverer probes a test assembly's direct
+    <!-- Private=true, same as a family mod's own tests project: the vstest discoverer probes a test assembly's direct
          references on disk BEFORE the harness's assembly resolver can run, and a reference missing
          from the output folder makes discovery silently report zero tests rather than fail. -->
     <Reference Include="VintagestoryAPI">
@@ -51,13 +61,15 @@
     <ProjectReference Include="..\HelloExpanded\HelloExpanded.csproj" />
   </ItemGroup>
   <!-- Explicit import: GamePath (used above via HintPath) lives in ExpandedLib.targets,
-       imported after the project body - the mods/Directory.Build.props import above only
-       carries ExpandedLib.props (the props half), and this project sits outside mods/, so
-       the auto-imported mods/Directory.Build.targets never reaches it either. Source mode only
+       imported after the project body - the Directory.Build.props import above only carries
+       ExpandedLib.props (the props half), and this project sits outside src/, so the
+       auto-imported Directory.Build.targets never reaches it either. Source mode only
        ($(ExlibRoot) != ''): in package mode the ExpandedLib PackageReference above pulls the same
        file in automatically, and importing both ways would double it up. -->
   <Import
-    Project="../../mods/exlib/build/ExpandedLib.targets"
+    Project="../../build/ExpandedLib.targets"
     Condition="'$(ExlibRoot)' != ''"
   />
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 </Project>

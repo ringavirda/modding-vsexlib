@@ -19,12 +19,20 @@ namespace ExpandedLib.Tests;
 /// the generated defs is the golden harness's job (<see cref="DefinitionGoldens"/>).
 /// </summary>
 public class MetalFamilyEmitterTests {
-  // The shipped metal descriptor, read from the same JSON the runtime and the golden harness feed the
-  // emitter.
+  // The metal descriptor, read from a fixture under Fixtures/ - a frozen copy of the family's own
+  // shipped JSON (iiex's pigiron/castiron, siex's bessemersteel), since the family mods that ship
+  // these live outside this repository. The "mod" argument only picks the file; it names no path
+  // here.
   private static MetalDef Shipped(string mod, string metal) =>
     JsonConvert.DeserializeObject<MetalDef>(
       File.ReadAllText(
-        Path.Combine(RepoPaths.Assets(mod), "config", "metals", $"{metal}.json")
+        Path.Combine(
+          DefinitionGoldens.RepoRoot(),
+          "tests",
+          "Metals",
+          "Fixtures",
+          $"{metal}.json"
+        )
       )
     )!;
 

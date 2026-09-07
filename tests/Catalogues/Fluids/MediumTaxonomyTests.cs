@@ -307,12 +307,12 @@ public class MediumTaxonomyTests {
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
     while (
       dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "VintageStory.sln"))
+      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
     return dir?.FullName
       ?? throw new InvalidOperationException(
-        "Could not locate the repo root (VintageStory.sln) from "
+        "Could not locate the repo root (ExpandedLib.sln) from "
           + AppContext.BaseDirectory
       );
   }

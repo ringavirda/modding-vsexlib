@@ -12,7 +12,7 @@ namespace ExpandedLib.Catalogues;
 /// tooling rather than naming a product.
 /// <para>
 /// A die is recognised by carrying a job that parses, never by its code, so a third party's die needs no
-/// naming blessing from us. See docs/design/mechanics/process-extension.md and machining-line.md.
+/// naming blessing from us. See docs/design/mechanics/process-extension.md; the family's own machining line (exmods) is what fills the job table.
 /// </para>
 /// </summary>
 public static class ItemDie {

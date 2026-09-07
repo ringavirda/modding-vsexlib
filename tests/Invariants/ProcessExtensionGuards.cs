@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using ExpandedLib.Testing;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -41,9 +42,7 @@ public class ProcessExtensionGuards {
     string root = RepoRoot();
     var files = new List<SourceFile>();
 
-    foreach (
-      string mod in Directory.EnumerateDirectories(Path.Combine(root, "mods"))
-    ) {
+    foreach (string mod in RepoManifest.Mods.Values) {
       string src = Path.Combine(mod, "src");
       if (!Directory.Exists(src))
         continue;
@@ -86,10 +85,10 @@ public class ProcessExtensionGuards {
     DirectoryInfo? dir = new(AppContext.BaseDirectory);
     while (
       dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "VintageStory.sln"))
+      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
-    Assert.True(dir != null, "could not locate repo root (VintageStory.sln)");
+    Assert.True(dir != null, "could not locate repo root (ExpandedLib.sln)");
     return dir!.FullName;
   }
 
@@ -103,18 +102,13 @@ public class ProcessExtensionGuards {
     // after the pattern it watched for moved to a folder it no longer walks.
     IReadOnlyList<SourceFile> machines = ProcessMachines();
 
+    // exlib ships no concrete process machine of its own - the family's own machines (the rolling
+    // mill, the boring machine, ...) are what this guard exists to police, checked in exmods. What
+    // still has to hold here is that the scan reaches real source at all.
     Assert.True(
       machines.Count > 0,
-      "Found no process-machine sources under mods/*/src - the corpus rule is wrong and the guard below is "
+      "Found no process-machine sources under src/ - the corpus rule is wrong and the guard below is "
         + "checking nothing."
-    );
-    Assert.Contains(
-      machines,
-      f =>
-        f.Relative.EndsWith(
-          "BlockEntityRollingMill.cs",
-          StringComparison.Ordinal
-        )
     );
   }
 

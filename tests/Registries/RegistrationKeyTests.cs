@@ -132,12 +132,10 @@ public class RegistrationKeyTests : IDisposable {
     // shipped asset tree, and a mod that adds one without the other resolves keys into a domain it does
     // not ship.
     var missing = new List<string>();
-    string mods = Path.Combine(RepoRoot(), "mods");
 
     foreach (
-      string modinfo in Directory
-        .EnumerateDirectories(mods)
-        .Select(d => Path.Combine(d, "src", "modinfo.json"))
+      string modinfo in RepoManifest
+        .Mods.Values.Select(d => Path.Combine(d, "src", "modinfo.json"))
         .Where(File.Exists)
     ) {
       string folder = Path.GetDirectoryName(modinfo)!;
@@ -162,25 +160,14 @@ public class RegistrationKeyTests : IDisposable {
         missing.Add($"{Path.GetFileName(folder)} (modid {modId})");
     }
 
-    // Five mod projects ship one each; an empty corpus means the discovery broke, not that the rule
+    // One mod project ships one; an empty corpus means the discovery broke, not that the rule
     // holds vacuously.
-    Assert.NotEmpty(Directory.EnumerateDirectories(mods));
+    Assert.NotEmpty(RepoManifest.Mods);
     Assert.True(
       missing.Count == 0,
       "every mod assembly must carry [assembly: ExDomain(\"<its modid>\")]: "
         + string.Join("; ", missing)
     );
-  }
-
-  private static string RepoRoot() {
-    DirectoryInfo? dir = new(AppContext.BaseDirectory);
-    while (
-      dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "VintageStory.sln"))
-    )
-      dir = dir.Parent;
-    Assert.True(dir != null, "could not locate repo root (VintageStory.sln)");
-    return dir!.FullName;
   }
 
   #endregion

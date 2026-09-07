@@ -2,7 +2,7 @@
 
 Full public surface of `ExpandedLib.Testing`. For setup and worked examples see the
 **[Testing Harness](Testing-Harness)** page. Signatures are taken from
-`mods/exlib/testing/`.
+`testing/`.
 
 ## Where things are
 

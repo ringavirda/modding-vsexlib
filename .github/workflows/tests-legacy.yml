@@ -16,9 +16,13 @@ on:
 # resolves assemblies from at runtime. No coverage gate here - the gate floors track the current
 # build (see tests.yml).
 #
-# Adding a game version means a row HERE, in the mods/exlib/build/ExpandedLib.props manifest (CI
-# YAML can't read MSBuild), in $GameTfms in extools' exmod.ps1, and in extools' pack/Program.cs
-# GameTargets.
+# Adding a game version means a row HERE, in the build/ExpandedLib.props manifest (CI YAML can't
+# read MSBuild), in $GameTfms in extools' exmod.ps1, and in extools' pack/Program.cs GameTargets.
+
+env:
+  # scripts/exmod.sh resolves the tools checkout through this, so no run has to fall back to
+  # cloning a private repo over HTTPS. Drop once extools is public and .extools/ can clone itself.
+  EXTOOLS_HOME: ${{ github.workspace }}/extools
 
 jobs:
   test:
@@ -27,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       # The .0 of each legacy series - the floor the mods stay source-compatible with. Keep in sync
-      # with the manifest in mods/exlib/build/ExpandedLib.props.
+      # with the manifest in build/ExpandedLib.props.
       matrix:
         include:
           - game: "1.21.0"
@@ -40,6 +44,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # extools is a private repository; a checkout token is needed until it is public.
+      - name: Checkout extools
+        uses: actions/checkout@v4
+        with:
+          repository: ringavirda/extools
+          ref: v0.1.0
+          path: extools
+          token: ${{ secrets.EXTOOLS_TOKEN }}
 
       # The legacy test host runs on the matching runtime, so install all SDKs the suite targets.
       - name: Set up .NET

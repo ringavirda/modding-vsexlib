@@ -1,20 +1,29 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <!-- samples/ sits outside mods/, so it does not inherit mods/Directory.Build.props the way every
-       mod project does automatically (MSBuild only walks up from a project's own folder). Import
-       the shared build files directly instead - the props here, the targets at the bottom of this
-       file - which is exactly what a third-party mod's own project gets from the ExpandedLib
-       package; see the wiki's Getting-Started for the standalone form. Source mode only
-       ($(ExlibRoot) != ''): in package mode the PackageReference below pulls the same two files in
-       automatically (the NuGet build/<id>.props|targets convention), and importing both ways would
-       double them up. -->
+<Project>
+  <!-- samples/ sits directly under this repo's root, so unlike a mod under mods/ in the family repo
+       it would otherwise auto-inherit Directory.Build.props/.targets the way every project below
+       the root does. It deliberately opts out (ImportDirectoryBuildProps/Targets=false, and the
+       explicit Sdk.props/Sdk.targets split that lets the props half take effect) and imports the
+       shared build files directly instead - the props here, the targets at the bottom of this file -
+       which is exactly what a third-party mod's own project gets from the ExpandedLib package; see
+       the wiki's Getting-Started for the standalone form. Source mode only ($(ExlibRoot) != ''): in
+       package mode the PackageReference below pulls the same two files in automatically (the NuGet
+       build/<id>.props|targets convention), and importing both ways would double them up. Opting out
+       of the repo's own Directory.Build.props also keeps -p:ExlibRoot= (forcing package mode)
+       meaningful here: that file's own default would otherwise refill it. -->
   <PropertyGroup>
-    <!-- The source-mode switch, canonically set in mods/Directory.Build.props; this project builds
-         standalone (dotnet build on this .csproj directly, no other import reaches it first), so it
-         carries the same one-line default rather than importing that whole file, which would also
-         pull in the version manifest and test-only settings this project has no use for.
+    <ImportDirectoryBuildProps>false</ImportDirectoryBuildProps>
+    <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
+  </PropertyGroup>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup>
+    <!-- The source-mode switch, canonically set in this repo's own Directory.Build.props; this
+         project opts out of that file's auto-import (see above), so it carries the same one-line
+         default rather than importing that whole file, which would also pull in the version
+         manifest and test-only settings this project has no use for.
          -p:ExlibRoot= (a global property) wins over this default and forces package mode. -->
     <ExlibRoot Condition="'$(ExlibRoot)' == ''"
-      >$(MSBuildThisFileDirectory)../../mods/exlib/</ExlibRoot>
+      >$(MSBuildThisFileDirectory)../../</ExlibRoot>
     <!-- Restore needs $(TargetFramework) (below, reading $(CurrentGameTfm)) before any package is
          present, so in package mode it can't come through ExpandedLib.props - the same reason the
          target framework list always stays in the consumer, never the package. Source mode's
@@ -24,7 +33,7 @@
       >net10.0</CurrentGameTfm>
   </PropertyGroup>
   <Import
-    Project="../../mods/exlib/build/ExpandedLib.props"
+    Project="../../build/ExpandedLib.props"
     Condition="'$(ExlibRoot)' != ''"
   />
 
@@ -88,7 +97,7 @@
        of the csproj, not one level up under src/) is still globbed by hand below. Source mode only,
        same reason as the .props import above. -->
   <Import
-    Project="../../mods/exlib/build/ExpandedLib.targets"
+    Project="../../build/ExpandedLib.targets"
     Condition="'$(ExlibRoot)' != ''"
   />
 
@@ -99,4 +108,6 @@
     </Content>
     <AdditionalFiles Include="assets/hellomodule/lang/en.json" />
   </ItemGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 </Project>

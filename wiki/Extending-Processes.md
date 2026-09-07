@@ -194,7 +194,7 @@ Both return the clashes they hit, empty when the contribution was taken whole, a
 same declaration and runs it through the same parser, so there is one set of rules rather than two.
 
 This surface is deliberately no wider than the JSON schema. Anything expressible only in C# is a gap in
-the schema, and the schema should grow instead — [open an issue](https://github.com/ringavirda/modding-vsexpanded/issues).
+the schema, and the schema should grow instead — [open an issue](https://github.com/ringavirda/exlib/issues).
 
 ⚠️ **Called directly, this is a one-time effect.** `AssetsFinalize` clears the registry before every
 load, JSON's included, so a call from `Start` would be wiped by your own mod's next world load. To

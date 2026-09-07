@@ -13,39 +13,31 @@ namespace ExpandedLib.Tests;
 /// <see cref="HandbookSync"/> for the transform and what it leaves alone (titles, translations).
 /// </summary>
 public class HandbookParityTests {
-  /// <summary>One case per handbook page across every domain that ships one.</summary>
-  public static IEnumerable<object[]> AllPages() =>
-    HandbookSync
-      .Domains()
-      .SelectMany(d => HandbookSync.Pages(d))
-      .Select(p => new object[] { p.Domain, p.Number });
+  // Plain Facts rather than [Theory]/[MemberData]: exlib ships no handbook page of its own (that is
+  // the family's own content), so the case list is legitimately empty here, and xUnit's MemberData
+  // treats an empty case list as a discovery failure rather than a vacuous pass.
 
-  /// <summary>One case per domain that ships handbook pages.</summary>
-  public static IEnumerable<object[]> AllDomains() =>
-    HandbookSync.Domains().Select(d => new object[] { d });
+  [Fact]
+  public void Every_shipped_handbook_page_matches_its_authoring_source() {
+    var failures = new List<string>();
+    foreach (string domain in HandbookSync.Domains())
+      foreach (HandbookSync.Page page in HandbookSync.Pages(domain)) {
+        var (ok, message) = HandbookSync.Check(page);
+        if (!ok)
+          failures.Add(message);
+      }
 
-  [Theory]
-  [MemberData(nameof(AllPages))]
-  public void Every_shipped_handbook_page_matches_its_authoring_source(
-    string domain,
-    string number
-  ) {
-    HandbookSync.Page page = HandbookSync
-      .Pages(domain)
-      .Single(p => p.Number == number);
-
-    var (ok, message) = HandbookSync.Check(page);
-
-    Assert.True(ok, message);
+    Assert.True(failures.Count == 0, string.Join("\n", failures));
   }
 
-  [Theory]
-  [MemberData(nameof(AllDomains))]
-  public void Every_handbook_page_is_wired_end_to_end(string domain) {
+  [Fact]
+  public void Every_handbook_page_is_wired_end_to_end() {
     // Checks the wiring rather than the prose: a shipped page with no source, a source that ships
     // nowhere, and a descriptor pointing at an undefined key (which renders the raw key in game). The
     // parity check above sees none of these, since it only runs where both halves exist.
-    IReadOnlyList<string> problems = HandbookSync.Problems(domain);
+    var problems = new List<string>();
+    foreach (string domain in HandbookSync.Domains())
+      problems.AddRange(HandbookSync.Problems(domain));
 
     Assert.True(problems.Count == 0, string.Join("\n", problems));
   }

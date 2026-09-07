@@ -48,7 +48,7 @@ public static class MPAnim {
   /// is <c>[0, QuantityFrames)</c> and the stretch from the last keyframe back to the first is an
   /// ordinary interpolation segment. A clip driven from here is therefore authored the way vanilla
   /// authors one - last keyframe at <c>360 * (frames-1) / frames</c> with <c>rotShortestDistance</c>
-  /// set, never a duplicate of frame 0. See docs/design/machines/engine-watt.md § Animation phase-lock.
+  /// set, never a duplicate of frame 0 - the same convention the engine's own sub-machine phase-lock authors to.
   /// </remarks>
   public static float FrameFromAngle(float angleRad, int totalFrames) {
     if (totalFrames <= 1)

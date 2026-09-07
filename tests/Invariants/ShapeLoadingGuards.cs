@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using ExpandedLib.Testing;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -25,9 +26,7 @@ public class ShapeLoadingGuards {
     string root = RepoRoot();
     var files = new List<SourceFile>();
 
-    foreach (
-      string mod in Directory.EnumerateDirectories(Path.Combine(root, "mods"))
-    ) {
+    foreach (string mod in RepoManifest.Mods.Values) {
       string src = Path.Combine(mod, "src");
       if (!Directory.Exists(src))
         continue;
@@ -77,10 +76,10 @@ public class ShapeLoadingGuards {
     DirectoryInfo? dir = new(AppContext.BaseDirectory);
     while (
       dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "VintageStory.sln"))
+      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
-    Assert.True(dir != null, "could not locate repo root (VintageStory.sln)");
+    Assert.True(dir != null, "could not locate repo root (ExpandedLib.sln)");
     return dir!.FullName;
   }
 

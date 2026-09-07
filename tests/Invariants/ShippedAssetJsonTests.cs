@@ -14,9 +14,9 @@ namespace ExpandedLib.Tests;
 /// domain is covered by the corpus (<see cref="ShippedJson"/> runs per mod, so nothing here checks
 /// that on its own), every texture a domain names resolves somewhere in the repo, and no shipped
 /// asset carries an authoring-machine path. The corpus for the whole-repo guards is derived from the
-/// asset trees the build actually packs - every domain folder under <c>mods/*/assets/</c> and
-/// <c>samples/*/assets/</c> - so a new mod or sample is covered on the day it is added and the
-/// source-only <c>workbench/</c> tree stays out.
+/// asset trees the build actually packs (<see cref="ExpandedLib.Testing.RepoPaths.AllAssetTrees"/>) -
+/// every mod's and sample's own <c>assets/</c> - so a new mod or sample is covered on the day it is
+/// added.
 /// </summary>
 public class ShippedAssetJsonTests {
   // Exlib has no patches/ folder of its own, so only the JSON-parses-and-carries-no-control-character
@@ -34,8 +34,8 @@ public class ShippedAssetJsonTests {
   public void The_corpus_covers_every_shipped_domain() {
     // A path filter that silently matches nothing turns both theories above into no-ops, so the
     // premise is asserted rather than assumed.
-    var covered = AssetFiles()
-      .Select(p => p.Split('/')[3]) // mods/<mod>/assets/<domain>/...
+    var covered = AssetFilesByDomain()
+      .Select(f => f.Domain)
       .Distinct()
       .ToHashSet(StringComparer.Ordinal);
 
@@ -61,11 +61,14 @@ public class ShippedAssetJsonTests {
 
   /// <summary>
   /// Every JSON under a shipped domain, repo-relative and forward-slashed so the theory labels read
-  /// the same on any platform.
+  /// the same on any platform, paired with the domain (the asset tree's own folder name) it shipped
+  /// under - the domain a repo-relative path segment count cannot reliably recover once a mod's own
+  /// depth varies (a mod at the repo root, one under <c>samples/</c>).
   /// </summary>
-  private static IEnumerable<string> AssetFiles() {
+  private static IEnumerable<(string Relative, string Domain)> AssetFilesByDomain() {
     string root = RepoRoot();
-    foreach (string dir in ExpandedLib.Testing.RepoPaths.AllAssetTrees())
+    foreach (string dir in ExpandedLib.Testing.RepoPaths.AllAssetTrees()) {
+      string domain = new DirectoryInfo(dir).Name;
       foreach (
         string file in Directory.EnumerateFiles(
           dir,
@@ -73,8 +76,12 @@ public class ShippedAssetJsonTests {
           SearchOption.AllDirectories
         )
       )
-        yield return Path.GetRelativePath(root, file).Replace('\\', '/');
+        yield return (Path.GetRelativePath(root, file).Replace('\\', '/'), domain);
+    }
   }
+
+  private static IEnumerable<string> AssetFiles() =>
+    AssetFilesByDomain().Select(f => f.Relative);
 
   /// <summary>
   /// Every texture one of our own domains names, anywhere in a shipped JSON asset, must have a file
@@ -168,10 +175,10 @@ public class ShippedAssetJsonTests {
     DirectoryInfo? dir = new(AppContext.BaseDirectory);
     while (
       dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "VintageStory.sln"))
+      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
-    Assert.True(dir != null, "could not locate repo root (VintageStory.sln)");
+    Assert.True(dir != null, "could not locate repo root (ExpandedLib.sln)");
     return dir!.FullName;
   }
 

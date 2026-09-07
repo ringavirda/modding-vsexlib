@@ -4,9 +4,9 @@
     VERSION MANIFEST, PACKAGE-SIDE HALF. Shipped in the nupkg (build/ExpandedLib.props) and
     imported into every consuming project's props stage, before its project body. The three
     defaults below are guarded with Condition="'$(X)' == ''", so a consumer that sets its own
-    manifest first - this repo's ../../Directory.Build.props does - keeps its own values; this
+    manifest first - this repo's own ../Directory.Build.props does - keeps its own values; this
     file only supplies them for a project with no manifest of its own (a standalone clone, a
-    third party). See ../../Directory.Build.props for the rest of the manifest story (why it's
+    third party). See ../Directory.Build.props for the rest of the manifest story (why it's
     properties not items, how the promote/add-a-version workflow goes).
 
     $(TargetFramework) and $(AssetDomain) are set in the CONSUMER'S PROJECT BODY, evaluated after
@@ -90,10 +90,14 @@
   <PropertyGroup Condition="Exists('$(MSBuildProjectDirectory)\modinfo.json')">
     <ModVersion Condition="'$(ModVersion)' == ''"
       >$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\modinfo.json')), '"version"\s*:\s*"([^"]+)"').Groups[1].Value)</ModVersion>
+    <!-- The numeric core of the version: a prerelease suffix such as -preview.1 belongs in the
+         package and informational versions, never in the assembly or file version, which the
+         runtime parses as four numbers. -->
+    <_ModVersionCore>$([System.Text.RegularExpressions.Regex]::Match('$(ModVersion)', '^\d+\.\d+\.\d+').Value)</_ModVersionCore>
     <Version>$(ModVersion)</Version>
-    <FileVersion>$(ModVersion)</FileVersion>
+    <FileVersion>$(_ModVersionCore)</FileVersion>
     <InformationalVersion>$(ModVersion)</InformationalVersion>
-    <AssemblyVersion>$([System.Version]::Parse('$(ModVersion)').Major).$([System.Version]::Parse('$(ModVersion)').Minor).0.0</AssemblyVersion>
+    <AssemblyVersion>$([System.Version]::Parse('$(_ModVersionCore)').Major).$([System.Version]::Parse('$(_ModVersionCore)').Minor).0.0</AssemblyVersion>
 
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- CS1591 missing comment on a public member - the undocumented remainder, a separate pass.

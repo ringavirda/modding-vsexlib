@@ -10,6 +10,9 @@ on:
 
 env:
   VS_VERSION: "1.22"
+  # scripts/exmod.sh resolves the tools checkout through this, so no run has to fall back to
+  # cloning a private repo over HTTPS. Drop once extools is public and .extools/ can clone itself.
+  EXTOOLS_HOME: ${{ github.workspace }}/extools
 
 jobs:
   release:
@@ -26,6 +29,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # extools is a private repository; a checkout token is needed until it is public.
+      - name: Checkout extools
+        uses: actions/checkout@v4
+        with:
+          repository: ringavirda/extools
+          ref: v0.1.0
+          path: extools
+          token: ${{ secrets.EXTOOLS_TOKEN }}
+
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -41,7 +53,7 @@ jobs:
         run: bash scripts/exmod.sh provision game -Version "$VS_VERSION" -Kind server
 
       - name: Restore
-        run: dotnet restore VintageStory.sln
+        run: dotnet restore ExpandedLib.sln
 
       # The same gate every push runs, one more time against the tagged commit - a release never
       # ships a build that hasn't just proven itself.
