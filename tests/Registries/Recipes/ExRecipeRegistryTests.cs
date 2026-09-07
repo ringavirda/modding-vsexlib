@@ -15,7 +15,7 @@ namespace ExpandedLib.Tests;
 /// returned.
 /// </summary>
 public class ExRecipeRegistryTests {
-  private sealed class TestRecipe : IByteSerializable {
+  public sealed class TestRecipe : IByteSerializable {
     public string Code = "";
 
     public void ToBytes(BinaryWriter writer) => writer.Write(Code);
