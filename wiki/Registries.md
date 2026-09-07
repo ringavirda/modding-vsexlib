@@ -55,9 +55,14 @@ Nine sealed attributes inherit it, each validating the target's base type:
 | `[EntityBehaviorRegister]` | `EntityBehavior` |
 | `[CropBehaviorRegister]` | `CropBehavior` |
 
-Entity renderers are `ICoreClientAPI`-only, and `RegisterMountable` takes a delegate rather than a
-class, so neither fits this rung's shape; register them with the raw `api.RegisterMountable(...)` /
-client-side call instead.
+Entity renderers are `ICoreClientAPI`-only, so a client-side-only registration doesn't fit a rung
+that runs identically on both sides; register them with the raw client-side call instead.
+
+Mountables are left out for a different reason: `RegisterMountable` takes a delegate matching
+`ICoreAPI.GetMountableDelegate`'s signature (`(IWorldAccessor, TreeAttribute) -> IMountableSeat`),
+not a class, and both this rung's scan and `Validate<TBase>` are type-based - a method-target
+attribute would need a second code path this rung doesn't have. Register mountables with the raw
+`api.RegisterMountable(...)` call instead.
 
 ```csharp
 [BlockRegister]                         // -> "yourmod.BlockPipe"
@@ -234,7 +239,7 @@ public static class ExRecipeRegistry
         where T : IByteSerializable, new();
 
     public static void LoadRecipes<T>(ICoreServerAPI sapi, string folder, List<T> into,
-        Action<T>? resolve = null) where T : IByteSerializable, new();
+        Func<T, bool>? resolve = null) where T : IByteSerializable, new();
 }
 ```
 
@@ -254,12 +259,15 @@ domain. Call it from `AssetsLoaded`, after `Register` has run on both sides:
 public override void AssetsLoaded(ICoreAPI api)
 {
     if (api is ICoreServerAPI sapi)
-        ExRecipeRegistry.LoadRecipes(sapi, "widgets", WidgetRecipes, r => r.Resolve(sapi.World));
+        ExRecipeRegistry.LoadRecipes(sapi, "widgets", WidgetRecipes, r => {
+            r.Resolve(sapi.World);
+            return r.Enabled;
+        });
 }
 ```
 
-`resolve` runs once per loaded recipe before it is added - an ingredient resolve, an `Enabled`
-check, whatever your recipe type needs done once loaded.
+`resolve` runs once per loaded recipe before it is added, and returning `false` drops it - an
+ingredient resolve, an `Enabled` check, whatever your recipe type needs done once loaded.
 
 ## Shipping more than one assembly
 

@@ -12,9 +12,9 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// R8: the bare <c>{ShortId}</c>/<c>{shortid}</c> block-entity aliases stay process-wide and
-/// unprefixed (existing worlds and blocktype JSON reference them), but a second type claiming a
-/// bare key already issued gets an error naming both, instead of silently overwriting the first.
+/// The bare <c>{ShortId}</c>/<c>{shortid}</c> block-entity aliases stay process-wide and unprefixed
+/// (existing worlds and blocktype JSON reference them), but a second type claiming a bare key already
+/// issued gets an error naming both, instead of silently overwriting the first.
 /// </summary>
 public class EntityRegistryBareAliasTests : IDisposable {
   public void Dispose() {
@@ -39,7 +39,8 @@ public class EntityRegistryBareAliasTests : IDisposable {
   }
 
   // Two distinct types sharing one simple name, so both claim the bare short-id key "Widget"/
-  // "widget" - the cross-mod scenario R8 defends against, reproduced within one assembly.
+  // "widget" - the cross-mod collision the bare-key error defends against, reproduced within one
+  // assembly.
   private static class OuterA {
     [BlockEntityRegister]
     public sealed class BlockEntityWidget : BlockEntity { }
@@ -62,17 +63,27 @@ public class EntityRegistryBareAliasTests : IDisposable {
 
     EntityRegistry.RegisterAll(world.Api, mod, GetType().Assembly);
 
-    // One error per colliding alias: the exact-case "Widget" and the lower-cased "widget".
+    // One error per colliding alias: the exact-case "Widget" and the lower-cased "widget". Assert on
+    // message content, not an exact count - _bareKeysIssued is a process-wide static that this
+    // fixture's own Dispose only clears for the two keys claimed here, so a class that scans this
+    // same assembly without cleaning up after itself can leave a stale entry behind.
     List<string> collisions = world.Log.Errors.ToList();
-    Assert.Equal(2, collisions.Count);
-    Assert.Contains(collisions, m => m.Contains("'Widget'"));
-    Assert.Contains(collisions, m => m.Contains("'widget'"));
-    Assert.All(
+    Assert.Contains(
       collisions,
-      m => Assert.Contains(nameof(OuterA.BlockEntityWidget), m)
+      m =>
+        m.Contains("'Widget'")
+        && m.Contains(nameof(OuterA.BlockEntityWidget))
+        && m.Contains("OuterA")
+        && m.Contains("OuterB")
     );
-    Assert.All(collisions, m => Assert.Contains("OuterA", m));
-    Assert.All(collisions, m => Assert.Contains("OuterB", m));
+    Assert.Contains(
+      collisions,
+      m =>
+        m.Contains("'widget'")
+        && m.Contains(nameof(OuterA.BlockEntityWidget))
+        && m.Contains("OuterA")
+        && m.Contains("OuterB")
+    );
   }
 
   [Fact]

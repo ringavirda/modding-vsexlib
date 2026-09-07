@@ -7,7 +7,7 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// N1: the per-world side-band data rung over <see cref="ISaveGame.GetData{T}"/>/
+/// The per-world side-band data rung over <see cref="ISaveGame.GetData{T}"/>/
 /// <see cref="ISaveGame.StoreData{T}"/>, keyed <c>{domain}:{key}</c> so two mods' unqualified keys
 /// never collide.
 /// </summary>

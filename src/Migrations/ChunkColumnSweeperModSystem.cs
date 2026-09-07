@@ -78,10 +78,10 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
 
   /// <summary>
   /// Completion-marker version for this sweeper. Null or empty (the default) means "no marker": every
-  /// column is scanned on every world load, exactly as before this was added. Set it to bump it - each
-  /// distinct value gets its own per-column marker (<see cref="ExChunkData"/>, keyed by
-  /// <see cref="ModSystem.Mod"/>'s id and this sweeper's type name) - so a column already marked at the
-  /// current version is skipped and changing the value re-sweeps every column once more.
+  /// column is scanned on every world load. Set it to bump it - each distinct value gets its own
+  /// per-column marker (<see cref="ExChunkData"/>, keyed by <see cref="ModSystem.Mod"/>'s id and this
+  /// sweeper's type name) - so a column already marked at the current version is skipped and changing
+  /// the value re-sweeps every column once more.
   /// </summary>
   protected virtual string? Version => null;
 
@@ -149,11 +149,13 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
   /// Scans one column's already-fetched chunk sections and returns how many changes were made. When
   /// <see cref="Version"/> is set and the column already carries this sweeper's current-version
   /// marker, the scan is skipped outright and this returns 0; otherwise the marker is (re)written on
-  /// whichever loaded section stands in for the column, after the scan.
+  /// the ground-level section (index 0) after the scan - a fixed section rather than "whichever
+  /// loaded section happens to be first", since which sections are loaded differs between the
+  /// startup sweep and a later streamed-in load of the same column.
   /// </summary>
   private int SweepColumn(int chunkX, int chunkZ, IWorldChunk?[] chunks) {
     bool versioned = !string.IsNullOrEmpty(Version);
-    IWorldChunk? marker = chunks.FirstOrDefault(c => c != null);
+    IWorldChunk? marker = chunks.Length > 0 ? chunks[0] : null;
 
     if (
       versioned
@@ -166,8 +168,13 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
     for (int cy = 0; cy < chunks.Length; cy++)
       changed += ScanChunk(chunkX, cy, chunkZ, chunks[cy]);
 
-    if (versioned && marker != null)
+    if (versioned && marker != null) {
       ExChunkData.Set(marker, Mod.Info.ModID, MarkerKey, true);
+      // SetModdata alone does not dirty the chunk (IWorldChunk.SetModdata's doc: stored "on the next
+      // autosave"); a column the scan changed nothing else in would otherwise never get written, and
+      // the marker would be lost on restart.
+      marker.MarkModified();
+    }
 
     return changed;
   }

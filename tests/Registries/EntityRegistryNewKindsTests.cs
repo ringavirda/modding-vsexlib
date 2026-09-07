@@ -12,7 +12,7 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The three registration kinds R7 added to <see cref="EntityRegistry.RegisterAll"/>: entity classes,
+/// The three registration kinds added to <see cref="EntityRegistry.RegisterAll"/>: entity classes,
 /// entity behaviours and crop behaviours, registered the same way as the six the rung already covered
 /// - same key convention, same base-type validation.
 /// </summary>

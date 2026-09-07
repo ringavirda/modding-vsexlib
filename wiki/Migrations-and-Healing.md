@@ -144,9 +144,11 @@ protected override string? Version => "1";
 ```
 
 Once set, a column that already carries this sweeper's marker for that version - stamped through
-`ExChunkData`, keyed by the sweeper's type name and the mod id - is skipped; bumping `Version` drops
-the old marker's key and every column is swept once more. Leaving `Version` null or empty (the
-default) keeps today's behaviour exactly: every column, every load.
+`ExChunkData`, keyed by the sweeper's type name and the mod id - is skipped; bumping `Version`
+writes a new marker key, under which no column is marked yet, so every column is swept once more.
+The old version's marker is never removed and stays on every chunk for the life of the save.
+Leaving `Version` null or empty (the default) keeps today's behaviour exactly: every column, every
+load.
 
 ## Related pages
 

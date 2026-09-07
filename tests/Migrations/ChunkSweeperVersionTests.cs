@@ -9,9 +9,9 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// N2's completion marker: <see cref="ChunkColumnSweeperModSystem.Version"/> null (the default) sweeps
-/// a column every call, exactly as before it was added; a non-null value marks the column after its
-/// first sweep and skips it on every later call at that same value, and bumping the value re-sweeps.
+/// <see cref="ChunkColumnSweeperModSystem"/>'s completion marker: <see cref="ChunkColumnSweeperModSystem.Version"/>
+/// null (the default) sweeps a column every call; a non-null value marks the column after its first
+/// sweep and skips it on every later call at that same value, and bumping the value re-sweeps.
 /// </summary>
 public class ChunkSweeperVersionTests {
   private sealed class VersionedSweeper : ChunkColumnSweeperModSystem {

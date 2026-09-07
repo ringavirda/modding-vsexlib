@@ -6,7 +6,7 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// N2: the per-chunk side-band data rung over <see cref="IWorldChunk.GetModdata{T}"/>/
+/// The per-chunk side-band data rung over <see cref="IWorldChunk.GetModdata{T}"/>/
 /// <see cref="IWorldChunk.SetModdata{T}"/>, keyed <c>{domain}:{key}</c> the same way as
 /// <see cref="ExWorldData"/>.
 /// </summary>

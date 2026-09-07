@@ -10,7 +10,7 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// R9: the recipe-registry rung, mirroring <c>RecipeRegistrySystem</c> - one
+/// The recipe-registry rung, mirroring <c>RecipeRegistrySystem</c> - one
 /// <c>RegisterRecipeRegistry</c> call per recipe type, then a server-side asset load into the list it
 /// returned.
 /// </summary>
@@ -83,9 +83,34 @@ public class ExRecipeRegistryTests {
       sapi,
       "widgets",
       new List<TestRecipe>(),
-      r => resolved.Add(r.Code)
+      r => {
+        resolved.Add(r.Code);
+        return true;
+      }
     );
 
     Assert.Equal(["a"], resolved);
+  }
+
+  [Fact]
+  public void LoadRecipes_drops_a_recipe_resolve_rejects() {
+    var sapi = Substitute.For<ICoreServerAPI>();
+    sapi.Server.Logger.Returns(Substitute.For<ILogger>());
+    var assets = new Dictionary<AssetLocation, JToken> {
+      [new AssetLocation("test:recipes/widgets/a.json")] = JToken.Parse(
+        """{ "code": "a" }"""
+      ),
+      [new AssetLocation("test:recipes/widgets/b.json")] = JToken.Parse(
+        """{ "code": "b" }"""
+      ),
+    };
+    sapi
+      .Assets.GetMany<JToken>(Arg.Any<ILogger>(), "recipes/widgets")
+      .Returns(assets);
+
+    var into = new List<TestRecipe>();
+    ExRecipeRegistry.LoadRecipes(sapi, "widgets", into, r => r.Code != "b");
+
+    Assert.Equal(["a"], into.ConvertAll(r => r.Code));
   }
 }

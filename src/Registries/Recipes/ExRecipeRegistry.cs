@@ -28,15 +28,17 @@ public static class ExRecipeRegistry {
   /// Reads every JSON asset under <c>recipes/{folder}</c> - each either one recipe object or an array
   /// of them - and appends one <typeparamref name="T"/> per entry to <paramref name="into"/>, resolved
   /// against the asset's own domain. <paramref name="resolve"/>, if given, runs on each recipe before
-  /// it is added - an ingredient resolve, an <c>Enabled</c> check, whatever the recipe type needs done
-  /// once loaded, mirroring the per-recipe step vanilla's own recipe kinds take at this same phase.
-  /// Server-only; call from <c>AssetsLoaded</c>.
+  /// it is added and returning <c>false</c> drops it - an ingredient resolve, an <c>Enabled</c> check,
+  /// whatever the recipe type needs done once loaded, mirroring the per-recipe step vanilla's own
+  /// recipe kinds take at this same phase, including the drop
+  /// (<c>RecipeRegistrySystem.loadRecipe</c>'s <c>if (!recipe.Enabled) return;</c>). Server-only; call
+  /// from <c>AssetsLoaded</c>.
   /// </summary>
   public static void LoadRecipes<T>(
     ICoreServerAPI sapi,
     string folder,
     List<T> into,
-    Action<T>? resolve = null
+    System.Func<T, bool>? resolve = null
   )
     where T : IByteSerializable, new() {
     Dictionary<AssetLocation, JToken> assets = sapi.Assets.GetMany<JToken>(
@@ -57,14 +59,16 @@ public static class ExRecipeRegistry {
     AssetLocation loc,
     JToken token,
     List<T> into,
-    Action<T>? resolve
+    System.Func<T, bool>? resolve
   )
     where T : IByteSerializable, new() {
     T? recipe = token.ToObject<T>(loc.Domain);
     if (recipe == null)
       return;
 
-    resolve?.Invoke(recipe);
+    if (resolve != null && !resolve(recipe))
+      return;
+
     into.Add(recipe);
   }
 }
