@@ -75,6 +75,8 @@ jobs:
         with:
           files: dist/assets/*
           generate_release_notes: true
+          # A tag with a suffix (v0.8.0-preview.1) is a prerelease.
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
       # Publishing to NuGet.org through Trusted Publishing: nuget.org validates a short-lived OIDC
       # token from this workflow against a policy naming this repository and this file, then issues a
