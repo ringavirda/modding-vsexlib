@@ -58,5 +58,5 @@ This wiki documents both libraries the family publishes for reuse:
 
 These pages document the public surface a third-party mod consumes. Signatures are taken from
 the source in this repository; when in doubt, the code in `src/` and
-`testing/` is the source of truth. Game-version differences (1.20 / 1.21 / 1.22)
+`src/ExpandedLib.Testing/` is the source of truth. Game-version differences (1.20 / 1.21 / 1.22)
 are handled by the `Legacy/` shim and noted where they affect you.

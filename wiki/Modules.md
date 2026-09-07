@@ -235,7 +235,7 @@ mod of its own called `industry` - the id nothing installs and nothing could eve
 depending on exlib, giving any mod's block a greeting. Mod id, module id and domain are all
 `hellomodule`.
 
-- `src/AssemblyInfo.cs` - `[assembly: ExDomain("hellomodule")]` and `[assembly: ExModule("hellomodule")]`,
+- `src/ExpandedLib/AssemblyInfo.cs` - `[assembly: ExDomain("hellomodule")]` and `[assembly: ExModule("hellomodule")]`,
   the two lines that make the assembly a module of its own mod's identity.
 - `src/HelloModuleModSystem.cs` - the empty placeholder the loader requires; see above.
 - `src/GreetingDef.cs` - the JSON shape of one entry under `config/greetings/`: a `Code` and a

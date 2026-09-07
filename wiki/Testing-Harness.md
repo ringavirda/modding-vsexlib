@@ -46,7 +46,7 @@ your mod has definitions or an `assets/` tree - see `templates/exlib-tests/READM
 
 Reference the harness, xUnit, the test SDK and NSubstitute, plus the game API DLLs (with
 `<Private>false</Private>` so you don't copy them). Inside this monorepo, mirror
-`tests/ExpandedLib.Tests.csproj`:
+`tests/ExpandedLib.Tests/ExpandedLib.Tests.csproj`:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">

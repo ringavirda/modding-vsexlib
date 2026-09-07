@@ -112,7 +112,7 @@ are not exlib networks - vanilla MP is the engine's own, and elex's grid is defe
 A content mod built on exlib is laid out its own way; the per-mod project skeleton, where a code-first
 definition or a recipe provider lives, and the authoring copies under a family's own `workbench/` are
 exmods' own convention, not exlib's to prescribe. exlib's own asset domain is `assets/exlib/`
-(`<AssetDomain>` in `src/ExpandedLib.csproj`), laid out the same way any mod's is.
+(`<AssetDomain>` in `src/ExpandedLib/ExpandedLib.csproj`), laid out the same way any mod's is.
 
 ### Where handbook prose lives
 
@@ -149,7 +149,7 @@ activity, and a machine mod needs about six in total.
 | `Checks/` | `ExpandedLib.Checks` | verifying content in the game or in a test |
 | `Helpers/` | `ExpandedLib.Helpers` | everything content-neutral that saves a few lines: orientation, meshes, inventories, units, rendering |
 | `Legacy/` | `ExpandedLib.Legacy` | supporting 1.20 and 1.21 from one source tree |
-| `industry/<Pack>/` | `ExpandedLib.Industry.<Pack>` | reusing the family's content layer: pipes, molten, mechanical power, metals, heat. Its own project beside `src/`, shipping `exlib.industry.dll` inside the same mod folder |
+| `src/ExpandedLib.Industry/<Pack>/` | `ExpandedLib.Industry.<Pack>` | reusing the family's content layer: pipes, molten, mechanical power, metals, heat. Its own project beside `src/`, shipping `exlib.industry.dll` inside the same mod folder |
 | `build/` | *(none)* | shipping the MSBuild plumbing itself: `ExpandedLib.props`/`.targets` and `LegacyUsings.cs`, packed under `build/` in the nupkg so `dotnet pack`'s own convention wires them into a consuming project with no manual `<Import>` |
 
 Rules with teeth: a folder that would hold one file is not a folder (the file goes beside its
@@ -161,7 +161,7 @@ model folder and a `Blocks/` shell folder and asked consumers to import both; th
 `exmod.json` at the repo root names this repo's own mods, samples and test projects; `RepoPaths`
 and `exmod` read it, falling back to the `mods/<id>` convention where the file is absent.
 
-`testing/` is one namespace, `ExpandedLib.Testing`, laid out the same way: `World/` (the
+`src/ExpandedLib.Testing/` is one namespace, `ExpandedLib.Testing`, laid out the same way: `World/` (the
 fake world and its blocks), `Scenes/` (the layout DSL), `Rigs/` (drivers for machines and
 structures), `Doubles/` (stand-ins), `Checks/` (the validators), `Repo/` (this repository's own
 history and paths). `tests/` mirrors `src/` folder for folder.
@@ -194,6 +194,6 @@ The units, invariants and simulation models a machine mod actually builds agains
 the furnace class tree, refractory chemistry, distillation, the per-mod project skeleton and every
 design page under `machines/`, `items/`, `deferred/` and the rest of `mechanics/` - are the family's
 own, recorded in exmods' `docs/design/`. exlib's own mechanics pages (the seven under
-[mechanics/](mechanics/) this repository carries) are cited from `src/`, `industry/` and `testing/`
+[mechanics/](mechanics/) this repository carries) are cited from `src/ExpandedLib/`, `src/ExpandedLib.Industry/` and `src/ExpandedLib.Testing/`
 directly; nothing else here claims them.
 

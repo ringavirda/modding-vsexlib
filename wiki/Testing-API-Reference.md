@@ -2,7 +2,7 @@
 
 Full public surface of `ExpandedLib.Testing`. For setup and worked examples see the
 **[Testing Harness](Testing-Harness)** page. Signatures are taken from
-`testing/`.
+`src/ExpandedLib.Testing/`.
 
 ## Where things are
 
