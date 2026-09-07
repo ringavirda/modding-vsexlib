@@ -53,4 +53,18 @@ public class LangCoverageCheckTests {
 
     Assert.Empty(result.Errors);
   }
+
+  [Fact]
+  public void Missing_key_in_a_non_en_locale_is_reported_only_with_allLocales() {
+    var source = new StubSource(
+      ("en", new JObject { ["block-stubblock"] = "Stub Block" }),
+      ("de", new JObject())
+    );
+
+    Assert.Empty(LangCoverageCheck.Run(source, Domain, allLocales: false).Errors);
+
+    CheckResult result = LangCoverageCheck.Run(source, Domain, allLocales: true);
+    Assert.Single(result.Errors);
+    Assert.Contains("de: block-stubblock", result.Errors);
+  }
 }

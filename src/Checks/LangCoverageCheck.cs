@@ -24,7 +24,16 @@ public static class LangCoverageCheck {
 
   /// <summary>Every unresolved <c>block-</c> name key for <paramref name="domain"/> in the <c>en</c>
   /// locale, as the check's <see cref="CheckResult"/>.</summary>
-  public static CheckResult Run(ICheckSource source, string domain) {
+  public static CheckResult Run(ICheckSource source, string domain) =>
+    Run(source, domain, allLocales: false);
+
+  /// <summary>Every unresolved <c>block-</c> name key for <paramref name="domain"/>, as the check's
+  /// <see cref="CheckResult"/>. <paramref name="allLocales"/> selects which shipped locales are
+  /// walked: <see langword="false"/> checks only <c>en</c> (the in-game defect, since <c>en</c> is
+  /// what every other locale falls back to); <see langword="true"/> checks every locale
+  /// <see cref="ICheckSource.Lang"/> returns, the repository-build parity rule
+  /// <c>ExpandedLib.Testing.LangCoverage.MissingNames</c> runs.</summary>
+  public static CheckResult Run(ICheckSource source, string domain, bool allLocales) {
     List<string> codes =
     [
       .. source
@@ -36,7 +45,7 @@ public static class LangCoverageCheck {
 
     var errors = new List<string>();
     foreach ((string locale, JObject lang) in source.Lang(domain)) {
-      if (locale != EnglishLocale)
+      if (!allLocales && locale != EnglishLocale)
         continue;
 
       var exact = new HashSet<string>(StringComparer.Ordinal);

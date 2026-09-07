@@ -18,10 +18,10 @@ namespace ExpandedLib.Testing;
 /// be <c>block-hopper-tall*</c>.
 /// </para>
 /// <para>
-/// <see cref="MissingNames"/> reads through the same <see cref="AssemblyCheckSource"/> as
-/// <see cref="LangCoverageCheck"/> but keeps its own coverage loop: the in-game check only guards
-/// <c>en</c>, while the repo build holds every shipped locale to full parity.
-/// <see cref="OrphanedDescriptions"/> has no library-side counterpart and stays here in full.
+/// <see cref="MissingNames"/> is <see cref="LangCoverageCheck.Run(ICheckSource, string, bool)"/>
+/// with <c>allLocales: true</c>: the in-game check only guards <c>en</c>, while the repo build holds
+/// every shipped locale to full parity. <see cref="OrphanedDescriptions"/> has no library-side
+/// counterpart and stays here in full.
 /// </para>
 /// </summary>
 public static class LangCoverage {
@@ -35,39 +35,7 @@ public static class LangCoverage {
     string langDir
   ) {
     var source = new AssemblyCheckSource([(domain, asm)], [(domain, langDir)]);
-
-    List<string> codes =
-    [
-      .. source
-        .BlockCodes.Where(c => c.Domain == domain)
-        .Select(c => c.Path)
-        .Distinct()
-        .OrderBy(c => c, StringComparer.Ordinal),
-    ];
-
-    var errors = new List<string>();
-    foreach ((string locale, JObject lang) in source.Lang(domain)) {
-      var exact = new HashSet<string>(StringComparer.Ordinal);
-      var wildcardPrefixes = new List<string>();
-      foreach (JProperty prop in lang.Properties()) {
-        if (prop.Name.EndsWith('*'))
-          wildcardPrefixes.Add(prop.Name[..^1]);
-        else
-          exact.Add(prop.Name);
-      }
-
-      foreach (string code in codes) {
-        string key = "block-" + code;
-        if (
-          !exact.Contains(key)
-          && !wildcardPrefixes.Any(p =>
-            key.StartsWith(p, StringComparison.Ordinal)
-          )
-        )
-          errors.Add($"{locale}: {key}");
-      }
-    }
-    return errors;
+    return LangCoverageCheck.Run(source, domain, allLocales: true).Errors;
   }
 
   /// <summary>
