@@ -19,8 +19,6 @@ on:
 # Adding a game version means a row HERE, in the build/ExpandedLib.props manifest (CI YAML can't
 # read MSBuild), in $GameTfms in extools' exmod.ps1, and in extools' pack/Program.cs GameTargets.
 
-env:
-
 jobs:
   test:
     runs-on: ubuntu-latest
