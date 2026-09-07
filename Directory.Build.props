@@ -142,9 +142,9 @@
     <PackageVersion>$([System.Text.RegularExpressions.Regex]::Match($(_ModinfoJson), '&quot;version&quot;:\s*&quot;([^&quot;]+)&quot;').Groups[1].Value)</PackageVersion>
 
     <Authors>fallenstar</Authors>
-    <RepositoryUrl>https://github.com/ringavirda/exlib</RepositoryUrl>
+    <RepositoryUrl>https://github.com/ringavirda/modding-vsexlib</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <PackageProjectUrl>https://github.com/ringavirda/exlib/wiki</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/ringavirda/modding-vsexlib/wiki</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>vintagestory mod framework exlib</PackageTags>

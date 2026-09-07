@@ -12,7 +12,7 @@ convention that a reviewer has to catch.
 ## Running things
 
 Every repo task goes through one entry point, `exmod`, which lives in its own repository,
-[extools](https://github.com/ringavirda/extools). `scripts/exmod.sh` and `scripts/exmod.ps1` are
+[extools](https://github.com/ringavirda/modding-vsextools). `scripts/exmod.sh` and `scripts/exmod.ps1` are
 launchers checked into this repo, not the implementation: they resolve the tools checkout and
 forward every argument to `exmod.ps1` there with this repository as `-RepoRoot`. There is
 deliberately no second implementation: the previous `.ps1`/`.sh` pairs had already drifted, with

@@ -60,7 +60,7 @@ includes whatever `/exmod verify` finds.
 
 A JSON-only modder has no code to build and no reason to install xUnit, but still wants "does my
 mod even load" before ever launching the game. `exlib-verify`, the `ExpandedLib.Verify` .NET tool
-built from [extools](https://github.com/ringavirda/extools) and installed with
+built from [extools](https://github.com/ringavirda/modding-vsextools) and installed with
 `dotnet tool install -g ExpandedLib.Verify`, answers that from a mod folder or zip alone, against a
 provisioned game install and any number of other mods:
 

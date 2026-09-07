@@ -1,8 +1,8 @@
 # Expanded Library (`exlib`)
 
 Shared framework mod for the *Expanded* family
-([Iron Industry Expanded](https://github.com/ringavirda/modding-vsexpanded/tree/main/mods/iiex),
-[Steel Industry Expanded](https://github.com/ringavirda/modding-vsexpanded/tree/main/mods/siex)). It
+([Iron Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/iiex),
+[Steel Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/siex)). It
 ships no gameplay content of its own - install it because another mod depends on it.
 
 ## What it provides
@@ -81,7 +81,7 @@ shipped as its own mod, can declare `[assembly: ExModule]` and join exlib's life
 | `ExpandedLib.Testing` | the headless xUnit harness, for a test project rather than a mod |
 
 `exlib-verify`, the JSON-only asset checker, is a .NET tool built from
-[extools](https://github.com/ringavirda/extools) rather than a package this repository ships - see
+[extools](https://github.com/ringavirda/modding-vsextools) rather than a package this repository ships - see
 the wiki's [Checks](wiki/Checks.md) page.
 
 They are built for the current Vintage Story version only. The mod zips on the GitHub releases
@@ -111,14 +111,14 @@ dotnet build industry/ExpandedLib.Industry.csproj # the family layer
 ```
 
 Every repo task goes through `scripts/exmod.sh` (`scripts/exmod.ps1` on Windows), a launcher that
-forwards to the CLI in [extools](https://github.com/ringavirda/extools), a sibling repository
+forwards to the CLI in [extools](https://github.com/ringavirda/modding-vsextools), a sibling repository
 checked out beside this one; see [CONTRIBUTING.md](CONTRIBUTING.md) for the command list and how
 the launcher finds it.
 
 ## The workspace and the family
 
 This repository stands alone - it clones, builds and tests with nothing else present. The family
-mods that consume it, [Iron Industry Expanded and Steel Industry Expanded](https://github.com/ringavirda/modding-vsexpanded),
+mods that consume it, [Iron Industry Expanded and Steel Industry Expanded](https://github.com/ringavirda/modding-vsexmods),
 live in their own repository and reference `ExpandedLib` as a NuGet package by default. A workspace
 that checks out both repositories side by side, with a `Directory.Build.props` above them setting
 `ExlibRoot`, switches the family's build onto this checkout's source instead - the daily loop for

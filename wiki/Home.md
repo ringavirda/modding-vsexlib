@@ -2,8 +2,8 @@
 
 **Expanded Library** (`exlib`) is the shared framework mod behind the
 _Fallenstar Expanded_ family for [Vintage Story](https://www.vintagestory.at/) -
-currently [Iron Industry Expanded](https://github.com/ringavirda/modding-vsexpanded/tree/main/mods/iiex) (`iiex`) and
-[Steel Industry Expanded](https://github.com/ringavirda/modding-vsexpanded/tree/main/mods/siex) (`siex`). It ships no
+currently [Iron Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/iiex) (`iiex`) and
+[Steel Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/siex) (`siex`). It ships no
 gameplay content of its own; you can use it because another mod depends on it or
 because it gives you batteries-included systems that are tedious to build from
 scratch:
@@ -24,7 +24,7 @@ scratch:
 This wiki documents both libraries the family publishes for reuse:
 
 - **`exlib`** - the runtime framework mod other mods depend on and call. It ships as the Vintage
-  Story mod artifact (`exlib_<version>.zip`) on the [releases page](https://github.com/ringavirda/exlib/releases).
+  Story mod artifact (`exlib_<version>.zip`) on the [releases page](https://github.com/ringavirda/modding-vsexlib/releases).
 - **`exlib.testing`** (`ExpandedLib.Testing`) - a headless xUnit harness that loads the real game
   assemblies and exercises network/block-entity logic under `dotnet test`, no game launch
   required. It's a build-/test-time developer library, not something installed in the game: you
@@ -36,7 +36,7 @@ This wiki documents both libraries the family publishes for reuse:
 
 - New here? Read **[Getting Started](Getting-Started)** - declare the dependency, set up a
   project reference, and register your first attribute-marked block. It walks
-  [`samples/HelloExpanded`](https://github.com/ringavirda/exlib/tree/main/samples/HelloExpanded),
+  [`samples/HelloExpanded`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/HelloExpanded),
   a buildable, bootable, tested mod using the convenience layer end to end - read it alongside the page.
 - Wondering when exlib does what during world load, and what's safe to call where? **[Lifecycle](Lifecycle)**.
 - Wondering which types are the supported contract and which are internal plumbing? **[Supported

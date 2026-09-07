@@ -107,7 +107,7 @@ or C.
 `ExpandedLib`) as a git submodule or sibling checkout and `ProjectReference` the `.csproj`s, exactly
 as above. You track upstream changes and can debug into the harness.
 
-**C - The release bundle.** Each [GitHub release](https://github.com/ringavirda/exlib/releases)
+**C - The release bundle.** Each [GitHub release](https://github.com/ringavirda/modding-vsexlib/releases)
 ships `exlib-testing_<version>.zip` (versioned in lockstep with exlib) containing
 `ExpandedLib.Testing.dll` + `exlib.dll` (built for the current game version, 1.22 / net10.0). Drop
 both into your repo and reference them with copy-local off, supplying the rest yourself:
