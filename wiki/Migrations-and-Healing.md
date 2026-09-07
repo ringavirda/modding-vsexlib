@@ -108,6 +108,24 @@ start from default state; multiblock anchors re-detect their structure on the ne
 > only thing to be aware of is that a healed BE starts empty, so anything you can't reconstruct
 > from the block alone (an inventory) is lost; healing restores *function*, not prior contents.
 
+## Side-band data
+
+A thin wrapper for state that belongs to neither a block entity's tree nor a ModConfig file - a
+migration completion flag, a per-world counter - keyed with an explicit domain so two mods'
+unqualified keys never collide:
+
+```csharp
+public static class ExWorldData
+{
+    public static T Get<T>(ICoreServerAPI api, string domain, string key, T defaultValue = default!);
+    public static void Set<T>(ICoreServerAPI api, string domain, string key, T value);
+    public static void OnSave(ICoreServerAPI api, Action action);   // subscribes to Event.GameWorldSave
+}
+```
+
+`ExWorldData` wraps `ISaveGame.GetData`/`StoreData`. Write from an `OnSave` hook, not on every
+change.
+
 ## Related pages
 
 - [Registries](Registries) - `[BlockEntityRegister]` is what scopes the healer.

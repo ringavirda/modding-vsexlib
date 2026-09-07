@@ -303,6 +303,7 @@ Everything content-neutral that saves a modder a few lines: orientation, meshes,
 | `ExShapeElements` | Prunes a loaded Shape to a chosen set of element paths - the mesh-side counterpart of a blocktype's `selectiveElements`, for a block entity that decides which parts to draw at runtime (a hearth showing only the pigs actually charged on it). | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `ExSide` | The `Api.Side == EnumAppSide.X` / `World.Side == EnumAppSide.X` check every machine writes by hand. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `ExTree` | Helpers for reading values a block entity persisted into its attribute tree. | [Helpers-and-Renderers](Helpers-and-Renderers) |
+| `ExWorldData` | Typed per-world side-band data over `ISaveGame.GetData`/`StoreData`, keyed `{domain}:{key}`. | [Migrations-and-Healing](Migrations-and-Healing) |
 | `GameTime` | Advances a machine on game time (the world calendar) rather than real time. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `GraceTimer` | Accumulator for the "hold a condition for N seconds, then fire once" idiom used by boiler over-pressure and choke, engine over-pressure and pipe burst grace. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `MeasurementSystem` | The unit system used when formatting measurements for the look-at HUD / block info / handbook. | [Helpers-and-Renderers](Helpers-and-Renderers) |
