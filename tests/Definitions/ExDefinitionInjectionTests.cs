@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Text;
 using ExpandedLib.Definitions;
+using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Xunit;
@@ -207,6 +208,36 @@ public class ExDefinitionInjectionTests {
   [Fact]
   public void BuildRecipeAssets_is_empty_when_nothing_is_registered() {
     Assert.Empty(ExDefinitions.BuildRecipeAssets(new ExDefinitionOrigin()));
+  }
+  #endregion
+
+  #region AssetsLoaded (the RecordInjected seam LateDefinitionCheck depends on)
+  [Fact]
+  public void AssetsLoaded_records_every_block_item_and_recipe_it_injected() {
+    var block = ExBlockDef.Create("iiex", "solidifiediron");
+    var item = ExItemDef.Create("iiex", "slag");
+    var recipe = ExRecipeDef.Create("iiex", "grid", "pipes");
+    ExDefinitions.RegisterBlock(block);
+    ExDefinitions.RegisterItem(item);
+    ExDefinitions.RegisterRecipe(recipe);
+
+    new ExDefinitionModSystem().AssetsLoaded(new TestWorld().Api);
+
+    Assert.True(ExDefinitions.InjectionRan);
+    Assert.True(ExDefinitions.WasInjected(block.Location));
+    Assert.True(ExDefinitions.WasInjected(item.Location));
+    Assert.True(ExDefinitions.WasInjected(recipe.Location));
+  }
+
+  [Fact]
+  public void AssetsLoaded_does_not_record_a_definition_registered_afterward() {
+    new ExDefinitionModSystem().AssetsLoaded(new TestWorld().Api);
+
+    var late = ExBlockDef.Create("iiex", "toolate");
+    ExDefinitions.RegisterBlock(late);
+
+    Assert.True(ExDefinitions.InjectionRan);
+    Assert.False(ExDefinitions.WasInjected(late.Location));
   }
   #endregion
 }

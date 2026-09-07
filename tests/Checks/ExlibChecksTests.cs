@@ -15,12 +15,19 @@ namespace ExpandedLib.Tests;
 /// run and report independently: one seeded violation per rule that has one, and nothing for the
 /// clean three (<c>DefinitionCatalogue</c>, <c>LateDefinition</c>, <c>NetworkNodeContract</c>) or for
 /// the clean parts of the domain the seeded violations sit in. <see cref="LateDefinitionCheck"/> reads
-/// <see cref="ExDefinitions"/> directly, so this class shares the "ExDefinitions" collection with
-/// everything else that touches that static registry.
+/// <see cref="ExDefinitions"/> directly rather than the fixture's <see cref="ICheckSource"/>, so the
+/// constructor records an empty injection pass - the same "injection has run" state
+/// <see cref="ExDefinitionModSystem.AssetsLoaded"/> leaves behind - rather than leaving
+/// <see cref="ExDefinitions.InjectionRan"/> false, which would short-circuit the check before it read
+/// anything. This class shares the "ExDefinitions" collection with everything else that touches that
+/// static registry.
 /// </summary>
 [Collection("ExDefinitions")]
 public class ExlibChecksTests {
-  public ExlibChecksTests() => ExDefinitions.Clear();
+  public ExlibChecksTests() {
+    ExDefinitions.Clear();
+    ExDefinitions.RecordInjected([]);
+  }
 
   private const string Domain = "stub";
 
@@ -163,6 +170,16 @@ public class ExlibChecksTests {
   }
 
   [Fact]
+  public void Late_definition_reports_through_ExlibChecks_once_injection_has_run() {
+    ExDefinitions.RegisterBlock(ExBlockDef.Create(Domain, "toolate"));
+
+    IReadOnlyList<string> errors = ErrorsOf("LateDefinition");
+
+    Assert.Single(errors);
+    Assert.Contains("stub:toolate", errors[0]);
+  }
+
+  [Fact]
   public void All_examines_every_check_for_every_domain_and_nothing_more() {
     IReadOnlyList<CheckResult> results = Results();
     // One CheckResult per (check, domain) pair - eight checks, one domain here.
@@ -187,6 +204,19 @@ public class ExlibChecksTests {
         && args.Length == 3
       );
     Assert.Equal(results.Count, summaryLines);
+  }
+
+  [Fact]
+  public void Log_writes_each_error_line_at_Warning_not_Notification() {
+    ILogger logger = Substitute.For<ILogger>();
+    IReadOnlyList<CheckResult> results = Results();
+
+    ExlibChecks.Log(logger, results);
+
+    int errorLines = logger
+      .ReceivedCalls()
+      .Count(call => call.GetMethodInfo().Name == nameof(ILogger.Warning));
+    Assert.Equal(results.Sum(r => r.Errors.Count), errorLines);
   }
 
   [Fact]

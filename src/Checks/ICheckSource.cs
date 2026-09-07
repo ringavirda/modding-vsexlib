@@ -10,7 +10,11 @@ namespace ExpandedLib.Checks;
 /// game's loaded assets (<see cref="AssetCheckSource"/>) or from a repository source tree
 /// (<c>ExpandedLib.Testing.RepoCheckSource</c>). A check never touches a registry, a file system or
 /// an assembly on its own - only through this interface - so the same rule runs unmodified in game
-/// (<c>AssetsFinalize</c>, <c>/exmod verify</c>) and against the xUnit harness.
+/// (<c>AssetsFinalize</c>, <c>/exmod verify</c>) and against the xUnit harness. One exception:
+/// <see cref="LateDefinitionCheck"/> ignores its source and reads the process-wide
+/// <see cref="Definitions.ExDefinitions"/> registry instead, so over a source that is not backed by a
+/// live game process (a repository tree, the headless <c>exlib-verify</c> tool) it can never report -
+/// it prints a "0 error(s)" line that reads as a pass regardless.
 /// </summary>
 public interface ICheckSource {
   /// <summary>The mod domains this source covers. A reference naming a domain outside this set

@@ -60,7 +60,9 @@ assets are already indexed. It is server-only, because `blocktypes`/`itemtypes` 
 loader are both server-only stages - **the client receives the resolved block and item types over the
 network**, the same way it receives any other asset the server built. See [Lifecycle](Lifecycle) for
 where this sits relative to everything else that happens at world load. A definition registered after
-this deadline is never built; [`LateDefinitionCheck`](Checks) names it and the fix in the log.
+this deadline is never built; [`LateDefinitionCheck`](Checks) names it and the fix in the log - unless
+it re-registers a location injection already covered, replacing the built content with something the
+loader never sees; the check tests location membership only, so that case stays silent.
 
 ## Definitions that depend on loaded assets
 

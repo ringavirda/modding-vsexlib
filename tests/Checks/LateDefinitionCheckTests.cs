@@ -80,9 +80,22 @@ public class LateDefinitionCheckTests {
     ExDefinitions.RegisterRecipe(ExRecipeDef.Create("stub", "grid", "late"));
 
     string error = Assert.Single(Run().Errors);
-    Assert.Contains("stub:late", error);
+    Assert.Contains("stub:recipes/grid/late.json", error);
     Assert.Contains("Start", error);
     Assert.Contains("IExDefinitionContributor", error);
+  }
+
+  [Fact]
+  public void Two_late_recipes_sharing_a_base_name_in_different_categories_are_told_apart() {
+    ExDefinitions.RecordInjected([]);
+    ExDefinitions.RegisterRecipe(ExRecipeDef.Create("stub", "grid", "late"));
+    ExDefinitions.RegisterRecipe(ExRecipeDef.Create("stub", "smithing", "late"));
+
+    IReadOnlyList<string> errors = Run().Errors;
+
+    Assert.Equal(2, errors.Count);
+    Assert.Contains(errors, e => e.Contains("stub:recipes/grid/late.json"));
+    Assert.Contains(errors, e => e.Contains("stub:recipes/smithing/late.json"));
   }
 
   [Fact]

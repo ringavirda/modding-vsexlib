@@ -46,10 +46,11 @@ public static class ExDefinitions {
   private static readonly List<Type> _contributors = [];
 
   // The location of every block, item and recipe def ExDefinitionModSystem.AssetsLoaded actually
-  // injected, recorded once by RecordInjected. Empty and InjectionRan false until then - the client
-  // side (ExDefinitionModSystem never loads there) and a harness path that skips AssetsLoaded stay
-  // false forever, which is what tells LateDefinitionCheck "nothing has run yet" from "this def
-  // missed the window".
+  // injected, recorded once by RecordInjected. Empty and InjectionRan false until then - a dedicated
+  // multiplayer client (ExDefinitionModSystem never loads there) and a harness path that skips
+  // AssetsLoaded stay false forever, which is what tells LateDefinitionCheck "nothing has run yet"
+  // from "this def missed the window". Not singleplayer: the integrated server and the client share
+  // this static, so the client sees InjectionRan turn true the moment the server's pass records it.
   private static readonly HashSet<string> _injected = new(StringComparer.Ordinal);
 
   /// <summary>Whether <see cref="ExDefinitionModSystem.AssetsLoaded"/> has recorded an injection

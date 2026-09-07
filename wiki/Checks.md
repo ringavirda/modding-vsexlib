@@ -11,8 +11,10 @@ codes, recipes, lang and definitions.
 `LateDefinitionCheck` is the odd one out: it names every block, item or recipe definition registered
 after `ExDefinitionModSystem` already injected (see [Code-First-Definitions](Code-First-Definitions)),
 which the loader then never builds. It reads `ExDefinitions` directly rather than `ICheckSource`, and
-reports nothing until injection has actually run once in the process - the client side never sees it,
-and neither does an `ICheckSource` built without replaying injection.
+reports nothing until injection has actually run once in the process - a dedicated multiplayer client
+never sees it, and neither does an `ICheckSource` built without replaying injection. In singleplayer
+the integrated server and the client share that process and its static state, so the client's own
+check call reports too, once the server's pass has run.
 
 `LangCoverageCheck` in this library only guards the `en` locale - an unresolved `en` key is the one
 that renders raw on screen, since every other translation falls back to it. Parity across a mod's
@@ -127,15 +129,20 @@ tool that reads from somewhere other than a running game.
 
 Implement the five members - `Domains`, `BlockCodes`, `ItemCodes`, `Recipes(domain)`,
 `Lang(domain)`, `BlockDefinitions(domain)` - over whatever you're validating, and every check runs
-unmodified. `AssetCheckSource` and the harness's `RepoCheckSource` are the two shipped
-implementations; reading either is the fastest way to see what each member is expected to answer.
+unmodified, with one exception: `LateDefinitionCheck` ignores the source it is handed and reads
+`ExDefinitions`, the process-wide registry `ExDefinitionModSystem` injects from, directly. A custom
+source not backed by a live game process - `exlib-verify`, a CI job reading a repository tree - can
+never make it report; it still prints a "0 error(s)" line, which reads as a pass. `AssetCheckSource`
+and the harness's `RepoCheckSource` are the two shipped implementations; reading either is the
+fastest way to see what each member is expected to answer.
 
 ## What moved from the harness, and what did not
 
-Every one of the seven checks above started life as a validator in `exlib.testing`'s `Checks/`
-folder, used from each mod's xUnit suite. `MultiblockCodesCheck`, `RecipeCodesCheck`,
-`LangCoverageCheck`, `CodePrefixCollisionCheck`, `PinnedNetworkNodesCheck` and
-`DefinitionCatalogueCheck` moved cleanly: everything they need is expressible over `ICheckSource`.
+Seven of the eight checks above started life as a validator in `exlib.testing`'s `Checks/` folder,
+used from each mod's xUnit suite. `MultiblockCodesCheck`, `RecipeCodesCheck`, `LangCoverageCheck`,
+`CodePrefixCollisionCheck`, `PinnedNetworkNodesCheck` and `DefinitionCatalogueCheck` moved cleanly:
+everything they need is expressible over `ICheckSource`. `LateDefinitionCheck` is the eighth: it
+never lived in the harness, since there was nothing there to replay `ExDefinitionModSystem.AssetsLoaded`.
 
 `NetworkNodeContractCheck` did not move in full. The harness's own `NetworkNodeContract` selects a
 "network node" definition by C# class (`BlockNetworkNode`, `BEBehaviorNetworkMember` and their
