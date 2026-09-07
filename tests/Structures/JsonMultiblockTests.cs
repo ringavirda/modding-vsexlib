@@ -170,9 +170,9 @@ public class JsonMultiblockTests {
 
   [Fact]
   public void A_resolved_block_is_collectable_once_nothing_else_holds_it() {
-    // JsonMultiblockLayout keeps its resolve-once record in a ConditionalWeakTable, not a HashSet, so
-    // resolving a block does not itself keep that block (and everything it roots, e.g. a session's
-    // ICoreAPI) alive across a client rejoin.
+    // JsonMultiblockLayout's resolve-once record holds its key weakly, so resolving a block does not
+    // itself keep that block (and everything it roots, e.g. a session's ICoreAPI) alive across a
+    // client rejoin.
     WeakReference weak = Resolve();
     GC.Collect();
     GC.WaitForPendingFinalizers();

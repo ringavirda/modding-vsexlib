@@ -21,9 +21,8 @@ namespace ExpandedLib.Structures;
 public static class JsonMultiblockLayout {
   // Blocks are singletons per registered variant, one instance per side; resolving twice would either
   // redo the work for nothing or, on a malformed layout, log the same Error once per block entity ever
-  // placed. A weak table rather than a HashSet: a dedicated server loads one world per process, so a
-  // HashSet would root every mega-block variant's Block - and the ICoreAPI it carries - for the life of
-  // the process across every client rejoin. TryAdd is already thread-safe, so no lock is needed.
+  // placed. Keyed by object identity and held weakly, so a block whose variant is unregistered - and the
+  // ICoreAPI it carries - is not kept alive by this table. TryAdd is thread-safe.
   private static readonly ConditionalWeakTable<Block, object> _resolved = new();
 
   // The value TryAdd needs but this table never reads back - only the key's presence matters.

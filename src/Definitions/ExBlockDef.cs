@@ -377,9 +377,8 @@ public sealed class ExBlockDef : IExDef {
   public ExBlockDef TpHandTransform(object transform) => RootKey("tpHandTransform", transform);
 
   /// <summary>Sets the <c>tpHandTransform</c> from translation, XYZ rotation in degrees, and uniform scale,
-  /// with no origin - emits <c>{ translation, rotation, scale }</c>, the three-key shape every existing
-  /// caller of this overload emits today. Use the ten-double or object overload for a transform whose
-  /// origin matters.</summary>
+  /// with no origin - emits <c>{ translation, rotation, scale }</c>. Use the ten-double or object overload
+  /// for a transform whose origin matters.</summary>
   public ExBlockDef TpHandTransform(
     double tx,
     double ty,
@@ -425,7 +424,7 @@ public sealed class ExBlockDef : IExDef {
     double scale
   ) => GroundTransform(Transform(tx, ty, tz, rx, ry, rz, ox, oy, oz, scale));
 
-  // The three-key shape the seven-double TpHandTransform overload has always emitted.
+  // Emits { translation, rotation, scale }, no origin.
   private static JObject Transform(
     double tx,
     double ty,

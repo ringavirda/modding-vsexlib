@@ -314,14 +314,21 @@ public static class WikiParity {
           );
       }
 
+    // Resolved with FindOwnDeclared, not FindOverridable: an `override` of a member the base
+    // declares abstract is the correct, compiling way to document it, and FindOverridable's base
+    // walk would find that base member and call it abstract too. FindOwnDeclared only sees a
+    // member ownType itself declares abstract - one it does not implement despite the page's claim.
     if (ownType != null)
       foreach (Match m in VirtualDecl.Matches(block).Concat(OverrideDecl.Matches(block))) {
         string name = m.Groups["name"].Value;
-        MemberInfo? member = FindOverridable(ownType, name);
-        if (member == null || !IsAbstract(member))
+        MemberInfo? member = FindOwnDeclared(ownType, name);
+        if (member == null)
           continue;
 
         examined++;
+        if (!IsAbstract(member))
+          continue;
+
         string form = m.Value.Contains("override") ? "override" : "virtual";
         findings.Add(
           new Finding(
@@ -348,6 +355,17 @@ public static class WikiParity {
         return found[0];
     }
     return null;
+  }
+
+  // A member ownType declares itself - not one it inherits. Type.GetMember without DeclaredOnly
+  // returns inherited members too, which would make an override of an inherited abstract member
+  // look like ownType still declares it abstract.
+  private static MemberInfo? FindOwnDeclared(Type ownType, string name) {
+    const BindingFlags flags =
+      BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+
+    MemberInfo[] found = ownType.GetMember(name, flags);
+    return found.Length > 0 ? found[0] : null;
   }
 
   private static MethodInfo? Accessor(MemberInfo m) =>

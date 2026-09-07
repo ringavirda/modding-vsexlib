@@ -86,7 +86,7 @@ public class WikiParityTests {
     );
 
     public TempWikiPage(string contents) {
-      System.IO.Directory.CreateDirectory(_dir);
+      Directory.CreateDirectory(_dir);
       File.WriteAllText(Path.Combine(_dir, "Page.md"), contents);
     }
 
@@ -94,7 +94,7 @@ public class WikiParityTests {
 
     public void Dispose() {
       try {
-        System.IO.Directory.Delete(_dir, recursive: true);
+        Directory.Delete(_dir, recursive: true);
       } catch { /* best-effort cleanup */
       }
     }
@@ -121,7 +121,9 @@ public class WikiParityTests {
 
     Assert.Contains(
       report.Findings,
-      f => f.Symbol == "BlockEntityProductionMachine.CanRunProduction"
+      f =>
+        f.Symbol == "BlockEntityProductionMachine.CanRunProduction"
+        && f.Reason.Contains("'virtual'")
     );
   }
 
@@ -143,6 +145,54 @@ public class WikiParityTests {
       GeneratorTypeNames().Any(),
       "no IIncrementalGenerator found in generators/ - the generator names the wiki "
         + "may cite would be resolved from an empty set, so any of them would read as valid"
+    );
+  }
+
+  [Fact]
+  public void An_override_of_a_member_the_type_inherits_but_does_not_itself_declare_is_not_a_finding() {
+    // ExBlockEntityContainer inherits Inventory from vanilla's BlockEntityContainer without
+    // overriding it. A page showing that inherited member as an override of ExBlockEntityContainer
+    // itself is documenting the actual (inherited, non-abstract) member correctly - resolving it by
+    // walking ExBlockEntityContainer's base chain, rather than by what ExBlockEntityContainer itself
+    // declares, would misattribute the base's member to ExBlockEntityContainer as abstract.
+    using var page = new TempWikiPage(
+      """
+      ```csharp
+      public abstract class ExBlockEntityContainer : BlockEntityContainer
+      {
+          public override InventoryBase Inventory { get; }
+      }
+      ```
+      """
+    );
+
+    WikiParity.Report report = WikiParity.Check(page.Dir, typeof(ExDefinitions).Assembly);
+
+    Assert.DoesNotContain(report.Findings, f => f.Symbol == "ExBlockEntityContainer.Inventory");
+  }
+
+  [Fact]
+  public void An_override_declared_where_the_code_declares_it_abstract_is_a_finding() {
+    // BlockEntityProductionMachine.CanRunProduction is abstract, declared on that type itself - there
+    // is nothing for an `override` inside its own page to override, so this form is as wrong as
+    // `virtual` would be.
+    using var page = new TempWikiPage(
+      """
+      ## `BlockEntityProductionMachine`
+
+      ```csharp
+      protected override bool CanRunProduction => true;
+      ```
+      """
+    );
+
+    WikiParity.Report report = WikiParity.Check(page.Dir, typeof(ExDefinitions).Assembly);
+
+    Assert.Contains(
+      report.Findings,
+      f =>
+        f.Symbol == "BlockEntityProductionMachine.CanRunProduction"
+        && f.Reason.Contains("'override'")
     );
   }
 }

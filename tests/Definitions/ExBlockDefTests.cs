@@ -232,8 +232,7 @@ public class ExBlockDefTests {
 
   [Fact]
   public void The_seven_double_TpHandTransform_overload_omits_origin() {
-    // The shape every existing caller (e.g. iiex's BlockMoltenBarrel) emits: no origin key at all,
-    // unlike the ten-double overload above.
+    // No origin key at all, unlike the ten-double overload above.
     JObject json = ExBlockDef
       .Create("d", "c")
       .TpHandTransform(-0.8, -1, -0.55, 20, 14, -90, 0.75)

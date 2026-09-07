@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -371,9 +372,28 @@ public class ExItemDefTests {
 
   // A method's name plus its parameter types, in declaration order - not its name alone, so an
   // overload that exists on one builder but not the other (TpHandTransform's seven-double, no-origin
-  // shape below) is caught even though the name itself is shared.
+  // shape below) is caught even though the name itself is shared. A property's name alone, since it
+  // takes no parameters. The generic type argument is spelled out (Action<ConstructionStages>, not
+  // Action`1), so two overloads that differ only in what they're generic over don't collide.
   private static string Signature(MethodInfo m) =>
-    $"{m.Name}({string.Join(",", m.GetParameters().Select(p => p.ParameterType.Name))})";
+    $"{m.Name}({string.Join(",", m.GetParameters().Select(p => TypeName(p.ParameterType)))})";
+
+  private static string TypeName(Type t) =>
+    t.IsGenericType
+      ? $"{t.Name[..t.Name.IndexOf('`')]}<{string.Join(",", t.GetGenericArguments().Select(TypeName))}>"
+      : t.Name;
+
+  // Every public method and property this type declares, methods by name+parameters and properties by
+  // name - not by type, since a builder's own instance methods all return that same builder and
+  // carrying the return type would tell us nothing a mismatched fluent chain wouldn't already catch
+  // elsewhere.
+  private static IEnumerable<string> PublicMembers(Type t) =>
+    t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
+      .Where(m => !m.IsSpecialName) // drop property accessors (get_Domain, get_Code, ...)
+      .Select(Signature)
+      .Concat(t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
+        .Select(p => p.Name))
+      .Distinct();
 
   // Signatures only ExBlockDef has: the JSON key each writes has no equivalent on ItemType/CollectibleType
   // (verified against the vendored ItemType.cs/CollectibleType.cs/BlockType.cs), or the method exists
@@ -397,7 +417,7 @@ public class ExItemDefTests {
       "requiredMiningTier; an item's ToolTier is a different, unmirrored concept",
     ["LightAbsorption(Int32)"] = "BlockType-only field, absent from CollectibleType/ItemType",
     ["NoDrops()"] = "BlockType-only field, absent from CollectibleType/ItemType",
-    ["Drop(String,String,Nullable`1)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["Drop(String,String,Nullable<Int32>)"] = "BlockType-only field, absent from CollectibleType/ItemType",
     ["CollisionBox(Single,Single,Single,Single,Single,Single)"] =
       "BlockType-only field, absent from CollectibleType/ItemType",
     ["SelectionBox(Single,Single,Single,Single,Single,Single)"] =
@@ -437,20 +457,24 @@ public class ExItemDefTests {
     // MineTool is a dead no-op on the block builder (mineTool is not a key the loader reads);
     // never had an item counterpart to propagate.
     ["MineTool(EnumTool)"] = "dead no-op on the block builder; never had an item counterpart",
-    // Derives a placed/legend code from VariantGroups for BlockCodeEmitter's generated {Mod}Blocks
-    // table; items have no code-emitter counterpart.
-    ["WithVariant(String,String)"] = "no code-emitter counterpart for items",
+    // Rendered/variant code: items carry no variantgroups key, so there is nothing to render into a
+    // wildcarded or pinned code, and no code-emitter counterpart to feed.
+    ["QualifiedCode"] = "no variantgroups key; items have no rendered code to qualify",
+    ["VariantGroups"] = "no variantgroups key; items carry no variant-group grammar",
+    ["Any"] = "no variantgroups key; items have no rendered code to wildcard",
+    ["WithVariant(String,String)"] = "no variantgroups key; items have no rendered code to pin",
     // Megablocks are blocks; items cannot be (part of) a multiblock structure.
-    ["FillerOffsets(IEnumerable`1)"] = "megablocks are blocks; items cannot be part of one",
-    ["FillerOffsetsByType(String,IEnumerable`1)"] = "megablocks are blocks; items cannot be part of one",
-    ["Construction(Action`1)"] = "megablocks are blocks; items cannot be part of one",
-    ["Multiblock(Action`1)"] = "megablocks are blocks; items cannot be part of one",
-    ["MultiblockLayout(Action`1)"] = "megablocks are blocks; items cannot be part of one",
-    // Emits { translation, rotation, scale } with no origin - the shape every existing caller of the
-    // block builder's TpHandTransform still uses. The item builder only ever grew the ten-double,
-    // with-origin form.
+    ["FillerOffsets(IEnumerable<FillerCellSpec>)"] = "megablocks are blocks; items cannot be part of one",
+    ["FillerOffsetsByType(String,IEnumerable<FillerCellSpec>)"] =
+      "megablocks are blocks; items cannot be part of one",
+    ["Construction(Action<ConstructionStages>)"] = "megablocks are blocks; items cannot be part of one",
+    ["Multiblock(Action<MultiblockBuilder>)"] = "megablocks are blocks; items cannot be part of one",
+    ["MultiblockLayout(Action<MultiblockLayoutBuilder>)"] =
+      "megablocks are blocks; items cannot be part of one",
+    // Emits { translation, rotation, scale }, no origin. The item builder only ever grew the
+    // ten-double, with-origin form.
     ["TpHandTransform(Double,Double,Double,Double,Double,Double,Double)"] =
-      "the no-origin shape every existing block-builder caller emits; the item builder only grew the ten-double form",
+      "the no-origin shape; the item builder only grew the ten-double form",
   };
 
   // Signatures only ExItemDef has.
@@ -460,45 +484,47 @@ public class ExItemDefTests {
 
   [Fact]
   public void Every_block_builder_member_that_applies_to_items_exists_on_the_item_builder() {
-    var blockSignatures = typeof(ExBlockDef)
-      .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-      .Where(m => !m.IsSpecialName) // drop property accessors (get_Domain, get_Code, ...)
-      .Select(Signature)
-      .Distinct()
-      .Except(BlockOnlySignatures.Keys);
+    var blockMembers = PublicMembers(typeof(ExBlockDef)).ToList();
 
-    var itemSignatures = typeof(ExItemDef)
-      .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-      .Where(m => !m.IsSpecialName)
-      .Select(Signature)
-      .ToHashSet();
+    // An allowlist entry naming a member ExBlockDef does not have is dead weight that can never be
+    // exercised - the parity check below would pass regardless of whether it is right.
+    var stale = BlockOnlySignatures.Keys.Where(s => !blockMembers.Contains(s)).ToList();
+    Assert.True(
+      stale.Count == 0,
+      "BlockOnlySignatures names a member ExBlockDef does not have: " + string.Join(", ", stale)
+    );
 
-    var missing = blockSignatures.Where(s => !itemSignatures.Contains(s)).ToList();
+    var itemMembers = PublicMembers(typeof(ExItemDef)).ToHashSet();
+
+    var missing = blockMembers
+      .Except(BlockOnlySignatures.Keys)
+      .Where(s => !itemMembers.Contains(s))
+      .ToList();
     Assert.True(
       missing.Count == 0,
-      "ExItemDef is missing a method for: " + string.Join(", ", missing)
+      "ExItemDef is missing a member for: " + string.Join(", ", missing)
     );
   }
 
   [Fact]
   public void Every_item_builder_member_that_applies_to_blocks_exists_on_the_block_builder() {
-    var itemSignatures = typeof(ExItemDef)
-      .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-      .Where(m => !m.IsSpecialName)
-      .Select(Signature)
-      .Distinct()
-      .Except(ItemOnlySignatures.Keys);
+    var itemMembers = PublicMembers(typeof(ExItemDef)).ToList();
 
-    var blockSignatures = typeof(ExBlockDef)
-      .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-      .Where(m => !m.IsSpecialName)
-      .Select(Signature)
-      .ToHashSet();
+    var stale = ItemOnlySignatures.Keys.Where(s => !itemMembers.Contains(s)).ToList();
+    Assert.True(
+      stale.Count == 0,
+      "ItemOnlySignatures names a member ExItemDef does not have: " + string.Join(", ", stale)
+    );
 
-    var missing = itemSignatures.Where(s => !blockSignatures.Contains(s)).ToList();
+    var blockMembers = PublicMembers(typeof(ExBlockDef)).ToHashSet();
+
+    var missing = itemMembers
+      .Except(ItemOnlySignatures.Keys)
+      .Where(s => !blockMembers.Contains(s))
+      .ToList();
     Assert.True(
       missing.Count == 0,
-      "ExBlockDef is missing a method for: " + string.Join(", ", missing)
+      "ExBlockDef is missing a member for: " + string.Join(", ", missing)
     );
   }
 
