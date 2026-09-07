@@ -40,26 +40,8 @@ public class ExConfigGeneratorFailureTests {
     return refs.ToArray();
   }
 
-  /// <summary>Loads whichever build of <c>ExpandedLib.Generators.dll</c> ran most recently, and
-  /// instantiates its <c>ExConfigGenerator</c> by name.</summary>
-  private static IIncrementalGenerator NewGenerator() {
-    string binRoot = Path.Combine(RepoPaths.Root, "generators", "bin");
-    string path = Directory
-      .EnumerateFiles(binRoot, "ExpandedLib.Generators.dll", SearchOption.AllDirectories)
-      .OrderByDescending(File.GetLastWriteTimeUtc)
-      .FirstOrDefault()
-      ?? throw new InvalidOperationException(
-        $"No built ExpandedLib.Generators.dll found under {binRoot}."
-      );
-
-    Assembly generators = Assembly.LoadFrom(path);
-    Type generatorType =
-      generators.GetType("ExpandedLib.Generators.ExConfigGenerator")
-      ?? throw new InvalidOperationException(
-        $"{path} carries no ExpandedLib.Generators.ExConfigGenerator type."
-      );
-    return (IIncrementalGenerator)Activator.CreateInstance(generatorType)!;
-  }
+  private static IIncrementalGenerator NewGenerator() =>
+    GeneratorLoader.Load("ExConfigGenerator");
 
   /// <summary>Runs <c>ExConfigGenerator</c> over a standalone source (no reference to this assembly's
   /// own fixtures), and returns the one <c>#error</c>-carrying accessor it emits alongside any
@@ -120,7 +102,7 @@ public class ExConfigGeneratorFailureTests {
     Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     Assert.Contains("found none", diagnostic.GetMessage());
     Assert.Equal(
-      LineOf(source, "[ExConfigRegister"),
+      LineOf(source, "[ExRecipeProfile"),
       diagnostic.Location.GetLineSpan().StartLinePosition.Line
     );
   }
@@ -153,7 +135,7 @@ public class ExConfigGeneratorFailureTests {
     Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     Assert.Contains("DefaultCatalogue", diagnostic.GetMessage());
     Assert.Equal(
-      LineOf(source, "[ExConfigRegister"),
+      LineOf(source, "[ExRecipeProfile"),
       diagnostic.Location.GetLineSpan().StartLinePosition.Line
     );
   }
@@ -186,7 +168,7 @@ public class ExConfigGeneratorFailureTests {
     Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     Assert.Contains("DefaultCatalogue", diagnostic.GetMessage());
     Assert.Equal(
-      LineOf(source, "[ExConfigRegister"),
+      LineOf(source, "[ExRecipeProfile"),
       diagnostic.Location.GetLineSpan().StartLinePosition.Line
     );
   }
@@ -218,7 +200,7 @@ public class ExConfigGeneratorFailureTests {
     Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     Assert.Contains("'RecipeLevel'", diagnostic.GetMessage());
     Assert.Equal(
-      LineOf(source, "[ExConfigRegister"),
+      LineOf(source, "[ExRecipeProfile"),
       diagnostic.Location.GetLineSpan().StartLinePosition.Line
     );
   }
@@ -255,7 +237,7 @@ public class ExConfigGeneratorFailureTests {
     Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
     Assert.Contains("PlainLevelHolder", diagnostic.GetMessage());
     Assert.Equal(
-      LineOf(source, "[ExConfigRegister"),
+      LineOf(source, "[ExRecipeProfile"),
       diagnostic.Location.GetLineSpan().StartLinePosition.Line
     );
   }

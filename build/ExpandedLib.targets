@@ -239,6 +239,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <AdditionalFiles Include="$(ModAssetsRoot)\$(AssetDomain)\lang\en.json" />
+    <!-- Without this, ExLangKeyGenerator's build_property.AssetDomain read is always empty and
+         EXLIB0003 never fires; no test project sets $(AssetDomain), so every EXLIB0003 test fakes
+         AnalyzerConfigOptionsProvider and would stay green if this line moved or were deleted. The
+         wiring is checked by inspecting a mod project's own
+         obj\Debug\ExpandedLib.GeneratedMSBuildEditorConfig.editorconfig for build_property.AssetDomain,
+         not by the suite. -->
     <CompilerVisibleProperty Include="AssetDomain" />
   </ItemGroup>
 

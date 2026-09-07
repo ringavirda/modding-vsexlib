@@ -17,7 +17,10 @@ namespace ExpandedLib.Tests;
 /// <summary>
 /// The <c>ExLangKeyGenerator</c> output: a bare <c>en.json</c> key <c>k</c> becomes the
 /// <c>ExlibLang</c> constant <c>"exlib:k"</c>, and a key that is already domain-qualified passes
-/// through verbatim. A mistyped member name fails the build.
+/// through verbatim. A mistyped member name fails the build. The rest of the class drives the
+/// generator directly over fake <c>AdditionalText</c>s and analyzer config, covering EXLIB0003
+/// (no parsed lang file for the declared <c>$(AssetDomain)</c>) and EXLIB0004 (a sanitised member
+/// name collision).
 /// </summary>
 public class LangKeyGeneratorTests {
   [Fact]
@@ -61,27 +64,8 @@ public class LangKeyGeneratorTests {
     public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => GlobalOptions;
   }
 
-  /// <summary>Loads whichever build of <c>ExpandedLib.Generators.dll</c> ran most recently, and
-  /// instantiates its <c>ExLangKeyGenerator</c> by name - the same reflection load
-  /// <c>ExConfigGeneratorFailureTests</c> uses, since the generator ships no runtime assembly.</summary>
-  private static IIncrementalGenerator NewGenerator() {
-    string binRoot = Path.Combine(RepoPaths.Root, "generators", "bin");
-    string path = Directory
-      .EnumerateFiles(binRoot, "ExpandedLib.Generators.dll", SearchOption.AllDirectories)
-      .OrderByDescending(File.GetLastWriteTimeUtc)
-      .FirstOrDefault()
-      ?? throw new InvalidOperationException(
-        $"No built ExpandedLib.Generators.dll found under {binRoot}."
-      );
-
-    Assembly generators = Assembly.LoadFrom(path);
-    Type generatorType =
-      generators.GetType("ExpandedLib.Generators.ExLangKeyGenerator")
-      ?? throw new InvalidOperationException(
-        $"{path} carries no ExpandedLib.Generators.ExLangKeyGenerator type."
-      );
-    return (IIncrementalGenerator)Activator.CreateInstance(generatorType)!;
-  }
+  private static IIncrementalGenerator NewGenerator() =>
+    GeneratorLoader.Load("ExLangKeyGenerator");
 
   /// <summary>Runs <c>ExLangKeyGenerator</c> over <paramref name="langFiles"/> (path, JSON content
   /// pairs) with <paramref name="assetDomain"/> as <c>$(AssetDomain)</c>, and returns whatever
@@ -133,6 +117,17 @@ public class LangKeyGeneratorTests {
     );
 
     Assert.DoesNotContain(diagnostics, d => d.Id == "EXLIB0003");
+  }
+
+  [Fact]
+  public void AssetDomain_with_a_malformed_lang_file_reports_a_diagnostic() {
+    IReadOnlyList<Diagnostic> diagnostics = Run(
+      "gentest",
+      ("/proj/assets/gentest/lang/en.json", "not json")
+    );
+
+    Diagnostic diagnostic = Assert.Single(diagnostics, d => d.Id == "EXLIB0003");
+    Assert.Contains("gentest", diagnostic.GetMessage());
   }
 
   [Fact]

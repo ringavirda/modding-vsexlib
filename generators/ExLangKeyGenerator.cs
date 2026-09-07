@@ -20,16 +20,18 @@ namespace ExpandedLib.Generators;
 /// </summary>
 [Generator(LanguageNames.CSharp)]
 public sealed class ExLangKeyGenerator : IIncrementalGenerator {
-  /// <summary>Reported when the consuming project declares <c>$(AssetDomain)</c> but no
-  /// <c>assets/{domain}/lang/en.json</c> reached the compiler as an <c>AdditionalFiles</c> item, so
-  /// the generator ran and silently emitted nothing: the only symptom otherwise is that
-  /// <c>{Domain}Lang</c> does not exist. Not reported for a project with no <c>AssetDomain</c> at
-  /// all - every non-mod project that references the analyzer (this one included).</summary>
+  /// <summary>Reported when the consuming project declares <c>$(AssetDomain)</c> but
+  /// <c>assets/{domain}/lang/en.json</c> did not yield a parsed lang file for it, so the generator
+  /// ran and silently emitted nothing: the only symptom otherwise is that <c>{Domain}Lang</c> does
+  /// not exist. Covers both a missing <c>AdditionalFiles</c> item and one present but malformed -
+  /// <see cref="ReadLang"/> returns null for either, so this diagnostic cannot tell them apart. Not
+  /// reported for a project with no <c>AssetDomain</c> at all - every non-mod project that
+  /// references the analyzer (this one included).</summary>
   private static readonly DiagnosticDescriptor NoMatchingLangFile = new(
     id: "EXLIB0003",
-    title: "AssetDomain has no matching lang file",
-    messageFormat: "AssetDomain '{0}' has no assets/{0}/lang/en.json among the AdditionalFiles, so "
-      + "{0}Lang will not be generated",
+    title: "AssetDomain has no parsed lang file",
+    messageFormat: "AssetDomain '{0}' has no parsed assets/{0}/lang/en.json among the "
+      + "AdditionalFiles, so {0}Lang will not be generated",
     category: "ExpandedLib.Lang",
     DiagnosticSeverity.Warning,
     isEnabledByDefault: true

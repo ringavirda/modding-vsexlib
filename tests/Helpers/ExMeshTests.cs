@@ -32,15 +32,16 @@ public class ExMeshTests {
   }
 
   [Fact]
-  public void A_nonzero_rotation_moves_a_vertex_off_the_rotation_axis() {
+  public void A_90_degree_rotation_carries_the_offset_from_x_to_z() {
     var mesh = new MeshData(4);
     mesh.AddVertexSkipTex(1f, 0.5f, 0.5f); // offset (0.5, 0, 0) from the cell centre
 
     ExMesh.RotateByShape(mesh, BlockWithRotation(90));
 
-    // Y (the rotation axis) is untouched; X/Z carry the rotation the tesselator applies at
-    // placement.
+    // Y (the rotation axis) is untouched; a 90 degree turn carries the 0.5 offset from X to Z,
+    // pinning both the centre point and the degrees-to-radians conversion.
+    Assert.Equal(0.5f, mesh.xyz[0], precision: 5);
     Assert.Equal(0.5f, mesh.xyz[1], precision: 5);
-    Assert.NotEqual(1f, mesh.xyz[0], precision: 5);
+    Assert.Equal(0f, mesh.xyz[2], precision: 5);
   }
 }

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using ExpandedLib.Helpers;
 using ExpandedLib.Testing;
 using NSubstitute;
@@ -12,16 +14,36 @@ namespace ExpandedLib.Tests;
 /// parenthetical merging. <c>TestLang</c> echoes every key back rather than formatting it, so a
 /// decorated name is asserted either as the untouched base name or, where the exact args a lookup
 /// receives are what is under test, through <c>TestLang.Service.Received()</c> - the same idiom
-/// <c>ExInfoTests</c> uses.
+/// <c>ExInfoTests</c> uses. Both statics are process-wide, so <see cref="Dispose"/> removes every
+/// qualifier group this class registered and restores the two lang keys the merge test restubs, so
+/// neither lingers for other test classes.
 /// </summary>
-public class ExBlockNamesTests {
+public class ExBlockNamesTests : IDisposable {
+  private readonly List<string> _addedQualifiers = [];
+
+  public void Dispose() {
+    foreach (string group in _addedQualifiers)
+      ExBlockNames.RemoveVariantQualifier(group);
+    TestLang
+      .Service.Get("exlib:blockname-suffixed", Arg.Any<object[]>())
+      .Returns(ci => ci.Arg<string>());
+    TestLang
+      .Service.Get("exlib:blockname-listsep", Arg.Any<object[]>())
+      .Returns(ci => ci.Arg<string>());
+  }
+
   private static Block BlockWith(params (string key, string value)[] variants) =>
     TestBlocks.Configure(new Block(), "iiex:testblock", 1, variants);
 
+  private void AddVariantQualifier(string variantGroup, string langPrefix) {
+    ExBlockNames.AddVariantQualifier(variantGroup, langPrefix);
+    _addedQualifiers.Add(variantGroup);
+  }
+
   [Fact]
   public void AddVariantQualifier_appends_new_groups_in_registration_order() {
-    ExBlockNames.AddVariantQualifier("exblocknamestest-order-a", "iiex:order-a-");
-    ExBlockNames.AddVariantQualifier("exblocknamestest-order-b", "iiex:order-b-");
+    AddVariantQualifier("exblocknamestest-order-a", "iiex:order-a-");
+    AddVariantQualifier("exblocknamestest-order-b", "iiex:order-b-");
 
     var qualifiers = ExBlockNames.Qualifiers;
     int indexA = -1,
@@ -39,11 +61,11 @@ public class ExBlockNamesTests {
 
   [Fact]
   public void AddVariantQualifier_replaces_an_existing_groups_prefix_without_moving_it() {
-    ExBlockNames.AddVariantQualifier("exblocknamestest-replace", "iiex:replace-old-");
-    ExBlockNames.AddVariantQualifier("exblocknamestest-replace-after", "iiex:after-");
+    AddVariantQualifier("exblocknamestest-replace", "iiex:replace-old-");
+    AddVariantQualifier("exblocknamestest-replace-after", "iiex:after-");
     int before = IndexOf("exblocknamestest-replace");
 
-    ExBlockNames.AddVariantQualifier("exblocknamestest-replace", "iiex:replace-new-");
+    AddVariantQualifier("exblocknamestest-replace", "iiex:replace-new-");
 
     Assert.Equal(before, IndexOf("exblocknamestest-replace"));
     Assert.Equal(
@@ -116,7 +138,7 @@ public class ExBlockNamesTests {
 
   [Fact]
   public void Decorate_applies_a_registered_qualifier_group_after_the_built_in_clause() {
-    ExBlockNames.AddVariantQualifier("exblocknamestest-tier", "iiex:tier-");
+    AddVariantQualifier("exblocknamestest-tier", "iiex:tier-");
     Block block = BlockWith(("exblocknamestest-tier", "advanced"));
 
     ExBlockNames.Decorate(block, "Reactor");
@@ -135,7 +157,7 @@ public class ExBlockNamesTests {
         return $"{a[0]} ({a[1]})";
       });
     TestLang.Service.Get("exlib:blockname-listsep", Arg.Any<object[]>()).Returns(", ");
-    ExBlockNames.AddVariantQualifier("exblocknamestest-merge", "iiex:merge-");
+    AddVariantQualifier("exblocknamestest-merge", "iiex:merge-");
     Block block = BlockWith(
       ("material", "steel"),
       ("exblocknamestest-merge", "polished")

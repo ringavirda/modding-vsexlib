@@ -132,7 +132,10 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     if (ExtractRecipeProfile(type) is not { IsValid: false } profile)
       return null;
 
-    return Diagnostic.Create(InvalidRecipeProfile, ctx.TargetNode.GetLocation(), profile.Error);
+    Location location =
+      ctx.Attributes[0].ApplicationSyntaxReference?.GetSyntax().GetLocation()
+      ?? ctx.TargetNode.GetLocation();
+    return Diagnostic.Create(InvalidRecipeProfile, location, profile.Error);
   }
 
   private static ConfigModel? Extract(GeneratorAttributeSyntaxContext ctx) {

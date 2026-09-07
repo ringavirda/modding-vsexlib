@@ -45,6 +45,12 @@ public static class ExBlockNames {
     _qualifiers.Add((variantGroup, langPrefix));
   }
 
+  /// <summary>Removes a registered variant group, if any. Internal, test-only: teardown for tests
+  /// that register a throwaway group, so it does not linger in <see cref="Decorate"/> for the rest
+  /// of the process.</summary>
+  internal static void RemoveVariantQualifier(string variantGroup) =>
+    _qualifiers.RemoveAll(q => q.Group == variantGroup);
+
   /// <summary>
   /// Decorates <paramref name="baseName"/> with the recognised variant values of
   /// <paramref name="block"/>. Metal materials and rocks resolve through the vanilla
