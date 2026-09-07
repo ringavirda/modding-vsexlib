@@ -67,14 +67,18 @@ public class MachineStationWindowTests {
 
   [Fact]
   public void Closing_disposes_the_dialog_exactly_once() {
-    var (_, station, player) = Setup();
+    var (world, station, player) = Setup();
 
     station.ToggleWindow(player.Player);
     SpyDialog dialog = station.LastDialog!;
+    Assert.True(dialog.IsOpened());
+    world.ClientApi.Network.Received(1).SendBlockEntityPacket(station.Pos, 1000, null);
+
     station.ToggleWindow(player.Player); // toggles the same window closed
 
     Assert.Equal(1, dialog.DisposeCalls);
     Assert.Null(ReflectionHelpers.GetField(station, "_dialog"));
+    world.ClientApi.Network.Received(1).SendBlockEntityPacket(station.Pos, 1001, null);
   }
 
   [Fact]

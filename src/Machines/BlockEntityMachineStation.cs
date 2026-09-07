@@ -59,6 +59,14 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
   /// slots exist but whose interactions are physical, which is what the rolling mill is until the
   /// machining line gives it a face. The returned dialog is disposed when the window closes, so
   /// every call must return a fresh instance rather than one reused from a previous open.
+  /// <para>
+  /// The returned dialog must be constructed with this station's <see cref="BlockEntity.Pos"/> and
+  /// must either not override <c>OnGuiClosed</c> or override it and call base: this station relies
+  /// on that base implementation to send the close packet the server needs to close the player's
+  /// inventory. A dialog that overrides <c>OnGuiClosed</c> without calling base - as vanilla's own
+  /// <c>GuiDialogBlockEntityInventory</c> does whenever its <c>packetIdOffset</c> is nonzero - leaves
+  /// the station's inventory open on the server after the window closes on the client.
+  /// </para>
   /// </summary>
   protected virtual GuiDialogBlockEntity? CreateDialog(ICoreClientAPI capi) =>
     null;
@@ -148,8 +156,9 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
       return;
     }
 
-    // GuiDialogBlockEntity.OnGuiClosed already sends this same close packet to this same position, so
-    // the closure only tears down the client-side dialog.
+    // GuiDialogBlockEntity.OnGuiClosed sends this same close packet to this same position when a
+    // dialog either does not override it or overrides it and calls base - which is why CreateDialog
+    // requires exactly that. The closure below only tears down the client-side dialog.
     _dialog.OnClosed += () => {
       _dialog?.Dispose();
       _dialog = null;
