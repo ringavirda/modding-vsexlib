@@ -156,30 +156,16 @@ public sealed class FillerLayoutBuilder {
   internal IReadOnlyList<FillerCellSpec> Build() {
     var options = new GridOptions(Anchor: AnchorGlyph);
     var drawn = new List<LayoutCell>();
-
-    if (_layers.Count > 0) {
-      var grid = new CellGrid(
-        GridPlane.Horizontal,
-        _originA,
-        _originB,
-        options
-      );
-      foreach ((int y, string g) in _layers)
-        grid.Add(y, FoldAnchorGlyph(g));
-      drawn.AddRange(grid.Cells);
-    }
-    if (_slices.Count > 0) {
-      var grid = new CellGrid(GridPlane.SliceX, _originA, _originB, options);
-      foreach ((int x, string g) in _slices)
-        grid.Add(x, FoldAnchorGlyph(g));
-      drawn.AddRange(grid.Cells);
-    }
-    if (_faces.Count > 0) {
-      var grid = new CellGrid(GridPlane.FaceZ, _originA, _originB, options);
-      foreach ((int z, string g) in _faces)
-        grid.Add(z, FoldAnchorGlyph(g));
-      drawn.AddRange(grid.Cells);
-    }
+    ThreePlaneDraw.Draw(
+      _layers,
+      _slices,
+      _faces,
+      _originA,
+      _originB,
+      options,
+      drawn,
+      FoldAnchorGlyph
+    );
 
     var cells = new List<FillerCellSpec>();
     foreach (LayoutCell cell in drawn) {

@@ -350,35 +350,15 @@ public sealed class MultiblockLayoutBuilder {
   private (int X, int Y, int Z)? DrawnCells(out List<LayoutCell> cells) {
     var options = new GridOptions(Anchor: _core);
     cells = new List<LayoutCell>();
-    (int X, int Y, int Z)? anchor = null;
-
-    if (_layers.Count > 0) {
-      var grid = new CellGrid(
-        GridPlane.Horizontal,
-        _originA,
-        _originB,
-        options
-      );
-      foreach ((int y, string g) in _layers)
-        grid.Add(y, g);
-      cells.AddRange(grid.Cells);
-      anchor ??= grid.AnchorCell;
-    }
-    if (_slices.Count > 0) {
-      var grid = new CellGrid(GridPlane.SliceX, _originA, _originB, options);
-      foreach ((int x, string g) in _slices)
-        grid.Add(x, g);
-      cells.AddRange(grid.Cells);
-      anchor ??= grid.AnchorCell;
-    }
-    if (_faces.Count > 0) {
-      var grid = new CellGrid(GridPlane.FaceZ, _originA, _originB, options);
-      foreach ((int z, string g) in _faces)
-        grid.Add(z, g);
-      cells.AddRange(grid.Cells);
-      anchor ??= grid.AnchorCell;
-    }
-    return anchor;
+    return ThreePlaneDraw.Draw(
+      _layers,
+      _slices,
+      _faces,
+      _originA,
+      _originB,
+      options,
+      cells
+    );
   }
 
   /// <summary>
