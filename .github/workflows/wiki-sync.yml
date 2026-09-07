@@ -22,6 +22,8 @@ concurrency:
 
 jobs:
   sync:
+    # A private repository has no wiki to publish to; the job is skipped, not failed.
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
