@@ -12,9 +12,9 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// <see cref="ExlibChecks.All"/> over a hand-built <see cref="ICheckSource"/> proves the eight checks
-/// run and report independently: one seeded violation per rule that has one, and nothing for the
-/// clean three (<c>DefinitionCatalogue</c>, <c>LateDefinition</c>, <c>NetworkNodeContract</c>) or for
-/// the clean parts of the domain the seeded violations sit in. <see cref="LateDefinitionCheck"/> reads
+/// run and report independently: one seeded violation per rule, and nothing for the one genuinely
+/// clean check (<c>LateDefinition</c>) or for the clean parts of the domain the seeded violations sit
+/// in. <see cref="LateDefinitionCheck"/> reads
 /// <see cref="ExDefinitions"/> directly rather than the fixture's <see cref="ICheckSource"/>, so the
 /// constructor records an empty injection pass - the same "injection has run" state
 /// <see cref="ExDefinitionModSystem.AssetsLoaded"/> leaves behind - rather than leaving
@@ -68,8 +68,31 @@ public class ExlibChecksTests {
   private static ExBlockDef FamilyVariant() =>
     ExBlockDef.Create(Domain, "stubfam-big");
 
-  // The concrete codes these four defs actually register - what AssetCheckSource would read off
-  // api.World.Blocks, matched by hand here since there is no game to ask.
+  // Registered, but the loader produced no block for it - the failure DefinitionCatalogueCheck exists
+  // to catch.
+  private static ExBlockDef Ghost() => ExBlockDef.Create(Domain, "stubghost");
+
+  // A network node (ExOrientable in network mode) with no `type` variant group - AllowedOrientations
+  // has nothing to contribute, so the block can never be placed, silently.
+  private static ExBlockDef NodeMissingTypeGroup() =>
+    ExBlockDef
+      .Create(Domain, "stubnodenotype")
+      .VariantGroup("orientation", "n", "e", "s", "w")
+      .NetworkOriented();
+
+  // A network node whose declared `scheme` does not match its `orientation` states - built with
+  // Behavior directly, since NetworkOriented() derives the scheme from the states and so cannot
+  // misspell it.
+  private static ExBlockDef NodeMisspelledScheme() =>
+    ExBlockDef
+      .Create(Domain, "stubnodebadscheme")
+      .VariantGroup("type", "normal")
+      .VariantGroup("orientation", "n", "e", "s", "w")
+      .Behavior("ExOrientable", new { mode = "network", scheme = "FaceAll" });
+
+  // The concrete codes these seven defs actually register - what AssetCheckSource would read off
+  // api.World.Blocks, matched by hand here since there is no game to ask. "stubghost" is deliberately
+  // absent: DefinitionCatalogueCheck's one seeded violation.
   private static readonly AssetLocation[] RegisteredCodes =
   [
     new("stub:stubnode-normal-n"),
@@ -79,6 +102,14 @@ public class ExlibChecksTests {
     new("stub:stubwall"),
     new("stub:stubfam"),
     new("stub:stubfam-big"),
+    new("stub:stubnodenotype-n"),
+    new("stub:stubnodenotype-e"),
+    new("stub:stubnodenotype-s"),
+    new("stub:stubnodenotype-w"),
+    new("stub:stubnodebadscheme-normal-n"),
+    new("stub:stubnodebadscheme-normal-e"),
+    new("stub:stubnodebadscheme-normal-s"),
+    new("stub:stubnodebadscheme-normal-w"),
   ];
 
   // Every registered code gets an English name key except "stubfam" - the one held back to prove
@@ -117,7 +148,17 @@ public class ExlibChecksTests {
       domain == Domain ? [("en", EnglishLang)] : [];
 
     public IEnumerable<ExBlockDef> BlockDefinitions(string domain) =>
-      domain == Domain ? [Node(), Wall(), Family(), FamilyVariant()] : [];
+      domain == Domain
+        ? [
+          Node(),
+          Wall(),
+          Family(),
+          FamilyVariant(),
+          Ghost(),
+          NodeMissingTypeGroup(),
+          NodeMisspelledScheme(),
+        ]
+        : [];
   }
 
   private static IReadOnlyList<CheckResult> Results() =>
@@ -164,9 +205,28 @@ public class ExlibChecksTests {
 
   [Fact]
   public void Clean_checks_report_nothing() {
-    Assert.Empty(ErrorsOf("DefinitionCatalogue"));
     Assert.Empty(ErrorsOf("LateDefinition"));
-    Assert.Empty(ErrorsOf("NetworkNodeContract"));
+  }
+
+  [Fact]
+  public void Definition_catalogue_reports_only_the_unregistered_def() {
+    IReadOnlyList<string> errors = ErrorsOf("DefinitionCatalogue");
+    Assert.Single(errors);
+    Assert.Contains("stubghost", errors[0]);
+  }
+
+  [Fact]
+  public void Network_node_contract_reports_the_missing_type_group_and_the_misspelled_scheme() {
+    IReadOnlyList<string> errors = ErrorsOf("NetworkNodeContract");
+    Assert.Equal(2, errors.Count);
+    Assert.Contains(
+      errors,
+      e => e.Contains("stubnodenotype") && e.Contains("`type`")
+    );
+    Assert.Contains(
+      errors,
+      e => e.Contains("stubnodebadscheme") && e.Contains("scheme")
+    );
   }
 
   [Fact]
@@ -185,7 +245,7 @@ public class ExlibChecksTests {
     // One CheckResult per (check, domain) pair - eight checks, one domain here.
     Assert.Equal(8, results.Count);
     Assert.All(results, r => Assert.Equal(Domain, r.Domain));
-    Assert.Equal(5, results.Sum(r => r.Errors.Count));
+    Assert.Equal(8, results.Sum(r => r.Errors.Count));
   }
 
   [Fact]
