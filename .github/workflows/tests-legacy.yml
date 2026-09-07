@@ -20,9 +20,6 @@ on:
 # read MSBuild), in $GameTfms in extools' exmod.ps1, and in extools' pack/Program.cs GameTargets.
 
 env:
-  # scripts/exmod.sh resolves the tools checkout through this, so no run has to fall back to
-  # cloning a private repo over HTTPS. Drop once extools is public and .extools/ can clone itself.
-  EXTOOLS_HOME: ${{ github.workspace }}/extools
 
 jobs:
   test:
@@ -45,14 +42,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # extools is a private repository; a checkout token is needed until it is public.
-      - name: Checkout extools
-        uses: actions/checkout@v4
-        with:
-          repository: ringavirda/extools
-          ref: v0.1.0
-          path: extools
-          token: ${{ secrets.EXTOOLS_TOKEN }}
 
       # The legacy test host runs on the matching runtime, so install all SDKs the suite targets.
       - name: Set up .NET

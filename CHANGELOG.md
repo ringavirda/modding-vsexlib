@@ -7,6 +7,8 @@ see the git history.
 
 ## [Unreleased]
 
+## [0.8.0-preview.1] - 2026-09-07
+
 ### Added
 
 - **Modules**, exlib's extension mechanism: `[assembly: ExModule("<id>")]` marks an assembly as a

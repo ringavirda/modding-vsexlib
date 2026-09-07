@@ -1,8 +1,9 @@
 name: Release
 
-# Publishes a tagged version's mod zips, the dev bundle and the three NuGet packages as GitHub
-# release assets. Nothing is pushed to NuGet.org - see the commented step at the bottom - and no
-# tag is created by this workflow itself; it only runs once one exists.
+# Publishes a tagged version: the mod zips, the dev bundle and the three NuGet packages as GitHub
+# release assets, and the packages to NuGet.org through trusted publishing once the NUGET_USER
+# repository variable is set. No tag is created by this workflow itself; it only runs once one
+# exists. The CLI comes from extools, cloned at the tag exmod.json pins by scripts/exmod.sh.
 on:
   push:
     tags:
@@ -10,9 +11,6 @@ on:
 
 env:
   VS_VERSION: "1.22"
-  # scripts/exmod.sh resolves the tools checkout through this, so no run has to fall back to
-  # cloning a private repo over HTTPS. Drop once extools is public and .extools/ can clone itself.
-  EXTOOLS_HOME: ${{ github.workspace }}/extools
 
 jobs:
   release:
@@ -29,14 +27,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # extools is a private repository; a checkout token is needed until it is public.
-      - name: Checkout extools
-        uses: actions/checkout@v4
-        with:
-          repository: ringavirda/extools
-          ref: v0.1.0
-          path: extools
-          token: ${{ secrets.EXTOOLS_TOKEN }}
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
