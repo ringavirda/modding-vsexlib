@@ -51,14 +51,8 @@ public static class ExCheckRegistry {
   }
 
   private static void Register(ICoreAPI api, string modId, Type type) {
-    if (!_seen.Add(type)) {
-      api.Logger.Notification(
-        "[{0}] check {1} is already registered; the duplicate scan is skipped.",
-        modId,
-        type.FullName
-      );
+    if (!_seen.Add(type))
       return;
-    }
 
     MethodInfo? run = type.GetMethod(
       "Run",

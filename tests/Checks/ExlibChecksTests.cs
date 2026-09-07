@@ -12,15 +12,16 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// <see cref="ExlibChecks.All"/> over a hand-built <see cref="ICheckSource"/> proves the eight checks
-/// run and report independently: one seeded violation per rule, and nothing for the one genuinely
-/// clean check (<c>LateDefinition</c>) or for the clean parts of the domain the seeded violations sit
-/// in. <see cref="LateDefinitionCheck"/> reads
-/// <see cref="ExDefinitions"/> directly rather than the fixture's <see cref="ICheckSource"/>, so the
-/// constructor records an empty injection pass - the same "injection has run" state
-/// <see cref="ExDefinitionModSystem.AssetsLoaded"/> leaves behind - rather than leaving
-/// <see cref="ExDefinitions.InjectionRan"/> false, which would short-circuit the check before it read
-/// anything. This class shares the "ExDefinitions" collection with everything else that touches that
-/// static registry.
+/// run and report independently: one seeded violation per rule (three for <c>NetworkNodeContract</c>,
+/// which checks node placement, its orientation scheme and network membership), and nothing for the
+/// one genuinely clean check (<c>LateDefinition</c>) or for the clean parts of the domain the seeded
+/// violations sit in.
+/// <see cref="LateDefinitionCheck"/> reads <see cref="ExDefinitions"/> directly rather than the
+/// fixture's <see cref="ICheckSource"/>, so the constructor records an empty injection pass - the same
+/// "injection has run" state <see cref="ExDefinitionModSystem.AssetsLoaded"/> leaves behind - rather
+/// than leaving <see cref="ExDefinitions.InjectionRan"/> false, which would short-circuit the check
+/// before it read anything. This class shares the "ExDefinitions" collection with everything else
+/// that touches that static registry.
 /// </summary>
 [Collection("ExDefinitions")]
 public class ExlibChecksTests {
@@ -90,6 +91,11 @@ public class ExlibChecksTests {
       .VariantGroup("orientation", "n", "e", "s", "w")
       .Behavior("ExOrientable", new { mode = "network", scheme = "FaceAll" });
 
+  // A declared network membership with no `networkType` - the behaviour has no other source for
+  // one, so the cell logs an error and joins no graph.
+  private static ExBlockDef NodeUntypedMembership() =>
+    ExBlockDef.Create(Domain, "stubmembership").EntityBehavior("BEBehaviorNetworkMember");
+
   // The concrete codes these seven defs actually register - what AssetCheckSource would read off
   // api.World.Blocks, matched by hand here since there is no game to ask. "stubghost" is deliberately
   // absent: DefinitionCatalogueCheck's one seeded violation.
@@ -110,6 +116,7 @@ public class ExlibChecksTests {
     new("stub:stubnodebadscheme-normal-e"),
     new("stub:stubnodebadscheme-normal-s"),
     new("stub:stubnodebadscheme-normal-w"),
+    new("stub:stubmembership"),
   ];
 
   // Every registered code gets an English name key except "stubfam" - the one held back to prove
@@ -157,6 +164,7 @@ public class ExlibChecksTests {
           Ghost(),
           NodeMissingTypeGroup(),
           NodeMisspelledScheme(),
+          NodeUntypedMembership(),
         ]
         : [];
   }
@@ -216,9 +224,9 @@ public class ExlibChecksTests {
   }
 
   [Fact]
-  public void Network_node_contract_reports_the_missing_type_group_and_the_misspelled_scheme() {
+  public void Network_node_contract_reports_the_missing_type_group_the_misspelled_scheme_and_the_untyped_membership() {
     IReadOnlyList<string> errors = ErrorsOf("NetworkNodeContract");
-    Assert.Equal(2, errors.Count);
+    Assert.Equal(3, errors.Count);
     Assert.Contains(
       errors,
       e => e.Contains("stubnodenotype") && e.Contains("`type`")
@@ -226,6 +234,10 @@ public class ExlibChecksTests {
     Assert.Contains(
       errors,
       e => e.Contains("stubnodebadscheme") && e.Contains("scheme")
+    );
+    Assert.Contains(
+      errors,
+      e => e.Contains("stubmembership") && e.Contains("networkType")
     );
   }
 
@@ -245,7 +257,7 @@ public class ExlibChecksTests {
     // One CheckResult per (check, domain) pair - eight checks, one domain here.
     Assert.Equal(8, results.Count);
     Assert.All(results, r => Assert.Equal(Domain, r.Domain));
-    Assert.Equal(8, results.Sum(r => r.Errors.Count));
+    Assert.Equal(9, results.Sum(r => r.Errors.Count));
   }
 
   [Fact]
@@ -275,8 +287,18 @@ public class ExlibChecksTests {
 
     int errorLines = logger
       .ReceivedCalls()
-      .Count(call => call.GetMethodInfo().Name == nameof(ILogger.Error));
+      .Count(call =>
+        call.GetMethodInfo().Name == nameof(ILogger.Error)
+        && call.GetArguments() is [string fmt, object[] args]
+        && fmt == "[exlib]   {0}"
+        && args.Length == 1
+      );
     Assert.Equal(results.Sum(r => r.Errors.Count), errorLines);
+
+    int summaryLines = logger
+      .ReceivedCalls()
+      .Count(call => call.GetMethodInfo().Name == nameof(ILogger.Notification));
+    Assert.Equal(results.Count, summaryLines);
   }
 
   [Fact]

@@ -27,7 +27,7 @@ public class ExModSystemTests : IDisposable {
   // shared test assembly pointing at a throwaway test mod id for the rest of the run - breaking
   // any other test's EntityRegistry.KeyFor/DomainOf call against it. Reset on dispose, the same way
   // ExHarmonyTests resets the Harmony patches it applies. RegisterAll also discovers this
-  // assembly's contributor-shaped types into ExDefinitions.Contributors, and now its
+  // assembly's contributor-shaped types into ExDefinitions.Contributors, and its
   // [ExCheckRegister]-decorated types into ExCheckRegistry, both cleared here too.
   public void Dispose() {
     var field = typeof(EntityRegistry).GetField(
@@ -42,6 +42,12 @@ public class ExModSystemTests : IDisposable {
 
   [BlockRegister]
   private sealed class TestBlock : Block { }
+
+  [Checks.ExCheckRegister]
+  private sealed class TestSystemCheck {
+    public static Checks.CheckResult Run(Checks.ICheckSource source, string domain) =>
+      new(nameof(TestSystemCheck), domain, []);
+  }
 
   [SubCommandRegister(Side = EnumAppSide.Server)]
   private sealed class TestServerSubCommand : IExSubCommand {
@@ -156,6 +162,10 @@ public class ExModSystemTests : IDisposable {
         typeof(TestBlock)
       );
     Assert.Equal(42, ExModSystemTestValues.Tunable);
+    Assert.Contains(
+      Checks.ExCheckRegistry.Registered,
+      c => c.Type == typeof(TestSystemCheck)
+    );
     Assert.Equal(["OnStart"], system.Order);
   }
 

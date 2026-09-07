@@ -63,7 +63,7 @@ public static class ExlibChecks {
       return new CheckResult(
         check.Type.Name,
         domain,
-        [$"{check.Type.FullName} threw {e.GetType().Name}: {e.Message}"]
+        [$"{check.Type.FullName} threw: {e}"]
       );
     }
   }

@@ -47,6 +47,12 @@ public class ExModuleHostTests : IDisposable {
   [BlockRegister]
   private sealed class TestBlock : Block { }
 
+  [Checks.ExCheckRegister]
+  private sealed class TestHostCheck {
+    public static Checks.CheckResult Run(Checks.ICheckSource source, string domain) =>
+      new(nameof(TestHostCheck), domain, []);
+  }
+
   [PreferenceRegister]
   private sealed class TestHostPreference : IExPreference {
     public string Key => "exmodulehosttestpref";
@@ -184,6 +190,10 @@ public class ExModuleHostTests : IDisposable {
       );
     Assert.Contains("Start", RecordingModule.Phases);
     Assert.Equal("exlibtest.host.TestBlock", RecordingModule.ObservedKey);
+    Assert.Contains(
+      Checks.ExCheckRegistry.Registered,
+      c => c.Type == typeof(TestHostCheck)
+    );
   }
 
   [Fact]
