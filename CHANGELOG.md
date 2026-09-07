@@ -7,6 +7,8 @@ see the git history.
 
 ## [Unreleased]
 
+## [0.8.0-preview.2] - 2026-09-07
+
 ### Added
 
 - **Three more registration kinds** on the attribute rung: `[EntityRegister]`,
@@ -34,6 +36,14 @@ see the git history.
 - `ExBlockDef` gains `GuiTransform`, `GroundTransform` and `FpHandTransform` with the item
   builder's overloads, and `TpHandTransform` gains the ten-double and object overloads that emit
   an origin; the seven-double overload keeps emitting translation, rotation and scale.
+- Generator diagnostics: `EXLIB0002` names a mis-shaped `[ExRecipeProfile]` config at the
+  attribute (the `#error` stays, so the build cannot be silenced into a dead profile);
+  `EXLIB0003` warns when `AssetDomain` is set but no lang file feeds `ExLangKeyGenerator`;
+  `EXLIB0004` warns when two lang keys sanitise to one member name.
+- `LangCoverageCheck.Run(source, domain, allLocales)`: the harness's `LangCoverage.MissingNames`
+  runs the same loop over every locale instead of carrying its own copy.
+- `VersionPinTests` binds the `ExpandedLib*` versions in `templates/` and the `exlib` floor in
+  Getting-Started to `src/modinfo.json`.
 
 ### Changed
 
@@ -49,6 +59,15 @@ see the git history.
 - The wiki parity check in ExpandedLib.Testing also fails a snippet that declares a member
   `virtual` or `override` where the code declares it `abstract`, and examines the containers
   section of the block-entities page.
+- The sample mods set `AssetDomain` instead of hand-rolling the asset glob and the lang
+  generator's input; Getting-Started and Source-Generators say a mod project sets it to its modid.
+- A release's assets include the symbol packages beside the nupkgs.
+
+### Fixed
+
+- A machine station's window is disposed when it closes; a refused open (a duplicate window)
+  no longer leaves a dialog the station can never open again, and no longer opens the inventory
+  or sends the open packet.
 - `IExModule.AssetsLoaded` is documented as running at the host's order, ahead of the JSON patch
   loader at 0.05, so an asset read there sees unpatched JSON; a catalogue read belongs in
   `AssetsFinalize`. The Lifecycle, Modules and Extending-Processes pages say the same, and the
