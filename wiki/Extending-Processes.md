@@ -212,6 +212,10 @@ MetalRegistry.Contributors.Register(api =>
     MetalRegistry.Register(new MetalDef { Code = "hadfield", MoltenItem = "yourmod:ingot-hadfield" }));
 ```
 
+⚠️ The same caveat applies to metals: a JSON patch to `config/metals/` reaches `MetalRegistry` at
+`AssetsFinalize`, but emits no item family - generation (`MetalFamilyEmitter`) runs at `AssetsLoaded`
+0.04, before patches. Ship your own `config/metals/` file instead.
+
 ```csharp
 ExLiquids.Contributors.Register(api => ExLiquids.Register(new LiquidDef { Code = "Brine" }));
 ```
@@ -304,5 +308,6 @@ makes your content break on our schedule.
 | the machine refuses your piece | no stage its fitted tooling's family accepts, or the tooling does not accept that stock at all |
 | your item shows its raw code | no `item-<code>` lang entry — ship your own strings |
 | your patch added a route but no item | patches land after item generation; ship your own catalogue file instead |
+| your patched metal has no ingot/plate/rod family | metal item generation runs at `AssetsLoaded` 0.04, before patches; ship your own `config/metals/` file instead |
 | nothing at all, and the log has an `Error` line under `processroutes` | the message names the file and the field |
 | your stage was ignored | someone declared that `(thickness, family)` first; the log names the clash |

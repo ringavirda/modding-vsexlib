@@ -32,17 +32,20 @@ public interface IExModule {
   void StartClientSide(ICoreClientAPI api) { }
 
   /// <summary>
-  /// Runs in the host's <c>AssetsLoaded</c>: assets are readable here and a catalogue read belongs
-  /// in this phase, but it is not where a definition is contributed - a module that emits
-  /// code-first definitions from loaded assets implements
-  /// <see cref="Definitions.IExDefinitionContributor"/> instead, which runs after every module's
-  /// <c>Start</c> and before injection regardless of host order.
+  /// Runs in the host's <c>AssetsLoaded</c>, at the host's own <c>ExecuteOrder</c> - 0.03 for the
+  /// exlib host, ahead of the game's own JSON patch loader at 0.05, so an asset read here sees
+  /// unpatched JSON. A catalogue read belongs in <see cref="AssetsFinalize"/> instead. This is also
+  /// not where a definition is contributed - a module that emits code-first definitions from loaded
+  /// assets implements <see cref="Definitions.IExDefinitionContributor"/> instead, which runs after
+  /// every module's <c>Start</c> and before injection regardless of host order. A module hosted by
+  /// its own mod's <see cref="ExModSystem"/> runs this at that mod's order (0.1 by default), which
+  /// is past the patch loader, so a read there is post-patch.
   /// </summary>
   void AssetsLoaded(ICoreAPI api) { }
 
   /// <summary>
   /// Runs in the host's <c>AssetsFinalize</c>, after the asset-patch pipeline has merged every mod's
-  /// JSON. A module loading a catalogue does it here.
+  /// JSON, whatever the host's own <c>ExecuteOrder</c>. A module loading a catalogue does it here.
   /// </summary>
   void AssetsFinalize(ICoreAPI api) { }
 

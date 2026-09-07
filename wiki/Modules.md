@@ -105,7 +105,7 @@ below). Before a module's entry points run at all, the host performs the registr
 | --- | --- | --- |
 | `StartPre` | Nothing yet - too early for registration. | `StartPre(ICoreAPI api)` |
 | `Start` | `ExConfig.LoadAll`, `EntityRegistry.RegisterAll`, and - if `PatchHarmony` is set - `ExHarmony.PatchOnce` under the module's Harmony id. | `Start(ICoreAPI api)` |
-| `AssetsLoaded` | Nothing extra. | `AssetsLoaded(ICoreAPI api)` |
+| `AssetsLoaded` | Nothing extra. Runs at the host's `ExecuteOrder` (0.03 for exlib), ahead of the JSON patch loader at 0.05 - an asset read here sees unpatched JSON. | `AssetsLoaded(ICoreAPI api)` |
 | `AssetsFinalize` | Nothing extra. | `AssetsFinalize(ICoreAPI api)` |
 | `StartServerSide` | `CommandRegistry.RegisterAll`. | `StartServerSide(ICoreServerAPI api)` |
 | `StartClientSide` | `PreferenceRegistry.RegisterAll`, then `CommandRegistry.RegisterAll` (preferences first, the same rule as any `ExModSystem`). | `StartClientSide(ICoreClientAPI api)` |
@@ -114,10 +114,13 @@ below). Before a module's entry points run at all, the host performs the registr
 Every `IExModule` method has an empty default, so a module overrides only what it needs. The
 engine's own call order across phases is `StartPre`, `Start`, `AssetsLoaded`, `AssetsFinalize`, then
 `StartServerSide`/`StartClientSide` for whichever side is running, then `Dispose` - the same order a
-`ModSystem`'s own hooks run in, and the order `IExModule`'s phases run in too. `AssetsLoaded` is
-where assets are readable and a catalogue read belongs; it is **not** where a definition should be
-contributed, because a module's own `Start` may have already run before another module's, or after
-- see the next section.
+`ModSystem`'s own hooks run in, and the order `IExModule`'s phases run in too. `AssetsLoaded` runs
+at the host's `ExecuteOrder` - 0.03 for exlib, ahead of the JSON patch loader at 0.05, so an asset
+read there sees unpatched JSON; a catalogue read belongs in `AssetsFinalize` instead. A module
+hosted by its own mod's `ExModSystem` runs `AssetsLoaded` at that mod's order (0.1 by default),
+past the patch loader, so a read there is post-patch. `AssetsLoaded` is also **not** where a
+definition should be contributed, because a module's own `Start` may have already run before
+another module's, or after - see the next section.
 
 A module that throws from any phase is logged (naming the module type) and the rest of the host's
 modules keep running; a module's own failure never takes down the phase for the others.
