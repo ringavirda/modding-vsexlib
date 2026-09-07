@@ -35,8 +35,7 @@ public class WikiParityTests {
     "ExMultiblock",
   ];
 
-  private static string WikiDirectory =>
-    Path.Combine(RepoPaths.Mod("exlib"), "wiki");
+  private static string WikiDirectory => Path.Combine(RepoPaths.Root, "wiki");
 
   /// <summary>
   /// The source generators, which the wiki documents and reflection cannot see: the project sets
@@ -45,7 +44,7 @@ public class WikiParityTests {
   /// too - which is exactly the drift that produced a page documenting one that no longer exists.
   /// </summary>
   private static IEnumerable<string> GeneratorTypeNames() {
-    string dir = Path.Combine(RepoPaths.Mod("exlib"), "generators");
+    string dir = Path.Combine(RepoPaths.Root, "src/ExpandedLib.Generators");
     var declared = new Regex(
       @"\bclass\s+(?<name>\w+)\s*:\s*[^{\r\n]*\bIIncrementalGenerator\b"
     );
@@ -117,7 +116,10 @@ public class WikiParityTests {
       """
     );
 
-    WikiParity.Report report = WikiParity.Check(page.Dir, typeof(ExDefinitions).Assembly);
+    WikiParity.Report report = WikiParity.Check(
+      page.Dir,
+      typeof(ExDefinitions).Assembly
+    );
 
     Assert.Contains(
       report.Findings,
@@ -143,7 +145,7 @@ public class WikiParityTests {
     );
     Assert.True(
       GeneratorTypeNames().Any(),
-      "no IIncrementalGenerator found in generators/ - the generator names the wiki "
+      "no IIncrementalGenerator found in src/ExpandedLib.Generators/ - the generator names the wiki "
         + "may cite would be resolved from an empty set, so any of them would read as valid"
     );
   }
@@ -166,9 +168,15 @@ public class WikiParityTests {
       """
     );
 
-    WikiParity.Report report = WikiParity.Check(page.Dir, typeof(ExDefinitions).Assembly);
+    WikiParity.Report report = WikiParity.Check(
+      page.Dir,
+      typeof(ExDefinitions).Assembly
+    );
 
-    Assert.DoesNotContain(report.Findings, f => f.Symbol == "ExBlockEntityContainer.Inventory");
+    Assert.DoesNotContain(
+      report.Findings,
+      f => f.Symbol == "ExBlockEntityContainer.Inventory"
+    );
   }
 
   [Fact]
@@ -186,7 +194,10 @@ public class WikiParityTests {
       """
     );
 
-    WikiParity.Report report = WikiParity.Check(page.Dir, typeof(ExDefinitions).Assembly);
+    WikiParity.Report report = WikiParity.Check(
+      page.Dir,
+      typeof(ExDefinitions).Assembly
+    );
 
     Assert.Contains(
       report.Findings,

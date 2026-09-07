@@ -106,13 +106,16 @@ public static class SelectorCoverage {
     return files;
   }
 
-  // Every mod's own tests folder plus every sample's, the latter kept separate because a sample's
-  // tests project need not sit under its own path (exmod.json's samples entry names it independently).
+  // Every mod's own tests folder, every sample's (kept separate because a sample's tests project
+  // need not sit under its own path - exmod.json's samples entry names it independently), plus
+  // every $Manifest.tests entry - exlib's own ExpandedLib.Tests sits outside any mod folder.
   private static IEnumerable<string> TestRoots() {
     foreach (string mod in RepoManifest.Mods.Values)
       yield return Path.Combine(mod, "tests");
     foreach (RepoManifest.SampleEntry sample in RepoManifest.Samples.Values)
       yield return sample.Tests;
+    foreach (string tests in RepoManifest.Tests)
+      yield return tests;
   }
 
   // Built once per domain: the groupBy rule needs the whole domain's codes and every golden in that

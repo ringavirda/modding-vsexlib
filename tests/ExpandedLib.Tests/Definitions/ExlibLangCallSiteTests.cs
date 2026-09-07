@@ -10,10 +10,7 @@ namespace ExpandedLib.Tests;
 /// </summary>
 public class ExlibLangCallSiteTests {
   private const string Domain = "exlib";
-  private static readonly string SrcDir = System.IO.Path.Combine(
-    RepoPaths.Mod(Domain),
-    "src"
-  );
+  private static readonly string SrcDir = RepoPaths.Src(Domain);
 
   [Fact]
   public void Every_key_the_source_asks_for_exists_in_every_locale() {

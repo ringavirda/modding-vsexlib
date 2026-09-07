@@ -45,7 +45,7 @@ public class ProcessExtensionGuards {
     foreach (string mod in RepoManifest.Mods.Values) {
       string src = Path.Combine(mod, "src");
       if (!Directory.Exists(src))
-        continue;
+        src = mod;
 
       foreach (
         string path in Directory.EnumerateFiles(
@@ -84,8 +84,7 @@ public class ProcessExtensionGuards {
   private static string RepoRoot() {
     DirectoryInfo? dir = new(AppContext.BaseDirectory);
     while (
-      dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
+      dir != null && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
     Assert.True(dir != null, "could not locate repo root (ExpandedLib.sln)");

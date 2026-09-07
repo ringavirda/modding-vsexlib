@@ -20,7 +20,7 @@ public class ExlibBlocksCodeTests {
       Mod,
       "ExlibBlocks",
       "ExpandedLib",
-      "src/Generated/ExlibBlocks.g.cs"
+      "src/ExpandedLib/Generated/ExlibBlocks.g.cs"
     );
 
     Assert.True(ok, message);

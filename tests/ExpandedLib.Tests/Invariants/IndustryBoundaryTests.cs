@@ -146,7 +146,7 @@ public class IndustryBoundaryTests {
 
   [Fact]
   public void No_framework_source_mentions_the_Industry_namespace() {
-    string srcRoot = Path.Combine(RepoPaths.Mod("exlib"), "src");
+    string srcRoot = RepoPaths.Src("exlib");
     var hits = new List<string>();
 
     foreach (

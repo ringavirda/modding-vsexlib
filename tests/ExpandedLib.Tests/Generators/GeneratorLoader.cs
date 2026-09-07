@@ -13,11 +13,21 @@ namespace ExpandedLib.Tests;
 /// analyzer DLL is loaded by reflection rather than by adding a compile reference.</summary>
 internal static class GeneratorLoader {
   public static IIncrementalGenerator Load(string generatorTypeName) {
-    string binRoot = Path.Combine(RepoPaths.Root, "generators", "bin");
-    string path = Directory
-      .EnumerateFiles(binRoot, "ExpandedLib.Generators.dll", SearchOption.AllDirectories)
-      .OrderByDescending(File.GetLastWriteTimeUtc)
-      .FirstOrDefault()
+    string binRoot = Path.Combine(
+      RepoPaths.Root,
+      "src",
+      "ExpandedLib.Generators",
+      "bin"
+    );
+    string path =
+      Directory
+        .EnumerateFiles(
+          binRoot,
+          "ExpandedLib.Generators.dll",
+          SearchOption.AllDirectories
+        )
+        .OrderByDescending(File.GetLastWriteTimeUtc)
+        .FirstOrDefault()
       ?? throw new InvalidOperationException(
         $"No built ExpandedLib.Generators.dll found under {binRoot}."
       );

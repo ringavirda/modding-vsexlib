@@ -29,6 +29,7 @@ public class MetalFamilyEmitterTests {
         Path.Combine(
           DefinitionGoldens.RepoRoot(),
           "tests",
+          "ExpandedLib.Tests",
           "Metals",
           "Fixtures",
           $"{metal}.json"

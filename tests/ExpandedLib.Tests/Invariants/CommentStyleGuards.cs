@@ -42,7 +42,13 @@ public class CommentStyleGuards {
   // The mod's own project folders - what used to sit inside mods/exlib/ before the split, so the
   // scan keeps its old scope rather than picking up samples/ and templates/, which sit beside it.
   private static readonly string[] ScannedFolders =
-  ["src", "industry", "testing", "generators", "tests"];
+  [
+    "src/ExpandedLib",
+    "src/ExpandedLib.Industry",
+    "src/ExpandedLib.Testing",
+    "src/ExpandedLib.Generators",
+    "tests/ExpandedLib.Tests",
+  ];
 
   private static IReadOnlyList<SourceFile> Sources() {
     string root = RepoRoot();
@@ -94,8 +100,7 @@ public class CommentStyleGuards {
   private static string RepoRoot() {
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
     while (
-      dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
+      dir != null && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
     )
       dir = dir.Parent;
     return dir?.FullName

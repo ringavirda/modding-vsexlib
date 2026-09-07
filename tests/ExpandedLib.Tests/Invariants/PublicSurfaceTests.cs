@@ -23,7 +23,7 @@ public class PublicSurfaceTests {
   private static readonly string[] NotATypeName = [];
 
   private static string PagePath =>
-    Path.Combine(RepoPaths.Mod("exlib"), "wiki", "Supported-API.md");
+    Path.Combine(RepoPaths.Root, "wiki", "Supported-API.md");
 
   // Only the Type column of a table row: `| \`Name\` | ... |`. The description column quotes
   // vanilla API members and JSON keys in the same backtick style, which are not exlib types and
@@ -199,7 +199,11 @@ public class PublicSurfaceTests {
   /// </summary>
   [Fact]
   public void Untested_public_types_are_reported() {
-    string testsDir = Path.Combine(RepoPaths.Mod("exlib"), "tests");
+    string testsDir = Path.Combine(
+      RepoPaths.Root,
+      "tests",
+      "ExpandedLib.Tests"
+    );
     string invariantsDir =
       Path.Combine(testsDir, "Invariants") + Path.DirectorySeparatorChar;
 
@@ -242,7 +246,7 @@ public class PublicSurfaceTests {
   // Same extraction WikiParityTests uses: the generators ship no runtime assembly, so their names
   // come from the source rather than reflection.
   private static IEnumerable<string> GeneratorTypeNames() {
-    string dir = Path.Combine(RepoPaths.Mod("exlib"), "generators");
+    string dir = Path.Combine(RepoPaths.Root, "src/ExpandedLib.Generators");
     var declared = new Regex(
       @"\bclass\s+(?<name>\w+)\s*:\s*[^{\r\n]*\bIIncrementalGenerator\b"
     );
@@ -263,7 +267,7 @@ public class PublicSurfaceTests {
   );
 
   private static IEnumerable<string> LegacyOnlyTypeNames() {
-    string srcDir = Path.Combine(RepoPaths.Mod("exlib"), "src");
+    string srcDir = RepoPaths.Src("exlib");
     foreach (
       string file in Directory.EnumerateFiles(
         srcDir,

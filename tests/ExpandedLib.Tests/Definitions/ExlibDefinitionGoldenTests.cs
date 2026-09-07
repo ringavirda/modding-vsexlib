@@ -17,8 +17,9 @@ public class ExlibDefinitionGoldenTests {
   private const string Domain = "exlib";
   private static readonly Assembly Mod = typeof(ExBlockDef).Assembly;
   private static readonly string GoldenRoot = System.IO.Path.Combine(
-    RepoPaths.Mod("exlib"),
+    RepoPaths.Root,
     "tests",
+    "ExpandedLib.Tests",
     "goldens"
   );
 

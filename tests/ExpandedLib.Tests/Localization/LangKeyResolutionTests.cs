@@ -12,7 +12,7 @@ public class LangKeyResolutionTests {
   private static readonly string[] SourceRoots =
   [
     RepoPaths.Src("exlib"),
-    Path.Combine(RepoPaths.Mod("exlib"), "generators"),
+    Path.Combine(RepoPaths.Root, "src/ExpandedLib.Generators"),
   ];
 
   [Fact]

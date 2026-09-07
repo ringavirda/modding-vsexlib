@@ -23,7 +23,8 @@ public class HandRolledLoaderOrderTests {
     string[] StepMarkers
   );
 
-  private static readonly Loader[] Loaders = [
+  private static readonly Loader[] Loaders =
+  [
     new Loader(
       "LiquidCatalogueLoader",
       Path.Combine(
@@ -54,7 +55,10 @@ public class HandRolledLoaderOrderTests {
     ),
     new Loader(
       "MetalCatalogueLoader",
-      Path.Combine(RepoPaths.Root, "industry/Metals/MetalCatalogueLoader.cs"),
+      Path.Combine(
+        RepoPaths.Root,
+        "src/ExpandedLib.Industry/Metals/MetalCatalogueLoader.cs"
+      ),
       [
         "MetalRegistry.Clear();",
         "AssetCatalogueLoader.Read<MetalDef>",
@@ -65,7 +69,8 @@ public class HandRolledLoaderOrderTests {
     ),
   ];
 
-  private static readonly string[] StepNames = [
+  private static readonly string[] StepNames =
+  [
     "clear",
     "read",
     "merge",

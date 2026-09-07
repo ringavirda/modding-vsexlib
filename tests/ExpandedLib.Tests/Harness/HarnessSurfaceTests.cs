@@ -18,7 +18,7 @@ namespace ExpandedLib.Tests;
 /// </summary>
 public class HarnessSurfaceTests {
   private static readonly string ReferencePath = Path.Combine(
-    RepoPaths.Mod("exlib"),
+    RepoPaths.Root,
     "wiki",
     "Testing-API-Reference.md"
   );
