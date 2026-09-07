@@ -5,6 +5,8 @@ Domain rules - units, invariants, network semantics - live in [conventions.md](d
 this file is about the code itself. The family's own rules (iiex, siex) are exmods' own
 CONTRIBUTING.md.
 
+Day-to-day work lands on `dev`. `main` moves by fast-forward when a batch is green locally, and that push is what runs CI; tags are cut from `main`. Push `dev` freely, it runs nothing.
+
 The mechanical parts are enforced, not trusted to review: formatting by `exmod format`, comment
 style by `CommentStyleGuards` in `ExpandedLib.Tests`. If a rule below is not enforced, it is a
 convention that a reviewer has to catch.
