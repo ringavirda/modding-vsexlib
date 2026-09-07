@@ -108,6 +108,32 @@ public static class ExRecipeCosts
   restores pinned defaults, clamps quantities to >=1.
 - `Apply` writes a named profile into the live grid ingredient/output counts and RCC stage costs.
 
+## Registering declaratively with [ExRecipeProfile]
+
+A config that colocates the catalogue and the active level can skip the hand-written
+`ExRecipeProfiles.Register` call above entirely: add `[ExRecipeProfile]` next to `[ExConfigRegister]`
+and `ExConfigGenerator` emits the registration into the generated `Load(ICoreAPI)`.
+
+```csharp
+[ExConfigRegister("ex_recipes.json", "iiex")]
+[ExRecipeProfile]
+public class IiexRecipeConfig : IExVersionedConfig
+{
+    public string? ConfigVersion { get; set; }
+    public string RecipeLevel { get; set; } = "normal";                          // GetLevel/SetLevel
+    public Dictionary<string, RecipeCostEntry> Recipes { get; set; } = Defaults(); // Catalogue
+
+    public static Dictionary<string, RecipeCostEntry> DefaultCatalogue() => Defaults(); // Defaults
+}
+```
+
+The generator finds `Catalogue` as the config's sole `Dictionary<string, RecipeCostEntry>` property
+and `Defaults` as the matching static `DefaultCatalogue()`; `Code` is the mod id already passed to
+`[ExConfigRegister]`, and `SaveCatalogue` is the accessor's generated `Save`. `GetLevel`/`SetLevel`
+read and write the property named `RecipeLevel` by default - set
+`[ExRecipeProfile(RecipeLevelProperty = "...")]` when a config names it differently. A config missing
+one of these members fails the build with `#error`, naming what is missing.
+
 ## Related pages
 
 - [Config System](Config-System) - store the active level and edit it with `/exmod config`.

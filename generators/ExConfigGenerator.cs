@@ -21,6 +21,10 @@ namespace ExpandedLib.Generators;
 public sealed class ExConfigGenerator : IIncrementalGenerator {
   private const string AttributeName =
     "ExpandedLib.Config.ExConfigRegisterAttribute";
+  private const string RecipeProfileAttributeName =
+    "ExpandedLib.Config.ExRecipeProfileAttribute";
+  private const string RecipeCostEntryType =
+    "global::ExpandedLib.Registries.RecipeCostEntry";
   private const string ConfigVersionProperty = "ConfigVersion";
 
   public void Initialize(IncrementalGeneratorInitializationContext context) {
@@ -120,7 +124,82 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
       manageable,
       new EquatableArray<string>(legacyNames),
       new EquatableArray<string>(legacySections),
-      new EquatableArray<PropModel>(properties)
+      new EquatableArray<PropModel>(properties),
+      ExtractRecipeProfile(type)
+    );
+  }
+
+  /// <summary>Reads the co-located <c>[ExRecipeProfile]</c> attribute, if any, and resolves the
+  /// catalogue property (the config's sole <c>Dictionary&lt;string, RecipeCostEntry&gt;</c>
+  /// property) and the level property it names or defaults to. Returns null when the config carries
+  /// no <c>[ExRecipeProfile]</c>.</summary>
+  private static RecipeProfileModel? ExtractRecipeProfile(INamedTypeSymbol type) {
+    var attr = type
+      .GetAttributes()
+      .FirstOrDefault(a =>
+        a.AttributeClass?.ToDisplayString() == RecipeProfileAttributeName
+      );
+    if (attr is null)
+      return null;
+
+    string levelProperty =
+      attr.NamedArguments.FirstOrDefault(na => na.Key == "RecipeLevelProperty")
+        .Value.Value as string ?? "RecipeLevel";
+
+    var catalogueCandidates = type
+      .GetMembers()
+      .OfType<IPropertySymbol>()
+      .Where(p =>
+        !p.IsStatic
+        && p.DeclaredAccessibility == Accessibility.Public
+        && p.GetMethod is not null
+        && p.Type is INamedTypeSymbol {
+          Name: "Dictionary",
+          TypeArguments.Length: 2,
+        } dict
+        && dict.TypeArguments[0].SpecialType == SpecialType.System_String
+        && dict.TypeArguments[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+          == RecipeCostEntryType
+      )
+      .ToImmutableArray();
+
+    bool hasDefaultsMethod = type
+      .GetMembers("DefaultCatalogue")
+      .OfType<IMethodSymbol>()
+      .Any(m => m.IsStatic && m.Parameters.Length == 0);
+
+    bool hasLevelProperty = type
+      .GetMembers(levelProperty)
+      .OfType<IPropertySymbol>()
+      .Any(p =>
+        !p.IsStatic
+        && p.DeclaredAccessibility == Accessibility.Public
+        && p.GetMethod is not null
+        && p.SetMethod is not null
+        && p.Type.SpecialType == SpecialType.System_String
+      );
+
+    if (catalogueCandidates.Length == 1 && hasDefaultsMethod && hasLevelProperty) {
+      return new RecipeProfileModel(
+        IsValid: true,
+        CatalogueProperty: catalogueCandidates[0].Name,
+        LevelProperty: levelProperty,
+        Error: string.Empty
+      );
+    }
+
+    string error = catalogueCandidates.Length == 0
+      ? "needs exactly one public Dictionary<string, RecipeCostEntry> property (found none)"
+      : catalogueCandidates.Length > 1
+        ? "needs exactly one public Dictionary<string, RecipeCostEntry> property (found more than one)"
+        : !hasDefaultsMethod
+          ? "needs a public static DefaultCatalogue() method returning the catalogue"
+          : $"needs a public string property named '{levelProperty}' with a getter and setter";
+    return new RecipeProfileModel(
+      IsValid: false,
+      CatalogueProperty: string.Empty,
+      LevelProperty: levelProperty,
+      Error: error
     );
   }
 
@@ -179,19 +258,56 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     sb.AppendLine(
       "  /// version-change resets and writes it back. Call once during mod startup.</summary>"
     );
+    if (m.RecipeProfile is { IsValid: false } badProfile) {
+      sb.AppendLine(
+        $"#error [ExRecipeProfile] on {m.ConfigTypeName} {badProfile.Error}"
+      );
+    }
+
+    var loadStatements = new List<string> { "_store.Load(api);" };
     if (m.Manageable) {
+      loadStatements.Add(
+        "// Manageable config: expose its values to the generic /exmod config command."
+      );
+      loadStatements.Add("ExConfigProfiles.Register(_store);");
+    }
+    if (m.RecipeProfile is { IsValid: true } profile) {
+      loadStatements.Add(
+        "// [ExRecipeProfile]: register with the shared recipe-cost framework."
+      );
+      loadStatements.Add(
+        "global::ExpandedLib.Registries.ExRecipeProfiles.Register("
+      );
+      loadStatements.Add(
+        "  new global::ExpandedLib.Registries.RecipeProfile"
+      );
+      loadStatements.Add("  {");
+      loadStatements.Add($"    Code = \"{m.ModId}\",");
+      loadStatements.Add(
+        $"    Catalogue = () => _config.{profile.CatalogueProperty},"
+      );
+      loadStatements.Add($"    Defaults = {m.ConfigTypeName}.DefaultCatalogue,");
+      loadStatements.Add(
+        $"    GetLevel = () => _config.{profile.LevelProperty},"
+      );
+      loadStatements.Add(
+        $"    SetLevel = level => Edit(c => c.{profile.LevelProperty} = level),"
+      );
+      loadStatements.Add("    SaveCatalogue = Save,");
+      loadStatements.Add("  }");
+      loadStatements.Add(");");
+    }
+
+    if (loadStatements.Count == 1) {
+      sb.AppendLine(
+        $"  public static void Load(ICoreAPI api) => {loadStatements[0]}"
+      );
+    } else {
       sb.AppendLine("  public static void Load(ICoreAPI api)");
       sb.AppendLine("  {");
-      sb.AppendLine("    _store.Load(api);");
-      sb.AppendLine(
-        "    // Manageable config: expose its values to the generic /exmod config command."
-      );
-      sb.AppendLine("    ExConfigProfiles.Register(_store);");
+      foreach (var line in loadStatements)
+        sb.AppendLine($"    {line}");
       sb.AppendLine("  }");
-    } else {
-      sb.AppendLine(
-        "  public static void Load(ICoreAPI api) => _store.Load(api);"
-      );
     }
     sb.AppendLine();
     sb.AppendLine(
@@ -258,10 +374,21 @@ internal sealed record ConfigModel(
   bool Manageable,
   EquatableArray<string> LegacyFileNames,
   EquatableArray<string> LegacySectionIds,
-  EquatableArray<PropModel> Properties
+  EquatableArray<PropModel> Properties,
+  RecipeProfileModel? RecipeProfile
 );
 
 internal readonly record struct PropModel(string Type, string Name);
+
+/// <summary>Resolution of a config's <c>[ExRecipeProfile]</c> attribute: either the catalogue and
+/// level property names to emit the registration from, or the reason it could not be resolved (an
+/// <c>#error</c> in the generated source names it).</summary>
+internal sealed record RecipeProfileModel(
+  bool IsValid,
+  string CatalogueProperty,
+  string LevelProperty,
+  string Error
+);
 
 /// <summary>Value-equatable wrapper over <see cref="ImmutableArray{T}"/> so generator models compare
 /// by content, which the incremental pipeline requires to cache across edits.</summary>

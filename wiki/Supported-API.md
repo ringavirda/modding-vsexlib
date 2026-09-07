@@ -74,6 +74,7 @@ For a modder declaring a config class, its ranges, migrations and live editing, 
 | `ExConfigRangeAttribute` | Declares the valid numeric range for a config tunable, enforced by ExConfigRegister<T> both when a player edits it live (`/exmod config` rejects an out-of-range value) and on load (a file edited out of range is reset to the coded default). | [Config-System](Config-System) |
 | `ExConfigRegister<T>` | Shared loader and saver for a mod's JSON gameplay tunables. | [Config-System](Config-System) |
 | `ExConfigRegisterAttribute` | Marks a config POCO implementing `IExVersionedConfig` for which the `ExConfigGenerator` source generator emits a static accessor class. | [Config-System](Config-System) |
+| `ExRecipeProfileAttribute` | Added alongside `[ExConfigRegister]` on a recipe-cost catalogue config to have `ExConfigGenerator` also emit that mod's `RecipeProfile` registration. | [Recipe-Costs](Recipe-Costs) |
 | `IExConfigAccess` | Non-generic view over a config store (ExConfigRegister<T>) that the `/exmod config` command uses to list, read and set a mod's tunables by name without knowing the concrete config type. | [Config-System](Config-System) |
 | `IExVersionedConfig` | A JSON config POCO that records the mod version it was last written under. | [Config-System](Config-System) |
 
