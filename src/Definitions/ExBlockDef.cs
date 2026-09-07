@@ -332,9 +332,54 @@ public sealed class ExBlockDef : IExDef {
 
   #region Model transforms
 
+  /// <summary>Sets the <c>guiTransform</c> from a POCO/anonymous object/token. Block transforms are authored
+  /// as objects because their shapes vary: some omit <c>rotation</c> or <c>origin</c>.</summary>
+  public ExBlockDef GuiTransform(object transform) => RootKey("guiTransform", transform);
+
+  /// <summary>Sets the <c>guiTransform</c> from translation, rotation, origin and uniform scale - the
+  /// positional counterpart of <see cref="GuiTransform(object)"/>, for the common case of a fully
+  /// specified transform. Emits <c>{ translation, rotation, origin, scale }</c>, the shape the gui, held
+  /// and ground transforms all share.</summary>
+  public ExBlockDef GuiTransform(
+    double tx,
+    double ty,
+    double tz,
+    double rx,
+    double ry,
+    double rz,
+    double ox,
+    double oy,
+    double oz,
+    double scale
+  ) => GuiTransform(Transform(tx, ty, tz, rx, ry, rz, ox, oy, oz, scale));
+
+  /// <summary>Sets the <c>fpHandTransform</c> (held in first person; deprecated in favour of
+  /// <see cref="TpHandTransform(object)"/> but still read by the loader) from a POCO/anonymous object/token.</summary>
+  public ExBlockDef FpHandTransform(object transform) => RootKey("fpHandTransform", transform);
+
+  /// <summary>Sets the <c>fpHandTransform</c> from translation, rotation, origin and uniform scale. Emits
+  /// <c>{ translation, rotation, origin, scale }</c>.</summary>
+  public ExBlockDef FpHandTransform(
+    double tx,
+    double ty,
+    double tz,
+    double rx,
+    double ry,
+    double rz,
+    double ox,
+    double oy,
+    double oz,
+    double scale
+  ) => FpHandTransform(Transform(tx, ty, tz, rx, ry, rz, ox, oy, oz, scale));
+
   /// <summary>Sets the <c>tpHandTransform</c> (the model transform applied when the block is held in third
-  /// person): translation, XYZ rotation in degrees, and uniform scale. The held, ground and gui transforms
-  /// all share this <c>{ translation, rotation, scale }</c> object shape.</summary>
+  /// person) from a POCO/anonymous object/token.</summary>
+  public ExBlockDef TpHandTransform(object transform) => RootKey("tpHandTransform", transform);
+
+  /// <summary>Sets the <c>tpHandTransform</c> from translation, XYZ rotation in degrees, and uniform scale,
+  /// with no origin - emits <c>{ translation, rotation, scale }</c>, the three-key shape every existing
+  /// caller of this overload emits today. Use the ten-double or object overload for a transform whose
+  /// origin matters.</summary>
   public ExBlockDef TpHandTransform(
     double tx,
     double ty,
@@ -345,6 +390,42 @@ public sealed class ExBlockDef : IExDef {
     double scale
   ) => Set("tpHandTransform", Transform(tx, ty, tz, rx, ry, rz, scale));
 
+  /// <summary>Sets the <c>tpHandTransform</c> from translation, rotation, origin and uniform scale - emits
+  /// <c>{ translation, rotation, origin, scale }</c>, matching <see cref="GuiTransform(double, double,
+  /// double, double, double, double, double, double, double, double)"/>. Use the seven-double overload
+  /// when the transform has no origin.</summary>
+  public ExBlockDef TpHandTransform(
+    double tx,
+    double ty,
+    double tz,
+    double rx,
+    double ry,
+    double rz,
+    double ox,
+    double oy,
+    double oz,
+    double scale
+  ) => TpHandTransform(Transform(tx, ty, tz, rx, ry, rz, ox, oy, oz, scale));
+
+  /// <summary>Sets the <c>groundTransform</c> (dropped on the ground) from a POCO/anonymous object/token.</summary>
+  public ExBlockDef GroundTransform(object transform) => RootKey("groundTransform", transform);
+
+  /// <summary>Sets the <c>groundTransform</c> from translation, rotation, origin and uniform scale. Emits
+  /// <c>{ translation, rotation, origin, scale }</c>.</summary>
+  public ExBlockDef GroundTransform(
+    double tx,
+    double ty,
+    double tz,
+    double rx,
+    double ry,
+    double rz,
+    double ox,
+    double oy,
+    double oz,
+    double scale
+  ) => GroundTransform(Transform(tx, ty, tz, rx, ry, rz, ox, oy, oz, scale));
+
+  // The three-key shape the seven-double TpHandTransform overload has always emitted.
   private static JObject Transform(
     double tx,
     double ty,
@@ -364,6 +445,38 @@ public sealed class ExBlockDef : IExDef {
         ["x"] = rx,
         ["y"] = ry,
         ["z"] = rz,
+      },
+      ["scale"] = scale,
+    };
+
+  // The four-key shape every other overload above emits, matching ExItemDef's transform object.
+  private static JObject Transform(
+    double tx,
+    double ty,
+    double tz,
+    double rx,
+    double ry,
+    double rz,
+    double ox,
+    double oy,
+    double oz,
+    double scale
+  ) =>
+    new() {
+      ["translation"] = new JObject {
+        ["x"] = tx,
+        ["y"] = ty,
+        ["z"] = tz,
+      },
+      ["rotation"] = new JObject {
+        ["x"] = rx,
+        ["y"] = ry,
+        ["z"] = rz,
+      },
+      ["origin"] = new JObject {
+        ["x"] = ox,
+        ["y"] = oy,
+        ["z"] = oz,
       },
       ["scale"] = scale,
     };

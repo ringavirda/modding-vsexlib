@@ -204,6 +204,49 @@ public class ExBlockDefTests {
   }
   #endregion
 
+  #region Model transforms
+
+  [Fact]
+  public void Positional_transforms_emit_translation_rotation_origin_and_scale() {
+    JObject json = ExBlockDef
+      .Create("d", "c")
+      .GuiTransform(0, 3, 0, 0, 90, 0, 0.5, 0, 0.5, 1.33)
+      .FpHandTransform(-0.87, -0.01, -0.56, -90, 0, 0, 0, 0, 0, 0.8)
+      .TpHandTransform(-0.87, -0.01, -0.56, -90, 0, 0, 0.5, 0, 0.5, 0.8)
+      .GroundTransform(0, 0, 0, 0, 0, 0, 0, 0, 0, 2.5)
+      .ToJson();
+
+    Assert.Equal(3, (int)json["guiTransform"]!["translation"]!["y"]!);
+    Assert.Equal(90, (int)json["guiTransform"]!["rotation"]!["y"]!);
+    Assert.Equal(0.5, (double)json["guiTransform"]!["origin"]!["x"]!);
+    Assert.Equal(1.33, (double)json["guiTransform"]!["scale"]!);
+
+    Assert.Equal(0.8, (double)json["fpHandTransform"]!["scale"]!);
+    Assert.Equal(-90, (int)json["fpHandTransform"]!["rotation"]!["x"]!);
+
+    Assert.Equal(0.5, (double)json["tpHandTransform"]!["origin"]!["x"]!);
+    Assert.Equal(0.8, (double)json["tpHandTransform"]!["scale"]!);
+
+    Assert.Equal(2.5, (double)json["groundTransform"]!["scale"]!);
+  }
+
+  [Fact]
+  public void The_seven_double_TpHandTransform_overload_omits_origin() {
+    // The shape every existing caller (e.g. iiex's BlockMoltenBarrel) emits: no origin key at all,
+    // unlike the ten-double overload above.
+    JObject json = ExBlockDef
+      .Create("d", "c")
+      .TpHandTransform(-0.8, -1, -0.55, 20, 14, -90, 0.75)
+      .ToJson();
+
+    Assert.Equal(-0.8, (double)json["tpHandTransform"]!["translation"]!["x"]!);
+    Assert.Equal(20, (int)json["tpHandTransform"]!["rotation"]!["x"]!);
+    Assert.Equal(0.75, (double)json["tpHandTransform"]!["scale"]!);
+    Assert.Null(json["tpHandTransform"]!["origin"]);
+  }
+
+  #endregion
+
   #region Location
   [Fact]
   public void Location_targets_the_blocktypes_json_the_loader_filters_on() {

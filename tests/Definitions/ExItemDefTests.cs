@@ -369,84 +369,136 @@ public class ExItemDefTests {
   // generic Attribute/AttributeByType/RootKey/RootKeyByType escape hatches already cover - not a gap
   // this parity check is about.
 
-  // Block-only method names: the JSON key each writes has no equivalent on ItemType/CollectibleType
+  // A method's name plus its parameter types, in declaration order - not its name alone, so an
+  // overload that exists on one builder but not the other (TpHandTransform's seven-double, no-origin
+  // shape below) is caught even though the name itself is shared.
+  private static string Signature(MethodInfo m) =>
+    $"{m.Name}({string.Join(",", m.GetParameters().Select(p => p.ParameterType.Name))})";
+
+  // Signatures only ExBlockDef has: the JSON key each writes has no equivalent on ItemType/CollectibleType
   // (verified against the vendored ItemType.cs/CollectibleType.cs/BlockType.cs), or the method exists
   // only to serve a block-specific mechanism (block-entity behaviors, megablocks, world placement and
-  // orientation, the block-code emitter). One reason per name.
-  private static readonly HashSet<string> BlockOnlyMethodNames = new()
-  {
+  // orientation, the block-code emitter). One reason per name, repeated across its overloads.
+  private static readonly Dictionary<string, string> BlockOnlySignatures = new() {
     // No block-entity analogue: items carry no BlockEntity.
-    "EntityClass",
-    "EntityBehavior",
+    ["EntityClass()"] = "no block-entity analogue: items carry no BlockEntity",
+    ["EntityClass(String)"] = "no block-entity analogue: items carry no BlockEntity",
+    ["EntityBehavior()"] = "no block-entity analogue: items carry no BlockEntity",
+    ["EntityBehavior(String)"] = "no block-entity analogue: items carry no BlockEntity",
+    ["EntityBehavior(JObject)"] = "no block-entity analogue: items carry no BlockEntity",
+    ["EntityBehavior(String,JObject)"] = "no block-entity analogue: items carry no BlockEntity",
     // BlockType-only fields (verified absent from CollectibleType/ItemType).
-    "Material",
-    "Resistance",
-    "Replaceable",
-    "WalkSpeedMultiplier",
-    "MiningTier", // requiredMiningTier; an item's ToolTier is a different, unmirrored concept.
-    "LightAbsorption",
-    "NoDrops",
-    "Drop",
-    "CollisionBox",
-    "SelectionBox",
-    "SingleCollisionBox",
-    "SingleSelectionBox",
-    "SideSolid",
-    "SideOpaque",
-    "SideAo",
-    "EmitSideAo",
-    "NonSolid", // derived from SideSolid/SideOpaque, both BlockType-only.
-    "SolidNonOpaque",
-    "RenderPass", // no shipped itemtype sets renderpass; chunk render passes are a placed-block concept.
-    "FaceCullMode", // culls a placed block's faces against its neighbours; no itemtype equivalent.
-    "DrawType", // selects how a placed block is meshed in the chunk; no itemtype equivalent.
+    ["Material(EnumBlockMaterial)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["Resistance(Single)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["Replaceable(Int32)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["WalkSpeedMultiplier(Double)"] =
+      "BlockType-only field, absent from CollectibleType/ItemType",
+    ["MiningTier(Int32)"] =
+      "requiredMiningTier; an item's ToolTier is a different, unmirrored concept",
+    ["LightAbsorption(Int32)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["NoDrops()"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["Drop(String,String,Nullable`1)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["CollisionBox(Single,Single,Single,Single,Single,Single)"] =
+      "BlockType-only field, absent from CollectibleType/ItemType",
+    ["SelectionBox(Single,Single,Single,Single,Single,Single)"] =
+      "BlockType-only field, absent from CollectibleType/ItemType",
+    ["SingleCollisionBox(Single,Single,Single,Single,Single,Single)"] =
+      "BlockType-only field, absent from CollectibleType/ItemType",
+    ["SingleSelectionBox(Single,Single,Single,Single,Single,Single)"] =
+      "BlockType-only field, absent from CollectibleType/ItemType",
+    ["SideSolid(Boolean)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["SideSolid(Object)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["SideOpaque(Boolean)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["SideOpaque(Object)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["SideAo(Boolean)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["EmitSideAo(Boolean)"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["NonSolid()"] = "derived from SideSolid/SideOpaque, both BlockType-only",
+    ["SolidNonOpaque()"] = "BlockType-only field, absent from CollectibleType/ItemType",
+    ["RenderPass(String)"] = "no shipped itemtype sets renderpass; a placed-block concept",
+    ["RenderPass(EnumChunkRenderPass)"] = "no shipped itemtype sets renderpass; a placed-block concept",
+    ["FaceCullMode(String)"] = "culls a placed block's faces against its neighbours; no itemtype equivalent",
+    ["FaceCullMode(EnumFaceCullMode)"] =
+      "culls a placed block's faces against its neighbours; no itemtype equivalent",
+    ["DrawType(String)"] = "selects how a placed block is meshed in the chunk; no itemtype equivalent",
+    ["DrawType(EnumDrawType)"] =
+      "selects how a placed block is meshed in the chunk; no itemtype equivalent",
     // sounds.* is a BlockType-only field (an item's HeldSounds is a separate, unrelated key).
-    "Sound",
-    "Sounds",
-    "MetalSounds",
-    "SoundByTool",
-    "SoundByType",
+    ["Sound(String,String)"] = "sounds.* is BlockType-only; an item's HeldSounds is separate",
+    ["Sounds(String,String,String,String)"] = "sounds.* is BlockType-only; an item's HeldSounds is separate",
+    ["MetalSounds()"] = "sounds.* is BlockType-only; an item's HeldSounds is separate",
+    ["SoundByTool(EnumTool,String,String)"] = "sounds.* is BlockType-only; an item's HeldSounds is separate",
+    ["SoundByType(String,String,String)"] = "sounds.* is BlockType-only; an item's HeldSounds is separate",
     // World placement/orientation: items are never placed with a facing side.
-    "ShapeRotateYByType",
-    "ShapeSpunPerOrientation",
-    "ShapeByTypePerOrientation",
-    "SideVariant",
-    "NetworkOriented",
+    ["ShapeRotateYByType(String,Int32)"] = "items are never placed with a facing side",
+    ["ShapeSpunPerOrientation(String,Int32)"] = "items are never placed with a facing side",
+    ["ShapeByTypePerOrientation(String,Int32)"] = "items are never placed with a facing side",
+    ["SideVariant()"] = "items are never placed with a facing side",
+    ["NetworkOriented()"] = "items are never placed with a facing side",
     // MineTool is a dead no-op on the block builder (mineTool is not a key the loader reads);
     // never had an item counterpart to propagate.
-    "MineTool",
+    ["MineTool(EnumTool)"] = "dead no-op on the block builder; never had an item counterpart",
     // Derives a placed/legend code from VariantGroups for BlockCodeEmitter's generated {Mod}Blocks
     // table; items have no code-emitter counterpart.
-    "WithVariant",
+    ["WithVariant(String,String)"] = "no code-emitter counterpart for items",
     // Megablocks are blocks; items cannot be (part of) a multiblock structure.
-    "FillerOffsets",
-    "FillerOffsetsByType",
-    "Construction",
-    "Multiblock",
-    "MultiblockLayout",
+    ["FillerOffsets(IEnumerable`1)"] = "megablocks are blocks; items cannot be part of one",
+    ["FillerOffsetsByType(String,IEnumerable`1)"] = "megablocks are blocks; items cannot be part of one",
+    ["Construction(Action`1)"] = "megablocks are blocks; items cannot be part of one",
+    ["Multiblock(Action`1)"] = "megablocks are blocks; items cannot be part of one",
+    ["MultiblockLayout(Action`1)"] = "megablocks are blocks; items cannot be part of one",
+    // Emits { translation, rotation, scale } with no origin - the shape every existing caller of the
+    // block builder's TpHandTransform still uses. The item builder only ever grew the ten-double,
+    // with-origin form.
+    ["TpHandTransform(Double,Double,Double,Double,Double,Double,Double)"] =
+      "the no-origin shape every existing block-builder caller emits; the item builder only grew the ten-double form",
+  };
+
+  // Signatures only ExItemDef has.
+  private static readonly Dictionary<string, string> ItemOnlySignatures = new() {
+    ["GrindingProps(Object)"] = "the quern grinding recipe; blocks are never ground",
   };
 
   [Fact]
-  public void Every_block_builder_method_that_applies_to_items_exists_on_the_item_builder() {
-    var blockMethodNames = typeof(ExBlockDef)
+  public void Every_block_builder_member_that_applies_to_items_exists_on_the_item_builder() {
+    var blockSignatures = typeof(ExBlockDef)
       .GetMethods(BindingFlags.Public | BindingFlags.Instance)
       .Where(m => !m.IsSpecialName) // drop property accessors (get_Domain, get_Code, ...)
-      .Select(m => m.Name)
+      .Select(Signature)
       .Distinct()
-      .Except(BlockOnlyMethodNames);
+      .Except(BlockOnlySignatures.Keys);
 
-    var itemMethodNames = typeof(ExItemDef)
+    var itemSignatures = typeof(ExItemDef)
       .GetMethods(BindingFlags.Public | BindingFlags.Instance)
       .Where(m => !m.IsSpecialName)
-      .Select(m => m.Name)
+      .Select(Signature)
       .ToHashSet();
 
-    var missing = blockMethodNames
-      .Where(n => !itemMethodNames.Contains(n))
-      .ToList();
+    var missing = blockSignatures.Where(s => !itemSignatures.Contains(s)).ToList();
     Assert.True(
       missing.Count == 0,
       "ExItemDef is missing a method for: " + string.Join(", ", missing)
+    );
+  }
+
+  [Fact]
+  public void Every_item_builder_member_that_applies_to_blocks_exists_on_the_block_builder() {
+    var itemSignatures = typeof(ExItemDef)
+      .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+      .Where(m => !m.IsSpecialName)
+      .Select(Signature)
+      .Distinct()
+      .Except(ItemOnlySignatures.Keys);
+
+    var blockSignatures = typeof(ExBlockDef)
+      .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+      .Where(m => !m.IsSpecialName)
+      .Select(Signature)
+      .ToHashSet();
+
+    var missing = itemSignatures.Where(s => !blockSignatures.Contains(s)).ToList();
+    Assert.True(
+      missing.Count == 0,
+      "ExBlockDef is missing a method for: " + string.Join(", ", missing)
     );
   }
 
