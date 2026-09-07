@@ -72,7 +72,9 @@ public class BlockPipe : BlockNetworkNode { }
 
 A class named `BlockEntityXxx` automatically also registers the short-name aliases
 `{modid}.{Xxx}`, `{Xxx}`, `{xxx}` (when you don't set an explicit `Code`), so your JSON can use the
-short `entityClass`.
+short `entityClass`. The bare `{Xxx}`/`{xxx}` pair carries no domain, so if a second mod's class
+claims a short name already issued, exlib logs an error naming both types rather than letting the
+second silently overwrite the first's registration.
 
 Register them all from `Start`:
 

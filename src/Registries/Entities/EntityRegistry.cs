@@ -209,7 +209,29 @@ public static class EntityRegistry {
 
     string shortId = type.Name[prefix.Length..];
     api.RegisterBlockEntityClass($"{domain}.{shortId}", type);
-    api.RegisterBlockEntityClass(shortId, type);
-    api.RegisterBlockEntityClass(shortId.ToLowerInvariant(), type);
+    RegisterBareAlias(api, shortId, type);
+    RegisterBareAlias(api, shortId.ToLowerInvariant(), type);
+  }
+
+  // Bare alias key -> the type that first claimed it. The keys themselves stay unprefixed - existing
+  // worlds and blocktype JSON reference them - but two mods' same-named BlockEntityXxx classes would
+  // otherwise overwrite one another silently, so a second claimant gets a log line instead.
+  private static readonly Dictionary<string, Type> _bareKeysIssued = [];
+
+  private static void RegisterBareAlias(ICoreAPI api, string key, Type type) {
+    if (
+      _bareKeysIssued.TryGetValue(key, out Type? owner)
+      && owner != type
+    )
+      api.Logger.Error(
+        "[exlib] Bare block entity key '{0}' is already registered by {1}; {2} claims it too - "
+          + "a saved block entity keyed '{0}' will load whichever type registered last.",
+        key,
+        owner.FullName,
+        type.FullName
+      );
+
+    _bareKeysIssued[key] = type;
+    api.RegisterBlockEntityClass(key, type);
   }
 }
