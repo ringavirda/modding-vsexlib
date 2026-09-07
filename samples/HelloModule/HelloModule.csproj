@@ -70,13 +70,13 @@
     generators as analyzers and the build/ plumbing, so the package branch needs nothing else.
   -->
   <ItemGroup Condition="'$(ExlibRoot)' != ''">
-    <ProjectReference Include="$(ExlibRoot)src\ExpandedLib.csproj">
+    <ProjectReference Include="$(ExlibRoot)src\ExpandedLib\ExpandedLib.csproj">
       <Private>false</Private>
     </ProjectReference>
     <!-- The config source generator emits HelloModuleValues from HelloModuleConfig's
          [ExConfigRegister]; ExLangKeyGenerator emits HelloModuleLang. Compile-time only, ships nothing. -->
     <ProjectReference
-      Include="$(ExlibRoot)generators\ExpandedLib.Generators.csproj"
+      Include="$(ExlibRoot)src\ExpandedLib.Generators\ExpandedLib.Generators.csproj"
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"
     />

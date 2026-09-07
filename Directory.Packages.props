@@ -8,7 +8,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <!-- Read once here, the same regex the three packable csprojs use, so their PackageVersion rows
          below don't repeat the file read three times over. -->
-    <_ExlibModinfoJson>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)src\modinfo.json'))</_ExlibModinfoJson>
+    <_ExlibModinfoJson>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)src\ExpandedLib\modinfo.json'))</_ExlibModinfoJson>
     <_ExlibReleaseVersion
       >$([System.Text.RegularExpressions.Regex]::Match($(_ExlibModinfoJson), '&quot;version&quot;:\s*&quot;([^&quot;]+)&quot;').Groups[1].Value)</_ExlibReleaseVersion>
   </PropertyGroup>

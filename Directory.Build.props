@@ -100,12 +100,12 @@
     ============================================================================================
   -->
   <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
-    <RunSettingsFilePath>$(MSBuildThisFileDirectory)infra\test\parallel.runsettings</RunSettingsFilePath>
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory)tests\parallel.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
     <Content
-      Include="$(MSBuildThisFileDirectory)infra\test\xunit.runner.json"
+      Include="$(MSBuildThisFileDirectory)tests\xunit.runner.json"
       Link="xunit.runner.json"
       CopyToOutputDirectory="PreserveNewest"
     />
@@ -138,7 +138,7 @@
   >
     <!-- Version is read from exlib's own modinfo.json rather than duplicated, so a release only
          ever bumps one number - the three packages ship in lockstep. -->
-    <_ModinfoJson>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)src/modinfo.json'))</_ModinfoJson>
+    <_ModinfoJson>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)src/ExpandedLib/modinfo.json'))</_ModinfoJson>
     <PackageVersion>$([System.Text.RegularExpressions.Regex]::Match($(_ModinfoJson), '&quot;version&quot;:\s*&quot;([^&quot;]+)&quot;').Groups[1].Value)</PackageVersion>
 
     <Authors>fallenstar</Authors>
@@ -149,7 +149,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>vintagestory mod framework exlib</PackageTags>
 
-    <!-- One shared icon for all three, read from src/ whichever project is packing -
+    <!-- One shared icon for all three, read from src/ExpandedLib/ whichever project is packing -
          Industry and Testing carry no modicon.png of their own. -->
     <PackageIcon>modicon.png</PackageIcon>
 
@@ -158,13 +158,13 @@
   </PropertyGroup>
 
   <!-- The icon, packed to the package root under its own name. ExpandedLib.csproj owns
-       src/modicon.png and declares this item itself, next to its own copy of the file (see the
+       src/ExpandedLib/modicon.png and declares this item itself, next to its own copy of the file (see the
        comment there for why a plain Include here would collide with it and silently drop the icon
        from the nupkg - NU5046). Industry and Testing carry no modicon.png of their own, so the
        plain Include below is all they need. -->
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'ExpandedLib.Industry' or '$(MSBuildProjectName)' == 'ExpandedLib.Testing'">
     <None
-      Include="$(MSBuildThisFileDirectory)src/modicon.png"
+      Include="$(MSBuildThisFileDirectory)src/ExpandedLib/modicon.png"
       Pack="true"
       PackagePath="modicon.png"
     />

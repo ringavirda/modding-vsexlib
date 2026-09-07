@@ -21,13 +21,13 @@
     <AssemblyName>exlib</AssemblyName>
     <RootNamespace>ExpandedLib</RootNamespace>
     <!-- This mod's asset domain; the shared globs in ../../Directory.Build.props pull in
-         ../assets/ (Content + the en.json ExLangKeyGenerator feed). -->
+         assets/ (Content + the en.json ExLangKeyGenerator feed). -->
     <AssetDomain>exlib</AssetDomain>
   </PropertyGroup>
 
   <!-- NuGet pack metadata. PackageId, Description and IsPackable stay here - the rest (version,
        authors, urls, license, readme filename, icon, tags, symbols) is shared across the three
-       packable exlib projects and lives in ../Directory.Build.props. The game assemblies above stay
+       packable exlib projects and lives in ../../Directory.Build.props. The game assemblies above stay
        References with Private=false - dotnet pack never bundles a Reference, only
        PackageReference/ProjectReference content or explicit Content/None items, so they are never
        at risk of ending up in the nupkg. -->
@@ -38,7 +38,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="../README.md" Pack="true" PackagePath="\" />
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <!-- The shared build plumbing - imported from source by mods/Directory.Build.props/.targets -
@@ -49,16 +49,16 @@
        untouched. -->
   <ItemGroup>
     <None
-      Include="../build/ExpandedLib.props"
+      Include="../../build/ExpandedLib.props"
       Pack="true"
       PackagePath="build/"
     />
     <None
-      Include="../build/ExpandedLib.targets"
+      Include="../../build/ExpandedLib.targets"
       Pack="true"
       PackagePath="build/"
     />
-    <None Include="../build/LegacyUsings.cs" Pack="true" PackagePath="build/" />
+    <None Include="../../build/LegacyUsings.cs" Pack="true" PackagePath="build/" />
   </ItemGroup>
 
   <!-- The shared glob in ../../Directory.Build.targets marks this mod's assets/modinfo/modicon as
@@ -121,7 +121,7 @@
   </ItemGroup>
 
   <!-- Doubles as the game's mod icon (CopyToOutputDirectory) and the nupkg icon (Pack/PackagePath -
-       ../Directory.Build.props sets $(PackageIcon)). Kept as None rather than Content: the
+       ../../Directory.Build.props sets $(PackageIcon)). Kept as None rather than Content: the
        ExcludeAssetsFromPack target below sets Pack=false on every @(Content) item, and NuGet's own
        pack targets exclude a packed file by matching its PACKAGE-ROOT NAME against any excluded
        Content, not by source identity - a Content item here would collide with this file's own
@@ -142,7 +142,7 @@
        under analyzers/dotnet/cs/ below, so a package consumer gets the same generators. -->
   <ItemGroup>
     <ProjectReference
-      Include="..\generators\ExpandedLib.Generators.csproj"
+      Include="..\ExpandedLib.Generators\ExpandedLib.Generators.csproj"
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"
     />

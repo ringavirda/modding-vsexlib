@@ -53,13 +53,13 @@
     <!-- Copy exlib.dll into the test bin so the runner can load it headlessly (the game is not
          present to provide it). It is a normal managed assembly; its VS deps are resolved by
          VsAssemblyResolver from the $(VINTAGE_STORY) install. -->
-    <ProjectReference Include="..\src\ExpandedLib.csproj" />
-    <ProjectReference Include="..\industry\ExpandedLib.Industry.csproj" />
-    <ProjectReference Include="..\testing\ExpandedLib.Testing.csproj" />
+    <ProjectReference Include="..\..\src\ExpandedLib\ExpandedLib.csproj" />
+    <ProjectReference Include="..\..\src\ExpandedLib.Industry\ExpandedLib.Industry.csproj" />
+    <ProjectReference Include="..\..\src\ExpandedLib.Testing\ExpandedLib.Testing.csproj" />
     <!-- ExModSystemTests needs a real [ExConfigRegister] config in THIS assembly so its generated
          accessor carries [ExConfigAccessor] for ExConfig.LoadAll to find. -->
     <ProjectReference
-      Include="..\generators\ExpandedLib.Generators.csproj"
+      Include="..\..\src\ExpandedLib.Generators\ExpandedLib.Generators.csproj"
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"
     />

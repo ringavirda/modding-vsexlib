@@ -15,14 +15,14 @@
          three builds don't overwrite each other - same layout as ExpandedLib.csproj's own output. -->
     <OutputPath
       Condition="'$(IsCurrentGame)' != 'true' and '$(TargetFramework)' != ''"
-      >..\src\bin\$(Configuration)\$(TargetFramework)\Mods\mod</OutputPath>
+      >..\ExpandedLib\bin\$(Configuration)\$(TargetFramework)\Mods\mod</OutputPath>
     <OutputPath Condition="'$(OutputPath)' == ''"
-      >..\src\bin\$(Configuration)\Mods\mod</OutputPath>
+      >..\ExpandedLib\bin\$(Configuration)\Mods\mod</OutputPath>
     <Nullable>enable</Nullable>
     <!-- Assembly name matches the mod-relative dll the docs and the split plan name it by. -->
     <AssemblyName>exlib.industry</AssemblyName>
     <RootNamespace>ExpandedLib.Industry</RootNamespace>
-    <!-- Deliberately unset: the assets under ../assets/ are exlib's own domain and are already
+    <!-- Deliberately unset: the assets under ../ExpandedLib/assets/ are exlib's own domain and are already
          globbed once by ExpandedLib.csproj (AssetDomain=exlib there). Setting it here would pull
          the same Content items into this project too and ship them twice in the packaged zip. -->
     <!-- ../../Directory.Build.props only wires GenerateDocumentationFile/NoWarn for a project with
@@ -37,7 +37,7 @@
 
   <!-- NuGet pack metadata. PackageId, Description and IsPackable stay here - the rest (version,
        authors, urls, license, readme filename, icon, tags, symbols) is shared across the three
-       packable exlib projects and lives in ../Directory.Build.props. -->
+       packable exlib projects and lives in ../../Directory.Build.props. -->
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>ExpandedLib.Industry</PackageId>
@@ -87,7 +87,7 @@
     <!-- The framework this assembly builds on. Private=false, the same way the mods reference
          exlib: the game already has exlib.dll loaded from the same mod folder, so this project
          must not copy a second one alongside its own output. -->
-    <ProjectReference Include="..\src\ExpandedLib.csproj">
+    <ProjectReference Include="..\ExpandedLib\ExpandedLib.csproj">
       <Private>false</Private>
     </ProjectReference>
   </ItemGroup>
@@ -98,7 +98,7 @@
        generator reference ExpandedLib.csproj carries. -->
   <ItemGroup>
     <ProjectReference
-      Include="..\generators\ExpandedLib.Generators.csproj"
+      Include="..\ExpandedLib.Generators\ExpandedLib.Generators.csproj"
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"
     />

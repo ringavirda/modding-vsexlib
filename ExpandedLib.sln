@@ -5,17 +5,17 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpandedLib", "src\ExpandedLib.csproj", "{BA92DD4C-1B20-439F-82FF-19A604310AA3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpandedLib", "src\ExpandedLib\ExpandedLib.csproj", "{BA92DD4C-1B20-439F-82FF-19A604310AA3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpandedLib.Generators", "generators\ExpandedLib.Generators.csproj", "{8374C813-C9AB-4BCF-BD9E-6A9CE9C7E51F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpandedLib.Generators", "src\ExpandedLib.Generators\ExpandedLib.Generators.csproj", "{8374C813-C9AB-4BCF-BD9E-6A9CE9C7E51F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpandedLib.Industry", "industry\ExpandedLib.Industry.csproj", "{0240D58E-0D36-4782-8EC5-2192CF02F052}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpandedLib.Industry", "src\ExpandedLib.Industry\ExpandedLib.Industry.csproj", "{0240D58E-0D36-4782-8EC5-2192CF02F052}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpandedLib.Testing", "testing\ExpandedLib.Testing.csproj", "{2B1D72B3-D6D7-4F3A-BA78-E9CFCAD91B5B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpandedLib.Testing", "src\ExpandedLib.Testing\ExpandedLib.Testing.csproj", "{2B1D72B3-D6D7-4F3A-BA78-E9CFCAD91B5B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpandedLib.Tests", "tests\ExpandedLib.Tests.csproj", "{48F02572-F2FF-4052-8711-24E3C307B400}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpandedLib.Tests", "tests\ExpandedLib.Tests\ExpandedLib.Tests.csproj", "{48F02572-F2FF-4052-8711-24E3C307B400}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5D20AA90-6969-D8BD-9DCD-8634F4692FDA}"
 EndProject

@@ -52,7 +52,7 @@ jobs:
       - name: Restore
         run: dotnet restore ExpandedLib.sln
 
-      # Collects cobertura over the solution and ratchets it against infra/test/coverage-floors.json.
+      # Collects cobertura over the solution and ratchets it against tests/coverage-floors.json.
       # The same command a contributor runs locally, so the gate cannot drift from what CI enforces.
       - name: Run tests with coverage
         run: bash scripts/exmod.sh test -Coverage

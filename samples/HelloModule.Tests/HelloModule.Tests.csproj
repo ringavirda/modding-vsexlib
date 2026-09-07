@@ -49,8 +49,8 @@
        reference stays plain (no ExcludeAssets) in both branches - a test project loads exlib.dll
        and ExpandedLib.Testing.dll at test time, unlike the mod project which never ships either. -->
   <ItemGroup Condition="'$(ExlibRoot)' != ''">
-    <ProjectReference Include="$(ExlibRoot)src\ExpandedLib.csproj" />
-    <ProjectReference Include="$(ExlibRoot)testing\ExpandedLib.Testing.csproj" />
+    <ProjectReference Include="$(ExlibRoot)src\ExpandedLib\ExpandedLib.csproj" />
+    <ProjectReference Include="$(ExlibRoot)src\ExpandedLib.Testing\ExpandedLib.Testing.csproj" />
   </ItemGroup>
   <ItemGroup Condition="'$(ExlibRoot)' == ''">
     <PackageReference Include="ExpandedLib" />
