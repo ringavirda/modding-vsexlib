@@ -12,7 +12,7 @@ Full public surface of `ExpandedLib.Testing`. For setup and worked examples see 
 | `Scenes/` | `Scene`, `SceneDiagram`, `SceneGrid` |
 | `Rigs/` | `StructureRig`, `StructureTestHooks`, `MachineRig`, `MachineTestHooks`, `RegistryLawScanner`, `ResourceInvariant<TState>`, `StaticStateCollection`, `HarmonyFixture` |
 | `Doubles/` | stand-ins: `StubNetwork`, `TestNetworkBlock`, `NetworkNodeTestHooks`, `CapturingNode`, `SeverableNode`, `OrientableNode`, `RccFake`, `TestMemberBlockEntity`, `MechPower`; supported doubles: `TestPlayer`, `TestInventory`, `TestModLoader`, `WorldConfigBag`, `ModConfigFiles`, `RecordingLogger`, `TestChannels` |
-| `Checks/` | the content validators: `CodeLiterals`, `CodePrefixCollision`, `CostSelectorOverlap`, `DefinitionAssets`, `DefinitionCatalogue`, `DefinitionCodes`, `DefinitionGoldens`, `DefinitionJson`, `DefinitionParity`, `HandbookSync`, `LangCallSites`, `LangCoverage`, `LangKeys`, `LangParity`, `LayoutTable`, `LoopingAnimations`, `MegablockFrames`, `MultiblockCodes`, `NetworkNodeContract`, `PinnedNetworkNodes`, `PressureVesselGate`, `RecipeCodes`, `ReferencedCodes`, `ShapeExtents`, `ShippedJson`, `TreeKeys`, `VanillaToolTiers`, `WikiParity` |
+| `Checks/` | the content validators: `CodeLiterals`, `CodePrefixCollision`, `CostSelectorOverlap`, `DefinitionAssets`, `DefinitionCatalogue`, `DefinitionCodes`, `DefinitionGoldens`, `DefinitionJson`, `DefinitionParity`, `HandbookSync`, `LangCallSites`, `LangCoverage`, `LangKeys`, `LangParity`, `LayoutTable`, `LoopingAnimations`, `MegablockFrames`, `MultiblockCodes`, `NetworkNodeContract`, `PinnedNetworkNodes`, `PressureVesselGate`, `RecipeCodes`, `ReferencedCodes`, `SelectorCoverage`, `ShapeExtents`, `ShippedJson`, `TreeKeys`, `VanillaToolTiers`, `WikiParity` |
 | `Repo/` | `RepoPaths`, `RepoManifest`, `ReleasedHistory`, `ReleasedCodes`, `ReleasedVersions`, `ReleasedCodeDebt`, `BlockCodeEmitter`, `RepoCheckSource` |
 | (root) | `ReflectionHelpers` |
 
@@ -620,6 +620,7 @@ pairs.
 | `PressureVesselGate` | The one place a fastener choice is a hard gate rather than a substitution: a pressure vessel must be riveted. |
 | `RecipeCodes` | Every grid recipe's block output names a block the mod registers (an output is exact, never a wildcard selector). |
 | `ReferencedCodes` | Every code a mod's recipes, construction stages and definition bodies point at (as opposed to register) that names nothing. |
+| `SelectorCoverage` | Every block code a golden blocktype's `variantgroups` produce matches a `shapeByType` pattern, and every handbook `groupBy` selector it declares matches a shipped code somewhere in its domain's golden corpus. |
 | `ShapeExtents` | The bounding box (in voxels) of everything a shape file draws. |
 | `ShippedJson` | Every JSON asset under one shipped tree parses, carries no control character, and (under `patches/`) declares the side each entry runs on. |
 | `TreeKeys` | Golden-file oracle for a block entity's save shape - the keys `ToTreeAttributes` writes, pinned against a committed golden the same way `DefinitionGoldens` pins a def's JSON; see [Testing Harness § Pinning a block entity's save shape](Testing-Harness#pinning-a-block-entitys-save-shape). |

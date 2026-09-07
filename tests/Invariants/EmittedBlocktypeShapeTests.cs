@@ -1,213 +1,37 @@
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
-using Vintagestory.API.Util;
 using ExpandedLib.Testing;
 using Xunit;
 
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The two selector families anchored on an emitted block code, both of which fail silently when the
-/// code moves out from under them: <c>shapeByType</c>, which leaves a variant with no shape, and the
-/// handbook's <c>groupBy</c>, which leaves an entry ungrouped. Inserting a variant group ahead of an
-/// existing one is how a code moves, and neither an unmatched shape pattern nor an unmatched group
-/// selector is an error.
-/// <para>
-/// The goldens are the emitted blocktypes, so checking them covers the code-first definitions
-/// without needing a running game.
-/// </para>
+/// The selector-coverage rule (<see cref="SelectorCoverage"/>) over exlib's own golden blocktypes.
 /// </summary>
 public class EmittedBlocktypeShapeTests {
-  public static TheoryData<string> EveryGoldenBlocktype() {
-    var data = new TheoryData<string>();
-    foreach (string path in GoldenBlocktypes())
-      data.Add(path);
-    return data;
+  [Fact]
+  public void Every_block_variant_resolves_a_shape() {
+    var findings = new List<string>();
+    foreach (string path in SelectorCoverage.GoldenBlocktypes("exlib"))
+      findings.AddRange(SelectorCoverage.Check(path).shapeByType);
+
+    Assert.True(findings.Count == 0, string.Join("\n", findings));
   }
 
-  [Theory]
-  [MemberData(nameof(EveryGoldenBlocktype))]
-  public void Every_block_variant_resolves_a_shape(string repoRelativePath) {
-    using JsonDocument doc = Parse(repoRelativePath);
-    JsonElement root = doc.RootElement;
-    if (root.ValueKind != JsonValueKind.Object)
-      return;
+  [Fact]
+  public void Every_handbook_group_selector_matches_a_shipped_code() {
+    var findings = new List<string>();
+    foreach (string path in SelectorCoverage.GoldenBlocktypes("exlib"))
+      findings.AddRange(SelectorCoverage.Check(path).groupBy);
 
-    JsonElement shapes = default;
-    foreach (JsonProperty p in root.EnumerateObject())
-      if (p.NameEquals("shapebytype") || p.NameEquals("shapeByType"))
-        shapes = p.Value;
-    if (shapes.ValueKind != JsonValueKind.Object)
-      return;
-
-    var patterns = shapes.EnumerateObject().Select(p => p.Name).ToList();
-    var unmatched = BlockCodes(root)
-      .Where(code => !patterns.Any(pat => WildcardUtil.Match(pat, code)))
-      .ToList();
-
-    Assert.True(
-      unmatched.Count == 0,
-      $"{repoRelativePath}: {unmatched.Count} variant(s) match no shape pattern "
-        + $"[{string.Join(", ", patterns)}]: {string.Join(", ", unmatched.Take(6))}"
-    );
+    Assert.True(findings.Count == 0, string.Join("\n", findings));
   }
 
-  /// <summary>
-  /// A handbook group selector is matched against a whole collectible code, and one carrying no domain
-  /// is qualified with the grouping block's own before matching
-  /// (<c>SlideshowItemstackTextComponent</c>). It selects across blocktypes - the four pipe segments
-  /// each list all four of their tier's shapes - so the corpus is the whole domain, not one def.
-  /// </summary>
-  [Theory]
-  [MemberData(nameof(EveryGoldenBlocktype))]
-  public void Every_handbook_group_selector_matches_a_shipped_code(
-    string repoRelativePath
-  ) {
-    using JsonDocument doc = Parse(repoRelativePath);
-    var selectors = HandbookGroups(doc.RootElement);
-    if (selectors.Count == 0)
-      return;
-
-    string domain = DomainOf(repoRelativePath);
-    IReadOnlyList<string> corpus = _qualifiedCodes.Value;
-    var unmatched = selectors
-      .Where(sel => {
-        string qualified = sel.Contains(':') ? sel : $"{domain}:{sel}";
-        return !corpus.Any(code => WildcardUtil.Match(qualified, code));
-      })
-      .ToList();
-
-    Assert.True(
-      unmatched.Count == 0,
-      $"{repoRelativePath}: {unmatched.Count} handbook groupBy selector(s) match no shipped "
-        + $"block code (resolved against domain {domain}): {string.Join(", ", unmatched)}"
-    );
+  [Fact]
+  public void The_golden_corpus_is_not_empty() {
+    // exlib's own corpus is one file today (goldens/exlib/blocktypes/structurefiller.json), which
+    // declares neither shapeByType nor a handbook groupBy - both rules above pass vacuously on it.
+    // Asserting the corpus itself is non-empty is what stops a renamed goldens/ or blocktypes/
+    // folder from reading as "every selector resolves".
+    Assert.NotEmpty(SelectorCoverage.GoldenBlocktypes("exlib"));
   }
-
-  // The two corpus-integrity checks that used to sit here (asserting at least one golden carries a
-  // handbook groupBy, and at least one a shapeByType map) are family territory: ExBlockDef exposes
-  // both as generic builder methods (see ExBlockDef.Handbook/ShapeByType), but exlib ships no
-  // gameplay block of its own that calls either, so the corpus is vacuously clean by construction
-  // here. The family mods (exmods) are where a golden actually carries one, and where the premise -
-  // and so these checks - belong.
-
-  #region Corpus
-
-  /// <summary>The <c>attributes.handbook.groupBy</c> selectors a blocktype declares, or empty.</summary>
-  private static List<string> HandbookGroups(JsonElement root) {
-    if (
-      root.ValueKind != JsonValueKind.Object
-      || !root.TryGetProperty("attributes", out JsonElement attrs)
-      || !attrs.TryGetProperty("handbook", out JsonElement handbook)
-      || !handbook.TryGetProperty("groupBy", out JsonElement groups)
-      || groups.ValueKind != JsonValueKind.Array
-    )
-      return [];
-
-    return [.. groups.EnumerateArray().Select(g => g.GetString() ?? "")];
-  }
-
-  // Built once: the theory runs per golden and each case needs the whole corpus.
-  private static readonly Lazy<IReadOnlyList<string>> _qualifiedCodes = new(
-    () =>
-      [.. QualifiedCodes()]
-  );
-
-  /// <summary>Every block code every golden emits, domain-qualified.</summary>
-  private static IEnumerable<string> QualifiedCodes() {
-    foreach (string path in GoldenBlocktypes()) {
-      string domain = DomainOf(path);
-      using JsonDocument doc = Parse(path);
-      foreach (string code in BlockCodes(doc.RootElement))
-        yield return $"{domain}:{code}";
-    }
-  }
-
-  // goldens/<domain>/blocktypes/... - the golden JSON carries the bare code, not the domain.
-  private static string DomainOf(string repoRelativePath) {
-    string[] parts = repoRelativePath.Split('/');
-    int i = Array.IndexOf(parts, "goldens");
-    return i >= 0 && i + 1 < parts.Length ? parts[i + 1] : "";
-  }
-
-  /// <summary>Every full block code the definition's variant groups produce.</summary>
-  private static IEnumerable<string> BlockCodes(JsonElement root) {
-    string code = root.TryGetProperty("code", out JsonElement c)
-      ? c.GetString() ?? ""
-      : "";
-    if (code.Length == 0)
-      yield break;
-
-    var axes = new List<string[]>();
-    if (root.TryGetProperty("variantgroups", out JsonElement groups))
-      foreach (JsonElement g in groups.EnumerateArray()) {
-        if (g.TryGetProperty("states", out JsonElement states))
-          axes.Add([
-            .. states.EnumerateArray().Select(s => s.GetString() ?? ""),
-          ]);
-        else
-          // The only loadFromProperties in use is the horizontal orientation.
-          axes.Add(["north", "south", "east", "west"]);
-      }
-
-    IEnumerable<string> codes = [code];
-    foreach (string[] axis in axes)
-      codes = codes.SelectMany(prefix => axis.Select(v => prefix + "-" + v));
-    foreach (string full in codes)
-      yield return full;
-  }
-
-  private static List<string> GoldenBlocktypes() {
-    string root = RepoRoot();
-    var files = new List<string>();
-    foreach (string mod in RepoManifest.Mods.Values) {
-      string tests = Path.Combine(mod, "tests");
-      if (!Directory.Exists(tests))
-        continue;
-
-      foreach (
-        string file in Directory.EnumerateFiles(
-          tests,
-          "*.json",
-          SearchOption.AllDirectories
-        )
-      ) {
-        string rel = Path.GetRelativePath(root, file).Replace('\\', '/');
-        if (rel.Contains("/bin/") || rel.Contains("/obj/"))
-          continue;
-        if (
-          !rel.Contains("/goldens/", StringComparison.Ordinal)
-          || !rel.Contains("/blocktypes/", StringComparison.Ordinal)
-        )
-          continue;
-        files.Add(rel);
-      }
-    }
-    return files;
-  }
-
-  private static JsonDocument Parse(string repoRelativePath) =>
-    JsonDocument.Parse(
-      File.ReadAllText(Path.Combine(RepoRoot(), repoRelativePath)),
-      new JsonDocumentOptions {
-        CommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-      }
-    );
-
-  private static string RepoRoot() {
-    DirectoryInfo? dir = new(AppContext.BaseDirectory);
-    while (
-      dir != null
-      && !File.Exists(Path.Combine(dir.FullName, "ExpandedLib.sln"))
-    )
-      dir = dir.Parent;
-    Assert.True(dir != null, "could not locate repo root (ExpandedLib.sln)");
-    return dir!.FullName;
-  }
-
-  #endregion
 }
