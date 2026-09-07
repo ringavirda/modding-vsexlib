@@ -16,7 +16,7 @@ with the minimum version you build against:
   "version": "1.0.0",
   "dependencies": {
     "game": "1.22.0",
-    "exlib": "0.7.3"
+    "exlib": "0.8.0-preview.1"
   }
 }
 ```
