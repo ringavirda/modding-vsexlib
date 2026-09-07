@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using ExpandedLib.Definitions;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -20,10 +21,13 @@ namespace ExpandedLib.Structures;
 public static class JsonMultiblockLayout {
   // Blocks are singletons per registered variant, one instance per side; resolving twice would either
   // redo the work for nothing or, on a malformed layout, log the same Error once per block entity ever
-  // placed. Reference equality: two variants of one block code are two different Block instances.
-  private static readonly HashSet<Block> _resolved = new(
-    ReferenceEqualityComparer.Instance
-  );
+  // placed. A weak table rather than a HashSet: a dedicated server loads one world per process, so a
+  // HashSet would root every mega-block variant's Block - and the ICoreAPI it carries - for the life of
+  // the process across every client rejoin. TryAdd is already thread-safe, so no lock is needed.
+  private static readonly ConditionalWeakTable<Block, object> _resolved = new();
+
+  // The value TryAdd needs but this table never reads back - only the key's presence matters.
+  private static readonly object _marker = new();
 
   /// <summary>
   /// Resolves <paramref name="block"/>'s <c>multiblockLayout</c> attribute, if any, into
@@ -32,10 +36,8 @@ public static class JsonMultiblockLayout {
   /// <c>OnLoaded</c>, including one that never declares the attribute.
   /// </summary>
   public static void Resolve(Block block, ILogger logger) {
-    lock (_resolved) {
-      if (!_resolved.Add(block))
-        return;
-    }
+    if (!_resolved.TryAdd(block, _marker))
+      return;
 
     JsonObject? layoutAttr = block.Attributes?["multiblockLayout"];
     if (layoutAttr is not { Exists: true })

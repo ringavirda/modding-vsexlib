@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using ExpandedLib.Definitions;
 using ExpandedLib.Registries;
@@ -165,6 +166,37 @@ public class JsonMultiblockTests {
     Assert.True(
       JToken.DeepEquals(expected, block.Attributes["fillerOffsets"].Token)
     );
+  }
+
+  [Fact]
+  public void A_resolved_block_is_collectable_once_nothing_else_holds_it() {
+    // JsonMultiblockLayout keeps its resolve-once record in a ConditionalWeakTable, not a HashSet, so
+    // resolving a block does not itself keep that block (and everything it roots, e.g. a session's
+    // ICoreAPI) alive across a client rejoin.
+    WeakReference weak = Resolve();
+    GC.Collect();
+    GC.WaitForPendingFinalizers();
+    GC.Collect();
+
+    Assert.False(weak.IsAlive);
+
+    // Not inlined into the test method: a local variable holding the block would itself be a root the
+    // collector could see, keeping it alive regardless of what JsonMultiblockLayout retains.
+    static WeakReference Resolve() {
+      TestWorld world = NewWorld();
+      var block = TestBlocks.Configure(
+        new BlockFilledMegastructure(),
+        "exlib:collectmega-n",
+        5
+      );
+      block.Attributes = new JsonObject(
+        JToken.Parse(
+          """{ "multiblockLayout": { "legend": { "C": "exlib:collectmega-n" }, "layers": [["C"]] } }"""
+        )
+      );
+      block.OnLoaded(world.Api);
+      return new WeakReference(block);
+    }
   }
 
   [Fact]
