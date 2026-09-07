@@ -7,6 +7,37 @@ see the git history.
 
 ## [Unreleased]
 
+### Added
+
+- **Three more registration kinds** on the attribute rung: `[EntityRegister]`,
+  `[EntityBehaviorRegister]` and `[CropBehaviorRegister]`, handled by `EntityRegistry.RegisterAll`
+  in `Start` beside the six existing kinds.
+- **`ExRecipeRegistry`** registers a `RecipeRegistryGeneric<T>` for a mod's own recipe type on both
+  sides in `Start`, with the recipe asset load server-side in `AssetsLoaded`.
+- **`ExWorldData` and `ExChunkData`**: typed per-world (`ISaveGame`) and per-chunk (`IWorldChunk`
+  moddata) side-band data, keyed `{domain}:{key}`. A `ChunkColumnSweeperModSystem` that declares a
+  version sweeps each column once per version and marks it in chunk moddata; a sweeper without one
+  keeps sweeping on every load.
+- **`LateDefinitionCheck`**: a code-first block, item or recipe definition registered after the
+  injection pass at `AssetsLoaded` 0.04 is reported by name, with the remedy, from `AssetsFinalize`
+  and `/exmod verify`.
+- A second type claiming a bare `{ShortId}`/`{shortid}` block-entity alias key is logged as an
+  error naming both types; the aliases themselves stay.
+- `ModSystemOrderTests`: every exlib ModSystem overriding `AssetsLoaded` or `AssetsFinalize`
+  declares an `ExecuteOrder` below the 0.1 consumer default.
+
+### Changed
+
+- `ExpandedLibModSystem` runs at `ExecuteOrder` 0.06 and `ExModSystem` at an explicit 0.1, so the
+  framework's `AssetsFinalize` (its five catalogue loads and the content checks) precedes every
+  consumer's by order rather than by the dependency tie-break the Lifecycle page used to assert.
+  The module driver stays at 0.03 and definition injection at 0.04.
+- Content-check errors are logged at Warning.
+- `IExModule.AssetsLoaded` is documented as running at the host's order, ahead of the JSON patch
+  loader at 0.05, so an asset read there sees unpatched JSON; a catalogue read belongs in
+  `AssetsFinalize`. The Lifecycle, Modules and Extending-Processes pages say the same, and the
+  metal catalogue's patch caveat sits beside the route caveat.
+
 ## [0.8.0-preview.1] - 2026-09-07
 
 ### Added
