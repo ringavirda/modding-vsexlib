@@ -1,0 +1,7 @@
+{
+  "assemblies": {
+    "exlib": { "display": "ExpandedLib", "floor": 68.0 },
+    "exlib.industry": { "display": "ExpandedLib.Industry", "floor": 75.0 }
+  },
+  "total_floor": 60.0
+}
