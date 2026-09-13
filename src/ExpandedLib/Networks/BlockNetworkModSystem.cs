@@ -28,14 +28,24 @@ public class BlockNetworkModSystem : ModSystem {
   private readonly Dictionary<Guid, HashSet<BlockPos>> _unreadableNodes = [];
 
   /// <summary>
-  /// Registers a factory that creates a new typed network instance for the
-  /// given <paramref name="networkType"/> (e.g. "gas", "molten").
-  /// Call once during <c>ModSystem.Start</c>.
+  /// Registers the factory for <paramref name="networkType"/>. A later registration for the same
+  /// type replaces the earlier one, which is how a content mod supplies a strategy for a type
+  /// Industry registered with defaults; the replacement is logged and reported by the return value.
   /// </summary>
-  public void RegisterNetworkType(
-    string networkType,
-    Func<BlockNetwork> factory
-  ) => _factories[networkType] = factory;
+  /// <returns><c>true</c> when an earlier factory for the type was replaced.</returns>
+  public bool RegisterNetworkType(string networkType, Func<BlockNetwork> factory) {
+    bool replaced = _factories.ContainsKey(networkType);
+    _factories[networkType] = factory;
+    if (replaced)
+      Mod?.Logger?.Notification(
+        "[exlib] Block network type '{0}' re-registered; the later factory wins.",
+        networkType
+      );
+    return replaced;
+  }
+
+  /// <summary>Every network type a factory has been registered for.</summary>
+  public IReadOnlyCollection<string> RegisteredNetworkTypes => _factories.Keys;
 
   /// <summary>
   /// Server world accessor, available to network instances during their tick (e.g.

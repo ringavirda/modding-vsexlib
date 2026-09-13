@@ -1,7 +1,11 @@
 using ExpandedLib.Catalogues;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
+using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Industry.Metals;
+using ExpandedLib.Industry.Molten;
+using ExpandedLib.Industry.Pipes;
+using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 
@@ -23,6 +27,22 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
   /// </summary>
   public void StartPre(ICoreAPI api) =>
     ExBlockNames.AddVariantQualifier("refractory", "exlib:refractory-");
+
+  /// <summary>
+  /// Registers the three network types this module ships, each with its defaults, so a mod that
+  /// depends on exlib places pipes, canals and shafts with no registration of its own. A content mod
+  /// that needs a strategy re-registers the type in its own <c>Start</c>, which runs after this
+  /// host's, and the manager keeps the later factory.
+  /// </summary>
+  public void Start(ICoreAPI api) =>
+    RegisterNetworkTypes(api.ModLoader.GetModSystem<BlockNetworkModSystem>());
+
+  /// <summary>The registrations <see cref="Start"/> makes, callable without a mod loader.</summary>
+  public static void RegisterNetworkTypes(BlockNetworkModSystem networks) {
+    networks.RegisterNetworkType("pipe", () => new PipeNetwork(networks));
+    networks.RegisterNetworkType("molten", () => new MoltenNetwork(networks));
+    networks.RegisterNetworkType("mpenergy", () => new MpEnergyNetwork(networks));
+  }
 
   /// <summary>
   /// Emits the generated metal resource item family (ingot/plate/rod/nails/bits per opted-in metal)

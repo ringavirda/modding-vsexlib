@@ -44,16 +44,22 @@ that carries your gameplay state (pressure, fluid, temperature...).
 
 ## Registering a network type
 
-Once, during `ModSystem.Start`, give the manager a factory for your network type:
+`IndustryModule` registers `pipe`, `molten` and `mpenergy` with their defaults in its own `Start`,
+so a mod placing `BlockNetworkNode`s on any of the three registers nothing itself. A mod that needs
+a strategy the default does not carry - a gas-vent, a medium taxonomy - re-registers the type in
+its own `Start`, which runs after the host's; `RegisterNetworkType` keeps the later factory and
+returns `true` to say so:
 
 ```csharp
 public override void Start(ICoreAPI api)
 {
     var networks = api.ModLoader.GetModSystem<BlockNetworkModSystem>();
-    // iiex's pipe: the vent strategy is optional content (the vanilla-chimney gas draw).
-    networks.RegisterNetworkType("pipe", () => new PipeNetwork(networks, new IiexChimneyVent()));
-    // iiex's molten canals need no extra pieces beyond the IMoltenCell block entities.
-    networks.RegisterNetworkType("molten", () => new MoltenNetwork(networks));
+    // iiex's pipe: the vent strategy draws gas through a chimney-ventable fitting, so the pipe
+    // network needs iiex's own factory in place of Industry's default.
+    networks.RegisterNetworkType(
+        "pipe",
+        () => new PipeNetwork(networks, new ChimneyVent(() => IiexValues.ChimneyGasDrawRate))
+    );
 }
 ```
 
