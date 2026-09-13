@@ -9,7 +9,7 @@
     <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
   </PropertyGroup>
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
-  <Import Project="../../Directory.Build.props" />
+  <Import Project="../../../Directory.Build.props" />
 
   <PropertyGroup>
     <TargetFramework>$(CurrentGameTfm)</TargetFramework>
@@ -44,7 +44,7 @@
     <PackageReference Include="NSubstitute" />
   </ItemGroup>
 
-  <!-- Dual mode, same switch as HelloModule.csproj: source mode ProjectReferences exlib and the
+  <!-- Dual mode, same switch as Grains.csproj: source mode ProjectReferences exlib and the
        harness straight from the checkout, package mode takes them from NuGet. The harness's
        reference stays plain (no ExcludeAssets) in both branches - a test project loads exlib.dll
        and ExpandedLib.Testing.dll at test time, unlike the mod project which never ships either. -->
@@ -58,7 +58,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HelloModule\HelloModule.csproj" />
+    <ProjectReference Include="..\src\Grains.csproj" />
   </ItemGroup>
   <!-- Explicit import: GamePath (used above via HintPath) lives in ExpandedLib.targets,
        imported after the project body - the Directory.Build.props import above only carries
@@ -67,7 +67,7 @@
        ($(ExlibRoot) != ''): in package mode the ExpandedLib PackageReference above pulls the same
        file in automatically, and importing both ways would double it up. -->
   <Import
-    Project="../../build/ExpandedLib.targets"
+    Project="../../../build/ExpandedLib.targets"
     Condition="'$(ExlibRoot)' != ''"
   />
 

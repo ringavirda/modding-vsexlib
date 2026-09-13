@@ -7,7 +7,7 @@
   },
   "samples": {
     "helloexpanded": { "path": "samples/HelloExpanded", "tests": "samples/HelloExpanded.Tests" },
-    "hellomodule":   { "path": "samples/HelloModule",   "tests": "samples/HelloModule.Tests" }
+    "grains":        { "path": "samples/Grains",        "tests": "samples/Grains/tests" }
   },
   "tests": ["tests/ExpandedLib.Tests"],
   "packages": ["src/ExpandedLib", "src/ExpandedLib.Industry", "src/ExpandedLib.Testing"],
