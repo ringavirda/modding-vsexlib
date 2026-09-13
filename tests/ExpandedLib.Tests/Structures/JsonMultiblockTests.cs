@@ -169,6 +169,37 @@ public class JsonMultiblockTests {
   }
 
   [Fact]
+  public void A_declared_empty_fillerOffsets_is_not_replaced_by_the_derived_footprint() {
+    TestWorld world = NewWorld();
+
+    var block = BlockWithLayout(
+      world,
+      "exlib:quernmega-n",
+      6,
+      """
+      {
+        "multiblockLayout": {
+          "legend": { "C": "exlib:quernmega-n", "Q": "game:quern-*" },
+          "layers": [["C"], ["Q"]]
+        },
+        "fillerOffsets": []
+      }
+      """
+    );
+
+    Assert.Empty(StructureFillers.ReadOffsets(block.Attributes?["fillerOffsets"]));
+  }
+
+  // Builds a BlockFilledMegastructure with the given code, id and raw JSON attributes, resolved
+  // through OnLoaded the way a real blocktype load would.
+  private static Block BlockWithLayout(TestWorld world, string code, int id, string attributesJson) {
+    var block = TestBlocks.Configure(new BlockFilledMegastructure(), code, id);
+    block.Attributes = new JsonObject(JToken.Parse(attributesJson));
+    block.OnLoaded(world.Api);
+    return block;
+  }
+
+  [Fact]
   public void A_resolved_block_is_collectable_once_nothing_else_holds_it() {
     // JsonMultiblockLayout's resolve-once record holds its key weakly, so resolving a block does not
     // itself keep that block (and everything it roots, e.g. a session's ICoreAPI) alive across a

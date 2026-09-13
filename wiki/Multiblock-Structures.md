@@ -168,7 +168,9 @@ at all. Three rungs, shortest first:
    incomplete/complete messages out of the box.
 2. **Declarative**: an `attributes.multiblockLayout` ASCII grid - the JSON twin of
    `MultiblockLayoutBuilder` - states the shape in one place. `fillerOffsets` is derived from it (every
-   drawn cell but the principal's own) unless you declare your own.
+   drawn cell but the principal's own) unless you declare your own. A designed structure of other
+   blocks, not filler cells, declares `"fillerOffsets": []`: a derived footprint would reserve every
+   drawn cell with a filler, and the player could place nothing there.
 
 ```json
 {
