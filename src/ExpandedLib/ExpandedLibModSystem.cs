@@ -6,6 +6,7 @@ using HarmonyLib;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
+using Vintagestory.API.Config;
 
 namespace ExpandedLib;
 
@@ -24,10 +25,19 @@ public class ExpandedLibModSystem : ModSystem {
   // Client-side Harmony instance for the handbook unit patch (see StartClientSide).
   private Harmony? _harmony;
 
+  // The message named at StartPre and repeated to every joining player; null when nothing clashes.
+  private string? _incompatible;
+
   // Above 0.03 so the module driver's phases - including the Industry module's metal catalogue
   // load at AssetsFinalize - land first, and below the 0.1 every consumer inherits, so exlib's own
   // AssetsFinalize below runs before theirs.
   public override double ExecuteOrder() => 0.06;
+
+  public override void StartPre(ICoreAPI api) {
+    _incompatible = IncompatibleMods.Message(api.ModLoader, Mod.Info.Version);
+    if (_incompatible != null)
+      Mod.Logger.Error(_incompatible);
+  }
 
   public override void Start(ICoreAPI api) {
     // Auto-register the library's [BlockRegister]/[BlockEntityRegister]/[BlockBehaviorRegister] classes
@@ -110,6 +120,12 @@ public class ExpandedLibModSystem : ModSystem {
 
     // Apply every registered mod's selected recipe-cost level to the live, host-authoritative recipes.
     ExRecipeProfiles.ApplyAll(api);
+
+    // Repeats the StartPre finding to every joining player, so the failure is visible without
+    // reading the server log.
+    if (_incompatible is { } message)
+      api.Event.PlayerJoin += player =>
+        player.SendMessage(GlobalConstants.GeneralChatGroup, message, EnumChatType.Notification);
   }
 
   public override void Dispose() {
