@@ -1,5 +1,5 @@
 {
-  "code": "crank",
+  "code": "drive",
   "class": "handmill.BlockCrank",
   "entityClass": "handmill.BlockEntityCrank",
   "blockmaterial": "Wood",

@@ -38,7 +38,7 @@ public partial class BlockMillCore : Block, IExBlockDefProvider {
         .MultiblockLayout(l =>
           l.Origin(-1, -1)
             .Legend('#', "game:cobblestone-*")
-            .Legend('A', $"{domain}:shaft-*")
+            .Legend('A', $"{domain}:drive-shaft-*")
             .Legend('C', $"{domain}:millcore-*")
             .Connector('A', BlockFacing.SOUTH)
             .Role('A', MillCellRoles.Axle)

@@ -1,5 +1,5 @@
 {
-  "code": "shaft",
+  "code": "drive",
   "class": "handmill.BlockShaft",
   "entityClass": "handmill.BlockEntityShaft",
   "blockmaterial": "Wood",

@@ -28,7 +28,7 @@ public partial class BlockCrank : BlockNetworkNode, IExBlockDefProvider {
   public static IEnumerable<ExBlockDef> Definitions(string domain) =>
     [
       ExBlockDef
-        .Create(domain, "crank")
+        .Create(domain, "drive", "drive/crank")
         .Class<BlockCrank>()
         .EntityClass<BlockEntityCrank>()
         .Material(EnumBlockMaterial.Wood)

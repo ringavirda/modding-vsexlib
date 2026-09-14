@@ -22,7 +22,7 @@ public partial class BlockShaft : BlockNetworkNode, IExBlockDefProvider {
   public static IEnumerable<ExBlockDef> Definitions(string domain) =>
     [
       ExBlockDef
-        .Create(domain, "shaft")
+        .Create(domain, "drive", "drive/shaft")
         .Class<BlockShaft>()
         .EntityClass<BlockEntities.BlockEntityShaft>()
         .Material(EnumBlockMaterial.Wood)

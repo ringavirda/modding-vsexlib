@@ -36,7 +36,7 @@ public class CrankTests {
     var world = new TestWorld();
     Block block = TestBlocks.Configure(
       new BlockCrank(),
-      "handmill:crank-crank-e",
+      "handmill:drive-crank-e",
       1,
       ("orientation", "e")
     );

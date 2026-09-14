@@ -60,7 +60,7 @@ public class MillCoreTests {
     // added to find the shaft's network to ITS north.
     Block crankBlock = TestBlocks.Configure(
       new BlockCrank(),
-      "handmill:crank-crank-s",
+      "handmill:drive-crank-s",
       3,
       ("orientation", "s")
     );
@@ -71,7 +71,7 @@ public class MillCoreTests {
 
     Block shaftBlock = TestBlocks.Configure(
       new BlockShaft(),
-      "handmill:shaft-shaft-ns",
+      "handmill:drive-shaft-ns",
       2,
       ("orientation", "ns")
     );

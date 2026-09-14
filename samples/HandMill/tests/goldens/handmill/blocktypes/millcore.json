@@ -55,7 +55,7 @@
     "multiblockStructure": {
       "blockNumbers": {
         "game:cobblestone-*": 1,
-        "handmill:shaft-*": 2,
+        "handmill:drive-shaft-*": 2,
         "handmill:millcore-*": 3
       },
       "offsets": [
