@@ -13,6 +13,8 @@ scratch:
 - **multiblock structures** with completion monitoring, build-outline projection and an
   invisible filler block that gives mega-blocks real per-cell collision;
 - a **production-machine** tick lifecycle base;
+- **code-first definitions** - blocks, items and recipes built in C# and injected at load, with
+  no `blocktypes/`/`itemtypes/` JSON of your own to hand-write;
 - **attribute-driven registration** for blocks/items/entities/behaviours/commands, plus a
   source-generated, versioned, live-editable **config** system;
 - a shared `/exmod` (server) and `.exmod` (client) command root, **recipe-cost** profiles,
@@ -34,6 +36,9 @@ This wiki documents both libraries the family publishes for reuse:
 
 ## Where to start
 
+- Starting a new mod from scratch? Clone
+  [exmod-starter](https://github.com/ringavirda/exmod-starter) - already wired to `exlib`, no
+  setup of your own before you build and boot it.
 - New here? Read **[Getting Started](Getting-Started)** - declare the dependency, set up a
   project reference, and register your first attribute-marked block. It walks
   [`samples/HandMill`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/HandMill) and

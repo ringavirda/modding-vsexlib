@@ -1,9 +1,14 @@
 # Expanded Library (`exlib`)
 
-Shared framework mod for the *Expanded* family
+A framework for building Vintage Story mods: block networks (pipes, wires, canals), multiblock
+structures with completion monitoring and a build outline, a production-machine tick lifecycle,
+code-first block/item/recipe definitions, attribute-driven registration, a source-generated live
+config system, a headless xUnit test harness that needs no game launch, and a module system for
+extending the framework or another mod without carrying a `ModSystem` of your own. It ships no
+gameplay content of its own - install it because another mod depends on it, or build your own mod
+on it directly. It is also the shared framework behind the *Expanded* family
 ([Iron Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/iiex),
-[Steel Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/siex)). It
-ships no gameplay content of its own - install it because another mod depends on it.
+[Steel Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/siex)).
 
 ## What it provides
 
@@ -53,10 +58,14 @@ ships no gameplay content of its own - install it because another mod depends on
 
 ## Start from the sample
 
-`samples/HandMill` is a third-party mod written against this library end to end: a hand crank and
-shaft on a mechanical-power network, a flywheel, a designed multiblock mill and a JSON-only quern
-stand, plus a full headless test suite - `samples/Grains`, the module it depends on, is a second
-mod alongside it, in the shapes the wiki's [Getting Started](wiki/Getting-Started.md) and [First
+Starting a new mod? Clone [exmod-starter](https://github.com/ringavirda/exmod-starter) - a fresh
+project already wired to `exlib`, ready to build and boot with no setup of your own.
+
+Working inside this repo, or want to read the sample before you write anything? `samples/HandMill`
+is a third-party mod written against this library end to end: a hand crank and shaft on a
+mechanical-power network, a flywheel, a designed multiblock mill and a JSON-only quern stand, plus
+a full headless test suite - `samples/Grains`, the module it depends on, is a second mod alongside
+it, in the shapes the wiki's [Getting Started](wiki/Getting-Started.md) and [First
 Machine](wiki/First-Machine.md) walks teach. Both build and boot like any other mod here
 (`dotnet build ExpandedLib.sln`, `exmod smoke`) - read them alongside the wiki rather than typing
 their snippets by hand.
