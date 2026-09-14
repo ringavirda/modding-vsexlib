@@ -88,3 +88,66 @@ jobs:
 
       - name: Smoke-test the dedicated server boot
         run: bash scripts/exmod.sh smoke -Version "$VS_VERSION"
+
+  scaffold:
+    name: Starter and templates
+    needs: test
+    runs-on: ubuntu-latest
+
+    # Proves the whole B1-B3 chain in one job: pack exlib's own packages (including the templates)
+    # into a local feed, generate the starter from exlib's manifest, scaffold every kind into it,
+    # then build and test - the same commands a fresh clone's README walks a modder through.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Cache Vintage Story install
+        uses: actions/cache@v4
+        with:
+          path: .game
+          key: vs-game-${{ env.VS_VERSION }}
+
+      - name: Provision Vintage Story (server assemblies)
+        run: bash scripts/exmod.sh provision game -Version "$VS_VERSION" -Kind server
+
+      # extools' scaffold command and the manifest-driven starter are unreleased (B5 tags and pins
+      # 0.3.0); EXTOOLS_HOME points every scripts/exmod.sh call in this job at a checkout of extools
+      # dev instead of the pinned release tag scripts/exmod.sh would otherwise clone into .extools/.
+      # Remove this checkout and env once B5 lands and the pin carries scaffold itself.
+      - name: Checkout extools dev
+        uses: actions/checkout@v4
+        with:
+          repository: ringavirda/modding-vsextools
+          ref: dev
+          path: .extools-dev
+
+      - name: Pack into a local feed
+        env:
+          EXTOOLS_HOME: ${{ github.workspace }}/.extools-dev
+        run: bash scripts/exmod.sh nuget
+
+      - name: Generate the starter, scaffold every kind, build and test it
+        env:
+          EXTOOLS_HOME: ${{ github.workspace }}/.extools-dev
+          NUGET_PACKAGES: ${{ runner.temp }}/pkgs
+          VINTAGE_STORY: ${{ github.workspace }}/.game/1.22-server
+        run: |
+          set -euo pipefail
+          version=$(jq -r .version src/ExpandedLib/modinfo.json)
+          dest="$RUNNER_TEMP/starter"
+          bash scripts/exmod.sh starter "$dest" -ExlibRoot "$GITHUB_WORKSPACE" -Version "$version"
+          cd "$dest"
+          dotnet new nugetconfig
+          dotnet nuget add source "$GITHUB_WORKSPACE/dist/nuget" --name exlib-local --configfile nuget.config
+          bash scripts/exmod.sh setup
+          bash scripts/exmod.sh new demo
+          for k in block item recipe megablock multiblock node blockbehavior entitybehavior config migration command; do
+            bash scripts/exmod.sh scaffold "$k" "Demo${k^}" -Mod demo
+          done
+          bash scripts/exmod.sh build latest
+          bash scripts/exmod.sh test latest
