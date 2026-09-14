@@ -1,40 +1,51 @@
 <p>
-  A framework for building Vintage Story mods: block networks, multiblock structures with
-  completion monitoring, a production-machine tick lifecycle, code-first block/item/recipe
-  definitions, attribute-driven registration, a source-generated live config system, a headless
-  test harness that needs no game launch, and a module system for extending the framework or
-  another mod without carrying a <code>ModSystem</code> of your own. It is also the shared
-  framework behind the
-  <a href="https://mods.vintagestory.at/iiex">Iron Industry Expanded</a> and
-  <a href="https://mods.vintagestory.at/siex">Steel Industry Expanded</a> family, so those mods
-  stay in sync and share a single block-network manager rather than one each. Building your own
-  mod on it: clone <a href="https://github.com/ringavirda/exmod-starter">exmod-starter</a> or run
-  <code>exmod scaffold</code> in an existing one.
+  A framework for building Vintage Story mods: block networks, multiblock and megablock
+  structures with completion monitoring, a production-machine tick lifecycle, code-first
+  block, item and recipe definitions, attribute-driven registration, a source-generated live
+  config system, a headless test harness that needs no game launch, and a module system for
+  extending the framework or another mod without carrying a <code>ModSystem</code> of your own.
+  It is the shared framework behind the Expanded mods, so they share one block-network manager
+  rather than one each.
 </p>
+
+<h2>Versions</h2>
+<ul>
+  <li><strong>0.8.0</strong> is the framework of the new family, <a href="https://mods.vintagestory.at/iiex">Iron Industry Expanded</a> and <a href="https://mods.vintagestory.at/siex">Steel Industry Expanded</a>, both in development and not yet released. Modders build on it today.</li>
+  <li><strong>0.7.2</strong> is what <a href="https://mods.vintagestory.at/smex">Steelmaking Expanded</a> 0.9.8 and <a href="https://mods.vintagestory.at/ppex">Pipes and Power Expanded</a> 0.6.8 need. They do not load beside 0.8: keep 0.7.2 installed while you play them.</li>
+  <li>A mod that needs this framework says so on its own page, with the version. Install that version.</li>
+</ul>
+
+<h2>For modders</h2>
+<ul>
+  <li><strong>NuGet packages</strong> - <code>ExpandedLib</code>, <code>ExpandedLib.Industry</code> (the pipe, molten-metal and mechanical-power network types), <code>ExpandedLib.Testing</code> (the headless harness) and <code>ExpandedLib.Templates</code> (the scaffolding templates), all at 0.8.0 on nuget.org. A mod project needs one <code>PackageReference</code> and a target framework.</li>
+  <li><strong>The starter</strong> - <a href="https://github.com/ringavirda/exmod-starter">exmod-starter</a>: a repository that clones, restores, builds, tests and smokes with nothing hand-edited, holding two real sample mods, a hand mill on the mechanical-power network with a flywheel megablock and a designed multiblock mill core, and the grain catalogue module it reads from.</li>
+  <li><strong>The scaffolder</strong> - <code>exmod scaffold block|item|recipe|megablock|multiblock|node|blockbehavior|entitybehavior|config|migration|command</code> puts a compiling, tested definition into an existing mod.</li>
+  <li><strong>The wiki</strong> - <a href="https://exwiki.felled-stars.org/modders/">exwiki.felled-stars.org</a>: getting started, the first machine walk-through, every module, the supported API and the checks; the same site holds the players' pages of every Expanded mod.</li>
+  <li><strong>The tools</strong> - <code>exmod</code> drives every task from a fresh clone to a tagged release; <code>exlib-verify</code> checks a mod's JSON headlessly; <code>exlib-shapes</code> renders shapes and build schematics.</li>
+</ul>
 
 <h2>Compatibility</h2>
 <ul>
   <li><strong>Game version:</strong> built for Vintage Story 1.22. Legacy 1.20 and 1.21 builds are on the GitHub releases page.</li>
   <li><strong>Multiplayer:</strong> works in singleplayer and on dedicated servers.</li>
-  <li><strong>Requires:</strong> nothing - this is itself a dependency for other mods.</li>
+  <li><strong>Requires:</strong> nothing. This is itself a dependency for other mods.</li>
   <li><strong>Languages:</strong> English, Russian, Ukrainian.</li>
   <li><strong>Save safety:</strong> safe to add to an existing world. Only remove it once no installed mod depends on it.</li>
 </ul>
-<p>Players: install this when a mod you use depends on it; such mods say so on their own pages. Modders: everything below is yours to build on, with a starter repository, a scaffolder and a wiki.</p>
 
 <h2>What it provides</h2>
 <ul>
-  <li><strong>Block networks</strong> - a generic connected-graph framework with self-orienting node blocks, merge-on-join and fracture-on-break handling, and a single network manager. iiex registers the pipe and molten-metal networks on it, and siex's machines ride them too.</li>
-  <li><strong>Multiblock structures</strong> - structure-completion monitoring, the build-outline projection (Ctrl + Shift + right-click), crash-safe highlighting of incomplete parts, and the invisible filler block that gives single-cell mega-block machines proper per-cell collision.</li>
-  <li><strong>Code-first definitions</strong> - blocks, items and recipes built in C# and injected at load, so a mod built on exlib can ship without hand-written <code>blocktypes/</code>/<code>itemtypes/</code> JSON.</li>
+  <li><strong>Block networks</strong> - a generic connected-graph framework with self-orienting node blocks, merge-on-join and fracture-on-break handling, and a single network manager. The Industry module registers the pipe, molten-metal and mechanical-power network types the family's machines ride.</li>
+  <li><strong>Multiblock and megablock structures</strong> - structure-completion monitoring, the build-outline projection (Ctrl + Shift + right-click), crash-safe highlighting of incomplete parts, and the invisible filler block that gives a megablock machine proper per-cell collision.</li>
+  <li><strong>Code-first definitions</strong> - blocks, items and recipes built in C# and injected at load, so a mod built on exlib can ship without hand-written <code>blocktypes/</code> and <code>itemtypes/</code> JSON; golden files keep the generated JSON reviewable.</li>
   <li><strong>Block-entity healing</strong> - recreates a block entity that was lost while its block survived (a load error or a server desync), so a machine never ends up an inert, unbreakable ghost. Runs on chunk load and on demand via <code>/exmod heal</code>.</li>
   <li><strong>Live config</strong> - every gameplay value is exposed through a JSON config that can also be read and changed in-game with <code>/exmod config</code>, applied immediately with no world reload.</li>
   <li><strong>Recipe-cost levels</strong> - lets each dependent mod offer cheaper or normal crafting and construction costs, switchable with <code>/exmod recipes</code>.</li>
   <li><strong>Network highlighting</strong> - <code>.exmod network hi</code> tints every networked block, a separate colour per network, so you can see which blocks share a run and where one is broken.</li>
   <li><strong>Save migrations</strong> - rewrites renamed block codes (and matching item stacks) in old saves as chunks load, so updates do not leave unknown blocks behind.</li>
-  <li><strong>Headless test harness</strong> - <code>exlib.testing</code> loads the real game assemblies and exercises network/block-entity logic under <code>dotnet test</code>, no game launch required.</li>
+  <li><strong>Headless test harness</strong> - <code>ExpandedLib.Testing</code> loads the real game assemblies and exercises network and block-entity logic under <code>dotnet test</code>, no game launch required.</li>
   <li><strong>Module system</strong> - an assembly that extends the framework or a mod built on it, driven through a host mod's lifecycle instead of carrying a <code>ModSystem</code> of its own.</li>
-  <li><strong>Shared helpers</strong> - orientation and rotation math, particle and sound catalogues, a production-machine base, content gating, and the attribute-driven registration both mods use.</li>
+  <li><strong>Shared helpers</strong> - orientation and rotation math, particle and sound catalogues, a production-machine base, content gating, and the attribute-driven registration the family uses.</li>
 </ul>
 
 <h2>Commands</h2>
@@ -48,14 +59,18 @@
 
 <h2>FAQ</h2>
 <ul>
+  <li><strong>Which version do I install?</strong> The one the mod you play names. Steelmaking Expanded and Pipes and Power Expanded name 0.7.2; the new family names 0.8.</li>
   <li><strong>Do I need to configure anything?</strong> No. It works out of the box; the dependent mods drive it.</li>
-  <li><strong>Can I remove it?</strong> Only once nothing else needs it. Removing it while iiex or siex is installed will break those mods.</li>
+  <li><strong>Can I remove it?</strong> Only once nothing else needs it. Removing it while a mod that depends on it is installed breaks that mod.</li>
   <li><strong>I see unknown blocks after updating a dependent mod.</strong> Migrations run on load; if any slipped through, replace them in creative.</li>
 </ul>
 
 <h2>Links and credits</h2>
 <ul>
   <li><strong>Source and releases:</strong> <a href="https://github.com/ringavirda/modding-vsexlib">github.com/ringavirda/modding-vsexlib</a></li>
+  <li><strong>Packages:</strong> <a href="https://www.nuget.org/packages/ExpandedLib">nuget.org/packages/ExpandedLib</a></li>
+  <li><strong>Starter:</strong> <a href="https://github.com/ringavirda/exmod-starter">github.com/ringavirda/exmod-starter</a></li>
+  <li><strong>Wiki:</strong> <a href="https://exwiki.felled-stars.org">exwiki.felled-stars.org</a></li>
   <li><strong>Contact:</strong> discord fallenstar1975</li>
   <li><strong>Logo art:</strong> <a href="https://x.com/ariburin_sfw">ariburin</a></li>
 </ul>
