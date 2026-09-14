@@ -7,6 +7,12 @@ see the git history.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-14
+
+The first stable release of the 0.8 line: the content of the three previews below, unchanged
+since 0.8.0-preview.3. Steelmaking Expanded 0.9.8 and Pipes and Power Expanded 0.6.8 stay on
+exlib 0.7.2; the new family (Iron Industry Expanded, Steel Industry Expanded) builds on this.
+
 ## [0.8.0-preview.3] - 2026-09-14
 
 ### Added
