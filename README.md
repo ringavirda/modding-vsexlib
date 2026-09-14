@@ -67,14 +67,14 @@ project already wired to `exlib`, ready to build and boot with no setup of your 
 block, structure or network node to a mod you already have? `exmod scaffold <kind> <Name>` drops
 one in from the `dotnet new` templates this library ships.
 
-Working inside this repo, or want to read the sample before you write anything? `samples/HandMill`
-is a third-party mod written against this library end to end: a hand crank and shaft on a
-mechanical-power network, a flywheel, a designed multiblock mill and a JSON-only quern stand, plus
-a full headless test suite - `samples/Grains`, the module it depends on, is a second mod alongside
-it, in the shapes the wiki's [Getting Started](https://github.com/ringavirda/modding-vsexlib/wiki/Getting-Started) and [First
-Machine](https://github.com/ringavirda/modding-vsexlib/wiki/First-Machine) walks teach. Both build and boot like any other mod here
-(`dotnet build ExpandedLib.sln`, `exmod smoke`) - read them alongside the wiki rather than typing
-their snippets by hand.
+Working inside this repo, or want to read a sample before you write anything? `samples/TwinTubBlower`
+is a third-party mod written against this library end to end: a mega-block reserving its own footprint
+for a mechanical-power port, and a gas-pipe node that produces into the network it stands in.
+`samples/BurdenMaker` is a second, unrelated mod alongside it: a 9-cell mega-block stock house raised
+through a five-stage right-click construction and rendered through a permanent pose animation, with a
+full headless test suite each. Both build and boot like any other mod here (`dotnet build
+ExpandedLib.sln`, `exmod smoke`) - read them alongside the wiki rather than typing their snippets by
+hand.
 
 ## What is supported
 
@@ -93,7 +93,7 @@ src/ExpandedLib.Testing/    the headless xUnit harness
 src/ExpandedLib.Generators/ the config/lang source generators, referenced as an analyzer
 tests/ExpandedLib.Tests/    the suite this repo's own gate runs
 build/                      the MSBuild plumbing the package ships (GamePath resolution, provisioning, asset globs)
-samples/                    HandMill and Grains, third-party mods written against this library
+samples/                    TwinTubBlower and BurdenMaker, third-party mods written against this library
 templates/                  the `dotnet new` templates a consumer installs (block, item, recipe, config, tests, ...)
 docs/                       design pages for a contributor working on this repo's own mechanics
 wiki/                       the GitHub wiki source, guarded by tests so it cannot drift from the code

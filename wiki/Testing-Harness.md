@@ -159,7 +159,7 @@ internal static class ModuleInit
 }
 ```
 
-Every test project here (`ExpandedLib.Tests`, `HandMill.Tests`, `Grains.Tests`) and in the family
+Every test project here (`ExpandedLib.Tests`, `TwinTubBlower.Tests`, `BurdenMaker.Tests`) and in the family
 mods has exactly this - a module initializer only
 runs for the assembly that declares it. `VsAssemblyResolver.Register`
 is idempotent and resolves the install via the `[AssemblyMetadata("GameInstallEnv")]` environment
@@ -609,8 +609,8 @@ variants:
 
 ```csharp
 using var world = new TestWorld();
-world.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "HandMill"));
-Block crank = world.World.GetBlock(new AssetLocation("handmill:drive-crank-n"))!;
+world.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "TwinTubBlower"));
+Block blower = world.World.GetBlock(new AssetLocation("twintubblower:blower-twintubblower-n"))!;
 ```
 
 `modPath` is a mod's folder (`modinfo.json`, `assets/<modid>/`, a compiled dll under `bin/`); every

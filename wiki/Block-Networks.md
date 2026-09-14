@@ -14,11 +14,11 @@ content-specific pieces through the seams below. You register your own network t
 > what the shipped pipes use - but a block that must also be something else, say a container or a
 > filler mega-block, hosts `BEBehaviorNetworkMember` instead of inheriting from here.
 > `BlockEntityNetworkNode` is itself only a host for that behaviour, so the two routes join
-> immediately. `samples/HandMill`'s flywheel and mill core both take this route: the flywheel is a
-> `BlockFilledMegastructure`, the core a designed multiblock, and each hosts its own membership in
-> its block entity's constructor rather than being a `BlockNetworkNode` - see [First
-> Machine](First-Machine). See [Production Machines](Production-Machines) for the same split on the
-> process axis.
+> immediately. `samples/TwinTubBlower` shows both at once: the block itself is a `BlockPipe` (so a
+> `BlockNetworkNode`), but the fillers reserved by its footprint are plain `BlockStructureFiller`
+> cells, and it is those that host a mechanical-power port and a pipe membership as behaviours
+> rather than by inheriting from here. See [Production Machines](Production-Machines) for the same
+> split on the process axis.
 
 The model (`BlockNetwork` and every `I*Node`/`I*Connector` interface - no Vintage Story block types
 involved) and the engine-facing shell (`BlockNetworkNode`, `BlockEntityNetworkNode`,

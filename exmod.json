@@ -6,8 +6,8 @@
     "exlib": { "path": "src/ExpandedLib" }
   },
   "samples": {
-    "grains":   { "path": "samples/Grains",   "tests": "samples/Grains/tests" },
-    "handmill": { "path": "samples/HandMill", "tests": "samples/HandMill/tests" }
+    "twintubblower": { "path": "samples/TwinTubBlower", "tests": "samples/TwinTubBlower/tests" },
+    "burdenmaker":   { "path": "samples/BurdenMaker",   "tests": "samples/BurdenMaker/tests" }
   },
   "tests": ["tests/ExpandedLib.Tests"],
   "packages": ["src/ExpandedLib", "src/ExpandedLib.Industry", "src/ExpandedLib.Testing", "templates"],
