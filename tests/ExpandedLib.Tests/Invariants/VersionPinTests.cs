@@ -120,28 +120,23 @@ public class VersionPinTests {
   [Fact]
   public void Every_sample_exlib_dependency_floor_matches_modinfo() {
     string version = ModinfoVersion;
-    string samplesDir = Path.Combine(RepoPaths.Root, "samples");
 
-    // Each sample's own src/modinfo.json - not Directory.EnumerateFiles(..., AllDirectories),
-    // which would also pick up stale modinfo.json copies under a sample's own bin/ output.
-    int matched = 0;
+    // Driven from exmod.json's own sample map rather than a directory walk, so a sample that
+    // moved, was renamed, or was added without a floor fails loudly instead of being skipped.
     var stale = new List<string>();
-    foreach (string sampleDir in Directory.EnumerateDirectories(samplesDir)) {
-      string file = Path.Combine(sampleDir, "src", "modinfo.json");
-      if (!File.Exists(file))
-        continue;
+    foreach ((string name, RepoManifest.SampleEntry sample) in RepoManifest.Samples) {
+      string file = Path.Combine(sample.Path, "src", "modinfo.json");
+      Assert.True(File.Exists(file), $"Sample '{name}' has no {file}.");
+
       string text = File.ReadAllText(file);
-      foreach (Match m in Regex.Matches(text, @"""exlib""\s*:\s*""([^""]+)""")) {
-        matched++;
+      MatchCollection literals = Regex.Matches(text, @"""exlib""\s*:\s*""([^""]+)""");
+      Assert.True(literals.Count > 0, $"{file} names no \"exlib\" dependency.");
+      foreach (Match m in literals) {
         if (m.Groups[1].Value != version)
           stale.Add($"{file}: exlib={m.Groups[1].Value}");
       }
     }
 
-    Assert.True(
-      matched > 0,
-      $"No sample src/modinfo.json with an \"exlib\" dependency found under {samplesDir}."
-    );
     Assert.True(
       stale.Count == 0,
       $"src/ExpandedLib/modinfo.json's version is {version}; stale sample exlib dependency"

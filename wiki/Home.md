@@ -1,9 +1,6 @@
 # Expanded Library Wiki
 
-**Expanded Library** (`exlib`) is the shared framework mod behind the
-_Fallenstar Expanded_ family for [Vintage Story](https://www.vintagestory.at/) -
-currently [Iron Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/iiex) (`iiex`) and
-[Steel Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/siex) (`siex`). It ships no
+**Expanded Library** (`exlib`) is a framework for building Vintage Story mods. It ships no
 gameplay content of its own; it gives you batteries-included systems that are tedious to build
 from scratch, so you build your own mod directly on it:
 
@@ -21,6 +18,11 @@ from scratch, so you build your own mod directly on it:
   of rotation / particle / sound / inventory **helpers**;
 - a **module** system: an assembly that extends the framework or a mod built on it, driven through
   a host mod's lifecycle instead of carrying a `ModSystem` of its own.
+
+It is also the shared framework behind the _Fallenstar Expanded_ family for
+[Vintage Story](https://www.vintagestory.at/) - currently
+[Iron Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/iiex) (`iiex`) and
+[Steel Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/siex) (`siex`).
 
 This wiki documents both libraries the family publishes for reuse:
 

@@ -5,8 +5,11 @@ structures with completion monitoring and a build outline, a production-machine 
 code-first block/item/recipe definitions, attribute-driven registration, a source-generated live
 config system, a headless xUnit test harness that needs no game launch, and a module system for
 extending the framework or another mod without carrying a `ModSystem` of your own. It ships no
-gameplay content of its own: build your own mod on the networks, multiblocks and megablocks,
-registries, headless test harness and tooling above. It is also the shared framework behind the
+gameplay content of its own: build your own mod on these networks, multiblocks and attribute-driven
+registration, starting from [exmod-starter](https://github.com/ringavirda/exmod-starter),
+scaffolding new pieces with `exmod scaffold`, and reading the
+[wiki](https://github.com/ringavirda/modding-vsexlib/wiki) alongside your own code. It is also
+the shared framework behind the
 *Expanded* family
 ([Iron Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/iiex),
 [Steel Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/siex)).
@@ -103,7 +106,8 @@ dist/                       release output (zips, NuGet packages) - not checked 
 The mod ships as one download - one modinfo, one folder, `exlib.dll` and `exlib.industry.dll` - and
 the module system means that is not a hard limit of two: any assembly, inside this folder or
 shipped as its own mod, can declare `[assembly: ExModule]` and join exlib's lifecycle without a
-`ModSystem` of its own. It ships as four NuGet packages a mod project references at compile time:
+`ModSystem` of its own. It ships as four NuGet packages: three a project references at compile time, plus the
+templates exmod scaffold installs for you:
 
 | Package | What it is |
 | --- | --- |
@@ -116,7 +120,7 @@ shipped as its own mod, can declare `[assembly: ExModule]` and join exlib's life
 [extools](https://github.com/ringavirda/modding-vsextools) rather than a package this repository ships - see
 the wiki's [Checks](https://github.com/ringavirda/modding-vsexlib/wiki/Checks) page.
 
-They are built for the current Vintage Story version only. The mod zips on the GitHub releases
+The three library packages are built for the current Vintage Story version only. The mod zips on the GitHub releases
 page cover the older versions; the packages do not, because a mod targeting an older version
 builds against a different .NET and a different game API.
 

@@ -79,9 +79,7 @@ base's job; the shaft's own class exists only to answer `Inertia`, so a run of s
 a little more than a bare crank-to-core line would. See [Block Networks](Block-Networks) for the base
 class and `SceneDiagram`'s `c===` shorthand for testing a line like this headlessly.
 
-Scaffolding a node like this one with `exmod scaffold node Shaft` leaves its golden missing until
-you bless the new definition's golden once with `EXLIB_WRITE_GOLDENS=1 bash scripts/exmod.sh test
-latest`.
+Scaffolding a node like this one with `exmod scaffold node Shaft` leaves its golden missing: bless it once with `EXLIB_WRITE_GOLDENS=1 bash scripts/exmod.sh test latest`.
 
 ## The flywheel: a filler footprint and a hosted membership
 
