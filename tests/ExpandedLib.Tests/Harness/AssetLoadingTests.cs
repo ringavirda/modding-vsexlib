@@ -79,5 +79,25 @@ public class AssetLoadingTests
       .ToString()!;
     Assert.Contains("grains.BlockBehaviorGrainInfo", json);
   }
+
+  [Fact]
+  public void Crank_block_resolves_with_its_orientation_variants()
+  {
+    string samplePath = Path.Combine(RepoPaths.Root, "samples", "HandMill");
+
+    using var world = new TestWorld();
+
+    world.LoadAssets(samplePath);
+
+    foreach (string side in new[] { "n", "e", "s", "w" })
+    {
+      Block? block = world.World.GetBlock(
+        new AssetLocation($"handmill:drive-crank-{side}")
+      );
+      Assert.NotNull(block);
+      Assert.Equal("HandMill.Blocks.BlockCrank", block!.GetType().FullName);
+      Assert.Equal(side, block.Variant["orientation"]);
+    }
+  }
 }
 #endif
