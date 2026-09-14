@@ -32,7 +32,10 @@ public class BlockEntityCrank : BlockEntityNetworkNode, IMpEnergyProducer {
 
   /// <summary>Adds <paramref name="seconds"/> of drive, capped at twice the configured wind.</summary>
   public void Wind(float seconds) {
-    _windSeconds = Math.Min(_windSeconds + seconds, HandMillValues.WindSeconds * 2f);
+    _windSeconds = Math.Min(
+      _windSeconds + seconds,
+      HandMillValues.WindSeconds * 2f
+    );
     MarkDirty();
   }
 

@@ -153,7 +153,11 @@ public class WikiParityTests {
         + "may cite would be resolved from an empty set, so any of them would read as valid"
     );
 
-    string[] wikiFiles = Directory.GetFiles(WikiDirectory, "*.md", SearchOption.AllDirectories);
+    string[] wikiFiles = Directory.GetFiles(
+      WikiDirectory,
+      "*.md",
+      SearchOption.AllDirectories
+    );
     foreach (string entry in KnownAbsent)
       Assert.True(
         wikiFiles.Any(f => File.ReadAllText(f).Contains(entry)),
