@@ -187,6 +187,7 @@ public class JsonMultiblockTests {
       """
     );
 
+    Assert.True(block.Attributes?["multiblockStructure"].Exists);
     Assert.Empty(StructureFillers.ReadOffsets(block.Attributes?["fillerOffsets"]));
   }
 
