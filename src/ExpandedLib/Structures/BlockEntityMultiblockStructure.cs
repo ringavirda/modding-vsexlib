@@ -434,13 +434,11 @@ public abstract class BlockEntityMultiblockStructure
           ProductionProcess.Stop(this);
         MarkDirty(true);
       }
-
-      if (!StructureComplete && byPlayer is IServerPlayer serverPlayer)
-        SendMissingBlocksReport(serverPlayer, missingByCode, misfacing);
     }
 
     if (Api is ICoreClientAPI clientApi) {
       if (missingCount > 0) {
+        ShowMissingBlocksReport(clientApi, missingByCode, misfacing);
         _highlightedStructure = _structure;
         clientApi.TriggerIngameError(
           this,
@@ -644,11 +642,12 @@ public abstract class BlockEntityMultiblockStructure
     || WildcardUtil.Match(wantBlockCode, StructureFillers.FillerCode);
 
   /// <summary>
-  /// Sends the player a chat breakdown of every block still missing and how many of each, resolving
-  /// (possibly wildcard) codes to readable block names.
+  /// Shows the player a chat breakdown of every block still missing and how many of each, resolving
+  /// (possibly wildcard) codes to readable block names. Client side, from the same scan that draws
+  /// the outline, so the list never depends on the gesture reaching the server.
   /// </summary>
-  private void SendMissingBlocksReport(
-    IServerPlayer player,
+  private void ShowMissingBlocksReport(
+    ICoreClientAPI clientApi,
     Dictionary<AssetLocation, int> missingByCode,
     IReadOnlyList<MissingCell> misfacing
   ) {
@@ -695,11 +694,7 @@ public abstract class BlockEntityMultiblockStructure
       );
     }
 
-    player.SendMessage(
-      GlobalConstants.GeneralChatGroup,
-      sb.ToString(),
-      EnumChatType.Notification
-    );
+    clientApi.ShowChatMessage(sb.ToString());
   }
 
   /// <summary>
