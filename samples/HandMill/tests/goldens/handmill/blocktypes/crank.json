@@ -1,0 +1,75 @@
+{
+  "code": "crank",
+  "class": "handmill.BlockCrank",
+  "entityClass": "handmill.BlockEntityCrank",
+  "blockmaterial": "Wood",
+  "maxstacksize": 64,
+  "variantgroups": [
+    {
+      "code": "orientation",
+      "states": [
+        "n",
+        "e",
+        "s",
+        "w"
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "name": "ExOrientable",
+      "properties": {
+        "mode": "network",
+        "scheme": "Face"
+      }
+    }
+  ],
+  "shapebytype": {
+    "*-n": {
+      "base": "game:block/wood/mechanics/crank",
+      "rotateY": 270
+    },
+    "*-e": {
+      "base": "game:block/wood/mechanics/crank",
+      "rotateY": 180
+    },
+    "*-s": {
+      "base": "game:block/wood/mechanics/crank",
+      "rotateY": 90
+    },
+    "*-w": {
+      "base": "game:block/wood/mechanics/crank",
+      "rotateY": 0
+    }
+  },
+  "creativeinventory": {
+    "general": [
+      "*-n"
+    ],
+    "handmill": [
+      "*-n"
+    ]
+  },
+  "collisionbox": {
+    "x1": 0.1875,
+    "y1": 0.0,
+    "z1": 0.1875,
+    "x2": 0.8125,
+    "y2": 0.625,
+    "z2": 0.8125
+  },
+  "selectionbox": {
+    "x1": 0.1875,
+    "y1": 0.0,
+    "z1": 0.1875,
+    "x2": 0.8125,
+    "y2": 0.625,
+    "z2": 0.8125
+  },
+  "sidesolid": {
+    "all": false
+  },
+  "sideopaque": {
+    "all": false
+  }
+}

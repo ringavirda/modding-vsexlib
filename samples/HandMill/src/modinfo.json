@@ -1,0 +1,14 @@
+{
+  "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
+  "type": "Code",
+  "modid": "handmill",
+  "name": "Hand Mill",
+  "authors": ["fallenstar"],
+  "description": "Sample mod walking through exlib's Getting-Started guide: a shaft and crank on the mpenergy network, a flywheel, a designed multiblock mill and a JSON-only quern stand.",
+  "version": "1.0.0",
+  "dependencies": {
+    "game": "1.22.0",
+    "exlib": "0.8.0-preview.2",
+    "grains": "1.0.0"
+  }
+}

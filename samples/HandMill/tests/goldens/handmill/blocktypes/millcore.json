@@ -1,0 +1,137 @@
+{
+  "code": "millcore",
+  "class": "handmill.BlockMillCore",
+  "entityClass": "handmill.BlockEntityMillCore",
+  "blockmaterial": "Stone",
+  "maxstacksize": 1,
+  "shape": {
+    "base": "game:block/stone/quern/complete"
+  },
+  "textures": {
+    "grindstoneup": {
+      "base": "game:block/stone/rock/granite1"
+    },
+    "baseside": {
+      "base": "game:block/stone/rock/granite1"
+    },
+    "baseup": {
+      "base": "game:block/stone/rock/granite1"
+    },
+    "wood": {
+      "base": "game:block/stone/rock/granite1"
+    }
+  },
+  "behaviors": [
+    {
+      "name": "MultiblockStructure"
+    },
+    {
+      "name": "ExOrientable"
+    },
+    {
+      "name": "grains.BlockBehaviorGrainInfo"
+    }
+  ],
+  "variantgroups": [
+    {
+      "code": "side",
+      "states": [
+        "n",
+        "e",
+        "s",
+        "w"
+      ]
+    }
+  ],
+  "creativeinventory": {
+    "general": [
+      "*-n"
+    ],
+    "handmill": [
+      "*-n"
+    ]
+  },
+  "attributes": {
+    "multiblockStructure": {
+      "blockNumbers": {
+        "game:cobblestone-*": 1,
+        "handmill:shaft-*": 2,
+        "handmill:millcore-*": 3
+      },
+      "offsets": [
+        {
+          "x": -1,
+          "y": 0,
+          "z": -1,
+          "w": 1
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "z": -1,
+          "w": 2
+        },
+        {
+          "x": 1,
+          "y": 0,
+          "z": -1,
+          "w": 1
+        },
+        {
+          "x": -1,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 3
+        },
+        {
+          "x": 1,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        {
+          "x": -1,
+          "y": 0,
+          "z": 1,
+          "w": 1
+        },
+        {
+          "x": 1,
+          "y": 0,
+          "z": 1,
+          "w": 1
+        }
+      ]
+    },
+    "multiblockRoles": {
+      "axle": [
+        {
+          "x": 0,
+          "y": 0,
+          "z": -1
+        }
+      ]
+    },
+    "multiblockConnectors": {
+      "s": [
+        {
+          "x": 0,
+          "y": 0,
+          "z": -1
+        }
+      ]
+    }
+  },
+  "sidesolid": {
+    "all": true
+  },
+  "sideopaque": {
+    "all": false
+  }
+}

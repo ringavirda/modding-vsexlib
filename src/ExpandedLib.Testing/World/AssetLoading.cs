@@ -33,12 +33,13 @@ public sealed partial class TestWorld {
   /// Scope: base <c>game</c> domain assets plus <paramref name="modPath"/>'s own, not vanilla
   /// survival/creative content (their blocks need classes only <c>VSSurvivalMod</c> registers).
   /// </summary>
-  /// <param name="modPath">A mod's folder: <c>modinfo.json</c> at its root, assets under
-  /// <c>assets/&lt;modid&gt;/</c>, and its compiled dll somewhere under <c>bin/</c>.</param>
+  /// <param name="modPath">A mod's or a sample's folder: <c>modinfo.json</c> and the compiled dll's
+  /// <c>bin/</c> either at its root or under its own <c>src/</c> (the family layout), assets always
+  /// under <c>assets/&lt;modid&gt;/</c> at the root regardless.</param>
   /// <param name="gamePath">The game install to read base assets from; defaults to
   /// <see cref="VsAssemblyResolver.InstallPath"/>.</param>
-  /// <exception cref="InvalidOperationException">No game install resolves, <paramref name="modPath"/>
-  /// has no <c>modinfo.json</c>, or its compiled dll cannot be found under <c>bin/</c>.</exception>
+  /// <exception cref="InvalidOperationException">No game install resolves, no <c>modinfo.json</c>
+  /// resolves, or the compiled dll cannot be found under <c>bin/</c>.</exception>
   public TestWorld LoadAssets(string modPath, string? gamePath = null) {
     gamePath ??=
       VsAssemblyResolver.InstallPath
@@ -47,10 +48,19 @@ public sealed partial class TestWorld {
       );
     string assetsPath = Path.Combine(gamePath, "assets");
 
-    string modInfoPath = Path.Combine(modPath, "modinfo.json");
+    // The family layout keeps modinfo.json and the csproj (so the compiled dll's bin/) under src/,
+    // one level below the assets/ tree; a project sitting flat at modPath's own root - the pre-family
+    // sample layout - is tried first, so nothing here needs to know which one a given repo uses.
+    // Checked by modinfo.json itself, not by bin/'s presence: a stale build's ignored bin/ can
+    // outlive a layout move and would otherwise point this at the wrong root.
+    string modRoot = File.Exists(Path.Combine(modPath, "modinfo.json"))
+      ? modPath
+      : Path.Combine(modPath, "src");
+
+    string modInfoPath = Path.Combine(modRoot, "modinfo.json");
     if (!File.Exists(modInfoPath))
       throw new InvalidOperationException(
-        $"No modinfo.json under '{modPath}'."
+        $"No modinfo.json under '{modPath}' or '{modRoot}'."
       );
     var modInfoJson = JObject.Parse(File.ReadAllText(modInfoPath));
     string modId =
@@ -58,7 +68,7 @@ public sealed partial class TestWorld {
       ?? throw new InvalidOperationException($"'{modInfoPath}' has no modid.");
     string version = (string?)modInfoJson["version"] ?? "0.0.0";
 
-    Assembly modAssembly = Assembly.LoadFrom(FindModAssembly(modPath, modId));
+    Assembly modAssembly = Assembly.LoadFrom(FindModAssembly(modRoot, modId));
 
     // The base game domain only - see the type doc for why survival/creative are excluded.
     var mgr = new AssetManager(assetsPath, EnumAppSide.Server);

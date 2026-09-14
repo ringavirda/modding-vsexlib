@@ -23,7 +23,7 @@
          manifest and test-only settings this project has no use for.
          -p:ExlibRoot= (a global property) wins over this default and forces package mode. -->
     <ExlibRoot Condition="'$(ExlibRoot)' == ''"
-      >$(MSBuildThisFileDirectory)../../</ExlibRoot>
+      >$(MSBuildThisFileDirectory)../../../</ExlibRoot>
     <!-- Restore needs $(TargetFramework) (below, reading $(CurrentGameTfm)) before any package is
          present, so in package mode it can't come through ExpandedLib.props - the same reason the
          target framework list always stays in the consumer, never the package. Source mode's
@@ -33,7 +33,7 @@
       >net10.0</CurrentGameTfm>
   </PropertyGroup>
   <Import
-    Project="../../build/ExpandedLib.props"
+    Project="../../../build/ExpandedLib.props"
     Condition="'$(ExlibRoot)' != ''"
   />
 
@@ -45,12 +45,12 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>bin\$(Configuration)\Mods\mod</OutputPath>
     <Nullable>enable</Nullable>
-    <AssemblyName>helloexpanded</AssemblyName>
-    <RootNamespace>HelloExpanded</RootNamespace>
+    <AssemblyName>handmill</AssemblyName>
+    <RootNamespace>HandMill</RootNamespace>
     <!-- This mod's primary asset domain; setting it turns on ExpandedLib.targets' shared globs,
-         which pull in the whole assets/ tree (Content) and feed assets/helloexpanded/lang/en.json
+         which pull in the whole assets/ tree (Content) and feed assets/handmill/lang/en.json
          to ExLangKeyGenerator. -->
-    <AssetDomain>helloexpanded</AssetDomain>
+    <AssetDomain>handmill</AssetDomain>
   </PropertyGroup>
 
   <ItemGroup>
@@ -63,7 +63,7 @@
   <!--
     Inside this monorepo (source mode, $(ExlibRoot) != '') exlib is a plain ProjectReference with
     copy-local off - the player installs exlib as its own mod, so it must not ship a second copy
-    inside helloexpanded's folder; the generators come along as an analyzer ProjectReference. A
+    inside handmill's folder; the generators come along as an analyzer ProjectReference. A
     standalone clone (package mode, $(ExlibRoot) == '', forced with -p:ExlibRoot=) has no such
     checkout to reference and takes the ExpandedLib package instead - see the wiki's Getting-Started
     "Reference exlib at compile time" for the whole standalone form. The package carries the
@@ -73,8 +73,13 @@
     <ProjectReference Include="$(ExlibRoot)src\ExpandedLib\ExpandedLib.csproj">
       <Private>false</Private>
     </ProjectReference>
-    <!-- The config source generator emits HelloValues from HelloConfig's [ExConfigRegister];
-         ExLangKeyGenerator emits HelloExpandedLang. Compile-time only, ships nothing. -->
+    <!-- The mechanical-power interfaces (IMpEnergyProducer/Storage/Consumer) and MpEnergyNetwork the
+         shaft, crank, flywheel and mill core all use. -->
+    <ProjectReference Include="$(ExlibRoot)src\ExpandedLib.Industry\ExpandedLib.Industry.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+    <!-- The config source generator emits HandMillValues from HandMillConfig's
+         [ExConfigRegister]; ExLangKeyGenerator emits HandMillLang. Compile-time only, ships nothing. -->
     <ProjectReference
       Include="$(ExlibRoot)src\ExpandedLib.Generators\ExpandedLib.Generators.csproj"
       OutputItemType="Analyzer"
@@ -83,13 +88,14 @@
   </ItemGroup>
   <ItemGroup Condition="'$(ExlibRoot)' == ''">
     <PackageReference Include="ExpandedLib" ExcludeAssets="runtime" />
+    <PackageReference Include="ExpandedLib.Industry" ExcludeAssets="runtime" />
   </ItemGroup>
 
-  <!-- hellomodule is a sample dependency inside this repo, not a package - referenced by project in
+  <!-- grains is a sample dependency inside this repo, not a package - referenced by project in
        both modes. Copy-local off for the same reason as exlib above: the player installs
-       hellomodule as its own mod. -->
+       grains as its own mod. -->
   <ItemGroup>
-    <ProjectReference Include="..\HelloModule\HelloModule.csproj">
+    <ProjectReference Include="..\..\Grains\src\Grains.csproj">
       <Private>false</Private>
     </ProjectReference>
   </ItemGroup>
@@ -109,7 +115,7 @@
        the assets/ content glob and the AdditionalFiles feed for ExLangKeyGenerator). Source mode
        only, same reason as the .props import above. -->
   <Import
-    Project="../../build/ExpandedLib.targets"
+    Project="../../../build/ExpandedLib.targets"
     Condition="'$(ExlibRoot)' != ''"
   />
 

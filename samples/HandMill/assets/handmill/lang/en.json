@@ -1,0 +1,14 @@
+{
+  "block-shaft-shaft-*": "Wooden Shaft",
+  "block-crank-*": "Hand Crank",
+  "block-flywheel-*": "Flywheel",
+  "block-millcore-*": "Mill Core",
+  "block-quernstand-*": "Quern Stand",
+  "handmill:millcore-incomplete": "The mill is missing {0} block(s).",
+  "handmill:millcore-complete": "The mill is complete.",
+  "handmill:grain": "Grain: {0} ({1})",
+  "handmill:flour": "Flour: {0}",
+  "handmill:speed": "Shaft speed: {0:0.0} rad/s",
+  "handmill:energy": "Stored energy: {0:0.0} J",
+  "ingameerror-handmill-notgrain": "That is not a grain or a grain sack."
+}

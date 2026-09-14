@@ -6,8 +6,8 @@
     "exlib": { "path": "src/ExpandedLib" }
   },
   "samples": {
-    "helloexpanded": { "path": "samples/HelloExpanded", "tests": "samples/HelloExpanded.Tests" },
-    "grains":        { "path": "samples/Grains",        "tests": "samples/Grains/tests" }
+    "grains":   { "path": "samples/Grains",   "tests": "samples/Grains/tests" },
+    "handmill": { "path": "samples/HandMill", "tests": "samples/HandMill/tests" }
   },
   "tests": ["tests/ExpandedLib.Tests"],
   "packages": ["src/ExpandedLib", "src/ExpandedLib.Industry", "src/ExpandedLib.Testing"],

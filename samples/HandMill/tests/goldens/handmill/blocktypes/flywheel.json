@@ -1,0 +1,102 @@
+{
+  "code": "flywheel",
+  "class": "handmill.BlockFlywheel",
+  "entityClass": "handmill.BlockEntityFlywheel",
+  "blockmaterial": "Wood",
+  "maxstacksize": 1,
+  "shape": {
+    "base": "game:block/wood/mechanics/largegear3"
+  },
+  "behaviors": [
+    {
+      "name": "ExOrientable"
+    }
+  ],
+  "variantgroups": [
+    {
+      "code": "side",
+      "states": [
+        "n",
+        "e",
+        "s",
+        "w"
+      ]
+    }
+  ],
+  "shapebytype": {
+    "*-n": {
+      "base": "game:block/wood/mechanics/largegear3",
+      "rotateY": 0
+    },
+    "*-e": {
+      "base": "game:block/wood/mechanics/largegear3",
+      "rotateY": 270
+    },
+    "*-s": {
+      "base": "game:block/wood/mechanics/largegear3",
+      "rotateY": 180
+    },
+    "*-w": {
+      "base": "game:block/wood/mechanics/largegear3",
+      "rotateY": 90
+    }
+  },
+  "creativeinventory": {
+    "general": [
+      "*-n"
+    ],
+    "handmill": [
+      "*-n"
+    ]
+  },
+  "attributes": {
+    "fillerOffsets": [
+      {
+        "x": -1,
+        "y": 1,
+        "z": 0
+      },
+      {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      {
+        "x": 1,
+        "y": 1,
+        "z": 0
+      },
+      {
+        "x": -1,
+        "y": 0,
+        "z": 0
+      },
+      {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      {
+        "x": -1,
+        "y": -1,
+        "z": 0
+      },
+      {
+        "x": 0,
+        "y": -1,
+        "z": 0
+      },
+      {
+        "x": 1,
+        "y": -1,
+        "z": 0
+      }
+    ]
+  },
+  "sidesolid": {
+    "all": true
+  },
+  "sideopaque": {
+    "all": false
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "code": "shaft",
+  "class": "handmill.BlockShaft",
+  "entityClass": "handmill.BlockEntityShaft",
+  "blockmaterial": "Wood",
+  "maxstacksize": 64,
+  "variantgroups": [
+    {
+      "code": "type",
+      "states": [
+        "shaft"
+      ]
+    },
+    {
+      "code": "orientation",
+      "states": [
+        "ns",
+        "we",
+        "ud"
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "name": "ExOrientable",
+      "properties": {
+        "mode": "network",
+        "scheme": "Axis"
+      }
+    }
+  ],
+  "shapebytype": {
+    "*-we": {
+      "base": "game:block/wood/mechanics/axle",
+      "rotateY": 0
+    },
+    "*-ns": {
+      "base": "game:block/wood/mechanics/axle",
+      "rotateY": 90
+    },
+    "*-ud": {
+      "base": "game:block/wood/mechanics/axle",
+      "rotateZ": 90
+    }
+  },
+  "creativeinventory": {
+    "general": [
+      "*-ns"
+    ],
+    "handmill": [
+      "*-ns"
+    ]
+  },
+  "collisionbox": {
+    "x1": 0.3125,
+    "y1": 0.3125,
+    "z1": 0.0,
+    "x2": 0.6875,
+    "y2": 0.6875,
+    "z2": 1.0
+  },
+  "selectionbox": {
+    "x1": 0.3125,
+    "y1": 0.3125,
+    "z1": 0.0,
+    "x2": 0.6875,
+    "y2": 0.6875,
+    "z2": 1.0
+  },
+  "sidesolid": {
+    "all": false
+  },
+  "sideopaque": {
+    "all": false
+  }
+}
