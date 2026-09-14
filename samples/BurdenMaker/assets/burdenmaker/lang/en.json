@@ -1,6 +1,7 @@
 {
+  "game:tabname-burdenmaker": "Burden Maker",
   "block-burdenmaker-*": "Burden Maker",
-  "blockdesc-burdenmaker-*": "Two hoppers over a shared basin with one sliding gate. Load crushed or roasted iron ore on the wide side and lime on the narrow side, then open the gate and both fall together into burden. Needs no power. Built from any colour of fired brick (except fire and clinker), which sets its appearance.",
+  "blockdesc-burdenmaker-*": "Two hoppers over a shared basin with one sliding gate. Load crushed iron ore on the wide side and lime on the narrow side, then open the gate and both fall together into burden. Needs no power. Built from any colour of fired brick (except fire and clinker), which sets its appearance.",
   "item-burden": "Blast Burden",
 
   "burdenmaker:rcc-ingredient-brick": "Fired Bricks",
@@ -12,7 +13,7 @@
   "burdenmaker:burdenmaker-willmake": "Would make burden at {0}% flux - {1}",
   "burdenmaker:burdenmaker-stored": "Burden in the basin: {0}",
   "burdenmaker:burdenmaker-empty": "The basin is empty.",
-  "burdenmaker:burdenmaker-help-addore": "Add one crushed or roasted iron ore",
+  "burdenmaker:burdenmaker-help-addore": "Add one crushed iron ore",
   "burdenmaker:burdenmaker-help-addore-stack": "Add a stack of ore",
   "burdenmaker:burdenmaker-help-addflux": "Add one lime",
   "burdenmaker:burdenmaker-help-addflux-stack": "Add a stack of flux",
