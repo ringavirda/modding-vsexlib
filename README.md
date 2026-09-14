@@ -90,7 +90,7 @@ src/ExpandedLib.Generators/ the config/lang source generators, referenced as an 
 tests/ExpandedLib.Tests/    the suite this repo's own gate runs
 build/                      the MSBuild plumbing the package ships (GamePath resolution, provisioning, asset globs)
 samples/                    HandMill and Grains, third-party mods written against this library
-templates/                  the `dotnet new` templates a consumer installs (exlib-tests)
+templates/                  the `dotnet new` templates a consumer installs (block, item, recipe, config, tests, ...)
 docs/                       design pages for a contributor working on this repo's own mechanics
 wiki/                       the GitHub wiki source, guarded by tests so it cannot drift from the code
 scripts/                    the exmod launchers this repo checks in
