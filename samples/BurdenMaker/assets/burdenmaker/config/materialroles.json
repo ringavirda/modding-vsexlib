@@ -1,0 +1,6 @@
+{
+  "materials": [
+    { "role": "flux", "code": "game:lime" },
+    { "role": "ironore", "pathPrefix": "crushed-iron" }
+  ]
+}

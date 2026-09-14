@@ -1,0 +1,31 @@
+{
+  "block-burdenmaker-*": "Burden Maker",
+  "blockdesc-burdenmaker-*": "Two hoppers over a shared basin with one sliding gate. Load crushed or roasted iron ore on the wide side and lime on the narrow side, then open the gate and both fall together into burden. Needs no power. Built from any colour of fired brick (except fire and clinker), which sets its appearance.",
+  "item-burden": "Blast Burden",
+
+  "burdenmaker:rcc-ingredient-brick": "Fired Bricks",
+  "burdenmaker:rcc-ingredient-hopperplate": "Iron Plates (hoppers)",
+  "burdenmaker:rcc-ingredient-lidplate": "Iron Plates (gate lid)",
+  "burdenmaker:rcc-ingredient-lidrails": "Iron Ingots (gate rails)",
+
+  "burdenmaker:burdenmaker-loaded": "Ore: {0} / {1}    Flux: {2} / {3}",
+  "burdenmaker:burdenmaker-willmake": "Would make burden at {0}% flux - {1}",
+  "burdenmaker:burdenmaker-stored": "Burden in the basin: {0}",
+  "burdenmaker:burdenmaker-empty": "The basin is empty.",
+  "burdenmaker:burdenmaker-help-addore": "Add one crushed or roasted iron ore",
+  "burdenmaker:burdenmaker-help-addore-stack": "Add a stack of ore",
+  "burdenmaker:burdenmaker-help-addflux": "Add one lime",
+  "burdenmaker:burdenmaker-help-addflux-stack": "Add a stack of flux",
+  "burdenmaker:burdenmaker-help-take": "Take",
+  "burdenmaker:burdenmaker-help-gate": "Open or close the gate",
+
+  "burdenmaker:burden-composition": "Composition: {0}% iron ore, {1}% flux",
+  "burdenmaker:burden-profile-empty": "Grade: unmixed",
+  "burdenmaker:burden-profile-offspec": "Grade: off-spec",
+  "burdenmaker:burden-profile-standard": "Grade: standard - well fluxed",
+  "burdenmaker:burden-profile-underfluxed": "Grade: under-fluxed - add lime",
+  "burdenmaker:burden-profile-overfluxed": "Grade: over-fluxed - more slag than the heat needs",
+
+  "game:ingameerror-burdenmaker-nothingloaded": "Both hoppers are empty - load ore and flux first.",
+  "game:ingameerror-burdenmaker-emptybunker": "Take the finished burden out before making the next batch."
+}

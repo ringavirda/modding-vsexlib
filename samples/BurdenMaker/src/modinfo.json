@@ -1,0 +1,13 @@
+{
+  "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
+  "type": "Code",
+  "modid": "burdenmaker",
+  "name": "Burden Maker",
+  "authors": ["fallenstar"],
+  "description": "Sample mod: a 9-cell mega-block stock house, two hoppers over a shared basin with one sliding gate, raised through a five-stage right-click construction and rendered through a permanent pose animation.",
+  "version": "1.0.0",
+  "dependencies": {
+    "game": "1.22.0",
+    "exlib": "0.8.0"
+  }
+}
