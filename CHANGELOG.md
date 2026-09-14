@@ -7,6 +7,12 @@ see the git history.
 
 ## [Unreleased]
 
+### Changed
+
+- **The twin-tub blower and burden maker samples** (`samples/TwinTubBlower`, `samples/BurdenMaker`)
+  replace `HandMill` and `Grains`: a mechanically driven pair of bellows on the gas-pipe network,
+  and a designed multiblock stock house with its own five-stage right-click construction.
+
 ## [0.8.0] - 2026-09-14
 
 The first stable release of the 0.8 line: the content of the three previews below, unchanged
