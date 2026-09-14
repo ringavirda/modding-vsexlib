@@ -7,8 +7,28 @@ see the git history.
 
 ## [Unreleased]
 
+## [0.8.0-preview.3] - 2026-09-14
+
+### Added
+
+- **The hand mill and grains samples** (`samples/HandMill`, `samples/Grains`) replace
+  `HelloExpanded` and `HelloModule`: a crank and a shaft on the mechanical-power network, a
+  flywheel, a designed multiblock mill core, a JSON-only quern stand, and the grain-catalogue
+  module the mill reads from.
+- `BlockNetworkModSystem.RegisteredNetworkTypes`: every network type a factory has been
+  registered for.
+- **The incompatible-mods guard** (`Registries/IncompatibleMods`): a published mod built against
+  exlib 0.7 that cannot load beside 0.8 is named at `StartPre` and reported to every joining
+  player, rather than surfacing as a missing type at load.
+
 ### Changed
 
+- `ExpandedLib.Industry` registers `pipe`, `molten` and `mpenergy` itself, each with its own
+  defaults, in its own `Start`; `BlockNetworkModSystem.RegisterNetworkType` now returns whether it
+  replaced an earlier factory for the same type, and logs the replacement.
+- The samples move to the family layout: `samples/<Name>/{src,tests,assets}`.
+- A JSON multiblock layout's declared empty `fillerOffsets` is honoured rather than replaced by
+  the derived footprint.
 - The repository uses the standard .NET container layout: `src/ExpandedLib` (the mod, with its
   assets), `src/ExpandedLib.Industry`, `src/ExpandedLib.Testing`, `src/ExpandedLib.Generators`,
   `tests/ExpandedLib.Tests` with the test settings and coverage floors beside it; `samples/`,
