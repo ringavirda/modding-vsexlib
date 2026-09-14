@@ -122,15 +122,14 @@ public class VersionPinTests {
     string version = ModinfoVersion;
     string samplesDir = Path.Combine(RepoPaths.Root, "samples");
 
+    // Each sample's own src/modinfo.json - not Directory.EnumerateFiles(..., AllDirectories),
+    // which would also pick up stale modinfo.json copies under a sample's own bin/ output.
     int matched = 0;
     var stale = new List<string>();
-    foreach (
-      string file in Directory.EnumerateFiles(
-        samplesDir,
-        "modinfo.json",
-        SearchOption.AllDirectories
-      )
-    ) {
+    foreach (string sampleDir in Directory.EnumerateDirectories(samplesDir)) {
+      string file = Path.Combine(sampleDir, "src", "modinfo.json");
+      if (!File.Exists(file))
+        continue;
       string text = File.ReadAllText(file);
       foreach (Match m in Regex.Matches(text, @"""exlib""\s*:\s*""([^""]+)""")) {
         matched++;
@@ -141,7 +140,7 @@ public class VersionPinTests {
 
     Assert.True(
       matched > 0,
-      $"No \"exlib\" dependency found under {samplesDir}."
+      $"No sample src/modinfo.json with an \"exlib\" dependency found under {samplesDir}."
     );
     Assert.True(
       stale.Count == 0,
