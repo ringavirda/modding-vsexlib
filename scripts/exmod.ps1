@@ -37,7 +37,9 @@ function Resolve-Extools {
     if ($have -ne $tag) {
       Write-Host "exmod: moving .extools from $(if ($have) { $have } else { 'an untagged commit' }) to $tag"
       & git -C $dest fetch --quiet --depth 1 origin "refs/tags/${tag}:refs/tags/${tag}"
+      if ($LASTEXITCODE -ne 0) { throw "git fetch of tag $tag failed" }
       & git -c advice.detachedHead=false -C $dest checkout --quiet $tag
+      if ($LASTEXITCODE -ne 0) { throw "git checkout of $tag failed" }
     }
   } else {
     Write-Host "exmod: cloning extools $tag into .extools/"
