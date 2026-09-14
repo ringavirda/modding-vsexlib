@@ -1,6 +1,6 @@
 name: Release
 
-# Publishes a tagged version: the mod zips, the dev bundle and the three NuGet packages as GitHub
+# Publishes a tagged version: the mod zips, the dev bundle and the four NuGet packages as GitHub
 # release assets, and the packages to NuGet.org through trusted publishing once the NUGET_USER
 # repository variable is set. No tag is created by this workflow itself; it only runs once one
 # exists. The CLI comes from extools, cloned at the tag exmod.json pins by scripts/exmod.sh.

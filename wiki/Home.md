@@ -4,9 +4,8 @@
 _Fallenstar Expanded_ family for [Vintage Story](https://www.vintagestory.at/) -
 currently [Iron Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/iiex) (`iiex`) and
 [Steel Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/siex) (`siex`). It ships no
-gameplay content of its own; you can use it because another mod depends on it or
-because it gives you batteries-included systems that are tedious to build from
-scratch:
+gameplay content of its own; it gives you batteries-included systems that are tedious to build
+from scratch, so you build your own mod directly on it:
 
 - a generic **block-network** graph (auto-orienting node blocks, merge/fracture handling, a
   single manager) - used for gas pipes, steam pipes and molten-metal canals;

@@ -428,5 +428,6 @@ A public member removed from a future release is listed here, marked `[Obsolete]
 | `ExBlockDef.Raw(string, JToken)` / `Raw(string, object)` | `ExBlockDef.RootKey` | 0.8.0 | 0.9.0 |
 | `ExBlockDef.RawByType(string, string, object)` | `ExBlockDef.RootKeyByType` | 0.8.0 | 0.9.0 |
 | `ExItemDef.Raw(string, JToken)` / `Raw(string, object)` | `ExItemDef.RootKey` | 0.8.0 | 0.9.0 |
+| `ExItemDef.RawByType(string, string, object)` | `ExItemDef.RootKeyByType` | 0.8.0 | 0.9.0 |
 | `ExLiquids.Load(ICoreAPI)` | `LiquidCatalogueLoader.Load(ICoreAPI)` | 0.8.0 | 0.9.0 |
 | `ExBlockDef.MineTool(EnumTool)` | none - `mineTool` is not a key the loader reads; use `Material` and `MiningTier` | 0.8.0 | 0.9.0 |

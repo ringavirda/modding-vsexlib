@@ -94,12 +94,6 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
 
-    # extools' scaffold command and the manifest-driven starter are unreleased; EXTOOLS_HOME points
-    # every scripts/exmod.sh call in this job at a checkout of extools dev instead of the pinned
-    # release tag scripts/exmod.sh would otherwise clone into .extools/.
-    env:
-      EXTOOLS_HOME: ${{ github.workspace }}/.extools-dev
-
     # Packs exlib's own packages (including the templates) into a local feed, generates the starter
     # from exlib's manifest, scaffolds every kind into it, then builds and tests it - the same
     # commands a fresh clone's README walks a modder through.
@@ -117,13 +111,6 @@ jobs:
         with:
           path: .game
           key: vs-game-${{ env.VS_VERSION }}
-
-      - name: Checkout extools dev
-        uses: actions/checkout@v4
-        with:
-          repository: ringavirda/modding-vsextools
-          ref: dev
-          path: .extools-dev
 
       - name: Provision Vintage Story (server assemblies)
         run: bash scripts/exmod.sh provision game -Version "$VS_VERSION" -Kind server

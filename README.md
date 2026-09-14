@@ -5,8 +5,9 @@ structures with completion monitoring and a build outline, a production-machine 
 code-first block/item/recipe definitions, attribute-driven registration, a source-generated live
 config system, a headless xUnit test harness that needs no game launch, and a module system for
 extending the framework or another mod without carrying a `ModSystem` of your own. It ships no
-gameplay content of its own - install it because another mod depends on it, or build your own mod
-on it directly. It is also the shared framework behind the *Expanded* family
+gameplay content of its own: build your own mod on the networks, multiblocks and megablocks,
+registries, headless test harness and tooling above. It is also the shared framework behind the
+*Expanded* family
 ([Iron Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/iiex),
 [Steel Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/siex)).
 
@@ -54,7 +55,7 @@ on it directly. It is also the shared framework behind the *Expanded* family
   extends the framework or a mod built on it without carrying a `ModSystem` of its own, driven
   through a host mod's lifecycle instead: `ExpandedLib.Industry` is the first, shipped inside this
   mod's own folder; a third party's own mod can be one too, depending on exlib. See the wiki's
-  [Modules](wiki/Modules.md) page.
+  [Modules](https://github.com/ringavirda/modding-vsexlib/wiki/Modules) page.
 
 ## Start from the sample
 
@@ -67,15 +68,15 @@ Working inside this repo, or want to read the sample before you write anything? 
 is a third-party mod written against this library end to end: a hand crank and shaft on a
 mechanical-power network, a flywheel, a designed multiblock mill and a JSON-only quern stand, plus
 a full headless test suite - `samples/Grains`, the module it depends on, is a second mod alongside
-it, in the shapes the wiki's [Getting Started](wiki/Getting-Started.md) and [First
-Machine](wiki/First-Machine.md) walks teach. Both build and boot like any other mod here
+it, in the shapes the wiki's [Getting Started](https://github.com/ringavirda/modding-vsexlib/wiki/Getting-Started) and [First
+Machine](https://github.com/ringavirda/modding-vsexlib/wiki/First-Machine) walks teach. Both build and boot like any other mod here
 (`dotnet build ExpandedLib.sln`, `exmod smoke`) - read them alongside the wiki rather than typing
 their snippets by hand.
 
 ## What is supported
 
 `ExpandedLib.*` outside `ExpandedLib.Industry` is the supported contract: every public type
-there is listed on the wiki's [Supported API](wiki/Supported-API.md) page, and a public type
+there is listed on the wiki's [Supported API](https://github.com/ringavirda/modding-vsexlib/wiki/Supported-API) page, and a public type
 missing from that list has been hidden from IntelliSense with `[EditorBrowsable(Never)]` because
 the engine has to see it, not because a mod is meant to call it. `ExpandedLib.Industry` is also
 public, but it is the family's own content layer and changes without notice.
@@ -102,17 +103,18 @@ dist/                       release output (zips, NuGet packages) - not checked 
 The mod ships as one download - one modinfo, one folder, `exlib.dll` and `exlib.industry.dll` - and
 the module system means that is not a hard limit of two: any assembly, inside this folder or
 shipped as its own mod, can declare `[assembly: ExModule]` and join exlib's lifecycle without a
-`ModSystem` of its own. It ships as three NuGet packages a mod project references at compile time:
+`ModSystem` of its own. It ships as four NuGet packages a mod project references at compile time:
 
 | Package | What it is |
 | --- | --- |
 | `ExpandedLib` | the framework: `exlib.dll`, the config/lang source generators, and the build/ plumbing (`GamePath` resolution, provisioning, asset globs) - a consumer needs no props of its own beyond a `TargetFramework` and an `AssetDomain` |
 | `ExpandedLib.Industry` | this family's content layer: `exlib.industry.dll`, beside it in the same mod folder |
 | `ExpandedLib.Testing` | the headless xUnit harness, for a test project rather than a mod |
+| `ExpandedLib.Templates` | the `dotnet new` templates `exmod scaffold` installs for you |
 
 `exlib-verify`, the JSON-only asset checker, is a .NET tool built from
 [extools](https://github.com/ringavirda/modding-vsextools) rather than a package this repository ships - see
-the wiki's [Checks](wiki/Checks.md) page.
+the wiki's [Checks](https://github.com/ringavirda/modding-vsexlib/wiki/Checks) page.
 
 They are built for the current Vintage Story version only. The mod zips on the GitHub releases
 page cover the older versions; the packages do not, because a mod targeting an older version
@@ -142,7 +144,7 @@ dotnet build src/ExpandedLib.Industry/ExpandedLib.Industry.csproj # the family l
 
 Every repo task goes through `scripts/exmod.sh` (`scripts/exmod.ps1` on Windows), a launcher that
 forwards to the CLI in [extools](https://github.com/ringavirda/modding-vsextools), a sibling repository
-checked out beside this one; see [CONTRIBUTING.md](CONTRIBUTING.md) for the command list and how
+checked out beside this one; see [CONTRIBUTING.md](https://github.com/ringavirda/modding-vsexlib/blob/main/CONTRIBUTING.md) for the command list and how
 the launcher finds it.
 
 ## The workspace and the family

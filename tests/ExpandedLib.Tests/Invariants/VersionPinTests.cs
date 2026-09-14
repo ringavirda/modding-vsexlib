@@ -9,9 +9,10 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Binds a first-time modder's two entry paths to <c>src/ExpandedLib/modinfo.json</c>: every
-/// <c>ExpandedLib*</c> package version under <c>templates/</c> and every
-/// <c>"exlib": "&lt;version&gt;"</c> dependency literal in <c>wiki/Getting-Started.md</c> must equal
+/// Binds a first-time modder's entry paths to <c>src/ExpandedLib/modinfo.json</c>: every
+/// <c>ExpandedLib*</c> package version under <c>templates/</c>, every
+/// <c>"exlib": "&lt;version&gt;"</c> dependency literal in <c>wiki/Getting-Started.md</c>, and each
+/// sample's own <c>exlib</c> dependency floor under <c>samples/*/src/modinfo.json</c> must equal
 /// <see cref="ModinfoVersion"/>.
 /// </summary>
 public class VersionPinTests {
@@ -113,6 +114,39 @@ public class VersionPinTests {
       stale.Count == 0,
       $"src/ExpandedLib/modinfo.json's version is {version}; {page} names stale exlib dependency"
         + $" version(s): {string.Join(", ", stale)}"
+    );
+  }
+
+  [Fact]
+  public void Every_sample_exlib_dependency_floor_matches_modinfo() {
+    string version = ModinfoVersion;
+    string samplesDir = Path.Combine(RepoPaths.Root, "samples");
+
+    int matched = 0;
+    var stale = new List<string>();
+    foreach (
+      string file in Directory.EnumerateFiles(
+        samplesDir,
+        "modinfo.json",
+        SearchOption.AllDirectories
+      )
+    ) {
+      string text = File.ReadAllText(file);
+      foreach (Match m in Regex.Matches(text, @"""exlib""\s*:\s*""([^""]+)""")) {
+        matched++;
+        if (m.Groups[1].Value != version)
+          stale.Add($"{file}: exlib={m.Groups[1].Value}");
+      }
+    }
+
+    Assert.True(
+      matched > 0,
+      $"No \"exlib\" dependency found under {samplesDir}."
+    );
+    Assert.True(
+      stale.Count == 0,
+      $"src/ExpandedLib/modinfo.json's version is {version}; stale sample exlib dependency"
+        + $" floor(s):\n  {string.Join("\n  ", stale)}"
     );
   }
 }
