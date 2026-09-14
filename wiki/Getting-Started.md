@@ -390,6 +390,7 @@ lane this repo's CI runs on every mod, now covering the one you just read:
 [exlib] Injected 5 code-first block definition(s).
 [exlib] Injected 6 code-first item definition(s).
 [exlib] check DefinitionCatalogue (handmill): 0 error(s)
+[exlib] check LateDefinition (handmill): 0 error(s)
 [exlib] check MultiblockCodes (handmill): 0 error(s)
 [exlib] check RecipeCodes (handmill): 0 error(s)
 [exlib] check LangCoverage (handmill): 0 error(s)
@@ -398,11 +399,14 @@ lane this repo's CI runs on every mod, now covering the one you just read:
 [exlib] check CodePrefixCollision (handmill): 0 error(s)
 ```
 
-The five blocks are the crank, the shaft, the flywheel, the mill core and the quern stand; the six
-items are `grains`' sacks, one per catalogued grain. `grains` is listed among the modules hosted by
-exlib because it ships as its own mod carrying no `ModSystem` of its own - see
-[Modules](Modules). See [First Machine](First-Machine) for the rest of the mill: the shaft, the
-flywheel, the designed multiblock core and the JSON-only quern stand.
+The count of five is process-global, not per-domain: handmill's own code-first blocks are the
+crank, the shaft, the flywheel and the mill core; the fifth is exlib's own structure filler
+(`BlockStructureFiller`), injected once for every mod that places a filled megastructure. The
+quern stand is JSON-only and never appears in this count. The six items are `grains`' sacks, one
+per catalogued grain. `grains` is listed among the modules hosted by exlib because it ships as its
+own mod carrying no `ModSystem` of its own - see [Modules](Modules). See
+[First Machine](First-Machine) for the rest of the mill: the shaft, the flywheel, the designed
+multiblock core and the JSON-only quern stand.
 
 ## 9. exmod in your repo
 
