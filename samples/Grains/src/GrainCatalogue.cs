@@ -23,7 +23,9 @@ public static class GrainCatalogue {
   /// <summary>The entry whose grain or sack is <paramref name="itemCode"/>, or <c>null</c>.</summary>
   public static GrainDef? ForItem(string? itemCode) =>
     itemCode == null ? null
-    : _all.FirstOrDefault(g => g.Grain == itemCode || $"grains:sack-{g.Code}" == itemCode);
+    : _all.FirstOrDefault(g =>
+      g.Grain == itemCode || $"grains:sack-{g.Code}" == itemCode
+    );
 
   /// <summary>Test seam: replaces the catalogue without an asset read.</summary>
   internal static void Set(IEnumerable<GrainDef> entries) => _all = [.. entries];

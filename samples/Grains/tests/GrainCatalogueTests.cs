@@ -26,9 +26,14 @@ public class GrainCatalogueTests {
           System.IO.File.ReadAllText(path)
         )!;
         var asset = Substitute.For<IAsset>();
-        asset.ToObject<GrainDef>(Arg.Any<JsonSerializerSettings>()).Returns(def);
+        asset
+          .ToObject<GrainDef>(Arg.Any<JsonSerializerSettings>())
+          .Returns(def);
         asset.Location.Returns(
-          new AssetLocation("grains", "config/grains/" + System.IO.Path.GetFileName(path))
+          new AssetLocation(
+            "grains",
+            "config/grains/" + System.IO.Path.GetFileName(path)
+          )
         );
         return asset;
       })
@@ -49,6 +54,28 @@ public class GrainCatalogueTests {
     GrainCatalogue.Load(FakeApi());
 
     Assert.Equal(6, GrainCatalogue.All.Count);
+
+    // Pins the shipped content itself, not just the count: a mistyped key, a wrong grain/flour
+    // code or an out-of-range seconds value in a shipped file must fail here.
+    var byCode = GrainCatalogue.All.ToDictionary(g => g.Code);
+    Assert.Equal("game:grain-spelt", byCode["spelt"].Grain);
+    Assert.Equal("game:flour-spelt", byCode["spelt"].Flour);
+    Assert.Equal(6, byCode["spelt"].Seconds);
+    Assert.Equal("game:grain-rice", byCode["rice"].Grain);
+    Assert.Equal("game:flour-rice", byCode["rice"].Flour);
+    Assert.Equal(6, byCode["rice"].Seconds);
+    Assert.Equal("game:grain-flax", byCode["flax"].Grain);
+    Assert.Equal("game:flour-flax", byCode["flax"].Flour);
+    Assert.Equal(6, byCode["flax"].Seconds);
+    Assert.Equal("game:grain-rye", byCode["rye"].Grain);
+    Assert.Equal("game:flour-rye", byCode["rye"].Flour);
+    Assert.Equal(8, byCode["rye"].Seconds);
+    Assert.Equal("game:grain-amaranth", byCode["amaranth"].Grain);
+    Assert.Equal("game:flour-amaranth", byCode["amaranth"].Flour);
+    Assert.Equal(6, byCode["amaranth"].Seconds);
+    Assert.Equal("game:grain-sunflower", byCode["sunflower"].Grain);
+    Assert.Equal("game:flour-sunflower", byCode["sunflower"].Flour);
+    Assert.Equal(6, byCode["sunflower"].Seconds);
   }
 
   [Fact]

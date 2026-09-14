@@ -5,7 +5,8 @@ using Vintagestory.API.Config;
 
 namespace Grains;
 
-/// <summary>The whole command walk: <c>/exmod grains</c> prints one line per catalogue entry.</summary>
+/// <summary>The whole command walk: <c>/exmod grains</c> prints one line per catalogue
+/// entry.</summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
 public sealed class GrainsSubCommand : IExSubCommand {
   public string ParentName => "exmod";
@@ -18,7 +19,9 @@ public sealed class GrainsSubCommand : IExSubCommand {
         TextCommandResult.Success(
           string.Join(
             "\n",
-            GrainCatalogue.All.Select(g => $"{g.Code}: {g.Grain} -> {g.Flour}, {g.Seconds}")
+            GrainCatalogue.All.Select(g =>
+              $"{g.Code}: {g.Grain} -> {g.Flour}, {g.Seconds}"
+            )
           )
         )
       )
