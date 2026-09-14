@@ -25,6 +25,7 @@ public partial class BlockMillCore : Block, IExBlockDefProvider {
         .Material(EnumBlockMaterial.Stone)
         .MaxStackSize(1)
         .Shape("game:block/stone/quern/complete")
+        .Texture("basematerial", "game:block/stone/rock/granite1")
         .Texture("grindstoneup", "game:block/stone/rock/granite1")
         .Texture("baseside", "game:block/stone/rock/granite1")
         .Texture("baseup", "game:block/stone/rock/granite1")
