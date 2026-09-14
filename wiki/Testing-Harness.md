@@ -581,8 +581,8 @@ ReleasedHistory.Register(
 ```
 
 `ReleasedCodes.Ppex`/`.Smex`/`.Exlib`, `ReleasedVersions.HighestPublished` and
-`ReleasedCodeDebt.KnownUnmigrated` are unchanged as call sites - they now read `ReleasedHistory`
-instead of holding the rows themselves, so the harness carries no mod's shipping history.
+`ReleasedCodeDebt.KnownUnmigrated` read `ReleasedHistory` rather than holding the rows themselves, so
+the harness carries no mod's shipping history directly.
 
 ### Regenerating a block-code table: `exmod codes`
 
@@ -617,8 +617,7 @@ Block crank = world.World.GetBlock(new AssetLocation("handmill:drive-crank-n"))!
 `ModSystem` the mod's assembly declares is `Start`ed against an isolated API before the object
 loader runs, so both JSON and code-first mods resolve. Base `game` domain assets load too, but not
 vanilla survival/creative content - those blocks need classes only `VSSurvivalMod`'s own
-`ModSystem`s register. See `docs/internal/research/2026-09-06-asset-loading-spike.md` for the
-wall-by-wall trace this was built from.
+`ModSystem`s register.
 
 ## 4. Boot it
 
@@ -685,8 +684,7 @@ through `MachineRig`), `Config/ConfigMigrationTests.cs` (the load-migrate-stamp-
 `ICoreAPI`), `Definitions/ExlibDefinitionGoldenTests.cs` (a golden-file comparison), and
 `Invariants/ShippedAssetJsonTests.cs` (a repository-wide JSON guard).
 
-Beside them, from the Task T10 pass over exlib's own untested public surface:
-`Registries/ExmodCommandTests.cs` (a hand-rolled fluent `IChatCommand` fake, since NSubstitute returns
+Beside them, covering exlib's own public surface: `Registries/ExmodCommandTests.cs` (a hand-rolled fluent `IChatCommand` fake, since NSubstitute returns
 a fresh substitute per call rather than the same one down a chain), `Registries/PreferencesTests.cs`,
 `Registries/Recipes/RecipeProfilesTests.cs`, `Config/ConfigAttributesTests.cs`,
 `Blocks/ConstructionTests.cs`, `Migrations/BlockRemovalTests.cs`, `Migrations/ItemCodeMigrationTests.cs`,

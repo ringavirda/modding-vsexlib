@@ -272,11 +272,11 @@ resolves to no block, so the base falls back to a neutral tint instead of crashi
 
 Vanilla rotates a structure's **offsets** through `InitForUse(angle)` but never its **codes**. So a
 layout that asked for `brickslabs-fire-south-free` would demand a *south*-facing slab at every structure
-angle - wrong three times out of four. The only workable answer used to be `-*`, "any rotation", which is
-how a structure could report itself complete while its walls still had visible gaps in them.
+angle - wrong three times out of four; only `-*`, "any rotation", sidesteps that, and a structure
+built with it can report itself complete while its walls still have visible gaps in them.
 
 A legend code containing a whole horizontal side segment (`north`/`south`/`east`/`west`, or the letters
-`n`/`s`/`e`/`w`) is now **orientation-checked**: the required facing rotates with the structure. Layouts
+`n`/`s`/`e`/`w`) is **orientation-checked**: the required facing rotates with the structure. Layouts
 stay authored in the north-default frame, like everything else.
 
 ```csharp

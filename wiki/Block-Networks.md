@@ -145,10 +145,10 @@ public virtual void RecalculateAndSyncOrientations(IWorldAccessor world, BlockPo
 
 Override `GetRotations` only for custom orientation alphabets; override
 `IsValidNonNetworkConnection` to tell `GetOpenConnectorFaces` that an adjacent non-network block (a
-machine housing, say) seals the face rather than leaving it open. Note that nothing in the suite
-overrides it: an open face only becomes a leak when the neighbour is air, so a face against a solid
-block is already quiet. Overriding it changes which faces are open for every consumer of that set,
-not just the leak count.
+machine housing, say) seals the face rather than leaving it open. Nothing in the suite overrides it:
+an open face only becomes a leak when the neighbour is air, so a face against a solid block is
+already quiet. Overriding it changes which faces are open for every consumer of that set, not just
+the leak count.
 
 ## Defining the node block entity
 

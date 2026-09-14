@@ -94,9 +94,9 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
 
-    # Proves the whole B1-B3 chain in one job: pack exlib's own packages (including the templates)
-    # into a local feed, generate the starter from exlib's manifest, scaffold every kind into it,
-    # then build and test - the same commands a fresh clone's README walks a modder through.
+    # Packs exlib's own packages (including the templates) into a local feed, generates the starter
+    # from exlib's manifest, scaffolds every kind into it, then builds and tests it - the same
+    # commands a fresh clone's README walks a modder through.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -115,10 +115,9 @@ jobs:
       - name: Provision Vintage Story (server assemblies)
         run: bash scripts/exmod.sh provision game -Version "$VS_VERSION" -Kind server
 
-      # extools' scaffold command and the manifest-driven starter are unreleased (B5 tags and pins
-      # 0.3.0); EXTOOLS_HOME points every scripts/exmod.sh call in this job at a checkout of extools
-      # dev instead of the pinned release tag scripts/exmod.sh would otherwise clone into .extools/.
-      # Remove this checkout and env once B5 lands and the pin carries scaffold itself.
+      # extools' scaffold command and the manifest-driven starter are unreleased; EXTOOLS_HOME points
+      # every scripts/exmod.sh call in this job at a checkout of extools dev instead of the pinned
+      # release tag scripts/exmod.sh would otherwise clone into .extools/.
       - name: Checkout extools dev
         uses: actions/checkout@v4
         with:

@@ -20,18 +20,17 @@ namespace ExpandedLib.Testing;
 /// Real-asset loading for <see cref="TestWorld"/>: drives the game's own <c>AssetManager</c> and
 /// <c>ModRegistryObjectTypeLoader</c> against a mod's actual JSON/code, so a test gets real, resolved
 /// <see cref="Block"/>/<see cref="Item"/> instances rather than <see cref="TestWorld.RegisterItem"/>'s
-/// hand-built stand-ins. See <c>docs/internal/research/2026-09-06-asset-loading-spike.md</c> for the
-/// wall-by-wall trace this was built from.
+/// hand-built stand-ins.
 /// </summary>
 public sealed partial class TestWorld {
   /// <summary>
   /// Loads one mod's real assets through the game's own asset manager and object loader - the same
   /// pipeline a dedicated server runs at startup - and registers every resulting
   /// <see cref="Block"/>/<see cref="Item"/> into this <see cref="TestWorld"/>
-  /// (<see cref="Register(Block)"/>/<see cref="Register(Item)"/>). Runs in an isolated substituted
-  /// <c>ICoreServerAPI</c>, not <see cref="Api"/> - see the design note this file's type doc cites.
-  /// Scope: base <c>game</c> domain assets plus <paramref name="modPath"/>'s own, not vanilla
-  /// survival/creative content (their blocks need classes only <c>VSSurvivalMod</c> registers).
+  /// (<see cref="Register(Block)"/>/<see cref="Register(Item)"/>), read back off an isolated
+  /// substituted <c>ICoreServerAPI</c>'s own calls rather than <see cref="Api"/>'s. Scope: base
+  /// <c>game</c> domain assets plus <paramref name="modPath"/>'s own, not vanilla survival/creative
+  /// content (their blocks need classes only <c>VSSurvivalMod</c> registers).
   /// </summary>
   /// <param name="modPath">A mod's or a sample's folder: <c>modinfo.json</c> and the compiled dll's
   /// <c>bin/</c> either at its root or under its own <c>src/</c> (the family layout), assets always
@@ -185,8 +184,8 @@ public sealed partial class TestWorld {
 
   /// <summary>
   /// Builds the isolated <c>ICoreServerAPI</c> substitute the object loader runs against, wiring
-  /// only what a headless replay of its own <c>AssetsLoaded</c> needs (found by the asset-loading
-  /// spike, see the type doc): a real <c>ClassRegistry</c> reached both through <c>ClassRegistry</c>
+  /// only what a headless replay of its own <c>AssetsLoaded</c> needs: a real <c>ClassRegistry</c>
+  /// reached both through <c>ClassRegistry</c>
   /// itself and through the top-level <c>RegisterBlockClass</c>-family members (which forward to
   /// <c>ServerMain</c>'s own registry in production, not through <c>api.ClassRegistry</c>), real tag
   /// registries (Castle's dynamic proxy cannot intercept their <c>ReadOnlySpan&lt;string&gt;</c>

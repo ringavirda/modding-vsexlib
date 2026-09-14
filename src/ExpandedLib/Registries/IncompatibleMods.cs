@@ -6,9 +6,10 @@ namespace ExpandedLib.Registries;
 
 /// <summary>
 /// The published mods built against exlib 0.7 that cannot load beside this version: they bind to
-/// namespaces and an assembly layout 0.8 no longer has, and the game's dependency check cannot see
-/// it because a modinfo dependency is a floor. Found at <c>StartPre</c>, reported once at Error and
-/// to every joining player, so the failure is named rather than surfacing as a missing type.
+/// namespaces and an assembly layout that 0.8 does not carry, and the game's dependency check
+/// cannot see it because a modinfo dependency is a floor. Found at <c>StartPre</c>, reported once
+/// at Error and to every joining player, so the failure is named rather than surfacing as a
+/// missing type.
 /// </summary>
 internal static class IncompatibleMods {
   /// <summary>Mod id to the name players know the mod by.</summary>

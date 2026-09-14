@@ -10,9 +10,9 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The wiki is the surface a third party is asked to build against, and it was the only authored
-/// artifact here with no guard: goldens, lang keys, code literals and released block codes are all
-/// tested, so they stay true while the documentation drifts. This is the same idiom extended to it.
+/// The wiki is the surface a third party is asked to build against: every symbol it writes as code
+/// must resolve against the shipped assembly, the same way goldens, lang keys and released block
+/// codes are tested elsewhere.
 /// </summary>
 public class WikiParityTests {
   /// <summary>
@@ -45,7 +45,7 @@ public class WikiParityTests {
   /// The source generators, which the wiki documents and reflection cannot see: the project sets
   /// <c>IncludeBuildOutput=false</c> and is consumed as an analyzer, so it ships no runtime assembly.
   /// Read out of the source rather than listed here, so deleting a generator deletes it from this set
-  /// too - which is exactly the drift that produced a page documenting one that no longer exists.
+  /// too.
   /// </summary>
   private static IEnumerable<string> GeneratorTypeNames() {
     string dir = Path.Combine(RepoPaths.Root, "src/ExpandedLib.Generators");
