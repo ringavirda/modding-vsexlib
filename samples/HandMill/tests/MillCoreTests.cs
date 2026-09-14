@@ -53,14 +53,14 @@ public class MillCoreTests {
     // map itself); the real placement pipeline runs it at chunk load, so a fixture must too, or the
     // shaft and the crank answer no connector at all and the rig never completes.
     //
-    // The crank goes down first: it is a network end point, so GetConnectedNeighbors never scans
-    // outward FROM it (that is what keeps a BFS fracture walk from passing through it) - it always
-    // starts its own isolated network. The shaft, added next, is not an end point, so its own scan
-    // finds the crank's already-registered network to its north and joins it; only then is the mill
-    // (added last, inside Complete()) added to find the shaft's network to ITS north.
+    // The crank goes down first with nothing yet registered beside it, so it
+    // starts its own isolated network. The shaft, added next, scans outward
+    // and finds the crank's already-registered network to its north and
+    // joins it; only then is the mill (added last, inside Complete())
+    // added to find the shaft's network to ITS north.
     Block crankBlock = TestBlocks.Configure(
       new BlockCrank(),
-      "handmill:crank-s",
+      "handmill:crank-crank-s",
       3,
       ("orientation", "s")
     );
@@ -124,7 +124,10 @@ public class MillCoreTests {
     rig.World.RegisterItem("game:flour-spelt");
 
     var grainSlot = new DummySlot(
-      new ItemStack(rig.World.World.GetItem(new AssetLocation("game:grain-spelt")), 1)
+      new ItemStack(
+        rig.World.World.GetItem(new AssetLocation("game:grain-spelt")),
+        1
+      )
     );
     Assert.True(rig.Mill.TryLoad(grainSlot));
 
@@ -166,7 +169,10 @@ public class MillCoreTests {
     rig.World.RegisterItem("game:flour-spelt");
 
     var grainSlot = new DummySlot(
-      new ItemStack(rig.World.World.GetItem(new AssetLocation("game:grain-spelt")), 1)
+      new ItemStack(
+        rig.World.World.GetItem(new AssetLocation("game:grain-spelt")),
+        1
+      )
     );
     Assert.True(rig.Mill.TryLoad(grainSlot));
 
@@ -203,7 +209,10 @@ public class MillCoreTests {
     rig.World.RegisterItem("game:flour-spelt");
 
     var grainSlot = new DummySlot(
-      new ItemStack(rig.World.World.GetItem(new AssetLocation("game:grain-spelt")), 1)
+      new ItemStack(
+        rig.World.World.GetItem(new AssetLocation("game:grain-spelt")),
+        2
+      )
     );
     Assert.True(rig.Mill.TryLoad(grainSlot));
     Step(rig.World, 3);
@@ -219,8 +228,29 @@ public class MillCoreTests {
 
     var restoredTree = new TreeAttribute();
     restored.ToTreeAttributes(restoredTree);
-    Assert.Equal(tree.GetInt("grain"), restoredTree.GetInt("grain"));
-    Assert.Equal(tree.GetInt("flour"), restoredTree.GetInt("flour"));
-    Assert.Equal(tree.GetFloat("progress"), restoredTree.GetFloat("progress"));
+    // 3 seconds of grinding is short of the catalogue's 6, so the first
+    // grain is still loaded and in progress; both must show up nonzero on
+    // the restored copy, not just match the original.
+    Assert.Equal(1, restoredTree.GetInt("grain"));
+    Assert.True(restoredTree.GetFloat("progress") > 0f);
+    Assert.Equal(0, restoredTree.GetInt("flour"));
+
+    // Load the second grain and grind it through to pin a nonzero flour
+    // value across the same round trip.
+    Assert.True(rig.Mill.TryLoad(grainSlot));
+    Step(rig.World, 40);
+
+    var flourTree = new TreeAttribute();
+    rig.Mill.ToTreeAttributes(flourTree);
+
+    var restoredFlour = new BlockEntityMillCore {
+      Pos = rig.Mill.Pos,
+      Block = rig.Mill.Block,
+    };
+    restoredFlour.FromTreeAttributes(flourTree, rig.World.World);
+
+    var restoredFlourTree = new TreeAttribute();
+    restoredFlour.ToTreeAttributes(restoredFlourTree);
+    Assert.True(restoredFlourTree.GetInt("flour") > 0);
   }
 }
