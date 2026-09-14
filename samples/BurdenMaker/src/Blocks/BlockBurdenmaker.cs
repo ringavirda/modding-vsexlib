@@ -176,7 +176,7 @@ public partial class BlockBurdenmaker
   /// the action.
   /// </summary>
   public enum BurdenmakerCell {
-    /// <summary>The wide upper hopper - crushed or roasted iron ore. Two cells.</summary>
+    /// <summary>The wide upper hopper - crushed iron ore. Two cells.</summary>
     OreHopper,
 
     /// <summary>The narrow upper hopper - lime. One cell.</summary>

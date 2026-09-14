@@ -13,7 +13,7 @@ public class BurdenMakerConfig : IExVersionedConfig {
   /// <summary>Mod version that last wrote this file. Managed by the config store - do not set by hand.</summary>
   public string? ConfigVersion { get; set; }
 
-  /// <summary>Maximum crushed/roasted iron ore (units) the wide hopper holds; 1 to 100000.</summary>
+  /// <summary>Maximum crushed iron ore (units) the wide hopper holds; 1 to 100000.</summary>
   [ExConfigRange(1, 100_000)]
   public int BurdenmakerOreCapacity { get; set; } = 512;
 
