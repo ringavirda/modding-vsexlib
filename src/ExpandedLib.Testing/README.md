@@ -24,5 +24,5 @@ internal static class ModuleInit {
 }
 ```
 
-`dotnet new install ExpandedLib.Templates.Tests` (or a local checkout's `templates/exlib-tests`)
+`dotnet new install ExpandedLib.Templates.Tests` (or a local checkout's `templates/content/exlib-tests`)
 scaffolds a project with this already wired up.

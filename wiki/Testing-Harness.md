@@ -32,7 +32,7 @@ Three ways to get from nothing to a green test, cheapest first.
 ### The template
 
 ```
-dotnet new install ./templates/exlib-tests    # or, once published: dotnet new install ExpandedLib.Templates.Tests
+dotnet new install ./templates/content/exlib-tests    # or, once published: dotnet new install ExpandedLib.Templates.Tests
 dotnet new exlib-tests -n Demo.Tests -o Demo.Tests --ModName Demo
 dotnet test Demo.Tests
 ```
@@ -40,7 +40,7 @@ dotnet test Demo.Tests
 `--ModName` names your mod project (a sibling folder, `../Demo/Demo.csproj`); `--GamePath` overrides
 the Vintage Story install baked in (defaults to the `VINTAGE_STORY` environment variable). The
 generated project's two content checks (a golden fact, a shipped-JSON fact) pass vacuously until
-your mod has definitions or an `assets/` tree - see `templates/exlib-tests/README.md`.
+your mod has definitions or an `assets/` tree - see `templates/content/exlib-tests/README.md`.
 
 ### By hand
 
@@ -98,7 +98,7 @@ The harness is a developer library, not a game mod - it never ships inside a `Mo
 Three ways to use it from a separate mod repo, in the order the template tries them:
 
 **A - NuGet.** `ExpandedLib` and `ExpandedLib.Testing` are `dotnet pack`-able (see the two `.csproj`
-files' pack metadata) and are what `templates/exlib-tests`' generated project references by default.
+files' pack metadata) and are what `templates/content/exlib-tests`' generated project references by default.
 They are not pushed to NuGet.org from this repo yet (`.github/workflows/release.yml`'s push step is
 present and commented) - until then, `dotnet pack` them yourself into a local feed, or use option B
 or C.

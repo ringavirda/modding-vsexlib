@@ -134,7 +134,8 @@
   <PropertyGroup
     Condition="'$(MSBuildProjectName)' == 'ExpandedLib'
       or '$(MSBuildProjectName)' == 'ExpandedLib.Industry'
-      or '$(MSBuildProjectName)' == 'ExpandedLib.Testing'"
+      or '$(MSBuildProjectName)' == 'ExpandedLib.Testing'
+      or '$(MSBuildProjectName)' == 'ExpandedLib.Templates'"
   >
     <!-- Version is read from exlib's own modinfo.json rather than duplicated, so a release only
          ever bumps one number - the three packages ship in lockstep. -->
@@ -162,7 +163,7 @@
        file (see the comment there for why a plain Include here would collide with it and silently
        drop the icon from the nupkg - NU5046). Industry and Testing carry no modicon.png of their
        own, so the plain Include below is all they need. -->
-  <ItemGroup Condition="'$(MSBuildProjectName)' == 'ExpandedLib.Industry' or '$(MSBuildProjectName)' == 'ExpandedLib.Testing'">
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'ExpandedLib.Industry' or '$(MSBuildProjectName)' == 'ExpandedLib.Testing' or '$(MSBuildProjectName)' == 'ExpandedLib.Templates'">
     <None
       Include="$(MSBuildThisFileDirectory)src/ExpandedLib/modicon.png"
       Pack="true"

@@ -432,6 +432,12 @@ line; `exmod smoke` boots the real server with your built mod and fails on a boo
 `modinfo.json`'s `dependencies` and fetches it for the smoke to load alongside your own mod - a
 workspace sibling checkout of exlib when there is one, otherwise a published release.
 
+`exmod scaffold <kind> <Name>` (alias `g`) drops a compiling, tested block, item, recipe, megablock,
+multiblock, node, blockbehavior, entitybehavior, config, migration or command into your mod from the
+templates exlib ships as `ExpandedLib.Templates`: `exmod scaffold block Widget` lands a block and its
+block entity in `src/Blocks` and `src/BlockEntities` with a test in `tests/`, and merges the lang keys
+the generated code reads into `assets/<id>/lang/en.json` - each kind lands compiling with a test.
+
 ## 10. Pick the system you need
 
 | You want to... | Read |

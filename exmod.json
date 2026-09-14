@@ -10,7 +10,7 @@
     "handmill": { "path": "samples/HandMill", "tests": "samples/HandMill/tests" }
   },
   "tests": ["tests/ExpandedLib.Tests"],
-  "packages": ["src/ExpandedLib", "src/ExpandedLib.Industry", "src/ExpandedLib.Testing"],
+  "packages": ["src/ExpandedLib", "src/ExpandedLib.Industry", "src/ExpandedLib.Testing", "templates"],
   "coverageFloors": "tests/coverage-floors.json",
   "depends": {}
 }

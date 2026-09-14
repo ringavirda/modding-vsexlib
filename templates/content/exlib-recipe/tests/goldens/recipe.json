@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Widget",
+    "ingredientPattern": "PP,PP",
+    "width": 2,
+    "height": 2,
+    "output": {
+      "type": "item",
+      "code": "widgetdomain:widget",
+      "quantity": 1
+    },
+    "ingredients": {
+      "P": {
+        "type": "item",
+        "code": "game:plank-*",
+        "quantity": 1
+      }
+    }
+  }
+]

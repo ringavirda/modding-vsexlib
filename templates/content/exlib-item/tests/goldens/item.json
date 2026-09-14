@@ -1,0 +1,15 @@
+{
+  "code": "widget",
+  "shape": {
+    "base": "game:item/bag/linensack"
+  },
+  "maxstacksize": 16,
+  "creativeinventory": {
+    "general": [
+      "*"
+    ],
+    "fixture": [
+      "*"
+    ]
+  }
+}

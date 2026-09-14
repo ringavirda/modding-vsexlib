@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- A template package: no assembly, the content folder is the payload. Versioned from
+       src/ExpandedLib/modinfo.json like every package here, through the root Directory.Build.props. -->
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>ExpandedLib.Templates</PackageId>
+    <Title>Expanded Library templates</Title>
+    <Description>dotnet new templates for mods built on exlib: a block, a megablock, a multiblock machine, a network node and a headless test project. Installed for you by exmod scaffold.</Description>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- No dll, so no symbols to ship - the shared IncludeSymbols/SymbolPackageFormat in
+         Directory.Build.props would otherwise try to pack an empty .snupkg and fail (NU5017). -->
+    <IncludeSymbols>false</IncludeSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- PackagePath set explicitly to the item's own relative path: the SDK's default
+         $(ContentTargetFolders) ("content;contentFiles") would otherwise prefix another "content/"
+         on top of the "content\" already in these paths. -->
+    <Content Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**" PackagePath="%(Identity)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>

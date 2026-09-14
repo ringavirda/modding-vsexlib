@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Fallenstar",
+  "classifications": [
+    "Vintage Story",
+    "exlib"
+  ],
+  "identity": "ExpandedLib.Templates.Recipe",
+  "name": "exlib code-first grid recipe",
+  "shortName": "exlib-recipe",
+  "tags": {
+    "language": "C#",
+    "type": "item"
+  },
+  "sourceName": "Widget",
+  "preferNameDirectory": false,
+  "symbols": {
+    "Domain": {
+      "type": "parameter",
+      "datatype": "string",
+      "isRequired": true,
+      "replaces": "widgetdomain",
+      "description": "The mod id the generated code is keyed under; its asset domain."
+    },
+    "Namespace": {
+      "type": "parameter",
+      "datatype": "string",
+      "isRequired": true,
+      "replaces": "WidgetNamespace",
+      "description": "The mod project's root namespace."
+    }
+  }
+}
