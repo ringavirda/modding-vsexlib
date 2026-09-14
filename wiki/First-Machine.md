@@ -13,13 +13,13 @@ its own definition. The GitHub wiki (and any other plain Markdown reader) shows 
 text you see here instead.
 
 ```
-      A
-      C
-      .
+# A #
+# C #
+# . #
 ```
 
-`A` is the shaft cell the core couples to, `C` the core itself, `.` the open front a player stands
-at. Read on for what builds that layout.
+`#` is the cobble wall either side, `A` the shaft cell the core couples to, `C` the core itself,
+`.` the open front a player stands at. Read on for what builds that layout.
 
 ## The shaft: a node in two classes
 
@@ -89,7 +89,9 @@ and membership are independent axes" split from [Block Networks](Block-Networks)
 ```csharp
 [BlockRegister]
 public partial class BlockFlywheel
-  : BlockFilledMegastructure, IFillerInteractionTarget, IExBlockDefProvider {
+  : BlockFilledMegastructure,
+    IFillerInteractionTarget,
+    IExBlockDefProvider {
   public static IEnumerable<ExBlockDef> Definitions(string domain) =>
     [
       ExBlockDef
@@ -108,35 +110,45 @@ public partial class BlockFlywheel
         .FillerOffsets(
           StructureFootprint.Layout(f =>
             f.Origin(-1, 1)
-              .Face(0, """
+              .Face(
+                0,
+                """
                 ###
                 #0#
                 ###
-                """)
+                """
+              )
           )
         )
         .SolidNonOpaque(),
     ];
 
-  public override int StructureAngle => ExOrientation.AngleFromSide(Variant["side"]);
+  public override int StructureAngle =>
+    ExOrientation.AngleFromSide(Variant["side"]);
 
+  /// <summary>Every cell of the wheel answers the same way: a sneak-click brakes it.</summary>
   public bool OnFillerInteractStart(
-    IWorldAccessor world, IPlayer byPlayer, BlockSelection principalSel, BlockPos clickedCell
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection principalSel,
+    BlockPos clickedCell
   ) {
     if (!ExInteraction.Of(world, byPlayer, principalSel).Sneaking)
       return false;
     if (
       world.Side == EnumAppSide.Server
-      && world.BlockAccessor.GetBlockEntity(principalSel.Position) is BlockEntityFlywheel wheel
+      && world.BlockAccessor.GetBlockEntity(principalSel.Position)
+        is BlockEntityFlywheel wheel
     )
       wheel.Brake();
     return true;
   }
-  // OnFillerInteractStep, OnFillerInteractStop and GetFillerInteractionHelp are no-ops here.
 }
 ```
 
-`Face` draws a front elevation at a fixed Z, rows running -Y from the top, columns +X - see [Multiblock
+`OnFillerInteractStep`, `OnFillerInteractStop` and `GetFillerInteractionHelp` are no-ops on
+`BlockFlywheel`, and `OnBlockInteractStart` only forwards to `OnFillerInteractStart` for the
+principal cell itself - omitted here. `Face` draws a front elevation at a fixed Z, rows running -Y from the top, columns +X - see [Multiblock
 Structures](Multiblock-Structures) "One grid, three uses" for how it and `Layer`/`Slice` share one
 grid core. `0` marks the principal; every other drawn cell becomes a filler, so the wheel's rim carries
 real collision without eight real blocks. Every cell answers a sneak-click the same way: it brakes the
@@ -152,6 +164,8 @@ public class BlockEntityFlywheel : ExBlockEntity, IMpEnergyStorage {
   private readonly HostMembership _membership;
 
   public BlockEntityFlywheel() {
+    // Added in the constructor: BlockEntity fans Initialize and FromTreeAttributes out over
+    // Behaviors, so a membership added later misses whichever has already run.
     _membership = new HostMembership(this);
     Behaviors.Add(_membership);
   }
@@ -162,13 +176,15 @@ public class BlockEntityFlywheel : ExBlockEntity, IMpEnergyStorage {
     // The axle passes through the hub: the wheel couples on both faces normal to its plane, in
     // the placed orientation.
     int angle = (Block as BlockFlywheel)?.StructureAngle ?? 0;
-    _membership.Connectors = [
+    _membership.Connectors =
+    [
       ExOrientation.RotateFacing(BlockFacing.NORTH, angle),
       ExOrientation.RotateFacing(BlockFacing.SOUTH, angle),
     ];
     base.Initialize(api);
   }
 
+  /// <summary>Stops the run this wheel is on: its stored energy is dropped to zero.</summary>
   public void Brake() {
     if (this.NetworkAt<MpEnergyNetwork>(Pos)?.State is { } state) {
       state.StoredEnergy = 0f;
@@ -176,7 +192,8 @@ public class BlockEntityFlywheel : ExBlockEntity, IMpEnergyStorage {
     }
   }
 
-  private sealed class HostMembership(BlockEntityFlywheel owner) : BEBehaviorNetworkMember(owner) {
+  private sealed class HostMembership(BlockEntityFlywheel owner)
+    : BEBehaviorNetworkMember(owner) {
     public override string NetworkType {
       get => "mpenergy";
       protected set { }
@@ -185,7 +202,7 @@ public class BlockEntityFlywheel : ExBlockEntity, IMpEnergyStorage {
 }
 ```
 
-`Connectors` is set before `base.Initialize` runs, so the membership registers with the rotated faces
+`GetBlockInfo` (the speed/energy readout a player sees on look) is omitted here. `Connectors` is set before `base.Initialize` runs, so the membership registers with the rotated faces
 - `BEBehaviorNetworkMember.Initialize` reads them, not the other way round.
 
 ## The mill core: a designed multiblock that also produces
@@ -224,11 +241,14 @@ public partial class BlockMillCore : Block, IExBlockDefProvider {
             .Connector('A', BlockFacing.SOUTH)
             .Role('A', MillCellRoles.Axle)
             .Core('C')
-            .Layer(0, """
+            .Layer(
+              0,
+              """
               # A #
               # C #
               # . #
-              """)
+              """
+            )
         )
         .SolidNonOpaque(),
     ];
@@ -249,14 +269,25 @@ structure is complete and the run is fast enough:
 
 ```csharp
 [BlockEntityRegister]
-public class BlockEntityMillCore : BlockEntityMultiblockMachine, IMpEnergyConsumer {
+public class BlockEntityMillCore
+  : BlockEntityMultiblockMachine,
+    IMpEnergyConsumer {
   private readonly HostMembership _membership;
 
-  [Persist] private string _grainCode = "";
-  [Persist] private int _grain;
-  [Persist] private string _flourCode = "";
-  [Persist] private int _flour;
-  [Persist] private float _progress;
+  [Persist]
+  private string _grainCode = "";
+
+  [Persist]
+  private int _grain;
+
+  [Persist]
+  private string _flourCode = "";
+
+  [Persist]
+  private int _flour;
+
+  [Persist]
+  private float _progress;
 
   public BlockEntityMillCore() {
     _membership = new HostMembership(this);
@@ -267,7 +298,10 @@ public class BlockEntityMillCore : BlockEntityMultiblockMachine, IMpEnergyConsum
 
   public override void Initialize(ICoreAPI api) {
     // The shaft cell sits north of the core in the authored frame.
-    _membership.Connectors = [ExOrientation.RotateFacing(BlockFacing.NORTH, Angle)];
+    _membership.Connectors =
+    [
+      ExOrientation.RotateFacing(BlockFacing.NORTH, Angle),
+    ];
     base.Initialize(api);
   }
 
@@ -276,14 +310,18 @@ public class BlockEntityMillCore : BlockEntityMultiblockMachine, IMpEnergyConsum
   protected override string GetIncompleteMessage(int missingCount) =>
     Lang.Get("handmill:millcore-incomplete", missingCount);
 
-  protected override string GetCompleteMessage() => Lang.Get("handmill:millcore-complete");
+  protected override string GetCompleteMessage() =>
+    Lang.Get("handmill:millcore-complete");
 
-  private float Speed => this.NetworkAt<MpEnergyNetwork>(Pos)?.State?.Speed ?? 0f;
+  private float Speed =>
+    this.NetworkAt<MpEnergyNetwork>(Pos)?.State?.Speed ?? 0f;
 
-  private bool Grinding => StructureComplete && _grain > 0 && Speed >= HandMillValues.MinGrindSpeed;
+  private bool Grinding =>
+    StructureComplete && _grain > 0 && Speed >= HandMillValues.MinGrindSpeed;
 
   /// <summary>The mill loads the run only while it is grinding.</summary>
-  public float LoadTorque(float speed) => Grinding ? HandMillValues.GrindTorque : 0f;
+  public float LoadTorque(float speed) =>
+    Grinding ? HandMillValues.GrindTorque : 0f;
 
   protected override void OnProductionTick(float dt) {
     if (!Grinding)
@@ -301,7 +339,8 @@ public class BlockEntityMillCore : BlockEntityMultiblockMachine, IMpEnergyConsum
     MarkDirty();
   }
 
-  private sealed class HostMembership(BlockEntityMillCore owner) : BEBehaviorNetworkMember(owner) {
+  private sealed class HostMembership(BlockEntityMillCore owner)
+    : BEBehaviorNetworkMember(owner) {
     public override string NetworkType {
       get => "mpenergy";
       protected set { }
@@ -309,6 +348,9 @@ public class BlockEntityMillCore : BlockEntityMultiblockMachine, IMpEnergyConsum
   }
 }
 ```
+
+`TryLoad`, `TakeFlour` and `GetBlockInfo` (loading a grain, handing over flour, the look readout)
+are omitted here.
 
 `IMpEnergyConsumer.LoadTorque` is how the mill draws on the run: read by the network the same way
 `IMpEnergyProducer.DriveTorque` is read on the crank's side, both through `NetworkAt<MpEnergyNetwork>`.
