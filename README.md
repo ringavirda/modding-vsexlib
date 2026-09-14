@@ -59,7 +59,9 @@ on it directly. It is also the shared framework behind the *Expanded* family
 ## Start from the sample
 
 Starting a new mod? Clone [exmod-starter](https://github.com/ringavirda/exmod-starter) - a fresh
-project already wired to `exlib`, ready to build and boot with no setup of your own.
+project already wired to `exlib`, ready to build and boot with no setup of your own. Adding a
+block, structure or network node to a mod you already have? `exmod scaffold <kind> <Name>` drops
+one in from the `dotnet new` templates this library ships.
 
 Working inside this repo, or want to read the sample before you write anything? `samples/HandMill`
 is a third-party mod written against this library end to end: a hand crank and shaft on a

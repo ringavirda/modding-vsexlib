@@ -39,6 +39,8 @@ This wiki documents both libraries the family publishes for reuse:
 - Starting a new mod from scratch? Clone
   [exmod-starter](https://github.com/ringavirda/exmod-starter) - already wired to `exlib`, no
   setup of your own before you build and boot it.
+- Adding one more piece to a mod you already have? `exmod scaffold <kind> <Name>` drops in a
+  block, structure, network node or test project from this library's own `dotnet new` templates.
 - New here? Read **[Getting Started](Getting-Started)** - declare the dependency, set up a
   project reference, and register your first attribute-marked block. It walks
   [`samples/HandMill`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/HandMill) and
