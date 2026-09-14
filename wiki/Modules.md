@@ -61,18 +61,17 @@ A module ships one of two ways:
   name loaded twice is not supported.
 
 Whichever form it takes, a module dll shipped as its own mod still has to satisfy the engine's own
-Code-mod loader, which does not know what a module is. `samples/Grains` ships with no `ModSystem` at
-all to settle this: the loader refused it outright, `declared as code mod, but there are no .dll
-files that contain at least one ModSystem or has a ModInfo attribute`, so the sample carries an empty
-placeholder,
+Code-mod loader, which does not know what a module is. A module with no `ModSystem` of its own is
+refused outright - `declared as code mod, but there are no .dll files that contain at least one
+ModSystem or has a ModInfo attribute` - so it needs an empty placeholder,
 
 ```csharp
-public class GrainsModSystem : ModSystem { }
+public class YourModuleModSystem : ModSystem { }
 ```
 
-purely to satisfy that check. Nothing in it does any work - `ExModuleModSystem` is what actually
-drives `GrainsModule` through the phases below. A module shipped as its own mod needs the same empty
-`ModSystem` for the same reason.
+purely to satisfy that check. Nothing goes in it - `ExModuleModSystem` is what actually drives the
+module's own entry point through the phases below. A module shipped as its own mod needs the same
+empty `ModSystem` for the same reason.
 
 ## Enabled-mod filtering
 
@@ -229,36 +228,34 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
 `Mod = "exlib"` is what tells `ExModules.For` that Industry ships as part of the exlib mod, not a
 mod of its own called `industry` - the id nothing installs and nothing could ever enable.
 
-## The sample module
+## Building a module of your own
 
-`samples/Grains` proves the third-party shape end to end: its own mod folder, its own domain,
-depending on exlib, giving any mod's block a description of the grains it accepts. Mod id, module id
-and domain are all `grains`. `samples/HandMill` is the proof it exists for - a second, unrelated mod
-that depends on `grains` the way any real content mod would, and reads its catalogue and its block
-behaviour with no special-casing on either side.
+Neither sample this wiki walks - [Getting Started](Getting-Started) and [First
+Machine](First-Machine)'s `TwinTubBlower` and `BurdenMaker` - is a module; both are ordinary content
+mods built on exlib. `ExpandedLib.Industry` above is the one worked example in this repo. For the
+third-party shape, the pieces are the same ones Industry uses, arranged around your own mod folder
+and domain instead of exlib's:
 
-- `src/AssemblyInfo.cs` - `[assembly: ExDomain("grains")]` and `[assembly: ExModule("grains")]`, the
-  two lines that make the assembly a module of its own mod's identity.
-- `src/GrainsModSystem.cs` - the empty placeholder the loader requires; see above.
-- `src/GrainDef.cs` - the JSON shape of one entry under `config/grains/`: a grain item code, the
-  flour it grinds into, and how many seconds one piece takes. Read with
-  `AssetCatalogueLoader.GetMany<GrainDef>(api, "config/grains/")`, the way Industry reads its metals.
-  `GetMany` deserializes one file to one object, so each file under `config/grains/` holds exactly
-  one `GrainDef`, not an array of them - which is why the sample ships six files, one grain each.
-- `src/GrainCatalogue.cs` - the loaded catalogue, populated on both sides identically at
-  `AssetsFinalize`, once the patch pipeline has merged every domain's grains; `ForItem` finds an
-  entry by its grain code or its sack code, the lookup `HandMill`'s mill core reads from.
-- `src/GrainSackItems.cs` - pure, no asset reads: one `ExItemDef` per grain, coded `sack-<code>`,
-  the linen sack shape.
-- `src/GrainsModule.cs` - the entry point: `Contribute` emits the sack items through
-  `ExDefinitions.RegisterItem`, `AssetsFinalize` loads `GrainCatalogue`.
-- `src/BlockBehaviorGrainInfo.cs` - `[BlockBehaviorRegister]`; a block's placed-block info naming
-  the grains it accepts, read from `GrainCatalogue.All`. `HandMill`'s mill core picks this up with
-  `.Behavior<BlockBehaviorGrainInfo>()`, which resolves to `grains.BlockBehaviorGrainInfo` through
-  this assembly's own `ExDomain` rather than the calling block's - the cross-assembly key path this
-  sample exists to prove.
-- `src/GrainsConfig.cs` - one `[ExConfigRegister]` tunable, how much grain a loaded sack stands for.
-- `src/GrainsSubCommand.cs` - `/exmod grains`, printing one line per catalogue entry.
+- An `AssemblyInfo.cs` (or any assembly-level file) carrying `[assembly: ExDomain("yourmodule")]`
+  and `[assembly: ExModule("yourmodule")]` - mod id, module id and domain all the same string is the
+  simplest shape, though nothing requires it.
+- An empty `ModSystem` to satisfy the Code-mod loader, as above - nothing in it does any work.
+- A JSON-shaped def read with `AssetCatalogueLoader.GetMany<T>(api, "config/<yours>/")`, the way
+  Industry reads `config/metals/` - one file, one object; a catalogue of several entries ships as
+  several files, not one file holding an array.
+- A catalogue type populated at `AssetsFinalize`, once the patch pipeline has merged every domain's
+  contribution, and read by any mod that depends on you.
+- Code-first items or blocks your module contributes, emitted from `IExDefinitionContributor.Contribute`
+  rather than from `Start` - see "`IExDefinitionContributor`" above for why that phase is the one
+  legal place.
+- The entry point itself, one class implementing `IExModule` (and `IExDefinitionContributor` if it
+  contributes definitions), registered the same way any other class in the assembly is - by
+  `EntityRegistry.RegisterAll`, with no explicit call to write.
+
+A depending mod checks `ExModules.IsLoaded(api, "yourmodule")` before relying on you optionally, or
+just declares you as a `modinfo.json` dependency to require you outright - see [Getting
+Started](Getting-Started) section 1 for the dependency shape, which is the same for a module mod as
+for exlib itself.
 
 ## For third parties
 

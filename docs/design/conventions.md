@@ -166,10 +166,10 @@ fake world and its blocks), `Scenes/` (the layout DSL), `Rigs/` (drivers for mac
 structures), `Doubles/` (stand-ins), `Checks/` (the validators), `Repo/` (this repository's own
 history and paths). `tests/` mirrors `src/` folder for folder.
 
-`samples/` holds two: `HandMill`, a mod built against exlib end to end (a crank and a shaft on the
-mechanical-power network, a flywheel, a designed multiblock mill and a JSON-only quern stand), and
-`Grains`, a module shipped as its own mod that `HandMill` depends on, proving the third-party
-module shape (see the wiki's Modules page).
+`samples/` holds two: `TwinTubBlower`, a mechanically driven pair of bellows on the gas-pipe network
+built from a filler footprint hosting a mechanical-power port, and `BurdenMaker`, a designed
+multiblock stock house with a five-stage right-click construction and a container of its own.
+Neither is a module; see the wiki's Modules page for that shape instead.
 
 ### Catalogue registry verbs (ruled 2026-09-06)
 

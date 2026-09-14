@@ -44,9 +44,9 @@ This wiki documents both libraries the family publishes for reuse:
   block, structure, network node or test project from this library's own `dotnet new` templates.
 - New here? Read **[Getting Started](Getting-Started)** - declare the dependency, set up a
   project reference, and register your first attribute-marked block. It walks
-  [`samples/HandMill`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/HandMill) and
-  [`samples/Grains`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/Grains),
-  a buildable, bootable, tested mod and the module it reads from, using the convenience layer end to
+  [`samples/TwinTubBlower`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/TwinTubBlower) and
+  [`samples/BurdenMaker`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/BurdenMaker),
+  two buildable, bootable, tested mods, using the convenience layer end to
   end - read them alongside the page.
 - Building a machine with a structure and a power line? **[First Machine](First-Machine)** finishes
   the walk Getting Started starts.

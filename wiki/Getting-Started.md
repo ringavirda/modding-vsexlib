@@ -80,7 +80,7 @@ way the [Testing Harness](Testing-Harness) page assumes: from the `VINTAGE_STORY
 variable, or `-p:GamePath=...` on the command line.
 
 Inside this monorepo the sample switches to a plain `ProjectReference` against the checkout instead
-(see `samples/HandMill/src/HandMill.csproj`) so exlib's own change history builds against itself
+(see `samples/TwinTubBlower/src/TwinTubBlower.csproj`) so exlib's own change history builds against itself
 without a release round-trip; nothing about that switch is part of the package's public contract.
 
 ## 3. Register your content
@@ -129,284 +129,220 @@ failure is not logged, which is why the attribute is worth declaring up front.
 
 ## 4. Your first block
 
-`samples/HandMill` in this repo is everything above, buildable and bootable: a `Code` mod depending
-on `exlib` and on the `grains` module sample, five blocks, one config, and a full test suite. Read it
-file by file rather than typing the snippets by hand - every one below (bar one labelled alternative)
-is copied verbatim from it, so it compiles.
+`samples/TwinTubBlower` in this repo is everything above, buildable and bootable: a `Code` mod
+depending on `exlib` alone, one block, one config, and a full test suite. Read it file by file rather
+than typing the snippets by hand - every one below (bar one labelled alternative and one elided
+footprint call) is copied verbatim from it, so it compiles.
 
 A code-first block is a class that implements `IExBlockDefProvider` and carries `[BlockRegister]`.
-There is no `blocktypes/drive/crank.json` anywhere in the mod's `assets/` folder; the JSON the object
-loader reads is built by `ExBlockDef` and injected in memory at load. The crank is the mill's
-producer, a network node riding a vanilla mechanics shape with an orientation variant group:
+There is no `blocktypes/furnace/twintubblower.json` anywhere in the mod's `assets/` folder; the JSON
+the object loader reads is built by `ExBlockDef` and injected in memory at load. The blower is a
+mechanically driven pair of bellows: a gas-pipe node that produces into the network it stands in,
+riding its own shape with an orientation variant group:
 
 ```csharp
 [BlockRegister]
-public partial class BlockCrank : BlockNetworkNode, IExBlockDefProvider {
-  public override string NetworkType => "mpenergy";
+public partial class BlockTwinTubMPBlower
+  : BlockPipe,
+    IExBlockDefProvider,
+    IFillerHost {
+  private static readonly FillerBehaviorSpec MpPortWest =
+    FillerBehaviorSpec.Of<BEBehaviorMPFillerPort>("west");
 
-  public static IEnumerable<ExBlockDef> Definitions(string domain) =>
+  public static new IEnumerable<ExBlockDef> Definitions(string domain) =>
     [
       ExBlockDef
-        .Create(domain, "drive", "drive/crank")
-        .Class<BlockCrank>()
-        .EntityClass<BlockEntityCrank>()
-        .Material(EnumBlockMaterial.Wood)
-        .MaxStackSize(64)
-        .VariantGroup("type", "crank")
+        .Create(domain, "blower", "furnace/twintubblower")
+        .Class<BlockTwinTubMPBlower>()
+        .EntityClass<BlockEntityTwinTubMPBlower>()
+        .Behavior("MultiblockStructure")
+        .Material(EnumBlockMaterial.Ceramic)
+        .MaxStackSize(1)
+        .VariantGroup("type", "twintubblower")
         .VariantGroup("orientation", "n", "e", "s", "w")
         .NetworkOriented()
-        .ShapeByType("*-n", "game:block/wood/mechanics/crank", rotateY: 270)
-        .ShapeByType("*-e", "game:block/wood/mechanics/crank", rotateY: 180)
-        .ShapeByType("*-s", "game:block/wood/mechanics/crank", rotateY: 90)
-        .ShapeByType("*-w", "game:block/wood/mechanics/crank", rotateY: 0)
+        .ShapeByType("*-n", "twintubblower:furnace/twintubmpblower", rotateY: 0)
+        .ShapeByType("*-e", "twintubblower:furnace/twintubmpblower", rotateY: 90)
+        .ShapeByType("*-s", "twintubblower:furnace/twintubmpblower", rotateY: 180)
+        .ShapeByType("*-w", "twintubblower:furnace/twintubmpblower", rotateY: 270)
         .CreativeCommon("*-n")
-        .SingleCollisionBox(0.1875f, 0f, 0.1875f, 0.8125f, 0.625f, 0.8125f)
-        .SingleSelectionBox(0.1875f, 0f, 0.1875f, 0.8125f, 0.625f, 0.8125f)
-        .SideSolid(false)
-        .SideOpaque(false),
+        .FillerOffsets(/* the footprint hosting the MP port - see First Machine */)
+        .SolidNonOpaque(),
     ];
 }
 ```
 
-`VariantGroup("type", "crank")` carries one state; it is the drive family's discriminator, the only
-thing separating `handmill:drive-crank-*` from `handmill:drive-shaft-*` (its family sibling) under
-the shared `drive` code - see [First Machine](First-Machine) for the shaft and the rest of the mill.
+`VariantGroup("type", "twintubblower")` carries one state; it is the family's discriminator, the
+same shape the framework uses whenever a second block joins a code under `blower`. The
+`FillerOffsets` call reserves the rest of the blower's 1x2x3 footprint and hosts the mechanical-power
+port that drives it - [First Machine](First-Machine) walks that call and the block's own
+`IFillerHost` placement triad in full.
 
 `ExModSystem` registers it - and every other `[BlockRegister]`/`[BlockEntityRegister]`/
-`IExBlockDefProvider` in the assembly, and loads `HandMillValues` - with nothing to write:
+`IExBlockDefProvider` in the assembly, and loads `TwinTubBlowerValues` - with nothing to write:
 
 ```csharp
-public class HandMillModSystem : ExModSystem { }
+public class TwinTubBlowerModSystem : ExModSystem { }
 ```
 
 The explicit form behind it, for a mod system that needs a different order:
 
 ```csharp
-public class HandMillModSystem : ModSystem {
+public class TwinTubBlowerModSystem : ModSystem {
   public override void Start(ICoreAPI api) {
-    HandMillValues.Load(api);
+    TwinTubBlowerValues.Load(api);
     EntityRegistry.RegisterAll(api, Mod, GetType().Assembly);
   }
 }
 ```
 
-## 5. State, clicks and a wind that survives a reload
+## 5. State and a drive that survives a reload
 
-The crank's block entity is a small state machine: winding adds drive, driving eases off as the run
-spins up, and it unwinds on its own when left alone:
+The blower's block entity samples its driving axle once a second and pushes air into its own pipe
+network, scaled by how fast that axle is turning:
 
 ```csharp
 [BlockEntityRegister]
-public class BlockEntityCrank : BlockEntityNetworkNode, IMpEnergyProducer {
-  [Persist]
-  private float _windSeconds;
+public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
+  private static readonly Vec3i MpPortCell = new(0, 1, 0);
 
-  public override string NetworkType {
-    get => "mpenergy";
-    set { }
-  }
+  // Written server-side and serialized because the client cannot read the port behaviour's live
+  // state and needs it for the HUD.
+  [Persist("blowerSpeed")]
+  private float _lastSpeed;
 
   public override void Initialize(ICoreAPI api) {
     base.Initialize(api);
     if (api.Side == EnumAppSide.Server)
-      RegisterGameTickListener(Unwind, 1000);
+      RegisterGameTickListener(OnBlowTick, 1000);
   }
 
-  public void Wind(float seconds) {
-    _windSeconds = Math.Min(_windSeconds + seconds, seconds * 2f);
-    MarkDirty();
+  private void OnBlowTick(float dt) {
+    float speed = PortSpeed();
+    if (speed != _lastSpeed) {
+      _lastSpeed = speed;
+      MarkDirty();
+    }
+    ProduceAir(speed, dt);
   }
 
-  public float DriveTorque(float speed) =>
-    _windSeconds <= 0f
-      ? 0f
-      : HandMillValues.CrankTorque
-        * Math.Max(0f, 1f - speed / ExlibValues.MpMaxSpeed);
+  public float ProduceAir(float speed, float dt) {
+    float fraction = SpeedFraction(speed);
+    if (fraction <= 0f || dt <= 0f)
+      return 0f;
+    if (NetworkSystem?.GetNetworkAt(Pos) is not PipeNetwork net)
+      return 0f;
 
-  private void Unwind(float dt) {
-    if (_windSeconds <= 0f)
-      return;
-    _windSeconds = Math.Max(0f, _windSeconds - dt);
-    MarkDirty();
+    float before = net.State?.Volume ?? 0f;
+    net.TryProduceGas(
+      TwinTubBlowerValues.TwinTubBlowerOutputPerSecond * fraction * dt,
+      AmbientTemperature,
+      "Air",
+      Api.World.BlockAccessor,
+      maxOutputPressure: TwinTubBlowerValues.TwinTubBlowerMaxPressure
+    );
+    return GameMath.Max(0f, (net.State?.Volume ?? 0f) - before);
+  }
+
+  public static float SpeedFraction(float speed) {
+    float min = TwinTubBlowerValues.TwinTubBlowerMinSpeed;
+    float max = TwinTubBlowerValues.TwinTubBlowerMaxSpeed;
+    if (speed <= min)
+      return 0f;
+    if (max <= min)
+      return 1f;
+    return GameMath.Clamp((speed - min) / (max - min), 0f, 1f);
   }
 }
 ```
 
-`[Persist]` is the whole save/load story for `_windSeconds`: no `ToTreeAttributes`/
-`FromTreeAttributes` override, no key to spell twice. The block answers a click by winding, through
-`ExInteraction` rather than a hand-rolled `IPlayer`/`BlockSelection` guard:
+`[Persist("blowerSpeed")]` is the whole save/load story for `_lastSpeed`: no `ToTreeAttributes`/
+`FromTreeAttributes` override, no key to spell twice. `PortSpeed` (the axle lookup itself, through
+the filler cell the port is hosted on) and `AmbientTemperature` are omitted here - see
+[First Machine](First-Machine) for the footprint that cell sits in. See [Helpers &
+Renderers](Helpers-and-Renderers) "Declared state" for the full surface `[Persist]` covers.
+
+## 6. A config value
+
+The blower's tunables, generated into a typed `TwinTubBlowerValues` accessor:
 
 ```csharp
-public override bool OnBlockInteractStart(
-  IWorldAccessor world,
-  IPlayer byPlayer,
-  BlockSelection blockSel
-) {
-  if (
-    world.BlockAccessor.GetBlockEntity(blockSel.Position)
-    is not BlockEntityCrank crank
-  )
-    return base.OnBlockInteractStart(world, byPlayer, blockSel);
-  if (ExInteraction.Of(world, byPlayer, blockSel).IsClient)
-    return true;
-  crank.Wind(HandMillValues.WindSeconds);
-  return true;
-}
-```
-
-See [Helpers & Renderers](Helpers-and-Renderers) "Declared state" and "Block-entity lookups and side
-checks" for the full surface of both.
-
-## 6. A config value and a command
-
-The mill's tunables, generated into a typed `HandMillValues` accessor:
-
-```csharp
-[ExConfigRegister("handmill.json", "handmill", Manageable = true)]
-public class HandMillConfig : IExVersionedConfig {
+[ExConfigRegister("twintubblower.json", "twintubblower", Manageable = true)]
+public class TwinTubBlowerConfig : IExVersionedConfig {
   public string? ConfigVersion { get; set; }
 
-  [ExConfigRange(1, 120)]
-  public int WindSeconds { get; set; } = 10;
-
-  [ExConfigRange(1f, 500f)]
-  public float CrankTorque { get; set; } = 40f;
-
-  [ExConfigRange(0.1f, 100f)]
-  public float GrindTorque { get; set; } = 15f;
+  [ExConfigRange(1f, 1000f)]
+  public float TwinTubBlowerOutputPerSecond { get; set; } = 45f;
 
   [ExConfigRange(0.1f, 50f)]
-  public float MinGrindSpeed { get; set; } = 1f;
+  public float TwinTubBlowerMaxPressure { get; set; } = 2.2f;
 
-  [ExConfigRange(0.01f, 100f)]
-  public float ShaftInertia { get; set; } = 0.5f;
+  [ExConfigRange(0f, 50f)]
+  public float TwinTubBlowerMinSpeed { get; set; } = 0.5f;
 
-  [ExConfigRange(1f, 1000f)]
-  public float FlywheelInertia { get; set; } = 40f;
+  [ExConfigRange(0.1f, 50f)]
+  public float TwinTubBlowerMaxSpeed { get; set; } = 1.5f;
 }
 ```
 
-`Manageable = true` is what puts it on the generic switch: `/exmod config handmill windseconds 20`
-reads or writes it live, validated against the `[ExConfigRange]` bound, with no code of this mod's
-own involved. `HandMillValues.WindSeconds` (read live in `BlockCrank.OnBlockInteractStart` above) is
-generated from the property name.
-
-The command that reads the mill's inputs lives in the `grains` module instead of in `HandMill`
-itself, because it prints the catalogue any mill (or any other mod's machine) reads from, not
-anything specific to this mill:
-
-```csharp
-[SubCommandRegister(Side = EnumAppSide.Server)]
-public sealed class GrainsSubCommand : IExSubCommand {
-  public string ParentName => "exmod";
-
-  public void Register(ICoreAPI api, Mod mod, IChatCommand parent) {
-    parent
-      .BeginSubCommand("grains")
-      .WithDescription(Lang.Get("grains:command-grains-desc"))
-      .HandleWith(args =>
-        TextCommandResult.Success(
-          string.Join(
-            "\n",
-            GrainCatalogue.All.Select(g =>
-              $"{g.Code}: {g.Grain} -> {g.Flour}, {g.Seconds}"
-            )
-          )
-        )
-      )
-      .EndSubCommand();
-  }
-}
-```
-
-`/exmod grains` now prints one line per catalogue entry, whether or not `HandMill` is even installed.
-See [Config System](Config-System) and [Commands](Commands) for everything else either surface
-offers.
+`Manageable = true` is what puts it on the generic switch: `/exmod config twintubblower
+twintubbloweroutputpersecond 60` reads or writes it live, validated against the `[ExConfigRange]`
+bound, with no code of this mod's own involved. `TwinTubBlowerValues.TwinTubBlowerMaxSpeed` (read
+live in `SpeedFraction` above) is generated from the property name. See [Config
+System](Config-System) and [Commands](Commands) for adding a `/exmod` sub-command of your own.
 
 ## 7. Test it
 
-`samples/HandMill/tests` drives the crank headlessly through [Testing Harness](Testing-Harness)'s
-`TestWorld`, with no game launch:
+`samples/TwinTubBlower/tests` drives the bellows headlessly, with no game launch:
 
 ```csharp
-public class CrankTests {
-  [Fact]
-  public void DriveTorque_is_zero_before_winding() {
-    var be = new BlockEntityCrank();
-    Assert.Equal(0f, be.DriveTorque(0f));
-  }
-
-  [Fact]
-  public void DriveTorque_equals_CrankTorque_at_rest_after_winding() {
-    var be = new BlockEntityCrank();
-    be.Wind(10);
-    Assert.Equal(HandMillValues.CrankTorque, be.DriveTorque(0f));
-  }
-
-  [Fact]
-  public void DriveTorque_is_zero_at_the_run_burst_speed() {
-    var be = new BlockEntityCrank();
-    be.Wind(10);
-    Assert.Equal(0f, be.DriveTorque(ExlibValues.MpMaxSpeed));
-  }
-
-  [Fact]
-  public void The_wind_survives_a_tree_round_trip() {
-    var world = new TestWorld();
-    Block block = TestBlocks.Configure(
-      new BlockCrank(),
-      "handmill:drive-crank-e",
-      1,
-      ("orientation", "e")
-    );
-    var be = new BlockEntityCrank();
-    world.Place(new BlockPos(0, 0, 0), block, be);
-    world.Initialize(be);
-    be.Wind(10);
-
-    var tree = new TreeAttribute();
-    be.ToTreeAttributes(tree);
-
-    var restored = new BlockEntityCrank { Pos = be.Pos, Block = be.Block };
-    restored.FromTreeAttributes(tree, world.World);
-
-    Assert.Equal(HandMillValues.CrankTorque, restored.DriveTorque(0f));
+public class TwinTubBlowerTests {
+  [Theory]
+  [InlineData(0f, 0f)]
+  [InlineData(0.5f, 0f)] // at the minimum the bellows barely move
+  [InlineData(1.0f, 0.5f)] // halfway between min and max
+  [InlineData(1.5f, 1f)] // rated speed
+  [InlineData(4f, 1f)] // over-driven: capped, never more than rated
+  public void Output_scales_linearly_between_the_min_and_max_axle_speed(
+    float speed,
+    float expected
+  ) {
+    Assert.Equal(expected, BlockEntityTwinTubMPBlower.SpeedFraction(speed), 3);
   }
 }
 ```
 
-Run it with `dotnet test samples/HandMill/tests/HandMill.Tests.csproj`, or
-`exmod test latest -Filter HandMill`.
+Run it with `dotnet test samples/TwinTubBlower/tests/TwinTubBlower.Tests.csproj`, or
+`exmod test latest -Filter TwinTubBlower`.
 
 ## 8. Boot it
 
-`exmod smoke -Mods samples/HandMill/src/bin/Debug/Mods/mod` (the default smoke lane already includes
-it, alongside `grains`) launches the real dedicated server against the built mods, runs the content
-checks and `/exmod verify`, and fails on a boot timeout or an `[Error]`/`[Fatal]` log line - the same
-lane this repo's CI runs on every mod, now covering the one you just read:
+`exmod smoke -Mods src/ExpandedLib/bin/Debug/Mods/mod,samples/TwinTubBlower/src/bin/Debug/Mods/mod`
+launches the real dedicated server against the built mods, runs the content checks and
+`/exmod verify`, and fails on a boot timeout or an `[Error]`/`[Fatal]` log line - the same lane this
+repo's CI runs on every mod, now covering the one you just read:
 
 ```
-[exlib] modules hosted by exlib: grains, industry
-[exlib] Injected 5 code-first block definition(s).
-[exlib] Injected 6 code-first item definition(s).
-[exlib] check DefinitionCatalogue (handmill): 0 error(s)
-[exlib] check LateDefinition (handmill): 0 error(s)
-[exlib] check MultiblockCodes (handmill): 0 error(s)
-[exlib] check RecipeCodes (handmill): 0 error(s)
-[exlib] check LangCoverage (handmill): 0 error(s)
-[exlib] check NetworkNodeContract (handmill): 0 error(s)
-[exlib] check PinnedNetworkNodes (handmill): 0 error(s)
-[exlib] check CodePrefixCollision (handmill): 0 error(s)
+[exlib] modules hosted by exlib: industry
+[exlib] Injected 3 code-first block definition(s).
+[exlib] Injected 1 code-first item definition(s).
+[exlib] Injected 2 code-first recipe file(s).
+[exlib] check DefinitionCatalogue (twintubblower): 0 error(s)
+[exlib] check LateDefinition (twintubblower): 0 error(s)
+[exlib] check MultiblockCodes (twintubblower): 0 error(s)
+[exlib] check RecipeCodes (twintubblower): 0 error(s)
+[exlib] check LangCoverage (twintubblower): 0 error(s)
+[exlib] check NetworkNodeContract (twintubblower): 0 error(s)
+[exlib] check PinnedNetworkNodes (twintubblower): 0 error(s)
+[exlib] check CodePrefixCollision (twintubblower): 0 error(s)
 ```
 
-The count of five is process-global, not per-domain: handmill's own code-first blocks are the
-crank, the shaft, the flywheel and the mill core; the fifth is exlib's own structure filler
-(`BlockStructureFiller`), injected once for every mod that places a filled megastructure. The
-quern stand is JSON-only and never appears in this count. The six items are `grains`' sacks, one
-per catalogued grain. `grains` is listed among the modules hosted by exlib because it ships as its
-own mod carrying no `ModSystem` of its own - see [Modules](Modules). See
-[First Machine](First-Machine) for the rest of the mill: the shaft, the flywheel, the designed
-multiblock core and the JSON-only quern stand.
+The counts above are process-global, not per-domain, and were taken booting both samples together:
+the three blocks are the blower, the burden maker (see [First Machine](First-Machine)) and exlib's
+own structure filler (`BlockStructureFiller`), injected once for every mod that places a filled
+megastructure; the one item is the burden maker's own `burden`. See [First Machine](First-Machine)
+for the rest of the footprint: the filler cells, the mechanical-power port, and a second, more
+involved machine built the same way.
 
 ## 9. exmod in your repo
 
