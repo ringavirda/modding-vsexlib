@@ -168,9 +168,9 @@ public partial class BlockCrank : BlockNetworkNode, IExBlockDefProvider {
 }
 ```
 
-`VariantGroup("type", "crank")` carries one state; it exists so `NetworkNodeContractCheck` finds an
-`OrientationMap` to place from, the same reason the shaft (its `drive` family sibling) declares one -
-see [First Machine](First-Machine) for the shaft and the rest of the mill.
+`VariantGroup("type", "crank")` carries one state; it is the drive family's discriminator, the only
+thing separating `handmill:drive-crank-*` from `handmill:drive-shaft-*` (its family sibling) under
+the shared `drive` code - see [First Machine](First-Machine) for the shaft and the rest of the mill.
 
 `ExModSystem` registers it - and every other `[BlockRegister]`/`[BlockEntityRegister]`/
 `IExBlockDefProvider` in the assembly, and loads `HandMillValues` - with nothing to write:

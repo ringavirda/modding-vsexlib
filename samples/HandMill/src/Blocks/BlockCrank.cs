@@ -23,8 +23,9 @@ public partial class BlockCrank : BlockNetworkNode, IExBlockDefProvider {
 
   /// <summary>The crank's own single-cell type; the connector is the one face the letter names, so
   /// <c>HasConnectorAt</c> holds through the base. Rotations match vanilla's own crank shape's
-  /// compass mapping. The single-state <c>type</c> group carries no variation of its own - it
-  /// exists so <c>NetworkNodeContractCheck</c> finds one, the way the shaft's does.</summary>
+  /// compass mapping. The <c>type</c> group is the drive family's discriminator - the only thing
+  /// separating <c>drive-crank-*</c> from <c>drive-shaft-*</c> under the shared <c>drive</c> code,
+  /// the way iiex's <c>mpenergy</c> blocks share one code across several types.</summary>
   public static IEnumerable<ExBlockDef> Definitions(string domain) =>
     [
       ExBlockDef
