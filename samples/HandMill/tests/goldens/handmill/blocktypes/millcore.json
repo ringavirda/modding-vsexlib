@@ -8,6 +8,9 @@
     "base": "game:block/stone/quern/complete"
   },
   "textures": {
+    "basematerial": {
+      "base": "game:block/stone/rock/granite1"
+    },
     "grindstoneup": {
       "base": "game:block/stone/rock/granite1"
     },
