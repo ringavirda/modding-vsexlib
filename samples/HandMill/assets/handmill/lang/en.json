@@ -2,6 +2,7 @@
   "block-drive-shaft-*": "Wooden Shaft",
   "block-drive-crank-*": "Hand Crank",
   "block-flywheel-*": "Flywheel",
+  "tabname-handmill": "Hand Mill",
   "block-millcore-*": "Mill Core",
   "block-quernstand-*": "Quern Stand",
   "handmill:millcore-incomplete": "The mill is missing {0} block(s).",
