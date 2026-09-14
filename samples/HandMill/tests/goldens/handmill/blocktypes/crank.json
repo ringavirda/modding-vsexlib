@@ -6,6 +6,12 @@
   "maxstacksize": 64,
   "variantgroups": [
     {
+      "code": "type",
+      "states": [
+        "crank"
+      ]
+    },
+    {
       "code": "orientation",
       "states": [
         "n",

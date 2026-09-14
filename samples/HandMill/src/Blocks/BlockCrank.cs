@@ -9,9 +9,8 @@ using Vintagestory.API.Common;
 namespace HandMill.Blocks;
 
 /// <summary>
-/// A hand crank: a fixed endpoint of the mpenergy network. Sneak-click winds it (nothing to
-/// sneak-click here - a plain click drives it), feeding <see cref="BlockEntityCrank.Wind"/> a burst
-/// of drive torque that eases off as the run spins up.
+/// A hand crank: the mpenergy network's producer, driving it with a burst of torque on every click,
+/// feeding <see cref="BlockEntityCrank.Wind"/>.
 /// </summary>
 [BlockRegister]
 public partial class BlockCrank : BlockNetworkNode, IExBlockDefProvider {
@@ -24,7 +23,8 @@ public partial class BlockCrank : BlockNetworkNode, IExBlockDefProvider {
 
   /// <summary>The crank's own single-cell type; the connector is the one face the letter names, so
   /// <c>HasConnectorAt</c> holds through the base. Rotations match vanilla's own crank shape's
-  /// compass mapping.</summary>
+  /// compass mapping. The single-state <c>type</c> group carries no variation of its own - it
+  /// exists so <c>NetworkNodeContractCheck</c> finds one, the way the shaft's does.</summary>
   public static IEnumerable<ExBlockDef> Definitions(string domain) =>
     [
       ExBlockDef
@@ -33,6 +33,7 @@ public partial class BlockCrank : BlockNetworkNode, IExBlockDefProvider {
         .EntityClass<BlockEntityCrank>()
         .Material(EnumBlockMaterial.Wood)
         .MaxStackSize(64)
+        .VariantGroup("type", "crank")
         .VariantGroup("orientation", "n", "e", "s", "w")
         .NetworkOriented()
         .ShapeByType("*-n", "game:block/wood/mechanics/crank", rotateY: 270)
@@ -47,8 +48,8 @@ public partial class BlockCrank : BlockNetworkNode, IExBlockDefProvider {
     ];
 
   /// <summary>
-  /// A fixed endpoint has no neighbour to connect toward, so its orientation is the player's own look
-  /// direction - the same token <see cref="ExpandedLib.Blocks.BlockBehaviorExOrientable"/>'s
+  /// The crank has no neighbour yet to take an orientation from, so it faces the player's own look
+  /// direction instead - the same token <see cref="ExpandedLib.Blocks.BlockBehaviorExOrientable"/>'s
   /// horizontal mode gives a wall-facing block, not the network node's default (which would face
   /// opposite the clicked face, toward whatever triggered the placement).
   /// </summary>
@@ -77,8 +78,8 @@ public partial class BlockCrank : BlockNetworkNode, IExBlockDefProvider {
     return oriented.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
   }
 
-  /// <summary>The crank declares no "type" variant group, so <c>Type</c> is always null and the base
-  /// default (keyed by type) never resolves; a fixed endpoint has one canonical facing regardless.</summary>
+  /// <summary>The crank's <c>type</c> group carries one state, so it has one canonical facing
+  /// regardless of <paramref name="type"/>.</summary>
   protected override string GetFallbackOrientation(string? type) => "n";
 
   public override bool OnBlockInteractStart(

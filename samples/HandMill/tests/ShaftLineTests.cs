@@ -57,7 +57,7 @@ public class ShaftLineTests {
   private static BlockCrank Crank(Scene scene, int id) {
     var block = TestBlocks.Configure(
       new BlockCrank(),
-      "handmill:crank-e",
+      "handmill:crank-crank-e",
       id,
       ("orientation", "e")
     );

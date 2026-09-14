@@ -9,9 +9,9 @@ using Vintagestory.API.Common;
 namespace HandMill.BlockEntities;
 
 /// <summary>
-/// Block entity for a <see cref="Blocks.BlockCrank"/>: a fixed endpoint of the mpenergy run that
-/// drives it with a burst of torque per click, easing off as the run spins up and unwinding over
-/// time when left alone.
+/// Block entity for a <see cref="Blocks.BlockCrank"/>: the mpenergy run's producer, driving it with
+/// a burst of torque per click, easing off as the run spins up and unwinding over time when left
+/// alone.
 /// </summary>
 [BlockEntityRegister]
 public class BlockEntityCrank : BlockEntityNetworkNode, IMpEnergyProducer {
