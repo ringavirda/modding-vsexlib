@@ -19,13 +19,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpandedLib.Tests", "tests\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5D20AA90-6969-D8BD-9DCD-8634F4692FDA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloExpanded", "samples\HelloExpanded\HelloExpanded.csproj", "{B6417B48-9468-4BA9-B966-AD04A9D89F3B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HandMill", "samples\HandMill\src\HandMill.csproj", "{B6417B48-9468-4BA9-B966-AD04A9D89F3B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloModule", "samples\HelloModule\HelloModule.csproj", "{52AE1C2A-33E0-45DF-A3EA-2666AB38CA71}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Grains", "samples\Grains\src\Grains.csproj", "{52AE1C2A-33E0-45DF-A3EA-2666AB38CA71}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloExpanded.Tests", "samples\HelloExpanded.Tests\HelloExpanded.Tests.csproj", "{5B7CB7DA-2B87-4B22-BC1D-64A822ED35B1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HandMill.Tests", "samples\HandMill\tests\HandMill.Tests.csproj", "{5B7CB7DA-2B87-4B22-BC1D-64A822ED35B1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloModule.Tests", "samples\HelloModule.Tests\HelloModule.Tests.csproj", "{BC81CA52-9B3F-48C5-AB28-71237D4F5219}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Grains.Tests", "samples\Grains\tests\Grains.Tests.csproj", "{BC81CA52-9B3F-48C5-AB28-71237D4F5219}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
