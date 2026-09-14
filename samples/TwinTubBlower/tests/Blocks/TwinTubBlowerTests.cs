@@ -1,0 +1,224 @@
+using System.Linq;
+using ExpandedLib.Definitions;
+using ExpandedLib.Industry.Pipes;
+using ExpandedLib.Networks;
+using ExpandedLib.Structures;
+using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
+using TwinTubBlower.BlockEntities;
+using TwinTubBlower.Blocks;
+using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
+using Xunit;
+
+namespace TwinTubBlower.Tests;
+
+/// <summary>
+/// The twin-tub blower: a mechanically driven bellows that produces into the pipe main it stands in.
+/// Covers the speed response, the production path and the footprint hosting the drive axle.
+/// </summary>
+public class TwinTubBlowerTests {
+  #region Speed response
+
+  [Theory]
+  [InlineData(0f, 0f)]
+  [InlineData(0.5f, 0f)] // at the minimum the bellows barely move
+  [InlineData(1.0f, 0.5f)] // halfway between min and max
+  [InlineData(1.5f, 1f)] // rated speed
+  [InlineData(4f, 1f)] // over-driven: capped, never more than rated
+  public void Output_scales_linearly_between_the_min_and_max_axle_speed(
+    float speed,
+    float expected
+  ) {
+    Assert.Equal(expected, BlockEntityTwinTubMPBlower.SpeedFraction(speed), 3);
+  }
+
+  [Fact]
+  public void A_retuned_speed_band_moves_the_response_with_it() {
+    float minOriginal = TwinTubBlowerValues.TwinTubBlowerMinSpeed;
+    try {
+      TwinTubBlowerValues.Edit(c => c.TwinTubBlowerMinSpeed = 1.0f);
+      // 1.0 is half output under the default band and zero once the minimum is raised to 1.0.
+      Assert.Equal(0f, BlockEntityTwinTubMPBlower.SpeedFraction(1.0f), 3);
+    } finally {
+      TwinTubBlowerValues.Edit(c => c.TwinTubBlowerMinSpeed = minOriginal);
+    }
+  }
+
+  #endregion
+
+  #region Production
+
+  /// <summary>
+  /// A blower standing as a node in its own single-cell pipe main. <c>ProduceAir</c> is driven with an
+  /// axle speed directly: the live tick reads speed from a hosted MP filler port, which needs a filler
+  /// block entity the headless world does not build.
+  /// </summary>
+  private static (
+    TestWorld world,
+    PipeNetwork net,
+    BlockEntityTwinTubMPBlower blower
+  ) Rig() {
+    var world = new TestWorld();
+    world.RegisterNetwork("pipe", sys => new PipeNetwork(sys));
+
+    var blowerBlock = TestBlocks.Configure(
+      new BlockTwinTubMPBlower(),
+      "twintubblower:blower-twintubblower-n",
+      120,
+      ("type", "twintubblower"),
+      ("orientation", "n")
+    );
+    blowerBlock.SetNetworkTypeForTest("twintubblower");
+    blowerBlock.ApplyOrientationForTest("n");
+
+    var blower = new BlockEntityTwinTubMPBlower();
+    var pos = new BlockPos(0, 0, 0);
+    world.Place(pos, blowerBlock, blower);
+    world.Attach(blower);
+    world.AddNode(pos, "pipe");
+    ReflectionHelpers.SetProperty(
+      blower,
+      nameof(blower.NetworkSystem),
+      world.Networks
+    );
+
+    return (world, (PipeNetwork)world.NetworkAt(pos)!, blower);
+  }
+
+  [Fact]
+  public void A_driven_blower_puts_air_into_its_own_network() {
+    var (_, net, blower) = Rig();
+    Assert.Equal(0f, net.State?.Volume ?? 0f);
+
+    float produced = blower.ProduceAir(
+      TwinTubBlowerValues.TwinTubBlowerMaxSpeed,
+      1f
+    );
+
+    Assert.True(produced > 0f, "a driven blower should produce air");
+    Assert.Equal("Air", net.State!.MediumType);
+    Assert.True(net.State!.Volume > 0f);
+  }
+
+  [Fact]
+  public void An_undriven_blower_leaves_the_main_alone() {
+    var (world, net, blower) = Rig();
+    net.TryProduceGas(20f, 20f, "Air", world.Accessor, maxOutputPressure: 2f);
+    float before = net.State!.Volume;
+
+    Assert.Equal(0f, blower.ProduceAir(0f, 1f));
+
+    Assert.Equal(before, net.State!.Volume, 3);
+  }
+
+  [Fact]
+  public void A_half_speed_axle_delivers_half_the_air_of_a_rated_one() {
+    var (_, fastNet, fast) = Rig();
+    var (_, slowNet, slow) = Rig();
+    float mid =
+      (
+        TwinTubBlowerValues.TwinTubBlowerMinSpeed
+        + TwinTubBlowerValues.TwinTubBlowerMaxSpeed
+      ) / 2f;
+
+    float fullOutput = fast.ProduceAir(
+      TwinTubBlowerValues.TwinTubBlowerMaxSpeed,
+      1f
+    );
+    float halfOutput = slow.ProduceAir(mid, 1f);
+
+    Assert.True(fullOutput > 0f && halfOutput > 0f);
+    Assert.Equal(fullOutput / 2f, halfOutput, 1);
+  }
+
+  [Fact]
+  public void The_blower_never_pushes_its_line_past_the_pressure_ceiling() {
+    var (_, net, blower) = Rig();
+
+    // Blow far longer than the single cell can hold, so the ceiling - not the volume - is what stops it.
+    for (int i = 0; i < 60; i++)
+      blower.ProduceAir(TwinTubBlowerValues.TwinTubBlowerMaxSpeed, 1f);
+
+    Assert.True(
+      net.State!.Pressure
+        <= TwinTubBlowerValues.TwinTubBlowerMaxPressure + 0.001f,
+      $"line reached {net.State!.Pressure} atm, ceiling is {TwinTubBlowerValues.TwinTubBlowerMaxPressure}"
+    );
+  }
+
+  #endregion
+
+  #region Footprint
+
+  [Fact]
+  public void The_footprint_hosts_a_mechanical_port_on_its_upper_rear_cell() {
+    ExBlockDef def = BlockTwinTubMPBlower.Definitions("twintubblower").Single();
+    var offsets = (JArray)def.ToJson()["attributes"]!["fillerOffsets"]!;
+
+    // 1x2x3 minus the principal = 5 filler cells.
+    Assert.Equal(5, offsets.Count);
+
+    JToken port = offsets.Single(o =>
+      (int)o["y"]! == 1 && (int)o["z"]! == 0 && (int)o["x"]! == 0
+    );
+    var behaviors = (JArray)port["behaviors"]!;
+    Assert.Equal(
+      "exlib.BEBehaviorMPFillerPort",
+      (string)behaviors[0]!["code"]!
+    );
+    Assert.Equal("west", (string)behaviors[0]!["face"]!);
+    Assert.True((bool)port["allowAttach"]!);
+  }
+
+  /// <summary>
+  /// The -Z run: the blower's own connector faces north, and the two fillers ahead of it must
+  /// forward that coupling rather than dead-end it, or nothing placed further out ever reaches the
+  /// blower's network.
+  /// </summary>
+  [Fact]
+  public void A_pipe_two_cells_out_joins_the_blowers_own_network() {
+    var (world, _, _) = Rig();
+    var principal = new BlockPos(0, 0, 0);
+
+    world.PlaceFillerNode(
+      new BlockPos(0, 0, -1),
+      "pipe",
+      "ns",
+      principal: principal
+    );
+    world.PlaceFillerNode(
+      new BlockPos(0, 0, -2),
+      "pipe",
+      "ns",
+      principal: principal
+    );
+    world.PlaceNode(new BlockPos(0, 0, -3), "pipe", "ns");
+
+    var net = world.NetworkAt(principal);
+    Assert.NotNull(net);
+    Assert.Equal(4, net!.Nodes.Count);
+    Assert.Same(net, world.NetworkAt(new BlockPos(0, 0, -3)));
+  }
+
+  [Theory]
+  [InlineData("n", 0)]
+  [InlineData("e", 90)]
+  [InlineData("s", 180)]
+  [InlineData("w", 270)]
+  public void The_structure_angle_follows_the_orientation_variant(
+    string orientation,
+    int expected
+  ) {
+    var block = TestBlocks.Configure(
+      new BlockTwinTubMPBlower(),
+      $"twintubblower:blower-twintubblower-{orientation}",
+      121,
+      ("type", "twintubblower"),
+      ("orientation", orientation)
+    );
+    Assert.Equal(expected, block.StructureAngle);
+  }
+
+  #endregion
+}

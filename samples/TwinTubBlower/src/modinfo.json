@@ -1,0 +1,13 @@
+{
+  "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
+  "type": "Code",
+  "modid": "twintubblower",
+  "name": "Twin Tub Blower",
+  "authors": ["fallenstar"],
+  "description": "Sample mod: a mechanically driven bellows that is both a mega-block reserving a footprint for its own drive port and a pipe node producing into the network it stands in.",
+  "version": "1.0.0",
+  "dependencies": {
+    "game": "1.22.0",
+    "exlib": "0.8.0"
+  }
+}

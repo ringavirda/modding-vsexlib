@@ -1,0 +1,7 @@
+{
+  "block-blower-twintubblower*": "Twin-Tub Blower",
+  "blockdesc-blower-twintubblower*": "Mechanically driven twin-tub bellows that supplies cold blast air.",
+
+  "twintubblower:blower-info-idle": "Bellows idle - no axle turning",
+  "twintubblower:blower-info-blowing": "Blowing {0} ({1}% of rated output)"
+}

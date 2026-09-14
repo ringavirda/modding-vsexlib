@@ -1,0 +1,134 @@
+{
+  "code": "blower",
+  "class": "twintubblower.BlockTwinTubMPBlower",
+  "entityClass": "twintubblower.BlockEntityTwinTubMPBlower",
+  "behaviors": [
+    {
+      "name": "MultiblockStructure"
+    },
+    {
+      "name": "ExOrientable",
+      "properties": {
+        "mode": "network",
+        "scheme": "Face"
+      }
+    }
+  ],
+  "blockmaterial": "Ceramic",
+  "maxstacksize": 1,
+  "variantgroups": [
+    {
+      "code": "type",
+      "states": [
+        "twintubblower"
+      ]
+    },
+    {
+      "code": "orientation",
+      "states": [
+        "n",
+        "e",
+        "s",
+        "w"
+      ]
+    }
+  ],
+  "shapebytype": {
+    "*-n": {
+      "base": "twintubblower:furnace/twintubmpblower",
+      "rotateY": 0
+    },
+    "*-e": {
+      "base": "twintubblower:furnace/twintubmpblower",
+      "rotateY": 90
+    },
+    "*-s": {
+      "base": "twintubblower:furnace/twintubmpblower",
+      "rotateY": 180
+    },
+    "*-w": {
+      "base": "twintubblower:furnace/twintubmpblower",
+      "rotateY": 270
+    }
+  },
+  "creativeinventory": {
+    "general": [
+      "*-n"
+    ],
+    "twintubblower": [
+      "*-n"
+    ]
+  },
+  "attributes": {
+    "fillerOffsets": [
+      {
+        "x": 0,
+        "y": 1,
+        "z": -2,
+        "collisionBox": {
+          "x1": 0.0,
+          "y1": 0.0,
+          "z1": 0.0,
+          "x2": 1.0,
+          "y2": 0.5,
+          "z2": 1.0
+        }
+      },
+      {
+        "x": 0,
+        "y": 1,
+        "z": -1
+      },
+      {
+        "x": 0,
+        "y": 1,
+        "z": 0,
+        "behaviors": [
+          {
+            "code": "exlib.BEBehaviorMPFillerPort",
+            "face": "west"
+          }
+        ],
+        "allowAttach": true
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "z": -2,
+        "behaviors": [
+          {
+            "code": "exlib.BEBehaviorNetworkMember",
+            "face": "north",
+            "properties": {
+              "networkType": "pipe",
+              "passThrough": true
+            }
+          }
+        ],
+        "allowAttach": true
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "z": -1,
+        "behaviors": [
+          {
+            "code": "exlib.BEBehaviorNetworkMember",
+            "face": "north",
+            "properties": {
+              "networkType": "pipe",
+              "passThrough": true
+            }
+          }
+        ],
+        "allowAttach": true
+      }
+    ]
+  },
+  "sidesolid": {
+    "all": true
+  },
+  "sideopaque": {
+    "all": false
+  }
+}

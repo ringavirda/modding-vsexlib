@@ -1,0 +1,39 @@
+[
+  {
+    "name": "Twin Tub Blower",
+    "ingredientPattern": "LPL,PNP,_H_",
+    "width": 3,
+    "height": 3,
+    "output": {
+      "type": "block",
+      "code": "twintubblower:blower-twintubblower-n"
+    },
+    "ingredients": {
+      "L": {
+        "type": "item",
+        "code": "game:leather-normal-plain",
+        "quantity": 2
+      },
+      "P": {
+        "type": "item",
+        "code": "game:plank-*",
+        "quantity": 1
+      },
+      "N": {
+        "type": "item",
+        "code": "game:metalnailsandstrips-*",
+        "name": "metal",
+        "allowedVariants": [
+          "iron",
+          "steel"
+        ],
+        "quantity": 1
+      },
+      "H": {
+        "type": "item",
+        "code": "game:hammer-*",
+        "isTool": true
+      }
+    }
+  }
+]
