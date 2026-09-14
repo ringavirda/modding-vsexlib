@@ -15,7 +15,7 @@ namespace WidgetNamespace.Tests.Definitions;
 /// </summary>
 public class WidgetRecipeGoldenTests {
   private static string GoldenPath([CallerFilePath] string here = "") =>
-    Path.Combine(Path.GetDirectoryName(here)!, "..", "goldens", "recipe.json");
+    Path.Combine(Path.GetDirectoryName(here)!, "..", "goldens", "WidgetRecipe.json");
 
   [Fact]
   public void Definition_reproduces_its_golden() {

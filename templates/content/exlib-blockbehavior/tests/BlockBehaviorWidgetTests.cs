@@ -1,4 +1,5 @@
 using ExpandedLib.Testing;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using WidgetNamespace.Behaviors;
@@ -14,14 +15,19 @@ public class BlockBehaviorWidgetTests {
   public void Names_the_blocks_code_in_the_placed_block_info() {
     var world = new TestWorld();
     Block block = TestBlocks.Configure(new Block(), "widgetdomain:widget", 1);
+    var pos = new BlockPos(0, 0, 0);
+    world.Place(pos, block);
     var behavior = new BlockBehaviorWidget(block);
 
-    string info = behavior.GetPlacedBlockInfo(
-      world.World,
-      new BlockPos(0, 0, 0),
-      world.Player().Player
-    );
+    behavior.GetPlacedBlockInfo(world.World, pos, world.Player().Player);
 
-    Assert.Equal("widgetdomain:widget-info", info);
+    // TestLang echoes a key back rather than formatting it, so the format argument the
+    // behaviour passes is asserted through the substitute call, not the returned string.
+    TestLang
+      .Service.Received()
+      .Get(
+        "widgetdomain:widget-info",
+        Arg.Is<object[]>(a => Equals(a[0], block.Code))
+      );
   }
 }

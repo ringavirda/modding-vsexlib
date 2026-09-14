@@ -135,19 +135,37 @@ jobs:
         env:
           EXTOOLS_HOME: ${{ github.workspace }}/.extools-dev
           NUGET_PACKAGES: ${{ runner.temp }}/pkgs
-          VINTAGE_STORY: ${{ github.workspace }}/.game/1.22-server
         run: |
           set -euo pipefail
+          # Reuse the game already provisioned above instead of setup's own provisioning: setup
+          # also fetches exlib's dependency mods for this unreleased version, which 404s (the
+          # release this job would resolve against is cut only after main goes green from this
+          # very run). The slug matches Invoke-ProvisionGame's own major.minor rule; VS_VERSION is
+          # a full patch, so this is never the client-conflict "-server" suffix a workstation with
+          # a pre-existing client would get.
+          slug=$(echo "$VS_VERSION" | cut -d. -f1,2)
+          export VINTAGE_STORY="$GITHUB_WORKSPACE/.game/$slug"
           version=$(jq -r .version src/ExpandedLib/modinfo.json)
           dest="$RUNNER_TEMP/starter"
           bash scripts/exmod.sh starter "$dest" -ExlibRoot "$GITHUB_WORKSPACE" -Version "$version"
           cd "$dest"
           dotnet new nugetconfig
           dotnet nuget add source "$GITHUB_WORKSPACE/dist/nuget" --name exlib-local --configfile nuget.config
-          bash scripts/exmod.sh setup
           bash scripts/exmod.sh new demo
           for k in block item recipe megablock multiblock node blockbehavior entitybehavior config migration command; do
             bash scripts/exmod.sh scaffold "$k" "Demo${k^}" -Mod demo
           done
+          # demo's own test project carries no golden-completeness check, so the scaffolded
+          # block/item/recipe/megablock/multiblock/node kinds (each a code-first def) would land
+          # unproven against that seam. Rendering the exlib-tests template's GoldenTests.cs into
+          # demo exercises it for real: the new defs' goldens need blessing once with
+          # EXLIB_WRITE_GOLDENS, same as any mod that golden-checks its whole def set.
+          dotnet new install "$GITHUB_WORKSPACE/templates/content/exlib-tests" --force
+          goldenTmp=$(mktemp -d)
+          dotnet new exlib-tests -n Demo.Tests --ModName Demo -o "$goldenTmp" --force
+          sed -i 's/Domain = "Demo"/Domain = "demo"/' "$goldenTmp/Definitions/GoldenTests.cs"
+          mkdir -p mods/demo/tests/Definitions
+          cp "$goldenTmp/Definitions/GoldenTests.cs" mods/demo/tests/Definitions/GoldenTests.cs
           bash scripts/exmod.sh build latest
+          EXLIB_WRITE_GOLDENS=1 bash scripts/exmod.sh test latest
           bash scripts/exmod.sh test latest

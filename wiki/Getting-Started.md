@@ -436,7 +436,10 @@ workspace sibling checkout of exlib when there is one, otherwise a published rel
 multiblock, node, blockbehavior, entitybehavior, config, migration or command into your mod from the
 templates exlib ships as `ExpandedLib.Templates`: `exmod scaffold block Widget` lands a block and its
 block entity in `src/Blocks` and `src/BlockEntities` with a test in `tests/`, and merges the lang keys
-the generated code reads into `assets/<id>/lang/en.json` - each kind lands compiling with a test.
+the generated code reads into `assets/<id>/lang/en.json` - each kind lands compiling with a test. A
+block, item, recipe, megablock, multiblock or node is a code-first def: if your mod's test project
+golden-checks the whole set (see **[Code-First Definitions](Code-First-Definitions)**, "Goldens"), the
+new def's missing golden turns that check red until you bless it once with `EXLIB_WRITE_GOLDENS=1`.
 
 ## 10. Pick the system you need
 
