@@ -117,7 +117,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
   #region What each hopper takes
 
   /// <summary>
-  /// Whether <paramref name="stack"/> belongs in the wide hopper: crushed or roasted iron ore. Resolved
+  /// Whether <paramref name="stack"/> belongs in the wide hopper: crushed iron ore. Resolved
   /// through <see cref="MaterialRoleRegistry"/> (role <see cref="Roles.IronOre"/>), the same role check
   /// the flux hopper uses, so ores contributed by another mod's <c>materialroles.json</c> are accepted
   /// here exactly as any other machine reading the role would.
@@ -301,7 +301,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     int units = ore + flux;
     float total = Math.Max(1, units);
     var stack = new ItemStack(item, units);
-    Burden.Write(stack, new BurdenMix(ore / total, flux / total, 0f));
+    Burden.Write(stack, new BurdenMix(ore / total, flux / total));
     return stack;
   }
 
@@ -353,7 +353,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
     if (ore + flux > 0) {
       float total = ore + flux;
-      var preview = new BurdenMix(ore / total, flux / total, 0f);
+      var preview = new BurdenMix(ore / total, flux / total);
       sb.AppendLine(
         Lang.Get(
           "burdenmaker:burdenmaker-willmake",

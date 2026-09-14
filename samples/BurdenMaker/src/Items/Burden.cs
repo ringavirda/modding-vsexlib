@@ -9,13 +9,12 @@ namespace BurdenMaker.Items;
 /// Stored as raw parts and read back as fractions, so splitting or merging a stack preserves the
 /// per-unit proportions.
 /// </summary>
-public readonly record struct BurdenMix(float Iron, float Flux, float Fuel) {
-  public float Sum => Iron + Flux + Fuel;
+public readonly record struct BurdenMix(float Iron, float Flux) {
+  public float Sum => Iron + Flux;
   public bool HasContent => Sum > 0.0001f;
 
   public float IronFrac => HasContent ? Iron / Sum : 0f;
   public float FluxFrac => HasContent ? Flux / Sum : 0f;
-  public float FuelFrac => HasContent ? Fuel / Sum : 0f;
 }
 
 /// <summary>
@@ -26,7 +25,6 @@ public readonly record struct BurdenMix(float Iron, float Flux, float Fuel) {
 public static class Burden {
   private const string IronKey = "iron";
   private const string FluxKey = "flux";
-  private const string FuelKey = "fuel";
 
   /// <summary>True when <paramref name="stack"/> is the burden item.</summary>
   public static bool Is([NotNullWhen(true)] ItemStack? stack) =>
@@ -37,7 +35,6 @@ public static class Burden {
     var a = stack.Attributes;
     a.SetFloat(IronKey, Math.Max(0f, mix.Iron));
     a.SetFloat(FluxKey, Math.Max(0f, mix.Flux));
-    a.SetFloat(FuelKey, Math.Max(0f, mix.Fuel));
   }
 
   /// <summary>Reads the mix parts off a burden stack; an unstamped stack reads as empty.</summary>
@@ -45,16 +42,12 @@ public static class Burden {
     var a = stack?.Attributes;
     if (a == null)
       return default;
-    return new BurdenMix(
-      a.GetFloat(IronKey),
-      a.GetFloat(FluxKey),
-      a.GetFloat(FuelKey)
-    );
+    return new BurdenMix(a.GetFloat(IronKey), a.GetFloat(FluxKey));
   }
 
   /// <summary>
-  /// Lang key of the named grade for a mix. Graded on flux alone: with fuel off the item, iron is just
-  /// <c>1 - flux</c>. A low-flux mix is not inferred; <c>underfluxed</c> is an explicit band.
+  /// Lang key of the named grade for a mix. Graded on flux alone: iron is just <c>1 - flux</c>. A
+  /// low-flux mix is not inferred; <c>underfluxed</c> is an explicit band.
   /// </summary>
   public static string ProfileLangKey(BurdenMix mix) {
     if (!mix.HasContent)

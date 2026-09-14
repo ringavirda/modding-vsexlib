@@ -192,7 +192,6 @@ public class BurdenmakerTests {
     BurdenMix mix = Burden.Read(be.TryWithdrawBurden());
     Assert.Equal(0.90f, mix.Iron, 3);
     Assert.Equal(0.10f, mix.Flux, 3);
-    Assert.Equal(0f, mix.Fuel, 5);
   }
 
   [Fact]
