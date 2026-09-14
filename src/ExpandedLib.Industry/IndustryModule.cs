@@ -41,7 +41,10 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
   public static void RegisterNetworkTypes(BlockNetworkModSystem networks) {
     networks.RegisterNetworkType("pipe", () => new PipeNetwork(networks));
     networks.RegisterNetworkType("molten", () => new MoltenNetwork(networks));
-    networks.RegisterNetworkType("mpenergy", () => new MpEnergyNetwork(networks));
+    networks.RegisterNetworkType(
+      "mpenergy",
+      () => new MpEnergyNetwork(networks)
+    );
   }
 
   /// <summary>

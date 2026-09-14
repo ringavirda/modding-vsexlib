@@ -12,16 +12,21 @@ namespace HandMill.Tests;
 public class ShaftLineTests {
   [Fact]
   public void A_wound_crank_spins_up_the_line_then_coasts_down() {
-    var scene = new Scene().Network("mpenergy", sys => new MpEnergyNetwork(sys));
+    var scene = new Scene().Network(
+      "mpenergy",
+      sys => new MpEnergyNetwork(sys)
+    );
     int id = 1;
     var diagram = new SceneDiagram()
       .On(
         'c',
-        p => scene.Node(p, Crank(scene, id++), new BlockEntityCrank(), "mpenergy")
+        p =>
+          scene.Node(p, Crank(scene, id++), new BlockEntityCrank(), "mpenergy")
       )
       .On(
         '=',
-        p => scene.Node(p, Shaft(scene, id++), new BlockEntityShaft(), "mpenergy")
+        p =>
+          scene.Node(p, Shaft(scene, id++), new BlockEntityShaft(), "mpenergy")
       );
     diagram.Layer("c===");
     scene.Build();
@@ -35,9 +40,9 @@ public class ShaftLineTests {
     // saturates the run to its burst speed in one second.
     scene.Step(1);
 
-    MpEnergyNetworkState? afterWind = scene.NetworkAt<MpEnergyNetwork>(
-      new BlockPos(0, 0, 0)
-    )?.State;
+    MpEnergyNetworkState? afterWind = scene
+      .NetworkAt<MpEnergyNetwork>(new BlockPos(0, 0, 0))
+      ?.State;
     Assert.NotNull(afterWind);
     Assert.True(afterWind!.Speed > 0f);
 
@@ -45,9 +50,9 @@ public class ShaftLineTests {
     // zero for a while, so this reads a converged floor, not a snapshot mid-oscillation.
     scene.Step(30);
 
-    MpEnergyNetworkState? afterCoast = scene.NetworkAt<MpEnergyNetwork>(
-      new BlockPos(0, 0, 0)
-    )?.State;
+    MpEnergyNetworkState? afterCoast = scene
+      .NetworkAt<MpEnergyNetwork>(new BlockPos(0, 0, 0))
+      ?.State;
     Assert.NotNull(afterCoast);
     Assert.Equal(0f, afterCoast!.Speed);
   }

@@ -28,7 +28,8 @@ public class BlockEntityFlywheel : ExBlockEntity, IMpEnergyStorage {
     // The axle passes through the hub: the wheel couples on both faces normal to its plane, in
     // the placed orientation.
     int angle = (Block as BlockFlywheel)?.StructureAngle ?? 0;
-    _membership.Connectors = [
+    _membership.Connectors =
+    [
       ExOrientation.RotateFacing(BlockFacing.NORTH, angle),
       ExOrientation.RotateFacing(BlockFacing.SOUTH, angle),
     ];

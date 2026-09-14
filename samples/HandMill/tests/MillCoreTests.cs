@@ -92,16 +92,15 @@ public class MillCoreTests {
   }
 
   private static void SeedCatalogue() =>
-    GrainCatalogue.Set(
-      [
-        new GrainDef {
-          Code = "spelt",
-          Grain = "game:grain-spelt",
-          Flour = "game:flour-spelt",
-          Seconds = 6,
-        },
-      ]
-    );
+    GrainCatalogue.Set([
+      new GrainDef
+      {
+        Code = "spelt",
+        Grain = "game:grain-spelt",
+        Flour = "game:flour-spelt",
+        Seconds = 6,
+      },
+    ]);
 
   [Fact]
   public void An_unraised_rig_never_completes_and_never_grinds() {

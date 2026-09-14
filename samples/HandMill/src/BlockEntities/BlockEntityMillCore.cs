@@ -15,7 +15,9 @@ using Vintagestory.API.MathTools;
 namespace HandMill.BlockEntities;
 
 [BlockEntityRegister]
-public class BlockEntityMillCore : BlockEntityMultiblockMachine, IMpEnergyConsumer {
+public class BlockEntityMillCore
+  : BlockEntityMultiblockMachine,
+    IMpEnergyConsumer {
   private readonly HostMembership _membership;
 
   [Persist]
@@ -42,7 +44,10 @@ public class BlockEntityMillCore : BlockEntityMultiblockMachine, IMpEnergyConsum
 
   public override void Initialize(ICoreAPI api) {
     // The shaft cell sits north of the core in the authored frame.
-    _membership.Connectors = [ExOrientation.RotateFacing(BlockFacing.NORTH, Angle)];
+    _membership.Connectors =
+    [
+      ExOrientation.RotateFacing(BlockFacing.NORTH, Angle),
+    ];
     base.Initialize(api);
   }
 
@@ -54,13 +59,15 @@ public class BlockEntityMillCore : BlockEntityMultiblockMachine, IMpEnergyConsum
   protected override string GetCompleteMessage() =>
     Lang.Get("handmill:millcore-complete");
 
-  private float Speed => this.NetworkAt<MpEnergyNetwork>(Pos)?.State?.Speed ?? 0f;
+  private float Speed =>
+    this.NetworkAt<MpEnergyNetwork>(Pos)?.State?.Speed ?? 0f;
 
   private bool Grinding =>
     StructureComplete && _grain > 0 && Speed >= HandMillValues.MinGrindSpeed;
 
   /// <summary>The mill loads the run only while it is grinding.</summary>
-  public float LoadTorque(float speed) => Grinding ? HandMillValues.GrindTorque : 0f;
+  public float LoadTorque(float speed) =>
+    Grinding ? HandMillValues.GrindTorque : 0f;
 
   protected override void OnProductionTick(float dt) {
     if (!Grinding)
@@ -95,7 +102,10 @@ public class BlockEntityMillCore : BlockEntityMultiblockMachine, IMpEnergyConsum
 
   /// <summary>Hands every flour piece to <paramref name="player"/>, dropping what does not fit.</summary>
   public void TakeFlour(IPlayer player) {
-    if (_flour == 0 || Api.World.GetItem(new AssetLocation(_flourCode)) is not { } flour)
+    if (
+      _flour == 0
+      || Api.World.GetItem(new AssetLocation(_flourCode)) is not { } flour
+    )
       return;
     var stack = new ItemStack(flour, _flour);
     if (player.InventoryManager?.TryGiveItemstack(stack) != true)

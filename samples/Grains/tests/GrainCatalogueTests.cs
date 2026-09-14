@@ -80,27 +80,42 @@ public class GrainCatalogueTests {
 
   [Fact]
   public void ForItem_finds_by_grain_code() {
-    GrainCatalogue.Set(
-      [new GrainDef { Code = "spelt", Grain = "game:grain-spelt", Flour = "game:flour-spelt" }]
-    );
+    GrainCatalogue.Set([
+      new GrainDef
+      {
+        Code = "spelt",
+        Grain = "game:grain-spelt",
+        Flour = "game:flour-spelt",
+      },
+    ]);
 
     Assert.Equal("spelt", GrainCatalogue.ForItem("game:grain-spelt")!.Code);
   }
 
   [Fact]
   public void ForItem_finds_by_sack_code() {
-    GrainCatalogue.Set(
-      [new GrainDef { Code = "spelt", Grain = "game:grain-spelt", Flour = "game:flour-spelt" }]
-    );
+    GrainCatalogue.Set([
+      new GrainDef
+      {
+        Code = "spelt",
+        Grain = "game:grain-spelt",
+        Flour = "game:flour-spelt",
+      },
+    ]);
 
     Assert.Equal("spelt", GrainCatalogue.ForItem("grains:sack-spelt")!.Code);
   }
 
   [Fact]
   public void ForItem_returns_null_for_anything_else() {
-    GrainCatalogue.Set(
-      [new GrainDef { Code = "spelt", Grain = "game:grain-spelt", Flour = "game:flour-spelt" }]
-    );
+    GrainCatalogue.Set([
+      new GrainDef
+      {
+        Code = "spelt",
+        Grain = "game:grain-spelt",
+        Flour = "game:flour-spelt",
+      },
+    ]);
 
     Assert.Null(GrainCatalogue.ForItem("game:grain-rye"));
     Assert.Null(GrainCatalogue.ForItem(null));

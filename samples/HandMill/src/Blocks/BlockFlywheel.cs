@@ -51,7 +51,8 @@ public partial class BlockFlywheel
         .SolidNonOpaque(),
     ];
 
-  public override int StructureAngle => ExOrientation.AngleFromSide(Variant["side"]);
+  public override int StructureAngle =>
+    ExOrientation.AngleFromSide(Variant["side"]);
 
   /// <summary>Every cell of the wheel answers the same way: a sneak-click brakes it.</summary>
   public bool OnFillerInteractStart(

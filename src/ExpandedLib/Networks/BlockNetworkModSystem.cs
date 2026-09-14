@@ -33,7 +33,10 @@ public class BlockNetworkModSystem : ModSystem {
   /// Industry registered with defaults; the replacement is logged and reported by the return value.
   /// </summary>
   /// <returns><c>true</c> when an earlier factory for the type was replaced.</returns>
-  public bool RegisterNetworkType(string networkType, Func<BlockNetwork> factory) {
+  public bool RegisterNetworkType(
+    string networkType,
+    Func<BlockNetwork> factory
+  ) {
     bool replaced = _factories.ContainsKey(networkType);
     _factories[networkType] = factory;
     if (replaced)

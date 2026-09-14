@@ -5,8 +5,8 @@ using ExpandedLib.Structures;
 using HarmonyLib;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Server;
 using Vintagestory.API.Config;
+using Vintagestory.API.Server;
 
 namespace ExpandedLib;
 
@@ -125,7 +125,11 @@ public class ExpandedLibModSystem : ModSystem {
     // reading the server log.
     if (_incompatible is { } message)
       api.Event.PlayerJoin += player =>
-        player.SendMessage(GlobalConstants.GeneralChatGroup, message, EnumChatType.Notification);
+        player.SendMessage(
+          GlobalConstants.GeneralChatGroup,
+          message,
+          EnumChatType.Notification
+        );
   }
 
   public override void Dispose() {

@@ -21,11 +21,7 @@ public class AssetLoadingTests
   [Fact]
   public void Millcore_block_resolves_with_its_orientation_variants()
   {
-    string samplePath = Path.Combine(
-      RepoPaths.Root,
-      "samples",
-      "HandMill"
-    );
+    string samplePath = Path.Combine(RepoPaths.Root, "samples", "HandMill");
 
     // BlockMillCore's def carries grains's BlockBehaviorGrainInfo; LoadAssets loads only the one mod
     // named in its own path, so grains's compiled dll must already be loaded for

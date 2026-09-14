@@ -40,7 +40,8 @@ public class BlockEntityCrank : BlockEntityNetworkNode, IMpEnergyProducer {
   public float DriveTorque(float speed) =>
     _windSeconds <= 0f
       ? 0f
-      : HandMillValues.CrankTorque * Math.Max(0f, 1f - speed / ExlibValues.MpMaxSpeed);
+      : HandMillValues.CrankTorque
+        * Math.Max(0f, 1f - speed / ExlibValues.MpMaxSpeed);
 
   private void Unwind(float dt) {
     if (_windSeconds <= 0f)

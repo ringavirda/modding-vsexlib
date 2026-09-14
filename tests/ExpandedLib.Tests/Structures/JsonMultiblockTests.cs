@@ -188,12 +188,19 @@ public class JsonMultiblockTests {
     );
 
     Assert.True(block.Attributes?["multiblockStructure"].Exists);
-    Assert.Empty(StructureFillers.ReadOffsets(block.Attributes?["fillerOffsets"]));
+    Assert.Empty(
+      StructureFillers.ReadOffsets(block.Attributes?["fillerOffsets"])
+    );
   }
 
   // Builds a BlockFilledMegastructure with the given code, id and raw JSON attributes, resolved
   // through OnLoaded the way a real blocktype load would.
-  private static Block BlockWithLayout(TestWorld world, string code, int id, string attributesJson) {
+  private static Block BlockWithLayout(
+    TestWorld world,
+    string code,
+    int id,
+    string attributesJson
+  ) {
     var block = TestBlocks.Configure(new BlockFilledMegastructure(), code, id);
     block.Attributes = new JsonObject(JToken.Parse(attributesJson));
     block.OnLoaded(world.Api);

@@ -34,7 +34,12 @@ public class CrankTests {
   [Fact]
   public void The_wind_survives_a_tree_round_trip() {
     var world = new TestWorld();
-    Block block = TestBlocks.Configure(new BlockCrank(), "handmill:crank-crank-e", 1, ("orientation", "e"));
+    Block block = TestBlocks.Configure(
+      new BlockCrank(),
+      "handmill:crank-crank-e",
+      1,
+      ("orientation", "e")
+    );
     var be = new BlockEntityCrank();
     world.Place(new BlockPos(0, 0, 0), block, be);
     world.Initialize(be);

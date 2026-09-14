@@ -10,25 +10,39 @@ namespace Grains.Tests;
 public class GrainSackItemsTests {
   private static readonly GrainDef[] Six =
   [
-    new() {
+    new()
+    {
       Code = "spelt",
       Grain = "game:grain-spelt",
       Flour = "game:flour-spelt",
     },
-    new() { Code = "rice", Grain = "game:grain-rice", Flour = "game:flour-rice" },
-    new() { Code = "flax", Grain = "game:grain-flax", Flour = "game:flour-flax" },
-    new() {
+    new()
+    {
+      Code = "rice",
+      Grain = "game:grain-rice",
+      Flour = "game:flour-rice",
+    },
+    new()
+    {
+      Code = "flax",
+      Grain = "game:grain-flax",
+      Flour = "game:flour-flax",
+    },
+    new()
+    {
       Code = "rye",
       Grain = "game:grain-rye",
       Flour = "game:flour-rye",
       Seconds = 8,
     },
-    new() {
+    new()
+    {
       Code = "amaranth",
       Grain = "game:grain-amaranth",
       Flour = "game:flour-amaranth",
     },
-    new() {
+    new()
+    {
       Code = "sunflower",
       Grain = "game:grain-sunflower",
       Flour = "game:flour-sunflower",
@@ -51,9 +65,6 @@ public class GrainSackItemsTests {
       ],
       defs.Select(d => d.Code)
     );
-    Assert.All(
-      defs,
-      d => Assert.Contains("linensack", d.ToJson().ToString())
-    );
+    Assert.All(defs, d => Assert.Contains("linensack", d.ToJson().ToString()));
   }
 }

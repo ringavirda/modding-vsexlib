@@ -21,8 +21,14 @@ public class NetworkTypeRegistrationTests {
   [Fact]
   public void A_later_registration_replaces_the_earlier_one_and_says_so() {
     var world = new TestWorld();
-    bool first = world.Networks.RegisterNetworkType("mpenergy", () => new MpEnergyNetwork(world.Networks));
-    bool second = world.Networks.RegisterNetworkType("mpenergy", () => new MpEnergyNetwork(world.Networks));
+    bool first = world.Networks.RegisterNetworkType(
+      "mpenergy",
+      () => new MpEnergyNetwork(world.Networks)
+    );
+    bool second = world.Networks.RegisterNetworkType(
+      "mpenergy",
+      () => new MpEnergyNetwork(world.Networks)
+    );
     Assert.False(first);
     Assert.True(second);
   }

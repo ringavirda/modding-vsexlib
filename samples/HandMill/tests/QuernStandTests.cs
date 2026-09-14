@@ -48,7 +48,9 @@ public class QuernStandTests {
     Block stand = Stand();
     stand.OnLoaded(world.Api);
 
-    Assert.Empty(StructureFillers.ReadOffsets(stand.Attributes?["fillerOffsets"]));
+    Assert.Empty(
+      StructureFillers.ReadOffsets(stand.Attributes?["fillerOffsets"])
+    );
   }
 
   [Fact]

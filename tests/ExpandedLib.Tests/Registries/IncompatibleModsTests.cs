@@ -9,7 +9,9 @@ namespace ExpandedLib.Tests.Registries;
 public class IncompatibleModsTests {
   private static IModLoader LoaderWith(params string[] enabled) {
     var loader = Substitute.For<IModLoader>();
-    loader.IsModEnabled(Arg.Any<string>()).Returns(call => enabled.Contains(call.Arg<string>()));
+    loader
+      .IsModEnabled(Arg.Any<string>())
+      .Returns(call => enabled.Contains(call.Arg<string>()));
     return loader;
   }
 
