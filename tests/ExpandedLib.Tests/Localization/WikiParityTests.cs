@@ -33,6 +33,10 @@ public class WikiParityTests {
     // C# class names they name - a JSON blocktype writes these, never a compiled reference.
     "ExFilledMegastructure",
     "ExMultiblock",
+    // Registered behaviour string (BlockBehaviorRegister's PrefixModId=false code) for
+    // BlockBehaviorExOrientable - a JSON blocktype or a .Behavior("...") call writes this string,
+    // never the C# class name.
+    "ExOrientable",
   ];
 
   private static string WikiDirectory => Path.Combine(RepoPaths.Root, "wiki");

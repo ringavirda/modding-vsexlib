@@ -36,8 +36,12 @@ This wiki documents both libraries the family publishes for reuse:
 
 - New here? Read **[Getting Started](Getting-Started)** - declare the dependency, set up a
   project reference, and register your first attribute-marked block. It walks
-  [`samples/HelloExpanded`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/HelloExpanded),
-  a buildable, bootable, tested mod using the convenience layer end to end - read it alongside the page.
+  [`samples/HandMill`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/HandMill) and
+  [`samples/Grains`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/Grains),
+  a buildable, bootable, tested mod and the module it reads from, using the convenience layer end to
+  end - read them alongside the page.
+- Building a machine with a structure and a power line? **[First Machine](First-Machine)** finishes
+  the walk Getting Started starts.
 - Wondering when exlib does what during world load, and what's safe to call where? **[Lifecycle](Lifecycle)**.
 - Wondering which types are the supported contract and which are internal plumbing? **[Supported
   API](Supported-API)**.

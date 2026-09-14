@@ -2,6 +2,7 @@
 
 - [Home](Home)
 - [Getting Started](Getting-Started)
+- [First Machine](First-Machine)
 - [Lifecycle](Lifecycle)
 - [Supported API](Supported-API)
 

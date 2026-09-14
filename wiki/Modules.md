@@ -61,17 +61,17 @@ A module ships one of two ways:
   name loaded twice is not supported.
 
 Whichever form it takes, a module dll shipped as its own mod still has to satisfy the engine's own
-Code-mod loader, which does not know what a module is. `samples/HelloModule` ships with no
-`ModSystem` at all to settle this: the loader refused it outright, `declared as code mod, but there
-are no .dll files that contain at least one ModSystem or has a ModInfo attribute`, so the sample
-carries an empty placeholder,
+Code-mod loader, which does not know what a module is. `samples/Grains` ships with no `ModSystem` at
+all to settle this: the loader refused it outright, `declared as code mod, but there are no .dll
+files that contain at least one ModSystem or has a ModInfo attribute`, so the sample carries an empty
+placeholder,
 
 ```csharp
-public class HelloModuleModSystem : ModSystem { }
+public class GrainsModSystem : ModSystem { }
 ```
 
 purely to satisfy that check. Nothing in it does any work - `ExModuleModSystem` is what actually
-drives `HelloModule` through the phases below. A module shipped as its own mod needs the same empty
+drives `GrainsModule` through the phases below. A module shipped as its own mod needs the same empty
 `ModSystem` for the same reason.
 
 ## Enabled-mod filtering
@@ -231,35 +231,38 @@ mod of its own called `industry` - the id nothing installs and nothing could eve
 
 ## The sample module
 
-`samples/HelloModule` proves the third-party shape end to end: its own mod folder, its own domain,
-depending on exlib, giving any mod's block a greeting. Mod id, module id and domain are all
-`hellomodule`.
+`samples/Grains` proves the third-party shape end to end: its own mod folder, its own domain,
+depending on exlib, giving any mod's block a description of the grains it accepts. Mod id, module id
+and domain are all `grains`. `samples/HandMill` is the proof it exists for - a second, unrelated mod
+that depends on `grains` the way any real content mod would, and reads its catalogue and its block
+behaviour with no special-casing on either side.
 
-- `src/ExpandedLib/AssemblyInfo.cs` - `[assembly: ExDomain("hellomodule")]` and `[assembly: ExModule("hellomodule")]`,
-  the two lines that make the assembly a module of its own mod's identity.
-- `src/HelloModuleModSystem.cs` - the empty placeholder the loader requires; see above.
-- `src/GreetingDef.cs` - the JSON shape of one entry under `config/greetings/`: a `Code` and a
-  `Text`. Read with `AssetCatalogueLoader.GetMany<GreetingDef>(api, "config/greetings/")`, the way
-  Industry reads its metals. `GetMany` deserializes one file to one object, so each file under
-  `config/greetings/` holds exactly one `GreetingDef`, not an array of them - which is why the
-  sample ships two files, `default.json` and `welcome.json`, one greeting each.
-- `src/Greetings.cs` - the loaded catalogue, populated on both sides identically at
-  `AssetsFinalize`, once the patch pipeline has merged every domain's greetings.
-- `src/GreetingItems.cs` - pure, no asset reads: one `ExItemDef` per greeting, coded
-  `greeting-<code>`, vanilla shape and texture.
-- `src/HelloModule.cs` - the entry point: `Contribute` emits the greeting items through
-  `ExDefinitions.RegisterItem`, `AssetsFinalize` loads `Greetings`.
-- `src/BlockBehaviorGreeter.cs` - `[BlockBehaviorRegister]`; on a server-side interact sends a
-  player some greetings from `Greetings.All`, handling left `PassThrough` so the block's own
-  handler still runs. Any mod's block picks this up with `.Behavior<BlockBehaviorGreeter>()`, which
-  resolves to `hellomodule.BlockBehaviorGreeter` through this assembly's own `ExDomain` rather than
-  the calling block's - the cross-assembly key path this sample exists to prove.
-- `src/HelloModuleConfig.cs` - one `[ExConfigRegister]` tunable, how many greetings per click.
-- `src/GreetSubCommand.cs` - `/exmod greet`, printing how many greetings loaded.
+- `src/AssemblyInfo.cs` - `[assembly: ExDomain("grains")]` and `[assembly: ExModule("grains")]`, the
+  two lines that make the assembly a module of its own mod's identity.
+- `src/GrainsModSystem.cs` - the empty placeholder the loader requires; see above.
+- `src/GrainDef.cs` - the JSON shape of one entry under `config/grains/`: a grain item code, the
+  flour it grinds into, and how many seconds one piece takes. Read with
+  `AssetCatalogueLoader.GetMany<GrainDef>(api, "config/grains/")`, the way Industry reads its metals.
+  `GetMany` deserializes one file to one object, so each file under `config/grains/` holds exactly
+  one `GrainDef`, not an array of them - which is why the sample ships six files, one grain each.
+- `src/GrainCatalogue.cs` - the loaded catalogue, populated on both sides identically at
+  `AssetsFinalize`, once the patch pipeline has merged every domain's grains; `ForItem` finds an
+  entry by its grain code or its sack code, the lookup `HandMill`'s mill core reads from.
+- `src/GrainSackItems.cs` - pure, no asset reads: one `ExItemDef` per grain, coded `sack-<code>`,
+  the linen sack shape.
+- `src/GrainsModule.cs` - the entry point: `Contribute` emits the sack items through
+  `ExDefinitions.RegisterItem`, `AssetsFinalize` loads `GrainCatalogue`.
+- `src/BlockBehaviorGrainInfo.cs` - `[BlockBehaviorRegister]`; a block's placed-block info naming
+  the grains it accepts, read from `GrainCatalogue.All`. `HandMill`'s mill core picks this up with
+  `.Behavior<BlockBehaviorGrainInfo>()`, which resolves to `grains.BlockBehaviorGrainInfo` through
+  this assembly's own `ExDomain` rather than the calling block's - the cross-assembly key path this
+  sample exists to prove.
+- `src/GrainsConfig.cs` - one `[ExConfigRegister]` tunable, how much grain a loaded sack stands for.
+- `src/GrainsSubCommand.cs` - `/exmod grains`, printing one line per catalogue entry.
 
 ## For third parties
 
 A module package publishes under its own id, not `ExpandedLib.*` - that prefix names exlib's own
-framework and content-layer packages. `hellomodule`, `electric`, `heating`: whatever the module's
-own id is, the package that ships it is named for that, the same as any other Vintage Story mod
-that happens to extend a framework instead of shipping content directly.
+framework and content-layer packages. `grains`, `electric`, `heating`: whatever the module's own id
+is, the package that ships it is named for that, the same as any other Vintage Story mod that
+happens to extend a framework instead of shipping content directly.

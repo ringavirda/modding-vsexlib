@@ -160,7 +160,7 @@ internal static class ModuleInit
 ```
 
 Every test project in this repo (`ExpandedLib.Tests`, `IronIndustryExpanded.Tests`,
-`SteelIndustryExpanded.Tests`, `HelloExpanded.Tests`) has exactly this - a module initializer only
+`SteelIndustryExpanded.Tests`, `HandMill.Tests`) has exactly this - a module initializer only
 runs for the assembly that declares it. `VsAssemblyResolver.Register`
 is idempotent and resolves the install via the `[AssemblyMetadata("GameInstallEnv")]` environment
 variable (e.g. `VINTAGE_STORY`) or, failing that, by walking up to `.game/<slug>`.
@@ -609,8 +609,8 @@ variants:
 
 ```csharp
 using var world = new TestWorld();
-world.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "HelloExpanded"));
-Block hello = world.World.GetBlock(new AssetLocation("helloexpanded:hello-n"))!;
+world.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "HandMill"));
+Block crank = world.World.GetBlock(new AssetLocation("handmill:drive-crank-n"))!;
 ```
 
 `modPath` is a mod's folder (`modinfo.json`, `assets/<modid>/`, a compiled dll under `bin/`); every

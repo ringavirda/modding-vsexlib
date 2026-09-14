@@ -11,10 +11,14 @@ content-specific pieces through the seams below. You register your own network t
 > are three independent axes: the base class belongs to **form** (what the block *is* - a container, a
 > multiblock part), while network membership and the production tick are **behaviours** you attach.
 > `BlockNetworkNode` below is the convenient answer when a block has no other form to be, and it is
-> what the shipped pipes use - but a block that must also be, say, a container hosts
-> `BEBehaviorNetworkMember` instead of inheriting from here. `BlockEntityNetworkNode` is itself only a
-> host for that behaviour, so the two routes join immediately. See
-> [Production Machines](Production-Machines) for the same split on the process axis.
+> what the shipped pipes use - but a block that must also be something else, say a container or a
+> filler mega-block, hosts `BEBehaviorNetworkMember` instead of inheriting from here.
+> `BlockEntityNetworkNode` is itself only a host for that behaviour, so the two routes join
+> immediately. `samples/HandMill`'s flywheel and mill core both take this route: the flywheel is a
+> `BlockFilledMegastructure`, the core a designed multiblock, and each hosts its own membership in
+> its block entity's constructor rather than being a `BlockNetworkNode` - see [First
+> Machine](First-Machine). See [Production Machines](Production-Machines) for the same split on the
+> process axis.
 
 The model (`BlockNetwork` and every `I*Node`/`I*Connector` interface - no Vintage Story block types
 involved) and the engine-facing shell (`BlockNetworkNode`, `BlockEntityNetworkNode`,

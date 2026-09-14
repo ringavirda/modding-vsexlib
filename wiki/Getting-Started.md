@@ -80,8 +80,8 @@ way the [Testing Harness](Testing-Harness) page assumes: from the `VINTAGE_STORY
 variable, or `-p:GamePath=...` on the command line.
 
 Inside this monorepo the sample switches to a plain `ProjectReference` against the checkout instead
-(see `samples/HelloExpanded.csproj`) so exlib's own change history builds against itself without a
-release round-trip; nothing about that switch is part of the package's public contract.
+(see `samples/HandMill/src/HandMill.csproj`) so exlib's own change history builds against itself
+without a release round-trip; nothing about that switch is part of the package's public contract.
 
 ## 3. Register your content
 
@@ -129,129 +129,127 @@ failure is not logged, which is why the attribute is worth declaring up front.
 
 ## 4. Your first block
 
-`samples/HelloExpanded` in this repo is everything above, buildable and bootable: a `Code` mod
-depending on `exlib`, one block, one config value, one command, and two tests. Read it file by file
-rather than typing the snippets by hand - every one below (bar one labelled alternative) is copied
-verbatim from it, so it compiles.
+`samples/HandMill` in this repo is everything above, buildable and bootable: a `Code` mod depending
+on `exlib` and on the `grains` module sample, five blocks, one config, and a full test suite. Read it
+file by file rather than typing the snippets by hand - every one below (bar one labelled alternative)
+is copied verbatim from it, so it compiles.
 
 A code-first block is a class that implements `IExBlockDefProvider` and carries `[BlockRegister]`.
-There is no `blocktypes/hello.json` anywhere in the mod's `assets/` folder; the JSON the object loader
-reads is built by `ExBlockDef` and injected in memory at load:
+There is no `blocktypes/drive/crank.json` anywhere in the mod's `assets/` folder; the JSON the object
+loader reads is built by `ExBlockDef` and injected in memory at load. The crank is the mill's
+producer, a network node riding a vanilla mechanics shape with an orientation variant group:
 
 ```csharp
 [BlockRegister]
-public class BlockHello : Block, IExBlockDefProvider {
+public partial class BlockCrank : BlockNetworkNode, IExBlockDefProvider {
+  public override string NetworkType => "mpenergy";
+
   public static IEnumerable<ExBlockDef> Definitions(string domain) =>
     [
       ExBlockDef
-        .Create(domain, "hello")
-        .Class<BlockHello>()
-        .EntityClass<BlockEntityHello>()
-        .Material(EnumBlockMaterial.Stone)
-        .Shape("game:block/basic/cube")
-        .TextureAll("survival:block/stone/rock/granite*")
-        .MetalSounds()
-        .Resistance(3.0f)
-        .MiningTier(1)
-        .MineTool(EnumTool.Pickaxe)
-        .CreativeCommon("*")
-        .SideVariant()
-        .Behavior<BlockBehaviorExOrientable>(),
+        .Create(domain, "drive", "drive/crank")
+        .Class<BlockCrank>()
+        .EntityClass<BlockEntityCrank>()
+        .Material(EnumBlockMaterial.Wood)
+        .MaxStackSize(64)
+        .VariantGroup("type", "crank")
+        .VariantGroup("orientation", "n", "e", "s", "w")
+        .NetworkOriented()
+        .ShapeByType("*-n", "game:block/wood/mechanics/crank", rotateY: 270)
+        .ShapeByType("*-e", "game:block/wood/mechanics/crank", rotateY: 180)
+        .ShapeByType("*-s", "game:block/wood/mechanics/crank", rotateY: 90)
+        .ShapeByType("*-w", "game:block/wood/mechanics/crank", rotateY: 0)
+        .CreativeCommon("*-n")
+        .SingleCollisionBox(0.1875f, 0f, 0.1875f, 0.8125f, 0.625f, 0.8125f)
+        .SingleSelectionBox(0.1875f, 0f, 0.1875f, 0.8125f, 0.625f, 0.8125f)
+        .SideSolid(false)
+        .SideOpaque(false),
     ];
 }
 ```
 
+`VariantGroup("type", "crank")` carries one state; it exists so `NetworkNodeContractCheck` finds an
+`OrientationMap` to place from, the same reason the shaft (its `drive` family sibling) declares one -
+see [First Machine](First-Machine) for the shaft and the rest of the mill.
+
 `ExModSystem` registers it - and every other `[BlockRegister]`/`[BlockEntityRegister]`/
-`IExBlockDefProvider` in the assembly, and loads `HelloValues` - with nothing to write:
+`IExBlockDefProvider` in the assembly, and loads `HandMillValues` - with nothing to write:
 
 ```csharp
-public class HelloExpandedModSystem : ExModSystem { }
+public class HandMillModSystem : ExModSystem { }
 ```
 
 The explicit form behind it, for a mod system that needs a different order:
 
 ```csharp
-public class HelloExpandedModSystem : ModSystem {
+public class HandMillModSystem : ModSystem {
   public override void Start(ICoreAPI api) {
-    HelloValues.Load(api);
+    HandMillValues.Load(api);
     EntityRegistry.RegisterAll(api, Mod, GetType().Assembly);
   }
 }
 ```
 
-Build the sample and boot it (`exmod smoke -Mods samples/HelloExpanded/bin/Debug/Mods/mod`, alongside
-exlib) and the log carries this, in order: the definition is injected, then the content checks run
-against it (see [Migrations & Healing](Migrations-and-Healing) for what the checks line means and
-[Checks](Checks) for the full list) and every one is clean:
+## 5. State, clicks and a wind that survives a reload
 
-```
-[exlib] Injected 2 code-first block definition(s).
-[exlib] check DefinitionCatalogue (helloexpanded): 0 error(s)
-[exlib] check MultiblockCodes (helloexpanded): 0 error(s)
-[exlib] check RecipeCodes (helloexpanded): 0 error(s)
-[exlib] check LangCoverage (helloexpanded): 0 error(s)
-[exlib] check NetworkNodeContract (helloexpanded): 0 error(s)
-[exlib] check PinnedNetworkNodes (helloexpanded): 0 error(s)
-[exlib] check CodePrefixCollision (helloexpanded): 0 error(s)
-```
-
-The count is 2, not 1: exlib injects one of its own (the structure-filler block every megablock
-reuses) alongside this mod's `hello`. A domain with no definitions of its own still gets a full row
-of `0 error(s)` - the checks run per domain regardless, so a clean run reads the same whether there
-was anything to check or not.
-
-## 5. State, clicks and info in three lines
-
-The block entity's whole job is a counter that survives a save/reload, ticking on the shared
-production lifecycle from [Production Machines](Production-Machines):
+The crank's block entity is a small state machine: winding adds drive, driving eases off as the run
+spins up, and it unwinds on its own when left alone:
 
 ```csharp
 [BlockEntityRegister]
-public class BlockEntityHello : BlockEntityProductionMachine {
+public class BlockEntityCrank : BlockEntityNetworkNode, IMpEnergyProducer {
   [Persist]
-  private int _ticks;
+  private float _windSeconds;
 
-  protected override int ProductionTickMs => HelloValues.TickIntervalMs;
-  protected override bool CanRunProduction => true;
-  protected override void OnProductionTick(float dt) => _ticks++;
+  public override string NetworkType {
+    get => "mpenergy";
+    set { }
+  }
 
-  public void ResetTicks() => _ticks = 0;
+  public override void Initialize(ICoreAPI api) {
+    base.Initialize(api);
+    if (api.Side == EnumAppSide.Server)
+      RegisterGameTickListener(Unwind, 1000);
+  }
 
-  public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc) {
-    base.GetBlockInfo(forPlayer, dsc);
-    dsc.Lang("helloexpanded:ticks", _ticks);
-    int neighbours = Api.World.BlockAccessor
-      .Neighbours<BlockEntityHello>(Pos)
-      .Count();
-    dsc.Lang("helloexpanded:neighbours", neighbours);
+  public void Wind(float seconds) {
+    _windSeconds = Math.Min(_windSeconds + seconds, seconds * 2f);
+    MarkDirty();
+  }
+
+  public float DriveTorque(float speed) =>
+    _windSeconds <= 0f
+      ? 0f
+      : HandMillValues.CrankTorque
+        * Math.Max(0f, 1f - speed / ExlibValues.MpMaxSpeed);
+
+  private void Unwind(float dt) {
+    if (_windSeconds <= 0f)
+      return;
+    _windSeconds = Math.Max(0f, _windSeconds - dt);
+    MarkDirty();
   }
 }
 ```
 
-`[Persist]` is the whole save/load story: no `ToTreeAttributes`/`FromTreeAttributes` override, no key
-to spell twice. `ExBlockAccess.Neighbours<T>` replaces the six-line
-`GetBlockEntity(pos.AddCopy(facing)) is T be` loop a hand-written block info would otherwise carry,
-and `ExInfo.Lang` is `dsc.AppendLine(Lang.Get(key, args))` written once as an extension method rather
-than at every call site.
-
-The block answers a sneak-click by resetting that counter, through `ExInteraction` rather than a
-hand-rolled `IPlayer`/`BlockSelection` guard:
+`[Persist]` is the whole save/load story for `_windSeconds`: no `ToTreeAttributes`/
+`FromTreeAttributes` override, no key to spell twice. The block answers a click by winding, through
+`ExInteraction` rather than a hand-rolled `IPlayer`/`BlockSelection` guard:
 
 ```csharp
 public override bool OnBlockInteractStart(
-  IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel
+  IWorldAccessor world,
+  IPlayer byPlayer,
+  BlockSelection blockSel
 ) {
-  if (world.BlockAccessor.GetBlockEntity(blockSel.Position) is not BlockEntityHello be)
+  if (
+    world.BlockAccessor.GetBlockEntity(blockSel.Position)
+    is not BlockEntityCrank crank
+  )
     return base.OnBlockInteractStart(world, byPlayer, blockSel);
-
-  Interaction interaction = ExInteraction.Of(world, byPlayer, blockSel);
-  if (!interaction.Sneaking)
-    return base.OnBlockInteractStart(world, byPlayer, blockSel);
-
-  if (interaction.IsClient)
+  if (ExInteraction.Of(world, byPlayer, blockSel).IsClient)
     return true;
-
-  be.ResetTicks();
+  crank.Wind(HandMillValues.WindSeconds);
   return true;
 }
 ```
@@ -261,37 +259,59 @@ checks" for the full surface of both.
 
 ## 6. A config value and a command
 
-One tunable, generated into a typed `HelloValues` accessor:
+The mill's tunables, generated into a typed `HandMillValues` accessor:
 
 ```csharp
-[ExConfigRegister("helloexpanded.json", "helloexpanded", Manageable = true)]
-public class HelloConfig : IExVersionedConfig {
+[ExConfigRegister("handmill.json", "handmill", Manageable = true)]
+public class HandMillConfig : IExVersionedConfig {
   public string? ConfigVersion { get; set; }
 
-  [ExConfigRange(100, 10000)]
-  public int TickIntervalMs { get; set; } = 1000;
+  [ExConfigRange(1, 120)]
+  public int WindSeconds { get; set; } = 10;
+
+  [ExConfigRange(1f, 500f)]
+  public float CrankTorque { get; set; } = 40f;
+
+  [ExConfigRange(0.1f, 100f)]
+  public float GrindTorque { get; set; } = 15f;
+
+  [ExConfigRange(0.1f, 50f)]
+  public float MinGrindSpeed { get; set; } = 1f;
+
+  [ExConfigRange(0.01f, 100f)]
+  public float ShaftInertia { get; set; } = 0.5f;
+
+  [ExConfigRange(1f, 1000f)]
+  public float FlywheelInertia { get; set; } = 40f;
 }
 ```
 
-`Manageable = true` is what puts it on the generic switch: `/exmod config helloexpanded
-tickintervalms 500` reads or writes it live, validated against the `[ExConfigRange]` bound, with no
-code of this mod's own involved. `HelloValues.TickIntervalMs` (read live in
-`BlockEntityHello.ProductionTickMs` above) is generated from the property name.
+`Manageable = true` is what puts it on the generic switch: `/exmod config handmill windseconds 20`
+reads or writes it live, validated against the `[ExConfigRange]` bound, with no code of this mod's
+own involved. `HandMillValues.WindSeconds` (read live in `BlockCrank.OnBlockInteractStart` above) is
+generated from the property name.
 
-A one-line command, attached to the shared `.exmod`/`/exmod` root rather than declaring its own:
+The command that reads the mill's inputs lives in the `grains` module instead of in `HandMill`
+itself, because it prints the catalogue any mill (or any other mod's machine) reads from, not
+anything specific to this mill:
 
 ```csharp
 [SubCommandRegister(Side = EnumAppSide.Server)]
-public sealed class HelloSubCommand : IExSubCommand {
+public sealed class GrainsSubCommand : IExSubCommand {
   public string ParentName => "exmod";
 
   public void Register(ICoreAPI api, Mod mod, IChatCommand parent) {
     parent
-      .BeginSubCommand("hello")
-      .WithDescription(Lang.Get("helloexpanded:command-hello-desc"))
+      .BeginSubCommand("grains")
+      .WithDescription(Lang.Get("grains:command-grains-desc"))
       .HandleWith(args =>
         TextCommandResult.Success(
-          Lang.Get("helloexpanded:command-hello-result", HelloValues.TickIntervalMs)
+          string.Join(
+            "\n",
+            GrainCatalogue.All.Select(g =>
+              $"{g.Code}: {g.Grain} -> {g.Flour}, {g.Seconds}"
+            )
+          )
         )
       )
       .EndSubCommand();
@@ -299,50 +319,90 @@ public sealed class HelloSubCommand : IExSubCommand {
 }
 ```
 
-`/exmod hello` now prints the tick interval. See [Config System](Config-System) and
-[Commands](Commands) for everything else either surface offers.
+`/exmod grains` now prints one line per catalogue entry, whether or not `HandMill` is even installed.
+See [Config System](Config-System) and [Commands](Commands) for everything else either surface
+offers.
 
 ## 7. Test it
 
-`samples/HelloExpanded.Tests` drives the same block entity headlessly through
-[Testing Harness](Testing-Harness)'s `TestWorld`, with no game launch:
+`samples/HandMill/tests` drives the crank headlessly through [Testing Harness](Testing-Harness)'s
+`TestWorld`, with no game launch:
 
 ```csharp
-[Fact]
-public void Counts_a_tick_and_round_trips_through_the_tree() {
-  var world = new TestWorld();
-  var pos = new BlockPos(0, 0, 0);
-  Block block = TestBlocks.Configure(new BlockHello(), "helloexpanded:hello", 1);
-  var be = new BlockEntityHello();
-  world.Place(pos, block, be);
-  world.Initialize(be);
+public class CrankTests {
+  [Fact]
+  public void DriveTorque_is_zero_before_winding() {
+    var be = new BlockEntityCrank();
+    Assert.Equal(0f, be.DriveTorque(0f));
+  }
 
-  world.FireBlockEntityTicks(times: 3);
+  [Fact]
+  public void DriveTorque_equals_CrankTorque_at_rest_after_winding() {
+    var be = new BlockEntityCrank();
+    be.Wind(10);
+    Assert.Equal(HandMillValues.CrankTorque, be.DriveTorque(0f));
+  }
 
-  var tree = new TreeAttribute();
-  be.ToTreeAttributes(tree);
-  Assert.Equal(3, tree.GetInt("ticks"));
+  [Fact]
+  public void DriveTorque_is_zero_at_the_run_burst_speed() {
+    var be = new BlockEntityCrank();
+    be.Wind(10);
+    Assert.Equal(0f, be.DriveTorque(ExlibValues.MpMaxSpeed));
+  }
+
+  [Fact]
+  public void The_wind_survives_a_tree_round_trip() {
+    var world = new TestWorld();
+    Block block = TestBlocks.Configure(
+      new BlockCrank(),
+      "handmill:drive-crank-e",
+      1,
+      ("orientation", "e")
+    );
+    var be = new BlockEntityCrank();
+    world.Place(new BlockPos(0, 0, 0), block, be);
+    world.Initialize(be);
+    be.Wind(10);
+
+    var tree = new TreeAttribute();
+    be.ToTreeAttributes(tree);
+
+    var restored = new BlockEntityCrank { Pos = be.Pos, Block = be.Block };
+    restored.FromTreeAttributes(tree, world.World);
+
+    Assert.Equal(HandMillValues.CrankTorque, restored.DriveTorque(0f));
+  }
 }
 ```
 
-A second test stands up a `TestPlayer`, sets `player.Entity.Controls.ShiftKey = true` and calls
-`OnBlockInteractStart` directly, asserting the counter is back at zero - the same handler a real
-sneak-click runs, exercised with no client and no server socket. Run both with
-`dotnet test samples/HelloExpanded.Tests/HelloExpanded.Tests.csproj`, or
-`exmod test latest -Filter HelloExpanded`.
+Run it with `dotnet test samples/HandMill/tests/HandMill.Tests.csproj`, or
+`exmod test latest -Filter HandMill`.
 
 ## 8. Boot it
 
-`exmod smoke -Mods samples/HelloExpanded/bin/Debug/Mods/mod` (the default smoke lane already includes
-it) launches the real dedicated server against the built mod, runs the content checks and `/exmod
-verify`, and fails on a boot timeout or an `[Error]`/`[Fatal]` log line - the same lane this repo's CI
-runs on every mod, now covering the one you just read.
+`exmod smoke -Mods samples/HandMill/src/bin/Debug/Mods/mod` (the default smoke lane already includes
+it, alongside `grains`) launches the real dedicated server against the built mods, runs the content
+checks and `/exmod verify`, and fails on a boot timeout or an `[Error]`/`[Fatal]` log line - the same
+lane this repo's CI runs on every mod, now covering the one you just read:
 
-`samples/HelloModule` is a second sample, alongside `HelloExpanded` rather than in place of it: a
-module shipped as its own mod, depending on exlib the same way `HelloExpanded` does, giving any
-mod's block a greeting through a block behaviour it registers under its own domain. Read it
-alongside [Modules](Modules) if you are extending exlib itself, or another mod built on it, rather
-than shipping gameplay content of your own.
+```
+[exlib] modules hosted by exlib: grains, industry
+[exlib] Injected 5 code-first block definition(s).
+[exlib] Injected 6 code-first item definition(s).
+[exlib] check DefinitionCatalogue (handmill): 0 error(s)
+[exlib] check MultiblockCodes (handmill): 0 error(s)
+[exlib] check RecipeCodes (handmill): 0 error(s)
+[exlib] check LangCoverage (handmill): 0 error(s)
+[exlib] check NetworkNodeContract (handmill): 0 error(s)
+[exlib] check PinnedNetworkNodes (handmill): 0 error(s)
+[exlib] check CodePrefixCollision (handmill): 0 error(s)
+```
+
+The five blocks are the crank, the shaft, the flywheel, the mill core and the quern stand; the six
+items are `grains`' sacks, one per catalogued grain. `grains` is listed among the modules hosted by
+exlib because it ships as its own mod carrying no `ModSystem` of its own - see
+[Modules](Modules). See [First Machine](First-Machine) for the rest of the mill: the shaft, the
+flywheel, the designed multiblock core and the JSON-only quern stand.
 
 ## 9. exmod in your repo
 
@@ -372,6 +432,7 @@ workspace sibling checkout of exlib when there is one, otherwise a published rel
 
 | You want to... | Read |
 | --- | --- |
+| Build a machine with a structure and a power line | [First Machine](First-Machine) |
 | Build pipes / wires / canals (anything that connects into a network) | [Block Networks](Block-Networks) |
 | Build a multi-cell machine (furnace, boiler) with completion + build outline | [Multiblock Structures](Multiblock-Structures) |
 | Run periodic server-side work on a block entity | [Production Machines](Production-Machines) |

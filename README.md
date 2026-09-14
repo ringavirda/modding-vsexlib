@@ -53,11 +53,13 @@ ships no gameplay content of its own - install it because another mod depends on
 
 ## Start from the sample
 
-`samples/HelloExpanded` is a third-party mod written against this library end to end: a block, a
-saved counter, a config value and a command, plus two headless tests, all in the shapes the wiki's
-[Getting Started](wiki/Getting-Started.md) walk teaches. It builds and boots like any other mod
-here (`dotnet build ExpandedLib.sln`, `exmod smoke`) - read it alongside the wiki rather than typing
-its snippets by hand.
+`samples/HandMill` is a third-party mod written against this library end to end: a hand crank and
+shaft on a mechanical-power network, a flywheel, a designed multiblock mill and a JSON-only quern
+stand, plus a full headless test suite - `samples/Grains`, the module it depends on, is a second
+mod alongside it, in the shapes the wiki's [Getting Started](wiki/Getting-Started.md) and [First
+Machine](wiki/First-Machine.md) walks teach. Both build and boot like any other mod here
+(`dotnet build ExpandedLib.sln`, `exmod smoke`) - read them alongside the wiki rather than typing
+their snippets by hand.
 
 ## What is supported
 
@@ -76,7 +78,7 @@ src/ExpandedLib.Testing/    the headless xUnit harness
 src/ExpandedLib.Generators/ the config/lang source generators, referenced as an analyzer
 tests/ExpandedLib.Tests/    the suite this repo's own gate runs
 build/                      the MSBuild plumbing the package ships (GamePath resolution, provisioning, asset globs)
-samples/                    HelloExpanded and HelloModule, third-party mods written against this library
+samples/                    HandMill and Grains, third-party mods written against this library
 templates/                  the `dotnet new` templates a consumer installs (exlib-tests)
 docs/                       design pages for a contributor working on this repo's own mechanics
 wiki/                       the GitHub wiki source, guarded by tests so it cannot drift from the code
