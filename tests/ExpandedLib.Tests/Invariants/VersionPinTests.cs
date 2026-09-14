@@ -124,12 +124,17 @@ public class VersionPinTests {
     // Driven from exmod.json's own sample map rather than a directory walk, so a sample that
     // moved, was renamed, or was added without a floor fails loudly instead of being skipped.
     var stale = new List<string>();
-    foreach ((string name, RepoManifest.SampleEntry sample) in RepoManifest.Samples) {
+    foreach (
+      (string name, RepoManifest.SampleEntry sample) in RepoManifest.Samples
+    ) {
       string file = Path.Combine(sample.Path, "src", "modinfo.json");
       Assert.True(File.Exists(file), $"Sample '{name}' has no {file}.");
 
       string text = File.ReadAllText(file);
-      MatchCollection literals = Regex.Matches(text, @"""exlib""\s*:\s*""([^""]+)""");
+      MatchCollection literals = Regex.Matches(
+        text,
+        @"""exlib""\s*:\s*""([^""]+)"""
+      );
       Assert.True(literals.Count > 0, $"{file} names no \"exlib\" dependency.");
       foreach (Match m in literals) {
         if (m.Groups[1].Value != version)
