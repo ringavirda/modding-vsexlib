@@ -133,6 +133,9 @@ jobs:
           export VINTAGE_STORY="$GITHUB_WORKSPACE/.game/$slug"
           version=$(jq -r .version src/ExpandedLib/modinfo.json)
           dest="$RUNNER_TEMP/starter"
+          # The generator commits the starter it writes; a runner has no git identity of its own.
+          git config --global user.name "exmod"
+          git config --global user.email "exmod@users.noreply.github.com"
           bash scripts/exmod.sh starter "$dest" -ExlibRoot "$GITHUB_WORKSPACE" -Version "$version"
           cd "$dest"
           dotnet new nugetconfig
