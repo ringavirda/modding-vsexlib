@@ -4,9 +4,6 @@
   "entityClass": "handmill.BlockEntityFlywheel",
   "blockmaterial": "Wood",
   "maxstacksize": 1,
-  "shape": {
-    "base": "game:block/wood/mechanics/largegear3"
-  },
   "behaviors": [
     {
       "name": "ExOrientable"

@@ -30,9 +30,9 @@ public class BlockEntityCrank : BlockEntityNetworkNode, IMpEnergyProducer {
       RegisterGameTickListener(Unwind, 1000);
   }
 
-  /// <summary>Adds <paramref name="seconds"/> of drive, capped at twice one wind.</summary>
+  /// <summary>Adds <paramref name="seconds"/> of drive, capped at twice the configured wind.</summary>
   public void Wind(float seconds) {
-    _windSeconds = Math.Min(_windSeconds + seconds, seconds * 2f);
+    _windSeconds = Math.Min(_windSeconds + seconds, HandMillValues.WindSeconds * 2f);
     MarkDirty();
   }
 

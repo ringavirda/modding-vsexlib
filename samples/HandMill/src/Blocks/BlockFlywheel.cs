@@ -28,7 +28,6 @@ public partial class BlockFlywheel
         .EntityClass<BlockEntityFlywheel>()
         .Material(EnumBlockMaterial.Wood)
         .MaxStackSize(1)
-        .Shape("game:block/wood/mechanics/largegear3")
         .Behavior("ExOrientable")
         .SideVariant()
         .ShapeByTypePerOrientation("game:block/wood/mechanics/largegear3", 0)

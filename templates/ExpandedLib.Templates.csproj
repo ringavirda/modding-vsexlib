@@ -5,7 +5,7 @@
     <PackageType>Template</PackageType>
     <PackageId>ExpandedLib.Templates</PackageId>
     <Title>Expanded Library templates</Title>
-    <Description>dotnet new templates for mods built on exlib: a block, a megablock, a multiblock machine, a network node and a headless test project. Installed for you by exmod scaffold.</Description>
+    <Description>dotnet new templates for mods built on exlib: blocks, items, recipes, megablocks, multiblocks, network nodes, block and block-entity behaviours, config sections, migrations, commands and a headless test project. Installed for you by exmod scaffold.</Description>
     <TargetFramework>netstandard2.0</TargetFramework>
     <IncludeContentInPack>true</IncludeContentInPack>
     <IncludeBuildOutput>false</IncludeBuildOutput>

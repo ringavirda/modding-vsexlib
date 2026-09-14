@@ -384,7 +384,6 @@ public class BlockNetworkModSystem : ModSystem {
     if (NetworkMembership.Resolve(world, rootPos, networkType) == null)
       return null;
 
-    // BFS-discover all reachable positions.
     var reachable = new HashSet<BlockPos>();
     var bfsQueue = new Queue<BlockPos>();
     reachable.Add(rootPos);
@@ -398,21 +397,19 @@ public class BlockNetworkModSystem : ModSystem {
       }
     }
 
-    // Collect old network IDs that overlap with the reachable set.
     var oldNetIds = new HashSet<Guid>();
     foreach (var pos in reachable) {
       if (_posToNetwork.TryGetValue(pos, out Guid id))
         oldNetIds.Add(id);
     }
 
-    // Preserve state of the current root network (temperature, fill level, …).
+    // Preserve state of the current root network (temperature, fill level and the rest).
     _posToNetwork.TryGetValue(rootPos, out Guid rootOldId);
     BlockNetwork? rootOldNet =
       rootOldId != default && _networks.TryGetValue(rootOldId, out var ron)
         ? ron
         : null;
 
-    // Tear down all overlapping old networks.
     foreach (var id in oldNetIds) {
       if (_networks.TryGetValue(id, out var oldNet)) {
         foreach (var p in oldNet.Nodes)
@@ -421,7 +418,6 @@ public class BlockNetworkModSystem : ModSystem {
       }
     }
 
-    // Build the new root-anchored network.
     var newNet = CreateNetwork(networkType);
     newNet.RootPos = rootPos.Copy();
 

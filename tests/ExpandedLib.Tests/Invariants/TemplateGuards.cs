@@ -32,6 +32,13 @@ public class TemplateGuards {
 
   [Fact]
   public void Every_kind_has_a_manifest_named_by_convention() {
+    Assert.Equal(
+      Kinds.Order(),
+      Directory
+        .GetDirectories(Root)
+        .Select(d => Path.GetFileName(d)!["exlib-".Length..])
+        .Order()
+    );
     foreach (string kind in Kinds) {
       string path = Path.Combine(
         Root,

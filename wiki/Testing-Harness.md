@@ -32,7 +32,7 @@ Three ways to get from nothing to a green test, cheapest first.
 ### The template
 
 ```
-dotnet new install ./templates/content/exlib-tests    # or, once published: dotnet new install ExpandedLib.Templates.Tests
+dotnet new install ./templates/content/exlib-tests    # or, once published: dotnet new install ExpandedLib.Templates
 dotnet new exlib-tests -n Demo.Tests -o Demo.Tests --ModName Demo
 dotnet test Demo.Tests
 ```
@@ -159,8 +159,8 @@ internal static class ModuleInit
 }
 ```
 
-Every test project in this repo (`ExpandedLib.Tests`, `IronIndustryExpanded.Tests`,
-`SteelIndustryExpanded.Tests`, `HandMill.Tests`) has exactly this - a module initializer only
+Every test project here (`ExpandedLib.Tests`, `HandMill.Tests`, `Grains.Tests`) and in the family
+mods has exactly this - a module initializer only
 runs for the assembly that declares it. `VsAssemblyResolver.Register`
 is idempotent and resolves the install via the `[AssemblyMetadata("GameInstallEnv")]` environment
 variable (e.g. `VINTAGE_STORY`) or, failing that, by walking up to `.game/<slug>`.

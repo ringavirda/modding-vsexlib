@@ -94,6 +94,12 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
 
+    # extools' scaffold command and the manifest-driven starter are unreleased; EXTOOLS_HOME points
+    # every scripts/exmod.sh call in this job at a checkout of extools dev instead of the pinned
+    # release tag scripts/exmod.sh would otherwise clone into .extools/.
+    env:
+      EXTOOLS_HOME: ${{ github.workspace }}/.extools-dev
+
     # Packs exlib's own packages (including the templates) into a local feed, generates the starter
     # from exlib's manifest, scaffolds every kind into it, then builds and tests it - the same
     # commands a fresh clone's README walks a modder through.
@@ -112,12 +118,6 @@ jobs:
           path: .game
           key: vs-game-${{ env.VS_VERSION }}
 
-      - name: Provision Vintage Story (server assemblies)
-        run: bash scripts/exmod.sh provision game -Version "$VS_VERSION" -Kind server
-
-      # extools' scaffold command and the manifest-driven starter are unreleased; EXTOOLS_HOME points
-      # every scripts/exmod.sh call in this job at a checkout of extools dev instead of the pinned
-      # release tag scripts/exmod.sh would otherwise clone into .extools/.
       - name: Checkout extools dev
         uses: actions/checkout@v4
         with:
@@ -125,14 +125,14 @@ jobs:
           ref: dev
           path: .extools-dev
 
+      - name: Provision Vintage Story (server assemblies)
+        run: bash scripts/exmod.sh provision game -Version "$VS_VERSION" -Kind server
+
       - name: Pack into a local feed
-        env:
-          EXTOOLS_HOME: ${{ github.workspace }}/.extools-dev
         run: bash scripts/exmod.sh nuget
 
       - name: Generate the starter, scaffold every kind, build and test it
         env:
-          EXTOOLS_HOME: ${{ github.workspace }}/.extools-dev
           NUGET_PACKAGES: ${{ runner.temp }}/pkgs
         run: |
           set -euo pipefail
@@ -157,12 +157,12 @@ jobs:
           # demo's own test project carries no golden-completeness check, so the scaffolded
           # block/item/recipe/megablock/multiblock/node kinds (each a code-first def) would land
           # unproven against that seam. Rendering the exlib-tests template's GoldenTests.cs into
-          # demo exercises it for real: the new defs' goldens need blessing once with
-          # EXLIB_WRITE_GOLDENS, same as any mod that golden-checks its whole def set.
+          # demo exercises it for real: the scaffolded defs' goldens are blessed once and
+          # re-checked, so every kind's def emitter is exercised and the golden set is proven to
+          # cover it.
           dotnet new install "$GITHUB_WORKSPACE/templates/content/exlib-tests" --force
           goldenTmp=$(mktemp -d)
-          dotnet new exlib-tests -n Demo.Tests --ModName Demo -o "$goldenTmp" --force
-          sed -i 's/Domain = "Demo"/Domain = "demo"/' "$goldenTmp/Definitions/GoldenTests.cs"
+          dotnet new exlib-tests -n Demo.Tests --ModName demo -o "$goldenTmp" --force
           mkdir -p mods/demo/tests/Definitions
           cp "$goldenTmp/Definitions/GoldenTests.cs" mods/demo/tests/Definitions/GoldenTests.cs
           bash scripts/exmod.sh build latest

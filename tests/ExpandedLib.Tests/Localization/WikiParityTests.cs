@@ -152,6 +152,13 @@ public class WikiParityTests {
       "no IIncrementalGenerator found in src/ExpandedLib.Generators/ - the generator names the wiki "
         + "may cite would be resolved from an empty set, so any of them would read as valid"
     );
+
+    string[] wikiFiles = Directory.GetFiles(WikiDirectory, "*.md", SearchOption.AllDirectories);
+    foreach (string entry in KnownAbsent)
+      Assert.True(
+        wikiFiles.Any(f => File.ReadAllText(f).Contains(entry)),
+        $"{entry} no longer appears in the wiki - delete its stale suppression from KnownAbsent"
+      );
   }
 
   [Fact]

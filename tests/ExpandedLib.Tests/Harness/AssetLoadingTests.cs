@@ -16,11 +16,9 @@ namespace ExpandedLib.Tests;
 /// the engine's own object loader from HandMill's code-first definition, with its variants
 /// intact - not a <see cref="TestWorld.RegisterItem"/> stand-in.
 /// </summary>
-public class AssetLoadingTests
-{
+public class AssetLoadingTests {
   [Fact]
-  public void Millcore_block_resolves_with_its_orientation_variants()
-  {
+  public void Millcore_block_resolves_with_its_orientation_variants() {
     string samplePath = Path.Combine(RepoPaths.Root, "samples", "HandMill");
 
     // BlockMillCore's def carries grains's BlockBehaviorGrainInfo; LoadAssets loads only the one mod
@@ -41,7 +39,10 @@ public class AssetLoadingTests
           "grains.dll",
           SearchOption.AllDirectories
         )
-        .First()
+        .FirstOrDefault()
+      ?? throw new InvalidOperationException(
+        $"no grains.dll under {moduleBinPath}; build the samples first"
+      )
     );
 
     using var world = new TestWorld();
@@ -81,8 +82,7 @@ public class AssetLoadingTests
   }
 
   [Fact]
-  public void Crank_block_resolves_with_its_orientation_variants()
-  {
+  public void Crank_block_resolves_with_its_orientation_variants() {
     string samplePath = Path.Combine(RepoPaths.Root, "samples", "HandMill");
 
     using var world = new TestWorld();

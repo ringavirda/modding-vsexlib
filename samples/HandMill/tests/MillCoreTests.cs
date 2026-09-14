@@ -103,7 +103,7 @@ public class MillCoreTests {
     ]);
 
   [Fact]
-  public void An_unraised_rig_never_completes_and_never_grinds() {
+  public void An_unraised_rig_never_completes() {
     Rig rig = Build();
     rig.World.Initialize(rig.Mill);
 

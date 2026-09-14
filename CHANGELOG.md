@@ -20,8 +20,14 @@ see the git history.
 - **The incompatible-mods guard** (`Registries/IncompatibleMods`): a published mod built against
   exlib 0.7 that cannot load beside 0.8 is named at `StartPre` and reported to every joining
   player, rather than surfacing as a missing type at load.
+- Eleven `dotnet new` templates alongside the existing headless test project - block, item,
+  recipe, megablock, multiblock, node, block behaviour, entity behaviour, config section,
+  migration and command - and `exmod scaffold <kind> <Name>` to add one to an existing mod.
 
 ### Changed
+
+- The template payload moves to `templates/content/<kind>`: `dotnet new install
+  ./templates/exlib-tests` becomes `dotnet new install ./templates/content/exlib-tests`.
 
 - `ExpandedLib.Industry` registers `pipe`, `molten` and `mpenergy` itself, each with its own
   defaults, in its own `Start`; `BlockNetworkModSystem.RegisterNetworkType` now returns whether it

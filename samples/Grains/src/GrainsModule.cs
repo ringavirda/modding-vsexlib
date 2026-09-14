@@ -20,7 +20,7 @@ public sealed class GrainsModule : IExModule, IExDefinitionContributor {
   public void Contribute(ICoreAPI api) {
     foreach (
       ExItemDef def in GrainSackItems.Emit(
-        "grains",
+        GrainCatalogue.Domain,
         AssetCatalogueLoader.GetMany<GrainDef>(api, "config/grains/")
       )
     )

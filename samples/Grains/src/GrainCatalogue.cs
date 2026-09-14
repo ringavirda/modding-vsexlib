@@ -10,6 +10,10 @@ namespace Grains;
 /// identically, so the mill reads it on the server with no round trip; empty until then.
 /// </summary>
 public static class GrainCatalogue {
+  /// <summary>The domain sack codes are built under; <see cref="ForItem"/> and
+  /// <see cref="GrainSackItems.Emit"/> must agree on it.</summary>
+  internal const string Domain = "grains";
+
   private static List<GrainDef> _all = [];
 
   /// <summary>Every entry loaded so far, in asset order.</summary>
@@ -25,7 +29,7 @@ public static class GrainCatalogue {
     itemCode == null
       ? null
       : _all.FirstOrDefault(g =>
-        g.Grain == itemCode || $"grains:sack-{g.Code}" == itemCode
+        g.Grain == itemCode || $"{Domain}:sack-{g.Code}" == itemCode
       );
 
   /// <summary>Test seam: replaces the catalogue without an asset read.</summary>

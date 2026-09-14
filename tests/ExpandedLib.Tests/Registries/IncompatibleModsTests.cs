@@ -23,6 +23,7 @@ public class IncompatibleModsTests {
   public void Both_old_mods_are_named_with_the_fix() {
     string? msg = IncompatibleMods.Message(LoaderWith("smex", "ppex"), "0.8.0");
     Assert.NotNull(msg);
+    Assert.StartsWith("exlib 0.8.0 does not work with", msg);
     Assert.Contains("Steelmaking Expanded", msg);
     Assert.Contains("Pipes and Power Expanded", msg);
     Assert.Contains("exlib 0.7.2", msg);
