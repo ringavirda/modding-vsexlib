@@ -72,7 +72,13 @@ public class TemplateGuards {
     Assert.NotEmpty(files);
     foreach (string file in files)
       foreach (
-        string literal in new[] { "HandMill", "handmill", "Grains", "grains" }
+        string literal in new[]
+        {
+        "TwinTubBlower",
+        "twintubblower",
+        "BurdenMaker",
+        "burdenmaker",
+        }
       )
         Assert.DoesNotContain(literal, File.ReadAllText(file));
   }
