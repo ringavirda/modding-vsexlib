@@ -45,7 +45,9 @@ public class IncompatibleModsTests {
   // the message when the mod is still sitting in a Mods folder.
   [Fact]
   public void A_mod_the_loader_no_longer_reports_enabled_is_still_found_on_disk() {
-    string root = Directory.CreateTempSubdirectory("exlib-incompatible-mods-test-").FullName;
+    string root = Directory
+      .CreateTempSubdirectory("exlib-incompatible-mods-test-")
+      .FullName;
     try {
       Directory.CreateDirectory(Path.Combine(root, "ppex"));
       File.WriteAllText(
@@ -63,7 +65,9 @@ public class IncompatibleModsTests {
 
   [Fact]
   public void A_zipped_mod_is_also_found_on_disk() {
-    string root = Directory.CreateTempSubdirectory("exlib-incompatible-mods-test-").FullName;
+    string root = Directory
+      .CreateTempSubdirectory("exlib-incompatible-mods-test-")
+      .FullName;
     try {
       string zipPath = Path.Combine(root, "smex_0.9.8.zip");
       using (var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create)) {
@@ -82,7 +86,9 @@ public class IncompatibleModsTests {
 
   [Fact]
   public void An_unrelated_mod_folder_is_ignored() {
-    string root = Directory.CreateTempSubdirectory("exlib-incompatible-mods-test-").FullName;
+    string root = Directory
+      .CreateTempSubdirectory("exlib-incompatible-mods-test-")
+      .FullName;
     try {
       Directory.CreateDirectory(Path.Combine(root, "iiex"));
       File.WriteAllText(

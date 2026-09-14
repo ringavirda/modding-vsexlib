@@ -57,8 +57,11 @@ internal static class IncompatibleMods {
   // A known mod that fails to load beside this exlib (see the type doc) never reaches
   // IModLoader.Mods and IsModEnabled reports it as absent, so presence also falls back to reading
   // the id straight off the Mods folders - the one thing a load failure cannot hide.
-  private static bool IsPresent(IModLoader loader, string modId, IEnumerable<string> modRoots) =>
-    loader.IsModEnabled(modId) || modRoots.Any(root => OnDisk(root, modId));
+  private static bool IsPresent(
+    IModLoader loader,
+    string modId,
+    IEnumerable<string> modRoots
+  ) => loader.IsModEnabled(modId) || modRoots.Any(root => OnDisk(root, modId));
 
   private static bool OnDisk(string modRoot, string modId) {
     if (!Directory.Exists(modRoot))
