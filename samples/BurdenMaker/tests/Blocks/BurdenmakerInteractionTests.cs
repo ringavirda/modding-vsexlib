@@ -16,22 +16,14 @@ using static BurdenMaker.Blocks.BlockBurdenmaker;
 
 namespace BurdenMaker.Tests;
 
-/// <summary>
-/// Interaction routing for the burdenmaker: a click on a world cell reaches the block-entity call that
-/// cell's class means. <see cref="BurdenmakerCellTests"/> covers the cell map itself.
-/// <para>
-/// Clicks go in through a real block - the principal or a <see cref="BlockStructureFiller"/> on a
-/// footprint cell - never through the private <c>HandleInteract</c>, so
-/// <see cref="IFillerInteractionTarget"/> forwarding is covered too. Filler positions come from
-/// <see cref="StructureFillers.FootprintCells"/> off the shipped def rather than hard-coded coordinates.
-/// </para>
-/// </summary>
+/// <summary>Interaction routing for the burdenmaker: a click on a world cell reaches the
+/// block-entity call that cell's class means. <see cref="BurdenmakerCellTests"/> covers the cell
+/// map itself.</summary>
 public class BurdenmakerInteractionTests {
   /// <summary>One deposit, small enough to fit one stack and every tank.</summary>
   private const int Load = 20;
 
-  /// <summary>Long enough to fully drain any batch this suite loads (see the constant of the same name
-  /// in <see cref="BurdenmakerTests"/>).</summary>
+  /// <summary>Long enough to fully drain any batch this suite loads.</summary>
   private const int FullDrainMs = 9000;
 
   private static readonly BlockPos At = new(64, 110, 64);
@@ -96,7 +88,7 @@ public class BurdenmakerInteractionTests {
       ("brick", "red"),
       ("side", side)
     );
-    // Footprint read off the shipped def rather than hand-typed, so it follows the drawing.
+    // Footprint read off the shipped def, not hand-typed.
     block.Attributes = new JsonObject(
       BlockBurdenmaker.Definitions("burdenmaker").First().ToJson()[
         "attributes"
@@ -152,8 +144,7 @@ public class BurdenmakerInteractionTests {
 
     var player = Substitute.For<IServerPlayer>();
     var entity = Substitute.For<EntityPlayer>();
-    // Ctrl, not sneak - vanilla ground-storage placement owns sneak+right-click with a held item.
-    // Controls is a real field on the proxy, so this sets the value the production path reads.
+    // Ctrl, not sneak; Controls is a real field on the substitute proxy.
     entity.Controls.CtrlKey = ctrl;
     player.Entity.Returns(entity);
 
@@ -175,11 +166,8 @@ public class BurdenmakerInteractionTests {
     return new Hands(player, slot, offered, errors);
   }
 
-  /// <summary>
-  /// Right-clicks the world cell at the authored offset <paramref name="cell"/>, through whichever real
-  /// block stands there - the principal for the gate, a filler for everything else. Returns whether the
-  /// click was consumed.
-  /// </summary>
+  /// <summary>Right-clicks the world cell at the authored offset <paramref name="cell"/>. Returns
+  /// whether the click was consumed.</summary>
   private static bool Click(Rig rig, (int X, int Y, int Z) cell, Hands hands) {
     BlockPos pos = ExOrientation.GlobalPos(
       rig.Be.Pos,
@@ -190,8 +178,6 @@ public class BurdenmakerInteractionTests {
     );
     Block under = rig.World.GetBlock(pos);
 
-    // Premise: a real cell of this machine is under the cursor. Clicking air returns quietly, which
-    // would make every "nothing moved" assertion below pass for the wrong reason.
     Assert.True(
       ReferenceEquals(under, rig.Block) || under is BlockStructureFiller,
       $"no burdenmaker cell at local ({cell.X},{cell.Y},{cell.Z}) "
@@ -205,8 +191,7 @@ public class BurdenmakerInteractionTests {
     return under.OnBlockInteractStart(rig.World.World, hands.Player, selection);
   }
 
-  /// <summary>What a full-handed click on <paramref name="cell"/> may move: each hopper takes its own
-  /// material and nothing else, and neither the gate nor the basin accepts a deposit at all.</summary>
+  /// <summary>What a full-handed click on <paramref name="cell"/> may move.</summary>
   private static (int Ore, int Flux) Expected(
     BurdenmakerCell cell,
     bool holdingOre
@@ -262,8 +247,7 @@ public class BurdenmakerInteractionTests {
     BurdenmakerCell cell,
     bool holdingOre
   ) {
-    // Each hopper refuses the other's material; StructureAngle is 0 at side "n", so all four facings
-    // are needed to exercise the angle passed to Classify.
+    // StructureAngle is 0 at side "n"; all four facings exercise the angle passed to Classify.
     Rig rig = NewRig(side);
     Item held = holdingOre ? rig.Ore : rig.Lime;
     Hands hands = PlayerWith(new ItemStack(held, Load), ctrl: true);
@@ -271,7 +255,7 @@ public class BurdenmakerInteractionTests {
     bool handled = Click(rig, (localX, localY, localZ), hands);
 
     (int ore, int flux) = Expected(cell, holdingOre);
-    // Every cell of a built machine consumes its click, so nothing is ever placed against its face.
+    // Every cell of a built machine consumes its click.
     Assert.True(handled);
     Assert.Equal(ore, rig.Be.OreUnits);
     Assert.Equal(flux, rig.Be.FluxUnits);
@@ -288,7 +272,6 @@ public class BurdenmakerInteractionTests {
   public void An_empty_hand_takes_back_from_the_hopper_that_was_clicked(
     string side
   ) {
-    // The two loads differ in material and in size, so a swapped arm fails on either assertion alone.
     Rig rig = NewRig(side);
     Fill(rig, ore: 20, flux: 7);
 
@@ -324,8 +307,7 @@ public class BurdenmakerInteractionTests {
 
   [Fact]
   public void Only_the_principal_pulls_the_gate() {
-    // Gate and Bunker share the y = 0 course and the principal sits in the middle of the basin. A
-    // basin cell wired to ToggleGate would empty the hoppers when the player reaches for the burden.
+    // Gate and Bunker share the y = 0 course; the principal sits in the middle of the basin.
     Rig rig = NewRig("e");
     Fill(rig, ore: 30, flux: 10);
 
@@ -363,8 +345,6 @@ public class BurdenmakerInteractionTests {
 
   [Fact]
   public void A_gate_pulled_over_a_full_basin_reports_the_other_refusal() {
-    // Both refusals route through the same arm; the second shows the code is carried through rather
-    // than emitted as a constant.
     Rig rig = NewRig();
     Fill(rig, ore: 30, flux: 10);
     Assert.True(rig.Be.ToggleGate(out _)); // batch started
@@ -385,8 +365,7 @@ public class BurdenmakerInteractionTests {
 
   [Fact]
   public void A_basin_cell_hands_the_burden_back_and_never_takes_a_deposit() {
-    // Take-only whatever is held: the gate is the basin's only inlet, and a full hand must still get
-    // the burden back rather than have the click do nothing.
+    // Take-only: the gate is the basin's only inlet.
     Rig rig = NewRig("s");
     Fill(rig, ore: 30, flux: 10);
     Assert.True(rig.Be.ToggleGate(out _));
@@ -491,9 +470,7 @@ public class BurdenmakerInteractionTests {
     int localZ,
     BurdenmakerCell cell
   ) {
-    // There is no GUI, so the help overlay is the only thing distinguishing the two hoppers. Help is
-    // classified per cell exactly as the click is; forwarding every filler cell to
-    // GetPlacedBlockInteractionHelp would advertise the gate on every cell.
+    // Help is classified per cell exactly as the click is.
     Rig rig = NewRig(side);
 
     Assert.Equal(ExpectedHelp(cell), Help(rig, (localX, localY, localZ)));
@@ -501,8 +478,7 @@ public class BurdenmakerInteractionTests {
 
   [Fact]
   public void Before_construction_the_help_belongs_to_the_builder() {
-    // Before construction the RCC behaviour advertises the next stage's materials, not the machine's
-    // own verbs.
+    // Before construction the RCC behaviour advertises the next stage's materials.
     Rig rig = NewRig(constructed: false);
 
     Assert.DoesNotContain(
@@ -517,8 +493,7 @@ public class BurdenmakerInteractionTests {
 
   [Fact]
   public void A_client_side_click_is_swallowed_but_changes_nothing() {
-    // The server owns every mutation; the client still consumes the click so no block is placed
-    // against the machine's face. Without the guard both sides mutate and the inventory desyncs.
+    // The server owns every mutation; the client still consumes the click.
     Rig rig = NewRig();
     rig.World.World.Side.Returns(EnumAppSide.Client);
     Hands hands = PlayerWith(new ItemStack(rig.Ore, Load), ctrl: true);
@@ -531,8 +506,7 @@ public class BurdenmakerInteractionTests {
 
   [Fact]
   public void Before_construction_finishes_the_click_falls_through_to_the_builder() {
-    // The machine is raised by right-clicking through five construction stages, so HandleInteract must
-    // leave the click unconsumed until construction finishes or the block can never be built.
+    // HandleInteract must leave the click unconsumed until construction finishes.
     Rig rig = NewRig(constructed: false);
     Assert.False(rig.Be.IsConstructed); // the premise
 

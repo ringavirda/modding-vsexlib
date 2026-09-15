@@ -5,12 +5,8 @@ using Vintagestory.Common;
 namespace ExpandedLib.Definitions;
 
 /// <summary>
-/// Builds the in-memory asset a code-first definition is injected as. The object loader
-/// (<c>ModRegistryObjectTypeLoader</c>) iterates blocktypes as the concrete <see cref="Asset"/> type, so
-/// an injected asset must be a real <see cref="Asset"/>: a custom <see cref="IAsset"/> throws
-/// <see cref="System.InvalidCastException"/> and aborts the <c>AssetsLoaded</c> phase. That contract is
-/// why exlib references <c>VintagestoryLib</c>. The asset is built already-loaded (<c>Data</c> set), so
-/// its origin is never asked to load it.
+/// Builds the in-memory <see cref="Asset"/> a code-first definition is injected as.
+/// Must be the concrete engine type; a custom <see cref="IAsset"/> throws during asset loading.
 /// </summary>
 internal static class ExSyntheticAsset {
   /// <summary>Constructs a real engine <see cref="Asset"/> carrying <paramref name="data"/> at
@@ -23,10 +19,8 @@ internal static class ExSyntheticAsset {
 }
 
 /// <summary>
-/// The <see cref="IAssetOrigin"/> stamped on injected assets. Injection goes through
-/// <c>AssetManager.Add</c> rather than origin enumeration and the asset is constructed already-loaded,
-/// so the load hooks are never called and <c>GetAssets</c> returns nothing; the origin exists only so
-/// <see cref="IAsset.Origin"/> is non-null and gameplay-allowed.
+/// The <see cref="IAssetOrigin"/> stamped on injected assets.
+/// Load hooks are never called; injection goes through <c>AssetManager.Add</c>, not origin enumeration.
 /// </summary>
 internal sealed class ExDefinitionOrigin : IAssetOrigin {
   public string OriginPath => "exlib:code-first-definitions";
@@ -45,7 +39,6 @@ internal sealed class ExDefinitionOrigin : IAssetOrigin {
     bool shouldLoad = true
   ) => [];
 
-  // Blocktypes and itemtypes are gameplay-affecting categories: an origin returning false is skipped
-  // for them. Only reached if this origin is ever enumerated rather than used via Add.
+  // A false return skips gameplay-affecting categories such as blocktypes and itemtypes.
   public bool IsAllowedToAffectGameplay() => true;
 }

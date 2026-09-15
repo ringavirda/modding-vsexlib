@@ -9,14 +9,8 @@ namespace ExpandedLib.Checks;
 
 /// <summary>
 /// Checks that every block code a <c>multiblockStructure</c> layout asks for is a block some mod
-/// registers. A cell naming a block that is not in the registry throws nothing: the structure simply
-/// can never be completed. Only mod-domain codes are checked - a <c>game:</c> code or an alternation
-/// group (<c>@(air|coalpile)</c>) is vanilla's to answer for, not a mod's.
-/// <para>
-/// Matched against <see cref="ICheckSource.BlockCodes"/> - concrete registered codes - rather than
-/// against a def's bare <c>code</c> field, so this class needs no knowledge of any def outside the
-/// domain being checked other than what the source's codes already carry.
-/// </para>
+/// registers, matched against <see cref="ICheckSource.BlockCodes"/>. Only mod-domain codes are
+/// checked; a <c>game:</c> code or an alternation group is vanilla's to answer for.
 /// </summary>
 public static class MultiblockCodesCheck {
   /// <summary>Every unresolvable layout code in <paramref name="domain"/>'s defs, as the check's <see cref="CheckResult"/>.</summary>
@@ -61,8 +55,7 @@ public static class MultiblockCodesCheck {
     return new CheckResult("MultiblockCodes", domain, errors);
   }
 
-  // An alternation group or a domainless/vanilla code is out of scope; anything else with a domain
-  // that is not "game" is some mod's to account for.
+  // An alternation group or a domainless/vanilla code is out of scope.
   internal static bool IsModDomainCode(
     string code,
     out string domain,
@@ -81,13 +74,8 @@ public static class MultiblockCodesCheck {
     return domain != "game";
   }
 
-  // Whether some registered code satisfies the layout's (possibly wildcarded) one, matched segment by
-  // '-'-delimited segment over the shorter of the two: a registered code may be a longer, more
-  // specific variant of the wanted path ("furnace-tuyere-n-normal" satisfies "furnace-tuyere-n") or the
-  // wanted path may be the longer, more specific one ("hopper-tall" satisfies a bare "hopper"). A `*`
-  // segment ("furnace-blastcore-*-n", any tier) matches any one segment of the other side; a segment
-  // ending in `*` ("convertercontrol*") matches by prefix within that segment, letting a wanted path
-  // glue the wildcard onto a still-open variant without a leading dash.
+  // Whether a registered code satisfies the layout's code, matched segment by '-'-delimited segment.
+  // A `*` segment matches any one segment; a trailing `*` matches by prefix within its segment.
   internal static bool AnyProvides(
     HashSet<string> registeredCodes,
     string wantedPath

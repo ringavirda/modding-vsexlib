@@ -4,10 +4,8 @@ using Vintagestory.API.Datastructures;
 namespace ExpandedLib.Migrations;
 
 /// <summary>
-/// Optional companion to <see cref="IBlockCodeMigration"/>, implemented on the same class when the
-/// block carries block-entity state that must survive the swap (inventory, progress). Without it the
-/// swap is a plain block-id replace; with it, the old BE's serialized tree is read before the swap and
-/// handed to <see cref="MigrateBlockEntity"/>.
+/// Optional companion to <see cref="IBlockCodeMigration"/>, implemented when the block carries
+/// block-entity state that must survive the swap. Without it the swap is a plain block-id replace.
 /// </summary>
 public interface IBlockEntityMigration {
   /// <summary>Called immediately after the new block is placed, for each migrated position.</summary>
@@ -16,8 +14,7 @@ public interface IBlockEntityMigration {
   /// <param name="oldState">The old block entity's serialized tree, or <c>null</c> if the position had
   /// no block entity.</param>
   /// <param name="newBlockEntity">The just-placed replacement's block entity. Mutate it directly, e.g.
-  /// <c>newBlockEntity.FromTreeAttributes(oldState, world)</c> for a verbatim copy; the caller marks it
-  /// dirty afterwards.</param>
+  /// <c>newBlockEntity.FromTreeAttributes(oldState, world)</c> for a verbatim copy.</param>
   /// <param name="world">The world accessor, for resolving stacks during deserialization.</param>
   void MigrateBlockEntity(
     AssetLocation oldCode,

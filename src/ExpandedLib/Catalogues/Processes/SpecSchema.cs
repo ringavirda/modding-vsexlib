@@ -2,26 +2,16 @@ using Vintagestory.API.Datastructures;
 
 namespace ExpandedLib.Catalogues;
 
-/// <summary>
-/// The versioning contract every spec attribute carries. A parser reads the current form first and falls
-/// back to the older ones, so a mod's content does not break on the library's release schedule - and it
-/// refuses a form from a newer build outright rather than mis-reading it as one it does know.
-/// See docs/design/mechanics/process-extension.md.
-/// </summary>
+/// <summary>The versioning contract every spec attribute carries.</summary>
 public static class SpecSchema {
   /// <summary>The key a spec declares its version under.</summary>
   public const string Key = "schema";
 
-  /// <summary>The first form, and what an undeclared <c>schema</c> means. Absent is not unversioned: the
-  /// form that shipped before the field existed has a number whether or not it was written down.</summary>
+  /// <summary>The first form, and what an undeclared <c>schema</c> means.</summary>
   public const int First = 1;
 
-  /// <summary>
-  /// Reads the declared schema of <paramref name="node"/> against the <paramref name="current"/> one this
-  /// build writes. An absent field reads as <see cref="First"/>; an older form is read as declared and is
-  /// the caller's to fall back on; a newer one fails with a human-readable <paramref name="error"/> naming
-  /// both versions, since the fix is on the reader's side.
-  /// </summary>
+  /// <summary>Reads the declared schema of <paramref name="node"/> against the
+  /// <paramref name="current"/> one this build writes. A newer form fails with <paramref name="error"/>.</summary>
   public static bool TryRead(
     JsonObject? node,
     int current,

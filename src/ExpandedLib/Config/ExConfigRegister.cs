@@ -8,16 +8,11 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Config;
 
-/// <summary>
-/// Shared loader and saver for a mod's JSON gameplay tunables. The config POCO's property
-/// initialisers are the defaults; a static accessor owns one of these stores. <see cref="Load"/>
-/// reads this mod's own section of the shared <see cref="ExConfigDocument"/> under
-/// <c>ModConfig/&lt;fileName&gt;</c>, falls back to defaults when absent or invalid, applies any
-/// crossed <see cref="ExConfigMigration"/> and stamps the running mod version, so the section is
-/// created on first run and gains newly added keys on update.
-/// </summary>
+/// <summary>Shared loader and saver for a mod's JSON gameplay tunables. <see cref="Load"/> reads
+/// this mod's own section of the shared <see cref="ExConfigDocument"/>, falls back to defaults when
+/// absent or invalid, and applies any crossed <see cref="ExConfigMigration"/>.</summary>
 /// <typeparam name="TConfig">The mod's config POCO; needs a parameterless constructor whose property
-/// initialisers define the defaults, and must record the version it was written under.</typeparam>
+/// initialisers define the defaults.</typeparam>
 public sealed class ExConfigRegister<TConfig> : IExConfigAccess
   where TConfig : class, IExVersionedConfig, new() {
   private readonly string _fileName;
@@ -26,8 +21,7 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
   private ICoreAPI? _api;
   private PropertyInfo[]? _editableProps;
 
-  /// <summary>The live config. Holds the coded defaults until <see cref="Load"/> runs (and after a
-  /// failed load), so accessors are always safe to read.</summary>
+  /// <summary>The live config; holds the coded defaults until <see cref="Load"/> runs.</summary>
   public TConfig Config { get; private set; } = new();
 
   /// <summary>The owning mod id (also the code typed in <c>/exmod config &lt;mod&gt;</c>).</summary>
@@ -36,15 +30,12 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
   /// <summary>The config file this store reads/writes under <c>ModConfig</c>.</summary>
   public string FileName => _fileName;
 
-  /// <summary>Former per-mod file names this config was carried over from. On <see cref="Load"/>, if
-  /// this mod's section is absent but one of these still exists in <c>ModConfig</c>, its contents
-  /// become the section and the old file is renamed to <c>&lt;name&gt;.migrated</c> (first match
-  /// wins). Set by the generated accessor from the attribute's <c>LegacyFileNames</c>.</summary>
+  /// <summary>Former per-mod file names this config was carried over from; on <see cref="Load"/>, if
+  /// absent, one of these is folded in and renamed to <c>&lt;name&gt;.migrated</c>.</summary>
   public IReadOnlyList<string> LegacyFileNames { get; init; } = [];
 
   /// <summary>Mod ids whose section of <see cref="FileName"/> this store now owns - the mods it was
-  /// renamed from or absorbed. Carried over on <see cref="Load"/>. Set by the generated accessor from
-  /// the attribute's <c>LegacySectionIds</c>.</summary>
+  /// renamed from or absorbed.</summary>
   public IReadOnlyList<string> LegacySectionIds { get; init; } = [];
 
   /// <param name="fileName">Shared config document under the game's <c>ModConfig</c> folder (e.g.
@@ -61,21 +52,17 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
     _migrations = migrations ?? [];
   }
 
-  /// <summary>Loads the config (falling back to defaults), applies version-change resets and stamps
-  /// the current mod version. Call once during mod startup, before any value is read. Runs on either
-  /// side and each reads its own local copy, but only the server writes the file back: in
-  /// singleplayer both sides load this store in one process against one file and would race.</summary>
+  /// <summary>Loads the config, applies version-change resets and stamps the current mod version;
+  /// call once during mod startup. Only the server writes the file back.</summary>
   public void Load(ICoreAPI api) {
     _api = api;
     var doc = ExConfigDocument.ForFile(api, _fileName);
     // One-time carry-over of the old per-mod file into this mod's section (no-op once it exists).
     doc.FoldLegacy(_modId, LegacyFileNames);
-    // And of a section this mod used to be keyed under, for a rename or a merge. Runs after the file
-    // fold so a legacy file that already became this section is what the legacy sections merge into.
+    // Runs after FoldLegacy, merging into whatever section that fold produced.
     doc.FoldLegacySections(_modId, LegacySectionIds);
 
-    // GetSection returns null on a missing or unreadable section, so a corrupt file or a fresh
-    // install starts from the coded defaults without throwing.
+    // GetSection returns null on a missing or unreadable section.
     TConfig config = doc.GetSection<TConfig>(_modId) ?? new TConfig();
 
     string current =
@@ -85,18 +72,13 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
     config.ConfigVersion = current;
 
     Config = config;
-    // Server only: in singleplayer both sides load this register in the same process against the
-    // same file, and two writers race over it. The server's copy is the authority anyway.
+    // Server only: both sides load this register in singleplayer and would race writing the file.
     if (api.Side == EnumAppSide.Server)
       Save();
   }
 
-  /// <summary>
-  /// Resets edited values that would break the sim back to their coded defaults: any numeric tunable
-  /// that is NaN, infinite or outside its <see cref="ExConfigRangeAttribute"/> bounds (default:
-  /// non-negative), and any reference-typed value set to null. Every reset is named in a warning log
-  /// line. Complex and collection properties carry their own repair.
-  /// </summary>
+  /// <summary>Resets any numeric tunable outside its <see cref="ExConfigRangeAttribute"/> bounds and
+  /// any nulled reference-typed value to its coded default.</summary>
   private void Sanitize(TConfig config, ILogger logger) {
     var defaults = new TConfig();
     var reset = new List<string>();
@@ -116,8 +98,7 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
       object? value = p.GetValue(config);
       bool bad = AsNumber(value) is double n
         ? !InNumericRange(p, n)
-        // A nulled-out reference value (a string, or a collection such as a recipe catalogue) would
-        // NRE its reader. Guarded on a non-null default so a legitimately optional null stays.
+        // A null reference value would NRE its reader; guarded on a non-null default.
         : value is null
           && !p.PropertyType.IsValueType
           && p.GetValue(defaults) != null;
@@ -200,9 +181,8 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
     );
   }
 
-  /// <summary>Writes the live <see cref="Config"/> back to <c>ModConfig/&lt;fileName&gt;</c>. Called at
-  /// the end of <see cref="Load"/>, and public so a runtime command can persist a change made through
-  /// <see cref="Config"/>.</summary>
+  /// <summary>Writes the live <see cref="Config"/> back to <c>ModConfig/&lt;fileName&gt;</c>; called
+  /// at the end of <see cref="Load"/> and by a runtime command persisting an edit.</summary>
   public void Save() {
     if (_api == null)
       return;
@@ -221,9 +201,8 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
   }
 
   #region IExConfigAccess (runtime /exmod config editing)
-  /// <summary>The read-write tunables of simple type (number, bool, string) this store exposes to the
-  /// generic config command; the version stamp and any complex or collection property are excluded.
-  /// Cached after first use.</summary>
+  /// <summary>The read-write simple-typed tunables this store exposes to the generic config
+  /// command; cached after first use.</summary>
   private PropertyInfo[] EditableProps =>
     _editableProps ??= typeof(TConfig)
       .GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -314,8 +293,7 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
     Config = imported;
   }
 
-  // Used by ImportJson's Sanitize call when no Load has run yet (a fresh register in a test, or a
-  // config imported before its own Load) - discards every log line rather than NRE on a null api.
+  // Discards log lines when Sanitize runs before Load has set _api.
   private static readonly NoopLogger _noopLogger = new();
 
   private sealed class NoopLogger : LoggerBase {
@@ -348,9 +326,8 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
       _ => Convert.ToString(v, CultureInfo.InvariantCulture) ?? string.Empty,
     };
 
-  /// <summary>Parses <paramref name="raw"/> into <paramref name="type"/> using invariant culture and
-  /// lenient boolean words (true/on/yes/1, false/off/no/0). <paramref name="expected"/> is a short
-  /// label of the accepted input for the error message.</summary>
+  /// <summary>Parses <paramref name="raw"/> into <paramref name="type"/>, with lenient boolean words
+  /// (true/on/yes/1, false/off/no/0). <paramref name="expected"/> labels the accepted input.</summary>
   private static bool TryParse(
     Type type,
     string raw,
@@ -461,8 +438,7 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
     return attr != null ? (attr.Min, attr.Max) : (0d, double.PositiveInfinity);
   }
 
-  /// <summary>Whether <paramref name="n"/> is finite and within the property's accepted range, so an
-  /// edit cannot set a value the next load would reset.</summary>
+  /// <summary>Whether <paramref name="n"/> is finite and within the property's accepted range.</summary>
   private static bool InNumericRange(PropertyInfo p, double n) {
     if (double.IsNaN(n) || double.IsInfinity(n))
       return false;
@@ -470,9 +446,8 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
     return n >= min && n <= max;
   }
 
-  /// <summary>A compact, language-neutral description of the property's accepted range for the edit
-  /// error: <c>"0..1"</c> for a bounded range, <c>"0+"</c> for a floor only. Avoids <c>&lt;</c>/<c>&gt;</c>
-  /// for VTML safety.</summary>
+  /// <summary>A compact range description for the edit error: <c>"0..1"</c> bounded, <c>"0+"</c> for
+  /// a floor only. Avoids <c>&lt;</c>/<c>&gt;</c> for VTML safety.</summary>
   private static string FormatRange(PropertyInfo p) {
     var (min, max) = RangeOf(p);
     string lo = min.ToString(CultureInfo.InvariantCulture);

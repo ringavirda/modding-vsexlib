@@ -2,12 +2,9 @@ using System;
 
 namespace ExpandedLib.Config;
 
-/// <summary>
-/// Stamped by <c>ExConfigGenerator</c> on every accessor class it emits for an
-/// <see cref="ExConfigRegisterAttribute"/>-decorated config POCO. Never applied by hand: it exists so
-/// <see cref="ExConfig.LoadAll"/> can find every generated accessor in an assembly by reflection and
-/// call its <c>Load(ICoreAPI)</c>, without a hand-maintained list of config types.
-/// </summary>
+/// <summary>Stamped by <c>ExConfigGenerator</c> on every accessor class it emits for an
+/// <see cref="ExConfigRegisterAttribute"/>-decorated config POCO, so <see cref="ExConfig.LoadAll"/>
+/// can find it by reflection. Never applied by hand.</summary>
 [AttributeUsage(
   AttributeTargets.Class,
   AllowMultiple = false,

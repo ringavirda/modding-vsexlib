@@ -4,21 +4,13 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
-/// <summary>
-/// Concrete <see cref="BlockNetwork"/> for the mechanical-energy system: one shared reservoir that
-/// <see cref="IMpEnergyProducer"/> engines drive, <see cref="IMpEnergyStorage"/> flywheels buffer, and
-/// <see cref="IMpEnergyConsumer"/> machines load. The physics lives in
-/// <see cref="MpEnergyNetworkState"/>; this class walks the node set each tick, sums inertia, drive
-/// torque and load torque, and integrates. Friction and speed constants are read live from
-/// <c>ExlibValues</c>; per-flywheel inertia is content and arrives through the nodes.
-/// See <c>docs/design/mechanics/mp-energy.md</c>.
-/// </summary>
+/// <summary>Concrete <see cref="BlockNetwork"/> for the mechanical-energy system: one shared
+/// reservoir that producers drive, storage nodes buffer, and consumers load.</summary>
 public class MpEnergyNetwork : BlockNetwork {
   public override string NetworkType => "mpenergy";
 
-  // Framework tunables, read live from config. FrictionCoeff is the windage coefficient (T proportional to w),
-  // IdleTorque the standing-resistance floor, MaxSpeed the burst speed w_max (rad/s) that sets
-  // capacity = 1/2*I*w_max^2.
+  // FrictionCoeff is the windage coefficient, IdleTorque the standing-resistance floor, MaxSpeed
+  // the burst speed w_max (rad/s).
   private static float FrictionCoeff => ExlibValues.MpFrictionCoeff;
   private static float IdleTorque => ExlibValues.MpIdleTorque;
   private static float MaxSpeed => ExlibValues.MpMaxSpeed;
@@ -48,8 +40,7 @@ public class MpEnergyNetwork : BlockNetwork {
     float dt,
     BlockNetworkModSystem manager
   ) {
-    // One walk of the node set at the current shaft speed: sum the storage inertia, the drive torque
-    // (producers evaluated on their torque-speed curve at w), and the load torque of working consumers.
+    // One walk of the node set: sums storage inertia, drive torque and load torque.
     float speed = State?.Speed ?? 0f;
     float inertia = 0f;
     float driveTorque = 0f;
@@ -66,13 +57,12 @@ public class MpEnergyNetwork : BlockNetwork {
         driveTorque += Math.Max(0f, producer.DriveTorque(speed));
       if (be is IMpEnergyConsumer consumer)
         loadTorque += Math.Max(0f, consumer.LoadTorque(speed));
-      // Any driver that knows its rotation sets the run's direction; the last one wins. Two drives
-      // turning opposite ways is a build error, not a state the model represents.
+      // Any driver that knows its rotation sets the run's direction; the last one wins.
       if (be is IMpEnergyDirection { IsReversed: true })
         reversed = true;
     }
 
-    // A run with no inertia has nothing to spin, so drop the reservoir.
+    // A run with no inertia has nothing to spin.
     if (inertia <= 0f) {
       if (State != null) {
         State = null;
@@ -85,8 +75,7 @@ public class MpEnergyNetwork : BlockNetwork {
     State.Inertia = inertia;
     State.Reversed = reversed;
 
-    // Integrate the shaft: w += (T_drive - T_load - T_fric)/I * dt, clamped to [0, w_max]. Torque
-    // governs, so an under-torqued run decelerates to a stall rather than buffering past the load.
+    // Integrate the shaft: w += (T_drive - T_load - T_fric)/I * dt, clamped to [0, w_max].
     MpEnergyNetworkState.Step(
       State,
       dt,
@@ -111,8 +100,7 @@ public class MpEnergyNetwork : BlockNetwork {
       State = o.State;
       return;
     }
-    // Pool the stored energy and inertia; the derived speed follows. The merged capacity is
-    // 1/2*(I1+I2)*w_max^2, so only the usual capacity ceiling applies.
+    // Pool the stored energy and inertia; the derived speed follows.
     State.Inertia += o.State.Inertia;
     State.StoredEnergy += o.State.StoredEnergy;
     float cap = MpEnergyNetworkState.CapacityFor(State.Inertia, MaxSpeed);
@@ -136,8 +124,7 @@ public class MpEnergyNetwork : BlockNetwork {
       State = null;
       return;
     }
-    // Each fragment keeps a share of the stored energy proportional to its inertia. Its own inertia is
-    // recomputed from its nodes on the next tick, so only the energy is seeded here.
+    // Each fragment keeps a share of the stored energy proportional to its inertia.
     float fragInertia = FragmentInertia(world);
     if (fragInertia <= 0f) {
       State = null;
@@ -151,7 +138,7 @@ public class MpEnergyNetwork : BlockNetwork {
     };
   }
 
-  // Sums this fragment's storage inertia from its nodes. Used only at split time, before the first tick.
+  // Sums this fragment's storage inertia from its nodes.
   private float FragmentInertia(IBlockAccessor world) {
     float inertia = 0f;
     foreach (var pos in Nodes)

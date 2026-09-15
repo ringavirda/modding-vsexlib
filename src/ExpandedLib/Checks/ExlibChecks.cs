@@ -5,15 +5,12 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Checks;
 
 /// <summary>
-/// Runs every content check ExpandedLib ships against one <see cref="ICheckSource"/>, so a JSON-only
-/// modder gets "your recipe names a code that does not exist" as a log line, without ever opening
-/// xUnit. <see cref="ExpandedLibModSystem.AssetsFinalize"/> runs <see cref="All(ICoreAPI)"/> after the
-/// catalogues load; <c>/exmod verify</c> runs it on demand. A mod's own <see cref="ExCheckRegisterAttribute"/>-decorated
-/// checks (see <see cref="ExCheckRegistry"/>) run after the eight shipped here, in registration order.
+/// Runs every content check ExpandedLib ships against one <see cref="ICheckSource"/>.
+/// <see cref="ExpandedLibModSystem.AssetsFinalize"/> and <c>/exmod verify</c> call
+/// <see cref="All(ICoreAPI)"/>; a mod's own <see cref="ExCheckRegisterAttribute"/>-decorated checks run after.
 /// </summary>
 public static class ExlibChecks {
-  // One entry per check. Order is the order results and log lines come out in - cheapest and most
-  // load-bearing (does a def even resolve to a real block) first.
+  // One entry per check; order is the order results and log lines are emitted in.
   private static readonly System.Func<
     ICheckSource,
     string,
@@ -34,11 +31,8 @@ public static class ExlibChecks {
   public static IReadOnlyList<CheckResult> All(ICheckSource source) =>
     [.. source.Domains.SelectMany(domain => For(source, domain))];
 
-  /// <summary>
-  /// Runs every check against one <paramref name="domain"/>, regardless of whether
-  /// <paramref name="source"/> covers it - <c>/exmod verify &lt;domain&gt;</c> uses this to let a
-  /// modder point at a domain <see cref="ICheckSource.Domains"/> would not scope in on its own.
-  /// </summary>
+  /// <summary>Runs every check against <paramref name="domain"/>, regardless of whether <paramref
+  /// name="source"/> covers it.</summary>
   public static IReadOnlyList<CheckResult> For(
     ICheckSource source,
     string domain
@@ -50,8 +44,7 @@ public static class ExlibChecks {
       ),
     ];
 
-  // Wraps a registered check the way ExModuleHost.Isolate wraps a module phase: a throw is caught and
-  // reported as one error naming the check, rather than taking down every shipped check's result.
+  // Catches a thrown exception and reports it as one error naming the check.
   private static CheckResult RunIsolated(
     (
       System.Type Type,
@@ -75,11 +68,8 @@ public static class ExlibChecks {
   public static IReadOnlyList<CheckResult> All(ICoreAPI api) =>
     All(new AssetCheckSource(api));
 
-  /// <summary>
-  /// Logs <paramref name="results"/>: one Notification per check naming its domain and error count,
-  /// then each error on its own Error line. A modder scanning the log for "0 error(s)" on every
-  /// line knows everything passed without reading further.
-  /// </summary>
+  /// <summary>Logs <paramref name="results"/>: one Notification per check naming its domain and error
+  /// count, then each error on its own Error line.</summary>
   public static void Log(ILogger logger, IReadOnlyList<CheckResult> results) {
     foreach (CheckResult result in results) {
       logger.Notification(

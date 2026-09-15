@@ -7,14 +7,9 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Structures;
 
 /// <summary>
-/// A single structure-local filler cell as declared in the <c>fillerOffsets</c>
-/// JSON array: the offset from the principal (north orientation), whether other
-/// blocks may attach to the filler placed there, and an optional set of per-cell
-/// collision/selection boxes (north orientation) for footprint cells the mega-block
-/// only partially fills, such as a slab. Attachment defaults to <c>false</c>;
-/// <c>CollisionBoxes</c> is <c>null</c> for the common full-cube cell.
-/// <see cref="PortFace"/>/<see cref="PortNetworkType"/> are both null, or both set, for a cell that
-/// carries a passive network port (north orientation).
+/// A structure-local filler cell from the <c>fillerOffsets</c> JSON array: offset from the principal,
+/// attach flag, optional per-cell collision boxes for a partial fill, and an optional passive network
+/// port face/type pair, all in north orientation.
 /// </summary>
 public readonly record struct FillerOffset(
   Vec3i Offset,
@@ -26,11 +21,8 @@ public readonly record struct FillerOffset(
 );
 
 /// <summary>
-/// A resolved world-space filler cell carrying its per-cell attachment flag and, when
-/// the cell is only partially filled, its collision/selection boxes already rotated
-/// into the placed orientation. <see cref="Behaviors"/> carry their connector face
-/// already rotated to match, as does <see cref="PortFace"/> when the cell carries a
-/// passive network port.
+/// A resolved world-space filler cell: attach flag, and collision boxes, behaviour connector faces
+/// and <see cref="PortFace"/> already rotated into the placed orientation.
 /// </summary>
 public readonly record struct FillerCell(
   BlockPos Pos,
@@ -42,27 +34,18 @@ public readonly record struct FillerCell(
 );
 
 /// <summary>
-/// Helpers for the invisible mega-block footprint system. A mega-block occupies one grid cell
-/// but renders across many; since collision resolves per cell, the surrounding cells are filled
-/// with <see cref="BlockStructureFiller"/> placeholders that provide real collision and reroute
-/// interaction/break/info to the principal.
+/// Helpers for the invisible mega-block footprint system. A mega-block occupies one grid cell but
+/// renders across many; the surrounding cells are filled with <see cref="BlockStructureFiller"/>
+/// placeholders that provide collision and reroute interaction/break/info to the principal.
 /// </summary>
 public static class StructureFillers {
-  /// <summary>
-  /// Asset code of the invisible filler block. <c>exlib</c> ships the one shared
-  /// <c>structurefiller</c> block and points this at it; every dependent mod reuses it.
-  /// Taken from the generated table rather than written as a literal, so it always matches the
-  /// block's registered code.
-  /// </summary>
+  /// <summary>Asset code of the invisible filler block. Taken from the generated block table, not a literal.</summary>
   public static AssetLocation FillerCode { get; set; } =
     new(ExlibBlocks.Structurefiller.Code);
 
-  // Set once the first time FillerCode fails to resolve, so the "not registered" Error logs once per
-  // process rather than once per footprint cell of every mega-block placed thereafter.
+  // Guards the "not registered" Error to log once per process.
   private static bool _missingFillerLogged;
 
-  // Logs an Error the first time the filler fails to resolve, instead of letting every caller fail
-  // silently.
   private static Block? ResolveFiller(IWorldAccessor world) {
     Block? filler = world.GetBlock(FillerCode);
     if (filler == null && !_missingFillerLogged) {
@@ -76,13 +59,7 @@ public static class StructureFillers {
     return filler;
   }
 
-  /// <summary>
-  /// Parses an already-resolved <c>fillerOffsets</c> node (<see cref="IFillerHost.FillerOffsets"/>) into
-  /// north-orientation cells. Each entry is <c>{ x, y, z }</c> plus an optional <c>allowAttach</c> bool
-  /// defaulting to <c>false</c>. A partially-filled cell declares its solid volume with <c>collisionBox</c>
-  /// (one cuboid) or <c>collisionBoxes</c> (an array); omit both for a full cube. A cell may also declare a
-  /// passive network port as <c>portFace</c> plus <c>portNetwork</c>; both are omitted for no port.
-  /// </summary>
+  /// <summary>Parses a resolved <c>fillerOffsets</c> node into north-orientation filler cells.</summary>
   public static List<FillerOffset> ReadOffsets(JsonObject? offsetsNode) {
     var result = new List<FillerOffset>();
     if (offsetsNode == null || !offsetsNode.Exists)
@@ -103,12 +80,7 @@ public static class StructureFillers {
     return result;
   }
 
-  /// <summary>
-  /// Reads a cell's optional <c>behaviors</c> array: each entry is
-  /// <c>{ "code": "&lt;registered class&gt;", "face": "&lt;north-orientation face&gt;"?, "properties": {…}? }</c>.
-  /// The face is rotated into the placed orientation by <see cref="FootprintCells"/>; omit it for a
-  /// behaviour that needs no connector. Returns null when the cell declares no behaviours.
-  /// </summary>
+  /// <summary>Reads a cell's optional <c>behaviors</c> array. Returns null when the cell declares none.</summary>
   private static FillerBehavior[]? ReadBehaviors(JsonObject entry) {
     if (!entry["behaviors"].Exists)
       return null;
@@ -132,15 +104,15 @@ public static class StructureFillers {
     return list.Count > 0 ? [.. list] : null;
   }
 
-  /// <summary>Resolves a face name ("north"/"n"…) to a <see cref="BlockFacing"/>, or null when absent.</summary>
+  /// <summary>Resolves a face name ("north"/"n"...) to a <see cref="BlockFacing"/>, or null when absent.</summary>
   private static BlockFacing? ParseFace(string? face) =>
     string.IsNullOrEmpty(face)
       ? null
       : BlockFacing.FromCode(face) ?? BlockFacing.FromFirstLetter(face[0]);
 
   /// <summary>
-  /// Reads a cell's optional partial-fill cuboids: <c>collisionBoxes</c> (array) takes precedence,
-  /// else a single <c>collisionBox</c>, else <c>null</c> (full cube). Boxes are north orientation.
+  /// Reads a cell's optional partial-fill cuboids, north orientation: <c>collisionBoxes</c> (array)
+  /// takes precedence, else a single <c>collisionBox</c>, else null.
   /// </summary>
   private static Cuboidf[]? ReadBoxes(JsonObject entry) {
     if (entry["collisionBoxes"].Exists) {
@@ -169,8 +141,7 @@ public static class StructureFillers {
     var cells = new List<FillerCell>();
     foreach (var off in ReadOffsets(principal.FillerOffsets)) {
       Vec3i r = ExOrientation.RotateOffset(off.Offset, angle);
-      // Partial boxes are declared in north orientation; rotate them into the placed
-      // orientation around the cell centre (RotateBoxes pivots on 0.5,0.5,0.5).
+      // Boxes are declared in north orientation; RotateBoxes pivots on (0.5,0.5,0.5).
       Cuboidf[]? boxes =
         off.CollisionBoxes == null
           ? null
@@ -192,9 +163,8 @@ public static class StructureFillers {
   }
 
   /// <summary>
-  /// Rotates each declared behaviour's north-orientation connector face into the placed orientation
-  /// (the behaviour's other config is orientation-independent and passes through unchanged). Returns
-  /// the same array reference when there is nothing to rotate.
+  /// Rotates each declared behaviour's north-orientation connector face into the placed orientation.
+  /// Returns the same array reference when there is nothing to rotate.
   /// </summary>
   private static FillerBehavior[]? RotateBehaviorFaces(
     FillerBehavior[]? behaviors,
@@ -255,19 +225,14 @@ public static class StructureFillers {
         be.CollisionBoxes = cell.CollisionBoxes;
         be.PortFace = cell.PortFace;
         be.PortNetworkType = cell.PortNetworkType;
-        // Stores and (re)creates the hosted behaviours now that the principal link is set, so an MP
-        // port joins the network at placement rather than at the next reload.
+        // Recreates hosted behaviours now that the principal link is set.
         be.SetHostedBehaviors(cell.Behaviors);
         be.MarkDirty(true);
       }
     }
   }
 
-  /// <summary>
-  /// Clears the structure's filler cells. Only removes a cell when it actually
-  /// holds a filler linked to <paramref name="principalPos"/>, so a neighbouring
-  /// structure's fillers are never disturbed.
-  /// </summary>
+  /// <summary>Clears the structure's filler cells that are linked to <paramref name="principalPos"/>.</summary>
   public static void RemoveFillers(
     IWorldAccessor world,
     BlockPos principalPos,

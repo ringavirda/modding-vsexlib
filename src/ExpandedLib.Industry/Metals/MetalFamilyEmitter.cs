@@ -6,22 +6,15 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Industry.Metals;
 
-/// <summary>
-/// Generates the resource item family (ingot / plate / bits / rod / nails) for every
-/// <see cref="MetalDef"/> that opts in via <see cref="MetalDef.GenerateItemFamily"/>, plus that metal's
-/// tools from <see cref="MetalToolEmitter"/>. Each item is an <see cref="ExItemDef"/> coded
-/// <c>{form}-{metalcode}</c> in the metal's owning domain (that of <see cref="MetalDef.MoltenItem"/>),
-/// built from the vanilla resource itemtypes parameterised by the metal's texture, density and melting
-/// point. Generated metals stay off the vanilla <c>block/metal</c> worldproperty, which would
-/// auto-create an anvil-forgeable <c>workitem-&lt;metal&gt;</c> - the family's own metal timeline (exmods) decides which metals opt in.
-/// </summary>
+/// <summary>Generates the resource item family for every <see cref="MetalDef"/> that opts in via
+/// <see cref="MetalDef.GenerateItemFamily"/>, plus that metal's tools.</summary>
 public static class MetalFamilyEmitter {
   // Iron-like fallbacks for a metal that opts in but leaves a field null.
   private const int DefaultDensity = 7870;
   private const int DefaultMeltingPoint = 1482;
   private const string DefaultTexture = "game:block/metal/ingot/iron";
 
-  // Forms a metal gets when ItemForms is left null. "bits" is opt-in rather than a default.
+  // Forms a metal gets when ItemForms is left null. "bits" is opt-in, not a default.
   private static readonly string[] DefaultForms =
   [
     "ingot",
@@ -51,11 +44,8 @@ public static class MetalFamilyEmitter {
   /// type outside this set is skipped.</summary>
   public static IEnumerable<string> KnownTools => MetalToolEmitter.KnownTools;
 
-  /// <summary>
-  /// Every resource and tool item def for every opted-in metal in <paramref name="metals"/>, each
-  /// created in its owning domain. A metal with <see cref="MetalDef.GenerateItemFamily"/> false
-  /// contributes nothing.
-  /// </summary>
+  /// <summary>Every resource and tool item def for every opted-in metal in
+  /// <paramref name="metals"/>.</summary>
   public static IEnumerable<ExItemDef> Emit(IEnumerable<MetalDef> metals) {
     foreach (MetalDef metal in metals) {
       if (
@@ -65,8 +55,7 @@ public static class MetalFamilyEmitter {
       )
         continue;
 
-      // Owning domain is the molten item's domain (iiex:ingot-castiron -> iiex); every generated form
-      // is co-located there so {form}-{code} resolves within one domain.
+      // Owning domain is the molten item's domain (iiex:ingot-castiron -> iiex).
       string domain = new AssetLocation(metal.MoltenItem).Domain;
       foreach (
         string token in (IEnumerable<string>?)metal.ItemForms ?? DefaultForms
@@ -87,8 +76,7 @@ public static class MetalFamilyEmitter {
 
   #region Shared surface
 
-  // Internal so MetalToolEmitter shares the same texture fallback: a metal that states no texture
-  // paints its tools and its ingots identically.
+  // Internal: shared with MetalToolEmitter's texture fallback.
   internal static string TextureOf(MetalDef m) =>
     m.TexturePath ?? DefaultTexture;
 
@@ -97,13 +85,11 @@ public static class MetalFamilyEmitter {
   private static int MeltOf(MetalDef m) =>
     m.MeltingPoint ?? DefaultMeltingPoint;
 
-  // The metal's own ingot: what every non-ingot form smelts back into, so a form recovers its own alloy
-  // rather than vanilla iron.
+  // The metal's own ingot: what every non-ingot form smelts back into.
   private static string IngotCodeOf(MetalDef m, string domain) =>
     domain + ":ingot-" + m.Code;
 
-  // Code, asset path, and the density/storage/creative-tab surface every form shares. storageFlags 5 and
-  // the general + owning-mod tabs match the vanilla resource itemtypes.
+  // Code, asset path, and the density/storage/creative-tab surface every form shares.
   private static ExItemDef Begin(
     MetalDef m,
     string domain,
@@ -135,8 +121,7 @@ public static class MetalFamilyEmitter {
           smeltedStack = new { type = "item", code = IngotCodeOf(m, domain) },
         }
       )
-      // What a shattered ingot mold gives back: the metal's SolidDrop, the same item MoltenChisel
-      // recovers. Falls back to the metal's own bit in its domain.
+      // What a shattered ingot mold gives back: the metal's SolidDrop.
       .Attribute(
         "shatteredStack",
         new {
@@ -347,7 +332,7 @@ public static class MetalFamilyEmitter {
       .MaxStackSize(8)
       .Shape("game:item/plate")
       .Texture("metal", texture)
-      // A plate holds 200 units, so it smelts back into 2 ingots.
+      // A plate holds 200 units and smelts back into 2 ingots.
       .CombustibleProps(
         new {
           meltingPoint = MeltOf(m),

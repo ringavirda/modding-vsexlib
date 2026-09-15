@@ -6,17 +6,14 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// Semantic comparison of an authored <c>ExBlockDef</c>'s emitted JSON against the hand-written
-/// blocktype JSON it replaces: the two are equal when the game would load an identical block.
-/// Numbers compare type-agnostically (a JSON <c>0</c> equals <c>0.0</c>);
-/// <c>attributes.multiblockStructure</c> compares as the set of <c>(x,y,z,block-code)</c> cells it
-/// resolves to, and <c>attributes.fillerOffsets</c> as the set of
-/// <c>(x,y,z,allowAttach,behaviors)</c> cells. Everything else (variantgroups, behaviors,
-/// construction stages) stays order-sensitive, because those arrays are ordered in the schema.
+/// blocktype JSON it replaces. Numbers compare type-agnostically; <c>multiblockStructure</c> and
+/// <c>fillerOffsets</c> compare as unordered cell sets.
 /// </summary>
 public static class DefinitionParity {
   /// <summary>True when <paramref name="actual"/> is semantically the same blocktype as
-  /// <paramref name="expected"/>. <paramref name="normalizedActual"/> holds the canonical form of the
-  /// actual token, for the assertion message on failure.</summary>
+  /// <paramref name="expected"/>.</summary>
+  /// <param name="normalizedActual">Canonical form of <paramref name="actual"/>, for the failure
+  /// message.</param>
   public static bool Equal(
     JToken expected,
     JToken actual,
@@ -79,9 +76,8 @@ public static class DefinitionParity {
     };
   }
 
-  // A fillerOffsets array reduces to its cells sorted, with allowAttach made explicit (absent == false)
-  // and each cell's hosted behaviors normalized (absent == empty), so a port declared on a filler cell
-  // is part of that cell's identity. Behaviors keep their array order; their object keys do not.
+  // A fillerOffsets array reduces to its cells sorted, with allowAttach made explicit and
+  // behaviors normalized. Behaviors keep their array order; their object keys do not.
   private static JToken CanonicalCells(JArray cells) {
     var canon = cells
       .Select(c =>

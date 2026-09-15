@@ -8,11 +8,9 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Localization guard over one shipped lang tree. English is the source of truth: each translated
-/// locale must carry the same key set (a missing key renders as its raw code in game, an extra one is
-/// dead weight), and every shared value must reference the same set of <c>{0}</c> / <c>{1:F0}</c>
-/// argument placeholders (an index the format call has no argument for throws
-/// <see cref="FormatException"/> at runtime, a dropped index loses information).
+/// Localization guard over one shipped lang tree: each translated locale must carry the same key
+/// set as English, and every shared value must reference the same placeholder set (<c>{0}</c>,
+/// <c>{1:F0}</c>).
 /// </summary>
 public static class LangParity {
   private static readonly Regex Placeholder = new(
@@ -20,9 +18,9 @@ public static class LangParity {
     RegexOptions.Compiled
   );
 
-  /// <summary>Every non-English locale under <paramref name="langTree"/> carries exactly the English
-  /// key set with matching placeholders. Empty means clean (and empty when <paramref name="langTree"/>
-  /// carries no <c>en.json</c> at all - there is nothing to compare a locale against).</summary>
+  /// <summary>Every non-English locale under <paramref name="langTree"/> carries exactly the
+  /// English key set with matching placeholders.</summary>
+  /// <returns>Empty when clean, or when <paramref name="langTree"/> has no <c>en.json</c>.</returns>
   public static IReadOnlyList<string> Check(string langTree) {
     string enPath = Path.Combine(langTree, "en.json");
     if (!File.Exists(enPath))
@@ -73,8 +71,7 @@ public static class LangParity {
     return offenders;
   }
 
-  /// <summary>The non-English locale files under <paramref name="langTree"/> - the premise a caller
-  /// asserts is non-empty where the tree is known to ship a translated locale.</summary>
+  /// <summary>The non-English locale files under <paramref name="langTree"/>.</summary>
   public static IReadOnlyList<string> LocaleFiles(string langTree) =>
     [.. LocaleFilePaths(langTree)];
 

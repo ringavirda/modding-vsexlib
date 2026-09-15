@@ -9,16 +9,9 @@ using Vintagestory.API.Config;
 namespace ExpandedLib.Config;
 
 /// <summary>
-/// A shared, mod-sectioned config file under <c>ModConfig</c> (e.g. <c>ex_values.json</c> /
-/// <c>ex_recipes.json</c>): one file whose top-level keys are mod ids, each holding that mod's config
-/// object. Each <see cref="ExConfigRegister{TConfig}"/> reads and writes only its own section, and a
-/// mod's nested <c>ConfigVersion</c> and migrations are unaffected by the sharing.
-/// <para>
-/// The document is cached per <see cref="ICoreAPI"/> instance: all mods in a running game share one
-/// API and therefore one document loaded once, while each headless test has its own API and so its
-/// own cache. Mod load is single-threaded and sections bind sequentially, so between a load and its
-/// <see cref="Flush"/> the in-memory document, not the file, holds the current state.
-/// </para>
+/// A shared, mod-sectioned config file under <c>ModConfig</c> (e.g. <c>ex_values.json</c>): one file
+/// whose top-level keys are mod ids, each holding that mod's config object. Each
+/// <see cref="ExConfigRegister{TConfig}"/> reads and writes only its own section.
 /// </summary>
 public sealed class ExConfigDocument {
   private static readonly ConditionalWeakTable<
@@ -80,18 +73,8 @@ public sealed class ExConfigDocument {
   /// <summary>Writes the whole document back to disk.</summary>
   public void Flush() => _api.StoreModConfig(_doc, _fileName);
 
-  /// <summary>
-  /// One-time migration of a section this mod used to be keyed under, for a mod that was renamed or
-  /// absorbed another: when <paramref name="modId"/> has no section but a legacy one is present, the
-  /// legacy section is moved across under the new key. First existing name wins; later names merge
-  /// only the keys the winner did not already supply, so absorbing two mods keeps both halves and the
-  /// survivor's value wins any collision.
-  /// <para>
-  /// A section key is the mod id, so a rename orphans the player's whole tuning silently - every
-  /// value reverts to its coded default with no error and no log line. Renaming the file cannot cover
-  /// this: <see cref="FoldLegacy"/> folds a legacy FILE into a section, which is a different move.
-  /// </para>
-  /// </summary>
+  /// <summary>One-time migration of a legacy section this mod used to be keyed under, moving it to
+  /// <paramref name="modId"/>'s section; first existing name wins.</summary>
   public void FoldLegacySections(
     string modId,
     IReadOnlyList<string> legacySectionIds
@@ -126,13 +109,8 @@ public sealed class ExConfigDocument {
     }
   }
 
-  /// <summary>
-  /// One-time migration of a legacy per-mod file into this document's <paramref name="modId"/>
-  /// section: when the section is absent and a legacy file exists under <c>ModConfig</c>, its
-  /// contents become the section and the old file is renamed to <c>&lt;name&gt;.migrated</c> rather
-  /// than deleted, keeping the carry-over reversible. First existing name wins. No-op once the
-  /// section exists, so it never re-runs.
-  /// </summary>
+  /// <summary>One-time migration of a legacy per-mod file into <paramref name="modId"/>'s section;
+  /// the old file is renamed to <c>&lt;name&gt;.migrated</c>. First existing name wins.</summary>
   public void FoldLegacy(string modId, IReadOnlyList<string> legacyFileNames) {
     if (
       legacyFileNames == null
@@ -174,8 +152,7 @@ public sealed class ExConfigDocument {
     try {
       return _api.LoadModConfig<JObject>(_fileName) ?? new JObject();
     } catch (Exception e) {
-      // A parse failure would otherwise take out every mod's section at once. Back the bad file up
-      // and start from an empty document, leaving each section on its coded defaults.
+      // Backs the bad file up and starts from an empty document.
       _api.Logger.Warning(
         "[exlib] Config file '{0}' could not be parsed; backing it up to '{0}.corrupt' and starting fresh. {1}",
         _fileName,

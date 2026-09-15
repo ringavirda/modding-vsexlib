@@ -9,99 +9,60 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Structures;
 
 /// <summary>
-/// Block entity for an invisible structure-filler block. Stores the position of the "principal"
-/// (controller) block this footprint cell belongs to and reroutes the looked-at block info to it.
-/// The filler block forwards interaction and break to the principal; this entity only carries the
-/// link and HUD passthrough.
+/// Block entity for an invisible structure-filler block: carries the link to its principal block
+/// and reroutes the HUD readout to it.
 /// </summary>
 [BlockEntityRegister]
 public class BlockEntityStructureFiller : BlockEntity {
   /// <summary>The controller block this filler cell belongs to, or null if orphaned.</summary>
   public BlockPos? Principal { get; set; }
 
-  /// <summary>
-  /// Whether other blocks may attach to this cell. Defaults to <c>false</c> so the footprint
-  /// behaves like empty space; a <c>fillerOffsets</c> entry can opt a cell back in via its
-  /// <c>allowAttach</c> flag. Honoured by <see cref="BlockStructureFiller.CanAttachBlockAt"/>.
-  /// </summary>
+  /// <summary>Whether other blocks may attach to this cell. Defaults to false.</summary>
   public bool AllowAttach { get; set; }
 
-  /// <summary>
-  /// Per-cell collision/selection boxes (already rotated into the placed orientation), or
-  /// <c>null</c> when this cell is a plain full cube. Set from the principal's <c>fillerOffsets</c>
-  /// <c>collisionBox</c>/<c>collisionBoxes</c> so a footprint cell can be a slab or any partial
-  /// shape. Read by <see cref="BlockStructureFiller.GetCollisionBoxes"/>/<c>GetSelectionBoxes</c>.
-  /// </summary>
+  /// <summary>Per-cell collision/selection boxes, already rotated into the placed orientation, or null for a plain full cube.</summary>
   public Cuboidf[]? CollisionBoxes { get; set; }
 
-  /// <summary>
-  /// Single-char face code of the network port this cell exposes, or null for a plain filler. Lets
-  /// a principal turn one footprint cell into a fixed connector (e.g. the boiler's steam outlet).
-  /// </summary>
+  /// <summary>Single-char face code of the network port this cell exposes, or null for a plain filler.</summary>
   public string? PortFace { get; set; }
 
   /// <summary>Network type of the exposed port (e.g. "pipe"), or null when this cell has no port.</summary>
   public string? PortNetworkType { get; set; }
 
-  /// <summary>
-  /// Behaviours this cell hosts on the principal's behalf (declared in <c>fillerOffsets</c>), each
-  /// carrying its connector face already rotated into the placed orientation. Recreated by
-  /// <see cref="ApplyHostedBehaviors"/> on placement and on load; null for a plain filler.
-  /// </summary>
+  /// <summary>Behaviours this cell hosts on the principal's behalf, or null for a plain filler.</summary>
   public FillerBehavior[]? HostedBehaviors { get; set; }
 
-  /// <summary>The behaviour instances created from <see cref="HostedBehaviors"/>, so a re-apply can
-  /// detach the previous set before recreating it.</summary>
+  /// <summary>The behaviour instances created from <see cref="HostedBehaviors"/>.</summary>
   private readonly List<BlockEntityBehavior> _hosted = [];
 
-  // The declaration set _hosted was built from, so being handed the same one again leaves the live
-  // behaviours alone. Rebuilding is a removal followed by a fresh registration - for a network
-  // membership, dropping the cell's graph node and adding it back, which fractures and re-merges the
-  // run around it - and an unchanged declaration should not cost that.
+  // The declaration set _hosted was built from; guards against rebuilding on an unchanged declaration.
   private FillerBehavior[]? _appliedSpecs;
 
-  // The most recent save/sync tree, kept so a hosted behaviour can still be handed it. FromTree
-  // restores HostedBehaviors and Initialize instantiates them afterwards, so
-  // BlockEntity.FromTreeAttributes has no behaviour to route the tree to on first load. A client-side
-  // mechanical-power port joins its network purely from the synced NetworkId in that tree.
+  // The most recent save/sync tree, kept so a hosted behaviour created late can still read it.
   private ITreeAttribute? _savedTree;
 
   private static JsonObject EmptyProps => new(new JObject());
 
   public override void Initialize(ICoreAPI api) {
     base.Initialize(api);
-    // FromTreeAttributes runs before Initialize and restores HostedBehaviors; the instances are
-    // recreated here, once the class registry and Api are available.
     ApplyHostedBehaviors();
   }
 
-  /// <summary>
-  /// Stores the cell's hosted-behaviour declarations and recreates them. Called by
-  /// <see cref="StructureFillers.PlaceFillers"/> right after the principal link is set, so an MP port
-  /// joins the network at placement. Passing null clears any existing hosted behaviours.
-  /// </summary>
+  /// <summary>Stores the cell's hosted-behaviour declarations and recreates them. Null clears any existing ones.</summary>
   public void SetHostedBehaviors(FillerBehavior[]? behaviors) {
     HostedBehaviors = behaviors is { Length: > 0 } ? behaviors : null;
     ApplyHostedBehaviors();
     MarkDirty(true);
   }
 
-  /// <summary>
-  /// Instantiates each declared behaviour by its registered class code, hands it the principal link
-  /// and rotated connector face (<see cref="IFillerHostedBehavior"/>), adds it to this BE and
-  /// initialises it. Detaches any previously created set first, so it is safe to call more than once,
-  /// and returns without touching a live set when handed the declarations it already applied. Does
-  /// nothing until <see cref="BlockEntity.Api"/> is set (the load path runs it from Initialize).
-  /// </summary>
+  /// <summary>Instantiates each declared behaviour by its registered class code and adds it to this BE.</summary>
   private void ApplyHostedBehaviors() {
     if (Api == null || ReferenceEquals(HostedBehaviors, _appliedSpecs))
       return;
     _appliedSpecs = HostedBehaviors;
 
     foreach (BlockEntityBehavior previous in _hosted) {
-      // Detaching is a removal as far as the behaviour is concerned, and it is told so: a network
-      // membership deregisters its graph node here, and one merely dropped from the list would strand
-      // a node at a position nothing owns afterwards.
+      // Told as a removal, not just dropped from the list, so a network membership deregisters its graph node.
       previous.OnBlockRemoved();
       Behaviors.Remove(previous);
     }
@@ -123,7 +84,7 @@ public class BlockEntityStructureFiller : BlockEntity {
         );
         continue;
       }
-      // Configure before Initialize so the behaviour's SetOrientations sees the principal's face.
+      // Must run before Initialize.
       (beh as IFillerHostedBehavior)?.ConfigureFromFiller(
         Principal,
         spec.ConnectorFace,
@@ -132,10 +93,7 @@ public class BlockEntityStructureFiller : BlockEntity {
       Behaviors.Add(beh);
       _hosted.Add(beh);
       beh.Initialize(Api, spec.Properties ?? EmptyProps);
-      // Replays the loaded tree so the behaviour restores the state it would normally read in
-      // FromTreeAttributes, having been created too late for that loop. Client only: on the server
-      // the behaviour establishes its own state in Initialize (an MP port discovers its network),
-      // which a stale saved NetworkId would override.
+      // Client only: replays the loaded tree since the behaviour was created too late for FromTreeAttributes.
       if (Api.Side == EnumAppSide.Client && _savedTree != null)
         beh.FromTreeAttributes(_savedTree, Api.World);
     }
@@ -143,7 +101,7 @@ public class BlockEntityStructureFiller : BlockEntity {
 
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);
-    // -1,-1,-1 is the "no principal" sentinel.
+    // (-1, -1, -1) is the "no principal" sentinel.
     tree.SetInt("cx", Principal?.X ?? -1);
     tree.SetInt("cy", Principal?.Y ?? -1);
     tree.SetInt("cz", Principal?.Z ?? -1);
@@ -197,13 +155,9 @@ public class BlockEntityStructureFiller : BlockEntity {
     HostedBehaviors = tree["hostedBehaviors"] is ITreeAttribute bt
       ? ReadHostedBehaviors(bt)
       : null;
-    // Kept so behaviours created below, or in Initialize, can still read their state from it; the
-    // base loop above already fed any behaviour that existed at this point.
+    // Kept so a behaviour created below, or in Initialize, can still read its state from it.
     _savedTree = tree;
-    // When a mega-block is placed while a client is watching, the filler block is set first (the
-    // client creates and initialises this BE with no hosted behaviours) and the principal assigns
-    // HostedBehaviors a moment later, arriving here as a sync update. Initialize does not run again,
-    // so the behaviours are created here instead.
+    // Covers a sync update that first sets HostedBehaviors after Initialize already ran.
     if (Api != null && _hosted.Count == 0 && HostedBehaviors is { Length: > 0 })
       ApplyHostedBehaviors();
   }

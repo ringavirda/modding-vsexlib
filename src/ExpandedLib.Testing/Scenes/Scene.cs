@@ -8,12 +8,8 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// Test-facing builder over <see cref="TestWorld"/> for integration tests: lays out blocks, network
-/// nodes and machines in one shared world, then advances them with <see cref="Step"/>, which mirrors
-/// a server tick - every machine's production tick fires, then every network flows and broadcasts.
-/// <para>
-/// Placement is grid-based and additive. <see cref="Build"/> must be called once after all
-/// placements to add the collected nodes to the graph, which merges adjacent runs into networks.
-/// </para>
+/// nodes and machines in one shared world, then advances them with <see cref="Step"/>. Placement is
+/// grid-based and additive; <see cref="Build"/> must be called once after all placements.
 /// </summary>
 public sealed class Scene {
   /// <summary>The underlying in-memory world (store, graph manager, fake API).</summary>
@@ -53,9 +49,9 @@ public sealed class Scene {
     return this;
   }
 
-  /// <summary>Places a machine entity - a non-node block that reads or feeds adjacent networks, such
-  /// as a boiler or engine - and runs its real <see cref="BlockEntity.Initialize"/> so it schedules
-  /// its production tick. Any construction or structure state must be forced before this call.</summary>
+  /// <summary>Places a machine entity - a non-node block that reads or feeds adjacent networks - and
+  /// runs its real <see cref="BlockEntity.Initialize"/>. Construction or structure state must already
+  /// be forced.</summary>
   public Scene Machine(BlockPos pos, Block block, BlockEntity be) {
     World.Place(pos, block, be);
     World.Initialize(be);

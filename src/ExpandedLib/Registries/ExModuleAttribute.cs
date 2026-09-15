@@ -2,13 +2,8 @@ using System;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// Declares an assembly as a module: an extension to the framework, discovered by
-/// <see cref="ExModules"/> and driven through the lifecycle of the mod named in
-/// <see cref="Host"/>. Distinct from <see cref="ExDomainAttribute"/>, which names the asset domain a
-/// module's own classes are keyed under and is optional - a module with none keys under its host's
-/// mod id instead.
-/// </summary>
+/// <summary>Declares an assembly as a module, discovered by <see cref="ExModules"/> and driven
+/// through the lifecycle of the mod named in <see cref="Host"/>.</summary>
 /// <example><code>
 /// [assembly: ExModule("industry")]
 /// </code></example>
@@ -21,10 +16,7 @@ public sealed class ExModuleAttribute(string id) : Attribute {
   /// framework itself; a mod hosting its own modules sets its own id.</summary>
   public string Host { get; set; } = "exlib";
 
-  /// <summary>The Vintage Story mod id that ships this assembly. Defaults to <see cref="Id"/>; a
-  /// framework module shipped inside another mod's folder (Industry, inside exlib's) sets this to
-  /// that mod's id instead, so <see cref="ExModules.For"/> can tell "not yet enabled this world"
-  /// from "no longer part of the process".</summary>
+  /// <summary>The Vintage Story mod id that ships this assembly. Defaults to <see cref="Id"/>.</summary>
   public string Mod { get; set; } = id;
 
   /// <summary>Module ids this one runs after, within the same host. A missing or cyclic requirement

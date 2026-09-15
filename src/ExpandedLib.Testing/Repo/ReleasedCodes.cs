@@ -18,8 +18,7 @@ namespace ExpandedLib.Testing;
 /// </summary>
 public static class ReleasedCodes {
   /// <summary>One shipped blocktype: where it lived, its base code, and every concrete code it
-  /// expanded to. Property-sourced variant groups are sampled rather than enumerated (the game
-  /// holds their states), so <see cref="Codes"/> is representative for those, exact otherwise.</summary>
+  /// expanded to.</summary>
   public sealed record Shipped(
     string Domain,
     string AssetPath,
@@ -35,26 +34,21 @@ public static class ReleasedCodes {
     string[] AssetPaths
   );
 
-  /// <summary>ppex, every release up to and including 0.6.8 - 19 blocktypes, 292 concrete codes.
-  /// Registered by iiex's test <c>ModuleInit</c> (ppex became iiex).</summary>
+  /// <summary>ppex, every release up to and including 0.6.8 - 19 blocktypes, 292 concrete codes.</summary>
   public static IReadOnlyList<Shipped> Ppex =>
     ReleasedHistory.For("iiex")?.Shipped ?? [];
 
-  /// <summary>smex, every release up to and including 0.9.8 - 35 blocktypes, 351 concrete codes.
-  /// Registered by siex's test <c>ModuleInit</c> (siex's coverage tests are the only ones that
-  /// consume it at runtime).</summary>
+  /// <summary>smex, every release up to and including 0.9.8 - 35 blocktypes, 351 concrete codes.</summary>
   public static IReadOnlyList<Shipped> Smex =>
     ReleasedHistory.For("siex")?.Shipped ?? [];
 
-  /// <summary>exlib 0.7.0 - no blocktype JSON, but the filler is written into released worlds by
-  /// every mega-block footprint, so it carries the same migration contract as a placed block.
-  /// Registered by exlib's test <c>ModuleInit</c>.</summary>
+  /// <summary>exlib 0.7.0 - no blocktype JSON, but the filler every mega-block footprint writes
+  /// into released worlds carries the same migration contract as a placed block.</summary>
   public static IReadOnlyList<Shipped> Exlib =>
     ReleasedHistory.For("exlib")?.Shipped ?? [];
 
   /// <summary>Every block-entity class string a released blocktype declared, with the blocktypes
-  /// that declared it. A class string lives in the SAVE and no code migration touches it, so an
-  /// unregistered one drops the block entity: the block arrives, its contents do not.</summary>
+  /// that declared it.</summary>
   public static IReadOnlyList<ShippedEntityClass> EntityClasses =>
     [.. ReleasedHistory.AllEntityClasses];
 

@@ -2,10 +2,8 @@ using System.Collections.Generic;
 
 namespace ExpandedLib.Catalogues;
 
-/// <summary>
-/// One occupant of a bay row: the cell its run starts at and how many cells it spans. A run is contiguous
-/// and never wraps, so a row is described by its runs alone.
-/// </summary>
+/// <summary>One occupant of a bay row: the cell its run starts at and how many cells it
+/// spans.</summary>
 /// <param name="Start">First cell of the run, from 0 at the principal end.</param>
 /// <param name="Length">Cells the run spans. At least one.</param>
 public readonly record struct BayRun(int Start, int Length) {
@@ -20,20 +18,12 @@ public readonly record struct BayRun(int Start, int Length) {
 }
 
 /// <summary>
-/// A row of storage cells filled by occupants of declared length: three one-cell stacks, a two-cell stack
-/// beside a one-cell one, or a single three-cell stack all fill a row of three. Length is the only axis -
-/// nothing stacks upward and nothing sits side by side across the row.
-/// <para>
-/// Pure and world-free, so a rack's capacity is answerable before anything is tesselated. The row's own
-/// length is the caller's: a machine reads it off its footprint rather than off a constant here, which is
-/// what lets a longer rack be another blocktype instead of a code change.
-/// </para>
+/// A row of storage cells filled by occupants of declared length. Length is the only axis; nothing
+/// stacks upward and nothing sits side by side across the row.
 /// </summary>
 public static class BayLayout {
-  /// <summary>
-  /// Whether a run of <paramref name="length"/> starting at <paramref name="start"/> fits in a row of
-  /// <paramref name="cells"/> without touching <paramref name="taken"/>.
-  /// </summary>
+  /// <summary>Whether a run of <paramref name="length"/> starting at <paramref name="start"/> fits
+  /// in a row of <paramref name="cells"/> without touching <paramref name="taken"/>.</summary>
   public static bool Fits(
     IReadOnlyList<BayRun> taken,
     int cells,
@@ -50,11 +40,8 @@ public static class BayLayout {
     return true;
   }
 
-  /// <summary>
-  /// The lowest cell a run of <paramref name="length"/> can start at, or null when the row has no gap
-  /// wide enough. Lowest-first rather than nearest-to-the-click: a row that packed toward whichever cell
-  /// was clicked would leave holes a longer piece could not use.
-  /// </summary>
+  /// <summary>The lowest cell a run of <paramref name="length"/> can start at, or null when the
+  /// row has no gap wide enough.</summary>
   public static int? Fit(IReadOnlyList<BayRun> taken, int cells, int length) {
     for (int start = 0; start + length <= cells; start++)
       if (Fits(taken, cells, start, length))
@@ -62,11 +49,8 @@ public static class BayLayout {
     return null;
   }
 
-  /// <summary>
-  /// Index into <paramref name="taken"/> of the run covering <paramref name="cell"/>, or null when that
-  /// cell is empty. This is how a clicked cell selects what to take: any cell of a three-cell stack takes
-  /// that stack, which is what makes every cell of the rack work it.
-  /// </summary>
+  /// <summary>Index into <paramref name="taken"/> of the run covering <paramref name="cell"/>, or
+  /// null when that cell is empty.</summary>
   public static int? IndexAt(IReadOnlyList<BayRun> taken, int cell) {
     for (int i = 0; i < taken.Count; i++)
       if (taken[i].Covers(cell))

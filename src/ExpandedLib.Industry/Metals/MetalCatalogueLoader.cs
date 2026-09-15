@@ -6,17 +6,11 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Industry.Metals;
 
-/// <summary>
-/// Populates <see cref="MetalRegistry"/> at <c>AssetsFinalize</c> in two passes: a derived baseline of
-/// one convention entry per metal in every loaded <c>worldproperties/block/metal</c> (vanilla and mods),
-/// so a metal shipping no <see cref="MetalDef"/> still has an entry, then an overlay of every domain's
-/// <c>config/metals/*.json</c> <see cref="MetalDef"/>, which enriches or replaces that entry. The
-/// registry is cleared first, so a world reload in the same process repopulates rather than
-/// accumulating stale entries.
-/// </summary>
+/// <summary>Populates <see cref="MetalRegistry"/> at <c>AssetsFinalize</c> in two passes: a
+/// derived baseline, then an overlay of every domain's <c>config/metals/*.json</c>.</summary>
 public static class MetalCatalogueLoader {
   /// <summary>Reads the assets, repopulates <see cref="MetalRegistry"/> and runs its code
-  /// contributors. Call from <c>ExpandedLibModSystem.AssetsFinalize</c>.</summary>
+  /// contributors.</summary>
   public static CatalogueLoadReport Load(ICoreAPI api) {
     MetalRegistry.Clear();
     AssetCatalogueLoader.ReadResult<MetalDef> read =
@@ -35,15 +29,10 @@ public static class MetalCatalogueLoader {
     return new CatalogueLoadReport("metals", read.Files, registered, errors);
   }
 
-  /// <summary>
-  /// The two passes over already-read inputs: a convention baseline for every
-  /// <paramref name="baselineCodes"/> metal short-code, then the <paramref name="overlays"/>, which
-  /// replace by molten-item or short code. The caller must clear the registry first. Asset-free so it
-  /// can be unit-tested.
-  /// </summary>
-  /// <param name="sources">One source location per entry of <paramref name="overlays"/>, same index,
-  /// named in a skip warning. Null (the default, for tests that build overlays by hand) reads as
-  /// "unknown source".</param>
+  /// <summary>The two passes over already-read inputs: a convention baseline, then the
+  /// <paramref name="overlays"/>. The caller must clear the registry first.</summary>
+  /// <param name="sources">One source location per entry of <paramref name="overlays"/>, same index.
+  /// Null reads as "unknown source".</param>
   /// <returns>How many of <paramref name="overlays"/> were registered.</returns>
   internal static int Populate(
     IEnumerable<string> baselineCodes,
@@ -51,9 +40,7 @@ public static class MetalCatalogueLoader {
     Action<string>? warn = null,
     IReadOnlyList<string>? sources = null
   ) {
-    // Pass 1 - baseline. Pure string work, no item resolution: the derived entry matches what the
-    // convention branch produces, so it only makes the metal enumerable and gives pass 2 something
-    // to enrich.
+    // Pass 1 - baseline. Pure string work, no item resolution.
     foreach (string raw in baselineCodes) {
       string code = ShortCode(raw);
       if (code.Length == 0)
@@ -66,7 +53,7 @@ public static class MetalCatalogueLoader {
       );
     }
 
-    // Pass 2 - overlay. A def missing either required field cannot be keyed, so it is skipped.
+    // Pass 2 - overlay. A def missing either required field cannot be keyed.
     var overlayList = overlays as IReadOnlyList<MetalDef> ?? [.. overlays];
     int registered = 0;
     for (int i = 0; i < overlayList.Count; i++) {
@@ -115,7 +102,7 @@ public static class MetalCatalogueLoader {
     return codes;
   }
 
-  // Worldproperty codes are bare ("copper") or "domain:copper"; take the segment after any colon.
+  // Worldproperty codes are bare ("copper") or "domain:copper"; the segment past any colon.
   private static string ShortCode(string worldPropCode) {
     if (string.IsNullOrEmpty(worldPropCode))
       return "";

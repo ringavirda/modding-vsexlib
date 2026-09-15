@@ -10,15 +10,8 @@ using Vintagestory.API.MathTools;
 
 namespace SmokeStack.Tests;
 
-/// <summary>
-/// A commissioned smoke stack: the 72-cell chimney standing on its own footprint with a gas main
-/// docked on its connector face. Each production tick the stack draws
-/// <see cref="SmokeStackValues.SmokestackGasIntakeVolume"/> litres of gas off the connected network and
-/// vents them. <see cref="StructureRig"/> raises the shipped layout and the stack's own monitor tick
-/// completes it, so the anchor has to wear the code the layout demands at the origin cell
-/// (<c>smokestack:smokestack-intake-*</c>). The chimney is a solid 3x3 column through z=0..2, so the main
-/// comes in at z=-1, the only face <see cref="BlockEntitySmokeStack.HasConnectorAt"/> accepts.
-/// </summary>
+/// <summary>A commissioned smoke stack: the 72-cell chimney on its footprint with a gas main
+/// docked on its connector face at z=-1.</summary>
 internal sealed class SmokeStackRig {
   // Clear of the layout's y=-1 foundation course.
   private static readonly BlockPos Anchor = new(0, 1, 0);
@@ -37,8 +30,7 @@ internal sealed class SmokeStackRig {
 
     Stack = new BlockEntitySmokeStack {
       Pos = Anchor.Copy(),
-      // The layout's origin cell requires "smokestack:smokestack-intake*": a generic
-      // "smokestack:smokestack-n" leaves the structure one cell short.
+      // Layout origin cell requires the exact code "smokestack:smokestack-intake*".
       Block = TestBlocks.Configure(
         new Block(),
         "smokestack:smokestack-intake-tier3-n",
@@ -52,8 +44,7 @@ internal sealed class SmokeStackRig {
     World.Place(Anchor, Stack.Block, Stack);
     World.Attach(Stack);
 
-    // The main runs away along -Z from the stack's north face and is capped, so gas can build
-    // pressure in it rather than leaking. The stack caps the near end itself.
+    // Main runs -Z from the stack's north face; capped both ends.
     for (int i = 1; i <= mainLength; i++)
       World.PlaceNode(Anchor.AddCopy(0, 0, -i), "pipe", "ns", id: 71);
     World.Place(

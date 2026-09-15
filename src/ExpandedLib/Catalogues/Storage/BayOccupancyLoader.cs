@@ -6,12 +6,8 @@ using Vintagestory.API.Datastructures;
 
 namespace ExpandedLib.Catalogues;
 
-/// <summary>
-/// Reads the bay-occupancy catalogue - every domain's <c>config/bayoccupancy/*.json</c> - and populates
-/// <see cref="BayOccupancyRegistry"/> from it. One file per store is the convention and nothing enforces
-/// it: the registry merges whatever arrives, so two mods may both make their stock rackable. The sibling
-/// of <c>ProcessJobLoader</c>, and deliberately the same shape.
-/// </summary>
+/// <summary>Reads the bay-occupancy catalogue - every domain's <c>config/bayoccupancy/*.json</c> -
+/// and populates <see cref="BayOccupancyRegistry"/> from it.</summary>
 public sealed class BayOccupancyLoader
   : ContributedCatalogueLoader<BayOccupancySet, BayOccupancyRegistry> {
   /// <summary>The asset path every domain's rules are read from.</summary>
@@ -19,9 +15,7 @@ public sealed class BayOccupancyLoader
 
   private static readonly BayOccupancyLoader _instance = new();
 
-  // The root keys BayOccupancySet.TryParse reads, and the keys each item entry reads.
-  // "schema" is accepted though BayOccupancySet.TryParse does not yet read it, for parity with the
-  // route and job catalogues' versioning convention every shipped file already carries.
+  // Root keys BayOccupancySet.TryParse reads; item keys each entry reads.
   private static readonly HashSet<string> RootKeys =
   [
     "schema",
@@ -71,22 +65,15 @@ public sealed class BayOccupancyLoader
   protected override void Clear(BayOccupancyRegistry registry) =>
     registry.Clear();
 
-  /// <summary>
-  /// Parses the catalogue out of already-read files, each a <c>(source, json)</c> pair whose source names
-  /// the file in an error. A malformed file - including one carrying a key the schema does not read - is
-  /// reported and skipped, so one bad declaration does not cost every other mod its rules. Asset-free, so
-  /// it runs headless.
-  /// </summary>
+  /// <summary>Parses the catalogue from already-read <c>(source, json)</c> pairs; a malformed file is
+  /// reported and skipped.</summary>
   public static List<BayOccupancySet> Parse(
     IEnumerable<(string Source, string Json)> files,
     out List<string> errors
   ) => _instance.ParseFiles(files, out errors);
 
-  /// <summary>
-  /// Parses <paramref name="files"/> and replaces <paramref name="registry"/>'s contents with them (the
-  /// shared registry when null). Returns one message per malformed file or clash, naming the file it came
-  /// from.
-  /// </summary>
+  /// <summary>Parses <paramref name="files"/> and replaces <paramref name="registry"/>'s contents (the
+  /// shared registry when null); returns one message per malformed file or clash.</summary>
   public static List<string> Load(
     IEnumerable<(string Source, string Json)> files,
     BayOccupancyRegistry? registry = null
@@ -96,8 +83,8 @@ public sealed class BayOccupancyLoader
   public static List<(string Source, string Json)> Read(ICoreAPI api) =>
     _instance.ReadAssets(api);
 
-  /// <summary>Reads the catalogue, repopulates the shared registry and runs its code contributors. Call
-  /// from <c>ExpandedLibModSystem.AssetsFinalize</c>.</summary>
+  /// <summary>Reads the catalogue, repopulates the shared registry and runs its code contributors;
+  /// call from <c>ExpandedLibModSystem.AssetsFinalize</c>.</summary>
   public static CatalogueLoadReport Load(ICoreAPI api) =>
     _instance.LoadCatalogue(api, BayOccupancyRegistry.Shared);
 }

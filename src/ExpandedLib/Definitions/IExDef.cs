@@ -4,10 +4,8 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Definitions;
 
 /// <summary>
-/// The common surface of a code-first definition - a block (<see cref="ExBlockDef"/>), item
-/// (<see cref="ExItemDef"/>) or recipe file (<see cref="ExRecipeDef"/>): the synthetic-asset
-/// <see cref="AssetLocation"/> the loader keys on, plus the built JSON payload. Lets
-/// <see cref="ExDefinitions"/> discover, register and serialize all three kinds through one generic path.
+/// The common surface of a code-first definition - a block, item or recipe file: the synthetic-asset
+/// location the loader keys on, plus the built JSON payload.
 /// </summary>
 public interface IExDef {
   /// <summary>The synthetic asset location the vanilla loader keys on (unique per def).</summary>

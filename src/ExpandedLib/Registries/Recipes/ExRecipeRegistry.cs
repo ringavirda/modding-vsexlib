@@ -7,33 +7,20 @@ using Vintagestory.API.Util;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// The recipe-registry rung: registers a <see cref="RecipeRegistryGeneric{T}"/> the same way
-/// vanilla's own recipe kinds do (<c>ICoreAPI.RegisterRecipeRegistry</c>), so a mod's own recipe
-/// type gets client sync and the handbook for free. <see cref="Register{T}"/> runs identically on
-/// both sides, from <c>Start</c>; <see cref="LoadRecipes{T}"/> is server-only and belongs in
-/// <c>AssetsLoaded</c>, after every mod's <see cref="Register{T}"/> call has run.
-/// </summary>
+/// <summary>The recipe-registry rung: registers a <see cref="RecipeRegistryGeneric{T}"/> the same
+/// way vanilla's own recipe kinds do, so a mod's own recipe type gets client sync and the handbook
+/// for free.</summary>
 public static class ExRecipeRegistry {
-  /// <summary>
-  /// Registers a <see cref="RecipeRegistryGeneric{T}"/> under <paramref name="code"/> and returns its
-  /// (initially empty) recipe list. Call with the same <paramref name="code"/> on both sides - a code
-  /// that differs between client and server leaves the two unable to sync the recipes it carries.
-  /// </summary>
+  /// <summary>Registers a <see cref="RecipeRegistryGeneric{T}"/> under <paramref name="code"/> and
+  /// returns its (initially empty) recipe list. Call with the same <paramref name="code"/> on both
+  /// sides.</summary>
   public static List<T> Register<T>(ICoreAPI api, string code)
     where T : IByteSerializable, new() =>
     api.RegisterRecipeRegistry<RecipeRegistryGeneric<T>>(code).Recipes;
 
-  /// <summary>
-  /// Reads every JSON asset under <c>recipes/{folder}</c> - each either one recipe object or an array
-  /// of them - and appends one <typeparamref name="T"/> per entry to <paramref name="into"/>, resolved
-  /// against the asset's own domain. <paramref name="resolve"/>, if given, runs on each recipe before
-  /// it is added and returning <c>false</c> drops it - an ingredient resolve, an <c>Enabled</c> check,
-  /// whatever the recipe type needs done once loaded, mirroring the per-recipe step vanilla's own
-  /// recipe kinds take at this same phase, including the drop
-  /// (<c>RecipeRegistrySystem.loadRecipe</c>'s <c>if (!recipe.Enabled) return;</c>). Server-only; call
-  /// from <c>AssetsLoaded</c>.
-  /// </summary>
+  /// <summary>Reads every JSON asset under <c>recipes/{folder}</c> and appends one
+  /// <typeparamref name="T"/> per entry to <paramref name="into"/>. <paramref name="resolve"/>, if
+  /// given, runs on each recipe and returning <c>false</c> drops it. Server-only.</summary>
   public static void LoadRecipes<T>(
     ICoreServerAPI sapi,
     string folder,

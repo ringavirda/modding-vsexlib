@@ -4,12 +4,9 @@ using Vintagestory.API.Datastructures;
 namespace ExpandedLib.Structures;
 
 /// <summary>
-/// Reads the <c>multiblockRoles</c> attribute a code-first layout emits: <see cref="CellRole"/> to the
-/// authored (north-frame) offsets of the cells carrying that role. Offsets are as drawn, not world positions
-/// or rotated ones; <see cref="BlockEntityMultiblockStructure.CellsWithRole"/> resolves them against
-/// vanilla's own rotation, so this type holds no rotation maths. A sibling attribute of
-/// <c>multiblockStructure</c> rather than a member of it, since vanilla's own <c>MultiblockStructure</c>
-/// deserialises that object and must keep its schema. A layout that declares no roles gets <see cref="None"/>.
+/// Reads the <c>multiblockRoles</c> attribute: <see cref="CellRole"/> to the authored (north-frame)
+/// offsets of cells carrying that role. A sibling of <c>multiblockStructure</c>, kept out of vanilla's
+/// own schema. A layout with no roles gets <see cref="None"/>.
 /// </summary>
 public sealed class MultiblockCellRoles {
   /// <summary>A layout that declares no roles. Every lookup answers empty.</summary>
@@ -31,20 +28,11 @@ public sealed class MultiblockCellRoles {
   /// <summary>True when the layout marks no cell with any role.</summary>
   public bool IsEmpty => _cellsOf.Count == 0;
 
-  /// <summary>
-  /// The authored offsets carrying <paramref name="role"/>, empty when the layout declares none. A set,
-  /// because the caller tests membership per footprint cell and <c>MultiblockBuilder.At</c> already rejects
-  /// two cells at one offset.
-  /// </summary>
+  /// <summary>The authored offsets carrying <paramref name="role"/>, empty when the layout declares none.</summary>
   public IReadOnlySet<(int X, int Y, int Z)> CellsOf(CellRole role) =>
     _cellsOf.TryGetValue(role, out var cells) ? cells : NoCells;
 
-  /// <summary>
-  /// Reads the <c>multiblockRoles</c> attribute. Returns <see cref="None"/> for a block that declares none.
-  /// Never throws: it is re-read on a live block entity mid-session, so malformed entries are skipped and
-  /// every value is type-checked rather than cast, since <c>(int)JToken</c> throws on a string, an object, or
-  /// a number too wide for an <c>int</c>.
-  /// </summary>
+  /// <summary>Reads the <c>multiblockRoles</c> attribute, or <see cref="None"/> when absent. Never throws.</summary>
   public static MultiblockCellRoles FromAttributes(JsonObject? attributes) {
     var map = new Dictionary<CellRole, HashSet<(int X, int Y, int Z)>>();
     foreach (
@@ -53,12 +41,10 @@ public sealed class MultiblockCellRoles {
         "multiblockRoles"
       )
     ) {
-      // A blank key cannot be a role - Of() would throw - so it is skipped rather than let through to
-      // poison the map with a role no caller could ever ask for by the same key.
+      // Blank keys skipped: Of() throws on an empty role.
       if (string.IsNullOrWhiteSpace(key))
         continue;
-      // The primary constructor, not Of(): this is reading a role someone else already declared back
-      // out of JSON, not declaring one, and Of() would reset whatever arity that declaration gave it.
+      // Primary constructor, not Of(): preserves the role's declared arity.
       var role = new CellRole(key);
       if (!map.TryGetValue(role, out HashSet<(int X, int Y, int Z)>? offsets))
         map[role] = offsets = [];

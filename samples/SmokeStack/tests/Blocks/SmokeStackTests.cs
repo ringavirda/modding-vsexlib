@@ -8,12 +8,8 @@ using Xunit;
 
 namespace SmokeStack.Tests;
 
-/// <summary>
-/// The smoke-stack multiblock is a gas-network sink: each production tick it draws
-/// <see cref="SmokeStackValues.SmokestackGasIntakeVolume"/> litres of gas off the connected pipe
-/// network and vents it. Covers the IPipeNode reads on an unbuilt node, the structure-gated draw on a
-/// built <see cref="SmokeStackRig"/>, and the serialization round trip.
-/// </summary>
+/// <summary>The smoke-stack multiblock is a gas-network sink: each production tick it draws
+/// <see cref="SmokeStackValues.SmokestackGasIntakeVolume"/> litres off the connected pipe network.</summary>
 public class SmokeStackTests {
   #region IPipeNode reads (an unbuilt, unwired node)
 
@@ -78,8 +74,6 @@ public class SmokeStackTests {
 
   [Fact]
   public void An_incomplete_stack_draws_nothing() {
-    // Same rig with the structure torn open first: one brick pulled out of the shell and the monitor
-    // re-run, so the stack observes its own footprint break before the draw.
     var rig = new SmokeStackRig();
     rig.SpillExhaust(200f, 400f);
     float before = rig.MainVolume;

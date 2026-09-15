@@ -8,22 +8,15 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Checks that every lang key a mod's own source hands to <c>Lang.Get</c>, <c>ActionLangCode</c> or
-/// <c>SendIngameError</c> exists in every locale it ships. <see cref="LangCoverage"/> checks the other
-/// direction - that registered block codes have names - and never looks at a call site, so a key
-/// misspelt in C# renders raw in game with the goldens, the build and the runtime all silent.
-/// <para>
-/// Only literal keys are checked. A key built by concatenation (<c>"iiex:bf-state-" + state</c>) names a
-/// family rather than a key, and is skipped along with the two-argument <c>SendIngameError</c> overload,
-/// which supplies its own text and never consults a lang file.
-/// </para>
+/// Checks that every lang key a mod's own source hands to <c>Lang.Get</c>, <c>ActionLangCode</c>
+/// or <c>SendIngameError</c> exists in every locale it ships. Only literal keys are checked; a
+/// key built by concatenation is skipped.
 /// </summary>
 public static class LangCallSites {
   #region Call-site scanning
 
-  // The three forms that name a key. Each is matched up to the value only; the literals themselves come
-  // out of the region that follows - a call's balanced argument list, or an assignment's right-hand side -
-  // so a ternary's arms are seen too.
+  // The three forms that name a key; literals are read from the region that follows (a balanced
+  // argument list, or an assignment's right-hand side).
   private static readonly Regex LangCall = new(
     @"\bLang\.Get(?:IfExists|Matching)?\s*\(",
     RegexOptions.Compiled
@@ -37,9 +30,7 @@ public static class LangCallSites {
     RegexOptions.Compiled
   );
 
-  // Case-insensitive on purpose. A key is lower-case by convention, so a capital in one is a typo - and a
-  // pattern that only matched lower-case would SKIP that literal rather than fail on it, which is the
-  // quietest possible outcome for the one thing this file exists to catch.
+  // Case-insensitive on purpose: a key is lower-case by convention, and a capital is a typo.
   private static readonly Regex Literal = new(
     "\"([a-z0-9]+:[a-z0-9-]+)\"",
     RegexOptions.Compiled | RegexOptions.IgnoreCase
@@ -49,11 +40,8 @@ public static class LangCallSites {
     RegexOptions.Compiled | RegexOptions.IgnoreCase
   );
 
-  /// <summary>
-  /// The source text between an opening parenthesis and the one that closes it. String contents are not
-  /// parsed, so a parenthesis inside a literal would end the region early; no call site in this repo
-  /// carries one, and a truncated region under-reports rather than inventing a key.
-  /// </summary>
+  /// <summary>The source text between an opening parenthesis and the one that closes it. String
+  /// contents are not parsed.</summary>
   private static string ArgumentRegion(string source, int openParen) {
     int depth = 0;
     for (int i = openParen; i < source.Length; i++) {
@@ -65,13 +53,9 @@ public static class LangCallSites {
     return source[(openParen + 1)..];
   }
 
-  /// <summary>
-  /// The right-hand side of an assignment starting at <paramref name="start"/>: everything up to the
-  /// first <c>,</c> or <c>;</c> outside brackets, or the bracket that closes the initializer or argument
-  /// list the assignment sits in. A ternary carries no brackets of its own, so both of its arms fall
-  /// inside the region - which is the whole reason this exists rather than reading the one literal that
-  /// happens to sit against the <c>=</c>.
-  /// </summary>
+  /// <summary>The right-hand side of an assignment starting at <paramref name="start"/>:
+  /// everything up to the first <c>,</c> or <c>;</c> outside brackets, or the bracket that closes
+  /// the enclosing list.</summary>
   private static string AssignedRegion(string source, int start) {
     int depth = 0;
     for (int i = start; i < source.Length; i++) {
@@ -95,12 +79,9 @@ public static class LangCallSites {
     return before.EndsWith('+') || after.StartsWith('+');
   }
 
-  /// <summary>
-  /// The keys in <paramref name="region"/>. <paramref name="domain"/> filters domain-qualified literals
-  /// to the mod's own - a <c>Lang.Get("game:…")</c> is vanilla's key and not this lang file's problem.
-  /// <c>null</c> takes every domain, which is what an <c>ActionLangCode</c> wants: a block may legitimately
-  /// advertise a key from the library it is built on.
-  /// </summary>
+  /// <summary>The keys in <paramref name="region"/>.</summary>
+  /// <param name="domain">Filters domain-qualified literals to this domain; <c>null</c> takes
+  /// every domain.</param>
   private static IEnumerable<string> KeysIn(
     string region,
     Regex literals,
@@ -120,11 +101,8 @@ public static class LangCallSites {
     }
   }
 
-  /// <summary>
-  /// Every <c>(file, key)</c> a mod's source names, as the lang cache would hold it: a bare key gains the
-  /// mod's own domain, an error code becomes <c>game:ingameerror-{code}</c>, and an already-qualified key
-  /// is used verbatim - the same normalisation vanilla's <c>TranslationService</c> applies on load.
-  /// </summary>
+  /// <summary>Every <c>(file, key)</c> a mod's source names, normalised the way the lang cache
+  /// holds it.</summary>
   public static IReadOnlyList<(string File, string Key)> Keys(
     string domain,
     string srcDir
@@ -159,8 +137,7 @@ public static class LangCallSites {
       }
       foreach (Match call in ErrorCall.Matches(source)) {
         string region = ArgumentRegion(source, call.Index + call.Length - 1);
-        // The two-argument overload carries its own text and never reads a lang file. A ternary picking
-        // between two codes is still one argument, so commas are counted outside its arms.
+        // The two-argument overload carries its own text and never reads a lang file.
         if (TopLevelCommas(region) > 0)
           continue;
         foreach (string code in KeysIn(region, BareLiteral, domain))
@@ -188,10 +165,9 @@ public static class LangCallSites {
 
   #region Coverage
 
-  /// <summary>
-  /// Every <c>(locale, file, key)</c> a call site names that the locale does not carry. Empty means every
-  /// hand-written key in the mod's source resolves.
-  /// </summary>
+  /// <summary>Every <c>(locale, file, key)</c> a call site names that the locale does not
+  /// carry.</summary>
+  /// <returns>Empty when every hand-written key resolves.</returns>
   public static IReadOnlyList<string> Unresolvable(
     string domain,
     string srcDir,

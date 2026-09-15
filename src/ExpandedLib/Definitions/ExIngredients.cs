@@ -2,14 +2,8 @@ using System;
 
 namespace ExpandedLib.Definitions;
 
-/// <summary>
-/// Vanilla crafting ingredients shared across the mods' code-first recipe files. Each entry is an
-/// <see cref="IngredientBuilder"/> factory in the shape <see cref="GridRecipeBuilder.Ingredient"/>
-/// accepts: after a <c>using static ExpandedLib.Definitions.ExIngredients;</c> a provider passes either
-/// a method group (<c>.Ingredient("H", Hammer)</c>) or a quantity factory
-/// (<c>.Ingredient("P", Plate(1))</c>). Only mod-agnostic <c>game:</c> ingredients belong here; a mod's
-/// own codes stay in its own provider.
-/// </summary>
+/// <summary>Vanilla crafting ingredients shared across the mods' code-first recipe files. Only
+/// mod-agnostic <c>game:</c> ingredients belong here.</summary>
 public static class ExIngredients {
   /// <summary>A hammer as a tool (consumed by durability, not stack): <c>game:hammer-*</c>, <c>isTool</c>.</summary>
   public static IngredientBuilder Hammer(IngredientBuilder i) =>

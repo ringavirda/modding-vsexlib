@@ -8,47 +8,24 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Industry.Pipes;
 
 /// <summary>
-/// Passthrough pipe: carries gas straight through a wall. A connector butted against a
-/// solid (non-air) block is not treated as a leak, so it seals against machine housings
-/// without any cooperation from those blocks. A chimney capping its open top face draws gas
-/// out of the run (<see cref="IChimneyVentable"/>).
-/// <para>
-/// Lives with the pipe base rather than with any one tier, as <see cref="BlockPipe.Segments"/> does;
-/// every tier calls <see cref="Passthroughs"/> with its own domain and tier. Unlike the segments, the
-/// geometry is identical across tiers, so all tiers share the <c>exlib:pipe/passthrough</c> shape and
-/// override only the sheet texture - which is exactly why the tier has to be on the code: two of these
-/// are otherwise indistinguishable to the registry.
-/// </para>
+/// Passthrough pipe: carries gas straight through a wall. A connector butted against a solid
+/// (non-air) block is not treated as a leak. A chimney capping its open top face draws gas out of
+/// the run (<see cref="IChimneyVentable"/>).
 /// </summary>
 [BlockRegister]
 public partial class BlockPipePassthrough : BlockPipe, IChimneyVentable {
-  /// <summary>Passthroughs never burst: they are embedded in walls and machine housings where a
-  /// fracture would be unreachable, so they are exempt from over-pressure failure.</summary>
+  /// <summary>Passthroughs never burst.</summary>
   public override float BurstPressure => float.MaxValue;
 
-  /// <summary>The defs this class declares itself. As with <see cref="BlockPipe.Definitions"/>, only
-  /// the <c>type</c> and <c>orientation</c> pairs are read from these - they feed
-  /// <see cref="BlockNetworkNode.AllowedOrientations"/> - so they carry no tier and are never
-  /// registered. Yields nothing for exlib itself, which authors the factory but ships no pipe
-  /// content.</summary>
+  /// <summary>The defs this class declares itself, used only to derive
+  /// <see cref="BlockNetworkNode.AllowedOrientations"/>; empty for the <c>exlib</c> domain.</summary>
   public static new IEnumerable<ExBlockDef> Definitions(string domain) =>
     domain == "exlib" ? [] : Passthroughs(domain, tier: null);
 
-  /// <summary>
-  /// The passthrough + passthrough-bend blocktypes of one <paramref name="tier"/> under
-  /// <paramref name="domain"/> (both back this class). AllowedOrientations and the fallback
-  /// orientation are derived from these by the base <see cref="BlockPipe"/>.
-  /// <para>
-  /// Tiered for the same reason the segments are, though a passthrough bears no pressure: two tiers
-  /// ship a passthrough apiece, and without the axis they carry one code between them and the later
-  /// registration silently replaces the earlier the moment both land in one domain.
-  /// </para>
-  /// </summary>
-  /// <param name="sheet">The sheet texture this tier's pipe is made of - the only thing that differs
-  /// between one tier's passthrough and another's, since all tiers share the mesh. Supplied by the
-  /// caller rather than chosen here: the art lives in the tier's own asset tree, and a library that
-  /// named one would pin itself to that mod's domain and resolve to nothing once it is renamed.
-  /// Defaults to vanilla's corroded sheet.</param>
+  /// <summary>The passthrough + passthrough-bend blocktypes of one <paramref name="tier"/> under
+  /// <paramref name="domain"/>.</summary>
+  /// <param name="sheet">The sheet texture this tier's pipe is made of; defaults to vanilla's
+  /// corroded sheet.</param>
   public static IEnumerable<ExBlockDef> Passthroughs(
     string domain,
     string? tier,
@@ -59,22 +36,12 @@ public partial class BlockPipePassthrough : BlockPipe, IChimneyVentable {
       PassthroughBend(domain, tier, sheet ?? DefaultSheet),
     ];
 
-  /// <summary>
-  /// The sheet texture used when a tier names none. Vanilla's, so exlib carries no dependency on any
-  /// content mod's asset tree. It overrides the <c>normal4</c> key only: <c>iron4</c>
-  /// (<c>game:block/metal/sheet-plain</c>) is the trim around the opening and is the same on every
-  /// tier, so repainting it would recolour the flange rather than the pipe.
-  /// </summary>
+  /// <summary>The sheet texture used when a tier names none; overrides the <c>normal4</c> key
+  /// only.</summary>
   private const string DefaultSheet = "game:block/metal/corroded/normal4";
 
-  /// <summary>
-  /// The brick shell both passthrough blocktypes are drawn with, in exlib's own asset tree. Shared by
-  /// every tier deliberately - a passthrough differs from another tier's only by the sheet texture
-  /// (the caller-supplied sheet texture), so the mesh is one file rather than one per tier. It lives here rather
-  /// than in a content mod's tree because exlib emits these defs for all three tiers: pinned to one
-  /// mod's domain it resolves to nothing the moment that mod is renamed or merged, and a blocktype
-  /// whose shape resolves to nothing loads with no shape and no error.
-  /// </summary>
+  /// <summary>The brick shell both passthrough blocktypes are drawn with, in exlib's own asset tree,
+  /// shared by every tier.</summary>
   private const string PassthroughShape = "exlib:pipe/passthrough";
 
   /// <summary>The bend counterpart of <see cref="PassthroughShape"/>, shared the same way.</summary>
@@ -103,8 +70,7 @@ public partial class BlockPipePassthrough : BlockPipe, IChimneyVentable {
   ) {
     ExBlockDef def = ExBlockDef
       .Create(domain, "pipe", assetName)
-      // Typed, and safe across assemblies: KeyFor resolves the domain from the TYPE's assembly, so
-      // this factory generates exlib's own keys even while running under a tier domain.
+      // Typed, and safe across assemblies: KeyFor resolves the domain from the TYPE's assembly.
       .Class<BlockPipePassthrough>()
       .EntityClass<BlockEntityPipePassthrough>()
       .Material(EnumBlockMaterial.Ceramic)
@@ -118,8 +84,7 @@ public partial class BlockPipePassthrough : BlockPipe, IChimneyVentable {
       .MaxStackSize(1)
       .CreativeTab("general", creative)
       .CreativeTab(domain, creative)
-      // Grouped within a tier, never across: an undomained groupBy selector is qualified with the
-      // block's own domain, so two tiers sharing a domain would merge into one handbook entry.
+      // Grouped within a tier: an undomained groupBy selector is qualified with the block's own domain.
       .Handbook(
         tier == null ? $"pipe-{handbookGroup}" : $"pipe-{tier}-{handbookGroup}"
       )
@@ -137,9 +102,7 @@ public partial class BlockPipePassthrough : BlockPipe, IChimneyVentable {
       .SideSolid(true)
       .SideOpaque(false);
 
-    // Declared first, before `type`, exactly as the segments do it: every selector below leads with a
-    // `*` so the new segment is absorbed, and declaring it last would move each code out from under
-    // them silently.
+    // Declared before `type`; every selector below leads with `*` to absorb it.
     return tier == null ? def : def.VariantGroup("tier", tier);
   }
 

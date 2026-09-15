@@ -2,12 +2,9 @@ using ExpandedLib.Networks;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// A <see cref="BlockEntityNetworkNode"/> whose connectivity can be toggled at runtime, covering the
-/// dynamic-sever path (a closed valve severs the graph at its own cell). Set <see cref="Broken"/> and
-/// re-walk to observe the fracture. Never <c>Initialize</c>d: it is attached to a block through
-/// <see cref="TestWorld.Place"/> and read directly by the graph.
-/// </summary>
+/// <summary>A <see cref="BlockEntityNetworkNode"/> whose connectivity can be toggled at runtime via
+/// <see cref="Broken"/>. Never <c>Initialize</c>d: attached through <see cref="TestWorld.Place"/> and
+/// read directly by the graph.</summary>
 public sealed class SeverableNode : BlockEntityNetworkNode {
   private string _networkType = "test";
 

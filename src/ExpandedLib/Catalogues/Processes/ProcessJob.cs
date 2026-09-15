@@ -6,19 +6,17 @@ using Vintagestory.API.Datastructures;
 namespace ExpandedLib.Catalogues;
 
 /// <summary>
-/// One terminal job: a piece goes in, one kind of thing comes out, and <see cref="Count"/> of them do. A
-/// staged job crops and the input survives; a whole-item job converts and it does not.
-/// See docs/design/mechanics/process-extension.md § What a count means.
+/// One terminal job: a piece goes in, one kind of thing comes out, and <see cref="Count"/> of them
+/// do. A staged job crops and the input survives; a whole-item job converts and it does not.
 /// </summary>
 /// <param name="Input">Item code the machine takes.</param>
 /// <param name="Output">Item code it yields.</param>
-/// <param name="Count">How many of the output the input is worth. On a staged job that is the whole
-/// piece's yield and one leaves per stroke; on a whole-item job they all leave at once. At least one.</param>
+/// <param name="Count">How many of the output the input is worth. At least one.</param>
 /// <param name="Stage">Gauge the input must be at, or null when the whole item is the input.</param>
 /// <param name="Family">Branch the input must be on, for a staged job at a fork.</param>
 /// <param name="MinTorque">Drive torque the machine needs for this job. 0 when it is not gated.</param>
 /// <param name="MinTier">Temper floor of the tool the job needs. 0 when any will do.</param>
-/// <param name="Seconds">How long one job takes. Never 0, or a job would complete every tick.</param>
+/// <param name="Seconds">How long one job takes. Never 0.</param>
 public sealed record ProcessJob(
   string Input,
   string Output,
@@ -29,13 +27,11 @@ public sealed record ProcessJob(
   int MinTier = 0,
   float Seconds = ProcessJob.DefaultSeconds
 ) {
-  /// <summary>What a job takes when it declares no time of its own. A job of no duration would complete
-  /// on the tick it started.</summary>
+  /// <summary>What a job takes when it declares no time of its own.</summary>
   public const float DefaultSeconds = 1f;
 
   /// <summary>Whether this job is the one for a piece of <paramref name="input"/> at
-  /// <paramref name="stage"/> on <paramref name="family"/>. A job with no stage takes the whole item and
-  /// ignores both.</summary>
+  /// <paramref name="stage"/> on <paramref name="family"/>.</summary>
   public bool Matches(string input, float? stage, string? family) {
     if (!string.Equals(Input, input, StringComparison.OrdinalIgnoreCase))
       return false;
@@ -47,10 +43,8 @@ public sealed record ProcessJob(
   }
 }
 
-/// <summary>
-/// Every terminal job one machine can do, as a mod declares them. Merged into
-/// <see cref="ProcessJobRegistry"/>, so a mod adds a crop by shipping a file rather than by patching ours.
-/// </summary>
+/// <summary>Every terminal job one machine can do, as a mod declares them. Merged into
+/// <see cref="ProcessJobRegistry"/>.</summary>
 /// <param name="Schema">Schema version of the declaration.</param>
 /// <param name="Machine">The machine these jobs belong to, e.g. <c>shear</c>.</param>
 /// <param name="Jobs">The jobs, in declaration order.</param>
@@ -62,11 +56,8 @@ public sealed record ProcessJobSet(
   /// <summary>The schema this parser writes and reads up to.</summary>
   public const int CurrentSchema = SpecSchema.First;
 
-  /// <summary>
-  /// Parses and validates one job-set declaration. Returns false with a human-readable
-  /// <paramref name="error"/> on any malformed field, so a bad table fails at load rather than by the
-  /// machine quietly refusing a piece.
-  /// </summary>
+  /// <summary>Parses and validates one job-set declaration. Returns false with a human-readable
+  /// <paramref name="error"/> on any malformed field.</summary>
   public static bool TryParse(
     JsonObject? node,
     out ProcessJobSet? set,
@@ -120,8 +111,7 @@ public sealed record ProcessJobSet(
           Blank(jobNode["family"].AsString("")),
           jobNode["minTorque"].AsFloat(0f),
           jobNode["minTier"].AsInt(0),
-          // A job of no duration would complete on the tick it started, so an authored 0 reads as
-          // "unstated" rather than as instant.
+          // An authored 0 reads as "unstated".
           seconds > 0f
             ? seconds
             : ProcessJob.DefaultSeconds

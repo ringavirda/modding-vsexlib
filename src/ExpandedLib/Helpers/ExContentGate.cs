@@ -10,12 +10,8 @@ namespace ExpandedLib.Helpers;
 /// has resolved, from a mod system's <c>StartServerSide</c>/<c>StartClientSide</c>, not <c>Start</c>.
 /// </summary>
 public static class ExContentGate {
-  /// <summary>
-  /// Hides every collectible matching <paramref name="match"/> from the creative inventory and handbook
-  /// by clearing its creative tabs and stacks; <c>CollectibleObject.GetHandBookStacks</c> lists nothing
-  /// for a collectible with neither. Returns the number hidden. Both are client-built, so this has
-  /// effect on the client and is a harmless no-op on the server.
-  /// </summary>
+  /// <summary>Hides every collectible matching <paramref name="match"/> from the creative inventory
+  /// and handbook; returns the number hidden.</summary>
   public static int HideFromCreativeAndHandbook(
     ICoreAPI api,
     System.Func<CollectibleObject, bool> match
@@ -24,9 +20,7 @@ public static class ExContentGate {
     foreach (var obj in AllCollectibles(api)) {
       if (obj?.Code == null || !match(obj))
         continue;
-      // Empty, not null: vanilla reads the tab list without a null guard in places
-      // (BehaviorAttachable.cs:646 does `CreativeInventoryTabs.Length == 0`), so nulling it throws
-      // on anything that enumerates collectibles. Length 0 hides the item just as well.
+      // Empty, not null: some vanilla code enumerates the tab list without a null guard.
       obj.CreativeInventoryTabs = [];
       obj.CreativeInventoryStacks = null;
       hidden++;

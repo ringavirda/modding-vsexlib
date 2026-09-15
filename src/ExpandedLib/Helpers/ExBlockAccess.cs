@@ -38,8 +38,7 @@ public static class ExBlockAccess {
 
   /// <summary>Every (facing, block entity) pair of type <typeparamref name="T"/> around
   /// <paramref name="pos"/>, walking <paramref name="facings"/> (<see cref="BlockFacing.ALLFACES"/>
-  /// when <c>null</c>). Only matching neighbours are yielded, so an empty result means none of the
-  /// walked faces carry one.</summary>
+  /// when <c>null</c>).</summary>
   public static IEnumerable<(BlockFacing Facing, T Entity)> Neighbours<T>(
     this IBlockAccessor accessor,
     BlockPos pos,

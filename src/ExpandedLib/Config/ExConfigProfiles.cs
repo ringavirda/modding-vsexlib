@@ -3,12 +3,8 @@ using ExpandedLib.Registries;
 
 namespace ExpandedLib.Config;
 
-/// <summary>
-/// Process-wide registry of the config stores mods expose to the generic <c>/exmod config</c> command,
-/// keyed by mod id. A mod opts a config in with <c>[ExConfigRegister(..., Manageable = true)]</c>; the
-/// source-generated accessor registers its store here from its <c>Load</c>. Mirrors
-/// <see cref="Registries.ExRecipeProfiles"/>.
-/// </summary>
+/// <summary>Process-wide registry of the config stores mods expose to the generic <c>/exmod
+/// config</c> command, keyed by mod id.</summary>
 public static class ExConfigProfiles {
   private static readonly ExKeyedRegistry<IExConfigAccess> _configs = new(c =>
     c.ModId

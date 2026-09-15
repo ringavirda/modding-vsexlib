@@ -8,16 +8,8 @@ using Vintagestory.API.Util;
 namespace ExpandedLib.Checks;
 
 /// <summary>
-/// Checks that every code-first block definition a domain declares actually produced a registered
-/// block. Registering a def is not the same thing as the loader successfully turning it into a
-/// block: a malformed variant group or a code the JSON-patch pipeline rewrote away leaves the def
-/// registered and the block simply missing, with nothing else in the pipeline reporting it.
-/// <para>
-/// A def's own <c>code</c> plus its variant groups are expanded into patterns exactly as
-/// <c>ExpandedLib.Testing.DefinitionCatalogue.BlockPatterns</c> does (a worldproperty-sourced group
-/// becomes <c>*</c>, since it cannot be enumerated here either), then matched against
-/// <see cref="ICheckSource.BlockCodes"/> - the concrete codes the game actually holds.
-/// </para>
+/// Checks that every code-first block definition a domain declares produced a registered block,
+/// matching its code and variant groups against <see cref="ICheckSource.BlockCodes"/>.
 /// </summary>
 public static class DefinitionCatalogueCheck {
   /// <summary>Every def in <paramref name="domain"/> that produced no registered block, as the check's <see cref="CheckResult"/>.</summary>
@@ -41,9 +33,8 @@ public static class DefinitionCatalogueCheck {
     return new CheckResult("DefinitionCatalogue", domain, errors);
   }
 
-  // Every code pattern def.Code expands to once its variant groups are walked, a property group
-  // standing in as a wildcard - the same shape ExpandedLib.Testing.DefinitionCatalogue.BlockPatterns
-  // produces, kept independent here since this class must not depend on the test harness.
+  // Code patterns def.Code expands into via its variant groups; a property group stands in as a
+  // wildcard.
   private static IEnumerable<string> Patterns(ExBlockDef def) {
     var groups = new List<string[]>();
     if (def.ToJson()["variantgroups"] is JArray vg)

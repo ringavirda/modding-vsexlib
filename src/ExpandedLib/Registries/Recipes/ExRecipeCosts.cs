@@ -7,27 +7,16 @@ using Vintagestory.API.Util;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// Rewrites the ingredient quantities and grid output count of grid crafting recipes and
-/// right-click-construction (RCC) blocks to a named cost profile from a catalogue, giving a mod a balance
-/// toggle such as <c>cheap</c> against <c>normal</c>. Catalogue keys are wildcard-aware block or output
-/// codes, matching a whole variant family at once. Apply at load once recipes have resolved
-/// (<c>StartServerSide</c> or <c>StartClientSide</c>), on the side that owns the recipe. RCC stages are
-/// rewritten on the block's behaviour-properties JSON, which the vanilla behaviour re-parses per
-/// construction, so a new cost reaches only constructions started after a world reload.
-/// </summary>
+/// <summary>Rewrites the ingredient quantities and grid output count of grid crafting recipes and
+/// right-click-construction blocks to a named cost profile from a catalogue.</summary>
 public static class ExRecipeCosts {
-  /// <summary>The profile whose numbers mirror the recipes as authored. Filled from the live recipe, so
-  /// a mod ships only its alternate profiles.</summary>
+  /// <summary>The profile whose numbers mirror the recipes as authored.</summary>
   public const string ProfileNormal = "normal";
 
   private const string RccBehaviorName = "ExRightClickConstructable";
 
-  /// <summary>
-  /// Fills the <see cref="ProfileNormal"/> profile of every catalogue entry that lacks it from the live
-  /// recipe's current quantities. Must run before <see cref="Apply"/>, which mutates those recipes.
-  /// Returns <c>true</c> if anything was added, so the caller can persist the catalogue.
-  /// </summary>
+  /// <summary>Fills the <see cref="ProfileNormal"/> profile of every catalogue entry that lacks it,
+  /// from the live recipe's current quantities.</summary>
   public static bool EnsureNormalExtracted(
     ICoreAPI api,
     IDictionary<string, RecipeCostEntry> catalogue
@@ -54,12 +43,8 @@ public static class ExRecipeCosts {
     return changed;
   }
 
-  /// <summary>
-  /// Fills <paramref name="profile"/> for entries lacking costs by scaling their
-  /// <see cref="ProfileNormal"/> quantities by <paramref name="factor"/>, each floored at 1; a value already
-  /// pinned in the profile is kept. Run after <see cref="EnsureNormalExtracted"/>. Returns <c>true</c> if
-  /// anything changed.
-  /// </summary>
+  /// <summary>Fills <paramref name="profile"/> for entries lacking costs by scaling their
+  /// <see cref="ProfileNormal"/> quantities by <paramref name="factor"/>, floored at 1.</summary>
   public static bool EnsureScaledLevel(
     IDictionary<string, RecipeCostEntry> catalogue,
     string profile,
@@ -71,7 +56,6 @@ public static class ExRecipeCosts {
         continue;
 
       entry.Profiles.TryGetValue(profile, out var target);
-      // Cost data (ingredients/stages) already filled: leave it and any pin alone.
       bool hasCosts =
         target != null
         && (
@@ -99,12 +83,8 @@ public static class ExRecipeCosts {
     return changed;
   }
 
-  /// <summary>
-  /// Repairs an edited catalogue against the code <paramref name="defaults"/>: restores deleted entries and
-  /// removed pins, resets <see cref="RecipeCostEntry.Match"/> and <see cref="RecipeCostEntry.Type"/>, and
-  /// clamps every quantity to at least 1. Edited numbers of 1 or more and added entries are kept. Run
-  /// before <see cref="EnsureNormalExtracted"/> and <see cref="Apply"/>; <c>true</c> if anything changed.
-  /// </summary>
+  /// <summary>Repairs an edited catalogue against the code <paramref name="defaults"/>: restores
+  /// deleted entries and removed pins, and clamps every quantity to at least 1.</summary>
   public static bool Reconcile(
     IDictionary<string, RecipeCostEntry> live,
     IReadOnlyDictionary<string, RecipeCostEntry> defaults
@@ -147,7 +127,6 @@ public static class ExRecipeCosts {
       }
     }
 
-    // Clamp every quantity, in default and added entries alike, to a safe minimum.
     foreach (var entry in live.Values) {
       if (entry?.Profiles == null)
         continue;
@@ -180,8 +159,8 @@ public static class ExRecipeCosts {
     return changed;
   }
 
-  /// <summary>Applies the named cost <paramref name="profile"/> to every recipe in the catalogue. A
-  /// missing or empty profile for an entry leaves that recipe untouched.</summary>
+  /// <summary>Applies the named cost <paramref name="profile"/> to every recipe in the catalogue,
+  /// skipping entries with a missing or empty profile.</summary>
   public static void Apply(
     ICoreAPI api,
     IDictionary<string, RecipeCostEntry> catalogue,
@@ -258,8 +237,8 @@ public static class ExRecipeCosts {
     }
   }
 
-  /// <summary>Sets a grid recipe's crafted output count: both <c>Quantity</c> and the resolved stack's
-  /// <c>StackSize</c>, the latter being what ends up in the output slot.</summary>
+  /// <summary>Sets a grid recipe's crafted output count: both <c>Quantity</c> and the resolved
+  /// stack's <c>StackSize</c>.</summary>
   private static void SetGridOutput(GridRecipe recipe, int qty) {
     if (recipe.Output == null)
       return;
@@ -340,8 +319,6 @@ public static class ExRecipeCosts {
     if (stages is not { Count: > 0 })
       return;
 
-    // Each variant block carries its own properties JSON, so all of them are rewritten. Each per-stage
-    // ingredient is set directly from its own catalogue entry, with no redistribution.
     foreach (var block in RccBlocksFor(api, blockCode)) {
       var jstages = RccStages(block)!;
       foreach (var (stageKey, names) in stages) {

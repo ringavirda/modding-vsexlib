@@ -5,16 +5,11 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Catalogues;
 
-/// <summary>
-/// Populates <see cref="MaterialRoleRegistry"/> at <c>AssetsFinalize</c>: clear, overlay every domain's
-/// <c>config/materialroles.json</c>, then invoke the registered code contributors that cover the
-/// mod-gated registrations JSON cannot express. With no <c>materialroles.json</c> and no contributor the
-/// registry stays empty and nothing is classified. <see cref="Overlay"/> is asset-free so it can be
-/// unit-tested; only the asset read needs a running game.
-/// </summary>
+/// <summary>Populates <see cref="MaterialRoleRegistry"/> from every domain's
+/// <c>config/materialroles.json</c> and the registered code contributors.</summary>
 public static class MaterialRoleLoader {
   /// <summary>Reads the assets, repopulates <see cref="MaterialRoleRegistry"/> and runs its code
-  /// contributors. Call from <c>ExpandedLibModSystem.AssetsFinalize</c>.</summary>
+  /// contributors.</summary>
   public static CatalogueLoadReport Load(ICoreAPI api) {
     MaterialRoleRegistry.Clear();
     AssetCatalogueLoader.ReadResult<MaterialRoleCatalogue> read =
@@ -29,7 +24,7 @@ public static class MaterialRoleLoader {
       api.ModLoader.IsModEnabled,
       read.Sources
     );
-    // Contributors run after the clear and the JSON overlay so their registrations survive a reload.
+    // Must run after the clear and the JSON overlay.
     MaterialRoleRegistry.InvokeContributors(api);
 
     var errors = new List<string>(read.Errors);
@@ -44,20 +39,17 @@ public static class MaterialRoleLoader {
 
   /// <summary>
   /// Registers every valid def from already-read catalogues, skipping and warning on a def with no
-  /// role or with neither code nor path prefix. The caller must have cleared the registry first; this
-  /// does not touch contributors. Exposed for unit tests.
+  /// role or with neither code nor path prefix. The caller must have cleared the registry first.
   /// </summary>
   /// <param name="modPresent">Answers whether a mod id is loaded, gating
-  /// <see cref="MaterialRoleDef.RequiresMod"/>. Null answers "nothing is loaded", which is the truthful
-  /// headless reading and the one that keeps another mod's rows out of a bare test registry.</param>
-  /// <param name="sources">One source location per entry of <paramref name="catalogues"/>, same index,
-  /// named in a skip warning. Null (the default, for tests that build catalogues by hand) reads as
-  /// "unknown source".</param>
+  /// <see cref="MaterialRoleDef.RequiresMod"/>. Null answers "nothing is loaded".</param>
+  /// <param name="sources">One source location per entry of <paramref name="catalogues"/>, same
+  /// index, named in a skip warning. Null reads as "unknown source".</param>
   /// <returns>How many defs across every catalogue were registered.</returns>
   internal static int Overlay(
     IEnumerable<MaterialRoleCatalogue> catalogues,
     Action<string>? warn = null,
-    // Qualified: Vintagestory.API.Common declares its own Func<,>, so the bare name is ambiguous here.
+    // Qualified: Vintagestory.API.Common declares its own Func<,>, ambiguous unqualified.
     System.Func<string, bool>? modPresent = null,
     IReadOnlyList<string>? sources = null
   ) {
@@ -86,8 +78,6 @@ public static class MaterialRoleLoader {
           );
           continue;
         }
-        // Silently, and before registering: a row waiting on a mod the player does not have is the
-        // ordinary case, so warning on it would fill the log with noise on every load.
         if (
           !string.IsNullOrEmpty(def.RequiresMod)
           && !(modPresent?.Invoke(def.RequiresMod!) ?? false)

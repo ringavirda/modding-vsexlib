@@ -4,10 +4,8 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// A bare block entity carrying a chosen set of network memberships, for testing the accessor and
-/// the graph walk without a concrete machine.
-/// </summary>
+/// <summary>A bare block entity carrying a chosen set of network memberships, for testing the
+/// accessor and the graph walk without a concrete machine.</summary>
 public sealed class TestMemberBlockEntity : BlockEntity {
   /// <summary>Adds one membership per network type and places the block entity at <paramref name="pos"/>
   /// on a plain block. Pass a block to <see cref="TestWorld.Place"/> afterwards to override it.</summary>
@@ -42,8 +40,7 @@ public sealed class TestMemberBlockEntity : BlockEntity {
   }
 
   /// <summary>Places a block entity carrying one membership whose declared network type and
-  /// per-cell answer differ, for the position-aware side of the resolver. A filler cell is the real
-  /// case: its type comes from the port recorded on the cell, not from the behaviour.</summary>
+  /// per-cell answer differ, for the position-aware side of the resolver.</summary>
   public static TestMemberBlockEntity WithPerCellType(
     TestWorld world,
     BlockPos pos,

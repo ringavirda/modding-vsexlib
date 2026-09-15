@@ -15,8 +15,7 @@ public sealed class ExModuleInfo {
   /// <summary>The mod id whose lifecycle drives this module.</summary>
   public required string Host { get; init; }
 
-  /// <summary>The Vintage Story mod id that ships this assembly; <see cref="ExModules.For"/> keeps
-  /// only the modules whose <see cref="Mod"/> is enabled on the world it is asked about.</summary>
+  /// <summary>The Vintage Story mod id that ships this assembly.</summary>
   public required string Mod { get; init; }
 
   /// <summary>Module ids this one runs after, within the same host.</summary>
@@ -25,15 +24,14 @@ public sealed class ExModuleInfo {
   /// <summary>The module's own assembly.</summary>
   public required Assembly Assembly { get; init; }
 
-  /// <summary>Concrete <see cref="IExModule"/> implementors in <see cref="Assembly"/>, name order.
-  /// A type with no parameterless constructor is left out; see <see cref="ExModules.All"/>.</summary>
+  /// <summary>Concrete <see cref="IExModule"/> implementors in <see cref="Assembly"/>, name order.</summary>
   public required IReadOnlyList<Type> EntryPoints { get; init; }
 
   /// <summary>Whether the host patches this assembly's uncategorised Harmony classes.</summary>
   public bool PatchHarmony { get; init; }
 
   /// <summary>The id this module's Harmony patches are applied and removed under: <see cref="Host"/>
-  /// and <see cref="Id"/> joined with a dot, distinct from any other module's or the host's own.</summary>
+  /// and <see cref="Id"/> joined with a dot.</summary>
   public string HarmonyId => Host + "." + Id;
 }
 

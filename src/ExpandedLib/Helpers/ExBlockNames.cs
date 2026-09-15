@@ -5,37 +5,22 @@ using Vintagestory.API.Config;
 namespace ExpandedLib.Helpers;
 
 /// <summary>
-/// Composes block display names that include the block's material variant: metal ("Piping
-/// (Straight, Steel)"), canal rock, passthrough brick and any variant group a dependent mod has
-/// registered through <see cref="AddVariantQualifier"/>, so that same-shaped blocks of different
-/// materials are distinguishable in the inventory, handbook and look-at HUD. The qualifier is
-/// always a parenthetical suffix, never a prefix: a leading noun does not decline to agree with
-/// the block noun in Russian and Ukrainian.
+/// Composes block display names that include the block's material variant: metal, rock, brick, and
+/// any variant group registered through <see cref="AddVariantQualifier"/>. The qualifier is always a
+/// parenthetical suffix, never a prefix.
 /// </summary>
 public static class ExBlockNames {
-  // Ordered so registration order controls the order qualifiers apply in; a duplicate group name
-  // replaces the prefix in place rather than moving it to the end (see AddVariantQualifier).
+  // Registration order is application order; a duplicate group replaces its prefix in place.
   private static readonly List<(string Group, string LangPrefix)> _qualifiers =
   [];
 
-  /// <summary>The registered variant groups, in the order <see cref="Decorate"/> applies them -
-  /// a test-only inspection point for <see cref="AddVariantQualifier"/>'s registration order and
-  /// replace-in-place behaviour.</summary>
+  /// <summary>The registered variant groups, in the order <see cref="Decorate"/> applies them.</summary>
   internal static IReadOnlyList<(string Group, string LangPrefix)> Qualifiers =>
     _qualifiers;
 
-  /// <summary>
-  /// Registers a variant group so <see cref="Decorate"/> also qualifies on it: a block whose
-  /// <c>block.Variant[variantGroup]</c> is non-null gets a further parenthetical clause resolved
-  /// through <c>Lang.Get(langPrefix + value)</c>. Applied after the built-in material/rock/brick
-  /// clause, and after every other group registered earlier - registration order is application
-  /// order. Registering a <paramref name="variantGroup"/> that is already registered replaces its
-  /// <paramref name="langPrefix"/> without changing its position in that order.
-  /// </summary>
+  /// <summary>Registers a variant group so <see cref="Decorate"/> also qualifies on it.</summary>
   /// <param name="variantGroup">The block variant key to test (e.g. <c>"refractory"</c>).</param>
-  /// <param name="langPrefix">Prepended to the variant value to form the lang key looked up
-  /// (e.g. <c>"exlib:refractory-"</c> for value <c>"tier1"</c> resolves
-  /// <c>"exlib:refractory-tier1"</c>).</param>
+  /// <param name="langPrefix">Prepended to the variant value to form the lang key looked up.</param>
   public static void AddVariantQualifier(string variantGroup, string langPrefix) {
     for (int i = 0; i < _qualifiers.Count; i++) {
       if (_qualifiers[i].Group == variantGroup) {
@@ -46,20 +31,13 @@ public static class ExBlockNames {
     _qualifiers.Add((variantGroup, langPrefix));
   }
 
-  /// <summary>Removes a registered variant group, if any. Internal, test-only: teardown for tests
-  /// that register a throwaway group, so it does not linger in <see cref="Decorate"/> for the rest
-  /// of the process.</summary>
+  /// <summary>Removes a registered variant group, if any; internal, test-only teardown.</summary>
   internal static void RemoveVariantQualifier(string variantGroup) =>
     _qualifiers.RemoveAll(q => q.Group == variantGroup);
 
-  /// <summary>
-  /// Decorates <paramref name="baseName"/> with the recognised variant values of
-  /// <paramref name="block"/>. Metal materials and rocks resolve through the vanilla
-  /// <c>material-*</c> and <c>rock-*</c> lang keys, brick variants through
-  /// <c>{domain}:brickname-*</c>, falling back to exlib's own <c>exlib:brickname-*</c> when the
-  /// block's mod ships none, then every group added through <see cref="AddVariantQualifier"/> in
-  /// registration order. Blocks with none of these variants are returned unchanged.
-  /// </summary>
+  /// <summary>Decorates <paramref name="baseName"/> with the recognised variant values of
+  /// <paramref name="block"/>: metal, rock, brick, then every group added through
+  /// <see cref="AddVariantQualifier"/>.</summary>
   public static string Decorate(Block block, string baseName) {
     string name = baseName;
 
@@ -89,11 +67,8 @@ public static class ExBlockNames {
     return name;
   }
 
-  /// <summary>
-  /// Appends <paramref name="qualifier"/> to <paramref name="name"/> as a parenthetical suffix. When
-  /// the name already ends in a "(...)" group ("Piping (Straight)"), the qualifier is merged into that
-  /// group ("Piping (Straight, Steel)") so brackets never stack.
-  /// </summary>
+  /// <summary>Appends <paramref name="qualifier"/> to <paramref name="name"/> as a parenthetical
+  /// suffix, merged into an existing group.</summary>
   private static string AppendQualifier(string name, string qualifier) {
     if (name.EndsWith(')') && name.Contains('('))
       return name[..^1] + Lang.Get("exlib:blockname-listsep") + qualifier + ")";

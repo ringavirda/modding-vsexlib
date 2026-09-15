@@ -5,28 +5,19 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Catalogues;
 
-/// <summary>
-/// Builds an <see cref="ExItemDef"/> for every stopping point in the stage catalogue, injected through the
-/// same path <c>MetalFamilyEmitter</c> uses for metal families. A stage that names a <c>code</c> is a thing
-/// the piece becomes, so the product catalogue falls out of the declaration instead of being hand-authored
-/// beside it. See docs/design/mechanics/process-extension.md.
-/// </summary>
+/// <summary>Builds an <see cref="ExItemDef"/> for every stopping point in the stage catalogue that
+/// names a code and opts in to generation.</summary>
 public static class ProcessItemEmitter {
-  /// <summary>Domain never generated into: injecting an itemtype there would replace one of the base
-  /// game's own items. A declaration naming a vanilla code is wiring it up, never building it.</summary>
+  /// <summary>Domain never generated into: injecting an itemtype there would replace one of the
+  /// base game's own items.</summary>
   private const string VanillaDomain = "game";
 
-  // What a declaration that specifies nothing still gets. A generated item has to load and be reachable,
-  // or a modder's first attempt is a crash rather than an untextured cube.
+  // Fallback shape for a declaration that specifies none.
   private const string FallbackShape = "game:item/ingot";
   private const int DefaultStackSize = 64;
 
-  /// <summary>
-  /// Every item def the catalogue calls for, one per stopping point that opts in. Codes are deduplicated:
-  /// a fork can reach one product down two branches, and the object loader would reject a duplicate
-  /// itemtype. <paramref name="skipped"/> collects one human-readable message per stage that named a code
-  /// and got no item, so a declaration that silently built nothing is visible in the log.
-  /// </summary>
+  /// <summary>Every item def the catalogue calls for, codes deduplicated. <paramref name="skipped"/>
+  /// collects one message per stage that named a code and got no item.</summary>
   public static IEnumerable<ExItemDef> Emit(
     IEnumerable<ProcessRoute> routes,
     out List<string> skipped
@@ -39,14 +30,12 @@ public static class ProcessItemEmitter {
     ];
   }
 
-  /// <summary>The codes <see cref="Emit"/> would build, so a guard can assert no declaration names
-  /// something unbuildable and nothing hand-authored collides with a generated code.</summary>
+  /// <summary>The codes <see cref="Emit"/> would build.</summary>
   public static IEnumerable<string> GeneratedCodes(
     IEnumerable<ProcessRoute> routes
   ) => [.. Buildable(routes, []).Select(b => b.Code.ToString())];
 
-  // Every stopping point that opts in and resolves, deduplicated: a fork can reach one product down two
-  // branches, and the object loader would reject a duplicate itemtype.
+  // Every stopping point that opts in and resolves, deduplicated.
   private static List<(
     ProcessRoute Route,
     ProcessStage Stage,
@@ -83,7 +72,7 @@ public static class ProcessItemEmitter {
     return buildable;
   }
 
-  // A code is a modder's free text, so a malformed one is skipped rather than thrown through the load.
+  // A malformed code is skipped.
   private static AssetLocation? Resolve(string code) {
     try {
       return new AssetLocation(code);
@@ -102,8 +91,7 @@ public static class ProcessItemEmitter {
       .MaxStackSize(DefaultStackSize)
       .CreativeCommon("*");
 
-    // The family's shape file, drawn at this stage's element. A stage with no element is the whole file,
-    // which is the right convention for a finished product with a model of its own.
+    // The family's shape file, drawn at this stage's element; no element is the whole file.
     def = def.Shape(route.Shape ?? FallbackShape);
     if (route.Shape != null && stage.Element != null)
       def = def.ShapeSelectiveElements(stage.Element);

@@ -2,30 +2,18 @@ using System;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
-/// <summary>
-/// Live state of one mechanical-energy run, modelled as a single spinning shaft: a drive applies torque,
-/// machines and friction resist it, and the net spins a lumped inertia up or down
-/// (<c>I*dw/dt = T_drive - T_load - T_fric</c>), with stored energy <c>E = 1/2*I*w^2</c>. A drive that cannot
-/// out-torque the load plus standing friction never spins the run up at all.
-/// <para>
-/// The simulation is in the static helpers here and needs no world; <see cref="MpEnergyNetwork"/> gathers
-/// the per-tick torques and inertia off the nodes and calls <see cref="Step"/>. Quantities are SI
-/// (w rad/s, I kg*m^2, T N*m, E J, P W); display conversion is <c>ExMeasure</c>'s.
-/// See docs/design/mechanics/mp-energy.md.
-/// </para>
-/// </summary>
+/// <summary>Live state of one mechanical-energy run, modelled as a single spinning shaft:
+/// <c>I*dw/dt = T_drive - T_load - T_fric</c>, with stored energy <c>E = 1/2*I*w^2</c>. Quantities
+/// are SI (w rad/s, I kg*m^2, T N*m, E J, P W).</summary>
 public class MpEnergyNetworkState {
-  /// <summary>Shaft speed <c>w</c> in rad/s, integrated from the net torque. Drives the flywheel spin
-  /// animation, the charge readout and any speed gates.</summary>
+  /// <summary>Shaft speed <c>w</c> in rad/s, integrated from the net torque.</summary>
   public float Speed { get; set; }
 
-  /// <summary>Lumped rotational inertia <c>I</c> in kg*m^2: the sum over every flywheel and transmission
-  /// buffer. With <c>maxSpeed</c> it sets the capacity, the spin-up time and how hard the run resists a
-  /// torque change.</summary>
+  /// <summary>Lumped rotational inertia <c>I</c> in kg*m^2: the sum over every flywheel and
+  /// transmission buffer.</summary>
   public float Inertia { get; set; }
 
-  /// <summary>Stored mechanical energy <c>E = 1/2*I*w^2</c> in joules. Recomputed from <see cref="Speed"/> and
-  /// <see cref="Inertia"/> each step; kept as a field for the block-info charge readout.</summary>
+  /// <summary>Stored mechanical energy <c>E = 1/2*I*w^2</c> in joules, recomputed each step.</summary>
   public float StoredEnergy { get; set; }
 
   /// <summary>Power fed into the run this tick, <c>P = T_drive*w</c> in watts. Display only.</summary>
@@ -34,14 +22,12 @@ public class MpEnergyNetworkState {
   /// <summary>Power drawn from the run this tick, <c>P = T_load*w</c> in watts. Display only.</summary>
   public float DemandPower { get; set; }
 
-  /// <summary>Direction of rotation. <see cref="Speed"/> is unsigned because the torque balance uses
-  /// magnitudes only; machines whose geometry depends on direction read this instead (see
-  /// <see cref="IMpEnergyDirection"/>).</summary>
+  /// <summary>Direction of rotation. <see cref="Speed"/> is unsigned; machines whose geometry
+  /// depends on direction read this instead.</summary>
   public bool Reversed { get; set; }
 
-  /// <summary>Reservoir capacity <c>E_cap = 1/2*I*w_max^2</c> in joules for the given inertia and burst speed.
-  /// Storage contributes inertia and capacity is derived from it, so a full reservoir is a flywheel spinning
-  /// at <paramref name="maxSpeed"/>.</summary>
+  /// <summary>Reservoir capacity <c>E_cap = 1/2*I*w_max^2</c> in joules for the given inertia and
+  /// burst speed.</summary>
   public static float CapacityFor(float inertia, float maxSpeed) =>
     0.5f * inertia * maxSpeed * maxSpeed;
 
@@ -55,13 +41,8 @@ public class MpEnergyNetworkState {
   public static float EnergyAtSpeed(float inertia, float speed) =>
     0.5f * inertia * speed * speed;
 
-  /// <summary>
-  /// One integration step of the shaft dynamics: <c>w += (T_drive - T_load - T_fric)/I * dt</c>, clamped to
-  /// <c>[0, maxSpeed]</c>. Friction is windage plus a standing-resistance floor,
-  /// <c>T_fric = b*w + T_idle</c>. Refreshes <see cref="Speed"/>, <see cref="StoredEnergy"/> and the display
-  /// powers. Stall, coast-down and buffering all follow from the sign of the net torque; there are no
-  /// special cases.
-  /// </summary>
+  /// <summary>One integration step of the shaft dynamics: <c>w += (T_drive - T_load - T_fric)/I *
+  /// dt</c>, clamped to <c>[0, maxSpeed]</c>, with <c>T_fric = b*w + T_idle</c>.</summary>
   public static void Step(
     MpEnergyNetworkState s,
     float dt,
@@ -71,8 +52,7 @@ public class MpEnergyNetworkState {
     float idleTorque,
     float maxSpeed
   ) {
-    // The idle floor is a resistance and only ever opposes rotation. With the w >= 0 clamp, a stopped shaft
-    // the drive cannot start stays stopped.
+    // The idle floor is a resistance and only ever opposes rotation.
     float frictionTorque = frictionCoeff * s.Speed + MathF.Max(0f, idleTorque);
     float netTorque = driveTorque - loadTorque - frictionTorque;
     float dOmega = s.Inertia > 0f ? netTorque / s.Inertia * dt : 0f;
@@ -83,15 +63,8 @@ public class MpEnergyNetworkState {
     s.DemandPower = loadTorque * s.Speed;
   }
 
-  /// <summary>
-  /// Couples two separate runs across a rigid gear of reduction <paramref name="ratio"/> (at least 1): the
-  /// north run is held at <c>w_south / ratio</c>, so south to north slows and gains torque. Each run keeps
-  /// its own reservoir; both are projected onto the gear constraint, conserving total kinetic energy times
-  /// <paramref name="retention"/> (per-tick gear-mesh loss, 1 = lossless), with the north inertia reflected
-  /// to the south side by <c>1/ratio^2</c>. Clamping <c>w_south</c> to <paramref name="maxSpeed"/> sheds the
-  /// surplus and covers <c>w_north</c> as well. A no-op when either side has no inertia. Speed, not
-  /// <see cref="StoredEnergy"/>, is read as the source of truth.
-  /// </summary>
+  /// <summary>Couples two separate runs across a rigid gear of reduction
+  /// <paramref name="ratio"/> (at least 1). A no-op when either side has no inertia.</summary>
   public static void CoupleRatio(
     MpEnergyNetworkState south,
     MpEnergyNetworkState north,

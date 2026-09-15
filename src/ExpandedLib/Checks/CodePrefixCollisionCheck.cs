@@ -4,12 +4,8 @@ using System.Linq;
 
 namespace ExpandedLib.Checks;
 
-/// <summary>
-/// Checks that no block's base code is a proper prefix of another's at a <c>-</c> boundary. Wildcards
-/// are routinely built from a base code (<c>SomeFamily.Code + "*"</c>) and used as multiblock
-/// <c>Legend</c> entries, so a prefix collision widens such a wildcard onto a foreign block and lets a
-/// structure complete with the wrong block in a cell, with every code involved still resolving.
-/// </summary>
+/// <summary>Checks that no block's base code is a proper prefix of another's at a <c>-</c> boundary,
+/// which would let a multiblock wildcard built from the shorter code match the longer one too.</summary>
 public static class CodePrefixCollisionCheck {
   /// <summary>Every collision found for <paramref name="domain"/>, as the check's <see cref="CheckResult"/>.</summary>
   public static CheckResult Run(ICheckSource source, string domain) {

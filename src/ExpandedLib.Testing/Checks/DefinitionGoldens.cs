@@ -12,21 +12,13 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Golden-file oracle for code-first definition parity. Each migrated def has a committed
-/// <c>goldens/{domain}/{Location.Path}</c> file recording the JSON it injects, so a mod's parity test is two
-/// data-driven checks: every def reproduces its golden (<see cref="CheckGolden"/>) and the golden set exactly
-/// covers the defs (<see cref="CheckCompleteness"/>).
-/// <para>
-/// Defs are collected off a mod assembly (<see cref="Collect"/>) without touching the process-wide
-/// <see cref="ExDefinitions"/> registry, so parity tests stay isolated. Goldens are read from and written to
-/// the source tree, with no build-output copy step; comparison is semantic via
-/// <see cref="DefinitionParity"/>, ignoring number type, key order and multiblock cell form.
-/// </para>
+/// Golden-file oracle for code-first definition parity: every def reproduces its golden
+/// (<see cref="CheckGolden"/>), and the golden set exactly covers the defs
+/// (<see cref="CheckCompleteness"/>).
 /// </summary>
 public static class DefinitionGoldens {
-  /// <summary>Every code-first def (blocks + items + recipe files) <paramref name="asm"/> declares for
-  /// <paramref name="domain"/> - collected by scanning the assembly and invoking each provider's static
-  /// <c>Definitions(domain)</c> factory, without registering anything into the process-wide registry.</summary>
+  /// <summary>Every code-first def (blocks, items, recipes) <paramref name="asm"/> declares for
+  /// <paramref name="domain"/>, without registering into the process-wide registry.</summary>
   public static IReadOnlyList<IExDef> Collect(string domain, Assembly asm) {
     var defs = new List<IExDef>();
     foreach (Type type in ReflectionScan.GetCandidateTypes(asm)) {
@@ -34,15 +26,12 @@ public static class DefinitionGoldens {
       defs.AddRange(ExDefinitions.ItemDefinitionsOf(type, domain));
       defs.AddRange(ExDefinitions.RecipeDefinitionsOf(type, domain));
     }
-    // Generated metal families have no provider class; they are emitted from the config/metals JSON at
-    // runtime. Feeding the emitter the same JSON off the source tree golden-checks them like any other def.
+    // Generated metal families have no provider class; emitted from config/metals JSON at runtime.
     defs.AddRange(EmittedFamilies(domain));
     return defs;
   }
 
-  // The metal-family item defs the emitter produces for the given domain, read from the source
-  // config/metals catalogue. Every mod's asset tree is scanned because a metal is emitted into the domain
-  // its molten item names, which need not match the tree it ships in.
+  // Metal-family item defs the emitter produces, read from config/metals across every asset tree.
   private static IEnumerable<ExItemDef> EmittedFamilies(string domain) {
     var metals = new List<MetalDef>();
     foreach (string assetsRoot in RepoPaths.AllAssetTrees()) {
@@ -77,9 +66,9 @@ public static class DefinitionGoldens {
       .OrderBy(p => p)
       .Select(p => new object[] { p });
 
-  /// <summary>Checks the def whose <see cref="RelativePath"/> is <paramref name="relativePath"/> against its
-  /// committed golden under <paramref name="goldenRoot"/>. Returns <c>(true, "")</c> on match, else a readable
-  /// diff message (the normalized actual token, or a missing-file note).</summary>
+  /// <summary>Checks the def whose <see cref="RelativePath"/> is <paramref name="relativePath"/>
+  /// against its committed golden under <paramref name="goldenRoot"/>.</summary>
+  /// <returns><c>(true, "")</c> on match, else a readable diff message.</returns>
   public static (bool ok, string message) CheckGolden(
     string domain,
     Assembly asm,
@@ -101,9 +90,8 @@ public static class DefinitionGoldens {
       );
   }
 
-  /// <summary>Completeness of the golden set for a mod: <c>missing</c> = defs with no golden file
-  /// (a new, unmigrated def), <c>orphans</c> = golden files under <c>{goldenRoot}/{domain}/</c> that
-  /// no def claims (a deleted def). Both empty == the goldens exactly cover the defs.</summary>
+  /// <summary>Completeness of the golden set: <c>missing</c> is defs with no golden file,
+  /// <c>orphans</c> is golden files no def claims.</summary>
   public static (
     IReadOnlyList<string> missing,
     IReadOnlyList<string> orphans
@@ -135,22 +123,13 @@ public static class DefinitionGoldens {
     return (missing, orphans);
   }
 
-  /// <summary>
-  /// Re-blesses the goldens under <paramref name="goldenRoot"/> from the current def output. Opt-in: call
-  /// only when <see cref="WriteRequested"/>, never as part of a normal test run.
-  /// <para>
-  /// <c>EXLIB_WRITE_GOLDENS=1</c> rewrites every golden in the domain, which accepts unread any drift in the
-  /// files that were not being changed. Setting it to a comma-separated list of path fragments instead
-  /// restricts the rewrite to goldens whose <c>domain/path</c> contains one of them
-  /// (<c>EXLIB_WRITE_GOLDENS=iiex/blocktypes/furnace/blastcore</c> blesses one file).
-  /// </para>
-  /// </summary>
+  /// <summary>Re-blesses the goldens under <paramref name="goldenRoot"/> from the current def
+  /// output. Opt-in: call only when <see cref="WriteRequested"/>.</summary>
   public static void WriteAll(string domain, Assembly asm, string goldenRoot) {
     IReadOnlyList<string> only = WriteFilter;
 
     foreach (IExDef def in Collect(domain, asm)) {
-      // Matched on the same domain-qualified relative path the parity test reports, so a failure message
-      // can be pasted straight into the variable.
+      // Matched on the same domain-qualified relative path the parity test reports.
       string relative = def.Location.Domain + "/" + def.Location.Path;
       if (
         only.Count > 0
@@ -164,9 +143,7 @@ public static class DefinitionGoldens {
     }
   }
 
-  /// <summary>True when <c>EXLIB_WRITE_GOLDENS</c> is set to anything non-empty - the opt-in switch a
-  /// regeneration test guards on. <c>1</c> means every golden; anything else is a path filter, see
-  /// <see cref="WriteAll"/>.</summary>
+  /// <summary>True when <c>EXLIB_WRITE_GOLDENS</c> is set to anything non-empty.</summary>
   public static bool WriteRequested =>
     !string.IsNullOrWhiteSpace(
       Environment.GetEnvironmentVariable("EXLIB_WRITE_GOLDENS")
@@ -192,17 +169,12 @@ public static class DefinitionGoldens {
     }
   }
 
-  /// <summary>
-  /// The repo root every source-tree path is resolved against. Set it to use this harness outside this
-  /// repository; leave it null to probe upward from the test binary. Also settable with the
-  /// <c>EXLIB_REPO_ROOT</c> environment variable, which is the form a CI step or a
-  /// <c>dotnet test -e</c> invocation can supply without a code change.
-  /// </summary>
+  /// <summary>The repo root every source-tree path is resolved against; also settable with the
+  /// <c>EXLIB_REPO_ROOT</c> environment variable.</summary>
   public static string? RepoRootOverride { get; set; }
 
-  /// <summary>Resolves a repo-root-relative path (e.g. <c>mods/iiex/tests/goldens</c>) to an
-  /// absolute path by walking up from the test binary to the solution root, so source-tree files are read
-  /// and written in place.</summary>
+  /// <summary>Resolves a repo-root-relative path to an absolute path, walking up from the test
+  /// binary to the solution root.</summary>
   public static string SolutionRelative(string repoRelativePath) =>
     Path.Combine(
       RepoRoot(),
@@ -216,18 +188,13 @@ public static class DefinitionGoldens {
       def.Location.Path.Replace('/', Path.DirectorySeparatorChar)
     );
 
-  // The harness ships as a consumable dev library (exlib-testing_*.zip), so the probe cannot look for
-  // this repo's own solution file by name: outside it, every path-relative helper - the goldens, the
-  // block-code table, the handbook sync - threw before doing anything. Any .sln/.slnx or a .git marks
-  // a repo root, and the override wins for a layout that has neither.
+  // Ships as a consumable dev library; cannot assume this repo's own solution file name.
+  // Any .sln, .slnx or .git marks a repo root.
   private static readonly string[] RootMarkers = ["*.sln", "*.slnx", ".git"];
 
-  /// <summary>
-  /// The resolved repo root - <see cref="RepoRootOverride"/>, else <c>EXLIB_REPO_ROOT</c>, else the
-  /// first directory above the test binary carrying a <c>.sln</c>/<c>.slnx</c>/<c>.git</c>. Public so a
-  /// helper that reads source-tree files does not need its own copy of the probe; fifteen test files in
-  /// this repository still carry one, each hardcoding this repository's solution name.
-  /// </summary>
+  /// <summary>The resolved repo root: <see cref="RepoRootOverride"/>, else
+  /// <c>EXLIB_REPO_ROOT</c>, else the first directory above the test binary carrying a
+  /// <c>.sln</c>, <c>.slnx</c> or <c>.git</c>.</summary>
   public static string RepoRoot() {
     string? configured =
       RepoRootOverride ?? Environment.GetEnvironmentVariable("EXLIB_REPO_ROOT");

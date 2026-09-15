@@ -8,14 +8,9 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Migrations;
 
 /// <summary>
-/// Server-side self-healer for orphaned block entities: a block still placed in the world whose
-/// <see cref="BlockEntity"/> was lost to a throwing deserialization or a desync, leaving it inert -
-/// no interaction, often unbreakable, impossible to build over. A block whose
-/// <see cref="Block.EntityClass"/> resolves to a type carrying
-/// <see cref="BlockEntityRegisterAttribute"/> but has no live BE gets a fresh one spawned; that scope
-/// leaves vanilla and third-party block entities untouched. The recreated BE starts from default
-/// state, so runtime data is not recovered, but the block is functional and breakable again. The
-/// chunk-column walk lives in <see cref="ChunkColumnSweeperModSystem"/>.
+/// Server-side self-healer for orphaned block entities: a block whose <see cref="BlockEntity"/> was
+/// lost to a deserialization failure or a desync. A block whose <see cref="Block.EntityClass"/>
+/// resolves to a <see cref="BlockEntityRegisterAttribute"/> type but has no live BE gets a fresh one.
 /// </summary>
 public class BlockEntityHealModSystem : ChunkColumnSweeperModSystem {
   // Block ids whose declared entityClass resolves to a [BlockEntityRegister] type. Built lazily, once
@@ -34,8 +29,7 @@ public class BlockEntityHealModSystem : ChunkColumnSweeperModSystem {
     if (ourBeTypes.Count == 0)
       return;
 
-    // entityClass code -> registered here. Resolved once per distinct code, since reading the
-    // concrete type requires instantiating a block entity.
+    // entityClass code -> registered here; resolved once per distinct code.
     Dictionary<string, bool> resolvedByCode = [];
 
     foreach (Block block in _sapi.World.Blocks) {
@@ -70,10 +64,8 @@ public class BlockEntityHealModSystem : ChunkColumnSweeperModSystem {
     }
   }
 
-  /// <summary>
-  /// Scans every loaded assembly for concrete <see cref="BlockEntity"/> types carrying
-  /// <see cref="BlockEntityRegisterAttribute"/>; all assemblies, since dependent mods declare their own.
-  /// </summary>
+  /// <summary>Scans every loaded assembly for concrete <see cref="BlockEntity"/> types carrying
+  /// <see cref="BlockEntityRegisterAttribute"/>.</summary>
   private static HashSet<Type> CollectRegisteredBlockEntityTypes() {
     HashSet<Type> types = [];
     foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
@@ -115,19 +107,13 @@ public class BlockEntityHealModSystem : ChunkColumnSweeperModSystem {
       total
     );
 
-  /// <summary>
-  /// Sweeps every currently loaded chunk and recreates any orphaned block entities, returning how many
-  /// were healed. Backs the <c>/exmod heal</c> admin command, which fixes already-loaded chunks without
-  /// a world reload; the startup sweep runs the same walk via the base.
-  /// </summary>
+  /// <summary>Sweeps every currently loaded chunk and recreates any orphaned block entities,
+  /// returning how many were healed.</summary>
   public int HealLoadedChunks() => SweepAllLoadedChunks();
 
-  /// <summary>
-  /// Spawns a fresh block entity when the block at <paramref name="pos"/> declares an
-  /// <see cref="Block.EntityClass"/> but has no live one, and returns <c>true</c>. A healthy block, an
-  /// empty cell or a block without a block entity is left untouched. Re-checks the block's own state,
-  /// so it is safe to call directly as well as from the pre-filtered chunk scan.
-  /// </summary>
+  /// <summary>Spawns a fresh block entity when the block at <paramref name="pos"/> declares an
+  /// <see cref="Block.EntityClass"/> but has no live one, returning <c>true</c>; a healthy block, an
+  /// empty cell or a block without one is left untouched.</summary>
   public bool HealOrphanAt(IBlockAccessor ba, BlockPos pos) {
     string? entityClass = ba.GetBlock(pos)?.EntityClass;
     if (entityClass == null)

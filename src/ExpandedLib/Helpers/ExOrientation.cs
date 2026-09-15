@@ -5,24 +5,12 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Helpers;
 
-/// <summary>
-/// Horizontal rotation math shared by the mod family's oriented blocks. Fillers, connectors,
-/// particle boxes and sub-cells are authored against a north (0°) layout and rotated by the
-/// structure's angle. Every method uses the same convention: north 0°, west 90°, south 180°,
-/// east 270°, with <c>(x,z) → 90:(z,-x) · 180:(-x,-z) · 270:(-z,x)</c>.
-/// </summary>
+/// <summary>Horizontal rotation math shared by the mod family's oriented blocks: north 0, west 90,
+/// south 180, east 270.</summary>
 public static class ExOrientation {
-  /// <summary>
-  /// A block code's path split on <c>-</c>, for code that inspects or rewrites one dash-segment at a
-  /// time (an orientation word, a network node's direction token) and rejoins the rest unchanged. A
-  /// leading <c>domain:</c> is stripped before splitting and is not part of any segment. Shared by
-  /// <see cref="ExpandedLib.Definitions.MultiblockLayoutBuilder.FindOrientationSegments"/> (finds which
-  /// segments name an orientation) and <see cref="ExpandedLib.Structures.MultiblockFacings.RotateSegments"/>
-  /// (rewrites the ones a layout marked).
-  /// </summary>
+  /// <summary>A block code's path split on <c>-</c>, domain stripped.</summary>
   public readonly struct SegmentedCode {
-    /// <summary>The path's dash-segments, domain stripped. Mutable in place - a caller rewriting one or
-    /// more segments before <see cref="Join(IReadOnlyList{string})"/> owns this array exclusively.</summary>
+    /// <summary>The path's dash-segments, domain stripped.</summary>
     public string[] Parts { get; }
 
     public SegmentedCode(string code) {
@@ -48,16 +36,13 @@ public static class ExOrientation {
     public string Join() => Join(Parts);
   }
 
-  /// <summary>
-  /// The rotation angle a horizontal side variant names (north 0, west 90, south 180, east 270).
-  /// Accepts the full <c>side</c> words and the single-letter <c>orientation</c> codes ("n"/"w"/"s"/"e").
-  /// </summary>
+  /// <summary>Returns the rotation angle a horizontal side variant names, full word or single letter.</summary>
   public static int AngleFromSide(string? side) =>
     side switch {
       "east" or "e" => 270,
       "south" or "s" => 180,
       "west" or "w" => 90,
-      _ => 0, // "north"/"n" or default
+      _ => 0,
     };
 
   /// <summary>Rotates a structure-local offset by <paramref name="angle"/> (Y is untouched).</summary>
@@ -66,48 +51,35 @@ public static class ExOrientation {
 
   /// <summary>Rotates a structure-local offset by <paramref name="angle"/> (Y is untouched).</summary>
   public static Vec3i RotateOffset(int x, int y, int z, int angle) {
-    // Normalise first so callers can pass any multiple or offset (e.g. Angle + 180 -> 450)
-    // without it slipping past the 90/180/270 cases into the unrotated default.
     angle = ((angle % 360) + 360) % 360;
     var (dx, dz) = angle switch {
       90 => (z, -x),
       180 => (-x, -z),
       270 => (-z, x),
-      _ => (x, z), // 0° or any unhandled value
+      _ => (x, z),
     };
     return new Vec3i(dx, y, dz);
   }
 
-  /// <summary>
-  /// Rotates a continuous XZ offset by <paramref name="angle"/> - the same turn
-  /// <see cref="RotateOffset(int, int, int, int)"/> makes, for a hit point rather than a cell. Kept as its
-  /// own overload so neither it nor the integer version has to round.
-  /// </summary>
+  /// <summary>Rotates a continuous XZ offset by <paramref name="angle"/>, the same turn as <see cref="RotateOffset(int, int, int, int)"/> for a hit point.</summary>
   public static (double X, double Z) RotateXZ(double x, double z, int angle) {
     angle = ((angle % 360) + 360) % 360;
     return angle switch {
       90 => (z, -x),
       180 => (-x, -z),
       270 => (-z, x),
-      _ => (x, z), // 0 or any unhandled value
+      _ => (x, z),
     };
   }
 
-  /// <summary>
-  /// Takes a world-frame XZ offset back into the structure's authored frame - the inverse of
-  /// <see cref="RotateXZ"/>, expressed as the opposite turn so there is one table and not two. What a
-  /// machine reading where along itself a player clicked needs, since interaction arrives in world space
-  /// and every layout is authored facing north.
-  /// </summary>
+  /// <summary>Takes a world-frame XZ offset back into the structure's authored frame, the inverse of <see cref="RotateXZ"/>.</summary>
   public static (double X, double Z) UnrotateXZ(
     double x,
     double z,
     int angle
   ) => RotateXZ(x, z, -angle);
 
-  /// <summary>
-  /// Converts a structure-local offset into a world position: <c>origin + RotateOffset(local, angle)</c>.
-  /// </summary>
+  /// <summary>Converts a structure-local offset into a world position.</summary>
   public static BlockPos GlobalPos(
     BlockPos origin,
     int localX,
@@ -119,10 +91,7 @@ public static class ExOrientation {
     return origin.AddCopy(r.X, r.Y, r.Z);
   }
 
-  /// <summary>
-  /// Reads a structure-local <c>{ x, y, z }</c> offset from an already-resolved JSON node, falling back
-  /// to <paramref name="fallback"/> when the node is absent.
-  /// </summary>
+  /// <summary>Reads a structure-local <c>{ x, y, z }</c> offset from a JSON node, falling back to <paramref name="fallback"/> when absent.</summary>
   public static Vec3i ReadOffset(JsonObject? node, Vec3i fallback) {
     if (node == null || !node.Exists)
       return fallback;
@@ -133,9 +102,7 @@ public static class ExOrientation {
     );
   }
 
-  /// <summary>
-  /// The double counterpart of <see cref="ReadOffset"/>, for continuous points such as particle anchors.
-  /// </summary>
+  /// <summary>The double counterpart of <see cref="ReadOffset"/>, for continuous points such as particle anchors.</summary>
   public static Vec3d ReadOffsetD(JsonObject? node, Vec3d fallback) {
     if (node == null || !node.Exists)
       return fallback;
@@ -146,10 +113,7 @@ public static class ExOrientation {
     );
   }
 
-  /// <summary>
-  /// Resolves a structure-local offset node to a world cell for the placed rotation:
-  /// <c>origin + RotateOffset(ReadOffset(node), angle)</c>.
-  /// </summary>
+  /// <summary>Resolves a structure-local offset node to a world cell for the placed rotation.</summary>
   public static BlockPos WorldPosFromAttr(
     BlockPos origin,
     JsonObject? node,
@@ -161,11 +125,7 @@ public static class ExOrientation {
     return origin.AddCopy(r.X, r.Y, r.Z);
   }
 
-  /// <summary>
-  /// Copies of <paramref name="boxes"/> rotated around the block centre by <paramref name="angle"/>°
-  /// (Y axis); the input array itself for angle 0. JSON boxes are authored north-facing and do not
-  /// auto-rotate with the <c>side</c> variant, so port blocks rotate them to match.
-  /// </summary>
+  /// <summary>Returns copies of <paramref name="boxes"/> rotated around the block centre by <paramref name="angle"/> degrees; the input array itself for angle 0.</summary>
   public static Cuboidf[] RotateBoxes(Cuboidf[] boxes, int angle) {
     angle = ((angle % 360) + 360) % 360;
     if (angle == 0 || boxes.Length == 0)
@@ -177,10 +137,7 @@ public static class ExOrientation {
     return rotated;
   }
 
-  /// <summary>
-  /// Rotates a horizontal block face by <paramref name="angle"/>, same convention as
-  /// <see cref="RotateOffset(Vec3i, int)"/>. Vertical faces come back unchanged.
-  /// </summary>
+  /// <summary>Rotates a horizontal block face by <paramref name="angle"/>; vertical faces come back unchanged.</summary>
   public static BlockFacing RotateFacing(BlockFacing baseFace, int angle) {
     if (baseFace.IsVertical)
       return baseFace;
@@ -189,11 +146,7 @@ public static class ExOrientation {
     return BlockFacing.FromNormal(r) ?? baseFace;
   }
 
-  /// <summary>
-  /// Inverse of <see cref="AngleFromSide"/>: the side word for a rotation angle (0 north, 90 west,
-  /// 180 south, 270 east). <paramref name="asLetter"/> selects the single-letter <c>orientation</c>
-  /// form over the full <c>side</c> word.
-  /// </summary>
+  /// <summary>Inverse of <see cref="AngleFromSide"/>: the side word for a rotation angle.</summary>
   public static string SideFromAngle(int angle, bool asLetter = false) {
     angle = ((angle % 360) + 360) % 360;
     return angle switch {
@@ -204,11 +157,7 @@ public static class ExOrientation {
     };
   }
 
-  /// <summary>
-  /// String counterpart of <see cref="RotateFacing"/>: rotates a horizontal side word by
-  /// <paramref name="angle"/>, preserving the input's form (a word stays a word, a letter stays a
-  /// letter). Vertical and unrecognised words come back unchanged, being invariant under a Y rotation.
-  /// </summary>
+  /// <summary>String counterpart of <see cref="RotateFacing"/>: rotates a horizontal side word by <paramref name="angle"/>, preserving its form.</summary>
   public static string RotateSideWord(string side, int angle) {
     if (!IsHorizontalSideWord(side))
       return side;
@@ -216,51 +165,32 @@ public static class ExOrientation {
     return SideFromAngle(AngleFromSide(side) + angle, asLetter);
   }
 
-  /// <summary>True for the four horizontal side words, full or single-letter. Vertical and unknown
-  /// words are false: a Y rotation does not move them.</summary>
+  /// <summary>True for the four horizontal side words, full or single-letter.</summary>
   public static bool IsHorizontalSideWord(string? side) =>
     side is "north" or "south" or "east" or "west" or "n" or "s" or "e" or "w";
 
-  /// <summary>
-  /// The <see cref="BlockFacing"/> a <c>side</c> or <c>orientation</c> token names, in either spelling
-  /// (<c>north</c> or <c>n</c>); null when the token names no facing. Use this rather than
-  /// <c>BlockFacing.FromCode</c>, which understands only the full words and returns null for the single
-  /// letters <c>orientation</c> groups use.
-  /// </summary>
+  /// <summary>Returns the <see cref="BlockFacing"/> a <c>side</c> or <c>orientation</c> token names, in either spelling; null when the token names no facing.</summary>
   public static BlockFacing? FacingFromSide(string? side) {
     if (string.IsNullOrEmpty(side))
       return null;
-    // The vertical faces have single-letter spellings too - a footprint stores every port face as its
-    // facing's initial - and vanilla knows only the full words.
     if (side is "u")
       return BlockFacing.UP;
     if (side is "d")
       return BlockFacing.DOWN;
-    // Any other non-horizontal token: hand it to vanilla unchanged (up/down/...).
     if (!IsHorizontalSideWord(side))
       return BlockFacing.FromCode(side);
-    // Horizontal, either spelling: go through the angle, which accepts both, and hand vanilla the word.
     return BlockFacing.FromCode(
       SideFromAngle(AngleFromSide(side), asLetter: false)
     );
   }
 
-  /// <summary>
-  /// The token a <see cref="BlockFacing"/> wears in a block code: the full word for a <c>side</c> group
-  /// (<c>north</c>), the single letter for a network node's <c>orientation</c> group (<c>n</c>).
-  /// </summary>
+  /// <summary>Returns the token a <see cref="BlockFacing"/> wears in a block code, full word or single letter.</summary>
   public static string TokenOf(BlockFacing facing, bool asLetter) =>
     SideFromAngle(AngleFromSide(facing.Code), asLetter);
 
   #region Multi-direction orientation tokens (network nodes)
 
-  // Network nodes spell their orientation as the set of faces they connect, not as a side word: pipes,
-  // passthroughs, axles, junctions and valves carry an `orientation` variant such as `ns`, `we`, `ud`,
-  // `nswe`, `nsud`, `weud`, plus the valves' reversed `sn` / `ew` / `du`.
-  //
-  // The grammar is exact - one direction, or whole axis pairs with each axis used at most once - rather
-  // than "a run of nsewud letters", because direction letters also spell ordinary words (`sun`, `wend`,
-  // `used`) and a loose test would rotate a material segment into a code matching no block.
+  // A token is one direction letter or whole axis pairs, each axis used at most once.
 
   private static readonly string[] AxisPairs =
   [
@@ -272,18 +202,13 @@ public static class ExOrientation {
     "du",
   ];
 
-  /// <summary>
-  /// True for a whole code segment naming an orientation: a single side (<c>n</c>, <c>north</c>,
-  /// <c>u</c>) or a concatenation of complete axis pairs (<c>ns</c>, <c>weud</c>, <c>nswe</c>). Naming
-  /// an orientation is not the same as rotating under Y; <see cref="RotatesUnderY"/> answers that.
-  /// </summary>
+  /// <summary>True for a whole code segment naming an orientation: a single side or a concatenation of complete axis pairs.</summary>
   public static bool IsOrientationToken(string? token) {
     if (string.IsNullOrEmpty(token))
       return false;
     if (IsHorizontalSideWord(token) || token is "up" or "down" or "u" or "d")
       return true;
 
-    // Whole axis pairs, each axis at most once. Length must therefore be even and <= 6.
     if (token.Length % 2 != 0 || token.Length > 6)
       return false;
     var axesSeen = new List<char>(3);
@@ -299,12 +224,7 @@ public static class ExOrientation {
     return true;
   }
 
-  /// <summary>
-  /// <see cref="RotateSideWord"/> for multi-direction tokens: letters rotate independently and the
-  /// result is emitted in canonical axis order (<c>ns</c>, <c>we</c>, <c>ud</c>); a non-orientation
-  /// token comes back unchanged. Canonicalising discards direction, so a layout pinning a directed
-  /// valve must use <c>LegendAnyFacing</c>. See docs/design/mechanics/orientation-schemes.md.
-  /// </summary>
+  /// <summary><see cref="RotateSideWord"/> for multi-direction tokens, emitted in canonical axis order; a non-orientation token comes back unchanged.</summary>
   public static string RotateOrientationToken(string token, int angle) {
     if (!IsOrientationToken(token))
       return token;
@@ -321,7 +241,7 @@ public static class ExOrientation {
           axes.Add(axis);
       }
       var sb = new System.Text.StringBuilder(token.Length);
-      foreach (char axis in "nwu") // canonical axis order: NS, WE, UD
+      foreach (char axis in "nwu")
         if (axes.Contains(axis))
           sb.Append(
             axis == 'n' ? "ns"
@@ -333,11 +253,7 @@ public static class ExOrientation {
     return RotateSideWord(token, angle);
   }
 
-  /// <summary>
-  /// Whether <paramref name="token"/> moves under a Y rotation, so a layout knows whether to emit an
-  /// orientation check for the segment. <c>ud</c>, <c>up</c> and <c>down</c> are false at every
-  /// structure angle and are covered by the code matching literally.
-  /// </summary>
+  /// <summary>Whether <paramref name="token"/> moves under a Y rotation.</summary>
   public static bool RotatesUnderY(string token) =>
     IsOrientationToken(token) && RotateOrientationToken(token, 90) != token;
 
@@ -356,10 +272,7 @@ public static class ExOrientation {
 
   #endregion
 
-  /// <summary>
-  /// Rotates a block-relative float coordinate around a cell centre by <paramref name="angle"/>: the
-  /// continuous counterpart of <see cref="RotateOffset(Vec3i, int)"/>, for particle and render boxes.
-  /// </summary>
+  /// <summary>Rotates a block-relative float coordinate around a cell centre by <paramref name="angle"/>.</summary>
   public static void RotateAroundCenter(
     ref float x,
     ref float z,

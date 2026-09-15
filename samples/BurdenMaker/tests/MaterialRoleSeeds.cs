@@ -3,12 +3,8 @@ using ExpandedLib.Industry.Materials;
 
 namespace BurdenMaker.Tests;
 
-/// <summary>
-/// Seeds <see cref="MaterialRoleRegistry"/> with the sample's default material-role assignments: the
-/// headless equivalent of loading <c>assets/burdenmaker/config/materialroles.json</c>, which the test
-/// harness has no asset pipeline to read. Mirrors that file entry for entry. Call once from the test
-/// assembly's module initializer. Idempotent.
-/// </summary>
+/// <summary>Seeds <see cref="MaterialRoleRegistry"/> with the sample's default material-role
+/// assignments, mirroring <c>assets/burdenmaker/config/materialroles.json</c>. Idempotent.</summary>
 public static class MaterialRoleSeeds {
   private static bool _seeded;
 

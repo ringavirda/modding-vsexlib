@@ -8,13 +8,8 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Industry.Pipes;
 
 /// <summary>
-/// The base pipe block: a self-orienting node of the unified "pipe" network. Provides the
-/// orientation tables shared by every straight/bend/junction variant. Each tier reuses this class
-/// and its block entity through the registered class keys <c>exlib.BlockPipe</c> /
-/// <c>exlib.BlockEntityPipe</c>, calling <see cref="Segments"/> from a thin per-mod
-/// <see cref="IExBlockDefProvider"/>: iiex the plated tier, iiex the cast tier, siex the rolled
-/// tier. One material per tier, so there is no <c>material</c> variant group; the tier itself is a
-/// variant (<see cref="Tier"/>), which is what lets one domain carry several.
+/// The base pipe block: a self-orienting node of the unified "pipe" network, providing the
+/// orientation tables shared by every straight/bend/junction variant.
 /// </summary>
 [BlockRegister]
 public partial class BlockPipe
@@ -36,26 +31,14 @@ public partial class BlockPipe
   /// <summary>Tier name of the rolled pipe family - the HP main, 12 atm and welded.</summary>
   public const string RolledTier = "rolled";
 
-  /// <summary>The defs this class declares itself. Only the <c>type</c> and <c>orientation</c> pairs
-  /// are read from these - <see cref="BlockNetworkNode.AllowedOrientations"/> derives its map from
-  /// them - so they carry no tier and are never registered: the shipped blocktypes come from each
-  /// tier's own provider. Yields nothing for exlib itself, which authors the factories but ships no
-  /// pipe content.</summary>
+  /// <summary>The defs this class declares itself, used only to derive
+  /// <see cref="BlockNetworkNode.AllowedOrientations"/>; empty for the <c>exlib</c> domain.</summary>
   public static IEnumerable<ExBlockDef> Definitions(string domain) =>
     domain == "exlib" ? [] : Segments(domain, tier: null);
 
-  /// <summary>
-  /// The four plain pipe segments (straight / bend / T / X junction) of one <paramref name="tier"/>
-  /// under <paramref name="domain"/>. All four share the <c>pipe</c> code at distinct asset paths and
-  /// an identical common surface (<see cref="Common"/>); each adds only its variant list, shape
-  /// rotations and collision boxes. Each tier ships its own shapes at <c>{domain}:pipe/{tier}/*</c>.
-  /// <para>
-  /// A null <paramref name="tier"/> declares no tier axis: the segments come out as
-  /// <c>pipe-{type}-{orientation}</c> and take the default rating, throughput and joint. That is the
-  /// shape <see cref="Definitions"/> uses to derive orientations, and the one a consumer shipping a
-  /// single pipe family wants.
-  /// </para>
-  /// </summary>
+  /// <summary>The four plain pipe segments (straight / bend / T / X junction) of one
+  /// <paramref name="tier"/> under <paramref name="domain"/>; a null <paramref name="tier"/> yields a
+  /// tierless family.</summary>
   public static IEnumerable<ExBlockDef> Segments(string domain, string? tier) =>
     [
       Straight(domain, tier),
@@ -64,15 +47,8 @@ public partial class BlockPipe
       XJunction(domain, tier),
     ];
 
-  /// <summary>
-  /// The asset path a tier's segment is declared and drawn at: <c>pipe/{tier}/{leaf}</c>, or
-  /// <c>pipe/{leaf}</c> for a tierless family. The tier belongs in the path and not only in the
-  /// variant grammar because <see cref="ExDefinitions"/> keys on
-  /// <see cref="ExBlockDef.Location"/> - which carries the asset path and no variants - so two tiers
-  /// sharing a domain would land on one key and the later registration would replace the earlier,
-  /// last-writer-wins and unlogged. The shape lives at the same path for the same reason: two tiers'
-  /// segments are different art.
-  /// </summary>
+  /// <summary>The asset path a tier's segment is declared and drawn at: <c>pipe/{tier}/{leaf}</c>, or
+  /// <c>pipe/{leaf}</c> for a tierless family.</summary>
   internal static string Asset(string? tier, string leaf) =>
     tier == null ? $"pipe/{leaf}" : $"pipe/{tier}/{leaf}";
 
@@ -86,7 +62,7 @@ public partial class BlockPipe
   ) {
     ExBlockDef def = ExBlockDef
       .Create(domain, "pipe", assetName)
-      // Shared base class + BE, registered by exlib; every tier's segments bind to these keys.
+      // Shared base class + BE; every tier's segments bind to these keys.
       .Class<BlockPipe>()
       .EntityClass<BlockEntityPipe>()
       .Material(EnumBlockMaterial.Metal)
@@ -94,24 +70,18 @@ public partial class BlockPipe
       .MaxStackSize(maxStack)
       .CreativeTab("general", creativeSelector)
       .CreativeTab(domain, creativeSelector)
-      // Grouped per tier, not across them: a groupBy selector with no domain is qualified with the
-      // block's own, so today's three domains already give three handbook entries. Widening to
-      // `pipe-*-straight-*` would merge them the moment two tiers share a domain.
+      // Grouped per tier: a groupBy selector with no domain is qualified with the block's own domain.
       .Handbook(HandbookGroups(tier))
       .Behavior("Lockable")
-      // No blanket texture override: each tier's shape declares its own texture map, and the shapes
-      // disagree on key names (the plated bend calls its body sheet "iron42" where the straight
-      // calls it "iron4"), so a single override would repaint some segments and miss others.
+      // No blanket texture override: each tier's shape declares its own texture map.
       .RenderPass("OpaqueNoCull")
       .FaceCullMode("NeverCull")
       .LightAbsorption(0)
       .SideSolid(false)
       .SideOpaque(false);
 
-    // The tier is the high-order axis: `pipe-{tier}-{type}-{orientation}`. Declared before each
-    // segment adds `type`, so the leading `*` of every shape and creative selector below absorbs it
-    // and they keep matching. Declared last it would break all of them, and silently - a blocktype
-    // whose shapebytype matches nothing loads with no shape rather than failing.
+    // The tier is the high-order axis: `pipe-{tier}-{type}-{orientation}`. Must be declared before
+    // each segment adds `type`.
     return tier == null ? def : def.VariantGroup("tier", tier);
   }
 
@@ -235,15 +205,8 @@ public partial class BlockPipe
 
   #region Tier
 
-  /// <summary>
-  /// The pipe family this block belongs to, from its <c>tier</c> variant, or null for a pipe
-  /// declaring no tier axis - every fitting, and any consumer shipping a single family. The tier is
-  /// the key to all three per-tier registries below, so a block without one takes their defaults.
-  /// <para>
-  /// A variant rather than the domain, because a merged mod carries several tiers under one domain
-  /// and a tier must still be legible on the block, in its code and in its name.
-  /// </para>
-  /// </summary>
+  /// <summary>The pipe family this block belongs to, from its <c>tier</c> variant, or null for a pipe
+  /// declaring no tier axis.</summary>
   public virtual string? Tier => Variant["tier"];
 
   #endregion
@@ -251,7 +214,6 @@ public partial class BlockPipe
   #region Burst rating (per-tier)
 
   // Each pipe tier registers its plain-segment burst pressure from its own config in ModSystem.Start.
-  // Resolved by the segment's own tier, so a run of mixed tiers is capped by its weakest segment.
   private static readonly Dictionary<string, Func<float>> _burstByTier = new();
 
   private const float DefaultBurstPressure = 5f;
@@ -260,31 +222,22 @@ public partial class BlockPipe
   public static void RegisterBurst(string tier, Func<float> burstPressure) =>
     _burstByTier[tier] = burstPressure;
 
-  /// <summary>
-  /// Pressure (atm) above which this pipe bursts - the weakest pipe limits a run. Read from the
-  /// per-tier registry keyed by this block's <see cref="Tier"/> (falls back to
-  /// <see cref="DefaultBurstPressure"/> if the block names no tier, or its owner never registered one).
-  /// </summary>
+  /// <summary>Pressure (atm) above which this pipe bursts, read from the per-tier registry keyed by
+  /// this block's <see cref="Tier"/>, or <see cref="DefaultBurstPressure"/> when unregistered.</summary>
   public virtual float BurstPressure =>
     Tier != null && _burstByTier.TryGetValue(Tier, out var f)
       ? f()
       : DefaultBurstPressure;
 
-  /// <summary>
-  /// Whether this pipe takes part in over-pressure failure. Only the plain segments of the base
-  /// <see cref="BlockPipe"/> class (straight, bend, tjunction, xjunction) burst and cap a run's
-  /// pressure; every fitting (valve, outlet, passthrough, tuyere) is a subclass and exempt, so a new
-  /// subclass is non-bursting unless it overrides this.
-  /// </summary>
+  /// <summary>Whether this pipe takes part in over-pressure failure; only the plain segments of the
+  /// base <see cref="BlockPipe"/> class do, by default.</summary>
   public virtual bool CanBurst => GetType() == typeof(BlockPipe);
 
   #endregion
 
   #region Throughput (per-tier)
 
-  // How much a tier's pipe passes per second, as distinct from how much a run holds (nodes x
-  // LitresPerPipe) or how hard it can be pressurised (burst). Registered per tier from each mod's
-  // ModSystem, like the burst rating and the joint family; a run is capped by its weakest segment.
+  // How much a tier's pipe passes per second, registered per tier from each mod's ModSystem.
   private static readonly Dictionary<string, Func<float>> _throughputByTier =
     new();
 
@@ -294,16 +247,9 @@ public partial class BlockPipe
   public static void RegisterThroughput(string tier, Func<float> throughput) =>
     _throughputByTier[tier] = throughput;
 
-  /// <summary>
-  /// Litres per second this pipe will pass - the smallest across a run caps the whole run. Read from
-  /// the per-tier registry keyed by this block's <see cref="Tier"/> (falls back to
-  /// <see cref="DefaultThroughput"/> if the block names no tier, or its owner never registered one).
-  /// <para>
-  /// Only a plain segment limits throughput, the same rule as <see cref="CanBurst"/>. Fittings are
-  /// exempt because some are a machine's own port on a single-node network rather than a length of
-  /// main (the iiex tuyere), and limiting there would cap every furnace at that tier's rate.
-  /// </para>
-  /// </summary>
+  /// <summary>Litres per second this pipe will pass, read from the per-tier registry keyed by this
+  /// block's <see cref="Tier"/>, or <see cref="DefaultThroughput"/> when unregistered; unlimited when
+  /// <see cref="CanBurst"/> is false.</summary>
   public virtual float MaxThroughput =>
     !CanBurst ? float.MaxValue
     : Tier != null && _throughputByTier.TryGetValue(Tier, out var f) ? f()
@@ -313,10 +259,8 @@ public partial class BlockPipe
 
   #region Joint family (which tiers physically couple)
 
-  // A pipe tier's joint, an axis independent of its pressure rating. The plated and cast tiers are
-  // both square in section and bolted through flanges, so they mate; the rolled tier is octagonal
-  // and welded, with no flange to bolt to, so it mates only with itself. Registered per tier from
-  // each mod's ModSystem, like the burst rating.
+  // A pipe tier's joint, an axis independent of its pressure rating; registered per tier from each
+  // mod's ModSystem.
   private static readonly Dictionary<string, string> _jointByTier = new();
 
   /// <summary>Default joint family: the bolted flange.</summary>
@@ -329,28 +273,20 @@ public partial class BlockPipe
   public static void RegisterJoint(string tier, string jointFamily) =>
     _jointByTier[tier] = jointFamily;
 
-  /// <summary>
-  /// The coupling this pipe presents, resolved from the per-tier registry by its own
-  /// <see cref="Tier"/>. Two pipes join only when these match, and a fitting - which names no tier -
-  /// takes the flange, so every flanged tier's run reaches them.
-  /// </summary>
+  /// <summary>The coupling this pipe presents, resolved from the per-tier registry by its own
+  /// <see cref="Tier"/>; a fitting, which names no tier, takes the flange.</summary>
   public virtual string JointFamily =>
     Tier != null && _jointByTier.TryGetValue(Tier, out string? joint)
       ? joint
       : FlangedJoint;
 
-  /// <summary>
-  /// A pipe couples to another pipe only when both present the same joint. Blocks that are not pipes
-  /// (machine ports, condensers, fluid intakes) are unaffected and join any tier. Every fitting
-  /// (valve, outlet, passthrough) is a <see cref="BlockPipe"/> subclass, so a run reaches only the
-  /// fittings of tiers sharing its joint family.
-  /// </summary>
+  /// <summary>A pipe couples to another pipe only when both present the same joint; a non-pipe
+  /// neighbour is always accepted.</summary>
   public override bool AcceptsNeighbour(Block neighbour) =>
     neighbour is not BlockPipe other || other.JointFamily == JointFamily;
 
   #endregion
 
-  // AllowedOrientations and GetFallbackOrientation are inherited from BlockNetworkNode, which derives
-  // both from this block's own code-first defs resolved by runtime type, so every pipe subclass gets
-  // its own map with no duplicated list and no hand-kept fallback table.
+  // AllowedOrientations and GetFallbackOrientation are inherited from BlockNetworkNode, derived from
+  // this block's own code-first defs resolved by runtime type.
 }

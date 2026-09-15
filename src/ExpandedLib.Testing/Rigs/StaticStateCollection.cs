@@ -7,24 +7,13 @@ using Xunit;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// The pattern for serializing every test class that touches the same process-wide static state:
-/// <code>
-/// [CollectionDefinition(Name, DisableParallelization = true)]
-/// public class SomeCollection { public const string Name = "Some"; }
-/// </code>
-/// A class in that collection then carries <c>[Collection(SomeCollection.Name)]</c> (or the bare
-/// string literal - xUnit accepts either, matching by name). xUnit runs test classes in parallel by
-/// default and a collection with no definition still exists implicitly, so a typo'd or copy-pasted
-/// name silently starts its own collection instead of joining the one it meant to - two classes that
-/// both mutate the same static field, each alone in its own "collection", racing on it. This type is
-/// the guard against that: it fails when a <c>[Collection("X")]</c> name has no matching
-/// <c>[CollectionDefinition("X", ...)]</c> anywhere in the assembly.
+/// Checks that every <c>[Collection("...")]</c> name has a matching
+/// <c>[CollectionDefinition("...", ...)]</c> in the same assembly.
 /// </summary>
 public static class StaticStateCollection {
   /// <summary>
-  /// Asserts that every xUnit collection name named by a <c>[Collection("...")]</c> attribute in
-  /// <paramref name="assembly"/> has a matching <c>[CollectionDefinition("...", ...)]</c> in the same
-  /// assembly. Call once per test assembly, from one <c>[Fact]</c>.
+  /// Asserts that every <c>[Collection("...")]</c> name in <paramref name="assembly"/> has a matching
+  /// <c>[CollectionDefinition("...", ...)]</c> in the same assembly.
   /// </summary>
   /// <exception cref="InvalidOperationException">At least one collection name is used but never
   /// defined.</exception>
@@ -53,10 +42,8 @@ public static class StaticStateCollection {
       );
   }
 
-  // Read through CustomAttributeData rather than the strongly-typed attribute instance: both
-  // [Collection] and [CollectionDefinition] take the name as their sole positional constructor
-  // argument, and reading it this way is immune to which xUnit attribute-property shape a given
-  // package version exposes.
+  // Reads through CustomAttributeData, immune to the attribute's property shape across package
+  // versions.
   private static IEnumerable<string> AttributeNames<TAttribute>(Type type)
     where TAttribute : Attribute =>
     CustomAttributeData

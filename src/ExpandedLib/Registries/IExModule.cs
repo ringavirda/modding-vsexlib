@@ -4,17 +4,8 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// An entry point of a module: an assembly carrying <c>[assembly: ExModule]</c>. The host names in
-/// <c>Host</c> runs it through the phases of its own <see cref="ModSystem"/>, in the order
-/// <see cref="ExModules.For"/> gives the module among the rest of the host's, after registering the
-/// assembly's classes for it. Every method has an empty default, so a module overrides only the
-/// phases it needs. Phase order per module: <see cref="StartPre"/>, <see cref="Start"/>,
-/// <see cref="AssetsLoaded"/>, <see cref="AssetsFinalize"/>, then
-/// <see cref="StartServerSide"/>/<see cref="StartClientSide"/> for the running side, then
-/// <see cref="Dispose"/> - the same order the engine calls a <see cref="ModSystem"/>'s own hooks in.
-/// See the wiki's Modules page.
-/// </summary>
+/// <summary>An entry point of a module, run through the phases of its host's own
+/// <see cref="ModSystem"/>. Every method has an empty default.</summary>
 public interface IExModule {
   /// <summary>Runs in the host's <c>StartPre</c>, before any registration.</summary>
   void StartPre(ICoreAPI api) { }
@@ -31,22 +22,11 @@ public interface IExModule {
   /// commands have been registered.</summary>
   void StartClientSide(ICoreClientAPI api) { }
 
-  /// <summary>
-  /// Runs in the host's <c>AssetsLoaded</c>, at the host's own <c>ExecuteOrder</c> - 0.03 for the
-  /// exlib host, ahead of the game's own JSON patch loader at 0.05, so an asset read here sees
-  /// unpatched JSON. A catalogue read belongs in <see cref="AssetsFinalize"/> instead. This is also
-  /// not where a definition is contributed - a module that emits code-first definitions from loaded
-  /// assets implements <see cref="Definitions.IExDefinitionContributor"/> instead, which runs after
-  /// every module's <c>Start</c> and before injection regardless of host order. A module hosted by
-  /// its own mod's <see cref="ExModSystem"/> runs this at that mod's order (0.1 by default), which
-  /// is past the patch loader, so a read there is post-patch.
-  /// </summary>
+  /// <summary>Runs in the host's <c>AssetsLoaded</c>, at the host's own <c>ExecuteOrder</c>.</summary>
   void AssetsLoaded(ICoreAPI api) { }
 
-  /// <summary>
-  /// Runs in the host's <c>AssetsFinalize</c>, after the asset-patch pipeline has merged every mod's
-  /// JSON, whatever the host's own <c>ExecuteOrder</c>. A module loading a catalogue does it here.
-  /// </summary>
+  /// <summary>Runs in the host's <c>AssetsFinalize</c>, after the asset-patch pipeline has merged
+  /// every mod's JSON.</summary>
   void AssetsFinalize(ICoreAPI api) { }
 
   /// <summary>Runs when the host disposes.</summary>

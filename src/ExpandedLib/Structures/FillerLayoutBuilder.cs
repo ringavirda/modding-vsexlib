@@ -4,12 +4,7 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Structures;
 
-/// <summary>
-/// A legend symbol's registered settings: whether other blocks may attach, and any hosted behaviours,
-/// partial collision boxes or passive network port. <see cref="FillerLayoutBuilder"/>'s registration
-/// methods (<c>Solid</c>, <c>Attach</c>, <c>Host</c>, <c>Slab</c>, <c>Port</c>) each build one of these
-/// and map it whole, so re-registering a symbol replaces its settings rather than merging into them.
-/// </summary>
+/// <summary>A legend symbol's registered settings: attach, hosted behaviours, boxes or a network port.</summary>
 internal readonly record struct FillerGlyph(
   bool AllowAttach,
   IReadOnlyList<FillerBehaviorSpec>? Hosted = null,
@@ -18,18 +13,9 @@ internal readonly record struct FillerGlyph(
   string? PortNetwork = null
 );
 
-/// <summary>
-/// Authors a mega-block <c>fillerOffsets</c> footprint from ASCII diagrams (grid rules in
-/// <see cref="StructureFootprint.Layout"/> and <see cref="CellGrid"/>). Draw it as one
-/// <see cref="Layer"/> per Y level (floor plan, rows +Z / cols +X), one <see cref="Slice"/> per X level
-/// (rows -Y down / cols +Z), or one <see cref="Face"/> per Z level (rows -Y down / cols +X); a layout may
-/// mix them. By default <c>'#'</c> is a plain filler, <c>'+'</c> one other blocks may attach to, <c>'.'</c>
-/// empty. The principal <c>(0,0,0)</c> may be marked <c>'O'</c> or <c>'0'</c>; it never becomes a filler,
-/// and that glyph anywhere but the origin is a load-time error.
-/// </summary>
+/// <summary>Authors a mega-block <c>fillerOffsets</c> footprint from ASCII diagrams, drawn as layers, slices or faces.</summary>
 public sealed class FillerLayoutBuilder {
-  // The two spellings of the principal marker are folded to this one before parsing, so CellGrid tracks
-  // a single anchor glyph and both spellings still resolve to the same AnchorCell.
+  // The two spellings of the principal marker are folded to this one before parsing.
   private const char AnchorGlyph = '0';
 
   private int _originA;
@@ -42,9 +28,7 @@ public sealed class FillerLayoutBuilder {
   private readonly List<(int X, string Grid)> _slices = new();
   private readonly List<(int Z, string Grid)> _faces = new();
 
-  /// <summary>Sets the top-left cell of every grid: <c>(xLeft, zTop)</c> for horizontal
-  /// <see cref="Layer"/>s, <c>(zLeft, yTop)</c> for fixed-X <see cref="Slice"/>s, <c>(xLeft, yTop)</c>
-  /// for fixed-Z <see cref="Face"/> elevations. Defaults to <c>(0, 0)</c>.</summary>
+  /// <summary>Sets the top-left cell of every grid. Defaults to <c>(0, 0)</c>.</summary>
   public FillerLayoutBuilder Origin(int a, int b) {
     _originA = a;
     _originB = b;
@@ -65,18 +49,7 @@ public sealed class FillerLayoutBuilder {
     return this;
   }
 
-  /// <summary>
-  /// Registers a character as an attach-allowing filler cell hosting <paramref name="behaviors"/> on the
-  /// principal's behalf - the ports a mega-block exposes on a footprint cell, such as an MP filler port
-  /// driven by an axle on that face, or a stateful molten cell.
-  /// <code>
-  ///   f.Host('M', FillerBehaviorSpec.Of&lt;BEBehaviorMPFillerPort&gt;("west"))
-  ///    .Slice(0, """
-  ///              M##
-  ///              0##
-  ///              """);
-  /// </code>
-  /// </summary>
+  /// <summary>Registers a character as an attach-allowing filler cell hosting <paramref name="behaviors"/> on the principal's behalf.</summary>
   public FillerLayoutBuilder Host(
     char symbol,
     params FillerBehaviorSpec[] behaviors
@@ -85,16 +58,7 @@ public sealed class FillerLayoutBuilder {
     return this;
   }
 
-  /// <summary>
-  /// Registers a character as a filler that fills only the half of its cell against <paramref name="half"/>
-  /// - a floor slab is <c>Slab('_', BlockFacing.DOWN)</c>, a slab against the north face
-  /// <c>Slab('-', BlockFacing.NORTH)</c>. The cell keeps collision over that half and leaves the rest open,
-  /// which is what lets a machine stand shorter than a whole cell without walling the space above it.
-  /// <para>
-  /// Attachment stays off, as it is for a plain filler: a partial cell is the machine's own volume, not a
-  /// shelf. The box is authored in the north orientation and rotated with the rest of the footprint.
-  /// </para>
-  /// </summary>
+  /// <summary>Registers a character as a filler that fills only the half of its cell against <paramref name="half"/>.</summary>
   public FillerLayoutBuilder Slab(char symbol, BlockFacing half) {
     _legend.Map(
       symbol,
@@ -103,16 +67,7 @@ public sealed class FillerLayoutBuilder {
     return this;
   }
 
-  /// <summary>
-  /// Registers a character as a filler carrying a passive network port on <paramref name="face"/>: the
-  /// cell answers <see cref="BlockStructureFiller.HasConnectorAt"/> for the principal without joining
-  /// the graph, which is what lets a pipe couple two cells away from the block that owns the machine.
-  /// The face is authored in the north orientation and rotated with the rest of the footprint.
-  /// <para>
-  /// Attachment stays off, as it is for a plain filler: a port is the machine's own coupling, not a
-  /// shelf.
-  /// </para>
-  /// </summary>
+  /// <summary>Registers a character as a filler carrying a passive network port on <paramref name="face"/>.</summary>
   public FillerLayoutBuilder Port(
     char symbol,
     BlockFacing face,
@@ -129,25 +84,19 @@ public sealed class FillerLayoutBuilder {
     return this;
   }
 
-  /// <summary>Adds one horizontal Y-level grid (a floor plan; rows run +Z, columns +X). Layers may be declared
-  /// in any Y order.</summary>
+  /// <summary>Adds one horizontal Y-level grid. Layers may be declared in any Y order.</summary>
   public FillerLayoutBuilder Layer(int y, string grid) {
     _layers.Add((y, grid));
     return this;
   }
 
-  /// <summary>Adds one vertical X-level grid (a front elevation; rows run down in -Y from the top, columns
-  /// run +Z). Suits a footprint that stacks in Y, such as an engine's beam column. Slices may be declared
-  /// in any X order.</summary>
+  /// <summary>Adds one vertical X-level grid. Slices may be declared in any X order.</summary>
   public FillerLayoutBuilder Slice(int x, string grid) {
     _slices.Add((x, grid));
     return this;
   }
 
-  /// <summary>Adds one vertical Z-level grid (a front elevation looking along -Z; rows run down in -Y
-  /// from the top, columns run +X). Suits a thin-in-Z, north-facing structure such as a flywheel disc,
-  /// whose face lies in the X-Y plane that neither <see cref="Layer"/> nor <see cref="Slice"/> draws
-  /// in-plane. Faces may be declared in any Z order.</summary>
+  /// <summary>Adds one vertical Z-level grid. Faces may be declared in any Z order.</summary>
   public FillerLayoutBuilder Face(int z, string grid) {
     _faces.Add((z, grid));
     return this;
@@ -170,7 +119,7 @@ public sealed class FillerLayoutBuilder {
     var cells = new List<FillerCellSpec>();
     foreach (LayoutCell cell in drawn) {
       if (cell.X == 0 && cell.Y == 0 && cell.Z == 0)
-        continue; // the principal occupies the origin - never a filler, whatever glyph marks it
+        continue; // the principal occupies the origin, never a filler
       if (cell.Symbol == AnchorGlyph)
         throw new System.InvalidOperationException(
           $"Filler layout marks the principal ('{cell.Symbol}') at ({cell.X},{cell.Y},{cell.Z}), which is "
@@ -198,8 +147,7 @@ public sealed class FillerLayoutBuilder {
     return cells;
   }
 
-  // 'O' is the other spelling of the principal marker; folded to '0' before CellGrid sees the grid, so
-  // one anchor glyph answers for both without CellGrid needing to know there ever were two.
+  // 'O' is the other spelling of the principal marker, folded to '0' before CellGrid sees the grid.
   private static string FoldAnchorGlyph(string grid) =>
     grid.Replace('O', AnchorGlyph);
 }

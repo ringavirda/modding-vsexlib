@@ -10,20 +10,13 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Checks that the asset paths a mod's code-first definitions name exist on disk. The goldens pin what
-/// a def emits, which is a different question: a def can emit a stable but wrong <c>shape.base</c>, and
-/// an unresolved shape shows up only in game, as a block with no model.
-/// <para>
-/// Only mod-domain paths are checked. A <c>game:</c> shape lives in the Vintage Story install, which a
-/// headless test does not require; the mod's own <c>assets/{domain}/shapes/</c> tree is in the repo.
-/// </para>
+/// Checks that the asset paths a mod's code-first definitions name exist on disk. Only
+/// mod-domain paths are checked; a <c>game:</c> shape lives in the Vintage Story install.
 /// </summary>
 public static class DefinitionAssets {
-  /// <summary>
-  /// Every mod-domain shape reference in <paramref name="asm"/>'s definitions for
-  /// <paramref name="domain"/> that has no file behind it, as readable
-  /// <c>"{block code}: {shape path} -> {expected file}"</c> lines. Empty means every shape resolves.
-  /// </summary>
+  /// <summary>Every mod-domain shape reference in <paramref name="asm"/>'s definitions for
+  /// <paramref name="domain"/> that has no file behind it.</summary>
+  /// <returns>Empty when every shape resolves.</returns>
   public static IReadOnlyList<string> MissingShapes(string domain, Assembly asm) {
     var missing = new List<string>();
 
@@ -43,13 +36,8 @@ public static class DefinitionAssets {
     return missing;
   }
 
-  /// <summary>
-  /// Whether a shape path has a file behind it. A path may carry <c>{variant}</c> placeholders the game
-  /// substitutes at load (<c>stonepath-slab-{cover}</c> to <c>-free</c> or <c>-snow</c>), so a
-  /// placeholder path is checked as a family: at least one matching file must exist. That is weaker
-  /// than resolving every variant, because the variant values live on the def and the substitution
-  /// rules are the game's, but it still catches a path pointing where nothing exists.
-  /// </summary>
+  /// <summary>Whether a shape path has a file behind it. A <c>{variant}</c> placeholder path is
+  /// checked as a family: at least one matching file must exist.</summary>
   private static bool Resolves(string domain, string path) {
     string root = Path.Combine(RepoPaths.Assets(domain), "shapes");
     string relative = path.Replace('/', Path.DirectorySeparatorChar) + ".json";
@@ -63,9 +51,7 @@ public static class DefinitionAssets {
       && Directory.EnumerateFiles(directory, Path.GetFileName(pattern)).Any();
   }
 
-  // Every "base" under a shape-bearing property: the single `shape` form and the `shapeByType` map
-  // (emitted lowercased as `shapebytype`), at any nesting depth. Matching on the property-name prefix
-  // covers a def that grows a new shape-bearing property without naming it here.
+  // Every "base" under a shape-bearing property (shape or shapeByType), at any nesting depth.
   private static IEnumerable<string> ShapeReferences(JToken token) {
     foreach (JProperty property in token.Children<JProperty>()) {
       bool isShape = property.Name.StartsWith(

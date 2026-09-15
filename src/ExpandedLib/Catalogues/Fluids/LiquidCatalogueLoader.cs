@@ -3,14 +3,10 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Catalogues;
 
-/// <summary>
-/// Populates <see cref="ExLiquids"/> at <c>AssetsFinalize</c>: re-seed the four built-in media, overlay
-/// every domain's <c>config/liquids.json</c> via <see cref="AssetCatalogueLoader"/>, then invoke the
-/// registered code contributors. Mirrors the family layer's <c>MetalCatalogueLoader</c>.
-/// </summary>
+/// <summary>Populates <see cref="ExLiquids"/> from every domain's <c>config/liquids.json</c>.</summary>
 public static class LiquidCatalogueLoader {
-  /// <summary>Re-seeds the built-ins, overlays every domain's <c>config/liquids.json</c> and runs the
-  /// code contributors. Call from <c>ExpandedLibModSystem.AssetsFinalize</c>.</summary>
+  /// <summary>Re-seeds the built-ins, overlays every domain's <c>config/liquids.json</c> and runs
+  /// the code contributors.</summary>
   public static CatalogueLoadReport Load(ICoreAPI api) {
     ExLiquids.Clear();
     ExLiquids.SeedDefaults();

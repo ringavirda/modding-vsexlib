@@ -4,16 +4,9 @@ using Vintagestory.API.Datastructures;
 
 namespace ExpandedLib.Blocks;
 
-/// <summary>
-/// Block entity base that persists whatever it declares. Mark a field <see cref="PersistAttribute"/> and
-/// it needs no <see cref="DeclareState"/> entry at all; anything else is named once there, and the save,
-/// the load, the client sync and the collectible id mappings all follow from that declaration.
-/// <para>
-/// A block entity whose base slot is already spent - a container, a multiblock, a network node - gets
-/// the same thing by owning an <see cref="ExBlockState"/> directly and calling it from its own two
-/// overrides. This class is the convenience, not the mechanism.
-/// </para>
-/// </summary>
+/// <summary>Block entity base that persists whatever it declares. Mark a field
+/// <see cref="PersistAttribute"/> and it needs no <see cref="DeclareState"/> entry at
+/// all.</summary>
 public abstract class ExBlockEntity : BlockEntity {
   private ExBlockState? _state;
 
@@ -21,16 +14,7 @@ public abstract class ExBlockEntity : BlockEntity {
   protected ExBlockState Persisted =>
     BlockEntityStateHost.GetOrCreate(this, ref _state, DeclareState);
 
-  /// <summary>
-  /// Declares the fields this block entity persists. Called once, lazily. A subclass whose state is
-  /// entirely <see cref="PersistAttribute"/> fields leaves this alone.
-  /// <code>
-  /// protected override void DeclareState(ExBlockState s) {
-  ///   s.Float("temp", () =&gt; _tempC, v =&gt; _tempC = v)
-  ///    .Stack("piece", () =&gt; _piece, v =&gt; _piece = v);
-  /// }
-  /// </code>
-  /// </summary>
+  /// <summary>Declares the fields this block entity persists. Called once, lazily.</summary>
   protected virtual void DeclareState(ExBlockState state) { }
 
   public override void ToTreeAttributes(ITreeAttribute tree) {

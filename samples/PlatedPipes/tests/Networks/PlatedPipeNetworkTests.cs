@@ -13,8 +13,7 @@ namespace PlatedPipes.Tests;
 /// registers from config.
 /// </summary>
 public class PlatedPipeNetworkTests : IDisposable {
-  // BlockPipe's per-tier registries are static, so a plated registration here would otherwise leak
-  // into whatever test runs next.
+  // BlockPipe's per-tier registries are static, shared across all tests.
   public void Dispose() {
     BlockPipe.RegisterBurst(BlockPipe.PlatedTier, () => 2.5f);
     BlockPipe.RegisterThroughput(BlockPipe.PlatedTier, () => 50f);

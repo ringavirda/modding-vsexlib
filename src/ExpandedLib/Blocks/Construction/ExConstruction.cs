@@ -1,9 +1,4 @@
-// Legacy-only port of the vanilla 1.22 right-click construction subsystem
-// (RightClickConstruction + ConstructionStage + ConstructionIngredient), which does not exist in
-// 1.20/1.21. Mirrors the vanilla logic the mega-blocks rely on - staged material consumption, shape
-// SelectiveElements per stage, and salvage drops - minus the interaction-help tooltip
-// (IInteractableWithHelp is 1.22-only) and the place sounds (version-divergent PlaySoundAt overloads).
-// Not compiled on 1.22, where the mods use the vanilla classes through ExRightClickConstructable.
+// Legacy-only port of vanilla 1.22's right-click construction subsystem; not compiled on 1.22.
 #if !GAME_GE_1_22
 using System;
 using System.Collections.Generic;
@@ -25,12 +20,11 @@ public class ExConstructionStage {
 }
 
 /// <summary>A required material for a stage; <see cref="StoreWildCard"/> records the chosen
-/// variant (e.g. metal) so later stages and drops resolve to the same one.</summary>
+/// variant so later stages and drops resolve to the same one.</summary>
 public class ExConstructionIngredient : CraftingRecipeIngredient {
   public string? StoreWildCard;
 
-  // Base Clone() is non-virtual in the legacy API, so this hides it with a derived-typed clone:
-  // CloneTo<T>() copies the base fields, then StoreWildCard is carried over.
+  // Base Clone() is non-virtual in the legacy API; hidden here with a derived-typed clone.
   public new ExConstructionIngredient Clone() {
     var c = CloneTo<ExConstructionIngredient>();
     c.StoreWildCard = StoreWildCard;
@@ -86,8 +80,7 @@ public class ExRightClickConstruction {
     if (CurrentCompletedStage < 1)
       return Array.Empty<ItemStack>();
 
-    // Refunds every completed stage, 0..CurrentCompletedStage inclusive: the bound is `<=`, not `<`,
-    // so the last built stage's materials are recovered too.
+    // Inclusive bound: the last built stage's materials are recovered too.
     var list = new List<ItemStack>();
     for (int i = 0; i <= CurrentCompletedStage; i++) {
       var stage = Stages[i];
@@ -147,8 +140,7 @@ public class ExRightClickConstruction {
     foreach (var ing in remaining) {
       foreach (var wc in StoredWildCards)
         ing.FillPlaceHolder(wc.Key, wc.Value);
-      // Legacy API uses IsWildCard rather than 1.22's MatchingType enum: a non-wildcard
-      // (exact-stack) ingredient that fails to resolve is a hard failure.
+      // Legacy API uses IsWildCard rather than 1.22's MatchingType enum.
       if (
         !ing.Resolve(
           api.World,
@@ -231,9 +223,8 @@ public class ExRightClickConstruction {
     CurrentCompletedStage = tree.GetInt("currentStage", 0);
   }
 
-  /// <summary>The build-material hover help for the next stage (right-click to add the listed stacks),
-  /// or null when construction is complete. Stands in for <c>IInteractableWithHelp</c>, which the legacy
-  /// game versions do not have.</summary>
+  /// <summary>The build-material hover help for the next stage, or null when construction is
+  /// complete.</summary>
   public WorldInteraction[]? GetInteractionHelp() {
     if (CurrentCompletedStage + 1 >= Stages.Length)
       return null;

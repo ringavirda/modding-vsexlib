@@ -8,13 +8,9 @@ using Vintagestory.API.Config;
 namespace ExpandedLib.Registries;
 
 /// <summary>
-/// Adds <c>/exmod config [&lt;mod&gt; [&lt;value&gt; [&lt;new&gt;]]]</c>: the mod-agnostic switch for the
-/// gameplay tunables a mod exposes through <see cref="ExConfigProfiles"/> (a config marked
-/// <c>[ExConfigRegister(..., Manageable = true)]</c>). With no argument it lists the registered configs,
-/// with a mod code that mod's values and their settings, with a value name that one value; a new value
-/// is parsed, validated, set and persisted. Changes apply without a world reload because everything
-/// reads through the live accessor. Server-side: the config is host-authoritative and the
-/// <c>/exmod</c> root requires <c>controlserver</c>.
+/// Adds <c>/exmod config [&lt;mod&gt; [&lt;value&gt; [&lt;new&gt;]]]</c>: the mod-agnostic switch for
+/// gameplay tunables exposed through <see cref="ExConfigProfiles"/>. Server-side; the <c>/exmod</c>
+/// root requires <c>controlserver</c>.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
 [EditorBrowsable(EditorBrowsableState.Never)]
@@ -54,7 +50,7 @@ public sealed class ConfigSubCommand : RegistrySubCommand<IExConfigAccess> {
     string raw = args[1];
     var result = config.Set(name, raw);
     if (result.Status == ExConfigEditStatus.Ok)
-      // Push the change to connected players so it takes effect for them without a reconnect.
+      // Pushes the change to connected players without requiring a reconnect.
       Api.ModLoader.GetModSystem<ExConfigSyncModSystem>()
         ?.BroadcastSection(config);
 
@@ -80,12 +76,8 @@ public sealed class ConfigSubCommand : RegistrySubCommand<IExConfigAccess> {
     };
   }
 
-  // Hand the framework the lang key plus args (StatusMessage = key, MessageParams = arguments) so the
-  // server resolves it once in the caller's language, via Lang.GetL(langCode, StatusMessage,
-  // MessageParams). Two constraints on the lang strings: a pre-formatted single-line result is re-run
-  // through Lang.Get, so a literal ':' is read back as "domain:key"; and the client wraps
-  // CommandSuccess/Notification lines in a <font> tag before VTML parsing, so a bare '<' or '>' breaks
-  // the tag stream and blanks the line. Keep both characters out of the command-result strings.
+  // StatusMessage/MessageParams resolve once via Lang.GetL in the caller's language.
+  // Keep ':' and '<'/'>' out of the result strings; both break the client's rendering.
   private static TextCommandResult Ok(string key, params object?[] args) =>
     new() {
       Status = EnumCommandStatus.Success,

@@ -7,15 +7,8 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Definitions;
 
-/// <summary>
-/// Code-first item definition, the item-side sibling of <see cref="ExBlockDef"/>. Builds the
-/// <see cref="JObject"/> the vanilla object loader consumes for an <c>itemtypes/</c> asset;
-/// <see cref="ExDefinitionModSystem"/> injects it as a synthetic in-memory asset on the server, so variant
-/// expansion, <c>*ByType</c> selection, atlas and client sync run unchanged. Keys without a typed method go
-/// through <see cref="Attribute"/> or <see cref="Raw"/>; <see cref="Shape"/> and <see cref="Texture"/> take
-/// asset-file references, never inline geometry. Model-transform decimals must be un-suffixed <c>double</c>
-/// literals (<c>0.32</c>): a <c>float</c> literal widens to a different double and breaks JSON parity.
-/// </summary>
+/// <summary>Code-first item definition, the item-side sibling of <see cref="ExBlockDef"/>. Builds
+/// the <see cref="JObject"/> an <c>itemtypes/</c> asset consumes.</summary>
 public sealed class ExItemDef : IExDef {
   private readonly string _domain;
   private readonly string _code;
@@ -34,9 +27,8 @@ public sealed class ExItemDef : IExDef {
   public static ExItemDef Create(string domain, string code) =>
     new(domain, code, code);
 
-  /// <summary>Starts an item definition whose asset path differs from its <paramref name="code"/>, for a
-  /// family of itemtype files that share one code. <paramref name="assetName"/> may include
-  /// sub-folders.</summary>
+  /// <summary>Starts an item definition whose asset path differs from its <paramref name="code"/>.
+  /// <paramref name="assetName"/> may include sub-folders.</summary>
   public static ExItemDef Create(
     string domain,
     string code,
@@ -57,7 +49,7 @@ public sealed class ExItemDef : IExDef {
   #region Class binding (type-safe)
 
   /// <summary>Sets <c>class</c> to <typeparamref name="T"/>'s registered key, taken from the same
-  /// <c>{modid}.{ClassName}</c> source the registry uses, so a rename cannot desync the two.</summary>
+  /// <c>{modid}.{ClassName}</c> source the registry uses.</summary>
   public ExItemDef Class<T>()
     where T : Item => Set("class", EntityRegistry.KeyFor(_domain, typeof(T)));
 
@@ -71,7 +63,7 @@ public sealed class ExItemDef : IExDef {
   /// <summary>Sets <c>maxstacksize</c>.</summary>
   public ExItemDef MaxStackSize(int size) => Set("maxstacksize", size);
 
-  /// <summary>Sets <c>materialDensity</c> (kg/m³; drives float/sink and shove behaviour).</summary>
+  /// <summary>Sets <c>materialDensity</c> (kg/m3; drives float/sink and shove behaviour).</summary>
   public ExItemDef MaterialDensity(int density) =>
     Set("materialDensity", density);
 
@@ -100,18 +92,15 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
-  /// <summary>Sets the shape's <c>selectiveElements</c> - the sub-elements the item renders, for a shape
-  /// file holding a family of them. Mutates the same <c>shape</c> node as <see cref="Shape"/>.</summary>
-  /// <remarks>Matching is the engine's per-segment prefix rule, so naming an ancestor keeps more than
-  /// intended and naming an element exactly drops its children.</remarks>
+  /// <summary>Sets the shape's <c>selectiveElements</c>. Matching is the engine's per-segment
+  /// prefix rule.</summary>
   public ExItemDef ShapeSelectiveElements(params string[] elements) {
     Nested("shape")["selectiveElements"] = new JArray(elements);
     return this;
   }
 
-  /// <summary>Adds a texture mapping <paramref name="key"/> -&gt; <c>{ "base": "domain:path" }</c> under
-  /// <c>textures</c> (accumulates across calls). Any <paramref name="overlays"/> are emitted as an
-  /// <c>overlays</c> array composited over the base.</summary>
+  /// <summary>Adds a texture mapping <paramref name="key"/> -&gt; <c>{ "base": "domain:path" }</c>
+  /// under <c>textures</c> (accumulates across calls).</summary>
   public ExItemDef Texture(
     string key,
     string baseTexture,
@@ -128,8 +117,8 @@ public sealed class ExItemDef : IExDef {
   public ExItemDef TextureAll(string baseTexture) =>
     Texture("all", baseTexture);
 
-  /// <summary>Sets a texture mapping <paramref name="key"/> from a fully-formed POCO/anonymous object/token,
-  /// for texture shapes the string helper cannot express (e.g. <c>alternates</c>).</summary>
+  /// <summary>Sets a texture mapping <paramref name="key"/> from a fully-formed POCO/anonymous
+  /// object/token.</summary>
   public ExItemDef Texture(string key, object texture) {
     Nested("textures")[key] = texture as JToken ?? JToken.FromObject(texture);
     return this;
@@ -159,9 +148,8 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
-  /// <summary>Appends a <c>variantgroups</c> entry sourced from a worldproperty (<c>{ loadFromProperties }</c>
-  /// with no <c>code</c>) - the vanilla form for the horizontal-orientation property, whose group code is
-  /// implied by the property itself.</summary>
+  /// <summary>Appends a <c>variantgroups</c> entry sourced from a worldproperty with no
+  /// <c>code</c>.</summary>
   public ExItemDef VariantGroupFromProperties(string propertiesPath) {
     NestedArray("variantgroups")
       .Add(new JObject { ["loadFromProperties"] = propertiesPath });
@@ -178,8 +166,8 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
-  /// <summary>Adds the item to both the <c>general</c> tab and this def's own mod tab with the same
-  /// <paramref name="selectors"/>, the second tab name derived from the def's domain.</summary>
+  /// <summary>Adds the item to both the <c>general</c> tab and this def's own mod tab with the
+  /// same <paramref name="selectors"/>.</summary>
   public ExItemDef CreativeCommon(params string[] selectors) =>
     CreativeTab("general", selectors).CreativeTab(_domain, selectors);
 
@@ -187,8 +175,8 @@ public sealed class ExItemDef : IExDef {
 
   #region Shape/texture *ByType maps
 
-  /// <summary>Maps a variant wildcard (e.g. <c>*-iron-*</c>) to a base shape reference, with optional axis
-  /// rotations, under <c>shapebytype</c> (expansion stays in vanilla).</summary>
+  /// <summary>Maps a variant wildcard to a base shape reference, with optional axis rotations,
+  /// under <c>shapebytype</c>.</summary>
   public ExItemDef ShapeByType(
     string wildcard,
     string baseShape,
@@ -207,9 +195,8 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
-  /// <summary>Maps a variant wildcard to a texture key -&gt; base reference under <c>texturesByType</c>
-  /// (accumulates keys per wildcard). Any <paramref name="overlays"/> are emitted as an
-  /// <c>overlays</c> array on the texture.</summary>
+  /// <summary>Maps a variant wildcard to a texture key -&gt; base reference under
+  /// <c>texturesByType</c> (accumulates keys per wildcard).</summary>
   public ExItemDef TextureByType(
     string wildcard,
     string textureKey,
@@ -239,7 +226,7 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
-  /// <summary>Appends a collectible behavior carrying a <c>properties</c> blob (a POCO/anonymous object/token).</summary>
+  /// <summary>Appends a collectible behavior carrying a <c>properties</c> blob.</summary>
   public ExItemDef Behavior(string name, object properties) {
     NestedArray("behaviors")
       .Add(
@@ -252,8 +239,8 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
-  /// <summary>Appends a collectible behavior by type - resolves to <typeparamref name="T"/>'s registered
-  /// <c>{modid}.{ClassName}</c> key (type-safe, for a mod's own behavior).</summary>
+  /// <summary>Appends a collectible behavior by type, resolved to <typeparamref name="T"/>'s
+  /// registered <c>{modid}.{ClassName}</c> key.</summary>
   public ExItemDef Behavior<T>()
     where T : CollectibleBehavior =>
     Behavior(EntityRegistry.KeyFor(_domain, typeof(T)));
@@ -262,15 +249,12 @@ public sealed class ExItemDef : IExDef {
 
   #region Model transforms
 
-  /// <summary>Sets the <c>guiTransform</c> from a POCO/anonymous object/token. Item transforms are authored
-  /// as objects because their shapes vary: some omit <c>translation</c> or <c>origin</c>.</summary>
+  /// <summary>Sets the <c>guiTransform</c> from a POCO/anonymous object/token.</summary>
   public ExItemDef GuiTransform(object transform) =>
     RootKey("guiTransform", transform);
 
-  /// <summary>Sets the <c>guiTransform</c> from translation, rotation, origin and uniform scale - the
-  /// positional counterpart of <see cref="GuiTransform(object)"/>, for the common case of a fully
-  /// specified transform. All the held/ground/gui transforms share this <c>{ translation, rotation,
-  /// origin, scale }</c> object shape.</summary>
+  /// <summary>Sets the <c>guiTransform</c> from translation, rotation, origin and uniform
+  /// scale.</summary>
   public ExItemDef GuiTransform(
     double tx,
     double ty,
@@ -284,8 +268,8 @@ public sealed class ExItemDef : IExDef {
     double scale
   ) => GuiTransform(Transform(tx, ty, tz, rx, ry, rz, ox, oy, oz, scale));
 
-  /// <summary>Sets the <c>fpHandTransform</c> (held in first person; deprecated in favour of
-  /// <see cref="TpHandTransform(object)"/> but still read by the loader) from a POCO/anonymous object/token.</summary>
+  /// <summary>Sets the <c>fpHandTransform</c> from a POCO/anonymous object/token. Deprecated;
+  /// still read by the loader.</summary>
   public ExItemDef FpHandTransform(object transform) =>
     RootKey("fpHandTransform", transform);
 
@@ -374,25 +358,23 @@ public sealed class ExItemDef : IExDef {
 
   #region Recipes / attributes + escape hatch
 
-  /// <summary>Sets the top-level <c>combustibleProps</c> from a POCO/anonymous object: the smelting/burning
-  /// recipe (melting point, burn temperature and duration, smelted stack) the fuel/smelt system reads.</summary>
+  /// <summary>Sets the top-level <c>combustibleProps</c> from a POCO/anonymous object.</summary>
   public ExItemDef CombustibleProps(object props) =>
     Set("combustibleProps", props as JToken ?? JToken.FromObject(props));
 
-  /// <summary>Sets the top-level <c>grindingProps</c> from a POCO/anonymous object: the quern grinding recipe
-  /// (e.g. slag -&gt; powdered slag).</summary>
+  /// <summary>Sets the top-level <c>grindingProps</c> from a POCO/anonymous object.</summary>
   public ExItemDef GrindingProps(object props) =>
     Set("grindingProps", props as JToken ?? JToken.FromObject(props));
 
-  /// <summary>Sets an arbitrary <c>attributes.{key}</c> entry from a POCO/anonymous object/token/collection:
-  /// the generic route for any attribute without a dedicated method.</summary>
+  /// <summary>Sets an arbitrary <c>attributes.{key}</c> entry from a POCO/anonymous
+  /// object/token/collection.</summary>
   public ExItemDef Attribute(string key, object value) {
     Nested("attributes")[key] = value as JToken ?? JToken.FromObject(value);
     return this;
   }
 
-  /// <summary>Merges every property of a POCO/anonymous object into <c>attributes</c> at once. Each property
-  /// becomes one <c>attributes.{name}</c> entry; later calls overwrite by key.</summary>
+  /// <summary>Merges every property of a POCO/anonymous object into <c>attributes</c> at once.
+  /// Later calls overwrite by key.</summary>
   public ExItemDef Attributes(object poco) {
     JObject source =
       poco as JObject
@@ -407,8 +389,7 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
-  /// <summary>Sets <c>attributes.handbook.groupBy</c> - the handbook variant grouping (so a family of
-  /// variants shows as one collapsed handbook entry).</summary>
+  /// <summary>Sets <c>attributes.handbook.groupBy</c>, the handbook variant grouping.</summary>
   public ExItemDef Handbook(params string[] groupBy) {
     Nested("attributes")["handbook"] = new JObject {
       ["groupBy"] = new JArray(groupBy),
@@ -416,9 +397,8 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
-  /// <summary>Sets <c>attributes.handbook.exclude</c> - hides the item from the survival handbook. The
-  /// handbook system reads this nested under <c>attributes</c>, same as <see cref="Handbook"/>'s
-  /// grouping; a bare top-level <c>handbook</c> key is never read.</summary>
+  /// <summary>Sets <c>attributes.handbook.exclude</c>, hiding the item from the survival
+  /// handbook.</summary>
   public ExItemDef HandbookExclude() {
     JObject attributes = Nested("attributes");
     JObject handbook = attributes["handbook"] as JObject ?? new JObject();
@@ -427,9 +407,8 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
-  /// <summary>Adds a <c>{wildcard: value}</c> entry to a <c>{key}ByType</c> map under <c>attributes</c>
-  /// (accumulates across calls) - e.g. <c>AttributeByType("widthByType", "*", 1)</c>. <paramref name="value"/>
-  /// may be a scalar, POCO or token.</summary>
+  /// <summary>Adds a <c>{wildcard: value}</c> entry to a <c>{key}ByType</c> map under
+  /// <c>attributes</c> (accumulates across calls).</summary>
   public ExItemDef AttributeByType(string key, string wildcard, object value) {
     JObject attrs = Nested("attributes");
     if (attrs[key] is not JObject map) {
@@ -440,9 +419,8 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
-  /// <summary>Adds a <c>{wildcard: value}</c> entry to a top-level <c>{key}ByType</c> map (accumulates) - for
-  /// the per-type transform maps (<c>guiTransformByType</c>/<c>tpHandTransformByType</c>/<c>groundTransformByType</c>),
-  /// whose values are transform objects with <c>{ translation, rotation, origin, scale }</c>.</summary>
+  /// <summary>Adds a <c>{wildcard: value}</c> entry to a top-level <c>{key}ByType</c> map
+  /// (accumulates).</summary>
   public ExItemDef RootKeyByType(string key, string wildcard, object value) {
     if (_root[key] is not JObject map) {
       map = new JObject();
@@ -452,14 +430,11 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
-  /// <summary>Sets an arbitrary top-level key to an arbitrary token - the escape hatch for itemtype
-  /// schema with no dedicated method. Read only when <paramref name="key"/> is a real itemtype key
-  /// the game's object loader understands (see <see cref="KnownRootKeys"/>); a mistyped key is
-  /// written into the JSON and never read by anything.</summary>
+  /// <summary>Sets an arbitrary top-level key to an arbitrary token. Read only when
+  /// <paramref name="key"/> is a real itemtype key the object loader understands.</summary>
   public ExItemDef RootKey(string key, JToken token) => Set(key, token);
 
-  /// <summary>Sets an arbitrary top-level key from a POCO/anonymous object: the object-valued companion to
-  /// <see cref="RootKey(string, JToken)"/>.</summary>
+  /// <summary>Sets an arbitrary top-level key from a POCO/anonymous object.</summary>
   public ExItemDef RootKey(string key, object value) =>
     Set(key, value as JToken ?? JToken.FromObject(value));
 
@@ -484,7 +459,8 @@ public sealed class ExItemDef : IExDef {
 
   #endregion
 
-  /// <summary>The explicit states of a variant group by its code (empty when absent or worldproperty-sourced).</summary>
+  /// <summary>The explicit states of a variant group by its code. Empty when absent or
+  /// worldproperty-sourced.</summary>
   public string[] VariantStates(string groupCode) {
     if (_root["variantgroups"] is not JArray groups)
       return [];
@@ -494,17 +470,14 @@ public sealed class ExItemDef : IExDef {
     return [];
   }
 
-  /// <summary>The built itemtype JSON (a defensive clone, safe to mutate/serialize). A
-  /// <c>shape.selectiveElements</c> list is spread over the <c>shapebytype</c> entries that name none
-  /// (<see cref="ShapeEntries.SpreadSelectiveElements"/>).</summary>
+  /// <summary>The built itemtype JSON (a defensive clone, safe to mutate/serialize).</summary>
   public JObject ToJson() {
     var json = (JObject)_root.DeepClone();
     ShapeEntries.SpreadSelectiveElements(json);
     return json;
   }
 
-  // Explicit implementation: the interface returns JToken while the public ToJson returns the more precise
-  // JObject its callers rely on, and an implicit implementation cannot covary the return type.
+  // Explicit implementation: an implicit one cannot covary the return type to JObject.
   JToken IExDef.ToJson() => ToJson();
 
   private ExItemDef Set(string key, JToken value) {

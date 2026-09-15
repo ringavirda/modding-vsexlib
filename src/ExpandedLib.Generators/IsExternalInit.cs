@@ -1,5 +1,4 @@
-// Polyfill so records and `init` accessors compile on netstandard2.0, the framework analyzers load
-// under, which predates this type.
+// Polyfill for records and `init` accessors to compile on netstandard2.0.
 namespace System.Runtime.CompilerServices {
   internal static class IsExternalInit { }
 }

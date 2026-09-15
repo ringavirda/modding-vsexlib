@@ -9,14 +9,7 @@ namespace ExpandedLib.Registries;
 
 /// <summary>
 /// Adds <c>/exmod verify [&lt;mod&gt;]</c>: runs every content check in <see cref="ExlibChecks"/>
-/// against the live game state and reports it on demand, the same checks
-/// <c>ExpandedLibModSystem.AssetsFinalize</c> already ran once at load (unless
-/// <c>ExlibConfig.RunChecksOnLoad</c> was off). With no argument, every domain exlib scopes in on
-/// its own (<see cref="AssetCheckSource.Domains"/> - itself plus its dependents) is checked; with a
-/// mod code, that one domain is checked regardless of whether exlib depends on it, so long as some
-/// loaded mod answers to it. Prints how many checks ran and how many errors they found in total,
-/// then the first ten error lines - the full list still goes to the log via the same
-/// <see cref="ExlibChecks.Log"/> call.
+/// against the live game state and reports it on demand.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
 [EditorBrowsable(EditorBrowsableState.Never)]
@@ -32,11 +25,7 @@ public sealed class VerifySubCommand : IExSubCommand {
       .EndSubCommand();
   }
 
-  /// <summary>
-  /// The command's logic with the framework's fluent arg parsing already stripped away: mirrors
-  /// <see cref="RegistrySubCommand{T}.Dispatch"/>. Internal rather than private so a test can drive
-  /// the domain and no-domain cases without building a fake <see cref="TextCommandCallingArgs"/>.
-  /// </summary>
+  /// <summary>The command's logic with fluent arg parsing stripped, callable directly by a test.</summary>
   internal static TextCommandResult Dispatch(ICoreAPI api, string? domain) {
     domain = domain?.ToLowerInvariant();
 
@@ -61,8 +50,7 @@ public sealed class VerifySubCommand : IExSubCommand {
       results = ExlibChecks.All(source);
     }
 
-    // Logged in full regardless of what the chat window can show, so a modder chasing the tenth
-    // error onward reads the server log rather than re-running with a narrower domain.
+    // Logged in full regardless of what the chat window can show.
     ExlibChecks.Log(api.Logger, results);
 
     List<string> errors = [.. results.SelectMany(r => r.Errors)];

@@ -6,18 +6,8 @@ using Vintagestory.API.Datastructures;
 namespace ExpandedLib.Machines;
 
 /// <summary>
-/// Base for a block entity whose whole reason to exist is periodic server-side production work. A
-/// machine that is also something else hosts a <see cref="BEBehaviorProductionMachine"/> of its own
-/// instead, and a multiblock does it through
-/// <see cref="ExpandedLib.Structures.BlockEntityMultiblockMachine"/>.
-/// <para>
-/// The tick lifecycle - registration, the gate, teardown and away-catch-up - is run by the process
-/// this class hosts: a concrete machine writes only its per-tick logic in
-/// <see cref="OnProductionTick"/> and the gate in <see cref="CanRunProduction"/>, ticking every
-/// <see cref="ProductionTickMs"/> ms and routing to <see cref="OnIdleProductionTick"/> when the gate
-/// is <c>false</c>. Network access is not part of being a machine; a machine reads a port through
-/// the <see cref="MachinePorts"/> extensions on itself.
-/// </para>
+/// Base for a block entity whose sole purpose is periodic server-side production work. A machine
+/// that is also something else hosts a <see cref="BEBehaviorProductionMachine"/> of its own instead.
 /// </summary>
 public abstract class BlockEntityProductionMachine
   : BlockEntity,
@@ -29,22 +19,17 @@ public abstract class BlockEntityProductionMachine
   protected ExBlockState Persisted =>
     BlockEntityStateHost.GetOrCreate(this, ref _state, DeclareState);
 
-  /// <summary>Declares the fields this machine persists beyond the away-catch-up stamp above. Called
-  /// once, lazily. Default: nothing.</summary>
+  /// <summary>Declares the fields this machine persists beyond the away-catch-up stamp above; called
+  /// once, lazily.</summary>
   protected virtual void DeclareState(ExBlockState state) { }
 
   protected BlockEntityProductionMachine() {
-    // Added here because BlockEntity fans both FromTreeAttributes and Initialize out over Behaviors,
-    // and a process added any later misses whichever of the two has already run.
+    // Must be added here: Behaviors fans out both FromTreeAttributes and Initialize.
     _process = new HostProcess(this);
     Behaviors.Add(_process);
   }
 
-  /// <summary>
-  /// This machine's production process. It holds no copy of the machine's answers and reads each one
-  /// off the block entity as the tick needs it, so a subclass override and a state change mid-tick are
-  /// both seen at once.
-  /// </summary>
+  /// <summary>The machine's production process; reads its answers from the owning block entity.</summary>
   private sealed class HostProcess(BlockEntityProductionMachine owner)
     : BEBehaviorProductionMachine(owner) {
     protected override int ProductionTickMs => owner.ProductionTickMs;
@@ -66,34 +51,21 @@ public abstract class BlockEntityProductionMachine
   /// <summary>Interval (ms) of the production tick.</summary>
   protected virtual int ProductionTickMs => 1000;
 
-  /// <summary>
-  /// Whether the machine is in an operational state this tick (e.g. structure complete, finished
-  /// construction). Returning <c>false</c> routes the tick to <see cref="OnIdleProductionTick"/>.
-  /// This is the machine's own readiness answer; the process reads it as one publisher among any
-  /// carried by behaviours (<see cref="ProductionReadiness"/>), and every one of them must agree.
-  /// </summary>
+  /// <summary>Whether the machine is operational this tick; <c>false</c> routes the tick to
+  /// <see cref="OnIdleProductionTick"/>, and every readiness publisher must agree.</summary>
   protected abstract bool CanRunProduction { get; }
 
-  /// <summary>This machine's own readiness answer, for the process and anything else that asks. Not
-  /// overridable: a subclass states its gate in <see cref="CanRunProduction"/>, so the two cannot
-  /// drift apart.</summary>
+  /// <summary>This machine's own readiness answer, not overridable; a subclass states its gate in
+  /// <see cref="CanRunProduction"/>.</summary>
   public bool IsReadyToProduce => CanRunProduction;
 
-  /// <summary>
-  /// Whether losing readiness also unregisters the production tick. A machine that must keep running
-  /// while un-ready overrides this, not <see cref="CanRunProduction"/>: that gate is only consulted by
-  /// a listener that still exists, so widening it alone leaves the machine frozen with its state held
-  /// rather than stopped.
-  /// </summary>
+  /// <summary>Whether losing readiness also unregisters the production tick; override this, not
+  /// <see cref="CanRunProduction"/>, to keep running while un-ready.</summary>
   public virtual bool StopsProductionWhenNotReady => true;
 
-  /// <summary>
-  /// Whether the process registers the production tick as soon as the machine loads. Default
-  /// <c>true</c> (the machine self-gates each tick). A machine that registers/unregisters the tick on
-  /// a state change instead overrides this and drives <see cref="StartProductionTick"/> and
-  /// <see cref="StopProductionTick"/> itself; readiness alone cannot drive this, since a self-gating
-  /// machine needs a listener while un-ready to notice when it becomes ready.
-  /// </summary>
+  /// <summary>Whether the process registers the production tick as soon as the machine loads; false
+  /// lets a subclass drive <see cref="StartProductionTick"/> and <see cref="StopProductionTick"/>
+  /// itself.</summary>
   protected virtual bool AutoStartProduction => true;
 
   /// <summary>Registers the production tick (idempotent, server-side only).</summary>
@@ -104,21 +76,15 @@ public abstract class BlockEntityProductionMachine
 
   #region Away catch-up (game time)
 
-  /// <summary>
-  /// How many bounded sub-ticks a machine replays to catch up the game time it spent unloaded. Default
-  /// <c>0</c> disables away-catch-up, so the machine simply resumes. When overridden, the away interval
-  /// is simulated as up to this many <see cref="AwayCatchupStepSeconds"/> sub-ticks, capping caught-up
-  /// game time at <c>MaxAwayCatchupSteps x AwayCatchupStepSeconds</c> seconds; a longer absence is
-  /// never replayed in full, which would stall the server and risk a grace-timer leap.
-  /// </summary>
+  /// <summary>How many bounded sub-ticks a machine replays to catch up game time spent unloaded,
+  /// capping the replay at <c>MaxAwayCatchupSteps x AwayCatchupStepSeconds</c> seconds; <c>0</c>
+  /// disables away-catch-up.</summary>
   protected virtual int MaxAwayCatchupSteps => 0;
 
-  /// <summary>Sub-tick length (seconds) used while catching up; defaults to one normal tick, so a
-  /// caught-up step is just another ordinary tick and needs no extra <c>dt</c> robustness.</summary>
+  /// <summary>Sub-tick length (seconds) used while catching up; defaults to one normal tick.</summary>
   protected virtual float AwayCatchupStepSeconds => ProductionTickMs / 1000f;
 
-  // The process holds the last-tick stamp and this class persists it: vanilla fans a behaviour's tree
-  // into the block entity's own flat tree, so a key written on both sides has one silent winner.
+  // The process holds the last-tick stamp; this class persists it into the shared flat tree.
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);
     tree.SetDouble("pm_lastHours", _process.LastTickHours);
@@ -172,15 +138,13 @@ public abstract class BlockEntityProductionMachine
   /// <summary>Per-tick production logic; runs server-side only while <see cref="CanRunProduction"/>.</summary>
   protected abstract void OnProductionTick(float dt);
 
-  /// <summary>Runs in place of <see cref="OnProductionTick"/> while the machine is not operational. Default: no-op.</summary>
+  /// <summary>Runs in place of <see cref="OnProductionTick"/> while the machine is not operational.</summary>
   protected virtual void OnIdleProductionTick(float dt) { }
 
-  /// <summary>Test seam: runs one production tick exactly as the registered listener would, including
-  /// the readiness gate. See <see cref="BEBehaviorProductionMachine.DriveProductionTick"/>.</summary>
+  /// <summary>Test seam: runs one production tick as the registered listener does, gate included.</summary>
   internal void DriveProductionTick(float dt) =>
     _process.DriveProductionTick(dt);
 
-  /// <summary>Test seam: runs the idle-tick path directly, bypassing the readiness gate. See
-  /// <see cref="BEBehaviorProductionMachine.DriveIdleTick"/>.</summary>
+  /// <summary>Test seam: runs the idle-tick path directly, bypassing the readiness gate.</summary>
   internal void DriveIdleTick(float dt) => _process.DriveIdleTick(dt);
 }

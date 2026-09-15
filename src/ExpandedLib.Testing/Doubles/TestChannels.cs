@@ -6,16 +6,11 @@ using Vintagestory.API.Util;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// A paired client and server channel that serialises through the game's own serialiser
+/// <summary>A paired client and server channel that serialises through the game's own serialiser
 /// (<see cref="SerializerUtil"/>) and delivers synchronously to the handler registered on the other
-/// side - no scheduler, no wire. Built by <see cref="TestWorld.Channels"/> so a <c>ModSystem</c> that
-/// registers a channel in <c>StartServerSide</c>/<c>StartClientSide</c> runs unchanged under the
-/// harness.
-/// </summary>
+/// side, no scheduler, no wire. Built by <see cref="TestWorld.Channels"/>.</summary>
 public sealed class TestChannels {
-  // Shared by both sides so a type registered on either channel is sendable on either: production
-  // code registers the same message types, in the same order, on both sides anyway.
+  // Shared by both sides: a type registered on either channel is sendable on either.
   private readonly HashSet<Type> _registered = [];
   private readonly Dictionary<Type, Delegate> _serverHandlers = [];
   private readonly Dictionary<Type, Delegate> _clientHandlers = [];

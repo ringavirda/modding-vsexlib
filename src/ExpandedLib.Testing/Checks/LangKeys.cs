@@ -8,17 +8,9 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Every literal <c>Lang.Get("domain:key")</c> under a set of source roots must name a key the given
-/// lang tree's English file actually carries. A miss is not an error at runtime:
-/// <c>TranslationService.GetUnformatted</c> does one exact dictionary lookup and returns the key
-/// verbatim when it fails, so the player is shown <c>iiex:furnace-heatinghearth-loaded</c> where a
-/// sentence should be.
-/// <para>
-/// A lang file may write a key bare or domain-qualified and the game accepts both, so both sides are
-/// normalised to the bare form before comparison. A literal naming a domain other than the lang
-/// tree's own (and not a vanilla/compat domain, which is somebody else's to ship) fails outright
-/// rather than being skipped - a domain we do not check for here is a dead key just the same.
-/// </para>
+/// Every literal <c>Lang.Get("domain:key")</c> under a set of source roots must name a key the
+/// given lang tree's English file actually carries. A lang file may write a key bare or
+/// domain-qualified; both are normalised to the bare form for comparison.
 /// </summary>
 public static class LangKeys {
   /// <summary>A literal followed by <c>+</c>, or ending in a separator, is a prefix completed at
@@ -28,9 +20,7 @@ public static class LangKeys {
     RegexOptions.Compiled
   );
 
-  /// <summary>Domains whose lang files are somebody else's to ship: vanilla's, and the compat targets
-  /// under <c>.compat/</c>. Anything else a literal names must resolve against the lang tree
-  /// <see cref="Check"/> is given.</summary>
+  /// <summary>Domains whose lang files are somebody else's to ship.</summary>
   private static readonly HashSet<string> Foreign =
   [
     "game",
@@ -39,7 +29,8 @@ public static class LangKeys {
   ];
 
   /// <summary>Every literal lang key found under <paramref name="sourceRoots"/> resolves in
-  /// <paramref name="langTree"/>'s <c>en.json</c>. Empty means clean.</summary>
+  /// <paramref name="langTree"/>'s <c>en.json</c>.</summary>
+  /// <returns>Empty when clean.</returns>
   public static IReadOnlyList<string> Check(
     IEnumerable<string> sourceRoots,
     string langTree
@@ -55,8 +46,7 @@ public static class LangKeys {
       if (Foreign.Contains(litDomain))
         continue;
 
-      // A domain this tree does not ship fails rather than being skipped: skipping it would let a
-      // renamed or merged-away domain's literals go unchecked instead of failing.
+      // A domain this tree does not ship fails; it is not skipped.
       if (!string.Equals(litDomain, domain, StringComparison.Ordinal)) {
         missing.Add(
           $"{litDomain}:{key} ({file}) - no lang tree ships domain '{litDomain}'"
@@ -70,9 +60,7 @@ public static class LangKeys {
     return missing;
   }
 
-  /// <summary>Every literal lang key found under <paramref name="sourceRoots"/> - the premise a caller
-  /// asserts is non-empty, since a regex that stops matching would otherwise make <see cref="Check"/>
-  /// pass trivially.</summary>
+  /// <summary>Every literal lang key found under <paramref name="sourceRoots"/>.</summary>
   public static IReadOnlyList<string> Literals(
     IEnumerable<string> sourceRoots
   ) =>

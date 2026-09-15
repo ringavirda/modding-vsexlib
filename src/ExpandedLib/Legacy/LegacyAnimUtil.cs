@@ -1,8 +1,4 @@
-// Legacy shim for BlockEntityAnimationUtil.CreateMesh. The 1.22 overload takes a
-// TesselationMetaData metaOverride so callers can pass per-call SelectiveElements; the 1.20/1.21
-// CreateMesh has no such parameter and reads SelectiveElements off the block's CompositeShape.
-// This reproduces the 5-arg signature: it resolves the block shape and tesselates with the override
-// applied per field (`metaOverride?.X ?? block.Shape.X`), mutating no shared state.
+// Legacy shim for BlockEntityAnimationUtil.CreateMesh, reproducing the 1.22 5-arg signature.
 #if !GAME_GE_1_22
 using System;
 using System.Collections.Generic;
@@ -56,10 +52,7 @@ public static class LegacyAnimUtil {
         }
       }
 
-      // Resolve through the API present on the legacy floor (1.20.0 / 1.21.0): void
-      // ResolveReferences plus the params-only ResolveAndFindJoints. The Dictionary-returning
-      // CollectAndResolveReferences / ResolveAndFindJoints overloads exist only on 1.21 and later
-      // 1.20.x patches, so they would break on a clean 1.20.0.
+      // The Dictionary-returning overloads exist only on 1.21 and later 1.20.x patches.
       shape.ResolveReferences(api.World.Logger, nameForLogging);
       shape.CacheInvTransforms();
       shape.ResolveAndFindJoints(

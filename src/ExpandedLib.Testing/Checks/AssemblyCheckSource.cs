@@ -11,11 +11,8 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// An <see cref="ICheckSource"/> built directly from <c>(domain, Assembly)</c> pairs, the same way
-/// the older per-check validators in this folder were called: no repo-root probing, no file-system
-/// lang lookup beyond the one directory a caller hands it. Lets a harness validator whose own return
-/// shape still fits <see cref="CheckResult"/> delegate into <c>ExpandedLib.Checks</c> instead of
-/// carrying a second copy of the rule.
+/// An <see cref="ICheckSource"/> built directly from <c>(domain, Assembly)</c> pairs, with no
+/// repo-root probing and no file-system lang lookup beyond the directory a caller hands it.
 /// </summary>
 internal sealed class AssemblyCheckSource : ICheckSource {
   private readonly Dictionary<string, Assembly> _assemblies;

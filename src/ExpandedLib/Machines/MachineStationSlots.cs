@@ -4,12 +4,11 @@ namespace ExpandedLib.Machines;
 
 /// <summary>
 /// What one slot of a machine station accepts. A station declares an array of these and
-/// <see cref="MachineStationInventory"/> builds the matching slots, so a machine states its inputs,
-/// tooling and outputs as data rather than by subclassing the inventory.
+/// <see cref="MachineStationInventory"/> builds the matching slots.
 /// </summary>
 /// <param name="Accepts">Predicate a stack must satisfy to enter the slot. Null accepts anything.</param>
 /// <param name="TakeOnly">True for an output: the player may take from it but never put into it.</param>
-/// <param name="HexBackgroundColor">Slot tint, so tooling and inputs read apart at a glance.</param>
+/// <param name="HexBackgroundColor">Slot tint distinguishing tooling from inputs at a glance.</param>
 public readonly record struct MachineSlotSpec(
   System.Func<ItemStack?, bool>? Accepts = null,
   bool TakeOnly = false,
@@ -31,9 +30,8 @@ public readonly record struct MachineSlotSpec(
 }
 
 /// <summary>
-/// A machine station's inventory, built from the station's <see cref="MachineSlotSpec"/> array.
-/// <see cref="InventoryGeneric"/>'s own slot-factory delegate does the building, so the specs reach
-/// each slot without the inventory needing a subclass per machine.
+/// A machine station's inventory, built from the station's <see cref="MachineSlotSpec"/> array via
+/// <see cref="InventoryGeneric"/>'s slot-factory delegate.
 /// </summary>
 public class MachineStationInventory(
   MachineSlotSpec[] specs,
@@ -78,7 +76,7 @@ public class ItemSlotMachineInput(
     (accepts?.Invoke(sourceSlot.Itemstack) ?? true) && base.CanHold(sourceSlot);
 }
 
-/// <summary>A take-only output slot, so a finished piece cannot be overwritten by hand.</summary>
+/// <summary>A take-only output slot.</summary>
 public class ItemSlotMachineOutput(InventoryBase inventory)
   : ItemSlotSurvival(inventory) {
   public override bool CanTakeFrom(

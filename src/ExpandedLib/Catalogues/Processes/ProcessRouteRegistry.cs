@@ -5,32 +5,21 @@ using ExpandedLib.Registries;
 namespace ExpandedLib.Catalogues;
 
 /// <summary>
-/// The merged catalogue of every <see cref="ProcessRoute"/> in the world, keyed by stock family. A process
-/// registry is contributed to rather than owned, which is what makes the two extension directions cost the
-/// same. Merging is by (thickness, accepting family) - a stage's address: an unclaimed pair is added, a pair
-/// already drawn the same way is a no-op so contributing twice is safe, and a pair redrawn differently is
-/// reported with the first declaration standing, since taking the last writer would make the route depend
-/// on mod load order. <see cref="Shared"/> is the process-wide one; the type is instantiable so a caller can
-/// compose an isolated catalogue. World-free, so it runs headless.
-/// See docs/design/mechanics/process-extension.md.
+/// The merged catalogue of every <see cref="ProcessRoute"/> in the world, keyed by stock family.
+/// Merging is by (thickness, accepting family), a stage's address. World-free; runs headless.
 /// </summary>
 public sealed class ProcessRouteRegistry {
-  /// <summary>The process-wide catalogue. Repopulated at <c>AssetsFinalize</c>, so it clears first and
-  /// entries do not accumulate across world reloads within one process.</summary>
+  /// <summary>The process-wide catalogue. Repopulated at <c>AssetsFinalize</c>.</summary>
   public static ProcessRouteRegistry Shared { get; } = new();
 
   /// <summary>Code contributions to <see cref="Shared"/>, invoked by <see cref="ProcessRouteLoader"/>
-  /// after its JSON read on every <c>Load(ICoreAPI)</c>, so a route registered from C# survives the
-  /// clear that precedes it. See <c>ProcessExtensions.Shared.AddStages</c>.</summary>
+  /// after its JSON read on every <c>Load(ICoreAPI)</c>.</summary>
   public static CatalogueContributors Contributors { get; } = new();
 
   private readonly ExKeyedRegistry<ProcessRoute> _byFamily = new(r => r.Family);
 
-  /// <summary>
-  /// Merges <paramref name="route"/> into the family it names. Returns one human-readable message per
-  /// clash (empty when the contribution was taken whole), so the caller can log them against the mod that
-  /// declared them.
-  /// </summary>
+  /// <summary>Merges <paramref name="route"/> into the family it names. Returns one message per
+  /// clash, empty when the contribution was taken whole.</summary>
   public IReadOnlyList<string> Contribute(ProcessRoute route) {
     if (!_byFamily.TryGet(route.Family, out ProcessRoute? merged)) {
       _byFamily.Register(route with { Schema = ProcessRoute.CurrentSchema });
@@ -77,8 +66,7 @@ public sealed class ProcessRouteRegistry {
       return;
     }
 
-    // Not claimed for this family. An identical stage is the same rung seen from another machine, so it
-    // widens; anything else is a new rung of its own.
+    // Not claimed for this family. An identical stage is the same rung seen from another machine.
     int twin = stages.FindIndex(s =>
       ProcessRoute.SameThickness(s.Thickness, incoming.Thickness)
       && s.Element == incoming.Element

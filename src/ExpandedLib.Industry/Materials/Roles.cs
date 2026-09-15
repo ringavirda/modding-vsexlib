@@ -1,10 +1,6 @@
 namespace ExpandedLib.Industry.Materials;
 
-/// <summary>
-/// The canonical material-role tokens the machines classify by. Constants rather than an enum so the
-/// JSON <see cref="ExpandedLib.Catalogues.MaterialRoleDef.Role"/> strings and the code call sites share
-/// one spelling, and a mod can add a role by shipping the string alone.
-/// </summary>
+/// <summary>The canonical material-role tokens the machines classify by.</summary>
 public static class Roles {
   /// <summary>Flux: lime and the like, for the mixer and hopper flux slot.</summary>
   public const string Flux = "flux";

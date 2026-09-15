@@ -7,23 +7,14 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Networks;
 
-/// <summary>
-/// Finds which network a cell belongs to. Vanilla's <see cref="BlockEntity.GetBehavior{T}"/> returns
-/// the first behaviour of a CLR type, which cannot tell a pipe membership from a molten one on the
-/// same block entity, so membership is selected by network type instead.
-/// </summary>
+/// <summary>Finds which network a cell belongs to; membership is selected by network type, not CLR type.</summary>
 public static class NetworkMembership {
   /// <summary>Every membership on <paramref name="be"/>; empty when it is on no network.</summary>
   public static IEnumerable<BEBehaviorNetworkMember> MembersOf(
     BlockEntity? be
   ) => be?.Behaviors.OfType<BEBehaviorNetworkMember>() ?? [];
 
-  /// <summary>
-  /// The membership declaring <paramref name="networkType"/>, or <c>null</c>. A block entity carries
-  /// at most one membership per network type; two would be two nodes at one position. This matches
-  /// the declared type, for a caller holding only a block entity; <see cref="Resolve"/> is the
-  /// position-aware form and is what the graph walk asks.
-  /// </summary>
+  /// <summary>The membership declaring <paramref name="networkType"/> on <paramref name="be"/>, or null. A block entity carries at most one membership per network type.</summary>
   public static BEBehaviorNetworkMember? MemberOf(
     BlockEntity? be,
     string networkType
@@ -33,14 +24,7 @@ public static class NetworkMembership {
         string.Equals(m.NetworkType, networkType, StringComparison.Ordinal)
       );
 
-  /// <summary>
-  /// How the cell at <paramref name="pos"/> participates in <paramref name="networkType"/>, or
-  /// <c>null</c> when it does not. A membership behaviour answers first; otherwise the block does,
-  /// which keeps a cell walkable whenever its block entity is absent but the cell itself readable.
-  /// </summary>
-  /// <remarks>An unloaded chunk is not that case: it takes the block away too, so both arms answer
-  /// nothing and the cell reads as empty space. That gap is closed at the graph level instead - see
-  /// <see cref="BlockNetworkModSystem"/>'s connectivity review.</remarks>
+  /// <summary>How the cell at <paramref name="pos"/> participates in <paramref name="networkType"/>, or null. A membership behaviour answers first, then the block.</summary>
   public static INetworkMember? Resolve(
     IBlockAccessor world,
     BlockPos pos,
@@ -59,12 +43,7 @@ public static class NetworkMembership {
       : null;
   }
 
-  /// <summary>
-  /// Whether the cell at <paramref name="pos"/> exposes a network connector on
-  /// <paramref name="face"/>, from whichever side answers for it - any membership on its block entity,
-  /// or the block. Network-type agnostic, for a caller after the network across a face rather than one
-  /// network in particular; <see cref="Resolve"/> is the form the graph walk asks.
-  /// </summary>
+  /// <summary>Whether the cell at <paramref name="pos"/> exposes a network connector on <paramref name="face"/>, network-type agnostic.</summary>
   public static bool CouplesAt(
     IBlockAccessor world,
     BlockPos pos,
@@ -77,11 +56,7 @@ public static class NetworkMembership {
       && connector.HasConnectorAt(world, pos, face)
     );
 
-  /// <summary>
-  /// Whether <paramref name="member"/> reports <paramref name="networkType"/> at
-  /// <paramref name="pos"/>. Both arms of <see cref="Resolve"/> ask through this, so a member whose
-  /// type varies by cell is found the same way whether a behaviour or a block answers.
-  /// </summary>
+  /// <summary>Whether <paramref name="member"/> reports <paramref name="networkType"/> at <paramref name="pos"/>.</summary>
   private static bool JoinsAt(
     INetworkMember member,
     IBlockAccessor world,

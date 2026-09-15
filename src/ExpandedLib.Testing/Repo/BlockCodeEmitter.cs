@@ -10,19 +10,13 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Emits a mod's <c>{Mod}Blocks</c> table from its code-first definitions, so a layout author can name a
-/// block code, with a chosen variant, instead of hand-writing the string. It executes
-/// <c>Definitions(domain)</c> rather than parsing the fluent chains: codes reach <c>ExBlockDef.Create</c>
-/// through helpers that add variant groups the call site never shows, so only the finished def carries the
-/// variant order and arity that ship. Vanilla codes are out of reach here - the game declares those, and
-/// <c>VanillaCodes</c> stays hand-authored.
+/// Emits a mod's <c>{Mod}Blocks</c> table from its code-first definitions. Vanilla codes are out of
+/// reach here; the game declares those, and <c>VanillaCodes</c> stays hand-authored.
 /// </summary>
 public static class BlockCodeEmitter {
   /// <summary>
   /// Emits <paramref name="domain"/>'s table and compares it to the file at
-  /// <paramref name="repoRelativePath"/>, or writes over it when the
-  /// <c>EXLIB_WRITE_BLOCKCODES</c> environment variable is set - the switch
-  /// <c>scripts/exmod.ps1 codes &lt;mod&gt;</c> sets before running this test.
+  /// <paramref name="repoRelativePath"/>, or writes over it when <c>EXLIB_WRITE_BLOCKCODES</c> is set.
   /// </summary>
   public static (bool ok, string message) CheckOrWrite(
     string domain,
@@ -69,11 +63,7 @@ public static class BlockCodeEmitter {
     return "";
   }
 
-  /// <summary>
-  /// One emitted accessor. It carries the def itself rather than a copy of its grammar: every code this
-  /// file writes out comes from <see cref="ExBlockDef.Any"/> or <see cref="ExBlockDef.WithVariant"/>, so
-  /// the emitter is a caller of the wildcard rule rather than a second implementation of it.
-  /// </summary>
+  /// <summary>One emitted accessor, holding the def itself rather than a copy of its grammar.</summary>
   private sealed record Entry(string Member, string AssetPath, ExBlockDef Def) {
     public string Code => Def.QualifiedCode;
 
@@ -161,8 +151,7 @@ public static class BlockCodeEmitter {
     );
     sb.Append($"    public const string Code = \"{e.Code}\";\n");
 
-    // Taken straight off the def: the wildcard rule (single-state groups baked in, the rest wildcarded)
-    // lives in ExBlockDef.Any and is not restated here.
+    // The wildcard rule lives in ExBlockDef.Any, not repeated here.
     string any = e.Def.Any;
     if (e.Groups.Count > 0) {
       sb.Append($"\n    /// <summary>Any variant: <c>{any}</c>.</summary>\n");
@@ -181,11 +170,9 @@ public static class BlockCodeEmitter {
       sb.Append("    }\n");
     }
 
-    // One accessor per varying group: pin that group, wildcard the others. A layout usually wants that
-    // ("a tall hopper facing north", "a straight pipe on the NS axis") rather than a fully resolved code.
+    // One accessor per varying group: pins that group, wildcards the others.
     foreach (ExVariantGroup g in e.Groups.Where(g => g.States.Count != 1)) {
-      // WithVariant produces the interpolation hole, so where the pinned segment lands stays the def's
-      // rule rather than a second copy of it here.
+      // The interpolation hole comes from WithVariant.
       string pattern = e.Def.WithVariant(g.Name, "{" + Ident(g.Name) + "}");
       sb.Append(
         $"\n    /// <summary>Pin only <c>{g.Name}</c>: <c>{pattern}</c>.</summary>\n"
@@ -195,8 +182,7 @@ public static class BlockCodeEmitter {
       );
       sb.Append($"      $\"{pattern}\";\n");
 
-      // Converts a facing to this block's own token spelling (word or letter). Skipped for a
-      // non-facing group (an axis group has no BlockFacing naming one of its states).
+      // Converts a facing to this block's own token spelling; skipped for a non-facing group.
       if (!g.IsHorizontalFacing)
         continue;
 
@@ -246,14 +232,14 @@ public static class BlockCodeEmitter {
         .Collect(domain, asm)
         .OfType<ExBlockDef>()
     ) {
-      // The asset path is the unique key, not the code: several defs legitimately share one code and
-      // differ by a `type` variant (`pipe` is straight, bend, tjunction, xjunction and outlet).
+      // The asset path is the unique key, not the code: several defs can share a code via a `type`
+      // variant.
       string assetPath = def
         .Location.Path.Replace("blocktypes/", "")
         .Replace(".json", "");
 
       string member = Pascal(assetPath.Replace('/', '-'));
-      // Deterministic disambiguation, so a collision never silently drops an accessor.
+      // Disambiguation is deterministic; a collision never drops an accessor silently.
       string unique = member;
       for (int i = 2; !used.Add(unique); i++)
         unique = member + i.ToString(CultureInfo.InvariantCulture);
@@ -261,19 +247,19 @@ public static class BlockCodeEmitter {
       entries.Add(new Entry(unique, assetPath, def));
     }
 
-    // Emitted in a stable order so the file does not churn when a provider is reordered or renamed.
+    // Emitted in a stable order to avoid churn on reorder or rename.
     entries.Sort((a, b) => string.CompareOrdinal(a.Member, b.Member));
     return entries;
   }
 
-  /// <summary>A C# identifier from a variant-group name (<c>orientation</c> → <c>orientation</c>).</summary>
+  /// <summary>A C# identifier from a variant-group name (<c>orientation</c> -> <c>orientation</c>).</summary>
   private static string Ident(string raw) {
     string s = Pascal(raw);
     return char.ToLowerInvariant(s[0]) + s[1..];
   }
 
-  /// <summary>PascalCase from a code segment: <c>pipes-straight</c> → <c>PipesStraight</c>,
-  /// <c>tier1</c> → <c>Tier1</c>, <c>n</c> → <c>N</c>.</summary>
+  /// <summary>PascalCase from a code segment: <c>pipes-straight</c> -> <c>PipesStraight</c>,
+  /// <c>tier1</c> -> <c>Tier1</c>, <c>n</c> -> <c>N</c>.</summary>
   private static string Pascal(string raw) {
     var sb = new StringBuilder(raw.Length);
     bool upper = true;
@@ -285,7 +271,7 @@ public static class BlockCodeEmitter {
       sb.Append(upper ? char.ToUpperInvariant(c) : c);
       upper = false;
     }
-    // An identifier may not start with a digit; no current code does, but a metal or tier easily could.
+    // An identifier may not start with a digit.
     if (sb.Length > 0 && char.IsDigit(sb[0]))
       sb.Insert(0, '_');
     return sb.Length == 0 ? "_" : sb.ToString();

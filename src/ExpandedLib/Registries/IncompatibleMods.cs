@@ -9,13 +9,7 @@ using Vintagestory.API.Config;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// The published mods built against exlib 0.7 that cannot load beside this version: they bind to
-/// namespaces and an assembly layout that 0.8 does not carry, and the game's dependency check
-/// cannot see it because a modinfo dependency is a floor. Found at <c>StartPre</c>, reported once
-/// at Error and to every joining player, so the failure is named rather than surfacing as a
-/// missing type.
-/// </summary>
+/// <summary>The published mods built against exlib 0.7 that cannot load beside this version.</summary>
 internal static class IncompatibleMods {
   /// <summary>Mod id to the name players know the mod by.</summary>
   internal static readonly IReadOnlyDictionary<string, string> Known =
@@ -24,16 +18,12 @@ internal static class IncompatibleMods {
       ["ppex"] = "Pipes and Power Expanded",
     };
 
-  /// <summary>
-  /// The one message the log and the chat carry, or <c>null</c> when no known mod is present.
-  /// <paramref name="exlibVersion"/> is this mod's own version string.
-  /// </summary>
+  /// <summary>The one message the log and the chat carry, or <c>null</c> when no known mod is
+  /// present.</summary>
   internal static string? Message(IModLoader loader, string exlibVersion) =>
     Message(loader, exlibVersion, DefaultModRoots());
 
-  /// <summary>
-  /// Overload the tests drive with a fake mod-folder set instead of the real installation paths.
-  /// </summary>
+  /// <summary>Overload against an explicit <paramref name="modRoots"/> set.</summary>
   internal static string? Message(
     IModLoader loader,
     string exlibVersion,
@@ -50,13 +40,11 @@ internal static class IncompatibleMods {
       + "keep exlib 0.7.2 with them, or replace them with Iron Industry Expanded.";
   }
 
-  // The game's binaries and data Mods folders: what a real install actually searches.
+  // The game's binaries and data Mods folders.
   private static IEnumerable<string> DefaultModRoots() =>
     [GamePaths.BinariesMods, GamePaths.DataPathMods];
 
-  // A known mod that fails to load beside this exlib (see the type doc) never reaches
-  // IModLoader.Mods and IsModEnabled reports it as absent, so presence also falls back to reading
-  // the id straight off the Mods folders - the one thing a load failure cannot hide.
+  // Falls back to reading the id off the Mods folders: a failed mod is absent from IModLoader.Mods.
   private static bool IsPresent(
     IModLoader loader,
     string modId,
@@ -73,8 +61,7 @@ internal static class IncompatibleMods {
     return false;
   }
 
-  // The modid a folder or zip mod declares, read straight from its modinfo.json; null for
-  // anything else (a single .cs/.dll mod, a corrupt archive, a folder without one).
+  // The modid a folder or zip mod declares; null for anything else.
   private static string? ModIdOf(string entry) {
     try {
       string? json = Directory.Exists(entry)

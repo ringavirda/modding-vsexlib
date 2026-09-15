@@ -4,11 +4,8 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.Helpers;
 
-/// <summary>
-/// Shared catalogue of sound asset locations and play helpers used across the mod family (iiex + siex).
-/// All sounds resolve from the vanilla "game" domain, which also covers the survival asset folder.
-/// Playing on the server replicates to nearby clients; each helper states whether it gates on side.
-/// </summary>
+/// <summary>Shared catalogue of sound asset locations and play helpers. Each helper states
+/// whether it gates on side.</summary>
 public static class ExSounds {
   // Molten / heat
   public static readonly AssetLocation Sizzle = new("game:sounds/sizzle");
@@ -152,10 +149,7 @@ public static class ExSounds {
     );
   }
 
-  /// <summary>
-  /// Plays at most once per <paramref name="intervalMs"/>, updating <paramref name="lastMs"/> when it
-  /// fires. For looping ambience, so per-second ticks do not spam audio. Server only.
-  /// </summary>
+  /// <summary>Plays at most once per <paramref name="intervalMs"/>. Server only.</summary>
   public static void PlayThrottled(
     ICoreAPI? api,
     BlockPos pos,
@@ -286,11 +280,8 @@ public static class ExSounds {
     );
   }
 
-  /// <summary>
-  /// Creates a gapless looping ambient sound. Returns null on the server. The caller owns the handle:
-  /// <c>Start()</c>/<c>Stop()</c> on state changes, <c>Dispose()</c> on unload. For a machine's constant
-  /// hum, where re-fired one-shots would gap or stack.
-  /// </summary>
+  /// <summary>Creates a gapless looping ambient sound. Returns null on the server; the caller owns
+  /// the handle.</summary>
   public static ILoadedSound? CreateLoop(
     ICoreAPI? api,
     BlockPos pos,

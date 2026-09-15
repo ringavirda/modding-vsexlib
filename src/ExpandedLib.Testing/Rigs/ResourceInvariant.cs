@@ -5,9 +5,7 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// A randomised-operation invariant check: builds a fresh <typeparamref name="TState"/>, applies a
-/// random sequence of the given moves to it, and asserts the invariant after every move. Where a
-/// resource can be split, merged, drained or refilled in any order, this is cheaper than enumerating
-/// every ordering by hand and it reports the exact sequence that broke it, not just that one did.
+/// random sequence of moves to it, and asserts the invariant after every move.
 /// </summary>
 public sealed class ResourceInvariant<TState>(
   Func<TState> fresh,
@@ -16,8 +14,7 @@ public sealed class ResourceInvariant<TState>(
 ) {
   /// <summary>
   /// Runs <paramref name="sequences"/> independent runs of <paramref name="movesPerSequence"/> random
-  /// moves each, asserting after every move. <paramref name="seed"/> makes a failure reproducible: the
-  /// same seed replays the same sequences.
+  /// moves each; <paramref name="seed"/> makes a failure reproducible.
   /// </summary>
   /// <exception cref="InvalidOperationException">The invariant failed; the message names the sequence
   /// number, the move index within it, and the move indices applied so far.</exception>

@@ -5,17 +5,13 @@ using Vintagestory.API.Datastructures;
 
 namespace ExpandedLib.Catalogues;
 
-/// <summary>
-/// How many bay cells a stack of one item occupies. Declared, never measured off a drawn shape's bounding
-/// box: capacity has to be answerable before anything is tesselated, and an item whose art changes must
-/// not silently change what a rack holds.
-/// </summary>
+/// <summary>How many bay cells a stack of one item occupies. Declared, never measured off a drawn
+/// shape's bounding box.</summary>
 /// <param name="Item">Item or block code the rule is for. A trailing <c>*</c> matches a family, so a
 /// whole stock ladder is one line.</param>
 /// <param name="Cells">Cells a stack of it fills. At least one.</param>
 public sealed record BayOccupancy(string Item, int Cells) {
-  /// <summary>What an item occupies when nothing declares it - one cell, the smallest thing a row can
-  /// hold.</summary>
+  /// <summary>What an item occupies when nothing declares it.</summary>
   public const int DefaultCells = 1;
 
   /// <summary>Whether this rule is the one for <paramref name="code"/>.</summary>
@@ -24,15 +20,12 @@ public sealed record BayOccupancy(string Item, int Cells) {
       ? code.StartsWith(Item[..^1], StringComparison.OrdinalIgnoreCase)
       : string.Equals(Item, code, StringComparison.OrdinalIgnoreCase);
 
-  /// <summary>How specific this rule is, so an exact code beats a family wildcard and a longer prefix
-  /// beats a shorter one. An exact match is longer than any prefix that could reach it.</summary>
+  /// <summary>How specific this rule is: an exact code beats a family wildcard, a longer prefix
+  /// beats a shorter one.</summary>
   public int Precision => Item.EndsWith('*') ? Item.Length - 1 : int.MaxValue;
 }
 
-/// <summary>
-/// One file's worth of occupancy rules, plus the store they are for. Keyed by store rather than global,
-/// so a rack and a future crate can size the same item differently.
-/// </summary>
+/// <summary>One file's worth of occupancy rules, plus the store they are for.</summary>
 /// <param name="Store">Store key the rules belong to, matching the machine's own
 /// <c>BayStoreKey</c>.</param>
 /// <param name="Rules">The declarations, in file order.</param>
@@ -40,11 +33,8 @@ public sealed record BayOccupancySet(
   string Store,
   IReadOnlyList<BayOccupancy> Rules
 ) {
-  /// <summary>
-  /// Reads one catalogue file. A file naming no store, or carrying a rule with no item or a cell count
-  /// under one, is refused whole with a message naming what is wrong - a half-read catalogue would size
-  /// some items and silently default the rest.
-  /// </summary>
+  /// <summary>Reads one catalogue file. A file naming no store, or carrying a rule with no item or
+  /// a cell count under one, is refused whole.</summary>
   public static bool TryParse(
     JsonObject json,
     out BayOccupancySet? set,

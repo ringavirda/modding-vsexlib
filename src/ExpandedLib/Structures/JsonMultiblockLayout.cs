@@ -8,32 +8,15 @@ using Vintagestory.API.Datastructures;
 
 namespace ExpandedLib.Structures;
 
-/// <summary>
-/// Resolves a block's <c>attributes.multiblockLayout</c> - an ASCII grid, the JSON twin of
-/// <see cref="MultiblockLayoutBuilder"/> - into the same <c>multiblockStructure</c>, and, absent an
-/// explicit <c>fillerOffsets</c>, the matching footprint, a code-first definition would have emitted.
-/// The grid is <c>{ origin: [xLeft, zTop], legend: { symbol: code }, layers: [ [row, ...], ... ], core:
-/// symbol }</c>, one <c>layers</c> entry per Y level; <c>origin</c> and <c>core</c> are optional. Run
-/// once per <see cref="Block"/> instance from <see cref="BlockFilledMegastructure.OnLoaded"/>, before any
-/// placement. A malformed attribute logs one Error and leaves the block without a
-/// <c>multiblockStructure</c>, so the structure never completes rather than throwing at chunk load.
-/// </summary>
+/// <summary>Resolves a block's <c>attributes.multiblockLayout</c> ASCII grid into a <c>multiblockStructure</c> and footprint.</summary>
 public static class JsonMultiblockLayout {
-  // Blocks are singletons per registered variant, one instance per side; resolving twice would either
-  // redo the work for nothing or, on a malformed layout, log the same Error once per block entity ever
-  // placed. Keyed by object identity and held weakly, so a block whose variant is unregistered - and the
-  // ICoreAPI it carries - is not kept alive by this table. TryAdd is thread-safe.
+  // Keyed by object identity and held weakly, so an unregistered block is not kept alive by this table.
   private static readonly ConditionalWeakTable<Block, object> _resolved = new();
 
-  // The value TryAdd needs but this table never reads back - only the key's presence matters.
+  // The value TryAdd needs but this table never reads back.
   private static readonly object _marker = new();
 
-  /// <summary>
-  /// Resolves <paramref name="block"/>'s <c>multiblockLayout</c> attribute, if any, into
-  /// <c>multiblockStructure</c> and, when the block declares no <c>fillerOffsets</c> of its own, into a
-  /// derived footprint. Idempotent per block instance; safe to call from every subclass's
-  /// <c>OnLoaded</c>, including one that never declares the attribute.
-  /// </summary>
+  /// <summary>Resolves <paramref name="block"/>'s <c>multiblockLayout</c> attribute, if any, into <c>multiblockStructure</c> and a derived footprint. Idempotent per block instance.</summary>
   public static void Resolve(Block block, ILogger logger) {
     if (!_resolved.TryAdd(block, _marker))
       return;
@@ -62,8 +45,7 @@ public static class JsonMultiblockLayout {
     }
   }
 
-  // Replays the grid through the same builder a code-first definition drives, so the emitted
-  // multiblockStructure is byte-for-byte what MultiblockLayoutBuilder.Build() would have produced.
+  // Replays the grid through the same builder a code-first definition drives.
   private static JObject Build(JObject layout) {
     var builder = new MultiblockLayoutBuilder();
 
@@ -109,8 +91,7 @@ public static class JsonMultiblockLayout {
     return builder.Build();
   }
 
-  // Every drawn cell but the principal's own (0,0,0) - the layout's non-empty, non-core cells - as a
-  // plain (no attach, no behaviours) footprint, the same shape ExBlockDef.FillerOffsets emits.
+  // Every drawn cell but the principal's own (0, 0, 0), as a plain footprint.
   private static IReadOnlyList<FillerCellSpec> DerivedFillerCells(
     JObject structure
   ) {

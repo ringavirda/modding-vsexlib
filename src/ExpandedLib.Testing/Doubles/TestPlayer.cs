@@ -7,11 +7,8 @@ using Vintagestory.API.Server;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// A player with a real hotbar: the active slot holds whatever the test puts there via
-/// <see cref="Hold"/>, backed by a substituted <see cref="IPlayer"/>/<see cref="EntityPlayer"/> with
-/// a real <see cref="DummySlot"/> behind <c>InventoryManager.ActiveHotbarSlot</c>, so an interaction
-/// handler that reads what the player holds or whether it is sneaking sees the same shape it does in
-/// game.
+/// A player with a real hotbar, backed by a substituted <see cref="IPlayer"/>/
+/// <see cref="EntityPlayer"/> with a real <see cref="DummySlot"/> as the active slot.
 /// </summary>
 public sealed class TestPlayer {
   private readonly DummySlot _activeSlot;
@@ -32,15 +29,14 @@ public sealed class TestPlayer {
   public IPlayer Player { get; }
 
   /// <summary>The same object as <see cref="Player"/>, viewed as <see cref="IServerPlayer"/>, or
-  /// <c>null</c> when this lane's game assembly cannot proxy it (see the constructor's catch).</summary>
+  /// <c>null</c> when this lane's game assembly cannot proxy it.</summary>
   public IServerPlayer? ServerPlayer { get; }
 
   /// <summary>The player's active hotbar slot - a real <see cref="ItemSlot"/>, not a fake.</summary>
   public ItemSlot ActiveSlot => _activeSlot;
 
-  /// <summary>The substituted entity behind <see cref="Player"/>; its <c>Controls.Sneak</c> is real
-  /// (Castle proxies a class by running its base constructor, so non-overridden members like
-  /// <c>Controls</c> come from the genuine <see cref="EntityPlayer"/> field initialisers).</summary>
+  /// <summary>The substituted entity behind <see cref="Player"/>; its <c>Controls</c> field is the
+  /// genuine <see cref="EntityPlayer"/> initialiser, not a substitute.</summary>
   public EntityPlayer Entity { get; }
 
   /// <summary>Whether the player is sneaking; backed by <see cref="Entity"/>'s own controls.</summary>
@@ -53,9 +49,8 @@ public sealed class TestPlayer {
   public void Hold(ItemStack? stack) => _activeSlot.Itemstack = stack;
 
   /// <summary>
-  /// Builds a player standing in <paramref name="world"/>: a substituted <see cref="IServerPlayer"/>
-  /// where the game assembly allows proxying it, falling back to a plain <see cref="IPlayer"/>
-  /// substitute otherwise.
+  /// Builds a player standing in <paramref name="world"/>, as a substituted
+  /// <see cref="IServerPlayer"/> or, failing that, a plain <see cref="IPlayer"/>.
   /// </summary>
   public static TestPlayer Create(
     TestWorld world,

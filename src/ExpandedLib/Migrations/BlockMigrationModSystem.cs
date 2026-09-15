@@ -14,12 +14,7 @@ namespace ExpandedLib.Migrations;
 /// <summary>
 /// Server-side world migrator for renamed or re-variantted blocks and items, and a purger for codes a
 /// mod drops. Collects every <see cref="IBlockCodeMigration"/>, <see cref="IItemCodeMigration"/> and
-/// <see cref="IBlockRemoval"/> in all loaded assemblies into legacy-code → action tables, then applies
-/// them as chunk columns load (the walk lives in <see cref="ChunkColumnSweeperModSystem"/>). Matching
-/// is on <see cref="RegistryObject.Code"/>, not a precomputed id, because the engine renumbers ids on load; that
-/// also catches the missing-block placeholders kept for removed codes. A plain migration is a bare
-/// block-id swap, one implementing <see cref="IBlockEntityMigration"/> also gets the old BE's tree, a
-/// removal deletes in place; matching stacks in container BEs and inventories are rewritten either way.
+/// <see cref="IBlockRemoval"/> into legacy-code to action tables, applied as chunk columns load.
 /// </summary>
 public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
   /// <summary>One resolved action for a given legacy block code. A null
@@ -33,26 +28,22 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
   );
 
   /// <summary>One resolved item-stack rewrite (<see cref="IItemCodeMigration"/>): the replacement
-  /// item to swap in for a legacy item code. Items are never in the world voxel grid, so this only
-  /// applies to held stacks.</summary>
+  /// item to swap in for a legacy item code, applying only to held stacks.</summary>
   internal readonly record struct ItemRemapEntry(
     Item NewItem,
     AssetLocation OldCode,
     AssetLocation NewCode
   );
 
-  // Legacy block code -> replacement, merged across all discovered migrations. Keyed by code
-  // (not id) because the engine can renumber block ids on load.
+  // Legacy block code -> replacement, merged across all discovered migrations; keyed by code, not id.
   internal readonly Dictionary<AssetLocation, RemapEntry> _remap = [];
 
-  // Legacy item code -> replacement item, for stacks held in inventories/containers (items are never
-  // placed in the world). Kept separate from _remap so a code that is both a block and an item (e.g.
-  // slag) maps each independently; RemapInventory picks the table by the stack's class.
+  // Legacy item code -> replacement item, for held stacks; separate from _remap, as a code may be
+  // both a block and an item.
   internal readonly Dictionary<AssetLocation, ItemRemapEntry> _itemRemap = [];
 
   protected override void OnStartedServer(ICoreServerAPI api) {
-    // Migrated blocks can also sit as item stacks in a player's inventory (the chunk scan never
-    // sees those), so remap them on join.
+    // A joining player's inventory carries item stacks the chunk scan never sees.
     api.Event.PlayerJoin += OnPlayerJoin;
   }
 
@@ -64,8 +55,7 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
 
   /// <summary>Matches one placed cell against the block remap table and rewrites it if it hits.</summary>
   protected override int VisitCell(IBlockAccessor ba, BlockPos pos, int blockId) {
-    // Resolve the live block and match on its code, so renumbered ids and missing-block
-    // placeholders are both handled.
+    // Matches on the live block's code: handles renumbered ids and missing-block placeholders.
     Block block = _sapi.World.GetBlock(blockId);
     if (
       block?.Code == null
@@ -77,10 +67,8 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
     return 1;
   }
 
-  /// <summary>
-  /// Rewrites migrated blocks held as item stacks in this chunk's container block entities (chests,
-  /// ground storage, mold racks) - stacks the voxel loop never sees.
-  /// </summary>
+  /// <summary>Rewrites migrated blocks held as item stacks in this chunk's container block entities,
+  /// which the voxel loop never sees.</summary>
   protected override int VisitChunkEntities(IWorldChunk chunk) {
     if (chunk.BlockEntities == null)
       return 0;
@@ -123,12 +111,8 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
       total
     );
 
-  /// <summary>
-  /// Rewrites every item stack in <paramref name="inv"/> whose collectible is a migration source,
-  /// preserving stack size and attributes (e.g. a filled mold's stored contents). Block stacks use the
-  /// block table and can be removed, item stacks the item table; a code that is both resolves by the
-  /// stack's class. Returns how many slots changed.
-  /// </summary>
+  /// <summary>Rewrites every item stack in <paramref name="inv"/> whose collectible is a migration
+  /// source, preserving stack size and attributes; returns how many slots changed.</summary>
   internal int RemapInventory(IInventory inv) {
     int changed = 0;
     foreach (ItemSlot slot in inv) {
@@ -172,8 +156,7 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
 
   /// <summary>Remaps any migrated blocks a joining player is carrying as item stacks.</summary>
   private void OnPlayerJoin(IServerPlayer player) {
-    // Shares the base's single-build guard with the chunk sweep, so joining before any column loads
-    // still builds the tables (and only once).
+    // Shares the base's single-build guard with the chunk sweep; builds the tables at most once.
     if (!EnsureInitialized())
       return;
 
@@ -216,11 +199,8 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
     AssetLocation NewCode
   );
 
-  /// <summary>
-  /// Every <c>(oldCode, newCode)</c> pair declared by any discovered <see cref="IBlockCodeMigration"/>,
-  /// before resolution against the world. Exposed so coverage of released codes can be checked across
-  /// all migrations at once.
-  /// </summary>
+  /// <summary>Every <c>(oldCode, newCode)</c> pair declared by any discovered
+  /// <see cref="IBlockCodeMigration"/>, before resolution against the world.</summary>
   public static IEnumerable<DeclaredRemap> DeclaredBlockRemaps(
     ICoreServerAPI api
   ) {
@@ -229,8 +209,8 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
         yield return new DeclaredRemap(migration.Name, oldCode, newCode);
   }
 
-  /// <summary>Every block code any discovered <see cref="IBlockRemoval"/> declares for purging. A
-  /// released code listed here counts as covered: a deliberate deletion is not an orphan.</summary>
+  /// <summary>Every block code any discovered <see cref="IBlockRemoval"/> declares for purging; a
+  /// deliberate deletion counts as covered, not an orphan.</summary>
   public static IEnumerable<(
     string Removal,
     AssetLocation Code
@@ -241,14 +221,11 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
           yield return (removal.Name, code);
   }
 
-  /// <summary>Hop limit for the chain walk; guards a cyclic declaration (A→B→A).</summary>
+  /// <summary>Hop limit for the chain walk; guards a cyclic declaration (A->B->A).</summary>
   internal const int MaxChainHops = 16;
 
-  /// <summary>
-  /// Follows the declared remap graph from <paramref name="from"/> to the code it finally lands on.
-  /// Pure: no world, registry or discovery access. Intermediate codes are dead by construction, so
-  /// only the terminal can be resolved against the world.
-  /// </summary>
+  /// <summary>Follows the declared remap graph from <paramref name="from"/> to the code it finally
+  /// lands on; pure, with no world, registry or discovery access.</summary>
   /// <param name="next">The next hop for a code, or null when it is terminal.</param>
   /// <param name="isPurged">Whether a code is declared for removal; a purge terminates the chain.</param>
   /// <param name="purged">Set when the walk ended on a declared removal.</param>
@@ -268,9 +245,8 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
     overflowed = false;
 
     for (int hops = 0; ; hops++) {
-      // Ask for the next hop before testing the limit. Testing first makes a chain of exactly
-      // MaxChainHops report an overflow even though it terminates cleanly - the guard is for a cycle,
-      // not for a long-but-finite rename history.
+      // The next hop is fetched first, then tested against the hop limit: an exact MaxChainHops
+      // chain does not overflow.
       AssetLocation? hop = next(cursor);
       if (hop == null)
         return cursor;
@@ -290,8 +266,6 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
 
   private void BuildRemapTable() {
     // Pass 1: collect every declared pair without resolving it against the world.
-    // A chain's intermediate codes are dead by construction: a code renamed twice has a middle code
-    // that no longer registers, so resolving while collecting would honour only the first hop.
     var declared =
       new Dictionary<
         AssetLocation,
@@ -329,13 +303,13 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
     // Pass 3: follow each declared source to its terminal, then resolve that once.
     var perMigration = new Dictionary<string, int>();
     foreach (AssetLocation oldCode in declared.Keys) {
-      // GetBlock resolves missing-block placeholders too, so a null means this world has no such
-      // legacy block - nothing to migrate.
+      // GetBlock resolves missing-block placeholders too; null means this world has no such legacy
+      // block.
       if (_sapi.World.GetBlock(oldCode) == null)
         continue;
 
-      // The block-entity migration is the first hop's; mid-chain hops are not consulted, so a hop that
-      // needs to reshape state must be declared as a direct pair.
+      // The block-entity migration used is the first hop's; a hop needing to reshape state must be
+      // declared as a direct pair.
       var (_, beMigration, sourceName) = declared[oldCode];
 
       AssetLocation cursor = FollowChain(
@@ -444,11 +418,8 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
     }
   }
 
-  /// <summary>
-  /// Swaps the block at <paramref name="pos"/> for its replacement. A plain migration is a bare
-  /// <c>SetBlock</c>; one that handles BE state captures the old entity's tree first and applies it
-  /// to the new entity afterwards.
-  /// </summary>
+  /// <summary>Swaps the block at <paramref name="pos"/> for its replacement, carrying over the old
+  /// entity's tree when the entry declares a <see cref="IBlockEntityMigration"/>.</summary>
   internal void ReplaceBlock(IBlockAccessor ba, BlockPos pos, RemapEntry entry) {
     // A removal: delete the block (and its entity) outright.
     if (entry.NewBlock == null) {
@@ -481,11 +452,8 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
     }
   }
 
-  // Scan every loaded assembly for parameterless implementations of T: this system lives in exlib,
-  // but iiex/siex declare their own migrations and removals. ReflectionScan.GetCandidateTypes
-  // already returns a deterministic order (assembly full name, then type full name), which is what
-  // keeps the "keep the first mapping" conflict resolution above stable across runs -
-  // AppDomain.GetAssemblies() order itself is not guaranteed.
+  // Scans every loaded assembly for parameterless implementations of T. GetCandidateTypes returns a
+  // deterministic order, keeping the conflict resolution above stable across runs.
   private static IEnumerable<T> Discover<T>()
     where T : class {
     foreach (

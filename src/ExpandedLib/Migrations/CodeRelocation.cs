@@ -7,24 +7,17 @@ using Vintagestory.API.Server;
 namespace ExpandedLib.Migrations;
 
 /// <summary>
-/// Builds remaps for a block that kept its shape but changed identity - a domain move, a rename or
-/// both - pairing an explicitly named historical base code with a live one and carrying every variant
-/// suffix across unchanged. The historical base must be a literal string, never derived from the live
-/// registry and never a whole-domain enumeration; variants stay derived from the live registry, so a
-/// new orientation needs no migration edit. Only <c>exlib</c>, <c>ppex</c> and <c>siex</c> were ever
-/// released, so those are the only domains a legacy code can carry; <c>ReleasedCodes</c> (from
-/// <c>dist/Releases/</c>) records what shipped and <c>ReleasedCodeCoverageTests</c> asserts coverage.
+/// Builds remaps for a block that kept its shape but changed identity: a domain move, a rename, or
+/// both, pairing a literal historical base code with a live one and carrying every variant suffix
+/// across unchanged. Only <c>exlib</c>, <c>ppex</c> and <c>siex</c> were ever released, so a legacy
+/// code names only those domains.
 /// </summary>
 public static class CodeRelocation {
-  /// <summary>
-  /// Pairs every live <c>{newDomain}:{newBase}[-variants]</c> block with its historical
-  /// <c>{oldDomain}:{oldBase}[-variants]</c> code. The suffix match requires a literal <c>-</c> after
-  /// <paramref name="newBase"/>, so a base of <c>slag</c> pairs with <c>slag</c> and <c>slag-x</c> but
-  /// never with <c>slagpath</c>.
-  /// </summary>
-  /// <param name="legacySideWords">Set for a row whose released code spelled its <c>side</c> variant as
-  /// a full word (<c>ppex:boilercornish-north</c>) where the live group renders a letter. Per-row: ppex
-  /// shipped words, smex shipped letters (<c>smex:blastfurnacetap-n</c>).</param>
+  /// <summary>Pairs every live <c>{newDomain}:{newBase}[-variants]</c> block with its historical
+  /// <c>{oldDomain}:{oldBase}[-variants]</c> code, matching <c>slag</c> and <c>slag-x</c> but never
+  /// <c>slagpath</c> against a base of <c>slag</c>.</summary>
+  /// <param name="legacySideWords">Set when the released code spelled its <c>side</c> variant as a
+  /// full word where the live group renders a letter.</param>
   public static IEnumerable<(
     AssetLocation oldCode,
     AssetLocation newCode
@@ -59,12 +52,8 @@ public static class CodeRelocation {
     }
   }
 
-  /// <summary>
-  /// The block's code suffix with its <c>side</c> letter written back out as the full word the old code
-  /// carried; anything else is returned untouched. Keys off the block's own <c>side</c> variant value,
-  /// not off the last segment being one of nsew: a network node's <c>orientation</c> group renders
-  /// single letters too (<c>ppex:pipe-fluidintake-n</c>) and always has.
-  /// </summary>
+  /// <summary>The block's code suffix with its <c>side</c> letter written back out as the full word
+  /// the old code carried; anything else is returned untouched.</summary>
   private static string WithSideSpeltOut(Block block, string suffix) {
     if (
       block.Variant is not { } variants
@@ -73,8 +62,7 @@ public static class CodeRelocation {
       return suffix;
     if (side is not { Length: 1 } || !ExOrientation.IsHorizontalSideWord(side))
       return suffix;
-    // The side group renders last, so the letter is the final segment. A mismatch means the code
-    // grammar moved; returning the suffix unchanged is safer than emitting a wrong old code.
+    // The side group renders last: the letter is the final segment.
     if (!suffix.EndsWith("-" + side, StringComparison.Ordinal))
       return suffix;
 
@@ -99,10 +87,8 @@ public static class CodeRelocation {
   ) =>
     Remap(api, oldDomain, sharedBase, newDomain, sharedBase, legacySideWords);
 
-  /// <summary>
-  /// Maps a historical block that carried no variants onto a live one that does. The old code cannot
-  /// say which variant it meant, so the caller names the full new code explicitly.
-  /// </summary>
+  /// <summary>Maps a historical block that carried no variants onto a live one that does; the caller
+  /// names the full new code explicitly.</summary>
   public static IEnumerable<(
     AssetLocation oldCode,
     AssetLocation newCode

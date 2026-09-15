@@ -7,14 +7,9 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Checks;
 
 /// <summary>
-/// Reflection-driven registration for a mod's own content checks, the checks-side counterpart to
-/// <see cref="Registries.EntityRegistry"/>. Scans an assembly for
-/// <see cref="ExCheckRegisterAttribute"/>-decorated classes exposing
-/// <c>static CheckResult Run(ICheckSource, string)</c> and appends each to
-/// <see cref="ExlibChecks"/>'s run list, after the eight shipped checks and in registration order. A
-/// class carrying the attribute but missing that exact method is warned about and skipped; the same
-/// type scanned twice (a rejoined world, a module and its host sharing an assembly) is registered once
-/// - a later scan is silently ignored, since re-registering would double every error the check reports.
+/// Reflection-driven registration for a mod's own content checks. Scans an assembly for
+/// <see cref="ExCheckRegisterAttribute"/>-decorated classes and appends each to
+/// <see cref="ExlibChecks"/>'s run list. A type already registered is skipped on a later scan.
 /// </summary>
 public static class ExCheckRegistry {
   private static readonly HashSet<Type> _seen = [];
@@ -29,17 +24,14 @@ public static class ExCheckRegistry {
     System.Func<ICheckSource, string, CheckResult> Run
   )> Registered => _registered;
 
-  /// <summary>Drops every registration. For tests only - a running game never calls this.</summary>
+  /// <summary>Drops every registration; for tests only.</summary>
   internal static void Clear() {
     _seen.Clear();
     _registered.Clear();
   }
 
-  /// <summary>
-  /// Registers every <see cref="ExCheckRegisterAttribute"/>-decorated check in <paramref name="asm"/>
-  /// (default: the calling assembly). Call once from <c>ModSystem.Start</c>, alongside
-  /// <see cref="Registries.EntityRegistry.RegisterAll"/>.
-  /// </summary>
+  /// <summary>Registers every <see cref="ExCheckRegisterAttribute"/>-decorated check in <paramref
+  /// name="asm"/> (default: the calling assembly); call once from <c>ModSystem.Start</c>.</summary>
   public static void RegisterAll(ICoreAPI api, Mod mod, Assembly? asm = null) {
     asm ??= Assembly.GetCallingAssembly();
     string modId = mod.Info.ModID;

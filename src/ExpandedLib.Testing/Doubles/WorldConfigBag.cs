@@ -4,8 +4,7 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// The world-config tree a real <c>IWorldAccessor.Config</c> answers - a real
-/// <see cref="TreeAttribute"/>, not a fake, so a behaviour that reads or writes a world-config key
-/// round-trips exactly as it does in game. <see cref="TestWorld"/> wires <see cref="Tree"/> as
+/// <see cref="TreeAttribute"/>, not a fake. <see cref="TestWorld"/> wires <see cref="Tree"/> as
 /// <c>World.Config</c>.
 /// </summary>
 public sealed class WorldConfigBag {

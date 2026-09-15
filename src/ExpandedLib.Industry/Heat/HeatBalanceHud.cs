@@ -4,10 +4,7 @@ using Vintagestory.API.Config;
 
 namespace ExpandedLib.Industry.Heat;
 
-/// <summary>
-/// The lang keys a <see cref="HeatBalance"/> ledger reads, supplied by the machine because exlib
-/// ships no lang of its own. The argument shape of each line is the same for every machine.
-/// </summary>
+/// <summary>The lang keys a <see cref="HeatBalance"/> ledger reads, supplied by the machine.</summary>
 /// <param name="Temp">Internal temperature line (one temperature arg).</param>
 /// <param name="HeatOk">At-or-above-threshold line (one temperature arg: the threshold).</param>
 /// <param name="HeatStall">Below-threshold line (one temperature arg: the threshold).</param>
@@ -27,17 +24,11 @@ public readonly record struct HeatBalanceLedgerKeys(
   string BlastCold
 );
 
-/// <summary>
-/// Formats the shared part of a furnace or converter heat-balance readout: internal temperature, the
-/// threshold it must clear, the heat-in and heat-loss ledger, and the blast state. Every figure comes
-/// off the <see cref="HeatBalance"/> the tick computed; nothing is recalculated. The caller appends
-/// its machine-specific lines after this ledger.
-/// </summary>
+/// <summary>Formats the shared part of a furnace or converter heat-balance readout.</summary>
 public static class HeatBalanceHud {
-  /// <summary>Appends the five shared ledger lines to <paramref name="sb"/>.
-  /// <paramref name="temp"/> formats a temperature for display, passed in because the measurement
-  /// helper lives downstream of exlib. <paramref name="thresholdTemp"/> is the temperature the
-  /// machine must hold to keep working (a furnace's melt point, the converter's refine floor).</summary>
+  /// <summary>Appends the five shared ledger lines to <paramref name="sb"/>.</summary>
+  /// <param name="temp">Formats a temperature for display.</param>
+  /// <param name="thresholdTemp">Temperature the machine must hold to keep working.</param>
   public static void AppendLedger(
     StringBuilder sb,
     in HeatBalance hb,

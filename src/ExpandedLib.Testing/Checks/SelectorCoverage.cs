@@ -8,27 +8,11 @@ using Vintagestory.API.Util;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// The two selector families anchored on an emitted block code, both of which fail silently when the
-/// code moves out from under them: <c>shapeByType</c>, which leaves a variant with no shape, and the
-/// handbook's <c>groupBy</c>, which leaves an entry ungrouped. Inserting a variant group ahead of an
-/// existing one is how a code moves, and neither an unmatched shape pattern nor an unmatched group
-/// selector is an error.
-/// <para>
-/// The goldens are the emitted blocktypes, so checking them covers the code-first definitions without
-/// needing a running game.
-/// </para>
-/// </summary>
+/// <summary>The two selector families anchored on an emitted block code: <c>shapeByType</c> and the
+/// handbook's <c>groupBy</c>.</summary>
 public static class SelectorCoverage {
-  /// <summary>
-  /// Checks one golden blocktype against both selector rules. <c>shapeByType</c> is self-contained: every
-  /// code the golden's own <c>variantgroups</c> produce must match one of its patterns. The handbook's
-  /// <c>groupBy</c> selects across blocktypes - the four pipe segments each list all four of their tier's
-  /// shapes - so a selector is checked against every code the golden's own domain emits, not just this
-  /// golden's. A selector with no domain is qualified with the golden's own before matching
-  /// (<c>SlideshowItemstackTextComponent</c> does the same at render time). Empty in both means
-  /// clean.
-  /// </summary>
+  /// <summary>Checks one golden blocktype against both selector rules, qualifying a domainless
+  /// selector with the golden's own before matching.</summary>
   public static (
     IReadOnlyList<string> shapeByType,
     IReadOnlyList<string> groupBy
@@ -74,12 +58,8 @@ public static class SelectorCoverage {
     return (shapeByType, groupBy);
   }
 
-  /// <summary>
-  /// Every golden blocktype JSON <paramref name="domain"/> ships - <c>&lt;mod or sample tests&gt;/goldens/
-  /// &lt;domain&gt;/blocktypes/**</c> under every mod and sample the manifest names, repo-relative and
-  /// forward-slashed. The corpus <see cref="Check"/> runs over, and what a caller asserts non-empty as
-  /// the corpus-integrity premise.
-  /// </summary>
+  /// <summary>Every golden blocktype JSON <paramref name="domain"/> ships, repo-relative and
+  /// forward-slashed.</summary>
   public static IReadOnlyList<string> GoldenBlocktypes(string domain) {
     string root = RepoPaths.Root;
     var marker = $"/goldens/{domain}/blocktypes/";
@@ -106,9 +86,7 @@ public static class SelectorCoverage {
     return files;
   }
 
-  // Every mod's own tests folder, every sample's (kept separate because a sample's tests project
-  // need not sit under its own path - exmod.json's samples entry names it independently), plus
-  // every $Manifest.tests entry - exlib's own ExpandedLib.Tests sits outside any mod folder.
+  // Every mod's own tests folder, every sample's, plus every $Manifest.tests entry.
   private static IEnumerable<string> TestRoots() {
     foreach (string mod in RepoManifest.Mods.Values)
       yield return Path.Combine(mod, "tests");
@@ -118,8 +96,7 @@ public static class SelectorCoverage {
       yield return tests;
   }
 
-  // Built once per domain: the groupBy rule needs the whole domain's codes and every golden in that
-  // domain re-asks for it.
+  // Built once per domain and cached.
   private static readonly ConcurrentDictionary<
     string,
     IReadOnlyList<string>

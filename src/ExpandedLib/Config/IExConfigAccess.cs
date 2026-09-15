@@ -2,41 +2,32 @@ using System.Collections.Generic;
 
 namespace ExpandedLib.Config;
 
-/// <summary>
-/// Non-generic view over a config store (<see cref="ExConfigRegister{TConfig}"/>) that the
-/// <c>/exmod config</c> command uses to list, read and set a mod's tunables by name without knowing
-/// the concrete config type. A config opts in with <c>[ExConfigRegister(..., Manageable = true)]</c>;
-/// the generated accessor then registers its store with <see cref="ExConfigProfiles"/> at load.
-/// </summary>
+/// <summary>Non-generic view over a config store that lists, reads and sets a mod's tunables by
+/// name without knowing the concrete config type.</summary>
 public interface IExConfigAccess {
-  /// <summary>The owning mod id, e.g. <c>"siex"</c>, as typed in <c>/exmod config siex ...</c>.</summary>
+  /// <summary>The owning mod id.</summary>
   string ModId { get; }
 
   /// <summary>The config file this store reads/writes, for display.</summary>
   string FileName { get; }
 
-  /// <summary>The names of every editable simple-typed value (numbers, booleans, strings), in
-  /// declaration order. Excludes the version stamp and complex/collection values.</summary>
+  /// <summary>Names of every editable simple-typed value, in declaration order.</summary>
   IReadOnlyList<string> ValueNames { get; }
 
-  /// <summary>Looks up a value by name (case-insensitive) and formats its current value, returning the
-  /// config's canonical casing via <paramref name="canonicalName"/>. <c>false</c> if no such value.</summary>
+  /// <summary>Looks up a value by name (case-insensitive) and formats its current value.</summary>
+  /// <returns><c>false</c> if no such value.</returns>
   bool TryGet(string name, out string canonicalName, out string value);
 
-  /// <summary>Parses <paramref name="raw"/> into the named value's type, validates it, sets it on the
-  /// live config and persists the file, so the change takes effect immediately for every reader going
-  /// through the accessor's getters. Returns the outcome, with canonical name and old/new value.</summary>
+  /// <summary>Parses <paramref name="raw"/> into the named value's type, validates it, sets it on
+  /// the live config and persists the file.</summary>
   ExConfigEditResult Set(string name, string raw);
 
-  /// <summary>Serializes this store's live config to JSON, exactly as it would be written to disk.
-  /// Carries the section from the host that owns it to a joining client (see
-  /// <c>ExConfigSyncModSystem</c>) or to any transport a mod wants to build its own sync over.</summary>
+  /// <summary>Serializes this store's live config to JSON, exactly as it would be written to disk.</summary>
   string ExportJson();
 
   /// <summary>Deserializes <paramref name="json"/> into a fresh config, applies the same range
-  /// clamping <see cref="ExConfigRegister{TConfig}.Load"/> applies on a bad value, and makes it the
-  /// live config every reader through the accessor's getters sees from then on. Never writes to disk -
-  /// a client importing the host's values must not overwrite its own file with them.</summary>
+  /// clamping <see cref="ExConfigRegister{TConfig}.Load"/> applies, and makes it the live config.
+  /// Never writes to disk.</summary>
   void ImportJson(string json);
 }
 

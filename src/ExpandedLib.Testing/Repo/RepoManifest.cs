@@ -7,18 +7,8 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Reads the repo manifest, <c>exmod.json</c>, and exposes the layout it declares: which folder is
-/// which mod's, which folder is which sample's (and where its tests live), which test projects belong
-/// to neither, and which mod's tree carries another domain's overlay (<c>"overlays"</c> on a mod's own
-/// entry).
-/// <para>
-/// Absent the file - a checkout from before the manifest existed, or the harness running against a
-/// third party's repo - the default layout applies: every directory under <c>mods/</c> is a mod named
-/// after itself, no samples, no extra tests, and <c>game</c> overlaid onto <c>iiex</c> only when its
-/// tree exists on disk. Read fresh on every access rather than cached, the same choice
-/// <see cref="DefinitionGoldens.RepoRoot"/> makes, since <see cref="DefinitionGoldens.RepoRootOverride"/>
-/// can move the root a caller resolves against mid-process.
-/// </para>
+/// Reads the repo manifest, <c>exmod.json</c>, and exposes the layout it declares: mod folders,
+/// sample folders and their tests, and which mod's tree carries another domain's overlay.
 /// </summary>
 public static class RepoManifest {
   /// <summary>One sample's project path and test project path.</summary>
@@ -28,18 +18,17 @@ public static class RepoManifest {
   /// directory order under <c>mods/</c>).</summary>
   public static IReadOnlyDictionary<string, string> Mods => Load().Mods;
 
-  /// <summary>Every sample's id, project path and test project path, in the manifest's declared order.
-  /// Empty in the default layout - a sample exists here only once <c>exmod.json</c> names it.</summary>
+  /// <summary>Every sample's id, project path and test project path, in the manifest's declared
+  /// order; empty in the default layout.</summary>
   public static IReadOnlyDictionary<string, SampleEntry> Samples =>
     Load().Samples;
 
-  /// <summary>Test projects belonging to neither a mod nor a sample, as absolute paths. Empty in the
+  /// <summary>Test projects belonging to neither a mod nor a sample, as absolute paths; empty in the
   /// default layout.</summary>
   public static IReadOnlyList<string> Tests => Load().Tests;
 
   /// <summary>An overlay domain mapped to the id of the mod whose tree ships it (<c>game</c> -&gt;
-  /// <c>iiex</c>, from that mod's own <c>"overlays"</c> object). In the default layout this is exactly
-  /// that one rule, and only when <c>mods/iiex/assets/game</c> exists.</summary>
+  /// <c>iiex</c>, from that mod's own <c>"overlays"</c> object).</summary>
   public static IReadOnlyDictionary<string, string> Overlays => Load().Overlays;
 
   private sealed record Manifest(

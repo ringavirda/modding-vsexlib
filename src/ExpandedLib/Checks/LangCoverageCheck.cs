@@ -7,18 +7,8 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Checks;
 
 /// <summary>
-/// Checks that every block code a mod registers resolves to a name in the <c>en</c> locale, matched
-/// against <see cref="ICheckSource.BlockCodes"/> - concrete registered codes, not a def's base code,
-/// since a variant-grouped block's own base code is never placeable. An unresolved <c>en</c> key
-/// renders as the raw key in game regardless of the player's own locale, since <c>en</c> is what
-/// every other translation falls back to.
-/// <para>
-/// Parity of a non-<c>en</c> locale against <c>en</c> is opt-in, via <c>allLocales</c> on
-/// the three-parameter overload: a missing Ukrainian key falls back to English rather than showing
-/// raw, so it is a translation gap to track at repository build time
-/// (<c>ExpandedLib.Testing.LangCoverage.MissingNames</c> runs it), not a defect that fails a server
-/// load over.
-/// </para>
+/// Checks that every registered block code resolves to a name in the <c>en</c> locale, matched
+/// against <see cref="ICheckSource.BlockCodes"/>. An unresolved key renders as the raw key in game.
 /// </summary>
 public static class LangCoverageCheck {
   private const string EnglishLocale = "en";
@@ -29,11 +19,8 @@ public static class LangCoverageCheck {
     Run(source, domain, allLocales: false);
 
   /// <summary>Every unresolved <c>block-</c> name key for <paramref name="domain"/>, as the check's
-  /// <see cref="CheckResult"/>. <paramref name="allLocales"/> selects which shipped locales are
-  /// walked: <see langword="false"/> checks only <c>en</c> (the in-game defect, since <c>en</c> is
-  /// what every other locale falls back to); <see langword="true"/> checks every locale
-  /// <see cref="ICheckSource.Lang"/> returns, the repository-build parity rule
-  /// <c>ExpandedLib.Testing.LangCoverage.MissingNames</c> runs.</summary>
+  /// <see cref="CheckResult"/>. <paramref name="allLocales"/> selects <c>en</c> only, or every
+  /// locale <see cref="ICheckSource.Lang"/> returns.</summary>
   public static CheckResult Run(
     ICheckSource source,
     string domain,

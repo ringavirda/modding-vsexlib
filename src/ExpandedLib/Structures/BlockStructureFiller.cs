@@ -11,12 +11,8 @@ using Vintagestory.GameContent.Mechanics;
 namespace ExpandedLib.Structures;
 
 /// <summary>
-/// Invisible, solid placeholder that fills the grid cells a mega-block visually
-/// occupies (see <see cref="StructureFillers"/>). It renders nothing but provides
-/// real per-cell collision/selection, and reroutes every player-facing operation
-/// to the "principal" controller block recorded on its
-/// <see cref="BlockEntityStructureFiller"/> - mirroring vanilla's
-/// <c>BlockMPMultiblockGear</c>.
+/// Invisible, solid placeholder that fills the grid cells a mega-block visually occupies. Renders
+/// nothing but reroutes every player-facing operation to the principal controller block.
 /// </summary>
 [BlockRegister]
 public partial class BlockStructureFiller
@@ -26,9 +22,7 @@ public partial class BlockStructureFiller
     IExBlockDefProvider {
   #region Code-first definition
 
-  /// <summary>The structure-filler blocktype: the invisible, solid, un-drawn placeholder every
-  /// mega-block reserves its footprint with. Hidden from the handbook, a <c>json</c> drawtype over an
-  /// empty shape, full-cube collision, no drops.</summary>
+  /// <summary>The structure-filler blocktype: invisible, solid, hidden from the handbook, no drops.</summary>
   public static IEnumerable<ExBlockDef> Definitions(string domain) =>
     [
       ExBlockDef
@@ -51,10 +45,7 @@ public partial class BlockStructureFiller
 
   #endregion
 
-  // INetworkConnector: a plain filler is inert (type ""), but a principal can turn one cell into
-  // a fixed port by setting PortFace/PortNetworkType on its BE (e.g. the boiler's steam outlet).
-  // The position-less members are the inert fallback; the network system uses the position-aware
-  // overloads, which consult the BE.
+  // A plain filler is inert (type ""); a principal can turn one cell into a fixed port via its BE.
   public string NetworkType => "";
 
   public bool HasConnectorAt(BlockFacing face) => false;
@@ -72,10 +63,7 @@ public partial class BlockStructureFiller
     world.GetBlockEntity(pos) is BlockEntityStructureFiller be
     && be.PortFace == face.Code[0].ToString();
 
-  // IMechanicalPowerBlock: a footprint cell becomes a mechanical-power intake when its
-  // fillerOffsets entry hosts an MP behaviour (e.g. exlib.BEBehaviorMPFillerPort) with a connector
-  // face. The vanilla MP network discovers power by asking the block at each cell whether it accepts
-  // an axle on a given face.
+  // A footprint cell becomes a mechanical-power intake when its fillerOffsets entry hosts an MP behaviour.
   private static BEBehaviorMPBase? MpBehaviorAt(
     IBlockAccessor world,
     BlockPos pos
@@ -97,9 +85,7 @@ public partial class BlockStructureFiller
       || be.HostedBehaviors == null
     )
       return false;
-    // A mechanical axle couples along an axis, so a port declared on one face accepts a connection
-    // on that face or, unless its properties say `through: false`, its opposite (both ends of the
-    // axle line), letting an axle run straight through the cell and attach from either side.
+    // A port declared on one face also accepts its opposite face, unless `through: false`.
     foreach (FillerBehavior b in be.HostedBehaviors)
       if (
         b.ConnectorFace != null
@@ -125,9 +111,7 @@ public partial class BlockStructureFiller
   public MechanicalNetwork? GetNetwork(IWorldAccessor world, BlockPos pos) =>
     MpBehaviorAt(world.BlockAccessor, pos)?.Network;
 
-  // Fillers are solid so they collide, but are not an attachment surface by default, otherwise
-  // torches, vines and slabs could hang on the invisible footprint. A cell opts back in via its
-  // fillerOffsets "allowAttach" flag.
+  // Not an attachment surface by default; a cell opts back in via its fillerOffsets "allowAttach" flag.
   public override bool CanAttachBlockAt(
     IBlockAccessor blockAccessor,
     Block block,
@@ -149,9 +133,8 @@ public partial class BlockStructureFiller
     return false;
   }
 
-  // A footprint cell the mega-block only partially fills (a slab, say) carries its own boxes on the
-  // BE; a plain full-cube cell carries none and falls back to the definition's box. Selection matches
-  // collision so the player cannot target solid-looking empty space above a partial cell.
+  // A cell the mega-block only partially fills carries its own boxes on the BE; a full-cube cell falls
+  // back to the definition's box.
   public override Cuboidf[] GetCollisionBoxes(
     IBlockAccessor blockAccessor,
     BlockPos pos
@@ -170,10 +153,7 @@ public partial class BlockStructureFiller
       ? boxes
       : base.GetSelectionBoxes(blockAccessor, pos);
 
-  /// <summary>
-  /// Inherits the principal's interaction sounds so the invisible footprint sounds like the block
-  /// it stands in for (otherwise hitting/walking on a filler is silent).
-  /// </summary>
+  /// <summary>Inherits the principal's interaction sounds so the invisible footprint is not silent.</summary>
   public override BlockSounds GetSounds(
     IBlockAccessor blockAccessor,
     BlockSelection blockSel,
@@ -192,7 +172,7 @@ public partial class BlockStructureFiller
     return base.GetSounds(blockAccessor, blockSel, stack);
   }
 
-  /// <summary>Resolves the principal position + block, or null when orphaned.</summary>
+  /// <summary>Resolves the principal position and block; false when orphaned.</summary>
   private bool TryGetPrincipal(
     IWorldAccessor world,
     BlockPos pos,
@@ -227,15 +207,12 @@ public partial class BlockStructureFiller
     IPlayer byPlayer,
     BlockSelection blockSel
   ) {
-    // A held placeable block means the player is building on the footprint rather than driving the
-    // principal, so the forward is skipped. Liquid containers are the exception: a principal such as
-    // a boiler filled from a bucket still needs to see them.
+    // A held placeable block skips the forward, except a liquid container, which the principal must see.
     ItemStack? held = byPlayer.InventoryManager?.ActiveHotbarSlot?.Itemstack;
     bool placingBlock =
       held?.Block != null && held.Collectible is not BlockLiquidContainerBase;
 
-    // Forwards to the principal first and stops if it handles the click. Cell-aware principals
-    // (IFillerInteractionTarget) also get the clicked cell, to restrict an interaction to it.
+    // Cell-aware principals (IFillerInteractionTarget) also get the clicked cell.
     if (
       !placingBlock
       && TryGetPrincipal(world, blockSel.Position, out var pp, out var pb)
@@ -248,8 +225,7 @@ public partial class BlockStructureFiller
         return true;
     }
 
-    // Unhandled: on an allowAttach cell (a buildable surface), return false so the engine does
-    // its normal placement on the filler's face instead of swallowing the click.
+    // Unhandled, allowAttach cell: let the engine do its normal placement.
     if (
       world.BlockAccessor.GetBlockEntity(blockSel.Position)
         is BlockEntityStructureFiller be
@@ -257,7 +233,7 @@ public partial class BlockStructureFiller
     )
       return false;
 
-    // Non-buildable cell: swallow a block-placement click so no block drops on the filler's face.
+    // Unhandled, non-buildable cell: swallow the click.
     if (placingBlock)
       return true;
 
@@ -341,15 +317,14 @@ public partial class BlockStructureFiller
     IPlayer byPlayer,
     float dropQuantityMultiplier = 1f
   ) {
-    // Breaking any filler breaks the whole structure: the principal's OnBlockBroken clears every
-    // filler cell via StructureFillers.RemoveFillers. Orphaned fillers fall back to a plain remove.
+    // Breaking any filler breaks the whole structure via the principal's OnBlockBroken.
     if (!TryGetPrincipal(world, pos, out var pp, out var pb)) {
       base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
       return;
     }
     pb.OnBlockBroken(world, pp, byPlayer, dropQuantityMultiplier);
 
-    // If the principal's break did not clear this cell, remove it rather than leave an orphan.
+    // Removes this cell in case the principal's break did not clear it.
     if (world.BlockAccessor.GetBlock(pos).Id == BlockId)
       world.BlockAccessor.SetBlock(0, pos);
   }
@@ -360,7 +335,7 @@ public partial class BlockStructureFiller
     return pb.OnPickBlock(world, pp);
   }
 
-  // The principal owns all drops; a filler never drops anything itself.
+  // The principal owns all drops.
   public override ItemStack[] GetDrops(
     IWorldAccessor world,
     BlockPos pos,
@@ -368,8 +343,7 @@ public partial class BlockStructureFiller
     float dropQuantityMultiplier = 1f
   ) => [];
 
-  // The look-at info HUD shows the principal's text (e.g. the pump's status) instead of the
-  // invisible filler's, so any footprint cell reads like the block it stands in for.
+  // The look-at info HUD shows the principal's text instead of the invisible filler's.
   public override string GetPlacedBlockInfo(
     IWorldAccessor world,
     BlockPos pos,

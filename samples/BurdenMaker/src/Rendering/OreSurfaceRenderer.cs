@@ -5,13 +5,9 @@ using Vintagestory.API.MathTools;
 
 namespace BurdenMaker.Rendering;
 
-/// <summary>
-/// Draws the flat top surface of the granular charge (crushed ore, flux or finished burden) heaped
-/// inside a burdenmaker's hoppers or basin. One opaque, ore-textured quad spans the vessel's interior
-/// footprint; its height interpolates with <see cref="Fill"/> between an empty floor line
-/// (<see cref="_yMin"/>) and a brim-full line (<see cref="_yMax"/>). A <see cref="Fill"/> of zero hides
-/// the surface.
-/// </summary>
+/// <summary>Draws the flat top surface of granular charge heaped inside a hopper or basin: one
+/// opaque quad whose height interpolates with <see cref="Fill"/> between <see cref="_yMin"/> and
+/// <see cref="_yMax"/>.</summary>
 public class OreSurfaceRenderer : SurfaceRenderer {
   private readonly int _textureId;
   private readonly float _yMin;

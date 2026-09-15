@@ -2,15 +2,9 @@ using System;
 
 namespace ExpandedLib.Config;
 
-/// <summary>
-/// Declares the valid numeric range for a config tunable, enforced by <see cref="ExConfigRegister{TConfig}"/>
-/// both when a player edits it live (<c>/exmod config</c> rejects an out-of-range value) and on load (a
-/// file edited out of range is reset to the coded default).
-/// <para>
-/// A numeric value without this attribute is still guarded as non-negative and finite; add the attribute
-/// only where a tighter bound is needed. Booleans and strings are ignored.
-/// </para>
-/// </summary>
+/// <summary>Declares the valid numeric range for a config tunable, enforced by <see
+/// cref="ExConfigRegister{TConfig}"/> on a live edit and on load. Values without this attribute are
+/// guarded as non-negative and finite.</summary>
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 public sealed class ExConfigRangeAttribute : Attribute {
   /// <summary>Smallest accepted value (inclusive).</summary>

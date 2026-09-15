@@ -16,7 +16,7 @@ public sealed record ReleasedModHistory(
 /// Registry of released-code history, one entry per mod. Each mod's own test <c>ModuleInit</c>
 /// registers its shipped codes, entity classes, published versions and migration debt exactly once;
 /// <see cref="ReleasedCodes"/>, <see cref="ReleasedVersions"/> and <see cref="ReleasedCodeDebt"/> read
-/// it back through their old entry points, so the harness itself carries no mod-specific history.
+/// it back through their old entry points.
 /// </summary>
 public static class ReleasedHistory {
   private static readonly Dictionary<string, ReleasedModHistory> ByMod = new();

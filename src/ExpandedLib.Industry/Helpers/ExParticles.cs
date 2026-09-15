@@ -3,12 +3,8 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.Helpers;
 
-/// <summary>
-/// Shared catalogue of particle effects for the mod family (iiex + siex). The named presets are thin
-/// wrappers over the configurable <see cref="Spawn"/> primitive; new effects reuse it or
-/// <see cref="RisingPlume"/>. No method does side-checking: spawn on the server to broadcast to nearby
-/// clients, or on the client to show locally.
-/// </summary>
+/// <summary>Shared catalogue of particle effects. No method does side-checking: spawn on the
+/// server to broadcast, or on the client to show locally.</summary>
 public static class ExParticles {
   /// <summary>White vapour (steam / pressurised air venting).</summary>
   public static readonly int Vapor = ColorUtil.ToRgba(130, 235, 235, 240);
@@ -34,10 +30,8 @@ public static class ExParticles {
   /// <summary>Faint, semi-transparent pale wisp - ambient air drawn into the air blower's cylinder.</summary>
   public static readonly int AirTint = ColorUtil.ToRgba(70, 225, 225, 230);
 
-  /// <summary>
-  /// Builds a <see cref="SimpleParticleProperties"/> from the given bounds, velocity and timing and
-  /// spawns it. Every preset below funnels through here.
-  /// </summary>
+  /// <summary>Builds a <see cref="SimpleParticleProperties"/> from the given bounds, velocity and
+  /// timing and spawns it.</summary>
   public static void Spawn(
     IWorldAccessor world,
     int color,
@@ -72,8 +66,7 @@ public static class ExParticles {
     ) {
       ShouldDieInLiquid = shouldDieInLiquid,
     };
-    // Evolve properties are non-nullable, so they are only set when supplied; presets without an
-    // evolve keep the engine default.
+    // Set only when supplied; presets without an evolve keep the engine default.
     if (opacityEvolve.HasValue)
       particles.OpacityEvolve = opacityEvolve.Value;
     if (sizeEvolve.HasValue)
@@ -97,11 +90,8 @@ public static class ExParticles {
       face.Normali.Z * speed + spread
     );
 
-  /// <summary>
-  /// Plume colour for a gas type: dark for exhaust, white for steam / pressurised air.
-  /// Returns <c>null</c> for plain air when <paramref name="ventAir"/> is <c>false</c>
-  /// (a pressure valve shows nothing when only air spills).
-  /// </summary>
+  /// <summary>Plume colour for a gas type. Returns <c>null</c> for plain air when
+  /// <paramref name="ventAir"/> is <c>false</c>.</summary>
   public static int? GasColor(string gasType, bool ventAir = true) =>
     gasType == "Exhaust" ? Exhaust
     : gasType == "Air" && !ventAir ? null
@@ -229,11 +219,8 @@ public static class ExParticles {
       shouldDieInLiquid: true
     );
 
-  /// <summary>
-  /// A short downdraft of faint air wisps drawn into the air blower's cylinder on the intake stroke.
-  /// Spawns just above <paramref name="mouth"/> and pulls the wisps down, shrinking into the bore.
-  /// <paramref name="count"/> sets the density.
-  /// </summary>
+  /// <summary>A short downdraft of faint air wisps drawn into the air blower's cylinder on the
+  /// intake stroke. <paramref name="count"/> sets the density.</summary>
   public static void AirInhale(IWorldAccessor world, Vec3d mouth, int count) =>
     Spawn(
       world,

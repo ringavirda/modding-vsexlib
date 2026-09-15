@@ -8,13 +8,9 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Industry.Molten;
 
 /// <summary>
-/// One molten-metal cell as a composable block-entity behaviour: holds a single cell's metal (amount,
-/// type, temperature) and the per-cell operations the molten system drives, so any block entity can be
-/// an <see cref="IMoltenCell"/> by composition, including a mega-block footprint cell hosted through
-/// <see cref="IFillerHostedBehavior"/>. A hosted cell is not registered in the shared molten network
-/// graph: its principal drives flow across the cluster, which may hold a different metal from the
-/// outside line. Hosted config is re-applied on load by <see cref="ConfigureFromFiller"/>; only mutable
-/// metal state is serialized here. See docs/design/mechanics/molten-network.md.
+/// One molten-metal cell as a composable block-entity behaviour, holding a single cell's metal (amount,
+/// type, temperature) and the per-cell operations the molten system drives. A hosted cell is not
+/// registered in the shared molten network graph.
 /// </summary>
 [BlockEntityBehaviorRegister]
 public class BEBehaviorMoltenCell(BlockEntity blockentity)
@@ -24,10 +20,8 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
   /// <summary>Fallback capacity (units) when the declaration sets no <c>capacity</c>.</summary>
   public const int DefaultCapacity = 100;
 
-  /// <summary>
-  /// The tree-key prefix a cell uses when it declares no <c>key</c>. Save contract: changing it makes
-  /// <see cref="FromTreeAttributes"/> read zeros over existing contents.
-  /// </summary>
+  /// <summary>The tree-key prefix a cell uses when it declares no <c>key</c>; changing it makes
+  /// <see cref="FromTreeAttributes"/> read zeros over existing contents.</summary>
   public const string DefaultKeyPrefix = "mc_";
 
   #region Config
@@ -37,20 +31,16 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
   private bool _solidifiesWhenCold = true;
   private float _cooldownSpeed = ExlibValues.MoltenCooldownDefault;
 
-  // One tree is shared by every behaviour a block entity hosts, and a cell holds exactly one metal
-  // (PushMetalRaw refuses a second), so a layered vessel such as a crucible holding iron under slag hosts
-  // two cells. Distinct prefixes keep the second cell's write from silently landing on the first.
+  // Distinct prefixes let one block entity host two cells without their tree writes colliding.
   private string _keyPrefix = DefaultKeyPrefix;
 
-  // Runtime capacity override that wins over the declared/config capacity while set; persisted so it
-  // survives a reload. The tree key stays `patcap` as a save contract.
+  // Runtime override that wins over the declared capacity while set; tree key `patcap` is a save contract.
   private int? _runtimeCapacity;
 
   /// <summary>The principal (controller) block this cell belongs to, or null when hosted standalone.</summary>
   public BlockPos? Principal { get; private set; }
 
-  // Config keys read from the hosted-behaviour properties. flowSource seeds the principal's internal
-  // flow, drainFitting takes the final sub-minimum dregs (a mold), solidifies clogs when cold.
+  // drainFitting takes the final sub-minimum dregs (a mold).
   private void ApplyConfig(JsonObject? props) {
     if (props == null)
       return;
@@ -74,8 +64,7 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
 
   public override void Initialize(ICoreAPI api, JsonObject properties) {
     base.Initialize(api, properties);
-    // Hosted-on-filler cells were already configured via ConfigureFromFiller (which runs first); a cell
-    // declared directly in a block's behaviours gets its config here instead. Same keys either way.
+    // ConfigureFromFiller runs first for hosted cells; direct declarations are configured here.
     ApplyConfig(properties);
   }
   #endregion
@@ -93,10 +82,8 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
   /// <inheritdoc/>
   public int MaxUnitCapacity => _runtimeCapacity ?? _capacity;
 
-  /// <summary>
-  /// Overrides this cell's capacity (units) until <see cref="ClearCapacity"/>; a non-positive value
-  /// clears the override. The caller guards against changing capacity while metal is present.
-  /// </summary>
+  /// <summary>Overrides this cell's capacity (units) until <see cref="ClearCapacity"/>; a non-positive
+  /// value clears the override.</summary>
   public void SetCapacity(int capacity) {
     _runtimeCapacity = capacity > 0 ? capacity : null;
     Blockentity.MarkDirty();
@@ -122,8 +109,7 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
   /// <inheritdoc/>
   public bool AcceptsSubMinimumFlow => _drainFitting;
 
-  // Server-side temperature carrier: an ItemStack so VS applies its time-based cooling. Null on the
-  // client and when empty; rebuilt lazily via EnsureMetalStack after a world load.
+  // Server-side temperature carrier; null on the client and when empty, rebuilt lazily via EnsureMetalStack.
   private ItemStack? _cellMetalStack;
   private float _cellTemperature;
 
@@ -137,10 +123,8 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
   public byte GlowLightLevel =>
     CellAmount > 0 ? MoltenMetal.GlowLevel(_cellTemperature) : (byte)0;
 
-  /// <summary>
-  /// Thermal state (liquid / cooling / hardened) classified against the metal's melting point, honouring
-  /// its registered per-metal thresholds. Empty cells read liquid.
-  /// </summary>
+  /// <summary>Thermal state (liquid / cooling / hardened) classified against the metal's melting point
+  /// and its registered thresholds; empty cells read liquid.</summary>
   public MoltenState CellState {
     get {
       IWorldAccessor? world = Blockentity.Api?.World;
@@ -159,10 +143,8 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
   #endregion
 
   #region Per-cell metal API
-  /// <summary>
-  /// Pushes up to <paramref name="amount"/> units of <paramref name="metal"/> into this cell,
-  /// temperature-averaging with any same-type metal already present. Returns the amount accepted.
-  /// </summary>
+  /// <summary>Pushes up to <paramref name="amount"/> units of <paramref name="metal"/> into this cell,
+  /// temperature-averaging with any same-type metal already present.</summary>
   public int PushMetal(int amount, ItemStack metal, IWorldAccessor world) =>
     PushMetalRaw(
       amount,
@@ -237,10 +219,8 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
     MoltenMetal.SetCooldownSpeed(_cellMetalStack, _cooldownSpeed);
   }
 
-  /// <summary>
-  /// Raises this cell's temperature toward <paramref name="incomingTemp"/> without adding volume, so a
-  /// continuously-fed full fitting stays molten instead of plugging. Returns true if raised.
-  /// </summary>
+  /// <summary>Raises this cell's temperature toward <paramref name="incomingTemp"/> without adding
+  /// volume; returns true if raised.</summary>
   public bool SoakHeat(IWorldAccessor world, float incomingTemp) {
     if (
       CellAmount <= 0
@@ -273,8 +253,7 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
       return;
 
     float temp = MoltenMetal.GetTemperature(world, _cellMetalStack);
-    // Re-stamp the live cooldown rate each tick (rebases the baseline to the current temperature, so an
-    // unchanged rate is a no-op) - a config change then applies to metal already standing in the cell.
+    // Re-stamps the live cooldown rate each tick; a config change applies to metal already in the cell.
     SetStackTemperature(world, temp);
 
     float meltPoint = MoltenMetal.MeltingPointOf(world, _cellMetalStack);
@@ -310,10 +289,7 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
     );
   }
 
-  /// <summary>
-  /// Empties this cell and clears its solidified latch, e.g. once the principal has collected the
-  /// hardened casting. No-op off-server.
-  /// </summary>
+  /// <summary>Empties this cell and clears its solidified latch; a no-op off the server.</summary>
   public void ClearContents() {
     if (Blockentity.Api?.Side != EnumAppSide.Server)
       return;
@@ -325,10 +301,8 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
 
   #region Serialization (behaviour keys are prefixed to share the BE tree)
 
-  /// <summary>
-  /// This cell's tree-key prefix - <see cref="DefaultKeyPrefix"/> unless the declaration sets
-  /// <c>key</c>. Distinct prefixes are what let two cells share one block entity's tree.
-  /// </summary>
+  /// <summary>This cell's tree-key prefix: <see cref="DefaultKeyPrefix"/> unless the declaration sets
+  /// <c>key</c>.</summary>
   public string Key => _keyPrefix;
 
   public override void ToTreeAttributes(ITreeAttribute tree) {

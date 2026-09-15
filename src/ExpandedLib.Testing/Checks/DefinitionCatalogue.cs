@@ -9,15 +9,9 @@ using Vintagestory.API.Util;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Answers whether a code names something a mod registers, over blocks and items together, because
-/// most callers hold a <c>JsonItemStack</c> whose <c>type</c> decides which registry it lands in. A
-/// code that names nothing neither throws nor logs: the stack resolves to null and whatever depended
-/// on it produces nothing. <see cref="RecipeCodes"/> covers the grid-recipe half of the same question.
-/// <para>
-/// Membership is tested with <see cref="WildcardUtil"/>, never equality. A worldproperty-sourced
-/// variant group cannot be enumerated headlessly, so those groups expand to <c>*</c> and a concrete
-/// code has to be matched against the pattern - see <see cref="DefinitionCodes.Expand"/>.
-/// </para>
+/// Answers whether a code names something a mod registers, over blocks and items together. A
+/// code that names nothing neither throws nor logs. Membership is tested with
+/// <see cref="WildcardUtil"/>, never equality.
 /// </summary>
 public static class DefinitionCatalogue {
   /// <summary>Every block code pattern <paramref name="domain"/> registers, worldproperty groups as
@@ -27,11 +21,7 @@ public static class DefinitionCatalogue {
     Assembly asm
   ) => DefinitionCodes.PatternsForDomain(domain, asm);
 
-  /// <summary>
-  /// Every item code pattern <paramref name="domain"/> registers. Items carry no worldproperty groups
-  /// in this codebase, so every group is enumerated exactly; the results are still called patterns
-  /// because a caller matches them the same way for either registry.
-  /// </summary>
+  /// <summary>Every item code pattern <paramref name="domain"/> registers.</summary>
   public static IEnumerable<string> ItemPatterns(string domain, Assembly asm) =>
     DefinitionGoldens
       .Collect(domain, asm)
@@ -46,8 +36,7 @@ public static class DefinitionCatalogue {
         if (g["states"] is JArray arr)
           groups.Add([.. arr.Select(s => (string)s!)]);
         else
-          // A worldproperty group on an item cannot be enumerated headlessly, so it becomes a
-          // wildcard, as blocks' do. Dropping it would make every code under it unresolvable.
+          // A worldproperty group on an item cannot be enumerated headlessly; it becomes a wildcard.
           groups.Add(["*"]);
 
     IEnumerable<string> codes = [$"{def.Domain}:{def.Code}"];
@@ -56,13 +45,8 @@ public static class DefinitionCatalogue {
     return codes;
   }
 
-  /// <summary>
-  /// Whether <paramref name="stack"/>'s code names something <paramref name="domains"/> register.
-  /// <para>
-  /// A stack whose domain is not among <paramref name="domains"/> (<c>game:</c>, or another mod's) is
-  /// reported as resolvable, since the harness cannot see those registries.
-  /// </para>
-  /// </summary>
+  /// <summary>Whether <paramref name="stack"/>'s code names something <paramref name="domains"/>
+  /// register; a domain not among <paramref name="domains"/> is reported as resolvable.</summary>
   public static bool Resolves(
     JsonItemStack? stack,
     IReadOnlyDictionary<string, Assembly> domains

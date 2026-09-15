@@ -8,10 +8,8 @@ namespace ExpandedLib.Industry.Molten;
 
 /// <summary>
 /// Concrete <see cref="BlockNetwork"/> for the molten-canal system. Each node (an
-/// <see cref="IMoltenCell"/>) owns its own metal, so merge and split need no redistribution; the
-/// network supplies connectivity plus the per-tick driver that flows metal cell-to-cell by level
-/// equalisation and runs each cell's cooling. Cells are resolved from
-/// <see cref="BlockNetwork.Nodes"/>. See docs/design/mechanics/molten-network.md.
+/// <see cref="IMoltenCell"/>) owns its own metal; the network supplies connectivity plus the per-tick
+/// driver that flows metal cell-to-cell by level equalisation and runs each cell's cooling.
 /// </summary>
 public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) {
   public override string NetworkType => "molten";
@@ -40,8 +38,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     return c != 0 ? c : a.Z.CompareTo(b.Z);
   }
 
-  // Distance-from-start is purely topological, so the map is cached and the BFS re-run only when a
-  // cheap topology signature changes rather than every tick.
+  // Cached; the BFS re-runs only when the topology signature changes.
   private Dictionary<BlockPos, int>? _cachedDistFromStart;
   private (int Count, long PosHash, long StartHash) _cachedTopoSig;
 
@@ -61,11 +58,8 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     return _cachedDistFromStart;
   }
 
-  /// <summary>
-  /// Order-independent fingerprint of the cells that drive the distance map: cell count plus
-  /// XOR-folded hashes of all cell positions and of the flow-source positions. Any add, removal or
-  /// swap between source and plain cell changes at least one term.
-  /// </summary>
+  /// <summary>Order-independent fingerprint of the cells that drive the distance map: cell count plus
+  /// XOR-folded hashes of cell positions and flow-source positions.</summary>
   private static (int, long, long) ComputeTopologySignature(
     List<(BlockPos Pos, IMoltenCell Cell)> cells
   ) {
@@ -82,10 +76,8 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     return (cells.Count, posHash, startHash);
   }
 
-  /// <summary>
-  /// Multi-source BFS over the canal graph mapping each cell to its hop distance from the nearest
-  /// flow source. Cells unreachable from any source (a sourceless run) are absent from the map.
-  /// </summary>
+  /// <summary>Multi-source BFS over the canal graph mapping each cell to its hop distance from the
+  /// nearest flow source; cells unreachable from any source are absent from the map.</summary>
   private Dictionary<BlockPos, int> BuildDistanceFromStart(
     IBlockAccessor blockAccessor,
     List<(BlockPos Pos, IMoltenCell Cell)> cells
@@ -119,11 +111,8 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     return dist;
   }
 
-  /// <summary>
-  /// Orders cells for the flow pass, greater distance from the source first, so metal is driven from
-  /// the farthest cells back toward the source. Position breaks ties; a cell unreachable from any
-  /// source counts as farthest.
-  /// </summary>
+  /// <summary>Orders cells for the flow pass, greater distance from the source first; position breaks
+  /// ties, and an unreachable cell counts as farthest.</summary>
   private static int CompareFlowOrder(
     (BlockPos Pos, IMoltenCell Cell) x,
     (BlockPos Pos, IMoltenCell Cell) y,
@@ -152,8 +141,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     if (cells.Count == 0)
       return;
 
-    // Farthest-first order drains the run toward the source one wavefront per tick rather than in
-    // arbitrary positional order.
+    // Farthest-first order drains the run toward the source one wavefront per tick.
     var distFromStart = GetDistanceFromStart(blockAccessor, cells);
     cells.Sort((x, y) => CompareFlowOrder(x, y, distFromStart));
     foreach (var c in cells)
@@ -168,9 +156,8 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
       )
         continue;
 
-      // ALLFACES, not HORIZONTALS: the graph joins vertical neighbours, so a run that steps down a level
-      // has to exchange metal across that edge too. HasConnectorAt still gates every face, so flow only
-      // happens where a connector exists.
+      // ALLFACES, not HORIZONTALS: vertical neighbours also exchange metal; HasConnectorAt still gates
+      // every face.
       foreach (var face in BlockFacing.ALLFACES) {
         if (!aNode.HasConnectorAt(face))
           continue;
@@ -183,10 +170,8 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
         if (b.Cell.Sealed || b.Cell.Solidified)
           continue;
 
-        // A vertical edge is downhill only: it is driven from the upper cell (face DOWN) and the reverse
-        // face is skipped outright, bypassing the distance ordering that decides horizontal edges, which
-        // would pump metal uphill. A full lower cell backs the upper one up, the back-pressure the rest
-        // of the canal model relies on.
+        // A vertical edge is downhill only: driven from the upper cell (face DOWN); the reverse face is
+        // skipped to avoid pumping metal uphill.
         if (face.Axis == EnumAxis.Y) {
           if (face != BlockFacing.DOWN)
             continue;
@@ -194,8 +179,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
           continue;
         }
 
-        // Drive each undirected edge exactly once, from the cell farther from the source (ties broken
-        // by position).
+        // Drive each undirected edge exactly once, from the cell farther from the source.
         if (CompareFlowOrder(a, b, distFromStart) >= 0)
           continue;
 
@@ -208,11 +192,9 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
       c.Cell.UpdateThermal(world);
   }
 
-  /// <summary>
-  /// Moves metal across one connection toward an equal amount (not an equal fill ratio), capped at
-  /// <paramref name="maxFlow"/> units. <paramref name="downhillOnly"/> makes the edge one-way from
-  /// <paramref name="aNode"/>, used for vertical edges where levelling both ways would pump metal uphill.
-  /// </summary>
+  /// <summary>Moves metal across one connection toward an equal amount, capped at
+  /// <paramref name="maxFlow"/> units; <paramref name="downhillOnly"/> makes the edge one-way from
+  /// <paramref name="aNode"/>.</summary>
   private static void FlowEdge(
     IMoltenCell aNode,
     IMoltenCell bNode,
@@ -245,16 +227,12 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     )
       return;
 
-    // A levelling pair moves half the difference: the whole difference would overshoot the midpoint and
-    // swap the two levels, so the pair oscillates instead of settling; integer division floors the step
-    // to zero on its own. The two exemptions are one-way sinks, not levelling pairs - a drain fitting
-    // consuming metal and a downhill edge pouring into the cell below - and take the whole difference so
-    // no dregs are stranded.
+    // A levelling pair moves half the difference; integer division floors the step to zero on its own.
+    // A drain fitting and a downhill edge are one-way sinks and take the whole difference.
     var step = receiver.AcceptsSubMinimumFlow || downhillOnly ? diff : diff / 2;
     var transfer = step > maxFlow ? maxFlow : step;
 
-    // No MoltenMinFlowAmount floor on a levelling edge: combined with halving it would double the
-    // deadband, and halving alone already decays proportionally to nothing.
+    // No MoltenMinFlowAmount floor on a levelling edge; halving alone already decays to nothing.
     if (transfer <= 0)
       return;
 

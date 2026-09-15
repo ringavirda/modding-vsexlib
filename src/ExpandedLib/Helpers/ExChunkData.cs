@@ -19,8 +19,7 @@ public static class ExChunkData {
   ) => chunk.GetModdata($"{domain}:{key}", defaultValue);
 
   /// <summary>Writes <paramref name="value"/> under <paramref name="domain"/>/<paramref name="key"/>
-  /// on <paramref name="chunk"/>, persisted with the chunk. Set server-side before the chunk is sent
-  /// to reach the client too.</summary>
+  /// on <paramref name="chunk"/>, persisted with the chunk; set server-side to reach the client.</summary>
   public static void Set<T>(
     IWorldChunk chunk,
     string domain,

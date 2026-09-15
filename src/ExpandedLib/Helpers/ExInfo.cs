@@ -25,13 +25,10 @@ public static class ExInfo {
     params object[] args
   ) => condition ? dsc.Lang(key, args) : dsc;
 
-  /// <summary>
-  /// Appends <paramref name="key"/>'s text with <paramref name="value"/> formatted through
-  /// <see cref="ExMeasure"/> in <paramref name="unit"/> - one of <c>volume</c>, <c>pressure</c>,
-  /// <c>temperature</c>, <c>power</c>, <c>speed</c>, <c>flowrate</c> or <c>energy</c>
-  /// (case-insensitive) - so metric and imperial readers both get theirs. Throws
-  /// <see cref="ArgumentException"/> naming an unrecognised unit.
-  /// </summary>
+  /// <summary>Appends <paramref name="key"/>'s text with <paramref name="value"/> formatted through
+  /// <see cref="ExMeasure"/> in <paramref name="unit"/> (<c>volume</c>, <c>pressure</c>,
+  /// <c>temperature</c>, <c>power</c>, <c>speed</c>, <c>flowrate</c> or <c>energy</c>, case-insensitive).</summary>
+  /// <exception cref="ArgumentException"><paramref name="unit"/> is not recognised.</exception>
   public static StringBuilder Measure(
     this StringBuilder dsc,
     string key,

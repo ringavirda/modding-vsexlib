@@ -7,26 +7,12 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Checks;
 
 /// <summary>
-/// The structural rules a definition must obey to end up on a network graph, all of which fail
-/// silently in game: a network node must declare a <c>type</c> variant state and the orientation
-/// scheme it actually ships, and a declared network membership must name the network it joins.
-/// <para>
-/// <c>ExpandedLib.Testing.NetworkNodeContract</c> selects a "node" definition by C# class
-/// (<c>BlockNetworkNode</c>, <c>BEBehaviorNetworkMember</c> and their subclasses), which needs an
-/// assembly to reflect over and so cannot run against <see cref="ICheckSource"/>. This class selects
-/// the same definitions by the contract they declare instead: a node is one that declares
-/// <c>ExOrientable</c> in <c>network</c> mode, and a membership is one declared under the framework's
-/// own <c>BEBehaviorNetworkMember</c> key. Every shipped node and membership in this codebase already
-/// satisfies both markers, so the two selections agree in practice; a mod that registered a network
-/// membership under a differently-keyed subclass would be seen by the harness's reflective version
-/// but not by this one - see <c>Checks.md</c>.
-/// </para>
+/// The structural rules a definition must obey to end up on a network graph: a node must declare a
+/// <c>type</c> variant state and the orientation scheme it ships, and a network membership must
+/// name the network it joins. All fail silently in game.
 /// </summary>
 public static class NetworkNodeContractCheck {
-  // The bare registered key every network membership in this codebase declares itself under. The
-  // harness's own NetworkNodeContract.MembershipViolations resolves this from BEBehaviorNetworkMember
-  // and its subclasses by reflecting the assembly; this class has none to reflect, so it matches the
-  // framework key literally instead.
+  // The bare registered key every network membership in this codebase declares itself under.
   private const string MembershipKey = "BEBehaviorNetworkMember";
 
   /// <summary>Every contract violation among <paramref name="domain"/>'s network-node and membership defs, as the check's <see cref="CheckResult"/>.</summary>
@@ -45,9 +31,7 @@ public static class NetworkNodeContractCheck {
     return new CheckResult("NetworkNodeContract", domain, errors);
   }
 
-  // Runtime AllowedOrientations comes from ExDefinitions.OrientationMap, which contributes nothing
-  // for a def carrying no type states, so such a node gets an empty orientation map and TryPlaceBlock
-  // refuses - with no exception and no log line.
+  // A def with no `type` states gets an empty OrientationMap entry; TryPlaceBlock then refuses silently.
   private static IEnumerable<string> TypeGroupViolation(
     string domain,
     ExBlockDef def
@@ -60,11 +44,8 @@ public static class NetworkNodeContractCheck {
       + "TryPlaceBlock refuses. The block can never be placed, silently.";
   }
 
-  // A node's orientation is picked by its neighbours, so the behaviour has to be told both that
-  // (mode: "network") and which vocabulary the block writes (scheme, which cannot be derived from
-  // the mode alone - a straight, a bend, a tee and a cross are all networks and declare different
-  // sets). Both halves fail silently: a misspelled scheme falls back to ExOrientations.Axis, whose
-  // three tokens reject every real token on a bend, and the node simply stops re-orienting.
+  // ExOrientable needs both mode "network" and an explicit scheme; a misspelled scheme silently
+  // falls back to ExOrientations.Axis.
   private static IEnumerable<string> SchemeViolation(
     string domain,
     ExBlockDef def,
@@ -102,9 +83,7 @@ public static class NetworkNodeContractCheck {
         + "outside [ns,we,ud] and stops the node re-orienting with no exception and no log line.";
   }
 
-  // A membership created from a declaration starts with no network type of its own, and nothing
-  // else can supply one: a footprint cell's block entity is a structure filler, and a plain block's
-  // carries no type either. Such a cell logs an error and joins no graph.
+  // A membership with no `networkType` logs an error and joins no graph.
   private static IEnumerable<string> MembershipViolations(
     string domain,
     ExBlockDef def,
@@ -157,8 +136,6 @@ public static class NetworkNodeContractCheck {
     return dot < 0 ? key : key[(dot + 1)..];
   }
 
-  // Whether a def declares ExOrientable in network mode - see the class remarks for why that marker
-  // stands in for "is a BlockNetworkNode" here.
   private static bool IsNode(JObject json) =>
     ArrayAt(json["behaviors"])
       .OfType<JObject>()

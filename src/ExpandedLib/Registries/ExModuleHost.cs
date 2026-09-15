@@ -8,12 +8,8 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// One driver instance's modules: the entry-point instances of <see cref="Mod"/>'s
-/// <see cref="ExModuleSet"/>, owned here and nowhere else, run through the same phases and in the
-/// same order as the host's own <see cref="ModSystem"/>. Built once per host instance - a rejoined
-/// world gets a fresh <see cref="ExModuleHost"/> with fresh instances, never a shared one.
-/// </summary>
+/// <summary>One driver instance's modules, run through the same phases and order as the host's
+/// own <see cref="ModSystem"/>.</summary>
 public sealed class ExModuleHost {
   private readonly Mod _mod;
   private readonly ExModuleSet _set;
@@ -23,14 +19,11 @@ public sealed class ExModuleHost {
   )> _resolved;
 
   /// <summary>Builds the host for <paramref name="mod"/> from its discovered, enabled module set
-  /// (see <see cref="ExModules.For"/>) against <paramref name="api"/>'s world, instantiating every
-  /// entry point. A constructor that throws is logged through <paramref name="mod"/>'s logger and
-  /// that entry point is left out.</summary>
+  /// against <paramref name="api"/>'s world, instantiating every entry point.</summary>
   public ExModuleHost(Mod mod, ICoreAPI api)
     : this(mod, ExModules.For(api, mod.Info.ModID)) { }
 
-  /// <summary>As <see cref="ExModuleHost(Mod, ICoreAPI)"/>, against a hand-built <paramref name="set"/> rather
-  /// than discovery. For tests.</summary>
+  /// <summary>As <see cref="ExModuleHost(Mod, ICoreAPI)"/>, against a hand-built <paramref name="set"/>.</summary>
   internal ExModuleHost(Mod mod, ExModuleSet set) {
     _mod = mod;
     _set = set;
@@ -48,10 +41,8 @@ public sealed class ExModuleHost {
     Drive(m => m.StartPre(api));
   }
 
-  /// <summary>Per module, before its entry points: <see cref="ExConfig.LoadAll"/>,
-  /// <see cref="EntityRegistry.RegisterAll"/>, <see cref="Checks.ExCheckRegistry.RegisterAll"/>, and
-  /// Harmony when the module opted in (see <see cref="ExModuleInfo.PatchHarmony"/>). Then every
-  /// module's <see cref="IExModule.Start"/>.</summary>
+  /// <summary>Per module, loads config and registers classes and checks before its entry points'
+  /// <see cref="IExModule.Start"/>.</summary>
   public void Start(ICoreAPI api) {
     foreach ((ExModuleInfo info, List<IExModule> instances) in _resolved) {
       ExConfig.LoadAll(api, info.Assembly);

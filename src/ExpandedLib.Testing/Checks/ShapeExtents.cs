@@ -6,26 +6,13 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// Measures a shape file - the bounding box of everything it draws, in voxels. Shared because getting it
-/// wrong is quiet: an art guard that measures the wrong box passes on art that is the wrong size, and both
-/// of this repo's stock-art guards would otherwise carry their own copy of the composition rule.
-/// </summary>
+/// <summary>Measures a shape file: the bounding box of everything it draws, in voxels.</summary>
 public static class ShapeExtents {
   /// <summary>
   /// The composed extents of every element in <paramref name="path"/>, as (width, thickness, length) on
   /// x / y / z.
   /// </summary>
-  /// <remarks>
-  /// A child element's <c>from</c> / <c>to</c> are offsets from its PARENT's <c>from</c>, not absolute
-  /// coordinates, so every element has to be lifted into absolute space before it is measured. Read as
-  /// absolute, a piece drawn as two halves end to end measures as lanes side by side. Measuring the
-  /// top-level elements alone has the milder version of the same fault: it sees one half and calls it
-  /// the piece.
-  /// </remarks>
-  /// <param name="element">One element to measure, children included - a family shape file holds every
-  /// stage of a route, so measuring the whole file would measure thirteen drawn states at once. Null
-  /// measures the file.</param>
+  /// <param name="element">One element to measure, children included. Null measures the whole file.</param>
   public static (float Width, float Thickness, float Length) Of(
     string path,
     string? element = null
@@ -36,18 +23,8 @@ public static class ShapeExtents {
 
   /// <summary>
   /// The composed bounding box of <paramref name="element"/> (or of the whole file), as minimum and
-  /// maximum voxel corners on x / y / z. What <see cref="Of"/> measures its spans from, and what a guard
-  /// relating a drawn shape to a placed volume needs instead of the spans: where a piece sits matters as
-  /// much as how big it is.
+  /// maximum voxel corners on x / y / z. Rotation is composed down the tree; scale is left at 1.
   /// </summary>
-  /// <remarks>
-  /// Each element's own <c>rotationX/Y/Z</c> about its <c>rotationOrigin</c> is applied, composed down
-  /// the tree, so the box is the volume the piece actually draws rather than the one it was authored in
-  /// before it was turned. The transform is built with the game's own <see cref="Mat4f"/> in the order
-  /// <c>ShapeElement.GetLocalTransformMatrix</c> uses, so this cannot drift from what the tesselator
-  /// does. Scale is left at 1: nothing in this repo's art sets it, and an unapplied scale would
-  /// under-report, which a containment check cannot afford.
-  /// </remarks>
   public static (float[] Min, float[] Max) Bounds(
     string path,
     string? element = null
@@ -102,13 +79,8 @@ public static class ShapeExtents {
       Walk(child, transform, corners);
   }
 
-  /// <summary>
-  /// One element's own placement within its parent: rotate about <c>rotationOrigin</c>, then translate
-  /// to <c>from</c>. The order mirrors <c>ShapeElement.GetLocalTransformMatrix</c>'s
-  /// animation-version-0 branch, which is the one a static block shape goes through; its single
-  /// <c>RotateByXYZ</c> is the X, Y, Z turns applied in that order, which is what the three calls below
-  /// spell out (the combined form is not on every supported game version's API).
-  /// </summary>
+  /// <summary>One element's own placement within its parent: rotate about <c>rotationOrigin</c> in
+  /// X, Y, Z order, then translate to <c>from</c>.</summary>
   private static float[] Local(JToken element, float[] from) {
     float[] origin = Point(element["rotationOrigin"]);
     float[] m = Mat4f.Create();

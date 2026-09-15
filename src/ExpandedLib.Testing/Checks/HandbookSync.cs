@@ -9,22 +9,13 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// The handbook authoring pipeline: <c>mods/{domain}/docs/handbook/NN-*.html</c> is the hand-edited source
-/// for a handbook page's body, and the shipped copy is one long string under a lang key in
-/// <c>mods/{domain}/assets/{domain}/lang/en.json</c>. A parity test fails when a page's shipped text no longer matches its
-/// source, <c>EXLIB_WRITE_HANDBOOK=1</c> re-blesses the lang file from the HTML, and
-/// <see cref="ExportAll"/> goes the other way.
-/// <para>
-/// Only the body is synced. A page's <c>title</c> key has no HTML source and stays hand-authored in the lang
-/// file. Writes touch <c>en.json</c> only and change values, never the key set, so translations and the
-/// lang-parity guard are unaffected.
-/// </para>
+/// The handbook authoring pipeline: <c>docs/handbook/NN-*.html</c> is the hand-edited source for a
+/// page's body, shipped as a lang-key string in <c>en.json</c>. Only the body is synced; a page's
+/// <c>title</c> key stays hand-authored.
 /// </summary>
 public static class HandbookSync {
-  /// <summary>
-  /// One handbook page: its authoring HTML, the shipped page descriptor that names its lang key, and the key
-  /// itself, already stripped of its <c>domain:</c> prefix.
-  /// </summary>
+  /// <summary>One handbook page: its authoring HTML, shipped descriptor, and lang key
+  /// (<c>domain:</c> prefix stripped).</summary>
   public sealed record Page(
     string Domain,
     string Number,
@@ -42,19 +33,14 @@ public static class HandbookSync {
     RegexOptions.Compiled
   );
 
-  /// <summary>True when <c>EXLIB_WRITE_HANDBOOK=1</c> - the opt-in switch the sync test guards on.</summary>
+  /// <summary>True when <c>EXLIB_WRITE_HANDBOOK=1</c>.</summary>
   public static bool WriteRequested =>
     Environment.GetEnvironmentVariable("EXLIB_WRITE_HANDBOOK") == "1";
 
   #region The transform
 
-  /// <summary>
-  /// The authoring HTML as it must appear in the lang file. The sources are pre-escaped for pasting into a
-  /// JSON string (attribute quotes written <c>\"</c>), so the backslashes come back out here and the JSON
-  /// writer adds its own. Runs of whitespace collapse to a single space, since VTML treats them as one and
-  /// line breaks in the source are wrapping rather than content; this keeps the check stable across a
-  /// re-wrap of the same prose.
-  /// </summary>
+  /// <summary>The authoring HTML as it must appear in the lang file: unescaped and
+  /// whitespace-collapsed.</summary>
   public static string Normalize(string html) =>
     Whitespace.Replace(html.Replace("\\\"", "\""), " ").Trim();
 
@@ -71,12 +57,8 @@ public static class HandbookSync {
       .OrderBy(d => d, StringComparer.Ordinal)
       .ToList();
 
-  /// <summary>
-  /// The pages of <paramref name="domain"/> that have both an authoring source and a shipped descriptor,
-  /// joined on the <c>NN-</c> ordering prefix the two trees share. The slugs after the prefix may differ
-  /// (<c>00-advances.html</c> ships as <c>00-advancedsteelmaking.json</c>); the number decides page order in
-  /// game and is the one field both sides must agree on.
-  /// </summary>
+  /// <summary>The pages of <paramref name="domain"/> that have both an authoring source and a
+  /// shipped descriptor, joined on the <c>NN-</c> ordering prefix.</summary>
   public static IReadOnlyList<Page> Pages(string domain) {
     var sources = SourcesByNumber(domain);
     var pages = new List<Page>();
@@ -91,12 +73,9 @@ public static class HandbookSync {
     return pages;
   }
 
-  /// <summary>
-  /// Everything wrong with <paramref name="domain"/>'s handbook wiring that is not a prose mismatch: a
-  /// shipped page with no authoring source, an authoring source that ships nowhere, a descriptor with no
-  /// <c>text</c> key, and a key absent from <c>en.json</c> (which renders in game as the raw key). Empty
-  /// means the two trees line up.
-  /// </summary>
+  /// <summary>Everything wrong with <paramref name="domain"/>'s handbook wiring that is not a
+  /// prose mismatch.</summary>
+  /// <returns>Empty when the two trees line up.</returns>
   public static IReadOnlyList<string> Problems(string domain) {
     var sources = SourcesByNumber(domain);
     var descriptors = DescriptorsByNumber(domain);
@@ -134,11 +113,9 @@ public static class HandbookSync {
 
   #region Check + write
 
-  /// <summary>
-  /// Checks one page's shipped text against its authoring source. Returns <c>(true, "")</c> on match, else a
-  /// message naming the page, both lengths, and the first differing character position with the text around
-  /// it.
-  /// </summary>
+  /// <summary>Checks one page's shipped text against its authoring source.</summary>
+  /// <returns><c>(true, "")</c> on match, else a message naming the page and the first differing
+  /// character.</returns>
   public static (bool ok, string message) Check(Page page) {
     string want = Normalize(File.ReadAllText(page.HtmlPath));
     string? have = (string?)Lang(page.Domain)[page.LangKey];
@@ -164,11 +141,9 @@ public static class HandbookSync {
     );
   }
 
-  /// <summary>
-  /// Re-blesses <paramref name="domain"/>'s lang file from its authoring sources and returns the keys that
-  /// changed. Writes through <see cref="JObject"/>, which preserves key order, so the diff is confined to
-  /// the handbook values. Opt-in: call only when <see cref="WriteRequested"/>.
-  /// </summary>
+  /// <summary>Re-blesses <paramref name="domain"/>'s lang file from its authoring sources.
+  /// Opt-in: call only when <see cref="WriteRequested"/>.</summary>
+  /// <returns>The lang keys that changed.</returns>
   public static IReadOnlyList<string> WriteAll(string domain) {
     string path = LangPath(domain);
     if (!File.Exists(path))
@@ -195,20 +170,16 @@ public static class HandbookSync {
     return changed;
   }
 
-  // The converter array is passed explicitly. The suite compiles against one Newtonsoft and loads the
-  // game's at runtime; the convenience overloads (`ToString(Formatting)`, `WriteTo(JsonWriter)`) exist only
-  // in the compile-time version, so binding to them throws MissingMethodException once the write path runs.
-  // The `params JsonConverter[]` form exists in both.
+  // Converter array passed explicitly; the game's runtime Newtonsoft lacks the convenience
+  // overloads present at compile time.
   private static string Serialize(JObject lang) =>
     lang.ToString(Formatting.Indented, Array.Empty<JsonConverter>());
 
-  /// <summary>
-  /// Rewrites <paramref name="domain"/>'s authoring sources from the shipped lang values and returns the
-  /// files it changed - the reverse of <see cref="WriteAll"/>, for when the lang file holds the good copy.
-  /// The result is re-wrapped at <see cref="WrapColumn"/> and re-escaped to the authoring convention, then
-  /// checked to <see cref="Normalize"/> back to exactly the value it came from; a mismatch throws, so an
-  /// export can never change what ships.
-  /// </summary>
+  /// <summary>Rewrites <paramref name="domain"/>'s authoring sources from the shipped lang
+  /// values, the reverse of <see cref="WriteAll"/>.</summary>
+  /// <returns>The authoring files it changed.</returns>
+  /// <exception cref="InvalidOperationException">The exported HTML does not
+  /// <see cref="Normalize"/> back to the shipped value.</exception>
   public static IReadOnlyList<string> ExportAll(string domain) {
     JObject lang = Lang(domain);
     var changed = new List<string>();
@@ -239,9 +210,8 @@ public static class HandbookSync {
   /// <summary>Column the exporter wraps authoring lines at.</summary>
   private const int WrapColumn = 78;
 
-  // A lang value as an authoring file: quotes escaped the way the hand-written sources escape them, and
-  // greedy word wrap. Breaking only at existing spaces is what makes this round-trip, since Normalize
-  // collapses any whitespace run back to one space; a break inside a tag or attribute is harmless.
+  // A lang value as an authoring file: escaped quotes and greedy word wrap, breaking only at
+  // existing spaces.
   private static string ToAuthoringHtml(string value) {
     var lines = new List<string>();
     var line = new System.Text.StringBuilder();
@@ -285,8 +255,7 @@ public static class HandbookSync {
       "*.json"
     );
 
-  // Files in `dir` keyed by their leading ordering number. A file without one is skipped: the number is
-  // the whole join, so a page that lacks it cannot be paired either way.
+  // Files in `dir` keyed by their leading ordering number; a file without one is skipped.
   private static SortedDictionary<string, string> ByNumber(
     string dir,
     string pattern

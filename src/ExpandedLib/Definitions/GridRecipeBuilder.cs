@@ -4,10 +4,8 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Definitions;
 
 /// <summary>
-/// Fluent builder for one grid (crafting-table) recipe object, the entries of a <c>recipes/grid/*.json</c>
-/// file. Emits the schema the survival grid-recipe loader reads:
-/// <c>{ name, ingredientPattern, ingredients{ key: {…} }, width, height, output }</c>. Only keys that are set
-/// are emitted, so an optional field stays absent unless authored.
+/// Fluent builder for one grid (crafting-table) recipe object, an entry of a <c>recipes/grid/*.json</c> file.
+/// Only keys that are set are emitted.
 /// </summary>
 public sealed class GridRecipeBuilder {
   private readonly JObject _root = new();
@@ -33,10 +31,7 @@ public sealed class GridRecipeBuilder {
     return this;
   }
 
-  /// <summary>Adds one <c>ingredients.{key}</c> entry authored via <see cref="IngredientBuilder"/>.
-  /// <paramref name="key"/> is the single-char slot letter used in the pattern. <paramref name="configure"/>
-  /// returns the builder, so a reusable <c>IngredientBuilder -&gt; IngredientBuilder</c> factory can be passed
-  /// by name (e.g. <c>Ingredient("H", Hammer)</c>).</summary>
+  /// <summary>Adds one <c>ingredients.{key}</c> entry authored via <see cref="IngredientBuilder"/>.</summary>
   public GridRecipeBuilder Ingredient(
     string key,
     Func<IngredientBuilder, IngredientBuilder> configure
@@ -47,8 +42,7 @@ public sealed class GridRecipeBuilder {
     return this;
   }
 
-  /// <summary>Sets the <c>output</c> stack: <c>{ type, code[, quantity] }</c>. <paramref name="quantity"/> is
-  /// emitted only when supplied; absent means 1, the schema default.</summary>
+  /// <summary>Sets the <c>output</c> stack: <c>{ type, code[, quantity] }</c>.</summary>
   public GridRecipeBuilder Output(
     string type,
     string code,
@@ -121,11 +115,7 @@ public sealed class IngredientBuilder {
     return this;
   }
 
-  /// <summary>
-  /// Matches by item tag instead of by code, the way a single slot accepts several unrelated item codes
-  /// (as vanilla's <c>tool-chisel</c> and <c>flux</c> ingredients do). Sets <c>type</c> and <c>tags</c> and
-  /// leaves <c>code</c> unset: a tag ingredient matches on the tag alone.
-  /// </summary>
+  /// <summary>Matches by item tag; leaves <c>code</c> unset.</summary>
   public IngredientBuilder Tagged(string type, params string[] tags) {
     _root["type"] = type;
     _root["tags"] = new JArray(tags);

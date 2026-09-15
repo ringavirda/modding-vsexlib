@@ -15,11 +15,8 @@ using Vintagestory.API.MathTools;
 
 namespace SmokeStack.BlockEntities;
 
-/// <summary>
-/// Block entity for the smoke-stack multiblock. Registers as a gas-network node and acts as a sink:
-/// each production tick it consumes gas from the connected network and vents it as smoke - including
-/// plain air, so a blower pushing cold blast through the stack still shows a visible plume.
-/// </summary>
+/// <summary>Block entity for the smoke-stack multiblock: a gas-network sink that consumes gas
+/// from the connected network each production tick and vents it as smoke, including plain air.</summary>
 [BlockEntityRegister]
 public class BlockEntitySmokeStack
   : BlockEntityMultiblockMachine,
@@ -34,17 +31,12 @@ public class BlockEntitySmokeStack
     base.Initialize(api);
     _system = api.ModLoader.GetModSystem<BlockNetworkModSystem>();
 
-    // Register this position in the gas graph. BlockEntityNetworkNode does this automatically, but
-    // this class derives from BlockEntityMultiblockStructure, so it must register itself.
+    // Manual gas-graph registration: this base class is not BlockEntityNetworkNode.
     if (api.Side == EnumAppSide.Server && _system.GetNetworkAt(Pos) == null)
       _system.AddNode(api.World.BlockAccessor, Pos, "pipe");
   }
 
-  /// <summary>
-  /// Drops the stack out of the gas graph, mirroring the <see cref="Initialize"/> registration this class
-  /// has to do by hand. Removal-only: deregistering on unload would cut the exhaust run every time a
-  /// chunk unloads, and the base already clears the listeners and the build outline there.
-  /// </summary>
+  /// <summary>Drops the stack out of the gas graph on removal only, not on unload.</summary>
   public override void OnBlockRemoved() {
     if (Api?.Side == EnumAppSide.Server)
       _system?.RemoveNode(Api.World.BlockAccessor, Pos);
@@ -174,8 +166,7 @@ public class BlockEntitySmokeStack
 
     var gasIntakeVolume = SmokeStackValues.SmokestackGasIntakeVolume;
 
-    // Read the medium before drawing: TryConsume can empty the pool and clear its label. It refuses
-    // a liquid run, so the medium here is always exhaust, steam or air.
+    // Medium read precedes the draw: TryConsume can empty the pool and clear its label.
     string medium = Medium;
     float consumed = TryConsume(gasIntakeVolume);
 
@@ -190,8 +181,7 @@ public class BlockEntitySmokeStack
       return;
 
     SpawnSmokeParticles(medium);
-    // Draught crackle for a hot draw only - plain air makes no fire sound. Throttled no shorter
-    // than the 9.26 s clip (game:sounds/environment/fire.ogg), so a repeat never cuts the last one off.
+    // Fire sound plays only for a hot draw; throttle interval is the clip length, 9.26s.
     if (medium != "Air")
       ExSounds.PlayThrottled(
         Api,
@@ -205,8 +195,7 @@ public class BlockEntitySmokeStack
   }
 
   private void SpawnSmokeParticles(string medium) {
-    // Colour by what's venting: soot for exhaust, vapour for steam, and - unlike a plain vent - a
-    // pale wisp for air too, so a blower's cold blast through the stack still shows.
+    // Colour by medium: soot for exhaust, vapour for steam, pale wisp for air.
     if (ExParticles.GasColor(medium, ventAir: true) is not int color)
       return;
 
@@ -257,8 +246,7 @@ public class BlockEntitySmokeStack
 
   #region Serialization
 
-  // "orientation" is written unconditionally, even when null - unlike ExBlockState's string helper (and
-  // [Persist]'s string primitive), which skip a null value - so it stays a Tree.
+  // "orientation" writes unconditionally, even when null, unlike the string helper's null-skip.
   protected override void DeclareState(ExBlockState state) {
     state.Tree(
       "orientation",
@@ -269,8 +257,7 @@ public class BlockEntitySmokeStack
       "possibleOrientations",
       tree => tree.SetStrings("possibleOrientations", PossibleOrientations),
       (tree, _) =>
-        // The old encoding of this key was a JSON string; it is read second so worlds saved before the
-        // cutover keep their rotation choices, and converts on the stack's next save.
+        // Falls back to the old JSON-string encoding when the string-list read is empty.
         PossibleOrientations =
           tree.GetStrings("possibleOrientations")
           ?? ExTree.SafeDeserialize(

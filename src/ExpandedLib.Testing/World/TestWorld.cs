@@ -15,13 +15,8 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// A headless, in-process stand-in for a Vintage Story server world, large enough to drive the
-/// block-network simulation in tests. It owns an in-memory block/block-entity store, a live
-/// <see cref="BlockNetworkModSystem"/>, and NSubstitute fakes for the accessor, world and server API
-/// wired to that store. Typical use: <see cref="Place"/> blocks, <see cref="AddNode"/> them to a
-/// network, then <see cref="Tick"/> one server second at a time and assert on <see cref="NetworkAt"/>.
-/// </summary>
+/// <summary>A headless, in-process stand-in for a Vintage Story server world, backing the
+/// block-network test suite.</summary>
 public sealed partial class TestWorld : IDisposable {
   private readonly Dictionary<BlockPos, Block> _blocks = new();
   private readonly Dictionary<BlockPos, BlockEntity> _blockEntities = new();
@@ -49,53 +44,45 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>The calendar; <see cref="AdvanceDays"/> moves <c>TotalDays</c> for evaporation tests.</summary>
   public IGameCalendar Calendar { get; }
 
-  /// <summary>
-  /// A server-side core API wired to this world (mod loader resolves <see cref="Networks"/>, event API
-  /// captures block-entity tick listeners). Assign it to a block entity's <c>Api</c>, or use
-  /// <see cref="Attach"/>, so it can resolve networks and register production ticks headlessly.
-  /// </summary>
+  /// <summary>A server-side core API wired to this world; assign it to a block entity's <c>Api</c>,
+  /// or use <see cref="Attach"/>.</summary>
   public ICoreServerAPI Api { get; }
 
-  /// <summary>A client-side core API wired to this world (same <see cref="Log"/>), for exercising a
-  /// <c>ModSystem</c>'s <c>StartClientSide</c> - most usefully together with <see cref="Channels"/>.</summary>
+  /// <summary>A client-side core API wired to this world, for exercising a <c>ModSystem</c>'s
+  /// <c>StartClientSide</c>.</summary>
   public ICoreClientAPI ClientApi { get; }
 
   /// <summary>Channel pairs handed out by <see cref="Channels"/>, keyed by channel name.</summary>
   private readonly Dictionary<string, TestChannels> _channels = new();
 
-  /// <summary>The one <see cref="RecordingLogger"/> wired as both <see cref="Api"/>'s and
-  /// <see cref="World"/>'s <c>Logger</c>. Read <c>Log.Errors</c>/<c>Log.Warnings</c> rather than
-  /// NSubstitute's <c>Received()</c> - this is a real object, not a substitute.</summary>
+  /// <summary>The <see cref="RecordingLogger"/> wired as both <see cref="Api"/>'s and
+  /// <see cref="World"/>'s <c>Logger</c>; a real object, not a substitute.</summary>
   public RecordingLogger Log { get; } = new();
 
   /// <summary>The bag behind <see cref="World"/>'s <c>Config</c> tree.</summary>
   public WorldConfigBag Config { get; } = new();
 
-  /// <summary>The mod loader behind <see cref="Api"/>'s <c>ModLoader</c>. Registers "exlib" as
-  /// enabled by default and this world's <see cref="Networks"/> as a resolvable mod system.</summary>
+  /// <summary>The mod loader behind <see cref="Api"/>'s <c>ModLoader</c>, with "exlib" enabled by
+  /// default.</summary>
   public TestModLoader Mods { get; } = new();
 
   /// <summary>Backs <see cref="Api"/>'s <c>LoadModConfig</c>/<c>StoreModConfig</c> with real files
-  /// under a temp directory removed on <see cref="Dispose"/>.</summary>
+  /// under a temp directory.</summary>
   public ModConfigFiles ConfigFiles { get; } = new();
 
   private readonly Dictionary<long, TickListener> _tickListeners = new();
 
-  // Sim-time (ms) accrued toward each listener's next fire, for interval-aware advancing
-  // (AdvanceBlockEntityTime). Remainders carry across calls so two sub-interval advances still cross
-  // the boundary. FireBlockEntityTicks ignores this and fires every listener regardless.
+  // Sim-time (ms) accrued toward each listener's next fire; ignored by FireBlockEntityTicks.
   private readonly Dictionary<long, int> _tickAccumMs = new();
   private long _nextListenerId;
 
-  /// <summary>A captured block-entity tick listener: its callback and the interval (ms) it asked for.
-  /// Keyed by a unique id so <c>UnregisterGameTickListener</c> can drop a torn-down block entity's
-  /// listener.</summary>
+  /// <summary>A captured block-entity tick listener: its callback and requested interval (ms).</summary>
   private readonly record struct TickListener(
     System.Action<float> Callback,
     int IntervalMs
   );
 
-  /// <summary>Item stacks spawned by the simulation (e.g. a bursting pipe dropping its materials).</summary>
+  /// <summary>Item stacks spawned by the simulation.</summary>
   public List<ItemStack> Drops { get; } = new();
 
   public TestWorld() {
@@ -113,8 +100,7 @@ public sealed partial class TestWorld : IDisposable {
     World.Api.Returns(Api);
     ClientApi = BuildClientApi();
 
-    // StartServerSide is not called (it would register a real tick listener), so the server world it
-    // normally captures is primed directly.
+    // StartServerSide is not called; the server world is primed directly.
     ReflectionHelpers.SetProperty(
       Networks,
       nameof(Networks.ServerWorld),
@@ -128,22 +114,15 @@ public sealed partial class TestWorld : IDisposable {
     return this;
   }
 
-  /// <summary>Builds a <see cref="TestPlayer"/> standing in this world. See
-  /// <see cref="TestPlayer.Create"/> for what it wires.</summary>
+  /// <summary>Builds a <see cref="TestPlayer"/> standing in this world.</summary>
   public TestPlayer Player(string uid = "test", string name = "Tester") =>
     TestPlayer.Create(this, uid, name);
 
-  /// <summary>Deletes <see cref="ConfigFiles"/>'s temp directory. Everything else this world owns
-  /// is in-memory and needs no teardown.</summary>
+  /// <summary>Deletes <see cref="ConfigFiles"/>'s temp directory.</summary>
   public void Dispose() => ConfigFiles.Dispose();
 
-  /// <summary>
-  /// The client/server channel pair for <paramref name="channelName"/>, built the first time it is
-  /// asked for and memoised after - matching <c>Api.Network.RegisterChannel</c>/
-  /// <c>ClientApi.Network.RegisterChannel</c>, which hand out the same pair. A <c>ModSystem</c> that
-  /// registers a channel of this name in <c>StartServerSide</c>/<c>StartClientSide</c> against
-  /// <see cref="Api"/>/<see cref="ClientApi"/> needs no other wiring.
-  /// </summary>
+  /// <summary>The client/server channel pair for <paramref name="channelName"/>, built the first
+  /// time it is asked for and memoised after.</summary>
   public TestChannels Channels(string channelName) {
     if (!_channels.TryGetValue(channelName, out TestChannels? channels)) {
       channels = TestChannels.Create(this, channelName);
@@ -152,11 +131,8 @@ public sealed partial class TestWorld : IDisposable {
     return channels;
   }
 
-  /// <summary>
-  /// Runs <paramref name="be"/> through its real <see cref="BlockEntity.Initialize"/> against this
-  /// world's API, so a network node registers itself and schedules its ticks exactly as the placement
-  /// pipeline would. The block entity must already be <see cref="Place"/>d.
-  /// </summary>
+  /// <summary>Runs <paramref name="be"/> through its real <see cref="BlockEntity.Initialize"/>
+  /// against this world's API; must already be <see cref="Place"/>d.</summary>
   public TestWorld Initialize(BlockEntity be) {
     be.Api = Api;
     be.Initialize(Api);
@@ -174,12 +150,8 @@ public sealed partial class TestWorld : IDisposable {
     return this;
   }
 
-  /// <summary>
-  /// Places <paramref name="block"/> (and optional <paramref name="be"/>) at <paramref name="pos"/>,
-  /// registering the block in the id/code lookup so <c>ExchangeBlock</c>/<c>GetBlock</c> resolve it.
-  /// The block entity is positioned and linked but not <c>Initialize</c>d; see
-  /// <see cref="Initialize"/> for the placement-pipeline path.
-  /// </summary>
+  /// <summary>Places <paramref name="block"/> (and optional <paramref name="be"/>) at
+  /// <paramref name="pos"/>, registering the block in the id/code lookup.</summary>
   public TestWorld Place(BlockPos pos, Block block, BlockEntity? be = null) {
     Register(block);
     _blocks[pos] = block;
@@ -191,13 +163,9 @@ public sealed partial class TestWorld : IDisposable {
     return this;
   }
 
-  /// <summary>
-  /// Places a network node at <paramref name="pos"/>: a <see cref="TestNetworkBlock"/> of
-  /// <paramref name="networkType"/> whose connectors are <paramref name="orientation"/>, a block
-  /// entity carrying one membership for that network, and the real <see cref="Initialize"/> the
-  /// placement pipeline runs - which is what registers the cell. <see cref="RegisterNetwork"/> must
-  /// have run for <paramref name="networkType"/> first, or the factory lookup throws.
-  /// </summary>
+  /// <summary>Places a network node at <paramref name="pos"/>, running the real
+  /// <see cref="Initialize"/> that registers the cell. <see cref="RegisterNetwork"/> must have run
+  /// for <paramref name="networkType"/> first.</summary>
   public TestWorld PlaceNode(
     BlockPos pos,
     string networkType,
@@ -209,12 +177,8 @@ public sealed partial class TestWorld : IDisposable {
     return Initialize(be);
   }
 
-  /// <summary>
-  /// Places a cell whose membership is all that puts it on the graph: a plain <see cref="Block"/> -
-  /// deliberately neither a node block nor an <see cref="INetworkConnector"/> - under a block entity
-  /// carrying one membership that states its own <paramref name="connectors"/>. Registered the same
-  /// way <see cref="PlaceNode"/> is.
-  /// </summary>
+  /// <summary>Places a cell whose membership alone puts it on the graph, under a block entity
+  /// declaring its own <paramref name="connectors"/>.</summary>
   public TestWorld PlaceMemberBlock(
     BlockPos pos,
     string networkType,
@@ -229,12 +193,8 @@ public sealed partial class TestWorld : IDisposable {
     return Initialize(be);
   }
 
-  /// <summary>
-  /// The one shared <see cref="BlockStructureFiller"/> this world places footprint cells from, created
-  /// on first use. Production has exactly one instance - always north, no variants - standing in every
-  /// cell of every mega-block, so a cell's own answers have to come from its block entity rather than
-  /// from its block; the fixtures share one instance for the same reason.
-  /// </summary>
+  /// <summary>The one shared <see cref="BlockStructureFiller"/> this world places footprint cells
+  /// from, created on first use.</summary>
   public BlockStructureFiller Filler =>
     _filler ??= TestBlocks.Configure(
       new BlockStructureFiller(),
@@ -244,19 +204,13 @@ public sealed partial class TestWorld : IDisposable {
 
   private BlockStructureFiller? _filler;
 
-  /// <summary>
-  /// The registered class code of the network-membership behaviour, as a <c>fillerOffsets</c> cell
-  /// names it. Written out rather than derived, because it is the string content authors write;
-  /// <c>EntityRegistry.KeyFor</c> is asserted against it so the two cannot drift.
-  /// </summary>
+  /// <summary>The registered class code of the network-membership behaviour, as a
+  /// <c>fillerOffsets</c> cell names it.</summary>
   public const string NetworkMemberClass = "exlib.BEBehaviorNetworkMember";
 
-  /// <summary>
-  /// Places a mega-block footprint cell at <paramref name="pos"/>: the shared <see cref="Filler"/>
-  /// block over a filler block entity linked to <paramref name="principal"/> (the cell below by
-  /// default) and hosting <paramref name="hosted"/>, then runs the real <see cref="Initialize"/> the
-  /// placement and load paths both go through, which is what creates the hosted behaviours.
-  /// </summary>
+  /// <summary>Places a mega-block footprint cell at <paramref name="pos"/> over a filler block
+  /// entity, running the real <see cref="Initialize"/> that creates its hosted
+  /// behaviours.</summary>
   public TestWorld PlaceFiller(
     BlockPos pos,
     FillerBehavior[]? hosted = null,
@@ -270,13 +224,9 @@ public sealed partial class TestWorld : IDisposable {
     return Initialize(be);
   }
 
-  /// <summary>
-  /// Places a footprint cell that is a graph node in its own right: a <see cref="PlaceFiller"/> cell
-  /// hosting one network membership on <paramref name="networkType"/>, declared exactly as a
-  /// <c>fillerOffsets</c> cell declares it - a class code, a connector face already rotated into the
-  /// placed orientation, and a properties blob. <paramref name="orientation"/> is one side letter, or
-  /// two naming an opposite pair for a cell a run passes straight through.
-  /// </summary>
+  /// <summary>Places a footprint cell that is a graph node in its own right, on
+  /// <paramref name="networkType"/>. <paramref name="orientation"/> is one side letter, or two
+  /// naming an opposite pair for a pass-through cell.</summary>
   public TestWorld PlaceFillerNode(
     BlockPos pos,
     string networkType,
@@ -298,8 +248,8 @@ public sealed partial class TestWorld : IDisposable {
     );
   }
 
-  /// <summary>Reads a one- or two-letter orientation as the face a filler cell couples on plus whether
-  /// the run passes through to its opposite; anything else is an authoring mistake in the fixture.</summary>
+  /// <summary>Reads a one- or two-letter orientation as the coupling face plus whether the run
+  /// passes through to its opposite.</summary>
   private static (BlockFacing Face, bool PassThrough) ReadOrientation(
     string orientation
   ) {
@@ -320,11 +270,8 @@ public sealed partial class TestWorld : IDisposable {
     };
   }
 
-  /// <summary>
-  /// Registers a factory the fake class registry builds <paramref name="classname"/> from - the
-  /// headless stand-in for the behaviour registry a structure filler creates its hosted behaviours
-  /// through. Production fills that registry from <c>[BlockEntityBehaviorRegister]</c>.
-  /// </summary>
+  /// <summary>Registers a factory the fake class registry builds <paramref name="classname"/> from,
+  /// the headless stand-in for the behaviour registry.</summary>
   public TestWorld RegisterBlockEntityBehaviorFactory(
     string classname,
     System.Func<BlockEntity, BlockEntityBehavior> factory
@@ -337,12 +284,8 @@ public sealed partial class TestWorld : IDisposable {
     return this;
   }
 
-  /// <summary>
-  /// Registers a factory that <c>BlockAccessor.SpawnBlockEntity(classname, pos)</c> uses for
-  /// <paramref name="classname"/> - the headless stand-in for the engine's class registry. The spawned
-  /// entity is positioned, linked to the block at that cell, stored and <c>Initialize</c>d against this
-  /// world's API.
-  /// </summary>
+  /// <summary>Registers a factory that <c>BlockAccessor.SpawnBlockEntity(classname, pos)</c> uses
+  /// for <paramref name="classname"/>.</summary>
   public TestWorld RegisterBlockEntityFactory(
     string classname,
     Func<BlockEntity> factory
@@ -359,8 +302,7 @@ public sealed partial class TestWorld : IDisposable {
     return this;
   }
 
-  /// <summary>Registers a real, already-resolved <see cref="Item"/> (from <see cref="LoadAssets"/>)
-  /// in the id/code lookup, the counterpart to <see cref="Register(Block)"/>.</summary>
+  /// <summary>Registers a real, already-resolved <see cref="Item"/> in the id/code lookup.</summary>
   public TestWorld Register(Item item) {
     _itemsById[item.ItemId] = item;
     if (item.Code != null)
@@ -368,26 +310,18 @@ public sealed partial class TestWorld : IDisposable {
     return this;
   }
 
-  /// <summary>
-  /// Registers a resolvable <see cref="Item"/> under <paramref name="code"/> so
-  /// <c>World.GetItem(code)</c> returns it. <paramref name="meltingPoint"/> (°C, 0 = none) is exposed
-  /// through the item's <see cref="CombustibleProperties"/> so melt-point classification
-  /// (liquid/cooling/hardened) works headlessly; <paramref name="burnTemperature"/>/
-  /// <paramref name="burnDuration"/> do the same for burn classification (<c>BEBehaviorFirebox.IsFuel</c>
-  /// and friends). Left at 0 (no explicit override), a real vanilla fuel code
-  /// (<c>game:coke</c>, <c>game:charcoal</c>, <c>game:ore-bituminouscoal</c>, <c>game:ore-anthracite</c>,
-  /// <c>game:ore-lignite</c>) still gets its own shipped burn figures - see <see cref="VanillaFuelBurn"/> -
-  /// so a bare <c>RegisterItem("game:coke")</c> clears the combustibleProps-based admission gate the way
-  /// the real item does, with nothing for a caller to wire up. Returns the created item.
-  /// </summary>
+  /// <summary>Registers a resolvable <see cref="Item"/> under <paramref name="code"/>.
+  /// <paramref name="meltingPoint"/> is in degrees C; a known vanilla fuel code gets its own
+  /// shipped burn figures when <paramref name="burnTemperature"/>/<paramref name="burnDuration"/>
+  /// are left at 0.</summary>
+  /// <returns>The created item.</returns>
   public Item RegisterItem(
     string code,
     float meltingPoint = 0f,
     float burnTemperature = 0f,
     float burnDuration = 0f
   ) {
-    // A unique non-zero id so ItemStack.ResolveBlockOrItem (which re-resolves a cloned/loaded stack
-    // by id) finds the item instead of nulling out its Collectible.
+    // Unique non-zero id: ItemStack.ResolveBlockOrItem re-resolves a stack by id.
     var item = new Item {
       Code = new AssetLocation(code),
       ItemId = _nextItemId++,
@@ -401,23 +335,15 @@ public sealed partial class TestWorld : IDisposable {
         BurnTemperature = (int)temp,
         BurnDuration = (int)duration,
       };
-    // The collectible's own api handle. A real world sets it on load, and several vanilla members reach
-    // for it rather than for the world they are handed: CollectibleObject.Equals compares two stacks'
-    // attributes through `api.World`, so an item registered without one throws inside an equality check
-    // that reads as a null stack.
+    // CollectibleObject.Equals reads api.World directly; an item without one throws on comparison.
     ReflectionHelpers.SetField(item, "api", Api);
     _itemsByCode[code] = item;
     _itemsById[item.ItemId] = item;
     return item;
   }
 
-  /// <summary>
-  /// Vanilla's own burn temperature and duration for the handful of real fuel codes the furnace suites
-  /// register by name, so <see cref="RegisterItem"/> can stand a headless item in for the real one without
-  /// every call site wiring up combustion figures by hand. Verified against
-  /// <c>.game/1.22/assets/survival/itemtypes/resource/{coke,charcoal,ore-ungraded}.json</c>. Empty for
-  /// anything else, including a mod's own items, which register their own combustion figures explicitly.
-  /// </summary>
+  /// <summary>Vanilla's own burn temperature and duration for a handful of real fuel codes; empty
+  /// for anything else.</summary>
   private static (float temperature, float duration) VanillaFuelBurn(
     string code
   ) =>
@@ -442,14 +368,13 @@ public sealed partial class TestWorld : IDisposable {
 
   #region Store access
 
-  /// <summary>What the store holds at <paramref name="pos"/>, whether or not its chunk is loaded.
-  /// <see cref="Accessor"/> reads through <see cref="ReadBlock"/> instead, which answers
-  /// <see cref="Air"/> for an unloaded chunk exactly as the engine does.</summary>
+  /// <summary>What the store holds at <paramref name="pos"/>, whether or not its chunk is
+  /// loaded.</summary>
   public Block GetBlock(BlockPos pos) =>
     _blocks.TryGetValue(pos, out var b) ? b : Air;
 
-  /// <summary>What the store holds at <paramref name="pos"/>, whether or not its chunk is loaded;
-  /// the accessor reads through <see cref="ReadBlockEntity"/>.</summary>
+  /// <summary>What the store holds at <paramref name="pos"/>, whether or not its chunk is
+  /// loaded.</summary>
   public BlockEntity? GetBlockEntity(BlockPos pos) =>
     _blockEntities.TryGetValue(pos, out var be) ? be : null;
 
@@ -460,14 +385,12 @@ public sealed partial class TestWorld : IDisposable {
   private readonly HashSet<Vec3i> _unloadedChunks = new();
   private readonly IWorldChunk _loadedChunk = Substitute.For<IWorldChunk>();
 
-  /// <summary>The chunk every loaded position resolves to. One instance for the whole world, so it
-  /// answers "did anything ask a chunk to be saved again" rather than "which chunk" - enough for a
-  /// <c>MarkModified</c> assertion, not enough to tell two chunks apart.</summary>
+  /// <summary>The chunk every loaded position resolves to; one instance for the whole
+  /// world.</summary>
   public IWorldChunk LoadedChunk => _loadedChunk;
 
   /// <summary>The chunk coordinate <paramref name="pos"/> falls in, dimension-aware through
-  /// <c>InternalY</c> - a mini-dimension sits above the world in internal Y, so a chunk column there
-  /// must not share a key with the one below it.</summary>
+  /// <c>InternalY</c>.</summary>
   private static Vec3i ChunkOf(BlockPos pos) =>
     new(
       pos.X / GlobalConstants.ChunkSize,
@@ -475,34 +398,26 @@ public sealed partial class TestWorld : IDisposable {
       pos.Z / GlobalConstants.ChunkSize
     );
 
-  /// <summary>Whether the chunk holding <paramref name="pos"/> is loaded. Every cell starts loaded;
-  /// <see cref="UnloadChunkAt"/> takes one chunk away.</summary>
+  /// <summary>Whether the chunk holding <paramref name="pos"/> is loaded.</summary>
   public bool IsChunkLoaded(BlockPos pos) =>
     !_unloadedChunks.Contains(ChunkOf(pos));
 
-  /// <summary>
-  /// Hides every cell in the chunk holding <paramref name="pos"/> from <see cref="Accessor"/>: its
-  /// blocks read as <see cref="Air"/>, its block entities as <c>null</c> and
-  /// <c>GetChunkAtBlockPos</c> as <c>null</c>, which is what a real unload looks like to a walk. The
-  /// store is untouched, so <see cref="LoadChunkAt"/> brings the chunk back exactly as it was.
-  /// </summary>
-  /// <remarks>Distinct from <see cref="Unload"/>, which models the other half - one block entity
-  /// running its own <c>OnBlockUnloaded</c> and being dropped - and leaves the cell readable.</remarks>
+  /// <summary>Hides every cell in the chunk holding <paramref name="pos"/> from
+  /// <see cref="Accessor"/>: its blocks read as <see cref="Air"/>, its block entities and
+  /// <c>GetChunkAtBlockPos</c> as <c>null</c>.</summary>
   public TestWorld UnloadChunkAt(BlockPos pos) {
     _unloadedChunks.Add(ChunkOf(pos));
     return this;
   }
 
-  /// <summary>Brings back the chunk holding <paramref name="pos"/>. Loading a chunk that was never
-  /// unloaded does nothing, so a test can call it twice.</summary>
+  /// <summary>Brings back the chunk holding <paramref name="pos"/>.</summary>
   public TestWorld LoadChunkAt(BlockPos pos) {
     _unloadedChunks.Remove(ChunkOf(pos));
     return this;
   }
 
   /// <summary>What <see cref="Accessor"/> sees at <paramref name="pos"/>: the placed block, or
-  /// <see cref="Air"/> when its chunk is away. The engine never returns null for an unloaded cell,
-  /// which is exactly why an absent cell and an unreadable one need telling apart.</summary>
+  /// <see cref="Air"/> when its chunk is away.</summary>
   private Block ReadBlock(BlockPos pos) =>
     IsChunkLoaded(pos) ? GetBlock(pos) : Air;
 
@@ -526,12 +441,8 @@ public sealed partial class TestWorld : IDisposable {
 
   #region Neighbours
 
-  /// <summary>
-  /// Fires <see cref="Block.OnNeighbourBlockChange"/> on the six blocks adjacent to
-  /// <paramref name="changedPos"/>, as the engine does after a place, break or exchange there; empty
-  /// cells resolve to <see cref="Air"/> and no-op. Opt-in, because auto-firing from <see cref="Place"/>
-  /// and the accessor makes an isolated network node self-break and reorientations recurse.
-  /// </summary>
+  /// <summary>Fires <see cref="Block.OnNeighbourBlockChange"/> on the six blocks adjacent to
+  /// <paramref name="changedPos"/>. Opt-in only.</summary>
   public TestWorld NotifyNeighbours(BlockPos changedPos) {
     foreach (BlockFacing face in BlockFacing.ALLFACES) {
       BlockPos nPos = changedPos.AddCopy(face);
@@ -544,12 +455,8 @@ public sealed partial class TestWorld : IDisposable {
 
   #region Time
 
-  /// <summary>
-  /// Advances the simulation by <paramref name="seconds"/> server ticks (the network manager runs one
-  /// tick per second) through <see cref="BlockNetworkModSystem.ServerTick"/>, so a test drives the
-  /// same per-tick graph work the server does - resuming discovery a chunk suspended, then
-  /// <see cref="BlockNetwork.OnTick"/> for every live network with <c>dt = 1</c>.
-  /// </summary>
+  /// <summary>Advances the simulation by <paramref name="seconds"/> server ticks through
+  /// <see cref="BlockNetworkModSystem.ServerTick"/>.</summary>
   public void Tick(int seconds = 1) {
     for (int i = 0; i < seconds; i++)
       Networks.ServerTick(Accessor, 1f);
@@ -563,12 +470,8 @@ public sealed partial class TestWorld : IDisposable {
         listener.Callback(dt);
   }
 
-  /// <summary>
-  /// Advances block-entity sim time by <paramref name="totalMs"/> ms, firing each listener once per
-  /// whole interval that elapses at the interval it registered, with <c>dt = interval / 1000</c> s.
-  /// Remainders carry across calls, so two 600 ms advances cross a 1000 ms boundary once. A listener
-  /// that unregisters itself mid-advance receives no further fires this call.
-  /// </summary>
+  /// <summary>Advances block-entity sim time by <paramref name="totalMs"/> ms, firing each listener
+  /// once per whole interval it registered.</summary>
   public void AdvanceBlockEntityTime(int totalMs) {
     // Snapshot: a listener may unregister (or a block entity may register a new one) while firing.
     foreach (long id in _tickListeners.Keys.ToList()) {
@@ -606,12 +509,9 @@ public sealed partial class TestWorld : IDisposable {
 
   #region Lifecycle
 
-  /// <summary>
-  /// Models a save, chunk unload and reload of the block entity at <paramref name="pos"/>: serialises
-  /// its real <c>ToTreeAttributes</c> bytes, tears the live instance down (unregistering its tick
-  /// listeners) while leaving the block placed, then builds a fresh instance of the same class and
-  /// drives <c>FromTreeAttributes</c> then <c>Initialize</c>. Returns the new instance.
-  /// </summary>
+  /// <summary>Models a save, chunk unload and reload of the block entity at
+  /// <paramref name="pos"/>.</summary>
+  /// <returns>The new instance, or null if none was placed.</returns>
   public BlockEntity? Reload(BlockPos pos) {
     BlockEntity? old = GetBlockEntity(pos);
     if (old == null)
@@ -622,8 +522,7 @@ public sealed partial class TestWorld : IDisposable {
     var tree = new TreeAttribute();
     old.ToTreeAttributes(tree);
 
-    // Unload the live instance (unregisters its listeners; a network node keeps its graph node, as
-    // the base OnBlockUnloaded does not RemoveNode), then drop it - the block stays placed.
+    // A network node keeps its graph node: base OnBlockUnloaded does not RemoveNode.
     old.OnBlockUnloaded();
     _blockEntities.Remove(pos);
 
@@ -637,20 +536,15 @@ public sealed partial class TestWorld : IDisposable {
     return fresh;
   }
 
-  /// <summary>
-  /// Models the block-entity half of a chunk unload at <paramref name="pos"/>: runs its real
-  /// <c>OnBlockUnloaded</c> (the fake event API honours the tick-listener unregister, so it stops
-  /// ticking) and drops the instance while leaving the block placed and readable. The cell itself
-  /// stays visible to the accessor; <see cref="UnloadChunkAt"/> is the half that takes it away.
-  /// </summary>
+  /// <summary>Models the block-entity half of a chunk unload at <paramref name="pos"/>: runs its
+  /// real <c>OnBlockUnloaded</c> and drops the instance, leaving the block placed.</summary>
   public void Unload(BlockPos pos) {
     GetBlockEntity(pos)?.OnBlockUnloaded();
     _blockEntities.Remove(pos);
   }
 
-  /// <summary>Creates a fresh block entity of the same class the engine would instantiate on load:
-  /// a registered factory for the block's entity class if one exists (see
-  /// <see cref="RegisterBlockEntityFactory"/>), otherwise the type's parameterless constructor.</summary>
+  /// <summary>Creates a fresh block entity of the same class the engine would instantiate on
+  /// load.</summary>
   private BlockEntity NewBlockEntityLike(BlockEntity old, Block block) {
     string? classname = block?.EntityClass ?? old.Block?.EntityClass;
     if (
@@ -670,17 +564,14 @@ public sealed partial class TestWorld : IDisposable {
 
     a.GetBlock(Arg.Any<BlockPos>())
       .Returns(ci => ReadBlock(ci.Arg<BlockPos>()));
-    // The fluid/solid-layer overload (BlockLayersAccess) reads the same store - tests that need a
-    // distinct fluid layer place a block whose LiquidCode is set.
+    // The fluid/solid-layer overload (BlockLayersAccess) reads the same store.
     a.GetBlock(Arg.Any<BlockPos>(), Arg.Any<int>())
       .Returns(ci => ReadBlock(ci.Arg<BlockPos>()));
-    // Null for a chunk this world has taken away, a live chunk otherwise. The one call that can tell
-    // an absent cell from an unreadable one, since every block read answers air for both.
+    // The one accessor call that can tell an absent cell from an unreadable one.
     a.GetChunkAtBlockPos(Arg.Any<BlockPos>())
       .Returns(ci => IsChunkLoaded(ci.Arg<BlockPos>()) ? _loadedChunk : null);
-    // Coordinate overloads, including the unchecked GetBlockRaw vanilla's multiblock code reads
-    // through. Left unwired these return null and NRE inside engine code. The int overload is obsolete
-    // in favour of the BlockPos one but engine code still calls it, hence the suppression.
+    // Coordinate overloads vanilla's multiblock code reads through; the int overload is obsolete
+    // but still called.
 #pragma warning disable CS0618
     a.GetBlock(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>())
       .Returns(ci =>
@@ -702,16 +593,13 @@ public sealed partial class TestWorld : IDisposable {
       );
     a.GetBlockEntity(Arg.Any<BlockPos>())
       .Returns(ci => ReadBlockEntity(ci.Arg<BlockPos>()));
-    // Resolve-by-code, the same store IServerWorldAccessor.GetBlock(AssetLocation) reads. Orientation
-    // behaviours swap a block to its facing variant through the accessor rather than the world
-    // (CodeWithVariant -> GetBlock -> ExchangeBlock), and read a null here as an undeclared variant.
+    // Resolve-by-code; orientation behaviours read a null here as an undeclared variant.
     a.GetBlock(Arg.Any<AssetLocation>())
       .Returns(ci => GetByCode(ci.Arg<AssetLocation>()));
 
     a.When(x => x.SetBlock(Arg.Any<int>(), Arg.Any<BlockPos>()))
       .Do(ci => DoSetBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1)));
-    // The placement overload. The stack it carries seeds block-entity attributes in the engine and the
-    // store has no use for it, but unwired this overload makes a real TryPlaceBlock place nothing.
+    // The placement overload; left unwired, a real TryPlaceBlock would place nothing.
     a.When(x =>
         x.SetBlock(Arg.Any<int>(), Arg.Any<BlockPos>(), Arg.Any<ItemStack>())
       )
@@ -732,8 +620,7 @@ public sealed partial class TestWorld : IDisposable {
       )
       .Do(ci => DoBreak(ci.ArgAt<BlockPos>(0)));
 
-    // WalkBlocks over an inclusive box, reading the store cell by cell (empties read as Air). Used by
-    // region scans such as the blast furnace's hearth-pile walk.
+    // WalkBlocks over an inclusive box, reading the store cell by cell.
     a.When(x =>
         x.WalkBlocks(
           Arg.Any<BlockPos>(),
@@ -776,7 +663,7 @@ public sealed partial class TestWorld : IDisposable {
     w.Calendar.Returns(Calendar);
     w.Logger.Returns(Log);
     w.Config.Returns(Config.Tree);
-    // Particle/sound helpers (e.g. a bursting pipe's vapour plume) read world.Rand.
+    // Particle/sound helpers read world.Rand.
     w.Rand.Returns(new Random(1));
     w.GetBlock(Arg.Any<AssetLocation>())
       .Returns(ci => GetByCode(ci.Arg<AssetLocation>()));
@@ -795,8 +682,7 @@ public sealed partial class TestWorld : IDisposable {
         )
       )
       .Do(ci => Drops.Add(ci.Arg<ItemStack>()));
-    // The full registries a content check enumerates (ExpandedLib.Checks.AssetCheckSource reads
-    // these), computed on each read so a block or item registered after BuildWorld runs still shows.
+    // The full registries a content check enumerates; computed on each read.
     w.Blocks.Returns(ci => (IList<Block>)_blocksById.Values.ToList());
     w.Items.Returns(ci => (IList<Item>)_itemsByCode.Values.ToList());
     return w;
@@ -804,8 +690,7 @@ public sealed partial class TestWorld : IDisposable {
 
   private ICoreServerAPI BuildApi() {
     var api = Substitute.For<ICoreServerAPI>();
-    // A block entity's Api field is typed ICoreAPI, so it reads the base-interface World/Event/
-    // ModLoader members - which ICoreServerAPI re-declares with `new`. Configure both views.
+    // BlockEntity.Api is typed ICoreAPI; ICoreServerAPI re-declares these members with `new`.
     var coreApi = (ICoreAPI)api;
 
     api.Side.Returns(EnumAppSide.Server);
@@ -814,25 +699,19 @@ public sealed partial class TestWorld : IDisposable {
     api.Logger.Returns(Log);
     coreApi.Logger.Returns(Log);
 
-    // Mods.IsModEnabled reports every id enabled (see TestModLoader's own doc), so a discovered
-    // module of any host - not only the ones a test happened to Add - is driven the same as in a
-    // real world.
+    // Mods.IsModEnabled reports every id enabled; see TestModLoader's own doc.
     api.ModLoader.Returns(Mods);
     coreApi.ModLoader.Returns(Mods);
 
-    // LoadModConfig<T>/StoreModConfig<T> are open generic methods: NSubstitute's Arg.Any<T>()/Returns
-    // pair binds to the one closed generic method it was written against, so it cannot answer a call
-    // made with a different T. A custom call handler dispatches on the raw method info instead, and
-    // falls through (RouteAction.Continue) for every other member, leaving the rest of this
-    // configuration untouched.
+    // LoadModConfig<T>/StoreModConfig<T> are open generics NSubstitute cannot bind by type; a
+    // custom call handler dispatches on the raw method info instead.
     SubstitutionContext
       .Current.GetCallRouterFor(api)
       .RegisterCustomCallHandlerFactory(_ => new ModConfigCallHandler(
         ConfigFiles
       ));
 
-    // Empty rather than unconfigured, so a content check reading recipes or lang off a TestWorld
-    // (which carries neither) gets "nothing shipped" rather than a null-reference.
+    // Empty rather than unconfigured, so a content check reads "nothing shipped" rather than null.
     var assets = Substitute.For<IAssetManager>();
     assets
       .GetMany(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
@@ -844,8 +723,7 @@ public sealed partial class TestWorld : IDisposable {
     api.Event.Returns(events);
     coreApi.Event.Returns(events);
 
-    // RegisterChannel hands out this world's memoised pair (see Channels), so a ModSystem's
-    // StartServerSide registers against the same channel a test drives through TestChannels.
+    // RegisterChannel hands out this world's memoised pair; see Channels.
     var network = Substitute.For<IServerNetworkAPI>();
     network
       .RegisterChannel(Arg.Any<string>())
@@ -853,9 +731,8 @@ public sealed partial class TestWorld : IDisposable {
     api.Network.Returns(network);
     coreApi.Network.Returns(network);
 
-    // Capture the server tick listeners block entities register, so a test can pump them via
-    // FireBlockEntityTicks. The event-API overload BlockEntity.RegisterGameTickListener forwards to
-    // gained a BlockPos parameter in 1.22, so only the one this game version calls is mocked.
+    // Captures server tick listeners for FireBlockEntityTicks; only the RegisterGameTickListener
+    // overload this game version calls is mocked.
 #if GAME_GE_1_22
     events
       .RegisterGameTickListener(
@@ -881,8 +758,7 @@ public sealed partial class TestWorld : IDisposable {
       );
 #endif
 
-    // Honour UnregisterGameTickListener so a torn-down block entity (Reload/Unload/OnBlockRemoved)
-    // stops ticking; left a no-op, a discarded block entity would go on ticking.
+    // Honours UnregisterGameTickListener so a torn-down block entity stops ticking.
     events
       .When(x => x.UnregisterGameTickListener(Arg.Any<long>()))
       .Do(ci => {
@@ -902,8 +778,7 @@ public sealed partial class TestWorld : IDisposable {
     api.Logger.Returns(Log);
     coreApi.Logger.Returns(Log);
 
-    // RegisterChannel hands out this world's memoised pair (see Channels), same as Api's server side,
-    // so a ModSystem's StartClientSide registers against the same channel a test drives.
+    // RegisterChannel hands out this world's memoised pair, same as Api's server side.
     var network = Substitute.For<IClientNetworkAPI>();
     network
       .RegisterChannel(Arg.Any<string>())
@@ -936,10 +811,8 @@ public sealed partial class TestWorld : IDisposable {
       return;
     _blocks[pos] = b;
 
-    // Engine parity: placing a block that declares an entity class (re)creates its block entity, so a
-    // caller that swaps a block and then reads its block entity finds the new block's one. Acts only
-    // when a factory is registered for the class, so graph-only tests are unaffected. A block entity
-    // already matching the new block is kept; a stale one is replaced.
+    // Engine parity: placing a block with an entity class (re)creates its block entity when a
+    // factory is registered for it.
     if (
       b.EntityClass is { } entityClass
       && (
@@ -947,8 +820,7 @@ public sealed partial class TestWorld : IDisposable {
         || existing.Block != b
       )
     ) {
-      // A block-changing SetBlock replaces the old block entity; tear the stale one down first (as
-      // the engine's chunk unload does, unregistering its tick listeners) so it cannot keep ticking.
+      // Tears the stale block entity down first so it cannot keep ticking.
       existing?.OnBlockUnloaded();
       DoSpawnBlockEntity(entityClass, pos);
     }
@@ -973,8 +845,7 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   private void DoBreak(BlockPos pos) {
-    // Route through the real break lifecycle so a block entity drops its contents and runs
-    // OnBlockRemoved, which unregisters its tick listeners and, for a network node, calls RemoveNode.
+    // Routes through the real break lifecycle: drops contents, runs OnBlockRemoved.
     if (_blockEntities.TryGetValue(pos, out var be)) {
       be.OnBlockBroken();
       be.OnBlockRemoved();

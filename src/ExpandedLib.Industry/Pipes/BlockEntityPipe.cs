@@ -23,23 +23,22 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
     set { }
   }
 
-  /// <summary>Gas temperature (°C) of this pipe's network, cached from the last broadcast.
-  /// Every pipe in a run reports the same value - the network has no spatial gradient.</summary>
+  /// <summary>Gas temperature ( deg C) of this pipe's network, cached from the last broadcast; every pipe
+  /// in a run reports the same value.</summary>
   public float Temperature { get; protected set; }
 
   /// <summary>Current medium of this pipe's network ("Air"/"Steam"/"Exhaust"/"Water", or
   /// "" when empty), cached from the last network broadcast.</summary>
   public string Medium { get; protected set; } = "";
 
-  /// <summary>Whether this pipe's network currently carries water rather than a gas.</summary>
+  /// <summary>Whether this pipe's network currently carries water and not a gas.</summary>
   public bool IsLiquid => ExLiquids.Taxonomy.IsLiquid(Medium);
 
   /// <summary>Pressure (atm) of this pipe's network, cached from the last broadcast - the volume
   /// ratio for a gas, or the pump-set pressure for a water line.</summary>
   public float Pressure { get; protected set; }
 
-  /// <summary>Client-synced gas volume (L) in this pipe's network; used by external
-  /// look-at info such as the vanilla-chimney venting patch.</summary>
+  /// <summary>Client-synced gas volume (L) in this pipe's network.</summary>
   public float Volume => _clientVolume;
 
   /// <summary>Client-synced maximum volume (L) of this pipe's network at its current node count.</summary>
@@ -99,10 +98,8 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
       _ambientTickId = RegisterGameTickListener(OnAmbientTick, 1000);
   }
 
-  /// <summary>
-  /// Sparse per-pipe ambience: each pipe has a small chance to play each second at short range, so a
-  /// long run stays quiet overall.
-  /// </summary>
+  /// <summary>Sparse per-pipe ambience: each pipe has a small chance to play each second at short
+  /// range.</summary>
   private void OnAmbientTick(float dt) {
     var world = Api.World;
     if (!IsLiquid && Pressure > 1f)
@@ -141,10 +138,8 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
 
   #region Leak particles
 
-  /// <summary>
-  /// Emits a gas wisp from each open-ended connector while the pool bleeds; <paramref name="intensity"/>
-  /// (0..1) scales density with the leak rate. Called from the server network tick so it broadcasts.
-  /// </summary>
+  /// <summary>Emits a gas wisp from each open-ended connector while the pool bleeds;
+  /// <paramref name="intensity"/> (0..1) scales density with the leak rate.</summary>
   public void SpawnGasLeak(BlockFacing[] openFaces, float intensity) {
     if (openFaces.Length == 0)
       return;
@@ -156,10 +151,8 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
     ExSounds.PlayAt(Api.World, Pos, ExSounds.Swoosh, range: 24f, volume: 0.6f);
   }
 
-  /// <summary>
-  /// Sprays water out of each open-ended connector while the pool leaks (density scaled by
-  /// <paramref name="intensity"/> 0..1). Called from the server network tick so it broadcasts.
-  /// </summary>
+  /// <summary>Sprays water out of each open-ended connector while the pool leaks (density scaled by
+  /// <paramref name="intensity"/> 0..1).</summary>
   public void SpawnLiquidLeak(BlockFacing[] openFaces, float intensity = 1f) {
     if (openFaces.Length == 0)
       return;
@@ -277,8 +270,7 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
 
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);
-    // Ensure the synced display fields are present even when _savedNetworkState is null
-    // (empty network), so the client display/glow always has a value.
+    // Keeps the synced display fields present even when _savedNetworkState is null (empty network).
     tree.SetFloat("temp", Temperature);
     tree.SetString("medium", Medium);
     tree.SetFloat("pressure", Pressure);
@@ -314,8 +306,7 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
     if (_openingsCount > 0)
       dsc.AppendLine(Lang.Get("exlib:pipe-info-leaking"));
 
-    // Throughput (L/s) rather than fill level: a line pushed and drained at once carries plenty yet
-    // sits near 0 L stored, which would otherwise read as empty.
+    // Reports throughput (L/s), not fill level.
     if (IsLiquid) {
       dsc.AppendLine(
         Lang.Get(
@@ -329,8 +320,7 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
         Lang.Get("exlib:pipe-info-pressure", ExMeasure.Pressure(Pressure))
       );
     } else if (_clientMaxVolume > 0 && (Medium.Length > 0 || _clientFlowRate > 0)) {
-      // Checked on flow rate too, not just the medium label: a run drained as fast as it is fed holds
-      // nothing and its label clears with the last litre, so a balanced tuyere would read empty.
+      // Gated on flow rate as well as the medium label.
       dsc.AppendLine(
         Lang.Get(
           "exlib:pipe-info-flow",
@@ -347,8 +337,6 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
         Lang.Get("exlib:pipe-info-pressure", ExMeasure.Pressure(Pressure))
       );
 
-      // Production is capped at the burst rating, so only the weakest pipes in a run reach it and
-      // the warning appears on exactly the cells at risk.
       if (
         Block is BlockPipe bp
         && bp.CanBurst

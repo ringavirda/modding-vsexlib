@@ -14,9 +14,8 @@ public readonly struct Interaction {
   private readonly BlockSelection? _selection;
   private readonly IWorldAccessor _world;
 
-  /// <summary>Wraps an interact handler's own arguments; none is validated here, so a null
-  /// <paramref name="player"/> or <paramref name="selection"/> is read back as empty-handed,
-  /// not-sneaking and faceless rather than throwing.</summary>
+  /// <summary>Wraps an interact handler's own arguments; a null <paramref name="player"/> or
+  /// <paramref name="selection"/> reads back as empty-handed, not-sneaking and faceless.</summary>
   public Interaction(
     IWorldAccessor world,
     IPlayer player,

@@ -7,14 +7,8 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Structures;
 
 /// <summary>
-/// Centralises the multiblock build-outline projection: Ctrl+Shift+right-click toggles the hologram of
-/// missing or incorrect blocks (routed to <see cref="BlockEntityMultiblockStructure.Interact"/>) and
-/// contributes the help line. Both act only while the structure is incomplete. Carried by the anchor
-/// block and by every functional component of the same structure (tap, hopper, tuyere); a component with
-/// no resolvable anchor does nothing. Add via <c>{ "name": "MultiblockStructure" }</c> before any
-/// behaviour that also consumes right-click, so its <see cref="EnumHandling.PreventSubsequent"/> wins; a
-/// block that overrides <c>OnBlockInteractStart</c> without calling base, or reroutes it through a
-/// filler, calls <see cref="TryToggleProjection"/> directly instead.
+/// Handles the multiblock build-outline projection: Ctrl+Shift+right-click toggles the hologram of
+/// missing or incorrect blocks and contributes the help line.
 /// </summary>
 [BlockBehaviorRegister("MultiblockStructure", PrefixModId = false)]
 public class BlockBehaviorMultiblockStructure : BlockBehavior {
@@ -27,11 +21,7 @@ public class BlockBehaviorMultiblockStructure : BlockBehavior {
     return controls != null && controls.CtrlKey && controls.ShiftKey;
   }
 
-  /// <summary>
-  /// Resolves the incomplete multiblock anchor the block at <paramref name="pos"/> should project, or
-  /// null. The block is either the anchor itself or an <see cref="IMultiblockComponent"/> that scans up
-  /// to the anchor whose layout owns its cell. A complete structure, or none, yields null.
-  /// </summary>
+  /// <summary>Resolves the incomplete multiblock anchor for the block at <paramref name="pos"/>, or null.</summary>
   public static BlockEntityMultiblockStructure? ResolveIncompleteAnchor(
     IWorldAccessor world,
     BlockPos pos
@@ -47,11 +37,8 @@ public class BlockBehaviorMultiblockStructure : BlockBehavior {
   }
 
   /// <summary>
-  /// Shared build-outline entry point. When the player makes the projection gesture and
-  /// <paramref name="pos"/> resolves to an incomplete anchor (<see cref="ResolveIncompleteAnchor"/>),
-  /// toggles that anchor's outline and missing-parts report and returns true (the click is consumed);
-  /// otherwise returns false and the caller handles its own click. Called directly by a block that
-  /// overrides <c>OnBlockInteractStart</c> or reroutes it through a filler.
+  /// Toggles the build-outline projection when the player gestures over an incomplete anchor at
+  /// <paramref name="pos"/>; returns whether the click was consumed.
   /// </summary>
   public static bool TryToggleProjection(
     IWorldAccessor world,
@@ -72,10 +59,8 @@ public class BlockBehaviorMultiblockStructure : BlockBehavior {
   }
 
   /// <summary>
-  /// The Ctrl+Shift+right-click "show multiblock structure" help line, resolved against
-  /// <paramref name="forBlock"/>'s own domain so a mod can supply its own translation of
-  /// <c>blockhelp-mulblock-struc-show</c>, falling back to exlib's own copy when it does not.
-  /// Shown only while the structure is incomplete.
+  /// Returns the Ctrl+Shift+right-click "show multiblock structure" help line, translated against
+  /// <paramref name="forBlock"/>'s domain.
   /// </summary>
   public static WorldInteraction[] ProjectionHelp(Block forBlock) {
     string domainKey = forBlock.Code.Domain + ":blockhelp-mulblock-struc-show";

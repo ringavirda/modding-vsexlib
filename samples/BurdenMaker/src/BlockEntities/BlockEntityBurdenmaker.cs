@@ -15,27 +15,12 @@ using Vintagestory.GameContent;
 
 namespace BurdenMaker.BlockEntities;
 
-/// <summary>
-/// Two hoppers over a shared basin with one sliding gate between them; materials go in and come out
-/// freely, one or a stack at a time. Opening the gate starts a batch: the hoppers drain into the basin
-/// over <see cref="BurdenMakerValues.BurdenmakerDrainSeconds"/>, stamped with the proportion loaded when
-/// the batch began. Closing the gate pauses the drain; reopening it resumes the same batch.
-/// <para>
-/// <c>RightClickConstructable</c> suppresses the default mesh, so the machine renders through a permanent
-/// animation: the resting clip <c>closed</c> must keep running or the mesh disappears with it, and
-/// <c>open</c> is a held pose cleared by <c>StopAnimation</c>.
-/// </para>
-/// <para>
-/// Storage is a real multi-slot inventory, so <see cref="BlockEntityContainer"/>'s break-spill covers
-/// drops.
-/// </para>
-/// </summary>
+/// <summary>Two hoppers over a shared basin with one sliding gate; opening it drains the hoppers
+/// into the basin over <see cref="BurdenMakerValues.BurdenmakerDrainSeconds"/>, stamped with the
+/// mix loaded when the batch began.</summary>
 [BlockEntityRegister]
 public class BlockEntityBurdenmaker : ExBlockEntityContainer {
-  // Slot layout. Fixed ranges, so "which tank" is a property of the index and never derived from a slot's
-  // contents. Counts are sized against a worst-case stack of 64 so the configured unit capacity always
-  // binds before the slots do; `MaxStackSize` belongs to the loaded item, so this cannot be derived at
-  // compile time.
+  // Fixed slot ranges: tank identity is a property of the index, not the contents.
   private const int OreSlots = 8; // 512 u
   private const int FluxSlots = 4; // 205 u
   private const int BunkerSlots = 18; // 1152 u
@@ -49,26 +34,18 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
   private ConstructedAnimator? _animator;
 
-  // Hand-rolled rather than [Persist]: a value that only saves and syncs is not enough here, because
-  // ToggleGate's own ApplyPose call never runs on the client (the server owns every mutation). The
-  // client's pose has to come from the sync itself, which needs to see the old value before it is
-  // overwritten.
+  // Set from FromTreeAttributes, read there before it is overwritten; not [Persist].
   private bool _gateOpen;
 
-  // Batch state, all persisted (see ToTreeAttributes): the stamp is fixed once at the batch's first
-  // gate-open so a paused-then-resumed drain cannot drift, and the original total is kept so the
-  // readout can report progress after the hoppers themselves have partly drained.
+  // Batch state, persisted via ToTreeAttributes; the mix is fixed at the batch's first gate-open.
   private bool _batchInProgress;
   private BurdenMix _batchMix;
   private int _batchTotal;
 
-  // Units/second, recomputed each time the gate opens from whatever is left to drain; not persisted,
-  // since a reload resumes at whatever rate the current remainder implies.
+  // Units/second; recomputed on each gate-open, not persisted.
   private float _drainRate;
 
-  // Fractional units owed to the drain since its last whole-unit move, so a rate under one unit per
-  // tick still averages out over several ticks instead of always flooring to zero. Not persisted: a
-  // reload restarting mid-fraction costs at most one tick's worth of drift.
+  // Fractional units owed since the last whole-unit move; not persisted.
   private float _drainCarry;
 
   private long _drainTickId;
@@ -97,10 +74,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
   public float FluxFill =>
     (float)FluxUnits / BurdenMakerValues.BurdenmakerFluxCapacity;
 
-  /// <summary>
-  /// Basin fill fraction: 0 empty, 1 at the combined ore+flux capacity, which is the most one
-  /// gate-open batch can ever stamp.
-  /// </summary>
+  /// <summary>Basin fill fraction: 0 empty, 1 at the combined ore+flux capacity.</summary>
   public float BurdenFill =>
     (float)BurdenUnits
     / (
@@ -121,21 +95,19 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
       api
     );
 
-    // Resolved on both sides (IsConstructed gates server-side logic); it only builds and poses on the client.
+    // Resolved on both sides; builds and poses on the client only.
     _animator = new ConstructedAnimator(this, () => AnimCacheKey);
     _animator.Initialize(ApplyPose);
 
     if (api is ICoreClientAPI capi)
       InitSurfaces(capi);
 
-    // A save/reload lands mid-drain exactly as often as it lands anywhere else; resume the tick rather
-    // than stranding the batch until the player cycles the gate.
+    // Resumes the tick on load if the gate is open and the hoppers hold anything.
     if (api.Side == EnumAppSide.Server && _gateOpen && OreUnits + FluxUnits > 0)
       StartDrain();
   }
 
-  // Must stay lazy: a wrench rotation changes the variant, and a key captured at Initialize would keep
-  // handing back the old orientation's cached mesh.
+  // Lazy: a wrench rotation changes the variant.
   private string AnimCacheKey =>
     "burdenmaker-" + Block.Variant["side"] + (_gateOpen ? "-open" : "-closed");
 
@@ -162,12 +134,8 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     tree.SetInt("batchTotal", _batchTotal);
   }
 
-  /// <summary>
-  /// Reads the gate state written by <see cref="ToTreeAttributes"/> - a save load and every resync the
-  /// server pushes through <c>MarkDirty</c>. <see cref="ToggleGate"/> poses the server's own animator
-  /// directly, but the server never touches the client's, so the client's pose has to come from here: a
-  /// changed value re-poses on arrival instead of waiting for a click that will never come.
-  /// </summary>
+  /// <summary>Reads the batch and gate state written by <see cref="ToTreeAttributes"/>; re-poses
+  /// the client's animator when the gate state changes.</summary>
   public override void FromTreeAttributes(
     ITreeAttribute tree,
     IWorldAccessor worldForResolving
@@ -186,10 +154,8 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     UpdateSurfaces();
   }
 
-  /// <summary>
-  /// Holds the machine visible via a permanent pose (RCC draws no mesh of its own): <c>closed</c> at rest,
-  /// <c>open</c> while the lid is drawn back.
-  /// </summary>
+  /// <summary>Poses the permanent animation: <c>closed</c> at rest, <c>open</c> while the lid is
+  /// drawn back.</summary>
   private void ApplyPose() {
     string clip = _gateOpen ? "open" : "closed";
     _animator?.Pose(util => {
@@ -210,12 +176,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
   #region Ore surfaces (client only)
 
-  // Footprints (0-16 pixel space, block-local) and floor/brim heights (block units), taken from
-  // assets/burdenmaker/shapes/ore/burdenmaker.json. Each hopper's masonry lip flares two pixels past
-  // the wall below it; the footprint follows the lip, the widest ring a fill quad can sit inside
-  // without poking through a wall. The basin floor is the base slab's top; its brim sits two pixels
-  // short of the hopper walls' foot, matching the margin the hopper lips carry below their own metal
-  // throat.
+  // Footprints in 0-16 pixel space, block-local; floor/brim heights in block units.
 
   /// <summary>The wide ore hopper's interior: the two cells west of the dividing pier (x -12..15px),
   /// behind the front masonry lip (z -14..-2px).</summary>
@@ -251,8 +212,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     "game:textures/item/resource/quicklime.png"
   );
 
-  /// <summary>The finished burden's surface, taken from <see cref="ItemBurden"/>'s own model texture
-  /// rather than a fresh pick, so the basin reads as the same material the item shows in hand.</summary>
+  /// <summary>The finished burden's surface texture, matching <see cref="ItemBurden"/>'s model.</summary>
   private static readonly AssetLocation BurdenTexture = new(
     "game:textures/block/coal/orecoalmix.png"
   );
@@ -262,8 +222,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
   private OreSurfaceRenderer? _burdenSurface;
 
   private void InitSurfaces(ICoreClientAPI capi) {
-    // Degrees to radians: Shape.rotateY carries the per-side spin ShapeSpunPerOrientation baked in,
-    // but SurfaceRenderer's own RotateY call, like the footprint boxes, works in radians.
+    // Degrees to radians; SurfaceRenderer.RotateY takes radians.
     float rotationY = (float)(Block.Shape.rotateY * Math.PI / 180.0);
 
     _oreSurface = new OreSurfaceRenderer(
@@ -335,12 +294,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
   #region What each hopper takes
 
-  /// <summary>
-  /// Whether <paramref name="stack"/> belongs in the wide hopper: crushed iron ore. Resolved
-  /// through <see cref="MaterialRoleRegistry"/> (role <see cref="Roles.IronOre"/>), the same role check
-  /// the flux hopper uses, so ores contributed by another mod's <c>materialroles.json</c> are accepted
-  /// here exactly as any other machine reading the role would.
-  /// </summary>
+  /// <summary>Whether <paramref name="stack"/> belongs in the wide hopper, by <see cref="Roles.IronOre"/> role.</summary>
   public static bool IsOre(ItemStack? stack) =>
     stack?.Collectible?.Code is { } code
     && MaterialRoleRegistry.IsRole(Roles.IronOre, code);
@@ -404,9 +358,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     int moved = 0;
     for (int i = first; i < first + count && moved < wanted; i++) {
       ItemSlot slot = _inventory[i];
-      // Only pool onto the same material: two ore types in one hopper would leave the burden's stamp
-      // disagreeing with what went in, with no per-slot record to recover it from. Compared by code
-      // rather than through ItemStack.Satisfies, which throws on a bare Item.
+      // Pools onto the same material only; compared by code, not ItemStack.Satisfies (throws on a bare Item).
       if (
         !slot.Empty
         && !slot.Itemstack.Collectible.Code.Equals(held.Collectible.Code)
@@ -441,8 +393,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
   }
 
   private ItemStack? TakeFrom(int first, int count) {
-    // Highest slot first, so repeated takes empty the tank from the top and a partial stack does not
-    // linger between two full ones.
+    // Highest slot first: partial stacks empty before full ones.
     for (int i = first + count - 1; i >= first; i--) {
       ItemSlot slot = _inventory[i];
       if (slot.Empty)
@@ -469,13 +420,8 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
   private const int DrainTickMs = 250;
 
-  /// <summary>
-  /// Toggles the lid. Opening either starts a new batch (basin empty, or already holding nothing but
-  /// this batch's own product) or resumes the one already in progress - the stamp is fixed once, at
-  /// whichever open starts the batch, and every later open of the same batch reuses it rather than
-  /// re-reading whatever proportion happens to be left. Closing pauses the drain exactly where it
-  /// stands; no unit moves here, that is <see cref="DrainTick"/>'s job alone.
-  /// </summary>
+  /// <summary>Toggles the lid, starting a new batch or resuming the one in progress; the batch mix
+  /// is fixed at its first gate-open.</summary>
   public bool ToggleGate(out string? errorCode) {
     errorCode = null;
 
@@ -512,12 +458,8 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     return true;
   }
 
-  /// <summary>
-  /// Server-only tick moving one slice of the batch in progress from the hoppers to the basin, at the
-  /// rate <see cref="StartDrain"/> set. The slice is split by <see cref="_batchMix"/> rather than by
-  /// whatever each hopper actually still holds, so a hopper that runs dry first does not skew the stamp
-  /// on whatever drains after it.
-  /// </summary>
+  /// <summary>Server-only tick moving one slice of the batch from the hoppers to the basin, split
+  /// by <see cref="_batchMix"/>.</summary>
   private void DrainTick(float dt) {
     int ore = OreUnits;
     int flux = FluxUnits;
@@ -528,10 +470,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
       return;
     }
 
-    // Floored rather than rounded, with the fraction carried to the next tick: rounding every tick's
-    // slice up would drain faster than the configured rate, and flooring every tick's slice down
-    // without carrying the remainder would drain slower than it (see the "at least one" floor below,
-    // which only fires when the rate itself is under one unit per tick).
+    // Floored, fraction carried to the next tick.
     _drainCarry += _drainRate * dt;
     int slice = (int)_drainCarry;
     int moveTotal = Math.Min(remaining, Math.Max(1, slice));
@@ -542,8 +481,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     );
     int moveFlux = moveTotal - moveOre;
     if (moveFlux > flux) {
-      // The ore-fraction rounding left more flux than is actually left; the shortfall comes out of
-      // ore instead, capped at what the hopper holds.
+      // Shortfall from rounding comes out of ore instead, capped at what the hopper holds.
       moveOre = Math.Min(ore, moveOre + (moveFlux - flux));
       moveFlux = flux;
     }
@@ -559,11 +497,8 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     }
   }
 
-  /// <summary>
-  /// Starts the drain tick at the rate the units currently left to move imply - recomputed here rather
-  /// than carried across a pause, so a reload or a resume after a partial drain moves at the rate its
-  /// own remainder implies rather than the original batch's. Idempotent, and a no-op off the server.
-  /// </summary>
+  /// <summary>Starts the drain tick at the rate implied by whatever remains. Idempotent; a no-op
+  /// off the server.</summary>
   private void StartDrain() {
     if (Api?.Side != EnumAppSide.Server || _drainTickId != 0)
       return;
@@ -597,10 +532,8 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     }
   }
 
-  /// <summary>
-  /// Adds <paramref name="units"/> of burden to the basin, topping up existing stacks before opening new
-  /// ones - all stamped with <see cref="_batchMix"/>, the one mix a batch in progress ever carries.
-  /// </summary>
+  /// <summary>Adds <paramref name="units"/> of burden to the basin, topping up existing stacks
+  /// before opening new ones, stamped with <see cref="_batchMix"/>.</summary>
   private void MergeBurden(int units) {
     if (units <= 0)
       return;
@@ -638,13 +571,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
   #region Readout
 
-  /// <summary>
-  /// Reports both hopper contents, then either the drain in progress or the flux fraction the current
-  /// pair would produce - named through the same <see cref="Burden.ProfileLangKey"/> the tooltip grades a
-  /// mix with. The preview is computed from the hoppers rather than the basin, so it answers while the
-  /// mix can still be changed; once a batch is in progress the mix is fixed, so the drain percentage
-  /// takes its place.
-  /// </summary>
+  /// <summary>Reports hopper contents, then the drain in progress or the mix preview.</summary>
   public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb) {
     base.GetBlockInfo(forPlayer, sb);
     if (!IsConstructed)
@@ -688,10 +615,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
   #endregion
 
-  /// <summary>
-  /// The inventory. Beyond storage its only job is the per-range acceptance gate, so an automated feed
-  /// cannot put lime in the ore hopper.
-  /// </summary>
+  /// <summary>The inventory; gates acceptance by slot range.</summary>
   private class InventoryBurdenmaker(int size)
     : InventoryGeneric(size, null, null) {
     public BlockEntityBurdenmaker? Machine { get; set; }

@@ -10,19 +10,11 @@ using Xunit;
 
 namespace BurdenMaker.Tests;
 
-/// <summary>
-/// The burdenmaker's two hoppers, its shared basin and the one gate between them. Crate semantics for
-/// loading and taking: materials go in and come out freely. The gate itself carries batch state -
-/// opening it starts a timed drain of one stamped mix into the basin - covered in its own region below.
-/// Each hopper takes only its own material, and everything loaded or drained comes back on break.
-/// </summary>
+/// <summary>The burdenmaker's two hoppers, its shared basin and the one gate between them: crate
+/// semantics for loading and taking, a timed drain into the basin, and everything loaded or
+/// drained returns on break.</summary>
 public class BurdenmakerTests {
-  /// <summary>
-  /// Long enough to fully drain any batch this suite loads: the drain always finishes within
-  /// <see cref="BurdenMakerValues.BurdenmakerDrainSeconds"/> of sim time (a bigger batch drains faster
-  /// per tick, not slower - see <c>BlockEntityBurdenmaker.StartDrain</c>), so one second of margin covers
-  /// rounding at the tail.
-  /// </summary>
+  /// <summary>Long enough to fully drain any batch this suite loads.</summary>
   private const int FullDrainMs = 9000;
 
   private static (
@@ -37,8 +29,7 @@ public class BurdenmakerTests {
     world.RegisterItem("game:lime");
     world.RegisterItem("game:clay-fire"); // an unrelated item, for the refusal cases
 
-    // The real block type, not `new Block()`: a stub carries no variants, so `Variant["side"]` is null
-    // and the animator's cache key throws.
+    // The real block type, not `new Block()`: a stub carries no variants and `Variant["side"]` throws.
     var block = TestBlocks.Configure(
       new BlockBurdenmaker(),
       "burdenmaker:burdenmaker-red-n",
@@ -130,9 +121,6 @@ public class BurdenmakerTests {
 
   [Fact]
   public void A_full_hopper_takes_no_more() {
-    // The slot ranges must leave the unit cap binding first, or the hopper fills short of its configured
-    // capacity. If this goes red after a capacity change, the slot ranges on the block entity are what
-    // to move, not this number.
     var (_, be, ore, _) = NewMachine();
     int cap = BurdenMakerValues.BurdenmakerOreCapacity;
 
@@ -146,8 +134,6 @@ public class BurdenmakerTests {
 
   [Fact]
   public void Every_tank_can_actually_reach_its_configured_capacity() {
-    // The same check for the other two tanks: the flux hopper and the basin have the same failure mode
-    // and no other case fills them to the brim.
     var (world, be, ore, lime) = NewMachine();
 
     for (
@@ -171,7 +157,7 @@ public class BurdenmakerTests {
         wholeStack: true
       );
 
-    // Gate the lot through: ore + flux must fit the basin, or a legal full load would be destroyed.
+    // Ore + flux must fit the basin.
     Assert.True(be.ToggleGate(out _));
     world.AdvanceBlockEntityTime(FullDrainMs);
     Assert.Equal(
@@ -243,7 +229,7 @@ public class BurdenmakerTests {
     world.AdvanceBlockEntityTime(1000); // some of the batch has moved
     int hoppersAtClose = be.OreUnits + be.FluxUnits;
     int basinAtClose = be.BurdenUnits;
-    Assert.True(hoppersAtClose < 100); // the premise: the drain really did start
+    Assert.True(hoppersAtClose < 100);
 
     Assert.True(be.ToggleGate(out _)); // close
     world.AdvanceBlockEntityTime(2000); // no listener should be running now
@@ -306,8 +292,7 @@ public class BurdenmakerTests {
 
   [Fact]
   public void A_second_batch_carries_only_its_own_stamp() {
-    // First batch 50:50, second 90:10. A basin that pooled the two would return their average on the
-    // second read.
+    // First batch 50:50, second 90:10.
     var (world, be, ore, lime) = NewMachine();
 
     be.TryLoadOre(Slot(ore, 50), wholeStack: true);
@@ -332,9 +317,7 @@ public class BurdenmakerTests {
 
   [Fact]
   public void The_gate_state_round_trips_through_the_tree() {
-    // The client learns the gate from the tree alone - the server's own ApplyPose call inside
-    // ToggleGate never runs there - so a round trip through ToTreeAttributes/FromTreeAttributes is
-    // what has to carry it, not just the field.
+    // The client learns the gate only through ToTreeAttributes/FromTreeAttributes, not the field.
     var (_, source, ore, _) = NewMachine();
     source.TryLoadOre(Slot(ore, 10), wholeStack: true);
     Assert.True(source.ToggleGate(out _));
@@ -355,8 +338,6 @@ public class BurdenmakerTests {
 
   [Fact]
   public void Breaking_it_returns_the_ore_the_flux_AND_the_burden() {
-    // Asserted through the inventory the container base spills, so it cannot pass by virtue of a custom
-    // GetDrops that a later edit removes.
     var (world, be, ore, lime) = NewMachine();
 
     be.TryLoadOre(Slot(ore, 60), wholeStack: true);
@@ -367,7 +348,6 @@ public class BurdenmakerTests {
     be.TryLoadOre(Slot(ore, 45), wholeStack: true);
     be.TryLoadFlux(Slot(lime, 15), wholeStack: true);
 
-    // The premise: all three tanks really are loaded, or the assertion below is vacuous.
     Assert.Equal(45, be.OreUnits);
     Assert.Equal(15, be.FluxUnits);
     Assert.Equal(80, be.BurdenUnits);

@@ -7,34 +7,18 @@ using Newtonsoft.Json.Linq;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// Checks that no shipped layout pins the orientation of a network node. A node picks its own
-/// orientation from its neighbours, so a pinned cell states a fact the node is free to contradict: the
-/// structure can be left uncompletable, or a complete one broken when the player plumbs something
-/// nearby. <c>MultiblockLayoutBuilder</c> refuses the multi-letter case outright; this is the half it
-/// cannot judge, where <c>furnace-tuyere-n</c> reads exactly like <c>hopper-tall-e</c> and only the
-/// referenced def says which is a node.
-/// <para>
-/// The sanctioned way to state what a layout wants is the <c>Connector</c> mark, which demands an
-/// outward connector face rather than a variant.
-/// </para>
-/// </summary>
+/// <summary>Checks that no shipped layout pins the orientation of a network node; the sanctioned way
+/// to state what a layout wants is the <c>Connector</c> mark.</summary>
 public static class PinnedNetworkNodes {
-  /// <summary>
-  /// Every pinned network node across <paramref name="sources"/>, as one line each, also reporting how
-  /// many pinned codes were examined. Callers must assert that number is non-zero for the reason
-  /// <see cref="MultiblockCodes"/> reports its own: a renamed attribute leaves the check passing while
-  /// examining nothing. Pass every mod whose blocks the layouts may reference - a furnace layout pins
-  /// parts from its own mod and from its dependencies alike.
-  /// </summary>
+  /// <summary>Every pinned network node across <paramref name="sources"/>, as one line each, also
+  /// reporting how many pinned codes were examined.</summary>
   public static IReadOnlyList<string> Violations(
     out int codesChecked,
     params (string Domain, Assembly Assembly)[] sources
   ) {
     codesChecked = 0;
 
-    // The network-oriented defs per domain, held as their expanded code shapes. Only nodes are kept:
-    // this check has nothing to say about a pinned block the player orients.
+    // The network-oriented defs per domain, held as their expanded code shapes.
     var nodesIn = new Dictionary<string, List<string[][]>>(
       StringComparer.Ordinal
     );
@@ -45,7 +29,7 @@ public static class PinnedNetworkNodes {
         nodesIn[domain] = nodes = [];
 
       foreach (IExDef def in DefinitionGoldens.Collect(domain, asm)) {
-        // A recipe def serialises as an array; indexing one by name throws rather than answering null.
+        // A recipe def serialises as an array; indexed access throws rather than answering null.
         if (def.ToJson() is not JObject json)
           continue;
         layouts.Add((def.Location.ToString(), json));
@@ -84,14 +68,8 @@ public static class PinnedNetworkNodes {
     return problems;
   }
 
-  /// <summary>
-  /// A def's code as a list of segment alternatives: the base code, then one entry per variant group
-  /// holding that group's declared states. A group sourced from a world property declares none of its
-  /// own, and stands in as <c>*</c> - unknown rather than empty, so a pin against it is not missed.
-  /// </summary>
-  /// <remarks>Matched shape by shape rather than by <c>def.Code</c>, which is the bare base code several
-  /// defs share - every furnace part answers <c>furnace</c>, so asking which def provides
-  /// <c>furnace-irontap-w</c> by base code alone names the tuyere too.</remarks>
+  /// <summary>A def's code as a list of segment alternatives: the base code, then one entry per
+  /// variant group holding that group's declared states.</summary>
   private static string[][] CodeShape(JObject json) {
     var shape = new List<string[]> { new[] { (string?)json["code"] ?? "" } };
 
@@ -107,8 +85,7 @@ public static class PinnedNetworkNodes {
   }
 
   /// <summary>Whether a layout's (possibly wildcarded) code path names a variant of
-  /// <paramref name="shape"/>: the same number of segments, each one an alternative that group declares
-  /// or a wildcard on either side.</summary>
+  /// <paramref name="shape"/>.</summary>
   private static bool Matches(string[][] shape, string path) {
     string[] parts = path.Split('-');
     if (parts.Length != shape.Length)
@@ -125,8 +102,7 @@ public static class PinnedNetworkNodes {
     return true;
   }
 
-  /// <summary>Whether a def declares <c>ExOrientable</c> in <c>network</c> mode - the one thing that
-  /// tells a node's single-letter code from a player-oriented block's.</summary>
+  /// <summary>Whether a def declares <c>ExOrientable</c> in <c>network</c> mode.</summary>
   private static bool IsNode(JObject json) =>
     json["behaviors"] is JArray behaviors
     && behaviors

@@ -5,11 +5,9 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Definitions;
 
 /// <summary>
-/// Typed builder for a block's <c>multiblockStructure</c> attribute: the <c>blockNumbers</c> map and the
-/// <c>offsets</c> table. Offers <see cref="Fill"/> for regular sub-volumes and validates at build time
-/// that every offset references a declared block number and that no cell position is duplicated. The
-/// emitted JSON matches the hand-written form, so the vanilla <c>MultiblockStructure</c> deserializer
-/// reads it unchanged.
+/// Typed builder for a block's <c>multiblockStructure</c> attribute: the <c>blockNumbers</c> map and
+/// the <c>offsets</c> table. Validates that every offset references a declared block number and no
+/// cell position is duplicated.
 /// </summary>
 public sealed class MultiblockBuilder {
   private readonly JObject _blockNumbers = new();
@@ -17,9 +15,8 @@ public sealed class MultiblockBuilder {
   private readonly JArray _offsets = new();
   private readonly HashSet<(int, int, int)> _positions = new();
 
-  /// <summary>Declares a <c>blockNumbers</c> entry: the block <paramref name="code"/> (a wildcard/selector,
-  /// e.g. <c>"siex:converterbessemer*"</c>) mapped to the number <paramref name="w"/> that offsets
-  /// reference. Numbers should be unique per structure.</summary>
+  /// <summary>Declares a <c>blockNumbers</c> entry: block <paramref name="code"/> mapped to the number
+  /// <paramref name="w"/> that offsets reference.</summary>
   public MultiblockBuilder Number(string code, int w) {
     _blockNumbers[code] = w;
     _numbers.Add(w);
@@ -44,11 +41,8 @@ public sealed class MultiblockBuilder {
     return this;
   }
 
-  /// <summary>
-  /// Fills a cuboid volume with offsets all requiring block number <paramref name="w"/>, emitted in
-  /// z-outer, y-mid, x-inner order. Ranges are inclusive. Use <see cref="At"/> for the individual cells
-  /// around the regular body.
-  /// </summary>
+  /// <summary>Fills a cuboid volume of offsets requiring block number <paramref name="w"/>, in
+  /// z-outer/y-mid/x-inner order; ranges are inclusive.</summary>
   public MultiblockBuilder Fill(
     int x1,
     int y1,
@@ -58,7 +52,7 @@ public sealed class MultiblockBuilder {
     int z2,
     int w
   ) {
-    // An inverted range would iterate zero times and silently omit the whole sub-volume.
+    // x2/y2/z2 must be >= x1/y1/z1.
     if (x2 < x1 || y2 < y1 || z2 < z1)
       throw new ArgumentException(
         $"Multiblock Fill has an inverted range: ({x1},{y1},{z1})..({x2},{y2},{z2})."
@@ -71,12 +65,9 @@ public sealed class MultiblockBuilder {
     return this;
   }
 
-  /// <summary>
-  /// Builds the <c>{ blockNumbers, offsets }</c> object, validating that every offset's <c>w</c> resolves
-  /// to a declared block number. Throws <see cref="InvalidOperationException"/> naming the first offset
-  /// that references an undeclared number, failing at load rather than yielding a structure that can
-  /// never complete.
-  /// </summary>
+  /// <summary>Builds the <c>{ blockNumbers, offsets }</c> object, validating that every offset's
+  /// <c>w</c> resolves to a declared block number.</summary>
+  /// <exception cref="InvalidOperationException">An offset references an undeclared block number.</exception>
   internal JObject Build() {
     foreach (JToken offset in _offsets) {
       int w = (int)offset["w"]!;

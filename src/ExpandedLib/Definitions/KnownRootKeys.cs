@@ -25,13 +25,8 @@ public static class KnownRootKeys {
   /// <summary>Whether <paramref name="key"/> is a root key the item loader reads.</summary>
   public static bool IsKnownItemKey(string key) => Item.Contains(key);
 
-  // Every instance field and property of `type` and every base type, public or not - a fair few of
-  // the loader's own JSON-bound members are private with a JsonProperty(name), e.g. CollisionBox and
-  // the deprecated heldTpIdleAnimation - named by JsonProperty(name) where the loader's own type
-  // carries one, else the member name with its first letter lower-cased - the same spelling the
-  // loader's own JSON keys use. Compared case-insensitively, since Json.NET matches member names that
-  // way regardless of the case actually written in the asset. Private members are not inherited by
-  // reflection, so each type in the hierarchy is walked and queried with DeclaredOnly.
+  // Walks every instance field and property, public or private, of `type` and its bases with
+  // DeclaredOnly, keyed by JsonProperty(name) or the lower-cased member name, case-insensitive.
   private static IReadOnlySet<string> KeysOf(Type type) {
     var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     const BindingFlags flags =

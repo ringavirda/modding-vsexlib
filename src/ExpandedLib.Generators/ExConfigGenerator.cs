@@ -9,14 +9,8 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace ExpandedLib.Generators;
 
-/// <summary>
-/// Source generator that emits the static accessor class for every config POCO marked
-/// <c>[ExConfigRegister(fileName, modId)]</c>. For a config <c>IiexConfig</c> it generates a
-/// <c>IiexValues</c> static partial class holding the <c>ConfigFileName</c> const, the backing
-/// <c>ExConfigRegister&lt;IiexConfig&gt;</c>, a <c>Load(ICoreAPI)</c> method and one read-only
-/// <c>public static</c> property per config value. The class also carries
-/// <c>[ExConfigAccessor(typeof(IiexConfig))]</c>, so <c>ExConfig.LoadAll</c> can find it by reflection.
-/// </summary>
+/// <summary>Source generator that emits the static accessor class for every config POCO marked
+/// <c>[ExConfigRegister(fileName, modId)]</c>.</summary>
 [Generator(LanguageNames.CSharp)]
 public sealed class ExConfigGenerator : IIncrementalGenerator {
   private const string AttributeName =
@@ -28,8 +22,7 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
   private const string ConfigVersionProperty = "ConfigVersion";
 
   /// <summary>Reported when a class carries <c>[ExRecipeProfile]</c> with no companion
-  /// <c>[ExConfigRegister]</c>: the recipe-profile pipeline only ever runs off the latter attribute, so
-  /// without it the class generates nothing at all rather than the intended registration.</summary>
+  /// <c>[ExConfigRegister]</c>.</summary>
   private static readonly DiagnosticDescriptor OrphanRecipeProfile = new(
     id: "EXLIB0001",
     title: "[ExRecipeProfile] without [ExConfigRegister]",
@@ -40,11 +33,8 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     isEnabledByDefault: true
   );
 
-  /// <summary>Reported alongside the <c>#error</c> <see cref="Emit"/> writes into the generated
-  /// accessor for an invalid <c>[ExRecipeProfile]</c> shape (missing catalogue property, missing
-  /// <c>DefaultCatalogue</c>, missing or unregistered level property): the <c>#error</c> is what
-  /// stops the build, unsuppressible, so this diagnostic never replaces it - it only gives an IDE
-  /// somewhere to navigate to, at the attribute's own location.</summary>
+  /// <summary>Reported alongside the unsuppressible <c>#error</c> for an invalid
+  /// <c>[ExRecipeProfile]</c> shape, at the attribute's own location.</summary>
   private static readonly DiagnosticDescriptor InvalidRecipeProfile = new(
     id: "EXLIB0002",
     title: "[ExRecipeProfile] shape is invalid",
@@ -95,9 +85,8 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     );
   }
 
-  /// <summary>Flags a <c>[ExRecipeProfile]</c> class with no <c>[ExConfigRegister]</c> of its own -
-  /// the only case <see cref="Extract"/> never sees, since its pipeline is driven by
-  /// <c>[ExConfigRegister]</c>. Null when the class carries both attributes.</summary>
+  /// <summary>Flags a <c>[ExRecipeProfile]</c> class with no <c>[ExConfigRegister]</c> of its own.
+  /// Null when the class carries both attributes.</summary>
   private static Diagnostic? ExtractOrphanDiagnostic(
     GeneratorAttributeSyntaxContext ctx
   ) {
@@ -117,11 +106,7 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
   }
 
   /// <summary>Flags a <c>[ExRecipeProfile]</c> class whose shape <see cref="ExtractRecipeProfile"/>
-  /// rejects, re-running that same check so the failure also lands as a diagnostic at the
-  /// attribute's own location for IDE navigation - the accessor pipeline (<see cref="Extract"/>,
-  /// <see cref="Emit"/>) still writes the unsuppressible <c>#error</c> regardless. Null when the
-  /// class has no [ExConfigRegister] (the orphan case, EXLIB0001) or its recipe-profile shape is
-  /// valid.</summary>
+  /// rejects. Null when the class has no <c>[ExConfigRegister]</c> or its shape is valid.</summary>
   private static Diagnostic? ExtractInvalidProfileDiagnostic(
     GeneratorAttributeSyntaxContext ctx
   ) {
@@ -229,12 +214,8 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     );
   }
 
-  /// <summary>Reads the co-located <c>[ExRecipeProfile]</c> attribute, if any, and resolves the
-  /// catalogue property (the config's sole <c>Dictionary&lt;string, RecipeCostEntry&gt;</c>
-  /// property), the level property it names or defaults to, and the generated accessor that owns that
-  /// level property - <paramref name="type"/> itself, or <see cref="ExRecipeProfileAttribute.LevelConfig"/>
-  /// when the two live on different <c>[ExConfigRegister]</c> configs, as the family mods' recipe
-  /// catalogue and its owning gameplay config do. Returns null when the config carries no
+  /// <summary>Reads the co-located <c>[ExRecipeProfile]</c> attribute, if any, and resolves its
+  /// catalogue property, level property and owning accessor. Null when the config carries no
   /// <c>[ExRecipeProfile]</c>.</summary>
   private static RecipeProfileModel? ExtractRecipeProfile(INamedTypeSymbol type) {
     var attr = type.GetAttributes()
@@ -329,8 +310,7 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     );
   }
 
-  /// <summary>True when <paramref name="type"/> is <c>Dictionary&lt;string, RecipeCostEntry&gt;</c> -
-  /// the shape both the catalogue property and <c>DefaultCatalogue()</c>'s return type must have.</summary>
+  /// <summary>True when <paramref name="type"/> is <c>Dictionary&lt;string, RecipeCostEntry&gt;</c>.</summary>
   private static bool IsRecipeCostDictionary(ITypeSymbol type) =>
     type
       is INamedTypeSymbol { Name: "Dictionary", TypeArguments.Length: 2 } dict
@@ -339,10 +319,8 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
       .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
       == RecipeCostEntryType;
 
-  /// <summary>Resolves the fully qualified name of the accessor <c>ExConfigGenerator</c> generates for
-  /// <paramref name="configType"/>, by the same rule <see cref="Extract"/> applies when generating that
-  /// type's own accessor. Null when <paramref name="configType"/> carries no
-  /// <c>[ExConfigRegister]</c>.</summary>
+  /// <summary>Resolves the fully qualified accessor name for <paramref name="configType"/>. Null
+  /// when it carries no <c>[ExConfigRegister]</c>.</summary>
   private static string? ResolveAccessorName(INamedTypeSymbol configType) {
     var registerAttr = configType
       .GetAttributes()
@@ -506,8 +484,7 @@ public sealed class ExConfigGenerator : IIncrementalGenerator {
     );
   }
 
-  /// <summary>Appends <c>Name = new string[] { ... }</c> for a non-empty list, so the store's object
-  /// initializer carries only the lists the attribute actually declared.</summary>
+  /// <summary>Appends <c>Name = new string[] { ... }</c> for a non-empty list.</summary>
   private static void AddArrayInitializer(
     List<string> into,
     string name,
@@ -544,11 +521,8 @@ internal sealed record ConfigModel(
 
 internal readonly record struct PropModel(string Type, string Name);
 
-/// <summary>Resolution of a config's <c>[ExRecipeProfile]</c> attribute: either the catalogue property,
-/// the level property, and the fully qualified generated accessor that owns the level property (the
-/// config's own, or <see cref="ExRecipeProfileAttribute.LevelConfig"/>'s) to emit the registration
-/// from, or the reason it could not be resolved (an <c>#error</c> in the generated source names
-/// it).</summary>
+/// <summary>Resolution of a config's <c>[ExRecipeProfile]</c> attribute, or the error that
+/// blocked it.</summary>
 internal sealed record RecipeProfileModel(
   bool IsValid,
   string CatalogueProperty,
@@ -557,8 +531,7 @@ internal sealed record RecipeProfileModel(
   string Error
 );
 
-/// <summary>Value-equatable wrapper over <see cref="ImmutableArray{T}"/> so generator models compare
-/// by content, which the incremental pipeline requires to cache across edits.</summary>
+/// <summary>Value-equatable wrapper over <see cref="ImmutableArray{T}"/>.</summary>
 internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>
   where T : IEquatable<T> {
   private readonly ImmutableArray<T> _array;

@@ -11,14 +11,8 @@ using Vintagestory.API.Server;
 
 namespace BurdenMaker.Blocks;
 
-/// <summary>
-/// A 9-cell mega-block stock house. Two hoppers (ore and flux) sit over a shared bunker basin with one
-/// sliding gate between them; opening the gate starts both hoppers draining together into the basin over
-/// several seconds, where the burden collects until the player takes it out. Proportioning is a single
-/// ore-to-flux ratio fixed for the whole batch, so there is no lock and no cycle beyond the one drain.
-/// The machine has no mechanism, and therefore no MP port and no special construction ingredient, which
-/// keeps it buildable stand-alone.
-/// </summary>
+/// <summary>A 9-cell mega-block stock house: two hoppers drain together into a shared basin
+/// through one sliding gate. Has no mechanism, no MP port.</summary>
 [BlockRegister]
 public partial class BlockBurdenmaker
   : BlockFilledMegastructure,
@@ -27,12 +21,8 @@ public partial class BlockBurdenmaker
     IExBlockDefProvider {
   #region Code-first definition
 
-  /// <summary>
-  /// The burdenmaker blocktype: a 9-cell footprint drawn as two floor plans, and a five-stage
-  /// right-click construction whose stages are the shape's own element groups, masonry first and
-  /// ironwork last. The <c>brick</c> variant group parameterises the shape's <c>fire1</c> texture slot,
-  /// so the code is <c>burdenmaker:burdenmaker-{brick}-{side}</c>.
-  /// </summary>
+  /// <summary>The burdenmaker blocktype: a 9-cell footprint and a five-stage right-click
+  /// construction matching the shape's element groups.</summary>
   public static IEnumerable<ExBlockDef> Definitions(string domain) =>
     [
       ExBlockDef
@@ -44,9 +34,6 @@ public partial class BlockBurdenmaker
         .Resistance(3.5f)
         .MaxStackSize(1)
         .NoDrops()
-        // Rows run +Z from z = -1 and columns +X from x = -1, so the front half (z = -1) carries the
-        // hoppers and the back half (z = 0) is left open at y = 1 for the player to reach into the basin.
-        // 'O' marks the principal and is skipped, so the emitted table is 8 cells, not 9.
         .FillerOffsets(
           StructureFootprint.Layout(f =>
             f.Origin(-1, -1)
@@ -123,8 +110,7 @@ public partial class BlockBurdenmaker
         .CreativeTab("general", "*-cream-n")
         .CreativeTab("burdenmaker", "*-cream-n")
         .ShapeSpunPerOrientation("burdenmaker:ore/burdenmaker")
-        // The placed shell before any stage is built: the basin floor only, marking where the machine
-        // will stand.
+        // The placed shell before any stage completes: basin floor only.
         .ShapeSelectiveElements("Root/Base/*")
         .Texture(
           "fire1",
@@ -143,11 +129,7 @@ public partial class BlockBurdenmaker
 
   #endregion
 
-  /// <summary>
-  /// Structure/filler rotation, with no <c>+180</c> correction: the drawn model spans z = -16..+16 px the
-  /// same way the footprint does (<c>BaseExtension</c> at z -16..4 is cell z = -1, <c>Base</c> at z 0..16
-  /// is cell z = 0), so model and footprint agree. Adding 180 here would put the hoppers behind the basin.
-  /// </summary>
+  /// <summary>Structure/filler rotation, with no extra offset.</summary>
   public override int StructureAngle =>
     ExOrientation.AngleFromSide(Variant["side"]);
 
@@ -155,9 +137,7 @@ public partial class BlockBurdenmaker
 
   // Placement, the filler footprint and break-time filler removal are handled by BlockFilledMegastructure.
 
-  // A broken burdenmaker returns its construction materials (scattered by the RightClickConstructable
-  // behaviour) plus both hopper contents and the basin (spilled by the container BE). It never returns
-  // the block itself: it is raised, not placed.
+  // Returns the construction materials and both hopper/basin contents; never the block itself.
   public override ItemStack[] GetDrops(
     IWorldAccessor world,
     BlockPos pos,
@@ -169,13 +149,7 @@ public partial class BlockBurdenmaker
 
   #region Cell classification
 
-  // Public rather than internal: this assembly declares no `InternalsVisibleTo`, so an internal
-  // classifier could not be covered by tests.
-
-  /// <summary>
-  /// What a footprint cell of the burdenmaker is. The machine has no GUI, so the clicked cell selects
-  /// the action.
-  /// </summary>
+  /// <summary>What a footprint cell of the burdenmaker is.</summary>
   public enum BurdenmakerCell {
     /// <summary>The wide upper hopper - crushed iron ore. Two cells.</summary>
     OreHopper,
@@ -193,19 +167,14 @@ public partial class BlockBurdenmaker
     Outside,
   }
 
-  /// <summary>
-  /// Classifies the world cell <paramref name="clicked"/> against a burdenmaker whose principal is at
-  /// <paramref name="principal"/> and which was placed at <paramref name="structureAngle"/>. The inverse
-  /// rotation is required: the two hoppers differ by X, so comparing raw world coordinates would put ore
-  /// in the flux hopper on the facings where X and Z have swapped, while reading correctly on north.
-  /// Static and world-free, so the per-facing table is testable without a world.
-  /// </summary>
+  /// <summary>Classifies the world cell <paramref name="clicked"/> relative to a burdenmaker at
+  /// <paramref name="principal"/> with structure angle <paramref name="structureAngle"/>.</summary>
   public static BurdenmakerCell Classify(
     BlockPos principal,
     BlockPos clicked,
     int structureAngle
   ) {
-    // World delta -> the authored north frame. RotateOffset normalises, so -90 arrives as 270.
+    // World delta, rotated into the authored north frame; RotateOffset normalises negative angles.
     Vec3i local = ExOrientation.RotateOffset(
       clicked.X - principal.X,
       clicked.Y - principal.Y,
@@ -213,8 +182,7 @@ public partial class BlockBurdenmaker
       -structureAngle
     );
 
-    // y = 1 carries the hoppers across the front row only (z = -1); y = 0 is the basin, with the
-    // principal itself the gate. Anything else belongs to another block.
+    // y = 1 is the hopper row (z = -1); y = 0 is the basin, principal is the gate.
     return (local.X, local.Y, local.Z) switch {
       ( >= -1 and <= 0, 1, -1) => BurdenmakerCell.OreHopper,
       (1, 1, -1) => BurdenmakerCell.FluxHopper,
@@ -228,10 +196,8 @@ public partial class BlockBurdenmaker
 
   #region Interaction
 
-  /// <summary>
-  /// A click on the principal, which is the gate cell, so this is the lid toggle. Every other cell
-  /// arrives through the fillers.
-  /// </summary>
+  /// <summary>Handles a click on the principal cell, the gate; other cells arrive through the
+  /// fillers.</summary>
   public override bool OnBlockInteractStart(
     IWorldAccessor world,
     IPlayer byPlayer,
@@ -240,10 +206,7 @@ public partial class BlockBurdenmaker
     HandleInteract(world, byPlayer, blockSel, blockSel.Position)
     ?? base.OnBlockInteractStart(world, byPlayer, blockSel);
 
-  /// <summary>
-  /// Routes a click to the action its cell carries. Returns <c>null</c> before construction completes, so
-  /// the click falls through to the RCC behaviour and the machine can still be built.
-  /// </summary>
+  /// <summary>Routes a click to its cell's action. Returns null before construction completes.</summary>
   private bool? HandleInteract(
     IWorldAccessor world,
     IPlayer byPlayer,
@@ -265,8 +228,7 @@ public partial class BlockBurdenmaker
       return true; // the server owns every mutation below; the click is still consumed
 
     ItemSlot? active = byPlayer.InventoryManager?.ActiveHotbarSlot;
-    // Ctrl, not sneak: vanilla ground-storage placement already takes sneak + right-click with a held
-    // item, so a sneak idiom here would collide with it.
+    // Ctrl, not sneak: vanilla ground-storage placement already uses sneak + right-click.
     bool wholeStack = byPlayer.Entity.Controls.CtrlKey;
 
     switch (cell) {
@@ -295,7 +257,7 @@ public partial class BlockBurdenmaker
         break;
     }
 
-    // Swallowed on both sides so no block is placed against the machine's face.
+    // Swallowed on both sides; no block is placed against the machine's face.
     return true;
   }
 
@@ -315,27 +277,20 @@ public partial class BlockBurdenmaker
 
   #region Interaction help
 
-  // Resolved once and cached: the block is a singleton, and resolving walks every collectible in the
-  // game, which is too costly per frame of the help overlay.
+  // Resolved once and cached: walks every collectible in the game.
   private ItemStack[]? _oreStacks;
   private ItemStack[]? _fluxStacks;
 
-  /// <summary>
-  /// Help for the principal, which is the gate cell. Every other cell arrives through
-  /// <see cref="IFillerInteractionTarget.GetFillerInteractionHelp"/>.
-  /// </summary>
+  /// <summary>Help for the principal (gate) cell; other cells arrive through
+  /// <see cref="IFillerInteractionTarget.GetFillerInteractionHelp"/>.</summary>
   public override WorldInteraction[] GetPlacedBlockInteractionHelp(
     IWorldAccessor world,
     BlockSelection selection,
     IPlayer forPlayer
   ) => BuildInteractionHelp(world, selection, forPlayer, BurdenmakerCell.Gate);
 
-  /// <summary>
-  /// The hints for whichever cell is being looked at. The machine has no GUI, so the help text is the
-  /// only thing distinguishing the two hoppers; it is routed by cell off the same <see cref="Classify"/>
-  /// call the interaction uses. Before construction completes it defers to the base help, where the RCC
-  /// behaviour advertises the next stage's materials.
-  /// </summary>
+  /// <summary>Hints for the cell being looked at, routed through <see cref="Classify"/>. Defers to
+  /// the base help before construction completes.</summary>
   private WorldInteraction[] BuildInteractionHelp(
     IWorldAccessor world,
     BlockSelection selection,
@@ -385,8 +340,7 @@ public partial class BlockBurdenmaker
         break;
     }
 
-    // Every cell except the gate hands something back to an empty hand: a hopper returns its own
-    // material, the basin returns burden.
+    // Every cell except the gate hands something back to an empty hand.
     if (cell != BurdenmakerCell.Gate && cell != BurdenmakerCell.Outside)
       help.Add(
         new WorldInteraction {
@@ -422,11 +376,7 @@ public partial class BlockBurdenmaker
     );
   }
 
-  /// <summary>
-  /// A representative stack of every collectible one hopper accepts, so the help overlay cycles through
-  /// them. Acceptance is the registry's test rather than a fixed list, so ores contributed by other mods
-  /// are included.
-  /// </summary>
+  /// <summary>A representative stack of every collectible the hopper's role check accepts.</summary>
   private ItemStack[] ResolveStacks(System.Func<ItemStack?, bool> accepts) {
     if (api?.World?.Collectibles is not { } collectibles)
       return [];
@@ -446,10 +396,7 @@ public partial class BlockBurdenmaker
 
   #region Filler interaction forwarding
 
-  // A click on any reserved footprint cell drives the principal. The clicked cell is carried through
-  // rather than discarded, because the cell selects the action: the two upper front cells are the ore
-  // hopper, the third is the flux hopper, the principal is the gate and the rest of the basin hands
-  // burden back.
+  // A click on any reserved footprint cell drives the principal; the clicked cell selects the action.
   bool IFillerInteractionTarget.OnFillerInteractStart(
     IWorldAccessor world,
     IPlayer byPlayer,
@@ -475,8 +422,7 @@ public partial class BlockBurdenmaker
     BlockPos clickedCell
   ) => base.OnBlockInteractStop(secondsUsed, world, byPlayer, principalSel);
 
-  // The help is classified from the clicked cell exactly as the interaction is. Forwarding to
-  // GetPlacedBlockInteractionHelp instead would show the gate's hint on all eight filler cells.
+  // Help is classified from the clicked cell, same as the interaction.
   WorldInteraction[] IFillerInteractionTarget.GetFillerInteractionHelp(
     IWorldAccessor world,
     BlockSelection principalSel,

@@ -6,10 +6,7 @@ using Vintagestory.API.Config;
 
 namespace ExpandedLib.Helpers;
 
-/// <summary>
-/// The unit system used when formatting measurements for the look-at HUD / block info / handbook.
-/// The simulation itself always runs in metric; this only changes how values are displayed.
-/// </summary>
+/// <summary>The unit system used when formatting measurements for the look-at HUD, block info and handbook.</summary>
 public enum MeasurementSystem {
   /// <summary>Litres, atmospheres, degrees Celsius.</summary>
   Metric,
@@ -18,34 +15,22 @@ public enum MeasurementSystem {
   Imperial,
 }
 
-/// <summary>
-/// Display-unit formatting shared across the mods. Gameplay values are stored and calculated in metric
-/// (litres, atm, °C); these methods render one into a player-facing string in the active
-/// <see cref="System"/>, so block-info and handbook code stays unit-agnostic.
-/// <para>
-/// <see cref="System"/> is a per-player, client-side preference, applied by
-/// <see cref="MeasurePreference"/> through the library's preferences store for the local player on
-/// join; exlib only reads it.
-/// </para>
-/// </summary>
+/// <summary>Display-unit formatting shared across the mods, rendering metric gameplay values into the active <see cref="System"/>.</summary>
 public static class ExMeasure {
-  /// <summary>The display system currently active on this client (the local player's choice).
-  /// Block-info formatters read this; it is set from the per-player preference on join.</summary>
+  /// <summary>The display system currently active on this client.</summary>
   public static MeasurementSystem System { get; set; } =
     MeasurementSystem.Metric;
 
-  // Conversion factors from metric / SI.
-  private const float LitresToImperialGallons = 0.219969248f; // 1 L = 0.21997 imp gal
-  private const float AtmToPsi = 14.6959488f; // 1 atm = 14.696 psi
-  private const float RadPerSecToRpm = 9.549296586f; // 60 / 2π
+  private const float LitresToImperialGallons = 0.219969248f;
+  private const float AtmToPsi = 14.6959488f;
+  private const float RadPerSecToRpm = 9.549296586f;
   private const float WattsToKilowatts = 0.001f;
-  private const float WattsToHorsepower = 1f / 745.699872f; // 1 mechanical hp = 745.7 W
+  private const float WattsToHorsepower = 1f / 745.699872f;
   private const float JoulesToKilojoules = 0.001f;
 
   private static bool Imperial => System == MeasurementSystem.Imperial;
 
-  /// <summary>Parses a system name ("metric" / "imperial", case-insensitive); returns
-  /// <see cref="MeasurementSystem.Metric"/> for anything unrecognised.</summary>
+  /// <summary>Parses a system name, case-insensitive; returns <see cref="MeasurementSystem.Metric"/> for anything unrecognised.</summary>
   public static MeasurementSystem Parse(string? name) =>
     string.Equals(name, "imperial", StringComparison.OrdinalIgnoreCase)
       ? MeasurementSystem.Imperial
@@ -59,8 +44,7 @@ public static class ExMeasure {
     return num + " " + unit;
   }
 
-  /// <summary>A volume range from a shared pool, e.g. <c>"400 / 800 L"</c> - the unit is
-  /// printed once after the pair.</summary>
+  /// <summary>A volume range from a shared pool, e.g. <c>"400 / 800 L"</c>.</summary>
   public static string VolumeRange(
     float litres,
     float maxLitres,
@@ -87,8 +71,7 @@ public static class ExMeasure {
     return num + " " + unit;
   }
 
-  /// <summary>A pressure range (current / limit), e.g. <c>"3.0 / 8.0 atm"</c> - the unit is
-  /// printed once after the pair.</summary>
+  /// <summary>A pressure range (current / limit), e.g. <c>"3.0 / 8.0 atm"</c>.</summary>
   public static string PressureRange(
     float atm,
     float maxAtm,
@@ -103,7 +86,7 @@ public static class ExMeasure {
 
   #region Temperature
 
-  /// <summary>A temperature given in degrees Celsius, e.g. <c>"100 °C"</c> or <c>"212 °F"</c>.</summary>
+  /// <summary>A temperature given in degrees Celsius, e.g. <c>"100 deg C"</c> or <c>"212 deg F"</c>.</summary>
   public static string Temperature(float celsius, string format = "F0") {
     var (num, unit) = Temp(celsius, format);
     return num + " " + unit;
@@ -113,8 +96,7 @@ public static class ExMeasure {
 
   #region Mechanical energy (rotation / power / energy)
 
-  /// <summary>A shaft speed given in rad/s, shown as revolutions per minute, e.g. <c>"480 RPM"</c>.
-  /// RPM in both display systems.</summary>
+  /// <summary>A shaft speed given in rad/s, shown as revolutions per minute in both display systems, e.g. <c>"480 RPM"</c>.</summary>
   public static string Speed(float radPerSecond, string format = "F0") =>
     Num(radPerSecond * RadPerSecToRpm, format) + " " + Unit("rpm");
 
@@ -125,8 +107,7 @@ public static class ExMeasure {
     return num + " " + unit;
   }
 
-  /// <summary>An energy given in joules, shown in kJ and promoted to MJ above 1000 kJ, e.g.
-  /// <c>"12.4 kJ"</c> or <c>"1.8 MJ"</c>. Energy stays SI in both display systems.</summary>
+  /// <summary>An energy given in joules, shown in kJ and promoted to MJ above 1000 kJ, e.g. <c>"12.4 kJ"</c> or <c>"1.8 MJ"</c>.</summary>
   public static string Energy(float joules, string format = "F1") {
     float kilojoules = joules * JoulesToKilojoules;
     return MathF.Abs(kilojoules) >= 1000f
@@ -134,8 +115,7 @@ public static class ExMeasure {
       : Num(kilojoules, format) + " " + Unit("kilojoules");
   }
 
-  /// <summary>A reservoir charge readout: the fill percentage against a capacity plus the absolute energy,
-  /// e.g. <c>"73% (12.4 kJ)"</c>. A non-positive capacity falls back to just the energy.</summary>
+  /// <summary>A reservoir charge readout: fill percentage plus absolute energy, e.g. <c>"73% (12.4 kJ)"</c>.</summary>
   public static string Charge(
     float joules,
     float capacityJoules,
@@ -152,8 +132,7 @@ public static class ExMeasure {
 
   #region Handbook prose conversion
 
-  /// <summary>One metric to imperial unit conversion, keyed by the localized metric symbol so that
-  /// handbook prose authored in any locale's units converts.</summary>
+  /// <summary>One metric to imperial unit conversion, keyed by the localized metric symbol.</summary>
   private readonly record struct UnitConversion(
     string MetricSymbol,
     string ImperialSymbol,
@@ -161,8 +140,7 @@ public static class ExMeasure {
     string Format
   );
 
-  // The metric-literal regex and conversion table derive from the localized unit symbols, so they are
-  // rebuilt whenever the active language changes those symbols (keyed by _conversionSig).
+  // Rebuilt whenever the active language changes the unit symbols, keyed by _conversionSig.
   private static string? _conversionSig;
   private static Regex? _metricRegex;
   private static UnitConversion[]? _conversions;
@@ -195,10 +173,7 @@ public static class ExMeasure {
     if (sig == _conversionSig && _metricRegex != null)
       return;
 
-    // Longest metric symbol first so a compound symbol wins over its prefix ("L/s" over "L"); each
-    // symbol is regex-escaped since a locale may use characters with regex meaning. The whole number
-    // expression - a value, an "a-b" range or an "a / b / c" list - is captured, and the trailing
-    // negative look-ahead stops a symbol from matching inside a Latin word.
+    // Longest metric symbol first: a compound symbol ("L/s") must win over its prefix ("L").
     string alternation = string.Join(
       "|",
       conversions
@@ -215,13 +190,7 @@ public static class ExMeasure {
     _conversionSig = sig;
   }
 
-  /// <summary>
-  /// Converts plain metric unit mentions in free prose (handbook text) to the active
-  /// <see cref="System"/>: "30 L" → "6.6 gal", "2-4 atm" → "29.39-58.78 psi", "8 / 16 / 32 L/s" →
-  /// "1.76 / 3.52 / 7.04 gal/s". Symbols matched and printed are the localized <c>unit-*</c> labels, so
-  /// the prose must be authored with the same metric symbols the lang file defines. Returns the text
-  /// unchanged in metric mode and for text without a recognised unit.
-  /// </summary>
+  /// <summary>Converts plain metric unit mentions in free prose to the active <see cref="System"/>, e.g. "30 L" to "6.6 gal".</summary>
   public static string ConvertMetricText(string text) {
     if (!Imperial || string.IsNullOrEmpty(text))
       return text;
@@ -237,8 +206,7 @@ public static class ExMeasure {
           _conversions!,
           c => c.MetricSymbol == symbol
         );
-        // Convert each number in the possibly multi-value expression, keeping the original
-        // "-" / "/" separators and spacing between them.
+        // Converts each number, keeping the original "-" / "/" separators and spacing.
         string converted = Regex.Replace(
           numbers,
           @"\d+(?:\.\d+)?",
@@ -290,11 +258,10 @@ public static class ExMeasure {
       ? (Num(watts * WattsToHorsepower, format), Unit("horsepower"))
       : (Num(watts * WattsToKilowatts, format), Unit("kilowatts"));
 
-  /// <summary>Localized symbol for a unit, e.g. <c>Unit("litres")</c> → "L" / "л".</summary>
+  /// <summary>Localized symbol for a unit, e.g. <c>Unit("litres")</c> returns "L".</summary>
   private static string Unit(string key) => Lang.Get("exlib:unit-" + key);
 
-  // Formats with the invariant culture so the decimal separator stays a dot regardless of the
-  // player's locale.
+  // Invariant culture: the decimal separator stays a dot regardless of the player's locale.
   private static string Num(float value, string format) =>
     value.ToString(format, CultureInfo.InvariantCulture);
 

@@ -8,21 +8,12 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Checks;
 
 /// <summary>
-/// The in-game <see cref="ICheckSource"/>: codes off the live block/item registries, recipes and
-/// lang straight from <see cref="ICoreAPI.Assets"/> (post-JSON-patch, whatever a modder actually
-/// ships), and code-first block definitions off the process-wide <see cref="ExDefinitions"/>
-/// registry. A domain is exlib itself plus every enabled mod that depends on it, JSON-only ones
-/// included - <see cref="BlockDefinitions"/> answers empty for one that registers no code-first def,
-/// which is not a defect: the checks reading raw assets (<see cref="RecipeCodesCheck"/>,
-/// <see cref="LangCoverageCheck"/>) still cover it. A mod with no exlib dependency - vanilla's own
-/// "game"/"survival"/"creative" included - is never a domain: its content is not this library's to
-/// police, and <c>/exmod verify &lt;domain&gt;</c> is how anyone still wants it named explicitly.
+/// The in-game <see cref="ICheckSource"/>: codes and recipes from <see cref="ICoreAPI.Assets"/>,
+/// block definitions from the process-wide <see cref="ExDefinitions"/> registry. A domain is exlib
+/// and every enabled mod that depends on it.
 /// </summary>
 public sealed class AssetCheckSource(ICoreAPI api) : ICheckSource {
   /// <inheritdoc/>
-  // exlib itself plus every enabled mod that names it as a dependency - never a bystander mod (a
-  // JSON-only content pack with no exlib dependency) and never vanilla's own "game"/"survival"/
-  // "creative", which never declares one.
   public IEnumerable<string> Domains =>
     api
       .ModLoader.Mods.Where(m =>
@@ -62,8 +53,7 @@ public sealed class AssetCheckSource(ICoreAPI api) : ICheckSource {
   public IEnumerable<ExBlockDef> BlockDefinitions(string domain) =>
     ExDefinitions.Blocks.Where(d => d.Domain == domain);
 
-  // A recipe file is either one object or a JSON array of them; either way every element sharing
-  // that file's location is handed back, so Recipes never makes a caller branch on the outer shape.
+  // A recipe file is one object or a JSON array; every element shares the file's location.
   private static IEnumerable<JObject> ReadRecipeObjects(IAsset asset) {
     if (!TryParseToken(asset, out JToken token))
       yield break;
@@ -81,8 +71,7 @@ public sealed class AssetCheckSource(ICoreAPI api) : ICheckSource {
     return true;
   }
 
-  // Malformed JSON is not this check's job to report - the game's own asset loader already logs a
-  // parse failure for a broken file - so a bad file is skipped rather than throwing here.
+  // A malformed file is skipped, not reported: the asset loader already logs the parse failure.
   private static bool TryParseToken(IAsset asset, out JToken token) {
     token = null!;
     try {

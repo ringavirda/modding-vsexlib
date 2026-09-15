@@ -5,14 +5,8 @@ namespace ExpandedLib.Industry.Molten;
 
 /// <summary>
 /// A body of molten metal held inside a machine or fitting: a temperature-tracked
-/// <see cref="ItemStack"/> carrier identifying the metal and its heat, plus a unit count. Wraps the
-/// temperature, live-cooldown, state-classification, chisel-recovery and tree round-trip operations the
-/// bessemer converter, molten barrel, canal tap and mold pedestal share.
-/// <para>
-/// An instance is always a present charge: <see cref="Stack"/> is never null and an absent charge is a
-/// null reference. World-coupled reads take an <see cref="IWorldAccessor"/>; the heat lives on the
-/// stack's vanilla temperature tree and keeps decaying between reads.
-/// </para>
+/// <see cref="ItemStack"/> carrier identifying the metal and its heat, plus a unit count;
+/// <see cref="Stack"/> is never null.
 /// </summary>
 public sealed class MoltenCharge {
   private MoltenCharge(ItemStack stack, int units) {
@@ -34,11 +28,8 @@ public sealed class MoltenCharge {
   public static MoltenCharge Of(ItemStack stack, int units) =>
     new(stack, units);
 
-  /// <summary>
-  /// Creates a charge of <paramref name="units"/> of <paramref name="itemCode"/> at
-  /// <paramref name="temperature"/> °C, cooling at <paramref name="cooldownSpeed"/> (default: the
-  /// mod's molten cooldown). Returns <c>null</c> when the item code does not resolve.
-  /// </summary>
+  /// <summary>Creates a charge of <paramref name="units"/> of <paramref name="itemCode"/> at
+  /// <paramref name="temperature"/> deg C; returns <c>null</c> when the item code does not resolve.</summary>
   public static MoltenCharge? Create(
     IWorldAccessor world,
     string itemCode,
@@ -57,7 +48,7 @@ public sealed class MoltenCharge {
   #endregion
 
   #region Temperature + state
-  /// <summary>Current charge temperature (°C).</summary>
+  /// <summary>Current charge temperature ( deg C).</summary>
   public float Temperature(IWorldAccessor world) =>
     MoltenMetal.GetTemperature(world, Stack);
 
@@ -65,12 +56,11 @@ public sealed class MoltenCharge {
   public void SetTemperature(IWorldAccessor world, float temperature) =>
     MoltenMetal.SetTemperature(world, Stack, temperature);
 
-  /// <summary>Re-applies the cooldown rate, rebasing to the current temperature. Call once per tick so
-  /// a live <c>/exmod config</c> cooldown change reaches metal already in the world.</summary>
+  /// <summary>Re-applies the cooldown rate, rebasing to the current temperature; call once per tick.</summary>
   public void SyncCooldown(IWorldAccessor world, float cooldownSpeed) =>
     MoltenMetal.SyncCooldownSpeed(world, Stack, cooldownSpeed);
 
-  /// <summary>The charge's melting point (°C).</summary>
+  /// <summary>The charge's melting point ( deg C).</summary>
   public float MeltingPoint(IWorldAccessor world) =>
     MoltenMetal.MeltingPointOf(world, Stack);
 
@@ -83,17 +73,14 @@ public sealed class MoltenCharge {
     MoltenMetal.IsHardened(world, Stack);
 
   /// <summary>True once the charge has cooled below its melting point (solidified, possibly still too
-  /// hot to chisel). The converter and the tap gate on this.</summary>
+  /// hot to chisel).</summary>
   public bool IsBelowMeltingPoint(IWorldAccessor world) =>
     Temperature(world) < MeltingPoint(world);
   #endregion
 
   #region Transform + recovery
-  /// <summary>
-  /// Replaces the carrier with <paramref name="newItemCode"/> at the charge's current temperature,
-  /// keeping the unit count (the iron to steel refine step). Returns <c>false</c> and leaves the charge
-  /// unchanged when the new item code does not resolve.
-  /// </summary>
+  /// <summary>Replaces the carrier with <paramref name="newItemCode"/> at the charge's current
+  /// temperature, keeping the unit count; returns <c>false</c> when the code does not resolve.</summary>
   public bool RetypeTo(
     IWorldAccessor world,
     string newItemCode,

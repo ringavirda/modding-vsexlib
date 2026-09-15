@@ -6,19 +6,15 @@ using ExpandedLib.Registries;
 namespace ExpandedLib.Catalogues;
 
 /// <summary>
-/// The merged catalogue of every terminal job, keyed by machine. Contributed to rather than owned, exactly
-/// as <see cref="ProcessRouteRegistry"/> is: a mod adds a crop, a heading or a nail job by shipping a file,
-/// and never by patching ours. A second job on one input is reported and the first stands, because taking
-/// the last writer would make the answer depend on mod load order. World-free, so it runs headless.
-/// See docs/design/mechanics/process-extension.md.
+/// The merged catalogue of every terminal job, keyed by machine. A second job on one input is
+/// reported and the first stands. World-free; runs headless.
 /// </summary>
 public sealed class ProcessJobRegistry {
   /// <summary>The process-wide catalogue, repopulated at <c>AssetsFinalize</c>.</summary>
   public static ProcessJobRegistry Shared { get; } = new();
 
   /// <summary>Code contributions to <see cref="Shared"/>, invoked by <see cref="ProcessJobLoader"/>
-  /// after its JSON read on every <c>Load(ICoreAPI)</c>, so a job registered from C# survives the clear
-  /// that precedes it. See <c>ProcessExtensions.Shared.AddJobs</c>.</summary>
+  /// after its JSON read on every <c>Load(ICoreAPI)</c>.</summary>
   public static CatalogueContributors Contributors { get; } = new();
 
   private readonly Dictionary<string, List<ProcessJob>> _byMachine = new(
@@ -58,12 +54,8 @@ public sealed class ProcessJobRegistry {
       ? jobs
       : [];
 
-  /// <summary>
-  /// The job <paramref name="machine"/> has for a piece of <paramref name="input"/> at
-  /// <paramref name="stage"/> on <paramref name="family"/>, or null when it has none. A staged job is
-  /// preferred over a whole-item one, so a stock family with a crop at one gauge can still have a
-  /// whole-item fallback.
-  /// </summary>
+  /// <summary>The job <paramref name="machine"/> has for a piece of <paramref name="input"/> at
+  /// <paramref name="stage"/> on <paramref name="family"/>, or null. A staged job is preferred.</summary>
   public ProcessJob? Job(
     string? machine,
     string? input,

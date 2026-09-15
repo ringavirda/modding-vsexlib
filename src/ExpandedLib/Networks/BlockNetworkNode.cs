@@ -24,10 +24,7 @@ public abstract class BlockNetworkNode
   /// <summary>Populated from the block's variant map; specifies the shape family (e.g. "straight", "bend").</summary>
   public string? Type { get; protected set; }
 
-  /// <summary>
-  /// Populated from the block's variant map; encodes which faces have network
-  /// connectors using single-character codes (e.g. "ns" = north + south).
-  /// </summary>
+  /// <summary>Populated from the block's variant map; single-character codes name which faces have connectors (e.g. "ns" = north + south).</summary>
   public string? Orientation { get; protected set; }
 
   /// <summary>The mod system that governs all block networks and nodes. Server side only.</summary>
@@ -43,7 +40,6 @@ public abstract class BlockNetworkNode
 
   public override void OnLoaded(ICoreAPI api) {
     base.OnLoaded(api);
-    // Pre-compute rotated collision/selection boxes for all orientation variants.
     PrecomputeRotatedBoxes();
 
     Type = Variant["type"] != null ? string.Intern(Variant["type"]) : null;
@@ -57,11 +53,7 @@ public abstract class BlockNetworkNode
   }
 
   #region Placement and orientation
-  /// <summary>
-  /// Passes the computed orientation choices from <see cref="TryPlaceBlock"/> to
-  /// <see cref="OnBlockPlaced"/> within the same placement call, keyed by world position. Entries are
-  /// consumed by <see cref="OnBlockPlaced"/>, so a refused placement must remove its own.
-  /// </summary>
+  /// <summary>Passes the computed orientation choices from <see cref="TryPlaceBlock"/> to <see cref="OnBlockPlaced"/> within the same placement call, keyed by world position.</summary>
   private static readonly ConcurrentDictionary<
     BlockPos,
     string[]
@@ -71,10 +63,6 @@ public abstract class BlockNetworkNode
   /// Determines the best orientation for this block at the target position by
   /// examining neighbouring network blocks, then delegates to <c>DoPlaceBlock</c>.
   /// </summary>
-  /// <remarks>Not a <c>BlockBehaviorExOrientable.ApplyOrientation</c> call site, unlike <c>Rotate</c>
-  /// and <c>RecalculateAndSyncOrientations</c>: that method exchanges the block standing at a position,
-  /// and here no block has been placed yet. What this shares with it is code resolution, not the swap -
-  /// the resolved code goes to <c>DoPlaceBlock</c>.</remarks>
   public override bool TryPlaceBlock(
     IWorldAccessor world,
     IPlayer byPlayer,
@@ -96,8 +84,7 @@ public abstract class BlockNetworkNode
       null
     );
     if (safeChoices.Length == 0) {
-      // Shown to the player as Lang.Get("placefailure-" + code), so this must be
-      // a plain code with a matching "game:placefailure-…" lang entry, not text.
+      // A plain code, shown via Lang.Get("placefailure-" + code); needs a matching lang entry.
       failureCode = "exlib-noorientation";
       return false;
     }
@@ -108,8 +95,7 @@ public abstract class BlockNetworkNode
       .Where(o => o.Contains(targetFaceChar))
       .ToArray();
 
-    // Clicking a top/bottom face gives no horizontal hint, so fall back to the player's look
-    // direction - the connector points the way they look, like wall placement.
+    // A top/bottom click gives no horizontal hint; falls back to the player's look direction.
     if (preferredChoices.Length == 0) {
       char lookChar = SuggestedHVOrientation(byPlayer, blockSel)[
         0
@@ -132,8 +118,7 @@ public abstract class BlockNetworkNode
         blockSel,
         itemstack
       );
-      // A refused variant place never reaches OnBlockPlaced, so drop the store entry here; otherwise
-      // the static store grows for every refused placement.
+      // A refused variant placement never reaches OnBlockPlaced; the store entry is dropped here.
       if (!placedVariant)
         _tempOrientationsStore.TryRemove(blockSel.Position, out _);
       return placedVariant;
@@ -146,16 +131,13 @@ public abstract class BlockNetworkNode
       blockSel,
       ref failureCode
     );
-    // Same for the base placement path: no OnBlockPlaced means the entry has to be dropped here.
+    // The base placement path also skips OnBlockPlaced.
     if (!placed)
       _tempOrientationsStore.TryRemove(blockSel.Position, out _);
     return placed;
   }
 
-  /// <summary>
-  /// After the block is placed, stores the computed orientation choices on the block
-  /// entity (for wrench cycling) or falls back to a full recalculation.
-  /// </summary>
+  /// <summary>Stores the computed orientation choices on the block entity for wrench cycling, or falls back to a full recalculation.</summary>
   public override void OnBlockPlaced(
     IWorldAccessor world,
     BlockPos blockPos,
@@ -176,17 +158,11 @@ public abstract class BlockNetworkNode
       RecalculateAndSyncOrientations(world, blockPos);
     }
 
-    // Neighbour orientation updates run via OnNeighbourBlockChange (the engine calls it on
-    // adjacent blocks after this returns). Node registration runs when the block entity's network
-    // membership initialises (inside DoPlaceBlock); calling AddNode here too would trigger a
-    // redundant O(N) BroadcastUpdate, freezing the server for large networks.
+    // Node registration happens in DoPlaceBlock, when the block entity's network membership initialises:
+    // not repeated here, to avoid a redundant O(N) BroadcastUpdate for large networks.
   }
 
-  /// <summary>
-  /// Computes the valid orientations for a block of the given <paramref name="type"/>
-  /// at <paramref name="pos"/>, taking into account which faces have compatible network
-  /// neighbours (required faces) and which faces have non-network neighbours (forbidden).
-  /// </summary>
+  /// <summary>Computes the valid orientations for a block of <paramref name="type"/> at <paramref name="pos"/>, given compatible network neighbours (required) and non-network neighbours (forbidden).</summary>
   protected virtual string[] ComputeValidOrientations(
     IBlockAccessor blockAccessor,
     BlockPos pos,
@@ -231,10 +207,7 @@ public abstract class BlockNetworkNode
       }
     }
 
-    // A linear shape (all orientations on one axis) can't join two perpendicular neighbours at
-    // once, so with perpendicular required faces it stays placeable by connecting to any one
-    // (player picks at placement, wrench switches). Bendable shapes must honour every required
-    // face, so the relaxation must not apply to them.
+    // A linear (single-axis) shape connects via any one required face; a bendable shape requires all of them.
     bool connectsAny = validOrientations.All(IsSingleAxisOrientation);
 
     bool Matches(string orient) =>
@@ -255,8 +228,7 @@ public abstract class BlockNetworkNode
       && currentOrientation != null
     ) {
       requiredChars.RemoveAll(c => {
-        // Orientation tokens are single letters; BlockFacing.FromCode only knows the full words and
-        // returns null for every one of them, which would make this whole relaxation a no-op.
+        // Orientation tokens are single letters; BlockFacing.FromCode only recognizes full words.
         BlockFacing? facing = BlockNetworkModSystem.SideToFace(c.ToString());
         if (facing == null)
           return false;
@@ -275,21 +247,14 @@ public abstract class BlockNetworkNode
     return choices;
   }
 
-  /// <summary>
-  /// True when every connector face in <paramref name="orientation"/> lies on the same
-  /// axis (e.g. "ns", "we", "ud", or a single face). Such shapes are linear: they can
-  /// only join collinear neighbours, never two perpendicular ones at once.
-  /// </summary>
+  /// <summary>True when every connector face in <paramref name="orientation"/> lies on the same axis (e.g. "ns", "we", "ud").</summary>
   private static bool IsSingleAxisOrientation(string orientation) =>
     orientation
       .Select(c => BlockFacing.FromFirstLetter(c)?.Axis)
       .Distinct()
       .Count() == 1;
 
-  /// <summary>
-  /// Recalculates this block's valid orientations when a neighbour changes and breaks it when it is
-  /// no longer supported: no connected network neighbours and no solid surface to attach to.
-  /// </summary>
+  /// <summary>Recalculates this block's valid orientations when a neighbour changes and breaks it when unsupported: no connected network neighbours and no solid surface to attach to.</summary>
   public override void OnNeighbourBlockChange(
     IWorldAccessor world,
     BlockPos pos,
@@ -300,7 +265,6 @@ public abstract class BlockNetworkNode
 
     RecalculateAndSyncOrientations(world, pos);
 
-    // Break the block if it has no network neighbours and no solid surface to rest on.
     bool hasSolidSurface = false;
     foreach (var f in BlockFacing.ALLFACES) {
       BlockPos nPos = pos.AddCopy(f);
@@ -323,10 +287,7 @@ public abstract class BlockNetworkNode
       world.BlockAccessor.BreakBlock(pos, null);
   }
 
-  /// <summary>
-  /// Removes this block's position from the network graph before calling the base
-  /// break logic (which drops items, removes the block entity, etc.).
-  /// </summary>
+  /// <summary>Removes this block's position from the network graph, then calls the base break logic.</summary>
   public override void OnBlockBroken(
     IWorldAccessor world,
     BlockPos pos,
@@ -342,11 +303,7 @@ public abstract class BlockNetworkNode
   #endregion
 
   #region IWrenchOrientable
-  /// <summary>
-  /// Cycles the block's orientation forward or backward through the choices from
-  /// <see cref="GetWrenchOrientations"/> and re-registers the node in the network graph with the new
-  /// orientation's connector set.
-  /// </summary>
+  /// <summary>Cycles the block's orientation through <see cref="GetWrenchOrientations"/> and re-registers the node in the network graph.</summary>
   public virtual void Rotate(
     EntityAgent byEntity,
     BlockSelection blockSel,
@@ -377,9 +334,7 @@ public abstract class BlockNetworkNode
     BlockBehaviorExOrientable? orientable =
       GetBehavior<BlockBehaviorExOrientable>();
 
-    // Every node def declares the behaviour and a per-mod contract holds them to it, so a node without
-    // one was authored wrong. Refusing states that; swapping the block here instead would keep the
-    // wrench working and leave the missing declaration invisible.
+    // Every node def is expected to declare this behaviour; a missing one fails loudly here.
     if (orientable == null) {
       world.Logger.Error(
         "[exlib] {0} is a network node carrying no ExOrientable behaviour, so the wrench cannot "
@@ -391,15 +346,12 @@ public abstract class BlockNetworkNode
 
     var netManager = world.Api.ModLoader.GetModSystem<BlockNetworkModSystem>();
 
-    // Full remove + add with broadcast so clients see the new connectivity immediately. The swap has
-    // to stay inside that sandwich: outside it the graph keeps the old connector faces while the block
-    // wears the new ones, which reads as connected and moves nothing.
+    // Remove and add with broadcast keeps the graph and the block's connector faces in step during the swap.
     netManager.RemoveNode(world.BlockAccessor, pos);
 
     if (orientable.ApplyOrientation(world, pos, choices[nextIndex])) {
       be?.MarkDirty(true);
 
-      // Recalculate adjacent blocks to keep their orientations consistent.
       foreach (var face in BlockFacing.ALLFACES)
         RecalculateAndSyncOrientations(world, pos.AddCopy(face));
     }
@@ -407,13 +359,7 @@ public abstract class BlockNetworkNode
     netManager.AddNode(world.BlockAccessor, pos, NetworkType);
   }
 
-  /// <summary>
-  /// Returns the orientation cycle a wrench rotates through at <paramref name="pos"/>. Full-cube
-  /// blocks are supported in any orientation, so their cycle is recomputed on the fly with a null
-  /// current orientation, constrained by topology alone. Thin-profile pipes keep the placement-time
-  /// restriction stored on the BE, falling back to a topology recompute for multiblock BEs that never
-  /// store it.
-  /// </summary>
+  /// <summary>Returns the orientation cycle a wrench rotates through at <paramref name="pos"/>: recomputed from topology for full cubes, or read from the block entity for thin-profile pipes.</summary>
   protected string[] GetWrenchOrientations(IWorldAccessor world, BlockPos pos) {
     if (Type == null)
       return [];
@@ -428,32 +374,20 @@ public abstract class BlockNetworkNode
       : ComputeValidOrientations(world.BlockAccessor, pos, Type, null);
   }
 
-  /// <summary>
-  /// True when the block fills its whole cell (default full-cube collision box). Such blocks are
-  /// supported in any orientation, so the wrench rotates them through the full topology-only cycle.
-  /// Virtual so a subclass can opt in/out regardless of its collision geometry.
-  /// </summary>
+  /// <summary>True when the block fills its whole cell (full-cube collision box); such blocks accept any orientation.</summary>
   protected virtual bool IsFullCube =>
     CollisionBoxes is { Length: 1 } boxes && IsFullCubeBox(boxes[0]);
 
   private static bool IsFullCubeBox(Cuboidf b) =>
     b.X1 <= 0 && b.Y1 <= 0 && b.Z1 <= 0 && b.X2 >= 1 && b.Y2 >= 1 && b.Z2 >= 1;
 
-  /// <summary>
-  /// Whether a wrench can rotate this block at <paramref name="pos"/> right now.
-  /// False when only one orientation is valid (rotation would be a no-op).
-  /// Override to add further restrictions (e.g. the blower locks while coupled
-  /// to an axle).
-  /// </summary>
+  /// <summary>Whether a wrench can rotate this block at <paramref name="pos"/>; false when only one orientation is valid.</summary>
   protected virtual bool CanWrenchRotate(IWorldAccessor world, BlockPos pos) =>
     GetWrenchOrientations(world, pos).Length > 1;
   #endregion
 
   #region Interaction help
-  /// <summary>
-  /// Appends the "Rotate" wrench hint to the placed-block help, only when the block can be rotated
-  /// here: more than one valid orientation and any subclass restriction satisfied.
-  /// </summary>
+  /// <summary>Appends the wrench rotate hint to the placed-block help when the block can be rotated here.</summary>
   public override WorldInteraction[] GetPlacedBlockInteractionHelp(
     IWorldAccessor world,
     BlockSelection selection,
@@ -481,10 +415,7 @@ public abstract class BlockNetworkNode
   protected readonly Dictionary<string, Cuboidf[]> collisionBoxesCache = [];
   protected readonly Dictionary<string, Cuboidf[]> selectionBoxesCache = [];
 
-  /// <summary>
-  /// Pre-computes rotated collision and selection box arrays for every (type, orientation) pair, so
-  /// runtime lookups are dictionary reads. Called from <see cref="OnLoaded"/>.
-  /// </summary>
+  /// <summary>Pre-computes rotated collision and selection box arrays for every (type, orientation) pair.</summary>
   protected virtual void PrecomputeRotatedBoxes() {
     if (CollisionBoxes == null || CollisionBoxes.Length == 0)
       return;
@@ -537,10 +468,7 @@ public abstract class BlockNetworkNode
       ? boxes
       : base.GetSelectionBoxes(blockAccessor, pos);
 
-  /// <summary>
-  /// Returns the Euler rotation angles in degrees for the given <paramref name="orientation"/> string.
-  /// Virtual so network-specific subclasses can handle custom orientations such as sloped canals.
-  /// </summary>
+  /// <summary>Returns the Euler rotation angles in degrees for <paramref name="orientation"/>.</summary>
   protected virtual void GetRotations(
     string orientation,
     out float rotX,
@@ -560,7 +488,7 @@ public abstract class BlockNetworkNode
       case "nswe":
         break;
 
-      // Y-axis 90°
+      // Y-axis 90 deg
       case "e":
       case "we":
       case "ws":
@@ -568,7 +496,7 @@ public abstract class BlockNetworkNode
         rotY = 90;
         break;
 
-      // Y-axis 180°
+      // Y-axis 180 deg
       case "s":
       case "sn":
       case "se":
@@ -576,7 +504,7 @@ public abstract class BlockNetworkNode
         rotY = 180;
         break;
 
-      // Y-axis 270°
+      // Y-axis 270 deg
       case "w":
       case "ew":
       case "en":
@@ -584,21 +512,21 @@ public abstract class BlockNetworkNode
         rotY = 270;
         break;
 
-      // X-axis 90°
+      // X-axis 90 deg
       case "u":
       case "ud":
       case "uwe":
         rotX = 90;
         break;
 
-      // X-axis 270°
+      // X-axis 270 deg
       case "d":
       case "du":
       case "dwe":
         rotX = 270;
         break;
 
-      // Z-axis 90° variants
+      // Z-axis 90 deg variants
       case "dn":
       case "dnu":
       case "nsud":
@@ -621,7 +549,7 @@ public abstract class BlockNetworkNode
         rotY = 270;
         break;
 
-      // Z-axis 270° variants
+      // Z-axis 270 deg variants
       case "un":
         rotZ = 270;
         break;
@@ -657,16 +585,7 @@ public abstract class BlockNetworkNode
     IPlayer forPlayer
   ) => [new BlockDropItemStack(handbookStack)];
 
-  /// <summary>
-  /// Always drops the fallback-orientation item, so the player receives one item type regardless of
-  /// the in-world orientation variant.
-  /// </summary>
-  /// <remarks>The fallback is this def's first-listed state, which is deliberately not the scheme's
-  /// first token, so <c>BlockBehaviorExOrientable.CanonicalStack</c> must not replace it: a tuyere
-  /// declares <c>[s,n,w,e]</c> and drops <c>-s</c> where <see cref="ExOrientations.Face"/> starts at
-  /// <c>n</c>, and a fluid intake and a canal start override the fallback outright. This override and
-  /// <c>OnPickBlock</c> below do not call base, so the behaviour's own drop and pick overrides never
-  /// run - which is what makes declaring the behaviour on every node drop-neutral.</remarks>
+  /// <summary>Always drops the fallback-orientation item, regardless of the in-world orientation variant.</summary>
   public override ItemStack[] GetDrops(
     IWorldAccessor worldMap,
     BlockPos pos,
@@ -674,10 +593,7 @@ public abstract class BlockNetworkNode
     float dropQuantityMultiplier = 1f
   ) => [FallbackStack(worldMap)];
 
-  /// <summary>
-  /// The fallback-orientation stack whatever the node drops: a raised mega-block drops its materials
-  /// and nothing else, and the block-info HUD still asks what block it is.
-  /// </summary>
+  /// <summary>The fallback-orientation stack, whatever this node drops.</summary>
   public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos) =>
     FallbackStack(world);
 
@@ -689,11 +605,7 @@ public abstract class BlockNetworkNode
     return new ItemStack(world.GetBlock(loc) ?? this);
   }
 
-  /// <summary>
-  /// Includes the node's material/rock/brick variant in its display name (e.g.
-  /// "Iron Piping (Straight)", "Granite Molten Canal"). The placed-block name
-  /// goes through <c>OnPickBlock</c> and then <c>GetName</c>, so this covers both.
-  /// </summary>
+  /// <summary>Includes the node's material/rock/brick variant in its display name (e.g. "Iron Piping (Straight)").</summary>
   public override string GetHeldItemName(ItemStack itemStack) =>
     ExBlockNames.Decorate(this, base.GetHeldItemName(itemStack));
   #endregion
@@ -704,21 +616,13 @@ public abstract class BlockNetworkNode
 
   private Dictionary<string, string[]>? _allowedOrientations;
 
-  /// <summary>
-  /// Maps shape-type strings (e.g. "straight", "bend") to their valid orientation strings, used for
-  /// placement, wrench rotation and collision-box pre-computation. Derived from this block's own
-  /// code-first defs, resolved by runtime type so every subclass gets the map from its own variant
-  /// groups, and cached on first read. A block whose orientation is not a type-to-orientation
-  /// variant pair can override.
-  /// </summary>
+  /// <summary>Maps shape-type strings (e.g. "straight", "bend") to their valid orientation strings, derived from this block's code-first defs and cached on first read.</summary>
   public virtual Dictionary<string, string[]> AllowedOrientations =>
     _allowedOrientations ??= ExDefinitions.OrientationMap(
       ExDefinitions.DefinitionsOf(GetType(), Code?.Domain ?? "")
     );
 
-  /// <summary>The orientation used for drops and handbook entries of a <paramref name="type"/>: the first
-  /// state the type lists in <see cref="AllowedOrientations"/>, or "ns" when the type is absent. A block
-  /// with a fixed default facing, such as a fluid intake or canal start, overrides.</summary>
+  /// <summary>The orientation used for drops and handbook entries of <paramref name="type"/>: the first state <see cref="AllowedOrientations"/> lists for it, or "ns" when absent.</summary>
   protected virtual string GetFallbackOrientation(string? type) =>
     type != null
     && AllowedOrientations.TryGetValue(type, out string[]? states)
@@ -726,67 +630,30 @@ public abstract class BlockNetworkNode
       ? states[0]
       : "ns";
 
-  /// <summary>
-  /// When <c>true</c>, this node acts as a fixed endpoint and is excluded from the
-  /// standard neighbour-discovery traversal (e.g. an output machine port).
-  /// </summary>
+  /// <summary>When true, this node acts as a fixed endpoint and is excluded from neighbour-discovery traversal.</summary>
   public virtual bool IsNetworkEndPoint => false;
 
-  /// <summary>
-  /// Returns <c>true</c> when a connection to <paramref name="neighborBlock"/> on
-  /// <paramref name="face"/> is valid even though the neighbour is not a network block, so
-  /// <c>BlockNetworkModSystem.GetOpenConnectorFaces</c> counts that face as sealed rather than open -
-  /// a machine housing a pipe runs into, say.
-  /// <para>
-  /// Nothing in the repo overrides it, so the hook is inert as shipped and every face against a
-  /// non-network block reads as open. That is harmless because the leak classifier only turns an open
-  /// face into a leak when the neighbour is air, which is what actually delivers the passthrough's
-  /// "seals against a wall". An override here changes which faces are open for every consumer of that
-  /// set, not just the leak count, so it is a wider change than it looks.
-  /// </para>
-  /// </summary>
+  /// <summary>Returns true when a connection to <paramref name="neighborBlock"/> on <paramref name="face"/> is valid even though the neighbour is not a network block.</summary>
   public virtual bool IsValidNonNetworkConnection(
     Block neighborBlock,
     BlockFacing face
   ) => false;
 
-  /// <summary>
-  /// Whether this node will physically join <paramref name="neighbour"/>, on top of the geometric
-  /// checks (matching connectors, same network type). Default <c>true</c>. This is where an
-  /// incompatible joint is refused - a welded octagonal HP pipe against a plated square one - and
-  /// refusing leaves the far side reading as an open end, so the run leaks rather than merging.
-  /// <para>
-  /// Implementations must be symmetric: the graph asks from whichever side it is walking, so a rule
-  /// that answers differently by direction produces a network that exists in one direction only.
-  /// Compare a shared property such as both sides' joint family.
-  /// </para>
-  /// </summary>
+  /// <summary>Whether this node will physically join <paramref name="neighbour"/>, beyond the geometric checks (matching connectors, same network type); implementations must answer symmetrically.</summary>
   public virtual bool AcceptsNeighbour(Block neighbour) => true;
 
-  /// <summary>
-  /// Returns <c>true</c> if <see cref="Orientation"/> contains the single-char code
-  /// for <paramref name="face"/>.
-  /// </summary>
+  /// <summary>Returns true if <see cref="Orientation"/> contains the single-char code for <paramref name="face"/>.</summary>
   public virtual bool HasConnectorAt(BlockFacing face) =>
     Orientation != null && Orientation.Contains(face.Code[0]);
 
-  /// <summary>
-  /// Position-aware connector test, answering <see cref="INetworkMember.HasConnectorAt"/> ahead of
-  /// that interface's own default. Defaults to the position-less answer; a node whose connectors
-  /// depend on runtime block-entity state, such as the bevel gear's per-face gears, overrides it to
-  /// read the cell. <c>BlockNetworkModSystem.GetConnectedNeighbors</c> calls this, so an override
-  /// branches the run. Declaring it here as a class virtual is what makes those overrides reachable
-  /// through the interface; see <see cref="INetworkMember.HasConnectorAt"/>.
-  /// </summary>
+  /// <summary>Position-aware connector test, answering <see cref="INetworkMember.HasConnectorAt"/>. Defaults to the position-less answer.</summary>
   public virtual bool HasConnectorAt(
     IBlockAccessor world,
     BlockPos pos,
     BlockFacing face
   ) => HasConnectorAt(face);
 
-  /// <summary>Returns all block faces that have a network connector, or <c>null</c> if unorientated.
-  /// <c>null</c> and an empty array mean different things to a caller: no orientation variant at all
-  /// versus one naming no side.</summary>
+  /// <summary>Returns all block faces that have a network connector, or null if unorientated; null and empty mean different things.</summary>
   public virtual BlockFacing[]? GetConnectorFaces() =>
     Orientation == null
       ? null
@@ -800,11 +667,7 @@ public abstract class BlockNetworkNode
     Cuboidi attachmentArea
   ) => HasConnectorAt(blockFace);
 
-  /// <summary>
-  /// Recomputes the valid orientations for the block at <paramref name="pos"/>, updates
-  /// the block entity's <c>PossibleOrientations</c>, and exchanges the in-world block if
-  /// the current orientation is no longer valid.
-  /// </summary>
+  /// <summary>Recomputes the valid orientations for the block at <paramref name="pos"/>, updates the block entity, and swaps it out when the current orientation has become invalid.</summary>
   public virtual void RecalculateAndSyncOrientations(
     IWorldAccessor world,
     BlockPos pos
@@ -832,18 +695,12 @@ public abstract class BlockNetworkNode
       return;
     }
 
-    // netBlock.Orientation, not this.Orientation. The six calls from Rotate run this against each
-    // neighbour of the block being wrenched, so the initiator's orientation is not the one that belongs
-    // in a neighbour's tree - it would be persisted and synced to every client watching. Every other
-    // read in this method already goes through netBlock.
+    // netBlock.Orientation, not this.Orientation: Rotate runs this against each neighbour of the wrenched block.
     beNet.Orientation = netBlock.Orientation;
     beNet.PossibleOrientations = finalChoices;
     beNet.MarkDirty(true);
 
-    // On netBlock, never on `this`: the six calls from Rotate run this against each neighbour, and
-    // `this` is a different variant instance whose behaviour would resolve the wrong code. Missing, the
-    // swap is skipped silently rather than logged - this runs on every neighbour notification, so a log
-    // line here would repeat for as long as the block stands.
+    // Applied to netBlock, never to `this`: the same call runs against each neighbour from Rotate.
     if (
       netBlock.Orientation != null
       && !finalChoices.Contains(netBlock.Orientation)

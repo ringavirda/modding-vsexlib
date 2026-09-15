@@ -8,10 +8,8 @@ using Vintagestory.API.Config;
 namespace ExpandedLib.Registries;
 
 /// <summary>
-/// Adds <c>.exmod network hi</c> and <c>.exmod network unhi</c>: toggles the transparent, per-network
-/// coloured highlight of every block network (see <see cref="NetworkHighlightModSystem"/>), showing
-/// which blocks share a network and where a run is broken. Client-side; the command flips the toggle
-/// and the server, which owns the graph, pushes the highlight.
+/// Adds <c>.exmod network hi</c> and <c>.exmod network unhi</c>: toggles the coloured block-network
+/// highlight (see <see cref="NetworkHighlightModSystem"/>). Client-side.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Client)]
 [EditorBrowsable(EditorBrowsableState.Never)]
@@ -35,11 +33,7 @@ public sealed class NetworkSubCommand : IExSubCommand {
       .EndSubCommand();
   }
 
-  /// <summary>
-  /// The two handlers with the framework's fluent arg parsing already stripped away: mirrors
-  /// <see cref="RegistrySubCommand{T}.Dispatch"/>. Internal rather than private so a test can drive
-  /// them without building a fake <see cref="Vintagestory.API.Common.TextCommandCallingArgs"/>.
-  /// </summary>
+  /// <summary>The two handlers with fluent arg parsing stripped, callable directly by a test.</summary>
   internal static TextCommandResult DispatchHi(
     NetworkHighlightModSystem highlight
   ) {

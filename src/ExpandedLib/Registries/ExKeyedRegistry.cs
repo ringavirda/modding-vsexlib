@@ -3,13 +3,8 @@ using System.Collections.Generic;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// A process-wide, case-insensitive registry of items keyed by a string code derived from each item.
-/// Register or replace by derived code, look up by code, and enumerate the registered codes and
-/// values. Backs the mod-keyed catalogues (<see cref="Config.ExConfigProfiles"/>,
-/// <see cref="ExRecipeProfiles"/>). Domain behaviour such as the recipe apply pipeline stays
-/// on the owning class; this holds the keyed storage only.
-/// </summary>
+/// <summary>A process-wide, case-insensitive registry of items keyed by a string code derived from
+/// each item.</summary>
 /// <typeparam name="T">The registered item type.</typeparam>
 public sealed class ExKeyedRegistry<T> {
   private readonly Dictionary<string, T> _items = new(
@@ -23,14 +18,10 @@ public sealed class ExKeyedRegistry<T> {
   /// <summary>Registers (or replaces) an item under its derived code.</summary>
   public void Register(T item) => _items[_key(item)] = item;
 
-  /// <summary>Drops every registered item. Asset-backed catalogues repopulate on each
-  /// <c>AssetsFinalize</c> and clear first, so entries do not accumulate across world reloads within
-  /// one process.</summary>
+  /// <summary>Drops every registered item.</summary>
   public void Clear() => _items.Clear();
 
-  /// <summary>Drops one registered item by code, if present. Internal: a mod-keyed registry such as
-  /// <see cref="ExRecipeProfiles"/> only ever registers or replaces in production; this exists for a
-  /// test fixture bound to a fixed code to undo its own registration.</summary>
+  /// <summary>Drops one registered item by code, if present.</summary>
   internal bool Remove(string code) => _items.Remove(code);
 
   /// <summary>Looks up an item by code (case-insensitive); <c>false</c> when none is registered.</summary>

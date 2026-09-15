@@ -4,12 +4,8 @@ using Vintagestory.API.Common;
 
 namespace PlatedPipes;
 
-/// <summary>
-/// The whole registration walk: <see cref="ExModSystem"/> loads this assembly's config, registers
-/// every attribute-marked class and code-first definition. The one thing left to write here is the
-/// plated tier's own rating, registered into <see cref="BlockPipe"/>'s per-tier tables - exlib's own
-/// <see cref="BlockPipe"/> carries no tier of its own.
-/// </summary>
+/// <summary>Registers this assembly's config and code-first definitions, and the plated tier's
+/// burst, throughput and joint ratings into <see cref="BlockPipe"/>.</summary>
 public class PlatedPipesModSystem : ExModSystem {
   protected override void OnStart(ICoreAPI api) {
     BlockPipe.RegisterBurst(

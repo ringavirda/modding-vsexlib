@@ -2,24 +2,18 @@ using System;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// Base for the kind-specific registration attributes. A class carries exactly one;
-/// <see cref="EntityRegistry.RegisterAll"/> scans for these, registers each under the matching game
-/// registry and validates the class's base type against the attribute's kind. The key defaults to
-/// <c>{modid}.{ClassName}</c>; <see cref="Code"/> and <see cref="PrefixModId"/> override it, as in
-/// <c>[BlockBehaviorRegister("MultiblockStructure", PrefixModId = false)]</c> for a vanilla replacement.
-/// </summary>
+/// <summary>Base for the kind-specific registration attributes; a class carries exactly one.
+/// The key defaults to <c>{modid}.{ClassName}</c>; <see cref="Code"/> and
+/// <see cref="PrefixModId"/> override it.</summary>
 public abstract class RegisterAttribute(string? code = null) : Attribute {
-  /// <summary>Explicit registry key. When null, the class name is used.</summary>
+  /// <summary>Explicit registry key, or the class name when null.</summary>
   public string? Code { get; } = code;
 
-  /// <summary>When true (default) the key is prefixed with <c>{modid}.</c>. Set false to register
-  /// under a bare key, as required when replacing a vanilla class.</summary>
+  /// <summary>Whether the key is prefixed with <c>{modid}.</c>.</summary>
   public bool PrefixModId { get; init; } = true;
 }
 
-/// <summary>Registers a <see cref="Vintagestory.API.Common.Block"/> class. A block is a singleton,
-/// one instance per variant, so its JSON attributes can be surfaced as generated members.</summary>
+/// <summary>Registers a <see cref="Vintagestory.API.Common.Block"/> class.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class BlockRegisterAttribute(string? code = null)
   : RegisterAttribute(code);
@@ -29,8 +23,7 @@ public sealed class BlockRegisterAttribute(string? code = null)
 public sealed class ItemRegisterAttribute(string? code = null)
   : RegisterAttribute(code);
 
-/// <summary>Registers a <see cref="Vintagestory.API.Common.BlockEntity"/> class. Classes named
-/// <c>BlockEntityXxx</c> under the default convention also gain the short-name aliases.</summary>
+/// <summary>Registers a <see cref="Vintagestory.API.Common.BlockEntity"/> class.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class BlockEntityRegisterAttribute(string? code = null)
   : RegisterAttribute(code);

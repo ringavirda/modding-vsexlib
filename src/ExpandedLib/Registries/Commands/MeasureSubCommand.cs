@@ -9,14 +9,8 @@ using Vintagestory.API.Config;
 namespace ExpandedLib.Registries;
 
 /// <summary>
-/// Attaches <c>.exmod measure [metric|imperial]</c> to the library's shared <c>.exmod</c> root: shows
-/// or, with an argument, sets the per-player display unit system, validated against the preference's
-/// options and persisted through <see cref="ExPreferences"/>. The preference itself and its effect on
-/// the active display unit system live in <see cref="MeasurePreference"/>. Client-only, since the unit
-/// system is a client-side display setting. The per-preference display strings
-/// (<c>command-measure-desc</c>, <c>pref-measure-label</c>, <c>pref-measure-{value}</c>) and the
-/// generic result strings (<c>command-pref-current</c>/<c>-set</c>/<c>-invalid</c>) live in the
-/// <c>exlib</c> domain.
+/// Attaches <c>.exmod measure [metric|imperial]</c> to the shared <c>.exmod</c> root: shows or sets
+/// the per-player display unit system, persisted through <see cref="ExPreferences"/>. Client-only.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Client)]
 [EditorBrowsable(EditorBrowsableState.Never)]
@@ -36,11 +30,7 @@ public sealed class MeasureSubCommand : IExSubCommand {
       .EndSubCommand();
   }
 
-  /// <summary>
-  /// The command's logic with the framework's fluent arg parsing already stripped away: mirrors
-  /// <see cref="RegistrySubCommand{T}.Dispatch"/>. Internal rather than private so a test can drive
-  /// it without building a fake <see cref="TextCommandCallingArgs"/>.
-  /// </summary>
+  /// <summary>The command's logic with fluent arg parsing stripped, callable directly by a test.</summary>
   internal static TextCommandResult Dispatch(
     ICoreClientAPI api,
     string domain,
@@ -74,8 +64,7 @@ public sealed class MeasureSubCommand : IExSubCommand {
     string previous = ExPreferences.GetForPlayer(uid, pref.Key);
     ExPreferences.SetForPlayer(uid, pref.Key, word);
 
-    // Handbook prose is unit-converted only when its pages are built, so a mid-session switch needs
-    // the pages rebuilt to re-read the now-active system (the look-at HUD already updates live).
+    // Handbook prose is unit-converted only when its pages are built; a switch needs a rebuild.
     if (previous != word)
       HandbookUnitPatch.Rebuild(api);
 

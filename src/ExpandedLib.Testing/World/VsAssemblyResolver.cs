@@ -6,18 +6,8 @@ using System.Runtime.CompilerServices;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// Resolves the Vintage Story game assemblies (VintagestoryAPI, VSSurvivalMod, the bundled
-/// libraries) at runtime from the matching game install. The test and harness projects reference
-/// those DLLs with <c>Private=false</c>, so a headless <c>dotnet test</c> run cannot load them
-/// without this probe; a module initializer registers it.
-/// <para>
-/// The install is picked by the game version this assembly was compiled for: the build stamps that
-/// version's env-var name and folder slug into <c>[AssemblyMetadata("GameInstallEnv")]</c> and
-/// <c>[AssemblyMetadata("GameSlug")]</c> from the version manifest in
-/// <c>mods/Directory.Build.props</c>, so adding a game version needs no change here.
-/// </para>
-/// </summary>
+/// <summary>Resolves the Vintage Story game assemblies at runtime from the matching game
+/// install.</summary>
 public static class VsAssemblyResolver {
   private static readonly object Gate = new();
   private static bool _registered;
@@ -31,10 +21,8 @@ public static class VsAssemblyResolver {
       .FirstOrDefault(a => a.Key == key)
       ?.Value;
 
-  /// <summary>The resolved game install for this TFM (env var or <c>.game/&lt;slug&gt;</c>), the
-  /// same lookup <see cref="Register"/> uses for its assembly probe. Null if neither yields a path -
-  /// a caller that needs the game's own <c>assets/</c> tree (<see cref="TestWorld.LoadAssets"/>) reads
-  /// this rather than re-deriving the slug.</summary>
+  /// <summary>The resolved game install for this TFM (env var or <c>.game/&lt;slug&gt;</c>).</summary>
+  /// <returns>Null if neither yields a path.</returns>
   public static string? InstallPath => ResolveInstallPath();
 
   /// <summary>Idempotently hooks <see cref="AppDomain.AssemblyResolve"/> to probe the game folders.</summary>
@@ -65,8 +53,7 @@ public static class VsAssemblyResolver {
   }
 
   /// <summary>The install path for this TFM: the <see cref="InstallKey"/> environment variable if
-  /// set, otherwise the in-repo install at <c>.game/&lt;slug&gt;</c>. Null when neither yields a
-  /// path.</summary>
+  /// set, otherwise the in-repo install at <c>.game/&lt;slug&gt;</c>.</summary>
   private static string? ResolveInstallPath() {
     if (!string.IsNullOrEmpty(InstallKey)) {
       string? fromEnv = Environment.GetEnvironmentVariable(InstallKey);
@@ -77,8 +64,7 @@ public static class VsAssemblyResolver {
   }
 
   /// <summary>Walks up from the test output directory looking for a provisioned
-  /// <c>.game/&lt;slug&gt;</c> holding the game assemblies. Null if the slug is unknown or no such
-  /// folder exists up the tree.</summary>
+  /// <c>.game/&lt;slug&gt;</c> holding the game assemblies.</summary>
   private static string? FindRepoGameInstall() {
     if (string.IsNullOrEmpty(GameSlug))
       return null;
@@ -96,8 +82,7 @@ public static class VsAssemblyResolver {
 }
 
 internal static class HarnessModuleInitializer {
-  // Used in a class library because the resolver must be live before any harness type that
-  // references the game assemblies is touched. It only hooks AssemblyResolve.
+  // Live before any harness type that references the game assemblies is touched.
 #pragma warning disable CA2255
   [ModuleInitializer]
 #pragma warning restore CA2255

@@ -9,27 +9,13 @@ using Vintagestory.API.Util;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Checks that no two recipe-cost selectors in a catalogue can match the same block.
-/// <c>ExRecipeCosts</c> applies every catalogue entry in sequence rather than taking the first match,
-/// so two selectors hitting one recipe leaves the later entry overwriting the earlier's costs in
-/// dictionary enumeration order, which is not a contract.
-/// <para>
-/// Hierarchical codes make this reachable: <c>iiex:slag-path-*</c> swallows <c>slag-path-slab</c>,
-/// where the flat <c>slagpath-*</c> could not match <c>slagpathslab</c>. The naming rule that follows
-/// is that a path segment may only become a folder if it is not itself a block.
-/// </para>
-/// <para>
-/// Compared within a <see cref="RecipeCostEntry.Type"/>, never across: <c>ExRecipeCosts.Apply</c>
-/// dispatches on it, so a machine that is both crafted and built carries one row of each against the
-/// same selector and neither can overwrite the other.
-/// </para>
+/// Checks that no two recipe-cost selectors in a catalogue can match the same block, compared
+/// within a <see cref="RecipeCostEntry.Type"/>.
 /// </summary>
 public static class CostSelectorOverlap {
-  /// <summary>
-  /// Every pair of same-type catalogue entries whose selectors can both match one code. Empty means no
-  /// overlap. <paramref name="sampleCodes"/> is the mod's registered codes: overlap is decided against
-  /// the codes that ship, not against pattern algebra.
-  /// </summary>
+  /// <summary>Every pair of same-type catalogue entries whose selectors can both match one code.</summary>
+  /// <param name="sampleCodes">The mod's registered codes.</param>
+  /// <returns>Empty when none.</returns>
   public static IReadOnlyList<string> Overlaps(
     IReadOnlyDictionary<string, RecipeCostEntry> catalogue,
     IEnumerable<string> sampleCodes

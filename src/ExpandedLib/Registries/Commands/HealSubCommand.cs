@@ -7,11 +7,8 @@ using Vintagestory.API.Config;
 namespace ExpandedLib.Registries;
 
 /// <summary>
-/// Adds <c>/exmod heal</c>: sweeps every currently loaded chunk and recreates any orphaned block
-/// entity - a block still in the world whose <see cref="BlockEntity"/> was discarded, leaving an inert,
-/// often unbreakable block. Repairs already-loaded chunks on demand rather than waiting for the
-/// <see cref="BlockEntityHealModSystem"/> automatic on-load pass. Server-side; the <c>/exmod</c> root
-/// requires <c>controlserver</c>.
+/// Adds <c>/exmod heal</c>: sweeps every loaded chunk and recreates any orphaned block entity.
+/// Server-side; the <c>/exmod</c> root requires <c>controlserver</c>.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
 [EditorBrowsable(EditorBrowsableState.Never)]
@@ -28,11 +25,7 @@ public sealed class HealSubCommand : IExSubCommand {
       .EndSubCommand();
   }
 
-  /// <summary>
-  /// The command's logic with the framework's fluent arg parsing already stripped away: mirrors
-  /// <see cref="RegistrySubCommand{T}.Dispatch"/>. Internal rather than private so a test can drive
-  /// it without building a fake <see cref="Vintagestory.API.Common.TextCommandCallingArgs"/>.
-  /// </summary>
+  /// <summary>The command's logic with fluent arg parsing stripped, callable directly by a test.</summary>
   internal static TextCommandResult Dispatch(BlockEntityHealModSystem healer) =>
     TextCommandResult.Success(
       Lang.Get("exlib:command-heal-result", healer.HealLoadedChunks())

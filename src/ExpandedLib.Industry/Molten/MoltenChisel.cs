@@ -25,11 +25,8 @@ public enum ChiselOutcome {
 }
 
 /// <summary>
-/// The chip-solidified-metal-out interaction shared by every <see cref="IChiselableMolten"/> holder
-/// (canal cells, the molten barrel, the bessemer vessel): tool gating, not-ready feedback, the
-/// recovered drop, tool wear and sound. A holder supplies its content-specific state through the
-/// interface and the clear-and-recover step in <see cref="IChiselableMolten.ChiselOut"/>; the drop
-/// itself is built by <see cref="BuildRecovery"/>.
+/// The chip-solidified-metal-out interaction shared by every <see cref="IChiselableMolten"/> holder:
+/// tool gating, not-ready feedback, the recovered drop, tool wear and sound.
 /// </summary>
 public static class MoltenChisel {
   /// <summary>True when <paramref name="stack"/> is a tool of kind <paramref name="tool"/>.</summary>
@@ -43,14 +40,8 @@ public static class MoltenChisel {
       EnumTool.Chisel
     ) && IsTool(byPlayer.Entity?.LeftHandItemSlot?.Itemstack, EnumTool.Hammer);
 
-  /// <summary>
-  /// The metal-bit recovery stack for <paramref name="units"/> of <paramref name="metalCode"/> at
-  /// <paramref name="temperature"/> °C, at <paramref name="unitsPerBit"/> units per bit and mapped to
-  /// the solid drop code by <see cref="MetalRegistry.SolidDropOf"/>. When the solid item does not
-  /// resolve, falls back to the metal's recovery item through
-  /// <see cref="MetalRegistry.FallbackOf"/> if <paramref name="slagFallback"/> is set, else returns
-  /// <c>null</c>. Used by every chisel and break drop path.
-  /// </summary>
+  /// <summary>The metal-bit recovery stack for <paramref name="units"/> of <paramref name="metalCode"/>,
+  /// or <c>null</c> when the solid item does not resolve and no slag fallback applies.</summary>
   public static ItemStack? BuildRecovery(
     IWorldAccessor world,
     AssetLocation metalCode,
@@ -75,15 +66,8 @@ public static class MoltenChisel {
     return drop;
   }
 
-  /// <summary>
-  /// Runs the chisel-out interaction against <paramref name="target"/>. On
-  /// <see cref="ChiselOutcome.Chiseled"/> the hardened content has been chipped out and given to the
-  /// player, or spawned at <paramref name="yOffset"/> when the inventory is full, the chisel damaged
-  /// (unless <paramref name="damageChisel"/> is false or the player is in creative) and
-  /// <paramref name="sound"/> played. On <see cref="ChiselOutcome.Blocked"/> the block error, if any,
-  /// is sent. All world mutation is server-side; the outcome is still returned on the client so the
-  /// caller can claim the click for prediction.
-  /// </summary>
+  /// <summary>Runs the chisel-out interaction against <paramref name="target"/> and returns the
+  /// outcome; all world mutation is server-side.</summary>
   public static ChiselOutcome TryChisel(
     IWorldAccessor world,
     IPlayer byPlayer,

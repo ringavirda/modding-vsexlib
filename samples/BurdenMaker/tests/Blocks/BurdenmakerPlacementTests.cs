@@ -11,11 +11,8 @@ using Xunit;
 
 namespace BurdenMaker.Tests;
 
-/// <summary>
-/// The block-placement path itself (<see cref="BlockFilledMegastructure.OnBlockPlaced"/>): nothing on
-/// <c>OnBlockPlaced</c>/<c>Initialize</c> removes or replaces the principal, and every footprint filler
-/// lands with it.
-/// </summary>
+/// <summary>The block-placement path: nothing on <c>OnBlockPlaced</c>/<c>Initialize</c> removes or
+/// replaces the principal, and every footprint filler lands with it.</summary>
 public class BurdenmakerPlacementTests {
   [Fact]
   public void Placing_the_burdenmaker_from_its_item_leaves_the_principal_and_every_filler_standing() {

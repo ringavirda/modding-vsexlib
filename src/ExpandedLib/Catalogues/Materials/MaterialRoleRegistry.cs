@@ -7,22 +7,16 @@ namespace ExpandedLib.Catalogues;
 
 /// <summary>
 /// Process-wide catalogue of material-role assignments (<see cref="MaterialRoleDef"/>), consulted to
-/// tell flux, fuel, ore, scrap and charge apart. Populated at <c>AssetsFinalize</c> by
-/// <see cref="MaterialRoleLoader"/> from every domain's <c>config/materialroles.json</c> plus any
-/// contributor from <see cref="RegisterContributor"/>. An item has a role when a def under that role
-/// matches by exact domain-normalised <see cref="MaterialRoleDef.Code"/> or by domain-blind
-/// <see cref="MaterialRoleDef.PathPrefix"/>; a read before the load returns false rather than throwing.
+/// tell flux, fuel, ore, scrap and charge apart. A read before the load returns false rather than
+/// throwing.
 /// </summary>
 public static class MaterialRoleRegistry {
-  // Role token (case-insensitive) -> the defs granting it. Several defs can grant one role: fuel is
-  // coke plus charcoal, ironore is the crushed-iron prefix plus per-mod ore codes.
+  // Role token (case-insensitive) -> the defs granting it. Several defs can grant one role.
   private static readonly Dictionary<string, List<MaterialRoleDef>> _byRole =
     new(StringComparer.OrdinalIgnoreCase);
 
   /// <summary>Code contributions to this registry, invoked by <see cref="MaterialRoleLoader"/> after
-  /// its JSON overlay on every load, so a mod-gated registration survives the loader's clear and
-  /// re-applies on each world load. <see cref="RegisterContributor"/>/<see cref="ClearContributors"/>
-  /// forward to this.</summary>
+  /// its JSON overlay on every load.</summary>
   public static CatalogueContributors Contributors { get; } = new();
 
   #region Registration
@@ -46,10 +40,8 @@ public static class MaterialRoleRegistry {
   /// world load; contributors are kept and re-invoked after the clear.</summary>
   public static void Clear() => _byRole.Clear();
 
-  /// <summary>Forwards to <see cref="Contributors"/>' <c>Register</c>: a code contributor invoked with
-  /// the api after the JSON overlay on every <see cref="MaterialRoleLoader.Load"/>, for role
-  /// registrations JSON cannot express such as gating on <c>ModLoader.IsModEnabled</c>. Call once from
-  /// the mod's <c>Start</c>.</summary>
+  /// <summary>Forwards to <see cref="Contributors"/>' <c>Register</c>. Call once from the mod's
+  /// <c>Start</c>.</summary>
   public static void RegisterContributor(Action<ICoreAPI> contributor) =>
     Contributors.Register(contributor);
 
@@ -132,7 +124,7 @@ public static class MaterialRoleRegistry {
       && path.StartsWith(def.PathPrefix, StringComparison.Ordinal)
     );
 
-  // Domain-normalise so "lime" (defaulting to game) and "game:lime" key alike.
+  // Domain-normalises "lime" (defaulting to game) and "game:lime" alike.
   private static string Normalize(string code) =>
     new AssetLocation(code).ToString();
 

@@ -7,30 +7,19 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Expands code-first block definitions into the concrete block codes they register, so a test can stand
-/// up a world holding the blocks the mods ship rather than ones it invented. Runs the definitions rather
-/// than restating them, as the goldens and <see cref="BlockCodeEmitter"/> do.
+/// Expands code-first block definitions into the concrete block codes they register.
 /// </summary>
 public static class DefinitionCodes {
-  /// <summary>
-  /// States for a variant group the game owns rather than the mod definitions. Sampled rather than
-  /// enumerated, because the states live in vanilla's assets and there is no registry headless:
-  /// <c>horizontalorientation</c> is exact (a fixed four), the rest take one representative, which is
-  /// enough to prove a code has a migration path. Kept identical to
-  /// extools' <c>tools/gen-released-codes.py</c>'s sampling, so the released manifest and the live registry
-  /// expand by one rule rather than two that can drift.
-  /// </summary>
+  /// <summary>States for a variant group the game owns; sampled, not enumerated.
+  /// <c>horizontalorientation</c> is exact (four); other groups take one representative.</summary>
   private static readonly Dictionary<string, string[]> PropertySamples = new() {
     ["horizontalorientation"] = ["north", "east", "south", "west"],
     ["rockwithdeposit"] = ["granite"],
     ["rock"] = ["granite"],
   };
 
-  /// <summary>
-  /// One concrete registered block: its domain-qualified code and the variant map that produced it.
-  /// Migrations read the variant map - <c>PipeMigration</c> gates on <c>block.Variant["type"]</c> and
-  /// skips every pipe in a world of code-only blocks.
-  /// </summary>
+  /// <summary>One concrete registered block: its domain-qualified code and the variant map that
+  /// produced it.</summary>
   public sealed record Registered(
     string Code,
     (string Key, string Value)[] Variants
@@ -38,11 +27,8 @@ public static class DefinitionCodes {
 
   /// <summary>Every concrete block <paramref name="def"/> registers, with its variant map.</summary>
   /// <param name="propertyGroupsAsWildcard">
-  /// Renders a worldproperty-sourced group as a literal <c>*</c> instead of its
-  /// <see cref="PropertySamples"/> representative, making the result a pattern to match against rather
-  /// than a concrete code. Use it to test whether a code names a registered block: the samples are one
-  /// state out of the game's many, so equality would reject <c>molten-canal-moldpedestal-basalt-s</c> as
-  /// unregistered purely because the sample is granite.
+  /// Renders a worldproperty-sourced group as a literal <c>*</c>, for matching a code against the
+  /// pattern, not enumerating concrete states.
   /// </param>
   public static IEnumerable<Registered> Expand(
     ExBlockDef def,
@@ -91,11 +77,8 @@ public static class DefinitionCodes {
       .SelectMany(d => Expand(d))
       .DistinctBy(r => r.Code);
 
-  /// <summary>
-  /// The same expansion as <see cref="ForDomain"/> but with worldproperty groups left as <c>*</c>, for a
-  /// caller testing membership of a code rather than enumerating the registry. Match with
-  /// <c>WildcardUtil</c>; see <see cref="Expand"/>'s parameter for why equality is wrong here.
-  /// </summary>
+  /// <summary>The same expansion as <see cref="ForDomain"/> but with worldproperty groups left as
+  /// <c>*</c>, for testing code membership.</summary>
   public static IEnumerable<string> PatternsForDomain(
     string domain,
     Assembly asm

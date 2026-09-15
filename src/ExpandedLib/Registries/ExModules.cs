@@ -6,42 +6,24 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// Discovers every module in the process - an assembly carrying <c>[assembly: ExModule]</c> - and
-/// orders each host's modules by <c>Requires</c>, keeping only the ones whose shipping mod is
-/// enabled on the world being asked about.
-/// </summary>
-/// <remarks>
-/// Discovery reads the assemblies the runtime has already loaded rather than any mod folder, so it
-/// works the same for a folder mod and a zipped one, and needs no path handling: the game loads
-/// every assembly in a mod folder while looking for its mod systems. See the wiki's Modules page.
-/// </remarks>
+/// <summary>Discovers every module in the process and orders each host's modules by
+/// <c>Requires</c>, keeping only the ones whose shipping mod is enabled.</summary>
 public static class ExModules {
-  // Memoised while AppDomain.CurrentDomain.GetAssemblies().Length is unchanged since the last scan;
-  // rescanned whenever it differs, so an assembly loaded mid-process (a test loading one after the
-  // first call, or the game's own mod folders finishing later than exlib's) is found on the very
-  // next call rather than never. Never cached across a count change - a shrink is as much a change
-  // as a growth, though the runtime does not actually unload assemblies.
+  // Rescanned whenever the loaded assembly count changes since the last scan.
   private static IReadOnlyList<ExModuleInfo>? _all;
   private static int _lastAssemblyCount = -1;
 
-  // Entry-point ctor-validation errors, one list per ExModuleInfo instance rather than per id: two
-  // assemblies may legally declare the same id until Order's dedup runs, and each keeps its own
-  // entry-point errors independent of that.
+  // Entry-point ctor-validation errors, one list per ExModuleInfo instance.
   private static Dictionary<ExModuleInfo, List<string>> _entryPointErrors =
     new();
 
-  /// <summary>Every module of every host, discovered once from the assemblies the runtime has
-  /// loaded, sorted by assembly full name. Not filtered by whether its mod is enabled; see
-  /// <see cref="Enabled"/> for that.</summary>
+  /// <summary>Every module of every host, discovered once from the loaded assemblies, sorted by
+  /// assembly full name. Not filtered by whether its mod is enabled.</summary>
   public static IReadOnlyList<ExModuleInfo> All => Discover();
 
   /// <summary>
-  /// <paramref name="host"/>'s modules whose shipping mod (<see cref="ExModuleInfo.Mod"/>) is
-  /// enabled on <paramref name="api"/>'s world, in dependency order (see <see cref="Order"/>). A
-  /// module whose mod is not enabled is left out and logged once at Notification level through
-  /// <paramref name="api"/>'s logger, naming both. Empty (with no errors) for a host with no enabled
-  /// modules, which is the normal case.
+  /// <paramref name="host"/>'s modules whose shipping mod is enabled on <paramref name="api"/>'s
+  /// world, in dependency order.
   /// </summary>
   public static ExModuleSet For(ICoreAPI api, string host) {
     var candidates = new List<ExModuleInfo>();
@@ -73,8 +55,7 @@ public static class ExModules {
   }
 
   /// <summary>Every module of every host whose shipping mod is enabled on <paramref name="api"/>'s
-  /// world, unordered. Used to set <see cref="FlagKey"/> for every module a world actually runs,
-  /// regardless of which host drives it.</summary>
+  /// world, unordered.</summary>
   public static IReadOnlyList<ExModuleInfo> Enabled(ICoreAPI api) =>
     [.. All.Where(m => api.ModLoader.IsModEnabled(m.Mod))];
 
@@ -89,16 +70,8 @@ public static class ExModules {
   /// condition to gate on.</summary>
   public static string FlagKey(string moduleId) => "exlib:module:" + moduleId;
 
-  /// <summary>
-  /// Orders <paramref name="modules"/> by <c>Requires</c> (Kahn's algorithm; ties broken by id,
-  /// <see cref="StringComparer.OrdinalIgnoreCase"/> throughout) and reports what could not be
-  /// placed. Two modules sharing one id (any case) are a duplicate: the first (in
-  /// <paramref name="modules"/> order) stands, the rest are excluded, one error naming the first
-  /// and each excluded one's assembly. A module naming a <c>Requires</c> id not present among the
-  /// survivors is excluded on its own; every module still part of a cycle after that is excluded
-  /// together, one error naming them all. Pure - takes no dependency on discovery, for tests to
-  /// build hand-made sets against.
-  /// </summary>
+  /// <summary>Orders <paramref name="modules"/> by <c>Requires</c> (Kahn's algorithm; ties broken
+  /// by id) and reports what could not be placed.</summary>
   internal static ExModuleSet Order(IEnumerable<ExModuleInfo> modules) {
     var errors = new List<string>();
     var byId = new Dictionary<string, ExModuleInfo>(

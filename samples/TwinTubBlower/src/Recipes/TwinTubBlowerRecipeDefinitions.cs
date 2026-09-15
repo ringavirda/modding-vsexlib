@@ -4,11 +4,8 @@ using static ExpandedLib.Definitions.ExIngredients;
 
 namespace TwinTubBlower.Recipes;
 
-/// <summary>
-/// Code-first grid recipe for the blower: two leather-topped wooden tubs on a nailed frame, driven by a
-/// plain vanilla wood axle (<c>BEBehaviorMPFillerPort</c>), so the recipe needs nothing beyond vanilla
-/// materials and exlib's own ingredient helpers.
-/// </summary>
+/// <summary>Code-first grid recipe for the blower: two leather-topped wooden tubs on a nailed
+/// frame, driven by a vanilla wood axle.</summary>
 public class TwinTubBlowerRecipeDefinitions : IExRecipeDefProvider {
   public static IEnumerable<ExRecipeDef> Definitions(string domain) =>
     [
@@ -18,9 +15,7 @@ public class TwinTubBlowerRecipeDefinitions : IExRecipeDefProvider {
           r.Name("Twin Tub Blower")
             .Pattern("LPL,PNP,_H_")
             .Size(3, 3)
-            // `game:leather-normal-plain`, the spelling vanilla's own armour and jerkin recipes use.
-            // Leather is fully variant-grouped (type x colour) with no concrete `game:leather` item
-            // registered, so a bare `leather` fails outright and the recipe never resolves.
+            // No concrete `game:leather` item exists; must use the fully qualified variant code.
             .Ingredient(
               "L",
               i => i.Item("game:leather-normal-plain").Quantity(2)

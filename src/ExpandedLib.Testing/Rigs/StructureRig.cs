@@ -16,13 +16,8 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// Stands up a mega-block's multiblock footprint in a headless world: every layout cell gets a block
-/// whose code satisfies it, so the anchor's own monitor tick observes <c>InCompleteBlockCount == 0</c>
-/// and sets <see cref="BlockEntityMultiblockStructure.StructureComplete"/> itself. Nothing is forced, so
-/// a wrong layout, rotation or anchor shows up as a structure that never completes.
-/// The layout comes from the anchor's <see cref="ExBlockDef"/>, whose attributes are attached to the
-/// placed block because a <see cref="TestBlocks.Configure"/> block carries none. Call order:
-/// <see cref="Occupy"/> the cells the test cares about, then <see cref="Raise"/>,
-/// <see cref="TestWorld.Initialize"/> and <see cref="AwaitCompletion"/> - or <see cref="Complete"/>.
+/// whose code satisfies it. Call order: <see cref="Occupy"/>, then <see cref="Raise"/>,
+/// <see cref="TestWorld.Initialize"/> and <see cref="AwaitCompletion"/>, or <see cref="Complete"/>.
 /// </summary>
 public sealed class StructureRig {
   private static readonly AssetLocation AirCode = new("game:air");
@@ -40,16 +35,15 @@ public sealed class StructureRig {
   public int Angle { get; }
 
   /// <summary>
-  /// The world the structure stands in, exposed for callers that did not build it themselves and need
-  /// to register a block type or a block-entity factory, or advance the clock.
+  /// The world the structure stands in, exposed for callers that need to register a block type or
+  /// factory, or advance the clock.
   /// </summary>
   public TestWorld World => _world;
 
   /// <summary>
-  /// Every cell of the rotated layout: world position and the (possibly wildcard) code it wants -
-  /// vanilla's own rotated offset table. Codes for parts marked oriented turn with the structure, so a
-  /// cell authored <c>iiex:hopper-tall-north</c> wants a <c>-west</c> hopper at 90 deg; all others keep
-  /// their authored, possibly domainless, form (<see cref="MultiblockFacings"/>).
+  /// Every cell of the rotated layout: world position and the (possibly wildcard) code it wants.
+  /// Oriented parts turn with the structure; other codes keep their authored form
+  /// (<see cref="MultiblockFacings"/>).
   /// </summary>
   public IReadOnlyList<(BlockPos Pos, string Wanted)> Cells { get; }
 
@@ -68,13 +62,11 @@ public sealed class StructureRig {
   }
 
   /// <summary>
-  /// Prepares a rig around an already-placed <paramref name="anchor"/>: attaches
-  /// <paramref name="def"/>'s attributes to the anchor's block so the production code can load the
-  /// layout, then resolves the layout rotated by <paramref name="angle"/> into world cells.
+  /// Prepares a rig around an already-placed <paramref name="anchor"/>, attaching
+  /// <paramref name="def"/>'s attributes to it and resolving the layout rotated by
+  /// <paramref name="angle"/> into world cells.
   /// </summary>
-  /// <param name="angle">The angle the machine derives from its block variant - north 0, west 90,
-  /// south 180, east 270, plus any per-machine offset (the Bessemer control and the cowper stove face
-  /// <c>angle + 180</c>). A wrong angle puts the cells where the machine does not look.</param>
+  /// <param name="angle">North 0, west 90, south 180, east 270, plus any per-machine offset.</param>
   public static StructureRig Around(
     TestWorld world,
     BlockEntityMultiblockStructure anchor,
@@ -96,33 +88,26 @@ public sealed class StructureRig {
         $"Block definition '{def.Code}' is not a multiblock: no 'multiblockStructure' attribute."
       );
 
-    // The shipped attributes are what the machine's own UpdateStructureRotation reads; without them
-    // _structure stays null and the monitor tick returns early.
+    // UpdateStructureRotation reads these attributes off the block.
     anchor.Block.Attributes = new JsonObject(attributes);
 
-    // Authored glyph per block number, read straight off the JSON so a domainless or wildcard code
-    // keeps its authored form instead of being re-domained by an AssetLocation round trip. Demand()
-    // applies the rotation rewrite.
+    // Authored glyph per block number, read straight off the JSON to avoid AssetLocation re-domaining.
     var codeByNumber = ((JObject)layout["blockNumbers"]!)
       .Properties()
       .ToDictionary(p => (int)p.Value!, p => p.Name);
 
-    // Vanilla MultiblockStructure, deserialized and rotated the way the production block entity does
-    // at placement.
+    // Vanilla MultiblockStructure, rotated the way the production block entity does at placement.
     MultiblockStructure structure = new JsonObject(
       layout
     ).AsObject<MultiblockStructure>()!;
     structure.InitForUse(angle);
 
-    // The oriented-part table the layout ships. Without it the rig fills and counts by the authored
-    // code while the machine checks the rotated one.
+    // The oriented-part table the layout ships.
     MultiblockFacings facings = MultiblockFacings.FromAttributes(
       new JsonObject(attributes)
     );
 
-    // The connector demands the layout ships, turned the same way. Without this mirror the rig counts a
-    // backwards node as satisfied while the machine counts it missing, and Complete() throws "0 of N
-    // cells unsatisfied" - a failure that invites loosening the production check to make it go away.
+    // The connector demands the layout ships, turned the same way.
     MultiblockConnectors connectors = MultiblockConnectors.FromAttributes(
       new JsonObject(attributes)
     );
@@ -161,9 +146,7 @@ public sealed class StructureRig {
 
   /// <summary>
   /// What a cell authored as <paramref name="authored"/> requires once the structure is turned to
-  /// <paramref name="angle"/> - the rig's half of <c>BlockEntityMultiblockStructure.WantedCodeAt</c>. An
-  /// identity rotation returns the authored string unchanged, because an <see cref="AssetLocation"/>
-  /// round trip re-domains a domainless glyph such as <c>@(air|coalpile|furnace-chargepile)</c>.
+  /// <paramref name="angle"/>.
   /// </summary>
   private static string Demand(
     MultiblockFacings facings,
@@ -178,17 +161,13 @@ public sealed class StructureRig {
     return rotated.Equals(code) ? authored : rotated.ToString();
   }
 
-  /// <summary>
-  /// The world position of a structure-local offset at this rig's rotation - the same mapping the
-  /// machine's own <c>GetGlobalPos</c> performs, so a cell can be addressed by authored coordinates.
-  /// </summary>
+  /// <summary>The world position of a structure-local offset at this rig's rotation.</summary>
   public BlockPos Cell(int localX, int localY, int localZ) =>
     ExOrientation.GlobalPos(_anchor.Pos, localX, localY, localZ, Angle);
 
   /// <summary>
-  /// Places a real, functional block (and its entity) at <paramref name="pos"/> before the rig fills
-  /// the footprint. <see cref="Raise"/> never replaces it: if its code does not satisfy what the layout
-  /// wants there, the structure does not complete.
+  /// Places a real, functional block (and its entity) at <paramref name="pos"/>. <see cref="Raise"/>
+  /// never replaces it.
   /// </summary>
   public StructureRig Occupy(BlockPos pos, Block block, BlockEntity? be = null) {
     _world.Place(pos, block, be);
@@ -198,10 +177,8 @@ public sealed class StructureRig {
   }
 
   /// <summary>
-  /// Fills every empty footprint cell with a stand-in block matching what that cell wants. Cells
-  /// satisfied by air (an open shaft, an <c>@(air|coalpile)</c> fuel slot) stay empty; filling them
-  /// would pass the code check while plugging a cell the machine expects open. An occupied cell is
-  /// never replaced, so a conflict surfaces through <see cref="Missing"/> instead. Idempotent.
+  /// Fills every empty footprint cell with a stand-in block matching what that cell wants; an occupied
+  /// cell is never replaced. Idempotent.
   /// </summary>
   public StructureRig Raise() {
     foreach (var (pos, wanted) in Cells) {
@@ -210,14 +187,11 @@ public sealed class StructureRig {
         continue; // occupied - the anchor itself, or a block the test placed deliberately
 
       AssetLocation concrete = Concretize(new AssetLocation(wanted));
-      // Compared on path alone: a shaft legend is domain-wildcarded (`*:@(air|coalpile|...)`), so its
-      // first branch concretises to `*:air`, which is not equal to `game:air`.
+      // Compared on path alone: a domain-wildcarded shaft legend concretises to `*:air`, not `game:air`.
       if (concrete.Path == AirCode.Path)
         continue; // an air-satisfied slot: leaving the cell empty is the fill
 
-      // A cell the layout demands a connector on needs a stand-in that is on a network and opens the
-      // right way; a plain block matches the code and answers no face, so the structure would never
-      // complete. A test that wants the backwards case Occupies the cell before raising.
+      // A connector cell needs a stand-in on a network that opens the right way.
       _world.Place(
         pos,
         _connectorFaces.TryGetValue(pos, out string[]? faces)
@@ -229,9 +203,8 @@ public sealed class StructureRig {
   }
 
   /// <summary>
-  /// How many footprint cells are still unsatisfied, counted against the same rotated demand the
-  /// machine's own completion check uses (see <see cref="Cells"/>), so this and <c>StructureComplete</c>
-  /// cannot disagree. Non-zero after <see cref="Raise"/> means layout and world disagree.
+  /// How many footprint cells are still unsatisfied against the machine's own completion demand;
+  /// non-zero after <see cref="Raise"/> means layout and world disagree.
   /// </summary>
   public int Missing {
     get {
@@ -244,11 +217,9 @@ public sealed class StructureRig {
   }
 
   /// <summary>
-  /// Runs the machine's own completion monitor until it observes the finished footprint, and returns
-  /// whether it did, so false means the machine cannot see the structure the rig built. The tick driven
-  /// here is the monitor, never the production one; the block entity must already be
-  /// <see cref="TestWorld.Initialize">initialized</see>, and the monitor runs on a 3 s interval, so one
-  /// interval is advanced per attempt.
+  /// Runs the machine's own completion monitor until it observes the finished footprint. The block
+  /// entity must already be <see cref="TestWorld.Initialize">initialized</see>; each attempt advances
+  /// one 3 s interval.
   /// </summary>
   public bool AwaitCompletion(int maxMonitorTicks = 2) {
     for (int i = 0; i < maxMonitorTicks && !_anchor.StructureComplete; i++)
@@ -272,8 +243,8 @@ public sealed class StructureRig {
   }
 
   /// <summary>
-  /// A per-cell breakdown of what each unsatisfied cell wants and what it holds - the message
-  /// <see cref="Complete"/> throws with, exposed for fixtures that build a scene over a raised structure.
+  /// A per-cell breakdown of what each unsatisfied cell wants and what it holds; the message
+  /// <see cref="Complete"/> throws with.
   /// </summary>
   public string MissingReport => UnsatisfiedReport();
 
@@ -286,11 +257,8 @@ public sealed class StructureRig {
     return string.Concat(lines);
   }
 
-  /// <summary>
-  /// Why the cell at <paramref name="pos"/> does not satisfy <paramref name="wanted"/>, or null when it
-  /// does - the rig's mirror of the machine's own two-part check: the code, then the outward faces the
-  /// layout demands a connector on.
-  /// </summary>
+  /// <summary>Why the cell at <paramref name="pos"/> does not satisfy <paramref name="wanted"/>, or
+  /// null when it does.</summary>
   private string? Unsatisfied(BlockPos pos, string wanted) {
     Block have = _world.GetBlock(pos);
     if (!WildcardUtil.Match(new AssetLocation(wanted), have.Code))
@@ -313,8 +281,7 @@ public sealed class StructureRig {
 
   /// <summary>
   /// A stand-in for a connector cell: a network node whose connector faces are exactly the ones the
-  /// layout demands there. Cached per code and face set, since two cells sharing a code may face
-  /// opposite ways - which is the whole point of marking the connector rather than pinning the variant.
+  /// layout demands there. Cached per code and face set.
   /// </summary>
   private Block ConnectorStandIn(AssetLocation code, string[] faces) {
     string token = string.Concat(faces);
@@ -332,7 +299,7 @@ public sealed class StructureRig {
     return block;
   }
 
-  /// <summary>One stand-in block per distinct code, so a 100-cell footprint registers a handful of blocks.</summary>
+  /// <summary>One stand-in block per distinct code.</summary>
   private Block StandIn(AssetLocation code) {
     if (_standIns.TryGetValue(code.ToString(), out Block? cached))
       return cached;
@@ -344,17 +311,14 @@ public sealed class StructureRig {
 
   /// <summary>
   /// Turns a wanted code into a concrete one that satisfies it: an alternation <c>@(air|coalpile)</c>
-  /// collapses to its first branch, and <c>*</c> becomes a literal segment. The result only has to
-  /// match the wildcard, since a footprint cell is checked by code alone.
+  /// collapses to its first branch, and <c>*</c> becomes a literal segment.
   /// </summary>
   private static AssetLocation Concretize(AssetLocation wanted) =>
     new(wanted.Domain, FirstAlternative(wanted.Path).Replace("*", "x"));
 
   /// <summary>
-  /// Collapses every alternation group down to its first branch, counting bracket depth. Vanilla treats
-  /// the inside of <c>@( )</c> as a regex, so a branch may carry its own parenthesised alternation
-  /// (<c>brickcourse-.*-(black|tan)</c>); scanning to the first <c>)</c> would stop inside it and leave
-  /// a stray bracket that matches nothing. Branches are resolved recursively.
+  /// Collapses every alternation group down to its first branch, tracking bracket depth to handle a
+  /// branch with its own nested alternation. Resolved recursively.
   /// </summary>
   private static string FirstAlternative(string path) {
     var sb = new StringBuilder();
@@ -369,7 +333,7 @@ public sealed class StructureRig {
       int open = tagged ? i + 1 : i;
       int close = MatchingParen(path, open);
       if (close < 0) {
-        sb.Append(path[i++]); // unbalanced - leave it alone rather than mangle it further
+        sb.Append(path[i++]); // unbalanced - left alone
         continue;
       }
 
@@ -413,11 +377,9 @@ public sealed class StructureRig {
 /// <summary>Test-only hook for a fixture that needs a structure's rotation recomputed without going
 /// through <see cref="StructureRig"/>.</summary>
 public static class StructureTestHooks {
-  /// <summary>Recomputes <paramref name="structure"/>'s rotation, the same protected path a load or
-  /// monitor tick uses. When <paramref name="orientationOrSide"/> is given, it is written to whichever
-  /// orientation-bearing variant key ("side" or "orientation") the block's variant map already carries
-  /// before the recompute, so a test can rotate and re-derive the angle in one call; when null, the
-  /// block's current variant is read as-is.</summary>
+  /// <summary>Recomputes <paramref name="structure"/>'s rotation, the same path a load or monitor tick
+  /// uses. When <paramref name="orientationOrSide"/> is given, it is written to the block's variant map
+  /// first; when null, the current variant is read as-is.</summary>
   public static void ApplyStructureRotation(
     this BlockEntityMultiblockStructure structure,
     string? orientationOrSide = null

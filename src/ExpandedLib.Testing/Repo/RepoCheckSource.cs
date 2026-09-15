@@ -12,22 +12,17 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// An <see cref="ICheckSource"/> over this repository's source tree, for the same checks a mod's
-/// xUnit suite runs to see against real committed assets rather than a stub. Reads exactly what the
-/// harness validators in <c>Checks/</c> read today: code-first defs through <see cref="ExDefinitions"/>
-/// (scanning each domain's assembly, resolved via its <c>[assembly: ExDomain]</c> declaration), and
-/// lang straight off the tree through <see cref="RepoPaths"/> - the harness's checks never had a
-/// code-first path for lang, since it is authored as plain JSON.
+/// An <see cref="ICheckSource"/> over this repository's source tree, reading real committed assets
+/// rather than a stub. Resolves code-first defs through <see cref="ExDefinitions"/> and lang through
+/// <see cref="RepoPaths"/>.
 /// </summary>
 public sealed class RepoCheckSource : ICheckSource {
   private readonly string[] _domains;
   private readonly Dictionary<string, Assembly> _assemblies;
 
-  /// <param name="repoRoot">Passed through to <see cref="DefinitionGoldens.RepoRootOverride"/> so
-  /// every path this source resolves is relative to it.</param>
-  /// <param name="domains">The domains this source covers, e.g. <c>"exlib", "iiex", "siex"</c>. Each
-  /// must have an already-loaded assembly declaring <c>[assembly: ExDomain(domain)]</c> - normally
-  /// true simply by referencing that mod's project from the test project this runs in.</param>
+  /// <param name="repoRoot">Passed through to <see cref="DefinitionGoldens.RepoRootOverride"/>.</param>
+  /// <param name="domains">The domains this source covers; each must have an already-loaded
+  /// assembly declaring <c>[assembly: ExDomain(domain)]</c>.</param>
   public RepoCheckSource(string repoRoot, params string[] domains) {
     DefinitionGoldens.RepoRootOverride = repoRoot;
     _domains = domains;
@@ -86,9 +81,7 @@ public sealed class RepoCheckSource : ICheckSource {
   public IEnumerable<ExBlockDef> BlockDefinitions(string domain) =>
     DefinitionGoldens.Collect(domain, _assemblies[domain]).OfType<ExBlockDef>();
 
-  // Resolves each domain to the assembly declaring it, via [assembly: ExDomain(domain)] on whichever
-  // already-loaded assembly carries it - normally true simply by referencing that mod's project from
-  // the test project this source runs in.
+  // Resolves each domain to the assembly declaring [assembly: ExDomain(domain)].
   private static Dictionary<string, Assembly> ResolveAssemblies(
     string[] domains
   ) {

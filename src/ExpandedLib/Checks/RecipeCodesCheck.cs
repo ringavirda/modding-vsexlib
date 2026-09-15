@@ -8,14 +8,8 @@ using Vintagestory.API.Util;
 namespace ExpandedLib.Checks;
 
 /// <summary>
-/// Checks that every grid recipe's block output names a block the mod registers. An output is a
-/// concrete block rather than a wildcard selector, so it must be exact; one naming a dead code does
-/// not throw, the recipe simply never resolves and the block stops being craftable.
-/// <para>
-/// Scoped to block outputs in the mod's own domain, matched against <see cref="ICheckSource.BlockCodes"/>.
-/// An item output is not covered here, and a <c>game:</c> output belongs to vanilla's own manifest,
-/// not this check.
-/// </para>
+/// Checks that every grid recipe's block output in the mod's own domain names a block the mod
+/// registers, matched against <see cref="ICheckSource.BlockCodes"/>. Item outputs are not covered.
 /// </summary>
 public static class RecipeCodesCheck {
   /// <summary>Every recipe output in <paramref name="domain"/> that names no registered block, as the check's <see cref="CheckResult"/>.</summary>

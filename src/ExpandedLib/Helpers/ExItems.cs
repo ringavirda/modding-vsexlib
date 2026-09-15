@@ -3,19 +3,11 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Helpers;
 
-/// <summary>
-/// Shared item-stack lookups for interaction help. Results are cached in the API's
-/// <c>ObjectCache</c>, whose lifetime is the game session/world; a plain static cache
-/// would hand out stacks of a previous world's items after rejoining.
-/// </summary>
+/// <summary>Shared item-stack lookups for interaction help, cached in the API's <c>ObjectCache</c>.</summary>
 public static class ExItems {
   private const string WrenchCacheKey = "exlib:wrenchStacks";
 
-  /// <summary>
-  /// One stack per registered wrench item (code path containing "wrench", the same test
-  /// the engine repair applies to the held tool), for rotate and repair interaction-help
-  /// icons.
-  /// </summary>
+  /// <summary>Returns one stack per registered wrench item, for rotate and repair interaction-help icons.</summary>
   public static ItemStack[] WrenchStacks(IWorldAccessor world) {
     if (
       world.Api.ObjectCache.TryGetValue(WrenchCacheKey, out object? cached)

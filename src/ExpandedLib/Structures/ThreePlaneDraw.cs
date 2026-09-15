@@ -18,8 +18,7 @@ internal static class ThreePlaneDraw {
   /// <param name="originB">World value of each grid's first row; meaning depends on plane.</param>
   /// <param name="options">Reading rules and anchor glyph shared by all three grids.</param>
   /// <param name="cells">Receives every drawn cell, across all three planes, in draw order.</param>
-  /// <param name="transform">Applied to each grid line before <see cref="CellGrid.Add"/> sees it (e.g.
-  /// folding a second anchor spelling to the canonical glyph); identity when omitted.</param>
+  /// <param name="transform">Applied to each grid line before <see cref="CellGrid.Add"/> sees it; identity when omitted.</param>
   /// <returns>The position <see cref="CellGrid.AnchorCell"/> reported in whichever plane drew the
   /// anchor glyph first, or null when no plane drew it.</returns>
   public static (int X, int Y, int Z)? Draw(

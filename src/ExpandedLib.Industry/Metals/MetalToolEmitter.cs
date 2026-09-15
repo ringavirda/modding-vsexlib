@@ -9,24 +9,15 @@ namespace ExpandedLib.Industry.Metals;
 /// The tool half of the generated metal item family: named stat presets, one template per tool type, and
 /// the builder that turns (metal x template x stats) into an <see cref="ExItemDef"/>.
 /// <see cref="MetalFamilyEmitter"/> holds the resource forms and emits both in one pass.
-/// <para>
-/// A metal opts in through <see cref="MetalDef.Tools"/>. Stats are flat: every generated tool of a metal
-/// shares one durability / attack power / mining tier and paints its single mining speed across the
-/// categories it works, never a <c>*byType</c> table, so durability is the only brittleness knob.
-/// Generated tools stay off the vanilla <c>block/metal</c> worldproperty for the reason given on
-/// <see cref="MetalFamilyEmitter"/>.
-/// </para>
 /// </summary>
 internal static class MetalToolEmitter {
   /// <summary>The tool tokens this emitter can build (the <see cref="MetalToolSpec.ToolTypes"/> default
   /// set); a requested type outside this set is skipped.</summary>
   internal static IEnumerable<string> KnownTools => ToolTemplates.Keys;
 
-  /// <summary>
-  /// Every tool def for <paramref name="metal"/> in its owning <paramref name="domain"/>, or nothing when
-  /// the metal makes no tools: it declares no <see cref="MetalDef.Tools"/> spec, or names the <c>none</c>
-  /// preset.
-  /// </summary>
+  /// <summary>Every tool def for <paramref name="metal"/> in its owning <paramref name="domain"/>, or
+  /// nothing when the metal declares no <see cref="MetalDef.Tools"/> spec, or names the <c>none</c>
+  /// preset.</summary>
   internal static IEnumerable<ExItemDef> Emit(MetalDef metal, string domain) {
     if (metal.Tools is not MetalToolSpec spec)
       yield break;
@@ -40,7 +31,7 @@ internal static class MetalToolEmitter {
         yield return ToolItem(metal, domain, token, template, resolved);
   }
 
-  // ---- Tool stats: named presets -> one flat stat block, applied uniformly across the tool set ----
+  // ---- Tool stats: named presets -> flat stat block ----
   private sealed record ToolStats(
     int Durability,
     double AttackPower,
@@ -48,9 +39,7 @@ internal static class MetalToolEmitter {
     double MiningSpeed
   );
 
-  // brittle: gold-tier durability at iron-tier hardness. good: steel-tier. standard: iron-tier, used by a
-  // spec that names no preset. "none" is absent because it resolves to "emit no tools" before a stat
-  // block is looked up.
+  // Presets: brittle=gold-tier, standard=iron-tier (default), good=steel-tier durability/hardness.
   private static readonly IReadOnlyDictionary<string, ToolStats> Presets =
     new Dictionary<string, ToolStats>(StringComparer.OrdinalIgnoreCase) {
       ["brittle"] = new(150, 2.0, 4, 6.0),
@@ -58,9 +47,8 @@ internal static class MetalToolEmitter {
       ["good"] = new(2600, 2.5, 5, 9.0),
     };
 
-  // Resolves a spec to its flat stats, or null when the metal makes no tools (preset "none"). A null or
-  // unrecognised preset falls back to "standard"; an explicit number on the spec overrides only the stat
-  // it names, the rest riding the preset.
+  // Null return means no tools (preset "none"). A null or unrecognized preset falls back to
+  // "standard"; an explicit spec field overrides only the stat it names.
   private static ToolStats? ResolveStats(MetalToolSpec spec) {
     if (
       spec.Preset != null
@@ -83,9 +71,6 @@ internal static class MetalToolEmitter {
   }
 
   // ---- Tool templates: everything about a tool type that does not vary with the metal ----
-  // The vanilla class and ToolType to bind, the iron-equivalent shape and the texture slot the metal
-  // paints, the material categories the tool mines, and the held-animation / behaviour / transform surface
-  // taken from the vanilla itemtype. The metal supplies only its texture and the flat stat block.
   private sealed record ToolTemplate(
     string ToolType,
     string? ItemClass,
@@ -107,9 +92,7 @@ internal static class MetalToolEmitter {
     object TpHand
   );
 
-  // The eight tool types a tool-making metal gets by default. Values transcribed from the vanilla
-  // itemtypes/tool/*.json iron-equivalent variants: shape base, texture slot ("metal" vs "material"),
-  // mining categories, held animations and model transforms.
+  // Values transcribed from vanilla itemtypes/tool/*.json iron-equivalent variants.
   private static readonly IReadOnlyDictionary<
     string,
     ToolTemplate
@@ -540,7 +523,7 @@ internal static class MetalToolEmitter {
       SetsTier: false,
       MiningCategories: [],
       Tags: ["tool", "tool-chisel"],
-      // Vanilla chisel ships no damagedby (ItemChisel spends durability itself, per microblock edit).
+      // Vanilla chisel has no damagedby; ItemChisel spends durability itself.
       DamagedBy: null,
       ExtraBehaviors: [],
       ExtraTextures: [],
@@ -629,8 +612,7 @@ internal static class MetalToolEmitter {
         heldRightReadyAnimation = "scytheReady",
         heldTpUseAnimation = "interactStaticLong",
       },
-      // codePrefixes/disallowedSuffixes drive the scythe's area harvest of crops and tall grass
-      // (vanilla scythe attributes).
+      // codePrefixes/disallowedSuffixes: vanilla scythe area-harvest attributes.
       ExtraAttributes: new {
         heldItemPitchFollow = 0.5,
         codePrefixes = new[]
@@ -708,9 +690,7 @@ internal static class MetalToolEmitter {
 
   #region Tool factory (one builder, driven by the per-type template + the flat stat block)
 
-  // One tool item: {toolToken}-{metalcode} in the metal's owning domain, bound to the vanilla tool class
-  // so mining, durability, tool modes and held animations run unchanged. Everything type-specific comes
-  // from the template; only the texture and the flat stats come from the metal.
+  // One tool item: {toolToken}-{metalcode}, bound to the vanilla tool class.
   private static ExItemDef ToolItem(
     MetalDef m,
     string domain,
@@ -758,7 +738,7 @@ internal static class MetalToolEmitter {
     behaviors.Add(new JObject { ["name"] = "Buffable" });
     def.RootKey("behaviors", behaviors);
 
-    // Held animations + any per-type top-level keys (axe attackRange, saw rotate:false is in the transform).
+    // Held animations plus any per-type top-level keys.
     MergeTop(def, t.TopLevel);
 
     def.Attribute("attachableToEntity", new { categoryCode = "toolholding" })
@@ -775,8 +755,7 @@ internal static class MetalToolEmitter {
     return def;
   }
 
-  // The wall-placeable ground-storage behaviour every tool shares, parameterised only by wallOffY (how
-  // many cells up the tool hangs), the one field that differs across the vanilla tool set.
+  // Ground-storage behaviour shared by every tool; wallOffY is the one field that varies.
   private static JObject GroundStorable(int wallOffY) =>
     JObject.FromObject(
       new {
@@ -805,8 +784,7 @@ internal static class MetalToolEmitter {
       }
     );
 
-  // Merges a POCO's properties as top-level itemtype keys (held*Animation, attackRange). ExItemDef offers
-  // only Attributes, which merges into attributes, so this spreads the blob one top-level key at a time.
+  // Spreads a POCO's properties as top-level itemtype keys (held*Animation, attackRange).
   private static void MergeTop(ExItemDef def, object? topLevel) {
     if (topLevel == null)
       return;

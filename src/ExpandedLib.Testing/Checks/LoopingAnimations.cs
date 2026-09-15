@@ -8,29 +8,21 @@ using System.Text.Json;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Guards the stretch between a looping clip's last keyframe and its first, over one shipped tree's
-/// <c>shapes/</c>. That stretch is not a seam the animator skips over - it is an ordinary interpolation
-/// segment, rendered like any other, because the live frame space is <c>[0, quantityframes)</c> while
-/// the last keyframe sits at <c>quantityframes - 1</c>.
-/// <para>
-/// Author a shaft as a full turn ending back at its starting value and that one-frame segment has to
-/// unwind the whole revolution backwards, which reads in game as the machine snapping to its unbuilt
-/// pose once per cycle. Vanilla's own machines all end a turn one frame short -
-/// <c>360 * (frames - 1) / frames</c> - and set <c>rotShortestDistance</c>. A second rule catches an
-/// element posed only at one end of the clip, which hitches or drifts across the same wrap.
-/// </para>
+/// Guards the stretch between a looping clip's last keyframe and its first, over one shipped
+/// tree's <c>shapes/</c>. That stretch is an ordinary interpolation segment, not a seam the
+/// animator skips over.
 /// </summary>
 public static class LoopingAnimations {
-  /// <summary>Past this the wrap is a real unwind rather than the last slice of the turn. Half a
-  /// revolution is far beyond any legitimate one-frame step and well clear of the small residuals a
-  /// clip carries when its elements are still moving through the loop point.</summary>
+  /// <summary>Threshold (degrees) past which the wrap is treated as a real unwind, not the last
+  /// slice of the turn.</summary>
   private const double UnwindDegrees = 180.0;
 
   private static readonly string[] Axes = ["X", "Y", "Z"];
 
-  /// <summary>Every looping clip in every shape under <paramref name="assetTree"/>'s <c>shapes/</c>: no
-  /// element unwinds a whole turn across the wrap without <c>rotShortestDistance</c>, and no element is
-  /// posed at only one end of the clip. Empty means clean.</summary>
+  /// <summary>Every looping clip in every shape under <paramref name="assetTree"/>'s
+  /// <c>shapes/</c> that unwinds across the wrap without <c>rotShortestDistance</c>, or poses an
+  /// element at only one end of the clip.</summary>
+  /// <returns>Empty when clean.</returns>
   public static IReadOnlyList<string> Check(string assetTree) {
     var offenders = new List<string>();
     foreach (string relative in ShapeFiles(assetTree)) {
@@ -66,10 +58,7 @@ public static class LoopingAnimations {
           }
         }
 
-        // An element keyframed partway through the clip but not at its first keyframe holds that pose
-        // from the loop point until the animator next reaches it, then moves off - a hitch at the same
-        // place every cycle. Its counterpart, keyframed at the start but not at the end, drifts back to
-        // frame 0 across the wrap rather than through the motion the artist drew.
+        // An element keyframed at only one end of the clip hitches or drifts across the wrap.
         int firstFrame = clip.Frames.First();
         int lastFrame = clip.Frames.Last();
         foreach (string element in clip.Elements()) {
@@ -91,9 +80,7 @@ public static class LoopingAnimations {
     return offenders;
   }
 
-  /// <summary>The shape files under <paramref name="assetTree"/>'s <c>shapes/</c> - the premise a caller
-  /// asserts is non-empty, since a path filter that stops matching would otherwise make
-  /// <see cref="Check"/> pass trivially.</summary>
+  /// <summary>The shape files under <paramref name="assetTree"/>'s <c>shapes/</c>.</summary>
   public static IReadOnlyList<string> ShapeFiles(string assetTree) {
     if (!Directory.Exists(assetTree))
       return [];
@@ -115,8 +102,8 @@ public static class LoopingAnimations {
 
   #region Shape reading
 
-  /// <summary>Only clips that say <c>Repeat</c> outright. A clip that stops or eases out at its end
-  /// never renders the wrap segment, so the rule does not apply to it.</summary>
+  /// <summary>Only clips that say <c>Repeat</c> outright; a clip that stops or eases out never
+  /// renders the wrap segment.</summary>
   private static IEnumerable<Clip> LoopingClips(string repoRelativePath) {
     using var doc = JsonDocument.Parse(
       File.ReadAllText(Path.Combine(RepoPaths.Root, repoRelativePath)),
@@ -183,9 +170,8 @@ public static class LoopingAnimations {
       }
     }
 
-    /// <summary>Each element's own first and last poses. The animator resolves keyframes per element,
-    /// so an element's wrap runs between the frames IT is posed at, not the clip's outermost
-    /// frames.</summary>
+    /// <summary>Each element's own first and last poses; the wrap runs between the frames it is
+    /// posed at, not the clip's outermost frames.</summary>
     public IEnumerable<(
       string element,
       JsonElement first,

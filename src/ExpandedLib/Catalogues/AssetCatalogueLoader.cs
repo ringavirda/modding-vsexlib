@@ -5,24 +5,11 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Catalogues;
 
-/// <summary>
-/// Reads a JSON catalogue out of every domain's assets: the plain "read every
-/// <c>assets/&lt;domain&gt;/&lt;pathBegins&gt;*.json</c> into a typed object and tell me what
-/// failed" primitive underneath the metal and liquid registries, and the one
-/// <see cref="ContributedCatalogueLoader{TSet, TRegistry}"/>'s own read step builds on for a
-/// catalogue with C# contributors. Pulls every matching asset, deserializes each to the caller's
-/// catalogue type, and returns them for a registry to key. Must run at <c>AssetsFinalize</c>, after
-/// the VS patch pipeline has merged the raw JSON. The <c>config</c> category it reads is Universal,
-/// so it populates identically on client and server. A malformed asset - including one carrying a
-/// key the type does not declare - is reported and skipped so one bad file does not fail the whole
-/// load.
-/// </summary>
+/// <summary>Reads a JSON catalogue out of every domain's assets, deserializing each matching file
+/// and reporting what failed. Must run at <c>AssetsFinalize</c>.</summary>
 public static class AssetCatalogueLoader {
-  /// <summary>
-  /// One path's read: every asset that parsed, its source location alongside it (same index), the
-  /// count of assets read whether or not they parsed, and one message per one that did not, naming the
-  /// asset.
-  /// </summary>
+  /// <summary>One path's read: every asset that parsed, its source location, the file count, and
+  /// one message per asset that did not parse.</summary>
   /// <typeparam name="T">The catalogue type each asset deserializes to.</typeparam>
   /// <param name="Items">Every asset that parsed, deserialized to <typeparamref name="T"/>.</param>
   /// <param name="Sources">Each item's asset location, same index as <paramref name="Items"/>.</param>
@@ -35,26 +22,16 @@ public static class AssetCatalogueLoader {
     IReadOnlyList<string> Errors
   );
 
-  /// <summary>
-  /// Deserializes every loaded asset whose path begins with <paramref name="pathBegins"/> (across all
-  /// domains) into <typeparamref name="T"/>. Pass a trailing slash (e.g. <c>"config/metals/"</c>) to
-  /// match a directory's contents and not a sibling prefix. An unknown JSON key is a binding failure
-  /// (see <see cref="Read{T}"/>) reported the same as any other malformed asset.
-  /// </summary>
+  /// <summary>Deserializes every loaded asset whose path begins with <paramref name="pathBegins"/>
+  /// (across all domains) into <typeparamref name="T"/>.</summary>
   /// <typeparam name="T">The catalogue type each matching asset deserializes to.</typeparam>
-  /// <param name="api">Only <see cref="ICoreAPI.Assets"/> is used; safe to call from either side.</param>
-  /// <param name="pathBegins">The asset path prefix to match, e.g. <c>"config/metals/"</c>.</param>
   /// <returns>Every asset that parsed. A malformed asset is dropped, not thrown.</returns>
   public static List<T> GetMany<T>(ICoreAPI api, string pathBegins)
     where T : class => [.. Read<T>(api, pathBegins).Items];
 
-  /// <summary>
-  /// As <see cref="GetMany{T}"/>, but keeps each item's source location and every failure, so the
-  /// caller can build a <see cref="CatalogueLoadReport"/> naming exactly what went wrong and where.
-  /// </summary>
+  /// <summary>As <see cref="GetMany{T}"/>, but keeps each item's source location and every
+  /// failure.</summary>
   /// <typeparam name="T">The catalogue type each matching asset deserializes to.</typeparam>
-  /// <param name="api">Only <see cref="ICoreAPI.Assets"/> is used; safe to call from either side.</param>
-  /// <param name="pathBegins">The asset path prefix to match, e.g. <c>"config/metals/"</c>.</param>
   /// <returns>The full read outcome: parsed items, their sources, the file count, and errors.</returns>
   public static ReadResult<T> Read<T>(ICoreAPI api, string pathBegins)
     where T : class {
@@ -73,11 +50,7 @@ public static class AssetCatalogueLoader {
     return new ReadResult<T>(items, sources, files, errors);
   }
 
-  // MissingMemberHandling.Error turns a misspelt or retired key into a JsonSerializationException
-  // naming the member and the file position, rather than a silently-dropped field. A fresh settings
-  // instance per asset: the engine's ToObject<T> may add a domain-specific AssetLocation converter to
-  // the instance it is given, and sharing one across assets from different domains would accumulate a
-  // converter per domain for the life of the process.
+  // A fresh settings instance per asset: ToObject<T> may add a domain-specific converter to it.
   private static T? SafeToObject<T>(IAsset asset, List<string> errors)
     where T : class {
     try {

@@ -3,13 +3,8 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// Sets <see cref="ExMods.FlagKey"/> to <c>true</c> in <c>api.World.Config</c> for every enabled mod, so
-/// a JSON patch's <c>condition</c> can gate on another mod without any C# code. Runs at
-/// <see cref="ExecuteOrder"/> 0.0 in both <see cref="StartPre"/> and <see cref="Start"/>, well ahead of
-/// the JSON patch loader's <c>AssetsLoaded</c> at 0.05. See <see cref="SetFlags"/> for why no
-/// client/server sync is needed and why it runs twice.
-/// </summary>
+/// <summary>Sets <see cref="ExMods.FlagKey"/> to <c>true</c> in <c>api.World.Config</c> for every
+/// enabled mod, ahead of the JSON patch loader.</summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class ExModsModSystem : ModSystem {
   public override double ExecuteOrder() => 0.0;
@@ -18,10 +13,7 @@ public class ExModsModSystem : ModSystem {
 
   public override void Start(ICoreAPI api) => SetFlags(api);
 
-  // api.ModLoader is each side's own local view of the mods enabled on that side, populated before
-  // any ModSystem lifecycle call runs, so client and server each compute the same flag set locally
-  // with no network sync needed. Runs from both StartPre and Start (idempotent, negligible cost)
-  // because World.Config's non-null guarantee as early as StartPre is not certain.
+  // Runs from both StartPre and Start: World.Config may still be null in StartPre.
   private static void SetFlags(ICoreAPI api) {
     var config = api.World?.Config;
     if (config == null)

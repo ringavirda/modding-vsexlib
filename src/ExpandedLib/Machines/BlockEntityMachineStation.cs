@@ -9,30 +9,23 @@ using Vintagestory.GameContent;
 namespace ExpandedLib.Machines;
 
 /// <summary>
-/// Base block entity for a machine the player works through a window: a container whose slots are
-/// declared as <see cref="MachineSlotSpec"/>s, plus the open/close handshake that keeps the server
-/// inventory in step with what the player sees.
-/// <para>
-/// <see cref="BlockEntityContainer"/> routes none of the window packets itself, so every machine that
-/// opens a dialog re-implements the same handshake, the same claim check and the same dialog disposal.
-/// This carries all three once. A machine adds its own actions by overriding
-/// <see cref="OnStationPacket"/>, whose ids start at <see cref="FirstMachinePacketId"/>.
-/// </para>
+/// Base block entity for a machine worked through a window: a container whose slots are declared
+/// as <see cref="MachineSlotSpec"/>s, plus the open/close handshake with the client.
 /// </summary>
 public abstract class BlockEntityMachineStation : BlockEntityContainer {
-  // 1000/1001 are the vanilla openable-container open/close literals, and anything below 1000 is a
-  // slot move the inventory's own network util handles. A machine's own actions start above them.
+  // 1000/1001 are the vanilla open/close packet ids; ids below 1000 belong to the inventory's own
+  // slot-move protocol.
   private const int PacketIdOpen = 1000;
   private const int PacketIdClose = 1001;
 
-  /// <summary>First packet id free for a machine's own actions. Ids below this are the container
+  /// <summary>First packet id free for a machine's own actions; ids below this are the container
   /// protocol.</summary>
   public const int FirstMachinePacketId = 1002;
 
   private MachineStationInventory? _inventory;
   private ExBlockState? _state;
 
-  /// <summary>The slots this machine offers, in window order. Read once, when the inventory is first
+  /// <summary>The slots this machine offers, in window order, read once when the inventory is first
   /// built.</summary>
   protected abstract MachineSlotSpec[] SlotSpecs { get; }
 
@@ -40,8 +33,7 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
   protected ExBlockState Persisted =>
     BlockEntityStateHost.GetOrCreate(this, ref _state, DeclareState);
 
-  /// <summary>Declares the fields this station persists beyond its inventory. Called once, lazily.
-  /// Default: nothing.</summary>
+  /// <summary>Declares the fields this station persists beyond its inventory; called once, lazily.</summary>
   protected virtual void DeclareState(ExBlockState state) { }
 
   public override InventoryBase Inventory =>
@@ -53,17 +45,8 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
   /// <summary>Whether this machine's window is open on this client.</summary>
   protected bool WindowOpen => _dialog != null;
 
-  /// <summary>
-  /// Builds this machine's window. Client-side; called on each open, so it may read whatever state
-  /// the window should open on. Returning null leaves the machine windowless. The returned dialog
-  /// is disposed when the window closes, so every call must return a fresh instance.
-  /// <para>
-  /// The returned dialog must be constructed with this station's <see cref="BlockEntity.Pos"/> and
-  /// must either not override <c>OnGuiClosed</c> or override it and call base: this station relies
-  /// on that base implementation to send the close packet the server needs to close the player's
-  /// inventory.
-  /// </para>
-  /// </summary>
+  /// <summary>Builds this machine's window, client-side, called on each open; the dialog must use
+  /// this station's <see cref="BlockEntity.Pos"/> and call base <c>OnGuiClosed</c>.</summary>
   protected virtual GuiDialogBlockEntity? CreateDialog(ICoreClientAPI capi) =>
     null;
 
@@ -124,8 +107,7 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
 
   #region The window
 
-  /// <summary>Right-click entry point: toggles the window. Does nothing on the server, so a caller
-  /// need not test the side itself.</summary>
+  /// <summary>Right-click entry point: toggles the window; a no-op on the server.</summary>
   public void ToggleWindow(IPlayer byPlayer) {
     if (Api.Side == EnumAppSide.Client)
       ToggleDialog((ICoreClientAPI)Api, byPlayer);
@@ -137,22 +119,19 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
       return;
     }
 
-    // A windowless station opens nothing rather than opening an empty frame, and must not send the
-    // open packet either: the server would put the player into an inventory they cannot see or close.
+    // A windowless station sends no open packet.
     _dialog = CreateDialog(capi);
     if (_dialog == null)
       return;
 
-    // TryOpen refuses a duplicate (GuiDialogBlockEntity.IsDuplicate) by returning false without
-    // opening anything; the dialog is torn down rather than kept as a never-opened placeholder.
+    // A refused TryOpen (duplicate dialog) gets disposed, not kept.
     if (!_dialog.TryOpen()) {
       _dialog.Dispose();
       _dialog = null;
       return;
     }
 
-    // GuiDialogBlockEntity.OnGuiClosed sends this same close packet when a dialog does not override
-    // it, or overrides it and calls base - which is why CreateDialog requires exactly that.
+    // Base OnGuiClosed sends the close packet; an override must call base.
     _dialog.OnClosed += () => {
       _dialog?.Dispose();
       _dialog = null;
@@ -162,10 +141,7 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
     capi.Network.SendBlockEntityPacket(Pos, PacketIdOpen);
   }
 
-  /// <summary>Closes and disposes the window, so a broken or unloaded machine cannot leave its GUI
-  /// bound to a dead block entity. Mirrors vanilla's <c>BEOpenableContainer.Dispose</c>. A subclass
-  /// that already disposed the dialog itself before calling this is harmless: <c>GuiDialog.Dispose</c>
-  /// tolerates being called on an already-disposed <c>GuiComposer</c>.</summary>
+  /// <summary>Closes and disposes the window.</summary>
   protected virtual void CloseWindow() {
     if (_dialog?.IsOpened() == true)
       _dialog.TryClose();
@@ -187,26 +163,21 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
 
   #region Packet handshake
 
-  /// <summary>
-  /// Server-side routing for the window packets: the container protocol, the access check, then this
-  /// machine's own actions. Sealed - a machine extends it through <see cref="OnStationPacket"/>, so
-  /// no override can drop the access check by forgetting to call base.
-  /// </summary>
+  /// <summary>Server-side routing for the window packets: container protocol, access check, then a
+  /// machine's own actions.</summary>
   public sealed override void OnReceivedClientPacket(
     IPlayer player,
     int packetid,
     byte[] data
   ) {
-    // Closing needs no check at all: a player who has walked out of a claim, or out of reach, must
-    // still be able to shut the window they already have open. Vanilla closes unconditionally too.
+    // Close needs no access check; vanilla closes unconditionally too.
     if (packetid == PacketIdClose) {
       player.InventoryManager?.CloseInventory(Inventory);
       return;
     }
 
     if (!MayUse(player)) {
-      // A refused slot move leaves the client's view out of sync with the server; vanilla answers a
-      // rejected container packet with a rollback rather than a bare return.
+      // A refused slot move triggers a rollback to resync the client's view.
       if (packetid < PacketIdOpen && player is IServerPlayer serverPlayer)
         SendRollback(serverPlayer, packetid, data);
       return;
@@ -214,8 +185,7 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
 
     if (packetid < PacketIdOpen) {
       Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
-      // Vanilla's comment on the same call: "Tell server to save this chunk to disk again". A slot move
-      // that is not followed by some other write is otherwise lost on the next server restart.
+      // Marks the chunk modified: a slot move needs an explicit write to persist across a restart.
       Api.World.BlockAccessor.GetChunkAtBlockPos(Pos)?.MarkModified();
       return;
     }
@@ -231,11 +201,8 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
     base.OnReceivedClientPacket(player, packetid, data);
   }
 
-  /// <summary>
-  /// This machine's own window actions, run server-side after the access check. Ids start at
-  /// <see cref="FirstMachinePacketId"/>. Return true when the packet was handled; false lets the
-  /// container base see it.
-  /// </summary>
+  /// <summary>This machine's own window actions, run server-side after the access check; returns
+  /// true when handled.</summary>
   protected virtual bool OnStationPacket(
     IPlayer player,
     int packetid,
@@ -246,19 +213,15 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
 
   #region Access
 
-  // Whether the engine's interaction-range test runs as part of the access check. Off only for
-  // headless tests (see ExpandedLib.Testing.DisablePickRangeCheck); the claim check is never behind it.
+  // Enables the engine's interaction-range test; off only for headless tests, never gating the
+  // claim check.
   internal bool ValidatePickRange { get; set; } = true;
 
-  /// <summary>
-  /// Whether <paramref name="player"/> may act on this machine: claim access, and on 1.22 and later
-  /// the engine's own interaction-range test as well. Without the range test a client can move slots
-  /// in any unclaimed station in any loaded chunk from arbitrary distance.
-  /// </summary>
+  /// <summary>Whether <paramref name="player"/> may act on this machine: claim access, plus the
+  /// engine's interaction-range test on 1.22 and later.</summary>
   private bool MayUse(IPlayer player) {
 #if GAME_GE_1_22
-    // CachedAccessPerms is the only public way to the range test; it also runs the claim check and
-    // audits either failure, so it replaces the hand-written pair outright.
+    // CachedAccessPerms runs both the claim check and the range test, and audits either failure.
 #pragma warning disable CS0618 // The ctor is obsolete ahead of a 1.23 signature change; there is no other entry point yet.
     var perms = new CachedAccessPerms(Api.World, Pos, player);
 #pragma warning restore CS0618
@@ -268,8 +231,7 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
       "machine station"
     );
 #else
-    // 1.20/1.21 have no public reach test. Hand-rolling one would measure a different notion of reach
-    // than the server uses, so those builds keep the claim check alone.
+    // 1.20/1.21 have no public reach test; those builds keep the claim check alone.
     if (Api.World.Claims.TryAccess(player, Pos, EnumBlockAccessFlags.Use))
       return true;
 
@@ -282,8 +244,7 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
 #endif
   }
 
-  // Rolls the client's view of the inventory back to the server's after a refused slot move.
-  // SendInventoryRollback arrived in 1.22; legacy builds correct on the next reopen instead.
+  // Rolls the client's inventory view back to the server's; legacy builds correct only on reopen.
   private void SendRollback(IServerPlayer player, int packetid, byte[] data) {
 #if GAME_GE_1_22
     Inventory.InvNetworkUtil.SendInventoryRollback(player, packetid, data);

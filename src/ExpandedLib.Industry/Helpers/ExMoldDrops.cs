@@ -3,15 +3,9 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Industry.Helpers;
 
-/// <summary>
-/// Reads a tool mold's cast-product templates off its block attributes: the vanilla <c>drop</c> (single)
-/// or <c>drops</c> (array) schema, resolved with the mold's own domain as the default for unqualified
-/// codes, matching <c>BlockEntityToolMold.GetMoldedStacks</c>.
-/// <para>
-/// The returned templates are freshly deserialized on every call and safe to mutate, which callers rely
-/// on: resolving one substitutes <c>{metal}</c> into its <see cref="JsonItemStack.Code"/> in place.
-/// </para>
-/// </summary>
+/// <summary>Reads a tool mold's cast-product templates off its block attributes, matching
+/// <c>BlockEntityToolMold.GetMoldedStacks</c>. Freshly deserialized on every call and safe to
+/// mutate.</summary>
 public static class ExMoldDrops {
   /// <summary>The mold's drop templates, empty when it declares none.</summary>
   public static List<JsonItemStack> Templates(Block? mold) {

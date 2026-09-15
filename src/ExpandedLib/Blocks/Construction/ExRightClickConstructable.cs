@@ -1,10 +1,5 @@
-// exlib-owned right-click construction behavior, referenced by the mega-blocks (engines, boilers,
-// bessemer converter) under the JSON behavior name "ExRightClickConstructable".
-//
-// On 1.22 it subclasses the vanilla BEBehaviorRightClickConstructable and adds a drops accessor. On
-// 1.20/1.21, where the vanilla behavior does not exist, it is a full reimplementation backed by
-// ExRightClickConstruction. Owning the JSON name on every version gives the mod C# a single type to
-// reference and leaves vanilla blocks (e.g. the waterwheel) on vanilla's own behavior.
+// exlib-owned right-click construction behavior under the JSON behavior name
+// "ExRightClickConstructable"; on 1.22 subclasses vanilla, on legacy is a full reimplementation.
 using ExpandedLib.Machines;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
@@ -21,12 +16,8 @@ public class ExRightClickConstructable(BlockEntity blockentity)
   : BEBehaviorRightClickConstructable(blockentity),
     IProductionReadiness
 {
-  /// <summary>
-  /// The materials this block would scatter at <paramref name="ratio"/> (0..1) of the consumed stacks,
-  /// across every completed stage. Vanilla <c>rcc.GetDrops</c> loops <c>i &lt; CurrentCompletedStage</c>
-  /// and so omits the last built stage; the counter (a public field) is advanced by one across the call
-  /// and restored afterwards so the loop reaches it.
-  /// </summary>
+  /// <summary>The materials this block would scatter at <paramref name="ratio"/> (0..1) of the
+  /// consumed stacks, across every completed stage.</summary>
   public ItemStack[] GetConstructionDrops(float ratio, Random rand)
   {
     int built = rcc.CurrentCompletedStage;
@@ -41,10 +32,8 @@ public class ExRightClickConstructable(BlockEntity blockentity)
     }
   }
 
-  /// <summary>Whether construction gates production, read from the <c>gatesProduction</c> JSON property
-  /// (default <c>true</c>). <c>false</c> opts a machine that must tick while unfinished out of the gate
-  /// below, while still exposing <see cref="BEBehaviorRightClickConstructable.IsComplete"/> for whatever
-  /// reads it directly.</summary>
+  /// <summary>Whether construction gates production, read from the <c>gatesProduction</c> JSON
+  /// property (default true).</summary>
   public bool GatesProduction { get; private set; } = true;
 
   public override void Initialize(ICoreAPI api, JsonObject properties)
@@ -53,22 +42,20 @@ public class ExRightClickConstructable(BlockEntity blockentity)
     GatesProduction = properties["gatesProduction"].AsBool(true);
   }
 
-  /// <summary>Ready once construction is complete, or always when <see cref="GatesProduction"/> opts out.</summary>
+  /// <summary>Ready once construction is complete, or always when <see cref="GatesProduction"/>
+  /// opts out.</summary>
   public bool IsReadyToProduce => !GatesProduction || IsComplete;
 
-  /// <summary>Stops the production tick while unfinished, unless <see cref="GatesProduction"/> opts out.</summary>
+  /// <summary>Stops the production tick while unfinished, unless <see cref="GatesProduction"/>
+  /// opts out.</summary>
   public bool StopsProductionWhenNotReady => GatesProduction;
 
-  // The salvage fraction, taken from the owning mod's (player-tunable) config when it registered one,
-  // else the JSON/default brokenDropsRatio. Read live so a /exmod config change applies immediately.
+  // The salvage fraction, from the owning mod's config when it registered one, else JSON/default.
   private float EffectiveBrokenDropsRatio =>
     ExRccSettings.BrokenDropsRatio(Block.Code.Domain) ?? brokenDropsRatio;
 
-  /// <summary>
-  /// Replaces vanilla's break handler so a broken structure refunds all completed stages at the
-  /// configured salvage fraction. Null-safe on the breaker, so an explosion-broken structure still
-  /// drops its salvage.
-  /// </summary>
+  /// <summary>Replaces vanilla's break handler so a broken structure refunds all completed stages
+  /// at the configured salvage fraction.</summary>
   public override void OnBlockBroken(IPlayer? byPlayer = null)
   {
     if (byPlayer?.WorldData.CurrentGameMode == EnumGameMode.Creative)
@@ -101,15 +88,16 @@ public class ExRightClickConstructable
   public bool IsComplete => rcc.CurrentCompletedStage == rcc.Stages.Length - 1;
   public event Action<CompositeShape>? OnShapeChanged;
 
-  /// <summary>Whether construction gates production, read from the <c>gatesProduction</c> JSON property
-  /// (default <c>true</c>). <c>false</c> opts a machine that must tick while unfinished out of the gate
-  /// below, while still exposing <see cref="IsComplete"/> for whatever reads it directly.</summary>
+  /// <summary>Whether construction gates production, read from the <c>gatesProduction</c> JSON
+  /// property (default true).</summary>
   public bool GatesProduction { get; private set; } = true;
 
-  /// <summary>Ready once construction is complete, or always when <see cref="GatesProduction"/> opts out.</summary>
+  /// <summary>Ready once construction is complete, or always when <see cref="GatesProduction"/>
+  /// opts out.</summary>
   public bool IsReadyToProduce => !GatesProduction || IsComplete;
 
-  /// <summary>Stops the production tick while unfinished, unless <see cref="GatesProduction"/> opts out.</summary>
+  /// <summary>Stops the production tick while unfinished, unless <see cref="GatesProduction"/>
+  /// opts out.</summary>
   public bool StopsProductionWhenNotReady => GatesProduction;
 
   public ExRightClickConstructable(BlockEntity blockentity)
@@ -170,8 +158,7 @@ public class ExRightClickConstructable
       );
   }
 
-  // The salvage fraction, taken from the owning mod's (player-tunable) config when it registered one,
-  // else the JSON/default brokenDropsRatio. Read live so a /exmod config change applies immediately.
+  // The salvage fraction, from the owning mod's config when it registered one, else JSON/default.
   private float EffectiveBrokenDropsRatio =>
     ExRccSettings.BrokenDropsRatio(Block.Code.Domain) ?? brokenDropsRatio;
 
@@ -188,14 +175,12 @@ public class ExRightClickConstructable
   public ItemStack[] GetConstructionDrops(float ratio, Random rand) =>
     rcc.GetDrops(ratio, rand);
 
-  /// <summary>The next-stage build-material hover help. On 1.22 vanilla supplies this via
-  /// IInteractableWithHelp; on legacy the host block surfaces it through
-  /// <see cref="AppendConstructionHelp"/> from its GetPlacedBlockInteractionHelp override.</summary>
+  /// <summary>The next-stage build-material hover help.</summary>
   public WorldInteraction[]? GetConstructionInteractionHelp() =>
     rcc.GetInteractionHelp();
 
   /// <summary>Prepends the construction help of the block-entity at the selection (if it has this
-  /// behavior) to <paramref name="baseHelp"/>. For legacy block GetPlacedBlockInteractionHelp overrides.</summary>
+  /// behavior) to <paramref name="baseHelp"/>.</summary>
   public static WorldInteraction[] AppendConstructionHelp(
     IWorldAccessor world,
     BlockSelection selection,

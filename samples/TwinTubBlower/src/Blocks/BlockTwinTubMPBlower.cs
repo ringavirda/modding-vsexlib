@@ -13,18 +13,9 @@ using Vintagestory.API.MathTools;
 
 namespace TwinTubBlower.Blocks;
 
-/// <summary>
-/// The twin-tub blower: a mechanically driven pair of bellows that produces into the gas-pipe network it
-/// stands in, needing no fuel and no player-fed material. It is both a gas-pipe node (it sits in the main
-/// and produces into it, hence the <see cref="BlockPipe"/> base) and a mega-block reserving a 1x2x3
-/// footprint of invisible fillers, whose upper-rear cell hosts a mechanical-power port so an axle on that
-/// face drives the bellows. <see cref="BlockEntityTwinTubMPBlower"/> holds the simulation.
-/// <para>
-/// <see cref="BlockFilledMegastructure"/> is a plain <c>Block</c> and the blower must be a pipe, so this
-/// type implements <see cref="IFillerHost"/> and drives the <see cref="StructureFillers"/> statics from
-/// the placement triad below. Without those calls no fillers spawn and the MP port cell never exists.
-/// </para>
-/// </summary>
+/// <summary>The twin-tub blower: bellows producing into the gas-pipe network it stands in, as a
+/// <see cref="BlockPipe"/> node with a 1x2x3 footprint of invisible fillers hosting the drive port.
+/// Implements <see cref="IFillerHost"/> to spawn them via <see cref="StructureFillers"/>.</summary>
 [BlockRegister]
 public partial class BlockTwinTubMPBlower
   : BlockPipe,
@@ -42,11 +33,8 @@ public partial class BlockTwinTubMPBlower
       new { through = false }
     );
 
-  /// <summary>
-  /// The two cells the -Z run crosses before it reaches the principal's own pipe connector: a
-  /// membership on north, passing through to south, so a run coupled two cells out still reaches the
-  /// principal rather than stopping at whichever cell it first touches.
-  /// </summary>
+  /// <summary>The two pass-through filler cells on the -Z run: membership on north, passing
+  /// through to south.</summary>
   private static readonly FillerBehaviorSpec PipeThrough =
     FillerBehaviorSpec.Of<BEBehaviorNetworkMember>(
       "north",
@@ -145,8 +133,7 @@ public partial class BlockTwinTubMPBlower
 
   #region Drops
 
-  // A broken blower returns its construction materials (scattered by the RightClickConstructable
-  // behaviour), never the block itself: it is right-click-built, not placed.
+  // Returns construction materials via RightClickConstructable, never the block itself.
   public override ItemStack[] GetDrops(
     IWorldAccessor world,
     BlockPos pos,
@@ -161,52 +148,29 @@ public partial class BlockTwinTubMPBlower
   /// <summary>The block's <c>fillerOffsets</c> attribute (from the injected code-first def).</summary>
   public JsonObject? FillerOffsets => Attributes?["fillerOffsets"];
 
-  /// <summary>
-  /// Rotation applied to the north-frame footprint to reach the placed orientation. The repository's
-  /// standard convention (<see cref="ExOrientation.AngleFromSide"/>: n 0, w 90, s 180, e 270), matching
-  /// the per-orientation shape rotations in the definition above. The block entity rotates its MP-port
-  /// lookup by the same angle, so the two can never disagree.
-  /// </summary>
+  /// <summary>Rotation applied to the north-frame footprint to reach the placed orientation,
+  /// per <see cref="ExOrientation.AngleFromSide"/>.</summary>
   public int StructureAngle =>
     ExOrientation.AngleFromSide(Variant?["orientation"]);
 
   private List<FillerCell> FootprintCells(BlockPos pos) =>
     StructureFillers.FootprintCells(this, pos, StructureAngle);
 
-  /// <summary>
-  /// The direction the pipe-through fillers couple through: the footprint's north face, rotated by
-  /// <see cref="StructureAngle"/> the same way <see cref="FootprintCells"/> rotates the cells
-  /// themselves. The only face this block itself ever presents a network connector on.
-  /// </summary>
+  /// <summary>The direction the pipe-through fillers couple through: the footprint's north face,
+  /// rotated by <see cref="StructureAngle"/>.</summary>
   public BlockFacing OutletFace =>
     ExOrientation.RotateFacing(BlockFacing.NORTH, StructureAngle);
 
-  /// <summary>
-  /// World cell of the far pipe-through filler, two cells out along the footprint's -Z run - the cell
-  /// whose outward face is where a pipe run actually joins this blower's network and where the vented
-  /// air leaves when the line has nowhere to take it.
-  /// </summary>
+  /// <summary>World cell of the far pipe-through filler, two cells out along the footprint's
+  /// -Z run.</summary>
   public BlockPos OutletCell(BlockPos principal) =>
     ExOrientation.GlobalPos(principal, 0, 0, -2, StructureAngle);
 
-  /// <summary>
-  /// Answers a connector only on <see cref="OutletFace"/>. The base class' Orientation-derived answer
-  /// reads the placed "orientation" variant letter directly as a connector-face code, which happens to
-  /// agree with <see cref="OutletFace"/> for the n/s placements but names the opposite face for e/w -
-  /// letting a pipe standing against the principal itself join the network there instead of two cells
-  /// out through <see cref="OutletCell"/>, where the fillers actually couple.
-  /// </summary>
+  /// <summary>Answers a connector only on <see cref="OutletFace"/>.</summary>
   public override bool HasConnectorAt(BlockFacing face) => face == OutletFace;
 
-  /// <summary>
-  /// Places the blower facing the way the player is looking and leaves it there: the mega-block's
-  /// footprint is fixed to that facing at placement, so the network re-orienting it later
-  /// (<see cref="BlockNetworkNode.RecalculateAndSyncOrientations"/>) would desync the fillers from the
-  /// shape. Resolves the oriented variant first, the way
-  /// <see cref="ExpandedLib.Blocks.BlockBehaviorExOrientable"/>'s own player-facing placement does, and
-  /// runs the footprint check against THAT variant's <see cref="StructureAngle"/> rather than the held
-  /// stack's, since the two can differ (the stack is the base "*-n" state read off the toolbar).
-  /// </summary>
+  /// <summary>Places the blower facing the way the player is looking, and locks that facing at
+  /// placement.</summary>
   public override bool TryPlaceBlock(
     IWorldAccessor world,
     IPlayer byPlayer,
@@ -249,8 +213,7 @@ public partial class BlockTwinTubMPBlower
     if (!base.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
       return false;
 
-    // Refuse placement unless the whole volume is clear, else the fillers fail to spawn and the blower
-    // would stand with no MP port cell to be driven through.
+    // Refuses placement unless the whole footprint volume is clear.
     if (!StructureFillers.CanPlace(world, FootprintCells(blockSel.Position))) {
       failureCode = "notenoughspace";
       return false;
@@ -268,8 +231,7 @@ public partial class BlockTwinTubMPBlower
   }
 
   public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos) {
-    // Runs on every removal path (a player break, an explosion, a worldedit delete), unlike
-    // OnBlockBroken, so the reserved volume is never left behind.
+    // Runs on every removal path (break, explosion, worldedit delete), unlike OnBlockBroken.
     StructureFillers.RemoveFillers(world, pos, FootprintCells(pos));
     base.OnBlockRemoved(world, pos);
   }
@@ -278,13 +240,8 @@ public partial class BlockTwinTubMPBlower
 
   #region Orientation lock
 
-  /// <summary>
-  /// Pins this block's own orientation choice to whatever it is already wearing, so a neighbour's
-  /// wrench rotation can never re-pick it. <c>BlockNetworkNode.RecalculateAndSyncOrientations</c> reads
-  /// this - via the polymorphic <c>netBlock</c> it fetches at the target position, not via the caller's
-  /// own type - both when it runs against this block directly and when a wrenched neighbour runs it
-  /// against this one's position, so pinning here closes both paths without touching shared code.
-  /// </summary>
+  /// <summary>Pins this block's orientation to whatever it already wears; a neighbour's wrench
+  /// rotation can never re-pick it.</summary>
   protected override string[] ComputeValidOrientations(
     IBlockAccessor blockAccessor,
     BlockPos pos,
@@ -292,13 +249,8 @@ public partial class BlockTwinTubMPBlower
     string? currentOrientation
   ) => Orientation != null ? [Orientation] : [];
 
-  /// <summary>
-  /// No-op: the blower keeps the facing the player gave it at placement, never the one the network's
-  /// connector scan would pick. The base implementation would exchange the block for whatever
-  /// <see cref="ComputeValidOrientations"/> answers on every neighbour change; pinned above, that
-  /// answer is always the current orientation, but this override also stops the wasted
-  /// recomputation and block-entity sync on every call this instance receives directly.
-  /// </summary>
+  /// <summary>No-op: the blower keeps its placement facing; ignores the network's connector-scan
+  /// orientation.</summary>
   public override void RecalculateAndSyncOrientations(
     IWorldAccessor world,
     BlockPos pos

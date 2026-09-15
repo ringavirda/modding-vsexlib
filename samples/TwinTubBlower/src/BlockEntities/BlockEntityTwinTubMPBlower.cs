@@ -15,29 +15,19 @@ using Vintagestory.GameContent;
 
 namespace TwinTubBlower.BlockEntities;
 
-/// <summary>
-/// Mechanically driven pair of bellows that pushes cold ambient air into the network it stands in. It is
-/// a pipe node that generates rather than a machine feeding a neighbouring network: the block is a
-/// <see cref="ExpandedLib.Industry.Pipes.BlockPipe"/> and produces into its own network, the way a fluid
-/// intake does for water. Drive comes from a <see cref="BEBehaviorMPFillerPort"/> on the footprint's
-/// upper-rear cell.
-/// </summary>
+/// <summary>Mechanically driven pair of bellows that pushes cold ambient air into the network it
+/// stands in; a <see cref="ExpandedLib.Industry.Pipes.BlockPipe"/> node driven by a
+/// <see cref="BEBehaviorMPFillerPort"/> on the footprint's upper-rear cell.</summary>
 [BlockEntityRegister]
 public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
-  /// <summary>
-  /// Structure-local cell hosting the mechanical-power port, in the block's north frame: the upper-rear
-  /// cell of the 1x2x3 footprint. The port faces west relative to the placed rotation.
-  /// </summary>
+  /// <summary>Structure-local cell hosting the mechanical-power port: the upper-rear cell of the
+  /// 1x2x3 footprint, facing west.</summary>
   private static readonly Vec3i MpPortCell = new(0, 1, 0);
 
-  /// <summary>
-  /// Shortest interval between bellows-note plays, at least as long as the "bellows" sample itself
-  /// (measured ~1.41 s at 44.1 kHz), so a run of blow ticks never overlaps or cuts off the clip.
-  /// </summary>
+  /// <summary>Shortest interval between bellows-note plays, at least the clip length (~1.41s).</summary>
   private const long BellowsSoundIntervalMs = 1500;
 
-  // Axle speed sampled on the last blow tick. Written server-side and serialized because the client
-  // cannot read the port behaviour's live state and needs it for the HUD.
+  // Axle speed sampled on the last blow tick; server writes it, client reads it for the HUD.
   [Persist("blowerSpeed")]
   private float _lastSpeed;
 
@@ -46,21 +36,15 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
 
   private ConstructedAnimator? _animator;
 
-  /// <summary>The placed rotation, read from the block so the port lookup and the footprint agree.</summary>
+  /// <summary>The placed rotation, read from the block.</summary>
   private int Angle =>
     (Block as Blocks.BlockTwinTubMPBlower)?.StructureAngle ?? 0;
 
-  /// <summary>True once the player has finished all five construction stages. The blower has no
-  /// mesh of its own before then - <see cref="ConstructedAnimator"/> draws the shape's own
-  /// <c>Root/Base</c> group - and neither ticks, sounds nor leaks air.</summary>
+  /// <summary>True once the player has finished all five construction stages.</summary>
   public bool IsConstructed => _animator?.IsConstructed ?? false;
 
-  /// <summary>
-  /// Renders nothing. Registered only to get a per-render-frame callback: the cycle clip must be
-  /// pinned to the axle every frame or it visibly steps between locks, worse the more the free-running
-  /// clip and the axle's own rate disagree. Runs before the opaque pass so the frame is already in
-  /// step when the mesh is drawn.
-  /// </summary>
+  /// <summary>Renders nothing; registered only for the per-render-frame callback that locks the
+  /// cycle clip to the axle.</summary>
   public double RenderOrder => 0.0;
 
   public int RenderRange => 24;
@@ -75,8 +59,7 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
     // Resolved on both sides (IsConstructed gates the blow tick); it only builds and poses on the client.
     _animator = new ConstructedAnimator(this, () => Block.Code.Path);
     _animator.Initialize(ApplyPose);
-    // One blow per second, server-side. The network tick runs at the same interval, so air is produced
-    // and then distributed in the same beat.
+    // One blow per second, server-side; matches the network tick interval.
     if (api.Side == EnumAppSide.Server) {
       _blowTickId = RegisterGameTickListener(OnBlowTick, 1000);
       return;
@@ -106,21 +89,15 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
       UnregisterGameTickListener(_blowTickId);
       _blowTickId = 0;
     }
-    // The renderer holds a reference to this block entity; leaving it registered keeps a removed
-    // blower alive and still writing frames.
+    // Renderer holds a reference to this entity; must unregister on removal to stop it writing frames.
     (Api as ICoreClientAPI)?.Event.UnregisterRenderer(
       this,
       EnumRenderStage.Before
     );
   }
 
-  /// <summary>
-  /// Samples the axle and pushes one second of air into the network, scaled by
-  /// <see cref="SpeedFraction"/>. Marks dirty only when the sampled speed changed. Plays the bellows'
-  /// note whenever they are working, even when the line had no room for the air, since several blowers
-  /// sharing a line at its pressure ceiling all move and must all be heard. A no-op before construction
-  /// completes.
-  /// </summary>
+  /// <summary>Samples the axle and pushes one second of air into the network, scaled by
+  /// <see cref="SpeedFraction"/>.</summary>
   private void OnBlowTick(float dt) {
     if (!IsConstructed)
       return;
@@ -149,13 +126,10 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
       ExParticles.GasLeak(Api.World, block.OutletCell(Pos), block.OutletFace);
   }
 
-  /// <summary>
-  /// Pushes <paramref name="dt"/> seconds of air into this blower's own network at axle speed
-  /// <paramref name="speed"/>. Returns the litres actually produced, 0 when the bellows are below
-  /// <see cref="TwinTubBlowerValues.TwinTubBlowerMinSpeed"/>, the line is at the pressure ceiling, or
-  /// construction is unfinished. Public so the balance can be driven without a mechanical network for
-  /// the port to read.
-  /// </summary>
+  /// <summary>Pushes <paramref name="dt"/> seconds of air into this blower's own network at axle
+  /// speed <paramref name="speed"/>.</summary>
+  /// <returns>Litres actually produced, or 0 below <see cref="TwinTubBlowerValues.TwinTubBlowerMinSpeed"/>,
+  /// at the pressure ceiling, or with construction unfinished.</returns>
   public float ProduceAir(float speed, float dt) {
     if (!IsConstructed)
       return 0f;
@@ -166,8 +140,7 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
       return 0f;
 
     // Cold blast: the air enters at ambient temperature.
-    // TryProduceGas reports only whether it accepted anything and clamps at the pressure ceiling, so the
-    // litres that landed are the change in the pool, not the amount asked for.
+    // TryProduceGas clamps at the ceiling; landed litres is the pool's change, not the request.
     float before = net.State?.Volume ?? 0f;
     net.TryProduceGas(
       TwinTubBlowerValues.TwinTubBlowerOutputPerSecond * fraction * dt,
@@ -185,11 +158,9 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
     Api?.World?.BlockAccessor?.GetClimateAt(Pos)?.Temperature
     ?? ExlibValues.AmbientTemperature;
 
-  /// <summary>
-  /// Fraction of the rated output the bellows deliver at <paramref name="speed"/>: 0 at or below
+  /// <summary>Fraction of rated output at <paramref name="speed"/>: 0 at or below
   /// <see cref="TwinTubBlowerValues.TwinTubBlowerMinSpeed"/>, 1 at or above
-  /// <see cref="TwinTubBlowerValues.TwinTubBlowerMaxSpeed"/>, linear between.
-  /// </summary>
+  /// <see cref="TwinTubBlowerValues.TwinTubBlowerMaxSpeed"/>, linear between.</summary>
   public static float SpeedFraction(float speed) {
     float min = TwinTubBlowerValues.TwinTubBlowerMinSpeed;
     float max = TwinTubBlowerValues.TwinTubBlowerMaxSpeed;
@@ -200,8 +171,8 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
     return GameMath.Clamp((speed - min) / (max - min), 0f, 1f);
   }
 
-  /// <summary>The mechanical-power port hosted on the footprint's upper-rear cell, or null before the
-  /// filler block entity there has loaded.</summary>
+  /// <summary>The mechanical-power port hosted on the footprint's upper-rear cell, or null if the
+  /// filler entity has not loaded.</summary>
   private BEBehaviorMPFillerPort? Port() {
     BlockPos cell = ExOrientation.GlobalPos(
       Pos,
@@ -221,11 +192,8 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
 
   #region Animation
 
-  /// <summary>
-  /// Holds one clip at a time: <c>cycle</c> while the bellows are working
-  /// (<see cref="SpeedFraction"/> of <see cref="_lastSpeed"/> above 0), <c>idle</c> otherwise. One must
-  /// always be active or the animator drops the mesh.
-  /// </summary>
+  /// <summary>Holds one clip at a time: cycle while the bellows work, idle when they do not; one
+  /// must always be active or the animator drops the mesh.</summary>
   private void ApplyPose() {
     bool blowing = SpeedFraction(_lastSpeed) > 0f;
     _animator?.Pose(util => {
@@ -242,24 +210,15 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
     });
   }
 
-  /// <summary>
-  /// Pins the running <c>cycle</c> clip to the driving axle's angle, so the rod, the beam and the two
-  /// tub pistons move in step with the shaft rather than at a merely proportional rate. Called every
-  /// render frame from <see cref="OnRenderFrame"/>, not from a tick, or the clip free-runs between
-  /// locks and visibly steps. A no-op while idle - <c>idle</c> has no cycle to lock.
-  /// </summary>
+  /// <summary>Pins the cycle clip's frame to the axle angle; called once per render frame.</summary>
   private void LockCycleToAxle() {
     if (SpeedFraction(_lastSpeed) <= 0f || Port() is not { } port)
       return;
     MPAnim.LockFrameToAngle(_animator?.AnimUtil, "cycle", DrivenAngle(port));
   }
 
-  /// <summary>
-  /// The axle's angle as a turn about the axis running from the port face into the machine, in the
-  /// sense vanilla draws the axle; the clip keyframes its shaft as a positive turn about that axis.
-  /// Vanilla signs a horizontal axle's rotation negative along its axis, so the port's angle reads
-  /// negated on a west or north port and straight on an east or south one.
-  /// </summary>
+  /// <summary>The axle's angle as a turn about the axis from the port face into the machine;
+  /// negated on a west or north port, straight on east or south.</summary>
   private static float DrivenAngle(BEBehaviorMPFillerPort port) {
     Vec3i n = port.PortFacing.Normali;
     return (n.X + n.Z - n.Y) * port.CurrentAngleRad;
@@ -267,11 +226,7 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
 
   #endregion
 
-  /// <summary>
-  /// Re-poses on the client when the loaded speed crosses the idle/blowing threshold. <c>_lastSpeed</c>
-  /// itself round-trips through the tree already, via its <c>[Persist]</c> declaration; this override
-  /// exists only for the side effect base has no hook for.
-  /// </summary>
+  /// <summary>Re-poses on the client when the loaded speed crosses the idle/blowing threshold.</summary>
   public override void FromTreeAttributes(
     ITreeAttribute tree,
     IWorldAccessor worldForResolving

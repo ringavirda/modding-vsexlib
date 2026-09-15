@@ -5,14 +5,9 @@ using Vintagestory.GameContent;
 
 namespace ExpandedLib.Blocks;
 
-/// <summary>
-/// Block entity base that persists whatever it declares, on top of vanilla's own inventory - the
-/// <see cref="ExBlockEntity"/> convenience for a block entity whose base slot is already spent on
-/// <see cref="BlockEntityContainer"/>. Mark a field <see cref="PersistAttribute"/> and it needs no
-/// <see cref="DeclareState"/> entry at all; the container's own <c>ToTreeAttributes</c>/
-/// <c>FromTreeAttributes</c> pair still runs first, through <c>base</c>, so the inventory keeps
-/// serializing exactly as it always has.
-/// </summary>
+/// <summary>Block entity base that persists whatever it declares, on top of vanilla's own
+/// inventory. Mark a field <see cref="PersistAttribute"/> and it needs no
+/// <see cref="DeclareState"/> entry at all.</summary>
 public abstract class ExBlockEntityContainer : BlockEntityContainer {
   private ExBlockState? _state;
 
@@ -20,11 +15,8 @@ public abstract class ExBlockEntityContainer : BlockEntityContainer {
   protected ExBlockState Persisted =>
     BlockEntityStateHost.GetOrCreate(this, ref _state, DeclareState);
 
-  /// <summary>
-  /// Declares the fields this block entity persists, beyond the inventory <see cref="BlockEntityContainer"/>
-  /// already carries. Called once, lazily. A subclass whose state is entirely <see cref="PersistAttribute"/>
-  /// fields leaves this alone.
-  /// </summary>
+  /// <summary>Declares the fields this block entity persists, beyond the inventory
+  /// <see cref="BlockEntityContainer"/> already carries. Called once, lazily.</summary>
   protected virtual void DeclareState(ExBlockState state) { }
 
   public override void ToTreeAttributes(ITreeAttribute tree) {

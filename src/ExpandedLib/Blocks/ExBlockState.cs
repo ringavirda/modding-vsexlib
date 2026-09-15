@@ -6,17 +6,8 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Blocks;
 
-/// <summary>
-/// A block entity's persisted fields, declared once and read and written from that one declaration.
-/// Hand-writing <c>ToTreeAttributes</c> and <c>FromTreeAttributes</c> as a pair means every field is
-/// spelled twice and a field added to one side and forgotten on the other still compiles: it saves and
-/// never loads, or loads and never reaches the client.
-/// <para>
-/// Composable on purpose. <see cref="ExBlockEntity"/> owns one and needs no wiring, but a block entity
-/// whose base is already spent - a container, a multiblock - can own one too and call
-/// <see cref="ToTree"/> and <see cref="FromTree"/> from its own overrides.
-/// </para>
-/// </summary>
+/// <summary>A block entity's persisted fields, declared once and read and written from that one
+/// declaration.</summary>
 public sealed class ExBlockState {
   private sealed record Entry(
     string Key,
@@ -29,8 +20,7 @@ public sealed class ExBlockState {
   private readonly List<Entry> _entries = [];
   private readonly HashSet<string> _keys = [];
 
-  /// <summary>The keys declared so far, in declaration order. Lets a guard assert what a block entity
-  /// persists without reflecting over its fields.</summary>
+  /// <summary>The keys declared so far, in declaration order.</summary>
   public IReadOnlyList<string> Keys => [.. _keys];
 
   private ExBlockState Add(
@@ -40,9 +30,7 @@ public sealed class ExBlockState {
     Func<ItemStack?>? getStack = null,
     Action<ItemStack?>? setStack = null
   ) {
-    // Two fields on one key is the copy-paste slip this whole type exists to make impossible: the
-    // second silently overwrites the first on save and both load the same value. Caught at
-    // declaration, which runs in the constructor, so it surfaces the first time one is built.
+    // Caught at declaration so a duplicate key surfaces the first time the state is built.
     if (!_keys.Add(key))
       throw new InvalidOperationException(
         $"Block-entity state key \"{key}\" is declared twice. Each field needs its own key."
@@ -122,11 +110,7 @@ public sealed class ExBlockState {
         )
     );
 
-  /// <summary>
-  /// An item stack. Beyond the round trip this carries the collectible id mapping both ways, which is
-  /// what makes the block entity survive being pasted into another world - <c>ItemStack.ToBytes</c>
-  /// writes the runtime id, so an unmapped stack resolves to whatever owns that id in the destination.
-  /// </summary>
+  /// <summary>An item stack; also carries the collectible id mapping both ways.</summary>
   public ExBlockState Stack(
     string key,
     Func<ItemStack?> get,
@@ -140,7 +124,6 @@ public sealed class ExBlockState {
       },
       (t, world) => {
         ItemStack? s = t.GetItemstack(key);
-        // A stack read from a tree carries no resolved Collectible until it meets a world.
         s?.ResolveBlockOrItem(world);
         set(s);
       },
@@ -148,14 +131,8 @@ public sealed class ExBlockState {
       set
     );
 
-  /// <summary>
-  /// A field that manages its own serialization against the very tree every other field writes into -
-  /// several related attributes at once (<c>MoltenCharge.ToTree/FromTree</c>, which takes explicit key
-  /// names) or a private nested tree it builds itself (<c>tree[key] = subTree</c>, the shape a
-  /// <see cref="IPersistable"/> member uses). Unlike the typed helpers above, <paramref name="write"/>
-  /// and <paramref name="read"/> see the whole tree and choose their own attribute names;
-  /// <paramref name="key"/> only names the declaration for the duplicate-key guard and <see cref="Keys"/>.
-  /// </summary>
+  /// <summary>A field that manages its own serialization against the whole tree. <paramref name="key"/>
+  /// only names the declaration for the duplicate-key guard and <see cref="Keys"/>.</summary>
   public ExBlockState Tree(
     string key,
     Action<ITreeAttribute> write,
@@ -196,12 +173,8 @@ public sealed class ExBlockState {
     }
   }
 
-  /// <summary>
-  /// Re-resolves every declared stack against the destination world. A stack whose collectible does not
-  /// exist there is dropped rather than kept: <c>FixMapping</c> returning false leaves the id at the
-  /// source world's value, which would resolve to whatever happens to own that id. Matches vanilla's
-  /// <c>BlockEntityIngotMold</c>.
-  /// </summary>
+  /// <summary>Re-resolves every declared stack against the destination world; drops a stack whose
+  /// collectible does not exist there.</summary>
   public void LoadCollectibleMappings(
     IWorldAccessor world,
     Dictionary<int, AssetLocation> oldBlockIdMapping,

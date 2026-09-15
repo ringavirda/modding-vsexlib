@@ -5,15 +5,9 @@ using static ExpandedLib.Definitions.ExIngredients;
 
 namespace SmokeStack.Recipes.Grid;
 
-/// <summary>
-/// Grid recipe for the smoke-stack intake, the anchor the stack column is built up from. Authored as a
-/// lone recipe object: four refractory bricks around an iron collar.
-/// </summary>
+/// <summary>Grid recipe for the smoke-stack intake, the anchor the stack column is built up from.</summary>
 public class SmokeStackRecipeDefinitions : IExRecipeDefProvider {
-  /// <summary>
-  /// Refractory brick of any tier, capturing the tier as <c>{tier}</c> so the crafted block resolves
-  /// to the matching variant.
-  /// </summary>
+  /// <summary>Refractory brick of any tier, capturing the tier as <c>{tier}</c> for the output variant.</summary>
   private static Func<IngredientBuilder, IngredientBuilder> RefractoryTier(
     int qty
   ) =>

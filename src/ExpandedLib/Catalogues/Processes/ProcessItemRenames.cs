@@ -5,19 +5,12 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Catalogues;
 
-/// <summary>
-/// Rewrites held stacks of a stage product that has been renamed, from the <c>formerCodes</c> the stage
-/// declares. Discovered by <see cref="BlockMigrationModSystem"/> like any other item migration, so a mod
-/// gets the migration by declaring the old code and nothing else.
-/// <para>
-/// Renames are declared, never detected: exlib sees only the current catalogue, so a code that vanished
-/// and one that appeared are indistinguishable from a rename without the hint.
-/// </para>
-/// </summary>
+/// <summary>Rewrites held stacks of a stage product that has been renamed, from the
+/// <c>formerCodes</c> the stage declares.</summary>
 public class ProcessItemRenames : IItemCodeMigration {
   public string Name => "process stage products";
 
-  /// <summary>The pairs the registry's current contents call for. Runs at server start, by which point
+  /// <summary>The pairs the registry's current contents call for. Runs at server start, after
   /// <c>AssetsFinalize</c> has populated the registry.</summary>
   public IEnumerable<(AssetLocation oldCode, AssetLocation newCode)> GetRemaps(
     ICoreServerAPI api
@@ -29,9 +22,8 @@ public class ProcessItemRenames : IItemCodeMigration {
         yield return route;
   }
 
-  /// <summary>Every <c>(former, current)</c> pair <paramref name="routes"/> declares. A stage naming no
-  /// code has nothing to be renamed to; an opted-out one still carries its rename, because the stacks in
-  /// a player's world do not care which mod built the item.</summary>
+  /// <summary>Every <c>(former, current)</c> pair <paramref name="routes"/> declares. A stage
+  /// naming no code has nothing to be renamed to.</summary>
   public static IEnumerable<(AssetLocation Old, AssetLocation New)> Remaps(
     IEnumerable<ProcessRoute> routes
   ) {

@@ -4,11 +4,8 @@ using Vintagestory.API.Common;
 
 namespace BurdenMaker.Items;
 
-/// <summary>
-/// The composition of a <see cref="ItemBurden"/> stack: the relative parts of iron ore and flux (lime).
-/// Stored as raw parts and read back as fractions, so splitting or merging a stack preserves the
-/// per-unit proportions.
-/// </summary>
+/// <summary>The composition of a <see cref="ItemBurden"/> stack: relative parts of iron ore and
+/// flux, stored raw and read back as fractions.</summary>
 public readonly record struct BurdenMix(float Iron, float Flux) {
   public float Sum => Iron + Flux;
   public bool HasContent => Sum > 0.0001f;
@@ -17,11 +14,7 @@ public readonly record struct BurdenMix(float Iron, float Flux) {
   public float FluxFrac => HasContent ? Flux / Sum : 0f;
 }
 
-/// <summary>
-/// Read/write helpers and the config-tunable grade classifier for burden. Shared by the burden item's
-/// tooltip and by <see cref="BlockEntities.BlockEntityBurdenmaker"/> - the only writer - which stamps the
-/// mix and previews the grade before the gate opens.
-/// </summary>
+/// <summary>Read/write helpers and the grade classifier for burden mixes.</summary>
 public static class Burden {
   private const string IronKey = "iron";
   private const string FluxKey = "flux";
@@ -45,10 +38,7 @@ public static class Burden {
     return new BurdenMix(a.GetFloat(IronKey), a.GetFloat(FluxKey));
   }
 
-  /// <summary>
-  /// Lang key of the named grade for a mix. Graded on flux alone: iron is just <c>1 - flux</c>. A
-  /// low-flux mix is not inferred; <c>underfluxed</c> is an explicit band.
-  /// </summary>
+  /// <summary>Lang key of the named grade for a mix, graded on flux alone.</summary>
   public static string ProfileLangKey(BurdenMix mix) {
     if (!mix.HasContent)
       return "burdenmaker:burden-profile-empty";

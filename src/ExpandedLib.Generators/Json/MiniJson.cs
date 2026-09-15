@@ -12,11 +12,7 @@ internal enum JKind {
   Null,
 }
 
-/// <summary>
-/// Parsed JSON value. Read-only: the parser never round-trips, so there is no writer.
-/// <see cref="Raw"/> holds the verbatim source text for a value so two values can be compared exactly
-/// without re-serialising.
-/// </summary>
+/// <summary>Parsed JSON value. Read-only: the parser never round-trips.</summary>
 internal sealed class JVal {
   public JKind Kind;
   public Dictionary<string, JVal>? Obj;
@@ -25,7 +21,7 @@ internal sealed class JVal {
   /// <summary>Decoded text for a <see cref="JKind.String"/>.</summary>
   public string? Str;
 
-  /// <summary>Verbatim source slice for any value (used for exact cross-file equality).</summary>
+  /// <summary>Verbatim source slice for any value.</summary>
   public string Raw = string.Empty;
 
   public bool TryGet(string key, out JVal val) {
@@ -38,12 +34,8 @@ internal sealed class JVal {
   }
 }
 
-/// <summary>
-/// Minimal JSON reader tolerant of what Vintage Story asset JSON allows and strict parsers reject:
-/// <c>//</c> and <c>/* */</c> comments and trailing commas. Hand-rolled so the source generator carries
-/// no external dependency, which an analyzer would otherwise have to bundle. Returns null on malformed
-/// input rather than throwing, so one bad asset file cannot break the build.
-/// </summary>
+/// <summary>Minimal JSON reader tolerant of <c>//</c> and <c>/* */</c> comments and trailing
+/// commas. Returns null on malformed input rather than throwing.</summary>
 internal static class MiniJson {
   public static JVal? Parse(string text) {
     try {

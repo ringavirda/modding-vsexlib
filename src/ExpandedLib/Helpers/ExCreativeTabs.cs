@@ -10,11 +10,8 @@ namespace ExpandedLib.Helpers;
 /// <c>ModSystem.StartClientSide</c>.
 /// </summary>
 public static class ExCreativeTabs {
-  /// <summary>
-  /// Appends <paramref name="tabCode"/> (typically the mod id, matching the blocks'
-  /// <c>creativeinventory</c> JSON key) to the client's creative tab list unless already present.
-  /// No-op when the internal type or field cannot be found.
-  /// </summary>
+  /// <summary>Appends <paramref name="tabCode"/> to the client's creative tab list unless already
+  /// present.</summary>
   public static void EnsureTab(string tabCode) {
     foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies()) {
       Type? type = assembly.GetType(

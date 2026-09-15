@@ -5,15 +5,8 @@ using System.Linq;
 namespace ExpandedLib.Catalogues;
 
 /// <summary>
-/// The public C# route into the process registries, for a mod that computes a spec at load or is happy to
-/// take a hard dependency on exlib. JSON stays the primary, dependency-free path; this is the same surface
-/// reached a second way.
-/// <para>
-/// Deliberately no wider than the JSON schema. Anything expressible only here would be a gap in the schema,
-/// and the schema should grow instead - so every method below builds the declaration a file would have held
-/// and hands it to the same parser, which is what keeps one set of rules rather than two.
-/// See docs/design/mechanics/process-extension.md.
-/// </para>
+/// The public C# route into the process registries, for a mod that computes a spec at load. No
+/// wider than the JSON schema.
 /// </summary>
 /// <param name="Routes">The sequence registry contributions land in.</param>
 /// <param name="Jobs">The terminal registry contributions land in.</param>
@@ -31,8 +24,7 @@ public sealed record ProcessExtensions(
   /// same way is a no-op, and one redrawn differently is returned as a conflict with the first standing.
   /// </summary>
   /// <returns>One human-readable message per clash; empty when the contribution was taken whole.</returns>
-  /// <exception cref="ArgumentException">The stages do not form a valid route - the same refusals a
-  /// declared one meets, so neither route can register something the other would reject.</exception>
+  /// <exception cref="ArgumentException">The stages do not form a valid route.</exception>
   public IReadOnlyList<string> AddStages(
     string family,
     IEnumerable<ProcessStage> stages,
@@ -67,9 +59,7 @@ public sealed record ProcessExtensions(
     return Jobs.Contribute(set);
   }
 
-  // The parser owns the rules, so the code route re-states none of them: it builds the same declaration a
-  // file would have held, runs it through the same TryParse, and throws on a refusal the caller could have
-  // read in a log had they shipped JSON instead.
+  // Builds the declaration a file holds and runs it through the same TryParse.
   private static void Validate(ProcessRoute route) {
     if (
       !ProcessRoute.TryParse(

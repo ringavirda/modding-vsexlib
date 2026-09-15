@@ -3,8 +3,7 @@ using ProtoBuf;
 namespace ExpandedLib.Config;
 
 /// <summary>One mod's config section, carried server to client by <c>ExConfigSyncModSystem</c>: the
-/// host's <see cref="IExConfigAccess.ExportJson"/> output, addressed by mod id so the receiving side
-/// can find the matching registered store.</summary>
+/// host's <see cref="IExConfigAccess.ExportJson"/> output, addressed by mod id.</summary>
 [ProtoContract]
 public sealed class ConfigSyncPacket {
   /// <summary>The section's owning mod id (see <see cref="IExConfigAccess.ModId"/>).</summary>

@@ -4,10 +4,8 @@ using ExpandedLib.Machines;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Drives one machine on a <see cref="TestWorld"/> to a condition rather than to a fixed offset. Every
-/// step fires block-entity ticks then the network tick, the same order <see cref="Scene.Step"/> and a
-/// live server use; a rig that needs a different order (feeding a fuel source directly, invoking a
-/// production tick by reflection) is doing more than this base covers and steps by hand instead.
+/// Drives one machine on a <see cref="TestWorld"/> until a condition holds, not for a fixed offset.
+/// Each step fires block-entity ticks then the network tick, the order <see cref="Scene.Step"/> uses.
 /// </summary>
 public abstract class MachineRig(TestWorld world) {
   /// <summary>The world this rig steps.</summary>
@@ -15,8 +13,7 @@ public abstract class MachineRig(TestWorld world) {
 
   private void Step(float stepSeconds) {
     World.FireBlockEntityTicks(stepSeconds);
-    // The network tick always advances a whole server second; a sub-second step still ticks it once,
-    // matching Scene.Step (which only ever steps by whole seconds).
+    // The network tick advances a whole server second; a sub-second step still ticks it once.
     World.Tick(Math.Max(1, (int)stepSeconds));
   }
 
@@ -56,9 +53,7 @@ public abstract class MachineRig(TestWorld world) {
   }
 
   /// <summary>
-  /// Runs <paramref name="beforeEachStep"/> before every step, for <paramref name="seconds"/>: the
-  /// "hold a source at a level and step" loop the fixtures otherwise write by hand (recharge a pipe,
-  /// crank a pump) so the machine sees a fed line rather than one that drains on the first tick.
+  /// Runs <paramref name="beforeEachStep"/> before every step, for <paramref name="seconds"/>.
   /// </summary>
   public void RunWhile(
     Action beforeEachStep,
@@ -73,20 +68,17 @@ public abstract class MachineRig(TestWorld world) {
 }
 
 /// <summary>
-/// Test-only hooks for the machine base types, for a fixture that drives a production tick or the
-/// access check by hand instead of through <see cref="MachineRig"/>'s stepping.
+/// Test-only hooks for the machine base types, for driving a production tick or access check by hand.
 /// </summary>
 public static class MachineTestHooks {
-  /// <summary>Turns off <see cref="BlockEntityMachineStation"/>'s engine interaction-range check, so a
-  /// headless test's substitute player - never "in range" of anything - can still exercise a packet
-  /// route gated on it. The claim check is unaffected.</summary>
+  /// <summary>Turns off <see cref="BlockEntityMachineStation"/>'s engine interaction-range check. The
+  /// claim check is unaffected.</summary>
   public static void DisablePickRangeCheck(
     this BlockEntityMachineStation station
   ) => station.ValidatePickRange = false;
 
   /// <summary>Runs one production tick on <paramref name="behavior"/> exactly as the registered
-  /// listener would, including the readiness gate and the catch-up <c>dt</c> clamp - without
-  /// registering the listener at all.</summary>
+  /// listener would, without registering it.</summary>
   public static void DriveProductionTick(
     this BEBehaviorProductionMachine behavior,
     float dt

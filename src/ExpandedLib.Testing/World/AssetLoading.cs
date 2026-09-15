@@ -18,23 +18,17 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// Real-asset loading for <see cref="TestWorld"/>: drives the game's own <c>AssetManager</c> and
-/// <c>ModRegistryObjectTypeLoader</c> against a mod's actual JSON/code, so a test gets real, resolved
-/// <see cref="Block"/>/<see cref="Item"/> instances rather than <see cref="TestWorld.RegisterItem"/>'s
-/// hand-built stand-ins.
+/// <c>ModRegistryObjectTypeLoader</c> against a mod's actual JSON/code, producing real, resolved
+/// <see cref="Block"/>/<see cref="Item"/> instances.
 /// </summary>
 public sealed partial class TestWorld {
   /// <summary>
-  /// Loads one mod's real assets through the game's own asset manager and object loader - the same
-  /// pipeline a dedicated server runs at startup - and registers every resulting
-  /// <see cref="Block"/>/<see cref="Item"/> into this <see cref="TestWorld"/>
-  /// (<see cref="Register(Block)"/>/<see cref="Register(Item)"/>), read back off an isolated
-  /// substituted <c>ICoreServerAPI</c>'s own calls rather than <see cref="Api"/>'s. Scope: base
-  /// <c>game</c> domain assets plus <paramref name="modPath"/>'s own, not vanilla survival/creative
-  /// content (their blocks need classes only <c>VSSurvivalMod</c> registers).
+  /// Loads one mod's real assets through the game's own asset manager and object loader, registering
+  /// resulting <see cref="Block"/>/<see cref="Item"/> instances, excluding vanilla survival/creative
+  /// content.
   /// </summary>
-  /// <param name="modPath">A mod's or a sample's folder: <c>modinfo.json</c> and the compiled dll's
-  /// <c>bin/</c> either at its root or under its own <c>src/</c> (the family layout), assets always
-  /// under <c>assets/&lt;modid&gt;/</c> at the root regardless.</param>
+  /// <param name="modPath">A mod's or sample's folder; <c>modinfo.json</c>/<c>bin/</c> may sit at its
+  /// root or under <c>src/</c>, assets always under <c>assets/&lt;modid&gt;/</c>.</param>
   /// <param name="gamePath">The game install to read base assets from; defaults to
   /// <see cref="VsAssemblyResolver.InstallPath"/>.</param>
   /// <exception cref="InvalidOperationException">No game install resolves, no <c>modinfo.json</c>
@@ -47,11 +41,8 @@ public sealed partial class TestWorld {
       );
     string assetsPath = Path.Combine(gamePath, "assets");
 
-    // The family layout keeps modinfo.json and the csproj (so the compiled dll's bin/) under src/,
-    // one level below the assets/ tree; a project sitting flat at modPath's own root - the pre-family
-    // sample layout - is tried first, so nothing here needs to know which one a given repo uses.
-    // Checked by modinfo.json itself, not by bin/'s presence: a stale build's ignored bin/ can
-    // outlive a layout move and would otherwise point this at the wrong root.
+    // modinfo.json presence picks src/ vs. the mod's own root; checked directly since a stale
+    // ignored bin/ can outlive a layout move.
     string modRoot = File.Exists(Path.Combine(modPath, "modinfo.json"))
       ? modPath
       : Path.Combine(modPath, "src");
@@ -69,13 +60,13 @@ public sealed partial class TestWorld {
 
     Assembly modAssembly = Assembly.LoadFrom(FindModAssembly(modRoot, modId));
 
-    // The base game domain only - see the type doc for why survival/creative are excluded.
+    // The base game domain only.
     var mgr = new AssetManager(assetsPath, EnumAppSide.Server);
     mgr.InitAndLoadBaseAssets(Log);
     MirrorAssets(mgr, Path.Combine(modPath, "assets", modId), modId);
 
-    // GamePaths.AssetsPath/Lang.Load are process-wide statics the object loader's Lang.Get() calls
-    // need primed; harmless to set repeatedly across LoadAssets calls in the same process.
+    // GamePaths.AssetsPath/Lang.Load are process-wide statics the object loader needs primed; safe
+    // to set repeatedly.
     ReflectionHelpers.SetStaticField(
       typeof(GamePaths),
       "<AssetsPath>k__BackingField",
@@ -101,9 +92,7 @@ public sealed partial class TestWorld {
       if (sys.ShouldLoad(EnumAppSide.Server))
         sys.Start(loaderApi);
     }
-    // Runs regardless of whether the mod itself is code-first: a mod that ships plain JSON registers
-    // no definitions here and this is a no-op, matching production (exlib's own ModSystem always
-    // runs, at ExecuteOrder 0.04, whether or not anyone used the code-first API).
+    // Runs regardless of whether the mod is code-first; a plain-JSON mod is a no-op here.
     new ExDefinitionModSystem().AssetsLoaded(loaderApi);
 
     RunObjectLoader(loaderApi);
@@ -130,10 +119,9 @@ public sealed partial class TestWorld {
     return this;
   }
 
-  /// <summary>Copies every asset under <paramref name="fullPath"/> for <paramref name="domain"/>
-  /// into <paramref name="mgr"/>'s live asset dictionary. <c>AssetManager.AddPathOrigin</c> alone
-  /// only appends the origin to a list the engine's object loader never re-scans (its <c>GetMany</c>
-  /// reads the already-populated dictionary) - assets must be added directly.</summary>
+  /// <summary>Copies every asset under <paramref name="fullPath"/> for <paramref name="domain"/> into
+  /// <paramref name="mgr"/>'s live asset dictionary; <c>AssetManager.AddPathOrigin</c> alone does not
+  /// reach it.</summary>
   private static void MirrorAssets(
     AssetManager mgr,
     string fullPath,
@@ -160,8 +148,7 @@ public sealed partial class TestWorld {
   ];
 
   /// <summary>Finds the mod's compiled assembly under <c>modPath/bin/</c>: the first dll (recursive
-  /// search) whose file name matches <paramref name="modId"/> case-insensitively, matching the
-  /// <c>&lt;AssemblyName&gt;</c> every mod project in this repo sets to its modid.</summary>
+  /// search) whose file name matches <paramref name="modId"/> case-insensitively.</summary>
   private static string FindModAssembly(string modPath, string modId) {
     string binPath = Path.Combine(modPath, "bin");
     if (!Directory.Exists(binPath))
@@ -183,15 +170,8 @@ public sealed partial class TestWorld {
   }
 
   /// <summary>
-  /// Builds the isolated <c>ICoreServerAPI</c> substitute the object loader runs against, wiring
-  /// only what a headless replay of its own <c>AssetsLoaded</c> needs: a real <c>ClassRegistry</c>
-  /// reached both through <c>ClassRegistry</c>
-  /// itself and through the top-level <c>RegisterBlockClass</c>-family members (which forward to
-  /// <c>ServerMain</c>'s own registry in production, not through <c>api.ClassRegistry</c>), real tag
-  /// registries (Castle's dynamic proxy cannot intercept their <c>ReadOnlySpan&lt;string&gt;</c>
-  /// parameters - <see cref="System.InvalidProgramException"/> - so a substitute cannot stand in),
-  /// and a real logger reachable through both <c>Logger</c> and <c>Server.Logger</c> (the loader
-  /// logs some errors through the latter).
+  /// Builds the isolated <c>ICoreServerAPI</c> substitute the object loader runs against, wiring a
+  /// real <c>ClassRegistry</c>, real tag registries and a real logger.
   /// </summary>
   private ICoreServerAPI BuildLoaderApi(
     AssetManager mgr,
@@ -244,8 +224,7 @@ public sealed partial class TestWorld {
         )
       );
 
-    // ICoreAPI.CollectibleTagRegistry/EntityTagRegistry (and the loader's PreloadTags that needs
-    // them) do not exist before 1.22.
+    // CollectibleTagRegistry/EntityTagRegistry appear only from 1.22 onward.
 #if GAME_GE_1_22
     coreApi.CollectibleTagRegistry.Returns(
       new ConcurrentTagRegistry(Log, "collectible")
@@ -262,9 +241,8 @@ public sealed partial class TestWorld {
     return api;
   }
 
-  /// <summary>Reflectively runs <c>ModRegistryObjectTypeLoader.AssetsLoaded</c> - a public
-  /// <c>Vintagestory.ServerMods.NoObf</c> class, but a game-version-fragile one to hard-reference, so
-  /// it is found by name each call rather than referenced statically.</summary>
+  /// <summary>Reflectively runs <c>ModRegistryObjectTypeLoader.AssetsLoaded</c>, found by name each
+  /// call to avoid a version-fragile static reference.</summary>
   private static void RunObjectLoader(ICoreServerAPI api) {
     Type loaderType =
       Assembly

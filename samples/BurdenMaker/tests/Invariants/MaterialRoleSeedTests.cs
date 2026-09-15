@@ -13,17 +13,11 @@ using Xunit;
 
 namespace BurdenMaker.Tests;
 
-/// <summary>
-/// Checks the claim <see cref="MaterialRoleSeeds"/> makes: that it mirrors
-/// <c>assets/burdenmaker/config/materialroles.json</c> entry for entry. Nothing else in the suite loads
-/// or compares that file - every other test gates on roles registered in C# - so a wrong role token or
-/// prefix in the shipped JSON would otherwise be invisible and the ore hopper would silently refuse
-/// everything in game.
-/// </summary>
+/// <summary>Checks that <see cref="MaterialRoleSeeds"/> mirrors
+/// <c>assets/burdenmaker/config/materialroles.json</c> entry for entry.</summary>
 public class MaterialRoleSeedTests {
-  /// <summary>The role tokens to compare across: the <see cref="Roles"/> constants unioned with the
-  /// shipped file's own roles, since a mod may invent a role string. The union makes this a set
-  /// comparison rather than a spot check.</summary>
+  /// <summary>The role tokens to compare across: <see cref="Roles"/> constants unioned with the
+  /// shipped file's own roles.</summary>
   private static IEnumerable<string> RoleTokens(
     IEnumerable<MaterialRoleDef> shipped
   ) =>
@@ -35,9 +29,8 @@ public class MaterialRoleSeedTests {
       .Select(r => r.ToLowerInvariant())
       .Distinct(StringComparer.Ordinal);
 
-  /// <summary>One role assignment as a comparable line. Codes are domain-normalised (the registry
-  /// matches that way, so <c>lime</c> and <c>game:lime</c> are the same row), and a missing value is
-  /// spelled <c>-</c> rather than defaulted - "no value" is a distinct fact from "value 1".</summary>
+  /// <summary>One role assignment as a comparable line; codes are domain-normalised, a missing
+  /// value is spelled <c>-</c>.</summary>
   private static string Row(MaterialRoleDef def) =>
     string.Join(
       " | ",
@@ -51,9 +44,7 @@ public class MaterialRoleSeedTests {
 
   [Fact]
   public void Seed_matches_the_shipped_materialroles_json() {
-    // MaterialRoleSeeds exists because the harness has no asset pipeline, and claims to mirror
-    // assets/burdenmaker/config/materialroles.json entry for entry. Read from the source tree, not
-    // from a copied-to-output asset: there is no copy step for this file.
+    // Read from the source tree; there is no copy-to-output step for this file.
     string path = Path.Combine(
       RepoPaths.Assets("burdenmaker"),
       "config",
@@ -79,8 +70,7 @@ public class MaterialRoleSeedTests {
       .OrderBy(r => r, StringComparer.Ordinal)
       .ToList();
 
-    // Set equality in both directions: a one-way "every asset row is seeded" check would miss a seed
-    // row that no longer ships.
+    // Set equality in both directions.
     Assert.Equal(fromAsset, fromSeed);
   }
 }

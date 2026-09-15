@@ -3,18 +3,14 @@ using Newtonsoft.Json.Linq;
 
 namespace ExpandedLib.Definitions;
 
-/// <summary>
-/// Typed builder for the <c>ExRightClickConstructable</c> behavior's <c>stages</c> table. Each stage
-/// adds or removes shape elements and optionally requires materials; the builder emits the
-/// <c>{ "stages": [...] }</c> properties object the vanilla behavior consumes.
-/// </summary>
+/// <summary>Typed builder for the <c>ExRightClickConstructable</c> behavior's <c>stages</c> table.</summary>
 public sealed class ConstructionStages {
   private readonly JArray _stages = new();
   private float? _brokenDropsRatio;
   private bool? _gatesProduction;
 
-  /// <summary>Appends one build stage configured through <paramref name="configure"/> (its required
-  /// materials and the shape elements it reveals). Stage order is the build order.</summary>
+  /// <summary>Appends one build stage configured through <paramref name="configure"/>. Stage order
+  /// is the build order.</summary>
   public ConstructionStages Stage(Action<ConstructionStage> configure) {
     var stage = new ConstructionStage();
     configure(stage);
@@ -22,16 +18,13 @@ public sealed class ConstructionStages {
     return this;
   }
 
-  /// <summary>Sets the top-level <c>brokenDropsRatio</c> (the salvage fraction returned when the finished
-  /// structure is broken). Omit to leave it at the behavior default.</summary>
+  /// <summary>Sets the top-level <c>brokenDropsRatio</c>.</summary>
   public ConstructionStages BrokenDropsRatio(float ratio) {
     _brokenDropsRatio = ratio;
     return this;
   }
 
-  /// <summary>Sets the top-level <c>gatesProduction</c>. Omit to leave the default (<c>true</c>): the
-  /// machine's production tick waits for construction to finish. Pass <c>false</c> for a machine that
-  /// must keep ticking while unfinished (see docs/design/mechanics/framework-composition.md).</summary>
+  /// <summary>Sets the top-level <c>gatesProduction</c>. Default <c>true</c>.</summary>
   public ConstructionStages GatesProduction(bool gates) {
     _gatesProduction = gates;
     return this;
@@ -52,8 +45,7 @@ public sealed class ConstructionStage {
   private readonly JObject _stage = new();
   private JArray? _requireStacks;
 
-  /// <summary>The shape elements this stage reveals (each becomes an <c>elem/*</c> selector). Sets
-  /// <c>addElements</c>.</summary>
+  /// <summary>The shape elements this stage reveals. Sets <c>addElements</c>.</summary>
   public ConstructionStage AddElements(params string[] elements) {
     _stage["addElements"] = new JArray(elements);
     return this;
@@ -65,13 +57,8 @@ public sealed class ConstructionStage {
     return this;
   }
 
-  /// <summary>
-  /// Requires <paramref name="quantity"/> of an ingredient to advance this stage. <paramref name="code"/>
-  /// may carry a variant placeholder (e.g. <c>game:burnedbrick-{brick}</c>); <paramref name="name"/> is the
-  /// lang key shown in the "missing X" hint; <paramref name="type"/> is <c>item</c> or <c>block</c>;
-  /// <paramref name="storeWildCard"/> records the chosen variant so later stages/drops resolve to the same
-  /// one. Accumulates across calls (a stage may need several materials).
-  /// </summary>
+  /// <summary>Requires <paramref name="quantity"/> of an ingredient to advance this stage.
+  /// Accumulates across calls.</summary>
   public ConstructionStage Require(
     string code,
     int quantity,
@@ -98,35 +85,26 @@ public sealed class ConstructionStage {
     return this;
   }
 
-  /// <summary>Requires iron or steel metal plate (<c>metalplate-*</c>, stored under the <c>metal</c>
-  /// wildcard so later stages and drops resolve to the same metal). Hint key
-  /// <c>{domain}:rcc-ingredient-metalplate</c>.</summary>
+  /// <summary>Requires iron or steel metal plate.</summary>
   public ConstructionStage RequireMetalPlate(string domain, int quantity) =>
     RequireMetal(domain, "metalplate-*", "metalplate", quantity);
 
-  /// <summary>Requires iron or steel nails and strips (<c>metalnailsandstrips-*</c>, stored under the
-  /// <c>metal</c> wildcard). Hint key <c>{domain}:rcc-ingredient-nailsandstrips</c>.</summary>
+  /// <summary>Requires iron or steel nails and strips.</summary>
   public ConstructionStage RequireMetalNails(string domain, int quantity) =>
     RequireMetal(domain, "metalnailsandstrips-*", "nailsandstrips", quantity);
 
-  /// <summary>
-  /// Requires rivets, which have no metal axis and so no wildcard to capture. Hint key
-  /// <c>{domain}:rcc-ingredient-rivet</c>. <paramref name="rivetCode"/> names the mod that ships the
-  /// rivet, which may differ from <paramref name="domain"/>.
-  /// </summary>
+  /// <summary>Requires rivets.</summary>
   public ConstructionStage RequireRivets(
     string domain,
     string rivetCode,
     int quantity
   ) => Require(rivetCode, quantity, $"{domain}:rcc-ingredient-rivet");
 
-  /// <summary>Requires an iron or steel metal rod (<c>rod-*</c>, stored under the <c>metal</c>
-  /// wildcard). Hint key <c>{domain}:rcc-ingredient-rod</c>.</summary>
+  /// <summary>Requires an iron or steel metal rod.</summary>
   public ConstructionStage RequireMetalRod(string domain, int quantity) =>
     RequireMetal(domain, "rod-*", "rod", quantity);
 
-  // Shared iron/steel ingredient shape: a metal-captured wildcard code stored under "metal", limited
-  // to iron and steel, with the conventional rcc-ingredient hint key.
+  // Shared iron/steel ingredient shape.
   private ConstructionStage RequireMetal(
     string domain,
     string code,

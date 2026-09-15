@@ -9,24 +9,12 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace ExpandedLib.Generators;
 
-/// <summary>
-/// Emits a typed <c>{Domain}Lang</c> class of <c>public const string</c> members, one per key in
-/// <c>assets/{AssetDomain}/lang/en.json</c>, so a mistyped key is a compile error rather than a raw key
-/// rendered in-game. English is the source of truth. The consuming csproj feeds the file by setting
-/// <c>&lt;AssetDomain&gt;</c>, which <c>build/ExpandedLib.targets</c> turns into the
-/// <c>AdditionalFiles</c> item this generator triggers on. A bare file key <c>k</c> emits the
-/// value <c>"{domain}:{k}"</c>; a key that is already domain-qualified (a vanilla override such as
-/// <c>"game:placefailure-..."</c>) emits verbatim.
-/// </summary>
+/// <summary>Emits a typed <c>{Domain}Lang</c> class of <c>public const string</c> members, one per
+/// key in <c>assets/{AssetDomain}/lang/en.json</c>.</summary>
 [Generator(LanguageNames.CSharp)]
 public sealed class ExLangKeyGenerator : IIncrementalGenerator {
   /// <summary>Reported when the consuming project declares <c>$(AssetDomain)</c> but
-  /// <c>assets/{domain}/lang/en.json</c> did not yield a parsed lang file for it, so the generator
-  /// ran and silently emitted nothing: the only symptom otherwise is that <c>{Domain}Lang</c> does
-  /// not exist. Covers both a missing <c>AdditionalFiles</c> item and one present but malformed -
-  /// <see cref="ReadLang"/> returns null for either, so this diagnostic cannot tell them apart. Not
-  /// reported for a project with no <c>AssetDomain</c> at all - every non-mod project that
-  /// references the analyzer (this one included).</summary>
+  /// <c>assets/{domain}/lang/en.json</c> did not yield a parsed lang file for it.</summary>
   private static readonly DiagnosticDescriptor NoMatchingLangFile = new(
     id: "EXLIB0003",
     title: "AssetDomain has no parsed lang file",
@@ -37,10 +25,8 @@ public sealed class ExLangKeyGenerator : IIncrementalGenerator {
     isEnabledByDefault: true
   );
 
-  /// <summary>Reported per sanitised member-name collision: two lang keys reduce to the same
-  /// identifier, and <see cref="Member"/> resolves it by appending "_2" (or higher) to whichever key
-  /// sorts later - so adding a key that sorts earlier can silently re-point an existing member at a
-  /// different lang key.</summary>
+  /// <summary>Reported per sanitised member-name collision, when two lang keys reduce to the same
+  /// identifier.</summary>
   private static readonly DiagnosticDescriptor MemberNameCollision = new(
     id: "EXLIB0004",
     title: "Lang keys collide on their sanitised member name",
@@ -52,8 +38,7 @@ public sealed class ExLangKeyGenerator : IIncrementalGenerator {
   );
 
   public void Initialize(IncrementalGeneratorInitializationContext context) {
-    // Class namespace = the consuming project's RootNamespace, so the class resolves from any file in
-    // that project by ancestor-namespace lookup. Absent: the global namespace, still referenceable.
+    // Class namespace is the consuming project's RootNamespace; absent, the global namespace.
     var rootNs = context.AnalyzerConfigOptionsProvider.Select(
       static (opts, _) =>
         opts.GlobalOptions.TryGetValue(
@@ -64,9 +49,7 @@ public sealed class ExLangKeyGenerator : IIncrementalGenerator {
           : null
     );
 
-    // $(AssetDomain), made compiler-visible in ExpandedLib.targets, gates the no-emit warning: a
-    // project with no AssetDomain at all (the generator's own project, every test project) is not
-    // a mod and is expected to feed nothing.
+    // Gates the no-emit warning; a project with no AssetDomain is expected to feed nothing.
     var assetDomain = context.AnalyzerConfigOptionsProvider.Select(
       static (opts, _) =>
         opts.GlobalOptions.TryGetValue(
@@ -133,7 +116,7 @@ public sealed class ExLangKeyGenerator : IIncrementalGenerator {
     string? rootNs,
     string? assetDomain
   ) {
-    // Merge keys across files sharing a domain; normally there is one en.json per domain per mod.
+    // Merges keys across files sharing a domain.
     var byDomain = new Dictionary<string, SortedSet<string>>(
       StringComparer.Ordinal
     );
@@ -170,8 +153,7 @@ public sealed class ExLangKeyGenerator : IIncrementalGenerator {
       );
       sb.AppendLine($"public static class {className}");
       sb.AppendLine("{");
-      // Walked in SortedSet ordinal order, so a key that sorts earlier than an existing collision
-      // claims the base member name first - see Member.
+      // Walked in ordinal order: an earlier-sorting key claims a collision's base member name.
       foreach (string key in kv.Value) {
         string? member = Member(key, used, owners, spc);
         if (member is null)
@@ -189,10 +171,7 @@ public sealed class ExLangKeyGenerator : IIncrementalGenerator {
     }
   }
 
-  // PascalCase the key's local part (after any "domain:" prefix), splitting on non-alphanumeric chars.
-  // Guarantees a unique, valid identifier (leading digit -> "_"-prefixed; collision -> numeric suffix).
-  // owners maps a base (pre-suffix) name to the first key that claimed it, so a later collision can
-  // report which two keys and which member are involved.
+  // owners maps a base (pre-suffix) name to the first key that claimed it.
   private static string? Member(
     string key,
     HashSet<string> used,

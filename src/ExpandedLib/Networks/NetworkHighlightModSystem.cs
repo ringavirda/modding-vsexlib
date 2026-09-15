@@ -20,23 +20,18 @@ internal class NetworkHighlightRequest {
 
 /// <summary>
 /// Server-driven visualisation of every <see cref="BlockNetwork"/>: each network's blocks are
-/// highlighted with transparent coloured cubes, one colour per network, so a player can see which
-/// blocks share a network and where a run is broken. Toggled per-player with
-/// <c>.exmod network hi|unhi</c> - the command runs client-side and this system carries the request to
-/// the server, which owns the graph. A short server tick re-pushes a player's highlight only when the
-/// set of network blocks or their colours changed; the colour comes from the network's stable
-/// <see cref="BlockNetwork.Id"/>, so it survives refreshes.
+/// highlighted with transparent coloured cubes, one colour per network. Toggled per-player with
+/// <c>.exmod network hi|unhi</c>.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class NetworkHighlightModSystem : ModSystem {
   private const string ChannelName = "exlibNetworkHighlight";
 
-  // Highlight group id reserved for this visualisation (kept distinct from other features' slots).
+  // Highlight group id reserved for this visualisation, distinct from other features' slots.
   private static readonly int HighlightSlotId = ExHighlightSlots.Reserve(
     "exlib:network-highlight"
   );
 
-  // Transparent boxes so overlapping/adjacent networks stay readable.
   private const int HighlightAlpha = 0x70;
 
   #region Client
@@ -58,7 +53,7 @@ public class NetworkHighlightModSystem : ModSystem {
   private ICoreServerAPI? _sapi;
   private BlockNetworkModSystem? _networks;
 
-  // playerUID -> signature of the highlight data last pushed to them (for change detection).
+  // playerUID -> signature of the highlight data last pushed to them.
   private readonly Dictionary<string, long> _lastPushed = [];
 
   public override void StartServerSide(ICoreServerAPI api) {
@@ -85,7 +80,7 @@ public class NetworkHighlightModSystem : ModSystem {
     }
   }
 
-  // Re-push to active players only when the graph (positions or per-network colours) changed.
+  // Re-pushed only when the graph's positions or per-network colours changed.
   private void OnHighlightTick(float dt) {
     if (_lastPushed.Count == 0)
       return;
@@ -134,8 +129,7 @@ public class NetworkHighlightModSystem : ModSystem {
     return (positions, colors, signature);
   }
 
-  /// <summary>A stable, transparent colour for a network, derived from its
-  /// <see cref="BlockNetwork.Id"/> so the same network keeps its colour between refreshes.</summary>
+  /// <summary>A stable, transparent colour for a network, derived from its <see cref="BlockNetwork.Id"/>.</summary>
   private static int NetworkColor(BlockNetwork network) {
     int hue = (int)((uint)network.Id.GetHashCode() % 256);
     int rgb = ColorUtil.HsvToRgb(hue, 190, 220) & 0xFFFFFF;

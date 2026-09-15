@@ -11,30 +11,25 @@ namespace ExpandedLib.Industry.Pipes;
 
 /// <summary>
 /// Pipe-network vent strategy: a vanilla chimney capping the top connector of an
-/// <see cref="IChimneyVentable"/> node draws gas out of the run and puffs smoke. Nodes are matched by
-/// the marker interface rather than concrete block types, so the strategy and the exlib pipe-network
-/// core stay free of any content mod's fitting classes. The per-chimney draw rate (L/s) is supplied by
-/// the mod that registers the "pipe" network and read live from its config. The pipe factory creates
-/// one instance per network, so the fire-sound throttle map is per-network.
+/// <see cref="IChimneyVentable"/> node draws gas out of the run and puffs smoke. The per-chimney draw
+/// rate (L/s) is supplied by the mod that registers the "pipe" network.
 /// </summary>
 public sealed class ChimneyVent : IPipeVentStrategy {
-  // Fire-loop restart interval (ms), just under the 9.26 s clip, so the draught sound is continuous
-  // instead of stacking every tick. The map holds the last loop start (world ms) per drawing chimney.
+  // Fire-loop restart interval (ms), just under the 9.26 s clip.
   private const long ChimneyFireLoopMs = 9000;
+
+  // Last loop start (world ms) per drawing chimney.
   private readonly Dictionary<BlockPos, long> _chimneyFireMs = new();
 
   private readonly Func<float> _drawRatePerChimney;
 
-  /// <param name="drawRatePerChimney">Gas (L/s) one chimney draws from the network - read live from
-  /// the owning mod's config so a retune applies without reconstructing networks.</param>
+  /// <param name="drawRatePerChimney">Gas (L/s) one chimney draws from the network, read live from
+  /// the owning mod's config.</param>
   public ChimneyVent(Func<float> drawRatePerChimney) =>
     _drawRatePerChimney = drawRatePerChimney;
 
-  /// <summary>
-  /// True when <paramref name="block"/> is a chimney. Matches on the code path because vanilla chimney
-  /// blocks carry no attribute to test without a JSON patch, and the substring accepts modded variants
-  /// as well. Shared with iiex's chimney info patch so both classify identically.
-  /// </summary>
+  /// <summary>True when <paramref name="block"/> is a chimney, matched on the code path (accepts
+  /// modded variants too).</summary>
   public static bool IsChimney(Block? block) =>
     block?.Code?.Path?.Contains("chimney") == true;
 
@@ -67,8 +62,7 @@ public sealed class ChimneyVent : IPipeVentStrategy {
     bool liquid,
     BlockNetworkModSystem manager
   ) {
-    // Chimney draw (gas only) - drawRate L/s per chimney-capped top connector. Each drawing chimney
-    // puffs smoke so the venting is visible.
+    // Chimney draw (gas only): drawRate L/s per chimney-capped top connector.
     float vented = 0f;
     if (!liquid && vents.Count > 0 && state.Volume > 0) {
       vented = Math.Min(state.Volume, vents.Count * _drawRatePerChimney());
@@ -94,8 +88,7 @@ public sealed class ChimneyVent : IPipeVentStrategy {
       }
     }
 
-    // Drop sound-throttle stamps for chimneys no longer venting this network, so the map stays bounded
-    // as chimneys are added and removed.
+    // Drops sound-throttle stamps for chimneys no longer venting this network.
     if (_chimneyFireMs.Count > vents.Count) {
       List<BlockPos>? stale = null;
       foreach (var key in _chimneyFireMs.Keys)

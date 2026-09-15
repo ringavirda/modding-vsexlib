@@ -7,14 +7,8 @@ using Vintagestory.API.Config;
 namespace ExpandedLib.Registries;
 
 /// <summary>
-/// A <c>/exmod &lt;name&gt;</c> sub-command over one keyed registry: no argument lists every code with
-/// <see cref="Describe"/>, a code with no further words shows that entry, and any further words are
-/// handed to <see cref="Set"/> to interpret (Config's <c>value [newvalue]</c>, Recipes'
-/// <c>level</c>...). Derive once - supplying the registry's codes/lookup and the four per-command lang
-/// keys and message builders - to get <c>/exmod &lt;name&gt; [code [...]]</c> with no scaffold of its
-/// own. <see cref="ConfigSubCommand"/> and <see cref="RecipesSubCommand"/> derive from this;
-/// <see cref="MeasureSubCommand"/> does not - it is bound to one preference, not a registry of many,
-/// and has no code argument to resolve.
+/// A <c>/exmod &lt;name&gt;</c> sub-command over one keyed registry: no argument lists every code, a
+/// code alone shows that entry, and further words go to <see cref="Set"/>.
 /// </summary>
 public abstract class RegistrySubCommand<T> : IExSubCommand
   where T : class {
@@ -50,13 +44,7 @@ public abstract class RegistrySubCommand<T> : IExSubCommand
   /// <summary>One line describing <paramref name="entry"/>, used for the no-argument list.</summary>
   protected abstract string Describe(T entry);
 
-  /// <summary>
-  /// Handles a resolved <paramref name="entry"/> against the words typed after its code: empty for
-  /// "show this entry", one or more to set something. Owns every per-command lang key and message,
-  /// including "show" - there is no separate show hook, since what "show" prints (a single status
-  /// line, a full value dump, ...) differs enough between commands that forcing one shape here would
-  /// only get in the way.
-  /// </summary>
+  /// <summary>Handles a resolved <paramref name="entry"/> against the words typed following its code: empty for "show this entry", one or more to set something.</summary>
   protected abstract TextCommandResult Set(T entry, string[] args);
 
   /// <summary>Lang key for "no code was given and nothing is registered".</summary>
@@ -85,12 +73,7 @@ public abstract class RegistrySubCommand<T> : IExSubCommand
   private TextCommandResult OnCommand(TextCommandCallingArgs args) =>
     Dispatch(args[0] as string, args[1] as string);
 
-  /// <summary>
-  /// The command's logic with the framework's fluent arg parsing already stripped away: <c>code</c>
-  /// is the first word (null for the bare command), <c>rest</c> everything typed after it. Internal
-  /// rather than private so a test can drive list/show/set/unknown-code without building a fake
-  /// <see cref="TextCommandCallingArgs"/>.
-  /// </summary>
+  /// <summary>The command's logic with fluent arg parsing stripped: <c>code</c> is the first word (null for the bare command), <c>rest</c> the remaining text.</summary>
   internal TextCommandResult Dispatch(string? code, string? rest) {
     if (code is not string c)
       return TextCommandResult.Success(ListEntries());

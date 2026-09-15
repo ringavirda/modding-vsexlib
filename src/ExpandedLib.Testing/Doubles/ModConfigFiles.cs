@@ -6,15 +6,9 @@ using Newtonsoft.Json;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// Real files under a throwaway temp directory, backing <c>ICoreAPI.LoadModConfig</c> and
-/// <c>StoreModConfig</c> so a config class saved through the real API round-trips through real file
-/// I/O rather than a hand-wired substitute. <see cref="TestWorld"/> owns the directory's lifetime -
-/// it is deleted on <see cref="TestWorld.Dispose"/> - and routes both generic and JSON-object
-/// overloads here through a custom NSubstitute call handler (open generic methods cannot be matched
-/// through the ordinary <c>Arg.Any&lt;T&gt;()</c>/<c>Returns</c> pair, since NSubstitute binds a
-/// return-value specification to the exact closed generic method it was written against).
-/// </summary>
+/// <summary>Real files under a throwaway temp directory, backing <c>ICoreAPI.LoadModConfig</c> and
+/// <c>StoreModConfig</c>. <see cref="TestWorld"/> owns the directory's lifetime, deleted on
+/// <see cref="TestWorld.Dispose"/>.</summary>
 public sealed class ModConfigFiles : IDisposable {
   /// <summary>The directory every file below is written to and read from.</summary>
   public string Directory { get; } =
@@ -31,8 +25,7 @@ public sealed class ModConfigFiles : IDisposable {
       : [];
 
   /// <summary>Serialises <paramref name="value"/> as indented JSON to <paramref name="file"/>,
-  /// creating the directory on first write. <c>null</c> writes the literal JSON <c>null</c>, which
-  /// is what storing an unwrapped, empty <c>JsonObject</c> means.</summary>
+  /// creating the directory on first write.</summary>
   public void Write(string file, object? value) {
     System.IO.Directory.CreateDirectory(Directory);
     File.WriteAllText(

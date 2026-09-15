@@ -5,10 +5,8 @@ namespace ExpandedLib.Structures;
 
 /// <summary>
 /// What happens when a legend maps a symbol that is already mapped. <see cref="Throw"/> suits a
-/// code-first layout, where restating a glyph is almost always a copy-paste mistake and the earlier
-/// mapping would otherwise vanish with no error anywhere; <see cref="Replace"/> suits a filler footprint
-/// or a test scene, where re-registering a symbol (a default overridden by <c>Solid</c>/<c>Attach</c>, a
-/// scene glyph rebound between setup steps) is the normal way to change it.
+/// code-first layout, where restating a glyph is a mistake; <see cref="Replace"/> suits a filler
+/// footprint or a test scene, where re-registering a symbol is normal.
 /// </summary>
 public enum DuplicatePolicy {
   Throw,
@@ -16,10 +14,9 @@ public enum DuplicatePolicy {
 }
 
 /// <summary>
-/// Maps a grid's symbols to whatever a caller resolves them into - a block code, a footprint cell's
-/// settings, a placement action - with one duplicate-mapping rule and the "declared but never drawn"
-/// check every one of these layouts needs. Not itself aware of what a symbol means; a <see cref="CellGrid"/>
-/// only says which symbols were drawn.
+/// Maps a grid's symbols to whatever a caller resolves them into, with one duplicate-mapping rule and
+/// an unused-symbol check. Not itself aware of what a symbol means; a <see cref="CellGrid"/> only says
+/// which symbols were drawn.
 /// </summary>
 public sealed class SymbolLegend<TPayload> {
   private readonly DuplicatePolicy _policy;
@@ -46,10 +43,7 @@ public sealed class SymbolLegend<TPayload> {
   public bool TryGet(char symbol, out TPayload payload) =>
     _payloadOf.TryGetValue(symbol, out payload!);
 
-  /// <summary>
-  /// Every mapped symbol <paramref name="grid"/> never drew - a legend entry the layout no longer uses,
-  /// which would otherwise resolve to nothing at runtime with no error anywhere.
-  /// </summary>
+  /// <summary>Every mapped symbol <paramref name="grid"/> never drew.</summary>
   public IReadOnlyList<char> Unused(CellGrid grid) {
     var unused = new List<char>();
     foreach (char symbol in _payloadOf.Keys)

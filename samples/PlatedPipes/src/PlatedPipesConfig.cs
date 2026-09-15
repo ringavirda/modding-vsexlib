@@ -2,11 +2,7 @@ using ExpandedLib.Config;
 
 namespace PlatedPipes;
 
-/// <summary>
-/// The plated tier's tunables, generated into a typed <c>PlatedPipesValues</c> accessor by
-/// <c>ExConfigGenerator</c>. Loaded from and written to the <c>platedpipes</c> section of
-/// <c>ModConfig/platedpipes.json</c>.
-/// </summary>
+/// <summary>The plated tier's tunables, generated into a typed <c>PlatedPipesValues</c> accessor.</summary>
 [ExConfigRegister("platedpipes.json", "platedpipes", Manageable = true)]
 public class PlatedPipesConfig : IExVersionedConfig {
   /// <summary>Mod version that last wrote this file. Managed by the config store - do not set by hand.</summary>

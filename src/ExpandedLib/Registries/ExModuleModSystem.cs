@@ -6,22 +6,8 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// Drives exlib's own framework modules - the <see cref="IExModule"/>s of any loaded assembly
-/// carrying <c>[assembly: ExModule]</c> with <c>Host = "exlib"</c>, shipped inside exlib's own mod
-/// folder (the domain layer, <c>exlib.industry.dll</c>) or as its own mod, which is how the domain
-/// layer joins the lifecycle without a second dll with mod systems, which the game refuses. Also
-/// boots exlib's own definition and entity-registry loggers and the library's tunables, ahead of
-/// anything that might log or register.
-/// </summary>
-/// <remarks>
-/// The execute order is what makes a module's phases usable rather than merely called. At 0.03 it
-/// sits below the game's own JSON patch loader (0.05), so a module's own
-/// <see cref="IExModule.AssetsLoaded"/> reads unpatched JSON, and below
-/// <see cref="ExpandedLib.ExpandedLibModSystem"/>'s pinned 0.06, so a module's own
-/// <see cref="IExModule.AssetsFinalize"/> runs before the framework's. A mod of its own drives its
-/// modules from <see cref="ExModSystem"/> instead, at its own order.
-/// </remarks>
+/// <summary>Drives exlib's own framework modules, and boots exlib's own loggers and tunables
+/// ahead of anything that might log or register.</summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class ExModuleModSystem : ModSystem {
   private ExModuleHost? _host;
@@ -32,13 +18,9 @@ public class ExModuleModSystem : ModSystem {
   public override double ExecuteOrder() => 0.03;
 
   public override void StartPre(ICoreAPI api) {
-    // Wired before anything registers a def or a class, so the re-registration notification and the
-    // cross-mod Class<T>() fallback warning are live for every mod's own Start - including a
-    // framework module's, driven a few lines below.
     Definitions.ExDefinitions.Logger = api.Logger;
     EntityRegistry.Logger = api.Logger;
 
-    // Load the library's own gameplay tunables before any module reads them.
     ExlibValues.Load(api);
 
     SetFlags(api);
@@ -77,10 +59,7 @@ public class ExModuleModSystem : ModSystem {
     base.Dispose();
   }
 
-  // Sets exlib:module:<id> for every enabled module discovered anywhere in the process, not only
-  // this host's own, so a JSON patch condition can gate on a module regardless of which mod hosts
-  // it. Idempotent, so calling from both StartPre and Start (see ExModsModSystem.SetFlags for why)
-  // costs nothing extra.
+  // Sets exlib:module:<id> for every enabled module discovered anywhere in the process.
   private static void SetFlags(ICoreAPI api) {
     var config = api.World?.Config;
     if (config == null)

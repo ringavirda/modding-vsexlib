@@ -7,11 +7,7 @@ namespace ExpandedLib.Catalogues;
 
 /// <summary>
 /// Process-wide catalogue of pipe and canal media (<see cref="LiquidDef"/>) and the single
-/// <see cref="IMediumTaxonomy"/> the pipe network reads. Mirrors the family layer's
-/// <c>MetalRegistry</c>: populated at <c>AssetsFinalize</c> from every domain's <c>config/liquids.json</c> via
-/// <see cref="AssetCatalogueLoader"/>, over a compiled-in baseline. The four built-ins (Air, Steam,
-/// Exhaust, Water) are seeded in the static constructor and again at the start of every
-/// <see cref="Load"/>, so a run without an asset load never sees an unknown medium.
+/// <see cref="IMediumTaxonomy"/> the pipe network reads.
 /// </summary>
 public static class ExLiquids {
   private static readonly ExKeyedRegistry<LiquidDef> _defs = new(d => d.Code);
@@ -21,8 +17,7 @@ public static class ExLiquids {
   /// <summary>The medium policy the pipe network consults (over the current registry contents).</summary>
   public static IMediumTaxonomy Taxonomy { get; } = new MediumTaxonomy();
 
-  /// <summary>Code contributions to this registry, invoked after every load so a medium registered from
-  /// C# survives the clear-and-reseed that precedes each <c>AssetsFinalize</c> read.</summary>
+  /// <summary>Code contributions to this registry, invoked after every load.</summary>
   public static CatalogueContributors Contributors { get; } = new();
 
   /// <summary>Registers (or replaces) a medium by its <see cref="LiquidDef.Code"/>.</summary>
@@ -74,14 +69,12 @@ public static class ExLiquids {
     );
   }
 
-  /// <summary>Obsolete name for <see cref="LiquidCatalogueLoader.Load(ICoreAPI)"/>: a registry does
-  /// not read assets under the naming law, a loader does.</summary>
+  /// <summary>Obsolete name for <see cref="LiquidCatalogueLoader.Load(ICoreAPI)"/>.</summary>
   [Obsolete("Use LiquidCatalogueLoader.Load(api).")]
   public static CatalogueLoadReport Load(ICoreAPI api) =>
     LiquidCatalogueLoader.Load(api);
 
-  // The taxonomy over the current registry contents. All comparisons are code-based and route through
-  // the registry, so a case mismatch or unknown code degrades to gas / not-liquid rather than throwing.
+  // Comparisons are code-based and route through the registry.
   private sealed class MediumTaxonomy : IMediumTaxonomy {
     public bool IsLiquid(string code) =>
       _defs.TryGet(code, out LiquidDef d) && d.Phase == LiquidPhase.Liquid;

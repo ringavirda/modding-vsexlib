@@ -5,24 +5,16 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// A real (non-substitute) <see cref="IModLoader"/>: <see cref="Add"/> registers an enabled mod by
-/// id and version, <see cref="Register"/> registers a live <see cref="ModSystem"/> so
-/// <c>GetModSystem&lt;T&gt;</c> resolves it. <see cref="IsModEnabled"/> and its three
-/// reflection-probed aliases (<see cref="IsModLoaded"/>, <see cref="HasMod"/>,
-/// <see cref="HasModId"/>) report every mod id as enabled: a fake world has no real mod list to
-/// consult (unlike <see cref="GetMod"/>/<see cref="Mods"/>, which only ever see what <see cref="Add"/>
-/// registered), so a caller that just wants to know "would this mod's stuff run" gets yes by
-/// default rather than a false negative for a mod nobody thought to add.
-/// </summary>
+/// <summary>A real (non-substitute) <see cref="IModLoader"/>: <see cref="Add"/> registers an
+/// enabled mod, <see cref="Register"/> registers a live <see cref="ModSystem"/>.
+/// <see cref="IsModEnabled"/> and its aliases report every mod id as enabled.</summary>
 public sealed class TestModLoader : IModLoader {
   private readonly Dictionary<string, Mod> _mods = new();
   private readonly List<ModSystem> _systems = [];
 
   /// <summary>Registers an enabled mod. Disabled (<paramref name="enabled"/> false) mods are not
-  /// added at all, matching production: <c>Mods</c>/<c>GetMod</c> only ever see enabled ones.
-  /// <paramref name="dependencies"/> are the mod IDs it declares in <c>modinfo.json</c>, as
-  /// <see cref="ModInfo.Dependencies"/> reports them.</summary>
+  /// added at all. <paramref name="dependencies"/> are the mod IDs it declares in
+  /// <c>modinfo.json</c>.</summary>
   public TestModLoader Add(
     string modId,
     string version,
@@ -46,8 +38,7 @@ public sealed class TestModLoader : IModLoader {
   }
 
   /// <summary>Registers a live mod system so <c>GetModSystem</c>/<c>GetModSystem&lt;T&gt;</c>
-  /// resolve it, as <see cref="TestWorld"/> does for its own
-  /// <see cref="ExpandedLib.Networks.BlockNetworkModSystem"/>.</summary>
+  /// resolve it.</summary>
   public TestModLoader Register(ModSystem system) {
     _systems.Add(system);
     return this;
@@ -74,8 +65,7 @@ public sealed class TestModLoader : IModLoader {
   public bool IsModSystemEnabled(string fullName) =>
     GetModSystem(fullName) != null;
 
-  /// <summary>Alias for <see cref="IsModEnabled"/>; not part of <see cref="IModLoader"/>, but some
-  /// mods reflect for it instead, guessing the member name might differ across API versions.</summary>
+  /// <summary>Alias for <see cref="IsModEnabled"/>; not part of <see cref="IModLoader"/>.</summary>
   public bool IsModLoaded(string modId) => IsModEnabled(modId);
 
   /// <summary>As <see cref="IsModLoaded"/>.</summary>

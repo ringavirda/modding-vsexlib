@@ -7,20 +7,15 @@ using Vintagestory.API.Common;
 
 namespace SmokeStack.Blocks;
 
-/// <summary>
-/// Intake and anchor block of the smoke-stack multiblock; draws surplus gas from the network it stands
-/// in and vents it to the sky. The build-outline projection (Ctrl + Shift + right-click) comes from the
-/// shared <c>MultiblockStructure</c> block behavior declared in the definition below.
-/// </summary>
+/// <summary>Intake and anchor block of the smoke-stack multiblock; draws surplus gas from the
+/// network it stands in and vents it to the sky.</summary>
 [BlockRegister]
 public partial class BlockSmokeStackIntake
   : BlockPipePassthrough,
     IExBlockDefProvider {
   #region Code-first definition
 
-  /// <summary>The smoke-stack intake blocktype, anchor of the 72-cell chimney multiblock. The base
-  /// <see cref="BlockPipe"/> derives AllowedOrientations and the fallback from this definition
-  /// (orientation states n, s, w, e with fallback "n"), so neither is written out by hand.</summary>
+  /// <summary>The smoke-stack intake blocktype, anchor of the 72-cell chimney multiblock.</summary>
   public static new IEnumerable<ExBlockDef> Definitions(string domain) =>
     [
       ExBlockDef

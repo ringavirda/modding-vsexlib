@@ -10,12 +10,8 @@ namespace ExpandedLib.Migrations;
 
 /// <summary>
 /// Server-side base for systems that act on individual cells across every loaded chunk column: one
-/// sweep of the spawn chunks already loaded at <see cref="EnumServerRunPhase.RunGame"/>, then one pass
-/// per column as the world streams in. A subclass supplies the work table (<see cref="BuildWork"/>),
-/// an optional per-id reject (<see cref="ShouldVisit"/>), the per-cell action
-/// (<see cref="VisitCell"/>) and an optional per-chunk block-entity pass
-/// (<see cref="VisitChunkEntities"/>); the reporting hooks are no-ops by default. Used by
-/// <see cref="BlockMigrationModSystem"/> and <see cref="BlockEntityHealModSystem"/>.
+/// sweep at <see cref="EnumServerRunPhase.RunGame"/>, then one pass per column as the world streams
+/// in. A subclass supplies the work table, an optional per-id reject and the per-cell action.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public abstract class ChunkColumnSweeperModSystem : ModSystem {
@@ -35,8 +31,7 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
 
   public override void StartServerSide(ICoreServerAPI api) {
     _sapi = api;
-    // Spawn-area chunks are already loaded before this event is wired up, so sweep them once at
-    // RunGame and handle every column that loads afterwards via the event.
+    // Spawn-area chunks need one RunGame sweep; every later column arrives through the event.
     api.Event.ServerRunPhase(EnumServerRunPhase.RunGame, RunStartupSweep);
     api.Event.ChunkColumnLoaded += OnChunkColumnLoaded;
     OnStartedServer(api);
@@ -76,20 +71,14 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
     int changed
   ) { }
 
-  /// <summary>
-  /// Completion-marker version for this sweeper. Null or empty (the default) means "no marker": every
-  /// column is scanned on every world load. Set it to bump it - each distinct value gets its own
-  /// per-column marker (<see cref="ExChunkData"/>, keyed by <see cref="ModSystem.Mod"/>'s id and this
-  /// sweeper's type name) - so a column already marked at the current version is skipped and changing
-  /// the value re-sweeps every column once more.
-  /// </summary>
+  /// <summary>Completion-marker version for this sweeper; null or empty (the default) scans every
+  /// column on every world load, and bumping the value re-sweeps every column once more.</summary>
   protected virtual string? Version => null;
 
   private string MarkerKey => $"sweep.{GetType().Name}.{Version}";
 
   /// <summary>Builds the work table once via <see cref="BuildWork"/> and memoises whether this world
-  /// has anything to do. Every entry point calls it, so the table is built exactly once regardless of
-  /// which fires first.</summary>
+  /// has anything to do; every entry point calls it, ensuring exactly one build.</summary>
   protected bool EnsureInitialized() {
     if (!_initialized) {
       _hasWork = BuildWork();
@@ -98,10 +87,8 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
     return _hasWork;
   }
 
-  /// <summary>
-  /// Sweeps every currently loaded chunk column and returns the total change count. Reports per column
-  /// through <see cref="OnColumnSwept"/>; the caller reports the total.
-  /// </summary>
+  /// <summary>Sweeps every currently loaded chunk column and returns the total change count,
+  /// reporting per column through <see cref="OnColumnSwept"/>.</summary>
   protected int SweepAllLoadedChunks() {
     if (!EnsureInitialized())
       return 0;
@@ -109,7 +96,7 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
     int chunksTall = _sapi.WorldManager.MapSizeY / GlobalConstants.ChunkSize;
     int total = 0;
 
-    // Copy the keys: VisitCell can mutate chunks, so don't enumerate the live dictionary.
+    // Copies the keys: VisitCell can mutate chunks during enumeration.
     foreach (
       long index2d in _sapi.WorldManager.AllLoadedMapchunks.Keys.ToArray()
     ) {
@@ -135,7 +122,7 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
 
   private void OnChunkColumnLoaded(Vec2i chunkCoord, IWorldChunk[] chunks) {
     if (!EnsureInitialized()) {
-      // Nothing in this world matches, so no column can ever need work: stop listening entirely.
+      // No column can need work; stops listening entirely.
       _sapi.Event.ChunkColumnLoaded -= OnChunkColumnLoaded;
       return;
     }
@@ -145,14 +132,9 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
       OnColumnStreamedIn(chunkCoord.X, chunkCoord.Y, changed);
   }
 
-  /// <summary>
-  /// Scans one column's already-fetched chunk sections and returns how many changes were made. When
-  /// <see cref="Version"/> is set and the column already carries this sweeper's current-version
-  /// marker, the scan is skipped outright and this returns 0; otherwise the marker is (re)written on
-  /// the ground-level section (index 0) after the scan - a fixed section rather than "whichever
-  /// loaded section happens to be first", since which sections are loaded differs between the
-  /// startup sweep and a later streamed-in load of the same column.
-  /// </summary>
+  /// <summary>Scans one column's already-fetched chunk sections and returns how many changes were
+  /// made; skips the scan and returns 0 when <see cref="Version"/> is set and the column already
+  /// carries the current-version marker.</summary>
   private int SweepColumn(int chunkX, int chunkZ, IWorldChunk?[] chunks) {
     bool versioned = !string.IsNullOrEmpty(Version);
     IWorldChunk? marker = chunks.Length > 0 ? chunks[0] : null;
@@ -170,9 +152,7 @@ public abstract class ChunkColumnSweeperModSystem : ModSystem {
 
     if (versioned && marker != null) {
       ExChunkData.Set(marker, Mod.Info.ModID, MarkerKey, true);
-      // SetModdata alone does not dirty the chunk (IWorldChunk.SetModdata's doc: stored "on the next
-      // autosave"); a column the scan changed nothing else in would otherwise never get written, and
-      // the marker would be lost on restart.
+      // SetModdata alone does not dirty the chunk; MarkModified persists the marker across a restart.
       marker.MarkModified();
     }
 

@@ -17,19 +17,17 @@ using Xunit;
 
 namespace TwinTubBlower.Tests;
 
-/// <summary>
-/// The twin-tub blower: a mechanically driven bellows that produces into the pipe main it stands in.
-/// Covers the speed response, the production path and the footprint hosting the drive axle.
-/// </summary>
+/// <summary>The twin-tub blower: a mechanically driven bellows that produces into the pipe main
+/// it stands in.</summary>
 public class TwinTubBlowerTests {
   #region Speed response
 
   [Theory]
   [InlineData(0f, 0f)]
-  [InlineData(0.5f, 0f)] // at the minimum the bellows barely move
-  [InlineData(1.0f, 0.5f)] // halfway between min and max
-  [InlineData(1.5f, 1f)] // rated speed
-  [InlineData(4f, 1f)] // over-driven: capped, never more than rated
+  [InlineData(0.5f, 0f)]
+  [InlineData(1.0f, 0.5f)]
+  [InlineData(1.5f, 1f)]
+  [InlineData(4f, 1f)]
   public void Output_scales_linearly_between_the_min_and_max_axle_speed(
     float speed,
     float expected
@@ -42,7 +40,6 @@ public class TwinTubBlowerTests {
     float minOriginal = TwinTubBlowerValues.TwinTubBlowerMinSpeed;
     try {
       TwinTubBlowerValues.Edit(c => c.TwinTubBlowerMinSpeed = 1.0f);
-      // 1.0 is half output under the default band and zero once the minimum is raised to 1.0.
       Assert.Equal(0f, BlockEntityTwinTubMPBlower.SpeedFraction(1.0f), 3);
     } finally {
       TwinTubBlowerValues.Edit(c => c.TwinTubBlowerMinSpeed = minOriginal);
@@ -53,12 +50,8 @@ public class TwinTubBlowerTests {
 
   #region Production
 
-  /// <summary>
-  /// A blower standing as a node in its own single-cell pipe main. <c>ProduceAir</c> is driven with an
-  /// axle speed directly: the live tick reads speed from a hosted MP filler port, which needs a filler
-  /// block entity the headless world does not build. Constructed by default, as a working blower is;
-  /// pass <paramref name="constructed"/> false for the premise of an unfinished one.
-  /// </summary>
+  /// <summary>A blower in its own single-cell pipe main, driven directly via <c>ProduceAir</c>.</summary>
+  /// <param name="constructed">False for an unfinished blower; true (default) for a working one.</param>
   private static (
     TestWorld world,
     PipeNetwork net,
@@ -93,13 +86,8 @@ public class TwinTubBlowerTests {
     return (world, (PipeNetwork)world.NetworkAt(pos)!, blower);
   }
 
-  /// <summary>
-  /// A blower placed at <paramref name="orientation"/>, wired into its own single-node pipe network.
-  /// Unlike <see cref="Rig"/>, this leaves the axle and production paths alone - the outlet facts
-  /// below only ever ask the block itself (<see cref="BlockTwinTubMPBlower.OutletCell"/>,
-  /// <see cref="BlockTwinTubMPBlower.OutletFace"/>,
-  /// <see cref="BlockTwinTubMPBlower.HasConnectorAt(BlockFacing)"/>) and the network graph.
-  /// </summary>
+  /// <summary>A blower placed at <paramref name="orientation"/>, wired into its own single-node
+  /// pipe network; leaves the axle and production paths untouched.</summary>
   private static (
     TestWorld world,
     BlockPos principal,
@@ -124,8 +112,8 @@ public class TwinTubBlowerTests {
     return (world, pos, block);
   }
 
-  /// <summary>A plain <see cref="BlockPipe"/> segment, real rather than the synthetic test node
-  /// used elsewhere, with a single connector on <paramref name="facing"/>.</summary>
+  /// <summary>A plain <see cref="BlockPipe"/> segment with a single connector on
+  /// <paramref name="facing"/>.</summary>
   private static BlockPipe PipeSegment(BlockFacing facing, int id) {
     var pipe = TestBlocks.Configure(
       new BlockPipe(),
@@ -202,7 +190,7 @@ public class TwinTubBlowerTests {
   public void The_blower_never_pushes_its_line_past_the_pressure_ceiling() {
     var (_, net, blower) = Rig();
 
-    // Blow far longer than the single cell can hold, so the ceiling - not the volume - is what stops it.
+    // Blows far longer than the single cell can hold; the ceiling, not the volume, stops it.
     for (int i = 0; i < 60; i++)
       blower.ProduceAir(TwinTubBlowerValues.TwinTubBlowerMaxSpeed, 1f);
 
@@ -237,11 +225,8 @@ public class TwinTubBlowerTests {
     Assert.True((bool)port["allowAttach"]!);
   }
 
-  /// <summary>
-  /// The -Z run: the blower's own connector faces north, and the two fillers ahead of it must
-  /// forward that coupling rather than dead-end it, or nothing placed further out ever reaches the
-  /// blower's network.
-  /// </summary>
+  /// <summary>The -Z run: the blower's connector faces north; the two fillers ahead of it must
+  /// forward that coupling.</summary>
   [Fact]
   public void A_pipe_two_cells_out_joins_the_blowers_own_network() {
     var (world, _, _) = Rig();
@@ -267,11 +252,9 @@ public class TwinTubBlowerTests {
     Assert.Same(net, world.NetworkAt(new BlockPos(0, 0, -3)));
   }
 
-  /// <summary>
-  /// A real <see cref="BlockPipe"/> - not the synthetic test node above - standing against
+  /// <summary>A real <see cref="BlockPipe"/> standing against
   /// <see cref="BlockTwinTubMPBlower.OutletCell"/>'s <see cref="BlockTwinTubMPBlower.OutletFace"/>
-  /// joins the blower's own network, at every placed orientation.
-  /// </summary>
+  /// joins the blower's network, at every placed orientation.</summary>
   [Theory]
   [InlineData("n", 200)]
   [InlineData("e", 210)]
@@ -333,7 +316,7 @@ public class TwinTubBlowerTests {
 
       var net = world.NetworkAt(principal);
       Assert.NotNull(net);
-      Assert.Equal(1, net!.Nodes.Count); // the principal alone - the pipe formed its own, separate network
+      Assert.Equal(1, net!.Nodes.Count);
       Assert.NotSame(net, world.NetworkAt(pipePos));
     }
   }
@@ -357,12 +340,8 @@ public class TwinTubBlowerTests {
     Assert.Equal(expected, block.StructureAngle);
   }
 
-  /// <summary>
-  /// The body extends away from the player, not toward them: the pass-through fillers sit at
-  /// principal + 1 and +2 cells along the facing the player was given at placement, the outlet
-  /// faces that same direction, and the MP port cell - fixed above the principal regardless of
-  /// orientation - carries its connector on the player's left hand.
-  /// </summary>
+  /// <summary>The body extends away from the player; the MP port cell carries its connector on
+  /// the player's left hand.</summary>
   [Theory]
   [InlineData("n", 400, 0, 0, -1, 0, 0, -2, "n", "w")]
   [InlineData("e", 410, 1, 0, 0, 2, 0, 0, "e", "n")]
@@ -453,11 +432,8 @@ public class TwinTubBlowerTests {
     );
   }
 
-  /// <summary>
-  /// <c>RecalculateAndSyncOrientations</c> is the neighbour scan's swap path
-  /// (<c>BlockNetworkNode.OnNeighbourBlockChange</c>); the blower's override answers nothing rather
-  /// than re-picking a token off the surrounding topology.
-  /// </summary>
+  /// <summary><c>RecalculateAndSyncOrientations</c> is the neighbour scan's swap path; the
+  /// blower's override answers nothing.</summary>
   [Fact]
   public void A_neighbour_scan_leaves_an_s_blower_s() {
     var world = new TestWorld();

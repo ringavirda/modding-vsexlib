@@ -6,12 +6,8 @@ using Vintagestory.API.Datastructures;
 
 namespace ExpandedLib.Catalogues;
 
-/// <summary>
-/// Reads the terminal-job catalogue - every domain's <c>config/processjobs/*.json</c> - and populates
-/// <see cref="ProcessJobRegistry"/> from it. One file per machine is the convention and nothing enforces
-/// it: the registry merges whatever arrives, so two mods may both add jobs to one machine. The sibling of
-/// <see cref="ProcessRouteLoader"/>, and deliberately the same shape.
-/// </summary>
+/// <summary>Reads the terminal-job catalogue, every domain's <c>config/processjobs/*.json</c>, and
+/// populates <see cref="ProcessJobRegistry"/> from it.</summary>
 public sealed class ProcessJobLoader
   : ContributedCatalogueLoader<ProcessJobSet, ProcessJobRegistry> {
   /// <summary>The asset path every domain's jobs are read from.</summary>
@@ -79,22 +75,15 @@ public sealed class ProcessJobLoader
   protected override void Clear(ProcessJobRegistry registry) =>
     registry.Clear();
 
-  /// <summary>
-  /// Parses the catalogue out of already-read files, each a <c>(source, json)</c> pair whose source names
-  /// the file in an error. A malformed file - including one carrying a key the schema does not read - is
-  /// reported and skipped, so one bad declaration does not cost every other mod its jobs. Asset-free, so
-  /// it runs headless.
-  /// </summary>
+  /// <summary>Parses the catalogue out of already-read <c>(source, json)</c> pairs. A malformed
+  /// file is reported and skipped. Asset-free; runs headless.</summary>
   public static List<ProcessJobSet> Parse(
     IEnumerable<(string Source, string Json)> files,
     out List<string> errors
   ) => _instance.ParseFiles(files, out errors);
 
-  /// <summary>
-  /// Parses <paramref name="files"/> and replaces <paramref name="registry"/>'s contents with them (the
-  /// shared registry when null). Returns one message per malformed file or clash, naming the file it came
-  /// from.
-  /// </summary>
+  /// <summary>Parses <paramref name="files"/> and replaces <paramref name="registry"/>'s contents
+  /// with them (the shared registry when null).</summary>
   public static List<string> Load(
     IEnumerable<(string Source, string Json)> files,
     ProcessJobRegistry? registry = null
@@ -104,8 +93,8 @@ public sealed class ProcessJobLoader
   public static List<(string Source, string Json)> Read(ICoreAPI api) =>
     _instance.ReadAssets(api);
 
-  /// <summary>Reads the catalogue, repopulates the shared registry and runs its code contributors. Call
-  /// from <c>ExpandedLibModSystem.AssetsFinalize</c>.</summary>
+  /// <summary>Reads the catalogue, repopulates the shared registry and runs its code
+  /// contributors.</summary>
   public static CatalogueLoadReport Load(ICoreAPI api) =>
     _instance.LoadCatalogue(api, ProcessJobRegistry.Shared);
 }

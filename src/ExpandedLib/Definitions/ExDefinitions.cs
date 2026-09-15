@@ -8,13 +8,8 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Definitions;
 
-/// <summary>
-/// Process-wide registry of code-first block definitions. A mod authors a block in C# with
-/// <see cref="ExBlockDef"/> and registers it here (from its <c>ModSystem.Start</c>); the shared
-/// <see cref="ExDefinitionModSystem"/> serializes each and injects it as a synthetic <c>blocktypes/</c>
-/// asset on the server, before the object loader runs. Keyed by asset location so a re-register (or a
-/// deliberate override) replaces rather than duplicates.
-/// </summary>
+/// <summary>Process-wide registry of code-first block, item and recipe definitions, keyed by
+/// asset location so a re-register replaces rather than duplicates.</summary>
 public static class ExDefinitions {
   private static readonly ExKeyedRegistry<ExBlockDef> _blocks = new(d =>
     d.Location.ToString()
@@ -28,9 +23,7 @@ public static class ExDefinitions {
     d.Location.ToString()
   );
 
-  // Location -> the assembly whose provider last registered it, so a re-registration from a different
-  // assembly (two mods claiming the same asset path) can be told apart from a mod simply reloading its
-  // own defs, which happens every world start.
+  // Location -> the assembly whose provider last registered it.
   private static readonly Dictionary<string, Assembly> _blockProviders = new(
     StringComparer.Ordinal
   );
@@ -41,28 +34,18 @@ public static class ExDefinitions {
     StringComparer.Ordinal
   );
 
-  // Types, never instances (see the module system's static-state rule): a contributor is
-  // instantiated fresh by RunContributors, not held across worlds.
+  // Types, never instances: a contributor is instantiated fresh by RunContributors.
   private static readonly List<Type> _contributors = [];
 
-  // The location of every block, item and recipe def ExDefinitionModSystem.AssetsLoaded actually
-  // injected, recorded once by RecordInjected. Empty and InjectionRan false until then - a dedicated
-  // multiplayer client (ExDefinitionModSystem never loads there) and a harness path that skips
-  // AssetsLoaded stay false forever, which is what tells LateDefinitionCheck "nothing has run yet"
-  // from "this def missed the window". Not singleplayer: the integrated server and the client share
-  // this static, so the client sees InjectionRan turn true the moment the server's pass records it.
+  // The location of every block, item and recipe def actually injected, recorded by RecordInjected.
   private static readonly HashSet<string> _injected = new(
     StringComparer.Ordinal
   );
 
-  /// <summary>Whether <see cref="ExDefinitionModSystem.AssetsLoaded"/> has recorded an injection
-  /// pass in this process. Read by <see cref="Checks.LateDefinitionCheck"/>; reset by <see cref="Clear"/>.</summary>
+  /// <summary>Whether an injection pass has run in this process. Reset by <see cref="Clear"/>.</summary>
   internal static bool InjectionRan { get; private set; }
 
-  /// <summary>Log sink for exlib's own definition diagnostics (the re-registration notification); set
-  /// once by <see cref="Registries.ExModuleModSystem.StartPre"/> (0.03). Null before startup and in
-  /// tests that never wire it, in which case diagnostics are silently skipped.
-  /// </summary>
+  /// <summary>Log sink for exlib's own definition diagnostics. Null before startup.</summary>
   public static ILogger? Logger { get; set; }
 
   /// <summary>Registers (or replaces) a code-first block definition.</summary>
@@ -95,9 +78,7 @@ public static class ExDefinitions {
     _recipes.Register(def);
   }
 
-  // Records which assembly registered `location` this time, and logs a Notification when that differs
-  // from the assembly that registered it last - two mods (or a mod and exlib itself) claiming the same
-  // asset path, rather than one mod's own reload.
+  // Records which assembly registered `location` this time, and logs when that differs from last time.
   private static void TrackProvider(
     Dictionary<string, Assembly> providers,
     string location,
@@ -141,12 +122,7 @@ public static class ExDefinitions {
     InjectionRan = false;
   }
 
-  /// <summary>
-  /// Records that injection ran and which locations it covered, so a definition registered
-  /// afterward under the same location can be told apart from one that made the deadline. Called
-  /// once by <see cref="ExDefinitionModSystem.AssetsLoaded"/>, right after building every synthetic
-  /// asset.
-  /// </summary>
+  /// <summary>Records that injection ran and which locations it covered.</summary>
   internal static void RecordInjected(IEnumerable<AssetLocation> locations) {
     InjectionRan = true;
     foreach (AssetLocation location in locations)
@@ -157,14 +133,7 @@ public static class ExDefinitions {
   internal static bool WasInjected(AssetLocation location) =>
     _injected.Contains(location.ToString());
 
-  /// <summary>
-  /// Builds a <c>type -&gt; orientation states</c> map from a class's code-first defs - the single
-  /// source a block derives its runtime <c>AllowedOrientations</c> from, so the orientation list lives
-  /// only in the variant groups. A def with no <c>type</c> states (e.g. a worldproperty-oriented block)
-  /// has no pair to contribute and is skipped. Every type state a def declares is mapped, not just a
-  /// lone one: a def may carry several (<c>iiex:flywheel</c> declares <c>type(normal|large)</c> with
-  /// <c>orientation(ns|we)</c>), and they share that def's single orientation group by construction.
-  /// </summary>
+  /// <summary>Builds a <c>type -&gt; orientation states</c> map from a class's code-first defs.</summary>
   public static Dictionary<string, string[]> OrientationMap(
     IEnumerable<ExBlockDef> defs
   ) {
@@ -177,12 +146,9 @@ public static class ExDefinitions {
     return map;
   }
 
-  /// <summary>
-  /// Scans <paramref name="asm"/> for <see cref="IExBlockDefProvider"/> classes and registers each
-  /// one's co-located definition (built for <paramref name="domain"/>, the mod id). Called from
-  /// <see cref="Registries.EntityRegistry.RegisterAll"/> so a mod's block defs are discovered
-  /// alongside its class registration. Returns how many were registered.
-  /// </summary>
+  /// <summary>Scans <paramref name="asm"/> for <see cref="IExBlockDefProvider"/> classes and
+  /// registers each one's co-located definition.</summary>
+  /// <returns>How many were registered.</returns>
   public static int DiscoverAndRegister(string domain, Assembly asm) =>
     Discover<ExBlockDef>(
       domain,
@@ -191,11 +157,8 @@ public static class ExDefinitions {
       def => RegisterBlock(def, asm)
     );
 
-  /// <summary>
-  /// Item-side sibling of <see cref="DiscoverAndRegister"/>: scans <paramref name="asm"/> for
-  /// <see cref="IExItemDefProvider"/> classes and registers each one's co-located definition(s).
-  /// Returns how many were registered.
-  /// </summary>
+  /// <summary>Item-side sibling of <see cref="DiscoverAndRegister"/>.</summary>
+  /// <returns>How many were registered.</returns>
   public static int DiscoverAndRegisterItems(string domain, Assembly asm) =>
     Discover<ExItemDef>(
       domain,
@@ -204,11 +167,8 @@ public static class ExDefinitions {
       def => RegisterItem(def, asm)
     );
 
-  /// <summary>
-  /// Recipe-side sibling of <see cref="DiscoverAndRegister"/>: scans <paramref name="asm"/> for
-  /// <see cref="IExRecipeDefProvider"/> classes and registers each one's co-located recipe file(s).
-  /// Returns how many were registered.
-  /// </summary>
+  /// <summary>Recipe-side sibling of <see cref="DiscoverAndRegister"/>.</summary>
+  /// <returns>How many were registered.</returns>
   public static int DiscoverAndRegisterRecipes(string domain, Assembly asm) =>
     Discover<ExRecipeDef>(
       domain,
@@ -217,15 +177,9 @@ public static class ExDefinitions {
       def => RegisterRecipe(def, asm)
     );
 
-  /// <summary>
-  /// Scans <paramref name="asm"/> for concrete <see cref="IExDefinitionContributor"/> types with a
-  /// parameterless constructor and records each once (types, never instances). Called from
-  /// <see cref="Registries.EntityRegistry.RegisterAll"/> alongside the three <c>DiscoverAndRegister*</c>
-  /// passes, so a contributor needs no separate registration call. One without a parameterless
-  /// constructor is logged through <see cref="Logger"/> as a warning naming the type and skipped.
-  /// </summary>
-  /// <remarks>Plumbing with one caller (<see cref="Registries.EntityRegistry.RegisterAll"/>);
-  /// public because the harness needs it to seed a test's own contributors.</remarks>
+  /// <summary>Scans <paramref name="asm"/> for concrete <see cref="IExDefinitionContributor"/>
+  /// types with a parameterless constructor and records each once. One without a parameterless
+  /// constructor is logged as a warning and skipped.</summary>
   [EditorBrowsable(EditorBrowsableState.Never)]
   public static void DiscoverContributors(Assembly asm) {
     foreach (Type type in ReflectionScan.GetCandidateTypes(asm)) {
@@ -243,16 +197,8 @@ public static class ExDefinitions {
     }
   }
 
-  /// <summary>
-  /// Instantiates and runs every discovered <see cref="IExDefinitionContributor"/>, in discovery
-  /// order, each isolated (a throw is logged through <paramref name="api"/>'s logger naming the type;
-  /// the rest still run). Called by <see cref="ExDefinitionModSystem.AssetsLoaded"/> right before
-  /// injection, after every mod's and module's <c>Start</c> has registered its contributors, so a
-  /// contribution depending on loaded assets is always in time. Server-only - the caller's own
-  /// side check gates this, since the definition system does not run client-side.
-  /// </summary>
-  /// <remarks>Plumbing with one caller (<see cref="ExDefinitionModSystem.AssetsLoaded"/>); public
-  /// because the harness needs it to replay contributors against real loaded assets.</remarks>
+  /// <summary>Instantiates and runs every discovered <see cref="IExDefinitionContributor"/>, in
+  /// discovery order, each isolated: a throw is logged and the rest still run.</summary>
   [EditorBrowsable(EditorBrowsableState.Never)]
   public static void RunContributors(ICoreAPI api) {
     int ran = 0;
@@ -277,11 +223,8 @@ public static class ExDefinitions {
       );
   }
 
-  // Discovers every concrete implementor of `providerInterface` in the assembly and registers each def its
-  // static `Definitions(string)` factory returns; shared by the three public passes above, which differ only
-  // by provider interface, def type and target registry. The provider interface is passed as a Type, not a
-  // type argument, because it carries a `static abstract` member, which bars it from being a generic type
-  // argument (CS8920), and only a reflective assignability check needs it.
+  // The provider interface is passed as a Type, not a type argument: it carries a `static
+  // abstract` member (CS8920).
   private static int Discover<TDef>(
     string domain,
     Assembly asm,
@@ -298,11 +241,8 @@ public static class ExDefinitions {
     return count;
   }
 
-  /// <summary>
-  /// The code-first block defs a <paramref name="type"/> declares itself, or empty when it declares none.
-  /// Used both by discovery and by a block deriving runtime tables from its own def
-  /// (<c>ExDefinitions.OrientationMap(DefinitionsOf(GetType(), domain))</c>).
-  /// </summary>
+  /// <summary>The code-first block defs a <paramref name="type"/> declares itself, or empty when
+  /// it declares none.</summary>
   public static IEnumerable<ExBlockDef> DefinitionsOf(
     Type type,
     string domain
@@ -320,12 +260,8 @@ public static class ExDefinitions {
     string domain
   ) => DefinitionsOf<ExRecipeDef>(type, domain, typeof(IExRecipeDefProvider));
 
-  // The defs a type declares itself via its provider interface's static `Definitions(string)` factory, or
-  // empty when it declares none. DeclaredOnly matters: several blocks subclass a def-providing base (the
-  // special pipes extend BlockPipe), and without it a derived class would return the base's inherited defs.
-  // All three provider interfaces name the factory "Definitions", so one generic lookup serves them all.
-  // A provider carrying [ExDefDomain] is handed that domain rather than the registering mod's, which is
-  // what lets one assembly emit into several domains.
+  // The defs a type declares itself via its provider interface's static `Definitions(string)` factory.
+  // DeclaredOnly: a derived class must not return its base's inherited defs.
   private static IEnumerable<TDef> DefinitionsOf<TDef>(
     Type type,
     string domain,
@@ -346,12 +282,8 @@ public static class ExDefinitions {
     return define?.Invoke(null, [effective]) as IEnumerable<TDef> ?? [];
   }
 
-  /// <summary>
-  /// Serializes every registered block definition to the synthetic assets the loader consumes:
-  /// one <c>{domain}:blocktypes/{code}.json</c> per def, its bytes the def's JSON. Side-effect-free -
-  /// the caller performs the <c>AssetManager.Add</c>. The <paramref name="origin"/> is stamped as each
-  /// asset's <see cref="IAsset.Origin"/>.
-  /// </summary>
+  /// <summary>Serializes every registered block definition to the synthetic assets the loader
+  /// consumes. Side-effect-free: the caller performs the <c>AssetManager.Add</c>.</summary>
   public static IEnumerable<(
     AssetLocation location,
     IAsset asset
@@ -373,16 +305,14 @@ public static class ExDefinitions {
   )> BuildRecipeAssets(IAssetOrigin origin) =>
     BuildAssets(_recipes.Values, origin);
 
-  // Serializes each def to a synthetic asset at its own Location; shared by the three public Build* passes,
-  // which differ only by which registry feeds them (IExDef's covariant Location/ToJson lets blocks, items and
-  // recipes flow through together).
+  // Serializes each def to a synthetic asset at its own Location.
   private static IEnumerable<(
     AssetLocation location,
     IAsset asset
   )> BuildAssets(IEnumerable<IExDef> defs, IAssetOrigin origin) {
     foreach (IExDef def in defs) {
-      // Parameterless ToString() (indented JSON): the payload only needs to be valid JSON for the loader
-      // to parse. The Formatting overload is not exposed at runtime by the game's bundled Newtonsoft build.
+      // Parameterless ToString(): the Formatting overload is not exposed at runtime by the
+      // game's bundled Newtonsoft build.
       byte[] bytes = Encoding.UTF8.GetBytes(def.ToJson().ToString());
       yield return (
         def.Location,

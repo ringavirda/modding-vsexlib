@@ -7,31 +7,20 @@ using Vintagestory.API.Config;
 namespace ExpandedLib.Industry.Metals;
 
 /// <summary>
-/// Process-wide catalogue of <see cref="MetalDef"/>s, consulted by the molten system in place of
-/// item-code string surgery. Populated at <c>AssetsFinalize</c> from every domain's
-/// <c>config/metals/*.json</c> plus an auto-derived baseline, so a mod contributes a metal by shipping
-/// or patching JSON. Every reader helper takes the registered override when the metal declares one and
-/// the code convention otherwise, so an unregistered metal - and any lookup before the loader runs -
-/// still resolves. World-free, so it runs headless.
+/// Process-wide catalogue of <see cref="MetalDef"/>s, populated at <c>AssetsFinalize</c> from each
+/// domain's <c>config/metals/*.json</c> plus an auto-derived baseline. Reader helpers fall back to
+/// a code convention for an unregistered metal.
 /// </summary>
 public static class MetalRegistry {
-  /// <summary>
-  /// Recovery item code assumed by <see cref="FallbackOf"/> when a metal declares no
-  /// <see cref="MetalDef.RecoveryFallback"/> of its own. Null (the default) means no fallback at all -
-  /// exlib ships no metal of its own and so no opinion on what one should drop instead. A content mod
-  /// sets this once, typically from its own config, if it wants an unregistered or under-specified
-  /// metal to still recover something; a metal's own <see cref="MetalDef.RecoveryFallback"/> always
-  /// wins over this.
-  /// </summary>
+  /// <summary>Recovery item code used by <see cref="FallbackOf"/> when a metal declares no
+  /// <see cref="MetalDef.RecoveryFallback"/>; null means no fallback.</summary>
   public static AssetLocation? DefaultRecoveryFallback { get; set; }
 
   /// <summary>Code contributions to this registry, invoked by <see cref="MetalCatalogueLoader"/> after
-  /// its overlay on every load, so a metal registered from C# survives the clear that precedes each
-  /// <c>AssetsFinalize</c> read.</summary>
+  /// each load's overlay.</summary>
   public static CatalogueContributors Contributors { get; } = new();
 
-  // Two indices over the same defs: by molten-item AssetLocation (the carrier code call sites hold) and
-  // by short Code (the "iron"/"slag" token the converter and blast furnace resolve).
+  // Indexed by molten-item AssetLocation and by short Code.
   private static readonly ExKeyedRegistry<MetalDef> _byMoltenItem = new(d =>
     Normalize(d.MoltenItem)
   );
@@ -48,7 +37,7 @@ public static class MetalRegistry {
     _byCode.Register(def);
   }
 
-  /// <summary>Drops every registered metal. The loader clears before repopulating on each world load.</summary>
+  /// <summary>Drops every registered metal.</summary>
   public static void Clear() {
     _byMoltenItem.Clear();
     _byCode.Clear();
@@ -70,11 +59,8 @@ public static class MetalRegistry {
   public static bool TryGet(ItemStack stack, out MetalDef def) =>
     TryGet(stack.Collectible.Code, out def);
 
-  /// <summary>
-  /// Resolves a short metal token ("iron", "steel", "slag") to its descriptor. An unregistered token
-  /// yields a transient convention descriptor whose <see cref="MetalDef.MoltenItem"/> is
-  /// <c>game:ingot-&lt;code&gt;</c>; a registered def (slag to <c>iiex:slag</c>) overrides it.
-  /// </summary>
+  /// <summary>Resolves a short metal token ("iron", "steel", "slag") to its descriptor, falling back to
+  /// a convention descriptor for an unregistered token.</summary>
   public static MetalDef ResolveByCode(string shortCode) =>
     _byCode.TryGet(shortCode, out var def)
       ? def
@@ -89,7 +75,7 @@ public static class MetalRegistry {
   #endregion
 
   #region Reader helpers (registered override else convention)
-  /// <summary>Solid item chipped/broken out of molten metal. Convention: <c>ingot-X → metalbit-X</c>
+  /// <summary>Solid item chipped/broken out of molten metal. Convention: <c>ingot-X -> metalbit-X</c>
   /// (same domain); a non-ingot carrier drops as itself.</summary>
   public static AssetLocation SolidDropOf(AssetLocation moltenItem) =>
     TryGet(moltenItem, out var def) && def.SolidDrop != null
@@ -101,7 +87,7 @@ public static class MetalRegistry {
     (TryGet(moltenItem, out var def) ? def.UnitsPerBit : null) ?? 5;
 
   /// <summary>Human-readable metal name. Convention: strip <c>ingot-</c> and capitalise
-  /// ("game:ingot-iron" → "Iron"); an empty code reads as the unknown-metal label.</summary>
+  /// ("game:ingot-iron" -> "Iron"); an empty code reads as the unknown-metal label.</summary>
   public static string DisplayName(string moltenItemCode) {
     if (moltenItemCode.Length == 0)
       return Lang.Get("exlib:metal-unknown");
@@ -111,8 +97,8 @@ public static class MetalRegistry {
   }
 
   /// <summary>Recovery item code when the solid drop cannot resolve: the metal's own
-  /// <see cref="MetalDef.RecoveryFallback"/> if it declares one, else <see cref="DefaultRecoveryFallback"/>,
-  /// else null (no fallback).</summary>
+  /// <see cref="MetalDef.RecoveryFallback"/>, else <see cref="DefaultRecoveryFallback"/>, else
+  /// null.</summary>
   public static AssetLocation? FallbackOf(AssetLocation moltenItem) {
     string? code = TryGet(moltenItem, out var def)
       ? def.RecoveryFallback
@@ -134,7 +120,7 @@ public static class MetalRegistry {
     (TryGet(moltenItem, out var def) ? def.HardenedThreshold : null)
     ?? ExlibValues.MetalHardenedThreshold;
 
-  /// <summary>Temperature (°C) below which this metal emits no glow (convention: the global default).</summary>
+  /// <summary>Temperature ( deg C) below which this metal emits no glow (convention: the global default).</summary>
   public static float GlowMinTempOf(AssetLocation moltenItem) =>
     (TryGet(moltenItem, out var def) ? def.GlowMinTemp : null)
     ?? ExlibValues.MetalGlowMinTemp;
@@ -143,12 +129,8 @@ public static class MetalRegistry {
   public static string? CastDomainOf(AssetLocation moltenItem) =>
     TryGet(moltenItem, out var def) ? def.CastDomain : null;
 
-  /// <summary>
-  /// Resolves a tool-mold drop <paramref name="template"/> for <paramref name="moltenItem"/>: substitutes
-  /// <c>{metal}</c> with the metal's short code, then rehomes the result into the metal's
-  /// <see cref="MetalDef.CastDomain"/> when it declares one. Without a <c>CastDomain</c> the template's
-  /// own domain is kept.
-  /// </summary>
+  /// <summary>Resolves a tool-mold drop for <paramref name="template"/> and <paramref name="moltenItem"/>,
+  /// substituting <c>{metal}</c> and rehoming into <see cref="MetalDef.CastDomain"/> when set.</summary>
   public static AssetLocation CastProductOf(
     AssetLocation template,
     AssetLocation moltenItem
@@ -163,9 +145,7 @@ public static class MetalRegistry {
   #endregion
 
   #region Conventions (the exact pre-registry behaviour)
-  // The token a tool mold substitutes into {metal}. Mirrors vanilla's substitution source:
-  // BlockEntityToolMold.stackFromCode uses Collectible.LastCodePart(), not MetalDef.Code, so a metal
-  // whose registry code differs from its item suffix resolves the way the mold does.
+  // Mirrors vanilla: BlockEntityToolMold.stackFromCode uses Collectible.LastCodePart().
   private static string ShortMetalOf(AssetLocation moltenItem) {
     string path = moltenItem.Path;
     int dash = path.LastIndexOf('-');
@@ -183,7 +163,7 @@ public static class MetalRegistry {
     return name.Length > 0 ? char.ToUpper(name[0]) + name[1..] : name;
   }
 
-  // Domain-normalise so "ingot-iron" (defaulting to game) and "game:ingot-iron" key alike.
+  // Domain-normalized key: "ingot-iron" and "game:ingot-iron" resolve alike.
   private static string Normalize(string code) =>
     new AssetLocation(code).ToString();
 

@@ -9,10 +9,9 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Networks;
 
 /// <summary>
-/// Base block entity for any block that is a node in a <see cref="BlockNetwork"/> (gas pipes, molten
-/// canals). Graph membership is held by a <see cref="BEBehaviorNetworkMember"/> this class hosts, which
-/// registers and unregisters the node server-side; the block entity itself persists orientation and
-/// network state and forwards network updates to the concrete block entity.
+/// Base block entity for any block that is a node in a <see cref="BlockNetwork"/>. Graph membership
+/// is held by a <see cref="BEBehaviorNetworkMember"/> this class hosts; the block entity itself
+/// persists orientation and network state and forwards network updates to the concrete block entity.
 /// </summary>
 public abstract class BlockEntityNetworkNode : BlockEntity, INetworkNode {
   private readonly HostMembership _membership;
@@ -22,29 +21,25 @@ public abstract class BlockEntityNetworkNode : BlockEntity, INetworkNode {
   protected ExBlockState Persisted =>
     BlockEntityStateHost.GetOrCreate(this, ref _state, DeclareState);
 
-  /// <summary>Declares the fields this node persists beyond the network membership state above. Called
-  /// once, lazily. Default: nothing.</summary>
+  /// <summary>Declares the fields this node persists beyond the network membership state above;
+  /// called once, lazily.</summary>
   protected virtual void DeclareState(ExBlockState state) { }
 
   protected BlockEntityNetworkNode() {
-    // Added here because BlockEntity fans both FromTreeAttributes and Initialize out over Behaviors,
-    // and a membership added any later misses whichever of the two has already run.
+    // Must be added here: Behaviors fans out both FromTreeAttributes and Initialize.
     _membership = new HostMembership(this);
     Behaviors.Add(_membership);
   }
 
   /// <summary>The network manager this node is registered with, resolved when the block entity
-  /// initialises. Held by the membership, which is what registers with it.</summary>
+  /// initialises.</summary>
   public BlockNetworkModSystem? NetworkSystem {
     get => _membership.NetworkSystem;
     protected set => _membership.NetworkSystem = value;
   }
 
-  /// <summary>
-  /// This node's graph membership. It holds no copy of the network type or the saved state and reads
-  /// both off the block entity as it needs them: <see cref="FromTreeAttributes"/> reaches the
-  /// behaviours before it assigns either, and runs again on every client sync.
-  /// </summary>
+  /// <summary>This node's graph membership; reads the network type and saved state off the block
+  /// entity as it needs them.</summary>
   private sealed class HostMembership(BlockEntityNetworkNode owner)
     : BEBehaviorNetworkMember(owner) {
     public override string NetworkType {
@@ -71,9 +66,7 @@ public abstract class BlockEntityNetworkNode : BlockEntity, INetworkNode {
     base.FromTreeAttributes(tree, worldForResolving);
     NetworkType = tree.GetString("networkType", null);
     Orientation = tree.GetString("orientation");
-    // Saves written before the string-array cutover hold this key as JSON text under the same name. The
-    // array read returns null on one of those rather than throwing, so the old encoding is simply the
-    // second thing tried; a node loaded that way is rewritten in the new shape on its next save.
+    // A legacy save holds this key as JSON text; a null array read falls back to that encoding.
     PossibleOrientations =
       tree.GetStrings("possibleOrientations")
       ?? ExTree.SafeDeserialize<string[]>(
@@ -119,8 +112,8 @@ public abstract class BlockEntityNetworkNode : BlockEntity, INetworkNode {
 
   #region Persistence hooks - override in concrete BEs
 
-  /// <summary>Returns <c>true</c> when <paramref name="state"/> is worth caching and restoring.
-  /// Default: any non-null state. Override to require non-empty content (e.g. amount > 0).</summary>
+  /// <summary>Returns <c>true</c> when <paramref name="state"/> is worth caching and restoring;
+  /// override to require non-empty content.</summary>
   protected virtual bool IsNetworkStateMeaningful(object? state) =>
     state != null;
 
@@ -162,10 +155,8 @@ public abstract class BlockEntityNetworkNode : BlockEntity, INetworkNode {
       _savedNetworkState = null;
   }
 
-  /// <summary>
-  /// Whether this node currently severs the network at its position (e.g. a closed
-  /// valve). Default <c>false</c>; override to break connectivity dynamically.
-  /// </summary>
+  /// <summary>Whether this node currently severs the network at its position; override to break
+  /// connectivity dynamically.</summary>
   public virtual bool IsConnectionBroken() => false;
 
   /// <inheritdoc/>

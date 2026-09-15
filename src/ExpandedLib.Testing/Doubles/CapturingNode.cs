@@ -4,12 +4,9 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// Block entity that records the network broadcasts and open-connector notifications it receives, so
-/// a test can assert that a producer/consumer change reached the nodes. Implements
-/// <see cref="INetworkNode"/> directly rather than via <c>BlockEntityNetworkNode</c> to avoid the
-/// engine-bound <c>Initialize</c> path.
-/// </summary>
+/// <summary>Block entity that records the network broadcasts and open-connector notifications it
+/// receives. Implements <see cref="INetworkNode"/> directly, not via
+/// <c>BlockEntityNetworkNode</c>, to avoid the engine-bound <c>Initialize</c> path.</summary>
 public sealed class CapturingNode : BlockEntity, INetworkNode {
   /// <summary>The most recent state payload delivered by <see cref="OnNetworkUpdate"/>.</summary>
   public object? LastState { get; private set; }

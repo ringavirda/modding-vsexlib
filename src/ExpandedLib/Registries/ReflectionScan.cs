@@ -6,18 +6,10 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>
-/// Shared reflection helper for the attribute-driven registries
-/// (<see cref="EntityRegistry"/>, <see cref="CommandRegistry"/>,
-/// <see cref="PreferenceRegistry"/>, <c>Checks.ExCheckRegistry</c>) and for
-/// <c>BlockMigrationModSystem</c>'s cross-assembly discovery.
-/// </summary>
+/// <summary>Shared reflection helper for the attribute-driven registries.</summary>
 public static class ReflectionScan {
-  /// <summary>
-  /// Returns every concrete (non-abstract) class in <paramref name="asm"/>, tolerating a
-  /// partial load (<see cref="ReflectionTypeLoadException"/>) so one unloadable type can't
-  /// break registration of the rest.
-  /// </summary>
+  /// <summary>Returns every concrete (non-abstract) class in <paramref name="asm"/>, tolerating a
+  /// partial load.</summary>
   public static Type[] GetCandidateTypes(Assembly asm) {
     try {
       return asm.GetTypes()
@@ -30,12 +22,8 @@ public static class ReflectionScan {
     }
   }
 
-  /// <summary>
-  /// Returns every concrete class across <paramref name="assemblies"/>, sorted by assembly full
-  /// name then type full name so a scan over <see cref="AppDomain.GetAssemblies"/> (whose own
-  /// order is not guaranteed) is reproducible run to run. Each assembly tolerates a partial load
-  /// the same way <see cref="GetCandidateTypes(Assembly)"/> does.
-  /// </summary>
+  /// <summary>Returns every concrete class across <paramref name="assemblies"/>, sorted by
+  /// assembly full name then type full name.</summary>
   public static Type[] GetCandidateTypes(IEnumerable<Assembly> assemblies) =>
     assemblies
       .SelectMany(GetCandidateTypes)
@@ -43,12 +31,8 @@ public static class ReflectionScan {
       .ThenBy(t => t.FullName, StringComparer.Ordinal)
       .ToArray();
 
-  /// <summary>
-  /// Validates that <paramref name="type"/> is assignable to <typeparamref name="T"/> and, if so,
-  /// activates it through its parameterless constructor. A mismatch (a mis-applied register
-  /// attribute) logs a warning and returns <c>false</c> so the caller skips the type rather than
-  /// throwing. Shared by the activating registries: commands, sub-commands and preferences.
-  /// </summary>
+  /// <summary>Validates that <paramref name="type"/> is assignable to <typeparamref name="T"/> and,
+  /// if so, activates it through its parameterless constructor.</summary>
   public static bool TryActivate<T>(
     ICoreAPI api,
     string modId,
@@ -71,14 +55,8 @@ public static class ReflectionScan {
     return true;
   }
 
-  /// <summary>
-  /// Registers every <typeparamref name="TAttr"/>-decorated <typeparamref name="TInstance"/> in
-  /// <paramref name="assembly"/>: the shared find-attribute / <see cref="TryActivate{T}"/> /
-  /// register loop behind <see cref="CommandRegistry"/> and <see cref="PreferenceRegistry"/>. A
-  /// type carrying the attribute but not assignable to <typeparamref name="TInstance"/>, or with
-  /// no parameterless constructor, is warned about by <see cref="TryActivate{T}"/> and skipped
-  /// rather than registered.
-  /// </summary>
+  /// <summary>Registers every <typeparamref name="TAttr"/>-decorated <typeparamref name="TInstance"/>
+  /// in <paramref name="assembly"/> through the shared find-attribute / activate / register loop.</summary>
   public static void ForEachAttributed<TAttr, TInstance>(
     ICoreAPI api,
     string modId,
@@ -99,13 +77,9 @@ public static class ReflectionScan {
     }
   }
 
-  /// <summary>
-  /// Finds every <typeparamref name="TAttr"/>-decorated class in <paramref name="assembly"/> and hands
-  /// back the type itself rather than an activated instance - for a rung whose classes are static, so
-  /// there is nothing to construct (a content check's <c>static Run</c>, say). The instance-activating
-  /// overload above covers <see cref="EntityRegistry"/>, <see cref="CommandRegistry"/> and
-  /// <see cref="PreferenceRegistry"/> instead.
-  /// </summary>
+  /// <summary>Finds every <typeparamref name="TAttr"/>-decorated class in
+  /// <paramref name="assembly"/> and hands back the type itself rather than an activated
+  /// instance.</summary>
   public static void ForEachAttributed<TAttr>(
     Assembly assembly,
     Action<TAttr, Type> register

@@ -3,16 +3,7 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Structures;
 
-/// <summary>
-/// A throttled resolver a functional component (a molten tap, a charging hopper, a tuyere) keeps to
-/// find and keep reading the multiblock anchor it belongs to. The anchor pushes to its components by
-/// structure-local offset and nothing points back, so the component scans a bounded box for the anchor
-/// (<see cref="BlockEntityMultiblockStructure.FindAnchorOwning{T}"/>). That scan is the expensive part
-/// and <c>GetBlockInfo</c> runs every frame the player looks at the block, so it re-runs at most once a
-/// second; a resolved anchor is cached and re-validated cheaply on each call (one block-entity lookup
-/// plus one ownership check). When the anchor moves or the structure breaks, the cache clears and the
-/// throttled re-scan takes over.
-/// </summary>
+/// <summary>A throttled resolver a functional component keeps to find and keep reading its multiblock anchor.</summary>
 public sealed class MultiblockAnchorLink<T>
   where T : BlockEntityMultiblockStructure {
   private readonly BlockEntity _component;
@@ -42,18 +33,13 @@ public sealed class MultiblockAnchorLink<T>
     _above = above;
   }
 
-  /// <summary>
-  /// The owning anchor, or null when none is in range. A still-valid cached anchor is read live; an
-  /// empty or invalidated cache triggers a bounded re-scan, at most once per
-  /// <see cref="RescanIntervalMs"/>, so a component with no anchor does not scan every frame.
-  /// </summary>
+  /// <summary>The owning anchor, or null when none is in range; re-scans at most once per <see cref="RescanIntervalMs"/>.</summary>
   public T? Resolve() {
     IWorldAccessor? world = _component.Api?.World;
     if (world == null)
       return null;
 
-    // Re-validate the cached anchor cheaply: it is still ours only if a T still sits at that cell and
-    // still owns us (it may have been broken, or replaced by an unrelated block).
+    // Still ours only if a T still sits at that cell and still owns us.
     if (_anchorPos != null) {
       if (
         world.BlockAccessor.GetBlockEntity(_anchorPos) is T cached

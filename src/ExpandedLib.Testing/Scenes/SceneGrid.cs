@@ -8,9 +8,8 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// Turns an ASCII layout into block placements, over the shared <see cref="CellGrid"/> core: each
-/// non-blank glyph is mapped by a legend to a placement action, drawn as a horizontal plane where a
-/// space is a gap between cells rather than a spacer (the opposite of a code-first layout's rule, since
-/// a scene is meant to read at a glance). <see cref="SceneDiagram"/> is the public surface this backs.
+/// non-blank glyph is mapped by a legend to a placement action, a space marking a gap between cells.
+/// <see cref="SceneDiagram"/> is the public surface this backs.
 /// </summary>
 public sealed class SceneGrid {
   private readonly SymbolLegend<Action<BlockPos>> _legend = new(
@@ -26,8 +25,7 @@ public sealed class SceneGrid {
   /// <summary>
   /// Applies one horizontal layer at height <paramref name="y"/>, with the top-left glyph at
   /// (<paramref name="originX"/>, <paramref name="y"/>, <paramref name="originZ"/>). A blank glyph
-  /// (unmapped, or a gap between cells) is skipped, so labels and gaps cost nothing. Leading and
-  /// trailing blank lines are trimmed.
+  /// (unmapped, or a gap) is skipped; leading and trailing blank lines are trimmed.
   /// </summary>
   public SceneGrid Layer(
     string ascii,
@@ -35,8 +33,7 @@ public sealed class SceneGrid {
     int originX = 0,
     int originZ = 0
   ) {
-    // A fresh grid per call: each Layer may declare its own origin, unlike a code-first layout's one
-    // Origin for the whole drawing, so the grids cannot be accumulated across calls.
+    // A fresh grid per call: each Layer may declare its own origin.
     var grid = new CellGrid(
       GridPlane.Horizontal,
       originX,
@@ -52,9 +49,9 @@ public sealed class SceneGrid {
 
   /// <summary>
   /// Stacks several horizontal layers along the Y axis in one call. <paramref name="layers"/>[0] sits at
-  /// <paramref name="baseY"/>, [1] at <c>baseY + 1</c>, and so on (bottom to top); each entry is itself a
-  /// multi-line X/Z plane in the same format as <see cref="Layer"/>. All layers share the
-  /// (<paramref name="originX"/>, <paramref name="originZ"/>) origin so the columns line up vertically.
+  /// <paramref name="baseY"/>, [1] at <c>baseY + 1</c>, and so on; each entry is itself a multi-line X/Z
+  /// plane in the same format as <see cref="Layer"/>. All layers share the
+  /// (<paramref name="originX"/>, <paramref name="originZ"/>) origin.
   /// </summary>
   public SceneGrid Stack(
     int baseY,

@@ -10,15 +10,8 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Finds domain-qualified block-code string literals in a mod's source that can never resolve because
-/// they name a variant-grouped block by its bare base code. A block declaring any variant group is
-/// never itself placeable, so <c>GetBlock("iiex:molten-barrel")</c> returns null once the barrel gains
-/// a <c>construction</c> group, and defensive call sites turn that into silent loss of function.
-/// <para>
-/// Only domain-qualified literals are scanned, which excludes the definitions themselves: a def names
-/// its own code unqualified (<c>Create(domain, "molten-barrel", …)</c>), as do its internal selectors
-/// (<c>Handbook("flywheel-*")</c>, <c>ShapeByType("*-normal-ns", …)</c>).
-/// </para>
+/// Finds domain-qualified block-code string literals in a mod's source that name a
+/// variant-grouped block by its bare base code, which can never resolve to a placed block.
 /// </summary>
 public static class CodeLiterals {
   private static readonly Regex Qualified = new(
@@ -26,15 +19,14 @@ public static class CodeLiterals {
     RegexOptions.Compiled
   );
 
-  /// <summary>Matches a line whose literal addresses an asset (shape, texture, animation) rather than
-  /// a block. Both use <c>domain:path</c>, and a shape path can equal a base code exactly.</summary>
+  /// <summary>Matches a line whose literal addresses an asset (shape, texture, animation), not a
+  /// block.</summary>
   private static readonly Regex AssetReference = new(
     @"\b(Shape|Texture|Animation|Sound)\w*\s*\(|\b(shapes|textures)/",
     RegexOptions.Compiled
   );
 
-  /// <summary>Base codes in <paramref name="domain"/> that declare at least one variant group, so
-  /// their bare code can never name a placed block.</summary>
+  /// <summary>Base codes in <paramref name="domain"/> that declare at least one variant group.</summary>
   private static HashSet<string> VariantGroupedBaseCodes(
     string domain,
     Assembly asm
@@ -46,11 +38,10 @@ public static class CodeLiterals {
       .Select(d => d.Code)
       .ToHashSet(StringComparer.Ordinal);
 
-  /// <summary>
-  /// Every <c>file:line</c> holding a literal that names a variant-grouped block by its bare code.
-  /// Empty means none. <paramref name="srcDir"/> is the mod's own source root (e.g.
-  /// <c>RepoPaths.Mod("iiex") + "/src"</c>).
-  /// </summary>
+  /// <summary>Every <c>file:line</c> holding a literal that names a variant-grouped block by its
+  /// bare code.</summary>
+  /// <param name="srcDir">The mod's own source root.</param>
+  /// <returns>Empty when none.</returns>
   public static IReadOnlyList<string> UnresolvableBareCodes(
     string domain,
     Assembly asm,
@@ -81,10 +72,8 @@ public static class CodeLiterals {
 
       string[] lines = File.ReadAllLines(file);
       for (int i = 0; i < lines.Length; i++) {
-        // A shape or texture path uses the same `domain:path` syntax as a block code and can coincide
-        // with a base code exactly: `.ShapeByTypePerOrientation("iiex:manualfluidpump", 0)` names
-        // assets/iiex/shapes/manualfluidpump.json, not a block. The method a literal is passed to is
-        // what distinguishes them, so the filter is on the line rather than on the literal.
+        // An asset path can equal a base code exactly; filtering is by the calling method, not
+        // the literal.
         if (AssetReference.IsMatch(lines[i]))
           continue;
 

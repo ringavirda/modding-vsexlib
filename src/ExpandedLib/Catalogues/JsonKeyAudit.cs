@@ -11,9 +11,8 @@ namespace ExpandedLib.Catalogues;
 /// unknown key for them.
 /// </summary>
 internal static class JsonKeyAudit {
-  /// <summary>Every key on <paramref name="node"/> that is not in <paramref name="known"/>. Empty when
-  /// <paramref name="node"/> is absent or not an object (an array element, say), which is a shape error
-  /// the parser itself already reports.</summary>
+  /// <summary>Every key on <paramref name="node"/> that is not in <paramref name="known"/>. Empty
+  /// when <paramref name="node"/> is absent or not an object.</summary>
   public static IReadOnlyList<string> UnknownKeys(
     JsonObject? node,
     IReadOnlySet<string> known

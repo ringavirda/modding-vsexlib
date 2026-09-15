@@ -12,8 +12,7 @@ internal static class ModuleInit {
   internal static void Init() {
     VsAssemblyResolver.Register();
     TestLang.Init();
-    // The two hoppers read the shared material-role registry; seed the sample's roles (the headless
-    // stand-in for materialroles.json) so those predicates resolve.
+    // Seeds the sample's material roles; the hoppers' predicates read the registry.
     MaterialRoleSeeds.SeedDefaults();
   }
 }

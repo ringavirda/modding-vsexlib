@@ -2,9 +2,7 @@ using System;
 
 namespace ExpandedLib.Industry.Heat;
 
-/// <summary>One evaluation of a process heat balance, captured as the tick computed it so block info
-/// reads the contributors without recomputing. Shared by the shaft furnace (coke combustion) and the
-/// Bessemer converter (autothermal); the T_process = T_in - T_loss law and its per-branch derivation are the family's own model.</summary>
+/// <summary>One evaluation of a process heat balance, captured as the tick computed it.</summary>
 /// <param name="TIn">Heat the burning or oxidising charge makes (C).</param>
 /// <param name="TLoss">Heat taken back by radiation, cold charge mass and a cold ambient (C).</param>
 /// <param name="TProcess">Settled temperature: <c>TIn - TLoss</c>, floored at ambient.</param>
@@ -16,8 +14,7 @@ namespace ExpandedLib.Industry.Heat;
 /// <param name="PreheatGain">Share of <paramref name="TIn"/> from that preheat (C).</param>
 /// <param name="ChargeLoss">Share of <paramref name="TLoss"/> from cold charge mass (C).</param>
 /// <param name="AmbientLoss">Share of <paramref name="TLoss"/> from a below-reference ambient (C).</param>
-/// <param name="TransferLoss">Share of <paramref name="TLoss"/> spent carrying the flame to the work (C).
-/// Zero wherever fuel and work share a chamber; a reverberatory furnace pays it across the bridge.</param>
+/// <param name="TransferLoss">Share of <paramref name="TLoss"/> spent carrying the flame to the work (C).</param>
 public readonly record struct HeatBalance(
   float TIn,
   float TLoss,
@@ -32,15 +29,10 @@ public readonly record struct HeatBalance(
   float AmbientLoss,
   float TransferLoss = 0f
 ) {
-  /// <summary>Whether the blast arrives preheated by a cowper rather than cold off the blower. The
-  /// half-degree threshold keeps float noise from reading as a hot blast.</summary>
+  /// <summary>Whether the blast arrives preheated by a cowper (preheat gain above half a degree).</summary>
   public bool IsHotBlast => PreheatGain > 0.5f;
 
-  /// <summary>
-  /// Applies <c>T_process = T_in - T_loss</c>, floored at ambient and with no upper bound. The caller
-  /// derives <paramref name="tIn"/> and <paramref name="tLoss"/> in its own domain and passes them
-  /// with the contributor figures the block info reads.
-  /// </summary>
+  /// <summary>Applies <c>T_process = T_in - T_loss</c>, floored at ambient.</summary>
   public static HeatBalance Compute(
     float tIn,
     float tLoss,

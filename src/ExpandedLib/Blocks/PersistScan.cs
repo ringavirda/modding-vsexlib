@@ -9,14 +9,10 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Blocks;
 
-/// <summary>
-/// Finds every <see cref="PersistAttribute"/> field or property on a block entity's type and declares
-/// each into an <see cref="ExBlockState"/>, so marking a member is enough - no <c>DeclareState</c>
-/// override needed for it. The reflection walk runs once per concrete type; every later block entity of
-/// that type reuses the compiled accessors.
-/// </summary>
+/// <summary>Finds every <see cref="PersistAttribute"/> field or property on a block entity's type
+/// and declares each into an <see cref="ExBlockState"/>.</summary>
 public static class PersistScan {
-  // One member's contribution: given the block entity instance and the state being built, declares it.
+  // One member's contribution: declares it into the state being built.
   private delegate void Binder(object instance, ExBlockState state);
 
   private static readonly ConcurrentDictionary<Type, Binder[]> _cache = new();
@@ -27,20 +23,16 @@ public static class PersistScan {
     | BindingFlags.NonPublic
     | BindingFlags.DeclaredOnly;
 
-  /// <summary>
-  /// Declares every <see cref="PersistAttribute"/> member of <paramref name="owner"/>'s type (base
-  /// types first) into <paramref name="state"/>. <paramref name="owner"/> is a block entity or a
-  /// block-entity behaviour - the scan only ever reflects over its type. Throws
-  /// <see cref="NotSupportedException"/>, naming the member, the first time a type carries a
-  /// <c>[Persist]</c> member of a type PersistScan does not know how to serialize.
-  /// </summary>
+  /// <summary>Declares every <see cref="PersistAttribute"/> member of <paramref name="owner"/>'s
+  /// type (base types first) into <paramref name="state"/>.</summary>
+  /// <exception cref="NotSupportedException">A member's type is not one PersistScan can serialize.</exception>
   public static void Declare(object owner, ExBlockState state) {
     foreach (Binder binder in _cache.GetOrAdd(owner.GetType(), BuildBinders))
       binder(owner, state);
   }
 
   private static Binder[] BuildBinders(Type type) {
-    // Base types first, matching declaration order a hand-written DeclareState would read top to bottom.
+    // Base types first, matching a hand-written DeclareState's top-to-bottom order.
     var chain = new List<Type>();
     for (Type? t = type; t != null && t != typeof(object); t = t.BaseType)
       chain.Add(t);
@@ -66,9 +58,7 @@ public static class PersistScan {
     string key = attr.Key ?? StripLeadingUnderscore(member.Name);
     string? legacy = attr.Legacy;
     System.Func<object, object?> getter = CompileGetter(member, memberType);
-    // Compiled lazily: an IPersistable member is read in place and never assigned, so a readonly field
-    // holding one (the natural way to declare it) must not force a setter that Expression.Assign would
-    // refuse to build.
+    // Compiled lazily: a readonly field holding an IPersistable must not force a setter build.
     Lazy<Action<object, object?>> setterLazy = new(() =>
       CompileSetter(member, memberType)
     );
@@ -173,12 +163,8 @@ public static class PersistScan {
     );
   }
 
-  /// <summary>
-  /// Builds a binder for a single-key scalar. Without <paramref name="legacy"/> this is just the field
-  /// under <paramref name="key"/>; with it, a load checks <paramref name="key"/> first and only falls
-  /// back to <paramref name="legacy"/> when <paramref name="key"/> is absent - a save always writes
-  /// <paramref name="key"/> alone, so the old name is never reintroduced.
-  /// </summary>
+  /// <summary>Builds a binder for a single-key scalar; a load falls back to
+  /// <paramref name="legacy"/> only when <paramref name="key"/> is absent.</summary>
   private static Binder Scalar(
     string key,
     string? legacy,

@@ -7,17 +7,12 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// Reflection scan for a law that must hold across every concrete subclass of a base type in the
-/// loaded assembly closure - iiex's own furnace branches, a downstream mod's, or one this harness has
-/// never heard of. xUnit discovers tests per assembly, so a <c>[Fact]</c> declared in one mod's suite
-/// never runs against another mod's leaf.
+/// loaded assembly closure.
 /// </summary>
 public static class RegistryLawScanner {
   /// <summary>
-  /// Every concrete (non-abstract) type assignable to <typeparamref name="TBase"/>, across every
-  /// assembly reachable from what this process has already loaded. Walked transitively rather than
-  /// read off <see cref="AppDomain.GetAssemblies"/> alone, because references load lazily and a scan
-  /// taken before anything has touched a mod's types would cover nothing and still pass - call this
-  /// only after the subject type is known to be loaded.
+  /// Every concrete (non-abstract) type assignable to <typeparamref name="TBase"/> across every
+  /// loaded assembly closure; call only once the subject type is loaded.
   /// </summary>
   public static IReadOnlyList<Type> ConcreteSubclasses<TBase>() {
     var seen = new Dictionary<string, Assembly>(StringComparer.Ordinal);
@@ -55,8 +50,7 @@ public static class RegistryLawScanner {
 
   /// <summary>
   /// Runs <paramref name="law"/> against every concrete subclass of <typeparamref name="TBase"/>,
-  /// collecting every failure into one message instead of stopping at the first, so a law broken by
-  /// three leaves names all three in one run rather than one retry at a time.
+  /// collecting every failure into one message.
   /// </summary>
   /// <exception cref="InvalidOperationException"><paramref name="law"/> threw for at least one leaf.
   /// </exception>

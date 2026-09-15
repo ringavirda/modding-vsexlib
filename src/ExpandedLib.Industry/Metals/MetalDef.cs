@@ -2,18 +2,9 @@ using System.Collections.Generic;
 
 namespace ExpandedLib.Industry.Metals;
 
-/// <summary>
-/// One metal or alloy descriptor - the source of truth the molten system reads instead of
-/// string-munging item codes. Deserialized from <c>assets/&lt;domain&gt;/config/metals/*.json</c> and
-/// registered into <see cref="MetalRegistry"/>; any content mod (or EM) can contribute or override a
-/// metal by shipping or patching one JSON file.
-/// <para>
-/// Only <see cref="Code"/> and <see cref="MoltenItem"/> carry meaning without derivation; every other
-/// field is optional and, when left null, falls back to the convention <see cref="MetalRegistry"/>
-/// applies for an unregistered metal. The melting point of an existing metal is not held here: it
-/// resolves from the item's vanilla <c>combustibleProps</c> via <see cref="ExpandedLib.Industry.Molten.MoltenMetal.MeltingPointOf"/>.
-/// </para>
-/// </summary>
+/// <summary>One metal or alloy descriptor. Deserialized from
+/// <c>assets/&lt;domain&gt;/config/metals/*.json</c> and registered into
+/// <see cref="MetalRegistry"/>.</summary>
 public class MetalDef {
   /// <summary>Short key - the token the converter / blast furnace uses ("iron", "steel", "slag").</summary>
   public string Code { get; set; } = "";
@@ -54,59 +45,43 @@ public class MetalDef {
   /// <see cref="MetalRegistry.DefaultRecoveryFallback"/>, which may itself be null.</summary>
   public string? RecoveryFallback { get; set; }
 
-  /// <summary>Domain owning this metal's cast products (the mold's <c>{metal}</c> drops). Null -> keep
-  /// the drop template's own domain. A mod-added metal has no <c>game:metalplate-X</c> to resolve into,
-  /// so its molds must rehome the drop into the mod's domain; see
-  /// <see cref="MetalRegistry.CastProductOf"/>.</summary>
+  /// <summary>Domain owning this metal's cast products (the mold's <c>{metal}</c> drops). Null ->
+  /// keep the drop template's own domain.</summary>
   public string? CastDomain { get; set; }
 
-  /// <summary>Optional inline alloy ratios - exlib emits the vanilla <c>AlloyRecipe</c> from these, so
-  /// the ratios are authored once alongside the metal identity.</summary>
+  /// <summary>Optional inline alloy ratios - exlib emits the vanilla <c>AlloyRecipe</c> from
+  /// these.</summary>
   public MetalAlloySpec? Alloy { get; set; }
 
-  // ---- Item-family generation (opt-in; read only by the family emitter, never the molten system) ----
-  // These stay null/false by default, so a vanilla/EM metal that already owns game:ingot-iron is never
-  // touched: only a metal that explicitly opts in gets a generated resource/tool family.
+  // ---- Item-family generation (opt-in; read only by the family emitter) ----
 
   /// <summary>Opt-in switch: when true, exlib generates this metal's derived item family
-  /// (ingot/plate/rod/nails/bits + tools) instead of the mod hand-authoring each itemtype. Default
-  /// <c>false</c>, so an unflagged metal generates nothing. Left off vanilla/EM metals that already ship
-  /// <c>game:ingot-&lt;code&gt;</c>.</summary>
+  /// (ingot/plate/rod/nails/bits + tools). Default <c>false</c>.</summary>
   public bool GenerateItemFamily { get; set; }
 
-  /// <summary>Which resource forms to emit when <see cref="GenerateItemFamily"/> is set, as form tokens
-  /// (<c>"ingot"</c>, <c>"plate"</c>, <c>"bits"</c>, <c>"rod"</c>, <c>"nails"</c>). A feedstock lists only
-  /// <c>"ingot"</c>; a full metal lists the build forms its iron-substitution recipes need. Null -> the
-  /// emitter's default set.</summary>
+  /// <summary>Which resource forms to emit when <see cref="GenerateItemFamily"/> is set. Null ->
+  /// the emitter's default set.</summary>
   public List<string>? ItemForms { get; set; }
 
-  /// <summary>The vanilla texture every generated form paints with (e.g.
-  /// <c>"game:block/metal/tarnished/iron"</c>) - one texture across the whole family. Null -> the
-  /// emitter's fallback.</summary>
+  /// <summary>The vanilla texture every generated form paints with. Null -> the emitter's
+  /// fallback.</summary>
   public string? TexturePath { get; set; }
 
   /// <summary>Density (kg/m^3) stamped on the generated items (cast iron 7200, vanilla iron 7870). Null ->
   /// the emitter's default.</summary>
   public int? Density { get; set; }
 
-  /// <summary>Melting point (C) written into the generated family's <c>combustibleProps</c>, which is
-  /// what vanilla's <c>GetMeltingPoint</c> then reports to <see cref="ExpandedLib.Industry.Molten.MoltenMetal.MeltingPointOf"/>.
-  /// Only authors an item that does not exist yet; reads of an existing metal always resolve through
-  /// the item's own <c>combustibleProps</c>. Null -> the emitter's default.</summary>
+  /// <summary>Melting point (C) written into the generated family's <c>combustibleProps</c>. Null
+  /// -> the emitter's default.</summary>
   public int? MeltingPoint { get; set; }
 
-  /// <summary>Tool family to generate for this metal, or null for a feedstock that makes no tools (pig
-  /// iron). A named <see cref="MetalToolSpec.Preset"/> supplies the stat baseline; explicit numbers on the
-  /// spec override it.</summary>
+  /// <summary>Tool family to generate for this metal, or null for a feedstock that makes no
+  /// tools.</summary>
   public MetalToolSpec? Tools { get; set; }
 }
 
-/// <summary>
-/// Tool stats for a generated metal family (<see cref="MetalDef.Tools"/>). A named <see cref="Preset"/>
-/// ("brittle" approx. gold-tier, "standard", "good", ...) fills the baseline durability, attack and mining
-/// values; any explicit number here overrides just that stat. The emitter binds these onto the vanilla
-/// tool classes as flat, non-byType values.
-/// </summary>
+/// <summary>Tool stats for a generated metal family (<see cref="MetalDef.Tools"/>). A named
+/// <see cref="Preset"/> fills the baseline; explicit numbers here override just that stat.</summary>
 public class MetalToolSpec {
   /// <summary>Named stat baseline ("brittle", "standard", "good", ...). Null -> the emitter's default preset.</summary>
   public string? Preset { get; set; }

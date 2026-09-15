@@ -5,13 +5,7 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Config;
 
-/// <summary>
-/// Carries every manageable config's live values from the host to each joining client, and any later
-/// live edit, so a client's display, handbook and predictions read the server's tunables instead of
-/// whatever its own local <c>ex_values.json</c> holds. Moves one <see cref="ConfigSyncPacket"/> per
-/// section registered with <see cref="ExConfigProfiles"/> over a dedicated channel; a mod carrying its
-/// own transport can skip this and call <see cref="IExConfigAccess.ImportJson"/> directly.
-/// </summary>
+/// <summary>Syncs every registered config section's live values from the host to each client.</summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class ExConfigSyncModSystem : ModSystem {
   private const string ChannelName = "exlibConfigSync";
@@ -33,9 +27,7 @@ public class ExConfigSyncModSystem : ModSystem {
         _serverChannel!.SendPacket(ToPacket(config), player);
   }
 
-  /// <summary>Pushes one section's current values to every connected player. Called by
-  /// <c>/exmod config set</c> after a successful edit, so a live change reaches players without
-  /// requiring a reconnect.</summary>
+  /// <summary>Pushes one section's current values to every connected player.</summary>
   public void BroadcastSection(IExConfigAccess config) =>
     _serverChannel?.BroadcastPacket(ToPacket(config));
 
@@ -55,9 +47,7 @@ public class ExConfigSyncModSystem : ModSystem {
   }
 
   /// <summary>Imports one section received from the host into its matching registered store, or logs
-  /// a warning and drops it if this side has no such section registered. The import never touches this
-  /// client's own config file - it only replaces the live, in-memory values every reader goes through.
-  /// Internal so the sync tests can drive it directly against a substituted client API.</summary>
+  /// a warning and drops it if this side has no such section registered.</summary>
   internal static void HandlePacket(ICoreClientAPI api, ConfigSyncPacket packet) {
     if (!ExConfigProfiles.TryGet(packet.ModId, out var config)) {
       api.Logger.Warning(

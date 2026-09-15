@@ -11,26 +11,18 @@ using Vintagestory.API.Server;
 namespace ExpandedLib;
 
 /// <summary>
-/// Entry point for the shared Expanded Lib mod (<c>exlib</c>). Registers the library's own blocks, block
-/// entities and behaviours (the invisible structure filler, the multiblock structure behaviour) and points
-/// <see cref="StructureFillers"/> at this mod's filler block, so every dependent mod's mega-blocks reuse one
-/// shared filler. On the client it owns the per-player display-preferences store
-/// (<see cref="Registries.ExPreferences"/>, backed by <c>exmod_preferences.json</c>) and the metric/imperial
-/// measure feature; dependent mods add further preferences and sub-commands from their own assemblies. The
-/// block-network graph manager (<see cref="Networks.BlockNetworkModSystem"/>) and the block-code
-/// migrator (<see cref="Migrations.BlockMigrationModSystem"/>) are separate auto-loaded ModSystems.
+/// Entry point for the shared Expanded Lib mod (<c>exlib</c>): registers the library's own blocks,
+/// block entities and behaviours, and owns the client-side display-preferences store and commands.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class ExpandedLibModSystem : ModSystem {
-  // Client-side Harmony instance for the handbook unit patch (see StartClientSide).
+  // Client-side Harmony instance for the handbook unit patch.
   private Harmony? _harmony;
 
   // The message named at StartPre and repeated to every joining player; null when nothing clashes.
   private string? _incompatible;
 
-  // Above 0.03 so the module driver's phases - including the Industry module's metal catalogue
-  // load at AssetsFinalize - land first, and below the 0.1 every consumer inherits, so exlib's own
-  // AssetsFinalize below runs before theirs.
+  // Between the module driver's 0.03 and consumers' inherited 0.1.
   public override double ExecuteOrder() => 0.06;
 
   public override void StartPre(ICoreAPI api) {
@@ -40,89 +32,67 @@ public class ExpandedLibModSystem : ModSystem {
   }
 
   public override void Start(ICoreAPI api) {
-    // Auto-register the library's [BlockRegister]/[BlockEntityRegister]/[BlockBehaviorRegister] classes
-    // (filler block + entity, the MultiblockStructure behaviour) under the exlib domain.
+    // Registers [BlockRegister]/[BlockEntityRegister]/[BlockBehaviorRegister] classes under the exlib domain.
     EntityRegistry.RegisterAll(api, Mod, GetType().Assembly);
 
-    // The shared filler block this lib ships; dependent mods' mega-blocks reserve their footprint cells with
-    // it. Taken from the generated table rather than a hand-typed path, so the code cannot drift from the
-    // definition.
+    // The shared filler block dependent mods' mega-blocks reserve footprint cells with.
     StructureFillers.FillerCode = new AssetLocation(
       ExlibBlocks.Structurefiller.Code
     );
   }
 
-  /// <summary>
-  /// Populates the shared liquid catalogue from every domain's <c>config/liquids</c>, after the
-  /// asset-patch pipeline has merged all mods' JSON and before recipe and world finalize. Runs on
-  /// both sides: the <c>config</c> category is Universal. Consumers fall back to convention values
-  /// for any liquid not enriched here, so a partial load still yields a usable catalogue, and
-  /// exlib's single dll means this fires once whatever is installed.
-  /// </summary>
+  /// <summary>Populates the shared liquid catalogue from every domain's <c>config/liquids</c>, once
+  /// the asset-patch pipeline has merged all mods' JSON.</summary>
   public override void AssetsFinalize(ICoreAPI api) {
     LiquidCatalogueLoader.Load(api).Log(api.Logger);
-    // The material-role catalogue (flux/fuel/ore/scrap/charge classification) and its mod-gated code
-    // contributors. Must load after the metal and liquid registries - the domain layer's own IExModule.AssetsFinalize
-    // (ExecuteOrder 0.03) loads the metal registry before this pass, pinned at 0.06, runs; exlib
-    // ships no role content itself.
+    // The material-role catalogue (flux/fuel/ore/scrap/charge) and its mod-gated contributors;
+    // must run once the metal and liquid registries have loaded.
     MaterialRoleLoader.Load(api).Log(api.Logger);
 
-    // The merged process-stage catalogue. Read again here rather than only at inject time so the
-    // registry the machines consult is the post-patch one; the emitter's earlier read cannot be.
+    // The merged process-stage catalogue, read post-patch.
     ProcessRouteLoader.Load(api).Log(api.Logger);
 
     // The terminal half of the same contract: every machine's job table.
     ProcessJobLoader.Load(api).Log(api.Logger);
 
-    // What each store's items occupy. Also each store's whitelist: an item no rule names is one no rack
-    // takes, so a missing file reads as an empty rack rather than as one that holds anything.
+    // What each store's items occupy; also each store's whitelist.
     BayOccupancyLoader.Load(api).Log(api.Logger);
 
-    // The content guards - dangling recipe codes, uncovered lang, pinned network nodes and the rest -
-    // run here, after exlib's own catalogue loads above (the metal catalogue loads through the module
-    // driver at 0.03, ahead of this pass either way), so a JSON-only mod gets them as a log line
-    // without ever opening the xUnit harness. Also available on demand with /exmod verify;
-    // ExlibConfig.RunChecksOnLoad opts out of this pass.
+    // The content guards - dangling recipe codes, uncovered lang, pinned network nodes and the rest.
+    // RunChecksOnLoad opts out; also available on demand with /exmod verify.
     if (ExlibValues.RunChecksOnLoad)
       Checks.ExlibChecks.Log(api.Logger, Checks.ExlibChecks.All(api));
   }
 
   public override void StartClientSide(ICoreClientAPI api) {
-    // The library's own display preferences, currently the metric/imperial unit system. Registered
-    // before the .exmod sub-commands below, which resolve their preference once at registration time.
+    // The library's own display preferences (metric/imperial unit system).
     PreferenceRegistry.RegisterAll(api, Mod, GetType().Assembly);
 
-    // Load the per-player display-preference store, writing the file on first run. Dependent mods contribute
-    // further preferences in their own StartClientSide, which applying on LevelFinalize picks up.
+    // Loads the per-player display-preference store, writing the file on first run.
     ExPreferences.LoadConfig(api);
 
-    // The handbook unit-conversion patch that makes authored metric prose read in imperial. Client only,
-    // and guarded so it is applied once however many dependent mods are installed.
+    // The handbook unit-conversion patch; applied once regardless of dependent mod count.
     _harmony = ExHarmony.PatchOnce(Mod, GetType().Assembly);
 
-    // Apply the local player's saved choices once the world (and player) are ready.
+    // Applies the local player's saved choices once the world and player are ready.
     api.Event.LevelFinalize += () =>
       ExPreferences.ApplyForPlayer(api.World.Player.PlayerUID);
 
     // The library's own client commands: the shared .exmod root and its network-highlight sub-command.
-    // Dependent mods attach their own sub-commands to the same root.
     CommandRegistry.RegisterAll(api, Mod, GetType().Assembly);
 
-    // Apply every dependent mod's selected recipe-cost level, registered in their Start, to the live
-    // recipes so the client handbook and grid agree with the server. Runs after all mods' Start.
+    // Applies every dependent mod's selected recipe-cost level to the live recipes.
     ExRecipeProfiles.ApplyAll(api);
   }
 
   public override void StartServerSide(ICoreServerAPI api) {
-    // The server-side counterpart: the universal exmod root surfaces here as /exmod, plus the generic
-    // /exmod recipes <mod> <level> switch over the recipe profiles dependent mods register.
+    // The server-side counterpart: the universal exmod root, plus the /exmod recipes <mod> <level> switch.
     CommandRegistry.RegisterAll(api, Mod, GetType().Assembly);
 
-    // Apply every registered mod's selected recipe-cost level to the live, host-authoritative recipes.
+    // Applies every registered mod's selected recipe-cost level to the live, host-authoritative recipes.
     ExRecipeProfiles.ApplyAll(api);
 
-    // Repeats the StartPre finding to every joining player, so the failure is visible without
-    // reading the server log.
+    // Repeats the StartPre finding to every joining player.
     if (_incompatible is { } message)
       api.Event.PlayerJoin += player =>
         player.SendMessage(

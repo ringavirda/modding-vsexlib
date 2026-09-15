@@ -4,9 +4,7 @@ using System.Reflection;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Reflection shims for reading and priming production members that are not publicly accessible but
-/// must be set for a headless test (e.g. the network manager's server-world back-reference, normally
-/// assigned only inside <c>StartServerSide</c>).
+/// Reflection shims for reading and priming production members that are not publicly accessible.
 /// </summary>
 public static class ReflectionHelpers {
   /// <summary>Sets a property's value through its (possibly non-public) setter.</summary>
@@ -35,9 +33,8 @@ public static class ReflectionHelpers {
     setter.Invoke(target, [value]);
   }
 
-  /// <summary>Reads a (possibly non-public) instance property - the getter counterpart of
-  /// <see cref="SetProperty"/>, for asserting on a <c>protected virtual</c> such as a machine's
-  /// structure-local cell offsets.</summary>
+  /// <summary>Reads a (possibly non-public) instance property; the getter counterpart of
+  /// <see cref="SetProperty"/>.</summary>
   public static object? GetProperty(object target, string propertyName) {
     PropertyInfo prop =
       target
@@ -59,15 +56,12 @@ public static class ReflectionHelpers {
     return getter.Invoke(target, []);
   }
 
-  /// <summary>Sets a (possibly non-public) instance field, walking up the type hierarchy so a field
-  /// declared on a base class is found from a derived instance.</summary>
+  /// <summary>Sets a (possibly non-public) instance field, walking up the type hierarchy.</summary>
   public static void SetField(object target, string fieldName, object? value) =>
     FindField(target.GetType(), fieldName).SetValue(target, value);
 
-  /// <summary>Sets a (possibly non-public) static field on <paramref name="type"/> - the static
-  /// counterpart of <see cref="SetField"/>, for a process-wide static (e.g. the engine's
-  /// <c>GamePaths.AssetsPath</c>) a headless replay must prime before the production code that reads
-  /// it runs.</summary>
+  /// <summary>Sets a (possibly non-public) static field on <paramref name="type"/>; the static
+  /// counterpart of <see cref="SetField"/>.</summary>
   public static void SetStaticField(
     Type type,
     string fieldName,
@@ -87,8 +81,8 @@ public static class ReflectionHelpers {
   public static object? GetField(object target, string fieldName) =>
     FindField(target.GetType(), fieldName).GetValue(target);
 
-  /// <summary>Reads a (possibly non-public) instance field if it exists, walking up the type hierarchy;
-  /// returns false (rather than throwing) when no such field is declared anywhere on the type.</summary>
+  /// <summary>Reads a (possibly non-public) instance field if it exists, walking up the type
+  /// hierarchy; returns false when none is found.</summary>
   public static bool TryGetField(
     object target,
     string fieldName,

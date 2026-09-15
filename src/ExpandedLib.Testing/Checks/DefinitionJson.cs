@@ -14,10 +14,9 @@ public static class VanillaToolTiers {
 }
 
 /// <summary>
-/// Shared readers for pinning a code-first definition's emitted JSON in tests (drop, tier and cost
-/// guards). The defs emit VS-flavoured JSON with comments and trailing commas, so <see cref="Parse"/>
-/// is the one lenient parse every guard goes through; the accessors read the fields the mega-block
-/// guards pin.
+/// Shared readers for pinning a code-first definition's emitted JSON in tests. Defs emit
+/// VS-flavoured JSON with comments and trailing commas; <see cref="Parse"/> is the lenient parse
+/// every guard goes through.
 /// </summary>
 public static class DefinitionJson {
   /// <summary>Parses def-emitted JSON (comments + trailing commas allowed) into a detached element.</summary>
@@ -36,10 +35,9 @@ public static class DefinitionJson {
   public static int MiningTier(JsonElement block) =>
     block.GetProperty("requiredMiningTier").GetInt32();
 
-  /// <summary>
-  /// The <c>ExRightClickConstructable</c> entity behavior's properties node, holding
-  /// <c>brokenDropsRatio</c> and <c>stages</c>. Throws when the block has no such behavior.
-  /// </summary>
+  /// <summary>The <c>ExRightClickConstructable</c> entity behavior's properties node, holding
+  /// <c>brokenDropsRatio</c> and <c>stages</c>.</summary>
+  /// <exception cref="InvalidOperationException">The block has no such behavior.</exception>
   public static JsonElement Constructable(JsonElement block) {
     foreach (
       JsonElement b in block.GetProperty("entityBehaviors").EnumerateArray()

@@ -6,13 +6,8 @@ using static BurdenMaker.Blocks.BlockBurdenmaker;
 
 namespace BurdenMaker.Tests;
 
-/// <summary>
-/// The burdenmaker's per-cell verb map, at every facing. The cell is the verb on this machine: the two
-/// wide upper cells are the ore hopper, the third is the flux hopper, the principal is the gate and the
-/// rest of the basin hands burden back. The two hoppers differ by X, so the placement rotation has to be
-/// inverted before an offset means anything; a classifier comparing raw world coordinates would swap ore
-/// and flux on half the facings.
-/// </summary>
+/// <summary>The burdenmaker's per-cell verb map, at every facing; the placement rotation must be
+/// inverted before an offset means anything.</summary>
 public class BurdenmakerCellTests {
   private static readonly BlockPos Principal = new(64, 110, 64);
 
@@ -23,8 +18,7 @@ public class BurdenmakerCellTests {
     var data = new TheoryData<int, int, int, int, BurdenmakerCell>();
     (int X, int Y, int Z, BurdenmakerCell Class)[] cells =
     [
-      // The hoppers sit over the front half only (z = -1), leaving the back open for the player to
-      // reach into the basin. The wide hopper spans two cells; the narrow one is a single cell.
+      // The hoppers sit over the front half only (z = -1); the wide hopper spans two cells.
       (-1, 1, -1, BurdenmakerCell.OreHopper),
       (0, 1, -1, BurdenmakerCell.OreHopper),
       (1, 1, -1, BurdenmakerCell.FluxHopper),
@@ -85,8 +79,7 @@ public class BurdenmakerCellTests {
 
   [Fact]
   public void The_back_half_at_hopper_height_is_Outside_not_a_hopper() {
-    // The y = 1, z = 0 row is drawn as `. . .`, open so the player can reach in. Height above the
-    // principal alone does not make a cell a hopper.
+    // The y = 1, z = 0 row is open; height alone does not make a cell a hopper.
     foreach (int x in new[] { -1, 0, 1 })
       Assert.Equal(
         BurdenmakerCell.Outside,
@@ -104,14 +97,11 @@ public class BurdenmakerCellTests {
 
   [Fact]
   public void Ore_and_flux_hoppers_do_not_swap_when_the_block_faces_east() {
-    // At 270deg the two hoppers' world cells lie on the Z axis rather than the X axis, so a classifier
-    // switching on the raw world delta reads the flux cell as ore or as Outside.
     const int East = 270;
 
     BlockPos flux = ExOrientation.GlobalPos(Principal, 1, 1, -1, East);
     BlockPos ore = ExOrientation.GlobalPos(Principal, -1, 1, -1, East);
 
-    // The premise: the rotation really did move them off the X axis.
     Assert.NotEqual(flux.X, ore.X + 2);
     Assert.NotEqual(flux, ore);
 

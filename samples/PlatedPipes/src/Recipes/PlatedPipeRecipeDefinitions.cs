@@ -4,11 +4,8 @@ using static ExpandedLib.Definitions.ExIngredients;
 
 namespace PlatedPipes.Recipes;
 
-/// <summary>
-/// Grid recipes for the four plain plated segments: a metal plate hammered onto a nailed frame. Plated
-/// is the bootstrap rung, craftable before any machine exists, so the recipe needs nothing beyond
-/// vanilla materials and exlib's own ingredient helpers.
-/// </summary>
+/// <summary>Grid recipes for the four plain plated segments: a metal plate hammered onto a
+/// nailed frame.</summary>
 public class PlatedPipeRecipeDefinitions : IExRecipeDefProvider {
   public static IEnumerable<ExRecipeDef> Definitions(string domain) =>
     [

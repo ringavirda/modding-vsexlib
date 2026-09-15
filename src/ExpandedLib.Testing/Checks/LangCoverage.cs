@@ -9,26 +9,12 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Checks that every block code a mod registers resolves to a name in every locale it ships. An unresolved
-/// name key renders as the raw key in game, and nothing in the build, the goldens or the runtime reports it.
-/// <para>
-/// Coverage is checked against concrete codes rather than base codes: a variant-grouped block's own
-/// <c>code</c> is never placeable, and <c>Lang.GetMatching</c> has no dash-stripping fallback, so
-/// <c>block-hopper-tall</c> can never be hit once the block declares <c>side(north|...)</c> - the key must
-/// be <c>block-hopper-tall*</c>.
-/// </para>
-/// <para>
-/// <see cref="MissingNames"/> is <see cref="LangCoverageCheck.Run(ICheckSource, string, bool)"/>
-/// with <c>allLocales: true</c>: the in-game check only guards <c>en</c>, while the repo build holds
-/// every shipped locale to full parity. <see cref="OrphanedDescriptions"/> has no library-side
-/// counterpart and stays here in full.
-/// </para>
+/// Checks that every block code a mod registers resolves to a name in every locale it ships.
+/// Coverage is checked against concrete codes, not base codes.
 /// </summary>
 public static class LangCoverage {
-  /// <summary>
-  /// Every <c>(locale, code)</c> with no resolving <c>block-</c> name key, across every locale the mod
-  /// ships. Empty means full coverage.
-  /// </summary>
+  /// <summary>Every <c>(locale, code)</c> with no resolving <c>block-</c> name key.</summary>
+  /// <returns>Empty when full coverage.</returns>
   public static IReadOnlyList<string> MissingNames(
     string domain,
     Assembly asm,
@@ -38,12 +24,8 @@ public static class LangCoverage {
     return LangCoverageCheck.Run(source, domain, allLocales: true).Errors;
   }
 
-  /// <summary>
-  /// Every <c>blockdesc-</c> key that matches no live block code, as <c>"{locale}: {key}"</c>. A missing
-  /// description is not a defect, since a block without one shows none; a stale key is, because the block it
-  /// described was renamed and the text silently stopped appearing. Nothing else in the suite reads these
-  /// keys.
-  /// </summary>
+  /// <summary>Every <c>blockdesc-</c> key that matches no live block code, as
+  /// <c>"{locale}: {key}"</c>.</summary>
   public static IReadOnlyList<string> OrphanedDescriptions(
     string domain,
     Assembly asm,
@@ -82,10 +64,7 @@ public static class LangCoverage {
     return orphans;
   }
 
-  /// <summary>
-  /// The distinct base codes behind <see cref="MissingNames"/>, which is what an author has to write: one
-  /// wildcard key usually covers a whole variant family.
-  /// </summary>
+  /// <summary>The distinct base codes behind <see cref="MissingNames"/>.</summary>
   public static IReadOnlyList<string> MissingBaseCodes(
     IEnumerable<string> failures
   ) =>

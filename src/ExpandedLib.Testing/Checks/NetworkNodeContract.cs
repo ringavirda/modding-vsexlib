@@ -10,34 +10,16 @@ using Newtonsoft.Json.Linq;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// The two structural rules a definition must obey to end up on a network graph, both of which fail
-/// silently in game: a <see cref="BlockNetworkNode"/> def must declare a <c>type</c> variant state, and
-/// a declared <c>BEBehaviorNetworkMember</c> must name the network it joins.
-/// </summary>
+/// <summary>The two structural rules a definition must obey to join a network graph: a
+/// <see cref="BlockNetworkNode"/> def must declare a <c>type</c> variant state, and a declared
+/// <c>BEBehaviorNetworkMember</c> must name the network it joins.</summary>
 public static class NetworkNodeContract {
-  /// <summary>
-  /// Every violation of either rule in <paramref name="asm"/>, as a human-readable line; empty means
-  /// both hold. Each line names the offending def's code and its block type.
-  /// </summary>
+  /// <summary>Every violation of either rule in <paramref name="asm"/>, as a human-readable line.</summary>
   public static IReadOnlyList<string> Violations(string domain, Assembly asm) =>
     [.. TypeGroupViolations(domain, asm), .. MembershipViolations(domain, asm)];
 
-  /// <summary>
-  /// Every network-node def in <paramref name="asm"/> whose <c>ExOrientable</c> declaration does not
-  /// agree with the states it actually ships, reporting how many defs were examined. A node's
-  /// orientation is picked by its neighbours, so the behaviour has to be told both that
-  /// (<c>mode: "network"</c>, which moves its variant key from <c>side</c> to <c>orientation</c>) and
-  /// which vocabulary the block writes (<c>scheme</c>, which cannot be derived from the mode - a
-  /// straight, a bend, a tee and a cross are all networks and declare different sets).
-  /// </summary>
-  /// <remarks>Both halves fail silently. An absent declaration leaves <c>IsNetworkOriented</c> false,
-  /// so the behaviour writes the <c>side</c> variant the block does not have and every swap resolves
-  /// to no block; a misspelled scheme falls back to <see cref="ExOrientations.Axis"/>, whose three
-  /// tokens reject every real token on a bend, and the node simply stops re-orienting.
-  /// <paramref name="defsChecked"/> exists for the reason
-  /// <see cref="MultiblockCodes.Unresolvable(out int, ValueTuple{string, Assembly}[])"/> reports its
-  /// own count: a checker that examines nothing passes forever.</remarks>
+  /// <summary>Every network-node def in <paramref name="asm"/> whose <c>ExOrientable</c> declaration
+  /// does not agree with the states it actually ships, reporting how many defs were examined.</summary>
   public static IReadOnlyList<string> SchemeViolations(
     string domain,
     Assembly asm,
@@ -110,14 +92,8 @@ public static class NetworkNodeContract {
     return problems;
   }
 
-  /// <summary>
-  /// The registered <c>class</c> keys, across exlib and <paramref name="asm"/>, that name a
-  /// <see cref="BlockNetworkNode"/>. Defs are matched on the key rather than scanned off the node
-  /// types themselves because a tier's segments are authored by a stand-alone provider - iiex's
-  /// plated pipes come from <c>PlatedPipeDefinitions</c>, not from <c>BlockPipe</c> - so a scan
-  /// filtered on the base class sees the nodes a mod subclasses and none of the ones it only
-  /// instantiates.
-  /// </summary>
+  /// <summary>The registered <c>class</c> keys, across exlib and <paramref name="asm"/>, that name a
+  /// <see cref="BlockNetworkNode"/>.</summary>
   private static IReadOnlySet<string> NetworkNodeClassKeys(
     string domain,
     Assembly asm
@@ -136,20 +112,8 @@ public static class NetworkNodeContract {
     return keys;
   }
 
-  /// <summary>
-  /// Every <see cref="BlockNetworkNode"/> def in <paramref name="asm"/> that declares no <c>type</c>
-  /// variant state. Runtime <c>AllowedOrientations</c> comes from
-  /// <see cref="ExDefinitions.OrientationMap"/>, which contributes nothing for a def carrying no
-  /// <c>type</c> states, so such a node gets an empty orientation map, <c>ComputeValidOrientations</c>
-  /// returns an empty set and <c>TryPlaceBlock</c> refuses - with no exception and no log line. A
-  /// single-state <c>type</c> group is therefore load-bearing even when it looks redundant. Several
-  /// states in one group are fine: they share that def's single orientation group by construction.
-  /// </summary>
-  /// <remarks>Filtered on the base class deliberately, because the failure it guards is that class's
-  /// machinery end to end. A cell that reaches the graph the other way - a membership behaviour on a
-  /// block that is no <see cref="BlockNetworkNode"/> - is placed by vanilla and owns no orientation
-  /// map, so this rule does not bite there; <see cref="MembershipViolations"/> is the rule that
-  /// does.</remarks>
+  /// <summary>Every <see cref="BlockNetworkNode"/> def in <paramref name="asm"/> that declares no
+  /// <c>type</c> variant state.</summary>
   public static IReadOnlyList<string> TypeGroupViolations(
     string domain,
     Assembly asm
@@ -175,18 +139,8 @@ public static class NetworkNodeContract {
     return problems;
   }
 
-  /// <summary>
-  /// Every declared network membership in <paramref name="asm"/> that names no <c>networkType</c>.
-  /// A membership behaviour created from a declaration starts with no network type of its own, and
-  /// nothing else can supply one: a footprint cell's block entity is a structure filler, and a plain
-  /// block's carries no type either. Such a cell logs an error and joins no graph, which reads to a
-  /// player as a run that quietly stopped working.
-  /// </summary>
-  /// <remarks>Scans definitions rather than types because a membership is attached at runtime - in a
-  /// block entity's constructor, from a footprint declaration, or from <c>entityBehaviors</c> - so no
-  /// type test can see which cells carry one. A membership declared on a block entity that is already
-  /// a <c>BlockEntityNetworkNode</c> is a second node at one position and should be removed rather
-  /// than given a type.</remarks>
+  /// <summary>Every declared network membership in <paramref name="asm"/> that names no
+  /// <c>networkType</c>.</summary>
   public static IReadOnlyList<string> MembershipViolations(
     string domain,
     Assembly asm
@@ -220,13 +174,8 @@ public static class NetworkNodeContract {
     return problems;
   }
 
-  /// <summary>
-  /// The registry key suffixes that name a network membership: <c>BEBehaviorNetworkMember</c> and any
-  /// subclass, from exlib and from <paramref name="asm"/> itself. Matched on the suffix rather than the
-  /// whole key because a registered key carries the owning mod's id - every mod declares exlib's
-  /// membership as <c>exlib.BEBehaviorNetworkMember</c> - so reconstructing it would mean mapping each
-  /// assembly back to its domain.
-  /// </summary>
+  /// <summary>The registry key suffixes that name a network membership: <c>BEBehaviorNetworkMember</c>
+  /// and any subclass, from exlib and from <paramref name="asm"/> itself.</summary>
   private static IReadOnlySet<string> MembershipCodes(Assembly asm) {
     var codes = new HashSet<string>(StringComparer.Ordinal);
 

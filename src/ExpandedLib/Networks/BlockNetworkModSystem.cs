@@ -19,19 +19,10 @@ public class BlockNetworkModSystem : ModSystem {
   private readonly Dictionary<BlockPos, Guid> _posToNetwork = [];
   private readonly Dictionary<string, Func<BlockNetwork>> _factories = [];
 
-  /// <summary>
-  /// Networks whose connectivity could not be decided, each mapped to the node positions the walk
-  /// could not read. Non-empty means a fracture check is deferred rather than answered wrongly; it is
-  /// taken again once one of those cells is back. Empty in the ordinary case, which is what keeps
-  /// <see cref="ResumeSuspendedReviews"/> free on the tick.
-  /// </summary>
+  /// <summary>Networks whose connectivity could not be decided, mapped to their unreadable node positions.</summary>
   private readonly Dictionary<Guid, HashSet<BlockPos>> _unreadableNodes = [];
 
-  /// <summary>
-  /// Registers the factory for <paramref name="networkType"/>. A later registration for the same
-  /// type replaces the earlier one, which is how a content mod supplies a strategy for a type
-  /// Industry registered with defaults; the replacement is logged and reported by the return value.
-  /// </summary>
+  /// <summary>Registers the factory for <paramref name="networkType"/>, replacing any earlier factory for the same type.</summary>
   /// <returns><c>true</c> when an earlier factory for the type was replaced.</returns>
   public bool RegisterNetworkType(
     string networkType,
@@ -50,10 +41,7 @@ public class BlockNetworkModSystem : ModSystem {
   /// <summary>Every network type a factory has been registered for.</summary>
   public IReadOnlyCollection<string> RegisteredNetworkTypes => _factories.Keys;
 
-  /// <summary>
-  /// Server world accessor, available to network instances during their tick (e.g.
-  /// to break a burst/melted node and drop its items). <c>null</c> on the client.
-  /// </summary>
+  /// <summary>Server world accessor, available to network instances during their tick. Null on the client.</summary>
   public IServerWorldAccessor? ServerWorld { get; private set; }
 
   public override void StartServerSide(ICoreServerAPI api) {
@@ -64,8 +52,7 @@ public class BlockNetworkModSystem : ModSystem {
     );
   }
 
-  /// <summary>Every live network instance. Server-side only: <see cref="AddNode"/> and
-  /// <see cref="RemoveNode"/> never run on the client, so the client graph is empty.</summary>
+  /// <summary>Every live network instance. Server-side only; the client graph is empty.</summary>
   public IEnumerable<BlockNetwork> AllNetworks => _networks.Values;
 
   /// <summary>Returns the network that owns <paramref name="pos"/>, or <c>null</c>.</summary>
@@ -75,15 +62,7 @@ public class BlockNetworkModSystem : ModSystem {
       ? net
       : null;
 
-  /// <summary>
-  /// Returns the network across <paramref name="connectorFace"/> from <paramref name="connectorPos"/>,
-  /// but only when the cell there exposes a connector back toward it. A pipe merely occupying the
-  /// adjacent cell without a facing connector is not plumbed in. Returns <c>null</c> when there is no
-  /// reciprocating connector or no network there.
-  /// </summary>
-  /// <remarks>The far cell answers through whatever speaks for it, a membership or the block, the way
-  /// the walk resolves one. Reading only the block would leave a machine sitting against a footprint
-  /// cell that is a node finding no network across that face.</remarks>
+  /// <summary>Returns the network across <paramref name="connectorFace"/> from <paramref name="connectorPos"/>, or null when the cell there has no reciprocating connector.</summary>
   public BlockNetwork? GetConnectedNetworkAcross(
     IBlockAccessor world,
     BlockPos connectorPos,
@@ -99,27 +78,17 @@ public class BlockNetworkModSystem : ModSystem {
       : null;
   }
 
-  /// <summary>
-  /// The network instance for <paramref name="networkType"/>, or <c>null</c> when no factory is
-  /// registered for it. Returning null rather than throwing is deliberate: the only caller runs inside
-  /// chunk load, so a mistyped or unregistered type would take the world down over one bad block
-  /// declaration. The caller logs the position and the registered types and adds no node.
-  /// </summary>
+  /// <summary>Creates a network for <paramref name="networkType"/>, or null when no factory is registered.</summary>
   private BlockNetwork? TryCreateNetwork(string networkType) =>
     _factories.TryGetValue(networkType, out var factory) ? factory() : null;
 
-  /// <summary>Registered network types, for a diagnostic naming what the caller could have meant.</summary>
+  /// <summary>Registered network types, for diagnostics.</summary>
   private string RegisteredTypes() =>
     _factories.Count == 0
       ? "(none)"
       : string.Join(", ", _factories.Keys.Order());
 
-  /// <summary>
-  /// Creates a network of a type already proven registered, because the caller took it off a live
-  /// network instance (a fracture split, a root rebuild). Throwing here is correct: a miss is an exlib
-  /// invariant violation rather than a mod declaring a bad type, and the content-facing path
-  /// (<see cref="AddNode"/>) uses <see cref="TryCreateNetwork"/> instead.
-  /// </summary>
+  /// <summary>Creates a network of a type already known registered; throws if none is registered.</summary>
   private BlockNetwork CreateNetwork(string networkType) =>
     TryCreateNetwork(networkType)
     ?? throw new InvalidOperationException(
@@ -133,10 +102,7 @@ public class BlockNetworkModSystem : ModSystem {
   /// Adds <paramref name="pos"/> to the network graph, merging adjacent networks
   /// of the same type as needed.
   /// </summary>
-  /// <param name="broadcast">
-  /// When <c>true</c> (default), immediately broadcasts state so clients reflect
-  /// the new connectivity.  Pass <c>false</c> during batch operations.
-  /// </param>
+  /// <param name="broadcast">When <c>true</c> (default), immediately broadcasts state to clients.</param>
   public virtual void AddNode(
     IBlockAccessor world,
     BlockPos pos,
@@ -153,12 +119,9 @@ public class BlockNetworkModSystem : ModSystem {
       .ToList();
 
     if (adjacentNetworks.Count == 0) {
-      // Isolated new node - standalone network, no broadcast needed.
       BlockNetwork? net = TryCreateNetwork(networkType);
       if (net == null) {
-        // Only an isolated node reaches the factory - one placed against an existing run joins that
-        // network instead - so an unregistered type surfaces intermittently and by position. Naming
-        // the block and the registered types is what turns that into something a modder can act on.
+        // Reached only for an isolated node; a placement joining an existing run never invokes the factory.
         ServerWorld?.Logger.Error(
           "[exlib] Block network: '{0}' at {1} declares network type '{2}', which no mod registered. "
             + "The block is placed but joins no network. Registered types: {3}. "
@@ -176,7 +139,6 @@ public class BlockNetworkModSystem : ModSystem {
       _posToNetwork[pos] = net.Id;
       net.OnTopologyChanged();
     } else {
-      // Join the first adjacent network and merge any others into it.
       var primaryNet = adjacentNetworks[0];
       primaryNet.Nodes.Add(pos);
       _posToNetwork[pos] = primaryNet.Id;
@@ -191,8 +153,7 @@ public class BlockNetworkModSystem : ModSystem {
           _posToNetwork[nPos] = primaryNet.Id;
         }
 
-        // A suspended review carries over rather than being dropped: the cells the walk could not read
-        // are now this network's, so it inherits the doubt about whether they still hang together.
+        // A suspended review carries over to the merged network.
         if (_unreadableNodes.TryGetValue(netToMerge.Id, out var pending)) {
           if (_unreadableNodes.TryGetValue(primaryNet.Id, out var carried))
             carried.UnionWith(pending);
@@ -214,10 +175,7 @@ public class BlockNetworkModSystem : ModSystem {
   /// Removes <paramref name="pos"/> from the network graph, running BFS fracture
   /// detection and splitting the network if it disconnects.
   /// </summary>
-  /// <param name="broadcast">
-  /// When <c>true</c> (default), broadcasts the updated state to all surviving
-  /// fragment nodes.
-  /// </param>
+  /// <param name="broadcast">When <c>true</c> (default), broadcasts the updated state to surviving fragments.</param>
   public virtual void RemoveNode(
     IBlockAccessor world,
     BlockPos pos,
@@ -241,16 +199,7 @@ public class BlockNetworkModSystem : ModSystem {
   #endregion
 
   #region Connectivity review
-  /// <summary>
-  /// Decides whether <paramref name="network"/> is still one run and acts on the answer: splits it
-  /// into its connected components, or - when part of it is behind an unloaded chunk - defers that
-  /// decision and leaves it whole until the missing cells come back.
-  /// </summary>
-  /// <remarks>An unreadable cell and an absent one are indistinguishable to the walk, because
-  /// <see cref="IBlockAccessor.GetBlock"/> answers the air block for an unloaded chunk rather than
-  /// null. Splitting on "cannot see" would fracture a run around a player who walked away from it,
-  /// and it would stay fractured: the returning cell finds its position already in a network and
-  /// never re-joins. See docs/design/mechanics/pipe-network.md.</remarks>
+  /// <summary>Decides whether <paramref name="network"/> is still one run; splits it, or defers the decision when part of it is behind an unloaded chunk.</summary>
   private void ReviewConnectivity(
     IBlockAccessor world,
     Guid netId,
@@ -265,8 +214,7 @@ public class BlockNetworkModSystem : ModSystem {
         .ToHashSet();
 
       if (unreadable.Count > 0) {
-        // Suspended, not answered. Every node position comes from a placed block, so an unreadable
-        // one is an unloaded chunk rather than a coordinate off the map, and no bounds test is owed.
+        // Suspended, not answered: every node position comes from a placed block.
         _unreadableNodes[netId] = unreadable;
         Settle(world, network, broadcast);
         return;
@@ -281,9 +229,7 @@ public class BlockNetworkModSystem : ModSystem {
     Settle(world, network, broadcast);
   }
 
-  /// <summary>Walks the graph from one of <paramref name="network"/>'s nodes and returns everything it
-  /// reached. Only positions already in the node set are followed, so connectivity is decided by the
-  /// nodes alone.</summary>
+  /// <summary>Walks the graph from one node of <paramref name="network"/> and returns everything reached, restricted to nodes already in the set.</summary>
   private HashSet<BlockPos> WalkFromAnyNode(
     IBlockAccessor world,
     BlockNetwork network
@@ -350,8 +296,7 @@ public class BlockNetworkModSystem : ModSystem {
     }
   }
 
-  /// <summary>Leaves <paramref name="network"/> as it stands - one run - after a review that did not
-  /// split it, telling it its node set may have moved.</summary>
+  /// <summary>Leaves <paramref name="network"/> as one run and notifies it that its node set may have moved.</summary>
   private static void Settle(
     IBlockAccessor world,
     BlockNetwork network,
@@ -362,19 +307,14 @@ public class BlockNetworkModSystem : ModSystem {
       network.BroadcastUpdate(world);
   }
 
-  /// <summary>Drops <paramref name="netId"/> and anything the graph remembered about it. Every path
-  /// that retires a network goes through here, so a suspended review cannot outlive its network.</summary>
+  /// <summary>Drops <paramref name="netId"/> and anything the graph remembers about it.</summary>
   private void DissolveNetwork(Guid netId) {
     _networks.Remove(netId);
     _unreadableNodes.Remove(netId);
   }
   #endregion
 
-  /// <summary>
-  /// Completely rebuilds the network rooted at <paramref name="rootPos"/> via BFS,
-  /// replacing all existing network entries that overlap with the reachable subgraph.
-  /// Preserves state from the old root network so temperature/fill survive rebuilds.
-  /// </summary>
+  /// <summary>Rebuilds the network rooted at <paramref name="rootPos"/> via BFS, replacing overlapping entries and preserving state from the old root network.</summary>
   public BlockNetwork? RebuildFromRoot(
     IBlockAccessor world,
     BlockPos rootPos,
@@ -403,7 +343,6 @@ public class BlockNetworkModSystem : ModSystem {
         oldNetIds.Add(id);
     }
 
-    // Preserve state of the current root network (temperature, fill level and the rest).
     _posToNetwork.TryGetValue(rootPos, out Guid rootOldId);
     BlockNetwork? rootOldNet =
       rootOldId != default && _networks.TryGetValue(rootOldId, out var ron)
@@ -439,33 +378,21 @@ public class BlockNetworkModSystem : ModSystem {
   }
 
   #region Tick
-  /// <summary>
-  /// One second of graph work: resumes any connectivity review an unloaded chunk suspended, then
-  /// dispatches <see cref="BlockNetwork.OnTick"/> for every live network. Registered in
-  /// <see cref="StartServerSide"/>; public so the headless harness drives the same path.
-  /// </summary>
+  /// <summary>One second of graph work: resumes any suspended connectivity review, then dispatches <see cref="BlockNetwork.OnTick"/> for every live network.</summary>
   public void ServerTick(IBlockAccessor blockAccessor, float dt) {
-    // The network tick is a server-global listener that survives chunk unload, so a rejoin can
-    // deliver one huge dt that an over-pressure grace timer would cross in a single step. Capped at
-    // 2x the 1000ms interval, matching BlockEntityProductionMachine.
+    // dt is capped at 2x the 1000ms tick interval, matching BlockEntityProductionMachine's grace timer.
     dt = GameMath.Min(dt, 2f);
     ResumeSuspendedReviews(blockAccessor);
     foreach (var network in _networks.Values.ToList())
       network.OnTick(blockAccessor, dt, this);
   }
 
-  /// <summary>
-  /// Re-decides the connectivity of every network a missing chunk left suspended, once at least one of
-  /// the cells it could not read is readable again. Costs a dictionary count in the ordinary case.
-  /// </summary>
-  /// <remarks>Driven from the tick rather than from a chunk event, so the review always sees a chunk
-  /// that has finished bringing its block entities back - a footprint cell answers through nothing
-  /// else - and so a run cannot stay suspended for good because one event went missing.</remarks>
+  /// <summary>Re-decides connectivity for every network a missing chunk left suspended, once one of its unreadable cells is readable again.</summary>
   private void ResumeSuspendedReviews(IBlockAccessor world) {
     if (_unreadableNodes.Count == 0)
       return;
 
-    // Snapshot: a review splits its network, which rewrites both dictionaries during the loop.
+    // Snapshot: a review rewrites both dictionaries mid-loop.
     var ready = _unreadableNodes
       .Where(e => e.Value.Any(p => world.GetChunkAtBlockPos(p) != null))
       .Select(e => e.Key)
@@ -481,15 +408,7 @@ public class BlockNetworkModSystem : ModSystem {
   #endregion
 
   #region Public utilities
-  /// <summary>
-  /// Returns the connector faces on <paramref name="pos"/> that have no valid network neighbour
-  /// (open ends / leaks), as seen by <paramref name="member"/> - the cell's own participation in its
-  /// network, from <see cref="NetworkMembership.Resolve"/> or from the block the caller already holds.
-  /// </summary>
-  /// <remarks>An open face is a physical fact, not a graph one, so <see cref="CouplesFrom"/> is
-  /// deliberately not asked of the source here: a severed or endpoint cell contributes no graph edge
-  /// while still meeting the pipe it touches, and capping or venting that face would be visible to
-  /// the player. See docs/design/mechanics/pipe-network.md.</remarks>
+  /// <summary>Returns the connector faces on <paramref name="pos"/> that have no valid network neighbour, as seen by <paramref name="member"/>.</summary>
   public BlockFacing[] GetOpenConnectorFaces(
     IBlockAccessor world,
     BlockPos pos,
@@ -512,12 +431,7 @@ public class BlockNetworkModSystem : ModSystem {
     return open.Count == 0 ? [] : open.ToArray();
   }
 
-  /// <summary>
-  /// Returns all positions that are graph-connected to <paramref name="pos"/> on
-  /// <paramref name="networkType"/> (matching connector on the touching face, same network type, not
-  /// broken). A cell joins the graph through whatever answers for it there - a membership behaviour
-  /// or the block - so a block that spent its base class elsewhere still walks.
-  /// </summary>
+  /// <summary>Returns positions graph-connected to <paramref name="pos"/> on <paramref name="networkType"/>: matching connector, same network type, not broken.</summary>
   public IEnumerable<BlockPos> GetConnectedNeighbors(
     IBlockAccessor world,
     BlockPos pos,
@@ -545,23 +459,14 @@ public class BlockNetworkModSystem : ModSystem {
     }
   }
 
-  /// <summary>
-  /// Whether the cell at <paramref name="pos"/> passes the run on: a fixed endpoint terminates it
-  /// rather than continuing through, and a severed cell (a closed valve, a solidified canal) breaks
-  /// it. Asked of the source and of every candidate neighbour, so a severed cell drops off the graph
-  /// from both sides at once.
-  /// </summary>
+  /// <summary>Whether the cell at <paramref name="pos"/> continues the run: not a fixed endpoint and not severed.</summary>
   private static bool CouplesFrom(
     IBlockAccessor world,
     BlockPos pos,
     INetworkMember member
   ) => !member.IsNetworkEndPoint && !member.IsConnectionBroken(world, pos);
 
-  /// <summary>
-  /// Whether the block at <paramref name="pos"/> counts a non-network neighbour on
-  /// <paramref name="face"/> as sealed rather than open, suppressing a false leak against a machine
-  /// housing. Read from the block because the hook is a block-side one.
-  /// </summary>
+  /// <summary>Whether the block at <paramref name="pos"/> treats a non-network neighbour on <paramref name="face"/> as sealed.</summary>
   private static bool SealsAgainst(
     IBlockAccessor world,
     BlockPos pos,
@@ -571,11 +476,7 @@ public class BlockNetworkModSystem : ModSystem {
     world.GetBlock(pos) is BlockNetworkNode node
     && node.IsValidNonNetworkConnection(neighbour, face);
 
-  /// <summary>
-  /// Whether the cell across <paramref name="facing"/> joins <paramref name="source"/>. The neighbour
-  /// is resolved exactly as the source is, so a block carrying a membership can be walked to as well
-  /// as from; resolving only the block would leave the graph one-directional.
-  /// </summary>
+  /// <summary>Whether the cell across <paramref name="facing"/> joins <paramref name="source"/>.</summary>
   private static bool IsValidNetworkNeighbour(
     IBlockAccessor world,
     BlockPos sourcePos,
@@ -595,21 +496,14 @@ public class BlockNetworkModSystem : ModSystem {
     )
       return false;
 
-    // Matching connectors and network type do not imply the two physically couple (see
-    // INetworkMember.AcceptsNeighbour). Tested here because this is the one path shared by the
-    // traversal and the open-end scan, so a refused joint reads the same way to both.
+    // Matching connectors and type do not imply the two physically couple; see INetworkMember.AcceptsNeighbour.
     if (!source.AcceptsNeighbour(neighbourBlock))
       return false;
 
     return CouplesFrom(world, neighbourPos, neighbour);
   }
 
-  /// <summary>
-  /// Maps an orientation string of single-letter side codes ("ns", "we", "nsewud") to the faces it
-  /// names, dropping any letter that names no side and any repeat. The one walk shared by everything
-  /// that turns an orientation into a connector set - a node block's variant, a membership's declared
-  /// faces - so the two cannot drift on which letters count.
-  /// </summary>
+  /// <summary>Maps an orientation string of single-letter side codes ("ns", "we", "nsewud") to the faces it names, dropping unknown or repeated letters.</summary>
   public static BlockFacing[] SidesToFaces(string? orientation) =>
     [
       .. (orientation ?? "")
@@ -634,11 +528,7 @@ public class BlockNetworkModSystem : ModSystem {
   public static bool IsCompatibleNetworkBlock(Block neighbour, string id) =>
     neighbour is INetworkConnector connector && connector.NetworkType == id;
 
-  /// <summary>
-  /// Position-aware compatibility - like <see cref="IsCompatibleNetworkBlock"/> but consults
-  /// the connector's per-cell network type, so a structure filler that exposes a port on one
-  /// footprint cell reads as compatible only on that cell.
-  /// </summary>
+  /// <summary>Position-aware compatibility: consults the connector's per-cell network type.</summary>
   public static bool IsCompatibleNetworkBlockAt(
     IBlockAccessor world,
     BlockPos pos,

@@ -1,7 +1,4 @@
-// Polyfills for BCL methods present on .NET 10 (the 1.22 runtime) but not on the .NET 8 / .NET 7
-// runtimes the legacy game versions ship. Compiled only for the legacy TFMs (!GAME_GE_1_22); the
-// real framework methods are used elsewhere. Brought into scope by the per-project legacy global
-// usings.
+// Polyfills for BCL methods present on .NET 10 (the 1.22 runtime) but not on the legacy runtimes.
 #if !GAME_GE_1_22
 using System.Collections.Generic;
 

@@ -7,19 +7,9 @@ using System.Text.RegularExpressions;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// Reflects the API the wiki teaches against the API the assembly actually has. The wiki is the one
-/// authored artifact a third party is asked to build against, and the only one this repository does not
-/// test - goldens, lang keys, code literals and released block codes all have guards, so they stay true
-/// and the wiki drifts.
-/// <para>
-/// Deliberately narrow, because a doc is not a compilation unit: it checks the two claims that are
-/// unambiguous and that a reader acts on. A member named on a type this assembly owns must exist on
-/// it, and an <c>Ex</c>-prefixed identifier written as code must name a type that exists.
-/// Everything else - a consumer's own class, a vanilla or BCL call, a local - is out of scope by
-/// construction, since neither rule can see it.
-/// </para>
-/// </summary>
+/// <summary>Reflects the API the wiki teaches against the API the assembly actually has: a member
+/// named on an owned type must exist on it, and an <c>Ex</c>-prefixed identifier must name a real
+/// type.</summary>
 public static class WikiParity {
   /// <summary>One drifted symbol: where it is written, what it names, and why it does not resolve.</summary>
   public sealed record Finding(
@@ -32,8 +22,7 @@ public static class WikiParity {
     public override string ToString() => $"{File}:{Line}  {Symbol} - {Reason}";
   }
 
-  // A code span: a ```csharp fence, or an inline `backtick` run. Prose outside both is not checked -
-  // an English sentence naming a type is not a claim about a signature.
+  // A code span: a ```csharp fence, or an inline `backtick` run. Prose outside both is not checked.
   private static readonly Regex FencedCsharp = new(
     @"^```\s*(csharp|cs|c#)\s*$",
     RegexOptions.IgnoreCase | RegexOptions.Compiled
@@ -57,20 +46,16 @@ public static class WikiParity {
   );
 
   // A return type, including a generic one whose arguments carry spaces (`Dictionary<string, string[]>`).
-  // Without the inner-space allowance the declaration rules below silently skip every generic member,
-  // which is most of the interesting surface.
   private const string TypeRef = @"[\w\.\?\[\]]+(?:<[^;=\{\r\n]*>)?";
 
-  // `class MyPipe : BlockPipe` - the class itself, and the base a subsequent `override` in the same
-  // fence resolves against.
+  // `class MyPipe : BlockPipe` - the class itself, and the base subsequent overrides resolve against.
   private static readonly Regex ClassWithBase = new(
     @"\bclass\s+(?<class>\w+)\s*:\s*(?<base>[A-Z][A-Za-z0-9_]*)",
     RegexOptions.Compiled
   );
 
   // `public override string NetworkType` / `protected override void OnLoaded(`. The accessibility is
-  // part of the claim: overriding a protected member as public is CS0507, and a page that teaches it
-  // does not compile.
+  // part of the claim: overriding a protected member as public is CS0507.
   private static readonly Regex OverrideDecl = new(
     @"\b(?<access>public|protected|internal|protected\s+internal)\s+(?:sealed\s+)?override\s+"
       + TypeRef
@@ -78,23 +63,19 @@ public static class WikiParity {
     RegexOptions.Compiled
   );
 
-  // `public abstract Dictionary<...> AllowedOrientations` - a page declaring a member abstract that the
-  // base actually implements teaches a consumer to write a member they do not have to.
+  // `public abstract Dictionary<...> AllowedOrientations`.
   private static readonly Regex AbstractDecl = new(
     @"\babstract\s+" + TypeRef + @"\s+(?<name>\w+)",
     RegexOptions.Compiled
   );
 
-  // `protected virtual void DeclareState(...)` - the reverse claim: a page showing a type's own member
-  // as virtual (or, via OverrideDecl below, as an override) when the code actually declares it abstract
-  // teaches a snippet that does not compile, since neither form supplies the body abstract forbids.
+  // `protected virtual void DeclareState(...)` - the reverse claim from AbstractDecl.
   private static readonly Regex VirtualDecl = new(
     @"\bvirtual\s+" + TypeRef + @"\s+(?<name>\w+)",
     RegexOptions.Compiled
   );
 
-  // `BlockPipe.cs:42` is a source citation, not a member access. Same for the other file kinds the
-  // docs cite by name.
+  // `BlockPipe.cs:42` is a source citation, not a member access.
   private static readonly HashSet<string> FileExtensions =
   [
     "cs",
@@ -110,24 +91,18 @@ public static class WikiParity {
     "zip",
   ];
 
-  /// <summary>What a run examined and what it found. The counts exist so a caller can assert the guard
-  /// is not inert: zero findings reads identically whether the wiki is correct or the extractor stopped
-  /// seeing code.</summary>
+  /// <summary>What a run examined and what it found.</summary>
   public sealed record Report(
     IReadOnlyList<Finding> Findings,
     int FilesRead,
     int SymbolsChecked
   );
 
-  /// <summary>
-  /// Every symbol in <paramref name="wikiDirectory"/>'s markdown that names something
-  /// <paramref name="assembly"/> does not have. <paramref name="knownAbsent"/> exempts an identifier the
-  /// docs invent on purpose - a sample type a reader is meant to write themselves.
-  /// </summary>
+  /// <summary>Every symbol in <paramref name="wikiDirectory"/>'s markdown that names something
+  /// <paramref name="assembly"/> does not have.</summary>
+  /// <param name="knownAbsent">Identifiers the docs invent on purpose, exempted.</param>
   /// <param name="alsoDefined">Type names that exist outside <paramref name="assembly"/> and cannot be
-  /// reflected - the source generators, which ship no runtime assembly. Supplied as a set discovered
-  /// from source rather than a hand-written allowance, so a generator that is deleted stops being known
-  /// here too. That is the whole point: a deleted generator is what this guard was written for.</param>
+  /// reflected, such as the source generators.</param>
   public static Report Check(
     string wikiDirectory,
     Assembly assembly,
@@ -135,12 +110,7 @@ public static class WikiParity {
     IEnumerable<string>? alsoDefined = null
   ) => Check(wikiDirectory, [assembly], knownAbsent, alsoDefined);
 
-  /// <summary>
-  /// As the single-assembly overload, resolving against several at once. One mod can ship more than
-  /// one assembly and still document them in one wiki - exlib ships its framework and its domain
-  /// layer as <c>exlib.dll</c> and <c>exlib.industry.dll</c> - and a check that saw only the first
-  /// would report every symbol from the second as a name the mod does not have.
-  /// </summary>
+  /// <summary>As the single-assembly overload, resolving against several at once.</summary>
   public static Report Check(
     string wikiDirectory,
     IReadOnlyList<Assembly> assemblies,
@@ -188,8 +158,7 @@ public static class WikiParity {
     return new Report(findings, files, checkedSymbols);
   }
 
-  // Returns how many symbols this span actually resolved against the assembly - a candidate naming a
-  // type exlib does not own is not a check, it is a skip, and counting it would hide an inert run.
+  // Returns how many symbols this span actually resolved against the assembly.
   private static int CheckSpan(
     string file,
     int line,
@@ -227,8 +196,7 @@ public static class WikiParity {
       if (exempt.Contains(id))
         continue;
       examined++;
-      // An attribute is written without its suffix at the use site - `[ExConfigRange(1, 100)]` names
-      // ExConfigRangeAttribute - so both spellings resolve.
+      // An attribute is written without its suffix at the use site; both spellings resolve.
       if (!defined.Contains(id) && !defined.Contains(id + "Attribute"))
         findings.Add(
           new Finding(
@@ -242,8 +210,7 @@ public static class WikiParity {
     return examined;
   }
 
-  // The declaration-shape checks, which need a whole fenced block rather than one line: an `override`
-  // only means something against the base named on the enclosing `class X : Base` line.
+  // The declaration-shape checks, which need a whole fenced block rather than one line.
   private static int CheckDeclarations(
     string file,
     int startLine,
@@ -252,20 +219,16 @@ public static class WikiParity {
     Dictionary<string, Type> types,
     List<Finding> findings
   ) {
-    // The base an `override` is measured against: the `class X : Base` inside the fence, or - for a
-    // bare signature list, which is where a doc's members drift furthest from the code - the type its
-    // own heading names ("Key `BlockNetworkNode` members to know").
+    // The base an `override` is measured against: the `class X : Base` inside the fence, or, for a
+    // bare signature list, the type its own heading names ("Key `BlockNetworkNode` members to know").
     Match classMatch = ClassWithBase.Match(block);
     string? baseName = classMatch.Success
       ? classMatch.Groups["base"].Value
       : headingType;
     types.TryGetValue(baseName ?? "", out Type? baseType);
 
-    // The type a bare `abstract`/`virtual` member is measured against: the class the fence itself
-    // declares (`ExBlockEntity` in `class ExBlockEntity : BlockEntity`), falling back to the heading's
-    // type when the fence shows only a signature list and no class line. This is deliberately not
-    // `baseType` above - such a member is being declared on this type, not inherited from its base, so
-    // looking it up on the base finds nothing and the check goes silently inert.
+    // The type a bare `abstract`/`virtual` member is measured against: the class the fence declares,
+    // falling back to the heading's type. Not `baseType` above: such a member is declared on this type.
     string? ownName = classMatch.Success
       ? classMatch.Groups["class"].Value
       : headingType;
@@ -316,10 +279,8 @@ public static class WikiParity {
           );
       }
 
-    // Resolved with FindOwnDeclared, not FindOverridable: an `override` of a member the base
-    // declares abstract is the correct, compiling way to document it, and FindOverridable's base
-    // walk would find that base member and call it abstract too. FindOwnDeclared only sees a
-    // member ownType itself declares abstract - one it does not implement despite the page's claim.
+    // Resolved with FindOwnDeclared, not FindOverridable: it only sees a member ownType itself
+    // declares abstract, not one inherited from a base that already implements it.
     if (ownType != null)
       foreach (
         Match m in VirtualDecl
@@ -363,9 +324,7 @@ public static class WikiParity {
     return null;
   }
 
-  // A member ownType declares itself - not one it inherits. Type.GetMember without DeclaredOnly
-  // returns inherited members too, which would make an override of an inherited abstract member
-  // look like ownType still declares it abstract.
+  // A member ownType declares itself, not one it inherits.
   private static MemberInfo? FindOwnDeclared(Type ownType, string name) {
     const BindingFlags flags =
       BindingFlags.Public
@@ -406,8 +365,7 @@ public static class WikiParity {
     RegexOptions.Compiled
   );
 
-  // The ```csharp fences as whole blocks, with the 1-based line each opens on and the type its nearest
-  // preceding heading names, if any.
+  // The ```csharp fences as whole blocks, with the opening line and the nearest preceding heading's type.
   private static IEnumerable<(
     int Line,
     string Block,
@@ -432,8 +390,7 @@ public static class WikiParity {
   }
 
   // Simple name -> type, generic arity stripped (`ExConfigRegister\`1` is written `ExConfigRegister<T>`).
-  // A name shared by two types keeps the first; the check only asks whether a member exists, and an
-  // ambiguity that made a real drift invisible would need two types of one name, which this repo has none of.
+  // A name shared by two types keeps the first.
   private static Dictionary<string, Type> PublicTypesBySimpleName(
     IReadOnlyList<Assembly> assemblies
   ) {
@@ -443,8 +400,7 @@ public static class WikiParity {
     return map;
   }
 
-  // Members are looked up on the type and everything it inherits, public and protected alike: the wiki
-  // teaches subclassing, so a protected member is a documented one.
+  // Members are looked up on the type and everything it inherits, public and protected alike.
   private static bool HasMember(Type type, string member) {
     const BindingFlags flags =
       BindingFlags.Public
@@ -457,9 +413,7 @@ public static class WikiParity {
       if (t.GetMember(member, flags).Length > 0)
         return true;
       // A nested generic type is named with its arity at runtime (ReadResult`1) while the wiki
-      // writes it the way a caller does (ReadResult<T>), which the caller's own arity has already
-      // been stripped from by the time it arrives here. Without this, documenting any nested
-      // generic type reads as a member the type does not have.
+      // writes it as ReadResult<T>.
       if (t.GetNestedTypes(flags).Any(n => StripArity(n.Name) == member))
         return true;
     }
