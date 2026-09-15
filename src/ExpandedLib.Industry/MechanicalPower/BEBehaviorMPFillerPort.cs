@@ -85,9 +85,12 @@ public class BEBehaviorMPFillerPort(BlockEntity blockentity)
 
   public override void SetOrientations() {
     OutFacingForNetworkDiscovery = _face;
-    // One sign per axis, not per facing: opposite facings share an axle line and must not
-    // counter-rotate.
-    AxisSign = _face.Axis == EnumAxis.X ? [-1, 0, 0] : [0, 0, -1];
+    // Signed from the port's own outward normal, not per axis: unlike a two-ended axle body, a filler
+    // port never shares its cell with the opposite facing, so there is no through-line to keep in
+    // sync, and reading the normal directly is what keeps an east or south port from mirroring the
+    // angle a west or north one on the same axis reports.
+    Vec3i n = _face.Normali;
+    AxisSign = [n.X, n.Y, n.Z];
   }
 
   /// <summary>The filler is invisible; the principal renders the rotor, so the port adds no mesh.</summary>
