@@ -88,6 +88,52 @@ public class TwinTubBlowerTests {
     return (world, (PipeNetwork)world.NetworkAt(pos)!, blower);
   }
 
+  /// <summary>
+  /// A blower placed at <paramref name="orientation"/>, wired into its own single-node pipe network.
+  /// Unlike <see cref="Rig"/>, this leaves the axle and production paths alone - the outlet facts
+  /// below only ever ask the block itself (<see cref="BlockTwinTubMPBlower.OutletCell"/>,
+  /// <see cref="BlockTwinTubMPBlower.OutletFace"/>,
+  /// <see cref="BlockTwinTubMPBlower.HasConnectorAt(BlockFacing)"/>) and the network graph.
+  /// </summary>
+  private static (
+    TestWorld world,
+    BlockPos principal,
+    BlockTwinTubMPBlower block
+  ) RigOriented(string orientation, int id) {
+    var world = new TestWorld();
+    world.RegisterNetwork("pipe", sys => new PipeNetwork(sys));
+
+    var block = TestBlocks.Configure(
+      new BlockTwinTubMPBlower(),
+      $"twintubblower:blower-twintubblower-{orientation}",
+      id,
+      ("type", "twintubblower"),
+      ("orientation", orientation)
+    );
+    var pos = new BlockPos(0, 0, 0);
+    var be = new BlockEntityTwinTubMPBlower();
+    world.Place(pos, block, be);
+    world.Attach(be);
+    world.AddNode(pos, "pipe");
+
+    return (world, pos, block);
+  }
+
+  /// <summary>A plain <see cref="BlockPipe"/> segment, real rather than the synthetic test node
+  /// used elsewhere, with a single connector on <paramref name="facing"/>.</summary>
+  private static BlockPipe PipeSegment(BlockFacing facing, int id) {
+    var pipe = TestBlocks.Configure(
+      new BlockPipe(),
+      $"twintubblower:test-pipe-{id}",
+      id,
+      ("type", "straight"),
+      ("orientation", facing.Code[0].ToString())
+    );
+    pipe.SetNetworkTypeForTest("pipe");
+    pipe.ApplyOrientationForTest(facing.Code[0].ToString());
+    return pipe;
+  }
+
   [Fact]
   public void A_driven_blower_puts_air_into_its_own_network() {
     var (_, net, blower) = Rig();
@@ -201,6 +247,82 @@ public class TwinTubBlowerTests {
     Assert.NotNull(net);
     Assert.Equal(4, net!.Nodes.Count);
     Assert.Same(net, world.NetworkAt(new BlockPos(0, 0, -3)));
+  }
+
+  /// <summary>
+  /// A real <see cref="BlockPipe"/> - not the synthetic test node above - standing against
+  /// <see cref="BlockTwinTubMPBlower.OutletCell"/>'s <see cref="BlockTwinTubMPBlower.OutletFace"/>
+  /// joins the blower's own network, at every placed orientation.
+  /// </summary>
+  [Theory]
+  [InlineData("n", 200)]
+  [InlineData("e", 210)]
+  [InlineData("s", 220)]
+  [InlineData("w", 230)]
+  public void A_pipe_against_the_outlet_cells_outward_face_joins_the_blowers_own_network(
+    string orientation,
+    int id
+  ) {
+    var (world, principal, block) = RigOriented(orientation, id);
+    BlockFacing outletFace = block.OutletFace;
+    string through = $"{outletFace.Code[0]}{outletFace.Opposite.Code[0]}";
+
+    world.PlaceFillerNode(
+      principal.AddCopy(outletFace),
+      "pipe",
+      through,
+      principal: principal
+    );
+    BlockPos outletCell = block.OutletCell(principal);
+    world.PlaceFillerNode(outletCell, "pipe", through, principal: principal);
+
+    BlockPos pipePos = outletCell.AddCopy(outletFace);
+    var pipeBe = new BlockEntityPipe();
+    world.Place(pipePos, PipeSegment(outletFace.Opposite, id + 1), pipeBe);
+    world.Attach(pipeBe);
+    world.AddNode(pipePos, "pipe");
+
+    var net = world.NetworkAt(principal);
+    Assert.NotNull(net);
+    Assert.Equal(4, net!.Nodes.Count);
+    Assert.Same(net, world.NetworkAt(pipePos));
+  }
+
+  /// <summary>
+  /// A pipe standing directly against the principal, on any face but the outlet, never joins: the
+  /// network only reaches this blower two cells out, through the outlet filler. Before the block's
+  /// own <see cref="BlockTwinTubMPBlower.HasConnectorAt(BlockFacing)"/> was narrowed to
+  /// <see cref="BlockTwinTubMPBlower.OutletFace"/>, the base class read the placed "orientation"
+  /// variant letter as a connector code, which agreed with the outlet face for n/s but named the
+  /// opposite face for e/w - so a pipe against the principal's east face joined an "e"-placed blower
+  /// and one against west joined a "w"-placed one.
+  /// </summary>
+  [Theory]
+  [InlineData("n", 300)]
+  [InlineData("e", 310)]
+  [InlineData("s", 320)]
+  [InlineData("w", 330)]
+  public void A_pipe_against_the_principal_itself_never_joins(
+    string orientation,
+    int baseId
+  ) {
+    int id = baseId;
+    foreach (BlockFacing face in BlockFacing.HORIZONTALS) {
+      var (world, principal, block) = RigOriented(orientation, id++);
+      if (face == block.OutletFace)
+        continue;
+
+      BlockPos pipePos = principal.AddCopy(face);
+      var pipeBe = new BlockEntityPipe();
+      world.Place(pipePos, PipeSegment(face.Opposite, id++), pipeBe);
+      world.Attach(pipeBe);
+      world.AddNode(pipePos, "pipe");
+
+      var net = world.NetworkAt(principal);
+      Assert.NotNull(net);
+      Assert.Equal(1, net!.Nodes.Count); // the principal alone - the pipe formed its own, separate network
+      Assert.NotSame(net, world.NetworkAt(pipePos));
+    }
   }
 
   [Theory]

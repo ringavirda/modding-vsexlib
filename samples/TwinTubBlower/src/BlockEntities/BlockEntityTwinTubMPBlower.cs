@@ -5,7 +5,6 @@ using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Industry.Pipes;
-using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -24,12 +23,18 @@ namespace TwinTubBlower.BlockEntities;
 /// upper-rear cell.
 /// </summary>
 [BlockEntityRegister]
-public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
+public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   /// <summary>
   /// Structure-local cell hosting the mechanical-power port, in the block's north frame: the upper-rear
   /// cell of the 1x2x3 footprint. The port faces west relative to the placed rotation.
   /// </summary>
   private static readonly Vec3i MpPortCell = new(0, 1, 0);
+
+  /// <summary>
+  /// Shortest interval between bellows-note plays, at least as long as the "bellows" sample itself
+  /// (measured ~1.41 s at 44.1 kHz), so a run of blow ticks never overlaps or cuts off the clip.
+  /// </summary>
+  private const long BellowsSoundIntervalMs = 1500;
 
   // Axle speed sampled on the last blow tick. Written server-side and serialized because the client
   // cannot read the port behaviour's live state and needs it for the HUD.
@@ -37,13 +42,28 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
   private float _lastSpeed;
 
   private long _blowTickId;
-  private long _lockTickId;
+  private long _lastBellowsSoundMs;
 
   private ToggleAnimator? _anim;
 
   /// <summary>The placed rotation, read from the block so the port lookup and the footprint agree.</summary>
   private int Angle =>
     (Block as Blocks.BlockTwinTubMPBlower)?.StructureAngle ?? 0;
+
+  /// <summary>
+  /// Renders nothing. Registered only to get a per-render-frame callback: the cycle clip must be
+  /// pinned to the axle every frame or it visibly steps between locks, worse the more the free-running
+  /// clip and the axle's own rate disagree. Runs before the opaque pass so the frame is already in
+  /// step when the mesh is drawn.
+  /// </summary>
+  public double RenderOrder => 0.0;
+
+  public int RenderRange => 24;
+
+  public void OnRenderFrame(float dt, EnumRenderStage stage) =>
+    LockCycleToAxle();
+
+  public void Dispose() { }
 
   public override void Initialize(ICoreAPI api) {
     base.Initialize(api);
@@ -56,8 +76,11 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
 
     _anim = new ToggleAnimator(this, BuildAnimator);
     _anim.Initialize(ApplyPose);
-    // Four updates a second, fast enough that pinning the clip to the axle does not show as stepping.
-    _lockTickId = RegisterGameTickListener(OnLockTick, 250);
+    (api as ICoreClientAPI)?.Event.RegisterRenderer(
+      this,
+      EnumRenderStage.Before,
+      "twintubblower-cycle"
+    );
   }
 
   public override void OnBlockRemoved() {
@@ -75,10 +98,12 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
       UnregisterGameTickListener(_blowTickId);
       _blowTickId = 0;
     }
-    if (_lockTickId != 0) {
-      UnregisterGameTickListener(_lockTickId);
-      _lockTickId = 0;
-    }
+    // The renderer holds a reference to this block entity; leaving it registered keeps a removed
+    // blower alive and still writing frames.
+    (Api as ICoreClientAPI)?.Event.UnregisterRenderer(
+      this,
+      EnumRenderStage.Before
+    );
   }
 
   /// <summary>
@@ -97,11 +122,17 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
       return;
 
     if (ProduceAir(speed, dt) > 0f)
-      ExSounds.PlayLocal(Api.World, Pos, ExSounds.Bellows, 0.5f, 16f);
-    else if (
-      (Block as BlockNetworkNode)?.GetConnectorFaces() is { Length: > 0 } faces
-    )
-      ExParticles.GasLeak(Api.World, Pos, faces[0]);
+      ExSounds.PlayThrottled(
+        Api,
+        Pos,
+        ExSounds.Bellows,
+        ref _lastBellowsSoundMs,
+        BellowsSoundIntervalMs,
+        0.5f,
+        16f
+      );
+    else if (Block is Blocks.BlockTwinTubMPBlower block)
+      ExParticles.GasLeak(Api.World, block.OutletCell(Pos), block.OutletFace);
   }
 
   /// <summary>
@@ -213,10 +244,11 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
 
   /// <summary>
   /// Pins the running <c>cycle</c> clip to the driving axle's angle, so the rod, the beam and the two
-  /// tub pistons move in step with the shaft rather than at a merely proportional rate. A no-op while
-  /// idle - <c>idle</c> has no cycle to lock.
+  /// tub pistons move in step with the shaft rather than at a merely proportional rate. Called every
+  /// render frame from <see cref="OnRenderFrame"/>, not from a tick, or the clip free-runs between
+  /// locks and visibly steps. A no-op while idle - <c>idle</c> has no cycle to lock.
   /// </summary>
-  private void OnLockTick(float dt) {
+  private void LockCycleToAxle() {
     if (SpeedFraction(_lastSpeed) <= 0f || Port() is not { } port)
       return;
     // Reversed: the clip turns its Axle element through +360 over the cycle, which runs against the
