@@ -13,7 +13,7 @@ public sealed class ExConfigRangeAttribute : Attribute {
   /// <summary>Largest accepted value (inclusive); <see cref="double.PositiveInfinity"/> for no upper bound.</summary>
   public double Max { get; }
 
-  /// <summary>Bounds the value to <c>[min, +∞)</c> - a floor only (e.g. a capacity that must be positive).</summary>
+  /// <summary>Bounds the value to <c>[min, +infinity)</c> - a floor only (e.g. a capacity that must be positive).</summary>
   public ExConfigRangeAttribute(double min)
     : this(min, double.PositiveInfinity) { }
 

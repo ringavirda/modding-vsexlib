@@ -432,7 +432,7 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
 
   /// <summary>The inclusive <c>[min, max]</c> a numeric property accepts: its
   /// <see cref="ExConfigRangeAttribute"/> when present, else the baseline non-negative range
-  /// <c>[0, +∞)</c>.</summary>
+  /// <c>[0, +infinity)</c>.</summary>
   private static (double Min, double Max) RangeOf(PropertyInfo p) {
     var attr = p.GetCustomAttribute<ExConfigRangeAttribute>();
     return attr != null ? (attr.Min, attr.Max) : (0d, double.PositiveInfinity);
