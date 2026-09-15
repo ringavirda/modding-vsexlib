@@ -672,14 +672,22 @@ public abstract class BlockNetworkNode
     BlockPos pos,
     IPlayer? byPlayer,
     float dropQuantityMultiplier = 1f
-  ) {
+  ) => [FallbackStack(worldMap)];
+
+  /// <summary>
+  /// The fallback-orientation stack whatever the node drops: a raised mega-block drops its materials
+  /// and nothing else, and the block-info HUD still asks what block it is.
+  /// </summary>
+  public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos) =>
+    FallbackStack(world);
+
+  /// <summary>One stack of this def's fallback-orientation variant, or of this block when that variant
+  /// is not registered.</summary>
+  protected ItemStack FallbackStack(IWorldAccessor world) {
     string fallback = GetFallbackOrientation(Type);
     AssetLocation loc = CodeWithVariant("orientation", fallback);
-    return [new ItemStack(worldMap.GetBlock(loc) ?? this)];
+    return new ItemStack(world.GetBlock(loc) ?? this);
   }
-
-  public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos) =>
-    GetDrops(world, pos, null)[0];
 
   /// <summary>
   /// Includes the node's material/rock/brick variant in its display name (e.g.

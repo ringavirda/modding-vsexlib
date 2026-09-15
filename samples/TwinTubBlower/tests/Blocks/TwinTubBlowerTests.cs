@@ -497,4 +497,13 @@ public class TwinTubBlowerTests {
   }
 
   #endregion
+
+  [Fact]
+  public void A_raised_blower_drops_nothing_but_still_names_itself_when_picked() {
+    var (world, _, blower) = Rig();
+    Assert.Empty(blower.Block.GetDrops(world.World, blower.Pos, null));
+    ItemStack picked = blower.Block.OnPickBlock(world.World, blower.Pos);
+    Assert.NotNull(picked.Block);
+    Assert.Equal(blower.Block.Code.Domain, picked.Block!.Code.Domain);
+  }
 }
