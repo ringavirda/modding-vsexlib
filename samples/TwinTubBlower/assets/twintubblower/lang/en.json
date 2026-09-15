@@ -7,6 +7,8 @@
   "twintubblower:blower-info-axle-noport": "Axle: the port cell is missing",
   "twintubblower:blower-info-axle-uncoupled": "Axle: no axle coupled to the port",
   "twintubblower:blower-info-axle-coupled": "Axle: coupled, turning at {0}",
+  "twintubblower:blower-info-built": "(built)",
+  "twintubblower:blower-info-unbuilt": "(construction incomplete)",
   "twintubblower:blower-info-blowing": "Blowing {0} ({1}% of rated output)",
 
   "twintubblower:rcc-ingredient-beam": "Support Beams",

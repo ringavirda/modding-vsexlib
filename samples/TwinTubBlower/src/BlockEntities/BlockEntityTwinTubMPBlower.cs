@@ -41,6 +41,15 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   [Persist("blowerSpeed")]
   private float _lastSpeed;
 
+  /// <summary>The port cell as the server last saw it, for the readout: 0 no port hosted, 1 a port
+  /// with no axle network, 2 a port on a turning network.</summary>
+  [Persist("axleState")]
+  private int _axleState;
+
+  /// <summary>Whether the server saw every construction stage complete on its last tick.</summary>
+  [Persist("builtOnServer")]
+  private bool _builtOnServer;
+
   private long _blowTickId;
   private long _lastBellowsSoundMs;
 
@@ -123,7 +132,14 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   /// coupled to the port cell of an unbuilt blower turns nothing.
   /// </summary>
   private void OnBlowTick(float dt) {
-    if (!IsConstructed)
+    int axleState = AxleState();
+    bool built = IsConstructed;
+    if (axleState != _axleState || built != _builtOnServer) {
+      _axleState = axleState;
+      _builtOnServer = built;
+      MarkDirty();
+    }
+    if (!built)
       return;
 
     float speed = PortSpeed();
@@ -305,6 +321,22 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   /// axle renders from.
   /// </summary>
   public string AxleReadout() {
+    string axle = _axleState switch {
+      0 => Lang.Get("twintubblower:blower-info-axle-noport"),
+      1 => Lang.Get("twintubblower:blower-info-axle-uncoupled"),
+      _ => Lang.Get("twintubblower:blower-info-axle-coupled", _lastSpeed.ToString("0.00")),
+    };
+    return axle
+      + " "
+      + Lang.Get(
+        _builtOnServer
+          ? "twintubblower:blower-info-built"
+          : "twintubblower:blower-info-unbuilt"
+      );
+  }
+
+  /// <summary>The port cell's state on this side: 0 no port hosted, 1 no axle network, 2 turning.</summary>
+  private int AxleState() {
     BlockPos cell = ExOrientation.GlobalPos(
       Pos,
       MpPortCell.X,
@@ -316,9 +348,7 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
       ?.World?.BlockAccessor?.GetBlockEntity(cell)
       ?.GetBehavior<BEBehaviorMPFillerPort>();
     if (port == null)
-      return Lang.Get("twintubblower:blower-info-axle-noport");
-    if (port.Network == null)
-      return Lang.Get("twintubblower:blower-info-axle-uncoupled");
-    return Lang.Get("twintubblower:blower-info-axle-coupled", port.Speed.ToString("0.00"));
+      return 0;
+    return port is { IsTurning: true } ? 2 : 1;
   }
 }
