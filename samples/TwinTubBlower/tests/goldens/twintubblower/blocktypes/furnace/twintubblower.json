@@ -14,6 +14,11 @@
       }
     }
   ],
+  "entityBehaviors": [
+    {
+      "name": "Animatable"
+    }
+  ],
   "blockmaterial": "Ceramic",
   "maxstacksize": 1,
   "variantgroups": [

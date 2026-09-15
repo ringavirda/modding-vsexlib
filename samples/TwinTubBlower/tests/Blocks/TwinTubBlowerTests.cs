@@ -7,7 +7,9 @@ using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using TwinTubBlower.BlockEntities;
 using TwinTubBlower.Blocks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -218,6 +220,80 @@ public class TwinTubBlowerTests {
       ("orientation", orientation)
     );
     Assert.Equal(expected, block.StructureAngle);
+  }
+
+  #endregion
+
+  #region Orientation lock
+
+  [Fact]
+  public void The_axle_speed_round_trips_through_the_tree_attributes() {
+    var (_, _, blower) = Rig();
+    ReflectionHelpers.SetField(blower, "_lastSpeed", 3.5f);
+    var tree = new TreeAttribute();
+
+    blower.ToTreeAttributes(tree);
+    var loaded = new BlockEntityTwinTubMPBlower();
+    loaded.FromTreeAttributes(tree, blower.Api.World);
+
+    Assert.Equal(3.5f, ReflectionHelpers.GetField(loaded, "_lastSpeed"));
+  }
+
+  [Fact]
+  public void The_blower_never_offers_the_wrench_rotate_hint() {
+    var (world, _, blower) = Rig();
+    var block = (BlockTwinTubMPBlower)blower.Block;
+    var selection = new BlockSelection {
+      Position = blower.Pos.Copy(),
+      Face = BlockFacing.UP,
+    };
+
+    WorldInteraction[] help = block.GetPlacedBlockInteractionHelp(
+      world.World,
+      selection,
+      world.Player().Player
+    );
+
+    Assert.DoesNotContain(
+      help,
+      w => w.ActionLangCode == "exlib:blockhelp-rotate"
+    );
+  }
+
+  /// <summary>
+  /// <c>RecalculateAndSyncOrientations</c> is the neighbour scan's swap path
+  /// (<c>BlockNetworkNode.OnNeighbourBlockChange</c>); the blower's override answers nothing rather
+  /// than re-picking a token off the surrounding topology.
+  /// </summary>
+  [Fact]
+  public void A_neighbour_scan_leaves_an_s_blower_s() {
+    var world = new TestWorld();
+    world.RegisterNetwork("pipe", sys => new PipeNetwork(sys));
+    var pos = new BlockPos(0, 0, 0);
+
+    var blowerBlock = TestBlocks.Configure(
+      new BlockTwinTubMPBlower(),
+      "twintubblower:blower-twintubblower-s",
+      123,
+      ("type", "twintubblower"),
+      ("orientation", "s")
+    );
+    blowerBlock.SetNetworkTypeForTest("twintubblower");
+    blowerBlock.ApplyOrientationForTest("s");
+
+    var blower = new BlockEntityTwinTubMPBlower();
+    world.Place(pos, blowerBlock, blower);
+    world.Attach(blower);
+
+    ((BlockNetworkNode)world.GetBlock(pos)).RecalculateAndSyncOrientations(
+      world.World,
+      pos
+    );
+
+    Assert.Equal(
+      "twintubblower:blower-twintubblower-s",
+      world.GetBlock(pos).Code?.ToString()
+    );
   }
 
   #endregion

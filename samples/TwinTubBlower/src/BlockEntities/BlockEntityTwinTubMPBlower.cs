@@ -2,13 +2,17 @@ using System.Text;
 using ExpandedLib;
 using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
+using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 
 namespace TwinTubBlower.BlockEntities;
 
@@ -33,6 +37,9 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
   private float _lastSpeed;
 
   private long _blowTickId;
+  private long _lockTickId;
+
+  private ToggleAnimator? _anim;
 
   /// <summary>The placed rotation, read from the block so the port lookup and the footprint agree.</summary>
   private int Angle =>
@@ -42,29 +49,43 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
     base.Initialize(api);
     // One blow per second, server-side. The network tick runs at the same interval, so air is produced
     // and then distributed in the same beat.
-    if (api.Side == EnumAppSide.Server)
+    if (api.Side == EnumAppSide.Server) {
       _blowTickId = RegisterGameTickListener(OnBlowTick, 1000);
+      return;
+    }
+
+    _anim = new ToggleAnimator(this, BuildAnimator);
+    _anim.Initialize(ApplyPose);
+    // Four updates a second, fast enough that pinning the clip to the axle does not show as stepping.
+    _lockTickId = RegisterGameTickListener(OnLockTick, 250);
   }
 
   public override void OnBlockRemoved() {
     base.OnBlockRemoved();
-    if (_blowTickId != 0) {
-      UnregisterGameTickListener(_blowTickId);
-      _blowTickId = 0;
-    }
+    UnregisterTicks();
   }
 
   public override void OnBlockUnloaded() {
     base.OnBlockUnloaded();
+    UnregisterTicks();
+  }
+
+  private void UnregisterTicks() {
     if (_blowTickId != 0) {
       UnregisterGameTickListener(_blowTickId);
       _blowTickId = 0;
+    }
+    if (_lockTickId != 0) {
+      UnregisterGameTickListener(_lockTickId);
+      _lockTickId = 0;
     }
   }
 
   /// <summary>
   /// Samples the axle and pushes one second of air into the network, scaled by
-  /// <see cref="SpeedFraction"/>. Marks dirty only when the sampled speed changed.
+  /// <see cref="SpeedFraction"/>. Marks dirty only when the sampled speed changed. A working line
+  /// blows with the bellows' note; a line with nowhere for the air to go blows it off at the outlet
+  /// instead.
   /// </summary>
   private void OnBlowTick(float dt) {
     float speed = PortSpeed();
@@ -72,7 +93,15 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
       _lastSpeed = speed;
       MarkDirty();
     }
-    ProduceAir(speed, dt);
+    if (SpeedFraction(speed) <= 0f)
+      return;
+
+    if (ProduceAir(speed, dt) > 0f)
+      ExSounds.PlayLocal(Api.World, Pos, ExSounds.Bellows, 0.5f, 16f);
+    else if (
+      (Block as BlockNetworkNode)?.GetConnectorFaces() is { Length: > 0 } faces
+    )
+      ExParticles.GasLeak(Api.World, Pos, faces[0]);
   }
 
   /// <summary>
@@ -123,8 +152,9 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
     return GameMath.Clamp((speed - min) / (max - min), 0f, 1f);
   }
 
-  /// <summary>The driving axle's speed, or 0 when no axle is coupled to the port cell.</summary>
-  private float PortSpeed() {
+  /// <summary>The mechanical-power port hosted on the footprint's upper-rear cell, or null before the
+  /// filler block entity there has loaded.</summary>
+  private BEBehaviorMPFillerPort? Port() {
     BlockPos cell = ExOrientation.GlobalPos(
       Pos,
       MpPortCell.X,
@@ -132,10 +162,89 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
       MpPortCell.Z,
       Angle
     );
-    var port = Api
+    return Api
       .World.BlockAccessor.GetBlockEntity(cell)
       ?.GetBehavior<BEBehaviorMPFillerPort>();
-    return port is { IsTurning: true } ? port.Speed : 0f;
+  }
+
+  /// <summary>The driving axle's speed, or 0 when no axle is coupled to the port cell.</summary>
+  private float PortSpeed() =>
+    Port() is { IsTurning: true } port ? port.Speed : 0f;
+
+  #region Animation
+
+  /// <summary>Builds the mesh and animator against this block's own shape, north-frame rotation
+  /// applied through <see cref="Vintagestory.API.Common.Block.Shape"/>'s <c>rotateY</c>.</summary>
+  private void BuildAnimator(BEBehaviorAnimatable animatable) {
+    MeshData mesh = animatable.animUtil.CreateMesh(
+      Block.Code.Path,
+      null,
+      out Shape shape,
+      null
+    );
+    animatable.animUtil.InitializeAnimator(
+      Block.Code.Path,
+      mesh,
+      shape,
+      new Vec3f(0, Block.Shape.rotateY, 0)
+    );
+  }
+
+  /// <summary>
+  /// Holds one clip at a time: <c>cycle</c> while the bellows are working
+  /// (<see cref="SpeedFraction"/> of <see cref="_lastSpeed"/> above 0), <c>idle</c> otherwise. One must
+  /// always be active or the animator drops the mesh.
+  /// </summary>
+  private void ApplyPose() {
+    bool blowing = SpeedFraction(_lastSpeed) > 0f;
+    _anim?.Pose(util => {
+      util.StopAnimation(blowing ? "idle" : "cycle");
+      util.StartAnimation(
+        new AnimationMetaData {
+          Animation = blowing ? "cycle" : "idle",
+          Code = blowing ? "cycle" : "idle",
+          AnimationSpeed = 1f,
+          EaseInSpeed = 10f,
+          EaseOutSpeed = 5f,
+        }.Init()
+      );
+    });
+  }
+
+  /// <summary>
+  /// Pins the running <c>cycle</c> clip to the driving axle's angle, so the rod, the beam and the two
+  /// tub pistons move in step with the shaft rather than at a merely proportional rate. A no-op while
+  /// idle - <c>idle</c> has no cycle to lock.
+  /// </summary>
+  private void OnLockTick(float dt) {
+    if (SpeedFraction(_lastSpeed) <= 0f || Port() is not { } port)
+      return;
+    // Reversed: the clip turns its Axle element through +360 over the cycle, which runs against the
+    // vanilla axle for a rising angle.
+    MPAnim.LockFrameToAngle(
+      _anim?.AnimUtil,
+      "cycle",
+      port.CurrentAngleRad,
+      reverse: true
+    );
+  }
+
+  #endregion
+
+  /// <summary>
+  /// Re-poses on the client when the loaded speed crosses the idle/blowing threshold. <c>_lastSpeed</c>
+  /// itself round-trips through the tree already, via its <c>[Persist]</c> declaration; this override
+  /// exists only for the side effect base has no hook for.
+  /// </summary>
+  public override void FromTreeAttributes(
+    ITreeAttribute tree,
+    IWorldAccessor worldForResolving
+  ) {
+    bool wasBlowing = SpeedFraction(_lastSpeed) > 0f;
+    base.FromTreeAttributes(tree, worldForResolving);
+
+    if (SpeedFraction(_lastSpeed) > 0f != wasBlowing)
+      ApplyPose();
   }
 
   public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc) {

@@ -64,6 +64,16 @@
       <HintPath>$(GamePath)/Mods/VSSurvivalMod.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- BEBehaviorAnimatable and BlockEntityAnimationUtil are in VSEssentials. -->
+    <Reference Include="VGameContent">
+      <HintPath>$(GamePath)/Mods/VSEssentials.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- VSEssentials' public surface (Shape, AnimationMetaData) leaks Newtonsoft types. -->
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(GamePath)/Lib/Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <!--
