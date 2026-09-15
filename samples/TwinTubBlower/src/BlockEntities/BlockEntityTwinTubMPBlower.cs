@@ -284,6 +284,7 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
     // Pipe readout first (medium, throughput, pressure), then the bellows' own state.
     base.GetBlockInfo(forPlayer, dsc);
 
+    dsc.AppendLine(AxleReadout());
     float fraction = SpeedFraction(_lastSpeed);
     dsc.AppendLine(
       fraction <= 0f
@@ -296,5 +297,28 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
           (int)(fraction * 100f)
         )
     );
+  }
+
+  /// <summary>
+  /// What the port cell reports: no port hosted, a port with no axle network, or the network's
+  /// speed. Read on the client from its own copy of the mechanical network, the same one the
+  /// axle renders from.
+  /// </summary>
+  public string AxleReadout() {
+    BlockPos cell = ExOrientation.GlobalPos(
+      Pos,
+      MpPortCell.X,
+      MpPortCell.Y,
+      MpPortCell.Z,
+      Angle
+    );
+    var port = Api
+      ?.World?.BlockAccessor?.GetBlockEntity(cell)
+      ?.GetBehavior<BEBehaviorMPFillerPort>();
+    if (port == null)
+      return Lang.Get("twintubblower:blower-info-axle-noport");
+    if (port.Network == null)
+      return Lang.Get("twintubblower:blower-info-axle-uncoupled");
+    return Lang.Get("twintubblower:blower-info-axle-coupled", port.Speed.ToString("0.00"));
   }
 }
