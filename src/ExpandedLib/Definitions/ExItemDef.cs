@@ -494,8 +494,14 @@ public sealed class ExItemDef : IExDef {
     return [];
   }
 
-  /// <summary>The built itemtype JSON (a defensive clone, safe to mutate/serialize).</summary>
-  public JObject ToJson() => (JObject)_root.DeepClone();
+  /// <summary>The built itemtype JSON (a defensive clone, safe to mutate/serialize). A
+  /// <c>shape.selectiveElements</c> list is spread over the <c>shapebytype</c> entries that name none
+  /// (<see cref="ShapeEntries.SpreadSelectiveElements"/>).</summary>
+  public JObject ToJson() {
+    var json = (JObject)_root.DeepClone();
+    ShapeEntries.SpreadSelectiveElements(json);
+    return json;
+  }
 
   // Explicit implementation: the interface returns JToken while the public ToJson returns the more precise
   // JObject its callers rely on, and an implicit implementation cannot covary the return type.

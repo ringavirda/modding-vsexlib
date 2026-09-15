@@ -579,4 +579,25 @@ public class ExItemDefTests {
   }
 
   #endregion
+
+  [Fact]
+  public void Selective_elements_reach_every_by_type_shape_that_names_none() {
+    JObject json = ExItemDef
+      .Create("d", "c")
+      .ShapeSelectiveElements("Base/*")
+      .ShapeByType("*-n", "d:x", rotateY: 0)
+      .ShapeByType("*-e", "d:x", rotateY: 90)
+      .ToJson();
+    foreach (string side in new[] { "*-n", "*-e" })
+      Assert.Equal(
+        "Base/*",
+        (string?)json["shapebytype"]![side]!["selectiveElements"]![0]
+      );
+  }
+
+  [Fact]
+  public void By_type_shapes_stay_bare_without_a_plain_selective_list() {
+    JObject json = ExItemDef.Create("d", "c").ShapeByType("*-n", "d:x").ToJson();
+    Assert.Null(json["shapebytype"]!["*-n"]!["selectiveElements"]);
+  }
 }

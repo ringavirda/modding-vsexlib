@@ -7,6 +7,12 @@ see the git history.
 
 ## [Unreleased]
 
+### Fixed
+
+- A `shape.selectiveElements` list now reaches every `shapebytype` entry that names none, so a block
+  or item that keys its shape by variant renders only the elements its definition selects in the game,
+  as it already did in the wiki.
+
 ### Changed
 
 - **The twin-tub blower and burden maker samples** (`samples/TwinTubBlower`, `samples/BurdenMaker`)
