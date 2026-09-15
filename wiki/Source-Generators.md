@@ -1,28 +1,55 @@
 # Source Generators
 
-`ExpandedLib.Generators` is a Roslyn source-generator project (netstandard2.0) that removes two
-kinds of boilerplate at compile time: typed accessors for config classes, and typed lang keys. Both
-run automatically on build - there is nothing to invoke.
+A source generator is a compiler plugin. It reads your code as the project compiles, writes more
+C#, and hands it back to the same compilation. You never see those files and never edit them; the
+generated members are simply there, with IntelliSense, as though you had typed them.
+`ExpandedLib.Generators` carries two of them, and both run on every build with nothing to invoke.
 
-The project sets `IncludeBuildOutput=false` and is consumed as an **analyzer**, so it ships no
-runtime assembly. Outside this repository it comes in the `exlib-testing` bundle under
-`analyzers/`; wire it with `<Analyzer Include="analyzers/ExpandedLib.Generators.dll" />`.
+They exist because two chores in a mod are pure repetition, and both fail quietly. A config class is
+plain data: to read a value at runtime you need a loaded instance of it, a file name, and the load
+and save plumbing around it, and every property you add needs a second line somewhere to expose it.
+Text is worse. Every string the player sees is a key into `assets/{domain}/lang/en.json`, and the
+game's translation call takes that key as a raw string, so a misspelled key is not a compile error,
+not a crash, and usually not even a log line - the player just reads `yourmod:blockdesc-machine`
+where a sentence should be.
+
+Both generators turn that repetition into symbols the compiler checks. A config class tagged
+`[ExConfigRegister]` gets a static accessor class, so a tunable is read as
+`IiexValues.PumpWaterPerSecond` and adding one is a single property. A lang file gets a
+`{Domain}Lang` class of constants, so a key that does not exist stops the build. In your own mod you
+set `<AssetDomain>` in the csproj and tag your config class; that is the whole of it.
+
+The project targets netstandard2.0, sets `IncludeBuildOutput=false` and is consumed as an
+**analyzer**, so it ships no runtime assembly and nothing of it lands in your mod folder. The
+`ExpandedLib` package carries the dll under `analyzers/dotnet/cs/`, where the compiler finds it
+without being told: reference the package as [Installing](Installing) describes and the generators
+are already running. Taking the `exlib-testing` bundle from a release instead puts the dll under
+`analyzers/`, and you wire it yourself with
+`<Analyzer Include="analyzers/ExpandedLib.Generators.dll" />`.
 
 ## `ExConfigGenerator` - config accessors
 
 **Triggers on:** a class tagged `[ExConfigRegister(fileName, modId)]` (see [Config System](Config-System)).
 
-**Emits:** a static partial class (default name = your type name with `Config` -> `Values`, override
-with `AccessorName`) containing:
+**Emits:** a static partial class named after your config type, with a trailing `Config` swapped
+for `Values` (`IiexConfig` gives `IiexValues`) unless you pass `AccessorName`. It carries:
 
-- `public const string ConfigFileName` - the file name you passed.
-- A private `ExConfigRegister<T>` backing store, with `LegacyFileNames` initialised and a static
-  `Migrations` member forwarded if your config type declares one.
-- `public static void Load(ICoreAPI api)` - calls the store's `Load`; if `Manageable = true`, also
-  registers with `ExConfigProfiles`.
-- `public static void Edit(Action<T> mutate)` and `public static void Save()`.
+- `public const string ConfigFileName` - the file name you passed, so a command or a test can name
+  the file without repeating the literal.
+- A private `ExConfigRegister<T>` backing store holding the live config, with `LegacyFileNames` and
+  `LegacySectionIds` initialised from the attribute and a static `Migrations` member forwarded if
+  your config type declares one. The store owns the reading and writing; the accessor is its face.
+- `public static void Load(ICoreAPI api)` - call it once during mod startup. It calls the store's
+  `Load`; if `Manageable = true`, it also registers with `ExConfigProfiles`, which is what puts your
+  values in `/exmod config` for an admin to read and change on a running server. A config class that
+  also carries `[ExRecipeProfile]` registers its cost catalogue with the shared recipe-cost
+  framework in the same call (see [Recipe Costs](Recipe-Costs)).
+- `public static void Edit(Action<T> mutate)` and `public static void Save()`, for changing a value
+  at runtime and flushing it to disk. Config is host-authoritative, so both are server-side in
+  practice.
 - One `public static` read-only getter per public, non-static, readable property (except
-  `ConfigVersion`), forwarding to the live config.
+  `ConfigVersion`), forwarding to the live config. Your gameplay code reads these and never holds
+  the config object itself, so a reload or a live edit is visible on the next read.
 
 So this:
 
@@ -61,7 +88,10 @@ item. There is no attribute and nothing to tag - the file is the input.
 
 **Emits:** a `{Domain}Lang` class of `public const string` members, one per key in that file, so a
 mistyped key is a compile error instead of a raw key rendered in the player's UI. English is the
-source of truth; the other locales are never read by the generator.
+source of truth; the other locales are never read by the generator. A member's name is its key with
+the separators dropped and each segment capitalised, so `blockdesc-machine` becomes
+`BlockdescMachine`. Two keys that reduce to the same member name do not silently overwrite each
+other: the one that sorts later takes a numeric suffix and the build warns (`EXLIB0004` below).
 
 A bare key `k` emits the value `"{domain}:{k}"`. A key that is already domain-qualified - a vanilla
 override such as `"game:placefailure-..."` - emits verbatim, so an override still resolves to the
@@ -87,8 +117,8 @@ Only the **primary** domain is fed: a mod packing a second tree (an absorbed mod
 
 - Generated code is re-emitted every build, so adding a config property or a lang key is instant -
   no boilerplate to duplicate or keep in sync.
-- The generator targets `netstandard2.0` (a Roslyn requirement); if you fork it, mind the usual
-  netstandard2.0 source-generator constraints (no newer BCL APIs).
+- The netstandard2.0 target is a Roslyn requirement, not a choice; if you fork the project, mind
+  the usual source-generator constraints that come with it (no newer BCL APIs).
 
 ## Related pages
 
@@ -97,6 +127,10 @@ Only the **primary** domain is fed: a mod packing a second tree (an absorbed mod
 - [Testing Harness](Testing-Harness) - the `exlib-testing` bundle these ship in.
 
 ## Diagnostics
+
+Both generators report through the compiler, so these arrive as ordinary build errors and warnings.
+The errors stop the build; the warnings mean a symbol you expected is missing, or is there under a
+name you did not choose.
 
 | Id | Severity | Generator | Reported when |
 |----|----------|-----------|----------------|

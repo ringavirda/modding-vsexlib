@@ -1,14 +1,35 @@
 # Code-First Definitions
 
-A block, item or recipe does not have to live in a JSON file. `ExpandedLib.Definitions` lets you
-build the same blocktype/itemtype/recipe JSON the vanilla object loader consumes, in C#, co-located
-with the class it configures. Everything ends up as the same synthetic asset a hand-written file
-would produce, so variant expansion, `*ByType` selection, the atlas, block-ID assignment and client
-sync all run unchanged - no `Block` is ever constructed directly from a definition.
+In Vintage Story a block is not only a C# class. The game builds it from a JSON file under
+`assets/yourmod/blocktypes/`, and that file is where the shape, the textures, the drops, the
+collision boxes, the creative-tab placement and the list of behaviours live. The class the file
+names is constructed once per block and reads the rest back out of `Attributes` at runtime. Items
+and recipes work the same way, from `itemtypes/` and `recipes/`.
+
+Nothing checks the two halves against each other. Rename the class and the file still names the old
+one. Add a variant in the file and the C# that switches on it never hears about it. Misspell an
+attribute key and your code quietly reads the default it was never meant to see. None of that is a
+compile error: the good case is a line in the log at world load, the bad case is a block that loads
+and does half its job.
+
+`ExpandedLib.Definitions` moves the file into the class. You build the same
+blocktype/itemtype/recipe JSON the vanilla object loader consumes, in C#, co-located with the class
+it configures, and exlib serializes the result and injects it before the loader runs. Everything
+ends up as the same synthetic asset a hand-written file would produce, so variant expansion,
+`*ByType` selection, the atlas, block-ID assignment and client sync all run unchanged - no `Block`
+is ever constructed directly from a definition. What you gain is the compiler reading your content,
+and a test suite that can check every definition before the game ever sees it.
+
+You apply it by implementing `IExBlockDefProvider` on your block class and returning
+`ExBlockDef.Create(...)` chains from it. The registration scan your mod system already runs finds
+it, so there is no second call to remember. [Getting Started](Getting-Started) walks a first one end
+to end.
 
 ## Provider interfaces
 
-Three sibling interfaces, one per asset kind, each with a single `static abstract` factory:
+Three sibling interfaces, one per asset kind, each with a single `static abstract` factory - a
+static method the interface demands, which lets exlib call it on the type itself without
+constructing anything:
 
 ```csharp
 public interface IExBlockDefProvider {
@@ -24,12 +45,18 @@ public interface IExRecipeDefProvider {
 }
 ```
 
-Implement `IExBlockDefProvider` on the block class itself (a class can back several blocktype assets -
-same `code`, distinct asset paths - so it returns an `IEnumerable`). Items and recipes have no natural
-class to hang a definition on, so their providers are usually stand-alone classes that implement
-`IExItemDefProvider` / `IExRecipeDefProvider` and nothing else. `domain` is the mod id the def
-registers into, which is what binds `ExBlockDef.Create` and `Class<T>()` to the right asset domain and
-registered-class key.
+Implement `IExBlockDefProvider` on the block class itself, so the definition sits beside the code
+that reads it. It returns an `IEnumerable` because one class can back several blocktype assets -
+same `code`, distinct asset paths - which is what a pipe class backing `pipe/straight`, `pipe/bend`
+and the rest needs. Items and recipes have no natural class to hang a definition on, so their
+providers are usually stand-alone classes that implement `IExItemDefProvider` /
+`IExRecipeDefProvider` and nothing else.
+
+`domain` is the mod id the def registers into, which is what binds `ExBlockDef.Create` and
+`Class<T>()` to the right asset domain and registered-class key. It is handed to the factory rather
+than written into it, so a definition cannot drift from the mod it ships in. You are handed your own
+mod id, unless the provider class carries `[ExDefDomain("othermod")]`: that is how one assembly
+emits definitions into a domain other than its own.
 
 ## Discovery and injection
 
@@ -37,61 +64,48 @@ registered-class key.
 `[BlockRegister]`/`[ItemRegister]`/`[BlockEntityRegister]` classes - also scans `asm` for provider
 implementors and feeds each one's `Definitions(domain)` result into `ExDefinitions`. No separate call
 is needed; a class that implements a provider interface is discovered the moment your `ModSystem.Start`
-calls `EntityRegistry.RegisterAll`.
+calls `EntityRegistry.RegisterAll`. (A `ModSystem` is the game's entry point for a mod's code and
+`Start` is its first phase; [Registries](Registries) covers the scan itself.)
 
-`ExDefinitions` is the process-wide registry the discovered defs land in:
+`ExDefinitions` is the process-wide registry the discovered defs land in. Holding them is all it
+does. Every def is keyed by its asset location, so registering the same location twice replaces
+rather than duplicates - which is also how you deliberately override a definition another mod
+declared.
 
-> Process-wide registry of code-first block definitions. A mod authors a block in C# with
-> `ExBlockDef` and registers it here (from its `ModSystem.Start`); the shared
-> `ExDefinitionModSystem` serializes each and injects it as a synthetic `blocktypes/` asset on the
-> server, before the object loader runs. Keyed by asset location so a re-register (or a deliberate
-> override) replaces rather than duplicates.
-
-`ExDefinitionModSystem` is the `ModSystem` that turns the registry into real assets:
+`ExDefinitionModSystem` is the `ModSystem` that turns the registry into real assets. exlib ships it
+and you never register it yourself; two of its lines decide when and where it runs:
 
 ```csharp
 public override bool ShouldLoad(EnumAppSide side) => side == EnumAppSide.Server;
 public override double ExecuteOrder() => 0.04;
 ```
 
-It runs at `AssetsLoaded`: below the game's own JSON patch loader (0.05), so injected assets stay
+`AssetsLoaded` is the world-load phase where every mod's asset files are in memory and nothing has
+been built from them yet; `ExecuteOrder` is the sort key that orders mod systems inside a phase. At
+0.04 the injection runs below the game's own JSON patch loader (0.05), so injected assets stay
 patchable by other mods; well below the object loader (0.2) that consumes them; and above 0 so base
 assets are already indexed. It is server-only, because `blocktypes`/`itemtypes` loading and the object
 loader are both server-only stages - **the client receives the resolved block and item types over the
 network**, the same way it receives any other asset the server built. See [Lifecycle](Lifecycle) for
-where this sits relative to everything else that happens at world load. A definition registered after
-this deadline is never built; [`LateDefinitionCheck`](Checks) names it and the fix in the log - unless
+where this sits relative to everything else that happens at world load.
+
+That injection is a deadline. A definition registered after it is never built;
+[`LateDefinitionCheck`](Checks) names it and the fix in the log - unless
 it re-registers a location injection already covered, replacing the built content with something the
 loader never sees; the check tests location membership only, so that case stays silent.
 
-## Definitions that depend on loaded assets
-
-A provider's `Definitions(domain)` runs the moment `EntityRegistry.RegisterAll` discovers it, which
-can be before every mod's own assets are readable - fine for a definition that is complete in
-source, wrong for one built from a catalogue another mod's JSON contributes to. `IExDefinitionContributor`
-is the interface for that case:
-
-```csharp
-public interface IExDefinitionContributor {
-  void Contribute(ICoreAPI api);
-}
-```
-
-`EntityRegistry.RegisterAll` discovers an implementor the same way it discovers a provider;
-`ExDefinitions.RunContributors` instantiates and runs each one at `AssetsLoaded` 0.04, right before
-injection, regardless of which mod or module `Start` discovered it in - the one point in the phase
-sequence guaranteed to run after every `Start` has returned, so a contributor can read a catalogue
-`AssetCatalogueLoader` assembles from every domain's JSON and register definitions from it.
-Server-only, the same as `ExDefinitionModSystem` itself. Industry's metal-family item emission is a
-contributor for exactly this reason: the metals it builds items for come from `config/metals/`
-across every domain. See [Modules](Modules) for a module's own use of it.
-
 ## The builders
+
+Three builders carry the asset kinds - `ExBlockDef`, `ExItemDef`, `ExRecipeDef` - and the smaller
+ones after them are the pieces those compose with: multiblock layouts, grid recipes, ingredients,
+code catalogues. All of them are fluent, so a definition is one expression and every method returns
+the builder for the next.
 
 ### `ExBlockDef`
 
-The block-side builder: a fluent chain that ends with `Location` (the synthetic asset path) and
-`ToJson()` (the built blocktype). Minimal:
+The block-side builder: `Create` starts a definition, each method writes one blocktype key, and the
+fluent chain ends with `Location` (the synthetic asset path) and `ToJson()` (the built blocktype),
+which are what exlib reads off it. Minimal:
 
 ```csharp
 public static IEnumerable<ExBlockDef> Definitions(string domain) =>
@@ -135,8 +149,16 @@ public static IEnumerable<ExBlockDef> Definitions(string domain) {
 
 #### `ExBlockDef` methods by JSON section
 
-Only the typed methods are listed; anything not here goes through `Attribute`/`AttributeByType`/
-`RootKey`/`RootKeyByType` below.
+Read the table from the blocktype JSON you already know - your own hand-written file, or one you
+found in another mod - across to the method that writes it. Only the typed methods are listed;
+anything not here goes through `Attribute`/`AttributeByType`/`RootKey`/`RootKeyByType` below.
+
+Two of the rows carry most of the game's leverage and are worth a sentence each. A variant group
+turns one definition into a family of blocks: declare a group `tier` with three states and a group
+`orientation` with six, and the loader builds eighteen blocks whose codes are the states joined onto
+the base code in declaration order (`pipe-cast-ns`). A `*ByType` key then varies one value across
+that family: it holds wildcard patterns matched against the rendered code, so a single definition
+gives a different shape per orientation without repeating anything else.
 
 | Section | Methods | JSON key(s) written |
 | --- | --- | --- |
@@ -178,7 +200,8 @@ see the `ExItemDef` section below for the list of what does not carry over and w
 
 #### `Attribute`/`RootKey`: the escape hatch, and the difference that matters
 
-Two methods reach schema the typed API does not cover, and they write to different places:
+Two methods reach schema the typed API does not cover. They write to different places, and the
+difference decides whether anything reads the value at all:
 
 - **`Attribute(key, value)`** writes `attributes.{key}` - a key the block/behaviour code reads back
   through `Attributes["..."]` at runtime. Anything is a valid key here; a typo just means your own
@@ -228,7 +251,9 @@ list honest as `ExBlockDef` grows.
 
 `ExRecipeDef` is the recipe-file builder: one def produces one
 `recipes/{category}/{assetName}.json` asset, either an array (`Grid`/`Add`, callable repeatedly) or a
-single object (`GridObject`/`Body`, callable once). `GridRecipeBuilder` builds one grid-recipe object
+single object (`GridObject`/`Body`, callable once). The category is the `recipes/` sub-folder the
+game sorts by (`grid`, `smithing`, and the rest), and a grid recipe is the crafting-grid kind: a
+pattern of letters, one ingredient per letter, and an output. `GridRecipeBuilder` builds one grid-recipe object
 (`{ name, ingredientPattern, ingredients, width, height, output }`); `IngredientBuilder` builds one
 ingredient slot. A real call site, the rolling mill's grid recipe:
 
@@ -253,9 +278,13 @@ ExpandedLib.Definitions.ExIngredients;` - see below.)
 
 ### `MultiblockBuilder`
 
-Builds a block's `attributes.multiblockStructure` (`{ blockNumbers, offsets }`) from explicit
-`Number`/`At`/`Fill` calls, validating at build time that every offset's number is declared and that
-no cell is duplicated. A real call site, the Bessemer converter control block:
+A multiblock structure is a machine that fills many block positions while one of them carries the
+logic, and the game checks the other cells against a declared layout. This builder writes that
+layout - a block's `attributes.multiblockStructure` (`{ blockNumbers, offsets }`) - from explicit
+`Number`/`At`/`Fill` calls: `Number` maps a block code to the digit that stands for it, `At` places
+that digit at one offset from the core block, and `Fill` fills a cuboid of them. It validates at
+build time that every offset's number is declared and that no cell is duplicated. A real call site,
+the Bessemer converter control block:
 
 ```csharp
 .Multiblock(m =>
@@ -273,7 +302,8 @@ no cell is duplicated. A real call site, the Bessemer converter control block:
 ### `MultiblockLayoutBuilder` and `StructureLayout`
 
 The higher-level alternative to `MultiblockBuilder`: draws the structure as ASCII diagrams instead
-of listing offsets by hand. `ExpandedLib.Structures.CellGrid` is the grid core underneath it (also
+of listing offsets by hand, which is what you want as soon as a structure runs past a handful of
+cells, since the diagram is also the thing a reader can check against the model. `ExpandedLib.Structures.CellGrid` is the grid core underneath it (also
 usable directly for other ASCII-diagram DSLs, such as the filler footprint); `MultiblockLayoutBuilder`
 adds the legend, role and connector vocabulary over it. `Layer` draws a floor plan, one grid per Y
 level; `Slice` and `Face` draw a fixed-X or fixed-Z elevation instead, for a structure that stacks in
@@ -338,6 +368,31 @@ steel-only siblings. After `using static ExpandedLib.Definitions.ExIngredients;`
 group (`.Ingredient("H", Hammer)`) or call the quantity factory (`.Ingredient("P", Plate(1))`). Only
 mod-agnostic ingredients belong here; a mod's own item codes stay in its own ingredients helper.
 
+## Definitions that depend on loaded assets
+
+A provider's `Definitions(domain)` runs the moment `EntityRegistry.RegisterAll` discovers it, which
+can be before every mod's own assets are readable. That is fine for a definition that is complete in
+source, and wrong for one built from a catalogue another mod's JSON contributes to: at `Start` time
+the catalogue may not exist yet, so the definition comes out short and nothing says so.
+`IExDefinitionContributor` is the interface for that case:
+
+```csharp
+public interface IExDefinitionContributor {
+  void Contribute(ICoreAPI api);
+}
+```
+
+`EntityRegistry.RegisterAll` discovers an implementor the same way it discovers a provider, but the
+work is deferred: `ExDefinitions.RunContributors` instantiates and runs each one at `AssetsLoaded`
+0.04, right before injection, regardless of which mod or module `Start` discovered it in - the one
+point in the phase sequence guaranteed to run after every `Start` has returned, so a contributor can
+read a catalogue `AssetCatalogueLoader` assembles from every domain's JSON and register definitions
+from it. Server-only, the same as `ExDefinitionModSystem` itself.
+
+Industry's metal-family item emission is a contributor for exactly this reason: the metals it builds
+items for come from `config/metals/` across every domain, so the list is not known until every mod's
+assets are in. See [Modules](Modules) for a module's own use of it.
+
 ## The cross-mod rule
 
 Class-typed methods (`Class<T>()`, `EntityClass<T>()`, `Behavior<T>()`, `EntityBehavior<T>()`) resolve
@@ -349,7 +404,10 @@ missing.
 
 ## Goldens
 
-`DefinitionGoldens` (in `exlib.testing`) is the oracle every migrated def is checked against: it
+A golden test pins a definition's output: the JSON it emits today is committed to the repository,
+and the test fails when a later edit changes it, so an accidental change to a shipped block arrives
+as a diff to read rather than as a bug report. `DefinitionGoldens` (in `exlib.testing`) is the
+oracle every migrated def is checked against: it
 collects every def a mod assembly declares (without touching the live `ExDefinitions` registry) and
 compares each one's emitted JSON to a committed golden file under `goldens/{domain}/{Location.Path}`.
 `EXLIB_WRITE_GOLDENS=1` reblesses every golden in a run; a narrower value

@@ -1,19 +1,35 @@
 # Construction (Right-Click Constructable)
 
-`Blocks/Construction/` wraps Vintage Story's right-click-construction (RCC) flow so it behaves
-consistently across game versions and so broken constructions scatter a configurable fraction of
-their build materials.
+Vintage Story can raise a block in stages instead of placing it whole. The player sets down the
+first piece, right-clicks it holding the next material, and each accepted material reveals another
+part of the block's shape. The game calls this right-click construction, and it is how a player
+assembles a machine too large to carry as one item.
+
+Building one from a mod meets two problems. The game's own construction behaviour exists only from
+version 1.22 on, so one block JSON cannot serve 1.20 and 1.21 too. And a half-built machine is a
+state your mod must answer for: broken, it should hand back some of what went into it; unfinished,
+its machine tick should usually not run.
+
+`Blocks/Construction/` answers both. exlib registers one behaviour under the JSON name
+`ExRightClickConstructable` on every supported version - a thin subclass of the game's own on
+**1.22**, a full port of it on **1.20 / 1.21** - so your block JSON does not change with the game
+version. On top of the vanilla flow it replaces the break handler, scattering the materials of
+every completed stage at a fraction each mod can expose in its config, and it answers a
+[production tick](Production-Machines) with "not yet" while the build is unfinished. You list the
+behaviour on your block with the stages it builds through, and that one entry carries all three.
 
 ## `ExRightClickConstructable`
 
-Per-block construction state and logic. On **1.22** it is a thin subclass of vanilla
-`BEBehaviorRightClickConstructable`; on **1.20 / 1.21** it is a full reimplementation. Either way
-you register it under the behaviour name `"ExRightClickConstructable"` (no mod prefix - exlib owns
-that JSON name on all versions), so your block JSON is version-agnostic.
+The behaviour name carries no mod prefix: exlib owns `ExRightClickConstructable` on every version,
+so one JSON entry loads against the vanilla subclass or the port alike.
 
 ```jsonc
 "entityBehaviors": [ { "name": "ExRightClickConstructable", "properties": { /* stages */ } } ]
 ```
+
+A stage names the shape elements it adds or removes and the material stacks it consumes; on 1.20
+and 1.21 exlib's ported `ExConstructionStage`, `ExConstructionIngredient` and
+`ExRightClickConstruction` read that same table.
 
 Public surface:
 
@@ -30,22 +46,30 @@ public static WorldInteraction[] AppendConstructionHelp(IWorldAccessor world, Bl
 ```
 
 `GetConstructionDrops(ratio, rand)` returns the materials this block would scatter at the given
-fraction of consumed stacks, summed across **every completed stage** - use it to salvage a
-partially built or finished construction when it is broken.
+fraction of consumed stacks, summed across every completed stage - call it to salvage a partly built
+construction yourself, for a burst boiler or a demolition tool.
+`GetConstructionInteractionHelp` is the hover text telling the player which stack the next stage
+wants, and `AppendConstructionHelp` prepends it to the help your block already offers. `IsComplete`
+is what rendering, `GetBlockInfo` and the production gate below read; `shape` is the block narrowed
+to the elements built so far, and `OnShapeChanged` fires when a stage changes that set.
 
-> **Rendering caveat.** The RCC behaviour draws no mesh of its own. A constructable block needs a
-> companion animator with an always-on idle animation to be visible - without it the block is
-> invisible mid-construction.
+The behaviour draws no mesh of its own, so a constructable block is invisible without a companion
+animator (`BEBehaviorAnimatable`) running an always-on, looping idle animation. `ConstructedAnimator`
+wires the two together: it follows `OnShapeChanged`, rebuilds the animator's mesh from the elements
+built so far and re-applies your pose. Call its `Initialize` with that pose callback, its `Dispose`
+from `OnBlockRemoved` and `OnBlockUnloaded`.
 
-> **Wildcard ingredients.** Stages with wildcard `requireStacks` ingredients must set
-> `storeWildCard`, or breaking the block NREs inside vanilla `GetDrops`.
+A stage whose `requireStacks` ingredient uses a wildcard code must set `storeWildCard`: drop
+resolution needs the variant the player actually fed it, and without that record breaking the block
+throws inside vanilla `GetDrops`.
 
 ## Construction gates production
 
-`ExRightClickConstructable` publishes `IProductionReadiness` (see [Production
-Machines](Production-Machines)): `IsReadyToProduce` is `IsComplete` and `StopsProductionWhenNotReady`
-is `true`. A host that carries the behaviour and hosts a production tick gets this for free - declare
-the stages and the tick already waits for them, with no gate to write by hand.
+exlib's production tick asks every publisher of `IProductionReadiness` on a block entity - the block
+entity itself and each of its behaviours - whether work may run (see
+[Production Machines](Production-Machines)). `ExRightClickConstructable` is one: `IsReadyToProduce`
+is `IsComplete` and `StopsProductionWhenNotReady` is `true`, so a host that carries the behaviour
+and a production tick waits for the build with no gate written by hand.
 
 ```jsonc
 "entityBehaviors": [
@@ -66,8 +90,9 @@ whatever else reads it directly (rendering, `GetBlockInfo`).
 
 ## `ExRccSettings`
 
-A small registry letting each mod expose a **player-tunable salvage fraction** for its broken RCC
-mega-blocks, resolved at break time by the block's `Code.Domain`.
+How much of a broken mega-block the player gets back is a balance question each mod answers for
+itself. `ExRccSettings` is the registry for that salvage fraction, resolved at break time from the
+block's `Code.Domain`, so two mods on one server can hold different values.
 
 ```csharp
 public static class ExRccSettings
@@ -83,17 +108,17 @@ Register at startup, wiring the getter to your [config](Config-System) so player
 ExRccSettings.RegisterBrokenDropsRatio("iiex", () => IiexValues.BoilerSalvageRatio);
 ```
 
-Then in your block's `OnBlockBroken`, scatter `GetConstructionDrops(ratio, rand)` where
-`ratio = ExRccSettings.BrokenDropsRatio(Code.Domain) ?? defaultRatio`.
+That is the whole integration: the behaviour reads the getter on every break, falls back to the
+block's own `brokenDropsRatio` JSON property when the domain registered nothing, and scatters the
+materials itself from its `OnBlockBroken` - not from `Block.GetDrops`, which returns nothing for a
+constructable block. A break in creative mode drops nothing.
 
-> **RCC drops come from `OnBlockBroken`, not `GetDrops`.** Vanilla RCC scatters its build
-> materials from its own `OnBlockBroken`, and `Block.GetDrops` returns nothing. A custom salvage
-> ratio for, say, a burst boiler needs to call back into the protected `rcc.GetDrops(ratio, rand)`
-> via reflection. Note also that a mega-block's frame self-drop is controlled by overriding
-> `GetDrops` to return `[]` on the controller - JSON `drops: []` is **not** honoured for variant
-> blocks.
+A mega-block that should not also drop its own frame item needs `GetDrops` overridden to return
+`[]` on the controller block: a JSON `drops: []` is not honoured for variant blocks.
 
 ## Related pages
 
 - [Config System](Config-System) - back the salvage ratio with a live-editable value.
 - [Recipe Costs](Recipe-Costs) - RCC stage costs are also adjustable per cost profile.
+- [Helpers & Renderers](Helpers-and-Renderers) - `ToggleAnimator`, the same animator plumbing for a
+  machine that is animated but not built in stages.

@@ -1,8 +1,22 @@
 # Testing API Reference
 
-Full public surface of `ExpandedLib.Testing`. For setup and worked examples see the
-**[Testing Harness](Testing-Harness)** page. Signatures are taken from
-`src/ExpandedLib.Testing/`.
+The full public surface of `ExpandedLib.Testing`, the headless harness that runs a mod's server-side
+code under `dotnet test` with no game running. **[Testing Harness](Testing-Harness)** teaches it
+from the first line and carries the setup and the worked examples; this page is the one you read
+once you know what you are looking for. Signatures are taken from `src/ExpandedLib.Testing/`, and a
+test holds this page in step with the assembly, so a type named here exists.
+
+The surface falls into six groups, and a first test needs only the first. `TestWorld` is the fake
+world: place a block, tick it, read it back. `Scene` and `SceneDiagram` compose over it when a test
+wants a layout rather than a handful of positions. The rigs stand up what is awkward to build by
+hand - a multiblock footprint that must complete itself, a machine running over simulated minutes, a
+Harmony patch, a law asserted over every subclass of a type. The doubles are stand-ins for the game
+objects your code asks for: a player, an inventory, a mod loader, a config tree, a logger, a network
+channel. The checks read a mod's shipped content off disk and report what is wrong with it, and the
+repo helpers find the trees they read.
+
+The harness's own API still moves between releases, so pin the version your test project builds
+against.
 
 ## Where things are
 
@@ -18,8 +32,10 @@ Full public surface of `ExpandedLib.Testing`. For setup and worked examples see 
 
 ## `TestWorld`
 
-Headless, in-process stand-in for a server world: in-memory block/BE store, a live
-`BlockNetworkModSystem`, and NSubstitute-faked accessors/API.
+The fake world a test starts from: an in-memory store of blocks and block entities, a live
+`BlockNetworkModSystem`, and the game's accessors and core APIs faked with NSubstitute behind them.
+One per test. Disposing it deletes the temp config directory it wrote; everything else it holds is
+in memory and goes with it.
 
 ```csharp
 public sealed class TestWorld : IDisposable
@@ -83,7 +99,7 @@ public sealed class TestWorld : IDisposable
 ```
 
 `PlaceNode` and `PlaceMemberBlock` place a cell *and* register it, by running the real
-`BlockEntity.Initialize` whose membership behaviour registers itself — so neither needs, or tolerates,
+`BlockEntity.Initialize` whose membership behaviour registers itself -  so neither needs, or tolerates,
 a following `AddNode`. Both require a prior `RegisterNetwork` for the type. `PlaceNode` places a
 `TestNetworkBlock`; `PlaceMemberBlock` places a plain `Block` whose membership states its own
 connector faces, for the cell that is a node only because it carries one.
@@ -98,7 +114,7 @@ registry (`RegisterBlockEntityBehaviorFactory`) exactly as the game builds them 
 position reads back as air, its block entities as `null` and `GetChunkAtBlockPos` as `null`, while the
 store keeps everything so `LoadChunkAt` restores the chunk exactly. Chunks are real
 `GlobalConstants.ChunkSize` (32) cubes, so a fixture that wants a boundary between two adjacent cells
-must straddle one. ⛔ Not to be confused with `Unload(pos)`, which is the *other* half - one block
+must straddle one.  Not to be confused with `Unload(pos)`, which is the *other* half - one block
 entity running its own `OnBlockUnloaded` and being dropped, with the cell left readable.
 
 `Tick` advances the network simulation through the manager's real `ServerTick`, so it resumes any
@@ -109,8 +125,9 @@ legacy 1.20/1.21 one via `#if GAME_GE_1_22`.
 
 ## `Scene`
 
-Composition layer over `TestWorld`: lay out blocks/nodes/machines, advance them together, read
-back state.
+A composition layer over `TestWorld`, for a test that needs a layout rather than a few
+positions: queue blocks, nodes and machines, then advance them together and read state back. The
+world underneath stays reachable as `World`.
 
 ```csharp
 public sealed class Scene
@@ -134,8 +151,10 @@ with `NetworkAt<T>` / `EntityAt<T>`.
 
 ## `SceneDiagram`
 
-Turns ASCII layouts into placements. Columns advance +X, rows advance +Z; each `Layer` sits at a
-fixed Y; `Stack` indexes layers bottom-to-top.
+Turns an ASCII drawing into placements, so a fixture shows the shape it builds instead of listing
+coordinates. A glyph registered with `On` runs its placement action for every cell that carries it.
+Columns advance +X, rows advance +Z; each `Layer` sits at a fixed Y; `Stack` indexes layers
+bottom-to-top.
 
 ```csharp
 public sealed class SceneDiagram
@@ -185,7 +204,9 @@ public static class ReflectionHelpers
 }
 ```
 
-All walk the base-class hierarchy and access non-public members.
+All four walk the base-class hierarchy and reach non-public members. Prefer a named seam where one
+exists: the name in the string here is checked at run time, so a rename leaves a test that fails
+somewhere far from the cause.
 
 ## `TestBlocks`
 
@@ -206,6 +227,10 @@ var pipe = TestBlocks.Configure(new BlockPipe(), "iiex:pipe-cast-straight-ns", i
 ```
 
 ## Test doubles (`Doubles/`)
+
+Concrete stand-ins for the parts of a network graph, so a test about topology - what merges, what
+splits, what a cut does - runs before your own node and network types exist, and without dragging
+gameplay state into it.
 
 ### `StubNetwork : BlockNetwork`
 
@@ -290,8 +315,10 @@ public sealed class SeverableNode : BlockEntityNetworkNode
 
 ## Supported doubles (`Doubles/`)
 
-Already wired into every `TestWorld` - see [Testing Harness § Doubles](Testing-Harness#doubles) for
-worked examples.
+Stand-ins for the game objects a mod reaches for constantly. Each is a real object holding real
+state, and each is already wired into every `TestWorld`, so a test asserts by reading state off one
+rather than by interrogating a mock - see [Doubles](Testing-Harness#doubles) on the Testing Harness
+page for worked examples.
 
 ```csharp
 public sealed class TestPlayer
@@ -367,6 +394,9 @@ would reconstruct it; sending a type neither `RegisterMessageType` call named th
 `InvalidOperationException` naming it.
 
 ## `MachineRig`
+
+The stepping loop a machine fixture writes by hand otherwise: run until a condition holds, run for a
+fixed span, or run while holding a source fed. Subclass it, call one of the three.
 
 ```csharp
 public abstract class MachineRig(TestWorld world)
@@ -556,7 +586,8 @@ public sealed class StructureRig
 
 Stands up a mega-block's multiblock footprint headlessly so its own monitor tick observes
 `InCompleteBlockCount == 0` and sets `StructureComplete` itself, rather than a test forcing the
-flag - see [Testing Harness § Standing up a mega-block](Testing-Harness#standing-up-a-mega-block-with-structurerig).
+flag - see [Standing up a mega-block](Testing-Harness#standing-up-a-mega-block-with-structurerig)
+on the Testing Harness page.
 
 ## `StructureTestHooks`
 
@@ -623,7 +654,7 @@ pairs.
 | `SelectorCoverage` | Every block code a golden blocktype's `variantgroups` produce matches a `shapeByType` pattern, and every handbook `groupBy` selector it declares matches a shipped code somewhere in its domain's golden corpus. |
 | `ShapeExtents` | The bounding box (in voxels) of everything a shape file draws. |
 | `ShippedJson` | Every JSON asset under one shipped tree parses, carries no control character, and (under `patches/`) declares the side each entry runs on. |
-| `TreeKeys` | Golden-file oracle for a block entity's save shape - the keys `ToTreeAttributes` writes, pinned against a committed golden the same way `DefinitionGoldens` pins a def's JSON; see [Testing Harness § Pinning a block entity's save shape](Testing-Harness#pinning-a-block-entitys-save-shape). |
+| `TreeKeys` | Golden-file oracle for a block entity's save shape - the keys `ToTreeAttributes` writes, pinned against a committed golden the same way `DefinitionGoldens` pins a def's JSON; see [Pinning a block entity's save shape](Testing-Harness#pinning-a-block-entitys-save-shape). |
 | `VanillaToolTiers` | Vanilla pickaxe tool tier constants (`Bronze`/`Iron`/`Steel`), for pinning a block's `requiredMiningTier`. |
 | `WikiParity` | Reflects the API the wiki teaches against the API the assembly actually has. |
 | `RepoCheckSource` (`Repo/`) | An `ICheckSource` over this repository's own source tree, for the same checks run against real committed assets rather than a stub. |

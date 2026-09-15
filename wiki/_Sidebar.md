@@ -1,6 +1,7 @@
 ### Expanded Library
 
 - [Home](Home)
+- [Installing](Installing)
 - [Getting Started](Getting-Started)
 - [First Machine](First-Machine)
 - [Lifecycle](Lifecycle)
@@ -14,7 +15,7 @@
 - [Construction (RCC)](Construction)
 - [Migrations & Healing](Migrations-and-Healing)
 
-**exlib - Extending our mods**
+**exlib - Extending processes**
 - [Extending Processes](Extending-Processes)
 
 **exlib - Registration**

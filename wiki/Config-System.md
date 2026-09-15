@@ -1,14 +1,28 @@
 # Config System
 
-`Config/` is a generic, versioned, source-generated config system for gameplay
-tunables. You write a plain POCO, tag it, and a generator emits a static accessor with typed
-getters, `Load`/`Save`/`Edit`, range validation, version-reset migrations, legacy-file folding
-and optional live editing through `/exmod config`.
+Every mod grows numbers a player wants to change: how fast a pump moves water, how much a pipe
+holds, how long a heat soak takes. The game gives you a `ModConfig` folder and stops there. You
+write the JSON reading and writing, you decide what a missing file means, you decide what happens
+when someone types `-1` where you expected a fraction, and if you want a value editable without a
+restart you write that command too. Then you fix a bad default in the next release and nobody sees
+it, because every existing player's file already carries the old number.
+
+exlib does that work once. You write a plain class with one property per tunable - a POCO, nothing
+but auto-properties and the values you ship as their defaults - and tag it. A source generator
+(code the compiler writes while it builds your mod, see [Source Generators](Source-Generators))
+reads the tag and emits a static accessor class beside it: one getter per property, `Load`, `Save`
+and `Edit`, range checks, migrations that reset a field when you change its default, folding of a
+file you renamed, and live editing from chat if you ask for it.
+
+In your mod it is two steps. Write the class, and let `Load` run once at startup. After that every
+read is `YourValues.SomeProperty`, from anywhere, on either side.
 
 ## Where the values actually live
 
-Config files are **shared and mod-sectioned**. A file under `ModConfig` is one JSON document whose
-top-level keys are mod ids, each holding that mod's whole config object:
+Read this section before you pick a file name: it settles the two arguments you are about to write
+into the tag. `ModConfig` is the game's folder for mod settings, and exlib does not put one file
+per mod in it. A config file is **shared and mod-sectioned**: one JSON document whose top-level
+keys are mod ids, each holding that mod's whole config object.
 
 ```json
 {
@@ -23,7 +37,7 @@ other's keys, and each carries its own independent `ConfigVersion` and migration
 mods use two documents: `ex_values.json` for gameplay tunables and `ex_recipes.json` for recipe-cost
 levels.
 
-Three consequences worth knowing before you pick a file name:
+Three consequences follow from that:
 
 - **Your section key is your mod id.** Naming a file another mod already uses is legal and simply adds
   a section to it.
@@ -37,7 +51,8 @@ Three consequences worth knowing before you pick a file name:
 
 ## Declaring a config
 
-Write a POCO implementing `IExVersionedConfig` and tag it `[ExConfigRegister]`:
+A config type is a plain class with one auto-property per tunable, each carrying the value you
+ship. It implements `IExVersionedConfig` and tags itself `[ExConfigRegister]`:
 
 ```csharp
 [ExConfigRegister(
@@ -63,7 +78,16 @@ public class IiexConfig : IExVersionedConfig
 }
 ```
 
-The marker interface is tiny - it just lets the store track and migrate the mod's section:
+The tag says four things. The first argument is the document under `ModConfig` your section goes
+in: `ex_values.json` to sit beside the family mods, or a name of your own. The second is the
+section key, which is your mod id. `LegacyFileNames` names files an older version of your mod
+wrote, so upgrading players keep their settings, and `Manageable` opts the config into the
+`/exmod config` command; both have their own section below, as do the `Migrations` array and
+`[ExConfigRange]`.
+
+`IExVersionedConfig` asks for one property in return. The store stamps it with the version of the
+mod that last wrote the section, and reads it back on the next load to decide which migrations
+still have to run:
 
 ```csharp
 public interface IExVersionedConfig
@@ -74,8 +98,11 @@ public interface IExVersionedConfig
 
 ## Using the generated accessor
 
-The generator emits `IiexValues` (the name is the type name with a trailing `Config` replaced by
-`Values`; override with `AccessorName`). You get:
+You do not read the config object itself. The generator emits a static class beside it -
+`IiexValues` for `IiexConfig`, the type name with a trailing `Config` replaced by `Values`,
+overridable with `AccessorName` on the tag - and every read goes through that. Being static, it
+needs nothing handed to it, so a block, a block entity or a renderer reads a value wherever it
+happens to be:
 
 ```csharp
 public static partial class IiexValues
@@ -103,10 +130,14 @@ float fraction = IiexValues.BoilerWaterIntakeFillFraction;
 IiexValues.Edit(c => c.RecipeLevel = "cheap");
 ```
 
-`Load` runs on both sides and each reads its own copy: it folds any legacy file in, applies
-migrations, resets invalid values and stamps the running mod version.
+Call `Load` once, before anything reads a value. A mod system derived from `ExModSystem` already
+does: its `Start` calls `ExConfig.LoadAll`, which finds every generated accessor in your assembly
+and loads it. Write the call yourself only when your entry point is a plain `ModSystem`, the class
+the game instantiates to start your mod. `Load` runs on both sides and each side reads its own
+copy: it folds any legacy file in, applies migrations, resets invalid values and stamps the running
+mod version.
 
-> ⚠ **Only the server writes the file back.** In singleplayer both sides load the same store in one
+> **Only the server writes the file back.** In singleplayer both sides load the same store in one
 > process against one file and would race over it, so the client migrates, sanitizes and stamps
 > **in memory only**. The server's copy is the authority. `Save()` before `Load()` is likewise a
 > silent no-op, because the store has no API handle yet - an `Edit()` that early mutates memory and
@@ -118,6 +149,10 @@ require a setter, so a computed get-only property is readable through the access
 both.
 
 ## Range validation
+
+A hand-edited file eventually carries a nonsense number, and a config that trusts the file turns
+that into a divide by zero or a machine that quietly does nothing, a long way from the line that
+caused it. Declare the range your code can actually handle and the store enforces it:
 
 ```csharp
 [ExConfigRange(0, 1)]      // bounded
@@ -131,7 +166,7 @@ public float Capacity { get; set; } = 30f;
 bounds) and on load. Numeric properties **without** the attribute default to a non-negative, finite
 range `[0, +inf)`.
 
-> ⚠ **On load an invalid value is reset, not clamped.** A file carrying `2000000` under
+> **On load an invalid value is reset, not clamped.** A file carrying `2000000` under
 > `[ExConfigRange(1, 1_000_000)]` comes back as the *coded default*, not as `1000000`. NaN and
 > infinity are treated the same way, and so is a reference-typed value nulled out in the file whose
 > coded default is non-null - a nulled string or collection would otherwise NRE its reader. Every
@@ -139,9 +174,11 @@ range `[0, +inf)`.
 
 ## Version-reset migrations
 
-When you change a default and want existing players to pick it up, declare a migration. On load,
-if the section's stamped version is below a migration's `ToVersion` and you're now at or past it, the
-named fields reset to their coded defaults - everything else the player tuned is preserved.
+Once a player's file exists it wins over your code, so changing a default in a new release reaches
+nobody who has already played. That is right for a value the player deliberately tuned, and wrong
+for one you shipped badly and fixed. A migration marks the second case. On load, when the section's
+stamped version is below a migration's `ToVersion` and the running mod is at or past it, the named
+fields go back to their coded defaults; everything else the player tuned is left alone.
 
 ```csharp
 public sealed class ExConfigMigration
@@ -175,8 +212,11 @@ of `ex_values.json`, and a player upgrading across either step keeps their setti
 
 ## Live editing: `Manageable`
 
-Set `Manageable = true` and the generated `Load` registers the store with `ExConfigProfiles`,
-exposing it to the generic command:
+Stopping a server to change one number is a poor way to tune a mod, and asking every mod author to
+write an edit command is a poor way to fix that. Set `Manageable = true` and the generated `Load`
+registers the store with `ExConfigProfiles`, the process-wide list the shared
+[command](Commands) reads. Your values become editable from chat, with no command code of your
+own:
 
 ```
 /exmod config                       # list manageable mods
@@ -185,7 +225,8 @@ exposing it to the generic command:
 /exmod config iiex PumpWaterPerSecond 20 # set it (immediate, no reload), validated + persisted
 ```
 
-Behind the command is a non-generic view over the store:
+The command knows nothing about your config type. It works through one non-generic view that every
+store implements, which is what lets one command serve every mod:
 
 ```csharp
 public interface IExConfigAccess
@@ -246,7 +287,8 @@ no-op.
 
 ## The underlying store (if you skip the generator)
 
-The generated accessor wraps `ExConfigRegister<TConfig>`; you can use it directly if you prefer:
+The generated accessor is a shell over `ExConfigRegister<TConfig>`, the store that does the work.
+Hold one yourself if you would rather not generate the accessor:
 
 ```csharp
 public sealed class ExConfigRegister<TConfig> : IExConfigAccess

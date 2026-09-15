@@ -1,24 +1,43 @@
 # Modules
 
+Sooner or later a mod outgrows one dll. A framework grows a content layer that half its users do
+not want. A feature gets large enough to build, version and test on its own. Another modder wants
+to extend your mod and needs somewhere to put the code that is not inside your repository.
+
+The obvious move is a second dll with a `ModSystem` of its own to do its registering - a
+`ModSystem` being the class the game constructs for a mod and calls at each phase of startup - and
+that is the one thing the engine refuses. A mod folder may hold as many dlls as it likes, but only
+one of them may contain a `ModSystem`; the engine refuses the whole mod when a second one does,
+with no indication of which files collided. So the second assembly has no way of being told that
+startup has begun, and nothing registers what is in it.
+
+A module is exlib's answer. It is an assembly that declares an id and names a host mod, and the
+host drives it through the phases it would have had for itself: its config loaded, its classes,
+commands and preferences registered, and a hook at every phase for its own work. Declaring one is a
+single assembly attribute. Implementing one is a class that implements `IExModule` and overrides
+only the phases it needs.
+
+`ExpandedLib.Industry` - pipes, molten metal, mechanical power, metals and heat - is the worked
+example, a module shipped inside exlib's own mod folder. A module can equally ship as its own
+Vintage Story mod that other mods depend on.
+
 ## What a module is
 
-A Vintage Story mod folder may hold as many dlls as it likes, but only one of them may contain a
-`ModSystem` - the engine refuses the whole mod when a second one does, with no indication of which
-files collided. exlib itself ships two assemblies in one folder, `exlib.dll` and
-`exlib.industry.dll`, so the framework needed an answer for its own content layer before it could
-ask anyone else to use one.
+Concretely, a module's assembly carries an id, the id of its host, and one or more entry points.
+The host loads that assembly's config, registers its classes, commands and preferences, and calls
+its entry points at each phase. The engine sees only the host: there is one `ModSystem` in the
+folder, and the module never needed one.
 
-A **module** is that answer generalised into exlib's extension mechanism: an assembly that extends
-the framework or a mod built on it, identified by its own id, driven through a host mod's lifecycle
-instead of carrying a `ModSystem` of its own. `ExpandedLib.Industry` is the first module - pipes,
-molten metal, mechanical power, metals and heat, hosted by exlib. Other modders have asked for
-electric and heating layers of their own; those are modules too, and a third party's own mod can be
-one without shipping inside exlib's folder at all.
+exlib needed that for itself before it could offer it to anyone else: `exlib.dll` and
+`exlib.industry.dll` ship in one folder, so the industry layer could never have had a mod system of
+its own. Other modders have asked for electric and heating layers of their own; those are modules
+too, and a third party's own mod can be one without shipping inside exlib's folder at all.
 
 ## The two assembly attributes
 
-`[assembly: ExModule("<id>")]` declares the assembly as a module and is the whole of what discovery
-needs:
+One assembly-level attribute is the whole of what discovery needs. It goes in any file of the
+module's project, conventionally `AssemblyInfo.cs`, and nothing calls it: exlib scans the loaded
+assemblies for it.
 
 ```csharp
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = false)]
@@ -60,20 +79,24 @@ A module ships one of two ways:
   embedded and duplicated inside two different mod folders cannot do - two assemblies of the same
   name loaded twice is not supported.
 
-Whichever form it takes, a module dll shipped as its own mod still has to satisfy the engine's own
-Code-mod loader, which does not know what a module is. A module with no `ModSystem` of its own is
-refused outright - `declared as code mod, but there are no .dll files that contain at least one
-ModSystem or has a ModInfo attribute` - so it needs an empty placeholder,
+The second form costs one extra file. A folder of its own puts the module in front of the engine's
+Code-mod loader, which does not know what a module is: a code mod whose folder contains no
+`ModSystem` at all is refused outright, with `declared as code mod, but there are no .dll files
+that contain at least one ModSystem or has a ModInfo attribute`. So a module shipped as its own mod
+carries an empty placeholder,
 
 ```csharp
 public class YourModuleModSystem : ModSystem { }
 ```
 
 purely to satisfy that check. Nothing goes in it - `ExModuleModSystem` is what actually drives the
-module's own entry point through the phases below. A module shipped as its own mod needs the same
-empty `ModSystem` for the same reason.
+module's own entry points through the phases below. A module shipped inside a host's folder needs
+no placeholder: the host's own dll already satisfies the loader for the folder.
 
 ## Enabled-mod filtering
+
+Which mods run is the player's decision, taken per world, and the process can outlive a world.
+Finding a module is therefore not the same as running one.
 
 Discovery finds every module in the process, but drives only the ones whose shipping mod
 (`ExModuleAttribute.Mod`) is enabled on the world being asked about - a module assembly still
@@ -103,28 +126,36 @@ below). Before a module's entry points run at all, the host performs the registr
 | Host phase | What the host does for the module first | `IExModule` hook |
 | --- | --- | --- |
 | `StartPre` | Nothing yet - too early for registration. | `StartPre(ICoreAPI api)` |
-| `Start` | `ExConfig.LoadAll`, `EntityRegistry.RegisterAll`, and - if `PatchHarmony` is set - `ExHarmony.PatchOnce` under the module's Harmony id. | `Start(ICoreAPI api)` |
-| `AssetsLoaded` | Nothing extra. Runs at the host's `ExecuteOrder` (0.03 for exlib), ahead of the JSON patch loader at 0.05 - an asset read here sees unpatched JSON. | `AssetsLoaded(ICoreAPI api)` |
+| `Start` | `ExConfig.LoadAll`, `EntityRegistry.RegisterAll`, `ExCheckRegistry.RegisterAll`, and - if `PatchHarmony` is set - `ExHarmony.PatchOnce` under the module's Harmony id. | `Start(ICoreAPI api)` |
+| `AssetsLoaded` | Nothing extra. Runs at the host's own `ExecuteOrder`, which decides whether an asset read here sees patched JSON - see below. | `AssetsLoaded(ICoreAPI api)` |
 | `AssetsFinalize` | Nothing extra. | `AssetsFinalize(ICoreAPI api)` |
 | `StartServerSide` | `CommandRegistry.RegisterAll`. | `StartServerSide(ICoreServerAPI api)` |
 | `StartClientSide` | `PreferenceRegistry.RegisterAll`, then `CommandRegistry.RegisterAll` (preferences first, the same rule as any `ExModSystem`). | `StartClientSide(ICoreClientAPI api)` |
 | `Dispose` | Nothing before; `ExHarmony.UnpatchAll` after, if `PatchHarmony` was set. | `Dispose()` |
 
-Every `IExModule` method has an empty default, so a module overrides only what it needs. The
-engine's own call order across phases is `StartPre`, `Start`, `AssetsLoaded`, `AssetsFinalize`, then
-`StartServerSide`/`StartClientSide` for whichever side is running, then `Dispose` - the same order a
-`ModSystem`'s own hooks run in, and the order `IExModule`'s phases run in too. `AssetsLoaded` runs
-at the host's `ExecuteOrder` - 0.03 for exlib, ahead of the JSON patch loader at 0.05, so an asset
-read there sees unpatched JSON; a catalogue read belongs in `AssetsFinalize` instead. A module
-hosted by its own mod's `ExModSystem` runs `AssetsLoaded` at that mod's order (0.1 by default),
-past the patch loader, so a read there is post-patch. `AssetsLoaded` is also **not** where a
-definition should be contributed, because a module's own `Start` may have already run before
-another module's, or after - see the next section.
+Every `IExModule` method has an empty default, so a module overrides only what it needs. The phases
+run in the engine's own order - `StartPre`, `Start`, `AssetsLoaded`, `AssetsFinalize`, then
+`StartServerSide` or `StartClientSide` for whichever side is running, then `Dispose` - the same
+order a `ModSystem`'s own hooks run in.
+
+`AssetsLoaded` is the one phase worth reading twice, because where it falls depends on the host.
+exlib's own order is 0.03, ahead of the JSON patch loader at 0.05, so an asset read there sees
+unpatched JSON and a catalogue read belongs in `AssetsFinalize` instead. A module hosted by its own
+mod's `ExModSystem` runs at that mod's order, 0.1 by default, past the patch loader, so the same
+read comes back patched. `AssetsLoaded` is also not where a definition should be contributed,
+because one module's `Start` may have run before another's or after - see the next section.
 
 A module that throws from any phase is logged (naming the module type) and the rest of the host's
 modules keep running; a module's own failure never takes down the phase for the others.
 
 ## `IExDefinitionContributor`
+
+Some definitions cannot be written until the assets are readable. Industry's metal items come from
+a catalogue of JSON files that any mod may add to, so what there is to emit is not known until
+every mod's `Start` has run. Emitting them from your own `Start` is a race you cannot win: your
+module's `Start` may run before another's or after, and which it is changes with the mods installed.
+
+This interface is the phase that has no race.
 
 ```csharp
 public interface IExDefinitionContributor {
@@ -132,21 +163,21 @@ public interface IExDefinitionContributor {
 }
 ```
 
-Implemented by a module (or a main assembly) entry point that emits code-first definitions
-depending on assets that are only readable once every mod's `Start` has run - a metal catalogue, a
-config-driven item family. `EntityRegistry.RegisterAll` discovers implementors alongside a mod's
-registered classes, the same call that discovers a module's own classes; `ExDefinitions.RunContributors`
-instantiates and runs each one at `AssetsLoaded` 0.04, right before injection, regardless of which
-host or which module order discovered it - the one legal place to emit a definition that depends on
-loaded assets, because it is guaranteed to run after every `Start`, however the hosts and modules
-involved are ordered against each other. Runs on the server only: the definition system does not
-exist client-side.
+Implement it on a module's entry point, or on a main assembly's, alongside `IExModule`.
+`EntityRegistry.RegisterAll` discovers implementors the same way it discovers a mod's registered
+classes, so there is no call to write. `ExDefinitions.RunContributors` then instantiates and runs
+each one at `AssetsLoaded` 0.04, right before injection and regardless of which host or module
+order discovered it. That is the one legal place to emit a definition that depends on loaded
+assets, because it is guaranteed to run after every `Start`, however the hosts and modules involved
+are ordered against each other. It runs on the server only: the definition system does not exist
+client-side.
 
 ## `Requires` and ordering
 
-Modules of one host are ordered by `Requires`: a module runs after every module it names, ids broken
-by alphabetical order. Three things can go wrong, each excluding only what it has to and logging one
-line naming the problem:
+Two modules of one host sometimes have to run in a set order, when one registers a qualifier or a
+catalogue the other reads. `Requires` is how the later one says so: a module runs after every
+module it names, ties broken by alphabetical order on the id. Three things can go wrong, each
+excluding only what it has to and logging one line naming the problem:
 
 - A module names a `Requires` id that is not among the host's other modules:
 
@@ -232,9 +263,11 @@ mod of its own called `industry` - the id nothing installs and nothing could eve
 
 None of the samples - [Getting Started](Getting-Started) and [First
 Machine](First-Machine)'s `TwinTubBlower` and `BurdenMaker`, `PlatedPipes` and `SmokeStack` - is a
-module; all four are ordinary content mods built on exlib. `ExpandedLib.Industry` above is the one worked example in this repo. For the
-third-party shape, the pieces are the same ones Industry uses, arranged around your own mod folder
-and domain instead of exlib's:
+module; all four are ordinary content mods built on exlib, which is what most mods should be. Reach
+for a module when a second assembly is the point: a layer other mods extend, or a part of your own
+mod with its own build and version. `ExpandedLib.Industry` above is the one worked example in this
+repository, and for the third-party shape the pieces are the same, arranged around your own mod
+folder and domain instead of exlib's:
 
 - An `AssemblyInfo.cs` (or any assembly-level file) carrying `[assembly: ExDomain("yourmodule")]`
   and `[assembly: ExModule("yourmodule")]` - mod id, module id and domain all the same string is the

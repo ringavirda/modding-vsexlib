@@ -1,33 +1,55 @@
 # Testing Harness
 
-`ExpandedLib.Testing` (`exlib.testing`) is a headless xUnit harness that loads the **real** Vintage
-Story assemblies and lets you unit- and integration-test network and block-entity logic with plain
-`dotnet test` - no game launch, no rendering, no world save. It fakes the server world with
-NSubstitute, runs the real `BlockNetworkModSystem`, and ticks block entities and networks in
-process.
+Almost nothing in a mod runs outside the game. A block entity - the class the game attaches to one
+block position so that it can hold state and tick - does nothing at all until a running world hands
+it a core API, a block accessor and a tick listener. So the usual way to find out whether your
+furnace melts iron is to build the mod, start the game, load a world, place the machine and watch.
+Every change costs a restart, and a bug that only shows up when a chunk unloads, a save reloads, or
+a pipe is cut in one particular order is close to impossible to reproduce on purpose.
 
-This page gets a test project running; the **[Testing API Reference](Testing-API-Reference)** lists
-every public type and signature.
+`ExpandedLib.Testing` (`exlib.testing`) is a headless xUnit harness that closes that loop. It loads
+the **real** Vintage Story assemblies into the test process and fakes the server side of a world
+around them, with NSubstitute behind the game's interfaces: an in-memory store of blocks and block
+entities, a block accessor, a server and a client core API, a calendar, a logger, and a live
+`BlockNetworkModSystem` - the production one, not a copy. Your block entity cannot tell the
+difference. Plain `dotnet test` places a block, ticks it and asserts on what it did, in
+milliseconds, with no game launch, no rendering and no world save.
+
+What you write is a separate test project. It references the harness, xUnit and the game DLLs, and
+declares one module initializer that resolves the game assemblies before any test type loads. Each
+test then makes a `TestWorld`, places what it needs, steps it and asserts. [A smoke
+test](#a-smoke-test) below is a whole one: ten lines that place a block and read it back. The
+harness scales up from there - `Scene` draws a multi-network layout as an ASCII diagram,
+`StructureRig` stands up a machine that spans a dozen blocks, `MachineRig` runs one for simulated
+minutes, and the checks under `Checks/` read your mod's shipped JSON, lang files and definitions off
+disk without booting anything.
+
+This page gets a test project running and then works outward through those; the
+**[Testing API Reference](Testing-API-Reference)** lists every public type and signature.
 
 ## What it gives you
 
-- `TestWorld` - an in-memory block/BE store with a live network manager and faked
-  `IServerWorldAccessor` / `IBlockAccessor` / `ICoreServerAPI`.
-- `Scene` + `SceneDiagram` - a fluent builder and an ASCII-layout parser, so multi-network setups
-  read like diagrams.
-- `VsAssemblyResolver` - resolves the game DLLs at runtime from your install or the in-repo
-  `.game/<slug>` folder.
-- `TestLang` - a minimal `Lang` so production code can call `Lang.Get()`.
-- Test doubles (`StubNetwork`, `TestNetworkBlock`, `CapturingNode`, `SeverableNode`) for exercising
-  the graph without real gameplay state.
+- `TestWorld` - the world itself: an in-memory block and block-entity store with a live network
+  manager, over faked `IServerWorldAccessor` / `IBlockAccessor` / `ICoreServerAPI`. Most tests need
+  nothing else.
+- `Scene` + `SceneDiagram` - a fluent builder and an ASCII-layout parser, for a test that needs
+  more than a handful of positions: you draw the pipe run instead of typing its coordinates.
+- `VsAssemblyResolver` - finds the game DLLs at runtime, in your install or the in-repo
+  `.game/<slug>` folder, so your test project never carries them.
+- `TestLang` - a minimal `Lang` so production code that formats a player-facing string still runs
+  when no game is loaded and `Lang.Get()` would otherwise have nothing behind it.
+- Test doubles (`StubNetwork`, `TestNetworkBlock`, `CapturingNode`, `SeverableNode`) - stand-ins
+  that exercise the network graph on its own, before your own node types exist.
 - Supported doubles (`TestPlayer`, `TestInventory`, `TestModLoader`, `WorldConfigBag`,
-  `ModConfigFiles`, `RecordingLogger`) already wired into every `TestWorld` - see [Doubles](#doubles).
-- `ReflectionHelpers` / `TestBlocks` - prime private fields and configure bare blocks without the
-  asset pipeline.
+  `ModConfigFiles`, `RecordingLogger`) - the game contracts a mod reaches for constantly, already
+  wired into every `TestWorld` - see [Doubles](#doubles).
+- `ReflectionHelpers` / `TestBlocks` - reach private state, and configure a bare block without the
+  asset pipeline, for the setup a test needs and your own API does not expose.
 
 ## 1. Ten minutes to a green test
 
-Three ways to get from nothing to a green test, cheapest first.
+Three ways to get from nothing to a green test, cheapest first. All three end in the same place: a
+test project beside your mod, referencing it, that `dotnet test` runs.
 
 ### The template
 
@@ -71,9 +93,9 @@ Reference the harness, xUnit, the test SDK and NSubstitute, plus the game API DL
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\exlib\src\ExpandedLib.csproj" />
+    <ProjectReference Include="..\..\exlib\src\ExpandedLib\ExpandedLib.csproj" />
     <ProjectReference Include="..\src\YourMod.csproj" />
-    <ProjectReference Include="..\..\exlib\testing\ExpandedLib.Testing.csproj" />
+    <ProjectReference Include="..\..\exlib\src\ExpandedLib.Testing\ExpandedLib.Testing.csproj" />
   </ItemGroup>
 </Project>
 ```
@@ -141,8 +163,12 @@ either way.
 
 ### The required module initializer
 
-The game assemblies must be resolvable **before any test type is instantiated**, and `Lang.Get`
-must work. Do both from a `[ModuleInitializer]` - it fires before the runner discovers test types:
+Your test project references the game DLLs without copying them, so at run time something has to go
+and find them. That has to happen **before any test type is instantiated**: xUnit loads every test
+class to discover its facts, and a class that mentions a game type cannot load while the assembly
+behind it is still missing. A `[ModuleInitializer]` - a method the runtime runs once when the
+assembly loads, before anything in it is touched - is the one place early enough. Register the
+resolver and the stand-in `Lang` there:
 
 ```csharp
 using System.Runtime.CompilerServices;
@@ -184,6 +210,11 @@ public void A_placed_block_reads_back_at_its_position()
 
 ### A first test
 
+The same shape with the network graph in play: make a world, register a network type, place three
+node blocks in a row, and assert that the manager merged them into one network rather than three.
+Every test on this page is that shape - arrange on a `TestWorld`, act through the calls production
+code makes, assert on state you read back:
+
 ```csharp
 using ExpandedLib.Testing;
 using Vintagestory.API.MathTools;
@@ -212,11 +243,18 @@ public class NetworkGraphTests
 
 ## 2. Stand something up
 
+A bare `TestWorld` holds blocks. This section is about giving it something worth asserting on: the
+game contracts your code reads through, a layout bigger than a few positions, a mega-block footprint
+that has to complete itself, a machine that runs over simulated minutes, Harmony patches, and
+packets crossing between the two sides.
+
 ### Doubles
 
-Six supported doubles wire the game's own contracts into `TestWorld` so a modder's first inventory,
-config or logging test needs no NSubstitute knowledge. Every one below is a real object, not a bare
-`Substitute.For<T>()`: read state off it directly rather than reaching for `Received()`.
+A double is a stand-in for something the game would normally supply: the player holding an item, the
+mod config on disk, the log an error goes to. Six of them are wired into every `TestWorld` already,
+so your first inventory, config or logging test needs no NSubstitute knowledge. Each is a real
+object holding real state, not a bare `Substitute.For<T>()`: assert by reading state off it rather
+than by asking a mock what it received with `Received()`.
 
 **`TestPlayer`** - a player with a real hotbar:
 
@@ -263,7 +301,11 @@ Assert.Contains(world.Log.Errors, m => m.Contains("names no network type"));
 
 ### Integration tests with `Scene` and `SceneDiagram`
 
-For your own real network types, build the world as a diagram, step it, then read state back:
+A test that needs a dozen blocks in a row spends more lines on coordinates than on the thing it
+proves, and nobody reading it later can see the shape it builds. `Scene` composes over `TestWorld`:
+register your network types, queue blocks, nodes and machines, then `Build` and `Step` them
+together. `SceneDiagram` places them from a drawing instead of a list of positions. For your own
+real network types, build the world as a diagram, step it, then read state back:
 
 ```csharp
 var scene = new Scene();
@@ -296,6 +338,10 @@ var rotated = LayoutTable.Rotated(def, angle: 90);   // as vanilla MultiblockStr
 ```
 
 ### Standing up a mega-block with `StructureRig`
+
+A mega-block is one machine spread over many block positions: an anchor block entity that does the
+work, and a footprint of cells around it that all have to hold the right blocks before it runs. That
+makes it the hardest thing on this page to stand up in a test, and the easiest to fake.
 
 A `BlockEntityMultiblockStructure` only runs its production tick while `StructureComplete` is true, and
 that flag is set by the machine's own monitor tick when vanilla's `InCompleteBlockCount` reaches zero.
@@ -365,8 +411,10 @@ step are like that, and stay as fixture-local methods.
 
 ### Testing Harmony patches
 
-`HarmonyFixture` applies a mod's Harmony patches once and reverts them on dispose. Harmony patches
-are process-wide (keyed by owner id and target method, not by test instance), so every class that
+Harmony is the runtime patching library a mod uses to change a vanilla method's behaviour without
+its source. `HarmonyFixture` applies a mod's Harmony patches once and reverts them on dispose, so a
+patch a test applies does not leak into the tests that run after it. Harmony patches are
+process-wide (keyed by owner id and target method, not by test instance), so every class that
 touches one joins a collection with `DisableParallelization = true`:
 
 ```csharp
@@ -403,7 +451,12 @@ objects in its type initialiser. Patch a server-safe vanilla method (`Collectibl
 
 ### Testing packets
 
-A `ModSystem` that registers a channel through `Api.Network.RegisterChannel`/`ClientApi.Network
+A packet is a message your mod sends over a named channel between the server and a client, and a
+real one needs two processes to exercise. The harness holds both ends, so a round trip is an
+assertion.
+
+A `ModSystem` - your mod's entry-point class, the one the game constructs at load - that registers a
+channel through `Api.Network.RegisterChannel`/`ClientApi.Network
 .RegisterChannel` in `StartServerSide`/`StartClientSide` needs no test-only wiring: call it against
 `world.Api`/`world.ClientApi` and read the pair back off `world.Channels`:
 
@@ -459,7 +512,16 @@ Assert.Equal(300f, water, 3);
 
 ## 3. Prove the content
 
+Half a mod is not code. Shipped JSON, lang files, block codes, save keys and code-first definitions
+never reach the compiler, so nothing catches a mistake in them until a world loads - or much later,
+when a player's save holds a block code you renamed. The checks below read those files off disk and
+fail a test instead.
+
 ### Pinning a block entity's save shape
+
+A block entity saves itself into a tree attribute, the game's nested key-value bag, and reads the
+same keys back on load. Spell a key one way on the write side and another on the read side and the
+field loads as zero in every existing save, with no error anywhere.
 
 `ExpandedLib.Testing.TreeKeys` golden-checks the keys a block entity writes, the same way
 `DefinitionGoldens` (see [Code-First Definitions](Code-First-Definitions)) golden-checks a def's JSON:
@@ -473,7 +535,7 @@ TreeKeys.AssertGolden(new BlockEntityFurnaceTap(), "iiex");
 `mods/<domain>/tests/goldens/<domain>/treekeys/<ClassName>.txt`, reblessed under
 `EXLIB_WRITE_GOLDENS` like any other golden. It is the oracle for converting a hand-written
 `ToTreeAttributes`/`FromTreeAttributes` pair to `[Persist]`/`Persisted` - see
-[Block Entities](Block-Entities) § Converting a hand-written pair.
+Converting a hand-written pair on [Block Entities](Block-Entities).
 
 #### Content validators (`Checks/`)
 
@@ -621,6 +683,10 @@ vanilla survival/creative content - those blocks need classes only `VSSurvivalMo
 
 ## 4. Boot it
 
+A green suite proves your logic. It does not prove the game will load your mod: a malformed asset, a
+class the game cannot resolve by name, a dependency version it will not accept - each of those
+passes every test above and still fails at world load. This is the lane that catches them.
+
 ### The smoke lane
 
 `exmod smoke` is the zero-effort rung below everything else on this page: one command boots the
@@ -693,13 +759,16 @@ a fresh substitute per call rather than the same one down a chain), `Registries/
 
 ## 7. Limits
 
+What the harness does not do, so you find out here rather than from a test that proves nothing.
+
 - **Side.** The harness fakes the **server**; tests exercise server-side simulation. Client-only
   render paths, GUI and real chunk loading aren't covered - `IServerPlayer` works (see
-  [§2 Doubles](#2-stand-something-up) above), because the game's own object graph makes it a
+  [Doubles](#doubles) above), because the game's own object graph makes it a
   server-side type in every way that matters to test code.
 - **The publicizer.** `IPlayer`/`IServerPlayer` can be substituted at all only because provisioning
   patches the game's `VintagestoryAPI.dll` in place - see "Provisioning the game install" under
-  [§1](#1-ten-minutes-to-a-green-test). It never touches the copy a player runs.
+  [Ten minutes to a green test](#1-ten-minutes-to-a-green-test). It never touches the copy a player
+  runs.
 - **Legacy targets.** The harness multi-targets `net8.0`/`net7.0` under `-p:Legacy=true` and
   branches on `#if GAME_GE_1_22` for the tick-listener signature change, so the same tests run on
   1.20/1.21 too.

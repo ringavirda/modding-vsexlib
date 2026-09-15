@@ -1,93 +1,54 @@
 # Getting Started
 
-This page gets a third-party mod consuming `exlib`: declaring the runtime dependency, wiring a
-project reference so you can call its APIs, and registering your first block.
+This page builds a first mod on exlib from end to end: a block declared in C# instead of JSON,
+state that survives a reload, a config value the player can edit while the server runs, a test that
+checks the machine without launching the game, and the tool that builds and boots the result.
 
-## 1. Depend on exlib at runtime
+The mod is a real one. `samples/TwinTubBlower` in this repository is a complete, buildable,
+bootable mod, and every snippet below is copied from it, so it compiles. Read the page beside the
+sample: each step explains what the code does and why you would want it.
 
-`exlib` is a separate `Code` mod. In your mod's `modinfo.json`, add it under `dependencies`
-with the minimum version you build against:
+Nothing here assumes you have written a Vintage Story mod before. Where the game's own API comes up
+(a mod system, a block entity, a variant group) it is explained the first time it appears.
+
+## 1. Install exlib
+
+exlib is two things at once: a mod the player installs into the game, and a set of packages your
+project compiles against. [Installing](Installing) covers both, and the four edits that put them
+into a project you already have. Two of those edits are worth repeating here, because getting
+either wrong fails quietly rather than loudly.
+
+Reference the `ExpandedLib` package with `ExcludeAssets="runtime"`. Without it your build copies
+`exlib.dll` into your own mod's output, and the game refuses any mod folder carrying a second
+assembly with mod systems in it. Nothing crashes; your mod is simply absent from the loaded list.
+
+Declare the exlib version you compiled against in `modinfo.json`, the manifest every mod ships. The
+sample's dependencies read:
 
 ```json
-{
-  "type": "Code",
-  "modid": "yourmod",
-  "name": "Your Mod",
-  "version": "1.0.0",
-  "dependencies": {
-    "game": "1.22.0",
-    "exlib": "0.8.2"
-  }
+"dependencies": {
+  "game": "1.22.0",
+  "exlib": "0.8.2"
 }
 ```
 
-> ⚠ **A dependency is a minimum, not a pin.** The game accepts any installed `exlib` at or above the
-> number you write, so a floor left at an old release lets a player satisfy it with an `exlib` that
-> predates the method you are calling - and the failure arrives at world load as a missing member,
-> not as a dependency error. Declare the version you actually compiled against, and raise it whenever
-> you start calling something newer.
+That number is a floor, not a pin: the game accepts any installed exlib at or above it. Leave the
+floor at an old release and a player can satisfy it with an exlib that predates the method you
+call, and the failure arrives at world load as a missing member rather than as a clear dependency
+error.
 
-Declare the `game` floor the same way: the oldest version you support. This repo builds the whole
-family against 1.20, 1.21 and 1.22 from one source tree and rewrites each `modinfo.json`'s game
-version per target as it packs, so the shipped 1.20 zip declares `1.20.0` while the source declares
-the current floor. If you target a single version, just name it.
+## 2. Register your content
 
-At load time the game ensures `exlib` is present and loaded before your mod, so its
-`ModSystem`s (the block-network manager, migration sweeper, healer, `/exmod` root) are already
-up when your `Start`/`StartServerSide`/`StartClientSide` run.
+The game does not find your classes on its own. A `ModSystem` is the class the game constructs
+when it loads your mod and calls at each phase of startup, and in a plain mod it is where you hand
+the engine every block, block entity, item and behaviour class by name, one
+`api.RegisterBlockClass(...)` call at a time. That list is yours to keep in step with your code, and
+a class you forget does not error: the game falls back to the plain `Block` and your logic never
+runs.
 
-> **Game versions.** `exlib` targets 1.22 but the family also builds and runs on 1.21 and 1.20
-> via the `Legacy/` shim. If you only target 1.22 you can ignore the shim entirely; the public
-> APIs on this wiki are the same across versions unless a page says otherwise.
-
-## 2. Reference exlib at compile time
-
-The project is called `ExpandedLib` and that is its root namespace, but the assembly it builds is
-**`exlib.dll`** - the assembly name matches the mod id. That is the file the package ships, and
-there is no `ExpandedLib.dll` anywhere outside `obj/`.
-
-Reference the `ExpandedLib` NuGet package, with runtime assets excluded - the player installs
-`exlib` as its own mod, so it must not ship a second copy inside your mod's output:
-
-```xml
-<ItemGroup>
-  <PackageReference Include="ExpandedLib" Version="<latest>" ExcludeAssets="runtime" />
-</ItemGroup>
-```
-
-> ⚠ **`ExcludeAssets="runtime"` is not optional, and omitting it fails silently.** Without it the SDK
-> copies `exlib.dll` into your mod's output, and Vintage Story refuses to load a mod folder carrying a
-> second assembly with `ModSystem`s in it - *"Found multiple .dll files with ModSystems and/or ModInfo
-> attributes"*. Your mod is then simply absent from the loaded-mod list.
-
-The package carries the config and lang source generators (as analyzers) and the whole
-`GamePath`/provisioning/asset-glob build behind it, so a project referencing only `ExpandedLib`
-needs no props of its own beyond a `TargetFramework` and an `<AssetDomain>` set to your modid - no
-`$(GamePath)` to define, no `<Error>` target to write:
-
-```xml
-<PropertyGroup>
-  <TargetFramework>net10.0</TargetFramework>
-  <AssetDomain>yourmod</AssetDomain>
-</PropertyGroup>
-```
-
-`$(AssetDomain)` is what turns on the asset copy - the whole `assets/` tree, not just its own
-domain, since your `assets/` folder can hold overrides for other domains too - and selects which
-domain's `lang/en.json` feeds the generated `{Domain}Lang` class (see [Source
-Generators](Source-Generators)); without it, both stay inert. `$(GamePath)` still resolves the same
-way the [Testing Harness](Testing-Harness) page assumes: from the `VINTAGE_STORY` environment
-variable, or `-p:GamePath=...` on the command line.
-
-Inside this monorepo the sample switches to a plain `ProjectReference` against the checkout instead
-(see `samples/TwinTubBlower/src/TwinTubBlower.csproj`) so exlib's own change history builds against itself
-without a release round-trip; nothing about that switch is part of the package's public contract.
-
-## 3. Register your content
-
-exlib is **attribute-driven**: you tag classes, and a `ModSystem` deriving `ExModSystem` registers
-them all by reflection with no calls of its own to write. No manual
-`api.RegisterBlockClass(...)` lists to maintain.
+exlib is **attribute-driven** instead. You tag each class with what it is, and a `ModSystem`
+deriving `ExModSystem` finds them all by reflection at the phase each one belongs to, with no calls
+of its own to write:
 
 ```csharp
 using ExpandedLib.Registries;
@@ -102,20 +63,24 @@ public class BlockEntityMachine : BlockEntity { }
 public class YourModSystem : ExModSystem { }
 ```
 
-That single, empty class also registers any `[CommandRegister]`/`[SubCommandRegister]` class on
-each side and any `[PreferenceRegister]` class on the client - see **[Commands](Commands)** for
-adding one. If you need something to run in a particular order relative to registration (or aren't
-deriving `ModSystem` at all), **[Registries](Registries)** documents the explicit `RegisterAll`
-calls this class makes for you and the one ordering rule they carry.
+That single, empty class covers more than blocks. It also loads your mod's config, and registers
+any `[CommandRegister]`/`[SubCommandRegister]` class on each side and any `[PreferenceRegister]`
+class on the client - see **[Commands](Commands)** for adding one. If you need something to run in a
+particular order relative to registration, or you are not deriving `ModSystem` at all,
+**[Registries](Registries)** documents the explicit `RegisterAll` calls this class makes for you and
+the one ordering rule they carry.
 
-See **[Source Generators](Source-Generators)** for the two generators exlib ships - typed config
-accessors and typed lang keys. Read a block's JSON `attributes` with
+Your block's own data still has to come from somewhere. Read a block's JSON `attributes` with
 `Attributes["..."].AsFloat()` as usual, or skip the JSON entirely and declare the block code-first
-through `IExBlockDefProvider`.
+through `IExBlockDefProvider`, which is what step 3 does. See **[Source
+Generators](Source-Generators)** for the two generators exlib ships, typed config accessors and
+typed lang keys: each turns a string you could mistype into a name the compiler checks.
 
 ### If other mods will name your types
 
-Add an assembly-level domain marker so a cross-assembly lookup can resolve your classes:
+Every registered class is keyed under an asset domain, the prefix that keeps codes from colliding
+between mods: vanilla content is `game:...`, yours is `yourmod:...`. Add an assembly-level marker
+naming yours, so a lookup arriving from another assembly can resolve your classes:
 
 ```csharp
 [assembly: ExDomain("yourmod")]
@@ -127,18 +92,22 @@ of your types, for example through `ExBlockDef.Class<T>()`: the key is resolved 
 assembly, and without the marker that lookup produces a key nobody registered. The block half of that
 failure is not logged, which is why the attribute is worth declaring up front.
 
-## 4. Your first block
+## 3. Your first block
 
-`samples/TwinTubBlower` in this repo is everything above, buildable and bootable: a `Code` mod
-depending on `exlib` alone, one block, one config, and a full test suite. Read it file by file rather
-than typing the snippets by hand - every one below (bar one labelled alternative and one elided
-footprint call) is copied verbatim from it, so it compiles.
+The game builds every block from a JSON file under `assets/<domain>/blocktypes/`, and the C# class
+that file names supplies only the behaviour. The two drift apart. Rename a variant, mistype a shape
+path or drop a behaviour in the JSON and the C# still compiles; the mismatch surfaces at world load,
+or later, as a block that is quietly not what the code expects.
 
-A code-first block is a class that implements `IExBlockDefProvider` and carries `[BlockRegister]`.
-There is no `blocktypes/furnace/twintubblower.json` anywhere in the mod's `assets/` folder; the JSON
-the object loader reads is built by `ExBlockDef` and injected in memory at load. The blower is a
-mechanically driven pair of bellows: a gas-pipe node that produces into the network it stands in,
-riding its own shape with an orientation variant group:
+A code-first block closes that gap by deleting the JSON. The class implements `IExBlockDefProvider`
+and carries `[BlockRegister]`, and its `Definitions` method returns what the file would have held,
+assembled by the `ExBlockDef` builder and injected into the object loader in memory at load. There
+is no `blocktypes/furnace/twintubblower.json` anywhere in the mod's `assets/` folder. The definition
+sits beside the class it configures, and a test can assert on it before the game ever sees it.
+
+The blower is a mechanically driven pair of bellows: an axle from the game's mechanical-power
+network turns it, and it pushes air into the gas-pipe network it stands in. One call below is
+elided and one snippet is a labelled alternative; everything else is verbatim from the sample:
 
 ```csharp
 [BlockRegister]
@@ -175,20 +144,33 @@ public partial class BlockTwinTubMPBlower
 }
 ```
 
-`VariantGroup("type", "twintubblower")` carries one state; it is the family's discriminator, the
-same shape the framework uses whenever a second block joins a code under `blower`. The
-`FillerOffsets` call reserves the rest of the blower's 1x2x3 footprint and hosts the mechanical-power
-port that drives it - [First Machine](First-Machine) walks that call and the block's own
-`IFillerHost` placement triad in full.
+Read that chain as a description of the block rather than a sequence of calls. `Class` and
+`EntityClass` name the two C# classes above. A variant group expands one definition into several
+real blocks, one per value, so the `orientation` group turns this definition into four:
+`blower-twintubblower-n` through `blower-twintubblower-w`, each handed the same shape spun to match
+by `ShapeByType`. `VariantGroup("type", "twintubblower")` carries a single state on purpose; it is
+the family's discriminator, the same shape the framework uses whenever a second block joins a code
+under `blower`. `NetworkOriented` gives the choice of which of the four to place to the pipe
+network, so a blower lines itself up with the run rather than with wherever the player happened to
+be looking. `CreativeCommon` puts one of them in the creative inventory, so the other three do not
+clutter it.
 
-`ExModSystem` registers it - and every other `[BlockRegister]`/`[BlockEntityRegister]`/
-`IExBlockDefProvider` in the assembly, and loads `TwinTubBlowerValues` - with nothing to write:
+`FillerOffsets` is the call with a structure behind it. The blower occupies a 1x2x3 box, and the
+call reserves the cells the block itself does not stand in with invisible fillers that still carry
+real collision. One of those cells hosts the mechanical-power port the axle couples to, because the
+block proper, two cells away, cannot accept power at that face. [First Machine](First-Machine)
+walks that call and the block's own `IFillerHost` placement triad in full.
+
+`ExModSystem` registers that block, its block entity, every other `[BlockRegister]`,
+`[BlockEntityRegister]` and `IExBlockDefProvider` in the assembly, and loads `TwinTubBlowerValues`,
+with nothing to write:
 
 ```csharp
 public class TwinTubBlowerModSystem : ExModSystem { }
 ```
 
-The explicit form behind it, for a mod system that needs a different order:
+The explicit form behind it, for a mod system that needs a different order, or that must run
+something of its own between loading the config and registering the classes:
 
 ```csharp
 public class TwinTubBlowerModSystem : ModSystem {
@@ -199,7 +181,18 @@ public class TwinTubBlowerModSystem : ModSystem {
 }
 ```
 
-## 5. State and a drive that survives a reload
+## 4. State and a drive that survives a reload
+
+A `Block` is one shared object for every copy of that block in the world, so it can hold nothing
+that belongs to a single placement. What one blower knows, such as how fast its axle is turning,
+lives in a block entity: the object the game attaches to one position, and ticks, saves and loads
+with the chunk around it.
+
+Saving that state is normally hand work. You override `ToTreeAttributes` and `FromTreeAttributes`
+and copy each field into and out of a tree attribute, the nested key-and-value structure the game
+serializes a block entity into, spelling the key once in each direction. Forget the reading half or
+mistype the key in it and nothing complains: the field just comes back at its default after every
+reload.
 
 The blower's block entity samples its driving axle once a second and pushes air into its own pipe
 network, scaled by how fast that axle is turning:
@@ -259,15 +252,29 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe {
 }
 ```
 
-`[Persist("blowerSpeed")]` is the whole save/load story for `_lastSpeed`: no `ToTreeAttributes`/
-`FromTreeAttributes` override, no key to spell twice. `PortSpeed` (the axle lookup itself, through
-the filler cell the port is hosted on) and `AmbientTemperature` are omitted here - see
+`[Persist("blowerSpeed")]` is the whole save and load story for `_lastSpeed`: no
+`ToTreeAttributes`/`FromTreeAttributes` override, no key to spell twice, and the field comes back on
+both sides. The rest of the class is ordinary game API. `RegisterGameTickListener` asks the game to
+call `OnBlowTick` every 1000 milliseconds, and the side check keeps that on the server, where
+production belongs. `MarkDirty` tells the game the entity's saved state changed, which both stores
+it and sends it to the clients watching the block; that send is the reason the speed is persisted at
+all, as the comment on the field says.
+
+`PortSpeed` (the axle lookup itself, through the filler cell the port is hosted on) and
+`AmbientTemperature` are omitted here - see
 [First Machine](First-Machine) for the footprint that cell sits in. See [Helpers &
 Renderers](Helpers-and-Renderers) "Declared state" for the full surface `[Persist]` covers.
 
-## 6. A config value
+## 5. A config value
 
-The blower's tunables, generated into a typed `TwinTubBlowerValues` accessor:
+The numbers that decide how a machine plays - its throughput, its pressure ceiling, the speed band
+it works over - should not be frozen in the code. Baked into C#, rebalancing costs a rebuild and a
+release, and a server owner who finds your blower too strong has nothing to turn. Read by hand from
+a JSON file, every value is a string key and an unchecked cast.
+
+In exlib a config is a plain class: you declare each property with its default and its legal range,
+and a source generator emits a typed accessor beside it, one read-only property per config property,
+named after it. These are the blower's tunables, generated into that `TwinTubBlowerValues` accessor:
 
 ```csharp
 [ExConfigRegister("twintubblower.json", "twintubblower", Manageable = true)]
@@ -288,14 +295,24 @@ public class TwinTubBlowerConfig : IExVersionedConfig {
 }
 ```
 
+`[ExConfigRegister]` names the file the values are stored in and the section of it this mod owns.
+`[ExConfigRange]` is the bound the value is held to in both directions: a file edited out of range
+is reset to the coded default at load, and a live edit outside it is refused. `IExVersionedConfig`
+adds the one property `ConfigVersion`, recording the mod version the file was last written under, so
+a later release can reset a tunable whose meaning changed instead of reading an old number as if it
+still meant the same thing.
+
 `Manageable = true` is what puts it on the generic switch: `/exmod config twintubblower
 twintubbloweroutputpersecond 60` reads or writes it live, validated against the `[ExConfigRange]`
 bound, with no code of this mod's own involved. `TwinTubBlowerValues.TwinTubBlowerMaxSpeed` (read
 live in `SpeedFraction` above) is generated from the property name. See [Config
 System](Config-System) and [Commands](Commands) for adding a `/exmod` sub-command of your own.
 
-## 7. Test it
+## 6. Test it
 
+A mod is awkward to test because its logic usually lives inside a block entity that needs a running
+world to exist at all. Two things answer that, and the first is free: keep the decisions that are
+pure arithmetic out of the instance, as `SpeedFraction` is above, and a test can call them straight.
 `samples/TwinTubBlower/tests` drives the bellows headlessly, with no game launch:
 
 ```csharp
@@ -315,10 +332,21 @@ public class TwinTubBlowerTests {
 }
 ```
 
-Run it with `dotnet test samples/TwinTubBlower/tests/TwinTubBlower.Tests.csproj`, or
+Each row is one point of the output curve, both ends of the clamp included, so a later change to
+the speed band cannot quietly turn the blower into an on-off switch. Run it with
+`dotnet test samples/TwinTubBlower/tests/TwinTubBlower.Tests.csproj`, or
 `exmod test latest -Filter TwinTubBlower`.
 
-## 8. Boot it
+The second answer is the [Testing Harness](Testing-Harness), for behaviour that genuinely needs a
+world: it loads the real game assemblies, gives you a world to place blocks in, and lets you tick a
+block entity and assert on what it did.
+
+## 7. Boot it
+
+Tests prove your arithmetic. They do not prove the game will load your mod. A definition the object
+loader rejects, a block code nothing registers, a name with no translation: none of that shows up
+under `dotnet test`, and all of it shows up at world load. The cheap way to catch it is to boot the
+real server and read the log.
 
 `exmod smoke -Mods src/ExpandedLib/bin/Debug/Mods/mod,samples/TwinTubBlower/src/bin/Debug/Mods/mod`
 launches the real dedicated server against the built mods, runs the content checks and
@@ -340,17 +368,21 @@ repo's CI runs on every mod, now covering the one you just read:
 [exlib] check CodePrefixCollision (twintubblower): 0 error(s)
 ```
 
-The counts above are process-global, not per-domain, and were taken booting both samples together:
+Each `check` line is one of the content guards in [Checks](Checks) run over a domain, and zero
+errors on every one of them is what a clean boot looks like. The counts above are process-global,
+not per-domain, and were taken booting both samples together:
 the three blocks are the blower, the burden maker (see [First Machine](First-Machine)) and exlib's
 own structure filler (`BlockStructureFiller`), injected once for every mod that places a filled
 megastructure; the one item is the burden maker's own `burden`. See [First Machine](First-Machine)
 for the rest of the footprint: the filler cells, the mechanical-power port, and a second, more
 involved machine built the same way.
 
-## 9. exmod in your repo
+## 8. exmod in your repo
 
-The whole toolchain above - build, test, smoke - is one script, not a set of raw `dotnet` commands
-you assemble yourself. Copy `scripts/exmod.sh` and `scripts/exmod.ps1` from this repo into your
+Every step above needs the same things arranged first: a game install to compile against, a
+dedicated server to boot, the exlib zip beside your own mod, your assets copied into the output. The
+whole toolchain - build, test, smoke - is one script rather than a set of raw `dotnet` commands you
+assemble yourself. Copy `scripts/exmod.sh` and `scripts/exmod.ps1` from this repo into your
 own (the launcher finds `pwsh`, the dispatcher does the rest), and add an `exmod.json` at your
 repo's root naming your mod:
 
@@ -363,24 +395,28 @@ repo's root naming your mod:
 }
 ```
 
-`exmod provision game` fetches the dedicated-server archive into `.game/`, no purchase needed to
-build and test headlessly; `exmod build` compiles against it; `exmod test` runs your test project
-the same way `dotnet test` does, but resolved from the manifest rather than named on the command
-line; `exmod smoke` boots the real server with your built mod and fails on a boot timeout or an
-`[Error]`/`[Fatal]` log line. Before the boot, `exmod provision mods` reads `exlib` out of your
-`modinfo.json`'s `dependencies` and fetches it for the smoke to load alongside your own mod - a
-workspace sibling checkout of exlib when there is one, otherwise a published release.
+From there the commands come in the order you need them. `exmod provision game` fetches the
+dedicated-server archive into `.game/`, so building and testing headlessly needs no purchase on that
+machine. `exmod build` compiles against it. `exmod test` runs your test project the way `dotnet
+test` does, resolved from the manifest rather than named on the command line. `exmod smoke` boots
+the real server with your built mod and fails on a boot timeout or an `[Error]`/`[Fatal]` log line.
+Before that boot, `exmod provision mods` reads `exlib` out of your `modinfo.json`'s `dependencies`
+and fetches it for the smoke to load alongside your own mod: a workspace sibling checkout of exlib
+when there is one, otherwise a published release.
 
-`exmod scaffold <kind> <Name>` (alias `g`) drops a compiling, tested block, item, recipe, megablock,
-multiblock, node, blockbehavior, entitybehavior, config, migration or command into your mod from the
-templates exlib ships as `ExpandedLib.Templates`: `exmod scaffold block Widget` lands a block and its
-block entity in `src/Blocks` and `src/BlockEntities` with a test in `tests/`, and merges the lang keys
-the generated code reads into `assets/<id>/lang/en.json` - each kind lands compiling with a test. A
+`exmod scaffold <kind> <Name>` (alias `g`) drops a compiling, tested starting point into your mod
+from the templates exlib ships as `ExpandedLib.Templates`: a block, item, recipe, megablock,
+multiblock, node, blockbehavior, entitybehavior, config, migration or command. `exmod scaffold block
+Widget` lands a block and its block entity in `src/Blocks` and `src/BlockEntities` with a test in
+`tests/`, and merges the lang keys the generated code reads into `assets/<id>/lang/en.json`. A
 block, item, recipe, megablock, multiblock or node is a code-first def: if your mod's test project
 golden-checks the whole set (see **[Code-First Definitions](Code-First-Definitions)**, "Goldens"), the
 new def's missing golden turns that check red until you bless it once with `EXLIB_WRITE_GOLDENS=1`.
 
-## 10. Pick the system you need
+## 9. Pick the system you need
+
+Each row below is a job. The page behind it teaches the system that does it, from the first line, on
+the assumption that you have not read the code.
 
 | You want to... | Read |
 | --- | --- |

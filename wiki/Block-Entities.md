@@ -1,8 +1,26 @@
 # Block Entities
 
-`Blocks/ExBlockEntity.cs` and `Blocks/ExBlockState.cs` give a plain block entity its save/load pair
-for free, so a field named once is enough - no hand-written `ToTreeAttributes`/`FromTreeAttributes`
-pair that spells the same key twice and can drift out of sync.
+Most blocks are only a shape in the world. A block that has to remember something - the temperature
+inside a furnace, what a hopper is holding, which way a valve was turned - needs a block entity: the
+object the game keeps beside the placed block, one per position, holding that state and running that
+block's code.
+
+The game saves none of it for you. A block entity keeps a field across a reload only if you write it
+into a tree attribute - the game's nested key-value record, stored with the chunk and sent to
+clients - from `ToTreeAttributes`, and read it back in `FromTreeAttributes`. That is a pair of
+methods per block entity with every key spelled twice, and nothing checks the halves against each
+other. The failure is quiet: a field added to one method and forgotten in the other, or one key
+mistyped, loses its value at the next world load with no error anywhere. Two further methods,
+`OnStoreCollectibleMappings` and `OnLoadCollectibleMappings`, repeat the exercise for any item stack
+the block entity holds, so a schematic pasted into another world still resolves to the right items.
+
+`Blocks/ExBlockEntity.cs` and `Blocks/ExBlockState.cs` collapse that into one declaration. Name a
+field once - usually by marking it `[Persist]` - and exlib writes it, reads it, syncs it to the
+client and remaps its collectible ids from that single naming. Declaring the same key twice is an
+error the moment the state is built, not a mismatch you find on the next load.
+
+To use it, derive your block entity from `ExBlockEntity`, or from whichever exlib base your block
+already needs, and mark the fields worth keeping.
 
 ## `ExBlockEntity`
 
@@ -18,7 +36,8 @@ public abstract class ExBlockEntity : BlockEntity
 
 `ToTreeAttributes`, `FromTreeAttributes`, `OnStoreCollectibleMappings` and
 `OnLoadCollectibleMappings` all call `base` then run through `Persisted`, so a declared field gets the
-save, the load, the client sync and the schematic-paste collectible remap in one place.
+save, the load, the client sync and the schematic-paste collectible remap in one place. Because the
+base still calls `base` first, anything vanilla writes into the tree is untouched.
 
 A block entity whose base slot is already spent - a container, a multiblock, a network node - is
 not locked out: `BlockEntityProductionMachine`, `BlockEntityMultiblockStructure`,
@@ -29,42 +48,10 @@ pair, layered on top of whatever they already write by hand (see
 (below). A block entity with none of those bases builds an `ExBlockState` directly and calls
 `ToTree`/`FromTree` from its own overrides - `ExBlockEntity` is the convenience, not the mechanism.
 
-## Behaviours
-
-A `BlockEntityBehavior` gets the same convenience through `ExBlockEntityBehavior`:
-
-```csharp
-public abstract class ExBlockEntityBehavior : BlockEntityBehavior
-{
-    protected ExBlockState Persisted { get; }               // built lazily on first use
-    protected virtual void DeclareState(ExBlockState state) { }
-}
-```
-
-Vanilla fans a block entity's `ToTreeAttributes`/`FromTreeAttributes` out over its `Behaviors` against
-the same flat tree the host itself writes into, so a behaviour's keys, its host's keys and a sibling
-behaviour's keys all share one key space. `ExBlockState` only catches a key declared twice inside one
-state; a key this behaviour declares that its host or another behaviour on the same host also happens
-to write is not caught here and collides silently - pick keys that are unambiguous across the whole
-host, not just within the behaviour.
-
-## Containers
-
-A block entity based on `BlockEntityContainer` gets it through `ExBlockEntityContainer`:
-
-```csharp
-public abstract class ExBlockEntityContainer : BlockEntityContainer
-{
-    protected ExBlockState Persisted { get; }               // built lazily on first use
-    protected virtual void DeclareState(ExBlockState state) { }
-}
-```
-
-`ToTreeAttributes`, `FromTreeAttributes` and the collectible-mapping pair call `base` first - which is
-`BlockEntityContainer`'s own inventory serialization - then run `Persisted` on top, so a declared field
-sits beside the inventory without touching how it saves.
-
 ## Three rungs
+
+Three ways to declare a field, in the order to reach for them. Each does more work than the last,
+and you only climb when the rung below cannot express what you need.
 
 1. **`[Persist]`** - mark the field, write nothing else.
    ```csharp
@@ -84,6 +71,8 @@ same `Persisted`, and a hand-written override still reaches it through `base`.
 
 ## `[Persist]` and `PersistScan`
 
+The attribute names a field as saved state, and optionally names the key it is saved under:
+
 ```csharp
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
 public sealed class PersistAttribute(string? key = null) : Attribute
@@ -101,7 +90,9 @@ other type throws `NotSupportedException` naming the member the first time the b
 `PersistScan.Declare(this, state)` runs before `DeclareState` on every base above, so an attribute
 and a hand-written entry never conflict for the same key. The reflection walk (base types first)
 and the compiled field/property accessors are built once per concrete type and cached; every
-instance of that type reuses them.
+instance of that type reuses them, so the reflection is paid once per type, not per block placed.
+
+`Legacy` is the escape from a rename that would otherwise orphan every save written before it:
 
 ```csharp
 private class RenamedField : ExBlockEntity
@@ -114,6 +105,10 @@ private class RenamedField : ExBlockEntity
 
 ## `IPersistable`
 
+A value with several parts of its own - a molten charge holding a metal and an amount, say - would
+otherwise be spread across several keys of its owner's tree. Implement `IPersistable` on it and a
+`[Persist]` member of that type is saved as one nested tree under its own key instead:
+
 ```csharp
 public interface IPersistable
 {
@@ -122,14 +117,14 @@ public interface IPersistable
 }
 ```
 
-A `[Persist]` member of this type is stored under its own key as a nested tree - the same shape
-`ExBlockState.Tree` gives a hand-declared field that manages several attributes at once (a
-`MoltenCharge`, for instance). `FromTree` mutates the existing instance rather than replacing it,
-so a field of this type is instantiated once at declaration and never reassigned by the scan.
+That nested shape is the same one `ExBlockState.Tree` gives a hand-declared field that manages
+several attributes at once. `FromTree` mutates the existing instance rather than replacing it, so a
+field of this type is instantiated once at declaration and never reassigned by the scan.
 
 ## `ExBlockState`
 
-The declaration surface both rungs above build on:
+The declaration surface both rungs above build on - one method per supported type, each taking the
+key and a getter and setter for the field it stands for:
 
 ```csharp
 public sealed class ExBlockState
@@ -150,7 +145,9 @@ public sealed class ExBlockState
 }
 ```
 
-Every method returns `this`, so a `DeclareState` override chains them. `Stack` also carries the
+Every method returns `this`, so a `DeclareState` override chains them. `Enum` stores the underlying
+`int`, so renaming a member keeps its saved value; `String` and `Pos` write a null as absent and
+read it back as null rather than as an empty string or the origin. `Stack` also carries the
 declared stack's collectible id mapping both ways - what makes a block entity survive being pasted
 into another world. `Tree` is the escape hatch for a value that manages several attributes on the
 same tree (a `MoltenCharge`) or builds a genuinely nested sub-tree itself (see `IPersistable`
@@ -158,10 +155,51 @@ above); `key` only names the declaration for the duplicate-key guard, so the cal
 choose its own attribute names. Declaring the same key twice throws `InvalidOperationException` at
 declaration time, not on the first mismatched save.
 
+## Behaviours
+
+A block entity can only derive from one base, and a block entity behaviour - a reusable piece of
+state and logic attached to a block entity, usually from its JSON - has the same problem and the
+same fix. `ExBlockEntityBehavior` carries the pair:
+
+```csharp
+public abstract class ExBlockEntityBehavior : BlockEntityBehavior
+{
+    protected ExBlockState Persisted { get; }               // built lazily on first use
+    protected virtual void DeclareState(ExBlockState state) { }
+}
+```
+
+Vanilla fans a block entity's `ToTreeAttributes`/`FromTreeAttributes` out over its `Behaviors` against
+the same flat tree the host itself writes into, so a behaviour's keys, its host's keys and a sibling
+behaviour's keys all share one key space. `ExBlockState` only catches a key declared twice inside one
+state; a key this behaviour declares that its host or another behaviour on the same host also happens
+to write is not caught here and collides silently - pick keys that are unambiguous across the whole
+host, not just within the behaviour.
+
+## Containers
+
+A block entity based on `BlockEntityContainer` - vanilla's base for anything with an inventory -
+gets it through `ExBlockEntityContainer`:
+
+```csharp
+public abstract class ExBlockEntityContainer : BlockEntityContainer
+{
+    protected ExBlockState Persisted { get; }               // built lazily on first use
+    protected virtual void DeclareState(ExBlockState state) { }
+}
+```
+
+`ToTreeAttributes`, `FromTreeAttributes` and the collectible-mapping pair call `base` first - which is
+`BlockEntityContainer`'s own inventory serialization - then run `Persisted` on top, so a declared field
+sits beside the inventory without touching how it saves.
+
 ## Converting a hand-written pair
 
-Turning an existing `ToTreeAttributes`/`FromTreeAttributes` pair into `[Persist]`/`Persisted` must not
-move, rename or retype a single key - a `TreeKeys` golden (below) is the proof. Per field:
+Moving an existing block entity onto `[Persist]`/`Persisted` is worth doing for the same reason as
+writing it that way from the start, but it is a refactor of live save data: a key that moves,
+changes type or disappears breaks every world that already holds the block. So the rule is that the
+tree written before and after must be identical, and a `TreeKeys` golden (below) is the proof. Per
+field:
 
 - A field written under key `K` with a plain get/set becomes `[Persist("K")] private float _x;`. The
   default key is the member name with a leading underscore stripped, so write the key explicitly

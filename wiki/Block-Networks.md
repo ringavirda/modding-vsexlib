@@ -1,20 +1,48 @@
 # Block Networks
 
-A generic connected-graph framework: self-orienting node blocks, live network instances with
-merge/fracture handling, and a single manager `ModSystem`. It also ships
-the two concrete networks the mods use - the `PipeNetwork` (gas + water, registered as `"pipe"` by
-`iiex`) and the `MoltenNetwork` (metal canals, registered as `"molten"` by `iiex`) - so all three
-mods share one implementation. Each mod just registers the type and supplies its own
-content-specific pieces through the seams below. You register your own network type the same way.
+A run of pipe is not one block. It is a line of blocks the player laid one at a time, and the gas
+inside it has a single pressure along the whole line: break the run in the middle and each half
+keeps a share, join two runs and the two shares become one. Vintage Story knows nothing about
+that. It gives you a block, and a block entity - the object the game attaches to one block
+position to hold that block's saved state and tick it - and no notion that a line of them is a
+thing.
 
-> ⚠ **A block does not have to spend its base class on being a node.** Form, process and membership
-> are three independent axes: the base class belongs to **form** (what the block *is* - a container, a
-> multiblock part), while network membership and the production tick are **behaviours** you attach.
+So every mod with pipes in it writes the same graph code. Placement has to find which of the six
+neighbouring cells really couple, and turn the block to face them. Pulling a block out of the
+middle has to notice that one run is now two, and divide the contents between them. Two runs that
+meet have to fold their contents together. A valve that shuts has to sever the run while it is
+shut and heal it when it opens. The sharpest edge is the chunk, the cube of world the game loads
+and unloads as players move: while part of a run sits in an unloaded chunk those blocks cannot be
+read at all, and a graph walk that does not expect that concludes the run is severed and divides
+contents that were never separated.
+
+exlib keeps the graph for you. One `ModSystem` - a class the game creates once per side at startup
+and keeps for the life of the world - owns every network in the game, of every type. Your block
+entity joins it on placement and leaves it on removal. The manager decides which cells couple,
+re-walks the graph on every change, and hands each connected run one `BlockNetwork` instance to
+carry the state you care about: pressure, fluid, temperature. It calls that instance when two runs
+merge, once per fragment when a run fractures, and once a second so the run can simulate. When a
+node sits behind an unloaded chunk the manager suspends the decision and re-decides when the chunk
+is back, rather than fracturing a run it cannot see.
+
+Using it means writing four small things: a node block that names its network type, its block
+entity, a `BlockNetwork` subclass with merge, split and tick, and one line registering a factory
+for the type. If your blocks carry gas, water or molten metal, that work is already done: the
+industry layer registers `PipeNetwork` as `"pipe"`, `MoltenNetwork` as `"molten"` and
+`MpEnergyNetwork` as `"mpenergy"` when it starts, so a node block on any of the three registers
+nothing of its own. Iron Industry Expanded and Steel Industry Expanded run on those three. You
+register a type of your own the same way.
+
+> **A block does not have to spend its base class on being a node.** C# gives a class one base
+> class, and a block usually has somewhere better to spend it. Form, process and membership are
+> three independent axes: the base class belongs to **form** (what the block *is* - a container, a
+> multiblock part), while network membership and the production tick are **behaviours**, small
+> objects attached to a block entity that the game initialises, saves and ticks along with it.
 > `BlockNetworkNode` below is the convenient answer when a block has no other form to be, and it is
-> what the shipped pipes use - but a block that must also be something else, say a container or a
-> filler mega-block, hosts `BEBehaviorNetworkMember` instead of inheriting from here.
-> `BlockEntityNetworkNode` is itself only a host for that behaviour, so the two routes join
-> immediately. `samples/TwinTubBlower` shows both at once: the block itself is a `BlockPipe` (so a
+> what the shipped pipes use. A block that must also be something else, say a container or a
+> filler mega-block, hosts `BEBehaviorNetworkMember` and keeps its base.
+> `BlockEntityNetworkNode` is itself only a host for that behaviour, so both routes run the same
+> code. `samples/TwinTubBlower` shows both at once: the block itself is a `BlockPipe` (so a
 > `BlockNetworkNode`), but the fillers reserved by its footprint are plain `BlockStructureFiller`
 > cells, and it is those that host a mechanical-power port and a pipe membership as behaviours
 > rather than by inheriting from here. See [Production Machines](Production-Machines) for the same
@@ -22,31 +50,35 @@ content-specific pieces through the seams below. You register your own network t
 
 The model (`BlockNetwork` and every `I*Node`/`I*Connector` interface - no Vintage Story block types
 involved) and the engine-facing shell (`BlockNetworkNode`, `BlockEntityNetworkNode`,
-`BlockNetworkModSystem`) now share one namespace, **`ExpandedLib.Networks`**; a modder building a
-network imports it once. **`ExpandedLib.Industry.Pipes`** / **`ExpandedLib.Industry.Molten`** hold
+`BlockNetworkModSystem`) share one namespace, **`ExpandedLib.Networks`**, so a network of your own
+needs one import. **`ExpandedLib.Industry.Pipes`** / **`ExpandedLib.Industry.Molten`** hold
 the shipped `PipeNetwork`/`PipeNetworkState` and `MoltenNetwork` themselves, alongside their own node
 blocks and block entities.
 
 Network tunables (litres per pipe, leak/evaporation rates, over-pressure grace, molten flow rate
-and minimum) live in exlib's own config, `ExlibValues` (the `exlib` section of `ModConfig/ex_values.json`,
-`/exmod config exlib …`), since the network code that reads them lives here now. Content-specific
-numbers (pipe burst pressures, chimney draw rate, molten cooldown) stay in each mod's own config.
+and minimum) are exlib's config, not yours: they live in `ExlibValues`, the `exlib` section of
+`ModConfig/ex_values.json`, editable in a running world with `/exmod config exlib ...`, because the
+network code that reads them ships here. Numbers that belong to your content - a pipe's burst
+pressure, a chimney's draw rate, a molten cooldown - stay in your own mod's config.
 
 ## The pieces
 
 | Piece | Type | Role |
 | --- | --- | --- |
-| `BlockNetworkNode` | abstract `Block` | A node block that auto-orients to its neighbours and reports its connector faces. |
-| `BlockEntityNetworkNode` | abstract `BlockEntity` | The node's block entity: registers/unregisters with the graph, persists state, forwards network updates. |
-| `BlockNetwork` | abstract class | One live network instance: owns typed `State`, merges/splits/ticks. |
-| `BlockNetworkModSystem` | `ModSystem` | The graph manager: add/remove nodes, BFS fracture detection, per-tick dispatch. |
-| `INetworkNode` / `INetworkConnector` | interfaces | Contracts a block entity / block implement to participate. |
+| `BlockNetworkNode` | abstract `Block` | The block a pipe of yours derives from: it works out its own orientation from the network blocks around it at placement and reports which faces carry a connector. |
+| `BlockEntityNetworkNode` | abstract `BlockEntity` | The block entity that goes with it: joins the graph when the block loads, leaves on removal, saves orientation and network state, and hands you each network update. |
+| `BlockNetwork` | abstract class | Your simulation, one instance per connected run. It owns a typed `State` object and is told when to merge, split and tick. |
+| `BlockNetworkModSystem` | `ModSystem` | The manager, one for the whole game. It keeps the graph, walks it to find fractures, and dispatches the tick. You call it to register your network type, and rarely otherwise. |
+| `INetworkNode` / `INetworkConnector` | interfaces | What a block entity implements to be a graph node, and what a block implements to be something a pipe connects to without joining the graph. |
 
-The mental model: **blocks** expose connector faces, **block entities** are graph nodes, the
-**manager** maintains the graph and hands each connected component a **`BlockNetwork`** instance
-that carries your gameplay state (pressure, fluid, temperature...).
+The shape of it: **blocks** expose connector faces, **block entities** are the graph's nodes, and the
+**manager** hands each connected component one **`BlockNetwork`**. Of the five, you write two.
 
 ## Registering a network type
+
+A network type is just a string, and the manager has to know how to build a network for it. That is
+what a factory is: a function the manager calls to make a fresh instance, every time a node is
+placed with no run beside it to join.
 
 `IndustryModule` registers `pipe`, `molten` and `mpenergy` with their defaults in its own `Start`,
 so a mod placing `BlockNetworkNode`s on any of the three registers nothing itself. A mod that needs
@@ -71,23 +103,35 @@ The manager creates one network per connected component and calls into it as the
 and clock advance. The factory runs once **per** network instance, so anything the network needs
 per-run (e.g. the chimney-vent's sound-throttle state) can be created fresh in the factory.
 
+Forget the registration and the failure is quiet in game and loud in the log: the block places
+normally and joins no network, and the server log names the block, the type it asked for and the
+types that are registered.
+
 ### Concrete-network seams
 
-Because `PipeNetwork` / `MoltenNetwork` live in exlib, they reach content-specific behaviour
-through small interfaces the mods implement, never by naming a mod's block type:
+exlib ships the pipe and molten networks; your mod ships the blocks that run on them. The network
+needs answers only your content has - how much metal is in this cell, what pressure this pipe
+bursts at - and it cannot name your types to ask for them. It asks through small interfaces
+instead. Implement the one you need and the shipped network finds it:
 
 | Seam | Implemented by | Role |
 | --- | --- | --- |
-| `IMoltenCell` | the canal block entities | Per-cell metal state + capability flags (`IsFlowSource`, `AcceptsSubMinimumFlow`) the molten flow driver reads. |
-| `IBurstablePipe` | `BlockPipe` | `{ CanBurst, BurstPressure }` - the pipe network walks nodes for the weakest burst rating. |
-| `IPipeVentStrategy` | `IiexChimneyVent` | Optional gas-vent (chimney) classification + draw, injected at `RegisterNetworkType`. |
-| `INetworkNode.OnLeak` | `BlockEntityPipe` (override) | Leak feedback (particles/sound) for a node on a leaking run; default no-op. |
+| `IMoltenCell` | the canal block entities | The metal in one cell (amount, type, temperature) plus the flags the flow driver reads: `IsFlowSource` marks a cell metal comes out of, `AcceptsSubMinimumFlow` lets a cell take a trickle below the normal minimum. |
+| `IBurstablePipe` | `BlockPipe` | `{ CanBurst, BurstPressure }`. The network walks the whole run for the weakest rating, so one cheap segment sets the pressure the run bursts at. |
+| `IPipeVentStrategy` | `ChimneyVent` | Optional. Says which fittings vent gas out of the run and how fast they draw, so a chimney relieves pressure instead of the run leaking. Injected at `RegisterNetworkType`, as the example above does. |
+| `INetworkNode.OnLeak` | `BlockEntityPipe` (override) | Called on a node at the open end of a pressurised or flooded run. Override it for particles and sound; the default does nothing. |
 
 ## Defining a node block
 
-The orientation table is not hand-written: `BlockNetworkNode` derives it from this class's own
-code-first definitions, so the shape's `type` x `orientation` map lives in the variant groups and in
-one place only.
+A node block names a network type and little else. Which way the model points, which faces carry a
+connector, what the wrench does: `BlockNetworkNode` works all of that out from the block's own
+[code-first definition](Code-First-Definitions).
+
+It reads the variant groups to do it. A variant group is the game's way of getting many blocks out
+of one definition: a group named `orientation` with the values `ns`, `we` and `ud` yields three
+blocks, one per axis, and the game chooses between them by code. `BlockNetworkNode` reads those
+same groups for its orientation table, so the `type` x `orientation` map exists in one place, in
+code, instead of being written a second time by hand.
 
 ```csharp
 [BlockRegister]
@@ -111,10 +155,16 @@ doing only for a block whose orientation is not a `type` x `orientation` pair. I
 `GetFallbackOrientation` is `protected virtual` - override it `protected`, not `public`, or the
 compiler rejects the widening (CS0507).
 
-`BlockNetworkNode` does the heavy lifting: at placement it computes the best orientation from
-surrounding network blocks (`TryPlaceBlock`), recomputes on neighbour change
-(`OnNeighbourBlockChange`), supplies rotated collision/selection boxes, drops a canonical
-(fallback-orientation) item, and supports wrench rotation (`IWrenchOrientable`).
+`BlockNetworkNode` does the heavy lifting from there, and all of it is player-facing. At placement
+(`TryPlaceBlock`) it works out which orientations are valid in that cell and prefers the ones
+facing the surface the player clicked, falling back to the direction the player is looking, so
+laying a line of pipe never needs turning a piece by hand; when no orientation fits it refuses the
+placement with the `exlib-noorientation` failure code. It recalculates on a neighbour change
+(`OnNeighbourBlockChange`), and breaks the block when nothing is left to hold it - no connected
+network neighbour and no solid face to attach to. It rotates the collision and selection boxes to
+match, drops the canonical fallback-orientation item rather than whichever variant was in the
+ground, and answers the wrench (`IWrenchOrientable`) so a player can cycle a piece through its
+valid orientations in place.
 
 ### Orientation convention
 
@@ -124,6 +174,9 @@ group that drives placement is **`orientation`** (singular); a mis-named variant
 breaks placement and wrenching, so keep it exactly that.
 
 ### Key `BlockNetworkNode` members to know
+
+You write the first of these; the rest have defaults, and the comments say what you would be
+replacing.
 
 ```csharp
 public abstract string NetworkType { get; }              // the only member you must write
@@ -152,6 +205,8 @@ the leak count.
 
 ## Defining the node block entity
 
+The block entity is what actually joins the graph, and for a plain pipe it is this small:
+
 ```csharp
 [BlockEntityRegister]
 public class BlockEntityPipe : BlockEntityNetworkNode
@@ -177,6 +232,14 @@ protected virtual object? DeserializeNetworkState(ITreeAttribute tree);
 protected virtual void SerializeNetworkState(ITreeAttribute tree, object? state);
 ```
 
+`OnNetworkUpdate` arrives on every node of the run each time the network broadcasts, and is where a
+client-side display reads the pressure or the contents. The three serialization hooks round-trip
+your state object through an `ITreeAttribute`, the game's save container: a nested bag of keyed
+values a block entity writes on save and reads back on load. A node keeps the last update it was
+sent so a run's state survives a reload even if no node has ticked since;
+`IsNetworkStateMeaningful` decides which updates are worth keeping, so an empty pipe does not hold
+a stale reading.
+
 > **Dynamic severing.** A node that can cut the network (a closed valve) overrides
 > `IsConnectionBroken()` to return `true` while closed. The graph re-walks on every state change,
 > so toggling it merges or fractures the network live. Restore the broken/closed flag in
@@ -184,7 +247,9 @@ protected virtual void SerializeNetworkState(ITreeAttribute tree, object? state)
 
 ## Writing a `BlockNetwork`
 
-Your network subclass owns the gameplay simulation. The manager calls these:
+Your network subclass is where the gameplay lives. The manager only moves positions between graphs;
+what a run holds, and what that does to the world, is yours. One instance exists per connected run,
+and instances are created, merged, split and dropped as players build. The manager calls these:
 
 ```csharp
 public abstract string NetworkType { get; }
@@ -206,7 +271,14 @@ protected virtual void OnBeforeBroadcast(IBlockAccessor world);  // update deriv
 protected virtual object? GetStatePayload();            // the object actually sent in a broadcast
 ```
 
-The contract you must satisfy when state is conserved (fluid, gas, charge):
+`OnTick` runs once a second, server-side, for every live network, with `dt` capped at two seconds so
+a stalled server cannot hand you a huge step. `RestoreState` runs on world load: node block entities
+come back before any tick, and the first one to load hands its saved state to the network the
+manager has just built for that run.
+
+Three of these carry a contract, and it is the same contract every time state is conserved (fluid,
+gas, charge): the topology changes constantly, and each change is a chance to create or destroy
+what the run holds.
 
 - **`OnMerge`** - fold `other`'s state into this network (sum volumes, average temperature...).
 - **`OnSplitFragment`** - when a fracture produces a new fragment, distribute the original's
@@ -216,6 +288,9 @@ The contract you must satisfy when state is conserved (fluid, gas, charge):
 - **`OnTopologyChanged`** - invalidate any cached aggregates after the node set changes.
 
 ## Manager API (`BlockNetworkModSystem`)
+
+Most mods touch the manager twice: once to register a network type, and once from a machine that
+wants to read the run next to it. The rest is here for the cases that need it.
 
 ```csharp
 public IServerWorldAccessor? ServerWorld { get; }       // non-null on server during tick
@@ -237,13 +312,24 @@ public static bool IsCompatibleNetworkBlock(Block neighbour, string id);
 public static bool IsCompatibleNetworkBlockAt(IBlockAccessor world, BlockPos pos, Block neighbour, string id);
 ```
 
-`BlockEntityNetworkNode` calls `AddNode`/`RemoveNode` for you. **A block entity that is *not* a
-`BlockEntityNetworkNode`** (e.g. a multiblock structure that also acts as a node) must call
-`AddNode`/`RemoveNode` itself - only the dedicated base does it automatically.
+`AddNode` and `RemoveNode` are called for you by the membership behaviour, so both routes into the
+graph - deriving from `BlockEntityNetworkNode`, or hosting `BEBehaviorNetworkMember` - are
+automatic. **A block entity that does neither** and joins the graph on its own terms must call
+`AddNode`/`RemoveNode` itself.
+
+The membership deregisters on removal only. A chunk unload is not a removal: the node stays in the
+graph, the block entity re-adopts its position when the chunk loads again, and a run that is
+half-unloaded is never fractured for it.
+
+`RebuildFromRoot` is the odd one out. A root-anchored network exists only as far as it reaches from
+one block - a machine's own plumbing, say - and rebuilding it walks out from that root, replaces
+whatever networks overlapped it, and carries the old root network's state into the new one through
+`InheritStateFrom`. A network with no such anchor leaves `RootPos` null and never needs it.
 
 ## Connectors vs. nodes
 
-Two interfaces, two roles:
+A pipe run has to reach machines, and a machine must not become part of the run: a boiler is not a
+length of pipe and must not hold the run's steam. Two interfaces keep the roles apart:
 
 ```csharp
 public interface INetworkNode            // implemented by the block ENTITY (a graph node)
@@ -271,12 +357,17 @@ including fixed machine ports that are *not* nodes - a boiler's steam outlet, an
 Such ports read/write the network in the cell on the **far side** of their connector face; see
 [Production Machines](Production-Machines) for the `MachinePorts` helpers that do exactly that.
 
+Both are `INetworkMember` underneath, which is what the graph walk actually asks. `NetworkMembership`
+resolves a cell to its member: a membership behaviour on the block entity answers first, then the
+block itself. So a cell joins a network by what it declares, never by what class it is.
+
 ## Visualising networks
 
-`NetworkHighlightModSystem` renders every live network in its own transparent colour, toggled
-per player with `.exmod network hi` / `.exmod network unhi`. The graph is server-only, so this is
-a client->server request plus server-side `HighlightBlocks`, polled every 250 ms for live updates.
-See [Commands](Commands).
+A graph is invisible in game, which makes "why are these two runs not one network" hard to answer by
+looking. `NetworkHighlightModSystem` renders every live network in its own transparent colour,
+toggled per player with `.exmod network hi` / `.exmod network unhi`, so a run that did not merge
+shows up as a second colour. The graph is server-only, so this is a client->server request plus
+server-side `HighlightBlocks`, polled every 250 ms for live updates. See [Commands](Commands).
 
 ## Related pages
 

@@ -1,12 +1,16 @@
 # Supported API
 
-This page is the supported contract: every public type of `exlib.dll` is listed below, and a type not listed here has been marked `[EditorBrowsable(Never)]` because the game engine has to see it, not because a mod is meant to call it. The family's content layer ships as a second assembly, `exlib.industry.dll`, beside it in the same mod folder and as the `ExpandedLib.Industry` package; it is public and reusable but it changes without notice, and its types are listed at the bottom of this page under that heading rather than covered by the promise above. A public member on this page is removed only after one full release spent marked `[Obsolete]` naming its replacement, and every currently-obsolete member is listed at the very bottom for as long as it lasts.
+This page is the list of types your mod may build on, and the promise that comes with them. Every public type of `exlib.dll` is on it. A type that is public in the assembly but absent from this page carries `[EditorBrowsable(Never)]`: it is public because the game engine has to see it, not because a mod is meant to call it, and it can change in any release. A test in this repository fails when the assembly and this page disagree in either direction, so the list cannot quietly go stale.
 
-The sections below are grouped by what a modder is doing, not by namespace; each row still names its type.
+The promise is a deprecation window, not permanence. A public member listed here is never deleted outright: it spends one full release marked `[Obsolete]`, with the attribute naming its replacement, and only then goes. Everything currently in that window is listed under [Obsolete members](#obsolete-members) at the foot of the page. Versions follow the same rule from 0.8.0 on: a minor bump may change a signature on this page, a patch bump does not.
+
+The industry layer is the exception. It ships as a second assembly, `exlib.industry.dll`, beside the framework in the same mod folder and as the `ExpandedLib.Industry` package. Its types are public and meant to be reused, but they are the family's content layer rather than the framework: they change without notice, they are listed separately under [Extending Industry](#extending-industry), and the promise above does not cover them.
+
+Read the page by activity. The sections are named for what you are doing - registering classes, persisting state, wiring a network - rather than by namespace, and each row names its type, says in one line what it is for, and links to the page that teaches it. Follow that link when you want to learn the system; the row itself is the answer when all you need to know is whether something is safe to depend on.
 
 ## Starting a mod
 
-Top-level, source-generated accessors that belong to no single activity folder.
+Two source-generated classes covering exlib's own assets: the framework's lang keys, and its config values. `ExlibValues.AmbientTemperature` is the kind of thing a machine reads from here. Your mod gets the same pair under its own domain's name once you set `<AssetDomain>` - see [Source Generators](Source-Generators).
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -15,7 +19,7 @@ Top-level, source-generated accessors that belong to no single activity folder.
 
 ## Registering classes and commands
 
-For a modder registering blocks, items, behaviours, commands, preferences or recipe profiles; asking about other mods; or patching with Harmony.
+The game wants every block, item, behaviour, command and preference class handed to it by name, in a list you maintain and can silently fall out of step with. These types replace that list with attributes and one reflection pass. The neighbouring questions that come with registration are here too: registering a recipe type of your own, asking whether another mod is installed before gating content on it, and applying Harmony patches once per process rather than once per load.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -61,7 +65,7 @@ For a modder registering blocks, items, behaviours, commands, preferences or rec
 
 ## Configuring a mod
 
-For a modder declaring a config class, its ranges, migrations and live editing, or syncing it to clients.
+Gameplay numbers a player can edit, without the string keys and unchecked casts of reading a JSON file by hand. You declare a config class; these types load and save it, hold each value to a declared range in both directions, expose it to the generic `/exmod config` command, reset a tunable whose meaning changed in a later release, and carry the server's copy to clients when the server owns the answer.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -82,7 +86,7 @@ For a modder declaring a config class, its ranges, migrations and live editing, 
 
 ## Defining blocks, items and recipes in code
 
-For a modder writing block, item, recipe and layout definitions in C#.
+Blocks, items and recipes described in C# instead of hand-written JSON under `assets/`, so a renamed variant or a mistyped shape path is a compile error rather than a surprise at world load. The builders here produce exactly what the game's object loader reads, and the layout types turn an ASCII diagram of a structure into the tables that loader expects. [Getting Started](Getting-Started) walks one block through from definition to boot.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -112,8 +116,7 @@ For a modder writing block, item, recipe and layout definitions in C#.
 
 ## Checking content
 
-For a modder who wants the content guards - dangling codes, uncovered lang, pinned network nodes -
-to run against their own custom source, in code rather than through `/exmod verify`.
+The guards that catch a dangling block code, a name with no translation, a recipe whose output nothing registers. They already run at load and from `/exmod verify` without you naming them, so the types here are for the other two cases: running the same guards in your own test suite, against a repository tree rather than a live game, and registering a check of your own that runs beside the shipped ones.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -134,7 +137,7 @@ to run against their own custom source, in code rather than through `/exmod veri
 
 ## Writing a block entity and persisting its state
 
-For a modder writing a block entity: declared state, orientation, right-click construction.
+A block entity is the object the game attaches to one placed block, ticks, and saves with the chunk around it. Keeping a field across a reload normally means writing it into a tree attribute and reading it back, with the key spelled once in each direction and no complaint when you get one half wrong. The bases and the `[Persist]` attribute here do it from the declaration alone. The construction types in the same section cover a block the player raises in stages from materials, which has state of its own to keep.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -155,7 +158,7 @@ For a modder writing a block entity: declared state, orientation, right-click co
 
 ## Renaming and healing blocks
 
-For a modder renaming or removing codes in old saves, or healing lost block entities.
+Renaming or removing a block breaks every save that holds it: the world comes back with a hole where the old code was, or with an item stack nothing can resolve. Declare the old-to-new mapping with these types and the migrator rewrites the world on load. The healer covers the other half, a block whose block entity was lost to a failed deserialization or a desync and which is left inert, often unbreakable and impossible to build over.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -170,7 +173,7 @@ For a modder renaming or removing codes in old saves, or healing lost block enti
 
 ## Building a structure
 
-For a modder building a multiblock or megablock.
+A machine larger than one block needs its cells checked before it may run, an outline the player can see while building it, and collision on every cell rather than only the one holding the block entity. These types carry the layout, authored as ASCII diagrams rather than offset tables, the completion monitoring behind it, and the invisible filler blocks that reserve the rest of the footprint and can host a behaviour such as a power port.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -209,7 +212,7 @@ For a modder building a multiblock or megablock.
 
 ## Running a machine
 
-For a modder building a machine that ticks, with ports, readiness and stations.
+A machine that works over time needs a server-side tick on a fixed interval, a gate saying whether it may run at all, and a decision about the game time it spent unloaded while the player was away. These types provide that lifecycle and leave you the work itself. The station types add the window a player loads and unloads the machine through, with slots that accept only what they should and an output slot nothing can be dropped into.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -227,7 +230,7 @@ For a modder building a machine that ticks, with ports, readiness and stations.
 
 ## Wiring a network
 
-For a modder building a connected network: the graph model and the engine-facing nodes together.
+Pipes, wires and canals are a graph: which blocks join, what happens when a run is cut in two or two runs meet, how a node knows its orientation, what a chunk unload does to the run. One manager owns all of it. The types here are the two halves you meet - the graph model, and the block entities and blocks that sit in it - so your node only declares what it connects to and what flows.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -243,7 +246,7 @@ For a modder building a connected network: the graph model and the engine-facing
 
 ## Loading a catalogue
 
-For a modder shipping or extending data catalogues: processes, materials, liquids, storage, their loaders, reports and contributors.
+A catalogue is data a mod ships as JSON that another mod can extend without touching code: process routes, material roles, pipe and canal media, storage occupancy. The loaders here read every domain's files, merge them, invoke the code contributions JSON cannot express, and report which asset failed rather than swallowing it. Reach for them when your own content is a table other mods should be able to add rows to - [Extending Processes](Extending-Processes) works one through end to end.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -285,7 +288,7 @@ For a modder shipping or extending data catalogues: processes, materials, liquid
 
 ## Helpers
 
-Everything content-neutral that saves a modder a few lines: orientation, meshes, inventories, units, rendering.
+The small things a machine ends up writing for itself: horizontal rotation math, a side check, particles and sounds, counting what a player is carrying, formatting a measurement for the look-at HUD, caching a tesselated mesh, hiding content behind a config gate. None of it is required to use exlib. Each entry is a few lines you do not have to get right a second time.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -318,7 +321,7 @@ Everything content-neutral that saves a modder a few lines: orientation, meshes,
 
 ## Supporting older game versions
 
-For supporting 1.20 and 1.21 from one source tree.
+exlib targets 1.22, and the family also builds and runs on 1.21 and 1.20 from this one source tree. If you target 1.22 alone you can ignore this section.
 
 Compiled only for the 1.20 and 1.21 targets: shims that let code written against the 1.22 API build
 unchanged there (`mods/LegacyUsings.cs` brings them into scope on those targets). They are absent from
@@ -334,9 +337,13 @@ that target.
 
 ## Extending Industry
 
-A separate assembly and package, `exlib.industry.dll` / `ExpandedLib.Industry`, referenced alongside `ExpandedLib` by a mod that wants it. Public and reusable, but the family's content layer rather than the framework: it changes without notice, and the one-release deprecation promise above does not cover it.
+The systems the family mods are made of, in a separate assembly and package, `exlib.industry.dll` / `ExpandedLib.Industry`, referenced alongside `ExpandedLib` by a mod that wants them: gas and liquid pipes, molten metal, mechanical-power ports for mega-blocks, metal descriptors and a process heat balance. Reference it when your blocks carry gas, liquid, metal or shaft power, and leave it out otherwise.
+
+It is public and reusable, but it is the family's content layer rather than the framework: it changes without notice, and the one-release deprecation promise above does not cover it.
 
 ### `ExpandedLib.Industry.Pipes`
+
+Gas and liquid runs: the pipe block and block entity you derive from, and the contracts a pipe opts into - burstable under pressure, throughput-limited, drawn on by a chimney.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -355,6 +362,8 @@ A separate assembly and package, `exlib.industry.dll` / `ExpandedLib.Industry`, 
 
 ### `ExpandedLib.Industry.Molten`
 
+Molten metal as a medium that flows: the per-cell store a block entity holds, the canal network that moves it between cells, and the chisel interaction that recovers it once it has set.
+
 | Type | What it is for | Page |
 | --- | --- | --- |
 | `BEBehaviorMoltenCell` | One molten-metal cell as a composable block-entity behaviour: holds a single cell's metal (amount, type, temperature) and the per-cell operations the molten system drives, so any block entity can be an IMoltenCell by composition, including a mega-block footprint cell hosted through IFillerHostedBehavior. | [Block-Networks](Block-Networks) |
@@ -371,6 +380,8 @@ A separate assembly and package, `exlib.industry.dll` / `ExpandedLib.Industry`, 
 
 ### `ExpandedLib.Industry.MechanicalPower`
 
+The shaft-power side: the port a mega-block hosts on one footprint cell so an axle has something to couple to, and the producer, consumer and storage roles a node takes on an energy run.
+
 | Type | What it is for | Page |
 | --- | --- | --- |
 | `BEBehaviorMPFillerPort` | A minimal mechanical-power node a mega-block hosts on one of its invisible footprint cells (see StructureFillers / IFillerHostedBehavior), giving the MP network a participant at the cell where an axle couples - the principal block, two cells away, cannot accept power at that face. | [Block-Networks](Block-Networks) |
@@ -385,6 +396,8 @@ A separate assembly and package, `exlib.industry.dll` / `ExpandedLib.Industry`, 
 
 ### `ExpandedLib.Industry.Metals`
 
+The metal and alloy catalogue the molten system reads instead of parsing item codes, and the emitter that generates a whole item family for a metal that opts in.
+
 | Type | What it is for | Page |
 | --- | --- | --- |
 | `MetalAlloyIngredient` | One ingredient of a MetalAlloySpec: a metal short code and its ratio band. | [Extending-Processes](Extending-Processes) |
@@ -397,6 +410,8 @@ A separate assembly and package, `exlib.industry.dll` / `ExpandedLib.Industry`, 
 
 ### `ExpandedLib.Industry.Heat`
 
+One process heat balance, captured as the tick computed it, and the block-info readout a furnace or converter shows from it.
+
 | Type | What it is for | Page |
 | --- | --- | --- |
 | `HeatBalance` | One evaluation of a process heat balance, captured as the tick computed it so block info reads the contributors without recomputing. | [Helpers-and-Renderers](Helpers-and-Renderers) |
@@ -404,6 +419,8 @@ A separate assembly and package, `exlib.industry.dll` / `ExpandedLib.Industry`, 
 | `HeatBalanceLedgerKeys` | The lang keys a HeatBalance ledger reads, supplied by the machine because exlib ships no lang of its own. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 
 ### `ExpandedLib.Industry.Helpers`
+
+Content helpers shared across the family mods: display names that carry a block's material variant, tool-mold drops, particles and sounds.
 
 | Type | What it is for | Page |
 | --- | --- | --- |
@@ -415,13 +432,15 @@ A separate assembly and package, `exlib.industry.dll` / `ExpandedLib.Industry`, 
 
 ### `ExpandedLib.Industry.Materials`
 
+The canonical role tokens the machines classify flux, fuel, ore, scrap and charge by.
+
 | Type | What it is for | Page |
 | --- | --- | --- |
 | `Roles` | The canonical material-role tokens the machines classify by. | [Extending-Processes](Extending-Processes) |
 
 ## Obsolete members
 
-A public member removed from a future release is listed here, marked `[Obsolete]`, for the one full release it stays deprecated before removal.
+A member on its way out is listed here, marked `[Obsolete]` in the code with its replacement named, for the one full release it stays deprecated before it is removed. If you call something in this table, the replacement column is the whole migration.
 
 | Member | Replacement | Obsolete since | Removed in |
 | --- | --- | --- | --- |
