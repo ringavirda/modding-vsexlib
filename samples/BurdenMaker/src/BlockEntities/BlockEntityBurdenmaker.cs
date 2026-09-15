@@ -40,7 +40,10 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
   private ConstructedAnimator? _animator;
 
-  [Persist]
+  // Hand-rolled rather than [Persist]: a value that only saves and syncs is not enough here, because
+  // ToggleGate's own ApplyPose call never runs on the client (the server owns every mutation). The
+  // client's pose has to come from the sync itself, which needs to see the old value before it is
+  // overwritten.
   private bool _gateOpen;
 
   public override InventoryBase Inventory => _inventory;
@@ -90,6 +93,28 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
   public override void OnBlockUnloaded() {
     _animator?.Dispose();
     base.OnBlockUnloaded();
+  }
+
+  public override void ToTreeAttributes(ITreeAttribute tree) {
+    base.ToTreeAttributes(tree);
+    tree.SetBool("gateOpen", _gateOpen);
+  }
+
+  /// <summary>
+  /// Reads the gate state written by <see cref="ToTreeAttributes"/> - a save load and every resync the
+  /// server pushes through <c>MarkDirty</c>. <see cref="ToggleGate"/> poses the server's own animator
+  /// directly, but the server never touches the client's, so the client's pose has to come from here: a
+  /// changed value re-poses on arrival instead of waiting for a click that will never come.
+  /// </summary>
+  public override void FromTreeAttributes(
+    ITreeAttribute tree,
+    IWorldAccessor worldForResolving
+  ) {
+    bool wasOpen = _gateOpen;
+    base.FromTreeAttributes(tree, worldForResolving);
+    _gateOpen = tree.GetBool("gateOpen");
+    if (Api?.Side == EnumAppSide.Client && _gateOpen != wasOpen)
+      ApplyPose();
   }
 
   /// <summary>

@@ -4,6 +4,7 @@ using BurdenMaker.Blocks;
 using BurdenMaker.Items;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -241,6 +242,25 @@ public class BurdenmakerTests {
     Assert.Equal(0.50f, first.Iron, 3);
     Assert.Equal(0.90f, second.Iron, 3);
     Assert.Equal(0.10f, second.Flux, 3);
+  }
+
+  [Fact]
+  public void The_gate_state_round_trips_through_the_tree() {
+    // The client learns the gate from the tree alone - the server's own ApplyPose call inside
+    // ToggleGate never runs there - so a round trip through ToTreeAttributes/FromTreeAttributes is
+    // what has to carry it, not just the field.
+    var (_, source, ore, _) = NewMachine();
+    source.TryLoadOre(Slot(ore, 10), wholeStack: true);
+    Assert.True(source.ToggleGate(out _));
+    Assert.True(source.GateOpen);
+
+    var tree = new TreeAttribute();
+    source.ToTreeAttributes(tree);
+
+    var (world, target, _, _) = NewMachine();
+    target.FromTreeAttributes(tree, world.World);
+
+    Assert.True(target.GateOpen);
   }
 
   #endregion
