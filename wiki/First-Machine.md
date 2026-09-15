@@ -16,7 +16,10 @@ bellows:
 
 ```csharp
 private static readonly FillerBehaviorSpec MpPortWest =
-  FillerBehaviorSpec.Of<BEBehaviorMPFillerPort>("west");
+  FillerBehaviorSpec.Of<BEBehaviorMPFillerPort>(
+    "west",
+    new { through = false }
+  );
 
 private static readonly FillerBehaviorSpec PipeThrough =
   FillerBehaviorSpec.Of<BEBehaviorNetworkMember>(
@@ -109,6 +112,12 @@ private float PortSpeed() {
   return port is { IsTurning: true } ? port.Speed : 0f;
 }
 ```
+
+`through = false` makes the port one-sided: the cell couples an axle on that face alone and the
+network ends there, where the default lets a row of ports carry power straight through a machine.
+A part the axle turns locks its clip to the port's `DrivenAngleRad`, the angle in the sense the
+axle is drawn whichever side the port faces; `CurrentAngleRad` alone reads mirrored on an east or
+south port.
 
 `TwinTubBlowerTests` confirms the shipped footprint hosts that port on the cell the code above
 expects and that a pipe coupled two cells out through the pass-through cells still joins the
