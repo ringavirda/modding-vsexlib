@@ -16,11 +16,18 @@ see the git history.
 
 ### Fixed
 
-- **The twin-tub blower sample** keeps the facing the player gave it (north and south no longer come
+- **Composed lang keys fall back to exlib's own**: the multiblock outline hint and the passthrough
+  brick names are looked up in the block's domain first and then in `exlib:`, which now ships them,
+  so a third-party mod no longer shows raw keys.
+- **The twin-tub blower sample** locks its bellows to the axle every render frame, throttles the
+  bellows note to the clip, vents air and joins a pipe only at its outlet filler (the orientation
+  letter named the wrong face for east and west), keeps the facing the player gave it (north and south no longer come
   out alike), cannot be wrench-rotated, wears the aligned shape, and moves, sounds and vents air at
   its outlet while an axle drives it.
-- **The burden maker sample** wears its polished shape, poses the lid on the client when the gate
-  opens, and draws the ore, flux and burden levels in its hoppers and basin.
+- **The burden maker sample** wears its polished shape with the game's textures, poses the lid on
+  the client when the gate opens, draws the ore, flux and burden levels in its hoppers and basin,
+  and drains the hoppers into the basin over `BurdenmakerDrainSeconds` instead of at once.
+- **The smoke stack sample** stays silent while venting plain air.
 - A `shape.selectiveElements` list now reaches every `shapebytype` entry that names none, so a block
   or item that keys its shape by variant renders only the elements its definition selects in the game,
   as it already did in the wiki.
