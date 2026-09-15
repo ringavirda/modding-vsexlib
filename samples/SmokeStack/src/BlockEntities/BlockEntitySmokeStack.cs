@@ -192,16 +192,18 @@ public class BlockEntitySmokeStack
       return;
 
     SpawnSmokeParticles(medium);
-    // Soft draught of gas venting up the stack.
-    ExSounds.PlayThrottled(
-      Api,
-      Pos,
-      ExSounds.Fire,
-      ref _lastVentSoundMs,
-      6000,
-      0.3f,
-      32f
-    );
+    // Draught crackle for a hot draw only - plain air makes no fire sound. Throttled no shorter
+    // than the 9.26 s clip (game:sounds/environment/fire.ogg), so a repeat never cuts the last one off.
+    if (medium != "Air")
+      ExSounds.PlayThrottled(
+        Api,
+        Pos,
+        ExSounds.Fire,
+        ref _lastVentSoundMs,
+        9500,
+        0.3f,
+        32f
+      );
   }
 
   private void SpawnSmokeParticles(string medium) {

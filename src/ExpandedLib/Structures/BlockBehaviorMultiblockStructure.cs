@@ -1,6 +1,7 @@
 using ExpandedLib.Registries;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Structures;
@@ -72,19 +73,24 @@ public class BlockBehaviorMultiblockStructure : BlockBehavior {
 
   /// <summary>
   /// The Ctrl+Shift+right-click "show multiblock structure" help line, resolved against
-  /// <paramref name="forBlock"/>'s own domain so each mod supplies its own translation of
-  /// <c>blockhelp-mulblock-struc-show</c>. Shown only while the structure is incomplete.
+  /// <paramref name="forBlock"/>'s own domain so a mod can supply its own translation of
+  /// <c>blockhelp-mulblock-struc-show</c>, falling back to exlib's own copy when it does not.
+  /// Shown only while the structure is incomplete.
   /// </summary>
-  public static WorldInteraction[] ProjectionHelp(Block forBlock) =>
+  public static WorldInteraction[] ProjectionHelp(Block forBlock) {
+    string domainKey = forBlock.Code.Domain + ":blockhelp-mulblock-struc-show";
+    return
     [
       new WorldInteraction
       {
-        ActionLangCode =
-          forBlock.Code.Domain + ":blockhelp-mulblock-struc-show",
+        ActionLangCode = Lang.HasTranslation(domainKey)
+          ? domainKey
+          : "exlib:blockhelp-mulblock-struc-show",
         HotKeyCodes = ["ctrl", "shift"],
         MouseButton = EnumMouseButton.Right,
       },
     ];
+  }
 
   public override bool OnBlockInteractStart(
     IWorldAccessor world,
