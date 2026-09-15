@@ -4,6 +4,7 @@ using BurdenMaker.Blocks;
 using BurdenMaker.Items;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -243,6 +244,25 @@ public class BurdenmakerTests {
     Assert.Equal(0.10f, second.Flux, 3);
   }
 
+  [Fact]
+  public void The_gate_state_round_trips_through_the_tree() {
+    // The client learns the gate from the tree alone - the server's own ApplyPose call inside
+    // ToggleGate never runs there - so a round trip through ToTreeAttributes/FromTreeAttributes is
+    // what has to carry it, not just the field.
+    var (_, source, ore, _) = NewMachine();
+    source.TryLoadOre(Slot(ore, 10), wholeStack: true);
+    Assert.True(source.ToggleGate(out _));
+    Assert.True(source.GateOpen);
+
+    var tree = new TreeAttribute();
+    source.ToTreeAttributes(tree);
+
+    var (world, target, _, _) = NewMachine();
+    target.FromTreeAttributes(tree, world.World);
+
+    Assert.True(target.GateOpen);
+  }
+
   #endregion
 
   #region Drops - the whole point of the block
@@ -275,6 +295,32 @@ public class BurdenmakerTests {
     Assert.Equal(45, found["crushed-iron"]);
     Assert.Equal(15, found["lime"]);
     Assert.Equal(80, found["burden"]);
+  }
+
+  #endregion
+
+  #region Fill fractions for the ore-level surfaces
+
+  [Fact]
+  public void Each_fraction_is_zero_empty_and_one_at_capacity() {
+    var (_, be, ore, lime) = NewMachine();
+    Assert.Equal(0f, be.OreFill);
+    Assert.Equal(0f, be.FluxFill);
+    Assert.Equal(0f, be.BurdenFill);
+
+    be.TryLoadOre(
+      Slot(ore, BurdenMakerValues.BurdenmakerOreCapacity),
+      wholeStack: true
+    );
+    be.TryLoadFlux(
+      Slot(lime, BurdenMakerValues.BurdenmakerFluxCapacity),
+      wholeStack: true
+    );
+    Assert.Equal(1f, be.OreFill);
+    Assert.Equal(1f, be.FluxFill);
+
+    be.ToggleGate(out _);
+    Assert.Equal(1f, be.BurdenFill);
   }
 
   #endregion
