@@ -1,0 +1,10 @@
+{
+  "game:tabname-smokestack": "Smoke Stack",
+  "block-smokestack-intake*": "Smoke Stack Intake",
+  "blockdesc-smokestack-intake*": "Draws surplus gas off the network and vents it to the sky.",
+
+  "smokestack:smokestack-info-consuming": "Consuming {0} of gas",
+  "smokestack:smokestack-complete": "Smoke Stack structure is complete!",
+  "smokestack:structure-incomplete": "Structure incomplete!",
+  "smokestack:structure-incomplete-count": "Structure is not complete. {0} blocks are missing or incorrect."
+}
