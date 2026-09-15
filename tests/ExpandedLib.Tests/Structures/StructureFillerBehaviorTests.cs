@@ -285,11 +285,14 @@ public class StructureFillerBehaviorTests {
 
   #region Mechanical-power connector glue
 
+#if GAME_GE_1_22
   [Fact]
-  public void A_one_sided_port_lets_no_power_out() {
+  public void A_one_sided_port_lets_no_power_out()
+  {
     var (world, filler) = NewWorld();
     var pos = new BlockPos(0, 0, 0);
-    var be = new BlockEntityStructureFiller {
+    var be = new BlockEntityStructureFiller
+    {
       Principal = new BlockPos(0, 0, -2),
     };
     world.Place(pos, filler, be);
@@ -307,6 +310,7 @@ public class StructureFillerBehaviorTests {
     Assert.Equal(2, through.GetMechPowerExits(entry).Length);
     Assert.Empty(oneSided.GetMechPowerExits(entry));
   }
+#endif
 
   [Fact]
   public void A_one_sided_port_accepts_an_axle_on_its_own_face_only() {

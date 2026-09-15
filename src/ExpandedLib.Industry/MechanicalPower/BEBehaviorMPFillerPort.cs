@@ -118,7 +118,13 @@ public class BEBehaviorMPFillerPort(BlockEntity blockentity)
   /// one-sided one. The path's out-facing is its direction of travel, so a one-sided port ends the
   /// network the way a vanilla consumer does rather than passing it out of the machine's far side.
   /// </summary>
+#if GAME_GE_1_22
   public override MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir) =>
+#else
+  protected override MechPowerPath[] GetMechPowerExits(
+    MechPowerPath entryDir
+  ) =>
+#endif
     _through ? base.GetMechPowerExits(entryDir) : [];
 
   public override void SetOrientations() {
