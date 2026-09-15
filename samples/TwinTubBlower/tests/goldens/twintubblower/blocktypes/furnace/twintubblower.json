@@ -45,7 +45,7 @@
     },
     "*-e": {
       "base": "twintubblower:furnace/twintubmpblower",
-      "rotateY": 90
+      "rotateY": 270
     },
     "*-s": {
       "base": "twintubblower:furnace/twintubmpblower",
@@ -53,7 +53,7 @@
     },
     "*-w": {
       "base": "twintubblower:furnace/twintubmpblower",
-      "rotateY": 270
+      "rotateY": 90
     }
   },
   "creativeinventory": {

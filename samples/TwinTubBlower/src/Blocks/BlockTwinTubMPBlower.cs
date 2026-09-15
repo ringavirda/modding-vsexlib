@@ -67,7 +67,7 @@ public partial class BlockTwinTubMPBlower
         .ShapeByType(
           "*-e",
           "twintubblower:furnace/twintubmpblower",
-          rotateY: 90
+          rotateY: 270
         )
         .ShapeByType(
           "*-s",
@@ -77,7 +77,7 @@ public partial class BlockTwinTubMPBlower
         .ShapeByType(
           "*-w",
           "twintubblower:furnace/twintubmpblower",
-          rotateY: 270
+          rotateY: 90
         )
         .CreativeCommon("*-n")
         .FillerOffsets(
@@ -106,18 +106,13 @@ public partial class BlockTwinTubMPBlower
   public JsonObject? FillerOffsets => Attributes?["fillerOffsets"];
 
   /// <summary>
-  /// Rotation applied to the north-frame footprint to reach the placed orientation. Read from the
-  /// pipe-fitting <c>orientation</c> variant (n 0, e 90, s 180, w 270), matching the per-orientation
-  /// shape rotations in the definition above. The block entity rotates its MP-port lookup by the same
-  /// angle, so the two can never disagree.
+  /// Rotation applied to the north-frame footprint to reach the placed orientation. The repository's
+  /// standard convention (<see cref="ExOrientation.AngleFromSide"/>: n 0, w 90, s 180, e 270), matching
+  /// the per-orientation shape rotations in the definition above. The block entity rotates its MP-port
+  /// lookup by the same angle, so the two can never disagree.
   /// </summary>
   public int StructureAngle =>
-    Variant?["orientation"] switch {
-      "e" => 90,
-      "s" => 180,
-      "w" => 270,
-      _ => 0,
-    };
+    ExOrientation.AngleFromSide(Variant?["orientation"]);
 
   private List<FillerCell> FootprintCells(BlockPos pos) =>
     StructureFillers.FootprintCells(this, pos, StructureAngle);
