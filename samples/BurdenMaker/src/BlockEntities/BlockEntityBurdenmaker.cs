@@ -205,10 +205,16 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
   private const float BasinBrimY = 14f / 16f;
 
   private static readonly AssetLocation OreTexture = new(
-    "game:textures/block/stone/gravel/basalt.png"
+    "game:textures/item/resource/crushed/hematite.png"
   );
   private static readonly AssetLocation FluxTexture = new(
-    "game:textures/block/stone/sand/chalk.png"
+    "game:textures/item/resource/quicklime.png"
+  );
+
+  /// <summary>The finished burden's surface, taken from <see cref="ItemBurden"/>'s own model texture
+  /// rather than a fresh pick, so the basin reads as the same material the item shows in hand.</summary>
+  private static readonly AssetLocation BurdenTexture = new(
+    "game:textures/block/coal/orecoalmix.png"
   );
 
   private OreSurfaceRenderer? _oreSurface;
@@ -245,7 +251,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
       rotationY,
       BasinFloorY,
       BasinBrimY,
-      OreTexture
+      BurdenTexture
     );
 
     capi.Event.RegisterRenderer(
