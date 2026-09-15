@@ -289,13 +289,19 @@ public class StructureFillerBehaviorTests {
   public void A_one_sided_port_lets_power_out_by_its_entry_only() {
     var (world, filler) = NewWorld();
     var pos = new BlockPos(0, 0, 0);
-    var be = new BlockEntityStructureFiller { Principal = new BlockPos(0, 0, -2) };
+    var be = new BlockEntityStructureFiller {
+      Principal = new BlockPos(0, 0, -2),
+    };
     world.Place(pos, filler, be);
     world.Initialize(be);
     var through = new BEBehaviorMPFillerPort(be);
     through.ConfigureFromFiller(be.Principal, BlockFacing.WEST, null);
     var oneSided = new BEBehaviorMPFillerPort(be);
-    oneSided.ConfigureFromFiller(be.Principal, BlockFacing.WEST, JsonObject.FromJson("{ \"through\": false }"));
+    oneSided.ConfigureFromFiller(
+      be.Principal,
+      BlockFacing.WEST,
+      JsonObject.FromJson("{ \"through\": false }")
+    );
     var entry = new MechPowerPath(BlockFacing.WEST, 1f, pos, false);
 
     Assert.Equal(2, through.GetMechPowerExits(entry).Length);
@@ -320,7 +326,11 @@ public class StructureFillerBehaviorTests {
       ),
     ];
     var port = new BEBehaviorMPFillerPort(be);
-    port.ConfigureFromFiller(be.Principal, BlockFacing.WEST, JsonObject.FromJson("{ \"through\": false }"));
+    port.ConfigureFromFiller(
+      be.Principal,
+      BlockFacing.WEST,
+      JsonObject.FromJson("{ \"through\": false }")
+    );
     be.Behaviors.Add(port);
 
     Assert.False(port.Through);

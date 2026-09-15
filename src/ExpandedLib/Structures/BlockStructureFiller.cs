@@ -105,7 +105,10 @@ public partial class BlockStructureFiller
         b.ConnectorFace != null
         && (
           b.ConnectorFace == face
-          || (b.ConnectorFace.Opposite == face && (b.Properties?["through"].AsBool(true) ?? true))
+          || (
+            b.ConnectorFace.Opposite == face
+            && (b.Properties?["through"].AsBool(true) ?? true)
+          )
         )
       )
         return true;
