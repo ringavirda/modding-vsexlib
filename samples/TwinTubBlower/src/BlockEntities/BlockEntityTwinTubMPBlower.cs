@@ -108,9 +108,10 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
 
   /// <summary>
   /// Samples the axle and pushes one second of air into the network, scaled by
-  /// <see cref="SpeedFraction"/>. Marks dirty only when the sampled speed changed. A working line
-  /// blows with the bellows' note; a line with nowhere for the air to go blows it off at the outlet
-  /// instead.
+  /// <see cref="SpeedFraction"/>. Marks dirty only when the sampled speed changed. The bellows' note
+  /// plays whenever they are working, whether or not the line had room for the air - several blowers
+  /// sharing a line at its pressure ceiling all move, so all must be heard; a line with nowhere for the
+  /// air to go blows it off at the outlet as well.
   /// </summary>
   private void OnBlowTick(float dt) {
     float speed = PortSpeed();
@@ -121,17 +122,19 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
     if (SpeedFraction(speed) <= 0f)
       return;
 
-    if (ProduceAir(speed, dt) > 0f)
-      ExSounds.PlayThrottled(
-        Api,
-        Pos,
-        ExSounds.Bellows,
-        ref _lastBellowsSoundMs,
-        BellowsSoundIntervalMs,
-        0.5f,
-        16f
-      );
-    else if (Block is Blocks.BlockTwinTubMPBlower block)
+    ExSounds.PlayThrottled(
+      Api,
+      Pos,
+      ExSounds.Bellows,
+      ref _lastBellowsSoundMs,
+      BellowsSoundIntervalMs,
+      0.5f,
+      16f
+    );
+    if (
+      ProduceAir(speed, dt) <= 0f
+      && Block is Blocks.BlockTwinTubMPBlower block
+    )
       ExParticles.GasLeak(Api.World, block.OutletCell(Pos), block.OutletFace);
   }
 
