@@ -7,8 +7,20 @@ see the git history.
 
 ## [Unreleased]
 
+### Added
+
+- **Two more samples** (`samples/PlatedPipes`, `samples/SmokeStack`): the network example, one pipe
+  tier with its own burst pressure, throughput and joint registered from config, and the multiblock
+  example, a 72-cell chimney that draws gas off the network it is plumbed into and vents it as a
+  plume. With the blower and the burden maker they are the four mods the starter ships.
+
 ### Fixed
 
+- **The twin-tub blower sample** keeps the facing the player gave it (north and south no longer come
+  out alike), cannot be wrench-rotated, wears the aligned shape, and moves, sounds and vents air at
+  its outlet while an axle drives it.
+- **The burden maker sample** wears its polished shape, poses the lid on the client when the gate
+  opens, and draws the ore, flux and burden levels in its hoppers and basin.
 - A `shape.selectiveElements` list now reaches every `shapebytype` entry that names none, so a block
   or item that keys its shape by variant renders only the elements its definition selects in the game,
   as it already did in the wiki.
