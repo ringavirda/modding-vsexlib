@@ -56,9 +56,9 @@ public static class ExBlockNames {
   /// Decorates <paramref name="baseName"/> with the recognised variant values of
   /// <paramref name="block"/>. Metal materials and rocks resolve through the vanilla
   /// <c>material-*</c> and <c>rock-*</c> lang keys, brick variants through
-  /// <c>{domain}:brickname-*</c> keys shipped by the block's own mod, then every group added
-  /// through <see cref="AddVariantQualifier"/> in registration order. Blocks with none of these
-  /// variants are returned unchanged.
+  /// <c>{domain}:brickname-*</c>, falling back to exlib's own <c>exlib:brickname-*</c> when the
+  /// block's mod ships none, then every group added through <see cref="AddVariantQualifier"/> in
+  /// registration order. Blocks with none of these variants are returned unchanged.
   /// </summary>
   public static string Decorate(Block block, string baseName) {
     string name = baseName;
@@ -74,7 +74,10 @@ public static class ExBlockNames {
     else if (brick != null)
       name = AppendQualifier(
         name,
-        Lang.Get(block.Code.Domain + ":brickname-" + brick)
+        Lang.GetWithFallback(
+          block.Code.Domain + ":brickname-" + brick,
+          "exlib:brickname-" + brick
+        )
       );
 
     foreach ((string group, string langPrefix) in _qualifiers) {
