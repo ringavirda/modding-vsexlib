@@ -4,11 +4,6 @@
   "blockdesc-blower-twintubblower*": "Mechanically driven twin-tub bellows that supplies cold blast air.",
 
   "twintubblower:blower-info-idle": "Bellows idle - no axle turning",
-  "twintubblower:blower-info-axle-noport": "Axle: the port cell is missing",
-  "twintubblower:blower-info-axle-uncoupled": "Axle: no axle coupled to the port",
-  "twintubblower:blower-info-axle-coupled": "Axle: coupled, turning at {0}",
-  "twintubblower:blower-info-built": "(built, stage {0})",
-  "twintubblower:blower-info-unbuilt": "(construction incomplete, stage {0})",
   "twintubblower:blower-info-blowing": "Blowing {0} ({1}% of rated output)",
 
   "twintubblower:rcc-ingredient-beam": "Support Beams",

@@ -41,20 +41,6 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   [Persist("blowerSpeed")]
   private float _lastSpeed;
 
-  /// <summary>The port cell as the server last saw it, for the readout: 0 no port hosted, 1 a port
-  /// with no axle network, 2 a port on a turning network.</summary>
-  [Persist("axleState")]
-  private int _axleState;
-
-  /// <summary>Whether the server saw every construction stage complete on its last tick.</summary>
-  [Persist("builtOnServer")]
-  private bool _builtOnServer;
-
-  /// <summary>The construction stage the server's behaviour reports, as "completed/total", or "-"
-  /// when the animator found no construction behaviour.</summary>
-  [Persist("stageOnServer")]
-  private string _stageOnServer = "-";
-
   private long _blowTickId;
   private long _lastBellowsSoundMs;
 
@@ -137,24 +123,7 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   /// coupled to the port cell of an unbuilt blower turns nothing.
   /// </summary>
   private void OnBlowTick(float dt) {
-    int axleState = AxleState();
-    bool built = IsConstructed;
-    // Vanilla's own counters, read directly: the sample compiles against the released framework
-    // package.
-    string stage = _animator?.Rcc is { } rcc
-      ? $"{rcc.CurrentCompletedStage}/{rcc.Stages}"
-      : "-";
-    if (
-      axleState != _axleState
-      || built != _builtOnServer
-      || stage != _stageOnServer
-    ) {
-      _axleState = axleState;
-      _builtOnServer = built;
-      _stageOnServer = stage;
-      MarkDirty();
-    }
-    if (!built)
+    if (!IsConstructed)
       return;
 
     float speed = PortSpeed();
@@ -320,7 +289,6 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
     // Pipe readout first (medium, throughput, pressure), then the bellows' own state.
     base.GetBlockInfo(forPlayer, dsc);
 
-    dsc.AppendLine(AxleReadout());
     float fraction = SpeedFraction(_lastSpeed);
     dsc.AppendLine(
       fraction <= 0f
@@ -333,46 +301,5 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
           (int)(fraction * 100f)
         )
     );
-  }
-
-  /// <summary>
-  /// What the port cell reports: no port hosted, a port with no axle network, or the network's
-  /// speed. Read on the client from its own copy of the mechanical network, the same one the
-  /// axle renders from.
-  /// </summary>
-  public string AxleReadout() {
-    string axle = _axleState switch {
-      0 => Lang.Get("twintubblower:blower-info-axle-noport"),
-      1 => Lang.Get("twintubblower:blower-info-axle-uncoupled"),
-      _ => Lang.Get(
-        "twintubblower:blower-info-axle-coupled",
-        _lastSpeed.ToString("0.00")
-      ),
-    };
-    return axle
-      + " "
-      + Lang.Get(
-        _builtOnServer
-          ? "twintubblower:blower-info-built"
-          : "twintubblower:blower-info-unbuilt",
-        _stageOnServer
-      );
-  }
-
-  /// <summary>The port cell's state on this side: 0 no port hosted, 1 no axle network, 2 turning.</summary>
-  private int AxleState() {
-    BlockPos cell = ExOrientation.GlobalPos(
-      Pos,
-      MpPortCell.X,
-      MpPortCell.Y,
-      MpPortCell.Z,
-      Angle
-    );
-    var port = Api
-      ?.World?.BlockAccessor?.GetBlockEntity(cell)
-      ?.GetBehavior<BEBehaviorMPFillerPort>();
-    if (port == null)
-      return 0;
-    return port is { IsTurning: true } ? 2 : 1;
   }
 }
