@@ -25,6 +25,10 @@ public class BurdenMakerConfig : IExVersionedConfig {
   [ExConfigRange(1, 100_000)]
   public int BurdenmakerBunkerCapacity { get; set; } = 1152;
 
+  /// <summary>Seconds a full gate-open batch takes to drain into the basin; 1 to 60.</summary>
+  [ExConfigRange(1, 60)]
+  public int BurdenmakerDrainSeconds { get; set; } = 8;
+
   /// <summary>
   /// Named burden grades, matched by flux band; fractions are 0..1 of the total mix. The classifier
   /// returns the first profile whose band contains the mix's flux fraction, so the list is scanned in

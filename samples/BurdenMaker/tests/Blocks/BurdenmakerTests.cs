@@ -11,11 +11,20 @@ using Xunit;
 namespace BurdenMaker.Tests;
 
 /// <summary>
-/// The burdenmaker's two hoppers, its shared basin and the one gate between them. Crate semantics:
-/// materials go in and come out freely, with no batch state to get stuck in. Each hopper takes only its
-/// own material, the gate makes one stamped batch, and everything loaded comes back on break.
+/// The burdenmaker's two hoppers, its shared basin and the one gate between them. Crate semantics for
+/// loading and taking: materials go in and come out freely. The gate itself carries batch state -
+/// opening it starts a timed drain of one stamped mix into the basin - covered in its own region below.
+/// Each hopper takes only its own material, and everything loaded or drained comes back on break.
 /// </summary>
 public class BurdenmakerTests {
+  /// <summary>
+  /// Long enough to fully drain any batch this suite loads: the drain always finishes within
+  /// <see cref="BurdenMakerValues.BurdenmakerDrainSeconds"/> of sim time (a bigger batch drains faster
+  /// per tick, not slower - see <c>BlockEntityBurdenmaker.StartDrain</c>), so one second of margin covers
+  /// rounding at the tail.
+  /// </summary>
+  private const int FullDrainMs = 9000;
+
   private static (
     TestWorld world,
     BlockEntityBurdenmaker be,
@@ -139,7 +148,7 @@ public class BurdenmakerTests {
   public void Every_tank_can_actually_reach_its_configured_capacity() {
     // The same check for the other two tanks: the flux hopper and the basin have the same failure mode
     // and no other case fills them to the brim.
-    var (_, be, ore, lime) = NewMachine();
+    var (world, be, ore, lime) = NewMachine();
 
     for (
       int i = 0;
@@ -164,6 +173,7 @@ public class BurdenmakerTests {
 
     // Gate the lot through: ore + flux must fit the basin, or a legal full load would be destroyed.
     Assert.True(be.ToggleGate(out _));
+    world.AdvanceBlockEntityTime(FullDrainMs);
     Assert.Equal(
       BurdenMakerValues.BurdenmakerOreCapacity
         + BurdenMakerValues.BurdenmakerFluxCapacity,
@@ -177,18 +187,91 @@ public class BurdenmakerTests {
   #region The gate
 
   [Fact]
-  public void Opening_the_gate_empties_both_hoppers_into_one_stamped_batch() {
+  public void Opening_the_gate_starts_a_drain_rather_than_moving_anything_at_once() {
     var (_, be, ore, lime) = NewMachine();
     be.TryLoadOre(Slot(ore, 90), wholeStack: true);
     be.TryLoadFlux(Slot(lime, 10), wholeStack: true);
 
     Assert.True(be.ToggleGate(out string? error));
+
     Assert.Null(error);
+    Assert.True(be.GateOpen);
+    // Nothing has moved yet - the tick that moves it has not fired.
+    Assert.Equal(90, be.OreUnits);
+    Assert.Equal(10, be.FluxUnits);
+    Assert.Equal(0, be.BurdenUnits);
+  }
+
+  [Fact]
+  public void The_drain_falls_in_the_hoppers_and_rises_in_the_basin_at_the_stored_mix() {
+    var (world, be, ore, lime) = NewMachine();
+    be.TryLoadOre(Slot(ore, 90), wholeStack: true);
+    be.TryLoadFlux(Slot(lime, 10), wholeStack: true);
+    Assert.True(be.ToggleGate(out _));
+
+    int lastHoppers = be.OreUnits + be.FluxUnits;
+    int lastBasin = be.BurdenUnits;
+    for (int i = 0; i < 20; i++) {
+      world.AdvanceBlockEntityTime(250);
+      int hoppers = be.OreUnits + be.FluxUnits;
+      int basin = be.BurdenUnits;
+
+      Assert.True(hoppers <= lastHoppers);
+      Assert.True(basin >= lastBasin);
+      // Everything the hoppers lost, the basin gained - nothing vanishes mid-drain.
+      Assert.Equal(100, hoppers + basin);
+
+      foreach (ItemSlot slot in be.Inventory)
+        if (!slot.Empty && Burden.Is(slot.Itemstack)) {
+          BurdenMix stamp = Burden.Read(slot.Itemstack);
+          Assert.Equal(0.90f, stamp.IronFrac, 2);
+          Assert.Equal(0.10f, stamp.FluxFrac, 2);
+        }
+
+      lastHoppers = hoppers;
+      lastBasin = basin;
+    }
+  }
+
+  [Fact]
+  public void Closing_the_gate_stops_the_drain_and_reopening_resumes_it() {
+    var (world, be, ore, lime) = NewMachine();
+    be.TryLoadOre(Slot(ore, 60), wholeStack: true);
+    be.TryLoadFlux(Slot(lime, 40), wholeStack: true);
+    Assert.True(be.ToggleGate(out _));
+
+    world.AdvanceBlockEntityTime(1000); // some of the batch has moved
+    int hoppersAtClose = be.OreUnits + be.FluxUnits;
+    int basinAtClose = be.BurdenUnits;
+    Assert.True(hoppersAtClose < 100); // the premise: the drain really did start
+
+    Assert.True(be.ToggleGate(out _)); // close
+    world.AdvanceBlockEntityTime(2000); // no listener should be running now
+
+    Assert.Equal(hoppersAtClose, be.OreUnits + be.FluxUnits);
+    Assert.Equal(basinAtClose, be.BurdenUnits);
+
+    Assert.True(be.ToggleGate(out string? error)); // reopen - resumes, does not refuse
+    Assert.Null(error);
+    world.AdvanceBlockEntityTime(FullDrainMs);
 
     Assert.Equal(0, be.OreUnits);
     Assert.Equal(0, be.FluxUnits);
     Assert.Equal(100, be.BurdenUnits);
-    Assert.True(be.GateOpen);
+  }
+
+  [Fact]
+  public void A_full_drain_leaves_the_hoppers_empty_and_the_basin_holding_every_unit() {
+    var (world, be, ore, lime) = NewMachine();
+    be.TryLoadOre(Slot(ore, 90), wholeStack: true);
+    be.TryLoadFlux(Slot(lime, 10), wholeStack: true);
+    Assert.True(be.ToggleGate(out _));
+
+    world.AdvanceBlockEntityTime(FullDrainMs);
+
+    Assert.Equal(0, be.OreUnits);
+    Assert.Equal(0, be.FluxUnits);
+    Assert.Equal(100, be.BurdenUnits);
 
     BurdenMix mix = Burden.Read(be.TryWithdrawBurden());
     Assert.Equal(0.90f, mix.Iron, 3);
@@ -206,10 +289,11 @@ public class BurdenmakerTests {
 
   [Fact]
   public void The_gate_refuses_while_the_basin_still_holds_a_batch() {
-    var (_, be, ore, lime) = NewMachine();
+    var (world, be, ore, lime) = NewMachine();
     be.TryLoadOre(Slot(ore, 50), wholeStack: true);
     be.TryLoadFlux(Slot(lime, 50), wholeStack: true);
     be.ToggleGate(out _);
+    world.AdvanceBlockEntityTime(FullDrainMs); // batch fully lands in the basin
     be.ToggleGate(out _); // shut it again; the batch stays in the basin
 
     be.TryLoadOre(Slot(ore, 30), wholeStack: true);
@@ -224,11 +308,12 @@ public class BurdenmakerTests {
   public void A_second_batch_carries_only_its_own_stamp() {
     // First batch 50:50, second 90:10. A basin that pooled the two would return their average on the
     // second read.
-    var (_, be, ore, lime) = NewMachine();
+    var (world, be, ore, lime) = NewMachine();
 
     be.TryLoadOre(Slot(ore, 50), wholeStack: true);
     be.TryLoadFlux(Slot(lime, 50), wholeStack: true);
     be.ToggleGate(out _);
+    world.AdvanceBlockEntityTime(FullDrainMs);
     BurdenMix first = Burden.Read(be.TryWithdrawBurden());
     while (be.BurdenUnits > 0)
       be.TryWithdrawBurden();
@@ -237,6 +322,7 @@ public class BurdenmakerTests {
     be.TryLoadOre(Slot(ore, 90), wholeStack: true);
     be.TryLoadFlux(Slot(lime, 10), wholeStack: true);
     Assert.True(be.ToggleGate(out _));
+    world.AdvanceBlockEntityTime(FullDrainMs);
     BurdenMix second = Burden.Read(be.TryWithdrawBurden());
 
     Assert.Equal(0.50f, first.Iron, 3);
@@ -271,11 +357,12 @@ public class BurdenmakerTests {
   public void Breaking_it_returns_the_ore_the_flux_AND_the_burden() {
     // Asserted through the inventory the container base spills, so it cannot pass by virtue of a custom
     // GetDrops that a later edit removes.
-    var (_, be, ore, lime) = NewMachine();
+    var (world, be, ore, lime) = NewMachine();
 
     be.TryLoadOre(Slot(ore, 60), wholeStack: true);
     be.TryLoadFlux(Slot(lime, 20), wholeStack: true);
     be.ToggleGate(out _);
+    world.AdvanceBlockEntityTime(FullDrainMs);
     be.ToggleGate(out _);
     be.TryLoadOre(Slot(ore, 45), wholeStack: true);
     be.TryLoadFlux(Slot(lime, 15), wholeStack: true);
@@ -303,7 +390,7 @@ public class BurdenmakerTests {
 
   [Fact]
   public void Each_fraction_is_zero_empty_and_one_at_capacity() {
-    var (_, be, ore, lime) = NewMachine();
+    var (world, be, ore, lime) = NewMachine();
     Assert.Equal(0f, be.OreFill);
     Assert.Equal(0f, be.FluxFill);
     Assert.Equal(0f, be.BurdenFill);
@@ -320,6 +407,7 @@ public class BurdenmakerTests {
     Assert.Equal(1f, be.FluxFill);
 
     be.ToggleGate(out _);
+    world.AdvanceBlockEntityTime(FullDrainMs);
     Assert.Equal(1f, be.BurdenFill);
   }
 

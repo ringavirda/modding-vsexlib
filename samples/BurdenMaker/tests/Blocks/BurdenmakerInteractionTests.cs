@@ -30,6 +30,10 @@ public class BurdenmakerInteractionTests {
   /// <summary>One deposit, small enough to fit one stack and every tank.</summary>
   private const int Load = 20;
 
+  /// <summary>Long enough to fully drain any batch this suite loads (see the constant of the same name
+  /// in <see cref="BurdenmakerTests"/>).</summary>
+  private const int FullDrainMs = 9000;
+
   private static readonly BlockPos At = new(64, 110, 64);
 
   private static readonly string[] Sides = ["n", "e", "s", "w"];
@@ -338,6 +342,7 @@ public class BurdenmakerInteractionTests {
 
     Hands gate = PlayerWith(null);
     Click(rig, GateCell, gate);
+    rig.World.AdvanceBlockEntityTime(FullDrainMs);
 
     Assert.True(rig.Be.GateOpen);
     Assert.Equal(0, rig.Be.OreUnits);
@@ -364,7 +369,8 @@ public class BurdenmakerInteractionTests {
     // than emitted as a constant.
     Rig rig = NewRig();
     Fill(rig, ore: 30, flux: 10);
-    Assert.True(rig.Be.ToggleGate(out _)); // batch made
+    Assert.True(rig.Be.ToggleGate(out _)); // batch started
+    rig.World.AdvanceBlockEntityTime(FullDrainMs); // ...and fully drained
     Assert.True(rig.Be.ToggleGate(out _)); // lid shut again, basin still full
     Fill(rig, ore: 5, flux: 0);
 
@@ -386,6 +392,7 @@ public class BurdenmakerInteractionTests {
     Rig rig = NewRig("s");
     Fill(rig, ore: 30, flux: 10);
     Assert.True(rig.Be.ToggleGate(out _));
+    rig.World.AdvanceBlockEntityTime(FullDrainMs);
 
     Hands hands = PlayerWith(new ItemStack(rig.Ore, 16), ctrl: true);
     Click(rig, FarBasinCell, hands);
@@ -403,6 +410,7 @@ public class BurdenmakerInteractionTests {
     Rig rig = NewRig();
     Fill(rig, ore: 30, flux: 10);
     Assert.True(rig.Be.ToggleGate(out _));
+    rig.World.AdvanceBlockEntityTime(FullDrainMs);
 
     Hands hands = PlayerWith(null, inventoryFull: true);
     Click(rig, BasinCell, hands);

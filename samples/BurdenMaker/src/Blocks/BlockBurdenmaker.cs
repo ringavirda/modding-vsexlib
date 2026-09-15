@@ -13,10 +13,11 @@ namespace BurdenMaker.Blocks;
 
 /// <summary>
 /// A 9-cell mega-block stock house. Two hoppers (ore and flux) sit over a shared bunker basin with one
-/// sliding gate between them; opening the gate drops both hoppers together into the basin, where the
-/// burden collects until the player takes it out. Proportioning is a single ore-to-flux ratio, so there
-/// is no batch, no lock and no cycle. The machine has no mechanism, and therefore no MP port and no
-/// special construction ingredient, which keeps it buildable stand-alone.
+/// sliding gate between them; opening the gate starts both hoppers draining together into the basin over
+/// several seconds, where the burden collects until the player takes it out. Proportioning is a single
+/// ore-to-flux ratio fixed for the whole batch, so there is no lock and no cycle beyond the one drain.
+/// The machine has no mechanism, and therefore no MP port and no special construction ingredient, which
+/// keeps it buildable stand-alone.
 /// </summary>
 [BlockRegister]
 public partial class BlockBurdenmaker

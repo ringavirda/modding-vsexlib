@@ -11,6 +11,7 @@
 
   "burdenmaker:burdenmaker-loaded": "Ore: {0} / {1}    Flux: {2} / {3}",
   "burdenmaker:burdenmaker-willmake": "Would make burden at {0}% flux - {1}",
+  "burdenmaker:burdenmaker-draining": "Draining: {0}%",
   "burdenmaker:burdenmaker-stored": "Burden in the basin: {0}",
   "burdenmaker:burdenmaker-empty": "The basin is empty.",
   "burdenmaker:burdenmaker-help-addore": "Add one crushed iron ore",
