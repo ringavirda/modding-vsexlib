@@ -31,12 +31,19 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   /// </summary>
   private static readonly Vec3i MpPortCell = new(0, 1, 0);
 
+  /// <summary>
+  /// Shortest interval between bellows-note plays, at least as long as the "bellows" sample itself
+  /// (measured ~1.41 s at 44.1 kHz), so a run of blow ticks never overlaps or cuts off the clip.
+  /// </summary>
+  private const long BellowsSoundIntervalMs = 1500;
+
   // Axle speed sampled on the last blow tick. Written server-side and serialized because the client
   // cannot read the port behaviour's live state and needs it for the HUD.
   [Persist("blowerSpeed")]
   private float _lastSpeed;
 
   private long _blowTickId;
+  private long _lastBellowsSoundMs;
 
   private ToggleAnimator? _anim;
 
@@ -116,7 +123,15 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
       return;
 
     if (ProduceAir(speed, dt) > 0f)
-      ExSounds.PlayLocal(Api.World, Pos, ExSounds.Bellows, 0.5f, 16f);
+      ExSounds.PlayThrottled(
+        Api,
+        Pos,
+        ExSounds.Bellows,
+        ref _lastBellowsSoundMs,
+        BellowsSoundIntervalMs,
+        0.5f,
+        16f
+      );
     else if (
       (Block as BlockNetworkNode)?.GetConnectorFaces() is { Length: > 0 } faces
     )
