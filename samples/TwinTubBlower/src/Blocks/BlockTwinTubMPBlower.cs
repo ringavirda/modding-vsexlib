@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ExpandedLib.Definitions;
+using ExpandedLib.Helpers;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
@@ -120,6 +121,48 @@ public partial class BlockTwinTubMPBlower
   private List<FillerCell> FootprintCells(BlockPos pos) =>
     StructureFillers.FootprintCells(this, pos, StructureAngle);
 
+  /// <summary>
+  /// Places the blower facing the way the player is looking and leaves it there: the mega-block's
+  /// footprint is fixed to that facing at placement, so the network re-orienting it later
+  /// (<see cref="BlockNetworkNode.RecalculateAndSyncOrientations"/>) would desync the fillers from the
+  /// shape. Resolves the oriented variant first, the way
+  /// <see cref="ExpandedLib.Blocks.BlockBehaviorExOrientable"/>'s own player-facing placement does, and
+  /// runs the footprint check against THAT variant's <see cref="StructureAngle"/> rather than the held
+  /// stack's, since the two can differ (the stack is the base "*-n" state read off the toolbar).
+  /// </summary>
+  public override bool TryPlaceBlock(
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    ItemStack itemstack,
+    BlockSelection blockSel,
+    ref string failureCode
+  ) {
+    if (!world.BlockAccessor.GetBlock(blockSel.Position).IsReplacableBy(this)) {
+      failureCode = "notreplaceable";
+      return false;
+    }
+
+    string token = ExOrientation.TokenOf(
+      SuggestedHVOrientation(byPlayer, blockSel)[0],
+      asLetter: true
+    );
+    if (
+      world.BlockAccessor.GetBlock(CodeWithVariant("orientation", token))
+      is not BlockTwinTubMPBlower oriented
+    )
+      return false;
+
+    if (!oriented.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+      return false;
+
+    world.BlockAccessor.SetBlock(
+      oriented.BlockId,
+      blockSel.Position,
+      itemstack
+    );
+    return true;
+  }
+
   public override bool CanPlaceBlock(
     IWorldAccessor world,
     IPlayer byPlayer,
@@ -153,6 +196,41 @@ public partial class BlockTwinTubMPBlower
     StructureFillers.RemoveFillers(world, pos, FootprintCells(pos));
     base.OnBlockRemoved(world, pos);
   }
+
+  #endregion
+
+  #region Orientation lock
+
+  /// <summary>
+  /// Pins this block's own orientation choice to whatever it is already wearing, so a neighbour's
+  /// wrench rotation can never re-pick it. <c>BlockNetworkNode.RecalculateAndSyncOrientations</c> reads
+  /// this - via the polymorphic <c>netBlock</c> it fetches at the target position, not via the caller's
+  /// own type - both when it runs against this block directly and when a wrenched neighbour runs it
+  /// against this one's position, so pinning here closes both paths without touching shared code.
+  /// </summary>
+  protected override string[] ComputeValidOrientations(
+    IBlockAccessor blockAccessor,
+    BlockPos pos,
+    string type,
+    string? currentOrientation
+  ) => Orientation != null ? [Orientation] : [];
+
+  /// <summary>
+  /// No-op: the blower keeps the facing the player gave it at placement, never the one the network's
+  /// connector scan would pick. The base implementation would exchange the block for whatever
+  /// <see cref="ComputeValidOrientations"/> answers on every neighbour change; pinned above, that
+  /// answer is always the current orientation, but this override also stops the wasted
+  /// recomputation and block-entity sync on every call this instance receives directly.
+  /// </summary>
+  public override void RecalculateAndSyncOrientations(
+    IWorldAccessor world,
+    BlockPos pos
+  ) { }
+
+  /// <summary>The blower is never wrench-rotatable: its footprint is fixed to the facing it was
+  /// placed with.</summary>
+  protected override bool CanWrenchRotate(IWorldAccessor world, BlockPos pos) =>
+    false;
 
   #endregion
 }
