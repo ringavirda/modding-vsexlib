@@ -50,6 +50,11 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   [Persist("builtOnServer")]
   private bool _builtOnServer;
 
+  /// <summary>The construction stage the server's behaviour reports, as "completed/total", or "-"
+  /// when the animator found no construction behaviour.</summary>
+  [Persist("stageOnServer")]
+  private string _stageOnServer = "-";
+
   private long _blowTickId;
   private long _lastBellowsSoundMs;
 
@@ -134,9 +139,14 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   private void OnBlowTick(float dt) {
     int axleState = AxleState();
     bool built = IsConstructed;
-    if (axleState != _axleState || built != _builtOnServer) {
+    string stage =
+      _animator?.Rcc is { } rcc
+        ? $"{rcc.CompletedStage}/{rcc.StageCount}"
+        : "-";
+    if (axleState != _axleState || built != _builtOnServer || stage != _stageOnServer) {
       _axleState = axleState;
       _builtOnServer = built;
+      _stageOnServer = stage;
       MarkDirty();
     }
     if (!built)
@@ -331,7 +341,8 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
       + Lang.Get(
         _builtOnServer
           ? "twintubblower:blower-info-built"
-          : "twintubblower:blower-info-unbuilt"
+          : "twintubblower:blower-info-unbuilt",
+        _stageOnServer
       );
   }
 

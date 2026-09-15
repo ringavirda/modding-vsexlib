@@ -98,6 +98,13 @@ public class BEBehaviorMPFillerPort(BlockEntity blockentity)
 
   public override float GetResistance() => _resistance;
 
+  /// <summary>
+  /// The faces power leaves this port by: both ends of the axis for a through port, the entry alone
+  /// for a one-sided one, so a one-sided port's network never spreads out of the machine's far side.
+  /// </summary>
+  public override MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir) =>
+    _through ? base.GetMechPowerExits(entryDir) : [entryDir];
+
   public override void SetOrientations() {
     OutFacingForNetworkDiscovery = _face;
     // Signed from the port's own outward normal, not per axis: unlike a two-ended axle body, a filler

@@ -56,6 +56,13 @@ public class ExRightClickConstructable(BlockEntity blockentity)
   /// <summary>Ready once construction is complete, or always when <see cref="GatesProduction"/> opts out.</summary>
   public bool IsReadyToProduce => !GatesProduction || IsComplete;
 
+  /// <summary>Stages completed so far, counting the free first stage; equals <see cref="StageCount"/>
+  /// once the last ingredient stage is done.</summary>
+  public int CompletedStage => rcc.CurrentCompletedStage + 1;
+
+  /// <summary>How many stages the construction declares.</summary>
+  public int StageCount => rcc.Stages.Length;
+
   /// <summary>Stops the production tick while unfinished, unless <see cref="GatesProduction"/> opts out.</summary>
   public bool StopsProductionWhenNotReady => GatesProduction;
 
@@ -99,6 +106,13 @@ public class ExRightClickConstructable
 
   public CompositeShape shape { get; protected set; }
   public bool IsComplete => rcc.CurrentCompletedStage == rcc.Stages.Length - 1;
+
+  /// <summary>Stages completed so far, counting the free first stage; equals <see cref="StageCount"/>
+  /// once the last ingredient stage is done.</summary>
+  public int CompletedStage => rcc.CurrentCompletedStage + 1;
+
+  /// <summary>How many stages the construction declares.</summary>
+  public int StageCount => rcc.Stages.Length;
   public event Action<CompositeShape>? OnShapeChanged;
 
   /// <summary>Whether construction gates production, read from the <c>gatesProduction</c> JSON property
