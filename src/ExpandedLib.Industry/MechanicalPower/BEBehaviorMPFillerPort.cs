@@ -27,6 +27,7 @@ public class BEBehaviorMPFillerPort(BlockEntity blockentity)
 
   private BlockFacing _face = BlockFacing.NORTH;
   private float _resistance = DefaultResistance;
+  private bool _through = true;
 
   /// <summary>The face this port couples an axle on (already in the placed orientation).</summary>
   public BlockFacing PortFacing => _face;
@@ -67,9 +68,19 @@ public class BEBehaviorMPFillerPort(BlockEntity blockentity)
   ) {
     if (connectorFace != null)
       _face = connectorFace;
-    if (properties != null)
+    if (properties != null) {
       _resistance = properties["resistance"].AsFloat(DefaultResistance);
+      _through = properties["through"].AsBool(true);
+    }
   }
+
+  /// <summary>
+  /// Whether the port also couples the face opposite its own, so a row of ports along one axis
+  /// joins into one line an axle drives from either end (the default). A machine that takes power
+  /// on one side only declares <c>through: false</c> in the port's filler properties, and the cell
+  /// then accepts an axle on the port face alone.
+  /// </summary>
+  public bool Through => _through;
 
   public override void Initialize(ICoreAPI api, JsonObject properties) {
     base.Initialize(api, properties);
@@ -77,7 +88,7 @@ public class BEBehaviorMPFillerPort(BlockEntity blockentity)
     // The base seeds only the single OutFacingForNetworkDiscovery face. Couple the opposite end of the
     // axis too, so a row of ports merges into one network and power passes straight through: an axle
     // on either side drives the same line.
-    if (api.Side == EnumAppSide.Server && OutFacingForNetworkDiscovery != null)
+    if (_through && api.Side == EnumAppSide.Server && OutFacingForNetworkDiscovery != null)
       tryConnect(OutFacingForNetworkDiscovery.Opposite);
   }
 

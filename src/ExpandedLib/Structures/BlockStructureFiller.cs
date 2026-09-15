@@ -98,12 +98,15 @@ public partial class BlockStructureFiller
     )
       return false;
     // A mechanical axle couples along an axis, so a port declared on one face accepts a connection
-    // on that face or its opposite (both ends of the axle line), letting an axle run straight through
-    // the cell and attach from either side.
+    // on that face or, unless its properties say `through: false`, its opposite (both ends of the
+    // axle line), letting an axle run straight through the cell and attach from either side.
     foreach (FillerBehavior b in be.HostedBehaviors)
       if (
         b.ConnectorFace != null
-        && (b.ConnectorFace == face || b.ConnectorFace.Opposite == face)
+        && (
+          b.ConnectorFace == face
+          || (b.ConnectorFace.Opposite == face && (b.Properties?["through"].AsBool(true) ?? true))
+        )
       )
         return true;
     return false;

@@ -286,6 +286,33 @@ public class StructureFillerBehaviorTests {
   #region Mechanical-power connector glue
 
   [Fact]
+  public void A_one_sided_port_accepts_an_axle_on_its_own_face_only() {
+    var (world, filler) = NewWorld();
+    var pos = new BlockPos(0, 0, 0);
+    var be = new BlockEntityStructureFiller {
+      Principal = new BlockPos(0, 0, -2),
+    };
+    world.Place(pos, filler, be);
+    world.Initialize(be);
+    be.HostedBehaviors =
+    [
+      new FillerBehavior(
+        "exlib.BEBehaviorMPFillerPort",
+        BlockFacing.WEST,
+        JsonObject.FromJson("{ \"through\": false }")
+      ),
+    ];
+    var port = new BEBehaviorMPFillerPort(be);
+    port.ConfigureFromFiller(be.Principal, BlockFacing.WEST, JsonObject.FromJson("{ \"through\": false }"));
+    be.Behaviors.Add(port);
+
+    Assert.False(port.Through);
+    Assert.True(HasMechConnector(filler, world, pos, BlockFacing.WEST));
+    Assert.False(HasMechConnector(filler, world, pos, BlockFacing.EAST));
+    Assert.False(HasMechConnector(filler, world, pos, BlockFacing.NORTH));
+  }
+
+  [Fact]
   public void A_hosting_cell_accepts_an_axle_on_either_end_of_its_port_axis() {
     var (world, filler) = NewWorld();
     var pos = new BlockPos(0, 0, 0);

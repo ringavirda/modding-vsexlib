@@ -37,7 +37,7 @@ public partial class BlockTwinTubMPBlower
   /// (rotation-relative) west face drives the bellows.
   /// </summary>
   private static readonly FillerBehaviorSpec MpPortWest =
-    FillerBehaviorSpec.Of<BEBehaviorMPFillerPort>("west");
+    FillerBehaviorSpec.Of<BEBehaviorMPFillerPort>("west", new { through = false });
 
   /// <summary>
   /// The two cells the -Z run crosses before it reaches the principal's own pipe connector: a

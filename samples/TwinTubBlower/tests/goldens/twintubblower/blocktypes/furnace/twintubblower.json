@@ -227,7 +227,10 @@
         "behaviors": [
           {
             "code": "exlib.BEBehaviorMPFillerPort",
-            "face": "west"
+            "face": "west",
+            "properties": {
+              "through": false
+            }
           }
         ],
         "allowAttach": true
