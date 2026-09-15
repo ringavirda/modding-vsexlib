@@ -73,7 +73,8 @@ for a mechanical-power port, and a gas-pipe node that produces into the network 
 `samples/BurdenMaker` is a second, unrelated mod alongside it: a 9-cell mega-block stock house raised
 through a five-stage right-click construction and rendered through a permanent pose animation.
 `samples/PlatedPipes` is the network example, one pipe tier with its own burst pressure and
-throughput, and `samples/SmokeStack` the multiblock example, a 72-cell chimney that draws gas off the
+throughput (its wall passthroughs are also the example of a block wearing texture variants), and
+`samples/SmokeStack` the multiblock example, a 72-cell chimney that draws gas off the
 network it is plumbed into. Each has a full headless test suite, and all four build and boot like any
 other mod here (`dotnet build ExpandedLib.sln`, `exmod smoke`) - read them alongside the wiki rather
 than typing their snippets by hand.
