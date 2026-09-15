@@ -47,7 +47,9 @@ This wiki documents both libraries the family publishes for reuse:
   [`samples/TwinTubBlower`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/TwinTubBlower) and
   [`samples/BurdenMaker`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/BurdenMaker),
   two buildable, bootable, tested mods, using the convenience layer end to
-  end - read them alongside the page.
+  end - read them alongside the page. [`samples/PlatedPipes`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/PlatedPipes)
+  (a pipe tier) and [`samples/SmokeStack`](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/SmokeStack)
+  (a multiblock chimney) complete the set the starter ships.
 - Building a machine with a structure and a power line? **[First Machine](First-Machine)** finishes
   the walk Getting Started starts.
 - Wondering when exlib does what during world load, and what's safe to call where? **[Lifecycle](Lifecycle)**.

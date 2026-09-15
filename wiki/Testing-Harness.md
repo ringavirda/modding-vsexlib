@@ -159,7 +159,7 @@ internal static class ModuleInit
 }
 ```
 
-Every test project here (`ExpandedLib.Tests`, `TwinTubBlower.Tests`, `BurdenMaker.Tests`) and in the family
+Every test project here (`ExpandedLib.Tests` and the four samples' suites) and in the family
 mods has exactly this - a module initializer only
 runs for the assembly that declares it. `VsAssemblyResolver.Register`
 is idempotent and resolves the install via the `[AssemblyMetadata("GameInstallEnv")]` environment

@@ -230,9 +230,9 @@ mod of its own called `industry` - the id nothing installs and nothing could eve
 
 ## Building a module of your own
 
-Neither sample this wiki walks - [Getting Started](Getting-Started) and [First
-Machine](First-Machine)'s `TwinTubBlower` and `BurdenMaker` - is a module; both are ordinary content
-mods built on exlib. `ExpandedLib.Industry` above is the one worked example in this repo. For the
+None of the samples - [Getting Started](Getting-Started) and [First
+Machine](First-Machine)'s `TwinTubBlower` and `BurdenMaker`, `PlatedPipes` and `SmokeStack` - is a
+module; all four are ordinary content mods built on exlib. `ExpandedLib.Industry` above is the one worked example in this repo. For the
 third-party shape, the pieces are the same ones Industry uses, arranged around your own mod folder
 and domain instead of exlib's:
 

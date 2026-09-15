@@ -8,7 +8,7 @@ extending the framework or another mod without carrying a `ModSystem` of your ow
 gameplay content of its own: build your own mod on these networks, multiblocks and attribute-driven
 registration, starting from [exmod-starter](https://github.com/ringavirda/exmod-starter),
 scaffolding new pieces with `exmod scaffold`, and reading the
-[wiki](https://github.com/ringavirda/modding-vsexlib/wiki) alongside your own code. It is also
+[wiki](https://exwiki.felled-stars.org/modders/) alongside your own code. It is also
 the shared framework behind the
 *Expanded* family
 ([Iron Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/iiex),
@@ -58,7 +58,7 @@ the shared framework behind the
   extends the framework or a mod built on it without carrying a `ModSystem` of its own, driven
   through a host mod's lifecycle instead: `ExpandedLib.Industry` is the first, shipped inside this
   mod's own folder; a third party's own mod can be one too, depending on exlib. See the wiki's
-  [Modules](https://github.com/ringavirda/modding-vsexlib/wiki/Modules) page.
+  [Modules](https://exwiki.felled-stars.org/modders/0.8/Modules/) page.
 
 ## Start from the sample
 
@@ -71,15 +71,17 @@ Working inside this repo, or want to read a sample before you write anything? `s
 is a third-party mod written against this library end to end: a mega-block reserving its own footprint
 for a mechanical-power port, and a gas-pipe node that produces into the network it stands in.
 `samples/BurdenMaker` is a second, unrelated mod alongside it: a 9-cell mega-block stock house raised
-through a five-stage right-click construction and rendered through a permanent pose animation, with a
-full headless test suite each. Both build and boot like any other mod here (`dotnet build
-ExpandedLib.sln`, `exmod smoke`) - read them alongside the wiki rather than typing their snippets by
-hand.
+through a five-stage right-click construction and rendered through a permanent pose animation.
+`samples/PlatedPipes` is the network example, one pipe tier with its own burst pressure and
+throughput, and `samples/SmokeStack` the multiblock example, a 72-cell chimney that draws gas off the
+network it is plumbed into. Each has a full headless test suite, and all four build and boot like any
+other mod here (`dotnet build ExpandedLib.sln`, `exmod smoke`) - read them alongside the wiki rather
+than typing their snippets by hand.
 
 ## What is supported
 
 `ExpandedLib.*` outside `ExpandedLib.Industry` is the supported contract: every public type
-there is listed on the wiki's [Supported API](https://github.com/ringavirda/modding-vsexlib/wiki/Supported-API) page, and a public type
+there is listed on the wiki's [Supported API](https://exwiki.felled-stars.org/modders/0.8/Supported-API/) page, and a public type
 missing from that list has been hidden from IntelliSense with `[EditorBrowsable(Never)]` because
 the engine has to see it, not because a mod is meant to call it. `ExpandedLib.Industry` is also
 public, but it is the family's own content layer and changes without notice.
@@ -93,7 +95,7 @@ src/ExpandedLib.Testing/    the headless xUnit harness
 src/ExpandedLib.Generators/ the config/lang source generators, referenced as an analyzer
 tests/ExpandedLib.Tests/    the suite this repo's own gate runs
 build/                      the MSBuild plumbing the package ships (GamePath resolution, provisioning, asset globs)
-samples/                    TwinTubBlower and BurdenMaker, third-party mods written against this library
+samples/                    TwinTubBlower, BurdenMaker, PlatedPipes and SmokeStack, third-party mods written against this library
 templates/                  the `dotnet new` templates a consumer installs (block, item, recipe, config, tests, ...)
 docs/                       design pages for a contributor working on this repo's own mechanics
 wiki/                       the GitHub wiki source, guarded by tests so it cannot drift from the code
@@ -118,7 +120,7 @@ templates exmod scaffold installs for you:
 
 `exlib-verify`, the JSON-only asset checker, is a .NET tool built from
 [extools](https://github.com/ringavirda/modding-vsextools) rather than a package this repository ships - see
-the wiki's [Checks](https://github.com/ringavirda/modding-vsexlib/wiki/Checks) page.
+the wiki's [Checks](https://exwiki.felled-stars.org/modders/0.8/Checks/) page.
 
 The three library packages are built for the current Vintage Story version only. The mod zips on the GitHub releases
 page cover the older versions; the packages do not, because a mod targeting an older version
