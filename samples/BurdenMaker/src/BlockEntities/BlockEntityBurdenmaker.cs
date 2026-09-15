@@ -17,7 +17,10 @@ namespace BurdenMaker.BlockEntities;
 
 /// <summary>
 /// The burdenmaker's block entity: two hoppers over a shared basin with one sliding gate between them.
-/// Materials go in and come out freely, one or a stack at a time, with no batch state. The
+/// Materials go in and come out freely, one or a stack at a time. Opening the gate starts a batch: the
+/// hoppers drain into the basin over <see cref="BurdenMakerValues.BurdenmakerDrainSeconds"/>, stamped
+/// with the proportion loaded at the moment the batch began; closing the gate pauses the drain, and
+/// reopening it resumes the same batch rather than starting a new one. The
 /// <c>RightClickConstructable</c> behaviour suppresses the default mesh, so the machine renders through a
 /// permanent animation re-tessellated to the currently-built elements; the resting clip <c>closed</c> must
 /// keep running or the mesh goes with it, and its sibling <c>open</c> is a held pose cleared by
@@ -48,6 +51,24 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
   // client's pose has to come from the sync itself, which needs to see the old value before it is
   // overwritten.
   private bool _gateOpen;
+
+  // Batch state, all persisted (see ToTreeAttributes): the stamp is fixed once at the batch's first
+  // gate-open so a paused-then-resumed drain cannot drift, and the original total is kept so the
+  // readout can report progress after the hoppers themselves have partly drained.
+  private bool _batchInProgress;
+  private BurdenMix _batchMix;
+  private int _batchTotal;
+
+  // Units/second, recomputed each time the gate opens from whatever is left to drain; not persisted,
+  // since a reload resumes at whatever rate the current remainder implies.
+  private float _drainRate;
+
+  // Fractional units owed to the drain since its last whole-unit move, so a rate under one unit per
+  // tick still averages out over several ticks instead of always flooring to zero. Not persisted: a
+  // reload restarting mid-fraction costs at most one tick's worth of drift.
+  private float _drainCarry;
+
+  private long _drainTickId;
 
   public override InventoryBase Inventory => _inventory;
 
@@ -103,6 +124,11 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
     if (api is ICoreClientAPI capi)
       InitSurfaces(capi);
+
+    // A save/reload lands mid-drain exactly as often as it lands anywhere else; resume the tick rather
+    // than stranding the batch until the player cycles the gate.
+    if (api.Side == EnumAppSide.Server && _gateOpen && OreUnits + FluxUnits > 0)
+      StartDrain();
   }
 
   // Must stay lazy: a wrench rotation changes the variant, and a key captured at Initialize would keep
@@ -111,12 +137,14 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     "burdenmaker-" + Block.Variant["side"] + (_gateOpen ? "-open" : "-closed");
 
   public override void OnBlockRemoved() {
+    StopDrain();
     _animator?.Dispose();
     DisposeSurfaces();
     base.OnBlockRemoved();
   }
 
   public override void OnBlockUnloaded() {
+    StopDrain();
     _animator?.Dispose();
     DisposeSurfaces();
     base.OnBlockUnloaded();
@@ -125,6 +153,10 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);
     tree.SetBool("gateOpen", _gateOpen);
+    tree.SetBool("batchInProgress", _batchInProgress);
+    tree.SetFloat("batchIron", _batchMix.Iron);
+    tree.SetFloat("batchFlux", _batchMix.Flux);
+    tree.SetInt("batchTotal", _batchTotal);
   }
 
   /// <summary>
@@ -140,6 +172,12 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     bool wasOpen = _gateOpen;
     base.FromTreeAttributes(tree, worldForResolving);
     _gateOpen = tree.GetBool("gateOpen");
+    _batchInProgress = tree.GetBool("batchInProgress");
+    _batchMix = new BurdenMix(
+      tree.GetFloat("batchIron"),
+      tree.GetFloat("batchFlux")
+    );
+    _batchTotal = tree.GetInt("batchTotal");
     if (Api?.Side == EnumAppSide.Client && _gateOpen != wasOpen)
       ApplyPose();
     UpdateSurfaces();
@@ -205,10 +243,16 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
   private const float BasinBrimY = 14f / 16f;
 
   private static readonly AssetLocation OreTexture = new(
-    "game:textures/block/stone/gravel/basalt.png"
+    "game:textures/item/resource/crushed/hematite.png"
   );
   private static readonly AssetLocation FluxTexture = new(
-    "game:textures/block/stone/sand/chalk.png"
+    "game:textures/item/resource/quicklime.png"
+  );
+
+  /// <summary>The finished burden's surface, taken from <see cref="ItemBurden"/>'s own model texture
+  /// rather than a fresh pick, so the basin reads as the same material the item shows in hand.</summary>
+  private static readonly AssetLocation BurdenTexture = new(
+    "game:textures/block/coal/orecoalmix.png"
   );
 
   private OreSurfaceRenderer? _oreSurface;
@@ -245,7 +289,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
       rotationY,
       BasinFloorY,
       BasinBrimY,
-      OreTexture
+      BurdenTexture
     );
 
     capi.Event.RegisterRenderer(
@@ -421,16 +465,21 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
   #region The gate
 
+  private const int DrainTickMs = 250;
+
   /// <summary>
-  /// Opens the lid: both hoppers drain instantaneously into the basin as one stamped burden batch. The
-  /// basin must be empty first, which is what marks batch boundaries without a batch state machine - one
-  /// gate-open is one batch, and pouring onto a previous batch would average two stamps.
+  /// Toggles the lid. Opening either starts a new batch (basin empty, or already holding nothing but
+  /// this batch's own product) or resumes the one already in progress - the stamp is fixed once, at
+  /// whichever open starts the batch, and every later open of the same batch reuses it rather than
+  /// re-reading whatever proportion happens to be left. Closing pauses the drain exactly where it
+  /// stands; no unit moves here, that is <see cref="DrainTick"/>'s job alone.
   /// </summary>
   public bool ToggleGate(out string? errorCode) {
     errorCode = null;
 
     if (_gateOpen) {
       _gateOpen = false;
+      StopDrain();
       ApplyPose();
       MarkDirty(true);
       return true;
@@ -442,60 +491,145 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
       errorCode = "burdenmaker-nothingloaded";
       return false;
     }
-    if (BurdenUnits > 0) {
+    if (BurdenUnits > 0 && !_batchInProgress) {
       errorCode = "burdenmaker-emptybunker";
       return false;
     }
 
-    ItemStack? batch = MakeBurden(ore, flux);
-    if (batch == null) {
-      errorCode = "burdenmaker-nothingloaded";
-      return false;
+    if (!_batchInProgress) {
+      float total = ore + flux;
+      _batchMix = new BurdenMix(ore / total, flux / total);
+      _batchTotal = ore + flux;
+      _batchInProgress = true;
     }
-
-    ClearRange(OreFirst, OreSlots);
-    ClearRange(FluxFirst, FluxSlots);
-    StoreBurden(batch);
 
     _gateOpen = true;
     ApplyPose();
+    StartDrain();
     MarkDirty(true);
     return true;
   }
 
   /// <summary>
-  /// One batch of <c>burdenmaker:burden</c>, stamped with the proportions actually loaded.
+  /// Server-only tick moving one slice of the batch in progress from the hoppers to the basin, at the
+  /// rate <see cref="StartDrain"/> set. The slice is split by <see cref="_batchMix"/> rather than by
+  /// whatever each hopper actually still holds, so a hopper that runs dry first does not skew the stamp
+  /// on whatever drains after it.
   /// </summary>
-  private ItemStack? MakeBurden(int ore, int flux) {
-    Item? item = Api?.World.GetItem(new AssetLocation("burdenmaker", "burden"));
-    if (item == null)
-      return null;
+  private void DrainTick(float dt) {
+    int ore = OreUnits;
+    int flux = FluxUnits;
+    int remaining = ore + flux;
+    if (remaining <= 0) {
+      StopDrain();
+      _batchInProgress = false;
+      return;
+    }
 
-    int units = ore + flux;
-    float total = Math.Max(1, units);
-    var stack = new ItemStack(item, units);
-    Burden.Write(stack, new BurdenMix(ore / total, flux / total));
-    return stack;
-  }
+    // Floored rather than rounded, with the fraction carried to the next tick: rounding every tick's
+    // slice up would drain faster than the configured rate, and flooring every tick's slice down
+    // without carrying the remainder would drain slower than it (see the "at least one" floor below,
+    // which only fires when the rate itself is under one unit per tick).
+    _drainCarry += _drainRate * dt;
+    int slice = (int)_drainCarry;
+    int moveTotal = Math.Min(remaining, Math.Max(1, slice));
+    _drainCarry -= moveTotal;
+    int moveOre = Math.Min(
+      ore,
+      (int)Math.Round(moveTotal * _batchMix.IronFrac)
+    );
+    int moveFlux = moveTotal - moveOre;
+    if (moveFlux > flux) {
+      // The ore-fraction rounding left more flux than is actually left; the shortfall comes out of
+      // ore instead, capped at what the hopper holds.
+      moveOre = Math.Min(ore, moveOre + (moveFlux - flux));
+      moveFlux = flux;
+    }
 
-  private void StoreBurden(ItemStack batch) {
-    int max = Math.Max(1, batch.Collectible.MaxStackSize);
-    int left = batch.StackSize;
-    for (int i = BunkerFirst; i < BunkerFirst + BunkerSlots && left > 0; i++) {
-      ItemStack part = batch.Clone();
-      part.StackSize = Math.Min(max, left);
-      _inventory[i].Itemstack = part;
-      _inventory[i].MarkDirty();
-      left -= part.StackSize;
+    RemoveUnits(OreFirst, OreSlots, moveOre);
+    RemoveUnits(FluxFirst, FluxSlots, moveFlux);
+    MergeBurden(moveOre + moveFlux);
+    MarkDirty(true);
+
+    if (OreUnits + FluxUnits <= 0) {
+      StopDrain();
+      _batchInProgress = false;
     }
   }
 
-  private void ClearRange(int first, int count) {
-    for (int i = first; i < first + count; i++)
-      if (!_inventory[i].Empty) {
-        _inventory[i].Itemstack = null;
-        _inventory[i].MarkDirty();
-      }
+  /// <summary>
+  /// Starts the drain tick at the rate the units currently left to move imply - recomputed here rather
+  /// than carried across a pause, so a reload or a resume after a partial drain moves at the rate its
+  /// own remainder implies rather than the original batch's. Idempotent, and a no-op off the server.
+  /// </summary>
+  private void StartDrain() {
+    if (Api?.Side != EnumAppSide.Server || _drainTickId != 0)
+      return;
+    int remaining = OreUnits + FluxUnits;
+    _drainRate = Math.Max(
+      1f,
+      remaining / (float)BurdenMakerValues.BurdenmakerDrainSeconds
+    );
+    _drainCarry = 0f;
+    _drainTickId = RegisterGameTickListener(DrainTick, DrainTickMs);
+  }
+
+  private void StopDrain() {
+    if (_drainTickId == 0)
+      return;
+    UnregisterGameTickListener(_drainTickId);
+    _drainTickId = 0;
+  }
+
+  /// <summary>Takes exactly <paramref name="amount"/> units out of the slot range, lowest slot first.</summary>
+  private void RemoveUnits(int first, int count, int amount) {
+    int left = amount;
+    for (int i = first; i < first + count && left > 0; i++) {
+      ItemSlot slot = _inventory[i];
+      if (slot.Empty)
+        continue;
+      int take = Math.Min(slot.Itemstack.StackSize, left);
+      slot.TakeOut(take);
+      slot.MarkDirty();
+      left -= take;
+    }
+  }
+
+  /// <summary>
+  /// Adds <paramref name="units"/> of burden to the basin, topping up existing stacks before opening new
+  /// ones - all stamped with <see cref="_batchMix"/>, the one mix a batch in progress ever carries.
+  /// </summary>
+  private void MergeBurden(int units) {
+    if (units <= 0)
+      return;
+    Item? item = Api?.World.GetItem(new AssetLocation("burdenmaker", "burden"));
+    if (item == null)
+      return;
+
+    int max = Math.Max(1, item.MaxStackSize);
+    int left = units;
+    for (int i = BunkerFirst; i < BunkerFirst + BunkerSlots && left > 0; i++) {
+      ItemSlot slot = _inventory[i];
+      if (slot.Empty)
+        continue;
+      int room = max - slot.Itemstack.StackSize;
+      if (room <= 0)
+        continue;
+      int add = Math.Min(room, left);
+      slot.Itemstack.StackSize += add;
+      slot.MarkDirty();
+      left -= add;
+    }
+    for (int i = BunkerFirst; i < BunkerFirst + BunkerSlots && left > 0; i++) {
+      ItemSlot slot = _inventory[i];
+      if (!slot.Empty)
+        continue;
+      var stack = new ItemStack(item, Math.Min(max, left));
+      Burden.Write(stack, _batchMix);
+      slot.Itemstack = stack;
+      slot.MarkDirty();
+      left -= stack.StackSize;
+    }
   }
 
   #endregion
@@ -503,9 +637,11 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
   #region Readout
 
   /// <summary>
-  /// Reports both hopper contents and the flux fraction the current pair would produce, named through the
-  /// same <see cref="Burden.ProfileLangKey"/> the tooltip grades a mix with. The preview is computed
-  /// from the hoppers rather than the basin, so it answers while the mix can still be changed.
+  /// Reports both hopper contents, then either the drain in progress or the flux fraction the current
+  /// pair would produce - named through the same <see cref="Burden.ProfileLangKey"/> the tooltip grades a
+  /// mix with. The preview is computed from the hoppers rather than the basin, so it answers while the
+  /// mix can still be changed; once a batch is in progress the mix is fixed, so the drain percentage
+  /// takes its place.
   /// </summary>
   public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb) {
     base.GetBlockInfo(forPlayer, sb);
@@ -524,7 +660,11 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
       )
     );
 
-    if (ore + flux > 0) {
+    if (_batchInProgress) {
+      int drained = _batchTotal - (ore + flux);
+      int percent = _batchTotal > 0 ? (int)(100f * drained / _batchTotal) : 100;
+      sb.AppendLine(Lang.Get("burdenmaker:burdenmaker-draining", percent));
+    } else if (ore + flux > 0) {
       float total = ore + flux;
       var preview = new BurdenMix(ore / total, flux / total);
       sb.AppendLine(
