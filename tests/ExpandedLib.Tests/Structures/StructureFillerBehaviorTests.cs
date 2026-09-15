@@ -286,7 +286,7 @@ public class StructureFillerBehaviorTests {
   #region Mechanical-power connector glue
 
   [Fact]
-  public void A_one_sided_port_lets_power_out_by_its_entry_only() {
+  public void A_one_sided_port_lets_no_power_out() {
     var (world, filler) = NewWorld();
     var pos = new BlockPos(0, 0, 0);
     var be = new BlockEntityStructureFiller {
@@ -305,7 +305,7 @@ public class StructureFillerBehaviorTests {
     var entry = new MechPowerPath(BlockFacing.WEST, 1f, pos, false);
 
     Assert.Equal(2, through.GetMechPowerExits(entry).Length);
-    Assert.Single(oneSided.GetMechPowerExits(entry));
+    Assert.Empty(oneSided.GetMechPowerExits(entry));
   }
 
   [Fact]
@@ -428,16 +428,15 @@ public class StructureFillerBehaviorTests {
   }
 
   /// <summary>
-  /// The axle sign follows the port's own outward normal, not one shared per axis: a port on east
-  /// reads the opposite sign from one on west, and south the opposite of north, or a machine whose
-  /// port faces east or south would read the axle's angle mirrored.
+  /// The axle sign is vanilla's for the port's axis, negative along a horizontal one, so a port
+  /// turns as the axle it couples is drawn whichever side of the machine it faces.
   /// </summary>
   [Theory]
   [InlineData("west", -1, 0, 0)]
-  [InlineData("east", 1, 0, 0)]
+  [InlineData("east", -1, 0, 0)]
   [InlineData("north", 0, 0, -1)]
-  [InlineData("south", 0, 0, 1)]
-  public void The_axle_sign_follows_the_ports_own_outward_normal(
+  [InlineData("south", 0, 0, -1)]
+  public void The_axle_sign_is_vanillas_for_the_ports_axis(
     string face,
     int x,
     int y,

@@ -38,6 +38,21 @@ public class BEBehaviorMPFillerPort(BlockEntity blockentity)
   /// </summary>
   public float CurrentAngleRad => Network != null ? AngleRad : 0f;
 
+  /// <summary>
+  /// The coupled axle's angle (radians) as a turn about the axis running from the port face into
+  /// the machine, in the sense vanilla draws the axle: what a shaft keyframed as a positive turn
+  /// about that axis locks to. Vanilla signs a horizontal axle's rotation negative along its axis,
+  /// so this reads <see cref="CurrentAngleRad"/> negated on a west or north port and straight on an
+  /// east or south one; 0 when the port has no network.
+  /// </summary>
+  public float DrivenAngleRad {
+    get {
+      Vec3i n = _face.Normali;
+      return -(AxisSign[0] * n.X + AxisSign[1] * n.Y + AxisSign[2] * n.Z)
+        * CurrentAngleRad;
+    }
+  }
+
   /// <summary>True while the axle is turning, that is, while the port delivers power.</summary>
   public bool IsTurning => Network is { Speed: > 0.001f or < -0.001f };
 
@@ -99,20 +114,21 @@ public class BEBehaviorMPFillerPort(BlockEntity blockentity)
   public override float GetResistance() => _resistance;
 
   /// <summary>
-  /// The faces power leaves this port by: both ends of the axis for a through port, the entry alone
-  /// for a one-sided one, so a one-sided port's network never spreads out of the machine's far side.
+  /// The faces power leaves this port by: both ends of the axis for a through port, none for a
+  /// one-sided one. The path's out-facing is its direction of travel, so a one-sided port ends the
+  /// network the way a vanilla consumer does rather than passing it out of the machine's far side.
   /// </summary>
   public override MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir) =>
-    _through ? base.GetMechPowerExits(entryDir) : [entryDir];
+    _through ? base.GetMechPowerExits(entryDir) : [];
 
   public override void SetOrientations() {
     OutFacingForNetworkDiscovery = _face;
-    // Signed from the port's own outward normal, not per axis: unlike a two-ended axle body, a filler
-    // port never shares its cell with the opposite facing, so there is no through-line to keep in
-    // sync, and reading the normal directly is what keeps an east or south port from mirroring the
-    // angle a west or north one on the same axis reports.
-    Vec3i n = _face.Normali;
-    AxisSign = [n.X, n.Y, n.Z];
+    // Vanilla's sign for the axis the coupled axle runs on, so the port turns as that axle is drawn.
+    AxisSign = _face.Axis switch {
+      EnumAxis.X => [-1, 0, 0],
+      EnumAxis.Y => [0, 1, 0],
+      _ => [0, 0, -1],
+    };
   }
 
   /// <summary>The filler is invisible; the principal renders the rotor, so the port adds no mesh.</summary>

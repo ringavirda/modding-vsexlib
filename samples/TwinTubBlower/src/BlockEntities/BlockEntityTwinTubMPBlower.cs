@@ -283,14 +283,19 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   private void LockCycleToAxle() {
     if (SpeedFraction(_lastSpeed) <= 0f || Port() is not { } port)
       return;
-    // Reversed: the clip turns its Axle element through +360 over the cycle, which runs against the
-    // vanilla axle for a rising angle.
-    MPAnim.LockFrameToAngle(
-      _animator?.AnimUtil,
-      "cycle",
-      port.CurrentAngleRad,
-      reverse: true
-    );
+    MPAnim.LockFrameToAngle(_animator?.AnimUtil, "cycle", DrivenAngle(port));
+  }
+
+  /// <summary>
+  /// The axle's angle as a turn about the axis running from the port face into the machine, in the
+  /// sense vanilla draws the axle; the clip keyframes its shaft as a positive turn about that axis.
+  /// Vanilla signs a horizontal axle's rotation negative along its axis, so the port's angle reads
+  /// negated on a west or north port and straight on an east or south one. The sample compiles
+  /// against the released framework package, so it derives this itself.
+  /// </summary>
+  private static float DrivenAngle(BEBehaviorMPFillerPort port) {
+    Vec3i n = port.PortFacing.Normali;
+    return (n.X + n.Z - n.Y) * port.CurrentAngleRad;
   }
 
   #endregion
