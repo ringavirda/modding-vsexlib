@@ -14,12 +14,21 @@ see the git history.
   example, a 72-cell chimney that draws gas off the network it is plumbed into and vents it as a
   plume. With the blower and the burden maker they are the four mods the starter ships.
 
+### Changed
+
+- **`ItemDie.Itemtype` and `MachineTool.Itemtype`** take an optional asset path, so a mod can file
+  its die and tool itemtypes under a sub-folder like every other item.
+
 ### Fixed
 
+- **A filler port's axle sign follows its own face** (`BEBehaviorMPFillerPort`): a port facing east
+  or south read the axle's angle mirrored, so a machine on that side spun against its axle.
 - **Composed lang keys fall back to exlib's own**: the multiblock outline hint and the passthrough
   brick names are looked up in the block's domain first and then in `exlib:`, which now ships them,
   so a third-party mod no longer shows raw keys.
-- **The twin-tub blower sample** locks its bellows to the axle every render frame, throttles the
+- **The twin-tub blower sample** is raised through five right-click construction stages like the
+  burden maker, turns east and west by the repository's rotation convention, sounds its bellows
+  whenever they move, locks its bellows to the axle every render frame, throttles the
   bellows note to the clip, vents air and joins a pipe only at its outlet filler (the orientation
   letter named the wrong face for east and west), keeps the facing the player gave it (north and south no longer come
   out alike), cannot be wrench-rotated, wears the aligned shape, and moves, sounds and vents air at
