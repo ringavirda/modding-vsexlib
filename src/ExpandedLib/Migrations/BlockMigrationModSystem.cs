@@ -289,9 +289,9 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
   }
 
   private void BuildRemapTable() {
-    // ── Pass 1: collect every declared pair without resolving it against the world. ──────────────
-    // A chain's intermediate codes are dead by construction: in ppex:x → lpex:x → iiex:x, lpex:x is
-    // precisely the code that no longer registers, so resolving while collecting would honour one hop.
+    // Pass 1: collect every declared pair without resolving it against the world.
+    // A chain's intermediate codes are dead by construction: a code renamed twice has a middle code
+    // that no longer registers, so resolving while collecting would honour only the first hop.
     var declared =
       new Dictionary<
         AssetLocation,
@@ -319,14 +319,14 @@ public class BlockMigrationModSystem : ChunkColumnSweeperModSystem {
       }
     }
 
-    // ── Pass 2: declared purges. A removal terminates a chain just as a live block does. ─────────
+    // Pass 2: declared purges. A removal terminates a chain just as a live block does.
     var removals = new Dictionary<AssetLocation, string>();
     foreach (IBlockRemoval removal in Discover<IBlockRemoval>())
       foreach (AssetLocation code in removal.GetRemovals(_sapi))
         if (code != null && !declared.ContainsKey(code))
           removals.TryAdd(code, removal.Name);
 
-    // ── Pass 3: follow each declared source to its terminal, then resolve that once. ─────────────
+    // Pass 3: follow each declared source to its terminal, then resolve that once.
     var perMigration = new Dictionary<string, int>();
     foreach (AssetLocation oldCode in declared.Keys) {
       // GetBlock resolves missing-block placeholders too, so a null means this world has no such

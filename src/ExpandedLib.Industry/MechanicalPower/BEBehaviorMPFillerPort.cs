@@ -61,7 +61,7 @@ public class BEBehaviorMPFillerPort(BlockEntity blockentity)
   /// work it does by it.
   /// <para>
   /// Geared through <see cref="BEBehaviorMPBase.GearedRatio"/>, as vanilla's
-  /// <c>BEBehaviorMPConsumer.TrueSpeed</c> is. A network holds ONE speed, in the frame of whichever
+  /// <c>BEBehaviorMPConsumer.TrueSpeed</c> is. A network holds one speed, in the frame of whichever
   /// node seeded it, so reading it raw makes a machine behind a gear train report the drive's speed
   /// or its own depending on chunk load order.
   /// </para>

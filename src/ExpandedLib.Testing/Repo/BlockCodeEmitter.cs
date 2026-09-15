@@ -195,10 +195,8 @@ public static class BlockCodeEmitter {
       );
       sb.Append($"      $\"{pattern}\";\n");
 
-      // The BlockFacing overload converts a direction into whichever token this block writes - a word
-      // (`side`) or a letter (`orientation`) - so the caller states only the direction. Emitted only
-      // where the states really are facings: an axis group (ns|we, nw|ne|se|sw) has no BlockFacing
-      // naming one of its states, and an overload there would produce a code matching nothing.
+      // Converts a facing to this block's own token spelling (word or letter). Skipped for a
+      // non-facing group (an axis group has no BlockFacing naming one of its states).
       if (!g.IsHorizontalFacing)
         continue;
 

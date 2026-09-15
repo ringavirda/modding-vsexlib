@@ -16,16 +16,19 @@ using Vintagestory.GameContent;
 namespace BurdenMaker.BlockEntities;
 
 /// <summary>
-/// The burdenmaker's block entity: two hoppers over a shared basin with one sliding gate between them.
-/// Materials go in and come out freely, one or a stack at a time. Opening the gate starts a batch: the
-/// hoppers drain into the basin over <see cref="BurdenMakerValues.BurdenmakerDrainSeconds"/>, stamped
-/// with the proportion loaded at the moment the batch began; closing the gate pauses the drain, and
-/// reopening it resumes the same batch rather than starting a new one. The
-/// <c>RightClickConstructable</c> behaviour suppresses the default mesh, so the machine renders through a
-/// permanent animation re-tessellated to the currently-built elements; the resting clip <c>closed</c> must
-/// keep running or the mesh goes with it, and its sibling <c>open</c> is a held pose cleared by
-/// <c>StopAnimation</c>. Storage is a real multi-slot inventory, so <see cref="BlockEntityContainer"/>'s
-/// break-spill covers drops.
+/// Two hoppers over a shared basin with one sliding gate between them; materials go in and come out
+/// freely, one or a stack at a time. Opening the gate starts a batch: the hoppers drain into the basin
+/// over <see cref="BurdenMakerValues.BurdenmakerDrainSeconds"/>, stamped with the proportion loaded when
+/// the batch began. Closing the gate pauses the drain; reopening it resumes the same batch.
+/// <para>
+/// <c>RightClickConstructable</c> suppresses the default mesh, so the machine renders through a permanent
+/// animation: the resting clip <c>closed</c> must keep running or the mesh disappears with it, and
+/// <c>open</c> is a held pose cleared by <c>StopAnimation</c>.
+/// </para>
+/// <para>
+/// Storage is a real multi-slot inventory, so <see cref="BlockEntityContainer"/>'s break-spill covers
+/// drops.
+/// </para>
 /// </summary>
 [BlockEntityRegister]
 public class BlockEntityBurdenmaker : ExBlockEntityContainer {
@@ -207,13 +210,12 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
   #region Ore surfaces (client only)
 
-  // Footprints (0-16 pixel space, block-local) and floor/brim heights (block units), measured off
-  // assets/burdenmaker/shapes/ore/burdenmaker.json with `vsshape measure --group Root/Hoppers` and
-  // `--group Root/Base`. Each hopper's masonry lip (Root/HopperMasonry, y26-32px) flares two pixels
-  // past the wall below it (y16-26px); the footprint follows the lip, the widest ring a fill quad
-  // can sit inside without poking through a wall. The basin floor is the base slab's top (y2px); its
-  // brim sits two pixels short of the hopper walls' foot (y16px), matching the same two-pixel margin
-  // the hopper lips carry below their own metal throat (y34px).
+  // Footprints (0-16 pixel space, block-local) and floor/brim heights (block units), taken from
+  // assets/burdenmaker/shapes/ore/burdenmaker.json. Each hopper's masonry lip flares two pixels past
+  // the wall below it; the footprint follows the lip, the widest ring a fill quad can sit inside
+  // without poking through a wall. The basin floor is the base slab's top; its brim sits two pixels
+  // short of the hopper walls' foot, matching the margin the hopper lips carry below their own metal
+  // throat.
 
   /// <summary>The wide ore hopper's interior: the two cells west of the dividing pier (x -12..15px),
   /// behind the front masonry lip (z -14..-2px).</summary>

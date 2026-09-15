@@ -105,14 +105,13 @@ public class BurdenmakerCellTests {
   [Fact]
   public void Ore_and_flux_hoppers_do_not_swap_when_the_block_faces_east() {
     // At 270deg the two hoppers' world cells lie on the Z axis rather than the X axis, so a classifier
-    // switching on the raw world delta reads the flux cell as ore or as Outside. Both halves are
-    // asserted so a partial fix cannot pass.
+    // switching on the raw world delta reads the flux cell as ore or as Outside.
     const int East = 270;
 
     BlockPos flux = ExOrientation.GlobalPos(Principal, 1, 1, -1, East);
     BlockPos ore = ExOrientation.GlobalPos(Principal, -1, 1, -1, East);
 
-    // The premise: the rotation really did move them off the X axis, or the case proves nothing.
+    // The premise: the rotation really did move them off the X axis.
     Assert.NotEqual(flux.X, ore.X + 2);
     Assert.NotEqual(flux, ore);
 

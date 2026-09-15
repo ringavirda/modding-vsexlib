@@ -10,11 +10,11 @@ namespace ExpandedLib.Structures;
 /// <summary>
 /// Rotates the facing of a multiblock layout's oriented parts, so a structure can require a slab, stairs or
 /// door to be placed the right way round rather than merely be present. Vanilla's <c>MultiblockStructure</c>
-/// rotates a structure's offsets through <c>InitForUse(angle)</c> but not its codes, so a cell wanting
-/// <c>brickslabs-fire-south-free</c> would demand a south-facing slab at every structure angle. The layout
-/// builder records which dash-segment of each oriented code is the facing word
-/// (<c>attributes.multiblockFacings</c>), and this class swaps that segment for the structure-rotated one at
-/// check time. Wildcards, vertical <c>up</c>/<c>down</c> parts and codes with no facing pass through untouched.
+/// rotates a structure's offsets but not its codes, so a cell wanting <c>brickslabs-fire-south-free</c> would
+/// demand a south-facing slab at every structure angle. The layout builder records which dash-segment of each
+/// oriented code is the facing word (<c>attributes.multiblockFacings</c>), and this class swaps that segment
+/// for the structure-rotated one at check time. Wildcards, vertical parts and codes with no facing pass through
+/// untouched.
 /// </summary>
 public sealed class MultiblockFacings {
   /// <summary>A layout with no oriented parts. <see cref="Rotate"/> is the identity.</summary>

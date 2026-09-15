@@ -692,7 +692,7 @@ public abstract class BlockNetworkNode
   /// <summary>
   /// Includes the node's material/rock/brick variant in its display name (e.g.
   /// "Iron Piping (Straight)", "Granite Molten Canal"). The placed-block name
-  /// goes through <c>OnPickBlock</c> → <c>GetName</c>, so this covers both.
+  /// goes through <c>OnPickBlock</c> and then <c>GetName</c>, so this covers both.
   /// </summary>
   public override string GetHeldItemName(ItemStack itemStack) =>
     ExBlockNames.Decorate(this, base.GetHeldItemName(itemStack));
@@ -708,8 +708,8 @@ public abstract class BlockNetworkNode
   /// Maps shape-type strings (e.g. "straight", "bend") to their valid orientation strings, used for
   /// placement, wrench rotation and collision-box pre-computation. Derived from this block's own
   /// code-first defs, resolved by runtime type so every subclass gets the map from its own variant
-  /// groups, and cached on first read. A block whose orientation is not a type→orientation variant
-  /// pair can override.
+  /// groups, and cached on first read. A block whose orientation is not a type-to-orientation
+  /// variant pair can override.
   /// </summary>
   public virtual Dictionary<string, string[]> AllowedOrientations =>
     _allowedOrientations ??= ExDefinitions.OrientationMap(

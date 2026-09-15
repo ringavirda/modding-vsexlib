@@ -9,8 +9,7 @@ namespace ExpandedLib.Testing;
 /// Reflection scan for a law that must hold across every concrete subclass of a base type in the
 /// loaded assembly closure - iiex's own furnace branches, a downstream mod's, or one this harness has
 /// never heard of. xUnit discovers tests per assembly, so a <c>[Fact]</c> declared in one mod's suite
-/// never runs against another mod's leaf; this is the <c>FurnaceBranchGuards</c> idiom lifted so any
-/// suite that hosts a leaf can call it without restating the scan.
+/// never runs against another mod's leaf.
 /// </summary>
 public static class RegistryLawScanner {
   /// <summary>

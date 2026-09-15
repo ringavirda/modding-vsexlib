@@ -103,9 +103,9 @@ public sealed class MultiblockLayoutBuilder {
   /// <summary>
   /// Marks <paramref name="symbol"/> as the anchor - the block the player places, which must land on
   /// the layout's own <c>(0,0,0)</c>. Optional; a layout that never calls this has its <c>Origin</c>
-  /// unchecked, same as before this method existed. <see cref="Build"/> then throws when the declared
-  /// <see cref="Origin"/> does not put the marked glyph there, which otherwise builds the whole
-  /// structure offset from the block the player placed with no error anywhere.
+  /// unchecked. <see cref="Build"/> then throws when the declared <see cref="Origin"/> does not put
+  /// the marked glyph there, which otherwise builds the whole structure offset from the block the
+  /// player placed with no error anywhere.
   /// </summary>
   public MultiblockLayoutBuilder Core(char symbol) {
     _core = symbol;

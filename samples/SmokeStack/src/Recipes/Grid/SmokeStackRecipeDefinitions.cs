@@ -33,8 +33,6 @@ public class SmokeStackRecipeDefinitions : IExRecipeDefProvider {
             .Ingredient("B", RefractoryTier(4))
             .Ingredient("N", Nails(2))
             .Ingredient("H", Hammer)
-            // The sample ships no pipe item of its own (siex's original recipe took a segment from
-            // iiex, which this sample does not depend on); iron ingots stand in for the fitting.
             .Ingredient("P", i => i.Item("game:ingot-iron").Quantity(2))
             .OutputBlock($"{domain}:smokestack-intake-{{tier}}-n")
         ),

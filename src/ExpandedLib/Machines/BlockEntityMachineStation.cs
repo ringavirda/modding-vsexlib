@@ -55,17 +55,13 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
 
   /// <summary>
   /// Builds this machine's window. Client-side; called on each open, so it may read whatever state
-  /// the window should open on. Returning null leaves the machine windowless - a station whose
-  /// slots exist but whose interactions are physical, which is what the rolling mill is until the
-  /// machining line gives it a face. The returned dialog is disposed when the window closes, so
-  /// every call must return a fresh instance rather than one reused from a previous open.
+  /// the window should open on. Returning null leaves the machine windowless. The returned dialog
+  /// is disposed when the window closes, so every call must return a fresh instance.
   /// <para>
   /// The returned dialog must be constructed with this station's <see cref="BlockEntity.Pos"/> and
   /// must either not override <c>OnGuiClosed</c> or override it and call base: this station relies
   /// on that base implementation to send the close packet the server needs to close the player's
-  /// inventory. A dialog that overrides <c>OnGuiClosed</c> without calling base - as vanilla's own
-  /// <c>GuiDialogBlockEntityInventory</c> does whenever its <c>packetIdOffset</c> is nonzero - leaves
-  /// the station's inventory open on the server after the window closes on the client.
+  /// inventory.
   /// </para>
   /// </summary>
   protected virtual GuiDialogBlockEntity? CreateDialog(ICoreClientAPI capi) =>
@@ -148,17 +144,15 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
       return;
 
     // TryOpen refuses a duplicate (GuiDialogBlockEntity.IsDuplicate) by returning false without
-    // opening anything. Left unchecked, the station would keep a never-opened dialog and send the
-    // open packet regardless, wedging every later toggle behind a window that can never show.
+    // opening anything; the dialog is torn down rather than kept as a never-opened placeholder.
     if (!_dialog.TryOpen()) {
       _dialog.Dispose();
       _dialog = null;
       return;
     }
 
-    // GuiDialogBlockEntity.OnGuiClosed sends this same close packet to this same position when a
-    // dialog either does not override it or overrides it and calls base - which is why CreateDialog
-    // requires exactly that. The closure below only tears down the client-side dialog.
+    // GuiDialogBlockEntity.OnGuiClosed sends this same close packet when a dialog does not override
+    // it, or overrides it and calls base - which is why CreateDialog requires exactly that.
     _dialog.OnClosed += () => {
       _dialog?.Dispose();
       _dialog = null;
@@ -211,9 +205,8 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
     }
 
     if (!MayUse(player)) {
-      // A refused slot move leaves the client's open window showing the item where the server says it
-      // is not, and the two disagree until the player reopens it. Vanilla answers a rejected container
-      // packet with a rollback rather than a bare return.
+      // A refused slot move leaves the client's view out of sync with the server; vanilla answers a
+      // rejected container packet with a rollback rather than a bare return.
       if (packetid < PacketIdOpen && player is IServerPlayer serverPlayer)
         SendRollback(serverPlayer, packetid, data);
       return;
@@ -253,11 +246,8 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
 
   #region Access
 
-  // Whether the engine's interaction-range test runs as part of the access check. Internal and not part
-  // of exlib's API: the only thing that turns it off is a headless test, whose player is a substitute
-  // the engine will never place in range, and which would otherwise be unable to exercise any packet
-  // route at all - see ExpandedLib.Testing's DisablePickRangeCheck. The claim check is not behind it
-  // and cannot be switched off.
+  // Whether the engine's interaction-range test runs as part of the access check. Off only for
+  // headless tests (see ExpandedLib.Testing.DisablePickRangeCheck); the claim check is never behind it.
   internal bool ValidatePickRange { get; set; } = true;
 
   /// <summary>
@@ -267,12 +257,9 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
   /// </summary>
   private bool MayUse(IPlayer player) {
 #if GAME_GE_1_22
-    // CachedAccessPerms is the only public way to the range test - the block-position overload of
-    // IPlayer.IsInInteractionRangeOf that it calls is internal to the engine. It also runs the claim
-    // check and audits either failure, so it replaces the hand-written pair outright.
-#pragma warning disable CS0618 // The ctor is marked obsolete ahead of a 1.23 signature change. Vanilla's
-    // own BEOpenableContainer calls it exactly like this, and there is no other entry point; when 1.23
-    // lands this gains a GAME_GE_1_23 branch like every other threshold in the tree.
+    // CachedAccessPerms is the only public way to the range test; it also runs the claim check and
+    // audits either failure, so it replaces the hand-written pair outright.
+#pragma warning disable CS0618 // The ctor is obsolete ahead of a 1.23 signature change; there is no other entry point yet.
     var perms = new CachedAccessPerms(Api.World, Pos, player);
 #pragma warning restore CS0618
     return perms.IsInteractingPlayerAllowedTo(
@@ -282,8 +269,7 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
     );
 #else
     // 1.20/1.21 have no public reach test. Hand-rolling one would measure a different notion of reach
-    // than the server uses and reject legitimate interactions, so those builds keep the claim check
-    // alone - the same protection they had before.
+    // than the server uses, so those builds keep the claim check alone.
     if (Api.World.Claims.TryAccess(player, Pos, EnumBlockAccessFlags.Use))
       return true;
 
@@ -297,8 +283,7 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
   }
 
   // Rolls the client's view of the inventory back to the server's after a refused slot move.
-  // SendInventoryRollback arrived in 1.22; on the legacy builds the client corrects itself when the
-  // window is reopened, which is the behaviour those versions have always had.
+  // SendInventoryRollback arrived in 1.22; legacy builds correct on the next reopen instead.
   private void SendRollback(IServerPlayer player, int packetid, byte[] data) {
 #if GAME_GE_1_22
     Inventory.InvNetworkUtil.SendInventoryRollback(player, packetid, data);

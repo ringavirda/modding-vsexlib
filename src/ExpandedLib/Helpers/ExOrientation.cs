@@ -81,8 +81,7 @@ public static class ExOrientation {
   /// <summary>
   /// Rotates a continuous XZ offset by <paramref name="angle"/> - the same turn
   /// <see cref="RotateOffset(int, int, int, int)"/> makes, for a hit point rather than a cell. Kept as its
-  /// own overload rather than folded into the integer one so neither has to round; a test pins the two
-  /// against each other at every angle.
+  /// own overload so neither it nor the integer version has to round.
   /// </summary>
   public static (double X, double Z) RotateXZ(double x, double z, int angle) {
     angle = ((angle % 360) + 360) % 360;

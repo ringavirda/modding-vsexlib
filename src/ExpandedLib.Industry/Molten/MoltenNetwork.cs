@@ -245,18 +245,16 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     )
       return;
 
-    // A levelling pair moves half the difference: the whole difference overshoots the midpoint and swaps
-    // the two levels (100/80 becomes 80/100), so the pair oscillates instead of settling. Integer division
-    // floors, so the step decays 20 -> 10 -> 5 -> 2 -> 1 -> 0 in whole units and the edge goes quiet on its
-    // own. The two exemptions are one-way sinks, not levelling pairs - a drain fitting (pedestal/tap)
-    // consuming metal and a downhill edge pouring into the cell below - and take the whole difference so no
-    // dregs are stranded.
+    // A levelling pair moves half the difference: the whole difference would overshoot the midpoint and
+    // swap the two levels, so the pair oscillates instead of settling; integer division floors the step
+    // to zero on its own. The two exemptions are one-way sinks, not levelling pairs - a drain fitting
+    // consuming metal and a downhill edge pouring into the cell below - and take the whole difference so
+    // no dregs are stranded.
     var step = receiver.AcceptsSubMinimumFlow || downhillOnly ? diff : diff / 2;
     var transfer = step > maxFlow ? maxFlow : step;
 
-    // A levelling edge applies no MoltenMinFlowAmount floor: combined with halving the floor would act as a
-    // deadband of twice its size, so at a floor of 10 a pair 19 units apart would never level. Halving is
-    // proportional and decays to nothing on its own.
+    // No MoltenMinFlowAmount floor on a levelling edge: combined with halving it would double the
+    // deadband, and halving alone already decays proportionally to nothing.
     if (transfer <= 0)
       return;
 

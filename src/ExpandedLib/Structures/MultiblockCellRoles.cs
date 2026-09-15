@@ -4,14 +4,12 @@ using Vintagestory.API.Datastructures;
 namespace ExpandedLib.Structures;
 
 /// <summary>
-/// Reads the <c>multiblockRoles</c> attribute a code-first layout emits: <see cref="CellRole"/> to the authored
-/// (north-frame) offsets of the cells carrying that role. The offsets are the ones the author drew, not world
-/// positions and not rotated ones; <see cref="BlockEntityMultiblockStructure.CellsWithRole"/> resolves an
-/// authored offset against vanilla's own <c>Offsets</c>/<c>TransformedOffsets</c> pair, so a role cell is turned
-/// by exactly the rotation the completion check applied and this type holds no rotation maths. It is a sibling
-/// attribute of <c>multiblockStructure</c> rather than a member of it, because vanilla's own
-/// <c>MultiblockStructure</c> deserialises that object and it must keep exactly that schema. A layout that
-/// declares no roles gets <see cref="None"/>.
+/// Reads the <c>multiblockRoles</c> attribute a code-first layout emits: <see cref="CellRole"/> to the
+/// authored (north-frame) offsets of the cells carrying that role. Offsets are as drawn, not world positions
+/// or rotated ones; <see cref="BlockEntityMultiblockStructure.CellsWithRole"/> resolves them against
+/// vanilla's own rotation, so this type holds no rotation maths. A sibling attribute of
+/// <c>multiblockStructure</c> rather than a member of it, since vanilla's own <c>MultiblockStructure</c>
+/// deserialises that object and must keep its schema. A layout that declares no roles gets <see cref="None"/>.
 /// </summary>
 public sealed class MultiblockCellRoles {
   /// <summary>A layout that declares no roles. Every lookup answers empty.</summary>
@@ -43,10 +41,9 @@ public sealed class MultiblockCellRoles {
 
   /// <summary>
   /// Reads the <c>multiblockRoles</c> attribute. Returns <see cref="None"/> for a block that declares none.
-  /// Never throws: it is re-read from <see cref="BlockEntityMultiblockStructure.SetStructureAngle"/>, on the
-  /// server monitor tick and on a client <c>GetBlockInfo</c>, where an exception would repeat on a live block
-  /// entity mid-session. Malformed entries are therefore skipped and every value is type-checked rather than
-  /// cast, since <c>(int)JToken</c> throws on a string, an object, or a number too wide for an <c>int</c>.
+  /// Never throws: it is re-read on a live block entity mid-session, so malformed entries are skipped and
+  /// every value is type-checked rather than cast, since <c>(int)JToken</c> throws on a string, an object, or
+  /// a number too wide for an <c>int</c>.
   /// </summary>
   public static MultiblockCellRoles FromAttributes(JsonObject? attributes) {
     var map = new Dictionary<CellRole, HashSet<(int X, int Y, int Z)>>();

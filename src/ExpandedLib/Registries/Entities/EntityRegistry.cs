@@ -106,8 +106,8 @@ public static class EntityRegistry {
     ExDefinitions.DiscoverAndRegisterItems(domain, asm);
     ExDefinitions.DiscoverAndRegisterRecipes(domain, asm);
 
-    // A definition contributor is asset-dependent (Task 3: IExDefinitionContributor), so it is
-    // discovered here with the rest of the assembly's scan but only run later, at AssetsLoaded 0.04.
+    // A definition contributor (IExDefinitionContributor) is asset-dependent, so it is discovered
+    // here with the rest of the assembly's scan but only run later, at AssetsLoaded 0.04.
     ExDefinitions.DiscoverContributors(asm);
   }
 
@@ -148,10 +148,8 @@ public static class EntityRegistry {
   /// <para>
   /// The domain comes from <paramref name="type"/>'s own assembly (<see cref="DomainOf"/>), not from
   /// <paramref name="callerDomain"/>, so naming a class from a dependency yields the key that mod
-  /// registered. Keying off the caller's domain instead produced a key nobody had registered, which
-  /// fails at world load and, on the block half, without a log line.
-  /// <paramref name="callerDomain"/> is the last resort, for a type whose assembly neither declares a
-  /// domain nor has registered one.
+  /// registered. <paramref name="callerDomain"/> is the last resort, for a type whose assembly
+  /// neither declares a domain nor has registered one.
   /// </para>
   /// </summary>
   public static string KeyFor(string callerDomain, Type type) =>

@@ -37,9 +37,6 @@ public partial class BlockSmokeStackIntake
         )
         .MaxStackSize(1)
         .Handbook("smokestack-intake-*")
-        // The chimney footprint, drawn as one top-down cross-section per Y level (rows +Z, cols +X, origin
-        // x=-1/z=0). y=-1 refractory base .. y=10 the flue mouth. Legend: # refractory brick, I the intake
-        // (origin), a air, B chimney brick-course. Compared as an unordered cell set by DefinitionParity.
         .MultiblockLayout(s =>
           s.Origin(-1, 0)
             .Core('I')

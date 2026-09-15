@@ -23,9 +23,9 @@ public enum MeasurementSystem {
 /// (litres, atm, °C); these methods render one into a player-facing string in the active
 /// <see cref="System"/>, so block-info and handbook code stays unit-agnostic.
 /// <para>
-/// <see cref="System"/> is a per-player, client-side preference. A content mod (iiex's
-/// <c>MeasurePreference</c>) owns it through the library's preferences store and applies it for the
-/// local player on join; exlib only reads it.
+/// <see cref="System"/> is a per-player, client-side preference, applied by
+/// <see cref="MeasurePreference"/> through the library's preferences store for the local player on
+/// join; exlib only reads it.
 /// </para>
 /// </summary>
 public static class ExMeasure {

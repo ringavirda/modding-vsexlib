@@ -42,10 +42,8 @@ public class BlockEntitySmokeStack
 
   /// <summary>
   /// Drops the stack out of the gas graph, mirroring the <see cref="Initialize"/> registration this class
-  /// has to do by hand.
-  /// removal-only teardown: a chunk unload leaves the stack plumbed in, so deregistering there would cut
-  /// the exhaust run every time a player walked away. The base clears the listeners and the build outline
-  /// on unload, which is the whole of what an unload owes.
+  /// has to do by hand. Removal-only: deregistering on unload would cut the exhaust run every time a
+  /// chunk unloads, and the base already clears the listeners and the build outline there.
   /// </summary>
   public override void OnBlockRemoved() {
     if (Api?.Side == EnumAppSide.Server)

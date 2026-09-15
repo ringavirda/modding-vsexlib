@@ -9,7 +9,7 @@ namespace ExpandedLib.Blocks;
 
 /// <summary>
 /// Places a block wearing the <c>side</c> variant the player's look implies; the family's replacement
-/// for vanilla's <c>HorizontalOrientable</c>. Resolves through <c>CodeWithVariant("side", …)</c> rather
+/// for vanilla's <c>HorizontalOrientable</c>. Resolves through <c>CodeWithVariant("side", ...)</c> rather
 /// than <c>CodeWithParts</c>, which keeps only the first dash-segment and so cannot address a code with
 /// several segments or variant groups. The facing is
 /// <c>SuggestedHVOrientation(byPlayer, blockSel)[0]</c>, as in vanilla.
@@ -103,8 +103,7 @@ public class BlockBehaviorExOrientable : BlockBehavior {
   /// </summary>
   /// <remarks>The mesh update belongs here rather than at the call sites: every swap needs it, and a
   /// headless test cannot see a missing one - the block changes, every server-side assertion passes,
-  /// and the player keeps looking at the old shape. <c>NetworkNodeOrientationTests</c> asserts the mark
-  /// explicitly for that reason.</remarks>
+  /// and the player keeps looking at the old shape.</remarks>
   public bool ApplyOrientation(IWorldAccessor world, BlockPos pos, string token) {
     if (!_scheme.Contains(token))
       return false;

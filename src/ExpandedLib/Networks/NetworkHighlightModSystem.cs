@@ -11,7 +11,7 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Networks;
 
-/// <summary>Toggle request sent client→server when a player runs <c>.exmod network hi|unhi</c>.</summary>
+/// <summary>Toggle request sent client to server when a player runs <c>.exmod network hi|unhi</c>.</summary>
 [ProtoContract]
 internal class NetworkHighlightRequest {
   [ProtoMember(1)]

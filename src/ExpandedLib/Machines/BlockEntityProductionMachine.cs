@@ -6,18 +6,17 @@ using Vintagestory.API.Datastructures;
 namespace ExpandedLib.Machines;
 
 /// <summary>
-/// Base for a block entity whose whole reason to exist is periodic server-side production work - the
-/// standalone steam engines and their sub-machines. A machine that is also something else hosts a
-/// <see cref="BEBehaviorProductionMachine"/> of its own instead, and a multiblock does it through
+/// Base for a block entity whose whole reason to exist is periodic server-side production work. A
+/// machine that is also something else hosts a <see cref="BEBehaviorProductionMachine"/> of its own
+/// instead, and a multiblock does it through
 /// <see cref="ExpandedLib.Structures.BlockEntityMultiblockMachine"/>.
 /// <para>
 /// The tick lifecycle - registration, the gate, teardown and away-catch-up - is run by the process
-/// this class hosts, so a concrete machine writes only its per-tick logic in
-/// <see cref="OnProductionTick"/> plus the gate in <see cref="CanRunProduction"/>: the tick runs
-/// every <see cref="ProductionTickMs"/> ms, and a <c>false</c> gate routes it to
-/// <see cref="OnIdleProductionTick"/> instead. Network access is not part of being a machine - a
-/// machine that reads a port calls the <see cref="MachinePorts"/> extensions on itself, exactly as a
-/// plain block entity does.
+/// this class hosts: a concrete machine writes only its per-tick logic in
+/// <see cref="OnProductionTick"/> and the gate in <see cref="CanRunProduction"/>, ticking every
+/// <see cref="ProductionTickMs"/> ms and routing to <see cref="OnIdleProductionTick"/> when the gate
+/// is <c>false</c>. Network access is not part of being a machine; a machine reads a port through
+/// the <see cref="MachinePorts"/> extensions on itself.
 /// </para>
 /// </summary>
 public abstract class BlockEntityProductionMachine
@@ -90,12 +89,10 @@ public abstract class BlockEntityProductionMachine
 
   /// <summary>
   /// Whether the process registers the production tick as soon as the machine loads. Default
-  /// <c>true</c> (the machine self-gates each tick). A machine that registers/unregisters the tick
-  /// on a state change (e.g. a multiblock that only ticks while complete) overrides this and drives
-  /// <see cref="StartProductionTick"/>/<see cref="StopProductionTick"/> itself.
-  /// Separate from readiness on purpose: a self-gating machine registers its tick while un-ready and
-  /// idles until it is, and taking the answer from readiness would leave it with no listener to notice
-  /// the change.
+  /// <c>true</c> (the machine self-gates each tick). A machine that registers/unregisters the tick on
+  /// a state change instead overrides this and drives <see cref="StartProductionTick"/> and
+  /// <see cref="StopProductionTick"/> itself; readiness alone cannot drive this, since a self-gating
+  /// machine needs a listener while un-ready to notice when it becomes ready.
   /// </summary>
   protected virtual bool AutoStartProduction => true;
 

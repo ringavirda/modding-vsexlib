@@ -262,9 +262,8 @@ public class BurdenmakerInteractionTests {
     BurdenmakerCell cell,
     bool holdingOre
   ) {
-    // Covers two mutations: swapping the OreHopper and FluxHopper arms of the switch (each hopper
-    // refuses the other's material, so a swapped arm moves nothing at all), and hard-coding the angle
-    // passed to Classify - StructureAngle is 0 at side "n", so all four facings are needed to see it.
+    // Each hopper refuses the other's material; StructureAngle is 0 at side "n", so all four facings
+    // are needed to exercise the angle passed to Classify.
     Rig rig = NewRig(side);
     Item held = holdingOre ? rig.Ore : rig.Lime;
     Hands hands = PlayerWith(new ItemStack(held, Load), ctrl: true);
@@ -289,8 +288,7 @@ public class BurdenmakerInteractionTests {
   public void An_empty_hand_takes_back_from_the_hopper_that_was_clicked(
     string side
   ) {
-    // The take arms are unreachable from the deposit table above. The two loads differ in material and
-    // in size, so a swapped arm fails on either assertion alone.
+    // The two loads differ in material and in size, so a swapped arm fails on either assertion alone.
     Rig rig = NewRig(side);
     Fill(rig, ore: 20, flux: 7);
 

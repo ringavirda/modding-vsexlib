@@ -100,10 +100,6 @@ public partial class BlockTwinTubMPBlower
               )
           )
         )
-        // Ported from smex's legacy mpblower.json: masonry-free base first, then the beam frame, the
-        // axle and gear train, the twin tubs, and last the pipe stub. The legacy stage there also asked
-        // for two ppex pipe segments; the sample ships no pipe item of its own, so two more metal
-        // plates stand in for them.
         .Construction(c =>
           c.Stage(s => s.AddElements("Root/Base", "Root/BaseExtention"))
             .Stage(s =>

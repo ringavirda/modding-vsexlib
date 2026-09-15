@@ -982,8 +982,8 @@ public sealed class ExBlockDef : IExDef {
         entry["behaviors"] = behaviors;
       }
       if (cell.CollisionBoxes is { Count: > 0 } boxes)
-        // One box writes `collisionBox`, several `collisionBoxes` - both are what StructureFillers.ReadBoxes
-        // accepts, and the singular form keeps the common slab cell readable in a golden.
+        // One box writes `collisionBox`, several `collisionBoxes` - both are what
+        // StructureFillers.ReadBoxes accepts.
         entry[boxes.Count == 1 ? "collisionBox" : "collisionBoxes"] =
           boxes.Count == 1
             ? Corners(boxes[0])
@@ -999,9 +999,8 @@ public sealed class ExBlockDef : IExDef {
     return array;
   }
 
-  // Just the two corners, in vanilla's own lowercase spelling. Serializing the Cuboidf itself writes its
-  // twenty-odd computed properties (Width, MidX, Center, ...), all of which the reader ignores and every
-  // one of which would land in a golden.
+  // Just the two corners, in vanilla's own lowercase spelling. Serializing the Cuboidf itself would also
+  // emit its computed properties (Width, MidX, Center, ...), which the reader ignores.
   private static JObject Corners(Cuboidf box) =>
     new() {
       ["x1"] = box.X1,

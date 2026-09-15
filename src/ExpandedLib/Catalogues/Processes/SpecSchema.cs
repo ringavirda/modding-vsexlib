@@ -4,9 +4,8 @@ namespace ExpandedLib.Catalogues;
 
 /// <summary>
 /// The versioning contract every spec attribute carries. A parser reads the current form first and falls
-/// back to the older ones, so a mod's content does not break on our schedule - and it refuses a form from
-/// a newer build outright rather than mis-reading it as one it does know. The alternative, freezing at
-/// release and going additive-only, was cheaper for us and worse for the people who asked for this.
+/// back to the older ones, so a mod's content does not break on the library's release schedule - and it
+/// refuses a form from a newer build outright rather than mis-reading it as one it does know.
 /// See docs/design/mechanics/process-extension.md.
 /// </summary>
 public static class SpecSchema {

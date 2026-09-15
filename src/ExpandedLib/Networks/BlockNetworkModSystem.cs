@@ -465,7 +465,7 @@ public class BlockNetworkModSystem : ModSystem {
     if (_unreadableNodes.Count == 0)
       return;
 
-    // Snapshot: a review splits its network, which rewrites both dictionaries underneath us.
+    // Snapshot: a review splits its network, which rewrites both dictionaries during the loop.
     var ready = _unreadableNodes
       .Where(e => e.Value.Any(p => world.GetChunkAtBlockPos(p) != null))
       .Select(e => e.Key)

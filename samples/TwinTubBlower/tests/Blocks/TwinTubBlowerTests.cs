@@ -308,12 +308,7 @@ public class TwinTubBlowerTests {
 
   /// <summary>
   /// A pipe standing directly against the principal, on any face but the outlet, never joins: the
-  /// network only reaches this blower two cells out, through the outlet filler. Before the block's
-  /// own <see cref="BlockTwinTubMPBlower.HasConnectorAt(BlockFacing)"/> was narrowed to
-  /// <see cref="BlockTwinTubMPBlower.OutletFace"/>, the base class read the placed "orientation"
-  /// variant letter as a connector code, which agreed with the outlet face for n/s but named the
-  /// opposite face for e/w - so a pipe against the principal's east face joined an "e"-placed blower
-  /// and one against west joined a "w"-placed one.
+  /// network only reaches this blower two cells out, through the outlet filler.
   /// </summary>
   [Theory]
   [InlineData("n", 300)]
@@ -366,9 +361,7 @@ public class TwinTubBlowerTests {
   /// The body extends away from the player, not toward them: the pass-through fillers sit at
   /// principal + 1 and +2 cells along the facing the player was given at placement, the outlet
   /// faces that same direction, and the MP port cell - fixed above the principal regardless of
-  /// orientation - carries its connector on the player's left hand. Pins the east/west repair:
-  /// before it, <see cref="BlockTwinTubMPBlower.StructureAngle"/> used e 90 / w 270 and turned
-  /// those two placements the wrong way.
+  /// orientation - carries its connector on the player's left hand.
   /// </summary>
   [Theory]
   [InlineData("n", 400, 0, 0, -1, 0, 0, -2, "n", "w")]
@@ -388,7 +381,7 @@ public class TwinTubBlowerTests {
     string portSide
   ) {
     var (_, principal, block) = RigOriented(orientation, id);
-    // Footprint read off the shipped def, as the burden maker's placement suite does.
+    // Footprint read off the shipped def.
     block.Attributes = new JsonObject(
       BlockTwinTubMPBlower.Definitions("twintubblower").First().ToJson()[
         "attributes"

@@ -6,15 +6,9 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// The one place in the suite where a fastener is a gate rather than a substitution: a pressure vessel is
-/// riveted and nothing else will do. A rivet makes a joint that is strong and tight; a nail is strong and
-/// not tight, so a boiler that accepted nails would hold steam behind a joint that leaks.
-/// the family's own fastener-by-tier rule (exmods): nails and bolts are the iron tier's, rivets the steam tier's.
-/// <para>
-/// The check is a negative match, which almost nothing else in the suite does. Every other definition
-/// check asks that something resolves; a careless widening of a boiler stage back onto nails would satisfy
-/// all of them, and only this would notice. Shared because two mods ship a boiler and both are gated.
-/// </para>
+/// Checks that a pressure vessel's construction stages accept rivets only, never nails or bolts: a
+/// riveted joint is tight where a nailed one is merely strong, and a boiler sealed with nails would leak
+/// steam. Shared because two mods ship a boiler and both are gated the same way.
 /// </summary>
 public static class PressureVesselGate {
   /// <summary>
@@ -55,8 +49,7 @@ public static class PressureVesselGate {
         .Select(i => i["code"]!.ToString()),
     ];
 
-  /// <summary>How many of <paramref name="rivetCode"/> the whole build costs, summed over its stages. The
-  /// ledger the mass-neutral move is stated against.</summary>
+  /// <summary>How many of <paramref name="rivetCode"/> the whole build costs, summed over its stages.</summary>
   public static int RivetsRequired(ExBlockDef def, string rivetCode) =>
     StageIngredients(def)
       .Where(i => i["code"]?.ToString() == rivetCode)

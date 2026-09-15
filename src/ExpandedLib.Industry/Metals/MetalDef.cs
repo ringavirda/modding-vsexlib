@@ -21,40 +21,40 @@ public class MetalDef {
   /// <summary>The <c>AssetLocation</c> carried in a canal cell / barrel / mold ("game:ingot-iron").</summary>
   public string MoltenItem { get; set; } = "";
 
-  /// <summary>Solid item chipped/broken out. Null → the vanilla <c>shatteredStack</c> convention
-  /// (<c>ingot-X → metalbit-X</c>, non-ingot items drop as themselves).</summary>
+  /// <summary>Solid item chipped/broken out. Null -> the vanilla <c>shatteredStack</c> convention
+  /// (<c>ingot-X -> metalbit-X</c>, non-ingot items drop as themselves).</summary>
   public string? SolidDrop { get; set; }
 
-  /// <summary>Molten units recovered per solid drop item. Null → 5 (the shared bit ratio).</summary>
+  /// <summary>Molten units recovered per solid drop item. Null -> 5 (the shared bit ratio).</summary>
   public int? UnitsPerBit { get; set; }
 
-  /// <summary>Localization key for the player-facing name. Null → strip <c>ingot-</c> and capitalise,
+  /// <summary>Localization key for the player-facing name. Null -> strip <c>ingot-</c> and capitalise,
   /// as <see cref="ExpandedLib.Industry.Molten.MoltenMetal.DisplayName"/> does.</summary>
   public string? DisplayLangKey { get; set; }
 
-  /// <summary>Fraction of the melting point above which this metal flows. Null → the global
+  /// <summary>Fraction of the melting point above which this metal flows. Null -> the global
   /// <see cref="ExlibValues.MetalLiquidThreshold"/>.</summary>
   public float? LiquidThreshold { get; set; }
 
-  /// <summary>Fraction of the melting point below which this metal is chisellable. Null → the global
+  /// <summary>Fraction of the melting point below which this metal is chisellable. Null -> the global
   /// <see cref="ExlibValues.MetalHardenedThreshold"/>.</summary>
   public float? HardenedThreshold { get; set; }
 
-  /// <summary>Temperature (°C) below which this metal emits no glow. Null → the global
+  /// <summary>Temperature (C) below which this metal emits no glow. Null -> the global
   /// <see cref="ExlibValues.MetalGlowMinTemp"/>.</summary>
   public float? GlowMinTemp { get; set; }
 
-  /// <summary>Network media this metal flows in (the bridge to the liquid taxonomy). Null → <c>["molten"]</c>.</summary>
+  /// <summary>Network media this metal flows in (the bridge to the liquid taxonomy). Null -> <c>["molten"]</c>.</summary>
   public List<string>? Media { get; set; }
 
   /// <summary>True when this entry is a produced alloy rather than an elemental metal.</summary>
   public bool IsAlloy { get; set; }
 
-  /// <summary>Item code recovered when the solid drop cannot resolve. Null →
+  /// <summary>Item code recovered when the solid drop cannot resolve. Null ->
   /// <see cref="MetalRegistry.DefaultRecoveryFallback"/>, which may itself be null.</summary>
   public string? RecoveryFallback { get; set; }
 
-  /// <summary>Domain owning this metal's cast products (the mold's <c>{metal}</c> drops). Null → keep
+  /// <summary>Domain owning this metal's cast products (the mold's <c>{metal}</c> drops). Null -> keep
   /// the drop template's own domain. A mod-added metal has no <c>game:metalplate-X</c> to resolve into,
   /// so its molds must rehome the drop into the mod's domain; see
   /// <see cref="MetalRegistry.CastProductOf"/>.</summary>
@@ -76,23 +76,23 @@ public class MetalDef {
 
   /// <summary>Which resource forms to emit when <see cref="GenerateItemFamily"/> is set, as form tokens
   /// (<c>"ingot"</c>, <c>"plate"</c>, <c>"bits"</c>, <c>"rod"</c>, <c>"nails"</c>). A feedstock lists only
-  /// <c>"ingot"</c>; a full metal lists the build forms its iron-substitution recipes need. Null → the
+  /// <c>"ingot"</c>; a full metal lists the build forms its iron-substitution recipes need. Null -> the
   /// emitter's default set.</summary>
   public List<string>? ItemForms { get; set; }
 
   /// <summary>The vanilla texture every generated form paints with (e.g.
-  /// <c>"game:block/metal/tarnished/iron"</c>) - one texture across the whole family. Null → the
+  /// <c>"game:block/metal/tarnished/iron"</c>) - one texture across the whole family. Null -> the
   /// emitter's fallback.</summary>
   public string? TexturePath { get; set; }
 
-  /// <summary>Density (kg/m³) stamped on the generated items (cast iron 7200, vanilla iron 7870). Null →
+  /// <summary>Density (kg/m^3) stamped on the generated items (cast iron 7200, vanilla iron 7870). Null ->
   /// the emitter's default.</summary>
   public int? Density { get; set; }
 
-  /// <summary>Melting point (°C) written into the generated family's <c>combustibleProps</c>, which is
+  /// <summary>Melting point (C) written into the generated family's <c>combustibleProps</c>, which is
   /// what vanilla's <c>GetMeltingPoint</c> then reports to <see cref="ExpandedLib.Industry.Molten.MoltenMetal.MeltingPointOf"/>.
   /// Only authors an item that does not exist yet; reads of an existing metal always resolve through
-  /// the item's own <c>combustibleProps</c>. Null → the emitter's default.</summary>
+  /// the item's own <c>combustibleProps</c>. Null -> the emitter's default.</summary>
   public int? MeltingPoint { get; set; }
 
   /// <summary>Tool family to generate for this metal, or null for a feedstock that makes no tools (pig
@@ -103,25 +103,25 @@ public class MetalDef {
 
 /// <summary>
 /// Tool stats for a generated metal family (<see cref="MetalDef.Tools"/>). A named <see cref="Preset"/>
-/// ("brittle" ≈ gold-tier, "standard", "good", …) fills the baseline durability, attack and mining
+/// ("brittle" approx. gold-tier, "standard", "good", ...) fills the baseline durability, attack and mining
 /// values; any explicit number here overrides just that stat. The emitter binds these onto the vanilla
 /// tool classes as flat, non-byType values.
 /// </summary>
 public class MetalToolSpec {
-  /// <summary>Named stat baseline ("brittle", "standard", "good", …). Null → the emitter's default preset.</summary>
+  /// <summary>Named stat baseline ("brittle", "standard", "good", ...). Null -> the emitter's default preset.</summary>
   public string? Preset { get; set; }
 
-  /// <summary>Durability override (hits before breaking). Null → the preset's value.</summary>
+  /// <summary>Durability override (hits before breaking). Null -> the preset's value.</summary>
   public int? Durability { get; set; }
 
-  /// <summary>Attack-power override. Null → the preset's value.</summary>
+  /// <summary>Attack-power override. Null -> the preset's value.</summary>
   public float? AttackPower { get; set; }
 
-  /// <summary>Mining-tier override. Null → the preset's value.</summary>
+  /// <summary>Mining-tier override. Null -> the preset's value.</summary>
   public int? MiningTier { get; set; }
 
   /// <summary>Which tool types to emit ("pickaxe", "axe", "shovel", "hammer", "saw", "knife", "chisel",
-  /// "scythe"). Null → the preset's default set.</summary>
+  /// "scythe"). Null -> the preset's default set.</summary>
   public List<string>? ToolTypes { get; set; }
 }
 

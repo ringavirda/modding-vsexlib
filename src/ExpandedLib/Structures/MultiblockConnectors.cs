@@ -44,9 +44,8 @@ public sealed class MultiblockConnectors {
   /// <summary>
   /// Reads the <c>multiblockConnectors</c> attribute, keyed face letter to the cells demanding it and
   /// inverted here to cell to faces. Returns <see cref="None"/> for a block that declares none. Never
-  /// throws, for the reason <see cref="MultiblockCellRoles.FromAttributes"/> does not: it is re-read
-  /// from <see cref="BlockEntityMultiblockStructure.SetStructureAngle"/>, on the server monitor tick and
-  /// on a client <c>GetBlockInfo</c>, where an exception repeats on a live block entity mid-session.
+  /// throws, for the reason <see cref="MultiblockCellRoles.FromAttributes"/> does not: it is re-read on a
+  /// live block entity mid-session.
   /// </summary>
   public static MultiblockConnectors FromAttributes(JsonObject? attributes) {
     var map = new Dictionary<(int X, int Y, int Z), List<string>>();

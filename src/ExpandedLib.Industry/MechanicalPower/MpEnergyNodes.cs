@@ -6,7 +6,7 @@ namespace ExpandedLib.Industry.MechanicalPower;
 /// the load and friction.
 /// </summary>
 public interface IMpEnergyProducer {
-  /// <summary>Drive torque (N·m) applied at the run's current shaft speed <paramref name="speed"/>
+  /// <summary>Drive torque (N*m) applied at the run's current shaft speed <paramref name="speed"/>
   /// (rad/s). Implementations follow a torque-speed curve: high torque at rest so a load can be
   /// started, easing toward 0 near the rated speed. A curve rather than flat power is what lets an
   /// under-powered drive stall a load instead of eventually reaching it.</summary>
@@ -16,10 +16,10 @@ public interface IMpEnergyProducer {
 /// <summary>
 /// A node that stores energy: a flywheel, or the small inherent inertia of a cast-iron shaft or gear.
 /// It contributes <see cref="Inertia"/>, from which the run's capacity follows as
-/// <c>E_cap = ½Iω_max²</c>, and which buffers the run against torque transients.
+/// <c>E_cap = 1/2*I*w_max^2</c>, and which buffers the run against torque transients.
 /// </summary>
 public interface IMpEnergyStorage {
-  /// <summary>Rotational inertia (kg·m²) this node adds to the run. Sets its capacity, its spin-up
+  /// <summary>Rotational inertia (kg*m^2) this node adds to the run. Sets its capacity, its spin-up
   /// time, and how hard it resists a change in shaft speed.</summary>
   float Inertia { get; }
 }
@@ -31,7 +31,7 @@ public interface IMpEnergyStorage {
 /// accrues over time, so an under-powered run stalls.
 /// </summary>
 public interface IMpEnergyConsumer {
-  /// <summary>Resisting torque (N·m) imposed at the run's current shaft speed <paramref name="speed"/>
+  /// <summary>Resisting torque (N*m) imposed at the run's current shaft speed <paramref name="speed"/>
   /// (rad/s), or 0 when idle. May scale with machine state, for example a cold rolling pass whose
   /// higher flow stress raises the torque enough to stall the mill.</summary>
   float LoadTorque(float speed);

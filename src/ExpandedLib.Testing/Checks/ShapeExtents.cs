@@ -19,9 +19,9 @@ public static class ShapeExtents {
   /// <remarks>
   /// A child element's <c>from</c> / <c>to</c> are offsets from its PARENT's <c>from</c>, not absolute
   /// coordinates, so every element has to be lifted into absolute space before it is measured. Read as
-  /// absolute, a piece drawn as two halves end to end measures as lanes side by side - which is how three
-  /// cast stock shapes were once reported as needing a redraw when only one did. Measuring the top-level
-  /// elements alone has the milder version of the same fault: it sees one half and calls it the piece.
+  /// absolute, a piece drawn as two halves end to end measures as lanes side by side. Measuring the
+  /// top-level elements alone has the milder version of the same fault: it sees one half and calls it
+  /// the piece.
   /// </remarks>
   /// <param name="element">One element to measure, children included - a family shape file holds every
   /// stage of a route, so measuring the whole file would measure thirteen drawn states at once. Null

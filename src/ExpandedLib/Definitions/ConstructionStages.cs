@@ -111,12 +111,8 @@ public sealed class ConstructionStage {
 
   /// <summary>
   /// Requires rivets, which have no metal axis and so no wildcard to capture. Hint key
-  /// <c>{domain}:rcc-ingredient-rivet</c>.
-  /// <para>
-  /// The code is passed in rather than composed from <paramref name="domain"/>: the mod that ships the
-  /// rivet is not always the mod building with it, and a steel-tier boiler fastened with the iron tier's
-  /// rivets would otherwise ask for a <c>rivet</c> under its own domain that nothing registers.
-  /// </para>
+  /// <c>{domain}:rcc-ingredient-rivet</c>. <paramref name="rivetCode"/> names the mod that ships the
+  /// rivet, which may differ from <paramref name="domain"/>.
   /// </summary>
   public ConstructionStage RequireRivets(
     string domain,

@@ -55,9 +55,8 @@ public static class LangKeys {
       if (Foreign.Contains(litDomain))
         continue;
 
-      // A domain this tree does not ship used to be skipped, which made this guard go blind exactly
-      // when it was needed most: rename or merge away a domain and every literal still naming it
-      // silently stops being checked instead of failing.
+      // A domain this tree does not ship fails rather than being skipped: skipping it would let a
+      // renamed or merged-away domain's literals go unchecked instead of failing.
       if (!string.Equals(litDomain, domain, StringComparison.Ordinal)) {
         missing.Add(
           $"{litDomain}:{key} ({file}) - no lang tree ships domain '{litDomain}'"

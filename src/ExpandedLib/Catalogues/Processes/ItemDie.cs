@@ -7,12 +7,13 @@ namespace ExpandedLib.Catalogues;
 
 /// <summary>
 /// A die: the swappable tooling a heading, nail or rivet bench works with, carrying the job it does in a
-/// <c>machinejob</c> attribute. The same idiom as a roll set and a mold pattern, and settled as E2 - a
-/// modder adds a die exactly the way they add a roll set, and the bench reads what to do off the fitted
-/// tooling rather than naming a product.
+/// <c>machinejob</c> attribute. The same idiom as a roll set and a mold pattern: a modder adds a die
+/// exactly the way they add a roll set, and the bench reads what to do off the fitted tooling rather than
+/// naming a product.
 /// <para>
 /// A die is recognised by carrying a job that parses, never by its code, so a third party's die needs no
-/// naming blessing from us. See docs/design/mechanics/process-extension.md; the family's own machining line (exmods) is what fills the job table.
+/// naming blessing from the library. See docs/design/mechanics/process-extension.md; the family's own
+/// machining line (exmods) is what fills the job table.
 /// </para>
 /// </summary>
 public static class ItemDie {
@@ -98,8 +99,8 @@ public static class ItemDie {
 
   /// <summary>
   /// Builds a mod's whole <c>die</c> itemtype from its own job table, so a mod that owns a die owns the
-  /// itemtype carrying it. The factory is the extension seam rather than the table - the shape
-  /// <c>PatternItemDefinitions.Itemtype</c> proved, and the one the roll sets still lack.
+  /// itemtype carrying it. The factory, not the table, is the extension seam, as with
+  /// <c>PatternItemDefinitions.Itemtype</c>.
   /// </summary>
   /// <param name="domain">The mod's domain; its dies land there.</param>
   /// <param name="jobs">Variant name to its spec, from <see cref="Job"/> or hand-built.</param>

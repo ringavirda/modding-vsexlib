@@ -16,9 +16,9 @@ namespace ExpandedLib.Industry.MechanicalPower;
 public class MpEnergyNetwork : BlockNetwork {
   public override string NetworkType => "mpenergy";
 
-  // Framework tunables, read live from config. FrictionCoeff is the windage coefficient (τ ∝ ω),
-  // IdleTorque the standing-resistance floor, MaxSpeed the burst speed ω_max (rad/s) that sets
-  // capacity = ½·I·ω_max².
+  // Framework tunables, read live from config. FrictionCoeff is the windage coefficient (T proportional to w),
+  // IdleTorque the standing-resistance floor, MaxSpeed the burst speed w_max (rad/s) that sets
+  // capacity = 1/2*I*w_max^2.
   private static float FrictionCoeff => ExlibValues.MpFrictionCoeff;
   private static float IdleTorque => ExlibValues.MpIdleTorque;
   private static float MaxSpeed => ExlibValues.MpMaxSpeed;
@@ -49,7 +49,7 @@ public class MpEnergyNetwork : BlockNetwork {
     BlockNetworkModSystem manager
   ) {
     // One walk of the node set at the current shaft speed: sum the storage inertia, the drive torque
-    // (producers evaluated on their torque-speed curve at ω), and the load torque of working consumers.
+    // (producers evaluated on their torque-speed curve at w), and the load torque of working consumers.
     float speed = State?.Speed ?? 0f;
     float inertia = 0f;
     float driveTorque = 0f;
@@ -85,7 +85,7 @@ public class MpEnergyNetwork : BlockNetwork {
     State.Inertia = inertia;
     State.Reversed = reversed;
 
-    // Integrate the shaft: ω += (τ_drive − τ_load − τ_fric)/I · dt, clamped to [0, ω_max]. Torque
+    // Integrate the shaft: w += (T_drive - T_load - T_fric)/I * dt, clamped to [0, w_max]. Torque
     // governs, so an under-torqued run decelerates to a stall rather than buffering past the load.
     MpEnergyNetworkState.Step(
       State,
@@ -112,7 +112,7 @@ public class MpEnergyNetwork : BlockNetwork {
       return;
     }
     // Pool the stored energy and inertia; the derived speed follows. The merged capacity is
-    // ½·(I₁+I₂)·ω_max², so only the usual capacity ceiling applies.
+    // 1/2*(I1+I2)*w_max^2, so only the usual capacity ceiling applies.
     State.Inertia += o.State.Inertia;
     State.StoredEnergy += o.State.StoredEnergy;
     float cap = MpEnergyNetworkState.CapacityFor(State.Inertia, MaxSpeed);

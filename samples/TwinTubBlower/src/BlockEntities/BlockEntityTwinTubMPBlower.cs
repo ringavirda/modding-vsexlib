@@ -116,11 +116,10 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
 
   /// <summary>
   /// Samples the axle and pushes one second of air into the network, scaled by
-  /// <see cref="SpeedFraction"/>. Marks dirty only when the sampled speed changed. The bellows' note
-  /// plays whenever they are working, whether or not the line had room for the air - several blowers
-  /// sharing a line at its pressure ceiling all move, so all must be heard; a line with nowhere for the
-  /// air to go blows it off at the outlet as well. A no-op before construction completes - an axle
-  /// coupled to the port cell of an unbuilt blower turns nothing.
+  /// <see cref="SpeedFraction"/>. Marks dirty only when the sampled speed changed. Plays the bellows'
+  /// note whenever they are working, even when the line had no room for the air, since several blowers
+  /// sharing a line at its pressure ceiling all move and must all be heard. A no-op before construction
+  /// completes.
   /// </summary>
   private void OnBlowTick(float dt) {
     if (!IsConstructed)
@@ -259,8 +258,7 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   /// The axle's angle as a turn about the axis running from the port face into the machine, in the
   /// sense vanilla draws the axle; the clip keyframes its shaft as a positive turn about that axis.
   /// Vanilla signs a horizontal axle's rotation negative along its axis, so the port's angle reads
-  /// negated on a west or north port and straight on an east or south one. The sample compiles
-  /// against the released framework package, so it derives this itself.
+  /// negated on a west or north port and straight on an east or south one.
   /// </summary>
   private static float DrivenAngle(BEBehaviorMPFillerPort port) {
     Vec3i n = port.PortFacing.Normali;

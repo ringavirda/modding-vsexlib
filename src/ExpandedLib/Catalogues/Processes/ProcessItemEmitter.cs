@@ -12,7 +12,7 @@ namespace ExpandedLib.Catalogues;
 /// beside it. See docs/design/mechanics/process-extension.md.
 /// </summary>
 public static class ProcessItemEmitter {
-  /// <summary>Domain we never generate into: injecting an itemtype there would replace one of the base
+  /// <summary>Domain never generated into: injecting an itemtype there would replace one of the base
   /// game's own items. A declaration naming a vanilla code is wiring it up, never building it.</summary>
   private const string VanillaDomain = "game";
 

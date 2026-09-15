@@ -12,12 +12,9 @@ using Xunit;
 namespace BurdenMaker.Tests;
 
 /// <summary>
-/// The block-placement path itself (<see cref="BlockFilledMegastructure.OnBlockPlaced"/>): a regression
-/// guard for the owner's report of the machine vanishing right after placement. The vanish traced to the
-/// polished shape's textures missing the game domain (fixed on dev before this branch), not to a removal
-/// path in the placement code; this fact pins the placement code's own half of that guarantee - nothing
-/// on <c>OnBlockPlaced</c>/<c>Initialize</c> removes or replaces the principal, and every footprint
-/// filler lands with it.
+/// The block-placement path itself (<see cref="BlockFilledMegastructure.OnBlockPlaced"/>): nothing on
+/// <c>OnBlockPlaced</c>/<c>Initialize</c> removes or replaces the principal, and every footprint filler
+/// lands with it.
 /// </summary>
 public class BurdenmakerPlacementTests {
   [Fact]
@@ -33,7 +30,7 @@ public class BurdenmakerPlacementTests {
       ("brick", "red"),
       ("side", "n")
     );
-    // Footprint read off the shipped def, as the other burdenmaker suites do.
+    // Footprint read off the shipped def.
     block.Attributes = new JsonObject(
       BlockBurdenmaker.Definitions("burdenmaker").First().ToJson()[
         "attributes"
@@ -43,7 +40,7 @@ public class BurdenmakerPlacementTests {
     var pos = new BlockPos(64, 110, 64);
     var be = new BlockEntityBurdenmaker { Pos = pos, Block = block };
     world.Place(pos, block, be);
-    world.Initialize(be); // runs Initialize, the other half of the owner's report
+    world.Initialize(be);
 
     // The item a player places from: an ItemStack wrapping the block itself, the same as vanilla's own
     // byItemStack at OnBlockPlaced.

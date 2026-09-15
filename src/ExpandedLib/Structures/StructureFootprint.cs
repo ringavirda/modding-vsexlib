@@ -9,10 +9,9 @@ namespace ExpandedLib.Structures;
 /// One behaviour hosted by a footprint filler cell: a block-entity behaviour code plus, optionally, the block
 /// face it exposes a connector on and a <see cref="Properties"/> config blob. Makes a filler cell a live port
 /// (an <c>exlib.BEBehaviorMPFillerPort</c> on <c>west</c> turns the cell into a mechanical-power intake driven
-/// by an axle on that face) or a stateful cell (an <c>exlib.BEBehaviorMoltenCell</c> whose
-/// <c>{ capacity, flowSource, drainFitting }</c> vary per footprint cell, as on a casting bed's basin, runners
-/// and molds). Serialized as <c>{ code[, face][, properties] }</c> in a cell's <c>behaviors</c> array;
-/// <see cref="Properties"/> is any object.
+/// by an axle on that face) or a stateful cell whose config varies per footprint cell. Serialized as
+/// <c>{ code[, face][, properties] }</c> in a cell's <c>behaviors</c> array; <see cref="Properties"/> is any
+/// object.
 /// </summary>
 public readonly record struct FillerBehaviorSpec(
   string Code,
@@ -21,10 +20,9 @@ public readonly record struct FillerBehaviorSpec(
 ) {
   /// <summary>
   /// The same spec named by type: <c>Of&lt;BEBehaviorMPFillerPort&gt;("west")</c> resolves
-  /// <typeparamref name="T"/>'s registered key, so renaming the behaviour class is a compile error.
-  /// The string overload remains for a vanilla behaviour or one this assembly cannot reference; a
-  /// hand-typed code that resolves to nothing is a per-cell warning at chunk load and the mega-block
-  /// still assembles, so the machine places and does nothing.
+  /// <typeparamref name="T"/>'s registered key, so renaming the behaviour class is a compile error. The
+  /// string overload remains for a vanilla behaviour or one this assembly cannot reference; a hand-typed
+  /// code that resolves to nothing is a per-cell warning at chunk load, and the machine still places.
   /// </summary>
   public static FillerBehaviorSpec Of<T>(
     string? face = null,
@@ -46,9 +44,8 @@ public readonly record struct FillerBehaviorSpec(
 /// behaviours (MP/pipe ports). A cell may also carry a passive <see cref="PortFace"/> / <see cref="PortNetworkType"/>
 /// network port: the face code the cell answers back through <see cref="BlockStructureFiller.HasConnectorAt"/> for
 /// the principal, without hosting a <c>BEBehaviorNetworkMember</c> and so without joining the network as a graph
-/// node. This is the typed source the code-first <c>fillerOffsets</c> attribute is
-/// serialized from (<see cref="ExpandedLib.Definitions.ExBlockDef.FillerOffsets"/>), so a footprint is computed
-/// and validated in C# rather than hand-typed as a coordinate array.
+/// node. The typed source the code-first <c>fillerOffsets</c> attribute is serialized from
+/// (<see cref="ExpandedLib.Definitions.ExBlockDef.FillerOffsets"/>).
 /// </summary>
 public readonly record struct FillerCellSpec(
   int X,

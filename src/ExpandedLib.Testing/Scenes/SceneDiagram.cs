@@ -8,7 +8,7 @@ namespace ExpandedLib.Testing;
 /// action; a layer is one horizontal (X/Z) plane at a given height, and several layers stack into a 3D
 /// setup. A row's characters advance along +X, successive rows advance along +Z, and each
 /// <see cref="Layer"/> sits at its own Y. The legend is supplied by the test, so the parser stays
-/// mod-agnostic. A thin forwarder over <see cref="SceneGrid"/>, kept as the type existing tests spell.
+/// mod-agnostic. A thin forwarder over <see cref="SceneGrid"/>.
 /// <code>
 ///   diagram.On('=', p =&gt; scene.Node(p, WePipe(), new BlockEntityPipe(), "pipe"))
 ///          .On('#', p =&gt; scene.Block(p, Rock))

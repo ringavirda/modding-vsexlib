@@ -8,11 +8,10 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// A player with a real hotbar: the active slot holds whatever the test puts there via
-/// <see cref="Hold"/>. Built the way <c>ExOrientableRig</c> and <c>ExInteractionTests</c> already
-/// stood one up by hand - a substituted <see cref="IPlayer"/>/<see cref="EntityPlayer"/> with a real
-/// <see cref="DummySlot"/> behind <c>InventoryManager.ActiveHotbarSlot</c> - so every interaction
-/// handler that reads "what is the player holding" or "is the player sneaking" sees the same shape
-/// it does in game.
+/// <see cref="Hold"/>, backed by a substituted <see cref="IPlayer"/>/<see cref="EntityPlayer"/> with
+/// a real <see cref="DummySlot"/> behind <c>InventoryManager.ActiveHotbarSlot</c>, so an interaction
+/// handler that reads what the player holds or whether it is sneaking sees the same shape it does in
+/// game.
 /// </summary>
 public sealed class TestPlayer {
   private readonly DummySlot _activeSlot;
@@ -55,9 +54,8 @@ public sealed class TestPlayer {
 
   /// <summary>
   /// Builds a player standing in <paramref name="world"/>: a substituted <see cref="IServerPlayer"/>
-  /// where the game assembly allows it (every lane today, once <c>provision game</c> has run - see
-  /// <c>Publicize-GameApi</c> in <c>scripts/exmod.ps1</c>), falling back to a plain
-  /// <see cref="IPlayer"/> substitute otherwise, since every lane supports that one.
+  /// where the game assembly allows proxying it, falling back to a plain <see cref="IPlayer"/>
+  /// substitute otherwise.
   /// </summary>
   public static TestPlayer Create(
     TestWorld world,

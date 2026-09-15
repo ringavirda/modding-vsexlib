@@ -27,9 +27,6 @@ public class ExlibConfig : IExVersionedConfig {
   /// one of these: the file already on disk wins otherwise, so correcting a default without a row here
   /// fixes nothing for anyone who has run the mod.
   /// </summary>
-  // Empty: the one existing row (0.7.3, MetalRecoveryFallback) went with the field when the slag
-  // recovery fallback moved to IiexConfig - it is iiex's own knowledge now, not exlib's, and the field
-  // no longer exists here for ResetFields to name.
   public static readonly ExConfigMigration[] Migrations = [];
 
   #region World
@@ -95,9 +92,9 @@ public class ExlibConfig : IExVersionedConfig {
   /// <summary>Below this temperature (°C) hot metal emits no incandescent block light.</summary>
   public float MetalGlowMinTemp { get; set; } = 500f;
 
-  // The recovery-item fallback (a metal's solid drop failing to resolve) moved to IiexConfig -
-  // "what to drop instead" is content knowledge, not a framework default; see
-  // MetalRegistry.DefaultRecoveryFallback (Industry) and IiexConfig.MetalRecoveryFallback.
+  // The recovery-item fallback (a metal's solid drop failing to resolve) is content knowledge, not
+  // a framework default; see MetalRegistry.DefaultRecoveryFallback (Industry) and
+  // IiexConfig.MetalRecoveryFallback.
   #endregion
 
   #region Mechanical-energy network

@@ -329,10 +329,8 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
         Lang.Get("exlib:pipe-info-pressure", ExMeasure.Pressure(Pressure))
       );
     } else if (_clientMaxVolume > 0 && (Medium.Length > 0 || _clientFlowRate > 0)) {
-      // A run drained as fast as it is fed holds nothing, and its medium label clears with the last
-      // litre - so gating this line on the label alone hides the throughput of exactly the pipes
-      // working hardest. A furnace tuyere in balance with its blower reads empty while carrying its
-      // whole blast. Name the gas while the run still knows it, and say gas when it does not.
+      // Checked on flow rate too, not just the medium label: a run drained as fast as it is fed holds
+      // nothing and its label clears with the last litre, so a balanced tuyere would read empty.
       dsc.AppendLine(
         Lang.Get(
           "exlib:pipe-info-flow",

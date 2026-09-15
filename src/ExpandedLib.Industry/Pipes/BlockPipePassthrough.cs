@@ -104,9 +104,7 @@ public partial class BlockPipePassthrough : BlockPipe, IChimneyVentable {
     ExBlockDef def = ExBlockDef
       .Create(domain, "pipe", assetName)
       // Typed, and safe across assemblies: KeyFor resolves the domain from the TYPE's assembly, so
-      // this factory generates exlib's own keys even while running under a tier domain. It used to be
-      // pinned as literals because the overloads keyed off the definition's domain instead - which
-      // silently produced a key nobody registered, and the block half of that failure is not logged.
+      // this factory generates exlib's own keys even while running under a tier domain.
       .Class<BlockPipePassthrough>()
       .EntityClass<BlockEntityPipePassthrough>()
       .Material(EnumBlockMaterial.Ceramic)
