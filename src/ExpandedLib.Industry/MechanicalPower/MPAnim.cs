@@ -53,7 +53,13 @@ public static class MPAnim {
   public static float FrameFromAngle(float angleRad, int totalFrames) {
     if (totalFrames <= 1)
       return 0f;
-    return GameMath.Mod(angleRad / GameMath.TWOPI * totalFrames, totalFrames);
+    float frame = GameMath.Mod(
+      angleRad / GameMath.TWOPI * totalFrames,
+      totalFrames
+    );
+    // A ratio landing on a wrap boundary can round up to exactly totalFrames, one past the clip's
+    // last valid index; fold it back to 0 rather than hand the animator an out-of-range frame.
+    return frame < totalFrames ? frame : 0f;
   }
 
   /// <summary>
