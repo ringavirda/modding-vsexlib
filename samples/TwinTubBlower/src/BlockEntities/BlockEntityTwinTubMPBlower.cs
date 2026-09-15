@@ -139,9 +139,11 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   private void OnBlowTick(float dt) {
     int axleState = AxleState();
     bool built = IsConstructed;
+    // Vanilla's own counters: the index of the last completed stage over the last index, so a
+    // finished machine reads 4/4. The sample compiles against the released framework package.
     string stage =
       _animator?.Rcc is { } rcc
-        ? $"{rcc.CompletedStage}/{rcc.StageCount}"
+        ? $"{rcc.CurrentCompletedStage}/{rcc.Stages}"
         : "-";
     if (axleState != _axleState || built != _builtOnServer || stage != _stageOnServer) {
       _axleState = axleState;
