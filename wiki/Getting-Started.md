@@ -16,7 +16,7 @@ with the minimum version you build against:
   "version": "1.0.0",
   "dependencies": {
     "game": "1.22.0",
-    "exlib": "0.8.1"
+    "exlib": "0.8.2"
   }
 }
 ```
@@ -147,7 +147,10 @@ public partial class BlockTwinTubMPBlower
     IExBlockDefProvider,
     IFillerHost {
   private static readonly FillerBehaviorSpec MpPortWest =
-    FillerBehaviorSpec.Of<BEBehaviorMPFillerPort>("west");
+    FillerBehaviorSpec.Of<BEBehaviorMPFillerPort>(
+    "west",
+    new { through = false }
+  );
 
   public static new IEnumerable<ExBlockDef> Definitions(string domain) =>
     [

@@ -5,7 +5,28 @@ All notable changes to this mod are documented here. The format is based on
 [Semantic Versioning](https://semver.org/). For changes before this file existed,
 see the git history.
 
-## [0.8.1] - 2026-09-16
+## [0.8.2] - 2026-09-15
+
+### Added
+
+- **One-sided filler ports.** `through: false` in a `BEBehaviorMPFillerPort`'s filler properties
+  couples an axle on the port face alone: the cell refuses the opposite face and the network ends
+  at the port, as at a vanilla consumer, instead of passing out of the machine's far side. The
+  default is unchanged, a row of ports still joins into one line an axle drives from either end.
+- **`BEBehaviorMPFillerPort.DrivenAngleRad`**: the coupled axle's angle as a turn about the axis
+  running from the port into the machine, in the sense vanilla draws the axle, so a shaft clip
+  phase-locked to it turns with the axle on every side. `CurrentAngleRad` alone reads mirrored on an
+  east or south port.
+
+### Fixed
+
+- **The filler port's axis sign is vanilla's per axis again** (`[-1, 0, 0]` on X, `[0, 0, -1]` on
+  Z), as `BEBehaviorMPSubmachineBase` has it; 0.8.1 signed it from the port face.
+- **The twin-tub blower sample**: the server resolves the construction behaviour too, so a finished
+  blower blows (0.8.1's server never saw it complete); the crank follows the axle in every
+  orientation; the port is one-sided, so an axle on the far side no longer turns.
+
+## [0.8.1] - 2026-09-15
 
 ### Added
 
