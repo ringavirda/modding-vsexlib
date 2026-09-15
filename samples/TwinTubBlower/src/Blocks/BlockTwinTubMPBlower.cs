@@ -123,6 +123,31 @@ public partial class BlockTwinTubMPBlower
     StructureFillers.FootprintCells(this, pos, StructureAngle);
 
   /// <summary>
+  /// The direction the pipe-through fillers couple through: the footprint's north face, rotated by
+  /// <see cref="StructureAngle"/> the same way <see cref="FootprintCells"/> rotates the cells
+  /// themselves. The only face this block itself ever presents a network connector on.
+  /// </summary>
+  public BlockFacing OutletFace =>
+    ExOrientation.RotateFacing(BlockFacing.NORTH, StructureAngle);
+
+  /// <summary>
+  /// World cell of the far pipe-through filler, two cells out along the footprint's -Z run - the cell
+  /// whose outward face is where a pipe run actually joins this blower's network and where the vented
+  /// air leaves when the line has nowhere to take it.
+  /// </summary>
+  public BlockPos OutletCell(BlockPos principal) =>
+    ExOrientation.GlobalPos(principal, 0, 0, -2, StructureAngle);
+
+  /// <summary>
+  /// Answers a connector only on <see cref="OutletFace"/>. The base class' Orientation-derived answer
+  /// reads the placed "orientation" variant letter directly as a connector-face code, which happens to
+  /// agree with <see cref="OutletFace"/> for the n/s placements but names the opposite face for e/w -
+  /// letting a pipe standing against the principal itself join the network there instead of two cells
+  /// out through <see cref="OutletCell"/>, where the fillers actually couple.
+  /// </summary>
+  public override bool HasConnectorAt(BlockFacing face) => face == OutletFace;
+
+  /// <summary>
   /// Places the blower facing the way the player is looking and leaves it there: the mega-block's
   /// footprint is fixed to that facing at placement, so the network re-orienting it later
   /// (<see cref="BlockNetworkNode.RecalculateAndSyncOrientations"/>) would desync the fillers from the

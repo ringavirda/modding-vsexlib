@@ -5,7 +5,6 @@ using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Industry.Pipes;
-using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -132,10 +131,8 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
         0.5f,
         16f
       );
-    else if (
-      (Block as BlockNetworkNode)?.GetConnectorFaces() is { Length: > 0 } faces
-    )
-      ExParticles.GasLeak(Api.World, Pos, faces[0]);
+    else if (Block is Blocks.BlockTwinTubMPBlower block)
+      ExParticles.GasLeak(Api.World, block.OutletCell(Pos), block.OutletFace);
   }
 
   /// <summary>
