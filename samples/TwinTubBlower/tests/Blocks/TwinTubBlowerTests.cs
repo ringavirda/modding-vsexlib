@@ -56,13 +56,14 @@ public class TwinTubBlowerTests {
   /// <summary>
   /// A blower standing as a node in its own single-cell pipe main. <c>ProduceAir</c> is driven with an
   /// axle speed directly: the live tick reads speed from a hosted MP filler port, which needs a filler
-  /// block entity the headless world does not build.
+  /// block entity the headless world does not build. Constructed by default, as a working blower is;
+  /// pass <paramref name="constructed"/> false for the premise of an unfinished one.
   /// </summary>
   private static (
     TestWorld world,
     PipeNetwork net,
     BlockEntityTwinTubMPBlower blower
-  ) Rig() {
+  ) Rig(bool constructed = true) {
     var world = new TestWorld();
     world.RegisterNetwork("pipe", sys => new PipeNetwork(sys));
 
@@ -86,6 +87,8 @@ public class TwinTubBlowerTests {
       nameof(blower.NetworkSystem),
       world.Networks
     );
+    if (constructed)
+      RccFake.Complete(blower);
 
     return (world, (PipeNetwork)world.NetworkAt(pos)!, blower);
   }
@@ -160,6 +163,19 @@ public class TwinTubBlowerTests {
     Assert.Equal(0f, blower.ProduceAir(0f, 1f));
 
     Assert.Equal(before, net.State!.Volume, 3);
+  }
+
+  [Fact]
+  public void An_unconstructed_blower_produces_no_air() {
+    var (_, net, blower) = Rig(constructed: false);
+
+    float produced = blower.ProduceAir(
+      TwinTubBlowerValues.TwinTubBlowerMaxSpeed,
+      1f
+    );
+
+    Assert.Equal(0f, produced);
+    Assert.Equal(0f, net.State?.Volume ?? 0f);
   }
 
   [Fact]

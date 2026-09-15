@@ -57,9 +57,11 @@ public partial class BlockTwinTubMPBlower
         .Class<BlockTwinTubMPBlower>()
         .EntityClass<BlockEntityTwinTubMPBlower>()
         .Behavior("MultiblockStructure")
+        .Behavior("BlockEntityInteract")
         .EntityBehavior("Animatable")
         .Material(EnumBlockMaterial.Ceramic)
         .MaxStackSize(1)
+        .NoDrops()
         .VariantGroup("type", "twintubblower")
         .VariantGroup("orientation", "n", "e", "s", "w")
         .NetworkOriented()
@@ -95,8 +97,63 @@ public partial class BlockTwinTubMPBlower
               )
           )
         )
+        // Ported from smex's legacy mpblower.json: masonry-free base first, then the beam frame, the
+        // axle and gear train, the twin tubs, and last the pipe stub. The legacy stage there also asked
+        // for two ppex pipe segments; the sample ships no pipe item of its own, so two more metal
+        // plates stand in for them.
+        .Construction(c =>
+          c.Stage(s => s.AddElements("Root/Base", "Root/BaseExtention"))
+            .Stage(s =>
+              s.Require(
+                  "game:supportbeam-*",
+                  4,
+                  "twintubblower:rcc-ingredient-beam",
+                  type: "block"
+                )
+                .RequireMetalNails(domain, 2)
+                .AddElements("Root/BaseBeam")
+            )
+            .Stage(s =>
+              s.Require("game:plank-*", 4, "twintubblower:rcc-ingredient-plank")
+                .Require(
+                  "game:woodenaxle-ud",
+                  1,
+                  "twintubblower:rcc-ingredient-axle",
+                  type: "block"
+                )
+                .RequireMetalRod(domain, 2)
+                .AddElements("Root/AxleGear")
+            )
+            .Stage(s =>
+              s.RequireMetalPlate(domain, 4)
+                .Require(
+                  "game:plank-*",
+                  4,
+                  "twintubblower:rcc-ingredient-plank"
+                )
+                .RequireMetalNails(domain, 4)
+                .AddElements("Root/Tubs")
+            )
+            .Stage(s =>
+              s.RequireMetalPlate(domain, 4).AddElements("Root/PipeConn")
+            )
+        )
+        .ShapeSelectiveElements("Root/Base/*")
         .SolidNonOpaque(),
     ];
+
+  #endregion
+
+  #region Drops
+
+  // A broken blower returns its construction materials (scattered by the RightClickConstructable
+  // behaviour), never the block itself: it is right-click-built, not placed.
+  public override ItemStack[] GetDrops(
+    IWorldAccessor world,
+    BlockPos pos,
+    IPlayer? byPlayer,
+    float dropQuantityMultiplier = 1f
+  ) => [];
 
   #endregion
 
