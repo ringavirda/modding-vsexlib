@@ -194,13 +194,19 @@ and in git, not beside the code.
 - Rhetoric and dramatic framing.
 - Prose duplicated from `docs/design/` - replace it with a one-line pointer.
 - Restatement of the code: `// increment the counter`.
-- Meta-commentary about the repo, the test suite or the process.
+- Meta-commentary about the repo, the test suite or the process, including "covered by
+  <TestName>".
+- Reasoning chains. A remark states the constraint, not the argument for it: "so", "because",
+  "otherwise", "which is why", "rather than", "instead of", "would" and a walked-through scenario
+  are the tells. "Gated on flow rate as well as the medium label." keeps; the paragraph explaining
+  what a balanced run would read without it goes.
+- Legends for a layout, legend or enum the code declares itself.
 
 ### Voice
 
 Plain declarative, present tense, third person.
 
-- No first or second person. Not "we cache this", but "cached because".
+- No first or second person. Not "we cache this", but "cached: rebuilt on every wrench turn".
 - No `<b>`, `<em>` or `<i>` for stress. Prefer none at all.
 - No em-dash. Use `-` or restructure the sentence.
 - No emoji, star or warning markers, no ALL-CAPS stress.
@@ -211,8 +217,9 @@ Plain declarative, present tense, third person.
 
 | Kind | Target |
 | --- | --- |
-| Class or interface doc | 6 lines |
-| Method or property doc | 4 lines |
+| Class or interface doc | 3 lines |
+| Method or property doc | one sentence, 2 lines, plus one line per `<param>`/`<returns>`/`<exception>` the signature does not answer |
+| `//` remark | 1 line |
 | Each <param> / <returns> | 1-2 lines |
 | Inline comment | 1-3 lines |
 
