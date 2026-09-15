@@ -1,0 +1,13 @@
+{
+  "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
+  "type": "Code",
+  "modid": "smokestack",
+  "name": "Smoke Stack",
+  "authors": ["fallenstar"],
+  "description": "Sample mod: a multiblock chimney that draws gas off a pipe network and vents it to the sky.",
+  "version": "1.0.0",
+  "dependencies": {
+    "game": "1.22.0",
+    "exlib": "0.8.0"
+  }
+}

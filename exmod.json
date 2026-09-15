@@ -8,7 +8,8 @@
   "samples": {
     "twintubblower": { "path": "samples/TwinTubBlower", "tests": "samples/TwinTubBlower/tests" },
     "burdenmaker":   { "path": "samples/BurdenMaker",   "tests": "samples/BurdenMaker/tests" },
-    "platedpipes":   { "path": "samples/PlatedPipes",   "tests": "samples/PlatedPipes/tests" }
+    "platedpipes":   { "path": "samples/PlatedPipes",   "tests": "samples/PlatedPipes/tests" },
+    "smokestack":    { "path": "samples/SmokeStack",    "tests": "samples/SmokeStack/tests" }
   },
   "tests": ["tests/ExpandedLib.Tests"],
   "packages": ["src/ExpandedLib", "src/ExpandedLib.Industry", "src/ExpandedLib.Testing", "templates"],

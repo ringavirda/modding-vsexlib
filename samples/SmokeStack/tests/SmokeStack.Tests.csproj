@@ -1,0 +1,77 @@
+<Project>
+  <!-- samples/ sits directly under this repo's root, so it would otherwise auto-inherit
+       Directory.Build.props/.targets the way every project below the root does; opted out
+       (ImportDirectoryBuildProps/Targets=false, and the explicit Sdk.props/Sdk.targets split that
+       lets the props half take effect) so the explicit import below is the only source, not a
+       second copy layered on top of the automatic one. -->
+  <PropertyGroup>
+    <ImportDirectoryBuildProps>false</ImportDirectoryBuildProps>
+    <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
+  </PropertyGroup>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  <Import Project="../../../Directory.Build.props" />
+
+  <PropertyGroup>
+    <TargetFramework>$(CurrentGameTfm)</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Private=true, same as a family mod's own tests project: the vstest discoverer probes a test assembly's direct
+         references on disk BEFORE the harness's assembly resolver can run, and a reference missing
+         from the output folder makes discovery silently report zero tests rather than fail. -->
+    <Reference Include="VintagestoryAPI">
+      <HintPath>$(GamePath)/VintagestoryAPI.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="VSSurvivalMod">
+      <HintPath>$(GamePath)/Mods/VSSurvivalMod.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="VSEssentials">
+      <HintPath>$(GamePath)/Mods/VSEssentials.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="NSubstitute" />
+  </ItemGroup>
+
+  <!-- Dual mode, same switch as SmokeStack.csproj: source mode ProjectReferences exlib and the
+       harness straight from the checkout, package mode takes them from NuGet. The harness's
+       reference stays plain (no ExcludeAssets) in both branches - a test project loads exlib.dll
+       and ExpandedLib.Testing.dll at test time, unlike the mod project which never ships either. -->
+  <ItemGroup Condition="'$(ExlibRoot)' != ''">
+    <ProjectReference Include="$(ExlibRoot)src\ExpandedLib\ExpandedLib.csproj" />
+    <ProjectReference Include="$(ExlibRoot)src\ExpandedLib.Industry\ExpandedLib.Industry.csproj" />
+    <ProjectReference Include="$(ExlibRoot)src\ExpandedLib.Testing\ExpandedLib.Testing.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(ExlibRoot)' == ''">
+    <PackageReference Include="ExpandedLib" />
+    <PackageReference Include="ExpandedLib.Industry" />
+    <PackageReference Include="ExpandedLib.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\SmokeStack.csproj" />
+  </ItemGroup>
+  <!-- Explicit import: GamePath (used above via HintPath) lives in ExpandedLib.targets,
+       imported after the project body - the Directory.Build.props import above only carries
+       ExpandedLib.props (the props half), and this project sits outside src/, so the
+       auto-imported Directory.Build.targets never reaches it either. Source mode only
+       ($(ExlibRoot) != ''): in package mode the ExpandedLib PackageReference above pulls the same
+       file in automatically, and importing both ways would double it up. -->
+  <Import
+    Project="../../../build/ExpandedLib.targets"
+    Condition="'$(ExlibRoot)' != ''"
+  />
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+</Project>
