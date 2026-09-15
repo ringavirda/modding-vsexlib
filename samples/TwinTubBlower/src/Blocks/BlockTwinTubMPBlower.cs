@@ -57,6 +57,7 @@ public partial class BlockTwinTubMPBlower
         .Class<BlockTwinTubMPBlower>()
         .EntityClass<BlockEntityTwinTubMPBlower>()
         .Behavior("MultiblockStructure")
+        .EntityBehavior("Animatable")
         .Material(EnumBlockMaterial.Ceramic)
         .MaxStackSize(1)
         .VariantGroup("type", "twintubblower")
