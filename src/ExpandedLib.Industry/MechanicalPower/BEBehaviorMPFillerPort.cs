@@ -85,11 +85,15 @@ public class BEBehaviorMPFillerPort(BlockEntity blockentity)
   public override void Initialize(ICoreAPI api, JsonObject properties) {
     base.Initialize(api, properties);
 
-    // The base seeds only the single OutFacingForNetworkDiscovery face. Couple the opposite end of the
-    // axis too, so a row of ports merges into one network and power passes straight through: an axle
-    // on either side drives the same line.
-    if (_through && api.Side == EnumAppSide.Server && OutFacingForNetworkDiscovery != null)
-      tryConnect(OutFacingForNetworkDiscovery.Opposite);
+    // The base seeds OutFacingForNetworkDiscovery but joins nothing on its own: an axle placed later
+    // spreads its network into the port, and a port raised beside an axle that already turns has to
+    // reach out itself. A through port couples the opposite end of the axis too, so a row of ports
+    // merges into one line an axle drives from either side.
+    if (api.Side == EnumAppSide.Server && OutFacingForNetworkDiscovery != null) {
+      tryConnect(OutFacingForNetworkDiscovery);
+      if (_through)
+        tryConnect(OutFacingForNetworkDiscovery.Opposite);
+    }
   }
 
   public override float GetResistance() => _resistance;
