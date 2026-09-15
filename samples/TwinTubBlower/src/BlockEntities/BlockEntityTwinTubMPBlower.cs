@@ -44,11 +44,16 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   private long _blowTickId;
   private long _lastBellowsSoundMs;
 
-  private ToggleAnimator? _anim;
+  private ConstructedAnimator? _animator;
 
   /// <summary>The placed rotation, read from the block so the port lookup and the footprint agree.</summary>
   private int Angle =>
     (Block as Blocks.BlockTwinTubMPBlower)?.StructureAngle ?? 0;
+
+  /// <summary>True once the player has finished all five construction stages. The blower has no
+  /// mesh of its own before then - <see cref="ConstructedAnimator"/> draws the shape's own
+  /// <c>Root/Base</c> group - and neither ticks, sounds nor leaks air.</summary>
+  public bool IsConstructed => _animator?.IsConstructed ?? false;
 
   /// <summary>
   /// Renders nothing. Registered only to get a per-render-frame callback: the cycle clip must be
@@ -74,8 +79,9 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
       return;
     }
 
-    _anim = new ToggleAnimator(this, BuildAnimator);
-    _anim.Initialize(ApplyPose);
+    // Resolved on both sides (IsConstructed gates the blow tick); it only builds and poses on the client.
+    _animator = new ConstructedAnimator(this, () => Block.Code.Path);
+    _animator.Initialize(ApplyPose);
     (api as ICoreClientAPI)?.Event.RegisterRenderer(
       this,
       EnumRenderStage.Before,
@@ -86,11 +92,13 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   public override void OnBlockRemoved() {
     base.OnBlockRemoved();
     UnregisterTicks();
+    _animator?.Dispose();
   }
 
   public override void OnBlockUnloaded() {
     base.OnBlockUnloaded();
     UnregisterTicks();
+    _animator?.Dispose();
   }
 
   private void UnregisterTicks() {
@@ -108,11 +116,16 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
 
   /// <summary>
   /// Samples the axle and pushes one second of air into the network, scaled by
-  /// <see cref="SpeedFraction"/>. Marks dirty only when the sampled speed changed. A working line
-  /// blows with the bellows' note; a line with nowhere for the air to go blows it off at the outlet
-  /// instead.
+  /// <see cref="SpeedFraction"/>. Marks dirty only when the sampled speed changed. The bellows' note
+  /// plays whenever they are working, whether or not the line had room for the air - several blowers
+  /// sharing a line at its pressure ceiling all move, so all must be heard; a line with nowhere for the
+  /// air to go blows it off at the outlet as well. A no-op before construction completes - an axle
+  /// coupled to the port cell of an unbuilt blower turns nothing.
   /// </summary>
   private void OnBlowTick(float dt) {
+    if (!IsConstructed)
+      return;
+
     float speed = PortSpeed();
     if (speed != _lastSpeed) {
       _lastSpeed = speed;
@@ -121,27 +134,32 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
     if (SpeedFraction(speed) <= 0f)
       return;
 
-    if (ProduceAir(speed, dt) > 0f)
-      ExSounds.PlayThrottled(
-        Api,
-        Pos,
-        ExSounds.Bellows,
-        ref _lastBellowsSoundMs,
-        BellowsSoundIntervalMs,
-        0.5f,
-        16f
-      );
-    else if (Block is Blocks.BlockTwinTubMPBlower block)
+    ExSounds.PlayThrottled(
+      Api,
+      Pos,
+      ExSounds.Bellows,
+      ref _lastBellowsSoundMs,
+      BellowsSoundIntervalMs,
+      0.5f,
+      16f
+    );
+    if (
+      ProduceAir(speed, dt) <= 0f
+      && Block is Blocks.BlockTwinTubMPBlower block
+    )
       ExParticles.GasLeak(Api.World, block.OutletCell(Pos), block.OutletFace);
   }
 
   /// <summary>
   /// Pushes <paramref name="dt"/> seconds of air into this blower's own network at axle speed
   /// <paramref name="speed"/>. Returns the litres actually produced, 0 when the bellows are below
-  /// <see cref="TwinTubBlowerValues.TwinTubBlowerMinSpeed"/> or the line is at the pressure ceiling.
-  /// Public so the balance can be driven without a mechanical network for the port to read.
+  /// <see cref="TwinTubBlowerValues.TwinTubBlowerMinSpeed"/>, the line is at the pressure ceiling, or
+  /// construction is unfinished. Public so the balance can be driven without a mechanical network for
+  /// the port to read.
   /// </summary>
   public float ProduceAir(float speed, float dt) {
+    if (!IsConstructed)
+      return 0f;
     float fraction = SpeedFraction(speed);
     if (fraction <= 0f || dt <= 0f)
       return 0f;
@@ -204,23 +222,6 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
 
   #region Animation
 
-  /// <summary>Builds the mesh and animator against this block's own shape, north-frame rotation
-  /// applied through <see cref="Vintagestory.API.Common.Block.Shape"/>'s <c>rotateY</c>.</summary>
-  private void BuildAnimator(BEBehaviorAnimatable animatable) {
-    MeshData mesh = animatable.animUtil.CreateMesh(
-      Block.Code.Path,
-      null,
-      out Shape shape,
-      null
-    );
-    animatable.animUtil.InitializeAnimator(
-      Block.Code.Path,
-      mesh,
-      shape,
-      new Vec3f(0, Block.Shape.rotateY, 0)
-    );
-  }
-
   /// <summary>
   /// Holds one clip at a time: <c>cycle</c> while the bellows are working
   /// (<see cref="SpeedFraction"/> of <see cref="_lastSpeed"/> above 0), <c>idle</c> otherwise. One must
@@ -228,7 +229,7 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
   /// </summary>
   private void ApplyPose() {
     bool blowing = SpeedFraction(_lastSpeed) > 0f;
-    _anim?.Pose(util => {
+    _animator?.Pose(util => {
       util.StopAnimation(blowing ? "idle" : "cycle");
       util.StartAnimation(
         new AnimationMetaData {
@@ -254,7 +255,7 @@ public class BlockEntityTwinTubMPBlower : BlockEntityPipe, IRenderer {
     // Reversed: the clip turns its Axle element through +360 over the cycle, which runs against the
     // vanilla axle for a rising angle.
     MPAnim.LockFrameToAngle(
-      _anim?.AnimUtil,
+      _animator?.AnimUtil,
       "cycle",
       port.CurrentAngleRad,
       reverse: true

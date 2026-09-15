@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Definitions;
+using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Structures;
@@ -54,13 +56,14 @@ public class TwinTubBlowerTests {
   /// <summary>
   /// A blower standing as a node in its own single-cell pipe main. <c>ProduceAir</c> is driven with an
   /// axle speed directly: the live tick reads speed from a hosted MP filler port, which needs a filler
-  /// block entity the headless world does not build.
+  /// block entity the headless world does not build. Constructed by default, as a working blower is;
+  /// pass <paramref name="constructed"/> false for the premise of an unfinished one.
   /// </summary>
   private static (
     TestWorld world,
     PipeNetwork net,
     BlockEntityTwinTubMPBlower blower
-  ) Rig() {
+  ) Rig(bool constructed = true) {
     var world = new TestWorld();
     world.RegisterNetwork("pipe", sys => new PipeNetwork(sys));
 
@@ -84,6 +87,8 @@ public class TwinTubBlowerTests {
       nameof(blower.NetworkSystem),
       world.Networks
     );
+    if (constructed)
+      RccFake.Complete(blower);
 
     return (world, (PipeNetwork)world.NetworkAt(pos)!, blower);
   }
@@ -158,6 +163,19 @@ public class TwinTubBlowerTests {
     Assert.Equal(0f, blower.ProduceAir(0f, 1f));
 
     Assert.Equal(before, net.State!.Volume, 3);
+  }
+
+  [Fact]
+  public void An_unconstructed_blower_produces_no_air() {
+    var (_, net, blower) = Rig(constructed: false);
+
+    float produced = blower.ProduceAir(
+      TwinTubBlowerValues.TwinTubBlowerMaxSpeed,
+      1f
+    );
+
+    Assert.Equal(0f, produced);
+    Assert.Equal(0f, net.State?.Volume ?? 0f);
   }
 
   [Fact]
@@ -327,9 +345,9 @@ public class TwinTubBlowerTests {
 
   [Theory]
   [InlineData("n", 0)]
-  [InlineData("e", 90)]
+  [InlineData("e", 270)]
   [InlineData("s", 180)]
-  [InlineData("w", 270)]
+  [InlineData("w", 90)]
   public void The_structure_angle_follows_the_orientation_variant(
     string orientation,
     int expected
@@ -342,6 +360,66 @@ public class TwinTubBlowerTests {
       ("orientation", orientation)
     );
     Assert.Equal(expected, block.StructureAngle);
+  }
+
+  /// <summary>
+  /// The body extends away from the player, not toward them: the pass-through fillers sit at
+  /// principal + 1 and +2 cells along the facing the player was given at placement, the outlet
+  /// faces that same direction, and the MP port cell - fixed above the principal regardless of
+  /// orientation - carries its connector on the player's left hand. Pins the east/west repair:
+  /// before it, <see cref="BlockTwinTubMPBlower.StructureAngle"/> used e 90 / w 270 and turned
+  /// those two placements the wrong way.
+  /// </summary>
+  [Theory]
+  [InlineData("n", 400, 0, 0, -1, 0, 0, -2, "n", "w")]
+  [InlineData("e", 410, 1, 0, 0, 2, 0, 0, "e", "n")]
+  [InlineData("s", 420, 0, 0, 1, 0, 0, 2, "s", "e")]
+  [InlineData("w", 430, -1, 0, 0, -2, 0, 0, "w", "s")]
+  public void The_body_extends_away_from_the_player_and_the_port_sits_on_their_left_hand(
+    string orientation,
+    int id,
+    int nearX,
+    int nearY,
+    int nearZ,
+    int farX,
+    int farY,
+    int farZ,
+    string outletSide,
+    string portSide
+  ) {
+    var (_, principal, block) = RigOriented(orientation, id);
+    // Footprint read off the shipped def, as the burden maker's placement suite does.
+    block.Attributes = new JsonObject(
+      BlockTwinTubMPBlower.Definitions("twintubblower").First().ToJson()[
+        "attributes"
+      ]!
+    );
+
+    List<FillerCell> cells = StructureFillers.FootprintCells(
+      block,
+      principal,
+      block.StructureAngle
+    );
+
+    Assert.Contains(
+      cells,
+      c => c.Pos.Equals(principal.AddCopy(nearX, nearY, nearZ))
+    );
+    Assert.Contains(
+      cells,
+      c => c.Pos.Equals(principal.AddCopy(farX, farY, farZ))
+    );
+
+    Assert.Equal(
+      outletSide,
+      ExOrientation.TokenOf(block.OutletFace, asLetter: true)
+    );
+
+    FillerCell port = cells.Single(c =>
+      c.Pos.Equals(principal.AddCopy(0, 1, 0))
+    );
+    BlockFacing portFace = port.Behaviors!.Single().ConnectorFace!;
+    Assert.Equal(portSide, ExOrientation.TokenOf(portFace, asLetter: true));
   }
 
   #endregion

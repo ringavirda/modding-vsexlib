@@ -373,6 +373,33 @@ public class StructureFillerBehaviorTests {
     );
   }
 
+  /// <summary>
+  /// The axle sign follows the port's own outward normal, not one shared per axis: a port on east
+  /// reads the opposite sign from one on west, and south the opposite of north, or a machine whose
+  /// port faces east or south would read the axle's angle mirrored.
+  /// </summary>
+  [Theory]
+  [InlineData("west", -1, 0, 0)]
+  [InlineData("east", 1, 0, 0)]
+  [InlineData("north", 0, 0, -1)]
+  [InlineData("south", 0, 0, 1)]
+  public void The_axle_sign_follows_the_ports_own_outward_normal(
+    string face,
+    int x,
+    int y,
+    int z
+  ) {
+    var (world, filler) = NewWorld();
+    var be = new BlockEntityStructureFiller();
+    world.Place(new BlockPos(0, 0, 0), filler, be);
+    var port = new BEBehaviorMPFillerPort(be);
+    port.ConfigureFromFiller(null, BlockFacing.FromCode(face), null);
+
+    port.SetOrientations();
+
+    Assert.Equal(new[] { x, y, z }, port.AxisSign);
+  }
+
   #endregion
 
   #region Removal (Block.OnBlockRemoved clears the footprint)
