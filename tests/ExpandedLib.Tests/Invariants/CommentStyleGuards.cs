@@ -152,6 +152,21 @@ public class CommentStyleGuards {
   }
 
   [Fact]
+  public void Comments_are_plain_ascii() {
+    var hits = CommentLines()
+      .Where(c => c.Text.Any(ch => ch > 127))
+      .Select(c => c.Where)
+      .ToList();
+    Assert.True(
+      hits.Count == 0,
+      Report(
+        "Comments are plain ASCII: spell out units (deg C), arrows (->) and Greek letters.",
+        hits
+      )
+    );
+  }
+
+  [Fact]
   public void Comments_do_not_open_with_filler() {
     var filler = new Regex(
       @"(^|\s)(Note that|It is worth noting|Importantly|Crucially|Remember that)\b",
