@@ -644,7 +644,10 @@ public class ExBlockDefTests {
 
   [Fact]
   public void By_type_shapes_stay_bare_without_a_plain_selective_list() {
-    JObject json = ExBlockDef.Create("d", "c").ShapeByType("*-n", "d:x").ToJson();
+    JObject json = ExBlockDef
+      .Create("d", "c")
+      .ShapeByType("*-n", "d:x")
+      .ToJson();
     Assert.Null(json["shapebytype"]!["*-n"]!["selectiveElements"]);
   }
 }
