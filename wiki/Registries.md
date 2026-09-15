@@ -99,7 +99,7 @@ The common case is the whole of it: tag the class, and the key follows the class
 public class BlockPipe : BlockNetworkNode { }
 ```
 
-The two properties, and the aliases a block entity gets for free, come out like this:
+The two properties, and the aliases a block entity gets without declaring them, come out like this:
 
 | Variant | Registers as |
 | --- | --- |
@@ -307,8 +307,8 @@ You want one of these only when your machine takes recipes of a shape no existin
 *files* for a type that already exists are assets, and need no code here at all.
 
 A mod shipping its own recipe *type* registers a `RecipeRegistryGeneric<T>`, the same rung vanilla's
-own recipe kinds use (`api.RegisterRecipeRegistry`), which is what gets a recipe client sync and a
-handbook entry for free:
+own recipe kinds use (`api.RegisterRecipeRegistry`), which is what gives a recipe its client sync and
+its handbook entry:
 
 ```csharp
 public static class ExRecipeRegistry

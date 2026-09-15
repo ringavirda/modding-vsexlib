@@ -12,7 +12,7 @@ with every click on a filler routed back to the principal.
 [Multiblock Structures](Multiblock-Structures) is the reference page for that system; this page is
 the walkthrough.
 
-It builds two machines from the samples in this repository, in order.
+It builds two machines, in order, from the samples in the exlib repository.
 [Getting Started](Getting-Started) has already walked the first, `samples/TwinTubBlower`, as a
 single block with a config value and a test. The first section here gives that block its footprint
 and the drive port that turns it. The rest builds a second machine from nothing,

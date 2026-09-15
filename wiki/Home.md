@@ -8,9 +8,8 @@ players can edit, and a way to test all of it without launching the game.
 
 I wrote it for my own mods, [Iron Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/iiex)
 and [Steel Industry Expanded](https://github.com/ringavirda/modding-vsexmods/tree/main/mods/siex),
-and publish it so that anyone else can build on the same base. Those two mods are the proof that
-the framework carries a full furnace-to-steel chain; the four small samples in this repository are
-the reading material.
+both still in development, and publish it so that anyone can build on the same base. Four small
+sample mods, linked below, show each system in use.
 
 ## Why a framework
 
@@ -84,15 +83,21 @@ molds and roll sets to those machines from a JSON file, without touching this co
    where.
 5. **[Supported API](Supported-API)**: which types are the supported contract.
 
-The samples in this repository are complete mods: buildable, bootable, tested. `TwinTubBlower` is a
-machine with a power port that feeds a pipe network; `BurdenMaker` is a stock house built in
-stages; `PlatedPipes` is a pipe tier; `SmokeStack` is a multiblock chimney. The
-[starter repository](https://github.com/ringavirda/exmod-starter) ships all four, wired and ready
-to boot.
+The samples are complete mods, each buildable, bootable and tested, in the
+[exlib repository](https://github.com/ringavirda/modding-vsexlib/tree/main/samples):
+[TwinTubBlower](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/TwinTubBlower)
+is a machine with a power port that feeds a pipe network,
+[BurdenMaker](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/BurdenMaker) a stock
+house built in stages,
+[PlatedPipes](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/PlatedPipes) a pipe
+tier, and [SmokeStack](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/SmokeStack)
+a multiblock chimney. The [starter repository](https://github.com/ringavirda/exmod-starter) ships
+all four, wired and ready to boot.
 
 ## Accuracy
 
-These pages document the public surface a third-party mod consumes. Signatures are taken from the
-source in this repository; when in doubt, `src/` and `src/ExpandedLib.Testing/` are the source of
-truth. Differences between game versions 1.20, 1.21 and 1.22 are handled by the `Legacy/` shim and
-noted where they affect you.
+These pages describe the public surface a third-party mod uses. Signatures follow the
+[source on GitHub](https://github.com/ringavirda/modding-vsexlib); where a page and the code
+disagree, the code is right and the page is the bug, and the edit link at the foot of every page
+leads to its text. Game versions 1.20, 1.21 and 1.22 are all supported; where they differ, the
+page says so.

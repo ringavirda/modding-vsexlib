@@ -4,8 +4,9 @@ This page builds a first mod on exlib from end to end: a block declared in C# in
 state that survives a reload, a config value the player can edit while the server runs, a test that
 checks the machine without launching the game, and the tool that builds and boots the result.
 
-The mod is a real one. `samples/TwinTubBlower` in this repository is a complete, buildable,
-bootable mod, and every snippet below is copied from it, so it compiles. Read the page beside the
+The mod is a real one: [TwinTubBlower](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/TwinTubBlower),
+a sample in the exlib repository, is a complete, buildable, bootable mod, and every snippet below
+is copied from it, so it compiles. Read the page beside the
 sample: each step explains what the code does and why you would want it.
 
 Nothing here assumes you have written a Vintage Story mod before. Where the game's own API comes up
@@ -334,8 +335,8 @@ public class TwinTubBlowerTests {
 
 Each row is one point of the output curve, both ends of the clamp included, so a later change to
 the speed band cannot quietly turn the blower into an on-off switch. Run it with
-`dotnet test samples/TwinTubBlower/tests/TwinTubBlower.Tests.csproj`, or
-`exmod test latest -Filter TwinTubBlower`.
+`dotnet test` on the test project, or `exmod test latest -Filter TwinTubBlower` from the starter or
+a clone of the exlib repository.
 
 The second answer is the [Testing Harness](Testing-Harness), for behaviour that genuinely needs a
 world: it loads the real game assemblies, gives you a world to place blocks in, and lets you tick a
@@ -348,10 +349,11 @@ loader rejects, a block code nothing registers, a name with no translation: none
 under `dotnet test`, and all of it shows up at world load. The cheap way to catch it is to boot the
 real server and read the log.
 
+From a clone of the exlib repository,
 `exmod smoke -Mods src/ExpandedLib/bin/Debug/Mods/mod,samples/TwinTubBlower/src/bin/Debug/Mods/mod`
 launches the real dedicated server against the built mods, runs the content checks and
-`/exmod verify`, and fails on a boot timeout or an `[Error]`/`[Fatal]` log line - the same lane this
-repo's CI runs on every mod, now covering the one you just read:
+`/exmod verify`, and fails on a boot timeout or an `[Error]`/`[Fatal]` log line - the same lane the exlib
+repository's CI runs on every mod, now covering the one you just read:
 
 ```
 [exlib] modules hosted by exlib: industry
@@ -382,8 +384,8 @@ involved machine built the same way.
 Every step above needs the same things arranged first: a game install to compile against, a
 dedicated server to boot, the exlib zip beside your own mod, your assets copied into the output. The
 whole toolchain - build, test, smoke - is one script rather than a set of raw `dotnet` commands you
-assemble yourself. Copy `scripts/exmod.sh` and `scripts/exmod.ps1` from this repo into your
-own (the launcher finds `pwsh`, the dispatcher does the rest), and add an `exmod.json` at your
+assemble yourself. Copy `scripts/exmod.sh` and `scripts/exmod.ps1` from the exlib repository, or from the starter,
+into your own (the launcher finds `pwsh`, the dispatcher does the rest), and add an `exmod.json` at your
 repo's root naming your mod:
 
 ```json

@@ -622,7 +622,7 @@ with NSubstitute's `Arg.Any<T>()`, so it goes through a plain call handler inste
 
 Content validators, most wrapping [`ExpandedLib.Checks`](Checks) - the same rule the game runs at
 load and `/exmod verify` runs on demand. A mod's own suite calls these against its own assembly and
-asset tree; `RepoCheckSource` (below) hands one a corpus over this repository's own source tree, and
+asset tree; `RepoCheckSource` (below) hands one a corpus over your repository's own source tree, and
 the internal (not public) `Checks/AssemblyCheckSource` does the same directly from `(domain, Assembly)`
 pairs.
 
@@ -657,7 +657,7 @@ pairs.
 | `TreeKeys` | Golden-file oracle for a block entity's save shape - the keys `ToTreeAttributes` writes, pinned against a committed golden the same way `DefinitionGoldens` pins a def's JSON; see [Pinning a block entity's save shape](Testing-Harness#pinning-a-block-entitys-save-shape). |
 | `VanillaToolTiers` | Vanilla pickaxe tool tier constants (`Bronze`/`Iron`/`Steel`), for pinning a block's `requiredMiningTier`. |
 | `WikiParity` | Reflects the API the wiki teaches against the API the assembly actually has. |
-| `RepoCheckSource` (`Repo/`) | An `ICheckSource` over this repository's own source tree, for the same checks run against real committed assets rather than a stub. |
+| `RepoCheckSource` (`Repo/`) | An `ICheckSource` over your repository's own source tree, for the same checks run against real committed assets rather than a stub. |
 
 ## `BlockCodeEmitter`
 

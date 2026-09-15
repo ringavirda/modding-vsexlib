@@ -62,7 +62,7 @@ dotnet test Demo.Tests
 `--ModName` names your mod project (a sibling folder, `../Demo/Demo.csproj`); `--GamePath` overrides
 the Vintage Story install baked in (defaults to the `VINTAGE_STORY` environment variable). The
 generated project's two content checks (a golden fact, a shipped-JSON fact) pass vacuously until
-your mod has definitions or an `assets/` tree - see `templates/content/exlib-tests/README.md`.
+your mod has definitions or an `assets/` tree - see `templates/content/exlib-tests/README.md` in the exlib repository.
 
 ### By hand
 
@@ -110,20 +110,18 @@ interface member no external assembly is allowed to implement, so `Substitute.Fo
 `IServerPlayer`, which inherits the same member) cannot construct a proxy at all without this patch.
 The edit is applied byte-for-byte **in place** rather than by regenerating the assembly - a
 regenerated DLL loses its `CodeView` debug-directory entry, which crashes the game's own logger on
-startup - so it is safe to leave in `.game/<slug>`, the copy this repo builds against and launches
-from; the mods you ship never see it, since the install a player runs is never patched. Idempotent
+startup - so it is safe to leave in `.game/<slug>`, the copy the exlib repository builds against and
+launches from; the mods you ship never see it, since the install a player runs is never patched. Idempotent
 and a no-op once upstream makes the member public.
 
-### Consuming outside this repo
+### Consuming the harness from your mod
 
 The harness is a developer library, not a game mod - it never ships inside a `Mods/mod` folder.
 Three ways to use it from a separate mod repo, in the order the template tries them:
 
-**A - NuGet.** `ExpandedLib` and `ExpandedLib.Testing` are `dotnet pack`-able (see the two `.csproj`
-files' pack metadata) and are what `templates/content/exlib-tests`' generated project references by default.
-They are not pushed to NuGet.org from this repo yet (`.github/workflows/release.yml`'s push step is
-present and commented) - until then, `dotnet pack` them yourself into a local feed, or use option B
-or C.
+**A - NuGet.** `ExpandedLib` and `ExpandedLib.Testing` are on NuGet.org and are what the template's
+generated project references by default; pin the version you build against, as
+[Installing](Installing) describes.
 
 **B - Reference from source (recommended if you might tweak it).** Add `ExpandedLib.Testing` (and
 `ExpandedLib`) as a git submodule or sibling checkout and `ProjectReference` the `.csproj`s, exactly
@@ -714,7 +712,7 @@ failed locally, so the real mod loader is what reports it - the point of this la
 itself catches, not what the script can catch first.
 
 CI runs it in its own job (see `.github/workflows/tests.yml`'s `smoke` job, or extools'
-`templates/ci/smoke.yml` for a mod outside this repo), separate from the test job so a
+`templates/ci/smoke.yml` for a mod outside the exlib repository), separate from the test job so a
 game-loading failure and a test failure are reported distinctly.
 
 #### CI templates

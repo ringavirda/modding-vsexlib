@@ -271,8 +271,8 @@ normally read *its own* local tuning, not the host's, whenever it differs. `ExCo
 closes that gap for every `Manageable` config, at three rungs:
 
 - **Nothing to do.** On join, the server sends every registered section (see `ExConfigProfiles`) to
-  the connecting client, which imports each one into its matching store. A `Manageable` config just
-  gets this for free.
+  the connecting client, which imports each one into its matching store. A `Manageable` config gets
+  this without any code of its own.
 - **`/exmod config set` reaches players.** After a successful edit the command broadcasts the
   changed section to everyone connected, so a live tweak takes effect without a reconnect - the same
   as it already did for the host itself.

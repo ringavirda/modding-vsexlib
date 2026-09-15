@@ -122,8 +122,8 @@ against. [Testing Harness](Testing-Harness) shows what a first test looks like.
 ## The exmod tool
 
 Nothing above needs it, but the whole loop (build, test, boot a server with your mod, scaffold a
-new block) is one script when you copy `scripts/exmod.sh` and `scripts/exmod.ps1` from this
-repository into yours and add an `exmod.json` naming your mod. `exmod provision game` downloads
+new block) is one script when you copy `scripts/exmod.sh` and `scripts/exmod.ps1` from the exlib
+repository, or from the starter, into yours and add an `exmod.json` naming your mod. `exmod provision game` downloads
 the dedicated server so you can build and test without a game purchase on that machine;
 `exmod provision mods` fetches the exlib zip your `modinfo.json` names; `exmod smoke` boots the
 server against your built mod and fails on any error in the log. The commands are documented in
@@ -131,7 +131,7 @@ server against your built mod and fails on any error in the log. The commands ar
 
 ## Building from source instead
 
-If you clone this repository beside your own, a `Directory.Build.props` above both that sets
+If you clone the exlib repository beside your own, a `Directory.Build.props` above both that sets
 `ExlibRoot` to the checkout switches your project from the packages to a plain project reference.
 That is the loop for changing exlib and your mod together without a release in between; nothing
 about it is part of the package's public contract.
