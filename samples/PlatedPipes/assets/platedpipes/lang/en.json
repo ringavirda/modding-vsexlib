@@ -1,0 +1,17 @@
+{
+  "game:tabname-platedpipes": "Plated Pipes",
+
+  "block-pipe-plated-straight*": "Plated Piping (Straight)",
+  "block-pipe-plated-bend*": "Plated Piping (Bend)",
+  "block-pipe-plated-tjunction*": "Plated Piping (T-Junction)",
+  "block-pipe-plated-xjunction*": "Plated Piping (X-Junction)",
+  "block-pipe-plated-passthrough-*": "Plated Pipe Passthrough (Straight)",
+  "block-pipe-plated-passthroughbend-*": "Plated Pipe Passthrough (Bend)",
+
+  "blockdesc-pipe-plated-straight*": "Carries gases or water.",
+  "blockdesc-pipe-plated-bend*": "A 90 degree bend in a pipe run.",
+  "blockdesc-pipe-plated-tjunction*": "A three-way pipe junction.",
+  "blockdesc-pipe-plated-xjunction*": "A four-way pipe junction.",
+  "blockdesc-pipe-plated-passthrough-*": "A plated pipe set in masonry - carries the flow through a wall without leaking.",
+  "blockdesc-pipe-plated-passthroughbend-*": "A bent plated pipe set in masonry."
+}
