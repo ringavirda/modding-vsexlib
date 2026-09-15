@@ -8,6 +8,6 @@
   "version": "1.0.0",
   "dependencies": {
     "game": "1.22.0",
-    "exlib": "0.8.0"
+    "exlib": "0.8.1"
   }
 }

@@ -5,7 +5,7 @@ All notable changes to this mod are documented here. The format is based on
 [Semantic Versioning](https://semver.org/). For changes before this file existed,
 see the git history.
 
-## [Unreleased]
+## [0.8.1] - 2026-09-16
 
 ### Added
 
