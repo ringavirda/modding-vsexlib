@@ -9,9 +9,9 @@
 	"textureSizes": {
 	},
 	"textures": {
-		"fire1": "block/clay/brick/four/running/fire1",
-		"burned": "block/clay/vessel/sides/burned",
-		"iron4": "block/metal/sheet/iron4"
+		"fire1": "game:block/clay/brick/four/running/fire1",
+		"burned": "game:block/clay/vessel/sides/burned",
+		"iron4": "game:block/metal/sheet/iron4"
 	},
 	"elements": [
 		{
