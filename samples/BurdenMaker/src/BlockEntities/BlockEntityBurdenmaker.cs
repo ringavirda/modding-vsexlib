@@ -1,13 +1,16 @@
 using System;
 using System.Text;
 using BurdenMaker.Items;
+using BurdenMaker.Rendering;
 using ExpandedLib.Blocks;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Industry.Materials;
 using ExpandedLib.Registries;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
 namespace BurdenMaker.BlockEntities;
@@ -62,6 +65,25 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
   public int BurdenUnits => UnitsIn(BunkerFirst, BunkerSlots);
 
+  /// <summary>Wide hopper fill fraction: 0 empty, 1 at <see cref="BurdenMakerValues.BurdenmakerOreCapacity"/>.</summary>
+  public float OreFill =>
+    (float)OreUnits / BurdenMakerValues.BurdenmakerOreCapacity;
+
+  /// <summary>Narrow hopper fill fraction: 0 empty, 1 at <see cref="BurdenMakerValues.BurdenmakerFluxCapacity"/>.</summary>
+  public float FluxFill =>
+    (float)FluxUnits / BurdenMakerValues.BurdenmakerFluxCapacity;
+
+  /// <summary>
+  /// Basin fill fraction: 0 empty, 1 at the combined ore+flux capacity, which is the most one
+  /// gate-open batch can ever stamp.
+  /// </summary>
+  public float BurdenFill =>
+    (float)BurdenUnits
+    / (
+      BurdenMakerValues.BurdenmakerOreCapacity
+      + BurdenMakerValues.BurdenmakerFluxCapacity
+    );
+
   public BlockEntityBurdenmaker() {
     _inventory = new InventoryBurdenmaker(TotalSlots) { Machine = this };
   }
@@ -78,6 +100,9 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     // Resolved on both sides (IsConstructed gates server-side logic); it only builds and poses on the client.
     _animator = new ConstructedAnimator(this, () => AnimCacheKey);
     _animator.Initialize(ApplyPose);
+
+    if (api is ICoreClientAPI capi)
+      InitSurfaces(capi);
   }
 
   // Must stay lazy: a wrench rotation changes the variant, and a key captured at Initialize would keep
@@ -87,11 +112,13 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
 
   public override void OnBlockRemoved() {
     _animator?.Dispose();
+    DisposeSurfaces();
     base.OnBlockRemoved();
   }
 
   public override void OnBlockUnloaded() {
     _animator?.Dispose();
+    DisposeSurfaces();
     base.OnBlockUnloaded();
   }
 
@@ -115,6 +142,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     _gateOpen = tree.GetBool("gateOpen");
     if (Api?.Side == EnumAppSide.Client && _gateOpen != wasOpen)
       ApplyPose();
+    UpdateSurfaces();
   }
 
   /// <summary>
@@ -135,6 +163,126 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
         }.Init()
       );
     });
+  }
+
+  #endregion
+
+  #region Ore surfaces (client only)
+
+  // Footprints (0-16 pixel space, block-local) and floor/brim heights (block units), measured off
+  // assets/burdenmaker/shapes/ore/burdenmaker.json with `vsshape measure --group Root/Hoppers` and
+  // `--group Root/Base`. Each hopper's masonry lip (Root/HopperMasonry, y26-32px) flares two pixels
+  // past the wall below it (y16-26px); the footprint follows the lip, the widest ring a fill quad
+  // can sit inside without poking through a wall. The basin floor is the base slab's top (y2px); its
+  // brim sits two pixels short of the hopper walls' foot (y16px), matching the same two-pixel margin
+  // the hopper lips carry below their own metal throat (y34px).
+
+  /// <summary>The wide ore hopper's interior: the two cells west of the dividing pier (x -12..15px),
+  /// behind the front masonry lip (z -14..-2px).</summary>
+  private static readonly Cuboidf[] WideHopperFootprint =
+  [
+    new(-12f, 0f, -14f, 15f, 0f, -2f),
+  ];
+
+  private const float WideHopperFloorY = 18f / 16f;
+  private const float WideHopperBrimY = 32f / 16f;
+
+  /// <summary>The narrow flux hopper's interior, past the pier (x 17..28px), same depth and height
+  /// band as <see cref="WideHopperFootprint"/>.</summary>
+  private static readonly Cuboidf[] NarrowHopperFootprint =
+  [
+    new(17f, 0f, -14f, 28f, 0f, -2f),
+  ];
+
+  /// <summary>The shared basin's interior (x -14..30px, z -12..14px), under both hoppers and the
+  /// open reach behind them.</summary>
+  private static readonly Cuboidf[] BasinFootprint =
+  [
+    new(-14f, 0f, -12f, 30f, 0f, 14f),
+  ];
+
+  private const float BasinFloorY = 2f / 16f;
+  private const float BasinBrimY = 14f / 16f;
+
+  private static readonly AssetLocation OreTexture = new(
+    "game:textures/block/stone/gravel/basalt.png"
+  );
+  private static readonly AssetLocation FluxTexture = new(
+    "game:textures/block/stone/sand/chalk.png"
+  );
+
+  private OreSurfaceRenderer? _oreSurface;
+  private OreSurfaceRenderer? _fluxSurface;
+  private OreSurfaceRenderer? _burdenSurface;
+
+  private void InitSurfaces(ICoreClientAPI capi) {
+    // Degrees to radians: Shape.rotateY carries the per-side spin ShapeSpunPerOrientation baked in,
+    // but SurfaceRenderer's own RotateY call, like the footprint boxes, works in radians.
+    float rotationY = (float)(Block.Shape.rotateY * Math.PI / 180.0);
+
+    _oreSurface = new OreSurfaceRenderer(
+      Pos,
+      capi,
+      WideHopperFootprint,
+      rotationY,
+      WideHopperFloorY,
+      WideHopperBrimY,
+      OreTexture
+    );
+    _fluxSurface = new OreSurfaceRenderer(
+      Pos,
+      capi,
+      NarrowHopperFootprint,
+      rotationY,
+      WideHopperFloorY,
+      WideHopperBrimY,
+      FluxTexture
+    );
+    _burdenSurface = new OreSurfaceRenderer(
+      Pos,
+      capi,
+      BasinFootprint,
+      rotationY,
+      BasinFloorY,
+      BasinBrimY,
+      OreTexture
+    );
+
+    capi.Event.RegisterRenderer(
+      _oreSurface,
+      EnumRenderStage.Opaque,
+      "burdenmaker-ore"
+    );
+    capi.Event.RegisterRenderer(
+      _fluxSurface,
+      EnumRenderStage.Opaque,
+      "burdenmaker-flux"
+    );
+    capi.Event.RegisterRenderer(
+      _burdenSurface,
+      EnumRenderStage.Opaque,
+      "burdenmaker-burden"
+    );
+    UpdateSurfaces();
+  }
+
+  /// <summary>Pushes the current fill fractions into the three renderers. A no-op off the client,
+  /// where <see cref="InitSurfaces"/> never ran.</summary>
+  private void UpdateSurfaces() {
+    if (_oreSurface == null)
+      return;
+    _oreSurface.Fill = OreFill;
+    _fluxSurface!.Fill = FluxFill;
+    _burdenSurface!.Fill = BurdenFill;
+  }
+
+  private void DisposeSurfaces() {
+    _oreSurface?.Dispose();
+    _fluxSurface?.Dispose();
+    _burdenSurface?.Dispose();
+    _oreSurface = null;
+    _fluxSurface = null;
+    _burdenSurface = null;
   }
 
   #endregion

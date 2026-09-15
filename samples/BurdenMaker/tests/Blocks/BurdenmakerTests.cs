@@ -298,4 +298,30 @@ public class BurdenmakerTests {
   }
 
   #endregion
+
+  #region Fill fractions for the ore-level surfaces
+
+  [Fact]
+  public void Each_fraction_is_zero_empty_and_one_at_capacity() {
+    var (_, be, ore, lime) = NewMachine();
+    Assert.Equal(0f, be.OreFill);
+    Assert.Equal(0f, be.FluxFill);
+    Assert.Equal(0f, be.BurdenFill);
+
+    be.TryLoadOre(
+      Slot(ore, BurdenMakerValues.BurdenmakerOreCapacity),
+      wholeStack: true
+    );
+    be.TryLoadFlux(
+      Slot(lime, BurdenMakerValues.BurdenmakerFluxCapacity),
+      wholeStack: true
+    );
+    Assert.Equal(1f, be.OreFill);
+    Assert.Equal(1f, be.FluxFill);
+
+    be.ToggleGate(out _);
+    Assert.Equal(1f, be.BurdenFill);
+  }
+
+  #endregion
 }
