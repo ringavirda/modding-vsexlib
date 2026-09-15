@@ -9,12 +9,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Repo-wide invariant: no non-<see cref="ExModSystem"/> ModSystem in `exlib.dll` or
-/// `exlib.industry.dll` may read or finalize assets at the vendored 0.1 default;
-/// <see cref="ExpandedLib.ExpandedLibModSystem"/>'s own `AssetsFinalize` is pinned at 0.06 and
-/// must run first.
-/// </summary>
+/// <summary>No ModSystem in exlib.dll or exlib.industry.dll other than an <see cref="ExModSystem"/>
+/// reads or finalizes assets at the vendored 0.1 default; <see cref="ExpandedLib.ExpandedLibModSystem"/>'s
+/// AssetsFinalize is pinned at 0.06 and runs first.</summary>
 public class ModSystemOrderTests {
   #region Corpus
 

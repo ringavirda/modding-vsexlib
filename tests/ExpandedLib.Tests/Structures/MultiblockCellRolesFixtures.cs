@@ -45,13 +45,8 @@ internal static class MultiblockCellRolesFixtures {
   /// <summary>The two tuyeres, drawn with two glyphs sharing one code and one role.</summary>
   public static readonly Vec3i[] TuyereCells = [new(0, 0, 1), new(1, 1, 1)];
 
-  /// <summary>
-  /// The layout under test.
-  /// <list type="bullet">
-  /// <item><c>a</c> and <c>v</c> are both <c>game:air</c>; only <c>v</c> is the flue.</item>
-  /// <item><c>t</c> and <c>y</c> are both <c>exlib:testtuyere*</c>, and both are tuyeres.</item>
-  /// </list>
-  /// </summary>
+  /// <summary>The layout under test: <c>a</c> and <c>v</c> are both <c>game:air</c> with only
+  /// <c>v</c> the flue; <c>t</c> and <c>y</c> are both <c>exlib:testtuyere*</c> and both tuyeres.</summary>
   public static ExBlockDef RoledDef() =>
     ExBlockDef
       .Create("exlib", "testmega")

@@ -4,12 +4,8 @@ using ExpandedLib.Definitions;
 
 namespace ExpandedLib.Structures;
 
-/// <summary>
-/// Draws whichever of a layout's three plane kinds (<see cref="GridPlane.Horizontal"/> layers,
-/// <see cref="GridPlane.SliceX"/> slices, <see cref="GridPlane.FaceZ"/> faces - a layout may declare
-/// any mix) are non-empty, one <see cref="CellGrid"/> per kind. Shared by
-/// <see cref="ExpandedLib.Definitions.MultiblockLayoutBuilder"/> and <see cref="FillerLayoutBuilder"/>.
-/// </summary>
+/// <summary>Draws each non-empty plane kind of a layout (horizontal layers, X slices, Z faces) as
+/// one <see cref="CellGrid"/>; shared by the multiblock and filler layout builders.</summary>
 internal static class ThreePlaneDraw {
   /// <param name="layers">Depth-and-grid pairs for <see cref="GridPlane.Horizontal"/>, in any Y order.</param>
   /// <param name="slices">Depth-and-grid pairs for <see cref="GridPlane.SliceX"/>, in any X order.</param>

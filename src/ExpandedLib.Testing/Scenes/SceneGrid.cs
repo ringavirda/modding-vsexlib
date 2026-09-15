@@ -47,12 +47,9 @@ public sealed class SceneGrid {
     return this;
   }
 
-  /// <summary>
-  /// Stacks several horizontal layers along the Y axis in one call. <paramref name="layers"/>[0] sits at
-  /// <paramref name="baseY"/>, [1] at <c>baseY + 1</c>, and so on; each entry is itself a multi-line X/Z
-  /// plane in the same format as <see cref="Layer"/>. All layers share the
-  /// (<paramref name="originX"/>, <paramref name="originZ"/>) origin.
-  /// </summary>
+  /// <summary>Stacks horizontal layers along Y: <paramref name="layers"/>[0] sits at
+  /// <paramref name="baseY"/>, each next one a level higher, all at the same X/Z origin and in
+  /// <see cref="Layer"/>'s format.</summary>
   public SceneGrid Stack(
     int baseY,
     int originX,

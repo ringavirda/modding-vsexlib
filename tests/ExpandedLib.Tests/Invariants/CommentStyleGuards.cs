@@ -14,6 +14,8 @@ public class CommentStyleGuards {
 
   private const int MaxDocBlockLines = 16;
   private const int MaxParaPerDocBlock = 3;
+  private const int MaxSummaryLines = 5;
+  private const int MaxRemarkLines = 2;
 
   private static readonly Regex CommentLine = new(
     @"^\s*(///|//)",
@@ -218,6 +220,97 @@ public class CommentStyleGuards {
       Report(
         $"More than {MaxParaPerDocBlock} <para> blocks means the doc is arguing rather than "
           + "describing. Each <para> should state a separate constraint.",
+        hits
+      )
+    );
+  }
+
+  // Migrations and the released-code registry carry version history by design.
+  private static bool IsHistoryFile(string relative) =>
+    relative.Contains("/Migrations/", StringComparison.Ordinal)
+    || Path.GetFileName(relative)
+      .StartsWith("Released", StringComparison.Ordinal);
+
+  // Consecutive // lines that are not /// form one remark.
+  private static IEnumerable<(string Where, int Lines)> RemarkBlocks() {
+    foreach (var f in Sources()) {
+      if (IsHistoryFile(f.Relative))
+        continue;
+      int run = 0,
+        start = 0;
+      for (int i = 0; i <= f.Lines.Length; i++) {
+        bool isRemark =
+          i < f.Lines.Length
+          && CommentLine.IsMatch(f.Lines[i])
+          && !XmlDocLine.IsMatch(f.Lines[i]);
+        if (isRemark) {
+          if (run == 0)
+            start = i + 1;
+          run++;
+        } else if (run > 0) {
+          yield return ($"{f.Relative}:{start}", run);
+          run = 0;
+        }
+      }
+    }
+  }
+
+  // A <summary> spans from its opening tag's line to its closing tag's line.
+  private static IEnumerable<(string Where, int Lines)> SummaryBlocks() {
+    foreach (var f in Sources()) {
+      if (IsHistoryFile(f.Relative))
+        continue;
+      int run = 0,
+        start = 0;
+      for (int i = 0; i < f.Lines.Length; i++) {
+        if (!XmlDocLine.IsMatch(f.Lines[i])) {
+          run = 0;
+          continue;
+        }
+        if (f.Lines[i].Contains("<summary>", StringComparison.Ordinal)) {
+          run = 1;
+          start = i + 1;
+        } else if (run > 0) {
+          run++;
+        }
+        if (
+          run > 0
+          && f.Lines[i].Contains("</summary>", StringComparison.Ordinal)
+        ) {
+          yield return ($"{f.Relative}:{start}", run);
+          run = 0;
+        }
+      }
+    }
+  }
+
+  [Fact]
+  public void No_remark_runs_past_two_lines() {
+    var hits = RemarkBlocks()
+      .Where(b => b.Lines > MaxRemarkLines)
+      .Select(b => $"{b.Where} ({b.Lines} lines)")
+      .ToList();
+    Assert.True(
+      hits.Count == 0,
+      Report(
+        $"A // remark over {MaxRemarkLines} lines narrates. State the constraint in one line or "
+          + "delete it; CONTRIBUTING.md sizes a remark at one line.",
+        hits
+      )
+    );
+  }
+
+  [Fact]
+  public void No_summary_runs_past_five_lines() {
+    var hits = SummaryBlocks()
+      .Where(b => b.Lines > MaxSummaryLines)
+      .Select(b => $"{b.Where} ({b.Lines} lines)")
+      .ToList();
+    Assert.True(
+      hits.Count == 0,
+      Report(
+        $"A <summary> over {MaxSummaryLines} lines is an essay. One sentence for a member, three "
+          + "lines for a class; move the rest to docs/design and cite it.",
         hits
       )
     );

@@ -156,12 +156,9 @@ public static class EntityRegistry {
     return false;
   }
 
-  /// <summary>
-  /// Registers a block entity under its primary key, plus the short-name aliases
-  /// (<c>{modid}.{ShortId}</c>, <c>{ShortId}</c>, <c>{shortid}</c>) for classes named
-  /// <c>BlockEntityXxx</c> using the default convention. Aliases are skipped when an explicit
-  /// <see cref="RegisterAttribute.Code"/> is given (e.g. a vanilla override).
-  /// </summary>
+  /// <summary>Registers a block entity under its primary key plus the <c>{modid}.{ShortId}</c>,
+  /// <c>{ShortId}</c> and <c>{shortid}</c> aliases of a <c>BlockEntityXxx</c> name; an explicit
+  /// <see cref="RegisterAttribute.Code"/> gets no aliases.</summary>
   private static void RegisterBlockEntity(
     ICoreAPI api,
     string domain,

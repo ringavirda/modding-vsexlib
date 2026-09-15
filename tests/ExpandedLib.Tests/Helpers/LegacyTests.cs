@@ -1,6 +1,5 @@
 // Compiles only on game-version floors lacking the real member; empty on 1.22.
-// LegacyAnimUtil.CreateMesh and LegacyApi120's MeshAngle need a live client/instance and are not
-// covered here.
+// LegacyAnimUtil.CreateMesh and LegacyApi120's MeshAngle need a live client and are not covered.
 #if !GAME_GE_1_22
 using System.Collections.Generic;
 using System.Linq;
