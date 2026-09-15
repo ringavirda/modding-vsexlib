@@ -105,18 +105,21 @@ public static class ItemDie {
   /// <param name="jobs">Variant name to its spec, from <see cref="Job"/> or hand-built.</param>
   /// <param name="shape">Shape every variant renders as, unless <paramref name="shapeByType"/> overrides it.</param>
   /// <param name="shapeByType">Per-variant shape override, keyed by the same variant names.</param>
+  /// <param name="assetName">The itemtype's asset path under <c>itemtypes/</c>, sub-folders allowed;
+  /// <c>die</c> when null.</param>
   public static ExItemDef Itemtype(
     string domain,
     IReadOnlyDictionary<string, object> jobs,
     string shape = "game:item/ingot",
-    IReadOnlyDictionary<string, string>? shapeByType = null
+    IReadOnlyDictionary<string, string>? shapeByType = null,
+    string? assetName = null
   ) {
     var byType = new Dictionary<string, object>();
     foreach ((string type, object job) in jobs)
       byType["*-" + type] = job;
 
     ExItemDef def = ExItemDef
-      .Create(domain, "die")
+      .Create(domain, "die", assetName ?? "die")
       .Shape(shape)
       .VariantGroup("type", [.. jobs.Keys])
       // Each die carries its own wear, so two can never merge into one stack.

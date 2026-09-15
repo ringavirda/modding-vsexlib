@@ -82,19 +82,22 @@ public static class MachineTool {
   /// <param name="variantGroup">The group the variants belong to. Defaults to <c>type</c>, but tooling
   /// whose hardness comes from what it was forged from wants <c>metal</c>, so it reads and captures like
   /// every other smithed item.</param>
+  /// <param name="assetName">The itemtype's asset path under <c>itemtypes/</c>, sub-folders allowed;
+  /// the code itself when null.</param>
   public static ExItemDef Itemtype(
     string domain,
     string code,
     IReadOnlyDictionary<string, int> tiers,
     string shape = "game:item/ingot",
-    string variantGroup = "type"
+    string variantGroup = "type",
+    string? assetName = null
   ) {
     var byType = new Dictionary<string, object>();
     foreach ((string type, int tier) in tiers)
       byType["*-" + type] = Tier(tier);
 
     return ExItemDef
-      .Create(domain, code)
+      .Create(domain, code, assetName ?? code)
       .Shape(shape)
       .VariantGroup(variantGroup, [.. tiers.Keys])
       // Each fitted tool wears independently, so two can never merge into one stack.
