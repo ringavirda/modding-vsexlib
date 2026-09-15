@@ -21,6 +21,8 @@ see the git history.
 
 ### Fixed
 
+- **A network node picks its fallback stack whatever it drops** (`BlockNetworkNode.OnPickBlock`):
+  the block-info HUD crashed on a raised mega-block's filler, whose principal drops nothing.
 - **A filler port's axle sign follows its own face** (`BEBehaviorMPFillerPort`): a port facing east
   or south read the axle's angle mirrored, so a machine on that side spun against its axle.
 - **Composed lang keys fall back to exlib's own**: the multiblock outline hint and the passthrough
