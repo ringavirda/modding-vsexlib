@@ -9,10 +9,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The container rung of the declared-state family: <see cref="ExBlockEntityContainer"/> gives a
-/// <see cref="BlockEntityContainer"/> the same <c>[Persist]</c>/<c>Persisted</c> convenience
-/// <see cref="ExBlockEntity"/> gives a plain block entity, layered on top of the inventory the vanilla
-/// base already writes by hand.
+/// Tests <see cref="ExBlockEntityContainer"/>'s <c>[Persist]</c> support layered on top of
+/// the inventory the vanilla base already writes.
 /// </summary>
 public class ExBlockEntityContainerTests {
   private sealed class Container : ExBlockEntityContainer {

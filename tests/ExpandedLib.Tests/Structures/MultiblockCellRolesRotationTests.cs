@@ -19,9 +19,8 @@ public class MultiblockCellRolesRotationTests {
     var (world, machine) = Stand(angle);
     StructureRig.Around(world, machine, RoledDef(), angle).Complete();
 
-    // The chiral L is what makes this discriminate: turning -90 instead of +90 lands the whole set in the
-    // opposite quadrant, which a square or single-cell role set would not show. All four angles are
-    // enumerated because a mapping that is the identity at 0 or 180 survives any subset of them.
+    // The chiral L discriminates a wrong-direction turn; all four angles rule out a mapping that is only
+    // correct at 0 and 180.
     Assert.Equal(
       ExpectedAt(FlueCells, angle),
       Render(machine.CellsWithRole(Flue))
@@ -41,8 +40,7 @@ public class MultiblockCellRolesRotationTests {
       sets.Add(Render(machine.CellsWithRole(Flue)));
     }
 
-    // A mapping that ignored the angle entirely still agrees with itself at every facing, which the
-    // per-facing theory cannot rule out. Four distinct sets does.
+    // Four distinct sets rules out a mapping that ignores the angle.
     Assert.Equal(4, sets.Distinct().Count());
   }
 
@@ -52,11 +50,8 @@ public class MultiblockCellRolesRotationTests {
       var (world, machine) = Stand(angle);
       StructureRig.Around(world, machine, RoledDef(), angle).Complete();
 
-      // Roles are resolved by index against vanilla's transformed offset table, so a role cell cannot land
-      // outside the footprint. That makes the loop below true by construction - it passes even for
-      // `OwnsCell => true` - so the negative assertion above it is what turns it into a claim: OwnsCell
-      // discriminates, and it discriminates against the transformed footprint. Pointed at Offsets rather
-      // than TransformedOffsets, this fails at three facings of four.
+      // Roles resolve against vanilla's transformed offset table; the negative assertion above proves
+      // OwnsCell actually discriminates.
       Assert.False(
         machine.OwnsCell(Anchor.AddCopy(0, -1, 0)),
         $"the cell under the anchor is below layer 0, so it is not owned at {angle} deg"
@@ -74,8 +69,7 @@ public class MultiblockCellRolesRotationTests {
     StructureRig.Around(world, machine, RoledDef()).Complete();
     Assert.Equal(ExpectedAt(FlueCells, 0), Render(machine.CellsWithRole(Flue)));
 
-    // A wrench turn: the machine re-derives its angle and reloads on the next monitor tick. Cells are cached
-    // in world space, so a cache surviving the reload would keep answering north.
+    // A wrench turn: the machine re-derives its angle and reloads on the next monitor tick.
     machine.Angle = 90;
     world.AdvanceBlockEntityTime(3000);
 

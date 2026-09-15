@@ -1,6 +1,4 @@
-// TwinTubBlower and BurdenMaker only build for the current game version, so a real-asset load of
-// them can only run there; the API under test (TestWorld.LoadAssets) itself compiles and runs on
-// every game version.
+// TwinTubBlower and BurdenMaker build only for the current game version.
 #if GAME_GE_1_22
 using System.IO;
 using ExpandedLib.Testing;
@@ -9,11 +7,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="TestWorld.LoadAssets"/> against the two samples: a real block, resolved by the
-/// engine's own object loader from each sample's code-first definition, with its variants
-/// intact - not a <see cref="TestWorld.RegisterItem"/> stand-in.
-/// </summary>
+/// <summary><see cref="TestWorld.LoadAssets"/> against the two samples: a real block resolved by
+/// the engine's own object loader, with its variants intact.</summary>
 public class AssetLoadingTests
 {
   [Fact]

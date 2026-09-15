@@ -82,7 +82,7 @@ public class BlockEntityHealTests {
     return healer;
   }
 
-  /// <summary>Minimal block entity that records whether it was initialized after spawning.</summary>
+  /// <summary>Minimal block entity that records whether Initialize ran.</summary>
   private sealed class ProbeBlockEntity : BlockEntity {
     public bool WasInitialized { get; private set; }
 

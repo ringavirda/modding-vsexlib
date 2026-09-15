@@ -15,9 +15,8 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// A modder with no C# gets a megablock from a blocktype JSON alone: <see cref="BlockFilledMegastructure"/>
-/// registered as <c>ExFilledMegastructure</c>, <see cref="BlockEntityMultiblock"/> as <c>ExMultiblock</c>,
-/// and an <c>attributes.multiblockLayout</c> ASCII grid that <see cref="JsonMultiblockLayout"/> resolves
-/// into the same <c>multiblockStructure</c>/<c>fillerOffsets</c> a code-first definition would emit.
+/// as <c>ExFilledMegastructure</c>, <see cref="BlockEntityMultiblock"/> as <c>ExMultiblock</c>, and an
+/// <c>attributes.multiblockLayout</c> ASCII grid resolved by <see cref="JsonMultiblockLayout"/>.
 /// </summary>
 public class JsonMultiblockTests {
   private static TestWorld NewWorld() {
@@ -30,8 +29,7 @@ public class JsonMultiblockTests {
   public void A_json_only_layout_gets_fillers_and_completion_with_no_C_sharp() {
     TestWorld world = NewWorld();
 
-    // A 2x1x1 layout: the placed block at (0,0,0) plus one brick cell at (1,0,0), declared with
-    // nothing but the block's own JSON attributes.
+    // A 2x1x1 layout: the placed block at (0,0,0) plus one brick cell at (1,0,0).
     var anchor = TestBlocks.Configure(
       new BlockFilledMegastructure(),
       "exlib:testmega-n",
@@ -68,8 +66,7 @@ public class JsonMultiblockTests {
 
   [Fact]
   public void GetIncompleteMessage_falls_back_to_the_exlib_key_when_the_domain_declares_none() {
-    // TestLang echoes every key back as true, so the fallback branch is exercised by restubbing the
-    // one domain key this test cares about to "not declared".
+    // TestLang echoes every key back as true; restub the one domain key to force "not declared".
     string domainKey = "exlib:multiblock-testmega-n-incomplete";
     TestLang.Service.HasTranslation(domainKey, Arg.Any<bool>()).Returns(false);
     TestLang
@@ -193,8 +190,7 @@ public class JsonMultiblockTests {
     );
   }
 
-  // Builds a BlockFilledMegastructure with the given code, id and raw JSON attributes, resolved
-  // through OnLoaded the way a real blocktype load would.
+  // Builds a BlockFilledMegastructure with the given code, id and JSON attributes, resolved through OnLoaded.
   private static Block BlockWithLayout(
     TestWorld world,
     string code,
@@ -209,9 +205,7 @@ public class JsonMultiblockTests {
 
   [Fact]
   public void A_resolved_block_is_collectable_once_nothing_else_holds_it() {
-    // JsonMultiblockLayout's resolve-once record holds its key weakly, so resolving a block does not
-    // itself keep that block (and everything it roots, e.g. a session's ICoreAPI) alive across a
-    // client rejoin.
+    // JsonMultiblockLayout's resolve-once record holds its key weakly.
     WeakReference weak = Resolve();
     GC.Collect();
     GC.WaitForPendingFinalizers();
@@ -219,8 +213,7 @@ public class JsonMultiblockTests {
 
     Assert.False(weak.IsAlive);
 
-    // Not inlined into the test method: a local variable holding the block would itself be a root the
-    // collector could see, keeping it alive regardless of what JsonMultiblockLayout retains.
+    // Not inlined: a local variable holding the block is itself a GC root.
     static WeakReference Resolve() {
       TestWorld world = NewWorld();
       var block = TestBlocks.Configure(

@@ -14,14 +14,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The <c>ExLangKeyGenerator</c> output: a bare <c>en.json</c> key <c>k</c> becomes the
-/// <c>ExlibLang</c> constant <c>"exlib:k"</c>, and a key that is already domain-qualified passes
-/// through verbatim. A mistyped member name fails the build. The rest of the class drives the
-/// generator directly over fake <c>AdditionalText</c>s and analyzer config, covering EXLIB0003
-/// (no parsed lang file for the declared <c>$(AssetDomain)</c>) and EXLIB0004 (a sanitised member
-/// name collision).
-/// </summary>
+/// <summary>The <c>ExLangKeyGenerator</c> output: a bare <c>en.json</c> key becomes an
+/// <c>ExlibLang</c> constant, and EXLIB0003/EXLIB0004 diagnostics for a missing or colliding
+/// key.</summary>
 public class LangKeyGeneratorTests {
   [Fact]
   public void Bare_keys_are_domain_qualified() {
@@ -38,8 +33,7 @@ public class LangKeyGeneratorTests {
     );
   }
 
-  /// <summary>An <c>AdditionalText</c> over an in-memory JSON blob, standing in for a fed
-  /// <c>en.json</c>.</summary>
+  /// <summary>An <c>AdditionalText</c> over an in-memory JSON blob.</summary>
   private sealed class FakeAdditionalText(string path, string content)
     : AdditionalText {
     public override string Path { get; } = path;
@@ -49,8 +43,7 @@ public class LangKeyGeneratorTests {
     ) => SourceText.From(content, Encoding.UTF8);
   }
 
-  /// <summary>A flat <c>build_property.*</c> map, standing in for the analyzer config the SDK
-  /// otherwise derives from <c>&lt;CompilerVisibleProperty&gt;</c> items.</summary>
+  /// <summary>A flat <c>build_property.*</c> map.</summary>
   private sealed class FakeAnalyzerConfigOptions(
     Dictionary<string, string> values
   ) : AnalyzerConfigOptions {
@@ -73,9 +66,8 @@ public class LangKeyGeneratorTests {
     GeneratorLoader.Load("ExLangKeyGenerator");
 
   /// <summary>Runs <c>ExLangKeyGenerator</c> over <paramref name="langFiles"/> (path, JSON content
-  /// pairs) with <paramref name="assetDomain"/> as <c>$(AssetDomain)</c>, and returns whatever
-  /// diagnostics it reported. No source is compiled - the generator reads only additional texts and
-  /// analyzer config options.</summary>
+  /// pairs) with <paramref name="assetDomain"/> as <c>$(AssetDomain)</c>, and returns the reported
+  /// diagnostics.</summary>
   private static IReadOnlyList<Diagnostic> Run(
     string? assetDomain,
     params (string Path, string Json)[] langFiles
@@ -156,8 +148,7 @@ public class LangKeyGeneratorTests {
 
   [Fact]
   public void A_sanitised_name_collision_reports_both_keys_and_the_member() {
-    // "foo bar" and "foo-bar" both sanitise to "FooBar"; sorted ordinal, "foo bar" (space, 0x20)
-    // comes before "foo-bar" (hyphen, 0x2D), so it claims the base name and "foo-bar" gets "_2".
+    // "foo bar" and "foo-bar" both sanitise to "FooBar"; ordinal sort orders "foo bar" first.
     IReadOnlyList<Diagnostic> diagnostics = Run(
       "gentest",
       (

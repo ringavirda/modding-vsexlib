@@ -30,19 +30,17 @@ internal sealed class TestReadinessPublisher(BlockEntity blockentity)
 internal sealed class TestPlainBlockEntity : BlockEntity { }
 
 /// <summary>A machine that hosts a real <see cref="ExRightClickConstructable"/>, as the shipped
-/// mega-blocks (boiler, engine, transmission) declare it from their JSON definition, so the
-/// behaviour's own readiness answer is exercised through the publisher path rather than an
-/// ad hoc forwarder. The `_rcc` field name matches what <see cref="RccFake"/> primes.</summary>
+/// mega-blocks declare it from their JSON definition. The `_rcc` field name matches what
+/// <see cref="RccFake"/> primes.</summary>
 internal sealed class TestConstructedMachine : BlockEntityProductionMachine {
-  // Set only through reflection (RccFake.Complete), never by compiled code - the same pattern
-  // PersistAttributeTests' [Persist] fixtures use for a field PersistScan reaches by name.
+  // Set only through reflection (RccFake.Complete), never by compiled code.
 #pragma warning disable CS0169 // field is set only via reflection, never by name
   private ExRightClickConstructable? _rcc;
 #pragma warning restore CS0169
   public int ProductionTicks;
   public int IdleTicks;
 
-  // Construction now publishes its own gate; nothing else on this machine does.
+  // Construction publishes its own gate; nothing else on this machine does.
   protected override bool CanRunProduction => true;
 
   protected override void OnProductionTick(float dt) => ProductionTicks++;
@@ -70,11 +68,8 @@ internal sealed class TestBreachMegablock : BlockEntityMultiblockMachine {
   protected override string GetCompleteMessage() => "complete";
 }
 
-/// <summary>
-/// The readiness contract: whatever knows publishes, the process reads. Every publisher on a machine
-/// must agree before production runs, and each says separately whether losing readiness closes the gate
-/// or takes the tick away with it. See docs/design/mechanics/framework-composition.md.
-/// </summary>
+/// <summary>Every publisher on a machine must agree for production to run, and each says separately
+/// whether losing readiness closes the gate or takes the tick away with it.</summary>
 public class ProductionReadinessTests {
   private static (TestWorld world, TestProductionMachine machine) NewMachine() {
     var world = new TestWorld();
@@ -109,8 +104,6 @@ public class ProductionReadinessTests {
     world.Attach(machine);
     StructureRig.Around(world, machine, Def()).Complete();
 
-    // The premise for every assertion below: a complete machine that has not run a tick yet, so any
-    // count afterwards was produced by the breach.
     Assert.True(machine.StructureComplete);
     Assert.Equal(0, machine.ProductionTicks);
     Assert.Equal(0, machine.IdleTicks);
@@ -125,8 +118,6 @@ public class ProductionReadinessTests {
   public void A_machine_publishes_its_own_gate_as_readiness() {
     var (_, machine) = NewMachine();
 
-    // The premise: the machine is a publisher at all, so the answer below is its own rather than the
-    // empty-set default.
     Assert.Single(ProductionReadiness.PublishersOn(machine));
     Assert.True(ProductionReadiness.IsReady(machine));
 
@@ -138,8 +129,7 @@ public class ProductionReadinessTests {
   public void Readiness_answers_before_the_machine_is_initialized() {
     var machine = new TestProductionMachine { Operational = false };
 
-    // The load path reads readiness from inside Initialize, so a publisher that needed an api, a
-    // neighbour or a network would answer wrong exactly when the machine decides whether to tick.
+    // The load path reads readiness from inside Initialize, before the machine has an api.
     Assert.Null(machine.Api);
     Assert.False(ProductionReadiness.IsReady(machine));
   }
@@ -162,7 +152,6 @@ public class ProductionReadinessTests {
     machine.Behaviors.Add(second);
     machine.StartTicking();
 
-    // The premise: the machine's own gate is open, so only the second publisher can close this one.
     Assert.True(machine.Operational);
     world.FireBlockEntityTicks();
     Assert.Equal(0, machine.ProductionTicks);
@@ -190,8 +179,8 @@ public class ProductionReadinessTests {
   }
 
   [Theory]
-  [InlineData(true)] // keeps its listener, so it idles through the breach
-  [InlineData(false)] // gives its listener up, so nothing runs at all
+  [InlineData(true)] // keeps its listener; idles through the breach
+  [InlineData(false)] // gives its listener up; nothing runs at all
   public void A_breach_takes_the_tick_only_from_a_machine_that_says_so(
     bool keepsTicking
   ) {
@@ -212,9 +201,7 @@ public class ProductionReadinessTests {
   public void A_completeness_recheck_leaves_a_machine_that_keeps_running_ticking() {
     var (world, machine) = Breached(keepsTicking: true);
 
-    // Interact recomputes completion itself, so it reaches the same transition the monitor tick does
-    // and must answer the same question. The shipped route only ever hands it an already-incomplete
-    // anchor, so this arm is reached from here rather than from play.
+    // Interact recomputes completion itself and must answer the same question the monitor tick does.
     machine.Interact(null!);
     Assert.False(machine.StructureComplete);
 
@@ -228,11 +215,8 @@ public class ProductionReadinessTests {
 
   #region Construction gates production
 
-  /// <summary>
-  /// Adds a real <see cref="ExRightClickConstructable"/> to <paramref name="machine"/>, primed with two
-  /// stages and none completed, and registers it as a publisher. Mirrors the field <see cref="RccFake"/>
-  /// primes on the real mega-blocks (see its own remarks on `rcc` vs the reimplementation's field).
-  /// </summary>
+  /// <summary>Adds a real <see cref="ExRightClickConstructable"/> to <paramref name="machine"/>,
+  /// primed with two stages and none completed, and registers it as a publisher.</summary>
   private static ExRightClickConstructable AddIncompleteRcc(
     TestConstructedMachine machine
   ) {
@@ -284,8 +268,8 @@ public class ProductionReadinessTests {
       Block = new Block(),
     };
 
-    // RccFake primes the machine's own `_rcc` field; the behaviour it plants there is added to
-    // Behaviors afterward so the readiness scan and the fake share the identical instance.
+    // RccFake primes the machine's own `_rcc` field; the readiness scan and the fake share the
+    // identical instance.
     RccFake.Complete(machine);
     var rcc = (ExRightClickConstructable)
       ReflectionHelpers.GetField(machine, "_rcc")!;

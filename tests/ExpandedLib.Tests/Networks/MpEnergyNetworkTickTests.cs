@@ -8,11 +8,9 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The mechanical-energy network's per-tick loop (<see cref="MpEnergyNetwork.OnTick"/>): it walks the nodes at
-/// the current shaft speed, sums the storage inertia, the drive torque and the load torque, then integrates
-/// the one shaft. Driven here with node doubles, covering discovery of storage/drives/loads and the rule that
-/// torque, not accumulated energy, governs whether the run turns. The shaft arithmetic itself is covered by
-/// <see cref="MpEnergyNetworkStateTests"/>.
+/// The mechanical-energy network's per-tick loop (<see cref="MpEnergyNetwork.OnTick"/>): walks the
+/// nodes at the current shaft speed, sums storage inertia, drive torque and load torque, then
+/// integrates the one shaft.
 /// </summary>
 public class MpEnergyNetworkTickTests {
   private sealed class StorageNode : BlockEntity, IMpEnergyStorage {
@@ -31,8 +29,7 @@ public class MpEnergyNetworkTickTests {
     public float LoadTorque(float speed) => Torque;
   }
 
-  /// <summary>Builds one network holding the given nodes, placed in the world so the tick resolves them by
-  /// position. Bypasses the graph so the loop can be driven without connector-correct doubles.</summary>
+  /// <summary>Builds one network holding the given nodes, bypassing the graph.</summary>
   private static MpEnergyNetwork Wire(
     TestWorld world,
     params (BlockPos Pos, BlockEntity Be)[] nodes
@@ -88,7 +85,7 @@ public class MpEnergyNetworkTickTests {
 
     net.OnTick(world.Accessor, 1f, world.Networks);
 
-    // The drive cannot out-torque the load, so the shaft never leaves rest and no energy accumulates.
+    // The drive cannot out-torque the load; the shaft stays at rest.
     Assert.Equal(0f, net.State!.Speed);
     Assert.Equal(0f, net.State!.StoredEnergy);
   }
@@ -103,21 +100,21 @@ public class MpEnergyNetworkTickTests {
       (new BlockPos(1, 0, 0), drive)
     );
 
-    net.OnTick(world.Accessor, 1f, world.Networks); // spin the heavy wheel up
+    net.OnTick(world.Accessor, 1f, world.Networks);
     float spun = net.State!.Speed;
     Assert.True(spun > 0f);
 
-    drive.Torque = 0f; // steam off
+    drive.Torque = 0f;
     net.OnTick(world.Accessor, 1f, world.Networks);
 
-    // A large inertia coasts: still turning, slower, rather than stopping the instant the drive does.
+    // A large inertia coasts: still turning, slower.
     Assert.True(net.State!.Speed > 0f && net.State!.Speed < spun);
   }
 
   [Fact]
   public void A_run_with_no_storage_has_no_reservoir() {
     var world = new TestWorld();
-    // A drive but no inertia: the tick drops the reservoir (nothing to spin).
+    // A drive but no inertia: the tick drops the reservoir.
     var net = Wire(
       world,
       (new BlockPos(0, 0, 0), new DriveNode { Torque = 5f })

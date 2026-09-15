@@ -6,9 +6,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Exercises the graph engine in <see cref="BlockNetworkModSystem"/> - node add/merge, BFS
-/// fracture on removal, and root rebuild - using a medium-less <see cref="StubNetwork"/> so only
-/// topology behaviour is under test.
+/// Exercises the graph engine in <see cref="BlockNetworkModSystem"/>: node add/merge, BFS
+/// fracture on removal, and root rebuild, using a medium-less <see cref="StubNetwork"/>.
 /// </summary>
 public class NetworkGraphTests {
   private static TestWorld NewWorld() {
@@ -17,9 +16,7 @@ public class NetworkGraphTests {
     return w;
   }
 
-  /// <summary>Places a straight "ns" run along +Z at z=0..count-1, each cell a block entity carrying
-  /// a membership that registers the cell as it is placed - so the first is isolated and every later
-  /// one merges into the run, which is the order the engine places in.</summary>
+  /// <summary>Places a straight "ns" run along +Z at z=0..count-1.</summary>
   private static BlockPos[] BuildLine(TestWorld w, int count) {
     var positions = new BlockPos[count];
     for (int z = 0; z < count; z++) {
@@ -44,10 +41,6 @@ public class NetworkGraphTests {
 
   [Fact]
   public void AddNode_with_an_unregistered_type_logs_and_adds_no_node() {
-    // AddNode runs inside chunk load, so this used to throw a world down over one mistyped network
-    // declaration. Only an isolated node reaches the factory - one placed against an existing run
-    // joins that network instead - so the crash was intermittent and position-dependent, which is the
-    // worst shape for a first-time user of the framework.
     var w = NewWorld();
     var pos = new BlockPos(0, 0, 0);
     w.Place(pos, TestNetworkBlock.Create("gass", "ns", 1));
@@ -65,7 +58,6 @@ public class NetworkGraphTests {
     var net = w.NetworkAt(positions[0]);
     Assert.NotNull(net);
     Assert.Equal(3, net!.Nodes.Count);
-    // All cells resolve to the very same network instance.
     Assert.Same(net, w.NetworkAt(positions[1]));
     Assert.Same(net, w.NetworkAt(positions[2]));
   }
@@ -102,9 +94,7 @@ public class NetworkGraphTests {
 
   [Fact]
   public void A_plain_block_carrying_a_membership_bridges_two_nodes() {
-    // Membership is a property of the cell, not a kind of block. Bridging is the only assertion that
-    // can fail: an isolated AddNode always creates a standalone network, so a lone member-bearing
-    // cell reads as "on a network" whether or not the walk can see it.
+    // Membership is a property of the cell, not a kind of block.
     var w = NewWorld();
     w.PlaceNode(new BlockPos(0, 0, 0), "test", "ns");
     w.PlaceMemberBlock(new BlockPos(0, 0, 1), "test", "ns");
@@ -119,14 +109,13 @@ public class NetworkGraphTests {
 
   [Fact]
   public void The_walk_reaches_a_plain_member_from_both_directions() {
-    // The source and the neighbour sides resolve a cell separately, so flipping one alone leaves a
-    // member-bearing block walkable from but never to - a network that exists in one direction only.
+    // Source and neighbour sides resolve a cell separately.
     var w = NewWorld();
     var node = new BlockPos(0, 0, 0);
     var member = new BlockPos(0, 0, 1);
     w.PlaceNode(node, "test", "ns");
     w.PlaceMemberBlock(member, "test", "ns");
-    // The premise: nothing about the placed block puts it on a network, so only its membership can.
+    // The block itself carries no network connector; only its membership does.
     Assert.IsNotAssignableFrom<INetworkConnector>(w.GetBlock(member));
 
     Assert.Equal(

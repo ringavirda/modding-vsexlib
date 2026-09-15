@@ -6,17 +6,12 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The stage route a sequence process walks: one stock family's states, each declaring the thickness it
-/// sits at, which machine families accept it, and - only when it is a stopping point - the code of the item
-/// it becomes. A stage is addressed by (thickness, accepting family), never by thickness alone, because two
-/// families draw different geometry at the same gauge. See docs/design/mechanics/process-extension.md.
-/// </summary>
+/// <summary>Tests <see cref="ProcessRoute"/> and <see cref="ProcessStage"/>: a stage is
+/// addressed by (thickness, accepting family), never by thickness alone.</summary>
 public class ProcessRouteTests {
   private static JsonObject Json(string json) => new(JToken.Parse(json));
 
-  // The narrow route as item-shingled-bar.json draws it: a shared entry stage both families take, then a
-  // grooved and a flattened branch at the same three gauges.
+  // A shared entry stage, then a grooved and a flattened branch at the same three gauges.
   private const string NarrowRoute = """
     {
       "schema": 1,
@@ -70,7 +65,7 @@ public class ProcessRouteTests {
 
   [Fact]
   public void A_route_naming_no_family_is_rejected() {
-    // The family is the key the registry merges on, so a route without one has nowhere to go.
+    // The family is the key the registry merges on.
     Assert.Contains(
       "family",
       Rejects(NarrowRoute.Replace("\"family\"", "\"unused\""))
@@ -87,8 +82,7 @@ public class ProcessRouteTests {
 
   [Fact]
   public void A_stage_no_family_accepts_is_rejected() {
-    // A stage nothing accepts is a state no machine can reach, so it is caught at load rather than read as
-    // a dead rung the walk silently steps over.
+    // A stage nothing accepts is caught at load, not read as a dead rung.
     Assert.Contains(
       "acceptedBy",
       Rejects(
@@ -144,8 +138,7 @@ public class ProcessRouteTests {
 
   [Fact]
   public void A_stopping_point_generates_an_item_unless_it_opts_out() {
-    // The default is to build the item, because the common case is a new product. Opting out is how a
-    // declaration points at a code that already exists - a vanilla rod, or one the mod ships itself.
+    // A stopping point generates by default; opting out points at a code that already exists.
     ProcessRoute route = Parse(NarrowRoute);
     Assert.True(route.StageAt(2.50f, "grooved")!.Generate);
 
@@ -160,8 +153,7 @@ public class ProcessRouteTests {
 
   [Fact]
   public void A_renamed_code_carries_the_name_it_had() {
-    // Exlib sees only the current catalogue, so a code that vanished and one that appeared are
-    // indistinguishable from a rename without the hint.
+    // A renamed code needs the formerCodes hint to be told apart from a vanished/appeared pair.
     ProcessRoute route = Parse(
       NarrowRoute.Replace(
         "\"code\": \"iiex:rolledrod\"",
@@ -178,15 +170,14 @@ public class ProcessRouteTests {
 
   [Fact]
   public void An_undeclared_schema_reads_as_the_first_one() {
-    // Routes authored before the field existed are schema 1 by definition; nothing else has shipped.
+    // An undeclared schema reads as 1; nothing else has shipped.
     ProcessRoute route = Parse(NarrowRoute.Replace("\"schema\": 1,", ""));
     Assert.Equal(1, route.Schema);
   }
 
   [Fact]
   public void A_route_from_a_newer_build_is_refused_rather_than_mis_read() {
-    // Reading it as the form we do know would silently mis-parse someone's content. The message names
-    // both numbers because the fix is to update the library.
+    // The error names both schema numbers.
     string error = Rejects(
       NarrowRoute.Replace("\"schema\": 1,", "\"schema\": 99,")
     );
@@ -240,9 +231,7 @@ public class ProcessRouteTests {
 
   [Fact]
   public void A_half_step_is_not_a_gauge_the_machine_can_be_set_to() {
-    // The whole point: a reduction is taken in two rounds, so the state between two rungs is real and
-    // drawn - but offering it as a setting would double the gap bands on the deck and make the two-round
-    // model a four-gap one.
+    // A half-step is real and drawn, but not offered as a machine setting.
     Assert.Equal(
       [2.0f, 1.5f],
       Parse(HalfStepRoute).RungsFor("flat").Select(s => s.Thickness)
@@ -251,8 +240,7 @@ public class ProcessRouteTests {
 
   [Fact]
   public void A_half_step_is_still_found_by_the_thing_that_draws_it() {
-    // Excluded from the walk, present in the route. If it were dropped entirely the renderer would fall
-    // back to scaling the base shape, which is exactly the art this stage exists to replace.
+    // Excluded from RungsFor, but still addressable by StageAt.
     ProcessStage? half = Parse(HalfStepRoute).StageAt(1.75f, "flat");
 
     Assert.NotNull(half);
@@ -263,8 +251,7 @@ public class ProcessRouteTests {
 
   [Fact]
   public void A_half_step_may_not_be_a_stopping_point() {
-    // A product declared where the player cannot stop reads as reachable and is obtainable nowhere, so
-    // it fails at parse rather than at claim time.
+    // A half-step naming a code fails at parse, not at claim time.
     Assert.False(
       ProcessRoute.TryParse(
         Json(

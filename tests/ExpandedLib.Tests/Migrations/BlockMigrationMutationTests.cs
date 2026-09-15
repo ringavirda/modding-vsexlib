@@ -10,21 +10,17 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The block migrator's mutation path, which rewrites save data; the per-mod <c>GetRemaps</c>
-/// definitions are covered elsewhere. Exercises the two primitives the chunk sweep drives:
-/// <see cref="BlockMigrationModSystem.ReplaceBlock"/> (a placed block swapped in the world, with and
-/// without block-entity state) and <see cref="BlockMigrationModSystem.RemapInventory"/> (migrated
-/// content held as item stacks in containers and inventories).
-/// </summary>
+/// <summary>The block migrator's mutation path: <see cref="BlockMigrationModSystem.ReplaceBlock"/>
+/// (a placed block swapped in the world) and <see cref="BlockMigrationModSystem.RemapInventory"/>
+/// (migrated content held as item stacks).</summary>
 public class BlockMigrationMutationTests {
   private static Block Block(string code, int id) =>
     TestBlocks.Configure(new Block(), code, id);
 
   private static BlockMigrationModSystem System(TestWorld world) {
     var sys = new BlockMigrationModSystem();
-    // ReplaceBlock's block-entity branch reaches through _sapi.World when handing the old tree to a
-    // migration. The headless harness never runs StartServerSide, which is what would set it.
+    // ReplaceBlock's block-entity branch reaches through _sapi.World; the headless harness never
+    // runs StartServerSide.
     ReflectionHelpers.SetField(sys, "_sapi", world.Api);
     return sys;
   }
@@ -104,7 +100,7 @@ public class BlockMigrationMutationTests {
     Assert.NotSame(oldBe, newBe); // a fresh entity, not the old instance
     Assert.Same(newBlock, world.GetBlock(pos)); // block swapped
     Assert.Equal(99, newBe.Value); // old saved state carried over
-    Assert.True(newBe.Dirtied); // and marked dirty so it persists
+    Assert.True(newBe.Dirtied); // marked dirty
   }
 
   #endregion
@@ -126,7 +122,7 @@ public class BlockMigrationMutationTests {
     );
 
     var stack = new ItemStack(oldBlock, 7);
-    stack.Attributes.SetInt("charge", 3); // makes attributes non-empty, so they must be carried
+    stack.Attributes.SetInt("charge", 3); // non-empty attributes must be carried
     var slot = new DummySlot(stack);
 
     int changed = sys.RemapInventory(Inventory(slot));
@@ -275,7 +271,7 @@ public class BlockMigrationMutationTests {
     }
   }
 
-  /// <summary>A block entity carrying one saved value, so a state hand-off can be observed, plus a flag
+  /// <summary>A block entity carrying one saved value, for observing a state hand-off, plus a flag
   /// recording that it was marked dirty.</summary>
   private sealed class StatefulBe : BlockEntity {
     public int Value { get; set; }

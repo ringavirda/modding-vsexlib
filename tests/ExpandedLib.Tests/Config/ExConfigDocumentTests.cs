@@ -7,10 +7,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>The shared mod-sectioned config document behind <c>ex_values.json</c> and
-/// <c>ex_recipes.json</c>: several mods coexist as separate sections of one file, a whole-file
-/// corruption degrades to defaults instead of clearing every section, and the in-memory document is
-/// isolated per API instance.</summary>
+/// <summary>Pins the shared mod-sectioned config document: per-mod sections, corruption fallback, and per-API isolation.</summary>
 public class ExConfigDocumentTests {
   private sealed class Section : IExVersionedConfig {
     public string? ConfigVersion { get; set; }
@@ -91,9 +88,7 @@ public class ExConfigDocumentTests {
 
   #region Legacy section carry-over (a mod renamed or absorbed another)
 
-  // A section is keyed by mod id, so a rename orphans the player's whole tuning: every value reverts
-  // to its coded default on the next load, with no error and no log line, because a missing section
-  // is indistinguishable from a fresh install. These cover the smex+hpex -> siex merge.
+  // A section is keyed by mod id: an unfolded rename reverts every value to its coded default.
 
   [Fact]
   public void A_renamed_mod_takes_over_its_old_section() {
@@ -103,7 +98,7 @@ public class ExConfigDocumentTests {
     doc.FoldLegacySections("siex", ["smex"]);
 
     Assert.Equal(7, doc.GetSection<Section>("siex")!.Value);
-    // The old key is cleared, so the carry-over cannot run twice and resurrect stale values.
+    // The old key is cleared after folding.
     Assert.False(doc.HasSection("smex"));
   }
 
@@ -117,8 +112,7 @@ public class ExConfigDocumentTests {
 
     doc.FoldLegacySections("siex", ["smex", "hpex"]);
 
-    // The survivor is authoritative where both carried a key; the absorbed mod still contributes
-    // what the survivor had no value for, so neither half's tuning is silently dropped.
+    // The survivor's existing values win; the absorbed section fills only the gaps.
     Assert.Equal(7, doc.GetSection<Section>("siex")!.Value);
     Assert.Equal(5, doc.GetSection<JObject>("siex")!["Other"]!.Value<int>());
     Assert.False(doc.HasSection("hpex"));

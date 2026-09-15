@@ -5,12 +5,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The public C# route into the process registries, for a mod that computes a spec at load or is happy to
-/// take a hard dependency. JSON stays the primary, dependency-free path; this is the same surface reached a
-/// second way, and deliberately no wider - anything expressible only in C# would be a gap in the JSON
-/// schema. See docs/design/mechanics/process-extension.md.
-/// </summary>
+/// <summary>Tests <see cref="ProcessExtensions"/>, the C# route into the process registries
+/// that JSON also reaches.</summary>
 public class ProcessExtensionsTests {
   private static ProcessExtensions Fresh() =>
     new(new ProcessRouteRegistry(), new ProcessJobRegistry());
@@ -42,7 +38,7 @@ public class ProcessExtensionsTests {
 
   [Fact]
   public void Code_and_json_contribute_to_one_route() {
-    // The two routes are the same registry, so a mod may add a branch to a family declared in JSON.
+    // A mod may add a branch to a family declared in JSON; both write the same registry.
     ProcessExtensions ex = Fresh();
     ProcessRouteLoader.Load(
       [
@@ -86,8 +82,7 @@ public class ProcessExtensionsTests {
 
   [Fact]
   public void A_malformed_route_is_refused_by_the_same_rules_as_a_declared_one() {
-    // Not a second validation path: the code route builds a declaration and hands it to the same parser,
-    // so a stage nothing accepts is refused here too.
+    // The code route builds a declaration and hands it to the same parser as JSON.
     ProcessExtensions ex = Fresh();
 
     Assert.Throws<System.ArgumentException>(() =>
@@ -140,8 +135,7 @@ public class ProcessExtensionsTests {
 
   [Fact]
   public void The_shared_surface_is_the_one_the_loaders_fill() {
-    // A mod calling the API and a mod shipping JSON must reach the same registries, or a C# contributor
-    // would be invisible to every machine.
+    // A mod calling the API and a mod shipping JSON reach the same registries.
     Assert.Same(ProcessRouteRegistry.Shared, ProcessExtensions.Shared.Routes);
     Assert.Same(ProcessJobRegistry.Shared, ProcessExtensions.Shared.Jobs);
   }

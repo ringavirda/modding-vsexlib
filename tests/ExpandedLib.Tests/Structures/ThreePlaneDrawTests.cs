@@ -5,12 +5,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="ThreePlaneDraw"/> is the shared three-plane draw both <c>MultiblockLayoutBuilder</c> and
-/// <c>FillerLayoutBuilder</c> call. Layers, slices and faces are drawn by three separate branches, so
-/// the transform hook and the anchor return are each checked from every branch on its own - a layout
-/// that draws only a slice or only a face still needs both to work.
-/// </summary>
+/// <summary><see cref="ThreePlaneDraw"/> is the shared three-plane draw both
+/// <c>MultiblockLayoutBuilder</c> and <c>FillerLayoutBuilder</c> call.</summary>
 public class ThreePlaneDrawTests {
   private static readonly GridOptions Options = new(Anchor: '0');
 

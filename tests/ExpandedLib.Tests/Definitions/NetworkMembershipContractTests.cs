@@ -10,13 +10,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The shipped-asset guard on declared network memberships. A membership created from a declaration
-/// starts with no network type of its own and nothing else can supply one, so a declaration missing
-/// <c>networkType</c> leaves the cell outside its run - visible in game only as a network that stopped
-/// working. No shipped def declares a membership yet, so the rule is proved here against defs written
-/// for the purpose rather than by scanning a corpus that would be empty.
-/// </summary>
+/// <summary>Pins the shipped-asset guard on declared network memberships: a declaration missing <c>networkType</c> is a violation.</summary>
 public class NetworkMembershipContractTests {
   private const string Member = TestWorld.NetworkMemberClass;
 
@@ -66,8 +60,7 @@ public class NetworkMembershipContractTests {
       ];
   }
 
-  /// <summary>A per-type footprint, which lives under <c>attributesByType</c> rather than
-  /// <c>attributes</c> - a second table the scan has to read.</summary>
+  /// <summary>A per-type footprint, living under <c>attributesByType</c>, a second table the scan reads.</summary>
   private sealed class UntypedPerTypeFootprint : Block, IExBlockDefProvider {
     public static IEnumerable<ExBlockDef> Definitions(string domain) =>
       [
@@ -87,7 +80,7 @@ public class NetworkMembershipContractTests {
       ];
   }
 
-  /// <summary>A membership declared on the block itself rather than on a footprint cell.</summary>
+  /// <summary>A membership declared on the block itself, not on a footprint cell.</summary>
   private sealed class UntypedEntityBehaviour : Block, IExBlockDefProvider {
     public static IEnumerable<ExBlockDef> Definitions(string domain) =>
       [
@@ -104,9 +97,7 @@ public class NetworkMembershipContractTests {
 
   [Fact]
   public void The_scan_reaches_every_place_a_membership_can_be_declared() {
-    // The premise the rule rests on: a declaration the scan never sees can never be reported, so a
-    // rule proved only by its own failures could be passing because it read nothing. Each of the three
-    // tables is represented once, and the well-formed def proves a reached declaration can also pass.
+    // Each of the three declaration tables is represented once.
     var violations = Violations();
 
     Assert.Contains(violations, v => v.Contains("contract-badfootprint"));
@@ -120,8 +111,7 @@ public class NetworkMembershipContractTests {
 
   [Fact]
   public void A_declaration_naming_its_network_is_the_only_thing_that_passes() {
-    // Three bad defs and one good one are declared in this file, so the count is the rule and not an
-    // accident of what the scan happened to walk.
+    // Three bad defs and one good one are declared in this file.
     Assert.Equal(3, Violations().Count);
   }
 
@@ -148,10 +138,7 @@ public class NetworkMembershipContractTests {
 
   [Fact]
   public void A_membership_bearing_block_owes_no_type_variant_group() {
-    // The rule the placement guard enforces is BlockNetworkNode's machinery end to end, and none of
-    // the defs above is one. Widening that guard's candidate filter to reach a membership-bearing cell
-    // instead of giving it a rule of its own would report all four here, for a variant group they have
-    // no use for.
+    // None of the defs above is a BlockNetworkNode; the placement guard does not apply to them.
     var placement = NetworkNodeContract.TypeGroupViolations("exlib", Here);
 
     Assert.DoesNotContain(placement, v => v.Contains("contract-"));

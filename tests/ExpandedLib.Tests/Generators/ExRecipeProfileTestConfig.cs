@@ -4,13 +4,9 @@ using ExpandedLib.Registries;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// A minimal <c>[ExConfigRegister]</c> + <c>[ExRecipeProfile]</c> config, top-level so
-/// <c>ExConfigGenerator</c> emits a proper accessor for it, exercising the generated
-/// <c>RecipeProfile</c> registration folded into <c>Load</c> - see <see cref="ExRecipeProfileGeneratorTests"/>.
-/// <c>DefaultCatalogue</c> ships one entry so a test can tell the generated <c>Defaults</c> delegate
-/// apart from the live, still-empty <see cref="Recipes"/> catalogue.
-/// </summary>
+/// <summary>A minimal <c>[ExConfigRegister]</c> + <c>[ExRecipeProfile]</c> config.
+/// <c>DefaultCatalogue</c> ships one entry, distinct from the empty live
+/// <see cref="Recipes"/>.</summary>
 [ExConfigRegister("exrecipeprofiletest.json", "exlib-recipeprofile-test")]
 [ExRecipeProfile]
 public class ExRecipeProfileTestConfig : IExVersionedConfig {

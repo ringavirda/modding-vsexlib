@@ -5,11 +5,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The catalogue that says what an item occupies, and by omission what a store will not hold at all. It is
-/// contributed to rather than owned: a mod makes its own stock rackable by shipping a file, never by
-/// patching ours, which is the same contract the process catalogues carry.
-/// </summary>
+/// <summary>Tests <see cref="BayOccupancyRegistry"/>: what an item occupies, and by omission
+/// what a store will not hold at all.</summary>
 public class BayOccupancyTests {
   private const string Store = "storagerack";
 
@@ -53,8 +50,7 @@ public class BayOccupancyTests {
 
   [Fact]
   public void An_item_no_rule_names_is_one_the_store_refuses() {
-    // Null rather than the default of one: the catalogue is the whitelist, and a store that fell back to
-    // "one cell" for anything unlisted would be a chest that then has to draw arbitrary items.
+    // The catalogue is a whitelist: an unlisted item returns null, not a default of one.
     BayOccupancyRegistry registry = Loaded(File(Store, ("iiex:stock-rod", 1)));
 
     Assert.Null(registry.CellsFor(Store, "game:stone-granite"));
@@ -87,8 +83,7 @@ public class BayOccupancyTests {
 
   [Fact]
   public void An_exact_code_beats_the_family_it_belongs_to_either_way_round() {
-    // Declaration order must not decide it, or the same two rules in two files would size an item
-    // differently depending on which mod loaded first.
+    // An exact code beats its family regardless of declaration order.
     foreach (
       string json in new[]
       {
@@ -129,7 +124,7 @@ public class BayOccupancyTests {
 
   [Fact]
   public void A_second_rule_for_one_item_is_reported_and_the_first_stands() {
-    // Taking the last writer would make a rack's capacity depend on mod load order.
+    // The first writer stands; capacity must not depend on mod load order.
     var registry = new BayOccupancyRegistry();
     List<string> errors = BayOccupancyLoader.Load(
       [

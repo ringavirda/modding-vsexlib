@@ -4,11 +4,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Every <c>[Collection("...")]</c> name used in this assembly has a matching
-/// <c>[CollectionDefinition(...)]</c> - see <see cref="StaticStateCollection"/> for why a name with no
-/// definition is a silent hole rather than a harmless default.
-/// </summary>
+/// <summary>Every <c>[Collection("...")]</c> name used in this assembly has a matching
+/// <c>[CollectionDefinition(...)]</c>.</summary>
 public class CollectionGuardTests {
   [Fact]
   public void Every_collection_name_has_a_definition() =>

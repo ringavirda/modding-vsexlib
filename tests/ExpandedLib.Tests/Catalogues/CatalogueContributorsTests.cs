@@ -9,10 +9,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The shared contributor contract every catalogue registry exposes, and its use by all six catalogues:
-/// a C# entry survives the clear that precedes each <c>AssetsFinalize</c> read because the loader
-/// re-invokes it every time. Shares the "MetalRegistry" collection with the other classes that mutate
-/// that process-wide static, since one of the cases below does too.
+/// Tests <see cref="CatalogueContributors"/> and its use across the six catalogue registries;
+/// shares the "MetalRegistry" xunit collection with the other mutators of that static.
 /// </summary>
 [Collection("MetalRegistry")]
 public class CatalogueContributorsTests {

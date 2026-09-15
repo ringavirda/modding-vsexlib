@@ -11,12 +11,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// <see cref="IExDefinitionContributor"/>: the asset-dependent definition hook a module or main
-/// assembly entry point implements, discovered alongside a mod's classes
-/// (<see cref="EntityRegistry.RegisterAll"/>) and run by <see cref="ExDefinitionModSystem.AssetsLoaded"/>
-/// right before injection. <see cref="ExDefinitions"/> is a process-wide static, so the class is
-/// serialized and cleared before each test; <see cref="EntityRegistry"/>'s own domain-fallback cache
-/// is reset on dispose the way <c>ExModSystemTests.Dispose</c> does.
+/// Pins <see cref="IExDefinitionContributor"/>, discovered by <see cref="EntityRegistry.RegisterAll"/>
+/// and run by <see cref="ExDefinitionModSystem.AssetsLoaded"/> before injection.
 /// </summary>
 [Collection("ExDefinitions")]
 public class DefinitionContributorTests : IDisposable {
@@ -101,7 +97,7 @@ public class DefinitionContributorTests : IDisposable {
   [Fact]
   public void A_throwing_contributor_is_logged_and_the_rest_still_run() {
     var world = new TestWorld();
-    // TestContributor and ThrowingContributor share this test assembly, so one scan discovers both.
+    // One scan discovers both contributors in this assembly.
     ExDefinitions.DiscoverContributors(typeof(ThrowingContributor).Assembly);
 
     ExDefinitions.RunContributors(world.Api);

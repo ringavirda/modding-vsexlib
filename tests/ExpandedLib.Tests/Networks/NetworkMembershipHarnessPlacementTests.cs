@@ -28,9 +28,7 @@ public class NetworkMembershipHarnessPlacementTests {
 
   [Fact]
   public void PlaceNode_registers_the_cell_exactly_once() {
-    // The membership registers itself in Initialize, so a fixture that also called AddNode would add
-    // the cell twice - and a second add of an isolated cell builds a whole second network over it,
-    // stranding the first. Nodes is a set, so a node count alone never notices.
+    // The membership registers itself in Initialize; AddNode is not called separately.
     var w = NewGraphWorld();
     var pos = new BlockPos(0, 0, 0);
 
@@ -48,9 +46,7 @@ public class NetworkMembershipHarnessPlacementTests {
     w.PlaceMemberBlock(pos, "test", "ns");
 
     Block placed = w.GetBlock(pos);
-    // The premise the cell exists for: nothing about the block makes it part of a network, so every
-    // answer below comes from the membership. Swapping a node block in here would leave the guard
-    // green while it stopped proving anything.
+    // The block itself is not part of a network; every answer below comes from the membership.
     Assert.IsNotAssignableFrom<INetworkConnector>(placed);
     Assert.IsNotAssignableFrom<BlockNetworkNode>(placed);
 

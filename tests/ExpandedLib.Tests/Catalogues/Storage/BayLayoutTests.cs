@@ -4,11 +4,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// A row of cells filled by length. The whole capacity model of a storage rack is here and it is pure, so
-/// what a rack holds is answerable without a world, a block or a mesh - which is the point of declaring
-/// piece size rather than measuring it off a drawn shape.
-/// </summary>
+/// <summary>Tests <see cref="BayLayout"/>: a row of cells filled by declared piece length,
+/// answerable without a world, a block or a mesh.</summary>
 public class BayLayoutTests {
   private const int Cells = 3;
 
@@ -21,12 +18,8 @@ public class BayLayoutTests {
 
   #region The three arrangements of a three-cell row
 
-  /// <summary>
-  /// The owner's enumeration, which is the whole spec: three one-cell stacks, a two beside a one, or a
-  /// single three. Driven rather than restated - each arrangement is laid a piece at a time through
-  /// <see cref="BayLayout.Fit"/>, so a fit rule that happened to agree on the totals but packed wrongly
-  /// still fails.
-  /// </summary>
+  /// <summary>Lays each arrangement a piece at a time through <see cref="BayLayout.Fit"/>: three
+  /// one-cell stacks, a two beside a one, or a single three.</summary>
   [Theory]
   [InlineData(new[] { 1, 1, 1 }, new[] { 0, 1, 2 })]
   [InlineData(new[] { 2, 1 }, new[] { 0, 2 })]
@@ -43,7 +36,7 @@ public class BayLayoutTests {
       row.Add(new BayRun(start!.Value, lengths[i]));
     }
 
-    // Full, and full to the cell: an arrangement that left a gap would be a different arrangement.
+    // Full, and full to the cell.
     Assert.Equal(0, BayLayout.FreeCells(row, Cells));
     Assert.Null(BayLayout.Fit(row, Cells, 1));
   }
@@ -79,8 +72,7 @@ public class BayLayoutTests {
 
   [Fact]
   public void A_two_cell_piece_needs_two_cells_that_are_next_to_each_other() {
-    // One free cell at each end, two free in total, and still no room: the run has to be contiguous. A
-    // fit rule that counted free cells rather than placing a run would put a slab in two halves.
+    // Two free cells, not contiguous: a two-cell run still does not fit.
     List<BayRun> row = Row((1, 1));
 
     Assert.Equal(2, BayLayout.FreeCells(row, Cells));
@@ -90,8 +82,7 @@ public class BayLayoutTests {
 
   [Fact]
   public void A_piece_goes_in_the_lowest_gap_that_holds_it() {
-    // Lowest-first rather than nearest-the-click: a row that packed toward whichever cell was clicked
-    // would strand gaps a longer piece could have used.
+    // Fit is lowest-first, not nearest to wherever was clicked.
     Assert.Equal(0, BayLayout.Fit(Row((2, 1)), 4, 1));
     Assert.Equal(1, BayLayout.Fit(Row((0, 1)), 4, 2));
   }
@@ -102,8 +93,7 @@ public class BayLayoutTests {
 
   [Fact]
   public void Every_cell_of_a_run_names_that_run() {
-    // What makes each cell of the rack work the whole of it: clicking any cell of a three-cell slab takes
-    // the slab. Without this only the cell a piece started at would answer.
+    // Every cell of a run answers with that run's index, not just its start.
     List<BayRun> row = Row((0, 3));
 
     for (int cell = 0; cell < 3; cell++)

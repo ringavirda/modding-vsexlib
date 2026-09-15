@@ -8,8 +8,8 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// <see cref="PreferenceRegistry"/> discovery and <see cref="ExPreferences"/>'s per-player store:
-/// registration finds a decorated preference, a player's choice round-trips through the config file
-/// double, and an unknown key degrades to the preference's own default rather than throwing.
+/// a decorated preference registers, a choice round-trips through the config file, and an unknown
+/// key falls back to the default.
 /// </summary>
 public class PreferencesTests {
   private const string Key = "prefstest";
@@ -52,9 +52,7 @@ public class PreferencesTests {
     ExPreferences.LoadConfig(world.Api);
     ExPreferences.SetForPlayer("player-a", Key, "b");
 
-    // A second store, freshly loaded off the same (real) config file backing, sees the same choice -
-    // proof the value actually round-tripped through StoreModConfig/LoadModConfig rather than only
-    // living in the in-memory dictionary the setter also updates.
+    // A second store loaded off the same config file backing sees the same choice.
     ExPreferences.LoadConfig(world.Api);
     Assert.Equal("b", ExPreferences.GetForPlayer("player-a", Key));
   }
@@ -110,7 +108,7 @@ public class PreferencesTests {
     ExPreferences.LoadConfig(world.Api);
     ExPreferences.SetForPlayer("player-c", Key, "b");
     var pref = (TestPreference)ExPreferences.Find(Key)!;
-    pref.Applied = []; // SetForPlayer already applied it once; clear so ApplyForPlayer is what proves it
+    pref.Applied = []; // Reset for ApplyForPlayer's own check.
 
     ExPreferences.ApplyForPlayer("player-c");
 

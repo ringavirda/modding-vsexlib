@@ -10,13 +10,11 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// <see cref="IItemCodeMigration"/>: a real implementation's declared pairs, fed into
-/// <see cref="BlockMigrationModSystem.RemapInventory"/> the same way <see cref="BlockMigrationMutationTests"/>
-/// drives a hand-built <c>ItemRemapEntry</c> - the mutation path itself is that class's job, this one
-/// proves an actual <see cref="IItemCodeMigration"/> implementation resolves correctly into it.
+/// <see cref="IItemCodeMigration"/>: a real implementation's declared pairs resolved through
+/// <see cref="BlockMigrationModSystem.RemapInventory"/>.
 /// </summary>
 public class ItemCodeMigrationTests {
-  /// <summary>A migration renaming one item code, in the shape a mod would actually declare.</summary>
+  /// <summary>A migration renaming one item code, in the shape a mod declares.</summary>
   private sealed class RenameMigration : IItemCodeMigration {
     public string Name => "rename test";
 
@@ -79,7 +77,7 @@ public class ItemCodeMigrationTests {
     var world = new TestWorld();
     Item untouched = world.RegisterItem("stub:untouched");
     var sys = System(world);
-    // Nothing registered in _itemRemap: this migration names only "stub:olditem".
+    // _itemRemap holds no entry for this migration.
 
     var slot = new DummySlot(new ItemStack(untouched, 3));
     int changed = sys.RemapInventory(Inventory(slot));

@@ -7,23 +7,18 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Discovery and ordering: a module is an assembly carrying <c>[assembly: ExModule]</c>, found by
-/// walking the assemblies the runtime has already loaded and kept only while its shipping mod is
-/// enabled. exlib's own domain layer (<c>exlib.industry.dll</c>) is the worked example of a
-/// framework module; this test assembly is a module of a fake host of its own, declared in
-/// <c>ModuleInit.cs</c>.
+/// Module discovery and ordering: a module is an assembly carrying <c>[assembly: ExModule]</c>,
+/// found among already-loaded assemblies while its shipping mod stays enabled.
 /// </summary>
 public class ExModulesTests {
-  // Never given a parameterless constructor, on purpose: an entry point declared like this one is
-  // reported and left out rather than crashing discovery.
+  // No parameterless constructor, on purpose.
   private sealed class NoCtorModule(int x) : IExModule {
     public int X => x;
   }
 
   [Fact]
   public void Finds_industry_as_a_framework_module() {
-    // Touch the type first: discovery reads loaded assemblies, and the domain layer is only loaded
-    // once something in this run has referenced it.
+    // Touches the type first: discovery only sees already-loaded assemblies.
     _ = typeof(IndustryModule);
     var world = new TestWorld();
 

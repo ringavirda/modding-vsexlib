@@ -28,10 +28,7 @@ public class EmittedBlocktypeShapeTests {
 
   [Fact]
   public void The_golden_corpus_is_not_empty() {
-    // exlib's own corpus is one file today (goldens/exlib/blocktypes/structurefiller.json), which
-    // declares neither shapeByType nor a handbook groupBy - both rules above pass vacuously on it.
-    // Asserting the corpus itself is non-empty is what stops a renamed goldens/ or blocktypes/
-    // folder from reading as "every selector resolves".
+    // Stops a renamed or emptied goldens/ folder from reading as "every selector resolves" vacuously.
     Assert.NotEmpty(SelectorCoverage.GoldenBlocktypes("exlib"));
   }
 }

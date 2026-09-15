@@ -7,13 +7,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Reading the stage catalogue off disk. Routes live in <c>config/processroutes/</c> rather than on an
-/// item, because item generation has to run before the object loader builds items - a route carried on an
-/// itemtype could not be read in time to generate one. One file per stock family is the convention, but
-/// nothing enforces it: the registry merges whatever arrives.
-/// See docs/design/mechanics/process-extension.md.
-/// </summary>
+/// <summary>Tests <see cref="ProcessRouteLoader"/>, which reads <c>config/processroutes/</c>
+/// and merges whatever files arrive per family.</summary>
 public class ProcessRouteLoaderTests {
   private const string BloomFile = """
     {
@@ -134,8 +129,7 @@ public class ProcessRouteLoaderTests {
 
   [Fact]
   public void An_earlier_malformed_file_does_not_misattribute_a_later_clash_to_the_family_name() {
-    // Before the fix, one malformed file anywhere in the batch made every later clash fall back to
-    // being named after the family rather than the file that actually lost it.
+    // A clash after an earlier malformed file must still attribute to the losing file, not the family name.
     var registry = new ProcessRouteRegistry();
 
     List<string> errors = ProcessRouteLoader.Load(

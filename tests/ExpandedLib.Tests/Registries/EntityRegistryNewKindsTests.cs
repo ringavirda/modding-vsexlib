@@ -13,8 +13,7 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// The three registration kinds added to <see cref="EntityRegistry.RegisterAll"/>: entity classes,
-/// entity behaviours and crop behaviours, registered the same way as the six the rung already covered
-/// - same key convention, same base-type validation.
+/// entity behaviours and crop behaviours.
 /// </summary>
 public class EntityRegistryNewKindsTests : IDisposable {
   public void Dispose() {

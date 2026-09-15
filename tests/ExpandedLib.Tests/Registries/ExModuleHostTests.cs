@@ -14,10 +14,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// <see cref="ExModuleHost"/>: one driver instance's modules, entry points owned only here. Each
-/// case builds its own host so a construction failure or a Harmony patch in one case cannot leak
-/// into another. Joins <see cref="ExHarmonyCollection"/> - the Harmony case patches a real,
-/// process-wide target.
+/// <see cref="ExModuleHost"/> tests: each case builds its own host. Joins
+/// <see cref="ExHarmonyCollection"/>; the Harmony case patches a real, process-wide target.
 /// </summary>
 [Collection(ExHarmonyCollection.Name)]
 public class ExModuleHostTests : IDisposable {
@@ -27,12 +25,8 @@ public class ExModuleHostTests : IDisposable {
     RecordingModule.ObservedKey = null;
   }
 
-  // See ExModSystemTests.Dispose: RegisterAll leaves this shared test assembly pointing at
-  // whichever mod id last registered it, which would break any other test's
-  // EntityRegistry.KeyFor/DomainOf call against it. RegisterAll also discovers this file's
-  // TestContributor-shaped types into ExDefinitions.Contributors (see DefinitionContributorTests'
-  // own cleanup) and its [ExCheckRegister]-decorated types into ExCheckRegistry; all are
-  // process-wide and must not leak into whatever test runs next.
+  // Clears the process-wide state RegisterAll leaves behind: domain map, ExDefinitions,
+  // ExCheckRegistry.
   public void Dispose() {
     var field = typeof(EntityRegistry).GetField(
       "_domainByAssembly",
@@ -64,16 +58,12 @@ public class ExModuleHostTests : IDisposable {
     public void Apply(string value) { }
   }
 
-  // A module of "exlibtest.host" through the test assembly's own [assembly: ExModule] (see
-  // ModuleInit.cs), so a real ExModuleHost(FakeMod("exlibtest.host"), api) discovers and constructs
-  // it.
+  // A module of "exlibtest.host" via the test assembly's own [assembly: ExModule].
   private sealed class RecordingModule : IExModule {
     public static readonly List<string> Phases = [];
     public static readonly List<RecordingModule> Created = [];
 
-    // Set by Start, asserted in the test body: an Assert failure raised inside a module's own
-    // phase is just another exception to the host's isolation (Isolate logs and continues), so it
-    // never fails the test unless something outside the isolated call checks it.
+    // Set by Start; an assertion failure raised here is swallowed by the host's isolation.
     public static string? ObservedKey;
 
     public RecordingModule() => Created.Add(this);
@@ -81,9 +71,7 @@ public class ExModuleHostTests : IDisposable {
     public void StartPre(ICoreAPI api) => Phases.Add("StartPre");
 
     public void Start(ICoreAPI api) {
-      // Proves Start registers this module's classes before running its entry points: a caller
-      // domain that is not this module's own still resolves through the domain RegisterAll just
-      // recorded, not through the fallback a not-yet-registered assembly would use.
+      // Resolves through the domain RegisterAll just recorded, not the unregistered fallback.
       ObservedKey = EntityRegistry.KeyFor(
         "not-exlibtest.host",
         typeof(TestBlock)
@@ -104,8 +92,7 @@ public class ExModuleHostTests : IDisposable {
     public void Dispose() => Phases.Add("Dispose");
   }
 
-  // Also a discovered entry point of "exlibtests": every phase but Start is the default no-op, so
-  // this only ever disturbs the one case that calls Start.
+  // A discovered entry point of "exlibtests"; every phase but Start is a no-op.
   private sealed class ThrowingModule : IExModule {
     public void Start(ICoreAPI api) =>
       throw new InvalidOperationException("ThrowingModule always throws.");
@@ -158,8 +145,7 @@ public class ExModuleHostTests : IDisposable {
     host.StartClientSide(world.ClientApi);
     host.Dispose();
 
-    // The engine's own order (docs/internal/vanilla/api-map.md): StartPre, Start, AssetsLoaded,
-    // AssetsFinalize, then the running side's StartServerSide/StartClientSide, then Dispose.
+    // Matches the engine's own phase order.
     Assert.Equal(
       [
         "StartPre",

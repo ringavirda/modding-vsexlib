@@ -10,8 +10,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>A multiblock that is form alone: it is built, it reports completion and it publishes
-/// readiness, and it runs no production process.</summary>
+/// <summary>A multiblock that is form alone: it completes and publishes readiness but runs no
+/// production process.</summary>
 internal sealed class TestFormMegablock : BlockEntityMultiblockStructure {
   public int CompletedCount;
   public int LostCount;
@@ -28,12 +28,9 @@ internal sealed class TestFormMegablock : BlockEntityMultiblockStructure {
   protected override string GetCompleteMessage() => "complete";
 }
 
-/// <summary>
-/// Form and process are separate axes on a multiblock. Being built is the form; running a production
-/// tick is taken on by deriving from <see cref="BlockEntityMultiblockMachine"/>, and a multiblock that
-/// does not take it on carries no tick at all while remaining a full member of every completion
-/// transition. See docs/design/mechanics/framework-composition.md.
-/// </summary>
+/// <summary>Form and process are separate axes on a multiblock: a multiblock that does not derive from
+/// <see cref="BlockEntityMultiblockMachine"/> carries no tick while remaining a full member of every
+/// completion transition.</summary>
 public class MultiblockProcessTests {
   private static ExBlockDef Def() =>
     ExBlockDef
@@ -73,8 +70,6 @@ public class MultiblockProcessTests {
     var machine = new TestFormMegablock();
     Complete(machine);
 
-    // The premise: the monitor tick really ran and reached its completed arm, which is where a machine
-    // carrying a process has its tick registered.
     Assert.True(machine.StructureComplete);
     Assert.Equal(1, machine.CompletedCount);
 
@@ -103,9 +98,6 @@ public class MultiblockProcessTests {
     machine.ToTreeAttributes(tree);
     machine.OnBlockUnloaded();
 
-    // The load path asks whether to register the tick from inside Initialize, so the answer has to
-    // come from the tree. The monitor tick cannot supply it: it acts on a transition, and a machine
-    // that loads complete never makes one.
     Assert.True(tree.GetBool("structureComplete"));
 
     var reloaded = new TestMegablock { Angle = 0 };
@@ -127,15 +119,12 @@ public class MultiblockProcessTests {
     world.AdvanceHours(3);
     world.AdvanceBlockEntityTime(1000);
 
-    // The premise: a tick ran, so the stamp below is one the process wrote rather than its -1 default.
     Assert.True(machine.ProductionTicks > 0);
 
     var tree = new TreeAttribute();
     machine.ToTreeAttributes(tree);
     Assert.Equal(3.0, tree.GetDouble("pm_lastHours"), 3);
 
-    // The gap between the stamp and the calendar on the next load is the game time the machine spent
-    // unloaded, so a multiblock that saved no stamp would resume rather than catch up.
     var reloaded = new TestMegablock { Angle = 0 };
     reloaded.FromTreeAttributes(tree, world.World);
     Assert.Equal(
@@ -166,8 +155,6 @@ public class MultiblockProcessTests {
     var machine = new TestFormMegablock();
     TestWorld world = Complete(machine);
 
-    // The stop arm of the monitor tick runs on a machine with nothing to stop. The premise is that it
-    // is reached at all: the transition is what fires OnStructureLost.
     Assert.True(ProductionReadiness.StopsProductionWhenNotReady(machine));
     Breach(world);
 

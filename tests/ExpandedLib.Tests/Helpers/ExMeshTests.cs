@@ -38,8 +38,7 @@ public class ExMeshTests {
 
     ExMesh.RotateByShape(mesh, BlockWithRotation(90));
 
-    // Y (the rotation axis) is untouched; a 90 degree turn carries the 0.5 offset from X to Z,
-    // pinning both the centre point and the degrees-to-radians conversion.
+    // Y is untouched; 90 degrees carries the offset from X to Z.
     Assert.Equal(0.5f, mesh.xyz[0], precision: 5);
     Assert.Equal(0.5f, mesh.xyz[1], precision: 5);
     Assert.Equal(0f, mesh.xyz[2], precision: 5);

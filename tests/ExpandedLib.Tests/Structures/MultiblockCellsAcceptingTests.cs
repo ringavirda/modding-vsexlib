@@ -10,24 +10,18 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Covers <see cref="BlockEntityMultiblockStructure.CellsAccepting"/>: which footprint cells admit a given
-/// block code, answered from the layout. The fixture footprint is chiral (an L of charge cells) so the
-/// rotation assertions bite - a square charge volume is closed under 90 deg rotation and would pass for a
-/// mapping that turns the wrong way as well. Its domainless <c>@(air|coalpile)</c> fuel slot, which
-/// vanilla's matcher never admits a modded block into, is what makes the answer differ per block code.
-/// </summary>
+/// <summary>Covers <see cref="BlockEntityMultiblockStructure.CellsAccepting"/>: which footprint cells
+/// admit a given block code.</summary>
 public class MultiblockCellsAcceptingTests {
   #region Fixture
 
   private static readonly BlockPos Anchor = new(0, 10, 0);
 
-  /// <summary>The domain-wildcarded shaft glyph the furnaces ship. The <c>*:</c> is required: vanilla's
-  /// matcher compares domain and path separately, so a bare alternation is implicitly <c>game:</c>.</summary>
+  /// <summary>The domain-wildcarded shaft glyph the furnaces ship; the <c>*:</c> is required, or a bare
+  /// alternation is implicitly <c>game:</c>.</summary>
   private const string ShaftGlyph = "*:@(air|coalpile|furnace-chargepile)";
 
-  /// <summary>The domainless fuel glyph a firebox layout ships. It cannot admit a modded block however the
-  /// alternation is written.</summary>
+  /// <summary>The domainless fuel glyph a firebox layout ships.</summary>
   private const string FireboxGlyph = "@(air|coalpile)";
 
   private static readonly AssetLocation ChargePile = new(
@@ -38,10 +32,8 @@ public class MultiblockCellsAcceptingTests {
     "iiex:furnace-tuyere-n"
   );
 
-  /// <summary>
-  /// The chiral charge volume. Three cells make an L in <c>(x, z)</c> and the fourth sits a level up, so a
-  /// rotation that leaked into <c>y</c> shows as well.
-  /// </summary>
+  /// <summary>The chiral charge volume: three cells make an L in <c>(x, z)</c>, the fourth sits a level
+  /// up.</summary>
   private static readonly Vec3i[] Chargeable =
   [
     new(2, 0, 0),
@@ -50,8 +42,7 @@ public class MultiblockCellsAcceptingTests {
     new(2, 1, 0),
   ];
 
-  /// <summary>The anchor, one brick, one firebox fuel slot, and the chiral charge volume. The brick and
-  /// the fuel slot keep the walk from being every cell of the footprint.</summary>
+  /// <summary>The anchor, one brick, one firebox fuel slot, and the chiral charge volume.</summary>
   private static ExBlockDef Def() =>
     ExBlockDef
       .Create("exlib", "testmega")
@@ -67,8 +58,7 @@ public class MultiblockCellsAcceptingTests {
           m.At(cell.X, cell.Y, cell.Z, 3);
       });
 
-  /// <summary>A layout with one oriented part in it. Authored through the layout builder because only the
-  /// builder emits the <c>multiblockFacings</c> table the rotation reads.</summary>
+  /// <summary>A layout with one oriented part in it.</summary>
   private static ExBlockDef OrientedDef() =>
     ExBlockDef
       .Create("exlib", "testmega")
@@ -97,8 +87,7 @@ public class MultiblockCellsAcceptingTests {
   }
 
   /// <summary>Where <see cref="Chargeable"/> lands in the world at <paramref name="angle"/>, computed
-  /// through the shared rotation math rather than through the machine. The machine's own answer comes off
-  /// vanilla's <c>InitForUse</c>, so the two are independent routes to the same cells.</summary>
+  /// through the shared rotation math.</summary>
   private static string ExpectedAt(int angle) =>
     Render(
       Chargeable.Select(c => {
@@ -107,8 +96,7 @@ public class MultiblockCellsAcceptingTests {
       })
     );
 
-  /// <summary>Cells as one ordered, printable string, so a failure names the whole set rather than a
-  /// count.</summary>
+  /// <summary>Cells as one ordered, printable string.</summary>
   private static string Render(IEnumerable<BlockPos> cells) =>
     string.Join(
       ", ",
@@ -126,7 +114,6 @@ public class MultiblockCellsAcceptingTests {
     var (world, machine) = Stand();
     StructureRig.Around(world, machine, Def()).Complete();
 
-    // Not the anchor, not the brick, not the firebox fuel slot - and all four charge cells.
     Assert.Equal(ExpectedAt(0), Render(machine.CellsAccepting(ChargePile)));
   }
 
@@ -135,8 +122,6 @@ public class MultiblockCellsAcceptingTests {
     var (world, machine) = Stand();
     StructureRig.Around(world, machine, Def()).Complete();
 
-    // `@(air|coalpile)` is implicitly `game:`, so the firebox slot takes a coal pile and never takes
-    // `iiex:furnace-chargepile`; the shaft glyph takes both. One cell of difference.
     Assert.Equal(Chargeable.Length + 1, machine.CellsAccepting(CoalPile).Count);
     Assert.Equal(Chargeable.Length, machine.CellsAccepting(ChargePile).Count);
     Assert.Contains(Anchor.AddCopy(-1, 0, 0), machine.CellsAccepting(CoalPile));
@@ -151,7 +136,6 @@ public class MultiblockCellsAcceptingTests {
     var (world, machine) = Stand();
     StructureRig.Around(world, machine, Def()).Complete();
 
-    // Empty is a valid answer; the non-empty assertion beside it rules out an empty footprint.
     Assert.Empty(machine.CellsAccepting(Unrelated));
     Assert.NotEmpty(machine.CellsAccepting(ChargePile));
   }
@@ -169,8 +153,6 @@ public class MultiblockCellsAcceptingTests {
     var (world, machine) = Stand(angle);
     StructureRig.Around(world, machine, Def(), angle).Complete();
 
-    // On a square charge volume this passes for a mapping that turns the wrong way; on the L it does not,
-    // because turning -90 instead of +90 lands the whole set in the opposite quadrant.
     Assert.Equal(ExpectedAt(angle), Render(machine.CellsAccepting(ChargePile)));
   }
 
@@ -183,8 +165,6 @@ public class MultiblockCellsAcceptingTests {
       sets.Add(Render(machine.CellsAccepting(ChargePile)));
     }
 
-    // Guards against a mapping that ignores the angle: four distinct sets is what the per-facing theory
-    // cannot state on its own.
     Assert.Equal(4, sets.Distinct().Count());
   }
 
@@ -194,8 +174,6 @@ public class MultiblockCellsAcceptingTests {
     StructureRig.Around(world, machine, Def()).Complete();
     Assert.Equal(ExpectedAt(0), Render(machine.CellsAccepting(ChargePile)));
 
-    // A wrench turn: the machine re-derives its angle and reloads its structure on the next monitor tick.
-    // The cells are cached in world space, so a cache surviving the reload would keep answering north.
     machine.Angle = 90;
     world.AdvanceBlockEntityTime(3000);
 
@@ -211,7 +189,6 @@ public class MultiblockCellsAcceptingTests {
     var (world, machine) = Stand();
     StructureRig.Around(world, machine, Def()).Complete();
 
-    // Read on every change of a charge column's height, so it must not re-walk the offsets per read.
     // Same instance, not merely equal contents.
     Assert.Same(
       machine.CellsAccepting(ChargePile),
@@ -223,13 +200,10 @@ public class MultiblockCellsAcceptingTests {
   public void A_structure_asked_before_its_layout_arrives_answers_properly_afterwards() {
     var (world, machine) = Stand();
 
-    // The block carries no attributes yet, the state a client-side block entity is in until the layout
-    // loads. Empty is the answer in that window.
     Assert.Empty(machine.CellsAccepting(ChargePile));
 
     StructureRig.Around(world, machine, Def()).Complete();
 
-    // The early read leaves no residue: the late-arriving layout is answered in full.
     Assert.Equal(ExpectedAt(0), Render(machine.CellsAccepting(ChargePile)));
   }
 
@@ -249,9 +223,6 @@ public class MultiblockCellsAcceptingTests {
     var (world, machine) = Stand(angle);
     StructureRig.Around(world, machine, OrientedDef(), angle).Complete();
 
-    // The layout authors a north door; a structure turned a quarter turn wants a west one. The answer goes
-    // through the same WantedCodeAt the completion walk uses; reading the raw blockNumbers code instead
-    // would report north at every facing.
     Assert.Single(
       machine.CellsAccepting(new AssetLocation($"exlib:testdoor-{facing}"))
     );

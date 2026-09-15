@@ -8,9 +8,7 @@ using Microsoft.CodeAnalysis;
 namespace ExpandedLib.Tests;
 
 /// <summary>Loads whichever build of <c>ExpandedLib.Generators.dll</c> ran most recently, and
-/// instantiates one of its generator types by name - the generator ships no runtime assembly (it
-/// is analyzer-only, referenced by every mod project at compile time only), so its already-built
-/// analyzer DLL is loaded by reflection rather than by adding a compile reference.</summary>
+/// instantiates one of its generator types by name.</summary>
 internal static class GeneratorLoader {
   public static IIncrementalGenerator Load(string generatorTypeName) {
     string binRoot = Path.Combine(

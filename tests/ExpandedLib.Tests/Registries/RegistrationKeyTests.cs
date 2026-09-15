@@ -18,14 +18,12 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// <see cref="EntityRegistry.KeyFor"/> is the single source of the class-string↔type binding, shared by
-/// the class registration (<c>RegisterAll</c>) and the code-first builder's type-safe <c>Class&lt;T&gt;()</c>.
-/// These pin the exact key it produces for each attribute shape so the two consumers can never desync.
+/// <see cref="EntityRegistry.KeyFor"/> is the single source of the class-string-to-type binding, shared
+/// by class registration (<c>RegisterAll</c>) and the code-first builder's <c>Class&lt;T&gt;()</c>. Pins
+/// the exact key for each attribute shape.
 /// </summary>
 public class RegistrationKeyTests : IDisposable {
-  // RegisterAll_keys_under_the_assemblys_declared_domain_not_the_mod registers Industry's assembly
-  // and discovers IndustryModule into ExDefinitions.Contributors; both are process-wide and must
-  // not leak into whatever test runs next.
+  // Clears process-wide state (domain map, ExDefinitions) left behind by RegisterAll.
   public void Dispose() {
     var field = typeof(EntityRegistry).GetField(
       "_domainByAssembly",
@@ -71,8 +69,7 @@ public class RegistrationKeyTests : IDisposable {
 
   [Fact]
   public void A_type_without_a_register_attribute_falls_back_to_the_convention() {
-    // The types above live in this test assembly, which declares no [assembly: ExDomain] and is never
-    // registered, so the caller's domain is the only answer available.
+    // This test assembly declares no [assembly: ExDomain]; the caller's domain is the only answer.
     Assert.Equal(
       "iiex.NoAttributeBlock",
       EntityRegistry.KeyFor("iiex", typeof(NoAttributeBlock))
@@ -83,10 +80,7 @@ public class RegistrationKeyTests : IDisposable {
 
   [Fact]
   public void A_type_from_an_assembly_that_declares_a_domain_ignores_the_caller_s() {
-    // The defect this replaced: a content mod naming an exlib behaviour through Class<T>()/Behavior<T>()
-    // got "{their domain}.BEBehaviorMoltenCell", a key nobody registered. It compiles, and the block
-    // half of the failure is not logged, so the machine places and silently does nothing. Every
-    // cross-assembly site worked around it with a hand-typed string, which a rename then broke.
+    // A type from an assembly with a declared domain keys under that domain, not the caller's.
     Assert.Equal(
       "exlib.BEBehaviorMoltenCell",
       EntityRegistry.KeyFor("iiex", typeof(BEBehaviorMoltenCell))
@@ -128,9 +122,7 @@ public class RegistrationKeyTests : IDisposable {
 
   [Fact]
   public void Every_mod_assembly_declares_the_domain_its_modinfo_names() {
-    // Keeps the two in step: the attribute is what resolves a key, modinfo.json is what names the
-    // shipped asset tree, and a mod that adds one without the other resolves keys into a domain it does
-    // not ship.
+    // The attribute resolves the key; modinfo.json names the shipped asset tree; every mod needs both.
     var missing = new List<string>();
     int found = 0;
 
@@ -163,8 +155,7 @@ public class RegistrationKeyTests : IDisposable {
         missing.Add($"{Path.GetFileName(folder)} (modid {modId})");
     }
 
-    // One mod project ships one; an empty corpus means the discovery broke, not that the rule
-    // holds vacuously.
+    // Guards against an empty corpus making the check vacuously true.
     Assert.True(
       found > 0,
       "Found no modinfo.json under any mod at all - the source walk is wrong."

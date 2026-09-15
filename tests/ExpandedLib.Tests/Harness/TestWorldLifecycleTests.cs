@@ -6,11 +6,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The harness lifecycle helpers. <see cref="TestWorld.Reload"/> runs the real save, discard,
-/// fresh-instance, FromTree, Initialize sequence, and a discarded block entity stops ticking because
-/// the harness honours <c>UnregisterGameTickListener</c>.
-/// </summary>
+/// <summary>The harness lifecycle helpers: <see cref="TestWorld.Reload"/>'s save/discard/reload
+/// sequence, and a discarded block entity's ticking stops.</summary>
 public class TestWorldLifecycleTests {
   [Fact]
   public void Reload_round_trips_state_and_the_old_instance_stops_ticking() {
@@ -24,16 +21,16 @@ public class TestWorldLifecycleTests {
     world.FireBlockEntityTicks();
     Assert.Equal(1, original.Ticks);
 
-    original.Saved = 42; // state that must survive the reload
+    original.Saved = 42;
     var reloaded = Assert.IsType<StatefulBe>(world.Reload(pos));
 
-    Assert.NotSame(original, reloaded); // a fresh instance, as on disk load
-    Assert.Equal(42, reloaded.Saved); // restored via ToTree/FromTree
+    Assert.NotSame(original, reloaded);
+    Assert.Equal(42, reloaded.Saved);
     Assert.Same(reloaded, world.GetBlockEntity(pos));
 
     world.FireBlockEntityTicks();
-    Assert.Equal(1, reloaded.Ticks); // the reloaded instance ticks...
-    Assert.Equal(1, original.Ticks); // ...and the discarded one no longer does (no double-tick)
+    Assert.Equal(1, reloaded.Ticks);
+    Assert.Equal(1, original.Ticks);
   }
 
   [Fact]
@@ -49,11 +46,11 @@ public class TestWorldLifecycleTests {
     Assert.Equal(1, be.Ticks);
 
     world.Unload(pos);
-    Assert.Null(world.GetBlockEntity(pos)); // entity gone
-    Assert.Same(block, world.GetBlock(pos)); // block still placed
+    Assert.Null(world.GetBlockEntity(pos));
+    Assert.Same(block, world.GetBlock(pos));
 
     world.FireBlockEntityTicks();
-    Assert.Equal(1, be.Ticks); // the unloaded listener no longer fires
+    Assert.Equal(1, be.Ticks);
   }
 
   [Fact]
@@ -64,8 +61,6 @@ public class TestWorldLifecycleTests {
 
   [Fact]
   public void Break_runs_the_real_block_broken_and_removed_lifecycle() {
-    // Production code breaks blocks through the accessor, so the break must run OnBlockBroken and
-    // OnBlockRemoved rather than only wiping the store: a network node calls RemoveNode there.
     var world = new TestWorld();
     var pos = new BlockPos(2, 0, 0);
     var block = TestBlocks.Configure(new Block(), "test:lifecycle", 3);

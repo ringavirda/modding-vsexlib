@@ -8,11 +8,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The shared mesh cache's keying and lifetime. Tesselation itself needs a real client, so what is
-/// checked here is the part that decides whether the cache is correct rather than merely fast: that a
-/// key is built once per distinct input, and that two blocktypes cannot collide on one.
-/// </summary>
+/// <summary>The shared mesh cache's keying and lifetime: a key is built once per distinct input,
+/// and two blocktypes never collide on one.</summary>
 public class ExMeshCacheTests {
   /// <summary>A client API whose ObjectCache is a real dictionary, which is all
   /// <c>ObjectCacheUtil</c> touches.</summary>
@@ -43,8 +40,6 @@ public class ExMeshCacheTests {
       Assert.Same(mesh, got);
     }
 
-    // Without the cache this is the shape re-read, deep-cloned and re-tesselated once per call, on the
-    // tesselation thread.
     Assert.Equal(1, builds);
   }
 
@@ -60,8 +55,6 @@ public class ExMeshCacheTests {
 
   [Fact]
   public void Two_blocktypes_sharing_a_variant_key_do_not_share_a_mesh() {
-    // The failure this prevents renders one block as another, which reads as an art bug rather than a
-    // caching one - so the block code is folded in for the caller instead of being their job.
     ICoreClientAPI capi = Capi();
     var firebox = new MeshData();
     var hearth = new MeshData();
@@ -174,8 +167,7 @@ public class ExMeshCacheTests {
 
   [Fact]
   public void A_blocks_shape_path_is_resolved_without_mutating_the_shared_shape() {
-    // WithPathPrefixOnce mutates in place, and Block.Shape is shared by every instance of that blocktype:
-    // resolving without the clone corrupts the path for every other reader, cumulatively.
+    // Block.Shape is shared across instances; must clone before mutating the path.
     Block block = BlockNamed("iiex:firebox");
     block.Shape = new CompositeShape {
       Base = new AssetLocation("iiex:block/firebox"),

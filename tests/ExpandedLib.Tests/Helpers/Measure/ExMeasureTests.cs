@@ -3,11 +3,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The display-unit helper: the simulation runs in metric and these methods convert a metric value
-/// into the player's chosen system (litres to gallons, atm to psi, C to F). The trailing unit symbol
-/// is localized, so assertions check the number rather than the label.
-/// </summary>
+/// <summary>The display-unit helper: converts a metric value into the player's chosen system
+/// (litres to gallons, atm to psi, C to F).</summary>
 [Collection(ExMeasureCollection.Name)] // mutates the global ExMeasure.System
 public class ExMeasureTests : System.IDisposable {
   private readonly MeasurementSystem _original = ExMeasure.System;
@@ -79,7 +76,7 @@ public class ExMeasureTests : System.IDisposable {
 
   [Fact]
   public void Speed_shows_rad_per_second_as_rpm() {
-    // 2 rad/s · 60/2π = 19.10 -> "19" at F0. RPM is system-independent.
+    // 2 rad/s * 60/2pi = 19.10 -> "19" at F0. RPM is system-independent.
     Assert.StartsWith("19 ", ExMeasure.Speed(2f));
   }
 

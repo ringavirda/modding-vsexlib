@@ -21,7 +21,7 @@ public class MachinePortsTests {
     world.Place(pipePos, TestNetworkBlock.Create("test", pipeOrientation, 1));
     world.AddNode(pipePos, "test");
 
-    // The machine sits at origin and is linked to the world API so it can resolve the manager.
+    // The machine sits at origin, linked to the world API.
     var machine = new CapturingNode { Pos = new BlockPos(0, 0, 0) };
     world.Attach(machine);
     return (world, machine);
@@ -60,8 +60,7 @@ public class MachinePortsTests {
 
   [Fact]
   public void ConnectedNetworkAt_reads_across_a_face_from_a_cell_that_is_not_the_machines_own() {
-    // The whole point of the overload: a mega-block's port sits on a footprint cell some distance from
-    // the block entity that owns it, so the machine's own Pos must play no part in the read.
+    // The machine's own Pos plays no part in the read.
     var world = new TestWorld();
     world.RegisterNetwork("test", sys => new StubNetwork(sys));
     var cellC = new BlockPos(0, 0, 0);
@@ -79,8 +78,7 @@ public class MachinePortsTests {
 
   [Fact]
   public void ConnectedNetworkAt_is_null_toward_an_empty_face() {
-    // Only the east neighbour of C is plumbed; the west cell is empty (air), so the read across WEST
-    // finds no network at all rather than an unplumbed one.
+    // Only the east neighbour of C is plumbed; the west cell is empty (air).
     var world = new TestWorld();
     world.RegisterNetwork("test", sys => new StubNetwork(sys));
     var cellC = new BlockPos(0, 0, 0);

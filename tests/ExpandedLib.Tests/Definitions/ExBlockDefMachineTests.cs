@@ -5,12 +5,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The builder surface a code-first machine needs beyond the flat block and pipe cases: one shape spun
-/// per orientation, textured overlays, single collision and selection cuboids, a behavior carrying a
-/// properties blob, the typed construction-stage table, and the computed filler footprint. Each is
-/// pinned to the exact JSON token shape the hand-authored blocktype emitted.
-/// </summary>
+/// <summary>Pins the machine builder surface: per-orientation shapes, texture overlays, single boxes, entity behaviors, and filler footprints.</summary>
 public class ExBlockDefMachineTests {
   #region Shape (single, spun per orientation)
 

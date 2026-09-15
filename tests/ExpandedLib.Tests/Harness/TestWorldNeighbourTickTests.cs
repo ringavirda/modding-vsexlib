@@ -6,12 +6,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Harness capabilities the low-level helpers do not fire automatically:
-/// <see cref="TestWorld.NotifyNeighbours"/>, the engine's post-change neighbour notification that
-/// drives self-break, reorientation and connector-update reactions, and
-/// <see cref="TestWorld.AdvanceBlockEntityTime"/>, which ticks each block entity at its own interval.
-/// </summary>
+/// <summary>Harness capabilities the low-level helpers do not fire automatically:
+/// <see cref="TestWorld.NotifyNeighbours"/> and <see cref="TestWorld.AdvanceBlockEntityTime"/>.</summary>
 public class TestWorldNeighbourTickTests {
   #region Neighbour propagation
 
@@ -21,7 +17,7 @@ public class TestWorldNeighbourTickTests {
     var center = new BlockPos(10, 10, 10);
     var eastPos = center.AddCopy(BlockFacing.EAST);
     var upPos = center.AddCopy(BlockFacing.UP);
-    var farPos = center.AddCopy(BlockFacing.EAST).AddCopy(BlockFacing.EAST); // 2 away - not a neighbour
+    var farPos = center.AddCopy(BlockFacing.EAST).AddCopy(BlockFacing.EAST); // not a neighbour
 
     var east = Probe("test:probe-east", 1);
     var up = Probe("test:probe-up", 2);
@@ -33,18 +29,17 @@ public class TestWorldNeighbourTickTests {
     world.NotifyNeighbours(center);
 
     var eastCall = Assert.Single(east.Calls);
-    Assert.Equal(eastPos, eastCall.own); // told its own pos...
-    Assert.Equal(center, eastCall.changed); // ...and what changed
+    Assert.Equal(eastPos, eastCall.own);
+    Assert.Equal(center, eastCall.changed);
     var upCall = Assert.Single(up.Calls);
     Assert.Equal(upPos, upCall.own);
     Assert.Equal(center, upCall.changed);
-    Assert.Empty(far.Calls); // not adjacent - never notified
+    Assert.Empty(far.Calls);
   }
 
   [Fact]
   public void NotifyNeighbours_treats_empty_neighbour_cells_as_a_no_op() {
     var world = new TestWorld();
-    // No blocks placed: every neighbour resolves to Air, whose base OnNeighbourBlockChange does nothing.
     var ex = Record.Exception(() =>
       world.NotifyNeighbours(new BlockPos(0, 0, 0))
     );
@@ -53,7 +48,6 @@ public class TestWorldNeighbourTickTests {
 
   [Fact]
   public void NotifyNeighbours_lets_a_neighbour_reaction_mutate_the_world() {
-    // A neighbour reaction may remove its own block, as an unsupported BlockNetworkNode does.
     var world = new TestWorld();
     var center = new BlockPos(4, 4, 4);
     var reactingPos = center.AddCopy(BlockFacing.NORTH);
@@ -65,7 +59,7 @@ public class TestWorldNeighbourTickTests {
 
     world.NotifyNeighbours(center);
 
-    Assert.Same(world.Air, world.GetBlock(reactingPos)); // it reacted by removing itself
+    Assert.Same(world.Air, world.GetBlock(reactingPos));
   }
 
   #endregion
@@ -104,7 +98,7 @@ public class TestWorldNeighbourTickTests {
     var be = new IntervalBe(1000) { UnregisterAfterFirst = true };
     Placed(world, be, 9);
 
-    world.AdvanceBlockEntityTime(3000); // would be 3 fires, but it tears its listener down after 1
+    world.AdvanceBlockEntityTime(3000); // listener torn down after the first fire
 
     Assert.Equal(1, be.Ticks);
   }

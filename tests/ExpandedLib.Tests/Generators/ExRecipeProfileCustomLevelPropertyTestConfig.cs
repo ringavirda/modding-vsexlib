@@ -4,11 +4,8 @@ using ExpandedLib.Registries;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// A <c>[ExRecipeProfile]</c> config whose level property is not named <c>RecipeLevel</c>, exercising
-/// <see cref="ExRecipeProfileAttribute.RecipeLevelProperty"/> - see
-/// <see cref="ExRecipeProfileWiringVariantsTests"/>.
-/// </summary>
+/// <summary>A <c>[ExRecipeProfile]</c> config whose level property is not named
+/// <c>RecipeLevel</c>.</summary>
 [ExConfigRegister(
   "exrecipeprofilecustomlevel.json",
   "exlib-recipeprofile-customlevel"

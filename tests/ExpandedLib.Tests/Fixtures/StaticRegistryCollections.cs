@@ -2,40 +2,18 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Collection definitions for the process-wide static registries that were previously only named by a
-/// bare <c>[Collection("...")]</c> string literal - which serializes their own members against each
-/// other, but gives <see cref="StaticStateCollection.EveryCollectionNameHasADefinition"/> nothing to
-/// confirm the name was not a typo. One definition per registry; members are named on each.
-/// </summary>
+/// <summary>Collection definitions for the process-wide static registries, one per registry.</summary>
 [CollectionDefinition("MetalRegistry", DisableParallelization = true)]
-public class MetalRegistryCollection {
-  // Members: MetalRegistryTests (writes it), MetalCatalogueLoaderTests (shares it),
-  // CatalogueContributorsTests (shares it).
-}
+public class MetalRegistryCollection { }
 
 [CollectionDefinition("MaterialRoles", DisableParallelization = true)]
-public class MaterialRolesCollection {
-  // Members: MaterialRoleRegistryTests (writes it), MaterialRoleLoaderTests (shares it).
-}
+public class MaterialRolesCollection { }
 
 [CollectionDefinition("ExLiquids", DisableParallelization = true)]
-public class ExLiquidsCollection {
-  // Members: ExLiquidsLoaderTests (writes it), MediumTaxonomyTests (shares it).
-}
+public class ExLiquidsCollection { }
 
 [CollectionDefinition("ExDefinitions", DisableParallelization = true)]
-public class ExDefinitionsCollection {
-  // Members: ExDefinitionDiscoveryTests, ExDefinitionInjectionTests, ExDefinitionsTests,
-  // DefinitionContributorTests, ExlibChecksTests, LateDefinitionCheckTests. ExModuleHostTests,
-  // ExModSystemTests and RegistrationKeyTests also register contributors through RegisterAll but
-  // already belong to another collection (or none); each clears ExDefinitions.Contributors from its
-  // own Dispose instead of joining this one.
-}
+public class ExDefinitionsCollection { }
 
 [CollectionDefinition("ExCheckRegistry", DisableParallelization = true)]
-public class ExCheckRegistryCollection {
-  // Members: ExCheckRegistryTests (writes it). ExModuleHostTests and ExModSystemTests also register
-  // checks through RegisterAll but already belong to another collection; each clears
-  // ExCheckRegistry from its own Dispose instead of joining this one.
-}
+public class ExCheckRegistryCollection { }

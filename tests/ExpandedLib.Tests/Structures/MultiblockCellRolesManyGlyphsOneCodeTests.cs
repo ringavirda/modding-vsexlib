@@ -11,10 +11,7 @@ namespace ExpandedLib.Tests;
 public class MultiblockCellRolesManyGlyphsOneCodeTests {
   [Fact]
   public void Two_glyphs_on_one_code_share_a_block_number_and_emit_one_entry() {
-    // `blockNumbers` is a JSON object keyed by code, so numbers are handed out per code rather than per
-    // glyph: numbering per glyph would emit two numbers into one entry and leave cells holding the
-    // overwritten number unrequired, and vanilla's InCompleteBlockCount indexes BlockCodes[w] without
-    // TryGetValue. Six glyphs, four codes, four numbers.
+    // `blockNumbers` is keyed by code, not by glyph: six glyphs, four codes, four numbers.
     var numbers = (JObject)
       Attributes(RoledDef())["multiblockStructure"]!["blockNumbers"]!;
 
@@ -23,7 +20,7 @@ public class MultiblockCellRolesManyGlyphsOneCodeTests {
       numbers.ToString(Newtonsoft.Json.Formatting.None)
     );
 
-    // Every offset resolves to one of those four, so no cell is orphaned.
+    // Every offset resolves to one of those four.
     var offsets = (JArray)
       Attributes(RoledDef())["multiblockStructure"]!["offsets"]!;
     Assert.NotEmpty(offsets);
@@ -38,8 +35,7 @@ public class MultiblockCellRolesManyGlyphsOneCodeTests {
     var (world, machine) = Stand();
     StructureRig.Around(world, machine, RoledDef()).Complete();
 
-    // Both `a` and `v` are `game:air`: five cells accept an air block, and the four drawn as `v` are the
-    // flue. A role keyed by code, or derived from the block occupying the cell, could not tell them apart.
+    // Both `a` and `v` are `game:air`: five cells accept air, four of them (the `v` cells) are the flue.
     Assert.Equal(
       5,
       machine.CellsAccepting(new AssetLocation("game:air")).Count
@@ -56,8 +52,7 @@ public class MultiblockCellRolesManyGlyphsOneCodeTests {
     var (world, machine) = Stand();
     StructureRig.Around(world, machine, RoledDef()).Complete();
 
-    // The T/Y idiom: two glyphs for the two tuyere facings, one role. A role is a set rather than a glyph
-    // alias, so both cells come back.
+    // Two glyphs, one role: a role is a set, not a glyph alias.
     Assert.Equal(
       ExpectedAt(TuyereCells, 0),
       Render(machine.CellsWithRole(Tuyere))
@@ -69,8 +64,7 @@ public class MultiblockCellRolesManyGlyphsOneCodeTests {
     var (world, machine) = Stand();
     StructureRig.Around(world, machine, OverlappingDef()).Complete();
 
-    // The shipped case is the shaft furnaces' crucible: Chargeable and Pool over the same cells. Both roles
-    // answer the same cell, and the two are cached independently rather than one shadowing the other.
+    // Both roles answer the same cell and are cached independently.
     Assert.Equal(
       Render([Anchor.AddCopy(2, 0, 0)]),
       Render(machine.CellsWithRole(Flue))
@@ -81,8 +75,7 @@ public class MultiblockCellRolesManyGlyphsOneCodeTests {
     );
     Assert.NotSame(machine.CellsWithRole(Flue), machine.CellsWithRole(Damper));
 
-    // The overlap is a property of the glyph rather than of its code: the neighbouring `a` cell is the same
-    // game:air and carries neither role.
+    // The overlap belongs to the glyph, not the code: the neighbouring `a` cell carries neither role.
     Assert.Equal(
       2,
       machine.CellsAccepting(new AssetLocation("game:air")).Count

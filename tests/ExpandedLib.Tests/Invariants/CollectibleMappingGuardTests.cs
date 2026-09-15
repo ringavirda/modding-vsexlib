@@ -7,17 +7,14 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Repo-wide collectible-mapping rule: a block entity that stores an <c>ItemStack</c> must also
-/// override <c>OnStoreCollectibleMappings</c> (and, by the same pairing, <c>OnLoadCollectibleMappings</c>).
-/// <c>ItemStack.ToBytes</c> serialises the collectible's runtime id, not its code, so a stack pasted into
-/// another world via a schematic resolves whatever holds that id there unless the mapping pair fixes it up.
-/// See <c>BlockSchematic</c>'s calls into both methods and <c>ItemStack.FixMapping</c>.
+/// Repo-wide rule: a block entity storing an <c>ItemStack</c> must also override
+/// <c>OnStoreCollectibleMappings</c> (and <c>OnLoadCollectibleMappings</c>), since
+/// <c>ItemStack.ToBytes</c> serialises the collectible's runtime id, not its code.
 /// </summary>
 public class CollectibleMappingGuardTests {
   #region Corpus
 
-  // Every mod's own source tree - <mod>/src when that folder holds it, else the mod's own folder
-  // (exlib's own project, flat under src/ExpandedLib) - the whole corpus this rule scans.
+  // Every mod's source tree: <mod>/src when present, else the mod's own folder (exlib is flat under src/ExpandedLib).
   private static IEnumerable<string> SourceFiles() {
     foreach (string mod in RepoManifest.Mods.Values) {
       string full = Path.Combine(mod, "src");
@@ -58,11 +55,7 @@ public class CollectibleMappingGuardTests {
       );
   }
 
-  // A stack is stored either directly (SetItemstack) or through one of the two helpers that call it
-  // on the caller's behalf: MoltenContents.Write (a static call, so its own name is the literal at
-  // the call site) and MoltenCharge.ToTree (an instance call, so only ".ToTree(" appears at the call
-  // site - narrowed to files that also name the type, since a bare ".ToTree(" alone also matches
-  // unrelated types such as OverPressure or ChargeColumn).
+  // Matches SetItemstack, MoltenContents.Write, or MoltenCharge.ToTree (narrowed to files naming MoltenCharge).
   private static bool StoresAStack(string text) =>
     text.Contains("SetItemstack(")
     || text.Contains("MoltenContents.Write(")
@@ -72,8 +65,6 @@ public class CollectibleMappingGuardTests {
 
   [Fact]
   public void A_block_entity_that_stores_a_stack_maps_its_collectibles() {
-    // ItemStack.ToBytes writes the runtime id, so a stack stored without OnStore/OnLoad
-    // CollectibleMappings resolves to whatever holds that id in the destination world.
     var offenders = new List<string>();
     int files = 0;
     foreach (string f in SourceFiles()) {

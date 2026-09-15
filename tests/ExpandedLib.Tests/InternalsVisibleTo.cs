@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
 
-// Castle DynamicProxy, which NSubstitute builds its substitutes with, must see this assembly's
-// internal types to proxy a generic game type closed over one of them.
+// NSubstitute (via Castle DynamicProxy) needs this assembly's internals to proxy a generic game type closed over one.
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

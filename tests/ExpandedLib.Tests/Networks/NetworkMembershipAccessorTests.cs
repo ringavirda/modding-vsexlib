@@ -10,8 +10,7 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// The type-keyed membership accessor and the two-arm resolver. Vanilla's
-/// <c>GetBehavior&lt;T&gt;()</c> returns the FIRST match, so a block entity on two networks needs an
-/// accessor that selects by network type instead.
+/// <c>GetBehavior&lt;T&gt;()</c> returns the FIRST match; this accessor selects by network type.
 /// </summary>
 public class NetworkMembershipAccessorTests {
   [Fact]
@@ -58,7 +57,7 @@ public class NetworkMembershipAccessorTests {
   public void Resolve_prefers_a_membership_behaviour_over_the_block() {
     var w = new TestWorld();
     var pos = new BlockPos(0, 0, 0);
-    // A network block AND a membership: the behaviour answers, so the type is the behaviour's.
+    // A network block and a membership on the same cell: the behaviour answers.
     var be = TestMemberBlockEntity.With(w, pos, "molten");
     w.Place(pos, TestNetworkBlock.Create("pipe", "ns", id: 901), be);
 
@@ -70,8 +69,7 @@ public class NetworkMembershipAccessorTests {
 
   [Fact]
   public void Resolve_falls_back_to_the_block_when_no_block_entity_exists() {
-    // The chunk-unload case: OnBlockUnloaded leaves the block placed and drops the block entity, so
-    // a walk that only asked the block entity would fracture every network a player walked away from.
+    // OnBlockUnloaded leaves the block placed and drops the block entity.
     var w = new TestWorld();
     var pos = new BlockPos(0, 0, 0);
     w.Place(pos, TestNetworkBlock.Create("pipe", "ns", id: 902));
@@ -93,9 +91,7 @@ public class NetworkMembershipAccessorTests {
 
   [Fact]
   public void Resolve_reads_a_memberships_per_cell_network_type() {
-    // Both arms have to key on NetworkTypeAt. Keying the behaviour arm on the declared NetworkType
-    // instead leaves a membership whose type varies by cell - which is what a filler cell is -
-    // unfindable at a position where the equivalent block would be found.
+    // Both arms key on NetworkTypeAt, not the declared NetworkType.
     var w = new TestWorld();
     var pos = new BlockPos(0, 0, 0);
     TestMemberBlockEntity.WithPerCellType(
@@ -124,10 +120,8 @@ public class NetworkMembershipAccessorTests {
 
   [Fact]
   public void A_connectors_own_per_cell_answer_is_what_INetworkMember_reaches() {
-    // The graph walk asks through INetworkMember, while a block answers the position-aware pair as
-    // ordinary public class members - the structure filler reads its port off the cell's block
-    // entity. Were the interface default reached instead, the filler would fall back to its
-    // block-wide "no connector, no network" and a boiler port would stop joining its pipe.
+    // The graph walk reaches through INetworkMember; a block answers the position-aware pair as
+    // ordinary members.
     var w = new TestWorld();
     var pos = new BlockPos(0, 0, 0);
     var filler = TestBlocks.Configure(
@@ -153,9 +147,7 @@ public class NetworkMembershipAccessorTests {
 
   [Fact]
   public void A_network_blocks_per_cell_override_is_what_INetworkMember_reaches() {
-    // The other shape: BlockNetworkNode declares the position-aware connector test as a class
-    // virtual and a junction such as the bevel gear overrides it. Its orientation carries no
-    // connectors, so only the override can answer true.
+    // BlockNetworkNode declares the position-aware connector test as virtual; a junction overrides it.
     var w = new TestWorld();
     var pos = new BlockPos(0, 0, 0);
     var junction = TestBlocks.Configure(
@@ -171,8 +163,8 @@ public class NetworkMembershipAccessorTests {
     Assert.True(member.HasConnectorAt(w.Accessor, pos, BlockFacing.NORTH));
   }
 
-  /// <summary>A network block that decides its connectors per cell rather than from an orientation
-  /// string, by overriding the position-aware form only.</summary>
+  /// <summary>A network block that decides its connectors per cell, by overriding the
+  /// position-aware form only.</summary>
   private sealed class AllFacesNode : BlockNetworkNode {
     public override string NetworkType => "test";
 

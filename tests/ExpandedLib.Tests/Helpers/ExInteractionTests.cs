@@ -7,12 +7,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// What a click carries: the held stack and tool, the sneak state, the clicked face and the side. The
-/// player is a <see cref="TestPlayer"/>; its shift-key modifier (distinct from the crouch state
-/// <see cref="TestPlayer.Sneaking"/> tracks - see <c>ExInteraction.Sneaking</c>) is set directly on
-/// <see cref="TestPlayer.Entity"/>'s controls, which is what an interact handler actually reads.
-/// </summary>
+/// <summary>What a click carries: the held stack and tool, sneak state, clicked face and side, read
+/// from a <see cref="TestPlayer"/>.</summary>
 public class ExInteractionTests {
   private static IPlayer PlayerHolding(ItemStack? held, bool sneaking = false) {
     TestPlayer player = new TestWorld().Player();

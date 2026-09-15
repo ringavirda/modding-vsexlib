@@ -8,11 +8,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The process-wide material-role registry the mixer, hoppers and furnace core classify by: the two
-/// match modes (exact domain-normalised <see cref="MaterialRoleDef.Code"/> and domain-blind
-/// <see cref="MaterialRoleDef.PathPrefix"/>), the per-role <see cref="MaterialRoleDef.Value"/> lookup,
-/// null handling, and the code-contributor seam. The registry is a static store, so each test clears
-/// it first.
+/// Tests <see cref="MaterialRoleRegistry"/>: code and <see cref="MaterialRoleDef.PathPrefix"/>
+/// matching, <see cref="MaterialRoleDef.Value"/> lookup, null handling, and contributors.
 /// </summary>
 [Collection("MaterialRoles")] // process-wide static; serialize the mutating classes
 public class MaterialRoleRegistryTests {
@@ -31,7 +28,7 @@ public class MaterialRoleRegistryTests {
     Assert.True(
       MaterialRoleRegistry.IsRole(Roles.Flux, new AssetLocation("game:lime"))
     );
-    // A bare code defaults to the game domain, so it keys the same entry.
+    // A bare code defaults to the game domain and keys the same entry.
     Assert.True(
       MaterialRoleRegistry.IsRole(Roles.Flux, new AssetLocation("lime"))
     );
@@ -160,7 +157,7 @@ public class MaterialRoleRegistryTests {
     );
 
     Assert.True(MaterialRoleRegistry.IsRole(Roles.Flux, stack));
-    Assert.Equal(2f, MaterialRoleRegistry.ValueOf(Roles.Flux, stack, 2f)); // no value → fallback
+    Assert.Equal(2f, MaterialRoleRegistry.ValueOf(Roles.Flux, stack, 2f)); // no value: fallback
   }
 
   [Fact]

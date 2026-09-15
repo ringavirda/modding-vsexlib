@@ -9,12 +9,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The injection pipeline that turns registered <see cref="ExBlockDef"/>s into the synthetic
-/// <c>blocktypes/</c> assets the object loader reads. Covers everything up to the
-/// <c>AssetManager.Add</c> sink: <see cref="ExSyntheticAsset"/> round-trips its JSON as
-/// <c>GetMany&lt;JObject&gt;</c> reads it, and <see cref="ExDefinitions.BuildBlockAssets"/> produces the
-/// right location and payload per def. <see cref="ExDefinitions"/> is a process-wide static, so the
-/// class is serialized and cleared before each test.
+/// Pins the injection pipeline from registered <see cref="ExBlockDef"/>s to synthetic
+/// <c>blocktypes/</c> assets, up to the <c>AssetManager.Add</c> sink.
 /// </summary>
 [Collection("ExDefinitions")]
 public class ExDefinitionInjectionTests {
@@ -23,9 +19,7 @@ public class ExDefinitionInjectionTests {
   #region ExSyntheticAsset
   [Fact]
   public void Synthetic_asset_is_a_real_engine_Asset_the_loader_can_cast() {
-    // The object loader iterates blocktypes as the concrete Vintagestory.Common.Asset, so a custom
-    // IAsset throws InvalidCastException and aborts the AssetsLoaded phase. The injected asset must be
-    // that engine type.
+    // The injected asset must be the concrete Vintagestory.Common.Asset type.
     var location = new AssetLocation("iiex", "blocktypes/solidifiediron.json");
     var payload = new JObject { ["code"] = "solidifiediron", ["n"] = 7 };
     IAsset asset = ExSyntheticAsset.Create(
@@ -42,7 +36,7 @@ public class ExDefinitionInjectionTests {
 
   [Fact]
   public void The_back_reference_origin_is_gameplay_allowed_and_serves_nothing() {
-    // blocktypes is a gameplay-affecting category; an origin returning false would be skipped for it.
+    // blocktypes is a gameplay-affecting category.
     var origin = new ExDefinitionOrigin();
     Assert.True(origin.IsAllowedToAffectGameplay());
     Assert.Empty(origin.GetAssets(AssetCategory.blocktypes));

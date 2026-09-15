@@ -39,10 +39,7 @@ public class IncompatibleModsTests {
     Assert.DoesNotContain("Steelmaking", msg);
   }
 
-  // A known mod's assembly fails to load beside this exlib (that is the whole point of this
-  // class), and a boot against real ppex/smex 1.22 zips shows the loader then drops it from both
-  // IModLoader.Mods and IsModEnabled - so a loader that reports nothing enabled must not silence
-  // the message when the mod is still sitting in a Mods folder.
+  // A loader reporting nothing enabled must not silence the message when the mod is still on disk.
   [Fact]
   public void A_mod_the_loader_no_longer_reports_enabled_is_still_found_on_disk() {
     string root = Directory

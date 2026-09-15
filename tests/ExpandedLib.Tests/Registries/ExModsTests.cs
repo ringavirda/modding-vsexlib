@@ -152,8 +152,7 @@ public class ExModsTests {
 
   [Fact]
   public void Start_also_sets_the_flags() {
-    // Belt and braces: if World.Config is not yet populated at StartPre on some side, Start still
-    // sets it, well before the JSON patch loader's AssetsLoaded at 0.05.
+    // Start also sets the flags, ahead of the JSON patch loader's AssetsLoaded at 0.05.
     var api = FakeApi(("toolsmith", "1.0.0"));
     var system = new ExModsModSystem();
 

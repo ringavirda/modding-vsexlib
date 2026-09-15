@@ -12,13 +12,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Behaviour-capable fillers: a <c>fillerOffsets</c> cell can declare behaviours the invisible filler
-/// hosts on the principal's behalf, such as a mechanical-power intake at the cell where an axle couples.
-/// Covers parsing the declarations, rotating their connector faces into the placed orientation, the save
-/// tree, the runtime hosting path, the <see cref="IMechanicalPowerBlock"/> glue that turns a hosting cell
-/// into an MP connector, and <see cref="BEBehaviorMPFillerPort"/> itself.
-/// </summary>
+/// <summary>Behaviour-capable fillers: a <c>fillerOffsets</c> cell can declare behaviours the invisible
+/// filler hosts on the principal's behalf, such as a mechanical-power intake at the cell where an axle
+/// couples.</summary>
 public class StructureFillerBehaviorTests {
   #region Parsing
 
@@ -215,14 +211,14 @@ public class StructureFillerBehaviorTests {
       )
       .Returns(ci => new TrackingHostedBehavior(ci.Arg<BlockEntity>()));
 
-    world.Initialize(be); // the placement/load path that recreates hosted behaviours
+    world.Initialize(be);
 
     var hosted = be.GetBehavior<TrackingHostedBehavior>();
     Assert.NotNull(hosted);
-    Assert.True(hosted!.Initialized); // its own Initialize ran
-    Assert.Equal(principal, hosted.Principal); // principal link
-    Assert.Equal(BlockFacing.EAST, hosted.Face); // rotated connector face
-    Assert.Equal(7, hosted.Props!["k"].AsInt()); // declared properties
+    Assert.True(hosted!.Initialized);
+    Assert.Equal(principal, hosted.Principal);
+    Assert.Equal(BlockFacing.EAST, hosted.Face);
+    Assert.Equal(7, hosted.Props!["k"].AsInt());
   }
 
   [Fact]
@@ -235,16 +231,13 @@ public class StructureFillerBehaviorTests {
     };
     world.Place(pos, filler, be);
 
-    world.Initialize(be); // class registry returns null for the unknown code
+    world.Initialize(be);
 
     Assert.Null(be.GetBehavior<TrackingHostedBehavior>());
   }
 
   [Fact]
   public void Hosted_behaviors_arriving_via_a_later_sync_update_are_created() {
-    // The filler BE is created and Initialized with no hosted behaviours, then the principal assigns
-    // them and they arrive as a sync update. Initialize does not run again, so FromTreeAttributes has
-    // to create them.
     var (world, filler) = NewWorld();
     var pos = new BlockPos(5, 6, 7);
     var be = new BlockEntityStructureFiller {
@@ -252,7 +245,7 @@ public class StructureFillerBehaviorTests {
     };
     world.Place(pos, filler, be);
     world.Initialize(be);
-    Assert.Null(be.GetBehavior<TrackingHostedBehavior>()); // none yet
+    Assert.Null(be.GetBehavior<TrackingHostedBehavior>());
 
     world
       .Api.ClassRegistry.CreateBlockEntityBehavior(
@@ -261,7 +254,6 @@ public class StructureFillerBehaviorTests {
       )
       .Returns(ci => new TrackingHostedBehavior(ci.Arg<BlockEntity>()));
 
-    // Build the sync tree the principal's assignment would produce.
     var update = new TreeAttribute();
     new BlockEntityStructureFiller {
       Pos = pos,
@@ -352,7 +344,6 @@ public class StructureFillerBehaviorTests {
     };
     world.Place(pos, filler, be);
     world.Initialize(be);
-    // Stands in for the real hosted port: west-facing metadata plus an MP behaviour on the BE.
     be.HostedBehaviors =
     [
       new FillerBehavior(
@@ -363,10 +354,8 @@ public class StructureFillerBehaviorTests {
     ];
     be.Behaviors.Add(new BEBehaviorMPFillerPort(be));
 
-    // An axle couples along the axis, so both ends of the declared face connect,
     Assert.True(HasMechConnector(filler, world, pos, BlockFacing.WEST));
     Assert.True(HasMechConnector(filler, world, pos, BlockFacing.EAST));
-    // but a perpendicular face does not.
     Assert.False(HasMechConnector(filler, world, pos, BlockFacing.NORTH));
     Assert.False(HasMechConnector(filler, world, pos, BlockFacing.SOUTH));
   }
@@ -377,7 +366,6 @@ public class StructureFillerBehaviorTests {
     var pos = new BlockPos(0, 0, 0);
     var be = new BlockEntityStructureFiller {
       Principal = new BlockPos(0, 0, -2),
-      // Face metadata present, but no MP behaviour hosted, so not an MP connector.
       HostedBehaviors =
       [
         new FillerBehavior(
@@ -431,10 +419,8 @@ public class StructureFillerBehaviorTests {
     );
   }
 
-  /// <summary>
-  /// The axle sign is vanilla's for the port's axis, negative along a horizontal one, so a port
-  /// turns as the axle it couples is drawn whichever side of the machine it faces.
-  /// </summary>
+  /// <summary>The axle sign is vanilla's for the port's axis, negative along a horizontal
+  /// one.</summary>
   [Theory]
   [InlineData("west", -1, 0, 0)]
   [InlineData("east", -1, 0, 0)]
@@ -463,11 +449,8 @@ public class StructureFillerBehaviorTests {
 
   [Fact]
   public void Replacing_the_principal_without_breaking_it_still_clears_the_footprint() {
-    // An explosion sets the block to air through the bulk accessor and never calls OnBlockBroken,
-    // so cleanup hung off OnBlockBroken leaves solid invisible cells behind. TestWorld's fake
-    // accessor does not route SetBlock through Block.OnBlockRemoved (see TestWorld.DoSetBlock), so
-    // this drives the Block-level hook directly instead of asserting on a dispatch path the
-    // harness cannot model.
+    // TestWorld's fake accessor does not route SetBlock through Block.OnBlockRemoved (see
+    // TestWorld.DoSetBlock); this drives the Block-level hook directly.
     var w = NewWorldWithMegastructure(
       out BlockPos principal,
       out BlockPos[] footprint
@@ -476,8 +459,7 @@ public class StructureFillerBehaviorTests {
 
     principalBlock.OnBlockRemoved(w.World, principal);
 
-    // GetBlockId is unstubbed on TestWorld's fake accessor (always returns 0), so the check reads
-    // the store through the stubbed GetBlock instead.
+    // GetBlockId is unstubbed on TestWorld's fake accessor; the check reads the stubbed GetBlock instead.
     foreach (var cell in footprint)
       Assert.Equal(0, w.Accessor.GetBlock(cell).BlockId);
   }
@@ -497,18 +479,14 @@ public class StructureFillerBehaviorTests {
     return (world, filler);
   }
 
-  /// <summary>
-  /// A principal placed with a two-cell footprint (east and west of it), each cell a filler BE
-  /// already linked to the principal - the state <see cref="StructureFillers.PlaceFillers"/> would
-  /// leave behind, built directly so the removal tests do not depend on the placement path.
-  /// </summary>
+  /// <summary>A principal placed with a two-cell footprint (east and west of it), each cell a filler
+  /// BE already linked to the principal.</summary>
   private static TestWorld NewWorldWithMegastructure(
     out BlockPos principal,
     out BlockPos[] footprint
   ) {
     var world = new TestWorld();
-    // RemoveFillers (and PlaceFillers) are server-only; the fake world otherwise leaves Side
-    // unstubbed, which does not equal EnumAppSide.Server.
+    // RemoveFillers (and PlaceFillers) are server-only.
     world.World.Side.Returns(EnumAppSide.Server);
     var filler = TestBlocks.Configure(
       new BlockStructureFiller(),

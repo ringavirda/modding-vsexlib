@@ -5,11 +5,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The testing harness's scene grid rule, pinned against the code-first layout's opposite rule
-/// (StructureLayoutTests.Parse_does_not_advance_the_column_on_a_space): a scene diagram is meant to read
-/// at a glance, so a space between two glyphs is a gap, not a spacer.
-/// </summary>
+/// <summary><see cref="SceneDiagram"/>: a space between two glyphs is a gap, not a spacer.</summary>
 public class SceneDiagramTests {
   [Fact]
   public void A_space_between_two_glyphs_places_them_two_columns_apart() {

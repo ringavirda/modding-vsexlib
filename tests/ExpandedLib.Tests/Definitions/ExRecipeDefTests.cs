@@ -5,10 +5,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Unit coverage for the recipe-side builders <see cref="ExRecipeDef"/>, <see cref="GridRecipeBuilder"/>
-/// and <see cref="IngredientBuilder"/>: the file location targets <c>recipes/{category}/</c>, grid recipes
-/// emit the loader's schema, and optional ingredient and output keys stay absent unless set, so the emitted
-/// JSON matches the hand-written form. Pure (no registry), so no serialization collection is needed.
+/// Pins the recipe-side builders <see cref="ExRecipeDef"/>, <see cref="GridRecipeBuilder"/> and
+/// <see cref="IngredientBuilder"/> against the loader's recipe schema.
 /// </summary>
 public class ExRecipeDefTests {
   [Fact]
@@ -119,8 +117,7 @@ public class ExRecipeDefTests {
 
   [Fact]
   public void GridObject_emits_a_single_recipe_object_not_an_array() {
-    // A one-recipe file authored as a lone object (bunker, molten-barrel): the emitted token must be an
-    // object, not a one-element array.
+    // The emitted token must be a lone object, not a one-element array.
     ExRecipeDef def = ExRecipeDef
       .Create("iiex", "grid", "bunker")
       .GridObject(r =>

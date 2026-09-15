@@ -4,11 +4,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The convenience doubles a first-time consumer reaches for: a player with a real hotbar, a
-/// recording logger, a mod loader, a config-file round-trip and the world-config tree - each wired
-/// into <see cref="TestWorld"/> with no NSubstitute knowledge required to use it.
-/// </summary>
+/// <summary>The convenience doubles wired into <see cref="TestWorld"/>: a player with a real
+/// hotbar, a recording logger, a mod loader, a config-file round-trip and the world-config
+/// tree.</summary>
 public class DoublesTests {
   private sealed class FakeConfig {
     public int Value { get; set; }
@@ -76,8 +74,6 @@ public class DoublesTests {
   public void IsModEnabled_and_every_alias_report_every_id_enabled() {
     using var world = new TestWorld();
 
-    // No real mod list to consult, so any id - added or not - reports enabled; see TestModLoader's
-    // own doc.
     Assert.True(world.Api.ModLoader.IsModEnabled("exlib"));
     Assert.True(world.Mods.IsModLoaded("exlib"));
     Assert.True(world.Mods.HasMod("exlib"));

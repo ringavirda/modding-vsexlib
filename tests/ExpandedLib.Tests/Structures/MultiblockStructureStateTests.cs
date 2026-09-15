@@ -33,8 +33,7 @@ public class MultiblockStructureStateTests {
 
   [Fact]
   public void A_field_declared_through_State_round_trips() {
-    // ToTreeAttributes reads Block.IsMissing before it ever reaches Persisted, so the structure needs a
-    // real block even though nothing here cares which one.
+    // ToTreeAttributes reads Block.IsMissing before Persisted; the structure needs a real block.
     var source = new StatefulStructure {
       Note = "riveted",
       Pos = new BlockPos(0, 0, 0),

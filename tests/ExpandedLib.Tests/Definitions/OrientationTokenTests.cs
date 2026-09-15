@@ -6,10 +6,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Orientation tokens on network node blocks: the multi-direction codes a pipe, passthrough, axle,
-/// junction or valve carries instead of a facing (<c>ns</c>, <c>we</c>, <c>ud</c>, <c>nswe</c>,
-/// <c>nsud</c>, <c>weud</c>, and the valves' reversed <c>sn</c> / <c>ew</c> / <c>du</c>). None of them
-/// is a side word, so the oriented-parts check recognises them through a separate grammar.
+/// Pins orientation tokens on network node blocks: the multi-direction codes (<c>ns</c>, <c>we</c>,
+/// <c>ud</c>, <c>nswe</c>, <c>nsud</c>, <c>weud</c>, and the valves' reversed spellings).
 /// </summary>
 public class OrientationTokenTests {
   #region The grammar is exact, not "a run of direction letters"
@@ -37,9 +35,8 @@ public class OrientationTokenTests {
     Assert.True(ExOrientation.IsOrientationToken(token));
 
   [Theory]
-  // The grammar is whole axis pairs rather than any run of letters from nsewud: direction letters
-  // spell ordinary words, and a loose match would rotate a material segment into a code matching no
-  // block. Every case below is a plausible code segment.
+  // The grammar is whole axis pairs, not any run of letters from nsewud. Every case below is a
+  // plausible code segment.
   [InlineData("sun")]
   [InlineData("wend")]
   [InlineData("used")]
@@ -72,7 +69,7 @@ public class OrientationTokenTests {
   [InlineData("ud", 90, "ud")]
   [InlineData("up", 90, "up")]
   [InlineData("u", 90, "u")]
-  // A cross junction is symmetric, so it maps to itself.
+  // A cross junction is symmetric: it maps to itself.
   [InlineData("nswe", 90, "nswe")]
   // A half-vertical junction does move.
   [InlineData("nsud", 90, "weud")]
@@ -90,8 +87,7 @@ public class OrientationTokenTests {
 
   [Fact]
   public void Rotation_lands_on_a_declared_variant_after_four_quarter_turns() {
-    // A pipe declares only `ns`, `we`, `ud`, so every intermediate turn must land on one of the three
-    // and not just the fourth: a token like `sn` would demand a block that does not exist.
+    // A pipe declares only `ns`, `we`, `ud`; every intermediate turn must land on one of the three.
     string[] declared = ["ns", "we", "ud"];
     foreach (string start in declared) {
       string t = start;
@@ -105,22 +101,18 @@ public class OrientationTokenTests {
 
   [Fact]
   public void Only_tokens_that_actually_move_are_treated_as_oriented() {
-    // An invariant token is already required exactly by the code matching literally, so recording it
-    // as oriented would only add a golden entry.
     Assert.True(ExOrientation.RotatesUnderY("ns"));
     Assert.True(ExOrientation.RotatesUnderY("nsud"));
     Assert.False(ExOrientation.RotatesUnderY("ud"));
     Assert.False(ExOrientation.RotatesUnderY("up"));
-    // A four-way junction is rotation-symmetric, so it is invariant too.
+    // A four-way junction is rotation-symmetric: invariant too.
     Assert.False(ExOrientation.RotatesUnderY("nswe"));
   }
 
   [Fact]
   public void The_valves_directed_spelling_canonicalises_and_that_is_the_known_limit() {
-    // `BlockValve` and `BlockPressureValve` declare both `ns` and `sn`, where the order encodes input
-    // to output; every other node declares only the canonical spelling of an undirected pair. The two
-    // grammars are indistinguishable from the token alone, so rotation canonicalises and a valve loses
-    // its direction. A layout pinning a directed valve uses LegendAnyFacing and checks it itself.
+    // `BlockValve` and `BlockPressureValve` declare both `ns` and `sn`; rotation canonicalises and
+    // a valve loses its direction.
     Assert.Equal("we", ExOrientation.RotateOrientationToken("sn", 90));
     Assert.Equal("ns", ExOrientation.RotateOrientationToken("ew", 90));
   }
@@ -144,9 +136,7 @@ public class OrientationTokenTests {
 
   [Fact]
   public void A_node_cell_rotates_with_the_structure() {
-    // Built as an attribute rather than through the layout DSL: the builder now refuses a pinned network
-    // token outright, so no code-first layout can produce this table. The runtime half stays reachable
-    // from a hand-authored JSON blocktype, and this is what it does when one arrives.
+    // Built as an attribute directly, matching a hand-authored blocktype.
     var attrs = new Vintagestory.API.Datastructures.JsonObject(
       Newtonsoft.Json.Linq.JObject.Parse(
         """{"multiblockFacings":{"iiex:pipe-straight-fire-ns":[3]}}"""
@@ -169,7 +159,7 @@ public class OrientationTokenTests {
 
   [Fact]
   public void A_vertical_node_emits_no_facings_at_all() {
-    // A vertical token does not move under a Y rotation, so no multiblockFacings entry is emitted.
+    // A vertical token does not move under a Y rotation.
     var attributes = (Newtonsoft.Json.Linq.JObject)
       ExBlockDef
         .Create("d", "c")

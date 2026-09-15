@@ -7,9 +7,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The re-registration notification: a location registered twice from the same assembly is a mod
-/// simply reloading its own defs (silent), while a location registered from two different assemblies
-/// is two providers claiming the same asset path (<see cref="ExDefinitions.Logger"/> Notification).
+/// Pins the re-registration notification on <see cref="ExDefinitions.Logger"/>: silent from the
+/// same assembly, a Notification from a different one.
 /// </summary>
 [Collection("ExDefinitions")]
 public class ExDefinitionsTests {
@@ -70,7 +69,7 @@ public class ExDefinitionsTests {
   [Fact]
   public void No_logger_wired_is_a_silent_no_op() {
     ExDefinitions.Logger = null;
-    // Would throw a NullReferenceException if the notification path dereferenced a null Logger.
+    // A null Logger must not throw.
     ExDefinitions.RegisterBlock(
       ExBlockDef.Create("d", "c"),
       typeof(ExDefinitionsTests).Assembly

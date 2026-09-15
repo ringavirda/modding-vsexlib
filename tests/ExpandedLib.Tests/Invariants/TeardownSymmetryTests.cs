@@ -7,26 +7,13 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Repo-wide block entity teardown rule: whatever cleans up in <c>OnBlockRemoved</c> must also clean
-/// up in <c>OnBlockUnloaded</c>, or state in the file why it does not. Removal means the block is gone
-/// for good; unload means the chunk left memory while the block stays placed, so the two paths share
-/// the client-side releases (listeners, renderers, dialogs, highlights) but not the permanent ones
-/// (dropping contents, deregistering a network node, putting a fire out).
-/// <para>
-/// Behaviours are covered by the same signatures, because a block entity fans both calls out to them.
-/// </para>
-/// <para>
-/// Checked per file rather than per class tree: a subclass's own teardown is its own, and a corrected
-/// base class does not run it. A file whose asymmetry is deliberate opts out with <c>removal-only
-/// teardown:</c> followed by the reason.
-/// </para>
-/// </summary>
+/// <summary>Whatever cleans up in <c>OnBlockRemoved</c> must also clean up in
+/// <c>OnBlockUnloaded</c>, or state in the file why not, via a <c>removal-only teardown:</c>
+/// marker.</summary>
 public class TeardownSymmetryTests {
   #region Corpus
 
-  // The block entity signatures take no arguments, which separates them from the Block overloads of the
-  // same names (those take a world and a position and are not part of this rule).
+  // The block entity signatures take no arguments, unlike the Block overloads of the same names.
   private static readonly Regex RemovedOverride = new(
     @"override\s+void\s+OnBlockRemoved\s*\(\s*\)",
     RegexOptions.Compiled
@@ -38,8 +25,7 @@ public class TeardownSymmetryTests {
 
   private const string OptOut = "removal-only teardown:";
 
-  // Every mod's own source tree - <mod>/src when that folder holds it, else the mod's own folder
-  // (exlib's own project, flat under src/ExpandedLib) - the whole corpus this rule scans.
+  // Every mod's own source tree: <mod>/src when that folder holds it, else the mod's own folder.
   private static IEnumerable<string> SourceFiles() {
     foreach (string mod in RepoManifest.Mods.Values) {
       string full = Path.Combine(mod, "src");
@@ -116,9 +102,6 @@ public class TeardownSymmetryTests {
 
   [Fact]
   public void A_removal_only_opt_out_sits_where_the_removal_teardown_does() {
-    // A marker outlives the method it explains when the teardown moves to a behaviour or a subclass,
-    // and the rule above reads any file carrying one as exempt - so a stale marker quietly exempts
-    // whatever offender lands in that file next.
     var offenders = new List<string>();
     int marked = 0;
     foreach (string f in SourceFiles()) {

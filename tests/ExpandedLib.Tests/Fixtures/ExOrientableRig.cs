@@ -10,15 +10,11 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// A world holding one block per declared orientation state, plus a player who can be stood on any side
-/// of the placement cell - what <see cref="BlockBehaviorExOrientable"/> needs and nothing else. The
-/// behaviour is driven directly rather than through <c>Block.TryPlaceBlock</c>, whose pipeline wants an
-/// inventory, a selection ray and an item-stack round-trip the behaviour never reads; each call below
-/// passes the arguments the engine passes.
+/// A world holding one block per declared orientation state, plus a player who can be stood on any
+/// side of the placement cell, driving <see cref="BlockBehaviorExOrientable"/> directly.
 /// </summary>
 public sealed class ExOrientableRig {
-  /// <summary>Where the block goes. Away from the origin so a sign error in the look math cannot
-  /// coincide with the right answer.</summary>
+  /// <summary>Where the block goes, away from the origin.</summary>
   public static readonly BlockPos Pos = new(64, 16, 64, 0);
 
   private readonly Block _placer;
@@ -39,7 +35,7 @@ public sealed class ExOrientableRig {
 
   public TestWorld World { get; }
 
-  /// <summary>The code of whatever now stands at <see cref="Pos"/>, or null for an empty cell.</summary>
+  /// <summary>The code of whatever stands at <see cref="Pos"/>, or null for an empty cell.</summary>
   public string? PlacedCode {
     get {
       Block at = World.GetBlock(Pos);
@@ -73,8 +69,7 @@ public sealed class ExOrientableRig {
     var loc = new AssetLocation(baseCode);
 
     Block Build(string state, int id) {
-      // CodeWithVariant walks Variant in insertion order to rebuild the path, so the orientation
-      // group must be declared last, as the definition DSL renders it.
+      // CodeWithVariant walks Variant in insertion order: the orientation group must be declared last.
       (string, string)[] variants =
       [
         .. fixedGroups.Select(g => (g.key, g.value)),
@@ -120,14 +115,10 @@ public sealed class ExOrientableRig {
 
   /// <summary>
   /// Places the block with the player looking <paramref name="lookDirection"/>, standing on the
-  /// opposite side of the cell. The placed block wears <paramref name="lookDirection"/> and so faces
-  /// away from the player, which is vanilla's convention (<c>SuggestedHVOrientation[0]</c> takes the
-  /// atan2 of eye-minus-hit and adds a quarter turn) and the basis of every multiblock angle here.
+  /// opposite side of the cell. The placed block faces away from the player.
   /// </summary>
   /// <param name="selectedFace">Face of the neighbouring block the player clicked. Defaults to
-  /// <c>up</c>, placing on the ground. Not inert on an omni block: a vertical selected face is what
-  /// makes one point up or down, so an omni case left at the default never reaches the horizontal
-  /// branch.</param>
+  /// <c>up</c>, placing on the ground.</param>
   public bool PlaceLooking(string lookDirection, string selectedFace = "up") {
     BlockFacing look =
       BlockFacing.FromCode(lookDirection)
@@ -219,9 +210,7 @@ public sealed class ExOrientableRig {
   private IPlayer PlayerAt(double x, double y, double z) {
     TestPlayer player = World.Player();
     player.Entity.Pos.SetPos(x, y, z);
-    // Zeroed rather than the real ~1.7 m: SuggestedHVOrientation adds LocalEyePos to the entity
-    // position before taking the angle, so eye height tilts the vertical component only and zeroing
-    // it keeps the horizontal arithmetic exact.
+    // Zeroed, not the real ~1.7 m: eye height tilts only the vertical component.
     player.Entity.LocalEyePos = new Vec3d(0, 0, 0);
     return player.Player;
   }

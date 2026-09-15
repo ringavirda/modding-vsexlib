@@ -32,11 +32,10 @@ public class ExContentGateTests {
     );
 
     Assert.Equal(1, hidden);
-    // Empty rather than null: vanilla reads the tab list without a null guard in places, so nulling
-    // it throws on anything that enumerates collectibles.
-    Assert.Empty(target.CreativeInventoryTabs); // hidden -> also drops from the handbook
+    // Empty rather than null: some vanilla code enumerates the tab list with no null guard.
+    Assert.Empty(target.CreativeInventoryTabs);
     Assert.Null(target.CreativeInventoryStacks);
-    Assert.NotEmpty(other.CreativeInventoryTabs); // untouched
+    Assert.NotEmpty(other.CreativeInventoryTabs);
   }
 
   [Fact]

@@ -8,10 +8,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// What the graph walk does when it cannot see a cell. <c>GetBlock</c> answers the air block for an
-/// unloaded chunk rather than null, so an absent cell and an unreadable one look identical - and a
-/// fracture check that treats them alike splits a run around a player who merely walked away from it.
-/// See docs/design/mechanics/pipe-network.md.
+/// What the graph walk does when it cannot see a cell: <c>GetBlock</c> answers the air block for an
+/// unloaded chunk, not null.
 /// </summary>
 public class UnloadedChunkTests {
   private static TestWorld NewWorld() {
@@ -25,8 +23,7 @@ public class UnloadedChunkTests {
   private static BlockPos Cell(int offsetFromBoundary) =>
     new(GlobalConstants.ChunkSize + offsetFromBoundary, 0, 0);
 
-  /// <summary>Lays a four-cell east-west run straddling the chunk boundary and asserts it came out as
-  /// one whole network - the premise every test here rests on.</summary>
+  /// <summary>Lays a four-cell east-west run straddling the chunk boundary.</summary>
   private static TestWorld BuildStraddlingRun() {
     var w = NewWorld();
     foreach (int offset in new[] { -2, -1, 0, 1 })
@@ -37,8 +34,7 @@ public class UnloadedChunkTests {
     return w;
   }
 
-  /// <summary>Takes away the chunk holding the far half of the run and asserts the boundary really
-  /// does fall where the fixture claims: the near two cells stay readable, the far two do not.</summary>
+  /// <summary>Unloads the chunk holding the far half of the run.</summary>
   private static void UnloadFarHalf(TestWorld w) {
     w.UnloadChunkAt(Cell(0));
 
@@ -52,10 +48,7 @@ public class UnloadedChunkTests {
 
   [Fact]
   public void An_unloaded_cell_answers_for_nothing_even_though_its_block_is_placed() {
-    // The fact the whole task turns on, and the one a block-first resolver does not change: a chunk
-    // unload hides the block as well as the block entity, so the far side of the walk reads exactly
-    // as empty space. Resolving through the block keeps a node walkable across a block entity dropped
-    // on its own - not across a chunk that went away.
+    // A chunk unload hides the block as well as the block entity.
     var w = NewWorld();
     var pos = new BlockPos(0, 0, 0);
     w.PlaceNode(pos, "test", "ns");
@@ -67,7 +60,7 @@ public class UnloadedChunkTests {
     Assert.Equal(0, w.Accessor.GetBlock(pos).BlockId);
     Assert.Null(w.Accessor.GetBlockEntity(pos));
     Assert.Null(w.Accessor.GetChunkAtBlockPos(pos));
-    // The store still holds it, which is what makes the cell unreadable rather than gone.
+    // The store still holds the block.
     Assert.NotEqual(0, w.GetBlock(pos).BlockId);
   }
 
@@ -92,9 +85,7 @@ public class UnloadedChunkTests {
 
   [Fact]
   public void A_run_left_with_no_readable_node_at_all_is_left_whole() {
-    // The gap can swallow the whole run, not just part of it: removing the last readable cell leaves
-    // the walk reaching nothing from anywhere, which reads as "everything fractured" unless the check
-    // knows it is blind.
+    // The gap can swallow the whole run, not just part of it.
     var w = BuildStraddlingRun();
     UnloadFarHalf(w);
     w.RemoveNode(Cell(-2));
@@ -110,8 +101,7 @@ public class UnloadedChunkTests {
 
   [Fact]
   public void A_genuinely_broken_run_still_fractures_while_every_chunk_is_loaded() {
-    // The gain is "do not fracture on unknown", not "never fracture". Same run, same removal, nothing
-    // unloaded - and it must still come apart.
+    // Same removal, nothing unloaded: the run must still fracture.
     var w = BuildStraddlingRun();
     Assert.True(w.IsChunkLoaded(Cell(0)));
 
@@ -142,8 +132,7 @@ public class UnloadedChunkTests {
 
   [Fact]
   public void A_resolved_run_fractures_again_at_once() {
-    // The deferral has to lift, not linger. Once the run has been seen whole, the very next break in
-    // it is decided on the spot - a network still carrying the old doubt would swallow that one too.
+    // Once the run is seen whole, the next break is decided on the spot.
     var w = BuildStraddlingRun();
     UnloadFarHalf(w);
     w.RemoveNode(Cell(-2));
@@ -159,8 +148,7 @@ public class UnloadedChunkTests {
 
   [Fact]
   public void A_break_hidden_by_an_unloaded_chunk_splits_once_it_comes_back() {
-    // The deferred decision is taken, not dropped. The removal really does cut the run in two; the
-    // walk just could not prove it while half the run was away.
+    // The removal cuts the run in two; the walk could not prove it while half was unloaded.
     var w = BuildStraddlingRun();
     UnloadFarHalf(w);
     w.RemoveNode(Cell(-1));
@@ -177,9 +165,7 @@ public class UnloadedChunkTests {
 
   [Fact]
   public void The_same_chunk_returning_twice_changes_nothing() {
-    // The resume runs off the server tick, so it is offered the same world again every second. A
-    // review that was not idempotent would rebuild the run each time, handing every node a fresh
-    // network and losing whatever the old one held.
+    // The resume runs off the server tick and repeats every second; it must stay idempotent.
     var w = BuildStraddlingRun();
     UnloadFarHalf(w);
     w.RemoveNode(Cell(-2));
@@ -197,9 +183,7 @@ public class UnloadedChunkTests {
 
   [Fact]
   public void One_of_two_missing_chunks_coming_back_is_not_enough() {
-    // Two gaps at once, and a genuine break. The run spans three chunks and the walk loses the last
-    // two of them; the middle coming back makes the break plain to see, but the far cells are still
-    // unaccounted for and could hang off either side, so the split keeps waiting for them.
+    // Two gaps at once: the middle returning is not enough while the far chunk stays unaccounted for.
     const int cs = GlobalConstants.ChunkSize;
     var w = NewWorld();
     for (int x = cs - 2; x <= 2 * cs; x++)
@@ -236,8 +220,7 @@ public class UnloadedChunkTests {
   #region A footprint cell bridging the run
 
   /// <summary>Lays the same straddling run with a mega-block footprint cell in place of the first cell
-  /// across the boundary, so the run is bridged through a cell whose participation lives entirely on
-  /// its block entity.</summary>
+  /// across the boundary.</summary>
   private static TestWorld BuildRunBridgedByFiller() {
     var w = NewWorld();
     w.PlaceNode(Cell(-2), "test", "we");
@@ -247,18 +230,14 @@ public class UnloadedChunkTests {
 
     Assert.Single(w.Networks.AllNetworks);
     Assert.Equal(4, w.NetworkAt(Cell(0))!.Nodes.Count);
-    // The premise: nothing about the bridging block is a network block, so only the membership on its
-    // block entity carries the run across it.
+    // The bridging block is not a network block; only its membership carries the run.
     Assert.IsNotAssignableFrom<BlockNetworkNode>(w.GetBlock(Cell(0)));
     return w;
   }
 
   [Fact]
   public void A_run_bridged_through_a_footprint_cell_survives_that_cells_chunk_unloading() {
-    // The sharpest case the suspension covers. A footprint cell answers for nothing while its chunk is
-    // away, so a run crossing a mega-block would come apart the moment anything else on it changed
-    // while the player was elsewhere - and stay apart, because the returning cell finds its position
-    // already in a network and never re-joins.
+    // A footprint cell answers for nothing while its chunk is unloaded.
     var w = BuildRunBridgedByFiller();
     UnloadFarHalf(w);
 
@@ -284,9 +263,8 @@ public class UnloadedChunkTests {
 
   [Fact]
   public void The_footprint_cell_rejoins_the_run_after_a_full_load_from_the_save_tree() {
-    // The whole sequence as the engine performs it: the chunk comes back, each block entity in it is
-    // rebuilt from its save tree and re-initialised - finding its position already in a network and so
-    // never re-joining - and the next server tick is what puts the run back together.
+    // Each block entity is rebuilt from its save tree and re-initialised; the next tick reconnects the
+    // run.
     var w = BuildRunBridgedByFiller();
     UnloadFarHalf(w);
     w.RemoveNode(Cell(-2));

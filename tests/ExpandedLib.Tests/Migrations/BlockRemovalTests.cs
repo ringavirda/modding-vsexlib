@@ -9,12 +9,10 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="IBlockRemoval"/>: a real implementation's declared codes drive
-/// <see cref="BlockMigrationModSystem.VisitCell"/> (via <see cref="ReflectionHelpers.Invoke"/>, since
-/// it is protected) to delete a placed block, and <see cref="CodeRelocation"/>'s helpers, which build
-/// the <c>(oldCode, newCode)</c> pairs a mod's own <see cref="IBlockCodeMigration"/> declares.
-/// </summary>
+/// <summary><see cref="IBlockRemoval"/>'s declared codes drive
+/// <see cref="BlockMigrationModSystem.VisitCell"/> to delete a placed block, and
+/// <see cref="CodeRelocation"/>'s helpers build the <c>(oldCode, newCode)</c> pairs a mod's own
+/// <see cref="IBlockCodeMigration"/> declares.</summary>
 public class BlockRemovalTests {
   private sealed class PurgeMigration : IBlockRemoval {
     public string Name => "purge test";
@@ -129,9 +127,7 @@ public class BlockRemovalTests {
       ];
   }
 
-  // BlockMigrationModSystem.Discover<T> walks ReflectionScan.GetCandidateTypes, ordered by assembly
-  // full name then type full name - not declaration order, which is why the "Z..." class is declared
-  // first above and still sorts after "A...".
+  // Ordered by assembly full name then type full name, not declaration order.
   [Fact]
   public void Discovery_order_is_by_type_full_name_not_declaration_order() {
     var names = BlockMigrationModSystem

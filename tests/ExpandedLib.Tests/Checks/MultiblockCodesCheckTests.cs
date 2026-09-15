@@ -5,9 +5,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// <see cref="MultiblockCodesCheck.AnyProvides"/> against the wildcard shapes real layouts actually
-/// write: a `*` segment standing in for one whole variant ("any tier", "any side") and a glued `*`
-/// suffix standing in for an open prefix within one segment.
+/// Pins <see cref="MultiblockCodesCheck.AnyProvides"/>: a bare `*` segment matches any one
+/// segment, a glued `*` suffix matches by prefix within one segment.
 /// </summary>
 public class MultiblockCodesCheckTests {
   [Fact]

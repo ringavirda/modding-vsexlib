@@ -7,10 +7,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The discovery scan that lets a block class carry its own code-first definition
-/// (<see cref="IExBlockDefProvider"/>) instead of a central list. <c>DiscoverAndRegister</c> finds every
-/// implementor in an assembly, invokes its static <c>Define(domain)</c> and registers the result.
-/// <see cref="ExDefinitions"/> is a process-wide static, so the class is serialized and cleared first.
+/// Pins the discovery scan for <see cref="IExBlockDefProvider"/>: <c>DiscoverAndRegister</c> finds
+/// every implementor in an assembly and registers its declared definitions.
 /// </summary>
 [Collection("ExDefinitions")]
 public class ExDefinitionDiscoveryTests {
@@ -57,12 +55,11 @@ public class ExDefinitionDiscoveryTests {
       d => d.Code == "discoverable"
     );
     Assert.Equal("test", def.Domain);
-    // Define ran with the supplied domain, so the type-safe Class<T>() bound to that domain's key.
+    // Class<T>() binds to the domain Define ran with.
     Assert.Equal("test.DiscoverableBlock", (string?)def.ToJson()["class"]);
   }
 
-  // A provider that emits somewhere other than the mod that ships it - the shape an absorbing assembly
-  // uses to keep emitting an absorbed mod's codes while the relocation lands.
+  // A provider that emits into a domain other than the one it is registered under.
   [BlockRegister]
   [ExDefDomain("borrowed")]
   private sealed class ForeignDomainBlock : Block, IExBlockDefProvider {
@@ -129,7 +126,7 @@ public class ExDefinitionDiscoveryTests {
       d => d.Code == "discoverableitem"
     );
     Assert.Equal("test", def.Domain);
-    // Define ran with the supplied domain, so the type-safe Class<T>() bound to that domain's key.
+    // Class<T>() binds to the domain Define ran with.
     Assert.Equal("test.DiscoverableItem", (string?)def.ToJson()["class"]);
     // Item discovery does not spill into the block registry.
     Assert.DoesNotContain(
@@ -210,8 +207,7 @@ public class ExDefinitionDiscoveryTests {
 
   [Fact]
   public void OrientationMap_skips_a_def_with_no_type_states_at_all() {
-    // A worldproperty-oriented block declares no explicit type states, so it contributes no
-    // type-to-orientation pair.
+    // A worldproperty-oriented block declares no explicit type states.
     var defs = new[]
     {
       ExBlockDef
@@ -223,9 +219,7 @@ public class ExDefinitionDiscoveryTests {
 
   [Fact]
   public void OrientationMap_maps_every_type_state_a_def_declares() {
-    // A def may declare several type states in one group, and every one of them maps to that def's
-    // whole orientation group. Dropping the multi-state case leaves AllowedOrientations empty, and a
-    // block with no valid orientations cannot be placed at all.
+    // Every type state in one group maps to that def's whole orientation group.
     var defs = new[]
     {
       ExBlockDef

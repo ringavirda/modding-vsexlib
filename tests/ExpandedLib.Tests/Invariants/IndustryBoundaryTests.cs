@@ -10,12 +10,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Boundary guard: the family-specific half of exlib is its own assembly, <c>exlib.industry.dll</c>,
-/// under <c>ExpandedLib.Industry.*</c> and outside the supported <c>ExpandedLib.*</c> contract. The
-/// dependency runs one way only - the domain layer builds on the framework, never the reverse - and
-/// a type named here that lands back in the framework assembly has crossed that line.
-/// </summary>
+/// <summary>Boundary guard: the family-specific half of exlib lives in
+/// <c>exlib.industry.dll</c> under <c>ExpandedLib.Industry.*</c>; the domain layer may depend on
+/// the framework, never the reverse.</summary>
 public class IndustryBoundaryTests {
   #region Corpus
 
@@ -52,9 +49,7 @@ public class IndustryBoundaryTests {
     }
   }
 
-  // The full set of namespaces the tree's top-level folders are allowed to declare (Task G1,
-  // docs/design/conventions.md "How exlib is laid out"). A sub-folder never adds a segment, so a
-  // type declaring anything outside this set has grown a namespace no folder maps to.
+  // Namespaces the top-level folders may declare (docs/design/conventions.md "How exlib is laid out").
   private static readonly string[] ContractNamespaces =
   [
     "ExpandedLib",
@@ -134,11 +129,7 @@ public class IndustryBoundaryTests {
     );
   }
 
-  // The assembly check above only fails once the framework has actually been compiled against the
-  // domain layer, which cannot happen without a project reference that would make the two
-  // circular - so the compiler stops it first, with an error naming neither side clearly. A text
-  // scan catches the same mistake at its source, pointing at the file and line that added the
-  // using directive or the qualified name.
+  // Catches a stray using/qualified name before a circular project reference would even compile.
   private static readonly Regex IndustryMention = new(
     @"\bExpandedLib\.Industry\b",
     RegexOptions.Compiled

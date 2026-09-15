@@ -7,12 +7,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Golden-file parity for exlib's own code-first defs (currently just the invisible
-/// <c>structurefiller</c> mega-block filler). Each def must reproduce its committed
-/// <c>goldens/exlib/{Location.Path}</c> file, and the golden set must exactly cover the defs. The
-/// shared harness is <see cref="DefinitionGoldens"/>.
-/// </summary>
+/// <summary>Pins golden-file parity for exlib's own code-first defs via <see cref="DefinitionGoldens"/>.</summary>
 public class ExlibDefinitionGoldenTests {
   private const string Domain = "exlib";
   private static readonly Assembly Mod = typeof(ExBlockDef).Assembly;
@@ -55,10 +50,7 @@ public class ExlibDefinitionGoldenTests {
     );
   }
 
-  /// <summary>
-  /// Every shape a def names must exist. The goldens pin only what a def emits, so a stable but wrong
-  /// path passes them and shows up in game as a block with no model.
-  /// </summary>
+  /// <summary>Every shape a def names must exist; the goldens do not pin shape file presence.</summary>
   [Fact]
   public void Every_shape_reference_resolves_to_a_shipped_file() {
     IReadOnlyList<string> missing = DefinitionAssets.MissingShapes(Domain, Mod);

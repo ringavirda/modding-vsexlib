@@ -67,9 +67,7 @@ public class ReflectionScanTests {
 
     Type[] merged = ReflectionScan.GetCandidateTypes(assemblies);
 
-    // Equivalent to concatenating the per-assembly scan (which already tolerates a partial load,
-    // see Skips_and_warns_on_a_non_assignable_type's sibling coverage on the single-assembly
-    // overload) and sorting it - never a reshuffle of what each assembly alone would report.
+    // Equivalent to concatenating each assembly's own scan and sorting the result.
     Type[] expected = assemblies
       .SelectMany(ReflectionScan.GetCandidateTypes)
       .OrderBy(t => t.Assembly.FullName, StringComparer.Ordinal)

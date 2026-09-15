@@ -12,9 +12,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The bare <c>{ShortId}</c>/<c>{shortid}</c> block-entity aliases stay process-wide and unprefixed
-/// (existing worlds and blocktype JSON reference them), but a second type claiming a bare key already
-/// issued gets an error naming both, instead of silently overwriting the first.
+/// The bare <c>{ShortId}</c>/<c>{shortid}</c> block-entity aliases stay process-wide and unprefixed;
+/// a second type claiming an issued bare key logs an error naming both.
 /// </summary>
 public class EntityRegistryBareAliasTests : IDisposable {
   public void Dispose() {
@@ -25,8 +24,7 @@ public class EntityRegistryBareAliasTests : IDisposable {
     var domainMap = (Dictionary<Assembly, string>)domainField.GetValue(null)!;
     domainMap.Remove(typeof(EntityRegistryBareAliasTests).Assembly);
 
-    // _bareKeysIssued is process-wide too - reset the two keys this fixture claims, so a second test
-    // method here doesn't see the first's registration as a collision.
+    // _bareKeysIssued is process-wide; reset the two keys this fixture claims.
     var bareField = typeof(EntityRegistry).GetField(
       "_bareKeysIssued",
       BindingFlags.NonPublic | BindingFlags.Static
@@ -38,9 +36,7 @@ public class EntityRegistryBareAliasTests : IDisposable {
     ExDefinitions.Clear();
   }
 
-  // Two distinct types sharing one simple name, so both claim the bare short-id key "Widget"/
-  // "widget" - the cross-mod collision the bare-key error defends against, reproduced within one
-  // assembly.
+  // Two distinct types sharing one simple name both claim the bare short-id key "Widget"/"widget".
   private static class OuterA {
     [BlockEntityRegister]
     public sealed class BlockEntityWidget : BlockEntity { }
@@ -63,10 +59,7 @@ public class EntityRegistryBareAliasTests : IDisposable {
 
     EntityRegistry.RegisterAll(world.Api, mod, GetType().Assembly);
 
-    // One error per colliding alias: the exact-case "Widget" and the lower-cased "widget". Assert on
-    // message content, not an exact count - _bareKeysIssued is a process-wide static that this
-    // fixture's own Dispose only clears for the two keys claimed here, so a class that scans this
-    // same assembly without cleaning up after itself can leave a stale entry behind.
+    // One error per colliding alias: the exact-case "Widget" and the lower-cased "widget".
     List<string> collisions = world.Log.Errors.ToList();
     Assert.Contains(
       collisions,
@@ -98,8 +91,7 @@ public class EntityRegistryBareAliasTests : IDisposable {
 
     EntityRegistry.RegisterAll(world.Api, mod, GetType().Assembly);
 
-    // The colliding bare keys are still (re-)issued for both types - the aliases themselves are
-    // save-load-bearing and are never withheld, only logged about.
+    // The colliding bare keys are still (re-)issued for both types.
     world
       .Api.Received()
       .RegisterBlockEntityClass("Widget", typeof(OuterA.BlockEntityWidget));

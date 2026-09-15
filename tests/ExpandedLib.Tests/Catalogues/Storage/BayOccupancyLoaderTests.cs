@@ -54,8 +54,7 @@ public class BayOccupancyLoaderTests {
   #region Load(files, registry) - source attribution
   [Fact]
   public void An_earlier_malformed_file_does_not_misattribute_a_later_clash_to_the_store_name() {
-    // Before the fix, one malformed file anywhere in the batch made every later clash fall back to
-    // being named after the store rather than the file that actually lost it.
+    // A clash after an earlier malformed file must still attribute to the losing file, not the store name.
     var registry = new BayOccupancyRegistry();
 
     List<string> errors = BayOccupancyLoader.Load(

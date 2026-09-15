@@ -11,10 +11,7 @@ namespace ExpandedLib.Tests;
 public class MultiblockCellRolesRoleArityTests {
   [Fact]
   public void Exactly_the_two_taps_are_single_cell_roles() {
-    // The arity split, pinned so that adding a role forces an explicit answer rather than inheriting the
-    // set default by omission. Every other role is a genuine set: a shaft is a column, a hearth has two
-    // tuyeres, and a stack throttled at both ends has two dampers. MetalTap/SlagTap are declared
-    // single-cell above, at the point CellRole.Of mints them.
+    // The arity split: MetalTap and SlagTap are single-cell; every other role is a set.
     Assert.Equal(
       new[] { MetalTap, SlagTap },
       new CellRole[]
@@ -34,8 +31,7 @@ public class MultiblockCellRolesRoleArityTests {
 
   [Fact]
   public void A_single_cell_role_drawn_twice_fails_the_build() {
-    // `MetalTapCell` and `SlagTapCell` are a single Vec3i, so callers read CellsWithRole(MetalTap).Single().
-    // Without the build-time check that is an InvalidOperationException out of LINQ on a live block entity.
+    // Single-cell roles let callers read CellsWithRole(MetalTap).Single().
     var ex = Assert.Throws<InvalidOperationException>(() =>
       ExBlockDef
         .Create("exlib", "testmega")
@@ -52,8 +48,7 @@ public class MultiblockCellRolesRoleArityTests {
 
   [Fact]
   public void Two_glyphs_cannot_share_a_single_cell_role() {
-    // Counted over the drawn cells rather than over the role table, so the two-glyph route that the T/Y
-    // idiom makes natural fails the same way as one glyph drawn twice.
+    // Counted over drawn cells, not the role table: two glyphs sharing a single-cell role also fails.
     Assert.Throws<InvalidOperationException>(() =>
       ExBlockDef
         .Create("exlib", "testmega")
@@ -70,8 +65,7 @@ public class MultiblockCellRolesRoleArityTests {
 
   [Fact]
   public void A_single_cell_role_drawn_once_builds_and_a_set_role_carries_many() {
-    // Both directions in one layout: one tap, four flue cells. Without the accepting half, a guard that
-    // rejected every single-cell role, or every role, would look correct.
+    // Both directions in one layout: one tap (single-cell), four flue cells (a set).
     var roles = (JObject)
       Attributes(
         ExBlockDef

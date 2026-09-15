@@ -11,8 +11,7 @@ public class MultiblockCellRolesCachingTests {
     var (world, machine) = Stand();
     StructureRig.Around(world, machine, RoledDef()).Complete();
 
-    // Consumers read these per state change, so the footprint must not be re-walked per read. The same
-    // instance comes back, not merely equal contents.
+    // The footprint is not re-walked per read: the same instance comes back, not merely equal contents.
     Assert.Same(machine.CellsWithRole(Flue), machine.CellsWithRole(Flue));
   }
 
@@ -20,8 +19,7 @@ public class MultiblockCellRolesCachingTests {
   public void A_structure_asked_before_its_layout_arrives_answers_properly_afterwards() {
     var (world, machine) = Stand();
 
-    // The block carries no attributes yet, which is the state a client-side block entity is in until the
-    // layout loads.
+    // The block carries no attributes yet: a client-side block entity awaiting its layout.
     Assert.Empty(machine.CellsWithRole(Flue));
 
     StructureRig.Around(world, machine, RoledDef()).Complete();

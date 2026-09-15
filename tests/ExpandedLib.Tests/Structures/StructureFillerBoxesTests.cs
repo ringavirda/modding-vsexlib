@@ -9,12 +9,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Per-cell partial-fill boxes, which let a mega-block footprint cell be a slab or any other shape
-/// instead of a full cube: how <c>fillerOffsets</c> JSON parses into boxes, how they rotate into the
-/// placed orientation, how they survive the filler BE's save tree, and how the filler block hands them
-/// back for collision and selection, falling back to the full cube when a cell has none.
-/// </summary>
+/// <summary>Per-cell partial-fill boxes, which let a mega-block footprint cell be a slab or any other
+/// shape, not just a full cube.</summary>
 public class StructureFillerBoxesTests {
   #region Parsing
 
@@ -81,7 +77,6 @@ public class StructureFillerBoxesTests {
 
   [Fact]
   public void Boxes_mirror_across_the_cell_centre_at_angle_180() {
-    // A north box on the low-x half becomes the high-x half after a 180° turn; y is untouched.
     var cell = Assert.Single(FootprintAt(180));
     AssertBox(
       new Cuboidf(0.5f, 0f, 0f, 1f, 1f, 1f),
@@ -95,7 +90,7 @@ public class StructureFillerBoxesTests {
   [InlineData(180)]
   [InlineData(270)]
   public void Rotation_preserves_box_count_and_vertical_extent(int angle) {
-    // Rotation is horizontal only, so a slab keeps its height at every angle.
+    // Rotation is horizontal only.
     var box = Assert.Single(Assert.Single(FootprintAt(angle)).CollisionBoxes!);
     Assert.Equal(0f, box.Y1, 4);
     Assert.Equal(1f, box.Y2, 4);
@@ -168,12 +163,10 @@ public class StructureFillerBoxesTests {
 
   [Fact]
   public void The_filler_block_falls_back_to_its_own_boxes_when_a_cell_has_no_boxes() {
-    // A cell with an empty BE and a cell with no BE must resolve identically: both fall through to the
-    // block's own JSON-configured boxes rather than the partial path.
     var block = new BlockStructureFiller();
     var pos = new BlockPos(0, 0, 0);
-    var emptyBe = AccessorWith(pos, new BlockEntityStructureFiller()); // null CollisionBoxes
-    var noBe = Substitute.For<IBlockAccessor>(); // GetBlockEntity -> null
+    var emptyBe = AccessorWith(pos, new BlockEntityStructureFiller());
+    var noBe = Substitute.For<IBlockAccessor>();
 
     Assert.Equal(
       block.GetCollisionBoxes(noBe, pos),
@@ -195,10 +188,8 @@ public class StructureFillerBoxesTests {
     string json
   ) => StructureFillers.ReadOffsets(Offsets(json));
 
-  /// <summary>
-  /// Resolves a single low-x-half slab cell at the given angle, so rotation can be asserted in
-  /// isolation. The north box is <c>(0,0,0 - 0.5,1,1)</c>.
-  /// </summary>
+  /// <summary>Resolves a single low-x-half slab cell at the given angle. The north box is
+  /// <c>(0,0,0 - 0.5,1,1)</c>.</summary>
   private static System.Collections.Generic.List<FillerCell> FootprintAt(
     int angle
   ) {
@@ -214,7 +205,7 @@ public class StructureFillerBoxesTests {
   private static BlockEntityStructureFiller RoundTrip(
     BlockEntityStructureFiller be
   ) {
-    // base.ToTreeAttributes writes Pos/Block, so the BE has to be sited like a placed one.
+    // base.ToTreeAttributes writes Pos/Block; the BE has to be sited like a placed one.
     var world = new TestWorld();
     var block = TestBlocks.Configure(
       new BlockStructureFiller(),

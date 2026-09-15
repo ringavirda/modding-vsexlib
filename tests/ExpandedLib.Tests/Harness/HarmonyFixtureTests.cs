@@ -6,12 +6,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="HarmonyFixture"/>: patches and reverts a test-only target and the vanilla server-safe
-/// <see cref="CollectibleObject.GetHeldItemName"/>, a second fixture for the same mod id does not
-/// double-patch, and the category form applies only its categorised class. Joins
-/// <see cref="ExHarmonyCollection"/> since Harmony patches are process-wide.
-/// </summary>
+/// <summary><see cref="HarmonyFixture"/>: patches and reverts a test-only target and a vanilla
+/// target, a second fixture for the same mod id does not double-patch, and the category form
+/// applies only its categorised class.</summary>
 [Collection(ExHarmonyCollection.Name)]
 public class HarmonyFixtureTests {
   private static class UncategorizedTarget {

@@ -8,12 +8,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The player-inventory queries machine costs share: counting and taking matching items over the
-/// whole inventory (<c>Entity.WalkInventory</c>) versus the hotbar only
-/// (<c>InventoryManager.GetHotbarInventory</c>). "Matching" is always the caller's own predicate;
-/// these tests use item code as a stand-in.
-/// </summary>
+/// <summary>Counting and taking matching items over the whole inventory
+/// (<c>Entity.WalkInventory</c>) versus the hotbar only
+/// (<c>InventoryManager.GetHotbarInventory</c>).</summary>
 public class ExInventoryTests {
   private static ItemStack Stack(string code, int size) =>
     new(new Item { Code = new AssetLocation(code) }, size);

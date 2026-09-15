@@ -7,15 +7,11 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The vanilla layout block-code catalogue: codes the game declares, which no definition can generate.
-/// Covers what the goldens do not reach - the containment order between brick-route rungs no layout
-/// draws yet, and the facing helpers, whose interpolated side segment is what makes a cell
-/// orientation-checked. How a constant used by a shipped layout expands is recorded in that layout's
-/// blocktype golden.
+/// Pins the vanilla layout block-code catalogue: the containment order between brick-route rungs,
+/// and the facing helpers' interpolated side segment.
 /// </summary>
 public class VanillaCodesTests {
-  // Real vanilla codes, read off survival/blocktypes/clay/*.json, so a rung cannot pass by matching a
-  // code the game does not ship.
+  // Real vanilla codes, read off survival/blocktypes/clay/*.json.
   private const string RefractoryTier1 = "refractorybricks-good-tier1";
   private const string RefractoryTier3 = "refractorybricks-good-tier3";
   private const string RefractoryDamaged = "refractorybricks-damaged-tier1";
@@ -38,8 +34,7 @@ public class VanillaCodesTests {
   [InlineData(VanillaCodes.Refractory, RefractoryTier3, true)]
   [InlineData(VanillaCodes.Refractory, FireBrick, false)]
   [InlineData(VanillaCodes.Refractory, CourseRed, false)]
-  // Damaged refractory is not sidesolid, so it must not satisfy a structural cell; the `-good-`
-  // segment is what excludes it.
+  // Damaged refractory is not sidesolid; the `-good-` segment is what excludes it.
   [InlineData(VanillaCodes.Refractory, RefractoryDamaged, false)]
   // Refractory or fire: the next rung up, and it contains the one below.
   [InlineData(VanillaCodes.RefractoryOrFire, RefractoryTier1, true)]
@@ -67,9 +62,8 @@ public class VanillaCodesTests {
 
   [Fact]
   public void Clinker_is_admitted_in_both_of_the_places_vanilla_puts_it() {
-    // Clinker belongs on every rung that says "any". Vanilla files it twice: as the eighth
-    // `brickcourse` colour, and as a standalone `claybricks` variant with no `state` group at all.
-    // AnyBricks therefore takes the colour group whole instead of enumerating colours by name.
+    // Vanilla files clinker twice: as the eighth `brickcourse` colour, and as a standalone
+    // `claybricks` variant with no `state` group at all.
     Assert.True(Matches(VanillaCodes.ColouredBricks, CourseClinker));
     Assert.True(Matches(VanillaCodes.AnyBricks, CourseClinker));
     Assert.True(Matches(VanillaCodes.AnyBricks, ClinkerRough));
@@ -88,9 +82,7 @@ public class VanillaCodesTests {
   [InlineData("south")]
   [InlineData("west")]
   public void A_cardinal_slab_is_orientation_checked(string side) {
-    // The oriented-parts feature decides a cell is facing-checked by reading the code, so a helper
-    // that stopped interpolating the facing would still compile and still match a block, while
-    // letting the slab be laid any way round.
+    // The oriented-parts feature decides a cell is facing-checked by reading the code.
     BlockFacing facing = BlockFacing.FromCode(side);
 
     Assert.Contains($"-{side}-", VanillaCodes.FireSlab(facing));
@@ -109,9 +101,7 @@ public class VanillaCodesTests {
 
   [Fact]
   public void A_wildcard_earlier_in_the_path_does_not_shadow_the_facing() {
-    // AnySlab puts a `*` before the facing, spanning one variant group on fire slabs (`fire`) and two
-    // on coloured ones (`four-red`). The facing lands on the same segment index either way, because a
-    // star is not an orientation token and is skipped.
+    // AnySlab puts a `*` before the facing; the star is not an orientation token and is skipped.
     Assert.Equal(
       [2],
       MultiblockLayoutBuilder.FindOrientationSegments(
@@ -125,9 +115,7 @@ public class VanillaCodesTests {
       )
     );
 
-    // Rotation keeps the star intact, so the rotated code still admits both slab families. The
-    // convention is north 0, west 90, south 180, east 270 (ExOrientation), so a +90 step runs
-    // south, east, north, west.
+    // The convention is north 0, west 90, south 180, east 270 (ExOrientation).
     Assert.Equal(
       "brickslabs-*-east-free",
       MultiblockFacings.RotateSegments("brickslabs-*-south-free", [2], 90)
@@ -135,7 +123,7 @@ public class VanillaCodesTests {
   }
 
   [Theory]
-  // Vertical never rotates under a Y turn, so an up-facing slab is not an oriented part.
+  // Vertical never rotates under a Y turn.
   [InlineData("up")]
   [InlineData("down")]
   public void A_vertical_slab_is_not_orientation_checked(string side) =>
@@ -153,9 +141,7 @@ public class VanillaCodesTests {
   public void The_coke_oven_door_pins_its_side_and_leaves_its_state_wild(
     string side
   ) {
-    // Vanilla spells the code `cokeovendoor-{closed|opened}-{side}`. A trailing `*` would swallow the
-    // side along with the state and admit a door hung any way round; pinning the state instead would
-    // break the structure the moment the player opened the door.
+    // Vanilla spells the code `cokeovendoor-{closed|opened}-{side}`.
     string code = VanillaCodes.CokeOvenDoor(BlockFacing.FromCode(side));
 
     Assert.EndsWith($"-{side}", code);
@@ -164,11 +150,7 @@ public class VanillaCodesTests {
   }
 
   [Theory]
-  // Vanilla's variant is the opposite of the wall face the door closes, the reverse of this family's
-  // own doors: `iiex:furnace-puddlingchargedoor-south` sits in the south wall, while the coke door in
-  // that same wall is spelled `north`. Derived from `liquidBarrierOnSidesByType`, which gives
-  // `cokeovendoor-closed-north` a barrier at face index 2, with `BlockFacing.ALLFACES` running
-  // N, E, S, W. `Sealing` is the only place the inversion is applied; layouts name the wall.
+  // Vanilla's variant is the opposite of the wall face the door closes.
   [InlineData("south", "north")]
   [InlineData("north", "south")]
   [InlineData("west", "east")]
@@ -192,9 +174,7 @@ public class VanillaCodesTests {
   [InlineData("south")]
   [InlineData("west")]
   public void A_stair_is_checked_on_its_cardinal_not_its_half(string side) {
-    // A stair code carries `up`/`down` then a cardinal, which is the case the "last whole side
-    // segment wins" rule exists for. Scanning from the front would find the half, rotate it to a
-    // cardinal, and produce a code matching no block.
+    // A stair code carries `up`/`down` then a cardinal: the "last whole side segment wins" case.
     BlockFacing facing = BlockFacing.FromCode(side);
 
     foreach (BlockFacing half in new[] { BlockFacing.UP, BlockFacing.DOWN }) {
@@ -204,8 +184,7 @@ public class VanillaCodesTests {
       Assert.Contains($"-{half.Code}-{side}-", fire);
       Assert.Contains($"-{half.Code}-{side}-", any);
 
-      // Only segment 3, the cardinal. The half at index 2 is `up`/`down`, which no Y rotation moves
-      // and which the code already matches literally; it must never be picked instead.
+      // Only segment 3, the cardinal; the half at index 2 is `up`/`down`.
       Assert.Equal([3], MultiblockLayoutBuilder.FindOrientationSegments(fire));
       Assert.Equal([3], MultiblockLayoutBuilder.FindOrientationSegments(any));
     }
@@ -228,8 +207,7 @@ public class VanillaCodesTests {
   }
 
   [Theory]
-  // The two groups passed the wrong way round. Both orderings compile and both produce a code
-  // matching no block, so the helper throws instead.
+  // The two groups passed the wrong way round; both orderings produce a code matching no block.
   [InlineData("north", "up")]
   [InlineData("south", "down")]
   public void A_stair_with_its_two_groups_swapped_is_refused(
@@ -249,8 +227,7 @@ public class VanillaCodesTests {
 
   [Fact]
   public void A_pinned_tier_admits_that_tier_only() {
-    // The hot blast furnace is the one shell that pins its material, so RefractoryTier must be
-    // narrower than Refractory rather than a synonym for it.
+    // RefractoryTier is narrower than Refractory, not a synonym for it.
     Assert.True(Matches(VanillaCodes.RefractoryTier(3), RefractoryTier3));
     Assert.False(Matches(VanillaCodes.RefractoryTier(3), RefractoryTier1));
     Assert.True(Matches(VanillaCodes.Refractory, RefractoryTier1));

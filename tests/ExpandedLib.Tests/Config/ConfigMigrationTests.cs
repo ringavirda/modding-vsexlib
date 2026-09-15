@@ -15,17 +15,12 @@ internal sealed class FakeConfig : IExVersionedConfig {
   public string Label { get; set; } = "ok";
 }
 
-/// <summary>
-/// The shared config store's load-migrate-stamp-save cycle: a value reset fires exactly when an
-/// upgrade crosses its <c>ToVersion</c>, scoped optionally by <c>FromVersion</c>, and only the named
-/// fields are reset while everything else (and the version stamp) round-trips.
-/// </summary>
+/// <summary>Pins the config store's load-migrate-stamp-save cycle across a <c>ToVersion</c>/<c>FromVersion</c> crossing.</summary>
 public class ConfigMigrationTests {
   private const string ModId = "fakemod";
   private const string FileName = "fake.json";
 
-  /// <summary>A fake mod stamped with <paramref name="version"/>. <c>Mod.Info</c> has a non-public
-  /// setter, so it is assigned through reflection.</summary>
+  /// <summary>A fake mod stamped with <paramref name="version"/>, assigned through reflection.</summary>
   private static Mod FakeMod(string version) {
     var mod = Substitute.For<Mod>();
     typeof(Mod)
@@ -43,8 +38,7 @@ public class ConfigMigrationTests {
   ) {
     var api = Substitute.For<ICoreAPI>();
     api.Logger.Returns(Substitute.For<ILogger>());
-    // Only the server writes the file back, so an unstubbed Side (default 0, neither side) would
-    // silently turn every write-back assertion below into a check on a no-op.
+    // Only the server writes the file back.
     api.Side.Returns(side);
 
     // The store reads and writes its "fakemod" section of a shared mod-sectioned document.
@@ -71,7 +65,6 @@ public class ConfigMigrationTests {
 
   [Fact]
   public void Load_resets_invalid_values_to_defaults_but_keeps_valid_ones() {
-    // A player has hand-edited the file into gameplay-breaking values.
     var stored = new FakeConfig {
       ConfigVersion = "1.0.0",
       ValueA = -3, // negative int
@@ -118,7 +111,7 @@ public class ConfigMigrationTests {
 
     store.Load(api);
 
-    // The build is unchanged, so no migration runs even though one targets this version.
+    // No migration runs for an unchanged build.
     Assert.Equal(5, store.Config.ValueA);
     Assert.Equal(7, store.Config.ValueB);
   }
@@ -174,8 +167,7 @@ public class ConfigMigrationTests {
 
   [Fact]
   public void FromVersion_lower_bound_scopes_the_reset() {
-    // The file was saved at 0.9.0, below the migration's FromVersion of 0.9.1, so the scoped
-    // "0.9.1 => 0.9.2" reset must not touch it.
+    // FromVersion 0.9.1 excludes a file stamped 0.9.0.
     var stored = new FakeConfig { ConfigVersion = "0.9.0", ValueA = 5 };
     var (api, _) = FakeApi(stored, runningVersion: "0.9.2");
     var store = Store(
@@ -193,7 +185,7 @@ public class ConfigMigrationTests {
 
   [Fact]
   public void Unparseable_stored_version_is_treated_as_oldest_and_migrates() {
-    // Pre-versioning file (null stamp) sorts lowest, so an unscoped migration fires.
+    // A null stamp sorts as oldest.
     var stored = new FakeConfig { ConfigVersion = null, ValueA = 5 };
     var (api, _) = FakeApi(stored, runningVersion: "0.9.2");
     var store = Store(
@@ -224,8 +216,7 @@ public class ConfigMigrationTests {
 
   [Fact]
   public void A_client_side_load_reads_the_config_but_never_writes_it() {
-    // In singleplayer both sides load this register in the same process against the same file. Two
-    // writers race over it, so only the server writes.
+    // Only the server writes; both sides load the same file in singleplayer.
     var stored = new FakeConfig { ConfigVersion = "1.0.0", ValueA = 42 };
     var (api, saved) = FakeApi(
       stored,

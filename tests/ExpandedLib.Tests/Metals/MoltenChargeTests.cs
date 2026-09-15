@@ -6,12 +6,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The shared molten-charge domain type used by the converter, barrel, tap and pedestal: a
+/// <summary>The shared molten-charge domain type used by the converter, barrel, tap and pedestal: a
 /// temperature-tracked stack plus a unit count, with temperature, state classification, retype,
-/// recovery and tree round-trip. Iron melts at 1500 C, so it is liquid above 0.8x = 1200, hardened
-/// below 0.3x = 450, and below its melting point under 1500.
-/// </summary>
+/// recovery and tree round-trip.</summary>
 public class MoltenChargeTests {
   private const string Iron = "game:ingot-iron";
   private const string Steel = "game:ingot-steel";

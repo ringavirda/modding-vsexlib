@@ -4,11 +4,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="RegistryLawScanner"/> against a throwaway base type with two leaves in this assembly -
-/// one that keeps the law and one that breaks it, so <c>ConcreteSubclasses</c> finds both and
-/// <c>ForEach</c> reports only the one that fails.
-/// </summary>
+/// <summary><see cref="RegistryLawScanner"/> against a throwaway base type with two leaves, one
+/// that keeps the law and one that breaks it.</summary>
 public class RegistryLawScannerTests {
   private abstract class Base {
     public abstract int Value { get; }

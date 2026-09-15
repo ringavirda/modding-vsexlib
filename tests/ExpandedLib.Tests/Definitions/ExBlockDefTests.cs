@@ -9,15 +9,11 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// <see cref="ExBlockDef"/> builds the blocktype <see cref="JObject"/> the vanilla object loader
-/// consumes. Pins the token shape of each field plus a whole-block parity check against a verbatim copy
-/// of a shipped blocktype (iiex's <c>solidifiediron</c>): the emitted JSON must be semantically equal to
-/// the hand-authored file it replaces.
+/// Pins <see cref="ExBlockDef"/>'s field-by-field token shape and a whole-block parity check
+/// against a verbatim shipped blocktype.
 /// </summary>
 public class ExBlockDefTests {
-  // Verbatim copy of iiex/blocktypes/blastfurnace/solidifiediron.json, the golden the builder must
-  // reproduce. Inline rather than read from the iiex asset so it survives that file's deletion when
-  // the block moves to code-first.
+  // Verbatim copy of iiex/blocktypes/blastfurnace/solidifiediron.json.
   private const string SolidifiedIronJson = """
     {
       "code": "solidifiediron",
@@ -422,7 +418,7 @@ public class ExBlockDefTests {
 
   [Fact]
   public void WalkSpeedMultiplier_emits_a_double_matching_the_parsed_json_value() {
-    // 1.3 has no exact float representation; the double path must equal JSON-parsed 1.3 (a float would not).
+    // 1.3 has no exact float representation; the double path must equal JSON-parsed 1.3.
     JObject json = ExBlockDef
       .Create("d", "c")
       .WalkSpeedMultiplier(1.3)

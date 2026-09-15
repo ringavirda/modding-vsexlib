@@ -10,10 +10,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The right-click-construction wiring exlib owns on top of vanilla's own
-/// <c>BEBehaviorRightClickConstructable</c>: the JSON-driven <see cref="ExRightClickConstructable.GatesProduction"/>
-/// flag and the readiness it derives, the per-domain salvage fraction in <see cref="ExRccSettings"/>,
-/// and <see cref="ConstructedAnimator.IsConstructed"/> following the resolved behavior.
+/// Tests <see cref="ExRightClickConstructable.GatesProduction"/> and readiness,
+/// <see cref="ExRccSettings"/>, and <see cref="ConstructedAnimator.IsConstructed"/>.
 /// </summary>
 public class ConstructionTests {
   /// <summary>Minimal concrete block entity: only used to host a behavior under test.</summary>
@@ -34,8 +32,7 @@ public class ConstructionTests {
     var behavior = new ExRightClickConstructable(be);
 
     var json = new JObject {
-      // Two bare stages: CurrentCompletedStage starts at 0, and IsComplete compares that against
-      // Stages.Length - 1, so a single stage would already read as complete before any interaction.
+      // Two stages: IsComplete compares CurrentCompletedStage against Stages.Length - 1.
       ["stages"] = new JArray { new JObject(), new JObject() },
     };
     if (gatesProduction.HasValue)
@@ -63,7 +60,7 @@ public class ConstructionTests {
   public void An_unfinished_construction_is_not_ready_when_it_gates_production() {
     var behavior = Behavior(new TestWorld(), gatesProduction: true);
 
-    Assert.False(behavior.IsComplete); // one stage, none completed yet
+    Assert.False(behavior.IsComplete);
     Assert.False(behavior.IsReadyToProduce);
     Assert.True(behavior.StopsProductionWhenNotReady);
   }
@@ -96,7 +93,7 @@ public class ConstructionTests {
     ExRccSettings.RegisterBrokenDropsRatio(domain, () => current);
 
     Assert.Equal(1f, ExRccSettings.BrokenDropsRatio(domain));
-    current = 0.25f; // a live /exmod config change
+    current = 0.25f;
     Assert.Equal(0.25f, ExRccSettings.BrokenDropsRatio(domain));
   }
 
@@ -104,9 +101,8 @@ public class ConstructionTests {
 
   #region ConstructedAnimator.IsConstructed
 
-  // One completed stage: on 1.22 vanilla's own RightClickConstruction/ConstructionStage; on
-  // 1.20/1.21 exlib's own port, ExRightClickConstruction/ExConstructionStage (ExRightClickConstructable.cs
-  // has neither type in scope on the other version). Both land on a field literally named "rcc".
+  // 1.22 uses RightClickConstruction/ConstructionStage; 1.20/1.21 use
+  // ExRightClickConstruction/ExConstructionStage. Both land on the field named "rcc".
   private static ExRightClickConstructable CompletedRcc(BlockEntity be) {
     var rcc = new ExRightClickConstructable(be);
 #if GAME_GE_1_22

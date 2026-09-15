@@ -6,12 +6,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The process-wide metal catalogue. A metal with no <see cref="MetalDef"/> reads back the code
-/// conventions of <c>MoltenMetal</c> / <c>MoltenChisel</c>, so the registry acts as a read-only overlay;
-/// a registered def overrides each of those in turn. The registry is a static store, so each test clears
-/// it first.
-/// </summary>
+/// <summary>The process-wide metal catalogue: a metal with no <see cref="MetalDef"/> reads back the
+/// code conventions of <c>MoltenMetal</c> / <c>MoltenChisel</c>; a registered def overrides each
+/// of those in turn.</summary>
 [Collection("MetalRegistry")] // the registry is a process-wide static; serialize the mutating classes
 public class MetalRegistryTests {
   public MetalRegistryTests() => MetalRegistry.Clear();
@@ -76,7 +73,7 @@ public class MetalRegistryTests {
   [Fact]
   public void FallbackOf_is_null_with_no_default_set() {
     // exlib ships no metal and no default of its own; a content mod opts in through
-    // MetalRegistry.DefaultRecoveryFallback (see FallbackOf_uses_the_registered_default).
+    // MetalRegistry.DefaultRecoveryFallback.
     Assert.Null(MetalRegistry.FallbackOf(new AssetLocation("game:ingot-iron")));
   }
 
@@ -148,9 +145,7 @@ public class MetalRegistryTests {
 
   [Fact]
   public void Classify_reads_a_registered_metals_thresholds_over_the_global_default() {
-    // A metal with liquid threshold 0.9 (global 0.8) and hardened threshold 0.5 (global 0.3) classifies
-    // differently from an unregistered metal at the same temperature and melting point, so
-    // MoltenMetal.Classify reads the per-metal MetalDef rather than the ExlibValues default.
+    // Liquid threshold 0.9 (global 0.8), hardened threshold 0.5 (global 0.3).
     MetalRegistry.Register(
       new MetalDef {
         Code = "slag",
@@ -163,7 +158,7 @@ public class MetalRegistryTests {
     var iron = new AssetLocation("game:ingot-iron"); // unregistered → global 0.8 / 0.3
     const float meltPoint = 1000f;
 
-    // 850 °C: above iron's 0.8x1000 liquid line, below slag's 0.9x1000, so iron flows and slag cools.
+    // 850 deg C: above iron's 0.8x1000 liquid line, below slag's 0.9x1000.
     Assert.Equal(
       MoltenState.Liquid,
       MoltenMetal.Classify(850f, meltPoint, iron)
@@ -173,7 +168,7 @@ public class MetalRegistryTests {
       MoltenMetal.Classify(850f, meltPoint, slag)
     );
 
-    // 400 °C: above iron's 0.3x1000 hardened line, below slag's 0.5x1000, so iron cools and slag hardens.
+    // 400 deg C: above iron's 0.3x1000 hardened line, below slag's 0.5x1000.
     Assert.Equal(
       MoltenState.Cooling,
       MoltenMetal.Classify(400f, meltPoint, iron)
@@ -211,7 +206,7 @@ public class MetalRegistryTests {
       new MetalDef { Code = "slag", MoltenItem = "iiex:slag" }
     );
 
-    // Convention would have built game:ingot-slag; the registered def redirects to iiex:slag.
+    // Convention builds game:ingot-slag; the registered def redirects to iiex:slag.
     Assert.Equal("iiex:slag", MetalRegistry.MoltenItemOf("slag").ToString());
   }
 
@@ -261,8 +256,7 @@ public class MetalRegistryTests {
 
   [Fact]
   public void CastProductOf_rehomes_the_drop_into_the_metals_cast_domain() {
-    // Vanilla's plate mold drops game:metalplate-{metal}, but there is no game-domain cast-iron plate,
-    // so the drop has to land in the domain that owns the metal.
+    // There is no game-domain cast-iron plate; the drop lands in the domain that owns the metal.
     MetalRegistry.Register(
       new MetalDef {
         Code = "castiron",
@@ -306,8 +300,7 @@ public class MetalRegistryTests {
 
   [Fact]
   public void CastProductOf_leaves_the_template_instance_untouched() {
-    // Vanilla's stackFromCode mutates the JsonItemStack it is handed. This primitive must not, because
-    // callers reuse one parsed template across metals.
+    // Callers reuse one parsed template across metals; this primitive must not mutate it.
     var template = new AssetLocation("game:metalplate-{metal}");
     MetalRegistry.CastProductOf(template, new AssetLocation("game:ingot-iron"));
 

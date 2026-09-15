@@ -8,15 +8,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// How shape assets may be loaded, enforced across every mod. Both rules here were live defects the
-/// vendored game source exposed, and neither shows up at runtime until something goes wrong on the
-/// tesselation thread, so they are pinned mechanically rather than left to review.
-/// <para>
-/// This is a source-text scan, not a behavioural one: it stops the pattern coming back, it cannot
-/// tell whether a given load is correct.
-/// </para>
-/// </summary>
+/// <summary>How shape assets may be loaded, enforced by a source-text scan across every mod.</summary>
 public class ShapeLoadingGuards {
   #region Corpus
 
@@ -57,8 +49,7 @@ public class ShapeLoadingGuards {
     return files;
   }
 
-  // Whole-file matching rather than line-by-line: the formatter breaks a fluent chain across lines, so a
-  // per-line scan would miss exactly the spellings csharpier produces.
+  // Whole-file matching: the formatter breaks a fluent chain across lines.
   private static string[] Offenders(Regex pattern) =>
     [
       .. Production()
@@ -88,11 +79,7 @@ public class ShapeLoadingGuards {
 
   [Fact]
   public void No_shape_is_deserialized_straight_off_the_asset() {
-    // Assets.TryGet(loc).ToObject<Shape>() throws on a malformed shape file, and the calls that matter
-    // run on the tesselation thread, where the exception surfaces detached from the block that caused
-    // it. Shape.TryGet wraps the same call: it catches, names the offending file in the log, and sets
-    // ShapeElement.locationForLogging first so a per-element warning names it too. ExMeshCache.LoadShape
-    // is the way in.
+    // ToObject<Shape>() throws on a malformed shape file with no offending path in the log.
     string[] offenders = Offenders(new Regex(@"ToObject\s*<\s*Shape\s*>\s*\("));
 
     Assert.True(
@@ -104,11 +91,8 @@ public class ShapeLoadingGuards {
 
   [Fact]
   public void A_blocktypes_own_shape_path_is_never_rewritten_in_place() {
-    // WithPathPrefixOnce and WithPathAppendixOnce mutate the receiver and return it, so calling either
-    // on Block.Shape.Base permanently rewrites the path for every instance of that blocktype. For an MP
-    // machine that also changes its CompositeShape's hash, which is what MechNetworkRenderer pools its
-    // renderers on, so the device silently migrates to a second bucket with its own uploaded mesh.
-    // Cloning first is what breaks the chain, and ExMeshCache.ShapePathOf does it.
+    // WithPathPrefixOnce/WithPathAppendixOnce mutate the receiver: calling either on Block.Shape.Base
+    // permanently rewrites the path for every instance of that blocktype.
     string[] offenders = Offenders(
       new Regex(@"Shape\s*\.\s*Base\s*\.\s*WithPath")
     );

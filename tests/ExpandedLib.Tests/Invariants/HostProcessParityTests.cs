@@ -4,13 +4,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The two nested <c>HostProcess</c> forwarding shims - <c>BlockEntityProductionMachine.HostProcess</c>
-/// and <c>BlockEntityMultiblockMachine.HostProcess</c> - stay identical apart from the owner type
-/// name they close over. A shim edited on one side and not the other silently forks the process's
-/// forwarding surface; deliberately not merged (an internal host interface would cost a forwarder per
-/// member for no fewer lines), so this test is what keeps them in step instead.
-/// </summary>
+/// <summary>Checks the two nested <c>HostProcess</c> forwarding shims in
+/// <c>BlockEntityProductionMachine</c> and <c>BlockEntityMultiblockMachine</c> stay identical apart
+/// from the owner type they close over.</summary>
 public class HostProcessParityTests {
   private const string ProductionMachinePath =
     "Machines/BlockEntityProductionMachine.cs";
@@ -33,14 +29,12 @@ public class HostProcessParityTests {
       $"{relativePath}: no 'HostProcess' nested class found."
     );
 
-    // The doc comment is a contiguous run of "  /// " lines directly above the class; included so a
-    // shim's comment can drift out of step the same way its body can.
+    // Includes the doc comment: a contiguous run of "  /// " lines directly above the class.
     int start = classLine;
     while (start > 0 && lines[start - 1].TrimStart().StartsWith("///"))
       start--;
 
-    // The class body ends at the first line back at the class's own two-space indent that closes
-    // it - every member inside is indented four spaces or more.
+    // The class body ends at the first line at the class's own two-space indent.
     int end = classLine + 1;
     while (
       end < lines.Length
@@ -54,8 +48,7 @@ public class HostProcessParityTests {
 
     var body = new string[end - start + 1];
     for (int i = 0; i <= end - start; i++)
-      // Normalise the owner type name so the comparison is blind to it - the one thing the two
-      // shims are allowed to differ on - and leave everything else, including whitespace, exact.
+      // Normalises the owner type name, the one thing the two shims may differ on.
       body[i] = lines[start + i].Replace(ownerTypeName, "TOwner");
     return (body, start + 1); // 1-based source line of body[0]
   }

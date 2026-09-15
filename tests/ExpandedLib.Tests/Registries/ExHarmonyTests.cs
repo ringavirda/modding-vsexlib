@@ -9,8 +9,7 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// The shared Harmony bootstrap (<see cref="ExHarmony"/>). Patches a test-only class on a test-only
-/// method - never a game type - under unique mod ids per case so cases cannot leave patches behind
-/// for one another; each unpatches in a <c>finally</c>.
+/// method, never a game type, under unique mod ids per case; each unpatches in a <c>finally</c>.
 /// </summary>
 [Collection(ExHarmonyCollection.Name)]
 public class ExHarmonyTests {

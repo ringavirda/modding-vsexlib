@@ -9,11 +9,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The behaviour rung of the declared-state family: <see cref="ExBlockEntityBehavior"/> gives a
-/// <see cref="BlockEntityBehavior"/> the same <c>[Persist]</c>/<c>Persisted</c> convenience
-/// <see cref="ExBlockEntity"/> gives a plain block entity, without forcing it to give up its own base.
-/// A behaviour's tree is the host's flat tree - vanilla fans <c>ToTreeAttributes</c> out over
-/// <c>Behaviors</c> against the same tree - so a host and its behaviour share one key space.
+/// Tests <see cref="ExBlockEntityBehavior"/>'s <c>[Persist]</c>/<c>DeclareState</c> support,
+/// sharing its host's flat attribute tree and key space.
 /// </summary>
 public class ExBlockEntityBehaviorTests {
   private sealed class AttributedBehavior(BlockEntity be)
@@ -39,7 +36,6 @@ public class ExBlockEntityBehaviorTests {
       state.Int("shared", () => A, v => A = v);
   }
 
-  // Any concrete block entity works as a host; the behaviour's own fan-out is what is under test.
   private sealed class Host : ExBlockEntity {
     [Persist("hostValue")]
     public int HostValue;

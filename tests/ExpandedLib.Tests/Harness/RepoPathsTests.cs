@@ -4,11 +4,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="RepoPaths"/>'s domain lookup: a known domain resolves to its declared mod, an unknown
-/// one falls back to a folder of its own name rather than throwing, and <see cref="RepoPaths.Register"/>
-/// lets a new mod declare its domain instead of hand-editing the harness.
-/// </summary>
+/// <summary><see cref="RepoPaths"/>'s domain lookup: a known domain resolves to its declared mod,
+/// an unknown one falls back to a folder of its own name, and <see cref="RepoPaths.Register"/>
+/// declares a new domain.</summary>
 public class RepoPathsTests {
   [Fact]
   public void Assets_of_an_unknown_domain_falls_back_to_a_same_named_mod_folder() {

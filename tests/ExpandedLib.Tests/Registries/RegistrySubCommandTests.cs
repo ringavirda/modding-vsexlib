@@ -7,8 +7,7 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// The shared list/show/set scaffold <see cref="ConfigSubCommand"/> and <see cref="RecipesSubCommand"/>
-/// derive from, exercised through a tiny in-memory registry of its own rather than either mod command's
-/// real one.
+/// derive from, exercised through its own tiny in-memory registry.
 /// </summary>
 public class RegistrySubCommandTests {
   private sealed class Widget {
@@ -34,8 +33,7 @@ public class RegistrySubCommandTests {
     protected override string Describe(Widget entry) =>
       $"{entry.Code}={entry.Value}";
 
-    // Mirrors ConfigSubCommand's two-level shape: `<field> <value>` to write, `<field>` alone is
-    // missing its value, no words at all shows the current one.
+    // Mirrors ConfigSubCommand's two-level shape: field+value writes, field alone errors, no words shows the current one.
     protected override TextCommandResult Set(Widget entry, string[] args) {
       if (args.Length == 0)
         return TextCommandResult.Success($"current: {entry.Value}");
@@ -101,8 +99,7 @@ public class RegistrySubCommandTests {
 
   [Fact]
   public void A_field_with_no_value_reports_missing_arguments() {
-    // The base only decides "show" (no words) versus "hand these words to Set"; how many Set then
-    // needs is the derived command's own business, same as ConfigSubCommand requiring a newvalue.
+    // The base only decides "show" versus "hand these words to Set"; Set decides how many it needs.
     var cmd = Command(new Widget { Code = "a", Value = "1" });
 
     TextCommandResult result = cmd.Dispatch("a", "field");

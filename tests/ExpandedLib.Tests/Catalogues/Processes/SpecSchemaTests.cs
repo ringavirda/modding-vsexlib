@@ -5,11 +5,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The versioning contract every spec attribute carries. A parser must read every form that has shipped,
-/// and must refuse one it cannot know the shape of rather than mis-reading it as the form it does know.
-/// See docs/design/mechanics/process-extension.md.
-/// </summary>
+/// <summary>Tests <see cref="SpecSchema"/>: every shipped form reads, an unknown one is
+/// refused by name.</summary>
 public class SpecSchemaTests {
   private static JsonObject Json(string json) => new(JToken.Parse(json));
 
@@ -38,8 +35,7 @@ public class SpecSchemaTests {
 
   [Fact]
   public void A_declaration_with_no_schema_reads_as_the_first_one() {
-    // Absent is not the same as unversioned: the first form is the one that shipped before the field
-    // existed, so it has a number whether or not it was written down.
+    // The first form has a number whether or not it was written down.
     Assert.Equal(SpecSchema.First, Read("""{ "family": "shingledbar" }"""));
     Assert.Equal(1, SpecSchema.First);
   }
@@ -51,15 +47,13 @@ public class SpecSchemaTests {
 
   [Fact]
   public void An_older_form_is_still_read() {
-    // The whole point of the number: a spec written against schema 1 keeps loading on a build that has
-    // moved to 2. Refusing it would break someone's content on our schedule.
+    // A spec written against schema 1 keeps loading on a build that has moved to 2.
     Assert.Equal(1, Read("""{ "schema": 1 }""", current: 2));
   }
 
   [Fact]
   public void A_schema_from_a_newer_build_is_refused_by_name() {
-    // We cannot know what changed, so reading it as the form we do know would mis-parse it silently. The
-    // error names both numbers, because the fix is on the reader's side - update the library.
+    // The error names both schema numbers.
     string error = Rejects("""{ "schema": 3 }""", current: 2);
 
     Assert.Contains("3", error);

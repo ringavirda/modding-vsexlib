@@ -31,8 +31,7 @@ public class PersistAttributeTests {
       Value = tree.GetInt("value");
   }
 
-  // Every supported kind at once, named with a leading underscore so the default-key rule is
-  // exercised alongside the round trip.
+  // Fields use a leading underscore to exercise the default-key rule alongside the round trip.
 #pragma warning disable CS0169 // fixture fields are set/read only via [Persist] reflection, never by name
   private sealed class Bag : ExBlockEntity {
     [Persist]
@@ -107,8 +106,7 @@ public class PersistAttributeTests {
   }
 #pragma warning restore CS0169
 
-  // ToTreeAttributes reads Block.IsMissing before it ever reaches Persisted, so every instance under test
-  // needs a real block even though nothing here cares which one.
+  // ToTreeAttributes reads Block.IsMissing before it reaches Persisted; every instance needs a real block.
   private static void Place(BlockEntity be) {
     be.Pos = new BlockPos(0, 0, 0);
     be.Block = TestBlocks.Configure(new Block(), "test:persist", 1);
@@ -312,9 +310,8 @@ public class PersistAttributeTests {
 
   [Fact]
   public void The_scan_is_cached_per_type_not_rebuilt_per_instance() {
-    // PersistScan caches the compiled binder array by CLR type: reading through the same private
-    // dictionary after two separate instances declare their state must find the identical array,
-    // not two equal-but-distinct rebuilds.
+    // PersistScan caches the compiled binder array by CLR type: two instances must find the same
+    // array, not two rebuilds.
     FieldInfo cacheField =
       typeof(PersistScan).GetField(
         "_cache",

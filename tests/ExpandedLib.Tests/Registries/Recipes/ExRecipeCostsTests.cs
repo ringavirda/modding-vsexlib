@@ -12,14 +12,12 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// The recipe-cost adjuster: a catalogue entry carries a self-contained <see cref="RecipeProfileCost"/>
-/// per profile. Covers extracting "normal" from a live recipe, scale-filling an alternate profile,
-/// applying a profile to grid recipes (ingredients + pinned output) and to RCC blocks (per-stage), and
+/// per profile. Covers extraction, scale-filling, applying a profile to grid and RCC recipes, and
 /// reconciling a hand-edited file.
 /// </summary>
 public class ExRecipeCostsTests {
   // 1.22 resolves grid ingredients into a CraftingRecipeIngredient[] property; 1.20/1.21 use a
-  // GridRecipeIngredient[] field of the subclass GridRecipeIngredient. The tests assert on the same
-  // instances they pass in, so on legacy those instances must be GridRecipeIngredients to fit the field.
+  // GridRecipeIngredient[] field of the subclass GridRecipeIngredient.
 #if GAME_GE_1_22
   private static CraftingRecipeIngredient Ing(string code, int qty) =>
     new() { Code = new AssetLocation(code), Quantity = qty };
@@ -41,8 +39,7 @@ public class ExRecipeCostsTests {
     return recipe;
   }
 
-  /// <summary>Stores the resolved ingredients into whichever member this game version exposes,
-  /// keeping the same instances so a later Apply mutates the objects the test holds.</summary>
+  /// <summary>Stores the resolved ingredients into whichever member this game version exposes.</summary>
   private static void SetResolvedIngredients(
     GridRecipe recipe,
     CraftingRecipeIngredient[] ings
@@ -348,8 +345,7 @@ public class ExRecipeCostsTests {
 
   [Fact]
   public void Applying_a_grid_profile_also_resizes_the_resolved_stack() {
-    // Crafting consumes ResolvedItemStack.StackSize, not Quantity, so both must be updated or the
-    // recipe keeps charging its authored amount.
+    // Crafting consumes ResolvedItemStack.StackSize, not Quantity; both need updating.
     var world = new TestWorld();
     var rod = Ing("game:rod-iron", 8);
     rod.ResolvedItemStack = new ItemStack { StackSize = 8 };

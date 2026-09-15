@@ -38,11 +38,9 @@ internal sealed class OrderedTeardownMachine : BlockEntityProductionMachine {
   }
 }
 
-/// <summary>
-/// The production process as a hosted behaviour rather than a base class: a machine carries one from
-/// construction, that behaviour owns the tick handle, and the machine remains the only writer of the
-/// saved timestamp. See docs/design/mechanics/framework-composition.md.
-/// </summary>
+/// <summary>The production process as a hosted behaviour: a machine carries one from construction,
+/// and it remains the only writer of the saved timestamp. See
+/// docs/design/mechanics/framework-composition.md.</summary>
 public class ProductionProcessTests {
   private const string MachineCode = "test:processmachine";
 
@@ -68,8 +66,6 @@ public class ProductionProcessTests {
   public void A_machine_carries_one_process_from_construction() {
     var machine = new TestProductionMachine();
 
-    // The premise: nothing has run on this machine yet. A process added by Initialize or by the first
-    // FromTreeAttributes would miss whichever of the two the engine had already fanned out.
     Assert.Null(machine.Api);
     Assert.Single(machine.Behaviors.OfType<BEBehaviorProductionMachine>());
   }
@@ -101,9 +97,7 @@ public class ProductionProcessTests {
 
   #region The tick handle
 
-  // The block entity drops every listener it holds before either teardown call reaches its behaviours,
-  // so what the process contributes on both paths is forgetting the handle. A handle kept behind names
-  // a listener that no longer exists, and the idempotence guard then refuses every later start.
+  // A handle kept behind names a stale listener; the idempotence guard then refuses every later start.
   [Theory]
   [InlineData(true)] // removal
   [InlineData(false)] // chunk unload
@@ -119,8 +113,6 @@ public class ProductionProcessTests {
     else
       machine.OnBlockUnloaded();
 
-    // The premise the second half rests on: teardown really did unregister the listener, so a further
-    // tick only arrives if the machine registered a new one.
     world.FireBlockEntityTicks();
     Assert.Equal(1, machine.ProductionTicks);
 
@@ -129,9 +121,7 @@ public class ProductionProcessTests {
     Assert.Equal(2, machine.ProductionTicks);
   }
 
-  // Hosts differ on where they put their own teardown relative to base: the multiblock form tears down
-  // after it, the furnace core before it so its fire is out while the tick still exists. The process
-  // sits at both ends of that and must leave the same result either way.
+  // The process must leave the same result from either end of a host's own teardown.
   [Theory]
   [InlineData(true)] // base first: the host's own teardown runs with its listeners already gone
   [InlineData(false)] // base last: they are still live, which is the window a fire-out needs
@@ -148,8 +138,6 @@ public class ProductionProcessTests {
     world.Initialize(machine);
     world.FireBlockEntityTicks();
 
-    // The premise: the machine is ticking, so a tick fired from inside its teardown reports whether
-    // the listener was still there at that point.
     Assert.Equal(1, machine.ProductionTicks);
 
     int atOwnTeardown = -1;
@@ -174,9 +162,7 @@ public class ProductionProcessTests {
     var (world, machine) = Placed();
     world.Attach(machine);
 
-    // A behaviour is handed an api only by its own Initialize; a block entity can be given one
-    // without being initialised, which is how most fixtures drive a machine. The process must read
-    // the block entity's api, not its own.
+    // The process reads the block entity's api, not its own.
     Assert.Null(ProcessOf(machine).Api);
     machine.StartTicking();
     world.FireBlockEntityTicks();
@@ -195,8 +181,7 @@ public class ProductionProcessTests {
     world.AdvanceHours(3);
     world.FireBlockEntityTicks();
 
-    // A behaviour's tree is fanned into the block entity's own flat tree, so a key both of them write
-    // has one silent winner. The process holds the stamp and writes none of it.
+    // The process holds the stamp and writes none of it.
     var ofProcess = new TreeAttribute();
     ProcessOf(machine).ToTreeAttributes(ofProcess);
     Assert.False(ofProcess.HasAttribute("pm_lastHours"));

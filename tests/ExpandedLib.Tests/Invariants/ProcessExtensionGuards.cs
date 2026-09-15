@@ -8,31 +8,19 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The rule the whole extension layer exists to make real: a machine reads its tooling and names no
-/// product. Every hard-coded product code is a place a third party has to fork instead of declare, and
-/// nothing about it fails at runtime - the machine simply makes the one thing its author thought of.
-/// <para>
-/// A source-text scan, in the shape of <see cref="ShapeLoadingGuards"/>: it stops the pattern coming back,
-/// it cannot tell whether a given lookup is correct.
-/// See docs/design/mechanics/process-extension.md.
-/// </para>
-/// </summary>
+/// <summary>A machine reads its tooling and names no product in code. See docs/design/mechanics/process-extension.md.</summary>
 public class ProcessExtensionGuards {
   #region Corpus
 
   private sealed record SourceFile(string Relative, string Text);
 
-  // What makes a file a process machine is that it reads a process registry. Deriving the corpus that way
-  // rather than from a hand-kept list means a machine adopting a registry joins this guard by doing so,
-  // and cannot be added to the codebase outside its reach.
+  // A file is a process machine when it reads a process registry.
   private static readonly Regex ReadsARegistry = new(
     @"ProcessRouteRegistry|ProcessJobRegistry|ProcessExtensions|MillSchedule|RollSetSpec|MoldSpec",
     RegexOptions.Compiled
   );
 
-  // A literal code is banned; an art path is not. Shapes and textures are the machine's own appearance,
-  // which no registry owns and no modder extends by declaring a stage.
+  // A literal code is banned; an art path is not.
   private static readonly Regex LiteralCode = new(
     """new\s+AssetLocation\s*\(\s*"(?<code>[a-z][a-z0-9]*:[^"]*)"\s*\)""",
     RegexOptions.Compiled
@@ -59,8 +47,7 @@ public class ProcessExtensionGuards {
           rel.Contains("/bin/", StringComparison.Ordinal)
           || rel.Contains("/obj/", StringComparison.Ordinal)
           || path.EndsWith(".g.cs", StringComparison.Ordinal)
-          // The registries and the spec types name the contract itself, which is the one place a code may
-          // legitimately be written down - and the emitter's whole job is to build items from declared ones.
+          // The registries and spec types name the contract itself.
           || rel.Contains("/Processes/", StringComparison.Ordinal)
         )
           continue;
@@ -97,13 +84,8 @@ public class ProcessExtensionGuards {
 
   [Fact]
   public void The_corpus_is_not_empty() {
-    // Without this the rule below passes by scanning nothing, which is how a guard reads green for a year
-    // after the pattern it watched for moved to a folder it no longer walks.
     IReadOnlyList<SourceFile> machines = ProcessMachines();
 
-    // exlib ships no concrete process machine of its own - the family's own machines (the rolling
-    // mill, the boring machine, ...) are what this guard exists to police, checked in exmods. What
-    // still has to hold here is that the scan reaches real source at all.
     Assert.True(
       machines.Count > 0,
       "Found no process-machine sources under src/ - the corpus rule is wrong and the guard below is "

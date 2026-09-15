@@ -8,16 +8,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="ExBlockNames.AddVariantQualifier"/>'s registration order and replace-in-place
-/// contract, and <see cref="ExBlockNames.Decorate"/>'s material/rock/brick precedence and
-/// parenthetical merging. <c>TestLang</c> echoes every key back rather than formatting it, so a
-/// decorated name is asserted either as the untouched base name or, where the exact args a lookup
-/// receives are what is under test, through <c>TestLang.Service.Received()</c> - the same idiom
-/// <c>ExInfoTests</c> uses. Both statics are process-wide, so <see cref="Dispose"/> removes every
-/// qualifier group this class registered and restores the two lang keys the merge test restubs, so
-/// neither lingers for other test classes.
-/// </summary>
+/// <summary><see cref="ExBlockNames.AddVariantQualifier"/>'s registration order and
+/// replace-in-place contract, and <see cref="ExBlockNames.Decorate"/>'s material/rock/brick
+/// precedence and parenthetical merging.</summary>
 public class ExBlockNamesTests : IDisposable {
   private readonly List<string> _addedQualifiers = [];
 
@@ -154,8 +147,7 @@ public class ExBlockNamesTests : IDisposable {
 
   [Fact]
   public void Decorate_merges_a_second_qualifier_into_an_existing_parenthetical_group() {
-    // Restub the two lookups AppendQualifier drives so the merge branch (name already ends in
-    // ")") is reachable: TestLang otherwise echoes the key, never producing a "(...)" suffix.
+    // Restubs the two lookups so the merge branch (name already ends in ")") is reachable.
     TestLang
       .Service.Get("exlib:blockname-suffixed", Arg.Any<object[]>())
       .Returns(ci => {

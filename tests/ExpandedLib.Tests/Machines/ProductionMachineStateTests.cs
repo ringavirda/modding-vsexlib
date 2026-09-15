@@ -8,12 +8,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="BlockEntityProductionMachine"/> gets the same <c>Persisted</c>/<c>DeclareState</c> convenience
-/// as <see cref="ExBlockEntity"/>, layered on top of the hand-written <c>pm_lastHours</c> stamp it
-/// already writes - a subclass that adds nothing must not disturb that stamp, and one that overrides the
-/// pair itself must not be shadowed by it.
-/// </summary>
+/// <summary><see cref="BlockEntityProductionMachine"/>'s <c>Persisted</c>/<c>DeclareState</c>
+/// convenience layers over its hand-written <c>pm_lastHours</c> stamp without disturbing or
+/// shadowing it.</summary>
 public class ProductionMachineStateTests {
   private sealed class StatefulMachine : BlockEntityProductionMachine {
     public float Temp;
@@ -55,8 +52,7 @@ public class ProductionMachineStateTests {
     }
   }
 
-  // ToTreeAttributes reads Block.IsMissing before it ever reaches Persisted, so every instance under test
-  // needs a real block even though nothing here cares which one.
+  // ToTreeAttributes reads Block.IsMissing before it reaches Persisted; every instance needs a real block.
   private static void Place(BlockEntity be) {
     be.Pos = new BlockPos(0, 0, 0);
     be.Block = TestBlocks.Configure(new Block(), "test:machine", 1);

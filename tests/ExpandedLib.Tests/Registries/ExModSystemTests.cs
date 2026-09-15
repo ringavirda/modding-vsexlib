@@ -15,20 +15,13 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// The zero-line registration rung. Each lifecycle hook runs the matching registries for that phase
-/// before the mod's own (empty by default) hook: config and entities in <c>Start</c>, commands in
-/// each side hook, preferences before commands on the client, and Harmony patched only when
-/// <c>PatchHarmony</c> opts in. Joins <see cref="ExHarmonyCollection"/> - the Harmony cases patch a
-/// real, process-wide target.
+/// before the mod's own hook: config and entities in <c>Start</c>, commands in each side hook,
+/// preferences before commands on the client, Harmony patched only when <c>PatchHarmony</c> opts in.
 /// </summary>
 [Collection(ExHarmonyCollection.Name)]
 public class ExModSystemTests : IDisposable {
-  // EntityRegistry.RegisterAll records this assembly against whichever mod id last registered it
-  // (EntityRegistry's own domain-fallback cache), so every test here would otherwise leave this
-  // shared test assembly pointing at a throwaway test mod id for the rest of the run - breaking
-  // any other test's EntityRegistry.KeyFor/DomainOf call against it. Reset on dispose, the same way
-  // ExHarmonyTests resets the Harmony patches it applies. RegisterAll also discovers this
-  // assembly's contributor-shaped types into ExDefinitions.Contributors, and its
-  // [ExCheckRegister]-decorated types into ExCheckRegistry, both cleared here too.
+  // EntityRegistry.RegisterAll records this assembly against the last mod id that registered it;
+  // reset on dispose, along with this assembly's ExDefinitions.Contributors and ExCheckRegistry entries.
   public void Dispose() {
     var field = typeof(EntityRegistry).GetField(
       "_domainByAssembly",
@@ -82,10 +75,8 @@ public class ExModSystemTests : IDisposable {
     public void Apply(string value) { }
   }
 
-  // A private target of this test class only, so its own patch count is never touched by another
-  // test file's uncategorised [HarmonyPatch] classes also living in this assembly (PatchOnce scans
-  // the whole assembly, so every such class gets applied under whichever mod id is patching - each
-  // targets its own private type, so their counts never mix).
+  // A private target of this test class only; other test files' uncategorised [HarmonyPatch]
+  // classes target their own private types and never mix counts with this one.
   private static class HarmonyTarget {
     public static void Method() { }
   }
@@ -95,8 +86,7 @@ public class ExModSystemTests : IDisposable {
     private static void Prefix() { }
   }
 
-  // A module of "exlibtest.host" through the test assembly's own [assembly: ExModule] (see
-  // ModuleInit.cs); Hosting_a_module_runs_it_through_the_mods_phases proves ExModSystem drives it.
+  // A module of "exlibtest.host" via the test assembly's own [assembly: ExModule].
   private sealed class RecordingModule : IExModule {
     public static readonly List<string> Phases = [];
 
@@ -137,9 +127,7 @@ public class ExModSystemTests : IDisposable {
       nameof(Mod.Info),
       new ModInfo { ModID = modId }
     );
-    // The module host logs through this when an entry point of a hosted module throws (see
-    // Hosting_a_module_runs_it_through_the_mods_phases, which shares this test assembly's
-    // "exlibtests" module with ExModuleHostTests' own throwing case).
+    // The module host logs through this when a hosted module's entry point throws.
     ReflectionHelpers.SetProperty(
       mod,
       nameof(Mod.Logger),

@@ -6,12 +6,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="HandbookUnitPatch"/>'s Harmony patch applies cleanly headlessly - it is exlib's only
-/// uncategorised <c>[HarmonyPatch]</c> class, so <see cref="HarmonyFixture"/> touches nothing else.
-/// Split from <see cref="HandbookUnitPatchConvertTextTests"/> below: a class joins exactly one xUnit
-/// collection, and this one mutates process-wide Harmony state, not <c>ExMeasure.System</c>.
-/// </summary>
+/// <summary>Checks <see cref="HandbookUnitPatch"/>'s Harmony patch applies cleanly
+/// headlessly.</summary>
 [Collection(ExHarmonyCollection.Name)]
 public class HandbookUnitPatchTests {
   [Fact]
@@ -30,19 +26,13 @@ public class HandbookUnitPatchTests {
   }
 }
 
-/// <summary>
-/// The prose conversion <see cref="HandbookUnitPatch"/> drives, <see cref="ExMeasure.ConvertMetricText"/>
-/// in imperial mode - the case <see cref="ExMeasureTests"/> does not cover, since it only proves the
-/// metric-mode passthrough and the no-units passthrough. Joins <see cref="ExMeasureCollection"/>: it
-/// mutates the process-wide <c>ExMeasure.System</c>.
-/// </summary>
+/// <summary>The prose conversion <see cref="HandbookUnitPatch"/> drives,
+/// <see cref="ExMeasure.ConvertMetricText"/> in imperial mode.</summary>
 [Collection(ExMeasureCollection.Name)]
 public class HandbookUnitPatchConvertTextTests {
   #region ConvertMetricText in imperial mode
 
-  // TestLang echoes every lang key back rather than resolving it to a real symbol, so the "metric
-  // symbol" ConvertMetricText matches against is the literal key "exlib:unit-litres", not "L" - the
-  // conversion logic under test is exactly the same either way, only the printed unit text differs.
+  // TestLang echoes lang keys unresolved; the matched symbol is the literal key "exlib:unit-litres", not "L".
   [Fact]
   public void A_single_value_converts_litres_to_gallons() {
     ExMeasure.System = MeasurementSystem.Imperial;
@@ -75,8 +65,7 @@ public class HandbookUnitPatchConvertTextTests {
   public void The_longer_compound_symbol_wins_over_its_prefix() {
     ExMeasure.System = MeasurementSystem.Imperial;
     try {
-      // "exlib:unit-litres" is a literal prefix of "exlib:unit-litres-per-second" under TestLang's
-      // echo, the same collision "L" vs "L/s" is a stand-in for with the real symbols.
+      // "exlib:unit-litres" is a prefix of "exlib:unit-litres-per-second", standing in for the "L" vs "L/s" collision.
       string result = ExMeasure.ConvertMetricText(
         "8 exlib:unit-litres-per-second"
       );

@@ -6,10 +6,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Every <c>exlib</c> block code must resolve to a name in every locale. Neither the build nor the
-/// runtime reports an unresolved key; it renders raw in game.
-/// </summary>
+/// <summary>Every <c>exlib</c> block code must resolve to a name in every locale.</summary>
 public class ExlibLangCoverageTests {
   private const string Domain = "exlib";
   private static readonly Assembly Mod =

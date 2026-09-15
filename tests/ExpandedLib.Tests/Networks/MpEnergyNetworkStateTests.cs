@@ -6,8 +6,7 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// Mechanical-energy shaft math: one shaft integrated as torque on inertia
-/// (<c>ω += (τ_drive - τ_load - τ_fric)/I · dt</c>), with <c>E = ½Iω²</c> for the readout. The helpers are
-/// pure statics, so the cases below need no world. See docs/design/mp-energy-network.md §2.
+/// (<c>w += (tau_drive - tau_load - tau_fric)/I * dt</c>), with <c>E = 1/2Iw^2</c> for the readout.
 /// </summary>
 public class MpEnergyNetworkStateTests {
   private const float MaxSpeed = 2f;
@@ -16,7 +15,7 @@ public class MpEnergyNetworkStateTests {
 
   [Fact]
   public void Capacity_is_the_energy_of_a_flywheel_at_max_speed() {
-    // E_cap = ½·I·ω_max²: a full reservoir is a flywheel at the burst speed.
+    // E_cap = 1/2*I*w_max^2: a full reservoir is a flywheel at the burst speed.
     Assert.Equal(
       0.5f * 10f * MaxSpeed * MaxSpeed,
       MpEnergyNetworkState.CapacityFor(10f, MaxSpeed),
@@ -26,7 +25,7 @@ public class MpEnergyNetworkStateTests {
 
   [Fact]
   public void Speed_and_energy_round_trip_through_the_flywheel_law() {
-    // ω = √(2E/I) is the inverse of E = ½Iω².
+    // w = sqrt(2E/I) is the inverse of E = 1/2Iw^2.
     float e = MpEnergyNetworkState.EnergyAtSpeed(8f, 1.5f);
     Assert.Equal(1.5f, MpEnergyNetworkState.DeriveSpeed(e, 8f), 3);
   }
@@ -44,7 +43,7 @@ public class MpEnergyNetworkStateTests {
   [Fact]
   public void Drive_torque_spins_the_shaft_up_and_stores_energy() {
     var s = new MpEnergyNetworkState { Inertia = 10f };
-    // dω = τ/I·dt = 5/10·1 = 0.5; E = ½·10·0.5².
+    // dw = tau/I*dt = 5/10*1 = 0.5; E = 1/2*10*0.5^2.
     MpEnergyNetworkState.Step(
       s,
       1f,
@@ -82,7 +81,7 @@ public class MpEnergyNetworkStateTests {
   [Fact]
   public void Speed_clamps_to_the_burst_ceiling() {
     var s = new MpEnergyNetworkState { Inertia = 1f };
-    // A torque this large overshoots in one step; the clamp holds ω ≤ ω_max.
+    // A torque this large overshoots in one step; the clamp holds w <= w_max.
     MpEnergyNetworkState.Step(
       s,
       1f,
@@ -99,7 +98,7 @@ public class MpEnergyNetworkStateTests {
   [Fact]
   public void Steady_state_holds_speed_when_drive_balances_load_and_friction() {
     var s = new MpEnergyNetworkState { Inertia = 10f, Speed = 2f };
-    // τ_fric = 0.5·2 = 1; with load 1, a drive of 2 balances exactly, so dω = 0.
+    // tau_fric = 0.5*2 = 1; drive 2 vs load 1 balances at dw = 0.
     MpEnergyNetworkState.Step(
       s,
       1f,
@@ -119,8 +118,7 @@ public class MpEnergyNetworkStateTests {
 
   [Fact]
   public void A_drive_below_the_resistance_floor_never_starts_the_shaft() {
-    // A drive that cannot beat load + idle at rest never spins the shaft up, so nothing accumulates:
-    // both ω and stored energy stay 0.
+    // A drive below load + idle at rest leaves w and stored energy at 0.
     var s = new MpEnergyNetworkState { Inertia = 10f };
     MpEnergyNetworkState.Step(
       s,
@@ -138,7 +136,7 @@ public class MpEnergyNetworkStateTests {
 
   [Fact]
   public void An_over_load_drags_the_shaft_to_a_hard_stall() {
-    // A load the drive cannot cover winds ω down; a large enough one stalls the shaft outright.
+    // A load the drive cannot cover winds w down; a large enough one stalls the shaft outright.
     var s = new MpEnergyNetworkState { Inertia = 1f, Speed = 2f };
     MpEnergyNetworkState.Step(
       s,
@@ -215,7 +213,7 @@ public class MpEnergyNetworkStateTests {
 
   [Fact]
   public void A_consistent_pair_is_left_untouched() {
-    // Already on the constraint (ω_north = ω_south / r), so the projection is a no-op.
+    // Already on the constraint (w_north = w_south / r); the projection is a no-op.
     var south = new MpEnergyNetworkState { Inertia = 10f, Speed = 2f };
     var north = new MpEnergyNetworkState { Inertia = 10f, Speed = 1f };
 
@@ -227,7 +225,7 @@ public class MpEnergyNetworkStateTests {
 
   [Fact]
   public void Driving_from_the_north_speeds_the_south_up() {
-    // Reverse power flow: the north (big gear) drives, so the south (small gear) turns faster.
+    // Reverse power flow: the north (big gear) drives the south (small gear).
     var south = new MpEnergyNetworkState { Inertia = 10f, Speed = 0f };
     var north = new MpEnergyNetworkState { Inertia = 10f, Speed = 1f };
 
@@ -256,7 +254,7 @@ public class MpEnergyNetworkStateTests {
 
   [Fact]
   public void Coupling_a_side_with_no_inertia_is_a_no_op() {
-    // One side carries no inertia, so there is nothing to couple to and the live side is left alone.
+    // A side with no inertia is left alone by the coupling.
     var south = new MpEnergyNetworkState { Inertia = 0f, Speed = 0f };
     var north = new MpEnergyNetworkState { Inertia = 10f, Speed = 1f };
 
@@ -268,8 +266,7 @@ public class MpEnergyNetworkStateTests {
 
   [Fact]
   public void Over_energised_coupling_clamps_the_south_and_keeps_the_ratio() {
-    // Above the ceiling the south clamps to ω_max and the north follows at ω_max / r, so the ratio
-    // survives the clamp; with ratio ≥ 1 the north is never the side that clamps.
+    // Above the ceiling the south clamps to w_max; the north follows at w_max / r.
     var south = new MpEnergyNetworkState { Inertia = 10f, Speed = 10f };
     var north = new MpEnergyNetworkState { Inertia = 10f, Speed = 0f };
 

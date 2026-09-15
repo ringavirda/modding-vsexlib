@@ -5,12 +5,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The typed <c>multiblockStructure</c> builder: named block numbers, a computed <c>Fill</c> for regular
-/// sub-volumes, and bespoke <c>At</c> cells, with build-time validation of block-number references and
-/// cell collisions. Offset order is pinned because the emitted array is compared position-by-position
-/// against the hand-written JSON.
-/// </summary>
+/// <summary>Pins the typed <c>multiblockStructure</c> builder: block numbers, <c>Fill</c>, <c>At</c>, and their build-time validation.</summary>
 public class MultiblockBuilderTests {
   private static JObject Structure(Action<MultiblockBuilder> configure) =>
     (JObject)
@@ -95,7 +90,7 @@ public class MultiblockBuilderTests {
 
   [Fact]
   public void Fill_rejects_an_inverted_range_instead_of_emitting_nothing() {
-    // An inverted range would emit an empty sub-volume rather than fail, so the builder rejects it.
+    // An inverted range is rejected, not emitted as an empty sub-volume.
     var ex = Assert.Throws<ArgumentException>(() =>
       Structure(m => m.Number("f", 8).Fill(1, 0, 0, -1, 0, 0, 8))
     );

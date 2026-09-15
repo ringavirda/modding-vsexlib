@@ -10,20 +10,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="ExlibChecks.All"/> over a hand-built <see cref="ICheckSource"/> proves the eight checks
-/// run and report independently: one seeded violation per rule (three for <c>NetworkNodeContract</c>,
-/// which checks node placement, its orientation scheme and network membership), and nothing for the
-/// one genuinely clean check (<c>LateDefinition</c>) or for the clean parts of the domain the seeded
-/// violations sit in.
-/// <see cref="LateDefinitionCheck"/> reads <see cref="ExDefinitions"/> directly rather than the
-/// fixture's <see cref="ICheckSource"/>, so the constructor records an empty injection pass - the same
-/// "injection has run" state <see cref="ExDefinitionModSystem.AssetsLoaded"/> leaves behind - rather
-/// than leaving <see cref="ExDefinitions.InjectionRan"/> false, which would short-circuit the check
-/// before it read anything. This class shares the "ExDefinitions" collection with everything else
-/// that touches that static registry.
-/// </summary>
-[Collection("ExDefinitions")]
+/// <summary>Tests <see cref="ExlibChecks.All"/> over a hand-built <see cref="ICheckSource"/>: each
+/// of the eight checks reports its own seeded violation and nothing else.</summary>
+[Collection("ExDefinitions")] // process-wide static; shared with other classes that mutate it
 public class ExlibChecksTests {
   public ExlibChecksTests() {
     ExDefinitions.Clear();
@@ -32,9 +21,7 @@ public class ExlibChecksTests {
 
   private const string Domain = "stub";
 
-  // The network node every "pinned" and "clean network contract" assertion below is built against:
-  // base code + a one-state `type` group + the four-way `orientation` group NetworkOriented() reads,
-  // so its concrete codes are "stub:stubnode-normal-{n,e,s,w}".
+  // Base code, a one-state `type` group, and the four-way `orientation` group NetworkOriented() reads.
   private static ExBlockDef Node() =>
     ExBlockDef
       .Create(Domain, "stubnode")
@@ -42,9 +29,8 @@ public class ExlibChecksTests {
       .VariantGroup("orientation", "n", "e", "s", "w")
       .NetworkOriented();
 
-  // An ordinary block that stands as a multiblock's principal: one blockNumbers entry pointing at a
-  // block nothing registers, and one multiblockFacings entry pinning the node above by its own
-  // concrete orientation code - the two failure modes neither the build nor the runtime reports.
+  // A multiblock principal: one dangling blockNumbers entry, one multiblockFacings entry pinning a
+  // concrete orientation code.
   private static ExBlockDef Wall() =>
     ExBlockDef
       .Create(Domain, "stubwall")
@@ -62,28 +48,25 @@ public class ExlibChecksTests {
         new JObject { ["stub:stubnode-normal-n"] = new JArray(2) }
       );
 
-  // A base code and a variant of it under a different def entirely - the collision a wildcard built
-  // from the shorter code would widen onto.
+  // A base code and a variant of it under a different def, colliding with a wildcard built from the
+  // shorter code.
   private static ExBlockDef Family() => ExBlockDef.Create(Domain, "stubfam");
 
   private static ExBlockDef FamilyVariant() =>
     ExBlockDef.Create(Domain, "stubfam-big");
 
-  // Registered, but the loader produced no block for it - the failure DefinitionCatalogueCheck exists
-  // to catch.
+  // Registered, but the loader produced no block for it.
   private static ExBlockDef Ghost() => ExBlockDef.Create(Domain, "stubghost");
 
-  // A network node (ExOrientable in network mode) with no `type` variant group - AllowedOrientations
-  // has nothing to contribute, so the block can never be placed, silently.
+  // A network node with no `type` variant group; AllowedOrientations has nothing to contribute.
   private static ExBlockDef NodeMissingTypeGroup() =>
     ExBlockDef
       .Create(Domain, "stubnodenotype")
       .VariantGroup("orientation", "n", "e", "s", "w")
       .NetworkOriented();
 
-  // A network node whose declared `scheme` does not match its `orientation` states - built with
-  // Behavior directly, since NetworkOriented() derives the scheme from the states and so cannot
-  // misspell it.
+  // A network node whose declared `scheme` does not match its `orientation` states, built with
+  // Behavior directly.
   private static ExBlockDef NodeMisspelledScheme() =>
     ExBlockDef
       .Create(Domain, "stubnodebadscheme")
@@ -91,16 +74,14 @@ public class ExlibChecksTests {
       .VariantGroup("orientation", "n", "e", "s", "w")
       .Behavior("ExOrientable", new { mode = "network", scheme = "FaceAll" });
 
-  // A declared network membership with no `networkType` - the behaviour has no other source for
-  // one, so the cell logs an error and joins no graph.
+  // A declared network membership with no `networkType`.
   private static ExBlockDef NodeUntypedMembership() =>
     ExBlockDef
       .Create(Domain, "stubmembership")
       .EntityBehavior("BEBehaviorNetworkMember");
 
-  // The concrete codes these seven defs actually register - what AssetCheckSource would read off
-  // api.World.Blocks, matched by hand here since there is no game to ask. "stubghost" is deliberately
-  // absent: DefinitionCatalogueCheck's one seeded violation.
+  // The concrete codes these seven defs register, matched by hand with no game to ask. "stubghost"
+  // is deliberately absent.
   private static readonly AssetLocation[] RegisteredCodes =
   [
     new("stub:stubnode-normal-n"),
@@ -121,18 +102,15 @@ public class ExlibChecksTests {
     new("stub:stubmembership"),
   ];
 
-  // Every registered code gets an English name key except "stubfam" - the one held back to prove
-  // LangCoverageCheck.
+  // Every registered code gets an English name key except "stubfam".
   private static readonly JObject EnglishLang = new(
     RegisteredCodes
       .Where(c => c.Path != "stubfam")
       .Select(c => new JProperty("block-" + c.Path, "Stub Block"))
   );
 
-  // One grid recipe whose output names a block nothing registers. A method rather than a static
-  // field: a field typed as a tuple of AssetLocation and JObject forces the CLR to lay out that
-  // ValueTuple - and so fully resolve both foreign assemblies - the moment this type loads, which
-  // races the harness's own assembly resolver and fails test discovery outright.
+  // A method, not a static field: a tuple-typed field forces early ValueTuple layout, which races
+  // the harness's assembly resolver and fails test discovery.
   private static (AssetLocation File, JObject Json) DanglingRecipe() =>
     (
       new AssetLocation("stub", "recipes/grid/stubrecipe.json"),

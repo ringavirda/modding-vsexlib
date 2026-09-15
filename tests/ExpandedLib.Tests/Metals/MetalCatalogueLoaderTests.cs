@@ -7,12 +7,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The two-pass populate that fills <see cref="MetalRegistry"/> at <c>AssetsFinalize</c>, and the
-/// <see cref="MetalDef"/> JSON binding a content mod ships. The asset reads themselves need a running
-/// game; baseline derivation, overlay precedence and the camelCase to POCO mapping are covered against
-/// the asset-free <see cref="MetalCatalogueLoader.Populate"/>.
-/// </summary>
+/// <summary>The two-pass populate that fills <see cref="MetalRegistry"/> at <c>AssetsFinalize</c>,
+/// and the <see cref="MetalDef"/> JSON binding a content mod ships.</summary>
 [Collection("MetalRegistry")] // shares the process-wide MetalRegistry with MetalRegistryTests
 public class MetalCatalogueLoaderTests {
   public MetalCatalogueLoaderTests() => MetalRegistry.Clear();
@@ -38,7 +34,7 @@ public class MetalCatalogueLoaderTests {
   public void Baseline_strips_a_domain_qualified_worldproperty_code() {
     MetalCatalogueLoader.Populate(new[] { "game:copper" }, NoOverlays);
 
-    // "game:copper" → short code "copper" → molten item game:ingot-copper.
+    // "game:copper" -> short code "copper" -> molten item game:ingot-copper.
     Assert.True(MetalRegistry.TryGet("game:ingot-copper", out var def));
     Assert.Equal("copper", def.Code);
   }
@@ -48,7 +44,7 @@ public class MetalCatalogueLoaderTests {
   [Fact]
   public void Overlay_enriches_the_baseline_entry_for_the_same_metal() {
     var iron = new AssetLocation("game:ingot-iron");
-    // Convention glow floor before the overlay...
+    // Convention glow floor with no overlay applied.
     MetalCatalogueLoader.Populate(new[] { "iron" }, NoOverlays);
     Assert.Equal(
       ExpandedLib.ExlibValues.MetalGlowMinTemp,
@@ -149,8 +145,7 @@ public class MetalCatalogueLoaderTests {
     Assert.Null(def.Alloy);
     Assert.False(def.IsAlloy);
 
-    // The item-family generation fields default to "generate nothing", so a metal that ships no such
-    // data is untouched by the emitter.
+    // The item-family generation fields default to "generate nothing".
     Assert.False(def.GenerateItemFamily);
     Assert.Null(def.ItemForms);
     Assert.Null(def.TexturePath);

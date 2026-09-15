@@ -15,28 +15,20 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// <see cref="CommandRegistry.RegisterAll"/> over the exlib assembly: which root and sub-commands
-/// come out on each side, and that every one of them wires up a handler. The handler bodies
-/// themselves (what typing them actually does) are driven through each command's internal dispatch
-/// seam rather than through the fluent framework, the same split <see cref="RegistrySubCommandTests"/>
-/// already uses for <see cref="ConfigSubCommand"/>/<see cref="RecipesSubCommand"/>.
+/// register on each side, and that each wires up a handler.
 /// </summary>
 public class ExmodCommandTests {
   #region A fluent IChatCommand fake
 
-  /// <summary>What one built command recorded: its own description, its handler (if any) and its
-  /// sub-commands by name. A tree of these mirrors the tree <see cref="CommandRegistry.RegisterAll"/>
-  /// builds through <c>GetOrCreate</c>/<c>BeginSubCommand</c>.</summary>
+  /// <summary>What one built command recorded: its description, its handler and its sub-commands by name.</summary>
   private sealed class CommandSpy {
     public string? Description;
     public OnCommandDelegate? Handler;
     public readonly Dictionary<string, CommandSpy> SubCommands = new();
   }
 
-  // NSubstitute auto-returns a substitute for an interface-typed return, but a fresh one on every
-  // call - fine for a leaf that hangs off nowhere else, wrong for the fluent chain a real
-  // IChatCommand supports, where WithDescription/BeginSubCommand/EndSubCommand must all resolve
-  // back to the same logical command. Each fluent member is configured explicitly instead so the
-  // whole chain (including a nested BeginSubCommand/EndSubCommand pair) threads through one spy.
+  // NSubstitute's default auto-substitute is a fresh one per call; the fluent chain needs every
+  // member to resolve back to the same spy.
   private static IChatCommand FakeCommand(CommandSpy spy, IChatCommand? parent) {
     var cmd = Substitute.For<IChatCommand>();
     cmd.WithDescription(Arg.Do<string>(d => spy.Description = d)).Returns(cmd);
@@ -55,10 +47,8 @@ public class ExmodCommandTests {
     return cmd;
   }
 
-  /// <summary>A <see cref="IChatCommandApi"/> whose <c>GetOrCreate</c> is idempotent by name - a
-  /// second call for the same root returns a fresh fake wrapping the same spy, exactly as
-  /// <see cref="CommandRegistry.RegisterAll"/> relies on when a sub-command resolves a parent another
-  /// mod (or another pass of this loop) already created.</summary>
+  /// <summary>An <see cref="IChatCommandApi"/> whose <c>GetOrCreate</c> is idempotent by name: repeat
+  /// calls for the same root return fresh fakes wrapping the same spy.</summary>
   private static (
     IChatCommandApi Api,
     Dictionary<string, CommandSpy> Roots
@@ -168,9 +158,7 @@ public class ExmodCommandTests {
 
   #region VerifySubCommand.Dispatch
 
-  // TestLang echoes every key straight back rather than formatting it (see TestLang's own doc
-  // comment), so a fact can tell which lang key a branch resolved to but not the substituted
-  // numbers - the message below is "exlib:command-verify-unknown", not the rendered sentence.
+  // TestLang echoes the lang key back unformatted; asserts check the key, not the rendered text.
   [Fact]
   public void Verify_rejects_a_domain_no_loaded_mod_answers_to() {
     var world = new TestWorld();
@@ -208,9 +196,7 @@ public class ExmodCommandTests {
 
     TextCommandResult result = HealSubCommand.Dispatch(healer);
 
-    // No orphaned block entities in a bare world, so the healer's own count (asserted separately
-    // below, since TestLang does not format the message's {0}) is zero; the command's job here is
-    // only to route that count into the success result.
+    // A bare world has no orphaned block entities to heal.
     Assert.Equal(EnumCommandStatus.Success, result.Status);
     Assert.Contains("command-heal-result", result.StatusMessage);
     Assert.Equal(0, healer.HealLoadedChunks());

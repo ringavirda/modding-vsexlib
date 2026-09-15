@@ -5,18 +5,11 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The three hand-rolled catalogue loaders that do not derive from
-/// <see cref="ContributedCatalogueLoader{TSet, TRegistry}"/> - <c>LiquidCatalogueLoader</c>,
-/// <c>MaterialRoleLoader</c> and industry's <c>MetalCatalogueLoader</c> - keep the same five-step
-/// <c>Load</c> shape: clear the registry, read the assets, merge them in, invoke the code
-/// contributors, return the report. Compared at source level, within each loader's own
-/// <c>Load(ICoreAPI)</c> method body, by the order in which the calls appear there, so a reordering
-/// fails here instead of drifting silently.
+/// Pins the five-step <c>Load</c> order - clear, read, merge, invoke contributors, report - of
+/// the three hand-rolled catalogue loaders, checked at source level.
 /// </summary>
 public class HandRolledLoaderOrderTests {
-  // One loader's absolute path, and the five step markers in their expected order - each a
-  // substring unique to that loader's own spelling of the step (the merge step in particular is a
-  // bare loop for liquids and a named call for the other two).
+  // Each step marker is a substring unique to that loader's own spelling of the step.
   private sealed record Loader(
     string Name,
     string AbsolutePath,
@@ -81,9 +74,8 @@ public class HandRolledLoaderOrderTests {
   private const string LoadSignature =
     "public static CatalogueLoadReport Load(ICoreAPI api) {";
 
-  /// <summary>Isolates one loader's <c>Load(ICoreAPI)</c> method body - the lines strictly between its
-  /// signature and the closing brace back at the method's own two-space indent - so a marker in a doc
-  /// comment or in another member cannot satisfy the order check.</summary>
+  /// <summary>Isolates one loader's <c>Load(ICoreAPI)</c> method body, between its signature
+  /// and its closing brace.</summary>
   private static string LoadMethodBody(string path) {
     string[] lines = File.ReadAllLines(path);
     int start = System.Array.FindIndex(lines, l => l.Contains(LoadSignature));

@@ -9,8 +9,7 @@ namespace ExpandedLib.Tests;
 public class MultiblockCellRolesSerializationTests {
   [Fact]
   public void Roles_serialise_as_the_authored_offsets_of_each_role() {
-    // Pinned literally: authored (north-frame) offsets, roles sorted by key, cells in drawing order.
-    // "Flue" sorts before "Tuyere" ordinally.
+    // Pinned literally: authored offsets, roles sorted by key, cells in drawing order.
     Assert.Equal(
       JObject
         .Parse(
@@ -31,8 +30,7 @@ public class MultiblockCellRolesSerializationTests {
 
   [Fact]
   public void Roles_ride_in_a_sibling_attribute_and_never_inside_multiblockStructure() {
-    // multiblockStructure is deserialised by vanilla's MultiblockStructure and must stay exactly its
-    // schema, so roles ride beside it as multiblockFacings does.
+    // multiblockStructure keeps vanilla's exact schema; roles ride in a sibling attribute, as multiblockFacings does.
     JObject attrs = Attributes(RoledDef());
     Assert.NotNull(attrs["multiblockRoles"]);
     Assert.Null(attrs["multiblockStructure"]!["roles"]);
@@ -54,7 +52,7 @@ public class MultiblockCellRolesSerializationTests {
       TuyereCells.Select(c => (c.X, c.Y, c.Z)).OrderBy(t => t).ToList(),
       roles.CellsOf(Tuyere).OrderBy(t => t).ToList()
     );
-    // A role the layout never mentions is empty rather than absent, so no caller has to null-check.
+    // A role the layout never mentions is empty, not absent.
     Assert.Empty(roles.CellsOf(MetalTap));
   }
 }

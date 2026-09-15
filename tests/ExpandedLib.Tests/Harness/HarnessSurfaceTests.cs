@@ -8,14 +8,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The harness has no shipped-asset guard of its own to catch a rename or an addition drifting from
-/// its wiki page (it isn't a mod, so <see cref="WikiParity"/>'s reflection-vs-doc-comment check
-/// doesn't cover it), so this stands in: every public type
-/// <c>ExpandedLib.Testing</c> declares must be named somewhere on
-/// <c>Testing-API-Reference.md</c>, and every type name the page's own "Where things are" table
-/// claims must actually exist.
-/// </summary>
+/// <summary>Every public type <c>ExpandedLib.Testing</c> declares is named on
+/// <c>Testing-API-Reference.md</c>, and every type its "Where things are" table claims actually
+/// exists.</summary>
 public class HarnessSurfaceTests {
   private static readonly string ReferencePath = Path.Combine(
     RepoPaths.Root,
@@ -25,10 +20,8 @@ public class HarnessSurfaceTests {
 
   private static string ReferenceText => File.ReadAllText(ReferencePath);
 
-  /// <summary>Every public top-level type the harness assembly declares, by its bare name - a
-  /// generic's backtick arity suffix (<c>ResourceInvariant`1</c>) is stripped, since the page spells
-  /// it <c>ResourceInvariant&lt;TState&gt;</c>. Nested types (<c>WikiParity.Report</c> and the like)
-  /// are implementation detail of the type that declares them, not a table entry of their own.</summary>
+  /// <summary>Every public top-level type the harness assembly declares, by its bare name with any
+  /// generic arity suffix stripped.</summary>
   private static IEnumerable<string> PublicTypeNames() =>
     typeof(TestWorld)
       .Assembly.GetExportedTypes()
@@ -55,8 +48,7 @@ public class HarnessSurfaceTests {
   public void Every_type_named_in_the_where_things_are_table_exists() {
     var known = PublicTypeNames().ToHashSet(StringComparer.Ordinal);
 
-    // The "Where things are" table's rows, up to the next blank line - the header row and its
-    // markdown separator both carry no backtick token, so no explicit skip is needed.
+    // The "Where things are" table's rows, up to the next blank line.
     string[] lines = ReferenceText
       .Split('\n')
       .SkipWhile(l => !l.StartsWith("## Where things are"))
@@ -66,9 +58,7 @@ public class HarnessSurfaceTests {
       .Where(l => l.StartsWith('|'))
       .ToArray();
 
-    // A fully-backtick-enclosed token, optionally generic (`ResourceInvariant<TState>`) - excludes
-    // the folder-path column's `World/`, `Rigs/`, ... which never closes its backtick before the
-    // slash.
+    // A fully-backtick-enclosed token, optionally generic.
     var claimed = new List<string>();
     foreach (string line in lines)
       foreach (

@@ -12,14 +12,13 @@ namespace ExpandedLib.Tests;
 public class MultiblockCellRolesAdditiveGuaranteeTests {
   [Fact]
   public void A_layout_with_no_roles_emits_no_roles_attribute() {
-    // A layout with no Role() calls emits no attribute, so goldens of role-less structures do not move.
+    // A layout with no Role() calls emits no attribute.
     Assert.Null(Attributes(UnroledDef())["multiblockRoles"]);
   }
 
   [Fact]
   public void Adding_roles_changes_nothing_about_the_structure_a_layout_emits() {
-    // The same drawing with and without Role() calls emits byte-identical multiblockStructure JSON. Roles
-    // are metadata beside the layout, never part of it.
+    // Roles are metadata beside the layout: with or without them, multiblockStructure JSON is byte-identical.
     Assert.Equal(
       Attributes(UnroledDef())["multiblockStructure"]!.ToString(
         Newtonsoft.Json.Formatting.None
@@ -32,8 +31,7 @@ public class MultiblockCellRolesAdditiveGuaranteeTests {
 
   [Fact]
   public void Numbers_are_still_handed_out_in_legend_declaration_order() {
-    // Per-code numbering must be the identity for a layout with one glyph per code, which is every shipped
-    // layout, or their goldens churn.
+    // Per-code numbering is the identity for a layout with one glyph per code.
     var numbers = (JObject)
       Attributes(
         ExBlockDef
@@ -70,8 +68,7 @@ public class MultiblockCellRolesAdditiveGuaranteeTests {
       }
     )
       Assert.Empty(machine.CellsWithRole(role));
-    // The footprint is non-empty beside it, so this cannot pass by the machine having failed to load a
-    // layout at all.
+    // The footprint is non-empty: the machine did load a layout.
     Assert.NotEmpty(machine.CellsAccepting(new AssetLocation("game:air")));
   }
 }

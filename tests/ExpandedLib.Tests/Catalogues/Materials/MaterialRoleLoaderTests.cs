@@ -9,11 +9,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The overlay that fills <see cref="MaterialRoleRegistry"/> at <c>AssetsFinalize</c>, and the
-/// <see cref="MaterialRoleDef"/> / <see cref="MaterialRoleCatalogue"/> JSON binding a content mod ships.
-/// The asset read itself needs a running game; valid-def registration, malformed-def skipping and the
-/// camelCase to POCO mapping are covered against the asset-free
-/// <see cref="MaterialRoleLoader.Overlay"/>.
+/// Tests <see cref="MaterialRoleLoader.Overlay"/>'s registration and JSON binding against
+/// <see cref="MaterialRoleDef"/> and <see cref="MaterialRoleCatalogue"/>.
 /// </summary>
 [Collection("MaterialRoles")] // shares the process-wide registry with MaterialRoleRegistryTests
 public class MaterialRoleLoaderTests {
@@ -128,8 +125,7 @@ public class MaterialRoleLoaderTests {
 
   [Fact]
   public void A_row_waiting_on_an_absent_mod_is_skipped() {
-    // Compatibility with another mod's ore ships as data, so the file always carries rows for mods the
-    // player may not have. Skipping is the ordinary path, not an error path.
+    // Skipping an absent mod's row is the ordinary path, not an error path.
     MaterialRoleLoader.Overlay([Gated()], modPresent: _ => false);
 
     Assert.True(
@@ -163,8 +159,7 @@ public class MaterialRoleLoaderTests {
 
   [Fact]
   public void With_no_answer_about_mods_a_gated_row_stays_out() {
-    // The truthful headless reading. Defaulting the other way would let a bare test registry claim
-    // ores from mods that are not there, and every gated row would look like it always applied.
+    // With no mod-presence answer, a gated row defaults to absent, not applied.
     MaterialRoleLoader.Overlay([Gated()]);
 
     Assert.False(

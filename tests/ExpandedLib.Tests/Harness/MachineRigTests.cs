@@ -5,11 +5,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="MachineRig"/> over the existing <see cref="TestProductionMachine"/>: each of its three
-/// stepping loops (<c>RunUntil</c>, <c>RunLive</c>, <c>RunWhile</c>) fires a block-entity tick per
-/// step, so a machine that only counts production ticks is enough to exercise all three.
-/// </summary>
+/// <summary><see cref="MachineRig"/>'s three stepping loops, <c>RunUntil</c>, <c>RunLive</c> and
+/// <c>RunWhile</c>, over <see cref="TestProductionMachine"/>.</summary>
 public class MachineRigTests {
   private sealed class TestRig(TestWorld world) : MachineRig(world);
 
@@ -68,8 +65,6 @@ public class MachineRigTests {
 
     rig.RunWhile(
       () => {
-        // The action runs before the step that would observe its effect - checked by asserting it
-        // always sees one fewer production tick than the step it precedes.
         Assert.Equal(before, machine.ProductionTicks);
         before++;
       },

@@ -9,11 +9,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The window handshake in <see cref="BlockEntityMachineStation"/>: closing must dispose the dialog
-/// exactly once, and a refused open (a duplicate <see cref="GuiDialogBlockEntity"/>) must leave the
-/// station able to open again rather than wedged behind a dialog that never opened.
-/// </summary>
+/// <summary>The window handshake in <see cref="BlockEntityMachineStation"/>: closing disposes the
+/// dialog exactly once, and a refused open leaves the station able to open again.</summary>
 public class MachineStationWindowTests {
   private sealed class WindowedStation : BlockEntityMachineStation {
     protected override MachineSlotSpec[] SlotSpecs => [];
@@ -27,8 +24,8 @@ public class MachineStationWindowTests {
     ) => LastDialog = new SpyDialog("test", Pos, capi);
   }
 
-  // Counts disposals; TryOpen's own duplicate refusal is exercised for real (by pre-populating
-  // ClientApi.OpenedGuis with a dialog at the same position) rather than by overriding TryOpen here.
+  // Counts disposals; TryOpen's own duplicate refusal is exercised by pre-populating
+  // ClientApi.OpenedGuis with a dialog at the same position.
   private sealed class SpyDialog : GuiDialogBlockEntity {
     public int DisposeCalls;
 
@@ -48,8 +45,7 @@ public class MachineStationWindowTests {
   ) Setup() {
     var world = new TestWorld();
 
-    // GuiDialog.TryOpen reads Gui.LoadedGuis (a concrete List<T>, so NSubstitute cannot auto-mock it)
-    // to decide whether it must register itself.
+    // GuiDialog.TryOpen reads Gui.LoadedGuis, a concrete List<T> NSubstitute cannot auto-mock.
     var gui = Substitute.For<IGuiAPI>();
     gui.LoadedGuis.Returns(new List<GuiDialog>());
     world.ClientApi.Gui.Returns(gui);
@@ -90,8 +86,7 @@ public class MachineStationWindowTests {
   public void A_refused_open_leaves_no_dialog_and_sends_nothing() {
     var (world, station, player) = Setup();
 
-    // A dialog already registered as opened against this station's position - TryOpen refuses a new
-    // one as a duplicate, the same as a second click landing before the first dialog registers.
+    // A dialog already registered as opened against this station's position.
     var openedGuis = (List<object>)world.ClientApi.OpenedGuis;
     openedGuis.Add(new SpyDialog("stale", station.Pos, world.ClientApi));
 

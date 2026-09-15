@@ -7,16 +7,12 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="StructureFillers.CanPlace"/> falls back to "not placeable" when the shared filler block
-/// (<see cref="StructureFillers.FillerCode"/>) is not registered - a mod misconfiguring exlib rather
-/// than a normal gameplay outcome, so it is logged once per process rather than swallowed.
-/// </summary>
+/// <summary><see cref="StructureFillers.CanPlace"/> falls back to "not placeable" when the shared
+/// filler block (<see cref="StructureFillers.FillerCode"/>) is not registered.</summary>
 public class StructureFillersTests {
   public StructureFillersTests() => ResetLoggedFlag();
 
-  // The "once per process" flag is a static field by design (see StructureFillers), so each test resets
-  // it rather than sharing one run's answer with the next.
+  // The once-per-process flag is a static field; each test resets it.
   private static void ResetLoggedFlag() =>
     typeof(StructureFillers)
       .GetField(

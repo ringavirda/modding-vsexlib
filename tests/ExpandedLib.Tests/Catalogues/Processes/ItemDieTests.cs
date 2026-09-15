@@ -9,11 +9,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The die carries its job spec, the same idiom as a roll set and a mold pattern: a modder adds a die
-/// exactly the way they add a roll set, and the machine reads what to do off the fitted tooling. Settled
-/// as E2. See docs/design/mechanics/process-extension.md and machining-line.md.
-/// </summary>
+/// <summary>Tests <see cref="ItemDie"/>: a die carries its job spec, the same idiom as a roll
+/// set or a mold pattern.</summary>
 public class ItemDieTests {
   private static JsonObject Json(string json) => new(JToken.Parse(json));
 
@@ -56,8 +53,7 @@ public class ItemDieTests {
 
   [Fact]
   public void A_die_carries_what_the_job_costs() {
-    // A machine tool's job is not free: it needs a tempered tool, drive, and time. All three are the
-    // die's to declare, so the machine names no number of its own either.
+    // A machine names no cost of its own; the die declares tool tier, drive and time.
     ProcessJob job = Assert.Single(Parse(BoltDie).Jobs);
 
     Assert.Equal(2, job.MinTier);
@@ -114,7 +110,6 @@ public class ItemDieTests {
 
   [Fact]
   public void The_job_for_a_piece_comes_off_the_fitted_die() {
-    // What a machine does at its tool slot: read the fitted die, ask it for the job matching the piece.
     var die = new Item {
       Code = new AssetLocation("iiex", "die-bolt"),
       Attributes = Json(BoltDie),
@@ -150,8 +145,7 @@ public class ItemDieTests {
 
   [Fact]
   public void A_die_is_recognised_by_carrying_a_job_and_nothing_else() {
-    // The same test the mill uses for a roll set: tooling is what parses, not what is named a certain way,
-    // so a third party's die needs no code-name blessing from us.
+    // A die is recognised by what parses, not by its code name.
     var die = new Item {
       Code = new AssetLocation("othermod", "whatever"),
       Attributes = Json(BoltDie),
@@ -166,8 +160,7 @@ public class ItemDieTests {
 
   [Fact]
   public void A_mod_builds_its_whole_die_itemtype_from_its_own_job_table() {
-    // The factory is the seam, not the table: PatternItemDefinitions.Itemtype is the proven shape and
-    // this follows it, so a mod owning a die owns the itemtype that carries it.
+    // Follows PatternItemDefinitions.Itemtype's shape: the factory is the seam, not the table.
     ExItemDef def = ItemDie.Itemtype(
       "othermod",
       new Dictionary<string, object> {

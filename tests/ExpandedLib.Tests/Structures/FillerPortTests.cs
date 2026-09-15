@@ -8,10 +8,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Declarative filler ports: a footprint cell can carry a passive network port (a face plus a network
-/// type) instead of the old imperative <c>BlockBoiler.MarkSteamPort</c> pattern of reaching into a
-/// filler BE after placement. Covers the builder glyph, its absence on a plain cell, and the round trip
-/// through the definition's serialized <c>fillerOffsets</c>.
+/// Declarative filler ports: a footprint cell can carry a passive network port (a face plus a
+/// network type), replacing the old imperative <c>BlockBoiler.MarkSteamPort</c> pattern.
 /// </summary>
 public class FillerPortTests {
   [Fact]
@@ -77,10 +75,7 @@ public class FillerPortTests {
     Assert.Equal("pipe", port.PortNetworkType);
   }
 
-  // UP is vertical and rotation-invariant, so the three tests above pass whether or not a horizontal
-  // face actually rotates. This drives FootprintCells with a horizontal port face (east) through every
-  // quarter turn, the same way StructureFillerBoxesTests drives it for collision boxes and
-  // StructureFillerBehaviorTests drives it for a hosted behaviour's connector face.
+  // UP is vertical and rotation-invariant; this drives a horizontal port face through every quarter turn.
   [Theory]
   [InlineData(0, "e")]
   [InlineData(90, "n")]

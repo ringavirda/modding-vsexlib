@@ -6,17 +6,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <c>ExConfigGenerator</c>'s <c>[ExRecipeProfile]</c> handling: a config carrying both
-/// <c>[ExConfigRegister]</c> and <c>[ExRecipeProfile]</c> - <see cref="ExRecipeProfileTestConfig"/>,
-/// generating <c>ExRecipeProfileTestValues</c> - registers its <see cref="RecipeProfile"/> from
-/// <c>Load</c> alone, with no hand-written <see cref="ExRecipeProfiles.Register"/> call anywhere.
-/// The fixture's mod id is fixed by its own <c>[ExConfigRegister]</c> attribute, so it cannot pick a
-/// fresh code per test the way <c>RecipeProfilesTests</c> does; <see cref="Dispose"/> unregisters it
-/// so it does not linger in <see cref="ExRecipeProfiles.ApplyAll"/> for other test classes, and
-/// <see cref="RecipeProfileRegistryCollection"/> keeps this class from running at the same time as
-/// one that calls <c>ApplyAll</c>.
-/// </summary>
+/// <summary><c>ExConfigGenerator</c>'s <c>[ExRecipeProfile]</c> handling: a config carrying both
+/// <c>[ExConfigRegister]</c> and <c>[ExRecipeProfile]</c> registers its <see cref="RecipeProfile"/>
+/// from <c>Load</c> alone.</summary>
 [Collection(nameof(RecipeProfileRegistryCollection))]
 public class ExRecipeProfileGeneratorTests : IDisposable {
   private const string Code = "exlib-recipeprofile-test";
@@ -54,8 +46,6 @@ public class ExRecipeProfileGeneratorTests : IDisposable {
     ExRecipeProfiles.TryGet(Code, out var profile);
 
     Assert.Same(ExRecipeProfileTestValues.Recipes, profile.Catalogue());
-    // Recipes starts empty and DefaultCatalogue() ships one entry, so this can only pass if
-    // Defaults is wired to DefaultCatalogue rather than to the live (empty) catalogue.
     Assert.Single(profile.Defaults());
     Assert.True(profile.Defaults().ContainsKey("stub"));
   }

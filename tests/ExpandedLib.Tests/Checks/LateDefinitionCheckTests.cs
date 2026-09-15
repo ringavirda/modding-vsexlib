@@ -7,17 +7,12 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="LateDefinitionCheck"/> against <see cref="ExDefinitions"/> directly, since the check
-/// reads that static registry rather than the <see cref="ICheckSource"/> it is handed. Shares the
-/// "ExDefinitions" collection with everything else that mutates it.
-/// </summary>
+/// <summary>Pins <see cref="LateDefinitionCheck"/> against <see cref="ExDefinitions"/> directly.</summary>
 [Collection("ExDefinitions")]
 public class LateDefinitionCheckTests {
   public LateDefinitionCheckTests() => ExDefinitions.Clear();
 
-  // LateDefinitionCheck never reads its ICheckSource argument (blocks come from ExDefinitions
-  // directly, and it has no item/recipe accessor to speak of), so this stub answers nothing.
+  // LateDefinitionCheck never reads its ICheckSource argument; this stub answers nothing.
   private sealed class EmptyCheckSource : ICheckSource {
     public IEnumerable<string> Domains => [];
     public IEnumerable<AssetLocation> BlockCodes => [];

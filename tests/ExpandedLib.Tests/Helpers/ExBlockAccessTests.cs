@@ -135,7 +135,6 @@ public class ExBlockAccessTests {
       TestBlocks.Configure(new Block(), "test:marker-n", 1),
       new MarkerBlockEntity { Value = 1 }
     );
-    // The other block entity type sits on the east face and must not be yielded.
     world.Place(
       Origin.AddCopy(BlockFacing.EAST),
       TestBlocks.Configure(new Block(), "test:other-e", 2),
@@ -178,7 +177,6 @@ public class ExBlockAccessTests {
       .Accessor.Neighbours<MarkerBlockEntity>(Origin, BlockFacing.HORIZONTALS)
       .ToList();
 
-    // The one on UP is outside the requested subset, so only NORTH comes back.
     Assert.Single(found);
     Assert.Equal(BlockFacing.NORTH, found[0].Facing);
   }

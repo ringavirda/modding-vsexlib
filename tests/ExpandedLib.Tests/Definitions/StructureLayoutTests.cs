@@ -8,10 +8,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The ASCII layer DSLs that author a multiblock structure or filler footprint as a grid per Y level
-/// instead of a coordinate array. Covers the grid parse, the cells the multiblock and filler layouts
-/// generate, and the parity oracle's set semantics: a hand-written coordinate table and a DSL drawing of
-/// the same cells compare equal regardless of order or block numbering.
+/// Pins the ASCII layer DSLs for multiblock structures and filler footprints, and the parity
+/// oracle's set semantics.
 /// </summary>
 public class StructureLayoutTests {
   #region Grid parsing
@@ -52,8 +50,7 @@ public class StructureLayoutTests {
 
   [Fact]
   public void Parse_does_not_advance_the_column_on_a_space() {
-    // Pins the definitions rule against the scene rule (SceneDiagramTests): a space here is a spacer
-    // between cells, not a gap, so 'A' and 'B' land adjacent rather than two columns apart.
+    // A space here is a spacer between cells, not a gap.
     var cells = StructureLayout.Parse(
       0,
       0,
@@ -132,8 +129,7 @@ public class StructureLayoutTests {
 
   [Fact]
   public void FillerLayout_slice_reads_a_vertical_column_and_skips_origin() {
-    // A front elevation of the x=0 plane: a full top row over a single lower cell, with the origin
-    // (0,0,0) marked 'O' at the lower left.
+    // A front elevation of the x=0 plane, origin (0,0,0) marked 'O' at the lower left.
     var cells = StructureFootprint.Layout(f =>
       f.Origin(0, 1) // zLeft=0, yTop=1
         .Slice(
@@ -176,9 +172,7 @@ public class StructureLayoutTests {
 
   [Fact]
   public void FillerLayout_rejects_the_principal_marker_off_the_origin() {
-    // '#' at col0 is the origin (skipped) and 'O' at col1 is (1,0,0), a misplaced principal marker.
-    // It throws the misplaced-principal error rather than being dropped or falling through to the
-    // unregistered-symbol branch, which 'O' would also hit if it were never folded to '0'.
+    // '#' at col0 is the origin (skipped); 'O' at col1 is (1,0,0), a misplaced principal marker.
     var ex = Assert.Throws<System.InvalidOperationException>(() =>
       StructureFootprint.Layout(f => f.Layer(0, "# O"))
     );

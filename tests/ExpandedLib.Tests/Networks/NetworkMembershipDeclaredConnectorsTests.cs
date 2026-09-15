@@ -11,10 +11,7 @@ namespace ExpandedLib.Tests;
 public class NetworkMembershipDeclaredConnectorsTests {
   [Fact]
   public void A_memberships_declared_connectors_are_what_INetworkMember_reaches() {
-    // Asked through INetworkMember, which is all the graph walk holds: a fresh member on a subclass
-    // never enters the interface map, so a test through the concrete type would pass while the real
-    // path answered from the base. The block under it is asserted to be no connector at all, leaving
-    // the declaration as the only thing that can answer yes.
+    // Asked through INetworkMember; the block itself carries no connector.
     var w = new TestWorld();
     var pos = new BlockPos(0, 0, 0);
     var block = TestBlocks.Configure(new Block(), "test:plain", 920);
@@ -32,8 +29,7 @@ public class NetworkMembershipDeclaredConnectorsTests {
 
   [Fact]
   public void A_membership_declaring_nothing_answers_from_its_block() {
-    // Every shipped network node relies on this: a membership added to a node block inherits the
-    // block's orientation without restating it.
+    // A membership added to a node block inherits the block's orientation.
     var w = new TestWorld();
     var pos = new BlockPos(0, 0, 0);
     TestMemberBlockEntity be = TestMemberBlockEntity.Carrying("test");
@@ -42,8 +38,6 @@ public class NetworkMembershipDeclaredConnectorsTests {
     BEBehaviorNetworkMember member = Assert.Single(
       NetworkMembership.MembersOf(be)
     );
-    // The premise, asserted rather than assumed: a membership that had picked up a declaration from
-    // somewhere would stop exercising the fallback while leaving this guard green.
     Assert.Empty(member.Connectors);
 
     Assert.True(
@@ -65,7 +59,6 @@ public class NetworkMembershipDeclaredConnectorsTests {
     TestNetworkBlock block = TestNetworkBlock.Create("test", "ns", id: 922);
     TestMemberBlockEntity be = TestMemberBlockEntity.Declaring("test", "ud");
     w.Place(pos, block, be);
-    // The premise: the two sources disagree on both faces asked about below.
     Assert.True(block.HasConnectorAt(BlockFacing.NORTH));
     Assert.False(block.HasConnectorAt(BlockFacing.UP));
 
@@ -99,10 +92,7 @@ public class NetworkMembershipDeclaredConnectorsTests {
 
   [Fact]
   public void Declared_connectors_lose_to_a_set_configured_in_code_and_say_so() {
-    // A host that configured the membership named faces the cell actually exposes - a filler's port
-    // arrives already rotated into the placed orientation - while a declaration is written in the
-    // unrotated frame, so a declaration that won would move the port. Refused out loud, exactly as a
-    // losing networkType declaration is, because silently ignoring one reads as if it took effect.
+    // A set configured in code names faces in the placed orientation; a declaration is unrotated.
     var w = NewGraphWorld();
     var pos = new BlockPos(0, 0, 0);
     TestMemberBlockEntity be = TestMemberBlockEntity.Declaring("test", "ns");

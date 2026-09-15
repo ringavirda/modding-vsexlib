@@ -7,17 +7,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Repo-wide comment style, enforced across every mod rather than trusted to review. The rules here
-/// are only the mechanically unambiguous ones: prose tests on words like "we" or "used to" produce
-/// false positives on legitimate vocabulary (<c>we</c> is the west-east orientation token, and
-/// "used to swap in a renderer" is ordinary English), so judgment-based rules stay in
-/// <c>CONTRIBUTING.md</c> for a reviewer.
-/// <para>
-/// The size limits are regression backstops, not targets. CONTRIBUTING asks for a 6-line class doc;
-/// these fail only at the point where a doc has clearly become an essay again.
-/// </para>
-/// </summary>
+/// <summary>Repo-wide comment style checks: only the mechanically unambiguous rules; judgment
+/// calls stay in <c>CONTRIBUTING.md</c>.</summary>
 public class CommentStyleGuards {
   #region Corpus
 
@@ -39,8 +30,7 @@ public class CommentStyleGuards {
     string[] Lines
   );
 
-  // The mod's own project folders - what used to sit inside mods/exlib/ before the split, so the
-  // scan keeps its old scope rather than picking up samples/ and templates/, which sit beside it.
+  // The mod's own project folders; excludes samples/ and templates/.
   private static readonly string[] ScannedFolders =
   [
     "src/ExpandedLib",
@@ -64,7 +54,7 @@ public class CommentStyleGuards {
           SearchOption.AllDirectories
         )
       ) {
-        // Generated sources are not hand-authored, so the style rules do not apply to them.
+        // Generated sources are not hand-authored; the style rules do not apply to them.
         if (path.EndsWith(".g.cs", StringComparison.Ordinal))
           continue;
         string rel = Path.GetRelativePath(root, path).Replace('\\', '/');
@@ -144,8 +134,7 @@ public class CommentStyleGuards {
 
   [Fact]
   public void Comments_carry_no_marker_glyphs() {
-    // The house style that grew during bring-up used these to rank remarks. They read as generated
-    // and carry no information a sentence cannot.
+    // These read as generated noise and carry no information a sentence cannot.
     var markers = new[] { '★', '⛔', '⚠', '✅', 'ⓘ', '❗', '⭐' };
     var hits = CommentLines()
       .Where(c => c.Text.IndexOfAny(markers) >= 0)

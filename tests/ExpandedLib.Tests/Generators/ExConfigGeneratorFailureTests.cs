@@ -11,21 +11,13 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <c>ExConfigGenerator</c>'s <c>[ExRecipeProfile]</c> failure paths: none of these can be exercised
-/// through a fixture compiled into this assembly (a bad fixture would fail the whole assembly's
-/// build, since the generated <c>#error</c> stops compilation), so each drives the generator directly
-/// over a small standalone compilation and inspects what it emits. The generator ships no runtime
-/// assembly (it is analyzer-only, referenced by every mod project at compile time only), so its
-/// already-built analyzer DLL is loaded by reflection rather than by adding a compile reference.
-/// </summary>
+/// <summary><c>ExConfigGenerator</c>'s <c>[ExRecipeProfile]</c> failure paths, each driven over a
+/// standalone compilation rather than a fixture in this assembly.</summary>
 public class ExConfigGeneratorFailureTests {
   private static readonly MetadataReference[] References = BuildReferences();
 
   private static MetadataReference[] BuildReferences() {
-    // Every trusted platform assembly (mscorlib, System.Runtime, System.Collections, ...) plus
-    // exlib itself, so the compilation resolves Dictionary<,>, the [ExConfigRegister]/
-    // [ExRecipeProfile] attributes and RecipeCostEntry the same way a real mod project would.
+    // Every trusted platform assembly plus exlib itself.
     string[] platform = (
       (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!
     ).Split(Path.PathSeparator);
@@ -45,9 +37,8 @@ public class ExConfigGeneratorFailureTests {
   private static IIncrementalGenerator NewGenerator() =>
     GeneratorLoader.Load("ExConfigGenerator");
 
-  /// <summary>Runs <c>ExConfigGenerator</c> over a standalone source (no reference to this assembly's
-  /// own fixtures), and returns the one <c>#error</c>-carrying accessor it emits alongside any
-  /// diagnostics the generator itself reported.</summary>
+  /// <summary>Runs <c>ExConfigGenerator</c> over a standalone source and returns the generated
+  /// accessor, if any, alongside the diagnostics it reported.</summary>
   private static (string? Generated, IReadOnlyList<Diagnostic> Diagnostics) Run(
     string source
   ) {
@@ -74,9 +65,7 @@ public class ExConfigGeneratorFailureTests {
   }
 
   /// <summary>0-based line of the first occurrence of <paramref name="needle"/> in
-  /// <paramref name="source"/> - what <c>ClassDeclarationSyntax.GetLocation()</c> reports for a
-  /// class whose attribute lists start there, matching <see cref="Diagnostic.Location"/>'s own
-  /// line numbering.</summary>
+  /// <paramref name="source"/>.</summary>
   private static int LineOf(string source, string needle) {
     int index = source.IndexOf(needle, StringComparison.Ordinal);
     return source[..index].Count(c => c == '\n');
@@ -276,7 +265,7 @@ public class ExConfigGeneratorFailureTests {
       """
     );
 
-    Assert.Null(generated); // no [ExConfigRegister]: the accessor pipeline never runs at all
+    Assert.Null(generated);
     Diagnostic diagnostic = Assert.Single(
       diagnostics,
       d => d.Id == "EXLIB0001"

@@ -9,16 +9,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The connector check: a layout cell marked <c>Connector</c> is satisfied only by an occupant whose
-/// network connector opens the way the drawing says. Until this existed the only thing catching a
-/// backwards tuyere was a hard orientation pin in the legend - which a network node's own neighbour scan
-/// is free to overwrite.
-/// <para>
-/// Driven on a probe layout rather than a furnace, and through <see cref="StructureRig"/> rather than by
-/// assigning <c>StructureComplete</c>: the machine completes itself or it does not.
-/// </para>
-/// </summary>
+/// <summary>The connector check: a layout cell marked <c>Connector</c> is satisfied only by an occupant
+/// whose network connector opens the way the drawing says.</summary>
 public class MultiblockConnectorsTests {
   private static readonly BlockPos Anchor = new(0, 10, 0);
 
@@ -36,22 +28,19 @@ public class MultiblockConnectorsTests {
 
   [Fact]
   public void A_node_whose_faces_are_a_superset_completes_it_too() {
-    // The demand is a subset test, so a legitimate re-pick by the network - a straight run through the
-    // wall rather than a stub into it - does not break a structure that already stands.
+    // The demand is a subset test.
     Assert.True(Scene.WithNode("ns").Completes());
   }
 
   [Fact]
   public void A_plain_block_cannot_satisfy_a_connector_cell() {
-    // The wanted code is a wildcard, so a block whose code happens to match would otherwise pass.
-    // Nothing that is not on a network can answer an outward face.
+    // The wanted code is a wildcard.
     Assert.False(Scene.WithPlainBlock().Completes());
   }
 
   [Fact]
   public void The_demanded_face_turns_with_the_structure() {
-    // Authored north; at 90 degrees the cell wants west, and a node still wearing north no longer
-    // answers. A demand that did not rotate would pass here and fail on three of the four facings.
+    // Authored north; at 90 degrees the cell wants west.
     Assert.False(Scene.WithNode("n", angle: 90).Completes());
     Assert.True(Scene.WithNode("w", angle: 90).Completes());
   }
@@ -71,8 +60,6 @@ public class MultiblockConnectorsTests {
 
   [Fact]
   public void A_layout_marking_no_connector_emits_no_attribute() {
-    // The additive guarantee the facings and roles siblings shipped on: a layout that marks nothing
-    // emits nothing, so no existing def moves and no migration is owed.
     JToken? attributes = ExBlockDef
       .Create("exlib", "probe", "plain")
       .MultiblockLayout(l =>
@@ -87,8 +74,6 @@ public class MultiblockConnectorsTests {
 
   [Fact]
   public void A_connector_on_a_glyph_the_drawing_never_uses_is_refused() {
-    // The same silent-empty-set failure a role glyph has, and the worse half of it: an undrawn demand
-    // reads as a structure with no facing requirement at all, which completes with the node backwards.
     var thrown = Assert.Throws<System.InvalidOperationException>(() =>
       ExBlockDef
         .Create("exlib", "probe", "undrawn")
@@ -120,8 +105,6 @@ public class MultiblockConnectorsTests {
 
   [Fact]
   public void Two_faces_on_one_cell_are_both_demanded() {
-    // The passthrough's shape: it must connect both ways through the wall, which is why Connector takes
-    // several faces and why the emitted table is keyed by face rather than by cell.
     var connectors = (JObject)
       ExBlockDef
         .Create("exlib", "probe", "both")
@@ -140,10 +123,8 @@ public class MultiblockConnectorsTests {
 
   #region The scene
 
-  /// <summary>
-  /// A two-cell probe: the machine, and one cell south of it the drawing wants open to the north - the
-  /// tuyere's own shape, reduced to what the check needs.
-  /// </summary>
+  /// <summary>A two-cell probe: the machine, and one cell south of it the drawing wants open to the
+  /// north.</summary>
   private sealed class Scene {
     private readonly TestMegablock _machine;
 
@@ -178,7 +159,7 @@ public class MultiblockConnectorsTests {
       return new Scene(rig, machine);
     }
 
-    /// <summary>Raises the footprint and lets the machine's own monitor decide.</summary>
+    /// <summary>Raises the footprint and lets the machine's monitor decide.</summary>
     public bool Completes() {
       Rig.Raise();
       Rig.World.Initialize(_machine);

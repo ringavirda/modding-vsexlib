@@ -10,11 +10,9 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The composable molten-cell behaviour (<see cref="BEBehaviorMoltenCell"/>): the per-cell metal state
-/// and operations a mega-block footprint cell (the sand casting bed's runners and molds) carries by
-/// composition. Covers config parsing, the push/drain/soak/thermal contract, melt-point
-/// classification, recovery, and the save round-trip. The fixture melts iron at 1500 C, so liquid is
-/// above 0.8x = 1200 and hardened below 0.3x = 450.
+/// The composable molten-cell behaviour (<see cref="BEBehaviorMoltenCell"/>): per-cell metal state
+/// and the push/drain/soak/thermal contract, melt-point classification, recovery, and the save
+/// round-trip. The fixture melts iron at 1500 C: liquid above 1200, hardened below 450.
 /// </summary>
 public class MoltenCellBehaviorTests {
   private const string Iron = "game:ingot-iron";
@@ -71,11 +69,11 @@ public class MoltenCellBehaviorTests {
     var cell = NewCell(NewWorld(), "{ \"capacity\": 200 }");
     Assert.Equal(200, cell.MaxUnitCapacity);
 
-    // A rammed mold pattern raises the cavity size at runtime,
+    // A rammed mold pattern raises the cavity size at runtime.
     cell.SetCapacity(136);
     Assert.Equal(136, cell.MaxUnitCapacity);
 
-    // shake-out drops the override back to the declared capacity.
+    // Shake-out drops the override back to the declared capacity.
     cell.ClearCapacity();
     Assert.Equal(200, cell.MaxUnitCapacity);
   }

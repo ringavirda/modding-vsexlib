@@ -8,13 +8,11 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The base every hand-parsed, contributed catalogue derives from: read files, audit keys, parse once,
-/// merge, invoke contributors, report. Exercised here through a two-key toy catalogue rather than
-/// through <see cref="ProcessRouteLoader"/>/<see cref="ProcessJobLoader"/>/<see cref="BayOccupancyLoader"/>,
-/// so the base's own behaviour is proved independently of any one schema.
+/// Tests <see cref="ContributedCatalogueLoader{TEntry,TRegistry}"/> through a two-key toy
+/// catalogue: read files, audit keys, parse once, merge, invoke contributors, report.
 /// </summary>
 public class ContributedCatalogueLoaderTests {
-  // One declaration: an id and the items it lists. The registry keys on id and refuses a repeat.
+  // The registry keys on id and refuses a repeat.
   private sealed record TestEntry(string Id, List<string> Items);
 
   private sealed class TestRegistry {
@@ -31,8 +29,7 @@ public class ContributedCatalogueLoaderTests {
     public void Clear() => ById.Clear();
   }
 
-  // Counts how many times TryParse actually runs a file through the parser, so the "parsed once" fix
-  // can be checked directly rather than inferred from the report.
+  // Counts how many times TryParse runs a file through the parser.
   private sealed class TestLoader
     : ContributedCatalogueLoader<TestEntry, TestRegistry> {
     public int ParseCalls;
@@ -78,8 +75,7 @@ public class ContributedCatalogueLoaderTests {
 
     protected override void Clear(TestRegistry registry) => registry.Clear();
 
-    // Public wrappers: the production loaders expose these under their own names, static and thinly
-    // named; a test loader just needs a way to call them.
+    // Public wrappers over the protected members the production loaders expose under their own names.
     public new List<TestEntry> ParseFiles(
       IEnumerable<(string Source, string Json)> files,
       out List<string> errors

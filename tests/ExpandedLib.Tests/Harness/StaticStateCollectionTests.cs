@@ -6,12 +6,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="StaticStateCollection.EveryCollectionNameHasADefinition"/>: a bare
+/// <summary><see cref="StaticStateCollection.EveryCollectionNameHasADefinition"/>: a bare
 /// <c>[Collection("...")]</c> name with no matching <c>[CollectionDefinition(...)]</c> fails the
-/// guard. Built as a throwaway dynamic assembly rather than a real fixture in this project, so the
-/// planted bug never trips this suite's own copy of the guard (<see cref="CollectionGuardTests"/>).
-/// </summary>
+/// guard. Built as a throwaway dynamic assembly.</summary>
 public class StaticStateCollectionTests {
   private static Assembly BuildAssembly(bool defineTheCollection) {
     var name = new AssemblyName(

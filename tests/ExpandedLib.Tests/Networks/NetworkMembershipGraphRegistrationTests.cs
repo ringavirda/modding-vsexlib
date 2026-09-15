@@ -37,8 +37,7 @@ public class NetworkMembershipGraphRegistrationTests {
 
   [Fact]
   public void A_chunk_unload_keeps_the_node_and_leaves_the_block_placed() {
-    // The asymmetry the whole design rests on: an unload drops the block entity while the block stays
-    // placed, so deregistering here would fracture a live run every time a player walked away.
+    // An unload drops the block entity while the block stays placed.
     var w = NewGraphWorld();
     var pos = new BlockPos(0, 0, 0);
     var be = TestMemberBlockEntity.With(w, pos, "test");
@@ -55,10 +54,7 @@ public class NetworkMembershipGraphRegistrationTests {
 
   [Fact]
   public void An_attached_but_uninitialised_node_still_deregisters_on_removal() {
-    // The harness pattern thirteen fixtures use: Attach hands the block entity an api, the graph node
-    // is added by hand, and nothing ever calls Initialize. Only the block entity's own api is set that
-    // way, so a teardown gated on the behaviour's would quietly never run and every one of those
-    // fixtures would model something weaker than it reads as.
+    // Attach sets only the block entity's own api; the graph node is added by hand without Initialize.
     var w = NewGraphWorld();
     var pos = new BlockPos(0, 0, 0);
     var be = new SeverableNode();
@@ -66,8 +62,6 @@ public class NetworkMembershipGraphRegistrationTests {
     w.Attach(be);
     ReflectionHelpers.SetProperty(be, nameof(be.NetworkSystem), w.Networks);
     w.AddNode(pos, "test");
-    // The premise, asserted rather than assumed: without it a harness that starts initialising
-    // behaviours turns this guard into a tautology while leaving it green.
     Assert.Null(NetworkMembership.MembersOf(be).Single().Api);
     Assert.NotNull(w.NetworkAt(pos));
 
@@ -78,10 +72,7 @@ public class NetworkMembershipGraphRegistrationTests {
 
   [Fact]
   public void A_membership_naming_no_network_joins_nothing_rather_than_throwing() {
-    // Registering a blank type throws out of AddNode's factory lookup, and this runs inside a chunk
-    // load, so one bad declaration would take a world down. The cell is left off the graph instead -
-    // and logged as an error, because a node silently outside its network reads to a player as "my
-    // pipes stopped working" and there is nothing else to go on.
+    // A blank network type leaves the cell off the graph and logs an error.
     var w = NewGraphWorld();
     var pos = new BlockPos(0, 0, 0);
     var be = TestMemberBlockEntity.With(w, pos, "");
@@ -94,8 +85,7 @@ public class NetworkMembershipGraphRegistrationTests {
 
   [Fact]
   public void A_declared_network_type_reaches_a_membership_that_names_none() {
-    // The one shape the JSON key is for: a membership with no other source. The write goes through
-    // the hosted membership's forwarding setter, so the block entity ends up holding it too.
+    // The declared type reaches the block entity through the hosted membership's forwarding setter.
     var w = NewGraphWorld();
     var pos = new BlockPos(0, 0, 0);
     var be = new SeverableNode { NetworkType = "" };
@@ -110,10 +100,8 @@ public class NetworkMembershipGraphRegistrationTests {
 
   [Fact]
   public void A_declared_network_type_loses_to_the_block_entitys_own_and_says_so() {
-    // A block entity that already names its network owns that answer - it is a compiled contract, and
-    // every node family but the fluid intake implements the setter as a no-op, so a declaration that
-    // "won" would vanish on the way through and register under the constant regardless. Refused out
-    // loud instead, because both silent outcomes read to the author as if the JSON took effect.
+    // A block entity that already names its network owns that answer; a losing declaration is refused
+    // out loud.
     var w = NewGraphWorld();
     var pos = new BlockPos(0, 0, 0);
     var be = new SeverableNode();
@@ -129,9 +117,7 @@ public class NetworkMembershipGraphRegistrationTests {
 
   [Fact]
   public void A_reloaded_block_entity_rejoins_the_node_its_chunk_left_behind() {
-    // The path the design rests on, and the opposite of a removal: an unload keeps the node, so the
-    // returning block entity must find it already there and skip AddNode. Registering again would
-    // build a second network over the same cell and strand the first.
+    // An unload keeps the node; the returning block entity must find it and skip AddNode.
     var w = NewGraphWorld();
     var pos = new BlockPos(0, 0, 0);
     w.Place(
@@ -150,10 +136,7 @@ public class NetworkMembershipGraphRegistrationTests {
 
   [Fact]
   public void A_hosted_membership_answers_its_block_entitys_type_through_the_interface() {
-    // Read as INetworkMember, which is all the graph walk holds, and against a production node rather
-    // than a double: interface mapping is fixed at the class listing the interface, so an override
-    // that never entered the map compiles and is simply never called. Asked before Initialize as well,
-    // where a membership holding its own copy of the type would still answer the base's empty default.
+    // Read as INetworkMember, against a production node, and before Initialize.
     var w = NewGraphWorld();
     w.RegisterNetwork("pipe", sys => new StubNetwork(sys, "pipe"));
     var pos = new BlockPos(0, 0, 0);
@@ -172,9 +155,7 @@ public class NetworkMembershipGraphRegistrationTests {
 
   [Fact]
   public void A_network_node_registers_under_its_own_network_type() {
-    // BlockEntityFluidIntake is the live case: its NetworkType is a plain auto-property that the save
-    // tree fills in, and FromTreeAttributes runs before Initialize. A membership that took the type
-    // any earlier than registration would register the wrong network - or none at all.
+    // NetworkType is a plain auto-property the save tree fills via FromTreeAttributes, before Initialize.
     var w = NewGraphWorld();
     var pos = new BlockPos(0, 0, 0);
     var be = new SeverableNode();
@@ -190,9 +171,8 @@ public class NetworkMembershipGraphRegistrationTests {
 
   [Fact]
   public void Saved_network_state_survives_a_reload_next_to_a_live_run() {
-    // The restore handshake, in the shape that can lose it: joining an existing run makes AddNode
-    // broadcast, and that broadcast reaches OnNetworkUpdate and clears the saved state. The state to
-    // restore therefore has to be read before registration, not after.
+    // AddNode broadcasts on join, which clears saved state via OnNetworkUpdate; restore must read
+    // before registration.
     var w = NewGraphWorld();
     var block = TestNetworkBlock.Create("test", "ns", id: 907);
     var anchor = new BlockPos(0, 0, 0);
@@ -205,16 +185,16 @@ public class NetworkMembershipGraphRegistrationTests {
     BlockNetwork net = w.NetworkAt(anchor)!;
     net.RestoreState("hot");
     net.BroadcastUpdate(w.Accessor); // both nodes cache the state for the next load
-    net.RestoreState(null); // the run itself forgets, as a server restart does
-    w.RemoveNode(reloading); // and this cell's node goes with its chunk
+    net.RestoreState(null); // the run itself forgets
+    w.RemoveNode(reloading); // this cell's node goes with its chunk
 
     w.Reload(reloading);
 
     Assert.Equal("hot", w.NetworkAt(anchor)?.State);
   }
 
-  /// <summary>A network node that persists whatever network state it was last broadcast, so a reload
-  /// can hand it back. <c>StubNetwork</c> state is a plain string.</summary>
+  /// <summary>A network node that persists its last broadcast network state. <c>StubNetwork</c> state
+  /// is a plain string.</summary>
   private sealed class TaggedNode : BlockEntityNetworkNode {
     public override string NetworkType { get; set; } = "test";
 

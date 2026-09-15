@@ -23,7 +23,7 @@ public class ConnectorTests {
     var a = new BlockPos(0, 0, 0);
     var b = new BlockPos(0, 0, 1); // south of A
     w.Place(a, TestNetworkBlock.Create("test", "ns", 1));
-    // "we" exposes east/west connectors only - nothing facing back north at A.
+    // "we" exposes only east/west connectors.
     w.Place(b, TestNetworkBlock.Create("test", "we", 2));
 
     var neighbours = w.Networks.GetConnectedNeighbors(w.Accessor, a, "test");
@@ -64,36 +64,29 @@ public class ConnectorTests {
 
   [Fact]
   public void GetOpenConnectorFaces_ignores_the_sources_own_severing() {
-    // The traversal and the open-end scan share the neighbour-side gates but not the source's. A
-    // severed cell contributes no graph edge, yet its faces are still physically joined: a closed
-    // valve does not leak and a solidified canal does not grow an end cap where it meets its run.
+    // The traversal and the open-end scan share the neighbour-side gates but not the source's.
     var w = NewWorld();
     var a = new BlockPos(0, 0, 0);
     var b = new BlockPos(0, 0, 1);
     var block = TestNetworkBlock.Create("test", "ns", 1);
     w.Place(a, block, new SeverableNode { Broken = true });
     w.Place(b, block);
-    // The premise, asserted rather than assumed: severing has taken this cell off the graph, so a
-    // guard that stopped severing it would read as green while proving nothing.
     Assert.Empty(w.Networks.GetConnectedNeighbors(w.Accessor, a, "test"));
 
     var open = w.Networks.GetOpenConnectorFaces(w.Accessor, a, block);
 
-    // North meets air; south meets the neighbour it is coupled to.
     Assert.Equal(BlockFacing.NORTH, Assert.Single(open));
   }
 
   [Fact]
   public void GetOpenConnectorFaces_ignores_the_source_being_an_endpoint() {
-    // Same rule for the other source gate: an endpoint terminates the run rather than passing it on,
-    // but the pipe it terminates against is still coupled to it and is no leak.
+    // Same source gate rule for an endpoint.
     var w = NewWorld();
     var a = new BlockPos(0, 0, 0);
     var b = new BlockPos(0, 0, 1);
     var endpoint = TestBlocks.Configure(new EndPointNode(), "test:endpoint", 3);
     w.Place(a, endpoint);
     w.Place(b, TestNetworkBlock.Create("test", "ns", 1));
-    // The premise: being an endpoint has taken this cell off the graph.
     Assert.Empty(w.Networks.GetConnectedNeighbors(w.Accessor, a, "test"));
 
     var open = w.Networks.GetOpenConnectorFaces(w.Accessor, a, endpoint);
@@ -145,8 +138,7 @@ public class ConnectorTests {
     );
   }
 
-  /// <summary>A node that terminates a run at its own cell, as the pressure valve does, with a
-  /// connector on each end of the north-south axis.</summary>
+  /// <summary>A node that terminates a run, with connectors on its north and south faces.</summary>
   private sealed class EndPointNode : BlockNetworkNode {
     public override string NetworkType => "test";
 

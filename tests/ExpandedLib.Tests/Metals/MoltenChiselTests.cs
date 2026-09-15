@@ -19,9 +19,7 @@ public class MoltenChiselTests {
     var world = new TestWorld();
     world.RegisterItem(Iron, 1500f);
     world.RegisterItem("game:metalbit-iron");
-    // The real code, not a convenient one. The fallback default read "iiex:slag" for a long time and
-    // this fixture registered exactly that, so a value naming a block that has never been registered
-    // looked alive here while resolving to nothing in game.
+    // The real code, not a convenient one.
     world.RegisterItem(SlagFallback);
     return world;
   }
@@ -80,9 +78,7 @@ public class MoltenChiselTests {
 
   [Fact]
   public void BuildRecovery_falls_back_to_slag_when_requested() {
-    // exlib ships no default of its own (MetalRegistry.DefaultRecoveryFallback is null); a content mod
-    // sets this at load. Set/restored here rather than left standing, since the registry is a
-    // process-wide static other tests share.
+    // The registry is a process-wide static other tests share; restored in the finally block.
     var previous = MetalRegistry.DefaultRecoveryFallback;
     MetalRegistry.DefaultRecoveryFallback = new AssetLocation(SlagFallback);
     try {

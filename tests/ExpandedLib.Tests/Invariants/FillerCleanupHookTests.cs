@@ -8,23 +8,14 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Repo-wide filler-cleanup rule: a block that calls one of the <see cref="CleanupCalls"/> helpers from
-/// <c>OnBlockBroken</c> must also call that same helper from the <c>Block</c> overload of
-/// <c>OnBlockRemoved(IWorldAccessor, BlockPos)</c> - not merely declare the override - or the cleanup
-/// survives any removal path that is not a player break. <c>Block.OnBlockExploded</c> sets the block to
-/// air through the bulk accessor and never calls <c>OnBlockBroken</c>, so a call reachable only from
-/// there leaves its cells behind after an explosion or a worldedit delete. The check reads each
-/// method's own body (brace-matched), so a file that clears its footprint on removal but still leaves a
-/// second helper - an axle bus, a network node - break-only cannot satisfy it by merely having an
-/// <c>OnBlockRemoved</c> override elsewhere. Matches
-/// <c>BlockFilledMegastructure.OnBlockRemoved</c>, the shape every filler host should converge on once
-/// each can spare a base class for it.
+/// Repo-wide rule: a block calling a <see cref="CleanupCalls"/> helper from <c>OnBlockBroken</c>
+/// must also call it from <c>OnBlockRemoved(IWorldAccessor, BlockPos)</c>, since
+/// <c>Block.OnBlockExploded</c> never calls <c>OnBlockBroken</c>.
 /// </summary>
 public class FillerCleanupHookTests {
   #region Corpus
 
-  /// <summary>Cleanup calls known to leave orphan cells behind if they run only on a player break.
-  /// Add to this list, not to the check itself, when a new break-only cleanup helper turns up.</summary>
+  /// <summary>Cleanup calls that must also run from OnBlockRemoved, not just OnBlockBroken.</summary>
   private static readonly string[] CleanupCalls =
   [
     "RemoveFillers(",
@@ -36,9 +27,7 @@ public class FillerCleanupHookTests {
     RegexOptions.Compiled
   );
 
-  // The Block overload specifically: OnBlockRemoved(IWorldAccessor, BlockPos). The BlockEntity overload
-  // takes no arguments and is a different method entirely (see TeardownSymmetryTests) - matching it here
-  // would let a file satisfy this guard with the wrong OnBlockRemoved.
+  // Matches only the Block overload OnBlockRemoved(IWorldAccessor, BlockPos), not the BlockEntity one.
   private static readonly Regex RemovedBlockSignature = new(
     @"override\s+void\s+OnBlockRemoved\s*\(\s*IWorldAccessor",
     RegexOptions.Compiled
@@ -63,8 +52,7 @@ public class FillerCleanupHookTests {
     return null;
   }
 
-  // Every mod's own source tree - <mod>/src when that folder holds it, else the mod's own folder
-  // (exlib's own project, flat under src/ExpandedLib) - the whole corpus this rule scans.
+  // Every mod's source tree: <mod>/src when present, else the mod's own folder (exlib is flat under src/ExpandedLib).
   private static IEnumerable<string> SourceFiles() {
     foreach (string mod in RepoManifest.Mods.Values) {
       string full = Path.Combine(mod, "src");
@@ -109,18 +97,11 @@ public class FillerCleanupHookTests {
 
   [Fact]
   public void Filler_cleanup_hangs_off_removal_not_breaking() {
-    // Block.OnBlockExploded sets the block to air through the bulk accessor and never calls
-    // OnBlockBroken, so a cleanup call reachable only from OnBlockBroken's own body leaves its cells
-    // behind. Checking method bodies, not file-wide substrings, is what catches a file that fixed one
-    // cleanup helper (RemoveFillers, in OnBlockRemoved) while leaving a second one (RemoveAxleNodes)
-    // stranded in OnBlockBroken: the earlier file-wide check saw the OnBlockRemoved override and
-    // stopped looking, certifying the file clean.
     var offenders = new List<string>();
     int seen = 0;
     foreach (string f in SourceFiles()) {
       string text = File.ReadAllText(f);
-      // The call syntax, not a bare mention: BlockStructureFiller's OnBlockBroken names
-      // RemoveFillers only in a comment describing the principal's cleanup, never calls it.
+      // Matches the call syntax, not a bare mention in another comment.
       bool mentionsAny = false;
       foreach (string call in CleanupCalls) {
         if (text.Contains(call)) {

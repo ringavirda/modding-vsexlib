@@ -12,10 +12,8 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// The two places a <see cref="BlockNetworkNode"/> swaps itself onto another orientation: the wrench
-/// (<c>Rotate</c>) and the neighbour scan (<c>RecalculateAndSyncOrientations</c>). Both go through
-/// <see cref="BlockBehaviorExOrientable.ApplyOrientation"/>, and both are driven here through a real
-/// node on a real graph - <c>ExOrientableRig</c> drives the behaviour in isolation and never through a
-/// node, so passing its cases says nothing about this path.
+/// (<c>Rotate</c>) and the neighbour scan (<c>RecalculateAndSyncOrientations</c>), both driven here
+/// through a real node on a real graph, via <see cref="BlockBehaviorExOrientable.ApplyOrientation"/>.
 /// </summary>
 public class NetworkNodeOrientationTests {
   private static readonly string[] Axis = ["ns", "we", "ud"];
@@ -34,9 +32,7 @@ public class NetworkNodeOrientationTests {
 
   [Fact]
   public void A_wrenched_node_is_re_registered_with_its_new_connector_faces() {
-    // The exchange sits between RemoveNode and AddNode. Moved out of that sandwich the graph keeps the
-    // old connector faces while the block wears the new ones - a run that reads as connected and moves
-    // nothing - so the graph is what is asserted, not the block code.
+    // The exchange sits between RemoveNode and AddNode; the graph is what is asserted, not the block code.
     var scene = Scene.Standing("ns");
     BlockPos alongZ = new(0, 0, 1);
     BlockPos alongX = new(1, 0, 0);
@@ -54,9 +50,7 @@ public class NetworkNodeOrientationTests {
 
   [Fact]
   public void A_wrenched_node_is_marked_dirty_for_the_client() {
-    // A headless suite cannot see a missing client mesh update: the block swaps, every server-side
-    // assertion passes, and the player keeps looking at the old shape. This assertion is the only
-    // thing in the repo that would notice.
+    // The only assertion in the suite for the client mesh update.
     var scene = Scene.Standing("ns");
 
     scene.Wrench(1);
@@ -66,9 +60,7 @@ public class NetworkNodeOrientationTests {
 
   [Fact]
   public void A_node_with_no_orientable_behaviour_refuses_the_wrench_and_says_so() {
-    // Every node def declares the behaviour and a per-mod contract holds them to it, so reaching here
-    // means a def was authored without it. Refusing states that; swapping the block by hand instead
-    // would keep the wrench working and leave the missing declaration invisible.
+    // A def without the orientable behaviour refuses the wrench and logs an error.
     var scene = Scene.Standing("ns");
     scene.StripOrientableBehaviour();
 
@@ -97,8 +89,8 @@ public class NetworkNodeOrientationTests {
 
   [Fact]
   public void A_recalculation_that_changes_nothing_exchanges_nothing() {
-    // This runs on every neighbour notification, so a second exchange onto the token already worn
-    // would be a mesh rebuild and a client packet per notification, forever.
+    // Runs on every neighbour notification; re-exchanging onto the same token means a mesh rebuild
+    // and a client packet each time.
     var scene = Scene.Standing("we");
     scene.World.PlaceNode(new BlockPos(1, 0, 0), "test", "ns", id: 50);
     scene.World.PlaceNode(new BlockPos(-1, 0, 0), "test", "ns", id: 51);
@@ -127,8 +119,8 @@ public class NetworkNodeOrientationTests {
 
   #region Test seams (SetNetworkTypeForTest, ApplyOrientationForTest)
 
-  // Both setters are protected on BlockNetworkNode; a headless fixture that skips OnLoaded (the parser
-  // that would otherwise fill them from the variant map) primes them through these seams instead.
+  // Both setters are protected on BlockNetworkNode; a headless fixture skipping OnLoaded primes them
+  // through these seams.
   [Fact]
   public void SetNetworkTypeForTest_writes_Type_directly() {
     var node = TestNetworkBlock.Family("test", "test:node", "Axis", Axis)[0];
@@ -217,8 +209,7 @@ public class NetworkNodeOrientationTests {
       );
 
     /// <summary>Takes the behaviour off every variant, leaving a node no swap path can reach. Both
-    /// arrays, because <c>GetBehavior</c> reads only one of them and clearing the other would leave the
-    /// behaviour findable.</summary>
+    /// arrays: <c>GetBehavior</c> reads only one of them.</summary>
     public void StripOrientableBehaviour() {
       foreach (TestNetworkBlock block in _family) {
         block.BlockBehaviors = [];

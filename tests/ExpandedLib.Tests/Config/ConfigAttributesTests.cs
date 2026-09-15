@@ -7,12 +7,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The attribute types themselves - <see cref="ExConfigRangeAttribute"/> and
-/// <see cref="ExConfigRegisterAttribute"/> - plus the two carry-over paths <see cref="ConfigEditTests"/>
-/// does not reach: <see cref="ExConfigRegister{TConfig}.LegacySectionIds"/> folding a section this mod
-/// used to be keyed under, and <see cref="ExConfigProfiles"/>'s own lookup. The numeric range
-/// enforcement itself (both edges, the baseline non-negative default) is <see cref="ConfigEditTests"/>'
-/// job over <c>EditableConfig.Ratio</c>; this file does not repeat it.
+/// Pins <see cref="ExConfigRangeAttribute"/>, <see cref="ExConfigRegisterAttribute"/>,
+/// <see cref="ExConfigRegister{TConfig}.LegacySectionIds"/> folding, and <see cref="ExConfigProfiles"/>.
 /// </summary>
 public class ConfigAttributesTests {
   #region ExConfigRangeAttribute
@@ -96,7 +92,7 @@ public class ConfigAttributesTests {
 
   [Fact]
   public void A_legacy_sections_values_are_carried_into_the_new_section() {
-    // "oldmod"'s section exists, "newmod"'s does not - the rename-or-absorb case.
+    // "newmod"'s section does not exist yet.
     var doc = new JObject {
       ["oldmod"] = JObject.FromObject(new SectionConfig { Value = 42 }),
     };
@@ -111,7 +107,7 @@ public class ConfigAttributesTests {
 
   [Fact]
   public void A_legacy_section_only_fills_gaps_when_the_new_section_already_has_one() {
-    // Both sections exist: the survivor (the mod's own current section) wins.
+    // Both sections exist; "newmod"'s own section wins.
     var doc = new JObject {
       ["oldmod"] = JObject.FromObject(new SectionConfig { Value = 42 }),
       ["newmod"] = JObject.FromObject(new SectionConfig { Value = 7 }),
@@ -134,7 +130,7 @@ public class ConfigAttributesTests {
 
     store.Load(FakeApiWithDocument(doc));
 
-    Assert.Equal(1, store.Config.Value); // coded default - the "oldmod" section was left alone
+    Assert.Equal(1, store.Config.Value); // coded default
   }
 
   #endregion

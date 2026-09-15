@@ -29,7 +29,7 @@ internal sealed class TestProductionMachine : BlockEntityProductionMachine {
     LastIdleDt = dt;
   }
 
-  /// <summary>Exposes the protected registration so a test can start ticking without full Initialize.</summary>
+  /// <summary>Exposes the protected registration, for starting the tick without a full Initialize.</summary>
   public void StartTicking() => StartProductionTick();
 }
 
@@ -79,9 +79,7 @@ public class ProductionMachineTests {
 
   #region Catch-up dt clamp (rejoin/hitch guard)
 
-  // A chunk reload or server hitch can hand the machine one oversized catch-up dt; the base clamps
-  // it to 2x the tick interval (default 1000 ms -> 2 s) so a grace timer cannot cross its whole
-  // window in one step.
+  // Catch-up dt clamps to 2x the tick interval (default 1000 ms -> 2 s).
   [Fact]
   public void Clamps_an_oversized_catchup_dt_to_2x_the_interval() {
     var (world, machine) = NewMachine();
@@ -115,8 +113,7 @@ public class ProductionMachineTests {
 
   #region Test seams (DriveProductionTick, DriveIdleTick)
 
-  // DriveProductionTick advances the same counter a registered tick would, without needing a
-  // TestWorld to fire one: the seam other suites' fixtures call instead of reflecting OnProductionTick.
+  // The seam other suites' fixtures call to advance the counter without a TestWorld tick.
   [Fact]
   public void DriveProductionTick_advances_the_same_counter_a_real_tick_advances() {
     var machine = new TestProductionMachine { Pos = new BlockPos(0, 0, 0) };
@@ -141,8 +138,7 @@ public class ProductionMachineTests {
     Assert.Equal(1, machine.IdleTicks);
   }
 
-  // DriveIdleTick runs the idle path directly, bypassing CanRunProduction - for a fixture asserting
-  // idle behaviour itself rather than the gate that routes to it.
+  // Runs the idle path directly, bypassing CanRunProduction.
   [Fact]
   public void DriveIdleTick_runs_the_idle_path_even_while_operational() {
     var machine = new TestProductionMachine { Pos = new BlockPos(0, 0, 0) };

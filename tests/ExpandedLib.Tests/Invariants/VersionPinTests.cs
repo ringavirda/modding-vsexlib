@@ -8,13 +8,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Binds a first-time modder's entry paths to <c>src/ExpandedLib/modinfo.json</c>: every
-/// <c>ExpandedLib*</c> package version under <c>templates/</c>, every
-/// <c>"exlib": "&lt;version&gt;"</c> dependency literal in <c>wiki/Getting-Started.md</c>, and each
-/// sample's own <c>exlib</c> dependency floor under <c>samples/*/src/modinfo.json</c> must equal
-/// <see cref="ModinfoVersion"/>.
-/// </summary>
+/// <summary>Every <c>ExpandedLib*</c> package version under <c>templates/</c>, every
+/// <c>"exlib": "&lt;version&gt;"</c> literal in <c>wiki/Getting-Started.md</c>, and each sample's
+/// <c>exlib</c> dependency floor must equal <see cref="ModinfoVersion"/>.</summary>
 public class VersionPinTests {
   private static string ModinfoVersion {
     get {
@@ -30,8 +26,7 @@ public class VersionPinTests {
     }
   }
 
-  // The element first, then its attributes, matched independently of order - Include and Version
-  // are not always adjacent (e.g. an ExcludeAssets attribute sitting between them).
+  // The element first, then its attributes, matched independently of order.
   private static readonly Regex PackageReferenceTag = new(
     @"<PackageReference\b([^>]*)>"
   );
@@ -121,8 +116,7 @@ public class VersionPinTests {
   public void Every_sample_exlib_dependency_floor_matches_modinfo() {
     string version = ModinfoVersion;
 
-    // Driven from exmod.json's own sample map rather than a directory walk, so a sample that
-    // moved, was renamed, or was added without a floor fails loudly instead of being skipped.
+    // Driven from exmod.json's own sample map, not a directory walk.
     var stale = new List<string>();
     foreach (
       (string name, RepoManifest.SampleEntry sample) in RepoManifest.Samples

@@ -6,10 +6,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// <see cref="BlockMigrationModSystem.FollowChain"/>, the walk that resolves a saved block code through
-/// a multi-hop rename history (<c>ppex</c> to <c>iiex</c> to <c>hpex</c>, <c>smex</c> to <c>iiex</c>) to
-/// its terminal code. Hops resolve against the declared remap table rather than against the world,
-/// because a chain's intermediate code is one that no longer registers.
+/// <see cref="BlockMigrationModSystem.FollowChain"/>: resolves a saved block code through a
+/// multi-hop rename history to its terminal code, against the declared remap table.
 /// </summary>
 public class MigrationChainTests {
   private static AssetLocation L(string code) => new(code);
@@ -51,8 +49,7 @@ public class MigrationChainTests {
 
   [Fact]
   public void A_multi_hop_chain_resolves_to_the_far_end() {
-    // The shipped shape: ppex, then iiex, then hpex. The middle code no longer registers, so it can
-    // only be resolved from the table.
+    // The middle code is not registered; resolution comes only from the table.
     var hops = new Dictionary<string, string> {
       ["ppex:boilerlancashire-north"] = "iiex:boilerlancashire-n",
       ["iiex:boilerlancashire-n"] = "hpex:boilerlancashire-n",
@@ -67,7 +64,6 @@ public class MigrationChainTests {
 
   [Fact]
   public void A_chain_entered_midway_still_reaches_the_far_end() {
-    // A world that already ran the first migration holds the middle code, not the oldest one.
     var hops = new Dictionary<string, string> {
       ["ppex:x"] = "iiex:x",
       ["iiex:x"] = "hpex:x",
@@ -101,8 +97,7 @@ public class MigrationChainTests {
 
   [Fact]
   public void A_purge_stops_the_walk_rather_than_following_past_it() {
-    // A purge wins even where the retired code later gains a hop; walking on would resurrect the
-    // block as something else.
+    // A purge wins over a later hop on the retired code.
     var hops = new Dictionary<string, string> {
       ["a:one"] = "a:two",
       ["a:two"] = "a:three",
@@ -142,8 +137,7 @@ public class MigrationChainTests {
 
   [Fact]
   public void A_chain_at_the_hop_limit_still_resolves() {
-    // Exactly MaxChainHops hops resolve and one more overflows. Both sides are pinned so the guard
-    // cannot tighten into rejecting a legitimate rename history.
+    // Pins both sides of the hop-count boundary.
     var atLimit = new Dictionary<string, string>();
     for (int i = 0; i < BlockMigrationModSystem.MaxChainHops; i++)
       atLimit[$"a:s{i}"] = $"a:s{i + 1}";

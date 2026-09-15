@@ -93,8 +93,7 @@ public class CellGridTests {
     );
     grid.Add(0, "A B");
 
-    // The space itself becomes a drawn cell (a legend simply never maps it, as a scene's does not);
-    // what the option changes is where the following glyph lands.
+    // The space itself becomes a drawn cell; the option only changes where the next glyph lands.
     Assert.Equal(3, grid.Cells.Count);
     Assert.Contains(new LayoutCell(0, 0, 0, 'A'), grid.Cells);
     Assert.Contains(new LayoutCell(2, 0, 0, 'B'), grid.Cells);
@@ -119,7 +118,7 @@ public class CellGridTests {
     );
     grid.Add(0, "_A.");
 
-    // '_' is now empty (skipped); '.' is now an ordinary drawn glyph.
+    // '_' is empty here (skipped); '.' is an ordinary drawn glyph.
     Assert.Equal(2, grid.Cells.Count);
     Assert.Contains(new LayoutCell(1, 0, 0, 'A'), grid.Cells);
     Assert.Contains(new LayoutCell(2, 0, 0, '.'), grid.Cells);

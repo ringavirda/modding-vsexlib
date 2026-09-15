@@ -8,14 +8,9 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The naming law every catalogue registry follows (docs/design/conventions.md, "Catalogue registry
-/// verbs"): <c>Register</c> declares from code, <c>Contribute</c> merges a parsed set, <c>Load</c> (on
-/// the loader, never the registry) reads assets in, <c>Clear</c> empties, <c>Contributors</c> is the
-/// hook a mod's C# survives a reload through. Scoped to the six catalogue registries
-/// (<c>ExpandedLib.Catalogues</c> plus <see cref="MetalRegistry"/>, the one catalogue registry the
-/// family namespace carries) rather than every type merely named <c>*Registry</c>: the framework also
-/// has registration registries with no catalogue to load or clear (<c>EntityRegistry</c>,
-/// <c>CommandRegistry</c>, <c>PreferenceRegistry</c>), and they are a different contract.
+/// The naming law every catalogue registry follows: <c>Register</c> declares from code,
+/// <c>Contribute</c> merges a parsed set, <c>Load</c> reads assets in, <c>Clear</c> empties, and
+/// <c>Contributors</c> survives a reload.
 /// </summary>
 public class CatalogueNamingTests {
   private static Type[] CatalogueRegistryTypes() {
@@ -66,8 +61,7 @@ public class CatalogueNamingTests {
             | BindingFlags.DeclaredOnly
         )
       ) {
-        // Skip the [Obsolete] forwarder itself: the naming law is being enforced by keeping it
-        // deprecated, not by hiding that it once existed.
+        // Skips the [Obsolete] forwarder; deprecating it enforces the law without hiding it.
         if (member.GetCustomAttribute<ObsoleteAttribute>() != null)
           continue;
         Assert.False(

@@ -11,8 +11,7 @@ namespace ExpandedLib.Tests;
 public class MultiblockCellRolesBuildTimeFailuresTests {
   [Fact]
   public void A_role_on_a_glyph_the_legend_does_not_define_fails_the_build() {
-    // The glyph is not in the drawing's alphabet, so without this the role would answer an empty set for
-    // ever with no error anywhere.
+    // The glyph is not in the drawing's alphabet.
     var ex = Assert.Throws<InvalidOperationException>(() =>
       ExBlockDef
         .Create("exlib", "testmega")
@@ -42,8 +41,7 @@ public class MultiblockCellRolesBuildTimeFailuresTests {
 
   [Fact]
   public void A_role_glyph_that_is_only_drawn_under_a_second_glyph_still_fails() {
-    // A role two glyphs share is satisfied only when each glyph is drawn. Counting the role's cells instead
-    // would let a drawing that lost one facing look complete.
+    // A role two glyphs share is satisfied only when each glyph is drawn.
     Assert.Throws<InvalidOperationException>(() =>
       ExBlockDef
         .Create("exlib", "testmega")
@@ -60,14 +58,10 @@ public class MultiblockCellRolesBuildTimeFailuresTests {
 
   [Fact]
   public void One_glyph_can_carry_two_roles_and_its_cells_answer_to_both() {
-    // A cell holds exactly one glyph, so two overlapping roles cannot be split across two glyphs. Stacking
-    // both roles on one glyph is what lets a drawing state the shaft furnaces' crucible, where burden column
-    // and metal pool are the same cells.
+    // A cell holds exactly one glyph; overlapping roles must stack on the same glyph.
     JObject roles = (JObject)Attributes(OverlappingDef())["multiblockRoles"]!;
 
-    // Both roles are emitted, sorted by key, each holding the same single cell: the `v` at (2,0,0). The
-    // neighbouring `a` is the identical code and carries neither, so this is about the glyph rather than
-    // about game:air.
+    // Both roles key on the glyph `v`, not the block code game:air.
     Assert.Equal(["Damper", "Flue"], roles.Properties().Select(p => p.Name));
     foreach (string role in new[] { "Damper", "Flue" }) {
       JToken cell = Assert.Single((JArray)roles[role]!);
@@ -106,7 +100,7 @@ public class MultiblockCellRolesBuildTimeFailuresTests {
 
   [Fact]
   public void One_glyph_cannot_carry_two_codes() {
-    // A cell gets one block number, so the second code would stop being required anywhere.
+    // A cell gets exactly one block number.
     Assert.Throws<ArgumentException>(() =>
       new MultiblockLayoutBuilder()
         .Legend('a', "game:air")
@@ -116,8 +110,7 @@ public class MultiblockCellRolesBuildTimeFailuresTests {
 
   [Fact]
   public void A_third_party_role_needs_nothing_from_exlib() {
-    // "kiln-door" is minted here, not declared anywhere in exlib or in FurnaceCellRoles: the layout
-    // builder and MultiblockCellRoles must accept and answer it on the strength of the key alone.
+    // "kiln-door" is minted here, declared nowhere in exlib: acceptance rests on the key alone.
     CellRole kilnDoor = CellRole.Of("kiln-door");
     ExBlockDef def = ExBlockDef
       .Create("exlib", "testmega")

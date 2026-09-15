@@ -8,12 +8,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Items generated from the stage catalogue. A stage that names a <c>code</c> is a stopping point, and a
-/// stopping point is an item - so the rolled catalogue stops being hand-authored defs and falls out of the
-/// declaration instead. Emitted at inject time, which is why the routes are config assets rather than item
-/// attributes. See docs/design/mechanics/process-extension.md.
-/// </summary>
+/// <summary>Tests <see cref="ProcessItemEmitter"/>: a stage naming a code is a stopping point,
+/// emitted as an item at inject time.</summary>
 public class ProcessItemEmitterTests {
   private static ProcessRoute Route(string json) {
     Assert.True(
@@ -61,7 +57,7 @@ public class ProcessItemEmitterTests {
 
   [Fact]
   public void The_owning_domain_comes_from_the_declared_code() {
-    // A modder's products land in their own domain, not ours, whoever's route they extend.
+    // A modder's products land in their own domain, not the framework's.
     ExItemDef def = Assert.Single(
       Emit(BarRoute.Replace("iiex:rolledrod", "othermod:splinerod"))
     );
@@ -72,8 +68,7 @@ public class ProcessItemEmitterTests {
 
   [Fact]
   public void A_stage_can_opt_out_and_build_nothing() {
-    // "The code exists already; wire it up, build nothing" - how a declaration points at an item the mod
-    // ships itself.
+    // A code with generate: false wires up an item the mod ships itself.
     Assert.Empty(
       Emit(
         BarRoute.Replace(
@@ -86,8 +81,7 @@ public class ProcessItemEmitterTests {
 
   [Fact]
   public void A_code_in_the_vanilla_domain_is_never_generated_over() {
-    // Injecting an itemtype into `game:` would replace one of the base game's own items. A declaration
-    // pointing at a vanilla item is wiring it up, never building it.
+    // A declaration pointing at a vanilla item wires it up; it never builds over `game:`.
     List<ExItemDef> defs =
     [
       .. ProcessItemEmitter.Emit(
@@ -102,8 +96,7 @@ public class ProcessItemEmitterTests {
 
   [Fact]
   public void A_code_with_no_path_is_skipped_rather_than_failing_the_load() {
-    // A code is a modder's free text. A blank one never reaches here - the parser reads it as "no code",
-    // so the stage is simply not a stopping point - but a domain with nothing after it does.
+    // A code with a domain but no path is skipped; a blank code is not a stopping point at all.
     List<ExItemDef> defs =
     [
       .. ProcessItemEmitter.Emit(
@@ -123,8 +116,7 @@ public class ProcessItemEmitterTests {
 
   [Fact]
   public void One_code_declared_twice_yields_one_item() {
-    // A fork can reach the same product down two branches, and the object loader would reject a duplicate
-    // itemtype.
+    // Two branches reaching the same product yield one item, not a duplicate itemtype.
     Assert.Single(
       Emit(
         BarRoute,
@@ -142,8 +134,7 @@ public class ProcessItemEmitterTests {
 
   [Fact]
   public void The_item_is_drawn_by_its_own_element_of_the_family_shape() {
-    // The route names one shape file for the family and the stage names its element in it, so the
-    // generated item renders as the stage the piece stopped at.
+    // The generated item renders as the stage element within the family's shape file.
     JObject shape = (JObject)Json(Assert.Single(Emit(BarRoute)))["shape"]!;
 
     Assert.Equal("iiex:item/smithed/shingled-bar", shape["base"]!.ToString());
@@ -168,8 +159,7 @@ public class ProcessItemEmitterTests {
 
   [Fact]
   public void A_sparse_declaration_still_yields_a_working_item() {
-    // No shape anywhere: the item must still load and be reachable, or a modder's first attempt is a
-    // crash rather than an untextured cube.
+    // A sparse declaration with no shape must still load as a reachable item.
     ExItemDef def = Assert.Single(
       Emit(
         """

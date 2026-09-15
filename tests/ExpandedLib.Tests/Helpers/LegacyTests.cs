@@ -1,8 +1,6 @@
-// The shims under ExpandedLib.Legacy compile only on the game-version floors that lack the real
-// member (see each type's own file), so this whole file is empty on 1.22 - there is nothing left to
-// test once the real framework/API member takes over. LegacyAnimUtil.CreateMesh and
-// LegacyApi120's BlockEntityToolMold.MeshAngle are not covered here: the first needs a live client
-// tesselator, the second a BlockEntityToolMold instance, and neither is constructible headlessly.
+// Compiles only on game-version floors lacking the real member; empty on 1.22.
+// LegacyAnimUtil.CreateMesh and LegacyApi120's MeshAngle need a live client/instance and are not
+// covered here.
 #if !GAME_GE_1_22
 using System.Collections.Generic;
 using System.Linq;
@@ -37,8 +35,7 @@ public class LegacyTests {
 #if !GAME_GE_1_21
   [Fact]
   public void ToRandomItemstackForPlayer_falls_back_to_GetNextItemStack() {
-    // A fixed (zero-variance) quantity, so GetNextItemStack's own internal roll is deterministic and
-    // the two calls can be compared directly.
+    // A fixed (zero-variance) quantity makes GetNextItemStack's roll deterministic.
     var drop = new BlockDropItemStack(new ItemStack(new Item()), 1f) {
       Quantity = NatFloat.createUniform(2f, 0f),
     };

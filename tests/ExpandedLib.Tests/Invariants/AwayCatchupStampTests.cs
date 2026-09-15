@@ -7,23 +7,12 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Repo-wide rule for a block entity that hosts a production process: it must round-trip the process's
-/// last-tick stamp, or opt out with <c>no away-catch-up:</c> and a reason. The stamp is the only thing
-/// the catch-up measures an absence against, and the behaviour cannot save it - vanilla fans a
-/// behaviour's tree into the block entity's own flat tree, so exactly one of the two may write the key
-/// and it is the host.
-/// <para>
-/// The failure is silent both ways: a host that saves nothing has <c>MaxAwayCatchupSteps</c> honoured
-/// and replays nothing, and one that saves it twice loses a writer without a word. Neither shows up in
-/// a machine's own tests, which is why this is a corpus rule rather than an assertion on one class.
-/// </para>
-/// </summary>
+/// <summary>Repo-wide rule: a block entity hosting a production process must round-trip its
+/// last-tick stamp, or opt out with <c>no away-catch-up:</c> and a reason.</summary>
 public class AwayCatchupStampTests {
   #region Corpus
 
-  // The base-list form: every host declares its process as a nested subclass, so the file that defines
-  // a process is the file that must decide what happens to its stamp.
+  // Matches the base-list form: every host declares its process as a nested subclass.
   private static readonly Regex HostsAProcess = new(
     @":\s*BEBehaviorProductionMachine\s*\(",
     RegexOptions.Compiled
@@ -32,8 +21,7 @@ public class AwayCatchupStampTests {
   private const string StampKey = "pm_lastHours";
   private const string OptOut = "no away-catch-up:";
 
-  // Every mod's own source tree - <mod>/src when that folder holds it, else the mod's own folder
-  // (exlib's own project, flat under src/ExpandedLib) - the whole corpus a process host can live in.
+  // Every mod's source tree: <mod>/src when present, else the mod's own folder (exlib is flat under src/ExpandedLib).
   private static IEnumerable<string> SourceFiles() {
     foreach (string mod in RepoManifest.Mods.Values) {
       string full = Path.Combine(mod, "src");
@@ -112,9 +100,7 @@ public class AwayCatchupStampTests {
 
   [Fact]
   public void A_no_catch_up_opt_out_sits_on_a_host_and_states_its_reason() {
-    // A marker outlives the process it explains when the host moves or the class is split, and the rule
-    // above reads any file carrying one as exempt - so a stale marker quietly exempts whatever host
-    // lands in that file next.
+    // A stale marker (left after the host moves) exempts whatever host lands in that file next.
     var stranded = new List<string>();
     var unexplained = new List<string>();
     foreach (string f in SourceFiles()) {
@@ -130,9 +116,7 @@ public class AwayCatchupStampTests {
       }
     }
 
-    // Unlike the corpus-integrity check above, marked == 0 is a legitimate outcome here: exlib's own
-    // process hosts round-trip the stamp outright (see the previous test), and the opt-out this rule
-    // polices is a family machine's to reach for, not the framework's.
+    // Zero markers is a legitimate outcome: the opt-out is a family machine's escape hatch, not exlib's own.
     Assert.True(
       stranded.Count == 0,
       "These carry the \""

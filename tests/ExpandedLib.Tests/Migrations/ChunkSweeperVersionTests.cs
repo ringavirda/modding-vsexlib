@@ -9,9 +9,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// <see cref="ChunkColumnSweeperModSystem"/>'s completion marker: <see cref="ChunkColumnSweeperModSystem.Version"/>
-/// null (the default) sweeps a column every call; a non-null value marks the column after its first
-/// sweep and skips it on every later call at that same value, and bumping the value re-sweeps.
+/// <see cref="ChunkColumnSweeperModSystem"/>'s completion marker: a null <see cref="ChunkColumnSweeperModSystem.Version"/>
+/// sweeps every call; a set value sweeps once per value and re-sweeps only when the value changes.
 /// </summary>
 public class ChunkSweeperVersionTests {
   private sealed class VersionedSweeper : ChunkColumnSweeperModSystem {
@@ -44,8 +43,7 @@ public class ChunkSweeperVersionTests {
     return mod;
   }
 
-  // A chunk section with no blocks (so ScanChunk's cell loop is a no-op) whose moddata round-trips
-  // through an in-memory dictionary, standing in for the persisted store the marker reads and writes.
+  // Blockless chunk stub; moddata backed by an in-memory dictionary.
   private static IWorldChunk FakeChunk() {
     var chunk = Substitute.For<IWorldChunk>();
     var data = Substitute.For<IChunkBlocks>();

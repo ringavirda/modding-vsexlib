@@ -10,11 +10,10 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Repo-wide `ExecuteOrder` invariant: no non-<see cref="ExModSystem"/> ModSystem in `exlib.dll` or
-/// `exlib.industry.dll` is allowed to read or finalize assets at the vendored 0.1 default, because
-/// exlib's own consumer contract rests on that default running strictly after the framework's own
-/// `AssetsFinalize` (<see cref="ExpandedLib.ExpandedLibModSystem"/>, pinned at 0.06).
-/// <see cref="ExModSystem"/> itself sits at 0.1 by design and is exempt.
+/// Repo-wide invariant: no non-<see cref="ExModSystem"/> ModSystem in `exlib.dll` or
+/// `exlib.industry.dll` may read or finalize assets at the vendored 0.1 default;
+/// <see cref="ExpandedLib.ExpandedLibModSystem"/>'s own `AssetsFinalize` is pinned at 0.06 and
+/// must run first.
 /// </summary>
 public class ModSystemOrderTests {
   #region Corpus
@@ -25,9 +24,7 @@ public class ModSystemOrderTests {
     typeof(IndustryModule).Assembly,
   ];
 
-  // Every concrete ModSystem the two assemblies declare, skipping the abstract bases (ExModSystem)
-  // that leave the choice to a subclass, and skipping ExModSystem's own descendants, which
-  // legitimately inherit its pinned 0.1.
+  // Concrete ModSystems only, excluding ExModSystem and its descendants (pinned at 0.1 by design).
   private static IEnumerable<Type> ConcreteModSystems() =>
     Assemblies
       .SelectMany(a => a.GetTypes())
@@ -37,9 +34,7 @@ public class ModSystemOrderTests {
         && !typeof(ExModSystem).IsAssignableFrom(t)
       );
 
-  // Walks t's base chain within the two assemblies above, so a concrete class that inherits its
-  // AssetsLoaded/AssetsFinalize override from an in-assembly abstract base (rather than declaring it
-  // itself) is still caught.
+  // Walks t's base chain within the two assemblies, catching an inherited override too.
   private static bool OverridesPhase(Type t, string methodName) {
     MethodInfo? m = t.GetMethod(
       methodName,

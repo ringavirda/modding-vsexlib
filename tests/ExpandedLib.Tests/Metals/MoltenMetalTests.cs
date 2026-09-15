@@ -3,13 +3,10 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The shared molten-metal value helper: the glow scale and metal-name formatting read by canal
-/// cells, taps, pedestals and barrels. Melt-point classification needs a resolved collectible, so
-/// only the world-free arithmetic is covered here.
-/// </summary>
-// Reads the global ExMeasure.System through MoltenMetal's temperature formatter, so it must not run
-// beside a class that flips it - see ExMeasureCollection.
+/// <summary>The shared molten-metal value helper: the glow scale and metal-name formatting read by
+/// canal cells, taps, pedestals and barrels.</summary>
+// Reads the global ExMeasure.System through MoltenMetal's temperature formatter; must not run
+// beside a class that flips it.
 [Collection(ExMeasureCollection.Name)]
 public class MoltenMetalTests {
   [Theory]
@@ -52,7 +49,7 @@ public class MoltenMetalTests {
   [Fact]
   public void FormatTemperature_prints_the_rounded_value_when_warm() {
     // With no formatter injected (iiex wires its own ExMeasure in-game), the exlib default prints
-    // the metric "650 °C" form.
+    // the metric "650 deg C" form.
     Assert.StartsWith("650 ", MoltenMetal.FormatTemperature(650f));
   }
 }

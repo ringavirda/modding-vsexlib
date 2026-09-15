@@ -6,11 +6,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="ExItems.WrenchStacks"/>: one stack per registered wrench item, built once per world
-/// and cached in the API's <c>ObjectCache</c> - the cache is keyed by session, not process, so a
-/// second world with a different item set must rebuild rather than reuse the first's stacks.
-/// </summary>
+/// <summary><see cref="ExItems.WrenchStacks"/>: one stack per registered wrench item, cached per
+/// world in the API's <c>ObjectCache</c>.</summary>
 public class ExItemsTests {
   private static IWorldAccessor WorldWith(params Item[] items) {
     var api = Substitute.For<ICoreAPI>();

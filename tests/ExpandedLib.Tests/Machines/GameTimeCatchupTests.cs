@@ -22,11 +22,8 @@ internal sealed class CatchupMachine : BlockEntityProductionMachine {
   public void StartTicking() => StartProductionTick();
 }
 
-/// <summary>
-/// Game-time away-catch-up. The calendar is the only clock that survives a chunk unload, so a machine
-/// that opts in (<c>MaxAwayCatchupSteps &gt; 0</c>) replays the game hours it spent unloaded as bounded
-/// sub-ticks on reload: proportional for a short absence, capped for a long one. Off by default.
-/// </summary>
+/// <summary>Game-time away-catch-up: a machine with <c>MaxAwayCatchupSteps &gt; 0</c> replays the
+/// game hours it spent unloaded as bounded sub-ticks on reload. Off by default.</summary>
 public class GameTimeCatchupTests {
   #region GameTime helper
 
@@ -81,7 +78,6 @@ public class GameTimeCatchupTests {
   private static Block MachineBlock() =>
     TestBlocks.Configure(new Block(), "test:catchupmachine", 99);
 
-  // Ticks m1 once, unloads it, advances the calendar, and reloads a fresh machine from m1's save tree.
   private static CatchupMachine Reload(int steps, double awayHours) {
     var world = new TestWorld();
     Block block = MachineBlock();
@@ -120,7 +116,7 @@ public class GameTimeCatchupTests {
 
   [Fact]
   public void A_long_absence_is_capped_at_the_step_budget() {
-    // An hour away would be 3600 sub-ticks; capped at 10, plus the 1 normal tick.
+    // An hour away is 3600 sub-ticks; capped at 10, plus the 1 normal tick.
     CatchupMachine m = Reload(steps: 10, awayHours: 1.0);
     Assert.Equal(11, m.ProductionTicks);
   }

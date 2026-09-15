@@ -9,19 +9,13 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Declared block-entity state: a field is named once and both directions follow from that. The pair of
-/// hand-written <c>ToTreeAttributes</c>/<c>FromTreeAttributes</c> this replaces spells every field
-/// twice, and a field added to one side and forgotten on the other still compiles - it saves and never
-/// loads, or loads and never reaches the client.
-/// </summary>
+/// <summary>Tests <see cref="ExBlockState"/>, where a field is named once for both directions.</summary>
 public class ExBlockStateTests {
   private enum Mode {
     Idle = 0,
     Running = 7,
   }
 
-  // Every supported kind at once, so a round trip covers the whole surface rather than one type.
   private sealed class Bag {
     public bool Flag;
     public int Count;
@@ -87,7 +81,7 @@ public class ExBlockStateTests {
     var world = new TestWorld();
 
     var tree = new TreeAttribute();
-    new Bag().Declare().ToTree(tree); // everything null
+    new Bag().Declare().ToTree(tree);
 
     var target = new Bag {
       Label = "stale",
@@ -96,8 +90,7 @@ public class ExBlockStateTests {
     };
     target.Declare().FromTree(tree, world.World);
 
-    // A position must not come back as the origin, which is a real cell and would silently re-anchor
-    // whatever reads it.
+    // A null position must not read back as the origin cell.
     Assert.Null(target.Label);
     Assert.Null(target.Anchor);
     Assert.Null(target.Stack);
@@ -118,8 +111,7 @@ public class ExBlockStateTests {
 
   [Fact]
   public void Declaring_one_key_twice_is_refused() {
-    // Two fields on one key is the copy-paste slip this type exists to prevent: the second silently
-    // overwrites the first on save, and both load the same value.
+    // A shared key: the second registration overwrites the first on save.
     int a = 0,
       b = 0;
 
@@ -167,8 +159,7 @@ public class ExBlockStateTests {
     var items = new Dictionary<int, AssetLocation>();
     bag.Declare().StoreCollectibleMappings(world.World, blocks, items);
 
-    // ItemStack.ToBytes writes the runtime id, so without this the paste resolves whatever owns that
-    // id in the destination world.
+    // ItemStack.ToBytes serializes the runtime id, not the code.
     Assert.Equal(item.Code, items[item.Id]);
   }
 
@@ -178,8 +169,7 @@ public class ExBlockStateTests {
     Item item = world.RegisterItem("test:widget");
     var bag = new Bag { Stack = new ItemStack(item) };
 
-    // An id the destination cannot map. FixMapping leaves Id at the source world's value, which would
-    // resolve to whatever owns that id there - so the stack must go rather than become another item.
+    // FixMapping leaves an unmapped id at the source value; the stack must be dropped, not reassigned.
     bag.Declare()
       .LoadCollectibleMappings(
         world.World,
@@ -227,8 +217,7 @@ public class ExBlockStateTests {
 
   [Fact]
   public void Tree_gives_write_and_read_the_same_flat_tree_every_other_field_uses() {
-    // MoltenCharge.ToTree/FromTree takes explicit key names on whatever tree it is given; Tree lets it
-    // write flat, multi-attribute state rather than forcing every declaration into its own subtree.
+    // Tree writes flat, multi-attribute state to the given tree, without a dedicated subtree.
     string? a = null;
     int b = 0;
     ExBlockState state = new ExBlockState().Tree(

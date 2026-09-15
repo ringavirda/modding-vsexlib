@@ -6,11 +6,7 @@ using static ExpandedLib.Tests.MultiblockCellRolesFixtures;
 namespace ExpandedLib.Tests;
 
 public class MultiblockCellRolesHandEditedAttributeTests {
-  /// <summary>
-  /// Reads a raw <c>multiblockRoles</c> body as a hand-edited JSON patch would present it. That is the only
-  /// route by which a malformed table reaches the reader, since the builder rejects these cases at authoring
-  /// time.
-  /// </summary>
+  /// <summary>Reads a raw <c>multiblockRoles</c> body as a hand-edited JSON patch presents it.</summary>
   private static MultiblockCellRoles ReadRoles(string rolesBody) =>
     MultiblockCellRoles.FromAttributes(
       new Vintagestory.API.Datastructures.JsonObject(
@@ -20,9 +16,7 @@ public class MultiblockCellRolesHandEditedAttributeTests {
 
   [Fact]
   public void A_cell_whose_coordinate_is_not_an_int_is_skipped_rather_than_thrown_on() {
-    // The read happens in SetStructureAngle, i.e. on the server monitor tick and in a client GetBlockInfo,
-    // so a throw there repeats on a live block entity mid-session. Newtonsoft's (int) cast throws
-    // FormatException on a string and ArgumentException on an object, a bool and a null.
+    // SetStructureAngle runs on the server tick and a client GetBlockInfo; a throw there repeats live.
     MultiblockCellRoles roles = ReadRoles(
       """
       {
@@ -52,9 +46,7 @@ public class MultiblockCellRolesHandEditedAttributeTests {
 
   [Fact]
   public void Any_non_blank_key_reads_as_a_role() {
-    // CellRole is an open string key, so "99" and "Nonsense" are both roles in their own right rather
-    // than something to reject - see A_third_party_role_needs_nothing_from_exlib for the same point made
-    // through the layout builder rather than raw JSON.
+    // CellRole is an open string key; "99" and "Nonsense" are both valid roles.
     Assert.NotEmpty(
       ReadRoles("""{ "99": [ {"x":0,"y":0,"z":0} ] }""")
         .CellsOf(CellRole.Of("99"))
@@ -64,8 +56,7 @@ public class MultiblockCellRolesHandEditedAttributeTests {
         .CellsOf(CellRole.Of("Nonsense"))
     );
 
-    // A key is read back exactly, not case-insensitively: "flue" and "Flue" are different roles now
-    // that neither is a spelling exlib itself owns.
+    // A key is read back exactly, not case-insensitively: "flue" and "Flue" are different roles.
     Assert.Empty(
       ReadRoles("""{ "flue": [ {"x":0,"y":0,"z":0} ] }""").CellsOf(Flue)
     );

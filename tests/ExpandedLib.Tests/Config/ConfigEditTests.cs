@@ -9,8 +9,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>A config POCO spanning every editable value type plus a non-editable complex one, so the
-/// store's value-listing and parse/format paths are all exercised.</summary>
+/// <summary>A config POCO spanning every editable value type plus a non-editable complex one.</summary>
 internal sealed class EditableConfig : IExVersionedConfig {
   public string? ConfigVersion { get; set; }
   public int Count { get; set; } = 10;
@@ -32,10 +31,8 @@ internal sealed class EditableConfig : IExVersionedConfig {
 }
 
 /// <summary>
-/// The runtime config-editing path the generic <c>/exmod config</c> command drives through
-/// <see cref="IExConfigAccess"/>: which values are exposed, reading and formatting them, parsing,
-/// validating and setting new ones, and the legacy-file fold that carries a player's tuning across a
-/// config rename.
+/// Pins <see cref="IExConfigAccess"/>: value listing, reading, parsing, validating, setting,
+/// and the legacy-file fold.
 /// </summary>
 public class ConfigEditTests {
   private static ExConfigRegister<EditableConfig> Store() =>
@@ -223,8 +220,7 @@ public class ConfigEditTests {
   [Fact]
   public void Load_restores_a_nulled_collection_to_its_default() {
     using var dir = new TempModConfig();
-    // A hand-edited file that nulled a non-string reference value (a recipe or profile catalogue,
-    // say) must be repaired rather than left to NRE the code that reads it.
+    // A nulled non-string value must be repaired to its default.
     var bad = new EditableConfig { NotEditable = null! };
 
     var store = new ExConfigRegister<EditableConfig>("c.json", "fakemod");
@@ -258,7 +254,7 @@ public class ConfigEditTests {
     var store = new ExConfigRegister<EditableConfig>("ex.json", "fakemod") {
       LegacyFileNames = ["old.json"],
     };
-    // The shared document already carries this mod's section, so there is nothing to fold.
+    // The shared document already carries this mod's section.
     store.Load(FakeApiLoading(new EditableConfig()));
 
     Assert.True(File.Exists(dir.Path("old.json"))); // untouched
@@ -276,12 +272,10 @@ public class ConfigEditTests {
   }
   #endregion
 
-  /// <summary>A fake API whose <c>LoadModConfig</c> returns null (so Load falls back to defaults) and
-  /// whose mod version resolves; the legacy fold runs against the real filesystem via GamePaths.</summary>
+  /// <summary>A fake API whose <c>LoadModConfig</c> returns null and whose mod version resolves.</summary>
   private static ICoreAPI FakeApi() => FakeApiLoading(null);
 
-  /// <summary>As <see cref="FakeApi"/>, but <c>LoadModConfig</c> returns <paramref name="loaded"/> - so a
-  /// test can feed a tampered-with config into <see cref="ExConfigRegister{TConfig}.Load"/>.</summary>
+  /// <summary>As <see cref="FakeApi"/>, but <c>LoadModConfig</c> returns <paramref name="loaded"/>.</summary>
   private static ICoreAPI FakeApiLoading(EditableConfig? loaded) {
     var api = Substitute.For<ICoreAPI>();
     api.Logger.Returns(Substitute.For<ILogger>());
@@ -303,8 +297,7 @@ public class ConfigEditTests {
     return api;
   }
 
-  /// <summary>Points <see cref="GamePaths.ModConfig"/> at a throwaway temp folder for a test and
-  /// removes it afterwards, so the rename runs against a real but disposable directory.</summary>
+  /// <summary>Points <see cref="GamePaths.ModConfig"/> at a throwaway temp folder and removes it afterwards.</summary>
   private sealed class TempModConfig : System.IDisposable {
     private readonly string _root = System.IO.Path.Combine(
       System.IO.Path.GetTempPath(),

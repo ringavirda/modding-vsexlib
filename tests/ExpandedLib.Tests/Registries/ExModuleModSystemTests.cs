@@ -10,9 +10,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// exlib's own driver at execute order 0.03: wires the framework's loggers and tunables and the
-/// per-module world-config flags ahead of anything that might log or register, then hosts every
-/// framework module (<c>exlib.industry.dll</c> is the one shipped today).
+/// exlib's own driver at execute order 0.03: wires framework loggers, tunables and per-module
+/// world-config flags, then hosts every framework module (currently exlib.industry.dll).
 /// </summary>
 public class ExModuleModSystemTests {
   private static Mod FakeMod(string modId) {
@@ -52,8 +51,7 @@ public class ExModuleModSystemTests {
 
     system.StartPre(world.Api);
 
-    // IndustryModule.StartPre registers the "refractory" variant qualifier; observing it proves
-    // the framework module's own StartPre ran, not just the notification line around it.
+    // IndustryModule.StartPre registers the "refractory" variant qualifier.
     Assert.Contains(ExBlockNames.Qualifiers, q => q.Group == "refractory");
   }
 }

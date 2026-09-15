@@ -9,14 +9,9 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Orientation-checked multiblock parts. Vanilla rotates a structure's offsets but not its codes, so a
-/// layout can only demand "a slab" unless the facing is rotated too. Covers both halves: the layout
-/// builder recognising which legends carry a facing, and the runtime rotating that facing.
+/// Pins orientation-checked multiblock parts: which legends carry a facing, and rotating that
+/// facing. A layout with no oriented part emits no facings attribute.
 /// </summary>
-/// <remarks>
-/// A layout that declares no oriented part must emit no facings attribute at all, so structures without
-/// one keep their existing offsets, goldens and completion checks.
-/// </remarks>
 public class MultiblockFacingsTests {
   private static JObject Def(Action<MultiblockLayoutBuilder> configure) =>
     (JObject)
@@ -42,7 +37,7 @@ public class MultiblockFacingsTests {
     );
 
   [Theory]
-  // Vertical facings do not move under a Y rotation, so they are not oriented parts.
+  // Vertical facings do not move under a Y rotation.
   [InlineData("game:brickslabs-fire-up-free")]
   [InlineData("game:brickslabs-fire-down-free")]
   [InlineData("iiex:pipe-outlet-fire-u")]
@@ -58,8 +53,7 @@ public class MultiblockFacingsTests {
 
   [Fact]
   public void A_layout_with_no_oriented_part_emits_no_facings_attribute() {
-    // Emitting the attribute here would churn the goldens and change the completion checks of every
-    // structure that has no oriented part.
+    // Absent here to avoid churning goldens for unoriented structures.
     Assert.Null(
       Facings(s =>
         s.Legend('#', "game:refractorybricks-good-tier*")
@@ -86,9 +80,7 @@ public class MultiblockFacingsTests {
         .Layer(0, "# i")
     );
     Assert.NotNull(f);
-    // Keyed by code, not block number, so it reads against blockNumbers and survives renumbering.
-    // The value is an array of segment indices: one code can carry several orientation groups (stairs
-    // spell a half and a facing), so a single index is the common case, not the only shape.
+    // Keyed by code, not block number. The value is an array of segment indices.
     Assert.Equal([2], f!["game:brickslabs-fire-south-free"]!.Values<int>());
     Assert.Null(f["game:claybricks-good-fire"]);
   }
@@ -98,8 +90,7 @@ public class MultiblockFacingsTests {
   #region Rotation
 
   [Theory]
-  // Authored north reads as the side whose AngleFromSide equals the structure angle, the convention
-  // RotateFacing and RotateOffset use.
+  // Authored north is the side whose AngleFromSide equals the structure angle.
   [InlineData("north", 0, "north")]
   [InlineData("north", 90, "west")]
   [InlineData("north", 180, "south")]
@@ -117,8 +108,7 @@ public class MultiblockFacingsTests {
 
   [Fact]
   public void Letter_form_survives_rotation_as_a_letter() {
-    // `orientation` variants use letters and `side` variants use words. Swapping the form builds a
-    // code no block has, which presents as a structure that never completes.
+    // `orientation` variants use letters; `side` variants use words.
     Assert.Equal("w", ExOrientation.RotateSideWord("n", 90));
     Assert.Equal("west", ExOrientation.RotateSideWord("north", 90));
   }
@@ -157,8 +147,7 @@ public class MultiblockFacingsTests {
       s.Legend('i', "game:brickslabs-fire-south-free").Layer(0, "i")
     );
 
-    // A brick has no facing and an up-facing slab has one that cannot turn. Both pass through
-    // unchanged, so the completion walk can route every cell through Rotate without branching.
+    // A brick has no facing; an up-facing slab has one that cannot turn.
     var brick = new AssetLocation("game", "claybricks-good-fire");
     var upSlab = new AssetLocation("game", "brickslabs-fire-up-free");
     Assert.Equal(brick.ToString(), f.Rotate(brick, 90).ToString());
@@ -186,15 +175,14 @@ public class MultiblockFacingsTests {
 
   [Fact]
   public void A_segment_index_past_the_end_falls_back_to_the_authored_code() {
-    // Only reachable through a hand-edited attribute. Not rotating is easier to diagnose than the
-    // nonsense code an out-of-range index would build.
+    // Only reachable through a hand-edited attribute.
     Assert.Null(
       MultiblockFacings.RotateSegments("brickslabs-fire-south-free", [9], 90)
     );
     Assert.Null(
       MultiblockFacings.RotateSegments("brickslabs-fire-south-free", [1], 90)
     );
-    // All or nothing: one bad index discards the whole rotation rather than half-applying it.
+    // One bad index discards the whole rotation.
     Assert.Null(
       MultiblockFacings.RotateSegments("brickslabs-fire-south-free", [2, 9], 90)
     );
@@ -218,9 +206,7 @@ public class MultiblockFacingsTests {
   [InlineData("iiex:pipe-plated-tjunction-uns")]
   [InlineData("iiex:molten-canal-brick-xjunction-nswe")]
   public void A_legend_pinning_a_network_token_is_refused(string code) {
-    // A multi-letter direction token is spelled by nothing but a network node, and a network node
-    // re-picks its orientation from its neighbours - so the pin can be contradicted at any moment,
-    // leaving the structure uncompletable or breaking a complete one when the player plumbs nearby.
+    // A multi-letter direction token names only a network node's self-picked orientation.
     var thrown = Assert.Throws<InvalidOperationException>(() =>
       Def(l => l.Legend('p', code).Layer(0, "p"))
     );
@@ -242,8 +228,7 @@ public class MultiblockFacingsTests {
 
   [Fact]
   public void A_side_word_is_not_a_network_token() {
-    // The refusal matches the tokens the declared schemes spell, not any run of direction letters, so a
-    // player-oriented part keeps its pin - which is the whole point of multiblockFacings.
+    // The refusal matches only the declared schemes' tokens, not any run of direction letters.
     JToken? facings = Facings(l =>
       l.Legend('s', "game:brickslabs-fire-south-free").Layer(0, "s")
     );

@@ -6,12 +6,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The merged stage catalogue. Every process registry is contributed to rather than owned: a mod adding a
-/// machine family declares the stages that family accepts, a mod adding a stock family declares its whole
-/// route, and both land in the same place. That is what makes the two extension directions cost the same.
-/// See docs/design/mechanics/process-extension.md.
-/// </summary>
+/// <summary>Tests <see cref="ProcessRouteRegistry"/>: the merged, contributed-to stage
+/// catalogue.</summary>
 public class ProcessRouteRegistryTests {
   private static ProcessRoute Route(string json) {
     Assert.True(
@@ -25,7 +21,7 @@ public class ProcessRouteRegistryTests {
     return route!;
   }
 
-  // Ours: the narrow bar's grooved branch.
+  // The narrow bar's grooved branch.
   private static ProcessRoute Ours() =>
     Route(
       """
@@ -89,8 +85,7 @@ public class ProcessRouteRegistryTests {
 
   [Fact]
   public void A_new_family_accepting_an_existing_rung_widens_that_stage() {
-    // The cheap extension: someone ships a serrated roll set and declares that it, too, takes the entry
-    // stage. The stage is one rung either way, so it must not become two.
+    // The stage is one rung either way; it must not become two.
     ProcessRouteRegistry reg = Fresh();
     reg.Contribute(Ours());
 
@@ -143,7 +138,7 @@ public class ProcessRouteRegistryTests {
 
   [Fact]
   public void A_fork_at_one_thickness_stays_two_stages() {
-    // Same gauge, different geometry, different product. Merging these into one rung would lose a branch.
+    // Same gauge, different geometry: merging into one rung loses a branch.
     ProcessRouteRegistry reg = Fresh();
     reg.Contribute(Ours());
     reg.Contribute(
@@ -169,7 +164,7 @@ public class ProcessRouteRegistryTests {
 
   [Fact]
   public void Re_contributing_the_same_route_changes_nothing() {
-    // Load order is not something a mod can control, so contributing twice must be safe.
+    // Contributing the same route twice must be safe.
     ProcessRouteRegistry reg = Fresh();
     reg.Contribute(Ours());
     Assert.Empty(reg.Contribute(Ours()));
@@ -179,8 +174,7 @@ public class ProcessRouteRegistryTests {
 
   [Fact]
   public void Redrawing_an_occupied_stage_is_reported_and_the_first_declaration_stands() {
-    // Silently taking the last writer would make the route depend on mod load order, which nothing can
-    // reproduce. The clash is named instead, and the piece keeps rendering as it did.
+    // The first declaration stands and is named in the clash; the route must not depend on mod load order.
     ProcessRouteRegistry reg = Fresh();
     reg.Contribute(Ours());
 
@@ -206,8 +200,7 @@ public class ProcessRouteRegistryTests {
 
   [Fact]
   public void A_second_shape_file_for_one_family_is_reported() {
-    // The renderer walks one family's route by thickness, so its stages must all be addressable from one
-    // file. Two shapes for one family means one of them is never reached.
+    // A family's stages must all be addressable from one shape file.
     ProcessRouteRegistry reg = Fresh();
     reg.Contribute(Ours());
 

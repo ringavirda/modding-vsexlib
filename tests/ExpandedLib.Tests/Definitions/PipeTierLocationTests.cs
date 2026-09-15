@@ -8,24 +8,11 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The tier axis has to separate two tiers' definitions everywhere the loader keys on, not only in the
-/// rendered block code. <see cref="ExDefinitions"/> keys on <see cref="ExBlockDef.Location"/>, and a
-/// second def landing on an existing key replaces it silently, so a tier that collides here is deleted
-/// from the game with no error, no failing code-level guard and no symptom beyond its absence.
-/// <para>
-/// Written against the exlib factories rather than the shipping providers, so it holds for any pair of
-/// tiers including ones a consumer adds. Two tiers share a domain the moment iiex and iiex merge; while
-/// the three tiers are three domains every collision here is latent.
-/// </para>
-/// </summary>
+/// <summary>Pins the tier axis: two pipe tiers must share no <see cref="ExBlockDef.Location"/> or shape.</summary>
 public class PipeTierLocationTests {
   private const string Domain = "iiex";
 
-  /// <summary>Domains owned by a content mod. A definition exlib itself emits may name
-  /// <c>game:</c> or its own <c>exlib:</c>, but naming one of these pins shared library art to one
-  /// mod's asset tree - which resolves to nothing the moment that mod is renamed or merged away, and a
-  /// blocktype whose shape resolves to nothing loads with no shape rather than failing.</summary>
+  /// <summary>Domains owned by a content mod.</summary>
   private static readonly string[] ContentDomains =
   [
     "iiex",
@@ -66,8 +53,7 @@ public class PipeTierLocationTests {
 
   [Fact]
   public void Every_tier_declares_the_same_number_of_definitions() {
-    // Guards the assertion above against passing because a tier collapsed to nothing rather than
-    // because the two are disjoint.
+    // Guards the assertion above against a tier that collapsed to nothing.
     int plated = Tier(BlockPipe.PlatedTier).Count;
 
     Assert.True(plated > 0, "the plated tier declares no definitions at all");
@@ -77,9 +63,7 @@ public class PipeTierLocationTests {
 
   [Fact]
   public void Two_tiers_in_one_domain_share_no_segment_shape() {
-    // Segments only. The two passthrough blocktypes deliberately share one brick mesh across every
-    // tier and differ by the sheet texture alone, so a shared shape path there is the design; the
-    // segments are genuinely different art per tier and a shared path would render the wrong mesh.
+    // Segments only; the passthrough blocktypes deliberately share one mesh across every tier.
     string[] shared =
     [
       .. ShapesOf(Segments(BlockPipe.PlatedTier))
@@ -97,8 +81,7 @@ public class PipeTierLocationTests {
 
   [Fact]
   public void No_pipe_shape_is_pinned_to_a_content_mod_domain() {
-    // exlib emits these defs for every tier, so a content domain written here is a cross-assembly
-    // literal in the library: it survives only while that exact mod ships that exact asset tree.
+    // exlib emits these defs for every tier; a content domain here is a cross-assembly literal.
     string[] pinned =
     [
       .. new[]

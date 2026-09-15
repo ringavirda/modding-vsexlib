@@ -6,17 +6,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The two <c>[ExRecipeProfile]</c> wiring options <see cref="ExRecipeProfileGeneratorTests"/> does
-/// not cover: a level property named by
-/// <see cref="ExpandedLib.Config.ExRecipeProfileAttribute.RecipeLevelProperty"/>
-/// (<see cref="ExRecipeProfileCustomLevelPropertyTestConfig"/>), and one held on a different config via
-/// <see cref="ExpandedLib.Config.ExRecipeProfileAttribute.LevelConfig"/>
-/// (<see cref="ExRecipeProfileCrossClassCatalogueTestConfig"/>/<see cref="ExRecipeProfileCrossClassLevelTestConfig"/>,
-/// the shape both family mods actually ship - a recipe catalogue and its owning gameplay config as two
-/// separate <c>[ExConfigRegister]</c> classes). See <see cref="RecipeProfileRegistryCollection"/> for
-/// why this joins that collection.
-/// </summary>
+/// <summary>The two <c>[ExRecipeProfile]</c> wiring options <see cref="ExRecipeProfileGeneratorTests"/>
+/// does not cover: <see cref="ExpandedLib.Config.ExRecipeProfileAttribute.RecipeLevelProperty"/> and
+/// <see cref="ExpandedLib.Config.ExRecipeProfileAttribute.LevelConfig"/>.</summary>
 [Collection(nameof(RecipeProfileRegistryCollection))]
 public class ExRecipeProfileWiringVariantsTests : IDisposable {
   private const string CustomLevelCode = "exlib-recipeprofile-customlevel";
@@ -66,8 +58,6 @@ public class ExRecipeProfileWiringVariantsTests : IDisposable {
     ExRecipeProfileCrossClassCatalogueTestValues.Load(api);
     ExRecipeProfiles.TryGet(CrossClassCode, out var profile);
 
-    // The catalogue config declares no RecipeLevel of its own; GetLevel/SetLevel only work at all if
-    // the generator reached through to ExRecipeProfileCrossClassLevelTestValues for them.
     Assert.Equal("normal", profile.GetLevel());
     profile.SetLevel("cheap");
 

@@ -82,8 +82,7 @@ public class StructureFootprintTests {
 
   [Fact]
   public void Host_attaches_behaviours_to_every_cell_drawn_with_its_glyph() {
-    // The twin-tub blower's shape: a 1x2x3 elevation whose upper-rear cell hosts the MP port an axle
-    // couples to.
+    // A 1x2x3 elevation whose upper-rear cell hosts the port.
     var port = new FillerBehaviorSpec("exlib.BEBehaviorMPFillerPort", "west");
     IReadOnlyList<FillerCellSpec> cells = StructureFootprint.Layout(f =>
       f.Host('M', port)
@@ -101,7 +100,7 @@ public class StructureFootprintTests {
     FillerCellSpec hosted = Assert.Single(cells, c => c.Behaviors != null);
     Assert.Equal((0, 1, 0), (hosted.X, hosted.Y, hosted.Z));
     Assert.Equal(port, Assert.Single(hosted.Behaviors!));
-    // A hosted cell always allows attach: something has to couple to it.
+    // A hosted cell always allows attach.
     Assert.True(hosted.AllowAttach);
   }
 

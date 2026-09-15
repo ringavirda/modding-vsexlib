@@ -5,12 +5,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The terminal registry: one input, one job, one output, and a count. The count is what makes it a shape
-/// of its own rather than a one-rung route - the shear crops a rod into four rods, so a job that could
-/// name only one output could not express the crop table at all.
-/// See docs/design/mechanics/process-extension.md.
-/// </summary>
+/// <summary>Tests <see cref="ProcessJobSet"/> and <see cref="ProcessJobRegistry"/>: one input,
+/// one job, one output, and a count.</summary>
 public class ProcessJobTests {
   private const string ShearFile = """
     {
@@ -163,7 +159,7 @@ public class ProcessJobTests {
 
   [Fact]
   public void Two_mods_add_jobs_to_one_machine() {
-    // The whole point of a registry: a mod ships a crop of its own without touching ours.
+    // A mod ships a crop of its own without touching another mod's.
     var registry = new ProcessJobRegistry();
     List<string> errors = ProcessJobLoader.Load(
       [
@@ -191,8 +187,7 @@ public class ProcessJobTests {
 
   [Fact]
   public void A_second_job_on_one_input_is_reported_and_the_first_stands() {
-    // Two crops for one piece is ambiguous, and taking the last writer would make the answer depend on
-    // mod load order.
+    // The first writer stands; the answer must not depend on mod load order.
     var registry = new ProcessJobRegistry();
     List<string> errors = ProcessJobLoader.Load(
       [

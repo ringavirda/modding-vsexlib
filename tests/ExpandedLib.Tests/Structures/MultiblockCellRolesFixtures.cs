@@ -13,11 +13,7 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// Shared layouts and helpers for the cell-role suite: what a layout cell is for, independent of the
-/// block that may occupy it. A role attaches to a glyph rather than to a code, because several glyphs
-/// may carry one code - <c>game:air</c> is the vent shaft, the flue and the tap alcove across shipped
-/// layouts. The fixture turns on that: <c>a</c> and <c>v</c> are both <c>game:air</c> and only
-/// <c>v</c> is the flue. Its footprint is chiral (the flue is an L congruent to none of its own
-/// rotations), so a rotation that turns the wrong way shows in the drawing.
+/// block that may occupy it. A role keys on a glyph, not a code.
 /// </summary>
 internal static class MultiblockCellRolesFixtures {
   public static readonly CellRole Chargeable = CellRole.Of("Chargeable");
@@ -36,10 +32,8 @@ internal static class MultiblockCellRolesFixtures {
 
   public static readonly BlockPos Anchor = new(0, 10, 0);
 
-  /// <summary>
-  /// The chiral flue - an L in <c>(x, z)</c> plus one cell a level up, so a rotation that leaked into
-  /// <c>y</c> shows too. Drawn with the glyph <c>v</c>.
-  /// </summary>
+  /// <summary>The chiral flue: an L in <c>(x, z)</c> plus one cell a level up, drawn with the glyph
+  /// <c>v</c>.</summary>
   public static readonly Vec3i[] FlueCells =
   [
     new(2, 0, 0),
@@ -48,8 +42,7 @@ internal static class MultiblockCellRolesFixtures {
     new(2, 1, 0),
   ];
 
-  /// <summary>The two tuyeres, drawn with two glyphs sharing one code and one role - the layouts' own
-  /// <c>T</c>/<c>Y</c> idiom, so a role is not one glyph per role.</summary>
+  /// <summary>The two tuyeres, drawn with two glyphs sharing one code and one role.</summary>
   public static readonly Vec3i[] TuyereCells = [new(0, 0, 1), new(1, 1, 1)];
 
   /// <summary>
@@ -118,11 +111,8 @@ internal static class MultiblockCellRolesFixtures {
           )
       );
 
-  /// <summary>
-  /// A drawing whose <c>v</c> glyph carries two roles over the same cell, with an <c>a</c> cell of the
-  /// identical code beside it carrying neither. The shipped case is the shaft furnaces' crucible floor,
-  /// which is burden column and metal pool at once.
-  /// </summary>
+  /// <summary>A drawing whose <c>v</c> glyph carries two roles over the same cell; the <c>a</c> cell of
+  /// the identical code beside it carries neither.</summary>
   public static ExBlockDef OverlappingDef() =>
     ExBlockDef
       .Create("exlib", "testmega")
@@ -151,9 +141,8 @@ internal static class MultiblockCellRolesFixtures {
     return (world, machine);
   }
 
-  /// <summary>Where <paramref name="authored"/> lands in the world at <paramref name="angle"/>, computed
-  /// through the shared rotation helper. An independent route to the machine's own answer, which comes off
-  /// vanilla's <c>InitForUse</c> offset table.</summary>
+  /// <summary>Where <paramref name="authored"/> lands in the world at <paramref name="angle"/>, via the
+  /// shared rotation helper.</summary>
   public static string ExpectedAt(IEnumerable<Vec3i> authored, int angle) =>
     Render(
       authored.Select(c => {

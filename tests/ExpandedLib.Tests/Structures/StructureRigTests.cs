@@ -30,21 +30,13 @@ internal sealed class TestMegablock : BlockEntityMultiblockMachine {
   protected override string GetCompleteMessage() => "complete";
 }
 
-/// <summary>
-/// Covers <see cref="StructureRig"/>, the harness primitive that stands up a machine's authored footprint
-/// so the machine completes itself rather than having <c>StructureComplete</c> assigned. Completion is
-/// only ever reached by satisfying vanilla's <c>InCompleteBlockCount</c>, and is lost again as soon as the
-/// world stops matching the layout.
-/// </summary>
+/// <summary>Covers <see cref="StructureRig"/>, the harness primitive that stands up a machine's
+/// authored footprint; the machine completes itself, with no direct assignment to
+/// <c>StructureComplete</c>.</summary>
 public class StructureRigTests {
   #region Nested alternations
 
-  /// <summary>
-  /// A layout glyph may be an alternation with a nested group inside one of its branches, because vanilla
-  /// treats the inside of <c>@( )</c> as a regex. Picking the first branch by scanning to the first
-  /// <c>)</c> stops inside that nested group and leaves a stray bracket on the stand-in's code, which then
-  /// matches nothing: the stand-ins are placed, no error is raised, and the machine never completes.
-  /// </summary>
+  /// <summary>Pins a layout glyph with a nested alternation inside <c>@( )</c>.</summary>
   [Fact]
   public void A_glyph_with_a_nested_alternation_is_still_satisfied() {
     var world = new TestWorld();
@@ -75,8 +67,7 @@ public class StructureRigTests {
 
   #region Fixture
 
-  // A principal, a ring of solid cells around it, and a shaft cell satisfied by air: the "@(air|coalpile)"
-  // fuel slot the blast furnaces use, which a filler must not try to place a block into.
+  // A principal, a ring of solid cells, and a shaft cell satisfied by air.
   private static ExBlockDef Def() =>
     ExBlockDef
       .Create("exlib", "testmega")
@@ -92,12 +83,8 @@ public class StructureRigTests {
           .At(0, 1, 0, 3)
       );
 
-  /// <summary>
-  /// A footprint with one oriented part in it. The door is authored facing north, and
-  /// <see cref="MultiblockLayoutBuilder.Legend"/> marks any code carrying a whole side segment oriented,
-  /// so the completion check rotates that facing with the structure. Authored through the layout builder
-  /// rather than <c>Multiblock</c> because only the builder emits the <c>multiblockFacings</c> table.
-  /// </summary>
+  /// <summary>A footprint with one oriented part in it, authored through the layout
+  /// builder.</summary>
   private static ExBlockDef OrientedDef() =>
     ExBlockDef
       .Create("exlib", "testmega")
@@ -134,9 +121,7 @@ public class StructureRigTests {
     var (world, machine) = Stand();
     var rig = StructureRig.Around(world, machine, Def());
 
-    // Four brick cells. The anchor's own cell is satisfied by the anchor, and the shaft cell by the air
-    // already there: vanilla's wildcard matcher resolves "@(air|coalpile)" against "game:air", so an
-    // unbuilt shaft is not counted as missing in game either.
+    // Four brick cells; the anchor and the air-satisfied shaft cell are not counted as missing.
     Assert.Equal(4, rig.Missing);
     rig.Raise();
     Assert.Equal(0, rig.Missing);
@@ -147,8 +132,7 @@ public class StructureRigTests {
     var (world, machine) = Stand();
     StructureRig.Around(world, machine, Def()).Raise();
 
-    // The shaft wants "@(air|coalpile)". Filling it with a block satisfies the code check while plugging
-    // the cell the machine expects to be open.
+    // The shaft wants "@(air|coalpile)"; it stays open, not filled.
     Assert.Equal(
       "game:air",
       world.GetBlock(new BlockPos(0, 11, 0)).Code.ToString()
@@ -160,7 +144,7 @@ public class StructureRigTests {
     var (world, machine) = Stand();
     var rig = StructureRig.Around(world, machine, Def());
 
-    // A functional block standing in one of the footprint cells: a tuyere, a tap, a gas outlet.
+    // A functional block already standing in one of the footprint cells.
     var functional = TestBlocks.Configure(
       new Block(),
       "exlib:testbrick-real",
@@ -267,9 +251,7 @@ public class StructureRigTests {
     var (world, machine) = Stand(90);
     var rig = StructureRig.Around(world, machine, Def(), 90);
 
-    // The rig's cell table is vanilla's rotated layout, so both must agree on where the structure-local
-    // (+1, 0, 0) cell ended up. That agreement is what lets a fixture address a tuyere by its authored
-    // coordinates instead of hand-rotating them per orientation.
+    // The rig's cell table is vanilla's rotated layout.
     BlockPos mapped = rig.Cell(1, 0, 0);
     Assert.Contains(rig.Cells, c => c.Pos.Equals(mapped));
     Assert.NotEqual(new BlockPos(1, 10, 0), mapped); // it genuinely moved
@@ -279,10 +261,7 @@ public class StructureRigTests {
 
   #region Oriented parts
 
-  // The rig's half of MultiblockFacings. The production check turns an oriented part's facing with the
-  // structure, so a rig that fills and counts by the authored code disagrees with the machine at every
-  // non-north angle: it places a north-facing part, reports no unsatisfied cells, and the machine never
-  // completes.
+  // The rig's half of MultiblockFacings.
 
   [Theory]
   [InlineData(0)]
@@ -305,19 +284,15 @@ public class StructureRigTests {
     var (world, machine) = Stand(90);
     var rig = StructureRig.Around(world, machine, OrientedDef(), 90);
 
-    // The layout authors a north-facing door; a structure turned to 90 deg wants a west-facing one, so
-    // placing the authored variant leaves the cell unsatisfied.
+    // The layout authors a north-facing door; at 90 degrees the cell wants a west-facing one.
     rig.Occupy(
       rig.Cell(1, 0, 0),
       TestBlocks.Configure(new Block(), "exlib:testdoor-n", 91)
     );
     rig.Raise();
 
-    // The count alone is not enough: Missing read against the authored code answers 0 and Complete()
-    // then reports no unsatisfied cells while the machine stays incomplete.
     Assert.Equal(1, rig.Missing);
-    // Single letters: the legend authors `exlib:testdoor-n` and MultiblockFacings rotates the token in the
-    // spelling it was given, so a quarter turn asks for `-w`.
+    // MultiblockFacings rotates in the token's own spelling; a quarter turn asks for `-w`.
     Assert.Contains("wants 'exlib:testdoor-w'", rig.MissingReport);
     Assert.Contains("has 'exlib:testdoor-n'", rig.MissingReport);
   }
@@ -327,9 +302,7 @@ public class StructureRigTests {
     var (world, machine) = Stand(90);
     var rig = StructureRig.Around(world, machine, Def(), 90);
 
-    // The other direction, so the rotation above is not a rewrite of every code. A shaft glyph is
-    // domainless: an AssetLocation round trip would re-domain it to "game:@(air|coalpile)", and the
-    // authored form is what the rig's filler and report read.
+    // A shaft glyph is domainless; the rig reads the authored form directly, not an AssetLocation round trip.
     Assert.Contains(rig.Cells, c => c.Wanted == "@(air|coalpile)");
     Assert.Contains(rig.Cells, c => c.Wanted == "exlib:testbrick*");
   }
@@ -340,8 +313,7 @@ public class StructureRigTests {
 
   [Fact]
   public void A_structure_raised_at_the_wrong_angle_does_not_complete() {
-    // The machine faces north; the rig lays the footprint a quarter-turn out, so an asymmetric cell lands
-    // where the machine is not looking.
+    // The machine faces north; the rig lays the footprint a quarter-turn out.
     var world = new TestWorld();
     var machine = new TestMegablock { Angle = 0 };
     world.Place(
@@ -412,7 +384,7 @@ public class StructureRigTests {
     var (world, machine) = Stand();
     var rig = StructureRig.Around(world, machine, Def());
 
-    // Block one cell with the wrong block so Raise leaves it unsatisfied.
+    // Occupies one cell with the wrong block.
     rig.Occupy(
       new BlockPos(1, 10, 0),
       TestBlocks.Configure(new Block(), "exlib:wrongblock", 88)

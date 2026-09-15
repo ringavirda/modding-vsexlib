@@ -9,19 +9,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="ExCheckRegistry"/> discovery and its effect on <see cref="ExlibChecks.All(ICheckSource)"/>:
-/// a registered check's own <see cref="CheckResult"/> comes back through the run list, a throwing
-/// check is isolated rather than taking the rest of the pass down, and scanning the same type twice
-/// registers it once. Both fixture checks below carry <c>[ExCheckRegister]</c>, so every
-/// <see cref="ExCheckRegistry.RegisterAll"/> call in this file registers both of them at once - the
-/// scan is assembly-wide, not per-type, so it also picks up every other <c>[ExCheckRegister]</c>
-/// fixture in this test assembly (ExModSystemTests' and ExModuleHostTests' own), which is why a test
-/// that cares about the exact run list filters by name rather than by count. Cleared on both ends:
-/// whichever test in this class ran last left registrations behind that would otherwise leak into
-/// every other test calling <see cref="ExlibChecks.All(ICheckSource)"/> over this same, process-wide
-/// test assembly.
-/// </summary>
+/// <summary>Tests <see cref="ExCheckRegistry"/> discovery and its effect on
+/// <see cref="ExlibChecks.All(ICheckSource)"/>; registrations are cleared on setup and
+/// teardown, being process-wide static state.</summary>
 [Collection("ExCheckRegistry")]
 public class ExCheckRegistryTests : IDisposable {
   public ExCheckRegistryTests() => ExCheckRegistry.Clear();
@@ -49,8 +39,7 @@ public class ExCheckRegistryTests : IDisposable {
     ) => [];
   }
 
-  // Non-static: a static class compiles to abstract sealed, which the assembly scan behind
-  // RegisterAll skips (see the wiki's own note against writing one this way).
+  // Non-static: a static class compiles to abstract sealed, which the assembly scan skips.
   [ExCheckRegister]
   private sealed class PassingCheck {
     public static CheckResult Run(ICheckSource source, string domain) =>
@@ -63,16 +52,16 @@ public class ExCheckRegistryTests : IDisposable {
       throw new System.InvalidOperationException("boom");
   }
 
-  // A static class compiles to abstract sealed, so ReflectionScan.GetCandidateTypes drops it before
-  // the attribute is ever read - no registration and no log line either.
+  // A static class compiles to abstract sealed; ReflectionScan.GetCandidateTypes drops it without
+  // reading the attribute - no registration and no log line either.
   [ExCheckRegister]
   private static class StaticCheck {
     public static CheckResult Run(ICheckSource source, string domain) =>
       new(nameof(StaticCheck), domain, []);
   }
 
-  // Carries the attribute but not the exact `static CheckResult Run(ICheckSource, string)` shape -
-  // Register warns and skips it rather than registering nothing silently.
+  // Carries the attribute but not the exact `static CheckResult Run(ICheckSource, string)` shape;
+  // Register warns and skips it.
   [ExCheckRegister]
   private sealed class WrongSignatureCheck {
     public static void Run(ICheckSource source, string domain) { }
@@ -104,8 +93,7 @@ public class ExCheckRegistryTests : IDisposable {
 
     IReadOnlyList<CheckResult> results = ExlibChecks.All(new StubCheckSource());
 
-    // Eight shipped checks, plus every [ExCheckRegister] fixture in this test assembly (the two
-    // below, and ExModSystemTests'/ExModuleHostTests' own) - the throw took down only its own entry.
+    // The throw took down only its own entry, not the other registered checks.
     CheckResult thrown = results.Single(r => r.Check == nameof(ThrowingCheck));
     Assert.Single(thrown.Errors);
     Assert.Contains("InvalidOperationException", thrown.Errors[0]);
@@ -115,8 +103,7 @@ public class ExCheckRegistryTests : IDisposable {
     );
   }
 
-  // The eight shipped checks, by the name their own CheckResult carries, in ExlibChecks._checks'
-  // order.
+  // The eight shipped checks, in ExlibChecks._checks' order.
   private static readonly string[] ShippedChecks =
   [
     "DefinitionCatalogue",

@@ -10,16 +10,12 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// The on-disk format of a network node, against the shape a world saved before membership became a
-/// behaviour. Vanilla fans behaviour persistence out over the block entity's own flat tree with no
-/// subtree, so a behaviour that wrote anything would land in the namespace the block entity already
-/// owns; the block entity therefore stays the only writer and nothing on disk moved. These guards pin
-/// that: the exact key set, which keys are conditional, and which of the two writers that reach the
-/// shared three runs last.
+/// behaviour: the exact key set, which keys are conditional, and which of the two writers that reach
+/// the shared keys runs last.
 /// </summary>
 public class SaveFormatTests {
   /// <summary>Reaches the pipe's protected persistence hook and the display fields it writes over the
-  /// network state, so the two writers can be made to disagree - in production they agree, and
-  /// agreement cannot show which of them ran last.</summary>
+  /// network state.</summary>
   private sealed class DivergentPipe : BlockEntityPipe {
     public void SetDisplay(float temperature, string medium, float pressure) {
       Temperature = temperature;
@@ -65,7 +61,7 @@ public class SaveFormatTests {
     "feedPressure",
   ];
 
-  /// <summary>The three both writers reach, which is what makes their order observable at all.</summary>
+  /// <summary>The three keys both writers reach.</summary>
   private static readonly string[] SharedKeys = ["temp", "medium", "pressure"];
 
   private static readonly PipeNetworkState SavedRun = new() {
@@ -85,9 +81,7 @@ public class SaveFormatTests {
     return w;
   }
 
-  /// <summary>The tree a pre-membership world holds for a pipe carrying a run, written key by key
-  /// rather than by round-tripping through today's code - a tree the current writer produced would
-  /// agree with the current reader whatever the pair of them became.</summary>
+  /// <summary>The tree a pre-membership world holds for a pipe carrying a run, written key by key.</summary>
   private static TreeAttribute OldFormatTree(BlockPos pos) {
     var tree = new TreeAttribute();
     tree.SetInt("posx", pos.X);
@@ -128,12 +122,12 @@ public class SaveFormatTests {
     be.FromTreeAttributes(OldFormatTree(pos), w.World);
     w.Initialize(be);
 
-    // The membership answers for the cell, so the walk finds a node here at all.
+    // The membership answers for the cell.
     Assert.IsAssignableFrom<BEBehaviorNetworkMember>(
       NetworkMembership.Resolve(w.Accessor, pos, "pipe")
     );
 
-    // And the run it was carrying is back on the network, not merely back on the block entity.
+    // The run is back on the network, not merely on the block entity.
     BlockNetwork net = Assert.IsType<StubNetwork>(w.NetworkAt(pos));
     var restored = Assert.IsType<PipeNetworkState>(net.State);
     Assert.Equal(SavedRun.Volume, restored.Volume, 3);
@@ -143,9 +137,7 @@ public class SaveFormatTests {
 
   [Fact]
   public void The_wrench_rotation_choices_come_back_from_the_json_string_they_were_saved_as() {
-    // Worlds saved before the string-array cutover hold possibleOrientations as one string of
-    // serialised JSON. Reading that with the array accessor alone answers empty for every world
-    // already on disk, losing the player's rotation choices with nothing to show for it.
+    // Worlds saved before the string-array cutover hold possibleOrientations as one JSON string.
     var w = NewPipeWorld();
     var pos = new BlockPos(0, 0, 0);
     var be = new BlockEntityPipe();
@@ -159,9 +151,7 @@ public class SaveFormatTests {
 
   [Fact]
   public void A_node_loaded_from_the_old_string_is_written_back_as_a_string_array() {
-    // The migration is one-way and silent: nothing rewrites a world wholesale, so a pipe converts on
-    // its own next save. If it wrote the string back the tree would never leave the old shape and the
-    // fallback above would be load-bearing forever.
+    // The migration is one-way and silent; nothing rewrites a world wholesale.
     var w = NewPipeWorld();
     var pos = new BlockPos(0, 0, 0);
     var be = new BlockEntityPipe();
@@ -213,9 +203,6 @@ public class SaveFormatTests {
     be.FromTreeAttributes(OldFormatTree(pos), w.World);
     w.Initialize(be);
 
-    // The premise: the node really does carry a membership behaviour, and vanilla really does fan
-    // ToTreeAttributes out over its behaviours. Without both, this asserts nothing about behaviour
-    // persistence staying silent.
     Assert.NotEmpty(NetworkMembership.MembersOf(be));
 
     var written = new TreeAttribute();
@@ -226,9 +213,8 @@ public class SaveFormatTests {
 
   [Fact]
   public void An_empty_run_writes_neither_more_nor_fewer_of_the_conditional_keys() {
-    // IsNetworkStateMeaningful gates on Volume > 0 || FlowRate > 0, so five of the eight state keys
-    // are absent for a run holding nothing. temp, medium and pressure survive it because the pipe
-    // writes them itself for the client display - which is the other half of the order guard below.
+    // IsNetworkStateMeaningful gates on Volume > 0 || FlowRate > 0; temp, medium and pressure survive
+    // as the pipe's own display writes.
     var w = NewPipeWorld();
     var pos = new BlockPos(0, 0, 0);
     var be = new BlockEntityPipe();
@@ -252,9 +238,6 @@ public class SaveFormatTests {
 
   [Fact]
   public void The_network_state_writes_the_three_keys_the_pipe_writes_again() {
-    // The premise the order guard rests on. Should the pipe's display keys ever stop colliding with
-    // the serialised state's, order would no longer be observable and the guard below would pass on
-    // nothing.
     var be = new DivergentPipe();
     var fromState = new TreeAttribute();
 
@@ -266,9 +249,8 @@ public class SaveFormatTests {
 
   [Fact]
   public void The_pipes_display_fields_are_written_after_the_network_state() {
-    // BlockEntityPipe.ToTreeAttributes rewrites temp, medium and pressure after base has already run
-    // SerializeNetworkState, so the display values are what reaches disk. Swapping the two writers
-    // changes what is persisted with nothing to show for it, and a client reads its gauge off these.
+    // BlockEntityPipe.ToTreeAttributes rewrites temp, medium and pressure after base runs
+    // SerializeNetworkState.
     var w = NewPipeWorld();
     var pos = new BlockPos(0, 0, 0);
     var be = new DivergentPipe();
@@ -283,8 +265,7 @@ public class SaveFormatTests {
     Assert.Equal("Water", written.GetString("medium"));
     Assert.Equal(9f, written.GetFloat("pressure"), 3);
 
-    // The state's own five keys are untouched by the second writer, so this is an overwrite of three
-    // rather than a wholesale rewrite.
+    // The state's own five keys are untouched by the second writer.
     Assert.Equal(SavedRun.Volume, written.GetFloat("vol"), 3);
     Assert.Equal(SavedRun.FeedPressure, written.GetFloat("feedPressure"), 3);
   }

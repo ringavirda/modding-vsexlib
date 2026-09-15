@@ -4,12 +4,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The element-path matcher a block entity prunes its shape with. It is not the engine's
-/// <c>selectiveElements</c> rule: matching is whole-segment, an ancestor on the way to a named element
-/// is kept, and naming an element keeps its children. A wrong pattern set renders a hole rather than
-/// throwing, so the rule is pinned here.
-/// </summary>
+/// <summary>The element-path matcher a block entity prunes its shape with: matching is
+/// whole-segment, an ancestor on the way to a named element is kept, and naming an element keeps
+/// its children.</summary>
 public class ExShapeElementsTests {
   private static readonly string[] Keep =
   [
@@ -27,7 +24,7 @@ public class ExShapeElementsTests {
   [InlineData("Items1/ShingledBlooms/ShingledBloom1")]
   [InlineData("Base")]
   [InlineData("Base/Cube2")]
-  // The ancestors on the way to a named element; without these the named children are unreachable.
+  // The ancestors on the way to a named element.
   [InlineData("Fettle")]
   [InlineData("Items1")]
   public void An_element_at_on_the_way_to_or_under_a_pattern_is_kept(
@@ -50,8 +47,7 @@ public class ExShapeElementsTests {
     Assert.False(ExShapeElements.Matches(path, Keep));
 
   [Theory]
-  // Whole-segment matching. These names exist in the shipped shapes, and a bare string prefix would
-  // keep all of them: "Items1" would match "Items10" and "Fettle/Cube13" would match "Fettle/Cube130".
+  // Whole-segment matching: a bare prefix match would treat "Items10" as under "Items1".
   [InlineData("Items10")]
   [InlineData("Items1x/ShingledBlooms")]
   [InlineData("Fettle/Cube130")]
@@ -79,7 +75,7 @@ public class ExShapeElementsTests {
 
   [Fact]
   public void The_subtree_marker_is_optional_spelling() {
-    // "Base" and "Base/*" mean the same thing, so both spellings render a group's children.
+    // "Base" and "Base/*" are equivalent spellings.
     Assert.True(ExShapeElements.Matches("Base/Cube2", ["Base"]));
     Assert.True(ExShapeElements.Matches("Base/Cube2", ["Base/*"]));
   }
@@ -129,10 +125,7 @@ public class ExShapeElementsTests {
 
   [Fact]
   public void Retexturing_does_not_write_through_to_the_shape_it_copied() {
-    // ShapeElement.Clone copies FacesResolved with a plain array clone, so a cloned element's faces are
-    // the *same objects* as the source's. Repointing one in place therefore rewrites the asset every
-    // other block draws from - a firebox charged with charcoal would retexture the bed of every firebox
-    // in the world. Load-bearing now that shapes are loaded once and cached rather than per tesselation.
+    // ShapeElement.Clone shares FacesResolved by reference; retexturing must not mutate in place.
     Shape source = Fixture();
     Shape copy = ExShapeElements.Retextured(source, "coke", "charcoal");
 

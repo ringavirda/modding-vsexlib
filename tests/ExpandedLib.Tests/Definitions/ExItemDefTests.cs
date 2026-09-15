@@ -9,12 +9,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Unit coverage for the item-side fluent builder <see cref="ExItemDef"/>: each method emits the
-/// itemtype JSON key the vanilla object loader expects, the asset location targets <c>itemtypes/</c>
-/// rather than <c>blocktypes/</c>, and the object-valued transform, recipe and attribute helpers
-/// round-trip a POCO. Pure (no registry), so no serialization collection is needed.
-/// </summary>
+/// <summary>Pins the item-side fluent builder <see cref="ExItemDef"/> against its itemtype JSON output.</summary>
 public class ExItemDefTests {
   // A stand-in item class for the type-safe Class<T>() overload.
   private sealed class SampleItem : Item { }
@@ -366,15 +361,7 @@ public class ExItemDefTests {
 
   #region Parity with the block builder
 
-  // Real itemtype keys the item builder doesn't yet have a dedicated typed method for, but which the
-  // generic Attribute/AttributeByType/RootKey/RootKeyByType escape hatches already cover - not a gap
-  // this parity check is about.
-
-  // A method's name plus its parameter types, in declaration order - not its name alone, so an
-  // overload that exists on one builder but not the other (TpHandTransform's seven-double, no-origin
-  // shape below) is caught even though the name itself is shared. A property's name alone, since it
-  // takes no parameters. The generic type argument is spelled out (Action<ConstructionStages>, not
-  // Action`1), so two overloads that differ only in what they're generic over don't collide.
+  // A method's signature: name plus parameter types, in declaration order. A property's name alone.
   private static string Signature(MethodInfo m) =>
     $"{m.Name}({string.Join(",", m.GetParameters().Select(p => TypeName(p.ParameterType)))})";
 
@@ -383,10 +370,7 @@ public class ExItemDefTests {
       ? $"{t.Name[..t.Name.IndexOf('`')]}<{string.Join(",", t.GetGenericArguments().Select(TypeName))}>"
       : t.Name;
 
-  // Every public method and property this type declares, methods by name+parameters and properties by
-  // name - not by type, since a builder's own instance methods all return that same builder and
-  // carrying the return type would tell us nothing a mismatched fluent chain wouldn't already catch
-  // elsewhere.
+  // Every public method and property this type declares: methods by name+parameters, properties by name.
   private static IEnumerable<string> PublicMembers(Type t) =>
     t.GetMethods(
         BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static
@@ -401,10 +385,7 @@ public class ExItemDefTests {
       )
       .Distinct();
 
-  // Signatures only ExBlockDef has: the JSON key each writes has no equivalent on ItemType/CollectibleType
-  // (verified against the vendored ItemType.cs/CollectibleType.cs/BlockType.cs), or the method exists
-  // only to serve a block-specific mechanism (block-entity behaviors, megablocks, world placement and
-  // orientation, the block-code emitter). One reason per name, repeated across its overloads.
+  // Signatures only ExBlockDef has, one reason per name, repeated across its overloads.
   private static readonly Dictionary<string, string> BlockOnlySignatures = new() {
     // No block-entity analogue: items carry no BlockEntity.
     ["EntityClass()"] = "no block-entity analogue: items carry no BlockEntity",
@@ -490,12 +471,10 @@ public class ExItemDefTests {
       "items are never placed with a facing side",
     ["SideVariant()"] = "items are never placed with a facing side",
     ["NetworkOriented()"] = "items are never placed with a facing side",
-    // MineTool is a dead no-op on the block builder (mineTool is not a key the loader reads);
-    // never had an item counterpart to propagate.
+    // MineTool is a dead no-op on the block builder; mineTool is not a key the loader reads.
     ["MineTool(EnumTool)"] =
       "dead no-op on the block builder; never had an item counterpart",
-    // Rendered/variant code: items carry no variantgroups key, so there is nothing to render into a
-    // wildcarded or pinned code, and no code-emitter counterpart to feed.
+    // Rendered/variant code: items carry no variantgroups key.
     ["QualifiedCode"] =
       "no variantgroups key; items have no rendered code to qualify",
     ["VariantGroups"] =
@@ -514,8 +493,7 @@ public class ExItemDefTests {
       "megablocks are blocks; items cannot be part of one",
     ["MultiblockLayout(Action<MultiblockLayoutBuilder>)"] =
       "megablocks are blocks; items cannot be part of one",
-    // Emits { translation, rotation, scale }, no origin; the item builder has no seven-double
-    // overload.
+    // Emits { translation, rotation, scale }, no origin.
     ["TpHandTransform(Double,Double,Double,Double,Double,Double,Double)"] =
       "the no-origin shape; the item builder has no seven-double overload",
   };
@@ -530,8 +508,7 @@ public class ExItemDefTests {
   public void Every_block_builder_member_that_applies_to_items_exists_on_the_item_builder() {
     var blockMembers = PublicMembers(typeof(ExBlockDef)).ToList();
 
-    // An allowlist entry naming a member ExBlockDef does not have is dead weight that can never be
-    // exercised - the parity check below would pass regardless of whether it is right.
+    // An allowlist entry naming a member ExBlockDef does not have is dead weight.
     var stale = BlockOnlySignatures
       .Keys.Where(s => !blockMembers.Contains(s))
       .ToList();

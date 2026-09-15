@@ -8,11 +8,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The medium taxonomy backing pipe-network compatibility, gas priority and phase change. For the four
-/// built-in media <see cref="IMediumTaxonomy"/> reproduces the <c>PipeNetworkState</c> string-helper
-/// truth tables exactly; the single divergence, two different liquids not blending, is pinned
-/// separately. <see cref="ExLiquids"/> is a process-wide static, so the class is serialized and reset
-/// to the built-in seed before each test.
+/// Tests <see cref="IMediumTaxonomy"/>: compatibility, gas priority and phase change, reset to
+/// the built-in seed before each test.
 /// </summary>
 [Collection("ExLiquids")]
 public class MediumTaxonomyTests {
@@ -140,8 +137,7 @@ public class MediumTaxonomyTests {
 
   [Fact]
   public void Water_and_steam_are_reciprocal_phase_change_partners() {
-    // The seeded pair: Water boils to Steam, Steam condenses to Water. A still reads this data per
-    // fraction; the boiler is the single-fraction case.
+    // The seeded pair: Water boils to Steam, Steam condenses to Water.
     Assert.True(
       ExLiquids.Taxonomy.VaporisationTarget("Water", out string gas, out _)
     );
@@ -154,8 +150,7 @@ public class MediumTaxonomyTests {
 
   [Fact]
   public void CondensationTarget_is_temperature_independent() {
-    // An active condenser supplies its own cooling, so the pair lookup does not gate on the gas's
-    // current temperature: a 150 C steam line still has Water as its condensation target.
+    // CondensationTarget does not gate on temperature; a 150 C steam line still targets Water.
     Assert.True(
       ExLiquids.Taxonomy.CondensationTarget("Steam", out string target, out _)
     );
@@ -167,9 +162,7 @@ public class MediumTaxonomyTests {
 
   [Fact]
   public void Builtin_phase_change_leaves_the_volume_factor_to_the_caller() {
-    // The built-ins leave the factor at 0 (null in the def) so exlib carries no iiex expansion
-    // constant; consumers fall back to their own default, the condenser to
-    // IiexValues.SteamExpansionFactor.
+    // The built-in factor is 0 (null in the def); consumers supply their own default.
     ExLiquids.Taxonomy.CondensationTarget("Steam", out _, out float condFactor);
     ExLiquids.Taxonomy.VaporisationTarget("Water", out _, out float vapFactor);
     Assert.Equal(0f, condFactor);
@@ -178,8 +171,7 @@ public class MediumTaxonomyTests {
 
   [Fact]
   public void A_fraction_can_ship_its_own_phase_change_pair_and_factor() {
-    // A fraction registered with an explicit boil/condense pair and factor is readable straight from
-    // the taxonomy, with no code change on the consumer side.
+    // A fraction's own boil/condense pair and factor read straight from the taxonomy.
     ExLiquids.Register(
       new LiquidDef {
         Code = "Benzene",
@@ -261,8 +253,7 @@ public class MediumTaxonomyTests {
 
   [Fact]
   public void The_shipped_liquids_json_reproduces_the_builtin_seed() {
-    // assets/exlib/config/liquids.json re-declares the four built-ins that SeedDefaults also seeds in
-    // code. The two must not drift: the file has to bind to exactly the seeded set, field for field.
+    // Pins liquids.json to match SeedDefaults' seeded set, field for field.
     var seeded = ExLiquids.All.ToDictionary(
       d => d.Code,
       StringComparer.OrdinalIgnoreCase

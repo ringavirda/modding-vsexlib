@@ -8,12 +8,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Renames declared in the stage catalogue. Exlib sees only the current catalogue, so a code that vanished
-/// and one that appeared are indistinguishable from a rename without the hint - the contract is declare the
-/// old code and get the migration free, never change the convention and we work it out.
-/// See docs/design/mechanics/process-extension.md.
-/// </summary>
+/// <summary>Tests <see cref="ProcessItemRenames"/>: a stage's declared former codes remap to
+/// its current one.</summary>
 public class ProcessItemRenameTests {
   private static ProcessRoute Route(string json) {
     Assert.True(
@@ -52,8 +48,7 @@ public class ProcessItemRenameTests {
 
   [Fact]
   public void Several_former_codes_all_point_at_the_current_one() {
-    // A product renamed twice keeps both old names, or the middle one strands the stacks that stopped
-    // there.
+    // A product renamed twice keeps both old names.
     var remaps = Remaps(
       """
       {
@@ -86,8 +81,7 @@ public class ProcessItemRenameTests {
 
   [Fact]
   public void An_opted_out_stage_still_carries_its_rename() {
-    // The item is the mod's own rather than generated, but the code still changed, and the stacks in a
-    // player's world do not care which of us built it.
+    // A remap is not conditioned on generation: an opted-out stage's code can still change.
     Assert.Single(
       Remaps(
         """

@@ -12,10 +12,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The host-to-client leg of a config's live values: <see cref="IExConfigAccess.ExportJson"/>/
-/// <see cref="IExConfigAccess.ImportJson"/> on the store, the wire packet, and
-/// <see cref="ExConfigSyncModSystem"/>'s join push and unknown-section handling. Reuses
-/// <c>FakeConfig</c> from <c>ConfigMigrationTests</c>.
+/// Pins <see cref="IExConfigAccess.ExportJson"/>/<see cref="IExConfigAccess.ImportJson"/>, the
+/// wire packet, and <see cref="ExConfigSyncModSystem"/>'s join push and unknown-section handling.
 /// </summary>
 public class ConfigSyncTests {
   #region ExportJson / ImportJson
@@ -38,7 +36,7 @@ public class ConfigSyncTests {
   public void ImportJson_clamps_an_out_of_range_value_exactly_as_Load_does() {
     var store = new ExConfigRegister<FakeConfig>("fake.json", "fakemod");
 
-    // ValueA has no [ExConfigRange], so it defaults to the non-negative floor Load enforces.
+    // ValueA has no [ExConfigRange]: only the non-negative floor applies.
     store.ImportJson("{\"ValueA\":-5,\"ValueB\":7}");
 
     Assert.Equal(100, store.Config.ValueA); // reset to the coded default, same as a bad load
@@ -155,9 +153,7 @@ public class ConfigSyncTests {
     var channels = world.Channels("exlibConfigSync");
     world.Api.Event.PlayerJoin += Raise.Event<PlayerDelegate>(channels.Sender);
 
-    // ExConfigProfiles is process-wide, so other test classes' sections may also be in here - assert
-    // exactly one packet per section, not on the total, exactly as the substituted-channel version
-    // did with Received(1).
+    // ExConfigProfiles is process-wide; assert one packet per section, not on the total.
     Assert.Single(
       channels.SentToClients,
       p => ((ConfigSyncPacket)p).ModId == "synctest.join.a"

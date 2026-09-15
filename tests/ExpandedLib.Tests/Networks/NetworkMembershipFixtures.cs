@@ -33,8 +33,7 @@ internal static class NetworkMembershipFixtures {
 
   /// <summary>
   /// Asserts the logger recorded an error whose formatted text carries <paramref name="fragment"/>
-  /// and mentions every one of <paramref name="mustMention"/>. <see cref="RecordingLogger"/> already
-  /// merges format and args, so both checks read off the same rendered string.
+  /// and mentions every one of <paramref name="mustMention"/>.
   /// </summary>
   public static void AssertErrorLogged(
     TestWorld w,

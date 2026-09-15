@@ -7,11 +7,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="TreeKeys.AssertDeclaresBaseKeys"/>: the guard for the "call <c>base.DeclareState</c>
-/// first" convention a golden alone cannot catch, since <see cref="PersistScan"/>'s <c>[Persist]</c>
-/// scan contributes its keys independently of whatever <c>DeclareState</c> does.
-/// </summary>
+/// <summary><see cref="TreeKeys.AssertDeclaresBaseKeys"/>: the guard for the "call
+/// <c>base.DeclareState</c> first" convention.</summary>
 public class TreeKeysTests {
   private class BaseEntity : ExBlockEntity {
     public int BaseField;

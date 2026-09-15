@@ -4,11 +4,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="ResourceInvariant{TState}"/> against a tiny split/merge counter with a planted bug: a
-/// negative move that lets the total drift below zero. A correct set of moves must pass over many
-/// random sequences; the buggy one must fail, and reproducibly (same seed, same sequence reported).
-/// </summary>
+/// <summary><see cref="ResourceInvariant{TState}"/> against a tiny counter with a planted bug: a
+/// negative move that lets the total drift below zero.</summary>
 public class ResourceInvariantTests {
   private sealed class Pool {
     public int Total = 5;
@@ -20,7 +17,7 @@ public class ResourceInvariantTests {
   [
     p => p.Total += 10,
     p => p.Total = Math.Max(0, p.Total - 10),
-    p => { }, // no-op
+    p => { },
   ];
 
   private static readonly System.Collections.Generic.IReadOnlyList<
@@ -28,7 +25,7 @@ public class ResourceInvariantTests {
   > BuggyMoves =
   [
     p => p.Total += 10,
-    p => p.Total -= 10, // the bug: no floor, so the total can go negative
+    p => p.Total -= 10, // no floor: can go negative
   ];
 
   [Fact]

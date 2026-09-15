@@ -5,13 +5,9 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// <see cref="TestChannels"/>: a registered packet round-trips through the game's own serialiser to
-/// the handler on the other side, and an unregistered type throws naming it.
-/// <see cref="ExConfigSyncModSystem"/>'s join push, observed through <c>SentToClients</c>
-/// (<c>ConfigSyncTests.PlayerJoin_sends_one_packet_per_registered_section</c>), is the production
-/// proof of the pair.
-/// </summary>
+/// <summary><see cref="TestChannels"/>: a registered packet round-trips through the game's own
+/// serialiser to the handler on the other side, and an unregistered type throws naming
+/// it.</summary>
 public class TestChannelsTests {
   [ProtoContract]
   private sealed class TestPacket {
@@ -36,7 +32,7 @@ public class TestChannelsTests {
     channels.Server.SendPacket(sent, channels.Sender);
 
     Assert.NotNull(received);
-    Assert.NotSame(sent, received); // came back through the wire, not the same instance
+    Assert.NotSame(sent, received);
     Assert.Equal(5, received!.Value);
     Assert.Equal("hi", received.Text);
     Assert.Single(channels.SentToClients);

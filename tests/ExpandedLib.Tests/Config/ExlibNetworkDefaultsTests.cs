@@ -2,12 +2,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// Locks the network tunable defaults in <see cref="ExlibValues"/>. The headless network tests and the
-/// pipe fixtures' capacity math assume exactly these numbers, and the config lives in a different
-/// assembly from those tests, so drift here would shift every pipe and molten scenario unnoticed. The
-/// accessors return the coded defaults until <c>Load</c> runs, which the headless harness never does.
-/// </summary>
+/// <summary>Pins the network tunable defaults in <see cref="ExlibValues"/> before <c>Load</c> runs.</summary>
 public class ExlibNetworkDefaultsTests {
   [Fact]
   public void PipeNetworkDefaults_MatchPreMoveValues() {

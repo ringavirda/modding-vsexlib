@@ -9,44 +9,26 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>
-/// The wiki is the surface a third party is asked to build against: every symbol it writes as code
-/// must resolve against the shipped assembly, the same way goldens, lang keys and released block
-/// codes are tested elsewhere.
-/// </summary>
+/// <summary>Every symbol the wiki writes as code must resolve against the shipped assembly.</summary>
 public class WikiParityTests {
-  /// <summary>
-  /// Identifiers the wiki writes as code that are deliberately not exlib types - a sample class a
-  /// reader is meant to write themselves. Kept short and justified one by one: an entry here is a
-  /// symbol this guard will never check again.
-  /// </summary>
+  /// <summary>Identifiers the wiki writes as code that are deliberately not exlib types.</summary>
   private static readonly string[] KnownAbsent =
   [
-    // Real exlib types, but compiled only under the legacy !GAME_GE_1_22 guard (see
-    // Blocks/Construction/ExConstruction.cs): absent from the assembly this guard reflects over,
-    // which always builds for the current target. PublicSurfaceTests resolves them from source
-    // instead, for the lane(s) that need it.
+    // Compiled only under the legacy !GAME_GE_1_22 guard; absent from this guard's assembly.
     "ExConstructionIngredient",
     "ExConstructionStage",
     "ExRightClickConstruction",
-    // Registered class strings (BlockRegister/BlockEntityRegister's PrefixModId=false code), not the
-    // C# class names they name - a JSON blocktype writes these, never a compiled reference.
+    // Registered class strings, not C# class names; a JSON blocktype writes these.
     "ExFilledMegastructure",
     "ExMultiblock",
-    // Registered behaviour string (BlockBehaviorRegister's PrefixModId=false code) for
-    // BlockBehaviorExOrientable - a JSON blocktype or a .Behavior("...") call writes this string,
-    // never the C# class name.
+    // Registered behaviour string for BlockBehaviorExOrientable, not a C# class name.
     "ExOrientable",
   ];
 
   private static string WikiDirectory => Path.Combine(RepoPaths.Root, "wiki");
 
-  /// <summary>
-  /// The source generators, which the wiki documents and reflection cannot see: the project sets
-  /// <c>IncludeBuildOutput=false</c> and is consumed as an analyzer, so it ships no runtime assembly.
-  /// Read out of the source rather than listed here, so deleting a generator deletes it from this set
-  /// too.
-  /// </summary>
+  /// <summary>The source generators the wiki documents, read from source since they ship no runtime
+  /// assembly.</summary>
   private static IEnumerable<string> GeneratorTypeNames() {
     string dir = Path.Combine(RepoPaths.Root, "src/ExpandedLib.Generators");
     var declared = new Regex(
@@ -57,8 +39,7 @@ public class WikiParityTests {
         yield return m.Groups["name"].Value;
   }
 
-  // Both assemblies the exlib mod ships: the framework and the domain layer beside it. The wiki
-  // documents them as one library, so a symbol from either one resolves.
+  // Both assemblies the exlib mod ships: the framework and the domain layer beside it.
   private static WikiParity.Report Run() =>
     WikiParity.Check(
       WikiDirectory,
@@ -80,8 +61,8 @@ public class WikiParityTests {
     );
   }
 
-  /// <summary>Points at a throwaway markdown directory for a test and removes it afterwards, so the
-  /// declaration-shape checks run against a real but disposable page.</summary>
+  /// <summary>Points the declaration-shape checks at a throwaway markdown directory, removed on
+  /// dispose.</summary>
   private sealed class TempWikiPage : System.IDisposable {
     private readonly string _dir = Path.Combine(
       Path.GetTempPath(),
@@ -105,8 +86,6 @@ public class WikiParityTests {
 
   [Fact]
   public void A_member_declared_virtual_where_the_code_declares_it_abstract_is_a_finding() {
-    // BlockEntityProductionMachine.CanRunProduction is abstract; a page reproducing the class's own
-    // declaration as virtual teaches a snippet with no body where one is required.
     using var page = new TempWikiPage(
       """
       ## `BlockEntityProductionMachine`
@@ -135,8 +114,6 @@ public class WikiParityTests {
 
   [Fact]
   public void The_guard_reads_the_wiki_and_reaches_real_api() {
-    // Zero findings reads identically whether the wiki is correct or the extractor stopped seeing code
-    // spans, so both halves of the corpus are asserted rather than assumed.
     WikiParity.Report report = Run();
 
     Assert.True(
@@ -168,10 +145,7 @@ public class WikiParityTests {
   [Fact]
   public void An_override_of_a_member_the_type_inherits_but_does_not_itself_declare_is_not_a_finding() {
     // ExBlockEntityContainer inherits Inventory from vanilla's BlockEntityContainer without
-    // overriding it. A page showing that inherited member as an override of ExBlockEntityContainer
-    // itself is documenting the actual (inherited, non-abstract) member correctly - resolving it by
-    // walking ExBlockEntityContainer's base chain, rather than by what ExBlockEntityContainer itself
-    // declares, would misattribute the base's member to ExBlockEntityContainer as abstract.
+    // overriding it.
     using var page = new TempWikiPage(
       """
       ```csharp
@@ -196,9 +170,6 @@ public class WikiParityTests {
 
   [Fact]
   public void An_override_declared_where_the_code_declares_it_abstract_is_a_finding() {
-    // BlockEntityProductionMachine.CanRunProduction is abstract, declared on that type itself - there
-    // is nothing for an `override` inside its own page to override, so this form is as wrong as
-    // `virtual` would be.
     using var page = new TempWikiPage(
       """
       ## `BlockEntityProductionMachine`

@@ -6,10 +6,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The ASCII layout DSL's own origin check: <c>Core(symbol)</c> marks the glyph the game places (the
-/// anchor), and <see cref="MultiblockLayoutBuilder.Build"/> then requires the declared <c>Origin</c> to
-/// land it on the layout's own <c>(0,0,0)</c>. Unmarked layouts (no <c>Core</c> call) are unchecked, so
-/// every layout shipped before this method existed keeps building.
+/// Pins the ASCII layout DSL's origin check: <c>Core(symbol)</c> marks the anchor glyph, and
+/// <see cref="MultiblockLayoutBuilder.Build"/> requires <c>Origin</c> to land it at <c>(0,0,0)</c>.
 /// </summary>
 public class MultiblockLayoutBuilderTests {
   private static void Build(Action<MultiblockLayoutBuilder> configure) =>
@@ -17,7 +15,7 @@ public class MultiblockLayoutBuilderTests {
 
   [Fact]
   public void Build_rejects_an_origin_that_does_not_match_the_anchor() {
-    // 'C' sits at column 1, row 0 of the grid, so the matching Origin would be (-1, 0); (0, 0) is wrong.
+    // 'C' sits at column 1, row 0; the matching Origin is (-1, 0), not (0, 0).
     var ex = Assert.Throws<InvalidOperationException>(() =>
       Build(s =>
         s.Origin(0, 0)
@@ -79,7 +77,7 @@ public class MultiblockLayoutBuilderTests {
 
   [Fact]
   public void A_layout_that_never_calls_Core_is_not_checked() {
-    // The pre-existing behaviour: an unmarked layout builds whatever its Origin says, right or wrong.
+    // An unmarked layout builds whatever its Origin says, right or wrong.
     var json = ExBlockDef
       .Create("d", "c")
       .MultiblockLayout(s =>
