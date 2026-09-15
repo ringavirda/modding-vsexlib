@@ -1,0 +1,13 @@
+{
+  "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
+  "type": "Code",
+  "modid": "platedpipes",
+  "name": "Plated Pipes",
+  "authors": ["fallenstar"],
+  "description": "Sample mod: a single pipe tier, straight/bend/T/X segments plus wall passthroughs, sharing exlib's own pipe network.",
+  "version": "1.0.0",
+  "dependencies": {
+    "game": "1.22.0",
+    "exlib": "0.8.0"
+  }
+}
