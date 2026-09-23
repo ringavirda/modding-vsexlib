@@ -89,7 +89,9 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
 
   #region Ambient sound
 
+  private const double AmbientChance = 0.08;
   private long _ambientTickId;
+  private long _ambientSoundMs;
 
   public override void Initialize(ICoreAPI api) {
     base.Initialize(api);
@@ -99,26 +101,30 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
   }
 
   /// <summary>Sparse per-pipe ambience: each pipe has a small chance to play each second at short
-  /// range.</summary>
+  /// range, and never while its previous clip is still playing.</summary>
   private void OnAmbientTick(float dt) {
     var world = Api.World;
+    if (world.Rand.NextDouble() >= AmbientChance)
+      return;
     if (!IsLiquid && Pressure > 1f)
-      ExSounds.PlayChance(
+      ExSounds.PlayLoop(
         world,
         Pos,
         ExSounds.Lava,
-        0.08,
-        range: 7f,
-        volume: 0.25f
+        ref _ambientSoundMs,
+        ExSounds.ClipLengthMs(ExSounds.Lava),
+        0.25f,
+        7f
       );
     if (IsLiquid && (_clientVolume > 0.01f || _clientFlowRate > 0.01f))
-      ExSounds.PlayChance(
+      ExSounds.PlayLoop(
         world,
         Pos,
         ExSounds.Creek,
-        0.08,
-        range: 7f,
-        volume: 0.25f
+        ref _ambientSoundMs,
+        ExSounds.ClipLengthMs(ExSounds.Creek),
+        0.25f,
+        7f
       );
   }
 

@@ -20,6 +20,25 @@ see the git history.
   at the salvage ratio. `TestWorld.RunsRemovalHooks` runs the engine's removal hooks through the
   accessor, `TestWorld.RegisterClasses`/`RegisterClass` hold a real class registry, and
   `TestWorld.DefineBlock` builds one variant of a definition the way the game registers it.
+- **Machine-sound volume**: `.exmod sound [0-1]` sets a per-player multiplier, `ExSounds.MachineVolume`,
+  on every sound the `ExSounds` helpers play. One-shots the server plays reach each client in range
+  over the `exlibSound` channel and are scaled there; one-shots play as the game's Sound type and
+  loops as Ambient.
+- **`ExSoundLoop`**: one machine's looping sound, loaded once on the client, started and stopped with
+  the machine, following `MachineVolume`, and released for good by `Dispose`.
+- **`SoundUse`** (ExpandedLib.Testing): fails a `PlayThrottled`/`PlayLoop` call whose interval is
+  shorter than its clip, a type holding an `ILoadedSound` itself, and an `ExSoundLoop` that
+  `OnBlockRemoved()` or `OnBlockUnloaded()` never releases.
+- **`ExSounds.ClipLengthMs`**, **`ExSounds.GearboxTurn`**, **`ExSounds.HeavyMetalHit`**.
+
+### Changed
+
+- `ExSounds.PlayThrottled` and `PlayLoop` never repeat a sound before its clip has finished, whatever
+  interval the caller asks for. The pipe ambience plays at most one clip at a time per pipe.
+
+### Removed
+
+- `ExSounds.MePostHit`: its file is not in the game; `HeavyMetalHit` replaces it.
 
 ## [0.8.2] - 2026-09-15
 

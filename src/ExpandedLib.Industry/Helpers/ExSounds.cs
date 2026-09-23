@@ -1,11 +1,18 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace ExpandedLib.Industry.Helpers;
 
 /// <summary>Shared catalogue of sound asset locations and play helpers. Each helper states
-/// whether it gates on side.</summary>
+/// whether it gates on side. A one-shot played on the server reaches each client in range through
+/// the <c>exlibSound</c> channel once <see cref="IndustryModule"/> has opened it; every client-side
+/// play is scaled by <see cref="MachineVolume"/> and plays as <see cref="EnumSoundType.Sound"/>,
+/// every loop as <see cref="EnumSoundType.Ambient"/>.</summary>
 public static class ExSounds {
   // Molten / heat
   public static readonly AssetLocation Sizzle = new("game:sounds/sizzle");
@@ -49,8 +56,10 @@ public static class ExSounds {
   public static readonly AssetLocation ToggleSwitch = new(
     "game:sounds/toggleswitch"
   );
-  public static readonly AssetLocation MePostHit = new(
-    "game:sounds/block/meposthit"
+
+  /// <summary>Heavy metal knock - an engine put back in order.</summary>
+  public static readonly AssetLocation HeavyMetalHit = new(
+    "game:sounds/block/heavymetal-hit"
   );
 
   // Fluids / venting
@@ -112,6 +121,11 @@ public static class ExSounds {
     "game:sounds/effect/planetary_gears"
   );
 
+  /// <summary>Soft gearbox turning - the gear train of an engine's mechanical-power take-off.</summary>
+  public static readonly AssetLocation GearboxTurn = new(
+    "game:sounds/effect/gearbox_turn"
+  );
+
   /// <summary>Large explosion - boiler burst. CreateExplosion plays its own; this is a spare.</summary>
   public static readonly AssetLocation LargeExplosion = new(
     "game:sounds/effect/largeexplosion"
@@ -127,7 +141,65 @@ public static class ExSounds {
     "game:sounds/effect/smallexplosion"
   );
 
-  /// <summary>Plays a one-shot sound centred on <paramref name="pos"/> (server only - replicates to clients).</summary>
+  /// <summary>Client-side multiplier (0-1) on every sound these helpers and <see cref="ExSoundLoop"/>
+  /// play, set from the player's <c>.exmod sound</c> preference; 1 by default. Values outside 0-1
+  /// are clamped.</summary>
+  public static float MachineVolume {
+    get => _machineVolume;
+    set => _machineVolume = Math.Clamp(value, 0f, 1f);
+  }
+
+  private static float _machineVolume = 1f;
+
+  internal const string ChannelName = "exlibSound";
+
+  private static IServerNetworkChannel? _serverChannel;
+
+  // Milliseconds each catalogue sound lasts; a variant set (anvilhit1..3) holds its longest file.
+  private static readonly Dictionary<AssetLocation, long> ClipLengths = new() {
+    [Sizzle] = 3564,
+    [MoltenMetal] = 3381,
+    [PourMetal] = 3941,
+    [Embers] = 22094,
+    [Fire] = 9260,
+    [Extinguish] = 859,
+    [Ignite] = 3016,
+    [Latch] = 229,
+    [CokeOvenDoorOpen] = 648,
+    [CokeOvenDoorClose] = 648,
+    [Bellows] = 1415,
+    [Ingot] = 210,
+    [AnvilHit] = 259,
+    [AnvilHitShort] = 1003,
+    [Build] = 152,
+    [StoneCrush] = 369,
+    [ToggleSwitch] = 362,
+    [HeavyMetalHit] = 2469,
+    [SmallSplash] = 1180,
+    [WaterPour] = 1174,
+    [Watering] = 1606,
+    [ExtinguishHiss] = 890,
+    [Cooking] = 4195,
+    [Lava] = 56630,
+    [Creek] = 29814,
+    [MetalGrinding] = 3395,
+    [Swoosh] = 899,
+    [TorchUnequip] = 866,
+    [AnvilMergeHit] = 1013,
+    [PlanetaryGears] = 7749,
+    [GearboxTurn] = 5500,
+    [LargeExplosion] = 4047,
+    [MediumExplosion] = 3786,
+    [SmallExplosion] = 1503,
+  };
+
+  /// <summary>How long <paramref name="sound"/> plays, in milliseconds, or 0 for a sound outside the
+  /// catalogue.</summary>
+  public static long ClipLengthMs(AssetLocation sound) =>
+    ClipLengths.TryGetValue(sound, out long ms) ? ms : 0;
+
+  /// <summary>Plays a one-shot sound centred on <paramref name="pos"/> to the players in range. Server
+  /// only.</summary>
   public static void Play(
     ICoreAPI? api,
     BlockPos pos,
@@ -137,19 +209,11 @@ public static class ExSounds {
   ) {
     if (api == null || api.Side != EnumAppSide.Server)
       return;
-    api.World.PlaySoundAt(
-      sound,
-      pos.X + 0.5,
-      pos.Y + 0.5,
-      pos.Z + 0.5,
-      null,
-      true,
-      range,
-      volume
-    );
+    Emit(api.World, pos, sound, null, true, range, volume);
   }
 
-  /// <summary>Plays at most once per <paramref name="intervalMs"/>. Server only.</summary>
+  /// <summary>Plays at most once per <paramref name="intervalMs"/>, and never again before the clip
+  /// has finished (<see cref="ClipLengthMs"/>). Server only.</summary>
   public static void PlayThrottled(
     ICoreAPI? api,
     BlockPos pos,
@@ -161,25 +225,15 @@ public static class ExSounds {
   ) {
     if (api == null || api.Side != EnumAppSide.Server)
       return;
-    long now = api.World.ElapsedMilliseconds;
-    if (now - lastMs < intervalMs)
+    if (!Due(api.World, sound, ref lastMs, intervalMs))
       return;
-    lastMs = now;
-    api.World.PlaySoundAt(
-      sound,
-      pos.X + 0.5,
-      pos.Y + 0.5,
-      pos.Z + 0.5,
-      null,
-      true,
-      range,
-      volume
-    );
+    Emit(api.World, pos, sound, null, true, range, volume);
   }
 
   /// <summary>
   /// Plays a one-shot at <paramref name="pos"/> with no side gate - for client-side, animation-synced
-  /// sounds that must play locally on each client (piston-stroke keyframe sounds).
+  /// sounds that must play locally on each client (piston-stroke keyframe sounds). On the server it
+  /// reaches the players in range.
   /// </summary>
   public static void PlayLocal(
     IWorldAccessor world,
@@ -188,21 +242,11 @@ public static class ExSounds {
     float volume = 1f,
     float range = 16f,
     bool randomizePitch = true
-  ) =>
-    world.PlaySoundAt(
-      sound,
-      pos.X + 0.5,
-      pos.Y + 0.5,
-      pos.Z + 0.5,
-      null,
-      randomizePitch,
-      range,
-      volume
-    );
+  ) => Emit(world, pos, sound, null, randomizePitch, range, volume);
 
   /// <summary>
-  /// Like <see cref="PlayThrottled"/> but with no side gate - a client-safe throttled loop for ongoing
-  /// ambience (boiler hum, pipe bubbling/trickle).
+  /// Like <see cref="PlayThrottled"/> but with no side gate - a client-safe repeat for ongoing
+  /// ambience; it never plays again before the clip has finished (<see cref="ClipLengthMs"/>).
   /// </summary>
   public static void PlayLoop(
     IWorldAccessor world,
@@ -213,20 +257,9 @@ public static class ExSounds {
     float volume = 1f,
     float range = 16f
   ) {
-    long now = world.ElapsedMilliseconds;
-    if (now - lastMs < intervalMs)
+    if (!Due(world, sound, ref lastMs, intervalMs))
       return;
-    lastMs = now;
-    world.PlaySoundAt(
-      sound,
-      pos.X + 0.5,
-      pos.Y + 0.5,
-      pos.Z + 0.5,
-      null,
-      false,
-      range,
-      volume
-    );
+    Emit(world, pos, sound, null, false, range, volume);
   }
 
   /// <summary>
@@ -241,17 +274,7 @@ public static class ExSounds {
     bool randomizePitch = true,
     float range = 32f,
     float volume = 1f
-  ) =>
-    world.PlaySoundAt(
-      sound,
-      pos.X + 0.5,
-      pos.Y + 0.5,
-      pos.Z + 0.5,
-      byPlayer,
-      randomizePitch,
-      range,
-      volume
-    );
+  ) => Emit(world, pos, sound, byPlayer, randomizePitch, range, volume);
 
   /// <summary>
   /// Plays a sound only <paramref name="chance"/> (0-1) of the time, so a recurring event (a spill, a
@@ -268,20 +291,12 @@ public static class ExSounds {
   ) {
     if (world.Rand.NextDouble() >= chance)
       return;
-    world.PlaySoundAt(
-      sound,
-      pos.X + 0.5,
-      pos.Y + 0.5,
-      pos.Z + 0.5,
-      null,
-      randomizePitch,
-      range,
-      volume
-    );
+    Emit(world, pos, sound, null, randomizePitch, range, volume);
   }
 
-  /// <summary>Creates a gapless looping ambient sound. Returns null on the server; the caller owns
-  /// the handle.</summary>
+  /// <summary>Creates a gapless looping ambient sound at <paramref name="volume"/> times
+  /// <see cref="MachineVolume"/>. Returns null on the server; the caller owns the handle, and
+  /// <see cref="ExSoundLoop"/> owns it for a machine.</summary>
   public static ILoadedSound? CreateLoop(
     ICoreAPI? api,
     BlockPos pos,
@@ -298,10 +313,11 @@ public static class ExSounds {
         ShouldLoop = true,
         Position = new Vec3f(pos.X + 0.5f, pos.Y + 0.5f, pos.Z + 0.5f),
         DisposeOnFinish = false,
-        Volume = volume,
+        Volume = volume * MachineVolume,
         Range = range,
         Pitch = pitch,
         RelativePosition = false,
+        SoundType = EnumSoundType.Ambient,
       }
     );
   }
@@ -314,4 +330,124 @@ public static class ExSounds {
   /// constant roar.</summary>
   public static void HissSound(IWorldAccessor world, BlockPos pos) =>
     PlayChance(world, pos, ExtinguishHiss, 0.3, range: 24f, volume: 0.5f);
+
+  /// <summary>Opens the server end of the sound channel; one-shots played on the server go through it
+  /// from then on.</summary>
+  internal static void StartServer(ICoreServerAPI api) =>
+    _serverChannel = api
+      .Network.RegisterChannel(ChannelName)
+      .RegisterMessageType<SoundPacket>();
+
+  /// <summary>Opens the client end of the sound channel, playing each packet through
+  /// <see cref="MachineVolume"/>.</summary>
+  internal static void StartClient(ICoreClientAPI api) =>
+    api.Network.RegisterChannel(ChannelName)
+      .RegisterMessageType<SoundPacket>()
+      .SetMessageHandler<SoundPacket>(packet =>
+        PlayOnClient(
+          api.World,
+          packet.X,
+          packet.Y,
+          packet.Z,
+          new AssetLocation(packet.Sound),
+          packet.RandomizePitch,
+          packet.Range,
+          packet.Volume
+        )
+      );
+
+  /// <summary>Closes the server end; later server one-shots fall back to the game's own
+  /// broadcast.</summary>
+  internal static void StopServer() => _serverChannel = null;
+
+  // Advances lastMs and returns true once both the interval and the clip have run out.
+  private static bool Due(
+    IWorldAccessor world,
+    AssetLocation sound,
+    ref long lastMs,
+    long intervalMs
+  ) {
+    long now = world.ElapsedMilliseconds;
+    if (now - lastMs < Math.Max(intervalMs, ClipLengthMs(sound)))
+      return false;
+    lastMs = now;
+    return true;
+  }
+
+  // A client plays the sound itself; a server sends it to the players in range, whose clients apply
+  // their own MachineVolume.
+  private static void Emit(
+    IWorldAccessor world,
+    BlockPos pos,
+    AssetLocation sound,
+    IPlayer? byPlayer,
+    bool randomizePitch,
+    float range,
+    float volume
+  ) {
+    double x = pos.X + 0.5,
+      y = pos.Y + 0.5,
+      z = pos.Z + 0.5;
+    if (world.Side == EnumAppSide.Client) {
+      PlayOnClient(world, x, y, z, sound, randomizePitch, range, volume);
+      return;
+    }
+    if (_serverChannel == null) {
+      world.PlaySoundAt(sound, x, y, z, byPlayer, randomizePitch, range, volume);
+      return;
+    }
+    IServerPlayer[] listeners = world
+      .AllOnlinePlayers.OfType<IServerPlayer>()
+      .Where(p =>
+        p != byPlayer
+        && p.ConnectionState == EnumClientState.Playing
+        && p.Entity?.Pos.SquareDistanceTo(x, y, z) <= range * range
+      )
+      .ToArray();
+    if (listeners.Length == 0)
+      return;
+    _serverChannel.SendPacket(
+      new SoundPacket {
+        Sound = sound.ToString(),
+        X = x,
+        Y = y,
+        Z = z,
+        RandomizePitch = randomizePitch,
+        Range = range,
+        Volume = volume,
+      },
+      listeners
+    );
+  }
+
+  private static void PlayOnClient(
+    IWorldAccessor world,
+    double x,
+    double y,
+    double z,
+    AssetLocation sound,
+    bool randomizePitch,
+    float range,
+    float volume
+  ) {
+    float scaled = volume * MachineVolume;
+    if (scaled <= 0f)
+      return;
+#if GAME_GE_1_22
+    world.PlaySoundAt(
+      new SoundAttributes(sound, randomizePitch) {
+        Type = EnumSoundType.Sound,
+        Range = range,
+      },
+      x,
+      y,
+      z,
+      0,
+      null,
+      scaled
+    );
+#else
+    world.PlaySoundAt(sound, x, y, z, null, randomizePitch, range, scaled);
+#endif
+  }
 }

@@ -1,13 +1,16 @@
 using ExpandedLib.Catalogues;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
+using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Industry.Metals;
 using ExpandedLib.Industry.Molten;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Server;
 
 namespace ExpandedLib.Industry;
 
@@ -22,6 +25,15 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
   /// <summary>Registers the three network types this module ships, each with its defaults.</summary>
   public void Start(ICoreAPI api) =>
     RegisterNetworkTypes(api.ModLoader.GetModSystem<BlockNetworkModSystem>());
+
+  /// <summary>Opens the server end of <see cref="ExSounds"/>' channel.</summary>
+  public void StartServerSide(ICoreServerAPI api) => ExSounds.StartServer(api);
+
+  /// <summary>Opens the client end of <see cref="ExSounds"/>' channel.</summary>
+  public void StartClientSide(ICoreClientAPI api) => ExSounds.StartClient(api);
+
+  /// <summary>Closes the server end of <see cref="ExSounds"/>' channel.</summary>
+  public void Dispose() => ExSounds.StopServer();
 
   /// <summary>The registrations <see cref="Start"/> makes, callable without a mod loader.</summary>
   public static void RegisterNetworkTypes(BlockNetworkModSystem networks) {

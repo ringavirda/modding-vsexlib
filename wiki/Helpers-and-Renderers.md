@@ -155,8 +155,12 @@ public static class ExSounds
 {
     // Constants (AssetLocation), grouped: molten/heat (Sizzle, MoltenMetal, PourMetal, Embers, Fire,
     // Extinguish, Ignite), mechanical (Latch, Bellows, Ingot, AnvilHit, Build, StoneCrush, ToggleSwitch,
-    // CokeOvenDoorOpen/Close, ...), fluids/venting (SmallSplash, WaterPour, Watering, ExtinguishHiss),
-    // steam ambience (Cooking, Lava, Creek, MetalGrinding, Swoosh, PlanetaryGears, *Explosion, ...).
+    // CokeOvenDoorOpen/Close, HeavyMetalHit, ...), fluids/venting (SmallSplash, WaterPour, Watering,
+    // ExtinguishHiss), steam ambience (Cooking, Lava, Creek, MetalGrinding, Swoosh, PlanetaryGears,
+    // GearboxTurn, *Explosion, ...).
+
+    public static float MachineVolume { get; set; }   // client-side, 0-1, set by .exmod sound
+    public static long ClipLengthMs(AssetLocation sound);  // 0 outside the catalogue
 
     public static void Play(ICoreAPI? api, BlockPos pos, AssetLocation sound, float volume = 1f, float range = 24f);  // server only
     public static void PlayThrottled(ICoreAPI? api, BlockPos pos, AssetLocation sound, ref long lastMs, long intervalMs, float volume = 1f, float range = 24f);
@@ -164,17 +168,38 @@ public static class ExSounds
     public static void PlayLoop(IWorldAccessor world, BlockPos pos, AssetLocation sound, ref long lastMs, long intervalMs, float volume = 1f, float range = 16f);  // client-safe
     public static void PlayAt(IWorldAccessor world, BlockPos pos, AssetLocation sound, IPlayer? byPlayer = null, bool randomizePitch = true, float range = 32f, float volume = 1f);
     public static void PlayChance(IWorldAccessor world, BlockPos pos, AssetLocation sound, double chance, bool randomizePitch = true, float range = 32f, float volume = 1f);
-    public static ILoadedSound? CreateLoop(ICoreAPI? api, BlockPos pos, AssetLocation sound, float volume = 1f, float range = 16f, float pitch = 1f);  // client only, gapless loop
+    public static ILoadedSound? CreateLoop(ICoreAPI? api, BlockPos pos, AssetLocation sound, float volume = 1f, float range = 16f, float pitch = 1f);  // client only, gapless ambient loop
     public static void SplashSound(IWorldAccessor world, BlockPos pos);   // quiet splash ~30% of the time
     public static void HissSound(IWorldAccessor world, BlockPos pos);     // soft steam/gas hiss ~30% of the time
 }
 ```
 
 `Play` and `PlayThrottled` do nothing unless called on the server; `PlayLocal` and `PlayLoop` carry
-no side gate and are the ones for client code. The throttled pair take a `ref long lastMs` you keep
-in a field and only play once that many milliseconds have passed, which is what stops a sound called
-from a tick handler turning into a buzz. `CreateLoop` instead returns the `ILoadedSound` itself, for
-a continuous machine hum you start, stop and dispose by hand.
+no side gate and are the ones for client code. A one-shot the server plays travels to each player in
+range over exlib's own channel, so every client plays it through its own volume. The throttled pair
+take a `ref long lastMs` you keep in a field and play again only once the interval and the clip
+(`ClipLengthMs`) have both run out, which is what stops a sound called from a tick handler from
+stacking copies until the game runs out of voices.
+
+Every play is scaled by `MachineVolume`, the player's `.exmod sound` setting (0 to 1 in tenths,
+default 1, saved per player). One-shots play as the game's Sound type, loops as Ambient, so the game's
+own sliders apply on top.
+
+For a continuous machine hum, hold an `ExSoundLoop` instead of a raw `ILoadedSound`:
+
+```csharp
+private readonly ExSoundLoop _hum = new(ExSounds.PlanetaryGears, volume: 0.5f);
+
+// Each client tick: loads once, starts and stops with the machine, follows MachineVolume.
+_hum.Update(Api, Pos, running);
+
+public override void OnBlockRemoved() { _hum.Dispose(); base.OnBlockRemoved(); }
+public override void OnBlockUnloaded() { _hum.Dispose(); base.OnBlockUnloaded(); }
+```
+
+A disposed `ExSoundLoop` never loads again. The harness's `SoundUse` check fails a type that holds an
+`ILoadedSound` itself, an `ExSoundLoop` that `OnBlockRemoved()` or `OnBlockUnloaded()` never
+releases, or a `PlayThrottled`/`PlayLoop` call whose interval is shorter than its clip.
 
 ## `ExInventory` - counting & consuming items
 

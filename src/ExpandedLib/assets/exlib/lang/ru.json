@@ -34,6 +34,8 @@
   "pref-measure-label": "Единицы измерения",
   "pref-measure-metric": "Метрическая (л, атм, °C)",
   "pref-measure-imperial": "Имперская (гал, psi, °F)",
+  "command-sound-desc": "Показать или задать громкость звуков машин Expanded (от 0 до 1)",
+  "pref-sound-label": "Громкость звуков машин",
   "unit-litres": "л",
   "unit-gallons": "гал",
   "unit-litres-per-second": "л/с",

@@ -34,6 +34,8 @@
   "pref-measure-label": "Display units",
   "pref-measure-metric": "Metric (L, atm, °C)",
   "pref-measure-imperial": "Imperial (gal, psi, °F)",
+  "command-sound-desc": "Show or set the volume of Expanded machine sounds (0 to 1)",
+  "pref-sound-label": "Machine sound volume",
   "unit-litres": "L",
   "unit-gallons": "gal",
   "unit-litres-per-second": "L/s",

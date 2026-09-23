@@ -15,9 +15,6 @@ namespace ExpandedLib.Industry.Pipes;
 /// rate (L/s) is supplied by the mod that registers the "pipe" network.
 /// </summary>
 public sealed class ChimneyVent : IPipeVentStrategy {
-  // Fire-loop restart interval (ms), just under the 9.26 s clip.
-  private const long ChimneyFireLoopMs = 9000;
-
   // Last loop start (world ms) per drawing chimney.
   private readonly Dictionary<BlockPos, long> _chimneyFireMs = new();
 
@@ -79,7 +76,7 @@ public sealed class ChimneyVent : IPipeVentStrategy {
             chimneyPos,
             ExSounds.Fire,
             ref last,
-            ChimneyFireLoopMs,
+            ExSounds.ClipLengthMs(ExSounds.Fire),
             volume: 0.3f,
             range: 20f
           );

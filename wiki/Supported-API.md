@@ -429,6 +429,7 @@ Content helpers shared across the family mods: display names that carry a block'
 | `ExMoldDrops` | Reads a tool mold's cast-product templates off its block attributes: the vanilla `drop` (single) or `drops` (array) schema, resolved with the mold's own domain as the default for unqualified codes, matching `BlockEntityToolMold.GetMoldedStacks`. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `ExMoldGate` | Cross-mod hook for asking whether a tool-mold type is currently disabled by a config gate, without the asker referencing the mod that owns the molds. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `ExParticles` | Shared catalogue of particle effects for the mod family (iiex + siex). | [Helpers-and-Renderers](Helpers-and-Renderers) |
+| `ExSoundLoop` | One machine's looping sound: loaded once on the client, started and stopped with the machine, scaled by the player's machine-sound volume, released for good by `Dispose` from `OnBlockRemoved` and `OnBlockUnloaded`. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `ExSounds` | Shared catalogue of sound asset locations and play helpers used across the mod family (iiex + siex). | [Helpers-and-Renderers](Helpers-and-Renderers) |
 
 ### `ExpandedLib.Industry.Materials`
