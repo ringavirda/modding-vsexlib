@@ -148,7 +148,9 @@ public abstract class BlockEntityMultiblockStructure
     if (Api?.Side == EnumAppSide.Server)
       NoSnowCells.Mark(
         this,
-        _structure == null ? _noCells : CellsWithRole(CellRoles.NoSnow)
+        _structure == null || Pos == null
+          ? _noCells
+          : CellsWithRole(CellRoles.NoSnow)
       );
 
     if (Api is ICoreClientAPI capi && _highlightedStructure != null) {

@@ -3,6 +3,7 @@ using ExpandedLib.Helpers;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -121,6 +122,25 @@ public class NoSnowCellsTests {
 
     Assert.Single(machine.CellsWithRole(CellRoles.NoSnow));
     Assert.False(NoSnowCells.IsMarked(anchor.AddCopy(2, 0, 0)));
+  }
+
+  // Fails when SetStructureAngle asks CellsWithRole before the block entity has a position.
+  [Fact]
+  public void A_structure_turned_before_it_has_a_position_marks_nothing() {
+    var world = new TestWorld();
+    var machine = new TestMegablock {
+      Block = TestBlocks.Configure(new Block(), "exlib:testmega-n", 1),
+    };
+    machine.Block.Attributes = new JsonObject(
+      MultiblockCellRolesFixtures.Attributes(FloorDef())
+    );
+    world.Attach(machine);
+
+    StructureTestHooks.ApplyStructureRotation(machine);
+
+    machine.Pos = new BlockPos(5500, 10, 0);
+    Assert.Single(machine.CellsWithRole(CellRoles.NoSnow));
+    Assert.False(NoSnowCells.IsMarked(machine.Pos.AddCopy(2, 0, 0)));
   }
 
   // Fails when releasing one owner removes a cell another owner still marks.
