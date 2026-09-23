@@ -13,6 +13,13 @@ see the git history.
   stands, neither a snow layer on top nor a snow-covered variant. The structure's server-side block
   entity lists its marked cells in the new `NoSnowCells` as soon as its facing is known and drops
   them when the core is broken or unloaded; `NoSnowCells.Mark`/`Unmark` serve any other owner.
+- **`StructureBreaks`** (ExpandedLib.Testing): stands up every code-first definition with filler
+  offsets or construction stages, in every variant, and breaks it as a survival player from the
+  principal at each partly built stage and from every cell once complete. A break fails when it
+  throws, leaves a cell standing, or drops other than the definition's `drops` plus the paid stages
+  at the salvage ratio. `TestWorld.RunsRemovalHooks` runs the engine's removal hooks through the
+  accessor, `TestWorld.RegisterClasses`/`RegisterClass` hold a real class registry, and
+  `TestWorld.DefineBlock` builds one variant of a definition the way the game registers it.
 
 ## [0.8.2] - 2026-09-15
 

@@ -85,6 +85,16 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Item stacks spawned by the simulation.</summary>
   public List<ItemStack> Drops { get; } = new();
 
+  /// <summary>
+  /// Whether <see cref="Accessor"/> runs the engine's removal hooks. When true, <c>SetBlock</c> over a
+  /// placed block first runs that block's <see cref="Block.OnBlockRemoved"/>, <c>RemoveBlockEntity</c>
+  /// runs the entity's <see cref="BlockEntity.OnBlockRemoved"/> and drops it, and <c>BreakBlock</c>
+  /// runs the block's own <see cref="Block.OnBlockBroken"/> with the breaking player. False (the
+  /// default) leaves a replaced cell's hooks unrun and <c>BreakBlock</c> tearing down the entity
+  /// alone.
+  /// </summary>
+  public bool RunsRemovalHooks { get; set; }
+
   public TestWorld() {
     Air = TestBlocks.Configure(new Block(), "game:air", 0);
     _blocksById[0] = Air;
@@ -617,7 +627,11 @@ public sealed partial class TestWorld : IDisposable {
     a.When(x =>
         x.BreakBlock(Arg.Any<BlockPos>(), Arg.Any<IPlayer>(), Arg.Any<float>())
       )
-      .Do(ci => DoBreak(ci.ArgAt<BlockPos>(0)));
+      .Do(ci =>
+        DoBreak(ci.ArgAt<BlockPos>(0), ci.ArgAt<IPlayer>(1), ci.ArgAt<float>(2))
+      );
+    a.When(x => x.RemoveBlockEntity(Arg.Any<BlockPos>()))
+      .Do(ci => DoRemoveBlockEntity(ci.Arg<BlockPos>()));
 
     // WalkBlocks over an inclusive box, reading the store cell by cell.
     a.When(x =>
@@ -677,6 +691,15 @@ public sealed partial class TestWorld : IDisposable {
         x.SpawnItemEntity(
           Arg.Any<ItemStack>(),
           Arg.Any<Vec3d>(),
+          Arg.Any<Vec3d>()
+        )
+      )
+      .Do(ci => Drops.Add(ci.Arg<ItemStack>()));
+    // The overload Block.SpawnDropsAndRemoveBlock spawns a broken block's drops through.
+    w.When(x =>
+        x.SpawnItemEntity(
+          Arg.Any<ItemStack>(),
+          Arg.Any<BlockPos>(),
           Arg.Any<Vec3d>()
         )
       )
@@ -801,6 +824,13 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   private void DoSetBlock(int id, BlockPos pos) {
+    if (
+      RunsRemovalHooks
+      && _blocks.TryGetValue(pos, out Block? replaced)
+      && replaced.BlockId != id
+    )
+      replaced.OnBlockRemoved(World, pos);
+
     if (id == 0) {
       _blocks.Remove(pos);
       _blockEntities.Remove(pos);
@@ -826,11 +856,14 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   private void DoSpawnBlockEntity(string classname, BlockPos pos) {
-    if (!_beFactories.TryGetValue(classname, out var factory))
+    Block block = GetBlock(pos);
+    BlockEntity? be = _beFactories.TryGetValue(classname, out var factory)
+      ? factory()
+      : CreateRegisteredBlockEntity(classname, block);
+    if (be == null)
       return;
-    var be = factory();
     be.Pos = pos.Copy();
-    be.Block = GetBlock(pos);
+    be.Block = block;
     _blockEntities[pos] = be;
     be.Initialize(Api);
   }
@@ -843,7 +876,12 @@ public sealed partial class TestWorld : IDisposable {
       be.Block = b;
   }
 
-  private void DoBreak(BlockPos pos) {
+  private void DoBreak(BlockPos pos, IPlayer? byPlayer, float dropMultiplier) {
+    if (RunsRemovalHooks) {
+      GetBlock(pos).OnBlockBroken(World, pos, byPlayer, dropMultiplier);
+      return;
+    }
+
     // Routes through the real break lifecycle: drops contents, runs OnBlockRemoved.
     if (_blockEntities.TryGetValue(pos, out var be)) {
       be.OnBlockBroken();
@@ -851,6 +889,13 @@ public sealed partial class TestWorld : IDisposable {
     }
     _blocks.Remove(pos);
     _blockEntities.Remove(pos);
+  }
+
+  private void DoRemoveBlockEntity(BlockPos pos) {
+    if (!RunsRemovalHooks || !_blockEntities.TryGetValue(pos, out var be))
+      return;
+    _blockEntities.Remove(pos);
+    be.OnBlockRemoved();
   }
 
   #endregion

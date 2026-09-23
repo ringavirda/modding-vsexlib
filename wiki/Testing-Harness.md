@@ -575,6 +575,34 @@ resolve the same way, so these four checks read the same whether `exmod.json` ex
 `Invariants/ShippedAssetJsonTests.cs` and `Localization/LangParityTests.cs` - trivially true (no
 files found, no failure) until the scaffolded mod ships assets and a translated locale to check.
 
+### Breaking every structure: `StructureBreaks`
+
+`StructureBreaks.Run` takes a mod's code-first block definitions and breaks every one that reserves
+filler cells or carries `ExRightClickConstructable` stages, the way a survival player breaks it on a
+server. Each break gets a fresh `TestWorld` holding the mod's registered classes, the variant stood up
+through `DefineBlock` and placed through its own `OnBlockPlaced`. A structure with stages is broken
+from its principal at every partly built stage, with each stored wildcard set to the ingredient's
+first allowed variant, and from every cell once complete. `prepare` registers what the block entities
+need before anything is placed, such as network types:
+
+```csharp
+[Fact]
+public void Every_structure_breaks_whole_from_every_cell_and_drops_its_definition() {
+  var defs = DefinitionGoldens.Collect("iiex", typeof(IronIndustryExpandedModSystem).Assembly)
+    .OfType<ExBlockDef>();
+  StructureBreaks.Result result = StructureBreaks.Run(
+    defs,
+    [typeof(BlockStructureFiller).Assembly, typeof(IndustryModule).Assembly,
+     typeof(IronIndustryExpandedModSystem).Assembly],
+    world => IndustryModule.RegisterNetworkTypes(world.Networks));
+  Assert.True(result.Failures.Count == 0, string.Join("\n", result.Failures));
+}
+```
+
+A failure names the variant, the stage and the cell, and says whether the break threw, which cells
+it left standing, or which drop counts fell outside the definition's range. Only the server break is
+exercised: client-side rendering and particles are not.
+
 ### Reflection scans: `RegistryLawScanner` and `ResourceInvariant`
 
 A law that must hold for every concrete subclass of some base type - wherever it is declared, not

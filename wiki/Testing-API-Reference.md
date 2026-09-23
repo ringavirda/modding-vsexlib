@@ -26,7 +26,7 @@ against.
 | `Scenes/` | `Scene`, `SceneDiagram`, `SceneGrid` |
 | `Rigs/` | `StructureRig`, `StructureTestHooks`, `MachineRig`, `MachineTestHooks`, `RegistryLawScanner`, `ResourceInvariant<TState>`, `StaticStateCollection`, `HarmonyFixture` |
 | `Doubles/` | stand-ins: `StubNetwork`, `TestNetworkBlock`, `NetworkNodeTestHooks`, `CapturingNode`, `SeverableNode`, `OrientableNode`, `RccFake`, `TestMemberBlockEntity`, `MechPower`; supported doubles: `TestPlayer`, `TestInventory`, `TestModLoader`, `WorldConfigBag`, `ModConfigFiles`, `RecordingLogger`, `TestChannels` |
-| `Checks/` | the content validators: `CodeLiterals`, `CodePrefixCollision`, `CostSelectorOverlap`, `DefinitionAssets`, `DefinitionCatalogue`, `DefinitionCodes`, `DefinitionGoldens`, `DefinitionJson`, `DefinitionParity`, `HandbookSync`, `LangCallSites`, `LangCoverage`, `LangKeys`, `LangParity`, `LayoutTable`, `LoopingAnimations`, `MegablockFrames`, `MultiblockCodes`, `NetworkNodeContract`, `PinnedNetworkNodes`, `PressureVesselGate`, `RecipeCodes`, `ReferencedCodes`, `SelectorCoverage`, `ShapeExtents`, `ShippedJson`, `TreeKeys`, `VanillaToolTiers`, `WikiParity` |
+| `Checks/` | the content validators: `CodeLiterals`, `CodePrefixCollision`, `CostSelectorOverlap`, `DefinitionAssets`, `DefinitionCatalogue`, `DefinitionCodes`, `DefinitionGoldens`, `DefinitionJson`, `DefinitionParity`, `HandbookSync`, `LangCallSites`, `LangCoverage`, `LangKeys`, `LangParity`, `LayoutTable`, `LoopingAnimations`, `MegablockFrames`, `MultiblockCodes`, `NetworkNodeContract`, `PinnedNetworkNodes`, `PressureVesselGate`, `RecipeCodes`, `ReferencedCodes`, `SelectorCoverage`, `ShapeExtents`, `ShippedJson`, `StructureBreaks`, `TreeKeys`, `VanillaToolTiers`, `WikiParity` |
 | `Repo/` | `RepoPaths`, `RepoManifest`, `ReleasedHistory`, `ReleasedCodes`, `ReleasedVersions`, `ReleasedCodeDebt`, `BlockCodeEmitter`, `RepoCheckSource` |
 | (root) | `ReflectionHelpers` |
 
@@ -55,6 +55,7 @@ public sealed class TestWorld : IDisposable
     public WorldConfigBag Config { get; }        // wired as World.Config
     public TestModLoader Mods { get; }           // wired as Api.ModLoader; "exlib" enabled by default
     public ModConfigFiles ConfigFiles { get; }   // backs Api.LoadModConfig/StoreModConfig; deleted on Dispose
+    public bool RunsRemovalHooks { get; set; }   // Accessor runs the engine's removal hooks; default false
 
     // Setup:
     public TestWorld Attach(BlockEntity be);
@@ -69,6 +70,9 @@ public sealed class TestWorld : IDisposable
     public TestWorld RegisterBlockEntityFactory(string classname, Func<BlockEntity> factory);
     public TestWorld RegisterBlockEntityBehaviorFactory(string classname, Func<BlockEntity, BlockEntityBehavior> factory);
     public TestWorld Register(Block block);
+    public TestWorld RegisterClasses(params Assembly[] assemblies);   // every [*Register] block/BE/behaviour class, real registry
+    public TestWorld RegisterClass(string key, Type type);           // one class, e.g. a vanilla "Animatable"
+    public Block DefineBlock(ExBlockDef def, DefinitionCodes.Registered variant);
     public Item RegisterItem(string code, float meltingPoint = 0f);
     public Item? GetItem(AssetLocation? code);
     public Item? GetItem(int id);
@@ -109,6 +113,22 @@ connector faces, for the cell that is a node only because it carries one.
 registry (`RegisterBlockEntityBehaviorFactory`) exactly as the game builds them from
 `[BlockEntityBehaviorRegister]`. `PlaceFillerNode` is that cell declaring one network membership:
 `orientation` is one side letter, or two naming an opposite pair for a cell a run passes through.
+
+`RunsRemovalHooks` makes `Accessor` run what the engine runs when a cell is cleared: `SetBlock`
+over a different block first runs the replaced block's `OnBlockRemoved`, `RemoveBlockEntity` runs the
+entity's `OnBlockRemoved` and drops it, and `BreakBlock` runs the block's own `OnBlockBroken` with the
+breaking player and drop multiplier. Off (the default), `BreakBlock` tears down the block entity alone
+and a replaced cell's hooks never run.
+
+`RegisterClasses` puts every block, block entity, block behaviour and block-entity behaviour class an
+assembly registers into a real class registry under the key the game registers it by; classes of
+other kinds are skipped. From then on `Api.ClassRegistry` and `World.ClassRegistry` answer from it,
+and a block entity the accessor spawns without a `RegisterBlockEntityFactory` factory comes from it
+with the behaviours its block declares. `DefineBlock` stands up one variant of a code-first definition
+as the game registers it: `*ByType` keys and `{group}` placeholders resolved by vanilla's own
+resolver, the block built through `BlockType.CreateBlock`, given a fresh id (from 40000) and this
+world's api, registered, its `drops` resolved and its `OnLoaded` run. It throws
+`InvalidOperationException` before `RegisterClasses` or `RegisterClass` has run.
 
 `UnloadChunkAt` models a chunk unload as the walk sees one: every cell in the chunk holding that
 position reads back as air, its block entities as `null` and `GetChunkAtBlockPos` as `null`, while the
@@ -654,6 +674,7 @@ pairs.
 | `SelectorCoverage` | Every block code a golden blocktype's `variantgroups` produce matches a `shapeByType` pattern, and every handbook `groupBy` selector it declares matches a shipped code somewhere in its domain's golden corpus. |
 | `ShapeExtents` | The bounding box (in voxels) of everything a shape file draws. |
 | `ShippedJson` | Every JSON asset under one shipped tree parses, carries no control character, and (under `patches/`) declares the side each entry runs on. |
+| `StructureBreaks` | Every definition with filler offsets or construction stages, in every variant, stood up in a fresh `TestWorld` with `RunsRemovalHooks` on and broken by a survival player: from the principal at each partly built stage, and from the principal and every filler cell once complete. A break fails when it throws, leaves a cell of the structure standing, or drops other than the definition's resolved `drops` plus every paid stage's materials at the salvage ratio. `Run` returns the blocks, variants and breaks covered and one line per failure; see [Breaking every structure](Testing-Harness#breaking-every-structure-structurebreaks). |
 | `TreeKeys` | Golden-file oracle for a block entity's save shape - the keys `ToTreeAttributes` writes, pinned against a committed golden the same way `DefinitionGoldens` pins a def's JSON; see [Pinning a block entity's save shape](Testing-Harness#pinning-a-block-entitys-save-shape). |
 | `VanillaToolTiers` | Vanilla pickaxe tool tier constants (`Bronze`/`Iron`/`Steel`), for pinning a block's `requiredMiningTier`. |
 | `WikiParity` | Reflects the API the wiki teaches against the API the assembly actually has. |
