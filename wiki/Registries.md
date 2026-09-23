@@ -110,9 +110,9 @@ The two properties, and the aliases a block entity gets without declaring them, 
 A class named `BlockEntityXxx` also registers the short-name aliases `{modid}.{Xxx}`, `{Xxx}` and
 `{xxx}`, unless you set an explicit `Code`. That is so a blocktype's `entityClass` field can name
 your block entity the short way vanilla blocktypes do, instead of spelling out the class name. The
-bare `{Xxx}`/`{xxx}` pair carries no domain, so when a second mod's class claims a short name
-already issued, exlib logs an error naming both types rather than letting the second silently
-overwrite the first's registration.
+bare `{Xxx}`/`{xxx}` pair carries no domain. When two classes claim the same short name and their
+assemblies are both marked or both unmarked (see `ExPublishedSaveKeys` below), exlib logs an error
+naming both types, and the one registered later loads under the bare key.
 
 The aliases are registered first and the primary key last, and the game saves a block entity under
 the last key its type was registered with, so every save names the primary key
