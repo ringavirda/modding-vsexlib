@@ -105,6 +105,7 @@ public sealed class ExOrientableRig {
     var behaviour = new BlockBehaviorExOrientable(placer!);
     behaviour.Initialize(properties);
     placer!.BlockBehaviors = [behaviour];
+    placer.CollectibleBehaviors = [behaviour];
 
     return new ExOrientableRig(world, placer, behaviour, variantKey);
   }
