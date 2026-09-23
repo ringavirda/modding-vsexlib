@@ -18,7 +18,7 @@ namespace ExpandedLib.Tests;
 
 /// <summary>The machine-sound volume, the clip-length throttle, the server-to-client one-shot
 /// channel and <see cref="ExSoundLoop"/>'s lifetime.</summary>
-[Collection(nameof(ExSoundsTests))]
+[Collection(ExSoundsCollection.Name)]
 public class ExSoundsTests : IDisposable {
   private static readonly BlockPos At = new(10, 5, 20);
 
@@ -438,4 +438,11 @@ public class ExSoundsTests : IDisposable {
     made = calls;
     return capi;
   }
+}
+
+/// <summary>Serializes every test class touching <see cref="ExSounds.MachineVolume"/> or the
+/// sound channel, both process-global.</summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public class ExSoundsCollection {
+  public const string Name = "ExSounds";
 }

@@ -5,14 +5,12 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.Helpers;
 
-/// <summary>
-/// One machine's looping sound. <see cref="Update"/> loads it on the client the first time the
-/// machine runs, starts and stops it with the machine, and re-applies <see cref="Volume"/> times
-/// <see cref="ExSounds.MachineVolume"/> and <see cref="Pitch"/> when either changes.
-/// <see cref="Dispose"/> stops and releases it for good: a disposed loop never loads again. The
-/// owner calls <see cref="Dispose"/> from both <c>OnBlockRemoved</c> and <c>OnBlockUnloaded</c>.
-/// Inert on the server.
-/// </summary>
+/// <summary>One machine's looping sound, loaded once on the client and released for good by
+/// <see cref="Dispose"/>. Inert on the server.</summary>
+/// <remarks><see cref="Update"/> loads it the first time the machine runs, starts and stops it with
+/// the machine, and re-applies <see cref="Volume"/> times <see cref="ExSounds.MachineVolume"/> and
+/// <see cref="Pitch"/> when either changes. A disposed loop never loads again. The owner calls
+/// <see cref="Dispose"/> from both <c>OnBlockRemoved</c> and <c>OnBlockUnloaded</c>.</remarks>
 public sealed class ExSoundLoop : IDisposable {
   private readonly AssetLocation _sound;
   private readonly float _range;
