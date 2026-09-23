@@ -50,7 +50,7 @@ public class FailOnWarningsTests {
     );
   }
 
-  // Fails when the check reads Entries, which Clear empties, instead of every entry logged.
+  // Fails when the check skips entries Clear removed from Entries.
   [Fact]
   public void A_cleared_warning_still_fails() {
     var world = new TestWorld();

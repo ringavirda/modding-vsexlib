@@ -94,7 +94,7 @@ public class HarnessUseGuards {
     );
   }
 
-  // Fails when CompletionWrites reads comments, or judges the whole file instead of one statement.
+  // Fails when CompletionWrites reads comments, or matches across statements.
   [Fact]
   public void A_read_a_comment_and_another_members_write_are_not_named() {
     Assert.Empty(
