@@ -436,7 +436,9 @@ as an error without running, since none may fall back to breaking as the world, 
 
 ### Creative sources
 
-Test inputs are real blocks in exlib's Industry module, in the creative inventory and in no recipe.
+Test inputs are real blocks in exlib's Industry module, in the creative inventory and in no recipe. A
+creative player sets one by cycling its values with right-click and sneak-right-click, as vanilla's
+creative rotor does; scenarios write the same tree keys directly.
 Each shows its settings and what it has delivered in its block info.
 
 | Block | Settings (tree keys) | Does |
@@ -446,6 +448,7 @@ Each shows its settings and what it has delivered in its block info.
 | fluid source, `exlib:creativefluid` | `medium` (any registered medium: Water, Steam, Air, Exhaust today), `rate` 0 to 500 L/s, `pressure` atm, `temperature` C | a pipe node on all six faces that feeds its network every tick through `PipeNetwork.ProduceLiquidMeasured` or `ProduceGasMeasured`; steam, hot blast, exhaust and fuel gas are all this block |
 | fluid drain, `exlib:creativedrain` | `rate` 0 to 500 L/s, `pressure` atm | a pipe node on all six faces that takes up to `rate` from its network while the network stands above `pressure`, the steady consumer a boiler or a gas main needs |
 | molten source, `exlib:creativemolten-{n,e,s,w}` | `metal` (a molten metal code), `rate` units/s, `temperature` C | an `IMoltenCell` with `IsFlowSource` whose pool `PushMetalRaw` tops up every tick, so a canal carries from it as from a tap |
+| mpenergy source, `exlib:creativempenergy` | `torque` 0 to 20 | an `IMpEnergyProducer` node that the generic mpenergy form places beside a member with no vanilla-MP bridge of its own (a shaft, a transmission, the rolling mill) and drives at the set torque |
 
 Heat has no block. Heat enters every family process as fuel or as a hot input, so it is a temperature:
 a fluid source's (steam, hot blast), a molten source's, or a stack's (`insert` and `interact` take a
@@ -1277,18 +1280,3 @@ scenario`; the live mod's build and staging; the citation resolver.
 - Hand-drawn grids in a scenario, and exporting a plot by command (WorldEdit covers it).
 - Item entities as inputs (a hopper or chute fed by thrown items).
 - Runs on 1.20 and 1.21.
-
----
-
-## Open
-
-- How the generic mpenergy form drives a run that has no vanilla-MP bridge of its own (a shaft, a
-  transmission, the rolling mill). The inputs ruling puts power in exlib's creative sources, and today
-  mpenergy takes vanilla power only at a mod's flywheel hub, which exlib's generic layer cannot name.
-  The options: a sixth creative source in exlib, `exlib:creativempenergy`, an `IMpEnergyProducer` node
-  with a `torque` setting that the mpenergy form places beside the member; or each mod's `generic.json`
-  names its bridge block (`iiex:mpenergy-flywheel-normal-*`), which the form places in the run and
-  drives with the power source at its hub, as a player would.
-- How a creative player sets a source: a settings dialog, or cycling values with right-click and
-  sneak-right-click as vanilla's creative rotor does. The first version stores the settings as tree keys,
-  which scenarios write; the gesture is fallen's call, on one source first.
