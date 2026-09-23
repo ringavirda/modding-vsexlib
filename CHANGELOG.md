@@ -38,9 +38,14 @@ see the git history.
   leaves the type saved under its primary key.
 - **`ExSounds.ClipLengthMs`**, **`ExSounds.CeramicBreak`**, **`ExSounds.GearboxTurn`**,
   **`ExSounds.HeavyMetalHit`**.
+- **`ExMeasure.TemperatureDelta`**: a temperature difference in Celsius degrees, shown in Fahrenheit
+  in imperial without the 32 degree offset: a 10 C difference reads 18 F.
 
 ### Changed
 
+- The incompatible-mods guard refuses Pipes and Power Expanded below 0.7.0 and Steelmaking Expanded
+  below 0.10.0 only, and its message names the version to install. A mod the loader has loaded is
+  judged by that version; one that failed to load by the newest copy in the Mods folders.
 - `EntityRegistry.RegisterAll` registers a block entity's aliases first and its primary key last, so
   saves written from now on name `{modid}.BlockEntityXxx` instead of the bare `{xxx}`. The aliases
   stay registered and older saves load as before.

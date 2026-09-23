@@ -92,6 +92,16 @@ public static class ExMeasure {
     return num + " " + unit;
   }
 
+  /// <summary>A temperature difference given in Celsius degrees, scaled to Fahrenheit without the
+  /// 32 degree offset of a point on the scale, e.g. <c>"10 deg C"</c> or <c>"18 deg F"</c>.</summary>
+  public static string TemperatureDelta(
+    float celsiusDelta,
+    string format = "F0"
+  ) =>
+    Imperial
+      ? Num(celsiusDelta * 9f / 5f, format) + " " + Unit("fahrenheit")
+      : Num(celsiusDelta, format) + " " + Unit("celsius");
+
   #endregion
 
   #region Mechanical energy (rotation / power / energy)

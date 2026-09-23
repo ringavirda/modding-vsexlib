@@ -9,89 +9,149 @@ using Xunit;
 namespace ExpandedLib.Tests.Registries;
 
 public class IncompatibleModsTests {
-  private static IModLoader LoaderWith(params string[] enabled) {
+  private static IModLoader LoaderWith(params (string Id, string Version)[] loaded) {
     var loader = Substitute.For<IModLoader>();
     loader
       .IsModEnabled(Arg.Any<string>())
-      .Returns(call => enabled.Contains(call.Arg<string>()));
+      .Returns(call => loaded.Any(m => m.Id == call.Arg<string>()));
+    foreach (var (id, version) in loaded) {
+      var mod = Substitute.For<Mod>();
+      typeof(Mod)
+        .GetProperty("Info")!
+        .SetValue(mod, new ModInfo { ModID = id, Version = version });
+      loader.GetMod(id).Returns(mod);
+    }
     return loader;
   }
 
-  [Fact]
-  public void Nothing_enabled_means_no_message() =>
-    Assert.Null(IncompatibleMods.Message(LoaderWith("iiex"), "0.8.0"));
+  // One folder mod, or one zip mod when fileName ends in .zip, declaring modid and version.
+  private static void PutOnDisk(
+    string root,
+    string fileName,
+    string modId,
+    string version
+  ) {
+    string json = $$"""{"modid":"{{modId}}","version":"{{version}}"}""";
+    string path = Path.Combine(root, fileName);
+    if (!fileName.EndsWith(".zip")) {
+      Directory.CreateDirectory(path);
+      File.WriteAllText(Path.Combine(path, "modinfo.json"), json);
+      return;
+    }
+    using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
+    using var writer = new StreamWriter(zip.CreateEntry("modinfo.json").Open());
+    writer.Write(json);
+  }
+
+  private static string TempRoot() =>
+    Directory.CreateTempSubdirectory("exlib-incompatible-mods-test-").FullName;
 
   [Fact]
-  public void Both_old_mods_are_named_with_the_fix() {
-    string? msg = IncompatibleMods.Message(LoaderWith("smex", "ppex"), "0.8.0");
+  public void Nothing_enabled_means_no_message() =>
+    Assert.Null(IncompatibleMods.Message(LoaderWith(("iiex", "0.1.0")), "0.8.0", []));
+
+  [Fact]
+  public void Both_old_mods_are_named_with_the_versions_to_install() {
+    string? msg = IncompatibleMods.Message(
+      LoaderWith(("smex", "0.9.8"), ("ppex", "0.6.8")),
+      "0.8.0",
+      []
+    );
     Assert.NotNull(msg);
-    Assert.StartsWith("exlib 0.8.0 does not work with", msg);
-    Assert.Contains("Steelmaking Expanded", msg);
-    Assert.Contains("Pipes and Power Expanded", msg);
+    Assert.StartsWith("exlib 0.8.0 needs", msg);
+    Assert.Contains("Steelmaking Expanded 0.10.0 or later", msg);
+    Assert.Contains("Pipes and Power Expanded 0.7.0 or later", msg);
     Assert.Contains("exlib 0.7.2", msg);
-    Assert.Contains("Iron Industry Expanded", msg);
   }
 
   [Fact]
   public void One_old_mod_is_named_alone() {
-    string? msg = IncompatibleMods.Message(LoaderWith("ppex"), "0.8.0");
+    string? msg = IncompatibleMods.Message(
+      LoaderWith(("ppex", "0.6.8"), ("smex", "0.10.0")),
+      "0.8.0",
+      []
+    );
     Assert.Contains("Pipes and Power Expanded", msg);
     Assert.DoesNotContain("Steelmaking", msg);
   }
 
-  // A loader reporting nothing enabled must not silence the message when the mod is still on disk.
-  [Fact]
-  public void A_mod_the_loader_no_longer_reports_enabled_is_still_found_on_disk() {
-    string root = Directory
-      .CreateTempSubdirectory("exlib-incompatible-mods-test-")
-      .FullName;
+  // Fails when the version is ignored: every loaded ppex or smex is refused.
+  [Theory]
+  [InlineData("ppex", "0.7.0")]
+  [InlineData("smex", "0.10.0")]
+  [InlineData("smex", "0.10.1")]
+  public void A_ported_version_loaded_is_accepted(string modId, string version) =>
+    Assert.Null(IncompatibleMods.Message(LoaderWith((modId, version)), "0.8.0", []));
+
+  // A failed load is absent from the loader; its copy on disk still names the version to install.
+  [Theory]
+  [InlineData("ppex", "ppex", "0.6.8", "Pipes and Power Expanded 0.7.0 or later")]
+  [InlineData("smex", "smex", "0.9.8", "Steelmaking Expanded 0.10.0 or later")]
+  [InlineData("ppex", "ppex_0.6.8.zip", "0.6.8", "Pipes and Power Expanded 0.7.0 or later")]
+  [InlineData("smex", "smex_0.9.8.zip", "0.9.8", "Steelmaking Expanded 0.10.0 or later")]
+  public void An_old_version_on_disk_only_is_refused(
+    string modId,
+    string fileName,
+    string version,
+    string named
+  ) {
+    string root = TempRoot();
     try {
-      Directory.CreateDirectory(Path.Combine(root, "ppex"));
-      File.WriteAllText(
-        Path.Combine(root, "ppex", "modinfo.json"),
-        """{"modid":"ppex","version":"0.6.8"}"""
+      PutOnDisk(root, fileName, modId, version);
+
+      string? msg = IncompatibleMods.Message(LoaderWith(), "0.8.0", [root]);
+      Assert.NotNull(msg);
+      Assert.Contains(named, msg);
+    } finally {
+      Directory.Delete(root, recursive: true);
+    }
+  }
+
+  // Fails when the disk is read before the loaded version: the old zip would refuse the mod.
+  [Theory]
+  [InlineData("ppex", "0.6.8", "0.7.0")]
+  [InlineData("smex", "0.9.8", "0.10.0")]
+  public void An_old_zip_beside_a_loaded_ported_version_is_accepted(
+    string modId,
+    string oldVersion,
+    string loadedVersion
+  ) {
+    string root = TempRoot();
+    try {
+      PutOnDisk(root, $"{modId}_{oldVersion}.zip", modId, oldVersion);
+
+      Assert.Null(
+        IncompatibleMods.Message(LoaderWith((modId, loadedVersion)), "0.8.0", [root])
       );
-
-      string? msg = IncompatibleMods.Message(LoaderWith(), "0.8.0", [root]);
-      Assert.NotNull(msg);
-      Assert.Contains("Pipes and Power Expanded", msg);
     } finally {
       Directory.Delete(root, recursive: true);
     }
   }
 
+  // Fails when any old copy on disk refuses the mod rather than the newest.
   [Fact]
-  public void A_zipped_mod_is_also_found_on_disk() {
-    string root = Directory
-      .CreateTempSubdirectory("exlib-incompatible-mods-test-")
-      .FullName;
+  public void A_ported_copy_on_disk_beside_an_old_one_is_accepted() {
+    string root = TempRoot();
     try {
-      string zipPath = Path.Combine(root, "smex_0.9.8.zip");
-      using (var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create)) {
-        var entry = zip.CreateEntry("modinfo.json");
-        using var writer = new StreamWriter(entry.Open());
-        writer.Write("""{"modid":"smex","version":"0.9.8"}""");
-      }
+      PutOnDisk(root, "ppex_0.6.8.zip", "ppex", "0.6.8");
+      PutOnDisk(root, "ppex_0.7.0.zip", "ppex", "0.7.0");
 
-      string? msg = IncompatibleMods.Message(LoaderWith(), "0.8.0", [root]);
-      Assert.NotNull(msg);
-      Assert.Contains("Steelmaking Expanded", msg);
+      Assert.Null(IncompatibleMods.Message(LoaderWith(), "0.8.0", [root]));
     } finally {
       Directory.Delete(root, recursive: true);
     }
   }
+
+  // Fails when a missing version reaches GameVersion, which throws on an empty string.
+  [Fact]
+  public void A_loaded_mod_without_a_version_is_refused() =>
+    Assert.NotNull(IncompatibleMods.Message(LoaderWith(("ppex", "")), "0.8.0", []));
 
   [Fact]
   public void An_unrelated_mod_folder_is_ignored() {
-    string root = Directory
-      .CreateTempSubdirectory("exlib-incompatible-mods-test-")
-      .FullName;
+    string root = TempRoot();
     try {
-      Directory.CreateDirectory(Path.Combine(root, "iiex"));
-      File.WriteAllText(
-        Path.Combine(root, "iiex", "modinfo.json"),
-        """{"modid":"iiex","version":"0.1.0"}"""
-      );
+      PutOnDisk(root, "iiex", "iiex", "0.1.0");
 
       Assert.Null(IncompatibleMods.Message(LoaderWith(), "0.8.0", [root]));
     } finally {
