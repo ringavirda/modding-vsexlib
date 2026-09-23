@@ -93,7 +93,8 @@ public class StructureBreaksTests
     );
   }
 
-  // Fails when Build stops seeding StoredWildCards: the refund throws KeyNotFoundException.
+  // Fails when Build stops seeding StoredWildCards (the refund throws KeyNotFoundException), or when
+  // a part-built stage is broken from the principal alone.
   [Fact]
   public void A_built_construction_refunds_every_paid_stage_from_every_cell()
   {
@@ -108,7 +109,7 @@ public class StructureBreaksTests
     );
 
     Assert.Empty(result.Failures);
-    Assert.Equal(2 + 1 + TwoCells.Length, result.Breaks);
+    Assert.Equal(3 * (1 + TwoCells.Length), result.Breaks);
   }
 
   // Fails when Build takes the salvage ratio as 1: a half refund of 3 is 1..2, never 3.
@@ -164,7 +165,8 @@ public class StructureBreaksTests
     Assert.Contains("stands up without them", failure);
   }
 
-  // Fails when Build seeds a stored wildcard with null instead of refusing.
+  // Fails when Build seeds a stored wildcard with null instead of refusing, or when a stage that
+  // cannot be stood up is retried from every cell.
   [Fact]
   public void A_stored_wildcard_with_no_allowed_variant_cannot_be_stood_up()
   {
@@ -177,12 +179,12 @@ public class StructureBreaksTests
         )
     );
 
-    Assert.Contains(
+    string failure = Assert.Single(
       result.Failures,
-      f =>
-        f.Contains("at stage 1 could not be stood up")
-        && f.Contains("names no allowed variant")
+      f => f.Contains("at stage 1", StringComparison.Ordinal)
     );
+    Assert.Contains("at stage 1 could not be stood up", failure);
+    Assert.Contains("names no allowed variant", failure);
   }
 
   // Fails when InScope reads only the plain attributes.

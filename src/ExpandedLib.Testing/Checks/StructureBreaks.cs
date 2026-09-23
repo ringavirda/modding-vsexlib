@@ -19,8 +19,8 @@ namespace ExpandedLib.Testing;
 /// <summary>Stands up every block definition that reserves filler cells or carries construction
 /// stages and breaks it as a survival player, through the engine's removal hooks
 /// (<see cref="TestWorld.RunsRemovalHooks"/>).</summary>
-/// <remarks>A structure with construction stages is broken from its principal at each partly built
-/// stage and from every cell once complete; one without is broken from every cell. A break passes
+/// <remarks>A structure with construction stages is broken from every cell at each stage, partly
+/// built or complete; one without is broken from every cell. A break passes
 /// when nothing throws, no cell of the structure is left standing, and the drops are the
 /// definition's: its resolved <c>drops</c> plus the materials of every paid stage at the configured
 /// salvage ratio.</remarks>
@@ -95,9 +95,7 @@ public static class StructureBreaks
           continue;
         for (int built = 0; built < Math.Max(stages, 1); built++)
         {
-          bool complete = built == Math.Max(stages, 1) - 1;
-          int cells = complete ? int.MaxValue : 0;
-          for (int cell = -1; cell < cells; cell++)
+          for (int cell = -1; ; cell++)
           {
             string? failure = BreakOnce(
               Stand(),
@@ -105,13 +103,15 @@ public static class StructureBreaks
               variant,
               stages == 0 ? null : built,
               cell,
-              out bool pastLastCell
+              out bool noMoreCells
             );
-            if (pastLastCell)
+            if (failure == null && noMoreCells)
               break;
             breaks++;
             if (failure != null)
               failures.Add(failure);
+            if (noMoreCells)
+              break;
           }
         }
       }
@@ -183,6 +183,8 @@ public static class StructureBreaks
   /// <paramref name="built"/> (null for a structure without stages) and breaks it from
   /// <paramref name="cell"/> (-1 the principal, else the index of a filler cell).
   /// </summary>
+  /// <param name="noMoreCells">Set when no later cell can be broken: <paramref name="cell"/> is past
+  /// the last filler (the return is then null), or the structure could not be stood up.</param>
   /// <returns>Why the break failed, or null when it passed.</returns>
   private static string? BreakOnce(
     TestWorld world,
@@ -190,10 +192,10 @@ public static class StructureBreaks
     DefinitionCodes.Registered variant,
     int? built,
     int cell,
-    out bool pastLastCell
+    out bool noMoreCells
   )
   {
-    pastLastCell = false;
+    noMoreCells = false;
     string where = cell < 0 ? "the principal" : $"filler cell {cell}";
     string stage = built is { } paid ? $" at stage {paid}" : "";
     Block block;
@@ -217,7 +219,7 @@ public static class StructureBreaks
       ];
       if (cell >= fillers.Length)
       {
-        pastLastCell = true;
+        noMoreCells = true;
         return null;
       }
       AddDefinitionDrops(block, expected);
@@ -226,6 +228,7 @@ public static class StructureBreaks
     }
     catch (Exception e)
     {
+      noMoreCells = true;
       return $"{variant.Code}{stage} could not be stood up: {Describe(e)}";
     }
 

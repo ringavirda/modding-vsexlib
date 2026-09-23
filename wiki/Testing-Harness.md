@@ -581,8 +581,9 @@ files found, no failure) until the scaffolded mod ships assets and a translated 
 filler cells or carries `ExRightClickConstructable` stages, the way a survival player breaks it on a
 server. Each break gets a fresh `TestWorld` holding the mod's registered classes, the variant stood up
 through `DefineBlock` and placed through its own `OnBlockPlaced`. A structure with stages is broken
-from its principal at every partly built stage, with each stored wildcard set to the ingredient's
-first allowed variant, and from every cell once complete. `prepare` registers what the block entities
+from every cell at every stage, partly built or complete, with each stored wildcard set to the
+ingredient's first allowed variant; its fillers stand from placement, so a player can break it from
+any of them. `prepare` registers what the block entities
 need before anything is placed, such as network types:
 
 ```csharp
