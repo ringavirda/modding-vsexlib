@@ -202,14 +202,25 @@ so last-writer-wins drift is absent by construction.
 block in hand, but it couples the caller to a block code that a retype can move out from under it. A role
 says what the layout knows the cell is for, independent of what fills it. Both stay.
 
+exlib declares one role of its own, `CellRoles.NoSnow`, on the block weather snow would lie on or turn
+into, never the air above it; the smoke stack's floor under its open column and the furnace cores and
+hearth cells under theirs (blast, cupola, heating, crucible) carry it. On the server a structure marks those cells in `NoSnowCells`, a thread-safe registry
+the snow simulation reads off the main thread, from `SetStructureAngle` (placement, a wrench turn) and
+from `Initialize` (a structure loaded from the save), and unmarks them in `OnBlockRemoved` and
+`OnBlockUnloaded`; `ExpandedLibModSystem.Dispose` clears it. `NoSnowPatch` postfixes
+`Block.AllowSnowCoverage` to false and `Block.GetSnowCoveredVariant` to the block itself at a marked
+cell. A block class that overrides either without calling the base escapes the patch, and a snow layer
+that settled before the mark stays.
+
 | | |
 |---|---|
-| **Authoring** | `MultiblockLayoutBuilder.Role(char, CellRole)` (`MultiblockLayoutBuilder.cs:77`) |
-| **Enum** | `Blocks/Structures/CellRole.cs:42` - `Chargeable`, `Firebox`, `Tuyere`, `GasOutlet`, `MetalTap`, `SlagTap`, `Pool`, `Flue`, `Damper` |
-| **Arity** | `[SingleCell]` on the enum member (`CellRole.cs:113`), read through `CellRoles.IsSingleCell` (`:135`) |
-| **Emission** | sibling attribute `attributes.multiblockRoles` (`ExBlockDef.cs:806-808`), role name → authored offsets |
-| **Reading** | `MultiblockCellRoles.FromAttributes` (`MultiblockCellRoles.cs:71`), `CellsOf(role)` (`:51`) |
-| **Runtime** | `BlockEntityMultiblockStructure.CellsWithRole(role)` (`BlockEntityMultiblockStructure.cs:256`) → world `BlockPos`, cached |
+| **Authoring** | `MultiblockLayoutBuilder.Role(char, CellRole)` |
+| **Roles** | `CellRole`, a record struct keyed by string, minted with `CellRole.Of(key, single)` by the mod that owns the machine; exlib's own is `CellRoles.NoSnow`, the furnaces' are `FurnaceCellRoles` in iiex |
+| **Arity** | `CellRole.Of(key, single: true)`, read through `CellRoles.IsSingleCell` and enforced when the layout builds (`MultiblockLayoutBuilder.ValidateRoleArity`) |
+| **Emission** | sibling attribute `attributes.multiblockRoles` (`ExBlockDef.MultiblockLayout`), role name to authored offsets |
+| **Reading** | `MultiblockCellRoles.FromAttributes`, `MultiblockCellRoles.CellsOf(role)` |
+| **Runtime** | `BlockEntityMultiblockStructure.CellsWithRole(role)` to world `BlockPos`, cached; `LocalCellsWithRole` for authored offsets |
+| **Snow** | `NoSnowCells` (`Mark`, `Unmark`, `IsMarked`), `NoSnowPatch` |
 
 ### Connector marks - what a cell must open onto
 
