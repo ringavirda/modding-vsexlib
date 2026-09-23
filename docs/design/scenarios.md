@@ -56,6 +56,10 @@ connections from localhost only.
 Shipping (ruled 2026-09-23): the runner belongs to exlib's testing family and ships only once fallen has
 confirmed that the feature works; until then extools stages it for runs. See Code.
 
+Layers (ruled 2026-09-23): unit tests and content checks, the harness, and scenarios are three layers
+that each run where their cost fits; scenarios add to the harness and replace none of it. See When each
+layer runs.
+
 ---
 
 ## How it works
@@ -600,6 +604,19 @@ repository, factory lines included; `-Generic` adds the generic layer over the r
 8. with `-Keep`: prints the port, the data path and how to join (`exmod client`, Multiplayer,
    `localhost:<port>`), relays the terminal's lines to the server console until Ctrl+C, then writes
    `/stop`. The exit code is the one step 7 would give.
+
+### When each layer runs
+
+| Layer | What it is | When it runs |
+|---|---|---|
+| unit and content checks | xUnit tests of one type, and the `Checks` over a mod's JSON, shapes, lang and definitions | `exmod check`: every change, every game version the repository builds, and CI |
+| harness | `TestWorld`, the rigs and scenes: real block code in a substituted world | `exmod check`, as above |
+| scenarios | this page: a real dedicated server, 1.22 only | a machine's mod-specific scenarios at the end of a lane that changes that machine, before its review; the whole generic layer with `-Coverage` before fallen's in-game check and before a release. Never inside `exmod check` |
+
+A bug a scenario finds gets its regression test in the harness when the harness can express it, so
+every later `check` repeats it; it stays a scenario case only when it needs what the harness fakes (the
+floor table under The generic layer). A hook the coverage report lists as uncovered gets a case in
+whichever layer reaches it.
 
 ---
 
