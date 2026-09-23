@@ -17,7 +17,11 @@ internal static class NoSnowPatch {
 
   [HarmonyPatch(typeof(Block), nameof(Block.GetSnowCoveredVariant))]
   [HarmonyPostfix]
-  public static void KeepVariant(Block __instance, BlockPos pos, ref Block __result) {
+  public static void KeepVariant(
+    Block __instance,
+    BlockPos pos,
+    ref Block __result
+  ) {
     if (NoSnowCells.IsMarked(pos))
       __result = __instance;
   }

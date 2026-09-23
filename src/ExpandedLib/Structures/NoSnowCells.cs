@@ -21,8 +21,10 @@ public static class NoSnowCells {
   > CellsByOwner = new(ReferenceEqualityComparer.Instance);
 
   // How many owners mark each cell; a cell leaves when its count reaches zero.
-  private static readonly ConcurrentDictionary<(int X, int Y, int Z), int> Owners =
-    new();
+  private static readonly ConcurrentDictionary<
+    (int X, int Y, int Z),
+    int
+  > Owners = new();
 
   /// <summary>Marks <paramref name="cells"/> for <paramref name="owner"/>, replacing whatever that owner
   /// marked before. An empty sequence is the same as <see cref="Unmark"/>.</summary>
