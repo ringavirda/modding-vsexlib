@@ -8,12 +8,9 @@ using System.Text.RegularExpressions;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// Guards how tests use the harness: a structure's completion forced by reflection instead of reached
-/// through its monitor, a block double given <c>BlockBehaviors</c> that <c>GetBehavior</c> cannot
-/// see, and a generic helper in a test file constrained on a game type, which can stop xUnit
-/// discovering the whole assembly.
-/// </summary>
+/// <summary>Guards how tests use the harness: completion forced by reflection, a block double
+/// whose behaviours <c>GetBehavior</c> cannot see, and a test file's generic helper constrained on a
+/// game type, which can stop xUnit discovering the whole assembly.</summary>
 /// <remarks>Each rule reads C# source text with comments blanked; a <c>//</c> inside a string literal
 /// blanks the rest of its line.</remarks>
 public static class HarnessUse {
