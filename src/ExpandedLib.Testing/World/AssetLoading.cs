@@ -22,15 +22,16 @@ namespace ExpandedLib.Testing;
 /// <see cref="Block"/>/<see cref="Item"/> instances.
 /// </summary>
 public sealed partial class TestWorld {
-  /// <summary>
-  /// Loads one mod's real assets through the game's own asset manager and object loader, registering
-  /// resulting <see cref="Block"/>/<see cref="Item"/> instances, excluding vanilla survival/creative
-  /// content.
-  /// </summary>
+  /// <summary>Loads one mod's real assets through the game's own asset manager and object loader and
+  /// registers the resulting <see cref="Block"/>/<see cref="Item"/> instances; vanilla survival and
+  /// creative content is not loaded.</summary>
+  /// <remarks>First the install's vanilla mod systems register their classes (one that cannot start
+  /// on a registration-only API is passed over).</remarks>
   /// <param name="modPath">A mod's or sample's folder; <c>modinfo.json</c>/<c>bin/</c> may sit at its
   /// root or under <c>src/</c>, assets always under <c>assets/&lt;modid&gt;/</c>.</param>
-  /// <param name="gamePath">The game install to read base assets from; defaults to
+  /// <param name="gamePath">The game install to read base assets and vanilla mods from; defaults to
   /// <see cref="VsAssemblyResolver.InstallPath"/>.</param>
+  /// <returns>This world.</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, no <c>modinfo.json</c>
   /// resolves, or the compiled dll cannot be found under <c>bin/</c>.</exception>
   public TestWorld LoadAssets(string modPath, string? gamePath = null) {
@@ -78,6 +79,7 @@ public sealed partial class TestWorld {
       mgr,
       out ClassRegistry rawClassRegistry
     );
+    StartVanillaMods(gamePath, rawClassRegistry);
 
     Mods.Add(modId, version);
     Mod mod = Mods.GetMod(modId)!;
@@ -186,43 +188,10 @@ public sealed partial class TestWorld {
     coreApi.ModLoader.Returns(Mods);
 
     rawClassRegistry = new ClassRegistry();
-    ClassRegistry captured = rawClassRegistry;
-    coreApi.ClassRegistry.Returns(new ClassRegistryAPI(World, captured));
-    coreApi
-      .When(x => x.RegisterBlockClass(Arg.Any<string>(), Arg.Any<Type>()))
-      .Do(ci =>
-        captured.RegisterBlockClass(ci.ArgAt<string>(0), ci.ArgAt<Type>(1))
-      );
-    coreApi
-      .When(x => x.RegisterBlockEntityClass(Arg.Any<string>(), Arg.Any<Type>()))
-      .Do(ci =>
-        captured.RegisterBlockEntityType(ci.ArgAt<string>(0), ci.ArgAt<Type>(1))
-      );
-    coreApi
-      .When(x => x.RegisterItemClass(Arg.Any<string>(), Arg.Any<Type>()))
-      .Do(ci =>
-        captured.RegisterItemClass(ci.ArgAt<string>(0), ci.ArgAt<Type>(1))
-      );
-    coreApi
-      .When(x =>
-        x.RegisterBlockBehaviorClass(Arg.Any<string>(), Arg.Any<Type>())
-      )
-      .Do(ci =>
-        captured.RegisterBlockBehaviorClass(
-          ci.ArgAt<string>(0),
-          ci.ArgAt<Type>(1)
-        )
-      );
-    coreApi
-      .When(x =>
-        x.RegisterBlockEntityBehaviorClass(Arg.Any<string>(), Arg.Any<Type>())
-      )
-      .Do(ci =>
-        captured.RegisterBlockEntityBehaviorClass(
-          ci.ArgAt<string>(0),
-          ci.ArgAt<Type>(1)
-        )
-      );
+    coreApi.ClassRegistry.Returns(
+      new ClassRegistryAPI(World, rawClassRegistry)
+    );
+    ForwardClassRegistrations(coreApi, rawClassRegistry);
 
     // CollectibleTagRegistry/EntityTagRegistry appear only from 1.22 onward.
 #if GAME_GE_1_22
@@ -239,6 +208,117 @@ public sealed partial class TestWorld {
     api.Server.Returns(serverApi);
 
     return api;
+  }
+
+  /// <summary>Forwards every class registration made through <paramref name="api"/> into
+  /// <paramref name="registry"/>, as the game's own API does.</summary>
+  private static void ForwardClassRegistrations(
+    ICoreAPI api,
+    ClassRegistry registry
+  ) {
+    api.When(x => x.RegisterBlockClass(Arg.Any<string>(), Arg.Any<Type>()))
+      .Do(ci =>
+        registry.RegisterBlockClass(ci.ArgAt<string>(0), ci.ArgAt<Type>(1))
+      );
+    api.When(x =>
+        x.RegisterBlockEntityClass(Arg.Any<string>(), Arg.Any<Type>())
+      )
+      .Do(ci =>
+        registry.RegisterBlockEntityType(ci.ArgAt<string>(0), ci.ArgAt<Type>(1))
+      );
+    api.When(x => x.RegisterItemClass(Arg.Any<string>(), Arg.Any<Type>()))
+      .Do(ci =>
+        registry.RegisterItemClass(ci.ArgAt<string>(0), ci.ArgAt<Type>(1))
+      );
+    api.When(x =>
+        x.RegisterBlockBehaviorClass(Arg.Any<string>(), Arg.Any<Type>())
+      )
+      .Do(ci =>
+        registry.RegisterBlockBehaviorClass(
+          ci.ArgAt<string>(0),
+          ci.ArgAt<Type>(1)
+        )
+      );
+    api.When(x =>
+        x.RegisterBlockEntityBehaviorClass(Arg.Any<string>(), Arg.Any<Type>())
+      )
+      .Do(ci =>
+        registry.RegisterBlockEntityBehaviorClass(
+          ci.ArgAt<string>(0),
+          ci.ArgAt<Type>(1)
+        )
+      );
+    api.When(x =>
+        x.RegisterCollectibleBehaviorClass(Arg.Any<string>(), Arg.Any<Type>())
+      )
+      .Do(ci =>
+        registry.RegisterCollectibleBehaviorClass(
+          ci.ArgAt<string>(0),
+          ci.ArgAt<Type>(1)
+        )
+      );
+    api.When(x => x.RegisterCropBehavior(Arg.Any<string>(), Arg.Any<Type>()))
+      .Do(ci =>
+        registry.RegisterCropBehavior(ci.ArgAt<string>(0), ci.ArgAt<Type>(1))
+      );
+    api.When(x => x.RegisterEntity(Arg.Any<string>(), Arg.Any<Type>()))
+      .Do(ci =>
+        registry.RegisterEntityType(ci.ArgAt<string>(0), ci.ArgAt<Type>(1))
+      );
+    api.When(x =>
+        x.RegisterEntityBehaviorClass(Arg.Any<string>(), Arg.Any<Type>())
+      )
+      .Do(ci =>
+        registry.RegisterentityBehavior(ci.ArgAt<string>(0), ci.ArgAt<Type>(1))
+      );
+    api.When(x =>
+        x.RegisterMountable(Arg.Any<string>(), Arg.Any<GetMountableDelegate>())
+      )
+      .Do(ci =>
+        registry.RegisterMountable(
+          ci.ArgAt<string>(0),
+          ci.ArgAt<GetMountableDelegate>(1)
+        )
+      );
+  }
+
+  /// <summary>Starts every server-side mod system of the dlls in <paramref name="gamePath"/>'s
+  /// <c>Mods/</c> folder, in the game's execute order, against an API whose only effect is class
+  /// registration into <paramref name="registry"/>. A system whose <c>Start</c> throws against that
+  /// API is passed over; what it registered before throwing stays.</summary>
+  private static void StartVanillaMods(string gamePath, ClassRegistry registry) {
+    string modsPath = Path.Combine(gamePath, "Mods");
+    if (!Directory.Exists(modsPath))
+      return;
+    var api = Substitute.For<ICoreServerAPI>();
+    ((ICoreAPI)api).Side.Returns(EnumAppSide.Server);
+    ForwardClassRegistrations(api, registry);
+
+    var systems = new List<ModSystem>();
+    foreach (
+      string dll in Directory.EnumerateFiles(modsPath, "*.dll").OrderBy(p => p)
+    )
+      foreach (
+        Type t in Assembly
+          .Load(Path.GetFileNameWithoutExtension(dll))
+          .GetTypes()
+          .Where(t =>
+            typeof(ModSystem).IsAssignableFrom(t)
+            && !t.IsAbstract
+            && t.GetConstructor(Type.EmptyTypes) != null
+          )
+      )
+        systems.Add((ModSystem)Activator.CreateInstance(t)!);
+
+    foreach (
+      ModSystem system in systems
+        .Where(s => s.ShouldLoad(EnumAppSide.Server))
+        .OrderBy(s => s.ExecuteOrder())
+    ) {
+      try {
+        system.Start(api);
+      } catch (Exception) { }
+    }
   }
 
   /// <summary>Reflectively runs <c>ModRegistryObjectTypeLoader.AssetsLoaded</c>, found by name each
