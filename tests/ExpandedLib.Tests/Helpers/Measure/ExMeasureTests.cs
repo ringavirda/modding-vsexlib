@@ -56,14 +56,18 @@ public class ExMeasureTests : System.IDisposable {
   public void Imperial_temperature_delta_scales_without_the_freezing_offset() {
     ExMeasure.System = MeasurementSystem.Imperial;
     // A 10 C difference is 18 F; as a point on the scale it would read 50.
-    Assert.StartsWith("18 ", ExMeasure.TemperatureDelta(10f));
+    Assert.Equal($"18 {TemperatureUnit()}", ExMeasure.TemperatureDelta(10f));
   }
 
   [Fact]
   public void Metric_temperature_delta_is_the_figure_itself() {
     ExMeasure.System = MeasurementSystem.Metric;
-    Assert.StartsWith("10 ", ExMeasure.TemperatureDelta(10f));
+    Assert.Equal($"10 {TemperatureUnit()}", ExMeasure.TemperatureDelta(10f));
   }
+
+  // The unit ExMeasure.Temperature prints in the current system.
+  private static string TemperatureUnit() =>
+    ExMeasure.Temperature(0f).Split(' ', 2)[1];
 
   [Fact]
   public void Volume_range_prints_the_unit_once_after_the_pair() {
