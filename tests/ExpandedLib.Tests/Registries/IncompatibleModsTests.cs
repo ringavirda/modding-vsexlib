@@ -77,6 +77,7 @@ public class IncompatibleModsTests {
     );
     Assert.Contains("Pipes and Power Expanded", msg);
     Assert.DoesNotContain("Steelmaking", msg);
+    Assert.DoesNotContain(" them", msg);
   }
 
   // Fails when the version is ignored: every loaded ppex or smex is refused.

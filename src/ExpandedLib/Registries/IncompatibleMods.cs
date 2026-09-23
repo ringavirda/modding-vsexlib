@@ -43,7 +43,7 @@ internal static class IncompatibleMods {
     if (needed.Count == 0)
       return null;
     return $"exlib {exlibVersion} needs {string.Join(" and ", needed)}: "
-      + "update them, or keep exlib 0.7.2 with the versions installed.";
+      + "update, or keep exlib 0.7.2 with the installed versions.";
   }
 
   // The game's binaries and data Mods folders.
