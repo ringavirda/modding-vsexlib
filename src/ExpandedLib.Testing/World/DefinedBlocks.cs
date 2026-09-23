@@ -96,7 +96,10 @@ public sealed partial class TestWorld {
       );
 
     var code = new AssetLocation(variant.Code);
-    var variants = new Vintagestory.API.Datastructures.OrderedDictionary<string, string>();
+    var variants = new Vintagestory.API.Datastructures.OrderedDictionary<
+      string,
+      string
+    >();
     foreach (var (key, value) in variant.Variants)
       variants[key] = value;
 
@@ -156,7 +159,10 @@ public sealed partial class TestWorld {
   /// <summary>A block entity of <paramref name="classname"/> with the behaviours
   /// <paramref name="block"/> declares, from the real class registry; null when none is set or it
   /// holds no such class.</summary>
-  private BlockEntity? CreateRegisteredBlockEntity(string classname, Block block) {
+  private BlockEntity? CreateRegisteredBlockEntity(
+    string classname,
+    Block block
+  ) {
     if (_classes == null || Api.ClassRegistry.GetBlockEntity(classname) == null)
       return null;
     BlockEntity be = Api.ClassRegistry.CreateBlockEntity(classname);

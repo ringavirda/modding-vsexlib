@@ -25,7 +25,8 @@ namespace ExpandedLib.Testing;
 /// standing, and the drops are the definition's: its resolved <c>drops</c> plus the materials of
 /// every paid stage at the configured salvage ratio.
 /// </summary>
-public static class StructureBreaks {
+public static class StructureBreaks
+{
   /// <summary>What <see cref="Run"/> covered and every break that failed, one line each.</summary>
   /// <param name="Blocks">Definitions stood up.</param>
   /// <param name="Variants">Concrete block variants stood up across them.</param>
@@ -51,7 +52,8 @@ public static class StructureBreaks {
     IEnumerable<ExBlockDef> defs,
     IReadOnlyList<Assembly> assemblies,
     Action<TestWorld>? prepare = null
-  ) {
+  )
+  {
     ExBlockDef fillerDef = ExDefinitions
       .DefinitionsOf(typeof(BlockStructureFiller), "exlib")
       .Single();
@@ -60,11 +62,16 @@ public static class StructureBreaks {
       variants = 0,
       breaks = 0;
 
-    foreach (ExBlockDef def in defs.Where(InScope)) {
+    foreach (ExBlockDef def in defs.Where(InScope))
+    {
       blocks++;
-      foreach (DefinitionCodes.Registered variant in DefinitionCodes.Expand(def)) {
+      foreach (
+        DefinitionCodes.Registered variant in DefinitionCodes.Expand(def)
+      )
+      {
         variants++;
-        TestWorld Stand() {
+        TestWorld Stand()
+        {
           var world = new TestWorld { RunsRemovalHooks = true };
           world.World.Side.Returns(EnumAppSide.Server);
           world.RegisterClasses([.. assemblies]);
@@ -77,17 +84,22 @@ public static class StructureBreaks {
           world.Mods.Register(power);
           power.Start(world.Api);
           prepare?.Invoke(world);
-          world.DefineBlock(fillerDef, DefinitionCodes.Expand(fillerDef).Single());
+          world.DefineBlock(
+            fillerDef,
+            DefinitionCodes.Expand(fillerDef).Single()
+          );
           return world;
         }
 
         int stages = StageCount(Stand(), def, variant, failures);
         if (stages < 0)
           continue;
-        for (int built = 0; built < Math.Max(stages, 1); built++) {
+        for (int built = 0; built < Math.Max(stages, 1); built++)
+        {
           bool complete = built == Math.Max(stages, 1) - 1;
           int cells = complete ? int.MaxValue : 0;
-          for (int cell = -1; cell < cells; cell++) {
+          for (int cell = -1; cell < cells; cell++)
+          {
             string? failure = BreakOnce(
               Stand(),
               def,
@@ -110,7 +122,8 @@ public static class StructureBreaks {
 
   /// <summary>Whether <paramref name="def"/> reserves filler cells or carries construction
   /// stages.</summary>
-  public static bool InScope(ExBlockDef def) {
+  public static bool InScope(ExBlockDef def)
+  {
     JObject json = def.ToJson();
     bool fillers =
       json["attributes"]?["fillerOffsets"] != null
@@ -132,8 +145,10 @@ public static class StructureBreaks {
     ExBlockDef def,
     DefinitionCodes.Registered variant,
     List<string> failures
-  ) {
-    try {
+  )
+  {
+    try
+    {
       Block block = world.DefineBlock(def, variant);
       Place(world, block);
       if (Construction(world) is { } rcc)
@@ -144,13 +159,16 @@ public static class StructureBreaks {
         $"{variant.Code} declares construction stages but stands up without them"
       );
       return -1;
-    } catch (Exception e) {
+    }
+    catch (Exception e)
+    {
       failures.Add($"{variant.Code} could not be stood up: {Describe(e)}");
       return -1;
     }
   }
 
-  private static void Place(TestWorld world, Block block) {
+  private static void Place(TestWorld world, Block block)
+  {
     world.Place(At, block);
     block.OnBlockPlaced(world.World, At, new ItemStack(block));
   }
@@ -174,14 +192,16 @@ public static class StructureBreaks {
     int? built,
     int cell,
     out bool pastLastCell
-  ) {
+  )
+  {
     pastLastCell = false;
     string where = cell < 0 ? "the principal" : $"filler cell {cell}";
     string stage = built is { } paid ? $" at stage {paid}" : "";
     Block block;
     BlockPos[] fillers;
     var expected = new Dictionary<string, (float Low, float High)>();
-    try {
+    try
+    {
       block = world.DefineBlock(def, variant);
       Place(world, block);
       fillers =
@@ -196,23 +216,29 @@ public static class StructureBreaks {
           .ThenBy(p => p.Y)
           .ThenBy(p => p.Z),
       ];
-      if (cell >= fillers.Length) {
+      if (cell >= fillers.Length)
+      {
         pastLastCell = true;
         return null;
       }
       AddDefinitionDrops(block, expected);
       if (built is { } k && Construction(world) is { } rcc)
         Build(world, block, rcc, k, expected);
-    } catch (Exception e) {
+    }
+    catch (Exception e)
+    {
       return $"{variant.Code}{stage} could not be stood up: {Describe(e)}";
     }
 
     BlockPos target = cell < 0 ? At : fillers[cell];
     TestPlayer player = world.Player();
     player.Player.WorldData.CurrentGameMode.Returns(EnumGameMode.Survival);
-    try {
+    try
+    {
       world.Accessor.BreakBlock(target, player.Player);
-    } catch (Exception e) {
+    }
+    catch (Exception e)
+    {
       return $"{variant.Code}{stage} broken from {where} threw {Describe(e)}";
     }
 
@@ -222,7 +248,10 @@ public static class StructureBreaks {
       .ToList();
     if (standing.Count > 0)
       return $"{variant.Code}{stage} broken from {where} left "
-        + string.Join(", ", standing.Select(p => $"{p} ({world.GetBlock(p).Code})"));
+        + string.Join(
+          ", ",
+          standing.Select(p => $"{p} ({world.GetBlock(p).Code})")
+        );
 
     return DropMismatch(world.Drops, expected) is { } mismatch
       ? $"{variant.Code}{stage} broken from {where} {mismatch}"
@@ -234,7 +263,8 @@ public static class StructureBreaks {
   private static void AddDefinitionDrops(
     Block block,
     Dictionary<string, (float Low, float High)> expected
-  ) {
+  )
+  {
     foreach (BlockDropItemStack drop in block.Drops ?? [])
       if (drop.Code != null)
         Expect(
@@ -257,12 +287,14 @@ public static class StructureBreaks {
     RightClickConstruction rcc,
     int built,
     Dictionary<string, (float Low, float High)> expected
-  ) {
+  )
+  {
     rcc.CurrentCompletedStage = built;
     for (int i = 1; i <= built; i++)
       foreach (ConstructionIngredient ing in rcc.Stages[i].RequireStacks ?? [])
         if (ing.StoreWildCard is { } key)
-          rcc.StoredWildCards[key] = ing.AllowedVariants?.FirstOrDefault()
+          rcc.StoredWildCards[key] =
+            ing.AllowedVariants?.FirstOrDefault()
             ?? throw new InvalidOperationException(
               $"stage {i} stores wildcard '{key}' for {ing.Code} but names no allowed variant"
             );
@@ -274,9 +306,13 @@ public static class StructureBreaks {
         .properties["brokenDropsRatio"]
         .AsFloat(1f);
     for (int i = 0; i <= built; i++)
-      foreach (ConstructionIngredient ing in rcc.Stages[i].RequireStacks ?? []) {
+      foreach (ConstructionIngredient ing in rcc.Stages[i].RequireStacks ?? [])
+      {
         string code = ing.Code.ToString();
-        if (ing.StoreWildCard is { } key && rcc.StoredWildCards.TryGetValue(key, out string? value))
+        if (
+          ing.StoreWildCard is { } key
+          && rcc.StoredWildCards.TryGetValue(key, out string? value)
+        )
           code = code.Replace("*", value);
         if (!code.Contains('*'))
           Resolvable(world, code, ing.Type);
@@ -292,12 +328,19 @@ public static class StructureBreaks {
 
   /// <summary>Registers <paramref name="code"/> in <paramref name="world"/> as an item or a block
   /// when nothing there answers to it yet.</summary>
-  private static void Resolvable(TestWorld world, string code, EnumItemClass type) {
+  private static void Resolvable(
+    TestWorld world,
+    string code,
+    EnumItemClass type
+  )
+  {
     var location = new AssetLocation(code);
-    if (type == EnumItemClass.Item) {
+    if (type == EnumItemClass.Item)
+    {
       if (world.GetItem(location) == null)
         world.RegisterItem(code);
-    } else if (world.World.GetBlock(location) == null)
+    }
+    else if (world.World.GetBlock(location) == null)
       world.Register(
         TestBlocks.Configure(
           new Block(),
@@ -314,7 +357,8 @@ public static class StructureBreaks {
     string code,
     float low,
     float high
-  ) {
+  )
+  {
     expected.TryGetValue(code, out var have);
     expected[code] = (have.Low + low, have.High + high);
   }
@@ -324,14 +368,16 @@ public static class StructureBreaks {
   private static string? DropMismatch(
     IEnumerable<ItemStack> drops,
     Dictionary<string, (float Low, float High)> expected
-  ) {
+  )
+  {
     var actual = drops
       .GroupBy(s => s.Collectible?.Code?.ToString() ?? "?")
       .ToDictionary(g => g.Key, g => g.Sum(s => s.StackSize));
     var wrong = expected
       .Keys.Union(actual.Keys)
       .OrderBy(c => c)
-      .Select(code => {
+      .Select(code =>
+      {
         int got = actual.GetValueOrDefault(code);
         var (low, high) = expected.GetValueOrDefault(code);
         return got >= low && got <= high
@@ -343,9 +389,10 @@ public static class StructureBreaks {
     return wrong.Count == 0 ? null : "dropped " + string.Join(", ", wrong);
   }
 
-  private static string Describe(Exception e) {
-    string? frame = e.StackTrace?
-      .Split('\n')
+  private static string Describe(Exception e)
+  {
+    string? frame = e
+      .StackTrace?.Split('\n')
       .Select(l => l.Trim())
       .FirstOrDefault();
     return $"{e.GetType().Name}: {e.Message} ({frame})";
