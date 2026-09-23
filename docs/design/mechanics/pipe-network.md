@@ -35,17 +35,17 @@ A run is one homogeneous pool, not a fluid simulation: no flow direction inside 
 
 ### 1. The shared graph substrate
 
-Every network in the suite - pipe, molten, mpenergy - is a `BlockNetwork` subclass (`BlockNetwork.cs:15`) managed by one `BlockNetworkModSystem` (`BlockNetworkModSystem.cs:16`). The manager does graph work only; all typed state lives in the subclass.
+Every network in the suite - pipe, molten, mpenergy - is a `BlockNetwork` subclass managed by one `BlockNetworkModSystem`. The manager does graph work only; all typed state lives in the subclass.
 
-| operation | file:line | behaviour |
+| operation | member | behaviour |
 |---|---|---|
-| register a type | `BlockNetworkModSystem.cs:35-38` | `RegisterNetworkType(name, factory)` in `ModSystem.Start`. iiex registers all three (`IronIndustryExpandedModSystem.cs:94-108`) |
-| add a node | `BlockNetworkModSystem.cs:108` | isolated → new network; otherwise joins `adjacentNetworks[0]` and merges the rest into it (`:136-157`), each merge gated by `CanMerge` |
-| remove a node | `BlockNetworkModSystem.cs:173` | removes, then hands the rest to `ReviewConnectivity` (`:206`) |
-| review connectivity | `BlockNetworkModSystem.cs:206` | walks from any node (`:239`); all reached → `Settle`, same instance kept (`:307`); some unreached and every node readable → `Fracture`, each component rebuilt as its own network with `OnSplitFragment` (`:263`); some unreached and any node behind an unloaded chunk → **suspended**, network left whole (`:219-225`) |
-| rebuild | `BlockNetworkModSystem.cs:330` | `RebuildFromRoot` BFS-discovers everything reachable, tears down overlapping networks, and preserves the old root network's state via `InheritStateFrom` (`:381`) |
-| tick | `BlockNetworkModSystem.cs:46-52, 403` | one server listener at 1000 ms, `dt` clamped to 2 s; resumes suspended reviews (`:420`) then dispatches `OnTick` to every live network |
-| broadcast | `BlockNetwork.cs:55-64` | pushes the typed state payload to every `INetworkNode` BE in the run |
+| register a type | `BlockNetworkModSystem.RegisterNetworkType` | `RegisterNetworkType(name, factory)` in `ModSystem.Start`. exlib's industry module registers all three (`IndustryModule.RegisterNetworkTypes`); iiex replaces `pipe` with one carrying its chimney vent (`IronIndustryExpandedModSystem.Start`) |
+| add a node | `BlockNetworkModSystem.AddNode` | isolated → new network; otherwise joins `adjacentNetworks[0]` and merges the rest into it, each merge gated by `BlockNetwork.CanMerge` |
+| remove a node | `BlockNetworkModSystem.RemoveNode` | removes, then hands the rest to `ReviewConnectivity` |
+| review connectivity | `BlockNetworkModSystem.ReviewConnectivity` | walks from any node (`WalkFromAnyNode`); all reached → `Settle`, same instance kept; some unreached and every node readable → `Fracture`, each component rebuilt as its own network with `OnSplitFragment`; some unreached and any node behind an unloaded chunk → **suspended**, network left whole |
+| rebuild | `BlockNetworkModSystem.RebuildFromRoot` | BFS-discovers everything reachable, tears down overlapping networks, and preserves the old root network's state via `InheritStateFrom` |
+| tick | `BlockNetworkModSystem.StartServerSide`, `BlockNetworkModSystem.ServerTick` | one server listener at 1000 ms, `dt` clamped to 2 s; resumes suspended reviews (`ResumeSuspendedReviews`) then dispatches `OnTick` to every live network |
+| broadcast | `BlockNetwork.BroadcastUpdate` | pushes the typed state payload to every `INetworkNode` BE in the run |
 
 Connectivity is reciprocal and four-way gated. `BlockNetworkModSystem.IsValidNetworkNeighbour` is the single chokepoint that both the traversal and the leak scan go through. Source and neighbour are resolved identically, by `NetworkMembership.Resolve` - a membership behaviour on the cell's block entity, else the block itself - so neither side names a block type and a block that spent its base class elsewhere still walks. A neighbour connects only when all of:
 
@@ -58,22 +58,22 @@ A face that passes 1-4 nowhere is an **open end** (`BlockNetworkModSystem.GetOpe
 
 The **source** cell is gated differently by the two consumers, deliberately. The traversal asks `CouplesFrom` of the source as well (`BlockNetworkModSystem.GetConnectedNeighbors`), so an endpoint or a severed cell yields no graph neighbours at all. The open-end scan does not: whether a face is open is a physical fact rather than a graph one, and a closed valve, a solidified canal and a pressure valve all still meet the pipe they touch. Gating the scan on the source too would cap a closed tap's inlet a second time over its own end-cap mesh (`BlockEntityMoltenCanalTap.OnTesselation`) and report every endpoint's coupled face as a leak.
 
-Connectors read the adjacent cell, not their own. Two position-aware members carry that: `NetworkTypeAt(world, pos)` on `INetworkMember` (`INetworkMember.cs:26`) and `HasConnectorAt(world, pos, face)`, which `INetworkConnector` supplies for a block as an explicit default (`INetworkConnector.cs:29`). A node block answers both from its `orientation` variant (`BlockNetworkNode.cs:732, 743`); a per-cell connector - a megablock structure filler exposing a port on exactly one footprint cell - declares them as plain public members that outrank the default, reads the block entity at `pos`, and stays inert everywhere else. So a machine need not be a network node to be plumbed in: a structure block implementing `INetworkConnector` is a valid connection target but is never added to the graph (`INetworkConnector.cs:7-17`).
+Connectors read the adjacent cell, not their own. Two position-aware members carry that: `INetworkMember.NetworkTypeAt(world, pos)` and `INetworkMember.HasConnectorAt(world, pos, face)`, which `INetworkConnector` supplies for a block as an explicit default forwarding to `INetworkConnector.HasConnectorAt(face)`. A node block answers the type from `BlockNetworkNode.NetworkType` and the connector from its `orientation` variant (`BlockNetworkNode.HasConnectorAt`); a per-cell connector - a megablock structure filler exposing a port on exactly one footprint cell - declares them as plain public members that outrank the default, reads the block entity at `pos`, and stays inert everywhere else. So a machine need not be a network node to be plumbed in: a structure block implementing `INetworkConnector` is a valid connection target but is never added to the graph (`INetworkConnector`).
 
-The machine side of the same rule is `MachinePorts` (`MachinePorts.cs:15`): `be.ConnectedNetwork<PipeNetwork>(face)` resolves the network in the cell across the connector face, and returns `null` unless the cell over there presents a connector back - asked of whatever speaks for it, a membership or the block (`BlockNetworkModSystem.cs:74-87`). A pipe merely sitting adjacent with its connectors pointing elsewhere is not plumbed in. Every fixed machine (boiler, engine, pumps, intake, converter, cowper, condenser) uses this one helper.
+The machine side of the same rule is `MachinePorts`: `be.ConnectedNetwork<PipeNetwork>(face)` resolves the network in the cell across the connector face, and returns `null` unless the cell over there presents a connector back - asked of whatever speaks for it, a membership or the block (`BlockNetworkModSystem.GetConnectedNetworkAcross`). A pipe merely sitting adjacent with its connectors pointing elsewhere is not plumbed in. Every fixed machine (boiler, engine, pumps, intake, converter, cowper, condenser) uses this one helper.
 
-State survives unload: `BlockEntityNetworkNode` serialises the last broadcast state (`BlockEntityNetworkNode.cs:56, 70, 110`) and the cell's membership injects it back into the freshly built network on `Initialize`, capturing it before `AddNode` can null it (`BEBehaviorNetworkMember.cs:220-231`). ⛔ The block entity stays the only writer: vanilla fans behaviour persistence over that same flat tree, so a membership that persisted anything would collide with the keys already there. Nothing about the format moved when membership did (`SaveFormatTests.cs`).
+State survives unload: `BlockEntityNetworkNode` serialises the last broadcast state (`BlockEntityNetworkNode.ToTreeAttributes`, `FromTreeAttributes`, `SerializeNetworkState`) and the cell's membership injects it back into the freshly built network on `Initialize`, capturing it before `AddNode` can null it (`BEBehaviorNetworkMember.Initialize`). ⛔ The block entity stays the only writer: vanilla fans behaviour persistence over that same flat tree, so a membership that persisted anything would collide with the keys already there. Nothing about the format moved when membership did (`SaveFormatTests.cs`).
 
 #### An unloaded chunk suspends the fracture check
 
-⛔ **The walk cannot tell "there is nothing here" from "I cannot see here."** `IBlockAccessor.GetBlock` answers the air block for an unloaded chunk rather than null (`vsapi/Common/API/IBlockAccessor.cs:256-262, :272`), and `GetBlockEntity` answers null, so an unloaded cell resolves to no member at all - exactly like an empty one. Nothing about the resolver changes that: the block arm keeps a node walkable across a block entity dropped on its own, not across a chunk that went away.
+⛔ **The walk cannot tell "there is nothing here" from "I cannot see here."** `IBlockAccessor.GetBlock` answers the air block for an unloaded chunk rather than null (`IBlockAccessor.GetBlock`), and `GetBlockEntity` answers null, so an unloaded cell resolves to no member at all - exactly like an empty one. Nothing about the resolver changes that: the block arm keeps a node walkable across a block entity dropped on its own, not across a chunk that went away.
 
-The graph outlives the unload - nothing calls `RemoveNode` there (`BEBehaviorNetworkMember.cs:249`, `BlockEntitySmokeStack.cs:47`) - so the node set stays right while the cells behind it are invisible. What breaks is the **fracture check**, which reads unreachable as gone. Left alone it splits a run around a player who walked away, and the run stays split: the returning cell finds its position already in a network and never re-joins (`BEBehaviorNetworkMember.cs:230`).
+The graph outlives the unload - nothing calls `RemoveNode` there (`BEBehaviorNetworkMember.OnBlockRemoved`, `BlockEntitySmokeStack.OnBlockRemoved`) - so the node set stays right while the cells behind it are invisible. What breaks is the **fracture check**, which reads unreachable as gone. Left alone it splits a run around a player who walked away, and the run stays split: the returning cell finds its position already in a network and never re-joins (`BEBehaviorNetworkMember.Initialize`).
 
-So the check is **suspended rather than answered** when it comes up short and any node of the network is unreadable (`BlockNetworkModSystem.cs:214-225`). The network is left whole and the positions the walk could not read are recorded against it; `ServerTick` re-decides it once at least one of them is back (`:420-441`). Three things follow from the shape:
+So the check is **suspended rather than answered** when it comes up short and any node of the network is unreadable (`BlockNetworkModSystem.ReviewConnectivity`). The network is left whole and the positions the walk could not read are recorded against it; `ServerTick` re-decides it once at least one of them is back (`BlockNetworkModSystem.ResumeSuspendedReviews`). Three things follow from the shape:
 
-1. **Positions are recorded, not chunk coordinates.** Asking `GetChunkAtBlockPos(pos)` is dimension-aware by contract; deriving a chunk key by hand means reproducing the engine's convention, and vanilla's mechanical-power version of this gets it wrong - `spreadTo` divides raw `.Y` rather than `.InternalY` (`vssurvivalmod/…/BEBehaviorMPBase.cs:526`). Several missing chunks are simply several positions, and each review recomputes the whole set, so a partial return shrinks it.
-2. **The re-decision runs on the tick, not on `Event.ChunkDirty`.** A chunk event fires while the chunk's block entities may not be back, and a footprint cell answers *only* through its block entity, so a review in that window would read the chunk as loaded and the cell as absent and split a healthy run. The tick cannot land inside a load - both are main-thread - and it needs no reason filter and no module-level "everything is loaded" flag, the pair that lets vanilla's re-trigger go stale (`MechanicalPowerMod.cs:328`). It is idempotent: a review is a recomputation from the current world, so running it again on an unchanged world changes nothing.
+1. **Positions are recorded, not chunk coordinates.** Asking `GetChunkAtBlockPos(pos)` is dimension-aware by contract; deriving a chunk key by hand means reproducing the engine's convention, and vanilla's mechanical-power version of this gets it wrong - `spreadTo` divides raw `.Y` rather than `.InternalY` (`BEBehaviorMPBase.spreadTo`). Several missing chunks are simply several positions, and each review recomputes the whole set, so a partial return shrinks it.
+2. **The re-decision runs on the tick, not on `Event.ChunkDirty`.** A chunk event fires while the chunk's block entities may not be back, and a footprint cell answers *only* through its block entity, so a review in that window would read the chunk as loaded and the cell as absent and split a healthy run. The tick cannot land inside a load - both are main-thread - and it needs no reason filter and no module-level "everything is loaded" flag, the pair that lets vanilla's re-trigger go stale (`MechanicalPowerMod.Event_ChunkDirty`). It is idempotent: a review is a recomputation from the current world, so running it again on an unchanged world changes nothing.
 3. **A network entirely behind unloaded chunks is covered by the same rule**, not a special case - no node is readable, so nothing is decided. The cost when nothing is suspended is one dictionary count per second.
 
 The trade-off is deliberate: while a run is suspended, a break that really did cut it keeps both halves sharing one pool until the chunk returns. That is strictly better than the alternative it replaces, which shredded the unloaded half into one network per cell **permanently**.
@@ -121,22 +121,22 @@ The network itself never changes phase. Two passive effects cool a run - a gas l
 ### 5. Burst pressure by tier, and joints
 
 Two orthogonal per-tier axes, both registered by **tier** from each mod's `ModSystem.Start`. The tier is the
-block's own `tier` variant (`BlockPipe.Tier`, `BlockPipe.cs:231`), the high-order segment of its code:
+block's own `tier` variant (`BlockPipe.Tier`), the high-order segment of its code:
 `pipe-{tier}-{type}-{orientation}`. It was the code's *domain* until M4 (2026-08-14), which could not survive
 the merge putting plated and cast in one domain.
 
-**Rating** - `BlockPipe._burstByTier` (`BlockPipe.cs:238`), resolved by the block's own tier (`:252-255`):
+**Rating** - `BlockPipe._burstByTier`, filled by `BlockPipe.RegisterBurst` and resolved by the block's own tier in `BlockPipe.BurstPressure`:
 
 | tier | domain | key | value | registration | config |
 |---|---|---|---|---|---|
-| plated | `iiex` | `PlatedPipeBurstPressure` | 2.5 | `IronIndustryExpandedModSystem.cs:67` | `IiexConfig.cs:206` |
-| cast | `iiex` | `CastPipeBurstPressure` | 5.0 | `IronIndustryExpandedModSystem.cs:56` | `IiexConfig.cs:50` |
-| rolled | `hpex` | `RolledPipeBurstPressure` | 12 | `SteelIndustryExpandedModSystem.cs:39` | `SiexConfig.cs:115` |
-| (no tier, or unregistered) | - | `DefaultBurstPressure` | 5, hard-coded | - | `BlockPipe.cs:241` |
+| plated | `iiex` | `PlatedPipeBurstPressure` | 2.5 | `IronIndustryExpandedModSystem.Start` | `IiexConfig.PlatedPipeBurstPressure` |
+| cast | `iiex` | `CastPipeBurstPressure` | 5.0 | `IronIndustryExpandedModSystem.Start` | `IiexConfig.CastPipeBurstPressure` |
+| rolled | `siex` | `RolledPipeBurstPressure` | 12 | `SteelIndustryExpandedModSystem.Start` | `SiexConfig.RolledPipeBurstPressure` |
+| (no tier, or unregistered) | - | `DefaultBurstPressure` | 5, hard-coded | - | `BlockPipe.DefaultBurstPressure` |
 
 The rating doubles as the tier's buffer size: a run holds `burst × pipes × LitresPerPipe`, so the plated tier is both the low-pressure tier and the small-buffer one.
 
-Only a plain segment participates: `CanBurst => GetType() == typeof(BlockPipe)` (`BlockPipe.cs:262`). Every fitting is a subclass and is therefore exempt by default - it neither bursts nor caps the run's pressure. Outlet and passthrough additionally override `BurstPressure => float.MaxValue` (`BlockPipeOutlet.cs:22`, `BlockPipePassthrough.cs:26`). The outlet names no tier and would take the default anyway; the passthroughs are tiered, but for identity rather than rating - see below.
+Only a plain segment participates: `CanBurst => GetType() == typeof(BlockPipe)` (`BlockPipe.CanBurst`). Every fitting is a subclass and is therefore exempt by default - it neither bursts nor caps the run's pressure. Outlet and passthrough additionally override `BurstPressure => float.MaxValue` (`BlockPipeOutlet.BurstPressure`, `BlockPipePassthrough.BurstPressure`). The outlet names no tier and would take the default anyway; the passthroughs are tiered, but for identity rather than rating - see below.
 
 **Joint** - `BlockPipe._jointByTier`, two families:
 
@@ -151,10 +151,10 @@ public override bool AcceptsNeighbour(Block neighbour) =>
 ```
 - `BlockPipe.AcceptsNeighbour`. Rolled pipe joins only rolled pipe. Anything that is not a `BlockPipe` - a machine port, a condenser, a fluid intake - is unaffected, because those are ports on a machine, not lengths of run. Two consequences the source calls out explicitly:
 
-- Because every fitting (valve, outlet, passthrough, tuyere, blower) is a `BlockPipe` subclass, a rolled run cannot reach iiex's fittings either. Until hpex ships its own, a rolled run is segments plus machine ports only.
+- Because every fitting (valve, outlet, passthrough, tuyere, blower) is a `BlockPipe` subclass, a rolled run cannot reach iiex's fittings either. Until siex ships its own, a rolled run is segments plus machine ports only.
 - A refused joint reads as an open end, not a hidden wall, so the run leaks rather than silently merging. The refusal is checked in `IsValidNetworkNeighbour`, the same chokepoint the leak scan uses, which asks both sides: a refusal from either holds whichever cell the walk starts from, so the pair cannot be connected from one direction and open from the other (`BlockNetworkNode.AcceptsNeighbour`, `BlockNetworkModSystem.IsValidNetworkNeighbour`).
 
-**Burst mechanics.** A run that sits at or above its weakest burstable pipe's rating with nowhere to vent accumulates `_overpressureSeconds`; at `PipeOverpressureSeconds` one random qualifying pipe fails (`PipeNetwork.cs:774-809, 858-882`). Any relief that drops the pressure below the rating resets the grace (`:799-800`), and the timer is transient - a reload resets it (`:74-76`). Failure drops the pipe's items, puffs steam, pops, removes the node (fracturing the run) and sets the cell to air (`:888-916`). Burst selection prefers the world RNG so a seeded world is deterministic (`:877`).
+**Burst mechanics.** A run that sits at or above its weakest burstable pipe's rating with nowhere to vent accumulates `_overpressureSeconds`; at `PipeOverpressureSeconds` one random qualifying pipe fails (`PipeNetwork.TickOverpressureAndBurst`, `PipeNetwork.MinBurstPressure`, `PipeNetwork.CollectBursts`). Any relief that drops the pressure below the rating resets the grace (`PipeNetwork.TickOverpressureAndBurst`), and the timer is transient - a reload resets it (`PipeNetwork._overpressureSeconds`). Failure drops the pipe's items, puffs steam, pops, removes the node (fracturing the run) and sets the cell to air (`PipeNetwork.ExecuteBurst`). Burst selection prefers the world RNG so a seeded world is deterministic (`PipeNetwork.CollectBursts`).
 
 ### 6. Tick order
 
@@ -279,7 +279,7 @@ A null `tier` yields the same four blocktypes with no tier axis and the default 
 |---|---|---|
 | `BlockNetworkModSystem` | `BlockNetworkModSystem.cs:16` | the graph manager. `RegisterNetworkType` (`:28`), `GetConnectedNetworkAcross` (`:67`), `AddNode` (`:101`), `RemoveNode` (`:163`), `RebuildFromRoot` (`:259`), `GetOpenConnectorFaces` (`:352`), `GetConnectedNeighbors` (`:380`), `IsValidNetworkNeighbour` (`:417`) |
 | `BlockNetwork` | `BlockNetwork.cs:15` | abstract base: `Nodes`, `State`, `OnTick`, `OnMerge`, `OnSplitFragment`, `InheritStateFrom` (`:110`), `OnTopologyChanged` (`:117`) |
-| `BlockNetworkNode` | `BlockNetworkNode.cs:20` | abstract block base: orientation/placement/wrench, `AcceptsNeighbour` (`:762`), `HasConnectorAt` (`:768, 777`), `IsNetworkEndPoint` (`:732`), `IsValidNonNetworkConnection` (`:739`) |
+| `BlockNetworkNode` | `BlockNetworkNode.cs:20` | abstract block base: orientation/placement/wrench, `AcceptsNeighbour`, `HasConnectorAt`, `IsNetworkEndPoint`, `IsValidNonNetworkConnection` |
 | `BlockEntityNetworkNode` | `BlockEntityNetworkNode.cs` | node lifecycle + state persistence; `IsConnectionBroken` (`:130`), `OnNetworkUpdate` (`:117`) |
 | `INetworkConnector` | `INetworkConnector.cs:15` | the extension point for a machine port. Implement it to be a valid pipe target without joining the graph |
 | `IPipeNode` | `IPipeNode.cs:11` | the extension point for a producer/consumer. Implement it to inject/withdraw without inheriting `BlockEntityPipe` |
