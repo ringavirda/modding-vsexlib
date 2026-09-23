@@ -3,7 +3,7 @@
 This page is for a modder who already has a project, or is about to make one, and wants exlib in
 it. It covers what exlib ships, where each piece comes from, and the handful of lines that wire it
 into a mod. If you would rather start from a working repository, clone
-[exmod-starter](https://github.com/ringavirda/exmod-starter) instead; everything below is already
+[exmods-starter](https://github.com/ringavirda/exmods-starter) instead; everything below is already
 done there.
 
 ## What ships, and where

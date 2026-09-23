@@ -6,7 +6,7 @@ code-first block/item/recipe definitions, attribute-driven registration, a sourc
 config system, a headless xUnit test harness that needs no game launch, and a module system for
 extending the framework or another mod without carrying a `ModSystem` of your own. It ships no
 gameplay content of its own: build your own mod on these networks, multiblocks and attribute-driven
-registration, starting from [exmod-starter](https://github.com/ringavirda/exmod-starter),
+registration, starting from [exmods-starter](https://github.com/ringavirda/exmods-starter),
 scaffolding new pieces with `exmod scaffold`, and reading the
 [wiki](https://exwiki.felled-stars.org/modders/) alongside your own code. It is also
 the shared framework behind the
@@ -62,7 +62,7 @@ the shared framework behind the
 
 ## Start from the sample
 
-Starting a new mod? Clone [exmod-starter](https://github.com/ringavirda/exmod-starter) - a fresh
+Starting a new mod? Clone [exmods-starter](https://github.com/ringavirda/exmods-starter) - a fresh
 project already wired to `exlib`, ready to build and boot with no setup of your own. Adding a
 block, structure or network node to a mod you already have? `exmod scaffold <kind> <Name>` drops
 one in from the `dotnet new` templates this library ships.

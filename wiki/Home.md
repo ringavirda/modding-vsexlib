@@ -91,7 +91,7 @@ is a machine with a power port that feeds a pipe network,
 house built in stages,
 [PlatedPipes](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/PlatedPipes) a pipe
 tier, and [SmokeStack](https://github.com/ringavirda/modding-vsexlib/tree/main/samples/SmokeStack)
-a multiblock chimney. The [starter repository](https://github.com/ringavirda/exmod-starter) ships
+a multiblock chimney. The [starter repository](https://github.com/ringavirda/exmods-starter) ships
 all four, wired and ready to boot.
 
 ## Accuracy
