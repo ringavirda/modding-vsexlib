@@ -4,6 +4,7 @@ using ExpandedLib.Testing;
 
 // A module of a fake host of its own, never exlib; declares no [assembly: ExDomain].
 [assembly: ExModule("exlibtests", Host = "exlibtest.host")]
+[assembly: FailOnWarnings]
 
 namespace ExpandedLib.Tests;
 
