@@ -113,7 +113,8 @@ public class SoundUseGuards {
   }
 
   // Fails when UndisposedLoops stops flagging a raw ILoadedSound field, stops following
-  // OnBlockUnloaded's IL to the field, or takes any field access for the loop's.
+  // OnBlockUnloaded's IL to the field, takes any field access for the loop's, or misses a
+  // null-conditional Dispose (ReceiverUse returning its argument unchanged).
   [Fact]
   public void Undisposed_and_raw_sound_holders_are_named() {
     List<string> offenders = SoundUse
@@ -121,7 +122,7 @@ public class SoundUseGuards {
       .Where(o => o.Contains("SoundFixture", StringComparison.Ordinal))
       .ToList();
 
-    Assert.Equal(4, offenders.Count);
+    Assert.Equal(5, offenders.Count);
     Assert.Contains(
       offenders,
       o => o.Contains("RawSoundFixture._sound: holds an ILoadedSound")
@@ -137,15 +138,24 @@ public class SoundUseGuards {
       offenders,
       o =>
         o.Contains(
-          "UnloadForgetsSoundFixture._loop: OnBlockUnloaded() never reaches it"
+          "UnloadForgetsSoundFixture._loop: OnBlockUnloaded() never disposes it"
         )
     );
     Assert.Contains(
       offenders,
       o =>
         o.Contains(
-          "UnloadTouchesOtherSoundFixture._loop: OnBlockUnloaded() never reaches it"
+          "UnloadTouchesOtherSoundFixture._loop: OnBlockUnloaded() never disposes it"
         )
+    );
+  }
+
+  // Fails when UndisposedLoops accepts any read of the loop field in place of a Dispose call on it.
+  [Fact]
+  public void A_loop_its_unload_only_stops_is_named() {
+    Assert.Contains(
+      "ExpandedLib.Tests.UnloadStopsSoundFixture._loop: OnBlockUnloaded() never disposes it",
+      SoundUse.UndisposedLoops(typeof(SoundUseGuards).Assembly)
     );
   }
 
@@ -208,4 +218,22 @@ internal sealed class DisposingSoundFixture : BlockEntity {
   public override void OnBlockUnloaded() => Release();
 
   private void Release() => _loop.Dispose();
+}
+
+internal sealed class UnloadStopsSoundFixture : BlockEntity {
+  private readonly ExSoundLoop _loop = new(ExSounds.Fire);
+
+  public override void OnBlockRemoved() => _loop.Dispose();
+
+  public override void OnBlockUnloaded() => _loop.Update(Api, Pos, false);
+}
+
+internal sealed class NullableLoopSoundFixture : BlockEntity {
+  private ExSoundLoop? _loop = new(ExSounds.Fire);
+
+  public override void OnBlockRemoved() => _loop?.Dispose();
+
+  public override void OnBlockUnloaded() => _loop?.Dispose();
+
+  internal void Drop() => _loop = null;
 }

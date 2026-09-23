@@ -62,8 +62,9 @@ public static class SoundUse {
   /// <summary>Every type in <paramref name="assembly"/> that holds an <see cref="ILoadedSound"/>
   /// field itself (only <see cref="ExSoundLoop"/> may), and every type holding an
   /// <see cref="ExSoundLoop"/> field whose own <c>OnBlockRemoved()</c> or <c>OnBlockUnloaded()</c>
-  /// override is missing or never reaches that field, directly or through a method of the same
-  /// type.</summary>
+  /// override is missing or never calls <see cref="ExSoundLoop.Dispose"/> on that field, directly or
+  /// through a method of the same type. Only <c>field.Dispose()</c> and <c>field?.Dispose()</c> count;
+  /// a loop copied to a local first, or disposed through another type, is named.</summary>
   /// <returns>One line per offending type and field; empty when clean.</returns>
   public static IReadOnlyList<string> UndisposedLoops(Assembly assembly) {
     var offenders = new List<string>();
@@ -92,9 +93,9 @@ public static class SoundUse {
             offenders.Add(
               $"{type.FullName}.{field.Name}: no {hook}() override disposes it"
             );
-          else if (!Reaches(method, field, type, 3))
+          else if (!Disposes(method, field, type, 3))
             offenders.Add(
-              $"{type.FullName}.{field.Name}: {hook}() never reaches it"
+              $"{type.FullName}.{field.Name}: {hook}() never disposes it"
             );
         }
       }
@@ -177,9 +178,9 @@ public static class SoundUse {
     }
   }
 
-  // Whether method's IL loads or stores field, following calls into owner's own methods up to
-  // depth levels.
-  private static bool Reaches(
+  // Whether method's IL calls ExSoundLoop.Dispose on field, directly or through owner's own methods
+  // up to depth levels.
+  private static bool Disposes(
     MethodBase method,
     FieldInfo field,
     Type owner,
@@ -191,21 +192,23 @@ public static class SoundUse {
     Module module = method.Module;
     for (int i = 0; i + 4 < il.Length; i++) {
       byte op = il[i];
-      bool fieldOp = op is 0x7B or 0x7C or 0x7D;
-      bool callOp = op is 0x28 or 0x6F;
-      if (!fieldOp && !callOp)
+      if (op is not (0x7B or 0x28 or 0x6F))
         continue;
       int token = BitConverter.ToInt32(il, i + 1);
       try {
-        if (fieldOp && module.ResolveField(token) == field)
+        if (
+          op == 0x7B
+          && module.ResolveField(token) == field
+          && DisposeAt(il, module, ReceiverUse(il, i + 5))
+        )
           return true;
         if (
-          callOp
+          op != 0x7B
           && depth > 0
           && module.ResolveMethod(token) is { } callee
           && callee.DeclaringType == owner
           && callee != method
-          && Reaches(callee, field, owner, depth - 1)
+          && Disposes(callee, field, owner, depth - 1)
         )
           return true;
       } catch (Exception e)
@@ -213,4 +216,19 @@ public static class SoundUse {
     }
     return false;
   }
+
+  // Where the value a ldfld leaves at `next` is consumed: next itself, or the branch target of the
+  // `dup; brtrue` a null-conditional call compiles to.
+  private static int ReceiverUse(byte[] il, int next) =>
+    next + 2 < il.Length && il[next] == 0x25 && il[next + 1] == 0x2D
+      ? next + 3 + (sbyte)il[next + 2]
+      : next;
+
+  private static bool DisposeAt(byte[] il, Module module, int at) =>
+    at >= 0
+    && at + 4 < il.Length
+    && il[at] is 0x28 or 0x6F
+    && module.ResolveMethod(BitConverter.ToInt32(il, at + 1))
+      is { Name: nameof(ExSoundLoop.Dispose) } called
+    && called.DeclaringType == typeof(ExSoundLoop);
 }
