@@ -11,6 +11,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using Vintagestory.Common;
 #if GAME_GE_1_22
+using Vintagestory.API.Datastructures;
 using Vintagestory.Common.Datastructures;
 #endif
 
@@ -26,7 +27,8 @@ public sealed partial class TestWorld {
   /// registers the resulting <see cref="Block"/>/<see cref="Item"/> instances; vanilla survival and
   /// creative content is not loaded.</summary>
   /// <remarks>First the install's vanilla mod systems register their classes (one that cannot start
-  /// on a registration-only API is passed over).</remarks>
+  /// on a registration-only API is passed over), the 1.22 tag converters take this load's
+  /// registries.</remarks>
   /// <param name="modPath">A mod's or sample's folder; <c>modinfo.json</c>/<c>bin/</c> may sit at its
   /// root or under <c>src/</c>, assets always under <c>assets/&lt;modid&gt;/</c>.</param>
   /// <param name="gamePath">The game install to read base assets and vanilla mods from; defaults to
@@ -195,12 +197,13 @@ public sealed partial class TestWorld {
 
     // CollectibleTagRegistry/EntityTagRegistry appear only from 1.22 onward.
 #if GAME_GE_1_22
-    coreApi.CollectibleTagRegistry.Returns(
-      new ConcurrentTagRegistry(Log, "collectible")
-    );
-    coreApi.EntityTagRegistry.Returns(
-      new ConcurrentTagRegistryFast(Log, "entity")
-    );
+    var collectibleTags = new ConcurrentTagRegistry(Log, "collectible");
+    var entityTags = new ConcurrentTagRegistryFast(Log, "entity");
+    coreApi.CollectibleTagRegistry.Returns(collectibleTags);
+    coreApi.EntityTagRegistry.Returns(entityTags);
+    GenericComplexConditionConverter.StaticInit(collectibleTags, entityTags);
+    CollectibleTagSetConverter.StaticInit(collectibleTags);
+    EntityTagSetConverter.StaticInit(entityTags);
 #endif
 
     var serverApi = Substitute.For<IServerAPI>();
