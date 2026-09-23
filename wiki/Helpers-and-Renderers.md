@@ -199,7 +199,8 @@ public override void OnBlockUnloaded() { _hum.Dispose(); base.OnBlockUnloaded();
 
 A disposed `ExSoundLoop` never loads again. The harness's `SoundUse` check fails a type that holds an
 `ILoadedSound` itself, an `ExSoundLoop` that `OnBlockRemoved()` or `OnBlockUnloaded()` never
-disposes (stopping it is not enough), or a `PlayThrottled`/`PlayLoop` call whose interval is shorter than its clip.
+disposes (stopping it is not enough), a `PlaySoundAt` or `LoadSound` call made past `ExSounds`, or a
+`PlayThrottled`/`PlayLoop` call whose interval is shorter than its clip.
 
 ## `ExInventory` - counting & consuming items
 

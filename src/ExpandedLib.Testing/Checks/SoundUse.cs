@@ -13,7 +13,8 @@ namespace ExpandedLib.Testing;
 /// <summary>
 /// Guards the two ways a machine's sound piles up in the game's voice limit: a repeating one-shot
 /// (<see cref="ExSounds.PlayThrottled"/>, <see cref="ExSounds.PlayLoop"/>) asked to repeat faster
-/// than its clip lasts, and a loaded loop that outlives its block.
+/// than its clip lasts, and a loaded loop that outlives its block; and the way one escapes
+/// <see cref="ExSounds.MachineVolume"/>, a sound played or loaded past <see cref="ExSounds"/>.
 /// </summary>
 public static class SoundUse {
   private static readonly Regex RepeatCall = new(
@@ -25,6 +26,17 @@ public static class SoundUse {
     @"^ExSounds\.(\w+)$",
     RegexOptions.Compiled
   );
+
+  private static readonly Regex DirectCall = new(
+    @"\.(PlaySound\w*|LoadSound)\s*\(",
+    RegexOptions.Compiled
+  );
+
+  // Path suffix, '/'-separated, to the reason the file may play or load a sound itself.
+  private static readonly Dictionary<string, string> DirectCallAllowed = new() {
+    ["ExpandedLib.Industry/Helpers/ExSounds.cs"] =
+      "the helpers every other sound goes through; they apply MachineVolume and the sound type",
+  };
 
   private static readonly Regex ClipLengthOf = new(
     @"^ExSounds\.ClipLengthMs\(\s*ExSounds\.(\w+)\s*\)$",
@@ -54,6 +66,33 @@ public static class SoundUse {
         string? reason = RepeatFault(args[2], args[4]);
         if (reason != null)
           offenders.Add($"{where}: {reason}");
+      }
+    }
+    return offenders;
+  }
+
+  /// <summary>Every direct <c>PlaySound*</c> or <c>LoadSound</c> call in
+  /// <paramref name="sourceFiles"/> outside the files the guard allows (<see cref="ExSounds"/>
+  /// itself); such a sound skips <see cref="ExSounds.MachineVolume"/> and the machine sound type.
+  /// Lines that start with <c>//</c> are skipped.</summary>
+  /// <param name="sourceFiles">C# files to read; each is read whole.</param>
+  /// <returns>One line per call, <c>file:line: reason</c>; empty when clean.</returns>
+  public static IReadOnlyList<string> DirectSounds(
+    IEnumerable<string> sourceFiles
+  ) {
+    var offenders = new List<string>();
+    foreach (string file in sourceFiles) {
+      string path = file.Replace('\\', '/');
+      if (DirectCallAllowed.Keys.Any(k => path.EndsWith("/" + k, StringComparison.Ordinal)))
+        continue;
+      string[] lines = File.ReadAllLines(file);
+      for (int i = 0; i < lines.Length; i++) {
+        if (lines[i].TrimStart().StartsWith("//", StringComparison.Ordinal))
+          continue;
+        foreach (Match call in DirectCall.Matches(lines[i]))
+          offenders.Add(
+            $"{Path.GetFileName(file)}:{i + 1}: {call.Groups[1].Value} called directly; use ExSounds"
+          );
       }
     }
     return offenders;

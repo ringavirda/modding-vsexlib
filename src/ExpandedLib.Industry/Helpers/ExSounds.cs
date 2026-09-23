@@ -57,6 +57,11 @@ public static class ExSounds {
     "game:sounds/toggleswitch"
   );
 
+  /// <summary>Fired clay shattering - a crucible pot cracking or wearing out.</summary>
+  public static readonly AssetLocation CeramicBreak = new(
+    "game:sounds/block/ceramicbreak"
+  );
+
   /// <summary>Heavy metal knock - an engine put back in order.</summary>
   public static readonly AssetLocation HeavyMetalHit = new(
     "game:sounds/block/heavymetal-hit"
@@ -174,6 +179,7 @@ public static class ExSounds {
     [Build] = 152,
     [StoneCrush] = 369,
     [ToggleSwitch] = 362,
+    [CeramicBreak] = 791,
     [HeavyMetalHit] = 2469,
     [SmallSplash] = 1180,
     [WaterPour] = 1174,

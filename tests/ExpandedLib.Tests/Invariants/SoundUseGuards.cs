@@ -40,6 +40,33 @@ public class SoundUseGuards {
     );
   }
 
+  // Fails when the guard's allowlist loses ExSounds.cs, or an exlib file outside it plays a sound
+  // through world.PlaySoundAt.
+  [Fact]
+  public void Exlibs_sounds_all_go_through_ExSounds() {
+    string[] files = Directory
+      .EnumerateFiles(
+        Path.Combine(RepoPaths.Root, "src"),
+        "*.cs",
+        SearchOption.AllDirectories
+      )
+      .Where(f =>
+        !f.Contains("/bin/", StringComparison.Ordinal)
+        && !f.Contains("/obj/", StringComparison.Ordinal)
+      )
+      .ToArray();
+
+    IReadOnlyList<string> offenders = SoundUse.DirectSounds(files);
+
+    Assert.True(offenders.Count == 0, string.Join("\n", offenders));
+    Assert.Contains(
+      files,
+      f =>
+        f.EndsWith("ExSounds.cs", StringComparison.Ordinal)
+        && File.ReadAllText(f).Contains(".PlaySoundAt(")
+    );
+  }
+
   // Fails when an exlib type holds an ILoadedSound itself, or an ExSoundLoop it leaves loaded on
   // removal or unload.
   [Fact]
@@ -150,6 +177,21 @@ public class SoundUseGuards {
     );
   }
 
+  // Fails when DirectSounds stops matching PlaySoundAt or LoadSound, or reads a commented-out call.
+  [Fact]
+  public void A_direct_play_or_load_is_named_and_a_comment_is_not() {
+    IReadOnlyList<string> offenders = Scan(
+      "Api.World.PlaySoundAt(ExSounds.Fire, Pos.X, Pos.Y, Pos.Z);\n"
+        + "  // world.PlaySoundAt(sound, x, y, z);\n"
+        + "ILoadedSound s = capi.World.LoadSound(p);",
+      SoundUse.DirectSounds
+    );
+
+    Assert.Equal(2, offenders.Count);
+    Assert.EndsWith(":1: PlaySoundAt called directly; use ExSounds", offenders[0]);
+    Assert.EndsWith(":3: LoadSound called directly; use ExSounds", offenders[1]);
+  }
+
   // Fails when UndisposedLoops accepts any read of the loop field in place of a Dispose call on it.
   [Fact]
   public void A_loop_its_unload_only_stops_is_named() {
@@ -161,14 +203,17 @@ public class SoundUseGuards {
 
   #endregion
 
-  private static IReadOnlyList<string> Scan(string source) {
+  private static IReadOnlyList<string> Scan(
+    string source,
+    System.Func<IEnumerable<string>, IReadOnlyList<string>>? guard = null
+  ) {
     string file = Path.Combine(
       Path.GetTempPath(),
       $"sounduse-{Guid.NewGuid():N}.cs"
     );
     File.WriteAllText(file, source);
     try {
-      return SoundUse.ShortRepeats([file]);
+      return (guard ?? SoundUse.ShortRepeats)([file]);
     } finally {
       File.Delete(file);
     }

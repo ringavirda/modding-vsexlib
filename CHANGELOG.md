@@ -28,8 +28,10 @@ see the git history.
   the machine, following `MachineVolume`, and released for good by `Dispose`.
 - **`SoundUse`** (ExpandedLib.Testing): fails a `PlayThrottled`/`PlayLoop` call whose interval is
   shorter than its clip, a type holding an `ILoadedSound` itself, and an `ExSoundLoop` that
-  `OnBlockRemoved()` or `OnBlockUnloaded()` never disposes.
-- **`ExSounds.ClipLengthMs`**, **`ExSounds.GearboxTurn`**, **`ExSounds.HeavyMetalHit`**.
+  `OnBlockRemoved()` or `OnBlockUnloaded()` never disposes; `DirectSounds` fails a `PlaySound*` or
+  `LoadSound` call made past `ExSounds`.
+- **`ExSounds.ClipLengthMs`**, **`ExSounds.CeramicBreak`**, **`ExSounds.GearboxTurn`**,
+  **`ExSounds.HeavyMetalHit`**.
 
 ### Changed
 
