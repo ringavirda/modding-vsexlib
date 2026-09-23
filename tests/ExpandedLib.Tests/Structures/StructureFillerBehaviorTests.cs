@@ -230,6 +230,10 @@ public class StructureFillerBehaviorTests {
       HostedBehaviors = [new FillerBehavior("test.DoesNotExist", null, null)],
     };
     world.Place(pos, filler, be);
+    world.Log.Expect(
+      EnumLogType.Warning,
+      "unknown hosted behaviour class 'test.DoesNotExist'"
+    );
 
     world.Initialize(be);
 
@@ -366,17 +370,17 @@ public class StructureFillerBehaviorTests {
     var pos = new BlockPos(0, 0, 0);
     var be = new BlockEntityStructureFiller {
       Principal = new BlockPos(0, 0, -2),
-      HostedBehaviors =
-      [
-        new FillerBehavior(
-          "exlib.BEBehaviorMPFillerPort",
-          BlockFacing.WEST,
-          null
-        ),
-      ],
     };
     world.Place(pos, filler, be);
     world.Initialize(be);
+    be.HostedBehaviors =
+    [
+      new FillerBehavior(
+        "exlib.BEBehaviorMPFillerPort",
+        BlockFacing.WEST,
+        null
+      ),
+    ];
 
     Assert.False(HasMechConnector(filler, world, pos, BlockFacing.WEST));
     Assert.Null(filler.GetNetwork(world.World, pos));
