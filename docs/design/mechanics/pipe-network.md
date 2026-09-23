@@ -312,7 +312,7 @@ A null `tier` yields the same four blocktypes with no tier axis and the default 
 
 ## Gotchas
 
-1. Never gate a tick pass on `pass.Consumers == 0`. `ClassifyOpenings` increments `Consumers` for every `IPipeNode` block entity, and `BlockEntityPipe` implements `IPipeNode`, so "no consumers" is unsatisfiable on any run containing a segment. Passive cooling shipped behind exactly that guard and was dead code in game; the guard is gone and the source warns against re-adding it (`PipeNetwork.cs:765`). The testing trap that hid it is still live: `PipeTestWorld.Run` places blocks with no block entities, so `Consumers` is 0 in a headless test - any test of tick-time node classification must use `PipeTestWorld.LiveRun`, which attaches real BEs; a test written against the bare fixture passes whether the feature works or not.
+1. Never gate a tick pass on `pass.Consumers == 0`. `ClassifyOpenings` increments `Consumers` for every `IPipeNode` block entity, and `BlockEntityPipe` implements `IPipeNode`, so "no consumers" is unsatisfiable on any run containing a segment. Passive cooling shipped behind exactly that guard and was dead code in game; the guard is gone and the source warns against re-adding it (`PipeNetwork.cs:765`). A headless test of tick-time node classification needs real block entities in the run: a run of bare blocks has `Consumers` 0 and passes whether the feature works or not. iiex's `PipeTestWorld.LiveRun`, its one pipe-run fixture, attaches a `BlockEntityPipe` to every cell.
 
 2. Gas leak loss is not dt-scaled; liquid leak loss is. `ApplyLeakLoss` uses `LiquidLeakRate * dt` for water but a bare `GasLeakRate` for gas (`PipeNetwork.cs:687` vs `:694`). With the `dt` clamp at 2 s, a catch-up tick leaks twice as much water but the same gas.
 
