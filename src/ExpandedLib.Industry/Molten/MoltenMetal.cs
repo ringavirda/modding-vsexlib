@@ -142,10 +142,20 @@ public static class MoltenMetal {
   public static string DisplayName(string metalItemCode) =>
     MetalRegistry.DisplayName(metalItemCode);
 
+  // Declared before TemperatureFormatter, whose initializer reads it.
+  private static readonly System.Func<float, string> DefaultFormatter = t =>
+    ExMeasure.Temperature(t);
+
   /// <summary>Formats a molten temperature for display, honouring the player's metric/imperial
-  /// preference; the simulation itself stays metric.</summary>
+  /// preference; the simulation itself stays metric. Set back to that default when a world starts
+  /// loading.</summary>
   public static System.Func<float, string> TemperatureFormatter { get; set; } =
-    t => ExMeasure.Temperature(t);
+    DefaultFormatter;
+
+  /// <summary>Restores the default <see cref="TemperatureFormatter"/>; run when a world starts
+  /// loading.</summary>
+  internal static void ResetForWorld() =>
+    TemperatureFormatter = DefaultFormatter;
 
   /// <summary>"Cold" below room temperature, otherwise the formatted temperature.</summary>
   public static string FormatTemperature(float temperature) =>

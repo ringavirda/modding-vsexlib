@@ -5,6 +5,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using ExpandedLib.Catalogues;
 using ExpandedLib.Definitions;
 using ExpandedLib.Industry;
 using ExpandedLib.Industry.Metals;
@@ -69,6 +70,17 @@ public class ExWorldStateTests {
     ["ExpandedLib.Industry.Metals.MetalFamilyEmitter.Builders"] = Emitters,
     ["ExpandedLib.Industry.Metals.MetalToolEmitter.Presets"] = Emitters,
     ["ExpandedLib.Industry.Metals.MetalToolEmitter.ToolTemplates"] = Emitters,
+    ["ExpandedLib.Helpers.ExHighlightSlots._next"] = TypeInitializers,
+    ["ExpandedLib.Registries.ExModules._lastAssemblyCount"] = LoadedAssemblies,
+    ["ExpandedLib.Helpers.ExMeasure._conversionSig"] =
+      "the unit symbols the conversions were built for",
+    ["ExpandedLib.Helpers.ExMeasure._metricRegex"] =
+      "built from the language's unit symbols with the conversions",
+    ["ExpandedLib.Helpers.ExMeasure.<System>k__BackingField"] =
+      PlayerPreference,
+    ["ExpandedLib.Industry.Helpers.ExSounds._machineVolume"] = PlayerPreference,
+    ["ExpandedLib.Structures.StructureFillers.<FillerCode>k__BackingField"] =
+      "the one filler block exlib's Start names, the same in every world",
   };
 
   private const string SchemaKeys = "the catalogue schema's key set, constant";
@@ -83,6 +95,8 @@ public class ExWorldStateTests {
   private const string EmptySentinel = "an empty sentinel nothing writes";
   private const string Orientations = "a constant orientation scheme";
   private const string Emitters = "the emitters' constant templates";
+  private const string PlayerPreference =
+    "the local player's display preference, read from the client's preferences file, not the world";
 
   private static Assembly[] Assemblies =>
     [typeof(ExWorldState).Assembly, typeof(IndustryModule).Assembly];
@@ -123,6 +137,53 @@ public class ExWorldStateTests {
       "Survives a load start - reset it where it is owned (ExWorldState, IndustryModule.StartPre) "
         + "or list it as a cache with its reason:\n"
         + string.Join("\n", survivors)
+    );
+  }
+
+  // Fails when any reset of a settable static value is removed: the default recovery fallback, the
+  // mold gate, the sound channel, the filler warning latch, the preferences api, the injection flag,
+  // the temperature formatter, the module loggers.
+  [Fact]
+  public void A_server_load_start_returns_every_settable_static_value_it_holds() {
+    var planted = new List<StaticCells.Fill>();
+    var unplantable = new List<string>();
+    foreach ((string root, FieldInfo field) in StaticCells.Roots(Assemblies))
+      if (!Caches.ContainsKey(root))
+        StaticCells.PlantValue(root, field, planted, unplantable);
+    Assert.Empty(unplantable);
+    Assert.Contains(
+      planted,
+      f =>
+        f.Path
+        == "ExpandedLib.Industry.Metals.MetalRegistry.<DefaultRecoveryFallback>k__BackingField"
+    );
+
+    var world = new TestWorld();
+    Driver(world).StartPre(world.Api);
+
+    string[] survivors =
+    [
+      .. planted.Where(f => f.Survives()).Select(f => f.Path),
+    ];
+    Assert.True(
+      survivors.Length == 0,
+      "Survives a load start - reset it where it is owned (ExWorldState, IndustryModule.StartPre) "
+        + "or list it as a cache with its reason:\n"
+        + string.Join("\n", survivors)
+    );
+  }
+
+  // Fails when the liquid reset stops seeding the built-in media, or keeps a registered one.
+  [Fact]
+  public void A_server_load_start_leaves_exactly_the_four_built_in_liquids() {
+    ExLiquids.Register(new LiquidDef { Code = "worldstatetest-brine" });
+
+    var world = new TestWorld();
+    Driver(world).StartPre(world.Api);
+
+    Assert.Equal(
+      ["Air", "Exhaust", "Steam", "Water"],
+      ExLiquids.All.Select(d => d.Code).Order()
     );
   }
 
@@ -269,8 +330,13 @@ internal static class StaticCells {
         filled.Add(fill);
       return;
     }
-    if (!IsWalked(type))
+    if (!IsWalked(type)) {
+      if (type.IsGenericType && !type.IsValueType)
+        unfillable.Add(
+          $"{path} ({type.Name}, a wrapper the walk cannot plant in)"
+        );
       return;
+    }
     for (Type? t = type; t != null && IsWalked(t); t = t.BaseType)
       foreach (
         FieldInfo f in t.GetFields(
@@ -288,6 +354,55 @@ internal static class StaticCells {
           filled,
           unfillable
         );
+  }
+
+  /// <summary>Plants a sentinel in a settable static root that holds no collection: a value type set
+  /// to another value, a string, delegate or object set to a new instance. Collection roots, and
+  /// readonly or open-generic roots, are left to <see cref="FillRoot"/>.</summary>
+  internal static void PlantValue(
+    string root,
+    FieldInfo field,
+    List<Fill> planted,
+    List<string> unplantable
+  ) {
+    if (
+      field.IsInitOnly
+      || field.DeclaringType!.ContainsGenericParameters
+      || field.FieldType.IsArray
+      || IsCollectionType(field.FieldType)
+    )
+      return;
+    Type type = field.FieldType;
+    object? sentinel;
+    if (type == typeof(bool))
+      sentinel = !(bool)field.GetValue(null)!;
+    else if (type.IsEnum) {
+      Array values = Enum.GetValues(type);
+      object now = field.GetValue(null)!;
+      sentinel = values.Cast<object>().FirstOrDefault(v => !v.Equals(now));
+    } else if (type.IsPrimitive)
+      sentinel = Convert.ChangeType(
+        Convert.ToDouble(field.GetValue(null)) + 7,
+        type
+      );
+    else if (type.IsValueType)
+      sentinel = null;
+    else
+      sentinel = Placeholder(type);
+    if (sentinel == null) {
+      unplantable.Add($"{root} ({type.Name})");
+      return;
+    }
+    field.SetValue(null, sentinel);
+    planted.Add(
+      new Fill(
+        root,
+        () =>
+          type.IsValueType
+            ? sentinel.Equals(field.GetValue(null))
+            : ReferenceEquals(sentinel, field.GetValue(null))
+      )
+    );
   }
 
   // The returned check reads the collection again through its path: a registry replaced by a new

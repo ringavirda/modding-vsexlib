@@ -18,8 +18,8 @@ namespace ExpandedLib.Industry;
 /// mod system, since only one dll per mod folder may contain mod systems.</summary>
 public sealed class IndustryModule : IExModule, IExDefinitionContributor {
   /// <summary>When <see cref="ExWorldState.ResetsOnLoad"/> holds, returns the family layer's
-  /// registries (metals, pipe tier ratings, the sound channel, the mold gate, the chisel list) to
-  /// their fresh-process state; then registers the refractory tier variant group before any block's
+  /// registries (metals, pipe tier ratings, the sound channel, the mold gate, the chisel list, the
+  /// molten temperature formatter) to their fresh-process state; then registers the refractory tier variant group before any block's
   /// <c>GetHeldItemName</c> can decorate.</summary>
   public void StartPre(ICoreAPI api) {
     if (ExWorldState.ResetsOnLoad(api)) {
@@ -28,6 +28,7 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
       ExSounds.StopServer();
       ExMoldGate.ResetForWorld();
       MoltenChisel.ResetForWorld();
+      MoltenMetal.ResetForWorld();
     }
     ExBlockNames.AddVariantQualifier("refractory", "exlib:refractory-");
   }
