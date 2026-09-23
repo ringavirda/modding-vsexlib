@@ -63,6 +63,10 @@ public class NetworkNodeOrientationTests {
     // A def without the orientable behaviour refuses the wrench and logs an error.
     var scene = Scene.Standing("ns");
     scene.StripOrientableBehaviour();
+    scene.World.Log.Expect(
+      EnumLogType.Error,
+      "carrying no ExOrientable behaviour"
+    );
 
     scene.Wrench(1);
 

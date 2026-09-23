@@ -176,6 +176,8 @@ public class EntityRegistrySaveKeyTests : IDisposable {
   public void Two_marked_claimants_log_the_error_and_the_later_wins() {
     Type first = Emit("oldmod", "Valve", published: true);
     Type second = Emit("othermod", "Valve", published: true);
+    _world.Log.Expect(EnumLogType.Error, "Bare block entity key 'Valve'");
+    _world.Log.Expect(EnumLogType.Error, "Bare block entity key 'valve'");
 
     Register("oldmod", first);
     Register("othermod", second);

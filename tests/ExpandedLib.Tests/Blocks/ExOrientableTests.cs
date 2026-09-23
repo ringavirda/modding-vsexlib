@@ -1,5 +1,6 @@
 using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
+using Vintagestory.API.Common;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -49,6 +50,7 @@ public class ExOrientableTests {
   public void A_missing_variant_state_is_refused_and_logged_rather_than_crashing() {
     // A missing variant state resolves to no block: placement is refused and logged, not dereferenced.
     var rig = ExOrientableRig.WithVariants("exlib:probe", "side", ["n"]);
+    rig.World.Log.Expect(EnumLogType.Error, "no 'side' state 'w'");
 
     bool placed = rig.PlaceLooking("west");
 

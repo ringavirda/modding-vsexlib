@@ -1,5 +1,6 @@
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -44,6 +45,7 @@ public class NetworkGraphTests {
     var w = NewWorld();
     var pos = new BlockPos(0, 0, 0);
     w.Place(pos, TestNetworkBlock.Create("gass", "ns", 1));
+    w.Log.Expect(EnumLogType.Error, "declares network type 'gass'");
 
     w.AddNode(pos, "gass");
 

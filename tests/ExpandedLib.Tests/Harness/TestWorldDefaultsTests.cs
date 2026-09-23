@@ -160,6 +160,7 @@ public class TestWorldDefaultsTests {
   [Fact]
   public void An_entity_placed_under_another_class_logs_a_warning() {
     TestWorld world = Registered();
+    world.Log.Expect(EnumLogType.Warning, "names entity class 'test-other'");
 
     world.Place(Pos, Naming("test-other"), new RegisteredBe());
 

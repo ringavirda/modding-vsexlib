@@ -166,6 +166,7 @@ public class ExBlockStateTests {
   [Fact]
   public void A_stack_the_destination_world_does_not_know_is_dropped_not_mis_resolved() {
     var world = new TestWorld();
+    world.Log.Expect(EnumLogType.Warning, "item code test:gone not found");
     Item item = world.RegisterItem("test:widget");
     var bag = new Bag { Stack = new ItemStack(item) };
 

@@ -33,13 +33,15 @@ internal static class NetworkMembershipFixtures {
 
   /// <summary>
   /// Asserts the logger recorded an error whose formatted text carries <paramref name="fragment"/>
-  /// and mentions every one of <paramref name="mustMention"/>.
+  /// and mentions every one of <paramref name="mustMention"/>, and declares every error carrying
+  /// <paramref name="fragment"/> expected.
   /// </summary>
   public static void AssertErrorLogged(
     TestWorld w,
     string fragment,
     params object[] mustMention
-  ) =>
+  ) {
+    w.Log.Expect(EnumLogType.Error, fragment);
     Assert.Contains(
       w.Log.Errors,
       message =>
@@ -48,4 +50,5 @@ internal static class NetworkMembershipFixtures {
           message.Contains(m.ToString()!, StringComparison.Ordinal)
         )
     );
+  }
 }

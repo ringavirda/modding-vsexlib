@@ -100,6 +100,7 @@ public class DoublesTests {
   [Fact]
   public void A_logged_error_is_retrievable_through_worldLog() {
     using var world = new TestWorld();
+    world.Log.Expect(EnumLogType.Error, "the furnace");
 
     world.Api.Logger.Error("Something went wrong at {0}", "the furnace");
 

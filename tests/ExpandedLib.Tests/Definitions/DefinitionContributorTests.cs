@@ -50,6 +50,12 @@ public class DefinitionContributorTests : IDisposable {
   }
 #pragma warning restore CS9113
 
+  // Every scan of this assembly runs ThrowingContributor with the rest.
+  private static void ExpectThrowingContributor(TestWorld world) {
+    world.Log.Expect(EnumLogType.Error, "ThrowingContributor threw");
+    world.Log.Expect(EnumLogType.Error, "boom");
+  }
+
   private static Mod FakeMod(string modId) {
     var mod = Substitute.For<Mod>();
     ReflectionHelpers.SetProperty(
@@ -83,6 +89,7 @@ public class DefinitionContributorTests : IDisposable {
       typeof(TestContributor).Assembly
     );
 
+    ExpectThrowingContributor(world);
     new ExDefinitionModSystem().AssetsLoaded(world.Api);
 
     Assert.Contains(ExDefinitions.Items, d => d.Code == "contributed");
@@ -99,6 +106,7 @@ public class DefinitionContributorTests : IDisposable {
     var world = new TestWorld();
     // One scan discovers both contributors in this assembly.
     ExDefinitions.DiscoverContributors(typeof(ThrowingContributor).Assembly);
+    ExpectThrowingContributor(world);
 
     ExDefinitions.RunContributors(world.Api);
 
@@ -109,6 +117,7 @@ public class DefinitionContributorTests : IDisposable {
   [Fact]
   public void A_contributor_without_a_parameterless_constructor_is_skipped_with_a_warning() {
     var logger = new RecordingLogger();
+    logger.Expect(EnumLogType.Warning, "NoCtorContributor");
     ExDefinitions.Logger = logger;
 
     ExDefinitions.DiscoverContributors(typeof(NoCtorContributor).Assembly);
