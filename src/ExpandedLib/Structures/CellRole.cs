@@ -40,6 +40,10 @@ public readonly record struct CellRole(string Key) {
 
 /// <summary>Facts about <see cref="CellRole"/> that both the layout builder and its consumers read.</summary>
 public static class CellRoles {
+  /// <summary>Marks the block weather snow would lie on or turn into, never the air above it: while the
+  /// structure stands, <see cref="NoSnowCells"/> keeps snow off that cell.</summary>
+  public static readonly CellRole NoSnow = CellRole.Of("nosnow");
+
   /// <summary>Whether <paramref name="role"/> was declared <see cref="CellRole.IsSingle">single-cell</see>.</summary>
   public static bool IsSingleCell(CellRole role) => role.IsSingle;
 }

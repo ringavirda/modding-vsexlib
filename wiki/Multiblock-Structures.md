@@ -378,8 +378,8 @@ A structure's code often needs to find a particular cell of the pattern: where t
 to spawn smoke, which cell takes fuel. Hard-coded coordinates break the moment the machine is
 rotated or the layout is edited. A `CellRole` is the alternative: an open string key naming what a
 cell is for, attached to a glyph in the layout and read back as world positions, already rotated.
-exlib declares no roles of its own; mint the ones your machine needs with `CellRole.Of`, mark a
-glyph with `MultiblockLayoutBuilder.Role`, and read them through
+exlib declares one role of its own, `CellRoles.NoSnow`, below; mint the ones your machine needs with
+`CellRole.Of`, mark a glyph with `MultiblockLayoutBuilder.Role`, and read them through
 `BlockEntityMultiblockStructure.CellsWithRole`:
 
 ```csharp
@@ -393,6 +393,25 @@ IReadOnlyList<BlockPos> tuyereCells = CellsWithRole(Tuyere);
 Pass `single: true` to `CellRole.Of` when a layout may give the role at most one cell, such as a
 single fuel hatch. The arity is then enforced at build time, and your code may call
 `CellsWithRole(role).Single()` without guarding against a second one.
+
+### Keeping snow out of an open cell
+
+A cell the layout wants empty and open to the sky, such as a chimney's inner column, fills with a
+snow layer in winter and the structure stops reading complete. Give the block under that column its
+own glyph and mark it with `CellRoles.NoSnow`:
+
+```csharp
+.Legend('#', VanillaCodes.Refractory)
+.Legend('f', VanillaCodes.Refractory)
+.Role('f', CellRoles.NoSnow)
+```
+
+Mark the block snow would lie on, not the air above it. While the structure stands, its server-side
+block entity lists those cells in `NoSnowCells`, and weather snow neither settles on them nor turns
+them into a snow-covered variant. The list follows a wrench turn and is emptied when the core is
+broken or its chunk unloads. `NoSnowCells.Mark` and `NoSnowCells.Unmark` do the same for a cell no
+layout owns. A snow layer already lying there stays until someone clears it, and a block class that
+overrides `AllowSnowCoverage` or `GetSnowCoveredVariant` without calling the base ignores the mark.
 
 ## Related pages
 

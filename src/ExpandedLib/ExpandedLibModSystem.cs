@@ -16,7 +16,7 @@ namespace ExpandedLib;
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class ExpandedLibModSystem : ModSystem {
-  // Client-side Harmony instance for the handbook unit patch.
+  // Carries the handbook unit patch and the snow patch on both sides.
   private Harmony? _harmony;
 
   // The message named at StartPre and repeated to every joining player; null when nothing clashes.
@@ -39,6 +39,9 @@ public class ExpandedLibModSystem : ModSystem {
     StructureFillers.FillerCode = new AssetLocation(
       ExlibBlocks.Structurefiller.Code
     );
+
+    // Applied once per process whichever side starts first.
+    _harmony = ExHarmony.PatchOnce(Mod, GetType().Assembly);
   }
 
   /// <summary>Populates the shared liquid catalogue from every domain's <c>config/liquids</c>, once
@@ -71,9 +74,6 @@ public class ExpandedLibModSystem : ModSystem {
     // Loads the per-player display-preference store, writing the file on first run.
     ExPreferences.LoadConfig(api);
 
-    // The handbook unit-conversion patch; applied once regardless of dependent mod count.
-    _harmony = ExHarmony.PatchOnce(Mod, GetType().Assembly);
-
     // Applies the local player's saved choices once the world and player are ready.
     api.Event.LevelFinalize += () =>
       ExPreferences.ApplyForPlayer(api.World.Player.PlayerUID);
@@ -105,6 +105,7 @@ public class ExpandedLibModSystem : ModSystem {
   public override void Dispose() {
     ExHarmony.UnpatchAll(Mod);
     _harmony = null;
+    NoSnowCells.Clear();
     base.Dispose();
   }
 }

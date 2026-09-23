@@ -5,6 +5,15 @@ All notable changes to this mod are documented here. The format is based on
 [Semantic Versioning](https://semver.org/). For changes before this file existed,
 see the git history.
 
+## [Unreleased]
+
+### Added
+
+- **`CellRoles.NoSnow`**: a layout cell marked with it takes no weather snow while the structure
+  stands, neither a snow layer on top nor a snow-covered variant. The structure's server-side block
+  entity lists its marked cells in the new `NoSnowCells` as soon as its facing is known and drops
+  them when the core is broken or unloaded; `NoSnowCells.Mark`/`Unmark` serve any other owner.
+
 ## [0.8.2] - 2026-09-15
 
 ### Added

@@ -127,7 +127,7 @@ public abstract class BlockEntityMultiblockStructure
   /// <summary>Recomputes the structure's rotation/angle from the block orientation.</summary>
   protected abstract void UpdateStructureRotation();
 
-  /// <summary>Reloads the structure layout for <paramref name="angle"/> and clears any stale build projection.</summary>
+  /// <summary>Reloads the structure layout for <paramref name="angle"/>, marks its <see cref="CellRoles.NoSnow"/> cells on the server and clears any stale build projection.</summary>
   protected void SetStructureAngle(int angle, int initAngleOffset = 0) {
     if (_structure != null && _currentAngle == angle)
       return;
@@ -145,6 +145,11 @@ public abstract class BlockEntityMultiblockStructure
     _facings = MultiblockFacings.FromAttributes(Block.Attributes);
     _roles = MultiblockCellRoles.FromAttributes(Block.Attributes);
     _connectors = MultiblockConnectors.FromAttributes(Block.Attributes);
+    if (Api?.Side == EnumAppSide.Server)
+      NoSnowCells.Mark(
+        this,
+        _structure == null ? _noCells : CellsWithRole(CellRoles.NoSnow)
+      );
 
     if (Api is ICoreClientAPI capi && _highlightedStructure != null) {
       _highlightedStructure.ClearHighlights(Api.World, capi.World.Player);
@@ -596,14 +601,16 @@ public abstract class BlockEntityMultiblockStructure
   public override void OnBlockRemoved() {
     base.OnBlockRemoved();
     StopStructureTick();
+    NoSnowCells.Unmark(this);
     if (Api is ICoreClientAPI capi)
       _highlightedStructure?.ClearHighlights(Api.World, capi.World.Player);
   }
 
-  /// <summary>Chunk unload: stops this instance's listeners and clears its client-side build outline.</summary>
+  /// <summary>Chunk unload: stops this instance's listeners, drops its <see cref="NoSnowCells"/> and clears its client-side build outline.</summary>
   public override void OnBlockUnloaded() {
     base.OnBlockUnloaded();
     StopStructureTick();
+    NoSnowCells.Unmark(this);
     if (Api is ICoreClientAPI capi)
       _highlightedStructure?.ClearHighlights(Api.World, capi.World.Player);
   }
