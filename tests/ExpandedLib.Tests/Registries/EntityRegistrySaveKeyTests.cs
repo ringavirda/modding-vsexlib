@@ -109,7 +109,10 @@ public class EntityRegistrySaveKeyTests : IDisposable {
       _world.Api.ClassRegistry.GetBlockEntityClass(type)
     );
     Assert.Equal(type, _world.Api.ClassRegistry.GetBlockEntity("sprocket"));
-    Assert.Equal(type, _world.Api.ClassRegistry.GetBlockEntity("keysmod.Sprocket"));
+    Assert.Equal(
+      type,
+      _world.Api.ClassRegistry.GetBlockEntity("keysmod.Sprocket")
+    );
   }
 
   // Fails when the unmarked claimant registers the contested key anyway, the last registration
@@ -178,7 +181,10 @@ public class EntityRegistrySaveKeyTests : IDisposable {
 
     Assert.Contains(
       _world.Log.Errors,
-      m => m.Contains("'valve'") && m.Contains(first.FullName!) && m.Contains(second.FullName!)
+      m =>
+        m.Contains("'valve'")
+        && m.Contains(first.FullName!)
+        && m.Contains(second.FullName!)
     );
     Assert.Empty(Notifications);
     Assert.Equal(second, _world.Api.ClassRegistry.GetBlockEntity("valve"));
@@ -224,7 +230,11 @@ public class EntityRegistrySaveKeyTests : IDisposable {
   [Fact]
   public void An_alias_for_a_type_that_is_not_a_block_entity_throws() {
     var ex = Assert.Throws<ArgumentException>(() =>
-      EntityRegistry.AliasBlockEntity(_world.Api, "oldmod.Thing", typeof(string))
+      EntityRegistry.AliasBlockEntity(
+        _world.Api,
+        "oldmod.Thing",
+        typeof(string)
+      )
     );
     Assert.Equal("type", ex.ParamName);
     _world

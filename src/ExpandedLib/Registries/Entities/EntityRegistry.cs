@@ -221,10 +221,7 @@ public static class EntityRegistry {
     Dictionary<Type, List<string>> settled = [];
 
     foreach (string key in keys.Distinct()) {
-      if (
-        !_bareKeysIssued.TryGetValue(key, out Type? owner)
-        || owner == type
-      ) {
+      if (!_bareKeysIssued.TryGetValue(key, out Type? owner) || owner == type) {
         _bareKeysIssued[key] = type;
         api.RegisterBlockEntityClass(key, type);
         continue;
