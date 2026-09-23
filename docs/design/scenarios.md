@@ -25,9 +25,10 @@ Scenarios come in two layers.
   pressure, the blower filling its run. The largest are factory lines, whole setups written from the
   player guides the mods ship and run the way the guide tells a player to run them.
 
-The coverage report ties the two together. For each block it lists every hook its classes override
-and which case exercised it; a hook no case touched prints as uncovered, and a run can be told to fail
-on one. That is the part that catches what nobody remembered to test.
+The coverage report ties the two together. For each block it lists every hook its classes override or
+implement from an exlib interface, and which case exercised it; a hook no case touched prints as
+uncovered, and a run can be told to fail on one. That is the part that catches what nobody remembered to
+test.
 
 `exmod smoke` answers "does the server load this". A scenario answers "does this block stand up, run,
 reload and come apart cleanly in a live world, does its process work, and does it work the way its
@@ -61,13 +62,22 @@ confirmed that the feature works; until then extools stages it for runs. See Cod
 
 ### The world
 
-`exmod scenario` boots the server the way `exmod smoke` does (a scratch `--dataPath`, the staged mods,
-port 42499) and writes `serverconfig.json` into the scratch data path before the first boot, so the
-server creates this world:
+`exmod scenario` boots the server the way `exmod smoke` does: a scratch `--dataPath`, the staged mods,
+the port passed as `--port`.
+
+The port is the scenario server's own, 42498, not smoke's 42499, so a smoke run and a scenario run share
+the machine; `-Port` moves it, which is how two lanes run scenarios at the same time. The install is the
+one smoke boots for the series `-Version` names (default 1.22): `Resolve-SmokeServer` takes
+`.game/<series>-server` before `.game/<series>`, which for 1.22 is 1.22.7 today, while builds and the
+harness default to `.game/1.22` (1.22.6). The `run` line prints the booted version
+(`GameVersion.OverallVersion`), so a result is read against the patch it ran on.
+
+It writes `serverconfig.json` into the scratch data path before the first boot, so the server creates
+this world:
 
 | Setting | Value | What it buys |
 |---|---|---|
-| `Ip` | `127.0.0.1` | the server listens on loopback only; `exmod client` runs on the same machine and joins `localhost:42499` |
+| `Ip` | `127.0.0.1` | the server listens on loopback only (the key exists in `serverconfig.json` and defaults to null, every address); `exmod client` runs on the same machine and joins `localhost:<port>` |
 | `WorldConfig.WorldType` | `superflat` | vscreativemod's `GenBlockLayersFlat` lays the layers of `creative/worldgen/layers.json` (claystone and two soils) and turns entity spawning off; vsessentialsmod's `GenMaps` still generates the climate map for a superflat world |
 | `WorldConfig.PlayStyle` | `surviveandbuild` | the default playstyle; survival and the family mods load as in play |
 | `WorldConfiguration.gameMode` | `creative` | a joining player can fly to a plot and look; the scenario player sets its own mode per step |
@@ -216,19 +226,27 @@ face of the block below (see The scenario player). The block's own placement dec
 thing in one step. It works in two parts, each applied when the block has it.
 
 - **Layout.** When the block entity is a `BlockEntityMultiblockStructure`, the runner reads the
-  structure's own missing cells (its completion demand, rotated) and raises each one with the first
-  registered block matching the wanted code (an alternation takes its first branch, as `StructureRig`
-  does; the step line names every code chosen). Three kinds of cell are left alone: a cell that wants
-  air, a cell a step placed, and a cell whose demand carries an outward connector face (the scenario
-  places those itself, turned the way it means). The runner then waits for the block entity's own
-  monitor tick to set `StructureComplete`, at most two `CompletionTickMs` intervals plus one second,
-  and fails with the missing-cell report otherwise.
-- **Construction stages.** When the block entity carries `ExRightClickConstructable`, the runner
-  advances it stage by stage through the construction's own ingredient consumption, fed from a supply
-  it generates: for each ingredient, the first registered collectible that satisfies it, restricted by
-  `materials` where the ingredient stores a wildcard (`"materials": { "metal": "iron" }`). Stored
-  wildcards are recorded as a player's hotbar records them, so later stages and the drops resolve the
-  same way. `to: n` stops at `CurrentCompletedStage` n, which is how a part-built structure is made.
+  structure's own missing cells from the block entity (`IncompleteBlockCount`, which reports each as a
+  `MissingCell` with its wanted code already rotated) and raises each one with the first registered
+  block matching the wanted code (an alternation takes its first branch, through the same wildcard
+  choice `StructureRig` uses; the step line names every code chosen). Three kinds of cell are left
+  alone: a cell that wants air, a cell a step placed, and a cell the structure's connector table
+  (`MultiblockConnectors.OutwardFacesAt`, turned as the block entity turns it) gives an outward face
+  (the scenario places those itself, turned the way it means). The connector table is read rather than
+  `MissingCell.OutwardFace`, which is empty on a cell whose code does not match yet. The runner then
+  waits for the block entity's own monitor tick to set `StructureComplete`, at most two
+  `CompletionTickMs` intervals plus one second, and fails with the missing-cell report otherwise.
+- **Construction stages.** When the block entity carries `ExRightClickConstructable`, the scenario
+  player builds it stage by stage the way a player does, through vanilla's own consumption: before each
+  stage the runner fills the player's hotbar with a supply it generates, then the player right-clicks
+  the block in survival, which reaches `BEBehaviorRightClickConstructable.OnBlockInteractStart` and
+  `RightClickConstruction.OnInteract`. The supply holds, for each ingredient of the next stage, the first
+  registered collectible that satisfies it, restricted by `materials` where the ingredient stores a
+  wildcard (`"materials": { "metal": "iron" }`). Vanilla takes the stacks from the hotbar and records
+  `StoredWildCards` from the variant of the stack it took, so later stages and the drops resolve the
+  same way as in play. Survival matters: in creative with Ctrl held, vanilla skips the cost and stores
+  oak and iron whatever the hotbar holds. `to: n` stops at `CurrentCompletedStage` n, which is how a
+  part-built structure is made. What the hotbar holds after a stage is printed and cleared.
 
 #### `run`
 
@@ -312,8 +330,15 @@ the chunks to the save database) and loads them back, which builds new block ent
 `FromTreeAttributes` and `Initialize` from what was saved. It then fails when a block entity is gone,
 has changed class, or holds a tree where a key is missing, has changed type, or is back at the value a
 fresh instance writes although the live value differed; the last is a field that is written but never
-read back, or never written. Structure frames and ids survive a reload; the block entities behind them
-are the new instances.
+read back, or never written. The tree comparison is the same code the harness's reload guard runs (see
+Code). Structure frames and ids survive a reload; the block entities behind them are the new instances.
+
+A block entity that fails to load does not come back missing. exlib's `BlockEntityHealModSystem` sweeps
+every column on `ChunkColumnLoaded`, the event the reload raises, recreates a fresh block entity for a
+block that has none and whose entity class carries exlib's `BlockEntityRegister`, and logs `Recreated
+<n> orphaned block entit(ies) in chunk column <x>,<z>.` at Notification level. Such a block entity would
+then pass the class check with a fresh tree, so that line, logged while a case runs, fails the case at
+the step running then (see Errors and exceptions).
 
 `repeat` runs its `steps` `times` times, or until `until` holds after a round, at most `max` rounds; an
 `until` never met by `max` fails the step. Its inner steps print as `<n>.<round>.<m>`. "Charge in rounds
@@ -345,6 +370,7 @@ removes them from the world and keeps both lists for `expect drops`.
 | `{ at, tree: key, <test> }` | a key of the block entity's `ToTreeAttributes` tree |
 | `{ at, info: regex }` | a line of the block entity's `GetBlockInfo` (its behaviours' lines included), in the server's language, for the scenario player |
 | `{ at, network: "pipe", member: name, <test> }` | the pipe network state at the cell: `Volume`, `MaxVolume`, `Pressure`, `Temperature`, `MediumType`, `FlowRate` |
+| `{ at, network: "mpenergy", member: name, <test> }` | the mechanical-energy run at the cell, `MpEnergyNetwork.State`: `Speed` (rad/s), `Inertia`, `StoredEnergy`, `SupplyPower`, `DemandPower`, `Reversed` |
 | `{ at, network: type, same: position }` | the cells at `at` and `same` are in one network of that type |
 | `{ of, footprint: "filled" \| "air" }` | every footprint cell, the principal included, holds the principal or a filler naming it, or holds air |
 | `{ drops: [{ code, count }], exact?: true }` | what the last `break` dropped, summed per code; `exact` also refuses any stack not listed |
@@ -400,12 +426,13 @@ it is despawned and removed from `PlayersByUid`, `WorldDataByUID` and `PlayerDat
 **When an engine update breaks it.** Every member it touches is public in VintagestoryLib and referenced
 at compile time, except two resolved by name at the start of a run: the internal `ServerMain.Systems`
 field and the internal `ServerSystemInventory` type in it. A changed public member breaks the live mod's
-build; a changed internal one fails the run's first check. Before the first case the runner builds the
-player and checks it: `PlayerByUid` returns it, `Entity.Player` returns it, its hotbar has an active
-slot, `WorldData.CurrentGameMode` takes survival and reads it back, and `IsInInteractionRangeOf` holds
-for the cell under its feet. A failure prints `[scenario] error player: <check>: <what was read or
-thrown> (game <version>)`. Every case then counts as an error without running, since none may fall back
-to breaking as the world, and extools exits 1.
+build against `.game/1.22`; one that differs only in the booted install (see The world) throws a
+missing-member exception at the player check, and a changed internal one fails the run's first check.
+Before the first case the runner builds the player and checks it: `PlayerByUid` returns it,
+`Entity.Player` returns it, its hotbar has an active slot, `WorldData.CurrentGameMode` takes survival
+and reads it back, and `IsInInteractionRangeOf` holds for the cell under its feet. A failure prints
+`[scenario] error player: <check>: <what was read or thrown> (game <version>)`. Every case then counts
+as an error without running, since none may fall back to breaking as the world, and extools exits 1.
 
 ### Creative sources
 
@@ -458,13 +485,15 @@ pages before an item is opened for it.
 ### Errors and exceptions
 
 "No exception" is checked on every case without being written. For the whole run the runner listens on
-the server logger's `ILogger.EntryAdded`. An `Error` or `Fatal` entry while a case runs fails the case at
-the step running then, checked after every step and on every wait poll, unless it matches one of the
+the server logger's `ILogger.EntryAdded`. An `Error` or `Fatal` entry while a case runs fails the case
+at the step running then, checked after every step and on every wait poll, unless it matches one of the
 case's `allowErrors`. A block entity whose tick listener throws is caught by
-`BlockEntity.TickingExceptionHandler`, which logs it as an error naming the position and the block, so
-a machine that throws on its own tick fails the case it happens in and the detail says which code. A
-throw the engine does not catch stops the server; extools then finds no count line, fails the run and
-prints the log's last errors. A warning never fails a case; it is listed in a failed case's detail.
+`BlockEntity.TickingExceptionHandler`, which logs it as an error naming the position and the block, so a
+machine that throws on its own tick fails the case it happens in and the detail says which code.
+`BlockEntityHealModSystem`'s `Recreated` line is the one Notification entry that fails a case the same
+way, since it means a block entity was lost and replaced (see `reload`). A throw the engine does not
+catch stops the server; extools then finds no count line, fails the run and prints the log's last
+errors. A warning never fails a case; it is listed in a failed case's detail.
 
 An exception thrown by a step's own call is caught, fails the step, and prints its type, message and
 first stack frames. After the last step the runner waits `settle` seconds, so a listener that throws on
@@ -479,7 +508,8 @@ sends him the `case`, `pass`, `fail` and `done` lines in chat, with angle bracke
 VTML cuts a line at one.
 
 ```
-[scenario] run: <S> scenario(s), <C> case(s), budget <B> s
+[scenario] run: <S> scenario(s), <C> case(s), budget <B> s, game <version>
+[scenario] census <modid>: <N> blocktype(s) found, <G> in the goldens
 [scenario] case <name> plot <x> <y> <z>
 [scenario]   <n> <kind> <what> ok[: <value>]
 [scenario]   <n> <kind> <what> FAIL: <reason>
@@ -494,11 +524,18 @@ VTML cuts a line at one.
 
 `plot` coordinates are absolute. `error` is a case that could not run: its file does not parse, it names
 an unknown code, its plot never loaded, or the scenario player could not be built (`error player`); it
-counts as failed. `budget` is the sum of the case timeouts, which extools adds to its own wait. The
-`coverage` lines appear only in a coverage run, just before the count line. The count line is always the
-last line of a run; extools matches it with
-`\[scenario\] done: (\d+) case\(s\) run, (\d+) passed, (\d+) failed\.` and the coverage line with
-`\[scenario\] coverage: .*, (\d+) uncovered\.`
+counts as failed. `budget` is the sum of the case timeouts, which extools adds to its own wait.
+
+A run that proves nothing fails. A selection that matches no case prints `[scenario] error run: no case
+selected` and the count line with 0 cases run. A generic run prints one `census` line per mod it walks,
+before the first case: the blocktypes the walk found against the blocktype goldens extools counted
+(`<dataPath>/Scenarios/census.json`, see `exmod scenario`), and a mod whose walk finds fewer prints
+`[scenario] error census <modid>: <N> blocktype(s) found, the goldens hold <G>`, which fails the run
+although its cases still run. A mod with no blocktype goldens has a census of 0 and is not checked.
+
+The `coverage` lines appear only in a coverage run, just before the count line. The count line is always
+the last line of a run; extools matches it with `\[scenario\] done: (\d+) case\(s\) run, (\d+) passed,
+(\d+) failed\.` and the coverage line with `\[scenario\] coverage: .*, (\d+) uncovered\.`
 
 ### When a step fails
 
@@ -528,8 +565,8 @@ can raise an error during a later case; the later case's detail says how many pl
 ### `exmod scenario`
 
 ```
-exmod scenario [<name>...] [-Generic] [-Coverage] [-FailOnUncovered] [-Version <x.y>] [-Keep]
-               [-Mods <dir>[,...]] [-Timeout <s>] [-KeepData] [-Verbose]
+exmod scenario [<name>...] [-Generic] [-Coverage] [-FailOnUncovered] [-Version <x.y>] [-Port <n>]
+               [-Keep] [-Mods <dir>[,...]] [-Timeout <s>] [-KeepData] [-Verbose]
 ```
 
 A name is a bare stem, `<modid>/<path>`, `<modid>/<path>/<case>`, or `generic/<code wildcard>` for part
@@ -541,20 +578,24 @@ repository, factory lines included; `-Generic` adds the generic layer over the r
 1. builds the live mod from exlib's source (this checkout in exlib; the sibling exlib in the workspace
    from exmods, failing with a message when there is none), stages it beside the mods as smoke stages
    them, copies each mod's `tests/live/` into `<dataPath>/Scenarios/<modid>/`, resolves the citations,
-   writes `serverconfig.json`, and with `-Coverage` writes `<dataPath>/Scenarios/coverage.on`;
-2. boots the server and waits for `Dedicated Server now running` in `Logs/server-main.log`;
+   counts each mod's blocktype goldens (one file per blocktype under `tests/goldens/<modid>/blocktypes/`)
+   into `<dataPath>/Scenarios/census.json`, writes `serverconfig.json`, and with `-Coverage` writes
+   `<dataPath>/Scenarios/coverage.on`;
+2. boots the server on its port (42498, or `-Port`) and waits for `Dedicated Server now running` in
+   `Logs/server-main.log`;
 3. writes `/exmod scenario run <names>` (with `keep` under `-Keep`, `failuncovered` under
    `-FailOnUncovered`) to the server's stdin;
-4. follows the log and prints the `run`, `pass`, `fail`, `error`, `coverage` and `done` lines, with every
-   line of a failed case and every `uncovered` line; `-Verbose` prints every step line;
+4. follows the log and prints the `run`, `census`, `pass`, `fail`, `error`, `coverage` and `done` lines,
+   with every line of a failed case and every `uncovered` line; `-Verbose` prints every step line;
 5. waits for the count line up to the boot, the run's budget and 60 s more, or `-Timeout`;
 6. prints every `[Error]` and `[Fatal]` line that falls outside a case (between a `case` line and its
    `pass` or `fail` line is inside);
 7. without `-Keep`: writes `/stop`, copies the failed cases' schematics and the coverage report to
-   `.game/.scenario-last/`, and exits 1 when the count line is missing, a case failed, an error line fell
-   outside a case, or `-FailOnUncovered` meets an uncovered hook; else 0;
+   `.game/.scenario-last/`, and exits 1 when the count line is missing or reports 0 cases run, a case
+   failed, an `error census` line was printed, an error line fell outside a case, or `-FailOnUncovered`
+   meets an uncovered hook; else 0;
 8. with `-Keep`: prints the port, the data path and how to join (`exmod client`, Multiplayer,
-   `localhost:42499`), relays the terminal's lines to the server console until Ctrl+C, then writes
+   `localhost:<port>`), relays the terminal's lines to the server console until Ctrl+C, then writes
    `/stop`. The exit code is the one step 7 would give.
 
 ---
@@ -574,6 +615,7 @@ depends on it) and reads each blocktype's signals from the registered blocks, ne
 | `nosnow` cells | the layout's cells marked `CellRole.NoSnow` | `nosnow` |
 | construction stages | `ExRightClickConstructable` among the entity behaviours | `construction` |
 | a mechanical-power connector | a cell (the principal or a hosted one) answering `IMechanicalPowerBlock.HasMechPowerConnectorAt` on some face for the power source, or hosting a `BEBehaviorMPBase` | `power` |
+| an mpenergy membership | a network member of type `mpenergy` (the shafts, flywheels, transmissions and the machines on the run, such as the rolling mill), on the principal or a hosted cell | `power`, mpenergy form |
 | a network membership | a `BlockNetworkNode`, or a `BEBehaviorNetworkMember` on the entity or a hosted cell | network checks inside `lifecycle` |
 | an inventory | the entity implements `IBlockEntityContainer` | container checks inside `lifecycle` |
 
@@ -597,17 +639,17 @@ time by reaching what the harness fakes.
 
 | Floor | Harness | Live | What the live case reaches |
 |---|---|---|---|
-| places in every orientation and breaks with the declared drops | the break-every-cell guard: every filler host and construction, every cell, built and part-built; the definition goldens pin what is declared | `lifecycle`: every variant code set and broken, and the block placed and broken by the scenario player from each facing, drops read as item entities | the engine's placement and break paths with the real block entity lifecycle, network and mechanical-power managers, a real player's facing and item entities, for every block rather than the filler hosts alone |
+| places in every orientation and breaks with the declared drops | the break-every-cell guard of plan task B3, to be built before the generic layer: every filler host and construction, every cell, built and part-built; the definition goldens pin what is declared | `lifecycle`: every variant code set and broken, and the block placed and broken by the scenario player from each facing, drops read as item entities | the engine's placement and break paths with the real block entity lifecycle, network and mechanical-power managers, a real player's facing and item entities, for every block rather than the filler hosts alone |
 | block info renders | a new guard: a fresh block entity of every block, `GetBlockInfo` with a test player | `lifecycle`: after the tick, the use and the reload, on the same plot | the state only a live world makes: joined networks, ticked counters, reloaded trees. It adds no wait |
-| survives a save and reload | the treekeys goldens pin the keys a fresh instance writes | `lifecycle`: `reload` | `OnBlockUnloaded`, the save database, `FromTreeAttributes` into a new instance and the `Initialize` order; the harness cannot unload a chunk |
+| survives a save and reload | the treekeys goldens pin the keys a fresh instance writes; a new guard runs `reload`'s tree comparison over a fresh block entity of every block through `TestWorld.Reload`, the in-memory save, `OnBlockUnloaded`, new instance, `FromTreeAttributes` and `Initialize` round trip | `lifecycle`: `reload` | the save database, the engine's chunk unload and load (`TestWorld.UnloadChunkAt` only hides a chunk from the accessor), the engine's `Initialize` order over a whole column, and `BlockEntityHealModSystem` on the load |
 | answers a neighbour change | none | `lifecycle`: a stone set and cleared on each free face of the principal | the engine's neighbour notification; it adds no wait |
 | ticks for N seconds | `RunLive` in the machines' own scenario tests | `lifecycle`: 5 s shared by every code on the plot | real listeners, intervals and `dt` for every block, not only the machines that have harness scenarios |
-| interacting raises no exception | none | `lifecycle`: the scenario player with an empty hand and each derived item, on the principal and each hosted cell | a real server player with real inventories, which a test double of `IPlayer` cannot be on 1.22 |
-| a network member joins and leaves | `NetworkNodeContract` checks the definition | `lifecycle`: the cell is in a network of its type (`BlockNetworkModSystem.GetNetworkAt`) after the place and after the reload, and in none after the break | the real network system over real block entities; the pipe test world has none |
-| a mechanical-power member connects to a source | the `MechPower` double | `power` | vanilla's network manager and propagation, which the harness replaces |
+| interacting raises no exception | none | `lifecycle`: the scenario player with an empty hand and each derived item, on the principal and each hosted cell | a real server player with real inventories and the server's use events, which the harness's substituted `TestPlayer` does not have |
+| a network member joins and leaves | `NetworkNodeContract` checks the definition | `lifecycle`: the cell is in a network of its type (`BlockNetworkModSystem.GetNetworkAt`) after the place and after the reload, and in none after the break | the network system over the engine's own block entity lifecycle, for every member. The harness reaches real block entities only where a fixture places them (`PipeTestWorld.LiveRun` in iiex's tests places a `BlockEntityPipe` in every cell; `PipeTestWorld.Run` places none) |
+| a mechanical-power member connects to a source | the `MechPower` double; the harness's `MpEnergyNetwork` over placed members (`CastIronShaftTests`) | `power`, and its mpenergy form | vanilla's network manager and propagation, which the harness replaces; an mpenergy run turned through the engine's ticks |
 | a multiblock forms, and unforms when a cell is taken | `StructureRig` with stand-in blocks; `MultiblockCodes` | `multiblock`: four facings with real blocks | real registered blocks against the wildcards: a stand-in matches a code that no real block matches |
-| a megablock places in four facings and breaks from every cell | the break-every-cell guard | `megablock`: four facings, the principal and one cell of each kind | the kinds route differently through the engine (a hosted behaviour joins real networks); identical plain fillers do not, so every cell stays with the harness |
-| a construction completes every stage, and pays its drops at each | the break-every-cell guard, built and part-built | `construction`: the stage walk against the real registry, readiness after the last stage, one player break at the end | ingredients resolved against the real item registry; the per-stage drop sweep stays with the harness |
+| a megablock places in four facings and breaks from every cell | B3's break-every-cell guard | `megablock`: four facings, the principal and one cell of each kind | the kinds route differently through the engine (a hosted behaviour joins real networks); identical plain fillers do not, so every cell stays with the harness |
+| a construction completes every stage, and pays its drops at each | B3's break-every-cell guard, built and part-built | `construction`: the stage walk against the real registry, readiness after the last stage, one player break at the end | ingredients resolved against the real item registry; the per-stage drop sweep stays with the harness |
 | a container accepts and returns items | a new guard over the inventory's acceptance and extraction | `lifecycle`: an accepted stack survives the reload and drops on the break | persistence and the break's drop path |
 | a `nosnow` cell refuses snow | `NoSnowCellsTests`, `NoSnowPatchTests` | `nosnow`: vanilla accumulation over the formed structure, four facings | vanilla computes snow on its own scanner thread and meets `NoSnowPatch` there; thread and order exist only live |
 
@@ -647,6 +689,12 @@ restored and all four must report complete again. An air-legend cell takes a sto
 in turn (speed 1, torque 5); the member's network (`BEBehaviorMPBase.Network`) must turn within 5 s. Then
 the cell hosting the mechanical-power behaviour is broken while it turns, and the source's network must
 carry on without an error.
+
+The mpenergy form, one per blocktype with an mpenergy membership, first facing: the member's run is
+driven (how is Open), and `expect network: "mpenergy"` must read `Speed` above 0 within 5 s at the
+member's cell. Then the member is broken while the run turns, and what stays of the run must carry on
+without an error. A blocktype that has both a vanilla connector and an mpenergy membership (the
+flywheel, whose hub is the vanilla-MP bridge) gets both forms.
 
 **`nosnow`**, one per layout with `nosnow` cells, each in a region of its own at -10 C and rainfall 1:
 four structures, one per facing, and a control brick. The role marks the block snow would lie on or turn
@@ -734,6 +782,14 @@ count. The runner finds them by reflection: `BindingFlags.DeclaredOnly` on each 
 `MethodInfo.GetBaseDefinition()` differs from the method. A hook is named `<DeclaringType>.<Member>`, so
 an exlib base's override shows under every block that inherits it.
 
+The network side of a machine is interface implementations rather than overrides (`IPipeNode`,
+`IMoltenCell`, the `IMpEnergy*` node contracts, `IProductionReadiness`, `IFillerHost`), so those count
+too: for each interface declared in exlib's assemblies (ExpandedLib and ExpandedLib.Industry) that a type
+along the same chains implements, every method `Type.GetInterfaceMap` maps it to that is declared on an
+exlib or family type, explicit implementations included. Such a hook is named by its implementing
+method, `<DeclaringType>.<Member>`, like an override. An interface member the type leaves to a default
+body declared on the interface is not a hook of the block.
+
 ### How a hook counts as exercised
 
 By observation, never by declaration. A case that declared the hooks it covers would go on claiming
@@ -750,11 +806,11 @@ a concurrent set, since vanilla calls `AllowSnowCoverage` from its snow thread. 
 counts under the pseudo-case `load`.
 
 The cost is the reason it is a switch. exlib, iiex and siex declare about 940 overrides in all, the
-hooks among them; Harmony patches each hook once at boot, on the order of a millisecond each. Every call
-to a patched override then pays one lookup and one set insert. Game assemblies are never patched, so
-only the family's overrides pay it, on plots that hold a few blocks each. A run without `-Coverage`
-patches nothing. A method Harmony cannot patch (an open generic, an extern) is listed as `unprobed`,
-never as covered.
+hooks among them, besides the interface implementations; Harmony patches each hook once at boot, on the
+order of a millisecond each. Every call to a patched hook then pays one lookup and one set insert. Game
+assemblies are never patched, so only the family's hooks pay it, on plots that hold a few blocks each. A
+run without `-Coverage` patches nothing. A method Harmony cannot patch (an open generic, an extern) is
+listed as `unprobed`, never as covered.
 
 ### Statuses
 
@@ -1052,7 +1108,7 @@ line fed hot stock by `insert` with a `temperature`.
 
 | Value | Number |
 |---|---|
-| Server port and address | 42499 on 127.0.0.1 |
+| Server port and address | 42498 on 127.0.0.1 (`-Port` moves the port); smoke keeps 42499 |
 | Runner tick (step loop, wait polls, interaction steps) | 100 ms |
 | Default plot | 16 x 16 x 16 blocks, in whole chunk columns (32 blocks) with an 8-block margin; the row starts 32 blocks east of the world spawn |
 | Map region, the unit of `climate` | 512 blocks |
@@ -1082,35 +1138,81 @@ litres and L/s, atm, C.
 
 ### The live mod, in exlib's testing family
 
-`src/ExpandedLib.Testing.Live`, a mod of its own (mod id `exliblive`, depending on exlib), beside the
-harness project `src/ExpandedLib.Testing`. It is not part of the harness project: the harness is a
-library for test processes that carries NSubstitute and xunit and is never loaded by the game, while the
-runner is a mod that the game loads. It builds for 1.22 only, since it references VintagestoryLib's
-server classes. It stays out of every release until fallen rules it ready to ship; extools builds and
-stages it for `exmod scenario`.
+`src/ExpandedLib.Testing.Live`, assembly `ExpandedLib.Testing.Live`, a mod of its own beside the harness
+project `src/ExpandedLib.Testing`. It builds for 1.22 only, since it references VintagestoryLib's server
+classes. It stays out of every release until fallen rules it ready to ship; extools builds and stages it
+for `exmod scenario`.
+
+What the mod folder holds: the assembly and its `modinfo.json` (`type` `code`, mod id `exliblive`,
+`side` `Server` with `requiredOnClient` false, so a client joining a `-Keep` server needs only exlib,
+and dependencies on the game and on `exlib` at exlib's own version). Nothing else: exlib's own mod
+folder supplies exlib's two assemblies at run time.
+
+What the assembly references, each without copying it (`Private` false): the game's `VintagestoryAPI`,
+`VintagestoryLib`, `VSSurvivalMod`, `VSEssentials`, `0Harmony` (the coverage probe) and `Newtonsoft.Json`
+(the scenario files), and the projects ExpandedLib and ExpandedLib.Industry. Industry is referenced
+directly, since `expect network` reads `PipeNetwork` and `MpEnergyNetwork`, so every step kind lives in
+the live mod and none is registered from outside it.
+
+What it must not reference: ExpandedLib.Testing, NSubstitute or xunit. ExpandedLib.Testing is a library
+for test processes, not a mod: it has no `modinfo.json`, it depends on NSubstitute and
+`xunit.extensibility.core`, which a server does not carry, and its `HarnessModuleInitializer` registers
+`VsAssemblyResolver` on `AppDomain.AssemblyResolve` in whatever process loads it, which in a server
+under the repository answers a failed assembly lookup from `.game/1.22` rather than from the install
+that booted. Code both need lives in ExpandedLib instead, internal, with exlib's `InternalsVisibleTo`
+naming `ExpandedLib.Testing.Live` beside `ExpandedLib.Testing`.
+
+One `ModSystem`, `ScenarioModSystem`, reads `coverage.on` in `StartPre` and, on the server, registers
+`ScenarioSubCommand` into exlib's `/exmod` group through `CommandRegistry.RegisterAll` over its own
+assembly.
 
 | Type | Place | Role |
 |---|---|---|
-| `ScenarioSubCommand` | `Commands/` | `/exmod scenario run <names...> [keep] [failuncovered]`, server side, the `/exmod` group's `controlserver` privilege, registered into exlib's group through `SubCommandRegister` |
+| `ScenarioModSystem` | root | the coverage switch at `StartPre`, the command registration |
+| `ScenarioSubCommand` | `Commands/` | `/exmod scenario run <names...> [keep] [failuncovered]`, server side, the `/exmod` group's `controlserver` privilege, a `SubCommandRegister` sub-command of exlib's group |
 | `ScenarioFile` | `Scenarios/` | parse, validate (unknown keys named), expand the matrix, substitute, resolve citations against the staged passages |
-| `ScenarioRunner` | `Scenarios/` | the queue of cases, the 100 ms main-thread loop, `ILogger.EntryAdded` capture, the output lines, the failure detail and its suspect |
+| `ScenarioRunner` | `Scenarios/` | the queue of cases, the 100 ms main-thread loop, `ILogger.EntryAdded` capture, the census check, the output lines, the failure detail and its suspect |
 | `ScenarioPlot` | `Scenarios/` | allocation in chunk columns, climate hold, chunk loading and reloading, the placed-cell set, the schematic snapshot, clearing |
 | `ScenarioPosition` | `Scenarios/` | the position forms and the structure frames |
 | `ScenarioPlayer` | `Scenarios/` | building, checking, parking and removing the scenario player; its place, break and interact verbs |
-| `IScenarioStep`, `ScenarioSteps` | `Scenarios/Steps/` | one internal class per step kind |
+| `IScenarioStep`, `ScenarioSteps` | `Scenarios/Steps/` | one internal class per step kind, and the internal table of kinds |
 | `GenericScenarios` | `Scenarios/Generic/` | reads each blocktype's signals and `generic.json`, and builds its cases out of the same steps |
 | `CoverageProbe`, `CoverageReport` | `Scenarios/Coverage/` | hook enumeration, the Harmony prefix installed from `StartPre` when `coverage.on` exists, the statuses, the allowlist, the report files |
-| `IScenarioHost` | `Scenarios/` | the seam (world, block accessor, clock, log feed, chunk loader, climate, player) through which exlib's test project drives the same steps in `TestWorld` |
+| `IScenarioHost` | `Scenarios/` | the seam (world, block accessor, clock, log feed, chunk loader, climate, player) through which exlib's test project drives the steps the harness host supports in `TestWorld` |
 
-Three existing pieces are shared rather than copied. `StructureRig`'s cell resolution (rotation, the
-oriented-part table, the wildcard choice) moves into ExpandedLib, where the rig and the runner both call
-it. `ExRightClickConstruction`'s ingredient consumption takes a list of slots, so a player's hotbar and a
-generated supply go through one routine and record wildcards the same way.
-`BlockEntityMultiblockStructure` exposes its missing cells and its rotated layout cells to the live mod.
+Three existing pieces are shared rather than copied, and one is not needed.
 
-`ExpandedLib.Testing` gains the two harness guards the floor names as new, as checks each mod's test
-project runs over its own definitions: `GetBlockInfo` on a fresh block entity of every block; a
-container's acceptance and extraction.
+- `BlockEntityMultiblockStructure` already computes the rotated demand from the live block:
+  `IncompleteBlockCount` (protected today) with its `MissingCell` report, `CompletionTickMs` (protected)
+  and the connector table (`MultiblockConnectors`, private) become internal, and the block entity also
+  exposes its rotated layout cells for `layout` positions. `complete` and the failure detail's
+  missing-cell report read these.
+- The alternation choice `StructureRig` makes (`FirstAlternative`, `FirstBranch`) moves into
+  ExpandedLib, where the rig and the runner both call it; the rig's stand-in naming (`Concretize`, which
+  also turns `*` into a stand-in letter) stays in the rig. `StructureRig` is rebased on the block's own
+  report: `Around` raises the cells the placed block entity reports missing, instead of re-deriving the
+  demand from `ExBlockDef.ToJson()`, so it also rigs a block defined in JSON only.
+- `reload`'s tree comparison (a key missing, a type changed, a value back at a fresh instance's) is one
+  internal routine in ExpandedLib, which the live `reload` and the harness's reload guard both call.
+- The construction walk shares nothing: it drives vanilla's `RightClickConstruction` through the
+  scenario player's hotbar. exlib's `ExRightClickConstruction` builds only on the 1.20 and 1.21 lanes and
+  plays no part in a 1.22 run.
+
+`ExpandedLib.Testing` gains the harness guards the floor names as new, as checks each mod's test project
+runs over its own definitions: `GetBlockInfo` on a fresh block entity of every block; a container's
+acceptance and extraction; the reload tree comparison through `TestWorld.Reload` over a fresh block
+entity of every block. The break-every-cell guard the floor leans on is plan task B3's, built in its own
+lane; the generic layer waits for it.
+
+### The harness host
+
+`IScenarioHost` over `TestWorld` runs a scenario's steps where the harness can mean the same thing, and
+refuses the rest when the file loads, with an error naming the step kind, so a file never half-passes
+in the harness.
+
+| Supported over `TestWorld` | Refused, and what the harness lacks |
+|---|---|
+| `place` by the world, `complete` of a layout, `set`, `call` (without a `"player"` argument), `insert`, `expect` `block`, `member`, `tree`, `info` (for a `TestWorld.Player`), `network`, `footprint`, `wait` (block entity time through `AdvanceBlockEntityTime`, network ticks through `Tick`), `advance` (`AdvanceHours`), `reload` (`TestWorld.Reload` per block entity, the in-memory round trip), `repeat` | `place` by the player, `run`, `interact`, `complete` of construction stages, `break` either way (the harness's player, `TestPlayer`, is a substitute with one `DummySlot` and a substituted inventory manager, so vanilla's construction consumption finds no hotbar, and the harness has no server event manager for the verbs to trigger; the accessor's `BreakBlock` runs only the block entity's `OnBlockBroken` and `OnBlockRemoved`), `expect drops` (no item entities and no `GetDrops` on the break), `paste` (no schematic placement), `power` (it would meet the `MechPower` double, not vanilla's network manager) and `source` (the harness's pipe fixtures feed a run directly), a `climate` (no weather) |
 
 ### The creative sources, in exlib
 
@@ -1170,9 +1272,8 @@ scenario`; the live mod's build and staging; the citation resolver.
   and one reload, with errors attributed by the position their log entry names, would bring the generic
   layer to about ten minutes.
 - Items and other non-block collectibles in the generic layer and in the coverage report.
-- exlib's interface contracts (`IFillerHost`, `IPipeNode` and the like) as hooks; only overrides of
-  virtual and abstract class members count.
-- Step kinds registered by other mods through a public API; the registry is internal to the live mod.
+- Step kinds registered by other mods through a public API; the step kinds are an internal table of the
+  live mod.
 - Hand-drawn grids in a scenario, and exporting a plot by command (WorldEdit covers it).
 - Item entities as inputs (a hopper or chute fed by thrown items).
 - Runs on 1.20 and 1.21.
@@ -1181,6 +1282,13 @@ scenario`; the live mod's build and staging; the citation resolver.
 
 ## Open
 
+- How the generic mpenergy form drives a run that has no vanilla-MP bridge of its own (a shaft, a
+  transmission, the rolling mill). The inputs ruling puts power in exlib's creative sources, and today
+  mpenergy takes vanilla power only at a mod's flywheel hub, which exlib's generic layer cannot name.
+  The options: a sixth creative source in exlib, `exlib:creativempenergy`, an `IMpEnergyProducer` node
+  with a `torque` setting that the mpenergy form places beside the member; or each mod's `generic.json`
+  names its bridge block (`iiex:mpenergy-flywheel-normal-*`), which the form places in the run and
+  drives with the power source at its hub, as a player would.
 - How a creative player sets a source: a settings dialog, or cycling values with right-click and
   sneak-right-click as vanilla's creative rotor does. The first version stores the settings as tree keys,
   which scenarios write; the gesture is fallen's call, on one source first.
