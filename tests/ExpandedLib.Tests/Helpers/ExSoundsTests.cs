@@ -53,7 +53,9 @@ public class ExSoundsTests : IDisposable {
       measured++;
       long recorded = ExSounds.ClipLengthMs(location);
       if (recorded < longest || recorded > longest + 1)
-        offenders.Add($"{field.Name}: recorded {recorded} ms, file {longest:0.0} ms");
+        offenders.Add(
+          $"{field.Name}: recorded {recorded} ms, file {longest:0.0} ms"
+        );
     }
     Assert.True(offenders.Count == 0, string.Join("\n", offenders));
     Assert.True(measured > 30, $"Only {measured} catalogue sounds measured.");
@@ -62,7 +64,10 @@ public class ExSoundsTests : IDisposable {
   // Fails when Due ignores the clip length and honours the caller's interval alone.
   [Fact]
   public void A_repeating_one_shot_waits_for_its_clip_to_end() {
-    IWorldAccessor world = ClientWorld(out Func<long> _, out Action<long> setNow);
+    IWorldAccessor world = ClientWorld(
+      out Func<long> _,
+      out Action<long> setNow
+    );
     long last = 0;
     long clip = ExSounds.ClipLengthMs(ExSounds.Fire);
 
@@ -80,7 +85,10 @@ public class ExSoundsTests : IDisposable {
   // Fails when Due takes the clip length over a longer caller interval.
   [Fact]
   public void A_longer_interval_than_the_clip_still_holds() {
-    IWorldAccessor world = ClientWorld(out Func<long> _, out Action<long> setNow);
+    IWorldAccessor world = ClientWorld(
+      out Func<long> _,
+      out Action<long> setNow
+    );
     long last = 0;
 
     setNow(100_000);
@@ -235,7 +243,10 @@ public class ExSoundsTests : IDisposable {
   // sound without the MachineVolume factor.
   [Fact]
   public void A_loop_follows_the_machine_volume() {
-    ICoreClientAPI capi = LoopApi(out List<ILoadedSound> loaded, out List<SoundParams> made);
+    ICoreClientAPI capi = LoopApi(
+      out List<ILoadedSound> loaded,
+      out List<SoundParams> made
+    );
     ExSounds.MachineVolume = 0.5f;
     var loop = new ExSoundLoop(ExSounds.Fire, 0.8f, pitch: 0.9f);
 
@@ -302,7 +313,9 @@ public class ExSoundsTests : IDisposable {
 
   // A catalogue path names one file, or a numbered set the game picks from at random.
   private static IEnumerable<string> Variants(string assets, string path) {
-    var stem = new Regex("^" + Regex.Escape(Path.GetFileName(path)) + @"\d*\.ogg$");
+    var stem = new Regex(
+      "^" + Regex.Escape(Path.GetFileName(path)) + @"\d*\.ogg$"
+    );
     foreach (string domain in new[] { "game", "survival", "creative" }) {
       string dir = Path.Combine(assets, domain, Path.GetDirectoryName(path)!);
       if (!Directory.Exists(dir))

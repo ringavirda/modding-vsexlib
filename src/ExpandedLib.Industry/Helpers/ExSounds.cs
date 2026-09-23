@@ -341,7 +341,8 @@ public static class ExSounds {
   /// <summary>Opens the client end of the sound channel, playing each packet through
   /// <see cref="MachineVolume"/>.</summary>
   internal static void StartClient(ICoreClientAPI api) =>
-    api.Network.RegisterChannel(ChannelName)
+    api
+      .Network.RegisterChannel(ChannelName)
       .RegisterMessageType<SoundPacket>()
       .SetMessageHandler<SoundPacket>(packet =>
         PlayOnClient(
@@ -393,7 +394,16 @@ public static class ExSounds {
       return;
     }
     if (_serverChannel == null) {
-      world.PlaySoundAt(sound, x, y, z, byPlayer, randomizePitch, range, volume);
+      world.PlaySoundAt(
+        sound,
+        x,
+        y,
+        z,
+        byPlayer,
+        randomizePitch,
+        range,
+        volume
+      );
       return;
     }
     IServerPlayer[] listeners = world
@@ -435,7 +445,8 @@ public static class ExSounds {
       return;
 #if GAME_GE_1_22
     world.PlaySoundAt(
-      new SoundAttributes(sound, randomizePitch) {
+      new SoundAttributes(sound, randomizePitch)
+      {
         Type = EnumSoundType.Sound,
         Range = range,
       },

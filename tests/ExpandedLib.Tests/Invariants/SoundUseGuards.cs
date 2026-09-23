@@ -63,7 +63,10 @@ public class SoundUseGuards {
       "ExSounds.PlayThrottled(Api, Pos, ExSounds.Fire, ref _ms, 5000, 0.6f);"
     );
 
-    Assert.Contains("repeats every 5000 ms but lasts 9260 ms", Assert.Single(offenders));
+    Assert.Contains(
+      "repeats every 5000 ms but lasts 9260 ms",
+      Assert.Single(offenders)
+    );
   }
 
   // Fails when ShortRepeats accepts any ClipLengthMs, not only the played sound's.
@@ -119,25 +122,40 @@ public class SoundUseGuards {
       .ToList();
 
     Assert.Equal(4, offenders.Count);
-    Assert.Contains(offenders, o => o.Contains("RawSoundFixture._sound: holds an ILoadedSound"));
     Assert.Contains(
       offenders,
-      o => o.Contains("UnloadMissingSoundFixture._loop: no OnBlockUnloaded() override")
+      o => o.Contains("RawSoundFixture._sound: holds an ILoadedSound")
     );
     Assert.Contains(
       offenders,
-      o => o.Contains("UnloadForgetsSoundFixture._loop: OnBlockUnloaded() never reaches it")
+      o =>
+        o.Contains(
+          "UnloadMissingSoundFixture._loop: no OnBlockUnloaded() override"
+        )
     );
     Assert.Contains(
       offenders,
-      o => o.Contains("UnloadTouchesOtherSoundFixture._loop: OnBlockUnloaded() never reaches it")
+      o =>
+        o.Contains(
+          "UnloadForgetsSoundFixture._loop: OnBlockUnloaded() never reaches it"
+        )
+    );
+    Assert.Contains(
+      offenders,
+      o =>
+        o.Contains(
+          "UnloadTouchesOtherSoundFixture._loop: OnBlockUnloaded() never reaches it"
+        )
     );
   }
 
   #endregion
 
   private static IReadOnlyList<string> Scan(string source) {
-    string file = Path.Combine(Path.GetTempPath(), $"sounduse-{Guid.NewGuid():N}.cs");
+    string file = Path.Combine(
+      Path.GetTempPath(),
+      $"sounduse-{Guid.NewGuid():N}.cs"
+    );
     File.WriteAllText(file, source);
     try {
       return SoundUse.ShortRepeats([file]);

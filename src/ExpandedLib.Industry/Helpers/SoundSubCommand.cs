@@ -53,8 +53,7 @@ public sealed class SoundSubCommand : IExSubCommand {
         NumberStyles.Float,
         CultureInfo.InvariantCulture,
         out float asked
-      )
-      || pref.Options.FirstOrDefault(o => Parse(o) == asked) is not { } option
+      ) || pref.Options.FirstOrDefault(o => Parse(o) == asked) is not { } option
     )
       return TextCommandResult.Error(
         Lang.Get(

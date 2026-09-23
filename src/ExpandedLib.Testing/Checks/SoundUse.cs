@@ -122,7 +122,8 @@ public static class SoundUse {
   }
 
   private static long ClipLength(string name) =>
-    typeof(ExSounds).GetField(name, BindingFlags.Public | BindingFlags.Static)
+    typeof(ExSounds)
+      .GetField(name, BindingFlags.Public | BindingFlags.Static)
       ?.GetValue(null)
       is AssetLocation location
       ? ExSounds.ClipLengthMs(location)
@@ -208,7 +209,7 @@ public static class SoundUse {
         )
           return true;
       } catch (Exception e)
-        when (e is ArgumentException or BadImageFormatException) { }
+          when (e is ArgumentException or BadImageFormatException) { }
     }
     return false;
   }
