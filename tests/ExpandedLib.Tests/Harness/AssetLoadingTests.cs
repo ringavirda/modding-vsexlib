@@ -60,5 +60,25 @@ public class AssetLoadingTests
       Assert.Equal(side, block.Variant["side"]);
     }
   }
+
+  // Fails when LoadAssets keeps the code-first definitions an earlier load registered.
+  [Fact]
+  public void A_second_load_meets_no_block_of_the_first()
+  {
+    using (var first = new TestWorld())
+      first.LoadAssets(
+        Path.Combine(RepoPaths.Root, "samples", "TwinTubBlower")
+      );
+    using var second = new TestWorld();
+
+    second.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "BurdenMaker"));
+
+    Assert.Null(
+      second.World.GetBlock(
+        new AssetLocation("twintubblower:blower-twintubblower-n")
+      )
+    );
+    Assert.DoesNotContain(second.Log.Errors, e => e.Contains("twintubblower"));
+  }
 }
 #endif

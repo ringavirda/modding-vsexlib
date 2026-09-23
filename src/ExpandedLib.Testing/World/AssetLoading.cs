@@ -27,8 +27,8 @@ public sealed partial class TestWorld {
   /// registers the resulting <see cref="Block"/>/<see cref="Item"/> instances; vanilla survival and
   /// creative content is not loaded.</summary>
   /// <remarks>First the install's vanilla mod systems register their classes (one that cannot start
-  /// on a registration-only API is passed over), the 1.22 tag converters take this load's
-  /// registries.</remarks>
+  /// on a registration-only API is passed over), the 1.22 tag converters take this load's registries
+  /// and <see cref="ExDefinitions"/> is emptied.</remarks>
   /// <param name="modPath">A mod's or sample's folder; <c>modinfo.json</c>/<c>bin/</c> may sit at its
   /// root or under <c>src/</c>, assets always under <c>assets/&lt;modid&gt;/</c>.</param>
   /// <param name="gamePath">The game install to read base assets and vanilla mods from; defaults to
@@ -82,6 +82,7 @@ public sealed partial class TestWorld {
       out ClassRegistry rawClassRegistry
     );
     StartVanillaMods(gamePath, rawClassRegistry);
+    ExDefinitions.Clear();
 
     Mods.Add(modId, version);
     Mod mod = Mods.GetMod(modId)!;
