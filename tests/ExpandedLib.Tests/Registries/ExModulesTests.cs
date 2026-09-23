@@ -14,9 +14,7 @@ namespace ExpandedLib.Tests;
 /// found among already-loaded assemblies while its shipping mod stays enabled.
 /// </summary>
 public class ExModulesTests {
-  // A module "exlibtests-noctor" of host "exlibtest.noctor" whose one entry point, NoCtorModule,
-  // has no parameterless constructor. Emitted once: a loaded assembly stays discoverable for the
-  // rest of the run, and a second copy would be a duplicate module id.
+  // Emitted once: the module stays discoverable all run, and a second copy duplicates its id.
   private static readonly Lazy<Type> NoCtorModule = new(EmitNoCtorModule);
 
   private static Type EmitNoCtorModule() {

@@ -62,9 +62,7 @@ public class ExCheckRegistryTests : IDisposable {
       new(nameof(StaticCheck), domain, []);
   }
 
-  // A WrongSignatureCheck carrying the attribute but not the exact `static CheckResult
-  // Run(ICheckSource, string)` shape; Register warns and skips it. It lives in an assembly of its
-  // own: the test assembly is registered whole by other classes.
+  // A check whose Run returns void, outside the test assembly that other classes register whole.
   private static Type EmitWrongSignatureCheck() {
     var asm = AssemblyBuilder.DefineDynamicAssembly(
       new AssemblyName($"wrongsignature.{Guid.NewGuid():N}"),

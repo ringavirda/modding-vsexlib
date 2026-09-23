@@ -38,9 +38,7 @@ public class EntityRegistryBareAliasTests : IDisposable {
       .GetField(name, BindingFlags.NonPublic | BindingFlags.Static)!
       .GetValue(null)!;
 
-  // Two distinct types sharing one simple name, OuterA.BlockEntityWidget and
-  // OuterB.BlockEntityWidget, both claiming the bare short-id key "Widget"/"widget". They live in an
-  // assembly of their own: the test assembly is registered whole by other classes.
+  // OuterA/OuterB.BlockEntityWidget, outside the test assembly that other classes register whole.
   private static Assembly EmitWidgets() {
     var asm = AssemblyBuilder.DefineDynamicAssembly(
       new AssemblyName($"barealias.{Guid.NewGuid():N}"),

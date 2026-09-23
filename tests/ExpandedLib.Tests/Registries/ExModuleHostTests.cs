@@ -93,9 +93,7 @@ public class ExModuleHostTests : IDisposable {
     public void Dispose() => Phases.Add("Dispose");
   }
 
-  // A ThrowingModule entry point whose Start throws and whose other phases are the interface's
-  // no-ops. It lives in an assembly of its own, since every IExModule in the test assembly is an
-  // entry point of "exlibtests" for the classes that host it.
+  // Outside the test assembly, whose every IExModule is an entry point wherever "exlibtests" runs.
   private static Type EmitThrowingModule() {
     var asm = AssemblyBuilder.DefineDynamicAssembly(
       new AssemblyName($"throwingmodule.{Guid.NewGuid():N}"),
