@@ -497,7 +497,10 @@ public class BlockNetworkModSystem : ModSystem {
       return false;
 
     // Matching connectors and type do not imply the two physically couple; see INetworkMember.AcceptsNeighbour.
-    if (!source.AcceptsNeighbour(neighbourBlock))
+    if (
+      !source.AcceptsNeighbour(neighbourBlock)
+      || !neighbour.AcceptsNeighbour(world.GetBlock(sourcePos))
+    )
       return false;
 
     return CouplesFrom(world, neighbourPos, neighbour);

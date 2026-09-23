@@ -43,6 +43,9 @@ see the git history.
 
 ### Changed
 
+- A network walk asks both cells of a pair whether they join (`AcceptsNeighbour`): a refusal from
+  either side keeps them apart whichever one the walk or placement starts from. Before, only the
+  source was asked, so a one-sided refusal could merge or split the pair depending on order.
 - The incompatible-mods guard refuses Pipes and Power Expanded below 0.7.0 and Steelmaking Expanded
   below 0.10.0 only, and its message names the version to install. A mod the loader has loaded is
   judged by that version; one that failed to load by the newest copy in the Mods folders.

@@ -51,7 +51,7 @@ Connectivity is reciprocal and four-way gated. `IsValidNetworkNeighbour` (`Block
 
 1. `Resolve` finds a membership there for the source's `NetworkTypeAt(world, sourcePos)` (`BlockNetworkModSystem.cs:543-547`),
 2. it exposes a connector on the touching face - `HasConnectorAt(world, pos, facing.Opposite)` (`:550`),
-3. `source.AcceptsNeighbour(neighbourBlock)` is true (`:557`) - the physical-joint test,
+3. `source.AcceptsNeighbour(neighbourBlock)` and `neighbour.AcceptsNeighbour(sourceBlock)` are both true - the physical-joint test, asked of both sides so a refusal holds whichever cell the walk starts from,
 4. it is neither an `IsNetworkEndPoint` nor severed - `CouplesFrom` (`:510-514`).
 
 A face that passes 1-4 nowhere is an **open end** (`GetOpenConnectorFaces`, `:449-469`), which the pipe tick turns into a leak or a vent.
@@ -152,7 +152,7 @@ public override bool AcceptsNeighbour(Block neighbour) =>
 - `BlockPipe.cs:238-239`. Rolled pipe joins only rolled pipe. Anything that is not a `BlockPipe` - a machine port, a condenser, a fluid intake - is unaffected, because those are ports on a machine, not lengths of run (`:227-236`). Two consequences the source calls out explicitly:
 
 - Because every fitting (valve, outlet, passthrough, tuyere, blower) is a `BlockPipe` subclass, a rolled run cannot reach iiex's fittings either. Until hpex ships its own, a rolled run is segments plus machine ports only (`BlockPipe.cs:231-235`).
-- A refused joint reads as an open end, not a hidden wall, so the run leaks rather than silently merging. The refusal is checked in `IsValidNetworkNeighbour`, the same chokepoint the leak scan uses, so it cannot be connected from one direction and open from the other (`BlockNetworkNode.cs:749-761`, `BlockNetworkModSystem.cs:434-438`). `AcceptsNeighbour` implementations must be symmetric (`BlockNetworkNode.cs:755-761`).
+- A refused joint reads as an open end, not a hidden wall, so the run leaks rather than silently merging. The refusal is checked in `IsValidNetworkNeighbour`, the same chokepoint the leak scan uses, which asks both sides: a refusal from either holds whichever cell the walk starts from, so the pair cannot be connected from one direction and open from the other (`BlockNetworkNode.AcceptsNeighbour`, `BlockNetworkModSystem.IsValidNetworkNeighbour`).
 
 **Burst mechanics.** A run that sits at or above its weakest burstable pipe's rating with nowhere to vent accumulates `_overpressureSeconds`; at `PipeOverpressureSeconds` one random qualifying pipe fails (`PipeNetwork.cs:774-809, 858-882`). Any relief that drops the pressure below the rating resets the grace (`:799-800`), and the timer is transient - a reload resets it (`:74-76`). Failure drops the pipe's items, puffs steam, pops, removes the node (fracturing the run) and sets the cell to air (`:888-916`). Burst selection prefers the world RNG so a seeded world is deterministic (`:877`).
 

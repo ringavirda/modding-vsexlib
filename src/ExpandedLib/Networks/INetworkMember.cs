@@ -23,6 +23,6 @@ public interface INetworkMember {
   /// <summary>Whether this cell currently severs the network at its position, e.g. a closed valve.</summary>
   bool IsConnectionBroken(IBlockAccessor world, BlockPos pos) => false;
 
-  /// <summary>Whether this cell will physically join <paramref name="neighbour"/>, beyond the geometric checks; implementations must answer symmetrically.</summary>
+  /// <summary>Whether this cell will physically join <paramref name="neighbour"/>, beyond the geometric checks. The walk asks both cells of a pair, so a refusal from either keeps them apart whichever side the walk starts from.</summary>
   bool AcceptsNeighbour(Block neighbour) => true;
 }

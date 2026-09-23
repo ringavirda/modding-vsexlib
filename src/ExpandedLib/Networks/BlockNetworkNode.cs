@@ -639,7 +639,7 @@ public abstract class BlockNetworkNode
     BlockFacing face
   ) => false;
 
-  /// <summary>Whether this node will physically join <paramref name="neighbour"/>, beyond the geometric checks (matching connectors, same network type); implementations must answer symmetrically.</summary>
+  /// <summary>Whether this node will physically join <paramref name="neighbour"/>, beyond the geometric checks (matching connectors, same network type). The walk asks both nodes of a pair, so a refusal from either keeps them apart.</summary>
   public virtual bool AcceptsNeighbour(Block neighbour) => true;
 
   /// <summary>Returns true if <see cref="Orientation"/> contains the single-char code for <paramref name="face"/>.</summary>
