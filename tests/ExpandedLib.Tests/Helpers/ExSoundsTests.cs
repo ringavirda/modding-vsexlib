@@ -258,7 +258,7 @@ public class ExSoundsTests : IDisposable {
 
     SoundParams first = Assert.Single(made);
     Assert.Equal(0.4f, first.Volume, 3);
-    Assert.Equal(EnumSoundType.Ambient, first.SoundType);
+    Assert.Equal(EnumSoundType.Sound, first.SoundType);
     Assert.True(first.ShouldLoop);
     loaded[0].Received(1).SetVolume(0.2f);
     loaded[0].Received(1).SetPitch(1.1f);

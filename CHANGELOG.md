@@ -22,8 +22,8 @@ see the git history.
   `TestWorld.DefineBlock` builds one variant of a definition the way the game registers it.
 - **Machine-sound volume**: `.exmod sound [0-1]` sets a per-player multiplier, `ExSounds.MachineVolume`,
   on every sound the `ExSounds` helpers play. One-shots the server plays reach each client in range
-  over the `exlibSound` channel and are scaled there; one-shots play as the game's Sound type and
-  loops as Ambient.
+  over the `exlibSound` channel and are scaled there; one-shots and loops play as the game's Sound
+  type, as vanilla machines do.
 - **`ExSoundLoop`**: one machine's looping sound, loaded once on the client, started and stopped with
   the machine, following `MachineVolume`, and released for good by `Dispose`.
 - **`SoundUse`** (ExpandedLib.Testing): fails a `PlayThrottled`/`PlayLoop` call whose interval is

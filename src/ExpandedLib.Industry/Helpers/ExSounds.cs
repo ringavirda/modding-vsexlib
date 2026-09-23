@@ -11,8 +11,8 @@ namespace ExpandedLib.Industry.Helpers;
 /// <summary>Shared catalogue of sound asset locations and play helpers. Each helper states
 /// whether it gates on side. A one-shot played on the server reaches each client in range through
 /// the <c>exlibSound</c> channel once <see cref="IndustryModule"/> has opened it; every client-side
-/// play is scaled by <see cref="MachineVolume"/> and plays as <see cref="EnumSoundType.Sound"/>,
-/// every loop as <see cref="EnumSoundType.Ambient"/>.</summary>
+/// play and every loop is scaled by <see cref="MachineVolume"/> and plays as
+/// <see cref="EnumSoundType.Sound"/>, the type vanilla machines use.</summary>
 public static class ExSounds {
   // Molten / heat
   public static readonly AssetLocation Sizzle = new("game:sounds/sizzle");
@@ -294,7 +294,7 @@ public static class ExSounds {
     Emit(world, pos, sound, null, randomizePitch, range, volume);
   }
 
-  /// <summary>Creates a gapless looping ambient sound at <paramref name="volume"/> times
+  /// <summary>Creates a gapless looping sound at <paramref name="volume"/> times
   /// <see cref="MachineVolume"/>. Returns null on the server; the caller owns the handle, and
   /// <see cref="ExSoundLoop"/> owns it for a machine.</summary>
   public static ILoadedSound? CreateLoop(
@@ -317,7 +317,7 @@ public static class ExSounds {
         Range = range,
         Pitch = pitch,
         RelativePosition = false,
-        SoundType = EnumSoundType.Ambient,
+        SoundType = EnumSoundType.Sound,
       }
     );
   }

@@ -182,8 +182,8 @@ take a `ref long lastMs` you keep in a field and play again only once the interv
 stacking copies until the game runs out of voices.
 
 Every play is scaled by `MachineVolume`, the player's `.exmod sound` setting (0 to 1 in tenths,
-default 1, saved per player). One-shots play as the game's Sound type, loops as Ambient, so the game's
-own sliders apply on top.
+default 1, saved per player). One-shots and loops both play as the game's Sound type, as vanilla
+machines do, so the game's sound-effects slider applies on top.
 
 For a continuous machine hum, hold an `ExSoundLoop` instead of a raw `ILoadedSound`:
 
