@@ -708,11 +708,18 @@ world.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "TwinTubBlower"));
 Block blower = world.World.GetBlock(new AssetLocation("twintubblower:blower-twintubblower-n"))!;
 ```
 
-`modPath` is a mod's folder (`modinfo.json`, `assets/<modid>/`, a compiled dll under `bin/`); every
-`ModSystem` the mod's assembly declares is `Start`ed against an isolated API before the object
-loader runs, so both JSON and code-first mods resolve. Base `game` domain assets load too, but not
-vanilla survival/creative content - those blocks need classes only `VSSurvivalMod`'s own
-`ModSystem`s register.
+`modPath` is a mod's folder (`modinfo.json`, `assets/<modid>/`, a compiled dll under `bin/`, which a
+mod declaring `"type": "content"` does without); every `ModSystem` the mod's assembly declares is
+`Start`ed against an isolated API before the object loader runs, so both JSON and code-first mods
+resolve. Base `game` domain assets load too, but not vanilla survival/creative content. Before the
+mod's own systems, every server-side `ModSystem` of the install's `Mods/` folder (`VSEssentials`,
+`VSSurvivalMod`, `VSCreativeMod`) is `Start`ed against an API that only registers classes, so the
+base domain finds the classes the game registers; a vanilla system that cannot start on that API is
+passed over. On 1.22 the tag converters read the load's own tag registries, as the server points
+them at its own. A vanilla-only load logs no Warning or Error, so under `[assembly: FailOnWarnings]`
+anything in `Log` after a load is the mod's: a block naming a class nothing registers logs "no such
+class registered". Each load starts from an empty `ExDefinitions`, so a second load in the process
+meets none of the first one's code-first blocks.
 
 ## 4. Boot it
 

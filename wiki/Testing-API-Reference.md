@@ -74,6 +74,7 @@ public sealed class TestWorld : IDisposable
     public TestWorld RegisterClasses(params Assembly[] assemblies);   // every [*Register] block/BE/behaviour class, real registry
     public TestWorld RegisterClass(string key, Type type);           // one class, e.g. a vanilla "Animatable"
     public Block DefineBlock(ExBlockDef def, DefinitionCodes.Registered variant);
+    public TestWorld LoadAssets(string modPath, string? gamePath = null);   // a mod's real assets through the game's loader
     public Item RegisterItem(string code, float meltingPoint = 0f);
     public Item? GetItem(AssetLocation? code);
     public Item? GetItem(int id);
@@ -141,6 +142,13 @@ as the game registers it: `*ByType` keys and `{group}` placeholders resolved by 
 resolver, the block built through `BlockType.CreateBlock`, given a fresh id (from 40000) and this
 world's api, registered, its `drops` resolved and its `OnLoaded` run. It throws
 `InvalidOperationException` before `RegisterClasses` or `RegisterClass` has run.
+
+`LoadAssets` loads a mod's folder through the game's own asset manager and object loader and
+registers the blocks and items it resolves; the vanilla mods' classes are registered first, so a
+vanilla-only load logs no Warning or Error, and each load starts from an empty `ExDefinitions`. It
+throws `InvalidOperationException` when no game install or `modinfo.json` resolves, or when a mod
+that is not `"type": "content"` has no compiled dll under `bin/`. See
+[Real assets](Testing-Harness#real-assets-testworldloadassets).
 
 `UnloadChunkAt` models a chunk unload as the walk sees one: every cell in the chunk holding that
 position reads back as air, its block entities as `null` and `GetChunkAtBlockPos` as `null`, while the

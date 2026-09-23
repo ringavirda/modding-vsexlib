@@ -72,6 +72,12 @@ see the git history.
   stay registered and older saves load as before.
 - `ExSounds.PlayThrottled` and `PlayLoop` never repeat a sound before its clip has finished, whatever
   interval the caller asks for. The pipe ambience plays at most one clip at a time per pipe.
+- `TestWorld.LoadAssets` (ExpandedLib.Testing) loads the base game as the game does. The vanilla
+  mods' mod systems register their block, item and entity classes first, and on 1.22 the tag
+  converters read this load's tag registries, so the base `game` domain loads without a Warning or
+  Error; a block naming a class nothing registers still logs its Error. Each load drops the
+  code-first definitions an earlier load registered. A mod whose `modinfo.json` declares
+  `"type": "content"` loads without a compiled assembly.
 
 ### Removed
 

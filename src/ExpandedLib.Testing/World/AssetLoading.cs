@@ -28,14 +28,15 @@ public sealed partial class TestWorld {
   /// creative content is not loaded.</summary>
   /// <remarks>First the install's vanilla mod systems register their classes (one that cannot start
   /// on a registration-only API is passed over), the 1.22 tag converters take this load's registries
-  /// and <see cref="ExDefinitions"/> is emptied.</remarks>
+  /// and <see cref="ExDefinitions"/> is emptied, so a vanilla-only load logs nothing.</remarks>
   /// <param name="modPath">A mod's or sample's folder; <c>modinfo.json</c>/<c>bin/</c> may sit at its
-  /// root or under <c>src/</c>, assets always under <c>assets/&lt;modid&gt;/</c>.</param>
+  /// root or under <c>src/</c>, assets always under <c>assets/&lt;modid&gt;/</c>. A mod whose
+  /// <c>modinfo.json</c> declares <c>"type": "content"</c> has no compiled assembly.</param>
   /// <param name="gamePath">The game install to read base assets and vanilla mods from; defaults to
   /// <see cref="VsAssemblyResolver.InstallPath"/>.</param>
   /// <returns>This world.</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, no <c>modinfo.json</c>
-  /// resolves, or the compiled dll cannot be found under <c>bin/</c>.</exception>
+  /// resolves, or a mod that is not a content mod has no compiled dll under <c>bin/</c>.</exception>
   public TestWorld LoadAssets(string modPath, string? gamePath = null) {
     gamePath ??=
       VsAssemblyResolver.InstallPath
@@ -60,8 +61,15 @@ public sealed partial class TestWorld {
       (string?)modInfoJson["modid"]
       ?? throw new InvalidOperationException($"'{modInfoPath}' has no modid.");
     string version = (string?)modInfoJson["version"] ?? "0.0.0";
+    bool isContentMod = string.Equals(
+      (string?)modInfoJson["type"],
+      "content",
+      StringComparison.OrdinalIgnoreCase
+    );
 
-    Assembly modAssembly = Assembly.LoadFrom(FindModAssembly(modRoot, modId));
+    Assembly? modAssembly = isContentMod
+      ? null
+      : Assembly.LoadFrom(FindModAssembly(modRoot, modId));
 
     // The base game domain only.
     var mgr = new AssetManager(assetsPath, EnumAppSide.Server);
@@ -88,9 +96,9 @@ public sealed partial class TestWorld {
     Mod mod = Mods.GetMod(modId)!;
 
     foreach (
-      Type t in modAssembly
-        .GetTypes()
-        .Where(t => typeof(ModSystem).IsAssignableFrom(t) && !t.IsAbstract)
+      Type t in (modAssembly?.GetTypes() ?? []).Where(t =>
+        typeof(ModSystem).IsAssignableFrom(t) && !t.IsAbstract
+      )
     ) {
       var sys = (ModSystem)Activator.CreateInstance(t)!;
       ReflectionHelpers.SetField(sys, "<Mod>k__BackingField", mod);
