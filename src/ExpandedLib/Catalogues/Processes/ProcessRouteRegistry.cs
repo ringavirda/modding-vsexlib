@@ -13,8 +13,15 @@ public sealed class ProcessRouteRegistry {
   public static ProcessRouteRegistry Shared { get; } = new();
 
   /// <summary>Code contributions to <see cref="Shared"/>, invoked by <see cref="ProcessRouteLoader"/>
-  /// after its JSON read on every <c>Load(ICoreAPI)</c>.</summary>
+  /// after its JSON read on every <c>Load(ICoreAPI)</c>; emptied when a world starts loading.</summary>
   public static CatalogueContributors Contributors { get; } = new();
+
+  /// <summary>Empties <see cref="Shared"/> and drops every contributor; run when a world starts
+  /// loading.</summary>
+  internal static void ResetForWorld() {
+    Shared.Clear();
+    Contributors.Clear();
+  }
 
   private readonly ExKeyedRegistry<ProcessRoute> _byFamily = new(r => r.Family);
 

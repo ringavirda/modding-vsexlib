@@ -31,6 +31,9 @@ public static class ExBlockNames {
     _qualifiers.Add((variantGroup, langPrefix));
   }
 
+  /// <summary>Drops every registered variant group; run when a world starts loading.</summary>
+  internal static void ResetForWorld() => _qualifiers.Clear();
+
   /// <summary>Removes a registered variant group, if any; internal, test-only teardown.</summary>
   internal static void RemoveVariantQualifier(string variantGroup) =>
     _qualifiers.RemoveAll(q => q.Group == variantGroup);

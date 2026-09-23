@@ -4,7 +4,8 @@ using ExpandedLib.Registries;
 namespace ExpandedLib.Config;
 
 /// <summary>Process-wide registry of the config stores mods expose to the generic <c>/exmod
-/// config</c> command, keyed by mod id.</summary>
+/// config</c> command, keyed by mod id. Emptied when a world starts loading
+/// (<see cref="ExWorldState"/>).</summary>
 public static class ExConfigProfiles {
   private static readonly ExKeyedRegistry<IExConfigAccess> _configs = new(c =>
     c.ModId
@@ -21,4 +22,7 @@ public static class ExConfigProfiles {
 
   /// <summary>The registered mod ids, for listing in the command.</summary>
   public static IReadOnlyCollection<string> Codes => _configs.Codes;
+
+  /// <summary>Drops every registered config store; run when a world starts loading.</summary>
+  internal static void ResetForWorld() => _configs.Clear();
 }

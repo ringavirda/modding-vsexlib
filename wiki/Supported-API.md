@@ -32,6 +32,7 @@ The game wants every block, item, behaviour, command and preference class handed
 | `IExModule` | The entry point of a module: driven through the phases of its host's lifecycle, in the order `ExModules.For` gives it among the host's other modules. | [Modules](Modules) |
 | `ExModuleInfo` | One discovered module: its id, host, shipping mod, requirements, assembly and entry points. | [Modules](Modules) |
 | `ExModuleSet` | One host's modules in dependency order, and the errors that excluded any of them. | [Modules](Modules) |
+| `ExWorldState` | When a world starts loading, returns exlib's process-wide registries to their fresh-process state: on the server every time, on a client only when it joins a remote server; `ResetsOnLoad` answers which. | [Lifecycle](Lifecycle) |
 | `ExModules` | Finds every module in the process and, per host, keeps only the ones whose shipping mod is enabled and orders the rest by `Requires`. | [Modules](Modules) |
 | `ExModuleHost` | One driver instance's modules: owns their entry-point instances and runs them through the same registries and phases as a main assembly. | [Modules](Modules) |
 | `BlockBehaviorRegisterAttribute` | Registers a BlockBehavior class. | [Registries](Registries) |

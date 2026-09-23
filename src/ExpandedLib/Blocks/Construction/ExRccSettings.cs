@@ -4,7 +4,8 @@ using System.Collections.Generic;
 namespace ExpandedLib.Blocks;
 
 /// <summary>Player-tunable settings for the right-click construction system, supplied by each mod
-/// from its own config, keyed by domain.</summary>
+/// from its own config, keyed by domain. Emptied when a world starts loading
+/// (<see cref="Registries.ExWorldState"/>).</summary>
 public static class ExRccSettings {
   private static readonly Dictionary<string, Func<float>> _brokenDropsRatios =
     new();
@@ -22,4 +23,7 @@ public static class ExRccSettings {
     _brokenDropsRatios.TryGetValue(domain, out Func<float>? getter)
       ? getter()
       : null;
+
+  /// <summary>Drops every registered ratio; run when a world starts loading.</summary>
+  internal static void ResetForWorld() => _brokenDropsRatios.Clear();
 }

@@ -83,6 +83,18 @@ see the git history.
 
 - `ExSounds.MePostHit`: its file is not in the game; `HeavyMetalHit` replaces it.
 
+### Fixed
+
+- **Leaving a world and loading another no longer carries state over.** exlib's registries are
+  process-wide, and the game keeps mod assemblies loaded between worlds, so a second world in the
+  same client process met the first one's code-first definitions, catalogue contributors, pipe tier
+  ratings, config, recipe-profile and preference registrations, including those of a mod since
+  disabled. Each is
+  now returned to its fresh-process state when a world starts loading, at `StartPre` of exlib's own
+  driver: on the server every time, on a client only when it joins a remote server
+  (`ExWorldState.ResetsOnLoad`). A singleplayer client loads after its own server in the same
+  process and keeps what that server loaded. Nothing is emptied at `Dispose`.
+
 ## [0.8.2] - 2026-09-15
 
 ### Added

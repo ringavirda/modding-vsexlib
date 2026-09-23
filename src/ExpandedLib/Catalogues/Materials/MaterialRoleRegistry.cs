@@ -16,7 +16,7 @@ public static class MaterialRoleRegistry {
     new(StringComparer.OrdinalIgnoreCase);
 
   /// <summary>Code contributions to this registry, invoked by <see cref="MaterialRoleLoader"/> after
-  /// its JSON overlay on every load.</summary>
+  /// its JSON overlay on every load; emptied when a world starts loading.</summary>
   public static CatalogueContributors Contributors { get; } = new();
 
   #region Registration
@@ -40,14 +40,20 @@ public static class MaterialRoleRegistry {
   /// world load; contributors are kept and re-invoked after the clear.</summary>
   public static void Clear() => _byRole.Clear();
 
-  /// <summary>Forwards to <see cref="Contributors"/>' <c>Register</c>. Call once from the mod's
-  /// <c>Start</c>.</summary>
+  /// <summary>Forwards to <see cref="Contributors"/>' <c>Register</c>. Call from the mod's
+  /// <c>Start</c>, which runs once per world.</summary>
   public static void RegisterContributor(Action<ICoreAPI> contributor) =>
     Contributors.Register(contributor);
 
-  /// <summary>Forwards to <see cref="Contributors"/>' <c>Clear</c>. For test isolation only; the game
-  /// registers once per process.</summary>
+  /// <summary>Forwards to <see cref="Contributors"/>' <c>Clear</c>.</summary>
   public static void ClearContributors() => Contributors.Clear();
+
+  /// <summary>Drops every role assignment and every contributor; run when a world starts
+  /// loading.</summary>
+  internal static void ResetForWorld() {
+    Clear();
+    ClearContributors();
+  }
 
   /// <summary>Runs every registered contributor against <paramref name="api"/>. Called by the loader
   /// after clearing and overlaying the JSON.</summary>

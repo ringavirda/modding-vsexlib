@@ -4,7 +4,8 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Catalogues;
 
-/// <summary>Code contributions to one catalogue, re-invoked after every load.</summary>
+/// <summary>Code contributions to one catalogue, re-invoked after every load. A registration lasts
+/// the world it was made in.</summary>
 public sealed class CatalogueContributors {
   private readonly List<Action<ICoreAPI>> _contributors = [];
 
@@ -15,7 +16,8 @@ public sealed class CatalogueContributors {
       _contributors.Add(contributor);
   }
 
-  /// <summary>Drops every registered contributor. For test isolation only.</summary>
+  /// <summary>Drops every registered contributor. Each registry's own list is dropped this way when
+  /// a world starts loading.</summary>
   public void Clear() => _contributors.Clear();
 
   /// <summary>How many contributors are registered.</summary>

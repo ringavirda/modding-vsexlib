@@ -111,8 +111,11 @@ public static class MoltenChisel {
     return ChiselOutcome.Chiseled;
   }
 
-  // The chisel items advertised in the interaction help, resolved once per process.
+  // The chisel items advertised in the interaction help, resolved once per world.
   private static ItemStack[]? _chiselStacks;
+
+  /// <summary>Forgets the resolved chisel stacks; run when a world starts loading.</summary>
+  internal static void ResetForWorld() => _chiselStacks = null;
 
   /// <summary>The chisel-out interaction hint, advertising every chisel item.</summary>
   public static WorldInteraction ChiselHelp(

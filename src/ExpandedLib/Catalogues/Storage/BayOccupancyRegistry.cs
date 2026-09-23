@@ -13,8 +13,15 @@ public sealed class BayOccupancyRegistry {
   public static BayOccupancyRegistry Shared { get; } = new();
 
   /// <summary>Code contributions to <see cref="Shared"/>, invoked by <c>BayOccupancyLoader</c> after
-  /// its JSON read on every <c>Load(ICoreAPI)</c>.</summary>
+  /// its JSON read on every <c>Load(ICoreAPI)</c>; emptied when a world starts loading.</summary>
   public static CatalogueContributors Contributors { get; } = new();
+
+  /// <summary>Empties <see cref="Shared"/> and drops every contributor; run when a world starts
+  /// loading.</summary>
+  internal static void ResetForWorld() {
+    Shared.Clear();
+    Contributors.Clear();
+  }
 
   private readonly Dictionary<string, List<BayOccupancy>> _byStore = new(
     StringComparer.OrdinalIgnoreCase

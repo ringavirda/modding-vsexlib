@@ -49,7 +49,8 @@ public static class NoSnowCells {
   /// <summary>Whether any owner marks <paramref name="pos"/>, in its own dimension.</summary>
   public static bool IsMarked(BlockPos pos) => Owners.ContainsKey(Key(pos));
 
-  /// <summary>Drops every mark of every owner, for a world that ends without unloading its blocks.</summary>
+  /// <summary>Drops every mark of every owner, for a world that ends without unloading its blocks;
+  /// also run when a world starts loading.</summary>
   internal static void Clear() {
     lock (Gate) {
       CellsByOwner.Clear();

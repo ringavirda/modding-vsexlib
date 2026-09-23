@@ -17,10 +17,20 @@ namespace ExpandedLib.Industry;
 /// <summary>Entry point for the family layer. Implements <see cref="IExModule"/> rather than a
 /// mod system, since only one dll per mod folder may contain mod systems.</summary>
 public sealed class IndustryModule : IExModule, IExDefinitionContributor {
-  /// <summary>Registers the refractory tier variant group before any block's
+  /// <summary>When <see cref="ExWorldState.ResetsOnLoad"/> holds, returns the family layer's
+  /// registries (metals, pipe tier ratings, the sound channel, the mold gate, the chisel list) to
+  /// their fresh-process state; then registers the refractory tier variant group before any block's
   /// <c>GetHeldItemName</c> can decorate.</summary>
-  public void StartPre(ICoreAPI api) =>
+  public void StartPre(ICoreAPI api) {
+    if (ExWorldState.ResetsOnLoad(api)) {
+      MetalRegistry.ResetForWorld();
+      BlockPipe.ResetForWorld();
+      ExSounds.StopServer();
+      ExMoldGate.ResetForWorld();
+      MoltenChisel.ResetForWorld();
+    }
     ExBlockNames.AddVariantQualifier("refractory", "exlib:refractory-");
+  }
 
   /// <summary>Registers the three network types this module ships, each with its defaults.</summary>
   public void Start(ICoreAPI api) =>

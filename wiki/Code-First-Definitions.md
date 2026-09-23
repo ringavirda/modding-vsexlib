@@ -68,7 +68,8 @@ calls `EntityRegistry.RegisterAll`. (A `ModSystem` is the game's entry point for
 `Start` is its first phase; [Registries](Registries) covers the scan itself.)
 
 `ExDefinitions` is the process-wide registry the discovered defs land in. Holding them is all it
-does. Every def is keyed by its asset location, so registering the same location twice replaces
+does, for one world: it is emptied when the next world starts loading, so a mod left out of that
+world injects nothing. Every def is keyed by its asset location, so registering the same location twice replaces
 rather than duplicates - which is also how you deliberately override a definition another mod
 declared.
 

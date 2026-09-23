@@ -43,6 +43,14 @@ public static class MetalRegistry {
     _byCode.Clear();
   }
 
+  /// <summary>Drops every metal and contributor and the recovery fallback; run when a world starts
+  /// loading.</summary>
+  internal static void ResetForWorld() {
+    Clear();
+    Contributors.Clear();
+    DefaultRecoveryFallback = null;
+  }
+
   /// <summary>Every registered metal descriptor.</summary>
   public static IReadOnlyCollection<MetalDef> All => _byMoltenItem.Values;
 

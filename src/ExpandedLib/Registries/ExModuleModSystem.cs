@@ -7,7 +7,8 @@ using Vintagestory.API.Server;
 namespace ExpandedLib.Registries;
 
 /// <summary>Drives exlib's own framework modules, and boots exlib's own loggers and tunables
-/// ahead of anything that might log or register.</summary>
+/// ahead of anything that might log or register. Its <c>StartPre</c> first returns exlib's
+/// registries to their fresh-process state through <see cref="ExWorldState"/>.</summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class ExModuleModSystem : ModSystem {
   private ExModuleHost? _host;
@@ -17,7 +18,10 @@ public class ExModuleModSystem : ModSystem {
 
   public override double ExecuteOrder() => 0.03;
 
+  // The reset runs before anything below, or any other mod, registers.
   public override void StartPre(ICoreAPI api) {
+    ExWorldState.ResetOnLoad(api);
+
     Definitions.ExDefinitions.Logger = api.Logger;
     EntityRegistry.Logger = api.Logger;
 

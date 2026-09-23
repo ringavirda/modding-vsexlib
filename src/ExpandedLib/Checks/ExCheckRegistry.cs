@@ -24,7 +24,7 @@ public static class ExCheckRegistry {
     System.Func<ICheckSource, string, CheckResult> Run
   )> Registered => _registered;
 
-  /// <summary>Drops every registration; for tests only.</summary>
+  /// <summary>Drops every registration; run when a world starts loading.</summary>
   internal static void Clear() {
     _seen.Clear();
     _registered.Clear();

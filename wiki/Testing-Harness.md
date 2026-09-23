@@ -718,8 +718,12 @@ base domain finds the classes the game registers; a vanilla system that cannot s
 passed over. On 1.22 the tag converters read the load's own tag registries, as the server points
 them at its own. A vanilla-only load logs no Warning or Error, so under `[assembly: FailOnWarnings]`
 anything in `Log` after a load is the mod's: a block naming a class nothing registers logs "no such
-class registered". Each load starts from an empty `ExDefinitions`, so a second load in the process
-meets none of the first one's code-first blocks.
+class registered". Each load first runs exlib's own `ExModuleModSystem.StartPre`, as a starting
+server does, which empties `ExDefinitions` and every other per-world registry of exlib, so a second
+load in the process meets nothing of the first one's code-first blocks, metals, contributors or
+config.
+exlib's own classes are not registered: a mod block naming `exlib.BlockPipe` logs "no such class
+registered".
 
 ## 4. Boot it
 

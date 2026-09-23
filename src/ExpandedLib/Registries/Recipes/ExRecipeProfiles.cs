@@ -4,7 +4,8 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Registries;
 
 /// <summary>Process-wide registry of <see cref="RecipeProfile"/>s keyed by mod code, for mods that
-/// expose recipe-cost levels. Owns the shared apply pipeline.</summary>
+/// expose recipe-cost levels. Owns the shared apply pipeline. Emptied when a world starts loading
+/// (<see cref="ExWorldState"/>).</summary>
 public static class ExRecipeProfiles {
   private static readonly ExKeyedRegistry<RecipeProfile> _profiles = new(p =>
     p.Code
@@ -20,6 +21,9 @@ public static class ExRecipeProfiles {
 
   /// <summary>Removes a mod's profile, if registered.</summary>
   internal static void Unregister(string code) => _profiles.Remove(code);
+
+  /// <summary>Drops every registered profile; run when a world starts loading.</summary>
+  internal static void ResetForWorld() => _profiles.Clear();
 
   /// <summary>The registered mod codes, for listing in the command.</summary>
   public static IReadOnlyCollection<string> Codes => _profiles.Codes;

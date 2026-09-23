@@ -12,6 +12,9 @@ public static class ExMoldGate {
     System.Func<AssetLocation?, bool> isDisabled
   ) => _isDisabled = isDisabled;
 
+  /// <summary>Drops the registered predicate; run when a world starts loading.</summary>
+  internal static void ResetForWorld() => _isDisabled = null;
+
   /// <summary>Whether the tool mold identified by <paramref name="code"/> is currently disabled.</summary>
   public static bool IsToolMoldDisabled(AssetLocation? code) =>
     _isDisabled?.Invoke(code) ?? false;

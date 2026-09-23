@@ -145,7 +145,8 @@ world's api, registered, its `drops` resolved and its `OnLoaded` run. It throws
 
 `LoadAssets` loads a mod's folder through the game's own asset manager and object loader and
 registers the blocks and items it resolves; the vanilla mods' classes are registered first, so a
-vanilla-only load logs no Warning or Error, and each load starts from an empty `ExDefinitions`. It
+vanilla-only load logs no Warning or Error, and each load starts as a server's does, with exlib's
+own `ExModuleModSystem.StartPre`, which empties `ExDefinitions` and every other per-world registry. It
 throws `InvalidOperationException` when no game install or `modinfo.json` resolves, or when a mod
 that is not `"type": "content"` has no compiled dll under `bin/`. See
 [Real assets](Testing-Harness#real-assets-testworldloadassets).

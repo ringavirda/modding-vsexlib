@@ -267,9 +267,10 @@ load. To survive that, register through `Contributors` instead, one section down
 
 Every catalogue is contributed to rather than owned, and every registry exposes the same seam: a
 static `Contributors` property, of type `ExpandedLib.Catalogues.CatalogueContributors`. Register
-your contribution once, from your mod system's `Start`, the first phase the game calls. The owning
-loader re-runs every registered contributor after its own JSON read, on every `AssetsFinalize`, so a
-C# entry outlives the clear that would otherwise erase it.
+your contribution from your mod system's `Start`. The owning loader re-runs every registered
+contributor after its own JSON read, on every `AssetsFinalize`, so a C# entry outlives the clear that
+would otherwise erase it. The list itself lasts one world: it is emptied when the next world starts
+loading, and your `Start` registers again.
 
 A metal, with the item it pours as:
 

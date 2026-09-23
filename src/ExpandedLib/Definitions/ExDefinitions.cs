@@ -9,7 +9,8 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Definitions;
 
 /// <summary>Process-wide registry of code-first block, item and recipe definitions, keyed by
-/// asset location so a re-register replaces rather than duplicates.</summary>
+/// asset location so a re-register replaces rather than duplicates. Emptied when a world starts
+/// loading (<see cref="ExWorldState"/>).</summary>
 public static class ExDefinitions {
   private static readonly ExKeyedRegistry<ExBlockDef> _blocks = new(d =>
     d.Location.ToString()
@@ -109,7 +110,8 @@ public static class ExDefinitions {
   /// <summary>Every discovered <see cref="IExDefinitionContributor"/> type, in discovery order.</summary>
   public static IReadOnlyList<Type> Contributors => _contributors.AsReadOnly();
 
-  /// <summary>Drops every registered definition (used by tests to isolate the static registry).</summary>
+  /// <summary>Drops every registered definition and discovered contributor, and the record of the
+  /// last injection. Run when a world starts loading, and by tests to isolate the registry.</summary>
   public static void Clear() {
     _blocks.Clear();
     _items.Clear();

@@ -34,6 +34,14 @@ public static class ExPreferences {
   public static void Register(IExPreference preference) =>
     _registered[preference.Key] = preference;
 
+  /// <summary>Drops every registered preference and the loaded store, as in a fresh process. Run
+  /// when a world starts loading.</summary>
+  internal static void ResetForWorld() {
+    _registered.Clear();
+    _config = new ExPreferencesConfig();
+    _api = null;
+  }
+
   /// <summary>The registered preference for <paramref name="key"/>, or <c>null</c> if none.</summary>
   public static IExPreference? Find(string key) =>
     _registered.TryGetValue(key, out var p) ? p : null;

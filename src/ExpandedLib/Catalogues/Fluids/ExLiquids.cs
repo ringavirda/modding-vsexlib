@@ -17,7 +17,8 @@ public static class ExLiquids {
   /// <summary>The medium policy the pipe network consults (over the current registry contents).</summary>
   public static IMediumTaxonomy Taxonomy { get; } = new MediumTaxonomy();
 
-  /// <summary>Code contributions to this registry, invoked after every load.</summary>
+  /// <summary>Code contributions to this registry, invoked after every load; emptied when a world
+  /// starts loading.</summary>
   public static CatalogueContributors Contributors { get; } = new();
 
   /// <summary>Registers (or replaces) a medium by its <see cref="LiquidDef.Code"/>.</summary>
@@ -32,6 +33,14 @@ public static class ExLiquids {
 
   /// <summary>Drops every registered medium. <see cref="Load"/> calls this before re-seeding.</summary>
   public static void Clear() => _defs.Clear();
+
+  /// <summary>Drops every registered medium but the four built-in ones, and every contributor; run
+  /// when a world starts loading.</summary>
+  internal static void ResetForWorld() {
+    _defs.Clear();
+    SeedDefaults();
+    Contributors.Clear();
+  }
 
   /// <summary>Registers the four built-in media. Idempotent.</summary>
   public static void SeedDefaults() {

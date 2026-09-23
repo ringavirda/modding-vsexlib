@@ -43,8 +43,11 @@ public static class StructureFillers {
   public static AssetLocation FillerCode { get; set; } =
     new(ExlibBlocks.Structurefiller.Code);
 
-  // Guards the "not registered" Error to log once per process.
+  // Guards the "not registered" Error to log once per world.
   private static bool _missingFillerLogged;
+
+  /// <summary>Re-arms the missing-filler Error; run when a world starts loading.</summary>
+  internal static void ResetForWorld() => _missingFillerLogged = false;
 
   private static Block? ResolveFiller(IWorldAccessor world) {
     Block? filler = world.GetBlock(FillerCode);

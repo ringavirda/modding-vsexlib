@@ -27,8 +27,10 @@ public sealed partial class TestWorld {
   /// registers the resulting <see cref="Block"/>/<see cref="Item"/> instances; vanilla survival and
   /// creative content is not loaded.</summary>
   /// <remarks>First the install's vanilla mod systems register their classes (one that cannot start
-  /// on a registration-only API is passed over), the 1.22 tag converters take this load's registries
-  /// and <see cref="ExDefinitions"/> is emptied, so a vanilla-only load logs nothing.</remarks>
+  /// on a registration-only API is passed over) and the 1.22 tag converters take this load's
+  /// registries, so a vanilla-only load logs nothing. Then exlib's own driver runs its
+  /// <c>StartPre</c> as a starting server's does, which empties every per-world registry of exlib and
+  /// exlib.industry (<see cref="Registries.ExWorldState"/>) before the mod's systems start.</remarks>
   /// <param name="modPath">A mod's or sample's folder; <c>modinfo.json</c>/<c>bin/</c> may sit at its
   /// root or under <c>src/</c>, assets always under <c>assets/&lt;modid&gt;/</c>. A mod whose
   /// <c>modinfo.json</c> declares <c>"type": "content"</c> has no compiled assembly.</param>
@@ -90,7 +92,7 @@ public sealed partial class TestWorld {
       out ClassRegistry rawClassRegistry
     );
     StartVanillaMods(gamePath, rawClassRegistry);
-    ExDefinitions.Clear();
+    StartExlib(loaderApi);
 
     Mods.Add(modId, version);
     Mod mod = Mods.GetMod(modId)!;
@@ -331,6 +333,18 @@ public sealed partial class TestWorld {
         system.Start(api);
       } catch (Exception) { }
     }
+  }
+
+  /// <summary>Runs <see cref="Registries.ExModuleModSystem.StartPre"/> under this world's
+  /// <c>exlib</c> mod against <paramref name="api"/>.</summary>
+  private void StartExlib(ICoreServerAPI api) {
+    var exlib = new Registries.ExModuleModSystem();
+    ReflectionHelpers.SetField(
+      exlib,
+      "<Mod>k__BackingField",
+      Mods.GetMod("exlib")!
+    );
+    exlib.StartPre(api);
   }
 
   /// <summary>Reflectively runs <c>ModRegistryObjectTypeLoader.AssetsLoaded</c>, found by name each

@@ -59,6 +59,9 @@ public abstract class BlockNetworkNode
     string[]
   > _tempOrientationsStore = new();
 
+  /// <summary>Drops every pending placement choice; run when a world starts loading.</summary>
+  internal static void ResetForWorld() => _tempOrientationsStore.Clear();
+
   /// <summary>
   /// Determines the best orientation for this block at the target position by
   /// examining neighbouring network blocks, then delegates to <c>DoPlaceBlock</c>.

@@ -98,6 +98,13 @@ public static class EntityRegistry {
   // Assembly -> the domain its registrable types are keyed under.
   private static readonly Dictionary<Assembly, string> _domainByAssembly = [];
 
+  /// <summary>Forgets every assembly's recorded domain and every block entity's primary key; run
+  /// when a world starts loading.</summary>
+  internal static void ResetForWorld() {
+    _domainByAssembly.Clear();
+    _primaryKeys.Clear();
+  }
+
   /// <summary>
   /// The domain <paramref name="asm"/>'s registrable types are keyed under: its
   /// <see cref="ExDomainAttribute"/> if it declares one, else the modid it was registered with, else
