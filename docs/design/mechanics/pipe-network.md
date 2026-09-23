@@ -47,16 +47,16 @@ Every network in the suite - pipe, molten, mpenergy - is a `BlockNetwork` subcla
 | tick | `BlockNetworkModSystem.cs:46-52, 403` | one server listener at 1000 ms, `dt` clamped to 2 s; resumes suspended reviews (`:420`) then dispatches `OnTick` to every live network |
 | broadcast | `BlockNetwork.cs:55-64` | pushes the typed state payload to every `INetworkNode` BE in the run |
 
-Connectivity is reciprocal and four-way gated. `IsValidNetworkNeighbour` (`BlockNetworkModSystem.cs:535`) is the single chokepoint that both the traversal and the leak scan go through. Source and neighbour are resolved identically, by `NetworkMembership.Resolve` (`NetworkMembership.cs:44`) - a membership behaviour on the cell's block entity, else the block itself - so neither side names a block type and a block that spent its base class elsewhere still walks. A neighbour connects only when all of:
+Connectivity is reciprocal and four-way gated. `BlockNetworkModSystem.IsValidNetworkNeighbour` is the single chokepoint that both the traversal and the leak scan go through. Source and neighbour are resolved identically, by `NetworkMembership.Resolve` - a membership behaviour on the cell's block entity, else the block itself - so neither side names a block type and a block that spent its base class elsewhere still walks. A neighbour connects only when all of:
 
-1. `Resolve` finds a membership there for the source's `NetworkTypeAt(world, sourcePos)` (`BlockNetworkModSystem.cs:543-547`),
-2. it exposes a connector on the touching face - `HasConnectorAt(world, pos, facing.Opposite)` (`:550`),
+1. `Resolve` finds a membership there for the source's `NetworkTypeAt(world, sourcePos)`,
+2. it exposes a connector on the touching face - `HasConnectorAt(world, pos, facing.Opposite)`,
 3. `source.AcceptsNeighbour(neighbourBlock)` and `neighbour.AcceptsNeighbour(sourceBlock)` are both true - the physical-joint test, asked of both sides so a refusal holds whichever cell the walk starts from,
-4. it is neither an `IsNetworkEndPoint` nor severed - `CouplesFrom` (`:510-514`).
+4. it is neither an `IsNetworkEndPoint` nor severed - `BlockNetworkModSystem.CouplesFrom`.
 
-A face that passes 1-4 nowhere is an **open end** (`GetOpenConnectorFaces`, `:449-469`), which the pipe tick turns into a leak or a vent.
+A face that passes 1-4 nowhere is an **open end** (`BlockNetworkModSystem.GetOpenConnectorFaces`), which the pipe tick turns into a leak or a vent.
 
-The **source** cell is gated differently by the two consumers, deliberately. The traversal asks `CouplesFrom` of the source as well (`:483`), so an endpoint or a severed cell yields no graph neighbours at all. The open-end scan does not: whether a face is open is a physical fact rather than a graph one, and a closed valve, a solidified canal and a pressure valve all still meet the pipe they touch. Gating the scan on the source too would cap a closed tap's inlet a second time over its own end-cap mesh (`BlockEntityMoltenCanalTap.cs:684-696`) and report every endpoint's coupled face as a leak.
+The **source** cell is gated differently by the two consumers, deliberately. The traversal asks `CouplesFrom` of the source as well (`BlockNetworkModSystem.GetConnectedNeighbors`), so an endpoint or a severed cell yields no graph neighbours at all. The open-end scan does not: whether a face is open is a physical fact rather than a graph one, and a closed valve, a solidified canal and a pressure valve all still meet the pipe they touch. Gating the scan on the source too would cap a closed tap's inlet a second time over its own end-cap mesh (`BlockEntityMoltenCanalTap.OnTesselation`) and report every endpoint's coupled face as a leak.
 
 Connectors read the adjacent cell, not their own. Two position-aware members carry that: `NetworkTypeAt(world, pos)` on `INetworkMember` (`INetworkMember.cs:26`) and `HasConnectorAt(world, pos, face)`, which `INetworkConnector` supplies for a block as an explicit default (`INetworkConnector.cs:29`). A node block answers both from its `orientation` variant (`BlockNetworkNode.cs:732, 743`); a per-cell connector - a megablock structure filler exposing a port on exactly one footprint cell - declares them as plain public members that outrank the default, reads the block entity at `pos`, and stays inert everywhere else. So a machine need not be a network node to be plumbed in: a structure block implementing `INetworkConnector` is a valid connection target but is never added to the graph (`INetworkConnector.cs:7-17`).
 
@@ -138,20 +138,20 @@ The rating doubles as the tier's buffer size: a run holds `burst × pipes × Lit
 
 Only a plain segment participates: `CanBurst => GetType() == typeof(BlockPipe)` (`BlockPipe.cs:262`). Every fitting is a subclass and is therefore exempt by default - it neither bursts nor caps the run's pressure. Outlet and passthrough additionally override `BurstPressure => float.MaxValue` (`BlockPipeOutlet.cs:22`, `BlockPipePassthrough.cs:26`). The outlet names no tier and would take the default anyway; the passthroughs are tiered, but for identity rather than rating - see below.
 
-**Joint** - `BlockPipe._jointByTier` (`BlockPipe.cs:301`), two families:
+**Joint** - `BlockPipe._jointByTier`, two families:
 
 | family | constant | tiers | registration |
 |---|---|---|---|
-| `flanged` | `BlockPipe.FlangedJoint` (`:307`) | plated, cast - both square in section, bolted through flanges - **and every untiered fitting** (outlet, fluid intake, tuyere), which is what keeps them reachable from either | `IronIndustryExpandedModSystem.cs:75`, `IronIndustryExpandedModSystem.cs:65` |
-| `welded` | `BlockPipe.WeldedJoint` (`:310`) | rolled - octagonal and welded, no flange to bolt to | `SteelIndustryExpandedModSystem.cs:49` |
+| `flanged` | `BlockPipe.FlangedJoint` | plated, cast - both square in section, bolted through flanges - **and every untiered fitting** (outlet, fluid intake, tuyere), which is what keeps them reachable from either | `IronIndustryExpandedModSystem.Start` |
+| `welded` | `BlockPipe.WeldedJoint` | rolled - octagonal and welded, no flange to bolt to | `SteelIndustryExpandedModSystem.Start` |
 
 ```csharp
 public override bool AcceptsNeighbour(Block neighbour) =>
     neighbour is not BlockPipe other || other.JointFamily == JointFamily;
 ```
-- `BlockPipe.cs:238-239`. Rolled pipe joins only rolled pipe. Anything that is not a `BlockPipe` - a machine port, a condenser, a fluid intake - is unaffected, because those are ports on a machine, not lengths of run (`:227-236`). Two consequences the source calls out explicitly:
+- `BlockPipe.AcceptsNeighbour`. Rolled pipe joins only rolled pipe. Anything that is not a `BlockPipe` - a machine port, a condenser, a fluid intake - is unaffected, because those are ports on a machine, not lengths of run. Two consequences the source calls out explicitly:
 
-- Because every fitting (valve, outlet, passthrough, tuyere, blower) is a `BlockPipe` subclass, a rolled run cannot reach iiex's fittings either. Until hpex ships its own, a rolled run is segments plus machine ports only (`BlockPipe.cs:231-235`).
+- Because every fitting (valve, outlet, passthrough, tuyere, blower) is a `BlockPipe` subclass, a rolled run cannot reach iiex's fittings either. Until hpex ships its own, a rolled run is segments plus machine ports only.
 - A refused joint reads as an open end, not a hidden wall, so the run leaks rather than silently merging. The refusal is checked in `IsValidNetworkNeighbour`, the same chokepoint the leak scan uses, which asks both sides: a refusal from either holds whichever cell the walk starts from, so the pair cannot be connected from one direction and open from the other (`BlockNetworkNode.AcceptsNeighbour`, `BlockNetworkModSystem.IsValidNetworkNeighbour`).
 
 **Burst mechanics.** A run that sits at or above its weakest burstable pipe's rating with nowhere to vent accumulates `_overpressureSeconds`; at `PipeOverpressureSeconds` one random qualifying pipe fails (`PipeNetwork.cs:774-809, 858-882`). Any relief that drops the pressure below the rating resets the grace (`:799-800`), and the timer is transient - a reload resets it (`:74-76`). Failure drops the pipe's items, puffs steam, pops, removes the node (fracturing the run) and sets the cell to air (`:888-916`). Burst selection prefers the world RNG so a seeded world is deterministic (`:877`).
