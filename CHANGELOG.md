@@ -30,11 +30,20 @@ see the git history.
   shorter than its clip, a type holding an `ILoadedSound` itself, and an `ExSoundLoop` that
   `OnBlockRemoved()` or `OnBlockUnloaded()` never disposes; `DirectSounds` fails a `PlaySound*` or
   `LoadSound` call made past `ExSounds`.
+- **`[assembly: ExPublishedSaveKeys]`**: marks a mod whose bare block-entity keys (`{Xxx}`,
+  `{xxx}`) are in published saves. A bare key claimed by a marked and an unmarked assembly is
+  registered to the marked one in either load order; the unmarked type keeps its prefixed keys and
+  one Notification names both.
+- **`EntityRegistry.AliasBlockEntity`**: registers a load-only key for a block entity type and
+  leaves the type saved under its primary key.
 - **`ExSounds.ClipLengthMs`**, **`ExSounds.CeramicBreak`**, **`ExSounds.GearboxTurn`**,
   **`ExSounds.HeavyMetalHit`**.
 
 ### Changed
 
+- `EntityRegistry.RegisterAll` registers a block entity's aliases first and its primary key last, so
+  saves written from now on name `{modid}.BlockEntityXxx` instead of the bare `{xxx}`. The aliases
+  stay registered and older saves load as before.
 - `ExSounds.PlayThrottled` and `PlayLoop` never repeat a sound before its clip has finished, whatever
   interval the caller asks for. The pipe ambience plays at most one clip at a time per pipe.
 

@@ -156,9 +156,9 @@ public static class EntityRegistry {
     return false;
   }
 
-  /// <summary>Registers a block entity under its primary key plus the <c>{modid}.{ShortId}</c>,
-  /// <c>{ShortId}</c> and <c>{shortid}</c> aliases of a <c>BlockEntityXxx</c> name; an explicit
-  /// <see cref="RegisterAttribute.Code"/> gets no aliases.</summary>
+  /// <summary>Registers a block entity under the <c>{modid}.{ShortId}</c>, <c>{ShortId}</c> and
+  /// <c>{shortid}</c> aliases of a <c>BlockEntityXxx</c> name, then under its primary key, which the
+  /// game saves it by; an explicit <see cref="RegisterAttribute.Code"/> gets no aliases.</summary>
   private static void RegisterBlockEntity(
     ICoreAPI api,
     string domain,
@@ -166,25 +166,71 @@ public static class EntityRegistry {
     RegisterAttribute attr,
     Type type
   ) {
-    api.RegisterBlockEntityClass(key, type);
-
     const string prefix = "BlockEntity";
-    if (attr.Code != null || !type.Name.StartsWith(prefix))
-      return;
+    if (attr.Code == null && type.Name.StartsWith(prefix)) {
+      string shortId = type.Name[prefix.Length..];
+      api.RegisterBlockEntityClass($"{domain}.{shortId}", type);
+      RegisterBareAliases(api, type, shortId, shortId.ToLowerInvariant());
+    }
 
-    string shortId = type.Name[prefix.Length..];
-    api.RegisterBlockEntityClass($"{domain}.{shortId}", type);
-    RegisterBareAlias(api, shortId, type);
-    RegisterBareAlias(api, shortId.ToLowerInvariant(), type);
+    // The game saves a block entity under the last key its type was registered with.
+    api.RegisterBlockEntityClass(key, type);
+    _primaryKeys[type] = key;
   }
 
-  // Bare alias key -> the type that first claimed it.
+  /// <summary>
+  /// Registers <paramref name="type"/> under <paramref name="key"/> so a save naming that key loads
+  /// it, while the game keeps saving it under its primary key.
+  /// </summary>
+  /// <remarks>A type <see cref="RegisterAll"/> has not registered yet gets its primary key
+  /// registered after the alias when it is. A type <see cref="RegisterAll"/> never registers is
+  /// saved under <paramref name="key"/>, the last key registered for it.</remarks>
+  /// <param name="api">The api whose class registry receives the alias.</param>
+  /// <param name="key">The load-only key, for example the class name an older release saved.</param>
+  /// <param name="type">A <see cref="BlockEntity"/> type.</param>
+  /// <exception cref="ArgumentException"><paramref name="type"/> does not derive from
+  /// <see cref="BlockEntity"/>.</exception>
+  public static void AliasBlockEntity(ICoreAPI api, string key, Type type) {
+    if (!typeof(BlockEntity).IsAssignableFrom(type))
+      throw new ArgumentException(
+        $"{type.FullName} is not a block entity class.",
+        nameof(type)
+      );
+
+    api.RegisterBlockEntityClass(key, type);
+    if (_primaryKeys.TryGetValue(type, out string? primary))
+      api.RegisterBlockEntityClass(primary, type);
+  }
+
+  // Block entity type -> the primary key RegisterAll registered it under.
+  private static readonly Dictionary<Type, string> _primaryKeys = [];
+
+  // Bare alias key -> the type that owns it.
   private static readonly Dictionary<string, Type> _bareKeysIssued = [];
 
-  private static void RegisterBareAlias(ICoreAPI api, string key, Type type) {
-    if (!_bareKeysIssued.TryAdd(key, type)) {
-      Type owner = _bareKeysIssued[key];
-      if (owner != type)
+  private static bool PublishesSaveKeys(Type type) =>
+    type.Assembly.IsDefined(typeof(ExPublishedSaveKeysAttribute));
+
+  private static void RegisterBareAliases(
+    ICoreAPI api,
+    Type type,
+    params string[] keys
+  ) {
+    bool published = PublishesSaveKeys(type);
+    // Contested keys settled by publication, grouped by the other claimant.
+    Dictionary<Type, List<string>> settled = [];
+
+    foreach (string key in keys.Distinct()) {
+      if (
+        !_bareKeysIssued.TryGetValue(key, out Type? owner)
+        || owner == type
+      ) {
+        _bareKeysIssued[key] = type;
+        api.RegisterBlockEntityClass(key, type);
+        continue;
+      }
+
+      if (published == PublishesSaveKeys(owner)) {
         api.Logger.Error(
           "[exlib] Bare block entity key '{0}' is already registered by {1}; {2} claims it too - "
             + "a saved block entity keyed '{0}' will load whichever type registered last.",
@@ -192,8 +238,28 @@ public static class EntityRegistry {
           owner.FullName,
           type.FullName
         );
+        api.RegisterBlockEntityClass(key, type);
+        continue;
+      }
+
+      if (!settled.TryGetValue(owner, out List<string>? contested))
+        settled[owner] = contested = [];
+      contested.Add(key);
+      if (published) {
+        _bareKeysIssued[key] = type;
+        api.RegisterBlockEntityClass(key, type);
+      }
     }
 
-    api.RegisterBlockEntityClass(key, type);
+    foreach ((Type other, List<string> contested) in settled) {
+      (Type keeper, Type skipped) = published ? (type, other) : (other, type);
+      api.Logger.Notification(
+        "[exlib] Bare block entity key(s) {0} belong to {1}, whose assembly declares "
+          + "[assembly: ExPublishedSaveKeys]; {2} is not registered under them.",
+        string.Join(", ", contested.Select(k => $"'{k}'")),
+        keeper.FullName,
+        skipped.FullName
+      );
+    }
   }
 }

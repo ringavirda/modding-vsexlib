@@ -114,6 +114,20 @@ bare `{Xxx}`/`{xxx}` pair carries no domain, so when a second mod's class claims
 already issued, exlib logs an error naming both types rather than letting the second silently
 overwrite the first's registration.
 
+The aliases are registered first and the primary key last, and the game saves a block entity under
+the last key its type was registered with, so every save names the primary key
+(`{modid}.BlockEntityXxx` for a class that sets no `Code`). The aliases stay registered, so a save
+that names one still loads.
+
+A mod whose bare keys are already in published saves declares `[assembly: ExPublishedSaveKeys]`.
+A bare key claimed by a marked assembly and an unmarked one belongs to the marked one, whichever
+registers first: the unmarked type is not registered under it, keeps its prefixed keys, and exlib
+logs one Notification naming both types. Two marked claimants, like two unmarked ones, log the
+error, and the one registered last loads.
+
+`EntityRegistry.AliasBlockEntity(api, key, type)` adds a load-only key to a block entity type, such
+as the class name an older release saved it under, and leaves its saved name at its primary key.
+
 One call registers the lot, from `Start`. It scans the assembly you hand it; omit the argument and
 it scans the caller's own, which is what you want until your mod ships more than one:
 
@@ -121,6 +135,7 @@ it scans the caller's own, which is what you want until your mod ships more than
 public static class EntityRegistry
 {
     public static void RegisterAll(ICoreAPI api, Mod mod, Assembly? asm = null);   // default asm = caller's
+    public static void AliasBlockEntity(ICoreAPI api, string key, Type type);      // load-only key
 }
 ```
 

@@ -44,6 +44,7 @@ The game wants every block, item, behaviour, command and preference class handed
 | `EntityRegisterAttribute` | Registers an Entity class. | [Registries](Registries) |
 | `EntityRegistry` | Reflection-driven class registration for mods built on ExpandedLib. | [Registries](Registries) |
 | `ExDomainAttribute` | Declares the asset domain an assembly's registered classes and code-first definitions are keyed under, so KeyFor can resolve a key from a Type alone rather than from the domain of whoever is asking. | [Registries](Registries) |
+| `ExPublishedSaveKeysAttribute` | Marks an assembly whose bare block-entity keys are in published saves; a bare key it and an unmarked assembly both claim is registered to it. | [Registries](Registries) |
 | `ItemRegisterAttribute` | Registers an Item class. | [Registries](Registries) |
 | `RegisterAttribute` | Base for the kind-specific registration attributes. | [Registries](Registries) |
 | `CommandRegisterAttribute` | Marks an IExCommand class for automatic registration by RegisterAll; the class supplies an Register body and needs no wiring in the mod system. | [Commands](Commands) |
