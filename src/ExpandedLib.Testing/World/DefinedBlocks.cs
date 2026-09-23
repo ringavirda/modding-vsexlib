@@ -155,6 +155,20 @@ public sealed partial class TestWorld {
     return _classes;
   }
 
+  /// <summary>Logs a Warning when <paramref name="block"/> names an <c>EntityClass</c> and
+  /// <paramref name="be"/>'s type is registered under another; silent without a class registry,
+  /// without an <c>EntityClass</c>, or for a type the registry does not hold.</summary>
+  private void WarnOnEntityClassMismatch(Block block, BlockEntity be) {
+    if (_classes == null || block.EntityClass == null)
+      return;
+    string? registered = Api.ClassRegistry.GetBlockEntityClass(be.GetType());
+    if (registered == null || registered == block.EntityClass)
+      return;
+    Log.Warning(
+      $"{block.Code} names entity class '{block.EntityClass}', but the {be.GetType().Name} placed on it is registered as '{registered}'."
+    );
+  }
+
   /// <summary>A block entity of <paramref name="classname"/> with the behaviours
   /// <paramref name="block"/> declares, from the real class registry; null when none is set or it
   /// holds no such class.</summary>

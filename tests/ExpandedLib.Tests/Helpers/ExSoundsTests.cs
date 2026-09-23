@@ -201,16 +201,11 @@ public class ExSoundsTests : IDisposable {
   // Fails when Play drops its server gate and plays on a client too.
   [Fact]
   public void Play_is_silent_on_a_client() {
-    ICoreClientAPI capi = Substitute.For<ICoreClientAPI>();
-    capi.Side.Returns(EnumAppSide.Client);
-    IClientWorldAccessor world = Substitute.For<IClientWorldAccessor>();
-    world.Side.Returns(EnumAppSide.Client);
-    capi.World.Returns(world);
-    ((ICoreAPI)capi).World.Returns(world);
+    ICoreClientAPI capi = new TestWorld().ClientApi;
 
     ExSounds.Play(capi, At, ExSounds.Latch);
 
-    Assert.Empty(Plays(world));
+    Assert.Empty(Plays(capi.World));
   }
 
   #endregion
@@ -397,9 +392,7 @@ public class ExSoundsTests : IDisposable {
       At.Z + 0.5
     );
     tw.World.AllOnlinePlayers.Returns([sender]);
-    IClientWorldAccessor client = Substitute.For<IClientWorldAccessor>();
-    client.Side.Returns(EnumAppSide.Client);
-    tw.ClientApi.World.Returns(client);
+    IClientWorldAccessor client = tw.ClientApi.World;
     ExSounds.StartServer(tw.Api);
     ExSounds.StartClient(tw.ClientApi);
     ExSounds.MachineVolume = 0.5f;

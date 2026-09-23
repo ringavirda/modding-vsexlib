@@ -788,8 +788,10 @@ a fresh substitute per call rather than the same one down a chain), `Registries/
 
 What the harness does not do, so you find out here rather than from a test that proves nothing.
 
-- **Side.** The harness fakes the **server**; tests exercise server-side simulation. Client-only
-  render paths, GUI and real chunk loading aren't covered - `IServerPlayer` works (see
+- **Side.** The harness fakes the **server**; tests exercise server-side simulation. `ClientApi`
+  carries a client world over the same store, so code that branches on the side can be run on
+  either by the API it is handed. Client-only render paths, GUI and real chunk loading aren't
+  covered - `IServerPlayer` works (see
   [Doubles](#doubles) above), because the game's own object graph makes it a
   server-side type in every way that matters to test code.
 - **The publicizer.** `IPlayer`/`IServerPlayer` can be substituted at all only because provisioning

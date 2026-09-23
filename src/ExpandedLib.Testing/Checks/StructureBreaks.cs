@@ -17,8 +17,8 @@ using Vintagestory.GameContent.Mechanics;
 namespace ExpandedLib.Testing;
 
 /// <summary>Stands up every block definition that reserves filler cells or carries construction
-/// stages and breaks it as a survival player, through the engine's removal hooks
-/// (<see cref="TestWorld.RunsRemovalHooks"/>).</summary>
+/// stages and breaks it as a survival player, through the engine's break and removal hooks
+/// (<see cref="TestWorld.BreakRunsBlockHooks"/>, <see cref="TestWorld.RunsRemovalHooks"/>).</summary>
 /// <remarks>A structure with construction stages is broken from every cell at each stage, partly
 /// built or complete; one without is broken from every cell. A break passes
 /// when nothing throws, no cell of the structure is left standing, and the drops are the
@@ -71,8 +71,7 @@ public static class StructureBreaks
         variants++;
         TestWorld Stand()
         {
-          var world = new TestWorld { RunsRemovalHooks = true };
-          world.World.Side.Returns(EnumAppSide.Server);
+          var world = new TestWorld();
           world.RegisterClasses([.. assemblies]);
           world.RegisterClass("Animatable", typeof(BEBehaviorAnimatable));
           world.RegisterClass(

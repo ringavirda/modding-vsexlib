@@ -35,11 +35,12 @@ public class NoSnowCellsTests {
   ) {
     var world = new TestWorld();
     var machine = new TestMegablock { Angle = angle };
-    world.Place(
-      anchor,
-      TestBlocks.Configure(new Block(), "exlib:testmega-n", 1),
-      machine
-    );
+    Block core = TestBlocks.Configure(new Block(), "exlib:testmega-n", 1);
+    // Breaking runs the block's own hooks: they reach the entity through EntityClass and spawn
+    // particles through the block's api.
+    core.EntityClass = "TestMegablock";
+    ReflectionHelpers.SetField(core, "api", world.Api);
+    world.Place(anchor, core, machine);
     world.Attach(machine);
     StructureRig.Around(world, machine, FloorDef(), angle).Complete();
     return (world, machine);

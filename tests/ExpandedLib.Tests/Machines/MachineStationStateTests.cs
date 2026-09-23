@@ -24,7 +24,8 @@ public class MachineStationStateTests {
 
   [Fact]
   public void A_field_declared_through_State_round_trips() {
-    // ToTreeAttributes reads Block.IsMissing before it reaches Persisted; the station needs a real block.
+    // ToTreeAttributes reads Block.IsMissing before it reaches Persisted, and FromTreeAttributes on a
+    // server world; both stations need a real block.
     var source = new StatefulStation {
       Setting = 3,
       Pos = new BlockPos(0, 0, 0),
@@ -33,7 +34,7 @@ public class MachineStationStateTests {
     var tree = new TreeAttribute();
     source.ToTreeAttributes(tree);
 
-    var target = new StatefulStation();
+    var target = new StatefulStation { Block = source.Block };
     target.FromTreeAttributes(tree, new TestWorld().World);
 
     Assert.Equal(3, target.Setting);

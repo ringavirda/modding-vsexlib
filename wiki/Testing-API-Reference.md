@@ -46,16 +46,17 @@ public sealed class TestWorld : IDisposable
     public Block Air { get; }
     public BlockNetworkModSystem Networks { get; }
     public IBlockAccessor Accessor { get; }
-    public IServerWorldAccessor World { get; }
+    public IServerWorldAccessor World { get; }   // Side answers Server
     public IGameCalendar Calendar { get; }
     public ICoreServerAPI Api { get; }
-    public ICoreClientAPI ClientApi { get; }     // for a ModSystem's StartClientSide; shares Log
+    public ICoreClientAPI ClientApi { get; }     // its World: Side answers Client, same Accessor and Log
     public List<ItemStack> Drops { get; }
     public RecordingLogger Log { get; }          // wired as Api.Logger and World.Logger
     public WorldConfigBag Config { get; }        // wired as World.Config
     public TestModLoader Mods { get; }           // wired as Api.ModLoader; "exlib" enabled by default
     public ModConfigFiles ConfigFiles { get; }   // backs Api.LoadModConfig/StoreModConfig; deleted on Dispose
-    public bool RunsRemovalHooks { get; set; }   // Accessor runs the engine's removal hooks; default false
+    public bool BreakRunsBlockHooks { get; set; } // BreakBlock runs the block's OnBlockBroken; default true
+    public bool RunsRemovalHooks { get; set; }   // SetBlock/RemoveBlockEntity run the removal hooks; default true
 
     // Setup:
     public TestWorld Attach(BlockEntity be);
@@ -114,11 +115,22 @@ registry (`RegisterBlockEntityBehaviorFactory`) exactly as the game builds them 
 `[BlockEntityBehaviorRegister]`. `PlaceFillerNode` is that cell declaring one network membership:
 `orientation` is one side letter, or two naming an opposite pair for a cell a run passes through.
 
-`RunsRemovalHooks` makes `Accessor` run what the engine runs when a cell is cleared: `SetBlock`
-over a different block first runs the replaced block's `OnBlockRemoved`, `RemoveBlockEntity` runs the
-entity's `OnBlockRemoved` and drops it, and `BreakBlock` runs the block's own `OnBlockBroken` with the
-breaking player and drop multiplier. Off (the default), `BreakBlock` tears down the block entity alone
-and a replaced cell's hooks never run.
+Each API answers its own side: `World.Side` is Server, and `ClientApi.World` is a client world whose
+`Side` is Client, reading the same `Accessor`, calendar, config, logger and block and item lookups.
+Code handed `Api` runs its server branch and code handed `ClientApi` its client branch, so a test
+picks its side by the API it passes.
+
+`Accessor` runs what the engine runs when a cell is broken or cleared. `BreakRunsBlockHooks` (on by
+default) makes `BreakBlock` run the block's own `OnBlockBroken` with the breaking player and drop
+multiplier; off, `BreakBlock` runs the block entity's `OnBlockBroken` and `OnBlockRemoved` and clears
+the cell. `RunsRemovalHooks` (on by default) makes `SetBlock` over a different block first run the
+replaced block's `OnBlockRemoved`, and `RemoveBlockEntity` run the entity's `OnBlockRemoved` and drop
+it; off, a replaced cell's hooks never run and `RemoveBlockEntity` does nothing. The block's own break
+hooks reach its block entity only through `EntityClass` and spawn particles through the block's
+`api`, so a hand-configured block that is broken needs both, as the engine's blocks have them.
+
+In a world holding a class registry (`RegisterClasses`/`RegisterClass`), `Place` logs a Warning when
+the block names an `EntityClass` and the placed entity's type is registered under another name.
 
 `RegisterClasses` puts every block, block entity, block behaviour and block-entity behaviour class an
 assembly registers into a real class registry under the key the game registers it by; classes of
@@ -675,7 +687,7 @@ pairs.
 | `ShapeExtents` | The bounding box (in voxels) of everything a shape file draws. |
 | `SoundUse` | `ShortRepeats` names every `ExSounds.PlayThrottled`/`PlayLoop` call in a set of source files whose sound is not a catalogue constant or whose interval is shorter than the clip; `UndisposedLoops` names every type in an assembly that holds an `ILoadedSound` itself, or an `ExSoundLoop` its own `OnBlockRemoved()` or `OnBlockUnloaded()` never calls `Dispose` on, directly or through a method of the same type; `DirectSounds` names every `PlaySound*` or `LoadSound` call in a set of source files outside `ExSounds` itself, since such a sound skips `ExSounds.MachineVolume`. |
 | `ShippedJson` | Every JSON asset under one shipped tree parses, carries no control character, and (under `patches/`) declares the side each entry runs on. |
-| `StructureBreaks` | Every definition with filler offsets or construction stages, in every variant, stood up in a fresh `TestWorld` with `RunsRemovalHooks` on and broken by a survival player from the principal and every filler cell, at each construction stage. A break fails when it throws, leaves a cell of the structure standing, or drops other than the definition's resolved `drops` plus every paid stage's materials at the salvage ratio. `Run` returns the blocks, variants and breaks covered and one line per failure; see [Breaking every structure](Testing-Harness#breaking-every-structure-structurebreaks). |
+| `StructureBreaks` | Every definition with filler offsets or construction stages, in every variant, stood up in a fresh `TestWorld`, whose break and removal hooks are on, and broken by a survival player from the principal and every filler cell, at each construction stage. A break fails when it throws, leaves a cell of the structure standing, or drops other than the definition's resolved `drops` plus every paid stage's materials at the salvage ratio. `Run` returns the blocks, variants and breaks covered and one line per failure; see [Breaking every structure](Testing-Harness#breaking-every-structure-structurebreaks). |
 | `TreeKeys` | Golden-file oracle for a block entity's save shape - the keys `ToTreeAttributes` writes, pinned against a committed golden the same way `DefinitionGoldens` pins a def's JSON; see [Pinning a block entity's save shape](Testing-Harness#pinning-a-block-entitys-save-shape). |
 | `VanillaToolTiers` | Vanilla pickaxe tool tier constants (`Bronze`/`Iron`/`Steel`), for pinning a block's `requiredMiningTier`. |
 | `WikiParity` | Reflects the API the wiki teaches against the API the assembly actually has. |

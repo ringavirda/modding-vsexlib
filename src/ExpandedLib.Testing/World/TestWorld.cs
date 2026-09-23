@@ -38,7 +38,9 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>The fake block accessor handed to every production network call.</summary>
   public IBlockAccessor Accessor { get; }
 
-  /// <summary>The fake server world (calendar, item-drop spawning) exposed as <see cref="BlockNetworkModSystem.ServerWorld"/>.</summary>
+  /// <summary>The fake server world (calendar, item-drop spawning) exposed as
+  /// <see cref="BlockNetworkModSystem.ServerWorld"/>; its <c>Side</c> is
+  /// <see cref="EnumAppSide.Server"/>.</summary>
   public IServerWorldAccessor World { get; }
 
   /// <summary>The calendar; <see cref="AdvanceDays"/> moves <c>TotalDays</c> for evaporation tests.</summary>
@@ -49,7 +51,11 @@ public sealed partial class TestWorld : IDisposable {
   public ICoreServerAPI Api { get; }
 
   /// <summary>A client-side core API wired to this world, for exercising a <c>ModSystem</c>'s
-  /// <c>StartClientSide</c>.</summary>
+  /// <c>StartClientSide</c> and code that branches on the client.</summary>
+  /// <remarks>Its <c>World</c> is a client world whose <c>Side</c> is
+  /// <see cref="EnumAppSide.Client"/>, reading the same <see cref="Accessor"/>, calendar, config,
+  /// logger and block and item lookups as <see cref="World"/>. Code handed <see cref="Api"/> runs
+  /// its server branch; code handed this runs its client branch.</remarks>
   public ICoreClientAPI ClientApi { get; }
 
   /// <summary>Channel pairs handed out by <see cref="Channels"/>, keyed by channel name.</summary>
@@ -85,14 +91,21 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Item stacks spawned by the simulation.</summary>
   public List<ItemStack> Drops { get; } = new();
 
-  /// <summary>Whether <see cref="Accessor"/> runs the engine's removal hooks; false by
+  /// <summary>Whether <see cref="Accessor"/>'s <c>BreakBlock</c> runs the broken block's own
+  /// <see cref="Block.OnBlockBroken"/> with the breaking player, as the engine does; true by
   /// default.</summary>
-  /// <remarks>When true, <c>SetBlock</c> over a placed block first runs that block's
-  /// <see cref="Block.OnBlockRemoved"/>, <c>RemoveBlockEntity</c> runs the entity's
-  /// <see cref="BlockEntity.OnBlockRemoved"/> and drops it, and <c>BreakBlock</c> runs the block's own
-  /// <see cref="Block.OnBlockBroken"/> with the breaking player. When false, a replaced cell's hooks
-  /// never run and <c>BreakBlock</c> tears down the entity alone.</remarks>
-  public bool RunsRemovalHooks { get; set; }
+  /// <remarks>When false, <c>BreakBlock</c> runs only the block entity's
+  /// <see cref="BlockEntity.OnBlockBroken"/> and <see cref="BlockEntity.OnBlockRemoved"/> and
+  /// clears the cell.</remarks>
+  public bool BreakRunsBlockHooks { get; set; } = true;
+
+  /// <summary>Whether <see cref="Accessor"/> runs the engine's removal hooks; true by
+  /// default.</summary>
+  /// <remarks>When true, <c>SetBlock</c> over a placed block of another id first runs that block's
+  /// <see cref="Block.OnBlockRemoved"/>, and <c>RemoveBlockEntity</c> runs the entity's
+  /// <see cref="BlockEntity.OnBlockRemoved"/> and drops it. When false, a replaced cell's hooks never
+  /// run and <c>RemoveBlockEntity</c> does nothing.</remarks>
+  public bool RunsRemovalHooks { get; set; } = true;
 
   public TestWorld() {
     Air = TestBlocks.Configure(new Block(), "game:air", 0);
@@ -161,6 +174,9 @@ public sealed partial class TestWorld : IDisposable {
 
   /// <summary>Places <paramref name="block"/> (and optional <paramref name="be"/>) at
   /// <paramref name="pos"/>, registering the block in the id/code lookup.</summary>
+  /// <remarks>In a world holding a class registry (<see cref="RegisterClasses"/>), logs a Warning
+  /// when <paramref name="block"/> names an <c>EntityClass</c> other than the one
+  /// <paramref name="be"/>'s type is registered under.</remarks>
   public TestWorld Place(BlockPos pos, Block block, BlockEntity? be = null) {
     Register(block);
     _blocks[pos] = block;
@@ -168,6 +184,7 @@ public sealed partial class TestWorld : IDisposable {
       be.Pos = pos.Copy();
       be.Block = block;
       _blockEntities[pos] = be;
+      WarnOnEntityClassMismatch(block, be);
     }
     return this;
   }
@@ -671,6 +688,7 @@ public sealed partial class TestWorld : IDisposable {
 
   private IServerWorldAccessor BuildWorld() {
     var w = Substitute.For<IServerWorldAccessor>();
+    w.Side.Returns(EnumAppSide.Server);
     w.BlockAccessor.Returns(Accessor);
     w.Calendar.Returns(Calendar);
     w.Logger.Returns(Log);
@@ -796,6 +814,9 @@ public sealed partial class TestWorld : IDisposable {
     var coreApi = (ICoreAPI)api;
 
     api.Side.Returns(EnumAppSide.Client);
+    IClientWorldAccessor world = BuildClientWorld(api);
+    api.World.Returns(world);
+    coreApi.World.Returns(world);
     api.Logger.Returns(Log);
     coreApi.Logger.Returns(Log);
 
@@ -808,6 +829,29 @@ public sealed partial class TestWorld : IDisposable {
     coreApi.Network.Returns(network);
 
     return api;
+  }
+
+  private IClientWorldAccessor BuildClientWorld(ICoreClientAPI api) {
+    var w = Substitute.For<IClientWorldAccessor>();
+    w.Side.Returns(EnumAppSide.Client);
+    w.Api.Returns(api);
+    w.BlockAccessor.Returns(Accessor);
+    // IClientWorldAccessor re-declares Calendar as IClientGameCalendar; code reading it through
+    // IWorldAccessor gets the server world's calendar.
+    ((IWorldAccessor)w).Calendar.Returns(Calendar);
+    w.Logger.Returns(Log);
+    w.Config.Returns(Config.Tree);
+    w.Rand.Returns(new Random(1));
+    w.GetBlock(Arg.Any<AssetLocation>())
+      .Returns(ci => GetByCode(ci.Arg<AssetLocation>()));
+    w.GetBlock(Arg.Any<int>())
+      .Returns(ci =>
+        _blocksById.TryGetValue(ci.Arg<int>(), out var b) ? b : Air
+      );
+    w.GetItem(Arg.Any<AssetLocation>())
+      .Returns(ci => GetItem(ci.Arg<AssetLocation>()));
+    w.GetItem(Arg.Any<int>()).Returns(ci => GetItem(ci.Arg<int>()));
+    return w;
   }
 
   private Block? GetByCode(AssetLocation? code) =>
@@ -876,7 +920,7 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   private void DoBreak(BlockPos pos, IPlayer? byPlayer, float dropMultiplier) {
-    if (RunsRemovalHooks) {
+    if (BreakRunsBlockHooks) {
       GetBlock(pos).OnBlockBroken(World, pos, byPlayer, dropMultiplier);
       return;
     }

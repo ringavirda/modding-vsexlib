@@ -23,7 +23,8 @@ public class NetworkNodeStateTests {
 
   [Fact]
   public void A_field_declared_through_State_round_trips() {
-    // ToTreeAttributes reads Block.IsMissing before reaching Persisted; the node needs a real block.
+    // ToTreeAttributes reads Block.IsMissing before reaching Persisted, and FromTreeAttributes on a
+    // server world; both nodes need a real block.
     var source = new StatefulNode {
       Amount = 5,
       Pos = new BlockPos(0, 0, 0),
@@ -32,7 +33,7 @@ public class NetworkNodeStateTests {
     var tree = new TreeAttribute();
     source.ToTreeAttributes(tree);
 
-    var target = new StatefulNode();
+    var target = new StatefulNode { Block = source.Block };
     target.FromTreeAttributes(tree, new TestWorld().World);
 
     Assert.Equal(5, target.Amount);

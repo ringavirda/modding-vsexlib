@@ -405,7 +405,7 @@ public class TwinTubBlowerTests {
     var tree = new TreeAttribute();
 
     blower.ToTreeAttributes(tree);
-    var loaded = new BlockEntityTwinTubMPBlower();
+    var loaded = new BlockEntityTwinTubMPBlower { Block = blower.Block };
     loaded.FromTreeAttributes(tree, blower.Api.World);
 
     Assert.Equal(3.5f, ReflectionHelpers.GetField(loaded, "_lastSpeed"));

@@ -106,7 +106,8 @@ public class PersistAttributeTests {
   }
 #pragma warning restore CS0169
 
-  // ToTreeAttributes reads Block.IsMissing before it reaches Persisted; every instance needs a real block.
+  // ToTreeAttributes reads Block.IsMissing before it reaches Persisted, and FromTreeAttributes reads it
+  // on a server world; every instance needs a real block.
   private static void Place(BlockEntity be) {
     be.Pos = new BlockPos(0, 0, 0);
     be.Block = TestBlocks.Configure(new Block(), "test:persist", 1);
@@ -136,6 +137,7 @@ public class PersistAttributeTests {
     source.ToTreeAttributes(tree);
 
     var target = new Bag();
+    Place(target);
     target.FromTreeAttributes(tree, world.World);
 
     Assert.True((bool)ReflectionHelpers.GetField(target, "_flag")!);
@@ -222,6 +224,7 @@ public class PersistAttributeTests {
     tree.SetInt("oldName", 11);
 
     var target = new RenamedEntity();
+    Place(target);
     target.FromTreeAttributes(tree, new TestWorld().World);
 
     Assert.Equal(11, (int)ReflectionHelpers.GetField(target, "_value")!);
@@ -234,6 +237,7 @@ public class PersistAttributeTests {
     tree.SetInt("value", 99);
 
     var target = new RenamedEntity();
+    Place(target);
     target.FromTreeAttributes(tree, new TestWorld().World);
 
     Assert.Equal(99, (int)ReflectionHelpers.GetField(target, "_value")!);
@@ -267,6 +271,7 @@ public class PersistAttributeTests {
     source.ToTreeAttributes(tree);
 
     var target = new DerivedEntity();
+    Place(target);
     target.FromTreeAttributes(tree, new TestWorld().World);
 
     Assert.Equal(1, (int)ReflectionHelpers.GetField(target, "_baseValue")!);
@@ -286,6 +291,7 @@ public class PersistAttributeTests {
     Assert.Equal(4.5f, tree.GetFloat("explicit"));
 
     var target = new MixedEntity();
+    Place(target);
     target.FromTreeAttributes(tree, new TestWorld().World);
 
     Assert.Equal(3, (int)ReflectionHelpers.GetField(target, "_attributed")!);

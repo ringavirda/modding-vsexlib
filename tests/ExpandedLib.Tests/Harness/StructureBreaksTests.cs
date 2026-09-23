@@ -39,7 +39,8 @@ public class StructureBreaksTests
       }
     );
 
-  // Fails when StructureBreaks leaves RunsRemovalHooks off: the fillers outlive the principal.
+  // Fails when a fresh TestWorld runs no break or no removal hooks: the fillers outlive the
+  // principal.
   [Fact]
   public void A_megablock_that_clears_its_footprint_passes_from_every_cell()
   {

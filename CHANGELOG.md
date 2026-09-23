@@ -17,8 +17,9 @@ see the git history.
   offsets or construction stages, in every variant, and breaks it as a survival player from every
   cell at every construction stage. A break fails when it
   throws, leaves a cell standing, or drops other than the definition's `drops` plus the paid stages
-  at the salvage ratio. `TestWorld.RunsRemovalHooks` runs the engine's removal hooks through the
-  accessor, `TestWorld.RegisterClasses`/`RegisterClass` hold a real class registry, and
+  at the salvage ratio. `TestWorld.BreakRunsBlockHooks` and `TestWorld.RunsRemovalHooks` run the
+  engine's break and removal hooks through the accessor, `TestWorld.RegisterClasses`/`RegisterClass`
+  hold a real class registry, and
   `TestWorld.DefineBlock` builds one variant of a definition the way the game registers it.
 - **Machine-sound volume**: `.exmod sound [0-1]` sets a per-player multiplier, `ExSounds.MachineVolume`,
   on every sound the `ExSounds` helpers play. One-shots the server plays reach each client in range
@@ -43,6 +44,14 @@ see the git history.
 
 ### Changed
 
+- A `TestWorld` (ExpandedLib.Testing) follows the engine by default. `World.Side` answers Server, and
+  `ClientApi.World` is a client world whose `Side` answers Client, reading the same block accessor,
+  lookups and logger; code handed `Api` runs its server branch, code handed `ClientApi` its client
+  branch. `BreakBlock` runs the block's own `OnBlockBroken`, `SetBlock` over another block runs the
+  replaced block's `OnBlockRemoved`, and `RemoveBlockEntity` removes the entity and runs its hook; a
+  test that wants less sets `BreakRunsBlockHooks` or `RunsRemovalHooks` false. In a world holding a
+  class registry, `Place` logs a Warning when the block's `EntityClass` names a class other than the
+  one the placed entity's type is registered under.
 - A network walk asks both cells of a pair whether they join (`AcceptsNeighbour`): a refusal from
   either side keeps them apart whichever one the walk or placement starts from. Before, only the
   source was asked, so a one-sided refusal could merge or split the pair depending on order.

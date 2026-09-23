@@ -64,6 +64,10 @@ public class TestWorldLifecycleTests {
     var world = new TestWorld();
     var pos = new BlockPos(2, 0, 0);
     var block = TestBlocks.Configure(new Block(), "test:lifecycle", 3);
+    // The block's own break hooks reach the entity through EntityClass and spawn particles
+    // through the block's api.
+    block.EntityClass = "test-lifecycle";
+    ReflectionHelpers.SetField(block, "api", world.Api);
     var be = new LifecycleBe();
     world.Place(pos, block, be);
     world.Initialize(be);

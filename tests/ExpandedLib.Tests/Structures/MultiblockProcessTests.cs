@@ -125,7 +125,7 @@ public class MultiblockProcessTests {
     machine.ToTreeAttributes(tree);
     Assert.Equal(3.0, tree.GetDouble("pm_lastHours"), 3);
 
-    var reloaded = new TestMegablock { Angle = 0 };
+    var reloaded = new TestMegablock { Angle = 0, Block = machine.Block };
     reloaded.FromTreeAttributes(tree, world.World);
     Assert.Equal(
       3.0,
