@@ -21,7 +21,7 @@ namespace ExpandedLib.Tests;
 /// remote server.</summary>
 [Collection("WorldState")]
 public class ExWorldStateTests {
-  // Caches: static state no world can make wrong, each with the reason it survives a load start.
+  // Keyed by the static root's full name; each value is why the root is a cache.
   private static readonly Dictionary<string, string> Caches = new() {
     ["ExpandedLib.Blocks.PersistScan._cache"] =
       "per-type binders, a pure function of the loaded types",
@@ -161,7 +161,6 @@ public class ExWorldStateTests {
     Assert.False(MetalRegistry.TryGet("worldstatetest:molten", out _));
   }
 
-  // One registry each side of the assembly split: exlib's own and exlib.industry's.
   private static void RegisterServerState() {
     ExDefinitions.RegisterBlock(
       ExBlockDef.Create("worldstatetest", "worldstate")
@@ -291,8 +290,8 @@ internal static class StaticCells {
         );
   }
 
-  // Re-reads the collection through the same path, so a registry replaced by a new object counts as
-  // emptied.
+  // The returned check reads the collection again through its path: a registry replaced by a new
+  // object reads as emptied.
   private static Fill? Plant(object collection, string path) {
     Type type = collection.GetType();
     if (collection is IDictionary dict) {
@@ -323,7 +322,7 @@ internal static class StaticCells {
     );
   }
 
-  // Follows "Namespace.Type.field.field..." from the static root to whatever it holds now.
+  // A path is a static root's full name followed by instance field names; null once a step is null.
   private static object? Resolve(string path) {
     foreach ((string root, FieldInfo field) in Roots([AssemblyOf(path)]))
       if (path == root || path.StartsWith(root + ".")) {
