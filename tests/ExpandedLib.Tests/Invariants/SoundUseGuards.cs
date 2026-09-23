@@ -139,9 +139,8 @@ public class SoundUseGuards {
     );
   }
 
-  // Fails when UndisposedLoops stops flagging a raw ILoadedSound field, stops following
-  // OnBlockUnloaded's IL to the field, takes any field access for the loop's, or misses a
-  // null-conditional Dispose (ReceiverUse returning its argument unchanged).
+  // Fails when UndisposedLoops misses a raw ILoadedSound, OnBlockUnloaded's call into Release, a
+  // wrong-field access, or a null-conditional Dispose (ReceiverUse returning its argument).
   [Fact]
   public void Undisposed_and_raw_sound_holders_are_named() {
     List<string> offenders = SoundUse

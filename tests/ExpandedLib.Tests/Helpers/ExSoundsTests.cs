@@ -29,6 +29,8 @@ public class ExSoundsTests : IDisposable {
 
   #region Catalogue and one-shots
 
+  // The length table holds 1.22's files; the provisioned 1.21 install carries no audio.
+#if GAME_GE_1_22
   // Fails when a catalogue length is shortened below its file (Fire 9260 -> 9000) or an entry is
   // dropped from the length table.
   [Fact]
@@ -60,6 +62,7 @@ public class ExSoundsTests : IDisposable {
     Assert.True(offenders.Count == 0, string.Join("\n", offenders));
     Assert.True(measured > 30, $"Only {measured} catalogue sounds measured.");
   }
+#endif
 
   // Fails when Due ignores the clip length and honours the caller's interval alone.
   [Fact]

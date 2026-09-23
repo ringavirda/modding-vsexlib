@@ -11,10 +11,9 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Guards the two ways a machine's sound piles up in the game's voice limit: a repeating one-shot
-/// (<see cref="ExSounds.PlayThrottled"/>, <see cref="ExSounds.PlayLoop"/>) asked to repeat faster
-/// than its clip lasts, and a loaded loop that outlives its block; and the way one escapes
-/// <see cref="ExSounds.MachineVolume"/>, a sound played or loaded past <see cref="ExSounds"/>.
+/// Guards machine sounds: a repeating one-shot asked to repeat faster than its clip lasts, a loaded
+/// loop that outlives its block, and a sound played or loaded past <see cref="ExSounds"/>, which
+/// escapes <see cref="ExSounds.MachineVolume"/>.
 /// </summary>
 public static class SoundUse {
   private static readonly Regex RepeatCall = new(
@@ -56,7 +55,7 @@ public static class SoundUse {
     foreach (string file in sourceFiles) {
       string text = File.ReadAllText(file);
       foreach (Match call in RepeatCall.Matches(text)) {
-        int line = text.AsSpan(0, call.Index).Count('\n') + 1;
+        int line = text.Take(call.Index).Count(c => c == '\n') + 1;
         string where = $"{Path.GetFileName(file)}:{line}";
         List<string>? args = Arguments(text, call.Index + call.Length);
         if (args == null || args.Count < 5) {
@@ -102,8 +101,9 @@ public static class SoundUse {
   /// field itself (only <see cref="ExSoundLoop"/> may), and every type holding an
   /// <see cref="ExSoundLoop"/> field whose own <c>OnBlockRemoved()</c> or <c>OnBlockUnloaded()</c>
   /// override is missing or never calls <see cref="ExSoundLoop.Dispose"/> on that field, directly or
-  /// through a method of the same type. Only <c>field.Dispose()</c> and <c>field?.Dispose()</c> count;
-  /// a loop copied to a local first, or disposed through another type, is named.</summary>
+  /// through a method of the same type.</summary>
+  /// <remarks>Only <c>field.Dispose()</c> and <c>field?.Dispose()</c> count; a loop copied to a local
+  /// first, or disposed through another type, is named.</remarks>
   /// <returns>One line per offending type and field; empty when clean.</returns>
   public static IReadOnlyList<string> UndisposedLoops(Assembly assembly) {
     var offenders = new List<string>();

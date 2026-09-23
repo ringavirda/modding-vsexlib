@@ -47,6 +47,10 @@ public class HarnessSurfaceTests {
   [Fact]
   public void Every_type_named_in_the_where_things_are_table_exists() {
     var known = PublicTypeNames().ToHashSet(StringComparer.Ordinal);
+#if !GAME_GE_1_22
+    // The page documents the 1.22 harness; StructureBreaks compiles on 1.22 only.
+    known.Add("StructureBreaks");
+#endif
 
     // The "Where things are" table's rows, up to the next blank line.
     string[] lines = ReferenceText
