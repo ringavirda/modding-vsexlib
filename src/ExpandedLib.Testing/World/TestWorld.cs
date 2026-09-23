@@ -85,14 +85,13 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Item stacks spawned by the simulation.</summary>
   public List<ItemStack> Drops { get; } = new();
 
-  /// <summary>
-  /// Whether <see cref="Accessor"/> runs the engine's removal hooks. When true, <c>SetBlock</c> over a
-  /// placed block first runs that block's <see cref="Block.OnBlockRemoved"/>, <c>RemoveBlockEntity</c>
-  /// runs the entity's <see cref="BlockEntity.OnBlockRemoved"/> and drops it, and <c>BreakBlock</c>
-  /// runs the block's own <see cref="Block.OnBlockBroken"/> with the breaking player. False (the
-  /// default) leaves a replaced cell's hooks unrun and <c>BreakBlock</c> tearing down the entity
-  /// alone.
-  /// </summary>
+  /// <summary>Whether <see cref="Accessor"/> runs the engine's removal hooks; false by
+  /// default.</summary>
+  /// <remarks>When true, <c>SetBlock</c> over a placed block first runs that block's
+  /// <see cref="Block.OnBlockRemoved"/>, <c>RemoveBlockEntity</c> runs the entity's
+  /// <see cref="BlockEntity.OnBlockRemoved"/> and drops it, and <c>BreakBlock</c> runs the block's own
+  /// <see cref="Block.OnBlockBroken"/> with the breaking player. When false, a replaced cell's hooks
+  /// never run and <c>BreakBlock</c> tears down the entity alone.</remarks>
   public bool RunsRemovalHooks { get; set; }
 
   public TestWorld() {

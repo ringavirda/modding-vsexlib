@@ -16,15 +16,14 @@ using Vintagestory.GameContent.Mechanics;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// Stands up every block definition that reserves filler cells or carries construction stages and
-/// breaks it as a survival player, through the engine's removal hooks
-/// (<see cref="TestWorld.RunsRemovalHooks"/>). A structure with construction stages is broken from
-/// its principal at each partly built stage and from every cell once complete; one without is
-/// broken from every cell. A break passes when nothing throws, no cell of the structure is left
-/// standing, and the drops are the definition's: its resolved <c>drops</c> plus the materials of
-/// every paid stage at the configured salvage ratio.
-/// </summary>
+/// <summary>Stands up every block definition that reserves filler cells or carries construction
+/// stages and breaks it as a survival player, through the engine's removal hooks
+/// (<see cref="TestWorld.RunsRemovalHooks"/>).</summary>
+/// <remarks>A structure with construction stages is broken from its principal at each partly built
+/// stage and from every cell once complete; one without is broken from every cell. A break passes
+/// when nothing throws, no cell of the structure is left standing, and the drops are the
+/// definition's: its resolved <c>drops</c> plus the materials of every paid stage at the configured
+/// salvage ratio.</remarks>
 public static class StructureBreaks
 {
   /// <summary>What <see cref="Run"/> covered and every break that failed, one line each.</summary>
@@ -275,12 +274,10 @@ public static class StructureBreaks
         );
   }
 
-  /// <summary>
-  /// Builds <paramref name="rcc"/> to stage <paramref name="built"/> the way a survival player
-  /// does, recording each wildcard ingredient's first allowed variant, registers every material its
-  /// stages name, and adds what breaking it refunds to <paramref name="expected"/>: every stage up
-  /// to the one built, at the salvage ratio, once at least one stage is paid.
-  /// </summary>
+  /// <summary>Builds <paramref name="rcc"/> to stage <paramref name="built"/> with each stored
+  /// wildcard set to its ingredient's first allowed variant, registers every material its stages
+  /// name, and adds to <paramref name="expected"/> what breaking it refunds: every stage up to the
+  /// one built, at the salvage ratio, once at least one stage is paid.</summary>
   private static void Build(
     TestWorld world,
     Block block,

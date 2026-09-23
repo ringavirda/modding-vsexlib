@@ -31,15 +31,14 @@ public sealed partial class TestWorld {
   internal IEnumerable<KeyValuePair<BlockPos, BlockEntity>> BlockEntities =>
     _blockEntities;
 
-  /// <summary>
-  /// Registers every <see cref="RegisterAttribute"/>-decorated class in
-  /// <paramref name="assemblies"/> under the key the game registers it by, in a real class registry.
-  /// A world holding that registry answers <see cref="Api"/>'s and <see cref="World"/>'s
-  /// <c>ClassRegistry</c> from it, and
-  /// creates a block entity the accessor spawns without a <see cref="RegisterBlockEntityFactory"/>
-  /// factory from it, with its declared behaviours, as the engine does;
-  /// <see cref="RegisterBlockEntityBehaviorFactory"/> has no effect on such a world.
-  /// </summary>
+  /// <summary>Registers every <see cref="RegisterAttribute"/>-decorated block, block entity and
+  /// behaviour class in <paramref name="assemblies"/> under the key the game registers it by, in a
+  /// real class registry; classes of other kinds are skipped.</summary>
+  /// <remarks>A world holding that registry answers <see cref="Api"/>'s and <see cref="World"/>'s
+  /// <c>ClassRegistry</c> from it, and creates a block entity the accessor spawns without a
+  /// <see cref="RegisterBlockEntityFactory"/> factory from it, with its declared behaviours, as the
+  /// engine does; <see cref="RegisterBlockEntityBehaviorFactory"/> has no effect on such a
+  /// world.</remarks>
   /// <returns>This world.</returns>
   public TestWorld RegisterClasses(params Assembly[] assemblies) {
     foreach (Assembly asm in assemblies) {
@@ -79,13 +78,13 @@ public sealed partial class TestWorld {
     return this;
   }
 
-  /// <summary>
-  /// The block the game registers for <paramref name="variant"/> of <paramref name="def"/>: its
-  /// <c>*ByType</c> keys and <c>{group}</c> placeholders resolved for that variant, built through
-  /// <see cref="BlockType.CreateBlock"/> against the classes <see cref="RegisterClasses"/> put in
-  /// this world, given a fresh id and this world's api, registered, its <c>drops</c> resolved
-  /// against this world's registries, and its <see cref="Block.OnLoaded"/> run.
-  /// </summary>
+  /// <summary>The block the game registers for <paramref name="variant"/> of
+  /// <paramref name="def"/>, registered in this world.</summary>
+  /// <remarks>Its <c>*ByType</c> keys and <c>{group}</c> placeholders are resolved for that variant,
+  /// the block is built through <see cref="BlockType.CreateBlock"/> against the classes
+  /// <see cref="RegisterClasses"/> put in this world, given a fresh id (from 40000) and this world's
+  /// api, its <c>drops</c> are resolved against this world's registries, and its
+  /// <see cref="Block.OnLoaded"/> is run.</remarks>
   /// <param name="variant">One of <see cref="DefinitionCodes.Expand"/>'s results for
   /// <paramref name="def"/>.</param>
   /// <exception cref="InvalidOperationException"><see cref="RegisterClasses"/> has not run.</exception>
