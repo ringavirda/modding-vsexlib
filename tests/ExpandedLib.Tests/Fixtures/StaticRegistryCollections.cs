@@ -17,3 +17,6 @@ public class ExDefinitionsCollection { }
 
 [CollectionDefinition("ExCheckRegistry", DisableParallelization = true)]
 public class ExCheckRegistryCollection { }
+
+[CollectionDefinition("WorldState", DisableParallelization = true)]
+public class WorldStateCollection { }
