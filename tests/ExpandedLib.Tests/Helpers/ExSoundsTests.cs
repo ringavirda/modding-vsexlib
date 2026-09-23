@@ -113,7 +113,7 @@ public class ExSoundsTests : IDisposable {
 #endif
   }
 
-  // Fails when PlayOnClient plays at zero volume instead of skipping.
+  // Fails when PlayOnClient plays at zero volume.
   [Fact]
   public void A_muted_machine_volume_plays_nothing() {
     IWorldAccessor world = ClientWorld(out Func<long> _, out Action<long> _);
@@ -211,7 +211,7 @@ public class ExSoundsTests : IDisposable {
 
   #region Loops
 
-  // Fails when Update loads a new sound on each call instead of reusing the first.
+  // Fails when Update loads a second sound for the same loop.
   [Fact]
   public void A_loop_loads_once_and_restarts_the_same_sound() {
     ICoreClientAPI capi = LoopApi(out List<ILoadedSound> loaded);
