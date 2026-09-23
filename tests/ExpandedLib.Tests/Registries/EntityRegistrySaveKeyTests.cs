@@ -13,10 +13,9 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// A block entity is saved under its primary key; a bare key claimed by an
-/// <c>[assembly: ExPublishedSaveKeys]</c> assembly and an unmarked one belongs to the marked one in
-/// either registration order; <see cref="EntityRegistry.AliasBlockEntity"/> adds a load-only key.
-/// Each claimant is a block entity class emitted into its own assembly.
+/// Saved names are primary keys; a bare key an <c>[assembly: ExPublishedSaveKeys]</c> assembly and
+/// an unmarked one both claim belongs to the marked one in either order; aliases load only. Each
+/// claimant is emitted into its own assembly.
 /// </summary>
 public class EntityRegistrySaveKeyTests : IDisposable {
   private readonly List<Assembly> _emitted = [];
