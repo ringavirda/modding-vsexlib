@@ -187,8 +187,14 @@ public class SoundUseGuards {
     );
 
     Assert.Equal(2, offenders.Count);
-    Assert.EndsWith(":1: PlaySoundAt called directly; use ExSounds", offenders[0]);
-    Assert.EndsWith(":3: LoadSound called directly; use ExSounds", offenders[1]);
+    Assert.EndsWith(
+      ":1: PlaySoundAt called directly; use ExSounds",
+      offenders[0]
+    );
+    Assert.EndsWith(
+      ":3: LoadSound called directly; use ExSounds",
+      offenders[1]
+    );
   }
 
   // Fails when UndisposedLoops accepts any read of the loop field in place of a Dispose call on it.

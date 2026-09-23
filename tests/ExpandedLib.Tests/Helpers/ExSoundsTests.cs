@@ -34,7 +34,8 @@ public class ExSoundsTests : IDisposable {
   // Fails when a catalogue length is shortened below its file (Fire 9260 -> 9000) or an entry is
   // dropped from the length table.
   [Fact]
-  public void Every_catalogue_sound_lasts_at_least_its_longest_file() {
+  public void Every_catalogue_sound_lasts_at_least_its_longest_file()
+  {
     string assets = Path.Combine(
       VsAssemblyResolver.InstallPath
         ?? throw new InvalidOperationException("No game install."),
@@ -42,13 +43,15 @@ public class ExSoundsTests : IDisposable {
     );
     var offenders = new List<string>();
     int measured = 0;
-    foreach (FieldInfo field in CatalogueFields()) {
+    foreach (FieldInfo field in CatalogueFields())
+    {
       var location = (AssetLocation)field.GetValue(null)!;
       double longest = Variants(assets, location.Path)
         .Select(OggLengthMs)
         .DefaultIfEmpty(0)
         .Max();
-      if (longest == 0) {
+      if (longest == 0)
+      {
         offenders.Add($"{field.Name}: no file for {location}");
         continue;
       }

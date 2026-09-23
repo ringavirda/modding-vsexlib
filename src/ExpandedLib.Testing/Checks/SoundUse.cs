@@ -82,7 +82,11 @@ public static class SoundUse {
     var offenders = new List<string>();
     foreach (string file in sourceFiles) {
       string path = file.Replace('\\', '/');
-      if (DirectCallAllowed.Keys.Any(k => path.EndsWith("/" + k, StringComparison.Ordinal)))
+      if (
+        DirectCallAllowed.Keys.Any(k =>
+          path.EndsWith("/" + k, StringComparison.Ordinal)
+        )
+      )
         continue;
       string[] lines = File.ReadAllLines(file);
       for (int i = 0; i < lines.Length; i++) {
