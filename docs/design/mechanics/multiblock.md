@@ -749,7 +749,8 @@ cell (`ExOrientation.GlobalPos(Pos, hx, hy, hz, angle)`) - `BlockEntityFlywheel.
   construction has no design page of its own, so it is held here. Today a stage's `storeWildCard` keeps
   one value per key, so every wood stage sharing `wood` refunds the last wood paid, and no shape reads
   the stored value. Vanilla precedent: `EntityBoatConstruction` reads `StoredWildCards["wood"]` for the
-  boat's textures and the finished boat's variant. Not designed.
+  boat's textures and the finished boat's variant. Ruled for the new line (iiex, siex) once the
+  testing and port infrastructure lanes are through; the design goes to fallen first. Not designed.
 - No origin validation in the multiblock DSL. A `Core(char)` call, or reusing the filler DSL's `'O'`
   convention, would have caught all three shipped bugs at load. Not built.
 - `LegendAnyFacing` has zero call sites in content. It exists for the "world-absolute facing" case (a
