@@ -294,8 +294,14 @@ MyConfig? loaded = world.Api.LoadModConfig<MyConfig>("mymod.json"); // round-tri
 **`RecordingLogger`** (`world.Log`) - every entry `Api.Logger`/`World.Logger` received, formatted:
 
 ```csharp
+world.Log.Expect(EnumLogType.Error, "names no network type");
 Assert.Contains(world.Log.Errors, m => m.Contains("names no network type"));
 ```
+
+An assembly that declares `[assembly: FailOnWarnings]` (in its `ModuleInit.cs`, say) fails every
+test that leaves a Warning or an Error it did not declare with `Expect`, and every `Expect` nothing
+matched. `[assembly: FailOnWarnings(ReportOnly = true)]` lists the offenders on standard error
+instead of failing them, for measuring a suite before it opts in.
 
 ### Integration tests with `Scene` and `SceneDiagram`
 
@@ -759,7 +765,7 @@ One namespace, `ExpandedLib.Testing`; the folders sort files by what you're doin
 | `World/` | `TestWorld`, `TestBlocks`, `TestLang`, `VsAssemblyResolver` |
 | `Scenes/` | `Scene`, `SceneDiagram`, `SceneGrid` |
 | `Rigs/` | `StructureRig`, `MachineRig`, `RegistryLawScanner`, `ResourceInvariant<TState>`, `StaticStateCollection`, `HarmonyFixture` |
-| `Doubles/` | stand-ins: `StubNetwork`, `TestNetworkBlock`, `CapturingNode`, `SeverableNode`, `OrientableNode`, `RccFake`, `TestMemberBlockEntity`, `MechPower`; supported doubles: `TestPlayer`, `TestInventory`, `TestModLoader`, `WorldConfigBag`, `ModConfigFiles`, `RecordingLogger`, `TestChannels` |
+| `Doubles/` | stand-ins: `StubNetwork`, `TestNetworkBlock`, `CapturingNode`, `SeverableNode`, `OrientableNode`, `RccFake`, `TestMemberBlockEntity`, `MechPower`; supported doubles: `TestPlayer`, `TestInventory`, `TestModLoader`, `WorldConfigBag`, `ModConfigFiles`, `RecordingLogger`, `TestChannels`; the log rule: `FailOnWarningsAttribute` |
 | `Checks/` | the content validators: definition parity, goldens, lang coverage, wiki parity, `LayoutTable`, ... - most now wrap [`ExpandedLib.Checks`](Checks), the same rule the game runs at load and `/exmod verify`; see the [Testing API Reference](Testing-API-Reference)'s full "Checks" table |
 | `Repo/` | `RepoPaths`, `ReleasedHistory`, `ReleasedCodes`, `ReleasedVersions`, `ReleasedCodeDebt`, `BlockCodeEmitter` |
 | (root) | `ReflectionHelpers` |

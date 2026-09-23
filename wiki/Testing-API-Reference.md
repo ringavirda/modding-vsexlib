@@ -25,8 +25,8 @@ against.
 | `World/` | `TestWorld`, `TestBlocks`, `TestLang`, `VsAssemblyResolver` |
 | `Scenes/` | `Scene`, `SceneDiagram`, `SceneGrid` |
 | `Rigs/` | `StructureRig`, `StructureTestHooks`, `MachineRig`, `MachineTestHooks`, `RegistryLawScanner`, `ResourceInvariant<TState>`, `StaticStateCollection`, `HarmonyFixture` |
-| `Doubles/` | stand-ins: `StubNetwork`, `TestNetworkBlock`, `NetworkNodeTestHooks`, `CapturingNode`, `SeverableNode`, `OrientableNode`, `RccFake`, `TestMemberBlockEntity`, `MechPower`; supported doubles: `TestPlayer`, `TestInventory`, `TestModLoader`, `WorldConfigBag`, `ModConfigFiles`, `RecordingLogger`, `TestChannels` |
-| `Checks/` | the content validators: `CodeLiterals`, `CodePrefixCollision`, `CostSelectorOverlap`, `DefinitionAssets`, `DefinitionCatalogue`, `DefinitionCodes`, `DefinitionGoldens`, `DefinitionJson`, `DefinitionParity`, `HandbookSync`, `LangCallSites`, `LangCoverage`, `LangKeys`, `LangParity`, `LayoutTable`, `LoopingAnimations`, `MegablockFrames`, `MultiblockCodes`, `NetworkNodeContract`, `PinnedNetworkNodes`, `PressureVesselGate`, `RecipeCodes`, `ReferencedCodes`, `SelectorCoverage`, `ShapeExtents`, `ShippedJson`, `SoundUse`, `StructureBreaks`, `TreeKeys`, `VanillaToolTiers`, `WikiParity` |
+| `Doubles/` | stand-ins: `StubNetwork`, `TestNetworkBlock`, `NetworkNodeTestHooks`, `CapturingNode`, `SeverableNode`, `OrientableNode`, `RccFake`, `TestMemberBlockEntity`, `MechPower`; supported doubles: `TestPlayer`, `TestInventory`, `TestModLoader`, `WorldConfigBag`, `ModConfigFiles`, `RecordingLogger`, `TestChannels`; the log rule: `FailOnWarningsAttribute`, `FailOnWarningsException` |
+| `Checks/` | the content validators: `CodeLiterals`, `CodePrefixCollision`, `CostSelectorOverlap`, `DefinitionAssets`, `DefinitionCatalogue`, `DefinitionCodes`, `DefinitionGoldens`, `DefinitionJson`, `DefinitionParity`, `HandbookSync`, `HarnessUse`, `LangCallSites`, `LangCoverage`, `LangKeys`, `LangParity`, `LayoutTable`, `LoopingAnimations`, `MegablockFrames`, `MultiblockCodes`, `NetworkNodeContract`, `PinnedNetworkNodes`, `PressureVesselGate`, `RecipeCodes`, `ReferencedCodes`, `SelectorCoverage`, `ShapeExtents`, `ShippedJson`, `SoundUse`, `StructureBreaks`, `TreeKeys`, `VanillaToolTiers`, `WikiParity` |
 | `Repo/` | `RepoPaths`, `RepoManifest`, `ReleasedHistory`, `ReleasedCodes`, `ReleasedVersions`, `ReleasedCodeDebt`, `BlockCodeEmitter`, `RepoCheckSource` |
 | (root) | `ReflectionHelpers` |
 
@@ -393,11 +393,22 @@ public sealed class ModConfigFiles : IDisposable
 
 public sealed class RecordingLogger : LoggerBase
 {
+    public RecordingLogger();                     // registers itself for the FailOnWarnings check
     public IReadOnlyList<(EnumLogType Type, string Message)> Entries { get; }
     public IEnumerable<string> Errors { get; }
     public IEnumerable<string> Warnings { get; }
-    public void Clear();
+    public void Clear();                          // empties Entries; the check still sees them
+    public void Expect(EnumLogType type, string fragment);
 }
+
+[AttributeUsage(AttributeTargets.Assembly)]
+public sealed class FailOnWarningsAttribute : BeforeAfterTestAttribute
+{
+    public bool ReportOnly { get; set; }          // print to stderr instead of failing
+    public override void After(MethodInfo methodUnderTest);
+}
+
+public sealed class FailOnWarningsException : Exception
 
 public sealed class TestChannels
 {
@@ -410,6 +421,15 @@ public sealed class TestChannels
     public IReadOnlyList<object> SentToClients { get; }   // deserialised, oldest first
 }
 ```
+
+`[assembly: FailOnWarnings]` fails every test that leaves an unexpected Warning, Error or Fatal entry
+in any `RecordingLogger` created since the previous test's check, in the class constructor or the
+body, including entries a `Clear` removed from `Entries`. `Expect(type, fragment)` declares entries
+of that type whose message contains `fragment`: every entry it matches passes, and an expectation no
+entry matched fails the test with a `FailOnWarningsException`. `ReportOnly = true` writes one
+`[FailOnWarnings] <test>: <fault>` line per fault to standard error instead, shown by
+`dotnet test --logger "console;verbosity=detailed"`. The check charges a fault to the test that just
+ran, so the assembly runs its collections one at a time (`parallelizeTestCollections: false`).
 
 `TestModLoader.GetMod`/`IsModEnabled`/`GetModSystem`/`GetModSystem<T>`/`IsModSystemEnabled` are the
 `IModLoader` members proper; `TestWorld`'s constructor registers `"exlib"` enabled and its own
@@ -670,6 +690,7 @@ pairs.
 | `DefinitionJson` | Shared lenient JSON reader for def-emitted JSON (comments + trailing commas), plus field accessors the mega-block guards pin against. |
 | `DefinitionParity` | Semantic comparison of an authored `ExBlockDef`'s emitted JSON against the hand-written blocktype JSON it replaces. |
 | `HandbookSync` | The handbook authoring pipeline: `mods/{domain}/docs/handbook/NN-*.html` as the hand-edited source for a shipped handbook page's body. |
+| `HarnessUse` | Rules over a suite's own test sources: `CompletionWrites` names every statement that writes `StructureComplete` by reflection instead of standing or breaking the structure; `HalfBehaviours` names every `BlockBehaviors` assignment whose receiver is never given `CollectibleBehaviors` in the same file, which `GetBehavior` reads; `GameConstrainedGenerics` names every `where` clause in a file declaring a `[Fact]` or `[Theory]` whose constraint is a game type, or derives from or implements one, resolved against the test assembly and its references. Each returns `file:line: reason` lines, empty when clean; the guard in each suite holds its allowed files. |
 | `LangCallSites` | Every lang key a mod's own source hands to `Lang.Get`/`ActionLangCode`/`SendIngameError` exists in every locale it ships. |
 | `LangCoverage` | Every block code a mod registers resolves to a name in every locale it ships (an unresolved key silently renders as the raw key). |
 | `LangKeys` | Every literal `Lang.Get("domain:key")` under a mod's source roots resolves in one lang tree's `en.json`. |

@@ -39,6 +39,15 @@ see the git history.
   leaves the type saved under its primary key.
 - **`ExSounds.ClipLengthMs`**, **`ExSounds.CeramicBreak`**, **`ExSounds.GearboxTurn`**,
   **`ExSounds.HeavyMetalHit`**.
+- **`FailOnWarningsAttribute`** (ExpandedLib.Testing): `[assembly: FailOnWarnings]` fails a test that
+  leaves an unexpected Warning, Error or Fatal entry in any `RecordingLogger` it created, in its
+  class constructor or its body. `RecordingLogger.Expect(type, fragment)` declares the entries a test
+  means to log; an expectation nothing matched fails too. `ReportOnly = true` lists the offenders on
+  standard error without failing them.
+- **`HarnessUse`** (ExpandedLib.Testing): source rules over a suite's tests. It names a
+  `StructureComplete` written by reflection, a `BlockBehaviors` assignment without
+  `CollectibleBehaviors` on the same receiver, and a generic helper in a test file constrained on a
+  game type.
 - **`ExMeasure.TemperatureDelta`**: a temperature difference in Celsius degrees, shown in Fahrenheit
   in imperial without the 32 degree offset: a 10 C difference reads 18 F.
 
