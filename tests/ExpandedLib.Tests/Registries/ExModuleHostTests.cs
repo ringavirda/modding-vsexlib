@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Reflection.Emit;
 using ExpandedLib.Definitions;
 using ExpandedLib.Registries;
 using ExpandedLib.Testing;
@@ -92,10 +93,42 @@ public class ExModuleHostTests : IDisposable {
     public void Dispose() => Phases.Add("Dispose");
   }
 
-  // A discovered entry point of "exlibtests"; every phase but Start is a no-op.
-  private sealed class ThrowingModule : IExModule {
-    public void Start(ICoreAPI api) =>
-      throw new InvalidOperationException("ThrowingModule always throws.");
+  // A ThrowingModule entry point whose Start throws and whose other phases are the interface's
+  // no-ops. It lives in an assembly of its own, since every IExModule in the test assembly is an
+  // entry point of "exlibtests" for the classes that host it.
+  private static Type EmitThrowingModule() {
+    var asm = AssemblyBuilder.DefineDynamicAssembly(
+      new AssemblyName($"throwingmodule.{Guid.NewGuid():N}"),
+      AssemblyBuilderAccess.Run
+    );
+    TypeBuilder builder = asm.DefineDynamicModule("throwingmodule")
+      .DefineType(
+        "throwingmodule.ThrowingModule",
+        TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
+        typeof(object),
+        [typeof(IExModule)]
+      );
+    MethodInfo start = typeof(IExModule).GetMethod(nameof(IExModule.Start))!;
+    MethodBuilder body = builder.DefineMethod(
+      nameof(IExModule.Start),
+      MethodAttributes.Public
+        | MethodAttributes.Virtual
+        | MethodAttributes.Final
+        | MethodAttributes.HideBySig
+        | MethodAttributes.NewSlot,
+      typeof(void),
+      [typeof(ICoreAPI)]
+    );
+    ILGenerator il = body.GetILGenerator();
+    il.Emit(OpCodes.Ldstr, "ThrowingModule always throws.");
+    il.Emit(
+      OpCodes.Newobj,
+      typeof(InvalidOperationException).GetConstructor([typeof(string)])!
+    );
+    il.Emit(OpCodes.Throw);
+    builder.DefineMethodOverride(body, start);
+    builder.DefineDefaultConstructor(MethodAttributes.Public);
+    return builder.CreateType();
   }
 
   private static class HarmonyTarget {
@@ -188,7 +221,23 @@ public class ExModuleHostTests : IDisposable {
   public void A_throwing_entry_point_is_logged_and_the_rest_continue() {
     var world = new TestWorld();
     var logger = new RecordingLogger();
-    var host = new ExModuleHost(FakeMod("exlibtest.host", logger), world.Api);
+    logger.Expect(EnumLogType.Error, "ThrowingModule threw");
+    logger.Expect(EnumLogType.Error, "ThrowingModule always throws.");
+    var set = new ExModuleSet(
+      [
+        new ExModuleInfo
+        {
+          Id = "exlibtests",
+          Host = "exlibtest.host",
+          Mod = "exlibtest.host",
+          Requires = [],
+          Assembly = typeof(ExModuleHostTests).Assembly,
+          EntryPoints = [EmitThrowingModule(), typeof(RecordingModule)],
+        },
+      ],
+      []
+    );
+    var host = new ExModuleHost(FakeMod("exlibtest.host", logger), set);
 
     host.Start(world.Api);
 
@@ -229,6 +278,7 @@ public class ExModuleHostTests : IDisposable {
   public void Resolution_errors_are_logged_at_StartPre() {
     var world = new TestWorld();
     var logger = new RecordingLogger();
+    logger.Expect(EnumLogType.Error, "boom");
     var set = new ExModuleSet([], ["boom"]);
     var host = new ExModuleHost(FakeMod("exlibtest.host", logger), set);
 

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using ExpandedLib.Checks;
 using ExpandedLib.Testing;
 using NSubstitute;
@@ -60,11 +62,34 @@ public class ExCheckRegistryTests : IDisposable {
       new(nameof(StaticCheck), domain, []);
   }
 
-  // Carries the attribute but not the exact `static CheckResult Run(ICheckSource, string)` shape;
-  // Register warns and skips it.
-  [ExCheckRegister]
-  private sealed class WrongSignatureCheck {
-    public static void Run(ICheckSource source, string domain) { }
+  // A WrongSignatureCheck carrying the attribute but not the exact `static CheckResult
+  // Run(ICheckSource, string)` shape; Register warns and skips it. It lives in an assembly of its
+  // own: the test assembly is registered whole by other classes.
+  private static Type EmitWrongSignatureCheck() {
+    var asm = AssemblyBuilder.DefineDynamicAssembly(
+      new AssemblyName($"wrongsignature.{Guid.NewGuid():N}"),
+      AssemblyBuilderAccess.Run
+    );
+    TypeBuilder builder = asm.DefineDynamicModule("wrongsignature")
+      .DefineType(
+        "wrongsignature.WrongSignatureCheck",
+        TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class
+      );
+    builder.SetCustomAttribute(
+      new CustomAttributeBuilder(
+        typeof(ExCheckRegisterAttribute).GetConstructor(Type.EmptyTypes)!,
+        []
+      )
+    );
+    MethodBuilder run = builder.DefineMethod(
+      "Run",
+      MethodAttributes.Public | MethodAttributes.Static,
+      typeof(void),
+      [typeof(ICheckSource), typeof(string)]
+    );
+    run.GetILGenerator().Emit(OpCodes.Ret);
+    builder.DefineDefaultConstructor(MethodAttributes.Public);
+    return builder.CreateType();
   }
 
   private static Mod FakeMod() {
@@ -153,20 +178,12 @@ public class ExCheckRegistryTests : IDisposable {
   [Fact]
   public void A_wrong_signature_is_warned_about_and_skipped() {
     var world = new TestWorld();
-    ExCheckRegistry.RegisterAll(
-      world.Api,
-      FakeMod(),
-      typeof(WrongSignatureCheck).Assembly
-    );
+    world.Log.Expect(EnumLogType.Warning, "WrongSignatureCheck");
+    Type wrong = EmitWrongSignatureCheck();
+    ExCheckRegistry.RegisterAll(world.Api, FakeMod(), wrong.Assembly);
 
-    Assert.DoesNotContain(
-      ExCheckRegistry.Registered,
-      c => c.Type == typeof(WrongSignatureCheck)
-    );
-    Assert.Contains(
-      world.Log.Warnings,
-      w => w.Contains(nameof(WrongSignatureCheck))
-    );
+    Assert.DoesNotContain(ExCheckRegistry.Registered, c => c.Type == wrong);
+    Assert.Contains(world.Log.Warnings, w => w.Contains("WrongSignatureCheck"));
   }
 
   [Fact]

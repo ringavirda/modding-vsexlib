@@ -1,4 +1,7 @@
+using System;
 using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using ExpandedLib.Industry;
 using ExpandedLib.Registries;
 using ExpandedLib.Testing;
@@ -11,9 +14,45 @@ namespace ExpandedLib.Tests;
 /// found among already-loaded assemblies while its shipping mod stays enabled.
 /// </summary>
 public class ExModulesTests {
-  // No parameterless constructor, on purpose.
-  private sealed class NoCtorModule(int x) : IExModule {
-    public int X => x;
+  // A module "exlibtests-noctor" of host "exlibtest.noctor" whose one entry point, NoCtorModule,
+  // has no parameterless constructor. Emitted once: a loaded assembly stays discoverable for the
+  // rest of the run, and a second copy would be a duplicate module id.
+  private static readonly Lazy<Type> NoCtorModule = new(EmitNoCtorModule);
+
+  private static Type EmitNoCtorModule() {
+    var asm = AssemblyBuilder.DefineDynamicAssembly(
+      new AssemblyName($"noctormodule.{Guid.NewGuid():N}"),
+      AssemblyBuilderAccess.Run
+    );
+    asm.SetCustomAttribute(
+      new CustomAttributeBuilder(
+        typeof(ExModuleAttribute).GetConstructor([typeof(string)])!,
+        ["exlibtests-noctor"],
+        [
+          typeof(ExModuleAttribute).GetProperty(
+            nameof(ExModuleAttribute.Host)
+          )!,
+        ],
+        ["exlibtest.noctor"]
+      )
+    );
+    TypeBuilder builder = asm.DefineDynamicModule("noctormodule")
+      .DefineType(
+        "noctormodule.NoCtorModule",
+        TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
+        typeof(object),
+        [typeof(IExModule)]
+      );
+    ConstructorBuilder ctor = builder.DefineConstructor(
+      MethodAttributes.Public,
+      CallingConventions.Standard,
+      [typeof(int)]
+    );
+    ILGenerator il = ctor.GetILGenerator();
+    il.Emit(OpCodes.Ldarg_0);
+    il.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes)!);
+    il.Emit(OpCodes.Ret);
+    return builder.CreateType();
   }
 
   [Fact]
@@ -116,14 +155,17 @@ public class ExModulesTests {
 
   [Fact]
   public void An_entry_point_without_a_parameterless_constructor_is_reported() {
-    _ = typeof(NoCtorModule);
+    Type noCtor = NoCtorModule.Value;
     var world = new TestWorld();
 
-    ExModuleSet set = ExModules.For(world.Api, "exlibtest.host");
+    ExModuleSet set = ExModules.For(world.Api, "exlibtest.noctor");
 
     Assert.Contains(set.Errors, e => e.Contains("NoCtorModule"));
-    ExModuleInfo module = Assert.Single(set.Modules, m => m.Id == "exlibtests");
-    Assert.DoesNotContain(typeof(NoCtorModule), module.EntryPoints);
+    ExModuleInfo module = Assert.Single(
+      set.Modules,
+      m => m.Id == "exlibtests-noctor"
+    );
+    Assert.DoesNotContain(noCtor, module.EntryPoints);
   }
 
   private static ExModuleInfo HandBuilt(string id, string[]? requires = null) =>
