@@ -12,8 +12,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// The bare <c>{ShortId}</c>/<c>{shortid}</c> block-entity aliases stay process-wide and unprefixed;
-/// a second type claiming an issued bare key logs an error naming both.
+/// The bare <c>{ShortId}</c>/<c>{shortid}</c> block-entity aliases stay unprefixed; a second type
+/// claiming a bare key already issued in the same class registry logs an error naming both.
 /// </summary>
 public class EntityRegistryBareAliasTests : IDisposable {
   public void Dispose() {
@@ -23,15 +23,6 @@ public class EntityRegistryBareAliasTests : IDisposable {
     )!;
     var domainMap = (Dictionary<Assembly, string>)domainField.GetValue(null)!;
     domainMap.Remove(typeof(EntityRegistryBareAliasTests).Assembly);
-
-    // _bareKeysIssued is process-wide; reset the two keys this fixture claims.
-    var bareField = typeof(EntityRegistry).GetField(
-      "_bareKeysIssued",
-      BindingFlags.NonPublic | BindingFlags.Static
-    )!;
-    var bareMap = (Dictionary<string, Type>)bareField.GetValue(null)!;
-    bareMap.Remove("Widget");
-    bareMap.Remove("widget");
 
     ExDefinitions.Clear();
   }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using ExpandedLib.Definitions;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -205,8 +206,11 @@ public static class EntityRegistry {
   // Block entity type -> the primary key RegisterAll registered it under.
   private static readonly Dictionary<Type, string> _primaryKeys = [];
 
-  // Bare alias key -> the type that owns it.
-  private static readonly Dictionary<string, Type> _bareKeysIssued = [];
+  // Class registry -> bare alias key -> the type that owns it in that registry.
+  private static readonly ConditionalWeakTable<
+    IClassRegistryAPI,
+    Dictionary<string, Type>
+  > _bareKeysIssued = new();
 
   private static bool PublishesSaveKeys(Type type) =>
     type.Assembly.IsDefined(typeof(ExPublishedSaveKeysAttribute));
@@ -217,12 +221,15 @@ public static class EntityRegistry {
     params string[] keys
   ) {
     bool published = PublishesSaveKeys(type);
+    Dictionary<string, Type> issued = _bareKeysIssued.GetOrCreateValue(
+      api.ClassRegistry
+    );
     // Contested keys settled by publication, grouped by the other claimant.
     Dictionary<Type, List<string>> settled = [];
 
     foreach (string key in keys.Distinct()) {
-      if (!_bareKeysIssued.TryGetValue(key, out Type? owner) || owner == type) {
-        _bareKeysIssued[key] = type;
+      if (!issued.TryGetValue(key, out Type? owner) || owner == type) {
+        issued[key] = type;
         api.RegisterBlockEntityClass(key, type);
         continue;
       }
@@ -243,7 +250,7 @@ public static class EntityRegistry {
         settled[owner] = contested = [];
       contested.Add(key);
       if (published) {
-        _bareKeysIssued[key] = type;
+        issued[key] = type;
         api.RegisterBlockEntityClass(key, type);
       }
     }

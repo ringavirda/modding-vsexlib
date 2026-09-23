@@ -19,28 +19,27 @@ namespace ExpandedLib.Tests;
 /// </summary>
 public class EntityRegistrySaveKeyTests : IDisposable {
   private readonly List<Assembly> _emitted = [];
-  private readonly TestWorld _world = new();
+  private readonly TestWorld _world = NewWorld();
 
-  public EntityRegistrySaveKeyTests() {
-    _world.RegisterClasses();
-    _world
+  // A world whose block entity registrations land in its own class registry.
+  private static TestWorld NewWorld() {
+    var world = new TestWorld();
+    world.RegisterClasses();
+    world
       .Api.When(x =>
         x.RegisterBlockEntityClass(Arg.Any<string>(), Arg.Any<Type>())
       )
-      .Do(ci => _world.RegisterClass(ci.ArgAt<string>(0), ci.ArgAt<Type>(1)));
+      .Do(ci => world.RegisterClass(ci.ArgAt<string>(0), ci.ArgAt<Type>(1)));
+    return world;
   }
 
   public void Dispose() {
     var domains = (Dictionary<Assembly, string>)Field("_domainByAssembly");
-    var bare = (Dictionary<string, Type>)Field("_bareKeysIssued");
     var primaries = (Dictionary<Type, string>)Field("_primaryKeys");
     foreach (Assembly asm in _emitted) {
       domains.Remove(asm);
-      foreach (Type type in asm.GetTypes()) {
+      foreach (Type type in asm.GetTypes())
         primaries.Remove(type);
-        foreach (var (key, owner) in bare.Where(e => e.Value == type).ToList())
-          bare.Remove(key);
-      }
     }
     ExDefinitions.Clear();
   }
@@ -81,14 +80,17 @@ public class EntityRegistrySaveKeyTests : IDisposable {
     return type;
   }
 
-  private void Register(string modId, Type type) {
+  private void Register(string modId, Type type) =>
+    Register(_world, modId, type);
+
+  private static void Register(TestWorld world, string modId, Type type) {
     var mod = Substitute.For<Mod>();
     ReflectionHelpers.SetProperty(
       mod,
       nameof(Mod.Info),
       new ModInfo { ModID = modId }
     );
-    EntityRegistry.RegisterAll(_world.Api, mod, type.Assembly);
+    EntityRegistry.RegisterAll(world.Api, mod, type.Assembly);
   }
 
   private IEnumerable<string> Notifications =>
@@ -187,6 +189,26 @@ public class EntityRegistrySaveKeyTests : IDisposable {
     );
     Assert.Empty(Notifications);
     Assert.Equal(second, _world.Api.ClassRegistry.GetBlockEntity("valve"));
+  }
+
+  // Fails when bare-key ownership is shared across class registries: the marked type settled the
+  // key in the first world, so the unmarked one is skipped in the second.
+  [Fact]
+  public void A_bare_key_settled_in_one_class_registry_is_free_in_another() {
+    Type marked = Emit("oldmod", "Damper", published: true);
+    Type unmarked = Emit("newmod", "Damper", published: false);
+    Register("oldmod", marked);
+    Register("newmod", unmarked);
+
+    TestWorld second = NewWorld();
+    Register(second, "newmod", unmarked);
+
+    Assert.Equal(unmarked, second.Api.ClassRegistry.GetBlockEntity("damper"));
+    Assert.Equal(unmarked, second.Api.ClassRegistry.GetBlockEntity("Damper"));
+    Assert.DoesNotContain(
+      second.Log.Entries,
+      e => e.Type == EnumLogType.Notification
+    );
   }
 
   // Fails when the alias is registered through the plain call, leaving it as the saved name.
