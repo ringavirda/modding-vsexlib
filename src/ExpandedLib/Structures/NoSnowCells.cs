@@ -5,13 +5,9 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Structures;
 
-/// <summary>
-/// World cells weather snow never forms on: a marked block keeps no snow layer above it and never
-/// turns into its snow-covered variant. A multiblock structure marks the cells its layout gives
-/// <see cref="CellRoles.NoSnow"/> on the server once its facing is known and unmarks them on removal
-/// and unload; <see cref="Mark"/> is the same call for any other owner. Thread-safe: the snow
-/// simulation reads it off the main thread.
-/// </summary>
+/// <summary>World cells weather snow never forms on, neither a snow layer above nor a snow-covered
+/// variant. A multiblock structure marks its <see cref="CellRoles.NoSnow"/> cells here on the server;
+/// thread-safe, since the snow simulation reads it off the main thread.</summary>
 public static class NoSnowCells {
   private static readonly object Gate = new();
 
