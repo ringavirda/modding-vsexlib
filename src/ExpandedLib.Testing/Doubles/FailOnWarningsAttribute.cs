@@ -11,8 +11,9 @@ namespace ExpandedLib.Testing;
 /// <remarks>
 /// <para>Opt in with <c>[assembly: FailOnWarnings]</c>. After each test it reads every
 /// <see cref="RecordingLogger"/> created since the previous test's check, in the test class's
-/// constructor or in the body, and then lets them go; entries logged later, in <c>Dispose</c>, are
-/// not seen.</para>
+/// constructor or in the body, and then lets them go. A Warning, Error or Fatal logged into a logger
+/// after its check, in the test's <c>Dispose</c> or through a logger a static still holds, fails
+/// the next test checked.</para>
 /// <para>Attribution relies on the assembly running its tests one at a time
 /// (<c>parallelizeTestCollections: false</c>); under parallel collections a fault can be charged to
 /// a test that ran beside the one that logged it.</para>

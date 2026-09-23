@@ -18,6 +18,8 @@ public class TestWorldDefinedBlocksTests
 {
   private static readonly BlockPos Pos = new(3, 0, 0);
 
+  public TestWorldDefinedBlocksTests() => TestModDomain.Register();
+
   // Fails when the BlockPos overload of SpawnItemEntity is not captured.
   [Fact]
   public void SpawnItemEntity_at_a_block_position_lands_in_Drops()

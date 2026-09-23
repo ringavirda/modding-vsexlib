@@ -12,6 +12,8 @@ namespace ExpandedLib.Tests;
 
 /// <summary>Pins the shipped-asset guard on declared network memberships: a declaration missing <c>networkType</c> is a violation.</summary>
 public class NetworkMembershipContractTests {
+  public NetworkMembershipContractTests() => TestModDomain.Register();
+
   private const string Member = TestWorld.NetworkMemberClass;
 
   private static readonly Assembly Here =

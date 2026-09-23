@@ -23,8 +23,21 @@ namespace ExpandedLib.Tests;
 /// the exact key for each attribute shape.
 /// </summary>
 public class RegistrationKeyTests : IDisposable {
+  private readonly RecordingLogger _log = new();
+  private readonly ILogger? _logger = EntityRegistry.Logger;
+
+  // This assembly starts unregistered, as in a world no mod of it has started in yet.
+  public RegistrationKeyTests() {
+    EntityRegistry.ResetForWorld();
+    EntityRegistry.Logger = _log;
+  }
+
+  private void ExpectFallback() =>
+    _log.Expect(EnumLogType.Warning, "declares no [assembly: ExDomain]");
+
   // Clears process-wide state (domain map, ExDefinitions) left behind by RegisterAll.
   public void Dispose() {
+    EntityRegistry.Logger = _logger;
     var field = typeof(EntityRegistry).GetField(
       "_domainByAssembly",
       BindingFlags.NonPublic | BindingFlags.Static
@@ -47,6 +60,7 @@ public class RegistrationKeyTests : IDisposable {
 
   [Fact]
   public void Default_convention_is_modid_dot_classname() {
+    ExpectFallback();
     Assert.Equal(
       "iiex.ConventionBlock",
       EntityRegistry.KeyFor("iiex", typeof(ConventionBlock))
@@ -55,6 +69,7 @@ public class RegistrationKeyTests : IDisposable {
 
   [Fact]
   public void Explicit_code_replaces_the_class_name_but_keeps_the_prefix() {
+    ExpectFallback();
     Assert.Equal(
       "iiex.customcode",
       EntityRegistry.KeyFor("iiex", typeof(CodedBlock))
@@ -63,12 +78,14 @@ public class RegistrationKeyTests : IDisposable {
 
   [Fact]
   public void PrefixModId_false_registers_under_a_bare_key() {
+    ExpectFallback();
     // As used when replacing a vanilla class - no {modid}. prefix.
     Assert.Equal("Vanilla", EntityRegistry.KeyFor("iiex", typeof(BareBlock)));
   }
 
   [Fact]
   public void A_type_without_a_register_attribute_falls_back_to_the_convention() {
+    ExpectFallback();
     // This test assembly declares no [assembly: ExDomain]; the caller's domain is the only answer.
     Assert.Equal(
       "iiex.NoAttributeBlock",
@@ -97,6 +114,7 @@ public class RegistrationKeyTests : IDisposable {
 
   [Fact]
   public void DomainOf_falls_back_when_an_assembly_declares_none() {
+    ExpectFallback();
     Assert.Equal(
       "iiex",
       EntityRegistry.DomainOf(typeof(ConventionBlock).Assembly, "iiex")

@@ -87,6 +87,69 @@ public class FailOnWarningsTests {
     Assert.Null(FailOnWarningsCheck.Faults(nameof(A_logger_is_checked_once)));
   }
 
+  // Fails when a checked logger stays unregistered after a later Warning, as one a static holds
+  // does, or when the next check reads the entries the first one already read.
+  [Fact]
+  public void A_warning_into_a_checked_logger_fails_the_next_check() {
+    var world = new TestWorld();
+    world.Log.Warning("first seat");
+    Assert.NotNull(
+      FailOnWarningsCheck.Faults(
+        nameof(A_warning_into_a_checked_logger_fails_the_next_check)
+      )
+    );
+
+    world.Log.Warning("second seat");
+
+    string? faults = FailOnWarningsCheck.Faults(
+      nameof(A_warning_into_a_checked_logger_fails_the_next_check)
+    );
+    Assert.Contains("unexpected Warning: second seat", faults);
+    Assert.DoesNotContain("first seat", faults);
+  }
+
+  // Fails when an expectation outlives the check that read it.
+  [Fact]
+  public void An_expectation_covers_only_the_check_it_was_declared_for() {
+    var world = new TestWorld();
+    world.Log.Expect(EnumLogType.Warning, "no seat");
+    world.Log.Warning("no seat");
+    Assert.Null(
+      FailOnWarningsCheck.Faults(
+        nameof(An_expectation_covers_only_the_check_it_was_declared_for)
+      )
+    );
+
+    world.Log.Warning("no seat");
+
+    Assert.Contains(
+      "unexpected Warning: no seat",
+      FailOnWarningsCheck.Faults(
+        nameof(An_expectation_covers_only_the_check_it_was_declared_for)
+      )
+    );
+  }
+
+  // Fails when Expect on a checked logger does not register it again.
+  [Fact]
+  public void An_expectation_on_a_checked_logger_is_checked() {
+    var world = new TestWorld();
+    Assert.Null(
+      FailOnWarningsCheck.Faults(
+        nameof(An_expectation_on_a_checked_logger_is_checked)
+      )
+    );
+
+    world.Log.Expect(EnumLogType.Warning, "no seat");
+
+    Assert.Contains(
+      "was never logged",
+      FailOnWarningsCheck.Faults(
+        nameof(An_expectation_on_a_checked_logger_is_checked)
+      )
+    );
+  }
+
   #endregion
 
   #region Expect

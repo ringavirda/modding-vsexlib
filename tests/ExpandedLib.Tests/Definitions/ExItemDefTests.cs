@@ -11,6 +11,8 @@ namespace ExpandedLib.Tests;
 
 /// <summary>Pins the item-side fluent builder <see cref="ExItemDef"/> against its itemtype JSON output.</summary>
 public class ExItemDefTests {
+  public ExItemDefTests() => TestModDomain.Register();
+
   // A stand-in item class for the type-safe Class<T>() overload.
   private sealed class SampleItem : Item { }
 
@@ -274,7 +276,7 @@ public class ExItemDefTests {
   [Fact]
   public void Behavior_by_name_by_type_and_with_properties() {
     JObject json = ExItemDef
-      .Create("iiex", "c")
+      .Create("test", "c")
       .Behavior("GroundStorable")
       .Behavior<FakeBehavior>()
       .Behavior("GroundStorable", new { layout = "SingleCenter" })
@@ -283,7 +285,7 @@ public class ExItemDefTests {
     var behaviors = (JArray)json["behaviors"]!;
     Assert.Equal("GroundStorable", (string?)behaviors[0]!["name"]);
     // Typed overload resolves the registered {modid}.{ClassName} key, same as the class binding.
-    Assert.Equal("iiex.FakeBehavior", (string?)behaviors[1]!["name"]);
+    Assert.Equal("test.FakeBehavior", (string?)behaviors[1]!["name"]);
     Assert.Equal(
       "SingleCenter",
       (string?)behaviors[2]!["properties"]!["layout"]

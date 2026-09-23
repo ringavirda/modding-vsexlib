@@ -9,7 +9,10 @@ namespace ExpandedLib.Testing;
 /// instance as both <c>Api.Logger</c> and <c>World.Logger</c>.</summary>
 /// <remarks>Every instance registers itself when it is created and stays referenced until the next
 /// <see cref="FailOnWarningsAttribute"/> check takes it; in an assembly without that attribute the
-/// registration is never read.</remarks>
+/// registration is never read. A taken logger that later receives an entry, as a logger held by a
+/// process-wide static does, registers again and is read by the next check, which sees only the
+/// entries logged since the last one and none of the earlier <see cref="Expect"/>
+/// declarations.</remarks>
 public sealed class RecordingLogger : LoggerBase {
   private static readonly List<RecordingLogger> Created = [];
 
@@ -22,6 +25,9 @@ public sealed class RecordingLogger : LoggerBase {
   private readonly List<(EnumLogType Type, string Message)> _history = [];
 
   private readonly List<(EnumLogType Type, string Fragment)> _expected = [];
+
+  // Guarded by Created's lock: true while no check is due to read this logger.
+  private bool _taken;
 
   /// <summary>A logger with no entries, registered for the next
   /// <see cref="FailOnWarningsAttribute"/> check.</summary>
@@ -57,21 +63,30 @@ public sealed class RecordingLogger : LoggerBase {
   /// <exception cref="ArgumentNullException"><paramref name="fragment"/> is null.</exception>
   public void Expect(EnumLogType type, string fragment) {
     ArgumentNullException.ThrowIfNull(fragment);
-    _expected.Add((type, fragment));
+    lock (Created) {
+      _expected.Add((type, fragment));
+      if (_taken) {
+        _taken = false;
+        Created.Add(this);
+      }
+    }
   }
 
-  /// <summary>Takes every logger created since the previous call and returns one line per
+  /// <summary>Takes every logger registered since the previous call and returns one line per
   /// unexpected Warning, Error or Fatal entry and per expectation no entry matched; empty when
-  /// clean. The taken loggers are no longer registered.</summary>
+  /// clean. The taken loggers are no longer registered, and their read entries and expectations are
+  /// dropped.</summary>
   internal static List<string> TakeFaults() {
-    RecordingLogger[] loggers;
+    var faults = new List<string>();
     lock (Created) {
-      loggers = [.. Created];
+      foreach (RecordingLogger logger in Created) {
+        logger.AddFaults(faults);
+        logger._history.Clear();
+        logger._expected.Clear();
+        logger._taken = true;
+      }
       Created.Clear();
     }
-    var faults = new List<string>();
-    foreach (RecordingLogger logger in loggers)
-      logger.AddFaults(faults);
     return faults;
   }
 
@@ -112,6 +127,12 @@ public sealed class RecordingLogger : LoggerBase {
       args is { Length: > 0 } ? string.Format(format, args) : format
     );
     _entries.Add(entry);
-    _history.Add(entry);
+    lock (Created) {
+      _history.Add(entry);
+      if (_taken) {
+        _taken = false;
+        Created.Add(this);
+      }
+    }
   }
 }

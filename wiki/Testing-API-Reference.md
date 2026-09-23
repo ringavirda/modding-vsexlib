@@ -438,7 +438,10 @@ of that type whose message contains `fragment`: every entry it matches passes, a
 entry matched fails the test with a `FailOnWarningsException`. `ReportOnly = true` writes one
 `[FailOnWarnings] <test>: <fault>` line per fault to standard error instead, shown by
 `dotnet test --logger "console;verbosity=detailed"`. The check charges a fault to the test that just
-ran, so the assembly runs its collections one at a time (`parallelizeTestCollections: false`).
+ran, so the assembly runs its collections one at a time (`parallelizeTestCollections: false`). A
+logger that receives an entry after its check, in a test's `Dispose` or through a static that still
+holds it, is read again by the next check, which sees only the entries since the last one and none of
+the earlier `Expect` declarations.
 
 `TestModLoader.GetMod`/`IsModEnabled`/`GetModSystem`/`GetModSystem<T>`/`IsModSystemEnabled` are the
 `IModLoader` members proper; `TestWorld`'s constructor registers `"exlib"` enabled and its own

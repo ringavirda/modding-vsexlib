@@ -42,8 +42,9 @@ see the git history.
 - **`FailOnWarningsAttribute`** (ExpandedLib.Testing): `[assembly: FailOnWarnings]` fails a test that
   leaves an unexpected Warning, Error or Fatal entry in any `RecordingLogger` it created, in its
   class constructor or its body. `RecordingLogger.Expect(type, fragment)` declares the entries a test
-  means to log; an expectation nothing matched fails too. `ReportOnly = true` lists the offenders on
-  standard error without failing them.
+  means to log; an expectation nothing matched fails too. A logger that receives an entry after its
+  check, through a static that still holds it, is checked again with the next test. `ReportOnly =
+  true` lists the offenders on standard error without failing them.
 - **`HarnessUse`** (ExpandedLib.Testing): source rules over a suite's tests. It names a
   `StructureComplete` written by reflection, a `BlockBehaviors` assignment without
   `CollectibleBehaviors` on the same receiver, and a generic helper in a test file constrained on a

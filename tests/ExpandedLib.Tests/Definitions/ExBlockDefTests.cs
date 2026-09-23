@@ -13,6 +13,8 @@ namespace ExpandedLib.Tests;
 /// against a verbatim shipped blocktype.
 /// </summary>
 public class ExBlockDefTests {
+  public ExBlockDefTests() => TestModDomain.Register();
+
   // Verbatim copy of iiex/blocktypes/blastfurnace/solidifiediron.json.
   private const string SolidifiedIronJson = """
     {
@@ -86,11 +88,11 @@ public class ExBlockDefTests {
   public void Class_of_T_matches_KeyFor_so_a_rename_cannot_desync() {
     // The typed overload emits the same string the class registry keys on.
     JObject json = ExBlockDef
-      .Create("iiex", "x")
+      .Create("test", "x")
       .Class<CodeFirstBlock>()
       .ToJson();
     Assert.Equal(
-      EntityRegistry.KeyFor("iiex", typeof(CodeFirstBlock)),
+      EntityRegistry.KeyFor("test", typeof(CodeFirstBlock)),
       (string?)json["class"]
     );
   }
@@ -340,7 +342,7 @@ public class ExBlockDefTests {
   [Fact]
   public void Behavior_by_name_and_by_type_append_name_entries() {
     JObject json = ExBlockDef
-      .Create("iiex", "c")
+      .Create("test", "c")
       .Behavior("Lockable")
       .Behavior<FakeBehavior>()
       .ToJson();
@@ -348,7 +350,7 @@ public class ExBlockDefTests {
     var behaviors = (JArray)json["behaviors"]!;
     Assert.Equal("Lockable", (string?)behaviors[0]!["name"]);
     // Typed overload resolves the registered {modid}.{ClassName} key, same as the class binding.
-    Assert.Equal("iiex.FakeBehavior", (string?)behaviors[1]!["name"]);
+    Assert.Equal("test.FakeBehavior", (string?)behaviors[1]!["name"]);
   }
 
   [Fact]
@@ -469,14 +471,14 @@ public class ExBlockDefTests {
   [Fact]
   public void EntityBehavior_by_name_and_by_type_append_entityBehaviors_entries() {
     JObject json = ExBlockDef
-      .Create("iiex", "c")
+      .Create("test", "c")
       .EntityBehavior("Animatable")
       .EntityBehavior<FakeEntityBehavior>()
       .ToJson();
 
     var behaviors = (JArray)json["entityBehaviors"]!;
     Assert.Equal("Animatable", (string?)behaviors[0]!["name"]);
-    Assert.Equal("iiex.FakeEntityBehavior", (string?)behaviors[1]!["name"]);
+    Assert.Equal("test.FakeEntityBehavior", (string?)behaviors[1]!["name"]);
   }
 
   [Fact]

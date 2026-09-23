@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Reflection.Emit;
 using ExpandedLib.Definitions;
 using ExpandedLib.Registries;
 using ExpandedLib.Testing;
@@ -44,11 +45,46 @@ public class DefinitionContributorTests : IDisposable {
       throw new InvalidOperationException("boom");
   }
 
-#pragma warning disable CS9113 // x only needs to exist, to remove the parameterless constructor
-  private sealed class NoCtorContributor(int x) : IExDefinitionContributor {
-    public void Contribute(ICoreAPI api) { }
+  // A contributor whose one constructor takes an int, outside the test assembly that other classes
+  // register whole.
+  private static Type EmitNoCtorContributor() {
+    var asm = AssemblyBuilder.DefineDynamicAssembly(
+      new AssemblyName($"noctorcontributor.{Guid.NewGuid():N}"),
+      AssemblyBuilderAccess.Run
+    );
+    TypeBuilder builder = asm.DefineDynamicModule("noctorcontributor")
+      .DefineType(
+        "noctorcontributor.NoCtorContributor",
+        TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
+        typeof(object),
+        [typeof(IExDefinitionContributor)]
+      );
+    ConstructorBuilder ctor = builder.DefineConstructor(
+      MethodAttributes.Public,
+      CallingConventions.Standard,
+      [typeof(int)]
+    );
+    ILGenerator il = ctor.GetILGenerator();
+    il.Emit(OpCodes.Ldarg_0);
+    il.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes)!);
+    il.Emit(OpCodes.Ret);
+    MethodInfo contract = typeof(IExDefinitionContributor).GetMethod(
+      nameof(IExDefinitionContributor.Contribute)
+    )!;
+    MethodBuilder contribute = builder.DefineMethod(
+      contract.Name,
+      MethodAttributes.Public
+        | MethodAttributes.Virtual
+        | MethodAttributes.Final
+        | MethodAttributes.HideBySig
+        | MethodAttributes.NewSlot,
+      typeof(void),
+      [typeof(ICoreAPI)]
+    );
+    contribute.GetILGenerator().Emit(OpCodes.Ret);
+    builder.DefineMethodOverride(contribute, contract);
+    return builder.CreateType();
   }
-#pragma warning restore CS9113
 
   // Every scan of this assembly runs ThrowingContributor with the rest.
   private static void ExpectThrowingContributor(TestWorld world) {
@@ -119,13 +155,11 @@ public class DefinitionContributorTests : IDisposable {
     var logger = new RecordingLogger();
     logger.Expect(EnumLogType.Warning, "NoCtorContributor");
     ExDefinitions.Logger = logger;
+    Type noCtor = EmitNoCtorContributor();
 
-    ExDefinitions.DiscoverContributors(typeof(NoCtorContributor).Assembly);
+    ExDefinitions.DiscoverContributors(noCtor.Assembly);
 
     Assert.Contains(logger.Warnings, w => w.Contains("NoCtorContributor"));
-    Assert.DoesNotContain(
-      typeof(NoCtorContributor),
-      ExDefinitions.Contributors
-    );
+    Assert.DoesNotContain(noCtor, ExDefinitions.Contributors);
   }
 }

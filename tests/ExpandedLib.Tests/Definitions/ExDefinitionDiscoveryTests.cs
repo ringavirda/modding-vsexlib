@@ -12,7 +12,10 @@ namespace ExpandedLib.Tests;
 /// </summary>
 [Collection("ExDefinitions")]
 public class ExDefinitionDiscoveryTests {
-  public ExDefinitionDiscoveryTests() => ExDefinitions.Clear();
+  public ExDefinitionDiscoveryTests() {
+    TestModDomain.Register();
+    ExDefinitions.Clear();
+  }
 
   // A block that authors its own defs, in the shape a migrated block uses.
   [BlockRegister]
