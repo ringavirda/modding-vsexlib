@@ -225,7 +225,10 @@ public class HarnessUseGuards {
   #endregion
 
   private static IReadOnlyList<string> Generics(IEnumerable<string> files) =>
-    HarnessUse.GameConstrainedGenerics(files, typeof(HarnessUseGuards).Assembly);
+    HarnessUse.GameConstrainedGenerics(
+      files,
+      typeof(HarnessUseGuards).Assembly
+    );
 
   private static string[] Sources() =>
     new[]

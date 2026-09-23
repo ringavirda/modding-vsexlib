@@ -39,7 +39,8 @@ public static class HarnessUse {
 
   private static readonly HashSet<string> GameAssemblies = new(
     StringComparer.Ordinal
-  ) {
+  )
+  {
     "VintagestoryAPI",
     "VintagestoryLib",
     "VSSurvivalMod",
@@ -93,9 +94,12 @@ public static class HarnessUse {
       string text = Uncommented(File.ReadAllText(file));
       foreach (Match write in BlockBehaviorsWrite.Matches(text)) {
         string receiver = write.Groups["receiver"].Value;
-        string pair = receiver.Length == 0
-          ? @"(?<![\w.])CollectibleBehaviors\s*=(?!=)"
-          : @"(?<![\w.])" + Regex.Escape(receiver) + @"!?\s*\.\s*CollectibleBehaviors\s*=(?!=)";
+        string pair =
+          receiver.Length == 0
+            ? @"(?<![\w.])CollectibleBehaviors\s*=(?!=)"
+            : @"(?<![\w.])"
+              + Regex.Escape(receiver)
+              + @"!?\s*\.\s*CollectibleBehaviors\s*=(?!=)";
         if (Regex.IsMatch(text, pair))
           continue;
         string who = receiver.Length == 0 ? "an initializer" : receiver;
@@ -128,7 +132,9 @@ public static class HarnessUse {
       if (!TestAttribute.IsMatch(text))
         continue;
       foreach (Match clause in WhereClause.Matches(text)) {
-        foreach (string constraint in TopLevel(clause.Groups["constraints"].Value)) {
+        foreach (
+          string constraint in TopLevel(clause.Groups["constraints"].Value)
+        ) {
           string name = constraint.Split('<')[0].Split('.')[^1].Trim();
           if (!types[name].Any(IsGameType))
             continue;
@@ -161,11 +167,18 @@ public static class HarnessUse {
       try {
         assemblies.Add(Assembly.Load(reference));
       } catch (Exception e)
-          when (e is FileNotFoundException or FileLoadException or BadImageFormatException) { }
+          when (e
+              is FileNotFoundException
+                or FileLoadException
+                or BadImageFormatException
+          ) { }
     }
     return assemblies
       .SelectMany(LoadableTypes)
-      .ToLookup(t => t.IsGenericType ? t.Name.Split('`')[0] : t.Name, StringComparer.Ordinal);
+      .ToLookup(
+        t => t.IsGenericType ? t.Name.Split('`')[0] : t.Name,
+        StringComparer.Ordinal
+      );
   }
 
   private static IEnumerable<Type> LoadableTypes(Assembly assembly) {
@@ -202,7 +215,12 @@ public static class HarnessUse {
         for (; i < sb.Length && sb[i] != '\n'; i++)
           sb[i] = ' ';
       } else if (sb[i] == '/' && sb[i + 1] == '*') {
-        for (; i < sb.Length && !(sb[i] == '*' && i + 1 < sb.Length && sb[i + 1] == '/'); i++)
+        for (
+          ;
+          i < sb.Length
+            && !(sb[i] == '*' && i + 1 < sb.Length && sb[i + 1] == '/');
+          i++
+        )
           if (sb[i] != '\n')
             sb[i] = ' ';
         if (i + 1 < sb.Length) {

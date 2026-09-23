@@ -32,7 +32,8 @@ public sealed class FailOnWarningsAttribute : BeforeAfterTestAttribute {
     List<string> faults = RecordingLogger.TakeFaults();
     if (faults.Count == 0)
       return;
-    string test = $"{methodUnderTest.DeclaringType?.FullName}.{methodUnderTest.Name}";
+    string test =
+      $"{methodUnderTest.DeclaringType?.FullName}.{methodUnderTest.Name}";
     if (ReportOnly) {
       foreach (string fault in faults)
         Console.Error.WriteLine($"[FailOnWarnings] {test}: {fault}");
@@ -46,4 +47,5 @@ public sealed class FailOnWarningsAttribute : BeforeAfterTestAttribute {
 
 /// <summary>The failure <see cref="FailOnWarningsAttribute"/> raises; its message lists each
 /// unexpected entry and each unmet <see cref="RecordingLogger.Expect"/>.</summary>
-public sealed class FailOnWarningsException(string message) : Exception(message);
+public sealed class FailOnWarningsException(string message)
+  : Exception(message);

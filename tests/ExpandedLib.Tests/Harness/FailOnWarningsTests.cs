@@ -22,7 +22,9 @@ public class FailOnWarningsTests {
 
     Assert.Contains(
       "unexpected Warning: valve 3 has no seat",
-      FailOnWarningsCheck.Faults(nameof(A_warning_from_a_world_built_in_the_body_fails))
+      FailOnWarningsCheck.Faults(
+        nameof(A_warning_from_a_world_built_in_the_body_fails)
+      )
     );
   }
 
@@ -69,7 +71,9 @@ public class FailOnWarningsTests {
     world.Log.Notification("seated");
     world.Log.Debug("seated");
 
-    Assert.Null(FailOnWarningsCheck.Faults(nameof(Notifications_and_debug_entries_pass)));
+    Assert.Null(
+      FailOnWarningsCheck.Faults(nameof(Notifications_and_debug_entries_pass))
+    );
   }
 
   // Fails when a checked logger stays registered, so the next test is charged with its entries.
@@ -77,7 +81,9 @@ public class FailOnWarningsTests {
   public void A_logger_is_checked_once() {
     new TestWorld().Log.Warning("no seat");
 
-    Assert.NotNull(FailOnWarningsCheck.Faults(nameof(A_logger_is_checked_once)));
+    Assert.NotNull(
+      FailOnWarningsCheck.Faults(nameof(A_logger_is_checked_once))
+    );
     Assert.Null(FailOnWarningsCheck.Faults(nameof(A_logger_is_checked_once)));
   }
 
@@ -229,8 +235,10 @@ internal static class FailOnWarningsCheck {
     Console.SetError(TextWriter.Null);
     try {
       new FailOnWarningsAttribute { ReportOnly = true }.After(
-        typeof(FailOnWarningsCheck).GetMethod(nameof(Drain),
-          BindingFlags.NonPublic | BindingFlags.Static)!
+        typeof(FailOnWarningsCheck).GetMethod(
+          nameof(Drain),
+          BindingFlags.NonPublic | BindingFlags.Static
+        )!
       );
     } finally {
       Console.SetError(was);
