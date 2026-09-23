@@ -529,7 +529,6 @@ public sealed partial class TestWorld : IDisposable {
     BlockEntity fresh = NewBlockEntityLike(old, block);
     fresh.Pos = pos.Copy();
     fresh.Block = block;
-    fresh.Api = Api;
     _blockEntities[pos] = fresh;
     fresh.FromTreeAttributes(tree, World);
     fresh.Initialize(Api);

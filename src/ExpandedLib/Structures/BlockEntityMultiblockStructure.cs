@@ -59,6 +59,8 @@ public abstract class BlockEntityMultiblockStructure
     if (api.Side == EnumAppSide.Server) {
       // Must run before any tick reads the angle; _currentAngle starts at -1.
       UpdateStructureRotation();
+      // FromTreeAttributes may have loaded the structure while Api was still null.
+      MarkNoSnowCells();
       StartMonitorTick();
     }
   }
@@ -145,6 +147,15 @@ public abstract class BlockEntityMultiblockStructure
     _facings = MultiblockFacings.FromAttributes(Block.Attributes);
     _roles = MultiblockCellRoles.FromAttributes(Block.Attributes);
     _connectors = MultiblockConnectors.FromAttributes(Block.Attributes);
+    MarkNoSnowCells();
+
+    if (Api is ICoreClientAPI capi && _highlightedStructure != null) {
+      _highlightedStructure.ClearHighlights(Api.World, capi.World.Player);
+      _highlightedStructure = null;
+    }
+  }
+
+  private void MarkNoSnowCells() {
     if (Api?.Side == EnumAppSide.Server)
       NoSnowCells.Mark(
         this,
@@ -152,11 +163,6 @@ public abstract class BlockEntityMultiblockStructure
           ? _noCells
           : CellsWithRole(CellRoles.NoSnow)
       );
-
-    if (Api is ICoreClientAPI capi && _highlightedStructure != null) {
-      _highlightedStructure.ClearHighlights(Api.World, capi.World.Player);
-      _highlightedStructure = null;
-    }
   }
 
   /// <summary>Converts a structure-local offset into a world position for the current rotation.</summary>
