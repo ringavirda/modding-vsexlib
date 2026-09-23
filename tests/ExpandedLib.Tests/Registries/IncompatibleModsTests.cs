@@ -9,7 +9,9 @@ using Xunit;
 namespace ExpandedLib.Tests.Registries;
 
 public class IncompatibleModsTests {
-  private static IModLoader LoaderWith(params (string Id, string Version)[] loaded) {
+  private static IModLoader LoaderWith(
+    params (string Id, string Version)[] loaded
+  ) {
     var loader = Substitute.For<IModLoader>();
     loader
       .IsModEnabled(Arg.Any<string>())
@@ -48,7 +50,9 @@ public class IncompatibleModsTests {
 
   [Fact]
   public void Nothing_enabled_means_no_message() =>
-    Assert.Null(IncompatibleMods.Message(LoaderWith(("iiex", "0.1.0")), "0.8.0", []));
+    Assert.Null(
+      IncompatibleMods.Message(LoaderWith(("iiex", "0.1.0")), "0.8.0", [])
+    );
 
   [Fact]
   public void Both_old_mods_are_named_with_the_versions_to_install() {
@@ -80,15 +84,35 @@ public class IncompatibleModsTests {
   [InlineData("ppex", "0.7.0")]
   [InlineData("smex", "0.10.0")]
   [InlineData("smex", "0.10.1")]
-  public void A_ported_version_loaded_is_accepted(string modId, string version) =>
-    Assert.Null(IncompatibleMods.Message(LoaderWith((modId, version)), "0.8.0", []));
+  public void A_ported_version_loaded_is_accepted(
+    string modId,
+    string version
+  ) =>
+    Assert.Null(
+      IncompatibleMods.Message(LoaderWith((modId, version)), "0.8.0", [])
+    );
 
   // A failed load is absent from the loader; its copy on disk still names the version to install.
   [Theory]
-  [InlineData("ppex", "ppex", "0.6.8", "Pipes and Power Expanded 0.7.0 or later")]
+  [InlineData(
+    "ppex",
+    "ppex",
+    "0.6.8",
+    "Pipes and Power Expanded 0.7.0 or later"
+  )]
   [InlineData("smex", "smex", "0.9.8", "Steelmaking Expanded 0.10.0 or later")]
-  [InlineData("ppex", "ppex_0.6.8.zip", "0.6.8", "Pipes and Power Expanded 0.7.0 or later")]
-  [InlineData("smex", "smex_0.9.8.zip", "0.9.8", "Steelmaking Expanded 0.10.0 or later")]
+  [InlineData(
+    "ppex",
+    "ppex_0.6.8.zip",
+    "0.6.8",
+    "Pipes and Power Expanded 0.7.0 or later"
+  )]
+  [InlineData(
+    "smex",
+    "smex_0.9.8.zip",
+    "0.9.8",
+    "Steelmaking Expanded 0.10.0 or later"
+  )]
   public void An_old_version_on_disk_only_is_refused(
     string modId,
     string fileName,
@@ -121,7 +145,11 @@ public class IncompatibleModsTests {
       PutOnDisk(root, $"{modId}_{oldVersion}.zip", modId, oldVersion);
 
       Assert.Null(
-        IncompatibleMods.Message(LoaderWith((modId, loadedVersion)), "0.8.0", [root])
+        IncompatibleMods.Message(
+          LoaderWith((modId, loadedVersion)),
+          "0.8.0",
+          [root]
+        )
       );
     } finally {
       Directory.Delete(root, recursive: true);
@@ -145,7 +173,9 @@ public class IncompatibleModsTests {
   // Fails when a missing version reaches GameVersion, which throws on an empty string.
   [Fact]
   public void A_loaded_mod_without_a_version_is_refused() =>
-    Assert.NotNull(IncompatibleMods.Message(LoaderWith(("ppex", "")), "0.8.0", []));
+    Assert.NotNull(
+      IncompatibleMods.Message(LoaderWith(("ppex", "")), "0.8.0", [])
+    );
 
   [Fact]
   public void An_unrelated_mod_folder_is_ignored() {
