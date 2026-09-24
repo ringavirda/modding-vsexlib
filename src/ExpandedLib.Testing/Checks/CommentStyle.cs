@@ -122,8 +122,9 @@ public static class CommentStyle {
     IEnumerable<SourceFile> files
   ) => CommentsWhere(files, HtmlEmphasis.IsMatch);
 
-  /// <summary>Each comment line of <paramref name="files"/> holding a marker glyph (star,
-  /// no-entry, warning, check mark), as <c>path:line</c> in file order.</summary>
+  /// <summary>Each comment line of <paramref name="files"/> holding a marker glyph: U+2605 and
+  /// U+2B50 (stars), U+26D4 (no entry), U+26A0 (warning), U+2705 (check mark), U+24D8 (circled i)
+  /// or U+2757 (heavy exclamation), as <c>path:line</c> in file order.</summary>
   /// <param name="files">The sources to read.</param>
   /// <returns>The findings; empty when clean.</returns>
   public static IReadOnlyList<string> MarkerGlyphs(
