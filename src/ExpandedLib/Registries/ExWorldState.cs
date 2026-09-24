@@ -16,11 +16,12 @@ namespace ExpandedLib.Registries;
 /// next.</summary>
 public static class ExWorldState {
   /// <summary>Whether a world starting to load on <paramref name="api"/>'s side empties the
-  /// process-wide state the previous world left: always on the server, and on a client only when it
-  /// joins a remote server.</summary>
+  /// process-wide state the previous world left and fills the catalogues at <c>AssetsFinalize</c>:
+  /// always on the server, and on a client only when it joins a remote server.</summary>
   /// <remarks>A singleplayer client loads after its own server, in the same process, and shares the
-  /// state that server has just filled, so it keeps it. Known from <c>StartPre</c> on: the game sets
-  /// the client's singleplayer flag before any mod loads.</remarks>
+  /// state that server has just filled, so it keeps it and reads the server's catalogues without
+  /// loading them again. Known from <c>StartPre</c> on: the game sets the client's singleplayer flag
+  /// before any mod loads.</remarks>
   /// <param name="api">The api of the side whose mods are starting.</param>
   /// <returns>True on the server and on a client of a remote server; false on a singleplayer
   /// client.</returns>

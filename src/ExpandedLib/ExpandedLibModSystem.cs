@@ -44,9 +44,21 @@ public class ExpandedLibModSystem : ModSystem {
     _harmony = ExHarmony.PatchOnce(Mod, GetType().Assembly);
   }
 
-  /// <summary>Populates the shared liquid catalogue from every domain's <c>config/liquids</c>, once
-  /// the asset-patch pipeline has merged all mods' JSON.</summary>
+  /// <summary>Loads the shared catalogues (liquids, material roles, process routes, process jobs, bay
+  /// occupancy) from every domain's <c>config/</c> once the asset-patch pipeline has merged all mods'
+  /// JSON, then runs the content checks. A singleplayer client loads none of them: it reads the ones
+  /// its own server has just loaded in the same process (<see cref="ExWorldState.ResetsOnLoad"/>).</summary>
   public override void AssetsFinalize(ICoreAPI api) {
+    if (ExWorldState.ResetsOnLoad(api))
+      LoadCatalogues(api);
+
+    // The content guards - dangling recipe codes, uncovered lang, pinned network nodes and the rest.
+    // RunChecksOnLoad opts out; also available on demand with /exmod verify.
+    if (ExlibValues.RunChecksOnLoad)
+      Checks.ExlibChecks.Log(api.Logger, Checks.ExlibChecks.All(api));
+  }
+
+  private static void LoadCatalogues(ICoreAPI api) {
     LiquidCatalogueLoader.Load(api).Log(api.Logger);
     // The material-role catalogue (flux/fuel/ore/scrap/charge) and its mod-gated contributors;
     // must run once the metal and liquid registries have loaded.
@@ -60,11 +72,6 @@ public class ExpandedLibModSystem : ModSystem {
 
     // What each store's items occupy; also each store's whitelist.
     BayOccupancyLoader.Load(api).Log(api.Logger);
-
-    // The content guards - dangling recipe codes, uncovered lang, pinned network nodes and the rest.
-    // RunChecksOnLoad opts out; also available on demand with /exmod verify.
-    if (ExlibValues.RunChecksOnLoad)
-      Checks.ExlibChecks.Log(api.Logger, Checks.ExlibChecks.All(api));
   }
 
   public override void StartClientSide(ICoreClientAPI api) {

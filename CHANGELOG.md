@@ -96,9 +96,12 @@ see the git history.
   now returned to its fresh-process state when a world starts loading, at `StartPre` of exlib's own
   driver: on the server every time, on a client only when it joins a remote server
   (`ExWorldState.ResetsOnLoad`). A singleplayer client loads after its own server in the same
-  process and keeps what that server loaded. No other state is emptied at `Dispose`, which still
-  removes exlib's Harmony patches, empties `NoSnowCells` and closes the server end of the sound
-  channel; in singleplayer the client's `Dispose` does so while its server still runs.
+  process and keeps what that server loaded; its `AssetsFinalize` no longer empties and reloads
+  the metal, liquid, material-role, process-route, process-job and bay-occupancy catalogues while
+  that server ticks, and a mod enabled on the server alone keeps its entries for the session. No
+  other state is emptied at `Dispose`, which still removes exlib's Harmony patches, empties
+  `NoSnowCells` and closes the server end of the sound channel; in singleplayer the client's
+  `Dispose` does so while its server still runs.
 
 ## [0.8.2] - 2026-09-15
 
