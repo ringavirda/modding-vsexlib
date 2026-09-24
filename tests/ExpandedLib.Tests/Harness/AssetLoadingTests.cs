@@ -8,6 +8,7 @@ using ExpandedLib.Industry.Metals;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Registries;
 using ExpandedLib.Testing;
+using HarmonyLib;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Xunit;
@@ -68,6 +69,35 @@ public class AssetLoadingTests
     }
   }
 
+  // Fails when the loader stops starting exlib's own mod systems, so no exlib class is registered.
+  [Fact]
+  public void A_mod_block_naming_an_exlib_class_resolves_to_it()
+  {
+    using var world = new TestWorld();
+
+    world.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "PlatedPipes"));
+
+    Assert.IsType<BlockPipe>(
+      world.World.GetBlock(
+        new AssetLocation("platedpipes:pipe-plated-straight-ns")
+      )
+    );
+  }
+
+  // Fails when the loader leaves exlib's systems undisposed, so their Harmony patches outlive the load.
+  [Fact]
+  public void A_load_leaves_no_exlib_harmony_patch()
+  {
+    using var world = new TestWorld();
+
+    world.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "PlatedPipes"));
+
+    Assert.DoesNotContain(
+      Harmony.GetAllPatchedMethods(),
+      m => Harmony.GetPatchInfo(m)?.Owners.Contains("exlib") ?? false
+    );
+  }
+
   // Fails when LoadAssets keeps the code-first definitions an earlier load registered.
   [Fact]
   public void A_second_load_meets_no_block_of_the_first()
@@ -89,7 +119,6 @@ public class AssetLoadingTests
   }
 
   // World A registers the metal and the preference as a mod's Start would; the sample ships none.
-  // The loader registers no exlib class, so world A's pipe blocks name an unknown one.
   [Fact]
   public void A_world_loaded_after_another_holds_nothing_of_a_mod_it_lacks()
   {
@@ -98,7 +127,6 @@ public class AssetLoadingTests
     platedPipe.Variant = new(platedPipe.VariantStrict);
     using (var first = new TestWorld())
     {
-      first.Log.Expect(EnumLogType.Error, "no such class registered");
       first.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "PlatedPipes"));
       MetalRegistry.Register(
         new MetalDef { Code = "platedsteel", MoltenItem = "platedpipes:molten" }

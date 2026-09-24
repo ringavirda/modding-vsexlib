@@ -26,11 +26,11 @@ public sealed partial class TestWorld {
   /// <summary>Loads one mod's real assets through the game's own asset manager and object loader and
   /// registers the resulting <see cref="Block"/>/<see cref="Item"/> instances; vanilla survival and
   /// creative content is not loaded.</summary>
-  /// <remarks>First the install's vanilla mod systems register their classes (one that cannot start
-  /// on a registration-only API is passed over) and the 1.22 tag converters take this load's
-  /// registries, so a vanilla-only load logs nothing. Then exlib's own driver runs its
-  /// <c>StartPre</c> as a starting server's does, which empties every per-world registry of exlib and
-  /// exlib.industry (<see cref="Registries.ExWorldState"/>) before the mod's systems start.</remarks>
+  /// <remarks>The install's vanilla mod systems register their classes first, so a vanilla-only
+  /// load logs nothing. exlib's driver then runs its <c>StartPre</c>, emptying every per-world
+  /// registry (<see cref="Registries.ExWorldState"/>), and every exlib mod system its <c>Start</c>,
+  /// before the mod's; exlib's systems are disposed, with their Harmony patches, when the load
+  /// ends.</remarks>
   /// <param name="modPath">A mod's or sample's folder; <c>modinfo.json</c>/<c>bin/</c> may sit at its
   /// root or under <c>src/</c>, assets always under <c>assets/&lt;modid&gt;/</c>. A mod whose
   /// <c>modinfo.json</c> declares <c>"type": "content"</c> has no compiled assembly.</param>
@@ -92,8 +92,22 @@ public sealed partial class TestWorld {
       out ClassRegistry rawClassRegistry
     );
     StartVanillaMods(gamePath, rawClassRegistry);
-    StartExlib(loaderApi);
+    List<ModSystem> exlibSystems = StartExlib(loaderApi);
+    try {
+      LoadMod(loaderApi, modAssembly, modId, version);
+    } finally {
+      foreach (ModSystem system in exlibSystems)
+        system.Dispose();
+    }
+    return this;
+  }
 
+  private void LoadMod(
+    ICoreServerAPI loaderApi,
+    Assembly? modAssembly,
+    string modId,
+    string version
+  ) {
     Mods.Add(modId, version);
     Mod mod = Mods.GetMod(modId)!;
 
@@ -130,8 +144,6 @@ public sealed partial class TestWorld {
         .Select(c => (Item)c.GetArguments()[0]!)
     )
       Register(item);
-
-    return this;
   }
 
   /// <summary>Copies every asset under <paramref name="fullPath"/> for <paramref name="domain"/> into
@@ -335,16 +347,34 @@ public sealed partial class TestWorld {
     }
   }
 
-  /// <summary>Runs <see cref="Registries.ExModuleModSystem.StartPre"/> under this world's
-  /// <c>exlib</c> mod against <paramref name="api"/>.</summary>
-  private void StartExlib(ICoreServerAPI api) {
-    var exlib = new Registries.ExModuleModSystem();
-    ReflectionHelpers.SetField(
-      exlib,
-      "<Mod>k__BackingField",
-      Mods.GetMod("exlib")!
-    );
-    exlib.StartPre(api);
+  /// <summary>Runs <see cref="Registries.ExModuleModSystem.StartPre"/>, then the <c>Start</c> of
+  /// every server-side mod system in exlib's assembly in the game's execute order, each under this
+  /// world's <c>exlib</c> mod against <paramref name="api"/>.</summary>
+  /// <returns>The started systems, for the caller to dispose.</returns>
+  private List<ModSystem> StartExlib(ICoreServerAPI api) {
+    Mod exlib = Mods.GetMod("exlib")!;
+    List<ModSystem> systems =
+    [
+      .. typeof(Registries.ExModuleModSystem)
+        .Assembly.GetTypes()
+        .Where(t =>
+          typeof(ModSystem).IsAssignableFrom(t)
+          && !t.IsAbstract
+          && t.GetConstructor(Type.EmptyTypes) != null
+        )
+        .Select(t => (ModSystem)Activator.CreateInstance(t)!)
+        .Where(s => s.ShouldLoad(EnumAppSide.Server))
+        .OrderBy(s => s.ExecuteOrder()),
+    ];
+    foreach (ModSystem system in systems)
+      ReflectionHelpers.SetField(system, "<Mod>k__BackingField", exlib);
+
+    // Only the driver's StartPre: ExpandedLibModSystem's asks this world's TestModLoader, which
+    // answers every mod id enabled, so it would name smex and ppex as outdated.
+    systems.OfType<Registries.ExModuleModSystem>().Single().StartPre(api);
+    foreach (ModSystem system in systems)
+      system.Start(api);
+    return systems;
   }
 
   /// <summary>Reflectively runs <c>ModRegistryObjectTypeLoader.AssetsLoaded</c>, found by name each
