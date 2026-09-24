@@ -37,21 +37,25 @@ public class VersionPinTests {
     @"Version\s*=\s*""([^""]+)"""
   );
 
-  [Fact]
-  public void Every_ExpandedLib_package_version_under_templates_matches_modinfo() {
-    string version = ModinfoVersion;
-    string templatesDir = Path.Combine(RepoPaths.Root, "templates");
+  private static readonly Regex ExlibDependency = new(
+    @"""exlib""\s*:\s*""([^""]+)"""
+  );
 
+  /// <summary>Each <c>ExpandedLib*</c> package reference in <paramref name="projects"/> whose
+  /// <c>Version</c> is not <paramref name="version"/> or is missing.</summary>
+  /// <param name="projects">Project files as their path and text.</param>
+  /// <param name="version">The version every pin must name.</param>
+  /// <returns><c>Matched</c>: the <c>ExpandedLib*</c> references seen. <c>Stale</c>:
+  /// <c>path: Package=version</c> or <c>path: Package names no Version.</c>, in input order.
+  /// </returns>
+  public static (int Matched, IReadOnlyList<string> Stale) StalePackagePins(
+    IEnumerable<(string Path, string Text)> projects,
+    string version
+  ) {
     int matched = 0;
     var stale = new List<string>();
-    foreach (
-      string file in Directory.EnumerateFiles(
-        templatesDir,
-        "*.csproj",
-        SearchOption.AllDirectories
-      )
-    ) {
-      foreach (Match tag in PackageReferenceTag.Matches(File.ReadAllText(file))) {
+    foreach (var (file, text) in projects)
+      foreach (Match tag in PackageReferenceTag.Matches(text)) {
         string attrs = tag.Groups[1].Value;
         Match include = IncludeAttr.Match(attrs);
         if (
@@ -64,15 +68,39 @@ public class VersionPinTests {
         matched++;
 
         Match ver = VersionAttr.Match(attrs);
-        Assert.True(
-          ver.Success,
-          $"{file}: {include.Groups[1].Value} names no Version."
-        );
-        string found = ver.Groups[1].Value;
-        if (found != version)
-          stale.Add($"{file}: {include.Groups[1].Value}={found}");
+        if (!ver.Success)
+          stale.Add($"{file}: {include.Groups[1].Value} names no Version.");
+        else if (ver.Groups[1].Value != version)
+          stale.Add($"{file}: {include.Groups[1].Value}={ver.Groups[1].Value}");
       }
-    }
+    return (matched, stale);
+  }
+
+  /// <summary>Each <c>"exlib": "&lt;version&gt;"</c> literal in <paramref name="text"/> whose
+  /// version is not <paramref name="version"/>.</summary>
+  /// <returns>The stale versions, in text order.</returns>
+  public static IReadOnlyList<string> StaleExlibDependencies(
+    string text,
+    string version
+  ) =>
+    [
+      .. ExlibDependency
+        .Matches(text)
+        .Select(m => m.Groups[1].Value)
+        .Where(found => found != version),
+    ];
+
+  [Fact]
+  public void Every_ExpandedLib_package_version_under_templates_matches_modinfo() {
+    string version = ModinfoVersion;
+    string templatesDir = Path.Combine(RepoPaths.Root, "templates");
+
+    var (matched, stale) = StalePackagePins(
+      Directory
+        .EnumerateFiles(templatesDir, "*.csproj", SearchOption.AllDirectories)
+        .Select(f => (f, File.ReadAllText(f))),
+      version
+    );
 
     Assert.True(
       matched > 0,
@@ -91,19 +119,12 @@ public class VersionPinTests {
     string page = Path.Combine(RepoPaths.Root, "wiki", "Getting-Started.md");
     string text = File.ReadAllText(page);
 
-    MatchCollection literals = Regex.Matches(
-      text,
-      @"""exlib""\s*:\s*""([^""]+)"""
-    );
     Assert.True(
-      literals.Count > 0,
+      ExlibDependency.Matches(text).Count > 0,
       $"No \"exlib\" dependency literal found in {page}."
     );
 
-    var stale = literals
-      .Select(m => m.Groups[1].Value)
-      .Where(found => found != version)
-      .ToList();
+    IReadOnlyList<string> stale = StaleExlibDependencies(text, version);
 
     Assert.True(
       stale.Count == 0,
@@ -125,21 +146,60 @@ public class VersionPinTests {
       Assert.True(File.Exists(file), $"Sample '{name}' has no {file}.");
 
       string text = File.ReadAllText(file);
-      MatchCollection literals = Regex.Matches(
-        text,
-        @"""exlib""\s*:\s*""([^""]+)"""
+      Assert.True(
+        ExlibDependency.Matches(text).Count > 0,
+        $"{file} names no \"exlib\" dependency."
       );
-      Assert.True(literals.Count > 0, $"{file} names no \"exlib\" dependency.");
-      foreach (Match m in literals) {
-        if (m.Groups[1].Value != version)
-          stale.Add($"{file}: exlib={m.Groups[1].Value}");
-      }
+      foreach (string found in StaleExlibDependencies(text, version))
+        stale.Add($"{file}: exlib={found}");
     }
 
     Assert.True(
       stale.Count == 0,
       $"src/ExpandedLib/modinfo.json's version is {version}; stale sample exlib dependency"
         + $" floor(s):\n  {string.Join("\n  ", stale)}"
+    );
+  }
+
+  // Fails when StalePackagePins passes a stale or missing version, counts another package, or
+  // reads attributes in one order only.
+  [Fact]
+  [PlantedDefect(typeof(VersionPinTests), nameof(StalePackagePins))]
+  public void A_stale_or_missing_package_pin_is_named() {
+    var (matched, stale) = StalePackagePins(
+      [
+        (
+          "a.csproj",
+          "<PackageReference Version=\"0.8.1\" Include=\"ExpandedLib.Testing\" />\n"
+            + "<PackageReference Include=\"ExpandedLib\" Version=\"0.8.2\" />\n"
+            + "<PackageReference Include=\"xunit\" Version=\"1.0\" />\n"
+            + "<PackageReference Include=\"ExpandedLib.Industry\" />"
+        ),
+      ],
+      "0.8.2"
+    );
+
+    Assert.Equal(3, matched);
+    Assert.Equal(
+      [
+        "a.csproj: ExpandedLib.Testing=0.8.1",
+        "a.csproj: ExpandedLib.Industry names no Version.",
+      ],
+      stale
+    );
+  }
+
+  // Fails when StaleExlibDependencies passes a stale version or names a current one or another
+  // mod's.
+  [Fact]
+  [PlantedDefect(typeof(VersionPinTests), nameof(StaleExlibDependencies))]
+  public void A_stale_exlib_dependency_is_named() {
+    Assert.Equal(
+      ["0.8.1"],
+      StaleExlibDependencies(
+        "{ \"exlib\": \"0.8.1\", \"exlibx\": \"0.1.0\", \"exlib\" : \"0.8.2\" }",
+        "0.8.2"
+      )
     );
   }
 }
