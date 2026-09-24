@@ -99,9 +99,12 @@ see the git history.
   process and keeps what that server loaded; its `AssetsFinalize` no longer empties and reloads
   the metal, liquid, material-role, process-route, process-job and bay-occupancy catalogues while
   that server ticks, and a mod enabled on the server alone keeps its entries for the session. No
-  other state is emptied at `Dispose`, which still removes exlib's Harmony patches, empties
-  `NoSnowCells` and closes the server end of the sound channel; in singleplayer the client's
-  `Dispose` does so while its server still runs.
+  other state is emptied at `Dispose`: a singleplayer client's `Dispose` no longer removes exlib's
+  Harmony patches, empties `NoSnowCells` or closes the server end of the sound channel while its
+  server still runs. `ExHarmony.UnpatchAll` releases one `PatchOnce` hold and removes an id's
+  patches, categories included, only when none is left, so the patches come off with the server's
+  `Dispose`; `NoSnowCells` is emptied at the next world's load start; the channel closes from the
+  Industry module instance that opened it. A `HarmonyFixture` disposed twice releases its hold once.
 
 ## [0.8.2] - 2026-09-15
 

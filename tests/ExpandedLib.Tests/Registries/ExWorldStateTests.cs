@@ -91,7 +91,7 @@ public class ExWorldStateTests {
   private const string LoadedAssemblies =
     "rescanned from the loaded assemblies whenever their count changes";
   private const string LivePatches =
-    "mirrors the live Harmony patches; emptied with them by UnpatchAll";
+    "mirrors the live Harmony patches; emptied with them by the UnpatchAll that releases the last hold";
   private const string EmptySentinel = "an empty sentinel nothing writes";
   private const string Orientations = "a constant orientation scheme";
   private const string Emitters = "the emitters' constant templates";

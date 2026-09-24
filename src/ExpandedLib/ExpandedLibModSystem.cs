@@ -40,7 +40,7 @@ public class ExpandedLibModSystem : ModSystem {
       ExlibBlocks.Structurefiller.Code
     );
 
-    // Applied once per process whichever side starts first.
+    // Applied once per process whichever side starts first; each side holds it until its Dispose.
     _harmony = ExHarmony.PatchOnce(Mod, GetType().Assembly);
   }
 
@@ -109,10 +109,12 @@ public class ExpandedLibModSystem : ModSystem {
         );
   }
 
+  /// <summary>Releases this side's hold on exlib's Harmony patches, which come off with the last
+  /// side's (<see cref="ExHarmony.UnpatchAll(Mod)"/>). <see cref="NoSnowCells"/> is left to the
+  /// server's structures and the next world's load start.</summary>
   public override void Dispose() {
     ExHarmony.UnpatchAll(Mod);
     _harmony = null;
-    NoSnowCells.Clear();
     base.Dispose();
   }
 }

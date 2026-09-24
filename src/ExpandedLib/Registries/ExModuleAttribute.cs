@@ -24,7 +24,7 @@ public sealed class ExModuleAttribute(string id) : Attribute {
   public string[] Requires { get; set; } = [];
 
   /// <summary>When true, the host patches this assembly's uncategorised <c>[HarmonyPatch]</c>
-  /// classes under <see cref="ExModuleInfo.HarmonyId"/> at <c>Start</c>, and unpatches them at
-  /// <c>Dispose</c>.</summary>
+  /// classes under <see cref="ExModuleInfo.HarmonyId"/> at <c>Start</c>, and releases its hold on
+  /// them at <c>Dispose</c> (<see cref="ExHarmony.UnpatchAll(string)"/>).</summary>
   public bool PatchHarmony { get; set; }
 }

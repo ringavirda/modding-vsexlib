@@ -83,8 +83,8 @@ public sealed class ExModuleHost {
   /// <summary>Runs every module's <see cref="IExModule.AssetsFinalize"/>.</summary>
   public void AssetsFinalize(ICoreAPI api) => Drive(m => m.AssetsFinalize(api));
 
-  /// <summary>Runs every entry point's <see cref="IExModule.Dispose"/>, then unpatches Harmony for
-  /// every module that opted in.</summary>
+  /// <summary>Runs every entry point's <see cref="IExModule.Dispose"/>, then releases the Harmony
+  /// hold of every module that opted in (<see cref="ExHarmony.UnpatchAll(string)"/>).</summary>
   public void Dispose() {
     Drive(m => m.Dispose());
     foreach ((ExModuleInfo info, _) in _resolved)

@@ -17,6 +17,9 @@ namespace ExpandedLib.Industry;
 /// <summary>Entry point for the family layer. Implements <see cref="IExModule"/> rather than a
 /// mod system, since only one dll per mod folder may contain mod systems.</summary>
 public sealed class IndustryModule : IExModule, IExDefinitionContributor {
+  // The channel is process-wide; in singleplayer the client's instance shares it with the server's.
+  private bool _openedServerChannel;
+
   /// <summary>When <see cref="ExWorldState.ResetsOnLoad"/> holds, returns the family layer's
   /// registries (metals, pipe tier ratings, the sound channel, the mold gate, the chisel list, the
   /// molten temperature formatter) to their fresh-process state; then registers the refractory tier variant group before any block's
@@ -38,13 +41,20 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
     RegisterNetworkTypes(api.ModLoader.GetModSystem<BlockNetworkModSystem>());
 
   /// <summary>Opens the server end of <see cref="ExSounds"/>' channel.</summary>
-  public void StartServerSide(ICoreServerAPI api) => ExSounds.StartServer(api);
+  public void StartServerSide(ICoreServerAPI api) {
+    ExSounds.StartServer(api);
+    _openedServerChannel = true;
+  }
 
   /// <summary>Opens the client end of <see cref="ExSounds"/>' channel.</summary>
   public void StartClientSide(ICoreClientAPI api) => ExSounds.StartClient(api);
 
-  /// <summary>Closes the server end of <see cref="ExSounds"/>' channel.</summary>
-  public void Dispose() => ExSounds.StopServer();
+  /// <summary>Closes the server end of <see cref="ExSounds"/>' channel when this instance opened it;
+  /// a singleplayer client's instance leaves its server's channel open.</summary>
+  public void Dispose() {
+    if (_openedServerChannel)
+      ExSounds.StopServer();
+  }
 
   /// <summary>The registrations <see cref="Start"/> makes, callable without a mod loader.</summary>
   public static void RegisterNetworkTypes(BlockNetworkModSystem networks) {

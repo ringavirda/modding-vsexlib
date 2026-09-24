@@ -553,7 +553,9 @@ public sealed class HarmonyFixture : IDisposable
 ```
 
 Built on `ExHarmony.PatchOnce`/`PatchCategoryWhenLoaded`/`UnpatchAll`, so the fixture and the library
-agree on idempotence: a second fixture for the same `modId` does not double-patch. `category == null`
+agree on idempotence: a second fixture for the same `modId` does not double-patch, and the patches
+stay until the last fixture holding them is disposed; disposing one fixture twice releases its hold
+once. `category == null`
 applies every uncategorised `[HarmonyPatch]` class in `patches`; a `category` applies only its
 `[HarmonyPatchCategory(category)]` classes. `IsPatched`/`PatchedMethods` read through
 `Harmony.GetPatchInfo`/`GetPatchedMethods`, scoped to this fixture's owner id. Join a collection with

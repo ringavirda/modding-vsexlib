@@ -13,7 +13,8 @@ public abstract class ExModSystem : ModSystem {
   /// <summary>The assembly scanned by every registry call below.</summary>
   protected virtual Assembly Assembly => GetType().Assembly;
 
-  /// <summary>When true, patches and unpatches this assembly's Harmony classes. Off by default.</summary>
+  /// <summary>When true, patches this assembly's Harmony classes at <c>Start</c> and releases them at
+  /// <c>Dispose</c>. Off by default.</summary>
   protected virtual bool PatchHarmony => false;
 
   /// <summary>The consumer-facing end of exlib's pinned order.</summary>
@@ -77,8 +78,9 @@ public abstract class ExModSystem : ModSystem {
     OnAssetsFinalize(api);
   }
 
-  /// <summary>Disposes this mod's modules, unpatches Harmony when <see cref="PatchHarmony"/> is
-  /// true, and clears the module host.</summary>
+  /// <summary>Disposes this mod's modules, releases this side's Harmony hold when
+  /// <see cref="PatchHarmony"/> is true (<see cref="ExHarmony.UnpatchAll(Mod)"/>), and clears the
+  /// module host.</summary>
   public override void Dispose() {
     _modules?.Dispose();
     if (PatchHarmony)

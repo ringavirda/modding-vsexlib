@@ -100,6 +100,25 @@ public class HarmonyFixtureTests {
     Assert.Equal(1, Harmony.GetPatchInfo(original)?.Prefixes.Count);
   }
 
+  // Fails when a second Dispose of one fixture releases the other fixture's hold.
+  [Fact]
+  public void A_fixture_disposed_twice_leaves_the_other_fixtures_patches() {
+    const string modId = "exlibtest.harmonyfixture-dispose-twice";
+    MethodBase original = typeof(UncategorizedTarget).GetMethod(
+      nameof(UncategorizedTarget.Method)
+    )!;
+    using var second = new HarmonyFixture(
+      modId,
+      typeof(HarmonyFixtureTests).Assembly
+    );
+    var first = new HarmonyFixture(modId, typeof(HarmonyFixtureTests).Assembly);
+
+    first.Dispose();
+    first.Dispose();
+
+    Assert.True(second.IsPatched(original));
+  }
+
   [Fact]
   public void The_category_form_applies_only_the_categorised_class() {
     MethodBase categorized = typeof(CollectibleObject).GetMethod(

@@ -11,10 +11,12 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// Applies a mod's Harmony patches once per test assembly and reverts them on dispose. Patches are
-/// process-wide; a second fixture for the same <c>modId</c> does not double-patch.
+/// process-wide; a second fixture for the same <c>modId</c> does not double-patch, and the patches
+/// stay until the last fixture holding them is disposed.
 /// </summary>
 public sealed class HarmonyFixture : IDisposable {
   private readonly Mod _mod;
+  private bool _disposed;
 
   /// <summary>
   /// Applies <paramref name="patches"/>' <c>[HarmonyPatch]</c> classes under <paramref name="modId"/>,
@@ -54,6 +56,12 @@ public sealed class HarmonyFixture : IDisposable {
   public IReadOnlyList<MethodBase> PatchedMethods =>
     Harmony.GetPatchedMethods().ToList();
 
-  /// <summary>Reverts every patch registered under this fixture's mod id. Safe to call twice.</summary>
-  public void Dispose() => ExHarmony.UnpatchAll(_mod);
+  /// <summary>Releases this fixture's hold; the mod id's patches are reverted once nothing else
+  /// holds them (<see cref="ExHarmony.UnpatchAll(Mod)"/>). Safe to call twice.</summary>
+  public void Dispose() {
+    if (_disposed)
+      return;
+    _disposed = true;
+    ExHarmony.UnpatchAll(_mod);
+  }
 }

@@ -71,6 +71,7 @@ public class ExHarmonyTests {
       Assert.Equal(1, Harmony.GetPatchInfo(original)?.Prefixes.Count);
     } finally {
       ExHarmony.UnpatchAll(mod);
+      ExHarmony.UnpatchAll(mod);
     }
   }
 
@@ -87,6 +88,7 @@ public class ExHarmonyTests {
 
       Assert.Equal(1, Harmony.GetPatchInfo(original)?.Prefixes.Count);
     } finally {
+      ExHarmony.UnpatchAll(id);
       ExHarmony.UnpatchAll(id);
     }
   }
@@ -198,6 +200,68 @@ public class ExHarmonyTests {
 
       Assert.Equal(1, Harmony.GetPatchInfo(original)?.Prefixes.Count);
     } finally {
+      ExHarmony.UnpatchAll(mod);
+    }
+  }
+
+  // Fails when UnpatchAll unpatches while a PatchOnce hold is left, or never lets the last one go.
+  [Fact]
+  public void The_patches_stay_until_the_last_hold_is_released() {
+    const string id = "exlibtest.exharmony-holds";
+    MethodBase original = typeof(UncategorizedTarget).GetMethod(
+      nameof(UncategorizedTarget.Method)
+    )!;
+
+    try {
+      ExHarmony.PatchOnce(id, typeof(ExHarmonyTests).Assembly);
+      ExHarmony.PatchOnce(id, typeof(ExHarmonyTests).Assembly);
+
+      ExHarmony.UnpatchAll(id);
+      Assert.Equal(1, Harmony.GetPatchInfo(original)?.Prefixes.Count);
+
+      ExHarmony.UnpatchAll(id);
+      var info = Harmony.GetPatchInfo(original);
+      Assert.True(info == null || info.Prefixes.Count == 0);
+    } finally {
+      ExHarmony.UnpatchAll(id);
+      ExHarmony.UnpatchAll(id);
+    }
+  }
+
+  // Fails when UnpatchAll forgets the applied categories while a hold keeps them patched, so a
+  // repeat PatchCategoryWhenLoaded stacks a second prefix.
+  [Fact]
+  public void A_held_id_keeps_its_categories_applied_once() {
+    var mod = FakeMod("exlibtest.exharmony-held-category");
+    var harmony = new Harmony(mod.Info.ModID);
+    var api = FakeApi("required-mod");
+    MethodBase categorized = typeof(CategorizedTarget).GetMethod(
+      nameof(CategorizedTarget.Method)
+    )!;
+
+    try {
+      ExHarmony.PatchOnce(mod, typeof(ExHarmonyTests).Assembly);
+      ExHarmony.PatchOnce(mod, typeof(ExHarmonyTests).Assembly);
+      ExHarmony.PatchCategoryWhenLoaded(
+        api,
+        harmony,
+        typeof(ExHarmonyTests).Assembly,
+        TestCategory,
+        "required-mod"
+      );
+
+      ExHarmony.UnpatchAll(mod);
+      ExHarmony.PatchCategoryWhenLoaded(
+        api,
+        harmony,
+        typeof(ExHarmonyTests).Assembly,
+        TestCategory,
+        "required-mod"
+      );
+
+      Assert.Equal(1, Harmony.GetPatchInfo(categorized)?.Prefixes.Count);
+    } finally {
+      ExHarmony.UnpatchAll(mod);
       ExHarmony.UnpatchAll(mod);
     }
   }

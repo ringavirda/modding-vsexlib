@@ -463,7 +463,12 @@ public override void Dispose()
 ```
 
 `PatchOnce` applies every uncategorised `[HarmonyPatch]` class in the assembly, guarded so it is a
-no-op on a second call however many dependent mods share the process. A class also carrying
+no-op on a second call however many dependent mods share the process. Each call is a hold, and each
+`UnpatchAll` releases one: the patches under the id, categories included, come off only when no hold
+is left. In singleplayer the server and the client run your mod system in one process and both
+call `PatchOnce`, so the client disposing first leaves the patches in place for the server still
+shutting down; the server's `UnpatchAll` removes them. An `UnpatchAll` with nothing held removes
+them at once, and a repeat is harmless. A class also carrying
 `[HarmonyPatchCategory("...")]` is left alone until you opt it in, gated on another mod being loaded:
 
 ```csharp
