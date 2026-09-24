@@ -14,11 +14,9 @@ using Vintagestory.GameContent;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Source laws for recurring bugs: a renderer left on the old facing after an exchange, a rotor on
-/// its own clock beside a mechanical network, a letter facing read by <c>BlockFacing.FromCode</c>,
-/// an unchecked read of a <c>SearchBlocks</c> result, a live tunable copied at load, a tunable only
-/// the text reads, a container dialog whose packets reach no handler, and particles built outside
-/// <c>ExParticles</c>.
+/// Source laws for recurring bugs: a renderer kept past an exchange, a rotor on its own clock, a
+/// letter facing read by <c>FromCode</c>, an unchecked <c>SearchBlocks</c> read, a live tunable
+/// copied at load or read only by the text, an unhandled container dialog, inline particles.
 /// </summary>
 /// <remarks>Every law reads source text with comments and string literals blanked. A type's parts
 /// are merged by name across the files given, partial declarations included.</remarks>
@@ -399,12 +397,10 @@ public static class SourceLaws {
   /// of a manageable config store: a field or property initialiser, or an assignment in a
   /// constructor, in <c>Initialize</c> or <c>OnLoaded</c>, or in a method of the same type one of
   /// those calls by name.</summary>
-  /// <remarks><c>/exmod config</c> edits a manageable store live and the generated accessor reads
-  /// the edited value, so a copy taken at load keeps the old one. A value is a public instance
-  /// property of a type carrying <see cref="ExConfigRegisterAttribute"/> with
-  /// <see cref="ExConfigRegisterAttribute.Manageable"/> set, read as <c>{Accessor}.{Value}</c>
-  /// through the generated accessor. A read inside a lambda, into a local, or behind <c>=&gt;</c>
-  /// is live.</remarks>
+  /// <remarks><c>/exmod config</c> edits a manageable store live, so a copy taken at load keeps
+  /// the old value. A value is a public property of a config type whose
+  /// <see cref="ExConfigRegisterAttribute.Manageable"/> is set, read as <c>{Accessor}.{Value}</c>;
+  /// a read in a lambda, into a local or behind <c>=&gt;</c> is live.</remarks>
   /// <param name="sourceFiles">C# files to read; each is read whole.</param>
   /// <param name="configAssemblies">Assemblies whose manageable config types give the values;
   /// a store without <c>Manageable</c> is skipped.</param>
@@ -709,9 +705,8 @@ public static class SourceLaws {
     public string? Base { get; init; }
   }
 
-  // Every class or record declared in the files, by name, with the span of each body, a
-  // declaration ending in ';' spanning only that ';'; parts are in path order, so a type's first
-  // hit is the same on every machine.
+  // Every class or record in the files by name, each part spanning its body or its closing ';';
+  // parts are in path order, so a type's first hit is the same on every machine.
   private static Dictionary<string, List<TypePart>> Types(
     IEnumerable<string> sourceFiles
   ) {
@@ -830,9 +825,8 @@ public static class SourceLaws {
     return body;
   }
 
-  // The member a read at position at initialises: the name before the first top-level '=' of the
-  // statement or block header holding it, when no top-level '=>' makes it live. Null for a read
-  // in a method, an accessor, a lambda or a nested type.
+  // The member a read at position at initialises, named before the first top-level '=' of its
+  // statement or block header; null when a top-level '=>' makes it live or no '=' is there.
   private static string? InitialisedMember(TypePart part, TypeBody body, int at) {
     MemberBlock? inside = body.Blocks.FirstOrDefault(b =>
       b.Open < at && at < b.End
