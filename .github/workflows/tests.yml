@@ -32,7 +32,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        with:
+          # Every tag: the release-seed guard compares against the newest v<x.y.z>.
+          fetch-depth: 0
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4

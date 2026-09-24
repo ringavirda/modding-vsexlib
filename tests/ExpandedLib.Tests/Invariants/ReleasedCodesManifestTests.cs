@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ExpandedLib.Testing;
@@ -37,22 +38,29 @@ public class ReleasedCodesManifestTests {
       + $"{seeded ?? "(none)"}; add a ReleasedHistory row per release in between, read from its tag";
   }
 
-  private static string[] Tags() {
+  /// <summary>The <c>v*</c> tags of the git checkout at <paramref name="root"/>.</summary>
+  /// <exception cref="InvalidOperationException">The checkout carries no such tag, as a shallow
+  /// or tagless clone does; the message says how to fetch them.</exception>
+  internal static IReadOnlyList<string> Tags(string root) {
     var git = new ProcessStartInfo("git", "tag --list v*") {
-      WorkingDirectory = RepoPaths.Root,
+      WorkingDirectory = root,
       RedirectStandardOutput = true,
       UseShellExecute = false,
     };
     using Process process = Process.Start(git)!;
     string output = process.StandardOutput.ReadToEnd();
     process.WaitForExit();
-    return output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+    return Premise.NotEmpty(
+      output.Split('\n', StringSplitOptions.RemoveEmptyEntries),
+      "v* git tag in the checkout (a shallow or tagless clone has none: run `git fetch --tags`, "
+        + "or check out with actions/checkout's fetch-depth: 0)"
+    );
   }
 
   // Fails when a release is tagged and the seed gains no row for it.
   [Fact]
   public void The_seed_reaches_the_newest_release_tag() {
-    IReadOnlyList<string> tags = Premise.NotEmpty(Tags(), "git tags v*");
+    IReadOnlyList<string> tags = Tags(RepoPaths.Root);
     ReleasedVersions.HighestPublished.TryGetValue("exlib", out string? seeded);
 
     string? mismatch = NewestReleaseMismatch(seeded, tags);
@@ -78,5 +86,26 @@ public class ReleasedCodesManifestTests {
     Assert.Null(NewestReleaseMismatch("0.10.0", tags));
     Assert.NotNull(NewestReleaseMismatch(null, tags));
     Assert.NotNull(NewestReleaseMismatch("0.10.0", ["v0.10.0-preview.1"]));
+  }
+
+  // Fails when a checkout without tags fails the seed rule with no word on how to fetch them.
+  [Fact]
+  public void A_checkout_without_tags_says_how_to_fetch_them() {
+    string repo = Path.Combine(
+      Path.GetTempPath(),
+      "exlib_tagless_" + Guid.NewGuid().ToString("N")
+    );
+    Directory.CreateDirectory(repo);
+    try {
+      using (Process init = Process.Start("git", $"init -q \"{repo}\"")!)
+        init.WaitForExit();
+
+      var e = Assert.Throws<InvalidOperationException>(() => Tags(repo));
+
+      Assert.Contains("git fetch --tags", e.Message);
+      Assert.Contains("fetch-depth: 0", e.Message);
+    } finally {
+      Directory.Delete(repo, recursive: true);
+    }
   }
 }
