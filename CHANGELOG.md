@@ -9,6 +9,9 @@ see the git history.
 
 ### Added
 
+- **`AxisSigns`** (ExpandedLib.Testing): every mechanical-power behaviour type of an assembly,
+  placed in the four facings, gives one `AxisSign` per world axis, a unit on its discovery face's
+  axis.
 - **`OpenLayoutCells`** (ExpandedLib.Testing): in every layout column open to the sky, the first
   solid cell below the open run and the open cell above it carry `CellRoles.NoSnow`.
 - **`AnimatorClips`** (ExpandedLib.Testing): every clip in a shipped shape ends in `Repeat` or
