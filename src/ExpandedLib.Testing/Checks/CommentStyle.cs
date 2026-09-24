@@ -242,7 +242,6 @@ public static class CommentStyle {
     || Path.GetFileName(relative)
       .StartsWith("Released", StringComparison.Ordinal);
 
-  // Consecutive // lines that are not /// form one remark.
   private static IEnumerable<(string Where, int Lines)> RemarkBlocks(
     IEnumerable<SourceFile> files
   ) {

@@ -24,8 +24,8 @@ public class ShapeTexturesTests {
   public void An_asset_location_is_accepted(string value) =>
     Assert.False(ShapeTextures.IsEditorPath(value));
 
-  // Fails when EditorPaths skips a nested folder, reads a non-string value or a nested textures
-  // map, or names an asset location.
+  // Fails when EditorPaths skips a nested folder, reads an element's own textures map, or names an
+  // asset location.
   [Fact]
   [PlantedDefect(typeof(ShapeTextures), nameof(ShapeTextures.EditorPaths))]
   public void An_editor_path_in_a_nested_shape_is_named() {

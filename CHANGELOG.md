@@ -89,8 +89,7 @@ see the git history.
   proves it can fail. `PlantedDefects.Survey` sorts the public static members of a folder's check
   types into those a `[PlantedDefect]` test proves, helpers marked `[CheckHelper]` with a reason, and
   the rest, every public type a file declares included; a file named after no type is reported with
-  them. A skipped test proves nothing. exlib's suite fails on a check member that is neither, unless
-  its `Pending` list names it.
+  them. A skipped test proves nothing. exlib's suite fails on a check member that is neither.
 - **`[GuardOf]`**, **`PlantedDefects.Unproven`** and **`HarnessUse.UncalledGuards`**
   (ExpandedLib.Testing): a guard class in a suite's `Invariants` folder names the checks it calls, or
   proves its own rule with a `[PlantedDefect]` test. `Unproven` lists the guards that do neither or
