@@ -104,7 +104,7 @@
          1. An explicit env-var override (its name is in $(GameInstallEnv)) - used by CI and by anyone
             pointing the build at an external install.
          2. Otherwise the nearest .game/<slug> holding VintagestoryAPI.dll, searched from
-            $(ExmodRepoRoot) upward, so every repository in a workspace shares the one at its root.
+            $(ExmodRepoRoot) upward.
          3. Otherwise nothing is installed yet and $(GamePath) names where a provision will put it:
             .game/<slug> beside the nearest exmod.workspace.json above $(ExmodRepoRoot) (a marker in
             $(ExmodRepoRoot) itself does not count), else under $(ExmodRepoRoot).
@@ -130,13 +130,19 @@
        debugger on another OS than the build (Windows vsdbg on a WSL build) matches them through a
        launch configuration's sourceFileMap of "/exmod/<folder>/". Test projects keep their real
        paths because their [CallerFilePath] fixture lookups read them at run time. Appended after
-       any $(PathMap) the project already sets. -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Debug' and '$(IsTestProject)' != 'true'">
+       any $(PathMap) the project already sets; ',' and '=' in the path and the folder name are
+       doubled because the compiler splits on them.
+       $(ExmodMapSourcePaths) - unset by default, which maps; 'false' leaves $(PathMap) as the
+       project set it, so a coverage report names the files on disk (exmod test -Coverage sets it). -->
+  <PropertyGroup
+    Condition="'$(Configuration)' == 'Debug' and '$(IsTestProject)' != 'true' and '$(ExmodMapSourcePaths)' != 'false'"
+  >
     <_ExmodRepoRootDir>$([MSBuild]::EnsureTrailingSlash('$(ExmodRepoRoot)'))</_ExmodRepoRootDir>
     <_ExmodRepoFolder
       >$([System.IO.Path]::GetFileName($([System.IO.Path]::GetDirectoryName('$(_ExmodRepoRootDir)'))))</_ExmodRepoFolder>
     <PathMap Condition="'$(PathMap)' != ''">$(PathMap),</PathMap>
-    <PathMap>$(PathMap)$(_ExmodRepoRootDir)=/exmod/$(_ExmodRepoFolder)/</PathMap>
+    <PathMap
+      >$(PathMap)$(_ExmodRepoRootDir.Replace(',', ',,').Replace('=', '=='))=/exmod/$(_ExmodRepoFolder.Replace(',', ',,').Replace('=', '=='))/</PathMap>
   </PropertyGroup>
 
   <!-- Version to auto-provision: the primary tracks the latest patch (pass the major.minor series so

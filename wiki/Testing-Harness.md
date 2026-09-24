@@ -34,8 +34,8 @@ This page gets a test project running and then works outward through those; the
   nothing else.
 - `Scene` + `SceneDiagram` - a fluent builder and an ASCII-layout parser, for a test that needs
   more than a handful of positions: you draw the pipe run instead of typing its coordinates.
-- `VsAssemblyResolver` - finds the game DLLs at runtime, in your install or the in-repo
-  `.game/<slug>` folder, so your test project never carries them.
+- `VsAssemblyResolver` - finds the game DLLs at runtime, in your install or the nearest
+  `.game/<slug>` at or above the test output, so your test project never carries them.
 - `TestLang` - a minimal `Lang` so production code that formats a player-facing string still runs
   when no game is loaded and `Lang.Get()` would otherwise have nothing behind it.
 - Test doubles (`StubNetwork`, `TestNetworkBlock`, `CapturingNode`, `SeverableNode`) - stand-ins
@@ -102,12 +102,12 @@ Reference the harness, xUnit, the test SDK and NSubstitute, plus the game API DL
 
 #### Provisioning the game install: why `IPlayer` can be mocked at all
 
-The build finds the install for each target the same way everywhere: the version's environment
-variable (`VINTAGE_STORY`, `VINTAGE_STORY_121`, `VINTAGE_STORY_120`) when it is set, else the nearest
+The build finds the install for each target through the version's environment variable
+(`VINTAGE_STORY`, `VINTAGE_STORY_121`, `VINTAGE_STORY_120`) when it is set, else the nearest
 `.game/<slug>` holding `VintagestoryAPI.dll`, searched from the repository root upward. When neither
 exists, the build provisions the server binaries into `.game/<slug>` beside the nearest
-`exmod.workspace.json` above the repository, so several repositories in one workspace share one
-install, and into the repository's own `.game/<slug>` when no such marker is above it.
+`exmod.workspace.json` above the repository, or into the repository's own `.game/<slug>` when no
+such marker is above it.
 
 `exmod provision game` (both `-Kind server` and `-Kind client`) runs `Publicize-GameApi`
 on the provisioned `VintagestoryAPI.dll` after every fetch, every re-check of an existing install and
@@ -117,9 +117,9 @@ interface member no external assembly is allowed to implement, so `Substitute.Fo
 `IServerPlayer`, which inherits the same member) cannot construct a proxy at all without this patch.
 The edit is applied byte-for-byte **in place** rather than by regenerating the assembly - a
 regenerated DLL loses its `CodeView` debug-directory entry, which crashes the game's own logger on
-startup - so it is safe to leave in `.game/<slug>`, the copy the exlib repository builds against and
-launches from; the mods you ship never see it, since the install a player runs is never patched. Idempotent
-and a no-op once upstream makes the member public.
+startup - so it is safe to leave in the nearest `.game/<slug>` at or above the test output, the copy
+the build compiles against and the harness loads; the mods you ship never see it, since the install
+a player runs is never patched. Idempotent and a no-op once upstream makes the member public.
 
 ### Consuming the harness from your mod
 

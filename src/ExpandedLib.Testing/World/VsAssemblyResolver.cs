@@ -53,7 +53,7 @@ public static class VsAssemblyResolver {
   }
 
   /// <summary>The install path for this TFM: the <see cref="InstallKey"/> environment variable if
-  /// set, otherwise the in-repo install at <c>.game/&lt;slug&gt;</c>.</summary>
+  /// set, otherwise the nearest <c>.game/&lt;slug&gt;</c> at or above the test output.</summary>
   private static string? ResolveInstallPath() {
     if (!string.IsNullOrEmpty(InstallKey)) {
       string? fromEnv = Environment.GetEnvironmentVariable(InstallKey);
