@@ -18,6 +18,7 @@ public class RecipeCodesTests {
   private const string Present = "plantedrecipesclean";
   private const string Wild = "plantedrecipeswild";
   private const string Rocks = "plantedrecipesrocks";
+  private const string Open = "plantedrecipesopen";
   private static readonly Assembly Here = typeof(RecipeCodesTests).Assembly;
 
   private static ExRecipeDef Output(string domain, string code) =>
@@ -52,12 +53,34 @@ public class RecipeCodesTests {
         }
       );
 
+  /// <summary>A recipe <paramref name="name"/> outputting <paramref name="code"/> from a plank
+  /// named <c>wood</c> with no allowedVariants.</summary>
+  private static ExRecipeDef AnyPlank(
+    string domain,
+    string name,
+    string code
+  ) =>
+    ExRecipeDef
+      .Create(domain, "grid", name)
+      .Add(
+        new JObject {
+          ["ingredients"] = new JObject {
+            ["P"] = new JObject {
+              ["type"] = "item",
+              ["code"] = "game:plank-*",
+              ["name"] = "wood",
+            },
+          },
+          ["output"] = new JObject { ["type"] = "block", ["code"] = code },
+        }
+      );
+
   /// <summary>Declares its crate only under <see cref="Missing"/> and <see cref="Present"/>, so
   /// other scans of this assembly never see it.</summary>
   private sealed class Crate : IExBlockDefProvider {
     public static IEnumerable<ExBlockDef> Definitions(string domain) =>
       domain switch {
-        Missing or Present or Wild =>
+        Missing or Present or Wild or Open =>
         [
           ExBlockDef
             .Create(domain, "crate")
@@ -82,6 +105,11 @@ public class RecipeCodesTests {
         Present => [Crates(domain, "oak", "pine")],
         Wild => [Output(domain, $"{domain}:crate-*")],
         Rocks => [Output(domain, $"{domain}:slab-andesite")],
+        Open =>
+        [
+          AnyPlank(domain, "crates", $"{domain}:crate-{{wood}}"),
+          AnyPlank(domain, "boxes", $"{domain}:box-{{wood}}"),
+        ],
         _ => [],
       };
   }
@@ -147,5 +175,20 @@ public class RecipeCodesTests {
   [Fact]
   public void An_output_naming_any_state_of_a_worldproperty_group_passes() {
     Assert.Empty(RecipeCodes.UnresolvableOutputs(Rocks, Here));
+  }
+
+  // Fails when RecipeCodesCheck.Unresolvable reports a placeholder a named ingredient without
+  // allowedVariants binds, or stops reporting one no registered code matches.
+  [Fact]
+  public void An_output_placeholder_bound_by_any_state_resolves_when_a_block_matches() {
+    Assert.Equal(
+      [
+        new RecipeCodes.Unresolvable(
+          "plantedrecipesopen:recipes/grid/boxes.json",
+          "plantedrecipesopen:box-{wood}"
+        ),
+      ],
+      RecipeCodes.UnresolvableOutputs(Open, Here)
+    );
   }
 }

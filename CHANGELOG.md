@@ -208,6 +208,10 @@ see the git history.
 
 ### Fixed
 
+- **`RecipeCodesCheck` accepts an output placeholder any state fills.** A `{name}` filled by a
+  named ingredient with no `allowedVariants` takes whatever states the loaded game gives, and was
+  reported as a code no block has. It now passes when some registered block matches it in any
+  state.
 - **`TestWorld.LoadAssets` gives each loaded block and item an id of its own.** Every one kept id 0,
   so the last block loaded replaced air in the world's id table. The load's classes now go into the
   world's own class registry, so a loaded block set in the world spawns its block entity with its

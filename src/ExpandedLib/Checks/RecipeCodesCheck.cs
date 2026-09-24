@@ -23,15 +23,33 @@ public static class RecipeCodesCheck {
       ]
     );
 
-  // An output holding a wildcard is reported.
+  // An output holding a wildcard is reported. A {name} placeholder a named ingredient without
+  // allowedVariants binds takes whatever state the loaded game gives, so it resolves when some
+  // registered code matches it as a wildcard.
   internal static IEnumerable<(AssetLocation File, string Code)> Unresolvable(
     ICheckSource source,
     string domain
   ) {
     AssetLocation[] registered = [.. source.BlockCodes];
-    foreach ((AssetLocation file, string code) in Outputs(source, domain))
-      if (!registered.Any(c => WildcardUtil.Match(c, new AssetLocation(code))))
+    foreach (
+      (AssetLocation file, JObject recipe, string code) in Candidates(
+        source,
+        domain
+      )
+    ) {
+      string open = OpenNames(recipe)
+        .Aggregate(
+          code,
+          (c, name) =>
+            c.Replace("{" + name + "}", "*", StringComparison.Ordinal)
+        );
+      bool resolves =
+        open == code
+          ? registered.Any(c => WildcardUtil.Match(c, new AssetLocation(code)))
+          : registered.Any(c => WildcardUtil.Match(new AssetLocation(open), c));
+      if (!resolves)
         yield return (file, code);
+    }
   }
 
   // Every concrete block code in the domain's own namespace that a grid recipe outputs, with its
@@ -39,7 +57,13 @@ public static class RecipeCodesCheck {
   internal static IEnumerable<(AssetLocation File, string Code)> Outputs(
     ICheckSource source,
     string domain
-  ) {
+  ) => Candidates(source, domain).Select(c => (c.File, c.Code));
+
+  private static IEnumerable<(
+    AssetLocation File,
+    JObject Recipe,
+    string Code
+  )> Candidates(ICheckSource source, string domain) {
     foreach ((AssetLocation file, JObject recipe) in source.Recipes(domain)) {
       if (recipe["output"] is not JObject output)
         continue;
@@ -52,9 +76,21 @@ public static class RecipeCodesCheck {
         continue;
 
       foreach (string concrete in Expand(code, Placeholders(recipe)))
-        yield return (file, concrete);
+        yield return (file, recipe, concrete);
     }
   }
+
+  // The names of the recipe's named ingredients that carry no allowedVariants.
+  private static IEnumerable<string> OpenNames(JObject recipe) =>
+    recipe["ingredients"] is JObject ingredients
+      ? ingredients
+        .Properties()
+        .Where(slot =>
+          slot.Value["name"] != null
+          && slot.Value["allowedVariants"] is not JArray
+        )
+        .Select(slot => (string)slot.Value["name"]!)
+      : [];
 
   // The {name} holes a recipe's output can carry, mapped to the states an ingredient binds them to.
   internal static Dictionary<string, string[]> Placeholders(JObject recipe) {
