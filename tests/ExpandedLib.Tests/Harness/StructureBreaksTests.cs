@@ -118,6 +118,24 @@ public class StructureBreaksTests
     Assert.Equal(3 * (1 + TwoCells.Length), result.Breaks);
   }
 
+  // Fails when Build expects a later stage's {metal} unfilled: the refund names the stored metal.
+  [Fact]
+  public void A_later_stage_taking_the_stored_metal_refunds_that_metal()
+  {
+    StructureBreaks.Result result = Run(
+      Mega("taken")
+        .EntityClass("test-plain")
+        .Construction(c =>
+          c.Stage(s => s.Require("game:stick", 1))
+            .Stage(s => s.RequireMetalPlate("test", 2))
+            .Stage(s => s.RequireMetalRod("test", 1))
+        )
+    );
+
+    Assert.Empty(result.Failures);
+    Assert.Equal(3 * (1 + TwoCells.Length), result.Breaks);
+  }
+
   // Fails when Build takes the salvage ratio as 1: a half refund of 3 is 1..2, never 3.
   [Fact]
   public void A_construction_refunds_at_its_salvage_ratio()

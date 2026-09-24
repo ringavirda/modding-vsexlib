@@ -445,8 +445,8 @@ public static class StructureBreaks
 
   /// <summary>Builds <paramref name="rcc"/> to stage <paramref name="built"/> with each stored
   /// wildcard set to its ingredient's first allowed variant, registers every material its stages
-  /// name, and adds to <paramref name="expected"/> what breaking it refunds: every stage up to the
-  /// one built, at the salvage ratio, once at least one stage is paid.</summary>
+  /// name, its <c>{key}</c>s filled from them, and adds to <paramref name="expected"/> what breaking
+  /// it refunds: every stage up to the one built, at the salvage ratio, once one is paid.</summary>
   private static void Build(
     TestWorld world,
     Block block,
@@ -480,6 +480,8 @@ public static class StructureBreaks
           && rcc.StoredWildCards.TryGetValue(key, out string? value)
         )
           code = code.Replace("*", value);
+        foreach ((string stored, string state) in rcc.StoredWildCards)
+          code = code.Replace("{" + stored + "}", state);
         if (!code.Contains('*'))
           Resolvable(world, code, ing.Type);
         if (built >= 1)
