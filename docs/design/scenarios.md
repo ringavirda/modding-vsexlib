@@ -1,5 +1,5 @@
 # Live-Server Scenarios
-**Status** proposed 2026-09-23   **Mod** exlib's testing family (the live mod `exliblive`: the runner, the scenario player, the generic layer, the coverage probe, `/exmod scenario`), exlib (the creative sources), extools (`exmod scenario`), every mod's `tests/live/` files
+**Status** proposed, not built: the runner, the scenario player, the creative sources and `exmod scenario` do not exist yet   **Mod** exlib's testing family (the live mod `exliblive`: the runner, the scenario player, the generic layer, the coverage probe, `/exmod scenario`), exlib (the creative sources), extools (`exmod scenario`), every mod's `tests/live/` files
 **Owns** the two layers of live tests: generic scenarios derived from every registered block's definition, and mod-specific scenarios that test processes, factory lines among them; the scenario file format, its citations of the player guides and where the files live; the scenario player; the creative sources; the step kinds (placing, building, laying pipe; supplying power, fluids, molten metal and items; interacting; stepping time; reloading; breaking; expecting); plots, climates and positions; the coverage report of every overridden hook; the `[scenario]` output grammar and its closing lines; the failure detail and its suspect; the scratch world `exmod scenario` boots and what `-Keep` leaves running.
 **Depends on** [multiblock](mechanics/multiblock.md) (the footprints, layouts, cell roles, monitor tick and missing-cell report the structure cases drive); [pipe-network](mechanics/pipe-network.md) (the pool the fluid sources feed); [mp-energy](mechanics/mp-energy.md) (the vanilla mechanical power the power source drives, bridged at the flywheel hub)
 
@@ -36,29 +36,26 @@ guide says".
 
 ---
 
-## Settled rulings
+## How scenarios run and ship
 
-Player (ruled 2026-09-23): every player verb, breaking included, runs as a real server player that the
-runner builds through the engine's own classes, so every case runs autonomously. See The scenario
-player.
+Player: every player verb, breaking included, runs as a real server player that the runner builds through
+the engine's own classes, so every case runs autonomously. See The scenario player.
 
-Inputs (ruled 2026-09-23): power, fluids and the other inputs a process needs come from creative source
-blocks in exlib, which are testing infrastructure and ordinary creative-mode blocks at once. See
-Creative sources.
+Inputs: power, fluids and the other inputs a process needs come from creative source blocks in exlib,
+which are testing infrastructure and ordinary creative-mode blocks at once. See Creative sources.
 
-Layouts (ruled 2026-09-23): nobody builds reference layouts by hand. Factory lines are written by agents
-from the guides the mods ship (the wiki pages and the handbook) and the old diagrams, with reasoning
-filling what they leave out, and each line's run says whether it works. See Factory lines.
+Layouts: nobody builds reference layouts by hand. Factory lines are written by agents from the guides the
+mods ship (the wiki pages and the handbook) and the old diagrams, with reasoning filling what they leave
+out, and each line's run says whether it works. See Factory lines.
 
-`-Keep` (ruled 2026-09-23): a player who joins a kept server is an admin, and the scratch server accepts
-connections from localhost only.
+`-Keep`: a player who joins a kept server is an admin, and the scratch server accepts connections from
+localhost only.
 
-Shipping (ruled 2026-09-23): the runner belongs to exlib's testing family and ships only once fallen has
-confirmed that the feature works; until then extools stages it for runs. See Code.
+Shipping: the runner belongs to exlib's testing family and ships only once the owner has confirmed in game
+that the feature works; until then extools stages it for runs. See Code.
 
-Layers (ruled 2026-09-23): unit tests and content checks, the harness, and scenarios are three layers
-that each run where their cost fits; scenarios add to the harness and replace none of it. See When each
-layer runs.
+Layers: unit tests and content checks, the harness, and scenarios are three layers that each run where
+their cost fits; scenarios add to the harness and replace none of it. See When each layer runs.
 
 ---
 
@@ -70,9 +67,9 @@ layer runs.
 the port passed as `--port`.
 
 The port is the scenario server's own, 42498, not smoke's 42499, so a smoke run and a scenario run share
-the machine; `-Port` moves it, which is how two lanes run scenarios at the same time. The install is the
+the machine; `-Port` moves it, which is how two scenario runs share the machine at once. The install is the
 one smoke boots for the series `-Version` names (default 1.22): `Resolve-SmokeServer` takes
-`.game/<series>-server` before `.game/<series>`, which for 1.22 is 1.22.7 today, while builds and the
+`.game/<series>-server` before `.game/<series>`, which for 1.22 is 1.22.7, while builds and the
 harness default to `.game/1.22` (1.22.6). The `run` line prints the booted version
 (`GameVersion.OverallVersion`), so a result is read against the patch it ran on.
 
@@ -282,11 +279,12 @@ for an `of` position the face turns with the structure. `speed` and `torque` are
 mechanical-power units. A machine on exlib's mpenergy run takes it at its flywheel hub, through the
 vanilla-MP bridge.
 
-`source` places the fluid source on an open end of the pipe at `at`: the first connector face with no
-node across it, in the order n, e, s, w, u, d, or `face`. The source caps that end, so the run does not
-leak there. It feeds `medium` at `rate` (L/s) and `temperature` (C); for a liquid, `pressure` (atm) is
-the commanded feed pressure, for a gas the output ceiling. A run holds one medium (R1), so a source into
-a run holding another delivers nothing, and its block info and the case's closing lines say so.
+`source` places the fluid source on an open end of the pipe at `at`: the first connector face with no node
+across it, in the order n, e, s, w, u, d, or `face`. The source caps that end, so the run does not leak
+there. It feeds `medium` at `rate` (L/s) and `temperature` (C); for a liquid, `pressure` (atm) is the
+commanded feed pressure, for a gas the output ceiling. A run holds one medium
+([conventions](conventions.md), single medium), so a source into a run holding another delivers nothing, and
+its block info and the case's closing lines say so.
 
 #### `insert`, `set`, `call`
 
@@ -449,7 +447,7 @@ Each shows its settings and what it has delivered in its block info.
 |---|---|---|
 | power source, `exlib:creativepower-{n,e,s,w,u,d}` | `speed` 0 to 3, `torque` 0 to 20, in vanilla's mechanical-power units | a vanilla mechanical-power producer whose output faces its variant's side, as `BlockCreativeRotor` is, without the rotor's 1.0 speed cap |
 | power load, `exlib:creativeload-{n,e,s,w,u,d}` | `torque` 0 to 20 | a vanilla mechanical-power consumer on its variant's side that resists with the set torque; it reports the speed and power it takes, so an engine's output can be read |
-| fluid source, `exlib:creativefluid` | `medium` (any registered medium: Water, Steam, Air, Exhaust today), `rate` 0 to 500 L/s, `pressure` atm, `temperature` C | a pipe node on all six faces that feeds its network every tick through `PipeNetwork.ProduceLiquidMeasured` or `ProduceGasMeasured`; steam, hot blast, exhaust and fuel gas are all this block |
+| fluid source, `exlib:creativefluid` | `medium` (any registered medium: Water, Steam, Air, Exhaust), `rate` 0 to 500 L/s, `pressure` atm, `temperature` C | a pipe node on all six faces that feeds its network every tick through `PipeNetwork.ProduceLiquidMeasured` or `ProduceGasMeasured`; steam, hot blast, exhaust and fuel gas are all this block |
 | fluid drain, `exlib:creativedrain` | `rate` 0 to 500 L/s, `pressure` atm | a pipe node on all six faces that takes up to `rate` from its network while the network stands above `pressure`, the steady consumer a boiler or a gas main needs |
 | molten source, `exlib:creativemolten-{n,e,s,w}` | `metal` (a molten metal code), `rate` units/s, `temperature` C | an `IMoltenCell` with `IsFlowSource` whose pool `PushMetalRaw` tops up every tick, so a canal carries from it as from a tap |
 | mpenergy source, `exlib:creativempenergy` | `torque` 0 to 20 | an `IMpEnergyProducer` node that the generic mpenergy form places beside a member with no vanilla-MP bridge of its own (a shaft, a transmission, the rolling mill) and drives at the set torque |
@@ -565,7 +563,7 @@ under it, enough to fix without a rerun:
 ### `-Keep`
 
 `/exmod scenario run <names...> keep` leaves every plot standing and every source and climate running
-after the run. extools leaves the server up for fallen to join from the same machine and look: each
+after the run. extools leaves the server up for a developer to join from the same machine and look: each
 `case` line carries the plot's coordinates. With several plots standing, a machine on an earlier plot
 can raise an error during a later case; the later case's detail says how many plots stand.
 
@@ -611,7 +609,7 @@ repository, factory lines included; `-Generic` adds the generic layer over the r
 |---|---|---|
 | unit and content checks | xUnit tests of one type, and the `Checks` over a mod's JSON, shapes, lang and definitions | `exmod check`: every change, every game version the repository builds, and CI |
 | harness | `TestWorld`, the rigs and scenes: real block code in a substituted world | `exmod check`, as above |
-| scenarios | this page: a real dedicated server, 1.22 only | a machine's mod-specific scenarios at the end of a lane that changes that machine, before its review; the whole generic layer with `-Coverage` before fallen's in-game check and before a release. Never inside `exmod check` |
+| scenarios | this page: a real dedicated server, 1.22 only | a machine's mod-specific scenarios when a change to that machine is done, before its review; the whole generic layer with `-Coverage` before the owner's in-game check and before a release. Never inside `exmod check` |
 
 A bug a scenario finds gets its regression test in the harness when the harness can express it, so
 every later `check` repeats it; it stays a scenario case only when it needs what the harness fakes (the
@@ -659,7 +657,7 @@ time by reaching what the harness fakes.
 
 | Floor | Harness | Live | What the live case reaches |
 |---|---|---|---|
-| places in every orientation and breaks with the declared drops | the break-every-cell guard of plan task B3, to be built before the generic layer: every filler host and construction, every cell, built and part-built; the definition goldens pin what is declared | `lifecycle`: every variant code set and broken, and the block placed and broken by the scenario player from each facing, drops read as item entities | the engine's placement and break paths with the real block entity lifecycle, network and mechanical-power managers, a real player's facing and item entities, for every block rather than the filler hosts alone |
+| places in every orientation and breaks with the declared drops | a break-every-cell guard, not built; the generic layer waits for it: every filler host and construction, every cell, built and part-built. The definition goldens pin what is declared | `lifecycle`: every variant code set and broken, and the block placed and broken by the scenario player from each facing, drops read as item entities | the engine's placement and break paths with the real block entity lifecycle, network and mechanical-power managers, a real player's facing and item entities, for every block rather than the filler hosts alone |
 | block info renders | a new guard: a fresh block entity of every block, `GetBlockInfo` with a test player | `lifecycle`: after the tick, the use and the reload, on the same plot | the state only a live world makes: joined networks, ticked counters, reloaded trees. It adds no wait |
 | survives a save and reload | the treekeys goldens pin the keys a fresh instance writes; a new guard runs `reload`'s tree comparison over a fresh block entity of every block through `TestWorld.Reload`, the in-memory save, `OnBlockUnloaded`, new instance, `FromTreeAttributes` and `Initialize` round trip | `lifecycle`: `reload` | the save database, the engine's chunk unload and load (`TestWorld.UnloadChunkAt` only hides a chunk from the accessor), the engine's `Initialize` order over a whole column, and `BlockEntityHealModSystem` on the load |
 | answers a neighbour change | none | `lifecycle`: a stone set and cleared on each free face of the principal | the engine's neighbour notification; it adds no wait |
@@ -668,8 +666,8 @@ time by reaching what the harness fakes.
 | a network member joins and leaves | `NetworkNodeContract` checks the definition | `lifecycle`: the cell is in a network of its type (`BlockNetworkModSystem.GetNetworkAt`) after the place and after the reload, and in none after the break | the network system over the engine's own block entity lifecycle, for every member. The harness reaches real block entities only where a fixture places them (`PipeTestWorld.LiveRun` in iiex's tests places a `BlockEntityPipe` in every cell) |
 | a mechanical-power member connects to a source | the `MechPower` double; the harness's `MpEnergyNetwork` over placed members (`CastIronShaftTests`) | `power`, and its mpenergy form | vanilla's network manager and propagation, which the harness replaces; an mpenergy run turned through the engine's ticks |
 | a multiblock forms, and unforms when a cell is taken | `StructureRig` with stand-in blocks; `MultiblockCodes` | `multiblock`: four facings with real blocks | real registered blocks against the wildcards: a stand-in matches a code that no real block matches |
-| a megablock places in four facings and breaks from every cell | B3's break-every-cell guard | `megablock`: four facings, the principal and one cell of each kind | the kinds route differently through the engine (a hosted behaviour joins real networks); identical plain fillers do not, so every cell stays with the harness |
-| a construction completes every stage, and pays its drops at each | B3's break-every-cell guard, built and part-built | `construction`: the stage walk against the real registry, readiness after the last stage, one player break at the end | ingredients resolved against the real item registry; the per-stage drop sweep stays with the harness |
+| a megablock places in four facings and breaks from every cell | the break-every-cell guard | `megablock`: four facings, the principal and one cell of each kind | the kinds route differently through the engine (a hosted behaviour joins real networks); identical plain fillers do not, so every cell stays with the harness |
+| a construction completes every stage, and pays its drops at each | the break-every-cell guard, built and part-built | `construction`: the stage walk against the real registry, readiness after the last stage, one player break at the end | ingredients resolved against the real item registry; the per-stage drop sweep stays with the harness |
 | a container accepts and returns items | a new guard over the inventory's acceptance and extraction | `lifecycle`: an accepted stack survives the reload and drops on the break | persistence and the break's drop path |
 | a `nosnow` cell refuses snow | `NoSnowCellsTests`, `NoSnowPatchTests` | `nosnow`: vanilla accumulation over the formed structure, four facings | vanilla computes snow on its own scanner thread and meets `NoSnowPatch` there; thread and order exist only live |
 
@@ -757,8 +755,8 @@ The derived case puts the four facings on one plot and holds every marked cell r
 file names. The smoke stack's open column is its only snow candidate: the column's rain-map top is the
 floor under it at layout `(0, -1, 1)`, the cell the role marks, so vanilla would lay snow in layout
 `(0, 0, 1)`. A snow layer set with `SetBlock` never asks `AllowSnowCoverage`, which is why the case
-drives accumulation. In a `-Keep` session fallen can stand in the plot and type vanilla's
-`/debug snowaccum here <levels>`, which runs the same `UpdateSnowLayer` path for his chunk at once.
+drives accumulation. In a `-Keep` session a joined player can stand in the plot and type vanilla's
+`/debug snowaccum here <levels>`, which runs the same `UpdateSnowLayer` path for that chunk at once.
 
 ### Variants and orientations
 
@@ -770,14 +768,14 @@ covers. `power` runs at the first orientation.
 ### Size and run time
 
 From the iiex and siex goldens: 110 blocktypes (92 with a block entity), at most 1491 variant codes
-(`skipVariants` trims the cobblestone canals), 33 footprints, 10 layouts (5 of them open to the sky,
+(`skipVariants` trims the cobblestone canals), 34 footprints, 10 layouts (5 of them open to the sky,
 which take `nosnow` cells), 8 constructions, 14 blocktypes naming mechanical power plus 21 hosted
-mechanical-power ports, and about 40 network members. Serial times, estimated before anything is built:
+mechanical-power ports, and about 40 network members. Serial times, estimated:
 
 | Case | Cases | Each | Total |
 |---|---|---|---|
 | `lifecycle` | 110 | about 13 s (5 s tick, the uses, reload, 3 s settle) | about 24 min |
-| `megablock` | 33 | about 8 s | about 5 min |
+| `megablock` | 34 | about 8 s | about 5 min |
 | `multiblock` | 10 | about 30 s (monitor intervals per glyph) | about 5 min |
 | `construction` | 8 | about 6 s | about 1 min |
 | `power` | about 20 | about 10 s | about 3 min |
@@ -838,7 +836,7 @@ listed as `unprobed`, never as covered.
 |---|---|
 | covered | at least one case, or `load`, called it for this blocktype; the report names the first three and a count |
 | allowed | no case called it, and the mod's `coverage-allow.json` names it with a reason |
-| client | a dedicated server never calls it: its parameters name a client-only type (`ICoreClientAPI`, `ITesselatorAPI`, `ITerrainMeshPool`, `MeshData`, `IClientPlayer` and the like), or it sits on a short table of client-only hooks (`BlockEntity.OnReceivedServerPacket` among them). Fallen's eye covers these |
+| client | a dedicated server never calls it: its parameters name a client-only type (`ICoreClientAPI`, `ITesselatorAPI`, `ITerrainMeshPool`, `MeshData`, `IClientPlayer` and the like), or it sits on a short table of client-only hooks (`BlockEntity.OnReceivedServerPacket` among them). The owner's in-game check covers these |
 | unprobed | Harmony could not patch it |
 | uncovered | server-reachable, never called, not allowed |
 
@@ -953,7 +951,7 @@ cell `(-1, 1, 0)`. The `port` position finds the cell across that port's face wh
 capped by the water source. The boiler's water, fire and pressure are read from its tree (`waterVolume`,
 `lit`) and its public members (`IsConstructed`, `CanLightBed`, `InternalPressure`); the fire is worked
 through its own verbs (`ToggleMainHatch`, `TryChargeBed`, `LightBed`). Two more cases pipe water to the
-old front face and to the east side and expect nothing to enter.
+principal's front face and to the east side and expect nothing to enter.
 
 ```json
 {
@@ -1003,10 +1001,10 @@ old front face and to the east side and expect nothing to enter.
 }
 ```
 
-The old front face is the principal's declared `feedwaterFace` (`"south"`), turned by `StructureAngle`
-as `BlockBoiler.FeedwaterWorldFace` turns it. The heat-up is `BoilerHeatUpSeconds` (180 s) on a
-bituminous bed, so the `west-port` case runs about four minutes. A line written from the boiler's guide
-works the same verbs through `interact`.
+The Cornish boiler declares a `feedwaterOffset`, so `BlockBoiler.FeedwaterWorldFace` is that cell's port
+face and the principal is no feedwater connector on any face; the `front-face` case pipes to the principal's
+south face. The heat-up is `BoilerHeatUpSeconds` (180 s) on a bituminous bed, so the `west-port` case runs
+about four minutes. A line written from the boiler's guide works the same verbs through `interact`.
 
 ### Factory lines
 
@@ -1160,7 +1158,7 @@ litres and L/s, atm, C.
 
 `src/ExpandedLib.Testing.Live`, assembly `ExpandedLib.Testing.Live`, a mod of its own beside the harness
 project `src/ExpandedLib.Testing`. It builds for 1.22 only, since it references VintagestoryLib's server
-classes. It stays out of every release until fallen rules it ready to ship; extools builds and stages it
+classes. It stays out of every release until the owner rules it ready to ship; extools builds and stages it
 for `exmod scenario`.
 
 What the mod folder holds: the assembly and its `modinfo.json` (`type` `code`, mod id `exliblive`,
@@ -1203,8 +1201,8 @@ assembly.
 Three existing pieces are shared rather than copied, and one is not needed.
 
 - `BlockEntityMultiblockStructure` already computes the rotated demand from the live block:
-  `IncompleteBlockCount` (protected today) with its `MissingCell` report, `CompletionTickMs` (protected)
-  and the connector table (`MultiblockConnectors`, private) become internal, and the block entity also
+  `IncompleteBlockCount` (protected) with its `MissingCell` report, `CompletionTickMs` (protected)
+  and the connector table (a `MultiblockConnectors` in a private field) become internal, and the block entity also
   exposes its rotated layout cells for `layout` positions. `complete` and the failure detail's
   missing-cell report read these.
 - The alternation choice `StructureRig` makes (`FirstAlternative`, `FirstBranch`) moves into
@@ -1221,8 +1219,8 @@ Three existing pieces are shared rather than copied, and one is not needed.
 `ExpandedLib.Testing` gains the harness guards the floor names as new, as checks each mod's test project
 runs over its own definitions: `GetBlockInfo` on a fresh block entity of every block; a container's
 acceptance and extraction; the reload tree comparison through `TestWorld.Reload` over a fresh block
-entity of every block. The break-every-cell guard the floor leans on is plan task B3's, built in its own
-lane; the generic layer waits for it.
+entity of every block. The break-every-cell guard the floor leans on is not built; the generic layer
+waits for it.
 
 ### The harness host
 
@@ -1240,7 +1238,7 @@ in the harness.
 `BEBehaviorMPBase` producer), `BlockCreativeLoad` with `BEBehaviorCreativeLoad` (a consumer), and
 `BlockEntityCreativeFluid`, `BlockEntityCreativeDrain` and `BlockEntityCreativeMolten`, each with its
 definition, shape, lang and handbook lines, and each listed in `wiki/Supported-API.md`. They ship with
-exlib on its usual rule, once fallen has seen them in game.
+exlib on its usual rule, once the owner has seen them in game.
 
 ### extools
 
@@ -1264,8 +1262,9 @@ scenario`; the live mod's build and staging; the citation resolver.
 - Weather is per region, so every `climate` case gets a region of its own. A region that has already
   taken snow snapshots covers a fresh plot's chunks as they load
   (`WeatherSimulationSnowAccum.TryImmediateSnowUpdate`), before the case has placed anything.
-- Time is real. A furnace campaign the harness runs in `RunLive(540)` takes nine minutes live. A factory
-  line runs a campaign start to finish once; its variations stay in the harness.
+- Time is real. The cold blast furnace's campaign, which the harness runs for up to 900 s
+  (`ColdBlastFurnaceScenarioTests`), takes up to fifteen minutes live. A factory line runs a campaign start
+  to finish once; its variations stay in the harness.
 - The scenario player's `PlayerName` and `IpAddress` read the client it does not have and return null.
   A mod that reads `PlayerName` from the acting player throws only in a scenario; the stack trace names
   the property.
