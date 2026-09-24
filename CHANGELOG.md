@@ -88,6 +88,9 @@ see the git history.
   `"type": "content"` loads without a compiled assembly.
 - `RegistryLawScanner.ForEach` (ExpandedLib.Testing) throws when the base type has no concrete
   subclass loaded, instead of passing a law that checked nothing.
+- `WikiParity.Check` (ExpandedLib.Testing) reports a page from which no symbol resolved against the
+  assembly, since nothing on it was checked; its new `symbolFree` parameter names pages that name no
+  API on purpose.
 
 ### Removed
 

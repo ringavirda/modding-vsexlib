@@ -731,7 +731,7 @@ pairs.
 | `StructureBreaks` | Every definition with filler offsets or construction stages, in every variant, stood up in a fresh `TestWorld`, whose break and removal hooks are on, and broken by a survival player from the principal and every filler cell, at each construction stage. A break fails when it throws, leaves a cell of the structure standing, or drops other than the definition's resolved `drops` plus every paid stage's materials at the salvage ratio. `Run` returns the blocks, variants and breaks covered and one line per failure; see [Breaking every structure](Testing-Harness#breaking-every-structure-structurebreaks). |
 | `TreeKeys` | Golden-file oracle for a block entity's save shape - the keys `ToTreeAttributes` writes, pinned against a committed golden the same way `DefinitionGoldens` pins a def's JSON; see [Pinning a block entity's save shape](Testing-Harness#pinning-a-block-entitys-save-shape). |
 | `VanillaToolTiers` | Vanilla pickaxe tool tier constants (`Bronze`/`Iron`/`Steel`), for pinning a block's `requiredMiningTier`. |
-| `WikiParity` | Reflects the API the wiki teaches against the API the assembly actually has. |
+| `WikiParity` | Reflects the API the wiki teaches against the API the assembly actually has. A page from which no symbol resolves is a finding too, unless `Check`'s `symbolFree` names it (a navigation page such as `Home.md`). |
 | `RepoCheckSource` (`Repo/`) | An `ICheckSource` over your repository's own source tree, for the same checks run against real committed assets rather than a stub. |
 
 ## `BlockCodeEmitter`

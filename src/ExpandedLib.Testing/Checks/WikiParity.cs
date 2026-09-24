@@ -99,25 +99,41 @@ public static class WikiParity {
   );
 
   /// <summary>Every symbol in <paramref name="wikiDirectory"/>'s markdown that names something
-  /// <paramref name="assembly"/> does not have.</summary>
+  /// <paramref name="assembly"/> does not have, and every page from which no symbol resolved
+  /// against it.</summary>
+  /// <param name="wikiDirectory">Directory whose top-level <c>*.md</c> files are read.</param>
+  /// <param name="assembly">The assembly the pages are checked against.</param>
   /// <param name="knownAbsent">Identifiers the docs invent on purpose, exempted.</param>
   /// <param name="alsoDefined">Type names that exist outside <paramref name="assembly"/> and cannot be
   /// reflected, such as the source generators.</param>
+  /// <param name="symbolFree">File names (<c>Home.md</c>) of pages that name no API on purpose;
+  /// such a page is read but never reported for having no symbol.</param>
+  /// <returns>The findings, one per drifted symbol and one per page with no symbol, with the
+  /// counts of files read and symbols checked.</returns>
+  /// <exception cref="DirectoryNotFoundException"><paramref name="wikiDirectory"/> does not
+  /// exist.</exception>
+  /// <exception cref="IOException">A page cannot be read.</exception>
   public static Report Check(
     string wikiDirectory,
     Assembly assembly,
     IEnumerable<string>? knownAbsent = null,
-    IEnumerable<string>? alsoDefined = null
-  ) => Check(wikiDirectory, [assembly], knownAbsent, alsoDefined);
+    IEnumerable<string>? alsoDefined = null,
+    IEnumerable<string>? symbolFree = null
+  ) => Check(wikiDirectory, [assembly], knownAbsent, alsoDefined, symbolFree);
 
   /// <summary>As the single-assembly overload, resolving against several at once.</summary>
   public static Report Check(
     string wikiDirectory,
     IReadOnlyList<Assembly> assemblies,
     IEnumerable<string>? knownAbsent = null,
-    IEnumerable<string>? alsoDefined = null
+    IEnumerable<string>? alsoDefined = null,
+    IEnumerable<string>? symbolFree = null
   ) {
     var exempt = new HashSet<string>(knownAbsent ?? [], StringComparer.Ordinal);
+    var symbolFreePages = new HashSet<string>(
+      symbolFree ?? [],
+      StringComparer.Ordinal
+    );
     Dictionary<string, Type> types = PublicTypesBySimpleName(assemblies);
     var defined = new HashSet<string>(
       types.Keys.Concat(alsoDefined ?? []),
@@ -135,18 +151,11 @@ public static class WikiParity {
       files++;
       string name = Path.GetFileName(path);
       string[] lines = File.ReadAllLines(path);
+      int onPage = 0;
       foreach (var (line, code) in CodeSpans(lines))
-        checkedSymbols += CheckSpan(
-          name,
-          line,
-          code,
-          types,
-          defined,
-          exempt,
-          findings
-        );
+        onPage += CheckSpan(name, line, code, types, defined, exempt, findings);
       foreach (var (line, block, heading) in FencedCsharpBlocks(lines))
-        checkedSymbols += CheckDeclarations(
+        onPage += CheckDeclarations(
           name,
           line,
           block,
@@ -154,6 +163,16 @@ public static class WikiParity {
           types,
           findings
         );
+      if (onPage == 0 && !symbolFreePages.Contains(name))
+        findings.Add(
+          new Finding(
+            name,
+            1,
+            name,
+            "no symbol on this page resolved against the assembly - the page is not checked"
+          )
+        );
+      checkedSymbols += onPage;
     }
     return new Report(findings, files, checkedSymbols);
   }

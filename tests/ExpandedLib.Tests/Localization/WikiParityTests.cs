@@ -25,6 +25,14 @@ public class WikiParityTests {
     "ExOrientable",
   ];
 
+  /// <summary>Navigation pages, which link to the others and name no API.</summary>
+  private static readonly string[] SymbolFree =
+  [
+    "Home.md",
+    "_Footer.md",
+    "_Sidebar.md",
+  ];
+
   private static string WikiDirectory => Path.Combine(RepoPaths.Root, "wiki");
 
   /// <summary>The source generators the wiki documents, read from source since they ship no runtime
@@ -45,7 +53,8 @@ public class WikiParityTests {
       WikiDirectory,
       [typeof(ExDefinitions).Assembly, typeof(IndustryModule).Assembly],
       KnownAbsent,
-      GeneratorTypeNames()
+      GeneratorTypeNames(),
+      SymbolFree
     );
 
   [Fact]
@@ -139,6 +148,39 @@ public class WikiParityTests {
       Assert.True(
         wikiFiles.Any(f => File.ReadAllText(f).Contains(entry)),
         $"{entry} no longer appears in the wiki - delete its stale suppression from KnownAbsent"
+      );
+  }
+
+  // Fails when Check stops reporting a page from which it read no symbol.
+  [Fact]
+  public void A_page_with_no_symbol_is_a_finding_unless_listed_symbol_free() {
+    using var page = new TempWikiPage(
+      "# Prose\n\nA page that names nothing the assembly has, `not code`.\n"
+    );
+
+    WikiParity.Report report = WikiParity.Check(
+      page.Dir,
+      typeof(ExDefinitions).Assembly
+    );
+    WikiParity.Report listed = WikiParity.Check(
+      page.Dir,
+      typeof(ExDefinitions).Assembly,
+      symbolFree: ["Page.md"]
+    );
+
+    WikiParity.Finding finding = Assert.Single(report.Findings);
+    Assert.Equal("Page.md", finding.File);
+    Assert.Contains("no symbol", finding.Reason);
+    Assert.Empty(listed.Findings);
+  }
+
+  // Fails when a symbol-free entry names a page the wiki no longer has.
+  [Fact]
+  public void Every_symbol_free_page_exists() {
+    foreach (string name in SymbolFree)
+      Assert.True(
+        File.Exists(Path.Combine(WikiDirectory, name)),
+        $"{name} is listed symbol-free but is not in {WikiDirectory}"
       );
   }
 
