@@ -266,6 +266,62 @@ public class ExHarmonyTests {
     }
   }
 
+  // Fails when PatchOnce lets a held id patch a second assembly, or holds that second assembly
+  // before it throws.
+  [Fact]
+  public void A_held_id_patching_a_second_assembly_throws_naming_both() {
+    const string id = "exlibtest.exharmony-two-assemblies";
+    Assembly other = typeof(ExpandedLib.Testing.HarmonyFixture).Assembly;
+
+    try {
+      ExHarmony.PatchOnce(id, typeof(ExHarmonyTests).Assembly);
+
+      var thrown = Assert.Throws<System.InvalidOperationException>(() =>
+        ExHarmony.PatchOnce(id, other)
+      );
+
+      Assert.Equal(
+        $"Harmony id {id} cannot patch ExpandedLib.Testing: it already holds "
+          + "ExpandedLib.Tests, and one id patches one assembly",
+        thrown.Message
+      );
+      ExHarmony.UnpatchAll(id);
+      ExHarmony.PatchOnce("exlibtest.exharmony-two-assemblies-other", other);
+    } finally {
+      ExHarmony.UnpatchAll(id);
+      ExHarmony.UnpatchAll("exlibtest.exharmony-two-assemblies-other");
+    }
+  }
+
+  // Fails when PatchOnce lets a second id patch a held assembly, or patches under it before it
+  // throws.
+  [Fact]
+  public void A_held_assembly_under_a_second_id_throws_naming_both() {
+    const string id = "exlibtest.exharmony-first-id";
+    const string second = "exlibtest.exharmony-second-id";
+    MethodBase original = typeof(UncategorizedTarget).GetMethod(
+      nameof(UncategorizedTarget.Method)
+    )!;
+
+    try {
+      ExHarmony.PatchOnce(id, typeof(ExHarmonyTests).Assembly);
+
+      var thrown = Assert.Throws<System.InvalidOperationException>(() =>
+        ExHarmony.PatchOnce(second, typeof(ExHarmonyTests).Assembly)
+      );
+
+      Assert.Equal(
+        $"Harmony id {second} cannot patch ExpandedLib.Tests: id {id} already holds it, "
+          + "and one assembly is patched under one id",
+        thrown.Message
+      );
+      Assert.Equal([id], Harmony.GetPatchInfo(original)!.Owners);
+    } finally {
+      ExHarmony.UnpatchAll(second);
+      ExHarmony.UnpatchAll(id);
+    }
+  }
+
   [Fact]
   public void UnpatchAll_removes_and_is_safe_twice() {
     var mod = FakeMod("exlibtest.exharmony-unpatch");

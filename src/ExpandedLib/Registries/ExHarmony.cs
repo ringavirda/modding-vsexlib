@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using Vintagestory.API.Common;
@@ -15,9 +15,12 @@ public static class ExHarmony {
   // Tracked as "<harmony id>::<category>"; PatchCategory is not idempotent.
   private static readonly HashSet<string> AppliedCategories = [];
 
-  // Per "<id>::<assembly full name>", the PatchOnce calls no UnpatchAll has released yet; a key is
-  // never held at zero. Harmony.HasAnyPatches(id) cannot tell categories apart.
-  private static readonly Dictionary<string, int> UncategorizedPatched = [];
+  // Per id, the assembly it patches (full name) and the PatchOnce calls no UnpatchAll has released
+  // yet; an id is never held at zero. Harmony.HasAnyPatches(id) cannot tell categories apart.
+  private static readonly Dictionary<
+    string,
+    (string Assembly, int Holds)
+  > UncategorizedPatched = [];
 
   /// <summary>
   /// Applies every uncategorised <c>[HarmonyPatch]</c> class in <paramref name="assembly"/> under
@@ -25,19 +28,37 @@ public static class ExHarmony {
   /// </summary>
   /// <remarks>Every call takes one hold that one <see cref="UnpatchAll(Mod)"/> releases; a repeat
   /// call applies nothing new. In singleplayer the server's and the client's mod systems both call
-  /// it, so the patches stay until both have disposed.</remarks>
+  /// it, so the patches stay until both have disposed. One id patches one assembly and one assembly
+  /// is patched under one id while any hold is left on the pair.</remarks>
+  /// <exception cref="InvalidOperationException">The id holds another assembly, or
+  /// <paramref name="assembly"/> is held under another id; the message names both ids or both
+  /// assemblies, and nothing is patched or held.</exception>
   public static Harmony PatchOnce(Mod mod, Assembly assembly) =>
     PatchOnce(mod.Info.ModID, assembly);
 
   /// <summary>As <see cref="PatchOnce(Mod, Assembly)"/>, under an explicit <paramref name="id"/>.</summary>
+  /// <exception cref="InvalidOperationException">As <see cref="PatchOnce(Mod, Assembly)"/>.</exception>
   public static Harmony PatchOnce(string id, Assembly assembly) {
     var harmony = new Harmony(id);
-    string key = id + "::" + assembly.FullName;
+    string name = assembly.FullName!;
     lock (UncategorizedPatched) {
-      UncategorizedPatched.TryGetValue(key, out int holds);
-      if (holds == 0)
-        harmony.PatchAllUncategorized(assembly);
-      UncategorizedPatched[key] = holds + 1;
+      if (UncategorizedPatched.TryGetValue(id, out var held)) {
+        if (held.Assembly != name)
+          throw new InvalidOperationException(
+            $"Harmony id {id} cannot patch {assembly.GetName().Name}: it already holds "
+              + $"{new AssemblyName(held.Assembly).Name}, and one id patches one assembly"
+          );
+        UncategorizedPatched[id] = (name, held.Holds + 1);
+        return harmony;
+      }
+      foreach ((string other, var hold) in UncategorizedPatched)
+        if (hold.Assembly == name)
+          throw new InvalidOperationException(
+            $"Harmony id {id} cannot patch {assembly.GetName().Name}: id {other} already holds "
+              + "it, and one assembly is patched under one id"
+          );
+      harmony.PatchAllUncategorized(assembly);
+      UncategorizedPatched[id] = (name, 1);
     }
     return harmony;
   }
@@ -63,26 +84,25 @@ public static class ExHarmony {
     return true;
   }
 
-  /// <summary>Releases one <see cref="PatchOnce(Mod, Assembly)"/> hold on each assembly patched
+  /// <summary>Releases one <see cref="PatchOnce(Mod, Assembly)"/> hold on the assembly patched
   /// under <paramref name="mod"/>'s id, and unpatches everything under the id, categories included,
   /// once none is still held.</summary>
-  /// <remarks>Each call releases one hold on every assembly patched under the id, whoever took it:
-  /// call it once per <see cref="PatchOnce(Mod, Assembly)"/>, from the code that made that call and
-  /// only after it returned. With nothing held it unpatches at once. In singleplayer the side that
-  /// disposes first leaves the patches applied for the other.</remarks>
+  /// <remarks>Each call releases one hold on the id, whoever took it: call it once per
+  /// <see cref="PatchOnce(Mod, Assembly)"/>, from the code that made that call and only after it
+  /// returned. With nothing held it unpatches at once. In singleplayer the side that disposes first
+  /// leaves the patches applied for the other. Once the last hold is released the id and its
+  /// assembly are free to pair with others.</remarks>
   public static void UnpatchAll(Mod mod) => UnpatchAll(mod.Info.ModID);
 
   /// <summary>As <see cref="UnpatchAll(Mod)"/>, under an explicit <paramref name="id"/>.</summary>
   public static void UnpatchAll(string id) {
-    string prefix = id + "::";
     lock (UncategorizedPatched) {
-      foreach (
-        string key in UncategorizedPatched
-          .Keys.Where(k => k.StartsWith(prefix))
-          .ToList()
-      )
-        if (--UncategorizedPatched[key] == 0)
-          UncategorizedPatched.Remove(key);
+      if (UncategorizedPatched.TryGetValue(id, out var held)) {
+        if (held.Holds == 1)
+          UncategorizedPatched.Remove(id);
+        else
+          UncategorizedPatched[id] = (held.Assembly, held.Holds - 1);
+      }
       UnpatchUnheldLocked(id);
     }
   }
@@ -97,10 +117,9 @@ public static class ExHarmony {
 
   // The caller holds the lock on UncategorizedPatched.
   private static void UnpatchUnheldLocked(string id) {
-    string prefix = id + "::";
-    if (UncategorizedPatched.Keys.Any(k => k.StartsWith(prefix)))
+    if (UncategorizedPatched.ContainsKey(id))
       return;
     new Harmony(id).UnpatchAll(id);
-    AppliedCategories.RemoveWhere(key => key.StartsWith(prefix));
+    AppliedCategories.RemoveWhere(key => key.StartsWith(id + "::"));
   }
 }
