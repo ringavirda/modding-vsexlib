@@ -42,7 +42,6 @@ public class SourceLawGuards(ITestOutputHelper output) {
   public void A_block_search_is_checked_before_it_is_read() =>
     Assert(SourceLaws.UnguardedSearch, new(), new());
 
-  // Prints every hit with the list that holds it, then asserts both lists.
   private void Assert(
     Func<IEnumerable<string>, IReadOnlyList<string>> law,
     Dictionary<string, string> allowed,

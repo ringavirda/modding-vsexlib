@@ -10,7 +10,7 @@ namespace ExpandedLib.Tests;
 /// <summary><see cref="SourceLaws"/> over planted source text, one rule or exemption
 /// each.</summary>
 public class SourceLawsTests(ITestOutputHelper output) {
-  // Each source is one planted file; the law's findings are printed and returned.
+  // Source i is written as Planted{i}.cs, the file name every finding carries.
   private IReadOnlyList<string> Scan(
     Func<IEnumerable<string>, IReadOnlyList<string>> law,
     params string[] sources

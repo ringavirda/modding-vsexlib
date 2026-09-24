@@ -26,7 +26,7 @@ public class AxisSignsTests(ITestOutputHelper output) {
           )!,
     };
 
-  // The findings of a run over the placed type alone, printed with its placements.
+  // Checked against an assembly with no behaviour types, so no finding names an unplaced type.
   private IReadOnlyList<string> Findings(Type type) {
     AxisSigns.Result result = AxisSigns.Check(
       typeof(object).Assembly,
