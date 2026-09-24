@@ -36,7 +36,10 @@ public static class PressureVesselGate {
     ];
 
   /// <summary>How many of <paramref name="rivetCode"/> the whole build costs, summed over its stages.</summary>
-  [CheckHelper("counts the rivets a definition's stages ask for")]
+  /// <param name="def">The construction-staged block.</param>
+  /// <param name="rivetCode">The ingredient code to count, compared whole and ordinally.</param>
+  /// <returns>The summed quantities; zero when no stage asks for the code, and an ingredient with
+  /// no quantity counts zero.</returns>
   public static int RivetsRequired(ExBlockDef def, string rivetCode) =>
     StageIngredients(def)
       .Where(i => i["code"]?.ToString() == rivetCode)
