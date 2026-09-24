@@ -11,7 +11,7 @@ see the git history.
 
 - **Three grid recipe checks** run with the shipped checks, at load and from `/exmod verify`.
   `GridRecipeShapeCheck`: every ingredient key appears in the pattern, every pattern letter has a
-  key, and the grid is at most 3x3. `GridRecipeCollisionCheck`: no two grid recipes of the domains
+  key, the pattern fills its width and height, and the grid is at most 3x3. `GridRecipeCollisionCheck`: no two grid recipes of the domains
   checked match the same input, counted as the game's matcher counts trimmed patterns, offsets,
   shapeless recipes over the input merged into stacks, wildcards, `allowedVariants` and named
   wildcards, with a code without a domain in its recipe file's. `GridOutputVariantCheck`: a

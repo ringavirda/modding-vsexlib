@@ -8,24 +8,25 @@ namespace ExpandedLib.Checks;
 
 /// <summary>
 /// Checks every grid recipe in a domain against the pattern the game reads: each ingredient key
-/// is placed by <c>ingredientPattern</c>, each pattern letter has an ingredient, and the grid is
-/// at most 3x3.
+/// is placed by <c>ingredientPattern</c>, each pattern letter has an ingredient, the pattern
+/// fills its declared width and height, and the grid is at most 3x3.
 /// </summary>
 /// <remarks>A key the pattern never places is never consumed and never shown, so two recipes
-/// differing only in it take the same input. A letter with no key fails the recipe at load
-/// (<c>GridRecipe.Resolve</c>), and a grid wider or taller than the crafting grid never matches
+/// differing only in it take the same input. A letter with no key or a pattern of another length
+/// than width times height fails the recipe at load (<c>GridRecipe.Resolve</c>), and a grid wider or taller than the crafting grid never matches
 /// (<c>GridRecipe.Matches</c>). A grid recipe is one under <c>recipes/grid/</c>; its properties
 /// are read case-insensitively, as the game's loader reads them.</remarks>
 public static class GridRecipeShapeCheck {
   /// <summary>The crafting grid's width and height, in slots.</summary>
   internal const int GridSize = 3;
 
-  /// <summary>Every key, letter or grid size in <paramref name="domain"/>'s grid recipes the game
-  /// cannot place.</summary>
+  /// <summary>Every key, letter, pattern length or grid size in <paramref name="domain"/>'s grid
+  /// recipes the game cannot place.</summary>
   /// <param name="source">The recipes to read.</param>
   /// <param name="domain">The domain whose grid recipes are checked.</param>
   /// <returns>The check's <see cref="CheckResult"/>, named <c>GridRecipeShape</c>, one error per
-  /// unplaced key, keyless letter and oversized grid; no errors when none.</returns>
+  /// unplaced key, keyless letter, pattern not filling its grid and oversized grid; no errors when
+  /// none.</returns>
   public static CheckResult Run(ICheckSource source, string domain) {
     var errors = new List<string>();
     foreach (GridEntry recipe in Recipes(source, domain)) {
@@ -40,6 +41,11 @@ public static class GridRecipeShapeCheck {
       foreach (string letter in recipe.Cells.Where(IsLetter).Distinct())
         if (!recipe.Ingredients.ContainsKey(letter))
           errors.Add($"{recipe.Where}: letter {letter} has no key");
+      if (recipe.Width * recipe.Height != recipe.Cells.Count)
+        errors.Add(
+          $"{recipe.Where}: pattern {recipe.RawPattern} has {recipe.Cells.Count} slots, "
+            + $"not {recipe.Width}x{recipe.Height}"
+        );
       if (recipe.Width > GridSize || recipe.Height > GridSize)
         errors.Add(
           $"{recipe.Where}: grid {recipe.Width}x{recipe.Height} is larger than "

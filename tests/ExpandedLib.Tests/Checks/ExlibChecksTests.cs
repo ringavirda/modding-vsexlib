@@ -114,6 +114,12 @@ public class ExlibChecksTests {
     (
       new AssetLocation("stub", "recipes/grid/stubrecipe.json"),
       new JObject {
+        ["ingredientPattern"] = "P",
+        ["width"] = 1,
+        ["height"] = 1,
+        ["ingredients"] = new JObject {
+          ["P"] = new JObject { ["type"] = "item", ["code"] = "game:stick" },
+        },
         ["output"] = new JObject {
           ["type"] = "block",
           ["code"] = "stub:missingrecipeoutput",

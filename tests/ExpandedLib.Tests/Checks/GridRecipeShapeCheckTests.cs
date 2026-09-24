@@ -7,7 +7,8 @@ using Xunit.Abstractions;
 namespace ExpandedLib.Tests;
 
 /// <summary><see cref="GridRecipeShapeCheck"/> over planted grid recipes, each breaking one rule:
-/// a key the pattern never places, a letter with no key, a grid larger than 3x3.</summary>
+/// a key the pattern never places, a letter with no key, a pattern not filling its grid, a grid
+/// larger than 3x3.</summary>
 public class GridRecipeShapeCheckTests {
   private readonly ITestOutputHelper output;
 
@@ -101,6 +102,29 @@ public class GridRecipeShapeCheckTests {
           "IngredientPattern": "PPPP", "Width": 4, "Height": 1,
           "Ingredients": { "P": { "type": "item", "code": "game:plank-oak" } },
           "Output": { "type": "block", "code": "stub:beam" }
+        }
+        """
+      )
+    );
+
+  // Fails when Run stops reporting a pattern with fewer slots than its width times its height.
+  [Fact]
+  [PlantedDefect(
+    typeof(GridRecipeShapeCheck),
+    nameof(GridRecipeShapeCheck.Run)
+  )]
+  public void A_pattern_not_filling_its_grid_is_reported() =>
+    Assert.Equal(
+      [
+        "stub:recipes/grid/planted.json#0 (shelf): pattern PP,PP has 4 slots, not 3x2",
+      ],
+      Findings(
+        """
+        {
+          "name": "shelf",
+          "ingredientPattern": "PP,PP", "width": 3, "height": 2,
+          "ingredients": { "P": { "type": "item", "code": "game:plank-oak" } },
+          "output": { "type": "block", "code": "stub:shelf" }
         }
         """
       )
