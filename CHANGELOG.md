@@ -9,6 +9,8 @@ see the git history.
 
 ### Added
 
+- **`OpenLayoutCells`** (ExpandedLib.Testing): in every layout column open to the sky, the first
+  solid cell below the open run and the open cell above it carry `CellRoles.NoSnow`.
 - **`AnimatorClips`** (ExpandedLib.Testing): every clip in a shipped shape ends in `Repeat` or
   `Hold`; a clip that ends leaves a block drawn only through its animator without a mesh.
 - **`StageWildcardsCheck`** runs with the shipped checks, at load and from `/exmod verify`: every
