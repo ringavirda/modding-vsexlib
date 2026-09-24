@@ -107,7 +107,9 @@ public class NetworkNodeContractTests {
             .NetworkOriented(),
           ExBlockDef
             .Create(domain, "subclassmember")
-            .EntityBehavior($"{domain}.{nameof(PlantedMember)}"),
+            .EntityBehavior(
+              EntityRegistry.KeyFor(domain, typeof(PlantedMember))
+            ),
         ]
         : [];
   }
