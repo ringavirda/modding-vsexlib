@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
 using System.Text.RegularExpressions;
 
 namespace ExpandedLib.Testing;
@@ -21,8 +23,9 @@ public static class ReleasedVersions {
     ReleasedHistory.AllVersions;
 
   /// <summary>Orders two versions: numerically by <c>major.minor.patch</c>, then a version with a
-  /// <c>-suffix</c> (a pre-release) before the same version without one, then by suffix, ordinally.
-  /// </summary>
+  /// <c>-suffix</c> (a pre-release) before the same version without one, then by the suffixes'
+  /// dot-separated identifiers in turn: two all-digit identifiers as numbers, any other pair
+  /// ordinally, and a suffix that runs out first before the longer one.</summary>
   /// <param name="a">A version such as <c>0.8.2</c> or <c>0.8.0-preview.3</c>.</param>
   /// <param name="b">The version to compare with.</param>
   /// <returns>Negative when <paramref name="a"/> is older, zero when equal, positive when newer.
@@ -42,8 +45,21 @@ public static class ReleasedVersions {
       yPre = y.Groups[4].Success;
     if (xPre != yPre)
       return xPre ? -1 : 1;
-    return string.CompareOrdinal(x.Groups[4].Value, y.Groups[4].Value);
+    string[] xs = x.Groups[4].Value.Split('.'),
+      ys = y.Groups[4].Value.Split('.');
+    for (int i = 0; i < Math.Min(xs.Length, ys.Length); i++) {
+      int c =
+        IsNumeric(xs[i]) && IsNumeric(ys[i])
+          ? BigInteger.Parse(xs[i]).CompareTo(BigInteger.Parse(ys[i]))
+          : string.CompareOrdinal(xs[i], ys[i]);
+      if (c != 0)
+        return c;
+    }
+    return xs.Length.CompareTo(ys.Length);
   }
+
+  private static bool IsNumeric(string identifier) =>
+    identifier.Length > 0 && identifier.All(char.IsAsciiDigit);
 
   private static Match Parse(string version, string name) {
     Match m = Semantic.Match(version);

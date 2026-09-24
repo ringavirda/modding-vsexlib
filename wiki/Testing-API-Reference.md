@@ -788,7 +788,7 @@ Unchanged call sites onto `ReleasedHistory`, which now holds the data: `Released
 block code that has ever shipped (the migration contract - a released code must resolve forever, or
 carry a documented `IBlockCodeMigration`); `ReleasedVersions.HighestPublished` is the newest version
 registered per modid, release rows included, and `ReleasedVersions.Compare` orders two versions
-numerically, a `-suffix` pre-release before its release; `ReleasedCodeDebt.KnownUnmigrated` is the recorded, dated exception list so the
+numerically, a `-suffix` pre-release before its release, and two suffixes by their dot-separated identifiers, the numeric ones as numbers; `ReleasedCodeDebt.KnownUnmigrated` is the recorded, dated exception list so the
 coverage guard still fails on anything new.
 
 ## Project configuration recap

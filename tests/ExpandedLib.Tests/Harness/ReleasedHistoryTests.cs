@@ -9,27 +9,37 @@ namespace ExpandedLib.Tests;
 /// <see cref="ReleasedVersions.Compare"/>.</summary>
 public class ReleasedHistoryTests {
   // Fails when a release row's codes stay out of the shipped history, its version out of
-  // HighestPublished, or the rows are kept in registration order.
+  // HighestPublished, or the rows are kept in registration order; the last assert when Forget
+  // leaves the rows registered.
   [Fact]
   public void A_release_row_adds_its_codes_and_its_version() {
     const string mod = "releasedhistorytestmod";
-    ReleasedHistory.Register(
-      mod,
-      "1.2.0",
-      [new(mod, "gadget", $"{mod}:gadget", [$"{mod}:gadget"])]
-    );
-    ReleasedHistory.Register(mod, "1.10.0", []);
-    ReleasedHistory.Register(mod, "1.3.0", []);
+    try {
+      ReleasedHistory.Register(
+        mod,
+        "1.2.0",
+        [new(mod, "gadget", $"{mod}:gadget", [$"{mod}:gadget"])]
+      );
+      ReleasedHistory.Register(mod, "1.10.0", []);
+      ReleasedHistory.Register(mod, "1.3.0", []);
 
-    Assert.Equal(
-      ["1.2.0", "1.3.0", "1.10.0"],
-      ReleasedHistory.Releases(mod).Select(r => r.Version)
-    );
-    Assert.Contains(
+      Assert.Equal(
+        ["1.2.0", "1.3.0", "1.10.0"],
+        ReleasedHistory.Releases(mod).Select(r => r.Version)
+      );
+      Assert.Contains(
+        ReleasedHistory.AllShipped,
+        s => s.BaseCode == $"{mod}:gadget"
+      );
+      Assert.Equal("1.10.0", ReleasedVersions.HighestPublished[mod]);
+    } finally {
+      ReleasedHistory.Forget(mod);
+    }
+    Assert.DoesNotContain(
       ReleasedHistory.AllShipped,
       s => s.BaseCode == $"{mod}:gadget"
     );
-    Assert.Equal("1.10.0", ReleasedVersions.HighestPublished[mod]);
+    Assert.False(ReleasedVersions.HighestPublished.ContainsKey(mod));
   }
 
   // Fails when exlib's seed loses a 0.8.x row, or a row gains a code no tag shipped.
@@ -54,6 +64,23 @@ public class ReleasedHistoryTests {
     Assert.Equal(0, ReleasedVersions.Compare("0.8.2", "0.8.2"));
     Assert.Throws<ArgumentException>(() =>
       ReleasedVersions.Compare("0.8", "0.8.2")
+    );
+  }
+
+  // Fails when Compare orders pre-release suffixes as whole strings, or ranks a shorter suffix
+  // after a longer one it starts.
+  [Fact]
+  public void Compare_orders_numeric_pre_release_identifiers_as_numbers() {
+    Assert.True(
+      ReleasedVersions.Compare("0.8.0-preview.10", "0.8.0-preview.9") > 0
+    );
+    Assert.True(ReleasedVersions.Compare("0.8.0-preview.2", "0.8.0-rc.1") < 0);
+    Assert.True(
+      ReleasedVersions.Compare("0.8.0-preview", "0.8.0-preview.1") < 0
+    );
+    Assert.Equal(
+      0,
+      ReleasedVersions.Compare("0.8.0-preview.3", "0.8.0-preview.3")
     );
   }
 }

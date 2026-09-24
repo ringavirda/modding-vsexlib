@@ -21,7 +21,11 @@ public sealed record ReleasedModHistory(
 /// </summary>
 public static class ReleasedHistory {
   /// <summary>One published release of a mod: its version and the blocktypes it shipped for the
-  /// first time. An empty <paramref name="Added"/> means the release added no code.</summary>
+  /// first time.</summary>
+  /// <param name="Version">The published version, <c>major.minor.patch</c> with an optional
+  /// <c>-suffix</c>.</param>
+  /// <param name="Added">The blocktypes the release shipped for the first time; empty when it added
+  /// no code.</param>
   public sealed record Release(
     string Version,
     IReadOnlyList<ReleasedCodes.Shipped> Added
@@ -67,13 +71,22 @@ public static class ReleasedHistory {
     rows.Sort((a, b) => ReleasedVersions.Compare(a.Version, b.Version));
   }
 
-  /// <summary><paramref name="mod"/>'s release rows, oldest first; empty when none is registered.
-  /// </summary>
+  /// <summary><paramref name="mod"/>'s release rows, oldest first.</summary>
+  /// <param name="mod">The mod the rows were registered under.</param>
+  /// <returns>A copy of the rows, ordered by <see cref="ReleasedVersions.Compare"/>; empty when none
+  /// is registered.</returns>
   public static IReadOnlyList<Release> Releases(string mod) =>
     ReleasesByMod.TryGetValue(mod, out List<Release>? rows) ? [.. rows] : [];
 
   /// <summary><paramref name="mod"/>'s registered history, its release rows' codes and versions
-  /// folded in, or null if it has never shipped.</summary>
+  /// folded in.</summary>
+  /// <param name="mod">The mod the history and rows were registered under.</param>
+  /// <returns>The full registration with every row's codes appended to its shipped codes, and the
+  /// newest row's version as the mod's own unless the registered one is as new or newer; the
+  /// registration unchanged when there are no rows; null when neither was registered.</returns>
+  /// <exception cref="ArgumentException">There are rows, and the full registration's version for
+  /// <paramref name="mod"/> is not <c>major.minor.patch</c> with an optional
+  /// <c>-suffix</c>.</exception>
   public static ReleasedModHistory? For(string mod) {
     ByMod.TryGetValue(mod, out ReleasedModHistory? history);
     IReadOnlyList<Release> rows = Releases(mod);
@@ -96,6 +109,13 @@ public static class ReleasedHistory {
       Shipped = [.. history.Shipped, .. rows.SelectMany(r => r.Added)],
       Versions = versions,
     };
+  }
+
+  /// <summary>Drops every registration and release row of <paramref name="mod"/>; does nothing
+  /// when there are none.</summary>
+  internal static void Forget(string mod) {
+    ByMod.Remove(mod);
+    ReleasesByMod.Remove(mod);
   }
 
   private static IEnumerable<ReleasedModHistory> All =>
