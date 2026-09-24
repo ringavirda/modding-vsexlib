@@ -38,7 +38,7 @@ disk without knowing which it is looking at.
 | `NetworkNodeContractCheck` | A [network node](Block-Networks) declares a `type` variant group and the orientation scheme it ships; a declared membership names the network it joins. | A node missing its `type` group has no allowed orientations, so placing it fails with no message at all. |
 | `PinnedNetworkNodesCheck` | No shipped layout pins the orientation of a network node. | A node picks its own orientation from its neighbours, so a pinned cell can be contradicted at any moment. Mark the cell with the layout's `Connector` instead. |
 | `CodePrefixCollisionCheck` | No block's base code is a proper prefix of another's at a `-` boundary. | A wildcard `yourmod:pipe-*` written for the short code also swallows `yourmod:pipe-plated-*`, quietly widening every rule built on it. |
-| `StageWildcardsCheck` | Every [construction](Construction) stage ingredient whose code holds `*` carries `storeWildCard`, keyed by the one variant group its `*` spans (`wood`, `metal`), a group of every block it matches; a `{key}` placeholder names one of the block's own variant groups or a key an earlier paid stage stores; a key on the unpaid stage 0 is stored by stage 1. The key must be `wood` or `metal`, the two a creative Ctrl build stores. | Breaking the structure throws a NullReferenceException, or its refund silently names a code that does not exist and drops nothing. |
+| `StageWildcardsCheck` | Every [construction](Construction) stage ingredient whose code holds `*` carries `storeWildCard`, keyed by the one variant group its `*` spans (`wood`, `metal`), a group of every block it matches; a `{key}` placeholder names one of the block's own variant groups or a key an earlier paid stage stores; a key on the unpaid stage 0 is stored by stage 1; a key is stored by one paid stage, later stages taking it as `{key}` (an ingredient whose code holds its own `{key}` is no second store). The key must be `wood` or `metal`, the two a creative Ctrl build stores. | Breaking the structure throws a NullReferenceException, or its refund silently names a code that does not exist and drops nothing. |
 | `GridRecipeShapeCheck` | Every key of a grid recipe's `ingredients` appears in its `ingredientPattern`, every pattern letter other than `_` and a space has a key, the pattern has width times height slots, and the grid is at most 3x3. | A key the pattern never places is never consumed and never shown, so two recipes differing only in it take the same input. A letter with no key or a pattern of the wrong length fails the recipe at load, and a larger grid never matches. |
 | `GridRecipeCollisionCheck` | No two grid recipes of the domains the check covers match the same input. It counts as the game's matcher does: a pattern trimmed of empty rows and columns at any offset it fits, a shapeless recipe's ingredients taking the input merged into one stack per item, a wildcard over what it matches as `allowedVariants` narrow it, and a named wildcard in one state across its slots. The game has no mirrored match. | The grid crafts whichever of the two recipes it finds first, and the other is never made from that input. |
 | `GridOutputVariantCheck` | A grid recipe whose output is an oriented block names the orientation its `creativeinventory` lists. A block is oriented by the variant group its orientation behaviour writes (`ExOrientable`, `HorizontalOrientable`, `NWOrientable`, `Pillar` or `OmniRotatable`) or its block class writes (`BlockStairs`, when the check's source resolves the class). | The game crafts the block the recipe names, but the handbook page of the creative block lists no recipe, and the crafted stack does not stack with the default the block drops when broken. |
@@ -48,10 +48,9 @@ Three of the twelve have a condition attached.
 `LateDefinitionCheck` is the odd one out. It names every block, item or recipe definition registered
 after `ExDefinitionModSystem` already injected (see [Code-First-Definitions](Code-First-Definitions)),
 which the loader then never builds. To do that it has to read `ExDefinitions` directly rather than
-`ICheckSource`, and it reports nothing until injection has actually run once in the process. A
-dedicated multiplayer client never sees it, and neither does an `ICheckSource` built without
-replaying injection. In singleplayer the integrated server and the client share one process and its
-static state, so the client's own check call reports too, once the server's pass has run.
+`ICheckSource`, and it reports nothing until injection has actually run once in the process, so an
+`ICheckSource` built without replaying injection never sees it. The load-time pass runs on the
+server only.
 
 `GridRecipeCollisionCheck` reads ingredient codes, and tags only from a loaded game: over
 `AssetCheckSource` on 1.22 and later, an ingredient with tags and no code takes the collectibles of
@@ -86,7 +85,7 @@ boots a dedicated server of the current series (1.22) with the built mods and se
 
 | Check | What it looks for | What goes wrong without it |
 | --- | --- | --- |
-| `ObtainabilityCheck` | Every recipe ingredient, every construction stage ingredient and every block a creative tab lists is made, one step deep, by one of: a loaded recipe's output (grid, cooking, barrel, alloy, smithing, knapping, clayforming); an output of exlib's process catalogues (a terminal job, a stock route's stopping point, a loaded die's job); a smelted, crushed or ground stack; a beehive kiln firing; the drop of a block of another type; a world source (`game:gravel-*`, from worldgen); a code a mod declares with `ExlibChecks.Produces`. A wildcard is made when one code it matches is, and a creative-listed block when a block differing from it only in groups its placement writes is: the orientation groups `GridOutputVariantCheck` recognises, and a network node's `orientation`, the faces it connects on. Another machine or pipe shape of the same blocktype does not count. A creative tab is no source. | A survival player can never obtain the ingredient, so the recipe or structure asking for it is never finished. |
+| `ObtainabilityCheck` | Every recipe ingredient, every construction stage ingredient and every block a creative tab lists is made, one step deep, by one of: a loaded recipe's output (grid, cooking, barrel, alloy, smithing, knapping, clayforming); an output of exlib's process catalogues (a terminal job, a stock route's stopping point, a loaded die's job); a smelted, crushed or ground stack; a beehive kiln firing; the drop of a block of another type; a world source (`game:gravel-*`, from worldgen); a code a mod declares with `ExlibChecks.Produces`. A wildcard is made when one code it matches is, among the states its stack's `allowedVariants` allow and its `skipVariants` leave, and a creative-listed block when a block differing from it only in groups its placement writes is: the orientation groups `GridOutputVariantCheck` recognises, and a network node's `orientation`, the faces it connects on. Another machine or pipe shape of the same blocktype does not count. A creative tab is no source. | A survival player can never obtain the ingredient, so the recipe or structure asking for it is never finished. |
 | `VanillaGridCollisionCheck` | No grid recipe of the domain matches the same input as a vanilla grid recipe, patches applied, counted as `GridRecipeCollisionCheck` counts. The domain's own pairs are that check's. | The grid crafts whichever recipe it finds first, and either yours or vanilla's is never made from that input. |
 | `GameReferencesCheck` | Every `game:` code the domain's recipes, construction stages and definition bodies name (outputs, ingredients, stage requirements, drops, smelted, ground and shattered stacks) matches a block or item of the class it names that the loaded game registered; a wildcard matches one. A code with no domain is `game:` in a construction stage and the file's own domain elsewhere, as the game reads each. | The reference resolves to nothing: an ingredient no stack fills, a drop that drops nothing. |
 | `LoadedStageWildcardsCheck` | `StageWildcardsCheck`'s rules for a stored construction wildcard of a domain the run does not cover, such as `game:plank-*`: its `*` spans only the variant group its `storeWildCard` key names, the key is a variant group of every loaded match, and the pattern matches something. | Breaking the structure refunds a code that does not exist, or throws. |
@@ -109,24 +108,31 @@ catalogues (`ProcessJobRegistry`, `ProcessRouteRegistry`, a die's `machinejob`) 
 
 ### A finding you ship knowingly: `Exempt`
 
-`ExlibChecks.Exempt(domain, rule, code, reason)`, called from `Start`, takes every finding of `rule`
-(the check's name as its `CheckResult` carries it, e.g. `GridRecipeCollision`) in `domain`'s runs
-that names `code` as a whole word, out of the errors. The code is whatever the finding names: a
-code, or a recipe's `file#position`, so `a.json#1` does not take `a.json#10`. An exempted finding
-moves to the result's `Exempted` lines, followed by the reason, and is logged at Notification; it
-applies at load, in `/exmod verify` and in `ExlibChecks.For`, `LoadedFor` and `Verify`.
+`ExlibChecks.Exempt(domain, rule, codes, reason)`, called from `Start`, takes every finding of
+`rule` (the check's name as its `CheckResult` carries it, e.g. `GridRecipeCollision`) in `domain`'s
+runs that names each of `codes` as a whole word, out of the errors. A code is whatever the finding
+names: a code, a recipe's `file#position`, or words of the defect (`key G`). Whole word means
+`a.json#1` does not take `a.json#10`, and `slag-block` does not take `yourmod:slag-block`: a `:` or
+`.` ends a word only before white space or the end, and starts none. A finding about two things,
+the two recipes of a collision or the two codes of a prefix clash, lists them in the result's
+`Subjects`, and is taken only by an exemption naming both. `Exempt(domain, rule, code, reason)`
+names one. An exempted finding moves to the result's `Exempted` lines, followed by the reason, and
+is logged at Notification; it applies at load, in `/exmod verify` and in `ExlibChecks.For`,
+`LoadedFor` and `Verify`.
 
 ```csharp
 ExlibChecks.Exempt(
     Mod.Info.ModID,
     "GridRecipeCollision",
-    "yourmod:recipes/grid/crate.json#0",
+    ["yourmod:recipes/grid/crate.json#0", "yourmod:recipes/grid/crate.json#1"],
     "the oak and pine crates are one item"
 );
 ```
 
 An exemption that takes no finding in a run of its rule is itself reported, in a result named
-`Exempt`; `ExlibChecks.Verify` also reports one whose rule never ran. Exemptions and `Produces`
+`Exempt`; `ExlibChecks.Verify` also reports one whose rule never ran. Of two exemptions taking the
+same finding the first given takes it, and the second, when it takes nothing else, is reported as
+its duplicate. Exemptions and `Produces`
 declarations are dropped when a world starts loading, so each load's `Start` declares them again.
 A finding another mod's content causes in your domain (its patch of your recipe, say) is exempted
 by that mod, for your domain, since the exemption is unused whenever it is not loaded.
@@ -135,8 +141,9 @@ There are three rungs, in increasing order of control.
 
 ## Rung 1: nothing to do
 
-`ExpandedLibModSystem.AssetsFinalize` runs every check against the live game state and logs the
-results, after the metal/fluid/process catalogues finish loading. Each check logs one summary line
+`ExpandedLibModSystem.AssetsFinalize` runs every check against the live game state on the server
+and logs the results, after the metal/fluid/process catalogues finish loading. A client runs none:
+it receives no recipes, a server asset category. Each check logs one summary line
 naming itself, its domain and how many errors it found, followed by one line per error. A modder who
 never opens xUnit still sees "your recipe names a code that does not exist" in the server log the
 first time the world loads with the mistake in it.
