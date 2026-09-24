@@ -9,6 +9,10 @@ see the git history.
 
 ### Added
 
+- **`CommentStyle` and `ShapeTextures`** (ExpandedLib.Testing): the comment style rules and the
+  shipped-shape editor-path rule, which exlib, iiex and siex each kept a copy of, are checks a
+  suite's guard calls: `CommentStyle` takes the sources `CommentStyle.Sources` reads from a list of
+  folders, `ShapeTextures.EditorPaths` a mod's shapes folder.
 - **`IMoltenCell.FlowRules`** (ExpandedLib.Industry): a molten cell can return `MoltenFlowRules`,
   its own rate in units per tick, minimum gap, conveying and horizontal-only flags. A connection
   whose two cells both return rules takes the smaller rate and the larger gap; below the gap nothing
