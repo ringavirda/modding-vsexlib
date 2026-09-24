@@ -346,8 +346,9 @@ public class GridRecipeCollisionCheckTests {
   [Fact]
   public void A_shapeless_recipe_takes_its_input_merged_into_stacks() =>
     Assert.Equal(
-      [Collision(0, "loose", 1, "stacked"), Collision(2, "pair", 3, "single")],
+      [Collision(0, "stacked", 1, "loose"), Collision(2, "single", 3, "pair")],
       Findings(
+        Recipe("stacked", "OOQ", 3, 1, $$"""{ "O": {{Oak}}, "Q": {{Pine}} }"""),
         Recipe(
           "loose",
           "OQ",
@@ -356,7 +357,7 @@ public class GridRecipeCollisionCheckTests {
           $$"""{ "O": {{Oak}}, "Q": {{Pine}} }""",
           "\"shapeless\": true,"
         ),
-        Recipe("stacked", "OOQ", 3, 1, $$"""{ "O": {{Oak}}, "Q": {{Pine}} }"""),
+        Recipe("single", "O", 1, 1, $$"""{ "O": {{Oak}} }"""),
         Recipe(
           "pair",
           "OP",
@@ -364,8 +365,7 @@ public class GridRecipeCollisionCheckTests {
           1,
           $$"""{ "O": {{Oak}}, "P": {{Oak}} }""",
           "\"shapeless\": true,"
-        ),
-        Recipe("single", "O", 1, 1, $$"""{ "O": {{Oak}} }""")
+        )
       )
     );
 
