@@ -10,8 +10,8 @@ using Xunit.Abstractions;
 namespace ExpandedLib.Tests;
 
 /// <summary>Every public static member of a check type, in <c>ExpandedLib.Testing/Checks</c> and
-/// every <c>*Check.Run</c> in <c>ExpandedLib/Checks</c>, is proven by a planted-defect test or
-/// marked a helper.</summary>
+/// <c>ExpandedLib.Testing/Laws</c>, and every <c>*Check.Run</c> in <c>ExpandedLib/Checks</c>, is
+/// proven by a planted-defect test or marked a helper.</summary>
 public class ChecksProveThemselvesTests(ITestOutputHelper output) {
   /// <summary>Census line, and why it stands.</summary>
   private static readonly Dictionary<string, string> Allowed = new(
@@ -20,12 +20,21 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
 #if !GAME_GE_1_22
     ["StructureBreaks: the file names no type in ExpandedLib.Testing"] =
       "the file compiles on 1.22 and later only",
+    ["BreakLaw: the file names no type in ExpandedLib.Testing"] =
+      "the file compiles on 1.22 and later only",
 #endif
   };
 
   private static PlantedDefects.Census Testing() =>
     PlantedDefects.Survey(
       Path.Combine(RepoPaths.Root, "src", "ExpandedLib.Testing", "Checks"),
+      typeof(PlantedDefects).Assembly,
+      typeof(ChecksProveThemselvesTests).Assembly
+    );
+
+  private static PlantedDefects.Census Laws() =>
+    PlantedDefects.Survey(
+      Path.Combine(RepoPaths.Root, "src", "ExpandedLib.Testing", "Laws"),
       typeof(PlantedDefects).Assembly,
       typeof(ChecksProveThemselvesTests).Assembly
     );
@@ -43,14 +52,15 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
   [Fact]
   public void Every_check_member_is_proven_or_a_helper() {
     PlantedDefects.Census testing = Testing(),
+      laws = Laws(),
       runs = Runs();
     output.WriteLine(
-      $"covered {testing.Proven.Count + runs.Proven.Count}, "
-        + $"exempt {testing.Helpers.Count + runs.Helpers.Count}"
+      $"covered {testing.Proven.Count + laws.Proven.Count + runs.Proven.Count}, "
+        + $"exempt {testing.Helpers.Count + laws.Helpers.Count + runs.Helpers.Count}"
     );
 
     FindingLists.Assert(
-      [.. testing.Unplanted, .. runs.Unplanted],
+      [.. testing.Unplanted, .. laws.Unplanted, .. runs.Unplanted],
       Allowed,
       new Dictionary<string, string>()
     );
@@ -61,6 +71,7 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
   public void Both_surveys_reach_their_checks() {
     Assert.Contains("HarnessUse.CompletionWrites", Testing().Proven);
     Assert.Contains("LayoutTable.From", Testing().Helpers);
+    Assert.Contains("MegablockLaw.Run", Laws().Proven);
     Assert.Contains("RecipeCodesCheck.Run", Runs().Proven);
   }
 

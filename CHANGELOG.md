@@ -9,6 +9,12 @@ see the git history.
 
 ### Added
 
+- **Block laws** (ExpandedLib.Testing, `Laws/`): `BlockLaws.Run` runs, over every block of a
+  domain in every variant, `PlacementLaw` (a placement from every side and face lands a declared
+  token), `BreakLaw` (`StructureBreaks`, plus no own-code drop beside a stage refund and no filler
+  drop), `MultiblockLaw` (completes on the mods' registered blocks in every facing and reads its
+  peripherals where it completes) and `MegablockLaw` (fillers stand exactly while the principal
+  does, a world removal included).
 - **`TestPlayer.Hotbar`, `GameMode` and `CtrlHeld`** (ExpandedLib.Testing): a real 12-slot hotbar
   that `GetHotbarInventory()` returns, the game mode `WorldData.CurrentGameMode` answers, and the
   entity's `CtrlKey` control. The world answers `PlayerByUid` for the player's uid with it, so the

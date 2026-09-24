@@ -72,21 +72,7 @@ public static class BlockSignalCensus {
     IReadOnlyList<Assembly> assemblies,
     Action<TestWorld>? prepare = null
   ) {
-    var world = new TestWorld();
-    world.RegisterVanillaClasses();
-    world.RegisterClasses([.. assemblies]);
-    var power = new MechanicalPowerMod();
-    world.Mods.Register(power);
-    power.Start(world.Api);
-    prepare?.Invoke(world);
-
-    ExBlockDef filler = ExDefinitions
-      .DefinitionsOf(typeof(BlockStructureFiller), "exlib")
-      .Single();
-    world.DefineBlocks(
-      defs.Where(d => d.Domain != filler.Domain || d.Code != filler.Code)
-        .Prepend(filler)
-    );
+    TestWorld world = BlockLaws.Stand(defs, assemblies, prepare);
     return Run(world, domain);
   }
 
