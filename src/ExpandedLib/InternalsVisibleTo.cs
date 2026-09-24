@@ -5,3 +5,6 @@ using System.Runtime.CompilerServices;
 
 // Wraps test-only internal seams in public hooks beside the double or rig that uses them.
 [assembly: InternalsVisibleTo("ExpandedLib.Testing")]
+
+// Reads the block signals, missing cells and tree comparison the live scenario runner drives.
+[assembly: InternalsVisibleTo("ExpandedLib.Testing.Live")]
