@@ -13,10 +13,33 @@ namespace ExpandedLib.Checks;
 /// </summary>
 public static class RecipeCodesCheck {
   /// <summary>Every recipe output in <paramref name="domain"/> that names no registered block, as the check's <see cref="CheckResult"/>.</summary>
-  public static CheckResult Run(ICheckSource source, string domain) {
-    AssetLocation[] registered = [.. source.BlockCodes];
+  public static CheckResult Run(ICheckSource source, string domain) =>
+    new(
+      "RecipeCodes",
+      domain,
+      [
+        .. Unresolvable(source, domain)
+          .Select(o => $"{o.File.ToShortString()}: {o.Code}"),
+      ]
+    );
 
-    var errors = new List<string>();
+  // An output holding a wildcard is reported.
+  internal static IEnumerable<(AssetLocation File, string Code)> Unresolvable(
+    ICheckSource source,
+    string domain
+  ) {
+    AssetLocation[] registered = [.. source.BlockCodes];
+    foreach ((AssetLocation file, string code) in Outputs(source, domain))
+      if (!registered.Any(c => WildcardUtil.Match(c, new AssetLocation(code))))
+        yield return (file, code);
+  }
+
+  // Every concrete block code in the domain's own namespace that a grid recipe outputs, with its
+  // placeholders expanded, paired with the file the recipe sits in.
+  internal static IEnumerable<(AssetLocation File, string Code)> Outputs(
+    ICheckSource source,
+    string domain
+  ) {
     foreach ((AssetLocation file, JObject recipe) in source.Recipes(domain)) {
       if (recipe["output"] is not JObject output)
         continue;
@@ -28,17 +51,9 @@ public static class RecipeCodesCheck {
       if (!code.StartsWith(domain + ":", StringComparison.Ordinal))
         continue;
 
-      foreach (string concrete in Expand(code, Placeholders(recipe))) {
-        var target = new AssetLocation(concrete);
-        if (
-          !registered.Any(c =>
-            WildcardUtil.Match(c, target) || WildcardUtil.Match(target, c)
-          )
-        )
-          errors.Add($"{file.ToShortString()}: {concrete}");
-      }
+      foreach (string concrete in Expand(code, Placeholders(recipe)))
+        yield return (file, concrete);
     }
-    return new CheckResult("RecipeCodes", domain, errors);
   }
 
   // The {name} holes a recipe's output can carry, mapped to the states an ingredient binds them to.

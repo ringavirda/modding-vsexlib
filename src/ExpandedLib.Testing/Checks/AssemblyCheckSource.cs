@@ -39,13 +39,22 @@ internal sealed class AssemblyCheckSource : ICheckSource {
     );
   }
 
+  /// <summary>Yields a worldproperty-sourced variant group in <see cref="BlockCodes"/> as a literal
+  /// <c>*</c> segment instead of its sampled states, so a code naming any state of it
+  /// matches.</summary>
+  internal bool PropertyGroupsAsWildcard { get; init; }
+
   public IEnumerable<string> Domains => _assemblies.Keys;
 
   public IEnumerable<AssetLocation> BlockCodes =>
     _assemblies.SelectMany(kv =>
-      DefinitionCodes
-        .ForDomain(kv.Key, kv.Value)
-        .Select(r => new AssetLocation(r.Code))
+      PropertyGroupsAsWildcard
+        ? DefinitionCodes
+          .PatternsForDomain(kv.Key, kv.Value)
+          .Select(c => new AssetLocation(c))
+        : DefinitionCodes
+          .ForDomain(kv.Key, kv.Value)
+          .Select(r => new AssetLocation(r.Code))
     );
 
   public IEnumerable<AssetLocation> ItemCodes =>
