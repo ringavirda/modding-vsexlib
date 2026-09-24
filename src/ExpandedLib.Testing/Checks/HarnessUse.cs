@@ -556,6 +556,12 @@ public static class HarnessUse {
   // The block or expression body after the parameter list opened before position from; empty
   // when none follows.
   private static string Body(string code, int from) {
+    (int start, int end) = BodySpan(code, from);
+    return code[start..end];
+  }
+
+  // Where Body's text starts and ends in code; an empty span when no body follows.
+  internal static (int Start, int End) BodySpan(string code, int from) {
     int start = Close(code, from, ')');
     while (start < code.Length && char.IsWhiteSpace(code[start]))
       start++;
@@ -564,12 +570,12 @@ public static class HarnessUse {
       : string.CompareOrdinal(code, start, "=>", 0, 2) == 0
         ? Close(code, start + 2, ';')
       : start;
-    return code[start..end];
+    return (start, end);
   }
 
   // The index just past the closer that ends the bracket opened before position from, counting
   // ( [ { pairs; a ';' closes only at depth zero. The text's end when none does.
-  private static int Close(string code, int from, char closer) {
+  internal static int Close(string code, int from, char closer) {
     int depth = 0;
     for (int i = from; i < code.Length; i++) {
       char c = code[i];
@@ -585,7 +591,7 @@ public static class HarnessUse {
 
   // The text with every comment and every string or char literal (regular, verbatim, interpolated
   // with its holes, raw) replaced by spaces, line breaks kept.
-  private static string CodeOnly(string text) {
+  internal static string CodeOnly(string text) {
     var sb = new StringBuilder(text);
     int i = 0;
     while (i < sb.Length) {
@@ -712,6 +718,6 @@ public static class HarnessUse {
   private static int Lead(string statement) =>
     statement.Length - statement.TrimStart().Length;
 
-  private static int LineOf(string text, int index) =>
+  internal static int LineOf(string text, int index) =>
     text.Take(Math.Min(index, text.Length)).Count(c => c == '\n') + 1;
 }

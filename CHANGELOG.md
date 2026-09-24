@@ -9,6 +9,10 @@ see the git history.
 
 ### Added
 
+- **`SourceLaws`** (ExpandedLib.Testing): four source laws. A block entity that builds an animator,
+  a renderer or a cached mesh for its facing overrides `OnExchanged` and calls the base; a part
+  beside a mechanical network takes its frame from the network angle; `BlockFacing.FromCode` on a
+  side state falls back to `FromFirstLetter`; a `SearchBlocks` result is checked before it is read.
 - **`AxisSigns`** (ExpandedLib.Testing): every mechanical-power behaviour type of an assembly,
   placed in the four facings, gives one `AxisSign` per world axis, a unit on its discovery face's
   axis.
