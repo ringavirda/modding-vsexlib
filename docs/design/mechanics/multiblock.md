@@ -1,7 +1,7 @@
 # Multiblock & Filler Structures
 **Status** live   **Mod** exlib (the whole system; every mod authors layouts against it)
 **Owns** the ASCII layout DSL (`Origin` / `Legend` / `Layer` / `Slice` / `Face`, the `'.'`/`' '`/`'O'` glyph rules, `@(a|b)` alternation), the origin-is-the-negation-of-the-core rule, oriented-part rotation and the trapdoor caveat, cell roles (what a cell is for, attached to glyphs), the invisible-filler footprint system (per-cell collision, interaction/break/info rerouting, `allowAttach`, partial collision boxes), behaviour-capable filler cells, the declarative filler port and the connector-versus-node choice, the completion/projection machinery, and the rule that a filler cell is a graph node exactly when it declares a membership.
-**Depends on** [mp-energy](mp-energy.md) (the `BEBehaviorMPFillerPort` a hosted cell carries, and the rolling mill's axle cells - the canonical case of the graph-node rule) · [conventions](../conventions.md) (block / megablock / multiblock vocabulary) · [layouts-workbench.md](../../../workbench/layouts.md) (the layout scratchpad)
+**Depends on** [mp-energy](mp-energy.md) (the `BEBehaviorMPFillerPort` a hosted cell carries, and the rolling mill's axle cells - the canonical case of the graph-node rule), [conventions](../conventions.md) (block / megablock / multiblock vocabulary), [layouts-workbench.md](../../../workbench/layouts.md) (the layout scratchpad)
 
 ---
 
@@ -13,11 +13,11 @@ exlib solves two separate problems:
   the surrounding cells must be filled or the player walks through a boiler. Invisible filler blocks
   reserve the volume and forward every player-facing operation to the principal.
 - **Multiblock** - a structure the player builds by hand in a specific shape (a furnace, a boiler
-  chamber), guided by an in-world projection of what is missing. A declared cell → block-code table that
+  chamber), guided by an in-world projection of what is missing. A declared cell -> block-code table that
   a monitor tick checks against the world.
 
 A block can be both, and several furnace cores are: a reserved footprint of its own plus a layout of
-player-placed cells around it (`conventions.md`, § Block-size vocabulary). It is a choice, not a
+player-placed cells around it (`conventions.md`, section Block-size vocabulary). It is a choice, not a
 progression - the Cornish boiler is a megablock and nothing else, because its own art carries the masonry
 a layout used to demand ([Cornish boiler](../machines/boiler-cornish.md)).
 
@@ -37,8 +37,8 @@ as a structure that never completes.
 | Parser | Grid = | Rows run | Columns run | Origin pair | file:line |
 |---|---|---|---|---|---|
 | `Parse` | one Y level (floor plan, top-down) | `+Z` | `+X` | `(xLeft, zTop)` | `:24-52` |
-| `ParseVertical` | one X level (side elevation) | `−Y` (down) | `+Z` | `(zLeft, yTop)` | `:61-89` |
-| `ParseFrontal` | one Z level (front elevation, looking along `−Z`) | `−Y` (down) | `+X` | `(xLeft, yTop)` | `:99-127` |
+| `ParseVertical` | one X level (side elevation) | `-Y` (down) | `+Z` | `(zLeft, yTop)` | `:61-89` |
+| `ParseFrontal` | one Z level (front elevation, looking along `-Z`) | `-Y` (down) | `+X` | `(xLeft, yTop)` | `:99-127` |
 
 Glyph rules, identical in all three (`StructureLayout.cs:13-18`):
 
@@ -57,7 +57,7 @@ A-frame), which neither of the other two can draw in-plane (`:93-98`).
 ### The multiblock DSL
 
 `MultiblockLayoutBuilder` (`Definitions/MultiblockLayoutBuilder.cs:20`), reached from
-`ExBlockDef.MultiblockLayout(…)` (`Definitions/ExBlockDef.cs:796-810`).
+`ExBlockDef.MultiblockLayout(...)` (`Definitions/ExBlockDef.cs:796-810`).
 
 ```csharp
 .MultiblockLayout(s =>
@@ -113,7 +113,7 @@ private index, so the generated table is behaviour-identical to any hand orderin
 
 > Origin is the **negation** of the core glyph's `(col, row)`, so the core lands on the anchor's own
 > `(0,0,0)`. Getting this wrong builds the whole structure offset from the block you placed.
-> — `../layouts-workbench.md:36-38`
+> - `../layouts-workbench.md:36-38`
 
 In the cold blast furnace, `C` sits at column 3, row 2 of layer 0, so `Origin(-3, -2)`
 (`BlockBlastFurnaceCoreCold.cs:58`). In the heating furnace `C` is at column 6, row 1, so `Origin(-6, -1)`
@@ -138,7 +138,7 @@ furnace still have visible gaps in its walls (`Blocks/Structures/MultiblockFacin
    because block codes put the orientation at the end and a material name earlier could otherwise shadow it
    (`:113-115`). Only whole segments count, so `westward` or a `-we-` axis token is never mistaken for a
    facing.
-2. Emission. The table `code → segment index` rides in a sibling attribute
+2. Emission. The table `code -> segment index` rides in a sibling attribute
    `attributes.multiblockFacings`, not inside `multiblockStructure` - that object is deserialised by
    vanilla and must stay exactly its schema (`ExBlockDef.cs:801-804`). It is keyed by the full domained
    code form (`AssetLocation.ToString()`), because `ToShortString()` elides `game:` and would never match a
@@ -233,7 +233,7 @@ structure can be left uncompletable, or a complete one broken when the player pl
 | | |
 |---|---|
 | **Authoring** | `MultiblockLayoutBuilder.Connector(char, params BlockFacing[])`, authored in the north frame |
-| **Emission** | sibling attribute `attributes.multiblockConnectors`, face letter → authored offsets, omitted when nothing is marked |
+| **Emission** | sibling attribute `attributes.multiblockConnectors`, face letter -> authored offsets, omitted when nothing is marked |
 | **Reading** | `MultiblockConnectors.FromAttributes`, `OutwardFacesAt(authoredOffset)` - total and never-throwing, as `MultiblockCellRoles` is |
 | **Runtime** | rotated by `_structureInitAngle` inside `IncompleteBlockCount`, asked through `INetworkMember.HasConnectorAt`; `ConnectorFacesAt(worldCell)` answers the same set for a report |
 | **Refusal** | `MultiblockLayoutBuilder` throws on a legend pinning a multi-letter token; `PinnedNetworkNodes` catches the single-letter cases per mod |
@@ -268,7 +268,7 @@ duplicate `Legend`, which throws at the call):
 | `Chargeable` and `Firebox` in one layout | a burden column or a fuel bed, never both - the shaft/firebox furnace split made structural |
 | connector on a glyph with no `Legend`, or on one no `Layer` draws | the same silent empty set a role has, and the worse half of it: an undrawn demand reads as a structure with no facing requirement at all, which completes with the node backwards |
 | a `Legend` code carrying a multi-letter direction token | only a network node spells one, and a node re-picks its own orientation; `LegendAnyFacing` is the opt-out |
-| a `[SingleCell]` role drawn on ≠ 1 cell | `MetalTapCell`/`SlagTapCell` are a single `Vec3i`, so the migration writes `.Single()`; without this that throws at runtime instead. Counted over drawn cells, so two glyphs sharing the role fails too (`ValidateRoleArity`, `MultiblockLayoutBuilder.cs:236`) |
+| a `[SingleCell]` role drawn on != 1 cell | `MetalTapCell`/`SlagTapCell` are a single `Vec3i`, so the migration writes `.Single()`; without this that throws at runtime instead. Counted over drawn cells, so two glyphs sharing the role fails too (`ValidateRoleArity`, `MultiblockLayoutBuilder.cs:236`) |
 
 Arity is part of a role's meaning. `MetalTap` and `SlagTap` are the two `[SingleCell]` roles - a hearth
 is drained at one point, and the hand-lists they replace are a single `Vec3i`. Everything else is a genuine
@@ -292,11 +292,11 @@ stronger statement at source: the same drawing with and without `Role` calls emi
 
 Live users: the five furnace cores.
 
-| layout | glyph → role | cells |
+| layout | glyph -> role | cells |
 |---|---|---|
-| `BlockBlastFurnaceCoreCold.cs` | `c`,`p` → `Chargeable` · `p` → `Pool` · `Y` → `Tuyere` · `T` → `MetalTap` · `S` → `SlagTap` | 38 · 2 · 2 · 1 · 1 |
-| `BlockCupolaFurnaceCore.cs` | the same five | 5 · 1 · 1 · 1 · 1 |
-| `BlockBlastFurnaceCoreHot.cs` (smex) | as the cold furnace, plus `P` → `GasOutlet` | 38 · 2 · 2 · 1 · 1 · 2 |
+| `BlockBlastFurnaceCoreCold.cs` | `c`,`p` -> `Chargeable`, `p` -> `Pool`, `Y` -> `Tuyere`, `T` -> `MetalTap`, `S` -> `SlagTap` | 38, 2, 2, 1, 1 |
+| `BlockCupolaFurnaceCore.cs` | the same five | 5, 1, 1, 1, 1 |
+| `BlockBlastFurnaceCoreHot.cs` (smex) | as the cold furnace, plus `P` -> `GasOutlet` | 38, 2, 2, 1, 1, 2 |
 | `BlockPuddlingFurnaceCore.cs` (`'c'`) | `Firebox` | 1 |
 | `BlockHeatingFurnaceCore.cs` (`'c'`) | `Firebox` | 2 |
 
@@ -309,10 +309,10 @@ which drain a cell is cannot be read off the code at all, only off the drawing.
 |---|---|---|
 | `ChargeableCells` | `Chargeable` | `CellsAccepting(BlockChargePile.PileCode)` |
 | `PoolCells` | `Pool` | `SolidifyCells` (a `Vec3i[]` virtual + one cupola override) |
-| `ScanForOutlets` → `_tuyeres` | `Tuyere` | `TuyereCells` (virtual + 2 overrides) |
-| `ScanForOutlets` → `_gasOutlets` | `GasOutlet` | `GasOutletCells` (virtual + 3 overrides) |
-| `MetalTapPos` (→ `DrainIronTap`, the tap HUD) | `MetalTap` | `MetalTapCell` (a `Vec3i` virtual + one cupola override) |
-| `SlagTapPos` (→ `DrainSlagTap`, the tap HUD) | `SlagTap` | `SlagTapCell` (a `Vec3i` virtual + cupola and puddling overrides) |
+| `ScanForOutlets` -> `_tuyeres` | `Tuyere` | `TuyereCells` (virtual + 2 overrides) |
+| `ScanForOutlets` -> `_gasOutlets` | `GasOutlet` | `GasOutletCells` (virtual + 3 overrides) |
+| `MetalTapPos` (-> `DrainIronTap`, the tap HUD) | `MetalTap` | `MetalTapCell` (a `Vec3i` virtual + one cupola override) |
+| `SlagTapPos` (-> `DrainSlagTap`, the tap HUD) | `SlagTap` | `SlagTapCell` (a `Vec3i` virtual + cupola and puddling overrides) |
 
 An absence needs no declaring: the drawing states it. The six `=> []` overrides that existed only to say
 "my drawing has none of these" (`GasOutletCells` on the cold furnace and the cupola,
@@ -320,7 +320,7 @@ An absence needs no declaring: the drawing states it. The six `=> []` overrides 
 `SlagTapPos` are nullable for the same reason: a `[SingleCell]` role a layout does not mark answers no
 cell rather than inventing one.
 
-The role↔code cross-check does not generalise, and `Pool` and the taps are where it runs out.
+The role<->code cross-check does not generalise, and `Pool` and the taps are where it runs out.
 `Chargeable`, `Firebox`, `Tuyere` and `GasOutlet` each sit on a glyph with a distinguishing code
 (`chargepile`, `coalpile`, `iiex:tuyere*`, `iiex:pipe-outlet*`), so a test can play the role off
 `CellsAccepting` and catch a `Role()` hung on the wrong glyph. `Pool` cannot be checked that way by
@@ -334,7 +334,7 @@ These five layouts are also the first to exercise the `Chargeable` XOR `Firebox`
 declaring a role, its first operand is false everywhere and the second is never evaluated.
 
 The shaft box is derived too. `BlockEntityFurnaceCore.ShaftBox` is the bounding box of
-`Chargeable` ∪ `Firebox` - the two are mutually exclusive by build guard, so the union is whichever one the
+`Chargeable`  or  `Firebox` - the two are mutually exclusive by build guard, so the union is whichever one the
 drawing carries and no per-branch virtual is needed. `ShaftBounds()` keeps its per-component re-sort
 unchanged, and both it and `ShaftBox` are nullable, because two corners cannot express "no cells" -
 everything that re-sorts would normalise an "impossible" pair back into a box at the origin. Load-order
@@ -364,7 +364,7 @@ every multiblock anchor:
   calls are no-ops.
 - `IncompleteBlockCount` (`:403-426`) walks the same `TransformedOffsets` vanilla does and matches with the
   same `WildcardUtil.Match`, with one addition: the wanted code is run through `MultiblockFacings.Rotate`
-  first (`WantedCodeAt`, `:433-441`). The number → code map is rebuilt from the public `BlockNumbers`
+  first (`WantedCodeAt`, `:433-441`). The number -> code map is rebuilt from the public `BlockNumbers`
   because vanilla keeps its own private, and cached (`:443-452`).
 - Projection is Ctrl+Shift+right-click (`BlockBehaviorMultiblockStructure.cs:34-38`), routed to
   `Interact` (`BlockEntityMultiblockStructure.cs:338-401`), which both draws the hologram and chats an exact
@@ -408,7 +408,7 @@ Per-cell knobs, all from the `fillerOffsets` entry (`StructureFillers.cs:53-59`,
 
 | Key | Default | Effect |
 |---|---|---|
-| `x, y, z` | — | offset from the principal, in the block's north/authored frame |
+| `x, y, z` | - | offset from the principal, in the block's north/authored frame |
 | `allowAttach` | `false` | whether other blocks may attach here (`BlockStructureFiller.cs:121-141`). Default off, or torches and vines would hang on the invisible footprint |
 | `collisionBox` / `collisionBoxes` | full cube | partial-fill cuboids for a cell the megablock only half occupies - a slab. Selection matches collision so the player cannot target solid-looking empty space (`:146-166`) |
 | `behaviors` | none | see below |
@@ -418,7 +418,7 @@ Rotation. `StructureFillers.FootprintCells(principal, pos, angle)` (`:144-170`) 
 declared behaviour's connector face (`RotateBehaviorFaces`, `:177-194`) into the placed orientation. The
 principal supplies the angle through `IFillerHost` / `StructureAngle`.
 
-Lifecycle triad - `CanPlace` → `PlaceFillers` → `RemoveFillers` (`:196-277`). `RemoveFillers` only
+Lifecycle triad - `CanPlace` -> `PlaceFillers` -> `RemoveFillers` (`:196-277`). `RemoveFillers` only
 clears a cell that actually holds a filler linked to this principal, so a neighbouring structure's fillers
 are never disturbed (`:247-251`). `BlockFilledMegastructure` (`Blocks/Structures/BlockFilledMegastructure.cs:31`)
 folds this triad for blocks that can inherit from it, with an `OnFootprintPlaced` hook (`:79-83`); blocks
@@ -427,7 +427,7 @@ that already have a base class (the flywheel is a `BlockNetworkNode`) call the t
 
 ### The footprint DSL
 
-`StructureFootprint.Layout(…)` → `FillerLayoutBuilder` (`Blocks/Structures/FillerLayoutBuilder.cs:17`) is
+`StructureFootprint.Layout(...)` -> `FillerLayoutBuilder` (`Blocks/Structures/FillerLayoutBuilder.cs:17`) is
 the filler-side counterpart of the multiblock DSL, on the same `StructureLayout` parser:
 
 | Member | Meaning | file:line |
@@ -435,9 +435,9 @@ the filler-side counterpart of the multiblock DSL, on the same `StructureLayout`
 | `Origin(a, b)` | axis pair depends on the grid kind: `(xLeft,zTop)` for `Layer`, `(zLeft,yTop)` for `Slice`, `(xLeft,yTop)` for `Face` | `:37-42` |
 | `Solid(ch)` / `Attach(ch)` | register a glyph as plain / attach-allowing; `'#'` and `'+'` are the defaults | `:45-56` |
 | `Slab(ch, half)` | register a glyph as a half-height cell, emitting the matching `collisionBox` | `:88-98` |
-| `Host(ch, …specs)` | register a glyph as an attach-allowing cell that hosts behaviours | `:69-80` |
+| `Host(ch, ...specs)` | register a glyph as an attach-allowing cell that hosts behaviours | `:69-80` |
 | `Port(ch, face, networkType)` | register a glyph as a plain filler carrying a passive network port on `face` | `:104-113` |
-| `Layer(y,…)` / `Slice(x,…)` / `Face(z,…)` | the three grid kinds | `:116`, `:124`, `:133` |
+| `Layer(y,...)` / `Slice(x,...)` / `Face(z,...)` | the three grid kinds | `:116`, `:124`, `:133` |
 | `'O'` / `'0'` | the principal, for readability - skipped, never becomes a filler | `:126-127` |
 
 Build-time guards (`:106-150`):
@@ -449,13 +449,13 @@ Build-time guards (`:106-150`):
   origin and any duplicate cell.
 
 `StructureFootprint.Rectangle(halfWidth, depth)` (`:51-69`) is a computed shortcut for a linear
-footprint: `depth` rows along `+Z`, `2·halfWidth+1` columns emitted centre-out (`0, +1, −1, +2, −2, …`),
+footprint: `depth` rows along `+Z`, `2*halfWidth+1` columns emitted centre-out (`0, +1, -1, +2, -2, ...`),
 principal skipped, every flanking column opting into attachment. No shipped block uses it today - every
 current footprint is a hand-drawn `Layout` grid.
 
 Per-variant footprints go through `ExBlockDef.FillerOffsetsByType(typeWildcard, cells)`
 (`ExBlockDef.cs:721-735`), which writes `attributesByType.{wildcard}.fillerOffsets` - the flywheel's
-`normal` 3×3×1 vs `large` 5×5×2 discs (`BlockFlywheel.cs:122-123`).
+`normal` 3x3x1 vs `large` 5x5x2 discs (`BlockFlywheel.cs:122-123`).
 
 ### Behaviour-capable fillers
 
@@ -480,10 +480,10 @@ Three sync traps are handled explicitly, all documented in-source:
 
 - `SetHostedBehaviors` is called by `PlaceFillers` right after the principal link is set, so an MP port
   joins the network at placement rather than at the next reload (`StructureFillers.cs:227-229`).
-- The load order is `FromTreeAttributes` → `Initialize`, so a behaviour created in `Initialize` missed the
+- The load order is `FromTreeAttributes` -> `Initialize`, so a behaviour created in `Initialize` missed the
   base class's tree-routing loop. The tree is kept in `_savedTree` and replayed to each behaviour -
   client only, because on the server the behaviour establishes its own state and a stale saved
-  `NetworkId` would fight it (`BlockEntityStructureFiller.cs:63-67`, `:135-140`). ⛔ The consequence is
+  `NetworkId` would fight it (`BlockEntityStructureFiller.cs:63-67`, `:135-140`). The consequence is
   that a hosted behaviour's *saved* state is never read back on the server; a membership is unaffected
   because it persists nothing and re-registers from its declaration.
 - When a megablock is placed while a client is watching, the filler block is set first (client creates the
@@ -497,7 +497,7 @@ Three sync traps are handled explicitly, all documented in-source:
   `PortNetworkType` / `PortFace` off the BE (`BlockStructureFiller.cs:62-73`);
 - vanilla MP via `IMechanicalPowerBlock.HasMechPowerConnectorAt`, which accepts the declared face or
   its opposite - an axle couples along an axis, so a player can run it straight through the cell and
-  attach from either side (`:84-110`). ⛔ It reads every hosted declaration's face, not just an MP one's,
+  attach from either side (`:84-110`). It reads every hosted declaration's face, not just an MP one's,
   so a cell hosting a network membership *and* an MP port would offer an axle the membership's face too.
 
 Live users: the flywheel's hub cells hosting `exlib.BEBehaviorMPFillerPort` north and south
@@ -515,7 +515,7 @@ f.Port('S', BlockFacing.UP, "pipe")     // steam leaves through the top of this 
 ```
 
 `FillerLayoutBuilder.Port` (`:104-113`) registers the glyph as a plain, non-attaching filler and records
-`(face letter, networkType)`; the pair rides through `FillerCellSpec` → `fillerOffsets[].portFace` /
+`(face letter, networkType)`; the pair rides through `FillerCellSpec` -> `fillerOffsets[].portFace` /
 `portNetwork` (`StructureFootprint.cs:56-65`, `ExBlockDef`), is read back by `StructureFillers.ReadOffsets`
 and is rotated into the placed orientation with the rest of the footprint. `BlockStructureFiller` then
 answers `INetworkConnector.NetworkTypeAt` / `HasConnectorAt` off the placed cell's `PortFace` /
@@ -533,9 +533,9 @@ a machine probes across and the face the cell answers on cannot drift apart.
 | What the cell is | skin. It answers for the principal and is invisible to the graph | a member of the graph in its own right |
 | Costs | two strings in the footprint | a block entity behaviour instantiated, registered and torn down per cell |
 | Pick it when | the machine is the thing on the network and the cell is only where a pipe touches it | the run has to **pass through** the footprint, or the cell must be reachable as a node from more than one side |
-| Live examples | the Cornish boiler's steam and exhaust cells ([Cornish boiler](../machines/boiler-cornish.md)) | the rolling mill's drive line, where a shaft runs straight through (§ A filler cell is a graph node) |
+| Live examples | the Cornish boiler's steam and exhaust cells ([Cornish boiler](../machines/boiler-cornish.md)) | the rolling mill's drive line, where a shaft runs straight through (section A filler cell is a graph node) |
 
-⛔ A connector cannot be probed from the principal. `ConnectedNetwork` runs its reciprocal test from the
+A connector cannot be probed from the principal. `ConnectedNetwork` runs its reciprocal test from the
 block entity's own cell, and a port two cells away is not that cell - so a machine reading a footprint port
 uses `ConnectedNetworkAt<TNet>(portCell, face)` instead (`MachinePorts.cs`). Reading from the principal
 answers `null` on a correctly plumbed machine, silently.
@@ -573,11 +573,11 @@ cell's own participation and the thing that registered the node, so a port canno
 A membership that states no face of its own falls through to the port's, which turns an existing port
 cell into a node without restating where it couples.
 
-⛔ A footprint cell answers *only* through its block entity, where an ordinary node block has the block
+A footprint cell answers *only* through its block entity, where an ordinary node block has the block
 arm to fall back on as well. That difference is narrower than it looks: an unload takes the block too,
 so both kinds of cell are equally invisible while their chunk is away. The graph answers that for both
 by suspending its fracture check rather than acting on it, so a run bridged through a footprint cell is
-left whole until the chunk returns - see [pipe network](pipe-network.md) § 1.
+left whole until the chunk returns - see [pipe network](pipe-network.md), section 1.
 
 `BlockRollingMillAxle` is the workaround this retires. The mill needs a three-cell drive line so it can
 be driven from either shaft end and chained with other stands, so it leaves those two cells out of its
@@ -588,14 +588,14 @@ membership on those footprint cells does the same job now, and the block is redu
 placed in existing worlds, and removing a placed block needs a migration. See
 [mp-energy](mp-energy.md).
 
-### `layouts-workbench.md` — the scratchpad
+### `layouts-workbench.md` - the scratchpad
 
 `../layouts-workbench.md` is the working surface for layouts, split by mod with a status word per
 layout (`:13-20`): *shipped* (in C#, has a golden - the copy there is a hand-taken snapshot), *draft*
 (drafted there only, not in C#), *stale* (in C# in an older form). The goldens are the truth: where a
 copy and its golden disagree, the golden is right.
 
-Goldens live at `test/<Mod>.Tests/goldens/<domain>/blocktypes/…`. Edit a layout there, then paste it back
+Goldens live at `test/<Mod>.Tests/goldens/<domain>/blocktypes/...`. Edit a layout there, then paste it back
 into the owning block.
 
 ---
@@ -628,7 +628,7 @@ multiblocks or fillers. A layout is content, authored in C# and pinned by a gold
 | wrong-block highlight | RGBA `215,94,94,0x60` | `BlockEntityMultiblockStructure.cs:490` | red |
 | unresolvable-slot highlight | RGBA `94,94,215,0x60` | `:498` | neutral blue fallback |
 | projection help key | `<domain>:blockhelp-mulblock-struc-show` | `BlockBehaviorMultiblockStructure.cs:102` | resolved against the block's own domain |
-| missing-report lang keys | `ExlibLang.StructureMissingHeader` / `…Line` | `BlockEntityMultiblockStructure.cs:539`, `:549` | exlib owns them; generated accessors, so a rename is a compile error |
+| missing-report lang keys | `ExlibLang.StructureMissingHeader` / `...Line` | `BlockEntityMultiblockStructure.cs:539`, `:549` | exlib owns them; generated accessors, so a rename is a compile error |
 
 Shipped drawn layouts: 9 (`../layouts-workbench.md` lists them per mod), plus the bessemer converter
 still in coordinate form.
@@ -663,7 +663,7 @@ still in coordinate form.
 | `.SetStructureAngle(angle, offset)` | `:146-169` | the canonical body: reload the JSON, `InitForUse(angle+offset)`, cache, drop stale projection |
 | `.OnStructureCompleted` / `.OnStructureLost` | `:581`, `:123` | the two hooks a machine overrides |
 | `.IsReadyToProduce` / `.StopsProductionWhenNotReady` | `:59`, `:135` | the readiness a process reads; see [framework composition](framework-composition.md) |
-| `.OwnsCell` / `.FindAnchorOwning<T>` | `:192`, `:307` | component → anchor reverse lookup |
+| `.OwnsCell` / `.FindAnchorOwning<T>` | `:192`, `:307` | component -> anchor reverse lookup |
 | `BlockEntityMultiblockMachine` | `Blocks/Structures/BlockEntityMultiblockMachine.cs:20` | the form plus a hosted production process; what a multiblock that also runs derives from |
 | `BlockBehaviorMultiblockStructure` | `Blocks/Structures/BlockBehaviorMultiblockStructure.cs:28` | registered as `"MultiblockStructure"`; `TryToggleProjection` (`:73`) is the one shared entry point |
 | `.CellsAccepting(code)` / `.CellsWithRole(role)` | `:232`, `:283` | the two layout-derived cell queries; both cached, both dropped in `SetStructureAngle` |
@@ -679,14 +679,14 @@ still in coordinate form.
 ### Where a caller hooks in
 
 To make a megablock: implement `IFillerHost` (or inherit `BlockFilledMegastructure`), expose
-`StructureAngle`, declare the footprint with `StructureFootprint.Layout(…)` and `.FillerOffsets(…)`, then
-wire `CanPlaceBlock` → `StructureFillers.CanPlace`, `OnBlockPlaced` → `PlaceFillers`, `OnBlockBroken` →
+`StructureAngle`, declare the footprint with `StructureFootprint.Layout(...)` and `.FillerOffsets(...)`, then
+wire `CanPlaceBlock` -> `StructureFillers.CanPlace`, `OnBlockPlaced` -> `PlaceFillers`, `OnBlockBroken` ->
 `RemoveFillers` before `base` (`BlockFlywheel.cs:149-190` is the copyable shape). Override
 `GetDrops` - the base will otherwise drop the block and the RCC materials.
 
 To make a multiblock: derive the BE from `BlockEntityMultiblockStructure`, implement
 `UpdateStructureRotation` via `SetStructureAngle`, add `{ "name": "MultiblockStructure" }` to the block
-before any other right-click behaviour, and author the layout with `.MultiblockLayout(…)`.
+before any other right-click behaviour, and author the layout with `.MultiblockLayout(...)`.
 
 To put a port on a footprint cell: `f.Host('M', new FillerBehaviorSpec("exlib.BEBehaviorMPFillerPort",
 "west"))`, then read it back from the principal with `GetBehavior<BEBehaviorMPFillerPort>()` at the rotated
@@ -770,7 +770,7 @@ cell (`ExOrientation.GlobalPos(Pos, hx, hy, hz, angle)`) - `BlockEntityFlywheel.
   fuel-bed cell set, and a role with no consumer is the speculative kind the enum's own rule refuses. The
   boilers are outside this question entirely - neither declares a layout, and the Cornish's fuel bed is a
   behaviour on its block entity rather than a cell anything could mark
-  ([firebox](../machines/firebox.md) § The pool is a behaviour, not a block feature).
+  ([firebox](../machines/firebox.md), section The pool is a behaviour, not a block feature).
 - The alternation syntax is undocumented anywhere but `layouts-workbench.md`. `@(a|b)` is vanilla
   `WildcardUtil`; nothing in exlib parses, validates or mentions it, so a malformed alternation fails
   as "this cell can never be satisfied" with no error.

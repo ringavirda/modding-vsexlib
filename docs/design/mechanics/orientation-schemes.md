@@ -11,7 +11,7 @@
 * the valve/canal directed-axis question and what dropping it would and would not buy.
 
 **Does not own** - cited only: the oriented-parts feature and `multiblockFacings`
-([multiblock](multiblock.md)) · the rotation convention itself, north 0° / west 90° (`ExOrientation`) ·
+([multiblock](multiblock.md)), the rotation convention itself, north 0° / west 90° (`ExOrientation`), 
 the layout scratchpad ([layouts-workbench.md](../../../workbench/layouts.md)).
 
 ---
@@ -31,7 +31,7 @@ scheme.
 
 ## The inventory
 
-Every `VariantGroup("orientation", …)` and `side` group in the suite, grouped by the shape of its tokens:
+Every `VariantGroup("orientation", ...)` and `side` group in the suite, grouped by the shape of its tokens:
 
 | Scheme | Tokens | Declared by |
 |---|---|---|
@@ -60,16 +60,16 @@ authored first, and they are the reason a general parser cannot be written.
 The algorithm needs nothing from a block except the list of tokens it declares, which the block already
 writes in its `VariantGroup`.
 
-Worked through every scheme at 90° (north → west):
+Worked through every scheme at 90° (north -> west):
 
 | Scheme | Input | Ordered rotation | Declared? | Result |
 |---|---|---|---|---|
 | Face | `n` | `w` | yes | `w` |
-| Axis | `we` | `sn` | no | set `{s,n}` → `ns` |
+| Axis | `we` | `sn` | no | set `{s,n}` -> `ns` |
 | DirectedAxis | `we` | `sn` | yes | `sn` - direction survives |
 | Bend | `nw` | `ws` | yes | `ws` |
-| Tee | `uwe` | `usn` | no | set `{u,s,n}` → `uns` |
-| Cross | `weud` | `snud` | no | set `{s,n,u,d}` → `nsud` |
+| Tee | `uwe` | `usn` | no | set `{u,s,n}` -> `uns` |
+| Cross | `weud` | `snud` | no | set `{s,n,u,d}` -> `nsud` |
 
 The two-step is what makes one rule enough. The ordered step preserves direction exactly where a scheme
 declares both spellings; the set fallback repairs the non-canonical spellings everywhere else. Neither step
@@ -242,7 +242,7 @@ encodes flow direction (keep it) or merely which end the lip is on (fold it into
 |---|---|
 | `ExOrientations` registry + the two-step rotation rule + tests | small - the rule is ~30 lines and the schemes are a table |
 | Point ~18 blocks' `VariantGroup` calls at it | mechanical; no golden movement if the token lists are copied exactly |
-| Teach the layout builder to resolve a token → scheme, and fail on ambiguity | small |
+| Teach the layout builder to resolve a token -> scheme, and fail on ambiguity | small |
 | Valve appearance split | real work - a variant group moves, so goldens and a block migration |
 
 Steps 1-3 move no goldens and are independently useful. Step 4 is a separate decision.

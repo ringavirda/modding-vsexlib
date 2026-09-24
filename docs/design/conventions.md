@@ -13,7 +13,7 @@ invariants, its per-mod layout, the shared simulation models and every design pa
 | Quantity | Unit | Notes |
 |---|---|---|
 | Metal mass | **units (u)** | 100 u = 1 vanilla ingot |
-| Fluid/gas volume | **litres (L)** *(live)* | A pipe segment holds 30 L *(live)*; a run's capacity = node count × 30 L. Litres everywhere, never m³ |
+| Fluid/gas volume | **litres (L)** *(live)* | A pipe segment holds 30 L *(live)*; a run's capacity = node count x 30 L. Litres everywhere, never m³ |
 | Mechanical power | **MP** *(live)* | Vanilla MP network; the flywheel reservoir model is exlib's own (R8) |
 | Flow | **L/s** | Per-tick flow, EMA-smoothed for the throughput readout *(live)* |
 | Temperature | **°C** | One network-wide pipe temperature *(live)*; molten canals are per-cell |
@@ -46,8 +46,8 @@ them content.
   is state that cannot be seen: no hidden timers, no invisible buffers, no "it is doing something, trust
   it".
 - **R8 - Mechanical energy is conserved.** *(Added 2026-07-29; the network it governs has been live for
-  months.)* A flywheel is a reservoir, not a battery: it stores `E = ½Iω²` in joules and every joule out
-  came from a joule in, less friction. Torque balance is `I·dω/dt = τ_drive − τ_load − τ_friction`. No node
+  months.)* A flywheel is a reservoir, not a battery: it stores `E = 1/2Iω²` in joules and every joule out
+  came from a joule in, less friction. Torque balance is `I*dω/dt = τ_drive - τ_load - τ_friction`. No node
   may mint energy, and a run whose total inertia is zero has no speed rather than infinite speed. Owned by
   [mp-energy](mechanics/mp-energy.md). Two clauses of the original proposal are not implemented -
   governor throttling and over-speed burst (`IsOverSpeed` has zero call sites).
@@ -56,7 +56,7 @@ them content.
 
 ## Block-size vocabulary
 
-- **block** - a single 1×1×1 block.
+- **block** - a single 1x1x1 block.
 - **megablock** - occupies more than one cell via the **filler-block** mechanic; often a
   RightClickConstructable (RCC).
 - **multiblock** - a structure the player builds by hand in a specific shape, guided by an in-world
@@ -80,7 +80,7 @@ are not exlib networks - vanilla MP is the engine's own, and elex's grid is defe
   face, and in iiex the player swaps that producer for a steam engine while the network stays identical.
   Governed by R8. Owned by [mp-energy](mechanics/mp-energy.md); blocks ship in iiex under
   `BlockNetworkEnergy/`.
-- **Molten-canal** *(live)* - per-cell metal, flows cell→cell, end caps recomputed on tesselation. The
+- **Molten-canal** *(live)* - per-cell metal, flows cell->cell, end caps recomputed on tesselation. The
   ladle is the only merge/mix point (R3). Owned by [molten-network](mechanics/molten-network.md).
 - **Pipe (gas or water)** *(live)* - single medium per network (R1). Used for water, steam, compressed
   air, exhaust, coal gas and the chemistry fractions. Three material tiers of pipe block, ascending
@@ -121,7 +121,7 @@ under a lang key in `assets/<mod>/lang/en.json`. The HTML is the source.
 
 The copy across is not manual. `HandbookSync` (in `ExpandedLib.Testing`) joins the two trees on the `NN-`
 ordering prefix, not the file name, so slugs are free to differ; `HandbookParityTests` fails on drift,
-`EXLIB_WRITE_HANDBOOK=1` imports HTML → lang, and `EXLIB_EXPORT_HANDBOOK=1` writes back the other way when
+`EXLIB_WRITE_HANDBOOK=1` imports HTML -> lang, and `EXLIB_EXPORT_HANDBOOK=1` writes back the other way when
 the good copy turned out to be the shipped one. Titles stay hand-authored (a few words, no HTML source) and
 translations are untouched: the sync changes values, never the key set, so the lang-parity guard still holds.
 

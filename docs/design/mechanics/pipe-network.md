@@ -4,7 +4,7 @@
 
 **Owns**
 - The shared block-network graph substrate used by every network in the suite: node add/remove, merge, BFS fracture detection, `RebuildFromRoot`, per-second tick dispatch, the `dt` catch-up clamp, open-connector (leak) detection, the connector-reciprocity rule, `AcceptsNeighbour`, and `IsConnectionBroken` re-walk. Other network pages cite this one for those facts.
-- The pipe pool model: one medium per run, capacity `nodes × LitresPerPipe`, gas pressure as a volume ratio, liquid pressure as fill-ratio-then-pump-pressure.
+- The pipe pool model: one medium per run, capacity `nodes x LitresPerPipe`, gas pressure as a volume ratio, liquid pressure as fill-ratio-then-pump-pressure.
 - Uniform network temperature (no spatial gradient) and where phase change is allowed to happen.
 - Burst pressure per material tier and the joint-family rule, including which blocks are exempt from both.
 - Leak, chimney-vent, evaporation, passive-cooling, throughput-EMA and over-pressure-burst behaviour, and every constant behind them.
@@ -14,7 +14,7 @@
 - [molten network](molten-network.md) - the other consumer of the same graph substrate.
 - `ExpandedLib.Fluids.ExLiquids` / `assets/*/config/liquids.json` - the medium catalogue: which codes exist, their phase, their boil/condense points and volume factors. This page states only how the pipe network consults the catalogue, never what is in it.
 - The iiex steam machines that produce into and consume from a run, and their own rates -
-  [Cornish boiler](../machines/boiler-cornish.md) · [Watt engine](../machines/engine-watt.md) ·
+  [Cornish boiler](../machines/boiler-cornish.md), [Watt engine](../machines/engine-watt.md), 
   [pumps & fluid intake](../machines/pumps.md).
 
 ---
@@ -40,9 +40,9 @@ Every network in the suite - pipe, molten, mpenergy - is a `BlockNetwork` subcla
 | operation | member | behaviour |
 |---|---|---|
 | register a type | `BlockNetworkModSystem.RegisterNetworkType` | `RegisterNetworkType(name, factory)` in `ModSystem.Start`. exlib's industry module registers all three (`IndustryModule.RegisterNetworkTypes`); iiex replaces `pipe` with one carrying its chimney vent (`IronIndustryExpandedModSystem.Start`) |
-| add a node | `BlockNetworkModSystem.AddNode` | isolated → new network; otherwise joins `adjacentNetworks[0]` and merges the rest into it, each merge gated by `BlockNetwork.CanMerge` |
+| add a node | `BlockNetworkModSystem.AddNode` | isolated -> new network; otherwise joins `adjacentNetworks[0]` and merges the rest into it, each merge gated by `BlockNetwork.CanMerge` |
 | remove a node | `BlockNetworkModSystem.RemoveNode` | removes, then hands the rest to `ReviewConnectivity` |
-| review connectivity | `BlockNetworkModSystem.ReviewConnectivity` | walks from any node (`WalkFromAnyNode`); all reached → `Settle`, same instance kept; some unreached and every node readable → `Fracture`, each component rebuilt as its own network with `OnSplitFragment`; some unreached and any node behind an unloaded chunk → **suspended**, network left whole |
+| review connectivity | `BlockNetworkModSystem.ReviewConnectivity` | walks from any node (`WalkFromAnyNode`); all reached -> `Settle`, same instance kept; some unreached and every node readable -> `Fracture`, each component rebuilt as its own network with `OnSplitFragment`; some unreached and any node behind an unloaded chunk -> **suspended**, network left whole |
 | rebuild | `BlockNetworkModSystem.RebuildFromRoot` | BFS-discovers everything reachable, tears down overlapping networks, and preserves the old root network's state via `InheritStateFrom` |
 | tick | `BlockNetworkModSystem.StartServerSide`, `BlockNetworkModSystem.ServerTick` | one server listener at 1000 ms, `dt` clamped to 2 s; resumes suspended reviews (`ResumeSuspendedReviews`) then dispatches `OnTick` to every live network |
 | broadcast | `BlockNetwork.BroadcastUpdate` | pushes the typed state payload to every `INetworkNode` BE in the run |
@@ -62,11 +62,11 @@ Connectors read the adjacent cell, not their own. Two position-aware members car
 
 The machine side of the same rule is `MachinePorts`: `be.ConnectedNetwork<PipeNetwork>(face)` resolves the network in the cell across the connector face, and returns `null` unless the cell over there presents a connector back - asked of whatever speaks for it, a membership or the block (`BlockNetworkModSystem.GetConnectedNetworkAcross`). A pipe merely sitting adjacent with its connectors pointing elsewhere is not plumbed in. Every fixed machine (boiler, engine, pumps, intake, converter, cowper, condenser) uses this one helper.
 
-State survives unload: `BlockEntityNetworkNode` serialises the last broadcast state (`BlockEntityNetworkNode.ToTreeAttributes`, `FromTreeAttributes`, `SerializeNetworkState`) and the cell's membership injects it back into the freshly built network on `Initialize`, capturing it before `AddNode` can null it (`BEBehaviorNetworkMember.Initialize`). ⛔ The block entity stays the only writer: vanilla fans behaviour persistence over that same flat tree, so a membership that persisted anything would collide with the keys already there. Nothing about the format moved when membership did (`SaveFormatTests.cs`).
+State survives unload: `BlockEntityNetworkNode` serialises the last broadcast state (`BlockEntityNetworkNode.ToTreeAttributes`, `FromTreeAttributes`, `SerializeNetworkState`) and the cell's membership injects it back into the freshly built network on `Initialize`, capturing it before `AddNode` can null it (`BEBehaviorNetworkMember.Initialize`). The block entity stays the only writer: vanilla fans behaviour persistence over that same flat tree, so a membership that persisted anything would collide with the keys already there. Nothing about the format moved when membership did (`SaveFormatTests.cs`).
 
 #### An unloaded chunk suspends the fracture check
 
-⛔ **The walk cannot tell "there is nothing here" from "I cannot see here."** `IBlockAccessor.GetBlock` answers the air block for an unloaded chunk rather than null (`IBlockAccessor.GetBlock`), and `GetBlockEntity` answers null, so an unloaded cell resolves to no member at all - exactly like an empty one. Nothing about the resolver changes that: the block arm keeps a node walkable across a block entity dropped on its own, not across a chunk that went away.
+**The walk cannot tell "there is nothing here" from "I cannot see here."** `IBlockAccessor.GetBlock` answers the air block for an unloaded chunk rather than null (`IBlockAccessor.GetBlock`), and `GetBlockEntity` answers null, so an unloaded cell resolves to no member at all - exactly like an empty one. Nothing about the resolver changes that: the block arm keeps a node walkable across a block entity dropped on its own, not across a chunk that went away.
 
 The graph outlives the unload - nothing calls `RemoveNode` there (`BEBehaviorNetworkMember.OnBlockRemoved`, `BlockEntitySmokeStack.OnBlockRemoved`) - so the node set stays right while the cells behind it are invisible. What breaks is the **fracture check**, which reads unreachable as gone. Left alone it splits a run around a player who walked away, and the run stays split: the returning cell finds its position already in a network and never re-joins (`BEBehaviorNetworkMember.Initialize`).
 
@@ -87,7 +87,7 @@ The medium is claimed by the first producer and held until the run is empty. Bot
 ```
 if (State.Volume > 0f && !_taxonomy.Compatible(State.MediumType, gasType)) return false;
 ```
-- `PipeNetwork.cs:110` (gas) and `:243` (liquid). The guard is on `Volume > 0`, not on the label: a drained run keeps its label for a few seconds as a display ghost (see §6) and a new medium must be able to re-claim it (`:106-109`, `:239-242`).
+- `PipeNetwork.cs:110` (gas) and `:243` (liquid). The guard is on `Volume > 0`, not on the label: a drained run keeps its label for a few seconds as a display ghost (see section 6) and a new medium must be able to re-claim it (`:106-109`, `:239-242`).
 
 Compatibility comes from the injected `IMediumTaxonomy` (`IMediumTaxonomy.cs:9`), defaulting to `ExLiquids.Taxonomy`: an empty run accepts anything; two gases always mix; two liquids mix only if identical; gas and liquid never mix (`ExLiquids.cs:106-116`). When gases mix, the dominant label is the higher `Priority` (`ExLiquids.cs:118-119`). Which codes exist, and their priorities, boil points and volume factors, is `ExLiquids`' fact, not this page's.
 
@@ -96,7 +96,7 @@ On merge, incompatible media cannot blend: the larger run wins outright and the 
 ### 3. Capacity and pressure
 
 ```
-MaxVolume = Nodes.Count × LitresPerPipe            (PipeNetwork.cs:112, 245, 351, 541)
+MaxVolume = Nodes.Count x LitresPerPipe            (PipeNetwork.cs:112, 245, 351, 541)
 
 gas    Pressure = Volume / MaxVolume, uncapped     (PipeNetworkState.cs:55-56)
 liquid Pressure = Volume / MaxVolume  while below capacity
@@ -134,7 +134,7 @@ the merge putting plated and cast in one domain.
 | rolled | `siex` | `RolledPipeBurstPressure` | 12 | `SteelIndustryExpandedModSystem.Start` | `SiexConfig.RolledPipeBurstPressure` |
 | (no tier, or unregistered) | - | `DefaultBurstPressure` | 5, hard-coded | - | `BlockPipe.DefaultBurstPressure` |
 
-The rating doubles as the tier's buffer size: a run holds `burst × pipes × LitresPerPipe`, so the plated tier is both the low-pressure tier and the small-buffer one.
+The rating doubles as the tier's buffer size: a run holds `burst x pipes x LitresPerPipe`, so the plated tier is both the low-pressure tier and the small-buffer one.
 
 Only a plain segment participates: `CanBurst => GetType() == typeof(BlockPipe)` (`BlockPipe.CanBurst`). Every fitting is a subclass and is therefore exempt by default - it neither bursts nor caps the run's pressure. Outlet and passthrough additionally override `BurstPressure => float.MaxValue` (`BlockPipeOutlet.BurstPressure`, `BlockPipePassthrough.BurstPressure`). The outlet names no tier and would take the default anyway; the passthroughs are tiered, but for identity rather than rating - see below.
 
@@ -195,14 +195,14 @@ The state is shown by holding the shape's `open` animation pose; the animator is
 
 `BlockEntityPressureValve` (`BlockEntityPressureValve.cs:25`) extends the pipe BE but is not a sever: it is a one-way relief between two different runs. It ticks once a second (`:54`) and:
 
-1. Reads the input face `orientation[0]` and output face `orientation[1]`; a wrench flip swaps `ns` ↔ `sn` to reverse the direction (`:86-89`, variants at `BlockPressureValve.cs:39`).
+1. Reads the input face `orientation[0]` and output face `orientation[1]`; a wrench flip swaps `ns` <-> `sn` to reverse the direction (`:86-89`, variants at `BlockPressureValve.cs:39`).
 2. Resolves both sides through `GetConnectedNetworkAcross`, so a pipe adjacent but not facing the valve is not plumbed in (`:93-97`).
 3. Runs `OverflowGas` then `OverflowLiquid` (`:99-101`).
 
 **Gas** (`:113-214`):
 
 ```
-allowed = gatePressure × inState.MaxVolume
+allowed = gatePressure x inState.MaxVolume
 if inState.Volume <= allowed                          -> nothing        (:123-125)
 if the output run carries water                       -> nothing        (:127-129)
 excess = inState.Volume - allowed
@@ -223,7 +223,7 @@ The gate is player-dialled in `GatePressureStep` increments between `MinGatePres
 
 | key | value | file:line | what it does |
 |---|---|---|---|
-| `LitresPerPipe` | `30` | `ExlibConfig.cs:39` | litres one pipe holds at 1 atm; run capacity is this × node count. Range-guarded ≥ 1 because it divides pressure |
+| `LitresPerPipe` | `30` | `ExlibConfig.cs:39` | litres one pipe holds at 1 atm; run capacity is this x node count. Range-guarded >= 1 because it divides pressure |
 | `GasLeakRate` | `8.0` | `ExlibConfig.cs:43` | gas lost per leaking tick, and the cap on a pressure valve's vent-to-atmosphere |
 | `LiquidLeakRate` | `10.0` | `ExlibConfig.cs:46` | water drained per second while leaking |
 | `EvaporationLitresPerDay` | `50` | `ExlibConfig.cs:50` | water lost per in-game day, measured off the calendar |
@@ -251,9 +251,9 @@ The gate is player-dialled in `GatePressureStep` increments between `MinGatePres
 | `DefaultBurstPressure` | `5` | `BlockPipe.cs:175` | fallback for a domain that never registered a rating |
 | gas-leak temperature drop | `5 °C`, floor `20 °C` | `PipeNetwork.cs:696-697` | per tick, not dt-scaled |
 | passive cooling | `PipeGasCoolPerSecond` 2 °C/s, floor `PipeAmbientTemperature` 20 °C | `ExlibConfig.cs:71`, `:75` | dt-scaled, applies whenever the run holds gas above ambient |
-| pipe throughput | plated 50 · cast 120 · rolled 250 L/s | `IiexConfig` / `IiexConfig` / `SiexConfig` | weakest segment caps the run; fittings and ports are exempt - a tuyere is the machine's intake, not a length of main |
-| gas leak particle ramp | `1 → GasLeakRate`, clamp `0..4` | `PipeNetwork.cs:568-576` | density only |
-| water leak particle ramp | `1 → 5 L`, clamp `0..1` | `PipeNetwork.cs:577` | density only |
+| pipe throughput | plated 50, cast 120, rolled 250 L/s | `IiexConfig` / `IiexConfig` / `SiexConfig` | weakest segment caps the run; fittings and ports are exempt - a tuyere is the machine's intake, not a length of main |
+| gas leak particle ramp | `1 -> GasLeakRate`, clamp `0..4` | `PipeNetwork.cs:568-576` | density only |
+| water leak particle ramp | `1 -> 5 L`, clamp `0..1` | `PipeNetwork.cs:577` | density only |
 | pressure broadcast epsilon | `0.02 atm` | `PipeNetwork.cs:551` | also the HUD sync threshold (`BlockEntityPipe.cs:233`) |
 | flow broadcast epsilon | `0.01 L/s` | `PipeNetwork.cs:557` | |
 | brim-full liquid epsilon | `0.001 L` | `PipeNetworkState.cs:68` | |
@@ -267,7 +267,7 @@ The gate is player-dialled in `GatePressureStep` increments between `MinGatePres
 
 ### Pipe geometry (code-first defs, shared by all three tiers)
 
-Every tier calls the same `BlockPipe.Segments(domain, tier)` factory (`BlockPipe.cs:59-65`), each provider passing its own tier - iiex via `PlatedPipeDefinitions.cs:19`, iiex via `CastPipeDefinitions.cs:19`, hpex via `RolledPipeDefinitions.cs:17`. Four blocktypes per tier: straight (`:118`), bend (`:130`), tjunction (`:167`), xjunction (`:204`). Collision/selection is a 5⁄16→11⁄16 core (`:126-127`). Max stack: 16 straight, 8 for the rest. Each tier ships its own shapes at `{domain}:pipes/*` - a tier is a different model, not a tint.
+Every tier calls the same `BlockPipe.Segments(domain, tier)` factory (`BlockPipe.cs:59-65`), each provider passing its own tier - iiex via `PlatedPipeDefinitions.cs:19`, iiex via `CastPipeDefinitions.cs:19`, hpex via `RolledPipeDefinitions.cs:17`. Four blocktypes per tier: straight (`:118`), bend (`:130`), tjunction (`:167`), xjunction (`:204`). Collision/selection is a 5/16->11/16 core (`:126-127`). Max stack: 16 straight, 8 for the rest. Each tier ships its own shapes at `{domain}:pipes/*` - a tier is a different model, not a tint.
 
 A null `tier` yields the same four blocktypes with no tier axis and the default rating, throughput and joint. That is what `BlockPipe.Definitions` uses to derive `AllowedOrientations` (the map reads only `type` and `orientation`, so no tier is needed and none is invented), and what a consumer shipping one pipe family gets.
 
@@ -344,7 +344,7 @@ A null `tier` yields the same four blocktypes with no tier axis and the default 
 
 16. Node registration happens in `BlockEntityNetworkNode.Initialize`, not `OnBlockPlaced`. Calling `AddNode` from `OnBlockPlaced` would trigger a redundant O(N) broadcast and freeze the server on large networks (`BlockNetworkNode.cs:183-186`).
 
-17. ⛔ **A node added beside an unloaded chunk never merges with what is over there.** `AddNode` resolves neighbours through the same blind walk, so the new cell forms a network of its own - and the neighbour, already in the graph from before its chunk left, skips `AddNode` on its return (`BEBehaviorNetworkMember.cs:230`), so nothing ever joins the two. Separate from the suspended fracture check, which only defers a *split*; suspension records the network's own nodes, and this cell is not one of them. A player interaction cannot reach it (the chunks around a player are loaded), but a tick-driven `RemoveNode` + `AddNode` at the edge of the loaded area can: `BlockEntityMoltenCanal.ResyncNetworkNode` (`:160-168`) and `BlockEntityValve.cs:138-139`. The fix, if it is ever worth one, is to make `AddNode` merge for a position it already holds and call it unconditionally on load, rather than to widen suspension.
+17. **A node added beside an unloaded chunk never merges with what is over there.** `AddNode` resolves neighbours through the same blind walk, so the new cell forms a network of its own - and the neighbour, already in the graph from before its chunk left, skips `AddNode` on its return (`BEBehaviorNetworkMember.cs:230`), so nothing ever joins the two. Separate from the suspended fracture check, which only defers a *split*; suspension records the network's own nodes, and this cell is not one of them. A player interaction cannot reach it (the chunks around a player are loaded), but a tick-driven `RemoveNode` + `AddNode` at the edge of the loaded area can: `BlockEntityMoltenCanal.ResyncNetworkNode` (`:160-168`) and `BlockEntityValve.cs:138-139`. The fix, if it is ever worth one, is to make `AddNode` merge for a position it already holds and call it unconditionally on load, rather than to widen suspension.
 
 18. `RebuildFromRoot` drops the nodes it cannot see. It tears down every overlapping network including their unreadable nodes and rebuilds only what the walk reached (`BlockNetworkModSystem.cs:368-374`), so cells behind an unloaded chunk leave the graph entirely and rejoin by `AddNode` when their chunk returns. Self-healing, and its one caller is a player-driven local action (`BlockEntityMoltenCanal.ClearSolidified`), but the run's state is redistributed in the meantime.
 
@@ -362,7 +362,7 @@ implicit ceiling is ~75 L/s through a single plated pipe, above every line in th
 substrate: `MoltenFlowRate` = 50 u/s already gates the molten network per transfer.
 
 The machine-side rates stand. The twelve shipped per-second constants (tuyere 14 L/s, cowper 24,
-smokestack 48, chimney 16 …) gate what a machine draws; the run's cap gates what the plumbing can carry.
+smokestack 48, chimney 16 ...) gate what a machine draws; the run's cap gates what the plumbing can carry.
 
 ### 2. Bore is not built - and if it ever is, it is orthogonal to tier
 
@@ -377,15 +377,15 @@ No large-bore pipe family. Three reasons, any one sufficient:
 * Cost against value: a full mirror is +20 blocktypes, +394 variants, +20 goldens, +18 shapes, while the
   existing cast and rolled tiers still have no recipe.
 
-The numbers to size it do not exist yet. [gas-system.md](gas-system.md) § 9 still lists the 48 L/s
+The numbers to size it do not exist yet. [gas-system.md](gas-system.md), section 9 still lists the 48 L/s
 exhaust retune, burner consumption, grade calorific values and holder capacity as underived, so a bore set
 sized against the 48 L/s figure would be sized against an acknowledged placeholder. Build the gate, measure,
 then decide.
 
 > If bore is ever added, it must be orthogonal to tier, never a fourth rung on the pressure ladder.
 > The largest pipework in a works carried the lowest pressure: blast, gas and exhaust run 24-160 L/s at
-> 1.25-2.75 atm, while steam runs 30-32 L/s at up to 12 atm. Friction loss goes as `Δp ∝ Q²/D⁵`, so halving
-> a bore multiplies the drop ×32, which is why a service with only a few psi of head must buy area instead.
+> 1.25-2.75 atm, while steam runs 30-32 L/s at up to 12 atm. Friction loss goes as `Δp  proportional to  Q²/D⁵`, so halving
+> a bore multiplies the drop x32, which is why a service with only a few psi of head must buy area instead.
 > A large-bore plated blast main and a small-bore rolled steam pipe are both correct; folding bore into the
 > pressure ladder produces "the strongest pipe is also the fattest", which is false.
 

@@ -7,7 +7,7 @@
 - Every molten tunable and its shipped value: `MoltenFlowRate`, `MoltenMinFlowAmount`, `MoltenCooldownDefault`, `CanalDefaultUnitCapacity`, `CanalDefaultDrainSpeed`, `MoldDefaultUnits`, `BarrelDefaultMaxUnits`, `MoltenCooldownSpeed` + the three per-container cooldown coefficients, `CanalSealClayCost` / `CanalUnsealClayRefund`.
 - The per-cell capacity of each fitting (canal 50 / start 100 / tap 25 / pedestal 25 / barrel 800 / hosted cell 100) and where each number comes from.
 - The two flow-blocking latches (`Sealed`, `Solidified`), the solidify rule, and the chisel-out recovery gate.
-- The back-pressure chain: destination full → canal backs up → furnace stalls and counts a disruption.
+- The back-pressure chain: destination full -> canal backs up -> furnace stalls and counts a disruption.
 - Molten merge/split semantics (they are no-ops) and the fact that no `Ladle` type exists anywhere in `src/`.
 - The two second copies of the flow driver (sand casting bed, sand casting cell) and how they differ from the network one.
 
@@ -71,7 +71,7 @@ The map is cached and rebuilt only when a cheap topology signature changes (`Mol
 
 The sort's only job is to decide which side of an undirected edge drives it - each edge is driven exactly once, by the cell farther from the source (`MoltenNetwork.cs:205-208`). It does not set the direction of transfer; see Gotchas.
 
-### 3. `FlowEdge` — the transfer rule
+### 3. `FlowEdge` - the transfer rule
 
 `MoltenNetwork.FlowEdge(a, b, maxFlow, world)` (`MoltenNetwork.cs:220-266`):
 
@@ -97,36 +97,36 @@ The network tick runs at 1 s and `dt` is clamped to 2 s (`BlockNetworkModSystem.
 
 ### 4. Thermal pass and solidification
 
-After the flow pass, every cell gets `UpdateThermal` (`MoltenNetwork.cs:215-216` → `BlockEntityMoltenCanal.cs:315-349`):
+After the flow pass, every cell gets `UpdateThermal` (`MoltenNetwork.cs:215-216` -> `BlockEntityMoltenCanal.cs:315-349`):
 
 1. Read the live temperature off the carrier stack.
-2. Re-stamp the cooldown rate every tick (`:327`). `MoltenMetal.SyncCooldownSpeed` rebases the cooling baseline to the current temperature (`MoltenMetal.cs:85-93`), so a live `/exmod config iiex MoltenCooldownSpeed …` applies to metal already standing in the world, and an unchanged rate is a no-op.
+2. Re-stamp the cooldown rate every tick (`:327`). `MoltenMetal.SyncCooldownSpeed` rebases the cooling baseline to the current temperature (`MoltenMetal.cs:85-93`), so a live `/exmod config iiex MoltenCooldownSpeed ...` applies to metal already standing in the world, and an unchanged rate is a no-op.
 3. If `SolidifiesWhenCold` and `temp < meltingPoint`, latch `Solidified` and retesselate (`:338-343`).
 
 `SolidifiesWhenCold` is `true` for plain canals and inherited by start / tap / pedestal (`BlockEntityMoltenCanal.cs:146`, and see the comments at `BlockEntityMoltenCanalTap.cs:41-44` and `BlockEntityMoltenCanalMoldPedestal.cs:44-47`). Hosted cells take it from their filler declaration (`BEBehaviorMoltenCell.cs:60`).
 
-A solidified cell is chiselable only once `IsHardened` - below `hardenedThreshold × meltingPoint` (`BlockEntityMoltenCanal.cs:119, 356-358`); before that the block reports `iiex:canal-cooling` and refuses with `iiex-canaltoohot`. Chiselling clears the cell, lifts the latch and calls `RebuildFromRoot` so it rejoins the run (`BlockEntityMoltenCanal.cs:367-382`). Recovery goes through `MoltenChisel.BuildRecovery` (`BlockEntityMoltenCanal.cs:393-398`); the fallback item when a metal's solid drop cannot be resolved is `MetalRecoveryFallback` (`ExlibConfig.cs:103`).
+A solidified cell is chiselable only once `IsHardened` - below `hardenedThreshold x meltingPoint` (`BlockEntityMoltenCanal.cs:119, 356-358`); before that the block reports `iiex:canal-cooling` and refuses with `iiex-canaltoohot`. Chiselling clears the cell, lifts the latch and calls `RebuildFromRoot` so it rejoins the run (`BlockEntityMoltenCanal.cs:367-382`). Recovery goes through `MoltenChisel.BuildRecovery` (`BlockEntityMoltenCanal.cs:393-398`); the fallback item when a metal's solid drop cannot be resolved is `MetalRecoveryFallback` (`ExlibConfig.cs:103`).
 
 Manual severing is the clay seal: `SetSealed` flips the latch and re-walks the graph (`BlockEntityMoltenCanal.cs:152-161`), and a sealed canal caps *every* connector face visually regardless of neighbours (`BlockEntityMoltenCanal.cs:520-525`).
 
-### 5. Back-pressure — full destination stalls the furnace
+### 5. Back-pressure - full destination stalls the furnace
 
 There is no explicit back-pressure code. It falls out of the fact that cells own their metal and every push returns what was actually accepted:
 
 | step | file:line | what happens when the far end is full |
 |---|---|---|
-| pedestal / tap drains its own cell into the mold or barrel | `BlockEntityMoltenCanalMoldPedestal.cs:202-221`, `BlockEntityMoltenCanalTap.cs:452-461` | `currentUnits >= maxUnits` → returns 0, the fitting's cell stops emptying |
-| `FlowEdge` into that cell | `MoltenNetwork.cs:258-265` | `PushMetalRaw` clamps to free space → `accepted` shrinks to 0, upstream cell keeps its metal |
-| the run fills back to the start | — | each cell reaches `MaxUnitCapacity` in turn |
+| pedestal / tap drains its own cell into the mold or barrel | `BlockEntityMoltenCanalMoldPedestal.cs:202-221`, `BlockEntityMoltenCanalTap.cs:452-461` | `currentUnits >= maxUnits` -> returns 0, the fitting's cell stops emptying |
+| `FlowEdge` into that cell | `MoltenNetwork.cs:258-265` | `PushMetalRaw` clamps to free space -> `accepted` shrinks to 0, upstream cell keeps its metal |
+| the run fills back to the start | - | each cell reaches `MaxUnitCapacity` in turn |
 | furnace tap hands metal down | `BlockEntityMoltenMetalTap.cs:187-200` | `CanReceiveOrSoak` still passes so the pour keeps *heating* a brim-full start (`BlockEntityMoltenCanalStart.cs:76-78, 104-112`), but `PushMetalRaw` accepts 0 |
-| furnace drain | `BlockEntityBlastFurnace.cs:355-358` | `accepted == 0` → `_moltenIron` never falls |
+| furnace drain | `BlockEntityBlastFurnace.cs:355-358` | `accepted == 0` -> `_moltenIron` never falls |
 | furnace pool caps | `BlockEntityBlastFurnace.cs:326-327` | `LiquidCapacityReached` goes true |
 | melt cycle stops | `BlockEntityFurnaceCore.cs:704` | no new metal is rendered |
 | extinguish timer runs | `BlockEntityFurnaceCore.cs:579-595` | it counts as one disruption; alone that is a 30 s grace, but combined with any second disruption the threshold drops to 0 and the fire goes out immediately |
 
 The "soak" branch: a brim-full canal start being poured onto does not cool and plug, because the tap keeps raising its temperature without adding volume (`SoakHeat`, `BlockEntityMoltenCanal.cs:276-291`). Without it, a stalled run would freeze solid at the one cell the player can least afford to lose.
 
-### 6. What merges — and the missing Ladle
+### 6. What merges - and the missing Ladle
 
 Graph merge and split are no-ops (`MoltenNetwork.cs:273-278`) because there is no pooled state to redistribute; `CanMerge` only checks the other network is also a `MoltenNetwork` (`:270-271`).
 
@@ -143,7 +143,7 @@ Two megablocks run their own cluster-internal flow instead of joining the graph,
 | driver | file:line | ordering | pull rate | flow rate |
 |---|---|---|---|---|
 | `MoltenNetwork` | `MoltenNetwork.cs:159-266` | farthest-from-source first; edge driven by the farther cell | n/a (fed by pour) | `MoltenFlowRate` |
-| Sand casting bed | `BlockEntitySandCastingBed.cs:227-319` | basin-outward (Manhattan distance from the basin), edge driven nearer→farther, and only where both ends are carved (`:243-256`) | `PullRatePerTick = 25`, hard-coded (`:44`), from any adjacent external `IMoltenCell` on any horizontal face (`:267-287`) | `MoltenFlowRate` (`:307`) |
+| Sand casting bed | `BlockEntitySandCastingBed.cs:227-319` | basin-outward (Manhattan distance from the basin), edge driven nearer->farther, and only where both ends are carved (`:243-256`) | `PullRatePerTick = 25`, hard-coded (`:44`), from any adjacent external `IMoltenCell` on any horizontal face (`:267-287`) | `MoltenFlowRate` (`:307`) |
 | Sand casting cell | `BlockEntitySandCastingCell.cs:155-170` | single hosted cell | `PullRatePerTick = 25`, hard-coded (`:33`), from the launder face only (`:172-175`) | n/a |
 
 The bed's `FlowEdge` (`BlockEntitySandCastingBed.cs:291-319`) is a near-copy of the network's with one extra rule: a drain fitting never gives metal back (`:302-303`), so a mold hoards its charge until it hardens.
@@ -152,7 +152,7 @@ The bed's `FlowEdge` (`BlockEntitySandCastingBed.cs:291-319`) is a near-copy of 
 
 ## Numbers
 
-### exlib config — `ExlibConfig.cs`, file `ModConfig/ex_values.json`, section `exlib`
+### exlib config - `ExlibConfig.cs`, file `ModConfig/ex_values.json`, section `exlib`
 
 | key | value | file:line | what it does |
 |---|---|---|---|
@@ -164,7 +164,7 @@ The bed's `FlowEdge` (`BlockEntitySandCastingBed.cs:291-319`) is a near-copy of 
 | `MetalGlowMinTemp` | `500` | `ExlibConfig.cs:98` | below this °C, hot metal emits no block light |
 | `MetalRecoveryFallback` | `iiex:slag` | `ExlibConfig.cs:103` | item recovered when a metal's solid drop cannot be resolved |
 
-### iiex config — `IiexConfig.cs`, file `ModConfig/ex_values.json`, section `iiex`
+### iiex config - `IiexConfig.cs`, file `ModConfig/ex_values.json`, section `iiex`
 
 | key | value | file:line | what it does |
 |---|---|---|---|
@@ -185,13 +185,13 @@ The bed's `FlowEdge` (`BlockEntitySandCastingBed.cs:291-319`) is a near-copy of 
 | `CanalSealClayCost` | `4` | `IiexConfig.cs:144` | fire clay to seal a straight canal |
 | `CanalUnsealClayRefund` | `2` | `IiexConfig.cs:147` | fire clay returned when breaking the seal |
 
-### Settled 2026-08-05 — cooldown derives from charge volume, not a per-container constant
+### Settled 2026-08-05 - cooldown derives from charge volume, not a per-container constant
 
 > Heat loss from any vessel - ladle, converter, hearth, canal, barrel, mould - is a function of its
 > surface-to-volume ratio, not a number chosen per block.
 
-This is the square–cube law. Heat loss scales with surface area; heat content scales with volume, so the
-cooling rate goes as area ÷ volume ∝ 1/L - double a vessel's linear size and it cools at half the rate.
+This is the square-cube law. Heat loss scales with surface area; heat content scales with volume, so the
+cooling rate goes as area / volume  proportional to  1/L - double a vessel's linear size and it cools at half the rate.
 
 The three per-container cooldown coefficients are therefore the wrong shape. They give the same numbers as a
 derived factor does today, and diverge the instant any vessel is resized - at which point nothing fails, the
@@ -199,9 +199,9 @@ numbers are merely wrong. One factor should explain all of them:
 
 | vessel | why it behaves as it does |
 |---|---|
-| canal | thin section, huge surface per unit → chills fast. That is what bounds canal-cast part size. |
-| crucible hearth | a block-scale pool → holds heat through a campaign |
-| ladle / converter | 3×3×3 of charge, radiating only from its surface → barely cools |
+| canal | thin section, huge surface per unit -> chills fast. That is what bounds canal-cast part size. |
+| crucible hearth | a block-scale pool -> holds heat through a campaign |
+| ladle / converter | 3x3x3 of charge, radiating only from its surface -> barely cools |
 
 Cooling is not a global knob: big vessels hold heat, so the player's lever against "molten metal solidifies
 too fast" is to build the bigger machine.
@@ -216,7 +216,7 @@ world - a partly-drained ladle cools faster as it empties. The parked-barrel lit
 | cell | capacity | file:line |
 |---|---|---|
 | plain canal (straight / bend / T / X) | `CanalDefaultUnitCapacity` = 50 | `BlockEntityMoltenCanal.cs:39` |
-| canal start | `× 2` = 100 | `BlockEntityMoltenCanalStart.cs:24-25` |
+| canal start | `x 2` = 100 | `BlockEntityMoltenCanalStart.cs:24-25` |
 | canal tap | `ceil(/2)` = 25 | `BlockEntityMoltenCanalTap.cs:53-54` |
 | mold pedestal | `ceil(/2)` = 25 | `BlockEntityMoltenCanalMoldPedestal.cs:68-69` |
 | molten barrel | `maxUnits` attribute = 800 | `BlockMoltenBarrel.cs:36, 60` |
@@ -224,7 +224,7 @@ world - a partly-drained ladle cools faster as it empties. The parked-barrel lit
 | hosted cell (`BEBehaviorMoltenCell`) | `capacity` property, default 100 | `BEBehaviorMoltenCell.cs:35, 57` |
 | hosted cell with a rammed pattern | pattern spec wins over both | `BEBehaviorMoltenCell.cs:95, 102-106` |
 
-### Hard-coded — **not config**
+### Hard-coded - **not config**
 
 | constant | value | file:line | note |
 |---|---|---|---|
@@ -232,14 +232,14 @@ world - a partly-drained ladle cools faster as it empties. The parked-barrel lit
 | `dt` catch-up clamp | `2 s` | `BlockNetworkModSystem.cs:341` | |
 | sand-bed / sand-cell `PullRatePerTick` | `25` | `BlockEntitySandCastingBed.cs:44`, `BlockEntitySandCastingCell.cs:33` | contradicts the settled one-number 50 u/s rule |
 | blast-furnace per-tick hand-down | `min(20, pool)` | `BlockEntityBlastFurnace.cs:346, 382` | contradicts the settled 50 u/s rule |
-| furnace iron stack yield factor | `× 0.6` | `BlockEntityBlastFurnace.cs:349` | slag uses `× 0.8` (`:385`) |
+| furnace iron stack yield factor | `x 0.6` | `BlockEntityBlastFurnace.cs:349` | slag uses `x 0.8` (`:385`) |
 | barrel chisel-out bit size | `10 u` per bit | `BlockEntityMoltenBarrel.cs:283-289` | |
 | barrel break-drop bit size | `5 u` per bit (the `MoltenChisel` default) | `BlockEntityMoltenBarrel.cs:362-367` | |
 | tap barrel-fill cooldown speed | `300f` | `BlockEntityMoltenCanalTap.cs:400-405` | a *parked barrel* deliberately ignores `BarrelCooldownCoefficient` (`:117-118`) |
 | pour-tally idle timeout | `5000 ms` | `BlockEntityMoltenCanalStart.cs:36` | |
 | pour / drain sound throttle | `2000 ms` | `BlockEntityMoltenCanalStart.cs:122-129`, `BlockEntityMoltenCanalTap.cs:433-441` | |
 | `BEBehaviorMoltenCell.DefaultCapacity` | `100` | `BEBehaviorMoltenCell.cs:35` | |
-| glow scale | `(T − 500) / 30`, clamped 0–24 | `MoltenMetal.cs:159-162` | |
+| glow scale | `(T - 500) / 30`, clamped 0-24 | `MoltenMetal.cs:159-162` | |
 
 ---
 
@@ -248,7 +248,7 @@ world - a partly-drained ladle cools faster as it empties. The parked-barrel lit
 | type | file:line | role |
 |---|---|---|
 | `MoltenNetwork : BlockNetwork` | `MoltenNetwork.cs:21` | the driver; `NetworkType => "molten"` (`:23`) |
-| `MoltenNetwork.OnTick` | `MoltenNetwork.cs:159` | collect → order → flow → cool. The whole model is here |
+| `MoltenNetwork.OnTick` | `MoltenNetwork.cs:159` | collect -> order -> flow -> cool. The whole model is here |
 | `MoltenNetwork.FlowEdge` | `MoltenNetwork.cs:220` | the transfer rule (static; safe to reason about in isolation) |
 | `MoltenNetwork.BuildDistanceFromStart` | `MoltenNetwork.cs:104` | multi-source BFS, horizontals only |
 | `MoltenNetwork.ComputeTopologySignature` | `MoltenNetwork.cs:81` | the cache-invalidation fingerprint |
@@ -277,7 +277,7 @@ world - a partly-drained ladle cools faster as it empties. The parked-barrel lit
 
 1. `FlowEdge` moves the whole difference, not half of it. `transfer = min(diff, maxFlow)` (`MoltenNetwork.cs:251`). With two 50-cap cells at 40 and 0, the whole 40 moves and the levels invert (0 and 40) rather than equalising at 20; next tick they swap back. The doc comment at `MoltenNetwork.cs:219` ("Moves metal across one connection toward equal fill ratio") describes an algorithm that is not implemented. True equalisation would be `diff / 2`.
 
-2. It compares raw amounts, not fill ratios. Despite the "equal fill ratio" wording, `diff` is `|a.CellAmount − b.CellAmount|` (`:232`). With the shipped unequal capacities (start 100, canal 50, tap 25) equal *amounts* are very different *ratios*.
+2. It compares raw amounts, not fill ratios. Despite the "equal fill ratio" wording, `diff` is `|a.CellAmount - b.CellAmount|` (`:232`). With the shipped unequal capacities (start 100, canal 50, tap 25) equal *amounts* are very different *ratios*.
 
 3. The ordering does not set the flow direction. The comments at `MoltenNetwork.cs:141-144` and `:176-177` say metal is "driven from the farthest cells back toward the source" / "drains toward the source". It is not: direction is decided purely by which cell has more units (`:236-238`). Metal will flow back into the canal start whenever the downstream cell holds more. The sort only picks which endpoint executes each undirected edge. Stale comment.
 
@@ -287,7 +287,7 @@ world - a partly-drained ladle cools faster as it empties. The parked-barrel lit
 
 6. `MoltenMinFlowAmount = 10` leaves permanent residue. Between two plain canals a difference below 10 never moves, so a settled run can hold up to 9 units of imbalance per edge forever, and a cell can never shed its last <10 units except into a tap or pedestal (`AcceptsSubMinimumFlow`, `MoltenNetwork.cs:252-256`).
 
-7. The solidify latch trips at 100 % of the melting point, but chisel-out needs < 30 %. `UpdateThermal` latches at `temp < meltPoint` (`BlockEntityMoltenCanal.cs:338`) while `IsHardened` uses `MetalHardenedThreshold × meltPoint` (`ExlibConfig.cs:95`). Between those a cell is a plug that reads `iiex:canal-cooling` and refuses the chisel. For iron (1482 °C) that is the whole span from 1482 down to ~445 °C. `CellState` can still classify the metal as Liquid (above `0.8 × meltPoint` = ~1186 °C) while `Solidified` is already latched - the two are independent by design (`BlockEntityMoltenCanal.cs:89-112`).
+7. The solidify latch trips at 100 % of the melting point, but chisel-out needs < 30 %. `UpdateThermal` latches at `temp < meltPoint` (`BlockEntityMoltenCanal.cs:338`) while `IsHardened` uses `MetalHardenedThreshold x meltPoint` (`ExlibConfig.cs:95`). Between those a cell is a plug that reads `iiex:canal-cooling` and refuses the chisel. For iron (1482 °C) that is the whole span from 1482 down to ~445 °C. `CellState` can still classify the metal as Liquid (above `0.8 x meltPoint` = ~1186 °C) while `Solidified` is already latched - the two are independent by design (`BlockEntityMoltenCanal.cs:89-112`).
 
 8. The molten barrel is not a cell. `BlockEntityMoltenBarrel` (`:23-27`) extends plain `BlockEntity` - it has no `IMoltenCell`, is not a network node, and is filled only by a tap draining into it or a direct pour. Do not expect network flow to reach it.
 
@@ -295,7 +295,7 @@ world - a partly-drained ladle cools faster as it empties. The parked-barrel lit
 
 10. `BlockEntityMoltenCanal.MaxUnitCapacity`'s doc comment lies. `BlockEntityMoltenCanal.cs:38` says "(from the block's `maxUnits` attribute)" but line 39 returns `IiexValues.CanalDefaultUnitCapacity` unconditionally - no attribute is ever read for a canal cell. Stale comment.
 
-11. The parked-barrel cooldown ignores its own coefficient. The tap passes a literal `300f` when creating the barrel's content stack (`BlockEntityMoltenCanalTap.cs:400-405`) while a parked *mold* uses `MoltenCooldownSpeed × TapMoldCooldownCoefficient`. The comment at `:117-118` says this is deliberate ("the parked barrel cools at a fixed slow rate by design"), but it means `BarrelCooldownCoefficient` has no effect on metal poured through a tap - only on a standalone barrel.
+11. The parked-barrel cooldown ignores its own coefficient. The tap passes a literal `300f` when creating the barrel's content stack (`BlockEntityMoltenCanalTap.cs:400-405`) while a parked *mold* uses `MoltenCooldownSpeed x TapMoldCooldownCoefficient`. The comment at `:117-118` says this is deliberate ("the parked barrel cools at a fixed slow rate by design"), but it means `BarrelCooldownCoefficient` has no effect on metal poured through a tap - only on a standalone barrel.
 
 12. The world accessor is resolved once and cached forever (`MoltenNetwork.cs:28-41`), on the assumption that a network never moves between worlds.
 
