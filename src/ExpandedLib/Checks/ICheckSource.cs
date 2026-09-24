@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using ExpandedLib.Definitions;
 using Newtonsoft.Json.Linq;
@@ -37,4 +38,17 @@ public interface ICheckSource {
   /// implementer reads blocktype files.</summary>
   IEnumerable<(AssetLocation File, JObject Json)> BlockTypes(string domain) =>
     [];
+
+  /// <summary>The type a block <c>class</c> key names, e.g. <c>"iiex.BlockValve"</c>.</summary>
+  /// <param name="classKey">The key as a definition's <c>class</c> property writes it.</param>
+  /// <returns>Null when this source cannot resolve the key, which is every key unless the
+  /// implementer resolves them.</returns>
+  Type? BlockClass(string classKey) => null;
+
+  /// <summary>The type a block-entity behaviour key names, as an <c>entityBehaviors</c>
+  /// <c>name</c> or a footprint cell's behaviour <c>code</c> writes it.</summary>
+  /// <param name="key">The behaviour key.</param>
+  /// <returns>Null when this source cannot resolve the key, which is every key unless the
+  /// implementer resolves them.</returns>
+  Type? BlockEntityBehaviorClass(string key) => null;
 }

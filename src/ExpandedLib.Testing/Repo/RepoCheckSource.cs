@@ -19,6 +19,7 @@ namespace ExpandedLib.Testing;
 public sealed class RepoCheckSource : ICheckSource {
   private readonly string[] _domains;
   private readonly Dictionary<string, Assembly> _assemblies;
+  private readonly ClassKeys _classKeys;
 
   /// <param name="repoRoot">Passed through to <see cref="DefinitionGoldens.RepoRootOverride"/>.</param>
   /// <param name="domains">The domains this source covers; each must have an already-loaded
@@ -27,6 +28,7 @@ public sealed class RepoCheckSource : ICheckSource {
     DefinitionGoldens.RepoRootOverride = repoRoot;
     _domains = domains;
     _assemblies = ResolveAssemblies(domains);
+    _classKeys = new ClassKeys(_assemblies.Select(kv => (kv.Key, kv.Value)));
   }
 
   /// <inheritdoc/>
@@ -104,6 +106,17 @@ public sealed class RepoCheckSource : ICheckSource {
           json
         );
   }
+
+  /// <inheritdoc/>
+  /// <remarks>Resolved by reflection over the domains' assemblies, the
+  /// <c>[assembly: ExDomain]</c> assemblies they reference, and ExpandedLib.</remarks>
+  public Type? BlockClass(string classKey) => _classKeys.Block(classKey);
+
+  /// <inheritdoc/>
+  /// <remarks>Resolved by reflection, as <see cref="BlockClass"/> is, matching the key's part after
+  /// its mod-id prefix against each behaviour's registered code.</remarks>
+  public Type? BlockEntityBehaviorClass(string key) =>
+    _classKeys.BlockEntityBehavior(key);
 
   // Resolves each domain to the assembly declaring [assembly: ExDomain(domain)].
   private static Dictionary<string, Assembly> ResolveAssemblies(

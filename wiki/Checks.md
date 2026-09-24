@@ -19,7 +19,7 @@ page is for the three cases beyond that: running them when you choose, running t
 game, and adding a rule of your own for an invariant that is yours rather than the framework's.
 
 A check never touches a registry, a file path or an assembly. Each one reads through
-[`ICheckSource`](#writing-a-custom-ichecksource), an interface that answers seven questions about a
+[`ICheckSource`](#writing-a-custom-ichecksource), an interface that answers nine questions about a
 domain - a domain being one mod's id, the part before the colon in `yourmod:coke-oven`. That is why
 one rule, written once, runs against the live game, against a repository tree, and against a zip on
 disk without knowing which it is looking at.
@@ -205,9 +205,11 @@ module phase, so one bad rule does not take the other checks down with it.
 A custom source is how you run the shipped rules over content the game has not loaded: a repository
 tree in CI, a zip on disk, a fixture in a test. Implement the six members - `Domains`, `BlockCodes`,
 `ItemCodes`, `Recipes(domain)`, `Lang(domain)`, `BlockDefinitions(domain)` - over whatever you are
-validating, and every check runs unmodified. The seventh, `BlockTypes(domain)`, the JSON blocktypes a
-domain ships, yields nothing unless you implement it; `StageWildcardsCheck` then reads code-first
-definitions only.
+validating, and every check runs unmodified. The seventh, `BlockTypes(domain)`, the JSON blocktypes
+a domain ships, yields nothing unless you implement it; `StageWildcardsCheck` then reads code-first
+definitions only. The last two, `BlockClass(classKey)` and `BlockEntityBehaviorClass(key)`, turn a
+`class` key or a behaviour key into its C# type and answer null unless you implement them;
+`NetworkNodeContractCheck` then knows a node and a membership by their JSON alone.
 
 There is one exception. `LateDefinitionCheck` ignores the source it is handed and reads
 `ExDefinitions`, the process-wide registry `ExDefinitionModSystem` injects from, directly. A custom
@@ -223,19 +225,22 @@ here so the game itself runs them, which is why this page exists at all. If you 
 suite calling the harness, nothing you wrote has changed; this section is the map between the two.
 
 `MultiblockCodesCheck`, `RecipeCodesCheck`, `LangCoverageCheck`, `CodePrefixCollisionCheck`,
-`PinnedNetworkNodesCheck` and `DefinitionCatalogueCheck` moved cleanly: everything they need is
-expressible over `ICheckSource`. `LateDefinitionCheck` never lived in the harness, since there was
-nothing there to replay `ExDefinitionModSystem.AssetsLoaded`. `StageWildcardsCheck` started here; the
-harness runs it over a suite's definitions as `StageWildcards`.
+`PinnedNetworkNodesCheck` and `NetworkNodeContractCheck` hold the rules the harness's
+`MultiblockCodes`, `RecipeCodes`, `LangCoverage.MissingNames`, `CodePrefixCollision`,
+`PinnedNetworkNodes` and `NetworkNodeContract` used to carry themselves; those harness members now
+call the check, so the rule is written once. `LateDefinitionCheck` never lived in the harness, since
+there was nothing there to replay `ExDefinitionModSystem.AssetsLoaded`. `StageWildcardsCheck`
+started here; the harness runs it over a suite's definitions as `StageWildcards`.
 
-`NetworkNodeContractCheck` did not move in full. The harness's own `NetworkNodeContract` selects a
-"network node" definition by C# class (`BlockNetworkNode`, `BEBehaviorNetworkMember` and their
-subclasses), which needs an assembly to reflect over - something no `ICheckSource` can supply, in
-game or in a repository tree read generically. The library version selects the same definitions by
-the contract they declare in JSON instead (a behaviour named "ExOrientable" in `network` mode, and
-the framework's own `BEBehaviorNetworkMember` key for a membership), which is everything every check
-in this codebase has needed so far but is a narrower rule than the harness's reflective one - see
-the class's own remarks for exactly where the two can disagree. The harness's `NetworkNodeContract`
-stays as it was, unchanged, for that reason; the wrappers over the other six now delegate into this
-library so the rule is written once. See [Testing-Harness](Testing-Harness) for the harness side of
-this split.
+`DefinitionCatalogueCheck` is not the harness's `DefinitionCatalogue`. The check reports a
+code-first block definition that produced no registered block; the harness's `Resolves` answers
+whether a stack's code names something a mod registers. They share only the expansion of a
+definition's variant groups into code patterns.
+
+`NetworkNodeContractCheck` knows a network node two ways: its `class` key resolves, through
+`ICheckSource.BlockClass`, to a `BlockNetworkNode`, or it declares a behaviour named "ExOrientable"
+in `network` mode. A membership is a behaviour keyed `BEBehaviorNetworkMember`, or one that
+resolves, through `ICheckSource.BlockEntityBehaviorClass`, to a subclass of it. In game the keys
+resolve through the class registry; the harness resolves them by reflection over the suite's
+assemblies. A source that cannot resolve a key leaves that definition to the JSON selection. See
+[Testing-Harness](Testing-Harness) for the harness side of this split.

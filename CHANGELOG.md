@@ -137,6 +137,17 @@ see the git history.
 
 ### Changed
 
+- `NetworkNodeContractCheck` knows a network node by a `class` key that resolves to a
+  `BlockNetworkNode` as well as by an `ExOrientable` declaration in `network` mode, and a membership
+  by a key that resolves to a `BEBehaviorNetworkMember` subclass as well as by the bare key; it also
+  reports a class-known node whose `ExOrientable` is missing or not in `network` mode. A mod may see
+  new Error lines at load, one per such definition. `ICheckSource` gains `BlockClass` and
+  `BlockEntityBehaviorClass`, which answer null unless implemented; `AssetCheckSource` answers from
+  the game's class registry and `RepoCheckSource` by reflection. The harness's `NetworkNodeContract`
+  runs the check: its type-group finding names the block class when one resolves, and its scheme
+  finding names the block's code in place of its class key.
+- `DefinitionCatalogue.ItemPatterns` (ExpandedLib.Testing) expands variant groups through the same
+  code as `DefinitionCatalogueCheck`.
 - `RecipeCodes`, `MultiblockCodes` and `PinnedNetworkNodes` (ExpandedLib.Testing) run
   `RecipeCodesCheck`, `MultiblockCodesCheck` and `PinnedNetworkNodesCheck`, so a suite and the game
   apply one rule. `RecipeCodesCheck` reports a block output holding a wildcard. `MultiblockCodes`

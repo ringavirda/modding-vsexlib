@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -61,6 +62,14 @@ public sealed class AssetCheckSource(ICoreAPI api) : ICheckSource {
       if (TryParseObject(asset, out JObject json))
         yield return (asset.Location, json);
   }
+
+  /// <inheritdoc/>
+  public Type? BlockClass(string classKey) =>
+    api.ClassRegistry.GetBlockClass(classKey);
+
+  /// <inheritdoc/>
+  public Type? BlockEntityBehaviorClass(string key) =>
+    api.ClassRegistry.GetBlockEntityBehaviorClass(key);
 
   // A recipe file is one object or a JSON array; every element shares the file's location.
   private static IEnumerable<JObject> ReadRecipeObjects(IAsset asset) {

@@ -17,6 +17,7 @@ namespace ExpandedLib.Testing;
 internal sealed class AssemblyCheckSource : ICheckSource {
   private readonly Dictionary<string, Assembly> _assemblies;
   private readonly Dictionary<string, string> _langDirs;
+  private readonly ClassKeys _classKeys;
 
   internal AssemblyCheckSource(
     params (string Domain, Assembly Assembly)[] sources
@@ -32,6 +33,7 @@ internal sealed class AssemblyCheckSource : ICheckSource {
       s => s.Assembly,
       StringComparer.Ordinal
     );
+    _classKeys = new ClassKeys(sources);
     _langDirs = langDirs.ToDictionary(
       l => l.Domain,
       l => l.LangDir,
@@ -94,4 +96,9 @@ internal sealed class AssemblyCheckSource : ICheckSource {
 
   public IEnumerable<ExBlockDef> BlockDefinitions(string domain) =>
     DefinitionGoldens.Collect(domain, _assemblies[domain]).OfType<ExBlockDef>();
+
+  public Type? BlockClass(string classKey) => _classKeys.Block(classKey);
+
+  public Type? BlockEntityBehaviorClass(string key) =>
+    _classKeys.BlockEntityBehavior(key);
 }
