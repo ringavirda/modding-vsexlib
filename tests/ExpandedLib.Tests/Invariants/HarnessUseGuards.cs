@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -17,6 +18,7 @@ namespace ExpandedLib.Tests;
 [GuardOf(typeof(HarnessUse), nameof(HarnessUse.UncalledGuards))]
 [GuardOf(typeof(HarnessUse), nameof(HarnessUse.Unpremised))]
 [GuardOf(typeof(HarnessUse), nameof(HarnessUse.SubstituteLoggers))]
+[GuardOf(typeof(HarnessUse), nameof(HarnessUse.UncalledPlants))]
 public class HarnessUseGuards {
   /// <summary>Guard file, and why it calls no <see cref="Premise"/>.</summary>
   private static readonly Dictionary<string, string> PremiseAllowed = new(
@@ -34,6 +36,26 @@ public class HarnessUseGuards {
   private static readonly Dictionary<string, string> LoggerAllowed = new(
     StringComparer.Ordinal
   );
+
+  private const string ThroughExlibChecks =
+    "reached through ExlibChecks.All, which runs every registered check";
+
+  /// <summary>Planted test, as <c>file: Type.Member</c>, and how it reaches the member it never
+  /// names.</summary>
+  private static readonly Dictionary<string, string> PlantAllowed = new(
+    StringComparer.Ordinal
+  ) {
+    ["ChecksProveThemselvesTests.cs: PlantedSurveyFixture.Gone"] =
+      "a fixture mark naming no member, for Survey's own test",
+    ["ExlibChecksTests.cs: MultiblockCodesCheck.Run"] = ThroughExlibChecks,
+    ["ExlibChecksTests.cs: RecipeCodesCheck.Run"] = ThroughExlibChecks,
+    ["ExlibChecksTests.cs: LangCoverageCheck.Run"] = ThroughExlibChecks,
+    ["ExlibChecksTests.cs: PinnedNetworkNodesCheck.Run"] = ThroughExlibChecks,
+    ["ExlibChecksTests.cs: CodePrefixCollisionCheck.Run"] = ThroughExlibChecks,
+    ["ExlibChecksTests.cs: DefinitionCatalogueCheck.Run"] = ThroughExlibChecks,
+    ["ExlibChecksTests.cs: NetworkNodeContractCheck.Run"] = ThroughExlibChecks,
+    ["ExlibChecksTests.cs: LateDefinitionCheck.Run"] = ThroughExlibChecks,
+  };
 
   #region exlib
 
@@ -131,6 +153,37 @@ public class HarnessUseGuards {
       LoggerAllowed,
       new Dictionary<string, string>(),
       f => f.Split(':')[0]
+    );
+  }
+
+  // Fails when an exlib test marked [PlantedDefect] never reaches the member it claims to prove.
+  [Fact]
+  public void Exlibs_planted_tests_name_their_member() {
+    FindingLists.Assert(
+      HarnessUse.UncalledPlants(
+        Premise.NotEmpty(
+          [
+            .. Sources(),
+            Path.Combine(
+              RepoPaths.Root,
+              "tests",
+              "ExpandedLib.Tests",
+              "Invariants",
+              "HarnessUseGuards.cs"
+            ),
+          ],
+          "test sources"
+        )
+      ),
+      PlantAllowed,
+      new Dictionary<string, string>(),
+      f =>
+        f.Split(':')[0]
+        + ": "
+        + System
+          .Text.RegularExpressions.Regex.Match(f, @" names (\S+), ")
+          .Groups[1]
+          .Value
     );
   }
 
@@ -428,6 +481,58 @@ public class HarnessUseGuards {
     );
     Assert.Empty(
       Scan(HarnessUse.Unpremised, "Premise.Covers(read, \"iiex\");")
+    );
+  }
+
+  // Fails when UncalledPlants passes a planted test that never reaches its member, directly or
+  // through a helper of the file, or reads a comment or a string literal as naming it.
+  [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.UncalledPlants))]
+  public void A_planted_test_that_never_reaches_its_member_is_named() {
+    IReadOnlyList<string> offenders = Scan(
+      HarnessUse.UncalledPlants,
+      "[Fact]\n"
+        + "[PlantedDefect(typeof(LangKeys), nameof(LangKeys.Check))]\n"
+        + "public void Empty() { Assert.True(true); }\n"
+        + "[Fact]\n"
+        + "[PlantedDefect(\n  typeof(ExpandedLib.Testing.SoundUse),\n  \"ShortRepeats\"\n)]\n"
+        + "public void Quoted() =>\n"
+        + "  Assert.Empty(Other(\"ShortRepeats\")); // SoundUse.ShortRepeats\n"
+        + "[Fact]\n[PlantedDefect(typeof(G), nameof(G.Rule))]\n"
+        + "public void Helped() => Assert.Empty(Helper());\n"
+        + "private static string[] Helper() => G.Other();\n"
+    );
+
+    Assert.Equal(
+      [
+        ":2: [PlantedDefect] on Empty names LangKeys.Check, which it never reaches",
+        ":5: [PlantedDefect] on Quoted names SoundUse.ShortRepeats, which it never reaches",
+        ":12: [PlantedDefect] on Helped names G.Rule, which it never reaches",
+      ],
+      offenders.Select(o => o[o.IndexOf(':')..])
+    );
+  }
+
+  // Fails when UncalledPlants names a test that names its member as a method group or a bare call,
+  // after other attributes, braces in a string or a nested block, or through a chain of the file's
+  // helpers, or reads a mark in a string.
+  [Fact]
+  public void A_planted_test_reaching_its_member_is_not_named() {
+    Assert.Empty(
+      Scan(
+        HarnessUse.UncalledPlants,
+        "[Fact]\n[PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.Unpremised))]\n"
+          + "[Trait(\"a\", \"b\")]\n"
+          + "public void A() {\n  var s = $\"}{x[\"k\"]}\";\n  if (x) { Y('}'); }\n"
+          + "  Scan(HarnessUse\n    .Unpremised, s);\n}\n"
+          + "[Fact]\n[PlantedDefect(typeof(G), nameof(G.Rule))]\n"
+          + "public void B() => Assert.Single(Rule(-1));\n"
+          + "[Fact]\n[PlantedDefect(typeof(G), nameof(G.Deep))]\n"
+          + "public void D() => Assert.Empty(Outer());\n"
+          + "private static IReadOnlyList<string> Outer() => Inner(1);\n"
+          + "static List<string> Inner(int x) {\n  return G.Deep(x);\n}\n"
+          + "string t = \"[PlantedDefect(typeof(G), nameof(G.Gone))] void C() { }\";\n"
+      )
     );
   }
 

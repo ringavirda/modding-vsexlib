@@ -21,7 +21,8 @@ public static class PlantedDefects {
   /// planted-defect test.</param>
   /// <param name="Unplanted">Members neither proven nor marked, then one line per
   /// <see cref="PlantedDefectAttribute"/> that names no public static member of a surveyed type,
-  /// sits on a method that is not a test, or per helper marked without a reason, then one
+  /// sits on a method that is not a test or on a skipped one, or per helper marked without a
+  /// reason, then one
   /// <c>File: reason</c> line per file whose name is no type's.</param>
   public sealed record Census(
     IReadOnlyList<string> Proven,
@@ -144,10 +145,12 @@ public static class PlantedDefects {
         continue;
       string key = $"{mark.Check.Name}.{mark.Member}";
       string at = $"{test.DeclaringType?.Name}.{test.Name}";
-      if (!IsTest(test))
+      if (!test.GetCustomAttributes<FactAttribute>(inherit: true).Any())
         unplanted.Add(
           $"{key}: [PlantedDefect] on {at}, which is not a [Fact] or [Theory]"
         );
+      else if (!IsTest(test))
+        unplanted.Add($"{key}: [PlantedDefect] on {at}, which is skipped");
       else if (!StaticMembers(mark.Check).Any(m => m.Name == mark.Member))
         unplanted.Add(
           $"{key}: [PlantedDefect] on {at} names no public static member"
@@ -163,7 +166,7 @@ public static class PlantedDefects {
   /// <remarks>A guard class is the top-level type of <paramref name="suite"/> named by a
   /// <c>*.cs</c> file in the directory; other types in the file are fixtures. A
   /// <see cref="GuardOfAttribute"/> naming no public static member proves nothing and is
-  /// reported.</remarks>
+  /// reported; a skipped test proves nothing.</remarks>
   /// <param name="suite">The test assembly the folder compiles into.</param>
   /// <param name="invariantsDirectory">The suite's <c>Invariants</c> folder; not searched
   /// recursively.</param>
@@ -239,8 +242,11 @@ public static class PlantedDefects {
     return unproven;
   }
 
+  // A [Fact] or [Theory] that runs: one with Skip set proves nothing.
   internal static bool IsTest(MethodInfo method) =>
-    method.GetCustomAttributes<FactAttribute>(inherit: true).Any();
+    method
+      .GetCustomAttributes<FactAttribute>(inherit: true)
+      .Any(f => string.IsNullOrEmpty(f.Skip));
 
   internal static IEnumerable<Type> LoadableTypes(Assembly assembly) {
     try {

@@ -11,10 +11,12 @@ namespace ExpandedLib.Testing;
 /// <summary>Guards how tests use the harness: completion forced by reflection, a block double
 /// whose behaviours <c>GetBehavior</c> cannot see, a test file's generic helper constrained on a
 /// game type, which can stop xUnit discovering the whole assembly, a guard naming a check it never
-/// calls, a guard file asserting nothing about its corpus, and a substitute logger that no
-/// <see cref="FailOnWarningsAttribute"/> check reads.</summary>
+/// calls, a guard file asserting nothing about its corpus, a planted-defect test that never reaches
+/// the member it proves, and a substitute logger that no <see cref="FailOnWarningsAttribute"/>
+/// check reads.</summary>
 /// <remarks>Each rule reads C# source text with comments blanked; a <c>//</c> inside a string literal
-/// blanks the rest of its line.</remarks>
+/// blanks the rest of its line, except in <see cref="UncalledPlants"/>, which blanks string literals
+/// too.</remarks>
 public static class HarnessUse {
   private static readonly Regex ReflectiveWrite = new(
     @"\b(SetProperty|SetField|SetValue)\s*\(|<StructureComplete>k__BackingField",
@@ -50,6 +52,12 @@ public static class HarnessUse {
 
   private static readonly Regex GuardOfMark = new(
     @"\bGuardOf\s*\(\s*typeof\s*\(\s*(?<type>[\w.]+)\s*\)\s*,\s*"
+      + @"(?:nameof\s*\(\s*(?:[\w.]+\.)?(?<m1>\w+)\s*\)|""(?<m2>\w+)"")\s*\)",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex PlantedDefectMark = new(
+    @"\bPlantedDefect\s*\(\s*typeof\s*\(\s*(?<type>[\w.]+)\s*\)\s*,\s*"
       + @"(?:nameof\s*\(\s*(?:[\w.]+\.)?(?<m1>\w+)\s*\)|""(?<m2>\w+)"")\s*\)",
     RegexOptions.Compiled
   );
@@ -258,6 +266,53 @@ public static class HarnessUse {
     return offenders;
   }
 
+  /// <summary>Every <see cref="PlantedDefectAttribute"/> in <paramref name="sourceFiles"/> whose
+  /// test never reaches the member it claims to prove: neither its body nor the body of a method of
+  /// the same file it names, followed through further such methods, names the member.</summary>
+  /// <remarks>The body is the method the mark decorates, a block or an expression body. Bodies are
+  /// read with comments and string literals blanked; a name counts when it appears as a whole word,
+  /// bare, qualified or as a method group. Methods are matched by name alone, overloads together. A
+  /// member reached only through another file, or through a type's dispatch that never names it,
+  /// is named. A mark inside a comment or a string literal is not read.</remarks>
+  /// <param name="sourceFiles">C# files to read; each is read whole.</param>
+  /// <returns>One line per mark, <c>file:line: reason</c>; empty when clean.</returns>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
+  public static IReadOnlyList<string> UncalledPlants(
+    IEnumerable<string> sourceFiles
+  ) {
+    var offenders = new List<string>();
+    foreach (string file in sourceFiles) {
+      string text = File.ReadAllText(file);
+      string code = CodeOnly(text);
+      ILookup<string, string>? methods = null;
+      foreach (Match mark in PlantedDefectMark.Matches(text)) {
+        if (
+          string.CompareOrdinal(
+            code,
+            mark.Index,
+            "PlantedDefect",
+            0,
+            "PlantedDefect".Length
+          ) != 0
+        )
+          continue;
+        string member = mark.Groups["m1"].Success
+          ? mark.Groups["m1"].Value
+          : mark.Groups["m2"].Value;
+        (string test, string body) = Decorated(code, mark.Index + mark.Length);
+        methods ??= MethodBodies(code);
+        if (Reaches(body, test, member, methods))
+          continue;
+        offenders.Add(
+          $"{Path.GetFileName(file)}:{LineOf(text, mark.Index)}: [PlantedDefect] on {test} names "
+            + $"{mark.Groups["type"].Value.Split('.')[^1]}.{member}, which it never reaches"
+        );
+      }
+    }
+    return offenders;
+  }
+
   /// <summary>Every file of <paramref name="guardFiles"/> that never calls <see cref="Premise"/>,
   /// so nothing asserts that the corpus its guard reads is there.</summary>
   /// <param name="guardFiles">The guard files of a suite's <c>Invariants</c> folder; each is read
@@ -358,6 +413,229 @@ public static class HarnessUse {
     }
     yield return list[from..].Trim();
   }
+
+  private static readonly Regex MethodDeclaration = new(
+    @"(?<type>[\w>\]?]+)\s+(?<name>\w+)\s*(?:<[^<>()]*>)?\s*\(",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex Word = new(@"\w+", RegexOptions.Compiled);
+
+  private static readonly HashSet<string> NotATypeOrName = new(
+    StringComparer.Ordinal
+  )
+  {
+    "new",
+    "return",
+    "else",
+    "await",
+    "throw",
+    "yield",
+    "in",
+    "is",
+    "as",
+    "case",
+    "goto",
+    "if",
+    "for",
+    "foreach",
+    "while",
+    "switch",
+    "using",
+    "lock",
+    "catch",
+    "fixed",
+    "when",
+    "nameof",
+    "typeof",
+    "sizeof",
+    "default",
+  };
+
+  // Every method declared in code, by name, with its body; a match followed by no block or
+  // expression body (a call, an abstract member) is left out.
+  private static ILookup<string, string> MethodBodies(string code) =>
+    MethodDeclaration
+      .Matches(code)
+      .Where(m =>
+        !NotATypeOrName.Contains(m.Groups["type"].Value)
+        && !NotATypeOrName.Contains(m.Groups["name"].Value)
+      )
+      .Select(m => (m.Groups["name"].Value, Body(code, m.Index + m.Length)))
+      .Where(d => d.Item2.Length > 0)
+      .ToLookup(d => d.Item1, d => d.Item2, StringComparer.Ordinal);
+
+  // Whether body, or a method of the file it names, followed transitively, names member.
+  private static bool Reaches(
+    string body,
+    string test,
+    string member,
+    ILookup<string, string> methods
+  ) {
+    var seen = new HashSet<string>(StringComparer.Ordinal) { test };
+    var queue = new Queue<string>([body]);
+    while (queue.Count > 0) {
+      foreach (Match word in Word.Matches(queue.Dequeue())) {
+        if (word.Value == member)
+          return true;
+        if (seen.Add(word.Value))
+          foreach (string callee in methods[word.Value])
+            queue.Enqueue(callee);
+      }
+    }
+    return false;
+  }
+
+  // The name and body of the method whose attribute list holds position from: the attribute
+  // sections are skipped, then the parameter list, then a block or an expression body is taken.
+  // Reads code with comments and literals blanked; empty when no body follows.
+  private static (string Name, string Body) Decorated(string code, int from) {
+    int i = Close(code, from, ']');
+    while (true) {
+      while (i < code.Length && char.IsWhiteSpace(code[i]))
+        i++;
+      if (i < code.Length && code[i] == '[')
+        i = Close(code, i + 1, ']');
+      else
+        break;
+    }
+    int open = code.IndexOf('(', i);
+    if (open < 0)
+      return ("", "");
+    Match name = Regex.Match(code[i..open], @"(\w+)\s*$");
+    return (name.Groups[1].Value, Body(code, open + 1));
+  }
+
+  // The block or expression body after the parameter list opened before position from; empty
+  // when none follows.
+  private static string Body(string code, int from) {
+    int start = Close(code, from, ')');
+    while (start < code.Length && char.IsWhiteSpace(code[start]))
+      start++;
+    int end =
+      start < code.Length && code[start] == '{' ? Close(code, start + 1, '}')
+      : string.CompareOrdinal(code, start, "=>", 0, 2) == 0
+        ? Close(code, start + 2, ';')
+      : start;
+    return code[start..end];
+  }
+
+  // The index just past the closer that ends the bracket opened before position from, counting
+  // ( [ { pairs; a ';' closes only at depth zero. The text's end when none does.
+  private static int Close(string code, int from, char closer) {
+    int depth = 0;
+    for (int i = from; i < code.Length; i++) {
+      char c = code[i];
+      if (depth == 0 && c == closer)
+        return i + 1;
+      if (c is '(' or '[' or '{')
+        depth++;
+      else if (c is ')' or ']' or '}')
+        depth--;
+    }
+    return code.Length;
+  }
+
+  // The text with every comment and every string or char literal (regular, verbatim, interpolated
+  // with its holes, raw) replaced by spaces, line breaks kept.
+  private static string CodeOnly(string text) {
+    var sb = new StringBuilder(text);
+    int i = 0;
+    while (i < sb.Length) {
+      int end = LiteralOrCommentEnd(text, i);
+      if (end == i) {
+        i++;
+        continue;
+      }
+      for (int j = i; j < end; j++)
+        if (sb[j] != '\n')
+          sb[j] = ' ';
+      i = end;
+    }
+    return sb.ToString();
+  }
+
+  // The index past the comment or literal starting at i, or i when none starts there.
+  private static int LiteralOrCommentEnd(string s, int i) {
+    if (s[i] == '/' && i + 1 < s.Length && s[i + 1] == '/') {
+      int nl = s.IndexOf('\n', i);
+      return nl < 0 ? s.Length : nl;
+    }
+    if (s[i] == '/' && i + 1 < s.Length && s[i + 1] == '*') {
+      int close = s.IndexOf("*/", i + 2, StringComparison.Ordinal);
+      return close < 0 ? s.Length : close + 2;
+    }
+    if (s[i] == '\'') {
+      for (int j = i + 1; j < s.Length && s[j] != '\n'; j++) {
+        if (s[j] == '\\')
+          j++;
+        else if (s[j] == '\'')
+          return j + 1;
+      }
+      return i + 1;
+    }
+    int q = i;
+    while (q < s.Length && s[q] is '@' or '$')
+      q++;
+    if (
+      q >= s.Length
+      || s[q] != '"'
+      || (q > i && i > 0 && IsWordChar(s[i - 1]))
+    )
+      return i;
+    string prefix = s[i..q];
+    bool verbatim = prefix.Contains('@'),
+      interpolated = prefix.Contains('$');
+    if (string.CompareOrdinal(s, q, "\"\"\"", 0, 3) == 0) {
+      int quotes = q;
+      while (quotes < s.Length && s[quotes] == '"')
+        quotes++;
+      string fence = new('"', quotes - q);
+      int close = s.IndexOf(fence, quotes, StringComparison.Ordinal);
+      return close < 0 ? s.Length : close + fence.Length;
+    }
+    for (int j = q + 1; j < s.Length; j++) {
+      char c = s[j];
+      if (!verbatim && c == '\n')
+        return j;
+      if (!verbatim && c == '\\')
+        j++;
+      else if (c == '"') {
+        if (verbatim && j + 1 < s.Length && s[j + 1] == '"')
+          j++;
+        else
+          return j + 1;
+      } else if (interpolated && c == '{') {
+        if (j + 1 < s.Length && s[j + 1] == '{')
+          j++;
+        else
+          j = Hole(s, j + 1) - 1;
+      }
+    }
+    return s.Length;
+  }
+
+  // The index past the } that closes an interpolation hole opened before position from.
+  private static int Hole(string s, int from) {
+    int depth = 0;
+    for (int j = from; j < s.Length; j++) {
+      int end = LiteralOrCommentEnd(s, j);
+      if (end != j) {
+        j = end - 1;
+        continue;
+      }
+      if (s[j] == '{')
+        depth++;
+      else if (s[j] == '}') {
+        if (depth == 0)
+          return j + 1;
+        depth--;
+      }
+    }
+    return s.Length;
+  }
+
+  private static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c == '_';
 
   // The text with every // and /* */ comment replaced by spaces, line breaks kept.
   private static string Uncommented(string text) {

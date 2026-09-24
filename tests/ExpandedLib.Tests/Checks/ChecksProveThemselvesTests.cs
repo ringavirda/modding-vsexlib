@@ -167,6 +167,28 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
     );
   }
 
+  // Fails when Survey counts a skipped test's mark as proof.
+  [Fact]
+  [PlantedDefect(typeof(PlantedDefects), nameof(PlantedDefects.Survey))]
+  public void Survey_counts_no_skipped_test() {
+    using var dir = new FixtureDirectory(nameof(SkippedSurveyFixture) + ".cs");
+
+    PlantedDefects.Census census = PlantedDefects.Survey(
+      dir.Path,
+      typeof(SkippedSurveyFixture).Assembly,
+      typeof(SkippedSurveyFixture).Assembly
+    );
+
+    Assert.Empty(census.Proven);
+    Assert.Equal(
+      [
+        "SkippedSurveyFixture.Rule",
+        "SkippedSurveyFixture.Rule: [PlantedDefect] on SkippedPlants.Skipped, which is skipped",
+      ],
+      census.Unplanted
+    );
+  }
+
   // Fails when the fixture rule stops naming a negative.
   [Fact]
   [PlantedDefect(
@@ -182,7 +204,19 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
     typeof(PlantedSurveyFixture),
     nameof(PlantedSurveyFixture.Bare)
   )]
-  private static void NotATest() { }
+  private static void NotATest() => PlantedSurveyFixture.Bare();
+
+  /// <summary>A skipped test, hidden from discovery, marking a fixture rule.</summary>
+#pragma warning disable xUnit1000
+  private sealed class SkippedPlants {
+    [Fact(Skip = "a fixture for Survey_counts_no_skipped_test")]
+    [PlantedDefect(
+      typeof(SkippedSurveyFixture),
+      nameof(SkippedSurveyFixture.Rule)
+    )]
+    public void Skipped() => Assert.Empty(SkippedSurveyFixture.Rule());
+  }
+#pragma warning restore xUnit1000
 
   /// <summary>A temporary directory holding empty files, deleted on dispose.</summary>
   private sealed class FixtureDirectory : IDisposable {
@@ -294,4 +328,10 @@ public static class PlantedSurveyFixture {
   /// <summary>A helper marked without a reason.</summary>
   [CheckHelper(" ")]
   public static int Blank => 0;
+}
+
+/// <summary>A check type whose one rule only a skipped test marks.</summary>
+public static class SkippedSurveyFixture {
+  /// <summary>Names nothing.</summary>
+  public static IReadOnlyList<string> Rule() => [];
 }
