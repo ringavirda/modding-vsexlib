@@ -5,6 +5,7 @@
   "structure-misfacing-line": "  {0} у {1} має виходити на {2}",
   "multiblock-incomplete": "Конструкцію не завершено. Бракує або неправильно встановлено блоків: {0}.",
   "multiblock-complete": "Конструкцію завершено!",
+  "ingameerror-construction-onematerial": "Цей етап будується з одного матеріалу: {0} або {1}, не разом.",
   "facing-n": "північ",
   "facing-e": "схід",
   "facing-s": "південь",

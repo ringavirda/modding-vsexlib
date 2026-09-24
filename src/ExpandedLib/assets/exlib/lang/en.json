@@ -5,6 +5,7 @@
   "structure-misfacing-line": "  {0} at {1} must open to the {2}",
   "multiblock-incomplete": "Structure is not complete. {0} blocks are missing or incorrect.",
   "multiblock-complete": "Structure is complete!",
+  "ingameerror-construction-onematerial": "Build this stage from one material: {0} or {1}, not both.",
   "facing-n": "north",
   "facing-e": "east",
   "facing-s": "south",

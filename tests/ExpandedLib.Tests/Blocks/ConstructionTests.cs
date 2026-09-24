@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Blocks;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
@@ -10,8 +12,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Tests <see cref="ExRightClickConstructable.GatesProduction"/> and readiness,
-/// <see cref="ExRccSettings"/>, and <see cref="ConstructedAnimator.IsConstructed"/>.
+/// Tests <see cref="ExRightClickConstructable.GatesProduction"/> and readiness, one material per
+/// stage, <see cref="ExRccSettings"/>, and <see cref="ConstructedAnimator.IsConstructed"/>.
 /// </summary>
 public class ConstructionTests {
   /// <summary>Minimal concrete block entity: only used to host a behavior under test.</summary>
@@ -95,6 +97,171 @@ public class ConstructionTests {
     Assert.Equal(1f, ExRccSettings.BrokenDropsRatio(domain));
     current = 0.25f;
     Assert.Equal(0.25f, ExRccSettings.BrokenDropsRatio(domain));
+  }
+
+  #endregion
+
+  #region One material per stage
+
+  private sealed record Site(
+    TestWorld World,
+    ExRightClickConstructable Behavior,
+    TestPlayer Payer
+  );
+
+  // Stage 1 takes two plates and a rod, each storing metal; stage 2 asks for nothing; stage 3 takes
+  // a rod of the stored metal.
+  private static Site Metalwork(
+    EnumGameMode mode = EnumGameMode.Survival,
+    bool ctrl = false
+  ) {
+    var world = new TestWorld();
+    foreach (string metal in new[] { "iron", "steel" })
+      foreach (string part in new[] { "metalplate", "rod" })
+        world.RegisterItem($"game:{part}-{metal}").VariantStrict["metal"] = metal;
+    var be = new StubBlockEntity {
+      Block = TestBlocks.Configure(new Block(), "stub:metalwork", 5001),
+      Pos = new BlockPos(0, 0, 0, 0),
+    };
+    be.Initialize(world.Api);
+    var behavior = new ExRightClickConstructable(be);
+    JObject properties = new Definitions.ConstructionStages()
+      .Stage(_ => { })
+      .Stage(s => s.RequireMetalPlate("stub", 2).RequireMetalRod("stub", 1))
+      .Stage(s => s.AddElements("Frame"))
+      .Stage(s => s.RequireMetalRod("stub", 1))
+      .Build();
+    behavior.Initialize(world.Api, new JsonObject(properties));
+    TestPlayer payer = world.Player();
+    payer.GameMode = mode;
+    payer.CtrlHeld = ctrl;
+    return new Site(world, behavior, payer);
+  }
+
+  private static void Offer(Site site, params string[] stacks) {
+    for (int i = 0; i < site.Payer.Hotbar.Count; i++)
+      site.Payer.Hotbar[i].Itemstack =
+        i < stacks.Length
+          ? new ItemStack(
+            site.World.GetItem(new AssetLocation(stacks[i].Split(' ')[0])),
+            int.Parse(stacks[i].Split(' ')[1])
+          )
+          : null;
+  }
+
+  /// <summary>Right-clicks the construction and returns its completed stage.</summary>
+  private static int Interact(Site site) {
+    EnumHandling handling = EnumHandling.PassThrough;
+    site.Behavior.OnBlockInteractStart(
+      site.World.World,
+      site.Payer.Player,
+      new BlockSelection { Position = new BlockPos(0, 0, 0, 0) },
+      ref handling
+    );
+    return (int)
+      ReflectionHelpers.GetField(Rcc(site.Behavior), "CurrentCompletedStage")!;
+  }
+
+  private static object Rcc(ExRightClickConstructable behavior) =>
+    ReflectionHelpers.GetField(behavior, "rcc")!;
+
+  private static string? StoredMetal(ExRightClickConstructable behavior) =>
+    (
+      (Dictionary<string, string>)
+        ReflectionHelpers.GetField(Rcc(behavior), "StoredWildCards")!
+    ).GetValueOrDefault("metal");
+
+  private static int Held(Site site) => site.Payer.Hotbar.Sum(s => s.StackSize);
+
+  // Fails when the constructable admits a stored key in two variants inside the stage that stores
+  // it: the plates are then taken as steel and iron.
+  [Fact]
+  public void A_stage_refuses_one_ingredient_paid_in_two_metals() {
+    Site site = Metalwork();
+    Offer(
+      site,
+      "game:metalplate-steel 1",
+      "game:metalplate-iron 1",
+      "game:rod-iron 1"
+    );
+
+    Assert.Equal(0, Interact(site));
+    Assert.Equal(3, Held(site));
+    Assert.Null(StoredMetal(site.Behavior));
+  }
+
+  // Fails when the constructable admits a stored key in two variants inside the stage that stores
+  // it: the plates are then taken as iron and the rod as steel.
+  [Fact]
+  public void A_stage_refuses_two_ingredients_paid_in_two_metals() {
+    Site site = Metalwork();
+    Offer(site, "game:metalplate-iron 2", "game:rod-steel 1");
+
+    Assert.Equal(0, Interact(site));
+    Assert.Equal(3, Held(site));
+  }
+
+  // Fails when a second slot of the metal already taken counts as a second metal.
+  [Fact]
+  public void A_stage_paid_in_one_metal_takes_it_and_stores_it() {
+    Site site = Metalwork();
+    Offer(
+      site,
+      "game:metalplate-iron 1",
+      "game:metalplate-iron 1",
+      "game:rod-iron 1"
+    );
+
+    Assert.Equal(1, Interact(site));
+    Assert.Equal(0, Held(site));
+    Assert.Equal("iron", StoredMetal(site.Behavior));
+  }
+
+  // Fails when a creative player without Ctrl is let through as one holding it.
+  [Fact]
+  public void A_creative_player_without_ctrl_is_refused_two_metals() {
+    Site site = Metalwork(EnumGameMode.Creative);
+    Offer(site, "game:metalplate-iron 2", "game:rod-steel 1");
+
+    Assert.Equal(0, Interact(site));
+    Assert.Equal(3, Held(site));
+  }
+
+  // Fails when a creative player holding Ctrl is refused: the game charges that player nothing.
+  [Fact]
+  public void A_creative_player_holding_ctrl_builds_without_paying() {
+    Site site = Metalwork(EnumGameMode.Creative, ctrl: true);
+    Offer(site, "game:metalplate-iron 2", "game:rod-steel 1");
+
+    Assert.Equal(1, Interact(site));
+    Assert.Equal(3, Held(site));
+    Assert.Equal("iron", StoredMetal(site.Behavior));
+  }
+
+  // Fails when a stage asking for nothing is read for ingredients: its null list throws.
+  [Fact]
+  public void A_stage_asking_for_nothing_is_built_whatever_the_hotbar_holds() {
+    Site site = Metalwork();
+    Offer(site, "game:metalplate-iron 2", "game:rod-iron 1");
+    Assert.Equal(1, Interact(site));
+    Offer(site, "game:metalplate-iron 1", "game:metalplate-steel 1");
+
+    Assert.Equal(2, Interact(site));
+  }
+
+  // Fails when a complete construction reads the stage past its last: the index is out of range.
+  [Fact]
+  public void A_complete_construction_takes_nothing_more() {
+    Site site = Metalwork();
+    Offer(site, "game:metalplate-iron 2", "game:rod-iron 1");
+    Interact(site);
+    Interact(site);
+    Offer(site, "game:rod-iron 1");
+    Assert.Equal(3, Interact(site));
+    Offer(site, "game:rod-iron 1");
+
+    Assert.Equal(3, Interact(site));
+    Assert.Equal(1, Held(site));
   }
 
   #endregion

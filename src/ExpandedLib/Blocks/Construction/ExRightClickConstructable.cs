@@ -8,6 +8,7 @@ namespace ExpandedLib.Blocks;
 
 #if GAME_GE_1_22
 using System;
+using System.Collections.Generic;
 using Vintagestory.API.Datastructures;
 using Vintagestory.GameContent;
 
@@ -36,10 +37,50 @@ public class ExRightClickConstructable(BlockEntity blockentity)
   /// property (default true).</summary>
   public bool GatesProduction { get; private set; } = true;
 
+  /// <summary>Reads <c>gatesProduction</c> and makes every stage refuse a payment that pays a
+  /// stored wildcard key in two variants inside the stage that stores it.</summary>
   public override void Initialize(ICoreAPI api, JsonObject properties)
   {
     base.Initialize(api, properties);
     GatesProduction = properties["gatesProduction"].AsBool(true);
+    OnAttemptConstruct = AdmitsOneMaterial;
+  }
+
+  private bool AdmitsOneMaterial(IPlayer byPlayer, BlockSelection blockSel)
+  {
+    if (rcc.CurrentCompletedStage >= rcc.Stages.Length - 1)
+      return true;
+    if (
+      byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative
+      && byPlayer.Entity.Controls.CtrlKey
+    )
+      return true;
+    ConstructionIngredient[]? required = rcc.Stages[
+      rcc.CurrentCompletedStage + 1
+    ].RequireStacks;
+    if (required == null)
+      return true;
+    var ingredients = new List<(CraftingRecipeIngredient, string?)>();
+    foreach (ConstructionIngredient ingredient in required)
+    {
+      if (ingredient.StoreWildCard == null)
+        continue;
+      ConstructionIngredient filled = ingredient.Clone();
+      foreach ((string key, string value) in rcc.StoredWildCards)
+        filled.FillPlaceHolder(key, value);
+      filled.Resolve(Api.World, "construction stage of " + Block.Code);
+      ingredients.Add((filled, filled.StoreWildCard));
+    }
+    if (
+      ConstructionPayment.MixedVariant(
+        ingredients,
+        byPlayer.InventoryManager.GetHotbarInventory()
+      )
+      is not { } mixed
+    )
+      return true;
+    ConstructionPayment.Refuse(Api, this, mixed);
+    return false;
   }
 
   /// <summary>Ready once construction is complete, or always when <see cref="GatesProduction"/>

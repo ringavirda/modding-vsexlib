@@ -2,6 +2,7 @@
 #if !GAME_GE_1_22
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -148,6 +149,18 @@ public class ExRightClickConstruction {
         ) && !ing.IsWildCard
       )
         return false;
+    }
+
+    if (
+      !creativeInstant
+      && ConstructionPayment.MixedVariant(
+        remaining.Select(i => ((CraftingRecipeIngredient)i, i.StoreWildCard)),
+        hotbar
+      )
+        is { } mixed
+    ) {
+      ConstructionPayment.Refuse(api, this, mixed);
+      return false;
     }
 
     foreach (var slot in hotbar) {

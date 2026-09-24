@@ -68,7 +68,10 @@ storing that key at it. So store a key on one paid stage and have later stages t
 value as a `{key}` placeholder, as vanilla's waterwheel does with `plank-{wood}`: the player pays
 the first stage in the material of his choice, later stages accept only that material, and the
 refund is exact. A `{key}` cannot be read in the stage that stores the key, since a stage is paid
-at once. The definition builder's `RequireMetalPlate`, `RequireMetalRod` and `RequireMetalNails`
+at once; instead `ExRightClickConstructable` refuses a payment that would take the key in two
+variants inside that stage, iron plates with steel rods say, and tells the player to build the
+stage from one material. A creative player holding Ctrl pays nothing and is not refused. The
+definition builder's `RequireMetalPlate`, `RequireMetalRod` and `RequireMetalNails`
 do this for `metal`: the first paid stage asking for metal stores it, iron or steel, and every
 later one asks for `{metal}`.
 
