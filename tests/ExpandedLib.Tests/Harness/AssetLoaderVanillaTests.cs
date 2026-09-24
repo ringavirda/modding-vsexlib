@@ -41,6 +41,26 @@ public class AssetLoaderVanillaTests : IDisposable {
     );
   }
 
+  // Fails when a vanilla system starts throwing against the loader's API, or stops: a class it
+  // registers below the throw would be lost unseen.
+  [Fact]
+  public void The_vanilla_systems_passed_over_are_the_known_four() {
+    WriteContentMod("passedover");
+    using var world = new TestWorld();
+
+    world.LoadAssets(_modPath);
+
+    Assert.Equal(
+      [
+        "Vintagestory.GameContent.ModSystemEntityOwnership",
+        "Vintagestory.GameContent.ModSystemOreMap",
+        "Vintagestory.GameContent.RecipeRegistrySystem",
+        "Vintagestory.GameContent.StoryStructuresSpawnConditions",
+      ],
+      world.PassedOverVanillaSystems.Order()
+    );
+  }
+
   // Fails when the loader's API logs anywhere but the world's Log, so an unknown class goes unseen.
   [Fact]
   public void A_block_naming_an_unregistered_class_still_logs_its_error() {

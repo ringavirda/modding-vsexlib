@@ -91,7 +91,7 @@ public sealed partial class TestWorld {
       mgr,
       out ClassRegistry rawClassRegistry
     );
-    StartVanillaMods(gamePath, rawClassRegistry);
+    PassedOverVanillaSystems = StartVanillaMods(gamePath, rawClassRegistry);
     var started = new List<ModSystem>();
     try {
       StartExlib(loaderApi, started);
@@ -107,6 +107,13 @@ public sealed partial class TestWorld {
   /// <summary>The mod systems the last <see cref="LoadAssets"/> started, exlib's then the mod's, in
   /// start order; every one was disposed, the mod's first, before it returned.</summary>
   internal IReadOnlyList<ModSystem> LoadedSystems { get; private set; } = [];
+
+  /// <summary>The full names of the install's vanilla mod systems whose <c>Start</c> threw against
+  /// the last <see cref="LoadAssets"/>'s class-registration API, in start order.</summary>
+  internal IReadOnlyList<string> PassedOverVanillaSystems {
+    get;
+    private set;
+  } = [];
 
   // Lists each system in started before its Start: the game keeps a system whose Start throws and
   // disposes it with the rest.
@@ -323,10 +330,16 @@ public sealed partial class TestWorld {
   /// <c>Mods/</c> folder, in the game's execute order, against an API whose only effect is class
   /// registration into <paramref name="registry"/>. A system whose <c>Start</c> throws against that
   /// API is passed over; what it registered before throwing stays.</summary>
-  private static void StartVanillaMods(string gamePath, ClassRegistry registry) {
+  /// <returns>The full names of the systems passed over; empty when the install has no
+  /// <c>Mods/</c> folder.</returns>
+  private static List<string> StartVanillaMods(
+    string gamePath,
+    ClassRegistry registry
+  ) {
+    var passedOver = new List<string>();
     string modsPath = Path.Combine(gamePath, "Mods");
     if (!Directory.Exists(modsPath))
-      return;
+      return passedOver;
     var api = Substitute.For<ICoreServerAPI>();
     ((ICoreAPI)api).Side.Returns(EnumAppSide.Server);
     ForwardClassRegistrations(api, registry);
@@ -354,8 +367,11 @@ public sealed partial class TestWorld {
     ) {
       try {
         system.Start(api);
-      } catch (Exception) { }
+      } catch (Exception) {
+        passedOver.Add(system.GetType().FullName!);
+      }
     }
+    return passedOver;
   }
 
   /// <summary>Runs <see cref="Registries.ExModuleModSystem.StartPre"/>, then the <c>Start</c> of
