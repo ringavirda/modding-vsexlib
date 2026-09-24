@@ -45,4 +45,38 @@ public class PressureVesselGateTests {
 
     Assert.Equal(0, PressureVesselGate.RivetsRequired(bunker, Rivet));
   }
+
+  // Fails when NailedIngredients stops naming a nails ingredient in a later stage.
+  [Fact]
+  [PlantedDefect(
+    typeof(PressureVesselGate),
+    nameof(PressureVesselGate.NailedIngredients)
+  )]
+  public void Nails_asked_for_in_a_later_stage_are_reported() {
+    ExBlockDef boiler = ExBlockDef
+      .Create("exlibtest", "boiler")
+      .Construction(c =>
+        c.Stage(s => s.RequireRivets("exlibtest", Rivet, 3))
+          .Stage(s => s.RequireMetalNails("exlibtest", 2))
+      );
+
+    Assert.Equal(
+      ["metalnailsandstrips-*"],
+      PressureVesselGate.NailedIngredients(boiler)
+    );
+  }
+
+  [Fact]
+  public void A_riveted_build_has_no_nailed_ingredient() {
+    ExBlockDef boiler = ExBlockDef
+      .Create("exlibtest", "boiler")
+      .Construction(c =>
+        c.Stage(s =>
+          s.RequireRivets("exlibtest", Rivet, 3)
+            .RequireMetalPlate("exlibtest", 2)
+        )
+      );
+
+    Assert.Empty(PressureVesselGate.NailedIngredients(boiler));
+  }
 }
