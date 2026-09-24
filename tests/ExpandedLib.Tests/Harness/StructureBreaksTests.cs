@@ -195,6 +195,7 @@ public class StructureBreaksTests
 
   // Fails when InScope reads only the plain attributes.
   [Fact]
+  [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.InScope))]
   public void InScope_reads_filler_offsets_by_type()
   {
     ExBlockDef byType = ExBlockDef
@@ -203,6 +204,23 @@ public class StructureBreaksTests
       .FillerOffsetsByType("*-n", TwoCells);
 
     Assert.True(StructureBreaks.InScope(byType));
+  }
+
+  // Fails when InScope stops reading construction stages.
+  [Fact]
+  [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.InScope))]
+  public void InScope_reads_construction_stages()
+  {
+    ExBlockDef staged = ExBlockDef
+      .Create("test", "staged")
+      .Construction(c => c.Stage(s => s.AddElements("Root")));
+
+    Assert.True(StructureBreaks.InScope(staged));
+  }
+
+  [Fact]
+  public void A_definition_with_neither_is_out_of_scope()
+  {
     Assert.False(StructureBreaks.InScope(ExBlockDef.Create("test", "plain")));
   }
 

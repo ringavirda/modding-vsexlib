@@ -10,18 +10,9 @@ using Xunit.Abstractions;
 namespace ExpandedLib.Tests;
 
 /// <summary>Every public static member of a check type, in <c>ExpandedLib.Testing/Checks</c> and
-/// every <c>*Check.Run</c> in <c>ExpandedLib/Checks</c>, is proven by a planted-defect test, marked
-/// a helper, or pending.</summary>
+/// every <c>*Check.Run</c> in <c>ExpandedLib/Checks</c>, is proven by a planted-defect test or
+/// marked a helper.</summary>
 public class ChecksProveThemselvesTests(ITestOutputHelper output) {
-  /// <summary>Members with no planted-defect test yet, in file order.</summary>
-  private static readonly string[] Pending =
-  [
-#if GAME_GE_1_22
-    "StructureBreaks.InScope",
-#endif
-    "TreeKeys.AssertGolden",
-  ];
-
   /// <summary>Census line, and why it stands.</summary>
   private static readonly Dictionary<string, string> Allowed = new(
     StringComparer.Ordinal
@@ -48,22 +39,20 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
       "Run"
     );
 
-  // Fails when a check member gains no planted test, helper mark or pending entry, or a pending
-  // member gains a planted test and stays listed.
+  // Fails when a check member gains neither a planted test nor a helper mark.
   [Fact]
-  public void Every_check_member_is_proven_a_helper_or_pending() {
+  public void Every_check_member_is_proven_or_a_helper() {
     PlantedDefects.Census testing = Testing(),
       runs = Runs();
     output.WriteLine(
       $"covered {testing.Proven.Count + runs.Proven.Count}, "
-        + $"exempt {testing.Helpers.Count + runs.Helpers.Count}, "
-        + $"pending {Pending.Length}"
+        + $"exempt {testing.Helpers.Count + runs.Helpers.Count}"
     );
 
     FindingLists.Assert(
       [.. testing.Unplanted, .. runs.Unplanted],
       Allowed,
-      Pending.ToDictionary(p => p, _ => "no planted-defect test yet")
+      new Dictionary<string, string>()
     );
   }
 
