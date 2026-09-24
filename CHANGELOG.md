@@ -9,6 +9,8 @@ see the git history.
 
 ### Added
 
+- **`AnimatorClips`** (ExpandedLib.Testing): every clip in a shipped shape ends in `Repeat` or
+  `Hold`; a clip that ends leaves a block drawn only through its animator without a mesh.
 - **`CommentStyle` and `ShapeTextures`** (ExpandedLib.Testing): the comment style rules and the
   shipped-shape editor-path rule, which exlib, iiex and siex each kept a copy of, are checks a
   suite's guard calls: `CommentStyle` takes the sources `CommentStyle.Sources` reads from a list of
