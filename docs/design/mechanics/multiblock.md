@@ -396,7 +396,7 @@ invisible. Everything else it does is rerouting to the principal:
 |---|---|
 | interact start/step/stop | to the principal, cell-aware via `IFillerInteractionTarget` |
 | interaction help | the principal's, cell-aware via `IFillerInteractionTarget.GetFillerInteractionHelp` |
-| getting broken / broken | to the principal (breaking any cell breaks the whole machine); the cell clears itself if the principal's break left it |
+| getting broken / broken | to the principal (breaking any cell breaks the whole machine); the cell clears itself if the principal's break left it, unless that break handed the cell to a filler of another principal |
 | drops | always `[]` - the principal owns all drops |
 | pick block | the principal's `OnPickBlock` |
 | look-at info | the principal's `GetPlacedBlockInfo`, and the BE's `GetBlockInfo` (`BlockEntityStructureFiller.GetBlockInfo`) |

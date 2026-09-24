@@ -324,8 +324,16 @@ public partial class BlockStructureFiller
     }
     pb.OnBlockBroken(world, pp, byPlayer, dropQuantityMultiplier);
 
-    // Removes this cell in case the principal's break did not clear it.
-    if (world.BlockAccessor.GetBlock(pos).Id == BlockId)
+    // Removes this cell in case the principal's break did not clear it, unless the break handed the
+    // cell to a filler of another principal.
+    if (
+      world.BlockAccessor.GetBlock(pos).Id == BlockId
+      && (
+        world.BlockAccessor.GetBlockEntity(pos)
+          is not BlockEntityStructureFiller { Principal: { } now }
+        || now.Equals(pp)
+      )
+    )
       world.BlockAccessor.SetBlock(0, pos);
   }
 
