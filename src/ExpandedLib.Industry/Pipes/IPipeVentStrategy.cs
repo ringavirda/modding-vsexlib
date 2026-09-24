@@ -7,9 +7,8 @@ namespace ExpandedLib.Industry.Pipes;
 
 /// <summary>
 /// Optional per-network strategy for gas vents: open connectors that draw gas away as a sink,
-/// not a leak. The content mod supplies an instance through the network factory, or per node
-/// block through <see cref="IPipeVentSource"/>; a node with neither vents nothing, and its faces
-/// open to air leak.
+/// not a leak. Supplied through the network factory or a node block's
+/// <see cref="IPipeVentSource"/>; a node with neither vents nothing.
 /// </summary>
 public interface IPipeVentStrategy {
   /// <summary>
