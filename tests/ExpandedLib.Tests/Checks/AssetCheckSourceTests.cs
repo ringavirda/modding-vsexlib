@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.GameContent;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -108,6 +109,53 @@ public class AssetCheckSourceTests {
       ProcessJobRegistry.ResetForWorld();
       ProcessRouteRegistry.ResetForWorld();
     }
+  }
+
+  // Fails when RecipeOutputs stops reading any one of the six recipe registries' outputs.
+  [Fact]
+  public void RecipeOutputs_names_what_the_recipe_registries_make() {
+    using var world = new TestWorld();
+    JsonItemStack Out(string code) =>
+      new() { Type = EnumItemClass.Item, Code = new AssetLocation(code) };
+    var registry = new RecipeRegistrySystem();
+    registry.CookingRecipes.Add(
+      new CookingRecipe { CooksInto = Out("dependent:cooked") }
+    );
+    registry.BarrelRecipes.Add(
+      new BarrelRecipe {
+        Output = new BarrelOutputStack {
+          Type = EnumItemClass.Item,
+          Code = new AssetLocation("dependent:soaked"),
+        },
+      }
+    );
+    registry.MetalAlloys.Add(
+      new AlloyRecipe { Output = Out("dependent:alloyed") }
+    );
+    registry.SmithingRecipes.Add(
+      new SmithingRecipe { Output = Out("dependent:smithed") }
+    );
+    registry.KnappingRecipes.Add(
+      new KnappingRecipe { Output = Out("dependent:knapped") }
+    );
+    registry.ClayFormingRecipes.Add(
+      new ClayFormingRecipe { Output = Out("dependent:formed") }
+    );
+    world.Mods.Register(registry);
+
+    Assert.Equal(
+      [
+        "cooking dependent:cooked",
+        "barrel dependent:soaked",
+        "alloy dependent:alloyed",
+        "smithing dependent:smithed",
+        "knapping dependent:knapped",
+        "clayforming dependent:formed",
+      ],
+      new AssetCheckSource(world.Api).RecipeOutputs.Select(o =>
+        $"{o.Registry} {o.Code}"
+      )
+    );
   }
 
   // Fails when an asset whose data the server unloaded stops loading again from its origin.
