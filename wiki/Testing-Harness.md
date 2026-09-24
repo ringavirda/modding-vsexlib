@@ -362,7 +362,7 @@ work, and a footprint of cells around it that all have to hold the right blocks 
 makes it the hardest thing on this page to stand up in a test, and the easiest to fake.
 
 A `BlockEntityMultiblockStructure` only runs its production tick while `StructureComplete` is true, and
-that flag is set by the machine's own monitor tick when vanilla's `InCompleteBlockCount` reaches zero.
+that flag is set by the machine's own monitor tick when its `IncompleteBlockCount` reaches zero.
 The tempting shortcut is to force it:
 
 ```csharp
@@ -380,13 +380,18 @@ rig.Occupy(rig.Cell(0, 1, -1), tuyereBlock, new BlockEntityTuyere());  // cells 
 rig.Complete();   // fill the rest, Initialize, and wait for the machine's own monitor tick
 ```
 
-- The layout comes from the anchor's **code-first `ExBlockDef`**, so re-authoring a footprint moves its
-  tests with it. `Around` also attaches the def's `attributes` to the placed block, which is what lets
-  the production `UpdateStructureRotation` find the layout (a `TestBlocks.Configure` block has none).
-- `angle` must be the angle the machine derives from its own variant (north 0, west 90, south 180,
-  east 270, plus any per-machine offset - the Bessemer control and cowper stove use `angle + 180`).
-  A wrong angle is not tolerated: the cells land where the machine isn't looking and `Complete` throws
-  with a per-cell breakdown of what each unsatisfied cell wants and what it holds.
+- `Around` attaches the anchor's **code-first `ExBlockDef`** `attributes` to the placed block, which is
+  what lets the production `UpdateStructureRotation` find the layout (a `TestBlocks.Configure` block
+  has none). For a block defined in JSON, `Around(world, anchor, angle)` reads the layout the block
+  already carries.
+- `Raise()` fills the cells the machine itself reports missing (`IncompleteBlockCount`), so the rig and
+  the machine cannot disagree about the demand; a cell the machine's connector table gives an outward
+  face gets a network stand-in open that way. `Missing`, `MissingReport` and the message `Complete`
+  throws with come from the same report.
+- `angle` must be the angle the machine turns its layout to (north 0, west 90, south 180, east 270,
+  plus any per-machine offset - the Bessemer control and cowper stove use `angle + 180`). `Around`
+  throws when the machine turns its layout another way. `Cells` and `Cell` lay the authored layout
+  out at that angle.
 - `Raise()` fills only **empty** cells. A cell you placed yourself is never replaced, even if it does
   not satisfy the layout - otherwise a fixture could put its tuyere one cell out and still complete,
   orphaning the block it goes on to assert against. Air-satisfied cells (`@(air|coalpile)` shafts) are

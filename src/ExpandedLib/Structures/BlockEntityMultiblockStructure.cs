@@ -44,6 +44,15 @@ public abstract class BlockEntityMultiblockStructure
   /// <summary>The layout's connector demands as last loaded, authored in the north frame;
   /// <see cref="MultiblockConnectors.None"/> before the structure loads.</summary>
   internal MultiblockConnectors Connectors => _connectors;
+
+  /// <summary>The angle, in degrees, the layout is turned to (<c>InitForUse</c>'s argument),
+  /// loading the structure first when it is not loaded.</summary>
+  internal int LayoutAngle {
+    get {
+      EnsureStructureLoaded();
+      return _structureInitAngle;
+    }
+  }
   private long _completionTickId;
 
   /// <summary>Whether every block of the multiblock structure is currently in place.</summary>

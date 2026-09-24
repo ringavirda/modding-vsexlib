@@ -170,6 +170,10 @@ see the git history.
 
 ### Changed
 
+- `StructureRig` (ExpandedLib.Testing) raises the cells the anchor reports missing, and `Missing`,
+  `MissingReport` and `Complete`'s message come from the anchor's report. `Around` throws
+  `InvalidOperationException` when the anchor turns its layout to another angle than the one
+  given, and a new `Around(world, anchor, angle)` rigs a block that carries its layout in JSON.
 - `BlockEntityMultiblockStructure.IncompleteBlockCount` and `CompletionTickMs` are `protected
   internal`. A subclass that overrides `CompletionTickMs` from another assembly keeps writing
   `protected override`.

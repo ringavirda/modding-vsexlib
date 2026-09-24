@@ -659,18 +659,24 @@ bottom-to-top in +Y.
 ```csharp
 public sealed class StructureRig
 {
-    public static StructureRig Around(TestWorld world, BlockEntityMultiblockStructure anchor, ExBlockDef def, int angle);
+    public static StructureRig Around(TestWorld world, BlockEntityMultiblockStructure anchor, ExBlockDef def, int angle = 0);
+    public static StructureRig Around(TestWorld world, BlockEntityMultiblockStructure anchor, int angle = 0);
     public BlockPos Cell(int x, int y, int z);
     public void Occupy(BlockPos pos, Block block, BlockEntity? be = null);
     public void Complete();
-    public void Raise();                    // fills only empty cells, then Complete()
-    public bool AwaitCompletion(float ceilingSeconds = 5f);
-    public IReadOnlyList<string> Missing { get; }
+    public void Raise();                    // fills the empty cells the anchor reports missing
+    public bool AwaitCompletion(int maxMonitorTicks = 2);
+    public int Missing { get; }             // the anchor's IncompleteBlockCount
+    public string MissingReport { get; }    // the anchor's missing cells, one line each
 }
 ```
 
+`Around` throws `InvalidOperationException` when the anchor turns its layout to another angle than
+the one given (0 and 360 agree). The overload without a definition reads the layout the anchor's
+block already carries, as a block defined in JSON does.
+
 Stands up a mega-block's multiblock footprint headlessly so its own monitor tick observes
-`InCompleteBlockCount == 0` and sets `StructureComplete` itself, rather than a test forcing the
+`IncompleteBlockCount() == 0` and sets `StructureComplete` itself, rather than a test forcing the
 flag - see [Standing up a mega-block](Testing-Harness#standing-up-a-mega-block-with-structurerig)
 on the Testing Harness page.
 

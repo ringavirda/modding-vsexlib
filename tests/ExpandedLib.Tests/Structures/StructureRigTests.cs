@@ -311,9 +311,11 @@ public class StructureRigTests {
 
   #region Rotation, continued
 
+  // Fails when Around skips the angle check, so a rig laid a quarter-turn out raises the machine's
+  // own cells, or none, without a word.
   [Fact]
-  public void A_structure_raised_at_the_wrong_angle_does_not_complete() {
-    // The machine faces north; the rig lays the footprint a quarter-turn out.
+  public void A_rig_asked_for_another_angle_than_the_machines_throws() {
+    // The machine faces north; the rig is asked for a quarter-turn out.
     var world = new TestWorld();
     var machine = new TestMegablock { Angle = 0 };
     world.Place(
@@ -332,10 +334,23 @@ public class StructureRigTests {
           .At(2, 0, 0, 2)
       );
 
-    StructureRig.Around(world, machine, asymmetric, 90).Raise();
-    world.Initialize(machine);
+    var thrown = Assert.Throws<System.InvalidOperationException>(() =>
+      StructureRig.Around(world, machine, asymmetric, 90)
+    );
+    Assert.Equal(
+      "The rig was asked for angle 90, but TestMegablock at 0, 10, 0 turns its layout to 0.",
+      thrown.Message
+    );
+  }
 
-    Assert.False(machine.StructureComplete);
+  // Fails when the angle check compares raw degrees, so 360 and 0 disagree.
+  [Fact]
+  public void A_full_turn_is_the_machines_own_angle() {
+    var (world, machine) = Stand();
+
+    StructureRig.Around(world, machine, Def(), 360).Complete();
+
+    Assert.True(machine.StructureComplete);
   }
 
   #endregion
@@ -364,6 +379,79 @@ public class StructureRigTests {
     machine.DriveMonitorTick();
 
     Assert.True(machine.StructureComplete);
+  }
+
+  #endregion
+
+  #region Following the machine
+
+  // Fails when Raise fills the rig's own reading of the layout rather than the cells the machine
+  // reports missing.
+  [Fact]
+  public void Raise_follows_the_machine_after_it_turns() {
+    var (world, machine) = Stand();
+    ExBlockDef asymmetric = ExBlockDef
+      .Create("exlib", "testmega")
+      .Multiblock(m =>
+        m.Number("exlib:testmega*", 1)
+          .Number("exlib:testbrick*", 2)
+          .At(0, 0, 0, 1)
+          .At(2, 0, 0, 2)
+      );
+    StructureRig rig = StructureRig.Around(world, machine, asymmetric);
+
+    machine.Angle = 90;
+    machine.ApplyStructureRotation();
+    rig.Complete();
+
+    Assert.True(machine.StructureComplete);
+  }
+
+  #endregion
+
+  #region A block defined in JSON
+
+  // Fails when the definition-less Around refuses a block that carries its layout.
+  [Fact]
+  public void A_block_carrying_its_layout_in_json_is_raised_from_the_machines_report() {
+    var world = new TestWorld();
+    var machine = new TestMegablock { Angle = 90 };
+    Block block = TestBlocks.Configure(new Block(), "exlib:testmega-w", 1);
+    block.Attributes = new Vintagestory.API.Datastructures.JsonObject(
+      Newtonsoft.Json.Linq.JToken.Parse(
+        """
+        { "multiblockStructure": {
+          "blockNumbers": { "exlib:testmega*": 1, "exlib:testbrick*": 2 },
+          "offsets": [ { "x": 0, "y": 0, "z": 0, "w": 1 }, { "x": 2, "y": 0, "z": 0, "w": 2 } ] } }
+        """
+      )
+    );
+    world.Place(new BlockPos(0, 10, 0), block, machine);
+    world.Attach(machine);
+
+    StructureRig rig = StructureRig.Around(world, machine, 90);
+    Assert.Equal(1, rig.Missing);
+    rig.Complete();
+
+    Assert.True(machine.StructureComplete);
+    Assert.Equal(
+      "exlib:testbrickx",
+      world.GetBlock(rig.Cell(2, 0, 0)).Code.ToString()
+    );
+  }
+
+  // Fails when the definition-less Around accepts a block whose attributes hold no layout.
+  [Fact]
+  public void A_block_without_a_layout_in_json_is_rejected() {
+    var (world, machine) = Stand();
+    machine.Block.Attributes = new Vintagestory.API.Datastructures.JsonObject(
+      new Newtonsoft.Json.Linq.JObject()
+    );
+
+    var ex = Assert.Throws<System.InvalidOperationException>(() =>
+      StructureRig.Around(world, machine)
+    );
+    Assert.Contains("multiblockStructure", ex.Message);
   }
 
   #endregion
