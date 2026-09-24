@@ -101,23 +101,10 @@ public class HarnessUseGuards {
   // Fails when a guard in exlib's Invariants names a check in [GuardOf] and never calls it.
   [Fact]
   public void Exlibs_guards_call_the_checks_they_name() {
-    string[] files =
-    [
-      .. Directory
-        .GetFiles(
-          Path.Combine(
-            RepoPaths.Root,
-            "tests",
-            "ExpandedLib.Tests",
-            "Invariants"
-          ),
-          "*.cs"
-        )
-        // This file carries the rule's fixtures as text.
-        .Where(f =>
-          !f.EndsWith("/HarnessUseGuards.cs", StringComparison.Ordinal)
-        ),
-    ];
+    string[] files = Directory.GetFiles(
+      Path.Combine(RepoPaths.Root, "tests", "ExpandedLib.Tests", "Invariants"),
+      "*.cs"
+    );
 
     Assert.Contains(files, f => File.ReadAllText(f).Contains("[GuardOf("));
     IReadOnlyList<string> offenders = HarnessUse.UncalledGuards(files);
@@ -508,6 +495,30 @@ public class HarnessUseGuards {
         HarnessUse.UncalledGuards,
         "[GuardOf(typeof(SoundUse), \"ShortRepeats\")]\npublic class G { }"
       )
+    );
+  }
+
+  // Fails when UncalledGuards counts Type.Member inside a string literal or a nameof as a call, or
+  // reads a mark inside a string literal.
+  [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.UncalledGuards))]
+  public void A_check_named_only_in_a_string_or_a_nameof_is_not_a_call() {
+    Assert.Equal(
+      [
+        ":1: [GuardOf] names SoundUse.DirectSounds, which the file never calls",
+        ":2: [GuardOf] names SoundUse.ShortRepeats, which the file never calls",
+      ],
+      Scan(
+          HarnessUse.UncalledGuards,
+          "[GuardOf(typeof(SoundUse), nameof(SoundUse.DirectSounds))]\n"
+            + "[GuardOf(typeof(SoundUse), nameof(SoundUse.ShortRepeats))]\n"
+            + "public class G {\n"
+            + "  string A = \"SoundUse.DirectSounds(files)\";\n"
+            + "  string B = nameof(SoundUse.ShortRepeats);\n"
+            + "  string C = \"[GuardOf(typeof(SoundUse), nameof(SoundUse.Loops))]\";\n"
+            + "}"
+        )
+        .Select(f => f[f.IndexOf(':')..])
     );
   }
 

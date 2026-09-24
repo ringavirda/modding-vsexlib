@@ -13,8 +13,8 @@ namespace ExpandedLib.Testing;
 /// assembly), a guard never calling a check it names or asserting nothing about its corpus, a
 /// planted-defect test never reaching its member, and a hand-made substitute logger.</summary>
 /// <remarks>Each rule reads C# source text with comments blanked; a <c>//</c> inside a string literal
-/// blanks the rest of its line, except in <see cref="UncalledPlants"/>, which blanks string literals
-/// too.</remarks>
+/// blanks the rest of its line, except in <see cref="UncalledGuards"/> and
+/// <see cref="UncalledPlants"/>, which blank string literals too.</remarks>
 public static class HarnessUse {
   private static readonly Regex ReflectiveWrite = new(
     @"\b(SetProperty|SetField|SetValue)\s*\(|<StructureComplete>k__BackingField",
@@ -69,6 +69,11 @@ public static class HarnessUse {
   private static readonly Regex PlantedDefectMark = new(
     @"\bPlantedDefect\s*\(\s*typeof\s*\(\s*(?<type>[\w.]+)\s*\)\s*,\s*"
       + @"(?:nameof\s*\(\s*(?:[\w.]+\.)?(?<m1>\w+)\s*\)|""(?<m2>\w+)"")\s*\)",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex NameofExpression = new(
+    @"\bnameof\s*\([^()]*\)",
     RegexOptions.Compiled
   );
 
@@ -251,7 +256,9 @@ public static class HarnessUse {
   /// <summary>Every <see cref="GuardOfAttribute"/> in <paramref name="sourceFiles"/> whose file
   /// never writes <c>Type.Member</c> for the check it names, outside the attribute itself.</summary>
   /// <remarks>The member counts as called when <c>Type.Member</c> appears anywhere else in the
-  /// file, a method group included; the type is compared by its last name segment.</remarks>
+  /// file's code, a method group included, but not inside a comment, a string literal or a
+  /// <c>nameof</c>; the type is compared by its last name segment. A mark inside a comment or a
+  /// string literal is not read.</remarks>
   /// <param name="sourceFiles">C# files to read; each is read whole.</param>
   /// <returns>One line per mark, <c>file:line: reason</c>; empty when clean.</returns>
   /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
@@ -261,16 +268,28 @@ public static class HarnessUse {
   ) {
     var offenders = new List<string>();
     foreach (string file in sourceFiles) {
-      string text = Uncommented(File.ReadAllText(file));
-      MatchCollection marks = GuardOfMark.Matches(text);
-      if (marks.Count == 0)
+      string text = File.ReadAllText(file);
+      string code = CodeOnly(text);
+      Match[] marks =
+      [
+        .. GuardOfMark
+          .Matches(text)
+          .Where(m =>
+            string.CompareOrdinal(code, m.Index, "GuardOf", 0, "GuardOf".Length)
+            == 0
+          ),
+      ];
+      if (marks.Length == 0)
         continue;
-      var rest = new StringBuilder(text);
+      var rest = new StringBuilder(code);
       foreach (Match mark in marks)
         for (int i = mark.Index; i < mark.Index + mark.Length; i++)
           if (rest[i] != '\n')
             rest[i] = ' ';
-      string body = rest.ToString();
+      string body = NameofExpression.Replace(
+        rest.ToString(),
+        m => new string(' ', m.Length)
+      );
       foreach (Match mark in marks) {
         string type = mark.Groups["type"].Value.Split('.')[^1];
         string member = mark.Groups["m1"].Success
@@ -342,6 +361,8 @@ public static class HarnessUse {
 
   /// <summary>Every file of <paramref name="guardFiles"/> that never calls <see cref="Premise"/>,
   /// so nothing asserts that the corpus its guard reads is there.</summary>
+  /// <remarks>Reads presence in the file: one <see cref="Premise"/> call anywhere in it passes every
+  /// guard it holds, whatever corpus the call names.</remarks>
   /// <param name="guardFiles">The guard files of a suite's <c>Invariants</c> folder; each is read
   /// whole.</param>
   /// <returns>One line per file, <c>file: reason</c>; empty when clean.</returns>
