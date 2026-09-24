@@ -10,12 +10,15 @@ namespace ExpandedLib.Checks;
 /// <summary>
 /// Checks that a survival player can make what a domain asks of him, one step deep: every recipe
 /// ingredient, every construction stage ingredient and every block a creative tab lists is the
-/// output of a loaded recipe, a smelted, crushed or ground stack, a beehive kiln's firing, the
-/// drop of a block of another type, or a world source vanilla places.
+/// output of a loaded recipe or of exlib's process catalogues, a smelted, crushed or ground stack,
+/// a beehive kiln's firing, the drop of a block of another type, a world source vanilla places, or
+/// a code a mod declares its machines make (<see cref="ExlibChecks.Produces"/>).
 /// </summary>
-/// <remarks>A wildcard is made when one code it matches is. A creative tab is no source: it lists
-/// what a creative player can take. A block's drop of its own type is no source either, since
-/// breaking it needs it first. Nothing is followed further back than the one step.</remarks>
+/// <remarks>A wildcard is made when one code it matches is. A block a creative tab lists is made
+/// when any block of its type is, so one crafted orientation or shape covers the rest. A creative
+/// tab is no source: it lists what a creative player can take. A block's drop of its own type is no
+/// source either, since breaking it needs it first. Nothing is followed further back than the one
+/// step.</remarks>
 public static class ObtainabilityCheck {
   /// <summary>Every ingredient and creative-listed block of <paramref name="domain"/> that nothing
   /// makes.</summary>
@@ -23,11 +26,17 @@ public static class ObtainabilityCheck {
   /// makes.</param>
   /// <param name="domain">The domain whose ingredients and blocks are checked.</param>
   /// <returns>The check's <see cref="CheckResult"/>, named <c>Obtainability</c>, one error per
-  /// distinct code nothing makes, naming where it is asked for; no errors when none.</returns>
+  /// distinct code nothing makes, naming where it is asked for, and one per declaration of
+  /// <paramref name="domain"/> that matches no loaded block or item; no errors when none.</returns>
   public static CheckResult Run(ILoadedGame game, string domain) {
     CollectibleObject[] loaded = [.. game.Collectibles];
     var made = new Made(loaded, game.RecipeOutputs);
     var errors = new List<string>();
+    foreach (ExlibChecks.Declaration declared in ExlibChecks.Produced())
+      if (!made.Declare(loaded, declared.Code) && declared.Domain == domain)
+        errors.Add(
+          $"{declared.Code} (made by {declared.Source}): matches no loaded block or item"
+        );
     foreach (
       Reference r in InRecipes(game, domain)
         .Where(r => r.Origin == Origin.RecipeIngredient)
@@ -40,15 +49,26 @@ public static class ObtainabilityCheck {
     )
       if (!made.Makes(r.IsBlock, r.Code))
         errors.Add($"{r}: nothing makes it");
+    CollectibleObject[] own =
+    [
+      .. loaded.Where(c =>
+        c.ItemClass == EnumItemClass.Block && c.Code.Domain == domain
+      ),
+    ];
+    ILookup<string, CollectibleObject> byType = own.ToLookup(TypeOf);
+    var typeMade = new Dictionary<string, bool>(StringComparer.Ordinal);
     foreach (
-      CollectibleObject block in loaded.Where(c =>
-        c.ItemClass == EnumItemClass.Block
-        && c.Code.Domain == domain
-        && c.CreativeInventoryTabs is { Length: > 0 }
+      CollectibleObject block in own.Where(c =>
+        c.CreativeInventoryTabs is { Length: > 0 }
       )
-    )
-      if (!made.Makes(true, block.Code.ToString()))
+    ) {
+      string type = TypeOf(block);
+      if (!typeMade.TryGetValue(type, out bool any))
+        typeMade[type] = any = byType[type]
+          .Any(b => made.Makes(true, b.Code.ToString()));
+      if (!any)
         errors.Add($"{block.Code} (block, creative tab): nothing makes it");
+    }
     return new CheckResult("Obtainability", domain, errors);
   }
 
@@ -58,7 +78,8 @@ public static class ObtainabilityCheck {
     EnumItemClass Type,
     string Pattern,
     string Source
-  )> WorldSources() => [];
+  )> WorldSources() =>
+    [(EnumItemClass.Block, "game:gravel-*", "worldgen, dug where it lies")];
 
   /// <summary>The type code a loaded collectible's variant states were appended to, one
   /// <c>-state</c> per variant group in group order.</summary>
@@ -95,10 +116,10 @@ public static class ObtainabilityCheck {
         Add(c.GrindingProps?.GroundStack);
         if (c.Attributes?["beehivekiln"] is { Exists: true } kiln)
           foreach (
-            JsonItemStack? fired in kiln
-              .AsObject<Dictionary<string, JsonItemStack?>>(null)
-              ?.Values
-            ?? Enumerable.Empty<JsonItemStack?>()
+            JsonItemStack? fired in kiln.AsObject<
+              Dictionary<string, JsonItemStack?>
+            >(null)?.Values
+              ?? Enumerable.Empty<JsonItemStack?>()
           )
             Add(fired);
         if (c is not Block block || block.Drops == null)
@@ -108,12 +129,37 @@ public static class ObtainabilityCheck {
           if (
             drop?.Code != null
             && drop.Code.ToString() != type
-            && !drop.Code.ToString().StartsWith(type + "-", StringComparison.Ordinal)
+            && !drop
+              .Code.ToString()
+              .StartsWith(type + "-", StringComparison.Ordinal)
           )
             Add(drop.Type, drop.Code);
       }
       foreach ((EnumItemClass type, string pattern, _) in WorldSources())
         Add(type, new AssetLocation(pattern));
+    }
+
+    // Adds every loaded collectible code matches, of either class; false when it matches none.
+    internal bool Declare(IEnumerable<CollectibleObject> loaded, string code) {
+      var pattern = new AssetLocation(code);
+      int wild = pattern.Path.IndexOfAny(Wild);
+      string prefix =
+        pattern.Domain + ":" + (wild < 0 ? pattern.Path : pattern.Path[..wild]);
+      bool any = false;
+      foreach (
+        CollectibleObject c in loaded.Where(c =>
+          c.Code.ToString().StartsWith(prefix, StringComparison.Ordinal)
+        )
+      )
+        if (
+          wild < 0
+            ? c.Code.ToString() == pattern.ToString()
+            : WildcardUtil.Match(pattern, c.Code)
+        ) {
+          Add(c.ItemClass, c.Code);
+          any = true;
+        }
+      return any;
     }
 
     private void Add(JsonItemStack? stack) {

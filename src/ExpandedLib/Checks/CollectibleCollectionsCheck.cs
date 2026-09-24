@@ -26,7 +26,9 @@ public static class CollectibleCollectionsCheck {
           $"{c.Code}: CreativeInventoryTabs is null, which looking at a mount dereferences"
         );
       if (c.ItemClass == EnumItemClass.Block && c.Variant == null)
-        errors.Add($"{c.Code}: Variant is null, which the snowball system dereferences");
+        errors.Add(
+          $"{c.Code}: Variant is null, which the snowball system dereferences"
+        );
     }
     return new CheckResult("CollectibleCollections", domain, errors);
   }

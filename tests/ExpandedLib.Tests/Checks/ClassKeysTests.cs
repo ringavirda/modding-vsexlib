@@ -148,4 +148,20 @@ public class ClassKeysTests {
       source.BlockEntityBehaviorClass("LooseKeyMember")
     );
   }
+
+  // Fails when a key none of the scanned assemblies registers stops falling back to the keys the
+  // install's vanilla systems register, for a block class or a behaviour.
+  [Fact]
+  public void A_vanilla_key_resolves_through_the_installs_registrations() {
+    ICheckSource source = new AssemblyCheckSource(("plantedclasskeys", Here));
+
+    Assert.Equal(
+      typeof(Vintagestory.GameContent.BlockStairs),
+      source.BlockClass("BlockStairs")
+    );
+    Assert.Equal(
+      typeof(Vintagestory.GameContent.Mechanics.BEBehaviorMPAxle),
+      source.BlockEntityBehaviorClass("MPAxle")
+    );
+  }
 }

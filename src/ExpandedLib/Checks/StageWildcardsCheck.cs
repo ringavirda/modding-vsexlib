@@ -158,7 +158,12 @@ public static class StageWildcardsCheck {
     }
 
     foreach (
-      string line in Decide(pattern, ing, key, Catalogue(source, pattern.Domain, catalogue))
+      string line in Decide(
+        pattern,
+        ing,
+        key,
+        Catalogue(source, pattern.Domain, catalogue)
+      )
     )
       yield return line;
   }

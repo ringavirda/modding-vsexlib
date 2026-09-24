@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ExpandedLib.Catalogues;
 using ExpandedLib.Definitions;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -85,13 +86,18 @@ public sealed class AssetCheckSource(ICoreAPI api) : ILoadedGame {
       .Concat(api.World.Items.Where(i => i?.Code != null));
 
   /// <inheritdoc/>
-  /// <remarks>Only the grid recipes when the game runs no <c>RecipeRegistrySystem</c>.</remarks>
+  /// <remarks>The recipe registries yield only the grid recipes when the game runs no
+  /// <c>RecipeRegistrySystem</c>.</remarks>
   public IEnumerable<LoadedOutput> RecipeOutputs {
     get {
+      foreach (LoadedOutput made in Catalogued())
+        yield return made;
       foreach (GridRecipe recipe in api.World.GridRecipes ?? [])
         if (recipe.Output?.Code != null)
           yield return new("grid", recipe.Output.Type, recipe.Output.Code);
-      if (api.ModLoader.GetModSystem<RecipeRegistrySystem>() is not { } registry)
+      if (
+        api.ModLoader.GetModSystem<RecipeRegistrySystem>() is not { } registry
+      )
         yield break;
       foreach (CookingRecipe recipe in registry.CookingRecipes)
         if (Made("cooking", recipe.CooksInto) is { } made)
@@ -112,6 +118,32 @@ public sealed class AssetCheckSource(ICoreAPI api) : ILoadedGame {
         if (Made("clayforming", recipe.Output) is { } made)
           yield return made;
     }
+  }
+
+  // The items exlib's catalogues name as made: each terminal job's output, each stopping point
+  // of a stock route, and each loaded die's job output.
+  private IEnumerable<LoadedOutput> Catalogued() {
+    foreach (string machine in ProcessJobRegistry.Shared.Machines)
+      foreach (ProcessJob job in ProcessJobRegistry.Shared.Jobs(machine))
+        yield return new("processjobs", EnumItemClass.Item, new(job.Output));
+    foreach (string family in ProcessRouteRegistry.Shared.Families)
+      foreach (
+        ProcessStage stage in ProcessRouteRegistry.Shared.Route(family)?.Stages
+          ?? []
+      )
+        if (stage.IsStoppingPoint)
+          yield return new("processroutes", EnumItemClass.Item, new(stage.Code!));
+    foreach (Item item in api.World.Items)
+      if (
+        item?.Code != null
+        && ItemDie.TryParse(
+          item.Attributes?[ItemDie.AttributeKey],
+          out ProcessJobSet? set,
+          out _
+        )
+      )
+        foreach (ProcessJob job in set!.Jobs)
+          yield return new("die", EnumItemClass.Item, new(job.Output));
   }
 
   private static LoadedOutput? Made(string registry, JsonItemStack? stack) =>

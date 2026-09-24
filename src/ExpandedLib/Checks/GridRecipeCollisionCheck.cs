@@ -68,9 +68,7 @@ public static class GridRecipeCollisionCheck {
   ) {
     var errors = new List<string>();
     for (int i = 0; i < own.Count; i++)
-      foreach (
-        Craft other in (withinOwn ? own.Skip(i + 1) : []).Concat(others)
-      )
+      foreach (Craft other in (withinOwn ? own.Skip(i + 1) : []).Concat(others))
         if (Collide(own[i], other))
           errors.Add($"{own[i].Where} and {other.Where} match the same input");
     return errors;
@@ -392,7 +390,9 @@ public static class GridRecipeCollisionCheck {
     slot.Members?.Contains(member)
     ?? (
       (slot.Domain == null || slot.Domain == member.Domain)
-      && (slot.Paths == null || slot.Paths.Any(p => PatternsMeet(p, member.Path)))
+      && (
+        slot.Paths == null || slot.Paths.Any(p => PatternsMeet(p, member.Path))
+      )
     );
 
   /// <summary>Whether some text matches both <paramref name="a"/> and <paramref name="b"/>, each

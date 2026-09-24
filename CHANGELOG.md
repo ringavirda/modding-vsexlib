@@ -9,6 +9,23 @@ see the git history.
 
 ### Added
 
+- **Five loaded checks** run from `/exmod verify`, never at load, over the new `ILoadedGame`
+  (`AssetCheckSource` implements it; `LoadedOutput` is one stack a registry makes).
+  `ObtainabilityCheck`: every recipe ingredient, construction stage ingredient and creative-listed
+  block of a domain is made, one step deep, by a loaded recipe, exlib's process catalogues, a
+  smelted, crushed or ground stack, a beehive kiln firing, another block type's drop, a world source
+  or a mod's declaration; a creative-listed block counts as made when a block of its type is.
+  `VanillaGridCollisionCheck`: no grid recipe matches a vanilla one's input. `GameReferencesCheck`:
+  every `game:` code a domain names is loaded. `LoadedStageWildcardsCheck`: a stored construction
+  wildcard over `game:` codes spans only its key's variant group. `CollectibleCollectionsCheck`: no
+  collectible carries a null `CreativeInventoryTabs`, and no block a null `Variant`.
+  `ExlibChecks.Loaded`, `LoadedFor` and `Verify` run them; `/exmod verify` calls `Verify`. A mod may
+  see new Error lines from `/exmod verify` and `exmod smoke`.
+- **`ExlibChecks.Exempt(domain, rule, code, reason)`** takes a finding a mod ships knowingly out of
+  a check's errors, at load and in verify, into `CheckResult.Exempted`; an exemption that takes no
+  finding is reported. **`ExlibChecks.Produces(domain, code, source)`** declares a code a mod's
+  machine makes, which `ObtainabilityCheck` counts as made; a declaration matching no loaded block
+  or item is reported. Both are dropped when a world starts loading.
 - **Three grid recipe checks** run with the shipped checks, at load and from `/exmod verify`.
   `GridRecipeShapeCheck`: every ingredient key appears in the pattern, every pattern letter has a
   key, the pattern fills its width and height, and the grid is at most 3x3. `GridRecipeCollisionCheck`: no two grid recipes of the domains
@@ -147,6 +164,12 @@ see the git history.
 
 ### Changed
 
+- `GridRecipeCollisionCheck` reads tags from a loaded game on 1.22 and later: an ingredient with
+  tags and no code takes the collectibles its tags meet, not every item of its class. The harness's
+  `ReferencedCodes` reads its references from `GameReferencesCheck`, which now holds the extraction.
+  `ICheckSource` gains `ItemTypes(domain)`, which yields nothing unless implemented. The harness
+  resolves a class or behaviour key no scanned assembly registers through the install's vanilla
+  registrations, so `BlockStairs` orients a grid output test-side as it does in game.
 - `NetworkNodeContractCheck` knows a network node by a `class` key that resolves to a
   `BlockNetworkNode` as well as by an `ExOrientable` declaration in `network` mode, and a membership
   by a key that resolves to a `BEBehaviorNetworkMember` subclass as well as by the bare key; it also
@@ -208,6 +231,9 @@ see the git history.
 
 ### Fixed
 
+- **`/exmod verify` reads code-first recipes and blocktypes.** The server unloads unpatched
+  asset data once the world is up, and a code-first asset's origin loaded nothing back, so every
+  check over them passed with nothing to read. The origin now keeps each asset's bytes.
 - **`RecipeCodesCheck` accepts an output placeholder any state fills.** A `{name}` filled by a
   named ingredient with no `allowedVariants` takes whatever states the loaded game gives, and was
   reported as a code no block has. It now passes when some registered block matches it in any

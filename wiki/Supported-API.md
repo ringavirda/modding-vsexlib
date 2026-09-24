@@ -122,10 +122,12 @@ The guards that catch a dangling block code, a name with no translation, a recip
 
 | Type | What it is for | Page |
 | --- | --- | --- |
-| `ICheckSource` | What a check reads: the codes, files and definitions of one or more domains, from the game's assets or from a repository tree. `BlockTypes(domain)` adds the JSON blocktypes a domain ships and yields nothing unless implemented. | [Checks](Checks) |
-| `AssetCheckSource` | The in-game `ICheckSource`: codes off the live registries, recipes and lang off `ICoreAPI.Assets`, defs off `ExDefinitions`. | [Checks](Checks) |
-| `CheckResult` | One check's findings for one domain: its name, the domain and the error lines found. | [Checks](Checks) |
-| `ExlibChecks` | Runs every content check against one `ICheckSource` (or the live game) and logs the results. | [Checks](Checks) |
+| `ICheckSource` | What a check reads: the codes, files and definitions of one or more domains, from the game's assets or from a repository tree. `BlockTypes(domain)` and `ItemTypes(domain)` add the JSON blocktypes and itemtypes a domain ships and yield nothing unless implemented. | [Checks](Checks) |
+| `ILoadedGame` | The `ICheckSource` a loaded check reads: every registered block and item, what the recipe registries and exlib's process catalogues make, and the collectibles a tag-only ingredient takes. | [Checks](Checks#loaded-checks) |
+| `LoadedOutput` | One stack a loaded recipe registry or exlib process catalogue makes: the registry, block or item, and the code. | [Checks](Checks#loaded-checks) |
+| `AssetCheckSource` | The in-game `ICheckSource` and `ILoadedGame`: codes off the live registries, recipes and lang off `ICoreAPI.Assets`, defs off `ExDefinitions`, collectibles and recipe outputs off the world. | [Checks](Checks) |
+| `CheckResult` | One check's findings for one domain: its name, the domain, the error lines found and the lines an exemption took. | [Checks](Checks) |
+| `ExlibChecks` | Runs every content check against one `ICheckSource` (or the live game), the loaded checks against an `ILoadedGame`, and logs the results; `Exempt` takes a finding a mod ships knowingly out of the errors, and `Produces` declares a code a mod's machine makes. | [Checks](Checks) |
 | `ExCheckRegisterAttribute` | Marks a class exposing `static CheckResult Run(ICheckSource, string)` for automatic registration by `ExCheckRegistry.RegisterAll`, so a mod's own content check runs alongside the twelve shipped ones. | [Checks](Checks) |
 | `ExCheckRegistry` | Reflection-driven registration for a mod's own content checks, the checks-side counterpart to `EntityRegistry`. | [Checks](Checks) |
 | `DefinitionCatalogueCheck` | Checks that every code-first block definition actually produced a registered block. | [Checks](Checks) |
@@ -140,6 +142,11 @@ The guards that catch a dangling block code, a name with no translation, a recip
 | `GridRecipeShapeCheck` | Checks that every grid recipe's ingredient keys and pattern letters match and its grid is at most 3x3. | [Checks](Checks) |
 | `GridRecipeCollisionCheck` | Checks that no two grid recipes of the covered domains match the same input. | [Checks](Checks) |
 | `GridOutputVariantCheck` | Checks that a grid recipe crafting an oriented block names its creative default orientation. | [Checks](Checks) |
+| `ObtainabilityCheck` | Loaded: checks that every recipe ingredient, construction stage ingredient and creative-listed block of a domain is made by something in the loaded game, one step deep. | [Checks](Checks#loaded-checks) |
+| `VanillaGridCollisionCheck` | Loaded: checks that no grid recipe of a domain matches the same input as a vanilla one. | [Checks](Checks#loaded-checks) |
+| `GameReferencesCheck` | Loaded: checks that every `game:` code a domain's recipes, stages and definitions name is a block or item the game loaded. | [Checks](Checks#loaded-checks) |
+| `LoadedStageWildcardsCheck` | Loaded: checks a stored construction wildcard of another domain, such as `game:plank-*`, against the loaded variant groups. | [Checks](Checks#loaded-checks) |
+| `CollectibleCollectionsCheck` | Loaded: checks that no collectible of a domain carries a null collection vanilla dereferences. | [Checks](Checks#loaded-checks) |
 
 ## Writing a block entity and persisting its state
 

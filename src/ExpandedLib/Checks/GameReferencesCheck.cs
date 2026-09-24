@@ -131,7 +131,9 @@ public static class GameReferencesCheck {
       string at = file.ToShortString();
       Dictionary<string, string[]> holes = RecipeHoles(recipe);
 
-      foreach (Reference r in Read(recipe["output"], at, Origin.RecipeOutput, holes))
+      foreach (
+        Reference r in Read(recipe["output"], at, Origin.RecipeOutput, holes)
+      )
         yield return r;
 
       // Grid recipes key ingredients by pattern letter, barrel recipes list them, smithing has one.

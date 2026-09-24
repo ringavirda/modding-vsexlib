@@ -10,11 +10,16 @@ namespace ExpandedLib.Checks;
 /// <see cref="ExpandedLibModSystem.AssetsFinalize"/> calls <see cref="All(ICoreAPI)"/>;
 /// <c>/exmod verify</c> calls <see cref="Verify"/>, which adds the loaded checks. A mod's own
 /// <see cref="ExCheckRegisterAttribute"/>-decorated checks run after the content checks. A finding
-/// a mod exempts with <see cref="Exempt"/> moves from a result's errors to its exempted lines.
+/// a mod exempts with <see cref="Exempt"/> moves from a result's errors to its exempted lines, and
+/// what a mod declares with <see cref="Produces"/> counts as made in every obtainability run.
 /// </summary>
 public static class ExlibChecks {
   // One entry per check; order is the order results and log lines are emitted in.
-  private static readonly System.Func<ICheckSource, string, CheckResult>[] _checks =
+  private static readonly System.Func<
+    ICheckSource,
+    string,
+    CheckResult
+  >[] _checks =
   [
     DefinitionCatalogueCheck.Run,
     LateDefinitionCheck.Run,
@@ -31,7 +36,11 @@ public static class ExlibChecks {
   ];
 
   // The checks that read the loaded game; never run at load, only by Verify.
-  private static readonly System.Func<ILoadedGame, string, CheckResult>[] _loaded =
+  private static readonly System.Func<
+    ILoadedGame,
+    string,
+    CheckResult
+  >[] _loaded =
   [
     ObtainabilityCheck.Run,
     VanillaGridCollisionCheck.Run,
@@ -42,12 +51,17 @@ public static class ExlibChecks {
 
   private static readonly List<Exemption> _exemptions = [];
 
+  private static readonly List<Declaration> _produced = [];
+
   private sealed record Exemption(
     string Domain,
     string Rule,
     string Code,
     string Reason
   );
+
+  /// <summary>One code a mod declared with <see cref="Produces"/>.</summary>
+  internal sealed record Declaration(string Domain, string Code, string Source);
 
   /// <summary>Runs every check against every domain <paramref name="source"/> covers.</summary>
   public static IReadOnlyList<CheckResult> All(ICheckSource source) =>
@@ -80,14 +94,13 @@ public static class ExlibChecks {
   /// or against every domain <paramref name="game"/> covers when it is null.</summary>
   /// <returns>One result per check and domain, then per domain one named <c>Exempt</c> listing
   /// each of its exemptions that matched no finding, the rule it names unknown or not.</returns>
-  public static IReadOnlyList<CheckResult> Verify(ILoadedGame game, string? domain) =>
+  public static IReadOnlyList<CheckResult> Verify(
+    ILoadedGame game,
+    string? domain
+  ) =>
     [
       .. (domain == null ? game.Domains : [domain]).SelectMany(d =>
-        Apply(
-          d,
-          [.. Content(game, d), .. LoadedOnly(game, d)],
-          everyRule: true
-        )
+        Apply(d, [.. Content(game, d), .. LoadedOnly(game, d)], everyRule: true)
       ),
     ];
 
@@ -115,26 +128,66 @@ public static class ExlibChecks {
     string code,
     string reason
   ) {
-    foreach (
-      (string value, string name) in new[]
-      {
-        (domain, nameof(domain)),
-        (rule, nameof(rule)),
-        (code, nameof(code)),
-        (reason, nameof(reason)),
-      }
-    )
-      if (string.IsNullOrEmpty(value))
-        throw new ArgumentException("an exemption names all four", name);
+    Require(
+      "an exemption names all four",
+      (domain, nameof(domain)),
+      (rule, nameof(rule)),
+      (code, nameof(code)),
+      (reason, nameof(reason))
+    );
     var exemption = new Exemption(domain, rule, code, reason);
     if (!_exemptions.Contains(exemption))
       _exemptions.Add(exemption);
   }
 
-  /// <summary>Drops every exemption; run when a world starts loading.</summary>
-  internal static void ClearExemptions() => _exemptions.Clear();
+  /// <summary>Declares that a machine makes <paramref name="code"/>, a code no recipe registry
+  /// or exlib process catalogue names as an output: a machine's product, or a block cast or poured
+  /// in place. <see cref="ObtainabilityCheck"/> counts every loaded block and item it matches as
+  /// made, in every domain's run. Call it from a mod's <c>Start</c>; a world starting to load
+  /// drops every declaration.</summary>
+  /// <param name="domain">The declaring mod's domain, whose obtainability run reports a
+  /// declaration that matches no loaded block or item.</param>
+  /// <param name="code">A domain-qualified code or wildcard, e.g. <c>"iiex:diagram-*"</c>.</param>
+  /// <param name="source">The machine that makes it, named when the declaration is
+  /// reported.</param>
+  /// <exception cref="ArgumentException">An argument is null or empty.</exception>
+  /// <remarks>The same declaration given twice is kept once.</remarks>
+  public static void Produces(string domain, string code, string source) {
+    Require(
+      "a declaration names all three",
+      (domain, nameof(domain)),
+      (code, nameof(code)),
+      (source, nameof(source))
+    );
+    var declaration = new Declaration(domain, code, source);
+    if (!_produced.Contains(declaration))
+      _produced.Add(declaration);
+  }
 
-  private static List<CheckResult> Content(ICheckSource source, string domain) =>
+  /// <summary>Every <see cref="Produces"/> declaration of the current world, in call
+  /// order.</summary>
+  internal static IReadOnlyList<Declaration> Produced() => _produced;
+
+  /// <summary>Drops every exemption and every <see cref="Produces"/> declaration; run when a
+  /// world starts loading.</summary>
+  internal static void ClearDeclarations() {
+    _exemptions.Clear();
+    _produced.Clear();
+  }
+
+  private static void Require(
+    string message,
+    params (string Value, string Name)[] arguments
+  ) {
+    foreach ((string value, string name) in arguments)
+      if (string.IsNullOrEmpty(value))
+        throw new ArgumentException(message, name);
+  }
+
+  private static List<CheckResult> Content(
+    ICheckSource source,
+    string domain
+  ) =>
     [
       .. _checks.Select(run => run(source, domain)),
       .. ExCheckRegistry.Registered.Select(check =>
@@ -142,8 +195,10 @@ public static class ExlibChecks {
       ),
     ];
 
-  private static List<CheckResult> LoadedOnly(ILoadedGame game, string domain) =>
-    [.. _loaded.Select(run => run(game, domain))];
+  private static List<CheckResult> LoadedOnly(
+    ILoadedGame game,
+    string domain
+  ) => [.. _loaded.Select(run => run(game, domain))];
 
   // Moves each exempted finding out of its result's errors, then reports every exemption of the
   // domain that took none: of a rule that ran, or of any rule when everyRule.
@@ -173,7 +228,9 @@ public static class ExlibChecks {
     HashSet<string> ran = [.. results.Select(r => r.Check)];
     string[] unused =
     [
-      .. own.Where(e => !used.Contains(e) && (everyRule || ran.Contains(e.Rule)))
+      .. own.Where(e =>
+          !used.Contains(e) && (everyRule || ran.Contains(e.Rule))
+        )
         .Select(e =>
           $"{e.Rule} exemption of {e.Code} matches no finding ({e.Reason})"
         ),
@@ -207,7 +264,8 @@ public static class ExlibChecks {
   }
 
   private static bool Bounds(char c) =>
-    char.IsWhiteSpace(c) || c is ',' or ';' or ':' or '(' or ')' or '[' or ']' or '\'' or '"';
+    char.IsWhiteSpace(c)
+    || c is ',' or ';' or ':' or '(' or ')' or '[' or ']' or '\'' or '"';
 
   // Catches a thrown exception and reports it as one error naming the check.
   private static CheckResult RunIsolated(

@@ -709,7 +709,9 @@ Content validators, most wrapping [`ExpandedLib.Checks`](Checks) - the same rule
 load and `/exmod verify` runs on demand. A mod's own suite calls these against its own assembly and
 asset tree; `RepoCheckSource` (below) hands one a corpus over your repository's own source tree, and
 the internal (not public) `Checks/AssemblyCheckSource` does the same directly from `(domain, Assembly)`
-pairs.
+pairs. Both resolve a block `class` key or a behaviour key by reflection over the domains'
+assemblies, and a key none of them registers through the classes the install's vanilla mod systems
+register, so `BlockStairs` or `MPAxle` resolves as it does in game.
 
 | Type | What it checks |
 |---|---|

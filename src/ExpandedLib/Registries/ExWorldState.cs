@@ -39,7 +39,7 @@ public static class ExWorldState {
     ExDefinitions.Clear();
     EntityRegistry.ResetForWorld();
     ExCheckRegistry.Clear();
-    ExlibChecks.ClearExemptions();
+    ExlibChecks.ClearDeclarations();
     ExConfigProfiles.ResetForWorld();
     ExRecipeProfiles.ResetForWorld();
     ExPreferences.ResetForWorld();

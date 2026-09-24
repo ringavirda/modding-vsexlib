@@ -15,9 +15,12 @@ public interface ILoadedGame : ICheckSource {
   /// drops, smelted, crushed and ground stacks, creative tabs.</summary>
   IEnumerable<CollectibleObject> Collectibles { get; }
 
-  /// <summary>What every recipe registry makes: each grid recipe's output, a cooking recipe's
-  /// <c>cooksInto</c>, and the output of each barrel, alloy, smithing, knapping and clayforming
-  /// recipe.</summary>
+  /// <summary>What every recipe registry and exlib process catalogue makes: each grid recipe's
+  /// output, a cooking recipe's <c>cooksInto</c>, the output of each barrel, alloy, smithing,
+  /// knapping and clayforming recipe, each terminal job's output
+  /// (<see cref="Catalogues.ProcessJobRegistry"/>), each stock route's stopping point
+  /// (<see cref="Catalogues.ProcessRouteRegistry"/>), and each loaded die's job output
+  /// (<see cref="Catalogues.ItemDie"/>).</summary>
   IEnumerable<LoadedOutput> RecipeOutputs { get; }
 
   /// <summary>The codes a recipe ingredient that names tags and no code takes: every collectible
