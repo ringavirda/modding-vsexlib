@@ -28,12 +28,6 @@ namespace ExpandedLib.Testing;
 /// stage took, at the configured salvage ratio.</remarks>
 public static class StructureBreaks
 {
-  /// <summary>What a run covered, every break that failed, one line each, and what each break
-  /// spawned.</summary>
-  /// <param name="Blocks">Definitions or blocktypes stood up.</param>
-  /// <param name="Variants">Concrete block variants stood up across them.</param>
-  /// <param name="Breaks">Breaks performed, one per structure broken from one cell.</param>
-  /// <param name="Spawned">Every break that ran, in run order, with the stacks it spawned.</param>
   /// <summary>How a player pays a construction stage.</summary>
   public enum Payment
   {
@@ -48,6 +42,13 @@ public static class StructureBreaks
     Creative,
   }
 
+  /// <summary>What a run covered, every break that failed, one line each, and what each break
+  /// spawned.</summary>
+  /// <param name="Blocks">Definitions or blocktypes stood up.</param>
+  /// <param name="Variants">Concrete block variants stood up across them.</param>
+  /// <param name="Breaks">Breaks performed, one per structure broken from one cell.</param>
+  /// <param name="Failures">Every failed break, one line each.</param>
+  /// <param name="Spawned">Every break that ran, in run order, with the stacks it spawned.</param>
   public sealed record Result(
     int Blocks,
     int Variants,
