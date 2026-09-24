@@ -94,6 +94,51 @@ public class HarnessUseGuards {
     );
   }
 
+  // Fails when CompletionWrites stops following a PropertyInfo local bound to the name.
+  [Fact]
+  public void A_completion_set_through_a_reflection_local_is_named() {
+    Assert.EndsWith(
+      ":2: StructureComplete written by reflection through a local; build or break the structure "
+        + "instead",
+      Assert.Single(
+        Scan(
+          HarnessUse.CompletionWrites,
+          "var p = typeof(T).GetProperty(\"StructureComplete\");\np!.SetValue(be, true);"
+        )
+      )
+    );
+  }
+
+  // Fails when CompletionWrites stops matching a subclass writing through the protected setter.
+  [Fact]
+  public void A_completion_set_by_a_subclass_through_its_setter_is_named() {
+    Assert.EndsWith(
+      ":2: StructureComplete written through its setter by a subclass; build or break the "
+        + "structure instead",
+      Assert.Single(
+        Scan(
+          HarnessUse.CompletionWrites,
+          "class Spy : BlockEntityMultiblockStructure {\n"
+            + "  public void Force() { StructureComplete = true; }\n}"
+        )
+      )
+    );
+  }
+
+  // Fails when CompletionWrites names a comparison, an expression body, or another member's local.
+  [Fact]
+  public void A_comparison_and_another_members_local_are_not_named() {
+    Assert.Empty(
+      Scan(
+        HarnessUse.CompletionWrites,
+        "var q = typeof(T).GetProperty(\"Other\");\n"
+          + "q.SetValue(be, 1);\n"
+          + "bool c = be.StructureComplete == true;\n"
+          + "public bool Done => StructureComplete;"
+      )
+    );
+  }
+
   // Fails when CompletionWrites reads comments, or matches across statements.
   [Fact]
   public void A_read_a_comment_and_another_members_write_are_not_named() {

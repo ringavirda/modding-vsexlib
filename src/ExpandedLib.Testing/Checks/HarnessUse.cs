@@ -19,6 +19,18 @@ public static class HarnessUse {
     RegexOptions.Compiled
   );
 
+  // A PropertyInfo or FieldInfo local bound to StructureComplete by name.
+  private static readonly Regex CompletionMemberLocal = new(
+    @"\b(?<local>\w+)\s*=(?!=)[^;]*\bGet(?:Property|Field)\s*\([^;]*StructureComplete",
+    RegexOptions.Compiled
+  );
+
+  // Only a subclass reaches the protected setter.
+  private static readonly Regex CompletionSetterWrite = new(
+    @"\bStructureComplete\s*=(?![=>])",
+    RegexOptions.Compiled
+  );
+
   private static readonly Regex BlockBehaviorsWrite = new(
     @"(?<![\w.])(?:(?<receiver>[\w\[\]]+)!?\s*\.\s*)?BlockBehaviors\s*=(?!=)",
     RegexOptions.Compiled
@@ -47,26 +59,59 @@ public static class HarnessUse {
 
   /// <summary>Every statement in <paramref name="sourceFiles"/> that writes a structure's
   /// <c>StructureComplete</c> by reflection (<c>SetProperty</c>, <c>SetField</c>,
-  /// <c>SetValue</c>, or its backing field by name), whatever the value.</summary>
+  /// <c>SetValue</c>, its backing field by name, or <c>SetValue</c> on a <c>PropertyInfo</c> or
+  /// <c>FieldInfo</c> local bound to it by name), or through its setter from a test subclass,
+  /// whatever the value.</summary>
   /// <remarks>Completion reached this way skips the monitor that sets it in game; the guard in each
-  /// suite holds the files allowed to do it.</remarks>
+  /// suite holds the files allowed to do it. A reflection local is matched by name across the whole
+  /// file.</remarks>
   /// <param name="sourceFiles">C# files to read; each is read whole.</param>
   /// <returns>One line per statement, <c>file:line: reason</c>; empty when clean.</returns>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
   public static IReadOnlyList<string> CompletionWrites(
     IEnumerable<string> sourceFiles
   ) {
     var offenders = new List<string>();
     foreach (string file in sourceFiles) {
       string text = Uncommented(File.ReadAllText(file));
+      string[] locals =
+      [
+        .. CompletionMemberLocal
+          .Matches(text)
+          .Select(m => m.Groups["local"].Value)
+          .Distinct(),
+      ];
       int start = 0;
       foreach (string statement in text.Split(';')) {
+        string? reason = null;
+        int at = Lead(statement);
+        Match? local = locals
+          .Select(name =>
+            Regex.Match(
+              statement,
+              @"(?<![\w.])" + Regex.Escape(name) + @"!?\s*\.\s*SetValue\s*\("
+            )
+          )
+          .FirstOrDefault(m => m.Success);
+        Match setter = CompletionSetterWrite.Match(statement);
         if (
           statement.Contains("StructureComplete", StringComparison.Ordinal)
           && ReflectiveWrite.IsMatch(statement)
         )
+          reason = "StructureComplete written by reflection";
+        else if (local != null) {
+          reason = "StructureComplete written by reflection through a local";
+          at = local.Index;
+        } else if (setter.Success) {
+          reason = "StructureComplete written through its setter by a subclass";
+          at = setter.Index;
+        }
+        if (reason != null)
           offenders.Add(
-            $"{Path.GetFileName(file)}:{LineOf(text, start + Lead(statement))}: "
-              + "StructureComplete written by reflection; build or break the structure instead"
+            $"{Path.GetFileName(file)}:{LineOf(text, start + at)}: "
+              + reason
+              + "; build or break the structure instead"
           );
         start += statement.Length + 1;
       }
@@ -83,6 +128,8 @@ public static class HarnessUse {
   /// <c>CollectibleBehaviors =</c>.</remarks>
   /// <param name="sourceFiles">C# files to read; each is read whole.</param>
   /// <returns>One line per assignment, <c>file:line: reason</c>; empty when clean.</returns>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
   public static IReadOnlyList<string> HalfBehaviours(
     IEnumerable<string> sourceFiles
   ) {
@@ -118,6 +165,8 @@ public static class HarnessUse {
   /// against it and the assemblies it references. A name that resolves to no type there is not
   /// named.</param>
   /// <returns>One line per clause, <c>file:line: reason</c>; empty when clean.</returns>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
   public static IReadOnlyList<string> GameConstrainedGenerics(
     IEnumerable<string> sourceFiles,
     Assembly testAssembly

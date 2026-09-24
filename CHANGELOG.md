@@ -46,9 +46,10 @@ see the git history.
   check, through a static that still holds it, is checked again with the next test. `ReportOnly =
   true` lists the offenders on standard error without failing them.
 - **`HarnessUse`** (ExpandedLib.Testing): source rules over a suite's tests. It names a
-  `StructureComplete` written by reflection, a `BlockBehaviors` assignment without
-  `CollectibleBehaviors` on the same receiver, and a generic helper in a test file constrained on a
-  game type.
+  `StructureComplete` written by reflection, directly or through a `PropertyInfo` or `FieldInfo`
+  local bound to it by name, or through its setter from a test subclass, a `BlockBehaviors`
+  assignment without `CollectibleBehaviors` on the same receiver, and a generic helper in a test
+  file constrained on a game type.
 - **`ExMeasure.TemperatureDelta`**: a temperature difference in Celsius degrees, shown in Fahrenheit
   in imperial without the 32 degree offset: a 10 C difference reads 18 F.
 
