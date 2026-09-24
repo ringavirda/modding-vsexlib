@@ -6,7 +6,6 @@ using ExpandedLib.Blocks;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
-using Vintagestory.GameContent;
 using Vintagestory.ServerMods;
 using static ExpandedLib.Checks.GridRecipeShapeCheck;
 
@@ -224,7 +223,7 @@ public static class GridOutputVariantCheck {
       (string?)Prop(type, "class") is { } key
       && source.BlockClass(key) is { } blockClass
     )
-      foreach (string group in ClassGroups(blockClass).Where(Has))
+      foreach (string group in BlockSignals.ClassGroups(blockClass).Where(Has))
         yield return group;
     if (Prop(type, "behaviors") is not JArray behaviors)
       yield break;
@@ -240,35 +239,6 @@ public static class GridOutputVariantCheck {
         "NWOrientable" => Has("orientation") ? "orientation" : "side",
         "Pillar" => (string?)properties?["rotationVariantCode"] ?? "rotation",
         "OmniRotatable" => "rot",
-        _ => null,
-      };
-      if (group != null && Has(group))
-        yield return group;
-    }
-  }
-
-  /// <summary>The variant groups a loaded block's orientation behaviours and block class write
-  /// when it is placed, among the groups it carries; the loaded counterpart of the blocktype
-  /// reading.</summary>
-  internal static IEnumerable<string> OrientationGroups(Block block) {
-    bool Has(string name) => block.Variant?.ContainsKey(name) == true;
-    foreach (string group in ClassGroups(block.GetType()).Where(Has))
-      yield return group;
-    foreach (BlockBehavior behavior in block.BlockBehaviors ?? []) {
-      string? group = behavior switch {
-        BlockBehaviorExOrientable ex => ex.VariantKey,
-        BlockBehaviorHorizontalOrientable => Has("horizontalorientation")
-          ? "horizontalorientation"
-          : "side",
-        BlockBehaviorNWOrientable => Has("orientation")
-          ? "orientation"
-          : "side",
-        BlockBehaviorPillar pillar => (string?)
-          (pillar.propertiesAtString is { } json ? JObject.Parse(json) : null)?[
-            "rotationVariantCode"
-          ]
-          ?? "rotation",
-        BlockBehaviorOmniRotatable => "rot",
         _ => null,
       };
       if (group != null && Has(group))
@@ -292,10 +262,4 @@ public static class GridOutputVariantCheck {
       ),
       _ => null,
     };
-
-  // The groups a block class writes when it places its block (BlockStairs.TryPlaceBlock).
-  private static string[] ClassGroups(Type blockClass) =>
-    typeof(BlockStairs).IsAssignableFrom(blockClass)
-      ? ["horizontalorientation", "verticalorientation"]
-      : [];
 }

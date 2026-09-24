@@ -57,6 +57,19 @@ public sealed partial class TestWorld {
     return this;
   }
 
+  /// <summary>Registers the classes the install's vanilla mod systems register, in this world's
+  /// real class registry, as the game does before any mod loads.</summary>
+  /// <returns>The full names of the vanilla systems whose <c>Start</c> threw.</returns>
+  /// <exception cref="InvalidOperationException">No game install resolves.</exception>
+  internal IReadOnlyList<string> RegisterVanillaClasses() =>
+    StartVanillaMods(
+      VsAssemblyResolver.InstallPath
+        ?? throw new InvalidOperationException(
+          "No game install found - set the game's env var or provision .game/<slug>."
+        ),
+      Classes()
+    );
+
   /// <summary>
   /// Registers <paramref name="type"/> under <paramref name="key"/> in this world's real class
   /// registry, as a block, block entity, block behaviour or block-entity behaviour by its base type;
@@ -93,6 +106,31 @@ public sealed partial class TestWorld {
   /// <paramref name="def"/>.</param>
   /// <exception cref="InvalidOperationException"><see cref="RegisterClasses"/> has not run.</exception>
   public Block DefineBlock(ExBlockDef def, DefinitionCodes.Registered variant) {
+    Block block = Build(def, variant);
+    Finish(block);
+    return block;
+  }
+
+  /// <summary>Every variant of every definition in <paramref name="defs"/>, built and registered
+  /// as <see cref="DefineBlock"/> builds one, their <c>drops</c> resolved and their
+  /// <see cref="Block.OnLoaded"/> run only once all are registered, the order the engine
+  /// keeps.</summary>
+  /// <exception cref="InvalidOperationException"><see cref="RegisterClasses"/> has not
+  /// run.</exception>
+  internal IReadOnlyList<Block> DefineBlocks(IEnumerable<ExBlockDef> defs) {
+    Block[] blocks =
+    [
+      .. defs.SelectMany(def =>
+        DefinitionCodes.Expand(def).Select(variant => Build(def, variant))
+      ),
+    ];
+    foreach (Block block in blocks)
+      Finish(block);
+    return blocks;
+  }
+
+  // Builds the variant's block through the class registry and registers it under a fresh id.
+  private Block Build(ExBlockDef def, DefinitionCodes.Registered variant) {
     if (_classes == null)
       throw new InvalidOperationException(
         "DefineBlock builds through the class registry; call RegisterClasses first."
@@ -122,12 +160,16 @@ public sealed partial class TestWorld {
     Block block = type.CreateBlock(Api);
     block.BlockId = _nextDefinedId++;
     Register(block);
+    return block;
+  }
+
+  // Resolves the block's drops against this world's registries and runs its OnLoaded.
+  private void Finish(Block block) {
     foreach (BlockDropItemStack drop in block.Drops ?? [])
-      drop.Resolve(World, "DefineBlock", code);
+      drop.Resolve(World, "DefineBlock", block.Code);
     // The engine assigns the api when it registers the block; OnLoaded does not.
     ReflectionHelpers.SetField(block, "api", Api);
     block.OnLoaded(Api);
-    return block;
   }
 
   private static bool IsRegistrable(Type type) =>

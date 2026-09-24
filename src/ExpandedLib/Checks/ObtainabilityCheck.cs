@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ExpandedLib.Blocks;
-using ExpandedLib.Networks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 using static ExpandedLib.Checks.GameReferencesCheck;
@@ -84,11 +82,9 @@ public static class ObtainabilityCheck {
   // groups, and the connector faces a network node's placement and its neighbours rewrite.
   private static string KindOf(Block block) {
     var placed = new HashSet<string>(
-      GridOutputVariantCheck.OrientationGroups(block),
+      BlockSignals.PlacedGroupsOf(block),
       StringComparer.Ordinal
     );
-    if (block is BlockNetworkNode)
-      placed.Add(BlockBehaviorExOrientable.OrientationVariant);
     return TypeOf(block)
       + string.Concat(
         block

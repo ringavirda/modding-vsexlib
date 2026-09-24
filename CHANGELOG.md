@@ -9,6 +9,11 @@ see the git history.
 
 ### Added
 
+- **`BlockSignalCensus`** (ExpandedLib.Testing) counts, per signal, the blocks of a domain that
+  carry it: block class, entity class, behaviours, the groups placement writes, footprint, layout,
+  nosnow cells, construction stages, network and mpenergy membership, a mechanical power
+  connector, an inventory. `Run` reads a world's registered blocks, or stands a mod's code-first
+  definitions up in one world first.
 - **Five loaded checks** run from `/exmod verify`, never at load, over the new `ILoadedGame`
   (`AssetCheckSource` implements it; `LoadedOutput` is one stack a registry makes).
   `ObtainabilityCheck`: every recipe ingredient, construction stage ingredient and creative-listed
