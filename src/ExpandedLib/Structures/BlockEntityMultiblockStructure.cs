@@ -698,6 +698,45 @@ public abstract class BlockEntityMultiblockStructure
     );
   }
 
+  /// <summary>One layout cell at the placed facing.</summary>
+  /// <param name="Local">The authored offset, north frame.</param>
+  /// <param name="At">The world cell the completion check reads for it.</param>
+  /// <param name="Wanted">The code the cell wants there, oriented parts turned.</param>
+  internal readonly record struct LayoutCell(
+    (int X, int Y, int Z) Local,
+    BlockPos At,
+    AssetLocation Wanted
+  );
+
+  /// <summary>Every layout cell whose block number the layout names, in authored order, loading
+  /// the structure first; empty without a layout.</summary>
+  internal IReadOnlyList<LayoutCell> LayoutCells {
+    get {
+      EnsureStructureLoaded();
+      if (_structure?.TransformedOffsets is not { } turned)
+        return [];
+      List<BlockOffsetAndNumber> authored = _structure.Offsets;
+      var cells = new List<LayoutCell>();
+      for (int i = 0; i < turned.Count && i < authored.Count; i++)
+        if (WantedCodeAt(turned[i]) is AssetLocation wanted)
+          cells.Add(
+            new LayoutCell(
+              (authored[i].X, authored[i].Y, authored[i].Z),
+              Pos.AddCopy(turned[i].X, turned[i].Y, turned[i].Z),
+              wanted
+            )
+          );
+      return cells;
+    }
+  }
+
+  /// <summary>The world cell this structure reads a peripheral at the authored offset from
+  /// (<see cref="GetGlobalPos"/>), loading the structure first.</summary>
+  internal BlockPos PeripheralCell(int localX, int localY, int localZ) {
+    EnsureStructureLoaded();
+    return GetGlobalPos(localX, localY, localZ);
+  }
+
   /// <summary>Runs one monitor tick, as the registered listener would.</summary>
   internal void DriveMonitorTick() => OnMonitorStructureTick(0f);
 
