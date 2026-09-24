@@ -10,7 +10,7 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>Tests <see cref="ExlibChecks.All"/> over a hand-built <see cref="ICheckSource"/>: each
-/// of the eight checks reports its own seeded violation and nothing else.</summary>
+/// seeded violation is reported by its own check, and nothing else is.</summary>
 [Collection("ExDefinitions")] // process-wide static; shared with other classes that mutate it
 public class ExlibChecksTests {
   public ExlibChecksTests() {
@@ -257,8 +257,8 @@ public class ExlibChecksTests {
   [Fact]
   public void All_examines_every_check_for_every_domain_and_nothing_more() {
     IReadOnlyList<CheckResult> results = Results();
-    // One CheckResult per (check, domain) pair - nine checks, one domain here.
-    Assert.Equal(9, results.Count);
+    // One CheckResult per (check, domain) pair - ten checks, one domain here.
+    Assert.Equal(10, results.Count);
     Assert.All(results, r => Assert.Equal(Domain, r.Domain));
     Assert.Equal(9, results.Sum(r => r.Errors.Count));
   }

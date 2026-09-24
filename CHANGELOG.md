@@ -9,6 +9,10 @@ see the git history.
 
 ### Added
 
+- **`GridRecipeShapeCheck`** runs with the shipped checks, at load and from `/exmod verify`:
+  every grid recipe ingredient key appears in the pattern, every pattern letter has a key,
+  and the grid is at most 3x3. `GridRecipes` (ExpandedLib.Testing) runs it over a suite's
+  definitions.
 - **`SourceLaws.UnreadTunables`** (ExpandedLib.Testing): a value of a manageable config store
   that no source reads is named at its declaration. `StaleOnExchange` also names a block entity
   that writes a `MeshData` field with no `OnExchanged` override, and each such field an override
