@@ -42,4 +42,15 @@ public class PipeAmbienceTests {
     // BlockEntity registers through ICoreAPI.Event, which ICoreClientAPI re-declares as another property.
     Assert.Equal(1, AmbienceTicks(((ICoreAPI)w.ClientApi).Event));
   }
+
+  // Fails when the side guard is dropped and a server pipe registers the tick as well.
+  [Fact]
+  public void A_server_pipe_registers_no_ambience_tick() {
+    var (w, be) = Placed();
+    be.Api = w.Api;
+
+    be.Initialize(w.Api);
+
+    Assert.Equal(0, AmbienceTicks(((ICoreAPI)w.Api).Event));
+  }
 }
