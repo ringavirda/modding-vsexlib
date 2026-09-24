@@ -6,9 +6,9 @@ using System.Text.Json;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Guards how every clip in one shipped tree's <c>shapes/</c> ends: <c>Repeat</c> (the default when
-/// absent) or <c>Hold</c>. A clip ending otherwise leaves the animator with nothing active after one
-/// play, and a block drawn only through its animator vanishes.
+/// Guards how every clip in one shipped tree's <c>shapes/</c> ends: <c>Repeat</c> (the default
+/// when absent) or <c>Hold</c>. A clip ending otherwise leaves the animator with nothing active
+/// after one play, and a block drawn only through its animator vanishes.
 /// </summary>
 /// <remarks><c>onActivityStopped</c> is not read.</remarks>
 public static class AnimatorClips {
@@ -24,10 +24,17 @@ public static class AnimatorClips {
   );
 
   /// <summary>Every clip under <paramref name="assetTree"/>'s <c>shapes/</c> whose
-  /// <c>onAnimationEnd</c> is neither <c>Repeat</c> nor <c>Hold</c>, compared ignoring case.</summary>
+  /// <c>onAnimationEnd</c> is neither <c>Repeat</c> nor <c>Hold</c>, compared ignoring
+  /// case.</summary>
   /// <param name="assetTree">A mod's asset tree, <c>assets/{domain}</c>; a missing tree reads
   /// nothing.</param>
+  /// <returns>The shapes and clips read, and one finding per clip that ends; no findings when
+  /// clean.</returns>
   /// <exception cref="JsonException">A shape file is not valid JSON.</exception>
+  /// <exception cref="InvalidOperationException">A clip is not a JSON object, or its
+  /// <c>code</c> is neither a string nor null.</exception>
+  /// <exception cref="IOException">A shape file cannot be read.</exception>
+  /// <exception cref="UnauthorizedAccessException">A shape file may not be read.</exception>
   public static Result Check(string assetTree) {
     IReadOnlyList<string> files = LoopingAnimations.ShapeFiles(assetTree);
     int clips = 0;
@@ -67,7 +74,8 @@ public static class AnimatorClips {
     return new Result(files.Count, clips, findings);
   }
 
-  /// <summary>The key of one finding: its shape path and clip, <c>{shape}: clip '{code}'</c>.</summary>
+  /// <summary>The key of one finding: its shape path and clip,
+  /// <c>{shape}: clip '{code}'</c>.</summary>
   [CheckHelper("keys a finding by shape and clip for a guard's lists")]
   public static string Key(string finding) =>
     finding[..finding.LastIndexOf(" ends ", StringComparison.Ordinal)];

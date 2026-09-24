@@ -9,6 +9,12 @@ see the git history.
 
 ### Added
 
+- **`SourceLaws.UnreadTunables`** (ExpandedLib.Testing): a value of a manageable config store
+  that no source reads is named at its declaration. `StaleOnExchange` also names a block entity
+  that writes a `MeshData` field with no `OnExchanged` override, and each such field an override
+  neither assigns nor clears; `CachedTunables` reads a `ModSystem`'s `Start*`, `AssetsLoaded` and
+  `AssetsFinalize`; `ContainerDialogPackets` names a `*Dialog*` type it cannot resolve instead of
+  reading it as no dialog; `Key` throws `ArgumentException` on a line that is no finding.
 - **`SourceLaws`** (ExpandedLib.Testing): four more source laws. A value of a manageable config
   store is read where it is used, not copied into a member at load (`CachedTunables`); a config
   value is read by more than `Lang.Get` arguments (`DisplayOnlyTunables`); a `BlockEntityContainer`

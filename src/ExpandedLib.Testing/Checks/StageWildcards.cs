@@ -27,8 +27,13 @@ public static class StageWildcards {
   /// <param name="family">Every domain whose block wildcards are decided, each with the assembly
   /// declaring its definitions; must hold <paramref name="domain"/>. A wildcard in any other
   /// domain is left to the loaded game.</param>
+  /// <returns>The block types and stages read, and one finding per violation; no findings when
+  /// clean.</returns>
   /// <exception cref="ArgumentException"><paramref name="family"/> does not hold
-  /// <paramref name="domain"/>.</exception>
+  /// <paramref name="domain"/>, or a stage table reads a JSON object or array where a string is
+  /// read, or an array where an object is read (<see cref="StageWildcardsCheck.Run"/>).</exception>
+  /// <exception cref="InvalidOperationException">A stage table reads a JSON value where an object
+  /// is read.</exception>
   public static Result Check(
     string domain,
     params (string Domain, Assembly Assembly)[] family

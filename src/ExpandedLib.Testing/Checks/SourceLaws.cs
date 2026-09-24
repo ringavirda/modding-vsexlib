@@ -159,6 +159,11 @@ public static class SourceLaws {
     RegexOptions.Compiled
   );
 
+  private static readonly Regex DialogName = new(
+    @"Dialog(?!ue)",
+    RegexOptions.Compiled
+  );
+
   private static readonly Regex PacketOverride = new(
     @"\boverride\b[\w\s]*\bvoid\s+OnReceivedClientPacket\s*\(",
     RegexOptions.Compiled
@@ -650,12 +655,15 @@ public static class SourceLaws {
   }
 
   /// <summary>Every type in <paramref name="sourceFiles"/> over <c>BlockEntityContainer</c> that
-  /// constructs a <c>GuiDialogBlockEntity</c> subclass, when neither it nor a base type overrides
-  /// <c>OnReceivedClientPacket</c>; and every such type whose base cannot be read.</summary>
+  /// constructs a <c>GuiDialogBlockEntity</c> subclass, or a type named <c>*Dialog*</c> whose
+  /// bases cannot be read, when neither it nor a base type overrides
+  /// <c>OnReceivedClientPacket</c>; and every type constructing either whose base cannot be
+  /// read.</summary>
   /// <remarks><c>BlockEntityContainer</c> handles no client packet, so the dialog's slot clicks
   /// never reach the server inventory and the two sides diverge. Bases are followed through the
   /// files given, then looked up by name in the game's and exlib's assemblies; a base found in
-  /// neither is named.</remarks>
+  /// neither is named, and a dialog found in neither is named as one that may be a block entity
+  /// dialog. A name containing <c>Dialogue</c> alone is not a dialog.</remarks>
   /// <param name="sourceFiles">C# files to read; each is read whole.</param>
   /// <returns>One line per type, <c>file:line: Type; reason</c>; <see cref="Key"/> keys it. Empty
   /// when clean.</returns>
@@ -679,6 +687,18 @@ public static class SourceLaws {
         )
         .Select(h => ((TypePart, Match)?)h)
         .FirstOrDefault();
+      bool unreadDialog = false;
+      if (opened == null) {
+        opened = parts
+          .SelectMany(p => Hits(p, Construction).Select(m => (p, m)))
+          .Where(h =>
+            DialogName.IsMatch(h.m.Groups["type"].Value)
+            && Unresolved(h.m.Groups["type"].Value, types)
+          )
+          .Select(h => ((TypePart, Match)?)h)
+          .FirstOrDefault();
+        unreadDialog = opened != null;
+      }
       if (opened is not { } o)
         continue;
       string dialog = o.Hit.Groups["type"].Value;
@@ -721,8 +741,12 @@ public static class SourceLaws {
             o.Part,
             o.Hit.Index,
             name,
-            $"opens {dialog} with no OnReceivedClientPacket override, so its slot clicks never "
-              + "reach the server"
+            unreadDialog
+              ? $"opens {dialog} with no OnReceivedClientPacket override, and {dialog} is in "
+                + "neither the files nor the game or exlib, so whether its slot clicks reach the "
+                + "server cannot be read"
+              : $"opens {dialog} with no OnReceivedClientPacket override, so its slot clicks "
+                + "never reach the server"
           )
         );
     }
@@ -766,12 +790,26 @@ public static class SourceLaws {
 
   /// <summary>The key of one finding: its file and subject, <c>{file}: {subject}</c>, without the
   /// line or the reason.</summary>
+  /// <param name="finding">A line one of the laws returned,
+  /// <c>file:line: subject; reason</c>.</param>
+  /// <returns>The file and subject, <c>{file}: {subject}</c>.</returns>
+  /// <exception cref="ArgumentException"><paramref name="finding"/> holds no <c>:</c>, no
+  /// <c>": "</c> after it, or no <c>"; "</c> after that.</exception>
   [CheckHelper("keys a finding by file and subject for a guard's lists")]
   public static string Key(string finding) {
     int line = finding.IndexOf(':');
-    int subject = finding.IndexOf(": ", line + 1, StringComparison.Ordinal) + 2;
-    int reason = finding.IndexOf("; ", subject, StringComparison.Ordinal);
-    return finding[..line] + ": " + finding[subject..reason];
+    int subject =
+      line < 0 ? -1 : finding.IndexOf(": ", line + 1, StringComparison.Ordinal);
+    int reason =
+      subject < 0
+        ? -1
+        : finding.IndexOf("; ", subject + 2, StringComparison.Ordinal);
+    if (reason < 0)
+      throw new ArgumentException(
+        $"not a finding line, file:line: subject; reason: {finding}",
+        nameof(finding)
+      );
+    return finding[..line] + ": " + finding[(subject + 2)..reason];
   }
 
   private sealed record TypePart(string File, string Code, int Start, int End) {
@@ -1315,8 +1353,27 @@ public static class SourceLaws {
       ) ?? listed.FirstOrDefault();
   }
 
-  // A block entity or block entity dialog type of the game or exlib by simple name; null when
-  // none or more than one has it.
+  // Whether the bases of a type named name, followed through the files, end at a name found in
+  // neither the files nor the game's and exlib's types.
+  private static bool Unresolved(
+    string name,
+    Dictionary<string, List<TypePart>> types
+  ) {
+    string? current = name;
+    var seen = new HashSet<string>(StringComparer.Ordinal);
+    while (
+      current != null
+      && types.TryGetValue(current, out List<TypePart>? parts)
+      && seen.Add(current)
+    )
+      current = BaseOf(parts, types);
+    return current != null
+      && !types.ContainsKey(current)
+      && Loaded(current) == null;
+  }
+
+  // A block entity, dialog or mod system type of the game or exlib by simple name; null when none
+  // or more than one has it.
   private static Type? Loaded(string name) =>
     LoadedTypes.Value.TryGetValue(name, out Type? type) ? type : null;
 

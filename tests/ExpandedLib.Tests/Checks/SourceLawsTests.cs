@@ -665,6 +665,47 @@ public class SourceLawsTests(ITestOutputHelper output) {
       )
     );
 
+  // Fails when ContainerDialogPackets reads a dialog it cannot resolve as no dialog, whether it is
+  // outside the files or declared in them over a base it cannot resolve.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.ContainerDialogPackets))]
+  public void A_dialog_it_cannot_resolve_is_named() =>
+    Assert.Equal(
+      [
+        "Planted0.cs:2: KilnEntity" + UnreadDialog("ForeignDialog"),
+        "Planted0.cs:6: OvenEntity" + UnreadDialog("OvenDialog"),
+      ],
+      Scan(
+        SourceLaws.ContainerDialogPackets,
+        "class KilnEntity : BlockEntityContainer {\n"
+          + "  void Open() => new ForeignDialog(t, inv, Pos, capi);\n}\n"
+          + "class OvenDialog : ModdedDialogBase { }\n"
+          + "class OvenEntity : BlockEntityContainer {\n"
+          + "  void Open() => new OvenDialog(t, inv, Pos, capi);\n}"
+      )
+    );
+
+  // Fails when ContainerDialogPackets names a game dialog that is no block entity dialog, a
+  // Dialogue type, or an unresolved dialog on a container that handles its packets.
+  [Fact]
+  public void Resolved_dialogs_dialogue_and_handled_packets_pass() =>
+    Assert.Empty(
+      Scan(
+        SourceLaws.ContainerDialogPackets,
+        "class ConfirmEntity : BlockEntityContainer {\n"
+          + "  void Ask() => new GuiDialogConfirm(capi, \"t\", ok => { });\n}\n"
+          + "class TalkEntity : BlockEntityContainer {\n"
+          + "  object Talk() => new DialogueConfig();\n}\n"
+          + "class HeldEntity : BlockEntityContainer {\n"
+          + "  void Open() => new ForeignDialog(t, inv, Pos, capi);\n"
+          + "  public override void OnReceivedClientPacket(IPlayer p, int id, byte[] d) { }\n}"
+      )
+    );
+
+  private static string UnreadDialog(string dialog) =>
+    $"; opens {dialog} with no OnReceivedClientPacket override, and {dialog} is in neither the "
+    + "files nor the game or exlib, so whether its slot clicks reach the server cannot be read";
+
   // Fails when ContainerDialogPackets names a type that handles its packets itself, through a
   // base in the files or through a game or exlib base, or that is no container.
   [Fact]
@@ -736,6 +777,14 @@ public class SourceLawsTests(ITestOutputHelper output) {
   }
 
   #endregion
+
+  // Fails when Key returns a key for a line with no subject or no reason instead of throwing.
+  [Theory]
+  [InlineData("ExOrientation.cs:181 FromCode(side); returns null")]
+  [InlineData("ExOrientation.cs: FromCode(side) returns null")]
+  [InlineData("no finding at all")]
+  public void Key_throws_on_a_line_that_is_no_finding(string line) =>
+    Assert.Throws<ArgumentException>(() => SourceLaws.Key(line));
 
   [Fact]
   public void Key_is_the_file_and_subject() =>

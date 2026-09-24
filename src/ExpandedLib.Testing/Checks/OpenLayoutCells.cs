@@ -28,8 +28,21 @@ public static class OpenLayoutCells {
     IReadOnlyList<string> Findings
   );
 
-  /// <summary>Runs the rule over every layout among <paramref name="defs"/>; a definition without a
-  /// layout is skipped.</summary>
+  /// <summary>Runs the rule over every layout among <paramref name="defs"/>; a definition without
+  /// a layout is skipped.</summary>
+  /// <param name="defs">The definitions to read.</param>
+  /// <returns>The layouts read, the cells the rule requires, and one finding per required cell
+  /// without the role; no findings when clean.</returns>
+  /// <exception cref="NullReferenceException">A layout has no <c>blockNumbers</c> or no
+  /// <c>offsets</c>.</exception>
+  /// <exception cref="InvalidCastException">A layout's <c>blockNumbers</c> is not an object, or
+  /// its <c>offsets</c> not an array.</exception>
+  /// <exception cref="ArgumentException">A block number, or an offset's <c>x</c>, <c>y</c>,
+  /// <c>z</c> or <c>w</c>, is missing or not an integer, or an offset is an array.</exception>
+  /// <exception cref="InvalidOperationException">An offset is a JSON value, not an
+  /// object.</exception>
+  /// <exception cref="KeyNotFoundException">An offset's <c>w</c> names no block
+  /// number.</exception>
   public static Result Check(IEnumerable<ExBlockDef> defs) {
     int layouts = 0,
       cells = 0;

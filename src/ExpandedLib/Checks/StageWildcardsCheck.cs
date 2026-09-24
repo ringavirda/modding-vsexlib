@@ -27,8 +27,17 @@ public static class StageWildcardsCheck {
 
   private static readonly Regex Placeholder = new(@"\{(\w+)\}");
 
-  /// <summary>Every rule broken by a stage table in <paramref name="domain"/>, as the check's
-  /// <see cref="CheckResult"/>; empty when none.</summary>
+  /// <summary>Every rule broken by a stage table in <paramref name="domain"/>.</summary>
+  /// <param name="source">The definitions and JSON blocktypes to read, the catalogue that
+  /// decides wildcards included.</param>
+  /// <param name="domain">The domain whose stage tables are checked.</param>
+  /// <returns>The check's <see cref="CheckResult"/>, named <c>StageWildcards</c>, one error per
+  /// violation prefixed with its rule; no errors when none.</returns>
+  /// <exception cref="ArgumentException">A code, type, key, state or variant list the tables
+  /// read is a JSON object or array where a string is read, or an array where an object is
+  /// read.</exception>
+  /// <exception cref="InvalidOperationException">A behaviour, its properties, a stage or an
+  /// ingredient is a JSON value where an object is read.</exception>
   public static CheckResult Run(ICheckSource source, string domain) {
     var catalogue = new Dictionary<string, List<Collectible>>(
       StringComparer.Ordinal
@@ -49,9 +58,9 @@ public static class StageWildcardsCheck {
     JArray Stages
   );
 
-  /// <summary>Every block type in <paramref name="domain"/> with an <c>ExRightClickConstructable</c>
-  /// stage table. A JSON blocktype whose code a definition declares is not read; definitions that
-  /// share a code are each read.</summary>
+  /// <summary>Every block type in <paramref name="domain"/> with an
+  /// <c>ExRightClickConstructable</c> stage table. A JSON blocktype whose code a definition
+  /// declares is not read; definitions that share a code are each read.</summary>
   internal static IEnumerable<Construction> Constructions(
     ICheckSource source,
     string domain
