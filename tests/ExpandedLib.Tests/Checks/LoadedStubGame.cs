@@ -23,6 +23,18 @@ internal sealed class LoadedStubGame(RecipeStubSource source) : ILoadedGame {
     params (string Group, string State)[] variants
   ) => Add(new Block { Code = new AssetLocation(code) }, configure, variants);
 
+  /// <summary>Adds <paramref name="block"/> as a loaded block of <paramref name="code"/>, as the
+  /// other overload adds a plain <see cref="Vintagestory.API.Common.Block"/>.</summary>
+  public LoadedStubGame Block(
+    Block block,
+    string code,
+    Action<Block>? configure = null,
+    params (string Group, string State)[] variants
+  ) {
+    block.Code = new AssetLocation(code);
+    return Add(block, configure, variants);
+  }
+
   /// <summary>Adds a loaded item, as <see cref="Block"/> adds a block.</summary>
   public LoadedStubGame Item(
     string code,

@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 using Vintagestory.GameContent;
+using Vintagestory.ServerMods;
 using static ExpandedLib.Checks.GridRecipeShapeCheck;
 
 namespace ExpandedLib.Checks;
@@ -239,6 +240,35 @@ public static class GridOutputVariantCheck {
         "NWOrientable" => Has("orientation") ? "orientation" : "side",
         "Pillar" => (string?)properties?["rotationVariantCode"] ?? "rotation",
         "OmniRotatable" => "rot",
+        _ => null,
+      };
+      if (group != null && Has(group))
+        yield return group;
+    }
+  }
+
+  /// <summary>The variant groups a loaded block's orientation behaviours and block class write
+  /// when it is placed, among the groups it carries; the loaded counterpart of the blocktype
+  /// reading.</summary>
+  internal static IEnumerable<string> OrientationGroups(Block block) {
+    bool Has(string name) => block.Variant?.ContainsKey(name) == true;
+    foreach (string group in ClassGroups(block.GetType()).Where(Has))
+      yield return group;
+    foreach (BlockBehavior behavior in block.BlockBehaviors ?? []) {
+      string? group = behavior switch {
+        BlockBehaviorExOrientable ex => ex.VariantKey,
+        BlockBehaviorHorizontalOrientable => Has("horizontalorientation")
+          ? "horizontalorientation"
+          : "side",
+        BlockBehaviorNWOrientable => Has("orientation")
+          ? "orientation"
+          : "side",
+        BlockBehaviorPillar pillar => (string?)
+          (pillar.propertiesAtString is { } json ? JObject.Parse(json) : null)?[
+            "rotationVariantCode"
+          ]
+          ?? "rotation",
+        BlockBehaviorOmniRotatable => "rot",
         _ => null,
       };
       if (group != null && Has(group))

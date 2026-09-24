@@ -14,7 +14,8 @@ see the git history.
   `ObtainabilityCheck`: every recipe ingredient, construction stage ingredient and creative-listed
   block of a domain is made, one step deep, by a loaded recipe, exlib's process catalogues, a
   smelted, crushed or ground stack, a beehive kiln firing, another block type's drop, a world source
-  or a mod's declaration; a creative-listed block counts as made when a block of its type is.
+  or a mod's declaration; a creative-listed block counts as made when a block differing from it
+  only in groups its placement writes is (an orientation group, a network node's `orientation`).
   `VanillaGridCollisionCheck`: no grid recipe matches a vanilla one's input. `GameReferencesCheck`:
   every `game:` code a domain names is loaded. `LoadedStageWildcardsCheck`: a stored construction
   wildcard over `game:` codes spans only its key's variant group. `CollectibleCollectionsCheck`: no

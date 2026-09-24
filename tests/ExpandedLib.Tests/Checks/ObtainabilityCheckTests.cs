@@ -1,12 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Blocks;
 using ExpandedLib.Checks;
 using ExpandedLib.Definitions;
+using ExpandedLib.Networks;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.GameContent;
+using Vintagestory.ServerMods;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -181,22 +185,133 @@ public sealed class ObtainabilityCheckTests : IDisposable {
   private static BlockDropItemStack Drop(string code) =>
     new() { Type = EnumItemClass.Block, Code = new AssetLocation(code) };
 
-  // Fails when a creative-listed block stops counting as made through another block of its type,
-  // or one whose type nothing makes stops being reported.
-  [Fact]
+  // Fails when the group any one row's behaviour, block class or network node writes stops being
+  // read as placement's.
+  [Theory]
   [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
-  public void A_creative_block_is_made_when_a_block_of_its_type_is() =>
-    Assert.Equal(
-      ["stub:valve-ns (block, creative tab): nothing makes it"],
+  [InlineData("ExOrientable", "side")]
+  [InlineData("ExOrientable network", "orientation")]
+  [InlineData("HorizontalOrientable", "horizontalorientation")]
+  [InlineData("HorizontalOrientable", "side")]
+  [InlineData("NWOrientable", "orientation")]
+  [InlineData("NWOrientable", "side")]
+  [InlineData("Pillar", "rotation")]
+  [InlineData("Pillar axis", "axis")]
+  [InlineData("OmniRotatable", "rot")]
+  [InlineData("BlockStairs", "horizontalorientation")]
+  [InlineData("BlockStairs", "verticalorientation")]
+  [InlineData("BlockNetworkNode", "orientation")]
+  public void A_creative_block_is_made_through_a_group_its_placement_writes(
+    string placement,
+    string group
+  ) =>
+    Assert.Empty(
       Findings(
         new LoadedStubGame(new RecipeStubSource().Covering("stub"))
-          .Output(EnumItemClass.Block, "stub:pipe-ns")
-          .Block("stub:pipe-ns", null, ("side", "ns"))
-          .Block("stub:pipe-we", Listed, ("side", "we"))
-          .Block("stub:valve-ns", Listed, ("side", "ns"))
+          .Output(EnumItemClass.Block, "stub:rig-oak-a")
+          .Block(
+            Placing(placement),
+            "stub:rig-oak-a",
+            null,
+            ("wood", "oak"),
+            (group, "a")
+          )
+          .Block(
+            Placing(placement),
+            "stub:rig-oak-b",
+            Listed,
+            ("wood", "oak"),
+            (group, "b")
+          )
+      )
+    );
+
+  // Fails when a block of the same blocktype differing in a group no placement writes (machine,
+  // pipe shape, an unwritten side) makes it, or an unlisted block nothing makes is reported.
+  [Fact]
+  [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
+  public void A_creative_block_is_not_made_through_another_state_of_a_group_placement_leaves() =>
+    Assert.Equal(
+      [
+        "stub:forming-lathe-north (block, creative tab): nothing makes it",
+        "stub:pipe-bend-ns (block, creative tab): nothing makes it",
+        "stub:crate-we (block, creative tab): nothing makes it",
+      ],
+      Findings(
+        new LoadedStubGame(new RecipeStubSource().Covering("stub"))
+          .Output(EnumItemClass.Block, "stub:forming-shear-east")
+          .Output(EnumItemClass.Block, "stub:pipe-straight-we")
+          .Output(EnumItemClass.Block, "stub:crate-ns")
+          .Block(
+            Placing("HorizontalOrientable"),
+            "stub:forming-shear-east",
+            null,
+            ("machine", "shear"),
+            ("horizontalorientation", "east")
+          )
+          .Block(
+            Placing("HorizontalOrientable"),
+            "stub:forming-lathe-north",
+            Listed,
+            ("machine", "lathe"),
+            ("horizontalorientation", "north")
+          )
+          .Block(
+            Placing("BlockNetworkNode"),
+            "stub:pipe-straight-we",
+            null,
+            ("type", "straight"),
+            ("orientation", "we")
+          )
+          .Block(
+            Placing("BlockNetworkNode"),
+            "stub:pipe-bend-ns",
+            Listed,
+            ("type", "bend"),
+            ("orientation", "ns")
+          )
+          .Block("stub:crate-ns", null, ("side", "ns"))
+          .Block("stub:crate-we", Listed, ("side", "we"))
           .Block("stub:hidden-ns", null, ("side", "ns"))
       )
     );
+
+  // A block whose class or one behaviour writes the group placement names; "axis" configures
+  // Pillar's rotationVariantCode.
+  private static Block Placing(string placement) {
+    Block block = placement switch {
+      "BlockStairs" => new BlockStairs(),
+      "BlockNetworkNode" => new StubNode(),
+      _ => new Block(),
+    };
+    BlockBehavior? behavior = placement switch {
+      "ExOrientable" => Initialized(new BlockBehaviorExOrientable(block), "{}"),
+      "ExOrientable network" => Initialized(
+        new BlockBehaviorExOrientable(block),
+        """{ "mode": "network" }"""
+      ),
+      "HorizontalOrientable" => new BlockBehaviorHorizontalOrientable(block),
+      "NWOrientable" => new BlockBehaviorNWOrientable(block),
+      "Pillar" => new BlockBehaviorPillar(block),
+      "Pillar axis" => new BlockBehaviorPillar(block) {
+        propertiesAtString = """{ "rotationVariantCode": "axis" }""",
+      },
+      "OmniRotatable" => new BlockBehaviorOmniRotatable(block),
+      _ => null,
+    };
+    block.BlockBehaviors = behavior == null ? [] : [behavior];
+    block.CollectibleBehaviors = [.. block.BlockBehaviors];
+    return block;
+  }
+
+  private static BlockBehavior Initialized(BlockBehavior behavior, string json) {
+    behavior.Initialize(new JsonObject(JObject.Parse(json)));
+    return behavior;
+  }
+
+  private sealed class StubNode : BlockNetworkNode {
+    public override string NetworkType => "stub";
+  }
 
   private static void Listed(Block block) =>
     block.CreativeInventoryTabs = ["general"];

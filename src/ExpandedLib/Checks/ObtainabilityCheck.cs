@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Blocks;
+using ExpandedLib.Networks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 using static ExpandedLib.Checks.GameReferencesCheck;
@@ -12,11 +14,13 @@ namespace ExpandedLib.Checks;
 /// <remarks>Made means the output of a loaded recipe or of exlib's process catalogues, a smelted,
 /// crushed or ground stack, a beehive kiln's firing, the drop of a block of another type, a world
 /// source vanilla places, or a code a mod declares its machines make
-/// (<see cref="ExlibChecks.Produces"/>). A wildcard is made when one code it matches is. A block a creative tab lists is made
-/// when any block of its type is, so one crafted orientation or shape covers the rest. A creative
-/// tab is no source: it lists what a creative player can take. A block's drop of its own type is no
-/// source either, since breaking it needs it first. Nothing is followed further back than the one
-/// step.</remarks>
+/// (<see cref="ExlibChecks.Produces"/>). A wildcard is made when one code it matches is. A block a
+/// creative tab lists is made when a block differing from it only in groups its placement writes
+/// is: the orientation groups <see cref="GridOutputVariantCheck"/> reads, and a network node's
+/// <c>orientation</c>, the faces it connects on. One crafted orientation covers the rest; another
+/// machine or pipe shape of the same blocktype does not. A creative tab is no source: it lists what
+/// a creative player can take. A block's drop of its own type is no source either, since breaking
+/// it needs it first. Nothing is followed further back than the one step.</remarks>
 public static class ObtainabilityCheck {
   /// <summary>Every ingredient and creative-listed block of <paramref name="domain"/> that nothing
   /// makes.</summary>
@@ -47,22 +51,18 @@ public static class ObtainabilityCheck {
     )
       if (!made.Makes(r.IsBlock, r.Code))
         errors.Add($"{r}: nothing makes it");
-    CollectibleObject[] own =
+    Block[] own =
     [
-      .. loaded.Where(c =>
-        c.ItemClass == EnumItemClass.Block && c.Code.Domain == domain
-      ),
+      .. loaded.OfType<Block>().Where(b => b.Code.Domain == domain),
     ];
-    ILookup<string, CollectibleObject> byType = own.ToLookup(TypeOf);
-    var typeMade = new Dictionary<string, bool>(StringComparer.Ordinal);
+    ILookup<string, Block> byKind = own.ToLookup(KindOf);
+    var kindMade = new Dictionary<string, bool>(StringComparer.Ordinal);
     foreach (
-      CollectibleObject block in own.Where(c =>
-        c.CreativeInventoryTabs is { Length: > 0 }
-      )
+      Block block in own.Where(b => b.CreativeInventoryTabs is { Length: > 0 })
     ) {
-      string type = TypeOf(block);
-      if (!typeMade.TryGetValue(type, out bool any))
-        typeMade[type] = any = byType[type]
+      string kind = KindOf(block);
+      if (!kindMade.TryGetValue(kind, out bool any))
+        kindMade[kind] = any = byKind[kind]
           .Any(b => made.Makes(true, b.Code.ToString()));
       if (!any)
         errors.Add($"{block.Code} (block, creative tab): nothing makes it");
@@ -78,6 +78,24 @@ public static class ObtainabilityCheck {
     string Source
   )> WorldSources() =>
     [(EnumItemClass.Block, "game:gravel-*", "worldgen, dug where it lies")];
+
+  // A block's type and its states in every group its placement does not write: the orientation
+  // groups, and the connector faces a network node's placement and its neighbours rewrite.
+  private static string KindOf(Block block) {
+    var placed = new HashSet<string>(
+      GridOutputVariantCheck.OrientationGroups(block),
+      StringComparer.Ordinal
+    );
+    if (block is BlockNetworkNode)
+      placed.Add(BlockBehaviorExOrientable.OrientationVariant);
+    return TypeOf(block)
+      + string.Concat(
+        block
+          .Variant?.Where(v => !placed.Contains(v.Key))
+          .Select(v => $"|{v.Key}={v.Value}")
+          ?? []
+      );
+  }
 
   /// <summary>The type code a loaded collectible's variant states were appended to, one
   /// <c>-state</c> per variant group in group order.</summary>
