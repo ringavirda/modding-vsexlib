@@ -8,6 +8,7 @@ using ExpandedLib.Industry.Metals;
 using ExpandedLib.Registries;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Vintagestory.API.Common;
 
 namespace ExpandedLib.Testing;
 
@@ -131,10 +132,10 @@ public static class DefinitionGoldens {
   /// <see cref="RelativePath"/> contains one of its comma-separated fragments. Opt-in: call only
   /// when <see cref="WriteRequested"/>.</summary>
   /// <remarks>A fragment whose first <c>/</c>-separated segment is another domain and whose
-  /// second is a golden category of this suite (the second segment of a
-  /// <see cref="RelativePath"/> here, such as <c>blocktypes</c>) belongs to another assembly's
-  /// goldens, is skipped here and never throws. A fragment naming a domain no suite has, with such
-  /// a category, is skipped the same way.</remarks>
+  /// second is a game asset category (a key of <see cref="AssetCategory.categories"/>, such as
+  /// <c>blocktypes</c>, <c>itemtypes</c> or <c>recipes</c>) belongs to another assembly's goldens,
+  /// is skipped here and never throws. A fragment naming a domain no suite has, with such a
+  /// category, is skipped the same way.</remarks>
   /// <exception cref="InvalidOperationException">Any other fragment matches none of
   /// <paramref name="domain"/>'s goldens; the message names the value and the fragment and says a
   /// fragment starts with its domain, and nothing is written.</exception>
@@ -155,13 +156,11 @@ public static class DefinitionGoldens {
   ) {
     IReadOnlyList<string> only = WriteFilter(value);
     IReadOnlyList<IExDef> defs = Collect(domain, asm);
-    var categories = defs.Select(d => RelativePath(d).Split('/')[1])
-      .ToHashSet(StringComparer.Ordinal);
 
     string[] unmatched =
     [
       .. only.Where(f =>
-        !IsOtherSuites(f, domain, categories)
+        !IsOtherSuites(f, domain)
         && !defs.Any(d => RelativePath(d).Contains(f, StringComparison.Ordinal))
       ),
     ];
@@ -186,16 +185,12 @@ public static class DefinitionGoldens {
     }
   }
 
-  private static bool IsOtherSuites(
-    string fragment,
-    string domain,
-    HashSet<string> categories
-  ) {
+  private static bool IsOtherSuites(string fragment, string domain) {
     string[] segments = fragment.Split('/');
     return segments.Length > 1
       && segments[0].Length > 0
       && segments[0] != domain
-      && categories.Contains(segments[1]);
+      && AssetCategory.categories.ContainsKey(segments[1]);
   }
 
   /// <summary>True when <c>EXLIB_WRITE_GOLDENS</c> is set to anything non-empty.</summary>

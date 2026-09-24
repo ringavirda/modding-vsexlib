@@ -45,16 +45,38 @@ public sealed class GoldenWriteTests : IDisposable {
   }
 
   // Fails when WriteAll throws on a fragment whose first segment is another domain and whose
-  // second is a golden category of this suite.
-  [Fact]
-  public void A_fragment_of_another_domain_is_left_to_that_domains_goldens() {
-    DefinitionGoldens.WriteAll(Domain, Mod, root, "siex/blocktypes/nomatch");
+  // second is a game asset category, or takes the categories from this suite's own goldens
+  // (exlib's suite has blocktypes only).
+  [Theory]
+  [InlineData("siex/blocktypes/nomatch")]
+  [InlineData("burdenmaker/itemtypes/x")]
+  [InlineData("burdenmaker/recipes/x")]
+  public void A_fragment_of_another_domain_is_left_to_that_domains_goldens(
+    string fragment
+  ) {
+    DefinitionGoldens.WriteAll(Domain, Mod, root, fragment);
 
     Assert.False(Directory.Exists(root));
   }
 
-  // Fails when WriteAll leaves to another suite a fragment whose second segment is no golden
-  // category of this suite: one missing its domain, or one whose second segment is not a category.
+  // Fails when the game's asset categories are read before VintagestoryAPI fills them.
+  [Fact]
+  public void The_game_asset_categories_are_filled_when_read() {
+    Assert.Superset(
+      new System.Collections.Generic.HashSet<string>
+      {
+        "blocktypes",
+        "itemtypes",
+        "recipes",
+        "entities",
+        "patches",
+      },
+      Vintagestory.API.Common.AssetCategory.categories.Keys.ToHashSet()
+    );
+  }
+
+  // Fails when WriteAll leaves to another suite a fragment whose second segment is no game asset
+  // category: one missing its domain, or one whose second segment is not a category.
   [Theory]
   [InlineData("blocktypes/nomatch")]
   [InlineData("siex/nomatch/furnace")]
