@@ -232,11 +232,49 @@ public class StageWildcardsTests {
     );
 
   [Fact]
-  public void Allowed_variants_narrow_a_family_star_to_the_keys_group() =>
+  public void Allowed_variants_narrow_a_family_star_to_the_keys_group() {
     Assert.Empty(
       Findings(
         "[]",
-        """[{ "type": "block", "code": "plantedstages:pipe-ns-*", "storeWildCard": "metal", "quantity": 1 }, { "type": "block", "code": "plantedstages:pipe-*", "allowedVariants": ["ns-iron", "ns-steel"], "storeWildCard": "metal", "quantity": 1 }]"""
+        """[{ "type": "block", "code": "plantedstages:pipe-ns-*", "storeWildCard": "metal", "quantity": 1 }]"""
+      )
+    );
+    Assert.Empty(
+      Findings(
+        "[]",
+        """[{ "type": "block", "code": "plantedstages:pipe-*", "allowedVariants": ["ns-iron", "ns-steel"], "storeWildCard": "metal", "quantity": 1 }]"""
+      )
+    );
+  }
+
+  // Fails when a key a later stage stores again stops being reported.
+  [Fact]
+  [PlantedDefect(typeof(StageWildcardsCheck), nameof(StageWildcardsCheck.Run))]
+  public void Rule_g_a_key_a_later_stage_stores_again_is_reported() =>
+    Assert.Equal(
+      [
+        "plantedstages:rig stage 2 game:rod-*: (g) key metal is stored again; stage 1 "
+          + "game:metalplate-* stores it first",
+      ],
+      Findings(
+        "[]",
+        Paid,
+        """[{ "type": "item", "code": "game:rod-*", "storeWildCard": "metal", "quantity": 1 }]"""
+      )
+    );
+
+  // Fails when stage 0's refund key, a second ingredient of the first storing stage, a later
+  // {key}, or a later ingredient storing the state its own {key} was filled with is reported as a
+  // second store.
+  [Fact]
+  [PlantedDefect(typeof(StageWildcardsCheck), nameof(StageWildcardsCheck.Run))]
+  public void A_stage_0_key_one_stages_stores_and_a_later_placeholder_are_no_second_store() =>
+    Assert.Empty(
+      Findings(
+        """[{ "type": "item", "code": "game:metalplate-*", "storeWildCard": "metal", "quantity": 1 }]""",
+        """[{ "type": "item", "code": "game:metalplate-*", "storeWildCard": "metal", "quantity": 2 }, { "type": "item", "code": "game:nails-*", "storeWildCard": "metal", "quantity": 1 }]""",
+        """[{ "type": "item", "code": "game:rod-{metal}", "quantity": 1 }]""",
+        """[{ "type": "item", "code": "game:nails-{metal}", "storeWildCard": "metal", "quantity": 1 }]"""
       )
     );
 

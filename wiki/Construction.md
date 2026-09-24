@@ -63,6 +63,15 @@ A stage whose `requireStacks` ingredient uses a wildcard code must set `storeWil
 resolution needs the variant the player actually fed it, and without that record breaking the block
 throws inside vanilla `GetDrops`.
 
+A key holds one value per construction, the last one paid, and the break refunds every ingredient
+storing that key at it. So store a key on one paid stage and have later stages take the stored
+value as a `{key}` placeholder, as vanilla's waterwheel does with `plank-{wood}`: the player pays
+the first stage in the material of his choice, later stages accept only that material, and the
+refund is exact. A `{key}` cannot be read in the stage that stores the key, since a stage is paid
+at once. The definition builder's `RequireMetalPlate`, `RequireMetalRod` and `RequireMetalNails`
+do this for `metal`: the first paid stage asking for metal stores it, iron or steel, and every
+later one asks for `{metal}`.
+
 ## Construction gates production
 
 exlib's production tick asks every publisher of `IProductionReadiness` on a block entity - the block

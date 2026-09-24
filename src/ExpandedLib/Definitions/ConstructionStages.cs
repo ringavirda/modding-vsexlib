@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace ExpandedLib.Definitions;
@@ -6,15 +8,25 @@ namespace ExpandedLib.Definitions;
 /// <summary>Typed builder for the <c>ExRightClickConstructable</c> behavior's <c>stages</c> table.</summary>
 public sealed class ConstructionStages {
   private readonly JArray _stages = new();
+  private readonly HashSet<string> _stored = new(StringComparer.Ordinal);
   private float? _brokenDropsRatio;
   private bool? _gatesProduction;
 
   /// <summary>Appends one build stage configured through <paramref name="configure"/>. Stage order
   /// is the build order.</summary>
+  /// <remarks>The stage's <see cref="ConstructionStage.RequireMetalPlate"/>,
+  /// <see cref="ConstructionStage.RequireMetalRod"/> and
+  /// <see cref="ConstructionStage.RequireMetalNails"/> take the metal an earlier paid stage stored,
+  /// so the first paid stage asking for metal picks the construction's one metal.</remarks>
   public ConstructionStages Stage(Action<ConstructionStage> configure) {
-    var stage = new ConstructionStage();
+    var stage = new ConstructionStage(_stages.Count == 0 ? [] : [.. _stored]);
     configure(stage);
-    _stages.Add(stage.Build());
+    JObject built = stage.Build();
+    if (_stages.Count > 0 && built["requireStacks"] is JArray required)
+      foreach (JToken ingredient in required)
+        if ((string?)ingredient["storeWildCard"] is { } key)
+          _stored.Add(key);
+    _stages.Add(built);
     return this;
   }
 
@@ -43,7 +55,16 @@ public sealed class ConstructionStages {
 /// <summary>One construction stage: the shape elements it adds/removes and the materials it requires.</summary>
 public sealed class ConstructionStage {
   private readonly JObject _stage = new();
+  private readonly IReadOnlyCollection<string> _stored;
   private JArray? _requireStacks;
+
+  /// <summary>A stage that follows no paid stage storing a key.</summary>
+  public ConstructionStage()
+    : this([]) { }
+
+  // stored: the storeWildCard keys earlier paid stages of the construction store.
+  internal ConstructionStage(IReadOnlyCollection<string> stored) =>
+    _stored = stored;
 
   /// <summary>The shape elements this stage reveals. Sets <c>addElements</c>.</summary>
   public ConstructionStage AddElements(params string[] elements) {
@@ -85,11 +106,13 @@ public sealed class ConstructionStage {
     return this;
   }
 
-  /// <summary>Requires iron or steel metal plate.</summary>
+  /// <summary>Requires iron or steel metal plate: of the metal an earlier paid stage stored, or
+  /// either, storing the one paid as <c>metal</c>.</summary>
   public ConstructionStage RequireMetalPlate(string domain, int quantity) =>
     RequireMetal(domain, "metalplate-*", "metalplate", quantity);
 
-  /// <summary>Requires iron or steel nails and strips.</summary>
+  /// <summary>Requires iron or steel nails and strips: of the metal an earlier paid stage stored,
+  /// or either, storing the one paid as <c>metal</c>.</summary>
   public ConstructionStage RequireMetalNails(string domain, int quantity) =>
     RequireMetal(domain, "metalnailsandstrips-*", "nailsandstrips", quantity);
 
@@ -100,24 +123,33 @@ public sealed class ConstructionStage {
     int quantity
   ) => Require(rivetCode, quantity, $"{domain}:rcc-ingredient-rivet");
 
-  /// <summary>Requires an iron or steel metal rod.</summary>
+  /// <summary>Requires an iron or steel metal rod: of the metal an earlier paid stage stored, or
+  /// either, storing the one paid as <c>metal</c>.</summary>
   public ConstructionStage RequireMetalRod(string domain, int quantity) =>
     RequireMetal(domain, "rod-*", "rod", quantity);
 
-  // Shared iron/steel ingredient shape.
+  // Vanilla keeps one value per key and refunds every storing ingredient at the last one stored.
   private ConstructionStage RequireMetal(
     string domain,
     string code,
     string kind,
     int quantity
   ) =>
-    Require(
-      code,
-      quantity,
-      $"{domain}:rcc-ingredient-{kind}",
-      storeWildCard: "metal",
-      allowedVariants: ["iron", "steel"]
-    );
+    _stored.Contains(Metal)
+      ? Require(
+        code.Replace("*", "{" + Metal + "}"),
+        quantity,
+        $"{domain}:rcc-ingredient-{kind}"
+      )
+      : Require(
+        code,
+        quantity,
+        $"{domain}:rcc-ingredient-{kind}",
+        storeWildCard: Metal,
+        allowedVariants: ["iron", "steel"]
+      );
+
+  private const string Metal = "metal";
 
   internal JObject Build() => _stage;
 }

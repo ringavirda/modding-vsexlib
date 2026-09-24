@@ -52,9 +52,7 @@
                   "walnut",
                   "purpleheart",
                   "aged",
-                  "veryaged",
-                  "rotten",
-                  "veryrotten"
+                  "veryaged"
                 ],
                 "storeWildCard": "wood"
               },
@@ -78,10 +76,9 @@
             "requireStacks": [
               {
                 "type": "item",
-                "code": "game:plank-*",
+                "code": "game:plank-{wood}",
                 "quantity": 4,
-                "name": "twintubblower:rcc-ingredient-plank",
-                "storeWildCard": "wood"
+                "name": "twintubblower:rcc-ingredient-plank"
               },
               {
                 "type": "block",
@@ -91,14 +88,9 @@
               },
               {
                 "type": "item",
-                "code": "rod-*",
+                "code": "rod-{metal}",
                 "quantity": 2,
-                "name": "twintubblower:rcc-ingredient-rod",
-                "allowedVariants": [
-                  "iron",
-                  "steel"
-                ],
-                "storeWildCard": "metal"
+                "name": "twintubblower:rcc-ingredient-rod"
               }
             ],
             "addElements": [
@@ -109,32 +101,21 @@
             "requireStacks": [
               {
                 "type": "item",
-                "code": "metalplate-*",
+                "code": "metalplate-{metal}",
                 "quantity": 4,
-                "name": "twintubblower:rcc-ingredient-metalplate",
-                "allowedVariants": [
-                  "iron",
-                  "steel"
-                ],
-                "storeWildCard": "metal"
+                "name": "twintubblower:rcc-ingredient-metalplate"
               },
               {
                 "type": "item",
-                "code": "game:plank-*",
+                "code": "game:plank-{wood}",
                 "quantity": 4,
-                "name": "twintubblower:rcc-ingredient-plank",
-                "storeWildCard": "wood"
+                "name": "twintubblower:rcc-ingredient-plank"
               },
               {
                 "type": "item",
-                "code": "metalnailsandstrips-*",
+                "code": "metalnailsandstrips-{metal}",
                 "quantity": 4,
-                "name": "twintubblower:rcc-ingredient-nailsandstrips",
-                "allowedVariants": [
-                  "iron",
-                  "steel"
-                ],
-                "storeWildCard": "metal"
+                "name": "twintubblower:rcc-ingredient-nailsandstrips"
               }
             ],
             "addElements": [
@@ -145,14 +126,9 @@
             "requireStacks": [
               {
                 "type": "item",
-                "code": "metalplate-*",
+                "code": "metalplate-{metal}",
                 "quantity": 4,
-                "name": "twintubblower:rcc-ingredient-metalplate",
-                "allowedVariants": [
-                  "iron",
-                  "steel"
-                ],
-                "storeWildCard": "metal"
+                "name": "twintubblower:rcc-ingredient-metalplate"
               }
             ],
             "addElements": [

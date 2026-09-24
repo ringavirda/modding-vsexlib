@@ -18,8 +18,13 @@ namespace ExpandedLib.Checks;
 /// (b) the <c>*</c> spans only the key's variant group; (c) the key is a group of every match;
 /// (d) the key is <c>wood</c> or <c>metal</c>, the keys a creative Ctrl build stores; (e) a
 /// <c>{key}</c> names a block variant group or a key an earlier paid stage stores; (f) a stage 0
-/// key is stored by stage 1. (b) and (c) decide block codes in covered domains only; a covered
-/// item code is undecidable, and other domains are left to the loaded game.
+/// key is stored by stage 1; (g) a key is stored by one paid stage, since the refund fills every
+/// ingredient storing it with the last payment's state, and a later stage takes the stored state
+/// as <c>{key}</c>. An ingredient whose code holds its own <c>{key}</c> stores the state it was
+/// filled with and is no second store. Ingredients of one stage storing one key are not reported:
+/// the stage is one payment, and a later <c>{key}</c> in it would read the state stored before
+/// it. (b) and (c) decide block codes in covered domains only;
+/// a covered item code is undecidable, and other domains are left to the loaded game.
 /// </remarks>
 public static class StageWildcardsCheck {
   /// <summary>The <c>storeWildCard</c> keys vanilla's creative Ctrl build stores.</summary>
@@ -109,6 +114,9 @@ public static class StageWildcardsCheck {
   ) {
     HashSet<string> stage1Keys = [.. KeysOf(c.Stages, 1)];
     var storedBefore = new HashSet<string>(StringComparer.Ordinal);
+    var firstStore = new Dictionary<string, (int Stage, string Code)>(
+      StringComparer.Ordinal
+    );
     for (int i = 0; i < c.Stages.Count; i++) {
       foreach (JToken ing in Ingredients(c.Stages, i)) {
         string code = (string?)ing["code"] ?? "";
@@ -137,6 +145,13 @@ public static class StageWildcardsCheck {
           yield return $"{where}: (d) key {key} is not seeded by the creative build";
         if (i == 0 && !stage1Keys.Contains(key))
           yield return $"{where}: (f) stage 0 key {key} is not stored by stage 1";
+        if (i == 0 || code.Contains("{" + key + "}", StringComparison.Ordinal))
+          continue;
+        if (!firstStore.TryGetValue(key, out var first))
+          firstStore[key] = (i, code);
+        else if (first.Stage < i)
+          yield return $"{where}: (g) key {key} is stored again; stage {first.Stage} "
+            + $"{first.Code} stores it first";
       }
       storedBefore.UnionWith(i == 0 ? [] : KeysOf(c.Stages, i));
     }

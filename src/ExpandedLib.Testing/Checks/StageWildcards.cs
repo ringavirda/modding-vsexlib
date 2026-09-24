@@ -15,7 +15,7 @@ public static class StageWildcards {
   /// <summary>What one run read and found.</summary>
   /// <param name="Blocks">The block types carrying construction stages.</param>
   /// <param name="Stages">The stages across those block types, stage 0 included.</param>
-  /// <param name="Findings">One line per violation, prefixed with its rule, (a) to (f).</param>
+  /// <param name="Findings">One line per violation, prefixed with its rule, (a) to (g).</param>
   public sealed record Result(
     int Blocks,
     int Stages,

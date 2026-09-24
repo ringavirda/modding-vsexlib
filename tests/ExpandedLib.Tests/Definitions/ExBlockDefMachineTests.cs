@@ -1,3 +1,4 @@
+using System.Linq;
 using ExpandedLib.Definitions;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
@@ -149,6 +150,38 @@ public class ExBlockDefMachineTests {
     Assert.True(
       JToken.DeepEquals(expected["entityBehaviors"], behaviors),
       "construction table diverged:\n" + behaviors
+    );
+  }
+
+  // Fails when a metal ingredient after the first paid stage storing metal stores it again, one
+  // of that first stage stops storing, or stage 0's stops counting as unpaid.
+  [Fact]
+  public void The_first_paid_stage_asking_for_metal_picks_the_constructions_metal() {
+    JArray stages = (JArray)
+      ExBlockDef
+        .Create("d", "c")
+        .Construction(c =>
+          c.Stage(s => s.RequireMetalRod("d", 1))
+            .Stage(s => s.Require("game:stick", 1))
+            .Stage(s => s.RequireMetalPlate("d", 2).RequireMetalNails("d", 4))
+            .Stage(s => s.RequireMetalRod("d", 3).RequireMetalNails("d", 5))
+        )
+        .ToJson()["entityBehaviors"]![0]!["properties"]!["stages"]!;
+
+    string[] Codes(int stage) =>
+      [
+        .. stages[stage]!["requireStacks"]!.Select(i =>
+          $"{i["code"]} {i["storeWildCard"] ?? "-"} {i["allowedVariants"]?.Count() ?? 0}"
+        ),
+      ];
+    Assert.Equal(["rod-* metal 2"], Codes(0));
+    Assert.Equal(
+      ["metalplate-* metal 2", "metalnailsandstrips-* metal 2"],
+      Codes(2)
+    );
+    Assert.Equal(
+      ["rod-{metal} - 0", "metalnailsandstrips-{metal} - 0"],
+      Codes(3)
     );
   }
 

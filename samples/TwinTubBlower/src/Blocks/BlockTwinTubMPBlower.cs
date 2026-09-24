@@ -33,9 +33,10 @@ public partial class BlockTwinTubMPBlower
       new { through = false }
     );
 
-  /// <summary>The <c>wood</c> states of vanilla's <c>supportbeam</c>: the woods and the aged
-  /// ones. <c>supportbeam-*</c> alone also takes the tarnished metal beams, which carry no
-  /// <c>wood</c> to store.</summary>
+  /// <summary>The <c>wood</c> states of vanilla's <c>supportbeam</c> that vanilla's <c>plank</c>
+  /// shares, since the later stages take <c>plank-{wood}</c>: the woods and the aged ones.
+  /// <c>supportbeam-*</c> alone also takes the tarnished metal beams, which carry no <c>wood</c> to
+  /// store.</summary>
   private static readonly string[] WoodenBeams =
   [
     "birch",
@@ -52,8 +53,6 @@ public partial class BlockTwinTubMPBlower
     "purpleheart",
     "aged",
     "veryaged",
-    "rotten",
-    "veryrotten",
   ];
 
   /// <summary>The two pass-through filler cells on the -Z run: membership on north, passing
@@ -127,10 +126,9 @@ public partial class BlockTwinTubMPBlower
             )
             .Stage(s =>
               s.Require(
-                  "game:plank-*",
+                  "game:plank-{wood}",
                   4,
-                  "twintubblower:rcc-ingredient-plank",
-                  storeWildCard: "wood"
+                  "twintubblower:rcc-ingredient-plank"
                 )
                 .Require(
                   "game:woodenaxle-ud",
@@ -144,10 +142,9 @@ public partial class BlockTwinTubMPBlower
             .Stage(s =>
               s.RequireMetalPlate(domain, 4)
                 .Require(
-                  "game:plank-*",
+                  "game:plank-{wood}",
                   4,
-                  "twintubblower:rcc-ingredient-plank",
-                  storeWildCard: "wood"
+                  "twintubblower:rcc-ingredient-plank"
                 )
                 .RequireMetalNails(domain, 4)
                 .AddElements("Root/Tubs")
