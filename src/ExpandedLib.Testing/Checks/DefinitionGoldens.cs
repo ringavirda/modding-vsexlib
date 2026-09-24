@@ -130,11 +130,14 @@ public static class DefinitionGoldens {
   /// output: every golden when <c>EXLIB_WRITE_GOLDENS</c> is <c>1</c>, else those whose
   /// <see cref="RelativePath"/> contains one of its comma-separated fragments. Opt-in: call only
   /// when <see cref="WriteRequested"/>.</summary>
-  /// <remarks>A fragment whose first <c>/</c>-separated segment is another domain belongs to
-  /// another assembly's goldens, is skipped here and never throws.</remarks>
-  /// <exception cref="InvalidOperationException">A fragment matches none of
-  /// <paramref name="domain"/>'s goldens; the message names the value and the fragment, and
-  /// nothing is written.</exception>
+  /// <remarks>A fragment whose first <c>/</c>-separated segment is another domain and whose
+  /// second is a golden category of this suite (the second segment of a
+  /// <see cref="RelativePath"/> here, such as <c>blocktypes</c>) belongs to another assembly's
+  /// goldens, is skipped here and never throws. A fragment naming a domain no suite has, with such
+  /// a category, is skipped the same way.</remarks>
+  /// <exception cref="InvalidOperationException">Any other fragment matches none of
+  /// <paramref name="domain"/>'s goldens; the message names the value and the fragment and says a
+  /// fragment starts with its domain, and nothing is written.</exception>
   [CheckHelper("writes the goldens when asked")]
   public static void WriteAll(string domain, Assembly asm, string goldenRoot) =>
     WriteAll(
@@ -152,11 +155,14 @@ public static class DefinitionGoldens {
   ) {
     IReadOnlyList<string> only = WriteFilter(value);
     IReadOnlyList<IExDef> defs = Collect(domain, asm);
+    var categories = defs
+      .Select(d => RelativePath(d).Split('/')[1])
+      .ToHashSet(StringComparer.Ordinal);
 
     string[] unmatched =
     [
       .. only.Where(f =>
-        IsOwnFragment(f, domain)
+        !IsOtherSuites(f, domain, categories)
         && !defs.Any(d => RelativePath(d).Contains(f, StringComparison.Ordinal))
       ),
     ];
@@ -164,6 +170,7 @@ public static class DefinitionGoldens {
       throw new InvalidOperationException(
         $"EXLIB_WRITE_GOLDENS={value} names no {domain} golden: "
           + string.Join(", ", unmatched)
+          + $"; a fragment starts with its domain, as in {domain}/"
       );
 
     foreach (IExDef def in defs) {
@@ -180,9 +187,16 @@ public static class DefinitionGoldens {
     }
   }
 
-  private static bool IsOwnFragment(string fragment, string domain) {
-    int slash = fragment.IndexOf('/');
-    return slash <= 0 || fragment[..slash] == domain;
+  private static bool IsOtherSuites(
+    string fragment,
+    string domain,
+    HashSet<string> categories
+  ) {
+    string[] segments = fragment.Split('/');
+    return segments.Length > 1
+      && segments[0].Length > 0
+      && segments[0] != domain
+      && categories.Contains(segments[1]);
   }
 
   /// <summary>True when <c>EXLIB_WRITE_GOLDENS</c> is set to anything non-empty.</summary>

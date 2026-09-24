@@ -415,7 +415,9 @@ compares each one's emitted JSON to a committed golden file under `goldens/{doma
 (`EXLIB_WRITE_GOLDENS=iiex/blocktypes/furnace/blastcore`) blesses one file at a time. A
 comma-separated list blesses each golden whose path contains one of its fragments; a fragment that
 matches none of the suite's goldens fails the write test naming the value, and writes nothing. A
-fragment starting with another domain (`iiex/` in siex's suite) is left to that domain's suite.
+fragment starts with its domain: one starting with another domain and then a category the suite's
+own goldens use (`iiex/blocktypes/` in siex's suite) is left to that domain's suite, and any other,
+such as `blocktypes/furnace` with no domain, fails when it matches nothing.
 
 For a def migrated from an existing hand-written blocktype, `DefinitionParity` checks the two are
 *semantically* the same JSON - numbers compare type-agnostically, `multiblockStructure` and
