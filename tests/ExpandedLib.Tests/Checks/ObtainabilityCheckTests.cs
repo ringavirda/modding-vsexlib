@@ -158,6 +158,62 @@ public sealed class ObtainabilityCheckTests : IDisposable {
       )
     );
 
+  // Fails when a wildcard's allowedVariants stop narrowing what makes it, its skipVariants stop
+  // narrowing either a narrowed or a plain wildcard, or an allowed state that is made stops
+  // counting.
+  [Fact]
+  [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
+  public void A_wildcard_is_made_only_through_the_states_its_stack_takes() {
+    var recipe = new JObject {
+      ["ingredientPattern"] = "ABCD",
+      ["width"] = 4,
+      ["height"] = 1,
+      ["ingredients"] = JObject.Parse(
+        """
+        {
+          "A": { "type": "item", "code": "stub:any-*", "name": "wood",
+            "allowedVariants": ["pine"] },
+          "B": { "type": "item", "code": "stub:log-*",
+            "allowedVariants": ["pine", "oak"], "skipVariants": ["oak"] },
+          "C": { "type": "item", "code": "stub:bark-*", "skipVariants": ["oak"] },
+          "D": { "type": "item", "code": "stub:board-*",
+            "allowedVariants": ["pine", "oak"] }
+        }
+        """
+      ),
+      ["output"] = new JObject { ["type"] = "item", ["code"] = "stub:product" },
+    };
+    Assert.Equal(
+      [
+        $"{File}: stub:any-* [pine] (item, RecipeIngredient): nothing makes it",
+        $"{File}: stub:log-* [pine, oak] [not oak] (item, RecipeIngredient): nothing makes it",
+        $"{File}: stub:bark-* [not oak] (item, RecipeIngredient): nothing makes it",
+      ],
+      Findings(
+        new LoadedStubGame(
+          new RecipeStubSource().Recipe(File, recipe.ToString())
+        )
+          .Output(EnumItemClass.Item, "stub:any-oak")
+          .Output(EnumItemClass.Item, "stub:log-oak")
+          .Output(EnumItemClass.Item, "stub:bark-oak")
+          .Output(EnumItemClass.Item, "stub:board-oak")
+      )
+    );
+  }
+
+  // Fails when a placeholder nothing binds stops reading as a wildcard.
+  [Fact]
+  [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
+  public void A_placeholder_nothing_binds_is_made_through_any_state() =>
+    Assert.Empty(
+      Findings(
+        new LoadedStubGame(Asking(("item", "stub:gear-{metal}"))).Output(
+          EnumItemClass.Item,
+          "stub:gear-iron"
+        )
+      )
+    );
+
   private static JsonItemStack Stack(EnumItemClass type, string code) =>
     new() { Type = type, Code = new AssetLocation(code) };
 

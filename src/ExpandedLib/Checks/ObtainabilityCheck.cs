@@ -14,7 +14,8 @@ namespace ExpandedLib.Checks;
 /// <remarks>Made means the output of a loaded recipe or of exlib's process catalogues, a smelted,
 /// crushed or ground stack, a beehive kiln's firing, the drop of a block of another type, a world
 /// source vanilla places, or a code a mod declares its machines make
-/// (<see cref="ExlibChecks.Produces"/>). A wildcard is made when one code it matches is. A block a
+/// (<see cref="ExlibChecks.Produces"/>). A wildcard is made when one code it matches is, among the
+/// states its stack's <c>allowedVariants</c> allow and its <c>skipVariants</c> leave. A block a
 /// creative tab lists is made when a block differing from it only in groups its placement writes
 /// is: the orientation groups <see cref="GridOutputVariantCheck"/> reads, and a network node's
 /// <c>orientation</c>, the faces it connects on. One crafted orientation covers the rest; another
@@ -49,7 +50,7 @@ public static class ObtainabilityCheck {
         .Select(r => r with { Code = r.Qualified })
         .Distinct()
     )
-      if (!made.Makes(r.IsBlock, r.Code))
+      if (!made.Makes(r.IsBlock, r.Code, r.Allowed, r.Skipped))
         errors.Add($"{r}: nothing makes it");
     Block[] own =
     [
@@ -63,7 +64,7 @@ public static class ObtainabilityCheck {
       string kind = KindOf(block);
       if (!kindMade.TryGetValue(kind, out bool any))
         kindMade[kind] = any = byKind[kind]
-          .Any(b => made.Makes(true, b.Code.ToString()));
+          .Any(b => made.Makes(true, b.Code.ToString(), null, null));
       if (!any)
         errors.Add($"{block.Code} (block, creative tab): nothing makes it");
     }
@@ -191,7 +192,18 @@ public static class ObtainabilityCheck {
         _codes[block].Add(code.ToString());
     }
 
-    internal bool Makes(bool isBlock, string code) {
+    // A single * narrowed by allowed states matches exactly those states' codes; the allowed
+    // states of a code with several are not read.
+    internal bool Makes(
+      bool isBlock,
+      string code,
+      string[]? allowed,
+      string[]? skipped
+    ) {
+      if (allowed != null && code.Count(c => c == '*') == 1)
+        return allowed
+          .Where(s => skipped?.Contains(s) != true)
+          .Any(s => Makes(isBlock, code.Replace("*", s), null, null));
       if (_codes[isBlock].Contains(code))
         return true;
       var target = new AssetLocation(Unbound(code));
@@ -203,7 +215,11 @@ public static class ObtainabilityCheck {
       string prefix = target.Domain + ":" + target.Path[..wild];
       return _codes[isBlock]
         .Where(c => c.StartsWith(prefix, StringComparison.Ordinal))
-        .Any(c => WildcardUtil.Match(target, new AssetLocation(c)));
+        .Select(c => new AssetLocation(c))
+        .Any(c =>
+          WildcardUtil.Match(target, c)
+          && (skipped == null || !WildcardUtil.Match(target, c, skipped))
+        );
     }
 
     private static readonly char[] Wild = ['*', '@', '{'];

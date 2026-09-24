@@ -92,12 +92,36 @@ public static class GameReferencesCheck {
   /// <param name="Origin">Where in the file.</param>
   /// <param name="Code">The concrete or wildcard code.</param>
   /// <param name="IsBlock">Which registry it lands in; <c>type</c> decides.</param>
+  /// <param name="Allowed">The states a <c>*</c> in <see cref="Code"/> may take, from the
+  /// stack's <c>allowedVariants</c>; null when it names none or the code holds no
+  /// <c>*</c>.</param>
+  /// <param name="Skipped">The states it may not take, from <c>skipVariants</c>; null
+  /// likewise.</param>
   internal sealed record Reference(
     string Source,
     Origin Origin,
     string Code,
-    bool IsBlock
+    bool IsBlock,
+    string[]? Allowed = null,
+    string[]? Skipped = null
   ) {
+    /// <inheritdoc/>
+    public bool Equals(Reference? other) =>
+      other is not null
+      && Source == other.Source
+      && Origin == other.Origin
+      && Code == other.Code
+      && IsBlock == other.IsBlock
+      && Same(Allowed, other.Allowed)
+      && Same(Skipped, other.Skipped);
+
+    /// <inheritdoc/>
+    public override int GetHashCode() =>
+      HashCode.Combine(Source, Origin, Code, IsBlock);
+
+    private static bool Same(string[]? a, string[]? b) =>
+      a == null ? b == null : b != null && a.SequenceEqual(b);
+
     /// <summary>The domain segment of <see cref="Code"/>, or <c>game</c> when it carries
     /// none.</summary>
     internal string Domain =>
@@ -116,7 +140,10 @@ public static class GameReferencesCheck {
 
     /// <inheritdoc/>
     public override string ToString() =>
-      $"{Source}: {Code} ({(IsBlock ? "block" : "item")}, {Origin})";
+      $"{Source}: {Code}"
+      + (Allowed == null ? "" : $" [{string.Join(", ", Allowed)}]")
+      + (Skipped == null ? "" : $" [not {string.Join(", ", Skipped)}]")
+      + $" ({(IsBlock ? "block" : "item")}, {Origin})";
   }
 
   #region Collecting
@@ -234,8 +261,18 @@ public static class GameReferencesCheck {
       return [];
 
     return Fill(code, holes)
-      .Select(c => new Reference(source, origin, c, isBlock));
+      .Select(c => new Reference(
+        source,
+        origin,
+        c,
+        isBlock,
+        c.Contains('*') ? States(obj["allowedVariants"]) : null,
+        c.Contains('*') ? States(obj["skipVariants"]) : null
+      ));
   }
+
+  private static string[]? States(JToken? token) =>
+    token is JArray states ? [.. states.Select(s => (string)s!)] : null;
 
   #endregion
 
