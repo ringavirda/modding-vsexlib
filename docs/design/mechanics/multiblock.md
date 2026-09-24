@@ -431,9 +431,11 @@ the server only, and `RemoveFillers` clears only a cell that holds a filler link
 neighbouring structure's fillers are never disturbed. With the filler block unregistered, the first call
 logs one error per world and nothing is placed. `BlockFilledMegastructure` (registered
 `ExFilledMegastructure`) folds this triad for blocks that can inherit from it - `CanPlaceBlock` (failure
-code `notenoughspace`), `OnBlockPlaced` with an `OnFootprintPlaced` hook, and `OnBlockRemoved`. Blocks that
-already have a base class (the flywheel is a `BlockNetworkNode`) call the three helpers from the same three
-overrides - `BlockFlywheel` is the canonical hand-rolled copy.
+code `notenoughspace`), `OnBlockPlaced` with an `OnFootprintPlaced` hook, and `OnBlockRemoved`. All three
+read their cells from `ReservedCells`, the whole footprint unless a subclass narrows it, and
+`CanPlaceBlock` asks `HasRoom`, which is `CanPlace` over those cells unless a subclass counts some held
+cells as room. Blocks that already have a base class (the flywheel is a `BlockNetworkNode`) call the three
+helpers from the same three overrides - `BlockFlywheel` is the canonical hand-rolled copy.
 
 ### The footprint DSL
 

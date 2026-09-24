@@ -29,6 +29,21 @@ public class BlockFilledMegastructure : Block, IFillerHost {
   protected List<FillerCell> FootprintCells(BlockPos pos) =>
     StructureFillers.FootprintCells((IFillerHost)this, pos, StructureAngle);
 
+  /// <summary>The footprint cells a principal at <paramref name="pos"/> takes in
+  /// <paramref name="world"/>: the whole footprint unless overridden. <see cref="HasRoom"/> checks
+  /// them, <see cref="OnBlockPlaced"/> fills them, and <see cref="OnBlockRemoved"/> clears those of them
+  /// still linked to this principal.</summary>
+  protected virtual List<FillerCell> ReservedCells(
+    IWorldAccessor world,
+    BlockPos pos
+  ) => FootprintCells(pos);
+
+  /// <summary>Whether a principal at <paramref name="pos"/> finds room for its fillers: by default,
+  /// every <see cref="ReservedCells"/> cell is air or replaceable by the filler.</summary>
+  /// <returns>False makes <see cref="CanPlaceBlock"/> refuse with <c>notenoughspace</c>.</returns>
+  protected virtual bool HasRoom(IWorldAccessor world, BlockPos pos) =>
+    StructureFillers.CanPlace(world, ReservedCells(world, pos));
+
   public override bool CanPlaceBlock(
     IWorldAccessor world,
     IPlayer byPlayer,
@@ -39,7 +54,7 @@ public class BlockFilledMegastructure : Block, IFillerHost {
       return false;
 
     // The whole footprint must be clear for the fillers to spawn.
-    if (!StructureFillers.CanPlace(world, FootprintCells(blockSel.Position))) {
+    if (!HasRoom(world, blockSel.Position)) {
       failureCode = "notenoughspace";
       return false;
     }
@@ -52,7 +67,11 @@ public class BlockFilledMegastructure : Block, IFillerHost {
     ItemStack? byItemStack = null
   ) {
     base.OnBlockPlaced(world, blockPos, byItemStack);
-    StructureFillers.PlaceFillers(world, blockPos, FootprintCells(blockPos));
+    StructureFillers.PlaceFillers(
+      world,
+      blockPos,
+      ReservedCells(world, blockPos)
+    );
     OnFootprintPlaced(world, blockPos);
   }
 
@@ -64,7 +83,7 @@ public class BlockFilledMegastructure : Block, IFillerHost {
 
   public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos) {
     // Called on every removal path, unlike OnBlockBroken, which only a player break triggers.
-    StructureFillers.RemoveFillers(world, pos, FootprintCells(pos));
+    StructureFillers.RemoveFillers(world, pos, ReservedCells(world, pos));
     base.OnBlockRemoved(world, pos);
   }
 }
