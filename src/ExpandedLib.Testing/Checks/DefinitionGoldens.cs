@@ -155,8 +155,7 @@ public static class DefinitionGoldens {
   ) {
     IReadOnlyList<string> only = WriteFilter(value);
     IReadOnlyList<IExDef> defs = Collect(domain, asm);
-    var categories = defs
-      .Select(d => RelativePath(d).Split('/')[1])
+    var categories = defs.Select(d => RelativePath(d).Split('/')[1])
       .ToHashSet(StringComparer.Ordinal);
 
     string[] unmatched =

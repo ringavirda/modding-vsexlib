@@ -19,7 +19,8 @@ public class PressureVesselGateTests {
       .Create("exlibtest", "boiler")
       .Construction(c =>
         c.Stage(s =>
-            s.RequireRivets("exlibtest", Rivet, 3).RequireMetalPlate("exlibtest", 2)
+            s.RequireRivets("exlibtest", Rivet, 3)
+              .RequireMetalPlate("exlibtest", 2)
           )
           .Stage(s => s.AddElements("Root/Shell"))
           .Stage(s =>
@@ -40,9 +41,7 @@ public class PressureVesselGateTests {
   public void A_build_asking_for_no_rivets_costs_none() {
     ExBlockDef bunker = ExBlockDef
       .Create("exlibtest", "bunker")
-      .Construction(c =>
-        c.Stage(s => s.RequireMetalPlate("exlibtest", 4))
-      );
+      .Construction(c => c.Stage(s => s.RequireMetalPlate("exlibtest", 4)));
 
     Assert.Equal(0, PressureVesselGate.RivetsRequired(bunker, Rivet));
   }
