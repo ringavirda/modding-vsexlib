@@ -72,6 +72,9 @@ public static class LangParity {
   }
 
   /// <summary>The non-English locale files under <paramref name="langTree"/>.</summary>
+  [CheckHelper(
+    "lists a lang tree's translated locale files, which Check reads"
+  )]
   public static IReadOnlyList<string> LocaleFiles(string langTree) =>
     [.. LocaleFilePaths(langTree)];
 

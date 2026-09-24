@@ -204,6 +204,7 @@ public class StructureLayoutTests {
   }
 
   [Fact]
+  [PlantedDefect(typeof(DefinitionParity), nameof(DefinitionParity.Equal))]
   public void DefinitionParity_catches_a_wrong_multiblock_cell() {
     JObject a = JObject.Parse(
       """{ "attributes": { "multiblockStructure": { "blockNumbers": { "mod:a": 1 }, "offsets": [ { "x": 0, "y": 0, "z": 0, "w": 1 } ] } } }"""

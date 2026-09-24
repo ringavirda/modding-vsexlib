@@ -19,6 +19,7 @@ namespace ExpandedLib.Testing;
 public static class DefinitionGoldens {
   /// <summary>Every code-first def (blocks, items, recipes) <paramref name="asm"/> declares for
   /// <paramref name="domain"/>, without registering into the process-wide registry.</summary>
+  [CheckHelper("collects a domain's code-first definitions")]
   public static IReadOnlyList<IExDef> Collect(string domain, Assembly asm) {
     var defs = new List<IExDef>();
     foreach (Type type in ReflectionScan.GetCandidateTypes(asm)) {
@@ -56,10 +57,12 @@ public static class DefinitionGoldens {
 
   /// <summary>The def's golden path relative to the golden root: <c>{domain}/{Location.Path}</c> (a stable,
   /// serializable key that doubles as the xUnit theory case id).</summary>
+  [CheckHelper("names a definition's golden file")]
   public static string RelativePath(IExDef def) =>
     def.Location.Domain + "/" + def.Location.Path;
 
   /// <summary>One xUnit theory case per def, keyed by its <see cref="RelativePath"/>.</summary>
+  [CheckHelper("feeds a theory the golden paths")]
   public static IEnumerable<object[]> Cases(string domain, Assembly asm) =>
     Collect(domain, asm)
       .Select(d => RelativePath(d))
@@ -125,6 +128,7 @@ public static class DefinitionGoldens {
 
   /// <summary>Re-blesses the goldens under <paramref name="goldenRoot"/> from the current def
   /// output. Opt-in: call only when <see cref="WriteRequested"/>.</summary>
+  [CheckHelper("writes the goldens when asked")]
   public static void WriteAll(string domain, Assembly asm, string goldenRoot) {
     IReadOnlyList<string> only = WriteFilter;
 
@@ -144,6 +148,7 @@ public static class DefinitionGoldens {
   }
 
   /// <summary>True when <c>EXLIB_WRITE_GOLDENS</c> is set to anything non-empty.</summary>
+  [CheckHelper("reads the golden-write switch")]
   public static bool WriteRequested =>
     !string.IsNullOrWhiteSpace(
       Environment.GetEnvironmentVariable("EXLIB_WRITE_GOLDENS")
@@ -171,10 +176,12 @@ public static class DefinitionGoldens {
 
   /// <summary>The repo root every source-tree path is resolved against; also settable with the
   /// <c>EXLIB_REPO_ROOT</c> environment variable.</summary>
+  [CheckHelper("overrides the repository root a run reads")]
   public static string? RepoRootOverride { get; set; }
 
   /// <summary>Resolves a repo-root-relative path to an absolute path, walking up from the test
   /// binary to the solution root.</summary>
+  [CheckHelper("resolves a path under the repository root")]
   public static string SolutionRelative(string repoRelativePath) =>
     Path.Combine(
       RepoRoot(),
@@ -195,6 +202,7 @@ public static class DefinitionGoldens {
   /// <summary>The resolved repo root: <see cref="RepoRootOverride"/>, else
   /// <c>EXLIB_REPO_ROOT</c>, else the first directory above the test binary carrying a
   /// <c>.sln</c>, <c>.slnx</c> or <c>.git</c>.</summary>
+  [CheckHelper("finds the repository root")]
   public static string RepoRoot() {
     string? configured =
       RepoRootOverride ?? Environment.GetEnvironmentVariable("EXLIB_REPO_ROOT");

@@ -59,6 +59,7 @@ public class HarnessUseGuards {
 
   // Fails when CompletionWrites stops matching SetProperty.
   [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.CompletionWrites))]
   public void A_completion_set_through_SetProperty_is_named() {
     IReadOnlyList<string> offenders = Scan(
       HarnessUse.CompletionWrites,
@@ -74,6 +75,7 @@ public class HarnessUseGuards {
 
   // Fails when CompletionWrites stops matching a PropertyInfo.SetValue.
   [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.CompletionWrites))]
   public void A_completion_set_through_SetValue_is_named() {
     Assert.Single(
       Scan(
@@ -85,6 +87,7 @@ public class HarnessUseGuards {
 
   // Fails when CompletionWrites stops matching the backing field written by name.
   [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.CompletionWrites))]
   public void A_completion_set_through_its_backing_field_is_named() {
     Assert.Single(
       Scan(
@@ -96,6 +99,7 @@ public class HarnessUseGuards {
 
   // Fails when CompletionWrites stops following a PropertyInfo local bound to the name.
   [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.CompletionWrites))]
   public void A_completion_set_through_a_reflection_local_is_named() {
     Assert.EndsWith(
       ":2: StructureComplete written by reflection through a local; build or break the structure "
@@ -111,6 +115,7 @@ public class HarnessUseGuards {
 
   // Fails when CompletionWrites stops matching a subclass writing through the protected setter.
   [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.CompletionWrites))]
   public void A_completion_set_by_a_subclass_through_its_setter_is_named() {
     Assert.EndsWith(
       ":2: StructureComplete written through its setter by a subclass; build or break the "
@@ -154,6 +159,7 @@ public class HarnessUseGuards {
 
   // Fails when HalfBehaviours stops matching a BlockBehaviors assignment.
   [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.HalfBehaviours))]
   public void BlockBehaviors_alone_is_named() {
     Assert.EndsWith(
       ":2: torch sets BlockBehaviors but not CollectibleBehaviors, which GetBehavior reads",
@@ -168,6 +174,7 @@ public class HarnessUseGuards {
 
   // Fails when HalfBehaviours pairs CollectibleBehaviors on another receiver with this one.
   [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.HalfBehaviours))]
   public void CollectibleBehaviors_on_another_block_does_not_pair() {
     Assert.Single(
       Scan(
@@ -179,6 +186,7 @@ public class HarnessUseGuards {
 
   // Fails when HalfBehaviours stops matching an initializer's bare BlockBehaviors.
   [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.HalfBehaviours))]
   public void An_initializer_with_BlockBehaviors_alone_is_named() {
     Assert.Contains(
       "an initializer sets BlockBehaviors",
@@ -209,6 +217,10 @@ public class HarnessUseGuards {
 
   // Fails when GameConstrainedGenerics stops resolving a constraint on a game class.
   [Fact]
+  [PlantedDefect(
+    typeof(HarnessUse),
+    nameof(HarnessUse.GameConstrainedGenerics)
+  )]
   public void A_helper_constrained_on_a_game_class_is_named() {
     Assert.EndsWith(
       ":3: T is constrained on the game type BlockEntity; write one helper per type",
@@ -224,6 +236,10 @@ public class HarnessUseGuards {
 
   // Fails when GameConstrainedGenerics stops walking a mod type's base classes.
   [Fact]
+  [PlantedDefect(
+    typeof(HarnessUse),
+    nameof(HarnessUse.GameConstrainedGenerics)
+  )]
   public void A_helper_constrained_on_a_type_deriving_from_a_game_class_is_named() {
     Assert.Single(
       Scan(
@@ -236,6 +252,10 @@ public class HarnessUseGuards {
 
   // Fails when GameConstrainedGenerics stops reading a type's interfaces.
   [Fact]
+  [PlantedDefect(
+    typeof(HarnessUse),
+    nameof(HarnessUse.GameConstrainedGenerics)
+  )]
   public void A_helper_constrained_on_a_type_implementing_a_game_interface_is_named() {
     Assert.Single(
       Scan(

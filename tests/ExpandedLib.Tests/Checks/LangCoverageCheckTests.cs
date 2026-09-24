@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ExpandedLib.Checks;
 using ExpandedLib.Definitions;
+using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Xunit;
@@ -32,6 +33,7 @@ public class LangCoverageCheckTests {
   }
 
   [Fact]
+  [PlantedDefect(typeof(LangCoverageCheck), nameof(LangCoverageCheck.Run))]
   public void Missing_en_key_is_an_error() {
     var source = new StubSource(("en", new JObject()));
 

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ExpandedLib.Checks;
 using ExpandedLib.Definitions;
+using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Xunit;
@@ -47,6 +48,7 @@ public class LateDefinitionCheckTests {
   }
 
   [Fact]
+  [PlantedDefect(typeof(LateDefinitionCheck), nameof(LateDefinitionCheck.Run))]
   public void A_late_block_is_reported_with_its_name_and_the_remedy() {
     ExDefinitions.RecordInjected([]);
     ExDefinitions.RegisterBlock(ExBlockDef.Create("stub", "late"));

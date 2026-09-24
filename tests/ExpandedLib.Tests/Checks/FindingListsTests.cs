@@ -14,6 +14,7 @@ public class FindingListsTests {
 
   // Fails when Assert lets through a finding neither list keys.
   [Fact]
+  [PlantedDefect(typeof(FindingLists), nameof(FindingLists.Assert))]
   public void A_finding_on_neither_list_fails_naming_it() {
     var ex = Assert.Throws<InvalidOperationException>(() =>
       FindingLists.Assert(
@@ -24,13 +25,13 @@ public class FindingListsTests {
       )
     );
 
-    Assert.Contains("1 finding(s) on neither list", ex.Message);
-    Assert.Contains("B.cs:9: bad", ex.Message);
+    Assert.StartsWith("1 finding(s) on neither list: B.cs:9: bad", ex.Message);
     Assert.DoesNotContain("A.cs:3", ex.Message);
   }
 
   // Fails when Assert passes a known entry the rule does not report.
   [Fact]
+  [PlantedDefect(typeof(FindingLists), nameof(FindingLists.Assert))]
   public void A_known_finding_that_no_longer_fails_fails_naming_it() {
     var ex = Assert.Throws<InvalidOperationException>(() =>
       FindingLists.Assert(
@@ -44,8 +45,10 @@ public class FindingListsTests {
       )
     );
 
-    Assert.Contains("1 known finding(s) that no longer fail", ex.Message);
-    Assert.Contains("Gone.cs", ex.Message);
+    Assert.StartsWith(
+      "1 known finding(s) that no longer fail; remove them: Gone.cs",
+      ex.Message
+    );
   }
 
   // Fails when Assert fails an allowed entry that keys nothing, or a listed finding.

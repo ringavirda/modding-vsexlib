@@ -26,7 +26,7 @@ against.
 | `Scenes/` | `Scene`, `SceneDiagram`, `SceneGrid` |
 | `Rigs/` | `StructureRig`, `StructureTestHooks`, `MachineRig`, `MachineTestHooks`, `RegistryLawScanner`, `ResourceInvariant<TState>`, `StaticStateCollection`, `HarmonyFixture` |
 | `Doubles/` | stand-ins: `StubNetwork`, `TestNetworkBlock`, `NetworkNodeTestHooks`, `CapturingNode`, `SeverableNode`, `OrientableNode`, `RccFake`, `TestMemberBlockEntity`, `MechPower`; supported doubles: `TestPlayer`, `TestInventory`, `TestModLoader`, `WorldConfigBag`, `ModConfigFiles`, `RecordingLogger`, `TestChannels`; the log rule: `FailOnWarningsAttribute`, `FailOnWarningsException` |
-| `Checks/` | the content validators: `CodeLiterals`, `CodePrefixCollision`, `CostSelectorOverlap`, `DefinitionAssets`, `DefinitionCatalogue`, `DefinitionCodes`, `DefinitionGoldens`, `DefinitionJson`, `DefinitionParity`, `FindingLists`, `HandbookSync`, `HarnessUse`, `LangCallSites`, `LangCoverage`, `LangKeys`, `LangParity`, `LayoutTable`, `LoopingAnimations`, `MegablockFrames`, `MultiblockCodes`, `NetworkNodeContract`, `PinnedNetworkNodes`, `PressureVesselGate`, `RecipeCodes`, `ReferencedCodes`, `SelectorCoverage`, `ShapeExtents`, `ShippedJson`, `SoundUse`, `StructureBreaks`, `TreeKeys`, `VanillaToolTiers`, `WikiParity` |
+| `Checks/` | the content validators: `CheckHelperAttribute`, `CodeLiterals`, `CodePrefixCollision`, `CostSelectorOverlap`, `DefinitionAssets`, `DefinitionCatalogue`, `DefinitionCodes`, `DefinitionGoldens`, `DefinitionJson`, `DefinitionParity`, `FindingLists`, `HandbookSync`, `HarnessUse`, `LangCallSites`, `LangCoverage`, `LangKeys`, `LangParity`, `LayoutTable`, `LoopingAnimations`, `MegablockFrames`, `MultiblockCodes`, `NetworkNodeContract`, `PinnedNetworkNodes`, `PlantedDefectAttribute`, `PlantedDefects`, `PressureVesselGate`, `RecipeCodes`, `ReferencedCodes`, `SelectorCoverage`, `ShapeExtents`, `ShippedJson`, `SoundUse`, `StructureBreaks`, `TreeKeys`, `VanillaToolTiers`, `WikiParity` |
 | `Repo/` | `RepoPaths`, `RepoManifest`, `ReleasedHistory`, `ReleasedCodes`, `ReleasedVersions`, `ReleasedCodeDebt`, `BlockCodeEmitter`, `RepoCheckSource` |
 | (root) | `ReflectionHelpers` |
 
@@ -706,6 +706,7 @@ pairs.
 
 | Type | What it checks |
 |---|---|
+| `CheckHelperAttribute` | `[CheckHelper("reason")]` marks a public static member of a check type that returns data rather than findings (a reader, a path, a collector); `PlantedDefects.Survey` counts it exempt. |
 | `CodeLiterals` | A domain-qualified block-code string literal in source that can never resolve because it names a variant-grouped block by its bare base code. |
 | `CodePrefixCollision` | No block's base code is a proper prefix of another's at a `-` boundary - a wildcard built from a base code must not also match an unrelated block. |
 | `CostSelectorOverlap` | No two recipe-cost selectors in a catalogue can match the same block (`ExRecipeCosts` applies every entry in sequence, not first-match). |
@@ -728,6 +729,8 @@ pairs.
 | `MultiblockCodes` | Every block code a `multiblockStructure` layout asks for is a block some mod defines (a dangling cell code throws nothing and passes the goldens). |
 | `NetworkNodeContract` | The two structural rules a definition must obey to end up on a network graph: a `BlockNetworkNode` def declares a `type` variant state, and its orientation states resolve. |
 | `PinnedNetworkNodes` | No shipped layout pins the orientation of a network node - a node picks its own orientation from its neighbours. |
+| `PlantedDefectAttribute` | `[PlantedDefect(typeof(X), nameof(X.M))]` on a `[Fact]` or `[Theory]` that feeds rule `M` a planted defect and asserts the finding; the test proves every overload of `M`. |
+| `PlantedDefects` | `Survey(sourceDirectory, checks, tests, filePattern, member)` sorts the public static members (methods, properties, fields) of the check types into a `PlantedDefects.Census`: `Proven` by a `[PlantedDefect]` test in `tests`, `Helpers` marked `[CheckHelper]`, and `Unplanted`, the rest in file order plus every mark naming no member, sitting on a method that is not a test, or a helper without a reason. A check type is the public top-level type of `checks` named by a file in `sourceDirectory`; `member` narrows the survey to one name (`"Run"`). Throws `InvalidOperationException` when no file names a type. exlib's own meta-test runs it over `Checks/` and every `*Check.Run`, holding the unplanted members in a `Pending` list through `FindingLists.Assert`. |
 | `PressureVesselGate` | The one place a fastener choice is a hard gate rather than a substitution: a pressure vessel must be riveted. |
 | `RecipeCodes` | Every grid recipe's block output names a block the mod registers (an output is exact, never a wildcard selector). |
 | `ReferencedCodes` | Every code a mod's recipes, construction stages and definition bodies point at (as opposed to register) that names nothing. |

@@ -66,14 +66,19 @@ public static class FindingLists {
     var parts = new List<string>();
     if (unlisted.Count > 0)
       parts.Add(
-        $"{unlisted.Count} finding(s) on neither list:\n  "
-          + string.Join("\n  ", unlisted)
+        Listed($"{unlisted.Count} finding(s) on neither list", unlisted)
       );
     if (stale.Count > 0)
       parts.Add(
-        $"{stale.Count} known finding(s) that no longer fail; remove them:\n  "
-          + string.Join("\n  ", stale)
+        Listed(
+          $"{stale.Count} known finding(s) that no longer fail; remove them",
+          stale
+        )
       );
     throw new InvalidOperationException(string.Join("\n", parts));
   }
+
+  // The first item shares the heading's line, which is all a one-line runner summary shows.
+  private static string Listed(string heading, List<string> items) =>
+    $"{heading}: {string.Join("\n  ", items)}";
 }

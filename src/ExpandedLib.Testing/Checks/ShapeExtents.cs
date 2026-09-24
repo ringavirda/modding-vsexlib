@@ -13,6 +13,7 @@ public static class ShapeExtents {
   /// x / y / z.
   /// </summary>
   /// <param name="element">One element to measure, children included. Null measures the whole file.</param>
+  [CheckHelper("measures the extents of a shape file")]
   public static (float Width, float Thickness, float Length) Of(
     string path,
     string? element = null
@@ -25,6 +26,7 @@ public static class ShapeExtents {
   /// The composed bounding box of <paramref name="element"/> (or of the whole file), as minimum and
   /// maximum voxel corners on x / y / z. Rotation is composed down the tree; scale is left at 1.
   /// </summary>
+  [CheckHelper("measures the bounding box of a shape or element")]
   public static (float[] Min, float[] Max) Bounds(
     string path,
     string? element = null

@@ -16,12 +16,18 @@ namespace ExpandedLib.Testing;
 public static class DefinitionCatalogue {
   /// <summary>Every block code pattern <paramref name="domain"/> registers, worldproperty groups as
   /// <c>*</c>.</summary>
+  [CheckHelper(
+    "lists the block code patterns a domain registers, which Resolves matches"
+  )]
   public static IEnumerable<string> BlockPatterns(
     string domain,
     Assembly asm
   ) => DefinitionCodes.PatternsForDomain(domain, asm);
 
   /// <summary>Every item code pattern <paramref name="domain"/> registers.</summary>
+  [CheckHelper(
+    "lists the item code patterns a domain registers, which Resolves matches"
+  )]
   public static IEnumerable<string> ItemPatterns(string domain, Assembly asm) =>
     DefinitionGoldens
       .Collect(domain, asm)

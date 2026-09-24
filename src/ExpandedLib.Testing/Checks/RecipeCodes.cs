@@ -16,6 +16,7 @@ public static class RecipeCodes {
 
   /// <summary>Every concrete block code <paramref name="domain"/>'s grid recipes can output, with
   /// placeholders expanded.</summary>
+  [CheckHelper("lists the block codes grid recipes output")]
   public static IEnumerable<string> OutputBlockCodes(
     string domain,
     Assembly asm

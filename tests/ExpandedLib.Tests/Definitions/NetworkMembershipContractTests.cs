@@ -98,6 +98,10 @@ public class NetworkMembershipContractTests {
     NetworkNodeContract.MembershipViolations("exlib", Here);
 
   [Fact]
+  [PlantedDefect(
+    typeof(NetworkNodeContract),
+    nameof(NetworkNodeContract.MembershipViolations)
+  )]
   public void The_scan_reaches_every_place_a_membership_can_be_declared() {
     // Each of the three declaration tables is represented once.
     var violations = Violations();
@@ -118,6 +122,10 @@ public class NetworkMembershipContractTests {
   }
 
   [Fact]
+  [PlantedDefect(
+    typeof(NetworkNodeContract),
+    nameof(NetworkNodeContract.MembershipViolations)
+  )]
   public void The_violation_names_the_cell_it_was_found_in() {
     string report = Assert.Single(
       Violations(),

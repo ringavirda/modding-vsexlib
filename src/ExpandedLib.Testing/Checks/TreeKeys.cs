@@ -16,6 +16,9 @@ public static class TreeKeys {
   /// <summary>The keys <paramref name="be"/> writes into <c>ToTreeAttributes</c>, sorted, each
   /// qualified with its attribute type ("temp:float"); a nested tree's keys are listed as
   /// "parent/child".</summary>
+  [CheckHelper(
+    "lists the keys a block entity writes, which the asserts compare"
+  )]
   public static IReadOnlyList<string> Of(BlockEntity be) {
     var tree = new TreeAttribute();
     be.ToTreeAttributes(tree);

@@ -48,6 +48,7 @@ public class TreeKeysTests {
   }
 
   [Fact]
+  [PlantedDefect(typeof(TreeKeys), nameof(TreeKeys.AssertDeclaresBaseKeys))]
   public void A_subclass_that_skips_base_fails_naming_the_type_and_the_missing_keys() {
     var be = new BadDerived();
     Place(be);

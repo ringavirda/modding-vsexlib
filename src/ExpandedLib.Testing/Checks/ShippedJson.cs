@@ -67,6 +67,7 @@ public static class ShippedJson {
   }
 
   /// <summary>The patch files under <paramref name="assetTree"/>.</summary>
+  [CheckHelper("lists the patch files under an asset tree")]
   public static IReadOnlyList<string> PatchFiles(string assetTree) =>
     [.. AssetFiles(assetTree).Where(IsPatchFile)];
 

@@ -81,6 +81,7 @@ public static class LoopingAnimations {
   }
 
   /// <summary>The shape files under <paramref name="assetTree"/>'s <c>shapes/</c>.</summary>
+  [CheckHelper("lists the shape files Check reads")]
   public static IReadOnlyList<string> ShapeFiles(string assetTree) {
     if (!Directory.Exists(assetTree))
       return [];

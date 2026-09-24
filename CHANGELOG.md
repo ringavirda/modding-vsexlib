@@ -60,6 +60,10 @@ see the git history.
   the rows and `ReleasedVersions.Compare` orders versions. exlib's seed carries 0.8.0, 0.8.1 and
   0.8.2, which shipped no code beyond `exlib:structurefiller`, and a guard fails when the newest
   release tag has no row.
+- **`PlantedDefects`**, **`[PlantedDefect]`** and **`[CheckHelper]`** (ExpandedLib.Testing): a check
+  proves it can fail. `PlantedDefects.Survey` sorts the public static members of a folder's check
+  types into those a `[PlantedDefect]` test proves, helpers marked `[CheckHelper]` with a reason, and
+  the rest. exlib's suite fails on a check member that is neither, unless its `Pending` list names it.
 
 ### Changed
 

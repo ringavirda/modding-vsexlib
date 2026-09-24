@@ -58,6 +58,7 @@ public static class ReferencedCodes {
 
   /// <summary>Every code <paramref name="domain"/>'s recipe files reference - outputs and ingredients of
   /// all three recipe shapes.</summary>
+  [CheckHelper("collects the codes a domain's recipes reference")]
   public static IEnumerable<Reference> InRecipes(string domain, Assembly asm) {
     foreach (
       ExRecipeDef def in DefinitionGoldens
@@ -105,6 +106,7 @@ public static class ReferencedCodes {
 
   /// <summary>Every code <paramref name="domain"/>'s blocktypes and itemtypes name in their own
   /// bodies: construction requires, drops, smelted, ground and shattered stacks, mold outputs.</summary>
+  [CheckHelper("collects the codes a domain's definitions reference")]
   public static IEnumerable<Reference> InDefinitions(
     string domain,
     Assembly asm

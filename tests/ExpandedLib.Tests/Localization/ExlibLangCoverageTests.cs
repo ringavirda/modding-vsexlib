@@ -32,6 +32,7 @@ public class ExlibLangCoverageTests {
   }
 
   [Fact]
+  [PlantedDefect(typeof(LangCoverage), nameof(LangCoverage.MissingNames))]
   public void A_key_present_in_en_but_missing_from_another_locale_is_reported() {
     string langDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
     Directory.CreateDirectory(langDir);

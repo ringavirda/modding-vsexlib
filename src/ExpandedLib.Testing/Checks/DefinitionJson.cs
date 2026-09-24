@@ -20,6 +20,7 @@ public static class VanillaToolTiers {
 /// </summary>
 public static class DefinitionJson {
   /// <summary>Parses def-emitted JSON (comments + trailing commas allowed) into a detached element.</summary>
+  [CheckHelper("parses definition JSON leniently")]
   public static JsonElement Parse(string json) {
     using var doc = JsonDocument.Parse(
       json,
@@ -32,12 +33,14 @@ public static class DefinitionJson {
   }
 
   /// <summary>The block's <c>requiredMiningTier</c> (see <see cref="VanillaToolTiers"/>).</summary>
+  [CheckHelper("reads a block's required mining tier")]
   public static int MiningTier(JsonElement block) =>
     block.GetProperty("requiredMiningTier").GetInt32();
 
   /// <summary>The <c>ExRightClickConstructable</c> entity behavior's properties node, holding
   /// <c>brokenDropsRatio</c> and <c>stages</c>.</summary>
   /// <exception cref="InvalidOperationException">The block has no such behavior.</exception>
+  [CheckHelper("reads a block's construction attributes")]
   public static JsonElement Constructable(JsonElement block) {
     foreach (
       JsonElement b in block.GetProperty("entityBehaviors").EnumerateArray()

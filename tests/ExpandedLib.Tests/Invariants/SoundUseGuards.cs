@@ -85,6 +85,7 @@ public class SoundUseGuards {
 
   // Fails when ShortRepeats stops comparing a literal interval with the clip.
   [Fact]
+  [PlantedDefect(typeof(SoundUse), nameof(SoundUse.ShortRepeats))]
   public void A_literal_interval_shorter_than_the_clip_is_named() {
     IReadOnlyList<string> offenders = Scan(
       "ExSounds.PlayThrottled(Api, Pos, ExSounds.Fire, ref _ms, 5000, 0.6f);"
@@ -98,6 +99,7 @@ public class SoundUseGuards {
 
   // Fails when ShortRepeats accepts any ClipLengthMs, not only the played sound's.
   [Fact]
+  [PlantedDefect(typeof(SoundUse), nameof(SoundUse.ShortRepeats))]
   public void The_clip_length_of_another_sound_is_named() {
     IReadOnlyList<string> offenders = Scan(
       "ExSounds.PlayLoop(\n  world,\n  pos,\n  ExSounds.Lava,\n  ref ms,\n"
@@ -109,6 +111,7 @@ public class SoundUseGuards {
 
   // Fails when ShortRepeats trusts a sound it cannot look up.
   [Fact]
+  [PlantedDefect(typeof(SoundUse), nameof(SoundUse.ShortRepeats))]
   public void A_sound_outside_the_catalogue_is_named() {
     IReadOnlyList<string> offenders = Scan(
       "ExSounds.PlayLoop(world, pos, mySound, ref ms, 20000);"
@@ -119,6 +122,7 @@ public class SoundUseGuards {
 
   // Fails when ShortRepeats treats a named constant as long enough.
   [Fact]
+  [PlantedDefect(typeof(SoundUse), nameof(SoundUse.ShortRepeats))]
   public void An_interval_it_cannot_read_is_named() {
     IReadOnlyList<string> offenders = Scan(
       "ExSounds.PlayLoop(world, pos, ExSounds.Latch, ref ms, SomeMs);"
@@ -142,6 +146,7 @@ public class SoundUseGuards {
   // Fails when UndisposedLoops misses a raw ILoadedSound, OnBlockUnloaded's call into Release, a
   // wrong-field access, or a null-conditional Dispose (ReceiverUse returning its argument).
   [Fact]
+  [PlantedDefect(typeof(SoundUse), nameof(SoundUse.UndisposedLoops))]
   public void Undisposed_and_raw_sound_holders_are_named() {
     List<string> offenders = SoundUse
       .UndisposedLoops(typeof(SoundUseGuards).Assembly)
@@ -178,6 +183,7 @@ public class SoundUseGuards {
 
   // Fails when DirectSounds stops matching PlaySoundAt or LoadSound, or reads a commented-out call.
   [Fact]
+  [PlantedDefect(typeof(SoundUse), nameof(SoundUse.DirectSounds))]
   public void A_direct_play_or_load_is_named_and_a_comment_is_not() {
     IReadOnlyList<string> offenders = Scan(
       "Api.World.PlaySoundAt(ExSounds.Fire, Pos.X, Pos.Y, Pos.Z);\n"
@@ -199,6 +205,7 @@ public class SoundUseGuards {
 
   // Fails when UndisposedLoops accepts any read of the loop field in place of a Dispose call on it.
   [Fact]
+  [PlantedDefect(typeof(SoundUse), nameof(SoundUse.UndisposedLoops))]
   public void A_loop_its_unload_only_stops_is_named() {
     Assert.Contains(
       "ExpandedLib.Tests.UnloadStopsSoundFixture._loop: OnBlockUnloaded() never disposes it",

@@ -103,6 +103,9 @@ public static class LangCallSites {
 
   /// <summary>Every <c>(file, key)</c> a mod's source names, normalised the way the lang cache
   /// holds it.</summary>
+  [CheckHelper(
+    "lists the lang keys source asks for, which Unresolvable checks"
+  )]
   public static IReadOnlyList<(string File, string Key)> Keys(
     string domain,
     string srcDir

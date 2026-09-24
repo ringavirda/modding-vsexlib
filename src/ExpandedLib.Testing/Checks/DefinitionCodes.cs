@@ -30,6 +30,7 @@ public static class DefinitionCodes {
   /// Renders a worldproperty-sourced group as a literal <c>*</c>, for matching a code against the
   /// pattern, not enumerating concrete states.
   /// </param>
+  [CheckHelper("expands a definition into the codes it registers")]
   public static IEnumerable<Registered> Expand(
     ExBlockDef def,
     bool propertyGroupsAsWildcard = false
@@ -67,6 +68,7 @@ public static class DefinitionCodes {
   }
 
   /// <summary>Every concrete block <paramref name="domain"/> registers, from its own assembly.</summary>
+  [CheckHelper("expands a domain's definitions into the codes they register")]
   public static IEnumerable<Registered> ForDomain(
     string domain,
     Assembly asm
@@ -79,6 +81,7 @@ public static class DefinitionCodes {
 
   /// <summary>The same expansion as <see cref="ForDomain"/> but with worldproperty groups left as
   /// <c>*</c>, for testing code membership.</summary>
+  [CheckHelper("lists a domain's registered codes as patterns")]
   public static IEnumerable<string> PatternsForDomain(
     string domain,
     Assembly asm

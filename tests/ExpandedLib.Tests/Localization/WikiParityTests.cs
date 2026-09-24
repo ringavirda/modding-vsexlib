@@ -94,6 +94,7 @@ public class WikiParityTests {
   }
 
   [Fact]
+  [PlantedDefect(typeof(WikiParity), nameof(WikiParity.Check))]
   public void A_member_declared_virtual_where_the_code_declares_it_abstract_is_a_finding() {
     using var page = new TempWikiPage(
       """
@@ -153,6 +154,7 @@ public class WikiParityTests {
 
   // Fails when Check stops reporting a page from which it read no symbol.
   [Fact]
+  [PlantedDefect(typeof(WikiParity), nameof(WikiParity.Check))]
   public void A_page_with_no_symbol_is_a_finding_unless_listed_symbol_free() {
     using var page = new TempWikiPage(
       "# Prose\n\nA page that names nothing the assembly has, `not code`.\n"
@@ -211,6 +213,7 @@ public class WikiParityTests {
   }
 
   [Fact]
+  [PlantedDefect(typeof(WikiParity), nameof(WikiParity.Check))]
   public void An_override_declared_where_the_code_declares_it_abstract_is_a_finding() {
     using var page = new TempWikiPage(
       """

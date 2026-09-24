@@ -34,6 +34,7 @@ public static class HandbookSync {
   );
 
   /// <summary>True when <c>EXLIB_WRITE_HANDBOOK=1</c>.</summary>
+  [CheckHelper("reads the handbook-write switch")]
   public static bool WriteRequested =>
     Environment.GetEnvironmentVariable("EXLIB_WRITE_HANDBOOK") == "1";
 
@@ -41,6 +42,7 @@ public static class HandbookSync {
 
   /// <summary>The authoring HTML as it must appear in the lang file: unescaped and
   /// whitespace-collapsed.</summary>
+  [CheckHelper("normalises page HTML for comparison")]
   public static string Normalize(string html) =>
     Whitespace.Replace(html.Replace("\\\"", "\""), " ").Trim();
 
@@ -49,6 +51,7 @@ public static class HandbookSync {
   #region Discovery
 
   /// <summary>Every mod asset domain that ships handbook pages, in order.</summary>
+  [CheckHelper("lists the domains that ship handbook pages")]
   public static IReadOnlyList<string> Domains() =>
     RepoPaths
       .AllAssetTrees()
@@ -59,6 +62,7 @@ public static class HandbookSync {
 
   /// <summary>The pages of <paramref name="domain"/> that have both an authoring source and a
   /// shipped descriptor, joined on the <c>NN-</c> ordering prefix.</summary>
+  [CheckHelper("lists a domain's handbook pages")]
   public static IReadOnlyList<Page> Pages(string domain) {
     var sources = SourcesByNumber(domain);
     var pages = new List<Page>();
@@ -144,6 +148,7 @@ public static class HandbookSync {
   /// <summary>Re-blesses <paramref name="domain"/>'s lang file from its authoring sources.
   /// Opt-in: call only when <see cref="WriteRequested"/>.</summary>
   /// <returns>The lang keys that changed.</returns>
+  [CheckHelper("writes the shipped pages when asked")]
   public static IReadOnlyList<string> WriteAll(string domain) {
     string path = LangPath(domain);
     if (!File.Exists(path))
@@ -180,6 +185,7 @@ public static class HandbookSync {
   /// <returns>The authoring files it changed.</returns>
   /// <exception cref="InvalidOperationException">The exported HTML does not
   /// <see cref="Normalize"/> back to the shipped value.</exception>
+  [CheckHelper("exports the shipped pages to their sources when asked")]
   public static IReadOnlyList<string> ExportAll(string domain) {
     JObject lang = Lang(domain);
     var changed = new List<string>();

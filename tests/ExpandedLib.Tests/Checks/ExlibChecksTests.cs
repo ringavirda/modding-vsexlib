@@ -157,6 +157,10 @@ public class ExlibChecksTests {
     Results().Single(r => r.Check == check).Errors;
 
   [Fact]
+  [PlantedDefect(
+    typeof(MultiblockCodesCheck),
+    nameof(MultiblockCodesCheck.Run)
+  )]
   public void Multiblock_codes_reports_only_the_dangling_cell() {
     IReadOnlyList<string> errors = ErrorsOf("MultiblockCodes");
     Assert.Single(errors);
@@ -164,6 +168,7 @@ public class ExlibChecksTests {
   }
 
   [Fact]
+  [PlantedDefect(typeof(RecipeCodesCheck), nameof(RecipeCodesCheck.Run))]
   public void Recipe_codes_reports_only_the_dangling_output() {
     IReadOnlyList<string> errors = ErrorsOf("RecipeCodes");
     Assert.Single(errors);
@@ -171,6 +176,7 @@ public class ExlibChecksTests {
   }
 
   [Fact]
+  [PlantedDefect(typeof(LangCoverageCheck), nameof(LangCoverageCheck.Run))]
   public void Lang_coverage_reports_only_the_missing_key() {
     IReadOnlyList<string> errors = ErrorsOf("LangCoverage");
     Assert.Single(errors);
@@ -178,6 +184,10 @@ public class ExlibChecksTests {
   }
 
   [Fact]
+  [PlantedDefect(
+    typeof(PinnedNetworkNodesCheck),
+    nameof(PinnedNetworkNodesCheck.Run)
+  )]
   public void Pinned_network_nodes_reports_only_the_pinned_node() {
     IReadOnlyList<string> errors = ErrorsOf("PinnedNetworkNodes");
     Assert.Single(errors);
@@ -185,6 +195,10 @@ public class ExlibChecksTests {
   }
 
   [Fact]
+  [PlantedDefect(
+    typeof(CodePrefixCollisionCheck),
+    nameof(CodePrefixCollisionCheck.Run)
+  )]
   public void Code_prefix_collision_reports_only_the_family_pair() {
     IReadOnlyList<string> errors = ErrorsOf("CodePrefixCollision");
     Assert.Single(errors);
@@ -198,6 +212,10 @@ public class ExlibChecksTests {
   }
 
   [Fact]
+  [PlantedDefect(
+    typeof(DefinitionCatalogueCheck),
+    nameof(DefinitionCatalogueCheck.Run)
+  )]
   public void Definition_catalogue_reports_only_the_unregistered_def() {
     IReadOnlyList<string> errors = ErrorsOf("DefinitionCatalogue");
     Assert.Single(errors);
@@ -205,6 +223,10 @@ public class ExlibChecksTests {
   }
 
   [Fact]
+  [PlantedDefect(
+    typeof(NetworkNodeContractCheck),
+    nameof(NetworkNodeContractCheck.Run)
+  )]
   public void Network_node_contract_reports_the_missing_type_group_the_misspelled_scheme_and_the_untyped_membership() {
     IReadOnlyList<string> errors = ErrorsOf("NetworkNodeContract");
     Assert.Equal(3, errors.Count);
@@ -223,6 +245,7 @@ public class ExlibChecksTests {
   }
 
   [Fact]
+  [PlantedDefect(typeof(LateDefinitionCheck), nameof(LateDefinitionCheck.Run))]
   public void Late_definition_reports_through_ExlibChecks_once_injection_has_run() {
     ExDefinitions.RegisterBlock(ExBlockDef.Create(Domain, "toolate"));
 

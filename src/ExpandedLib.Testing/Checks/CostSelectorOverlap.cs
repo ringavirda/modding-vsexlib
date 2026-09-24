@@ -66,6 +66,9 @@ public static class CostSelectorOverlap {
   }
 
   /// <summary>The mod's registered codes, read from its own definitions.</summary>
+  [CheckHelper(
+    "lists the block codes a domain registers, which Overlaps tests selectors against"
+  )]
   public static IEnumerable<string> CodesOf(string domain, Assembly asm) =>
     DefinitionCodes.ForDomain(domain, asm).Select(r => r.Code);
 }

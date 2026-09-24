@@ -9,6 +9,7 @@ namespace ExpandedLib.Testing;
 /// <summary>Relates a mega-block's drawn mesh to the volume it reserves.</summary>
 public static class MegablockFrames {
   /// <summary>Blocks of overhang a drawn mesh may have past its reserved footprint.</summary>
+  [CheckHelper("the overhang Misfit allows by default")]
   public const float DefaultOverhang = 0.25f;
 
   /// <summary>
@@ -42,6 +43,7 @@ public static class MegablockFrames {
   }
 
   /// <summary>The repo-relative shape file a <c>domain:path</c> shape reference names.</summary>
+  [CheckHelper("resolves a shape base to its file")]
   public static string ShapeFile(string shapeBase) {
     string[] parts = shapeBase.Split(':', 2);
     return System.IO.Path.Combine(

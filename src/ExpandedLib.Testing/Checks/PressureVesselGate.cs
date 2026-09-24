@@ -10,6 +10,7 @@ namespace ExpandedLib.Testing;
 public static class PressureVesselGate {
   /// <summary>Every stage ingredient a construction-staged block declares, flattened across its
   /// stages.</summary>
+  [CheckHelper("lists a definition's construction-stage ingredients")]
   public static IEnumerable<JObject> StageIngredients(ExBlockDef def) {
     // Construction stages ride on the ExRightClickConstructable behaviour, not a fixed `attributes` path.
     if (def.ToJson()["entityBehaviors"] is not JArray behaviours)
@@ -35,6 +36,7 @@ public static class PressureVesselGate {
     ];
 
   /// <summary>How many of <paramref name="rivetCode"/> the whole build costs, summed over its stages.</summary>
+  [CheckHelper("counts the rivets a definition's stages ask for")]
   public static int RivetsRequired(ExBlockDef def, string rivetCode) =>
     StageIngredients(def)
       .Where(i => i["code"]?.ToString() == rivetCode)

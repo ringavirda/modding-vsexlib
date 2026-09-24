@@ -15,6 +15,7 @@ namespace ExpandedLib.Testing;
 public static class LayoutTable {
   /// <summary>The wanted block code at each structure-local cell, read from the generated
   /// <c>multiblockStructure</c> attribute.</summary>
+  [CheckHelper("reads a layout into a per-cell code table")]
   public static Dictionary<Vec3i, string> From(ExBlockDef def) {
     JObject structure = (JObject)
       def.ToJson()["attributes"]!["multiblockStructure"]!;
@@ -34,6 +35,7 @@ public static class LayoutTable {
   /// <summary>The wanted block code at each world-relative cell, rotated by
   /// <paramref name="angle"/> through vanilla <see cref="MultiblockStructure"/> the way the
   /// production block entity does at placement.</summary>
+  [CheckHelper("reads a layout turned by an angle into a per-cell code table")]
   public static Dictionary<Vec3i, string> Rotated(ExBlockDef def, int angle) {
     JObject json = (JObject)def.ToJson()["attributes"]!["multiblockStructure"]!;
 

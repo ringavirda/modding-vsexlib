@@ -65,6 +65,7 @@ public static class LangCoverage {
   }
 
   /// <summary>The distinct base codes behind <see cref="MissingNames"/>.</summary>
+  [CheckHelper("groups MissingNames' findings by block code")]
   public static IReadOnlyList<string> MissingBaseCodes(
     IEnumerable<string> failures
   ) =>

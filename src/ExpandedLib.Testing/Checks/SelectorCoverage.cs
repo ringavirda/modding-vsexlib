@@ -60,6 +60,7 @@ public static class SelectorCoverage {
 
   /// <summary>Every golden blocktype JSON <paramref name="domain"/> ships, repo-relative and
   /// forward-slashed.</summary>
+  [CheckHelper("lists a domain's golden blocktype files, which Check reads")]
   public static IReadOnlyList<string> GoldenBlocktypes(string domain) {
     string root = RepoPaths.Root;
     var marker = $"/goldens/{domain}/blocktypes/";

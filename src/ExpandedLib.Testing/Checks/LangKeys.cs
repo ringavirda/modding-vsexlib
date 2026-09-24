@@ -61,6 +61,9 @@ public static class LangKeys {
   }
 
   /// <summary>Every literal lang key found under <paramref name="sourceRoots"/>.</summary>
+  [CheckHelper(
+    "lists the literal lang keys under the source roots, which Check resolves"
+  )]
   public static IReadOnlyList<string> Literals(
     IEnumerable<string> sourceRoots
   ) =>

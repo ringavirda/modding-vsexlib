@@ -56,6 +56,7 @@ public class StructureBreaksTests
 
   // Fails when the standing-cell check is dropped.
   [Fact]
+  [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.Run))]
   public void A_megablock_that_leaves_its_fillers_fails_as_left_standing()
   {
     StructureBreaks.Result result = Run(Mega("leaves", "test-leavesfillers"));
@@ -70,6 +71,7 @@ public class StructureBreaksTests
 
   // Fails when the break is not wrapped in the catch that records it.
   [Fact]
+  [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.Run))]
   public void A_break_that_throws_fails_with_the_exception()
   {
     StructureBreaks.Result result = Run(Mega("throws", "test-throwsonbreak"));
@@ -83,6 +85,7 @@ public class StructureBreaksTests
 
   // Fails when AddDefinitionDrops adds nothing to the expected drops.
   [Fact]
+  [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.Run))]
   public void A_break_that_drops_nothing_fails_against_the_definition_drops()
   {
     StructureBreaks.Result result = Run(Mega("empty", "test-dropsnothing"));
