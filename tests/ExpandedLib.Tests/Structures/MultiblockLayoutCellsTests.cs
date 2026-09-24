@@ -41,8 +41,7 @@ public class MultiblockLayoutCellsTests {
     return machine;
   }
 
-  // Fails when LayoutCells places a cell at its authored offset instead of the turned one, or
-  // pairs a turned cell with another authored offset.
+  // Fails when LayoutCells places a cell at its authored offset or pairs it with another offset.
   [Theory]
   [InlineData(0)]
   [InlineData(90)]

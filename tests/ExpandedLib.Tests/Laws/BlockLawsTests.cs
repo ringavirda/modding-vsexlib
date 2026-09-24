@@ -120,8 +120,7 @@ public class BlockLawsTests {
 
   #region Megablock
 
-  // Fails when the law removes the principal by a player break, which clears the fillers through
-  // OnBlockBroken, instead of through the accessor's SetBlock.
+  // Fails when the law removes the principal by a player break instead of the accessor's SetBlock.
   [Fact]
   [PlantedDefect(typeof(MegablockLaw), nameof(MegablockLaw.Run))]
   public void A_megablock_clearing_its_fillers_only_on_a_break_leaves_them_on_removal() {
