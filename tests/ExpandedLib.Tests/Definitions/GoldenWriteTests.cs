@@ -44,9 +44,8 @@ public sealed class GoldenWriteTests : IDisposable {
     Assert.False(Directory.Exists(root));
   }
 
-  // Fails when WriteAll throws on a fragment whose first segment is another domain and whose
-  // second is a game asset category, or takes the categories from this suite's own goldens
-  // (exlib's suite has blocktypes only).
+  // Fails when WriteAll throws on another domain's fragment whose second segment is a game asset
+  // category, or takes the categories from this suite's goldens (exlib's are blocktypes only).
   [Theory]
   [InlineData("siex/blocktypes/nomatch")]
   [InlineData("burdenmaker/itemtypes/x")]
