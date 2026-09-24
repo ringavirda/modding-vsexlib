@@ -279,24 +279,28 @@ public class GridOutputVariantCheckTests {
   private sealed class Steps : BlockStairs;
 
   /// <summary>A stairs blocktype <paramref name="code"/> of class <paramref name="blockClass"/>,
-  /// its facing loaded from vanilla's horizontal orientation, listed in creative facing
-  /// north.</summary>
-  private static string Stairs(string code, string blockClass) =>
+  /// its facings loaded from vanilla's orientation world properties, the horizontal one at
+  /// <paramref name="horizontal"/>, listed in creative facing up and north.</summary>
+  private static string Stairs(
+    string code,
+    string blockClass,
+    string horizontal = "game:abstract/horizontalorientation"
+  ) =>
     $$"""
       {
         "code": "{{code}}", "class": "{{blockClass}}",
         "behaviors": [{ "name": "WrenchOrientable" }],
         "variantgroups": [
-          { "code": "verticalorientation", "states": ["up", "down"] },
-          { "loadFromProperties": "game:abstract/horizontalorientation" },
+          { "loadFromProperties": "game:abstract/verticalorientation" },
+          { "loadFromProperties": "{{horizontal}}" },
           { "code": "cover", "states": ["free", "snow"] }
         ],
         "creativeinventory": { "general": ["*-up-north-free"] }
       }
       """;
 
-  // Fails when Run stops resolving a block's class, reading the groups BlockStairs or a class
-  // derived from it writes, or reading vanilla's orientation world property as its group.
+  // Fails when Run stops resolving a block's class, or reading the groups BlockStairs or a class
+  // derived from it writes.
   [Fact]
   public void A_block_oriented_by_its_class_is_held_by_the_groups_it_writes() =>
     Assert.Equal(
@@ -323,6 +327,38 @@ public class GridOutputVariantCheckTests {
           .Recipe(File, Crafts("stub:steps-down-north-free"))
           .Recipe(File, Crafts("stub:ramp-up-south-free"))
           .Recipe(File, Crafts("stub:stairs-up-north-snow"))
+      )
+    );
+
+  // Fails when Run stops reading a group that loads vanilla's orientation world property as that
+  // property's states under the group's own code, or reads a property of the block's own domain
+  // as vanilla's.
+  [Fact]
+  public void A_group_loading_a_vanilla_orientation_property_takes_its_states() =>
+    Assert.Equal(
+      [Finding("stub:hatch-north", "stub:hatch-south")],
+      Findings(
+        new RecipeStubSource()
+          .BlockType(
+            "stub:blocktypes/hatch.json",
+            """
+            {
+              "code": "hatch",
+              "behaviors": [{ "name": "ExOrientable" }],
+              "variantgroups": [
+                { "code": "side", "loadFromProperties": "game:abstract/horizontalorientation" }
+              ],
+              "creativeinventory": { "general": ["*-south"] }
+            }
+            """
+          )
+          .BlockType(
+            "stub:blocktypes/slope.json",
+            Stairs("slope", "BlockStairs", "abstract/horizontalorientation")
+          )
+          .Class("BlockStairs", typeof(BlockStairs))
+          .Recipe(File, Crafts("stub:hatch-north"))
+          .Recipe(File, Crafts("stub:slope-up-south-free"))
       )
     );
 
