@@ -13,7 +13,16 @@ namespace ExpandedLib.Checks;
 /// </summary>
 public static class PinnedNetworkNodesCheck {
   /// <summary>Every pinned network node among <paramref name="domain"/>'s layouts, as the check's <see cref="CheckResult"/>.</summary>
-  public static CheckResult Run(ICheckSource source, string domain) {
+  public static CheckResult Run(ICheckSource source, string domain) =>
+    Run(source, domain, out _);
+
+  // codesChecked counts the mod-domain pinned codes examined.
+  internal static CheckResult Run(
+    ICheckSource source,
+    string domain,
+    out int codesChecked
+  ) {
+    codesChecked = 0;
     // The network-oriented defs across every domain the source covers, held as expanded code shapes.
     var nodesByDomain = new Dictionary<string, List<string[][]>>(
       StringComparer.Ordinal
@@ -43,6 +52,7 @@ public static class PinnedNetworkNodesCheck {
         )
           continue;
 
+        codesChecked++;
         if (
           nodesByDomain.TryGetValue(wantDomain, out var nodes)
           && nodes.Any(shape => Matches(shape, wantPath))

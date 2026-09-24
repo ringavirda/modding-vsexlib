@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using ExpandedLib.Checks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Testing;
 using Xunit;
@@ -53,7 +54,7 @@ public class PinnedNetworkNodesTests {
     );
 
     Assert.StartsWith(
-      "plantedpins:blocktypes/boiler.json pins 'plantedpins:valve-ns', which is a network node",
+      "plantedpins:boiler pins 'plantedpins:valve-ns', which is a network node",
       finding
     );
   }
@@ -64,5 +65,25 @@ public class PinnedNetworkNodesTests {
       PinnedNetworkNodes.Violations(out int codesChecked, (Clean, Here))
     );
     Assert.Equal(1, codesChecked);
+  }
+
+  // Fails when PinnedNetworkNodesCheck.Run stops reporting a pinned code that matches a node.
+  [Fact]
+  [PlantedDefect(
+    typeof(PinnedNetworkNodesCheck),
+    nameof(PinnedNetworkNodesCheck.Run)
+  )]
+  public void The_harness_and_the_check_report_the_same_pin() {
+    string harness = Assert.Single(
+      PinnedNetworkNodes.Violations(out _, (Pinned, Here))
+    );
+    string check = Assert.Single(
+      PinnedNetworkNodesCheck
+        .Run(new AssemblyCheckSource((Pinned, Here)), Pinned)
+        .Errors
+    );
+
+    Assert.StartsWith("plantedpins:boiler pins 'plantedpins:valve-ns'", check);
+    Assert.Equal(check, harness);
   }
 }
