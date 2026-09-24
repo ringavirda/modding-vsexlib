@@ -1,6 +1,7 @@
 # Pipe Network
 
-**Status** live   **Mod** `exlib` owns the graph substrate and the pipe network itself - `BlockNetworkModSystem`,
+**Status** live; the ruling of 2026-09-24 (the rolled tier bursts at about 20 atm) is designed, not built
+**Mod** `exlib` owns the graph substrate and the pipe network itself - `BlockNetworkModSystem`,
 `BlockNetwork`, `BlockNetworkNode`, `BlockEntityNetworkNode` and the membership types live in
 `src/ExpandedLib/Networks`; `PipeNetwork`, `PipeNetworkState`, `BlockPipe`, `BlockEntityPipe`,
 `BlockPipePassthrough` and `ChimneyVent` in `src/ExpandedLib.Industry/Pipes`. `iiex` owns the plated and cast
@@ -168,7 +169,7 @@ loading, before the tiers' mods register again.
 |---|---|---|---|---|---|
 | plated | `iiex` | `PlatedPipeBurstPressure` | 2.5 | `IronIndustryExpandedModSystem.Start` | `IiexConfig.PlatedPipeBurstPressure` |
 | cast | `iiex` | `CastPipeBurstPressure` | 5.0 | `IronIndustryExpandedModSystem.Start` | `IiexConfig.CastPipeBurstPressure` |
-| rolled | `siex` | `RolledPipeBurstPressure` | 12 | `SteelIndustryExpandedModSystem.Start` | `SiexConfig.RolledPipeBurstPressure` |
+| rolled | `siex` | `RolledPipeBurstPressure` | about 20 *(Ruled 2026-09-24, not built: ships 12)* | `SteelIndustryExpandedModSystem.Start` | `SiexConfig.RolledPipeBurstPressure` |
 | (no tier, or unregistered) | - | `DefaultBurstPressure` | 5, hard-coded | - | `BlockPipe.DefaultBurstPressure` |
 
 The rating doubles as the tier's buffer size: a run holds `burst x pipes x LitresPerPipe`, so the plated tier is both the low-pressure tier and the small-buffer one.
@@ -187,7 +188,7 @@ than rating - see below.
 | family | constant | tiers | registration |
 |---|---|---|---|
 | `flanged` | `BlockPipe.FlangedJoint` | plated, cast - both square in section, bolted through flanges - **and every untiered `BlockPipe` subclass** (outlet, tuyere, twin-tub MP blower, steam hammer), which take the flange by default (`BlockPipe.JointFamily`) and so are reachable from either | `IronIndustryExpandedModSystem.Start` |
-| `welded` | `BlockPipe.WeldedJoint` | rolled - octagonal and welded, no flange to bolt to | `SteelIndustryExpandedModSystem.Start` |
+| `welded` | `BlockPipe.WeldedJoint` | rolled - octagonal with screwed sockets, no flange to bolt to | `SteelIndustryExpandedModSystem.Start` |
 
 ```csharp
 public override bool AcceptsNeighbour(Block neighbour) =>
@@ -334,7 +335,7 @@ itself never bursts (`CanBurst` is false for any subclass).
 | `CastPipeBurstPressure` | `5.0` | iiex tier rating |
 | `CastPipeThroughput` | `120` | L/s the cast tier passes |
 | `ChimneyGasDrawRate` | `16.0` | L/s one chimney draws through a ventable fitting |
-| `RolledPipeBurstPressure` | `12` | siex tier rating |
+| `RolledPipeBurstPressure` | `12` | siex tier rating; about 20 *(Ruled 2026-09-24, not built)* |
 | `RolledPipeThroughput` | `250` | L/s the rolled tier passes |
 
 The first five are `IiexConfig`, the last two `SiexConfig`. Throughput caps only blocks that can burst:
@@ -567,7 +568,7 @@ flame temperature.
 - No pressure drop along a run. Length is free for pressure: a one-block run and a 300-block run
   behave identically apart from capacity. Length is not free for temperature - see Stored gas cools, above.
   Whether pressure should also fall with distance remains undecided.
-- siex has segments but no fittings. The welded joint means a rolled run cannot use iiex's valve / pressure
+- siex has segments but no fittings. The rolled tier's screwed-socket joint (`welded`) means a rolled run cannot use iiex's valve / pressure
   valve / outlet / passthrough / indicator (`BlockPipe.AcceptsNeighbour`). Until siex ships its own, a rolled
   run is segments, machine ports and the non-`BlockPipe` fittings.
 - Gas leak loss is not dt-scaled (Gotcha 2) and the two leak paths should probably agree.

@@ -1,5 +1,6 @@
 # MP Energy Network
-**Status** live   **Mod** exlib (graph + physics), iiex (every block)
+**Status** live; the rulings of 2026-09-24 (standing friction per shaft and bevel segment, the clutch slipping
+in) are designed, not built   **Mod** exlib (graph + physics), iiex (every block)
 **Owns** the `"mpenergy"` network: the one-spinning-shaft model (`E = 1/2Iω²`, `I*dω/dt = τ_drive - τ_load - τ_fric`), the four node contracts (`IMpEnergyProducer` / `IMpEnergyStorage` / `IMpEnergyConsumer` / `IMpEnergyDirection`), merge/split semantics, the vanilla-MP bridge at the flywheel hub and its torque curve, the transmission's two-network gear coupling, the direction flag, `MaxSpeed` and everything derived from it, the animation-speed convention, and every `Mp*` / `Flywheel*` / `ShaftInertia` config key.
 **Depends on** [multiblock](multiblock.md) (the fillers the flywheel/transmission/mill reserve their volume with, and how a filler cell joins a run), [conventions](../conventions.md) (R7, the network-family list)
 
@@ -61,6 +62,10 @@ is `null` and every reader sees ω = 0.
 E      = 1/2Iω²                                        // EnergyAtSpeed
 P_sup  = τ_drive*ω     P_dem = τ_load*ω              // display only
 ```
+
+The standing term is the shafting's own: each shaft and bevel segment adds a standing torque, summed over the
+run as `ShaftInertia` is, in place of one per-run `idleTorque` (Idle draw, below). *(Ruled 2026-09-24, not
+built: `MpEnergyNetwork.OnTick` passes the one per-run `MpIdleTorque` to `Step`.)*
 
 Everything follows from the sign of `τ_net`, with no special cases:
 
@@ -152,6 +157,12 @@ back through the transmission).
 `retention = 1 - MpGearMeshLoss*dt` (`TryCouple`), so the mesh loss is a per-second fraction, dt-scaled at
 the coupling tick.
 
+A clutch does not lock on at once. Thrown in, it slips over a time, carrying the two runs toward the ratio
+speed, and the energy the speed difference carries is lost as heat; once they meet it couples as above. The
+lever stays the only verb. *(Ruled 2026-09-24, not built: the first `TryCouple` after the lever is thrown
+projects both runs onto the ratio at once, conserving their energy less the mesh loss. The slip time has no
+symbol yet.)*
+
 ### Merge and split
 
 | Event | Behaviour | Member |
@@ -190,7 +201,7 @@ retuning needs no rebuild.
 | Key | Value | What it does |
 |---|---|---|
 | `MpFrictionCoeff` | `0.05` | windage/bearing coefficient `b` (N*m per rad/s); the speed-proportional drain that winds an unpowered run down |
-| `MpIdleTorque` | `0.5` | standing-resistance floor `τ_idle` (N*m); range `[0, 1000]`. With the load, the threshold below which a drive never spins up |
+| `MpIdleTorque` | `0.5` | standing-resistance floor `τ_idle` (N*m); range `[0, 1000]`. With the load, the threshold below which a drive never spins up. *(Ruled 2026-09-24, not built: replaced by the standing torque per segment)* |
 | `MpMaxSpeed` | `2.0` | burst speed `ω_max` (rad/s); range `[0.1, 1000]`. Capacity `= 1/2Iω_max²` scales with its square |
 | `MpGearMeshLoss` | `0.02` | transmission mesh loss, fraction of coupled energy lost per second; range `[0, 1]`; 0 = lossless |
 
@@ -203,6 +214,7 @@ retuning needs no rebuild.
 | `FlywheelBridgeChargePower` | `1.0` | bridge drive torque (N*m) at/above rated axle speed; range `[0, 1e6]` |
 | `FlywheelBridgeRatedAxleSpeed` | `1.0` | axle speed at which the bridge delivers full torque (vanilla MP rated speed is ~1); range `[0.01, 1000]` |
 | `ShaftInertia` | `0.5` | `I` a single cast-iron shaft (or bevel) segment adds - the "Buffer" node's rotating mass; range `[0, 1e6]` |
+| no symbol yet | calibration | standing torque (N*m) a single shaft or bevel segment adds to the friction term *(Ruled 2026-09-24, not built)* |
 
 ### Hard-coded - not config
 
@@ -225,7 +237,8 @@ The mill's own balance levers (`RollingLoadTorque`, `RollingTempC`, `RollingRoll
 on its page, but `RollingLoadTorque` (0.34) is derived from this page's numbers: one bridge drive (1 N*m)
 less friction at ω_max (`0.05*2 + 0.5 = 0.6`) leaves 0.4 N*m of headroom, and the mill's declared demand
 takes 85 % of it. Change `MpFrictionCoeff`, `MpIdleTorque`, `MpMaxSpeed` or `FlywheelBridgeChargePower` and
-the mill's calibration moves with them.
+the mill's calibration moves with them. Under standing friction per segment the headroom also falls with the
+length of the line *(Ruled 2026-09-24, not built)*.
 
 The mill's demand is declared, not computed from the bite, so re-cutting its schedule never moves its draw on
 this network. Only the declared torque and the piece's heat move it: `RollingPass.LoadTorque` stiffens
@@ -317,23 +330,26 @@ is the shape to copy for the next one.
 
 ## Idle draw - not built
 
-An idle machine on the run costs power: every connected consumer contributes a standing torque whether or
-not it is working. Not built: every consumer's `LoadTorque` returns 0 when idle and the idle torque is a
-single per-network constant, `MpIdleTorque`.
+Keeping a line turning costs power, and the cost grows with the shafting: every shaft and bevel segment
+contributes a standing torque, summed over the run as `ShaftInertia` is, whether or not anything on the line
+is working. A long line costs power to keep turning; an idle machine adds no standing torque of its own, so
+what it costs to keep is the line that reaches it. Not built: every consumer's `LoadTorque` returns 0 when
+idle and the standing torque is a single per-network constant, `MpIdleTorque`, whatever the run's length.
 
 The escape from a standing draw is to declutch the branch, which needs nothing new: the clutch is a
 `BlockTransmission` variant - a 2x2 footprint with a lever cell and persisted `_engaged`, and a disengaged
-clutch does not couple (`BlockEntityTransmission.ShouldCouple`), leaving the two runs fully independent. The
-lever belongs to the transmission, a block the player sites, not to a per-machine engaged flag inside every
-bench. Historically, line shafting's no-load loss was the defining inefficiency of a shafted mill, and
-fast-and-loose pulleys existed so an idle machine could be thrown off the line.
+clutch does not couple (`BlockEntityTransmission.ShouldCouple`), leaving the two runs fully independent, so a
+declutched idle branch costs the driven run little. The lever belongs to the transmission, a block the player
+sites, not to a per-machine engaged flag inside every bench. Historically, the friction of heavy, slow
+shafting could take almost as much power as the machinery; mills kept their main lines permanently
+connected and threw an idle machine off at the machine itself, by a fork lever moving its strap onto a loose
+pulley.
 
-`MpIdleTorque` is the standing-resistance floor; under this design it becomes per connected consumer
-instead of one per-network constant. It makes the wide hall's power cost, steel roll sets' "a bigger plant"
-gate, the nail machine's bank argument and the flywheel's reason to exist mechanically true.
+This makes the wide hall's power cost, steel roll sets' "a bigger plant" gate, the nail machine's bank
+argument and the flywheel's reason to exist mechanically true, through the length of line each needs.
 
-Consequence to design for: a machine built and walked away from drains the run forever unless it is behind a
-clutch, so the clutch's engaged state needs a readout - the open item below. The torque value itself is
+Consequence to design for: a line built and walked away from drains the run forever unless it is behind a
+clutch, so the clutch's engaged state needs a readout - the open item below. The torque per segment is
 calibration.
 
 ## Open
