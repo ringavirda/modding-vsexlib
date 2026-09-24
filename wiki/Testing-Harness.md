@@ -102,6 +102,13 @@ Reference the harness, xUnit, the test SDK and NSubstitute, plus the game API DL
 
 #### Provisioning the game install: why `IPlayer` can be mocked at all
 
+The build finds the install for each target the same way everywhere: the version's environment
+variable (`VINTAGE_STORY`, `VINTAGE_STORY_121`, `VINTAGE_STORY_120`) when it is set, else the nearest
+`.game/<slug>` holding `VintagestoryAPI.dll`, searched from the repository root upward. When neither
+exists, the build provisions the server binaries into `.game/<slug>` beside the nearest
+`exmod.workspace.json` above the repository, so several repositories in one workspace share one
+install, and into the repository's own `.game/<slug>` when no such marker is above it.
+
 `exmod provision game` (both `-Kind server` and `-Kind client`) runs `Publicize-GameApi`
 on the provisioned `VintagestoryAPI.dll` after every fetch, every re-check of an existing install and
 every version bump - see the function in extools' `exmod/provision.ps1`. It flips the accessibility bits on
