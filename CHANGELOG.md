@@ -50,8 +50,8 @@ see the git history.
 - **`HarnessUse`** (ExpandedLib.Testing): source rules over a suite's tests. It names a
   `StructureComplete` written by reflection, directly or through a `PropertyInfo` or `FieldInfo`
   local bound to it by name, or through its setter from a test subclass, a `BlockBehaviors`
-  assignment without `CollectibleBehaviors` on the same receiver, and a generic helper in a test
-  file constrained on a game type.
+  assignment without `CollectibleBehaviors` on the same receiver, a generic helper in a test
+  file constrained on a game type, and a static field typed as a tuple holding a game type.
 - **`ExMeasure.TemperatureDelta`**: a temperature difference in Celsius degrees, shown in Fahrenheit
   in imperial without the 32 degree offset: a 10 C difference reads 18 F.
 - **`FindingLists`** (ExpandedLib.Testing): `Assert` holds a guard's findings against its allowed
@@ -84,6 +84,9 @@ see the git history.
 
 ### Changed
 
+- `DefinitionGoldens.WriteAll` (ExpandedLib.Testing) throws `InvalidOperationException` naming the
+  `EXLIB_WRITE_GOLDENS` value when one of its fragments matches none of the domain's goldens, and
+  writes nothing; a fragment starting with another domain is skipped.
 - A `TestWorld` (ExpandedLib.Testing) follows the engine by default. `World.Side` answers Server, and
   `ClientApi.World` is a client world whose `Side` answers Client, reading the same block accessor,
   lookups and logger; code handed `Api` runs its server branch, code handed `ClientApi` its client

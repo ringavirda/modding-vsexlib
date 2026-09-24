@@ -189,6 +189,18 @@ runs for the assembly that declares it. `VsAssemblyResolver.Register`
 is idempotent and resolves the install via the `[AssemblyMetadata("GameInstallEnv")]` environment
 variable (e.g. `VINTAGE_STORY`) or, failing that, by walking up to `.game/<slug>`.
 
+Two shapes load a game type before the initializer can run, and vstest then skips the whole assembly
+with "could not find dependent assembly VintagestoryAPI": a generic helper in a test class constrained
+on a game type (`where T : BlockEntity`), and a static field whose type is a tuple holding one
+(`static readonly (AssetLocation, JObject) X`). Write one helper per type, and return the tuple from
+a method. `HarnessUse.GameConstrainedGenerics` names both in a suite's sources.
+
+`exmod test` fails an assembly that discovers no tests, and keeps a census of each assembly's last
+green count per game series in `.exmod/census/<branch>.json`: an unfiltered run fails on a count below
+the census, naming the assembly and both counts, and writes the census when every assembly passed. A
+test removed on purpose is recorded with `exmod test -AcceptDrop` (or `exmod check -AcceptDrop`). A
+`-Filter` run neither reads nor writes the census.
+
 ### A smoke test
 
 The smallest thing `TestWorld` can prove - place a block, read it back - with no network involved:
