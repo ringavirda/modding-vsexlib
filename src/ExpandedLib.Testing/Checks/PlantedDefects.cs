@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace ExpandedLib.Testing;
@@ -20,26 +21,38 @@ public static class PlantedDefects {
   /// planted-defect test.</param>
   /// <param name="Unplanted">Members neither proven nor marked, then one line per
   /// <see cref="PlantedDefectAttribute"/> that names no public static member of a surveyed type,
-  /// sits on a method that is not a test, or per helper marked without a reason.</param>
+  /// sits on a method that is not a test, or per helper marked without a reason, then one
+  /// <c>File: reason</c> line per file whose name is no type's.</param>
   public sealed record Census(
     IReadOnlyList<string> Proven,
     IReadOnlyList<string> Helpers,
     IReadOnlyList<string> Unplanted
   );
 
+  private static readonly Regex PublicTypeDeclaration = new(
+    @"^[ \t]*public\s+(?:(?:static|sealed|abstract|partial|readonly|unsafe|ref|new)\s+)*"
+      + @"(?:class|struct|interface|enum|record(?:\s+(?:class|struct))?)\s+(?<name>\w+)",
+    RegexOptions.Compiled | RegexOptions.Multiline
+  );
+
   /// <summary>Sorts the public static members (methods, overloads once; properties; fields) of
   /// the check types in <paramref name="sourceDirectory"/> into proven, helpers and unplanted, in
   /// file-name order, then declaration order.</summary>
-  /// <param name="sourceDirectory">Its files name the check types: the public top-level types of
-  /// <paramref name="checks"/> of those names. Not searched recursively.</param>
+  /// <param name="sourceDirectory">Its files hold the check types: the public top-level types of
+  /// <paramref name="checks"/> that a file is named after or declares as <c>public</c> in its text.
+  /// A file named after no top-level type of <paramref name="checks"/>, public or not, is reported.
+  /// Not searched recursively.</param>
   /// <param name="checks">The assembly declaring the check types.</param>
   /// <param name="tests">The assembly whose tests carry <see cref="PlantedDefectAttribute"/>.</param>
-  /// <param name="filePattern">Which files name check types.</param>
+  /// <param name="filePattern">Which files hold check types.</param>
   /// <param name="member">When set, only members of this name are surveyed.</param>
-  /// <returns>The census; <c>Unplanted</c> is empty when every member is proven or a helper.</returns>
+  /// <returns>The census; <c>Unplanted</c> is empty when every member is proven or a helper and
+  /// every file is named after a type.</returns>
   /// <exception cref="DirectoryNotFoundException"><paramref name="sourceDirectory"/> does not
   /// exist.</exception>
-  /// <exception cref="InvalidOperationException">No file names a check type.</exception>
+  /// <exception cref="IOException">A file cannot be read.</exception>
+  /// <exception cref="InvalidOperationException">No file names or declares a check type.
+  /// </exception>
   public static Census Survey(
     string sourceDirectory,
     Assembly checks,
@@ -51,17 +64,35 @@ public static class PlantedDefects {
       .GetExportedTypes()
       .Where(t => t.DeclaringType == null)
       .ToLookup(t => t.Name, StringComparer.Ordinal);
-    List<Type> types =
+    HashSet<string> topLevel =
     [
-      .. Directory
-        .EnumerateFiles(sourceDirectory, filePattern)
-        .Select(Path.GetFileNameWithoutExtension)
-        .Order(StringComparer.Ordinal)
-        .SelectMany(name => byName[name!]),
+      .. LoadableTypes(checks)
+        .Where(t => t.DeclaringType == null)
+        .Select(t => t.Name),
     ];
+    var types = new List<Type>();
+    var misnamed = new List<string>();
+    foreach (
+      string file in Directory
+        .EnumerateFiles(sourceDirectory, filePattern)
+        .Order(StringComparer.Ordinal)
+    ) {
+      string name = Path.GetFileNameWithoutExtension(file);
+      if (!topLevel.Contains(name))
+        misnamed.Add(
+          $"{name}: the file names no type in {checks.GetName().Name}"
+        );
+      IEnumerable<string> declared = PublicTypeDeclaration
+        .Matches(File.ReadAllText(file))
+        .Select(m => m.Groups["name"].Value);
+      foreach (string typeName in declared.Prepend(name))
+        foreach (Type type in byName[typeName])
+          if (!types.Contains(type))
+            types.Add(type);
+    }
     if (types.Count == 0)
       throw new InvalidOperationException(
-        $"no file in {sourceDirectory} matching {filePattern} names a public type of "
+        $"no file in {sourceDirectory} matching {filePattern} names or declares a public type of "
           + $"{checks.GetName().Name} - nothing to survey"
       );
 
@@ -122,6 +153,7 @@ public static class PlantedDefects {
           $"{key}: [PlantedDefect] on {at} names no public static member"
         );
     }
+    unplanted.AddRange(misnamed);
     return new Census(proven, helpers, unplanted);
   }
 

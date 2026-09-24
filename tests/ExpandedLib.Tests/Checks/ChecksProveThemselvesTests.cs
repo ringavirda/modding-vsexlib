@@ -132,6 +132,41 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
     );
   }
 
+  // Fails when Survey passes a file named for no type, as a check file renamed away from its type
+  // is, or surveys only the type a file is named after.
+  [Fact]
+  [PlantedDefect(typeof(PlantedDefects), nameof(PlantedDefects.Survey))]
+  public void Survey_names_a_renamed_file_and_reads_every_type_a_file_declares() {
+    string checks = Path.Combine(
+      RepoPaths.Root,
+      "src",
+      "ExpandedLib.Testing",
+      "Checks"
+    );
+    using var dir = new FixtureDirectory();
+    File.Copy(
+      Path.Combine(checks, "LangParity.cs"),
+      Path.Combine(dir.Path, "LangParityRules.cs")
+    );
+    File.Copy(
+      Path.Combine(checks, "DefinitionJson.cs"),
+      Path.Combine(dir.Path, "DefinitionJson.cs")
+    );
+
+    PlantedDefects.Census census = PlantedDefects.Survey(
+      dir.Path,
+      typeof(PlantedDefects).Assembly,
+      typeof(ChecksProveThemselvesTests).Assembly
+    );
+
+    Assert.Contains("LangParity.Check", census.Proven);
+    Assert.Contains("VanillaToolTiers.Iron", census.Helpers);
+    Assert.Contains(
+      "LangParityRules: the file names no type in ExpandedLib.Testing",
+      census.Unplanted
+    );
+  }
+
   // Fails when the fixture rule stops naming a negative.
   [Fact]
   [PlantedDefect(

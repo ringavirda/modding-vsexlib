@@ -8,8 +8,13 @@ namespace ExpandedLib.Testing;
 /// game's own numbering, not mod balance.
 /// </summary>
 public static class VanillaToolTiers {
+  [CheckHelper("a vanilla mining tier the rules compare against")]
   public const int Bronze = 3;
+
+  [CheckHelper("a vanilla mining tier the rules compare against")]
   public const int Iron = 4;
+
+  [CheckHelper("a vanilla mining tier the rules compare against")]
   public const int Steel = 5;
 }
 
