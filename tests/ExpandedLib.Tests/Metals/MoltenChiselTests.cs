@@ -13,7 +13,7 @@ namespace ExpandedLib.Tests;
 /// </summary>
 public class MoltenChiselTests {
   private const string Iron = "game:ingot-iron";
-  private const string SlagFallback = "iiex:slag-block";
+  private const string SlagFallback = "iiex:slag";
 
   private static TestWorld NewWorld() {
     var world = new TestWorld();
