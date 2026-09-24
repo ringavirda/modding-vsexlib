@@ -38,7 +38,7 @@ disk without knowing which it is looking at.
 | `CodePrefixCollisionCheck` | No block's base code is a proper prefix of another's at a `-` boundary. | A wildcard `yourmod:pipe-*` written for the short code also swallows `yourmod:pipe-plated-*`, quietly widening every rule built on it. |
 | `StageWildcardsCheck` | Every [construction](Construction) stage ingredient whose code holds `*` carries `storeWildCard`, keyed by the one variant group its `*` spans (`wood`, `metal`), a group of every block it matches; a `{key}` placeholder names one of the block's own variant groups or a key an earlier paid stage stores; a key on the unpaid stage 0 is stored by stage 1. The key must be `wood` or `metal`, the two a creative Ctrl build stores. | Breaking the structure throws a NullReferenceException, or its refund silently names a code that does not exist and drops nothing. |
 | `GridRecipeShapeCheck` | Every key of a grid recipe's `ingredients` appears in its `ingredientPattern`, every pattern letter other than `_` and a space has a key, and the grid is at most 3x3. | A key the pattern never places is never consumed and never shown, so two recipes differing only in it take the same input. A letter with no key fails the recipe at load, and a larger grid never matches. |
-| `GridRecipeCollisionCheck` | No two grid recipes of the domains the check covers match the same input. It counts as the game's matcher does: a pattern trimmed of empty rows and columns at any offset it fits, a shapeless recipe's ingredients in any slots, a wildcard over what it matches as `allowedVariants` narrow it, and a named wildcard in one state across its slots. The game has no mirrored match. | The grid crafts whichever of the two recipes it finds first, and the other is never made from that input. |
+| `GridRecipeCollisionCheck` | No two grid recipes of the domains the check covers match the same input. It counts as the game's matcher does: a pattern trimmed of empty rows and columns at any offset it fits, a shapeless recipe's ingredients taking the input merged into one stack per item, a wildcard over what it matches as `allowedVariants` narrow it, and a named wildcard in one state across its slots. The game has no mirrored match. | The grid crafts whichever of the two recipes it finds first, and the other is never made from that input. |
 | `GridOutputVariantCheck` | A grid recipe whose output is an oriented block names the orientation its `creativeinventory` lists. A block is oriented by the variant group its orientation behaviour writes: `ExOrientable`, `HorizontalOrientable`, `NWOrientable`, `Pillar` or `OmniRotatable`. | Found in game: a tap listed in creative as `*-south` whose recipe named `-north` could not be crafted. |
 
 Three of the twelve have a condition attached.
@@ -53,11 +53,12 @@ static state, so the client's own check call reports too, once the server's pass
 
 `GridRecipeCollisionCheck` reads ingredient codes only. Tags, attributes and `skipVariants`
 narrow a match and are not read, and an ingredient with tags and no code overlaps every ingredient
-of its item class, so a pair it reports can be one the loaded game tells apart. One slot holding a
-stack that a shapeless recipe takes for two of its ingredients is not counted. A recipe the game
-refuses at load or never matches (disabled, a letter with no key, a pattern that does not fill its
-declared grid, a grid larger than 3x3) is skipped. A pair across two mods is reported in the run of
-each.
+of its item class, so a pair it reports can be one the loaded game tells apart. A shapeless recipe
+matches its input merged into one stack per item, as the game merges it, so a shapeless oak and pine
+also takes oak, oak and pine laid in three slots, and a shapeless oak and oak takes one slot of oak.
+A recipe the game refuses at load or never matches (disabled, a letter with no key, a pattern that
+does not fill its declared grid, a grid larger than 3x3) is skipped. A pair across two mods is
+reported in the run of each.
 
 `LangCoverageCheck` in this library only guards the `en` locale. An unresolved `en` key is the one
 that renders raw on screen, since every other translation falls back to it. Parity across a mod's

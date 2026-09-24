@@ -244,8 +244,9 @@ public class GridRecipeCollisionCheckTests {
 
   #region Shapeless
 
-  // Fails when a shapeless recipe is matched by position, pairs with fewer slots than it has, or
-  // keeps a slot's first pairing when another slot needs it.
+  // Fails when a shapeless recipe is matched by position, pairs with fewer slots than it has,
+  // keeps a slot's first pairing when another slot needs it, or lets one item fill two of its
+  // stacks.
   [Fact]
   [PlantedDefect(
     typeof(GridRecipeCollisionCheck),
@@ -258,7 +259,6 @@ public class GridRecipeCollisionCheckTests {
         Collision(1, "loose", 4, "wild"),
         Collision(1, "loose", 5, "flipped"),
         Collision(2, "column", 4, "wild"),
-        Collision(3, "row", 4, "wild"),
         Collision(4, "wild", 5, "flipped"),
       ],
       Findings(
@@ -284,6 +284,74 @@ public class GridRecipeCollisionCheckTests {
         Recipe("flipped", "O,Q", 1, 2, $$"""{ "O": {{Oak}}, "Q": {{Pine}} }""")
       )
     );
+
+  // Fails when a shapeless recipe stops merging its exact ingredients or the input into one stack
+  // per item, or reads each slot of a shaped recipe as an item of its own.
+  [Fact]
+  public void A_shapeless_recipe_takes_its_input_merged_into_stacks() =>
+    Assert.Equal(
+      [Collision(0, "loose", 1, "stacked"), Collision(2, "pair", 3, "single")],
+      Findings(
+        Recipe(
+          "loose",
+          "OQ",
+          2,
+          1,
+          $$"""{ "O": {{Oak}}, "Q": {{Pine}} }""",
+          "\"shapeless\": true,"
+        ),
+        Recipe("stacked", "OOQ", 3, 1, $$"""{ "O": {{Oak}}, "Q": {{Pine}} }"""),
+        Recipe(
+          "pair",
+          "OP",
+          2,
+          1,
+          $$"""{ "O": {{Oak}}, "P": {{Oak}} }""",
+          "\"shapeless\": true,"
+        ),
+        Recipe("single", "O", 1, 1, $$"""{ "O": {{Oak}} }""")
+      )
+    );
+
+  // Fails when a shapeless pair whose search passes the placement limit stops being reported.
+  [Fact]
+  public void A_shapeless_search_past_its_limit_is_reported() {
+    string planks = string.Join(
+      ", ",
+      "ABCDEFG".Select(c =>
+        $$"""
+          "{{c}}": { "type": "item", "code": "game:plank-{{char.ToLowerInvariant(
+            c
+          )}}" }
+          """
+      )
+    );
+    Assert.Equal(
+      [Collision(0, "seven", 1, "eight")],
+      Findings(
+        Recipe(
+          "seven",
+          "ABC,DEF,G__",
+          3,
+          3,
+          $"{{ {planks} }}",
+          "\"shapeless\": true,"
+        ),
+        Recipe(
+          "eight",
+          "PPP,PPP,PL_",
+          3,
+          3,
+          """
+          {
+            "P": { "type": "item", "code": "game:plank-*" },
+            "L": { "type": "item", "code": "game:log-oak" }
+          }
+          """
+        )
+      )
+    );
+  }
 
   #endregion
 

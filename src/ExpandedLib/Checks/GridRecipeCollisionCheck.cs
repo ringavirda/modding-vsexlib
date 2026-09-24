@@ -15,8 +15,10 @@ namespace ExpandedLib.Checks;
 /// <remarks>
 /// Follows the game's matcher: a shaped pattern, trimmed, at any offset its grid allows
 /// (<c>GridRecipe.Matches</c>, <c>RecipeBase.MatchesAtPosition</c>), with no mirrored match; a
-/// shapeless recipe's slots in any order (<c>RecipeBase.MatchesShapeLess</c>); a named wildcard
-/// in one state across its slots (<c>RecipeBase.GenerateRecipesForAllIngredientCombinations</c>);
+/// shapeless recipe's input merged into one stack per distinct item, which its exact ingredients,
+/// merged the same way, and its other ingredients, one stack each, take one to one
+/// (<c>RecipeBase.MatchesShapeLess</c>); a named wildcard in one state across its slots
+/// (<c>RecipeBase.GenerateRecipesForAllIngredientCombinations</c>);
 /// <c>allowedVariants</c> narrowing a wildcard (<c>WildcardUtil.Match</c>). Tags, attributes and
 /// <c>skipVariants</c> are not read, and a regex or tag-only ingredient overlaps its whole item
 /// class. A recipe the game refuses or never matches is skipped.
@@ -25,6 +27,9 @@ public static class GridRecipeCollisionCheck {
   // Above this many combinations of named states, the names are left unbound, which can only add
   // collisions.
   private const int MaxBindings = 256;
+
+  // Past this many slot placements, a shapeless pair is reported as colliding.
+  private const int MaxPlacements = 100_000;
 
   private static readonly Regex AdvancedHole = new(@"\{[^}]*\}");
 
@@ -54,11 +59,13 @@ public static class GridRecipeCollisionCheck {
   }
 
   /// <summary>What an ingredient matches: its item class, its domain (null for any) and the code
-  /// paths it matches, each a pattern whose <c>*</c> matches any text (null for any).</summary>
+  /// paths it matches, each a pattern whose <c>*</c> matches any text (null for any). Exact when
+  /// the game matches it as one code, which a shapeless recipe merges with its equals.</summary>
   private sealed record Slot(
     string Type,
     string? Domain,
-    IReadOnlyList<string>? Paths
+    IReadOnlyList<string>? Paths,
+    bool Exact = false
   );
 
   /// <summary>A recipe the game loads and can match: its slots, row by row, once per combination
@@ -178,7 +185,7 @@ public static class GridRecipeCollisionCheck {
       IsNamedWildcard(ingredient, out string name)
       && binding.TryGetValue(name, out string? state)
     )
-      return new Slot(type, domain, [path.Replace("*", state)]);
+      return new Slot(type, domain, [path.Replace("*", state)], true);
     if (Allowed(ingredient) is { } allowed && path.Contains('*')) {
       int star = path.IndexOf('*');
       return new Slot(
@@ -187,7 +194,12 @@ public static class GridRecipeCollisionCheck {
         [.. allowed.Select(s => path[..star] + s + path[(star + 1)..])]
       );
     }
-    return new Slot(type, domain, [path]);
+    return new Slot(
+      type,
+      domain,
+      [path],
+      domain != null && !path.Contains('*')
+    );
   }
 
   private static bool Collide(Craft a, Craft b) {
@@ -203,7 +215,11 @@ public static class GridRecipeCollisionCheck {
       );
     }
     return a.Variants.Any(x =>
-      b.Variants.Any(y => Pair([.. x.OfType<Slot>()], [.. y.OfType<Slot>()]))
+      b.Variants.Any(y =>
+        a.Shapeless
+          ? Takes(Stacks(x), [.. y.OfType<Slot>()], b.Shapeless)
+          : Takes(Stacks(y), [.. x.OfType<Slot>()], false)
+      )
     );
   }
 
@@ -232,26 +248,88 @@ public static class GridRecipeCollisionCheck {
           : p.Second != null && Overlap(p.First, p.Second)
       );
 
-  // Whether each slot of xs pairs with its own slot of ys, every pair overlapping.
-  private static bool Pair(IReadOnlyList<Slot> xs, IReadOnlyList<Slot> ys) {
-    if (xs.Count != ys.Count)
+  // The stacks a shapeless recipe takes: one per exact code, however many slots name it, and one
+  // per other ingredient.
+  private static List<Slot> Stacks(Slot?[] slots) {
+    var stacks = new List<Slot>();
+    foreach (Slot slot in slots.OfType<Slot>())
+      if (!slot.Exact || !stacks.Any(s => s.Exact && SameItem(s, slot)))
+        stacks.Add(slot);
+    return stacks;
+  }
+
+  // Whether items in slots, merged by item, can be exactly the stacks: every slot's item one its
+  // stack takes, every stack filled, two stacks never one item. With distinct, each slot is a
+  // stack of its own recipe and fills a stack alone.
+  private static bool Takes(
+    IReadOnlyList<Slot> stacks,
+    IReadOnlyList<Slot> slots,
+    bool distinct
+  ) {
+    if (slots.Count < stacks.Count || (distinct && slots.Count != stacks.Count))
       return false;
-    int[] owner = [.. Enumerable.Repeat(-1, ys.Count)];
-    bool Augment(int x, bool[] seen) {
-      for (int y = 0; y < ys.Count; y++) {
-        if (seen[y] || !Overlap(xs[x], ys[y]))
+    var held = new Slot?[stacks.Count];
+    int placements = 0;
+    bool Fill(int at) {
+      if (slots.Count - at < held.Count(h => h == null))
+        return false;
+      if (at == slots.Count)
+        return Apart(held!);
+      for (int k = 0; k < stacks.Count; k++) {
+        if (distinct && held[k] != null)
           continue;
-        seen[y] = true;
-        if (owner[y] < 0 || Augment(owner[y], seen)) {
-          owner[y] = x;
+        if (++placements > MaxPlacements)
           return true;
-        }
+        Slot? was = held[k];
+        if (Meet(was ?? stacks[k], slots[at]) is not { } met)
+          continue;
+        held[k] = met;
+        if (Fill(at + 1))
+          return true;
+        held[k] = was;
       }
       return false;
     }
-    return Enumerable
-      .Range(0, xs.Count)
-      .All(x => Augment(x, new bool[ys.Count]));
+    return Fill(0);
+  }
+
+  // Whether no two stacks are forced to one item; a stack still matching a pattern can take an
+  // item the others do not.
+  private static bool Apart(Slot[] held) {
+    for (int i = 0; i < held.Length; i++)
+      for (int j = i + 1; j < held.Length; j++)
+        if (Single(held[i]) && Single(held[j]) && SameItem(held[i], held[j]))
+          return false;
+    return true;
+  }
+
+  private static bool Single(Slot slot) =>
+    slot.Domain != null && slot.Paths is [string path] && !path.Contains('*');
+
+  private static bool SameItem(Slot a, Slot b) =>
+    a.Type == b.Type
+    && a.Domain == b.Domain
+    && a.Paths is [string p]
+    && b.Paths is [string q]
+    && p == q;
+
+  // What both slots match, or a wider set when two patterns meet; null when they share nothing.
+  private static Slot? Meet(Slot a, Slot b) {
+    if (!Overlap(a, b))
+      return null;
+    IReadOnlyList<string>? paths =
+      a.Paths == null ? b.Paths
+      : b.Paths == null ? a.Paths
+      :
+      [
+        .. a
+          .Paths.SelectMany(p =>
+            b.Paths.Where(q => PatternsMeet(p, q))
+              .Select(q => p.Contains('*') ? q : p)
+          )
+          .Distinct(),
+      ];
+    return new Slot(a.Type, a.Domain ?? b.Domain, paths);
   }
 
   private static bool Overlap(Slot a, Slot b) =>
