@@ -16,11 +16,6 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
   /// <summary>Members with no planted-defect test yet, in file order.</summary>
   private static readonly string[] Pending =
   [
-    "CodeLiterals.UnresolvableBareCodes",
-    "CodePrefixCollision.Collisions",
-    "CostSelectorOverlap.Overlaps",
-    "DefinitionAssets.MissingShapes",
-    "DefinitionCatalogue.Resolves",
     "DefinitionGoldens.CheckGolden",
     "DefinitionGoldens.CheckCompleteness",
     "HandbookSync.Problems",
