@@ -13,8 +13,8 @@ run by themselves at the end of world load and write their findings to the serve
 time you boot a world with a broken code in it you read "names a code that does not exist" instead
 of wondering why a recipe vanished. The same twelve run on demand from `/exmod verify`, from your own
 code, from a unit test, and from a command-line tool that needs no running game. Five more need the
-loaded game itself, vanilla included, and run from `/exmod verify` only (see
-[Loaded checks](#loaded-checks)).
+loaded game itself, vanilla included, and run from `/exmod verify` only, which `exmod check` sends
+a booted server after the tests (see [Loaded checks](#loaded-checks)).
 
 There is nothing to switch on. Install exlib, load your mod, and the checks report. The rest of this
 page is for the three cases beyond that: running them when you choose, running them without the
@@ -79,7 +79,10 @@ that also hands over every registered block and item (`Collectibles`), what the 
 and exlib's process catalogues make (`RecipeOutputs`, one `LoadedOutput` each) and what a
 tag-only ingredient takes (`Tagged`). `AssetCheckSource` is the one implementation; a repository or
 assembly source has no vanilla content and no patches. The five run from `/exmod verify` only,
-never at world load.
+never at world load. `exmod check` runs them on every change: its last step is `exmod smoke`, which
+boots a dedicated server of the current series (1.22) with the built mods and sends
+`/exmod verify`, and fails on any error it reports. `check all` runs smoke once, on 1.22; `check
+1.21` and `check 1.20` skip it.
 
 | Check | What it looks for | What goes wrong without it |
 | --- | --- | --- |
@@ -164,7 +167,7 @@ first ten error lines; the full list always goes to the server log via the same 
 
 This is exactly the command `exmod smoke` (see [Testing Harness](Testing-Harness#the-smoke-lane))
 runs against a freshly-booted dedicated server before stopping it, so the smoke lane's pass/fail
-includes whatever `/exmod verify` finds.
+includes whatever `/exmod verify` finds, and `exmod check` runs smoke as its last step.
 
 ## Without the game: `exlib-verify`
 

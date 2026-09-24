@@ -795,6 +795,8 @@ found: every `[exlib]` notification line, every `[Error]`/`[Fatal]` log line, an
 It exits non-zero - printing the offending lines - on a boot timeout (`-Timeout`, default 180s), any
 `[Error]`/`[Fatal]` line, or a verify summary with errors in it; `-KeepData` keeps the scratch
 dataPath and mods folder afterwards instead of deleting them, for chasing a failure.
+`exmod check` runs smoke after its tests, on 1.22 only: once for `check all`, never for `check 1.21`
+or `check 1.20`, since smoke loads the current series' build.
 
 A mod whose `modinfo.json` doesn't even parse is still copied in (under its folder name) rather than
 failed locally, so the real mod loader is what reports it - the point of this lane is what the game
