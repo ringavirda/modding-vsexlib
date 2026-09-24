@@ -13,7 +13,10 @@ namespace ExpandedLib.Checks;
 
 /// <summary>
 /// Checks that a grid recipe whose output names an oriented block names the orientation its
-/// blocktype's <c>creativeinventory</c> lists, the block's creative default.
+/// blocktype's <c>creativeinventory</c> lists, the block's creative default. The game crafts the
+/// block an output names; the handbook page of the creative default lists only recipes whose output
+/// is that stack, and a crafted stack of another orientation does not stack with the default the
+/// block drops.
 /// </summary>
 /// <remarks>
 /// A block is oriented by the variant group its orientation behaviour writes when placed:
