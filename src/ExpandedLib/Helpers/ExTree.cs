@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text.Json;
 using Vintagestory.API.Datastructures;
 
@@ -29,5 +32,75 @@ public static class ExTree {
     } catch (JsonException) {
       return fallback;
     }
+  }
+
+  /// <summary>What a block entity lost over a save and reload: every key of
+  /// <paramref name="saved"/> that <paramref name="reloaded"/> lacks, holds as another attribute
+  /// type, or holds at <paramref name="fresh"/>'s value although <paramref name="saved"/>'s value
+  /// differed from it. Subtrees are compared key by key.</summary>
+  /// <param name="saved">The live instance's tree, written before the reload.</param>
+  /// <param name="reloaded">The tree the reloaded instance writes.</param>
+  /// <param name="fresh">The tree a newly constructed instance writes; a key it lacks is not checked
+  /// for a return to it.</param>
+  /// <returns>One line per difference, the key path joined with <c>/</c>, in <paramref name="saved"/>'s
+  /// key order; empty when the reload kept everything.</returns>
+  internal static IReadOnlyList<string> Differences(
+    ITreeAttribute saved,
+    ITreeAttribute reloaded,
+    ITreeAttribute fresh
+  ) {
+    var lines = new List<string>();
+    Compare(saved, reloaded, fresh, "", lines);
+    return lines;
+  }
+
+  private static void Compare(
+    ITreeAttribute saved,
+    ITreeAttribute reloaded,
+    ITreeAttribute? fresh,
+    string prefix,
+    List<string> lines
+  ) {
+    foreach (KeyValuePair<string, IAttribute> entry in saved) {
+      string path = prefix + entry.Key;
+      IAttribute? after = reloaded[entry.Key];
+      IAttribute? initial = fresh?[entry.Key];
+      if (after == null) {
+        lines.Add($"{path}: missing after the reload");
+        continue;
+      }
+      if (after.GetType() != entry.Value.GetType()) {
+        lines.Add(
+          $"{path}: saved as {entry.Value.GetType().Name}, reloaded as {after.GetType().Name}"
+        );
+        continue;
+      }
+      if (entry.Value is ITreeAttribute subtree) {
+        Compare(
+          subtree,
+          (ITreeAttribute)after,
+          initial as ITreeAttribute,
+          path + "/",
+          lines
+        );
+        continue;
+      }
+      if (
+        initial != null
+        && !SameValue(entry.Value, initial)
+        && SameValue(after, initial)
+      )
+        lines.Add($"{path}: back at a fresh instance's value after the reload");
+    }
+  }
+
+  private static bool SameValue(IAttribute a, IAttribute b) =>
+    a.GetType() == b.GetType() && Bytes(a).SequenceEqual(Bytes(b));
+
+  private static byte[] Bytes(IAttribute attribute) {
+    using var stream = new MemoryStream();
+    using (var writer = new BinaryWriter(stream))
+      attribute.ToBytes(writer);
+    return stream.ToArray();
   }
 }
