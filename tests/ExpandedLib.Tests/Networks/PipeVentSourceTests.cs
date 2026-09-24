@@ -32,11 +32,10 @@ public class PipeVentSourceTests {
     var w = new TestWorld();
     w.RegisterNetwork(
       "pipe",
-      sys =>
-        new PipeNetwork(
-          sys,
-          factoryRate is float rate ? new ChimneyVent(() => rate) : null
-        )
+      sys => new PipeNetwork(
+        sys,
+        factoryRate is float rate ? new ChimneyVent(() => rate) : null
+      )
     );
     return w;
   }

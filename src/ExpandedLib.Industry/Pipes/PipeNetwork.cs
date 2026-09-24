@@ -763,7 +763,8 @@ public class PipeNetwork : BlockNetwork {
     public float WaterLeakFrac;
 
     // Vent positions per classifying strategy.
-    private readonly Dictionary<IPipeVentStrategy, List<BlockPos>> _vents = new();
+    private readonly Dictionary<IPipeVentStrategy, List<BlockPos>> _vents =
+      new();
 
     public void AddVent(IPipeVentStrategy strategy, BlockPos ventPos) {
       if (!_vents.TryGetValue(strategy, out List<BlockPos>? vents))
