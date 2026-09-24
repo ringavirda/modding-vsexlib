@@ -32,7 +32,8 @@ public class ExSoundsTests : IDisposable {
   // The length table holds 1.22's files; the provisioned 1.21 install carries no audio.
 #if GAME_GE_1_22
   // Fails when a catalogue length is shortened below its file (Fire 9260 -> 9000) or an entry is
-  // dropped from the length table.
+  // dropped from the length table. Passes without measuring on an install with no .ogg under
+  // assets/game/sounds (a server install, as CI provisions); fails there when that guard is dropped.
   [Fact]
   public void Every_catalogue_sound_lasts_at_least_its_longest_file()
   {
@@ -41,6 +42,14 @@ public class ExSoundsTests : IDisposable {
         ?? throw new InvalidOperationException("No game install."),
       "assets"
     );
+    string sounds = Path.Combine(assets, "game", "sounds");
+    if (
+      !Directory.Exists(sounds)
+      || !Directory
+        .EnumerateFiles(sounds, "*.ogg", SearchOption.AllDirectories)
+        .Any()
+    )
+      return;
     var offenders = new List<string>();
     int measured = 0;
     foreach (FieldInfo field in CatalogueFields())

@@ -211,7 +211,7 @@
 
   <!-- Fail clearly (instead of a cryptic CS1705 assembly-version mismatch) if, after the auto-provision
        attempt, the binaries still aren't there (e.g. offline, no wrapper found, or an env override
-       pointing nowhere). -->
+       pointing nowhere). A found install is named at normal verbosity (-v:n). -->
   <Target
     Name="_CheckGamePath"
     BeforeTargets="ResolveAssemblyReferences"
@@ -222,6 +222,7 @@
       Condition="!Exists('$(GamePath)\VintagestoryAPI.dll')"
       Text="Can't find the Vintage Story $(GameVer) install (GamePath='$(GamePath)'). Provision it with 'scripts/exmod.sh provision game -Version $(_ProvisionVersion) -Kind server', or set the $(GameInstallEnv) environment variable to an existing install."
     />
+    <Message Importance="normal" Text="Vintage Story $(GameVer) install: $(GamePath)" />
   </Target>
 
   <!--
