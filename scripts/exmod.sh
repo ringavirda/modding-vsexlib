@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # exmod launcher for a repository that consumes extools. Finds the tools checkout (EXTOOLS_HOME,
 # the workspace sibling ../extools, or a clone of the tag pinned in exmod.json under .extools/),
-# finds pwsh (bootstrapping it into .dotnet/tools when the machine has none) and forwards every
+# finds pwsh (bootstrapping it into a .dotnet/tools when the machine has none) and forwards every
 # argument to the dispatcher with this repository as the root. Not a second implementation of
 # anything: exmod.ps1 in the tools checkout holds the commands.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
-tools_dir="$repo_root/.dotnet/tools"
 
 # The "tools" value of exmod.json, read with sed: this runs before any manifest reader exists.
 tools_pin() {
@@ -36,23 +35,48 @@ resolve_extools() {
     have="$(git -C "$dest" describe --tags --exact-match 2>/dev/null || true)"
     if [[ "$have" != "$tag" ]]; then
       echo "exmod: moving .extools from ${have:-an untagged commit} to $tag" >&2
-      git -C "$dest" fetch --quiet --depth 1 origin "refs/tags/$tag:refs/tags/$tag"
-      git -c advice.detachedHead=false -C "$dest" checkout --quiet "$tag"
+      checkout_pinned_tag "$dest" "$tag"
     fi
   else
     echo "exmod: cloning extools $tag into .extools/" >&2
-    git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$tag" "$url" "$dest"
+    # The clone takes the default branch and leaves the tree empty: --branch naming an annotated
+    # tag makes git warn that the ref is not a commit, and the tag is checked out next anyway.
+    git clone --quiet --depth 1 --no-checkout "$url" "$dest"
+    checkout_pinned_tag "$dest" "$tag"
   fi
   printf '%s' "$dest"
 }
 
-# pwsh: $PWSH, then PATH, then the repo-local tool install, made on first use.
+# Fetches tag $2 into the checkout at $1, shallow, and leaves it checked out detached.
+checkout_pinned_tag() {
+  git -C "$1" fetch --quiet --depth 1 origin "refs/tags/$2:refs/tags/$2"
+  git -c advice.detachedHead=false -C "$1" checkout --quiet "$2"
+}
+
+# The nearest folder above the repository (never the repository itself) holding
+# exmod.workspace.json; empty when there is none.
+workspace_root() {
+  local dir="$repo_root"
+  while [[ "$dir" != / ]]; do
+    dir="$(dirname "$dir")"
+    if [[ -f "$dir/exmod.workspace.json" ]]; then printf '%s' "$dir"; return; fi
+  done
+}
+
+# pwsh: $PWSH, then PATH, then the repository's .dotnet/tools, then the workspace root's. Made on
+# first use in the workspace root's .dotnet/tools when a workspace is above, else the repository's.
 resolve_pwsh() {
   if [[ -n "${PWSH:-}" ]]; then printf '%s' "$PWSH"; return; fi
   if command -v pwsh >/dev/null 2>&1; then command -v pwsh; return; fi
-  if [[ -x "$tools_dir/pwsh" ]]; then printf '%s' "$tools_dir/pwsh"; return; fi
+  if [[ -x "$repo_root/.dotnet/tools/pwsh" ]]; then printf '%s' "$repo_root/.dotnet/tools/pwsh"; return; fi
+  local workspace
+  workspace="$(workspace_root)"
+  if [[ -n "$workspace" && -x "$workspace/.dotnet/tools/pwsh" ]]; then
+    printf '%s' "$workspace/.dotnet/tools/pwsh"; return
+  fi
+  local tools_dir="${workspace:-$repo_root}/.dotnet/tools"
   if command -v dotnet >/dev/null 2>&1; then
-    echo 'exmod: pwsh not found - installing PowerShell into .dotnet/tools ...' >&2
+    echo "exmod: pwsh not found - installing PowerShell into $tools_dir ..." >&2
     dotnet tool install --tool-path "$tools_dir" PowerShell >/dev/null
     printf '%s' "$tools_dir/pwsh"; return
   fi

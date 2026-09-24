@@ -8,7 +8,7 @@ param(
   [string[]]$Arguments
 )
 $ErrorActionPreference = 'Stop'
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).ProviderPath
 
 function Get-ToolsPin {
   $manifest = Join-Path $repoRoot 'exmod.json'
@@ -18,12 +18,21 @@ function Get-ToolsPin {
   return $null
 }
 
+# Fetches $Tag into the checkout at $Dest, shallow, and leaves it checked out detached.
+function Sync-PinnedTag {
+  param([string]$Dest, [string]$Tag)
+  & git -C $Dest fetch --quiet --depth 1 origin "refs/tags/${Tag}:refs/tags/${Tag}"
+  if ($LASTEXITCODE -ne 0) { throw "git fetch of $Tag failed" }
+  & git -c advice.detachedHead=false -C $Dest checkout --quiet $Tag
+  if ($LASTEXITCODE -ne 0) { throw "git checkout of $Tag failed" }
+}
+
 function Resolve-Extools {
   if ($env:EXTOOLS_HOME -and (Test-Path (Join-Path $env:EXTOOLS_HOME 'exmod.ps1'))) {
-    return (Resolve-Path $env:EXTOOLS_HOME).Path
+    return (Resolve-Path $env:EXTOOLS_HOME).ProviderPath
   }
   $sibling = Join-Path $repoRoot '../extools'
-  if (Test-Path (Join-Path $sibling 'exmod.ps1')) { return (Resolve-Path $sibling).Path }
+  if (Test-Path (Join-Path $sibling 'exmod.ps1')) { return (Resolve-Path $sibling).ProviderPath }
 
   $version = Get-ToolsPin
   if (-not $version) {
@@ -36,15 +45,15 @@ function Resolve-Extools {
     $have = (& git -C $dest describe --tags --exact-match 2>$null)
     if ($have -ne $tag) {
       Write-Host "exmod: moving .extools from $(if ($have) { $have } else { 'an untagged commit' }) to $tag"
-      & git -C $dest fetch --quiet --depth 1 origin "refs/tags/${tag}:refs/tags/${tag}"
-      if ($LASTEXITCODE -ne 0) { throw "git fetch of tag $tag failed" }
-      & git -c advice.detachedHead=false -C $dest checkout --quiet $tag
-      if ($LASTEXITCODE -ne 0) { throw "git checkout of $tag failed" }
+      Sync-PinnedTag $dest $tag
     }
   } else {
     Write-Host "exmod: cloning extools $tag into .extools/"
-    & git -c advice.detachedHead=false clone --quiet --depth 1 --branch $tag $url $dest
-    if ($LASTEXITCODE -ne 0) { throw "git clone of $url at $tag failed" }
+    # The clone takes the default branch and leaves the tree empty: --branch naming an annotated
+    # tag makes git warn that the ref is not a commit, and the tag is checked out next anyway.
+    & git clone --quiet --depth 1 --no-checkout $url $dest
+    if ($LASTEXITCODE -ne 0) { throw "git clone of $url failed" }
+    Sync-PinnedTag $dest $tag
   }
   return $dest
 }
