@@ -148,7 +148,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     foreach (var c in cells)
       c.Cell.EnsureMetalStack(world);
 
-    int maxFlow = ExlibValues.MoltenFlowRate;
+    int defaultFlow = ExlibValues.MoltenFlowRate;
     foreach (var a in cells) {
       if (
         a.Cell.Sealed
@@ -170,13 +170,15 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
         var b = (Pos: npos, Cell: bCell);
         if (b.Cell.Sealed || b.Cell.Solidified)
           continue;
+        var rules = EdgeRules(a.Cell.FlowRules, b.Cell.FlowRules);
+        int maxFlow = rules?.FlowRate ?? defaultFlow;
 
         // A vertical edge is downhill only: driven from the upper cell (face DOWN); the reverse face is
         // skipped to avoid pumping metal uphill.
         if (face.Axis == EnumAxis.Y) {
-          if (face != BlockFacing.DOWN)
+          if (face != BlockFacing.DOWN || rules?.HorizontalOnly == true)
             continue;
-          FlowEdge(a.Cell, b.Cell, maxFlow, world, downhillOnly: true);
+          FlowEdge(a, b, maxFlow, rules, distFromStart, world, downhillOnly: true);
           continue;
         }
 
@@ -184,7 +186,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
         if (CompareFlowOrder(a, b, distFromStart) >= 0)
           continue;
 
-        FlowEdge(a.Cell, b.Cell, maxFlow, world);
+        FlowEdge(a, b, maxFlow, rules, distFromStart, world);
       }
     }
 
@@ -193,58 +195,93 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
       c.Cell.UpdateThermal(world);
   }
 
-  /// <summary>Moves metal across one connection toward an equal amount, capped at
-  /// <paramref name="maxFlow"/> units; <paramref name="downhillOnly"/> makes the edge one-way from
-  /// <paramref name="aNode"/>.</summary>
+  /// <summary>The rules of a connection whose two cells both return rules, or null when either
+  /// returns none.</summary>
+  private static MoltenFlowRules? EdgeRules(
+    MoltenFlowRules? a,
+    MoltenFlowRules? b
+  ) {
+    if (a is not MoltenFlowRules x || b is not MoltenFlowRules y)
+      return null;
+    return new MoltenFlowRules(
+      Math.Min(x.FlowRate, y.FlowRate),
+      Math.Max(x.MinFlowGap, y.MinFlowGap),
+      x.Conveys && y.Conveys,
+      x.HorizontalOnly || y.HorizontalOnly
+    );
+  }
+
+  /// <summary>The cell's hop distance from the nearest flow source, or
+  /// <see cref="int.MaxValue"/> for a cell no source reaches.</summary>
+  private static int DistanceOf(
+    Dictionary<BlockPos, int> distFromStart,
+    BlockPos pos
+  ) => distFromStart.TryGetValue(pos, out int d) ? d : int.MaxValue;
+
+  /// <summary>Moves metal across one connection, capped at <paramref name="maxFlow"/> units, by
+  /// <paramref name="rules"/> when set and by the defaults otherwise;
+  /// <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>.</summary>
   private static void FlowEdge(
-    IMoltenCell aNode,
-    IMoltenCell bNode,
+    (BlockPos Pos, IMoltenCell Cell) a,
+    (BlockPos Pos, IMoltenCell Cell) b,
     int maxFlow,
+    MoltenFlowRules? rules,
+    Dictionary<BlockPos, int> distFromStart,
     IWorldAccessor world,
     bool downhillOnly = false
   ) {
-    var aCap = aNode.MaxUnitCapacity;
-    var bCap = bNode.MaxUnitCapacity;
+    var aCap = a.Cell.MaxUnitCapacity;
+    var bCap = b.Cell.MaxUnitCapacity;
     if (aCap <= 0 || bCap <= 0)
       return;
 
-    var diff = Math.Abs(aNode.CellAmount - bNode.CellAmount);
+    var diff = Math.Abs(a.Cell.CellAmount - b.Cell.CellAmount);
     if (diff == 0)
       return;
 
-    bool aIsGiver = aNode.CellAmount > bNode.CellAmount;
+    bool aIsGiver = a.Cell.CellAmount > b.Cell.CellAmount;
     // A downhill edge runs one way only: nothing moves when the lower cell is the fuller one.
     if (downhillOnly && !aIsGiver)
       return;
-    IMoltenCell giver = aIsGiver ? aNode : bNode;
-    IMoltenCell receiver = aIsGiver ? bNode : aNode;
-    if (giver.CellAmount <= 0f)
+    var giver = aIsGiver ? a : b;
+    var receiver = aIsGiver ? b : a;
+    if (giver.Cell.CellAmount <= 0f)
       return;
 
     // Different metals sit side by side without mixing.
     if (
-      receiver.CellAmount > 0f
-      && receiver.CellMetalType != giver.CellMetalType
+      receiver.Cell.CellAmount > 0f
+      && receiver.Cell.CellMetalType != giver.Cell.CellMetalType
     )
       return;
 
-    // A levelling pair moves half the difference; integer division floors the step to zero on its own.
-    // A drain fitting and a downhill edge are one-way sinks and take the whole difference.
-    var step = receiver.AcceptsSubMinimumFlow || downhillOnly ? diff : diff / 2;
+    // A drain fitting and a downhill edge are one-way sinks and take the whole difference; a
+    // levelling pair moves half, and integer division floors the step to zero on its own.
+    bool drain = receiver.Cell.AcceptsSubMinimumFlow;
+    bool whole = drain || downhillOnly;
+    if (rules is MoltenFlowRules r) {
+      // The floor is on the gap, never on the halved step.
+      if (!drain && diff < r.MinFlowGap)
+        return;
+      whole |=
+        r.Conveys
+        && DistanceOf(distFromStart, receiver.Pos)
+          > DistanceOf(distFromStart, giver.Pos);
+    }
+    var step = whole ? diff : diff / 2;
     var transfer = step > maxFlow ? maxFlow : step;
 
-    // No MoltenMinFlowAmount floor on a levelling edge; halving alone already decays to nothing.
     if (transfer <= 0)
       return;
 
-    var accepted = receiver.PushMetalRaw(
+    var accepted = receiver.Cell.PushMetalRaw(
       transfer,
-      giver.CellMetalType,
-      giver.CellTemperature,
+      giver.Cell.CellMetalType,
+      giver.Cell.CellTemperature,
       world
     );
     if (accepted > 0f)
-      giver.DrainMetal(accepted);
+      giver.Cell.DrainMetal(accepted);
   }
   #endregion
 

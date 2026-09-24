@@ -33,6 +33,12 @@ public interface IMoltenCell {
   /// difference rather than half, so a run empties into it.</summary>
   bool AcceptsSubMinimumFlow { get; }
 
+  /// <summary>This cell's flow rules, read on every tick; null by default. A connection where
+  /// either cell returns null moves metal by the network's defaults:
+  /// <c>ExlibValues.MoltenFlowRate</c> units per tick, no gap floor, half the difference sideways
+  /// and the whole of it downhill or into a drain fitting.</summary>
+  MoltenFlowRules? FlowRules => null;
+
   /// <summary>Rebuilds the server temperature carrier after a world load; only type and temperature persist.</summary>
   void EnsureMetalStack(IWorldAccessor world);
 
