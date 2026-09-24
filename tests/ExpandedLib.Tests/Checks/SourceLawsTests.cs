@@ -424,6 +424,36 @@ public class SourceLawsTests(ITestOutputHelper output) {
       )
     );
 
+  // Fails when CachedTunables skips a ModSystem's Start or StartServerSide, stops following a base
+  // through the files to ModSystem, or reads Start on a type that is no ModSystem.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.CachedTunables))]
+  public void A_copy_in_a_mod_system_start_is_named() =>
+    Assert.Equal(
+      [
+        "Planted0.cs:3: FamilySystem.Registry.Fallback; copies ExlibValues.MoltenFlowRate in "
+          + "Start"
+          + Unreached,
+        "Planted0.cs:10: SteelSystem._rate; copies ExlibValues.GasLeakRate in StartServerSide"
+          + Unreached,
+      ],
+      Scan(
+        f => SourceLaws.CachedTunables(f, Exlib),
+        "class FamilySystem : ModSystem {\n"
+          + "  public override void Start(ICoreAPI api) {\n"
+          + "    Registry.Fallback = ExlibValues.MoltenFlowRate;\n"
+          + "    Register(() => ExlibValues.LitresPerPipe);\n"
+          + "  }\n}\n"
+          + "class SteelSystem : FamilySystem {\n"
+          + "  public override void StartServerSide(ICoreServerAPI api) {\n"
+          + "    base.StartServerSide(api);\n"
+          + "    _rate = ExlibValues.GasLeakRate;\n"
+          + "  }\n}\n"
+          + "class Machine {\n"
+          + "  public void Start() { _heat = ExlibValues.AmbientTemperature; }\n}"
+      )
+    );
+
   // Fails when CachedTunables names a live read (an expression body, a lambda, a local, another
   // method) or a store registered without Manageable.
   [Fact]

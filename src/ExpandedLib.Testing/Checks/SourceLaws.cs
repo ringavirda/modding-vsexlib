@@ -114,6 +114,11 @@ public static class SourceLaws {
     RegexOptions.Compiled
   );
 
+  private static readonly Regex StartMethod = new(
+    @"^(?:Start|StartPre|StartServerSide|StartClientSide|AssetsLoaded|AssetsFinalize)$",
+    RegexOptions.Compiled
+  );
+
   private static readonly Regex BareCall = new(
     @"(?:(?<![.\w])|\bthis\s*\.\s*)(?<name>[A-Za-z_]\w*)\s*\(",
     RegexOptions.Compiled
@@ -167,7 +172,8 @@ public static class SourceLaws {
   private const string ParticleHome =
     "ExpandedLib.Industry/Helpers/ExParticles.cs";
 
-  // Where a base type outside the files given is looked up: the game's and exlib's assemblies.
+  // Where a base type outside the files given is looked up: the block entity, dialog and mod
+  // system types of the game's and exlib's assemblies, by simple name.
   private static readonly Lazy<Dictionary<string, Type?>> LoadedTypes = new(
     () =>
       new[]
@@ -182,7 +188,8 @@ public static class SourceLaws {
         .SelectMany(LoadableTypes)
         .Where(t =>
           typeof(BlockEntity).IsAssignableFrom(t)
-          || typeof(GuiDialogBlockEntity).IsAssignableFrom(t)
+          || typeof(GuiDialog).IsAssignableFrom(t)
+          || typeof(ModSystem).IsAssignableFrom(t)
         )
         .GroupBy(t => t.Name, StringComparer.Ordinal)
         .ToDictionary(
@@ -433,15 +440,15 @@ public static class SourceLaws {
 
   /// <summary>Every member of a type in <paramref name="sourceFiles"/> that holds a copy of a value
   /// of a manageable config store: a field or property initialiser, or an assignment in a
-  /// constructor, in <c>Initialize</c> or <c>OnLoaded</c>, or in a method of the same type one of
-  /// those calls by name.</summary>
-  /// <remarks><c>/exmod config</c> edits a manageable store live, so a copy taken at load keeps
-  /// the old value. A value is a public property of a config type whose
-  /// <see cref="ExConfigRegisterAttribute.Manageable"/> is set, read as <c>{Accessor}.{Value}</c>;
-  /// a read in a lambda, into a local or behind <c>=&gt;</c> is live.</remarks>
+  /// constructor, <c>Initialize</c>, <c>OnLoaded</c>, a <c>ModSystem</c>'s <c>Start*</c>,
+  /// <c>AssetsLoaded</c> or <c>AssetsFinalize</c>, or a method of the type one of those calls by
+  /// name.</summary>
+  /// <remarks><c>/exmod config</c> edits the store live, so a copy taken at load keeps the old
+  /// value. A read in a lambda, into a local or behind <c>=&gt;</c> is live. A value is a public
+  /// property of a config type, read as <c>{Accessor}.{Value}</c>.</remarks>
   /// <param name="sourceFiles">C# files to read; each is read whole.</param>
-  /// <param name="configAssemblies">Assemblies whose manageable config types give the values;
-  /// a store without <c>Manageable</c> is skipped.</param>
+  /// <param name="configAssemblies">Assemblies whose config types registered with
+  /// <see cref="ExConfigRegisterAttribute.Manageable"/> give the values.</param>
   /// <returns>One line per copy, <c>file:line: Type.member; reason</c>; <see cref="Key"/> keys it.
   /// Empty when clean.</returns>
   /// <exception cref="ArgumentException">The assemblies hold no manageable config type.</exception>
@@ -454,7 +461,8 @@ public static class SourceLaws {
     Regex read = TunableRead(TunableStores(configAssemblies));
     Dictionary<string, List<TypePart>> types = Types(sourceFiles);
     var findings = new List<string>();
-    foreach ((string name, List<TypePart> parts) in Types(sourceFiles)) {
+    foreach ((string name, List<TypePart> parts) in types) {
+      bool modSystem = Derives(name, typeof(ModSystem), types, []);
       var bodies = parts.ToDictionary(p => p, Members);
       foreach (TypePart part in parts)
         foreach (Match hit in Hits(part, read)) {
@@ -480,7 +488,11 @@ public static class SourceLaws {
       ];
       List<(TypePart Part, MemberBlock Block, string Name)> entries =
       [
-        .. methods.Where(m => m.Name == name || LoadMethod.IsMatch(m.Name)),
+        .. methods.Where(m =>
+          m.Name == name
+          || LoadMethod.IsMatch(m.Name)
+          || (modSystem && StartMethod.IsMatch(m.Name))
+        ),
       ];
       var scanned = new HashSet<MemberBlock>(entries.Select(e => e.Block));
       foreach ((TypePart part, MemberBlock entry, string entryName) in entries) {
