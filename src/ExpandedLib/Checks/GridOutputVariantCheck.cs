@@ -24,7 +24,8 @@ namespace ExpandedLib.Checks;
 /// <c>creativeinventory</c> entry matches it and one matches it with only that group's state
 /// changed; an output differing from the default in any other group is not this check's. A
 /// block without a <c>creativeinventory</c>, or whose groups combine other than by multiplying,
-/// is not read. Blocktypes are read from every domain the source covers.
+/// is not read. Blocktypes are read from every domain the source covers. An output code without a
+/// domain is in its recipe file's domain.
 /// </remarks>
 public static class GridOutputVariantCheck {
   private static readonly Regex Placeholder = new(@"\{[^}]*\}");
@@ -52,7 +53,10 @@ public static class GridOutputVariantCheck {
           RecipeCodesCheck.Placeholders(recipe.Json)
         )
       ) {
-        var location = new AssetLocation(Placeholder.Replace(expanded, "*"));
+        var location = AssetLocation.Create(
+          Placeholder.Replace(expanded, "*"),
+          domain
+        );
         if (!source.Domains.Append(domain).Contains(location.Domain))
           continue;
         if (!types.TryGetValue(location.Domain, out List<JObject>? declared))

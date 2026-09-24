@@ -21,7 +21,9 @@ namespace ExpandedLib.Checks;
 /// (<c>RecipeBase.GenerateRecipesForAllIngredientCombinations</c>);
 /// <c>allowedVariants</c> narrowing a wildcard (<c>WildcardUtil.Match</c>). Tags, attributes and
 /// <c>skipVariants</c> are not read, and a regex or tag-only ingredient overlaps its whole item
-/// class. A recipe the game refuses or never matches is skipped.
+/// class. An ingredient code without a domain is in its recipe file's domain, as the game's
+/// <c>RecipeLoader</c> reads it (<c>AssetLocation.Create</c>). A recipe the game refuses or never
+/// matches is skipped.
 /// </remarks>
 public static class GridRecipeCollisionCheck {
   // Above this many combinations of named states, the names are left unbound, which can only add
@@ -119,7 +121,9 @@ public static class GridRecipeCollisionCheck {
         [
           .. Bindings(placed)
             .Select(b =>
-              placed.Select(i => i == null ? null : SlotOf(i, b)).ToArray()
+              placed
+                .Select(i => i == null ? null : SlotOf(i, b, domain))
+                .ToArray()
             ),
         ],
         left,
@@ -169,7 +173,8 @@ public static class GridRecipeCollisionCheck {
 
   private static Slot SlotOf(
     JObject ingredient,
-    Dictionary<string, string> binding
+    Dictionary<string, string> binding,
+    string fileDomain
   ) {
     string type = (
       (string?)Prop(ingredient, "type") ?? "block"
@@ -178,7 +183,7 @@ public static class GridRecipeCollisionCheck {
     if (code == null || code.StartsWith('@'))
       return new Slot(type, null, null);
 
-    var location = new AssetLocation(code);
+    var location = AssetLocation.Create(code, fileDomain);
     string path = AdvancedHole.Replace(location.Path, "*");
     string? domain = location.Domain == "*" ? null : location.Domain;
     if (

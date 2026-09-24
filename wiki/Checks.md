@@ -56,6 +56,8 @@ narrow a match and are not read, and an ingredient with tags and no code overlap
 of its item class, so a pair it reports can be one the loaded game tells apart. A shapeless recipe
 matches its input merged into one stack per item, as the game merges it, so a shapeless oak and pine
 also takes oak, oak and pine laid in three slots, and a shapeless oak and oak takes one slot of oak.
+An ingredient code without a domain names an item of its recipe file's mod, as the game reads it,
+and so does an output code for `GridOutputVariantCheck`.
 A recipe the game refuses at load or never matches (disabled, a letter with no key, a pattern that
 does not fill its declared grid, a grid larger than 3x3) is skipped. A pair across two mods is
 reported in the run of each.

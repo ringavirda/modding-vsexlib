@@ -14,7 +14,7 @@ see the git history.
   key, and the grid is at most 3x3. `GridRecipeCollisionCheck`: no two grid recipes of the domains
   checked match the same input, counted as the game's matcher counts trimmed patterns, offsets,
   shapeless recipes over the input merged into stacks, wildcards, `allowedVariants` and named
-  wildcards. `GridOutputVariantCheck`: a
+  wildcards, with a code without a domain in its recipe file's. `GridOutputVariantCheck`: a
   recipe crafting a block oriented by `ExOrientable`, `HorizontalOrientable`, `NWOrientable`,
   `Pillar` or `OmniRotatable` names the orientation its `creativeinventory` lists. `GridRecipes`
   (ExpandedLib.Testing) runs the three over a suite's definitions.

@@ -70,8 +70,8 @@ public class GridOutputVariantCheckTests {
 
   #region ExOrientable
 
-  // Fails when Run stops reporting an oriented output creative does not list, or names another
-  // state as the default.
+  // Fails when Run stops reporting an oriented output creative does not list, names another
+  // state as the default, or reads an output code without a domain as game's.
   [Fact]
   [PlantedDefect(
     typeof(GridOutputVariantCheck),
@@ -79,12 +79,17 @@ public class GridOutputVariantCheckTests {
   )]
   public void A_non_default_orientation_is_reported() =>
     Assert.Equal(
-      [Finding("stub:tap-iron-n", "stub:tap-iron-s")],
+      [
+        Finding("stub:tap-iron-n", "stub:tap-iron-s"),
+        $"{File}#2 (tap-iron-n): output stub:tap-iron-n is not the creative default "
+          + "stub:tap-iron-s",
+      ],
       Findings(
         new RecipeStubSource()
           .Definition(Tap())
           .Recipe(File, Crafts("stub:tap-iron-n"))
           .Recipe(File, Crafts("stub:tap-iron-s"))
+          .Recipe(File, Crafts("tap-iron-n"))
       )
     );
 

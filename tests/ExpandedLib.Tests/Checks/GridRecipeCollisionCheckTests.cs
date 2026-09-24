@@ -318,11 +318,9 @@ public class GridRecipeCollisionCheckTests {
   public void A_shapeless_search_past_its_limit_is_reported() {
     string planks = string.Join(
       ", ",
-      "ABCDEFG".Select(c =>
+      "abcdefg".Select(c =>
         $$"""
-          "{{c}}": { "type": "item", "code": "game:plank-{{char.ToLowerInvariant(
-            c
-          )}}" }
+          "{{c}}": { "type": "item", "code": "game:plank-{{c}}" }
           """
       )
     );
@@ -331,7 +329,7 @@ public class GridRecipeCollisionCheckTests {
       Findings(
         Recipe(
           "seven",
-          "ABC,DEF,G__",
+          "abc,def,g__",
           3,
           3,
           $"{{ {planks} }}",
@@ -448,6 +446,68 @@ public class GridRecipeCollisionCheckTests {
           .Recipe(
             "other:recipes/grid/planted.json",
             Recipe("again", "P", 1, 1, $$"""{ "P": {{Oak}} }""")
+          )
+      )
+    );
+
+  // Fails when an ingredient code without a domain is read as game's, not its file's.
+  [Fact]
+  public void A_code_without_a_domain_is_in_its_file_domain() =>
+    Assert.Equal(
+      [
+        $"{File}#1 (cog) and other:recipes/grid/planted.json#1 (named) match the same input",
+      ],
+      Findings(
+        new RecipeStubSource()
+          .Recipe(
+            File,
+            Recipe(
+              "gear",
+              "G",
+              1,
+              1,
+              """{ "G": { "type": "item", "code": "gear" } }"""
+            )
+          )
+          .Recipe(
+            File,
+            Recipe(
+              "cog",
+              "C",
+              1,
+              1,
+              """{ "C": { "type": "item", "code": "cog" } }"""
+            )
+          )
+          .Recipe(
+            File,
+            Recipe(
+              "vanilla",
+              "S",
+              1,
+              1,
+              """{ "S": { "type": "item", "code": "game:gear" } }"""
+            )
+          )
+          .Recipe(
+            "other:recipes/grid/planted.json",
+            Recipe(
+              "bare",
+              "G",
+              1,
+              1,
+              """{ "G": { "type": "item", "code": "gear" } }"""
+            )
+          )
+          .Recipe(
+            "other:recipes/grid/planted.json",
+            Recipe(
+              "named",
+              "C",
+              1,
+              1,
+              """{ "C": { "type": "item", "code": "stub:cog" } }"""
+            )
           )
       )
     );
