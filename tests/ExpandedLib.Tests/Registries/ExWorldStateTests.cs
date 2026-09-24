@@ -140,9 +140,8 @@ public class ExWorldStateTests {
     );
   }
 
-  // Fails when any reset of a settable static value is removed: the default recovery fallback, the
-  // mold gate, the sound channel, the filler warning latch, the preferences api, the injection flag,
-  // the temperature formatter, the module loggers.
+  // Fails when a settable static's reset goes: recovery fallback, mold gate, sound channel, filler
+  // latch, preferences api, injection flag, temperature formatter.
   [Fact]
   public void A_server_load_start_returns_every_settable_static_value_it_holds() {
     var planted = new List<StaticCells.Fill>();
