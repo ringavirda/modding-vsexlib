@@ -40,16 +40,47 @@ public abstract class BlockNetworkNode
 
   public override void OnLoaded(ICoreAPI api) {
     base.OnLoaded(api);
-    PrecomputeRotatedBoxes();
 
     Type = Variant["type"] != null ? string.Intern(Variant["type"]) : null;
     Orientation =
       Variant["orientation"] != null
         ? string.Intern(Variant["orientation"])
         : null;
+    AdoptLoadedOrientations(api);
+    PrecomputeRotatedBoxes();
 
     if (api.Side == EnumAppSide.Server)
       NetworkSystem = api.ModLoader.GetModSystem<BlockNetworkModSystem>();
+  }
+
+  /// <summary>Adds this block's <see cref="Type"/> to <see cref="AllowedOrientations"/> when this
+  /// class's own definitions leave it out, as for a type another provider defines: its states are
+  /// those of the loaded blocks of this class and domain that differ from this one only in
+  /// <c>orientation</c>, in load order.</summary>
+  private void AdoptLoadedOrientations(ICoreAPI api) {
+    if (
+      Type == null
+      || Orientation == null
+      || AllowedOrientations.ContainsKey(Type)
+    )
+      return;
+    string[] states =
+    [
+      .. api
+        .World.Blocks.Where(b =>
+          b?.Code?.Domain == Code.Domain
+          && b.GetType() == GetType()
+          && b.Variant.Count == Variant.Count
+          && Variant.All(v =>
+            v.Key == "orientation"
+              ? b.Variant[v.Key] != null
+              : b.Variant[v.Key] == v.Value
+          )
+        )
+        .Select(b => b.Variant["orientation"]),
+    ];
+    if (states.Length > 0)
+      AllowedOrientations[Type] = states;
   }
 
   #region Placement and orientation
@@ -111,7 +142,7 @@ public abstract class BlockNetworkNode
 
     _tempOrientationsStore[blockSel.Position] = finalChoices;
 
-    AssetLocation newCode = CodeWithVariant("orientation", finalChoices[0]);
+    AssetLocation newCode = this.WithVariant("orientation", finalChoices[0]);
     Block? block = world.GetBlock(newCode);
 
     if (block != null) {
@@ -604,7 +635,7 @@ public abstract class BlockNetworkNode
   /// is not registered.</summary>
   protected ItemStack FallbackStack(IWorldAccessor world) {
     string fallback = GetFallbackOrientation(Type);
-    AssetLocation loc = CodeWithVariant("orientation", fallback);
+    AssetLocation loc = this.WithVariant("orientation", fallback);
     return new ItemStack(world.GetBlock(loc) ?? this);
   }
 

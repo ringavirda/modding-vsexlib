@@ -19,6 +19,53 @@ public class NetworkNodeOrientationTests {
   private static readonly string[] Axis = ["ns", "we", "ud"];
   private static readonly BlockPos Centre = new(0, 0, 0);
 
+  // Fails when the fallback code is built from the code's first dash-segment only.
+  [Fact]
+  public void A_node_with_a_dash_in_its_code_drops_its_fallback_orientation() {
+    var world = new TestWorld();
+    TestNetworkBlock[] family = TestNetworkBlock.Family(
+      "test",
+      "test:dashed-node",
+      "Axis",
+      Axis
+    );
+    foreach (TestNetworkBlock block in family)
+      world.Register(block);
+    world.Place(Centre, family.First(b => b.Orientation == "we"));
+
+    ItemStack drop = Assert.Single(
+      world.GetBlock(Centre).GetDrops(world.World, Centre, null)
+    );
+
+    Assert.Equal("test:dashed-node-ns", drop.Collectible.Code.ToString());
+  }
+
+  // Fails when a loaded node's type is left out of its allowed orientations because its class's own
+  // definitions do not declare it.
+  [Fact]
+  public void A_type_another_provider_defines_takes_its_loaded_orientations() {
+    var world = new TestWorld();
+    TestNetworkBlock[] gauges =
+    [
+      .. Axis.Select(
+        (token, i) =>
+          TestBlocks.Configure(
+            TestNetworkBlock.Create("test", token, 10 + i),
+            $"test:node-gauge-{token}",
+            10 + i,
+            ("type", "gauge"),
+            ("orientation", token)
+          )
+      ),
+    ];
+    foreach (TestNetworkBlock gauge in gauges)
+      world.Register(gauge);
+
+    gauges[1].OnLoaded(world.Api);
+
+    Assert.Equal(Axis, gauges[1].AllowedOrientations["gauge"]);
+  }
+
   #region The wrench
 
   [Fact]

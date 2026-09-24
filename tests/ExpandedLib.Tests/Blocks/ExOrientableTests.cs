@@ -48,6 +48,27 @@ public class ExOrientableTests {
     Assert.Equal("exlib:crafting-designtable-w", rig.PlacedCode);
   }
 
+  // Fails when the placed code is built from the code's first dash-segment only.
+  [Theory]
+  [InlineData("north", "n")]
+  [InlineData("east", "e")]
+  [InlineData("south", "s")]
+  [InlineData("west", "w")]
+  public void A_code_with_a_dash_places_in_every_facing(
+    string look,
+    string token
+  ) {
+    var rig = ExOrientableRig.WithVariants(
+      "exlib:crafting-workbench",
+      "side",
+      FourSides
+    );
+
+    Assert.True(rig.PlaceLooking(look));
+
+    Assert.Equal($"exlib:crafting-workbench-{token}", rig.PlacedCode);
+  }
+
   [Fact]
   public void A_missing_variant_state_is_refused_and_logged_rather_than_crashing() {
     // A missing variant state resolves to no block: placement is refused and logged, not dereferenced.

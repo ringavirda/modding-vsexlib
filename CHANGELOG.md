@@ -270,6 +270,14 @@ see the git history.
 
 ### Fixed
 
+- **`ExOrientable` places a block whose code has a dash.** The placed, dropped and picked codes
+  were built from the code's first dash-segment, so `crafting-workbench` looked for
+  `crafting-n` and every placement was refused with an error. A network node's fallback drop and
+  its placed orientation had the same fault.
+- **A network node of a type another provider defines places.** `AllowedOrientations` held only
+  the types the node's own class declares, so a `BlockPipe` type declared elsewhere (a pipe
+  indicator) was refused with `exlib-noorientation` from every side. A loaded node now adds its
+  own type from the loaded blocks that differ from it only in `orientation`.
 - **`/exmod verify` reads code-first recipes and blocktypes.** The server unloads unpatched
   asset data once the world is up, and a code-first asset's origin loaded nothing back, so every
   check over them passed with nothing to read. The origin now keeps each asset's bytes.

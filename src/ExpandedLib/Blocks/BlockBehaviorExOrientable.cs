@@ -68,7 +68,7 @@ public class BlockBehaviorExOrientable : BlockBehavior {
       return false;
 
     Block? oriented = world.BlockAccessor.GetBlock(
-      block.CodeWithVariant(VariantKey, token)
+      block.WithVariant(VariantKey, token)
     );
     if (oriented == null || oriented.BlockId == block.BlockId)
       return false;
@@ -99,7 +99,7 @@ public class BlockBehaviorExOrientable : BlockBehavior {
 
     string token = TokenFor(byPlayer, blockSel);
     Block? oriented = world.BlockAccessor.GetBlock(
-      block.CodeWithVariant(VariantKey, token)
+      block.WithVariant(VariantKey, token)
     );
 
     // A missing state is an authoring mistake: refuse the placement rather than dereference null.
@@ -162,7 +162,7 @@ public class BlockBehaviorExOrientable : BlockBehavior {
   public ItemStack CanonicalStack(IWorldAccessor world) {
     Block canonical =
       world.BlockAccessor.GetBlock(
-        block.CodeWithVariant(VariantKey, _scheme.Tokens[0])
+        block.WithVariant(VariantKey, _scheme.Tokens[0])
       ) ?? block;
     return new ItemStack(canonical);
   }
