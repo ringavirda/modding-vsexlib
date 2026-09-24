@@ -1,3 +1,39 @@
 {
-  "entries": []
+  "entries": [
+    {
+      "file": "src/ExpandedLib/Blocks/Construction/ConstructedAnimator.cs",
+      "member": "ConstructedAnimator.Initialize",
+      "reason": "Q8, client-only rendering judged by fallen's eye: builds the staged mesh and animator and follows construction changes."
+    },
+    {
+      "file": "src/ExpandedLib/Blocks/Construction/ConstructedAnimator.cs",
+      "member": "ConstructedAnimator.Rebuild",
+      "reason": "Q8, client-only rendering judged by fallen's eye: tessellates the built elements and initialises the animator."
+    },
+    {
+      "file": "src/ExpandedLib/Blocks/Construction/ConstructedAnimator.cs",
+      "member": "ConstructedAnimator.Pose",
+      "reason": "Q8, client-only rendering judged by fallen's eye: poses the live animator."
+    },
+    {
+      "file": "src/ExpandedLib/Helpers/Rendering/ToggleAnimator.cs",
+      "member": "ToggleAnimator.Initialize",
+      "reason": "Q8, client-only rendering judged by fallen's eye: builds the animator and applies the first pose."
+    },
+    {
+      "file": "src/ExpandedLib/Helpers/Rendering/ToggleAnimator.cs",
+      "member": "ToggleAnimator.Rebuild",
+      "reason": "Q8, client-only rendering judged by fallen's eye: rebuilds the animator through the build delegate."
+    },
+    {
+      "file": "src/ExpandedLib/Helpers/Rendering/ToggleAnimator.cs",
+      "member": "ToggleAnimator.Pose",
+      "reason": "Q8, client-only rendering judged by fallen's eye: poses the live animator."
+    },
+    {
+      "file": "src/ExpandedLib.Industry/MechanicalPower/BEBehaviorMPSubmachineBase.cs",
+      "member": "BEBehaviorMPSubmachineBase.OnTesselation",
+      "reason": "Q8, client-only rendering judged by fallen's eye: adds the cached body mesh to the chunk."
+    }
+  ]
 }
