@@ -1,4 +1,5 @@
 using System.Reflection;
+using ExpandedLib.Registries;
 using ExpandedLib.Testing;
 using HarmonyLib;
 using Vintagestory.API.Common;
@@ -136,5 +137,44 @@ public class HarmonyFixtureTests {
 
     Assert.True(fixture.IsPatched(categorized));
     Assert.False(fixture.IsPatched(uncategorized));
+  }
+
+  // Fails when the category form's Dispose leaves its category applied with nothing held.
+  [Fact]
+  public void The_category_form_reverts_its_category_when_nothing_holds_the_id() {
+    MethodBase categorized = typeof(CollectibleObject).GetMethod(
+      nameof(CollectibleObject.GetHeldItemName)
+    )!;
+    var fixture = new HarmonyFixture(
+      "exlibtest.harmonyfixture-category-revert",
+      typeof(HarmonyFixtureTests).Assembly,
+      TestCategory
+    );
+
+    fixture.Dispose();
+
+    Assert.False(fixture.IsPatched(categorized));
+  }
+
+  // Fails when the category form's Dispose releases a hold it never took.
+  [Fact]
+  public void The_category_form_leaves_a_PatchOnce_holders_patches() {
+    const string modId = "exlibtest.harmonyfixture-category-beside-hold";
+    MethodBase uncategorized = typeof(UncategorizedTarget).GetMethod(
+      nameof(UncategorizedTarget.Method)
+    )!;
+    try {
+      ExHarmony.PatchOnce(modId, typeof(HarmonyFixtureTests).Assembly);
+
+      new HarmonyFixture(
+        modId,
+        typeof(HarmonyFixtureTests).Assembly,
+        TestCategory
+      ).Dispose();
+
+      Assert.Contains(modId, Harmony.GetPatchInfo(uncategorized)!.Owners);
+    } finally {
+      ExHarmony.UnpatchAll(modId);
+    }
   }
 }

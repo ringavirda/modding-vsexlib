@@ -81,10 +81,24 @@ public static class ExHarmony {
       )
         if (--UncategorizedPatched[key] == 0)
           UncategorizedPatched.Remove(key);
-      if (UncategorizedPatched.Keys.Any(k => k.StartsWith(prefix)))
-        return;
-      new Harmony(id).UnpatchAll(id);
-      AppliedCategories.RemoveWhere(key => key.StartsWith(prefix));
+      UnpatchUnheldLocked(id);
     }
+  }
+
+  /// <summary>Unpatches everything under <paramref name="id"/>, categories included, unless a
+  /// <see cref="PatchOnce(string, Assembly)"/> hold is left on it; releases no hold. For a caller
+  /// that applied only categories and so holds nothing.</summary>
+  internal static void UnpatchUnheld(string id) {
+    lock (UncategorizedPatched)
+      UnpatchUnheldLocked(id);
+  }
+
+  // The caller holds the lock on UncategorizedPatched.
+  private static void UnpatchUnheldLocked(string id) {
+    string prefix = id + "::";
+    if (UncategorizedPatched.Keys.Any(k => k.StartsWith(prefix)))
+      return;
+    new Harmony(id).UnpatchAll(id);
+    AppliedCategories.RemoveWhere(key => key.StartsWith(prefix));
   }
 }

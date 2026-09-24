@@ -557,7 +557,8 @@ agree on idempotence: a second fixture for the same `modId` does not double-patc
 stay until the last fixture holding them is disposed; disposing one fixture twice releases its hold
 once. `category == null`
 applies every uncategorised `[HarmonyPatch]` class in `patches`; a `category` applies only its
-`[HarmonyPatchCategory(category)]` classes. `IsPatched`/`PatchedMethods` read through
+`[HarmonyPatchCategory(category)]` classes and takes no hold, so its `Dispose` reverts the id's
+patches only when no `PatchOnce` hold is left on the id. `IsPatched`/`PatchedMethods` read through
 `Harmony.GetPatchInfo`/`GetPatchedMethods`, scoped to this fixture's owner id. Join a collection with
 `DisableParallelization = true` - Harmony patches are process-wide.
 

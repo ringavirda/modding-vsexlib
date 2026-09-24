@@ -16,6 +16,9 @@ namespace ExpandedLib.Testing;
 /// </summary>
 public sealed class HarmonyFixture : IDisposable {
   private readonly Mod _mod;
+
+  // False for the category form, which applies through PatchCategoryWhenLoaded and takes no hold.
+  private readonly bool _holds;
   private bool _disposed;
 
   /// <summary>
@@ -31,7 +34,8 @@ public sealed class HarmonyFixture : IDisposable {
       new ModInfo { ModID = modId }
     );
 
-    if (category == null) {
+    _holds = category == null;
+    if (_holds) {
       Harmony = ExHarmony.PatchOnce(_mod, patches);
     } else {
       Harmony = new Harmony(modId);
@@ -57,11 +61,17 @@ public sealed class HarmonyFixture : IDisposable {
     Harmony.GetPatchedMethods().ToList();
 
   /// <summary>Releases this fixture's hold; the mod id's patches are reverted once nothing else
-  /// holds them (<see cref="ExHarmony.UnpatchAll(Mod)"/>). Safe to call twice.</summary>
+  /// holds them (<see cref="ExHarmony.UnpatchAll(Mod)"/>). The category form holds nothing: it
+  /// reverts the id's patches only when no <see cref="ExHarmony.PatchOnce(Mod, Assembly)"/> hold is
+  /// left on the id, and otherwise leaves its category to come off with the last hold. Safe to call
+  /// twice.</summary>
   public void Dispose() {
     if (_disposed)
       return;
     _disposed = true;
-    ExHarmony.UnpatchAll(_mod);
+    if (_holds)
+      ExHarmony.UnpatchAll(_mod);
+    else
+      ExHarmony.UnpatchUnheld(_mod.Info.ModID);
   }
 }
