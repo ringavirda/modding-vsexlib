@@ -14,7 +14,14 @@ namespace ExpandedLib.Tests;
 
 /// <summary><see cref="StageWildcardsCheck"/>'s rules, each over a planted stage table that breaks
 /// that rule alone, and <see cref="StageWildcards"/> over definitions read from this assembly.</summary>
-public class StageWildcardsTests(ITestOutputHelper output) {
+public class StageWildcardsTests {
+  private readonly ITestOutputHelper output;
+
+  public StageWildcardsTests(ITestOutputHelper output) {
+    this.output = output;
+    TestModDomain.Register();
+  }
+
   private const string Domain = "plantedstages";
 
   /// <summary>A pipe whose <c>*</c> spans orientation and metal, and a crate grouped by metal
