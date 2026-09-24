@@ -127,14 +127,47 @@ public static class DefinitionGoldens {
   }
 
   /// <summary>Re-blesses the goldens under <paramref name="goldenRoot"/> from the current def
-  /// output. Opt-in: call only when <see cref="WriteRequested"/>.</summary>
+  /// output: every golden when <c>EXLIB_WRITE_GOLDENS</c> is <c>1</c>, else those whose
+  /// <see cref="RelativePath"/> contains one of its comma-separated fragments. Opt-in: call only
+  /// when <see cref="WriteRequested"/>.</summary>
+  /// <remarks>A fragment whose first <c>/</c>-separated segment is another domain belongs to
+  /// another assembly's goldens, is skipped here and never throws.</remarks>
+  /// <exception cref="InvalidOperationException">A fragment matches none of
+  /// <paramref name="domain"/>'s goldens; the message names the value and the fragment, and
+  /// nothing is written.</exception>
   [CheckHelper("writes the goldens when asked")]
-  public static void WriteAll(string domain, Assembly asm, string goldenRoot) {
-    IReadOnlyList<string> only = WriteFilter;
+  public static void WriteAll(string domain, Assembly asm, string goldenRoot) =>
+    WriteAll(
+      domain,
+      asm,
+      goldenRoot,
+      Environment.GetEnvironmentVariable("EXLIB_WRITE_GOLDENS") ?? ""
+    );
 
-    foreach (IExDef def in Collect(domain, asm)) {
-      // Matched on the same domain-qualified relative path the parity test reports.
-      string relative = def.Location.Domain + "/" + def.Location.Path;
+  internal static void WriteAll(
+    string domain,
+    Assembly asm,
+    string goldenRoot,
+    string value
+  ) {
+    IReadOnlyList<string> only = WriteFilter(value);
+    IReadOnlyList<IExDef> defs = Collect(domain, asm);
+
+    string[] unmatched =
+    [
+      .. only.Where(f =>
+        IsOwnFragment(f, domain)
+        && !defs.Any(d => RelativePath(d).Contains(f, StringComparison.Ordinal))
+      ),
+    ];
+    if (unmatched.Length > 0)
+      throw new InvalidOperationException(
+        $"EXLIB_WRITE_GOLDENS={value} names no {domain} golden: "
+          + string.Join(", ", unmatched)
+      );
+
+    foreach (IExDef def in defs) {
+      string relative = RelativePath(def);
       if (
         only.Count > 0
         && !only.Any(f => relative.Contains(f, StringComparison.Ordinal))
@@ -147,6 +180,11 @@ public static class DefinitionGoldens {
     }
   }
 
+  private static bool IsOwnFragment(string fragment, string domain) {
+    int slash = fragment.IndexOf('/');
+    return slash <= 0 || fragment[..slash] == domain;
+  }
+
   /// <summary>True when <c>EXLIB_WRITE_GOLDENS</c> is set to anything non-empty.</summary>
   [CheckHelper("reads the golden-write switch")]
   public static bool WriteRequested =>
@@ -154,24 +192,19 @@ public static class DefinitionGoldens {
       Environment.GetEnvironmentVariable("EXLIB_WRITE_GOLDENS")
     );
 
-  /// <summary>The path fragments <c>EXLIB_WRITE_GOLDENS</c> names, or empty for "every golden" (<c>1</c>).</summary>
-  private static IReadOnlyList<string> WriteFilter {
-    get {
-      string value =
-        Environment.GetEnvironmentVariable("EXLIB_WRITE_GOLDENS") ?? "";
-      if (value.Trim() is "" or "1")
-        return [];
-      return
-      [
-        .. value
-          .Split(
-            ',',
-            StringSplitOptions.RemoveEmptyEntries
-              | StringSplitOptions.TrimEntries
-          )
-          .Select(p => p.Replace('\\', '/').Replace(".json", "")),
-      ];
-    }
+  /// <summary>The path fragments <paramref name="value"/> names, or empty for "every golden" (<c>1</c>).</summary>
+  private static IReadOnlyList<string> WriteFilter(string value) {
+    if (value.Trim() is "" or "1")
+      return [];
+    return
+    [
+      .. value
+        .Split(
+          ',',
+          StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+        )
+        .Select(p => p.Replace('\\', '/').Replace(".json", "")),
+    ];
   }
 
   /// <summary>The repo root every source-tree path is resolved against; also settable with the

@@ -412,7 +412,10 @@ oracle every migrated def is checked against: it
 collects every def a mod assembly declares (without touching the live `ExDefinitions` registry) and
 compares each one's emitted JSON to a committed golden file under `goldens/{domain}/{Location.Path}`.
 `EXLIB_WRITE_GOLDENS=1` reblesses every golden in a run; a narrower value
-(`EXLIB_WRITE_GOLDENS=iiex/blocktypes/furnace/blastcore`) blesses one file at a time.
+(`EXLIB_WRITE_GOLDENS=iiex/blocktypes/furnace/blastcore`) blesses one file at a time. A
+comma-separated list blesses each golden whose path contains one of its fragments; a fragment that
+matches none of the suite's goldens fails the write test naming the value, and writes nothing. A
+fragment starting with another domain (`iiex/` in siex's suite) is left to that domain's suite.
 
 For a def migrated from an existing hand-written blocktype, `DefinitionParity` checks the two are
 *semantically* the same JSON - numbers compare type-agnostically, `multiblockStructure` and
