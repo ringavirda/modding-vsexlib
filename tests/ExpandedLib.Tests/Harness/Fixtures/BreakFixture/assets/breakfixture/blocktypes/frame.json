@@ -1,0 +1,38 @@
+{
+  "code": "frame",
+  "class": "ExFilledMegastructure",
+  "entityClass": "Generic",
+  "variantgroups": [{ "code": "side", "states": ["n", "e"] }],
+  "attributes": {
+    "fillerOffsets": [
+      { "x": -1, "y": 0, "z": 0 },
+      { "x": 1, "y": 0, "z": 0 }
+    ]
+  },
+  "entityBehaviors": [
+    {
+      "name": "ExRightClickConstructable",
+      "properties": {
+        "stages": [
+          {},
+          {
+            "requireStacks": [
+              { "type": "item", "code": "game:stick", "quantity": 1 }
+            ]
+          },
+          {
+            "requireStacks": [
+              {
+                "type": "item",
+                "code": "game:metalplate-*",
+                "quantity": 2,
+                "allowedVariants": ["iron", "steel"],
+                "storeWildCard": "metal"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

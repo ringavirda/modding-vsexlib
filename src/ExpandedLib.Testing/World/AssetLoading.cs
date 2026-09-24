@@ -30,7 +30,11 @@ public sealed partial class TestWorld {
   /// load logs nothing. exlib's driver then runs its <c>StartPre</c>, emptying every per-world
   /// registry (<see cref="Registries.ExWorldState"/>), and every exlib mod system its <c>Start</c>,
   /// before the mod's. Every system started, a mod's own included, is disposed when the load ends,
-  /// thrown or not, the mod's first, so the Harmony holds they took are released.</remarks>
+  /// thrown or not, the mod's first, so the Harmony holds they took are released. Each block and
+  /// item registered gets an id of its own, as the engine gives one on registration, and every class
+  /// the load registered goes into this world's class registry (<see cref="RegisterClasses"/>), so a
+  /// loaded block placed here spawns its block entity with its declared behaviours. A block's api,
+  /// its resolved <c>drops</c> and its <see cref="Block.OnLoaded"/> are left to the caller.</remarks>
   /// <param name="modPath">A mod's or sample's folder; <c>modinfo.json</c>/<c>bin/</c> may sit at its
   /// root or under <c>src/</c>, assets always under <c>assets/&lt;modid&gt;/</c>. A mod whose
   /// <c>modinfo.json</c> declares <c>"type": "content"</c> has no compiled assembly.</param>
@@ -151,8 +155,10 @@ public sealed partial class TestWorld {
           c.GetMethodInfo().Name == nameof(ICoreServerAPI.RegisterBlock)
         )
         .Select(c => (Block)c.GetArguments()[0]!)
-    )
+    ) {
+      block.BlockId = _nextDefinedId++;
       Register(block);
+    }
     foreach (
       Item item in loaderApi
         .ReceivedCalls()
@@ -160,8 +166,10 @@ public sealed partial class TestWorld {
           c.GetMethodInfo().Name == nameof(ICoreServerAPI.RegisterItem)
         )
         .Select(c => (Item)c.GetArguments()[0]!)
-    )
+    ) {
+      item.ItemId = _nextItemId++;
       Register(item);
+    }
   }
 
   /// <summary>Copies every asset under <paramref name="fullPath"/> for <paramref name="domain"/> into
@@ -230,7 +238,7 @@ public sealed partial class TestWorld {
     coreApi.World.Returns(World);
     coreApi.ModLoader.Returns(Mods);
 
-    rawClassRegistry = new ClassRegistry();
+    rawClassRegistry = Classes();
     coreApi.ClassRegistry.Returns(
       new ClassRegistryAPI(World, rawClassRegistry)
     );

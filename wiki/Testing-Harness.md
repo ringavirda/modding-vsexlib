@@ -620,6 +620,29 @@ public void Every_structure_breaks_whole_from_every_cell_and_drops_its_definitio
 }
 ```
 
+A mod whose blocks are JSON, not code-first definitions, is loaded with `LoadAssets` and broken in
+that world. `Run(world, include)` breaks every loaded block whose attributes carry `fillerOffsets` or
+whose entity behaviours include `ExRightClickConstructable`, one variant per block, with the same
+pass rules; `include` narrows it. Every structure stands at its own principal, 32 blocks along X
+from the last, and the world keeps what a break leaves. The run gives each block it breaks, and the
+structure filler, the world's api, resolves its `drops`, registering a stand-in for a code the world
+does not hold, runs its `OnLoaded`, and registers a `MechanicalPowerMod` when the world holds none.
+Anything else the block entities need, such as network types, is registered before the call:
+
+```csharp
+[Fact]
+public void Every_json_structure_breaks_whole_from_every_cell() {
+  using var world = new TestWorld();
+  world.LoadAssets(Path.Combine(RepoPaths.Root, "mods", "yourmod"));
+  StructureBreaks.Result result = StructureBreaks.Run(world);
+  Assert.True(result.Failures.Count == 0, string.Join("\n", result.Failures));
+}
+```
+
+`Result.Spawned` lists every break that ran, with the variant, the stage, the cell and every stack the
+break spawned through `SpawnItemEntity`, whatever spawned it, so a test can assert on the stacks
+themselves, not only on the pass rules.
+
 A failure names the variant, the stage and the cell, and says whether the break threw, which cells
 it left standing, or which drop counts fell outside the definition's range. Only the server break is
 exercised: client-side rendering and particles are not.
@@ -738,7 +761,11 @@ load in the process meets nothing of the first one's code-first blocks, metals, 
 config. Then every exlib mod system runs its `Start` in execute order, so a mod block naming an exlib
 class such as `exlib.BlockPipe` resolves to it. Every system the load started, exlib's and the
 mod's, is disposed when the load ends, the mod's first and whether a `Start` threw or not, which
-releases the Harmony holds their `Start` took.
+releases the Harmony holds their `Start` took. Each block and item the load registers gets an id of
+its own, as the engine gives one, and the load's classes land in the world's own class registry, so
+a loaded block set through `world.Accessor.SetBlock` spawns its block entity with the behaviours its
+JSON declares. The block's api, resolved `drops` and `OnLoaded` are the caller's to supply;
+`StructureBreaks` does that for the blocks it breaks.
 
 ## 4. Boot it
 

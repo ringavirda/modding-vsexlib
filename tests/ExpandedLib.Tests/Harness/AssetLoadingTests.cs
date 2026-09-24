@@ -3,6 +3,7 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using ExpandedLib.Blocks;
 using ExpandedLib.Config;
 using ExpandedLib.Definitions;
 using ExpandedLib.Industry.Metals;
@@ -68,6 +69,57 @@ public class AssetLoadingTests
       );
       Assert.Equal(side, block.Variant["side"]);
     }
+  }
+
+  private static string BreakFixture =>
+    Path.Combine(
+      RepoPaths.Root,
+      "tests",
+      "ExpandedLib.Tests",
+      "Harness",
+      "Fixtures",
+      "BreakFixture"
+    );
+
+  // Fails when the loader leaves every block at id 0 (the last one loaded replaces air), or an item
+  // at id 0.
+  [Fact]
+  public void Loaded_blocks_and_items_take_ids_of_their_own()
+  {
+    using var world = new TestWorld();
+
+    world.LoadAssets(BreakFixture);
+
+    Assert.Equal("game:air", world.World.GetBlock(0).Code.ToString());
+    int[] ids = [.. world.World.Blocks.Select(b => b.BlockId)];
+    Assert.Equal(ids.Length, ids.Distinct().Count());
+    Assert.Contains(
+      world.World.Blocks,
+      b => b.Code.ToString() == "breakfixture:frame-n"
+    );
+    Assert.NotEqual(
+      0,
+      world.GetItem(new AssetLocation("breakfixture:token"))!.ItemId
+    );
+  }
+
+  // Fails when the loader registers classes into a registry of its own, so a block set in the world
+  // spawns no entity.
+  [Fact]
+  public void A_loaded_block_set_in_the_world_spawns_its_entity_with_its_behaviours()
+  {
+    using var world = new TestWorld();
+    world.LoadAssets(BreakFixture);
+    var at = new Vintagestory.API.MathTools.BlockPos(0, 64, 0);
+
+    world.Accessor.SetBlock(
+      world.World.GetBlock(new AssetLocation("breakfixture:frame-n"))!.BlockId,
+      at
+    );
+
+    Assert.NotNull(
+      world.GetBlockEntity(at)?.GetBehavior<ExRightClickConstructable>()
+    );
   }
 
   // Fails when the loader stops starting exlib's own mod systems, so no exlib class is registered.

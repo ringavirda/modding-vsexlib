@@ -148,7 +148,10 @@ registers the blocks and items it resolves; the vanilla mods' classes are regist
 vanilla-only load logs no Warning or Error, and each load starts as a server's does, with exlib's
 own `ExModuleModSystem.StartPre`, which empties `ExDefinitions` and every other per-world registry.
 Every exlib mod system then runs its `Start`, so `exlib.*` classes resolve; every system the load
-started, the mod's own included, is disposed when the load ends. It
+started, the mod's own included, is disposed when the load ends. Each block and item it registers gets
+an id of its own, as the engine gives one, and the load's classes go into the world's own class
+registry, so a loaded block set through `Accessor.SetBlock` spawns its block entity with its declared
+behaviours; a block's api, resolved `drops` and `OnLoaded` are left to the caller. It
 throws `InvalidOperationException` when no game install or `modinfo.json` resolves, or when a mod
 that is not `"type": "content"` has no compiled dll under `bin/`. See
 [Real assets](Testing-Harness#real-assets-testworldloadassets).
@@ -744,7 +747,7 @@ pairs.
 | `ShapeExtents` | The bounding box (in voxels) of everything a shape file draws. |
 | `SoundUse` | `ShortRepeats` names every `ExSounds.PlayThrottled`/`PlayLoop` call in a set of source files whose sound is not a catalogue constant or whose interval is shorter than the clip; `UndisposedLoops` names every type in an assembly that holds an `ILoadedSound` itself, or an `ExSoundLoop` its own `OnBlockRemoved()` or `OnBlockUnloaded()` never calls `Dispose` on, directly or through a method of the same type; `DirectSounds` names every `PlaySound*` or `LoadSound` call in a set of source files outside `ExSounds` itself, since such a sound skips `ExSounds.MachineVolume`. |
 | `ShippedJson` | Every JSON asset under one shipped tree parses, carries no control character, and (under `patches/`) declares the side each entry runs on. |
-| `StructureBreaks` | Every definition with filler offsets or construction stages, in every variant, stood up in a fresh `TestWorld`, whose break and removal hooks are on, and broken by a survival player from the principal and every filler cell, at each construction stage. A break fails when it throws, leaves a cell of the structure standing, or drops other than the definition's resolved `drops` plus every paid stage's materials at the salvage ratio. `Run` returns the blocks, variants and breaks covered and one line per failure; see [Breaking every structure](Testing-Harness#breaking-every-structure-structurebreaks). |
+| `StructureBreaks` | Every definition with filler offsets or construction stages, in every variant, stood up in a fresh `TestWorld`, whose break and removal hooks are on, and broken by a survival player from the principal and every filler cell, at each construction stage. A break fails when it throws, leaves a cell of the structure standing, or drops other than the definition's resolved `drops` plus every paid stage's materials at the salvage ratio. `Run` takes code-first definitions, each break in a fresh world, or a world `LoadAssets` filled, every break in that world, with an optional block filter. It returns the blocks, variants and breaks covered, one line per failure, and in `Spawned` every break with the stacks it spawned; see [Breaking every structure](Testing-Harness#breaking-every-structure-structurebreaks). |
 | `TreeKeys` | Golden-file oracle for a block entity's save shape - the keys `ToTreeAttributes` writes, pinned against a committed golden the same way `DefinitionGoldens` pins a def's JSON; see [Pinning a block entity's save shape](Testing-Harness#pinning-a-block-entitys-save-shape). |
 | `VanillaToolTiers` | Vanilla pickaxe tool tier constants (`Bronze`/`Iron`/`Steel`), for pinning a block's `requiredMiningTier`. |
 | `WikiParity` | Reflects the API the wiki teaches against the API the assembly actually has. A page from which no symbol resolves is a finding too, unless `Check`'s `symbolFree` names it (a navigation page such as `Home.md`). |

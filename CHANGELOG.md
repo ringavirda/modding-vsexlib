@@ -27,6 +27,10 @@ see the git history.
   engine's break and removal hooks through the accessor, `TestWorld.RegisterClasses`/`RegisterClass`
   hold a real class registry, and
   `TestWorld.DefineBlock` builds one variant of a definition the way the game registers it.
+- **`StructureBreaks.Run(TestWorld, include)`** (ExpandedLib.Testing): breaks the JSON blocks
+  `TestWorld.LoadAssets` loaded that carry `fillerOffsets` or `ExRightClickConstructable` stages,
+  under the same pass rules, all in that world. `StructureBreaks.Result.Spawned` lists every break
+  with the stacks it spawned, on both paths.
 - **Machine-sound volume**: `.exmod sound [0-1]` sets a per-player multiplier, `ExSounds.MachineVolume`,
   on every sound the `ExSounds` helpers play. One-shots the server plays reach each client in range
   over the `exlibSound` channel and are scaled there; one-shots and loops play as the game's Sound
@@ -133,6 +137,10 @@ see the git history.
 
 ### Fixed
 
+- **`TestWorld.LoadAssets` gives each loaded block and item an id of its own.** Every one kept id 0,
+  so the last block loaded replaced air in the world's id table. The load's classes now go into the
+  world's own class registry, so a loaded block set in the world spawns its block entity with its
+  declared behaviours.
 - **Leaving a world and loading another no longer carries state over.** exlib's registries are
   process-wide, and the game keeps mod assemblies loaded between worlds, so a second world in the
   same client process met the first one's code-first definitions, catalogue contributors, pipe tier

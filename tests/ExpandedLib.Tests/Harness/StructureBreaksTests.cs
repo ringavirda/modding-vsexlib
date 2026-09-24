@@ -1,18 +1,20 @@
 #if GAME_GE_1_22
 using System;
+using System.IO;
 using System.Linq;
 using ExpandedLib.Definitions;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent.Mechanics;
 using Xunit;
 
 namespace ExpandedLib.Tests;
 
 /// <summary><see cref="StructureBreaks"/> against small megablocks and constructions that each break
 /// one way: whole, leaving fillers, throwing, dropping nothing, or refunding through a wildcard the
-/// construction never stored.</summary>
+/// construction never stored; code-first, and loaded from the JSON of the BreakFixture mod.</summary>
 public class StructureBreaksTests
 {
   private static readonly FillerCellSpec[] TwoCells =
@@ -212,6 +214,102 @@ public class StructureBreaksTests
 
     Assert.Equal(0, result.Blocks);
     Assert.Equal(0, result.Breaks);
+  }
+
+  private static TestWorld LoadFixture() =>
+    new TestWorld().LoadAssets(
+      Path.Combine(
+        RepoPaths.Root,
+        "tests",
+        "ExpandedLib.Tests",
+        "Harness",
+        "Fixtures",
+        "BreakFixture"
+      )
+    );
+
+  private static bool IsFrame(Block block) =>
+    block.Code.Path.StartsWith("frame-");
+
+  // Fails when LoadAssets keeps the loader's classes out of the world's registry (the stages do not
+  // stand up), when the run stops registering the mechanical power system, or when the fixture's
+  // metal plate loses its storeWildCard:
+  // "threw NullReferenceException: Object reference not set to an instance of an object."
+  [Fact]
+  public void A_json_megablock_breaks_clean_from_every_cell_at_every_stage()
+  {
+    using TestWorld world = LoadFixture();
+
+    StructureBreaks.Result result = StructureBreaks.Run(world, IsFrame);
+
+    Assert.True(result.Failures.Count == 0, string.Join("\n", result.Failures));
+    Assert.Equal(1, result.Blocks);
+    Assert.Equal(2, result.Variants);
+    Assert.Equal(2 * 3 * (1 + TwoCells.Length), result.Breaks);
+    Assert.Single(world.Mods.Systems.OfType<MechanicalPowerMod>());
+  }
+
+  // Fails when a break's spawns are not recorded, or when the world's drops are not cleared before
+  // each break: the complete frame's refund then carries the earlier breaks' stacks.
+  [Fact]
+  public void Each_break_reports_every_stack_it_spawned()
+  {
+    using TestWorld world = LoadFixture();
+
+    StructureBreaks.Result result = StructureBreaks.Run(world, IsFrame);
+
+    Assert.Equal(result.Breaks, result.Spawned.Count);
+    StructureBreaks.Spawn complete = Assert.Single(
+      result.Spawned,
+      s => s.Code == "breakfixture:frame-e" && s.Stage == 2 && s.Cell == 1
+    );
+    Assert.Equal(
+      ["breakfixture:frame-e x1", "game:metalplate-iron x2", "game:stick x1"],
+      complete
+        .Stacks.Select(s => $"{s.Collectible.Code} x{s.StackSize}")
+        .Order(StringComparer.Ordinal)
+    );
+  }
+
+  // Fails when the run skips the blocks no filter names (include null), or when a break that throws
+  // is not recorded with its exception.
+  [Fact]
+  [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.Run))]
+  public void A_json_wildcard_ingredient_without_storeWildCard_throws_on_break()
+  {
+    using TestWorld world = LoadFixture();
+
+    StructureBreaks.Result result = StructureBreaks.Run(world);
+
+    Assert.Equal(2, result.Blocks);
+    Assert.Equal(4, result.Variants);
+    Assert.Equal(2 * (1 + TwoCells.Length), result.Failures.Count);
+    Assert.All(
+      result.Failures,
+      f =>
+      {
+        Assert.StartsWith("breakfixture:unstored-", f);
+        Assert.Contains("at stage 2 broken from", f, StringComparison.Ordinal);
+        Assert.Contains("threw NullReferenceException", f);
+      }
+    );
+  }
+
+  // Fails when the run registers a mechanical power system over the one the world holds.
+  [Fact]
+  public void A_run_keeps_the_worlds_own_mechanical_power_system()
+  {
+    using TestWorld world = LoadFixture();
+    var power = new MechanicalPowerMod();
+    world.Mods.Register(power);
+    power.Start(world.Api);
+
+    StructureBreaks.Run(world, IsFrame);
+
+    Assert.Same(
+      power,
+      Assert.Single(world.Mods.Systems.OfType<MechanicalPowerMod>())
+    );
   }
 
   private sealed class LeavesFillers : BlockFilledMegastructure
