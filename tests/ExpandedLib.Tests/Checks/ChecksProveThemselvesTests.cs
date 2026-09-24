@@ -16,12 +16,6 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
   /// <summary>Members with no planted-defect test yet, in file order.</summary>
   private static readonly string[] Pending =
   [
-    "RecipeCodes.UnresolvableOutputs",
-    "ReferencedCodes.Unresolvable",
-    "ReferencedCodes.Checkable",
-    "ReferencedCodes.BareButOurs",
-    "SelectorCoverage.Check",
-    "ShippedJson.Check",
 #if GAME_GE_1_22
     "StructureBreaks.InScope",
 #endif
