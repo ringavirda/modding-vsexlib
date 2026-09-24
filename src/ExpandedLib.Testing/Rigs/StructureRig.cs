@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
@@ -314,64 +313,10 @@ public sealed class StructureRig {
   /// collapses to its first branch, and <c>*</c> becomes a literal segment.
   /// </summary>
   private static AssetLocation Concretize(AssetLocation wanted) =>
-    new(wanted.Domain, FirstAlternative(wanted.Path).Replace("*", "x"));
-
-  /// <summary>
-  /// Collapses every alternation group down to its first branch, tracking bracket depth to handle a
-  /// branch with its own nested alternation. Resolved recursively.
-  /// </summary>
-  private static string FirstAlternative(string path) {
-    var sb = new StringBuilder();
-    int i = 0;
-    while (i < path.Length) {
-      bool tagged = path[i] == '@' && i + 1 < path.Length && path[i + 1] == '(';
-      if (!tagged && path[i] != '(') {
-        sb.Append(path[i++]);
-        continue;
-      }
-
-      int open = tagged ? i + 1 : i;
-      int close = MatchingParen(path, open);
-      if (close < 0) {
-        sb.Append(path[i++]); // unbalanced - left alone
-        continue;
-      }
-
-      sb.Append(
-        FirstAlternative(
-          FirstBranch(path.Substring(open + 1, close - open - 1))
-        )
-      );
-      i = close + 1;
-    }
-    return sb.ToString();
-  }
-
-  /// <summary>Index of the <c>)</c> closing the <c>(</c> at <paramref name="open"/>, or -1 if unbalanced.</summary>
-  private static int MatchingParen(string s, int open) {
-    int depth = 0;
-    for (int i = open; i < s.Length; i++) {
-      if (s[i] == '(')
-        depth++;
-      else if (s[i] == ')' && --depth == 0)
-        return i;
-    }
-    return -1;
-  }
-
-  /// <summary>The part of an alternation body before its first top-level <c>|</c>.</summary>
-  private static string FirstBranch(string inner) {
-    int depth = 0;
-    for (int i = 0; i < inner.Length; i++) {
-      if (inner[i] == '(')
-        depth++;
-      else if (inner[i] == ')')
-        depth--;
-      else if (inner[i] == '|' && depth == 0)
-        return inner[..i];
-    }
-    return inner;
-  }
+    new(
+      wanted.Domain,
+      ExWildcards.FirstAlternative(wanted.Path).Replace("*", "x")
+    );
 }
 
 /// <summary>Test-only hook for a fixture that needs a structure's rotation recomputed without going
