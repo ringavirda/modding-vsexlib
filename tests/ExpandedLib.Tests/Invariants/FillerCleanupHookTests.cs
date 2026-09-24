@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using ExpandedLib.Testing;
 using Xunit;
@@ -95,24 +96,23 @@ public class FillerCleanupHookTests {
 
   #endregion
 
-  [Fact]
-  public void Filler_cleanup_hangs_off_removal_not_breaking() {
-    var offenders = new List<string>();
-    int seen = 0;
-    foreach (string f in Premise.NotEmpty(SourceFiles(), "mod source files")) {
-      string text = File.ReadAllText(f);
-      // Matches the call syntax, not a bare mention in another comment.
-      bool mentionsAny = false;
-      foreach (string call in CleanupCalls) {
-        if (text.Contains(call)) {
-          mentionsAny = true;
-          break;
-        }
-      }
-      if (!mentionsAny)
-        continue;
-      seen++;
+  // Matches the call syntax, not a bare mention in another comment.
+  private static bool NamesACleanup(string text) =>
+    CleanupCalls.Any(call => text.Contains(call));
 
+  /// <summary>Each file of <paramref name="files"/> whose <c>OnBlockBroken</c> body calls a
+  /// cleanup helper (<c>RemoveFillers</c>, <c>RemoveAxleNodes</c>) that the Block overload of
+  /// <c>OnBlockRemoved</c> does not call, or that has no such overload.</summary>
+  /// <param name="files">Sources as their relative path and text.</param>
+  /// <returns><c>path (Call)</c> per offender, naming its first such call, in input order.
+  /// </returns>
+  public static IReadOnlyList<string> BreakOnlyCleanups(
+    IEnumerable<(string Relative, string Text)> files
+  ) {
+    var offenders = new List<string>();
+    foreach (var (rel, text) in files) {
+      if (!NamesACleanup(text))
+        continue;
       string? brokenBody = MethodBody(text, BrokenSignature);
       if (brokenBody == null)
         continue;
@@ -123,19 +123,59 @@ public class FillerCleanupHookTests {
           continue;
         if (removedBody != null && removedBody.Contains(call))
           continue;
-        offenders.Add(Rel(f) + " (" + call.TrimEnd('(') + ")");
+        offenders.Add(rel + " (" + call.TrimEnd('(') + ")");
         break;
       }
     }
+    return offenders;
+  }
+
+  [Fact]
+  public void Filler_cleanup_hangs_off_removal_not_breaking() {
+    List<(string Relative, string Text)> files =
+    [
+      .. Premise
+        .NotEmpty(SourceFiles(), "mod source files")
+        .Select(f => (Rel(f), File.ReadAllText(f))),
+    ];
+    List<string> offenders = [.. BreakOnlyCleanups(files)];
 
     Assert.True(
-      seen > 0,
+      files.Any(f => NamesACleanup(f.Text)),
       "Found no files naming a cleanup call at all - the source walk is wrong."
     );
     Assert.True(
       offenders.Count == 0,
       "these clear their footprint only on a player break: "
         + string.Join(", ", offenders)
+    );
+  }
+
+  // Fails when BreakOnlyCleanups passes a break-only cleanup, takes the BlockEntity overload of
+  // OnBlockRemoved for the Block one, or names a block cleaning up in both.
+  [Fact]
+  [PlantedDefect(typeof(FillerCleanupHookTests), nameof(BreakOnlyCleanups))]
+  public void A_cleanup_called_only_on_break_is_named() {
+    const string broken =
+      "public override void OnBlockBroken(IWorldAccessor w, BlockPos p) {\n"
+      + "  RemoveAxleNodes(w, p);\n}\n";
+    Assert.Equal(
+      ["bare.cs (RemoveAxleNodes)", "entity.cs (RemoveAxleNodes)"],
+      BreakOnlyCleanups([
+        ("bare.cs", broken),
+        (
+          "entity.cs",
+          broken
+            + "public override void OnBlockRemoved() {\n  RemoveAxleNodes(w, p);\n}"
+        ),
+        (
+          "both.cs",
+          broken
+            + "public override void OnBlockRemoved(IWorldAccessor w, BlockPos p) {\n"
+            + "  RemoveAxleNodes(w, p);\n}"
+        ),
+        ("elsewhere.cs", "void Tidy() { RemoveFillers(w, p); }"),
+      ])
     );
   }
 }

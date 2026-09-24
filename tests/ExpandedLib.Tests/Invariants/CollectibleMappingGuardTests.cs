@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ExpandedLib.Testing;
 using Xunit;
 
@@ -63,25 +64,66 @@ public class CollectibleMappingGuardTests {
 
   #endregion
 
+  /// <summary>Each file of <paramref name="files"/> declaring a block entity that stores a stack
+  /// (<c>SetItemstack</c>, <c>MoltenContents.Write</c>, <c>MoltenCharge</c>'s <c>ToTree</c>) and
+  /// never names <c>OnStoreCollectibleMappings</c>.</summary>
+  /// <param name="files">Sources as their relative path and text.</param>
+  /// <returns>The offenders' relative paths, in input order.</returns>
+  public static IReadOnlyList<string> UnmappedStacks(
+    IEnumerable<(string Relative, string Text)> files
+  ) =>
+    [
+      .. files
+        .Where(f =>
+          f.Text.Contains("class BlockEntity")
+          && StoresAStack(f.Text)
+          && !f.Text.Contains("OnStoreCollectibleMappings")
+        )
+        .Select(f => f.Relative),
+    ];
+
   [Fact]
   public void A_block_entity_that_stores_a_stack_maps_its_collectibles() {
-    var offenders = new List<string>();
-    int files = 0;
-    foreach (string f in Premise.NotEmpty(SourceFiles(), "mod source files")) {
-      files++;
-      string text = File.ReadAllText(f);
-      if (!text.Contains("class BlockEntity") || !StoresAStack(text))
-        continue;
-      if (text.Contains("OnStoreCollectibleMappings"))
-        continue;
-      offenders.Add(Rel(f));
-    }
+    List<(string Relative, string Text)> files =
+    [
+      .. Premise
+        .NotEmpty(SourceFiles(), "mod source files")
+        .Select(f => (Rel(f), File.ReadAllText(f))),
+    ];
+    List<string> offenders = [.. UnmappedStacks(files)];
 
     Assert.True(
-      files > 0,
+      files.Count > 0,
       "Found no C# sources under any mod's own source tree - the source walk is wrong, and "
         + "this rule would pass by scanning nothing."
     );
     Assert.True(offenders.Count == 0, string.Join(", ", offenders));
+  }
+
+  // Fails when UnmappedStacks passes a block entity storing a stack by any of the three writes
+  // without the mapping, or names one that maps, a block, or a MoltenCharge read.
+  [Fact]
+  [PlantedDefect(typeof(CollectibleMappingGuardTests), nameof(UnmappedStacks))]
+  public void A_block_entity_storing_a_stack_without_mappings_is_named() {
+    const string be = "class BlockEntityKiln : BlockEntity {\n";
+    Assert.Equal(
+      ["slot.cs", "molten.cs", "charge.cs"],
+      UnmappedStacks([
+        ("slot.cs", be + "  void S() => t.SetItemstack(\"k\", s);\n}"),
+        ("molten.cs", be + "  void S() => MoltenContents.Write(t, c);\n}"),
+        ("charge.cs", be + "  MoltenCharge c;\n  void S() => c.ToTree(t);\n}"),
+        (
+          "mapped.cs",
+          be
+            + "  void S() => t.SetItemstack(\"k\", s);\n"
+            + "  public override void OnStoreCollectibleMappings() { }\n}"
+        ),
+        (
+          "block.cs",
+          "class Kiln : Block {\n  void S() => t.SetItemstack(\"k\", s);\n}"
+        ),
+        ("read.cs", be + "  MoltenCharge c;\n}"),
+      ])
+    );
   }
 }
