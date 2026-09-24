@@ -521,6 +521,82 @@ public class SourceLawsTests(ITestOutputHelper output) {
 
   #endregion
 
+  #region UnreadTunables
+
+  private const string Unread =
+    "; no source reads it, so the setting changes nothing";
+
+  private const string ExlibConfigSource =
+    "class ExlibConfig {\n"
+    + "  public float GasLeakRate { get; set; } = 8f;\n"
+    + "  public float LitresPerPipe { get; set; } = 30f;\n}";
+
+  private IReadOnlyList<string> Unreads() =>
+    Scan(
+      f => SourceLaws.UnreadTunables(f, Exlib),
+      ExlibConfigSource,
+      "class Pipe {\n"
+        + "  float Leak() => ExlibValues.LiquidLeakRate;\n"
+        + "  float Flow(ExlibConfig c) => c.MoltenFlowRate;\n"
+        + "  string Info() => Lang.Get(\"k\", ExlibValues.MoltenMinFlowAmount);\n"
+        + "  static float Grace => ExlibValues.PipeOverpressureSeconds;\n"
+        + "  bool Burst(float t) => t > Grace;\n"
+        + "  void Edit() => ExlibValues.Edit(c => c.GasLeakRate = 2f);\n"
+        + "  string Key = nameof(ExlibConfig.LitresPerPipe);\n"
+        + "  static float Idle => ExlibValues.MpIdleTorque;\n"
+        + "  protected override float Dry => ExlibValues.EvaporationLitresPerDay;\n}"
+    );
+
+  // Fails when UnreadTunables accepts a value no file reads, counts a write, a nameof on the config
+  // type or an unused property standing for it as a read, or loses the declaration's line.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.UnreadTunables))]
+  public void A_value_no_source_reads_is_named() {
+    IReadOnlyList<string> found = Unreads();
+
+    Assert.Contains("Planted0.cs:2: ExlibValues.GasLeakRate" + Unread, found);
+    Assert.Contains("Planted0.cs:3: ExlibValues.LitresPerPipe" + Unread, found);
+    Assert.Contains(
+      "Planted0.cs:1: ExlibValues.AmbientTemperature" + Unread,
+      found
+    );
+    Assert.Contains("Planted0.cs:1: ExlibValues.MpIdleTorque" + Unread, found);
+  }
+
+  // Fails when UnreadTunables names a value read through the accessor, a config instance, a
+  // Lang.Get argument, a property that stands for it, or an override its base reads.
+  [Fact]
+  public void Values_read_any_way_pass() {
+    IReadOnlyList<string> found = Unreads();
+
+    foreach (
+      string value in new[]
+      {
+        "LiquidLeakRate",
+        "MoltenFlowRate",
+        "MoltenMinFlowAmount",
+        "PipeOverpressureSeconds",
+        "EvaporationLitresPerDay",
+      }
+    )
+      Assert.DoesNotContain(found, f => f.Contains($"ExlibValues.{value};"));
+  }
+
+  // Fails when UnreadTunables runs over files that do not declare the config type instead of
+  // throwing.
+  [Fact]
+  public void Files_without_the_config_type_throw() =>
+    Assert.Contains(
+      "ExlibConfig",
+      Assert
+        .Throws<ArgumentException>(() =>
+          Scan(f => SourceLaws.UnreadTunables(f, Exlib), "class Pipe { }")
+        )
+        .Message
+    );
+
+  #endregion
+
   #region ContainerDialogPackets
 
   // Fails when ContainerDialogPackets stops following a base through the files, skips a dialog

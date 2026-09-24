@@ -18,6 +18,7 @@ namespace ExpandedLib.Tests;
 [GuardOf(typeof(SourceLaws), nameof(SourceLaws.UnguardedSearch))]
 [GuardOf(typeof(SourceLaws), nameof(SourceLaws.CachedTunables))]
 [GuardOf(typeof(SourceLaws), nameof(SourceLaws.DisplayOnlyTunables))]
+[GuardOf(typeof(SourceLaws), nameof(SourceLaws.UnreadTunables))]
 [GuardOf(typeof(SourceLaws), nameof(SourceLaws.ContainerDialogPackets))]
 [GuardOf(typeof(SourceLaws), nameof(SourceLaws.InlineParticles))]
 public class SourceLawGuards(ITestOutputHelper output) {
@@ -40,6 +41,21 @@ public class SourceLawGuards(ITestOutputHelper output) {
       "no shipped cell declares cooldownSpeed, so every molten cell stamps its metal with the "
       + "MoltenCooldownDefault read when the cell was constructed; an edit reaches only cells "
       + "loaded after it",
+  };
+
+  private const string ConsumerValue =
+    "a framework value for the mods built on exlib, which exlib's own sources do not read";
+
+  /// <summary>File and value, and who reads it.</summary>
+  private static readonly Dictionary<string, string> AllowedUnread = new() {
+    ["ExlibConfig.cs: ExlibValues.AmbientTemperature"] =
+      ConsumerValue + "; the SmokeStack sample reads it",
+    ["ExlibConfig.cs: ExlibValues.MoltenMinFlowAmount"] =
+      ConsumerValue
+      + "; iiex BlockEntitySandCastingBed floors its transfers at it",
+    ["ExlibConfig.cs: ExlibValues.MpGearMeshLoss"] =
+      ConsumerValue
+      + "; iiex BlockEntityTransmission loses it per second of coupling",
   };
 
   [Fact]
@@ -65,6 +81,10 @@ public class SourceLawGuards(ITestOutputHelper output) {
   [Fact]
   public void A_tunable_is_read_by_more_than_its_text() =>
     Assert(f => SourceLaws.DisplayOnlyTunables(f, Configs), new(), new());
+
+  [Fact]
+  public void Every_tunable_is_read() =>
+    Assert(f => SourceLaws.UnreadTunables(f, Configs), AllowedUnread, new());
 
   [Fact]
   public void A_container_that_opens_a_dialog_handles_its_packets() =>

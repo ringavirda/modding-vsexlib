@@ -139,6 +139,11 @@ public static class SourceLaws {
     RegexOptions.Compiled
   );
 
+  private static readonly Regex OverrideKeyword = new(
+    @"\boverride\b",
+    RegexOptions.Compiled
+  );
+
   private static readonly Regex AliasTail = new(
     @"\G\s*;",
     RegexOptions.Compiled
@@ -446,7 +451,8 @@ public static class SourceLaws {
     IEnumerable<string> sourceFiles,
     IEnumerable<Assembly> configAssemblies
   ) {
-    Regex read = TunableRead(configAssemblies);
+    Regex read = TunableRead(TunableStores(configAssemblies));
+    Dictionary<string, List<TypePart>> types = Types(sourceFiles);
     var findings = new List<string>();
     foreach ((string name, List<TypePart> parts) in Types(sourceFiles)) {
       var bodies = parts.ToDictionary(p => p, Members);
@@ -521,10 +527,10 @@ public static class SourceLaws {
   /// <summary>Every value of a manageable config store that <paramref name="sourceFiles"/> read,
   /// every read of which sits inside the argument list of a <c>Lang.Get</c> call
   /// (<c>Get</c>, <c>GetIfExists</c>, <c>GetMatching</c>, ...).</summary>
-  /// <remarks>A value only the text reads is a mechanic the simulation lacks. A property whose
-  /// whole expression body is the read stands for the value, and every use of its name counts as a
-  /// read. A read inside <c>nameof</c> does not count; a value no file reads is not
-  /// named.</remarks>
+  /// <remarks>A value only the text reads is a mechanic the simulation lacks. A read is
+  /// <c>{Accessor}.{Value}</c>, or an unassigned <c>.{Value}</c> on a config instance; a property
+  /// whose whole expression body is the read stands for the value, each use of its name a read, and
+  /// read once more by its base when it overrides; <c>nameof</c> is no read.</remarks>
   /// <param name="sourceFiles">C# files to read; each is read whole.</param>
   /// <param name="configAssemblies">Assemblies whose manageable config types give the values;
   /// a store without <c>Manageable</c> is skipped.</param>
@@ -538,51 +544,10 @@ public static class SourceLaws {
     IEnumerable<string> sourceFiles,
     IEnumerable<Assembly> configAssemblies
   ) {
-    Regex read = TunableRead(configAssemblies);
-    string[] files = [.. sourceFiles.OrderBy(f => f, StringComparer.Ordinal)];
-    var code = files.ToDictionary(
-      f => f,
-      f => HarnessUse.CodeOnly(File.ReadAllText(f))
-    );
-    var reads = new SortedDictionary<
-      string,
-      List<(string File, int At, bool Shown)>
-    >(StringComparer.Ordinal);
-    var aliases = new List<(string Value, string Alias, string File, int At)>();
-    foreach (string file in files) {
-      string text = code[file];
-      foreach (Match hit in read.Matches(text)) {
-        if (Within(text, NameofCall, hit.Index))
-          continue;
-        string value = $"{hit.Groups["acc"].Value}.{hit.Groups["value"].Value}";
-        int head = Math.Max(0, hit.Index - 160);
-        Match alias = AliasHead.Match(text[head..hit.Index]);
-        if (alias.Success && AliasTail.IsMatch(text, hit.Index + hit.Length))
-          aliases.Add(
-            (value, alias.Groups["alias"].Value, file, head + alias.Index)
-          );
-        else
-          Read(
-            reads,
-            value,
-            (file, hit.Index, Within(text, LangCall, hit.Index))
-          );
-      }
-    }
-    foreach ((string value, string alias, string declared, int at) in aliases)
-      foreach (string file in files) {
-        string text = code[file];
-        foreach (Match use in Regex.Matches(text, $@"(?<!\w){alias}\b"))
-          if (
-            (file != declared || use.Index != at)
-            && !Within(text, NameofCall, use.Index)
-          )
-            Read(
-              reads,
-              value,
-              (file, use.Index, Within(text, LangCall, use.Index))
-            );
-      }
+    (
+      SortedDictionary<string, List<(string File, int At, bool Shown)>> reads,
+      Dictionary<string, string> code
+    ) = TunableReads(sourceFiles, TunableStores(configAssemblies));
     var findings = new List<string>();
     foreach (
       (string value, List<(string File, int At, bool Shown)> all) in reads
@@ -607,6 +572,69 @@ public static class SourceLaws {
       );
     }
     return findings;
+  }
+
+  /// <summary>Every value of a manageable config store that no file in
+  /// <paramref name="sourceFiles"/> reads.</summary>
+  /// <remarks>A setting no source reads changes nothing. A read is one
+  /// <see cref="DisplayOnlyTunables"/> counts, a <c>Lang.Get</c> argument included; a test is no
+  /// reader, so tests are not among the files.</remarks>
+  /// <param name="sourceFiles">C# files to read; each is read whole. They declare every manageable
+  /// config type of <paramref name="configAssemblies"/>.</param>
+  /// <param name="configAssemblies">Assemblies whose manageable config types give the values;
+  /// a store without <c>Manageable</c> is skipped.</param>
+  /// <returns>One line per value at its property's declaration, else its config type's, in path
+  /// and line order, <c>file:line: Accessor.Value; reason</c>; <see cref="Key"/> keys it. Empty
+  /// when clean.</returns>
+  /// <exception cref="ArgumentException">The assemblies hold no manageable config type, or the
+  /// files do not declare one.</exception>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
+  public static IReadOnlyList<string> UnreadTunables(
+    IEnumerable<string> sourceFiles,
+    IEnumerable<Assembly> configAssemblies
+  ) {
+    string[] files = [.. sourceFiles];
+    List<TunableStore> stores = TunableStores(configAssemblies);
+    SortedDictionary<string, List<(string File, int At, bool Shown)>> reads =
+      TunableReads(files, stores).Reads;
+    Dictionary<string, List<TypePart>> types = Types(files);
+    var unread = new List<(TypePart Part, int At, string Value)>();
+    foreach (TunableStore store in stores) {
+      if (!types.TryGetValue(store.Config.Name, out List<TypePart>? parts))
+        throw new ArgumentException(
+          $"the files do not declare the config type {store.Config.Name}",
+          nameof(sourceFiles)
+        );
+      foreach (string value in store.Values) {
+        if (reads.ContainsKey($"{store.Accessor}.{value}"))
+          continue;
+        Regex declaration = new(@"(?<![\w.])" + value + @"\s*\{");
+        (TypePart Part, Match Hit)? declared = parts
+          .SelectMany(p => Hits(p, declaration).Select(m => (p, m)))
+          .Select(h => ((TypePart, Match)?)h)
+          .FirstOrDefault();
+        unread.Add(
+          declared is { } d
+            ? (d.Part, d.Hit.Index, $"{store.Accessor}.{value}")
+            : (parts[0], parts[0].Start, $"{store.Accessor}.{value}")
+        );
+      }
+    }
+    return
+    [
+      .. unread
+        .OrderBy(u => u.Part.File, StringComparer.Ordinal)
+        .ThenBy(u => u.At)
+        .Select(u =>
+          Finding(
+            u.Part,
+            u.At,
+            u.Value,
+            "no source reads it, so the setting changes nothing"
+          )
+        ),
+    ];
   }
 
   /// <summary>Every type in <paramref name="sourceFiles"/> over <c>BlockEntityContainer</c> that
@@ -1072,10 +1100,18 @@ public static class SourceLaws {
     $"copies {read.Groups["acc"].Value}.{read.Groups["value"].Value} {where}; an /exmod config "
     + "edit never reaches it";
 
-  // A read of any value of the manageable config types in assemblies, as Accessor.Value, with
-  // the groups acc and value.
-  private static Regex TunableRead(IEnumerable<Assembly> assemblies) {
-    List<string> stores =
+  // A manageable config type, the accessor ExConfigGenerator emits for it, and its values.
+  private sealed record TunableStore(
+    Type Config,
+    string Accessor,
+    string[] Values
+  );
+
+  // The manageable config types in assemblies, by full name.
+  private static List<TunableStore> TunableStores(
+    IEnumerable<Assembly> assemblies
+  ) {
+    List<TunableStore> stores =
     [
       .. assemblies
         .Distinct()
@@ -1085,11 +1121,12 @@ public static class SourceLaws {
         )
         .Where(c => c.Register is { Manageable: true })
         .OrderBy(c => c.Type.FullName, StringComparer.Ordinal)
-        .Select(c =>
-          $@"(?<acc>{Regex.Escape(AccessorOf(c.Type, c.Register!))})\s*\.\s*(?<value>"
-          + string.Join(
-            "|",
-            c.Type.GetProperties(
+        .Select(c => new TunableStore(
+          c.Type,
+          AccessorOf(c.Type, c.Register!),
+          [
+            .. c
+              .Type.GetProperties(
                 BindingFlags.Public
                   | BindingFlags.Instance
                   | BindingFlags.DeclaredOnly
@@ -1099,17 +1136,107 @@ public static class SourceLaws {
                 && p.GetIndexParameters().Length == 0
                 && p.Name != nameof(IExVersionedConfig.ConfigVersion)
               )
-              .Select(p => p.Name)
-          )
-          + ")"
-        ),
+              .Select(p => p.Name),
+          ]
+        )),
     ];
     if (stores.Count == 0)
       throw new ArgumentException(
         "the assemblies hold no config type registered with Manageable = true",
         nameof(assemblies)
       );
-    return new Regex($@"\b(?:{string.Join("|", stores)})\b(?!\s*\()");
+    return stores;
+  }
+
+  // A read of any value of stores, as Accessor.Value, with the groups acc and value.
+  private static Regex TunableRead(List<TunableStore> stores) =>
+    new(
+      $@"\b(?:{string.Join(
+        "|",
+        stores.Select(s =>
+          $@"(?<acc>{Regex.Escape(s.Accessor)})\s*\.\s*(?<value>{string.Join("|", s.Values)})"
+        )
+      )})\b(?!\s*\()"
+    );
+
+  // A read of a value of stores on a config instance: .Value behind no accessor, neither called
+  // nor assigned, with the group value.
+  private static Regex InstanceRead(List<TunableStore> stores) =>
+    new(
+      $@"(?<!\b(?:{string.Join("|", stores.Select(s => Regex.Escape(s.Accessor)))})\s*)"
+        + $@"\.\s*(?<value>{string.Join("|", stores.SelectMany(s => s.Values).Distinct())})\b"
+        + @"(?!\s*\()(?!\s*=(?![=>]))"
+    );
+
+  // Each value's reads in the files by Accessor.Value, with whether a Lang.Get argument holds it;
+  // a property that is only the read stands for it, and read by its base when an override.
+  private static (
+    SortedDictionary<string, List<(string File, int At, bool Shown)>> Reads,
+    Dictionary<string, string> Code
+  ) TunableReads(IEnumerable<string> sourceFiles, List<TunableStore> stores) {
+    Regex read = TunableRead(stores);
+    Regex instance = InstanceRead(stores);
+    string[] files = [.. sourceFiles.OrderBy(f => f, StringComparer.Ordinal)];
+    var code = files.ToDictionary(
+      f => f,
+      f => HarnessUse.CodeOnly(File.ReadAllText(f))
+    );
+    var reads = new SortedDictionary<
+      string,
+      List<(string File, int At, bool Shown)>
+    >(StringComparer.Ordinal);
+    var aliases = new List<(string Value, string Alias, string File, int At)>();
+    foreach (string file in files) {
+      string text = code[file];
+      foreach (Match hit in read.Matches(text)) {
+        if (Within(text, NameofCall, hit.Index))
+          continue;
+        string value = $"{hit.Groups["acc"].Value}.{hit.Groups["value"].Value}";
+        int head = Math.Max(0, hit.Index - 160);
+        Match alias = AliasHead.Match(text[head..hit.Index]);
+        if (alias.Success && AliasTail.IsMatch(text, hit.Index + hit.Length)) {
+          int at = head + alias.Index;
+          aliases.Add((value, alias.Groups["alias"].Value, file, at));
+          int statement = text.LastIndexOfAny([';', '{', '}'], at) + 1;
+          if (OverrideKeyword.IsMatch(text[statement..at]))
+            Read(reads, value, (file, hit.Index, false));
+        } else
+          Read(
+            reads,
+            value,
+            (file, hit.Index, Within(text, LangCall, hit.Index))
+          );
+      }
+      foreach (Match hit in instance.Matches(text)) {
+        if (Within(text, NameofCall, hit.Index))
+          continue;
+        foreach (
+          TunableStore store in stores.Where(s =>
+            s.Values.Contains(hit.Groups["value"].Value)
+          )
+        )
+          Read(
+            reads,
+            $"{store.Accessor}.{hit.Groups["value"].Value}",
+            (file, hit.Index, Within(text, LangCall, hit.Index))
+          );
+      }
+    }
+    foreach ((string value, string alias, string declared, int at) in aliases)
+      foreach (string file in files) {
+        string text = code[file];
+        foreach (Match use in Regex.Matches(text, $@"(?<!\w){alias}\b"))
+          if (
+            (file != declared || use.Index != at)
+            && !Within(text, NameofCall, use.Index)
+          )
+            Read(
+              reads,
+              value,
+              (file, use.Index, Within(text, LangCall, use.Index))
+            );
+      }
+    return (reads, code);
   }
 
   // The accessor ExConfigGenerator emits for a config type.
