@@ -6,6 +6,7 @@ using ExpandedLib.Blocks;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
+using Vintagestory.GameContent;
 using static ExpandedLib.Checks.GridRecipeShapeCheck;
 
 namespace ExpandedLib.Checks;
@@ -20,7 +21,11 @@ namespace ExpandedLib.Checks;
 /// (<c>BlockBehaviorExOrientable.VariantKey</c>); vanilla's <c>HorizontalOrientable</c>'s
 /// <c>horizontalorientation</c> and <c>NWOrientable</c>'s <c>orientation</c>, each <c>side</c>
 /// when the block declares no such group; <c>Pillar</c>'s <c>rotationVariantCode</c>, by default
-/// <c>rotation</c>; and <c>OmniRotatable</c>'s <c>rot</c>. An output is reported when no
+/// <c>rotation</c>; <c>OmniRotatable</c>'s <c>rot</c>; and, for a block whose <c>class</c> the
+/// source resolves (<see cref="ICheckSource.BlockClass"/>), <c>BlockStairs</c>'
+/// <c>horizontalorientation</c> and <c>verticalorientation</c>. A group loading vanilla's
+/// <c>abstract/horizontalorientation</c> or <c>abstract/verticalorientation</c> world property
+/// takes that property's code and states. An output is reported when no
 /// <c>creativeinventory</c> entry matches it and one matches it with only that group's state
 /// changed; an output differing from the default in any other group is not this check's. A
 /// block without a <c>creativeinventory</c>, or whose groups combine other than by multiplying,
@@ -29,6 +34,28 @@ namespace ExpandedLib.Checks;
 /// </remarks>
 public static class GridOutputVariantCheck {
   private static readonly Regex Placeholder = new(@"\{[^}]*\}");
+
+  // Vanilla's survival worldproperties/abstract orientation files: the group code each gives a
+  // group that declares none, and its states.
+  private static readonly Dictionary<
+    string,
+    (string Code, string[] States)
+  > OrientationProperties = new(StringComparer.Ordinal) {
+    ["game:abstract/horizontalorientation"] = (
+      "horizontalorientation",
+      ["north", "east", "south", "west"]
+    ),
+    ["game:abstract/verticalorientation"] = (
+      "verticalorientation",
+      ["up", "down"]
+    ),
+  };
+
+  // The groups a block class writes when it places its block (BlockStairs.TryPlaceBlock).
+  private static readonly (Type Class, string[] Groups)[] OrientingClasses =
+  [
+    (typeof(BlockStairs), ["horizontalorientation", "verticalorientation"]),
+  ];
 
   /// <summary>Every grid recipe output in <paramref name="domain"/> that names an oriented block
   /// in an orientation other than its creative default.</summary>
@@ -64,7 +91,9 @@ public static class GridOutputVariantCheck {
             .. TypesOf(source, location.Domain),
           ];
         foreach (JObject type in declared)
-          if (Default(type, location.Path) is { } fallback)
+          if (
+            Default(source, type, location.Domain, location.Path) is { } fallback
+          )
             errors.Add(
               $"{recipe.Where}: output {location} is not the creative default "
                 + $"{location.Domain}:{fallback}"
@@ -92,9 +121,14 @@ public static class GridOutputVariantCheck {
 
   // The creative default of path, when path names an oriented variant of type the creative
   // inventory does not list; null otherwise.
-  private static string? Default(JObject type, string path) {
+  private static string? Default(
+    ICheckSource source,
+    JObject type,
+    string domain,
+    string path
+  ) {
     JObject tabs = Prop(type, "creativeinventory") as JObject ?? [];
-    List<(string Name, string[]? States)> groups = [.. Groups(type)];
+    List<(string Name, string[]? States)> groups = [.. Groups(type, domain)];
     if (groups.Count == 0 || Parse(type, groups, path) is not { } states)
       return null;
     string[] listed =
@@ -106,7 +140,7 @@ public static class GridOutputVariantCheck {
     if (Listed(listed, groups, CodeOf(type), states))
       return null;
 
-    foreach (string oriented in OrientationGroups(type, groups)) {
+    foreach (string oriented in OrientationGroups(source, type, groups)) {
       int at = groups.FindIndex(g => g.Name == oriented);
       foreach (string state in groups[at].States ?? []) {
         string[] turned = [.. states];
@@ -138,9 +172,11 @@ public static class GridOutputVariantCheck {
     });
   }
 
-  // Null states for a group loaded from world properties; none when a group does not multiply.
+  // Null states for a group loaded from world properties other than an orientation file; none
+  // when a group does not multiply.
   private static IEnumerable<(string Name, string[]? States)> Groups(
-    JObject type
+    JObject type,
+    string domain
   ) {
     if (Prop(type, "variantgroups") is not JArray groups)
       return [];
@@ -149,14 +185,24 @@ public static class GridOutputVariantCheck {
       string combine = (string?)Prop(group, "combine") ?? "multiply";
       if (!combine.Equals("multiply", StringComparison.OrdinalIgnoreCase))
         return [];
-      read.Add(
-        (
-          (string?)Prop(group, "code") ?? "",
-          Prop(group, "states") is JArray states
-            ? [.. states.Select(s => (string)s!)]
-            : null
+      string? code = (string?)Prop(group, "code");
+      if (
+        (string?)Prop(group, "loadFromProperties") is { } property
+        && OrientationProperties.TryGetValue(
+          AssetLocation.Create(property, domain).ToString(),
+          out var oriented
         )
-      );
+      )
+        read.Add((code ?? oriented.Code, oriented.States));
+      else
+        read.Add(
+          (
+            code ?? "",
+            Prop(group, "states") is JArray states
+              ? [.. states.Select(s => (string)s!)]
+              : null
+          )
+        );
     }
     return read;
   }
@@ -194,13 +240,23 @@ public static class GridOutputVariantCheck {
       : null;
   }
 
-  // The groups the type's orientation behaviours write, among those it declares with states.
+  // The groups the type's orientation behaviours and block class write, among those it declares
+  // with states.
   private static IEnumerable<string> OrientationGroups(
+    ICheckSource source,
     JObject type,
     List<(string Name, string[]? States)> groups
   ) {
     bool Has(string name) =>
       groups.Any(g => g.Name == name && g.States != null);
+    if (
+      (string?)Prop(type, "class") is { } key
+      && source.BlockClass(key) is { } blockClass
+    )
+      foreach (var (orienting, written) in OrientingClasses)
+        if (orienting.IsAssignableFrom(blockClass))
+          foreach (string group in written.Where(Has))
+            yield return group;
     if (Prop(type, "behaviors") is not JArray behaviors)
       yield break;
     foreach (JObject behavior in behaviors.OfType<JObject>()) {

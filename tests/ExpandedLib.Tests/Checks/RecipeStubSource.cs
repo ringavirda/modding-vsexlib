@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Checks;
@@ -8,11 +9,13 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Tests;
 
 /// <summary>An <see cref="ICheckSource"/> holding planted grid recipes and JSON blocktypes, each
-/// under the domain of its file; it registers no codes and ships no lang.</summary>
+/// under the domain of its file, and the block classes it is handed; it registers no codes and
+/// ships no lang.</summary>
 internal sealed class RecipeStubSource : ICheckSource {
   private readonly List<(AssetLocation File, JObject Json)> _recipes = [];
   private readonly List<(AssetLocation File, JObject Json)> _types = [];
   private readonly List<ExBlockDef> _defs = [];
+  private readonly Dictionary<string, Type> _classes = [];
   private string[]? _covered;
 
   /// <summary>Adds <paramref name="json"/>, one recipe object, as a recipe in
@@ -32,6 +35,13 @@ internal sealed class RecipeStubSource : ICheckSource {
   /// <summary>Adds a code-first block definition.</summary>
   public RecipeStubSource Definition(ExBlockDef def) {
     _defs.Add(def);
+    return this;
+  }
+
+  /// <summary>Resolves the block class key <paramref name="key"/> to
+  /// <paramref name="type"/>.</summary>
+  public RecipeStubSource Class(string key, Type type) {
+    _classes[key] = type;
     return this;
   }
 
@@ -65,4 +75,7 @@ internal sealed class RecipeStubSource : ICheckSource {
   public IEnumerable<(AssetLocation File, JObject Json)> BlockTypes(
     string domain
   ) => _types.Where(t => t.File.Domain == domain);
+
+  public Type? BlockClass(string classKey) =>
+    _classes.GetValueOrDefault(classKey);
 }

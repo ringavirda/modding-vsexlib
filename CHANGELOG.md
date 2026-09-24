@@ -16,7 +16,8 @@ see the git history.
   shapeless recipes over the input merged into stacks, wildcards, `allowedVariants` and named
   wildcards, with a code without a domain in its recipe file's. `GridOutputVariantCheck`: a
   recipe crafting a block oriented by `ExOrientable`, `HorizontalOrientable`, `NWOrientable`,
-  `Pillar` or `OmniRotatable` names the orientation its `creativeinventory` lists. `GridRecipes`
+  `Pillar`, `OmniRotatable` or the `BlockStairs` class names the orientation its
+  `creativeinventory` lists. `GridRecipes`
   (ExpandedLib.Testing) runs the three over a suite's definitions.
 - **`SourceLaws.UnreadTunables`** (ExpandedLib.Testing): a value of a manageable config store
   that no source reads is named at its declaration. `StaleOnExchange` also names a block entity

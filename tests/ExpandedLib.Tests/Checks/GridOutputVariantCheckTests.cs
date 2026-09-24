@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using ExpandedLib.Checks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Testing;
+using Vintagestory.GameContent;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -270,6 +271,60 @@ public class GridOutputVariantCheckTests {
       )
     );
   }
+
+  #endregion
+
+  #region Block classes
+
+  private sealed class Steps : BlockStairs;
+
+  /// <summary>A stairs blocktype <paramref name="code"/> of class <paramref name="blockClass"/>,
+  /// its facing loaded from vanilla's horizontal orientation, listed in creative facing
+  /// north.</summary>
+  private static string Stairs(string code, string blockClass) =>
+    $$"""
+      {
+        "code": "{{code}}", "class": "{{blockClass}}",
+        "behaviors": [{ "name": "WrenchOrientable" }],
+        "variantgroups": [
+          { "code": "verticalorientation", "states": ["up", "down"] },
+          { "loadFromProperties": "game:abstract/horizontalorientation" },
+          { "code": "cover", "states": ["free", "snow"] }
+        ],
+        "creativeinventory": { "general": ["*-up-north-free"] }
+      }
+      """;
+
+  // Fails when Run stops resolving a block's class, reading the groups BlockStairs or a class
+  // derived from it writes, or reading vanilla's orientation world property as its group.
+  [Fact]
+  public void A_block_oriented_by_its_class_is_held_by_the_groups_it_writes() =>
+    Assert.Equal(
+      [
+        Finding("stub:stairs-up-south-free", "stub:stairs-up-north-free"),
+        $"{File}#1 (stub:steps-down-north-free): output "
+          + "stub:steps-down-north-free is not the creative default "
+          + "stub:steps-up-north-free",
+      ],
+      Findings(
+        new RecipeStubSource()
+          .BlockType(
+            "stub:blocktypes/stairs.json",
+            Stairs("stairs", "BlockStairs")
+          )
+          .BlockType(
+            "stub:blocktypes/steps.json",
+            Stairs("steps", "stub.Steps")
+          )
+          .BlockType("stub:blocktypes/ramp.json", Stairs("ramp", "stub.Ramp"))
+          .Class("BlockStairs", typeof(BlockStairs))
+          .Class("stub.Steps", typeof(Steps))
+          .Recipe(File, Crafts("stub:stairs-up-south-free"))
+          .Recipe(File, Crafts("stub:steps-down-north-free"))
+          .Recipe(File, Crafts("stub:ramp-up-south-free"))
+          .Recipe(File, Crafts("stub:stairs-up-north-snow"))
+      )
+    );
 
   #endregion
 }
