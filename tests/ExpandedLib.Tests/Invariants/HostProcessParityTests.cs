@@ -147,7 +147,11 @@ public class HostProcessParityTests {
       "Oven.cs: HostProcess class never closes.",
       ShimDivergence(
         a,
-        new Shim("Oven.cs", ["  private sealed class HostProcess(Oven o) {"], "Oven")
+        new Shim(
+          "Oven.cs",
+          ["  private sealed class HostProcess(Oven o) {"],
+          "Oven"
+        )
       )
     );
     Assert.Equal(
