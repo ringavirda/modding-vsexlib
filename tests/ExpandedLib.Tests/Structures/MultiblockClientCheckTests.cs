@@ -42,7 +42,7 @@ public class MultiblockClientCheckTests {
   // Fails when Interact's client guard never holds on the client.
   [Fact]
   public void An_incomplete_structure_reports_and_outlines_its_missing_block() {
-    var (world, machine, wall, _) = Broken(new BlockPos(5000, 10, 0));
+    var (world, machine, wall, _) = Broken(new BlockPos(9000, 10, 0));
     IPlayer player = world.Player().Player;
 
     machine.Interact(player);
@@ -57,7 +57,7 @@ public class MultiblockClientCheckTests {
   // Fails when SetStructureAngle's client guard never holds on the client.
   [Fact]
   public void Turning_it_clears_the_outline_of_the_old_facing() {
-    var (world, machine, _, _) = Broken(new BlockPos(5500, 10, 0));
+    var (world, machine, _, _) = Broken(new BlockPos(9500, 10, 0));
     IPlayer player = world.Player().Player;
     machine.Interact(player);
     machine.Angle = 90;
@@ -70,7 +70,7 @@ public class MultiblockClientCheckTests {
   // Fails when Interact's client guard never holds on the client.
   [Fact]
   public void Completing_it_says_so_and_clears_the_outline() {
-    var (world, machine, wall, wallId) = Broken(new BlockPos(5100, 10, 0));
+    var (world, machine, wall, wallId) = Broken(new BlockPos(9100, 10, 0));
     IPlayer player = world.Player().Player;
     machine.Interact(player);
     world.Accessor.SetBlock(wallId, wall);
@@ -89,7 +89,7 @@ public class MultiblockClientCheckTests {
   [InlineData(false)]
   public void Removing_or_unloading_it_clears_the_outline(bool removed) {
     var (world, machine, _, _) = Broken(
-      new BlockPos(removed ? 5200 : 5300, 10, 0)
+      new BlockPos(removed ? 9200 : 9300, 10, 0)
     );
     machine.Interact(world.Player().Player);
 
@@ -105,7 +105,7 @@ public class MultiblockClientCheckTests {
   // Fails when FromTreeAttributes' client guard never holds on the client.
   [Fact]
   public void A_sync_that_completes_it_clears_the_outline() {
-    var (world, machine, _, _) = Broken(new BlockPos(5400, 10, 0));
+    var (world, machine, _, _) = Broken(new BlockPos(9400, 10, 0));
     machine.Interact(world.Player().Player);
     var tree = new TreeAttribute();
     machine.ToTreeAttributes(tree);
