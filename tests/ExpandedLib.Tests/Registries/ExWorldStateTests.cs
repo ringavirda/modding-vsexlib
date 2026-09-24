@@ -81,6 +81,10 @@ public class ExWorldStateTests {
     ["ExpandedLib.Industry.Helpers.ExSounds._machineVolume"] = PlayerPreference,
     ["ExpandedLib.Structures.StructureFillers.<FillerCode>k__BackingField"] =
       "the one filler block exlib's Start names, the same in every world",
+    ["ExpandedLib.ExlibValues._store._api"] =
+      "the api the config is saved through, replaced by every world's Start",
+    ["ExpandedLib.ExlibValues._store.<Config>k__BackingField"] =
+      "the config values, loaded again from the world's file by every Start",
   };
 
   private const string SchemaKeys = "the catalogue schema's key set, constant";
@@ -117,7 +121,13 @@ public class ExWorldStateTests {
     var unfillable = new List<string>();
     foreach ((string root, FieldInfo field) in StaticCells.Roots(Assemblies))
       if (!Caches.ContainsKey(root))
-        StaticCells.FillRoot(root, field, filled, unfillable);
+        StaticCells.FillRoot(
+          root,
+          field,
+          Caches.ContainsKey,
+          filled,
+          unfillable
+        );
     Assert.Empty(unfillable);
     Assert.Contains(
       filled,
@@ -188,11 +198,23 @@ public class ExWorldStateTests {
 
   [Fact]
   public void Every_listed_cache_names_a_static_that_exists() {
-    HashSet<string> roots =
-    [
-      .. StaticCells.Roots(Assemblies).Select(r => r.Root),
-    ];
-    Assert.Empty(Caches.Keys.Where(k => !roots.Contains(k)));
+    Assert.Empty(Caches.Keys.Where(k => !StaticCells.Names(k)));
+  }
+
+  // Fails when the walk stops naming a settable field of an object a static readonly root holds.
+  [Fact]
+  public void A_settable_field_inside_a_static_holder_is_named_unless_listed() {
+    (string root, FieldInfo field) = StaticCells
+      .Roots(Assemblies)
+      .Single(r => r.Root == "ExpandedLib.ExlibValues._store");
+    var unfillable = new List<string>();
+
+    StaticCells.FillRoot(root, field, _ => false, [], unfillable);
+
+    Assert.Contains(
+      "ExpandedLib.ExlibValues._store._api (settable field inside a static holder)",
+      unfillable
+    );
   }
 
   [Fact]
@@ -264,9 +286,14 @@ internal static class StaticCells {
               yield return ($"{type.FullName}.{field.Name}", field);
   }
 
+  /// <summary>Plants in every collection <paramref name="root"/> reaches, and names in
+  /// <paramref name="unfillable"/> each collection it cannot plant in and each settable
+  /// non-collection field of an object it walks through. A path <paramref name="listed"/> answers
+  /// true for is neither named nor walked.</summary>
   internal static void FillRoot(
     string root,
     FieldInfo field,
+    System.Func<string, bool> listed,
     List<Fill> filled,
     List<string> unfillable
   ) {
@@ -301,6 +328,7 @@ internal static class StaticCells {
       root,
       0,
       new(ReferenceEqualityComparer.Instance),
+      listed,
       filled,
       unfillable
     );
@@ -311,6 +339,7 @@ internal static class StaticCells {
     string path,
     int depth,
     HashSet<object> seen,
+    System.Func<string, bool> listed,
     List<Fill> filled,
     List<string> unfillable
   ) {
@@ -344,15 +373,19 @@ internal static class StaticCells {
             | BindingFlags.NonPublic
             | BindingFlags.DeclaredOnly
         )
-      )
-        Walk(
-          f.GetValue(value),
-          $"{path}.{f.Name}",
-          depth + 1,
-          seen,
-          filled,
-          unfillable
-        );
+      ) {
+        string at = $"{path}.{f.Name}";
+        if (listed(at))
+          continue;
+        object? inner = f.GetValue(value);
+        if (
+          !f.IsInitOnly
+          && !IsCollectionType(f.FieldType)
+          && !(inner != null && IsCollectionType(inner.GetType()))
+        )
+          unfillable.Add($"{at} (settable field inside a static holder)");
+        Walk(inner, at, depth + 1, seen, listed, filled, unfillable);
+      }
   }
 
   /// <summary>Plants a sentinel in a settable static root that holds no collection: a value type set
@@ -434,6 +467,34 @@ internal static class StaticCells {
         && now.GetType().GetMethod("Contains", element) is { } has
         && (bool)has.Invoke(now, [item])!
     );
+  }
+
+  /// <summary>Whether <paramref name="path"/> is a static root, or a root followed by instance field
+  /// names each declared on the type of the field before it.</summary>
+  internal static bool Names(string path) {
+    foreach ((string root, FieldInfo field) in Roots([AssemblyOf(path)])) {
+      if (path == root)
+        return true;
+      if (!path.StartsWith(root + "."))
+        continue;
+      Type type = field.FieldType;
+      foreach (string name in path[(root.Length + 1)..].Split('.')) {
+        FieldInfo? next = null;
+        for (Type? t = type; t != null && next == null; t = t.BaseType)
+          next = t.GetField(
+            name,
+            BindingFlags.Instance
+              | BindingFlags.Public
+              | BindingFlags.NonPublic
+              | BindingFlags.DeclaredOnly
+          );
+        if (next == null)
+          return false;
+        type = next.FieldType;
+      }
+      return true;
+    }
+    return false;
   }
 
   // A path is a static root's full name followed by instance field names; null once a step is null.
