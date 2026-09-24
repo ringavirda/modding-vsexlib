@@ -1,26 +1,28 @@
 # Process Extension - how a machine learns what it can make
 
-**Status** settled 2026-08-12; the sequence half is **built** - `ProcessRoute`, `ProcessRouteRegistry`,
-`ProcessRouteLoader`, `SpecSchema`, `ProcessItemEmitter` and `ProcessItemRenames` in exlib, `MillSchedule`
-and the shipped shingledbar/shingledslab catalogues in iiex. The rule and the two registry shapes are fixed; the schemas
-below are the contract a third-party mod writes against.
+**Status** built - `ProcessRoute`, `ProcessRouteRegistry`, `ProcessRouteLoader`, `ProcessJob`,
+`ProcessJobRegistry`, `ProcessJobLoader`, `ItemDie`, `SpecSchema`, `ProcessItemEmitter` and
+`ProcessItemRenames` in exlib; `MillSchedule`, the shear and the fastener benches in iiex; route and job
+catalogues shipped by iiex and siex. The bending machine's sequence is not built. The rule and the two
+registry shapes are fixed; the schemas below are the contract a third-party mod writes against.
 **Mod** exlib (the contract and the emitter), every mod (every registry)
 **Owns** the rule that a machine names no product, the two shapes a process registry takes, how a
-declaration becomes items, and what we promise about the schema over time.
+declaration becomes items, and what exlib promises about the schema over time.
 **Depends on** [framework-composition](framework-composition.md) (the machine bases the registries hang
-off), [machining-line](machining-line.md) (the terminal-versus-sequence axis, the die contract), 
-[recipes & config](recipes-config.md) (`ExItemDef`, the injection path), 
-[rolling mill](../machines/rolling-mill.md), [shear](../machines/shear.md)
+off),
+[machining-line](https://github.com/ringavirda/modding-vsexmods/blob/main/docs/design/mechanics/machining-line.md)
+(the terminal-versus-sequence axis, the die contract),
+[recipes & config](https://github.com/ringavirda/modding-vsexmods/blob/main/docs/design/mechanics/recipes-config.md)
+(`ExItemDef`, the injection path),
+[rolling mill](https://github.com/ringavirda/modding-vsexmods/blob/main/docs/design/machines/rolling-mill.md),
+[shear](https://github.com/ringavirda/modding-vsexmods/blob/main/docs/design/machines/shear.md)
 
 ---
 
 ## Role
 
-Other mods must be able to add to our processes - a roll set, a mold, a diagram, a die, a crop - from
-their own mod, without our source and without a fork. This page fixes how.
-
-It exists because the idiom was real but unstated. Three processes already worked this way and nothing
-said so, nothing enforced it, and the two unbuilt ones had made no commitment.
+Other mods must be able to add to the family's processes - a roll set, a mold, a diagram, a die, a crop -
+from their own mod, without the source and without a fork. This page fixes how.
 
 ---
 
@@ -29,8 +31,9 @@ said so, nothing enforced it, and the two unbuilt ones had made no commitment.
 > **Tooling carries its own spec. The machine reads it and names no product.**
 
 A machine that hard-codes a product code cannot be extended, and every such code is a place a modder
-has to fork instead of declare. `RollSetItemDefinitions` states the target form: *"the mill reads what
-to do off the fitted set and never names a product in code."*
+has to fork instead of declare. A roll set's `RollSetSpec` carries its family, the stock forms it bites, its
+barrel width and its torque; the mill reads what to do off the fitted set and the stock's route, and names no
+product in code.
 
 The corollary decides where state lives:
 
@@ -62,17 +65,22 @@ exactly as a ladder is - a second job on one input is reported and the first sta
   "machine": "shear",
   "jobs": [
     { "input": "iiex:stock-shingledbar", "stage": 2.0, "family": "grooved",
-      "output": "game:rod-iron", "count": 4, "minTorque": 0.3 },
-    { "input": "iiex:nailplate", "output": "game:metalnailsandstrips", "count": 4 }
+      "output": "game:rod-iron", "count": 4, "minTorque": 0.2, "seconds": 2 },
+    { "input": "game:metalplate-iron", "output": "iiex:nailplate", "count": 2,
+      "minTorque": 0.2, "seconds": 2 }
   ]
 }
 ```
+
+`minTier` (the temper floor of the fitted tool) and `seconds` (one job's time, 1 when absent) are optional. A
+die carries the same job-set form under its `machinejob` attribute (`ItemDie`), so a bench's jobs travel with
+the die fitted to it.
 
 `stage` and `family` are optional and belong together: a job naming them takes a piece part way down a
 ladder, at that gauge on that branch; one omitting them takes the whole item. A staged job wins over a
 whole-item one for the same input, so a stock family can carry both.
 
-### What a count means *(settled 2026-08-12)*
+### What a count means
 
 > **A staged job crops. A whole-item job converts.** The distinction decides whether the input survives,
 > and `count` reads differently on each.
@@ -83,20 +91,22 @@ whole-item one for the same input, so a stock family can carry both.
 | **whole-item** (no `stage`) | what one conversion produces | **consumed** |
 
 The names are the rule: a crop takes a product's worth off and leaves the remainder on the deck, and a
-conversion turns the thing into another thing. Both were already in the design - crop-not-convert is
-[shear](../machines/shear.md)'s, and `nailplate -> 4 x nails-and-strips` is the one whole-piece conversion
-in the forming ladder.
+conversion turns the thing into another thing. Crop-not-convert is
+[shear](https://github.com/ringavirda/modding-vsexmods/blob/main/docs/design/machines/shear.md)'s;
+the shipped whole-item jobs are the shear's `game:metalplate-iron -> 2 x nailplate` and the nail and rivet
+dies'.
 
-`count` is the modder's own number and nothing checks it against geometry. That the shipped rows happen to
-divide their input's mass exactly - 400 / 4, 600 / 6, 3000 / 5 - is the [density rule](density-rule.md)
-being applied by whoever authored them, not a constraint the loader enforces. It could not be: length and
-mass are art, and a cut point is a design choice.
+`count` is the modder's own number and nothing checks it against geometry. That the shipped rows divide
+their input's mass exactly - 400 / 4, 1000 / 5, 3000 / 5 - is the
+[density rule](https://github.com/ringavirda/modding-vsexmods/blob/main/docs/design/mechanics/density-rule.md)
+applied by whoever authored them, not a constraint the loader enforces. It could not be: length and mass are
+art, and a cut point is a design choice.
 
-**A staged crop needs one integer on the stack, and nothing else** *(ruled and built 2026-08-13)*. The
-piece carries **crops taken**, and `count - taken` is what is left; at zero left it is spent. It needs no
-mass and no length, because **length is not defined programmatically - it comes from the art** - and a cut
-point is declared rather than derived. `count` being the modder's own number is the whole point: what a
-piece divides into is a design choice, not arithmetic we can do for them.
+**A staged crop needs one integer on the stack, and nothing else.** The piece carries **crops taken**
+(`WorkPiece.Cropped`), and `count - taken` is what is left; at zero left it is spent. It needs no mass and no
+length, because **length is not defined programmatically - it comes from the art** - and a cut point is
+declared rather than derived. `count` being the modder's own number is the whole point: what a
+piece divides into is a design choice, not arithmetic exlib can do for them.
 
 **Taken, not remaining**, so that zero means *untouched*: a piece that has never met the machine and one
 worked out to nothing must not read alike, no piece already in a world needs migrating, and the declared
@@ -105,37 +115,42 @@ rather than stranding it on the number it was cut against.
 
 **A part-worked piece cannot re-enter a sequence.** The tally is against *this* stage's count, so a
 piece carried to the next stage would be worth that stage's whole count again however much of it had gone -
-metal from nothing. The mill refuses one outright (`FeedVerdict.PartCropped`). That refusal is what lets the
+metal from nothing. The mill refuses one outright (`FeedVerdict.PartCropped`, from `WorkPiece.IsPartCropped`).
+That refusal is what lets the
 tally stay a single `int` instead of a proportion carried between stages, and any other sequence machine
 declaring staged jobs owes the same refusal.
 
-**Sequence** - a ladder the work walks, one step at a time, carrying state between steps. Only the
-rolling mill and the bending roller are sequences today: the mill walks thickness *down* in gaps, the
-bender walks curvature *up* in passes. Everything else - shear, drill press, lathe, shaper, planer,
-nail machine, rivet machine, sand casting, the design table - is terminal.
+**Sequence** - a ladder the work walks, one step at a time, carrying state between steps. The rolling
+mill and the bending machine are the sequences: the mill walks thickness *down* in gaps, the bender walks
+curvature *up* in passes. Everything else - shear, drill press, lathe, shaper, planer, nail machine, rivet
+machine, sand casting, the design table - is terminal.
 
 | Machine | Shape | Registry declares |
 |---|---|---|
 | rolling mill | sequence | roller families, the process route, which family accepts each stage |
-| bending roller | sequence | curvature steps |
+| bending machine | sequence | curvature steps |
 | shear | terminal | the crop table: input, output, count |
-| drill, lathe, shaper, planer | terminal | the die's job ([machining-line](machining-line.md)) |
-| nail, rivet machine | terminal | input, output, count |
+| drill, lathe, shaper, planer | terminal | the die's job ([machining-line](https://github.com/ringavirda/modding-vsexmods/blob/main/docs/design/mechanics/machining-line.md)) |
+| nail, rivet machine | terminal | the die's job: input, output, count |
 | sand casting | terminal | the mold's cavity and product |
 | design table | terminal | the diagram, scanned by code |
+
+Built through this contract: the mill's routes, the shear's job table and the nail and rivet dies. No other
+machine reads a process registry, and the diagram is identified by its code shape (section Schema stability).
+The bending machine places and has no process ([bending](https://github.com/ringavirda/modding-vsexmods/blob/main/docs/design/processes/bending.md)).
 
 A machine is not a special case because its registry is small. A terminal registry with one entry is
 still a registry, and it is what lets someone add a second entry.
 
-### A registry is contributed to, never owned *(settled 2026-08-12)*
+### A registry is contributed to, never owned
 
-The registry is **not a field on the tooling item**. It is a merged catalogue any collectible may declare
-into, and that is what makes both extension directions cost the same:
+The registry is **not a field on the tooling item**. It is a merged catalogue any mod may declare into, and
+that is what makes both extension directions cost the same:
 
 | A mod adds | It ships | It patches |
 |---|---|---|
-| a machine family (a serrated roll set) | its own item, declaring the stages that family accepts | nothing of ours |
-| a stock family (a bronze bar) | its own item, declaring that family's whole ladder | nothing of ours |
+| a machine family (a serrated roll set) | its own roll set, and a route file declaring the stages that family accepts | nothing of the family's |
+| a stock family (a bronze bar) | its own stock, and a route file declaring that family's whole ladder | nothing of the family's |
 
 Hang the ladder on the tooling and the second row has to patch every roll set; hang it on the stock and the
 first row has to patch every stock item. Merging removes the choice.
@@ -165,49 +180,53 @@ may both contribute to one family.
 {
   "schema": 1,
   "family": "shingledbar",
-  "shape": "iiex:item/smithed/shingled-bar",
+  "shape": "iiex:forming/shingledbar",
   "stages": [
-    { "thickness": 2.50, "element": "Grooved250",   "acceptedBy": ["grooved"] },
-    { "thickness": 2.00, "element": "Grooved200",   "acceptedBy": ["grooved"], "code": "rolledrod" }
+    { "thickness": 2.75, "acceptedBy": ["grooved"], "element": "Grooved275", "halfStep": true },
+    { "thickness": 2.5, "acceptedBy": ["grooved"], "element": "Grooved250" },
+    { "thickness": 2.0, "acceptedBy": ["flat", "flatwide"], "element": "Beam",
+      "code": "iiex:beam", "generate": false }
   ]
 }
 ```
 
 **A config asset and not an item attribute, and the load order is why.** Items are *generated* from the
-stopping points below, and that has to happen at ExecuteOrder **0.04** - before the JSON patch loader (0.05)
+stopping points below, and that has to happen at ExecuteOrder **0.04** (`ExDefinitionModSystem`) - before the
+JSON patch loader (0.05)
 and well before the object loader (0.2) that builds itemtypes. A ladder carried on an itemtype could not be
 read in time to generate one: you cannot build an itemtype from data that lives on an itemtype.
 
 The catalogue is therefore read **twice, by one parser**: at 0.04 for generation, and again at
 `AssetsFinalize` for the registry the machines consult - which is the post-patch one, as the earlier read
-cannot be. A consequence worth knowing: **patching our catalogue file adds a route but no item**, because
+cannot be. **Patching a shipped catalogue file adds a route but no item**, because
 the patch lands after generation. To add a stopping point, ship your own file; the merge makes it land in
 the same family.
 
-**`code` present means a stopping point** and an item is generated for it. **`code` absent means a
-render-only intermediate.** That one field carries the whole distinction, so the item catalogue, the
-mill's stopping points and the held-item appearance all come from one declaration.
+**`code` present means a stopping point** and an item is generated for it, unless the stage declares
+`"generate": false`. **`code` absent means a render-only intermediate.** That one field carries the whole
+distinction, so the item catalogue, the mill's stopping points and the held-item appearance all come from
+one declaration.
 
 **`acceptedBy` makes the ladder a graph, not a line.** A stage several families accept is a fork: the
 same piece at the same thickness continues on grooved toward a rivet rod or switches to flat toward a
 nail plate - same feed, same mass, two routes. A line could not express that, and the fork is the
 mill's whole point.
 
-**A rung is a gap, not a round** *(corrected 2026-08-12, when the two-round model was built)*. A gap
-costs two rounds - 3.00 -> 2.75 -> 2.50 is gap 2.5 taken in two bites - but only **2.50 is a rung**. The
-half-step between them is arithmetic (`(thickness + gap) / 2`), it is never declared, and it is drawn by
-the composed mesh rather than by an element.
+**A rung is a gap, not a round.** A gap costs two rounds - 3.00 -> 2.75 -> 2.50 is gap 2.5 taken in two
+bites - but only **2.50 is a rung**. The half-step between them is arithmetic (`(thickness + gap) / 2`,
+`WorkPiece`). A route may declare it as a stage with `"halfStep": true` to give it an element to draw; a
+half-step is never a gauge the mill can be set to and never a stopping point, and the parser refuses one that
+names a `code`. An undeclared half-step is drawn by the composed mesh.
 
-This page previously said the ladder is drawn per *pass*, with the half-steps as the rungs carrying no
-`code`. That reading puts twice as many gap bands on the mill's deck as the barrel has grooves, because
-`MillSchedule` builds the deck's bands straight from the rungs a family accepts. A third-party ladder
-should therefore declare **one rung per gap**, and get its half-steps for free.
+`MillSchedule` builds the deck's bands from the rungs a family accepts (`ProcessRoute.RungsFor`, half-steps
+excluded), so a ladder declares **one rung per gap**; a half-step declared without `halfStep` would put a
+second band on the deck for the same groove.
 
 ### Mid-pass states are a per-stack mesh, not an item
 
 An uneven piece is never claimed, so a half-rolled piece is *the same item code* as the stock it came
 from with a different thickness attribute. It cannot be an item def; it is rendered by swapping
-`renderinfo.ModelRef` in `OnBeforeRender` from the stack's own thickness, exactly as vanilla's
+`renderinfo.ModelRef` in `ItemStockPiece.OnBeforeRender` from the stack's own thickness, exactly as vanilla's
 `ItemWorkItem` renders its voxel state (`vssurvivalmod/Item/ItemWorkItem.cs`).
 
 Vanilla documents the trap in place: the handbook clones the stack **every frame**, so the
@@ -217,11 +236,11 @@ This is why a family's stages belong in **one shape file**. The renderer walks t
 thickness, and every step must be addressable from one place.
 
 **Thickness alone does not address a stage - the piece must carry its branch.** A fork is two
-families drawing one gauge differently (`Grooved200` and `Flattened200` both at 2.0), so a renderer
-keyed on thickness would be visibly wrong half the time. The work piece therefore records the roller
-family that last worked it, written with the reduction, and the mesh cache is keyed on it too. A piece
-that names no branch - never rolled, or rolled before the field existed - falls back to the composed
-mesh rather than guessing one.
+families drawing one gauge differently (`CutRod1` on grooved and `Beam` on flat, both at 2.0 on the shingled
+bar), so a renderer keyed on thickness would be visibly wrong half the time. The work piece therefore records
+the roller family that last worked it (`WorkPiece.Family`), written with the reduction, and the mesh cache is
+keyed on it too (`StockMesh.CacheKey`). A piece that names no branch falls back to the composed mesh rather
+than guessing one.
 
 The two mesh routes, in order: the **drawn** stage when the ladder names a shape file and the stage an
 element in it, and the **composed** mesh otherwise - the form's base shape scaled from the same numbers
@@ -241,8 +260,7 @@ is not a thinner rectangle. The composition covers every gauge nobody has drawn.
 
 Elements of a progression are authored superimposed on a shared origin, so each is already in the item
 frame and needs no re-centring. An element drawn off to the side is by convention **not a stage** - it
-is another machine's output, and it belongs in that machine's registry. `CutRod1` in
-`item-shingled-bar.json` is the worked example: it is the shear's product, declared by the shear.
+is another machine's output, and it belongs in that machine's registry.
 
 `selectiveElements` matching is the engine's per-segment prefix rule, so naming an ancestor keeps
 more than intended and naming an element exactly drops its children. Flat, distinctly-named top-level
@@ -252,12 +270,12 @@ elements are safe; a nested one needs care.
 
 ## Items are generated from the declaration
 
-A stage that names a `code` gets an item built for it and injected as a synthetic itemtype, through the same
-path `MetalFamilyEmitter` already uses for metal families: read the catalogue at `AssetsLoaded`, emit
-`ExItemDef`s, inject at ExecuteOrder **0.04** - below the JSON patch loader (0.05), so other mods can still
-patch the result, and below the object loader (0.2) that consumes it.
+A stage that names a `code` gets an item built for it (`ProcessItemEmitter`) and injected as a synthetic
+itemtype, through the same path `MetalFamilyEmitter` uses for metal families: read the catalogue at
+`AssetsLoaded`, emit `ExItemDef`s, inject at ExecuteOrder **0.04** - below the JSON patch loader (0.05), so
+other mods can still patch the result, and below the object loader (0.2) that consumes it.
 
-Five properties that path already has, and which this one keeps:
+The path has five properties:
 
 - **per-entry opt-out** - `"generate": false` means the code exists already; wire it up, build nothing.
   It is also how a declaration points at an item the mod ships itself.
@@ -283,16 +301,16 @@ its code is frozen. So a declaration **states its code explicitly** and exlib ne
 
 ### Renames are declared, not detected
 
-A code that changed carries its old name, and the emitter registers the remap through
-`BlockMigrationModSystem` automatically:
+A code that changed carries its old name, and `ProcessItemRenames`, an `IItemCodeMigration` that
+`BlockMigrationModSystem` discovers, rewrites held stacks from it:
 
 ```json
 { "code": "nailplate", "formerCodes": ["oldnailplate"] }
 ```
 
-Exlib sees only the current catalogue. A code that vanished and a code that appeared are
+exlib sees only the current catalogue. A code that vanished and a code that appeared are
 indistinguishable from a rename without the hint, so the contract is *declare the old code and get the
-migration free* - never *change the convention and we work it out*.
+migration free* - never *change the convention and exlib works it out*.
 
 ---
 
@@ -303,8 +321,8 @@ first, older as a fallback. The shape to copy is the `possibleOrientations` migr
 that **the absent-versus-empty distinction is the migration** - a reader that cannot tell "never
 written" from "written empty" has nothing to fall back on.
 
-This was chosen over freezing the schema at release and going additive-only. That was cheaper for us
-and worse for the people who asked for this, because it makes their content break on our schedule.
+Freezing the schema at release and going additive-only would be cheaper for exlib and worse for third
+parties, because it makes their content break on exlib's schedule.
 
 `SpecSchema` (exlib) holds the three rules every parser routes through:
 
@@ -312,29 +330,28 @@ and worse for the people who asked for this, because it makes their content brea
 |---|---|
 | absent | **schema 1** - absent is not unversioned; the form that shipped before the field existed has a number whether or not it was written down |
 | below the current one | itself, and the parser falls back to that form's shape |
-| above the current one | **refused**, with an error naming both numbers - we cannot know what changed, so reading it as the form we do know would mis-parse someone's content silently. The fix is on the reader's side: update the library |
+| above the current one | **refused**, with an error naming both numbers - the reader cannot know what changed, so reading it as the form it does know would mis-parse someone's content silently. The fix is on the reader's side: update the library |
 
 **A spec attribute is not save data.** It sits on the itemtype and is re-read from the declaration
-every load, so *our own* emitters never need a fallback - regenerating the def replaces the old form
-outright. The migration burden exists **only for declarations we do not own**, and it therefore starts
-at the first schema a third party could have written against. That is why `RollSetSpec` could drop
-`gaps`/`outputs` outright at schema 1 and still satisfy this section.
+every load, so the family's own emitters never need a fallback - regenerating the def replaces the old
+form outright. The migration burden exists **only for declarations the family does not own**, and it
+therefore starts at the first schema a third party could have written against.
 
 **The diagram contract carries no schema, because it carries no spec.** A `diagram-*` item is
 identified by code shape alone - first code part `diagram`, plus a `type` variant - and holds no data
 for a parser to version. If diagrams ever gain a spec, that is when they gain a number.
 
-Our emitted JSON is the template a third party copies, so every spec we ship declares `schema`
-explicitly even though absent would parse. `ShippedSpecSchemaGuards` pins it.
+The family's emitted JSON is the template a third party copies, so every shipped spec declares `schema`
+explicitly even though absent would parse. `ShippedSpecSchemaGuards` (iiex) pins it.
 
 ---
 
 ## Consequences
 
 - The JSON attribute schema is **the API**. `ExBlockDef`/`ExItemDef` are a private authoring
-  convenience - a third party cannot add a def to our assembly - so the golden tests protect our
-  authoring and **not** this contract. It needs its own guards.
+  convenience - a third party cannot add a def to another mod's assembly - so the golden tests protect the
+  family's authoring and **not** this contract. It needs its own guards.
 - A machine's registry is the only place its products are named, which is what makes the
   "names no product" rule checkable by a source scan.
-- The rolled-product catalogue is no longer hand-authored item defs; it falls out of the mill's and
-  the shear's registries.
+- The shipped rolled products are hand-authored item defs (`RolledItemDefinitions`), and every shipped
+  stage that names one declares `"generate": false`; no shipped route has an item generated for it.
