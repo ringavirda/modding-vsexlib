@@ -40,8 +40,8 @@ public class NetworkNodeOrientationTests {
     Assert.Equal("test:dashed-node-ns", drop.Collectible.Code.ToString());
   }
 
-  // Fails when a loaded node's type is left out of its allowed orientations because its class's own
-  // definitions do not declare it.
+  // Fails when a loaded node's type, absent from its class's own definitions, is left out of its
+  // allowed orientations.
   [Fact]
   public void A_type_another_provider_defines_takes_its_loaded_orientations() {
     var world = new TestWorld();
