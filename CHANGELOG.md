@@ -9,12 +9,14 @@ see the git history.
 
 ### Added
 
-- **Two grid recipe checks** run with the shipped checks, at load and from `/exmod verify`.
+- **Three grid recipe checks** run with the shipped checks, at load and from `/exmod verify`.
   `GridRecipeShapeCheck`: every ingredient key appears in the pattern, every pattern letter has a
   key, and the grid is at most 3x3. `GridRecipeCollisionCheck`: no two grid recipes of the domains
   checked match the same input, counted as the game's matcher counts trimmed patterns, offsets,
-  shapeless recipes, wildcards, `allowedVariants` and named wildcards. `GridRecipes`
-  (ExpandedLib.Testing) runs the two over a suite's definitions.
+  shapeless recipes, wildcards, `allowedVariants` and named wildcards. `GridOutputVariantCheck`: a
+  recipe crafting a block oriented by `ExOrientable`, `HorizontalOrientable`, `NWOrientable`,
+  `Pillar` or `OmniRotatable` names the orientation its `creativeinventory` lists. `GridRecipes`
+  (ExpandedLib.Testing) runs the three over a suite's definitions.
 - **`SourceLaws.UnreadTunables`** (ExpandedLib.Testing): a value of a manageable config store
   that no source reads is named at its declaration. `StaleOnExchange` also names a block entity
   that writes a `MeshData` field with no `OnExchanged` override, and each such field an override

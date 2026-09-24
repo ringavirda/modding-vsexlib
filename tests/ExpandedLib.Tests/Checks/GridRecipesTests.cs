@@ -50,12 +50,34 @@ public class GridRecipesTests {
                 .Size(1, 1)
                 .Ingredient("L", i => i.Item("game:log-oak"))
                 .OutputItem("game:firewood")
+            )
+            .Grid(g =>
+              g.Name("tap")
+                .Pattern("B")
+                .Size(1, 1)
+                .Ingredient("B", i => i.Item("game:ingot-iron"))
+                .OutputBlock($"{domain}:tap-n")
             ),
         ]
         : [];
   }
 
-  // Fails when Check stops running either grid recipe check, drops the check-name
+  /// <summary>Declares its oriented tap only under <see cref="Planted"/>.</summary>
+  private sealed class PlantedTap : IExBlockDefProvider {
+    public static IEnumerable<ExBlockDef> Definitions(string domain) =>
+      domain == Planted
+        ?
+        [
+          ExBlockDef
+            .Create(domain, "tap")
+            .VariantGroup("side", "n", "e", "s", "w")
+            .Behavior("ExOrientable")
+            .CreativeTab("general", "*-s"),
+        ]
+        : [];
+  }
+
+  // Fails when Check stops running any of the three grid recipe checks, drops the check-name
   // prefix, or counts recipes other than the domain's grid recipes.
   [Fact]
   [PlantedDefect(typeof(GridRecipes), nameof(GridRecipes.Check))]
@@ -64,13 +86,15 @@ public class GridRecipesTests {
     foreach (string line in result.Findings)
       output.WriteLine(line);
 
-    Assert.Equal(3, result.Recipes);
+    Assert.Equal(4, result.Recipes);
     Assert.Equal(
       [
         "GridRecipeShape: plantedgrid:recipes/grid/planted.json#0 (unplaced): key G is not in "
           + "the pattern PP",
         "GridRecipeCollision: plantedgrid:recipes/grid/planted.json#1 (first) and "
           + "plantedgrid:recipes/grid/planted.json#2 (second) match the same input",
+        "GridOutputVariant: plantedgrid:recipes/grid/planted.json#3 (tap): output "
+          + "plantedgrid:tap-n is not the creative default plantedgrid:tap-s",
       ],
       result.Findings
     );

@@ -57,7 +57,7 @@ public static class RecipeCodesCheck {
   }
 
   // The {name} holes a recipe's output can carry, mapped to the states an ingredient binds them to.
-  private static Dictionary<string, string[]> Placeholders(JObject recipe) {
+  internal static Dictionary<string, string[]> Placeholders(JObject recipe) {
     var holes = new Dictionary<string, string[]>(StringComparer.Ordinal);
     if (recipe["ingredients"] is not JObject ingredients)
       return holes;
@@ -73,7 +73,7 @@ public static class RecipeCodesCheck {
     return holes;
   }
 
-  private static IEnumerable<string> Expand(
+  internal static IEnumerable<string> Expand(
     string code,
     Dictionary<string, string[]> holes
   ) {
