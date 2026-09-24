@@ -9,6 +9,15 @@ see the git history.
 
 ### Added
 
+- **`TestPlayer.Hotbar`, `GameMode` and `CtrlHeld`** (ExpandedLib.Testing): a real 12-slot hotbar
+  that `GetHotbarInventory()` returns, the game mode `WorldData.CurrentGameMode` answers, and the
+  entity's `CtrlKey` control. The world answers `PlayerByUid` for the player's uid with it, so the
+  game's right-click construction pays from that hotbar. `TestWorld`'s `Collectibles` lists its
+  registered items and blocks.
+- **`StructureBreaks.Payment`** (ExpandedLib.Testing): `Survival`, `CreativeWithCtrl` and
+  `Creative`, the three ways `StructureBreaks` pays a construction stage; `Spawn.Paid` names the one
+  a break was built with.
+
 - **`BlockSignalCensus`** (ExpandedLib.Testing) counts, per signal, the blocks of a domain that
   carry it: block class, entity class, behaviours, the groups placement writes, footprint, layout,
   nosnow cells, construction stages, network and mpenergy membership, a mechanical power
@@ -170,6 +179,17 @@ see the git history.
 
 ### Changed
 
+- `ExRightClickConstructable` refuses a payment that would take a stored wildcard key in two
+  variants inside the stage that stores it, such as iron plates with steel rods in a first metal
+  stage, and shows the player `exlib:ingameerror-construction-onematerial`. A creative player
+  holding Ctrl pays nothing and is not refused.
+- `StructureBreaks` (ExpandedLib.Testing) pays each stage through the block's own interaction and
+  the game's `RightClickConstruction`, in survival, in creative with Ctrl held and in creative
+  without it, each wildcard stage in the next allowed variant, and compares the refund to what was
+  paid; it offers a storing stage its key in two variants first and fails a stage that takes them.
+  A code-first run's stages past 0 now break three times, and a mismatch reads `(expected: ...)`
+  where it read `(definition: ...)`. A wildcard ingredient without `allowedVariants` fails as not
+  stood up.
 - `StructureRig` (ExpandedLib.Testing) raises the cells the anchor reports missing, and `Missing`,
   `MissingReport` and `Complete`'s message come from the anchor's report. `Around` throws
   `InvalidOperationException` when the anchor turns its layout to another angle than the one

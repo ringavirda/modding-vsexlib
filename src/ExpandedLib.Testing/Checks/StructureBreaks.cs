@@ -20,11 +20,12 @@ namespace ExpandedLib.Testing;
 /// mod's code-first definitions or from the JSON blocks <see cref="TestWorld.LoadAssets"/> loaded,
 /// and breaks it as a survival player, through the engine's break and removal hooks
 /// (<see cref="TestWorld.BreakRunsBlockHooks"/>, <see cref="TestWorld.RunsRemovalHooks"/>).</summary>
-/// <remarks>A structure with construction stages is broken from every cell at each stage, partly
-/// built or complete; one without is broken from every cell. A break passes
-/// when nothing throws, no cell of the structure is left standing, and the drops are the
-/// block's: its resolved <c>drops</c> plus the materials of every paid stage at the configured
-/// salvage ratio.</remarks>
+/// <remarks>A structure with construction stages is paid stage by stage through its own
+/// interaction, the game's <see cref="RightClickConstruction"/>, in each <see cref="Payment"/>, and
+/// broken from every cell at each stage, partly built or complete; one without is broken from every
+/// cell. A break passes when nothing throws, no cell of the structure is left standing, and the
+/// drops are the block's: its resolved <c>drops</c> plus stage 0's materials and what every paid
+/// stage took, at the configured salvage ratio.</remarks>
 public static class StructureBreaks
 {
   /// <summary>What a run covered, every break that failed, one line each, and what each break
@@ -33,6 +34,20 @@ public static class StructureBreaks
   /// <param name="Variants">Concrete block variants stood up across them.</param>
   /// <param name="Breaks">Breaks performed, one per structure broken from one cell.</param>
   /// <param name="Spawned">Every break that ran, in run order, with the stacks it spawned.</param>
+  /// <summary>How a player pays a construction stage.</summary>
+  public enum Payment
+  {
+    /// <summary>A survival player, from the hotbar.</summary>
+    Survival,
+
+    /// <summary>A creative player holding Ctrl, whom the game charges nothing and records as
+    /// having paid <c>wood</c> oak and <c>metal</c> iron.</summary>
+    CreativeWithCtrl,
+
+    /// <summary>A creative player without Ctrl, who pays from the hotbar as in survival.</summary>
+    Creative,
+  }
+
   public sealed record Result(
     int Blocks,
     int Variants,
@@ -51,11 +66,14 @@ public static class StructureBreaks
   /// cell, ordered by X, then Y, then Z.</param>
   /// <param name="Stacks">Every stack spawned from the break on, those of a break that threw
   /// included.</param>
+  /// <param name="Paid">How its stages were paid; null for a structure without stages or one built
+  /// to stage 0.</param>
   public sealed record Spawn(
     string Code,
     int? Stage,
     int Cell,
-    IReadOnlyList<ItemStack> Stacks
+    IReadOnlyList<ItemStack> Stacks,
+    Payment? Paid
   );
 
   private static readonly BlockPos At = new(64, 64, 64);
@@ -259,8 +277,9 @@ public static class StructureBreaks
     public int Breaks { get; set; }
   }
 
-  /// <summary>Breaks the variant <paramref name="code"/> from every cell at every stage, standing it
-  /// up at a fresh <paramref name="stand"/> site for its stage count and for each break.</summary>
+  /// <summary>Breaks the variant <paramref name="code"/> from every cell at every stage, each stage
+  /// past 0 paid in every <see cref="Payment"/>, standing it up at a fresh
+  /// <paramref name="stand"/> site for its stage count and for each break.</summary>
   private static void BreakVariant(
     string code,
     bool declaresStages,
@@ -273,24 +292,28 @@ public static class StructureBreaks
       return;
     for (int built = 0; built < Math.Max(stages, 1); built++)
     {
-      for (int cell = -1; ; cell++)
-      {
-        string? failure = BreakOnce(
-          stand(),
-          code,
-          stages == 0 ? null : built,
-          cell,
-          tally.Spawned,
-          out bool noMoreCells
-        );
-        if (failure == null && noMoreCells)
-          break;
-        tally.Breaks++;
-        if (failure != null)
-          tally.Failures.Add(failure);
-        if (noMoreCells)
-          break;
-      }
+      Payment?[] payments =
+        built == 0 ? [null] : [.. Enum.GetValues<Payment>()];
+      foreach (Payment? payment in payments)
+        for (int cell = -1; ; cell++)
+        {
+          string? failure = BreakOnce(
+            stand(),
+            code,
+            stages == 0 ? null : built,
+            payment,
+            cell,
+            tally.Spawned,
+            out bool noMoreCells
+          );
+          if (failure == null && noMoreCells)
+            break;
+          tally.Breaks++;
+          if (failure != null)
+            tally.Failures.Add(failure);
+          if (noMoreCells)
+            break;
+        }
     }
   }
 
@@ -307,8 +330,8 @@ public static class StructureBreaks
     {
       Block block = site.Block();
       Place(site.World, site.At, block);
-      if (Construction(site.World, site.At) is { } rcc)
-        return rcc.Stages.Length;
+      if (Construction(site.World, site.At) is { } behavior)
+        return Rcc(behavior).Stages.Length;
       if (!declaresStages)
         return 0;
       failures.Add(
@@ -329,19 +352,19 @@ public static class StructureBreaks
     block.OnBlockPlaced(world.World, at, new ItemStack(block));
   }
 
-  private static RightClickConstruction? Construction(
+  private static ExRightClickConstructable? Construction(
     TestWorld world,
     BlockPos at
-  ) =>
-    world.GetBlockEntity(at)?.GetBehavior<ExRightClickConstructable>()
-      is { } behavior
-      ? (RightClickConstruction?)ReflectionHelpers.GetField(behavior, "rcc")
-      : null;
+  ) => world.GetBlockEntity(at)?.GetBehavior<ExRightClickConstructable>();
 
-  /// <summary>Stands the variant <paramref name="code"/> up at <paramref name="site"/>, builds it to
-  /// stage <paramref name="built"/> (null for a structure without stages), breaks it from
-  /// <paramref name="cell"/> (-1 the principal, else a filler cell's index) and adds what the break
-  /// spawned to <paramref name="spawned"/>.</summary>
+  private static RightClickConstruction Rcc(
+    ExRightClickConstructable behavior
+  ) => (RightClickConstruction)ReflectionHelpers.GetField(behavior, "rcc")!;
+
+  /// <summary>Stands the variant <paramref name="code"/> up at <paramref name="site"/>, pays it to
+  /// stage <paramref name="built"/> (null for a structure without stages) in
+  /// <paramref name="payment"/>, breaks it from <paramref name="cell"/> (-1 the principal, else a
+  /// filler cell's index) and adds what the break spawned to <paramref name="spawned"/>.</summary>
   /// <param name="noMoreCells">Set when no later cell can be broken: <paramref name="cell"/> is past
   /// the last filler (the return is then null), or the structure could not be stood up.</param>
   /// <returns>Why the break failed, or null when it passed.</returns>
@@ -349,6 +372,7 @@ public static class StructureBreaks
     Site site,
     string code,
     int? built,
+    Payment? payment,
     int cell,
     List<Spawn> spawned,
     out bool noMoreCells
@@ -358,7 +382,9 @@ public static class StructureBreaks
     TestWorld world = site.World;
     BlockPos at = site.At;
     string where = cell < 0 ? "the principal" : $"filler cell {cell}";
-    string stage = built is { } paid ? $" at stage {paid}" : "";
+    string stage =
+      (built is { } k0 ? $" at stage {k0}" : "")
+      + (payment is { } how ? " " + Describe(how) : "");
     Block block;
     BlockPos[] fillers;
     var expected = new Dictionary<string, (float Low, float High)>();
@@ -384,8 +410,16 @@ public static class StructureBreaks
         return null;
       }
       AddDefinitionDrops(block, expected);
-      if (built is { } k && Construction(world, at) is { } rcc)
-        Build(world, block, rcc, k, expected);
+      if (built is { } k && Construction(world, at) is { } behavior)
+        Pay(
+          world,
+          at,
+          block,
+          behavior,
+          k,
+          payment ?? Payment.Survival,
+          expected
+        );
     }
     catch (Exception e)
     {
@@ -395,7 +429,7 @@ public static class StructureBreaks
 
     BlockPos target = cell < 0 ? at : fillers[cell];
     TestPlayer player = world.Player();
-    player.Player.WorldData.CurrentGameMode.Returns(EnumGameMode.Survival);
+    player.GameMode = EnumGameMode.Survival;
     world.Drops.Clear();
     try
     {
@@ -407,7 +441,7 @@ public static class StructureBreaks
     }
     finally
     {
-      spawned.Add(new Spawn(code, built, cell, [.. world.Drops]));
+      spawned.Add(new Spawn(code, built, cell, [.. world.Drops], payment));
     }
 
     var standing = fillers
@@ -443,27 +477,111 @@ public static class StructureBreaks
         );
   }
 
-  /// <summary>Builds <paramref name="rcc"/> to stage <paramref name="built"/> with each stored
-  /// wildcard set to its ingredient's first allowed variant, registers every material its stages
-  /// name, its <c>{key}</c>s filled from them, and adds to <paramref name="expected"/> what breaking
-  /// it refunds: every stage up to the one built, at the salvage ratio, once one is paid.</summary>
-  private static void Build(
+  /// <summary>One ingredient as a stage offers it: its code with the stored keys filled and, for a
+  /// wildcard, the allowed variant this stage pays it in.</summary>
+  /// <param name="Pattern">The code with the stored keys filled, its wildcard kept.</param>
+  /// <param name="Code">The code paid.</param>
+  /// <param name="Key">The key the ingredient stores, or null.</param>
+  /// <param name="Variant">The variant paid for the wildcard, or null for an exact code.</param>
+  /// <param name="Allowed">The ingredient's allowed variants; empty for an exact code.</param>
+  private sealed record Offer(
+    string Pattern,
+    string Code,
+    EnumItemClass Type,
+    int Quantity,
+    string? Key,
+    string? Variant,
+    string[] Allowed
+  )
+  {
+    public string In(string variant) => Pattern.Replace("*", variant);
+  }
+
+  /// <summary>Pays <paramref name="behavior"/>'s stages 1 to <paramref name="built"/> through its
+  /// own interaction as a player paying in <paramref name="payment"/>, and adds to
+  /// <paramref name="expected"/> what breaking it refunds: stage 0's materials and what each stage
+  /// took, at the salvage ratio, once a stage is paid.</summary>
+  /// <remarks>A wildcard ingredient is paid in its next allowed variant, one wildcard stage after
+  /// another. Before paying a stage from the hotbar, a key the stage stores is offered in two
+  /// variants, and the stage must refuse it. What a stage paid with Ctrl held took is what the game
+  /// records: its codes with the stored keys filled.</remarks>
+  /// <exception cref="InvalidOperationException">A wildcard ingredient names no allowed variant, a
+  /// stage is not paid, or a stage takes a stored key in two variants.</exception>
+  private static void Pay(
     TestWorld world,
+    BlockPos at,
     Block block,
-    RightClickConstruction rcc,
+    ExRightClickConstructable behavior,
     int built,
+    Payment payment,
     Dictionary<string, (float Low, float High)> expected
   )
   {
-    rcc.CurrentCompletedStage = built;
+    RightClickConstruction rcc = Rcc(behavior);
+    TestPlayer payer = world.Player("payer");
+    payer.GameMode =
+      payment == Payment.Survival
+        ? EnumGameMode.Survival
+        : EnumGameMode.Creative;
+    payer.CtrlHeld = payment == Payment.CreativeWithCtrl;
+    var paid = new List<(string Code, EnumItemClass Type, int Quantity)>();
+    int turn = 0;
     for (int i = 1; i <= built; i++)
-      foreach (ConstructionIngredient ing in rcc.Stages[i].RequireStacks ?? [])
-        if (ing.StoreWildCard is { } key)
-          rcc.StoredWildCards[key] =
-            ing.AllowedVariants?.FirstOrDefault()
-            ?? throw new InvalidOperationException(
-              $"stage {i} stores wildcard '{key}' for {ing.Code} but names no allowed variant"
-            );
+    {
+      Offer[] offers = Offers(rcc.Stages[i], i, rcc.StoredWildCards, turn);
+      foreach (Offer offer in offers)
+        Resolvable(world, offer.Code, offer.Type, offer.Key, offer.Variant);
+      var stores = new Dictionary<string, string>(rcc.StoredWildCards);
+      foreach (Offer offer in offers.Where(o => o.Key != null))
+        if (payment == Payment.CreativeWithCtrl)
+        {
+          stores["wood"] = "oak";
+          stores["metal"] = "iron";
+        }
+        else
+          stores[offer.Key!] = offer.Variant!;
+      if (i + 1 < rcc.Stages.Length)
+        foreach (
+          ConstructionIngredient next in rcc.Stages[i + 1].RequireStacks ?? []
+        )
+          if (
+            Filled(next.Code.ToString(), stores) is var code
+            && !code.Contains('*')
+            && !code.Contains('{')
+          )
+            Resolvable(world, code, next.Type);
+
+      if (payment != Payment.CreativeWithCtrl)
+        OfferMixed(world, behavior, rcc, payer, offers, i, at);
+
+      Fill(payer.Hotbar, offers.Select(o => (o.Code, o.Type, o.Quantity)));
+      int[] before = [.. payer.Hotbar.Select(s => s.StackSize)];
+      Interact(world, behavior, payer, at);
+      if (rcc.CurrentCompletedStage != i)
+        throw new InvalidOperationException(
+          $"stage {i} was not paid {Describe(payment)}"
+        );
+      for (int j = 0; j < offers.Length; j++)
+        paid.Add(
+          payment == Payment.CreativeWithCtrl
+            ? (
+              offers[j].Key is { } key
+              && rcc.StoredWildCards.TryGetValue(key, out string? seeded)
+                ? offers[j].In(seeded)
+                : offers[j].Pattern,
+              offers[j].Type,
+              offers[j].Quantity
+            )
+            : (
+              offers[j].Code,
+              offers[j].Type,
+              before[j] - payer.Hotbar[j].StackSize
+            )
+        );
+      Fill(payer.Hotbar, []);
+      if (offers.Any(o => o.Variant != null))
+        turn++;
+    }
 
     float ratio =
       ExRccSettings.BrokenDropsRatio(block.Code.Domain)
@@ -471,51 +589,211 @@ public static class StructureBreaks
         .BlockEntityBehaviors.First(b => b.Name == "ExRightClickConstructable")
         .properties["brokenDropsRatio"]
         .AsFloat(1f);
-    for (int i = 0; i <= built; i++)
-      foreach (ConstructionIngredient ing in rcc.Stages[i].RequireStacks ?? [])
-      {
-        string code = ing.Code.ToString();
-        if (
-          ing.StoreWildCard is { } key
-          && rcc.StoredWildCards.TryGetValue(key, out string? value)
-        )
-          code = code.Replace("*", value);
-        foreach ((string stored, string state) in rcc.StoredWildCards)
-          code = code.Replace("{" + stored + "}", state);
-        if (!code.Contains('*'))
-          Resolvable(world, code, ing.Type);
-        if (built >= 1)
-          Expect(
-            expected,
-            code,
-            MathF.Floor(ing.Quantity * ratio),
-            MathF.Ceiling(ing.Quantity * ratio)
-          );
-      }
+    foreach (ConstructionIngredient ing in rcc.Stages[0].RequireStacks ?? [])
+    {
+      string code = Filled(ing.Code.ToString(), rcc.StoredWildCards);
+      if (
+        ing.StoreWildCard is { } key
+        && rcc.StoredWildCards.TryGetValue(key, out string? value)
+      )
+        code = code.Replace("*", value);
+      paid.Insert(0, (code, ing.Type, ing.Quantity));
+    }
+    foreach ((string code, EnumItemClass type, _) in paid)
+      if (!code.Contains('*') && !code.Contains('{'))
+        Resolvable(world, code, type);
+    if (built >= 1)
+      foreach ((string code, _, int quantity) in paid)
+        Expect(
+          expected,
+          code,
+          MathF.Floor(quantity * ratio),
+          MathF.Ceiling(quantity * ratio)
+        );
   }
 
+  /// <summary>What stage <paramref name="index"/> offers, its stored keys filled from
+  /// <paramref name="stored"/> and each wildcard paid in the allowed variant
+  /// <paramref name="turn"/> steps on.</summary>
+  /// <exception cref="InvalidOperationException">A wildcard ingredient names no allowed
+  /// variant.</exception>
+  private static Offer[] Offers(
+    Vintagestory.GameContent.ConstructionStage stage,
+    int index,
+    IReadOnlyDictionary<string, string> stored,
+    int turn
+  ) =>
+    [
+      .. (stage.RequireStacks ?? []).Select(ing =>
+      {
+        string pattern = Filled(ing.Code.ToString(), stored);
+        if (!pattern.Contains('*'))
+          return new Offer(
+            pattern,
+            pattern,
+            ing.Type,
+            ing.Quantity,
+            ing.StoreWildCard,
+            null,
+            []
+          );
+        string[] allowed = ing.AllowedVariants is { Length: > 0 } a
+          ? a
+          : throw new InvalidOperationException(
+            ing.StoreWildCard is { } key
+              ? $"stage {index} stores wildcard '{key}' for {ing.Code} but names no allowed variant"
+              : $"stage {index} asks for {ing.Code} but names no allowed variant"
+          );
+        string variant = allowed[turn % allowed.Length];
+        return new Offer(
+          pattern,
+          pattern.Replace("*", variant),
+          ing.Type,
+          ing.Quantity,
+          ing.StoreWildCard,
+          variant,
+          allowed
+        );
+      }),
+    ];
+
+  /// <summary>Offers stage <paramref name="index"/> the first key it stores in two variants: one
+  /// storing ingredient in another allowed variant than the rest, or a lone storing ingredient of
+  /// two or more split one unit to the other variant; nothing when no key allows it.</summary>
+  /// <exception cref="InvalidOperationException">The stage took the mixed payment.</exception>
+  private static void OfferMixed(
+    TestWorld world,
+    ExRightClickConstructable behavior,
+    RightClickConstruction rcc,
+    TestPlayer payer,
+    Offer[] offers,
+    int index,
+    BlockPos at
+  )
+  {
+    foreach (
+      IGrouping<string, Offer> storing in offers
+        .Where(o => o.Key != null && o.Allowed.Distinct().Count() >= 2)
+        .GroupBy(o => o.Key!)
+    )
+    {
+      Offer first = storing.First();
+      string other = first.Allowed.First(v => v != first.Variant);
+      bool several = storing.Skip(1).Any(o => o.Variant != other);
+      if (!several && first.Quantity < 2)
+        continue;
+      Resolvable(world, first.In(other), first.Type, first.Key, other);
+      var stacks = new List<(string, EnumItemClass, int)>();
+      foreach (Offer offer in offers)
+        if (!ReferenceEquals(offer, first))
+          stacks.Add((offer.Code, offer.Type, offer.Quantity));
+        else if (several)
+          stacks.Add((offer.In(other), offer.Type, offer.Quantity));
+        else
+        {
+          stacks.Add((offer.In(other), offer.Type, 1));
+          stacks.Add((offer.Code, offer.Type, offer.Quantity - 1));
+        }
+      Fill(payer.Hotbar, stacks);
+      Interact(world, behavior, payer, at);
+      Fill(payer.Hotbar, []);
+      if (rcc.CurrentCompletedStage >= index)
+        throw new InvalidOperationException(
+          $"stage {index} took '{storing.Key}' in two variants, {other} and {first.Variant}"
+        );
+      return;
+    }
+  }
+
+  private static string Filled(
+    string code,
+    IReadOnlyDictionary<string, string> stored
+  )
+  {
+    foreach ((string key, string value) in stored)
+      code = code.Replace("{" + key + "}", value);
+    return code;
+  }
+
+  /// <summary>Empties <paramref name="hotbar"/> and puts each of <paramref name="stacks"/> in the
+  /// next slot, in order.</summary>
+  /// <exception cref="InvalidOperationException">More stacks than slots.</exception>
+  private static void Fill(
+    InventoryGeneric hotbar,
+    IEnumerable<(string Code, EnumItemClass Type, int Quantity)> stacks
+  )
+  {
+    foreach (ItemSlot slot in hotbar)
+      slot.Itemstack = null;
+    int next = 0;
+    foreach ((string code, EnumItemClass type, int quantity) in stacks)
+    {
+      if (next >= hotbar.Count)
+        throw new InvalidOperationException(
+          $"a stage asks for more than the {hotbar.Count} hotbar slots"
+        );
+      var location = new AssetLocation(code);
+      hotbar[next++].Itemstack =
+        type == EnumItemClass.Item
+          ? new ItemStack(hotbar.Api.World.GetItem(location), quantity)
+          : new ItemStack(hotbar.Api.World.GetBlock(location), quantity);
+    }
+  }
+
+  private static void Interact(
+    TestWorld world,
+    ExRightClickConstructable behavior,
+    TestPlayer payer,
+    BlockPos at
+  )
+  {
+    EnumHandling handling = EnumHandling.PassThrough;
+    behavior.OnBlockInteractStart(
+      world.World,
+      payer.Player,
+      new BlockSelection { Position = at.Copy() },
+      ref handling
+    );
+  }
+
+  private static string Describe(Payment payment) =>
+    payment switch
+    {
+      Payment.Survival => "paid in survival",
+      Payment.CreativeWithCtrl => "paid in creative with Ctrl held",
+      _ => "paid in creative",
+    };
+
   /// <summary>Registers <paramref name="code"/> in <paramref name="world"/> as an item or a block
-  /// when nothing there answers to it yet.</summary>
+  /// when nothing there answers to it yet, and gives it <paramref name="variant"/> under
+  /// <paramref name="key"/> when it names none there.</summary>
   private static void Resolvable(
     TestWorld world,
     string code,
-    EnumItemClass type
+    EnumItemClass type,
+    string? key = null,
+    string? variant = null
   )
   {
     var location = new AssetLocation(code);
+    CollectibleObject collectible;
     if (type == EnumItemClass.Item)
+      collectible = world.GetItem(location) ?? world.RegisterItem(code);
+    else if (world.World.GetBlock(location) is { } known)
+      collectible = known;
+    else
     {
-      if (world.GetItem(location) == null)
-        world.RegisterItem(code);
-    }
-    else if (world.World.GetBlock(location) == null)
-      world.Register(
-        TestBlocks.Configure(
-          new Block(),
-          code,
-          Interlocked.Increment(ref _nextMaterialId)
-        )
+      Block standIn = TestBlocks.Configure(
+        new Block(),
+        code,
+        Interlocked.Increment(ref _nextMaterialId)
       );
+      ReflectionHelpers.SetField(standIn, "api", world.Api);
+      world.Register(standIn);
+      collectible = standIn;
+    }
+    if (key != null && variant != null && collectible.Variant[key] == null)
+      collectible.VariantStrict[key] = variant;
   }
 
   private static int _nextMaterialId = 60000;
@@ -550,7 +828,7 @@ public static class StructureBreaks
         var (low, high) = expected.GetValueOrDefault(code);
         return got >= low && got <= high
           ? null
-          : $"{code} x{got} (definition: {low}..{high})";
+          : $"{code} x{got} (expected: {low}..{high})";
       })
       .OfType<string>()
       .ToList();

@@ -272,6 +272,9 @@ than by asking a mock what it received with `Received()`.
 TestPlayer player = world.Player();
 player.Hold(new ItemStack(pickaxe));
 Assert.True(player.Sneaking is false); // player.Sneaking = true toggles Entity.Controls.Sneak
+player.Hotbar[0].Itemstack = new ItemStack(plate, 2); // what the game's construction pays from
+player.GameMode = EnumGameMode.Creative;
+player.CtrlHeld = true;                               // Entity.Controls.CtrlKey
 ```
 
 **`TestInventory`** - a real multi-slot inventory, for a test that needs more than one slot:
@@ -606,9 +609,14 @@ files found, no failure) until the scaffolded mod ships assets and a translated 
 filler cells or carries `ExRightClickConstructable` stages, the way a survival player breaks it on a
 server. Each break gets a fresh `TestWorld` holding the mod's registered classes, the variant stood up
 through `DefineBlock` and placed through its own `OnBlockPlaced`. A structure with stages is broken
-from every cell at every stage, partly built or complete, with each stored wildcard set to the
-ingredient's first allowed variant; its fillers stand from placement, so a player can break it from
-any of them. `prepare` registers what the block entities
+from every cell at every stage, partly built or complete; its fillers stand from placement, so a
+player can break it from any of them. Each stage is paid the way a player pays it, through the
+block's own interaction and the game's `RightClickConstruction`, three times over: in survival, in
+creative with Ctrl held, which the game charges nothing and records as `wood` oak and `metal` iron,
+and in creative without Ctrl, which pays from the hotbar. A wildcard ingredient is paid in its next
+allowed variant, one wildcard stage after another, so two stages storing one key refund the second
+variant for both and fail the refund comparison. A stage that stores a key is first offered that key
+in two variants, and must refuse it: the first payment picks the material. `prepare` registers what the block entities
 need before anything is placed, such as network types:
 
 ```csharp
@@ -645,12 +653,14 @@ public void Every_json_structure_breaks_whole_from_every_cell() {
 }
 ```
 
-`Result.Spawned` lists every break that ran, with the variant, the stage, the cell and every stack the
-break spawned through `SpawnItemEntity`, whatever spawned it, so a test can assert on the stacks
-themselves, not only on the pass rules.
+`Result.Spawned` lists every break that ran, with the variant, the stage, the payment, the cell and
+every stack the break spawned through `SpawnItemEntity`, whatever spawned it, so a test can assert on
+the stacks themselves, not only on the pass rules.
 
-A failure names the variant, the stage and the cell, and says whether the break threw, which cells
-it left standing, or which drop counts fell outside the definition's range. Only the server break is
+A failure names the variant, the stage, the payment and the cell, and says whether the break threw,
+which cells it left standing, or which drop counts fell outside the expected range. A stage keyed other
+than `wood` or `metal` fails the break paid with Ctrl held, with the game's own
+`KeyNotFoundException`. Only the server break is
 exercised: client-side rendering and particles are not.
 
 ### Reflection scans: `RegistryLawScanner` and `ResourceInvariant`

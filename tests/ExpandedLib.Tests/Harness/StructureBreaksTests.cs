@@ -2,10 +2,12 @@
 using System;
 using System.IO;
 using System.Linq;
+using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent.Mechanics;
 using Xunit;
@@ -13,8 +15,9 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary><see cref="StructureBreaks"/> against small megablocks and constructions that each break
-/// one way: whole, leaving fillers, throwing, dropping nothing, or refunding through a wildcard the
-/// construction never stored; code-first, and loaded from the JSON of the BreakFixture mod.</summary>
+/// one way: whole, leaving fillers, throwing, dropping nothing, refunding through a wildcard the
+/// construction never stored, or other than it was paid; code-first, and loaded from the JSON of the
+/// BreakFixture mod.</summary>
 public class StructureBreaksTests
 {
   private static readonly FillerCellSpec[] TwoCells =
@@ -29,6 +32,12 @@ public class StructureBreaksTests
   ) => ExBlockDef.Create("test", code).Class(cls).FillerOffsets(TwoCells);
 
   private static StructureBreaks.Result Run(params ExBlockDef[] defs) =>
+    Run(_ => { }, defs);
+
+  private static StructureBreaks.Result Run(
+    Action<TestWorld> prepare,
+    params ExBlockDef[] defs
+  ) =>
     StructureBreaks.Run(
       defs,
       [typeof(BlockStructureFiller).Assembly],
@@ -38,8 +47,13 @@ public class StructureBreaksTests
         world.RegisterClass("test-throwsonbreak", typeof(ThrowsOnBreak));
         world.RegisterClass("test-dropsnothing", typeof(DropsNothing));
         world.RegisterClass("test-plain", typeof(PlainBe));
+        prepare(world);
       }
     );
+
+  /// <summary>Breaks per cell of a three-stage construction: stage 0 once, stages 1 and 2 once per
+  /// payment.</summary>
+  private const int ThreeStageBreaks = 1 + 2 * 3;
 
   // Fails when a fresh TestWorld runs no break or no removal hooks: the fillers outlive the
   // principal.
@@ -95,7 +109,7 @@ public class StructureBreaksTests
     Assert.Equal(1 + TwoCells.Length, result.Failures.Count);
     Assert.All(
       result.Failures,
-      f => Assert.EndsWith("dropped test:empty x0 (definition: 1..1)", f)
+      f => Assert.EndsWith("dropped test:empty x0 (expected: 1..1)", f)
     );
   }
 
@@ -115,7 +129,7 @@ public class StructureBreaksTests
     );
 
     Assert.Empty(result.Failures);
-    Assert.Equal(3 * (1 + TwoCells.Length), result.Breaks);
+    Assert.Equal(ThreeStageBreaks * (1 + TwoCells.Length), result.Breaks);
   }
 
   // Fails when Build expects a later stage's {metal} unfilled: the refund names the stored metal.
@@ -133,7 +147,7 @@ public class StructureBreaksTests
     );
 
     Assert.Empty(result.Failures);
-    Assert.Equal(3 * (1 + TwoCells.Length), result.Breaks);
+    Assert.Equal(ThreeStageBreaks * (1 + TwoCells.Length), result.Breaks);
   }
 
   // Fails when Build takes the salvage ratio as 1: a half refund of 3 is 1..2, never 3.
@@ -163,7 +177,7 @@ public class StructureBreaksTests
         .EntityClass("test-plain")
         .Construction(c =>
           c.Stage(s => s.Require("game:stick", 1))
-            .Stage(s => s.Require("game:plank-*", 2))
+            .Stage(s => s.Require("game:plank-*", 2, allowedVariants: ["oak"]))
         )
     );
 
@@ -203,12 +217,18 @@ public class StructureBreaksTests
         )
     );
 
-    string failure = Assert.Single(
-      result.Failures,
-      f => f.Contains("at stage 1", StringComparison.Ordinal)
+    var failures = result
+      .Failures.Where(f => f.Contains("at stage 1", StringComparison.Ordinal))
+      .ToList();
+    Assert.Equal(3, failures.Count);
+    Assert.All(
+      failures,
+      f =>
+      {
+        Assert.Contains("could not be stood up", f);
+        Assert.Contains("names no allowed variant", f);
+      }
     );
-    Assert.Contains("at stage 1 could not be stood up", failure);
-    Assert.Contains("names no allowed variant", failure);
   }
 
   // Fails when InScope reads only the plain attributes.
@@ -252,6 +272,187 @@ public class StructureBreaksTests
     Assert.Equal(0, result.Breaks);
   }
 
+  #region Payments
+
+  // Fails when the payment with Ctrl held is made without Ctrl: the gear is then paid and stored.
+  [Fact]
+  [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.Run))]
+  public void A_stage_keyed_other_than_wood_or_metal_fails_the_break_paid_with_ctrl_held()
+  {
+    StructureBreaks.Result result = Run(
+      Mega("gear")
+        .EntityClass("test-plain")
+        .Construction(c =>
+          c.Stage(s => s.Require("game:stick", 1))
+            .Stage(s =>
+              s.Require(
+                "game:gear-*",
+                1,
+                storeWildCard: "gear",
+                allowedVariants: ["rusty"]
+              )
+            )
+        )
+    );
+
+    Assert.Equal(1 + TwoCells.Length, result.Failures.Count);
+    Assert.All(
+      result.Failures,
+      f =>
+      {
+        Assert.Contains(
+          "at stage 1 paid in creative with Ctrl held broken from",
+          f
+        );
+        Assert.Contains(
+          "threw KeyNotFoundException: The given key 'gear' was not present in the dictionary.",
+          f
+        );
+      }
+    );
+  }
+
+  // Fails when every stage is paid in the same allowed variant: the shared key then refunds what
+  // each stage paid.
+  [Fact]
+  [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.Run))]
+  public void Two_stages_storing_one_key_fail_the_refund_comparison()
+  {
+    string[] woods = ["oak", "birch"];
+    StructureBreaks.Result result = Run(
+      Mega("shared")
+        .EntityClass("test-plain")
+        .Construction(c =>
+          c.Stage(s => s.Require("game:stick", 1))
+            .Stage(s =>
+              s.Require(
+                "game:plank-*",
+                2,
+                storeWildCard: "wood",
+                allowedVariants: woods
+              )
+            )
+            .Stage(s =>
+              s.Require(
+                "game:plank-*",
+                3,
+                storeWildCard: "wood",
+                allowedVariants: woods
+              )
+            )
+        )
+    );
+
+    Assert.Equal(2 * (1 + TwoCells.Length), result.Failures.Count);
+    Assert.All(
+      result.Failures,
+      f =>
+      {
+        Assert.Contains("at stage 2 paid in ", f);
+        Assert.DoesNotContain("with Ctrl held", f);
+        Assert.EndsWith(
+          "dropped game:plank-birch x5 (expected: 3..3), game:plank-oak x0 (expected: 2..2)",
+          f
+        );
+      }
+    );
+  }
+
+  // Fails when ExRightClickConstructable admits a stored key in two variants inside the stage that
+  // stores it: the plate and rod paid in steel and iron are then taken.
+  [Fact]
+  public void A_stage_storing_its_metal_refuses_two_metals()
+  {
+    StructureBreaks.Result result = Run(
+      Mega("onemetal")
+        .EntityClass("test-plain")
+        .Construction(c =>
+          c.Stage(s => s.Require("game:stick", 1))
+            .Stage(s =>
+              s.RequireMetalPlate("test", 2).RequireMetalRod("test", 1)
+            )
+            .Stage(s => s.RequireMetalNails("test", 1))
+        )
+    );
+
+    Assert.True(result.Failures.Count == 0, string.Join("\n", result.Failures));
+    Assert.Equal(ThreeStageBreaks * (1 + TwoCells.Length), result.Breaks);
+  }
+
+  // Fails when the run offers no mixed payment before paying a stage that stores a key.
+  [Fact]
+  [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.Run))]
+  public void A_constructable_taking_two_metals_in_one_stage_fails()
+  {
+    StructureBreaks.Result result = Run(
+      world =>
+        world.RegisterClass("ExRightClickConstructable", typeof(TakesAnyMetal)),
+      Mega("anymetal")
+        .EntityClass("test-plain")
+        .Construction(c =>
+          c.Stage(s => s.Require("game:stick", 1))
+            .Stage(s => s.RequireMetalPlate("test", 2))
+            .Stage(s => s.RequireMetalRod("test", 1))
+        )
+    );
+
+    Assert.Equal(2 * 2, result.Failures.Count);
+    Assert.All(
+      result.Failures,
+      f =>
+        Assert.Contains(
+          "stage 1 took 'metal' in two variants, steel and iron",
+          f
+        )
+    );
+  }
+
+  // Fails when the creative payment holds Ctrl: the game then records oak, not the birch paid.
+  [Fact]
+  public void Creative_without_ctrl_pays_from_the_hotbar_as_survival_does()
+  {
+    StructureBreaks.Result result = Run(
+      Mega("birch")
+        .EntityClass("test-plain")
+        .Construction(c =>
+          c.Stage(s => s.Require("game:stick", 1))
+            .Stage(s =>
+              s.Require(
+                "game:plank-*",
+                2,
+                storeWildCard: "wood",
+                allowedVariants: ["birch"]
+              )
+            )
+        )
+    );
+
+    string Refund(StructureBreaks.Payment paid) =>
+      string.Join(
+        ", ",
+        result
+          .Spawned.Single(s => s.Stage == 1 && s.Cell == -1 && s.Paid == paid)
+          .Stacks.Select(s => $"{s.Collectible.Code} x{s.StackSize}")
+          .Where(s => !s.StartsWith("test:", StringComparison.Ordinal))
+          .Order(StringComparer.Ordinal)
+      );
+    Assert.Empty(result.Failures);
+    Assert.Equal(
+      "game:plank-birch x2, game:stick x1",
+      Refund(StructureBreaks.Payment.Survival)
+    );
+    Assert.Equal(
+      "game:plank-birch x2, game:stick x1",
+      Refund(StructureBreaks.Payment.Creative)
+    );
+    Assert.Equal(
+      "game:plank-oak x2, game:stick x1",
+      Refund(StructureBreaks.Payment.CreativeWithCtrl)
+    );
+  }
+
+  #endregion
+
   private static TestWorld LoadFixture() =>
     new TestWorld().LoadAssets(
       Path.Combine(
@@ -279,7 +480,7 @@ public class StructureBreaksTests
     Assert.True(result.Failures.Count == 0, string.Join("\n", result.Failures));
     Assert.Equal(1, result.Blocks);
     Assert.Equal(2, result.Variants);
-    Assert.Equal(2 * 3 * (1 + TwoCells.Length), result.Breaks);
+    Assert.Equal(2 * ThreeStageBreaks * (1 + TwoCells.Length), result.Breaks);
     Assert.Single(world.Mods.Systems.OfType<MechanicalPowerMod>());
   }
 
@@ -295,7 +496,11 @@ public class StructureBreaksTests
     Assert.Equal(result.Breaks, result.Spawned.Count);
     StructureBreaks.Spawn complete = Assert.Single(
       result.Spawned,
-      s => s.Code == "breakfixture:frame-e" && s.Stage == 2 && s.Cell == 1
+      s =>
+        s.Code == "breakfixture:frame-e"
+        && s.Stage == 2
+        && s.Cell == 1
+        && s.Paid == StructureBreaks.Payment.Survival
     );
     Assert.Equal(
       ["breakfixture:frame-e x1", "game:metalplate-iron x2", "game:stick x1"],
@@ -317,13 +522,13 @@ public class StructureBreaksTests
 
     Assert.Equal(2, result.Blocks);
     Assert.Equal(4, result.Variants);
-    Assert.Equal(2 * (1 + TwoCells.Length), result.Failures.Count);
+    Assert.Equal(2 * 3 * (1 + TwoCells.Length), result.Failures.Count);
     Assert.All(
       result.Failures,
       f =>
       {
         Assert.StartsWith("breakfixture:unstored-", f);
-        Assert.Contains("at stage 2 broken from", f, StringComparison.Ordinal);
+        Assert.Matches("at stage 2 paid in [a-zA-Z ]+ broken from", f);
         Assert.Contains("threw NullReferenceException", f);
       }
     );
@@ -364,7 +569,7 @@ public class StructureBreaksTests
 
     Assert.True(first.Failures.Count == 0, string.Join("\n", first.Failures));
     Assert.True(second.Failures.Count == 0, string.Join("\n", second.Failures));
-    Assert.Equal(3 * (1 + TwoCells.Length), second.Breaks);
+    Assert.Equal(ThreeStageBreaks * (1 + TwoCells.Length), second.Breaks);
   }
 
   private sealed class LeavesFillers : BlockFilledMegastructure
@@ -393,5 +598,15 @@ public class StructureBreaksTests
   }
 
   private sealed class PlainBe : BlockEntity { }
+
+  private sealed class TakesAnyMetal(BlockEntity be)
+    : ExRightClickConstructable(be)
+  {
+    public override void Initialize(ICoreAPI api, JsonObject properties)
+    {
+      base.Initialize(api, properties);
+      OnAttemptConstruct = null;
+    }
+  }
 }
 #endif
