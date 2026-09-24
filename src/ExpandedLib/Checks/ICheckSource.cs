@@ -30,4 +30,11 @@ public interface ICheckSource {
 
   /// <summary>Every code-first block definition <paramref name="domain"/> declares.</summary>
   IEnumerable<ExBlockDef> BlockDefinitions(string domain);
+
+  /// <summary>Every JSON blocktype <paramref name="domain"/> ships, as its file paired with its
+  /// parsed object. Code-first definitions arrive through <see cref="BlockDefinitions"/>; a source
+  /// that also sees them as blocktype assets may yield them here too. Yields nothing unless the
+  /// implementer reads blocktype files.</summary>
+  IEnumerable<(AssetLocation File, JObject Json)> BlockTypes(string domain) =>
+    [];
 }

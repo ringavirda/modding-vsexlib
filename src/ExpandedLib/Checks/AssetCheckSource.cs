@@ -53,6 +53,15 @@ public sealed class AssetCheckSource(ICoreAPI api) : ICheckSource {
   public IEnumerable<ExBlockDef> BlockDefinitions(string domain) =>
     ExDefinitions.Blocks.Where(d => d.Domain == domain);
 
+  /// <inheritdoc/>
+  public IEnumerable<(AssetLocation File, JObject Json)> BlockTypes(
+    string domain
+  ) {
+    foreach (IAsset asset in api.Assets.GetMany("blocktypes/", domain))
+      if (TryParseObject(asset, out JObject json))
+        yield return (asset.Location, json);
+  }
+
   // A recipe file is one object or a JSON array; every element shares the file's location.
   private static IEnumerable<JObject> ReadRecipeObjects(IAsset asset) {
     if (!TryParseToken(asset, out JToken token))

@@ -122,11 +122,11 @@ The guards that catch a dangling block code, a name with no translation, a recip
 
 | Type | What it is for | Page |
 | --- | --- | --- |
-| `ICheckSource` | What a check reads: the codes, files and definitions of one or more domains, from the game's assets or from a repository tree. | [Checks](Checks) |
+| `ICheckSource` | What a check reads: the codes, files and definitions of one or more domains, from the game's assets or from a repository tree. `BlockTypes(domain)` adds the JSON blocktypes a domain ships and yields nothing unless implemented. | [Checks](Checks) |
 | `AssetCheckSource` | The in-game `ICheckSource`: codes off the live registries, recipes and lang off `ICoreAPI.Assets`, defs off `ExDefinitions`. | [Checks](Checks) |
 | `CheckResult` | One check's findings for one domain: its name, the domain and the error lines found. | [Checks](Checks) |
 | `ExlibChecks` | Runs every content check against one `ICheckSource` (or the live game) and logs the results. | [Checks](Checks) |
-| `ExCheckRegisterAttribute` | Marks a class exposing `static CheckResult Run(ICheckSource, string)` for automatic registration by `ExCheckRegistry.RegisterAll`, so a mod's own content check runs alongside the eight shipped ones. | [Checks](Checks) |
+| `ExCheckRegisterAttribute` | Marks a class exposing `static CheckResult Run(ICheckSource, string)` for automatic registration by `ExCheckRegistry.RegisterAll`, so a mod's own content check runs alongside the nine shipped ones. | [Checks](Checks) |
 | `ExCheckRegistry` | Reflection-driven registration for a mod's own content checks, the checks-side counterpart to `EntityRegistry`. | [Checks](Checks) |
 | `DefinitionCatalogueCheck` | Checks that every code-first block definition actually produced a registered block. | [Checks](Checks) |
 | `LateDefinitionCheck` | Checks that every registered block, item or recipe definition made the injection deadline. | [Checks](Checks) |
@@ -136,6 +136,7 @@ The guards that catch a dangling block code, a name with no translation, a recip
 | `NetworkNodeContractCheck` | Checks the structural rules a network-node definition and a declared membership must obey. | [Checks](Checks) |
 | `PinnedNetworkNodesCheck` | Checks that no shipped layout pins the orientation of a network node. | [Checks](Checks) |
 | `CodePrefixCollisionCheck` | Checks that no block's base code is a proper prefix of another's at a `-` boundary. | [Checks](Checks) |
+| `StageWildcardsCheck` | Checks that every construction stage's wildcard ingredient stores a key its refund can resolve. | [Checks](Checks) |
 
 ## Writing a block entity and persisting its state
 

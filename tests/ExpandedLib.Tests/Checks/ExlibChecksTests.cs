@@ -257,8 +257,8 @@ public class ExlibChecksTests {
   [Fact]
   public void All_examines_every_check_for_every_domain_and_nothing_more() {
     IReadOnlyList<CheckResult> results = Results();
-    // One CheckResult per (check, domain) pair - eight checks, one domain here.
-    Assert.Equal(8, results.Count);
+    // One CheckResult per (check, domain) pair - nine checks, one domain here.
+    Assert.Equal(9, results.Count);
     Assert.All(results, r => Assert.Equal(Domain, r.Domain));
     Assert.Equal(9, results.Sum(r => r.Errors.Count));
   }

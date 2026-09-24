@@ -81,6 +81,30 @@ public sealed class RepoCheckSource : ICheckSource {
   public IEnumerable<ExBlockDef> BlockDefinitions(string domain) =>
     DefinitionGoldens.Collect(domain, _assemblies[domain]).OfType<ExBlockDef>();
 
+  /// <inheritdoc/>
+  public IEnumerable<(AssetLocation File, JObject Json)> BlockTypes(
+    string domain
+  ) {
+    string dir = Path.Combine(RepoPaths.Assets(domain), "blocktypes");
+    if (!Directory.Exists(dir))
+      yield break;
+
+    foreach (
+      string file in Directory
+        .EnumerateFiles(dir, "*.json", SearchOption.AllDirectories)
+        .OrderBy(f => f, StringComparer.Ordinal)
+    )
+      if (JToken.Parse(File.ReadAllText(file)) is JObject json)
+        yield return (
+          new AssetLocation(
+            domain,
+            Path.GetRelativePath(RepoPaths.Assets(domain), file)
+              .Replace('\\', '/')
+          ),
+          json
+        );
+  }
+
   // Resolves each domain to the assembly declaring [assembly: ExDomain(domain)].
   private static Dictionary<string, Assembly> ResolveAssemblies(
     string[] domains

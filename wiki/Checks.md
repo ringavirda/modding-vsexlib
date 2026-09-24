@@ -8,10 +8,10 @@ key is missing from `lang/en.json` shows the player the raw key instead of a nam
 layout that names a block you renamed last week builds a structure that can never complete. Every
 one of these fails silently, and the person who finds it is usually a player, weeks later.
 
-`ExpandedLib.Checks` is eight rules that read your content and report what does not line up. They
+`ExpandedLib.Checks` is nine rules that read your content and report what does not line up. They
 run by themselves at the end of world load and write their findings to the server log, so the first
 time you boot a world with a broken code in it you read "names a code that does not exist" instead
-of wondering why a recipe vanished. The same eight run on demand from `/exmod verify`, from your own
+of wondering why a recipe vanished. The same nine run on demand from `/exmod verify`, from your own
 code, from a unit test, and from a command-line tool that needs no running game.
 
 There is nothing to switch on. Install exlib, load your mod, and the checks report. The rest of this
@@ -19,7 +19,7 @@ page is for the three cases beyond that: running them when you choose, running t
 game, and adding a rule of your own for an invariant that is yours rather than the framework's.
 
 A check never touches a registry, a file path or an assembly. Each one reads through
-[`ICheckSource`](#writing-a-custom-ichecksource), an interface that answers six questions about a
+[`ICheckSource`](#writing-a-custom-ichecksource), an interface that answers seven questions about a
 domain - a domain being one mod's id, the part before the colon in `yourmod:coke-oven`. That is why
 one rule, written once, runs against the live game, against a repository tree, and against a zip on
 disk without knowing which it is looking at.
@@ -36,8 +36,9 @@ disk without knowing which it is looking at.
 | `NetworkNodeContractCheck` | A [network node](Block-Networks) declares a `type` variant group and the orientation scheme it ships; a declared membership names the network it joins. | A node missing its `type` group has no allowed orientations, so placing it fails with no message at all. |
 | `PinnedNetworkNodesCheck` | No shipped layout pins the orientation of a network node. | A node picks its own orientation from its neighbours, so a pinned cell can be contradicted at any moment. Mark the cell with the layout's `Connector` instead. |
 | `CodePrefixCollisionCheck` | No block's base code is a proper prefix of another's at a `-` boundary. | A wildcard `yourmod:pipe-*` written for the short code also swallows `yourmod:pipe-plated-*`, quietly widening every rule built on it. |
+| `StageWildcardsCheck` | Every [construction](Construction) stage ingredient whose code holds `*` carries `storeWildCard`, keyed by the one variant group its `*` spans (`wood`, `metal`), a group of every block it matches; a `{key}` placeholder names one of the block's own variant groups or a key an earlier paid stage stores; a key on the unpaid stage 0 is stored by stage 1. The key must be `wood` or `metal`, the two a creative Ctrl build stores. | Breaking the structure throws a NullReferenceException, or its refund silently names a code that does not exist and drops nothing. |
 
-Two of the eight have a condition attached.
+Two of the nine have a condition attached.
 
 `LateDefinitionCheck` is the odd one out. It names every block, item or recipe definition registered
 after `ExDefinitionModSystem` already injected (see [Code-First-Definitions](Code-First-Definitions)),
@@ -165,7 +166,7 @@ game.
 
 ## Adding your own check
 
-The eight checks above are exlib's own. A mod's own content invariant - every machine's job table
+The nine checks above are exlib's own. A mod's own content invariant - every machine's job table
 names a registered item, every diagram has a shape - gets the same three rungs for one line of its
 own, and none of them is a call you have to place.
 
@@ -193,7 +194,7 @@ there is nothing to call. A class carrying the attribute but not shaped exactly 
 about and skipped; the same class scanned twice (a rejoined world, a module and its host sharing an
 assembly) is registered once and every later scan is silently ignored.
 
-**Explicit: `ExlibChecks.All`.** Once registered, your check is appended after the eight shipped
+**Explicit: `ExlibChecks.All`.** Once registered, your check is appended after the nine shipped
 ones, in registration order, and runs at every rung above - the `AssetsFinalize` log line,
 `/exmod verify`, and `ExlibChecks.All` from your own code - with no further wiring. A throw from
 `Run` is caught and reported as one error naming your check, the way `ExModuleHost.Isolate` wraps a
@@ -204,7 +205,9 @@ module phase, so one bad rule does not take the other checks down with it.
 A custom source is how you run the shipped rules over content the game has not loaded: a repository
 tree in CI, a zip on disk, a fixture in a test. Implement the six members - `Domains`, `BlockCodes`,
 `ItemCodes`, `Recipes(domain)`, `Lang(domain)`, `BlockDefinitions(domain)` - over whatever you are
-validating, and every check runs unmodified.
+validating, and every check runs unmodified. The seventh, `BlockTypes(domain)`, the JSON blocktypes a
+domain ships, yields nothing unless you implement it; `StageWildcardsCheck` then reads code-first
+definitions only.
 
 There is one exception. `LateDefinitionCheck` ignores the source it is handed and reads
 `ExDefinitions`, the process-wide registry `ExDefinitionModSystem` injects from, directly. A custom
@@ -221,8 +224,9 @@ suite calling the harness, nothing you wrote has changed; this section is the ma
 
 `MultiblockCodesCheck`, `RecipeCodesCheck`, `LangCoverageCheck`, `CodePrefixCollisionCheck`,
 `PinnedNetworkNodesCheck` and `DefinitionCatalogueCheck` moved cleanly: everything they need is
-expressible over `ICheckSource`. `LateDefinitionCheck` is the eighth and never lived in the harness,
-since there was nothing there to replay `ExDefinitionModSystem.AssetsLoaded`.
+expressible over `ICheckSource`. `LateDefinitionCheck` never lived in the harness, since there was
+nothing there to replay `ExDefinitionModSystem.AssetsLoaded`. `StageWildcardsCheck` started here; the
+harness runs it over a suite's definitions as `StageWildcards`.
 
 `NetworkNodeContractCheck` did not move in full. The harness's own `NetworkNodeContract` selects a
 "network node" definition by C# class (`BlockNetworkNode`, `BEBehaviorNetworkMember` and their

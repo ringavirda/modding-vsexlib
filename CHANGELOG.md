@@ -11,6 +11,14 @@ see the git history.
 
 - **`AnimatorClips`** (ExpandedLib.Testing): every clip in a shipped shape ends in `Repeat` or
   `Hold`; a clip that ends leaves a block drawn only through its animator without a mesh.
+- **`StageWildcardsCheck`** runs with the shipped checks, at load and from `/exmod verify`: every
+  `ExRightClickConstructable` stage ingredient whose code holds `*` carries `storeWildCard`, keyed
+  `wood` or `metal` and naming the one variant group its `*` spans; a `{key}` placeholder names one
+  of the block's own variant groups or a key an earlier paid stage stores; a key on stage 0 is
+  stored by stage 1. Such a stage throws or refunds nothing when the structure breaks.
+  `ICheckSource.BlockTypes(domain)` hands a check the JSON blocktypes a domain ships; it yields
+  nothing unless implemented, and `AssetCheckSource` and `RepoCheckSource` implement it.
+  `StageWildcards` (ExpandedLib.Testing) runs the rules over a suite's definitions.
 - **`CommentStyle` and `ShapeTextures`** (ExpandedLib.Testing): the comment style rules and the
   shipped-shape editor-path rule, which exlib, iiex and siex each kept a copy of, are checks a
   suite's guard calls: `CommentStyle` takes the sources `CommentStyle.Sources` reads from a list of
