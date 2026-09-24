@@ -13,14 +13,18 @@ namespace ExpandedLib.Tests;
 public class EntityRegistryTests {
   private sealed class PlainClass;
 
-  public EntityRegistryTests() => EntityRegistry.Logger = null;
+  // This assembly starts unregistered, as in a world no mod of it has started in yet.
+  public EntityRegistryTests() {
+    EntityRegistry.ResetForWorld();
+    EntityRegistry.Logger = null;
+  }
 
   [Fact]
   public void A_domain_fallback_logs_a_warning_naming_the_assembly() {
     var logger = Substitute.For<ILogger>();
     EntityRegistry.Logger = logger;
 
-    // This assembly declares no [assembly: ExDomain] and is never passed to RegisterAll.
+    // This assembly declares no [assembly: ExDomain].
     string domain = EntityRegistry.DomainOf(
       typeof(PlainClass).Assembly,
       "iiex"
