@@ -52,6 +52,9 @@ see the git history.
   file constrained on a game type.
 - **`ExMeasure.TemperatureDelta`**: a temperature difference in Celsius degrees, shown in Fahrenheit
   in imperial without the 32 degree offset: a 10 C difference reads 18 F.
+- **`FindingLists`** (ExpandedLib.Testing): `Assert` holds a guard's findings against its allowed
+  list, permanent exceptions with their reasons, and its known list, defects awaiting a fix. A
+  finding on neither list fails, and so does a known entry the rule does not report.
 
 ### Changed
 
