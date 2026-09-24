@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using ExpandedLib.Testing;
 using Xunit;
 using Xunit.Abstractions;
@@ -263,6 +264,285 @@ public class SourceLawsTests(ITestOutputHelper output) {
           + "void C() {\n  Block[] all = Scan();\n  use(all[0]);\n}"
       )
     );
+
+  #endregion
+
+  #region CachedTunables
+
+  private const string Unreached = "; an /exmod config edit never reaches it";
+
+  private static readonly Assembly[] Exlib = [typeof(ExlibConfig).Assembly];
+
+  // Fails when CachedTunables accepts a value copied into a field in Initialize.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.CachedTunables))]
+  public void A_value_copied_in_Initialize_is_named() =>
+    Assert.Equal(
+      "Planted0.cs:4: PipeEntity._leak; copies ExlibValues.GasLeakRate in Initialize"
+        + Unreached,
+      Assert.Single(
+        Scan(
+          f => SourceLaws.CachedTunables(f, Exlib),
+          "class PipeEntity : BlockEntity {\n"
+            + "  public override void Initialize(ICoreAPI api) {\n"
+            + "    base.Initialize(api);\n"
+            + "    _leak = ExlibValues.GasLeakRate * 2f;\n"
+            + "  }\n}"
+        )
+      )
+    );
+
+  // Fails when CachedTunables skips a field or property initialiser, or loses a property's name
+  // behind its accessor block.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.CachedTunables))]
+  public void Initialisers_are_named() =>
+    Assert.Equal(
+      [
+        "Planted0.cs:2: Tank.Limit; copies ExlibValues.LitresPerPipe at construction"
+          + Unreached,
+        "Planted0.cs:3: Tank.Capacity; copies ExlibValues.MoltenFlowRate at construction"
+          + Unreached,
+        "Planted0.cs:4: Tank.Rates; copies ExlibValues.GasLeakRate at construction"
+          + Unreached,
+      ],
+      Scan(
+        f => SourceLaws.CachedTunables(f, Exlib),
+        "class Tank {\n"
+          + "  static readonly float Limit = ExlibValues.LitresPerPipe;\n"
+          + "  [ProtoMember(1)] public int Capacity { get; set; } = ExlibValues.MoltenFlowRate;\n"
+          + "  Dictionary<string, float> Rates = new() { [\"gas\"] = ExlibValues.GasLeakRate };\n"
+          + "}"
+      )
+    );
+
+  // Fails when CachedTunables stops following a method the constructor calls, follows one only a
+  // lambda calls, or names a local.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.CachedTunables))]
+  public void A_copy_in_a_method_the_constructor_calls_is_named() =>
+    Assert.Equal(
+      "Planted0.cs:6: Stove._max; copies ExlibValues.AmbientTemperature in Cache, called from "
+        + "the constructor"
+        + Unreached,
+      Assert.Single(
+        Scan(
+          f => SourceLaws.CachedTunables(f, Exlib),
+          "class Stove {\n"
+            + "  public Stove() { Cache(); Listen(() => Tick()); }\n"
+            + "  void Tick() { _heat = ExlibValues.MoltenFlowRate; }\n"
+            + "  void Cache() {\n"
+            + "    float local = ExlibValues.GasLeakRate;\n"
+            + "    _max = ExlibValues.AmbientTemperature;\n"
+            + "  }\n}"
+        )
+      )
+    );
+
+  // Fails when CachedTunables names a live read (an expression body, a lambda, a local, another
+  // method) or a store registered without Manageable.
+  [Fact]
+  public void Live_reads_and_unmanaged_stores_pass() =>
+    Assert.Empty(
+      Scan(
+        f =>
+          SourceLaws.CachedTunables(
+            f,
+            [typeof(ExlibConfig).Assembly, typeof(SourceLawsTests).Assembly]
+          ),
+        "class Pipe : BlockEntity {\n"
+          + "  float Leak => ExlibValues.GasLeakRate;\n"
+          + "  Func<float> Rate = () => ExlibValues.LitresPerPipe;\n"
+          + "  int Seed = ExModSystemTestValues.Tunable;\n"
+          + "  public override void Initialize(ICoreAPI api) {\n"
+          + "    RegisterGameTickListener(dt => _flow = ExlibValues.MoltenFlowRate, 100);\n"
+          + "    float cap = ExlibValues.LitresPerPipe;\n"
+          + "    _seed = ExModSystemTestValues.Tunable;\n"
+          + "  }\n"
+          + "  void Tick() { _flow = ExlibValues.MoltenFlowRate; }\n}"
+      )
+    );
+
+  // Fails when CachedTunables runs with no manageable store to read instead of throwing.
+  [Fact]
+  public void Assemblies_with_no_manageable_store_throw() =>
+    Assert.Contains(
+      "Manageable",
+      Assert
+        .Throws<ArgumentException>(() =>
+          SourceLaws.CachedTunables([], [typeof(SourceLawsTests).Assembly])
+        )
+        .Message
+    );
+
+  #endregion
+
+  #region DisplayOnlyTunables
+
+  private const string TextOnly =
+    "; every read sits inside a Lang.Get argument list, so the value changes the text and "
+    + "nothing else";
+
+  // Fails when DisplayOnlyTunables accepts a value every read of which is a Lang.Get argument, or
+  // counts a nameof as a read.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.DisplayOnlyTunables))]
+  public void A_value_only_the_text_reads_is_named() =>
+    Assert.Equal(
+      "Planted0.cs:3: ExlibValues.EvaporationLitresPerDay" + TextOnly,
+      Assert.Single(
+        Scan(
+          f => SourceLaws.DisplayOnlyTunables(f, Exlib),
+          "class Converter {\n"
+            + "  string Info(int units) =>\n"
+            + "    Lang.Get(\"x:scrap\", ExlibValues.EvaporationLitresPerDay * units);\n"
+            + "  string Key = nameof(ExlibValues.EvaporationLitresPerDay);\n"
+            + "  float Leak() => ExlibValues.GasLeakRate * Lang.Get(\"x\").Length;\n}"
+        )
+      )
+    );
+
+  // Fails when DisplayOnlyTunables stops reading a property that stands for the value as the
+  // value.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.DisplayOnlyTunables))]
+  public void A_value_shown_through_a_property_that_stands_for_it_is_named() =>
+    Assert.Equal(
+      "Planted1.cs:1: ExlibValues.PipeOverpressureSeconds" + TextOnly,
+      Assert.Single(
+        Scan(
+          f => SourceLaws.DisplayOnlyTunables(f, Exlib),
+          "class Control {\n"
+            + "  private static float Grace => ExlibValues.PipeOverpressureSeconds;\n}",
+          "string Info() => Lang.Get(\"x:grace\", Control.Grace);"
+        )
+      )
+    );
+
+  // Fails when DisplayOnlyTunables names a value the simulation reads, directly or through a
+  // property that stands for it.
+  [Fact]
+  public void A_value_the_simulation_reads_passes() =>
+    Assert.Empty(
+      Scan(
+        f => SourceLaws.DisplayOnlyTunables(f, Exlib),
+        "class Control {\n"
+          + "  static float Grace => ExlibValues.PipeOverpressureSeconds;\n"
+          + "  string Info() => Lang.Get(\"k\", Grace, ExlibValues.GasLeakRate);\n"
+          + "  bool Burst(float t) => t > Grace;\n"
+          + "  float Leak() => ExlibValues.GasLeakRate;\n}"
+      )
+    );
+
+  #endregion
+
+  #region ContainerDialogPackets
+
+  // Fails when ContainerDialogPackets stops following a base through the files, skips a dialog
+  // declared without a body, or accepts a container that opens a dialog and handles no packet.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.ContainerDialogPackets))]
+  public void A_container_dialog_with_no_packet_handler_is_named() =>
+    Assert.Equal(
+      "Planted1.cs:2: HopperEntity; opens HopperDialog with no OnReceivedClientPacket override, "
+        + "so its slot clicks never reach the server",
+      Assert.Single(
+        Scan(
+          SourceLaws.ContainerDialogPackets,
+          "abstract class TankEntity : BlockEntityContainer { }\n"
+            + "class HopperDialog(string t) : GuiDialogBlockEntity(t);",
+          "class HopperEntity : TankEntity {\n"
+            + "  void Open() => _dialog = new HopperDialog(\"t\", Inventory, Pos, capi);\n}"
+        )
+      )
+    );
+
+  // Fails when ContainerDialogPackets passes a dialog opener whose base it cannot read.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.ContainerDialogPackets))]
+  public void A_dialog_opener_on_an_unread_base_is_named() =>
+    Assert.EndsWith(
+      "ForgeEntity; opens ForgeDialog, but its base ModdedContainer is in neither the files nor "
+        + "the game or exlib, so its packet handling cannot be read",
+      Assert.Single(
+        Scan(
+          SourceLaws.ContainerDialogPackets,
+          "class ForgeDialog : GuiDialogBlockEntity { }\n"
+            + "class ForgeEntity : ModdedContainer {\n"
+            + "  void Open() => new ForgeDialog(t, inv, Pos, capi);\n}"
+        )
+      )
+    );
+
+  // Fails when ContainerDialogPackets names a type that handles its packets itself, through a
+  // base in the files or through a game or exlib base, or that is no container.
+  [Fact]
+  public void Handled_packets_and_other_types_pass() =>
+    Assert.Empty(
+      Scan(
+        SourceLaws.ContainerDialogPackets,
+        "class PanDialog : GuiDialogBlockEntity { }\n"
+          + "class PanEntity : BlockEntityContainer {\n"
+          + "  void Open() => new PanDialog(t, inv, Pos, capi);\n"
+          + "  public override void OnReceivedClientPacket(IPlayer p, int id, byte[] d) { }\n}\n"
+          + "abstract class Station : BlockEntityContainer {\n"
+          + "  public sealed override void OnReceivedClientPacket(IPlayer p, int i, byte[] d) { }\n"
+          + "}\n"
+          + "class Lathe : Station { void Open() => new PanDialog(t, inv, Pos, capi); }\n"
+          + "class Bench : BlockEntityMachineStation {\n"
+          + "  object D() => new PanDialog(t, inv, Pos, capi);\n}\n"
+          + "class Chest : BlockEntityOpenableContainer {\n"
+          + "  void Open() => new PanDialog(t, inv, Pos, capi);\n}\n"
+          + "class Sign : BlockEntity { void Open() => new PanDialog(t, inv, Pos, capi); }\n"
+          + "class Crate : BlockEntityContainer { object Fill() => new ItemStack(block); }"
+      )
+    );
+
+  #endregion
+
+  #region InlineParticles
+
+  private const string Inline =
+    "; builds SimpleParticleProperties inline; take the effect from ExParticles";
+
+  // Fails when InlineParticles accepts a SimpleParticleProperties built inline, names the outer
+  // type for a nested one, or reads one in a comment or string.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.InlineParticles))]
+  public void Particles_built_inline_are_named() =>
+    Assert.Equal(
+      ["Planted0.cs:3: Smoke" + Inline, "Planted0.cs:5: Chimney" + Inline],
+      Scan(
+        SourceLaws.InlineParticles,
+        "class Chimney {\n"
+          + "  class Smoke {\n"
+          + "    static readonly object P = new SimpleParticleProperties(1, 2, c);\n"
+          + "  }\n"
+          + "  void Puff() => Spawn(new SimpleParticleProperties { MinQuantity = 1 });\n"
+          + "  // new SimpleParticleProperties(\n"
+          + "  string s = \"new SimpleParticleProperties(\";\n}"
+      )
+    );
+
+  // Fails when InlineParticles names ExParticles itself, or loses the file's name for a
+  // construction outside every type.
+  [Fact]
+  public void ExParticles_is_exempt_and_file_scope_takes_the_file_name() {
+    using var files = new PlantedFiles();
+    string home = files.Write(
+      "src/ExpandedLib.Industry/Helpers/ExParticles.cs",
+      "static class ExParticles { object P = new SimpleParticleProperties(1, 2, c); }"
+    );
+    string script = files.Write(
+      "Script.cs",
+      "var p = new SimpleParticleProperties(1, 2, c);"
+    );
+
+    Assert.Equal(
+      "Script.cs:1: Script" + Inline,
+      Assert.Single(SourceLaws.InlineParticles([home, script]))
+    );
+  }
 
   #endregion
 

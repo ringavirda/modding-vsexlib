@@ -9,6 +9,12 @@ see the git history.
 
 ### Added
 
+- **`SourceLaws`** (ExpandedLib.Testing): four more source laws. A value of a manageable config
+  store is read where it is used, not copied into a member at load (`CachedTunables`); a config
+  value is read by more than `Lang.Get` arguments (`DisplayOnlyTunables`); a `BlockEntityContainer`
+  that opens a `GuiDialogBlockEntity` handles `OnReceivedClientPacket` itself or through a base
+  (`ContainerDialogPackets`); `SimpleParticleProperties` is built only in `ExParticles`
+  (`InlineParticles`).
 - **`SourceLaws`** (ExpandedLib.Testing): four source laws. A block entity that builds an animator,
   a renderer or a cached mesh for its facing overrides `OnExchanged` and calls the base; a part
   beside a mechanical network takes its frame from the network angle; `BlockFacing.FromCode` on a

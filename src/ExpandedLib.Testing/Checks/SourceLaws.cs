@@ -2,14 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
+using ExpandedLib.Blocks;
+using ExpandedLib.Config;
+using ExpandedLib.Industry.Helpers;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
+using Vintagestory.GameContent;
 
 namespace ExpandedLib.Testing;
 
 /// <summary>
 /// Source laws for recurring bugs: a renderer left on the old facing after an exchange, a rotor on
 /// its own clock beside a mechanical network, a letter facing read by <c>BlockFacing.FromCode</c>,
-/// and an unchecked read of a <c>SearchBlocks</c> result.
+/// an unchecked read of a <c>SearchBlocks</c> result, a live tunable copied at load, a tunable only
+/// the text reads, a container dialog whose packets reach no handler, and particles built outside
+/// <c>ExParticles</c>.
 /// </summary>
 /// <remarks>Every law reads source text with comments and string literals blanked. A type's parts
 /// are merged by name across the files given, partial declarations included.</remarks>
@@ -86,6 +95,94 @@ public static class SourceLaws {
 
   private const string ElementRead =
     @"\s*[?!]?\s*(?:\[|\.\s*(?:First|Single|Last|ElementAt)\s*\()";
+
+  private static readonly Regex TypeKeyword = new(
+    @"\b(?:class|struct|record|interface|enum)\b",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex MethodName = new(
+    @"(?<name>\w+)\s*(?:<[^<>()]*>)?\s*\($",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex LoadMethod = new(
+    @"^(?:Initialize|OnLoaded)$",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex BareCall = new(
+    @"(?:(?<![.\w])|\bthis\s*\.\s*)(?<name>[A-Za-z_]\w*)\s*\(",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex Assignment = new(
+    @"(?<![\w.])(?:this\s*\.\s*)?(?<target>[A-Za-z_][\w.]*)\s*(?:[-+*/%]|\?\?)?=(?![=>])",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex LangCall = new(
+    @"\bLang\s*\.\s*Get\w*\s*\(",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex NameofCall = new(
+    @"\bnameof\s*\(",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex AliasHead = new(
+    @"(?<![\w.])(?<alias>[A-Za-z_]\w*)\s*=>\s*$",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex AliasTail = new(
+    @"\G\s*;",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex Construction = new(
+    @"\bnew\s+(?:[\w.]+\.)?(?<type>\w+)\s*(?:<[^<>(){};]*>)?\s*\(",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex PacketOverride = new(
+    @"\boverride\b[\w\s]*\bvoid\s+OnReceivedClientPacket\s*\(",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex ParticleConstruction = new(
+    @"\bnew\s+(?:[\w.]+\.)?SimpleParticleProperties\s*[({]",
+    RegexOptions.Compiled
+  );
+
+  private const string ParticleHome =
+    "ExpandedLib.Industry/Helpers/ExParticles.cs";
+
+  // Where a base type outside the files given is looked up: the game's and exlib's assemblies.
+  private static readonly Lazy<Dictionary<string, Type?>> LoadedTypes = new(
+    () =>
+      new[]
+      {
+        typeof(BlockEntity).Assembly,
+        typeof(BlockEntityContainer).Assembly,
+        typeof(BEBehaviorAnimatable).Assembly,
+        typeof(ExBlockEntityContainer).Assembly,
+        typeof(ExParticles).Assembly,
+      }
+        .Distinct()
+        .SelectMany(LoadableTypes)
+        .Where(t =>
+          typeof(BlockEntity).IsAssignableFrom(t)
+          || typeof(GuiDialogBlockEntity).IsAssignableFrom(t)
+        )
+        .GroupBy(t => t.Name, StringComparer.Ordinal)
+        .ToDictionary(
+          g => g.Key,
+          g => g.Count() == 1 ? g.First() : null,
+          StringComparer.Ordinal
+        )
+  );
 
   /// <summary>Every block entity type in <paramref name="sourceFiles"/> that builds an animator
   /// (<c>InitializeAnimator</c>, a <c>ToggleAnimator</c> or <c>ConstructedAnimator</c>), registers
@@ -298,6 +395,306 @@ public static class SourceLaws {
     return findings;
   }
 
+  /// <summary>Every member of a type in <paramref name="sourceFiles"/> that holds a copy of a value
+  /// of a manageable config store: a field or property initialiser, or an assignment in a
+  /// constructor, in <c>Initialize</c> or <c>OnLoaded</c>, or in a method of the same type one of
+  /// those calls by name.</summary>
+  /// <remarks><c>/exmod config</c> edits a manageable store live and the generated accessor reads
+  /// the edited value, so a copy taken at load keeps the old one. A value is a public instance
+  /// property of a type carrying <see cref="ExConfigRegisterAttribute"/> with
+  /// <see cref="ExConfigRegisterAttribute.Manageable"/> set, read as <c>{Accessor}.{Value}</c>
+  /// through the generated accessor. A read inside a lambda, into a local, or behind <c>=&gt;</c>
+  /// is live.</remarks>
+  /// <param name="sourceFiles">C# files to read; each is read whole.</param>
+  /// <param name="configAssemblies">Assemblies whose manageable config types give the values;
+  /// a store without <c>Manageable</c> is skipped.</param>
+  /// <returns>One line per copy, <c>file:line: Type.member; reason</c>; <see cref="Key"/> keys it.
+  /// Empty when clean.</returns>
+  /// <exception cref="ArgumentException">The assemblies hold no manageable config type.</exception>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
+  public static IReadOnlyList<string> CachedTunables(
+    IEnumerable<string> sourceFiles,
+    IEnumerable<Assembly> configAssemblies
+  ) {
+    Regex read = TunableRead(configAssemblies);
+    var findings = new List<string>();
+    foreach ((string name, List<TypePart> parts) in Types(sourceFiles)) {
+      var bodies = parts.ToDictionary(p => p, Members);
+      foreach (TypePart part in parts)
+        foreach (Match hit in Hits(part, read)) {
+          string? member = InitialisedMember(part, bodies[part], hit.Index);
+          if (member != null)
+            findings.Add(
+              Finding(
+                part,
+                hit.Index,
+                $"{name}.{member}",
+                Copies(hit, "at construction")
+              )
+            );
+        }
+      List<(TypePart Part, MemberBlock Block, string Name)> methods =
+      [
+        .. parts.SelectMany(p =>
+          bodies[p]
+            .Blocks.Select(b => (p, b, MethodOf(b)))
+            .Where(m => m.Item3 != null)
+            .Select(m => (m.p, m.b, m.Item3!))
+        ),
+      ];
+      List<(TypePart Part, MemberBlock Block, string Name)> entries =
+      [
+        .. methods.Where(m => m.Name == name || LoadMethod.IsMatch(m.Name)),
+      ];
+      var scanned = new HashSet<MemberBlock>(entries.Select(e => e.Block));
+      foreach ((TypePart part, MemberBlock entry, string entryName) in entries) {
+        bool constructor = entryName == name;
+        findings.AddRange(
+          BodyCopies(
+            part,
+            entry,
+            name,
+            read,
+            constructor ? "at construction" : $"in {entryName}"
+          )
+        );
+        string caller = constructor ? "the constructor" : entryName;
+        List<(int Start, int End)> lambdas = Lambdas(part.Code, entry);
+        foreach (
+          Match call in BareCall
+            .Matches(part.Code[..entry.End], entry.Open)
+            .Where(c => !lambdas.Any(l => c.Index > l.Start && c.Index < l.End))
+        )
+          foreach (
+            (
+              TypePart helperPart,
+              MemberBlock helper,
+              string helperName
+            ) in methods.Where(m =>
+              m.Name == call.Groups["name"].Value && scanned.Add(m.Block)
+            )
+          )
+            findings.AddRange(
+              BodyCopies(
+                helperPart,
+                helper,
+                name,
+                read,
+                $"in {helperName}, called from {caller}"
+              )
+            );
+      }
+    }
+    return findings;
+  }
+
+  /// <summary>Every value of a manageable config store that <paramref name="sourceFiles"/> read,
+  /// every read of which sits inside the argument list of a <c>Lang.Get</c> call
+  /// (<c>Get</c>, <c>GetIfExists</c>, <c>GetMatching</c>, ...).</summary>
+  /// <remarks>A value only the text reads is a mechanic the simulation lacks. A property whose
+  /// whole expression body is the read stands for the value, and every use of its name counts as a
+  /// read. A read inside <c>nameof</c> does not count; a value no file reads is not
+  /// named.</remarks>
+  /// <param name="sourceFiles">C# files to read; each is read whole.</param>
+  /// <param name="configAssemblies">Assemblies whose manageable config types give the values;
+  /// a store without <c>Manageable</c> is skipped.</param>
+  /// <returns>One line per value at its first read in path order,
+  /// <c>file:line: Accessor.Value; reason</c>; <see cref="Key"/> keys it. Empty when
+  /// clean.</returns>
+  /// <exception cref="ArgumentException">The assemblies hold no manageable config type.</exception>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
+  public static IReadOnlyList<string> DisplayOnlyTunables(
+    IEnumerable<string> sourceFiles,
+    IEnumerable<Assembly> configAssemblies
+  ) {
+    Regex read = TunableRead(configAssemblies);
+    string[] files = [.. sourceFiles.OrderBy(f => f, StringComparer.Ordinal)];
+    var code = files.ToDictionary(
+      f => f,
+      f => HarnessUse.CodeOnly(File.ReadAllText(f))
+    );
+    var reads = new SortedDictionary<
+      string,
+      List<(string File, int At, bool Shown)>
+    >(StringComparer.Ordinal);
+    var aliases = new List<(string Value, string Alias, string File, int At)>();
+    foreach (string file in files) {
+      string text = code[file];
+      foreach (Match hit in read.Matches(text)) {
+        if (Within(text, NameofCall, hit.Index))
+          continue;
+        string value = $"{hit.Groups["acc"].Value}.{hit.Groups["value"].Value}";
+        int head = Math.Max(0, hit.Index - 160);
+        Match alias = AliasHead.Match(text[head..hit.Index]);
+        if (alias.Success && AliasTail.IsMatch(text, hit.Index + hit.Length))
+          aliases.Add(
+            (value, alias.Groups["alias"].Value, file, head + alias.Index)
+          );
+        else
+          Read(
+            reads,
+            value,
+            (file, hit.Index, Within(text, LangCall, hit.Index))
+          );
+      }
+    }
+    foreach ((string value, string alias, string declared, int at) in aliases)
+      foreach (string file in files) {
+        string text = code[file];
+        foreach (Match use in Regex.Matches(text, $@"(?<!\w){alias}\b"))
+          if (
+            (file != declared || use.Index != at)
+            && !Within(text, NameofCall, use.Index)
+          )
+            Read(
+              reads,
+              value,
+              (file, use.Index, Within(text, LangCall, use.Index))
+            );
+      }
+    var findings = new List<string>();
+    foreach (
+      (string value, List<(string File, int At, bool Shown)> all) in reads
+    ) {
+      if (!all.All(r => r.Shown))
+        continue;
+      (string file, int at, _) = all.OrderBy(
+          r => r.File,
+          StringComparer.Ordinal
+        )
+        .ThenBy(r => r.At)
+        .First();
+      findings.Add(
+        Finding(
+          file,
+          code[file],
+          at,
+          value,
+          "every read sits inside a Lang.Get argument list, so the value changes the text and "
+            + "nothing else"
+        )
+      );
+    }
+    return findings;
+  }
+
+  /// <summary>Every type in <paramref name="sourceFiles"/> over <c>BlockEntityContainer</c> that
+  /// constructs a <c>GuiDialogBlockEntity</c> subclass, when neither it nor a base type overrides
+  /// <c>OnReceivedClientPacket</c>; and every such type whose base cannot be read.</summary>
+  /// <remarks><c>BlockEntityContainer</c> handles no client packet, so the dialog's slot clicks
+  /// never reach the server inventory and the two sides diverge. Bases are followed through the
+  /// files given, then looked up by name in the game's and exlib's assemblies; a base found in
+  /// neither is named.</remarks>
+  /// <param name="sourceFiles">C# files to read; each is read whole.</param>
+  /// <returns>One line per type, <c>file:line: Type; reason</c>; <see cref="Key"/> keys it. Empty
+  /// when clean.</returns>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
+  public static IReadOnlyList<string> ContainerDialogPackets(
+    IEnumerable<string> sourceFiles
+  ) {
+    Dictionary<string, List<TypePart>> types = Types(sourceFiles);
+    var findings = new List<string>();
+    foreach ((string name, List<TypePart> parts) in types) {
+      (TypePart Part, Match Hit)? opened = parts
+        .SelectMany(p => Hits(p, Construction).Select(m => (p, m)))
+        .Where(h =>
+          Derives(
+            h.m.Groups["type"].Value,
+            typeof(GuiDialogBlockEntity),
+            types,
+            []
+          )
+        )
+        .Select(h => ((TypePart, Match)?)h)
+        .FirstOrDefault();
+      if (opened is not { } o)
+        continue;
+      string dialog = o.Hit.Groups["type"].Value;
+      bool handled = false;
+      string? current = name;
+      var seen = new HashSet<string>(StringComparer.Ordinal);
+      while (
+        current != null
+        && types.TryGetValue(current, out List<TypePart>? line)
+        && seen.Add(current)
+      ) {
+        handled |= line.Any(p => Hits(p, PacketOverride).Any());
+        current = BaseOf(line, types);
+      }
+      if (current == null || types.ContainsKey(current))
+        continue;
+      Type? outside = Loaded(current);
+      if (outside == null)
+        findings.Add(
+          Finding(
+            o.Part,
+            o.Hit.Index,
+            name,
+            $"opens {dialog}, but its base {current} is in neither the files nor the game or "
+              + "exlib, so its packet handling cannot be read"
+          )
+        );
+      else if (
+        typeof(BlockEntityContainer).IsAssignableFrom(outside)
+        && !handled
+        && outside
+          .GetMethod(
+            nameof(BlockEntity.OnReceivedClientPacket),
+            [typeof(IPlayer), typeof(int), typeof(byte[])]
+          )
+          ?.DeclaringType == typeof(BlockEntity)
+      )
+        findings.Add(
+          Finding(
+            o.Part,
+            o.Hit.Index,
+            name,
+            $"opens {dialog} with no OnReceivedClientPacket override, so its slot clicks never "
+              + "reach the server"
+          )
+        );
+    }
+    return findings;
+  }
+
+  /// <summary>Every <c>new SimpleParticleProperties</c> in <paramref name="sourceFiles"/> outside
+  /// <c>ExpandedLib.Industry/Helpers/ExParticles.cs</c>.</summary>
+  /// <remarks><c>ExParticles</c> is the family's shared catalogue of particle effects.</remarks>
+  /// <param name="sourceFiles">C# files to read; each is read whole.</param>
+  /// <returns>One line per construction, <c>file:line: Type; reason</c>, the type being the one
+  /// that encloses it, or the file's name outside every type; <see cref="Key"/> keys it. Empty
+  /// when clean.</returns>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
+  public static IReadOnlyList<string> InlineParticles(
+    IEnumerable<string> sourceFiles
+  ) {
+    var findings = new List<string>();
+    foreach (string file in sourceFiles.OrderBy(f => f, StringComparer.Ordinal)) {
+      if (
+        file.Replace('\\', '/')
+          .EndsWith("/" + ParticleHome, StringComparison.Ordinal)
+      )
+        continue;
+      string code = HarnessUse.CodeOnly(File.ReadAllText(file));
+      foreach (Match hit in ParticleConstruction.Matches(code))
+        findings.Add(
+          Finding(
+            file,
+            code,
+            hit.Index,
+            EnclosingType(code, hit.Index)
+              ?? Path.GetFileNameWithoutExtension(file),
+            "builds SimpleParticleProperties inline; take the effect from ExParticles"
+          )
+        );
+    }
+    return findings;
+  }
+
   /// <summary>The key of one finding: its file and subject, <c>{file}: {subject}</c>, without the
   /// line or the reason.</summary>
   [CheckHelper("keys a finding by file and subject for a guard's lists")]
@@ -312,8 +709,9 @@ public static class SourceLaws {
     public string? Base { get; init; }
   }
 
-  // Every class or record declared in the files, by name, with the span of each body; parts are
-  // in path order, so a type's first hit is the same on every machine.
+  // Every class or record declared in the files, by name, with the span of each body, a
+  // declaration ending in ';' spanning only that ';'; parts are in path order, so a type's first
+  // hit is the same on every machine.
   private static Dictionary<string, List<TypePart>> Types(
     IEnumerable<string> sourceFiles
   ) {
@@ -322,7 +720,7 @@ public static class SourceLaws {
       string code = HarnessUse.CodeOnly(File.ReadAllText(file));
       foreach (Match type in TypeDeclaration.Matches(code)) {
         int open = code.IndexOfAny(['{', ';'], type.Index + type.Length);
-        if (open < 0 || code[open] == ';')
+        if (open < 0)
           continue;
         string? baseName = type.Groups["base"].Success
           ? type.Groups["base"].Value.Split('.')[^1]
@@ -331,7 +729,7 @@ public static class SourceLaws {
           file,
           code,
           open,
-          HarnessUse.Close(code, open + 1, '}')
+          code[open] == ';' ? open + 1 : HarnessUse.Close(code, open + 1, '}')
         ) {
           Base = baseName,
         };
@@ -388,6 +786,341 @@ public static class SourceLaws {
   // The index past the bracket or parenthesis an element read opened just before position from.
   private static int ReadEnd(string code, int from) =>
     HarnessUse.Close(code, from, code[from - 1] == '[' ? ']' : ')');
+
+  // A block directly in a type's body, a member's or an initialiser's: the text before its '{'
+  // back to the previous statement's start, the '{', and the index past its '}'.
+  private sealed class MemberBlock(string header, int open, int end) {
+    public string Header { get; } = header;
+    public int Open { get; } = open;
+    public int End { get; } = end;
+  }
+
+  // The blocks directly in a type part's body, and where each statement between them starts.
+  private sealed record TypeBody(List<MemberBlock> Blocks, List<int> Starts);
+
+  // The blocks and statement starts of part's body, in order. A property's accessor block does
+  // not end its member, so an initialiser after it carries the property's name in its statement.
+  private static TypeBody Members(TypePart part) {
+    var body = new TypeBody([], [part.Start + 1]);
+    string code = part.Code;
+    int depth = 0;
+    for (int i = part.Start + 1; i < part.End - 1; i++) {
+      char c = code[i];
+      if (c is '(' or '[')
+        depth++;
+      else if (c is ')' or ']')
+        depth--;
+      else if (depth == 0 && c == ';')
+        body.Starts.Add(i + 1);
+      else if (depth == 0 && c == '{') {
+        int end = HarnessUse.Close(code, i + 1, '}');
+        string header = code[body.Starts[^1]..i];
+        body.Blocks.Add(new MemberBlock(header, i, end));
+        (int assign, bool arrow) = TopLevelEquals(header);
+        if (
+          assign >= 0
+          || arrow
+          || OpenParen(header) >= 0
+          || TypeKeyword.IsMatch(header)
+        )
+          body.Starts.Add(end);
+        i = end - 1;
+      }
+    }
+    return body;
+  }
+
+  // The member a read at position at initialises: the name before the first top-level '=' of the
+  // statement or block header holding it, when no top-level '=>' makes it live. Null for a read
+  // in a method, an accessor, a lambda or a nested type.
+  private static string? InitialisedMember(TypePart part, TypeBody body, int at) {
+    MemberBlock? inside = body.Blocks.FirstOrDefault(b =>
+      b.Open < at && at < b.End
+    );
+    string text =
+      inside?.Header ?? part.Code[body.Starts.Last(s => s <= at)..at];
+    (int eq, bool live) = TopLevelEquals(text);
+    if (eq < 0 || live)
+      return null;
+    Match name = Regex.Match(Flatten(text[..eq]), @"(?<name>\w+)\s*$");
+    return name.Success ? name.Groups["name"].Value : null;
+  }
+
+  // The first top-level assignment '=' in text, outside every bracket, and whether a top-level
+  // '=>' appears anywhere; -1 when there is no assignment.
+  private static (int Assign, bool Arrow) TopLevelEquals(string text) {
+    int assign = -1;
+    bool arrow = false;
+    int depth = 0;
+    for (int i = 0; i < text.Length; i++) {
+      char c = text[i];
+      if (c is '(' or '[' or '{')
+        depth++;
+      else if (c is ')' or ']' or '}')
+        depth--;
+      else if (depth == 0 && c == '=') {
+        char before = i > 0 ? text[i - 1] : ' ';
+        char after = i + 1 < text.Length ? text[i + 1] : ' ';
+        if (after == '>')
+          arrow = true;
+        else if (
+          after != '='
+          && before is not ('=' or '!' or '<' or '>')
+          && assign < 0
+        )
+          assign = i;
+        if (after is '>' or '=')
+          i++;
+      }
+    }
+    return (assign, arrow);
+  }
+
+  // Text with every bracketed span removed.
+  private static string Flatten(string text) {
+    var kept = new System.Text.StringBuilder();
+    int depth = 0;
+    foreach (char c in text) {
+      if (c is '(' or '[' or '{')
+        depth++;
+      else if (c is ')' or ']' or '}')
+        depth--;
+      else if (depth == 0)
+        kept.Append(c);
+    }
+    return kept.ToString();
+  }
+
+  // The name of the method or constructor a block is the body of; null for any other block.
+  private static string? MethodOf(MemberBlock block) {
+    (int assign, bool arrow) = TopLevelEquals(block.Header);
+    int open = OpenParen(block.Header);
+    if (assign >= 0 || arrow || open < 0 || TypeKeyword.IsMatch(block.Header))
+      return null;
+    Match name = MethodName.Match(block.Header[..(open + 1)]);
+    return name.Success ? name.Groups["name"].Value : null;
+  }
+
+  // The index of the first '(' outside brackets in header; -1 when none.
+  private static int OpenParen(string header) {
+    int depth = 0;
+    for (int i = 0; i < header.Length; i++) {
+      char c = header[i];
+      if (depth == 0 && c == '(')
+        return i;
+      if (c is '[' or '{')
+        depth++;
+      else if (c is ']' or '}')
+        depth--;
+    }
+    return -1;
+  }
+
+  // The copies into members a method body takes: an assignment whose right side holds a read,
+  // outside every lambda, to a name the method does not declare as a local or parameter.
+  private static IEnumerable<string> BodyCopies(
+    TypePart part,
+    MemberBlock method,
+    string type,
+    Regex read,
+    string where
+  ) {
+    string code = part.Code;
+    List<(int Start, int End)> lambdas = Lambdas(code, method);
+    string scope = method.Header + code[method.Open..method.End];
+    foreach (Match hit in read.Matches(code[..method.End], method.Open)) {
+      if (lambdas.Any(l => hit.Index > l.Start && hit.Index < l.End))
+        continue;
+      int statement = code.LastIndexOfAny([';', '{', '}'], hit.Index - 1) + 1;
+      Match? target = Assignment
+        .Matches(code[statement..hit.Index])
+        .LastOrDefault();
+      if (target == null)
+        continue;
+      string member = target.Groups["target"].Value;
+      string root = Regex.Escape(member.Split('.')[0]);
+      if (
+        Regex.IsMatch(
+          scope,
+          @"\b(?:var|bool|byte|char|decimal|double|float|int|long|short|string|uint|ulong"
+            + @"|ushort|object|[A-Z]\w*(?:<[^;(){}=]*>)?)\??(?:\[\])?\s+"
+            + root
+            + @"\s*(?:[=;,)]|\bin\b)"
+        )
+      )
+        continue;
+      yield return Finding(
+        part,
+        hit.Index,
+        $"{type}.{member}",
+        Copies(hit, where)
+      );
+    }
+  }
+
+  // Where each lambda in a method body starts, at its '=>', and ends.
+  private static List<(int Start, int End)> Lambdas(
+    string code,
+    MemberBlock method
+  ) =>
+    [
+      .. Regex
+        .Matches(code[..method.End], "=>")
+        .Where(m => m.Index > method.Open)
+        .Select(m => (m.Index, LambdaEnd(code, m.Index + 2))),
+    ];
+
+  // The index past the body of the lambda whose '=>' ends just before position from: its block,
+  // or its expression up to the first ',', ';' or unmatched closer.
+  private static int LambdaEnd(string code, int from) {
+    int i = from;
+    while (i < code.Length && char.IsWhiteSpace(code[i]))
+      i++;
+    if (i < code.Length && code[i] == '{')
+      return HarnessUse.Close(code, i + 1, '}');
+    int depth = 0;
+    for (; i < code.Length; i++) {
+      char c = code[i];
+      if (c is '(' or '[' or '{')
+        depth++;
+      else if (c is ')' or ']' or '}') {
+        if (depth == 0)
+          return i;
+        depth--;
+      } else if (depth == 0 && c is ',' or ';')
+        return i;
+    }
+    return code.Length;
+  }
+
+  private static string Copies(Match read, string where) =>
+    $"copies {read.Groups["acc"].Value}.{read.Groups["value"].Value} {where}; an /exmod config "
+    + "edit never reaches it";
+
+  // A read of any value of the manageable config types in assemblies, as Accessor.Value, with
+  // the groups acc and value.
+  private static Regex TunableRead(IEnumerable<Assembly> assemblies) {
+    List<string> stores =
+    [
+      .. assemblies
+        .Distinct()
+        .SelectMany(LoadableTypes)
+        .Select(t =>
+          (Type: t, Register: t.GetCustomAttribute<ExConfigRegisterAttribute>())
+        )
+        .Where(c => c.Register is { Manageable: true })
+        .OrderBy(c => c.Type.FullName, StringComparer.Ordinal)
+        .Select(c =>
+          $@"(?<acc>{Regex.Escape(AccessorOf(c.Type, c.Register!))})\s*\.\s*(?<value>"
+          + string.Join(
+            "|",
+            c.Type.GetProperties(
+                BindingFlags.Public
+                  | BindingFlags.Instance
+                  | BindingFlags.DeclaredOnly
+              )
+              .Where(p =>
+                p.GetMethod is { IsPublic: true }
+                && p.GetIndexParameters().Length == 0
+                && p.Name != nameof(IExVersionedConfig.ConfigVersion)
+              )
+              .Select(p => p.Name)
+          )
+          + ")"
+        ),
+    ];
+    if (stores.Count == 0)
+      throw new ArgumentException(
+        "the assemblies hold no config type registered with Manageable = true",
+        nameof(assemblies)
+      );
+    return new Regex($@"\b(?:{string.Join("|", stores)})\b(?!\s*\()");
+  }
+
+  // The accessor ExConfigGenerator emits for a config type.
+  private static string AccessorOf(
+    Type config,
+    ExConfigRegisterAttribute register
+  ) =>
+    !string.IsNullOrWhiteSpace(register.AccessorName) ? register.AccessorName
+    : config.Name.EndsWith("Config", StringComparison.Ordinal)
+      ? config.Name[..^"Config".Length] + "Values"
+    : config.Name + "Values";
+
+  private static IEnumerable<Type> LoadableTypes(Assembly assembly) {
+    try {
+      return assembly.GetTypes();
+    } catch (ReflectionTypeLoadException e) {
+      return e.Types.OfType<Type>();
+    }
+  }
+
+  private static void Read(
+    SortedDictionary<string, List<(string File, int At, bool Shown)>> reads,
+    string value,
+    (string File, int At, bool Shown) read
+  ) {
+    if (!reads.TryGetValue(value, out List<(string, int, bool)>? all))
+      reads[value] = all = [];
+    all.Add(read);
+  }
+
+  // Whether position at lies inside the argument list of a call rule matches.
+  private static bool Within(string code, Regex rule, int at) =>
+    rule.Matches(code[..at])
+      .Any(m => HarnessUse.Close(code, m.Index + m.Length, ')') > at);
+
+  // Whether a type named name derives from target: through the bases the files list, then by
+  // the game's and exlib's types.
+  private static bool Derives(
+    string name,
+    Type target,
+    Dictionary<string, List<TypePart>> types,
+    HashSet<string> seen
+  ) =>
+    types.TryGetValue(name, out List<TypePart>? parts)
+      ? seen.Add(name)
+        && parts
+          .Select(p => p.Base)
+          .OfType<string>()
+          .Any(b => Derives(b, target, types, seen))
+      : Loaded(name) is { } type && target.IsAssignableFrom(type);
+
+  // The class a type's parts derive from: a listed base in the files or among the game's and
+  // exlib's classes, else the first listed; null when none is listed.
+  private static string? BaseOf(
+    List<TypePart> parts,
+    Dictionary<string, List<TypePart>> types
+  ) {
+    string[] listed =
+    [
+      .. parts.Select(p => p.Base).OfType<string>().Distinct(),
+    ];
+    return listed.FirstOrDefault(b =>
+        types.ContainsKey(b) || Loaded(b) is { IsClass: true }
+      ) ?? listed.FirstOrDefault();
+  }
+
+  // A block entity or block entity dialog type of the game or exlib by simple name; null when
+  // none or more than one has it.
+  private static Type? Loaded(string name) =>
+    LoadedTypes.Value.TryGetValue(name, out Type? type) ? type : null;
+
+  // The innermost class or record whose body holds position at; null outside every one.
+  private static string? EnclosingType(string code, int at) =>
+    TypeDeclaration
+      .Matches(code)
+      .Select(m =>
+        (Match: m, Open: code.IndexOfAny(['{', ';'], m.Index + m.Length))
+      )
+      .Where(t =>
+        t.Open >= 0
+        && code[t.Open] == '{'
+        && t.Open < at
+        && at < HarnessUse.Close(code, t.Open + 1, '}')
+      )
+      .Select(t => t.Match.Groups["name"].Value)
+      .LastOrDefault();
 
   private static string Squeeze(string text) =>
     Regex.Replace(
