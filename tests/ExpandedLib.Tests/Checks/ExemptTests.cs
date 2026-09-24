@@ -32,9 +32,8 @@ public sealed class ExemptTests : IDisposable {
     string check
   ) => results.Single(r => r.Check == check);
 
-  // Fails when an exemption stops taking the finding naming its code, takes one where the code
-  // runs on into another word, takes one where another word runs into it, or applies in another
-  // domain's run.
+  // Fails when an exemption stops taking its finding, takes one where the code runs on into or
+  // follows another word, or applies in another domain's run.
   [Fact]
   public void An_exemption_takes_only_the_finding_naming_its_code_as_a_word() {
     ExlibChecks.Exempt("stub", Rule, "stub:untabbed1", "planted reason");

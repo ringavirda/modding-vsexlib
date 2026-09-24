@@ -5,14 +5,13 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Checks;
 
-/// <summary>
-/// Runs every content check ExpandedLib ships against one <see cref="ICheckSource"/>.
-/// <see cref="ExpandedLibModSystem.AssetsFinalize"/> calls <see cref="All(ICoreAPI)"/>;
+/// <summary>Runs every content check ExpandedLib ships against one <see cref="ICheckSource"/>, and
+/// the loaded checks against an <see cref="ILoadedGame"/>. A mod exempts a finding it ships
+/// knowingly with <see cref="Exempt"/> and declares what its machines make with
+/// <see cref="Produces"/>.</summary>
+/// <remarks><see cref="ExpandedLibModSystem.AssetsFinalize"/> calls <see cref="All(ICoreAPI)"/>;
 /// <c>/exmod verify</c> calls <see cref="Verify"/>, which adds the loaded checks. A mod's own
-/// <see cref="ExCheckRegisterAttribute"/>-decorated checks run after the content checks. A finding
-/// a mod exempts with <see cref="Exempt"/> moves from a result's errors to its exempted lines, and
-/// what a mod declares with <see cref="Produces"/> counts as made in every obtainability run.
-/// </summary>
+/// <see cref="ExCheckRegisterAttribute"/>-decorated checks run after the content checks.</remarks>
 public static class ExlibChecks {
   // One entry per check; order is the order results and log lines are emitted in.
   private static readonly System.Func<

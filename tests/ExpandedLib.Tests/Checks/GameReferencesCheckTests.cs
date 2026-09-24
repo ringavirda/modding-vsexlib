@@ -55,9 +55,8 @@ public class GameReferencesCheckTests {
           )
       );
 
-  // Fails when Run stops reporting an unloaded game code, stops resolving a wildcard or an exact
-  // code, stops telling blocks from items, reads a bare stage code outside game, or checks the
-  // domain's own codes.
+  // Fails when Run stops reporting an unloaded game code, resolving a wildcard or telling blocks
+  // from items, reads a bare stage code outside game, or checks the domain's own codes.
   [Fact]
   [PlantedDefect(typeof(GameReferencesCheck), nameof(GameReferencesCheck.Run))]
   public void A_game_code_nothing_loaded_names_is_reported() {

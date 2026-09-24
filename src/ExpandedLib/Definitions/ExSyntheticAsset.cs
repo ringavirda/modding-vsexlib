@@ -21,12 +21,10 @@ internal static class ExSyntheticAsset {
   }
 }
 
-/// <summary>
-/// The <see cref="IAssetOrigin"/> stamped on injected assets.
-/// Injection goes through <c>AssetManager.Add</c>, not origin enumeration. It keeps each asset's
-/// bytes, so an asset the server unloads once the world is up (<c>UnloadUnpatchedAssets</c>) loads
-/// again when a later reader asks for it.
-/// </summary>
+/// <summary>The <see cref="IAssetOrigin"/> stamped on injected assets.</summary>
+/// <remarks>Injection goes through <c>AssetManager.Add</c>, not origin enumeration. It keeps each
+/// asset's bytes, so an asset the server unloads once the world is up
+/// (<c>UnloadUnpatchedAssets</c>) loads again when a later reader asks for it.</remarks>
 internal sealed class ExDefinitionOrigin : IAssetOrigin {
   private readonly Dictionary<AssetLocation, byte[]> _data = [];
 

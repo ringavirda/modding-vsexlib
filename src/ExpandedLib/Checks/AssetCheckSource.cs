@@ -13,12 +13,9 @@ using Vintagestory.API.Datastructures;
 
 namespace ExpandedLib.Checks;
 
-/// <summary>
-/// The in-game <see cref="ICheckSource"/> and <see cref="ILoadedGame"/>: codes and recipes from
-/// <see cref="ICoreAPI.Assets"/>, block definitions from the process-wide
-/// <see cref="ExDefinitions"/> registry, collectibles and recipe outputs from the world. A domain
-/// is exlib and every enabled mod that depends on it.
-/// </summary>
+/// <summary>The in-game <see cref="ICheckSource"/> and <see cref="ILoadedGame"/>: codes and recipes
+/// from <see cref="ICoreAPI.Assets"/>, definitions from <see cref="ExDefinitions"/>, collectibles
+/// and recipe outputs from the world. A domain is exlib and every mod that depends on it.</summary>
 public sealed class AssetCheckSource(ICoreAPI api) : ILoadedGame {
   /// <inheritdoc/>
   public IEnumerable<string> Domains =>

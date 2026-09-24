@@ -7,14 +7,12 @@ using static ExpandedLib.Checks.GameReferencesCheck;
 
 namespace ExpandedLib.Checks;
 
-/// <summary>
-/// Checks that a survival player can make what a domain asks of him, one step deep: every recipe
-/// ingredient, every construction stage ingredient and every block a creative tab lists is the
-/// output of a loaded recipe or of exlib's process catalogues, a smelted, crushed or ground stack,
-/// a beehive kiln's firing, the drop of a block of another type, a world source vanilla places, or
-/// a code a mod declares its machines make (<see cref="ExlibChecks.Produces"/>).
-/// </summary>
-/// <remarks>A wildcard is made when one code it matches is. A block a creative tab lists is made
+/// <summary>Checks that a survival player can make what a domain asks of him, one step deep: every
+/// recipe ingredient, construction stage ingredient and block a creative tab lists.</summary>
+/// <remarks>Made means the output of a loaded recipe or of exlib's process catalogues, a smelted,
+/// crushed or ground stack, a beehive kiln's firing, the drop of a block of another type, a world
+/// source vanilla places, or a code a mod declares its machines make
+/// (<see cref="ExlibChecks.Produces"/>). A wildcard is made when one code it matches is. A block a creative tab lists is made
 /// when any block of its type is, so one crafted orientation or shape covers the rest. A creative
 /// tab is no source: it lists what a creative player can take. A block's drop of its own type is no
 /// source either, since breaking it needs it first. Nothing is followed further back than the one

@@ -9,13 +9,11 @@ using Vintagestory.Common;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>
-/// Resolves block class keys and block-entity behaviour keys by reflection, for a check source with
-/// no game class registry. Scans the given assemblies, the <c>[assembly: ExDomain]</c> assemblies
-/// they reference, and ExpandedLib itself; a key none of them registers falls back to the keys the
-/// install's vanilla mod systems register, as <see cref="TestWorld.LoadAssets"/> starts them.
-/// </summary>
-/// <remarks>A type is keyed by <see cref="EntityRegistry.KeyFor"/> under each domain its own
+/// <summary>Resolves block class keys and block-entity behaviour keys by reflection, for a check
+/// source with no game class registry.</summary>
+/// <remarks>Scans the given assemblies, the <c>[assembly: ExDomain]</c> assemblies they reference,
+/// and ExpandedLib itself; a key none of them registers falls back to the keys the install's
+/// vanilla mod systems register, as <see cref="TestWorld.LoadAssets"/> starts them. A type is keyed by <see cref="EntityRegistry.KeyFor"/> under each domain its own
 /// assembly is given under, so an assembly that declares no <c>ExDomain</c> and was never
 /// registered logs that method's warning once per type and domain.</remarks>
 internal sealed class ClassKeys {
