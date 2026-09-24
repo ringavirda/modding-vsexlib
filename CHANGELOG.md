@@ -55,6 +55,11 @@ see the git history.
 - **`FindingLists`** (ExpandedLib.Testing): `Assert` holds a guard's findings against its allowed
   list, permanent exceptions with their reasons, and its known list, defects awaiting a fix. A
   finding on neither list fails, and so does a known entry the rule does not report.
+- **`ReleasedHistory.Register(mod, version, added)`** (ExpandedLib.Testing) records one release and
+  the blocktypes it shipped for the first time, an empty list when it added none; `Releases` lists
+  the rows and `ReleasedVersions.Compare` orders versions. exlib's seed carries 0.8.0, 0.8.1 and
+  0.8.2, which shipped no code beyond `exlib:structurefiller`, and a guard fails when the newest
+  release tag has no row.
 
 ### Changed
 

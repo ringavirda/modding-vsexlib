@@ -20,7 +20,7 @@ public static class ReleasedHistorySeed {
     ),
   ];
 
-  public static void Register() =>
+  public static void Register() {
     ReleasedHistory.Register(
       "exlib",
       Shipped,
@@ -28,4 +28,10 @@ public static class ReleasedHistorySeed {
       new Dictionary<string, string> { ["exlib"] = "0.7.2" },
       []
     );
+    // Each tag's src/ExpandedLib/Generated/ExlibBlocks.g.cs lists exlib:structurefiller alone, and
+    // no tag ships blocktype JSON under assets/exlib.
+    ReleasedHistory.Register("exlib", "0.8.0", []);
+    ReleasedHistory.Register("exlib", "0.8.1", []);
+    ReleasedHistory.Register("exlib", "0.8.2", []);
+  }
 }

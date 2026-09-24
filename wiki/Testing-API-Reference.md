@@ -614,6 +614,9 @@ public static class ReleasedHistory
         IReadOnlyList<ReleasedCodes.ShippedEntityClass> entityClasses,
         IReadOnlyDictionary<string, string> versions,
         IReadOnlyList<string> debt);
+    public static void Register(
+        string mod, string version, IReadOnlyList<ReleasedCodes.Shipped> added);
+    public static IReadOnlyList<Release> Releases(string mod);
     public static ReleasedModHistory? For(string mod);
     public static IEnumerable<ReleasedCodes.Shipped> AllShipped { get; }
     public static IEnumerable<ReleasedCodes.ShippedEntityClass> AllEntityClasses { get; }
@@ -622,8 +625,12 @@ public static class ReleasedHistory
 }
 ```
 
-One mod, one `Register` call, from that mod's own test `ModuleInit`. `ReleasedCodes`,
-`ReleasedVersions` and `ReleasedCodeDebt` are unchanged forwarders onto this registry.
+One mod, one full `Register` call, from that mod's own test `ModuleInit`, then one row per later
+release: `Register(mod, version, added)` records a release published under the modid `mod` with the
+blocktypes it shipped for the first time, an empty list when it added none. `For`, `AllShipped` and
+`AllVersions` fold the rows in, and `Releases` lists them oldest first as `ReleasedHistory.Release`
+records. `ReleasedCodes`, `ReleasedVersions` and `ReleasedCodeDebt` are forwarders onto this
+registry.
 
 ## `SceneGrid`
 
@@ -754,7 +761,11 @@ default, it fails and names `exmod codes <mod>` when the table has drifted; with
 
 ```csharp
 public static class ReleasedCodes { /* forwards onto ReleasedHistory.AllShipped/.AllEntityClasses */ }
-public static class ReleasedVersions { public static IReadOnlyDictionary<string, string> HighestPublished { get; } }
+public static class ReleasedVersions
+{
+    public static IReadOnlyDictionary<string, string> HighestPublished { get; }
+    public static int Compare(string a, string b);
+}
 public static class ReleasedCodeDebt { public static IEnumerable<string> KnownUnmigrated { get; } }
 
 public sealed record ReleasedModHistory(
@@ -766,8 +777,9 @@ public sealed record ReleasedModHistory(
 
 Unchanged call sites onto `ReleasedHistory`, which now holds the data: `ReleasedCodes` is every
 block code that has ever shipped (the migration contract - a released code must resolve forever, or
-carry a documented `IBlockCodeMigration`); `ReleasedVersions.HighestPublished` is the highest version
-published per modid; `ReleasedCodeDebt.KnownUnmigrated` is the recorded, dated exception list so the
+carry a documented `IBlockCodeMigration`); `ReleasedVersions.HighestPublished` is the newest version
+registered per modid, release rows included, and `ReleasedVersions.Compare` orders two versions
+numerically, a `-suffix` pre-release before its release; `ReleasedCodeDebt.KnownUnmigrated` is the recorded, dated exception list so the
 coverage guard still fails on anything new.
 
 ## Project configuration recap
