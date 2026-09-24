@@ -1,0 +1,69 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using BurdenMaker.Blocks;
+using ExpandedLib.Definitions;
+using ExpandedLib.Industry;
+using ExpandedLib.Structures;
+using ExpandedLib.Testing;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace BurdenMaker.Tests;
+
+/// <summary>The burdenmaker blocks under <see cref="BlockLaws"/>: a
+/// <see cref="BlockFilledMegastructure"/> with <c>ExOrientable</c>, a <c>side</c> group and
+/// construction stages, so the placement, break and megablock laws judge exlib's own megastructure
+/// class. Each law's counts and findings are printed; none is allowed.</summary>
+[GuardOf(typeof(BlockLaws), nameof(BlockLaws.Run))]
+public class BlockLawGuards(ITestOutputHelper output) {
+  private static readonly Lazy<BlockLaws.Result> Laws = new(() => {
+    var defs = DefinitionGoldens.Collect(
+      "burdenmaker",
+      typeof(BlockBurdenmaker).Assembly
+    );
+    Premise.Covers(defs.Select(DefinitionGoldens.RelativePath), "burdenmaker");
+    return BlockLaws.Run(
+      "burdenmaker",
+      defs.OfType<ExBlockDef>(),
+      [
+        typeof(BlockStructureFiller).Assembly,
+        typeof(IndustryModule).Assembly,
+        typeof(BlockBurdenmaker).Assembly,
+      ]
+    );
+  });
+
+  private void Judge(string law) {
+    BlockLaws.Law result = Laws.Value[law];
+    output.WriteLine(result.ToString());
+    foreach (string finding in result.Findings)
+      output.WriteLine("  " + finding);
+    Assert.True(
+      result.Blocks > 0,
+      $"the {law} law judged no burdenmaker block"
+    );
+    FindingLists.Assert(
+      result.Findings,
+      new Dictionary<string, string>(),
+      new Dictionary<string, string>(),
+      BlockLaws.CodeOf
+    );
+  }
+
+  // Fails when ExOrientable reports a placement without placing the block.
+  [Fact]
+  public void Every_placement_lands_a_declared_side() => Judge("placement");
+
+#if GAME_GE_1_22
+  // Fails when the burdenmaker drops its own code beside its stage refund.
+  [Fact]
+  public void The_burdenmaker_breaks_whole_and_refunds_its_stages() =>
+    Judge("break");
+#endif
+
+  // Fails when BlockFilledMegastructure.OnBlockRemoved skips RemoveFillers.
+  [Fact]
+  public void The_burdenmaker_holds_its_fillers_exactly_while_it_stands() =>
+    Judge("megablock");
+}
