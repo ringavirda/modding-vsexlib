@@ -158,9 +158,8 @@ public sealed class ObtainabilityCheckTests : IDisposable {
       )
     );
 
-  // Fails when a wildcard's allowedVariants stop narrowing what makes it, its skipVariants stop
-  // narrowing either a narrowed or a plain wildcard, or an allowed state that is made stops
-  // counting.
+  // Fails when allowedVariants stop narrowing a wildcard, skipVariants stop narrowing a narrowed or
+  // a plain one, or a made allowed state stops counting.
   [Fact]
   [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
   public void A_wildcard_is_made_only_through_the_states_its_stack_takes() {

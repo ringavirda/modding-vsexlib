@@ -47,10 +47,9 @@ public class ExpandedLibModSystem : ModSystem {
 
   /// <summary>Loads the shared catalogues (liquids, material roles, process routes, process jobs, bay
   /// occupancy) from every domain's <c>config/</c> once the asset-patch pipeline has merged all mods'
-  /// JSON, then runs the content checks on the server. A singleplayer client loads none of the
-  /// catalogues: it reads the ones its own server has just loaded in the same process
-  /// (<see cref="ExWorldState.ResetsOnLoad"/>). No client runs the checks: it receives no recipes,
-  /// a server asset category.</summary>
+  /// JSON, then, on a server, runs the content checks; a client receives no recipes. A singleplayer
+  /// client loads no catalogue: it reads its own server's (<see cref="ExWorldState.ResetsOnLoad"/>).
+  /// </summary>
   public override void AssetsFinalize(ICoreAPI api) {
     if (ExWorldState.ResetsOnLoad(api))
       LoadCatalogues(api);

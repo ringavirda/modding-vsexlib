@@ -263,9 +263,8 @@ public class StageWildcardsTests {
       )
     );
 
-  // Fails when stage 0's refund key, a second ingredient of the first storing stage, a later
-  // {key}, or a later ingredient storing the state its own {key} was filled with is reported as a
-  // second store.
+  // Fails when stage 0's key, a second ingredient of the first storing stage, a later {key}, or a
+  // later ingredient storing the state its own {key} was filled with counts as a second store.
   [Fact]
   [PlantedDefect(typeof(StageWildcardsCheck), nameof(StageWildcardsCheck.Run))]
   public void A_stage_0_key_one_stages_stores_and_a_later_placeholder_are_no_second_store() =>

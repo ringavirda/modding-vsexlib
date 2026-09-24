@@ -145,17 +145,14 @@ public static class ExlibChecks {
   /// <param name="domain">The domain whose run the finding is reported in.</param>
   /// <param name="rule">The check's name as its result carries it, e.g.
   /// <c>"GridRecipeCollision"</c>.</param>
-  /// <param name="codes">What the finding names: codes, recipes' <c>file#position</c>, or words of
-  /// the defect (<c>"key G"</c>). Each is matched as a whole word, so <c>a.json#1</c> does not take
-  /// <c>a.json#10</c> and <c>slag</c> does not take <c>mod:slag</c>. A finding with
-  /// <see cref="CheckResult.Subjects"/> is taken only when every subject is one of
-  /// <paramref name="codes"/>.</param>
+  /// <param name="codes">What the finding names: codes, recipes' <c>file#position</c> or words of
+  /// the defect (<c>"key G"</c>), each a whole word, so <c>a.json#1</c> does not take
+  /// <c>a.json#10</c>; a finding's <see cref="CheckResult.Subjects"/> must all be among them.</param>
   /// <param name="reason">Why the finding stands, logged beside it.</param>
   /// <exception cref="ArgumentException">An argument or one of <paramref name="codes"/> is null or
   /// empty, or <paramref name="codes"/> holds none.</exception>
-  /// <remarks>An exemption that matches no finding of a run of its rule is reported in that run,
-  /// and <see cref="Verify"/> reports one whose rule never ran. Of two exemptions matching one
-  /// finding the first given takes it, and the second, when it takes nothing else, is reported as
+  /// <remarks>An exemption matching no finding of a run of its rule is reported in that run, one
+  /// whose rule never ran by <see cref="Verify"/>, and one taking only what an earlier one took as
   /// its duplicate. The same exemption given twice is kept once.</remarks>
   public static void Exempt(
     string domain,

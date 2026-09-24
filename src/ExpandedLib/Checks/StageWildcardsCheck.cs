@@ -18,13 +18,11 @@ namespace ExpandedLib.Checks;
 /// (b) the <c>*</c> spans only the key's variant group; (c) the key is a group of every match;
 /// (d) the key is <c>wood</c> or <c>metal</c>, the keys a creative Ctrl build stores; (e) a
 /// <c>{key}</c> names a block variant group or a key an earlier paid stage stores; (f) a stage 0
-/// key is stored by stage 1; (g) a key is stored by one paid stage, since the refund fills every
-/// ingredient storing it with the last payment's state, and a later stage takes the stored state
-/// as <c>{key}</c>. An ingredient whose code holds its own <c>{key}</c> stores the state it was
-/// filled with and is no second store. Ingredients of one stage storing one key are not reported:
-/// the stage is one payment, and a later <c>{key}</c> in it would read the state stored before
-/// it. (b) and (c) decide block codes in covered domains only;
-/// a covered item code is undecidable, and other domains are left to the loaded game.
+/// key is stored by stage 1; (g) a key is stored by one paid stage, as the refund fills every
+/// storing ingredient with the last state stored, and later stages take it as <c>{key}</c>; one
+/// holding its own <c>{key}</c> stores what it was filled with. (b) and (c) decide block codes in
+/// covered domains only; a covered item code is undecidable, and other domains are left to the
+/// loaded game.
 /// </remarks>
 public static class StageWildcardsCheck {
   /// <summary>The <c>storeWildCard</c> keys vanilla's creative Ctrl build stores.</summary>
