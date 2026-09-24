@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
@@ -138,6 +139,25 @@ public class PipeVentSourceTests {
     Assert.Equal(StartVolume - 2 * NodeRate, second.State!.Volume, 3);
   }
 
+  // Fails when a strategy that classified no vent this tick is not called.
+  [Fact]
+  public void A_strategy_whose_vent_left_is_called_with_no_vents() {
+    var w = NewWorld(factoryRate: null);
+    CountingVentNode node = TestBlocks.Configure(
+      new CountingVentNode(),
+      "test:countingventnode-1",
+      1
+    );
+    PlaceVented(w, FactoryRunPos, node);
+    Fill(w, FactoryRunPos, StartVolume);
+
+    w.Tick();
+    w.Place(FactoryRunPos.UpCopy(), w.Air);
+    w.Tick();
+
+    Assert.Equal([1, 0], node.Strategy.VentCounts);
+  }
+
   #endregion
 
   #region Stand-in blocks
@@ -181,6 +201,41 @@ public class PipeVentSourceTests {
     public IPipeVentStrategy? CreateVentStrategy() {
       Created++;
       return Rate is float rate ? new ChimneyVent(() => rate) : null;
+    }
+  }
+
+  /// <summary>A <see cref="VentNode"/> whose block supplies <see cref="Strategy"/>.</summary>
+  private sealed class CountingVentNode : VentNode, IPipeVentSource {
+    public CountingVent Strategy { get; } = new();
+
+    public IPipeVentStrategy? CreateVentStrategy() => Strategy;
+  }
+
+  /// <summary>Classifies a face under a chimney as a vent, vents nothing, and records the number of
+  /// vents each call receives.</summary>
+  private sealed class CountingVent : IPipeVentStrategy {
+    public List<int> VentCounts { get; } = [];
+
+    public bool TryClassifyVent(
+      IBlockAccessor blockAccessor,
+      BlockNetworkNode node,
+      BlockPos pos,
+      BlockFacing face,
+      Block neighbour,
+      out BlockPos ventPos
+    ) {
+      ventPos = pos.AddCopy(face);
+      return neighbour.Code?.Path == "chimney";
+    }
+
+    public float Vent(
+      IReadOnlyList<BlockPos> vents,
+      PipeNetworkState state,
+      bool liquid,
+      BlockNetworkModSystem manager
+    ) {
+      VentCounts.Add(vents.Count);
+      return 0f;
     }
   }
 
