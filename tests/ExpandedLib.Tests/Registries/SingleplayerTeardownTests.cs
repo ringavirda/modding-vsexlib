@@ -59,9 +59,8 @@ public class SingleplayerTeardownTests : IDisposable {
       Assert.True(NoSnowCells.IsMarked(pos));
 
       server.Dispose();
-      Assert.DoesNotContain(
-        Harmony.GetPatchInfo(target)?.Postfixes ?? [],
-        p => p.owner == "exlib"
+      Assert.False(
+        Harmony.GetPatchInfo(target)?.Owners.Contains("exlib") ?? false
       );
     } finally {
       NoSnowCells.Unmark(owner);
