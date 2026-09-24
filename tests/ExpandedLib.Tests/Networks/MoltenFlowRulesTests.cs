@@ -76,6 +76,16 @@ public class MoltenFlowRulesTests {
       AcceptsSubMinimumFlow = drain,
     };
 
+  /// <summary>A cell that is no flow source, holding <paramref name="amount"/> units of iron in
+  /// 1000.</summary>
+  private static Cell Holding(int amount, MoltenFlowRules? rules) =>
+    new() {
+      MaxUnitCapacity = 1000,
+      CellAmount = amount,
+      CellMetalType = Iron,
+      FlowRules = rules,
+    };
+
   /// <summary>A flow source at the origin and one empty cell east of it, both in one run.</summary>
   private static (Cell Start, Cell Next) Pair(
     TestWorld w,
@@ -144,6 +154,21 @@ public class MoltenFlowRulesTests {
         Conveys = nextConveys,
       }
     );
+
+    w.Tick();
+
+    Assert.Equal(30, start.CellAmount);
+    Assert.Equal(30, next.CellAmount);
+  }
+
+  // Fails when a conveying edge moves the whole difference whatever the distances: the cell hands
+  // its 60 back to the source.
+  [Fact]
+  public void A_cell_levelling_back_toward_the_source_moves_half() {
+    var w = NewWorld();
+    var origin = new BlockPos(0, 0, 0);
+    Cell start = Put(w, origin, Straight, Source(0, 1000, Canal));
+    Cell next = Put(w, origin.EastCopy(), Straight, Holding(60, Canal));
 
     w.Tick();
 
@@ -250,6 +275,21 @@ public class MoltenFlowRulesTests {
 
     Assert.Equal(9, start.CellAmount);
     Assert.Equal(0, next.CellAmount);
+  }
+
+  // Fails when the floor binds the halved step: a step of 5 under a gap of 10 holds.
+  [Fact]
+  public void With_gap_10_a_levelling_gap_of_10_moves_5() {
+    var w = NewWorld();
+    var floored = Canal with { MinFlowGap = 10 };
+    var origin = new BlockPos(0, 0, 0);
+    Cell start = Put(w, origin, Straight, Source(0, 1000, floored));
+    Cell next = Put(w, origin.EastCopy(), Straight, Holding(10, floored));
+
+    w.Tick();
+
+    Assert.Equal(5, start.CellAmount);
+    Assert.Equal(5, next.CellAmount);
   }
 
   #endregion
