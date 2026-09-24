@@ -5,13 +5,15 @@ using System.Reflection;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
+using Vintagestory.Common;
 
 namespace ExpandedLib.Testing;
 
 /// <summary>
 /// Resolves block class keys and block-entity behaviour keys by reflection, for a check source with
 /// no game class registry. Scans the given assemblies, the <c>[assembly: ExDomain]</c> assemblies
-/// they reference, and ExpandedLib itself.
+/// they reference, and ExpandedLib itself; a key none of them registers falls back to the keys the
+/// install's vanilla mod systems register, as <see cref="TestWorld.LoadAssets"/> starts them.
 /// </summary>
 /// <remarks>A type is keyed by <see cref="EntityRegistry.KeyFor"/> under each domain its own
 /// assembly is given under, so an assembly that declares no <c>ExDomain</c> and was never
@@ -29,16 +31,28 @@ internal sealed class ClassKeys {
   }
 
   /// <summary>The block type registered under <paramref name="classKey"/> by
-  /// <see cref="EntityRegistry.KeyFor"/> in any of the domains, or null.</summary>
+  /// <see cref="EntityRegistry.KeyFor"/> in any of the domains, else by a vanilla mod system, or
+  /// null.</summary>
   internal Type? Block(string classKey) =>
-    _blocks.Value.GetValueOrDefault(classKey);
+    _blocks.Value.GetValueOrDefault(classKey)
+    ?? Vanilla.Value?.BlockClassToTypeMapping.GetValueOrDefault(classKey);
 
   /// <summary>The behaviour type registered under <paramref name="key"/> by
   /// <see cref="EntityRegistry.KeyFor"/>, or the type with no register attribute whose class
-  /// name is the key; null when none.</summary>
+  /// name is the key, else by a vanilla mod system; null when none.</summary>
   internal Type? BlockEntityBehavior(string key) =>
     _behaviors.Value.GetValueOrDefault(key)
-    ?? _bareBehaviors.Value.GetValueOrDefault(key);
+    ?? _bareBehaviors.Value.GetValueOrDefault(key)
+    ?? Vanilla.Value?.blockentitybehaviorToTypeMapping.GetValueOrDefault(key);
+
+  // Built once per process; null when no game install resolves.
+  private static readonly Lazy<ClassRegistry?> Vanilla = new(() => {
+    if (VsAssemblyResolver.InstallPath is not { } install)
+      return null;
+    var registry = new ClassRegistry();
+    TestWorld.StartVanillaMods(install, registry);
+    return registry;
+  });
 
   private static Dictionary<string, Type> Index(
     (string Domain, Assembly Assembly)[] sources,

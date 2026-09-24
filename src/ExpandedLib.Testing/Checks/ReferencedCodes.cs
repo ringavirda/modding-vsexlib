@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using ExpandedLib.Blocks;
+using ExpandedLib.Checks;
 using ExpandedLib.Definitions;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -59,50 +59,10 @@ public static class ReferencedCodes {
   /// <summary>Every code <paramref name="domain"/>'s recipe files reference - outputs and ingredients of
   /// all three recipe shapes.</summary>
   [CheckHelper("collects the codes a domain's recipes reference")]
-  public static IEnumerable<Reference> InRecipes(string domain, Assembly asm) {
-    foreach (
-      ExRecipeDef def in DefinitionGoldens
-        .Collect(domain, asm)
-        .OfType<ExRecipeDef>()
-    ) {
-      string source = def.Location.ToShortString();
-      JToken json = def.ToJson();
-      foreach (JToken recipe in json is JArray arr ? arr : [json]) {
-        Dictionary<string, string[]> holes = RecipeHoles(recipe);
-
-        foreach (
-          Reference r in Read(
-            recipe["output"],
-            source,
-            Origin.RecipeOutput,
-            holes
-          )
-        )
-          yield return r;
-
-        // Grid recipes key ingredients by pattern letter, barrel recipes list them, smithing has one.
-        IEnumerable<JToken> ingredients = recipe["ingredients"] switch {
-          JObject slots => slots.Properties().Select(p => p.Value),
-          JArray list => list,
-          _ => [],
-        };
-        IEnumerable<JToken> allIngredients = recipe["ingredient"]
-          is JToken single
-          ? ingredients.Append(single)
-          : ingredients;
-        foreach (JToken ingredient in allIngredients)
-          foreach (
-            Reference r in Read(
-              ingredient,
-              source,
-              Origin.RecipeIngredient,
-              holes
-            )
-          )
-            yield return r;
-      }
-    }
-  }
+  public static IEnumerable<Reference> InRecipes(string domain, Assembly asm) =>
+    GameReferencesCheck
+      .InRecipes(new AssemblyCheckSource((domain, asm)), domain)
+      .Select(Of);
 
   /// <summary>Every code <paramref name="domain"/>'s blocktypes and itemtypes name in their own
   /// bodies: construction requires, drops, smelted, ground and shattered stacks, mold outputs.</summary>
@@ -110,172 +70,13 @@ public static class ReferencedCodes {
   public static IEnumerable<Reference> InDefinitions(
     string domain,
     Assembly asm
-  ) {
-    foreach (IExDef def in DefinitionGoldens.Collect(domain, asm)) {
-      if (def is not (ExBlockDef or ExItemDef))
-        continue;
+  ) =>
+    GameReferencesCheck
+      .InDefinitions(new AssemblyCheckSource((domain, asm)), domain)
+      .Select(Of);
 
-      JToken json = def.ToJson();
-      string source = def.Location.ToShortString();
-      Dictionary<string, string[]> holes = VariantStates(json);
-      foreach ((string name, string[] states) in ConstructionWildCards(json))
-        holes[name] = states;
-
-      foreach (Reference r in Stacks(json, source, holes, false))
-        yield return r;
-    }
-  }
-
-  // Depth-first; `inRequire` tracks whether the subtree sits under a requireStacks array.
-  private static IEnumerable<Reference> Stacks(
-    JToken node,
-    string source,
-    Dictionary<string, string[]> holes,
-    bool inRequire
-  ) {
-    if (node is JObject obj) {
-      foreach (
-        Reference r in Read(
-          obj,
-          source,
-          inRequire ? Origin.ConstructionRequire : Origin.DefinitionStack,
-          holes
-        )
-      )
-        yield return r;
-
-      foreach (JProperty property in obj.Properties())
-        foreach (
-          Reference r in Stacks(
-            property.Value,
-            source,
-            holes,
-            inRequire || property.Name == "requireStacks"
-          )
-        )
-          yield return r;
-    } else if (node is JArray array) {
-      foreach (JToken child in array)
-        foreach (Reference r in Stacks(child, source, holes, inRequire))
-          yield return r;
-    }
-  }
-
-  // One stack object into references, one per state its placeholders can take.
-  private static IEnumerable<Reference> Read(
-    JToken? stack,
-    string source,
-    Origin origin,
-    Dictionary<string, string[]> holes
-  ) {
-    if (stack is not JObject obj || (string?)obj["code"] is not { } code)
-      return [];
-
-    bool isBlock = (string?)obj["type"] == "block";
-    if (!isBlock && (string?)obj["type"] != "item")
-      return [];
-
-    return Fill(code, holes)
-      .Select(c => new Reference(source, origin, c, isBlock));
-  }
-
-  #endregion
-
-  #region Placeholders
-
-  /// <summary>The <c>{name}</c> holes a recipe's codes can carry, mapped to the states they may take,
-  /// as bound by an ingredient's <c>allowedVariants</c>.</summary>
-  private static Dictionary<string, string[]> RecipeHoles(JToken recipe) {
-    var holes = new Dictionary<string, string[]>(StringComparer.Ordinal);
-    IEnumerable<JToken> ingredients = recipe["ingredients"] switch {
-      JObject slots => slots.Properties().Select(p => p.Value),
-      JArray list => list,
-      _ => [],
-    };
-
-    foreach (JToken? ingredient in ingredients.Append(recipe["ingredient"]))
-      Bind(holes, ingredient, "name");
-    return holes;
-  }
-
-  /// <summary>The states a definition's own variant groups can take. A group sourced from a world
-  /// property binds to <c>*</c>, matching <see cref="DefinitionCodes.Expand"/>.</summary>
-  private static Dictionary<string, string[]> VariantStates(JToken definition) {
-    var holes = new Dictionary<string, string[]>(StringComparer.Ordinal);
-    if (definition["variantgroups"] is not JArray groups)
-      return holes;
-
-    foreach (JToken group in groups) {
-      string? name =
-        (string?)group["code"]
-        ?? ((string?)group["loadFromProperties"])?.Split('/').Last();
-      if (string.IsNullOrEmpty(name))
-        continue;
-      holes[name] = group["states"] is JArray states
-        ? [.. states.Select(s => (string)s!)]
-        : ["*"];
-    }
-    return holes;
-  }
-
-  /// <summary>The wildcards a definition's construction stages store for later stages to fill via
-  /// <c>storeWildCard</c>.</summary>
-  private static Dictionary<string, string[]> ConstructionWildCards(
-    JToken definition
-  ) {
-    var holes = new Dictionary<string, string[]>(StringComparer.Ordinal);
-    if (
-      definition["entityBehaviors"] is not JArray behaviors
-      || behaviors.FirstOrDefault(b =>
-        (string?)b["name"] == nameof(ExRightClickConstructable)
-      )
-        is not { } rcc
-      || rcc["properties"]?["stages"] is not JArray stages
-    )
-      return holes;
-
-    foreach (JToken stage in stages)
-      if (stage["requireStacks"] is JArray required)
-        foreach (JToken ingredient in required)
-          Bind(holes, ingredient, "storeWildCard");
-    return holes;
-  }
-
-  // Records the states one ingredient binds under the name it declares at nameKey; repeats union.
-  private static void Bind(
-    Dictionary<string, string[]> holes,
-    JToken? ingredient,
-    string nameKey
-  ) {
-    if (
-      ingredient?[nameKey] is not { } name
-      || ingredient["allowedVariants"] is not JArray states
-    )
-      return;
-
-    string key = (string)name!;
-    string[] declared = [.. states.Select(s => (string)s!)];
-    holes[key] = holes.TryGetValue(key, out string[]? seen)
-      ? [.. seen.Union(declared)]
-      : declared;
-  }
-
-  // Every concrete code the holes expand this one to. A hole with no binding stays written.
-  private static IEnumerable<string> Fill(
-    string code,
-    Dictionary<string, string[]> holes
-  ) {
-    IEnumerable<string> codes = [code];
-    foreach ((string name, string[] states) in holes) {
-      string hole = "{" + name + "}";
-      codes = codes.SelectMany(c =>
-        c.Contains(hole, StringComparison.Ordinal)
-          ? states.Select(s => c.Replace(hole, s, StringComparison.Ordinal))
-          : [c]
-      );
-    }
-    return codes;
-  }
+  private static Reference Of(GameReferencesCheck.Reference r) =>
+    new(r.Source, (Origin)(int)r.Origin, r.Code, r.IsBlock);
 
   #endregion
 

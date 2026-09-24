@@ -157,11 +157,31 @@ public static class StageWildcardsCheck {
       yield break;
     }
 
+    foreach (
+      string line in Decide(pattern, ing, key, Catalogue(source, pattern.Domain, catalogue))
+    )
+      yield return line;
+  }
+
+  /// <summary>Rules (b) and (c) for one wildcard ingredient against the concrete collectibles its
+  /// pattern is decided among.</summary>
+  /// <param name="pattern">The ingredient's code.</param>
+  /// <param name="ing">The ingredient, for its <c>allowedVariants</c> and
+  /// <c>skipVariants</c>.</param>
+  /// <param name="key">The <c>storeWildCard</c> key it stores.</param>
+  /// <param name="catalogue">The concrete collectibles of the pattern's domain and item
+  /// class.</param>
+  internal static IEnumerable<string> Decide(
+    AssetLocation pattern,
+    JToken ing,
+    string key,
+    IEnumerable<Collectible> catalogue
+  ) {
     string[]? allowed = Strings(ing["allowedVariants"]);
     string[] skipped = Strings(ing["skipVariants"]) ?? [];
     List<Collectible> matches =
     [
-      .. Catalogue(source, pattern.Domain, catalogue)
+      .. catalogue
         .Where(k => WildcardUtil.Match(pattern, new AssetLocation(k.Code)))
         .Where(k =>
           Captured(pattern.Path, new AssetLocation(k.Code).Path) is not { } v
@@ -213,7 +233,7 @@ public static class StageWildcardsCheck {
 
   /// <summary>One concrete block: its code, its type's code, its variants, and the groups whose
   /// states come from world properties and are not enumerated.</summary>
-  private sealed record Collectible(
+  internal sealed record Collectible(
     string Code,
     string Type,
     (string Group, string State)[] Variants,
@@ -283,7 +303,9 @@ public static class StageWildcardsCheck {
     }
   }
 
-  private static IEnumerable<JToken> Ingredients(JArray stages, int i) =>
+  /// <summary>The <c>requireStacks</c> of stage <paramref name="i"/>; empty past the last
+  /// stage.</summary>
+  internal static IEnumerable<JToken> Ingredients(JArray stages, int i) =>
     i < stages.Count && stages[i]["requireStacks"] is JArray stacks
       ? stacks
       : [];

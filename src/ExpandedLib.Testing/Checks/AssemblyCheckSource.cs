@@ -97,6 +97,18 @@ internal sealed class AssemblyCheckSource : ICheckSource {
   public IEnumerable<ExBlockDef> BlockDefinitions(string domain) =>
     DefinitionGoldens.Collect(domain, _assemblies[domain]).OfType<ExBlockDef>();
 
+  public IEnumerable<(AssetLocation File, JObject Json)> ItemTypes(
+    string domain
+  ) {
+    foreach (
+      ExItemDef def in DefinitionGoldens
+        .Collect(domain, _assemblies[domain])
+        .OfType<ExItemDef>()
+    )
+      if (def.ToJson() is JObject json)
+        yield return (def.Location, json);
+  }
+
   public Type? BlockClass(string classKey) => _classKeys.Block(classKey);
 
   public Type? BlockEntityBehaviorClass(string key) =>

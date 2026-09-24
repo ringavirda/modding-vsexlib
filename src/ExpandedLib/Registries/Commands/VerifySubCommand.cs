@@ -8,8 +8,8 @@ using Vintagestory.API.Config;
 namespace ExpandedLib.Registries;
 
 /// <summary>
-/// Adds <c>/exmod verify [&lt;mod&gt;]</c>: runs every content check in <see cref="ExlibChecks"/>
-/// against the live game state and reports it on demand.
+/// Adds <c>/exmod verify [&lt;mod&gt;]</c>: runs every content check and every loaded check in
+/// <see cref="ExlibChecks"/> against the live game state and reports it on demand.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
 [EditorBrowsable(EditorBrowsableState.Never)]
@@ -29,9 +29,6 @@ public sealed class VerifySubCommand : IExSubCommand {
   internal static TextCommandResult Dispatch(ICoreAPI api, string? domain) {
     domain = domain?.ToLowerInvariant();
 
-    var source = new AssetCheckSource(api);
-    IReadOnlyList<CheckResult> results;
-
     if (domain != null) {
       List<string> loaded =
       [
@@ -45,10 +42,11 @@ public sealed class VerifySubCommand : IExSubCommand {
             string.Join(", ", loaded)
           )
         );
-      results = ExlibChecks.For(source, domain);
-    } else {
-      results = ExlibChecks.All(source);
     }
+    IReadOnlyList<CheckResult> results = ExlibChecks.Verify(
+      new AssetCheckSource(api),
+      domain
+    );
 
     // Logged in full regardless of what the chat window can show.
     ExlibChecks.Log(api.Logger, results);

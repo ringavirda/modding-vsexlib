@@ -336,7 +336,7 @@ public sealed partial class TestWorld {
   /// API is passed over; what it registered before throwing stays.</summary>
   /// <returns>The full names of the systems passed over; empty when the install has no
   /// <c>Mods/</c> folder.</returns>
-  private static List<string> StartVanillaMods(
+  internal static List<string> StartVanillaMods(
     string gamePath,
     ClassRegistry registry
   ) {

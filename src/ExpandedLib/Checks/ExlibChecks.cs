@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -6,16 +7,14 @@ namespace ExpandedLib.Checks;
 
 /// <summary>
 /// Runs every content check ExpandedLib ships against one <see cref="ICheckSource"/>.
-/// <see cref="ExpandedLibModSystem.AssetsFinalize"/> and <c>/exmod verify</c> call
-/// <see cref="All(ICoreAPI)"/>; a mod's own <see cref="ExCheckRegisterAttribute"/>-decorated checks run after.
+/// <see cref="ExpandedLibModSystem.AssetsFinalize"/> calls <see cref="All(ICoreAPI)"/>;
+/// <c>/exmod verify</c> calls <see cref="Verify"/>, which adds the loaded checks. A mod's own
+/// <see cref="ExCheckRegisterAttribute"/>-decorated checks run after the content checks. A finding
+/// a mod exempts with <see cref="Exempt"/> moves from a result's errors to its exempted lines.
 /// </summary>
 public static class ExlibChecks {
   // One entry per check; order is the order results and log lines are emitted in.
-  private static readonly System.Func<
-    ICheckSource,
-    string,
-    CheckResult
-  >[] _checks =
+  private static readonly System.Func<ICheckSource, string, CheckResult>[] _checks =
   [
     DefinitionCatalogueCheck.Run,
     LateDefinitionCheck.Run,
@@ -31,16 +30,111 @@ public static class ExlibChecks {
     GridOutputVariantCheck.Run,
   ];
 
+  // The checks that read the loaded game; never run at load, only by Verify.
+  private static readonly System.Func<ILoadedGame, string, CheckResult>[] _loaded =
+  [
+    ObtainabilityCheck.Run,
+    VanillaGridCollisionCheck.Run,
+    GameReferencesCheck.Run,
+    LoadedStageWildcardsCheck.Run,
+    CollectibleCollectionsCheck.Run,
+  ];
+
+  private static readonly List<Exemption> _exemptions = [];
+
+  private sealed record Exemption(
+    string Domain,
+    string Rule,
+    string Code,
+    string Reason
+  );
+
   /// <summary>Runs every check against every domain <paramref name="source"/> covers.</summary>
   public static IReadOnlyList<CheckResult> All(ICheckSource source) =>
     [.. source.Domains.SelectMany(domain => For(source, domain))];
 
   /// <summary>Runs every check against <paramref name="domain"/>, regardless of whether <paramref
   /// name="source"/> covers it.</summary>
+  /// <returns>One result per check, then one named <c>Exempt</c> listing each exemption of
+  /// <paramref name="domain"/> whose rule ran and matched no finding, when there is one.</returns>
   public static IReadOnlyList<CheckResult> For(
     ICheckSource source,
     string domain
-  ) =>
+  ) => Apply(domain, Content(source, domain), everyRule: false);
+
+  /// <summary>Runs every loaded check against every domain <paramref name="game"/> covers.</summary>
+  public static IReadOnlyList<CheckResult> Loaded(ILoadedGame game) =>
+    [.. game.Domains.SelectMany(domain => LoadedFor(game, domain))];
+
+  /// <summary>Runs every loaded check against <paramref name="domain"/>: obtainability, vanilla
+  /// grid collisions, <c>game:</c> references, construction wildcards over vanilla codes and the
+  /// collections vanilla dereferences.</summary>
+  /// <returns>One result per loaded check, then one named <c>Exempt</c> listing each exemption of
+  /// <paramref name="domain"/> whose rule ran and matched no finding, when there is one.</returns>
+  public static IReadOnlyList<CheckResult> LoadedFor(
+    ILoadedGame game,
+    string domain
+  ) => Apply(domain, LoadedOnly(game, domain), everyRule: false);
+
+  /// <summary>Runs the content checks and the loaded checks against <paramref name="domain"/>,
+  /// or against every domain <paramref name="game"/> covers when it is null.</summary>
+  /// <returns>One result per check and domain, then per domain one named <c>Exempt</c> listing
+  /// each of its exemptions that matched no finding, the rule it names unknown or not.</returns>
+  public static IReadOnlyList<CheckResult> Verify(ILoadedGame game, string? domain) =>
+    [
+      .. (domain == null ? game.Domains : [domain]).SelectMany(d =>
+        Apply(
+          d,
+          [.. Content(game, d), .. LoadedOnly(game, d)],
+          everyRule: true
+        )
+      ),
+    ];
+
+  /// <summary>Runs every check against the live game state, over a fresh <see cref="AssetCheckSource"/>.</summary>
+  public static IReadOnlyList<CheckResult> All(ICoreAPI api) =>
+    All(new AssetCheckSource(api));
+
+  /// <summary>Takes every finding of <paramref name="rule"/> in <paramref name="domain"/> that
+  /// names <paramref name="code"/> out of the errors, for a defect a mod ships knowingly. Call it
+  /// from a mod's <c>Start</c>; a world starting to load drops every exemption.</summary>
+  /// <param name="domain">The domain whose run the finding is reported in.</param>
+  /// <param name="rule">The check's name as its result carries it, e.g.
+  /// <c>"GridRecipeCollision"</c>.</param>
+  /// <param name="code">What the finding names: a code, or a recipe's
+  /// <c>file#position</c>; matched as a whole word, so <c>a.json#1</c> does not take
+  /// <c>a.json#10</c>.</param>
+  /// <param name="reason">Why the finding stands, logged beside it.</param>
+  /// <exception cref="ArgumentException">An argument is null or empty.</exception>
+  /// <remarks>An exemption that matches no finding of a run of its rule is reported in that run,
+  /// and <see cref="Verify"/> reports one whose rule never ran. The same exemption given twice is
+  /// kept once.</remarks>
+  public static void Exempt(
+    string domain,
+    string rule,
+    string code,
+    string reason
+  ) {
+    foreach (
+      (string value, string name) in new[]
+      {
+        (domain, nameof(domain)),
+        (rule, nameof(rule)),
+        (code, nameof(code)),
+        (reason, nameof(reason)),
+      }
+    )
+      if (string.IsNullOrEmpty(value))
+        throw new ArgumentException("an exemption names all four", name);
+    var exemption = new Exemption(domain, rule, code, reason);
+    if (!_exemptions.Contains(exemption))
+      _exemptions.Add(exemption);
+  }
+
+  /// <summary>Drops every exemption; run when a world starts loading.</summary>
+  internal static void ClearExemptions() => _exemptions.Clear();
+
+  private static List<CheckResult> Content(ICheckSource source, string domain) =>
     [
       .. _checks.Select(run => run(source, domain)),
       .. ExCheckRegistry.Registered.Select(check =>
@@ -48,18 +142,82 @@ public static class ExlibChecks {
       ),
     ];
 
+  private static List<CheckResult> LoadedOnly(ILoadedGame game, string domain) =>
+    [.. _loaded.Select(run => run(game, domain))];
+
+  // Moves each exempted finding out of its result's errors, then reports every exemption of the
+  // domain that took none: of a rule that ran, or of any rule when everyRule.
+  private static List<CheckResult> Apply(
+    string domain,
+    List<CheckResult> results,
+    bool everyRule
+  ) {
+    Exemption[] own = [.. _exemptions.Where(e => e.Domain == domain)];
+    var used = new HashSet<Exemption>();
+    var applied = new List<CheckResult>();
+    foreach (CheckResult result in results) {
+      Exemption[] rule = [.. own.Where(e => e.Rule == result.Check)];
+      var errors = new List<string>();
+      var exempted = new List<string>(result.Exempted);
+      foreach (string error in result.Errors) {
+        Exemption? taken = rule.FirstOrDefault(e => Names(error, e.Code));
+        if (taken == null) {
+          errors.Add(error);
+          continue;
+        }
+        used.Add(taken);
+        exempted.Add($"{error} (exempt: {taken.Reason})");
+      }
+      applied.Add(result with { Errors = errors, Exempted = exempted });
+    }
+    HashSet<string> ran = [.. results.Select(r => r.Check)];
+    string[] unused =
+    [
+      .. own.Where(e => !used.Contains(e) && (everyRule || ran.Contains(e.Rule)))
+        .Select(e =>
+          $"{e.Rule} exemption of {e.Code} matches no finding ({e.Reason})"
+        ),
+    ];
+    if (unused.Length > 0)
+      applied.Add(new CheckResult("Exempt", domain, unused));
+    return applied;
+  }
+
+  // Whether text holds code as a whole word: bounded by the text's ends, white space or
+  // punctuation, where a '.' ends a word only before white space or the end.
+  private static bool Names(string text, string code) {
+    for (
+      int at = text.IndexOf(code, StringComparison.Ordinal);
+      at >= 0;
+      at = text.IndexOf(code, at + 1, StringComparison.Ordinal)
+    ) {
+      int end = at + code.Length;
+      bool before = at == 0 || Bounds(text[at - 1]);
+      bool after =
+        end == text.Length
+        || Bounds(text[end])
+        || (
+          text[end] == '.'
+          && (end + 1 == text.Length || char.IsWhiteSpace(text[end + 1]))
+        );
+      if (before && after)
+        return true;
+    }
+    return false;
+  }
+
+  private static bool Bounds(char c) =>
+    char.IsWhiteSpace(c) || c is ',' or ';' or ':' or '(' or ')' or '[' or ']' or '\'' or '"';
+
   // Catches a thrown exception and reports it as one error naming the check.
   private static CheckResult RunIsolated(
-    (
-      System.Type Type,
-      System.Func<ICheckSource, string, CheckResult> Run
-    ) check,
+    (Type Type, System.Func<ICheckSource, string, CheckResult> Run) check,
     ICheckSource source,
     string domain
   ) {
     try {
       return check.Run(source, domain);
-    } catch (System.Exception e) {
+    } catch (Exception e) {
       return new CheckResult(
         check.Type.Name,
         domain,
@@ -68,12 +226,9 @@ public static class ExlibChecks {
     }
   }
 
-  /// <summary>Runs every check against the live game state, over a fresh <see cref="AssetCheckSource"/>.</summary>
-  public static IReadOnlyList<CheckResult> All(ICoreAPI api) =>
-    All(new AssetCheckSource(api));
-
   /// <summary>Logs <paramref name="results"/>: one Notification per check naming its domain and error
-  /// count, then each error on its own Error line.</summary>
+  /// count, then each error on its own Error line and each exempted finding on its own
+  /// Notification line.</summary>
   public static void Log(ILogger logger, IReadOnlyList<CheckResult> results) {
     foreach (CheckResult result in results) {
       logger.Notification(
@@ -84,6 +239,8 @@ public static class ExlibChecks {
       );
       foreach (string error in result.Errors)
         logger.Error("[exlib]   {0}", error);
+      foreach (string exempted in result.Exempted)
+        logger.Notification("[exlib]   {0}", exempted);
     }
   }
 }
