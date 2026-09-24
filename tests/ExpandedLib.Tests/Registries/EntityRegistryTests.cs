@@ -1,5 +1,5 @@
 using ExpandedLib.Registries;
-using NSubstitute;
+using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Xunit;
 
@@ -21,8 +21,9 @@ public class EntityRegistryTests {
 
   [Fact]
   public void A_domain_fallback_logs_a_warning_naming_the_assembly() {
-    var logger = Substitute.For<ILogger>();
+    var logger = new RecordingLogger();
     EntityRegistry.Logger = logger;
+    logger.Expect(EnumLogType.Warning, "declares no [assembly: ExDomain]");
 
     // This assembly declares no [assembly: ExDomain].
     string domain = EntityRegistry.DomainOf(
@@ -31,7 +32,10 @@ public class EntityRegistryTests {
     );
 
     Assert.Equal("iiex", domain);
-    logger.Received(1).Warning(Arg.Any<string>(), Arg.Any<object[]>());
+    Assert.Contains(
+      typeof(PlainClass).Assembly.GetName().Name!,
+      Assert.Single(logger.Warnings)
+    );
   }
 
   [Fact]

@@ -19,15 +19,9 @@ namespace ExpandedLib.Tests;
 /// <c>attributes.multiblockLayout</c> ASCII grid resolved by <see cref="JsonMultiblockLayout"/>.
 /// </summary>
 public class JsonMultiblockTests {
-  private static TestWorld NewWorld() {
-    var world = new TestWorld();
-    world.Api.Logger.Returns(Substitute.For<ILogger>());
-    return world;
-  }
-
   [Fact]
   public void A_json_only_layout_gets_fillers_and_completion_with_no_C_sharp() {
-    TestWorld world = NewWorld();
+    TestWorld world = new();
 
     // A 2x1x1 layout: the placed block at (0,0,0) plus one brick cell at (1,0,0).
     var anchor = TestBlocks.Configure(
@@ -83,9 +77,8 @@ public class JsonMultiblockTests {
 
   [Fact]
   public void A_malformed_layout_logs_one_error_and_never_completes() {
-    TestWorld world = NewWorld();
-    var logger = Substitute.For<ILogger>();
-    world.Api.Logger.Returns(logger);
+    TestWorld world = new();
+    world.Log.Expect(EnumLogType.Error, "malformed multiblockLayout");
 
     var anchor = TestBlocks.Configure(
       new BlockFilledMegastructure(),
@@ -100,7 +93,7 @@ public class JsonMultiblockTests {
     );
 
     anchor.OnLoaded(world.Api);
-    logger.Received(1).Error(Arg.Any<string>(), Arg.Any<object[]>());
+    Assert.Single(world.Log.Errors);
     Assert.False(anchor.Attributes["multiblockStructure"].Exists);
 
     var be = new BlockEntityMultiblock();
@@ -113,12 +106,12 @@ public class JsonMultiblockTests {
 
     // Loading it again (a second block entity of the same singleton) does not re-log the failure.
     anchor.OnLoaded(world.Api);
-    logger.Received(1).Error(Arg.Any<string>(), Arg.Any<object[]>());
+    Assert.Single(world.Log.Errors);
   }
 
   [Fact]
   public void FillerOffsets_derived_from_the_layout_matches_the_C_sharp_derivation() {
-    TestWorld world = NewWorld();
+    TestWorld world = new();
 
     var block = TestBlocks.Configure(
       new BlockFilledMegastructure(),
@@ -167,7 +160,7 @@ public class JsonMultiblockTests {
 
   [Fact]
   public void A_declared_empty_fillerOffsets_is_not_replaced_by_the_derived_footprint() {
-    TestWorld world = NewWorld();
+    TestWorld world = new();
 
     var block = BlockWithLayout(
       world,
@@ -215,7 +208,7 @@ public class JsonMultiblockTests {
 
     // Not inlined: a local variable holding the block is itself a GC root.
     static WeakReference Resolve() {
-      TestWorld world = NewWorld();
+      TestWorld world = new();
       var block = TestBlocks.Configure(
         new BlockFilledMegastructure(),
         "exlib:collectmega-n",

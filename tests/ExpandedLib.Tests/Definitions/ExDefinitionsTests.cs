@@ -1,6 +1,6 @@
 using System.Reflection;
 using ExpandedLib.Definitions;
-using NSubstitute;
+using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Xunit;
 
@@ -19,7 +19,7 @@ public class ExDefinitionsTests {
 
   [Fact]
   public void Re_registering_from_the_same_assembly_logs_nothing() {
-    var logger = Substitute.For<ILogger>();
+    var logger = new RecordingLogger();
     ExDefinitions.Logger = logger;
     Assembly asm = Assembly.GetExecutingAssembly();
 
@@ -29,12 +29,12 @@ public class ExDefinitionsTests {
       asm
     );
 
-    logger.DidNotReceive().Notification(Arg.Any<string>(), Arg.Any<object[]>());
+    Assert.Empty(logger.Entries);
   }
 
   [Fact]
   public void Re_registering_from_a_different_assembly_logs_a_notification() {
-    var logger = Substitute.For<ILogger>();
+    var logger = new RecordingLogger();
     ExDefinitions.Logger = logger;
 
     ExDefinitions.RegisterBlock(
@@ -46,12 +46,12 @@ public class ExDefinitionsTests {
       typeof(ExDefinitions).Assembly
     );
 
-    logger.Received(1).Notification(Arg.Any<string>(), Arg.Any<object[]>());
+    Assert.Equal(EnumLogType.Notification, Assert.Single(logger.Entries).Type);
   }
 
   [Fact]
   public void Re_registering_an_item_from_a_different_assembly_logs_a_notification() {
-    var logger = Substitute.For<ILogger>();
+    var logger = new RecordingLogger();
     ExDefinitions.Logger = logger;
 
     ExDefinitions.RegisterItem(
@@ -63,7 +63,7 @@ public class ExDefinitionsTests {
       typeof(ExDefinitions).Assembly
     );
 
-    logger.Received(1).Notification(Arg.Any<string>(), Arg.Any<object[]>());
+    Assert.Equal(EnumLogType.Notification, Assert.Single(logger.Entries).Type);
   }
 
   [Fact]

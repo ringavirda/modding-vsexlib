@@ -1,4 +1,5 @@
 using ExpandedLib.Config;
+using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
 using Vintagestory.API.Common;
@@ -77,7 +78,7 @@ public class ConfigAttributesTests {
 
   private static ICoreAPI FakeApiWithDocument(JObject doc) {
     var api = Substitute.For<ICoreAPI>();
-    api.Logger.Returns(Substitute.For<ILogger>());
+    api.Logger.Returns(new RecordingLogger());
     api.LoadModConfig<JObject>(Arg.Any<string>()).Returns(doc);
 
     var mod = Substitute.For<Mod>();

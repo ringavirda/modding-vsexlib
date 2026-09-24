@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Registries;
+using ExpandedLib.Testing;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Xunit;
@@ -22,9 +23,9 @@ public class ReflectionScanTests {
   [Marker]
   private sealed class MarkedThing : IThing { }
 
-  private static ICoreAPI FakeApi() {
+  private static ICoreAPI FakeApi(RecordingLogger? logger = null) {
     var api = Substitute.For<ICoreAPI>();
-    api.Logger.Returns(Substitute.For<ILogger>());
+    api.Logger.Returns(logger ?? new RecordingLogger());
     return api;
   }
 
@@ -43,10 +44,11 @@ public class ReflectionScanTests {
 
   [Fact]
   public void Skips_and_warns_on_a_non_assignable_type() {
-    var api = FakeApi();
+    var logger = new RecordingLogger();
+    logger.Expect(EnumLogType.Warning, "does not implement IThing");
 
     bool ok = ReflectionScan.TryActivate<IThing>(
-      api,
+      FakeApi(logger),
       "test",
       typeof(NotAThing),
       out var instance
@@ -54,7 +56,10 @@ public class ReflectionScanTests {
 
     Assert.False(ok);
     Assert.Null(instance);
-    api.Logger.Received().Warning(Arg.Any<string>(), Arg.Any<object[]>());
+    Assert.Contains(
+      typeof(NotAThing).FullName!,
+      Assert.Single(logger.Warnings)
+    );
   }
 
   [Fact]

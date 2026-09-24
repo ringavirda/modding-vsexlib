@@ -71,6 +71,10 @@ see the git history.
 - **`Premise`** and **`HarnessUse.Unpremised`** (ExpandedLib.Testing): `Premise.NotEmpty` fails a
   guard whose corpus is empty and `Premise.Covers` one that misses part of a census, such as a
   domain's golden blocktypes. `Unpremised` names every guard file that calls neither.
+- **`HarnessUse.SubstituteLoggers`** (ExpandedLib.Testing): names every `Substitute.For<ILogger>` in
+  a suite's tests, whose entries no `FailOnWarnings` check reads. exlib's tests log into a
+  `RecordingLogger` instead and declare the Warnings and Errors they drive with `Expect`; exlib's
+  guard fails on a new substitute logger outside its allowed list.
 
 ### Changed
 

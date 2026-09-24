@@ -46,7 +46,7 @@ public class ConfigSyncTests {
   [Fact]
   public void ImportJson_never_persists_to_disk() {
     var api = Substitute.For<ICoreAPI>();
-    api.Logger.Returns(Substitute.For<ILogger>());
+    api.Logger.Returns(new RecordingLogger());
     api.Side.Returns(EnumAppSide.Server);
 
     var mod = Substitute.For<Mod>();
@@ -98,7 +98,8 @@ public class ConfigSyncTests {
     ExConfigProfiles.Register(store);
 
     var api = Substitute.For<ICoreClientAPI>();
-    api.Logger.Returns(Substitute.For<ILogger>());
+    var logger = new RecordingLogger();
+    api.Logger.Returns(logger);
 
     ExConfigSyncModSystem.HandlePacket(
       api,
@@ -110,14 +111,26 @@ public class ConfigSyncTests {
     );
 
     Assert.Equal(42, store.Config.ValueA);
-    api.Logger.Received(1).Notification(Arg.Any<string>(), Arg.Any<object[]>());
+    Assert.Equal(
+      [
+        (
+          EnumLogType.Notification,
+          "[exlib] config: synctest.known section received from the server"
+        ),
+      ],
+      logger.Entries
+    );
   }
 
   [Fact]
   public void HandlePacket_warns_and_drops_an_unknown_section() {
     var api = Substitute.For<ICoreClientAPI>();
-    var logger = Substitute.For<ILogger>();
+    var logger = new RecordingLogger();
     api.Logger.Returns(logger);
+    logger.Expect(
+      EnumLogType.Warning,
+      "unknown section 'synctest.unregistered'"
+    );
 
     ExConfigSyncModSystem.HandlePacket(
       api,
@@ -128,8 +141,7 @@ public class ConfigSyncTests {
       }
     );
 
-    logger.Received(1).Warning(Arg.Any<string>(), Arg.Any<object[]>());
-    logger.DidNotReceive().Notification(Arg.Any<string>(), Arg.Any<object[]>());
+    Assert.Equal(EnumLogType.Warning, Assert.Single(logger.Entries).Type);
   }
 
   [Fact]

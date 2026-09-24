@@ -4,7 +4,6 @@ using ExpandedLib.Checks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
-using NSubstitute;
 using Vintagestory.API.Common;
 using Xunit;
 
@@ -266,43 +265,38 @@ public class ExlibChecksTests {
 
   [Fact]
   public void Log_writes_one_summary_line_per_check() {
-    ILogger logger = Substitute.For<ILogger>();
+    var logger = new RecordingLogger();
     IReadOnlyList<CheckResult> results = Results();
+    logger.Expect(EnumLogType.Error, "[exlib]   ");
 
     ExlibChecks.Log(logger, results);
 
-    int summaryLines = logger
-      .ReceivedCalls()
-      .Count(call =>
-        call.GetMethodInfo().Name == nameof(ILogger.Notification)
-        && call.GetArguments() is [string fmt, object[] args]
-        && fmt == "[exlib] check {0} ({1}): {2} error(s)"
-        && args.Length == 3
-      );
-    Assert.Equal(results.Count, summaryLines);
+    Assert.Equal(
+      results.Select(r =>
+        $"[exlib] check {r.Check} ({r.Domain}): {r.Errors.Count} error(s)"
+      ),
+      logger
+        .Entries.Where(e => e.Type == EnumLogType.Notification)
+        .Select(e => e.Message)
+    );
   }
 
   [Fact]
   public void Log_writes_each_error_line_at_Error_not_Notification() {
-    ILogger logger = Substitute.For<ILogger>();
+    var logger = new RecordingLogger();
     IReadOnlyList<CheckResult> results = Results();
+    logger.Expect(EnumLogType.Error, "[exlib]   ");
 
     ExlibChecks.Log(logger, results);
 
-    int errorLines = logger
-      .ReceivedCalls()
-      .Count(call =>
-        call.GetMethodInfo().Name == nameof(ILogger.Error)
-        && call.GetArguments() is [string fmt, object[] args]
-        && fmt == "[exlib]   {0}"
-        && args.Length == 1
-      );
-    Assert.Equal(results.Sum(r => r.Errors.Count), errorLines);
-
-    int summaryLines = logger
-      .ReceivedCalls()
-      .Count(call => call.GetMethodInfo().Name == nameof(ILogger.Notification));
-    Assert.Equal(results.Count, summaryLines);
+    Assert.Equal(
+      results.SelectMany(r => r.Errors).Select(e => "[exlib]   " + e),
+      logger.Errors
+    );
+    Assert.Equal(
+      results.Count,
+      logger.Entries.Count(e => e.Type == EnumLogType.Notification)
+    );
   }
 
   [Fact]

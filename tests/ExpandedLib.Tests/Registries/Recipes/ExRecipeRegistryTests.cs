@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using ExpandedLib.Registries;
+using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
 using Vintagestory.API.Common;
@@ -43,7 +44,7 @@ public class ExRecipeRegistryTests {
   [Fact]
   public void LoadRecipes_reads_a_single_object_and_an_array_under_the_folder() {
     var sapi = Substitute.For<ICoreServerAPI>();
-    sapi.Server.Logger.Returns(Substitute.For<ILogger>());
+    sapi.Server.Logger.Returns(new RecordingLogger());
     var assets = new Dictionary<AssetLocation, JToken> {
       [new AssetLocation("test:recipes/widgets/a.json")] = JToken.Parse(
         """{ "code": "a" }"""
@@ -67,7 +68,7 @@ public class ExRecipeRegistryTests {
   [Fact]
   public void LoadRecipes_runs_resolve_on_every_loaded_recipe() {
     var sapi = Substitute.For<ICoreServerAPI>();
-    sapi.Server.Logger.Returns(Substitute.For<ILogger>());
+    sapi.Server.Logger.Returns(new RecordingLogger());
     var assets = new Dictionary<AssetLocation, JToken> {
       [new AssetLocation("test:recipes/widgets/a.json")] = JToken.Parse(
         """{ "code": "a" }"""
@@ -93,7 +94,7 @@ public class ExRecipeRegistryTests {
   [Fact]
   public void LoadRecipes_drops_a_recipe_resolve_rejects() {
     var sapi = Substitute.For<ICoreServerAPI>();
-    sapi.Server.Logger.Returns(Substitute.For<ILogger>());
+    sapi.Server.Logger.Returns(new RecordingLogger());
     var assets = new Dictionary<AssetLocation, JToken> {
       [new AssetLocation("test:recipes/widgets/a.json")] = JToken.Parse(
         """{ "code": "a" }"""

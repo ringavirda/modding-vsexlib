@@ -16,6 +16,7 @@ namespace ExpandedLib.Tests;
 [GuardOf(typeof(HarnessUse), nameof(HarnessUse.GameConstrainedGenerics))]
 [GuardOf(typeof(HarnessUse), nameof(HarnessUse.UncalledGuards))]
 [GuardOf(typeof(HarnessUse), nameof(HarnessUse.Unpremised))]
+[GuardOf(typeof(HarnessUse), nameof(HarnessUse.SubstituteLoggers))]
 public class HarnessUseGuards {
   /// <summary>Guard file, and why it calls no <see cref="Premise"/>.</summary>
   private static readonly Dictionary<string, string> PremiseAllowed = new(
@@ -28,6 +29,11 @@ public class HarnessUseGuards {
     ["VersionPinTests.cs"] =
       "fails on its own when no template PackageReference or sample dependency is found",
   };
+
+  /// <summary>Test file, and why it may hand code a substitute logger.</summary>
+  private static readonly Dictionary<string, string> LoggerAllowed = new(
+    StringComparer.Ordinal
+  );
 
   #region exlib
 
@@ -112,6 +118,17 @@ public class HarnessUseGuards {
         )
       ),
       PremiseAllowed,
+      new Dictionary<string, string>(),
+      f => f.Split(':')[0]
+    );
+  }
+
+  // Fails when an exlib test hands code a substitute ILogger instead of a RecordingLogger.
+  [Fact]
+  public void Exlibs_tests_log_where_the_log_rule_reads() {
+    FindingLists.Assert(
+      HarnessUse.SubstituteLoggers(Premise.NotEmpty(Sources(), "test sources")),
+      LoggerAllowed,
       new Dictionary<string, string>(),
       f => f.Split(':')[0]
     );
@@ -411,6 +428,40 @@ public class HarnessUseGuards {
     );
     Assert.Empty(
       Scan(HarnessUse.Unpremised, "Premise.Covers(read, \"iiex\");")
+    );
+  }
+
+  // Fails when SubstituteLoggers stops matching a substitute logger, bare or qualified.
+  [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.SubstituteLoggers))]
+  public void A_substitute_logger_is_named() {
+    IReadOnlyList<string> offenders = Scan(
+      HarnessUse.SubstituteLoggers,
+      "var api = Substitute.For<ICoreAPI>();\n"
+        + "api.Logger.Returns(Substitute.For< ILogger >());\n"
+        + "var log = Substitute\n  .For<Vintagestory.API.Common.ILogger, IDisposable>();"
+    );
+
+    Assert.Equal(2, offenders.Count);
+    Assert.EndsWith(
+      ":2: a substitute ILogger hides its entries from the log rule; log into a RecordingLogger",
+      offenders[0]
+    );
+    Assert.Contains(":3: ", offenders[1]);
+  }
+
+  // Fails when SubstituteLoggers names a recording logger, another substitute, an argument matcher
+  // or a comment.
+  [Fact]
+  public void A_recording_logger_a_matcher_and_a_comment_are_not_named() {
+    Assert.Empty(
+      Scan(
+        HarnessUse.SubstituteLoggers,
+        "api.Logger.Returns(new RecordingLogger());\n"
+          + "var l = Substitute.For<ILoggerFactory>();\n"
+          + "assets.GetMany<JToken>(Arg.Any<ILogger>(), \"recipes\");\n"
+          + "// api.Logger.Returns(Substitute.For< ILogger >());"
+      )
     );
   }
 

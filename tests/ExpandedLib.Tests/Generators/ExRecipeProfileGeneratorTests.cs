@@ -1,5 +1,6 @@
 using System;
 using ExpandedLib.Registries;
+using ExpandedLib.Testing;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Xunit;
@@ -17,7 +18,7 @@ public class ExRecipeProfileGeneratorTests : IDisposable {
 
   private static ICoreAPI FakeApi(EnumAppSide side) {
     var api = Substitute.For<ICoreAPI>();
-    api.Logger.Returns(Substitute.For<ILogger>());
+    api.Logger.Returns(new RecordingLogger());
     api.Side.Returns(side);
     api.LoadModConfig<Newtonsoft.Json.Linq.JObject>(Arg.Any<string>())
       .Returns((Newtonsoft.Json.Linq.JObject?)null);

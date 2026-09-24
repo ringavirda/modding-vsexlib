@@ -1,5 +1,6 @@
 using System;
 using ExpandedLib.Config;
+using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
 using Vintagestory.API.Common;
@@ -19,7 +20,7 @@ public class ExConfigDocumentTests {
     Action<JObject>? onStore = null
   ) {
     var api = Substitute.For<ICoreAPI>();
-    api.Logger.Returns(Substitute.For<ILogger>());
+    api.Logger.Returns(new RecordingLogger());
     api.LoadModConfig<JObject>(Arg.Any<string>()).Returns(existing);
     if (onStore != null)
       api.When(a => a.StoreModConfig(Arg.Any<JObject>(), Arg.Any<string>()))
@@ -59,7 +60,9 @@ public class ExConfigDocumentTests {
   [Fact]
   public void A_corrupt_file_yields_an_empty_document_without_throwing() {
     var api = Substitute.For<ICoreAPI>();
-    api.Logger.Returns(Substitute.For<ILogger>());
+    var logger = new RecordingLogger();
+    api.Logger.Returns(logger);
+    logger.Expect(EnumLogType.Warning, "'bad.json' could not be parsed");
     api.LoadModConfig<JObject>("bad.json")
       .Returns(_ => throw new Exception("corrupt json"));
 

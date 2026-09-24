@@ -1,7 +1,6 @@
 using System.Reflection;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
-using NSubstitute;
 using Vintagestory.API.Common;
 using Xunit;
 
@@ -24,13 +23,15 @@ public class StructureFillersTests {
   [Fact]
   public void A_missing_filler_block_logs_an_error_once_across_two_calls() {
     var world = new TestWorld();
-    var logger = Substitute.For<ILogger>();
-    world.World.Logger.Returns(logger);
+    world.Log.Expect(EnumLogType.Error, "is not registered");
 
     // FillerCode defaults to exlib:structurefiller, which this TestWorld never registers.
     Assert.False(StructureFillers.CanPlace(world.World, []));
     Assert.False(StructureFillers.CanPlace(world.World, []));
 
-    logger.Received(1).Error(Arg.Any<string>(), Arg.Any<object[]>());
+    Assert.Contains(
+      StructureFillers.FillerCode.ToString(),
+      Assert.Single(world.Log.Errors)
+    );
   }
 }

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using ExpandedLib.Config;
+using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
 using Vintagestory.API.Common;
@@ -196,9 +197,14 @@ public class ConfigEditTests {
       Count = -1, // negative (baseline guard)
       Rate = float.NaN, // not finite
     };
+    var logger = new RecordingLogger();
+    logger.Expect(
+      EnumLogType.Warning,
+      "reset invalid value(s) to defaults: Count, Rate, Ratio."
+    );
 
     var store = new ExConfigRegister<EditableConfig>("c.json", "fakemod");
-    store.Load(FakeApiLoading(bad));
+    store.Load(FakeApiLoading(bad, logger));
 
     Assert.Equal(0.5f, store.Config.Ratio, 3); // reset to default
     Assert.Equal(10, store.Config.Count); // reset to default
@@ -222,9 +228,14 @@ public class ConfigEditTests {
     using var dir = new TempModConfig();
     // A nulled non-string value must be repaired to its default.
     var bad = new EditableConfig { NotEditable = null! };
+    var logger = new RecordingLogger();
+    logger.Expect(
+      EnumLogType.Warning,
+      "reset invalid value(s) to defaults: NotEditable."
+    );
 
     var store = new ExConfigRegister<EditableConfig>("c.json", "fakemod");
-    store.Load(FakeApiLoading(bad));
+    store.Load(FakeApiLoading(bad, logger));
 
     Assert.Equal([1, 2, 3], store.Config.NotEditable);
   }
@@ -275,10 +286,14 @@ public class ConfigEditTests {
   /// <summary>A fake API whose <c>LoadModConfig</c> returns null and whose mod version resolves.</summary>
   private static ICoreAPI FakeApi() => FakeApiLoading(null);
 
-  /// <summary>As <see cref="FakeApi"/>, but <c>LoadModConfig</c> returns <paramref name="loaded"/>.</summary>
-  private static ICoreAPI FakeApiLoading(EditableConfig? loaded) {
+  /// <summary>As <see cref="FakeApi"/>, but <c>LoadModConfig</c> returns <paramref name="loaded"/>, and
+  /// the API logs into <paramref name="logger"/> when one is given.</summary>
+  private static ICoreAPI FakeApiLoading(
+    EditableConfig? loaded,
+    RecordingLogger? logger = null
+  ) {
     var api = Substitute.For<ICoreAPI>();
-    api.Logger.Returns(Substitute.For<ILogger>());
+    api.Logger.Returns(logger ?? new RecordingLogger());
     // The store reads its "fakemod" section from the shared mod-sectioned document.
     JObject? doc =
       loaded == null

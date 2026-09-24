@@ -11,7 +11,8 @@ namespace ExpandedLib.Testing;
 /// <summary>Guards how tests use the harness: completion forced by reflection, a block double
 /// whose behaviours <c>GetBehavior</c> cannot see, a test file's generic helper constrained on a
 /// game type, which can stop xUnit discovering the whole assembly, a guard naming a check it never
-/// calls, and a guard file asserting nothing about its corpus.</summary>
+/// calls, a guard file asserting nothing about its corpus, and a substitute logger that no
+/// <see cref="FailOnWarningsAttribute"/> check reads.</summary>
 /// <remarks>Each rule reads C# source text with comments blanked; a <c>//</c> inside a string literal
 /// blanks the rest of its line.</remarks>
 public static class HarnessUse {
@@ -55,6 +56,11 @@ public static class HarnessUse {
 
   private static readonly Regex PremiseCall = new(
     @"\bPremise\s*\.\s*(NotEmpty|Covers)\b",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex SubstituteLogger = new(
+    @"\bSubstitute\s*\.\s*For\s*<\s*(?:[\w.]+\.)?ILogger\s*[,>]",
     RegexOptions.Compiled
   );
 
@@ -269,6 +275,31 @@ public static class HarnessUse {
           $"{Path.GetFileName(f)}: calls no Premise, so an empty corpus passes"
         ),
     ];
+
+  /// <summary>Every <c>Substitute.For&lt;ILogger&gt;</c> in <paramref name="sourceFiles"/>, the
+  /// type written bare or namespace-qualified, alone or first of several.</summary>
+  /// <remarks>A substitute logger keeps every entry from the
+  /// <see cref="FailOnWarningsAttribute"/> check, so a Warning or Error the code under test logs
+  /// into it fails nothing. A <see cref="RecordingLogger"/>, standalone or a
+  /// <see cref="TestWorld"/>'s <c>Log</c>, is read by the check.</remarks>
+  /// <param name="sourceFiles">C# files to read; each is read whole.</param>
+  /// <returns>One line per substitute, <c>file:line: reason</c>; empty when clean.</returns>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
+  public static IReadOnlyList<string> SubstituteLoggers(
+    IEnumerable<string> sourceFiles
+  ) {
+    var offenders = new List<string>();
+    foreach (string file in sourceFiles) {
+      string text = Uncommented(File.ReadAllText(file));
+      foreach (Match use in SubstituteLogger.Matches(text))
+        offenders.Add(
+          $"{Path.GetFileName(file)}:{LineOf(text, use.Index)}: a substitute ILogger hides its "
+            + "entries from the log rule; log into a RecordingLogger"
+        );
+    }
+    return offenders;
+  }
 
   private static bool IsGameType(Type type) {
     for (Type? t = type; t != null; t = t.BaseType)

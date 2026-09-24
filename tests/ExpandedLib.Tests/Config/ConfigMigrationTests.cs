@@ -1,4 +1,5 @@
 using ExpandedLib.Config;
+using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
 using Vintagestory.API.Common;
@@ -30,14 +31,16 @@ public class ConfigMigrationTests {
   }
 
   /// <summary>Builds a fake server API whose <c>LoadModConfig</c> returns <paramref name="stored"/>
-  /// and whose mod version is <paramref name="runningVersion"/>. Captures whatever is saved back.</summary>
+  /// and whose mod version is <paramref name="runningVersion"/>, logging into
+  /// <paramref name="logger"/> when one is given. Captures whatever is saved back.</summary>
   private static (ICoreAPI api, System.Func<FakeConfig?> saved) FakeApi(
     FakeConfig? stored,
     string runningVersion,
-    EnumAppSide side = EnumAppSide.Server
+    EnumAppSide side = EnumAppSide.Server,
+    RecordingLogger? logger = null
   ) {
     var api = Substitute.For<ICoreAPI>();
-    api.Logger.Returns(Substitute.For<ILogger>());
+    api.Logger.Returns(logger ?? new RecordingLogger());
     // Only the server writes the file back.
     api.Side.Returns(side);
 
@@ -72,7 +75,12 @@ public class ConfigMigrationTests {
       Rate = float.NaN, // not-a-number
       Label = null!, // missing/null string
     };
-    var (api, saved) = FakeApi(stored, runningVersion: "1.0.0");
+    var logger = new RecordingLogger();
+    logger.Expect(
+      EnumLogType.Warning,
+      "reset invalid value(s) to defaults: ValueA, Rate, Label."
+    );
+    var (api, saved) = FakeApi(stored, runningVersion: "1.0.0", logger: logger);
     var store = Store();
 
     store.Load(api);
@@ -200,7 +208,9 @@ public class ConfigMigrationTests {
   [Fact]
   public void Load_failure_falls_back_to_defaults_without_throwing() {
     var api = Substitute.For<ICoreAPI>();
-    api.Logger.Returns(Substitute.For<ILogger>());
+    var logger = new RecordingLogger();
+    api.Logger.Returns(logger);
+    logger.Expect(EnumLogType.Warning, "'fake.json' could not be parsed");
     api.LoadModConfig<JObject>(FileName)
       .Returns(_ => throw new System.Exception("corrupt json"));
     var modLoader = Substitute.For<IModLoader>();
