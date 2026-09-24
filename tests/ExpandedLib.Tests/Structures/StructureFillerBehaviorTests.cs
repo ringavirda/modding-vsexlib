@@ -277,6 +277,37 @@ public class StructureFillerBehaviorTests {
     Assert.Equal(BlockFacing.WEST, hosted.Face);
   }
 
+  [Fact]
+  public void A_client_filler_loaded_from_its_tree_replays_it_into_the_behaviors_it_creates() {
+    // FromTreeAttributes runs before Initialize, so the behaviour it declares does not exist yet.
+    var (world, filler) = NewWorld();
+    var pos = new BlockPos(2, 3, 4);
+    var tree = new TreeAttribute();
+    new BlockEntityStructureFiller {
+      Pos = pos,
+      Block = filler,
+      Principal = new BlockPos(2, 3, 1),
+      HostedBehaviors =
+      [
+        new FillerBehavior("test.Tracking", BlockFacing.EAST, null),
+      ],
+    }.ToTreeAttributes(tree);
+    var be = new BlockEntityStructureFiller();
+    world.Place(pos, filler, be);
+    world
+      .ClientApi.ClassRegistry.CreateBlockEntityBehavior(
+        Arg.Any<BlockEntity>(),
+        "test.Tracking"
+      )
+      .Returns(ci => new TrackingHostedBehavior(ci.Arg<BlockEntity>()));
+
+    be.FromTreeAttributes(tree, world.ClientApi.World);
+    be.Api = world.ClientApi;
+    be.Initialize(world.ClientApi);
+
+    Assert.Same(tree, be.GetBehavior<TrackingHostedBehavior>()?.ReadTree);
+  }
+
   #endregion
 
   #region Mechanical-power connector glue
@@ -592,6 +623,7 @@ public class StructureFillerBehaviorTests {
     public BlockFacing? Face;
     public JsonObject? Props;
     public bool Initialized;
+    public ITreeAttribute? ReadTree;
 
     public void ConfigureFromFiller(
       BlockPos? principal,
@@ -606,6 +638,14 @@ public class StructureFillerBehaviorTests {
     public override void Initialize(ICoreAPI api, JsonObject properties) {
       base.Initialize(api, properties);
       Initialized = true;
+    }
+
+    public override void FromTreeAttributes(
+      ITreeAttribute tree,
+      IWorldAccessor worldAccessForResolve
+    ) {
+      base.FromTreeAttributes(tree, worldAccessForResolve);
+      ReadTree = tree;
     }
   }
 
