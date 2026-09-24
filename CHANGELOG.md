@@ -113,6 +113,11 @@ see the git history.
   an `ExModSystem` with `PatchHarmony` and `ExModuleHost` release a hold only when their `Start`
   reached `ExHarmony.PatchOnce`, and only once: a singleplayer client whose `Start` threw before it
   patched, or a system disposed twice, no longer unpatches exlib or a mod under its server.
+- **A side start that throws releases its Harmony hold.** The game drops a system whose
+  `StartServerSide` or `StartClientSide` throws and never disposes it, so its hold stayed for the
+  rest of the process. `ExpandedLibModSystem`, an `ExModSystem` (its own hold and its modules') and
+  `ExModuleHost` now release the holds their `Start` took there, then pass the exception on
+  unchanged.
 - **`HarmonyFixture`'s category form releases no hold.** It applies through
   `PatchCategoryWhenLoaded`, which takes none, so its `Dispose` reverts the id's patches only when no
   `PatchOnce` hold is left on the id; beside a holder of the same id, its category stays until that

@@ -99,13 +99,22 @@ public class ExModSystemTests : IDisposable {
     public List<string> Order { get; } = [];
     protected override bool PatchHarmony => patchHarmony;
 
+    // Thrown by both side hooks when set.
+    public Exception? SideHookThrows { get; set; }
+
     protected override void OnStart(ICoreAPI api) => Order.Add("OnStart");
 
-    protected override void OnStartServerSide(ICoreServerAPI api) =>
+    protected override void OnStartServerSide(ICoreServerAPI api) {
       Order.Add("OnStartServerSide");
+      if (SideHookThrows != null)
+        throw SideHookThrows;
+    }
 
-    protected override void OnStartClientSide(ICoreClientAPI api) =>
+    protected override void OnStartClientSide(ICoreClientAPI api) {
       Order.Add("OnStartClientSide");
+      if (SideHookThrows != null)
+        throw SideHookThrows;
+    }
 
     protected override void OnAssetsFinalize(ICoreAPI api) =>
       Order.Add("OnAssetsFinalize");
@@ -278,6 +287,118 @@ public class ExModSystemTests : IDisposable {
     } finally {
       ExHarmony.UnpatchAll(mod);
     }
+  }
+
+  private static void SideStart(
+    RecordingModSystem system,
+    TestWorld world,
+    EnumAppSide side
+  ) {
+    if (side == EnumAppSide.Server)
+      system.StartServerSide(world.Api);
+    else
+      system.StartClientSide(world.ClientApi);
+  }
+
+  // Another holder of the id stands in for the other side. Fails when a throwing side start keeps
+  // its hold (the last assert), swallows the hook's exception or gives it a new stack.
+  [Theory]
+  [InlineData(EnumAppSide.Server)]
+  [InlineData(EnumAppSide.Client)]
+  public void A_side_start_that_throws_releases_its_hold_and_rethrows_the_hooks_exception(
+    EnumAppSide side
+  ) {
+    const string id = "exlibtest.exmodsystem-failedstart";
+    var mod = FakeMod(id);
+    var system = NewSystem(mod, patchHarmony: true);
+    var boom = new InvalidOperationException("side hook");
+    system.SideHookThrows = boom;
+    var world = new TestWorld();
+    MethodBase original = typeof(HarmonyTarget).GetMethod(
+      nameof(HarmonyTarget.Method)
+    )!;
+
+    try {
+      ExHarmony.PatchOnce(id, typeof(ExModSystemTests).Assembly);
+      system.Start(world.Api);
+
+      Exception thrown = Assert.ThrowsAny<Exception>(() =>
+        SideStart(system, world, side)
+      );
+
+      Assert.Same(boom, thrown);
+      Assert.Contains(
+        side == EnumAppSide.Server ? "OnStartServerSide" : "OnStartClientSide",
+        thrown.StackTrace
+      );
+      Assert.Contains(id, Harmony.GetPatchInfo(original)!.Owners);
+    } finally {
+      ExHarmony.UnpatchAll(id);
+    }
+    Assert.DoesNotContain(
+      id,
+      (IEnumerable<string>?)Harmony.GetPatchInfo(original)?.Owners ?? []
+    );
+  }
+
+  // As above for a module the system hosts, with the system itself patching nothing. Fails when a
+  // throwing side start keeps the module host's hold.
+  [Theory]
+  [InlineData(EnumAppSide.Server)]
+  [InlineData(EnumAppSide.Client)]
+  public void A_side_start_that_throws_releases_its_module_hosts_hold(
+    EnumAppSide side
+  ) {
+    const string moduleId = "exlibtest.host.exmodsystem-failedstart";
+    Assembly assembly = typeof(ExModSystemTests).Assembly;
+    var mod = FakeMod("exlibtest.exmodsystem-failedstart");
+    var system = NewSystem(mod);
+    var boom = new InvalidOperationException("side hook");
+    system.SideHookThrows = boom;
+    ReflectionHelpers.SetField(
+      system,
+      "_modules",
+      new ExModuleHost(
+        mod,
+        new ExModuleSet(
+          [
+            new ExModuleInfo
+            {
+              Id = "exmodsystem-failedstart",
+              Host = "exlibtest.host",
+              Mod = "exlibtest.host",
+              Requires = [],
+              Assembly = assembly,
+              EntryPoints = [],
+              PatchHarmony = true,
+            },
+          ],
+          []
+        )
+      )
+    );
+    var world = new TestWorld();
+    MethodBase original = typeof(HarmonyTarget).GetMethod(
+      nameof(HarmonyTarget.Method)
+    )!;
+
+    try {
+      ExHarmony.PatchOnce(moduleId, assembly);
+      system.Start(world.Api);
+
+      Exception thrown = Assert.ThrowsAny<Exception>(() =>
+        SideStart(system, world, side)
+      );
+
+      Assert.Same(boom, thrown);
+      Assert.Contains(moduleId, Harmony.GetPatchInfo(original)!.Owners);
+    } finally {
+      ExHarmony.UnpatchAll(moduleId);
+    }
+    Assert.DoesNotContain(
+      moduleId,
+      (IEnumerable<string>?)Harmony.GetPatchInfo(original)?.Owners ?? []
+    );
   }
 
   [Fact]

@@ -129,9 +129,9 @@ below). Before a module's entry points run at all, the host performs the registr
 | `Start` | `ExConfig.LoadAll`, `EntityRegistry.RegisterAll`, `ExCheckRegistry.RegisterAll`, and - if `PatchHarmony` is set - `ExHarmony.PatchOnce` under the module's Harmony id. | `Start(ICoreAPI api)` |
 | `AssetsLoaded` | Nothing extra. Runs at the host's own `ExecuteOrder`, which decides whether an asset read here sees patched JSON - see below. | `AssetsLoaded(ICoreAPI api)` |
 | `AssetsFinalize` | Nothing extra. | `AssetsFinalize(ICoreAPI api)` |
-| `StartServerSide` | `CommandRegistry.RegisterAll`. | `StartServerSide(ICoreServerAPI api)` |
-| `StartClientSide` | `PreferenceRegistry.RegisterAll`, then `CommandRegistry.RegisterAll` (preferences first, the same rule as any `ExModSystem`). | `StartClientSide(ICoreClientAPI api)` |
-| `Dispose` | Nothing before; `ExHarmony.UnpatchAll` after, once, if this host's `Start` patched the module, which removes the patches once no side still holds them. | `Dispose()` |
+| `StartServerSide` | `CommandRegistry.RegisterAll`. When a registration throws, the host releases its Harmony holds and passes the exception on. | `StartServerSide(ICoreServerAPI api)` |
+| `StartClientSide` | `PreferenceRegistry.RegisterAll`, then `CommandRegistry.RegisterAll` (preferences first, the same rule as any `ExModSystem`). When a registration throws, the host releases its Harmony holds and passes the exception on. | `StartClientSide(ICoreClientAPI api)` |
+| `Dispose` | Nothing before; `ExHarmony.UnpatchAll` after, once, if this host's `Start` patched the module and no side start released it, which removes the patches once no side still holds them. | `Dispose()` |
 
 Every `IExModule` method has an empty default, so a module overrides only what it needs. The phases
 run in the engine's own order - `StartPre`, `Start`, `AssetsLoaded`, `AssetsFinalize`, then
@@ -219,7 +219,7 @@ a JSON patch condition to gate on with no C# at all:
 ## `PatchHarmony`
 
 A module that sets `PatchHarmony = true` gets its uncategorised `[HarmonyPatch]` classes patched at
-`Start` and unpatched at `Dispose`, the same convenience `ExModSystem` offers a main assembly -
+`Start` and unpatched at `Dispose`, or when a side start of its host throws, the same convenience `ExModSystem` offers a main assembly -
 patched and unpatched under `ExModuleInfo.HarmonyId`, which is `Host` and `Id` joined with a dot
 (`"<host>.<id>"`), distinct from the host's own Harmony id and from every other module's.
 

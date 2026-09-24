@@ -343,6 +343,49 @@ public class ExModuleHostTests : IDisposable {
       []
     );
 
+  // Another holder of the module's id stands in for the other side. Fails when a throwing side
+  // start keeps the host's hold (the last assert) or swallows the exception.
+  [Theory]
+  [InlineData(EnumAppSide.Server)]
+  [InlineData(EnumAppSide.Client)]
+  public void A_side_start_that_throws_releases_the_hosts_holds_and_rethrows(
+    EnumAppSide side
+  ) {
+    const string id = "exlibtest.host.failedstart";
+    var world = new TestWorld();
+    var boom = new InvalidOperationException("command registration");
+    world.Api.ChatCommands.Returns(_ => throw boom);
+    world.ClientApi.ChatCommands.Returns(_ => throw boom);
+    var host = new ExModuleHost(
+      FakeMod("exlibtest.host"),
+      PatchingSet("failedstart")
+    );
+    MethodBase original = typeof(HarmonyTarget).GetMethod(
+      nameof(HarmonyTarget.Method)
+    )!;
+
+    try {
+      ExHarmony.PatchOnce(id, typeof(ExModuleHostTests).Assembly);
+      host.Start(world.Api);
+
+      Exception thrown = Assert.ThrowsAny<Exception>(() => {
+        if (side == EnumAppSide.Server)
+          host.StartServerSide(world.Api);
+        else
+          host.StartClientSide(world.ClientApi);
+      });
+
+      Assert.Same(boom, thrown);
+      Assert.Contains(id, Harmony.GetPatchInfo(original)!.Owners);
+    } finally {
+      ExHarmony.UnpatchAll(id);
+    }
+    Assert.DoesNotContain(
+      id,
+      (IEnumerable<string>?)Harmony.GetPatchInfo(original)?.Owners ?? []
+    );
+  }
+
   // Fails when Dispose releases a hold for a module its Start never patched.
   [Fact]
   public void A_host_never_started_leaves_another_holders_patches_on_Dispose() {

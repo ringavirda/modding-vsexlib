@@ -472,7 +472,9 @@ call `PatchOnce`, so the client disposing first leaves the patches in place for 
 shutting down; the server's `UnpatchAll` removes them. Each `UnpatchAll` releases one hold on every
 assembly patched under the id, whoever took it: call it once, and only after your own `PatchOnce`
 returned, as the `_harmony` check above does, since a `Dispose` also runs on a system whose `Start`
-threw before it patched. With nothing held it unpatches at once. A class also carrying
+threw before it patched. With nothing held it unpatches at once. A system whose `StartServerSide`
+or `StartClientSide` throws is dropped and never disposed: release the same hold in a `catch` there,
+clear `_harmony`, and rethrow with `throw;`. A class also carrying
 `[HarmonyPatchCategory("...")]` is left alone until you opt it in, gated on another mod being loaded:
 
 ```csharp

@@ -23,7 +23,7 @@ public abstract class ExModSystem : ModSystem {
   // Lazy: a phase called on its own must work without StartPre having run first.
   private ExModuleHost? _modules;
 
-  // True from the PatchOnce in Start to the release in Dispose.
+  // True from the PatchOnce in Start to the release in Dispose, or in a side start that throws.
   private bool _holdsHarmony;
 
   /// <summary>This mod's own modules, built against whichever phase's <paramref name="api"/> runs
@@ -61,19 +61,34 @@ public abstract class ExModSystem : ModSystem {
 
   /// <summary>Registers every command class on the server, runs every own module's server start,
   /// then calls <see cref="OnStartServerSide"/>.</summary>
+  /// <remarks>When any of it throws, releases the Harmony holds this instance's <c>Start</c> took,
+  /// its modules' included, then rethrows the exception unchanged: the game drops a system whose side
+  /// start throws and never disposes it.</remarks>
   public override void StartServerSide(ICoreServerAPI api) {
-    CommandRegistry.RegisterAll(api, Mod, Assembly);
-    Modules(api).StartServerSide(api);
-    OnStartServerSide(api);
+    try {
+      CommandRegistry.RegisterAll(api, Mod, Assembly);
+      Modules(api).StartServerSide(api);
+      OnStartServerSide(api);
+    } catch {
+      ReleaseHarmony();
+      throw;
+    }
   }
 
   /// <summary>Registers preferences then commands on the client, runs every own module's client
   /// start, then calls <see cref="OnStartClientSide"/>.</summary>
+  /// <remarks>Releases the Harmony holds when any of it throws, as
+  /// <see cref="StartServerSide"/> does.</remarks>
   public override void StartClientSide(ICoreClientAPI api) {
-    PreferenceRegistry.RegisterAll(api, Mod, Assembly);
-    CommandRegistry.RegisterAll(api, Mod, Assembly);
-    Modules(api).StartClientSide(api);
-    OnStartClientSide(api);
+    try {
+      PreferenceRegistry.RegisterAll(api, Mod, Assembly);
+      CommandRegistry.RegisterAll(api, Mod, Assembly);
+      Modules(api).StartClientSide(api);
+      OnStartClientSide(api);
+    } catch {
+      ReleaseHarmony();
+      throw;
+    }
   }
 
   /// <summary>Runs every own module's <see cref="IExModule.AssetsFinalize"/>, then calls
@@ -85,16 +100,22 @@ public abstract class ExModSystem : ModSystem {
 
   /// <summary>Disposes this mod's modules, releases the Harmony hold this instance's <c>Start</c>
   /// took when <see cref="PatchHarmony"/> is true (<see cref="ExHarmony.UnpatchAll(Mod)"/>), and
-  /// clears the module host. An instance whose <c>Start</c> never patched, or one already disposed,
-  /// releases nothing.</summary>
+  /// clears the module host. An instance whose <c>Start</c> never patched, one already disposed, or
+  /// one whose side start threw releases nothing.</summary>
   public override void Dispose() {
     _modules?.Dispose();
+    ReleaseHarmony();
+    _modules = null;
+    base.Dispose();
+  }
+
+  // Releases the module host's holds and this instance's own, each once.
+  private void ReleaseHarmony() {
+    _modules?.ReleaseHarmony();
     if (_holdsHarmony) {
       ExHarmony.UnpatchAll(Mod);
       _holdsHarmony = false;
     }
-    _modules = null;
-    base.Dispose();
   }
 
   /// <summary>Runs before any registration, in <see cref="StartPre"/>. Empty by default.</summary>

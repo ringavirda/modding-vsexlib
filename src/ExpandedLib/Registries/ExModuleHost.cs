@@ -18,7 +18,7 @@ public sealed class ExModuleHost {
     List<IExModule> Instances
   )> _resolved;
 
-  // The Harmony ids this host's Start holds and its Dispose has not released.
+  // The Harmony ids this host's Start holds and nothing has released yet.
   private readonly List<string> _heldHarmonyIds = [];
 
   /// <summary>Builds the host for <paramref name="mod"/> from its discovered, enabled module set
@@ -62,23 +62,38 @@ public sealed class ExModuleHost {
 
   /// <summary>Per module, <see cref="CommandRegistry.RegisterAll"/> before its entry points'
   /// <see cref="IExModule.StartServerSide"/>.</summary>
+  /// <remarks>An entry point that throws is logged and skipped. When a registration throws, releases
+  /// every Harmony hold <see cref="Start"/> took, then rethrows the exception unchanged: the game
+  /// drops the system driving a side start that throws and never disposes it.</remarks>
   public void StartServerSide(ICoreServerAPI api) {
-    foreach ((ExModuleInfo info, List<IExModule> instances) in _resolved) {
-      CommandRegistry.RegisterAll(api, _mod, info.Assembly);
-      foreach (IExModule module in instances)
-        Isolate(module, m => m.StartServerSide(api));
+    try {
+      foreach ((ExModuleInfo info, List<IExModule> instances) in _resolved) {
+        CommandRegistry.RegisterAll(api, _mod, info.Assembly);
+        foreach (IExModule module in instances)
+          Isolate(module, m => m.StartServerSide(api));
+      }
+    } catch {
+      ReleaseHarmony();
+      throw;
     }
   }
 
   /// <summary>Per module, <see cref="PreferenceRegistry.RegisterAll"/> then
   /// <see cref="CommandRegistry.RegisterAll"/> before its entry points'
   /// <see cref="IExModule.StartClientSide"/>.</summary>
+  /// <remarks>Releases the Harmony holds when a registration throws, as
+  /// <see cref="StartServerSide"/> does.</remarks>
   public void StartClientSide(ICoreClientAPI api) {
-    foreach ((ExModuleInfo info, List<IExModule> instances) in _resolved) {
-      PreferenceRegistry.RegisterAll(api, _mod, info.Assembly);
-      CommandRegistry.RegisterAll(api, _mod, info.Assembly);
-      foreach (IExModule module in instances)
-        Isolate(module, m => m.StartClientSide(api));
+    try {
+      foreach ((ExModuleInfo info, List<IExModule> instances) in _resolved) {
+        PreferenceRegistry.RegisterAll(api, _mod, info.Assembly);
+        CommandRegistry.RegisterAll(api, _mod, info.Assembly);
+        foreach (IExModule module in instances)
+          Isolate(module, m => m.StartClientSide(api));
+      }
+    } catch {
+      ReleaseHarmony();
+      throw;
     }
   }
 
@@ -90,10 +105,17 @@ public sealed class ExModuleHost {
 
   /// <summary>Runs every entry point's <see cref="IExModule.Dispose"/>, then releases each Harmony
   /// hold this host's <see cref="Start"/> took for a module that opted in
-  /// (<see cref="ExHarmony.UnpatchAll(string)"/>); a host never started, or already disposed,
-  /// releases none.</summary>
+  /// (<see cref="ExHarmony.UnpatchAll(string)"/>); a host never started, already disposed, or whose
+  /// side start threw releases none.</summary>
   public void Dispose() {
     Drive(m => m.Dispose());
+    ReleaseHarmony();
+  }
+
+  /// <summary>Releases each Harmony hold <see cref="Start"/> took that nothing has released yet
+  /// (<see cref="ExHarmony.UnpatchAll(string)"/>); a second call releases none. Runs no module
+  /// hook.</summary>
+  internal void ReleaseHarmony() {
     foreach (string id in _heldHarmonyIds)
       ExHarmony.UnpatchAll(id);
     _heldHarmonyIds.Clear();

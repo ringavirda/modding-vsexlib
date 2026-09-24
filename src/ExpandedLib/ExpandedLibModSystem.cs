@@ -17,7 +17,7 @@ namespace ExpandedLib;
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class ExpandedLibModSystem : ModSystem {
   // Set while this instance holds exlib's patches (the handbook unit patch and the snow patch):
-  // from the end of its Start to its Dispose.
+  // from the end of its Start to its Dispose, or to a side start that throws.
   private Harmony? _harmony;
 
   // The message named at StartPre and repeated to every joining player; null when nothing clashes.
@@ -76,50 +76,65 @@ public class ExpandedLibModSystem : ModSystem {
   }
 
   public override void StartClientSide(ICoreClientAPI api) {
-    // The library's own display preferences (metric/imperial unit system).
-    PreferenceRegistry.RegisterAll(api, Mod, GetType().Assembly);
+    try {
+      // The library's own display preferences (metric/imperial unit system).
+      PreferenceRegistry.RegisterAll(api, Mod, GetType().Assembly);
 
-    // Loads the per-player display-preference store, writing the file on first run.
-    ExPreferences.LoadConfig(api);
+      // Loads the per-player display-preference store, writing the file on first run.
+      ExPreferences.LoadConfig(api);
 
-    // Applies the local player's saved choices once the world and player are ready.
-    api.Event.LevelFinalize += () =>
-      ExPreferences.ApplyForPlayer(api.World.Player.PlayerUID);
+      // Applies the local player's saved choices once the world and player are ready.
+      api.Event.LevelFinalize += () =>
+        ExPreferences.ApplyForPlayer(api.World.Player.PlayerUID);
 
-    // The library's own client commands: the shared .exmod root and its network-highlight sub-command.
-    CommandRegistry.RegisterAll(api, Mod, GetType().Assembly);
+      // The library's own client commands: the shared .exmod root and its network-highlight sub-command.
+      CommandRegistry.RegisterAll(api, Mod, GetType().Assembly);
 
-    // Applies every dependent mod's selected recipe-cost level to the live recipes.
-    ExRecipeProfiles.ApplyAll(api);
+      // Applies every dependent mod's selected recipe-cost level to the live recipes.
+      ExRecipeProfiles.ApplyAll(api);
+    } catch {
+      ReleaseHarmony();
+      throw;
+    }
   }
 
   public override void StartServerSide(ICoreServerAPI api) {
-    // The server-side counterpart: the universal exmod root, plus the /exmod recipes <mod> <level> switch.
-    CommandRegistry.RegisterAll(api, Mod, GetType().Assembly);
+    try {
+      // The server-side counterpart: the universal exmod root, plus the /exmod recipes <mod> <level> switch.
+      CommandRegistry.RegisterAll(api, Mod, GetType().Assembly);
 
-    // Applies every registered mod's selected recipe-cost level to the live, host-authoritative recipes.
-    ExRecipeProfiles.ApplyAll(api);
+      // Applies every registered mod's selected recipe-cost level to the live, host-authoritative recipes.
+      ExRecipeProfiles.ApplyAll(api);
 
-    // Repeats the StartPre finding to every joining player.
-    if (_incompatible is { } message)
-      api.Event.PlayerJoin += player =>
-        player.SendMessage(
-          GlobalConstants.GeneralChatGroup,
-          message,
-          EnumChatType.Notification
-        );
+      // Repeats the StartPre finding to every joining player.
+      if (_incompatible is { } message)
+        api.Event.PlayerJoin += player =>
+          player.SendMessage(
+            GlobalConstants.GeneralChatGroup,
+            message,
+            EnumChatType.Notification
+          );
+    } catch {
+      ReleaseHarmony();
+      throw;
+    }
   }
 
   /// <summary>Releases the hold this instance's <c>Start</c> took on exlib's Harmony patches, which
   /// come off with the last hold (<see cref="ExHarmony.UnpatchAll(Mod)"/>); an instance whose
-  /// <c>Start</c> never reached it, or one already disposed, releases nothing.
-  /// <see cref="NoSnowCells"/> is left to the server's structures and the next world's load
+  /// <c>Start</c> never reached it, one already disposed, or one whose side start threw releases
+  /// nothing. <see cref="NoSnowCells"/> is left to the server's structures and the next world's load
   /// start.</summary>
   public override void Dispose() {
+    ReleaseHarmony();
+    base.Dispose();
+  }
+
+  // Also run by a side start that throws: the game drops that system and never disposes it.
+  private void ReleaseHarmony() {
     if (_harmony != null) {
       ExHarmony.UnpatchAll(Mod);
       _harmony = null;
     }
-    base.Dispose();
   }
 }

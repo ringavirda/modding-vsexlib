@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using ExpandedLib.Industry;
 using ExpandedLib.Industry.Helpers;
+using ExpandedLib.Registries;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using HarmonyLib;
@@ -14,8 +15,9 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>In singleplayer the client's teardown leaves what the server applied: exlib's Harmony
-/// patches, the no-snow marks and the server end of the sound channel. Patches <see cref="Block"/>
-/// process-wide, hence the Harmony collection.</summary>
+/// patches, the no-snow marks and the server end of the sound channel. A side start that throws
+/// releases the hold its own <c>Start</c> took, since the game never disposes that system. Patches
+/// <see cref="Block"/> process-wide, hence the Harmony collection.</summary>
 [Collection(ExHarmonyCollection.Name)]
 public class SingleplayerTeardownTests : IDisposable {
   private static readonly BlockPos At = new(10, 5, 20);
@@ -114,6 +116,43 @@ public class SingleplayerTeardownTests : IDisposable {
     } finally {
       server.Dispose();
     }
+  }
+
+  // Another holder of the exlib id stands in for the other side. Fails when a throwing side start
+  // keeps its hold (the last assert) or swallows the exception.
+  [Theory]
+  [InlineData(EnumAppSide.Server)]
+  [InlineData(EnumAppSide.Client)]
+  public void A_side_start_that_throws_releases_its_hold_and_rethrows(
+    EnumAppSide side
+  ) {
+    var world = new TestWorld();
+    var boom = new InvalidOperationException("command registration");
+    world.Api.ChatCommands.Returns(_ => throw boom);
+    world.ClientApi.ChatCommands.Returns(_ => throw boom);
+    ExpandedLibModSystem system = Exlib(world);
+    try {
+      ExHarmony.PatchOnce("exlib", typeof(ExpandedLibModSystem).Assembly);
+      system.Start(side == EnumAppSide.Server ? world.Api : world.ClientApi);
+
+      Exception thrown = Assert.ThrowsAny<Exception>(() => {
+        if (side == EnumAppSide.Server)
+          system.StartServerSide(world.Api);
+        else
+          system.StartClientSide(world.ClientApi);
+      });
+
+      Assert.Same(boom, thrown);
+      Assert.Contains(
+        Harmony.GetPatchInfo(SnowCoverage)!.Postfixes,
+        p => p.owner == "exlib"
+      );
+    } finally {
+      ExHarmony.UnpatchAll("exlib");
+    }
+    Assert.False(
+      Harmony.GetPatchInfo(SnowCoverage)?.Owners.Contains("exlib") ?? false
+    );
   }
 
   // Fails when IndustryModule.Dispose closes the channel on an instance that never opened it.
