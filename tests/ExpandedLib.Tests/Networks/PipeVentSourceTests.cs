@@ -58,7 +58,7 @@ public class PipeVentSourceTests {
 
   #region Vent strategies
 
-  // Mutation: PipeNetwork.VentFor returns the factory's strategy for every node.
+  // Fails when every node vents through the factory's strategy.
   [Fact]
   public void Two_runs_vent_each_at_its_own_strategys_rate() {
     var w = NewWorld(FactoryRate);
@@ -73,7 +73,7 @@ public class PipeVentSourceTests {
     Assert.Equal(StartVolume - NodeRate, nodeRun.State!.Volume, 3);
   }
 
-  // Mutation: ClassifyOpenings drops its air check, so the chimney face counts as a leak.
+  // Fails when a chimney face with no strategy counts as a leak.
   [Fact]
   public void A_run_with_neither_strategy_vents_nothing() {
     var w = NewWorld(factoryRate: null);
@@ -86,7 +86,7 @@ public class PipeVentSourceTests {
     Assert.Equal(0, run.State.OpeningsCount);
   }
 
-  // Mutation: ApplyVentDraw stops after the first strategy.
+  // Fails when a run vents through its first strategy only.
   [Fact]
   public void A_run_mixing_both_vents_each_node_through_its_own_strategy() {
     var w = NewWorld(FactoryRate);
@@ -109,7 +109,7 @@ public class PipeVentSourceTests {
     );
   }
 
-  // Mutation: PipeNetwork.VentFor returns the node's null instead of falling back to the factory's.
+  // Fails when a node whose block returns no strategy vents nothing.
   [Fact]
   public void A_block_supplying_no_strategy_vents_through_the_factorys() {
     var w = NewWorld(FactoryRate);
@@ -121,7 +121,7 @@ public class PipeVentSourceTests {
     Assert.Equal(StartVolume - FactoryRate, run.State!.Volume, 3);
   }
 
-  // Mutation: PipeNetwork.VentFor calls CreateVentStrategy on every tick instead of keeping it.
+  // Fails when a network creates a block's strategy more than once.
   [Fact]
   public void Each_run_creates_its_nodes_strategy_once_and_keeps_it() {
     var w = NewWorld(factoryRate: null);
