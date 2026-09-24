@@ -81,8 +81,8 @@ public class AssetLoadingTests
       "BreakFixture"
     );
 
-  // Fails when the loader leaves every block at id 0 (the last one loaded replaces air), or an item
-  // at id 0.
+  // Fails when the loader gives its blocks id 0 or one id to two of them (the later replaces the
+  // earlier in the id table), or leaves an item at id 0.
   [Fact]
   public void Loaded_blocks_and_items_take_ids_of_their_own()
   {
@@ -91,12 +91,19 @@ public class AssetLoadingTests
     world.LoadAssets(BreakFixture);
 
     Assert.Equal("game:air", world.World.GetBlock(0).Code.ToString());
-    int[] ids = [.. world.World.Blocks.Select(b => b.BlockId)];
-    Assert.Equal(ids.Length, ids.Distinct().Count());
-    Assert.Contains(
-      world.World.Blocks,
-      b => b.Code.ToString() == "breakfixture:frame-n"
-    );
+    foreach (
+      string code in new[]
+      {
+        "breakfixture:frame-n",
+        "breakfixture:frame-e",
+        "breakfixture:unstored-n",
+        "breakfixture:unstored-e",
+      }
+    )
+    {
+      Block block = world.World.GetBlock(new AssetLocation(code));
+      Assert.Same(block, world.World.GetBlock(block.BlockId));
+    }
     Assert.NotEqual(
       0,
       world.GetItem(new AssetLocation("breakfixture:token"))!.ItemId
