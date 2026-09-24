@@ -41,7 +41,7 @@ public class ExStairsTests {
     Assert.Equal($"{Stem}-{expected}", rig.PlacedCode);
   }
 
-  // Fails when a missing state is dereferenced rather than refused.
+  // Fails when the null check on the placed state is removed.
   [Fact]
   public void A_state_the_blocktype_lacks_is_refused() {
     var rig = new StairsRig(noDown: false, skip: "down-north-free");

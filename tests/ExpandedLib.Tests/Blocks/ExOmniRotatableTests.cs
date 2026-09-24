@@ -74,7 +74,7 @@ public class ExOmniRotatableTests {
     Assert.Equal($"{Stem}-{expected}", rig.PlacedCode);
   }
 
-  // Fails when a state missing from the registered blocks is dereferenced rather than refused.
+  // Fails when the null check on the picked state is removed.
   [Fact]
   public void A_state_the_blocktype_skips_is_refused() {
     var rig = new SlabRig("sides-block", skip: "down");
