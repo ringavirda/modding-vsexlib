@@ -106,4 +106,11 @@ public class GridRecipesTests {
     Assert.Throws<System.ArgumentException>(() =>
       GridRecipes.Check(Planted, ("other", Here))
     );
+
+  // Fails when Check stops refusing a family that holds one domain twice.
+  [Fact]
+  public void A_family_holding_a_domain_twice_throws() =>
+    Assert.Throws<System.ArgumentException>(() =>
+      GridRecipes.Check(Planted, (Planted, Here), (Planted, Here))
+    );
 }
