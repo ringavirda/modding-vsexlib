@@ -83,6 +83,8 @@ see the git history.
   Harmony holds they took are released. Each load drops the code-first definitions an earlier
   load registered. A mod whose `modinfo.json` declares
   `"type": "content"` loads without a compiled assembly.
+- `RegistryLawScanner.ForEach` (ExpandedLib.Testing) throws when the base type has no concrete
+  subclass loaded, instead of passing a law that checked nothing.
 
 ### Removed
 

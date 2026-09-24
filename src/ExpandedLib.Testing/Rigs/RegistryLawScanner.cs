@@ -52,10 +52,15 @@ public static class RegistryLawScanner {
   /// Runs <paramref name="law"/> against every concrete subclass of <typeparamref name="TBase"/>,
   /// collecting every failure into one message.
   /// </summary>
-  /// <exception cref="InvalidOperationException"><paramref name="law"/> threw for at least one leaf.
+  /// <exception cref="InvalidOperationException"><typeparamref name="TBase"/> has no concrete
+  /// subclass in the loaded closure, or <paramref name="law"/> threw for at least one leaf.
   /// </exception>
   public static void ForEach<TBase>(Action<Type> law) {
     IReadOnlyList<Type> leaves = ConcreteSubclasses<TBase>();
+    if (leaves.Count == 0)
+      throw new InvalidOperationException(
+        $"no concrete subclass of {typeof(TBase).FullName} is loaded - the law checked nothing"
+      );
     var failures = new List<string>();
 
     foreach (Type leaf in leaves) {

@@ -19,6 +19,10 @@ public class RegistryLawScannerTests {
     public override int Value => -1;
   }
 
+  private abstract class Leafless {
+    public abstract int Value { get; }
+  }
+
   [Fact]
   public void ConcreteSubclasses_finds_every_non_abstract_leaf_and_excludes_the_base() {
     var leaves = RegistryLawScanner.ConcreteSubclasses<Base>();
@@ -42,5 +46,18 @@ public class RegistryLawScannerTests {
 
     Assert.Contains(nameof(BadLeaf), ex.Message);
     Assert.DoesNotContain(nameof(GoodLeaf), ex.Message);
+  }
+
+  // Fails when ForEach passes a law that met no leaf.
+  [Fact]
+  public void ForEach_over_a_base_with_no_leaf_throws() {
+    int ran = 0;
+
+    var ex = Assert.Throws<InvalidOperationException>(() =>
+      RegistryLawScanner.ForEach<Leafless>(_ => ran++)
+    );
+
+    Assert.Contains(nameof(Leafless), ex.Message);
+    Assert.Equal(0, ran);
   }
 }

@@ -509,7 +509,8 @@ public static class RegistryLawScanner
 
 `ConcreteSubclasses` walks the loaded assembly closure transitively (references load lazily) and
 returns every non-abstract type assignable to `TBase`. `ForEach` runs `law` against each and throws
-one `InvalidOperationException` naming every leaf that failed, rather than stopping at the first.
+one `InvalidOperationException` naming every leaf that failed, rather than stopping at the first; it
+also throws when `TBase` has no concrete subclass loaded, since a law over nothing proves nothing.
 
 ## `ResourceInvariant<TState>`
 
