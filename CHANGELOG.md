@@ -13,9 +13,10 @@ see the git history.
   its own rate in units per tick, minimum gap, conveying and horizontal-only flags. A connection
   whose two cells both return rules takes the smaller rate and the larger gap; below the gap nothing
   moves except into a drain fitting; a receiver farther from the nearest flow source takes the whole
-  difference when both cells convey, and any other pair moves half; a horizontal-only cell exchanges
-  no metal through its up and down faces. The member defaults to null, and a connection where
-  either cell returns null flows as before.
+  difference when both cells convey, a drain fitting and a downhill edge take the whole difference,
+  and any other pair moves half; a horizontal-only cell exchanges no metal through its up and down
+  faces with a cell that returns rules. The member defaults to null, and a connection where either
+  cell returns null flows as before.
 - **`IPipeVentSource`** (ExpandedLib.Industry): a pipe node's block can supply its own
   `IPipeVentStrategy` through `CreateVentStrategy`. `PipeNetwork` classifies each open face with
   its node's strategy, falling back to the one the "pipe" factory registered, and vents each

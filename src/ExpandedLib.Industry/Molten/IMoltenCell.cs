@@ -29,8 +29,9 @@ public interface IMoltenCell {
   /// <summary>True for a cell that seeds the flow (the canal start); the distance-from-start BFS roots here.</summary>
   bool IsFlowSource { get; }
 
-  /// <summary>True for a drain fitting (tap, mold pedestal): a levelling edge into it moves the whole
-  /// difference rather than half, so a run empties into it.</summary>
+  /// <summary>True for a drain fitting (tap, mold pedestal): an edge into it moves the whole
+  /// difference rather than half and is exempt from a rule's
+  /// <see cref="MoltenFlowRules.MinFlowGap"/>, so a run empties into it.</summary>
   bool AcceptsSubMinimumFlow { get; }
 
   /// <summary>This cell's flow rules, read on every tick; null by default. A connection where
