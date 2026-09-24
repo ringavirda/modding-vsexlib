@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using ExpandedLib.Testing;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -68,11 +69,7 @@ public class CommentStyleGuards {
         files.Add(new SourceFile(path, rel, File.ReadAllLines(path)));
       }
     }
-    Assert.True(
-      files.Count > 0,
-      "Found no C# sources to check - the repo-root walk is wrong."
-    );
-    return files;
+    return Premise.NotEmpty(files, "C# sources");
   }
 
   // Every comment line in the repo, as "<relative path>:<1-based line>" plus its text.

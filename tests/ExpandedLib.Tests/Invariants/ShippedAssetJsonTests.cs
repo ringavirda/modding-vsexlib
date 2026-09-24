@@ -42,7 +42,7 @@ public class ShippedAssetJsonTests {
       .Distinct()
       .ToList();
 
-    Assert.NotEmpty(domains);
+    Premise.NotEmpty(domains, "shipped asset domains");
     return domains;
   }
 

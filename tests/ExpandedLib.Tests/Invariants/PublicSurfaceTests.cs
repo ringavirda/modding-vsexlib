@@ -94,7 +94,9 @@ public class PublicSurfaceTests {
     // Bare name plus the arity its row was written at.
     var listed = ListedNames(page).Select(ParseRow).ToHashSet();
     var missing = new List<string>();
-    foreach (Type t in ContractTypes()) {
+    foreach (
+      Type t in Premise.NotEmpty(ContractTypes(), "public contract types")
+    ) {
       if (IsHidden(t))
         continue;
       string name = QualifiedName(t);

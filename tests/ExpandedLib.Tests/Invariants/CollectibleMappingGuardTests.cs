@@ -67,7 +67,7 @@ public class CollectibleMappingGuardTests {
   public void A_block_entity_that_stores_a_stack_maps_its_collectibles() {
     var offenders = new List<string>();
     int files = 0;
-    foreach (string f in SourceFiles()) {
+    foreach (string f in Premise.NotEmpty(SourceFiles(), "mod source files")) {
       files++;
       string text = File.ReadAllText(f);
       if (!text.Contains("class BlockEntity") || !StoresAStack(text))

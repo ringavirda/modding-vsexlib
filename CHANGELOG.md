@@ -68,6 +68,9 @@ see the git history.
   (ExpandedLib.Testing): a guard class in a suite's `Invariants` folder names the checks it calls, or
   proves its own rule with a `[PlantedDefect]` test. `Unproven` lists the guards that do neither, and
   `UncalledGuards` fails a guard file that never calls a check it names.
+- **`Premise`** and **`HarnessUse.Unpremised`** (ExpandedLib.Testing): `Premise.NotEmpty` fails a
+  guard whose corpus is empty and `Premise.Covers` one that misses part of a census, such as a
+  domain's golden blocktypes. `Unpremised` names every guard file that calls neither.
 
 ### Changed
 

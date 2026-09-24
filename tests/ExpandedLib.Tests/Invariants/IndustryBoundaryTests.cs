@@ -141,10 +141,9 @@ public class IndustryBoundaryTests {
     var hits = new List<string>();
 
     foreach (
-      string path in Directory.EnumerateFiles(
-        srcRoot,
-        "*.cs",
-        SearchOption.AllDirectories
+      string path in Premise.NotEmpty(
+        Directory.EnumerateFiles(srcRoot, "*.cs", SearchOption.AllDirectories),
+        "framework sources"
       )
     ) {
       string[] lines = File.ReadAllLines(path);

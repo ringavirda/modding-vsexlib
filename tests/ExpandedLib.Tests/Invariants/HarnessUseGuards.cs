@@ -15,14 +15,27 @@ namespace ExpandedLib.Tests;
 [GuardOf(typeof(HarnessUse), nameof(HarnessUse.HalfBehaviours))]
 [GuardOf(typeof(HarnessUse), nameof(HarnessUse.GameConstrainedGenerics))]
 [GuardOf(typeof(HarnessUse), nameof(HarnessUse.UncalledGuards))]
+[GuardOf(typeof(HarnessUse), nameof(HarnessUse.Unpremised))]
 public class HarnessUseGuards {
+  /// <summary>Guard file, and why it calls no <see cref="Premise"/>.</summary>
+  private static readonly Dictionary<string, string> PremiseAllowed = new(
+    StringComparer.Ordinal
+  ) {
+    ["HostProcessParityTests.cs"] =
+      "compares two named files; a missing file or class fails the test",
+    ["UnprovenGuardTests.cs"] =
+      "PlantedDefects.Unproven throws on a folder with no guard",
+    ["VersionPinTests.cs"] =
+      "fails on its own when no template PackageReference or sample dependency is found",
+  };
+
   #region exlib
 
   // Fails when an exlib test sets StructureComplete through ReflectionHelpers.SetProperty instead
   // of standing or breaking the structure.
   [Fact]
   public void Exlibs_tests_never_force_a_structure_complete() {
-    string[] files = Sources();
+    IReadOnlyList<string> files = Premise.NotEmpty(Sources(), "test sources");
 
     Assert.Contains(
       files,
@@ -36,7 +49,7 @@ public class HarnessUseGuards {
   // CollectibleBehaviors.
   [Fact]
   public void Exlibs_block_doubles_fill_both_behaviour_arrays() {
-    string[] files = Sources();
+    IReadOnlyList<string> files = Premise.NotEmpty(Sources(), "test sources");
 
     Assert.Contains(
       files,
@@ -81,6 +94,27 @@ public class HarnessUseGuards {
     Assert.Contains(files, f => File.ReadAllText(f).Contains("[GuardOf("));
     IReadOnlyList<string> offenders = HarnessUse.UncalledGuards(files);
     Assert.True(offenders.Count == 0, string.Join("\n", offenders));
+  }
+
+  // Fails when a guard in exlib's Invariants reads a corpus with no Premise and is not allowed.
+  [Fact]
+  public void Exlibs_guards_assert_their_corpus() {
+    FindingLists.Assert(
+      HarnessUse.Unpremised(
+        Directory.GetFiles(
+          Path.Combine(
+            RepoPaths.Root,
+            "tests",
+            "ExpandedLib.Tests",
+            "Invariants"
+          ),
+          "*.cs"
+        )
+      ),
+      PremiseAllowed,
+      new Dictionary<string, string>(),
+      f => f.Split(':')[0]
+    );
   }
 
   #endregion
@@ -353,6 +387,30 @@ public class HarnessUseGuards {
         HarnessUse.UncalledGuards,
         "[GuardOf(typeof(SoundUse), \"ShortRepeats\")]\npublic class G { }"
       )
+    );
+  }
+
+  // Fails when Unpremised passes a file with no Premise call, or names one that makes it.
+  [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.Unpremised))]
+  public void A_guard_file_calling_no_Premise_is_named() {
+    Assert.Equal(
+      ": calls no Premise, so an empty corpus passes",
+      Assert.Single(
+        Scan(
+          HarnessUse.Unpremised,
+          "public class G {\n  // Premise.NotEmpty(files, \"x\");\n}"
+        )
+      )[^45..]
+    );
+    Assert.Empty(
+      Scan(
+        HarnessUse.Unpremised,
+        "var f = Premise\n  .NotEmpty(Files(), \"x\");"
+      )
+    );
+    Assert.Empty(
+      Scan(HarnessUse.Unpremised, "Premise.Covers(read, \"iiex\");")
     );
   }
 

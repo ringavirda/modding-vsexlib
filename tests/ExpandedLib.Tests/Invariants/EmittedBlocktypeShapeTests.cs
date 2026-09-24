@@ -30,6 +30,9 @@ public class EmittedBlocktypeShapeTests {
   [Fact]
   public void The_golden_corpus_is_not_empty() {
     // Stops a renamed or emptied goldens/ folder from reading as "every selector resolves" vacuously.
-    Assert.NotEmpty(SelectorCoverage.GoldenBlocktypes("exlib"));
+    Premise.NotEmpty(
+      SelectorCoverage.GoldenBlocktypes("exlib"),
+      "golden blocktypes"
+    );
   }
 }

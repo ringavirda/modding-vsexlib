@@ -69,7 +69,7 @@ public class TemplateGuards {
         )
       )
       .ToArray();
-    Assert.NotEmpty(files);
+    Premise.NotEmpty(files, "template files");
     foreach (string file in files)
       foreach (
         string literal in new[]

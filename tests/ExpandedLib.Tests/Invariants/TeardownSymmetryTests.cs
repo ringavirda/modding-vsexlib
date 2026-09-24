@@ -74,7 +74,7 @@ public class TeardownSymmetryTests {
   public void A_block_entity_that_tears_down_on_removal_also_tears_down_on_unload() {
     var offenders = new List<string>();
     int seen = 0;
-    foreach (string f in SourceFiles()) {
+    foreach (string f in Premise.NotEmpty(SourceFiles(), "mod source files")) {
       string text = File.ReadAllText(f);
       if (!RemovedOverride.IsMatch(text))
         continue;
@@ -104,7 +104,7 @@ public class TeardownSymmetryTests {
   public void A_removal_only_opt_out_sits_where_the_removal_teardown_does() {
     var offenders = new List<string>();
     int marked = 0;
-    foreach (string f in SourceFiles()) {
+    foreach (string f in Premise.NotEmpty(SourceFiles(), "mod source files")) {
       string text = File.ReadAllText(f);
       if (!text.Contains(OptOut, StringComparison.Ordinal))
         continue;
@@ -130,7 +130,7 @@ public class TeardownSymmetryTests {
   [Fact]
   public void A_removal_only_opt_out_states_its_reason() {
     var offenders = new List<string>();
-    foreach (string f in SourceFiles()) {
+    foreach (string f in Premise.NotEmpty(SourceFiles(), "mod source files")) {
       foreach (string line in File.ReadAllLines(f)) {
         int at = line.IndexOf(OptOut, StringComparison.Ordinal);
         if (at < 0)

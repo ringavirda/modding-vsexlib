@@ -33,6 +33,7 @@ public class SoundUseGuards {
         && !f.Contains("/obj/", StringComparison.Ordinal)
       )
       .ToArray();
+    Premise.NotEmpty(files, "exlib sources");
 
     IReadOnlyList<string> offenders = SoundUse.ShortRepeats(files);
 
@@ -58,6 +59,7 @@ public class SoundUseGuards {
         && !f.Contains("/obj/", StringComparison.Ordinal)
       )
       .ToArray();
+    Premise.NotEmpty(files, "exlib sources");
 
     IReadOnlyList<string> offenders = SoundUse.DirectSounds(files);
 

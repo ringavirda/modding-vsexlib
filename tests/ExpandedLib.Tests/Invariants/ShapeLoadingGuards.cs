@@ -52,7 +52,8 @@ public class ShapeLoadingGuards {
   // Whole-file matching: the formatter breaks a fluent chain across lines.
   private static string[] Offenders(Regex pattern) =>
     [
-      .. Production()
+      .. Premise
+        .NotEmpty(Production(), "production sources")
         .SelectMany(f =>
           pattern
             .Matches(f.Text)

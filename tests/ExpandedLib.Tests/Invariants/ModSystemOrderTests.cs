@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using ExpandedLib.Industry;
 using ExpandedLib.Registries;
+using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Xunit;
 
@@ -47,7 +48,7 @@ public class ModSystemOrderTests {
   [Fact]
   public void Every_ModSystem_reading_or_finalizing_assets_sits_below_the_default_order() {
     var offenders = new List<string>();
-    foreach (Type t in ConcreteModSystems()) {
+    foreach (Type t in Premise.NotEmpty(ConcreteModSystems(), "mod systems")) {
       if (
         !OverridesPhase(t, nameof(ModSystem.AssetsLoaded))
         && !OverridesPhase(t, nameof(ModSystem.AssetsFinalize))

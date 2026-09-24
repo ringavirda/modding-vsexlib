@@ -99,7 +99,7 @@ public class FillerCleanupHookTests {
   public void Filler_cleanup_hangs_off_removal_not_breaking() {
     var offenders = new List<string>();
     int seen = 0;
-    foreach (string f in SourceFiles()) {
+    foreach (string f in Premise.NotEmpty(SourceFiles(), "mod source files")) {
       string text = File.ReadAllText(f);
       // Matches the call syntax, not a bare mention in another comment.
       bool mentionsAny = false;

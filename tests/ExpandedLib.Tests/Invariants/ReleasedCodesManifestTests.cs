@@ -52,7 +52,7 @@ public class ReleasedCodesManifestTests {
   // Fails when a release is tagged and the seed gains no row for it.
   [Fact]
   public void The_seed_reaches_the_newest_release_tag() {
-    string[] tags = Tags();
+    IReadOnlyList<string> tags = Premise.NotEmpty(Tags(), "git tags v*");
     ReleasedVersions.HighestPublished.TryGetValue("exlib", out string? seeded);
 
     string? mismatch = NewestReleaseMismatch(seeded, tags);

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Industry.Metals;
+using ExpandedLib.Testing;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -32,7 +33,12 @@ public class CatalogueNamingTests {
 
   [Fact]
   public void Every_catalogue_registry_exposes_Clear_and_Contributors() {
-    foreach (Type type in CatalogueRegistryTypes()) {
+    foreach (
+      Type type in Premise.NotEmpty(
+        CatalogueRegistryTypes(),
+        "catalogue registries"
+      )
+    ) {
       Assert.True(
         type.GetMethod(
           "Clear",
@@ -52,7 +58,12 @@ public class CatalogueNamingTests {
 
   [Fact]
   public void No_catalogue_registry_exposes_an_Add_or_Load_member() {
-    foreach (Type type in CatalogueRegistryTypes())
+    foreach (
+      Type type in Premise.NotEmpty(
+        CatalogueRegistryTypes(),
+        "catalogue registries"
+      )
+    )
       foreach (
         MemberInfo member in type.GetMembers(
           BindingFlags.Public

@@ -17,6 +17,9 @@ public class LoopingAnimationTests {
   [Fact]
   public void The_corpus_reaches_the_shipped_shapes() {
     // A path filter that silently matches nothing would make the rule above pass trivially.
-    Assert.NotEmpty(LoopingAnimations.ShapeFiles(RepoPaths.Assets("exlib")));
+    Premise.NotEmpty(
+      LoopingAnimations.ShapeFiles(RepoPaths.Assets("exlib")),
+      "shipped shapes"
+    );
   }
 }

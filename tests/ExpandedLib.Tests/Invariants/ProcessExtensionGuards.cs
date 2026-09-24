@@ -84,13 +84,7 @@ public class ProcessExtensionGuards {
 
   [Fact]
   public void The_corpus_is_not_empty() {
-    IReadOnlyList<SourceFile> machines = ProcessMachines();
-
-    Assert.True(
-      machines.Count > 0,
-      "Found no process-machine sources under src/ - the corpus rule is wrong and the guard below is "
-        + "checking nothing."
-    );
+    Premise.NotEmpty(ProcessMachines(), "process-machine sources");
   }
 
   [Fact]

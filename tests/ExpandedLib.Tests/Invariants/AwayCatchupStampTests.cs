@@ -70,7 +70,7 @@ public class AwayCatchupStampTests {
   public void A_process_host_saves_the_stamp_its_catch_up_measures_from() {
     var offenders = new List<string>();
     int seen = 0;
-    foreach (string f in SourceFiles()) {
+    foreach (string f in Premise.NotEmpty(SourceFiles(), "mod source files")) {
       string text = File.ReadAllText(f);
       if (!HostsAProcess.IsMatch(text))
         continue;
@@ -103,7 +103,7 @@ public class AwayCatchupStampTests {
     // A stale marker (left after the host moves) exempts whatever host lands in that file next.
     var stranded = new List<string>();
     var unexplained = new List<string>();
-    foreach (string f in SourceFiles()) {
+    foreach (string f in Premise.NotEmpty(SourceFiles(), "mod source files")) {
       string text = File.ReadAllText(f);
       if (!text.Contains(OptOut, StringComparison.Ordinal))
         continue;
