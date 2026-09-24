@@ -2,6 +2,7 @@
 #if GAME_GE_1_22
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using ExpandedLib.Config;
 using ExpandedLib.Definitions;
 using ExpandedLib.Industry.Metals;
@@ -81,6 +82,24 @@ public class AssetLoadingTests
       world.World.GetBlock(
         new AssetLocation("platedpipes:pipe-plated-straight-ns")
       )
+    );
+  }
+
+  // Fails when the loader disposes exlib's systems and leaves the mod's own started.
+  [Fact]
+  public void A_load_disposes_the_mods_own_systems()
+  {
+    using var world = new TestWorld();
+
+    world.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "PlatedPipes"));
+
+    ModSystem plated = world.LoadedSystems.Single(s =>
+      s.GetType().Name == "PlatedPipesModSystem"
+    );
+    Assert.Null(
+      typeof(ExModSystem)
+        .GetField("_modules", BindingFlags.Instance | BindingFlags.NonPublic)!
+        .GetValue(plated)
     );
   }
 

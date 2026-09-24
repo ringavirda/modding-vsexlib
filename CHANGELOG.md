@@ -77,8 +77,9 @@ see the git history.
   mods' mod systems register their block, item and entity classes first, and on 1.22 the tag
   converters read this load's tag registries, so the base `game` domain loads without a Warning or
   Error; a block naming a class nothing registers still logs its Error. exlib's own mod systems start
-  before the mod's, so a mod block naming an `exlib.*` class resolves, and are disposed when the load
-  ends, taking their Harmony patches with them. Each load drops the code-first definitions an earlier
+  before the mod's, so a mod block naming an `exlib.*` class resolves. Every system a load starts,
+  the mod's own included, is disposed when the load ends, whether a `Start` threw or not, so the
+  Harmony holds they took are released. Each load drops the code-first definitions an earlier
   load registered. A mod whose `modinfo.json` declares
   `"type": "content"` loads without a compiled assembly.
 

@@ -29,8 +29,8 @@ public sealed partial class TestWorld {
   /// <remarks>The install's vanilla mod systems register their classes first, so a vanilla-only
   /// load logs nothing. exlib's driver then runs its <c>StartPre</c>, emptying every per-world
   /// registry (<see cref="Registries.ExWorldState"/>), and every exlib mod system its <c>Start</c>,
-  /// before the mod's; exlib's systems are disposed, with their Harmony patches, when the load
-  /// ends.</remarks>
+  /// before the mod's. Every system started, a mod's own included, is disposed when the load ends,
+  /// thrown or not, the mod's first, so the Harmony holds they took are released.</remarks>
   /// <param name="modPath">A mod's or sample's folder; <c>modinfo.json</c>/<c>bin/</c> may sit at its
   /// root or under <c>src/</c>, assets always under <c>assets/&lt;modid&gt;/</c>. A mod whose
   /// <c>modinfo.json</c> declares <c>"type": "content"</c> has no compiled assembly.</param>
@@ -92,21 +92,30 @@ public sealed partial class TestWorld {
       out ClassRegistry rawClassRegistry
     );
     StartVanillaMods(gamePath, rawClassRegistry);
-    List<ModSystem> exlibSystems = StartExlib(loaderApi);
+    var started = new List<ModSystem>();
     try {
-      LoadMod(loaderApi, modAssembly, modId, version);
+      StartExlib(loaderApi, started);
+      LoadMod(loaderApi, modAssembly, modId, version, started);
     } finally {
-      foreach (ModSystem system in exlibSystems)
-        system.Dispose();
+      for (int i = started.Count - 1; i >= 0; i--)
+        started[i].Dispose();
+      LoadedSystems = started;
     }
     return this;
   }
 
+  /// <summary>The mod systems the last <see cref="LoadAssets"/> started, exlib's then the mod's, in
+  /// start order; every one was disposed, the mod's first, before it returned.</summary>
+  internal IReadOnlyList<ModSystem> LoadedSystems { get; private set; } = [];
+
+  // Lists each system in started before its Start: the game keeps a system whose Start throws and
+  // disposes it with the rest.
   private void LoadMod(
     ICoreServerAPI loaderApi,
     Assembly? modAssembly,
     string modId,
-    string version
+    string version,
+    List<ModSystem> started
   ) {
     Mods.Add(modId, version);
     Mod mod = Mods.GetMod(modId)!;
@@ -118,8 +127,10 @@ public sealed partial class TestWorld {
     ) {
       var sys = (ModSystem)Activator.CreateInstance(t)!;
       ReflectionHelpers.SetField(sys, "<Mod>k__BackingField", mod);
-      if (sys.ShouldLoad(EnumAppSide.Server))
+      if (sys.ShouldLoad(EnumAppSide.Server)) {
+        started.Add(sys);
         sys.Start(loaderApi);
+      }
     }
     // Runs regardless of whether the mod is code-first; a plain-JSON mod is a no-op here.
     new ExDefinitionModSystem().AssetsLoaded(loaderApi);
@@ -349,9 +360,9 @@ public sealed partial class TestWorld {
 
   /// <summary>Runs <see cref="Registries.ExModuleModSystem.StartPre"/>, then the <c>Start</c> of
   /// every server-side mod system in exlib's assembly in the game's execute order, each under this
-  /// world's <c>exlib</c> mod against <paramref name="api"/>.</summary>
-  /// <returns>The started systems, for the caller to dispose.</returns>
-  private List<ModSystem> StartExlib(ICoreServerAPI api) {
+  /// world's <c>exlib</c> mod against <paramref name="api"/>. Lists each system in
+  /// <paramref name="started"/> before it starts, for the caller to dispose.</summary>
+  private void StartExlib(ICoreServerAPI api, List<ModSystem> started) {
     Mod exlib = Mods.GetMod("exlib")!;
     List<ModSystem> systems =
     [
@@ -372,9 +383,10 @@ public sealed partial class TestWorld {
     // Only the driver's StartPre: ExpandedLibModSystem's asks this world's TestModLoader, which
     // answers every mod id enabled, so it would name smex and ppex as outdated.
     systems.OfType<Registries.ExModuleModSystem>().Single().StartPre(api);
-    foreach (ModSystem system in systems)
+    foreach (ModSystem system in systems) {
+      started.Add(system);
       system.Start(api);
-    return systems;
+    }
   }
 
   /// <summary>Reflectively runs <c>ModRegistryObjectTypeLoader.AssetsLoaded</c>, found by name each

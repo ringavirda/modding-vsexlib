@@ -723,8 +723,9 @@ class registered". Each load first runs exlib's own `ExModuleModSystem.StartPre`
 server does, which empties `ExDefinitions` and every other per-world registry of exlib, so a second
 load in the process meets nothing of the first one's code-first blocks, metals, contributors or
 config. Then every exlib mod system runs its `Start` in execute order, so a mod block naming an exlib
-class such as `exlib.BlockPipe` resolves to it. exlib's systems are disposed when the load ends,
-which removes the Harmony patches their `Start` applied.
+class such as `exlib.BlockPipe` resolves to it. Every system the load started, exlib's and the
+mod's, is disposed when the load ends, the mod's first and whether a `Start` threw or not, which
+releases the Harmony holds their `Start` took.
 
 ## 4. Boot it
 

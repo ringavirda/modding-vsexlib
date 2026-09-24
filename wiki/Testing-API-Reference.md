@@ -147,8 +147,8 @@ world's api, registered, its `drops` resolved and its `OnLoaded` run. It throws
 registers the blocks and items it resolves; the vanilla mods' classes are registered first, so a
 vanilla-only load logs no Warning or Error, and each load starts as a server's does, with exlib's
 own `ExModuleModSystem.StartPre`, which empties `ExDefinitions` and every other per-world registry.
-Every exlib mod system then runs its `Start`, so `exlib.*` classes resolve, and is disposed when the
-load ends. It
+Every exlib mod system then runs its `Start`, so `exlib.*` classes resolve; every system the load
+started, the mod's own included, is disposed when the load ends. It
 throws `InvalidOperationException` when no game install or `modinfo.json` resolves, or when a mod
 that is not `"type": "content"` has no compiled dll under `bin/`. See
 [Real assets](Testing-Harness#real-assets-testworldloadassets).
