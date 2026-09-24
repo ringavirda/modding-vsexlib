@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using ExpandedLib.Checks;
 using ExpandedLib.Definitions;
-using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 
@@ -32,24 +32,10 @@ public static class DefinitionCatalogue {
     DefinitionGoldens
       .Collect(domain, asm)
       .OfType<ExItemDef>()
-      .SelectMany(ExpandItem)
+      .SelectMany(d =>
+        DefinitionCatalogueCheck.Patterns(d.Domain, d.Code, d.ToJson())
+      )
       .Distinct();
-
-  private static IEnumerable<string> ExpandItem(ExItemDef def) {
-    var groups = new List<string[]>();
-    if (def.ToJson()["variantgroups"] is JArray vg)
-      foreach (JToken g in vg)
-        if (g["states"] is JArray arr)
-          groups.Add([.. arr.Select(s => (string)s!)]);
-        else
-          // A worldproperty group on an item cannot be enumerated headlessly; it becomes a wildcard.
-          groups.Add(["*"]);
-
-    IEnumerable<string> codes = [$"{def.Domain}:{def.Code}"];
-    foreach (string[] states in groups)
-      codes = codes.SelectMany(c => states.Select(s => c + "-" + s));
-    return codes;
-  }
 
   /// <summary>Whether <paramref name="stack"/>'s code names something <paramref name="domains"/>
   /// register; a domain not among <paramref name="domains"/> is reported as resolvable.</summary>

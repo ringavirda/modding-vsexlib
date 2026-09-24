@@ -18,7 +18,7 @@ public static class DefinitionCatalogueCheck {
 
     var errors = new List<string>();
     foreach (ExBlockDef def in source.BlockDefinitions(domain)) {
-      bool resolves = Patterns(def)
+      bool resolves = Patterns(def.Domain, def.Code, def.ToJson())
         .Select(p => new AssetLocation(p))
         .Any(pattern =>
           registered.Any(code => WildcardUtil.Match(pattern, code))
@@ -33,17 +33,21 @@ public static class DefinitionCatalogueCheck {
     return new CheckResult("DefinitionCatalogue", domain, errors);
   }
 
-  // Code patterns def.Code expands into via its variant groups; a property group stands in as a
-  // wildcard.
-  private static IEnumerable<string> Patterns(ExBlockDef def) {
+  // Code patterns a block or item def expands into via its variant groups; a property group stands
+  // in as a wildcard.
+  internal static IEnumerable<string> Patterns(
+    string domain,
+    string code,
+    JToken json
+  ) {
     var groups = new List<string[]>();
-    if (def.ToJson()["variantgroups"] is JArray vg)
+    if (json["variantgroups"] is JArray vg)
       foreach (JToken g in vg)
         groups.Add(
           g["states"] is JArray arr ? [.. arr.Select(s => (string)s!)] : ["*"]
         );
 
-    IEnumerable<string> codes = [$"{def.Domain}:{def.Code}"];
+    IEnumerable<string> codes = [$"{domain}:{code}"];
     foreach (string[] states in groups)
       codes = codes.SelectMany(c => states.Select(s => c + "-" + s));
     return codes;
