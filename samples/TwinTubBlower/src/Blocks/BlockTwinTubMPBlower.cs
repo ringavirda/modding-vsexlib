@@ -95,13 +95,19 @@ public partial class BlockTwinTubMPBlower
                   "game:supportbeam-*",
                   4,
                   "twintubblower:rcc-ingredient-beam",
-                  type: "block"
+                  type: "block",
+                  storeWildCard: "wood"
                 )
                 .RequireMetalNails(domain, 2)
                 .AddElements("Root/BaseBeam")
             )
             .Stage(s =>
-              s.Require("game:plank-*", 4, "twintubblower:rcc-ingredient-plank")
+              s.Require(
+                  "game:plank-*",
+                  4,
+                  "twintubblower:rcc-ingredient-plank",
+                  storeWildCard: "wood"
+                )
                 .Require(
                   "game:woodenaxle-ud",
                   1,
@@ -116,7 +122,8 @@ public partial class BlockTwinTubMPBlower
                 .Require(
                   "game:plank-*",
                   4,
-                  "twintubblower:rcc-ingredient-plank"
+                  "twintubblower:rcc-ingredient-plank",
+                  storeWildCard: "wood"
                 )
                 .RequireMetalNails(domain, 4)
                 .AddElements("Root/Tubs")
