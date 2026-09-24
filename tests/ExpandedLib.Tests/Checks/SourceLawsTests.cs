@@ -142,6 +142,91 @@ public class SourceLawsTests(ITestOutputHelper output) {
       )
     );
 
+  // Fails when StaleOnExchange reads a MeshData field written by ??=, a field written through out,
+  // or an auto-property, as nothing built.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.StaleOnExchange))]
+  public void A_mesh_field_with_no_exchange_override_is_named() =>
+    Assert.Equal(
+      [
+        "Planted0.cs:4: CapEntity; MeshData field _cap" + NoOverride,
+        "Planted0.cs:11: BarrelEntity; MeshData field _body" + NoOverride,
+        "Planted0.cs:16: HoodEntity; MeshData field Hood" + NoOverride,
+      ],
+      Scan(
+        SourceLaws.StaleOnExchange,
+        "class CapEntity : BlockEntity {\n"
+          + "  private MeshData? _cap;\n"
+          + "  public override bool OnTesselation(ITerrainMeshPool m, ITesselatorAPI t) {\n"
+          + "    _cap ??= Build(t);\n"
+          + "    return true;\n  }\n}\n"
+          + "class BarrelEntity : BlockEntity {\n"
+          + "  private MeshData _body;\n"
+          + "  void Tess(ITesselatorAPI t) {\n"
+          + "    t.TesselateShape(Block, shape, out _body);\n  }\n}\n"
+          + "class HoodEntity : BlockEntity {\n"
+          + "  public MeshData? Hood { get; set; }\n"
+          + "  void Tess() => Hood = Build();\n}"
+      )
+    );
+
+  // Fails when StaleOnExchange accepts an override that keeps a MeshData field, reads a ??= in the
+  // override as a clear, misses a clear through this., or counts a write outside the override.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.StaleOnExchange))]
+  public void An_override_that_keeps_a_mesh_field_is_named() =>
+    Assert.Equal(
+      [
+        "Planted0.cs:10: PedestalEntity._mold" + Kept("_mold"),
+        "Planted0.cs:10: PedestalEntity._side" + Kept("_side"),
+      ],
+      Scan(
+        SourceLaws.StaleOnExchange,
+        "class PedestalEntity : BlockEntity {\n"
+          + "  private MeshData? _mold;\n"
+          + "  private MeshData? _end;\n"
+          + "  private MeshData? _side;\n"
+          + "  void Tess(ITesselatorAPI t) {\n"
+          + "    t.TesselateBlock(MoldBlock, out _mold);\n"
+          + "    _end = Cap(t);\n"
+          + "    _side = Cap(t);\n"
+          + "  }\n"
+          + "  public override void OnExchanged(Block block) {\n"
+          + "    base.OnExchanged(block);\n"
+          + "    _renderer?.Dispose();\n"
+          + "    this._end = null;\n"
+          + "    _side ??= Cap(null);\n"
+          + "  }\n}"
+      )
+    );
+
+  // Fails when StaleOnExchange counts a MeshData local, or an initialiser as a write, or names a
+  // field the override clears.
+  [Fact]
+  public void Mesh_locals_initialisers_and_cleared_fields_pass() =>
+    Assert.Empty(
+      Scan(
+        SourceLaws.StaleOnExchange,
+        "class ShaftEntity : BlockEntity {\n"
+          + "  private MeshData? _shaft;\n"
+          + "  private MeshData? _spare = null;\n"
+          + "  bool Tess(ITesselatorAPI t) { _shaft ??= Build(t); return true; }\n"
+          + "  public override void OnExchanged(Block block) {\n"
+          + "    base.OnExchanged(block);\n"
+          + "    _shaft = null;\n  }\n}\n"
+          + "class GearEntity : BlockEntity {\n"
+          + "  private MeshData? _spare = null;\n"
+          + "  void Draw(ITesselatorAPI t) { MeshData built; built = Build(t); Add(built); }\n}"
+      )
+    );
+
+  private const string NoOverride =
+    " with no OnExchanged override, so an exchange keeps the old facing";
+
+  private static string Kept(string field) =>
+    $"; OnExchanged never assigns or clears the MeshData field {field}, so the mesh it caches "
+    + "keeps the old facing";
+
   #endregion
 
   #region UndrivenRotor

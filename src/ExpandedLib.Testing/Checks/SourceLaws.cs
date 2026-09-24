@@ -54,6 +54,11 @@ public static class SourceLaws {
     RegexOptions.Compiled
   );
 
+  private static readonly Regex MeshField = new(
+    @"\bMeshData\s*\??\s+(?<name>[A-Za-z_]\w*)\s*(?:[;{]|=(?![=>]))",
+    RegexOptions.Compiled
+  );
+
   private static readonly Regex MechanicalReference = new(
     @"\bBEBehaviorMP\w*|\bIMechanicalPowerDevice\b|\bMechanicalNetwork\b"
       + @"|\bExpandedLib\s*\.\s*Industry\s*\.\s*MechanicalPower\b"
@@ -182,18 +187,19 @@ public static class SourceLaws {
         )
   );
 
-  /// <summary>Every block entity type in <paramref name="sourceFiles"/> that builds an animator
-  /// (<c>InitializeAnimator</c>, a <c>ToggleAnimator</c> or <c>ConstructedAnimator</c>), registers
-  /// a renderer, or takes an <c>ExMeshCache</c> mesh outside <c>OnTesselation</c>, and declares no
-  /// <c>OnExchanged</c> override; and every <c>OnExchanged</c> override that never calls
-  /// <c>base.OnExchanged</c>.</summary>
-  /// <remarks>An exchange keeps the entity, so what it built in <c>Initialize</c> keeps the old
-  /// block's facing. A type is a block entity when a base any part lists, followed through the
-  /// files given, is named <c>*BlockEntity*</c> or <c>BE*</c>, behaviours excepted. An override on
-  /// a base type does not count for a type that builds its own.</remarks>
+  /// <summary>Every block entity type in <paramref name="sourceFiles"/> that builds for its facing
+  /// (<c>InitializeAnimator</c>, a <c>ToggleAnimator</c> or <c>ConstructedAnimator</c>, a renderer,
+  /// an <c>ExMeshCache</c> mesh outside <c>OnTesselation</c>, a write to a <c>MeshData</c> field it
+  /// declares) with no <c>OnExchanged</c> override; every override that never calls the base; and
+  /// every such field an override neither assigns nor clears.</summary>
+  /// <remarks>An exchange keeps the entity, so what it built keeps the old block's facing. A type
+  /// is a block entity when a base any part lists, followed through the files, is named
+  /// <c>*BlockEntity*</c> or <c>BE*</c>, behaviours excepted; an override on a base does not count
+  /// for a type that builds its own. A field is written by <c>=</c>, <c>??=</c> or <c>out</c>, its
+  /// initialiser aside; in the override <c>??=</c> is no clear.</remarks>
   /// <param name="sourceFiles">C# files to read; each is read whole.</param>
-  /// <returns>One line per type, <c>file:line: Type; reason</c>; <see cref="Key"/> keys it. Empty
-  /// when clean.</returns>
+  /// <returns>One line per type, <c>file:line: Type; reason</c>, or per field an override keeps,
+  /// <c>file:line: Type.field; reason</c>; <see cref="Key"/> keys it. Empty when clean.</returns>
   /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
   /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
   public static IReadOnlyList<string> StaleOnExchange(
@@ -204,13 +210,22 @@ public static class SourceLaws {
     foreach ((string name, List<TypePart> parts) in types) {
       if (!IsBlockEntity(name, types, []))
         continue;
-      (TypePart Part, Match Hit)? built = parts
-        .SelectMany(p => Hits(p, ExchangeSensitive).Select(m => (p, m)))
-        .Where(h =>
-          h.m.Groups["what"].Value != "ExMeshCache"
-          || !InTesselation(h.p, h.m.Index)
+      List<(string Field, TypePart Part, Match Hit)> writes = MeshWrites(parts);
+      (TypePart Part, Match Hit, string What)? built = parts
+        .SelectMany(p =>
+          Hits(p, ExchangeSensitive)
+            .Where(m =>
+              m.Groups["what"].Value != "ExMeshCache"
+              || !InTesselation(p, m.Index)
+            )
+            .Select(m => (p, m, m.Groups["what"].Value))
         )
-        .Select(h => ((TypePart, Match)?)h)
+        .Concat(
+          writes.Select(w => (w.Part, w.Hit, $"MeshData field {w.Field}"))
+        )
+        .OrderBy(h => parts.IndexOf(h.Item1))
+        .ThenBy(h => h.Item2.Index)
+        .Select(h => ((TypePart, Match, string)?)h)
         .FirstOrDefault();
       (TypePart Part, Match Hit)? exchange = parts
         .SelectMany(p => Hits(p, ExchangeOverride).Select(m => (p, m)))
@@ -230,14 +245,32 @@ public static class SourceLaws {
               "OnExchanged never calls base.OnExchanged, so Block stays the old block"
             )
           );
+        foreach (string field in writes.Select(w => w.Field).Distinct())
+          if (
+            !writes.Any(w =>
+              w.Field == field
+              && w.Part == o.Part
+              && w.Hit.Index >= start
+              && w.Hit.Index < end
+              && !w.Hit.Groups["coalesce"].Success
+            )
+          )
+            findings.Add(
+              Finding(
+                o.Part,
+                o.Hit.Index,
+                $"{name}.{field}",
+                $"OnExchanged never assigns or clears the MeshData field {field}, so the mesh "
+                  + "it caches keeps the old facing"
+              )
+            );
       } else if (built is { } b)
         findings.Add(
           Finding(
             b.Part,
             b.Hit.Index,
             name,
-            $"{b.Hit.Groups["what"].Value} with no OnExchanged override, so an exchange "
-              + "keeps the old facing"
+            $"{b.What} with no OnExchanged override, so an exchange keeps the old facing"
           )
         );
     }
@@ -761,6 +794,54 @@ public static class SourceLaws {
     Hits(part, TesselationMethod)
       .Select(m => HarnessUse.BodySpan(part.Code, m.Index + m.Length))
       .Any(span => at >= span.Start && at < span.End);
+
+  // Every write to a MeshData field or auto-property that parts declare directly in their bodies,
+  // in part order: name =, name ??= (the group coalesce) or out name; initialisers are not writes.
+  private static List<(string Field, TypePart Part, Match Hit)> MeshWrites(
+    List<TypePart> parts
+  ) {
+    List<(TypePart Part, Match Hit)> declared =
+    [
+      .. parts.SelectMany(p =>
+      {
+        TypeBody body = Members(p);
+        return Hits(p, MeshField)
+          .Where(m =>
+            !body.Blocks.Any(b => b.Open < m.Index && m.Index < b.End)
+          )
+          .Select(m => (p, m));
+      }),
+    ];
+    var writes = new List<(string Field, TypePart Part, Match Hit)>();
+    foreach (
+      string field in declared
+        .Select(d => d.Hit.Groups["name"].Value)
+        .Distinct()
+    ) {
+      string name = Regex.Escape(field);
+      Regex write = new(
+        @"(?<![\w.])(?:this\s*\.\s*)?"
+          + name
+          + @"\s*(?<coalesce>\?\?)?=(?![=>])"
+          + @"|\bout\s+(?:this\s*\.\s*)?"
+          + name
+          + @"\b"
+      );
+      foreach (TypePart part in parts)
+        writes.AddRange(
+          Hits(part, write)
+            .Where(m =>
+              !declared.Any(d =>
+                d.Part == part
+                && m.Index >= d.Hit.Index
+                && m.Index < d.Hit.Index + d.Hit.Length
+              )
+            )
+            .Select(m => (field, part, m))
+        );
+    }
+    return writes;
+  }
 
   private static string Finding(
     TypePart part,
