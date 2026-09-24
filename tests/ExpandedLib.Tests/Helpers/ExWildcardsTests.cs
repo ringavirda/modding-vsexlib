@@ -17,7 +17,8 @@ public class ExWildcardsTests {
     Assert.Equal("brick-red", ExWildcards.FirstAlternative("brick-(red|tan)"));
   }
 
-  // Fails when FirstBranch splits on a | inside a nested group, or the branch is not resolved again.
+  // Fails when FirstBranch splits on a | inside a nested group, or the branch is not resolved
+  // again.
   [Fact]
   public void A_nested_alternation_in_the_first_branch_is_resolved_too() {
     Assert.Equal(

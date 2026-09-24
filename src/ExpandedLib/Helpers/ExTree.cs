@@ -40,10 +40,10 @@ public static class ExTree {
   /// differed from it. Subtrees are compared key by key.</summary>
   /// <param name="saved">The live instance's tree, written before the reload.</param>
   /// <param name="reloaded">The tree the reloaded instance writes.</param>
-  /// <param name="fresh">The tree a newly constructed instance writes; a key it lacks is not checked
-  /// for a return to it.</param>
-  /// <returns>One line per difference, the key path joined with <c>/</c>, in <paramref name="saved"/>'s
-  /// key order; empty when the reload kept everything.</returns>
+  /// <param name="fresh">The tree a newly constructed instance writes; a key it lacks is not
+  /// checked for a return to it.</param>
+  /// <returns>One line per difference, the key path joined with <c>/</c>, in
+  /// <paramref name="saved"/>'s key order; empty when the reload kept everything.</returns>
   internal static IReadOnlyList<string> Differences(
     ITreeAttribute saved,
     ITreeAttribute reloaded,
