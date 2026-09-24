@@ -29,6 +29,8 @@ public interface IPipeVentStrategy {
   /// Draws gas from the collected <paramref name="vents"/> into <paramref name="state"/>, playing
   /// vent feedback. A <paramref name="liquid"/> run vents nothing.
   /// </summary>
+  /// <remarks>Called every tick with only the vents this strategy classified, an empty list included,
+  /// so state kept for a vent missing from the list can be dropped.</remarks>
   /// <returns>Litres vented.</returns>
   float Vent(
     IReadOnlyList<BlockPos> vents,
