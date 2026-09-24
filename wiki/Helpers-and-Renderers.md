@@ -60,6 +60,11 @@ splits a block code's path on `-` so a caller can index, rewrite and rejoin one 
 time: that is how a multiblock layout finds which segments of a code name an orientation, and
 rotates just those to a placed structure's angle while leaving the rest of the code alone.
 
+`ExVariantCodes.WithVariant` and `WithVariants` build the code of a block with some variant groups
+set to other states: `block.WithVariant("side", "e")` turns `crafting-workbench-n` into
+`crafting-workbench-e`. Vanilla's `CodeWithVariant` and `CodeWithVariants` start from the code's
+first dash-segment and would give `crafting-e`, a block that does not exist.
+
 ## `ExMeshCache` - mesh and mesh-ref cache
 
 A block entity that draws something the blocktype's own shape cannot - a barrel with a visible fill

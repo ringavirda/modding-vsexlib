@@ -33,6 +33,18 @@ public class SourceLawGuards(ITestOutputHelper output) {
     ] = "SideFromAngle with asLetter: false returns a full word",
     ["BlockEntityStructureFiller.cs: BlockFacing.FromCode(faceCode)"] =
       "reads back the code ToTreeAttributes writes from BlockFacing.Code, a full word",
+    [
+      "BlockBehaviorExOmniRotatable.cs: BlockFacing.FromCode(block.Variant[RotVariant])"
+    ] =
+      "vanilla's slab rot group holds the six facing words, which the behaviour writes",
+    [
+      "BlockBehaviorExOmniRotatable.cs: BlockFacing.FromCode(block.Variant[\"v\"])"
+    ] =
+      "vanilla's v group holds up, down, left and right; only up and down name a facing",
+    [
+      "BlockExStairs.cs: BlockFacing.FromCode(Variant[\"horizontalorientation\"])"
+    ] =
+      "vanilla's horizontalorientation group holds the four horizontal facing words",
   };
 
   /// <summary>File and member, and which edit never reaches it.</summary>

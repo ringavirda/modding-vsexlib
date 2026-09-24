@@ -21,8 +21,11 @@ public class WikiParityTests {
     // Registered class strings, not C# class names; a JSON blocktype writes these.
     "ExFilledMegastructure",
     "ExMultiblock",
-    // Registered behaviour string for BlockBehaviorExOrientable, not a C# class name.
+    // Registered behaviour strings for BlockBehaviorExOrientable and BlockBehaviorExOmniRotatable,
+    // and the class string for BlockExStairs, not C# class names.
     "ExOrientable",
+    "ExOmniRotatable",
+    "ExStairs",
   ];
 
   /// <summary>Navigation pages, which link to the others and name no API.</summary>

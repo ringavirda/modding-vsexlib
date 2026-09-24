@@ -9,6 +9,15 @@ see the git history.
 
 ### Added
 
+- **`ExOmniRotatable` and `ExStairs`**: vanilla's slab behaviour (`OmniRotatable`) and stairs class
+  (`BlockStairs`) for a block whose code has a dash, such as `slag-brickslab`. Vanilla builds the
+  codes it places, rotates and flips to, and the stairs' drop and pick, from the code's first
+  dash-segment, so its slab throws on placement and its stairs land nowhere; these build every code
+  from the whole code and keep vanilla's groups, properties and rules. `GridOutputVariantCheck`
+  reads `ExOmniRotatable`'s `rot` group.
+- **`ExVariantCodes`**: `WithVariant` and `WithVariants`, a block's or item's code with variant
+  groups replaced, built from the whole code where vanilla's `CodeWithVariant` and
+  `CodeWithVariants` keep only the first dash-segment.
 - **Block laws** (ExpandedLib.Testing, `Laws/`): `BlockLaws.Run` runs, over every block of a
   domain in every variant, `PlacementLaw` (a placement from every side and face lands a declared
   token), `BreakLaw` (`StructureBreaks`, plus no own-code drop beside a stage refund and no filler

@@ -18,8 +18,9 @@ namespace ExpandedLib.Checks;
 /// </summary>
 /// <remarks>
 /// A block is oriented by the group its orientation behaviour writes (<c>ExOrientable</c>,
-/// <c>HorizontalOrientable</c>, <c>NWOrientable</c>, <c>Pillar</c>, <c>OmniRotatable</c>) or, when
-/// the source resolves its <c>class</c>, its block class writes (<c>BlockStairs</c>); a group
+/// <c>HorizontalOrientable</c>, <c>NWOrientable</c>, <c>Pillar</c>, <c>OmniRotatable</c>,
+/// <c>ExOmniRotatable</c>) or, when the source resolves its <c>class</c>, its block class writes
+/// (<c>BlockStairs</c>, <c>ExStairs</c>); a group
 /// loading vanilla's <c>abstract/horizontalorientation</c> or <c>abstract/verticalorientation</c>
 /// takes that property's code and states. An output is reported when no creative entry matches it
 /// and one matches it with only that group's state changed. A block without a
@@ -238,7 +239,7 @@ public static class GridOutputVariantCheck {
           : "side",
         "NWOrientable" => Has("orientation") ? "orientation" : "side",
         "Pillar" => (string?)properties?["rotationVariantCode"] ?? "rotation",
-        "OmniRotatable" => "rot",
+        "OmniRotatable" or "ExOmniRotatable" => "rot",
         _ => null,
       };
       if (group != null && Has(group))

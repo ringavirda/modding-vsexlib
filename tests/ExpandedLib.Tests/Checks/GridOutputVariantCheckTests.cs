@@ -222,8 +222,8 @@ public class GridOutputVariantCheckTests {
       )
     );
 
-  // Fails when Run drops the group NWOrientable, Pillar or OmniRotatable writes, or reads a
-  // block whose groups add rather than multiply.
+  // Fails when Run drops the group NWOrientable, Pillar, OmniRotatable or ExOmniRotatable writes,
+  // or reads a block whose groups add rather than multiply.
   [Theory]
   [InlineData("NWOrientable", "orientation", "ns", "we", "{}")]
   [InlineData(
@@ -234,6 +234,7 @@ public class GridOutputVariantCheckTests {
     """{ "rotationVariantCode": "axis" }"""
   )]
   [InlineData("OmniRotatable", "rot", "up", "down", "{}")]
+  [InlineData("ExOmniRotatable", "rot", "up", "down", "{}")]
   public void Each_vanilla_orientation_behaviour_names_its_group(
     string behavior,
     string group,

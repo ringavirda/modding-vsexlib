@@ -162,6 +162,8 @@ A block entity is the object the game attaches to one placed block, ticks, and s
 | `IPersistable` | A value that writes itself into a sub-tree; a `[Persist]` member of this type is stored under its key as a nested tree. | [Block-Entities](Block-Entities) |
 | `PersistScan` | Finds every `[Persist]` member of a block entity's type by reflection and declares it into an `ExBlockState`. | [Block-Entities](Block-Entities) |
 | `BlockBehaviorExOrientable` | Places a block wearing the `side` variant the player's look implies; the family's replacement for vanilla's `HorizontalOrientable`. | this page |
+| `BlockBehaviorExOmniRotatable` | Vanilla's slab behaviour `OmniRotatable`, registered as `ExOmniRotatable`, for a block whose code has a dash: the same properties, place modes, rotation and flips, each code built from the whole code. | this page |
+| `BlockExStairs` | Vanilla's `BlockStairs`, registered as `ExStairs`, for a block whose code has a dash: the same placement, drop, pick, rotation and flips, each code built from the whole code. | this page |
 | `ConstructedAnimator` | Owns the animator and ExRightClickConstructable lifecycle shared by constructed, animator-rendered mega-blocks (boiler, engine, converter vessel, burdenmaker). | [Construction](Construction) |
 | `ExConstructionIngredient` | A required material for a construction stage; port of vanilla `ConstructionIngredient` (1.20 and 1.21 only). | [Construction](Construction) |
 | `ExConstructionStage` | One construction stage: shape elements it adds/removes and the materials it needs; port of vanilla `ConstructionStage` (1.20 and 1.21 only). | [Construction](Construction) |
@@ -326,6 +328,7 @@ The small things a machine ends up writing for itself: horizontal rotation math,
 | `ExShapeElements` | Prunes a loaded Shape to a chosen set of element paths - the mesh-side counterpart of a blocktype's `selectiveElements`, for a block entity that decides which parts to draw at runtime (a hearth showing only the pigs actually charged on it). | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `ExSide` | The `Api.Side == EnumAppSide.X` / `World.Side == EnumAppSide.X` check every machine writes by hand. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `ExTree` | Helpers for reading values a block entity persisted into its attribute tree. | [Helpers-and-Renderers](Helpers-and-Renderers) |
+| `ExVariantCodes` | A block's or item's code with one or more variant groups replaced, built from the whole code where vanilla's `CodeWithVariant` keeps only the first dash-segment. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `ExWorldData` | Typed per-world side-band data over `ISaveGame.GetData`/`StoreData`, keyed `{domain}:{key}`. | [Migrations-and-Healing](Migrations-and-Healing) |
 | `GameTime` | Advances a machine on game time (the world calendar) rather than real time. | [Helpers-and-Renderers](Helpers-and-Renderers) |
 | `GraceTimer` | Accumulator for the "hold a condition for N seconds, then fire once" idiom used by boiler over-pressure and choke, engine over-pressure and pipe burst grace. | [Helpers-and-Renderers](Helpers-and-Renderers) |
