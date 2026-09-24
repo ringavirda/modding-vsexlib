@@ -20,8 +20,8 @@ namespace ExpandedLib.Testing;
 /// by vanilla's own <see cref="BlockType.CreateBlock"/>.
 /// </summary>
 public sealed partial class TestWorld {
-  /// <summary>Block ids <see cref="DefineBlock"/> and <see cref="LoadAssets"/> hand out, clear of the ids fixtures and
-  /// <see cref="StructureRig"/> use.</summary>
+  /// <summary>Block ids <see cref="DefineBlock"/> and <see cref="LoadAssets"/> hand out, clear of
+  /// the ids fixtures and <see cref="StructureRig"/> use.</summary>
   private const int FirstDefinedId = 40000;
 
   private ClassRegistry? _classes;
