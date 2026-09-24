@@ -34,6 +34,16 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
     "TreeKeys.AssertGolden",
   ];
 
+  /// <summary>Census line, and why it stands.</summary>
+  private static readonly Dictionary<string, string> Allowed = new(
+    StringComparer.Ordinal
+  ) {
+#if !GAME_GE_1_22
+    ["StructureBreaks: the file names no type in ExpandedLib.Testing"] =
+      "the file compiles on 1.22 and later only",
+#endif
+  };
+
   private static PlantedDefects.Census Testing() =>
     PlantedDefects.Survey(
       Path.Combine(RepoPaths.Root, "src", "ExpandedLib.Testing", "Checks"),
@@ -64,7 +74,7 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
 
     FindingLists.Assert(
       [.. testing.Unplanted, .. runs.Unplanted],
-      new Dictionary<string, string>(),
+      Allowed,
       Pending.ToDictionary(p => p, _ => "no planted-defect test yet")
     );
   }
