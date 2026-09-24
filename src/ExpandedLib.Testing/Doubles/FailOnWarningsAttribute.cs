@@ -9,18 +9,23 @@ namespace ExpandedLib.Testing;
 /// in a <see cref="RecordingLogger"/>, or declares an entry through
 /// <see cref="RecordingLogger.Expect"/> that never came.</summary>
 /// <remarks>
-/// <para>Opt in with <c>[assembly: FailOnWarnings]</c>. After each test it reads every
-/// <see cref="RecordingLogger"/> created since the previous test's check, in the test class's
-/// constructor or in the body, and then lets them go. A Warning, Error or Fatal logged into a logger
-/// after its check, in the test's <c>Dispose</c> or through a logger a static still holds, fails
-/// the next test checked; one logged after the run's last check, in the last test's
-/// <c>Dispose</c> or a class or collection fixture's, is never read.</para>
+/// <para>Opt in with <c>[assembly: FailOnWarnings]</c>. After each test it reads, then lets go,
+/// every <see cref="RecordingLogger"/> created since the previous check. An entry logged into a
+/// logger after its check, in <c>Dispose</c> or through a static, fails the next test checked; one
+/// logged after the run's last check is never read.</para>
+/// <para>Every <c>ILogger</c> NSubstitute creates, by <c>Substitute.For</c> in any form or for an
+/// unset <c>Logger</c>, also logs into a <see cref="RecordingLogger"/> this check reads, which no
+/// <see cref="RecordingLogger.Expect"/> can reach; it still records calls for <c>Received</c>.</para>
 /// <para>Attribution relies on the assembly running its tests one at a time
 /// (<c>parallelizeTestCollections: false</c>); under parallel collections a fault can be charged to
 /// a test that ran beside the one that logged it.</para>
 /// </remarks>
 [AttributeUsage(AttributeTargets.Assembly)]
 public sealed class FailOnWarningsAttribute : BeforeAfterTestAttribute {
+  /// <summary>Routes NSubstitute's loggers into <see cref="RecordingLogger"/>s for the rest of the
+  /// process; see the remarks.</summary>
+  public FailOnWarningsAttribute() => SubstituteLogRouting.Install();
+
   /// <summary>When true, a failing test's faults are written to standard error, one line each
   /// prefixed with <c>[FailOnWarnings]</c> and the test's full name, and the test passes.
   /// False by default.</summary>

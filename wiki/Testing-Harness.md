@@ -301,7 +301,8 @@ Assert.Contains(world.Log.Errors, m => m.Contains("names no network type"));
 An assembly that declares `[assembly: FailOnWarnings]` (in its `ModuleInit.cs`, say) fails every
 test that leaves a Warning or an Error it did not declare with `Expect`, and every `Expect` nothing
 matched. A Warning logged later into a logger already checked, through a static that still holds it,
-fails the test running at the time. `[assembly: FailOnWarnings(ReportOnly = true)]` lists the
+fails the test running at the time, and so does one logged into any `ILogger` NSubstitute creates,
+the made-up `Logger` of a bare `Substitute.For<ICoreAPI>()` included. `[assembly: FailOnWarnings(ReportOnly = true)]` lists the
 offenders on standard error instead of failing them, for measuring a suite before it opts in.
 
 ### Integration tests with `Scene` and `SceneDiagram`

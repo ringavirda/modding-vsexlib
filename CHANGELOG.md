@@ -44,7 +44,9 @@ see the git history.
   class constructor or its body. `RecordingLogger.Expect(type, fragment)` declares the entries a test
   means to log; an expectation nothing matched fails too. A logger that receives an entry after its
   check, through a static that still holds it, is checked again with the next test. `ReportOnly =
-  true` lists the offenders on standard error without failing them.
+  true` lists the offenders on standard error without failing them. Every `ILogger` NSubstitute
+  creates, by `Substitute.For` in any form or as the made-up `Logger` of an API or world substitute,
+  logs into a `RecordingLogger` the check reads as well.
 - **`HarnessUse`** (ExpandedLib.Testing): source rules over a suite's tests. It names a
   `StructureComplete` written by reflection, directly or through a `PropertyInfo` or `FieldInfo`
   local bound to it by name, or through its setter from a test subclass, a `BlockBehaviors`
@@ -76,7 +78,7 @@ see the git history.
   guard whose corpus is empty and `Premise.Covers` one that misses part of a census, such as a
   domain's golden blocktypes. `Unpremised` names every guard file that calls neither.
 - **`HarnessUse.SubstituteLoggers`** (ExpandedLib.Testing): names every `Substitute.For<ILogger>` in
-  a suite's tests, whose entries no `FailOnWarnings` check reads. exlib's tests log into a
+  a suite's tests, whose entries no `Expect` can declare. exlib's tests log into a
   `RecordingLogger` instead and declare the Warnings and Errors they drive with `Expect`; exlib's
   guard fails on a new substitute logger outside its allowed list.
 

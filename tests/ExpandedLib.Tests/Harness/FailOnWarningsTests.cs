@@ -2,8 +2,12 @@ using System;
 using System.IO;
 using System.Reflection;
 using ExpandedLib.Testing;
+using NSubstitute;
+using NSubstitute.Core;
+using NSubstitute.Core.DependencyInjection;
 using Vintagestory.API.Common;
 using Xunit;
+using AliasedLogger = Vintagestory.API.Common.ILogger;
 
 namespace ExpandedLib.Tests;
 
@@ -25,6 +29,64 @@ public class FailOnWarningsTests {
       FailOnWarningsCheck.Faults(
         nameof(A_warning_from_a_world_built_in_the_body_fails)
       )
+    );
+  }
+
+  // Fails when a logger NSubstitute makes up for an API or world substitute logs where no check
+  // reads.
+  [Fact]
+  public void A_warning_through_a_made_up_logger_fails() {
+    Substitute.For<ICoreAPI>().Logger.Warning("valve {0} has no seat", 3);
+    Substitute.For<IWorldAccessor>().Logger.Error("no seat");
+
+    string? faults = FailOnWarningsCheck.Faults(
+      nameof(A_warning_through_a_made_up_logger_fails)
+    );
+
+    Assert.Contains("unexpected Warning: valve 3 has no seat", faults);
+    Assert.Contains("unexpected Error: no seat", faults);
+  }
+
+  // Fails when a substitute ILogger made through an alias, the non-generic For or as a second
+  // interface logs where no check reads, or stops recording its calls for Received.
+  [Fact]
+  public void A_warning_through_a_substitute_logger_of_any_shape_fails() {
+    var aliased = Substitute.For<AliasedLogger>();
+    var untyped = (ILogger)Substitute.For([typeof(ILogger)], []);
+    var paired = (ILogger)Substitute.For<IDisposable, ILogger>();
+
+    aliased.Warning("aliased seat");
+    untyped.Warning("untyped seat");
+    paired.Warning("paired seat");
+
+    aliased.Received(1).Warning("aliased seat");
+    string? faults = FailOnWarningsCheck.Faults(
+      nameof(A_warning_through_a_substitute_logger_of_any_shape_fails)
+    );
+    Assert.Contains("unexpected Warning: aliased seat", faults);
+    Assert.Contains("unexpected Warning: untyped seat", faults);
+    Assert.Contains("unexpected Warning: paired seat", faults);
+  }
+
+  // Fails when a substitute logger's formatting fault surfaces wrapped in the reflection call that
+  // replays it, not as the fault a RecordingLogger raises.
+  [Fact]
+  public void A_bad_format_through_a_substitute_logger_throws_as_it_would_directly() {
+    ILogger log = Substitute.For<ICoreAPI>().Logger;
+
+    Assert.Throws<FormatException>(() => log.Warning("seat {1}", 0));
+  }
+
+  // Fails when the routed context takes thread state of its own, which strands a Returns or
+  // Received on a substitute made before the swap.
+  [Fact]
+  public void The_routed_context_keeps_the_running_thread_state() {
+    ISubstitutionContext running =
+      NSubstituteDefaultFactory.CreateSubstitutionContext();
+
+    Assert.Same(
+      running.ThreadContext,
+      SubstituteLogRouting.Routed(running).ThreadContext
     );
   }
 

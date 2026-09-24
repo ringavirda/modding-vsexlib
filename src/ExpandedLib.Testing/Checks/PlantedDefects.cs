@@ -39,21 +39,18 @@ public static class PlantedDefects {
   /// <summary>Sorts the public static members (methods, overloads once; properties; fields) of
   /// the check types in <paramref name="sourceDirectory"/> into proven, helpers and unplanted, in
   /// file-name order, then declaration order.</summary>
-  /// <param name="sourceDirectory">Its files hold the check types: the public top-level types of
-  /// <paramref name="checks"/> that a file is named after or declares as <c>public</c> in its text.
-  /// A file named after no top-level type of <paramref name="checks"/>, public or not, is reported.
-  /// Not searched recursively.</param>
+  /// <param name="sourceDirectory">Not searched recursively. A check type is a public top-level type
+  /// of <paramref name="checks"/> a file is named after or declares; a file named after no type is
+  /// reported.</param>
   /// <param name="checks">The assembly declaring the check types.</param>
   /// <param name="tests">The assembly whose tests carry <see cref="PlantedDefectAttribute"/>.</param>
   /// <param name="filePattern">Which files hold check types.</param>
   /// <param name="member">When set, only members of this name are surveyed.</param>
-  /// <returns>The census; <c>Unplanted</c> is empty when every member is proven or a helper and
-  /// every file is named after a type.</returns>
+  /// <returns>The census; <c>Unplanted</c> is empty when nothing is reported.</returns>
   /// <exception cref="DirectoryNotFoundException"><paramref name="sourceDirectory"/> does not
   /// exist.</exception>
   /// <exception cref="IOException">A file cannot be read.</exception>
-  /// <exception cref="InvalidOperationException">No file names or declares a check type.
-  /// </exception>
+  /// <exception cref="InvalidOperationException">No file names or declares a type.</exception>
   public static Census Survey(
     string sourceDirectory,
     Assembly checks,
@@ -163,11 +160,9 @@ public static class PlantedDefects {
   /// <summary>Every guard class in <paramref name="invariantsDirectory"/> that proves nothing: it
   /// neither carries a valid <see cref="GuardOfAttribute"/> nor declares a public static member a
   /// <see cref="PlantedDefectAttribute"/> test in <paramref name="suite"/> names.</summary>
-  /// <remarks>A guard class is the top-level type of <paramref name="suite"/> named by a
-  /// <c>*.cs</c> file in the directory; other types in the file are fixtures. A
-  /// <see cref="GuardOfAttribute"/> naming no public static member, or one marked
-  /// <see cref="CheckHelperAttribute"/>, proves nothing and is reported; a skipped test proves
-  /// nothing.</remarks>
+  /// <remarks>A guard class is the top-level type a <c>*.cs</c> file is named after. A mark naming
+  /// no public static member or a <see cref="CheckHelperAttribute"/> one is reported; a skipped
+  /// test proves nothing.</remarks>
   /// <param name="suite">The test assembly the folder compiles into.</param>
   /// <param name="invariantsDirectory">The suite's <c>Invariants</c> folder; not searched
   /// recursively.</param>

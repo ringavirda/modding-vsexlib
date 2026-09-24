@@ -513,9 +513,8 @@ public class HarnessUseGuards {
     );
   }
 
-  // Fails when UncalledPlants names a test that names its member as a method group or a bare call,
-  // after other attributes, braces in a string or a nested block, or through a chain of the file's
-  // helpers, or reads a mark in a string.
+  // Fails when UncalledPlants misses a member named as a method group, a bare call or through a
+  // chain of helpers, after other attributes or braces in literals, or reads a mark in a string.
   [Fact]
   public void A_planted_test_reaching_its_member_is_not_named() {
     Assert.Empty(
@@ -549,7 +548,8 @@ public class HarnessUseGuards {
 
     Assert.Equal(2, offenders.Count);
     Assert.EndsWith(
-      ":2: a substitute ILogger hides its entries from the log rule; log into a RecordingLogger",
+      ":2: a substitute ILogger's entries cannot be declared with Expect; log into a "
+        + "RecordingLogger",
       offenders[0]
     );
     Assert.Contains(":3: ", offenders[1]);

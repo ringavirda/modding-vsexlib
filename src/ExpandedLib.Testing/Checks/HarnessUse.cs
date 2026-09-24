@@ -8,12 +8,10 @@ using System.Text.RegularExpressions;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>Guards how tests use the harness: completion forced by reflection, a block double
-/// whose behaviours <c>GetBehavior</c> cannot see, a test file's generic helper constrained on a
-/// game type, which can stop xUnit discovering the whole assembly, a guard naming a check it never
-/// calls, a guard file asserting nothing about its corpus, a planted-defect test that never reaches
-/// the member it proves, and a substitute logger that no <see cref="FailOnWarningsAttribute"/>
-/// check reads.</summary>
+/// <summary>Guards how tests use the harness: forced completion, a block double <c>GetBehavior</c>
+/// cannot see, a generic helper constrained on a game type (which can stop xUnit discovering the
+/// assembly), a guard never calling a check it names or asserting nothing about its corpus, a
+/// planted-defect test never reaching its member, and a hand-made substitute logger.</summary>
 /// <remarks>Each rule reads C# source text with comments blanked; a <c>//</c> inside a string literal
 /// blanks the rest of its line, except in <see cref="UncalledPlants"/>, which blanks string literals
 /// too.</remarks>
@@ -333,10 +331,10 @@ public static class HarnessUse {
 
   /// <summary>Every <c>Substitute.For&lt;ILogger&gt;</c> in <paramref name="sourceFiles"/>, the
   /// type written bare or namespace-qualified, alone or first of several.</summary>
-  /// <remarks>A substitute logger keeps every entry from the
-  /// <see cref="FailOnWarningsAttribute"/> check, so a Warning or Error the code under test logs
-  /// into it fails nothing. A <see cref="RecordingLogger"/>, standalone or a
-  /// <see cref="TestWorld"/>'s <c>Log</c>, is read by the check.</remarks>
+  /// <remarks>Under <see cref="FailOnWarningsAttribute"/> a substitute logger's entries reach the
+  /// check through a <see cref="RecordingLogger"/> no test can reach, so none can be declared with
+  /// <see cref="RecordingLogger.Expect"/>. A <see cref="RecordingLogger"/>, standalone or a
+  /// <see cref="TestWorld"/>'s <c>Log</c>, takes the declaration.</remarks>
   /// <param name="sourceFiles">C# files to read; each is read whole.</param>
   /// <returns>One line per substitute, <c>file:line: reason</c>; empty when clean.</returns>
   /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
@@ -349,8 +347,8 @@ public static class HarnessUse {
       string text = Uncommented(File.ReadAllText(file));
       foreach (Match use in SubstituteLogger.Matches(text))
         offenders.Add(
-          $"{Path.GetFileName(file)}:{LineOf(text, use.Index)}: a substitute ILogger hides its "
-            + "entries from the log rule; log into a RecordingLogger"
+          $"{Path.GetFileName(file)}:{LineOf(text, use.Index)}: a substitute ILogger's entries "
+            + "cannot be declared with Expect; log into a RecordingLogger"
         );
     }
     return offenders;
@@ -486,9 +484,8 @@ public static class HarnessUse {
     return false;
   }
 
-  // The name and body of the method whose attribute list holds position from: the attribute
-  // sections are skipped, then the parameter list, then a block or an expression body is taken.
-  // Reads code with comments and literals blanked; empty when no body follows.
+  // The name and body of the method whose attribute list holds position from, read from code with
+  // comments and literals blanked; the body is empty when none follows.
   private static (string Name, string Body) Decorated(string code, int from) {
     int i = Close(code, from, ']');
     while (true) {
