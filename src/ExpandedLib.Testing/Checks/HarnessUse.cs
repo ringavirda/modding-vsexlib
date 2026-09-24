@@ -48,6 +48,18 @@ public static class HarnessUse {
     RegexOptions.Compiled
   );
 
+  private static readonly Regex StaticTupleField = new(
+    @"\bstatic\s+(?:readonly\s+)?(?<type>\((?>[^()]+|\((?<d>)|\)(?<-d>))*(?(d)(?!))\)"
+      + @"|(?:System\s*\.\s*)?ValueTuple\s*<(?>[^<>]+|<(?<d>)|>(?<-d>))*(?(d)(?!))>)"
+      + @"\s*\??\s+(?<name>\w+)\s*(?==(?!>)|;)",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex TupleElement = new(
+    @"^(?<type>.+?)(?:\s+\w+)?$",
+    RegexOptions.Compiled | RegexOptions.Singleline
+  );
+
   private static readonly Regex GuardOfMark = new(
     @"\bGuardOf\s*\(\s*typeof\s*\(\s*(?<type>[\w.]+)\s*\)\s*,\s*"
       + @"(?:nameof\s*\(\s*(?:[\w.]+\.)?(?<m1>\w+)\s*\)|""(?<m2>\w+)"")\s*\)",
@@ -182,13 +194,15 @@ public static class HarnessUse {
 
   /// <summary>Every <c>where</c> clause in a file of <paramref name="sourceFiles"/> that declares a
   /// <c>[Fact]</c> or <c>[Theory]</c> whose constraint names a game type, or a type deriving from or
-  /// implementing one. Such a helper in a test class can make xUnit skip the whole assembly, reporting
-  /// a missing game assembly.</summary>
+  /// implementing one, and every static field in any of the files whose type is a tuple
+  /// (<c>(A, B)</c> or <c>ValueTuple&lt;A, B&gt;</c>) naming such a type.</summary>
+  /// <remarks>Either can load a game type before the harness resolves the game, and vstest then
+  /// skips the whole assembly, reporting a missing game assembly.</remarks>
   /// <param name="sourceFiles">C# files to read; each is read whole.</param>
   /// <param name="testAssembly">The assembly the files compile into; constraint names resolve
   /// against it and the assemblies it references. A name that resolves to no type there is not
   /// named.</param>
-  /// <returns>One line per clause, <c>file:line: reason</c>; empty when clean.</returns>
+  /// <returns>One line per clause or field, <c>file:line: reason</c>; empty when clean.</returns>
   /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
   /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
   public static IReadOnlyList<string> GameConstrainedGenerics(
@@ -199,6 +213,21 @@ public static class HarnessUse {
     var offenders = new List<string>();
     foreach (string file in sourceFiles) {
       string text = Uncommented(File.ReadAllText(file));
+      foreach (Match field in StaticTupleField.Matches(text)) {
+        string type = field.Groups["type"].Value;
+        string inner = type[(type.IndexOfAny(['(', '<']) + 1)..^1];
+        string? game = TopLevel(inner)
+          .Select(e => TupleElement.Match(e).Groups["type"].Value)
+          .SelectMany(t => Word.Matches(t).Select(w => w.Value))
+          .FirstOrDefault(w => types[w].Any(IsGameType));
+        if (game == null)
+          continue;
+        offenders.Add(
+          $"{Path.GetFileName(file)}:{LineOf(text, field.Index)}: "
+            + $"the static field {field.Groups["name"].Value} is a tuple holding the game type "
+            + $"{game}; return the tuple from a method"
+        );
+      }
       if (!TestAttribute.IsMatch(text))
         continue;
       foreach (Match clause in WhereClause.Matches(text)) {

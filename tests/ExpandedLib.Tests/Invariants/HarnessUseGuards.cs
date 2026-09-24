@@ -400,6 +400,57 @@ public class HarnessUseGuards {
     );
   }
 
+  // Fails when GameConstrainedGenerics stops reading static fields, or reads them only in files
+  // declaring a test.
+  [Fact]
+  [PlantedDefect(
+    typeof(HarnessUse),
+    nameof(HarnessUse.GameConstrainedGenerics)
+  )]
+  public void A_static_tuple_field_holding_a_game_type_is_named() {
+    Assert.EndsWith(
+      ":2: the static field Dangling is a tuple holding the game type AssetLocation; "
+        + "return the tuple from a method",
+      Assert.Single(
+        Scan(
+          Generics,
+          "public class Fixture {\n"
+            + "  private static readonly (AssetLocation File, JObject Json) Dangling =\n"
+            + "    (null, null);\n}"
+        )
+      )
+    );
+  }
+
+  // Fails when GameConstrainedGenerics stops reading a field typed ValueTuple<...>.
+  [Fact]
+  [PlantedDefect(
+    typeof(HarnessUse),
+    nameof(HarnessUse.GameConstrainedGenerics)
+  )]
+  public void A_static_value_tuple_field_holding_a_game_type_is_named() {
+    Assert.Single(
+      Scan(Generics, "internal static ValueTuple<int, Block> Cells;")
+    );
+  }
+
+  // Fails when GameConstrainedGenerics names a method or property returning a tuple, a tuple of
+  // non-game types, a tuple element named like a game type, or a commented field.
+  [Fact]
+  public void Tuple_methods_properties_and_plain_tuples_are_not_named() {
+    Assert.Empty(
+      Scan(
+        Generics,
+        "private static (AssetLocation File, JObject Json) Make() => default;\n"
+          + "private static (\n  AssetLocation File,\n  int N\n) Stand(int a) => default;\n"
+          + "static (AssetLocation, int) Pair => default;\n"
+          + "static readonly (string Name, int Arity) Plain = default;\n"
+          + "static readonly (int Block, string Entity) Named = default;\n"
+          + "// static (Block, int) Commented;"
+      )
+    );
+  }
+
   // Fails when GameConstrainedGenerics scans a file with no test in it, names a constraint on a
   // non-game type or a keyword, or reads a comment.
   [Fact]
