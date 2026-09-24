@@ -15,19 +15,37 @@ internal static class ExSyntheticAsset {
     AssetLocation location,
     byte[] data,
     IAssetOrigin origin
-  ) => new Asset(data, location, origin);
+  ) {
+    (origin as ExDefinitionOrigin)?.Keep(location, data);
+    return new Asset(data, location, origin);
+  }
 }
 
 /// <summary>
 /// The <see cref="IAssetOrigin"/> stamped on injected assets.
-/// Load hooks are never called; injection goes through <c>AssetManager.Add</c>, not origin enumeration.
+/// Injection goes through <c>AssetManager.Add</c>, not origin enumeration. It keeps each asset's
+/// bytes, so an asset the server unloads once the world is up (<c>UnloadUnpatchedAssets</c>) loads
+/// again when a later reader asks for it.
 /// </summary>
 internal sealed class ExDefinitionOrigin : IAssetOrigin {
+  private readonly Dictionary<AssetLocation, byte[]> _data = [];
+
   public string OriginPath => "exlib:code-first-definitions";
 
-  public void LoadAsset(IAsset asset) { }
+  /// <summary>Keeps <paramref name="data"/> as the bytes of the asset at
+  /// <paramref name="location"/>.</summary>
+  internal void Keep(AssetLocation location, byte[] data) =>
+    _data[location] = data;
 
-  public bool TryLoadAsset(IAsset asset) => true;
+  public void LoadAsset(IAsset asset) {
+    if (_data.TryGetValue(asset.Location, out byte[]? data))
+      asset.Data = data;
+  }
+
+  public bool TryLoadAsset(IAsset asset) {
+    LoadAsset(asset);
+    return true;
+  }
 
   public List<IAsset> GetAssets(
     AssetCategory category,
