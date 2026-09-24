@@ -29,7 +29,7 @@ public class MultiblockClientCheckTests {
     return (world, machine, wall, wallId);
   }
 
-  // Read off the received calls rather than one overload, which differs between game versions.
+  // HighlightBlocks has a different overload per game version; this matches it by name.
   private static List<List<BlockPos>> Outlines(TestWorld world) =>
     world
       .ClientApi.World.ReceivedCalls()
