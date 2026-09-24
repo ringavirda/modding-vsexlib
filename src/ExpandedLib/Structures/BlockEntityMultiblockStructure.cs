@@ -40,13 +40,17 @@ public abstract class BlockEntityMultiblockStructure
   private MultiblockFacings _facings = MultiblockFacings.None;
   private MultiblockCellRoles _roles = MultiblockCellRoles.None;
   private MultiblockConnectors _connectors = MultiblockConnectors.None;
+
+  /// <summary>The layout's connector demands as last loaded, authored in the north frame;
+  /// <see cref="MultiblockConnectors.None"/> before the structure loads.</summary>
+  internal MultiblockConnectors Connectors => _connectors;
   private long _completionTickId;
 
   /// <summary>Whether every block of the multiblock structure is currently in place.</summary>
   public bool StructureComplete { get; protected set; }
 
   /// <summary>Interval (ms) of the structure-completion monitor tick.</summary>
-  protected virtual int CompletionTickMs => 3000;
+  protected internal virtual int CompletionTickMs => 3000;
 
   /// <summary>Whether the machine may run production this tick.</summary>
   protected virtual bool CanRunProduction => StructureComplete;
@@ -368,7 +372,9 @@ public abstract class BlockEntityMultiblockStructure
   /// <summary>Number of structure cells not yet satisfied.</summary>
   /// <param name="onMissing">Called per unsatisfied cell, with the wanted code already rotated.</param>
   /// <returns>The count of unsatisfied cells, or 0 when the structure is not loaded.</returns>
-  protected int IncompleteBlockCount(Action<MissingCell>? onMissing = null) {
+  protected internal int IncompleteBlockCount(
+    Action<MissingCell>? onMissing = null
+  ) {
     if (_structure?.TransformedOffsets is not { } transformed)
       return 0;
 

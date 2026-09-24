@@ -165,6 +165,9 @@ see the git history.
 
 ### Changed
 
+- `BlockEntityMultiblockStructure.IncompleteBlockCount` and `CompletionTickMs` are `protected
+  internal`. A subclass that overrides `CompletionTickMs` from another assembly keeps writing
+  `protected override`.
 - `GridRecipeCollisionCheck` reads tags from a loaded game on 1.22 and later: an ingredient with
   tags and no code takes the collectibles its tags meet, not every item of its class. The harness's
   `ReferencedCodes` reads its references from `GameReferencesCheck`, which now holds the extraction.

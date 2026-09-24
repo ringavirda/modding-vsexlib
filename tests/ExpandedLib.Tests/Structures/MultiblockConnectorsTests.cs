@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Definitions;
 using ExpandedLib.Structures;
@@ -52,6 +53,33 @@ public class MultiblockConnectorsTests {
     scene.Completes();
 
     Assert.Contains("open to 'n'", scene.Rig.MissingReport);
+  }
+
+  #endregion
+
+  #region What the block entity hands out
+
+  // Fails when Connectors answers MultiblockConnectors.None in place of the loaded table.
+  [Fact]
+  public void The_block_entity_hands_out_the_connector_table_it_loaded() {
+    Scene scene = Scene.WithNode("n");
+
+    scene.Completes();
+
+    Assert.Equal(["n"], scene.Machine.Connectors.OutwardFacesAt((0, 0, 1)));
+  }
+
+  // Fails when IncompleteBlockCount reports a misfaced cell without the face it wants.
+  [Fact]
+  public void The_missing_cells_reach_a_caller_outside_the_structure() {
+    Scene scene = Scene.WithNode("s");
+    scene.Completes();
+    var missing = new List<BlockEntityMultiblockStructure.MissingCell>();
+
+    int count = scene.Machine.IncompleteBlockCount(missing.Add);
+
+    Assert.Equal(1, count);
+    Assert.Equal("n", Assert.Single(missing).OutwardFace);
   }
 
   #endregion
@@ -134,6 +162,8 @@ public class MultiblockConnectorsTests {
     }
 
     public StructureRig Rig { get; }
+
+    public TestMegablock Machine => _machine;
 
     public static Scene WithNode(string token, int angle = 0) =>
       Build(
