@@ -130,9 +130,10 @@ public class CommentStyleTests {
 
     Assert.Equal(
       ["a.cs:5 (3 lines)"],
-      CommentStyle.LongRemarks(
-        [new("a.cs", lines), new("src/Migrations/M.cs", lines)]
-      )
+      CommentStyle.LongRemarks([
+        new("a.cs", lines),
+        new("src/Migrations/M.cs", lines),
+      ])
     );
   }
 
@@ -154,9 +155,10 @@ public class CommentStyleTests {
 
     Assert.Equal(
       ["a.cs:7 (6 lines)"],
-      CommentStyle.LongSummaries(
-        [new("a.cs", lines), new("src/ReleasedCodes.cs", lines)]
-      )
+      CommentStyle.LongSummaries([
+        new("a.cs", lines),
+        new("src/ReleasedCodes.cs", lines),
+      ])
     );
   }
 }

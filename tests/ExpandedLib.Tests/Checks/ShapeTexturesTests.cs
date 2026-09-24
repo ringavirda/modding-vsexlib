@@ -44,7 +44,9 @@ public class ShapeTexturesTests {
     );
 
     Assert.Equal(
-      [$"boiler{System.IO.Path.DirectorySeparatorChar}b.json: coal = C:/art/coal"],
+      [
+        $"boiler{System.IO.Path.DirectorySeparatorChar}b.json: coal = C:/art/coal",
+      ],
       ShapeTextures.EditorPaths(shapes.Root)
     );
   }
