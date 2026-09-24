@@ -12,6 +12,8 @@ namespace ExpandedLib.Tests;
 /// <summary>How each shipped <see cref="ICheckSource"/> resolves a block class key and a
 /// block-entity behaviour key.</summary>
 public class ClassKeysTests {
+  public ClassKeysTests() => TestModDomain.Register();
+
   private const string FillerKey = "exlib.BlockStructureFiller";
   private const string MemberKey = TestWorld.NetworkMemberClass;
 
