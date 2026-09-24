@@ -43,9 +43,9 @@ public class PublicSurfaceTests {
     t.Name.Contains('<')
     || t.IsDefined(typeof(CompilerGeneratedAttribute), false);
 
-  private static IEnumerable<Type> ContractTypes() =>
-    typeof(ExpandedLibModSystem)
-      .Assembly.GetTypes()
+  // Publicly visible, outside ExpandedLib.Industry, written by hand and not a ref struct.
+  private static IEnumerable<Type> ContractTypes(IEnumerable<Type> types) =>
+    types
       .Where(IsPubliclyVisible)
       .Where(t =>
         t.Namespace != null && !t.Namespace.StartsWith("ExpandedLib.Industry")
@@ -55,6 +55,9 @@ public class PublicSurfaceTests {
         t.GetCustomAttributesData()
           .All(a => a.AttributeType.Name != "IsByRefLikeAttribute")
       );
+
+  private static IEnumerable<Type> ContractTypes() =>
+    ContractTypes(typeof(ExpandedLibModSystem).Assembly.GetTypes());
 
   private static bool IsHidden(Type t) =>
     t.GetCustomAttributesData()
@@ -88,21 +91,39 @@ public class PublicSurfaceTests {
   private static IEnumerable<string> ListedNames(string page) =>
     TableRow.Matches(page).Select(m => m.Groups[1].Value);
 
-  [Fact]
-  public void Every_public_type_outside_Industry_is_listed_or_hidden() {
-    string page = File.ReadAllText(PagePath);
+  /// <summary>Each contract type of <paramref name="types"/> (publicly visible, outside
+  /// <c>ExpandedLib.Industry</c>, not compiler-made) that carries no
+  /// <see cref="EditorBrowsableAttribute"/> and no row of <paramref name="page"/> names.</summary>
+  /// <param name="page">Markdown whose table rows open with the type in a code span: a nested
+  /// type as <c>Outer.Inner</c>, a generic one with its parameters.</param>
+  /// <returns><c>Namespace.Name</c> per type, in input order.</returns>
+  public static IReadOnlyList<string> Unlisted(
+    IEnumerable<Type> types,
+    string page
+  ) {
     // Bare name plus the arity its row was written at.
     var listed = ListedNames(page).Select(ParseRow).ToHashSet();
     var missing = new List<string>();
-    foreach (
-      Type t in Premise.NotEmpty(ContractTypes(), "public contract types")
-    ) {
+    foreach (Type t in ContractTypes(types)) {
       if (IsHidden(t))
         continue;
       string name = QualifiedName(t);
       if (!listed.Contains((name, Arity(t))))
         missing.Add($"{t.Namespace}.{name}");
     }
+    return missing;
+  }
+
+  [Fact]
+  public void Every_public_type_outside_Industry_is_listed_or_hidden() {
+    string page = File.ReadAllText(PagePath);
+    List<string> missing =
+    [
+      .. Unlisted(
+        Premise.NotEmpty(ContractTypes(), "public contract types"),
+        page
+      ),
+    ];
 
     Assert.True(
       missing.Count == 0,
@@ -112,12 +133,17 @@ public class PublicSurfaceTests {
     );
   }
 
-  [Fact]
-  public void Every_listed_type_exists() {
-    string page = File.ReadAllText(PagePath);
-
-    // A name resolves when it is a public or nested-public type of exlib.dll or
-    // exlib.industry.dll, a generator type, or a legacy type gated by `#if !GAME_GE_*`.
+  /// <summary>Each type name a table row of <paramref name="page"/> opens with that resolves to no
+  /// publicly visible type of <paramref name="types"/> at the row's arity, nor to one of
+  /// <paramref name="bareNames"/>.</summary>
+  /// <param name="bareNames">Names that resolve at arity 0 with no type behind them.</param>
+  /// <returns>Each unresolved code span as written, once, in page order.</returns>
+  /// <remarks>A dotted name also resolves by its last segment.</remarks>
+  public static IReadOnlyList<string> Unresolved(
+    string page,
+    IEnumerable<Type> types,
+    IEnumerable<string> bareNames
+  ) {
     var resolvable = new Dictionary<string, HashSet<int>>();
     void Add(string name, int arity) {
       if (!resolvable.TryGetValue(name, out var arities))
@@ -126,9 +152,7 @@ public class PublicSurfaceTests {
     }
 
     foreach (
-      Type t in typeof(ExpandedLibModSystem)
-        .Assembly.GetTypes()
-        .Concat(typeof(Industry.IndustryModule).Assembly.GetTypes())
+      Type t in types
         .Where(IsPubliclyVisible)
         .Where(t => !IsCompilerSynthesized(t))
     ) {
@@ -136,9 +160,7 @@ public class PublicSurfaceTests {
       Add(SimpleName(t), arity);
       Add(QualifiedName(t), arity);
     }
-    foreach (string name in GeneratorTypeNames())
-      Add(name, 0);
-    foreach (string name in LegacyOnlyTypeNames())
+    foreach (string name in bareNames)
       Add(name, 0);
 
     var missing = new List<string>();
@@ -162,12 +184,47 @@ public class PublicSurfaceTests {
         continue;
       missing.Add(raw);
     }
+    return [.. missing.Distinct()];
+  }
+
+  [Fact]
+  public void Every_listed_type_exists() {
+    string page = File.ReadAllText(PagePath);
+
+    // A name resolves when it is a public or nested-public type of exlib.dll or
+    // exlib.industry.dll, a generator type, or a legacy type gated by `#if !GAME_GE_*`.
+    IReadOnlyList<string> missing = Unresolved(
+      page,
+      typeof(ExpandedLibModSystem)
+        .Assembly.GetTypes()
+        .Concat(typeof(Industry.IndustryModule).Assembly.GetTypes()),
+      GeneratorTypeNames().Concat(LegacyOnlyTypeNames())
+    );
 
     Assert.True(
       missing.Count == 0,
       $"{missing.Count} name(s) on Supported-API.md do not resolve to a public exlib type:\n  "
-        + string.Join("\n  ", missing.Distinct())
+        + string.Join("\n  ", missing)
     );
+  }
+
+  /// <summary>The simple names of the contract types of <paramref name="types"/> that appear in
+  /// none of <paramref name="testTexts"/>, ordinal-sorted.</summary>
+  public static IReadOnlyList<string> Untested(
+    IEnumerable<Type> types,
+    IEnumerable<string> testTexts
+  ) {
+    string[] texts = [.. testTexts];
+    return
+    [
+      .. ContractTypes(types)
+        .Select(SimpleName)
+        .Distinct()
+        .Where(name =>
+          !texts.Any(t => t.Contains(name, StringComparison.Ordinal))
+        )
+        .OrderBy(n => n, StringComparer.Ordinal),
+    ];
   }
 
   /// <summary>Reports every public contract type whose simple name appears in no test file outside
@@ -200,16 +257,10 @@ public class PublicSurfaceTests {
         .Select(File.ReadAllText),
     ];
 
-    List<string> untested =
-    [
-      .. ContractTypes()
-        .Select(SimpleName)
-        .Distinct()
-        .Where(name =>
-          !testText.Any(t => t.Contains(name, StringComparison.Ordinal))
-        )
-        .OrderBy(n => n, StringComparer.Ordinal),
-    ];
+    IReadOnlyList<string> untested = Untested(
+      typeof(ExpandedLibModSystem).Assembly.GetTypes(),
+      testText
+    );
 
     Assert.True(
       untested.Count < 60,
@@ -252,5 +303,63 @@ public class PublicSurfaceTests {
       foreach (Match m in LegacyTypeDecl.Matches(text))
         yield return m.Groups[1].Value;
     }
+  }
+
+  // Fails when Unlisted passes an unlisted type or one listed at another arity, or names a hidden
+  // type, an Industry one or a listed one.
+  [Fact]
+  [PlantedDefect(typeof(PublicSurfaceTests), nameof(Unlisted))]
+  public void An_unlisted_public_type_is_named() {
+    Assert.Equal(
+      [
+        "ExpandedLib.Registries.ExKeyedRegistry",
+        "ExpandedLib.Registries.RegistrySubCommand",
+      ],
+      Unlisted(
+        [
+          typeof(ExpandedLib.Registries.ExKeyedRegistry<>),
+          typeof(ExpandedLib.Registries.RegistrySubCommand<>),
+          typeof(ExlibConfig),
+          typeof(Industry.IndustryModule),
+          typeof(ExpandedLib.Registries.ExHarmony),
+        ],
+        "| `ExKeyedRegistry` | no arity |\n"
+          + "| `ExHarmony` | listed |\n"
+          + "| x | `RegistrySubCommand<T>` in another column |\n"
+      )
+    );
+  }
+
+  // Fails when Unresolved passes a name no type carries or one at the wrong arity, drops the
+  // last-segment or bare-name fallback, or names a row twice.
+  [Fact]
+  [PlantedDefect(typeof(PublicSurfaceTests), nameof(Unresolved))]
+  public void A_listed_name_no_type_carries_is_named() {
+    Assert.Equal(
+      ["Gone", "ExlibConfig<T>"],
+      Unresolved(
+        "| `ExlibConfig` | a type |\n"
+          + "| `Gone` | none |\n"
+          + "| `ExlibConfig<T>` | wrong arity |\n"
+          + "| `Some.Outer.ExlibConfig` | dotted |\n"
+          + "| `ExlibLang` | generated |\n"
+          + "| `Gone` | twice |\n",
+        [typeof(ExlibConfig)],
+        ["ExlibLang"]
+      )
+    );
+  }
+
+  // Fails when Untested passes a type no test text names or names one a text names.
+  [Fact]
+  [PlantedDefect(typeof(PublicSurfaceTests), nameof(Untested))]
+  public void A_public_type_no_test_names_is_reported() {
+    Assert.Equal(
+      ["ExlibConfig"],
+      Untested(
+        [typeof(ExlibConfig), typeof(ExpandedLib.Registries.ExKeyedRegistry<>)],
+        ["var r = new ExKeyedRegistry<int>(x => x);"]
+      )
+    );
   }
 }

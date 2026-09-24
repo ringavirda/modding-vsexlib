@@ -87,25 +87,52 @@ public class ProcessExtensionGuards {
     Premise.NotEmpty(ProcessMachines(), "process-machine sources");
   }
 
-  [Fact]
-  public void No_process_machine_names_a_product_in_code() {
-    string[] offenders =
+  /// <summary>Each <c>new AssetLocation("domain:path")</c> in <paramref name="files"/> whose
+  /// literal is a code, not a shape, texture or <c>.json</c> path.</summary>
+  /// <param name="files">Process-machine sources as their relative path and text.</param>
+  /// <returns><c>path:line names "code"</c> per literal, in input order.</returns>
+  public static IReadOnlyList<string> NamedProducts(
+    IEnumerable<(string Relative, string Text)> files
+  ) =>
     [
-      .. ProcessMachines()
-        .SelectMany(f =>
-          LiteralCode
-            .Matches(f.Text)
-            .Where(m => !IsArtPath(m.Groups["code"].Value))
-            .Select(m =>
-              $"{f.Relative}:{LineOf(f.Text, m.Index)} names \"{m.Groups["code"].Value}\""
-            )
-        ),
+      .. files.SelectMany(f =>
+        LiteralCode
+          .Matches(f.Text)
+          .Where(m => !IsArtPath(m.Groups["code"].Value))
+          .Select(m =>
+            $"{f.Relative}:{LineOf(f.Text, m.Index)} names \"{m.Groups["code"].Value}\""
+          )
+      ),
     ];
 
+  [Fact]
+  public void No_process_machine_names_a_product_in_code() {
+    IReadOnlyList<string> offenders = NamedProducts(
+      ProcessMachines().Select(f => (f.Relative, f.Text))
+    );
+
     Assert.True(
-      offenders.Length == 0,
+      offenders.Count == 0,
       "A machine reads its tooling and names no product. Declare it in the machine's registry instead:\n  "
         + string.Join("\n  ", offenders)
+    );
+  }
+
+  // Fails when NamedProducts misses a literal code or names a shape, texture or json path.
+  [Fact]
+  [PlantedDefect(typeof(ProcessExtensionGuards), nameof(NamedProducts))]
+  public void A_literal_product_code_is_named() {
+    Assert.Equal(
+      ["mill.cs:4 names \"game:ingot-iron\""],
+      NamedProducts([
+        (
+          "mill.cs",
+          "var a = new AssetLocation(\"game:shapes/block/mill\");\n"
+            + "var b = new AssetLocation(\"game:textures/iron\");\n"
+            + "var c = new AssetLocation(\"game:config/mill.json\");\n"
+            + "var d = new AssetLocation( \"game:ingot-iron\" );"
+        ),
+      ])
     );
   }
 
