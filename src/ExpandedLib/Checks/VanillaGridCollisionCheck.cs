@@ -19,15 +19,13 @@ public static class VanillaGridCollisionCheck {
   /// <returns>The check's <see cref="CheckResult"/>, named <c>VanillaGridCollision</c>, one error
   /// per colliding pair; no errors when none.</returns>
   public static CheckResult Run(ILoadedGame game, string domain) =>
-    new(
-      "VanillaGridCollision",
-      domain,
-      domain == "game"
-        ? []
-        : Collisions(
-          [.. Crafts(game, domain)],
-          [.. Crafts(game, "game")],
-          withinOwn: false
-        )
-    );
+    domain == "game"
+      ? new("VanillaGridCollision", domain, [])
+      : Collisions(
+        "VanillaGridCollision",
+        domain,
+        [.. Crafts(game, domain)],
+        [.. Crafts(game, "game")],
+        withinOwn: false
+      );
 }

@@ -7,8 +7,8 @@ namespace ExpandedLib.Checks;
 
 /// <summary>Runs every content check ExpandedLib ships against one <see cref="ICheckSource"/>, and
 /// the loaded checks against an <see cref="ILoadedGame"/>. A mod exempts a finding it ships
-/// knowingly with <see cref="Exempt"/> and declares what its machines make with
-/// <see cref="Produces"/>.</summary>
+/// knowingly with <see cref="Exempt(string, string, string[], string)"/> and declares what its
+/// machines make with <see cref="Produces"/>.</summary>
 /// <remarks><see cref="ExpandedLibModSystem.AssetsFinalize"/> calls <see cref="All(ICoreAPI)"/>;
 /// <c>/exmod verify</c> calls <see cref="Verify"/>, which adds the loaded checks. A mod's own
 /// <see cref="ExCheckRegisterAttribute"/>-decorated checks run after the content checks.</remarks>
@@ -55,9 +55,21 @@ public static class ExlibChecks {
   private sealed record Exemption(
     string Domain,
     string Rule,
-    string Code,
+    string[] Codes,
     string Reason
-  );
+  ) {
+    public bool Equals(Exemption? other) =>
+      other is not null
+      && Domain == other.Domain
+      && Rule == other.Rule
+      && Reason == other.Reason
+      && Codes.SequenceEqual(other.Codes);
+
+    public override int GetHashCode() => HashCode.Combine(Domain, Rule, Reason);
+
+    public override string ToString() =>
+      $"{Rule} exemption of {string.Join(" + ", Codes)}";
+  }
 
   /// <summary>One code a mod declared with <see cref="Produces"/>.</summary>
   internal sealed record Declaration(string Domain, string Code, string Source);
@@ -112,29 +124,57 @@ public static class ExlibChecks {
   /// from a mod's <c>Start</c>; a world starting to load drops every exemption.</summary>
   /// <param name="domain">The domain whose run the finding is reported in.</param>
   /// <param name="rule">The check's name as its result carries it, e.g.
-  /// <c>"GridRecipeCollision"</c>.</param>
-  /// <param name="code">What the finding names: a code, or a recipe's
-  /// <c>file#position</c>; matched as a whole word, so <c>a.json#1</c> does not take
-  /// <c>a.json#10</c>.</param>
+  /// <c>"GridRecipeShape"</c>.</param>
+  /// <param name="code">What the finding names: a code, or a recipe's <c>file#position</c>.
+  /// Matched as <see cref="Exempt(string, string, string[], string)"/> matches each of its
+  /// codes.</param>
   /// <param name="reason">Why the finding stands, logged beside it.</param>
   /// <exception cref="ArgumentException">An argument is null or empty.</exception>
-  /// <remarks>An exemption that matches no finding of a run of its rule is reported in that run,
-  /// and <see cref="Verify"/> reports one whose rule never ran. The same exemption given twice is
-  /// kept once.</remarks>
+  /// <remarks>A finding about two things, such as a collision of two recipes, is taken only by an
+  /// exemption naming both, through the other overload.</remarks>
   public static void Exempt(
     string domain,
     string rule,
     string code,
     string reason
+  ) => Exempt(domain, rule, [code], reason);
+
+  /// <summary>Takes every finding of <paramref name="rule"/> in <paramref name="domain"/> that
+  /// names each of <paramref name="codes"/> out of the errors, for a defect a mod ships knowingly.
+  /// Call it from a mod's <c>Start</c>; a world starting to load drops every exemption.</summary>
+  /// <param name="domain">The domain whose run the finding is reported in.</param>
+  /// <param name="rule">The check's name as its result carries it, e.g.
+  /// <c>"GridRecipeCollision"</c>.</param>
+  /// <param name="codes">What the finding names: codes, recipes' <c>file#position</c>, or words of
+  /// the defect (<c>"key G"</c>). Each is matched as a whole word, so <c>a.json#1</c> does not take
+  /// <c>a.json#10</c> and <c>slag</c> does not take <c>mod:slag</c>. A finding with
+  /// <see cref="CheckResult.Subjects"/> is taken only when every subject is one of
+  /// <paramref name="codes"/>.</param>
+  /// <param name="reason">Why the finding stands, logged beside it.</param>
+  /// <exception cref="ArgumentException">An argument or one of <paramref name="codes"/> is null or
+  /// empty, or <paramref name="codes"/> holds none.</exception>
+  /// <remarks>An exemption that matches no finding of a run of its rule is reported in that run,
+  /// and <see cref="Verify"/> reports one whose rule never ran. Of two exemptions matching one
+  /// finding the first given takes it, and the second, when it takes nothing else, is reported as
+  /// its duplicate. The same exemption given twice is kept once.</remarks>
+  public static void Exempt(
+    string domain,
+    string rule,
+    string[] codes,
+    string reason
   ) {
+    if (codes is not { Length: > 0 })
+      throw new ArgumentException("an exemption names a code", nameof(codes));
     Require(
       "an exemption names all four",
-      (domain, nameof(domain)),
-      (rule, nameof(rule)),
-      (code, nameof(code)),
-      (reason, nameof(reason))
+      [
+        (domain, nameof(domain)),
+        (rule, nameof(rule)),
+        (reason, nameof(reason)),
+        .. codes.Select(c => (c, nameof(codes))),
+      ]
     );
-    var exemption = new Exemption(domain, rule, code, reason);
+    var exemption = new Exemption(domain, rule, [.. codes], reason);
     if (!_exemptions.Contains(exemption))
       _exemptions.Add(exemption);
   }
@@ -208,19 +248,32 @@ public static class ExlibChecks {
   ) {
     Exemption[] own = [.. _exemptions.Where(e => e.Domain == domain)];
     var used = new HashSet<Exemption>();
+    var duplicates = new Dictionary<Exemption, Exemption>();
     var applied = new List<CheckResult>();
     foreach (CheckResult result in results) {
       Exemption[] rule = [.. own.Where(e => e.Rule == result.Check)];
       var errors = new List<string>();
       var exempted = new List<string>(result.Exempted);
       foreach (string error in result.Errors) {
-        Exemption? taken = rule.FirstOrDefault(e => Names(error, e.Code));
-        if (taken == null) {
+        IReadOnlyList<string> subjects = result.Subjects.GetValueOrDefault(
+          error,
+          []
+        );
+        Exemption[] taking =
+        [
+          .. rule.Where(e =>
+            e.Codes.All(c => Names(error, c))
+            && subjects.All(s => e.Codes.Contains(s))
+          ),
+        ];
+        if (taking.Length == 0) {
           errors.Add(error);
           continue;
         }
-        used.Add(taken);
-        exempted.Add($"{error} (exempt: {taken.Reason})");
+        used.Add(taking[0]);
+        foreach (Exemption again in taking.Skip(1))
+          duplicates.TryAdd(again, taking[0]);
+        exempted.Add($"{error} (exempt: {taking[0].Reason})");
       }
       applied.Add(result with { Errors = errors, Exempted = exempted });
     }
@@ -231,7 +284,9 @@ public static class ExlibChecks {
           !used.Contains(e) && (everyRule || ran.Contains(e.Rule))
         )
         .Select(e =>
-          $"{e.Rule} exemption of {e.Code} matches no finding ({e.Reason})"
+          duplicates.TryGetValue(e, out Exemption? first)
+            ? $"{e} duplicates the {first} ({e.Reason})"
+            : $"{e} matches no finding ({e.Reason})"
         ),
     ];
     if (unused.Length > 0)
@@ -239,9 +294,11 @@ public static class ExlibChecks {
     return applied;
   }
 
-  // Whether text holds code as a whole word: bounded by the text's ends, white space or
-  // punctuation, where a '.' ends a word only before white space or the end.
-  private static bool Names(string text, string code) {
+  /// <summary>Whether <paramref name="text"/> holds <paramref name="code"/> as a whole word:
+  /// starting at the text's start or after white space or punctuation other than <c>:</c> and
+  /// <c>.</c>, and ending at the text's end, before white space or such punctuation, or before a
+  /// <c>:</c> or <c>.</c> that ends the text or precedes white space.</summary>
+  internal static bool Names(string text, string code) {
     for (
       int at = text.IndexOf(code, StringComparison.Ordinal);
       at >= 0;
@@ -253,7 +310,7 @@ public static class ExlibChecks {
         end == text.Length
         || Bounds(text[end])
         || (
-          text[end] == '.'
+          text[end] is '.' or ':'
           && (end + 1 == text.Length || char.IsWhiteSpace(text[end + 1]))
         );
       if (before && after)
@@ -264,7 +321,7 @@ public static class ExlibChecks {
 
   private static bool Bounds(char c) =>
     char.IsWhiteSpace(c)
-    || c is ',' or ';' or ':' or '(' or ')' or '[' or ']' or '\'' or '"';
+    || c is ',' or ';' or '(' or ')' or '[' or ']' or '\'' or '"';
 
   // Catches a thrown exception and reports it as one error naming the check.
   private static CheckResult RunIsolated(

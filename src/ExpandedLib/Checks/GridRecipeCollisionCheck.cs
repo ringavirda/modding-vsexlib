@@ -51,27 +51,39 @@ public static class GridRecipeCollisionCheck {
         .Distinct()
         .SelectMany(d => Crafts(source, d)),
     ];
-    return new CheckResult(
+    return Collisions(
       "GridRecipeCollision",
       domain,
-      Collisions(own, others, withinOwn: true)
+      own,
+      others,
+      withinOwn: true
     );
   }
 
-  /// <summary>One line per pair of <paramref name="own"/> with <paramref name="others"/>, and of
-  /// two of <paramref name="own"/> when <paramref name="withinOwn"/>, that match the same
-  /// input.</summary>
-  internal static List<string> Collisions(
+  /// <summary>The result named <paramref name="check"/>: one line per pair of
+  /// <paramref name="own"/> with <paramref name="others"/>, and of two of <paramref name="own"/>
+  /// when <paramref name="withinOwn"/>, that match the same input, each with the two recipes'
+  /// <see cref="Craft.At"/> as its subjects.</summary>
+  internal static CheckResult Collisions(
+    string check,
+    string domain,
     IReadOnlyList<Craft> own,
     IReadOnlyList<Craft> others,
     bool withinOwn
   ) {
     var errors = new List<string>();
+    var subjects = new Dictionary<string, IReadOnlyList<string>>(
+      StringComparer.Ordinal
+    );
     for (int i = 0; i < own.Count; i++)
       foreach (Craft other in (withinOwn ? own.Skip(i + 1) : []).Concat(others))
-        if (Collide(own[i], other))
-          errors.Add($"{own[i].Where} and {other.Where} match the same input");
-    return errors;
+        if (Collide(own[i], other)) {
+          string line =
+            $"{own[i].Where} and {other.Where} match the same input";
+          errors.Add(line);
+          subjects[line] = [own[i].At, other.At];
+        }
+    return new CheckResult(check, domain, errors) { Subjects = subjects };
   }
 
   /// <summary>What an ingredient matches: its item class, its domain (null for any) and the code
@@ -90,6 +102,7 @@ public static class GridRecipeCollisionCheck {
   /// of its named states, and the box its ingredients fill.</summary>
   internal sealed record Craft(
     string Where,
+    string At,
     bool Shapeless,
     int Width,
     int Height,
@@ -133,6 +146,7 @@ public static class GridRecipeCollisionCheck {
       int top = filled.Min(i => i / recipe.Width);
       yield return new Craft(
         recipe.Where,
+        recipe.At,
         Prop(recipe.Json, "shapeless")?.Type == JTokenType.Boolean
           && (bool)Prop(recipe.Json, "shapeless")!,
         recipe.Width,

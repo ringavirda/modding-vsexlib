@@ -58,6 +58,8 @@ public static class GridRecipeShapeCheck {
   /// <summary>One grid recipe as the game resolves it.</summary>
   /// <param name="Where">The recipe's file, its position among the file's recipes from 0, and its
   /// name, or its output code when it has none: <c>mod:recipes/grid/a.json#1 (Crate)</c>.</param>
+  /// <param name="At">The recipe's file and position alone:
+  /// <c>mod:recipes/grid/a.json#1</c>.</param>
   /// <param name="Json">The recipe object.</param>
   /// <param name="RawPattern">The pattern as written, or an empty string.</param>
   /// <param name="Cells">The pattern with row separators removed, one entry per slot, row by
@@ -67,6 +69,7 @@ public static class GridRecipeShapeCheck {
   /// <param name="Ingredients">Every key of <c>ingredients</c>, to its ingredient.</param>
   internal sealed record GridEntry(
     string Where,
+    string At,
     JObject Json,
     string RawPattern,
     IReadOnlyList<string> Cells,
@@ -97,6 +100,7 @@ public static class GridRecipeShapeCheck {
         ?? "(unnamed)";
       yield return new GridEntry(
         $"{at}#{position} ({label})",
+        $"{at}#{position}",
         json,
         pattern,
         [
