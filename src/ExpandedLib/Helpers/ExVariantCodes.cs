@@ -7,6 +7,9 @@ namespace ExpandedLib.Helpers;
 /// <summary>Variant codes built from the whole code stem, where vanilla's
 /// <c>CodeWithVariant</c> and <c>CodeWithVariants</c> keep only the first dash-segment of a code
 /// such as <c>crafting-workbench</c>.</summary>
+/// <remarks>The stem is the code less one dash-segment per variant group, so every state is taken
+/// to be one dash-segment: a state holding a dash, such as <c>light-oak</c>, cuts that many
+/// segments more off the stem.</remarks>
 public static class ExVariantCodes {
   /// <summary>The code of <paramref name="obj"/> with <paramref name="group"/>'s value replaced by
   /// <paramref name="value"/>; the other groups keep theirs, in <c>Variant</c> order.</summary>
@@ -15,7 +18,8 @@ public static class ExVariantCodes {
   /// nothing.</param>
   /// <param name="value">The group's new state.</param>
   /// <returns>The code in <paramref name="obj"/>'s domain, which no block need carry; a copy of the
-  /// code when <paramref name="obj"/> has no variant groups.</returns>
+  /// code when <paramref name="obj"/> has no variant groups. Wrong when a state holds a dash (see
+  /// the class remarks).</returns>
   public static AssetLocation WithVariant(
     this RegistryObject obj,
     string group,
@@ -29,7 +33,8 @@ public static class ExVariantCodes {
   /// <param name="groups">The variant groups to replace.</param>
   /// <param name="values">The new states, one per entry of <paramref name="groups"/>.</param>
   /// <returns>The code in <paramref name="obj"/>'s domain, which no block need carry; a copy of the
-  /// code when <paramref name="obj"/> has no variant groups.</returns>
+  /// code when <paramref name="obj"/> has no variant groups. Wrong when a state holds a dash (see
+  /// the class remarks).</returns>
   /// <exception cref="IndexOutOfRangeException"><paramref name="values"/> is shorter than
   /// <paramref name="groups"/> and the object carries a group past its end.</exception>
   public static AssetLocation WithVariants(

@@ -64,6 +64,8 @@ rotates just those to a placed structure's angle while leaving the rest of the c
 set to other states: `block.WithVariant("side", "e")` turns `crafting-workbench-n` into
 `crafting-workbench-e`. Vanilla's `CodeWithVariant` and `CodeWithVariants` start from the code's
 first dash-segment and would give `crafting-e`, a block that does not exist.
+The helpers take each state to be one dash-segment: the stem is the code less one segment per
+variant group, so a state holding a dash, such as `light-oak`, cuts into the stem.
 
 ## `ExMeshCache` - mesh and mesh-ref cache
 
