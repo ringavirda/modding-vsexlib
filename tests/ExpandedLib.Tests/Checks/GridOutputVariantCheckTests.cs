@@ -330,9 +330,8 @@ public class GridOutputVariantCheckTests {
       )
     );
 
-  // Fails when Run stops reading a group that loads vanilla's orientation world property as that
-  // property's states under the group's own code, or reads a property of the block's own domain
-  // as vanilla's.
+  // Fails when a group loading vanilla's orientation property loses its states or its own code,
+  // or a property of the block's own domain is read as vanilla's.
   [Fact]
   public void A_group_loading_a_vanilla_orientation_property_takes_its_states() =>
     Assert.Equal(

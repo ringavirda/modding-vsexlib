@@ -11,10 +11,11 @@ namespace ExpandedLib.Testing;
 /// <summary>
 /// Resolves block class keys and block-entity behaviour keys by reflection, for a check source with
 /// no game class registry. Scans the given assemblies, the <c>[assembly: ExDomain]</c> assemblies
-/// they reference, and ExpandedLib itself. A type is keyed by <see cref="EntityRegistry.KeyFor"/>
-/// under each domain its own assembly is given under, so an assembly that declares no
-/// <c>ExDomain</c> and was never registered logs that method's warning once per type and domain.
+/// they reference, and ExpandedLib itself.
 /// </summary>
+/// <remarks>A type is keyed by <see cref="EntityRegistry.KeyFor"/> under each domain its own
+/// assembly is given under, so an assembly that declares no <c>ExDomain</c> and was never
+/// registered logs that method's warning once per type and domain.</remarks>
 internal sealed class ClassKeys {
   private readonly Lazy<Dictionary<string, Type>> _blocks;
   private readonly Lazy<Dictionary<string, Type>> _behaviors;

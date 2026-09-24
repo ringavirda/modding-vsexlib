@@ -300,9 +300,8 @@ public class GridRecipeCollisionCheckTests {
 
   #region Shapeless
 
-  // Fails when a shapeless recipe is matched by position, pairs with fewer slots than it has,
-  // keeps a slot's first pairing when another slot needs it, or lets one item fill two of its
-  // stacks.
+  // Fails when a shapeless recipe is matched by position or with too few slots, keeps a slot's
+  // first pairing when another slot needs it, or lets one item fill two of its stacks.
   [Fact]
   [PlantedDefect(
     typeof(GridRecipeCollisionCheck),

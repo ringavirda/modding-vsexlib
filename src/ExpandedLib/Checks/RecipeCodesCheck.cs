@@ -23,9 +23,8 @@ public static class RecipeCodesCheck {
       ]
     );
 
-  // An output holding a wildcard is reported. A {name} placeholder a named ingredient without
-  // allowedVariants binds takes whatever state the loaded game gives, so it resolves when some
-  // registered code matches it as a wildcard.
+  // An output holding a wildcard is reported; a {name} a named ingredient without allowedVariants
+  // binds resolves when some registered code matches it in any state.
   internal static IEnumerable<(AssetLocation File, string Code)> Unresolvable(
     ICheckSource source,
     string domain

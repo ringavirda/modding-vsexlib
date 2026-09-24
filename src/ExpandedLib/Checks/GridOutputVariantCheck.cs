@@ -13,52 +13,21 @@ namespace ExpandedLib.Checks;
 
 /// <summary>
 /// Checks that a grid recipe whose output names an oriented block names the orientation its
-/// blocktype's <c>creativeinventory</c> lists, the block's creative default. The game crafts the
-/// block an output names; the handbook page of the creative default lists only recipes whose output
-/// is that stack, and a crafted stack of another orientation does not stack with the default the
-/// block drops.
+/// blocktype's <c>creativeinventory</c> lists, the block's creative default. Another orientation
+/// crafts, but the default's handbook page lists no recipe and the two stacks do not stack.
 /// </summary>
 /// <remarks>
-/// A block is oriented by the variant group its orientation behaviour writes when placed:
-/// <c>ExOrientable</c>'s <c>side</c>, or <c>orientation</c> in <c>network</c> mode
-/// (<c>BlockBehaviorExOrientable.VariantKey</c>); vanilla's <c>HorizontalOrientable</c>'s
-/// <c>horizontalorientation</c> and <c>NWOrientable</c>'s <c>orientation</c>, each <c>side</c>
-/// when the block declares no such group; <c>Pillar</c>'s <c>rotationVariantCode</c>, by default
-/// <c>rotation</c>; <c>OmniRotatable</c>'s <c>rot</c>; and, for a block whose <c>class</c> the
-/// source resolves (<see cref="ICheckSource.BlockClass"/>), <c>BlockStairs</c>'
-/// <c>horizontalorientation</c> and <c>verticalorientation</c>. A group loading vanilla's
-/// <c>abstract/horizontalorientation</c> or <c>abstract/verticalorientation</c> world property
-/// takes that property's code and states. An output is reported when no
-/// <c>creativeinventory</c> entry matches it and one matches it with only that group's state
-/// changed; an output differing from the default in any other group is not this check's. A
-/// block without a <c>creativeinventory</c>, or whose groups combine other than by multiplying,
-/// is not read. Blocktypes are read from every domain the source covers. An output code without a
-/// domain is in its recipe file's domain.
+/// A block is oriented by the group its orientation behaviour writes (<c>ExOrientable</c>,
+/// <c>HorizontalOrientable</c>, <c>NWOrientable</c>, <c>Pillar</c>, <c>OmniRotatable</c>) or, when
+/// the source resolves its <c>class</c>, its block class writes (<c>BlockStairs</c>); a group
+/// loading vanilla's <c>abstract/horizontalorientation</c> or <c>abstract/verticalorientation</c>
+/// takes that property's code and states. An output is reported when no creative entry matches it
+/// and one matches it with only that group's state changed. A block without a
+/// <c>creativeinventory</c>, or whose groups combine other than by multiplying, is not read. An
+/// output code without a domain is in its recipe file's domain.
 /// </remarks>
 public static class GridOutputVariantCheck {
   private static readonly Regex Placeholder = new(@"\{[^}]*\}");
-
-  // Vanilla's survival worldproperties/abstract orientation files: the group code each gives a
-  // group that declares none, and its states.
-  private static readonly Dictionary<
-    string,
-    (string Code, string[] States)
-  > OrientationProperties = new(StringComparer.Ordinal) {
-    ["game:abstract/horizontalorientation"] = (
-      "horizontalorientation",
-      ["north", "east", "south", "west"]
-    ),
-    ["game:abstract/verticalorientation"] = (
-      "verticalorientation",
-      ["up", "down"]
-    ),
-  };
-
-  // The groups a block class writes when it places its block (BlockStairs.TryPlaceBlock).
-  private static readonly (Type Class, string[] Groups)[] OrientingClasses =
-  [
-    (typeof(BlockStairs), ["horizontalorientation", "verticalorientation"]),
-  ];
 
   /// <summary>Every grid recipe output in <paramref name="domain"/> that names an oriented block
   /// in an orientation other than its creative default.</summary>
@@ -191,10 +160,8 @@ public static class GridOutputVariantCheck {
       string? code = (string?)Prop(group, "code");
       if (
         (string?)Prop(group, "loadFromProperties") is { } property
-        && OrientationProperties.TryGetValue(
-          AssetLocation.Create(property, domain).ToString(),
-          out var oriented
-        )
+        && OrientationProperty(AssetLocation.Create(property, domain))
+          is { } oriented
       )
         read.Add((code ?? oriented.Code, oriented.States));
       else
@@ -256,10 +223,8 @@ public static class GridOutputVariantCheck {
       (string?)Prop(type, "class") is { } key
       && source.BlockClass(key) is { } blockClass
     )
-      foreach (var (orienting, written) in OrientingClasses)
-        if (orienting.IsAssignableFrom(blockClass))
-          foreach (string group in written.Where(Has))
-            yield return group;
+      foreach (string group in ClassGroups(blockClass).Where(Has))
+        yield return group;
     if (Prop(type, "behaviors") is not JArray behaviors)
       yield break;
     foreach (JObject behavior in behaviors.OfType<JObject>()) {
@@ -280,4 +245,27 @@ public static class GridOutputVariantCheck {
         yield return group;
     }
   }
+
+  // Vanilla's survival worldproperties/abstract orientation files: the code a group loading one
+  // takes when it declares none, and its states; null for any other property.
+  private static (string Code, string[] States)? OrientationProperty(
+    AssetLocation property
+  ) =>
+    property.ToString() switch {
+      "game:abstract/horizontalorientation" => (
+        "horizontalorientation",
+        ["north", "east", "south", "west"]
+      ),
+      "game:abstract/verticalorientation" => (
+        "verticalorientation",
+        ["up", "down"]
+      ),
+      _ => null,
+    };
+
+  // The groups a block class writes when it places its block (BlockStairs.TryPlaceBlock).
+  private static string[] ClassGroups(Type blockClass) =>
+    typeof(BlockStairs).IsAssignableFrom(blockClass)
+      ? ["horizontalorientation", "verticalorientation"]
+      : [];
 }

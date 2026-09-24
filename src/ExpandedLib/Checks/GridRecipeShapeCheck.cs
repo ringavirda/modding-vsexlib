@@ -13,8 +13,8 @@ namespace ExpandedLib.Checks;
 /// </summary>
 /// <remarks>A key the pattern never places is never consumed and never shown, so two recipes
 /// differing only in it take the same input. A letter with no key or a pattern of another length
-/// than width times height fails the recipe at load (<c>GridRecipe.Resolve</c>), and a grid wider or taller than the crafting grid never matches
-/// (<c>GridRecipe.Matches</c>). A grid recipe is one under <c>recipes/grid/</c>; its properties
+/// than width times height fails the recipe at load (<c>GridRecipe.Resolve</c>), and a grid wider
+/// or taller than the crafting grid never matches (<c>GridRecipe.Matches</c>). A grid recipe is one under <c>recipes/grid/</c>; its properties
 /// are read case-insensitively, as the game's loader reads them.</remarks>
 public static class GridRecipeShapeCheck {
   /// <summary>The crafting grid's width and height, in slots.</summary>

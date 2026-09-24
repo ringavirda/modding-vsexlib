@@ -15,15 +15,13 @@ namespace ExpandedLib.Checks;
 /// <remarks>
 /// Follows the game's matcher: a shaped pattern, trimmed, at any offset its grid allows
 /// (<c>GridRecipe.Matches</c>, <c>RecipeBase.MatchesAtPosition</c>), with no mirrored match; a
-/// shapeless recipe's input merged into one stack per distinct item, which its exact ingredients,
-/// merged the same way, and its other ingredients, one stack each, take one to one
-/// (<c>RecipeBase.MatchesShapeLess</c>); a named wildcard in one state across its slots
-/// (<c>RecipeBase.GenerateRecipesForAllIngredientCombinations</c>);
-/// <c>allowedVariants</c> narrowing a wildcard (<c>WildcardUtil.Match</c>). Tags, attributes and
-/// <c>skipVariants</c> are not read, and a regex or tag-only ingredient overlaps its whole item
-/// class. An ingredient code without a domain is in its recipe file's domain, as the game's
-/// <c>RecipeLoader</c> reads it (<c>AssetLocation.Create</c>). A recipe the game refuses or never
-/// matches is skipped.
+/// shapeless recipe's input merged into one stack per item, each taken by one of its ingredients,
+/// exact ones merged alike (<c>RecipeBase.MatchesShapeLess</c>); a named wildcard in one state
+/// across its slots (<c>RecipeBase.GenerateRecipesForAllIngredientCombinations</c>);
+/// <c>allowedVariants</c> narrowing a wildcard (<c>WildcardUtil.Match</c>); a code without a
+/// domain in its file's (<c>RecipeLoader</c>). Tags, attributes and <c>skipVariants</c> are not
+/// read, and a regex or tag-only ingredient overlaps its whole item class. A recipe the game
+/// refuses or never matches is skipped.
 /// </remarks>
 public static class GridRecipeCollisionCheck {
   // Above this many combinations of named states, the names are left unbound, which can only add
@@ -134,10 +132,8 @@ public static class GridRecipeCollisionCheck {
     }
   }
 
-  // Every combination of states the recipe's named wildcards take; one empty combination when it
-  // names none, or names more than MaxBindings combinations. A name several slots share takes the
-  // states of the last in pattern order (RecipeBase.GetNameToCodeMappingForBasicWildcard), and
-  // stays unbound when that slot has no allowedVariants.
+  // Each combination of named states, a shared name taking its last slot's (vanilla
+  // GetNameToCodeMappingForBasicWildcard); one empty one past MaxBindings or with none.
   private static IEnumerable<Dictionary<string, string>> Bindings(
     JObject?[] placed
   ) {
@@ -265,9 +261,8 @@ public static class GridRecipeCollisionCheck {
     return stacks;
   }
 
-  // Whether items in slots, merged by item, can be exactly the stacks: every slot's item one its
-  // stack takes, every stack filled, two stacks never one item. With distinct, each slot is a
-  // stack of its own recipe and fills a stack alone.
+  // Whether the slots' items, merged by item, are exactly the stacks, no two stacks one item;
+  // with distinct, each slot is itself a stack and fills one stack alone.
   private static bool Takes(
     IReadOnlyList<Slot> stacks,
     IReadOnlyList<Slot> slots,
