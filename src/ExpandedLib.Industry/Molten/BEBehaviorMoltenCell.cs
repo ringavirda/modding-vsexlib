@@ -40,7 +40,7 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
   /// <summary>The principal (controller) block this cell belongs to, or null when hosted standalone.</summary>
   public BlockPos? Principal { get; private set; }
 
-  // drainFitting takes the final sub-minimum dregs (a mold).
+  // drainFitting: a levelling edge into this cell moves the whole difference, not half (a mold).
   private void ApplyConfig(JsonObject? props) {
     if (props == null)
       return;

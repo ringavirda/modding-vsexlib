@@ -9,8 +9,8 @@ public class MpEnergyNetworkState {
   /// <summary>Shaft speed <c>w</c> in rad/s, integrated from the net torque.</summary>
   public float Speed { get; set; }
 
-  /// <summary>Lumped rotational inertia <c>I</c> in kg*m^2: the sum over every flywheel and
-  /// transmission buffer.</summary>
+  /// <summary>Lumped rotational inertia <c>I</c> in kg*m^2: the sum over every
+  /// <see cref="IMpEnergyStorage"/> node on the run.</summary>
   public float Inertia { get; set; }
 
   /// <summary>Stored mechanical energy <c>E = 1/2*I*w^2</c> in joules, recomputed each step.</summary>

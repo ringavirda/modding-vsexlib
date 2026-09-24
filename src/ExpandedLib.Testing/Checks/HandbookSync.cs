@@ -9,9 +9,9 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// The handbook authoring pipeline: <c>docs/handbook/NN-*.html</c> is the hand-edited source for a
-/// page's body, shipped as a lang-key string in <c>en.json</c>. Only the body is synced; a page's
-/// <c>title</c> key stays hand-authored.
+/// The handbook authoring pipeline: <c>mods/&lt;domain&gt;/docs/handbook/NN-*.html</c> is the
+/// hand-edited source for a page's body, shipped as a lang-key string in <c>en.json</c>. Only the
+/// body is synced; a page's <c>title</c> key stays hand-authored.
 /// </summary>
 public static class HandbookSync {
   /// <summary>One handbook page: its authoring HTML, shipped descriptor, and lang key

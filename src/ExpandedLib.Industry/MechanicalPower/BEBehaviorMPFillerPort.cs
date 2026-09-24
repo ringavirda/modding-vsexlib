@@ -9,7 +9,8 @@ using Vintagestory.GameContent.Mechanics;
 namespace ExpandedLib.Industry.MechanicalPower;
 
 /// <summary>A minimal mechanical-power node a mega-block hosts on one of its invisible footprint
-/// cells. The port renders nothing and only loads the network with a configurable resistance.</summary>
+/// cells. The port renders nothing, loads the network with a configurable resistance, and exposes
+/// the network's speed, direction and angle to the principal that hosts it.</summary>
 [BlockEntityBehaviorRegister]
 public class BEBehaviorMPFillerPort(BlockEntity blockentity)
   : BEBehaviorMPBase(blockentity),

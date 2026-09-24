@@ -7,8 +7,9 @@ namespace ExpandedLib.Definitions;
 public readonly record struct LayoutCell(int X, int Y, int Z, char Symbol);
 
 /// <summary>
-/// Parses the ASCII layer diagrams the multiblock and filler DSLs are authored with, over the shared
-/// <see cref="CellGrid"/> core. A structure is a stack of 2D grids, rows along +Z, columns along +X.
+/// Parses a stack of horizontal ASCII layers into cells over <see cref="CellGrid"/>, rows along +Z,
+/// columns along +X. The multiblock and filler builders parse through <c>ThreePlaneDraw</c>
+/// and <see cref="CellGrid"/> themselves and do not call it.
 /// </summary>
 public static class StructureLayout {
   /// <summary>Parses the layers into their non-empty cells, each carrying its legend symbol.</summary>

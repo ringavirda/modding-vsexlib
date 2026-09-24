@@ -15,7 +15,7 @@ public abstract class BlockNetwork(BlockNetworkModSystem system) {
   /// <summary>Stable identity for this network instance.</summary>
   public Guid Id { get; } = Guid.NewGuid();
 
-  /// <summary>Identifies the network type, e.g. "gas" or "molten".</summary>
+  /// <summary>Identifies the network type, e.g. "pipe", "molten" or "mpenergy".</summary>
   public abstract string NetworkType { get; }
 
   /// <summary>Every world position that belongs to this network.</summary>

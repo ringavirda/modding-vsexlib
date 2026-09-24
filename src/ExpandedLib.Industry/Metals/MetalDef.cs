@@ -49,8 +49,8 @@ public class MetalDef {
   /// keep the drop template's own domain.</summary>
   public string? CastDomain { get; set; }
 
-  /// <summary>Optional inline alloy ratios - exlib emits the vanilla <c>AlloyRecipe</c> from
-  /// these.</summary>
+  /// <summary>Optional inline alloy ratios, read from the def's JSON. Nothing reads them: no
+  /// <c>AlloyRecipe</c> is emitted from them.</summary>
   public MetalAlloySpec? Alloy { get; set; }
 
   // ---- Item-family generation (opt-in; read only by the family emitter) ----

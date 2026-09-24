@@ -12,7 +12,7 @@ public interface INetworkNode {
   /// <summary>All orientation strings valid at this position, used for wrench cycling.</summary>
   string[] PossibleOrientations { get; }
 
-  /// <summary>Network type identifier, e.g. "gas" or "molten".</summary>
+  /// <summary>Network type identifier, e.g. "pipe", "molten" or "mpenergy".</summary>
   string NetworkType { get; }
 
   /// <summary>Returns <c>true</c> when this block has a connector on <paramref name="face"/>.</summary>

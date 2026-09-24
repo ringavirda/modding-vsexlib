@@ -32,10 +32,12 @@ public class ExlibConfig : IExVersionedConfig {
   [ExConfigRange(1, 1_000_000)] // pipe capacity divides pressure - must stay positive
   public float LitresPerPipe { get; set; } = 30f;
 
-  /// <summary>Gas (L/s) bled per open-ended pipe connector.</summary>
+  /// <summary>Gas (L) a leaking gas run loses each network tick, however many ends are open; not
+  /// scaled by the tick's dt. Also caps a vent to atmosphere.</summary>
   public float GasLeakRate { get; set; } = 8.0f;
 
-  /// <summary>Liquid (L/s) drained from the network per open-ended pipe connector.</summary>
+  /// <summary>Liquid (L/s) a leaking water run drains, however many ends are open; scaled by the
+  /// tick's dt.</summary>
   public float LiquidLeakRate { get; set; } = 10.0f;
 
   /// <summary>Water (L) lost to natural evaporation per in-game day (pipe water pool and the boiler
@@ -58,8 +60,8 @@ public class ExlibConfig : IExVersionedConfig {
   /// <summary>Max metal (units) flowing across one canal connection per second.</summary>
   public int MoltenFlowRate { get; set; } = 50;
 
-  /// <summary>Minimum metal (units) that must move across a canal connection for any flow that tick
-  /// (stops sub-unit dribbles).</summary>
+  /// <summary>Minimum metal (units) a single transfer must move, for callers that apply a floor;
+  /// the molten network's own edges apply none.</summary>
   public int MoltenMinFlowAmount { get; set; } = 10;
 
   /// <summary>Default time-based cooldown speed stamped on a molten carrier stack when a caller gives
@@ -91,8 +93,8 @@ public class ExlibConfig : IExVersionedConfig {
   [ExConfigRange(0, 1000)]
   public float MpIdleTorque { get; set; } = 0.5f;
 
-  /// <summary>Burst shaft speed (rad/s); the weakest flywheel on a run sets the effective
-  /// ceiling.</summary>
+  /// <summary>Burst shaft speed (rad/s): one ceiling for every mechanical-energy run, the cap its
+  /// speed is clamped to and the speed its storage capacity is sized at.</summary>
   [ExConfigRange(0.1, 1000)] // capacity scales with its square - must stay positive
   public float MpMaxSpeed { get; set; } = 2f;
 
