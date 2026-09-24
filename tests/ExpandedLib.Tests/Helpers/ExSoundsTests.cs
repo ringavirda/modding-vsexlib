@@ -31,9 +31,8 @@ public class ExSoundsTests : IDisposable {
 
   // The length table holds 1.22's files; the provisioned 1.21 install carries no audio.
 #if GAME_GE_1_22
-  // Fails when a catalogue length is shortened below its file (Fire 9260 -> 9000) or an entry is
-  // dropped from the length table. Passes without measuring on an install with no .ogg under
-  // assets/game/sounds (a server install, as CI provisions); fails there when that guard is dropped.
+  // Fails when a length is shortened below its file (Fire 9260 -> 9000) or leaves the table. A server
+  // install (no .ogg in assets/game/sounds) passes unmeasured, and fails when that guard is dropped.
   [Fact]
   public void Every_catalogue_sound_lasts_at_least_its_longest_file()
   {
