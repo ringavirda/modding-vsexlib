@@ -207,7 +207,7 @@ into, never the air above it; the smoke stack's floor under its open column and 
 hearth cells under theirs (blast, cupola, heating, crucible) carry it. On the server a structure marks those cells in `NoSnowCells`, a thread-safe registry
 the snow simulation reads off the main thread, from `SetStructureAngle` (placement, a wrench turn) and
 from `Initialize` (a structure loaded from the save), and unmarks them in `OnBlockRemoved` and
-`OnBlockUnloaded`; `ExpandedLibModSystem.Dispose` clears it. `NoSnowPatch` postfixes
+`OnBlockUnloaded`; a server's load start empties it (`ExWorldState.ResetOnLoad`), never a `Dispose`. `NoSnowPatch` postfixes
 `Block.AllowSnowCoverage` to false and `Block.GetSnowCoveredVariant` to the block itself at a marked
 cell. A block class that overrides either without calling the base escapes the patch, and a snow layer
 that settled before the mark stays.
