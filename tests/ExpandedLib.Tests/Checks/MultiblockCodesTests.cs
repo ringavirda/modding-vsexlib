@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using ExpandedLib.Checks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
@@ -14,6 +15,7 @@ public class MultiblockCodesTests {
 
   private const string Missing = "plantedlayouts";
   private const string Present = "plantedlayoutsclean";
+  private const string Strict = "plantedlayoutsstrict";
   private static readonly Assembly Here = typeof(MultiblockCodesTests).Assembly;
 
   private static ExBlockDef Furnace(string domain, params string[] wanted) {
@@ -47,8 +49,28 @@ public class MultiblockCodesTests {
           Furnace(domain, "plantedlayoutsclean:brick-n", "game:stone-granite"),
           ExBlockDef.Create(domain, "brick").VariantGroup("side", "n", "s"),
         ],
+        Strict =>
+        [
+          Furnace(
+            domain,
+            "plantedlayoutsstrict:brick-x",
+            "plantedlayoutsstrict:ingot",
+            "plantedlayoutsstrict:wall-andesite"
+          ),
+          ExBlockDef.Create(domain, "brick").VariantGroup("side", "n", "s"),
+          ExBlockDef
+            .Create(domain, "wall")
+            .VariantGroupFromProperties("rock", "block/rock"),
+        ],
         _ => [],
       };
+  }
+
+  /// <summary>Declares an item under <see cref="Strict"/> only, whose code a layout
+  /// names.</summary>
+  private sealed class Ingots : IExItemDefProvider {
+    public static IEnumerable<ExItemDef> Definitions(string domain) =>
+      domain == Strict ? [ExItemDef.Create(domain, "ingot")] : [];
   }
 
   [Fact]
@@ -66,5 +88,38 @@ public class MultiblockCodesTests {
       MultiblockCodes.Unresolvable(out int codesChecked, (Present, Here))
     );
     Assert.Equal(1, codesChecked);
+  }
+
+  // Fails when MultiblockCodesCheck.Run stops reporting a layout code no registered block matches.
+  [Fact]
+  [PlantedDefect(
+    typeof(MultiblockCodesCheck),
+    nameof(MultiblockCodesCheck.Run)
+  )]
+  public void The_harness_and_the_check_report_the_same_code() {
+    const string finding =
+      "plantedlayouts:furnace wants 'plantedlayouts:nosuchbrick'";
+
+    Assert.Equal([finding], MultiblockCodes.Unresolvable((Missing, Here)));
+    Assert.Equal(
+      [finding],
+      MultiblockCodesCheck
+        .Run(new AssemblyCheckSource((Missing, Here)), Missing)
+        .Errors
+    );
+  }
+
+  // Fails when MultiblockCodesCheck.AnyProvides accepts a state the group does not declare, when
+  // the check counts item codes as blocks, or when a worldproperty group's `*` stops matching.
+  [Fact]
+  [PlantedDefect(typeof(MultiblockCodes), nameof(MultiblockCodes.Unresolvable))]
+  public void An_undeclared_state_and_an_item_code_are_reported() {
+    Assert.Equal(
+      [
+        "plantedlayoutsstrict:furnace wants 'plantedlayoutsstrict:brick-x'",
+        "plantedlayoutsstrict:furnace wants 'plantedlayoutsstrict:ingot'",
+      ],
+      MultiblockCodes.Unresolvable((Strict, Here))
+    );
   }
 }

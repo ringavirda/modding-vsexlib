@@ -137,6 +137,13 @@ see the git history.
 
 ### Changed
 
+- `RecipeCodes`, `MultiblockCodes` and `PinnedNetworkNodes` (ExpandedLib.Testing) run
+  `RecipeCodesCheck`, `MultiblockCodesCheck` and `PinnedNetworkNodesCheck`, so a suite and the game
+  apply one rule. `RecipeCodesCheck` reports a block output holding a wildcard. `MultiblockCodes`
+  matches a layout code against the states a block declares, segment by segment, and an item code
+  no longer provides a cell. `PinnedNetworkNodes` names a finding by the pinning block's code, not
+  its file. `MultiblockCodes` and `PinnedNetworkNodes` throw `ArgumentException` when two sources
+  share a domain.
 - `DefinitionGoldens.WriteAll` (ExpandedLib.Testing) throws `InvalidOperationException` naming the
   `EXLIB_WRITE_GOLDENS` value when one of its fragments matches none of the domain's goldens, and
   writes nothing; a fragment starting with another domain is skipped.

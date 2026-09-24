@@ -14,7 +14,16 @@ namespace ExpandedLib.Checks;
 /// </summary>
 public static class MultiblockCodesCheck {
   /// <summary>Every unresolvable layout code in <paramref name="domain"/>'s defs, as the check's <see cref="CheckResult"/>.</summary>
-  public static CheckResult Run(ICheckSource source, string domain) {
+  public static CheckResult Run(ICheckSource source, string domain) =>
+    Run(source, domain, out _);
+
+  // codesChecked counts the mod-domain layout codes examined.
+  internal static CheckResult Run(
+    ICheckSource source,
+    string domain,
+    out int codesChecked
+  ) {
+    codesChecked = 0;
     var codesByDomain = new Dictionary<string, HashSet<string>>(
       StringComparer.Ordinal
     );
@@ -45,6 +54,7 @@ public static class MultiblockCodesCheck {
         )
           continue;
 
+        codesChecked++;
         if (
           !codesByDomain.TryGetValue(wantDomain, out var codes)
           || !AnyProvides(codes, wantPath)
@@ -74,8 +84,8 @@ public static class MultiblockCodesCheck {
     return domain != "game";
   }
 
-  // Whether a registered code satisfies the layout's code, matched segment by '-'-delimited segment.
-  // A `*` segment matches any one segment; a trailing `*` matches by prefix within its segment.
+  // Whether a registered code satisfies the layout's, per '-'-delimited segment: a `*` segment on
+  // either side matches any one segment, a trailing `*` on the layout's side a prefix within it.
   internal static bool AnyProvides(
     HashSet<string> registeredCodes,
     string wantedPath
@@ -92,7 +102,7 @@ public static class MultiblockCodesCheck {
     int common = Math.Min(want.Length, code.Length);
     for (int i = 0; i < common; i++) {
       string w = want[i];
-      if (w == "*")
+      if (w == "*" || code[i] == "*")
         continue;
       if (w.EndsWith('*')) {
         if (!code[i].StartsWith(w[..^1], StringComparison.Ordinal))
