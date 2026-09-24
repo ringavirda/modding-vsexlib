@@ -131,7 +131,7 @@ below). Before a module's entry points run at all, the host performs the registr
 | `AssetsFinalize` | Nothing extra. | `AssetsFinalize(ICoreAPI api)` |
 | `StartServerSide` | `CommandRegistry.RegisterAll`. | `StartServerSide(ICoreServerAPI api)` |
 | `StartClientSide` | `PreferenceRegistry.RegisterAll`, then `CommandRegistry.RegisterAll` (preferences first, the same rule as any `ExModSystem`). | `StartClientSide(ICoreClientAPI api)` |
-| `Dispose` | Nothing before; `ExHarmony.UnpatchAll` after, if `PatchHarmony` was set, which removes the patches once no side still holds them. | `Dispose()` |
+| `Dispose` | Nothing before; `ExHarmony.UnpatchAll` after, once, if this host's `Start` patched the module, which removes the patches once no side still holds them. | `Dispose()` |
 
 Every `IExModule` method has an empty default, so a module overrides only what it needs. The phases
 run in the engine's own order - `StartPre`, `Start`, `AssetsLoaded`, `AssetsFinalize`, then

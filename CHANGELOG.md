@@ -105,6 +105,10 @@ see the git history.
   patches, categories included, only when none is left, so the patches come off with the server's
   `Dispose`; `NoSnowCells` is emptied at the next world's load start; the channel closes from the
   Industry module instance that opened it. A `HarmonyFixture` disposed twice releases its hold once.
+- **A `Dispose` releases only the Harmony hold its own `Start` took.** `ExpandedLibModSystem`,
+  an `ExModSystem` with `PatchHarmony` and `ExModuleHost` release a hold only when their `Start`
+  reached `ExHarmony.PatchOnce`, and only once: a singleplayer client whose `Start` threw before it
+  patched, or a system disposed twice, no longer unpatches exlib or a mod under its server.
 
 ## [0.8.2] - 2026-09-15
 

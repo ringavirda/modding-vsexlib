@@ -18,6 +18,9 @@ public sealed class ExModuleHost {
     List<IExModule> Instances
   )> _resolved;
 
+  // The Harmony ids this host's Start holds and its Dispose has not released.
+  private readonly List<string> _heldHarmonyIds = [];
+
   /// <summary>Builds the host for <paramref name="mod"/> from its discovered, enabled module set
   /// against <paramref name="api"/>'s world, instantiating every entry point.</summary>
   public ExModuleHost(Mod mod, ICoreAPI api)
@@ -48,8 +51,10 @@ public sealed class ExModuleHost {
       ExConfig.LoadAll(api, info.Assembly);
       EntityRegistry.RegisterAll(api, _mod, info.Assembly);
       Checks.ExCheckRegistry.RegisterAll(api, _mod, info.Assembly);
-      if (info.PatchHarmony)
+      if (info.PatchHarmony) {
         ExHarmony.PatchOnce(info.HarmonyId, info.Assembly);
+        _heldHarmonyIds.Add(info.HarmonyId);
+      }
       foreach (IExModule module in instances)
         Isolate(module, m => m.Start(api));
     }
@@ -83,13 +88,15 @@ public sealed class ExModuleHost {
   /// <summary>Runs every module's <see cref="IExModule.AssetsFinalize"/>.</summary>
   public void AssetsFinalize(ICoreAPI api) => Drive(m => m.AssetsFinalize(api));
 
-  /// <summary>Runs every entry point's <see cref="IExModule.Dispose"/>, then releases the Harmony
-  /// hold of every module that opted in (<see cref="ExHarmony.UnpatchAll(string)"/>).</summary>
+  /// <summary>Runs every entry point's <see cref="IExModule.Dispose"/>, then releases each Harmony
+  /// hold this host's <see cref="Start"/> took for a module that opted in
+  /// (<see cref="ExHarmony.UnpatchAll(string)"/>); a host never started, or already disposed,
+  /// releases none.</summary>
   public void Dispose() {
     Drive(m => m.Dispose());
-    foreach ((ExModuleInfo info, _) in _resolved)
-      if (info.PatchHarmony)
-        ExHarmony.UnpatchAll(info.HarmonyId);
+    foreach (string id in _heldHarmonyIds)
+      ExHarmony.UnpatchAll(id);
+    _heldHarmonyIds.Clear();
   }
 
   private List<IExModule> Instantiate(ExModuleInfo info) {

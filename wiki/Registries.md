@@ -458,7 +458,9 @@ public override void Start(ICoreAPI api)
 
 public override void Dispose()
 {
-    ExHarmony.UnpatchAll(Mod);
+    if (_harmony != null)
+        ExHarmony.UnpatchAll(Mod);
+    _harmony = null;
 }
 ```
 

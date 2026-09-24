@@ -325,4 +325,69 @@ public class ExModuleHostTests : IDisposable {
       ExHarmony.UnpatchAll("exlibtest.host.exlibtests");
     }
   }
+
+  private static ExModuleSet PatchingSet(string id) =>
+    new(
+      [
+        new ExModuleInfo
+        {
+          Id = id,
+          Host = "exlibtest.host",
+          Mod = "exlibtest.host",
+          Requires = [],
+          Assembly = typeof(ExModuleHostTests).Assembly,
+          EntryPoints = [],
+          PatchHarmony = true,
+        },
+      ],
+      []
+    );
+
+  // Fails when Dispose releases a hold for a module its Start never patched.
+  [Fact]
+  public void A_host_never_started_leaves_another_holders_patches_on_Dispose() {
+    const string id = "exlibtest.host.unstarted";
+    MethodBase original = typeof(HarmonyTarget).GetMethod(
+      nameof(HarmonyTarget.Method)
+    )!;
+
+    try {
+      ExHarmony.PatchOnce(id, typeof(ExModuleHostTests).Assembly);
+
+      new ExModuleHost(
+        FakeMod("exlibtest.host"),
+        PatchingSet("unstarted")
+      ).Dispose();
+
+      Assert.Contains(id, Harmony.GetPatchInfo(original)!.Owners);
+    } finally {
+      ExHarmony.UnpatchAll(id);
+    }
+  }
+
+  // Fails when a second Dispose of one host releases its holds again.
+  [Fact]
+  public void A_host_disposed_twice_leaves_another_holders_patches() {
+    const string id = "exlibtest.host.twice";
+    var world = new TestWorld();
+    var host = new ExModuleHost(
+      FakeMod("exlibtest.host"),
+      PatchingSet("twice")
+    );
+    MethodBase original = typeof(HarmonyTarget).GetMethod(
+      nameof(HarmonyTarget.Method)
+    )!;
+
+    try {
+      ExHarmony.PatchOnce(id, typeof(ExModuleHostTests).Assembly);
+      host.Start(world.Api);
+
+      host.Dispose();
+      host.Dispose();
+
+      Assert.Contains(id, Harmony.GetPatchInfo(original)!.Owners);
+    } finally {
+      ExHarmony.UnpatchAll(id);
+    }
+  }
 }

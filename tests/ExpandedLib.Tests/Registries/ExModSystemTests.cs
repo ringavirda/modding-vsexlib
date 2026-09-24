@@ -238,6 +238,48 @@ public class ExModSystemTests : IDisposable {
     }
   }
 
+  // Fails when Dispose releases a hold on an instance whose Start never took one.
+  [Fact]
+  public void Dispose_without_Start_leaves_another_holders_patches() {
+    var mod = FakeMod("exlibtest.exmodsystem-harmony-unstarted");
+    MethodBase original = typeof(HarmonyTarget).GetMethod(
+      nameof(HarmonyTarget.Method)
+    )!;
+
+    try {
+      ExHarmony.PatchOnce(mod, typeof(ExModSystemTests).Assembly);
+
+      NewSystem(mod, patchHarmony: true).Dispose();
+
+      Assert.Equal(1, Harmony.GetPatchInfo(original)?.Prefixes.Count);
+    } finally {
+      ExHarmony.UnpatchAll(mod);
+    }
+  }
+
+  // Fails when a second Dispose of one instance releases a hold again.
+  [Fact]
+  public void A_second_Dispose_leaves_another_holders_patches() {
+    var mod = FakeMod("exlibtest.exmodsystem-harmony-twice");
+    var system = NewSystem(mod, patchHarmony: true);
+    var world = new TestWorld();
+    MethodBase original = typeof(HarmonyTarget).GetMethod(
+      nameof(HarmonyTarget.Method)
+    )!;
+
+    try {
+      ExHarmony.PatchOnce(mod, typeof(ExModSystemTests).Assembly);
+      system.Start(world.Api);
+
+      system.Dispose();
+      system.Dispose();
+
+      Assert.Equal(1, Harmony.GetPatchInfo(original)?.Prefixes.Count);
+    } finally {
+      ExHarmony.UnpatchAll(mod);
+    }
+  }
+
   [Fact]
   public void PatchHarmony_false_never_patches() {
     var mod = FakeMod("exlibtest.exmodsystem-no-harmony");

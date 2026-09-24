@@ -16,7 +16,8 @@ namespace ExpandedLib;
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class ExpandedLibModSystem : ModSystem {
-  // Carries the handbook unit patch and the snow patch on both sides.
+  // Set while this instance holds exlib's patches (the handbook unit patch and the snow patch):
+  // from the end of its Start to its Dispose.
   private Harmony? _harmony;
 
   // The message named at StartPre and repeated to every joining player; null when nothing clashes.
@@ -109,12 +110,16 @@ public class ExpandedLibModSystem : ModSystem {
         );
   }
 
-  /// <summary>Releases this side's hold on exlib's Harmony patches, which come off with the last
-  /// side's (<see cref="ExHarmony.UnpatchAll(Mod)"/>). <see cref="NoSnowCells"/> is left to the
-  /// server's structures and the next world's load start.</summary>
+  /// <summary>Releases the hold this instance's <c>Start</c> took on exlib's Harmony patches, which
+  /// come off with the last hold (<see cref="ExHarmony.UnpatchAll(Mod)"/>); an instance whose
+  /// <c>Start</c> never reached it, or one already disposed, releases nothing.
+  /// <see cref="NoSnowCells"/> is left to the server's structures and the next world's load
+  /// start.</summary>
   public override void Dispose() {
-    ExHarmony.UnpatchAll(Mod);
-    _harmony = null;
+    if (_harmony != null) {
+      ExHarmony.UnpatchAll(Mod);
+      _harmony = null;
+    }
     base.Dispose();
   }
 }

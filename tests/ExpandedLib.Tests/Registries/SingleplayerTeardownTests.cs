@@ -20,6 +20,11 @@ namespace ExpandedLib.Tests;
 public class SingleplayerTeardownTests : IDisposable {
   private static readonly BlockPos At = new(10, 5, 20);
 
+  private static readonly MethodBase SnowCoverage = AccessTools.Method(
+    typeof(Block),
+    nameof(Block.AllowSnowCoverage)
+  );
+
   public void Dispose() => ExSounds.StopServer();
 
   private static ExpandedLibModSystem Exlib(TestWorld world) {
@@ -65,6 +70,48 @@ public class SingleplayerTeardownTests : IDisposable {
     } finally {
       NoSnowCells.Unmark(owner);
       client.Dispose();
+      server.Dispose();
+    }
+  }
+
+  // Fails when Dispose releases a hold on an instance whose Start never took one.
+  [Fact]
+  public void A_client_that_never_started_leaves_the_servers_patches_on_dispose() {
+    var world = new TestWorld();
+    ExpandedLibModSystem server = Exlib(world);
+    try {
+      server.Start(world.Api);
+
+      Exlib(world).Dispose();
+
+      Assert.Contains(
+        Harmony.GetPatchInfo(SnowCoverage)!.Postfixes,
+        p => p.owner == "exlib"
+      );
+    } finally {
+      server.Dispose();
+    }
+  }
+
+  // Fails when a second Dispose of one instance releases a hold again.
+  [Fact]
+  public void A_client_disposed_twice_leaves_the_servers_patches() {
+    var world = new TestWorld();
+    world.ClientApi.IsSinglePlayer.Returns(true);
+    ExpandedLibModSystem server = Exlib(world);
+    ExpandedLibModSystem client = Exlib(world);
+    try {
+      server.Start(world.Api);
+      client.Start(world.ClientApi);
+
+      client.Dispose();
+      client.Dispose();
+
+      Assert.Contains(
+        Harmony.GetPatchInfo(SnowCoverage)!.Postfixes,
+        p => p.owner == "exlib"
+      );
+    } finally {
       server.Dispose();
     }
   }

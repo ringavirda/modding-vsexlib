@@ -23,6 +23,9 @@ public abstract class ExModSystem : ModSystem {
   // Lazy: a phase called on its own must work without StartPre having run first.
   private ExModuleHost? _modules;
 
+  // True from the PatchOnce in Start to the release in Dispose.
+  private bool _holdsHarmony;
+
   /// <summary>This mod's own modules, built against whichever phase's <paramref name="api"/> runs
   /// first.</summary>
   private ExModuleHost Modules(ICoreAPI api) =>
@@ -41,8 +44,10 @@ public abstract class ExModSystem : ModSystem {
     ExConfig.LoadAll(api, Assembly);
     EntityRegistry.RegisterAll(api, Mod, Assembly);
     Checks.ExCheckRegistry.RegisterAll(api, Mod, Assembly);
-    if (PatchHarmony)
+    if (PatchHarmony) {
       ExHarmony.PatchOnce(Mod, Assembly);
+      _holdsHarmony = true;
+    }
     Modules(api).Start(api);
     OnStart(api);
   }
@@ -78,13 +83,16 @@ public abstract class ExModSystem : ModSystem {
     OnAssetsFinalize(api);
   }
 
-  /// <summary>Disposes this mod's modules, releases this side's Harmony hold when
-  /// <see cref="PatchHarmony"/> is true (<see cref="ExHarmony.UnpatchAll(Mod)"/>), and clears the
-  /// module host.</summary>
+  /// <summary>Disposes this mod's modules, releases the Harmony hold this instance's <c>Start</c>
+  /// took when <see cref="PatchHarmony"/> is true (<see cref="ExHarmony.UnpatchAll(Mod)"/>), and
+  /// clears the module host. An instance whose <c>Start</c> never patched, or one already disposed,
+  /// releases nothing.</summary>
   public override void Dispose() {
     _modules?.Dispose();
-    if (PatchHarmony)
+    if (_holdsHarmony) {
       ExHarmony.UnpatchAll(Mod);
+      _holdsHarmony = false;
+    }
     _modules = null;
     base.Dispose();
   }
