@@ -24,7 +24,7 @@ public static class GridRecipes {
   /// <returns>The grid recipes read and one finding per violation; no findings when
   /// clean.</returns>
   /// <exception cref="ArgumentException"><paramref name="family"/> does not hold
-  /// <paramref name="domain"/>.</exception>
+  /// <paramref name="domain"/>, or holds one domain twice.</exception>
   public static Result Check(
     string domain,
     params (string Domain, Assembly Assembly)[] family
