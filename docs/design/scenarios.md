@@ -609,6 +609,7 @@ repository, factory lines included; `-Generic` adds the generic layer over the r
 |---|---|---|
 | unit and content checks | xUnit tests of one type, and the `Checks` over a mod's JSON, shapes, lang and definitions | `exmod check`: every change, every game version the repository builds, and CI |
 | harness | `TestWorld`, the rigs and scenes: real block code in a substituted world | `exmod check`, as above |
+| smoke and the loaded checks | `exmod smoke`: a real dedicated server boots the built mods and runs `/exmod verify`, the content checks and the five loaded checks (`ObtainabilityCheck` and the rest); any `[Error]` or `[Fatal]` log line or verify error fails it | `exmod check`, after the tests: on 1.22 for `check` and `check latest`, once on 1.22 for `check all`, skipped for `check 1.21` and `check 1.20` (smoke loads the current series' build); CI runs it as its own job |
 | scenarios | this page: a real dedicated server, 1.22 only | a machine's mod-specific scenarios when a change to that machine is done, before its review; the whole generic layer with `-Coverage` before the owner's in-game check and before a release. Never inside `exmod check` |
 
 A bug a scenario finds gets its regression test in the harness when the harness can express it, so
