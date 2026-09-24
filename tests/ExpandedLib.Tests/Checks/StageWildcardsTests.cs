@@ -207,7 +207,6 @@ public class StageWildcardsTests {
       )
     );
 
-  // The sand casting bed's break: a stage-0 rock key breaks the creative rule as well as rule (f).
   [Fact]
   [PlantedDefect(typeof(StageWildcardsCheck), nameof(StageWildcardsCheck.Run))]
   public void A_stage_0_rock_key_is_reported_under_rules_d_and_f() =>

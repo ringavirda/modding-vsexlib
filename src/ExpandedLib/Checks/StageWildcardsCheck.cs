@@ -133,7 +133,6 @@ public static class StageWildcardsCheck {
     }
   }
 
-  // Rules (b) and (c) for one keyed wildcard.
   private static IEnumerable<string> Spans(
     string code,
     JToken ing,
