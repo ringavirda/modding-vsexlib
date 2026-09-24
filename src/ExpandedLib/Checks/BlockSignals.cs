@@ -245,12 +245,15 @@ internal sealed class BlockSignals {
     ?? 0;
 
   /// <summary>The variant groups <paramref name="block"/>'s placement writes: its orientation
-  /// groups, and <see cref="BlockBehaviorExOrientable.OrientationVariant"/> for a network node,
-  /// whose placement and neighbours rewrite its connector faces.</summary>
+  /// groups, and <see cref="BlockBehaviorExOrientable.OrientationVariant"/> for a network node
+  /// that carries it, whose placement and neighbours rewrite its connector faces.</summary>
   internal static IEnumerable<string> PlacedGroupsOf(Block block) {
     var placed = new List<string>(OrientationGroups(block));
     if (
       block is BlockNetworkNode
+      && block.Variant?.ContainsKey(
+        BlockBehaviorExOrientable.OrientationVariant
+      ) == true
       && !placed.Contains(BlockBehaviorExOrientable.OrientationVariant)
     )
       placed.Add(BlockBehaviorExOrientable.OrientationVariant);

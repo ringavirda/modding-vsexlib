@@ -31,8 +31,9 @@ public static class PlacementLaw {
   /// fresh cell of <paramref name="world"/>.</summary>
   /// <remarks>One stack is held per variant that differs in a group placement does not write. A
   /// refused placement is no finding; a placement that throws is, as is one that lands a block of
-  /// another blocktype or a token its blocktype does not declare, and a stack that lands from no
-  /// stand at all.</remarks>
+  /// another blocktype or with another state in a group placement does not write, one that lands a
+  /// token its blocktype does not declare, and a stack that lands from no stand at all, named with
+  /// the failure codes its refusals gave.</remarks>
   /// <param name="world">A world holding every variant of the blocks judged
   /// (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose blocks are placed.</param>
@@ -66,6 +67,7 @@ public static class PlacementLaw {
           .Select(g => g.First())
       ) {
         bool landed = false;
+        var refusals = new SortedSet<string>(StringComparer.Ordinal);
         foreach ((string where, Vec3d eye) in Stands)
           foreach (BlockFacing face in BlockFacing.ALLFACES) {
             cases++;
@@ -96,11 +98,17 @@ public static class PlacementLaw {
               );
               continue;
             }
-            if (!went)
+            if (!went) {
+              refusals.Add(failure ?? "");
               continue;
+            }
             landed = true;
             Block down = world.GetBlock(at);
-            if (down.Id == 0 || BlockLaws.TypeOf(down) != type.Key) {
+            if (
+              down.Id == 0
+              || BlockLaws.TypeOf(down) != BlockLaws.TypeOf(held)
+              || HeldKey(down, placed) != HeldKey(held, placed)
+            ) {
               findings.Add($"{held.Code} placed {against} landed {down.Code}");
               continue;
             }
@@ -115,7 +123,10 @@ public static class PlacementLaw {
                 );
           }
         if (!landed)
-          findings.Add($"{held.Code} lands from no stand against no face");
+          findings.Add(
+            $"{held.Code} lands from no stand against no face (refused: "
+              + $"{string.Join(", ", refusals.Select(r => r == "" ? "no code" : r))})"
+          );
       }
     }
     return new BlockLaws.Law(Name, blocks, cases, findings);

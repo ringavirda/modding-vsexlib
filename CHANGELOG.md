@@ -278,6 +278,10 @@ see the git history.
   the types the node's own class declares, so a `BlockPipe` type declared elsewhere (a pipe
   indicator) was refused with `exlib-noorientation` from every side. A loaded node now adds its
   own type from the loaded blocks that differ from it only in `orientation`.
+- **The placement law tells apart definitions that share a code.** Blocks sharing a code with
+  other variant groups were judged as one blocktype, and a network node without an `orientation`
+  group was taken to write one; it also names a stack that lands from nowhere with its refusal
+  codes, and a placement that changes a group placement does not write.
 - **`/exmod verify` reads code-first recipes and blocktypes.** The server unloads unpatched
   asset data once the world is up, and a code-first asset's origin loaded nothing back, so every
   check over them passed with nothing to read. The origin now keeps each asset's bytes.

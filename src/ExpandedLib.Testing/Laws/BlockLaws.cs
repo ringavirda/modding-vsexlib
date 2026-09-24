@@ -18,7 +18,8 @@ namespace ExpandedLib.Testing;
 public static class BlockLaws {
   /// <summary>What one law covered and what it found.</summary>
   /// <param name="Name">The law's name.</param>
-  /// <param name="Blocks">Blocktypes (codes less their variant parts) the law applied to.</param>
+  /// <param name="Blocks">Blocktypes (codes less their variant parts, with their variant group
+  /// names) the law applied to.</param>
   /// <param name="Cases">Cases it ran: placements, breaks, or structures stood up.</param>
   /// <param name="Findings">One line per finding, each starting with the variant code it is
   /// about and a space.</param>
@@ -125,14 +126,15 @@ public static class BlockLaws {
   }
 
   /// <summary>The blocks of <paramref name="domain"/> in <paramref name="world"/> grouped by
-  /// blocktype, each group in registration order, the groups ordered by blocktype.</summary>
+  /// blocktype and variant group names, so two definitions sharing a code and differing in their
+  /// groups stay apart; each group in registration order, the groups ordered by key.</summary>
   internal static IEnumerable<IGrouping<string, Block>> Blocktypes(
     TestWorld world,
     string domain
   ) =>
     world
       .World.Blocks.Where(b => b?.Code?.Domain == domain)
-      .GroupBy(TypeOf)
+      .GroupBy(b => $"{TypeOf(b)}({string.Join(",", b.Variant?.Keys ?? [])})")
       .OrderBy(g => g.Key, StringComparer.Ordinal);
 
   /// <summary>The signals of <paramref name="block"/>, read against <paramref name="world"/>'s

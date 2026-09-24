@@ -168,10 +168,23 @@ public class BlockSignalsTests {
   // Fails when a network node's orientation is not among the groups its placement writes.
   [Fact]
   public void A_network_nodes_orientation_is_a_placed_group() {
-    Block node = TestNetworkBlock.Create("pipe", "ns", 5);
+    Block node = TestBlocks.Configure(
+      TestNetworkBlock.Create("pipe", "ns", 5),
+      "test:pipe-ns",
+      5,
+      ("orientation", "ns")
+    );
 
     Assert.Equal(["orientation"], Read(node).PlacedGroups);
     Assert.Contains("placed groups", Read(node).Names());
+  }
+
+  // Fails when a network node's orientation is a placed group whether or not the node carries it.
+  [Fact]
+  public void A_network_node_without_an_orientation_group_writes_none() {
+    Block node = TestNetworkBlock.Create("mpenergy", "ns", 5);
+
+    Assert.Empty(Read(node).PlacedGroups);
   }
 
   // Fails when an orientation behaviour's group is not read.

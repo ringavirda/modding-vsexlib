@@ -10,10 +10,10 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>The block laws against small blocks that each break one law: a placement that writes an
-/// undeclared side, a megablock that clears its fillers only on a player break, a multiblock read in
-/// a frame it does not complete in, a layout naming a block nobody registers, and a construction
-/// that refunds its stages and drops itself.</summary>
+/// <summary>The block laws against small blocks that each break one law: placements that write an
+/// undeclared side or land another block or none, a megablock that clears its fillers only on a
+/// player break, a multiblock read in a frame it does not complete in, a layout naming a block
+/// nobody registers, and a construction that refunds its stages and drops itself.</summary>
 public class BlockLawsTests {
   private static readonly FillerCellSpec[] TwoCells =
   [
@@ -32,6 +32,10 @@ public class BlockLawsTests {
     world.RegisterClass("test-sideframe", typeof(SideFrame));
     world.RegisterClass("test-turnedframe", typeof(TurnedFrame));
     world.RegisterClass("test-plain", typeof(PlainBe));
+    world.RegisterClass("test-placeswall", typeof(PlacesAWall));
+    world.RegisterClass("test-placeskindb", typeof(PlacesKindB));
+    world.RegisterClass("test-placesbare", typeof(PlacesTheBareTurner));
+    world.RegisterClass("test-neverplaces", typeof(NeverPlaces));
   }
 
   private static TestWorld Stand(params ExBlockDef[] defs) =>
@@ -70,6 +74,13 @@ public class BlockLawsTests {
       );
 
   private static readonly ExBlockDef Wall = ExBlockDef.Create("test", "wall");
+
+  private static ExBlockDef Oriented(string code, string cls) =>
+    ExBlockDef
+      .Create("test", code)
+      .Class(cls)
+      .SideVariant()
+      .Behavior("ExOrientable");
 
   #region Placement
 
@@ -114,6 +125,116 @@ public class BlockLawsTests {
         ) && f.Contains("code test:halfturn-west,", StringComparison.Ordinal)
       )
     );
+  }
+
+  // Fails when a placement landing a block of another blocktype passes as a landing.
+  [Fact]
+  [PlantedDefect(typeof(PlacementLaw), nameof(PlacementLaw.Run))]
+  public void A_placement_that_lands_another_blocktype_is_named() {
+    BlockLaws.Law law = PlacementLaw.Run(
+      Stand(Wall, Oriented("walls", "test-placeswall")),
+      "test"
+    );
+
+    Assert.Equal(1, law.Blocks);
+    Assert.Equal(36, law.Findings.Count);
+    Assert.Equal(
+      "test:walls-n placed from the north against its north face landed test:wall",
+      law.Findings[0]
+    );
+  }
+
+  // Fails when a placement that changes a group placement does not write passes as a landing.
+  [Fact]
+  [PlantedDefect(typeof(PlacementLaw), nameof(PlacementLaw.Run))]
+  public void A_placement_that_lands_another_state_of_a_kept_group_is_named() {
+    BlockLaws.Law law = PlacementLaw.Run(
+      Stand(
+        ExBlockDef
+          .Create("test", "kinds")
+          .Class("test-placeskindb")
+          .VariantGroup("kind", "a", "b")
+          .SideVariant()
+          .Behavior("ExOrientable")
+      ),
+      "test"
+    );
+
+    Assert.Equal(36, law.Findings.Count);
+    Assert.Equal(
+      "test:kinds-a-n placed from the north against its north face landed test:kinds-b-n",
+      law.Findings[0]
+    );
+  }
+
+  // Fails when a landed block missing a group placement writes passes the token check.
+  [Fact]
+  [PlantedDefect(typeof(PlacementLaw), nameof(PlacementLaw.Run))]
+  public void A_landed_block_without_the_placed_group_is_named() {
+    BlockLaws.Law law = PlacementLaw.Run(
+      Stand(
+        ExBlockDef
+          .Create("test", "turner")
+          .Class("test-placesbare")
+          .VariantGroup("kind", "a")
+          .SideVariant()
+          .Behavior("ExOrientable"),
+        ExBlockDef
+          .Create("test", "turner", "turner/bare")
+          .VariantGroup("kind", "a")
+      ),
+      "test"
+    );
+
+    Assert.Equal(1, law.Blocks);
+    Assert.Equal(36, law.Findings.Count);
+    Assert.Equal(
+      "test:turner-a-n placed from the north against its north face landed test:turner-a, "
+        + "whose side '' its blocktype does not declare",
+      law.Findings[0]
+    );
+  }
+
+  // Fails when a stack that every stand and face refuses is not named, or its refusals are not.
+  [Fact]
+  [PlantedDefect(typeof(PlacementLaw), nameof(PlacementLaw.Run))]
+  public void A_stack_that_lands_from_no_stand_is_named_with_its_refusals() {
+    BlockLaws.Law law = PlacementLaw.Run(
+      Stand(Oriented("never", "test-neverplaces")),
+      "test"
+    );
+
+    Assert.Equal(36, law.Cases);
+    Assert.Equal(
+      [
+        "test:never-n lands from no stand against no face (refused: test-never)",
+      ],
+      law.Findings
+    );
+  }
+
+  // Fails when blocks sharing a code are judged as one blocktype whatever their variant groups.
+  [Fact]
+  [PlantedDefect(typeof(PlacementLaw), nameof(PlacementLaw.Run))]
+  public void Definitions_sharing_a_code_are_judged_by_their_own_groups() {
+    BlockLaws.Law law = PlacementLaw.Run(
+      Stand(
+        ExBlockDef
+          .Create("test", "machine", "machine/press")
+          .VariantGroup("type", "press")
+          .SideVariant()
+          .Behavior("ExOrientable"),
+        ExBlockDef
+          .Create("test", "machine", "machine/lathe")
+          .VariantGroup("type", "lathe")
+          .VariantGroup("axis", "ns", "we")
+      ),
+      "test"
+    );
+
+    Assert.Equal(1, law.Blocks);
+    Assert.Equal(36, law.Cases);
+    Assert.Empty(law.Findings);
   }
 
   #endregion
@@ -391,6 +512,66 @@ public class BlockLawsTests {
   }
 
   private sealed class PlainBe : BlockEntity { }
+
+  private sealed class PlacesAWall : Block {
+    public override bool TryPlaceBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      ItemStack itemstack,
+      BlockSelection blockSel,
+      ref string failureCode
+    ) {
+      world.BlockAccessor.SetBlock(
+        world.GetBlock(new AssetLocation("test:wall")).BlockId,
+        blockSel.Position
+      );
+      return true;
+    }
+  }
+
+  private sealed class PlacesKindB : Block {
+    public override bool TryPlaceBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      ItemStack itemstack,
+      BlockSelection blockSel,
+      ref string failureCode
+    ) {
+      world.BlockAccessor.SetBlock(
+        world.GetBlock(CodeWithVariant("kind", "b")).BlockId,
+        blockSel.Position
+      );
+      return true;
+    }
+  }
+
+  private sealed class PlacesTheBareTurner : Block {
+    public override bool TryPlaceBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      ItemStack itemstack,
+      BlockSelection blockSel,
+      ref string failureCode
+    ) {
+      world.BlockAccessor.SetBlock(
+        world.GetBlock(new AssetLocation("test:turner-a")).BlockId,
+        blockSel.Position
+      );
+      return true;
+    }
+  }
+
+  private sealed class NeverPlaces : Block {
+    public override bool CanPlaceBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel,
+      ref string failureCode
+    ) {
+      failureCode = "test-never";
+      return false;
+    }
+  }
 
   #endregion
 }
