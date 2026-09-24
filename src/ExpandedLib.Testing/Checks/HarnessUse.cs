@@ -9,8 +9,9 @@ using System.Text.RegularExpressions;
 namespace ExpandedLib.Testing;
 
 /// <summary>Guards how tests use the harness: completion forced by reflection, a block double
-/// whose behaviours <c>GetBehavior</c> cannot see, and a test file's generic helper constrained on a
-/// game type, which can stop xUnit discovering the whole assembly.</summary>
+/// whose behaviours <c>GetBehavior</c> cannot see, a test file's generic helper constrained on a
+/// game type, which can stop xUnit discovering the whole assembly, and a guard naming a check it
+/// never calls.</summary>
 /// <remarks>Each rule reads C# source text with comments blanked; a <c>//</c> inside a string literal
 /// blanks the rest of its line.</remarks>
 public static class HarnessUse {
@@ -43,6 +44,12 @@ public static class HarnessUse {
 
   private static readonly Regex WhereClause = new(
     @"\bwhere\s+(?<param>\w+)\s*:\s*(?<constraints>[^{;]+?)(?=\s*(\bwhere\b|\{|=>|;))",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex GuardOfMark = new(
+    @"\bGuardOf\s*\(\s*typeof\s*\(\s*(?<type>[\w.]+)\s*\)\s*,\s*"
+      + @"(?:nameof\s*\(\s*(?:[\w.]+\.)?(?<m1>\w+)\s*\)|""(?<m2>\w+)"")\s*\)",
     RegexOptions.Compiled
   );
 
@@ -190,6 +197,51 @@ public static class HarnessUse {
               + "write one helper per type"
           );
         }
+      }
+    }
+    return offenders;
+  }
+
+  /// <summary>Every <see cref="GuardOfAttribute"/> in <paramref name="sourceFiles"/> whose file
+  /// never writes <c>Type.Member</c> for the check it names, outside the attribute itself.</summary>
+  /// <remarks>The member counts as called when <c>Type.Member</c> appears anywhere else in the
+  /// file, a method group included; the type is compared by its last name segment.</remarks>
+  /// <param name="sourceFiles">C# files to read; each is read whole.</param>
+  /// <returns>One line per mark, <c>file:line: reason</c>; empty when clean.</returns>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
+  public static IReadOnlyList<string> UncalledGuards(
+    IEnumerable<string> sourceFiles
+  ) {
+    var offenders = new List<string>();
+    foreach (string file in sourceFiles) {
+      string text = Uncommented(File.ReadAllText(file));
+      MatchCollection marks = GuardOfMark.Matches(text);
+      if (marks.Count == 0)
+        continue;
+      var rest = new StringBuilder(text);
+      foreach (Match mark in marks)
+        for (int i = mark.Index; i < mark.Index + mark.Length; i++)
+          if (rest[i] != '\n')
+            rest[i] = ' ';
+      string body = rest.ToString();
+      foreach (Match mark in marks) {
+        string type = mark.Groups["type"].Value.Split('.')[^1];
+        string member = mark.Groups["m1"].Success
+          ? mark.Groups["m1"].Value
+          : mark.Groups["m2"].Value;
+        string call =
+          @"\b"
+          + Regex.Escape(type)
+          + @"\s*\.\s*"
+          + Regex.Escape(member)
+          + @"\b";
+        if (Regex.IsMatch(body, call))
+          continue;
+        offenders.Add(
+          $"{Path.GetFileName(file)}:{LineOf(text, mark.Index)}: [GuardOf] names "
+            + $"{type}.{member}, which the file never calls"
+        );
       }
     }
     return offenders;

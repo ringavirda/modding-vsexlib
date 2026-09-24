@@ -12,6 +12,9 @@ namespace ExpandedLib.Tests;
 
 /// <summary><see cref="SoundUse"/> over exlib's own sources and assemblies, and against fixtures
 /// that each break one of its rules.</summary>
+[GuardOf(typeof(SoundUse), nameof(SoundUse.ShortRepeats))]
+[GuardOf(typeof(SoundUse), nameof(SoundUse.DirectSounds))]
+[GuardOf(typeof(SoundUse), nameof(SoundUse.UndisposedLoops))]
 public class SoundUseGuards {
   #region exlib
 

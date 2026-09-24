@@ -7,6 +7,7 @@ namespace ExpandedLib.Tests;
 /// <summary>
 /// The selector-coverage rule (<see cref="SelectorCoverage"/>) over exlib's own golden blocktypes.
 /// </summary>
+[GuardOf(typeof(SelectorCoverage), nameof(SelectorCoverage.Check))]
 public class EmittedBlocktypeShapeTests {
   [Fact]
   public void Every_block_variant_resolves_a_shape() {

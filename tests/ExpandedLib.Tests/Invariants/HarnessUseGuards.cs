@@ -11,6 +11,10 @@ namespace ExpandedLib.Tests;
 
 /// <summary><see cref="HarnessUse"/> over exlib's tests, samples and harness, and against fixtures
 /// that each break one of its rules.</summary>
+[GuardOf(typeof(HarnessUse), nameof(HarnessUse.CompletionWrites))]
+[GuardOf(typeof(HarnessUse), nameof(HarnessUse.HalfBehaviours))]
+[GuardOf(typeof(HarnessUse), nameof(HarnessUse.GameConstrainedGenerics))]
+[GuardOf(typeof(HarnessUse), nameof(HarnessUse.UncalledGuards))]
 public class HarnessUseGuards {
   #region exlib
 
@@ -50,6 +54,32 @@ public class HarnessUseGuards {
       typeof(HarnessUseGuards).Assembly
     );
 
+    Assert.True(offenders.Count == 0, string.Join("\n", offenders));
+  }
+
+  // Fails when a guard in exlib's Invariants names a check in [GuardOf] and never calls it.
+  [Fact]
+  public void Exlibs_guards_call_the_checks_they_name() {
+    string[] files =
+    [
+      .. Directory
+        .GetFiles(
+          Path.Combine(
+            RepoPaths.Root,
+            "tests",
+            "ExpandedLib.Tests",
+            "Invariants"
+          ),
+          "*.cs"
+        )
+        // This file carries the rule's fixtures as text.
+        .Where(f =>
+          !f.EndsWith("/HarnessUseGuards.cs", StringComparison.Ordinal)
+        ),
+    ];
+
+    Assert.Contains(files, f => File.ReadAllText(f).Contains("[GuardOf("));
+    IReadOnlyList<string> offenders = HarnessUse.UncalledGuards(files);
     Assert.True(offenders.Count == 0, string.Join("\n", offenders));
   }
 
@@ -283,6 +313,45 @@ public class HarnessUseGuards {
           + "private static T Max<T>(T a) where T : IComparable<T>, new() => a;\n"
           + "private static T Min<T, U>(T a) where T : class, U where U : notnull => a;\n"
           + "// where T : BlockEntity"
+      )
+    );
+  }
+
+  // Fails when UncalledGuards passes a guard that never calls the check it names.
+  [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.UncalledGuards))]
+  public void A_guard_naming_a_check_it_never_calls_is_named() {
+    Assert.EndsWith(
+      ":2: [GuardOf] names SoundUse.ShortRepeats, which the file never calls",
+      Assert.Single(
+        Scan(
+          HarnessUse.UncalledGuards,
+          "[GuardOf(typeof(SoundUse), nameof(SoundUse.DirectSounds))]\n"
+            + "[GuardOf(typeof(SoundUse), nameof(SoundUse.ShortRepeats))]\n"
+            + "public class G { void A() => SoundUse.DirectSounds(files); }\n"
+            + "// SoundUse.ShortRepeats(files);"
+        )
+      )
+    );
+  }
+
+  // Fails when UncalledGuards stops reading a qualified type, a string member or a method group.
+  [Fact]
+  [PlantedDefect(typeof(HarnessUse), nameof(HarnessUse.UncalledGuards))]
+  public void A_guard_calling_its_checks_in_any_form_is_not_named() {
+    Assert.Empty(
+      Scan(
+        HarnessUse.UncalledGuards,
+        "[GuardOf(typeof(ExpandedLib.Testing.SoundUse), \"ShortRepeats\")]\n"
+          + "[GuardOf(typeof(HarnessUse), nameof(HarnessUse.HalfBehaviours))]\n"
+          + "public class G {\n"
+          + "  void A() => Run(SoundUse.ShortRepeats, HarnessUse\n    .HalfBehaviours);\n}"
+      )
+    );
+    Assert.Single(
+      Scan(
+        HarnessUse.UncalledGuards,
+        "[GuardOf(typeof(SoundUse), \"ShortRepeats\")]\npublic class G { }"
       )
     );
   }

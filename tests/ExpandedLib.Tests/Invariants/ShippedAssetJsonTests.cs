@@ -10,6 +10,7 @@ namespace ExpandedLib.Tests;
 
 /// <summary>Runs the per-mod JSON-defect rule (<see cref="ShippedJson"/>) over exlib's own tree, plus
 /// the whole-repo guards that compare one domain's assets against another's.</summary>
+[GuardOf(typeof(ShippedJson), nameof(ShippedJson.Check))]
 public class ShippedAssetJsonTests {
   // Exlib has no patches/ folder; only the JSON-parses half of ShippedJson.Check applies here.
   [Fact]

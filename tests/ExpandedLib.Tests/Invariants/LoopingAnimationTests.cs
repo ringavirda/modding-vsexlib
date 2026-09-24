@@ -6,6 +6,7 @@ namespace ExpandedLib.Tests;
 /// <summary>
 /// The looping-animation rule (<see cref="LoopingAnimations"/>) over exlib's own shipped shapes.
 /// </summary>
+[GuardOf(typeof(LoopingAnimations), nameof(LoopingAnimations.Check))]
 public class LoopingAnimationTests {
   [Fact]
   public void Exlibs_own_shapes_carry_no_looping_defect() {

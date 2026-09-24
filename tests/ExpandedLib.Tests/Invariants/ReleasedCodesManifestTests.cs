@@ -63,6 +63,10 @@ public class ReleasedCodesManifestTests {
   // Fails when NewestReleaseMismatch takes a pre-release or the first tag listed for the newest,
   // orders versions as text, or passes a seed behind the newest release.
   [Fact]
+  [PlantedDefect(
+    typeof(ReleasedCodesManifestTests),
+    nameof(NewestReleaseMismatch)
+  )]
   public void A_seed_behind_the_newest_release_is_named() {
     string[] tags = ["v0.9.0", "v0.10.0", "v0.10.1-preview.1", "v0.9.1"];
 

@@ -125,6 +125,88 @@ public static class PlantedDefects {
     return new Census(proven, helpers, unplanted);
   }
 
+  /// <summary>Every guard class in <paramref name="invariantsDirectory"/> that proves nothing: it
+  /// neither carries a valid <see cref="GuardOfAttribute"/> nor declares a public static member a
+  /// <see cref="PlantedDefectAttribute"/> test in <paramref name="suite"/> names.</summary>
+  /// <remarks>A guard class is the top-level type of <paramref name="suite"/> named by a
+  /// <c>*.cs</c> file in the directory; other types in the file are fixtures. A
+  /// <see cref="GuardOfAttribute"/> naming no public static member proves nothing and is
+  /// reported.</remarks>
+  /// <param name="suite">The test assembly the folder compiles into.</param>
+  /// <param name="invariantsDirectory">The suite's <c>Invariants</c> folder; not searched
+  /// recursively.</param>
+  /// <returns>One line per unproven class, its bare name, or <c>Name: reason</c> for a stray mark
+  /// or a file that names no type, in file-name order; empty when every guard is proven.</returns>
+  /// <exception cref="DirectoryNotFoundException"><paramref name="invariantsDirectory"/> does not
+  /// exist.</exception>
+  /// <exception cref="InvalidOperationException">The directory holds no <c>*.cs</c> file.
+  /// </exception>
+  public static IReadOnlyList<string> Unproven(
+    Assembly suite,
+    string invariantsDirectory
+  ) {
+    string[] names =
+    [
+      .. Directory
+        .EnumerateFiles(invariantsDirectory, "*.cs")
+        .Select(f => Path.GetFileNameWithoutExtension(f)!)
+        .Order(StringComparer.Ordinal),
+    ];
+    if (names.Length == 0)
+      throw new InvalidOperationException(
+        $"no *.cs file in {invariantsDirectory} - no guard to prove"
+      );
+
+    List<Type> all = [.. LoadableTypes(suite)];
+    ILookup<string, Type> byName = all.Where(t => t.DeclaringType == null)
+      .ToLookup(t => t.Name, StringComparer.Ordinal);
+    var planted = all.SelectMany(t =>
+        t.GetMethods(
+          BindingFlags.Public
+            | BindingFlags.NonPublic
+            | BindingFlags.Instance
+            | BindingFlags.Static
+            | BindingFlags.DeclaredOnly
+        )
+      )
+      .Where(IsTest)
+      .SelectMany(m => m.GetCustomAttributes<PlantedDefectAttribute>())
+      .ToList();
+
+    var unproven = new List<string>();
+    foreach (string name in names) {
+      Type? guard = byName[name].FirstOrDefault();
+      if (guard == null) {
+        unproven.Add(
+          $"{name}: the file names no type in {suite.GetName().Name}"
+        );
+        continue;
+      }
+      GuardOfAttribute[] marks =
+      [
+        .. guard.GetCustomAttributes<GuardOfAttribute>(),
+      ];
+      string[] stray =
+      [
+        .. marks
+          .Where(g => !StaticMembers(g.Check).Any(m => m.Name == g.Member))
+          .Select(g => $"{g.Check.Name}.{g.Member}"),
+      ];
+      if (stray.Length > 0)
+        unproven.Add(
+          $"{name}: [GuardOf] names {string.Join(", ", stray)}, no public static member"
+        );
+      else if (
+        marks.Length == 0
+        && !planted.Any(p =>
+          p.Check == guard && StaticMembers(guard).Any(m => m.Name == p.Member)
+        )
+      )
+        unproven.Add(name);
+    }
+    return unproven;
+  }
+
   internal static bool IsTest(MethodInfo method) =>
     method.GetCustomAttributes<FactAttribute>(inherit: true).Any();
 

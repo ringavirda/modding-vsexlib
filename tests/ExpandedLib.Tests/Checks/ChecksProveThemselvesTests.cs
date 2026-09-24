@@ -164,15 +164,16 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
   )]
   private static void NotATest() { }
 
-  /// <summary>A temporary directory holding one empty file, deleted on dispose.</summary>
+  /// <summary>A temporary directory holding empty files, deleted on dispose.</summary>
   private sealed class FixtureDirectory : IDisposable {
-    public FixtureDirectory(string file) {
+    public FixtureDirectory(params string[] files) {
       Path = System.IO.Path.Combine(
         System.IO.Path.GetTempPath(),
         "exlib_survey_" + Guid.NewGuid().ToString("N")
       );
       Directory.CreateDirectory(Path);
-      File.WriteAllText(System.IO.Path.Combine(Path, file), "");
+      foreach (string file in files)
+        File.WriteAllText(System.IO.Path.Combine(Path, file), "");
     }
 
     public string Path { get; }
@@ -181,7 +182,80 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
   }
 
   #endregion
+
+  #region Unproven
+
+  // Fails when Unproven counts a bare guard proven, passes a [GuardOf] naming no member or a file
+  // naming no type, or stops reading [GuardOf] or a guard's own planted rule.
+  [Fact]
+  [PlantedDefect(typeof(PlantedDefects), nameof(PlantedDefects.Unproven))]
+  public void Unproven_names_the_bare_guard_the_stray_mark_and_the_typeless_file() {
+    using var dir = new FixtureDirectory(
+      nameof(UnprovenFixtureGuarded) + ".cs",
+      nameof(UnprovenFixtureOwnRule) + ".cs",
+      nameof(UnprovenFixtureBare) + ".cs",
+      nameof(UnprovenFixtureStray) + ".cs",
+      "NoSuchGuard.cs"
+    );
+
+    IReadOnlyList<string> unproven = PlantedDefects.Unproven(
+      typeof(ChecksProveThemselvesTests).Assembly,
+      dir.Path
+    );
+
+    Assert.Equal(
+      [
+        "NoSuchGuard: the file names no type in ExpandedLib.Tests",
+        nameof(UnprovenFixtureBare),
+        "UnprovenFixtureStray: [GuardOf] names HarnessUse.Gone, no public static member",
+      ],
+      unproven
+    );
+  }
+
+  // Fails when Unproven passes a folder with no guard in it.
+  [Fact]
+  [PlantedDefect(typeof(PlantedDefects), nameof(PlantedDefects.Unproven))]
+  public void Unproven_over_an_empty_folder_throws() {
+    using var dir = new FixtureDirectory();
+
+    Assert.Throws<InvalidOperationException>(() =>
+      PlantedDefects.Unproven(
+        typeof(ChecksProveThemselvesTests).Assembly,
+        dir.Path
+      )
+    );
+  }
+
+  // Fails when the fixture guard's own rule stops naming an empty code.
+  [Fact]
+  [PlantedDefect(
+    typeof(UnprovenFixtureOwnRule),
+    nameof(UnprovenFixtureOwnRule.Blank)
+  )]
+  public void The_fixture_guards_rule_names_an_empty_code() {
+    Assert.Single(UnprovenFixtureOwnRule.Blank(["a", ""]));
+  }
+
+  #endregion
 }
+
+/// <summary>A guard calling a check.</summary>
+[GuardOf(typeof(HarnessUse), nameof(HarnessUse.HalfBehaviours))]
+internal sealed class UnprovenFixtureGuarded { }
+
+/// <summary>A guard exposing its own rule.</summary>
+internal static class UnprovenFixtureOwnRule {
+  public static IReadOnlyList<string> Blank(IEnumerable<string> codes) =>
+    [.. codes.Where(c => c.Length == 0).Select(_ => "an empty code")];
+}
+
+/// <summary>A guard that proves nothing.</summary>
+internal sealed class UnprovenFixtureBare { }
+
+/// <summary>A guard naming a member its check does not have.</summary>
+[GuardOf(typeof(HarnessUse), "Gone")]
+internal sealed class UnprovenFixtureStray { }
 
 /// <summary>A check type for <see cref="PlantedDefects.Survey"/>'s own tests: one proven rule, one
 /// helper, one bare rule and one helper marked without a reason.</summary>
