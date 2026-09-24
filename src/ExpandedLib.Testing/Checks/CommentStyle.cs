@@ -57,10 +57,12 @@ public static class CommentStyle {
   /// skipping <c>*.g.cs</c> and anything under a <c>bin</c> or <c>obj</c> folder.</summary>
   /// <param name="root">The repository root; the folders and each file's
   /// <see cref="SourceFile.Relative"/> are relative to it.</param>
-  /// <param name="folders">'/'-separated folders under <paramref name="root"/>; a missing one is
-  /// skipped.</param>
+  /// <param name="folders">'/'-separated folders under <paramref name="root"/>; each must exist.
+  /// </param>
   /// <returns>The files, folder by folder in the given order; empty when no folder holds one.
   /// </returns>
+  /// <exception cref="DirectoryNotFoundException">A folder does not exist; the message names it.
+  /// </exception>
   /// <exception cref="IOException">A file cannot be read.</exception>
   [CheckHelper("reads the corpus the rules run over")]
   public static IReadOnlyList<SourceFile> Sources(
@@ -71,7 +73,9 @@ public static class CommentStyle {
     foreach (string folder in folders) {
       string dir = Path.Combine(root, folder);
       if (!Directory.Exists(dir))
-        continue;
+        throw new DirectoryNotFoundException(
+          $"CommentStyle.Sources: no folder {folder} under {root}"
+        );
       foreach (
         string path in Directory.EnumerateFiles(
           dir,

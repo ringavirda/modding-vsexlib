@@ -14,6 +14,18 @@ public class CommentStyleTests {
   private static string[] Repeat(string line, int count) =>
     [.. Enumerable.Repeat(line, count)];
 
+  // Fails when Sources skips a missing folder instead of throwing on it.
+  [Fact]
+  public void A_missing_source_folder_is_named() {
+    string missing = "missing-" + System.Guid.NewGuid().ToString("N");
+
+    var thrown = Assert.Throws<System.IO.DirectoryNotFoundException>(() =>
+      CommentStyle.Sources(System.IO.Path.GetTempPath(), [missing])
+    );
+
+    Assert.Contains($"no folder {missing} under", thrown.Message);
+  }
+
   // Fails when EmDashes misses an em dash in a comment or reads one in code.
   [Fact]
   [PlantedDefect(typeof(CommentStyle), nameof(CommentStyle.EmDashes))]
