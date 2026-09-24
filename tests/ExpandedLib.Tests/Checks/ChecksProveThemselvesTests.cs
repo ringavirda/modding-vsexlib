@@ -239,8 +239,8 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
 
   #region Unproven
 
-  // Fails when Unproven counts a bare guard proven, passes a [GuardOf] naming no member or a file
-  // naming no type, or stops reading [GuardOf] or a guard's own planted rule.
+  // Fails when Unproven counts a bare guard proven, passes a [GuardOf] naming no member, a helper or
+  // a file naming no type, or stops reading [GuardOf] or a guard's own planted rule.
   [Fact]
   [PlantedDefect(typeof(PlantedDefects), nameof(PlantedDefects.Unproven))]
   public void Unproven_names_the_bare_guard_the_stray_mark_and_the_typeless_file() {
@@ -249,6 +249,7 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
       nameof(UnprovenFixtureOwnRule) + ".cs",
       nameof(UnprovenFixtureBare) + ".cs",
       nameof(UnprovenFixtureStray) + ".cs",
+      nameof(UnprovenFixtureHelper) + ".cs",
       "NoSuchGuard.cs"
     );
 
@@ -261,6 +262,8 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
       [
         "NoSuchGuard: the file names no type in ExpandedLib.Tests",
         nameof(UnprovenFixtureBare),
+        "UnprovenFixtureHelper: [GuardOf] names DefinitionJson.Parse, a [CheckHelper], which "
+          + "proves nothing",
         "UnprovenFixtureStray: [GuardOf] names HarnessUse.Gone, no public static member",
       ],
       unproven
@@ -303,6 +306,10 @@ internal static class UnprovenFixtureOwnRule {
   public static IReadOnlyList<string> Blank(IEnumerable<string> codes) =>
     [.. codes.Where(c => c.Length == 0).Select(_ => "an empty code")];
 }
+
+/// <summary>A guard naming a helper, which has no planted test to inherit.</summary>
+[GuardOf(typeof(DefinitionJson), nameof(DefinitionJson.Parse))]
+internal sealed class UnprovenFixtureHelper { }
 
 /// <summary>A guard that proves nothing.</summary>
 internal sealed class UnprovenFixtureBare { }

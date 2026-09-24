@@ -165,8 +165,9 @@ public static class PlantedDefects {
   /// <see cref="PlantedDefectAttribute"/> test in <paramref name="suite"/> names.</summary>
   /// <remarks>A guard class is the top-level type of <paramref name="suite"/> named by a
   /// <c>*.cs</c> file in the directory; other types in the file are fixtures. A
-  /// <see cref="GuardOfAttribute"/> naming no public static member proves nothing and is
-  /// reported; a skipped test proves nothing.</remarks>
+  /// <see cref="GuardOfAttribute"/> naming no public static member, or one marked
+  /// <see cref="CheckHelperAttribute"/>, proves nothing and is reported; a skipped test proves
+  /// nothing.</remarks>
   /// <param name="suite">The test assembly the folder compiles into.</param>
   /// <param name="invariantsDirectory">The suite's <c>Invariants</c> folder; not searched
   /// recursively.</param>
@@ -227,9 +228,26 @@ public static class PlantedDefects {
           .Where(g => !StaticMembers(g.Check).Any(m => m.Name == g.Member))
           .Select(g => $"{g.Check.Name}.{g.Member}"),
       ];
+      string[] helpers =
+      [
+        .. marks
+          .Where(g =>
+            StaticMembers(g.Check)
+              .Any(m =>
+                m.Name == g.Member
+                && m.GetCustomAttribute<CheckHelperAttribute>() != null
+              )
+          )
+          .Select(g => $"{g.Check.Name}.{g.Member}"),
+      ];
       if (stray.Length > 0)
         unproven.Add(
           $"{name}: [GuardOf] names {string.Join(", ", stray)}, no public static member"
+        );
+      else if (helpers.Length > 0)
+        unproven.Add(
+          $"{name}: [GuardOf] names {string.Join(", ", helpers)}, a [CheckHelper], which "
+            + "proves nothing"
         );
       else if (
         marks.Length == 0

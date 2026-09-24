@@ -68,8 +68,8 @@ see the git history.
   its `Pending` list names it.
 - **`[GuardOf]`**, **`PlantedDefects.Unproven`** and **`HarnessUse.UncalledGuards`**
   (ExpandedLib.Testing): a guard class in a suite's `Invariants` folder names the checks it calls, or
-  proves its own rule with a `[PlantedDefect]` test. `Unproven` lists the guards that do neither, and
-  `UncalledGuards` fails a guard file that never calls a check it names.
+  proves its own rule with a `[PlantedDefect]` test. `Unproven` lists the guards that do neither or
+  name a `[CheckHelper]`, and `UncalledGuards` fails a guard file that never calls a check it names.
 - **`HarnessUse.UncalledPlants`** (ExpandedLib.Testing): names every `[PlantedDefect]` test that
   never reaches the member it names, in its body or through the helpers of its file it calls.
 - **`Premise`** and **`HarnessUse.Unpremised`** (ExpandedLib.Testing): `Premise.NotEmpty` fails a
