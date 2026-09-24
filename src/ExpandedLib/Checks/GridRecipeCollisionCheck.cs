@@ -19,9 +19,10 @@ namespace ExpandedLib.Checks;
 /// exact ones merged alike (<c>RecipeBase.MatchesShapeLess</c>); a named wildcard in one state
 /// across its slots (<c>RecipeBase.GenerateRecipesForAllIngredientCombinations</c>);
 /// <c>allowedVariants</c> narrowing a wildcard (<c>WildcardUtil.Match</c>); a code without a
-/// domain in its file's (<c>RecipeLoader</c>). Tags, attributes and <c>skipVariants</c> are not
-/// read, and a regex or tag-only ingredient overlaps its whole item class. A recipe the game
-/// refuses or never matches is skipped.
+/// domain in its file's (<c>RecipeLoader</c>). A tag-only ingredient takes the collectibles
+/// <see cref="ILoadedGame.Tagged"/> answers when the source is a loaded game, and otherwise
+/// overlaps its whole item class, as a regex ingredient does. Attributes and <c>skipVariants</c>
+/// are not read. A recipe the game refuses or never matches is skipped.
 /// </remarks>
 public static class GridRecipeCollisionCheck {
   // Above this many combinations of named states, the names are left unbound, which can only add
@@ -50,27 +51,46 @@ public static class GridRecipeCollisionCheck {
         .Distinct()
         .SelectMany(d => Crafts(source, d)),
     ];
+    return new CheckResult(
+      "GridRecipeCollision",
+      domain,
+      Collisions(own, others, withinOwn: true)
+    );
+  }
+
+  /// <summary>One line per pair of <paramref name="own"/> with <paramref name="others"/>, and of
+  /// two of <paramref name="own"/> when <paramref name="withinOwn"/>, that match the same
+  /// input.</summary>
+  internal static List<string> Collisions(
+    IReadOnlyList<Craft> own,
+    IReadOnlyList<Craft> others,
+    bool withinOwn
+  ) {
     var errors = new List<string>();
     for (int i = 0; i < own.Count; i++)
-      foreach (Craft other in own.Skip(i + 1).Concat(others))
+      foreach (
+        Craft other in (withinOwn ? own.Skip(i + 1) : []).Concat(others)
+      )
         if (Collide(own[i], other))
           errors.Add($"{own[i].Where} and {other.Where} match the same input");
-    return new CheckResult("GridRecipeCollision", domain, errors);
+    return errors;
   }
 
   /// <summary>What an ingredient matches: its item class, its domain (null for any) and the code
   /// paths it matches, each a pattern whose <c>*</c> matches any text (null for any). Exact when
-  /// the game matches it as one code, which a shapeless recipe merges with its equals.</summary>
-  private sealed record Slot(
+  /// the game matches it as one code, which a shapeless recipe merges with its equals. A tag-only
+  /// ingredient of a loaded game holds the codes it takes as its members instead.</summary>
+  internal sealed record Slot(
     string Type,
     string? Domain,
     IReadOnlyList<string>? Paths,
-    bool Exact = false
+    bool Exact = false,
+    IReadOnlyList<AssetLocation>? Members = null
   );
 
   /// <summary>A recipe the game loads and can match: its slots, row by row, once per combination
   /// of its named states, and the box its ingredients fill.</summary>
-  private sealed record Craft(
+  internal sealed record Craft(
     string Where,
     bool Shapeless,
     int Width,
@@ -82,7 +102,10 @@ public static class GridRecipeCollisionCheck {
     int BoxHeight
   );
 
-  private static IEnumerable<Craft> Crafts(ICheckSource source, string domain) {
+  /// <summary>Every grid recipe of <paramref name="domain"/> the game loads and can
+  /// match.</summary>
+  internal static IEnumerable<Craft> Crafts(ICheckSource source, string domain) {
+    var game = source as ILoadedGame;
     foreach (GridEntry recipe in Recipes(source, domain)) {
       if (
         Prop(recipe.Json, "enabled")?.Type == JTokenType.Boolean
@@ -120,7 +143,7 @@ public static class GridRecipeCollisionCheck {
           .. Bindings(placed)
             .Select(b =>
               placed
-                .Select(i => i == null ? null : SlotOf(i, b, domain))
+                .Select(i => i == null ? null : SlotOf(i, b, domain, game))
                 .ToArray()
             ),
         ],
@@ -172,12 +195,15 @@ public static class GridRecipeCollisionCheck {
   private static Slot SlotOf(
     JObject ingredient,
     Dictionary<string, string> binding,
-    string fileDomain
+    string fileDomain,
+    ILoadedGame? game
   ) {
     string type = (
       (string?)Prop(ingredient, "type") ?? "block"
     ).ToLowerInvariant();
     string? code = (string?)Prop(ingredient, "code");
+    if (code == null && game?.Tagged(ingredient) is { } members)
+      return Of(type, members);
     if (code == null || code.StartsWith('@'))
       return new Slot(type, null, null);
 
@@ -204,6 +230,12 @@ public static class GridRecipeCollisionCheck {
       domain != null && !path.Contains('*')
     );
   }
+
+  // One taken code is a plain slot of that code.
+  private static Slot Of(string type, IReadOnlyList<AssetLocation> members) =>
+    members is [AssetLocation one]
+      ? new Slot(type, one.Domain, [one.Path])
+      : new Slot(type, null, null, Members: members);
 
   private static bool Collide(Craft a, Craft b) {
     if (!a.Shapeless && !b.Shapeless) {
@@ -319,6 +351,13 @@ public static class GridRecipeCollisionCheck {
   private static Slot? Meet(Slot a, Slot b) {
     if (!Overlap(a, b))
       return null;
+    if (a.Members != null || b.Members != null)
+      return Of(
+        a.Type,
+        a.Members != null
+          ? [.. a.Members.Where(m => Holds(b, m))]
+          : [.. b.Members!.Where(m => Holds(a, m))]
+      );
     IReadOnlyList<string>? paths =
       a.Paths == null ? b.Paths
       : b.Paths == null ? a.Paths
@@ -336,11 +375,24 @@ public static class GridRecipeCollisionCheck {
 
   private static bool Overlap(Slot a, Slot b) =>
     a.Type == b.Type
+    && (
+      a.Members != null ? a.Members.Any(m => Holds(b, m))
+      : b.Members != null ? b.Members.Any(m => Holds(a, m))
+      : true
+    )
     && (a.Domain == null || b.Domain == null || a.Domain == b.Domain)
     && (
       a.Paths == null
       || b.Paths == null
       || a.Paths.Any(p => b.Paths.Any(q => PatternsMeet(p, q)))
+    );
+
+  // Whether slot takes the one code member.
+  private static bool Holds(Slot slot, AssetLocation member) =>
+    slot.Members?.Contains(member)
+    ?? (
+      (slot.Domain == null || slot.Domain == member.Domain)
+      && (slot.Paths == null || slot.Paths.Any(p => PatternsMeet(p, member.Path)))
     );
 
   /// <summary>Whether some text matches both <paramref name="a"/> and <paramref name="b"/>, each

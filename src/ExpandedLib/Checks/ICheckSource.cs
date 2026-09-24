@@ -39,6 +39,12 @@ public interface ICheckSource {
   IEnumerable<(AssetLocation File, JObject Json)> BlockTypes(string domain) =>
     [];
 
+  /// <summary>Every JSON itemtype <paramref name="domain"/> ships, as its file paired with its
+  /// parsed object, code-first definitions included as their JSON. Yields nothing unless the
+  /// implementer reads itemtype files.</summary>
+  IEnumerable<(AssetLocation File, JObject Json)> ItemTypes(string domain) =>
+    [];
+
   /// <summary>The type a block <c>class</c> key names, e.g. <c>"iiex.BlockValve"</c>.</summary>
   /// <param name="classKey">The key as a definition's <c>class</c> property writes it.</param>
   /// <returns>Null when this source cannot resolve the key, which is every key unless the

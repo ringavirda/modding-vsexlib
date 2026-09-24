@@ -11,4 +11,8 @@ public sealed record CheckResult(
   string Check,
   string Domain,
   IReadOnlyList<string> Errors
-);
+) {
+  /// <summary>The findings an <see cref="ExlibChecks.Exempt"/> exemption took out of
+  /// <see cref="Errors"/>, each followed by its reason; empty when none.</summary>
+  public IReadOnlyList<string> Exempted { get; init; } = [];
+}
