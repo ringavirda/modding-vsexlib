@@ -469,8 +469,10 @@ no-op on a second call however many dependent mods share the process. Each call 
 `UnpatchAll` releases one: the patches under the id, categories included, come off only when no hold
 is left. In singleplayer the server and the client run your mod system in one process and both
 call `PatchOnce`, so the client disposing first leaves the patches in place for the server still
-shutting down; the server's `UnpatchAll` removes them. An `UnpatchAll` with nothing held removes
-them at once, and a repeat is harmless. A class also carrying
+shutting down; the server's `UnpatchAll` removes them. Each `UnpatchAll` releases one hold on every
+assembly patched under the id, whoever took it: call it once, and only after your own `PatchOnce`
+returned, as the `_harmony` check above does, since a `Dispose` also runs on a system whose `Start`
+threw before it patched. With nothing held it unpatches at once. A class also carrying
 `[HarmonyPatchCategory("...")]` is left alone until you opt it in, gated on another mod being loaded:
 
 ```csharp

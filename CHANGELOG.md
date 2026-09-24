@@ -99,13 +99,15 @@ see the git history.
   (`ExWorldState.ResetsOnLoad`). A singleplayer client loads after its own server in the same
   process and keeps what that server loaded; its `AssetsFinalize` no longer empties and reloads
   the metal, liquid, material-role, process-route, process-job and bay-occupancy catalogues while
-  that server ticks, and a mod enabled on the server alone keeps its entries for the session. No
-  other state is emptied at `Dispose`: a singleplayer client's `Dispose` no longer removes exlib's
-  Harmony patches, empties `NoSnowCells` or closes the server end of the sound channel while its
-  server still runs. `ExHarmony.UnpatchAll` releases one `PatchOnce` hold and removes an id's
-  patches, categories included, only when none is left, so the patches come off with the server's
-  `Dispose`; `NoSnowCells` is emptied at the next world's load start; the channel closes from the
-  Industry module instance that opened it. A `HarmonyFixture` disposed twice releases its hold once.
+  that server ticks, and a mod enabled on the server alone keeps its entries for the session. At
+  `Dispose` exlib now only releases its Harmony hold and, on the server, closes the sound channel: a
+  singleplayer client's `Dispose` no longer removes exlib's Harmony patches, empties `NoSnowCells`
+  or closes the server end of the sound channel while its server still runs.
+  `ExHarmony.UnpatchAll` releases one `PatchOnce` hold on each assembly patched under the id,
+  whoever took it, and removes the id's patches, categories included, only when none is left, so
+  the patches come off with the last side's `Dispose`; `NoSnowCells` is emptied at the next world's
+  load start; the channel closes from the Industry module instance that opened it. A
+  `HarmonyFixture` disposed twice releases its hold once.
 - **A `Dispose` releases only the Harmony hold its own `Start` took.** `ExpandedLibModSystem`,
   an `ExModSystem` with `PatchHarmony` and `ExModuleHost` release a hold only when their `Start`
   reached `ExHarmony.PatchOnce`, and only once: a singleplayer client whose `Start` threw before it

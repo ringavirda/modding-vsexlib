@@ -66,8 +66,10 @@ public static class ExHarmony {
   /// <summary>Releases one <see cref="PatchOnce(Mod, Assembly)"/> hold on each assembly patched
   /// under <paramref name="mod"/>'s id, and unpatches everything under the id, categories included,
   /// once none is still held.</summary>
-  /// <remarks>With nothing held it unpatches at once, and a repeat call is harmless. In singleplayer
-  /// the side that disposes first leaves the patches applied for the other.</remarks>
+  /// <remarks>Each call releases one hold on every assembly patched under the id, whoever took it:
+  /// call it once per <see cref="PatchOnce(Mod, Assembly)"/>, from the code that made that call and
+  /// only after it returned. With nothing held it unpatches at once. In singleplayer the side that
+  /// disposes first leaves the patches applied for the other.</remarks>
   public static void UnpatchAll(Mod mod) => UnpatchAll(mod.Info.ModID);
 
   /// <summary>As <see cref="UnpatchAll(Mod)"/>, under an explicit <paramref name="id"/>.</summary>
