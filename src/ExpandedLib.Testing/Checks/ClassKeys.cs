@@ -33,11 +33,11 @@ internal sealed class ClassKeys {
     _blocks.Value.GetValueOrDefault(classKey);
 
   /// <summary>The behaviour type registered under <paramref name="key"/> by
-  /// <see cref="EntityRegistry.KeyFor"/>, or, for a key with no mod-id prefix, the type with no
-  /// register attribute whose class name is the key; null when none.</summary>
+  /// <see cref="EntityRegistry.KeyFor"/>, or the type with no register attribute whose class
+  /// name is the key; null when none.</summary>
   internal Type? BlockEntityBehavior(string key) =>
     _behaviors.Value.GetValueOrDefault(key)
-    ?? (key.Contains('.') ? null : _bareBehaviors.Value.GetValueOrDefault(key));
+    ?? _bareBehaviors.Value.GetValueOrDefault(key);
 
   private static Dictionary<string, Type> Index(
     (string Domain, Assembly Assembly)[] sources,
