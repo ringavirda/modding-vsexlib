@@ -63,8 +63,8 @@ Connectivity is reciprocal and four-way gated. `BlockNetworkModSystem.IsValidNet
 A connector face that passes 1-4 nowhere, and that the source block does not accept as a non-network
 connection (`BlockNetworkNode.IsValidNonNetworkConnection`, false unless a block overrides it), is an **open
 end** (`BlockNetworkModSystem.GetOpenConnectorFaces`). The pipe tick sorts open ends by what they face
-(`PipeNetwork.ClassifyOpenings`): a face the vent strategy claims is a vent, a face onto air is a leak, and a
-face onto any other block is neither - it moves nothing and does not count towards `OpeningsCount`.
+(`PipeNetwork.ClassifyOpenings`): a face its node's vent strategy claims is a vent, a face onto air is a leak,
+and a face onto any other block is neither - it moves nothing and does not count towards `OpeningsCount`.
 
 The **source** cell is gated differently by the two consumers, deliberately. The traversal asks `CouplesFrom` of the source as well (`BlockNetworkModSystem.GetConnectedNeighbors`), so an endpoint or a severed cell yields no graph neighbours at all. The open-end scan does not: whether a face is open is a physical fact rather than a graph one, and a closed valve, a solidified canal and a pressure valve all still meet the pipe they touch. Gating the scan on the source too would cap a closed tap's inlet a second time over its own end-cap mesh (`BlockEntityMoltenCanalTap.OnTesselation`) and report every endpoint's coupled face as a leak.
 
@@ -219,8 +219,8 @@ public override bool AcceptsNeighbour(Block neighbour) =>
 | 1 | `SmoothFlow` | EMA of throughput, idle timer |
 | 2 | `RecomputePressureAndFlow` | refresh `MaxVolume`, pressure, displayed flow |
 | 3 | `ComputeLeakFractions` | particle density only |
-| 4 | `ClassifyOpenings` | one pass over nodes: count `IPipeNode` consumers, classify each open face as vent (strategy) or leak (air), fire `OnLeak`/`OnOpenConnectorsChanged`, refresh `OpeningsCount` |
-| 5 | `ApplyVentDraw` | the injected `IPipeVentStrategy` pulls gas out through vents |
+| 4 | `ClassifyOpenings` | one pass over nodes: count `IPipeNode` consumers, classify each open face as vent (its node's strategy, `VentFor`) or leak (air), group the vent positions by the strategy that claimed them, fire `OnLeak`/`OnOpenConnectorsChanged`, refresh `OpeningsCount` |
+| 5 | `ApplyVentDraw` | every strategy the network has used pulls gas out through its own group, an empty group included; the vented litres add |
 | 6 | `ApplyLeakLoss` | leak volume loss |
 | 7 | `ApplyEvaporation` | calendar-based water loss |
 | 8 | `RepressureAfterVentLeak` | gas only |
@@ -228,12 +228,23 @@ public override bool AcceptsNeighbour(Block neighbour) =>
 | 10 | `ClearIfEmptyAndIdle` | drops `State` once drained and idle for `EmptyClearDelaySeconds` |
 | 11 | `TickOverpressureAndBurst` | last, after the broadcast, so it never mutates the node set while another pass reads it |
 
-The vent strategy is injected per network at registration, so the network core never hard-wires a policy.
-exlib ships `ChimneyVent`, and iiex injects it with its own draw rate when it registers the pipe network
-(`IronIndustryExpandedModSystem.Start`). It classifies a vanilla-or-modded chimney (matched by code substring,
-`ChimneyVent.IsChimney`) capping the top connector of an `IChimneyVentable` fitting as a vent, and draws
-`ChimneyGasDrawRate` L/s per chimney with smoke and a fire-roar loop. A network with no strategy vents
-nothing - every open end onto air is a leak.
+The vent strategy is injected per network at registration, or supplied per node block through
+`IPipeVentSource`, so the network core never hard-wires a policy. exlib ships `ChimneyVent`, and iiex injects
+it with its own draw rate when it registers the pipe network (`IronIndustryExpandedModSystem.Start`). It
+classifies a vanilla-or-modded chimney (matched by code substring, `ChimneyVent.IsChimney`) capping the top
+connector of an `IChimneyVentable` fitting as a vent, and draws `ChimneyGasDrawRate` L/s per chimney with smoke
+and a fire-roar loop.
+
+A node's faces are classified by the strategy its block supplies, else by the factory's (`PipeNetwork.VentFor`).
+A network calls `IPipeVentSource.CreateVentStrategy` once per `Block` (per variant, not per cell), the first
+tick a node of that block has an open face, and keeps the instance for its own lifetime, so two runs never
+share strategy state; a null return falls back to the factory's strategy. Every strategy the network has used,
+the factory's included, is called each tick with only the vents it classified, an empty list included, which
+is where `ChimneyVent.Vent` drops the sound stamps of chimneys that stopped; the vented litres add
+(`PipeNetwork.ApplyVentDraw`). A node whose block supplies no strategy, on a network registered without one,
+vents nothing - its faces onto air leak. A mod whose vent fittings implement `IPipeVentSource` needs no
+`RegisterNetworkType` of its own. `ChimneyVent.TryClassifyVent` still requires the node to be
+`IChimneyVentable`, so a block that sources a `ChimneyVent` implements both.
 
 ### 7. Plain valve = in-line sever
 
@@ -380,7 +391,8 @@ A null `tier` yields the same four blocktypes with no tier axis and the default 
 | `IPipeNode` | the extension point for a producer/consumer. Implement it to inject/withdraw without inheriting `BlockEntityPipe` |
 | `IBurstablePipe` | opt into the burst model: `CanBurst` + `BurstPressure` |
 | `IThroughputLimitedPipe` | opt into the throughput cap: `MaxThroughput` |
-| `IPipeVentStrategy` | the injected vent policy; `ChimneyVent` is exlib's implementation, injected by iiex |
+| `IPipeVentStrategy` | the vent policy, injected by the network factory or supplied by a node block; `ChimneyVent` is exlib's implementation, injected by iiex |
+| `IPipeVentSource` | the extension point for a vent fitting. Implement it on the `Block` to supply the fitting's own `IPipeVentStrategy`; the factory's is the fallback |
 | `IMediumTaxonomy` | the injected medium policy; `ExLiquids.Taxonomy` is the default |
 | `PipeNetwork` | the pool: `TryProduceGas`, `ProduceGasMeasured`, `TryConsumeGas`, `TryProduceLiquid`, `ProduceLiquidMeasured`, `TryConsumeLiquid`, `OnTick`, `MinBurstPressure`, `MinThroughput` |
 | `PipeNetworkState` | the state object + the two pressure formulas (`ComputeGasPressure`, `ComputeLiquidPressure`) |
