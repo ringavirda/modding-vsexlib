@@ -20,7 +20,8 @@ public sealed record ProcessRoute(
   string? Shape,
   ProcessStage[] Stages
 ) {
-  /// <summary>The attribute key a collectible declares its route under.</summary>
+  /// <summary>The name <see cref="TryParse"/> reports a missing route node under. Routes are read
+  /// from <see cref="ProcessRouteLoader.CataloguePath"/>, not from a collectible attribute.</summary>
   public const string AttributeKey = "processroute";
 
   /// <summary>The schema this parser writes and reads up to. Raise it only alongside the fallback that
@@ -48,7 +49,7 @@ public sealed record ProcessRoute(
   public static bool SameThickness(float a, float b) =>
     MathF.Abs(a - b) < ThicknessEpsilon;
 
-  /// <summary>Parses and validates a <c>processroute</c> attribute. Returns false with a
+  /// <summary>Parses and validates one route file's root node. Returns false with a
   /// human-readable <paramref name="error"/> on any malformed field.</summary>
   public static bool TryParse(
     JsonObject? node,

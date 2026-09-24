@@ -282,7 +282,8 @@ public partial class BlockPipe
     _jointByTier[tier] = jointFamily;
 
   /// <summary>The coupling this pipe presents, resolved from the per-tier registry by its own
-  /// <see cref="Tier"/>; a fitting, which names no tier, takes the flange.</summary>
+  /// <see cref="Tier"/>; a pipe whose tier is null or has no registered joint takes the
+  /// flange.</summary>
   public virtual string JointFamily =>
     Tier != null && _jointByTier.TryGetValue(Tier, out string? joint)
       ? joint

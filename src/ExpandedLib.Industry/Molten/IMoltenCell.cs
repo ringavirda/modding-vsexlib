@@ -29,7 +29,8 @@ public interface IMoltenCell {
   /// <summary>True for a cell that seeds the flow (the canal start); the distance-from-start BFS roots here.</summary>
   bool IsFlowSource { get; }
 
-  /// <summary>True for a drain fitting (tap, mold pedestal) that takes a sub-minimum final transfer.</summary>
+  /// <summary>True for a drain fitting (tap, mold pedestal): a levelling edge into it moves the whole
+  /// difference rather than half, so a run empties into it.</summary>
   bool AcceptsSubMinimumFlow { get; }
 
   /// <summary>Rebuilds the server temperature carrier after a world load; only type and temperature persist.</summary>

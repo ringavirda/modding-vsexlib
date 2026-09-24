@@ -15,7 +15,7 @@ namespace ExpandedLib.Networks;
 
 /// <summary>
 /// Base class for <c>Block</c> types that auto-orient from the surrounding blocks of the same network
-/// to form a connected run. Used by gas pipes and molten canals.
+/// to form a connected run; the block itself is the graph node on its <see cref="NetworkType"/>.
 /// </summary>
 public abstract class BlockNetworkNode
   : Block,
@@ -614,7 +614,7 @@ public abstract class BlockNetworkNode
   #endregion
 
   #region Abstracts and virtuals
-  /// <summary>Identifies which block network type this block belongs to (e.g. "gas", "molten").</summary>
+  /// <summary>Identifies which block network type this block belongs to (e.g. "pipe", "molten", "mpenergy").</summary>
   public abstract string NetworkType { get; }
 
   private Dictionary<string, string[]>? _allowedOrientations;

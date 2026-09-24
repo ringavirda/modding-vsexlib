@@ -94,11 +94,9 @@ public static class StructureFootprint {
     return cells;
   }
 
-  /// <summary>
-  /// Builds a footprint from ASCII layer diagrams: one <c>Layer</c> per Y level, cells marked solid or
-  /// attach-allowing via <see cref="FillerLayoutBuilder.Solid"/>/<see cref="FillerLayoutBuilder.Attach"/>.
-  /// The principal origin is skipped if drawn.
-  /// </summary>
+  /// <summary>Builds a footprint from ASCII grids drawn as <c>Layer</c> (per Y), <c>Slice</c> (per X)
+  /// or <c>Face</c> (per Z), each glyph registered on the builder as <c>Solid</c>, <c>Attach</c>,
+  /// <c>Host</c>, <c>Slab</c> or <c>Port</c>. The principal origin is skipped if drawn.</summary>
   public static IReadOnlyList<FillerCellSpec> Layout(
     Action<FillerLayoutBuilder> configure
   ) {

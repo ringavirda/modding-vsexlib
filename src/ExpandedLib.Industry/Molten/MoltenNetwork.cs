@@ -141,7 +141,8 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     if (cells.Count == 0)
       return;
 
-    // Farthest-first order drains the run toward the source one wavefront per tick.
+    // Farthest-first order picks which end drives each edge; the two amounts set which way metal
+    // moves.
     var distFromStart = GetDistanceFromStart(blockAccessor, cells);
     cells.Sort((x, y) => CompareFlowOrder(x, y, distFromStart));
     foreach (var c in cells)

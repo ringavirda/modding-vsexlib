@@ -57,7 +57,7 @@ public class MpEnergyNetwork : BlockNetwork {
         driveTorque += Math.Max(0f, producer.DriveTorque(speed));
       if (be is IMpEnergyConsumer consumer)
         loadTorque += Math.Max(0f, consumer.LoadTorque(speed));
-      // Any driver that knows its rotation sets the run's direction; the last one wins.
+      // One reversed direction node reverses the whole run.
       if (be is IMpEnergyDirection { IsReversed: true })
         reversed = true;
     }

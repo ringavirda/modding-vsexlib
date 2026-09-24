@@ -256,7 +256,7 @@ cell glow (`MoltenMetal.GlowLevel`) reads the global `MetalGlowMinTemp`.
 | `ClayMoldHeatCeiling` | `1100` | pour temperature above which a small fired-clay tool mold shatters |
 | `EnhanceVanillaMolds` | `false` | opt vanilla clay molds into the enhanced spill/burn/render handling |
 | `MoldBurnMinTemperature` | `200` | mold-content °C that burns a bare-handed carrier |
-| `MetalRecoveryFallback` | `iiex:slag-block` | installed at load as `MetalRegistry.DefaultRecoveryFallback`; used only by recoveries that ask for a fallback |
+| `MetalRecoveryFallback` | `iiex:slag` | installed at load as `MetalRegistry.DefaultRecoveryFallback`; used only by recoveries that ask for a fallback |
 | `CanalDefaultUnitCapacity` | `50` | per-canal-block capacity |
 | `CanalDefaultDrainSpeed` | `20` | tap drain speed (units per 1 s tick) when the block sets no `drainSpeed` |
 | `MoldDefaultUnits` | `100` | mold capacity when the mold sets no `requiredUnits` |

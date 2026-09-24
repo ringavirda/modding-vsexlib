@@ -14,7 +14,7 @@ public static class NetworkMembership {
     BlockEntity? be
   ) => be?.Behaviors.OfType<BEBehaviorNetworkMember>() ?? [];
 
-  /// <summary>The membership declaring <paramref name="networkType"/> on <paramref name="be"/>, or null. A block entity carries at most one membership per network type.</summary>
+  /// <summary>The first membership declaring <paramref name="networkType"/> on <paramref name="be"/>, or null. A second membership of the same type is not returned.</summary>
   public static BEBehaviorNetworkMember? MemberOf(
     BlockEntity? be,
     string networkType
@@ -24,7 +24,7 @@ public static class NetworkMembership {
         string.Equals(m.NetworkType, networkType, StringComparison.Ordinal)
       );
 
-  /// <summary>How the cell at <paramref name="pos"/> participates in <paramref name="networkType"/>, or null. A membership behaviour answers first, then the block.</summary>
+  /// <summary>How the cell at <paramref name="pos"/> participates in <paramref name="networkType"/>, or null. The first membership behaviour that joins answers, then the block; the graph reads only that member's connector faces.</summary>
   public static INetworkMember? Resolve(
     IBlockAccessor world,
     BlockPos pos,
