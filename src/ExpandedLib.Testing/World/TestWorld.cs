@@ -734,6 +734,12 @@ public sealed partial class TestWorld : IDisposable {
     // The full registries a content check enumerates; computed on each read.
     w.Blocks.Returns(ci => (IList<Block>)_blocksById.Values.ToList());
     w.Items.Returns(ci => (IList<Item>)_itemsByCode.Values.ToList());
+    w.Collectibles.Returns(ci =>
+      _itemsByCode
+        .Values.Cast<CollectibleObject>()
+        .Concat(_blocksById.Values)
+        .ToList()
+    );
     return w;
   }
 

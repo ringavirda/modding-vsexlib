@@ -42,6 +42,59 @@ public class DoublesTests {
     Assert.True(player.Sneaking);
   }
 
+  // Fails when CtrlHeld writes anything but the entity's own CtrlKey control.
+  [Fact]
+  public void Ctrl_is_reflected_in_the_entitys_own_controls() {
+    using var world = new TestWorld();
+    TestPlayer player = world.Player();
+
+    player.CtrlHeld = true;
+
+    Assert.True(player.Entity.Controls.CtrlKey);
+    Assert.True(player.CtrlHeld);
+  }
+
+  // Fails when GameMode is not what the player's world data answers.
+  [Fact]
+  public void The_game_mode_reads_back_through_the_players_world_data() {
+    using var world = new TestWorld();
+    TestPlayer player = world.Player();
+
+    player.GameMode = EnumGameMode.Creative;
+
+    Assert.Equal(
+      EnumGameMode.Creative,
+      player.Player.WorldData.CurrentGameMode
+    );
+  }
+
+  // Fails when the world does not answer the player's uid with the player, or the inventory manager
+  // hands out another hotbar: the game reaches both through the entity.
+  [Fact]
+  public void The_entity_resolves_to_the_player_and_its_hotbar() {
+    using var world = new TestWorld();
+    TestPlayer player = world.Player("paying");
+
+    Assert.Same(player.Player, player.Entity.Player);
+    Assert.Same(
+      player.Hotbar,
+      player.Entity.Player.InventoryManager.GetHotbarInventory()
+    );
+    Assert.Equal(12, player.Hotbar.Count);
+  }
+
+  // Fails when the world's Collectibles leaves out its registered items or blocks.
+  [Fact]
+  public void The_worlds_collectibles_hold_its_items_and_blocks() {
+    using var world = new TestWorld();
+    Item item = world.RegisterItem("game:stick");
+    Block block = TestBlocks.Configure(new Block(), "game:plank-oak", 5002);
+    world.Register(block);
+
+    Assert.Contains(item, world.World.Collectibles);
+    Assert.Contains(block, world.World.Collectibles);
+  }
+
   #endregion
 
   #region ModConfig
