@@ -135,17 +135,19 @@ public static class GridRecipeCollisionCheck {
   }
 
   // Every combination of states the recipe's named wildcards take; one empty combination when it
-  // names none, or names more than MaxBindings combinations.
+  // names none, or names more than MaxBindings combinations. A name several slots share takes the
+  // states of the last in pattern order (RecipeBase.GetNameToCodeMappingForBasicWildcard), and
+  // stays unbound when that slot has no allowedVariants.
   private static IEnumerable<Dictionary<string, string>> Bindings(
     JObject?[] placed
   ) {
-    var names = new Dictionary<string, string[]>(StringComparer.Ordinal);
+    var named = new Dictionary<string, string[]?>(StringComparer.Ordinal);
     foreach (JObject ingredient in placed.OfType<JObject>())
-      if (
-        IsNamedWildcard(ingredient, out string name)
-        && Allowed(ingredient) is { } states
-      )
-        names.TryAdd(name, states);
+      if (IsNamedWildcard(ingredient, out string name))
+        named[name] = Allowed(ingredient);
+    Dictionary<string, string[]> names = named
+      .Where(n => n.Value != null)
+      .ToDictionary(n => n.Key, n => n.Value!, StringComparer.Ordinal);
 
     IEnumerable<Dictionary<string, string>> combinations =
     [
@@ -186,11 +188,11 @@ public static class GridRecipeCollisionCheck {
     var location = AssetLocation.Create(code, fileDomain);
     string path = AdvancedHole.Replace(location.Path, "*");
     string? domain = location.Domain == "*" ? null : location.Domain;
-    if (
-      IsNamedWildcard(ingredient, out string name)
-      && binding.TryGetValue(name, out string? state)
-    )
-      return new Slot(type, domain, [path.Replace("*", state)], true);
+    // A name left unbound takes any state, whatever this slot's allowedVariants.
+    if (IsNamedWildcard(ingredient, out string name))
+      return binding.TryGetValue(name, out string? state)
+        ? new Slot(type, domain, [path.Replace("*", state)], true)
+        : new Slot(type, domain, [path]);
     if (Allowed(ingredient) is { } allowed && path.Contains('*')) {
       int star = path.IndexOf('*');
       return new Slot(

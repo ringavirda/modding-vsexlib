@@ -187,6 +187,62 @@ public class GridRecipeCollisionCheckTests {
       )
     );
 
+  // Fails when a name two slots share takes the first slot's states, stays bound when the last
+  // slot has no allowedVariants, or, unbound, is narrowed by a slot's own allowedVariants.
+  [Fact]
+  public void A_shared_name_takes_the_last_slot_states() =>
+    Assert.Equal(
+      [
+        Collision(0, "last", 1, "open"),
+        Collision(0, "last", 2, "pine"),
+        Collision(1, "open", 2, "pine"),
+      ],
+      Findings(
+        Recipe(
+          "last",
+          "PL",
+          2,
+          1,
+          """
+          {
+            "P": {
+              "type": "item", "code": "game:plank-*", "name": "wood", "allowedVariants": ["oak"]
+            },
+            "L": {
+              "type": "item", "code": "game:log-*", "name": "wood", "allowedVariants": ["pine"]
+            }
+          }
+          """
+        ),
+        Recipe(
+          "open",
+          "PL",
+          2,
+          1,
+          """
+          {
+            "P": {
+              "type": "item", "code": "game:plank-*", "name": "wood", "allowedVariants": ["oak"]
+            },
+            "L": { "type": "item", "code": "game:log-*", "name": "wood" }
+          }
+          """
+        ),
+        Recipe(
+          "pine",
+          "PL",
+          2,
+          1,
+          """
+          {
+            "P": { "type": "item", "code": "game:plank-pine" },
+            "L": { "type": "item", "code": "game:log-pine" }
+          }
+          """
+        )
+      )
+    );
+
   // Fails when the names of a recipe with more than 256 combinations stay bound.
   [Fact]
   public void Names_past_the_combination_limit_are_left_unbound() {
