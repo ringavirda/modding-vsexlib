@@ -6,7 +6,8 @@ owns every cell block (canal, start, tap, mold pedestal, barrel) and the content
 
 **Owns**
 - The molten flow driver: per-cell metal ownership, the distance-from-source BFS, the wavefront sort,
-  `FlowEdge` level-equalisation, the downhill vertical edge and the per-tick thermal pass.
+  `FlowEdge` level-equalisation, the per-cell flow rules, the downhill vertical edge and the per-tick
+  thermal pass.
 - Every molten tunable and its shipped value: `MoltenFlowRate`, `MoltenMinFlowAmount`, `MoltenCooldownDefault`,
   `CanalDefaultUnitCapacity`, `CanalDefaultDrainSpeed`, `MoldDefaultUnits`, `BarrelDefaultMaxUnits`,
   `MoltenCooldownSpeed` + the three per-container cooldown coefficients, `CanalSealClayCost` /
@@ -55,7 +56,7 @@ different metals stand side by side in one graph without mixing.
 ### 1. Cells own their metal
 
 The network stores no metal. Every node is an `IMoltenCell` exposing amount / type / temperature / capacity,
-the two latches, two capability flags, and four operations:
+the two latches, two capability flags, its flow rules, and four operations:
 
 | member | meaning |
 |---|---|
@@ -66,7 +67,8 @@ the two latches, two capability flags, and four operations:
 | `Sealed` | clay-sealed manual valve |
 | `Solidified` | frozen plug |
 | `IsFlowSource` | roots the distance BFS (the canal start) |
-| `AcceptsSubMinimumFlow` | drain fitting (tap / pedestal): a levelling edge into it moves the whole difference, not half, so a run empties into it |
+| `AcceptsSubMinimumFlow` | drain fitting (tap / pedestal): a levelling edge into it moves the whole difference, not half, so a run empties into it; a flow rule's gap floor does not apply to it |
+| `FlowRules` | this cell's `MoltenFlowRules`, read every tick; null (the default member) leaves its edges on the network defaults - see section 3 |
 | `EnsureMetalStack` / `PushMetalRaw` / `DrainMetal` / `UpdateThermal` | the per-tick operations |
 
 Two implementations exist:
@@ -106,7 +108,7 @@ Gotchas.
 
 ### 3. `FlowEdge` - the transfer rule
 
-`MoltenNetwork.FlowEdge(a, b, maxFlow, world, downhillOnly)`:
+`MoltenNetwork.FlowEdge(a, b, maxFlow, rules, distFromStart, world, downhillOnly)`:
 
 ```
 if aCap <= 0 or bCap <= 0                  -> nothing
@@ -116,9 +118,13 @@ giver    = the cell with more units
 receiver = the other
 if downhillOnly and a is not the giver     -> nothing
 if receiver has metal of a DIFFERENT type  -> nothing (no mixing)
-step = diff       if receiver.AcceptsSubMinimumFlow or downhillOnly
+whole = receiver.AcceptsSubMinimumFlow or downhillOnly
+if the edge has rules:
+  if diff < rules.MinFlowGap and not receiver.AcceptsSubMinimumFlow -> nothing
+  whole = whole or (rules.Conveys and distance(receiver) > distance(giver))
+step = diff       if whole
        diff / 2   otherwise (integer division)
-transfer = min(step, MoltenFlowRate)
+transfer = min(step, maxFlow)              maxFlow = rules.FlowRate, else MoltenFlowRate
 if transfer <= 0                           -> nothing
 accepted = receiver.PushMetalRaw(transfer, giver type, giver temp)
 giver.DrainMetal(accepted)
@@ -126,11 +132,12 @@ giver.DrainMetal(accepted)
 
 A levelling pair moves half the difference, so it never overshoots the midpoint; integer halving settles a
 pair at a difference of at most 1 unit and stops there. `MoltenMinFlowAmount` is not applied anywhere in the
-network driver; a small difference still closes.
+network driver; on an edge without rules a small difference still closes.
 
 The flow loop walks all six faces, each gated by `HasConnectorAt`. A vertical edge is driven only from the
 upper cell (face `DOWN`) with `downhillOnly`: it runs one way, moves the whole difference (capped at
-`MoltenFlowRate`) and never pumps metal uphill. No shipped canal fitting exposes an up or down connector
+the edge's rate) and never pumps metal uphill; an edge whose rules are horizontal-only moves nothing
+vertically. No shipped canal fitting exposes an up or down connector
 (every canal, start, tap and pedestal orientation is horizontal), so no shipped run has a vertical edge.
 
 `PushMetalRaw` clamps to the receiver's free space, refuses a type mismatch or a solidified cell, and
@@ -139,6 +146,22 @@ volume-weight-averages the temperature of the two charges (`BlockEntityMoltenCan
 
 Cells that are `Sealed` or `Solidified` are skipped on both sides before `FlowEdge` is reached, and both
 latches also sever the *graph* at that position via `BlockEntityMoltenCanal.IsConnectionBroken`.
+
+**Per-cell flow rules.** A cell can return a `MoltenFlowRules` record from `IMoltenCell.FlowRules`. A
+connection applies rules only when both cells return them, combined per edge (`MoltenNetwork.EdgeRules`): the
+smaller `FlowRate`, the larger `MinFlowGap`, conveying only if both convey, horizontal-only if either is. When
+either cell returns null the edge runs on the defaults above, so a cell's floor or `HorizontalOnly` holds only
+against a neighbour that returns rules too.
+
+| member | unit | effect on the edge |
+|---|---|---|
+| `FlowRate` | metal units per connection per tick | caps the move in place of `MoltenFlowRate`; 0 or less moves nothing |
+| `MinFlowGap` | metal units | a difference below it moves nothing, except into a drain fitting; the floor is on the difference, before halving; 1 or less sets no floor |
+| `Conveys` | - | a receiver farther than the giver from the nearest flow source, by the section 2 distance map, takes the whole difference; toward the source or between equal distances, half. A cell no source reaches counts as farthest |
+| `HorizontalOnly` | - | no metal crosses the edge vertically |
+
+A vertical edge with rules that are not horizontal-only keeps the downhill rule: the whole difference, capped
+by the rule's `FlowRate` and floored by its `MinFlowGap`.
 
 The network tick runs at 1 s (`BlockNetworkModSystem.StartServerSide`) and the driver does not read `dt`, so
 `MoltenFlowRate` is units per connection per tick, which is per second. This is the number the design's
@@ -215,7 +238,7 @@ hosted behaviours rather than nodes:
 
 | driver | code | ordering | pull rate | flow rate |
 |---|---|---|---|---|
-| `MoltenNetwork` | `MoltenNetwork.OnTick` | farthest-from-source first; horizontal edge driven by the farther cell, vertical edge by the upper | n/a (fed by pour) | `MoltenFlowRate`, half the difference |
+| `MoltenNetwork` | `MoltenNetwork.OnTick` | farthest-from-source first; horizontal edge driven by the farther cell, vertical edge by the upper | n/a (fed by pour) | `MoltenFlowRate`, half the difference; an edge with flow rules per section 3 |
 | Sand casting bed | `BlockEntitySandCastingBed.OnServerTick` | basin-outward (Manhattan distance from the basin), edge driven nearer->farther, and only where both ends are carved | `PullRatePerTick = 25`, hard-coded, from any adjacent molten cell on a horizontal face of the basin (`PullFromNeighbours`) | `MoltenFlowRate`, the whole difference |
 | Sand casting cell | `BlockEntitySandCastingCell.OnServerTick` | single hosted cell | `PullRatePerTick = 25`, hard-coded, from the launder face only (`PullFromLaunder`) | n/a |
 
@@ -232,7 +255,7 @@ hardens.
 
 | key | value | what it does |
 |---|---|---|
-| `MoltenFlowRate` | `50` | max units across one canal connection per tick (= per second) |
+| `MoltenFlowRate` | `50` | max units across one canal connection per tick (= per second) on an edge without flow rules |
 | `MoltenMinFlowAmount` | `10` | minimum transfer in the sand casting bed's `FlowEdge` unless the receiver is a drain fitting; the network driver does not read it |
 | `MoltenCooldownDefault` | `24` | cooldown speed stamped on a carrier stack when a caller gives none |
 | `MetalLiquidThreshold` | `0.8` | fraction of melting point above which metal reads *liquid* |
@@ -331,10 +354,12 @@ faster as it empties. The parked-barrel literal `300f` and the `BarrelCooldownCo
 |---|---|---|
 | `MoltenNetwork : BlockNetwork` | exlib | the driver; `NetworkType => "molten"` |
 | `MoltenNetwork.OnTick` | exlib | collect -> order -> flow -> cool. The whole model is here |
-| `MoltenNetwork.FlowEdge` | exlib | the transfer rule (private static; reads nothing but its two cells) |
+| `MoltenNetwork.FlowEdge` | exlib | the transfer rule (private static; reads its two cells, the edge's rules and the distance map) |
+| `MoltenNetwork.EdgeRules` | exlib | combines two cells' `MoltenFlowRules` into the edge's, or null when either has none |
 | `MoltenNetwork.BuildDistanceFromStart` | exlib | multi-source BFS, horizontals only |
 | `MoltenNetwork.ComputeTopologySignature` | exlib | the cache-invalidation fingerprint |
 | `IMoltenCell` | exlib | the extension point. Implement this to be carried by the network |
+| `MoltenFlowRules` | exlib | a cell's flow rules: rate, gap floor, conveying, horizontal-only |
 | `BEBehaviorMoltenCell` | exlib | `IMoltenCell` + `IFillerHostedBehavior`; config via `ConfigureFromFiller` |
 | `MoltenCellHost` | exlib | selects one of several hosted cells on a block entity by declared key |
 | `BlockEntityMoltenCanal` | iiex | the node implementation; `IsConnectionBroken` is `Sealed || Solidified` |
@@ -348,7 +373,8 @@ faster as it empties. The parked-barrel literal `300f` and the `BarrelCooldownCo
 | `IndustryModule.RegisterNetworkTypes` | exlib | `networks.RegisterNetworkType("molten", () => new MoltenNetwork(networks))` |
 
 Tests: `MoltenFlowTests` (iiex; half-difference levelling, settling, no floor on a small difference, no mixing),
-`MoltenInvariantTests` (conservation and cell bounds under random flow), `CastingScenarioTests` (a run casting
+`MoltenFlowRulesTests` (exlib; conveying, vertical faces, the gap floor, the rate, per-edge combining, the
+no-rules fallback), `MoltenInvariantTests` (conservation and cell bounds under random flow), `CastingScenarioTests` (a run casting
 at a pedestal and a barrel tap).
 
 **Where a caller hooks in**
