@@ -134,25 +134,21 @@ public static class StructureBreaks
     );
   }
 
-  /// <summary>
-  /// Breaks each block of <paramref name="world"/> whose attributes carry <c>fillerOffsets</c> or
-  /// whose entity behaviours include <c>ExRightClickConstructable</c>, one variant per block, all in
-  /// <paramref name="world"/>: each structure is placed at its own principal, 32 blocks along X from
-  /// the last, and broken there.
-  /// </summary>
-  /// <remarks>Mutates <paramref name="world"/> and the blocks it breaks: registers and starts a
-  /// <see cref="MechanicalPowerMod"/> when none is registered; gives each block broken, and each
-  /// <see cref="BlockStructureFiller"/>, this world's api, resolves their <c>drops</c> against it and
-  /// runs their <see cref="Block.OnLoaded"/> once; registers a stand-in item or block for every
-  /// drop and stage material it does not hold; leaves each broken structure's leftovers in place;
-  /// and clears <see cref="TestWorld.Drops"/> before each break.</remarks>
-  /// <param name="world">A world <see cref="TestWorld.LoadAssets"/> loaded, with the network types
-  /// and mod systems the block entities need already registered.</param>
+  /// <summary>Breaks each block of <paramref name="world"/> whose attributes carry
+  /// <c>fillerOffsets</c> or whose entity behaviours include <c>ExRightClickConstructable</c>, one
+  /// variant per block, each at its own principal 32 blocks along X from the last.</summary>
+  /// <remarks>Registers and starts a <see cref="MechanicalPowerMod"/> when the world holds none;
+  /// gives each block it breaks, and each <see cref="BlockStructureFiller"/>, the world's api, its
+  /// resolved <c>drops</c> and one <see cref="Block.OnLoaded"/>; registers a stand-in for every drop
+  /// and material the world lacks; clears <see cref="TestWorld.Drops"/> before each break and keeps
+  /// what a break leaves.</remarks>
+  /// <param name="world">A world <see cref="TestWorld.LoadAssets"/> loaded, holding the network
+  /// types and mod systems the block entities need.</param>
   /// <param name="include">Which in-scope blocks to break; all of them when null.</param>
-  /// <returns>The blocktypes (the block codes less their variant parts) and variants covered, the
-  /// breaks and their failures, and what each break spawned.</returns>
-  /// <exception cref="Exception">Whatever a structure filler's <see cref="Block.OnLoaded"/> throws;
-  /// a block that cannot be stood up, built or broken is a failure line instead.</exception>
+  /// <returns>The blocktypes (codes less their variant parts) and variants covered, as on the
+  /// code-first path.</returns>
+  /// <exception cref="Exception">What a structure filler's <see cref="Block.OnLoaded"/> throws; a
+  /// block that cannot be stood up or broken is a failure line.</exception>
   public static Result Run(
     TestWorld world,
     System.Func<Block, bool>? include = null
@@ -342,12 +338,10 @@ public static class StructureBreaks
       ? (RightClickConstruction?)ReflectionHelpers.GetField(behavior, "rcc")
       : null;
 
-  /// <summary>
-  /// Stands the variant <paramref name="code"/> up at <paramref name="site"/>, builds it to stage
-  /// <paramref name="built"/> (null for a structure without stages) and breaks it from
-  /// <paramref name="cell"/> (-1 the principal, else the index of a filler cell), adding what the
-  /// break spawned to <paramref name="spawned"/>.
-  /// </summary>
+  /// <summary>Stands the variant <paramref name="code"/> up at <paramref name="site"/>, builds it to
+  /// stage <paramref name="built"/> (null for a structure without stages), breaks it from
+  /// <paramref name="cell"/> (-1 the principal, else a filler cell's index) and adds what the break
+  /// spawned to <paramref name="spawned"/>.</summary>
   /// <param name="noMoreCells">Set when no later cell can be broken: <paramref name="cell"/> is past
   /// the last filler (the return is then null), or the structure could not be stood up.</param>
   /// <returns>Why the break failed, or null when it passed.</returns>

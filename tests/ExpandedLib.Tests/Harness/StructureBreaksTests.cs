@@ -231,10 +231,8 @@ public class StructureBreaksTests
   private static bool IsFrame(Block block) =>
     block.Code.Path.StartsWith("frame-");
 
-  // Fails when LoadAssets keeps the loader's classes out of the world's registry (the stages do not
-  // stand up), when the run stops registering the mechanical power system, or when the fixture's
-  // metal plate loses its storeWildCard:
-  // "threw NullReferenceException: Object reference not set to an instance of an object."
+  // Fails when LoadAssets keeps the loader's classes from the world, when the run registers no
+  // mechanical power system, or when the fixture's metal plate loses its storeWildCard.
   [Fact]
   public void A_json_megablock_breaks_clean_from_every_cell_at_every_stage()
   {

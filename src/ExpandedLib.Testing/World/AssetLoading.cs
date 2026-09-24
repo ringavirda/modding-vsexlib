@@ -29,18 +29,14 @@ public sealed partial class TestWorld {
   /// <remarks>The install's vanilla mod systems register their classes first, so a vanilla-only
   /// load logs nothing. exlib's driver then runs its <c>StartPre</c>, emptying every per-world
   /// registry (<see cref="Registries.ExWorldState"/>), and every exlib mod system its <c>Start</c>,
-  /// before the mod's. Every system started, a mod's own included, is disposed when the load ends,
-  /// thrown or not, the mod's first, so the Harmony holds they took are released. Each block and
-  /// item registered gets an id of its own, as the engine gives one on registration, and every class
-  /// the load registered goes into this world's class registry (<see cref="RegisterClasses"/>), so a
-  /// loaded block placed here spawns its block entity with its declared behaviours. A block's api,
-  /// its resolved <c>drops</c> and its <see cref="Block.OnLoaded"/> are left to the caller.</remarks>
-  /// <param name="modPath">A mod's or sample's folder; <c>modinfo.json</c>/<c>bin/</c> may sit at its
-  /// root or under <c>src/</c>, assets always under <c>assets/&lt;modid&gt;/</c>. A mod whose
-  /// <c>modinfo.json</c> declares <c>"type": "content"</c> has no compiled assembly.</param>
+  /// before the mod's. Every system started is disposed when the load ends, thrown or not, the mod's
+  /// first. A block's api, resolved <c>drops</c> and <c>OnLoaded</c> are the caller's.</remarks>
+  /// <param name="modPath">A mod's or sample's folder: <c>modinfo.json</c> and <c>bin/</c> at its root
+  /// or under <c>src/</c>, assets under <c>assets/&lt;modid&gt;/</c>; a content mod has no dll.</param>
   /// <param name="gamePath">The game install to read base assets and vanilla mods from; defaults to
   /// <see cref="VsAssemblyResolver.InstallPath"/>.</param>
-  /// <returns>This world.</returns>
+  /// <returns>This world, holding each loaded block and item under an id of its own and every class
+  /// the load registered in its class registry (<see cref="RegisterClasses"/>).</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, no <c>modinfo.json</c>
   /// resolves, or a mod that is not a content mod has no compiled dll under <c>bin/</c>.</exception>
   public TestWorld LoadAssets(string modPath, string? gamePath = null) {
