@@ -42,9 +42,11 @@ public class AssetLoaderVanillaTests : IDisposable {
   }
 
   // Fails when a vanilla system starts throwing against the loader's API, or stops: a class it
-  // registers below the throw would be lost unseen.
+  // registers below the throw would be lost unseen. Before 1.21 RecipeRegistryGeneric has only
+  // virtual members, so the substitute API returns a working registry and RecipeRegistrySystem
+  // starts.
   [Fact]
-  public void The_vanilla_systems_passed_over_are_the_known_four() {
+  public void The_vanilla_systems_passed_over_are_the_known_ones() {
     WriteContentMod("passedover");
     using var world = new TestWorld();
 
@@ -54,7 +56,9 @@ public class AssetLoaderVanillaTests : IDisposable {
       [
         "Vintagestory.GameContent.ModSystemEntityOwnership",
         "Vintagestory.GameContent.ModSystemOreMap",
+#if GAME_GE_1_21
         "Vintagestory.GameContent.RecipeRegistrySystem",
+#endif
         "Vintagestory.GameContent.StoryStructuresSpawnConditions",
       ],
       world.PassedOverVanillaSystems.Order()
