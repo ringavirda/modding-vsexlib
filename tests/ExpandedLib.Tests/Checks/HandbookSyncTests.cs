@@ -6,6 +6,7 @@ namespace ExpandedLib.Tests;
 
 /// <summary><see cref="HandbookSync.Problems"/> and <see cref="HandbookSync.Check"/> over a planted
 /// one-page handbook in a temporary repository.</summary>
+[Collection(RepoRootCollection.Name)]
 public class HandbookSyncTests {
   private const string Domain = "plantedhandbook";
   private const string Source =

@@ -53,14 +53,18 @@ public static class TreeKeys {
   /// <summary>Asserts that <paramref name="be"/>'s current <see cref="Of"/> matches the committed
   /// golden at <c>mods/&lt;mod&gt;/tests/goldens/&lt;domain&gt;/treekeys/&lt;ClassName&gt;.txt</c>, one
   /// key per line.</summary>
-  public static void AssertGolden(BlockEntity be, string domain) {
+  public static void AssertGolden(BlockEntity be, string domain) =>
+    AssertGolden(be, domain, DefinitionGoldens.WriteRequested);
+
+  // write: rewrite the golden from the current keys and return without comparing.
+  internal static void AssertGolden(BlockEntity be, string domain, bool write) {
     string className = be.GetType().Name;
     string file = DefinitionGoldens.SolutionRelative(
       $"mods/{domain}/tests/goldens/{domain}/treekeys/{className}.txt"
     );
     IReadOnlyList<string> actual = Of(be);
 
-    if (DefinitionGoldens.WriteRequested) {
+    if (write) {
       Directory.CreateDirectory(Path.GetDirectoryName(file)!);
       File.WriteAllLines(file, actual);
       return;

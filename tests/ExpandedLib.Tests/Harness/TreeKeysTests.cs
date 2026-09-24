@@ -98,7 +98,7 @@ public class TreeKeysTests {
 
     InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
       () =>
-        TreeKeys.AssertGolden(be, Domain)
+        TreeKeys.AssertGolden(be, Domain, write: false)
     );
 
     Assert.StartsWith(
@@ -114,6 +114,6 @@ public class TreeKeysTests {
     Place(be);
     using var golden = new Golden(TreeKeys.Of(be));
 
-    TreeKeys.AssertGolden(be, Domain);
+    TreeKeys.AssertGolden(be, Domain, write: false);
   }
 }
