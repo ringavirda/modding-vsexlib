@@ -150,7 +150,9 @@ public class BlockSignalsTests {
   [Fact]
   public void The_blocks_own_behaviours_are_read_by_type_name() {
     Block block = Plain();
-    block.BlockBehaviors = [new BlockBehaviorHorizontalOrientable(block)];
+    var orientable = new BlockBehaviorHorizontalOrientable(block);
+    block.BlockBehaviors = [orientable];
+    block.CollectibleBehaviors = [orientable];
 
     Assert.Equal(
       ["BlockBehaviorHorizontalOrientable"],
@@ -181,7 +183,9 @@ public class BlockSignalsTests {
       1,
       ("side", "north")
     );
-    block.BlockBehaviors = [new BlockBehaviorHorizontalOrientable(block)];
+    var orientable = new BlockBehaviorHorizontalOrientable(block);
+    block.BlockBehaviors = [orientable];
+    block.CollectibleBehaviors = [orientable];
 
     Assert.Equal(["side"], Read(block).PlacedGroups);
     Assert.Empty(Read(Plain()).PlacedGroups);
