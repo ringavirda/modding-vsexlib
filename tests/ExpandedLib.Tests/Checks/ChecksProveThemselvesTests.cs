@@ -16,11 +16,6 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
   /// <summary>Members with no planted-defect test yet, in file order.</summary>
   private static readonly string[] Pending =
   [
-    "LangCoverage.OrphanedDescriptions",
-    "LangKeys.Check",
-    "LangParity.Check",
-    "LoopingAnimations.Check",
-    "MegablockFrames.Misfit",
     "MultiblockCodes.Unresolvable",
     "NetworkNodeContract.Violations",
     "NetworkNodeContract.SchemeViolations",
