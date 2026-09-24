@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
+using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -20,17 +21,20 @@ public sealed class ExOrientableRig {
   private readonly Block _placer;
   private readonly BlockBehaviorExOrientable _behaviour;
   private readonly string _variantKey;
+  private readonly List<Block> _states;
 
   private ExOrientableRig(
     TestWorld world,
     Block placer,
     BlockBehaviorExOrientable behaviour,
-    string variantKey
+    string variantKey,
+    List<Block> states
   ) {
     World = world;
     _placer = placer;
     _behaviour = behaviour;
     _variantKey = variantKey;
+    _states = states;
   }
 
   public TestWorld World { get; }
@@ -55,6 +59,7 @@ public sealed class ExOrientableRig {
   /// A block declaring <paramref name="states"/> in the <paramref name="variantKey"/> group, one
   /// registered <see cref="Block"/> per state, all sharing one behaviour instance's configuration.
   /// </summary>
+  /// <param name="newBlock">Builds each state's block; a plain <see cref="Block"/> when null.</param>
   /// <param name="fixedGroups">Variant groups that precede the orientation one and never move. Pass
   /// at least one to exercise a multi-segment code.</param>
   public static ExOrientableRig WithVariants(
@@ -63,6 +68,7 @@ public sealed class ExOrientableRig {
     string[] states,
     string mode = "horizontal",
     string? scheme = null,
+    System.Func<Block>? newBlock = null,
     params (string key, string value)[] fixedGroups
   ) {
     var world = new TestWorld();
@@ -80,7 +86,7 @@ public sealed class ExOrientableRig {
         loc.Path + string.Concat(variants.Select(v => "-" + v.Item2));
 
       return TestBlocks.Configure(
-        new Block(),
+        newBlock?.Invoke() ?? new Block(),
         $"{loc.Domain}:{path}",
         id,
         variants
@@ -88,9 +94,11 @@ public sealed class ExOrientableRig {
     }
 
     Block? placer = null;
+    var built = new List<Block>();
     for (int i = 0; i < states.Length; i++) {
       Block b = Build(states[i], i + 1);
       world.Register(b);
+      built.Add(b);
       placer ??= b;
     }
 
@@ -107,7 +115,53 @@ public sealed class ExOrientableRig {
     placer!.BlockBehaviors = [behaviour];
     placer.CollectibleBehaviors = [behaviour];
 
-    return new ExOrientableRig(world, placer, behaviour, variantKey);
+    return new ExOrientableRig(world, placer, behaviour, variantKey, built);
+  }
+
+  /// <summary>
+  /// A horizontal <see cref="BlockFilledMegastructure"/> in the four sides whose footprint is
+  /// <paramref name="fillerOffsetsJson"/> (a <c>fillerOffsets</c> array, north orientation), with the
+  /// filler block registered.
+  /// </summary>
+  public static ExOrientableRig Megablock(string fillerOffsetsJson) {
+    var attributes = new JsonObject(
+      Newtonsoft.Json.Linq.JToken.Parse(
+        $$"""{"fillerOffsets":{{fillerOffsetsJson}}}"""
+      )
+    );
+    ExOrientableRig rig = WithVariants(
+      "exlib:mega",
+      "side",
+      ["n", "e", "s", "w"],
+      newBlock: () => new BlockFilledMegastructure { Attributes = attributes }
+    );
+    rig.World.Register(
+      TestBlocks.Configure(
+        new BlockStructureFiller(),
+        StructureFillers.FillerCode.ToString(),
+        90
+      )
+    );
+    return rig;
+  }
+
+  /// <summary>Appends a behaviour built by <paramref name="make"/> to every state's block.</summary>
+  public ExOrientableRig WithBehaviour(System.Func<Block, BlockBehavior> make) {
+    foreach (Block state in _states) {
+      BlockBehavior behaviour = make(state);
+      state.BlockBehaviors = [.. state.BlockBehaviors, behaviour];
+      state.CollectibleBehaviors = [.. state.CollectibleBehaviors, behaviour];
+    }
+    return this;
+  }
+
+  /// <summary>Stands a solid block (<c>Replaceable</c> 0) at <paramref name="pos"/>.</summary>
+  public ExOrientableRig Occupy(BlockPos pos) {
+    World.Place(
+      pos,
+      TestBlocks.Configure(new Block(), "game:rock-granite", 91)
+    );
+    return this;
   }
 
   #endregion

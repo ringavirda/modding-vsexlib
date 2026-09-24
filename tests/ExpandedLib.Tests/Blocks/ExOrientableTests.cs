@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Xunit;
 
@@ -7,8 +9,8 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// <see cref="BlockBehaviorExOrientable"/>, the family's replacement for vanilla's
-/// <c>HorizontalOrientable</c>: horizontal and omni placement, the canonical drop and pick stack,
-/// and <c>ApplyOrientation</c>.
+/// <c>HorizontalOrientable</c>: horizontal and omni placement, the space check a placement passes, the
+/// canonical drop and pick stack, and <c>ApplyOrientation</c>.
 /// </summary>
 public class ExOrientableTests {
   private static readonly string[] FourSides = ["n", "e", "s", "w"];
@@ -58,6 +60,107 @@ public class ExOrientableTests {
     Assert.Equal("cantplace", rig.FailureCode);
     Assert.Contains("no 'side' state 'w'", Assert.Single(rig.LoggedErrors));
     Assert.Null(rig.PlacedCode);
+  }
+
+  #endregion
+
+  #region Checking the space
+
+  // Fails when TryPlaceBlock skips the oriented block's CanPlaceBlock.
+  [Fact]
+  public void A_cell_holding_a_block_that_cannot_be_replaced_is_refused() {
+    var rig = ExOrientableRig.WithVariants("exlib:probe", "side", FourSides);
+    rig.Occupy(ExOrientableRig.Pos);
+
+    Assert.False(rig.PlaceLooking("west"));
+
+    Assert.Equal("notreplaceable", rig.FailureCode);
+    Assert.Equal("game:rock-granite", rig.PlacedCode);
+  }
+
+  // Fails when TryPlaceBlock skips CanPlaceBlock: only the megablock's footprint check refuses here.
+  [Fact]
+  public void A_megablock_with_a_footprint_cell_taken_is_refused() {
+    var rig = ExOrientableRig.Megablock("""[{ "x": 0, "y": 1, "z": 0 }]""");
+    rig.Occupy(ExOrientableRig.Pos.UpCopy());
+
+    Assert.False(rig.PlaceLooking("west"));
+
+    Assert.Equal("notenoughspace", rig.FailureCode);
+    Assert.Null(rig.PlacedCode);
+  }
+
+  // Fails when TryPlaceBlock skips CanPlaceBlock: only the behaviour's override refuses here.
+  [Fact]
+  public void A_behaviour_that_refuses_the_placement_is_obeyed_with_its_code() {
+    var rig = ExOrientableRig
+      .WithVariants("exlib:probe", "side", FourSides)
+      .WithBehaviour(b => new RefusesPlacement(b));
+
+    Assert.False(rig.PlaceLooking("west"));
+
+    Assert.Equal("refusedbytest", rig.FailureCode);
+    Assert.Null(rig.PlacedCode);
+  }
+
+  // Fails when TryPlaceBlock skips CanPlaceBlock: only the land-claim test refuses here.
+  [Fact]
+  public void A_claimed_cell_is_refused_to_a_player_without_access() {
+    var rig = ExOrientableRig.WithVariants("exlib:probe", "side", FourSides);
+    rig.World.World.Claims.TryAccess(
+        Arg.Any<IPlayer>(),
+        ExOrientableRig.Pos,
+        EnumBlockAccessFlags.BuildOrBreak
+      )
+      .Returns(false);
+
+    Assert.False(rig.PlaceLooking("west"));
+
+    Assert.Equal("claimed", rig.FailureCode);
+    Assert.Null(rig.PlacedCode);
+  }
+
+  // Fails when TryPlaceBlock sets the block itself instead of calling the oriented block's
+  // DoPlaceBlock.
+  [Fact]
+  public void A_free_cell_takes_the_oriented_variant_through_its_place_hooks() {
+    var placedAs = new List<string>();
+    var rig = ExOrientableRig
+      .WithVariants("exlib:probe", "side", FourSides)
+      .WithBehaviour(b => new RecordsPlacement(b, placedAs));
+
+    Assert.True(rig.PlaceLooking("west"));
+
+    Assert.Equal("exlib:probe-w", rig.PlacedCode);
+    Assert.Equal(["exlib:probe-w"], placedAs);
+  }
+
+  private sealed class RefusesPlacement(Block block) : BlockBehavior(block) {
+    public override bool CanPlaceBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel,
+      ref EnumHandling handling,
+      ref string failureCode
+    ) {
+      handling = EnumHandling.PreventDefault;
+      failureCode = "refusedbytest";
+      return false;
+    }
+  }
+
+  private sealed class RecordsPlacement(Block block, List<string> placedAs)
+    : BlockBehavior(block) {
+    public override bool DoPlaceBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel,
+      ItemStack byItemStack,
+      ref EnumHandling handling
+    ) {
+      placedAs.Add(block.Code.ToString());
+      return true;
+    }
   }
 
   #endregion

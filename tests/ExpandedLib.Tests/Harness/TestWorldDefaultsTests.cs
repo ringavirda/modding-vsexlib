@@ -7,8 +7,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>What a fresh <see cref="TestWorld"/> answers without being told: each API's side,
-/// the client world, the break and removal hooks, and the entity class check on
-/// <see cref="TestWorld.Place"/>.</summary>
+/// the client world, the air and land claims a placement reads, the break and removal hooks, and the
+/// entity class check on <see cref="TestWorld.Place"/>.</summary>
 public class TestWorldDefaultsTests {
   private static readonly BlockPos Pos = new(3, 0, 0);
 
@@ -46,6 +46,34 @@ public class TestWorldDefaultsTests {
     Assert.Same(block, client.BlockAccessor.GetBlock(Pos));
     Assert.Same(block, client.GetBlock(new AssetLocation("test:shared")));
     Assert.Same(world.Log, client.Logger);
+  }
+
+  #endregion
+
+  #region Placement
+
+  // Fails when the harness air keeps Block's default Replaceable of 0.
+  [Fact]
+  public void Air_is_replaceable_by_a_solid_block_as_in_the_game() {
+    var world = new TestWorld();
+    Block solid = TestBlocks.Configure(new Block(), "test:solid", 5);
+
+    Assert.Equal(9999, world.Air.Replaceable);
+    Assert.True(world.Air.IsReplacableBy(solid));
+  }
+
+  // Fails when BuildWorld leaves Claims to NSubstitute's default false.
+  [Fact]
+  public void The_world_grants_every_player_build_access_everywhere() {
+    var world = new TestWorld();
+
+    Assert.True(
+      world.World.Claims.TryAccess(
+        world.Player().Player,
+        Pos,
+        EnumBlockAccessFlags.BuildOrBreak
+      )
+    );
   }
 
   #endregion

@@ -78,7 +78,11 @@ public class BlockBehaviorExOrientable : BlockBehavior {
     return true;
   }
 
-  /// <inheritdoc/>
+  /// <summary>Places the variant wearing the player's facing, after that variant's own
+  /// <c>CanPlaceBlock</c> (replaceable cell, entities, land claim, its block and behaviour checks)
+  /// allows it; a network-oriented block defers to the default placement.</summary>
+  /// <returns>False, with <paramref name="failureCode"/> set, when the variant is missing
+  /// (<c>cantplace</c>) or its <c>CanPlaceBlock</c> refuses.</returns>
   public override bool TryPlaceBlock(
     IWorldAccessor world,
     IPlayer byPlayer,
@@ -112,11 +116,9 @@ public class BlockBehaviorExOrientable : BlockBehavior {
       return false;
     }
 
-    world.BlockAccessor.SetBlock(
-      oriented.BlockId,
-      blockSel.Position,
-      itemstack
-    );
+    if (!oriented.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+      return false;
+    oriented.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
     return true;
   }
 

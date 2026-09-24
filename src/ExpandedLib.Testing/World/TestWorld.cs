@@ -29,7 +29,8 @@ public sealed partial class TestWorld : IDisposable {
 
   private double _totalDays;
 
-  /// <summary>The block returned for any cell that has not been placed (id 0, code "game:air").</summary>
+  /// <summary>The block returned for any cell that has not been placed (id 0, code "game:air",
+  /// <c>Replaceable</c> 9999 as the game's air, so any block may be placed over it).</summary>
   public Block Air { get; }
 
   /// <summary>The network graph manager under test. Factories are registered via <see cref="RegisterNetwork"/>.</summary>
@@ -40,7 +41,8 @@ public sealed partial class TestWorld : IDisposable {
 
   /// <summary>The fake server world (calendar, item-drop spawning) exposed as
   /// <see cref="BlockNetworkModSystem.ServerWorld"/>; its <c>Side</c> is
-  /// <see cref="EnumAppSide.Server"/>.</summary>
+  /// <see cref="EnumAppSide.Server"/>, and its <c>Claims.TryAccess</c> answers true for every
+  /// player, cell and flag until a test restubs it.</summary>
   public IServerWorldAccessor World { get; }
 
   /// <summary>The calendar; <see cref="AdvanceDays"/> moves <c>TotalDays</c> for evaporation tests.</summary>
@@ -109,6 +111,7 @@ public sealed partial class TestWorld : IDisposable {
 
   public TestWorld() {
     Air = TestBlocks.Configure(new Block(), "game:air", 0);
+    Air.Replaceable = 9999;
     _blocksById[0] = Air;
 
     Calendar = Substitute.For<IGameCalendar>();
@@ -695,6 +698,13 @@ public sealed partial class TestWorld : IDisposable {
     w.Config.Returns(Config.Tree);
     // Particle/sound helpers read world.Rand.
     w.Rand.Returns(new Random(1));
+    // No land claims: every player may build and use everywhere until a test restubs TryAccess.
+    w.Claims.TryAccess(
+        Arg.Any<IPlayer>(),
+        Arg.Any<BlockPos>(),
+        Arg.Any<EnumBlockAccessFlags>()
+      )
+      .Returns(true);
     w.GetBlock(Arg.Any<AssetLocation>())
       .Returns(ci => GetByCode(ci.Arg<AssetLocation>()));
     w.GetBlock(Arg.Any<int>())
