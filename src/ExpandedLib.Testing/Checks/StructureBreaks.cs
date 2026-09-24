@@ -136,7 +136,8 @@ public static class StructureBreaks
 
   /// <summary>Breaks each block of <paramref name="world"/> whose attributes carry
   /// <c>fillerOffsets</c> or whose entity behaviours include <c>ExRightClickConstructable</c>, one
-  /// variant per block, each at its own principal 32 blocks along X from the last.</summary>
+  /// variant per block, each at its own principal 32 blocks along X from the last, a later run on
+  /// the same world continuing past the earlier run's.</summary>
   /// <remarks>Registers and starts a <see cref="MechanicalPowerMod"/> when the world holds none;
   /// gives each block it breaks, and each <see cref="BlockStructureFiller"/>, the world's api, its
   /// resolved <c>drops</c> and one <see cref="Block.OnLoaded"/>; registers a stand-in for every drop
@@ -170,7 +171,6 @@ public static class StructureBreaks
         .OrderBy(b => b.Code.ToString(), StringComparer.Ordinal),
     ];
     var tally = new Tally();
-    int placed = 0;
     foreach (Block block in scoped)
     {
       bool ready = false;
@@ -180,7 +180,7 @@ public static class StructureBreaks
         () =>
           new Site(
             world,
-            new BlockPos(At.X + Stride * placed++, At.Y, At.Z),
+            new BlockPos(At.X + Stride * world.BreakSites++, At.Y, At.Z),
             () =>
             {
               if (!ready)

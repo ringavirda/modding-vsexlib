@@ -624,7 +624,8 @@ A mod whose blocks are JSON, not code-first definitions, is loaded with `LoadAss
 that world. `Run(world, include)` breaks every loaded block whose attributes carry `fillerOffsets` or
 whose entity behaviours include `ExRightClickConstructable`, one variant per block, with the same
 pass rules; `include` narrows it. Every structure stands at its own principal, 32 blocks along X
-from the last, and the world keeps what a break leaves. The run gives each block it breaks, and the
+from the last, a later run on the same world continuing past the earlier run's, and the world keeps
+what a break leaves. The run gives each block it breaks, and the
 structure filler, the world's api, resolves its `drops`, registering a stand-in for a code the world
 does not hold, runs its `OnLoaded`, and registers a `MechanicalPowerMod` when the world holds none.
 Anything else the block entities need, such as network types, is registered before the call:

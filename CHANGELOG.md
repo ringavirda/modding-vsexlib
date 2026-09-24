@@ -37,8 +37,9 @@ see the git history.
   `TestWorld.DefineBlock` builds one variant of a definition the way the game registers it.
 - **`StructureBreaks.Run(TestWorld, include)`** (ExpandedLib.Testing): breaks the JSON blocks
   `TestWorld.LoadAssets` loaded that carry `fillerOffsets` or `ExRightClickConstructable` stages,
-  under the same pass rules, all in that world. `StructureBreaks.Result.Spawned` lists every break
-  with the stacks it spawned, on both paths.
+  under the same pass rules, all in that world, a later run standing its structures past the
+  earlier run's. `StructureBreaks.Result.Spawned` lists every break with the stacks it spawned, on
+  both paths.
 - **Machine-sound volume**: `.exmod sound [0-1]` sets a per-player multiplier, `ExSounds.MachineVolume`,
   on every sound the `ExSounds` helpers play. One-shots the server plays reach each client in range
   over the `exlibSound` channel and are scaled there; one-shots and loops play as the game's Sound

@@ -27,6 +27,10 @@ public sealed partial class TestWorld {
   private ClassRegistry? _classes;
   private int _nextDefinedId = FirstDefinedId;
 
+  /// <summary>Principals <see cref="StructureBreaks"/> has placed in this world, each 32 blocks
+  /// along X from the last.</summary>
+  internal int BreakSites { get; set; }
+
   /// <summary>Every block entity in the store, loaded chunk or not.</summary>
   internal IEnumerable<KeyValuePair<BlockPos, BlockEntity>> BlockEntities =>
     _blockEntities;

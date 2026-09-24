@@ -310,6 +310,27 @@ public class StructureBreaksTests
     );
   }
 
+  // Fails when each run places its first principal at the first site, over the leftovers of the
+  // run before.
+  [Fact]
+  public void A_second_run_on_one_world_stands_clear_of_the_first()
+  {
+    using TestWorld world = LoadFixture();
+
+    StructureBreaks.Result first = StructureBreaks.Run(
+      world,
+      b => b.Code.Path == "frame-n"
+    );
+    StructureBreaks.Result second = StructureBreaks.Run(
+      world,
+      b => b.Code.Path == "frame-e"
+    );
+
+    Assert.True(first.Failures.Count == 0, string.Join("\n", first.Failures));
+    Assert.True(second.Failures.Count == 0, string.Join("\n", second.Failures));
+    Assert.Equal(3 * (1 + TwoCells.Length), second.Breaks);
+  }
+
   private sealed class LeavesFillers : BlockFilledMegastructure
   {
     public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos) { }
