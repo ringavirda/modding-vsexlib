@@ -9,6 +9,12 @@ see the git history.
 
 ### Added
 
+- **`IPipeVentSource`** (ExpandedLib.Industry): a pipe node's block can supply its own
+  `IPipeVentStrategy` through `CreateVentStrategy`. `PipeNetwork` classifies each open face with
+  its node's strategy, falling back to the one the "pipe" factory registered, and vents each
+  strategy's faces through that strategy, so one world holds runs venting at different rates. Each
+  network creates a block's strategy once and keeps it; a null strategy falls back to the
+  factory's.
 - **`CellRoles.NoSnow`**: a layout cell marked with it takes no weather snow while the structure
   stands, neither a snow layer on top nor a snow-covered variant. The structure's server-side block
   entity lists its marked cells in the new `NoSnowCells` as soon as its facing is known and drops

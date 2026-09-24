@@ -119,6 +119,7 @@ instead. Implement the one you need and the shipped network finds it:
 | `IMoltenCell` | the canal block entities | The metal in one cell (amount, type, temperature) plus the flags the flow driver reads: `IsFlowSource` marks a cell metal comes out of, `AcceptsSubMinimumFlow` lets a cell take a trickle below the normal minimum. |
 | `IBurstablePipe` | `BlockPipe` | `{ CanBurst, BurstPressure }`. The network walks the whole run for the weakest rating, so one cheap segment sets the pressure the run bursts at. |
 | `IPipeVentStrategy` | `ChimneyVent` | Optional. Says which fittings vent gas out of the run and how fast they draw, so a chimney relieves pressure instead of the run leaking. Injected at `RegisterNetworkType`, as the example above does. |
+| `IPipeVentSource` | your vent fittings' block classes | Optional. `CreateVentStrategy` gives the node its own `IPipeVentStrategy`, which classifies and vents that node's open faces in place of the factory's. Each network creates it once and keeps it; `null` falls back to the factory's. A mod whose vent fittings carry their own strategy needs no `RegisterNetworkType` of its own. |
 | `INetworkNode.OnLeak` | `BlockEntityPipe` (override) | Called on a node at the open end of a pressurised or flooded run. Override it for particles and sound; the default does nothing. |
 
 ## Defining a node block

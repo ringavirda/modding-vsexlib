@@ -358,6 +358,7 @@ Gas and liquid runs: the pipe block and block entity you derive from, and the co
 | `IBurstablePipe` | A pipe-network block that can fail under over-pressure. | [Block-Networks](Block-Networks) |
 | `IChimneyVentable` | Marker for a pipe-network node whose open top connector may be drawn through by a vanilla chimney, which acts as a sink rather than a leak. | [Block-Networks](Block-Networks) |
 | `IPipeNode` | A block entity that participates in the pipe network as an addressable node: gas or liquid can be injected (TryProduce) or withdrawn (TryConsume) at its position, and the network's medium, temperature, pressure and volume can be read. | [Block-Networks](Block-Networks) |
+| `IPipeVentSource` | A pipe-network node block that supplies its own IPipeVentStrategy, in place of the one the "pipe" network factory registered. | [Block-Networks](Block-Networks) |
 | `IPipeVentStrategy` | Optional per-network strategy for gas vents: open connectors that draw gas away as a sink rather than leaking it, such as a chimney capping a vertical pipe. | [Block-Networks](Block-Networks) |
 | `IThroughputLimitedPipe` | A pipe-network block that limits how much can move through a run per second. | [Block-Networks](Block-Networks) |
 | `PipeNetwork` | Concrete BlockNetwork for the pipe system. | [Block-Networks](Block-Networks) |

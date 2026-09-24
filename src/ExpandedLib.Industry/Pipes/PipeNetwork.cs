@@ -17,8 +17,15 @@ namespace ExpandedLib.Industry.Pipes;
 public class PipeNetwork : BlockNetwork {
   public override string NetworkType => "pipe";
 
-  // Optional gas-vent strategy, supplied by the content mod. Null means every open end leaks.
+  // Optional gas-vent strategy from the factory; the fallback for nodes whose block supplies none.
   private readonly IPipeVentStrategy? _vent;
+
+  // Strategies node blocks created (IPipeVentSource), one per block for this network's lifetime; a
+  // null entry falls back to _vent.
+  private readonly Dictionary<Block, IPipeVentStrategy?> _nodeVents = new();
+
+  // Every distinct strategy this network has used, _vent first; each vents once per tick.
+  private readonly List<IPipeVentStrategy> _ventStrategies = new();
 
   // Medium policy (compatibility and priority), injected like the vent strategy.
   private readonly IMediumTaxonomy _taxonomy;
@@ -30,6 +37,8 @@ public class PipeNetwork : BlockNetwork {
   )
     : base(system) {
     _vent = vent;
+    if (vent != null)
+      _ventStrategies.Add(vent);
     _taxonomy = taxonomy ?? ExLiquids.Taxonomy;
   }
 
@@ -542,16 +551,17 @@ public class PipeNetwork : BlockNetwork {
       if (openFaces.Length == 0)
         continue;
 
+      IPipeVentStrategy? vent = VentFor(node);
       int airOpen = 0;
       for (int i = 0; i < openFaces.Length; i++) {
         BlockFacing face = openFaces[i];
         BlockPos nPos = pos.AddCopy(face);
         Block neighbour = blockAccessor.GetBlock(nPos);
-        // Vent classification comes from the content mod's strategy; a vent face does not count
-        // as a leak.
+        // Vent classification comes from the node's strategy; a vent face does not count as a
+        // leak.
         if (
-          _vent != null
-          && _vent.TryClassifyVent(
+          vent != null
+          && vent.TryClassifyVent(
             blockAccessor,
             node,
             pos,
@@ -560,7 +570,7 @@ public class PipeNetwork : BlockNetwork {
             out BlockPos ventPos
           )
         ) {
-          pass.ChimneyVents.Add(ventPos);
+          pass.AddVent(vent, ventPos);
           continue;
         }
         if (neighbour.FirstCodePart() == "air")
@@ -591,15 +601,35 @@ public class PipeNetwork : BlockNetwork {
     }
   }
 
-  /// <summary>Vent draw (gas only) via the content mod's strategy; a network with none vents
-  /// nothing.</summary>
+  /// <summary>The strategy that classifies <paramref name="node"/>'s faces: the one its block
+  /// supplies, else the factory's; <c>null</c> when neither exists.</summary>
+  private IPipeVentStrategy? VentFor(BlockNetworkNode node) {
+    if (node is not IPipeVentSource source)
+      return _vent;
+    if (!_nodeVents.TryGetValue(node, out IPipeVentStrategy? vent)) {
+      vent = source.CreateVentStrategy();
+      _nodeVents[node] = vent;
+      if (vent != null && !_ventStrategies.Contains(vent))
+        _ventStrategies.Add(vent);
+    }
+    return vent ?? _vent;
+  }
+
+  /// <summary>Vent draw (gas only): every strategy this network has used vents the faces it
+  /// classified this tick, an empty set included; a network with none vents nothing.</summary>
   private void ApplyVentDraw(
     BlockNetworkModSystem manager,
     PipeNetworkState state,
     TickPass pass
   ) {
-    float vented =
-      _vent?.Vent(pass.ChimneyVents, state, pass.Liquid, manager) ?? 0f;
+    float vented = 0f;
+    foreach (IPipeVentStrategy strategy in _ventStrategies)
+      vented += strategy.Vent(
+        pass.VentsOf(strategy),
+        state,
+        pass.Liquid,
+        manager
+      );
     if (vented > 0f) {
       _consumedAccum += vented;
       pass.Changed = true;
@@ -652,7 +682,7 @@ public class PipeNetwork : BlockNetwork {
 
   /// <summary>Recomputes gas pressure once venting and leaking are applied.</summary>
   private void RepressureAfterVentLeak(PipeNetworkState state, TickPass pass) {
-    if (!pass.Liquid && (pass.ChimneyVents.Count > 0 || pass.TotalLeaks > 0))
+    if (!pass.Liquid && (pass.VentCount > 0 || pass.TotalLeaks > 0))
       state.Pressure = PipeNetworkState.ComputeGasPressure(
         state.Volume,
         state.MaxVolume
@@ -728,9 +758,24 @@ public class PipeNetwork : BlockNetwork {
     public bool Liquid;
     public int Consumers;
     public int TotalLeaks;
-    public readonly List<BlockPos> ChimneyVents = new();
+    public int VentCount;
     public float GasLeakFrac;
     public float WaterLeakFrac;
+
+    // Vent positions per classifying strategy.
+    private readonly Dictionary<IPipeVentStrategy, List<BlockPos>> _vents = new();
+
+    public void AddVent(IPipeVentStrategy strategy, BlockPos ventPos) {
+      if (!_vents.TryGetValue(strategy, out List<BlockPos>? vents))
+        _vents[strategy] = vents = new();
+      vents.Add(ventPos);
+      VentCount++;
+    }
+
+    public IReadOnlyList<BlockPos> VentsOf(IPipeVentStrategy strategy) =>
+      _vents.TryGetValue(strategy, out List<BlockPos>? vents)
+        ? vents
+        : Array.Empty<BlockPos>();
   }
 
   // Cached; changes only with the node set, invalidated by OnTopologyChanged and once per tick
