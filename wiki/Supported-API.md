@@ -126,7 +126,7 @@ The guards that catch a dangling block code, a name with no translation, a recip
 | `AssetCheckSource` | The in-game `ICheckSource`: codes off the live registries, recipes and lang off `ICoreAPI.Assets`, defs off `ExDefinitions`. | [Checks](Checks) |
 | `CheckResult` | One check's findings for one domain: its name, the domain and the error lines found. | [Checks](Checks) |
 | `ExlibChecks` | Runs every content check against one `ICheckSource` (or the live game) and logs the results. | [Checks](Checks) |
-| `ExCheckRegisterAttribute` | Marks a class exposing `static CheckResult Run(ICheckSource, string)` for automatic registration by `ExCheckRegistry.RegisterAll`, so a mod's own content check runs alongside the ten shipped ones. | [Checks](Checks) |
+| `ExCheckRegisterAttribute` | Marks a class exposing `static CheckResult Run(ICheckSource, string)` for automatic registration by `ExCheckRegistry.RegisterAll`, so a mod's own content check runs alongside the eleven shipped ones. | [Checks](Checks) |
 | `ExCheckRegistry` | Reflection-driven registration for a mod's own content checks, the checks-side counterpart to `EntityRegistry`. | [Checks](Checks) |
 | `DefinitionCatalogueCheck` | Checks that every code-first block definition actually produced a registered block. | [Checks](Checks) |
 | `LateDefinitionCheck` | Checks that every registered block, item or recipe definition made the injection deadline. | [Checks](Checks) |
@@ -138,6 +138,7 @@ The guards that catch a dangling block code, a name with no translation, a recip
 | `CodePrefixCollisionCheck` | Checks that no block's base code is a proper prefix of another's at a `-` boundary. | [Checks](Checks) |
 | `StageWildcardsCheck` | Checks that every construction stage's wildcard ingredient stores a key its refund can resolve. | [Checks](Checks) |
 | `GridRecipeShapeCheck` | Checks that every grid recipe's ingredient keys and pattern letters match and its grid is at most 3x3. | [Checks](Checks) |
+| `GridRecipeCollisionCheck` | Checks that no two grid recipes of the covered domains match the same input. | [Checks](Checks) |
 
 ## Writing a block entity and persisting its state
 

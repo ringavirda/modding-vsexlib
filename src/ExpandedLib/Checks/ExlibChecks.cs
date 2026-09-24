@@ -27,6 +27,7 @@ public static class ExlibChecks {
     CodePrefixCollisionCheck.Run,
     StageWildcardsCheck.Run,
     GridRecipeShapeCheck.Run,
+    GridRecipeCollisionCheck.Run,
   ];
 
   /// <summary>Runs every check against every domain <paramref name="source"/> covers.</summary>

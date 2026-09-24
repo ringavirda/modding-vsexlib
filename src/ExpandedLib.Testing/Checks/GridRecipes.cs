@@ -7,7 +7,8 @@ using ExpandedLib.Checks;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// <see cref="GridRecipeShapeCheck"/> over code-first definitions read from assemblies.
+/// <see cref="GridRecipeShapeCheck"/> and <see cref="GridRecipeCollisionCheck"/> over code-first
+/// definitions read from assemblies.
 /// </summary>
 public static class GridRecipes {
   /// <summary>What one run read and found.</summary>
@@ -34,7 +35,11 @@ public static class GridRecipes {
         nameof(family)
       );
     var source = new AssemblyCheckSource(family);
-    CheckResult[] results = [GridRecipeShapeCheck.Run(source, domain)];
+    CheckResult[] results =
+    [
+      GridRecipeShapeCheck.Run(source, domain),
+      GridRecipeCollisionCheck.Run(source, domain),
+    ];
     return new Result(
       GridRecipeShapeCheck.Recipes(source, domain).Count(),
       [.. results.SelectMany(r => r.Errors.Select(e => $"{r.Check}: {e}"))]

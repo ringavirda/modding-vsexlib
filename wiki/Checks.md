@@ -8,10 +8,10 @@ key is missing from `lang/en.json` shows the player the raw key instead of a nam
 layout that names a block you renamed last week builds a structure that can never complete. Every
 one of these fails silently, and the person who finds it is usually a player, weeks later.
 
-`ExpandedLib.Checks` is ten rules that read your content and report what does not line up. They
+`ExpandedLib.Checks` is eleven rules that read your content and report what does not line up. They
 run by themselves at the end of world load and write their findings to the server log, so the first
 time you boot a world with a broken code in it you read "names a code that does not exist" instead
-of wondering why a recipe vanished. The same ten run on demand from `/exmod verify`, from your own
+of wondering why a recipe vanished. The same eleven run on demand from `/exmod verify`, from your own
 code, from a unit test, and from a command-line tool that needs no running game.
 
 There is nothing to switch on. Install exlib, load your mod, and the checks report. The rest of this
@@ -38,8 +38,9 @@ disk without knowing which it is looking at.
 | `CodePrefixCollisionCheck` | No block's base code is a proper prefix of another's at a `-` boundary. | A wildcard `yourmod:pipe-*` written for the short code also swallows `yourmod:pipe-plated-*`, quietly widening every rule built on it. |
 | `StageWildcardsCheck` | Every [construction](Construction) stage ingredient whose code holds `*` carries `storeWildCard`, keyed by the one variant group its `*` spans (`wood`, `metal`), a group of every block it matches; a `{key}` placeholder names one of the block's own variant groups or a key an earlier paid stage stores; a key on the unpaid stage 0 is stored by stage 1. The key must be `wood` or `metal`, the two a creative Ctrl build stores. | Breaking the structure throws a NullReferenceException, or its refund silently names a code that does not exist and drops nothing. |
 | `GridRecipeShapeCheck` | Every key of a grid recipe's `ingredients` appears in its `ingredientPattern`, every pattern letter other than `_` and a space has a key, and the grid is at most 3x3. | A key the pattern never places is never consumed and never shown, so two recipes differing only in it take the same input. A letter with no key fails the recipe at load, and a larger grid never matches. |
+| `GridRecipeCollisionCheck` | No two grid recipes of the domains the check covers match the same input. It counts as the game's matcher does: a pattern trimmed of empty rows and columns at any offset it fits, a shapeless recipe's ingredients in any slots, a wildcard over what it matches as `allowedVariants` narrow it, and a named wildcard in one state across its slots. The game has no mirrored match. | The grid crafts whichever of the two recipes it finds first, and the other is never made from that input. |
 
-Two of the ten have a condition attached.
+Three of the eleven have a condition attached.
 
 `LateDefinitionCheck` is the odd one out. It names every block, item or recipe definition registered
 after `ExDefinitionModSystem` already injected (see [Code-First-Definitions](Code-First-Definitions)),
@@ -48,6 +49,14 @@ which the loader then never builds. To do that it has to read `ExDefinitions` di
 dedicated multiplayer client never sees it, and neither does an `ICheckSource` built without
 replaying injection. In singleplayer the integrated server and the client share one process and its
 static state, so the client's own check call reports too, once the server's pass has run.
+
+`GridRecipeCollisionCheck` reads ingredient codes only. Tags, attributes and `skipVariants`
+narrow a match and are not read, and an ingredient with tags and no code overlaps every ingredient
+of its item class, so a pair it reports can be one the loaded game tells apart. One slot holding a
+stack that a shapeless recipe takes for two of its ingredients is not counted. A recipe the game
+refuses at load or never matches (disabled, a letter with no key, a pattern that does not fill its
+declared grid, a grid larger than 3x3) is skipped. A pair across two mods is reported in the run of
+each.
 
 `LangCoverageCheck` in this library only guards the `en` locale. An unresolved `en` key is the one
 that renders raw on screen, since every other translation falls back to it. Parity across a mod's
@@ -167,7 +176,7 @@ game.
 
 ## Adding your own check
 
-The ten checks above are exlib's own. A mod's own content invariant - every machine's job table
+The eleven checks above are exlib's own. A mod's own content invariant - every machine's job table
 names a registered item, every diagram has a shape - gets the same three rungs for one line of its
 own, and none of them is a call you have to place.
 
@@ -195,7 +204,7 @@ there is nothing to call. A class carrying the attribute but not shaped exactly 
 about and skipped; the same class scanned twice (a rejoined world, a module and its host sharing an
 assembly) is registered once and every later scan is silently ignored.
 
-**Explicit: `ExlibChecks.All`.** Once registered, your check is appended after the ten shipped
+**Explicit: `ExlibChecks.All`.** Once registered, your check is appended after the eleven shipped
 ones, in registration order, and runs at every rung above - the `AssetsFinalize` log line,
 `/exmod verify`, and `ExlibChecks.All` from your own code - with no further wiring. A throw from
 `Run` is caught and reported as one error naming your check, the way `ExModuleHost.Isolate` wraps a
@@ -231,9 +240,9 @@ suite calling the harness, nothing you wrote has changed; this section is the ma
 `PinnedNetworkNodes` and `NetworkNodeContract` used to carry themselves; those harness members now
 call the check, so the rule is written once. `LateDefinitionCheck` never lived in the harness, since
 there was nothing there to replay `ExDefinitionModSystem.AssetsLoaded`. `StageWildcardsCheck`
-started here; the harness runs it over a suite's definitions as `StageWildcards`.
-`GridRecipeShapeCheck` started here too; the harness runs it over a suite's definitions as
-`GridRecipes`.
+started here; the harness runs it over a suite's definitions as `StageWildcards`. The two grid
+recipe checks, `GridRecipeShapeCheck` and `GridRecipeCollisionCheck`, started here too; the
+harness runs them over a suite's definitions as `GridRecipes`.
 
 `DefinitionCatalogueCheck` is not the harness's `DefinitionCatalogue`. The check reports a
 code-first block definition that produced no registered block; the harness's `Resolves` answers

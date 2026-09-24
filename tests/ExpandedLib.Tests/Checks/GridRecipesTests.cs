@@ -36,12 +36,26 @@ public class GridRecipesTests {
                 .Ingredient("P", i => i.Item("game:plank-oak"))
                 .Ingredient("G", i => i.Item("game:gear-rusty"))
                 .OutputItem("game:stick")
+            )
+            .Grid(g =>
+              g.Name("first")
+                .Pattern("L")
+                .Size(1, 1)
+                .Ingredient("L", i => i.Item("game:log-*"))
+                .OutputItem("game:plank-oak")
+            )
+            .Grid(g =>
+              g.Name("second")
+                .Pattern("L")
+                .Size(1, 1)
+                .Ingredient("L", i => i.Item("game:log-oak"))
+                .OutputItem("game:firewood")
             ),
         ]
         : [];
   }
 
-  // Fails when Check stops running GridRecipeShapeCheck, drops the check-name
+  // Fails when Check stops running either grid recipe check, drops the check-name
   // prefix, or counts recipes other than the domain's grid recipes.
   [Fact]
   [PlantedDefect(typeof(GridRecipes), nameof(GridRecipes.Check))]
@@ -50,11 +64,13 @@ public class GridRecipesTests {
     foreach (string line in result.Findings)
       output.WriteLine(line);
 
-    Assert.Equal(1, result.Recipes);
+    Assert.Equal(3, result.Recipes);
     Assert.Equal(
       [
         "GridRecipeShape: plantedgrid:recipes/grid/planted.json#0 (unplaced): key G is not in "
           + "the pattern PP",
+        "GridRecipeCollision: plantedgrid:recipes/grid/planted.json#1 (first) and "
+          + "plantedgrid:recipes/grid/planted.json#2 (second) match the same input",
       ],
       result.Findings
     );
