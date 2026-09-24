@@ -1,3 +1,4 @@
+using System;
 using ExpandedLib.Definitions;
 using ExpandedLib.Registries;
 using ExpandedLib.Structures;
@@ -647,5 +648,16 @@ public class ExBlockDefTests {
       .ShapeByType("*-n", "d:x")
       .ToJson();
     Assert.Null(json["shapebytype"]!["*-n"]!["selectiveElements"]);
+  }
+
+  // Fails when RootKeyByType takes a key the game does not resolve per variant.
+  [Fact]
+  public void RootKeyByType_refuses_a_key_not_ending_in_ByType() {
+    Assert.Throws<ArgumentException>(() =>
+      ExBlockDef.Create("d", "c").RootKeyByType("combustibleProps", "*-raw", 1)
+    );
+    ExBlockDef
+      .Create("d", "c")
+      .RootKeyByType("combustiblepropsbytype", "*-raw", 1);
   }
 }

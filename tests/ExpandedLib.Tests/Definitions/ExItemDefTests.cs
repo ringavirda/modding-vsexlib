@@ -337,6 +337,17 @@ public class ExItemDefTests {
     Assert.Equal(1.2, (double)byType["*-small"]!["scale"]!);
   }
 
+  // Fails when RootKeyByType takes a key the game does not resolve per variant.
+  [Fact]
+  public void RootKeyByType_refuses_a_key_not_ending_in_ByType() {
+    Assert.Throws<ArgumentException>(() =>
+      ExItemDef.Create("d", "c").RootKeyByType("combustibleProps", "*-raw", 1)
+    );
+    ExItemDef
+      .Create("d", "c")
+      .RootKeyByType("combustiblepropsbytype", "*-raw", 1);
+  }
+
   [Fact]
   public void Positional_transforms_emit_translation_rotation_origin_and_scale() {
     JObject json = ExItemDef

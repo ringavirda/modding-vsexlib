@@ -421,7 +421,21 @@ public sealed class ExItemDef : IExDef {
 
   /// <summary>Adds a <c>{wildcard: value}</c> entry to a top-level <c>{key}ByType</c> map
   /// (accumulates).</summary>
+  /// <param name="key">The map's key, ending in <c>ByType</c> (any case), e.g.
+  /// <c>"combustiblePropsByType"</c>: the game resolves a map per variant only under such a key,
+  /// and reads any other as one value for every variant.</param>
+  /// <param name="wildcard">The variant codes the entry applies to, e.g. <c>"*-raw"</c>.</param>
+  /// <param name="value">The entry's value, a <see cref="JToken"/> or an object serialised to
+  /// one.</param>
+  /// <returns>This definition.</returns>
+  /// <exception cref="ArgumentException"><paramref name="key"/> does not end in
+  /// <c>ByType</c>.</exception>
   public ExItemDef RootKeyByType(string key, string wildcard, object value) {
+    if (!key.EndsWith("ByType", StringComparison.OrdinalIgnoreCase))
+      throw new ArgumentException(
+        $"{key} is no ByType key; the game reads it as one value for every variant",
+        nameof(key)
+      );
     if (_root[key] is not JObject map) {
       map = new JObject();
       _root[key] = map;
