@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ExpandedLib.Testing;
 using Xunit;
 
@@ -28,5 +29,33 @@ public class ExlibLangCallSiteTests {
   [Fact]
   public void The_call_site_scan_finds_keys_to_check() {
     Assert.NotEmpty(LangCallSites.Keys(Domain, SrcDir));
+  }
+
+  private static IReadOnlyList<string> PlantedCallSite(string english) {
+    using var files = new PlantedFiles();
+    files.Write(
+      "src/Planted.cs",
+      "var text = Lang.Get(\"plantedcalls:greeting\");"
+    );
+    files.Write("lang/en.json", english);
+    return LangCallSites.Unresolvable(
+      "plantedcalls",
+      files.Path("src"),
+      files.Path("lang")
+    );
+  }
+
+  [Fact]
+  [PlantedDefect(typeof(LangCallSites), nameof(LangCallSites.Unresolvable))]
+  public void A_key_the_source_asks_for_that_the_locale_lacks_is_reported() {
+    Assert.Equal(
+      ["en: plantedcalls:greeting (Planted.cs)"],
+      PlantedCallSite("{ }")
+    );
+  }
+
+  [Fact]
+  public void A_key_the_locale_carries_passes() {
+    Assert.Empty(PlantedCallSite("""{ "greeting": "Hello" }"""));
   }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -49,5 +50,32 @@ public class ExlibLangCoverageTests {
     } finally {
       Directory.Delete(langDir, recursive: true);
     }
+  }
+
+  private static IReadOnlyList<string> Orphans(string english) {
+    using var files = new PlantedFiles();
+    files.Write("lang/en.json", english);
+    return LangCoverage.OrphanedDescriptions(Domain, Mod, files.Path("lang"));
+  }
+
+  [Fact]
+  [PlantedDefect(
+    typeof(LangCoverage),
+    nameof(LangCoverage.OrphanedDescriptions)
+  )]
+  public void A_description_key_naming_no_block_is_reported() {
+    Assert.Equal(
+      ["en: blockdesc-structurefiler"],
+      Orphans("""{ "blockdesc-structurefiler": "Holds a cell" }""")
+    );
+  }
+
+  [Fact]
+  public void Description_keys_naming_a_block_or_a_prefix_of_one_pass() {
+    Assert.Empty(
+      Orphans(
+        """{ "blockdesc-structurefiller": "Holds a cell", "blockdesc-structure*": "Any" }"""
+      )
+    );
   }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using ExpandedLib.Testing;
 using Xunit;
@@ -33,5 +34,29 @@ public class LangKeyResolutionTests {
   public void The_scan_finds_the_calls_it_is_meant_to_guard() {
     // A regex that stops matching turns the guard above into an unconditional pass.
     Assert.NotEmpty(LangKeys.Literals(SourceRoots));
+  }
+
+  private static IReadOnlyList<string> PlantedKey(string english) {
+    using var files = new PlantedFiles();
+    files.Write(
+      "src/Planted.cs",
+      "var text = Lang.Get(\"plantedkeys:greeting\");"
+    );
+    files.Write("plantedkeys/lang/en.json", english);
+    return LangKeys.Check([files.Path("src")], files.Path("plantedkeys/lang"));
+  }
+
+  [Fact]
+  [PlantedDefect(typeof(LangKeys), nameof(LangKeys.Check))]
+  public void A_literal_key_english_lacks_is_reported() {
+    string finding = Assert.Single(PlantedKey("{ }"));
+
+    Assert.StartsWith("plantedkeys:greeting (", finding);
+    Assert.EndsWith("/src/Planted.cs)", finding);
+  }
+
+  [Fact]
+  public void A_literal_key_english_carries_passes() {
+    Assert.Empty(PlantedKey("""{ "plantedkeys:greeting": "Hello" }"""));
   }
 }
