@@ -13,7 +13,8 @@ namespace ExpandedLib.Testing;
 /// <see cref="RecordingLogger"/> created since the previous test's check, in the test class's
 /// constructor or in the body, and then lets them go. A Warning, Error or Fatal logged into a logger
 /// after its check, in the test's <c>Dispose</c> or through a logger a static still holds, fails
-/// the next test checked.</para>
+/// the next test checked; one logged after the run's last check, in the last test's
+/// <c>Dispose</c> or a class or collection fixture's, is never read.</para>
 /// <para>Attribution relies on the assembly running its tests one at a time
 /// (<c>parallelizeTestCollections: false</c>); under parallel collections a fault can be charged to
 /// a test that ran beside the one that logged it.</para>
@@ -48,5 +49,6 @@ public sealed class FailOnWarningsAttribute : BeforeAfterTestAttribute {
 
 /// <summary>The failure <see cref="FailOnWarningsAttribute"/> raises; its message lists each
 /// unexpected entry and each unmet <see cref="RecordingLogger.Expect"/>.</summary>
+/// <param name="message">The failing test's full name, then one line per fault.</param>
 public sealed class FailOnWarningsException(string message)
   : Exception(message);

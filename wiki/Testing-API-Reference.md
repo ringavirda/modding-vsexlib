@@ -443,7 +443,8 @@ entry matched fails the test with a `FailOnWarningsException`. `ReportOnly = tru
 ran, so the assembly runs its collections one at a time (`parallelizeTestCollections: false`). A
 logger that receives an entry after its check, in a test's `Dispose` or through a static that still
 holds it, is read again by the next check, which sees only the entries since the last one and none of
-the earlier `Expect` declarations.
+the earlier `Expect` declarations. An entry logged after the run's last check, in the last test's
+`Dispose` or a class or collection fixture's, is never read.
 
 `TestModLoader.GetMod`/`IsModEnabled`/`GetModSystem`/`GetModSystem<T>`/`IsModSystemEnabled` are the
 `IModLoader` members proper; `TestWorld`'s constructor registers `"exlib"` enabled and its own
@@ -707,7 +708,7 @@ pairs.
 | `DefinitionJson` | Shared lenient JSON reader for def-emitted JSON (comments + trailing commas), plus field accessors the mega-block guards pin against. |
 | `DefinitionParity` | Semantic comparison of an authored `ExBlockDef`'s emitted JSON against the hand-written blocktype JSON it replaces. |
 | `HandbookSync` | The handbook authoring pipeline: `mods/{domain}/docs/handbook/NN-*.html` as the hand-edited source for a shipped handbook page's body. |
-| `HarnessUse` | Rules over a suite's own test sources: `CompletionWrites` names every statement that writes `StructureComplete` by reflection instead of standing or breaking the structure; `HalfBehaviours` names every `BlockBehaviors` assignment whose receiver is never given `CollectibleBehaviors` in the same file, which `GetBehavior` reads; `GameConstrainedGenerics` names every `where` clause in a file declaring a `[Fact]` or `[Theory]` whose constraint is a game type, or derives from or implements one, resolved against the test assembly and its references. Each returns `file:line: reason` lines, empty when clean; the guard in each suite holds its allowed files. |
+| `HarnessUse` | Rules over a suite's own test sources: `CompletionWrites` names every statement that writes `StructureComplete` by reflection, directly or through a `PropertyInfo` or `FieldInfo` local bound to it by name, or through its setter from a test subclass, instead of standing or breaking the structure; `HalfBehaviours` names every `BlockBehaviors` assignment whose receiver is never given `CollectibleBehaviors` in the same file, which `GetBehavior` reads; `GameConstrainedGenerics` names every `where` clause in a file declaring a `[Fact]` or `[Theory]` whose constraint is a game type, or derives from or implements one, resolved against the test assembly and its references. Each returns `file:line: reason` lines, empty when clean; the guard in each suite holds its allowed files. |
 | `LangCallSites` | Every lang key a mod's own source hands to `Lang.Get`/`ActionLangCode`/`SendIngameError` exists in every locale it ships. |
 | `LangCoverage` | Every block code a mod registers resolves to a name in every locale it ships (an unresolved key silently renders as the raw key). |
 | `LangKeys` | Every literal `Lang.Get("domain:key")` under a mod's source roots resolves in one lang tree's `en.json`. |
