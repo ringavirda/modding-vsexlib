@@ -102,7 +102,12 @@ public class MoltenFlowRulesTests {
   public void A_ten_cell_run_fills_its_far_cell_on_the_ninth_tick() {
     var w = NewWorld();
     var cells = new Cell[10];
-    cells[0] = Put(w, new BlockPos(0, 0, 0), Straight, Source(1000, 1000, Canal));
+    cells[0] = Put(
+      w,
+      new BlockPos(0, 0, 0),
+      Straight,
+      Source(1000, 1000, Canal)
+    );
     for (int x = 1; x < 10; x++)
       cells[x] = Put(w, new BlockPos(x, 0, 0), Straight, Empty(100, Canal));
     Assert.Same(w.NetworkAt(cells[0].Pos), w.NetworkAt(cells[9].Pos));
@@ -132,8 +137,12 @@ public class MoltenFlowRulesTests {
     var (start, next) = Pair(
       w,
       60,
-      Canal with { Conveys = startConveys },
-      Canal with { Conveys = nextConveys }
+      Canal with {
+        Conveys = startConveys,
+      },
+      Canal with {
+        Conveys = nextConveys,
+      }
     );
 
     w.Tick();
@@ -229,8 +238,12 @@ public class MoltenFlowRulesTests {
     var (start, next) = Pair(
       w,
       9,
-      Canal with { MinFlowGap = startGap },
-      Canal with { MinFlowGap = nextGap }
+      Canal with {
+        MinFlowGap = startGap,
+      },
+      Canal with {
+        MinFlowGap = nextGap,
+      }
     );
 
     w.Tick();
@@ -264,8 +277,12 @@ public class MoltenFlowRulesTests {
     var (_, next) = Pair(
       w,
       1000,
-      Canal with { FlowRate = startRate },
-      Canal with { FlowRate = nextRate }
+      Canal with {
+        FlowRate = startRate,
+      },
+      Canal with {
+        FlowRate = nextRate,
+      }
     );
 
     w.Tick();

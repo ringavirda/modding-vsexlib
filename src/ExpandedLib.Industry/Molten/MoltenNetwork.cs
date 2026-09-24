@@ -178,7 +178,15 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
         if (face.Axis == EnumAxis.Y) {
           if (face != BlockFacing.DOWN || rules?.HorizontalOnly == true)
             continue;
-          FlowEdge(a, b, maxFlow, rules, distFromStart, world, downhillOnly: true);
+          FlowEdge(
+            a,
+            b,
+            maxFlow,
+            rules,
+            distFromStart,
+            world,
+            downhillOnly: true
+          );
           continue;
         }
 
