@@ -19,16 +19,15 @@ public static class MultiblockLaw {
   /// <see cref="BlockEntityMultiblockStructure"/> with a layout at a fresh cell through the
   /// accessor's <c>SetBlock</c>, runs its <see cref="Block.OnBlockPlaced"/>, fills the cells its
   /// entity reports missing and runs one monitor tick.</summary>
-  /// <remarks>A variant's layout angle is expected at its <c>side</c> (else <c>orientation</c>)
-  /// token's <see cref="ExOrientation.AngleFromSide"/> plus the offset the blocktype's first
-  /// variant turns by, and the rig is raised at that angle. A cell wanting a code outside
-  /// <c>game</c> takes the first registered block that satisfies it and stays empty when none does;
-  /// a <c>game</c> cell takes a <see cref="StructureRig"/> stand-in. A finding is a placement that
-  /// throws or raises no such entity, a layout turned to another angle than expected, a cell no
-  /// registered block satisfies, a structure the monitor does not see complete, and a layout cell
-  /// read as a peripheral (<c>GetGlobalPos</c>) elsewhere than it completes.</remarks>
-  /// <param name="world">A world holding every variant of the blocks judged and of the blocks their
-  /// layouts name (<see cref="BlockLaws.Run"/> stands one).</param>
+  /// <remarks>The rig stands at the angle the variant's <c>side</c> (else <c>orientation</c>) gives
+  /// through <see cref="ExOrientation.AngleFromSide"/>, plus the offset the blocktype's first variant
+  /// turns by. A non-<c>game</c> cell takes the first registered block that satisfies it, else stays
+  /// empty; a <c>game</c> cell takes a stand-in. A finding is a placement that throws or raises no
+  /// such entity, a layout turned elsewhere than that angle, a cell no registered block satisfies,
+  /// an incomplete structure, and a peripheral (<c>GetGlobalPos</c>) read elsewhere than it
+  /// completes.</remarks>
+  /// <param name="world">Every variant of the blocks judged and of the blocks their layouts name
+  /// (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose blocks are placed.</param>
   /// <returns>The law's blocktypes, structures stood up and findings, each keyed by the variant's
   /// code.</returns>
