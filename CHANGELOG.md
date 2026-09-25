@@ -216,10 +216,6 @@ see the git history.
   else the nearest `.game/<slug>` holding `VintagestoryAPI.dll` from the repository upward, else
   `.game/<slug>` beside an `exmod.workspace.json` above the repository, else the repository's own.
   Auto-provisioning passes that path as `-Dest`, and the build prints it.
-- **Debug source paths**: Debug builds of non-test projects map the repository root to
-  `/exmod/<repository folder>/` in their pdbs, so a debugger on another OS finds the sources through
-  a launch configuration's `sourceFileMap`. `-p:ExmodMapSourcePaths=false` turns it off; `exmod test
-  -Coverage` passes it.
 - `ExRightClickConstructable` refuses a payment that would take a stored wildcard key in two
   variants inside the stage that stores it, such as iron plates with steel rods in a first metal
   stage, and shows the player `exlib:ingameerror-construction-onematerial`. A creative player
