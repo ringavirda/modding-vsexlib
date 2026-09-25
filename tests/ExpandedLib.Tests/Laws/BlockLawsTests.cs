@@ -630,8 +630,8 @@ public class BlockLawsTests {
 
   #region Every law
 
-  // Fails when Stand leaves vanilla's per-thread room accessor bound to an earlier world, so rooms
-  // in this one are walked over the earlier world's cells.
+  // Fails when Stand leaves vanilla's per-thread room accessor (1.21 and later) bound to an earlier
+  // world, so rooms in this one are walked over the earlier world's cells.
   [Fact]
   public void A_stood_world_walks_its_rooms_over_its_own_cells() {
     var at = new BlockPos(64, 64, 64);
@@ -645,10 +645,12 @@ public class BlockLawsTests {
       at
     );
 
-    world
-      .Api.ModLoader.GetModSystem<Vintagestory.GameContent.RoomRegistry>()
-      .GetRoomForPosition(at);
+    var rooms =
+      world.Api.ModLoader.GetModSystem<Vintagestory.GameContent.RoomRegistry>()!;
 
+    rooms.GetRoomForPosition(at);
+
+#if GAME_GE_1_21
     var walked = (IBlockAccessor)
       typeof(Vintagestory.GameContent.RoomRegistry)
         .GetField(
@@ -657,6 +659,16 @@ public class BlockLawsTests {
             | System.Reflection.BindingFlags.Static
         )!
         .GetValue(null)!;
+#else
+    var walked = (IBlockAccessor)
+      typeof(Vintagestory.GameContent.RoomRegistry)
+        .GetField(
+          "blockAccess",
+          System.Reflection.BindingFlags.NonPublic
+            | System.Reflection.BindingFlags.Instance
+        )!
+        .GetValue(rooms)!;
+#endif
     Assert.Equal("test:wall", walked.GetBlock(at).Code.ToString());
   }
 

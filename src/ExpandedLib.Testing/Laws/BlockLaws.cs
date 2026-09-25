@@ -129,15 +129,17 @@ public static class BlockLaws {
         Arg.Any<double>()
       )
       .Returns(_ => new ClimateCondition { Temperature = 20 });
+    var rooms = new RoomRegistry();
+    world.Mods.Register(rooms);
+    rooms.Start(world.Api);
+#if GAME_GE_1_21
     // The registry caches its accessor per thread; a later world would read an earlier one's cells.
     ReflectionHelpers.SetStaticField(
       typeof(RoomRegistry),
       "blockAccessor",
       null
     );
-    var rooms = new RoomRegistry();
-    world.Mods.Register(rooms);
-    rooms.Start(world.Api);
+#endif
     prepare?.Invoke(world);
 
     ExBlockDef filler = ExDefinitions
