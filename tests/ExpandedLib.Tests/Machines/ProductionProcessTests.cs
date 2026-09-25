@@ -40,7 +40,7 @@ internal sealed class OrderedTeardownMachine : BlockEntityProductionMachine {
 
 /// <summary>The production process as a hosted behaviour: a machine carries one from construction,
 /// and it remains the only writer of the saved timestamp. See
-/// docs/design/mechanics/framework-composition.md.</summary>
+/// exdocs/exlib/design/mechanics/framework-composition.md.</summary>
 public class ProductionProcessTests {
   private const string MachineCode = "test:processmachine";
 

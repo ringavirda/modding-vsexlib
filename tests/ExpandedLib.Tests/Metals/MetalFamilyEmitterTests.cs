@@ -235,7 +235,7 @@ public class MetalFamilyEmitterTests {
   [Fact]
   public void Pig_iron_makes_no_tools() {
     // A feedstock (Tools null): the blast furnace's cast target only, never a tool.
-    // See docs/design/materials.md.
+    // See exdocs/exmods/design/materials.md.
     Assert.DoesNotContain(Emit(Shipped("iiex", "pigiron")), IsTool);
   }
 

@@ -99,11 +99,15 @@ tests/ExpandedLib.Tests/    the suite this repo's own gate runs
 build/                      the MSBuild plumbing the package ships (GamePath resolution, provisioning, asset globs)
 samples/                    TwinTubBlower, BurdenMaker, PlatedPipes and SmokeStack, third-party mods written against this library
 templates/                  the `dotnet new` templates a consumer installs (block, item, recipe, config, tests, ...)
-docs/                       design pages for a contributor working on this repo's own mechanics
-wiki/                       the GitHub wiki source, guarded by tests so it cannot drift from the code
 scripts/                    the exmod launchers this repo checks in
 dist/                       release output (zips, NuGet packages) - not checked in
 ```
+
+The design pages and the GitHub wiki source live in the private exdocs repository, under
+`exdocs/exlib/design/` and `exdocs/exlib/wiki/`, cloned beside this one: the `docs` entry of
+`exmod.json` names it (`../exdocs/exlib`). The wiki guards read the pages from there and fail when
+the clone is missing. The Sync Wiki workflow publishes `exdocs/exlib/wiki` to this repository's
+GitHub wiki.
 
 ## Packages
 

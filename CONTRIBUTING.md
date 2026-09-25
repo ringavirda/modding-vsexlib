@@ -2,7 +2,7 @@
 
 How the C# in `src/ExpandedLib/`, `src/ExpandedLib.Industry/`, `src/ExpandedLib.Testing/`,
 `src/ExpandedLib.Generators/` and `tests/ExpandedLib.Tests/` is written and formatted.
-Domain rules - units, invariants, network semantics - live in [conventions.md](docs/design/conventions.md);
+Domain rules - units, invariants, network semantics - live in `exdocs/exlib/design/conventions.md`;
 this file is about the code itself. The family's own rules (iiex, siex) are exmods' own
 CONTRIBUTING.md.
 
@@ -170,8 +170,8 @@ idempotent. Running CSharpier on its own afterwards puts the braces back, so alw
 Write what a caller needs. Delete what a historian wants.
 
 The repo has been swept once for the opposite habit: comments that carried decision history, bug
-post-mortems and paragraphs defending a design against alternatives. That belongs in `docs/design/`
-and in git, not beside the code.
+post-mortems and paragraphs defending a design against alternatives. That belongs in the design pages
+(`exdocs/exlib/design/`) and in git, not beside the code.
 
 ### Keep
 
@@ -181,7 +181,7 @@ and in git, not beside the code.
   "has no setter because the tick recomputes it".
 - Mechanism the code cannot show for itself: why a value is cached or serialized, why a clamp
   exists, why a default is what it is.
-- Pointers into `docs/design/`. When a rationale is long, cite the doc instead of restating it.
+- Pointers into `exdocs/exlib/design/`. When a rationale is long, cite the doc instead of restating it.
 - `<param>`, `<returns>`, `<exception>` where the signature does not already answer it.
 - In `**/Migrations/**` and `ReleasedCodes*`, factual version history - that is what those files
   are for. The guard test exempts them.
@@ -192,7 +192,7 @@ and in git, not beside the code.
   were fixed, dates, task IDs.
 - Essays defending the design against alternatives.
 - Rhetoric and dramatic framing.
-- Prose duplicated from `docs/design/` - replace it with a one-line pointer.
+- Prose duplicated from `exdocs/exlib/design/` - replace it with a one-line pointer.
 - Restatement of the code: `// increment the counter`.
 - Meta-commentary about the repo, the test suite or the process, including "covered by
   <TestName>".

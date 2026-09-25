@@ -75,7 +75,7 @@ public class IndustryBoundaryTests {
     Assert.True(misplaced.Count == 0, string.Join("\n", misplaced));
   }
 
-  // Namespaces the top-level folders may declare (docs/design/conventions.md "How exlib is laid out").
+  // Namespaces the top-level folders may declare (exdocs/exlib/design/conventions.md "How exlib is laid out").
   private static readonly string[] ContractNamespaces =
   [
     "ExpandedLib",

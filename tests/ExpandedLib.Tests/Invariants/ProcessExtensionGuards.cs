@@ -8,7 +8,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>A machine reads its tooling and names no product in code. See docs/design/mechanics/process-extension.md.</summary>
+/// <summary>A machine reads its tooling and names no product in code. See exdocs/exlib/design/mechanics/process-extension.md.</summary>
 public class ProcessExtensionGuards {
   #region Corpus
 

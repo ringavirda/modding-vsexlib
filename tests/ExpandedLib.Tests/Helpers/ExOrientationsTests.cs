@@ -11,7 +11,7 @@ namespace ExpandedLib.Tests;
 public class ExOrientationsTests {
   #region The worked examples from the design doc
 
-  // Transcribed from docs/design/mechanics/orientation-schemes.md's worked table (90 deg, north to west).
+  // Transcribed from exdocs/exlib/design/mechanics/orientation-schemes.md's worked table (90 deg, north to west).
   [Theory]
   [InlineData("Face", "n", "w")]
   [InlineData("Axis", "we", "ns")] // ordered gives `sn`, undeclared -> set {s,n} -> `ns`

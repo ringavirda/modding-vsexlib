@@ -81,7 +81,7 @@ public class CommentStyleGuards {
     AssertNone(
       CommentStyle.LongDocBlocks(Sources()),
       "A doc comment over 16 lines is an essay. Keep the constraint, move the rationale to "
-        + "docs/design and cite it. CONTRIBUTING.md asks for 6 lines on a class."
+        + "exdocs/exlib/design and cite it. CONTRIBUTING.md asks for 6 lines on a class."
     );
 
   [Fact]
@@ -105,7 +105,7 @@ public class CommentStyleGuards {
     AssertNone(
       CommentStyle.LongSummaries(Sources()),
       "A <summary> over 5 lines is an essay. One sentence for a member, three lines for a class; "
-        + "move the rest to docs/design and cite it."
+        + "move the rest to exdocs/exlib/design and cite it."
     );
 
   #endregion
