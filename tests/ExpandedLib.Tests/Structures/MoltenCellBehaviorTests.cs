@@ -216,6 +216,25 @@ public class MoltenCellBehaviorTests {
     Assert.True(cell.HasMoltenMetal);
   }
 
+  // One real second of a server tick at the default calendar speed, in game hours.
+  private const double HoursPerSecond = 1.0 / 120.0;
+
+  // Fails on 1.20/1.21 when the thermal tick rebases the stack every call: those versions cool a
+  // stack only once 1/85 game hour has passed since its last update.
+  [Fact]
+  public void A_cell_ticked_every_second_cools() {
+    var w = NewWorld();
+    var cell = NewCell(w, "{ \"capacity\": 100 }");
+    cell.PushMetalRaw(40, Iron, 1600f, w.World);
+
+    for (int i = 0; i < 120; i++) {
+      w.AdvanceHours(HoursPerSecond);
+      cell.UpdateThermal(w.World);
+    }
+
+    Assert.True(cell.CellTemperature < 1600f - 10f, $"{cell.CellTemperature}");
+  }
+
   [Theory]
   [InlineData(1300f, MoltenState.Liquid)]
   [InlineData(1100f, MoltenState.Cooling)]

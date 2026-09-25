@@ -37,6 +37,11 @@ public static class MoltenMetal {
   /// <summary>Below this temperature ( deg C) hot metal emits no block light.</summary>
   public static float GlowMinTemp => ExlibValues.MetalGlowMinTemp;
 
+  /// <summary>Cooldown speed ( deg C per game hour) vanilla stamps on metal poured into a tool mold
+  /// or an ingot mold (<c>BlockEntityToolMold.ReceiveLiquidMetal</c>,
+  /// <c>BlockEntityIngotMold.ReceiveLiquidMetal</c>).</summary>
+  public const float VanillaMoldCooldownSpeed = 300f;
+
   /// <summary>Creates a single-item temperature carrier for <paramref name="itemCode"/> at
   /// <paramref name="temperature"/> deg C; returns <c>null</c> when the item does not resolve.</summary>
   public static ItemStack? CreateStack(
@@ -63,15 +68,29 @@ public static class MoltenMetal {
       cooldownSpeed
     );
 
-  /// <summary>Re-applies the cooldown rate to an already-stamped stack, rebasing the baseline to the
-  /// stack's current temperature; call once per tick on standing molten content.</summary>
+  /// <summary>Re-stamps the cooldown rate on an already-stamped stack; call once per tick on standing
+  /// molten content so a live rate change reaches metal already cast.</summary>
+  /// <param name="world">World whose calendar the temperature is read against.</param>
+  /// <param name="stack">Temperature carrier; mutated only when its rate changes.</param>
+  /// <param name="cooldownSpeed">Target rate ( deg C per game hour), or <c>null</c> for
+  /// <see cref="ExlibValues.MoltenCooldownDefault"/>.</param>
+  /// <remarks>When the stamped <c>cooldownSpeed</c> already equals the target the stack is left
+  /// untouched, so the game's own cooldown runs from its last update. Otherwise the temperature is
+  /// rebased to its current value and the new rate stamped.</remarks>
   public static void SyncCooldownSpeed(
     IWorldAccessor world,
     ItemStack stack,
     float? cooldownSpeed = null
   ) {
+    float target = cooldownSpeed ?? ExlibValues.MoltenCooldownDefault;
+    if (
+      stack.Attributes["temperature"] is ITreeAttribute tree
+      && tree.HasAttribute("cooldownSpeed")
+      && tree.GetFloat("cooldownSpeed") == target
+    )
+      return;
     SetTemperature(world, stack, GetTemperature(world, stack));
-    SetCooldownSpeed(stack, cooldownSpeed ?? ExlibValues.MoltenCooldownDefault);
+    SetCooldownSpeed(stack, target);
   }
 
   /// <summary>Sets the stack temperature without delaying the cooldown (the mod-wide convention).</summary>

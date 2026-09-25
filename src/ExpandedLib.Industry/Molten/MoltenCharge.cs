@@ -56,7 +56,8 @@ public sealed class MoltenCharge {
   public void SetTemperature(IWorldAccessor world, float temperature) =>
     MoltenMetal.SetTemperature(world, Stack, temperature);
 
-  /// <summary>Re-applies the cooldown rate, rebasing to the current temperature; call once per tick.</summary>
+  /// <summary>Re-stamps the cooldown rate when it differs from the stamped one, rebasing to the current
+  /// temperature; an unchanged rate leaves the charge untouched. Call once per tick.</summary>
   public void SyncCooldown(IWorldAccessor world, float cooldownSpeed) =>
     MoltenMetal.SyncCooldownSpeed(world, Stack, cooldownSpeed);
 

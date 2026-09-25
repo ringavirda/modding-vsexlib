@@ -253,8 +253,8 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
       return;
 
     float temp = MoltenMetal.GetTemperature(world, _cellMetalStack);
-    // Re-stamps the live cooldown rate each tick; a config change applies to metal already in the cell.
-    SetStackTemperature(world, temp);
+    // A config change applies to metal already in the cell.
+    MoltenMetal.SyncCooldownSpeed(world, _cellMetalStack, _cooldownSpeed);
 
     float meltPoint = MoltenMetal.MeltingPointOf(world, _cellMetalStack);
 

@@ -1,4 +1,7 @@
 using ExpandedLib.Industry.Molten;
+using ExpandedLib.Testing;
+using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -52,4 +55,52 @@ public class MoltenMetalTests {
     // the metric "650 deg C" form.
     Assert.StartsWith("650 ", MoltenMetal.FormatTemperature(650f));
   }
+
+  #region SyncCooldownSpeed
+
+  private const string Iron = "game:ingot-iron";
+
+  // Below the game's own cooldown step on every version (1/150 h on 1.22, 1/85 h before).
+  private const double UnderOneCooldownStep = 1.0 / 200.0;
+
+  private static (TestWorld world, ItemStack stack) StampedAtZero(float speed) {
+    var world = new TestWorld();
+    world.RegisterItem(Iron, 1500f);
+    return (world, MoltenMetal.CreateStack(world.World, Iron, 1000f, speed)!);
+  }
+
+  private static ITreeAttribute Tree(ItemStack stack) =>
+    (ITreeAttribute)stack.Attributes["temperature"];
+
+  // Fails when the sync rebases every call: the baseline moves to the current hour.
+  [Fact]
+  public void SyncCooldownSpeed_leaves_a_stack_at_its_stamped_rate_untouched() {
+    var (world, stack) = StampedAtZero(24f);
+    world.AdvanceHours(UnderOneCooldownStep);
+
+    MoltenMetal.SyncCooldownSpeed(world.World, stack, 24f);
+
+    Assert.Equal(0.0, Tree(stack).GetDouble("temperatureLastUpdate"));
+    Assert.Equal(1000f, Tree(stack).GetFloat("temperature"));
+    Assert.Equal(24f, Tree(stack).GetFloat("cooldownSpeed"));
+  }
+
+  // Fails when the sync never re-stamps: the rate stays 24 and the baseline at zero.
+  [Fact]
+  public void SyncCooldownSpeed_restamps_and_rebases_a_stack_at_another_rate() {
+    var (world, stack) = StampedAtZero(24f);
+    world.AdvanceHours(UnderOneCooldownStep);
+
+    MoltenMetal.SyncCooldownSpeed(world.World, stack, 300f);
+
+    Assert.Equal(300f, Tree(stack).GetFloat("cooldownSpeed"));
+    Assert.Equal(
+      UnderOneCooldownStep,
+      Tree(stack).GetDouble("temperatureLastUpdate"),
+      9
+    );
+    Assert.Equal(1000f, Tree(stack).GetFloat("temperature"));
+  }
+
+  #endregion
 }
