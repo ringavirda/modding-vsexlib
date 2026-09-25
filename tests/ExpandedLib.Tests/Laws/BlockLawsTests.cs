@@ -62,7 +62,10 @@ public class BlockLawsTests {
     world.RegisterClass("test-accepter", typeof(Accepter));
     world.RegisterClass("test-refuser", typeof(RefusesTheAccepter));
     world.RegisterClass("test-asksagain", typeof(RefusesWhenFirstAsked));
-    world.RegisterClass("test-forgetsentity", typeof(DropsItsEntityOnANeighbour));
+    world.RegisterClass(
+      "test-forgetsentity",
+      typeof(DropsItsEntityOnANeighbour)
+    );
     world.RegisterClass("test-askthrows", typeof(ThrowsWhenAsked));
     world.RegisterClass("test-readssupport", typeof(ReadsItsSupport));
     world.RegisterClass("test-support", typeof(Support));
@@ -799,18 +802,17 @@ public class BlockLawsTests {
   public void A_pair_whose_structures_would_overlap_is_skipped() {
     BlockLaws.Law law = NetworkLaw.Run(
       Stand(
-        ExBlockDef
-          .Create("test", "ported")
-          .Class("test-mega")
-          .SideVariant()
-          .FillerOffsets(
-            [
+          ExBlockDef
+            .Create("test", "ported")
+            .Class("test-mega")
+            .SideVariant()
+            .FillerOffsets([
               new(-1, 0, 0, Behaviors: [Member("east")]),
               new(1, 0, 0, Behaviors: [Member("west")]),
-            ]
-          ),
-        Node("accepter", "test-accepter")
-      ).RegisterNetwork("test", system => new TestNetwork(system)),
+            ]),
+          Node("accepter", "test-accepter")
+        )
+        .RegisterNetwork("test", system => new TestNetwork(system)),
       "test"
     );
 
@@ -823,10 +825,7 @@ public class BlockLawsTests {
   [Fact]
   public void A_refusal_from_one_side_keeps_the_pair_apart_from_both() {
     BlockLaws.Law law = NetworkLaw.Run(
-      Stand(
-        Node("accepter", "test-accepter"),
-        Node("refuser", "test-refuser")
-      ),
+      Stand(Node("accepter", "test-accepter"), Node("refuser", "test-refuser")),
       "test"
     );
 

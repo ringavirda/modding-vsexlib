@@ -52,7 +52,7 @@ public static class NetworkLaw {
         Block[] members =
         [
           .. type.Where(b => BlockLaws.Signals(world, b).Networks.Count > 0),
-        ];
+      ];
         if (members.Length == 0)
           continue;
         if (owner == domain)
@@ -113,8 +113,8 @@ public static class NetworkLaw {
       foreach ((int X, int Y, int Z) cell in cells) {
         BlockPos pos = at.AddCopy(cell.X, cell.Y, cell.Z);
         if (
-          NetworkMembership.Resolve(world.Accessor, pos, network) is not
-          { } member
+          NetworkMembership.Resolve(world.Accessor, pos, network)
+          is not { } member
         )
           continue;
         foreach (BlockFacing face in BlockFacing.ALLFACES)

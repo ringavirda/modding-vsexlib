@@ -109,5 +109,4 @@ public static class MegablockLaw {
       .Select(c => c.Pos)
       .ToHashSet()
       .SetEquals(standing);
-
 }
