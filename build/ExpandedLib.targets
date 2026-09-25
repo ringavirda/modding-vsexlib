@@ -125,26 +125,6 @@
     <GamePath>$([System.IO.Path]::GetFullPath('$(_GameInstallRoot)/.game/$(GameSlug)'))</GamePath>
   </PropertyGroup>
 
-  <!-- $(PathMap) on Debug builds of every project whose $(IsTestProject) is not true: the source
-       paths in the pdb read /exmod/<repository folder>/... instead of this machine's path, so a
-       debugger on another OS than the build (Windows vsdbg on a WSL build) matches them through a
-       launch configuration's sourceFileMap of "/exmod/<folder>/". Test projects keep their real
-       paths because their [CallerFilePath] fixture lookups read them at run time. Appended after
-       any $(PathMap) the project already sets; ',' and '=' in the path and the folder name are
-       doubled because the compiler splits on them.
-       $(ExmodMapSourcePaths) - unset by default, which maps; 'false' leaves $(PathMap) as the
-       project set it, so a coverage report names the files on disk (exmod test -Coverage sets it). -->
-  <PropertyGroup
-    Condition="'$(Configuration)' == 'Debug' and '$(IsTestProject)' != 'true' and '$(ExmodMapSourcePaths)' != 'false'"
-  >
-    <_ExmodRepoRootDir>$([MSBuild]::EnsureTrailingSlash('$(ExmodRepoRoot)'))</_ExmodRepoRootDir>
-    <_ExmodRepoFolder
-      >$([System.IO.Path]::GetFileName($([System.IO.Path]::GetDirectoryName('$(_ExmodRepoRootDir)'))))</_ExmodRepoFolder>
-    <PathMap Condition="'$(PathMap)' != ''">$(PathMap),</PathMap>
-    <PathMap
-      >$(PathMap)$(_ExmodRepoRootDir.Replace(',', ',,').Replace('=', '=='))=/exmod/$(_ExmodRepoFolder.Replace(',', ',,').Replace('=', '=='))/</PathMap>
-  </PropertyGroup>
-
   <!-- Version to auto-provision: the primary tracks the latest patch (pass the major.minor series so
        provision-game resolves it); the legacy targets pin the series .0 floor. -->
   <PropertyGroup>
