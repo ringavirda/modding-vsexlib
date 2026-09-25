@@ -60,7 +60,7 @@ public static class MegablockLaw {
           continue;
         }
 
-        BlockPos[] standing = FillersOf(world, at);
+        BlockPos[] standing = BlockLaws.FillersOf(world, at);
         if (standing.Length != declared)
           findings.Add(
             $"{block.Code} placed raised {standing.Length} of its {declared} filler cells"
@@ -88,7 +88,7 @@ public static class MegablockLaw {
           );
           continue;
         }
-        BlockPos[] left = FillersOf(world, at);
+        BlockPos[] left = BlockLaws.FillersOf(world, at);
         if (left.Length > 0)
           findings.Add(
             $"{block.Code} removed by the world left {left.Length} filler cells standing"
@@ -110,14 +110,4 @@ public static class MegablockLaw {
       .ToHashSet()
       .SetEquals(standing);
 
-  private static BlockPos[] FillersOf(TestWorld world, BlockPos principal) =>
-    [
-      .. world
-        .BlockEntities.Where(e =>
-          e.Value is BlockEntityStructureFiller { Principal: { } p }
-          && p.Equals(principal)
-          && world.GetBlock(e.Key) is BlockStructureFiller
-        )
-        .Select(e => e.Key.Copy()),
-    ];
 }

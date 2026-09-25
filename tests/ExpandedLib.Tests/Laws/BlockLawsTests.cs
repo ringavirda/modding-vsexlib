@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
+using ExpandedLib.Networks;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
@@ -13,11 +14,11 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>The block laws against small blocks that each break one law: placements that land an
-/// undeclared side, another block or none; megablocks that keep or misplace their fillers;
-/// multiblocks read in another frame, turned to one angle or naming an unregistered block; a
-/// construction that drops itself; info that throws once ticked or logs; and entities that forget
-/// a count or change class over a reload.</summary>
+/// <summary>The block laws against small blocks that each break one law: placements that land
+/// amiss; megablocks that keep or misplace their fillers; multiblocks read in another frame or
+/// naming an unregistered block; a construction that drops itself; info that throws or logs;
+/// entities that forget a count or change class over a reload; blocks that change or throw when a
+/// neighbour comes and goes; and a network member whose answer changes when asked again.</summary>
 public class BlockLawsTests {
   private static readonly FillerCellSpec[] TwoCells =
   [
@@ -53,6 +54,20 @@ public class BlockLawsTests {
     world.RegisterClass("test-other", typeof(OtherBe));
     world.RegisterClass("test-swapsblock", typeof(ExchangesToSwapped));
     world.RegisterClass("test-dropsentity", typeof(DropsItsEntity));
+    world.RegisterClass("test-mega", typeof(BlockFilledMegastructure));
+    world.RegisterClass("test-turner", typeof(TurnsOnANeighbour));
+    world.RegisterClass("test-counter", typeof(CountsNeighbours));
+    world.RegisterClass("test-counted", typeof(NeighbourCount));
+    world.RegisterClass("test-notifythrows", typeof(ThrowsOnANeighbour));
+    world.RegisterClass("test-accepter", typeof(Accepter));
+    world.RegisterClass("test-refuser", typeof(RefusesTheAccepter));
+    world.RegisterClass("test-asksagain", typeof(RefusesWhenFirstAsked));
+    world.RegisterClass("test-forgetsentity", typeof(DropsItsEntityOnANeighbour));
+    world.RegisterClass("test-askthrows", typeof(ThrowsWhenAsked));
+    world.RegisterClass("test-readssupport", typeof(ReadsItsSupport));
+    world.RegisterClass("test-support", typeof(Support));
+    world.RegisterClass("test-askedonce", typeof(AcceptsWhenFirstAsked));
+    world.RegisterClass("test-initthrows", typeof(ThrowsOnInitialize));
   }
 
   private static TestWorld Stand(params ExBlockDef[] defs) =>
@@ -94,6 +109,18 @@ public class BlockLawsTests {
 
   private static ExBlockDef Entity(string code, string entity) =>
     ExBlockDef.Create("test", code).EntityClass(entity);
+
+  private static FillerBehaviorSpec Member(string face) =>
+    FillerBehaviorSpec.Of<BEBehaviorNetworkMember>(
+      face,
+      new { networkType = "test" }
+    );
+
+  private static ExBlockDef Node(string code, string cls) =>
+    ExBlockDef
+      .Create("test", code)
+      .Class(cls)
+      .VariantGroup("orientation", "ns", "nsew");
 
   private static ExBlockDef Oriented(string code, string cls) =>
     ExBlockDef
@@ -628,6 +655,188 @@ public class BlockLawsTests {
 
   #endregion
 
+  #region Neighbour
+
+  // Fails when the law skips the code, the entity or the tree comparison, stops recording a
+  // throwing notification, or tries the face the block stands on.
+  [Fact]
+  [PlantedDefect(typeof(NeighbourLaw), nameof(NeighbourLaw.Run))]
+  public void A_block_that_turns_counts_forgets_or_throws_on_a_neighbour_is_named() {
+    BlockLaws.Law law = NeighbourLaw.Run(
+      Stand(
+        Wall,
+        ExBlockDef.Create("test", "turner").Class("test-turner"),
+        Entity("counter", "test-counted").Class("test-counter"),
+        Entity("forgets", "test-plain").Class("test-forgetsentity"),
+        ExBlockDef.Create("test", "throws").Class("test-notifythrows")
+      ),
+      "test"
+    );
+
+    Assert.Equal(
+      [
+        "test:counter with a neighbour on its north face changed the tree of its cell at "
+          + "count",
+        "test:forgets with a neighbour on its north face left its cell without its block "
+          + "entity",
+        "test:throws with a neighbour on its north face threw InvalidOperationException: "
+          + "a neighbour changed",
+        "test:turner with a neighbour on its north face left its cell holding test:wall, not "
+          + "test:turner",
+      ],
+      law.Findings.Select(f => f.Split(" (")[0])
+    );
+    Assert.Equal(5, law.Blocks);
+    Assert.Equal(4 + 5, law.Cases);
+  }
+
+  // Fails when the law stands the block's support only after placing it.
+  [Fact]
+  public void A_block_that_reads_its_support_is_judged_from_where_it_stands() {
+    BlockLaws.Law law = NeighbourLaw.Run(
+      Stand(Entity("reads", "test-support").Class("test-readssupport")),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(5, law.Cases);
+  }
+
+  // Fails when the law skips the fillers' cells, or sets a neighbour over a cell the structure
+  // holds.
+  [Fact]
+  public void A_megablock_meets_neighbours_on_the_free_faces_of_its_fillers_too() {
+    BlockLaws.Law law = NeighbourLaw.Run(
+      Stand(Mega("mega", "test-mega")),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(4 * (3 + 4 + 4), law.Cases);
+  }
+
+  #endregion
+
+  #region Network
+
+  // Fails when the law walks from one member of a pair only.
+  [Fact]
+  [PlantedDefect(typeof(NetworkLaw), nameof(NetworkLaw.Run))]
+  public void A_member_that_answers_a_second_asking_otherwise_is_named() {
+    BlockLaws.Law law = NetworkLaw.Run(
+      Stand(
+        Node("accepter", "test-accepter"),
+        Node("asks", "test-asksagain"),
+        Node("once", "test-askedonce")
+      ),
+      "test"
+    );
+
+    Assert.Equal(
+      [
+        "test:accepter-ns test at (0, 0, 0) across its north face and test:asks-ns at (0, 0, 0): "
+          + TheOtherReaches,
+        "test:accepter-ns test at (0, 0, 0) across its north face and test:once-ns at (0, 0, 0): "
+          + ItReaches,
+        "test:accepter-nsew test at (0, 0, 0) across its east face and test:asks-nsew at "
+          + "(0, 0, 0): "
+          + TheOtherReaches,
+        "test:accepter-nsew test at (0, 0, 0) across its east face and test:once-nsew at "
+          + "(0, 0, 0): "
+          + ItReaches,
+        "test:asks-ns test at (0, 0, 0) across its north face and test:asks-ns at (0, 0, 0): "
+          + TheOtherReaches,
+        "test:asks-ns test at (0, 0, 0) across its north face and test:once-ns at (0, 0, 0): "
+          + TheOtherReaches,
+        "test:asks-nsew test at (0, 0, 0) across its east face and test:asks-nsew at (0, 0, 0): "
+          + TheOtherReaches,
+        "test:asks-nsew test at (0, 0, 0) across its east face and test:once-nsew at (0, 0, 0): "
+          + TheOtherReaches,
+      ],
+      law.Findings
+    );
+  }
+
+  private const string ItReaches =
+    "its walk reaches the other, the other's does not reach it";
+
+  private const string TheOtherReaches =
+    "the other's walk reaches it, its own does not reach the other";
+
+  // Fails when the law stops catching a placement or a walk that throws.
+  [Fact]
+  public void A_member_whose_placement_or_walk_throws_is_named() {
+    BlockLaws.Law law = NetworkLaw.Run(
+      Stand(
+        Node("accepter", "test-accepter"),
+        Node("askthrows", "test-askthrows"),
+        Node("initthrows", "test-accepter").EntityClass("test-initthrows")
+      ),
+      "test"
+    );
+
+    string[] heads = [.. law.Findings.Select(f => f[..f.IndexOf(" (at ")])];
+    Assert.Equal(
+      [
+        "test:initthrows-ns placed threw InvalidOperationException: initialised",
+        "test:initthrows-nsew placed threw InvalidOperationException: initialised",
+      ],
+      heads.Where(f => f.Contains(" placed threw "))
+    );
+    Assert.Equal(
+      12,
+      heads.Count(f =>
+        f.Contains("test:askthrows-")
+        && f.EndsWith(": the walk threw InvalidOperationException: asked")
+      )
+    );
+    Assert.Equal(14, heads.Length);
+  }
+
+  // Fails when the law stands a pair whose second structure overlaps the first. Each port of
+  // "ported" faces its own principal, so every pair it makes overlaps; the accepter's pairs stand.
+  [Fact]
+  public void A_pair_whose_structures_would_overlap_is_skipped() {
+    BlockLaws.Law law = NetworkLaw.Run(
+      Stand(
+        ExBlockDef
+          .Create("test", "ported")
+          .Class("test-mega")
+          .SideVariant()
+          .FillerOffsets(
+            [
+              new(-1, 0, 0, Behaviors: [Member("east")]),
+              new(1, 0, 0, Behaviors: [Member("west")]),
+            ]
+          ),
+        Node("accepter", "test-accepter")
+      ).RegisterNetwork("test", system => new TestNetwork(system)),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(2, law.Blocks);
+    Assert.Equal(4, law.Cases);
+  }
+
+  // Fails when IsValidNetworkNeighbour asks only the walk's source whether it accepts the other.
+  [Fact]
+  public void A_refusal_from_one_side_keeps_the_pair_apart_from_both() {
+    BlockLaws.Law law = NetworkLaw.Run(
+      Stand(
+        Node("accepter", "test-accepter"),
+        Node("refuser", "test-refuser")
+      ),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(2, law.Blocks);
+    Assert.Equal(4 * 2 * 2, law.Cases);
+  }
+
+  #endregion
+
   #region Every law
 
   // Fails when Stand leaves vanilla's per-thread room accessor (1.21 and later) bound to an earlier
@@ -710,12 +919,29 @@ public class BlockLawsTests {
     );
 #if GAME_GE_1_22
     Assert.Equal(
-      ["placement", "break", "multiblock", "megablock", "info", "reload"],
+      [
+        "placement",
+        "break",
+        "multiblock",
+        "megablock",
+        "info",
+        "reload",
+        "neighbour",
+        "network",
+      ],
       result.Laws.Select(l => l.Name)
     );
 #else
     Assert.Equal(
-      ["placement", "multiblock", "megablock", "info", "reload"],
+      [
+        "placement",
+        "multiblock",
+        "megablock",
+        "info",
+        "reload",
+        "neighbour",
+        "network",
+      ],
       result.Laws.Select(l => l.Name)
     );
 #endif
@@ -954,6 +1180,140 @@ public class BlockLawsTests {
         blockPos
       );
     }
+  }
+
+  private sealed class TurnsOnANeighbour : Block {
+    public override void OnNeighbourBlockChange(
+      IWorldAccessor world,
+      BlockPos pos,
+      BlockPos neibpos
+    ) =>
+      world.BlockAccessor.ExchangeBlock(
+        world.GetBlock(new AssetLocation("test:wall")).BlockId,
+        pos
+      );
+  }
+
+  private sealed class CountsNeighbours : Block {
+    public override void OnNeighbourBlockChange(
+      IWorldAccessor world,
+      BlockPos pos,
+      BlockPos neibpos
+    ) {
+      if (world.BlockAccessor.GetBlockEntity(pos) is NeighbourCount counted)
+        counted.Count++;
+    }
+  }
+
+  private sealed class NeighbourCount : BlockEntity {
+    public int Count;
+
+    public override void ToTreeAttributes(ITreeAttribute tree) {
+      base.ToTreeAttributes(tree);
+      tree.SetInt("count", Count);
+    }
+  }
+
+  private sealed class ThrowsOnANeighbour : Block {
+    public override void OnNeighbourBlockChange(
+      IWorldAccessor world,
+      BlockPos pos,
+      BlockPos neibpos
+    ) => throw new InvalidOperationException("a neighbour changed");
+  }
+
+  private sealed class DropsItsEntityOnANeighbour : Block {
+    public override void OnNeighbourBlockChange(
+      IWorldAccessor world,
+      BlockPos pos,
+      BlockPos neibpos
+    ) => world.BlockAccessor.RemoveBlockEntity(pos);
+  }
+
+  private sealed class ReadsItsSupport : Block {
+    public override void OnBlockPlaced(
+      IWorldAccessor world,
+      BlockPos blockPos,
+      ItemStack byItemStack = null!
+    ) {
+      base.OnBlockPlaced(world, blockPos, byItemStack);
+      Read(world, blockPos);
+    }
+
+    public override void OnNeighbourBlockChange(
+      IWorldAccessor world,
+      BlockPos pos,
+      BlockPos neibpos
+    ) => Read(world, pos);
+
+    private static void Read(IWorldAccessor world, BlockPos pos) {
+      if (world.BlockAccessor.GetBlockEntity(pos) is Support support)
+        support.Below = world
+          .BlockAccessor.GetBlock(pos.DownCopy())
+          .Code.ToString();
+    }
+  }
+
+  private sealed class Support : BlockEntity {
+    public string Below = "";
+
+    public override void ToTreeAttributes(ITreeAttribute tree) {
+      base.ToTreeAttributes(tree);
+      tree.SetString("below", Below);
+    }
+  }
+
+  /// <summary>Accepts a block the first time it is asked about it and refuses it after.</summary>
+  private sealed class AcceptsWhenFirstAsked : Accepter {
+    private readonly HashSet<int> _asked = [];
+
+    public override bool AcceptsNeighbour(Block neighbour) =>
+      _asked.Add(neighbour.BlockId);
+  }
+
+  private sealed class ThrowsWhenAsked : Accepter {
+    public override bool AcceptsNeighbour(Block neighbour) =>
+      throw new InvalidOperationException("asked");
+  }
+
+  private sealed class ThrowsOnInitialize : BlockEntity {
+    public override void Initialize(ICoreAPI api) =>
+      throw new InvalidOperationException("initialised");
+  }
+
+  private sealed class TestNetwork(BlockNetworkModSystem system)
+    : BlockNetwork(system) {
+    public override string NetworkType => "test";
+
+    public override void OnMerge(BlockNetwork other, IBlockAccessor world) { }
+
+    public override void OnSplitFragment(
+      BlockNetwork original,
+      IBlockAccessor world
+    ) { }
+
+    public override void OnTick(
+      IBlockAccessor world,
+      float dt,
+      BlockNetworkModSystem manager
+    ) { }
+  }
+
+  private class Accepter : BlockNetworkNode {
+    public override string NetworkType => "test";
+  }
+
+  private sealed class RefusesTheAccepter : Accepter {
+    public override bool AcceptsNeighbour(Block neighbour) =>
+      neighbour is not Accepter || neighbour is RefusesTheAccepter;
+  }
+
+  /// <summary>Refuses a block the first time it is asked about it and accepts it after.</summary>
+  private sealed class RefusesWhenFirstAsked : Accepter {
+    private readonly HashSet<int> _asked = [];
+
+    public override bool AcceptsNeighbour(Block neighbour) =>
+      !_asked.Add(neighbour.BlockId);
   }
 
   private sealed class NeverPlaces : Block {

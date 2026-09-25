@@ -13,8 +13,8 @@ namespace BurdenMaker.Tests;
 
 /// <summary>The burdenmaker blocks under <see cref="BlockLaws"/>: a
 /// <see cref="BlockFilledMegastructure"/> with <c>ExOrientable</c>, a <c>side</c> group and
-/// construction stages, so the placement, break, megablock, info and reload laws judge exlib's own
-/// megastructure class. Each law's counts and findings are printed; none is allowed.</summary>
+/// construction stages, so the placement, break, megablock, info, reload and neighbour laws judge
+/// exlib's own megastructure class. Each law's counts and findings are printed; none is allowed.</summary>
 [GuardOf(typeof(BlockLaws), nameof(BlockLaws.Run))]
 public class BlockLawGuards(ITestOutputHelper output) {
   private static readonly Lazy<BlockLaws.Result> Laws = new(() => {
@@ -42,6 +42,7 @@ public class BlockLawGuards(ITestOutputHelper output) {
     ["megablock"] = 1,
     ["info"] = 1,
     ["reload"] = 1,
+    ["neighbour"] = 1,
   };
 
   private void Judge(string law) {
@@ -87,4 +88,9 @@ public class BlockLawGuards(ITestOutputHelper output) {
   [Fact]
   public void The_burdenmaker_reloads_with_its_tree_and_info() =>
     Judge("reload");
+
+  // Fails when a block changes its code or tree when a neighbour comes and goes.
+  [Fact]
+  public void The_burdenmaker_stands_as_it_was_when_a_neighbour_comes_and_goes() =>
+    Judge("neighbour");
 }

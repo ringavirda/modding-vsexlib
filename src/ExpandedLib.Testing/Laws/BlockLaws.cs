@@ -18,14 +18,15 @@ namespace ExpandedLib.Testing;
 /// <summary>Runs the block laws over every block of a domain, each law over the blocks whose
 /// signals (<c>BlockSignals</c>) it applies to, in every variant: <see cref="PlacementLaw"/>,
 /// <see cref="BreakLaw"/> (1.22 and later), <see cref="MultiblockLaw"/>,
-/// <see cref="MegablockLaw"/>, <see cref="InfoLaw"/> and <see cref="ReloadLaw"/>.</summary>
+/// <see cref="MegablockLaw"/>, <see cref="InfoLaw"/>, <see cref="ReloadLaw"/>,
+/// <see cref="NeighbourLaw"/> and <see cref="NetworkLaw"/>.</summary>
 public static class BlockLaws {
   /// <summary>What one law covered and what it found.</summary>
   /// <param name="Name">The law's name.</param>
   /// <param name="Blocks">Blocktypes (codes less their variant parts, with their variant group
   /// names) the law applied to.</param>
-  /// <param name="Cases">Cases it ran: placements, breaks, structures stood up, or block entities
-  /// read or reloaded.</param>
+  /// <param name="Cases">Cases it ran: placements, breaks, structures stood up, block entities
+  /// read or reloaded, faces a neighbour came and went on, or network pairs walked.</param>
   /// <param name="Findings">One line per finding, each starting with the variant code it is
   /// about and a space.</param>
   public sealed record Law(
@@ -80,7 +81,8 @@ public static class BlockLaws {
   /// <param name="prepare">Runs on each world before any block is defined, to register the
   /// network types and mod systems the blocks need.</param>
   /// <returns>The laws named <c>placement</c>, <c>break</c> (from 1.22 only), <c>multiblock</c>,
-  /// <c>megablock</c>, <c>info</c> and <c>reload</c>, in that order.</returns>
+  /// <c>megablock</c>, <c>info</c>, <c>reload</c>, <c>neighbour</c> and <c>network</c>, in that
+  /// order.</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, or a block's entity or
   /// behaviour throws while its signals are read.</exception>
   public static Result Run(
@@ -103,6 +105,8 @@ public static class BlockLaws {
     laws.Add(MegablockLaw.Run(Stand(all, assemblies, prepare), domain));
     laws.Add(InfoLaw.Run(Stand(all, assemblies, prepare), domain));
     laws.Add(ReloadLaw.Run(Stand(all, assemblies, prepare), domain));
+    laws.Add(NeighbourLaw.Run(Stand(all, assemblies, prepare), domain));
+    laws.Add(NetworkLaw.Run(Stand(all, assemblies, prepare), domain));
     return new Result(laws);
   }
 
@@ -175,6 +179,37 @@ public static class BlockLaws {
     block.Variant is not { Count: > 0 } variant
       ? block.Code.ToString()
       : $"{block.Code.Domain}:{block.CodeWithoutParts(variant.Count)}";
+
+  /// <summary>The cells holding a <see cref="BlockStructureFiller"/> whose entity names
+  /// <paramref name="principal"/> as its principal.</summary>
+  internal static BlockPos[] FillersOf(TestWorld world, BlockPos principal) =>
+    [
+      .. world
+        .BlockEntities.Where(e =>
+          e.Value is BlockEntityStructureFiller { Principal: { } p }
+          && p.Equals(principal)
+          && world.GetBlock(e.Key) is BlockStructureFiller
+        )
+        .Select(e => e.Key.Copy()),
+    ];
+
+  /// <summary>The full solid block the neighbour law sets against a face and stands a block on:
+  /// a stand-in coded <see cref="SolidCode"/>, registered in <paramref name="world"/> on first
+  /// use under the next free id.</summary>
+  internal static Block Solid(TestWorld world) {
+    if (world.World.GetBlock(new AssetLocation(SolidCode)) is { } known)
+      return known;
+    Block solid = TestBlocks.Configure(
+      new Block(),
+      SolidCode,
+      world.World.Blocks.Max(b => b?.BlockId ?? 0) + 1
+    );
+    ReflectionHelpers.SetField(solid, "api", world.Api);
+    world.Register(solid);
+    return solid;
+  }
+
+  internal const string SolidCode = "game:rock-granite";
 
   /// <summary>Hands out cells for one case each, 32 blocks apart along X and Z, from
   /// (64, 64, 64).</summary>
@@ -262,6 +297,25 @@ public static class BlockLaws {
       );
       return clean ? tree : null;
     }
+
+    /// <summary>Sets <paramref name="neighbour"/> at <paramref name="cell"/> and clears it again,
+    /// each change followed by <see cref="TestWorld.NotifyNeighbours"/>.</summary>
+    internal bool Neighbour(
+      BlockPos cell,
+      Block neighbour,
+      string what,
+      bool judged
+    ) =>
+      Step(
+        what,
+        judged,
+        () => {
+          _world.Accessor.SetBlock(neighbour.BlockId, cell);
+          _world.NotifyNeighbours(cell);
+          _world.Accessor.SetBlock(0, cell);
+          _world.NotifyNeighbours(cell);
+        }
+      );
 
     /// <summary>Runs <see cref="TestWorld.Reload"/> at <see cref="At"/>.</summary>
     internal bool Reload(bool judged) =>
