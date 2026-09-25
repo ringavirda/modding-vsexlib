@@ -13,8 +13,8 @@ namespace BurdenMaker.Tests;
 
 /// <summary>The burdenmaker blocks under <see cref="BlockLaws"/>: a
 /// <see cref="BlockFilledMegastructure"/> with <c>ExOrientable</c>, a <c>side</c> group and
-/// construction stages, so the placement, break and megablock laws judge exlib's own megastructure
-/// class. Each law's counts and findings are printed; none is allowed.</summary>
+/// construction stages, so the placement, break, megablock, info and reload laws judge exlib's own
+/// megastructure class. Each law's counts and findings are printed; none is allowed.</summary>
 [GuardOf(typeof(BlockLaws), nameof(BlockLaws.Run))]
 public class BlockLawGuards(ITestOutputHelper output) {
   private static readonly Lazy<BlockLaws.Result> Laws = new(() => {
@@ -40,6 +40,8 @@ public class BlockLawGuards(ITestOutputHelper output) {
     ["placement"] = 1,
     ["break"] = 1,
     ["megablock"] = 1,
+    ["info"] = 1,
+    ["reload"] = 1,
   };
 
   private void Judge(string law) {
@@ -75,4 +77,14 @@ public class BlockLawGuards(ITestOutputHelper output) {
   [Fact]
   public void The_burdenmaker_holds_its_fillers_exactly_while_it_stands() =>
     Judge("megablock");
+
+  // Fails when the burdenmaker's GetBlockInfo throws or logs.
+  [Fact]
+  public void The_burdenmaker_shows_its_info_fresh_ticked_and_reloaded() =>
+    Judge("info");
+
+  // Fails when the burdenmaker's FromTreeAttributes throws on the tree it saved.
+  [Fact]
+  public void The_burdenmaker_reloads_with_its_tree_and_info() =>
+    Judge("reload");
 }
