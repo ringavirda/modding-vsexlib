@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Checks;
+using ExpandedLib.Networks;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -9,7 +10,8 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Testing;
 
 /// <summary>A block whose placement writes variant groups lands a variant its blocktype declares,
-/// placed by a player from every side and against every face.</summary>
+/// placed by a player from every side and against every face, and lands every token it
+/// declares.</summary>
 public static class PlacementLaw {
   internal const string Name = "placement";
 
@@ -32,8 +34,10 @@ public static class PlacementLaw {
   /// <remarks>One stack is held per variant that differs in a group placement does not write. A
   /// refused placement is no finding; a placement that throws is, as is one that lands a block of
   /// another blocktype or with another state in a group placement does not write, one that lands a
-  /// token its blocktype does not declare, and a stack that lands from no stand at all, named with
-  /// the failure codes its refusals gave.</remarks>
+  /// token its blocktype does not declare, a stack that lands from no stand at all, named with
+  /// the failure codes its refusals gave, and, for a stack with no other finding, a token its
+  /// variants of the held stack's other states declare that no placement lands. A network node,
+  /// whose token its neighbours pick, is not held to the last.</remarks>
   /// <param name="world">A world holding every variant of the blocks judged
   /// (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose blocks are placed.</param>
@@ -67,6 +71,11 @@ public static class PlacementLaw {
           .Select(g => g.First())
       ) {
         bool landed = false;
+        int earlier = findings.Count;
+        Dictionary<string, HashSet<string>> reached = placed.ToDictionary(
+          g => g,
+          _ => new HashSet<string>()
+        );
         var refusals = new SortedSet<string>(StringComparer.Ordinal);
         foreach ((string where, Vec3d eye) in Stands)
           foreach (BlockFacing face in BlockFacing.ALLFACES) {
@@ -113,6 +122,9 @@ public static class PlacementLaw {
               continue;
             }
             foreach (string group in placed)
+              if (down.Variant?[group] is { } token)
+                reached[group].Add(token);
+            foreach (string group in placed)
               if (
                 down.Variant?[group] is not { } token
                 || !declared[group].Contains(token)
@@ -127,6 +139,24 @@ public static class PlacementLaw {
             $"{held.Code} lands from no stand against no face (refused: "
               + $"{string.Join(", ", refusals.Select(r => r == "" ? "no code" : r))})"
           );
+        else if (findings.Count == earlier && held is not BlockNetworkNode)
+          foreach (string group in placed) {
+            string[] unreached =
+            [
+              .. variants
+                .Where(v => HeldKey(v, placed) == HeldKey(held, placed))
+                .Select(v => v.Variant?[group])
+                .OfType<string>()
+                .Distinct()
+                .Where(t => !reached[group].Contains(t))
+                .Order(StringComparer.Ordinal),
+            ];
+            if (unreached.Length > 0)
+              findings.Add(
+                $"{held.Code} lands no {group} '{string.Join("', '", unreached)}' from any "
+                  + "stand or face"
+              );
+          }
       }
     }
     return new BlockLaws.Law(Name, blocks, cases, findings);

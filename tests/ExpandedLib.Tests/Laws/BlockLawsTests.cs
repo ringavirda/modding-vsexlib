@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
@@ -11,9 +12,10 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>The block laws against small blocks that each break one law: placements that write an
-/// undeclared side or land another block or none, a megablock that clears its fillers only on a
-/// player break, a multiblock read in a frame it does not complete in, a layout naming a block
-/// nobody registers, and a construction that refunds its stages and drops itself.</summary>
+/// undeclared side, land another block or none, or never land a side; megablocks that clear their
+/// fillers only on a player break or raise the wrong ones; multiblocks read in a frame they do not
+/// complete in or turned to one angle; a layout naming a block nobody registers; and a
+/// construction that refunds its stages and drops itself.</summary>
 public class BlockLawsTests {
   private static readonly FillerCellSpec[] TwoCells =
   [
@@ -31,6 +33,10 @@ public class BlockLawsTests {
     world.RegisterClass("test-dropsfiller", typeof(DropsAFiller));
     world.RegisterClass("test-sideframe", typeof(SideFrame));
     world.RegisterClass("test-turnedframe", typeof(TurnedFrame));
+    world.RegisterClass("test-fixedframe", typeof(FixedFrame));
+    world.RegisterClass("test-northfillers", typeof(NorthFillers));
+    world.RegisterClass("test-placesnorth", typeof(PlacesNorth));
+    world.RegisterClass("test-shortfillers", typeof(ShortFillers));
     world.RegisterClass("test-plain", typeof(PlainBe));
     world.RegisterClass("test-placeswall", typeof(PlacesAWall));
     world.RegisterClass("test-placeskindb", typeof(PlacesKindB));
@@ -83,6 +89,22 @@ public class BlockLawsTests {
       .Behavior("ExOrientable");
 
   #region Placement
+
+  // Fails when the law stops comparing the tokens placements landed with those the held stack's
+  // variants declare.
+  [Fact]
+  [PlantedDefect(typeof(PlacementLaw), nameof(PlacementLaw.Run))]
+  public void A_blocktype_that_always_lands_its_first_side_is_named() {
+    BlockLaws.Law law = PlacementLaw.Run(
+      Stand(Oriented("northonly", "test-placesnorth")),
+      "test"
+    );
+
+    Assert.Equal(
+      ["test:northonly-n lands no side 'e', 's', 'w' from any stand or face"],
+      law.Findings
+    );
+  }
 
   // Fails when a throwing TryPlaceBlock is not recorded, or a stand or face is skipped.
   [Fact]
@@ -160,10 +182,14 @@ public class BlockLawsTests {
       "test"
     );
 
-    Assert.Equal(36, law.Findings.Count);
+    Assert.Equal(37, law.Findings.Count);
     Assert.Equal(
       "test:kinds-a-n placed from the north against its north face landed test:kinds-b-n",
       law.Findings[0]
+    );
+    Assert.Equal(
+      "test:kinds-b-n lands no side 'e', 's', 'w' from any stand or face",
+      law.Findings[^1]
     );
   }
 
@@ -265,6 +291,52 @@ public class BlockLawsTests {
     );
   }
 
+  // Fails when the law accepts fillers turned to any facing instead of the variant's own
+  // StructureAngle.
+  [Fact]
+  [PlantedDefect(typeof(MegablockLaw), nameof(MegablockLaw.Run))]
+  public void A_megablock_raising_its_north_footprint_on_every_side_is_named() {
+    BlockLaws.Law law = MegablockLaw.Run(
+      Stand(Mega("northern", "test-northfillers")),
+      "test"
+    );
+
+    Assert.Equal(4, law.Cases);
+    Assert.Equal(
+      ["e", "w"],
+      law.Findings.Select(f => f.Split(' ')[0][^1..])
+        .Order(StringComparer.Ordinal)
+    );
+    Assert.All(
+      law.Findings,
+      f =>
+        Assert.Matches(
+          @"^test:northern-[ew] placed raised fillers elsewhere than its footprint turned to "
+            + @"(90|270) puts them: ",
+          f
+        )
+    );
+  }
+
+  // Fails when the law stops comparing the filler count with the footprint's.
+  [Fact]
+  [PlantedDefect(typeof(MegablockLaw), nameof(MegablockLaw.Run))]
+  public void A_megablock_raising_part_of_its_footprint_is_named() {
+    BlockLaws.Law law = MegablockLaw.Run(
+      Stand(Mega("short", "test-shortfillers")),
+      "test"
+    );
+
+    Assert.Equal(
+      [
+        .. new[] { "e", "n", "s", "w" }.Select(side =>
+          $"test:short-{side} placed raised 1 of its 2 filler cells"
+        ),
+      ],
+      law.Findings.Order(StringComparer.Ordinal)
+    );
+  }
+
   #endregion
 
   #region Multiblock
@@ -292,6 +364,29 @@ public class BlockLawsTests {
         Assert.Matches(
           @"^test:turned-[nesw] reads 3 layout cell\(s\) as peripherals elsewhere than it "
             + @"completes them: \(1, 0, 0\) at ",
+          f
+        )
+    );
+  }
+
+  // Fails when the law rigs each variant at the angle its anchor turns to instead of the one its
+  // side gives.
+  [Fact]
+  [PlantedDefect(typeof(MultiblockLaw), nameof(MultiblockLaw.Run))]
+  public void A_multiblock_turning_every_facing_to_one_angle_is_named() {
+    BlockLaws.Law law = MultiblockLaw.Run(
+      Stand(Wall, Structure("fixed", "test-fixedframe")),
+      "test"
+    );
+
+    Assert.Equal(4, law.Cases);
+    Assert.Equal(3, law.Findings.Count);
+    Assert.All(
+      law.Findings,
+      f =>
+        Assert.Matches(
+          @"^test:fixed-[nesw] turns its layout to 0, not the (90|180|270) its side '[nesw]' "
+            + @"gives at the offset test:fixed-[nesw] turns by$",
           f
         )
     );
@@ -475,6 +570,20 @@ public class BlockLawsTests {
       world.BlockAccessor.RemoveBlockEntity(pos);
   }
 
+  private sealed class NorthFillers : BlockFilledMegastructure {
+    protected override List<FillerCell> ReservedCells(
+      IWorldAccessor world,
+      BlockPos pos
+    ) => StructureFillers.FootprintCells(this, pos, 0);
+  }
+
+  private sealed class ShortFillers : BlockFilledMegastructure {
+    protected override List<FillerCell> ReservedCells(
+      IWorldAccessor world,
+      BlockPos pos
+    ) => [.. FootprintCells(pos).Take(1)];
+  }
+
   private sealed class DropsAFiller : BlockFilledMegastructure {
     public override void OnBlockBroken(
       IWorldAccessor world,
@@ -509,6 +618,13 @@ public class BlockLawsTests {
 
   private sealed class TurnedFrame : SideFrame {
     protected override int Offset => 180;
+  }
+
+  private sealed class FixedFrame : SideFrame {
+    protected override void UpdateStructureRotation() {
+      if (Block != null)
+        SetStructureAngle(0);
+    }
   }
 
   private sealed class PlainBe : BlockEntity { }
@@ -555,6 +671,22 @@ public class BlockLawsTests {
     ) {
       world.BlockAccessor.SetBlock(
         world.GetBlock(new AssetLocation("test:turner-a")).BlockId,
+        blockSel.Position
+      );
+      return true;
+    }
+  }
+
+  private sealed class PlacesNorth : Block {
+    public override bool TryPlaceBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      ItemStack itemstack,
+      BlockSelection blockSel,
+      ref string failureCode
+    ) {
+      world.BlockAccessor.SetBlock(
+        world.GetBlock(this.WithVariant("side", "n")).BlockId,
         blockSel.Position
       );
       return true;

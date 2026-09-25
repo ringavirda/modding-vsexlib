@@ -194,6 +194,12 @@ see the git history.
 
 ### Changed
 
+- **The block laws see facings and coverage.** `MultiblockLaw` raises each variant at the angle its
+  `side` token gives, plus the offset its blocktype's first variant turns by, and names a variant
+  whose layout turns elsewhere, so a machine turning every facing to one angle is found.
+  `MegablockLaw` holds a `BlockFilledMegastructure` to the fillers of its own `StructureAngle`.
+  `PlacementLaw` names a declared token no placement lands, network nodes aside.
+
 - **Game install lookup** (`build/ExpandedLib.targets`): `$(GamePath)` is the environment override,
   else the nearest `.game/<slug>` holding `VintagestoryAPI.dll` from the repository upward, else
   `.game/<slug>` beside an `exmod.workspace.json` above the repository, else the repository's own.
@@ -287,6 +293,10 @@ see the git history.
 
 ### Fixed
 
+- **A block with a `cover` group and a dash in its code takes snow.** Vanilla's `Block.OnLoaded`
+  finds the free and snowed variants from the code's first dash-segment, so `slag-path-free` had
+  none: weather never snowed it, and `BreakSnowFirst` broke a snowed one whole. A postfix on
+  `Block.OnLoaded` finds them from the whole code.
 - **`ExOrientable` places a block whose code has a dash.** The placed, dropped and picked codes
   were built from the code's first dash-segment, so `crafting-workbench` looked for
   `crafting-n` and every placement was refused with an error. A network node's fallback drop and

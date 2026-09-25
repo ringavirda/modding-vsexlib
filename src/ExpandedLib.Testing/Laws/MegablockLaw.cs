@@ -7,7 +7,7 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Testing;
 
 /// <summary>A megablock's fillers exist exactly while its principal does: placing the principal
-/// raises one filler on every cell its footprint declares, turned to one facing, and removing it by
+/// raises one filler on every cell its footprint declares, turned to its facing, and removing it by
 /// the world clears them all.</summary>
 public static class MegablockLaw {
   internal const string Name = "megablock";
@@ -20,8 +20,10 @@ public static class MegablockLaw {
   /// then clears the principal through <c>SetBlock</c>, the path an explosion or a world edit takes,
   /// which never runs <see cref="Block.OnBlockBroken"/>.</summary>
   /// <remarks>A finding is a placement that throws, a filler count other than the footprint's, fillers
-  /// standing where no facing of the footprint puts them, a removal that throws, and a filler left
-  /// linked to the removed principal.</remarks>
+  /// standing elsewhere than the footprint turned to the variant's
+  /// <see cref="BlockFilledMegastructure.StructureAngle"/> puts them (for another
+  /// <see cref="IFillerHost"/>, where no facing of it puts them), a removal that throws, and a
+  /// filler left linked to the removed principal.</remarks>
   /// <param name="world">A world holding every variant of the blocks judged and exlib's structure
   /// filler (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose blocks are placed.</param>
@@ -63,15 +65,16 @@ public static class MegablockLaw {
           findings.Add(
             $"{block.Code} placed raised {standing.Length} of its {declared} filler cells"
           );
-        else if (
-          !Angles.Any(angle =>
-            StructureFillers
-              .FootprintCells((IFillerHost)block, at, angle)
-              .Select(c => c.Pos)
-              .ToHashSet()
-              .SetEquals(standing)
+        else if (block is BlockFilledMegastructure host) {
+          if (!Covers(host, at, host.StructureAngle, standing))
+            findings.Add(
+              $"{block.Code} placed raised fillers elsewhere than its footprint turned to "
+                + $"{host.StructureAngle} puts them: "
+                + string.Join(", ", standing.Select(p => p.ToString()))
+            );
+        } else if (
+            !Angles.Any(angle => Covers((IFillerHost)block, at, angle, standing))
           )
-        )
           findings.Add(
             $"{block.Code} placed raised fillers where no facing of its footprint puts them: "
               + string.Join(", ", standing.Select(p => p.ToString()))
@@ -94,6 +97,18 @@ public static class MegablockLaw {
     }
     return new BlockLaws.Law(Name, blocks, cases, findings);
   }
+
+  private static bool Covers(
+    IFillerHost host,
+    BlockPos at,
+    int angle,
+    BlockPos[] standing
+  ) =>
+    StructureFillers
+      .FootprintCells(host, at, angle)
+      .Select(c => c.Pos)
+      .ToHashSet()
+      .SetEquals(standing);
 
   private static BlockPos[] FillersOf(TestWorld world, BlockPos principal) =>
     [

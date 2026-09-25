@@ -34,14 +34,23 @@ public class BlockLawGuards(ITestOutputHelper output) {
     );
   });
 
+  /// <summary>Law, then the blocktypes it judged at its last green run; fewer means the law stopped
+  /// seeing blocks it saw.</summary>
+  private static readonly Dictionary<string, int> Floors = new() {
+    ["placement"] = 1,
+    ["break"] = 1,
+    ["megablock"] = 1,
+  };
+
   private void Judge(string law) {
     BlockLaws.Law result = Laws.Value[law];
     output.WriteLine(result.ToString());
     foreach (string finding in result.Findings)
       output.WriteLine("  " + finding);
     Assert.True(
-      result.Blocks > 0,
-      $"the {law} law judged no burdenmaker block"
+      result.Blocks >= Floors[law],
+      $"the {law} law judged {result.Blocks} burdenmaker blocktype(s), below its floor of "
+        + $"{Floors[law]}: a drop means the law stopped seeing blocks"
     );
     FindingLists.Assert(
       result.Findings,

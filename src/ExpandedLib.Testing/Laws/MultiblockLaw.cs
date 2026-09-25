@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Helpers;
 using ExpandedLib.Structures;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -7,9 +9,9 @@ using Vintagestory.API.Util;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>A multiblock completes in every facing it is placed in, its cells filled with the
-/// registered blocks of the mods and stand-ins for <c>game:</c> ones, and reads each peripheral at
-/// the cell its completion check reads.</summary>
+/// <summary>A multiblock turns its layout with its side, completes in every facing it is placed in,
+/// its cells filled with the registered blocks of the mods and stand-ins for <c>game:</c> ones, and
+/// reads each peripheral at the cell its completion check reads.</summary>
 public static class MultiblockLaw {
   internal const string Name = "multiblock";
 
@@ -17,12 +19,14 @@ public static class MultiblockLaw {
   /// <see cref="BlockEntityMultiblockStructure"/> with a layout at a fresh cell through the
   /// accessor's <c>SetBlock</c>, runs its <see cref="Block.OnBlockPlaced"/>, fills the cells its
   /// entity reports missing and runs one monitor tick.</summary>
-  /// <remarks>A cell wanting a code outside <c>game</c> takes the first registered block that
-  /// satisfies it and stays empty when none does; a <c>game</c> cell takes a
-  /// <see cref="StructureRig"/> stand-in. A finding is a placement that throws or raises no such
-  /// entity, a cell no registered block satisfies, a structure the monitor does not see complete,
-  /// and a layout cell read as a peripheral (<c>GetGlobalPos</c>) elsewhere than it
-  /// completes.</remarks>
+  /// <remarks>A variant's layout angle is expected at its <c>side</c> (else <c>orientation</c>)
+  /// token's <see cref="ExOrientation.AngleFromSide"/> plus the offset the blocktype's first
+  /// variant turns by, and the rig is raised at that angle. A cell wanting a code outside
+  /// <c>game</c> takes the first registered block that satisfies it and stays empty when none does;
+  /// a <c>game</c> cell takes a <see cref="StructureRig"/> stand-in. A finding is a placement that
+  /// throws or raises no such entity, a layout turned to another angle than expected, a cell no
+  /// registered block satisfies, a structure the monitor does not see complete, and a layout cell
+  /// read as a peripheral (<c>GetGlobalPos</c>) elsewhere than it completes.</remarks>
   /// <param name="world">A world holding every variant of the blocks judged and of the blocks their
   /// layouts name (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose blocks are placed.</param>
@@ -49,6 +53,7 @@ public static class MultiblockLaw {
       if (layouts.Length == 0)
         continue;
       blocks++;
+      (Block Variant, int Offset)? frame = null;
       foreach (Block block in layouts) {
         cases++;
         BlockPos at = sites.Next();
@@ -66,6 +71,11 @@ public static class MultiblockLaw {
           continue;
         }
 
+        string? side = block.Variant?["side"] ?? block.Variant?["orientation"];
+        int turned = ExOrientation.AngleFromSide(side);
+        frame ??= (block, Normal(anchor.LayoutAngle - turned));
+        int expected = Normal(turned + frame.Value.Offset);
+
         var missing = new List<BlockEntityMultiblockStructure.MissingCell>();
         var unmade = new List<BlockPos>();
         anchor.IncompleteBlockCount(missing.Add);
@@ -81,7 +91,15 @@ public static class MultiblockLaw {
           );
         }
 
-        StructureRig.Around(world, anchor, anchor.LayoutAngle).Raise();
+        try {
+          StructureRig.Around(world, anchor, expected).Raise();
+        } catch (InvalidOperationException) {
+          findings.Add(
+            $"{block.Code} turns its layout to {anchor.LayoutAngle}, not the {expected} its side "
+              + $"'{side}' gives at the offset {frame.Value.Variant.Code} turns by"
+          );
+          continue;
+        }
         foreach (BlockPos cell in unmade)
           world.Accessor.SetBlock(0, cell);
         anchor.DriveMonitorTick();
@@ -132,6 +150,8 @@ public static class MultiblockLaw {
     world.Accessor.SetBlock(0, cell.At);
     return false;
   }
+
+  private static int Normal(int angle) => ((angle % 360) + 360) % 360;
 
   private static (int X, int Y, int Z) Local(
     BlockEntityMultiblockStructure anchor,
