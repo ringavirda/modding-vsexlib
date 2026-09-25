@@ -9,6 +9,13 @@ see the git history.
 
 ### Added
 
+- **`NeighbourLaw` and `NetworkLaw`** (ExpandedLib.Testing, `Laws/`), run by `BlockLaws.Run` as
+  `neighbour` and `network`: every block, stood on a solid block, meets a solid block set and
+  cleared on each free face of its cells, each change announced through
+  `TestWorld.NotifyNeighbours`, and throws nothing, logs nothing and keeps each cell's code and
+  entity tree; every pair of network members' connectors of one type, face to face, is walked
+  through `BlockNetworkModSystem.GetConnectedNeighbors` from both sides, and joins from both or
+  from neither.
 - **`InfoLaw` and `ReloadLaw`** (ExpandedLib.Testing, `Laws/`), run by `BlockLaws.Run` as `info`
   and `reload`: every block entity's `GetBlockInfo`, read fresh, after 5 s of its own ticks and
   after `TestWorld.Reload`, throws nothing and logs nothing; the reload keeps the entity's class,
