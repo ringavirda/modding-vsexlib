@@ -36,6 +36,20 @@ jobs:
           # Every tag: the release-seed guard compares against the newest v<x.y.z>.
           fetch-depth: 0
 
+      # exmod.json's "docs" entry reads ../exdocs; a checkout stays inside the workspace, so the
+      # sibling is a link to it.
+      - name: Checkout exdocs
+        uses: actions/checkout@v4
+        with:
+          repository: ringavirda/exdocs
+          ref: ${{ github.base_ref || github.ref_name }}
+          ssh-key: ${{ secrets.EXDOCS_KEY }}
+          path: .exdocs
+          sparse-checkout: exlib
+
+      - name: Place exdocs beside the repository
+        run: ln -s "$GITHUB_WORKSPACE/.exdocs" "$GITHUB_WORKSPACE/../exdocs"
+
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:

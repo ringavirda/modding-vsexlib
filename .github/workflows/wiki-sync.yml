@@ -1,16 +1,15 @@
 name: Sync Wiki
 
-# Publishes the hand-authored wiki sources under wiki/ to the repository's GitHub wiki
-# (the separate <repo>.wiki.git). The in-repo copy is the single source of truth - it is reviewed
-# in PRs and versioned with the code; the wiki is a generated mirror, so never edit the wiki
-# directly (those edits would be overwritten on the next sync).
+# Publishes the wiki sources in exdocs (exlib/wiki in ringavirda/exdocs) to this repository's GitHub
+# wiki (the separate <repo>.wiki.git). exdocs is the single source of truth; the wiki is a generated
+# mirror, so never edit the wiki directly (those edits would be overwritten on the next sync). The
+# nightly run carries an exdocs edit that no push here triggered.
 on:
   push:
     branches: [main]
-    paths:
-      - "wiki/**"
-      - ".github/workflows/wiki-sync.yml"
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
 
 permissions:
   contents: write
@@ -26,10 +25,16 @@ jobs:
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout exdocs
         uses: actions/checkout@v4
+        with:
+          repository: ringavirda/exdocs
+          ref: ${{ github.ref_name }}
+          ssh-key: ${{ secrets.EXDOCS_KEY }}
+          path: exdocs
+          sparse-checkout: exlib/wiki
 
-      - name: Publish wiki/ to the GitHub wiki
+      - name: Publish exdocs/exlib/wiki to the GitHub wiki
         env:
           GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -43,12 +48,10 @@ jobs:
             exit 0
           fi
 
-          # Cloned under a name distinct from the in-repo wiki/ it mirrors from, since both now
-          # sit at the repo root.
           git clone "$wiki_url" wiki-repo
-          # Replace the wiki contents with the in-repo sources (keep the wiki's .git).
+          # Replace the wiki contents with the exdocs sources (keep the wiki's .git).
           find wiki-repo -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
-          cp -R wiki/. wiki-repo/
+          cp -R exdocs/exlib/wiki/. wiki-repo/
 
           cd wiki-repo
           git config user.name  "github-actions[bot]"
@@ -57,6 +60,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "Wiki already up to date."
           else
-            git commit -m "Sync wiki from ${GITHUB_SHA}"
+            git commit -m "Sync wiki from exdocs $(git -C ../exdocs rev-parse --short HEAD)"
             git push
           fi
