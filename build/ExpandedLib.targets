@@ -176,10 +176,12 @@
 
   <!-- Auto-provision the SERVER binaries into $(GamePath) when they're missing and no env override is
        set, so a fresh `dotnet build` / `dotnet test` works seamlessly with no manual step. The playable
-       client is never fetched here - only the launch tasks pull it (provision-game ... -Kind client). -->
+       client is never fetched here - only the launch tasks pull it (provision-game ... -Kind client).
+       An IDE's design-time build (DesignTimeBuild=true) never provisions: it only reports the
+       missing install through _CheckGamePath. -->
   <Target
     Name="_AutoProvisionGame"
-    Condition="'$(GameSlug)' != '' and '$(_GamePathEnv)' == '' and '$(ExmodWrapper)' != '' and !Exists('$(GamePath)\VintagestoryAPI.dll')"
+    Condition="'$(GameSlug)' != '' and '$(_GamePathEnv)' == '' and '$(ExmodWrapper)' != '' and !Exists('$(GamePath)\VintagestoryAPI.dll') and '$(DesignTimeBuild)' != 'true'"
   >
     <Message
       Importance="high"
