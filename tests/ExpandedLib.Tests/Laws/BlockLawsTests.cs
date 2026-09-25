@@ -587,9 +587,8 @@ public class BlockLawsTests {
 
   #region Reload
 
-  // Fails when the law stops comparing the reloaded tree with the saved one or the info, reloads
-  // without ticking, takes the fresh tree from the ticked entity, or counts two blocks without
-  // variant groups as one blocktype.
+  // Fails when the law skips the tree or info comparison or the tick, takes the fresh tree from the
+  // ticked entity, or counts two blocks without variant groups as one blocktype.
   [Fact]
   [PlantedDefect(typeof(ReloadLaw), nameof(ReloadLaw.Run))]
   public void A_count_written_and_never_read_back_is_named_by_its_tree_and_its_info() {
