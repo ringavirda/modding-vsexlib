@@ -17,13 +17,12 @@ public static class NeighbourLaw {
   /// <paramref name="world"/> on a solid block, as <see cref="InfoLaw.Run"/> does, stands the solid
   /// block under each filler cell that has air below, then on each free face sets the solid
   /// block, runs <see cref="TestWorld.NotifyNeighbours"/>, clears it and runs it again.</summary>
-  /// <remarks>The block's cells are its own and those of the fillers linked to it; a free face is
-  /// one of theirs whose neighbour is air. A finding is a set or clear that throws or logs, a cell
-  /// holding another code afterwards, an entity gone, and a tree with a key lost, added, of
-  /// another type or of another value (<c>ExTree.Differences</c>). A variant whose placement throws
-  /// or logs is <see cref="InfoLaw"/>'s finding and is skipped; a variant is judged no further
-  /// after its first finding. A block whose footprint holds the cell below its own is placed on
-  /// air; no support is announced to the block.</remarks>
+  /// <remarks>The block's cells are its own and its fillers'; a free face is one whose neighbour
+  /// is air. A finding is a set or clear that throws or logs, a cell holding another code after,
+  /// an entity gone, and a tree changed by <c>ExTree.Differences</c>. A variant whose placement
+  /// throws or logs is <see cref="InfoLaw"/>'s finding and is skipped; a variant is judged no
+  /// further after its first finding. A block whose footprint holds the cell below its own stands
+  /// on air.</remarks>
   /// <param name="world">A world holding every variant of the blocks judged
   /// (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose blocks are placed.</param>

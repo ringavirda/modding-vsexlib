@@ -18,15 +18,12 @@ public static class NetworkLaw {
   /// <summary>Finds every connector of the network members of <paramref name="domain"/> in
   /// <paramref name="world"/>, then stands each representative connector against each of the
   /// same network type on the opposite face and walks from both.</summary>
-  /// <remarks>A member is a block whose signals name a network (<c>BlockSignals.Networks</c>): a
-  /// node block, an entity's membership, a footprint port. Each variant is set through the
-  /// accessor's <c>SetBlock</c>, a filler host then runs <see cref="Block.OnBlockPlaced"/> to
-  /// raise its fillers, and each of its cells is resolved (<see cref="NetworkMembership.Resolve"/>)
-  /// for each network it names. Per network type, face and kind (the blocktype with its groups
-  /// other than those placement writes) the first connector found stands for the rest, so every
-  /// kind meets every kind across every face, and the orientations are not multiplied in. A pair
-  /// whose second structure would overlap the first is skipped. A finding is a pair joined from
-  /// one side only, and a placement or walk that throws.</remarks>
+  /// <remarks>A member is a block whose signals name a network: a node, an entity's membership, a
+  /// footprint port. Each variant is set through the accessor's <c>SetBlock</c> (a filler host
+  /// then runs <see cref="Block.OnBlockPlaced"/>) and its cells resolved per network. Per network
+  /// type, face and kind (the blocktype with its unplaced groups) the first connector stands for
+  /// the rest. A pair whose second structure would overlap the first is skipped. A finding is a
+  /// pair joined from one side only, and a placement or walk that throws.</remarks>
   /// <param name="world">A world holding every variant of the blocks judged and the network types
   /// they name (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose blocks are judged; members of other domains in the
