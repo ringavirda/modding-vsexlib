@@ -112,6 +112,7 @@ public sealed partial class TestWorld : IDisposable {
   public TestWorld() {
     Air = TestBlocks.Configure(new Block(), "game:air", 0);
     Air.Replaceable = 9999;
+    Air.SideSolid = new SmallBoolArray(0);
     _blocksById[0] = Air;
 
     Calendar = Substitute.For<IGameCalendar>();
@@ -501,9 +502,19 @@ public sealed partial class TestWorld : IDisposable {
 
   /// <summary>Advances block-entity sim time by <paramref name="totalMs"/> ms, firing each listener
   /// once per whole interval it registered.</summary>
-  public void AdvanceBlockEntityTime(int totalMs) {
+  public void AdvanceBlockEntityTime(int totalMs) =>
+    AdvanceBlockEntityTime(totalMs, null);
+
+  /// <summary>The ids of the tick listeners registered and not yet removed, as a copy.</summary>
+  internal HashSet<long> TickListenerIds() => [.. _tickListeners.Keys];
+
+  /// <summary>Advances block-entity sim time by <paramref name="totalMs"/> ms for the listeners in
+  /// <paramref name="only"/>, or for every listener when it is null.</summary>
+  internal void AdvanceBlockEntityTime(int totalMs, IReadOnlySet<long>? only) {
     // Snapshot: a listener may unregister (or a block entity may register a new one) while firing.
     foreach (long id in _tickListeners.Keys.ToList()) {
+      if (only != null && !only.Contains(id))
+        continue;
       if (!_tickListeners.TryGetValue(id, out TickListener listener))
         continue; // already removed by an earlier callback this pass
       int interval = System.Math.Max(1, listener.IntervalMs);
@@ -571,16 +582,17 @@ public sealed partial class TestWorld : IDisposable {
     _blockEntities.Remove(pos);
   }
 
-  /// <summary>Creates a fresh block entity of the same class the engine would instantiate on
-  /// load.</summary>
+  /// <summary>Creates a fresh block entity of the class the engine would instantiate on load: the
+  /// placed block's entity class through a registered factory, else through the class registry with
+  /// its behaviours, else one of <paramref name="old"/>'s type.</summary>
   private BlockEntity NewBlockEntityLike(BlockEntity old, Block block) {
     string? classname = block?.EntityClass ?? old.Block?.EntityClass;
-    if (
-      classname != null
-      && _beFactories.TryGetValue(classname, out var factory)
-    )
+    if (classname == null)
+      return (BlockEntity)Activator.CreateInstance(old.GetType())!;
+    if (_beFactories.TryGetValue(classname, out var factory))
       return factory();
-    return (BlockEntity)Activator.CreateInstance(old.GetType())!;
+    return CreateRegisteredBlockEntity(classname, block ?? old.Block!)
+      ?? (BlockEntity)Activator.CreateInstance(old.GetType())!;
   }
 
   #endregion
@@ -689,6 +701,15 @@ public sealed partial class TestWorld : IDisposable {
           onBlock(GetBlock(new BlockPos(x, y, z, min.dimension)), x, y, z);
   }
 
+  private ICachingBlockAccessor BuildCachingAccessor() {
+    var a = Substitute.For<ICachingBlockAccessor>();
+    a.GetBlock(Arg.Any<BlockPos>())
+      .Returns(ci => ReadBlock(ci.Arg<BlockPos>()));
+    a.IsValidPos(Arg.Any<BlockPos>()).Returns(true);
+    a.LastChunkLoaded.Returns(true);
+    return a;
+  }
+
   private IServerWorldAccessor BuildWorld() {
     var w = Substitute.For<IServerWorldAccessor>();
     w.Side.Returns(EnumAppSide.Server);
@@ -705,6 +726,10 @@ public sealed partial class TestWorld : IDisposable {
         Arg.Any<EnumBlockAccessFlags>()
       )
       .Returns(true);
+    // Vanilla's RoomRegistry walks the cells through a caching accessor; every cell is loaded and
+    // valid.
+    w.GetCachingBlockAccessor(Arg.Any<bool>(), Arg.Any<bool>())
+      .Returns(_ => BuildCachingAccessor());
     w.GetBlock(Arg.Any<AssetLocation>())
       .Returns(ci => GetByCode(ci.Arg<AssetLocation>()));
     w.GetBlock(Arg.Any<int>())

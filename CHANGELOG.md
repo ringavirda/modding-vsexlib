@@ -301,6 +301,10 @@ see the git history.
 
 ### Fixed
 
+- **`TestWorld.Reload` builds the reloaded block entity from the block's entity class** through the
+  class registry, with its behaviours, as the game does on load; without a registered factory it
+  made one of the old instance's type with no behaviours. The harness's air is solid on no side,
+  as the game's is.
 - **A block with a `cover` group and a dash in its code takes snow.** Vanilla's `Block.OnLoaded`
   finds the free and snowed variants from the code's first dash-segment, so `slag-path-free` had
   none: weather never snowed it, and `BreakSnowFirst` broke a snowed one whole. A postfix on
