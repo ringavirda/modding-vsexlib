@@ -89,7 +89,7 @@ public class BlockLawGuards(ITestOutputHelper output) {
   public void The_burdenmaker_reloads_with_its_tree_and_info() =>
     Judge("reload");
 
-  // Fails when a block changes its code or tree when a neighbour comes and goes.
+  // Fails when the burdenmaker drops its entity on a neighbour change.
   [Fact]
   public void The_burdenmaker_stands_as_it_was_when_a_neighbour_comes_and_goes() =>
     Judge("neighbour");
