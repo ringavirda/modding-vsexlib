@@ -308,6 +308,14 @@ see the git history.
 
 ### Fixed
 
+- **An open mold draws the metal around it.** A pour sized to its molds left metal in the canals: it
+  conveyed past the near molds, and its return levelled by half the difference rounded down, so a
+  one-unit gap never closed. `IMoltenCell.IsOpenMold` (default false) marks a drain fitting whose mold
+  is present, has room, has not solidified and is set to pour. Each cell within
+  `MoltenMoldDrawRadius` canal hops of one (`ExlibConfig`, default 3) hands a neighbour nearer to it the
+  whole difference, capped by the flow rate and the neighbour's room, with no gap floor, while it holds
+  more, and moves nothing back across that connection. Farther out the network conveys and levels as
+  before, so a mold set far out on a large network pulls nothing across it.
 - **`TestWorld.Reload` builds the reloaded block entity from the block's entity class** through the
   class registry, with its behaviours, as the game does on load; without a registered factory it
   made one of the old instance's type with no behaviours. The harness's air is solid on no side,

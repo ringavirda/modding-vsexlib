@@ -40,6 +40,13 @@ public interface IMoltenCell {
   /// and the whole of it downhill or into a drain fitting.</summary>
   MoltenFlowRules? FlowRules => null;
 
+  /// <summary>True for a drain fitting whose mold is present, has room, has not solidified and is set
+  /// to pour; read on every tick, false by default. A cell within
+  /// <c>ExlibValues.MoltenMoldDrawRadius</c> canal hops of one hands a nearer horizontal neighbour the
+  /// whole difference while it holds more, with no gap floor, and takes none back (exdocs
+  /// exlib/design/mechanics/molten-network.md, section 3).</summary>
+  bool IsOpenMold => false;
+
   /// <summary>Rebuilds the server temperature carrier after a world load; only type and temperature persist.</summary>
   void EnsureMetalStack(IWorldAccessor world);
 

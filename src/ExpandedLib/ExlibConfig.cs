@@ -64,6 +64,10 @@ public class ExlibConfig : IExVersionedConfig {
   /// the molten network's own edges apply none.</summary>
   public int MoltenMinFlowAmount { get; set; } = 10;
 
+  /// <summary>Canal hops, counted along the network's connections, within which an open mold
+  /// (<c>IMoltenCell.IsOpenMold</c>) draws metal toward itself; 0 or less draws nothing.</summary>
+  public int MoltenMoldDrawRadius { get; set; } = 3;
+
   /// <summary>Default time-based cooldown speed stamped on a molten carrier stack when a caller gives
   /// none.</summary>
   public float MoltenCooldownDefault { get; set; } = 24f;

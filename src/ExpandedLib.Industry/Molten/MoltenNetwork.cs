@@ -111,6 +111,59 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     return dist;
   }
 
+  /// <summary>Multi-source BFS mapping each cell within <paramref name="radius"/> canal hops of an
+  /// open mold to its hop distance from the nearest one; open molds map to 0 and every other cell is
+  /// absent, so a radius of 0 or less draws nothing. A hop reaches a cell beside or above the nearer
+  /// one, never below it, and never a sealed or solidified cell.</summary>
+  private Dictionary<BlockPos, int> BuildDistanceToOpenMold(
+    IBlockAccessor blockAccessor,
+    List<(BlockPos Pos, IMoltenCell Cell)> cells,
+    int radius
+  ) {
+    var dist = new Dictionary<BlockPos, int>();
+    var queue = new Queue<BlockPos>();
+    foreach (var c in cells)
+      if (c.Cell.IsOpenMold && !c.Cell.Sealed && !c.Cell.Solidified) {
+        dist[c.Pos] = 0;
+        queue.Enqueue(c.Pos);
+      }
+
+    while (queue.Count > 0) {
+      BlockPos cur = queue.Dequeue();
+      int next = dist[cur] + 1;
+      if (
+        next > radius
+        || blockAccessor.GetBlock(cur) is not BlockNetworkNode node
+        || blockAccessor.GetBlockEntity(cur) is not IMoltenCell curCell
+      )
+        continue;
+
+      foreach (var face in BlockFacing.ALLFACES) {
+        // Metal from the cell below cannot climb into this one.
+        if (face == BlockFacing.DOWN || !node.HasConnectorAt(face))
+          continue;
+        BlockPos npos = cur.AddCopy(face);
+        if (!Nodes.Contains(npos) || dist.ContainsKey(npos))
+          continue;
+        if (
+          blockAccessor.GetBlockEntity(npos) is not IMoltenCell nCell
+          || nCell.Sealed
+          || nCell.Solidified
+        )
+          continue;
+        if (
+          face == BlockFacing.UP
+          && EdgeRules(curCell.FlowRules, nCell.FlowRules)?.HorizontalOnly
+            == true
+        )
+          continue;
+        dist[npos] = next;
+        queue.Enqueue(npos);
+      }
+    }
+    return dist;
+  }
+
   /// <summary>Orders cells for the flow pass, greater distance from the source first; position breaks
   /// ties, and an unreachable cell counts as farthest.</summary>
   private static int CompareFlowOrder(
@@ -144,6 +197,11 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     // Farthest-first order picks which end drives each edge; the two amounts set which way metal
     // moves.
     var distFromStart = GetDistanceFromStart(blockAccessor, cells);
+    var distToMold = BuildDistanceToOpenMold(
+      blockAccessor,
+      cells,
+      ExlibValues.MoltenMoldDrawRadius
+    );
     cells.Sort((x, y) => CompareFlowOrder(x, y, distFromStart));
     foreach (var c in cells)
       c.Cell.EnsureMetalStack(world);
@@ -184,6 +242,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
             maxFlow,
             rules,
             distFromStart,
+            distToMold,
             world,
             downhillOnly: true
           );
@@ -194,7 +253,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
         if (CompareFlowOrder(a, b, distFromStart) >= 0)
           continue;
 
-        FlowEdge(a, b, maxFlow, rules, distFromStart, world);
+        FlowEdge(a, b, maxFlow, rules, distFromStart, distToMold, world);
       }
     }
 
@@ -226,8 +285,9 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     BlockPos pos
   ) => distFromStart.TryGetValue(pos, out int d) ? d : int.MaxValue;
 
-  /// <summary>Moves metal across one connection, capped at <paramref name="maxFlow"/> units, by
-  /// <paramref name="rules"/> when set and by the defaults otherwise;
+  /// <summary>Moves metal across one connection, capped at <paramref name="maxFlow"/> units: toward
+  /// the nearer end when both ends lie at different distances in <paramref name="distToMold"/>, else
+  /// by <paramref name="rules"/> when set and by the defaults otherwise;
   /// <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>.</summary>
   private static void FlowEdge(
     (BlockPos Pos, IMoltenCell Cell) a,
@@ -235,6 +295,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     int maxFlow,
     MoltenFlowRules? rules,
     Dictionary<BlockPos, int> distFromStart,
+    Dictionary<BlockPos, int> distToMold,
     IWorldAccessor world,
     bool downhillOnly = false
   ) {
@@ -247,21 +308,26 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     if (diff == 0)
       return;
 
+    if (
+      !downhillOnly
+      && distToMold.TryGetValue(a.Pos, out int aToMold)
+      && distToMold.TryGetValue(b.Pos, out int bToMold)
+      && aToMold != bToMold
+    ) {
+      var from = aToMold > bToMold ? a : b;
+      var to = aToMold > bToMold ? b : a;
+      if (from.Cell.CellAmount < to.Cell.CellAmount)
+        return;
+      Transfer(from, to, Math.Min(diff, maxFlow), world);
+      return;
+    }
+
     bool aIsGiver = a.Cell.CellAmount > b.Cell.CellAmount;
     // A downhill edge runs one way only: nothing moves when the lower cell is the fuller one.
     if (downhillOnly && !aIsGiver)
       return;
     var giver = aIsGiver ? a : b;
     var receiver = aIsGiver ? b : a;
-    if (giver.Cell.CellAmount <= 0f)
-      return;
-
-    // Different metals sit side by side without mixing.
-    if (
-      receiver.Cell.CellAmount > 0f
-      && receiver.Cell.CellMetalType != giver.Cell.CellMetalType
-    )
-      return;
 
     // A drain fitting and a downhill edge are one-way sinks and take the whole difference; a
     // levelling pair moves half, and integer division floors the step to zero on its own.
@@ -277,13 +343,28 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
           > DistanceOf(distFromStart, giver.Pos);
     }
     var step = whole ? diff : diff / 2;
-    var transfer = step > maxFlow ? maxFlow : step;
+    Transfer(giver, receiver, step > maxFlow ? maxFlow : step, world);
+  }
 
-    if (transfer <= 0)
+  /// <summary>Moves up to <paramref name="amount"/> units from <paramref name="giver"/> into
+  /// <paramref name="receiver"/>; a receiver holding another metal takes none.</summary>
+  private static void Transfer(
+    (BlockPos Pos, IMoltenCell Cell) giver,
+    (BlockPos Pos, IMoltenCell Cell) receiver,
+    int amount,
+    IWorldAccessor world
+  ) {
+    if (amount <= 0 || giver.Cell.CellAmount <= 0)
+      return;
+    // Different metals sit side by side without mixing.
+    if (
+      receiver.Cell.CellAmount > 0
+      && receiver.Cell.CellMetalType != giver.Cell.CellMetalType
+    )
       return;
 
     var accepted = receiver.Cell.PushMetalRaw(
-      transfer,
+      amount,
       giver.Cell.CellMetalType,
       giver.Cell.CellTemperature,
       world
