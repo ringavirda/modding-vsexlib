@@ -36,7 +36,7 @@ public class WikiParityTests {
     "_Sidebar.md",
   ];
 
-  private static string WikiDirectory => Path.Combine(RepoPaths.Root, "wiki");
+  private static string WikiDirectory => RepoPaths.Wiki;
 
   /// <summary>The source generators the wiki documents, read from source since they ship no runtime
   /// assembly.</summary>

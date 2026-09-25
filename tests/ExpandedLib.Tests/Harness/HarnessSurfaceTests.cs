@@ -12,11 +12,8 @@ namespace ExpandedLib.Tests;
 /// <c>Testing-API-Reference.md</c>, and every type its "Where things are" table claims actually
 /// exists.</summary>
 public class HarnessSurfaceTests {
-  private static readonly string ReferencePath = Path.Combine(
-    RepoPaths.Root,
-    "wiki",
-    "Testing-API-Reference.md"
-  );
+  private static string ReferencePath =>
+    Path.Combine(RepoPaths.Wiki, "Testing-API-Reference.md");
 
   private static string ReferenceText => File.ReadAllText(ReferencePath);
 

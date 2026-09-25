@@ -14,5 +14,6 @@
   "tests": ["tests/ExpandedLib.Tests"],
   "packages": ["src/ExpandedLib", "src/ExpandedLib.Industry", "src/ExpandedLib.Testing", "templates"],
   "coverageFloors": "tests/coverage-floors.json",
+  "docs": "../exdocs/exlib",
   "depends": {}
 }

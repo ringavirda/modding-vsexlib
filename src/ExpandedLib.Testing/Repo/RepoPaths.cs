@@ -6,7 +6,8 @@ using System.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Repo-relative path resolution for the per-mod layout (<c>mods/&lt;mod&gt;/{src,tests,assets,docs}</c>).
+/// Repo-relative path resolution for the per-mod layout (<c>mods/&lt;mod&gt;/{src,tests,assets,docs}</c>),
+/// with docs and the wiki read from the docs root <c>exmod.json</c> names when it names one.
 /// Every repo path a test or guard needs is resolved here.
 /// </summary>
 public static class RepoPaths {
@@ -55,8 +56,38 @@ public static class RepoPaths {
     return Path.Combine(Mod(mod), "assets", domain);
   }
 
-  /// <summary>The absolute path to <c>mods/&lt;modId&gt;/docs</c> (handbook, screenshots, moddb pages).</summary>
-  public static string Docs(string modId) => Path.Combine(Mod(modId), "docs");
+  /// <summary>The absolute docs root named by the <c>docs</c> entry of <c>exmod.json</c>, a path
+  /// relative to the repository root such as <c>../exdocs/exlib</c>; null when the manifest has no
+  /// such entry, or no manifest exists.</summary>
+  /// <exception cref="DirectoryNotFoundException">The entry names a folder that does not
+  /// exist.</exception>
+  public static string? DocsRoot {
+    get {
+      string? root = RepoManifest.Docs;
+      if (root == null || Directory.Exists(root))
+        return root;
+      throw new DirectoryNotFoundException(
+        $"exmod.json names the docs root {root}, which does not exist. Clone exdocs beside "
+          + "the repository so that path resolves."
+      );
+    }
+  }
+
+  /// <summary>The absolute path to the wiki folder: <c>&lt;DocsRoot&gt;/wiki</c> when
+  /// <c>exmod.json</c> names a docs root, else <c>&lt;Root&gt;/wiki</c>.</summary>
+  /// <exception cref="DirectoryNotFoundException">The configured docs root does not
+  /// exist.</exception>
+  public static string Wiki => Path.Combine(DocsRoot ?? Root, "wiki");
+
+  /// <summary>The absolute path to a mod's docs (handbook, screenshots, moddb pages):
+  /// <c>&lt;DocsRoot&gt;/&lt;modId&gt;</c> when <c>exmod.json</c> names a docs root, else
+  /// <c>&lt;mod path&gt;/docs</c>.</summary>
+  /// <exception cref="DirectoryNotFoundException">The configured docs root does not
+  /// exist.</exception>
+  public static string Docs(string modId) =>
+    DocsRoot is { } docsRoot
+      ? Path.Combine(docsRoot, modId)
+      : Path.Combine(Mod(modId), "docs");
 
   /// <summary>The absolute path to <paramref name="id"/>'s source folder: <c>&lt;mod path&gt;/src</c> when
   /// that directory exists, else the mod path itself.</summary>

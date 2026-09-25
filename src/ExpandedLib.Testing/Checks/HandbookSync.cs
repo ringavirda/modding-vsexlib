@@ -9,9 +9,9 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// The handbook authoring pipeline: <c>mods/&lt;domain&gt;/docs/handbook/NN-*.html</c> is the
-/// hand-edited source for a page's body, shipped as a lang-key string in <c>en.json</c>. Only the
-/// body is synced; a page's <c>title</c> key stays hand-authored.
+/// The handbook authoring pipeline: <c>handbook/NN-*.html</c> under <see cref="RepoPaths.Docs"/>
+/// is the hand-edited source for a page's body, shipped as a lang-key string in <c>en.json</c>.
+/// Only the body is synced; a page's <c>title</c> key stays hand-authored.
 /// </summary>
 public static class HandbookSync {
   /// <summary>One handbook page: its authoring HTML, shipped descriptor, and lang key
@@ -90,7 +90,7 @@ public static class HandbookSync {
       string name = Path.GetFileName(descriptor);
       if (!sources.ContainsKey(number))
         problems.Add(
-          $"{domain}: shipped page {name} has no authoring source mods/{domain}/docs/handbook/{number}-*.html"
+          $"{domain}: shipped page {name} has no authoring source {Shown(HandbookFolder(domain))}/{number}-*.html"
         );
 
       string? key = LangKeyOf(descriptor);
@@ -127,8 +127,7 @@ public static class HandbookSync {
     if (have == want)
       return (true, "");
 
-    string relative =
-      $"mods/{page.Domain}/docs/handbook/{Path.GetFileName(page.HtmlPath)}";
+    string relative = Shown(page.HtmlPath);
     if (have == null)
       return (
         false,
@@ -251,7 +250,14 @@ public static class HandbookSync {
 
   private static SortedDictionary<string, string> SourcesByNumber(
     string domain
-  ) => ByNumber(Path.Combine(RepoPaths.Docs(domain), "handbook"), "*.html");
+  ) => ByNumber(HandbookFolder(domain), "*.html");
+
+  private static string HandbookFolder(string domain) =>
+    Path.Combine(RepoPaths.Docs(domain), "handbook");
+
+  // A path as a message names it: relative to the repository root, '/'-separated.
+  private static string Shown(string path) =>
+    Path.GetRelativePath(RepoPaths.Root, path).Replace('\\', '/');
 
   private static SortedDictionary<string, string> DescriptorsByNumber(
     string domain

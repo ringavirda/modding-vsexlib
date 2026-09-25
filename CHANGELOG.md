@@ -194,6 +194,14 @@ see the git history.
 
 ### Changed
 
+- **`RepoPaths` reads a docs root from `exmod.json`** (ExpandedLib.Testing). A `docs` entry, a path
+  relative to the repository root, moves the wiki (`RepoPaths.Wiki`) and each mod's docs
+  (`RepoPaths.Docs`, now `<root>/<modId>`) to that folder; `RepoPaths.DocsRoot` names it. An entry
+  naming a folder that does not exist throws `DirectoryNotFoundException` with the path. A manifest
+  without the entry keeps `<mod path>/docs` and `wiki/`.
+- **exlib's design pages and wiki source moved to exdocs** (`exdocs/exlib/design`,
+  `exdocs/exlib/wiki`), a repository cloned beside this one; the wiki guards and the Sync Wiki
+  workflow read them from there.
 - **The block laws see facings and coverage.** `MultiblockLaw` raises each variant at the angle its
   `side` token gives, plus the offset its blocktype's first variant turns by, and names a variant
   whose layout turns elsewhere, so a machine turning every facing to one angle is found.

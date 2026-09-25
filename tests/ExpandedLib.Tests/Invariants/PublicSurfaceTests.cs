@@ -17,7 +17,7 @@ public class PublicSurfaceTests {
   private static readonly string[] NotATypeName = [];
 
   private static string PagePath =>
-    Path.Combine(RepoPaths.Root, "wiki", "Supported-API.md");
+    Path.Combine(RepoPaths.Wiki, "Supported-API.md");
 
   // Only the Type column of a table row: `| \`Name\` | ... |`.
   private static readonly Regex TableRow = new(

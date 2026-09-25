@@ -9,7 +9,7 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>Every <c>ExpandedLib*</c> package version under <c>templates/</c>, every
-/// <c>"exlib": "&lt;version&gt;"</c> literal in <c>wiki/Getting-Started.md</c>, and each sample's
+/// <c>"exlib": "&lt;version&gt;"</c> literal in <c>exdocs/exlib/wiki/Getting-Started.md</c>, and each sample's
 /// <c>exlib</c> dependency floor must equal <see cref="ModinfoVersion"/>.</summary>
 public class VersionPinTests {
   private static string ModinfoVersion {
@@ -116,7 +116,7 @@ public class VersionPinTests {
   [Fact]
   public void Every_exlib_dependency_literal_in_Getting_Started_matches_modinfo() {
     string version = ModinfoVersion;
-    string page = Path.Combine(RepoPaths.Root, "wiki", "Getting-Started.md");
+    string page = Path.Combine(RepoPaths.Wiki, "Getting-Started.md");
     string text = File.ReadAllText(page);
 
     Assert.True(

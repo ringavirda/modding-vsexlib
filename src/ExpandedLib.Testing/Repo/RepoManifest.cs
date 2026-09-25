@@ -31,11 +31,15 @@ public static class RepoManifest {
   /// <c>iiex</c>, from that mod's own <c>"overlays"</c> object).</summary>
   public static IReadOnlyDictionary<string, string> Overlays => Load().Overlays;
 
+  // The "docs" entry as an absolute path, existing or not; null when the entry is absent.
+  internal static string? Docs => Load().Docs;
+
   private sealed record Manifest(
     IReadOnlyDictionary<string, string> Mods,
     IReadOnlyDictionary<string, SampleEntry> Samples,
     IReadOnlyList<string> Tests,
-    IReadOnlyDictionary<string, string> Overlays
+    IReadOnlyDictionary<string, string> Overlays,
+    string? Docs = null
   );
 
   private static Manifest Load() {
@@ -77,7 +81,11 @@ public static class RepoManifest {
       ? [.. testsArr.Select(t => Resolve(root, (string)t!))]
       : [];
 
-    return new Manifest(mods, samples, tests, overlays);
+    string? docs = doc["docs"] is JValue { Value: string docsEntry }
+      ? Path.GetFullPath(Resolve(root, docsEntry))
+      : null;
+
+    return new Manifest(mods, samples, tests, overlays, docs);
   }
 
   private static Manifest Default(string root) {
