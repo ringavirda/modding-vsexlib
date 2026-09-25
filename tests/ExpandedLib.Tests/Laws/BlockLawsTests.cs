@@ -1,21 +1,23 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>The block laws against small blocks that each break one law: placements that write an
-/// undeclared side, land another block or none, or never land a side; megablocks that clear their
-/// fillers only on a player break or raise the wrong ones; multiblocks read in a frame they do not
-/// complete in or turned to one angle; a layout naming a block nobody registers; and a
-/// construction that refunds its stages and drops itself.</summary>
+/// <summary>The block laws against small blocks that each break one law: placements that land an
+/// undeclared side, another block or none; megablocks that keep or misplace their fillers;
+/// multiblocks read in another frame, turned to one angle or naming an unregistered block; a
+/// construction that drops itself; info that throws once ticked or logs; and entities that forget
+/// a count or change class over a reload.</summary>
 public class BlockLawsTests {
   private static readonly FillerCellSpec[] TwoCells =
   [
@@ -42,6 +44,15 @@ public class BlockLawsTests {
     world.RegisterClass("test-placeskindb", typeof(PlacesKindB));
     world.RegisterClass("test-placesbare", typeof(PlacesTheBareTurner));
     world.RegisterClass("test-neverplaces", typeof(NeverPlaces));
+    world.RegisterClass("test-tickthrows", typeof(ThrowsOnceTicked));
+    world.RegisterClass("test-tickbreaks", typeof(TickBreaks));
+    world.RegisterClass("test-infologs", typeof(LogsItsInfo));
+    world.RegisterClass("test-forgets", typeof(ForgetsItsCount));
+    world.RegisterClass("test-keeps", typeof(KeepsItsCount));
+    world.RegisterClass("test-swaps", typeof(SwapsOnPlacement));
+    world.RegisterClass("test-other", typeof(OtherBe));
+    world.RegisterClass("test-swapsblock", typeof(ExchangesToSwapped));
+    world.RegisterClass("test-dropsentity", typeof(DropsItsEntity));
   }
 
   private static TestWorld Stand(params ExBlockDef[] defs) =>
@@ -80,6 +91,9 @@ public class BlockLawsTests {
       );
 
   private static readonly ExBlockDef Wall = ExBlockDef.Create("test", "wall");
+
+  private static ExBlockDef Entity(string code, string entity) =>
+    ExBlockDef.Create("test", code).EntityClass(entity);
 
   private static ExBlockDef Oriented(string code, string cls) =>
     ExBlockDef
@@ -492,7 +506,160 @@ public class BlockLawsTests {
   #endregion
 #endif
 
+  #region Info
+
+  // Fails when the law skips the tick, ticks every listener instead of the case's, or stops
+  // reading the info after it.
+  [Fact]
+  [PlantedDefect(typeof(InfoLaw), nameof(InfoLaw.Run))]
+  public void Info_that_throws_only_once_ticked_is_named() {
+    BlockLaws.Law law = InfoLaw.Run(
+      Stand(Wall, Entity("tickthrows", "test-tickthrows")),
+      "test"
+    );
+
+    Assert.Equal(1, law.Blocks);
+    Assert.Equal(1, law.Cases);
+    Assert.Equal(
+      "test:tickthrows info ticked threw InvalidOperationException: ticked 5 time(s)",
+      Assert.Single(law.Findings).Split(" (")[0]
+    );
+  }
+
+  // Fails when the law ticks every listener instead of those the case registered, so the
+  // reloaded block's throwing listener is charged to the block placed after it.
+  [Fact]
+  [PlantedDefect(typeof(InfoLaw), nameof(InfoLaw.Run))]
+  public void A_throwing_tick_is_named_on_its_own_block_only() {
+    BlockLaws.Law law = InfoLaw.Run(
+      Stand(
+        Entity("tickbreaks", "test-tickbreaks"),
+        Entity("unticked", "test-plain")
+      ),
+      "test"
+    );
+
+    Assert.Equal(2, law.Cases);
+    Assert.Equal(
+      [
+        "test:tickbreaks ticked threw InvalidOperationException: the tick broke",
+      ],
+      law.Findings.Select(f => f.Split(" (")[0])
+    );
+  }
+
+  // Fails when the law stops reading log entries around a step, or leaves them to the log rule,
+  // which then fails this test on the Warning.
+  [Fact]
+  [PlantedDefect(typeof(InfoLaw), nameof(InfoLaw.Run))]
+  public void Info_that_logs_is_named_fresh_ticked_and_reloaded() {
+    BlockLaws.Law law = InfoLaw.Run(
+      Stand(Entity("logs", "test-infologs")),
+      "test"
+    );
+
+    Assert.Equal(
+      [
+        "test:logs info fresh logged Warning: read the info",
+        "test:logs info ticked logged Warning: read the info",
+        "test:logs info reloaded logged Warning: read the info",
+      ],
+      law.Findings
+    );
+  }
+
+  // Fails when a placement that leaves no block entity passes unread.
+  [Fact]
+  [PlantedDefect(typeof(InfoLaw), nameof(InfoLaw.Run))]
+  public void A_placement_that_leaves_no_entity_is_named() {
+    BlockLaws.Law law = InfoLaw.Run(
+      Stand(Entity("orphan", "test-other").Class("test-dropsentity")),
+      "test"
+    );
+
+    Assert.Equal(
+      ["test:orphan placed raised no test-other block entity"],
+      law.Findings
+    );
+  }
+
+  #endregion
+
+  #region Reload
+
+  // Fails when the law stops comparing the reloaded tree with the saved one or the info, reloads
+  // without ticking, takes the fresh tree from the ticked entity, or counts two blocks without
+  // variant groups as one blocktype.
+  [Fact]
+  [PlantedDefect(typeof(ReloadLaw), nameof(ReloadLaw.Run))]
+  public void A_count_written_and_never_read_back_is_named_by_its_tree_and_its_info() {
+    BlockLaws.Law law = ReloadLaw.Run(
+      Stand(Entity("forgets", "test-forgets"), Entity("keeps", "test-keeps")),
+      "test"
+    );
+
+    Assert.Equal(
+      [
+        "test:forgets count: back at a fresh instance's value after the reload",
+        "test:forgets info changed over the reload: \"count 5\" became \"count 0\"",
+      ],
+      law.Findings
+    );
+    Assert.Equal(2, law.Blocks);
+  }
+
+  // Fails when an entity of another class after the reload passes as the same one, or
+  // TestWorld.Reload builds the old instance's type instead of the block's entity class.
+  [Fact]
+  [PlantedDefect(typeof(ReloadLaw), nameof(ReloadLaw.Run))]
+  public void An_entity_that_reloads_as_another_class_is_named() {
+    BlockLaws.Law law = ReloadLaw.Run(
+      Stand(
+        Entity("swaps", "test-swaps").Class("test-swapsblock"),
+        Entity("swapped", "test-other")
+      ),
+      "test"
+    );
+
+    Assert.Equal(
+      ["test:swaps reloaded as OtherBe, not SwapsOnPlacement"],
+      law.Findings
+    );
+  }
+
+  #endregion
+
   #region Every law
+
+  // Fails when Stand leaves vanilla's per-thread room accessor bound to an earlier world, so rooms
+  // in this one are walked over the earlier world's cells.
+  [Fact]
+  public void A_stood_world_walks_its_rooms_over_its_own_cells() {
+    var at = new BlockPos(64, 64, 64);
+    TestWorld earlier = Stand(Wall);
+    earlier
+      .Api.ModLoader.GetModSystem<Vintagestory.GameContent.RoomRegistry>()
+      .GetRoomForPosition(at);
+    TestWorld world = Stand(Wall);
+    world.Accessor.SetBlock(
+      world.World.GetBlock(new AssetLocation("test:wall")).BlockId,
+      at
+    );
+
+    world
+      .Api.ModLoader.GetModSystem<Vintagestory.GameContent.RoomRegistry>()
+      .GetRoomForPosition(at);
+
+    var walked = (IBlockAccessor)
+      typeof(Vintagestory.GameContent.RoomRegistry)
+        .GetField(
+          "blockAccessor",
+          System.Reflection.BindingFlags.NonPublic
+            | System.Reflection.BindingFlags.Static
+        )!
+        .GetValue(null)!;
+    Assert.Equal("test:wall", walked.GetBlock(at).Code.ToString());
+  }
 
   // Fails when Run drops a law, or hands a law another domain's blocks.
   [Fact]
@@ -532,12 +699,12 @@ public class BlockLawsTests {
     );
 #if GAME_GE_1_22
     Assert.Equal(
-      ["placement", "break", "multiblock", "megablock"],
+      ["placement", "break", "multiblock", "megablock", "info", "reload"],
       result.Laws.Select(l => l.Name)
     );
 #else
     Assert.Equal(
-      ["placement", "multiblock", "megablock"],
+      ["placement", "multiblock", "megablock", "info", "reload"],
       result.Laws.Select(l => l.Name)
     );
 #endif
@@ -690,6 +857,91 @@ public class BlockLawsTests {
         blockSel.Position
       );
       return true;
+    }
+  }
+
+  private sealed class ThrowsOnceTicked : BlockEntity {
+    private int _ticks;
+
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      RegisterGameTickListener(_ => _ticks++, 1000);
+    }
+
+    public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc) {
+      if (_ticks > 0)
+        throw new InvalidOperationException($"ticked {_ticks} time(s)");
+    }
+  }
+
+  private sealed class TickBreaks : BlockEntity {
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      RegisterGameTickListener(
+        _ => throw new InvalidOperationException("the tick broke"),
+        1000
+      );
+    }
+  }
+
+  private sealed class LogsItsInfo : BlockEntity {
+    public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc) =>
+      Api.Logger.Warning("read the info");
+  }
+
+  private class ForgetsItsCount : BlockEntity {
+    protected int Count;
+
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      RegisterGameTickListener(_ => Count++, 1000);
+    }
+
+    public override void ToTreeAttributes(ITreeAttribute tree) {
+      base.ToTreeAttributes(tree);
+      tree.SetInt("count", Count);
+    }
+
+    public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc) =>
+      dsc.Append("count ").Append(Count);
+  }
+
+  private sealed class KeepsItsCount : ForgetsItsCount {
+    public override void FromTreeAttributes(
+      ITreeAttribute tree,
+      IWorldAccessor worldAccessForResolve
+    ) {
+      base.FromTreeAttributes(tree, worldAccessForResolve);
+      Count = tree.GetInt("count");
+    }
+  }
+
+  private sealed class SwapsOnPlacement : BlockEntity { }
+
+  private sealed class OtherBe : BlockEntity { }
+
+  private sealed class DropsItsEntity : Block {
+    public override void OnBlockPlaced(
+      IWorldAccessor world,
+      BlockPos blockPos,
+      ItemStack byItemStack = null!
+    ) {
+      base.OnBlockPlaced(world, blockPos, byItemStack);
+      world.BlockAccessor.RemoveBlockEntity(blockPos);
+    }
+  }
+
+  private sealed class ExchangesToSwapped : Block {
+    public override void OnBlockPlaced(
+      IWorldAccessor world,
+      BlockPos blockPos,
+      ItemStack byItemStack = null!
+    ) {
+      base.OnBlockPlaced(world, blockPos, byItemStack);
+      world.BlockAccessor.ExchangeBlock(
+        world.GetBlock(new AssetLocation("test:swapped")).BlockId,
+        blockPos
+      );
     }
   }
 

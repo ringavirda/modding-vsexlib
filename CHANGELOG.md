@@ -9,6 +9,10 @@ see the git history.
 
 ### Added
 
+- **`InfoLaw` and `ReloadLaw`** (ExpandedLib.Testing, `Laws/`), run by `BlockLaws.Run` as `info`
+  and `reload`: every block entity's `GetBlockInfo`, read fresh, after 5 s of its own ticks and
+  after `TestWorld.Reload`, throws nothing and logs nothing; the reload keeps the entity's class,
+  its tree (by the reload tree comparison) and its info text.
 - **`ExOmniRotatable` and `ExStairs`**: vanilla's slab behaviour (`OmniRotatable`) and stairs class
   (`BlockStairs`) for a block whose code has a dash, such as `slag-brickslab`. Vanilla builds the
   codes it places, rotates and flips to, and the stairs' drop and pick, from the code's first
