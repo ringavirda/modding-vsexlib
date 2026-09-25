@@ -80,9 +80,8 @@ public static class BlockLaws {
   /// exlib's own included.</param>
   /// <param name="prepare">Runs on each world before any block is defined, to register the
   /// network types and mod systems the blocks need.</param>
-  /// <returns>The laws <c>placement</c>, <c>break</c> (1.22 on), <c>multiblock</c>,
-  /// <c>megablock</c>, <c>info</c>, <c>reload</c>, <c>neighbour</c>, <c>network</c>, in order.
-  /// </returns>
+  /// <returns>In order, the laws <c>placement</c>, <c>break</c> (1.22 on), <c>multiblock</c>,
+  /// <c>megablock</c>, <c>info</c>, <c>reload</c>, <c>neighbour</c>, <c>network</c>.</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, or a block's entity or
   /// behaviour throws while its signals are read.</exception>
   public static Result Run(
