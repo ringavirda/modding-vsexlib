@@ -151,7 +151,11 @@ public class BlockLawsTests {
 
   private static readonly ExBlockDef Wall = ExBlockDef.Create("test", "wall");
 
-  private static ExBlockDef Feeds(string code, string entity, bool dead = false) =>
+  private static ExBlockDef Feeds(
+    string code,
+    string entity,
+    bool dead = false
+  ) =>
     ExBlockDef
       .Create("test", code)
       .Class("test-feeder")
@@ -2097,7 +2101,8 @@ public class BlockLawsTests {
         return false;
       if (
         Attributes?["dead"].AsBool() != true
-        && world.BlockAccessor.GetBlockEntity(blockSel.Position) is Holder holder
+        && world.BlockAccessor.GetBlockEntity(blockSel.Position)
+          is Holder holder
       )
         holder.Take(byPlayer.InventoryManager.ActiveHotbarSlot);
       return true;

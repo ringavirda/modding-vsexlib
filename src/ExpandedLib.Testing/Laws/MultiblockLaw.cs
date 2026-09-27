@@ -142,8 +142,7 @@ public static class MultiblockLaw {
         string.Join(
           ",",
           (
-            b.Variant?.Where(v => v.Key is not ("side" or "orientation"))
-            ?? []
+            b.Variant?.Where(v => v.Key is not ("side" or "orientation")) ?? []
           ).Select(v => $"{v.Key}={v.Value}")
         )
       );

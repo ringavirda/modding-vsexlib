@@ -53,7 +53,14 @@ public static class ContainerLaw {
           continue;
         judged = true;
         cases++;
-        Follow(world, player, step, stack, findings, step.Block.Code.ToString());
+        Follow(
+          world,
+          player,
+          step,
+          stack,
+          findings,
+          step.Block.Code.ToString()
+        );
       }
       if (judged)
         blocks++;

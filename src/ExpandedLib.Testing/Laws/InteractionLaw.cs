@@ -127,7 +127,9 @@ public static class InteractionLaw {
           continue;
         var stopped = new HashSet<(int, int, int)>();
         foreach (Click click in clicks) {
-          if (stopped.Contains((click.Offset.X, click.Offset.Y, click.Offset.Z)))
+          if (
+            stopped.Contains((click.Offset.X, click.Offset.Y, click.Offset.Z))
+          )
             continue;
           cases++;
           int earlier = findings.Count;
