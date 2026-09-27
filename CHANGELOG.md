@@ -17,6 +17,8 @@ see the git history.
   block or the held item takes; a stack a block entity accepts, by a click or into its inventory,
   is still held after a reload and dropped by the break. `BlockLaws.Run` takes item definitions
   beside block definitions for these laws' worlds.
+  `InteractionLaw` also names a right-click help line carrying both items and a `ShouldApply`, which
+  the engine ignores on such a line.
 - **`NeighbourLaw` and `NetworkLaw`** (ExpandedLib.Testing, `Laws/`), run by `BlockLaws.Run` as
   `neighbour` and `network`: every block, stood on a solid block, meets a solid block set and
   cleared on each free face of its cells, each change announced through

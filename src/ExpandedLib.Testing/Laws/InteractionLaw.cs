@@ -26,7 +26,8 @@ public static class InteractionLaw {
   /// <remarks>A click goes to the block, then to the held item. An entity is placed from a stack
   /// carrying its tree, less its position. A finding is a throw or log, an entity off its cell after
   /// the placement, a click or the first reload, and a named click both refuse or that changes
-  /// nothing; a variant stops at its first. <see cref="BlockBehaviorUnplaceable"/> blocks are
+  /// nothing, or a right-click help line carrying both items and a <c>ShouldApply</c>, which the
+  /// engine ignores on such a line; a variant stops at its first. <see cref="BlockBehaviorUnplaceable"/> blocks are
   /// skipped.</remarks>
   /// <param name="world">A world holding the blocks judged and the items their help names
   /// (<see cref="BlockLaws.Run"/> stands one).</param>
@@ -51,7 +52,10 @@ public static class InteractionLaw {
         )
           continue;
         ItemStack? carrying = Carrying(probe, sites.Next());
-        Click[] clicks = Clicks(world, player.Player, probe);
+        int flagged = findings.Count;
+        Click[] clicks = Clicks(world, player.Player, probe, findings);
+        if (findings.Count > flagged)
+          continue;
         for (int i = 0; i < clicks.Length; i++) {
           cases++;
           int earlier = findings.Count;
@@ -172,11 +176,13 @@ public static class InteractionLaw {
 
   /// <summary>The clicks <paramref name="probe"/>'s help calls for: an empty hand on each cell, then
   /// each right-click interaction each cell's help lists, once per distinct item it names and with
-  /// an empty hand when it names none, keys as listed; duplicates dropped.</summary>
+  /// an empty hand when it names none, keys as listed; duplicates dropped. A line carrying both
+  /// items and a <c>ShouldApply</c> goes to <paramref name="findings"/> when given.</summary>
   internal static Click[] Clicks(
     TestWorld world,
     IPlayer player,
-    BlockLaws.EntityCase probe
+    BlockLaws.EntityCase probe,
+    List<string>? findings = null
   ) {
     var clicks = new List<Click>();
     foreach (BlockPos cell in Cells(world, probe)) {
@@ -194,6 +200,16 @@ public static class InteractionLaw {
           .Where(h => h.MouseButton == EnumMouseButton.Right),
       ];
       foreach (WorldInteraction help in helps) {
+        if (
+          findings != null
+          && help.Itemstacks != null
+          && help.ShouldApply != null
+        )
+          findings.Add(
+            $"{probe.Block.Code} help on {BlockLaws.CellName(offset)} for "
+              + $"\"{help.ActionLangCode}\" carries items and a ShouldApply, which the "
+              + "engine ignores on a line with items"
+          );
         Keys keys = KeysOf(help);
         ItemStack[] named = Named(help, selection);
         if (named.Length == 0)

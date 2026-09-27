@@ -1143,6 +1143,29 @@ public class BlockLawsTests {
     Assert.Empty(law.Findings);
   }
 
+  // Fails when a help line carrying items and a ShouldApply, which the engine ignores there, is not
+  // named.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_line_with_items_and_a_should_apply_is_named() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [Token],
+        Names("gated", "test:token", takes: true, spends: true)
+          .Attribute("gated", true)
+      ),
+      "test"
+    );
+
+    Assert.Equal(
+      [
+        "test:gated help on its cell for \"test:use\" carries items and a ShouldApply, "
+          + "which the engine ignores on a line with items",
+      ],
+      law.Findings
+    );
+  }
+
   #endregion
 
   #region Container
@@ -1708,6 +1731,9 @@ public class BlockLawsTests {
           ActionLangCode = "test:use",
           MouseButton = EnumMouseButton.Right,
           HotKeyCode = Attributes["keys"].AsString(),
+          ShouldApply = Attributes["gated"].AsBool()
+            ? (wi, bs, es) => true
+            : null,
           Itemstacks =
           [
             new ItemStack(
