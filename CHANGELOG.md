@@ -308,6 +308,14 @@ see the git history.
 
 ### Fixed
 
+- **`TestWorld`**: the accessor's `SpawnBlockEntity`, which a block's `OnBlockPlaced` calls, runs the
+  spawned entity's `OnBlockPlaced` with the placing stack, as the engine's does; `Register(Block)`
+  gives a block without sounds empty ones, as the engine's registration does, so vanilla code
+  playing a block's placement sound (the wrench) no longer throws; `RegisterClass` and
+  `RegisterClasses` take item and collectible-behaviour classes; the api's `ObjectCache` is a real
+  dictionary and the server world's `SearchItems` and `SearchBlocks` match wildcards over the
+  registries.
+- **`TestPlayer`**: the entity's `RightHandItemSlot` answers the active slot.
 - **An open mold draws the metal around it.** A pour sized to its molds left metal in the canals: it
   conveyed past the near molds, and its return levelled by half the difference rounded down, so a
   one-unit gap never closed. `IMoltenCell.IsOpenMold` (default false) marks a drain fitting whose mold

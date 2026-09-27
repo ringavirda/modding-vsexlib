@@ -37,8 +37,9 @@ public sealed class TestPlayer {
   /// <c>null</c> when this lane's game assembly cannot proxy it.</summary>
   public IServerPlayer? ServerPlayer { get; }
 
-  /// <summary>The player's active hotbar slot - a real <see cref="ItemSlot"/>, not a fake. It is
-  /// not one of <see cref="Hotbar"/>'s slots.</summary>
+  /// <summary>The player's active hotbar slot - a real <see cref="ItemSlot"/>, not a fake, and
+  /// the slot <see cref="Entity"/>'s <c>RightHandItemSlot</c> answers. It is not one of
+  /// <see cref="Hotbar"/>'s slots.</summary>
   public ItemSlot ActiveSlot => _activeSlot;
 
   /// <summary>The inventory <c>InventoryManager.GetHotbarInventory()</c> returns: a real, empty
@@ -87,6 +88,7 @@ public sealed class TestPlayer {
     entity.World = world.World;
     entity.WatchedAttributes.SetString("playerUID", uid);
 
+    var activeSlot = new DummySlot();
     IPlayer player;
     IServerPlayer? serverPlayer;
     try {
@@ -98,11 +100,11 @@ public sealed class TestPlayer {
     }
 
     player.Entity.Returns(entity);
+    entity.RightHandItemSlot.Returns(activeSlot);
     player.PlayerUID.Returns(uid);
     player.PlayerName.Returns(name);
     world.World.PlayerByUid(uid).Returns(player);
 
-    var activeSlot = new DummySlot();
     InventoryGeneric hotbar = TestInventory.Of(world, 12, $"hotbar-{uid}");
     var inventoryManager = Substitute.For<IPlayerInventoryManager>();
     inventoryManager.ActiveHotbarSlot.Returns(activeSlot);

@@ -34,9 +34,20 @@ public static class DefinitionCodes {
   public static IEnumerable<Registered> Expand(
     ExBlockDef def,
     bool propertyGroupsAsWildcard = false
+  ) => Expand(def.ToJson(), def.Domain, def.Code, propertyGroupsAsWildcard);
+
+  /// <summary>Every concrete item <paramref name="def"/> registers, with its variant map.</summary>
+  internal static IEnumerable<Registered> Expand(ExItemDef def) =>
+    Expand(def.ToJson(), def.Domain, def.Code, false);
+
+  private static IEnumerable<Registered> Expand(
+    JObject json,
+    string domain,
+    string code,
+    bool propertyGroupsAsWildcard
   ) {
     var groups = new List<(string Name, string[] States)>();
-    if (def.ToJson()["variantgroups"] is JArray vg)
+    if (json["variantgroups"] is JArray vg)
       foreach (JToken g in vg) {
         string? props = (string?)g["loadFromProperties"];
         // A codeless worldproperty group takes its name from the property's last segment, which is
@@ -55,7 +66,7 @@ public static class DefinitionCodes {
         groups.Add((name, states));
       }
 
-    string prefix = $"{def.Domain}:{def.Code}";
+    string prefix = $"{domain}:{code}";
     IEnumerable<Registered> codes = [new Registered(prefix, [])];
     foreach (var (name, states) in groups)
       codes = codes.SelectMany(c =>

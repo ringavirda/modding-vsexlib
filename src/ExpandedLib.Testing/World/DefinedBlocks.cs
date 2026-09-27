@@ -11,6 +11,10 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.Common;
 using Vintagestory.ServerMods.NoObf;
+#if GAME_GE_1_22
+using Vintagestory.API.Datastructures;
+using Vintagestory.Common.Datastructures;
+#endif
 
 namespace ExpandedLib.Testing;
 
@@ -35,9 +39,9 @@ public sealed partial class TestWorld {
   internal IEnumerable<KeyValuePair<BlockPos, BlockEntity>> BlockEntities =>
     _blockEntities;
 
-  /// <summary>Registers every <see cref="RegisterAttribute"/>-decorated block, block entity and
-  /// behaviour class in <paramref name="assemblies"/> under the key the game registers it by, in a
-  /// real class registry; classes of other kinds are skipped.</summary>
+  /// <summary>Registers every <see cref="RegisterAttribute"/>-decorated block, block entity, item
+  /// and behaviour class in <paramref name="assemblies"/> under the key the game registers it by, in
+  /// a real class registry; classes of other kinds are skipped.</summary>
   /// <remarks>A world holding that registry answers <see cref="Api"/>'s and <see cref="World"/>'s
   /// <c>ClassRegistry</c> from it, and creates a block entity the accessor spawns without a
   /// <see cref="RegisterBlockEntityFactory"/> factory from it, with its declared behaviours, as the
@@ -70,12 +74,10 @@ public sealed partial class TestWorld {
       Classes()
     );
 
-  /// <summary>
-  /// Registers <paramref name="type"/> under <paramref name="key"/> in this world's real class
-  /// registry, as a block, block entity, block behaviour or block-entity behaviour by its base type;
-  /// the way to add a vanilla class (<c>"Animatable"</c>) a definition names.
-  /// </summary>
-  /// <exception cref="ArgumentException"><paramref name="type"/> is none of the four.</exception>
+  /// <summary>Registers <paramref name="type"/> under <paramref name="key"/> in this world's real
+  /// class registry by its base type (block, block entity, item, or a behaviour of either); the
+  /// way to add a vanilla class (<c>"Animatable"</c>) a definition names.</summary>
+  /// <exception cref="ArgumentException"><paramref name="type"/> is none of the six.</exception>
   /// <returns>This world.</returns>
   public TestWorld RegisterClass(string key, Type type) {
     ClassRegistry classes = Classes();
@@ -87,9 +89,13 @@ public sealed partial class TestWorld {
       classes.RegisterBlockBehaviorClass(key, type);
     else if (typeof(BlockEntityBehavior).IsAssignableFrom(type))
       classes.RegisterBlockEntityBehaviorClass(key, type);
+    else if (typeof(Item).IsAssignableFrom(type))
+      classes.RegisterItemClass(key, type);
+    else if (typeof(CollectibleBehavior).IsAssignableFrom(type))
+      classes.RegisterCollectibleBehaviorClass(key, type);
     else
       throw new ArgumentException(
-        $"{type.FullName} is not a block, block entity or behaviour class.",
+        $"{type.FullName} is not a block, block entity, item or behaviour class.",
         nameof(type)
       );
     return this;
@@ -129,6 +135,91 @@ public sealed partial class TestWorld {
     return blocks;
   }
 
+  /// <summary>Every variant of every definition in <paramref name="defs"/>, built as the game builds
+  /// an item from its itemtype through <see cref="ItemType.CreateItem"/> against the classes
+  /// <see cref="RegisterClasses"/> put in this world, each given a fresh id and this world's api and
+  /// registered; their <see cref="CollectibleObject.OnLoaded"/> runs once all are registered.</summary>
+  /// <exception cref="InvalidOperationException"><see cref="RegisterClasses"/> has not
+  /// run.</exception>
+  internal IReadOnlyList<Item> DefineItems(IEnumerable<ExItemDef> defs) {
+#if GAME_GE_1_22
+    BindTags();
+#endif
+    Item[] items =
+    [
+      .. defs.SelectMany(def =>
+        DefinitionCodes
+          .Expand(def)
+          .Select(variant => BuildItem(def, variant))
+      ),
+    ];
+    foreach (Item item in items)
+      item.OnLoaded(Api);
+    return items;
+  }
+
+#if GAME_GE_1_22
+  private bool _tagsBound;
+
+  /// <summary>Gives <see cref="Api"/> collectible and entity tag registries and binds the tag
+  /// readers' process-wide statics to them, as <see cref="LoadAssets"/> does; once per
+  /// world.</summary>
+  private void BindTags() {
+    if (_tagsBound)
+      return;
+    var coreApi = (ICoreAPI)Api;
+    var collectibleTags = new ConcurrentTagRegistry(Log, "collectible");
+    var entityTags = new ConcurrentTagRegistryFast(Log, "entity");
+    coreApi.CollectibleTagRegistry.Returns(collectibleTags);
+    coreApi.EntityTagRegistry.Returns(entityTags);
+    GenericComplexConditionConverter.StaticInit(collectibleTags, entityTags);
+    CollectibleTagSetConverter.StaticInit(collectibleTags);
+    EntityTagSetConverter.StaticInit(entityTags);
+    _tagsBound = true;
+  }
+#endif
+
+  private Item BuildItem(ExItemDef def, DefinitionCodes.Registered variant) {
+    if (_classes == null)
+      throw new InvalidOperationException(
+        "DefineItems builds through the class registry; call RegisterClasses first."
+      );
+
+    var code = new AssetLocation(variant.Code);
+    var variants = Variants(variant);
+    var json = def.ToJson();
+    json.Remove("variantgroups");
+    SolveByType.Invoke(null, [json, code.Path, variants]);
+
+    var type = new ItemType();
+    JsonUtil.PopulateObject(
+      type,
+      json,
+      JsonUtil.CreateSerializerForDomain(code.Domain)
+    );
+    type.Code = code;
+    type.Variant = variants;
+
+    Item item = type.CreateItem(Api);
+    item.ItemId = _nextItemId++;
+    ReflectionHelpers.SetField(item, "api", Api);
+    Register(item);
+    return item;
+  }
+
+  private static Vintagestory.API.Datastructures.OrderedDictionary<
+    string,
+    string
+  > Variants(DefinitionCodes.Registered variant) {
+    var variants = new Vintagestory.API.Datastructures.OrderedDictionary<
+      string,
+      string
+    >();
+    foreach (var (key, value) in variant.Variants)
+      variants[key] = value;
+    return variants;
+  }
+
   // Builds the variant's block through the class registry and registers it under a fresh id.
   private Block Build(ExBlockDef def, DefinitionCodes.Registered variant) {
     if (_classes == null)
@@ -137,12 +228,7 @@ public sealed partial class TestWorld {
       );
 
     var code = new AssetLocation(variant.Code);
-    var variants = new Vintagestory.API.Datastructures.OrderedDictionary<
-      string,
-      string
-    >();
-    foreach (var (key, value) in variant.Variants)
-      variants[key] = value;
+    var variants = Variants(variant);
 
     var json = (JObject)def.ToJson().DeepClone();
     json.Remove("variantgroups");
@@ -176,7 +262,9 @@ public sealed partial class TestWorld {
     typeof(Block).IsAssignableFrom(type)
     || typeof(BlockEntity).IsAssignableFrom(type)
     || typeof(BlockBehavior).IsAssignableFrom(type)
-    || typeof(BlockEntityBehavior).IsAssignableFrom(type);
+    || typeof(BlockEntityBehavior).IsAssignableFrom(type)
+    || typeof(Item).IsAssignableFrom(type)
+    || typeof(CollectibleBehavior).IsAssignableFrom(type);
 
   /// <summary>Vanilla's per-variant resolver of <c>*ByType</c> keys and <c>{group}</c>
   /// placeholders, the one the object loader runs on every variant.</summary>

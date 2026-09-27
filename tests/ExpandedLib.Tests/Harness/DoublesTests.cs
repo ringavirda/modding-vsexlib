@@ -83,6 +83,15 @@ public class DoublesTests {
     Assert.Equal(12, player.Hotbar.Count);
   }
 
+  // Fails when the entity's right hand is not the active slot: vanilla reads a held tool there.
+  [Fact]
+  public void The_entitys_right_hand_is_the_active_slot() {
+    using var world = new TestWorld();
+    TestPlayer player = world.Player();
+
+    Assert.Same(player.ActiveSlot, player.Entity.RightHandItemSlot);
+  }
+
   // Fails when the world's Collectibles leaves out its registered items or blocks.
   [Fact]
   public void The_worlds_collectibles_hold_its_items_and_blocks() {
@@ -93,6 +102,50 @@ public class DoublesTests {
 
     Assert.Contains(item, world.World.Collectibles);
     Assert.Contains(block, world.World.Collectibles);
+  }
+
+  // Fails when a wildcard search answers nothing, or answers what the wildcard does not match.
+  [Fact]
+  public void A_wildcard_search_finds_the_registered_items_and_blocks_it_matches() {
+    using var world = new TestWorld();
+    Item iron = world.RegisterItem("game:metalplate-iron");
+    world.RegisterItem("game:stick");
+    Block oak = TestBlocks.Configure(new Block(), "game:plank-oak", 5002);
+    world.Register(oak);
+    world.Register(TestBlocks.Configure(new Block(), "game:log-oak", 5003));
+
+    Assert.Equal(
+      [iron],
+      world.World.SearchItems(new AssetLocation("game:metalplate-*"))
+    );
+    Assert.Equal(
+      [oak],
+      world.World.SearchBlocks(new AssetLocation("game:plank-*"))
+    );
+  }
+
+  // Fails when a block registered without sounds keeps none: vanilla plays a block's placement
+  // sound unguarded, as the engine's registration never leaves it null.
+  [Fact]
+  public void A_block_registered_without_sounds_gets_empty_ones() {
+    using var world = new TestWorld();
+    Block bare = TestBlocks.Configure(new Block(), "game:bare", 5004);
+    bare.Sounds = null!;
+
+    world.Register(bare);
+
+    Assert.NotNull(bare.Sounds);
+  }
+
+  // Fails when the api's object cache is left a substitute's default: vanilla collectibles cache
+  // their stacks and meshes there from OnLoaded on.
+  [Fact]
+  public void The_api_object_cache_keeps_what_is_put_in_it() {
+    using var world = new TestWorld();
+
+    world.Api.ObjectCache["key"] = 5;
+
+    Assert.Equal(5, world.Api.ObjectCache["key"]);
   }
 
   #endregion

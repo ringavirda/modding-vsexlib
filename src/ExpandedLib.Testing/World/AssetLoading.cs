@@ -6,6 +6,7 @@ using System.Reflection;
 using ExpandedLib.Definitions;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
+using NSubstitute.Core;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
@@ -102,6 +103,90 @@ public sealed partial class TestWorld {
       LoadedSystems = started;
     }
     return this;
+  }
+
+  /// <summary>Loads the install's vanilla survival block and item types named by
+  /// <paramref name="blocks"/> and <paramref name="items"/> through the game's own object loader
+  /// and registers each variant this world holds nothing of by code, as
+  /// <see cref="DefineBlock"/> registers one; <c>OnLoaded</c> runs once all are
+  /// registered.</summary>
+  /// <param name="blocks">Blocktype file names without <c>.json</c>, matched under
+  /// <c>assets/survival/blocktypes</c> at any depth, so a file that moved between game versions
+  /// is still found.</param>
+  /// <param name="items">Itemtype file names without <c>.json</c>, matched the same way under
+  /// <c>itemtypes</c>.</param>
+  /// <returns>The block and item variants registered.</returns>
+  /// <exception cref="InvalidOperationException">No game install resolves.</exception>
+  internal IReadOnlyList<CollectibleObject> LoadVanilla(
+    IReadOnlyCollection<string> blocks,
+    IReadOnlyCollection<string> items
+  ) {
+    string assetsPath = Path.Combine(
+      VsAssemblyResolver.InstallPath
+        ?? throw new InvalidOperationException(
+          "No game install found - set the game's env var or provision .game/<slug>."
+        ),
+      "assets"
+    );
+    var mgr = new AssetManager(assetsPath, EnumAppSide.Server);
+    mgr.InitAndLoadBaseAssets(Log);
+    var survival = new PathOrigin("game", Path.Combine(assetsPath, "survival"));
+    foreach (
+      (AssetCategory category, IReadOnlyCollection<string>? names) in new[]
+      {
+        (AssetCategory.worldproperties, (IReadOnlyCollection<string>?)null),
+        (AssetCategory.blocktypes, blocks),
+        (AssetCategory.itemtypes, items),
+      }
+    )
+      foreach (IAsset asset in survival.GetAssets(category, shouldLoad: true))
+        if (
+          names == null
+          || names.Contains(Path.GetFileNameWithoutExtension(asset.Name))
+        )
+          mgr.Add(asset.Location, asset);
+    ReflectionHelpers.SetStaticField(
+      typeof(GamePaths),
+      "<AssetsPath>k__BackingField",
+      assetsPath
+    );
+    Lang.Load(Log, mgr, "en");
+
+    ICoreServerAPI loaderApi = BuildLoaderApi(mgr, out _);
+    RunObjectLoader(loaderApi);
+    // Vanilla collectibles read world properties from the api's assets in OnLoaded, which the
+    // manager refuses until the game marks every asset loaded.
+    ReflectionHelpers.SetField(mgr, "allAssetsLoaded", true);
+    Api.Assets.Get(Arg.Any<AssetLocation>())
+      .Returns(ci => mgr.TryGet(ci.Arg<AssetLocation>()));
+    Api.Assets.TryGet(Arg.Any<AssetLocation>(), Arg.Any<bool>())
+      .Returns(ci => mgr.TryGet(ci.Arg<AssetLocation>(), ci.Arg<bool>()));
+    var loaded = new List<CollectibleObject>();
+    foreach (ICall call in loaderApi.ReceivedCalls())
+      switch (call.GetArguments().FirstOrDefault()) {
+        case Block block
+          when call.GetMethodInfo().Name == nameof(ICoreServerAPI.RegisterBlock)
+            && GetByCode(block.Code) == null:
+          block.BlockId = _nextDefinedId++;
+          Register(block);
+          loaded.Add(block);
+          break;
+        case Item item
+          when call.GetMethodInfo().Name == nameof(ICoreServerAPI.RegisterItem)
+            && GetItem(item.Code) == null:
+          item.ItemId = _nextItemId++;
+          Register(item);
+          loaded.Add(item);
+          break;
+      }
+    foreach (CollectibleObject collectible in loaded)
+      if (collectible is Block block)
+        Finish(block);
+      else {
+        ReflectionHelpers.SetField(collectible, "api", Api);
+        collectible.OnLoaded(Api);
+      }
+    return loaded;
   }
 
   /// <summary>The mod systems the last <see cref="LoadAssets"/> started, exlib's then the mod's, in

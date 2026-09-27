@@ -94,7 +94,44 @@ public class TestWorldDefinedBlocksTests
     );
   }
 
-  // Fails when RegisterClass accepts a type that is none of the four kinds.
+  // Fails when RegisterClass refuses an item or collectible behaviour class.
+  [Fact]
+  public void RegisterClass_takes_items_and_collectible_behaviours()
+  {
+    var world = new TestWorld()
+      .RegisterClass("test-item", typeof(PlainItem))
+      .RegisterClass("test-collectiblebh", typeof(PlainCollectibleBehavior));
+
+    Assert.Equal(typeof(PlainItem), world.Api.ClassRegistry.GetItemClass("test-item"));
+    Assert.Equal(
+      typeof(PlainCollectibleBehavior),
+      world.Api.ClassRegistry.GetCollectibleBehaviorClass("test-collectiblebh")
+    );
+  }
+
+  // Fails when RegisterClasses skips a registered item or collectible behaviour class.
+  [Fact]
+  public void RegisterClasses_registers_items_and_collectible_behaviours()
+  {
+    Assembly asm = typeof(TestWorldDefinedBlocksTests).Assembly;
+    string domain = EntityRegistry.DomainOf(asm, asm.GetName().Name ?? "");
+    var world = new TestWorld().RegisterClasses(asm);
+
+    Assert.Equal(
+      typeof(RegisteredItem),
+      world.Api.ClassRegistry.GetItemClass(
+        EntityRegistry.KeyFor(domain, typeof(RegisteredItem))
+      )
+    );
+    Assert.Equal(
+      typeof(RegisteredCollectibleBehavior),
+      world.Api.ClassRegistry.GetCollectibleBehaviorClass(
+        EntityRegistry.KeyFor(domain, typeof(RegisteredCollectibleBehavior))
+      )
+    );
+  }
+
+  // Fails when RegisterClass accepts a type that is none of the six kinds.
   [Fact]
   public void RegisterClass_of_a_non_block_type_throws()
   {
@@ -103,8 +140,8 @@ public class TestWorldDefinedBlocksTests
     );
   }
 
-  // Fails when RegisterClasses drops the IsRegistrable filter: this assembly registers items and
-  // entities, which RegisterClass refuses.
+  // Fails when RegisterClasses drops the IsRegistrable filter: this assembly registers entities,
+  // which RegisterClass refuses.
   [Fact]
   public void RegisterClasses_skips_registered_classes_of_other_kinds()
   {
@@ -123,8 +160,20 @@ public class TestWorldDefinedBlocksTests
 
   private sealed class PlainBe : BlockEntity { }
 
+  private sealed class PlainItem : Item { }
+
+  private sealed class PlainCollectibleBehavior(CollectibleObject collectible)
+    : CollectibleBehavior(collectible);
+
   [BlockEntityRegister]
   private sealed class RegisteredBe : BlockEntity { }
+
+  [ItemRegister]
+  private sealed class RegisteredItem : Item { }
+
+  [CollectibleBehaviorRegister]
+  private sealed class RegisteredCollectibleBehavior(CollectibleObject collectible)
+    : CollectibleBehavior(collectible);
 
   private sealed class MarkerBehavior(BlockEntity be) : BlockEntityBehavior(be);
 }

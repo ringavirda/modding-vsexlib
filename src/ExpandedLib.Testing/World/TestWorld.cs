@@ -8,6 +8,7 @@ using NSubstitute;
 using NSubstitute.Core;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Util;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -315,7 +316,8 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   /// <summary>Registers a factory that <c>BlockAccessor.SpawnBlockEntity(classname, pos)</c> uses
-  /// for <paramref name="classname"/>.</summary>
+  /// for <paramref name="classname"/>. As the engine's, that spawn initialises the entity and then
+  /// runs its <see cref="BlockEntity.OnBlockPlaced"/> with the spawn's stack.</summary>
   public TestWorld RegisterBlockEntityFactory(
     string classname,
     Func<BlockEntity> factory
@@ -324,8 +326,11 @@ public sealed partial class TestWorld : IDisposable {
     return this;
   }
 
-  /// <summary>Registers a block in the id/code lookup without placing it (for orientation-variant swaps).</summary>
+  /// <summary>Registers a block in the id/code lookup without placing it (for orientation-variant
+  /// swaps). A block without <see cref="Block.Sounds"/> is given empty ones, as the engine's
+  /// registration gives them.</summary>
   public TestWorld Register(Block block) {
+    block.Sounds ??= new BlockSounds();
     _blocksById[block.BlockId] = block;
     if (block.Code != null)
       _blocksByCode[block.Code.ToString()] = block;
@@ -654,7 +659,10 @@ public sealed partial class TestWorld : IDisposable {
           Arg.Any<ItemStack>()
         )
       )
-      .Do(ci => DoSpawnBlockEntity(ci.ArgAt<string>(0), ci.ArgAt<BlockPos>(1)));
+      .Do(ci =>
+        DoSpawnBlockEntity(ci.ArgAt<string>(0), ci.ArgAt<BlockPos>(1))
+          ?.OnBlockPlaced(ci.ArgAt<ItemStack>(2))
+      );
     a.When(x =>
         x.BreakBlock(Arg.Any<BlockPos>(), Arg.Any<IPlayer>(), Arg.Any<float>())
       )
@@ -739,6 +747,21 @@ public sealed partial class TestWorld : IDisposable {
     w.GetItem(Arg.Any<AssetLocation>())
       .Returns(ci => GetItem(ci.Arg<AssetLocation>()));
     w.GetItem(Arg.Any<int>()).Returns(ci => GetItem(ci.Arg<int>()));
+    // Wildcard searches over the registries, as the game answers them.
+    w.SearchItems(Arg.Any<AssetLocation>())
+      .Returns(ci =>
+        _itemsByCode
+          .Values.Where(i => WildcardUtil.Match(ci.Arg<AssetLocation>(), i.Code))
+          .ToArray()
+      );
+    w.SearchBlocks(Arg.Any<AssetLocation>())
+      .Returns(ci =>
+        _blocksById
+          .Values.Where(b =>
+            b.Code != null && WildcardUtil.Match(ci.Arg<AssetLocation>(), b.Code)
+          )
+          .ToArray()
+      );
     w.When(x =>
         x.SpawnItemEntity(
           Arg.Any<ItemStack>(),
@@ -798,6 +821,11 @@ public sealed partial class TestWorld : IDisposable {
       .Returns([]);
     api.Assets.Returns(assets);
     coreApi.Assets.Returns(assets);
+
+    // Vanilla collectibles cache their meshes and stack lists here from OnLoaded on.
+    var cache = new Dictionary<string, object>();
+    api.ObjectCache.Returns(cache);
+    coreApi.ObjectCache.Returns(cache);
 
     var events = Substitute.For<IServerEventAPI>();
     api.Event.Returns(events);
@@ -939,17 +967,18 @@ public sealed partial class TestWorld : IDisposable {
     }
   }
 
-  private void DoSpawnBlockEntity(string classname, BlockPos pos) {
+  private BlockEntity? DoSpawnBlockEntity(string classname, BlockPos pos) {
     Block block = GetBlock(pos);
     BlockEntity? be = _beFactories.TryGetValue(classname, out var factory)
       ? factory()
       : CreateRegisteredBlockEntity(classname, block);
     if (be == null)
-      return;
+      return null;
     be.Pos = pos.Copy();
     be.Block = block;
     _blockEntities[pos] = be;
     be.Initialize(Api);
+    return be;
   }
 
   private void DoExchangeBlock(int id, BlockPos pos) {
