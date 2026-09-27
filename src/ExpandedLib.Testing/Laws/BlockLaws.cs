@@ -25,8 +25,8 @@ public static class BlockLaws {
   /// <param name="Blocks">Blocktypes (codes less their variant parts, with their variant group
   /// names) the law applied to.</param>
   /// <param name="Cases">Cases it ran: placements, breaks, structures stood up, block entities
-  /// read or reloaded, faces a neighbour came and went on, network pairs walked, or clicks
-  /// made.</param>
+  /// read or reloaded, faces a neighbour came and went on, network pairs walked, clicks made, or
+  /// accepted stacks followed.</param>
   /// <param name="Findings">One line per finding, each starting with the variant code it is
   /// about and a space.</param>
   public sealed record Law(
@@ -71,7 +71,7 @@ public static class BlockLaws {
   /// <summary>Stands every variant of <paramref name="defs"/>' blocks up and runs each law over the
   /// blocks of <paramref name="domain"/>.</summary>
   /// <remarks>Each law but the break law gets a world of its own; the break law stands one per
-  /// break. The interaction law's world also holds the item definitions.</remarks>
+  /// break. The interaction and container laws' worlds also hold the item definitions.</remarks>
   /// <param name="domain">The domain whose blocks are judged; other domains' definitions stand
   /// beside them, for layouts and help to name.</param>
   /// <param name="defs">Block and item definitions; others, and exlib's filler, are
@@ -81,7 +81,7 @@ public static class BlockLaws {
   /// need, before any is defined.</param>
   /// <returns>In order, the laws <c>placement</c>, <c>break</c> (1.22 on), <c>multiblock</c>,
   /// <c>megablock</c>, <c>info</c>, <c>reload</c>, <c>neighbour</c>, <c>network</c>,
-  /// <c>interaction</c>.</returns>
+  /// <c>interaction</c>, <c>container</c>.</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, or a block's entity or
   /// behaviour throws while its signals are read.</exception>
   public static Result Run(
@@ -110,6 +110,9 @@ public static class BlockLaws {
     laws.Add(NetworkLaw.Run(Stand(all, assemblies, prepare), domain));
     laws.Add(
       InteractionLaw.Run(Stand(all, assemblies, prepare, items), domain)
+    );
+    laws.Add(
+      ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain)
     );
     return new Result(laws);
   }

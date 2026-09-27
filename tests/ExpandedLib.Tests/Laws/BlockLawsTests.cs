@@ -82,6 +82,10 @@ public class BlockLawsTests {
     world.RegisterClass("test-lights", typeof(Lights));
     world.RegisterClass("test-spent", typeof(SpentOnTheStart));
     world.RegisterClass("test-holder", typeof(Holder));
+    world.RegisterClass("test-holderblock", typeof(DropsWhatItHolds));
+    world.RegisterClass("test-forgetsheld", typeof(ForgetsWhatItHolds));
+    world.RegisterClass("test-shelf", typeof(Shelf));
+    world.RegisterClass("test-shedsnothing", typeof(ShedsNothing));
     world.RegisterClass("test-pair", typeof(TakesAMatchingPair));
     world.RegisterClass("test-loadmoves", typeof(MovesOnTheLoad));
   }
@@ -89,6 +93,9 @@ public class BlockLawsTests {
   private static readonly ExItemDef Token = ExItemDef.Create("test", "token");
 
   private static readonly ExItemDef Nail = ExItemDef.Create("test", "nail");
+
+  private static ExBlockDef Holds(string code, string entity, string cls) =>
+    Names(code, "test:token", takes: true).Class(cls).EntityClass(entity);
 
   private static TestWorld Hands(ExItemDef[] items, params ExBlockDef[] defs) =>
     BlockLaws.Stand(defs, Exlib, Prepare, items);
@@ -1133,6 +1140,62 @@ public class BlockLawsTests {
 
   #endregion
 
+  #region Container
+
+  // Fails when the reload count or the break drops are not compared with what the entity held,
+  // or a click that hands a stack over is not read as accepting it.
+  [Fact]
+  [PlantedDefect(typeof(ContainerLaw), nameof(ContainerLaw.Run))]
+  public void A_stack_accepted_and_lost_on_a_reload_or_a_break_is_named() {
+    BlockLaws.Law law = ContainerLaw.Run(
+      Hands(
+        [Token],
+        Holds("holds", "test-holder", "test-holderblock"),
+        Holds("forgets", "test-forgetsheld", "test-holderblock"),
+        Holds("keepsnothing", "test-holder", "test-namesanitem")
+      ),
+      "test"
+    );
+
+    Assert.Equal(3, law.Blocks);
+    Assert.Equal(3, law.Cases);
+    Assert.Equal(
+      [
+        "test:forgets held 1 test:token clicked on its cell with test:token, and 0 after "
+          + "the reload",
+        "test:keepsnothing held 1 test:token clicked on its cell with test:token, and "
+          + "broken dropped 0",
+      ],
+      law.Findings
+    );
+  }
+
+  // Fails when an entity with an inventory is offered nothing when its clicks accept nothing, or
+  // the stacks its inventory holds inside its tree are not counted.
+  [Fact]
+  [PlantedDefect(typeof(ContainerLaw), nameof(ContainerLaw.Run))]
+  public void An_inventory_is_offered_stacks_its_clicks_do_not_name() {
+    BlockLaws.Law law = ContainerLaw.Run(
+      Hands(
+        [Token],
+        Entity("shelf", "test-shelf"),
+        Entity("sheds", "test-shedsnothing")
+      ),
+      "test"
+    );
+
+    Assert.Equal(2, law.Cases);
+    Assert.Equal(
+      [
+        "test:sheds held 1 game:waterportion put into its inventory, and broken "
+          + "dropped 0",
+      ],
+      law.Findings
+    );
+  }
+
+  #endregion
+
   #region Every law
 
   // Fails when Stand leaves vanilla's per-thread room accessor (1.21 and later) bound to an earlier
@@ -1225,6 +1288,7 @@ public class BlockLawsTests {
         "neighbour",
         "network",
         "interaction",
+        "container",
       ],
       result.Laws.Select(l => l.Name)
     );
@@ -1239,6 +1303,7 @@ public class BlockLawsTests {
         "neighbour",
         "network",
         "interaction",
+        "container",
       ],
       result.Laws.Select(l => l.Name)
     );
@@ -1846,6 +1911,43 @@ public class BlockLawsTests {
       Held = tree.GetItemstack("held");
       Held?.ResolveBlockOrItem(worldForResolving);
     }
+  }
+
+  private sealed class ForgetsWhatItHolds : Holder {
+    public override void FromTreeAttributes(
+      ITreeAttribute tree,
+      IWorldAccessor worldForResolving
+    ) {
+      base.FromTreeAttributes(tree, worldForResolving);
+      Held = null;
+    }
+  }
+
+  private sealed class DropsWhatItHolds : NamesAnItem {
+    public override ItemStack[] GetDrops(
+      IWorldAccessor world,
+      BlockPos pos,
+      IPlayer byPlayer,
+      float dropQuantityMultiplier = 1f
+    ) =>
+      [
+        .. base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier) ?? [],
+        .. world.BlockAccessor.GetBlockEntity(pos) is Holder { Contents: { } held }
+          ? new[] { held.Clone() }
+          : [],
+      ];
+  }
+
+  private class Shelf : BlockEntityContainer {
+    private readonly InventoryGeneric _inventory = new(1, "shelf-0", null);
+
+    public override InventoryBase Inventory => _inventory;
+
+    public override string InventoryClassName => "shelf";
+  }
+
+  private sealed class ShedsNothing : Shelf {
+    public override void OnBlockBroken(IPlayer? byPlayer = null) { }
   }
 
   #endregion
