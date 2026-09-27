@@ -324,6 +324,10 @@ see the git history.
   dictionary and the server world's `SearchItems` and `SearchBlocks` match wildcards over the
   registries.
 - **`TestPlayer`**: the entity's `RightHandItemSlot` answers the active slot.
+- **A wrench turns a structure from any of its cells.** Vanilla's wrench asks the clicked block for
+  `IWrenchOrientable`, which a filler did not answer, so its principal's rotate help did nothing
+  there; `BlockStructureFiller` now answers with the principal's rotation, run at the principal's
+  cell.
 - **An open mold draws the metal around it.** A pour sized to its molds left metal in the canals: it
   conveyed past the near molds, and its return levelled by half the difference rounded down, so a
   one-unit gap never closed. `IMoltenCell.IsOpenMold` (default false) marks a drain fitting whose mold

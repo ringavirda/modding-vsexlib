@@ -283,6 +283,29 @@ public partial class BlockStructureFiller
       pb.OnBlockInteractStop(secondsUsed, world, byPlayer, psel);
   }
 
+  /// <summary>Answers a wrench (<see cref="IWrenchOrientable"/>) with the principal's rotation,
+  /// run with the selection moved to the principal's cell, so a wrench on any cell turns the whole
+  /// structure; null for an orphaned cell or a principal that does not orient. Every other
+  /// interface is answered as <see cref="Block.GetInterface{T}"/> answers it.</summary>
+  public override T GetInterface<T>(IWorldAccessor world, BlockPos pos) {
+    if (
+      typeof(T) == typeof(IWrenchOrientable)
+      && pos != null
+      && TryGetPrincipal(world, pos, out var pp, out var pb)
+      && pb.GetInterface<IWrenchOrientable>(world, pp) is { } principal
+    )
+      return (T)(object)new PrincipalWrench(principal, pp);
+    return base.GetInterface<T>(world, pos);
+  }
+
+  private sealed class PrincipalWrench(
+    IWrenchOrientable principal,
+    BlockPos principalPos
+  ) : IWrenchOrientable {
+    public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir) =>
+      principal.Rotate(byEntity, Repoint(blockSel, principalPos), dir);
+  }
+
   public override float OnGettingBroken(
     IPlayer player,
     BlockSelection blockSel,
