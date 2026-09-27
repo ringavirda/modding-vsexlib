@@ -76,8 +76,24 @@ jobs:
       - name: Provision Vintage Story (server assemblies)
         run: bash scripts/exmod.sh provision game -Version "${{ matrix.game }}" -Kind server
 
+      # The last green test count per assembly, which the test step compares against and rewrites
+      # when it passes; one cache per branch and series, the newest run's copy restored.
+      - name: Restore .exmod/census/
+        uses: actions/cache/restore@v4
+        with:
+          path: .exmod/census/
+          key: census-${{ github.head_ref || github.ref_name }}-${{ matrix.series }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: census-${{ github.head_ref || github.ref_name }}-${{ matrix.series }}-
+
       # The same command a contributor runs locally. It knows which projects exist for a legacy
       # series (the sample and the standalone tool target the current one only), builds them serially
       # and runs the lanes in parallel with a per-lane summary.
       - name: Test (legacy ${{ matrix.tfm }})
         run: bash scripts/exmod.sh test ${{ matrix.series }}
+
+      - name: Save .exmod/census/
+        if: hashFiles('.exmod/census/*.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .exmod/census/
+          key: census-${{ github.head_ref || github.ref_name }}-${{ matrix.series }}-${{ github.run_id }}-${{ github.run_attempt }}

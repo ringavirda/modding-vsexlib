@@ -68,10 +68,30 @@ jobs:
       - name: Restore
         run: dotnet restore ExpandedLib.sln
 
+      - name: Census series
+        id: census
+        run: echo "series=$(echo "$VS_VERSION" | cut -d. -f1,2)" >> "$GITHUB_OUTPUT"
+
+      # The last green test count per assembly, which the test step compares against and rewrites
+      # when it passes; one cache per branch and series, the newest run's copy restored.
+      - name: Restore .exmod/census/
+        uses: actions/cache/restore@v4
+        with:
+          path: .exmod/census/
+          key: census-${{ github.head_ref || github.ref_name }}-${{ steps.census.outputs.series }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: census-${{ github.head_ref || github.ref_name }}-${{ steps.census.outputs.series }}-
+
       # Collects cobertura over the solution and ratchets it against tests/coverage-floors.json.
       # The same command a contributor runs locally, so the gate cannot drift from what CI enforces.
       - name: Run tests with coverage
         run: bash scripts/exmod.sh test -Coverage
+
+      - name: Save .exmod/census/
+        if: hashFiles('.exmod/census/*.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .exmod/census/
+          key: census-${{ github.head_ref || github.ref_name }}-${{ steps.census.outputs.series }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Upload coverage report
         if: always()
