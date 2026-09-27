@@ -25,7 +25,7 @@ public class BlockLawGuards(ITestOutputHelper output) {
     Premise.Covers(defs.Select(DefinitionGoldens.RelativePath), "burdenmaker");
     return BlockLaws.Run(
       "burdenmaker",
-      defs.OfType<ExBlockDef>(),
+      defs,
       [
         typeof(BlockStructureFiller).Assembly,
         typeof(IndustryModule).Assembly,
@@ -43,6 +43,8 @@ public class BlockLawGuards(ITestOutputHelper output) {
     ["info"] = 1,
     ["reload"] = 1,
     ["neighbour"] = 1,
+    ["interaction"] = 1,
+    ["container"] = 0,
   };
 
   private void Judge(string law) {
@@ -93,4 +95,14 @@ public class BlockLawGuards(ITestOutputHelper output) {
   [Fact]
   public void The_burdenmaker_stands_as_it_was_when_a_neighbour_comes_and_goes() =>
     Judge("neighbour");
+
+  // Fails when a click with an item the burdenmaker's help names changes nothing.
+  [Fact]
+  public void The_burdenmaker_answers_every_click_its_help_names() =>
+    Judge("interaction");
+
+  // Fails when the burdenmaker's break leaves the stack it accepted undropped.
+  [Fact]
+  public void The_burdenmaker_keeps_what_it_accepts_and_drops_it_when_broken() =>
+    Judge("container");
 }
