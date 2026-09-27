@@ -191,7 +191,8 @@ public static class BlockLaws {
   ];
 
   /// <summary>The vanilla itemtypes the worlds of the hand laws load: the tools and materials the
-  /// family's help names.</summary>
+  /// family's help names, and the crushed ores, flux, fuel and metal bits its material roles
+  /// name.</summary>
   internal static readonly string[] VanillaItems =
   [
     "chisel",
@@ -199,6 +200,10 @@ public static class BlockLaws {
     "firestarter",
     "waterportion",
     "clay",
+    "crushed",
+    "lime",
+    "coke",
+    "metalbit",
   ];
 
   /// <summary>Registers a stand-in in <paramref name="world"/> for each construction ingredient

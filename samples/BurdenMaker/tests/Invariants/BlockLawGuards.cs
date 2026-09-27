@@ -44,7 +44,7 @@ public class BlockLawGuards(ITestOutputHelper output) {
     ["reload"] = 1,
     ["neighbour"] = 1,
     ["interaction"] = 1,
-    ["container"] = 0,
+    ["container"] = 1,
   };
 
   private void Judge(string law) {

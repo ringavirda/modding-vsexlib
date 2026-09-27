@@ -1062,10 +1062,10 @@ public class BlockLawsTests {
     Assert.Empty(law.Findings);
   }
 
-  // Fails when the hand laws' worlds leave out the vanilla tools and vessels the family's help
-  // names.
+  // Fails when the hand laws' worlds leave out the vanilla tools, vessels and role materials the
+  // family's help names.
   [Fact]
-  public void The_hand_laws_world_holds_vanilla_tools_and_vessels() {
+  public void The_hand_laws_world_holds_vanilla_tools_vessels_and_role_materials() {
     TestWorld world = Hands([]);
 
     Assert.NotNull(
@@ -1080,6 +1080,12 @@ public class BlockLawsTests {
     );
     Assert.NotNull(
       world.World.GetBlock(new AssetLocation("game:crucible-blue-smelted"))
+    );
+    Assert.NotNull(world.World.GetItem(new AssetLocation("game:crushed-iron")));
+    Assert.NotNull(world.World.GetItem(new AssetLocation("game:lime")));
+    Assert.NotNull(world.World.GetItem(new AssetLocation("game:coke")));
+    Assert.NotNull(
+      world.World.GetItem(new AssetLocation("game:metalbit-steel"))
     );
   }
 
