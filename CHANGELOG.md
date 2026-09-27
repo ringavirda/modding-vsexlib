@@ -9,6 +9,12 @@ see the git history.
 
 ### Added
 
+- **`InteractionLaw`** (ExpandedLib.Testing, `Laws/`), run by `BlockLaws.Run` as `interaction`: every
+  cell of every block, clicked with an empty hand and with each item its right-click help names (keys
+  held, the other items of the same action carried), throws nothing, logs nothing, keeps its block
+  entity at its cell through a placement from a stack carrying `blockEntityAttributes` and a reload,
+  and does something with each named item that the block or the held item takes. `BlockLaws.Run`
+  takes item definitions beside block definitions for this law's world.
 - **`NeighbourLaw` and `NetworkLaw`** (ExpandedLib.Testing, `Laws/`), run by `BlockLaws.Run` as
   `neighbour` and `network`: every block, stood on a solid block, meets a solid block set and
   cleared on each free face of its cells, each change announced through

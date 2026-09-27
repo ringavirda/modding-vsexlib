@@ -7,9 +7,12 @@ using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -71,7 +74,37 @@ public class BlockLawsTests {
     world.RegisterClass("test-support", typeof(Support));
     world.RegisterClass("test-askedonce", typeof(AcceptsWhenFirstAsked));
     world.RegisterClass("test-initthrows", typeof(ThrowsOnInitialize));
+    world.RegisterClass("test-namesanitem", typeof(NamesAnItem));
+    world.RegisterClass("test-namestwo", typeof(NamesTwoTogether));
+    world.RegisterClass("test-clickthrows", typeof(ThrowsOnAClick));
+    world.RegisterClass("test-readsstack", typeof(ReadsItsStack));
+    world.RegisterClass("test-keepscell", typeof(ReadsItsStackInPlace));
+    world.RegisterClass("test-lights", typeof(Lights));
+    world.RegisterClass("test-spent", typeof(SpentOnTheStart));
+    world.RegisterClass("test-holder", typeof(Holder));
+    world.RegisterClass("test-pair", typeof(TakesAMatchingPair));
+    world.RegisterClass("test-loadmoves", typeof(MovesOnTheLoad));
   }
+
+  private static readonly ExItemDef Token = ExItemDef.Create("test", "token");
+
+  private static readonly ExItemDef Nail = ExItemDef.Create("test", "nail");
+
+  private static TestWorld Hands(ExItemDef[] items, params ExBlockDef[] defs) =>
+    BlockLaws.Stand(defs, Exlib, Prepare, items);
+
+  private static ExBlockDef Names(
+    string code,
+    string item,
+    bool takes,
+    bool spends = false
+  ) =>
+    ExBlockDef
+      .Create("test", code)
+      .Class("test-namesanitem")
+      .Attribute("names", item)
+      .Attribute("takes", takes)
+      .Attribute("spends", spends);
 
   private static TestWorld Stand(params ExBlockDef[] defs) =>
     BlockLaws.Stand(defs, Exlib, Prepare);
@@ -501,6 +534,7 @@ public class BlockLawsTests {
           .Class("ExFilledMegastructure")
           .FillerOffsets(TwoCells)
           .EntityClass("test-plain")
+          .Behavior("BlockEntityInteract")
           .Construction(c =>
             c.Stage(s => s.Require("game:stick", 1))
               .Stage(s => s.Require("game:plank-oak", 3))
@@ -836,6 +870,269 @@ public class BlockLawsTests {
 
   #endregion
 
+  #region Interaction
+
+  // Fails when a taken click with a named item is not judged for what it changed.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_click_its_help_names_that_changes_nothing_is_named() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [Token],
+        Names("idle", "test:token", takes: true),
+        Names("spends", "test:token", takes: true, spends: true)
+      ),
+      "test"
+    );
+
+    Assert.Equal(2, law.Blocks);
+    Assert.Equal(
+      [
+        "test:idle clicked on its cell with test:token, which its help names for "
+          + "\"test:use\", and the click changed nothing",
+      ],
+      law.Findings
+    );
+  }
+
+  // Fails when a click the block declines is not handed to the held item, as the engine hands it,
+  // or when a click both decline passes.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_click_the_block_and_the_item_both_refuse_is_named() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [Token, ExItemDef.Create("test", "lights").Class("test-lights")],
+        Names("refuses", "test:token", takes: false),
+        Names("lit", "test:lights", takes: false)
+      ),
+      "test"
+    );
+
+    Assert.Equal(
+      [
+        "test:refuses clicked on its cell with test:token, which its help names for "
+          + "\"test:use\", and the click was refused",
+      ],
+      law.Findings
+    );
+  }
+
+  // Fails when the held item's step and stop run on the collectible the hand held before the
+  // start rather than the one it holds after.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_held_item_the_start_swaps_is_stepped_as_what_the_hand_now_holds() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [Token, ExItemDef.Create("test", "spent").Class("test-spent")],
+        Names("pours", "test:spent", takes: false)
+      ),
+      "test"
+    );
+
+    Assert.Equal(2, law.Cases);
+    Assert.Empty(law.Findings);
+  }
+
+  // Fails when the keys a help line names are not held for its click.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_click_is_made_with_the_keys_its_help_names() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [Token],
+        Names("sneaks", "test:token", takes: true, spends: true)
+          .Attribute("keys", "sneak")
+      ),
+      "test"
+    );
+
+    Assert.Equal(2, law.Cases);
+    Assert.Empty(law.Findings);
+  }
+
+  // Fails when the other items a help lists under the same action are not carried beside the
+  // hand.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void Items_listed_together_are_carried_together() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [Token, Nail],
+        ExBlockDef.Create("test", "together").Class("test-namestwo")
+      ),
+      "test"
+    );
+
+    Assert.Equal(3, law.Cases);
+    Assert.Empty(law.Findings);
+  }
+
+  // Fails when the empty-hand click is dropped, or a throwing click passes.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_click_that_throws_is_named() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands([], ExBlockDef.Create("test", "throws").Class("test-clickthrows")),
+      "test"
+    );
+
+    Assert.Equal(
+      [
+        "test:throws clicked on its cell with an empty hand threw "
+          + "InvalidOperationException: clicked",
+      ],
+      law.Findings.Select(f => f.Split(" (")[0])
+    );
+  }
+
+  // Fails when the stack placed from carries its position, the entity's cell is not read after
+  // the placement or the reload, or the spawn skips the entity's own OnBlockPlaced.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void An_entity_placed_from_a_stack_or_reloaded_off_its_cell_is_named() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [],
+        Entity("moves", "test-readsstack"),
+        Entity("stays", "test-keepscell"),
+        Entity("loadmoves", "test-loadmoves")
+      ),
+      "test"
+    );
+
+    Assert.Equal(2, law.Findings.Count);
+    Assert.StartsWith(
+      "test:loadmoves reloaded left its block entity at ",
+      law.Findings[0]
+    );
+    Assert.Equal(
+      "test:moves placed left its block entity at 0, 0, 0, not at its cell",
+      law.Findings[1]
+    );
+  }
+
+  // Fails when the carried item is not the one whose variant agrees with the hand's, as a stage
+  // storing a metal takes one metal throughout.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void The_item_carried_beside_the_hand_agrees_with_its_variant() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [
+          ExItemDef.Create("test", "plate").VariantGroup("metal", "a", "b"),
+          ExItemDef.Create("test", "rivet").VariantGroup("metal", "a", "b"),
+        ],
+        ExBlockDef.Create("test", "pair").Class("test-pair")
+      ),
+      "test"
+    );
+
+    Assert.Equal(5, law.Cases);
+    Assert.Empty(law.Findings);
+  }
+
+  // Fails when the hand laws' worlds start no block reinforcement system, which vanilla's lockable
+  // blocks ask on every click.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_lockable_block_is_clicked_in_a_world_with_reinforcement() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands([], ExBlockDef.Create("test", "locked").Behavior("Lockable")),
+      "test"
+    );
+
+    Assert.Equal(1, law.Cases);
+    Assert.Empty(law.Findings);
+  }
+
+  // Fails when the hand laws' worlds leave out the vanilla tools and vessels the family's help
+  // names.
+  [Fact]
+  public void The_hand_laws_world_holds_vanilla_tools_and_vessels() {
+    TestWorld world = Hands([]);
+
+    Assert.NotNull(world.World.GetItem(new AssetLocation("game:wrench-copper")));
+    Assert.NotNull(world.World.GetItem(new AssetLocation("game:chisel-copper")));
+    Assert.NotNull(world.World.GetItem(new AssetLocation("game:clay-fire")));
+    Assert.NotNull(
+      world.World.GetBlock(new AssetLocation("game:torch-basic-lit-up"))
+    );
+    Assert.NotNull(
+      world.World.GetBlock(new AssetLocation("game:crucible-blue-smelted"))
+    );
+  }
+
+#if GAME_GE_1_22
+  // Fails when a construction's ingredients get no stand-ins, or a wildcard's stand-ins carry no
+  // variant under the key the stage stores, which the next stage's ingredient then names.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_construction_is_paid_with_stand_ins_for_its_ingredients() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [],
+        ExBlockDef
+          .Create("test", "frame")
+          .Class("ExFilledMegastructure")
+          .FillerOffsets(TwoCells)
+          .EntityClass("test-plain")
+          .Behavior("BlockEntityInteract")
+          .Construction(c =>
+            c.Stage(s => s.Require("test:peg", 1))
+              .Stage(s => s.RequireMetalPlate("test", 2))
+              .Stage(s => s.RequireMetalPlate("test", 1))
+          )
+      ),
+      "test"
+    );
+
+    Assert.Equal(1, law.Blocks);
+    Assert.Empty(law.Findings);
+    Assert.Equal(9, law.Cases);
+  }
+#endif
+
+  // Fails when the law places a block the game never sets, as it does a vessel stored on the
+  // ground.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_block_the_game_never_places_is_not_clicked() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [],
+        ExBlockDef
+          .Create("test", "vessel")
+          .Class("test-clickthrows")
+          .Behavior("Unplaceable")
+      ),
+      "test"
+    );
+
+    Assert.Equal(1, law.Blocks);
+    Assert.Equal(0, law.Cases);
+  }
+
+  // Fails when the audit line the engine writes for every stack a player takes is read as a
+  // fault.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void An_audited_click_is_no_fault() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [Token],
+        Names("audits", "test:token", takes: true, spends: true)
+          .Attribute("audits", true)
+      ),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+  }
+
+  #endregion
+
   #region Every law
 
   // Fails when Stand leaves vanilla's per-thread room accessor (1.21 and later) bound to an earlier
@@ -927,6 +1224,7 @@ public class BlockLawsTests {
         "reload",
         "neighbour",
         "network",
+        "interaction",
       ],
       result.Laws.Select(l => l.Name)
     );
@@ -940,6 +1238,7 @@ public class BlockLawsTests {
         "reload",
         "neighbour",
         "network",
+        "interaction",
       ],
       result.Laws.Select(l => l.Name)
     );
@@ -1324,6 +1623,228 @@ public class BlockLawsTests {
     ) {
       failureCode = "test-never";
       return false;
+    }
+  }
+
+  private class NamesAnItem : Block {
+    public override WorldInteraction[] GetPlacedBlockInteractionHelp(
+      IWorldAccessor world,
+      BlockSelection selection,
+      IPlayer forPlayer
+    ) =>
+      [
+        new()
+        {
+          ActionLangCode = "test:use",
+          MouseButton = EnumMouseButton.Right,
+          HotKeyCode = Attributes["keys"].AsString(),
+          Itemstacks =
+          [
+            new ItemStack(
+              world.GetItem(new AssetLocation(Attributes["names"].AsString()))
+            ),
+          ],
+        },
+      ];
+
+    public override bool OnBlockInteractStart(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel
+    ) {
+      ItemSlot hand = byPlayer.InventoryManager.ActiveHotbarSlot;
+      if (!Attributes["takes"].AsBool() || hand.Empty)
+        return Attributes["takes"].AsBool();
+      bool keyed =
+        Attributes["keys"].AsString() == null
+        || byPlayer.Entity.Controls.ShiftKey;
+      if (Attributes["spends"].AsBool() && keyed) {
+        hand.TakeOut(1);
+        if (Attributes["audits"].AsBool())
+          world.Logger.Audit("{0} spent a token", byPlayer.PlayerName);
+      }
+      if (world.BlockAccessor.GetBlockEntity(blockSel.Position) is Holder holder)
+        holder.Take(hand);
+      return true;
+    }
+  }
+
+  private sealed class NamesTwoTogether : Block {
+    public override WorldInteraction[] GetPlacedBlockInteractionHelp(
+      IWorldAccessor world,
+      BlockSelection selection,
+      IPlayer forPlayer
+    ) =>
+      [
+        .. new[] { "test:token", "test:nail" }.Select(code => new WorldInteraction {
+          ActionLangCode = "test:build",
+          MouseButton = EnumMouseButton.Right,
+          Itemstacks = [new ItemStack(world.GetItem(new AssetLocation(code)))],
+        }),
+      ];
+
+    public override bool OnBlockInteractStart(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel
+    ) {
+      ItemSlot[] held =
+      [
+        .. byPlayer
+          .InventoryManager.GetHotbarInventory()
+          .Where(slot => !slot.Empty),
+      ];
+      if (held.Length < 2)
+        return true;
+      foreach (ItemSlot slot in held)
+        slot.TakeOut(1);
+      return true;
+    }
+  }
+
+  private sealed class TakesAMatchingPair : Block {
+    public override WorldInteraction[] GetPlacedBlockInteractionHelp(
+      IWorldAccessor world,
+      BlockSelection selection,
+      IPlayer forPlayer
+    ) =>
+      [
+        .. new[] { "plate", "rivet" }.Select(kind => new WorldInteraction {
+          ActionLangCode = "test:build",
+          MouseButton = EnumMouseButton.Right,
+          Itemstacks =
+          [
+            .. new[] { "a", "b" }.Select(metal =>
+              new ItemStack(world.GetItem(new AssetLocation($"test:{kind}-{metal}")))
+            ),
+          ],
+        }),
+      ];
+
+    public override bool OnBlockInteractStart(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel
+    ) {
+      ItemSlot[] held =
+      [
+        .. byPlayer
+          .InventoryManager.GetHotbarInventory()
+          .Where(slot => !slot.Empty),
+      ];
+      if (
+        held.Length == 2
+        && held[0].Itemstack.Collectible.Variant["metal"]
+          == held[1].Itemstack.Collectible.Variant["metal"]
+      )
+        foreach (ItemSlot slot in held)
+          slot.TakeOut(1);
+      return true;
+    }
+  }
+
+  private sealed class ThrowsOnAClick : Block {
+    public override bool OnBlockInteractStart(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel
+    ) => throw new InvalidOperationException("clicked");
+  }
+
+  private class ReadsItsStack : BlockEntity {
+    public override void OnBlockPlaced(ItemStack? byItemStack = null) {
+      if (
+        byItemStack?.Attributes["blockEntityAttributes"] is ITreeAttribute tree
+      )
+        FromTreeAttributes(tree, Api.World);
+    }
+  }
+
+  private sealed class ReadsItsStackInPlace : ReadsItsStack {
+    public override void OnBlockPlaced(ItemStack? byItemStack = null) {
+      BlockPos at = Pos.Copy();
+      base.OnBlockPlaced(byItemStack);
+      Pos = at;
+    }
+  }
+
+  private sealed class MovesOnTheLoad : BlockEntity {
+    public override void FromTreeAttributes(
+      ITreeAttribute tree,
+      IWorldAccessor worldAccessForResolve
+    ) {
+      base.FromTreeAttributes(tree, worldAccessForResolve);
+      Pos = Pos.UpCopy();
+    }
+  }
+
+  private sealed class Lights : Item {
+    public override void OnHeldInteractStart(
+      ItemSlot slot,
+      EntityAgent byEntity,
+      BlockSelection blockSel,
+      EntitySelection entitySel,
+      bool firstEvent,
+      ref EnumHandHandling handling
+    ) {
+      slot.TakeOut(1);
+      handling = EnumHandHandling.PreventDefault;
+    }
+  }
+
+  private sealed class SpentOnTheStart : Item {
+    public override void OnHeldInteractStart(
+      ItemSlot slot,
+      EntityAgent byEntity,
+      BlockSelection blockSel,
+      EntitySelection entitySel,
+      bool firstEvent,
+      ref EnumHandHandling handling
+    ) {
+      slot.Itemstack = new ItemStack(
+        byEntity.World.GetItem(new AssetLocation("test:token"))
+      );
+      handling = EnumHandHandling.PreventDefault;
+    }
+
+    public override bool OnHeldInteractStep(
+      float secondsUsed,
+      ItemSlot slot,
+      EntityAgent byEntity,
+      BlockSelection blockSel,
+      EntitySelection entitySel
+    ) => throw new InvalidOperationException("stepped once spent");
+  }
+
+  private class Holder : BlockEntity {
+    protected ItemStack? Held;
+
+    internal void Take(ItemSlot hand) {
+      if (hand.Empty && Held == null)
+        return;
+      ItemStack taken = hand.TakeOut(1);
+      if (Held == null)
+        Held = taken;
+      else
+        Held.StackSize += taken.StackSize;
+      MarkDirty();
+    }
+
+    internal ItemStack? Contents => Held;
+
+    public override void ToTreeAttributes(ITreeAttribute tree) {
+      base.ToTreeAttributes(tree);
+      if (Held != null)
+        tree.SetItemstack("held", Held);
+    }
+
+    public override void FromTreeAttributes(
+      ITreeAttribute tree,
+      IWorldAccessor worldForResolving
+    ) {
+      base.FromTreeAttributes(tree, worldForResolving);
+      Held = tree.GetItemstack("held");
+      Held?.ResolveBlockOrItem(worldForResolving);
     }
   }
 
