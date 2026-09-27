@@ -1082,9 +1082,15 @@ public class BlockLawsTests {
     Assert.NotNull(
       world.World.GetBlock(new AssetLocation("game:torch-basic-lit-up"))
     );
+#if GAME_GE_1_21
     Assert.NotNull(
       world.World.GetBlock(new AssetLocation("game:crucible-blue-smelted"))
     );
+#else
+    Assert.NotNull(
+      world.World.GetBlock(new AssetLocation("game:crucible-smelted"))
+    );
+#endif
     Assert.NotNull(world.World.GetItem(new AssetLocation("game:crushed-iron")));
     Assert.NotNull(world.World.GetItem(new AssetLocation("game:lime")));
     Assert.NotNull(world.World.GetItem(new AssetLocation("game:coke")));
