@@ -19,6 +19,8 @@ namespace ExpandedLib.Testing;
 public static class InteractionLaw {
   internal const string Name = "interaction";
 
+  internal const string FormedName = "formed interaction";
+
   /// <summary>Stands every variant of each block of <paramref name="domain"/> as
   /// <see cref="NeighbourLaw.Run"/> does and, on a fresh placement each, clicks every cell with an
   /// empty hand and with a fresh stack of each item the cell's right-click help names, keys
@@ -63,7 +65,15 @@ public static class InteractionLaw {
             StandUp(world, block, sites.Next(), solid, carrying, findings)
               is { } step
             && KeepsItsCell(step, "placed", findings)
-            && Make(world, player, step, clicks[i], findings)
+            && Make(
+              world,
+              player,
+              step,
+              clicks[i],
+              findings,
+              Cells(world, step),
+              step.Block.Code.ToString()
+            )
             && (i > 0 || Reloads(step, findings));
           if (!clean || findings.Count > earlier)
             break;
@@ -71,6 +81,86 @@ public static class InteractionLaw {
       }
     }
     return new BlockLaws.Law(Name, blocks, cases, findings);
+  }
+
+  /// <summary>Stands each structure of <paramref name="domain"/> formed, in one facing, as
+  /// <see cref="MultiblockLaw.Run"/> completes it, and clicks each of its cells holding a block
+  /// outside <c>game</c> as <see cref="Run"/> clicks a block's cells, on a fresh structure
+  /// each.</summary>
+  /// <remarks>A finding is a placement or click that throws or logs, the anchor's entity off its
+  /// cell after a click, a named click both refuse or that changes nothing, and a help line
+  /// carrying both items and a <c>ShouldApply</c>; a cell is judged no further after its first. A
+  /// structure that does not form is left to the multiblock law. A click's findings are keyed by the
+  /// anchor's code and name the block clicked; a placement's, by the block placed.</remarks>
+  /// <param name="world">A world holding the blocks judged, the blocks their layouts name and the
+  /// items their help names (<see cref="BlockLaws.Run"/> stands one).</param>
+  /// <param name="domain">The domain whose structures are formed.</param>
+  /// <returns>The blocktypes with a structure that formed, clicks made and findings, keyed by the
+  /// anchor's variant code.</returns>
+  public static BlockLaws.Law RunFormed(TestWorld world, string domain) {
+    var findings = new List<string>();
+    var sites = new BlockLaws.Sites();
+    int blocks = 0,
+      cases = 0;
+    TestPlayer player = User(world);
+    Block[] registered = MultiblockLaw.Registered(world);
+    foreach (
+      IGrouping<string, Block> type in BlockLaws.Blocktypes(world, domain)
+    ) {
+      bool formed = false;
+      foreach (Block block in MultiblockLaw.OneFacing(world, type)) {
+        if (
+          MultiblockLaw.Formed(world, block, sites.Next(), registered, null)
+          is not { } probe
+        )
+          continue;
+        formed = true;
+        int flagged = findings.Count;
+        Click[] clicks = Clicks(
+          world,
+          player.Player,
+          probe,
+          findings,
+          MultiblockLaw.FormedCells(world, probe)
+        );
+        if (findings.Count > flagged)
+          continue;
+        var stopped = new HashSet<(int, int, int)>();
+        foreach (Click click in clicks) {
+          if (stopped.Contains((click.Offset.X, click.Offset.Y, click.Offset.Z)))
+            continue;
+          cases++;
+          int earlier = findings.Count;
+          if (
+            MultiblockLaw.Formed(
+              world,
+              block,
+              sites.Next(),
+              registered,
+              findings
+            )
+            is not { } step
+          )
+            break;
+          if (
+            !Make(
+              world,
+              player,
+              step,
+              click,
+              findings,
+              MultiblockLaw.FormedCells(world, step),
+              $"{block.Code} formed"
+            )
+            || findings.Count > earlier
+          )
+            stopped.Add((click.Offset.X, click.Offset.Y, click.Offset.Z));
+        }
+      }
+      if (formed)
+        blocks++;
+    }
+    return new BlockLaws.Law(FormedName, blocks, cases, findings);
   }
 
   /// <summary>One click a case makes: on the cell at <see cref="Offset"/> from the principal,
@@ -88,6 +178,10 @@ public static class InteractionLaw {
     /// stage lists each ingredient it takes together.</summary>
     public (CollectibleObject Item, int Count)[] Carried { get; init; } = [];
 
+    /// <summary>The code of the block clicked, named on a cell of a formed structure; null
+    /// elsewhere.</summary>
+    public AssetLocation? On { get; init; }
+
     /// <summary>What the click is, for a finding.</summary>
     public string Describe() {
       string hand = Item == null ? "an empty hand" : $"{Item.Code}";
@@ -100,9 +194,16 @@ public static class InteractionLaw {
         Keys == Keys.None
           ? ""
           : $" and {Keys.ToString().ToLowerInvariant()} held";
-      return $"clicked on {BlockLaws.CellName(Offset)} with {hand}{keys}";
+      return $"clicked on {Where(Offset, On)} with {hand}{keys}";
     }
   }
+
+  /// <summary>A cell named by its offset from the principal, and by the block it holds when
+  /// <paramref name="on"/> is given.</summary>
+  private static string Where(Vec3i offset, AssetLocation? on) =>
+    on == null
+      ? BlockLaws.CellName(offset)
+      : $"{BlockLaws.CellName(offset)}, {on},";
 
   /// <summary>The keys a click holds.</summary>
   [Flags]
@@ -178,20 +279,24 @@ public static class InteractionLaw {
   /// each right-click interaction each cell's help lists, once per distinct item it names and with
   /// an empty hand when it names none, keys as listed; duplicates dropped. A line carrying both
   /// items and a <c>ShouldApply</c> goes to <paramref name="findings"/> when given.</summary>
+  /// <param name="cells">The cells clicked, each click naming the block it holds; the principal's
+  /// and its fillers' (<see cref="Cells"/>) for null.</param>
   internal static Click[] Clicks(
     TestWorld world,
     IPlayer player,
     BlockLaws.EntityCase probe,
-    List<string>? findings = null
+    List<string>? findings = null,
+    BlockPos[]? cells = null
   ) {
     var clicks = new List<Click>();
-    foreach (BlockPos cell in Cells(world, probe)) {
+    foreach (BlockPos cell in cells ?? Cells(world, probe)) {
       var offset = new Vec3i(
         cell.X - probe.At.X,
         cell.Y - probe.At.Y,
         cell.Z - probe.At.Z
       );
-      clicks.Add(new Click(offset, Keys.None, null, 0, null));
+      AssetLocation? on = cells == null ? null : world.GetBlock(cell).Code;
+      clicks.Add(new Click(offset, Keys.None, null, 0, null) { On = on });
       BlockSelection selection = Selection(cell);
       WorldInteraction[] helps =
       [
@@ -206,14 +311,14 @@ public static class InteractionLaw {
           && help.ShouldApply != null
         )
           findings.Add(
-            $"{probe.Block.Code} help on {BlockLaws.CellName(offset)} for "
+            $"{probe.Block.Code} help on {Where(offset, on)} for "
               + $"\"{help.ActionLangCode}\" carries items and a ShouldApply, which the "
               + "engine ignores on a line with items"
           );
         Keys keys = KeysOf(help);
         ItemStack[] named = Named(help, selection);
         if (named.Length == 0)
-          clicks.Add(new Click(offset, keys, null, 0, null));
+          clicks.Add(new Click(offset, keys, null, 0, null) { On = on });
         WorldInteraction[] alongside =
         [
           .. helps.Where(h =>
@@ -231,6 +336,7 @@ public static class InteractionLaw {
               Math.Max(1, stack.StackSize),
               help.ActionLangCode
             ) {
+              On = on,
               Carried =
               [
                 .. alongside
@@ -317,15 +423,18 @@ public static class InteractionLaw {
       : new ItemStack((Item)item, count);
 
   /// <summary>Makes <paramref name="click"/> on <paramref name="step"/> and judges it.</summary>
+  /// <param name="cells">The cells whose codes and trees the click may change.</param>
+  /// <param name="who">What a finding starts with.</param>
   /// <returns>False when the click threw or logged, or moved the entity off its cell.</returns>
   private static bool Make(
     TestWorld world,
     TestPlayer player,
     BlockLaws.EntityCase step,
     Click click,
-    List<string> findings
+    List<string> findings,
+    BlockPos[] cells,
+    string who
   ) {
-    BlockPos[] cells = Cells(world, step);
     Snapshot before = Snapshot.Of(world, step, cells);
     bool? taken = Press(world, player, step, click, judged: true);
     if (taken == null || !KeepsItsCell(step, click.Describe(), findings))
@@ -333,7 +442,7 @@ public static class InteractionLaw {
     if (click.Item == null)
       return true;
     string what =
-      $"{step.Block.Code} {click.Describe()}, which its help names for "
+      $"{who} {click.Describe()}, which its help names for "
       + $"\"{click.Action}\",";
     if (taken == false)
       findings.Add($"{what} and the click was refused");

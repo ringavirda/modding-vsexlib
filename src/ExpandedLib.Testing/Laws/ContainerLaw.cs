@@ -11,6 +11,8 @@ namespace ExpandedLib.Testing;
 public static class ContainerLaw {
   internal const string Name = "container";
 
+  internal const string FormedName = "formed container";
+
   /// <summary>Stands every variant with an entity of each block of <paramref name="domain"/> as
   /// <see cref="InteractionLaw.Run"/> does, offers it stacks until it accepts one, by the clicks
   /// its help names and then into its inventory, reloads it and breaks it.</summary>
@@ -30,11 +32,7 @@ public static class ContainerLaw {
       cases = 0;
     Block solid = BlockLaws.Solid(world);
     TestPlayer player = InteractionLaw.User(world);
-    CollectibleObject[] palette =
-    [
-      .. world.World.Items.Where(i => i?.Code != null),
-      .. world.World.Blocks.Where(b => b?.Code != null && b.Id != 0),
-    ];
+    CollectibleObject[] palette = Palette(world);
     foreach (
       IGrouping<string, Block> type in BlockLaws.Blocktypes(world, domain)
     ) {
@@ -55,13 +53,96 @@ public static class ContainerLaw {
           continue;
         judged = true;
         cases++;
-        Follow(world, player, step, stack, findings);
+        Follow(world, player, step, stack, findings, step.Block.Code.ToString());
       }
       if (judged)
         blocks++;
     }
     return new BlockLaws.Law(Name, blocks, cases, findings);
   }
+
+  /// <summary>Stands each structure of <paramref name="domain"/> formed, in one facing, as
+  /// <see cref="InteractionLaw.RunFormed"/> does and, on a fresh structure for each of its cells
+  /// holding a block outside <c>game</c> with an entity, offers that entity stacks as
+  /// <see cref="Run"/> does, reloads it and breaks its cell.</summary>
+  /// <remarks>A finding is what <see cref="Run"/> finds. A count lost over the reload or the break
+  /// is keyed by the anchor's code and names the cell's block; a reload or break that throws or logs,
+  /// by the cell's block.</remarks>
+  /// <param name="world">A world holding the blocks judged, the blocks their layouts name and the
+  /// items their help names (<see cref="BlockLaws.Run"/> stands one).</param>
+  /// <param name="domain">The domain whose structures are formed.</param>
+  /// <returns>The blocktypes with a formed structure a cell of which accepted a stack, the cells
+  /// that did, and findings, keyed by the anchor's variant code.</returns>
+  public static BlockLaws.Law RunFormed(TestWorld world, string domain) {
+    var findings = new List<string>();
+    var sites = new BlockLaws.Sites();
+    int blocks = 0,
+      cases = 0;
+    TestPlayer player = InteractionLaw.User(world);
+    CollectibleObject[] palette = Palette(world);
+    Block[] registered = MultiblockLaw.Registered(world);
+    foreach (
+      IGrouping<string, Block> type in BlockLaws.Blocktypes(world, domain)
+    ) {
+      bool judged = false;
+      foreach (Block block in MultiblockLaw.OneFacing(world, type)) {
+        if (
+          MultiblockLaw.Formed(world, block, sites.Next(), registered, null)
+          is not { } probe
+        )
+          continue;
+        foreach (
+          BlockPos cell in MultiblockLaw
+            .FormedCells(world, probe)
+            .Where(c => world.GetBlockEntity(c) != null)
+        ) {
+          var offset = new Vec3i(
+            cell.X - probe.At.X,
+            cell.Y - probe.At.Y,
+            cell.Z - probe.At.Z
+          );
+          if (
+            MultiblockLaw.Formed(world, block, sites.Next(), registered, null)
+            is not { } formed
+          )
+            break;
+          BlockPos at = formed.At.AddCopy(offset.X, offset.Y, offset.Z);
+          var step = new BlockLaws.EntityCase(
+            world,
+            world.GetBlock(at),
+            at,
+            findings
+          );
+          if (
+            (ByClick(world, player, step) ?? ByInventory(world, step, palette))
+            is not { } stack
+          )
+            continue;
+          judged = true;
+          cases++;
+          Follow(
+            world,
+            player,
+            step,
+            stack,
+            findings,
+            $"{block.Code} formed, {step.Block.Code} on "
+              + $"{BlockLaws.CellName(offset)},"
+          );
+        }
+      }
+      if (judged)
+        blocks++;
+    }
+    return new BlockLaws.Law(FormedName, blocks, cases, findings);
+  }
+
+  /// <summary>Every item, then every block but air, of <paramref name="world"/>.</summary>
+  private static CollectibleObject[] Palette(TestWorld world) =>
+    [
+      .. world.World.Items.Where(i => i?.Code != null),
+      .. world.World.Blocks.Where(b => b?.Code != null && b.Id != 0),
+    ];
 
   private static (CollectibleObject, int, string)? ByClick(
     TestWorld world,
@@ -113,10 +194,11 @@ public static class ContainerLaw {
     TestPlayer player,
     BlockLaws.EntityCase step,
     (CollectibleObject Item, int Held, string How) accepted,
-    List<string> findings
+    List<string> findings,
+    string who
   ) {
     string what =
-      $"{step.Block.Code} held {accepted.Held} {accepted.Item.Code} {accepted.How}";
+      $"{who} held {accepted.Held} {accepted.Item.Code} {accepted.How}";
     if (!step.Reload(judged: true))
       return;
     int kept = Held(step, accepted.Item);

@@ -36,12 +36,7 @@ public static class MultiblockLaw {
     var sites = new BlockLaws.Sites();
     int blocks = 0,
       cases = 0;
-    Block[] registered =
-    [
-      .. world.World.Blocks.Where(b =>
-        b?.Code != null && b.Id != 0 && b.Code.Domain != "game"
-      ),
-    ];
+    Block[] registered = Registered(world);
     foreach (
       IGrouping<string, Block> type in BlockLaws.Blocktypes(world, domain)
     ) {
@@ -125,6 +120,98 @@ public static class MultiblockLaw {
     }
     return new BlockLaws.Law(Name, blocks, cases, findings);
   }
+
+  /// <summary>The blocks of <paramref name="world"/> outside <c>game</c>, which a layout cell is
+  /// filled from.</summary>
+  internal static Block[] Registered(TestWorld world) =>
+    [
+      .. world.World.Blocks.Where(b =>
+        b?.Code != null && b.Id != 0 && b.Code.Domain != "game"
+      ),
+    ];
+
+  /// <summary>The variants of <paramref name="type"/> with a layout, the first of each combination
+  /// of their variant groups other than <c>side</c> and <c>orientation</c>: each structure in one
+  /// facing.</summary>
+  internal static IEnumerable<Block> OneFacing(
+    TestWorld world,
+    IEnumerable<Block> type
+  ) =>
+    type.Where(b => BlockLaws.Signals(world, b).Layout != null)
+      .DistinctBy(b =>
+        string.Join(
+          ",",
+          (
+            b.Variant?.Where(v => v.Key is not ("side" or "orientation"))
+            ?? []
+          ).Select(v => $"{v.Key}={v.Value}")
+        )
+      );
+
+  /// <summary>Stands the structure <paramref name="block"/> anchors up formed at
+  /// <paramref name="at"/>: the anchor placed as <see cref="BlockLaws.EntityCase.Place"/> places a
+  /// block, each cell it reports missing filled as <see cref="Run"/> fills it and then placed the
+  /// same way, with its entity, the <c>game</c> cells raised by <see cref="StructureRig"/> at the
+  /// angle the anchor turns its layout to, and one monitor tick.</summary>
+  /// <param name="registered">The blocks cells are filled from (<see cref="Registered"/>).</param>
+  /// <param name="faults">Where a placement's throw or log goes, keyed by the placed block's code;
+  /// null leaves it unjudged.</param>
+  /// <returns>The anchor's case; null when a placement threw or logged, a cell has no registered
+  /// block to satisfy it, or the monitor does not see the structure complete, each of which
+  /// <see cref="Run"/> judges.</returns>
+  internal static BlockLaws.EntityCase? Formed(
+    TestWorld world,
+    Block block,
+    BlockPos at,
+    Block[] registered,
+    List<string>? faults
+  ) {
+    var step = new BlockLaws.EntityCase(world, block, at, faults);
+    if (
+      !step.Place(judged: faults != null)
+      || step.Entity is not BlockEntityMultiblockStructure anchor
+    )
+      return null;
+    var missing = new List<BlockEntityMultiblockStructure.MissingCell>();
+    anchor.IncompleteBlockCount(missing.Add);
+    foreach (BlockEntityMultiblockStructure.MissingCell cell in missing) {
+      if (cell.Wanted.Domain == "game" || world.GetBlock(cell.At).Id != 0)
+        continue;
+      if (
+        !FillReal(world, anchor, cell, registered)
+        || !new BlockLaws.EntityCase(
+          world,
+          world.GetBlock(cell.At),
+          cell.At,
+          faults
+        ).Place(judged: faults != null)
+      )
+        return null;
+    }
+    StructureRig.Around(world, anchor, anchor.LayoutAngle).Raise();
+    anchor.DriveMonitorTick();
+    return anchor.StructureComplete ? step : null;
+  }
+
+  /// <summary>The cell of the structure <paramref name="step"/> anchors, then each of its layout
+  /// cells holding a block outside <c>game</c>: the cells of a formed structure a player meets,
+  /// less the rig's stand-ins, which carry no behaviour.</summary>
+  internal static BlockPos[] FormedCells(
+    TestWorld world,
+    BlockLaws.EntityCase step
+  ) =>
+    step.Entity is BlockEntityMultiblockStructure anchor
+      ?
+      [
+        step.At.Copy(),
+        .. anchor
+          .LayoutCells.Select(c => c.At)
+          .Where(c =>
+            !c.Equals(step.At)
+            && world.GetBlock(c) is { Id: not 0, Code.Domain: not "game" }
+          ),
+      ]
+      : [step.At.Copy()];
 
   /// <summary>Places at <paramref name="cell"/> the first block of <paramref name="registered"/>
   /// its wanted code matches and <paramref name="anchor"/> accepts there; clears the cell and

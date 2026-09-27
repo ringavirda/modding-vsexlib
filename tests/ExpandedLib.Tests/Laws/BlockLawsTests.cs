@@ -88,6 +88,7 @@ public class BlockLawsTests {
     world.RegisterClass("test-shedsnothing", typeof(ShedsNothing));
     world.RegisterClass("test-pair", typeof(TakesAMatchingPair));
     world.RegisterClass("test-loadmoves", typeof(MovesOnTheLoad));
+    world.RegisterClass("test-feeder", typeof(FeedsWhenFormed));
   }
 
   private static readonly ExItemDef Token = ExItemDef.Create("test", "token");
@@ -149,6 +150,13 @@ public class BlockLawsTests {
       );
 
   private static readonly ExBlockDef Wall = ExBlockDef.Create("test", "wall");
+
+  private static ExBlockDef Feeds(string code, string entity, bool dead = false) =>
+    ExBlockDef
+      .Create("test", code)
+      .Class("test-feeder")
+      .EntityClass(entity)
+      .Attribute("dead", dead);
 
   private static ExBlockDef Entity(string code, string entity) =>
     ExBlockDef.Create("test", code).EntityClass(entity);
@@ -1166,6 +1174,37 @@ public class BlockLawsTests {
     );
   }
 
+  // Fails when the formed pass clicks only the anchor's cell or the rig's stand-ins too, forms a
+  // structure in every facing, leaves the filled cells without their entities, stops a structure
+  // at its first finding, or names no block clicked.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.RunFormed))]
+  public void A_cell_that_answers_only_in_a_formed_structure_is_clicked_there() {
+    ExBlockDef[] defs =
+    [
+      Feeds("feeder", "test-holder"),
+      Feeds("deadfeeder", "test-holder", dead: true),
+      Structure("fed", "test-sideframe", "test:feeder"),
+      Structure("starved", "test-sideframe", "test:deadfeeder"),
+    ];
+
+    BlockLaws.Law alone = InteractionLaw.Run(Hands([Token], defs), "test");
+    BlockLaws.Law law = InteractionLaw.RunFormed(Hands([Token], defs), "test");
+
+    Assert.Empty(alone.Findings);
+    Assert.Equal(2, law.Blocks);
+    Assert.Equal(10, law.Cases);
+    Assert.Equal(
+      [
+        "test:starved-n formed clicked on its cell at (1, 0, 0), test:deadfeeder, with "
+          + "test:token, which its help names for \"test:feed\", and the click changed nothing",
+        "test:starved-n formed clicked on its cell at (-1, 1, 2), test:deadfeeder, with "
+          + "test:token, which its help names for \"test:feed\", and the click changed nothing",
+      ],
+      law.Findings
+    );
+  }
+
   #endregion
 
   #region Container
@@ -1217,6 +1256,35 @@ public class BlockLawsTests {
       [
         "test:sheds held 1 game:waterportion put into its inventory, and broken "
           + "dropped 0",
+      ],
+      law.Findings
+    );
+  }
+
+  // Fails when the formed pass follows a stack at the anchor rather than the cell that took it,
+  // skips the cells' entities, or stops reading the reload count.
+  [Fact]
+  [PlantedDefect(typeof(ContainerLaw), nameof(ContainerLaw.RunFormed))]
+  public void A_stack_a_formed_cell_accepts_and_loses_on_a_reload_is_named() {
+    BlockLaws.Law law = ContainerLaw.RunFormed(
+      Hands(
+        [Token],
+        Feeds("feeder", "test-holder"),
+        Feeds("forgetful", "test-forgetsheld"),
+        Structure("kept", "test-sideframe", "test:feeder"),
+        Structure("lost", "test-sideframe", "test:forgetful")
+      ),
+      "test"
+    );
+
+    Assert.Equal(2, law.Blocks);
+    Assert.Equal(4, law.Cases);
+    Assert.Equal(
+      [
+        "test:lost-n formed, test:forgetful on its cell at (1, 0, 0), held 1 test:token "
+          + "clicked on its cell with test:token, and 0 after the reload",
+        "test:lost-n formed, test:forgetful on its cell at (-1, 1, 2), held 1 test:token "
+          + "clicked on its cell with test:token, and 0 after the reload",
       ],
       law.Findings
     );
@@ -1317,6 +1385,8 @@ public class BlockLawsTests {
         "network",
         "interaction",
         "container",
+        "formed interaction",
+        "formed container",
       ],
       result.Laws.Select(l => l.Name)
     );
@@ -1332,6 +1402,8 @@ public class BlockLawsTests {
         "network",
         "interaction",
         "container",
+        "formed interaction",
+        "formed container",
       ],
       result.Laws.Select(l => l.Name)
     );
@@ -1964,6 +2036,67 @@ public class BlockLawsTests {
   }
 
   private sealed class DropsWhatItHolds : NamesAnItem {
+    public override ItemStack[] GetDrops(
+      IWorldAccessor world,
+      BlockPos pos,
+      IPlayer byPlayer,
+      float dropQuantityMultiplier = 1f
+    ) =>
+      [
+        .. base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier) ?? [],
+        .. world.BlockAccessor.GetBlockEntity(pos)
+          is Holder { Contents: { } held }
+          ? new[] { held.Clone() }
+          : [],
+      ];
+  }
+
+  private sealed class FeedsWhenFormed : Block {
+    private static bool Formed(IWorldAccessor world, BlockPos pos) =>
+      BlockEntityMultiblockStructure.FindAnchorOwning<BlockEntityMultiblockStructure>(
+        world,
+        pos,
+        3,
+        3,
+        3
+      )
+        is { StructureComplete: true };
+
+    public override WorldInteraction[] GetPlacedBlockInteractionHelp(
+      IWorldAccessor world,
+      BlockSelection selection,
+      IPlayer forPlayer
+    ) =>
+      Formed(world, selection.Position)
+        ?
+        [
+          new()
+          {
+            ActionLangCode = "test:feed",
+            MouseButton = EnumMouseButton.Right,
+            Itemstacks =
+            [
+              new ItemStack(world.GetItem(new AssetLocation("test:token"))),
+            ],
+          },
+        ]
+        : [];
+
+    public override bool OnBlockInteractStart(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel
+    ) {
+      if (!Formed(world, blockSel.Position))
+        return false;
+      if (
+        Attributes?["dead"].AsBool() != true
+        && world.BlockAccessor.GetBlockEntity(blockSel.Position) is Holder holder
+      )
+        holder.Take(byPlayer.InventoryManager.ActiveHotbarSlot);
+      return true;
+    }
+
     public override ItemStack[] GetDrops(
       IWorldAccessor world,
       BlockPos pos,

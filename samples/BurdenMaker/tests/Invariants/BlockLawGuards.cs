@@ -13,8 +13,8 @@ namespace BurdenMaker.Tests;
 
 /// <summary>The burdenmaker blocks under <see cref="BlockLaws"/>: a
 /// <see cref="BlockFilledMegastructure"/> with <c>ExOrientable</c>, a <c>side</c> group and
-/// construction stages, so the placement, break, megablock, info, reload and neighbour laws judge
-/// exlib's own megastructure class. Each law's counts and findings are printed; none is allowed.</summary>
+/// construction stages, so the placement, break, megablock, info, reload, neighbour, interaction and
+/// container laws judge exlib's own megastructure class. Each law's counts and findings are printed; none is allowed.</summary>
 [GuardOf(typeof(BlockLaws), nameof(BlockLaws.Run))]
 public class BlockLawGuards(ITestOutputHelper output) {
   private static readonly Lazy<BlockLaws.Result> Laws = new(() => {
