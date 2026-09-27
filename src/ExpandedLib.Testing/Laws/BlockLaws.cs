@@ -111,9 +111,7 @@ public static class BlockLaws {
     laws.Add(
       InteractionLaw.Run(Stand(all, assemblies, prepare, items), domain)
     );
-    laws.Add(
-      ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain)
-    );
+    laws.Add(ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain));
     return new Result(laws);
   }
 
@@ -218,7 +216,9 @@ public static class BlockLaws {
         StandIn(world, code, block);
         continue;
       }
-      foreach (string variant in ingredient["allowedVariants"].AsArray<string>() ?? [])
+      foreach (
+        string variant in ingredient["allowedVariants"].AsArray<string>() ?? []
+      )
         if (
           StandIn(world, code.Replace("*", variant), block) is { } collectible
           && key != null
@@ -235,8 +235,7 @@ public static class BlockLaws {
   ) {
     var location = new AssetLocation(code);
     if (!block)
-      return world.GetItem(location)
-        ?? world.RegisterItem(location.ToString());
+      return world.GetItem(location) ?? world.RegisterItem(location.ToString());
     if (world.World.GetBlock(location) is { } known)
       return known;
     Block standIn = TestBlocks.Configure(
@@ -483,8 +482,18 @@ public static class BlockLaws {
         () => {
           taken = block.OnBlockInteractStart(_world.World, player, selection);
           if (taken) {
-            block.OnBlockInteractStep(UseSeconds, _world.World, player, selection);
-            block.OnBlockInteractStop(UseSeconds, _world.World, player, selection);
+            block.OnBlockInteractStep(
+              UseSeconds,
+              _world.World,
+              player,
+              selection
+            );
+            block.OnBlockInteractStop(
+              UseSeconds,
+              _world.World,
+              player,
+              selection
+            );
             return;
           }
           ItemSlot slot = player.InventoryManager.ActiveHotbarSlot;
@@ -502,8 +511,20 @@ public static class BlockLaws {
           taken = handling != EnumHandHandling.NotHandled;
           if (!taken || slot.Itemstack?.Collectible is not { } now)
             return;
-          now.OnHeldInteractStep(UseSeconds, slot, player.Entity, selection, null);
-          now.OnHeldInteractStop(UseSeconds, slot, player.Entity, selection, null);
+          now.OnHeldInteractStep(
+            UseSeconds,
+            slot,
+            player.Entity,
+            selection,
+            null
+          );
+          now.OnHeldInteractStop(
+            UseSeconds,
+            slot,
+            player.Entity,
+            selection,
+            null
+          );
         }
       )
         ? taken
@@ -516,11 +537,7 @@ public static class BlockLaws {
     /// <summary>Breaks the block at <see cref="At"/> through the accessor's <c>BreakBlock</c> for
     /// <paramref name="player"/>.</summary>
     internal bool Break(IPlayer player, bool judged) =>
-      Step(
-        "broken",
-        judged,
-        () => _world.Accessor.BreakBlock(At, player, 1f)
-      );
+      Step("broken", judged, () => _world.Accessor.BreakBlock(At, player, 1f));
 
     /// <summary>Runs <paramref name="act"/>; false when it threw or logged.</summary>
     private bool Step(string what, bool judged, Action act) {

@@ -1060,8 +1060,12 @@ public class BlockLawsTests {
   public void The_hand_laws_world_holds_vanilla_tools_and_vessels() {
     TestWorld world = Hands([]);
 
-    Assert.NotNull(world.World.GetItem(new AssetLocation("game:wrench-copper")));
-    Assert.NotNull(world.World.GetItem(new AssetLocation("game:chisel-copper")));
+    Assert.NotNull(
+      world.World.GetItem(new AssetLocation("game:wrench-copper"))
+    );
+    Assert.NotNull(
+      world.World.GetItem(new AssetLocation("game:chisel-copper"))
+    );
     Assert.NotNull(world.World.GetItem(new AssetLocation("game:clay-fire")));
     Assert.NotNull(
       world.World.GetBlock(new AssetLocation("game:torch-basic-lit-up"))
@@ -1076,7 +1080,8 @@ public class BlockLawsTests {
   // variant under the key the stage stores, which the next stage's ingredient then names.
   [Fact]
   [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
-  public void A_construction_is_paid_with_stand_ins_for_its_ingredients() {
+  public void A_construction_is_paid_with_stand_ins_for_its_ingredients()
+  {
     BlockLaws.Law law = InteractionLaw.Run(
       Hands(
         [],
@@ -1728,7 +1733,9 @@ public class BlockLawsTests {
         if (Attributes["audits"].AsBool())
           world.Logger.Audit("{0} spent a token", byPlayer.PlayerName);
       }
-      if (world.BlockAccessor.GetBlockEntity(blockSel.Position) is Holder holder)
+      if (
+        world.BlockAccessor.GetBlockEntity(blockSel.Position) is Holder holder
+      )
         holder.Take(hand);
       return true;
     }
@@ -1741,11 +1748,17 @@ public class BlockLawsTests {
       IPlayer forPlayer
     ) =>
       [
-        .. new[] { "test:token", "test:nail" }.Select(code => new WorldInteraction {
-          ActionLangCode = "test:build",
-          MouseButton = EnumMouseButton.Right,
-          Itemstacks = [new ItemStack(world.GetItem(new AssetLocation(code)))],
-        }),
+        .. new[] { "test:token", "test:nail" }.Select(
+          code => new WorldInteraction
+          {
+            ActionLangCode = "test:build",
+            MouseButton = EnumMouseButton.Right,
+            Itemstacks =
+            [
+              new ItemStack(world.GetItem(new AssetLocation(code))),
+            ],
+          }
+        ),
       ];
 
     public override bool OnBlockInteractStart(
@@ -1774,14 +1787,15 @@ public class BlockLawsTests {
       IPlayer forPlayer
     ) =>
       [
-        .. new[] { "plate", "rivet" }.Select(kind => new WorldInteraction {
+        .. new[] { "plate", "rivet" }.Select(kind => new WorldInteraction
+        {
           ActionLangCode = "test:build",
           MouseButton = EnumMouseButton.Right,
           Itemstacks =
           [
-            .. new[] { "a", "b" }.Select(metal =>
-              new ItemStack(world.GetItem(new AssetLocation($"test:{kind}-{metal}")))
-            ),
+            .. new[] { "a", "b" }.Select(metal => new ItemStack(
+              world.GetItem(new AssetLocation($"test:{kind}-{metal}"))
+            )),
           ],
         }),
       ];
@@ -1932,7 +1946,8 @@ public class BlockLawsTests {
     ) =>
       [
         .. base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier) ?? [],
-        .. world.BlockAccessor.GetBlockEntity(pos) is Holder { Contents: { } held }
+        .. world.BlockAccessor.GetBlockEntity(pos)
+          is Holder { Contents: { } held }
           ? new[] { held.Clone() }
           : [],
       ];

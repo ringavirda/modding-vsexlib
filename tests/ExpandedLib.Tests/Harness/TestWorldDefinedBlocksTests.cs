@@ -102,7 +102,10 @@ public class TestWorldDefinedBlocksTests
       .RegisterClass("test-item", typeof(PlainItem))
       .RegisterClass("test-collectiblebh", typeof(PlainCollectibleBehavior));
 
-    Assert.Equal(typeof(PlainItem), world.Api.ClassRegistry.GetItemClass("test-item"));
+    Assert.Equal(
+      typeof(PlainItem),
+      world.Api.ClassRegistry.GetItemClass("test-item")
+    );
     Assert.Equal(
       typeof(PlainCollectibleBehavior),
       world.Api.ClassRegistry.GetCollectibleBehaviorClass("test-collectiblebh")
@@ -172,8 +175,9 @@ public class TestWorldDefinedBlocksTests
   private sealed class RegisteredItem : Item { }
 
   [CollectibleBehaviorRegister]
-  private sealed class RegisteredCollectibleBehavior(CollectibleObject collectible)
-    : CollectibleBehavior(collectible);
+  private sealed class RegisteredCollectibleBehavior(
+    CollectibleObject collectible
+  ) : CollectibleBehavior(collectible);
 
   private sealed class MarkerBehavior(BlockEntity be) : BlockEntityBehavior(be);
 }

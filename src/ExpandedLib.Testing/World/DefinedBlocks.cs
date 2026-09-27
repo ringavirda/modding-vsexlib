@@ -148,9 +148,7 @@ public sealed partial class TestWorld {
     Item[] items =
     [
       .. defs.SelectMany(def =>
-        DefinitionCodes
-          .Expand(def)
-          .Select(variant => BuildItem(def, variant))
+        DefinitionCodes.Expand(def).Select(variant => BuildItem(def, variant))
       ),
     ];
     foreach (Item item in items)
@@ -164,7 +162,8 @@ public sealed partial class TestWorld {
   /// <summary>Gives <see cref="Api"/> collectible and entity tag registries and binds the tag
   /// readers' process-wide statics to them, as <see cref="LoadAssets"/> does; once per
   /// world.</summary>
-  private void BindTags() {
+  private void BindTags()
+  {
     if (_tagsBound)
       return;
     var coreApi = (ICoreAPI)Api;

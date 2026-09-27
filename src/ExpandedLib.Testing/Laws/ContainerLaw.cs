@@ -74,12 +74,15 @@ public static class ContainerLaw {
         .Where(c => c.Item != null)
     ) {
       int before = Held(step, click.Item!);
-      if (InteractionLaw.Press(world, player, step, click, judged: false) == null)
+      if (
+        InteractionLaw.Press(world, player, step, click, judged: false) == null
+      )
         continue;
-      int left = InteractionLaw.Hand(player).Itemstack is { } hand
+      int left =
+        InteractionLaw.Hand(player).Itemstack is { } hand
         && hand.Collectible == click.Item
-        ? hand.StackSize
-        : 0;
+          ? hand.StackSize
+          : 0;
       int after = Held(step, click.Item!);
       if (left < click.Count && after > before)
         return (click.Item!, after, click.Describe());

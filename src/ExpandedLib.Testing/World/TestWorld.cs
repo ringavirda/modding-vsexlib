@@ -8,11 +8,11 @@ using NSubstitute;
 using NSubstitute.Core;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Util;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace ExpandedLib.Testing;
 
@@ -751,14 +751,17 @@ public sealed partial class TestWorld : IDisposable {
     w.SearchItems(Arg.Any<AssetLocation>())
       .Returns(ci =>
         _itemsByCode
-          .Values.Where(i => WildcardUtil.Match(ci.Arg<AssetLocation>(), i.Code))
+          .Values.Where(i =>
+            WildcardUtil.Match(ci.Arg<AssetLocation>(), i.Code)
+          )
           .ToArray()
       );
     w.SearchBlocks(Arg.Any<AssetLocation>())
       .Returns(ci =>
         _blocksById
           .Values.Where(b =>
-            b.Code != null && WildcardUtil.Match(ci.Arg<AssetLocation>(), b.Code)
+            b.Code != null
+            && WildcardUtil.Match(ci.Arg<AssetLocation>(), b.Code)
           )
           .ToArray()
       );

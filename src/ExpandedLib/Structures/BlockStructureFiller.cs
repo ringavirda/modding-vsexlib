@@ -302,8 +302,11 @@ public partial class BlockStructureFiller
     IWrenchOrientable principal,
     BlockPos principalPos
   ) : IWrenchOrientable {
-    public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir) =>
-      principal.Rotate(byEntity, Repoint(blockSel, principalPos), dir);
+    public void Rotate(
+      EntityAgent byEntity,
+      BlockSelection blockSel,
+      int dir
+    ) => principal.Rotate(byEntity, Repoint(blockSel, principalPos), dir);
   }
 
   public override float OnGettingBroken(

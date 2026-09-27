@@ -92,7 +92,10 @@ public static class InteractionLaw {
           " and "
           + string.Join(", ", Carried.Select(c => c.Item.Code.ToString()))
           + " carried";
-      string keys = Keys == Keys.None ? "" : $" and {Keys.ToString().ToLowerInvariant()} held";
+      string keys =
+        Keys == Keys.None
+          ? ""
+          : $" and {Keys.ToString().ToLowerInvariant()} held";
       return $"clicked on {BlockLaws.CellName(Offset)} with {hand}{keys}";
     }
   }
@@ -153,8 +156,10 @@ public static class InteractionLaw {
   }
 
   /// <summary>The principal's cell, then each of its fillers'.</summary>
-  internal static BlockPos[] Cells(TestWorld world, BlockLaws.EntityCase step) =>
-    [step.At.Copy(), .. BlockLaws.FillersOf(world, step.At)];
+  internal static BlockPos[] Cells(
+    TestWorld world,
+    BlockLaws.EntityCase step
+  ) => [step.At.Copy(), .. BlockLaws.FillersOf(world, step.At)];
 
   /// <summary>The selection a click and a help read use: the cell's top face at its
   /// centre.</summary>
@@ -263,9 +268,7 @@ public static class InteractionLaw {
 
   private static Keys KeysOf(WorldInteraction help) {
     Keys keys = Keys.None;
-    foreach (
-      string code in (help.HotKeyCodes ?? []).Append(help.HotKeyCode)
-    )
+    foreach (string code in (help.HotKeyCodes ?? []).Append(help.HotKeyCode))
       keys |= code switch {
         "sneak" or "shift" => Keys.Sneak,
         "sprint" or "ctrl" => Keys.Ctrl,
@@ -407,7 +410,10 @@ public static class InteractionLaw {
     return false;
   }
 
-  private static bool Reloads(BlockLaws.EntityCase step, List<string> findings) =>
+  private static bool Reloads(
+    BlockLaws.EntityCase step,
+    List<string> findings
+  ) =>
     step.Block.EntityClass == null
     || step.Entity == null
     || step.Reload(judged: true) && KeepsItsCell(step, "reloaded", findings);
@@ -470,13 +476,14 @@ public static class InteractionLaw {
     /// <summary>Whether the hotbar still holds the fresh stacks the click put there.</summary>
     private static bool Holds(TestPlayer player, Click click) =>
       player
-        .Hotbar.Select((slot, i) =>
-          Same(
-            slot.Itemstack,
-            i == 0 ? (click.Item, click.Count)
-            : i <= click.Carried.Length ? click.Carried[i - 1]
-            : (null, 0)
-          )
+        .Hotbar.Select(
+          (slot, i) =>
+            Same(
+              slot.Itemstack,
+              i == 0 ? (click.Item, click.Count)
+                : i <= click.Carried.Length ? click.Carried[i - 1]
+                : (null, 0)
+            )
         )
         .All(same => same);
 
