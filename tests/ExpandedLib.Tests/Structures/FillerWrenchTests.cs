@@ -13,8 +13,8 @@ public class FillerWrenchTests {
   private static readonly BlockPos PrincipalPos = new(4, 4, 4);
   private static readonly BlockPos EastCell = new(5, 4, 4);
 
-  // Fails when the filler answers the wrench with nothing, or hands the principal the filler's own
-  // cell instead of the principal's.
+  // Fails when the filler answers the wrench with nothing, or hands the principal the filler's
+  // cell.
   [Fact]
   public void A_wrench_on_a_filler_turns_the_principal_at_its_own_cell() {
     var turnable = new Turnable();
