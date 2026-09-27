@@ -70,13 +70,11 @@ public static class BlockLaws {
 
   /// <summary>Stands every variant of <paramref name="defs"/>' blocks up and runs each law over the
   /// blocks of <paramref name="domain"/>.</summary>
-  /// <remarks>Each law but the break law gets a world of its own; the break law stands one per
-  /// break. The interaction and container laws' worlds, formed or not, also hold the item
-  /// definitions.</remarks>
+  /// <remarks>Each law but the break law gets a world of its own, holding the item definitions for
+  /// the interaction and container laws, formed or not; the break law stands one per break.</remarks>
   /// <param name="domain">The domain whose blocks are judged; other domains' definitions stand
   /// beside them, for layouts and help to name.</param>
-  /// <param name="defs">Block and item definitions; others, and exlib's filler, are
-  /// skipped.</param>
+  /// <param name="defs">Block and item definitions; others, and exlib's filler, are skipped.</param>
   /// <param name="assemblies">Where the definitions' classes live, exlib's included.</param>
   /// <param name="prepare">Registers on each world the network types and mod systems the blocks
   /// need, before any is defined.</param>

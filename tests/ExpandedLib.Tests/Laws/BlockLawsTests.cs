@@ -1184,9 +1184,8 @@ public class BlockLawsTests {
     );
   }
 
-  // Fails when the formed pass clicks only the anchor's cell or the rig's stand-ins too, forms a
-  // structure in every facing, leaves the filled cells without their entities, stops a structure
-  // at its first finding, or names no block clicked.
+  // Fails when the formed pass clicks only the anchor or the stand-ins too, forms every facing, skips
+  // the filled cells' entities, stops a structure at its first finding, or names no block clicked.
   [Fact]
   [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.RunFormed))]
   public void A_cell_that_answers_only_in_a_formed_structure_is_clicked_there() {
