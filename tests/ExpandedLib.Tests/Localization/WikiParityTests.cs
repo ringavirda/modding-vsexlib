@@ -182,9 +182,8 @@ public class WikiParityTests {
     Assert.Empty(listed.Findings);
   }
 
-  // Fails when either Check overload 0.8.2 shipped (without symbolFree) is removed or changes its
-  // parameter list: a test assembly built against 0.8.2 binds to it and throws
-  // MissingMethodException.
+  // Fails when a Check overload 0.8.2 shipped is removed or reshaped: a test assembly built
+  // against 0.8.2 binds to it and would throw MissingMethodException.
   [Fact]
   public void The_Check_overloads_of_0_8_2_still_bind_and_check() {
     using var page = new TempWikiPage(

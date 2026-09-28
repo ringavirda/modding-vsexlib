@@ -50,22 +50,16 @@ public static class NetworkLaw {
     return new BlockLaws.Law(Name, blocks, cases, findings);
   }
 
-  /// <summary>Stands each port of <paramref name="domain"/> in <paramref name="world"/> against
-  /// each network member across each face the port declares, and counts the pairs the graph
-  /// couples.</summary>
-  /// <remarks>A port is a block that is an <see cref="INetworkConnector"/>, neither a
-  /// <see cref="BlockNetworkNode"/> nor a structure filler, and answers for its own cell: no
-  /// membership of its entity does. Each variant is set as <see cref="Run"/> sets it and its faces
-  /// read through <c>INetworkMember.HasConnectorAt</c> with the world and its cell; per network
-  /// type, face and kind the first port face stands for the rest. Its partners are the member
-  /// connectors <see cref="Run"/> finds, of any domain, on the opposite face, less those of ports.
-  /// A pair couples when the member's walk
-  /// (<see cref="BlockNetworkModSystem.GetConnectedNeighbors"/>, which asks the port's
-  /// <c>HasConnectorAt</c>, both sides' <c>AcceptsNeighbour</c> and whether the port is an
-  /// endpoint or severed) reaches the port. A finding is a placement or walk that throws, and a
-  /// port face no member couples to.</remarks>
-  /// <param name="world">A world holding every variant of the blocks judged and the network types
-  /// they name (<see cref="BlockLaws.Run"/> stands one).</param>
+  /// <summary>Stands each face a port of <paramref name="domain"/> declares against each network
+  /// member facing it, and counts the pairs the graph couples.</summary>
+  /// <remarks>A port is an <see cref="INetworkConnector"/> block, neither a
+  /// <see cref="BlockNetworkNode"/> nor a structure filler, that answers for its own cell. Its
+  /// faces are read through <c>INetworkMember.HasConnectorAt</c> as <see cref="Run"/> reads a
+  /// member's, the first per network type, face and kind standing for the rest; its partners are
+  /// the connectors <see cref="Run"/> finds that are no port's. A pair couples when
+  /// <see cref="BlockNetworkModSystem.GetConnectedNeighbors"/> from the member reaches the port. A
+  /// finding is a placement or walk that throws, and a port face no member couples to.</remarks>
+  /// <param name="world">As for <see cref="Run"/>.</param>
   /// <param name="domain">The domain whose ports are judged; members of every domain but
   /// <c>game</c> are their partners.</param>
   /// <returns>The law <c>network port</c>: port blocktypes, pairs coupled and findings, each keyed
