@@ -228,4 +228,149 @@ public class DefinitionGoldensTests {
       )
     );
   }
+
+  // Fails when CheckCompleteness looks for a def's golden only among the shared goldens, so a def
+  // only an older series has stays missing there.
+  [Fact]
+  [PlantedDefect(
+    typeof(DefinitionGoldens),
+    nameof(DefinitionGoldens.CheckCompleteness)
+  )]
+  public void A_def_only_the_series_has_is_satisfied_by_its_series_golden() {
+    var (files, root) = SharedAndSeries();
+    using var _ = files;
+    File.Delete(files.Path("goldens/" + AnvilPath));
+    files.Write("goldens-1.21/" + AnvilPath, Anvil(Domain).ToJson().ToString());
+
+    var (missing, orphans) = DefinitionGoldens.CheckCompleteness(
+      Domain,
+      Here,
+      root,
+      Series
+    );
+
+    Assert.Empty(missing);
+    Assert.Empty(orphans);
+    Assert.Equal(
+      [AnvilPath],
+      DefinitionGoldens.CheckCompleteness(Domain, Here, root, null).missing
+    );
+  }
+
+  // Fails when a marker stops excusing the shared golden of a def the series lacks.
+  [Fact]
+  [PlantedDefect(
+    typeof(DefinitionGoldens),
+    nameof(DefinitionGoldens.CheckCompleteness)
+  )]
+  public void A_shared_golden_the_series_lacks_is_excused_by_its_marker() {
+    var (files, root) = SharedAndSeries();
+    using var _ = files;
+    files.Write("goldens/" + Gone, "{}");
+
+    string[] unmarked =
+    [
+      .. DefinitionGoldens
+        .CheckCompleteness(Domain, Here, root, Series)
+        .orphans,
+    ];
+    files.Write("goldens-1.21/" + Gone + DefinitionGoldens.AbsentSuffix, "");
+
+    Assert.Equal([Gone], unmarked);
+    Assert.Empty(
+      DefinitionGoldens.CheckCompleteness(Domain, Here, root, Series).orphans
+    );
+    Assert.Equal(
+      [Gone],
+      DefinitionGoldens.CheckCompleteness(Domain, Here, root, null).orphans
+    );
+  }
+
+  // Fails when a marker whose def the series has, or whose shared golden is gone, passes as a
+  // marker that excuses something.
+  [Fact]
+  [PlantedDefect(
+    typeof(DefinitionGoldens),
+    nameof(DefinitionGoldens.CheckCompleteness)
+  )]
+  public void A_stale_marker_is_an_orphan() {
+    var (files, root) = SharedAndSeries();
+    using var _ = files;
+    files.Write(
+      "goldens-1.21/" + AnvilPath + DefinitionGoldens.AbsentSuffix,
+      ""
+    );
+    files.Write("goldens-1.21/" + Gone + DefinitionGoldens.AbsentSuffix, "");
+
+    var (missing, orphans) = DefinitionGoldens.CheckCompleteness(
+      Domain,
+      Here,
+      root,
+      Series
+    );
+
+    Assert.Empty(missing);
+    Assert.Equal(
+      [
+        "goldens-1.21/" + AnvilPath + ".absent",
+        "goldens-1.21/" + Gone + ".absent",
+      ],
+      orphans
+    );
+  }
+
+  // Fails when a series write leaves the shared golden of a def the series lacks unmarked, or
+  // keeps a stale marker.
+  [Fact]
+  public void A_series_write_marks_what_the_series_lacks_and_drops_stale_markers() {
+    var (files, root) = SharedAndSeries();
+    using var _ = files;
+    files.Write("goldens/" + Gone, "{}");
+    string stale = files.Write(
+      "goldens-1.21/" + AnvilPath + DefinitionGoldens.AbsentSuffix,
+      ""
+    );
+
+    DefinitionGoldens.WriteAll(Domain, Here, root, "1", Series);
+
+    Assert.True(
+      File.Exists(
+        files.Path("goldens-1.21/" + Gone + DefinitionGoldens.AbsentSuffix)
+      )
+    );
+    Assert.False(File.Exists(stale));
+    var (missing, orphans) = DefinitionGoldens.CheckCompleteness(
+      Domain,
+      Here,
+      root,
+      Series
+    );
+    Assert.Empty(missing);
+    Assert.Empty(orphans);
+  }
+
+  // Fails when a series write refuses a fragment naming only a shared golden the series lacks.
+  [Fact]
+  public void A_series_write_takes_a_fragment_naming_a_golden_the_series_lacks() {
+    var (files, root) = SharedAndSeries();
+    using var _ = files;
+    files.Write("goldens/" + Gone, "{}");
+
+    DefinitionGoldens.WriteAll(
+      Domain,
+      Here,
+      root,
+      "plantedgoldens/blocktypes/gone",
+      Series
+    );
+
+    Assert.True(
+      File.Exists(
+        files.Path("goldens-1.21/" + Gone + DefinitionGoldens.AbsentSuffix)
+      )
+    );
+  }
+
+  // A shared golden no def of this assembly claims, as one a series lacks.
+  private const string Gone = "plantedgoldens/blocktypes/gone.json";
 }

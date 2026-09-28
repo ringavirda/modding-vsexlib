@@ -283,6 +283,12 @@ see the git history.
 - `DefinitionGoldens.WriteAll` (ExpandedLib.Testing) throws `InvalidOperationException` naming the
   `EXLIB_WRITE_GOLDENS` value when one of its fragments matches none of the domain's goldens, and
   writes nothing; a fragment starting with another domain is skipped.
+- `DefinitionGoldens` (ExpandedLib.Testing) keeps an older series' goldens under
+  `goldens-{series}` (`SeriesRoot`, `OlderSeries`): a series golden overrides the shared one there,
+  and satisfies completeness for a def only that series has. A marker, the shared golden's path
+  there with `AbsentSuffix` (`.absent`) appended, excuses a shared golden whose def the series
+  lacks; a stale marker is an orphan. A series write leaves the shared goldens alone, writes and
+  deletes series goldens and markers, and runs after the current series' write.
 - A `TestWorld` (ExpandedLib.Testing) follows the engine by default. `World.Side` answers Server, and
   `ClientApi.World` is a client world whose `Side` answers Client, reading the same block accessor,
   lookups and logger; code handed `Api` runs its server branch, code handed `ClientApi` its client
