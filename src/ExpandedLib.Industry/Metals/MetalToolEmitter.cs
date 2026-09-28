@@ -731,11 +731,14 @@ internal static class MetalToolEmitter {
       def.RootKey("miningspeed", speeds);
     }
 
-    // Behaviour order mirrors the vanilla tools: GroundStorable, any per-type behaviour, then Buffable.
+    // Behaviour order mirrors the vanilla tools: GroundStorable, any per-type behaviour, then
+    // Buffable, which the game registers from 1.22.
     var behaviors = new JArray { GroundStorable(t.WallOffY) };
     foreach (object behavior in t.ExtraBehaviors)
       behaviors.Add(JToken.FromObject(behavior));
+#if GAME_GE_1_22
     behaviors.Add(new JObject { ["name"] = "Buffable" });
+#endif
     def.RootKey("behaviors", behaviors);
 
     // Held animations plus any per-type top-level keys.

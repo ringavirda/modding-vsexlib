@@ -7,6 +7,8 @@ using ExpandedLib.Industry.Molten;
 using ExpandedLib.Testing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Vintagestory.API.Common;
+using Vintagestory.GameContent;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -385,6 +387,36 @@ public class MetalFamilyEmitterTests {
         "iiex:ingot-castiron",
         (string?)def.ToJson()["combustibleProps"]!["smeltedStack"]!["code"]
       );
+  }
+
+  #endregion
+
+  #region Loading on this game series
+
+  // Fails when a generated item names a behaviour class or a ground layout the running series
+  // lacks: a tool's Buffable before 1.22, a bit's or nail's Messy12 before 1.21.
+  [Fact]
+  public void Every_generated_item_loads_whole_on_this_game_series() {
+    var world = new TestWorld();
+    world.RegisterVanillaClasses();
+    List<ExItemDef> defs = Emit(Shipped("iiex", "castiron"));
+
+    IReadOnlyList<Item> items = world.DefineItems(defs);
+
+    Assert.Equal(defs.Count, items.Count);
+    foreach ((ExItemDef def, Item item) in defs.Zip(items)) {
+      var behaviors = (JArray)def.ToJson()["behaviors"]!;
+      Assert.Equal(behaviors.Count, item.CollectibleBehaviors.Length);
+      Assert.Equal(
+        (string?)behaviors.Single(b => (string?)b["name"] == "GroundStorable")[
+          "properties"
+        ]!["layout"],
+        item
+          .CollectibleBehaviors.OfType<CollectibleBehaviorGroundStorable>()
+          .Single()
+          .StorageProps?.Layout.ToString()
+      );
+    }
   }
 
   #endregion

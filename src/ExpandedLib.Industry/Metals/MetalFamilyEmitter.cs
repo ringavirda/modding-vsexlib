@@ -14,6 +14,13 @@ public static class MetalFamilyEmitter {
   private const int DefaultMeltingPoint = 1482;
   private const string DefaultTexture = "game:block/metal/ingot/iron";
 
+  // The ground layout of loose bits and nails, vanilla's own per series: 1.20 has no Messy12.
+#if GAME_GE_1_21
+  private const string LooseLayout = "Messy12";
+#else
+  private const string LooseLayout = "Quadrants";
+#endif
+
   // Forms a metal gets when ItemForms is left null. "bits" is opt-in, not a default.
   private static readonly string[] DefaultForms =
   [
@@ -249,7 +256,7 @@ public static class MetalFamilyEmitter {
             name = "GroundStorable",
             properties = new
             {
-              layout = "Messy12",
+              layout = LooseLayout,
               collisionBox = new
               {
                 x1 = 0,
@@ -546,7 +553,7 @@ public static class MetalFamilyEmitter {
       );
 
   private static ExItemDef Nails(MetalDef m, string domain) =>
-    // Vanilla resource/metalnailsandstrips.json: plain Item, Messy12 ground layout. The tong-held shape
+    // Vanilla resource/metalnailsandstrips.json: plain Item, loose ground layout. The tong-held shape
     // behaviour is dropped; a cast metal is never tong-worked.
     Begin(m, domain, "metalnailsandstrips")
       .MaxStackSize(32)
@@ -574,7 +581,7 @@ public static class MetalFamilyEmitter {
             name = "GroundStorable",
             properties = new
             {
-              layout = "Messy12",
+              layout = LooseLayout,
               collisionBox = new
               {
                 x1 = 0,
