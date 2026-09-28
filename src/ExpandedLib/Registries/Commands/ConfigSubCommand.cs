@@ -31,7 +31,10 @@ public sealed class ConfigSubCommand : RegistrySubCommand<IExConfigAccess> {
     $"{config.ModId} ({config.FileName})";
 
   // Keep '<' and '>' out of the result strings; both break the client's rendering.
-  protected override TextCommandResult Set(IExConfigAccess config, string[] args) {
+  protected override TextCommandResult Set(
+    IExConfigAccess config,
+    string[] args
+  ) {
     string languageCode = CallerLanguage;
     if (args.Length == 0)
       return TextCommandResult.Success(ListValues(config, languageCode));
