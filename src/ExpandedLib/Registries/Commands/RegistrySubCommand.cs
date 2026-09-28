@@ -45,15 +45,26 @@ public abstract class RegistrySubCommand<T> : IExSubCommand
   protected abstract string Describe(T entry);
 
   /// <summary>Handles a resolved <paramref name="entry"/> against the words typed following its code: empty for "show this entry", one or more to set something.</summary>
+  /// <remarks>The reply reaches the caller as written; word it with <c>Lang.GetL</c> in
+  /// <see cref="CallerLanguage"/>.</remarks>
   /// <param name="entry">The entry the typed code resolved to.</param>
   /// <param name="args">The words after the code, split on spaces; empty for the bare code.</param>
-  /// <param name="languageCode">The caller's language (the server's own for the console), for
-  /// <c>Lang.GetL</c>: the reply is formatted here and reaches the caller as written.</param>
-  protected abstract TextCommandResult Set(
-    T entry,
-    string[] args,
-    string languageCode
-  );
+  protected abstract TextCommandResult Set(T entry, string[] args);
+
+  private string? _callerLanguage;
+
+  /// <summary>The language of the caller whose command <see cref="Set"/> is answering: the player's
+  /// language, or the server's own for the console, as
+  /// <see cref="TextCommandCallingArgs.LanguageCode"/> gives it. Valid only while
+  /// <see cref="Set"/> runs for a dispatched command.</summary>
+  /// <exception cref="InvalidOperationException">Read outside a call of <see cref="Set"/> by
+  /// this command's dispatch.</exception>
+  protected string CallerLanguage =>
+    _callerLanguage
+    ?? throw new InvalidOperationException(
+      $"{GetType().Name}.CallerLanguage is read outside Set; it names the caller only while Set "
+        + "answers a command."
+    );
 
   /// <summary>Lang key for "no code was given and nothing is registered".</summary>
   protected abstract string NoneRegisteredKey { get; }
@@ -101,7 +112,12 @@ public abstract class RegistrySubCommand<T> : IExSubCommand
       trimmed.Length == 0
         ? []
         : trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-    return Set(entry, tail, languageCode);
+    _callerLanguage = languageCode;
+    try {
+      return Set(entry, tail);
+    } finally {
+      _callerLanguage = null;
+    }
   }
 
   private string ListEntries(string languageCode) {

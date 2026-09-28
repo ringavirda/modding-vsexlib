@@ -217,6 +217,9 @@ see the git history.
   a suite's tests, whose entries no `Expect` can declare. exlib's tests log into a
   `RecordingLogger` instead and declare the Warnings and Errors they drive with `Expect`; exlib's
   guard fails on a new substitute logger outside its allowed list.
+- **`RegistrySubCommand<T>.CallerLanguage`**: the language of the caller a `Set` override is
+  answering, the server's own for the console, for `Lang.GetL`. It is valid only while `Set` runs
+  for a dispatched command and throws `InvalidOperationException` outside it.
 
 ### Changed
 
@@ -322,8 +325,6 @@ see the git history.
 - `WikiParity.Check` (ExpandedLib.Testing) reports a page from which no symbol resolved against the
   assembly, since nothing on it was checked; its new `symbolFree` parameter names pages that name no
   API on purpose.
-- **`RegistrySubCommand<T>.Set` takes the caller's language** as a third parameter,
-  `languageCode`, for `Lang.GetL`.
 - `LangCallSites` (ExpandedLib.Testing) also reads the key a `...Key =>` property returns, such as a
   registry sub-command's `ListHeaderKey`.
 

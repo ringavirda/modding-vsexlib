@@ -28,11 +28,8 @@ public sealed class RecipesSubCommand : RegistrySubCommand<RecipeProfile> {
   protected override string Describe(RecipeProfile profile) =>
     $"{profile.Code}: {profile.GetLevel()}";
 
-  protected override TextCommandResult Set(
-    RecipeProfile profile,
-    string[] args,
-    string languageCode
-  ) {
+  protected override TextCommandResult Set(RecipeProfile profile, string[] args) {
+    string languageCode = CallerLanguage;
     if (args.Length == 0)
       return TextCommandResult.Success(
         Lang.GetL(

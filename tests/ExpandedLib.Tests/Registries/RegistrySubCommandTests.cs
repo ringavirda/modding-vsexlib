@@ -33,14 +33,14 @@ public class RegistrySubCommandTests {
     protected override string Describe(Widget entry) =>
       $"{entry.Code}={entry.Value}";
 
+    public string Language => CallerLanguage;
+
     // Mirrors ConfigSubCommand's two-level shape: field+value writes, field alone errors, no words shows the current one.
-    protected override TextCommandResult Set(
-      Widget entry,
-      string[] args,
-      string languageCode
-    ) {
+    protected override TextCommandResult Set(Widget entry, string[] args) {
       if (args.Length == 0)
         return TextCommandResult.Success($"current: {entry.Value}");
+      if (args[0] == "language")
+        return TextCommandResult.Success(CallerLanguage);
       if (args.Length == 1)
         return TextCommandResult.Error($"missing a value for '{args[0]}'");
 
@@ -120,5 +120,24 @@ public class RegistrySubCommandTests {
 
     Assert.Equal(EnumCommandStatus.Success, result.Status);
     Assert.Equal("current: 1", result.StatusMessage);
+  }
+
+  // Fails when Set reads the server's language instead of the caller's.
+  [Fact]
+  public void Set_reads_the_callers_language() {
+    var cmd = Command(new Widget { Code = "a", Value = "1" });
+
+    TextCommandResult result = cmd.Dispatch("a", "language", "uk");
+
+    Assert.Equal("uk", result.StatusMessage);
+  }
+
+  // Fails when the caller's language outlives the dispatch that set it.
+  [Fact]
+  public void The_callers_language_is_gone_once_Set_returns() {
+    var cmd = Command(new Widget { Code = "a", Value = "1" });
+    cmd.Dispatch("a", "language", "uk");
+
+    Assert.Throws<System.InvalidOperationException>(() => cmd.Language);
   }
 }
