@@ -308,6 +308,40 @@ public class StructureFillerBehaviorTests {
     Assert.Same(tree, be.GetBehavior<TrackingHostedBehavior>()?.ReadTree);
   }
 
+  /// <summary>A sync carrying a different declaration swaps the client's hosted behaviour. Fails if
+  /// the sync re-applies only while no behaviour is hosted.</summary>
+  [Fact]
+  public void A_client_filler_swaps_its_hosted_behavior_when_a_sync_changes_the_declaration() {
+    var (world, filler, pos, be) = ClientFillerHosting("test.Tracking");
+    var old = be.GetBehavior<TrackingHostedBehavior>()!;
+
+    be.FromTreeAttributes(
+      FillerTree(filler, pos, "test.Other"),
+      world.ClientApi.World
+    );
+
+    Assert.True(old.Removed);
+    Assert.DoesNotContain(old, be.Behaviors);
+    Assert.True(be.GetBehavior<OtherHostedBehavior>()?.Initialized);
+  }
+
+  /// <summary>A sync carrying the declaration already applied keeps the hosted instance. Fails if
+  /// every sync re-applies.</summary>
+  [Fact]
+  public void A_client_filler_keeps_its_hosted_behavior_across_an_unchanged_sync() {
+    var (world, filler, pos, be) = ClientFillerHosting("test.Tracking");
+    var hosted = be.GetBehavior<TrackingHostedBehavior>();
+
+    be.FromTreeAttributes(
+      FillerTree(filler, pos, "test.Tracking"),
+      world.ClientApi.World
+    );
+
+    Assert.NotNull(hosted);
+    Assert.Same(hosted, be.GetBehavior<TrackingHostedBehavior>());
+    Assert.False(hosted!.Removed);
+  }
+
   #endregion
 
   #region Mechanical-power connector glue
@@ -577,6 +611,54 @@ public class StructureFillerBehaviorTests {
     filler.HasMechPowerConnectorAt(world.World, pos, face);
 #endif
 
+  /// <summary>A client-side filler loaded from a tree declaring <paramref name="code"/> and then
+  /// initialised; <c>test.Tracking</c> and <c>test.Other</c> resolve on the client registry.</summary>
+  private static (
+    TestWorld world,
+    BlockStructureFiller filler,
+    BlockPos pos,
+    BlockEntityStructureFiller be
+  ) ClientFillerHosting(string code) {
+    var (world, filler) = NewWorld();
+    var pos = new BlockPos(2, 3, 4);
+    var be = new BlockEntityStructureFiller();
+    world.Place(pos, filler, be);
+    world
+      .ClientApi.ClassRegistry.CreateBlockEntityBehavior(
+        Arg.Any<BlockEntity>(),
+        "test.Tracking"
+      )
+      .Returns(ci => new TrackingHostedBehavior(ci.Arg<BlockEntity>()));
+    world
+      .ClientApi.ClassRegistry.CreateBlockEntityBehavior(
+        Arg.Any<BlockEntity>(),
+        "test.Other"
+      )
+      .Returns(ci => new OtherHostedBehavior(ci.Arg<BlockEntity>()));
+
+    be.FromTreeAttributes(FillerTree(filler, pos, code), world.ClientApi.World);
+    be.Api = world.ClientApi;
+    be.Initialize(world.ClientApi);
+    return (world, filler, pos, be);
+  }
+
+  /// <summary>The save tree of a filler at <paramref name="pos"/> hosting one west-facing
+  /// <paramref name="code"/>.</summary>
+  private static TreeAttribute FillerTree(
+    BlockStructureFiller filler,
+    BlockPos pos,
+    string code
+  ) {
+    var tree = new TreeAttribute();
+    new BlockEntityStructureFiller {
+      Pos = pos,
+      Block = filler,
+      Principal = new BlockPos(2, 3, 1),
+      HostedBehaviors = [new FillerBehavior(code, BlockFacing.WEST, null)],
+    }.ToTreeAttributes(tree);
+    return tree;
+  }
+
   private static JsonObject Offsets(string json) => new(JArray.Parse(json));
 
   private static JsonObject Props(string json) => new(JToken.Parse(json));
@@ -624,6 +706,7 @@ public class StructureFillerBehaviorTests {
     public JsonObject? Props;
     public bool Initialized;
     public ITreeAttribute? ReadTree;
+    public bool Removed;
 
     public void ConfigureFromFiller(
       BlockPos? principal,
@@ -646,6 +729,22 @@ public class StructureFillerBehaviorTests {
     ) {
       base.FromTreeAttributes(tree, worldAccessForResolve);
       ReadTree = tree;
+    }
+
+    public override void OnBlockRemoved() {
+      base.OnBlockRemoved();
+      Removed = true;
+    }
+  }
+
+  /// <summary>A second hosted behaviour class, distinct from <see cref="TrackingHostedBehavior"/>.</summary>
+  private sealed class OtherHostedBehavior(BlockEntity be)
+    : BlockEntityBehavior(be) {
+    public bool Initialized;
+
+    public override void Initialize(ICoreAPI api, JsonObject properties) {
+      base.Initialize(api, properties);
+      Initialized = true;
     }
   }
 

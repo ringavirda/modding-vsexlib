@@ -157,9 +157,27 @@ public class BlockEntityStructureFiller : BlockEntity {
       : null;
     // Kept so a behaviour created below, or in Initialize, can still read its state from it.
     _savedTree = tree;
-    // Covers a sync update that first sets HostedBehaviors after Initialize already ran.
-    if (Api != null && _hosted.Count == 0 && HostedBehaviors is { Length: > 0 })
+    // Covers a sync update that sets or changes HostedBehaviors after Initialize already ran; an
+    // unchanged declaration keeps the existing instances.
+    if (Api != null && !SameSpecs(HostedBehaviors, _appliedSpecs))
       ApplyHostedBehaviors();
+  }
+
+  /// <summary>Whether two declaration sets match on every field the save tree carries.</summary>
+  private static bool SameSpecs(FillerBehavior[]? a, FillerBehavior[]? b) {
+    if (a == null || b == null)
+      return a == b;
+    if (a.Length != b.Length)
+      return false;
+    for (int i = 0; i < a.Length; i++) {
+      if (
+        a[i].Code != b[i].Code
+        || a[i].ConnectorFace?.Code != b[i].ConnectorFace?.Code
+        || a[i].Properties?.ToString() != b[i].Properties?.ToString()
+      )
+        return false;
+    }
+    return true;
   }
 
   /// <summary>Rebuilds the hosted-behaviour specs from the save tree (faces stay rotated as stored).</summary>
