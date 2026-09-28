@@ -8,9 +8,10 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Checks that every lang key a mod's own source hands to <c>Lang.Get</c>, <c>ActionLangCode</c>
-/// or <c>SendIngameError</c> exists in every locale it ships. Only literal keys are checked; a
-/// key built by concatenation is skipped.
+/// Checks that every lang key a mod's own source hands to <c>Lang.Get</c> (and its <c>IfExists</c>,
+/// <c>Matching</c> and per-language <c>L</c> forms), <c>SendLocalisedMessage</c>,
+/// <c>ActionLangCode</c> or <c>SendIngameError</c> exists in every locale it ships. Only literal
+/// keys are checked; a key built by concatenation is skipped.
 /// </summary>
 public static class LangCallSites {
   #region Call-site scanning
@@ -18,7 +19,7 @@ public static class LangCallSites {
   // The three forms that name a key; literals are read from the region that follows (a balanced
   // argument list, or an assignment's right-hand side).
   private static readonly Regex LangCall = new(
-    @"\bLang\.Get(?:IfExists|Matching)?\s*\(",
+    @"\b(?:Lang\.Get(?:IfExists|Matching)?L?|SendLocalisedMessage)\s*\(",
     RegexOptions.Compiled
   );
   private static readonly Regex ActionLangCode = new(

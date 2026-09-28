@@ -58,4 +58,22 @@ public class ExlibLangCallSiteTests {
   public void A_key_the_locale_carries_passes() {
     Assert.Empty(PlantedCallSite("""{ "greeting": "Hello" }"""));
   }
+
+  // Fails when the scan skips the per-language lookup or the localised chat message.
+  [Theory]
+  [InlineData("var text = Lang.GetL(code, \"plantedcalls:greeting\");")]
+  [InlineData(
+    "player.SendLocalisedMessage(0, \"plantedcalls:greeting\", name);"
+  )]
+  public void A_key_a_player_is_sent_in_their_own_language_is_scanned(
+    string callSite
+  ) {
+    using var files = new PlantedFiles();
+    files.Write("src/Planted.cs", callSite);
+
+    Assert.Equal(
+      [("Planted.cs", "plantedcalls:greeting")],
+      LangCallSites.Keys("plantedcalls", files.Path("src"))
+    );
+  }
 }
