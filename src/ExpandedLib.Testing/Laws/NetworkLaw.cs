@@ -11,9 +11,12 @@ namespace ExpandedLib.Testing;
 
 /// <summary>Two network members face to face agree on whether they join: the walk from each
 /// (<see cref="BlockNetworkModSystem.GetConnectedNeighbors"/>, which asks both members through
-/// <c>IsValidNetworkNeighbour</c>) reaches the other, or neither does.</summary>
+/// <c>IsValidNetworkNeighbour</c>) reaches the other, or neither does. Each face a port declares
+/// couples to some member (<see cref="RunPorts"/>).</summary>
 public static class NetworkLaw {
   internal const string Name = "network";
+
+  internal const string PortName = "network port";
 
   /// <summary>Finds every connector of the network members of <paramref name="domain"/> in
   /// <paramref name="world"/>, then stands each representative connector against each of the
@@ -34,8 +37,94 @@ public static class NetworkLaw {
   public static BlockLaws.Law Run(TestWorld world, string domain) {
     var findings = new List<string>();
     var sites = new BlockLaws.Sites();
+    (int blocks, Connector[] kept) = Members(world, domain, sites, findings);
+    int cases = 0;
+    foreach (Connector a in kept.Where(c => c.Variant.Code.Domain == domain))
+      foreach (
+        Connector b in kept.Where(b =>
+          b.Network == a.Network && b.Face == a.Face.Opposite
+        )
+      )
+        if (Walk(world, a, b, sites.Next(), findings))
+          cases++;
+    return new BlockLaws.Law(Name, blocks, cases, findings);
+  }
+
+  /// <summary>Stands each port of <paramref name="domain"/> in <paramref name="world"/> against
+  /// each network member across each face the port declares, and counts the pairs the graph
+  /// couples.</summary>
+  /// <remarks>A port is a block that is an <see cref="INetworkConnector"/>, neither a
+  /// <see cref="BlockNetworkNode"/> nor a structure filler, and answers for its own cell: no
+  /// membership of its entity does. Each variant is set as <see cref="Run"/> sets it and its faces
+  /// read through <c>INetworkMember.HasConnectorAt</c> with the world and its cell; per network
+  /// type, face and kind the first port face stands for the rest. Its partners are the member
+  /// connectors <see cref="Run"/> finds, of any domain, on the opposite face, less those of ports.
+  /// A pair couples when the member's walk
+  /// (<see cref="BlockNetworkModSystem.GetConnectedNeighbors"/>, which asks the port's
+  /// <c>HasConnectorAt</c>, both sides' <c>AcceptsNeighbour</c> and whether the port is an
+  /// endpoint or severed) reaches the port. A finding is a placement or walk that throws, and a
+  /// port face no member couples to.</remarks>
+  /// <param name="world">A world holding every variant of the blocks judged and the network types
+  /// they name (<see cref="BlockLaws.Run"/> stands one).</param>
+  /// <param name="domain">The domain whose ports are judged; members of every domain but
+  /// <c>game</c> are their partners.</param>
+  /// <returns>The law <c>network port</c>: port blocktypes, pairs coupled and findings, each keyed
+  /// by the port's variant code.</returns>
+  public static BlockLaws.Law RunPorts(TestWorld world, string domain) {
+    var findings = new List<string>();
+    var sites = new BlockLaws.Sites();
+    Connector[] members =
+    [
+      .. Members(world, domain, sites, null).Kept.Where(c => !c.Port),
+    ];
     int blocks = 0,
       cases = 0;
+    var ports = new List<Connector>();
+    foreach (
+      IGrouping<string, Block> type in BlockLaws.Blocktypes(world, domain)
+    ) {
+      Block[] declared = [.. type.Where(IsPort)];
+      if (declared.Length == 0)
+        continue;
+      blocks++;
+      foreach (Block block in declared)
+        ports.AddRange(FindPort(world, block, sites.Next(), findings));
+    }
+    foreach (
+      Connector port in ports
+        .GroupBy(c => (c.Network, c.Face.Index, c.Kind))
+        .Select(g => g.First())
+    ) {
+      int coupled = 0;
+      foreach (
+        Connector member in members.Where(m =>
+          m.Network == port.Network && m.Face == port.Face.Opposite
+        )
+      )
+        if (Couple(world, port, member, sites.Next(), findings))
+          coupled++;
+      if (coupled == 0)
+        findings.Add(
+          $"{port.Variant.Code} {port.Network} port on its {port.Face.Code} face: no member "
+            + "couples to it"
+        );
+      cases += coupled;
+    }
+    return new BlockLaws.Law(PortName, blocks, cases, findings);
+  }
+
+  /// <summary>The network members of <paramref name="domain"/>'s blocktypes counted, and the
+  /// first connector per network type, face and kind among the members of every domain but
+  /// <c>game</c>.</summary>
+  /// <param name="findings">Where a throwing placement of a <paramref name="domain"/> member goes;
+  /// null drops it.</param>
+  private static (int Blocks, Connector[] Kept) Members(
+    TestWorld world,
+    string domain,
+    BlockLaws.Sites sites,
+    List<string>? findings
+  ) {
+    int blocks = 0;
     var connectors = new List<Connector>();
     foreach (
       string owner in world
@@ -60,34 +149,36 @@ public static class NetworkLaw {
             Find(world, block, sites.Next(), owner == domain ? findings : null)
           );
       }
-
-    Connector[] kept =
-    [
-      .. connectors
-        .GroupBy(c => (c.Network, c.Face.Index, c.Kind))
-        .Select(g => g.First()),
-    ];
-    foreach (Connector a in kept.Where(c => c.Variant.Code.Domain == domain))
-      foreach (
-        Connector b in kept.Where(b =>
-          b.Network == a.Network && b.Face == a.Face.Opposite
-        )
-      )
-        if (Walk(world, a, b, sites.Next(), findings))
-          cases++;
-    return new BlockLaws.Law(Name, blocks, cases, findings);
+    return (
+      blocks,
+      [
+        .. connectors
+          .GroupBy(c => (c.Network, c.Face.Index, c.Kind))
+          .Select(g => g.First()),
+      ]
+    );
   }
+
+  /// <summary>Whether <paramref name="block"/> is a port: an <see cref="INetworkConnector"/> that is
+  /// neither a graph node nor a structure filler.</summary>
+  private static bool IsPort(Block block) =>
+    block
+      is INetworkConnector
+        and not BlockNetworkNode
+        and not BlockStructureFiller;
 
   /// <summary>A connector a member's cell exposes on <see cref="Face"/> for
   /// <see cref="Network"/>; <see cref="Cell"/> and <see cref="Cells"/> are offsets from the
-  /// variant's own cell.</summary>
+  /// variant's own cell. <see cref="Port"/> is set when a port answers for the cell
+  /// itself.</summary>
   private sealed record Connector(
     Block Variant,
     string Kind,
     string Network,
     (int X, int Y, int Z) Cell,
     BlockFacing Face,
-    (int X, int Y, int Z)[] Cells
+    (int X, int Y, int Z)[] Cells,
+    bool Port = false
   );
 
   private static IEnumerable<Connector> Find(
@@ -115,11 +206,101 @@ public static class NetworkLaw {
           is not { } member
         )
           continue;
+        bool port = member is Block own && IsPort(own);
         foreach (BlockFacing face in BlockFacing.ALLFACES)
           if (member.HasConnectorAt(world.Accessor, pos, face))
-            found.Add(new Connector(block, kind, network, cell, face, cells));
+            found.Add(
+              new Connector(block, kind, network, cell, face, cells, port)
+            );
       }
     return found;
+  }
+
+  /// <summary>The faces <paramref name="block"/>, a port, declares at its own cell when set at
+  /// <paramref name="at"/>; none when a membership of its entity answers for the cell
+  /// instead.</summary>
+  private static IEnumerable<Connector> FindPort(
+    TestWorld world,
+    Block block,
+    BlockPos at,
+    List<string> findings
+  ) {
+    if (!Stand(world, block, at, "placed", findings))
+      return [];
+    string network = ((INetworkMember)block).NetworkTypeAt(world.Accessor, at);
+    if (
+      NetworkMembership.Resolve(world.Accessor, at, network) is not { } resolved
+      || !ReferenceEquals(resolved, block)
+    )
+      return [];
+    (int X, int Y, int Z)[] cells =
+    [
+      (0, 0, 0),
+      .. BlockLaws
+        .FillersOf(world, at)
+        .Select(p => (p.X - at.X, p.Y - at.Y, p.Z - at.Z)),
+    ];
+    string kind = KindOf(block);
+    return
+    [
+      .. BlockFacing
+        .ALLFACES.Where(face =>
+          resolved.HasConnectorAt(world.Accessor, at, face)
+        )
+        .Select(face => new Connector(
+          block,
+          kind,
+          network,
+          (0, 0, 0),
+          face,
+          cells,
+          true
+        )),
+    ];
+  }
+
+  /// <summary>Stands <paramref name="port"/> at <paramref name="at"/> and
+  /// <paramref name="member"/> so its connector faces the port's, and walks from the
+  /// member.</summary>
+  /// <returns>Whether the member's walk reaches the port; false for a pair skipped and one whose
+  /// placement or walk threw.</returns>
+  private static bool Couple(
+    TestWorld world,
+    Connector port,
+    Connector member,
+    BlockPos at,
+    List<string> findings
+  ) {
+    BlockPos across = at.AddCopy(port.Face);
+    BlockPos other = across.AddCopy(
+      -member.Cell.X,
+      -member.Cell.Y,
+      -member.Cell.Z
+    );
+    if (
+      member.Cells.Any(c =>
+        port.Cells.Contains(
+          (other.X + c.X - at.X, other.Y + c.Y - at.Y, other.Z + c.Z - at.Z)
+        )
+      )
+    )
+      return false;
+    string pair =
+      $"{port.Network} port on its {port.Face.Code} face and {member.Variant.Code} at "
+      + $"{Offset(member.Cell)}";
+    if (
+      !Stand(world, port.Variant, at, $"paired {pair}", findings)
+      || !Stand(world, member.Variant, other, $"paired {pair}", findings)
+    )
+      return false;
+    try {
+      return Joins(world, across, at, port.Network);
+    } catch (Exception e) {
+      findings.Add(
+        $"{port.Variant.Code} {pair}: the walk threw {BlockLaws.Describe(e)}"
+      );
+      return false;
+    }
   }
 
   /// <summary>Stands <paramref name="a"/> at <paramref name="at"/> and <paramref name="b"/> so

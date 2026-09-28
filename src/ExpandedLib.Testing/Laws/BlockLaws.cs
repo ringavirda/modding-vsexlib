@@ -27,7 +27,7 @@ public static class BlockLaws {
   /// laws structures, one per variant <c>MultiblockLaw.OneFacing</c> picks.</param>
   /// <param name="Cases">Cases it ran: placements, breaks, structures stood up, block entities
   /// read or reloaded, faces a neighbour came and went on, network pairs joined from both sides,
-  /// clicks made, on a block or a formed structure, or accepted stacks followed.</param>
+  /// port-to-member pairs coupled from both sides, clicks made, on a block or a formed structure, or accepted stacks followed.</param>
   /// <param name="Findings">One line per finding, each starting with the variant code it is
   /// about and a space.</param>
   public sealed record Law(
@@ -91,7 +91,7 @@ public static class BlockLaws {
   /// need, before any is defined.</param>
   /// <returns>In order, the laws <c>placement</c>, <c>break</c> (1.22 on), <c>multiblock</c>,
   /// <c>megablock</c>, <c>info</c>, <c>reload</c>, <c>neighbour</c>, <c>network</c>,
-  /// <c>interaction</c>, <c>container</c>, <c>formed interaction</c>, <c>formed
+  /// <c>network port</c>, <c>interaction</c>, <c>container</c>, <c>formed interaction</c>, <c>formed
   /// container</c>.</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, or a block's entity or
   /// behaviour throws while its signals are read.</exception>
@@ -119,6 +119,7 @@ public static class BlockLaws {
     laws.Add(ReloadLaw.Run(Stand(all, assemblies, prepare), domain));
     laws.Add(NeighbourLaw.Run(Stand(all, assemblies, prepare), domain));
     laws.Add(NetworkLaw.Run(Stand(all, assemblies, prepare), domain));
+    laws.Add(NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain));
     laws.Add(
       InteractionLaw.Run(Stand(all, assemblies, prepare, items), domain)
     );

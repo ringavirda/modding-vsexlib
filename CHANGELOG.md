@@ -30,7 +30,11 @@ see the git history.
   entity tree, and a block without an entity places without a throw or a log; every pair of network
   members' connectors of one type, face to face, is walked through
   `BlockNetworkModSystem.GetConnectedNeighbors` from both sides, and joins from both or from
-  neither; the network law's cases are the pairs joined from both sides.
+  neither; the network law's cases are the pairs joined from both sides. `NetworkLaw.RunPorts`, run
+  as `network port`, stands each face a port (an `INetworkConnector` block the graph never holds)
+  declares against every member connector facing it and counts the pairs whose walk reaches the
+  port, so a guard floors them apart from the member pairs; a port face no member couples to is a
+  finding.
 - **`InfoLaw` and `ReloadLaw`** (ExpandedLib.Testing, `Laws/`), run by `BlockLaws.Run` as `info`
   and `reload`: every block entity's `GetBlockInfo`, read fresh, after 5 s of its own ticks and
   after `TestWorld.Reload`, throws nothing and logs nothing; the reload keeps the entity's class,

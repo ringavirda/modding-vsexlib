@@ -5,8 +5,10 @@ using System.Text;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
+using ExpandedLib.Registries;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -73,6 +75,9 @@ public class BlockLawsTests {
     world.RegisterClass("test-readssupport", typeof(ReadsItsSupport));
     world.RegisterClass("test-support", typeof(Support));
     world.RegisterClass("test-askedonce", typeof(AcceptsWhenFirstAsked));
+    world.RegisterClass("test-port", typeof(Port));
+    world.RegisterClass("test-refusesports", typeof(RefusesPorts));
+    world.RegisterClass("test-portedmega", typeof(PortedMega));
     world.RegisterClass("test-initthrows", typeof(ThrowsOnInitialize));
     world.RegisterClass("test-namesanitem", typeof(NamesAnItem));
     world.RegisterClass("test-namestwo", typeof(NamesTwoTogether));
@@ -177,6 +182,12 @@ public class BlockLawsTests {
       .Create("test", code)
       .Class(cls)
       .VariantGroup("orientation", "ns", "nsew");
+
+  private static ExBlockDef Ported(string code, string faces) =>
+    ExBlockDef
+      .Create("test", code)
+      .Class("test-port")
+      .Attribute("faces", faces);
 
   private static ExBlockDef Oriented(string code, string cls) =>
     ExBlockDef
@@ -922,6 +933,140 @@ public class BlockLawsTests {
     Assert.Equal(4 * 2, law.Cases);
   }
 
+  // Fails when the law counts no pair a port couples to: the accepter's south face couples to
+  // the port's north.
+  [Fact]
+  [PlantedDefect(typeof(NetworkLaw), nameof(NetworkLaw.RunPorts))]
+  public void A_port_face_a_member_couples_to_is_one_pair() {
+    BlockLaws.Law law = NetworkLaw.RunPorts(
+      Stand(Ported("port", "n"), Node("accepter", "test-accepter")),
+      "test"
+    );
+
+    Assert.Equal("network port", law.Name);
+    Assert.Empty(law.Findings);
+    Assert.Equal(1, law.Blocks);
+    Assert.Equal(1, law.Cases);
+  }
+
+  // Fails when the law takes a port's faces without asking the port through HasConnectorAt.
+  [Fact]
+  [PlantedDefect(typeof(NetworkLaw), nameof(NetworkLaw.RunPorts))]
+  public void A_port_with_no_connector_couples_to_nothing() {
+    BlockLaws.Law law = NetworkLaw.RunPorts(
+      Stand(Ported("sealed", ""), Node("accepter", "test-accepter")),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(1, law.Blocks);
+    Assert.Equal(0, law.Cases);
+  }
+
+  // Fails when a port face no member couples to passes unnamed: no member faces down.
+  [Fact]
+  [PlantedDefect(typeof(NetworkLaw), nameof(NetworkLaw.RunPorts))]
+  public void A_port_face_no_member_couples_to_is_named() {
+    BlockLaws.Law law = NetworkLaw.RunPorts(
+      Stand(Ported("up", "nu"), Node("accepter", "test-accepter")),
+      "test"
+    );
+
+    Assert.Equal(
+      ["test:up test port on its up face: no member couples to it"],
+      law.Findings
+    );
+    Assert.Equal(1, law.Cases);
+  }
+
+  // Fails when the law counts a pair the member's walk does not reach: the refuser's south face
+  // stays apart from the port, the accepter's couples.
+  [Fact]
+  [PlantedDefect(typeof(NetworkLaw), nameof(NetworkLaw.RunPorts))]
+  public void A_member_that_refuses_a_port_is_no_pair() {
+    BlockLaws.Law law = NetworkLaw.RunPorts(
+      Stand(
+        Ported("port", "n"),
+        Node("accepter", "test-accepter"),
+        Node("refuses", "test-refusesports")
+      ),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(1, law.Cases);
+  }
+
+  // Fails when the law stops catching a port's placement or a walk to a port that throws.
+  [Fact]
+  public void A_port_whose_placement_or_walk_throws_is_named() {
+    BlockLaws.Law law = NetworkLaw.RunPorts(
+      Stand(
+        Ported("initthrows", "n").EntityClass("test-initthrows"),
+        Ported("port", "n"),
+        Node("askthrows", "test-askthrows")
+      ),
+      "test"
+    );
+
+    Assert.Equal(
+      [
+        "test:initthrows placed threw InvalidOperationException: initialised",
+        "test:port test port on its north face and test:askthrows-ns at (0, 0, 0): the walk "
+          + "threw InvalidOperationException: asked",
+        "test:port test port on its north face: no member couples to it",
+      ],
+      law.Findings.Select(f => f.Split(" (at ")[0])
+    );
+    Assert.Equal(2, law.Blocks);
+  }
+
+  // Fails when a block whose entity's membership answers for its cell is judged as a port.
+  [Fact]
+  [PlantedDefect(typeof(NetworkLaw), nameof(NetworkLaw.RunPorts))]
+  public void A_port_whose_entity_joins_for_its_cell_declares_no_port_face() {
+    BlockLaws.Law law = NetworkLaw.RunPorts(
+      Stand(
+          Ported("joined", "n")
+            .EntityClass("test-plain")
+            .EntityBehavior(
+              EntityRegistry.KeyFor("exlib", typeof(BEBehaviorNetworkMember)),
+              new JObject { ["networkType"] = "test" }
+            ),
+          Node("accepter", "test-accepter")
+        )
+        .RegisterNetwork("test", system => new TestNetwork(system)),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(1, law.Blocks);
+    Assert.Equal(0, law.Cases);
+  }
+
+  // Fails when a port that is also a structure's member partners another port: each side's north
+  // and south faces couple to the accepter only, never to the mega's own opposite face.
+  [Fact]
+  [PlantedDefect(typeof(NetworkLaw), nameof(NetworkLaw.RunPorts))]
+  public void A_port_is_no_partner_of_a_port() {
+    BlockLaws.Law law = NetworkLaw.RunPorts(
+      Stand(
+          ExBlockDef
+            .Create("test", "portedmega")
+            .Class("test-portedmega")
+            .SideVariant()
+            .FillerOffsets([new(0, 1, 0, Behaviors: [Member("up")])]),
+          Node("accepter", "test-accepter")
+        )
+        .RegisterNetwork("test", system => new TestNetwork(system)),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(1, law.Blocks);
+    Assert.Equal(4 * 2, law.Cases);
+  }
+
   #endregion
 
   #region Interaction
@@ -1537,6 +1682,7 @@ public class BlockLawsTests {
         "reload",
         "neighbour",
         "network",
+        "network port",
         "interaction",
         "container",
         "formed interaction",
@@ -1554,6 +1700,7 @@ public class BlockLawsTests {
         "reload",
         "neighbour",
         "network",
+        "network port",
         "interaction",
         "container",
         "formed interaction",
@@ -1918,6 +2065,26 @@ public class BlockLawsTests {
 
   private class Accepter : BlockNetworkNode {
     public override string NetworkType => "test";
+  }
+
+  /// <summary>A port on the faces its <c>faces</c> attribute names by their first letters.</summary>
+  private class Port : Block, INetworkConnector {
+    public string NetworkType => "test";
+
+    public bool HasConnectorAt(BlockFacing face) =>
+      Attributes?["faces"].AsString("")?.Contains(face.Code[0]) == true;
+  }
+
+  private sealed class RefusesPorts : Accepter {
+    public override bool AcceptsNeighbour(Block neighbour) =>
+      neighbour is not Port;
+  }
+
+  /// <summary>A megablock port on its north and south faces whose fillers host memberships.</summary>
+  private sealed class PortedMega : BlockFilledMegastructure, INetworkConnector {
+    public string NetworkType => "test";
+
+    public bool HasConnectorAt(BlockFacing face) => face.Axis == EnumAxis.Z;
   }
 
   private sealed class RefusesTheAccepter : Accepter {
