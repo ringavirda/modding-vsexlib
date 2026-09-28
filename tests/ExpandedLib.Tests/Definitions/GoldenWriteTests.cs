@@ -100,7 +100,8 @@ public sealed class GoldenWriteTests : IDisposable {
       Domain,
       Mod,
       root,
-      "exlib/blocktypes/structurefiller.json"
+      "exlib/blocktypes/structurefiller.json",
+      series: null
     );
 
     Assert.Equal(
