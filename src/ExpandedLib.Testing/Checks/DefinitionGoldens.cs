@@ -17,7 +17,28 @@ namespace ExpandedLib.Testing;
 /// (<see cref="CheckGolden"/>), and the golden set exactly covers the defs
 /// (<see cref="CheckCompleteness"/>).
 /// </summary>
+/// <remarks>On a game series older than the current one, a def whose content differs on that
+/// series has its golden under <see cref="SeriesRoot"/>, which overrides the shared one.</remarks>
 public static class DefinitionGoldens {
+  /// <summary>The game series this build runs against when it is older than the current one
+  /// (<c>1.21</c>, <c>1.20</c>), or <c>null</c> on the current series.</summary>
+  [CheckHelper("names the series whose own goldens the checks read")]
+  public static readonly string? OlderSeries =
+#if GAME_GE_1_22
+    null;
+#elif GAME_GE_1_21
+    "1.21";
+#else
+    "1.20";
+#endif
+
+  /// <summary>The folder holding <paramref name="series"/>' own goldens: the sibling of
+  /// <paramref name="goldenRoot"/> named <c>&lt;goldenRoot&gt;-&lt;series&gt;</c>, laid out as
+  /// <paramref name="goldenRoot"/> is.</summary>
+  [CheckHelper("names the folder of a series' own goldens")]
+  public static string SeriesRoot(string goldenRoot, string series) =>
+    goldenRoot.TrimEnd('/', '\\') + "-" + series;
+
   /// <summary>Every code-first def (blocks, items, recipes) <paramref name="asm"/> declares for
   /// <paramref name="domain"/>, without registering into the process-wide registry.</summary>
   [CheckHelper("collects a domain's code-first definitions")]
@@ -71,17 +92,31 @@ public static class DefinitionGoldens {
       .Select(p => new object[] { p });
 
   /// <summary>Checks the def whose <see cref="RelativePath"/> is <paramref name="relativePath"/>
-  /// against its committed golden under <paramref name="goldenRoot"/>.</summary>
+  /// against its committed golden under <paramref name="goldenRoot"/>, or under
+  /// <see cref="SeriesRoot"/> for <see cref="OlderSeries"/> where that holds one.</summary>
   /// <returns><c>(true, "")</c> on match, else a readable diff message.</returns>
   public static (bool ok, string message) CheckGolden(
     string domain,
     Assembly asm,
     string relativePath,
     string goldenRoot
+  ) => CheckGolden(domain, asm, relativePath, goldenRoot, OlderSeries);
+
+  internal static (bool ok, string message) CheckGolden(
+    string domain,
+    Assembly asm,
+    string relativePath,
+    string goldenRoot,
+    string? series
   ) {
     IExDef def = Collect(domain, asm)
       .Single(d => RelativePath(d) == relativePath);
     string file = FullPath(goldenRoot, def);
+    if (
+      series != null
+      && File.Exists(FullPath(SeriesRoot(goldenRoot, series), def))
+    )
+      file = FullPath(SeriesRoot(goldenRoot, series), def);
     if (!File.Exists(file))
       return (false, $"missing golden file: {file}");
 
@@ -94,23 +129,61 @@ public static class DefinitionGoldens {
       );
   }
 
-  /// <summary>Completeness of the golden set: <c>missing</c> is defs with no golden file,
-  /// <c>orphans</c> is golden files no def claims.</summary>
+  /// <summary>Completeness of the golden set: <c>missing</c> is defs with no golden file under
+  /// <paramref name="goldenRoot"/>, <c>orphans</c> is golden files no def claims, there and, for
+  /// <see cref="OlderSeries"/>, under <see cref="SeriesRoot"/>.</summary>
+  /// <returns>Each list sorted; an orphan under <paramref name="goldenRoot"/> is named relative to
+  /// it, one under <see cref="SeriesRoot"/> relative to that folder's parent, so it starts with
+  /// the folder's name.</returns>
   public static (
     IReadOnlyList<string> missing,
     IReadOnlyList<string> orphans
-  ) CheckCompleteness(string domain, Assembly asm, string goldenRoot) {
+  ) CheckCompleteness(string domain, Assembly asm, string goldenRoot) =>
+    CheckCompleteness(domain, asm, goldenRoot, OlderSeries);
+
+  internal static (
+    IReadOnlyList<string> missing,
+    IReadOnlyList<string> orphans
+  ) CheckCompleteness(
+    string domain,
+    Assembly asm,
+    string goldenRoot,
+    string? series
+  ) {
     var defs = Collect(domain, asm);
-    var claimed = defs.Select(d => Path.GetFullPath(FullPath(goldenRoot, d)))
-      .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     var missing = defs.Where(d => !File.Exists(FullPath(goldenRoot, d)))
       .Select(RelativePath)
       .OrderBy(p => p)
       .ToList();
 
-    string domainRoot = Path.Combine(goldenRoot, domain);
-    var orphans = (
+    var orphans = Orphans(defs, domain, goldenRoot, goldenRoot).ToList();
+    if (series != null) {
+      string seriesRoot = SeriesRoot(goldenRoot, series);
+      orphans.AddRange(
+        Orphans(
+          defs,
+          domain,
+          seriesRoot,
+          Path.GetDirectoryName(Path.GetFullPath(seriesRoot))!
+        )
+      );
+    }
+
+    return (missing, orphans);
+  }
+
+  // Golden files under root's domain folder that no def claims, named relative to namedFrom.
+  private static IEnumerable<string> Orphans(
+    IReadOnlyList<IExDef> defs,
+    string domain,
+    string root,
+    string namedFrom
+  ) {
+    var claimed = defs.Select(d => Path.GetFullPath(FullPath(root, d)))
+      .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    string domainRoot = Path.Combine(root, domain);
+    return (
       Directory.Exists(domainRoot)
         ? Directory.EnumerateFiles(
           domainRoot,
@@ -120,17 +193,18 @@ public static class DefinitionGoldens {
         : []
     )
       .Where(f => !claimed.Contains(Path.GetFullPath(f)))
-      .Select(f => Path.GetRelativePath(goldenRoot, f).Replace('\\', '/'))
-      .OrderBy(p => p)
-      .ToList();
-
-    return (missing, orphans);
+      .Select(f => Path.GetRelativePath(namedFrom, f).Replace('\\', '/'))
+      .OrderBy(p => p);
   }
 
   /// <summary>Re-blesses the goldens under <paramref name="goldenRoot"/> from the current def
   /// output: every golden when <c>EXLIB_WRITE_GOLDENS</c> is <c>1</c>, else those whose
   /// <see cref="RelativePath"/> contains one of its comma-separated fragments. Opt-in: call only
   /// when <see cref="WriteRequested"/>.</summary>
+  /// <remarks>On <see cref="OlderSeries"/> the shared goldens are left as they are: a selected def
+  /// whose output differs from its shared golden, or has none, is written under
+  /// <see cref="SeriesRoot"/>, and a series golden of a def that no longer differs is
+  /// deleted.</remarks>
   /// <remarks>A fragment whose first <c>/</c>-separated segment is another domain and whose
   /// second is a game asset category (a key of <see cref="AssetCategory.categories"/>, such as
   /// <c>blocktypes</c>, <c>itemtypes</c> or <c>recipes</c>) belongs to another assembly's goldens,
@@ -153,6 +227,14 @@ public static class DefinitionGoldens {
     Assembly asm,
     string goldenRoot,
     string value
+  ) => WriteAll(domain, asm, goldenRoot, value, OlderSeries);
+
+  internal static void WriteAll(
+    string domain,
+    Assembly asm,
+    string goldenRoot,
+    string value,
+    string? series
   ) {
     IReadOnlyList<string> only = WriteFilter(value);
     IReadOnlyList<IExDef> defs = Collect(domain, asm);
@@ -180,6 +262,21 @@ public static class DefinitionGoldens {
         continue;
 
       string file = FullPath(goldenRoot, def);
+      if (series != null) {
+        string shared = file;
+        file = FullPath(SeriesRoot(goldenRoot, series), def);
+        if (
+          File.Exists(shared)
+          && DefinitionParity.Equal(
+            JToken.Parse(File.ReadAllText(shared)),
+            def.ToJson()
+          )
+        ) {
+          if (File.Exists(file))
+            File.Delete(file);
+          continue;
+        }
+      }
       Directory.CreateDirectory(Path.GetDirectoryName(file)!);
       File.WriteAllText(file, def.ToJson().ToString());
     }

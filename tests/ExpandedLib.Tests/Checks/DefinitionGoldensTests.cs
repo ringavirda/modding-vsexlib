@@ -129,4 +129,100 @@ public class DefinitionGoldensTests {
       d => DefinitionGoldens.RelativePath(d) == AnvilPath
     );
   }
+
+  // A shared golden root and its series sibling, both inside one planted directory.
+  private const string Series = "1.21";
+
+  private static (PlantedFiles files, string root) SharedAndSeries() {
+    var files = new PlantedFiles();
+    foreach (IExDef def in DefinitionGoldens.Collect(Domain, Here))
+      files.Write(
+        "goldens/" + DefinitionGoldens.RelativePath(def),
+        def.ToJson().ToString()
+      );
+    return (files, files.Path("goldens"));
+  }
+
+  // Fails when CheckGolden reads the shared golden on a series that has its own.
+  [Fact]
+  [PlantedDefect(
+    typeof(DefinitionGoldens),
+    nameof(DefinitionGoldens.CheckGolden)
+  )]
+  public void A_series_golden_overrides_the_shared_one_on_that_series() {
+    var (files, root) = SharedAndSeries();
+    using var _ = files;
+    files.Write(
+      "goldens/" + AnvilPath,
+      Anvil(Domain).Resistance(4).ToJson().ToString()
+    );
+    files.Write("goldens-1.21/" + AnvilPath, Anvil(Domain).ToJson().ToString());
+
+    Assert.Equal(
+      (true, ""),
+      DefinitionGoldens.CheckGolden(Domain, Here, AnvilPath, root, Series)
+    );
+    Assert.False(
+      DefinitionGoldens.CheckGolden(Domain, Here, AnvilPath, root, null).ok
+    );
+  }
+
+  // Fails when CheckCompleteness leaves the series folder unread.
+  [Fact]
+  [PlantedDefect(
+    typeof(DefinitionGoldens),
+    nameof(DefinitionGoldens.CheckCompleteness)
+  )]
+  public void A_series_golden_no_def_claims_is_reported_orphaned() {
+    var (files, root) = SharedAndSeries();
+    using var _ = files;
+    files.Write("goldens-1.21/plantedgoldens/blocktypes/stray.json", "{}");
+
+    var (missing, orphans) = DefinitionGoldens.CheckCompleteness(
+      Domain,
+      Here,
+      root,
+      Series
+    );
+
+    Assert.Empty(missing);
+    Assert.Equal(["goldens-1.21/plantedgoldens/blocktypes/stray.json"], orphans);
+  }
+
+  // Fails when a series write rewrites the shared goldens, writes a series golden that matches the
+  // shared one, or keeps a series golden that no longer differs.
+  [Fact]
+  public void A_series_write_keeps_only_the_goldens_that_differ_on_that_series() {
+    var (files, root) = SharedAndSeries();
+    using var _ = files;
+    string sharedAnvil = files.Write(
+      "goldens/" + AnvilPath,
+      Anvil(Domain).Resistance(4).ToJson().ToString()
+    );
+    string other = DefinitionGoldens
+      .Collect(Domain, Here)
+      .Select(DefinitionGoldens.RelativePath)
+      .First(p => p != AnvilPath);
+    string stale = files.Write("goldens-1.21/" + other, "{}");
+
+    DefinitionGoldens.WriteAll(Domain, Here, root, "1", Series);
+
+    Assert.Equal(
+      Anvil(Domain).Resistance(4).ToJson().ToString(),
+      File.ReadAllText(sharedAnvil)
+    );
+    Assert.Equal(
+      Anvil(Domain).ToJson().ToString(),
+      File.ReadAllText(files.Path("goldens-1.21/" + AnvilPath))
+    );
+    Assert.False(File.Exists(stale));
+    Assert.Equal(
+      [files.Path("goldens-1.21/" + AnvilPath)],
+      Directory.EnumerateFiles(
+        files.Path("goldens-1.21"),
+        "*.json",
+        SearchOption.AllDirectories
+      )
+    );
+  }
 }
