@@ -327,8 +327,9 @@ see the git history.
 - `RegistryLawScanner.ForEach` (ExpandedLib.Testing) throws when the base type has no concrete
   subclass loaded, instead of passing a law that checked nothing.
 - `WikiParity.Check` (ExpandedLib.Testing) reports a page from which no symbol resolved against the
-  assembly, since nothing on it was checked; its new `symbolFree` parameter names pages that name no
-  API on purpose.
+  assembly, since nothing on it was checked; new overloads taking a `symbolFree` list name pages that
+  name no API on purpose, and the 0.8.2 overloads keep their signatures, so a test assembly built
+  against 0.8.2 still runs.
 - `LangCallSites` (ExpandedLib.Testing) also reads the key a `...Key =>` property returns, such as a
   registry sub-command's `ListHeaderKey`.
 

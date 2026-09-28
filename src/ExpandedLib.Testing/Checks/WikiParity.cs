@@ -103,11 +103,33 @@ public static class WikiParity {
   /// against it.</summary>
   /// <param name="wikiDirectory">Directory whose top-level <c>*.md</c> files are read.</param>
   /// <param name="assembly">The assembly the pages are checked against.</param>
+  /// <param name="knownAbsent">Identifiers the docs invent on purpose, exempted; null for
+  /// none.</param>
+  /// <param name="alsoDefined">Type names that exist outside <paramref name="assembly"/> and cannot be
+  /// reflected, such as the source generators; null for none.</param>
+  /// <param name="symbolFree">File names (<c>Home.md</c>) of pages that name no API on purpose;
+  /// such a page is read but never reported for having no symbol. Null for none.</param>
+  /// <returns>The findings, one per drifted symbol and one per page with no symbol, with the
+  /// counts of files read and symbols checked.</returns>
+  /// <exception cref="DirectoryNotFoundException"><paramref name="wikiDirectory"/> does not
+  /// exist.</exception>
+  /// <exception cref="IOException">A page cannot be read.</exception>
+  public static Report Check(
+    string wikiDirectory,
+    Assembly assembly,
+    IEnumerable<string>? knownAbsent,
+    IEnumerable<string>? alsoDefined,
+    IEnumerable<string>? symbolFree
+  ) => Check(wikiDirectory, [assembly], knownAbsent, alsoDefined, symbolFree);
+
+  /// <summary>Every symbol in <paramref name="wikiDirectory"/>'s markdown that names something
+  /// <paramref name="assembly"/> does not have, and every page from which no symbol resolved
+  /// against it, with no page exempted as symbol-free.</summary>
+  /// <param name="wikiDirectory">Directory whose top-level <c>*.md</c> files are read.</param>
+  /// <param name="assembly">The assembly the pages are checked against.</param>
   /// <param name="knownAbsent">Identifiers the docs invent on purpose, exempted.</param>
   /// <param name="alsoDefined">Type names that exist outside <paramref name="assembly"/> and cannot be
   /// reflected, such as the source generators.</param>
-  /// <param name="symbolFree">File names (<c>Home.md</c>) of pages that name no API on purpose;
-  /// such a page is read but never reported for having no symbol.</param>
   /// <returns>The findings, one per drifted symbol and one per page with no symbol, with the
   /// counts of files read and symbols checked.</returns>
   /// <exception cref="DirectoryNotFoundException"><paramref name="wikiDirectory"/> does not
@@ -117,17 +139,51 @@ public static class WikiParity {
     string wikiDirectory,
     Assembly assembly,
     IEnumerable<string>? knownAbsent = null,
-    IEnumerable<string>? alsoDefined = null,
-    IEnumerable<string>? symbolFree = null
-  ) => Check(wikiDirectory, [assembly], knownAbsent, alsoDefined, symbolFree);
+    IEnumerable<string>? alsoDefined = null
+  ) => Check(wikiDirectory, [assembly], knownAbsent, alsoDefined, null);
 
-  /// <summary>As the single-assembly overload, resolving against several at once.</summary>
+  /// <summary>Every symbol in <paramref name="wikiDirectory"/>'s markdown that names something none
+  /// of <paramref name="assemblies"/> has, and every page from which no symbol resolved against
+  /// them, with no page exempted as symbol-free.</summary>
+  /// <param name="wikiDirectory">Directory whose top-level <c>*.md</c> files are read.</param>
+  /// <param name="assemblies">The assemblies the pages are checked against, together.</param>
+  /// <param name="knownAbsent">Identifiers the docs invent on purpose, exempted.</param>
+  /// <param name="alsoDefined">Type names that exist outside <paramref name="assemblies"/> and
+  /// cannot be reflected, such as the source generators.</param>
+  /// <returns>The findings, one per drifted symbol and one per page with no symbol, with the
+  /// counts of files read and symbols checked.</returns>
+  /// <exception cref="DirectoryNotFoundException"><paramref name="wikiDirectory"/> does not
+  /// exist.</exception>
+  /// <exception cref="IOException">A page cannot be read.</exception>
   public static Report Check(
     string wikiDirectory,
     IReadOnlyList<Assembly> assemblies,
     IEnumerable<string>? knownAbsent = null,
-    IEnumerable<string>? alsoDefined = null,
-    IEnumerable<string>? symbolFree = null
+    IEnumerable<string>? alsoDefined = null
+  ) => Check(wikiDirectory, assemblies, knownAbsent, alsoDefined, null);
+
+  /// <summary>Every symbol in <paramref name="wikiDirectory"/>'s markdown that names something none
+  /// of <paramref name="assemblies"/> has, and every page from which no symbol resolved against
+  /// them.</summary>
+  /// <param name="wikiDirectory">Directory whose top-level <c>*.md</c> files are read.</param>
+  /// <param name="assemblies">The assemblies the pages are checked against, together.</param>
+  /// <param name="knownAbsent">Identifiers the docs invent on purpose, exempted; null for
+  /// none.</param>
+  /// <param name="alsoDefined">Type names that exist outside <paramref name="assemblies"/> and
+  /// cannot be reflected, such as the source generators; null for none.</param>
+  /// <param name="symbolFree">File names (<c>Home.md</c>) of pages that name no API on purpose;
+  /// such a page is read but never reported for having no symbol. Null for none.</param>
+  /// <returns>The findings, one per drifted symbol and one per page with no symbol, with the
+  /// counts of files read and symbols checked.</returns>
+  /// <exception cref="DirectoryNotFoundException"><paramref name="wikiDirectory"/> does not
+  /// exist.</exception>
+  /// <exception cref="IOException">A page cannot be read.</exception>
+  public static Report Check(
+    string wikiDirectory,
+    IReadOnlyList<Assembly> assemblies,
+    IEnumerable<string>? knownAbsent,
+    IEnumerable<string>? alsoDefined,
+    IEnumerable<string>? symbolFree
   ) {
     var exempt = new HashSet<string>(knownAbsent ?? [], StringComparer.Ordinal);
     var symbolFreePages = new HashSet<string>(

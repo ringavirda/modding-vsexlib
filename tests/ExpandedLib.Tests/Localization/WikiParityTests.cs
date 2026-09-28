@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using ExpandedLib.Definitions;
 using ExpandedLib.Industry;
@@ -170,6 +171,8 @@ public class WikiParityTests {
     WikiParity.Report listed = WikiParity.Check(
       page.Dir,
       typeof(ExDefinitions).Assembly,
+      knownAbsent: null,
+      alsoDefined: null,
       symbolFree: ["Page.md"]
     );
 
@@ -177,6 +180,55 @@ public class WikiParityTests {
     Assert.Equal("Page.md", finding.File);
     Assert.Contains("no symbol", finding.Reason);
     Assert.Empty(listed.Findings);
+  }
+
+  // Fails when either Check overload 0.8.2 shipped (without symbolFree) is removed or changes its
+  // parameter list: a test assembly built against 0.8.2 binds to it and throws
+  // MissingMethodException.
+  [Fact]
+  public void The_Check_overloads_of_0_8_2_still_bind_and_check() {
+    using var page = new TempWikiPage(
+      "# Prose\n\nA page that names nothing the assembly has, `not code`.\n"
+    );
+    Assembly assembly = typeof(ExDefinitions).Assembly;
+    MethodInfo? single = typeof(WikiParity).GetMethod(
+      nameof(WikiParity.Check),
+      [
+        typeof(string),
+        typeof(Assembly),
+        typeof(IEnumerable<string>),
+        typeof(IEnumerable<string>),
+      ]
+    );
+    MethodInfo? several = typeof(WikiParity).GetMethod(
+      nameof(WikiParity.Check),
+      [
+        typeof(string),
+        typeof(IReadOnlyList<Assembly>),
+        typeof(IEnumerable<string>),
+        typeof(IEnumerable<string>),
+      ]
+    );
+
+    Assert.NotNull(single);
+    Assert.NotNull(several);
+    foreach (
+      (MethodInfo method, object assemblies) in new (MethodInfo, object)[]
+      {
+        (single, assembly),
+        (several, new[] { assembly }),
+      }
+    ) {
+      Assert.Equal(typeof(WikiParity.Report), method.ReturnType);
+      Assert.All(
+        method.GetParameters().Skip(2),
+        p => Assert.True(p.HasDefaultValue && p.DefaultValue == null)
+      );
+      var report = (WikiParity.Report)
+        method.Invoke(null, [page.Dir, assemblies, null, null])!;
+      Assert.Equal("Page.md", Assert.Single(report.Findings).File);
+      Assert.Equal(1, report.FilesRead);
+    }
   }
 
   // Fails when a symbol-free entry names a page the wiki no longer has.
