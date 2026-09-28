@@ -353,6 +353,9 @@ see the git history.
   as the game does, so a variant group that reads them (`"loadFromProperties":
   "abstract/horizontalorientation"`) registers every variant; it registered one block without the
   group's variant.
+- **`LangCoverageCheck`** reads a lang key with a `*` inside it (`block-toolmold-*-fired-plate`) as
+  the game's lang does, a wildcard over the whole key; it read such a key as a literal and reported
+  every block the key names.
 - **`TestPlayer`**: the entity's `RightHandItemSlot` answers the active slot.
 - **A wrench turns a structure from any of its cells.** Vanilla's wrench asks the clicked block for
   `IWrenchOrientable`, which a filler did not answer, so its principal's rotate help did nothing

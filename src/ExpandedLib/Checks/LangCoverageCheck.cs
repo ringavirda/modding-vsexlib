@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 
@@ -9,6 +10,8 @@ namespace ExpandedLib.Checks;
 /// <summary>
 /// Checks that every registered block code resolves to a name in the <c>en</c> locale, matched
 /// against <see cref="ICheckSource.BlockCodes"/>. An unresolved key renders as the raw key in game.
+/// A lang key carrying <c>*</c> matches as the game's lang matches it: one trailing <c>*</c> as a
+/// prefix, any other as a wildcard over the whole key.
 /// </summary>
 public static class LangCoverageCheck {
   private const string EnglishLocale = "en";
@@ -42,11 +45,15 @@ public static class LangCoverageCheck {
 
       var exact = new HashSet<string>(StringComparer.Ordinal);
       var wildcardPrefixes = new List<string>();
+      var patterns = new List<Regex>();
       foreach (JProperty prop in lang.Properties()) {
-        if (prop.Name.EndsWith('*'))
+        int stars = prop.Name.Count(c => c == '*');
+        if (stars == 0)
+          exact.Add(prop.Name);
+        else if (stars == 1 && prop.Name.EndsWith('*'))
           wildcardPrefixes.Add(prop.Name[..^1]);
         else
-          exact.Add(prop.Name);
+          patterns.Add(Pattern(prop.Name));
       }
 
       foreach (string code in codes) {
@@ -56,10 +63,19 @@ public static class LangCoverageCheck {
           && !wildcardPrefixes.Any(p =>
             key.StartsWith(p, StringComparison.Ordinal)
           )
+          && !patterns.Any(p => p.IsMatch(key))
         )
           errors.Add($"{locale}: {key}");
       }
     }
     return new CheckResult("LangCoverage", domain, errors);
   }
+
+  // A key whose `*` is not its one last character matches as the game's lang reads it, each `*`
+  // standing for any run of characters over the whole key.
+  private static Regex Pattern(string key) =>
+    new(
+      "^" + string.Join("(.*)", key.Split('*').Select(Regex.Escape)) + "$",
+      RegexOptions.CultureInvariant
+    );
 }

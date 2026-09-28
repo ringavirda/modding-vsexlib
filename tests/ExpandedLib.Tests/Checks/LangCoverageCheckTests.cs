@@ -74,4 +74,22 @@ public class LangCoverageCheckTests {
     Assert.Single(result.Errors);
     Assert.Contains("de: block-stubblock", result.Errors);
   }
+
+  // Fails when a lang key with a `*` inside it is read as a literal, or when it matches a code its
+  // pattern does not cover.
+  [Fact]
+  public void A_key_with_a_wildcard_inside_covers_the_codes_it_matches() {
+    var matching = new StubSource(
+      ("en", new JObject { ["block-stub*ock"] = "Stub Block" })
+    );
+    var other = new StubSource(
+      ("en", new JObject { ["block-stub*-fired"] = "Stub Block" })
+    );
+
+    Assert.Empty(LangCoverageCheck.Run(matching, Domain).Errors);
+    Assert.Equal(
+      ["en: block-stubblock"],
+      LangCoverageCheck.Run(other, Domain).Errors
+    );
+  }
 }
