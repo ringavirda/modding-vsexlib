@@ -82,7 +82,8 @@ public static class ContainerLaw {
   /// <param name="domain">The domain whose structures are formed.</param>
   /// <returns>The structures formed a cell of which accepted a stack, the cells that did, and
   /// findings, keyed by the anchor's variant code; <see cref="BlockLaws.Law.Structures"/> names
-  /// each structure formed with its cells that accepted one, none included.</returns>
+  /// each structure formed, those none of whose cells accepted one included, with the block and
+  /// cell of each that did.</returns>
   public static BlockLaws.Law RunFormed(TestWorld world, string domain) {
     var findings = new List<string>();
     var structures = new List<string>();
@@ -101,7 +102,7 @@ public static class ContainerLaw {
           is not { } probe
         )
           continue;
-        int accepted = 0;
+        var accepted = new List<string>();
         foreach (
           BlockPos cell in MultiblockLaw
             .FormedCells(world, probe)
@@ -129,7 +130,7 @@ public static class ContainerLaw {
             is not { } stack
           )
             continue;
-          accepted++;
+          accepted.Add($"{step.Block.Code} on {BlockLaws.CellName(offset)}");
           Follow(
             world,
             player,
@@ -140,11 +141,12 @@ public static class ContainerLaw {
               + $"{BlockLaws.CellName(offset)},"
           );
         }
-        if (accepted > 0)
+        if (accepted.Count > 0)
           blocks++;
-        cases += accepted;
+        cases += accepted.Count;
         structures.Add(
-          $"{block.Code} formed, {accepted} cell(s) accepted a stack"
+          $"{block.Code} formed, {accepted.Count} cell(s) accepted a stack"
+            + (accepted.Count > 0 ? ": " + string.Join("; ", accepted) : "")
         );
       }
     return new BlockLaws.Law(FormedName, blocks, cases, findings) {

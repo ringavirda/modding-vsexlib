@@ -1068,7 +1068,7 @@ public class BlockLawsTests {
   }
 
   // Fails when the hand laws' worlds leave out the vanilla tools, vessels and role materials the
-  // family's help names.
+  // family's help names, or the coals a coke oven takes.
   [Fact]
   public void The_hand_laws_world_holds_vanilla_tools_vessels_and_role_materials() {
     TestWorld world = Hands([]);
@@ -1095,6 +1095,12 @@ public class BlockLawsTests {
     Assert.NotNull(world.World.GetItem(new AssetLocation("game:crushed-iron")));
     Assert.NotNull(world.World.GetItem(new AssetLocation("game:lime")));
     Assert.NotNull(world.World.GetItem(new AssetLocation("game:coke")));
+    Assert.NotNull(
+      world.World.GetItem(new AssetLocation("game:ore-bituminouscoal"))
+    );
+    Assert.NotNull(
+      world.World.GetItem(new AssetLocation("game:ore-anthracite"))
+    );
     Assert.NotNull(
       world.World.GetItem(new AssetLocation("game:metalbit-steel"))
     );
@@ -1374,8 +1380,10 @@ public class BlockLawsTests {
     Assert.Equal("structures", law.Unit);
     Assert.Equal(
       [
-        "test:tiered-n-a formed, 2 cell(s) accepted a stack",
-        "test:tiered-n-b formed, 2 cell(s) accepted a stack",
+        "test:tiered-n-a formed, 2 cell(s) accepted a stack: test:feeder on its cell at "
+          + "(1, 0, 0); test:feeder on its cell at (-1, 1, 2)",
+        "test:tiered-n-b formed, 2 cell(s) accepted a stack: test:feeder on its cell at "
+          + "(1, 0, 0); test:feeder on its cell at (-1, 1, 2)",
       ],
       law.Structures
     );

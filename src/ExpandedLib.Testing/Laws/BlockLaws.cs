@@ -190,18 +190,20 @@ public static class BlockLaws {
   }
 
   /// <summary>The vanilla blocktypes the worlds of the hand laws load: the containers and vessels
-  /// the family's help names (buckets, tool molds, crucibles) and torches, which ignite.</summary>
+  /// the family's help names (buckets, tool molds, crucibles), torches, which ignite, and the cave
+  /// art a mined coal paints as a pigment.</summary>
   internal static readonly string[] VanillaBlocks =
   [
     "bucket",
     "torch",
     "toolmold",
     "crucible",
+    "caveart",
   ];
 
   /// <summary>The vanilla itemtypes the worlds of the hand laws load: the tools and materials the
-  /// family's help names, and the crushed ores, flux, fuel and metal bits its material roles
-  /// name.</summary>
+  /// family's help names, the crushed ores, flux, fuel and metal bits its material roles name, and
+  /// the ungraded ores, which hold the mined coals a coke oven takes.</summary>
   internal static readonly string[] VanillaItems =
   [
     "chisel",
@@ -213,6 +215,7 @@ public static class BlockLaws {
     "lime",
     "coke",
     "metalbit",
+    "ore-ungraded",
   ];
 
   /// <summary>Registers a stand-in in <paramref name="world"/> for each construction ingredient
