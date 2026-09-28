@@ -22,11 +22,12 @@ namespace ExpandedLib.Testing;
 public static class BlockLaws {
   /// <summary>What one law covered and what it found.</summary>
   /// <param name="Name">The law's name.</param>
-  /// <param name="Blocks">Blocktypes (codes less their variant parts, with their variant group
-  /// names) the law applied to.</param>
+  /// <param name="Blocks">What the law applied to, in the unit <see cref="Unit"/> names:
+  /// blocktypes (codes less their variant parts, with their variant group names), or for the formed
+  /// laws structures, one per variant <c>MultiblockLaw.OneFacing</c> picks.</param>
   /// <param name="Cases">Cases it ran: placements, breaks, structures stood up, block entities
-  /// read or reloaded, faces a neighbour came and went on, network pairs walked, clicks made, on a
-  /// block or a formed structure, or accepted stacks followed.</param>
+  /// read or reloaded, faces a neighbour came and went on, network pairs walked,
+  /// clicks made, on a block or a formed structure, or accepted stacks followed.</param>
   /// <param name="Findings">One line per finding, each starting with the variant code it is
   /// about and a space.</param>
   public sealed record Law(
@@ -35,9 +36,19 @@ public static class BlockLaws {
     int Cases,
     IReadOnlyList<string> Findings
   ) {
-    /// <summary>The law's name, blocktypes, cases and finding count.</summary>
+    /// <summary>What <see cref="Blocks"/> counts: <c>blocktypes</c>, or <c>structures</c> for
+    /// the formed laws.</summary>
+    public string Unit { get; init; } = "blocktypes";
+
+    /// <summary>One line per structure a formed law stood up formed, in the order it ran: the
+    /// anchor's variant code, then what the structure gave the law. Empty for the other
+    /// laws.</summary>
+    public IReadOnlyList<string> Structures { get; init; } = [];
+
+    /// <summary>The law's name, <see cref="Blocks"/> in its <see cref="Unit"/>, cases and finding
+    /// count.</summary>
     public override string ToString() =>
-      $"{Name}: {Blocks} blocktypes, {Cases} cases, {Findings.Count} finding(s)";
+      $"{Name}: {Blocks} {Unit}, {Cases} cases, {Findings.Count} finding(s)";
   }
 
   /// <summary>Every law's result, in the order the laws ran.</summary>

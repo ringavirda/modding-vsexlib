@@ -87,18 +87,22 @@ public static class InteractionLaw {
   /// <see cref="MultiblockLaw.Run"/> completes it, and clicks each of its cells holding a block
   /// outside <c>game</c> as <see cref="Run"/> clicks a block's cells, on a fresh structure
   /// each.</summary>
-  /// <remarks>A finding is a placement or click that throws or logs, the anchor's entity off its
-  /// cell after a click, a named click both refuse or that changes nothing, and a help line
-  /// carrying both items and a <c>ShouldApply</c>; a cell is judged no further after its first. A
-  /// structure that does not form is left to the multiblock law. A click's findings are keyed by the
-  /// anchor's code and name the block clicked; a placement's, by the block placed.</remarks>
+  /// <remarks>A finding is a placement of the anchor or of a filled cell, or a click, that throws
+  /// or logs, the anchor's entity off its cell after a click, a named click both refuse or that
+  /// changes nothing, and a help line carrying both items and a <c>ShouldApply</c>; a cell is judged
+  /// no further after its first. A structure whose placements are clean and that still does not form
+  /// (no multiblock entity, a cell no registered block satisfies, incomplete) is left to the
+  /// multiblock law and not counted. A click's findings are keyed by the anchor's code and name the
+  /// block clicked; a placement's, by the block placed.</remarks>
   /// <param name="world">A world holding the blocks judged, the blocks their layouts name and the
   /// items their help names (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose structures are formed.</param>
-  /// <returns>The blocktypes with a structure that formed, clicks made and findings, keyed by the
-  /// anchor's variant code.</returns>
+  /// <returns>The structures that formed, clicks made and findings, keyed by the anchor's variant
+  /// code; <see cref="BlockLaws.Law.Structures"/> names each structure formed with its
+  /// clicks.</returns>
   public static BlockLaws.Law RunFormed(TestWorld world, string domain) {
     var findings = new List<string>();
+    var structures = new List<string>();
     var sites = new BlockLaws.Sites();
     int blocks = 0,
       cases = 0;
@@ -106,63 +110,81 @@ public static class InteractionLaw {
     Block[] registered = MultiblockLaw.Registered(world);
     foreach (
       IGrouping<string, Block> type in BlockLaws.Blocktypes(world, domain)
-    ) {
-      bool formed = false;
+    )
       foreach (Block block in MultiblockLaw.OneFacing(world, type)) {
         if (
-          MultiblockLaw.Formed(world, block, sites.Next(), registered, null)
+          MultiblockLaw.Formed(world, block, sites.Next(), registered, findings)
           is not { } probe
         )
           continue;
-        formed = true;
-        int flagged = findings.Count;
-        Click[] clicks = Clicks(
-          world,
-          player.Player,
-          probe,
-          findings,
-          MultiblockLaw.FormedCells(world, probe)
-        );
-        if (findings.Count > flagged)
-          continue;
-        var stopped = new HashSet<(int, int, int)>();
-        foreach (Click click in clicks) {
-          if (
-            stopped.Contains((click.Offset.X, click.Offset.Y, click.Offset.Z))
-          )
-            continue;
-          cases++;
-          int earlier = findings.Count;
-          if (
-            MultiblockLaw.Formed(
-              world,
-              block,
-              sites.Next(),
-              registered,
-              findings
-            )
-            is not { } step
-          )
-            break;
-          if (
-            !Make(
-              world,
-              player,
-              step,
-              click,
-              findings,
-              MultiblockLaw.FormedCells(world, step),
-              $"{block.Code} formed"
-            )
-            || findings.Count > earlier
-          )
-            stopped.Add((click.Offset.X, click.Offset.Y, click.Offset.Z));
-        }
-      }
-      if (formed)
         blocks++;
+        int made = cases;
+        ClickFormed(
+          world,
+          player,
+          block,
+          probe,
+          registered,
+          sites,
+          findings,
+          ref cases
+        );
+        structures.Add($"{block.Code} formed, {cases - made} click(s)");
+      }
+    return new BlockLaws.Law(FormedName, blocks, cases, findings) {
+      Unit = "structures",
+      Structures = structures,
+    };
+  }
+
+  /// <summary>Clicks each cell of the structure <paramref name="probe"/> stands, each click on a
+  /// fresh structure <paramref name="block"/> anchors, and counts each in
+  /// <paramref name="cases"/>.</summary>
+  private static void ClickFormed(
+    TestWorld world,
+    TestPlayer player,
+    Block block,
+    BlockLaws.EntityCase probe,
+    Block[] registered,
+    BlockLaws.Sites sites,
+    List<string> findings,
+    ref int cases
+  ) {
+    int flagged = findings.Count;
+    Click[] clicks = Clicks(
+      world,
+      player.Player,
+      probe,
+      findings,
+      MultiblockLaw.FormedCells(world, probe)
+    );
+    if (findings.Count > flagged)
+      return;
+    var stopped = new HashSet<(int, int, int)>();
+    foreach (Click click in clicks) {
+      if (stopped.Contains((click.Offset.X, click.Offset.Y, click.Offset.Z)))
+        continue;
+      cases++;
+      int earlier = findings.Count;
+      if (
+        MultiblockLaw.Formed(world, block, sites.Next(), registered, findings)
+        is not { } step
+      )
+        return;
+      if (
+        !Make(
+          world,
+          player,
+          step,
+          click,
+          findings,
+          MultiblockLaw.FormedCells(world, step),
+          $"{block.Code} formed"
+        )
+        || findings.Count > earlier
+      )
+        stopped.Add((click.Offset.X, click.Offset.Y, click.Offset.Z));
     }
-    return new BlockLaws.Law(FormedName, blocks, cases, findings);
   }
 
   /// <summary>One click a case makes: on the cell at <see cref="Offset"/> from the principal,

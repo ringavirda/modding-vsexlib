@@ -72,16 +72,20 @@ public static class ContainerLaw {
   /// <see cref="InteractionLaw.RunFormed"/> does and, on a fresh structure for each of its cells
   /// holding a block outside <c>game</c> with an entity, offers that entity stacks as
   /// <see cref="Run"/> does, reloads it and breaks its cell.</summary>
-  /// <remarks>A finding is what <see cref="Run"/> finds. A count lost over the reload or the break
-  /// is keyed by the anchor's code and names the cell's block; a reload or break that throws or logs,
-  /// by the cell's block.</remarks>
+  /// <remarks>A finding is what <see cref="Run"/> finds, and a placement of the anchor or of a
+  /// filled cell that throws or logs as the structure first forms, keyed by the block placed. A
+  /// structure whose placements are clean and that still does not form is left to the multiblock
+  /// law. A count lost over the reload or the break is keyed by the anchor's code and names the
+  /// cell's block; a reload or break that throws or logs, by the cell's block.</remarks>
   /// <param name="world">A world holding the blocks judged, the blocks their layouts name and the
   /// items their help names (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose structures are formed.</param>
-  /// <returns>The blocktypes with a formed structure a cell of which accepted a stack, the cells
-  /// that did, and findings, keyed by the anchor's variant code.</returns>
+  /// <returns>The structures formed a cell of which accepted a stack, the cells that did, and
+  /// findings, keyed by the anchor's variant code; <see cref="BlockLaws.Law.Structures"/> names
+  /// each structure formed with its cells that accepted one, none included.</returns>
   public static BlockLaws.Law RunFormed(TestWorld world, string domain) {
     var findings = new List<string>();
+    var structures = new List<string>();
     var sites = new BlockLaws.Sites();
     int blocks = 0,
       cases = 0;
@@ -90,14 +94,14 @@ public static class ContainerLaw {
     Block[] registered = MultiblockLaw.Registered(world);
     foreach (
       IGrouping<string, Block> type in BlockLaws.Blocktypes(world, domain)
-    ) {
-      bool judged = false;
+    )
       foreach (Block block in MultiblockLaw.OneFacing(world, type)) {
         if (
-          MultiblockLaw.Formed(world, block, sites.Next(), registered, null)
+          MultiblockLaw.Formed(world, block, sites.Next(), registered, findings)
           is not { } probe
         )
           continue;
+        int accepted = 0;
         foreach (
           BlockPos cell in MultiblockLaw
             .FormedCells(world, probe)
@@ -125,8 +129,7 @@ public static class ContainerLaw {
             is not { } stack
           )
             continue;
-          judged = true;
-          cases++;
+          accepted++;
           Follow(
             world,
             player,
@@ -137,11 +140,17 @@ public static class ContainerLaw {
               + $"{BlockLaws.CellName(offset)},"
           );
         }
+        if (accepted > 0)
+          blocks++;
+        cases += accepted;
+        structures.Add(
+          $"{block.Code} formed, {accepted} cell(s) accepted a stack"
+        );
       }
-      if (judged)
-        blocks++;
-    }
-    return new BlockLaws.Law(FormedName, blocks, cases, findings);
+    return new BlockLaws.Law(FormedName, blocks, cases, findings) {
+      Unit = "structures",
+      Structures = structures,
+    };
   }
 
   /// <summary>Every item, then every block but air, of <paramref name="world"/>.</summary>

@@ -89,6 +89,7 @@ public class BlockLawsTests {
     world.RegisterClass("test-pair", typeof(TakesAMatchingPair));
     world.RegisterClass("test-loadmoves", typeof(MovesOnTheLoad));
     world.RegisterClass("test-feeder", typeof(FeedsWhenFormed));
+    world.RegisterClass("test-placethrows", typeof(ThrowsWhenPlaced));
   }
 
   private static readonly ExItemDef Token = ExItemDef.Create("test", "token");
@@ -1220,6 +1221,59 @@ public class BlockLawsTests {
     );
   }
 
+  // Fails when the formed pass counts a blocktype once however many of its structures formed, or
+  // names no structure it formed.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.RunFormed))]
+  public void Each_structure_a_blocktype_forms_is_counted_and_named() {
+    BlockLaws.Law law = InteractionLaw.RunFormed(
+      Hands([Token], [.. Tiered()]),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(2, law.Blocks);
+    Assert.Equal("structures", law.Unit);
+    Assert.Equal(
+      [
+        "test:tiered-n-a formed, 5 click(s)",
+        "test:tiered-n-b formed, 5 click(s)",
+      ],
+      law.Structures
+    );
+    Assert.Equal(10, law.Cases);
+  }
+
+  // Fails when the formed pass stands its structure with its placements unjudged, so a filled
+  // cell whose placement throws leaves the structure unformed and nothing said.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.RunFormed))]
+  public void A_filled_cell_whose_placement_throws_is_named_by_the_formed_pass() {
+    ExBlockDef[] defs =
+    [
+      ExBlockDef.Create("test", "brittle").Class("test-placethrows"),
+      Structure("cracked", "test-sideframe", "test:brittle"),
+    ];
+
+    BlockLaws.Law rigged = MultiblockLaw.Run(Stand(defs), "test");
+    BlockLaws.Law law = InteractionLaw.RunFormed(Hands([Token], defs), "test");
+
+    Assert.Empty(rigged.Findings);
+    Assert.Equal(0, law.Blocks);
+    Assert.Empty(law.Structures);
+    Assert.Equal(
+      ["test:brittle placed threw InvalidOperationException: placed"],
+      law.Findings.Select(f => f.Split(" (")[0])
+    );
+  }
+
+  private static IEnumerable<ExBlockDef> Tiered() =>
+    [
+      Feeds("feeder", "test-holder"),
+      Structure("tiered", "test-sideframe", "test:feeder")
+        .VariantGroup("tier", "a", "b"),
+    ];
+
   #endregion
 
   #region Container
@@ -1302,6 +1356,49 @@ public class BlockLawsTests {
           + "clicked on its cell with test:token, and 0 after the reload",
       ],
       law.Findings
+    );
+  }
+
+  // Fails when the formed container pass counts a blocktype once however many of its structures
+  // took a stack, or names no structure it formed.
+  [Fact]
+  [PlantedDefect(typeof(ContainerLaw), nameof(ContainerLaw.RunFormed))]
+  public void Each_structure_a_blocktype_forms_is_counted_and_named_by_the_container_pass() {
+    BlockLaws.Law law = ContainerLaw.RunFormed(
+      Hands([Token], [.. Tiered()]),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(2, law.Blocks);
+    Assert.Equal("structures", law.Unit);
+    Assert.Equal(
+      [
+        "test:tiered-n-a formed, 2 cell(s) accepted a stack",
+        "test:tiered-n-b formed, 2 cell(s) accepted a stack",
+      ],
+      law.Structures
+    );
+    Assert.Equal(4, law.Cases);
+  }
+
+  // Fails when the formed container pass stands its structure with its placements unjudged.
+  [Fact]
+  [PlantedDefect(typeof(ContainerLaw), nameof(ContainerLaw.RunFormed))]
+  public void A_filled_cell_whose_placement_throws_is_named_by_the_formed_container_pass() {
+    BlockLaws.Law law = ContainerLaw.RunFormed(
+      Hands(
+        [Token],
+        ExBlockDef.Create("test", "brittle").Class("test-placethrows"),
+        Structure("cracked", "test-sideframe", "test:brittle")
+      ),
+      "test"
+    );
+
+    Assert.Equal(0, law.Blocks);
+    Assert.Equal(
+      ["test:brittle placed threw InvalidOperationException: placed"],
+      law.Findings.Select(f => f.Split(" (")[0])
     );
   }
 
@@ -2126,6 +2223,14 @@ public class BlockLawsTests {
           ? new[] { held.Clone() }
           : [],
       ];
+  }
+
+  private sealed class ThrowsWhenPlaced : Block {
+    public override void OnBlockPlaced(
+      IWorldAccessor world,
+      BlockPos blockPos,
+      ItemStack byItemStack = null!
+    ) => throw new InvalidOperationException("placed");
   }
 
   private class Shelf : BlockEntityContainer {
