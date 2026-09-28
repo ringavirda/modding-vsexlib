@@ -25,8 +25,8 @@ namespace ExpandedLib.Testing;
 /// </summary>
 public sealed partial class TestWorld {
   /// <summary>Loads one mod's real assets through the game's own asset manager and object loader and
-  /// registers the resulting <see cref="Block"/>/<see cref="Item"/> instances; vanilla survival and
-  /// creative content is not loaded.</summary>
+  /// registers the resulting <see cref="Block"/>/<see cref="Item"/> instances; of vanilla survival and
+  /// creative, only the survival world properties load, which a <c>loadFromProperties</c> reads.</summary>
   /// <remarks>The install's vanilla mod systems register their classes first, so a vanilla-only
   /// load logs nothing. exlib's driver then runs its <c>StartPre</c>, emptying every per-world
   /// registry (<see cref="Registries.ExWorldState"/>), and every exlib mod system its <c>Start</c>,
@@ -77,6 +77,14 @@ public sealed partial class TestWorld {
     // The base game domain only.
     var mgr = new AssetManager(assetsPath, EnumAppSide.Server);
     mgr.InitAndLoadBaseAssets(Log);
+    var survival = new PathOrigin("game", Path.Combine(assetsPath, "survival"));
+    foreach (
+      IAsset asset in survival.GetAssets(
+        AssetCategory.worldproperties,
+        shouldLoad: true
+      )
+    )
+      mgr.Add(asset.Location, asset);
     MirrorAssets(mgr, Path.Combine(modPath, "assets", modId), modId);
 
     // GamePaths.AssetsPath/Lang.Load are process-wide statics the object loader needs primed; safe

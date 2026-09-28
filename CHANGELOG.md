@@ -349,6 +349,10 @@ see the git history.
   `RegisterClasses` take item and collectible-behaviour classes; the api's `ObjectCache` is a real
   dictionary and the server world's `SearchItems` and `SearchBlocks` match wildcards over the
   registries.
+- **`TestWorld.LoadAssets`** loads the install's survival world properties before the mod's assets,
+  as the game does, so a variant group that reads them (`"loadFromProperties":
+  "abstract/horizontalorientation"`) registers every variant; it registered one block without the
+  group's variant.
 - **`TestPlayer`**: the entity's `RightHandItemSlot` answers the active slot.
 - **A wrench turns a structure from any of its cells.** Vanilla's wrench asks the clicked block for
   `IWrenchOrientable`, which a filler did not answer, so its principal's rotate help did nothing

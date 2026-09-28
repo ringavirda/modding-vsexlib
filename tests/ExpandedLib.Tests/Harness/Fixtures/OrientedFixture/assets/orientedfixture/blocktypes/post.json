@@ -1,0 +1,6 @@
+{
+  "code": "post",
+  "variantgroups": [
+    { "code": "side", "loadFromProperties": "abstract/horizontalorientation" }
+  ]
+}

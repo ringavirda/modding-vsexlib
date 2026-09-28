@@ -71,6 +71,34 @@ public class AssetLoadingTests
     }
   }
 
+  // Fails when the load leaves out the install's survival world properties: the post then registers
+  // once, as orientedfixture:post, with no side.
+  [Fact]
+  public void A_variant_group_loaded_from_vanilla_world_properties_expands()
+  {
+    using var world = new TestWorld();
+
+    world.LoadAssets(
+      Path.Combine(
+        RepoPaths.Root,
+        "tests",
+        "ExpandedLib.Tests",
+        "Harness",
+        "Fixtures",
+        "OrientedFixture"
+      )
+    );
+
+    foreach (string side in new[] { "north", "east", "south", "west" })
+    {
+      Block? block = world.World.GetBlock(
+        new AssetLocation($"orientedfixture:post-{side}")
+      );
+      Assert.NotNull(block);
+      Assert.Equal(side, block!.Variant["side"]);
+    }
+  }
+
   private static string BreakFixture =>
     Path.Combine(
       RepoPaths.Root,
