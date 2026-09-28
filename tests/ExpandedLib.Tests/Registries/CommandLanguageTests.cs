@@ -67,7 +67,8 @@ public class CommandLanguageTests : IDisposable {
       LanguageCode = Locale,
       Parsers =
       [
-        .. words.Select(w => {
+        .. words.Select(w =>
+        {
           var parser = Substitute.For<ICommandArgumentParser>();
           parser.GetValue().Returns(w);
           return parser;
@@ -251,8 +252,18 @@ public class CommandLanguageTests : IDisposable {
   // is handed over as a bare key the console would log as it stands.
   [Theory]
   [InlineData(null, null, ExConfigEditStatus.Ok, "exlib:command-config-values")]
-  [InlineData("Nope", null, ExConfigEditStatus.Ok, "exlib:command-config-novalue")]
-  [InlineData("Rate", null, ExConfigEditStatus.Ok, "exlib:command-config-current")]
+  [InlineData(
+    "Nope",
+    null,
+    ExConfigEditStatus.Ok,
+    "exlib:command-config-novalue"
+  )]
+  [InlineData(
+    "Rate",
+    null,
+    ExConfigEditStatus.Ok,
+    "exlib:command-config-current"
+  )]
   [InlineData("Rate", "2", ExConfigEditStatus.Ok, "exlib:command-config-set")]
   [InlineData(
     "Rate",

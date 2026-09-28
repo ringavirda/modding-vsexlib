@@ -53,7 +53,12 @@ public sealed class ConfigSubCommand : RegistrySubCommand<IExConfigAccess> {
           )
         );
       return TextCommandResult.Success(
-        Lang.GetL(languageCode, "exlib:command-config-current", canonical, value)
+        Lang.GetL(
+          languageCode,
+          "exlib:command-config-current",
+          canonical,
+          value
+        )
       );
     }
 
@@ -103,10 +108,7 @@ public sealed class ConfigSubCommand : RegistrySubCommand<IExConfigAccess> {
     };
   }
 
-  private static string ListValues(
-    IExConfigAccess config,
-    string languageCode
-  ) {
+  private static string ListValues(IExConfigAccess config, string languageCode) {
     var lines = config.ValueNames.Select(n =>
       config.TryGet(n, out var canonical, out var value)
         ? $"  {canonical} = {value}"
