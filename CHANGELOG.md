@@ -16,16 +16,21 @@ see the git history.
   carrying `blockEntityAttributes` and a reload, and does something with each named item that the
   block or the held item takes; a stack a block entity accepts, by a click or into its inventory,
   is still held after a reload and dropped by the break. `BlockLaws.Run` takes item definitions
-  beside block definitions for these laws' worlds.
+  beside block definitions for these laws' worlds. `RunFormed` asks the same of each cell of every
+  multiblock stood up formed, one structure per combination of its variant groups other than its
+  facing; a placement of the anchor or a filled cell that throws or logs is its finding, `Blocks`
+  counts structures (`BlockLaws.Law.Unit`), and `BlockLaws.Law.Structures` names each one. The
+  worlds load vanilla's ungraded ores, so a coke oven's hopper is offered the mined coals.
   `InteractionLaw` also names a right-click help line carrying both items and a `ShouldApply`, which
   the engine ignores on such a line.
 - **`NeighbourLaw` and `NetworkLaw`** (ExpandedLib.Testing, `Laws/`), run by `BlockLaws.Run` as
   `neighbour` and `network`: every block, stood on a solid block, meets a solid block set and
   cleared on each free face of its cells, each change announced through
   `TestWorld.NotifyNeighbours`, and throws nothing, logs nothing and keeps each cell's code and
-  entity tree; every pair of network members' connectors of one type, face to face, is walked
-  through `BlockNetworkModSystem.GetConnectedNeighbors` from both sides, and joins from both or
-  from neither.
+  entity tree, and a block without an entity places without a throw or a log; every pair of network
+  members' connectors of one type, face to face, is walked through
+  `BlockNetworkModSystem.GetConnectedNeighbors` from both sides, and joins from both or from
+  neither.
 - **`InfoLaw` and `ReloadLaw`** (ExpandedLib.Testing, `Laws/`), run by `BlockLaws.Run` as `info`
   and `reload`: every block entity's `GetBlockInfo`, read fresh, after 5 s of its own ticks and
   after `TestWorld.Reload`, throws nothing and logs nothing; the reload keeps the entity's class,

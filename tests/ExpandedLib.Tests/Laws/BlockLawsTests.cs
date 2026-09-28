@@ -747,6 +747,38 @@ public class BlockLawsTests {
     Assert.Equal(4 + 5, law.Cases);
   }
 
+  // Fails when the neighbour law leaves the placement of a block without an entity unjudged, which
+  // no other law judges, or judges one with an entity, which the info law names.
+  [Fact]
+  [PlantedDefect(typeof(NeighbourLaw), nameof(NeighbourLaw.Run))]
+  public void A_placement_that_throws_is_named_by_the_neighbour_law_when_no_entity_is_raised() {
+    BlockLaws.Result result = BlockLaws.Run(
+      "test",
+      [
+        ExBlockDef.Create("test", "brittle").Class("test-placethrows"),
+        Entity("brittlebox", "test-plain").Class("test-placethrows"),
+      ],
+      Exlib,
+      Prepare
+    );
+
+    Assert.Equal(
+      [
+        (
+          "info",
+          "test:brittlebox placed threw InvalidOperationException: placed"
+        ),
+        (
+          "neighbour",
+          "test:brittle placed threw InvalidOperationException: placed"
+        ),
+      ],
+      result.Laws.SelectMany(l =>
+        l.Findings.Select(f => (l.Name, f.Split(" (")[0]))
+      )
+    );
+  }
+
   // Fails when the law stands the block's support only after placing it.
   [Fact]
   public void A_block_that_reads_its_support_is_judged_from_where_it_stands() {

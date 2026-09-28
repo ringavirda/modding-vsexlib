@@ -19,8 +19,9 @@ public static class NeighbourLaw {
   /// block, runs <see cref="TestWorld.NotifyNeighbours"/>, clears it and runs it again.</summary>
   /// <remarks>The block's cells are its own and its fillers'; a free face is one whose neighbour
   /// is air. A finding is a set or clear that throws or logs, a cell holding another code after,
-  /// an entity gone, and a tree changed by <c>ExTree.Differences</c>. A variant whose placement
-  /// throws or logs is <see cref="InfoLaw"/>'s finding and is skipped; a variant is judged no
+  /// an entity gone, a tree changed by <c>ExTree.Differences</c>, and the placement of a variant
+  /// without an entity that throws or logs. A variant with an entity whose placement throws or logs
+  /// is <see cref="InfoLaw"/>'s finding; either is skipped after it, and a variant is judged no
   /// further after its first finding. A block whose footprint holds the cell below its own stands
   /// on air.</remarks>
   /// <param name="world">A world holding every variant of the blocks judged
@@ -47,7 +48,7 @@ public static class NeighbourLaw {
         )
           world.Accessor.SetBlock(solid.BlockId, site.DownCopy());
         var step = new BlockLaws.EntityCase(world, block, site, findings);
-        if (!step.Place(judged: false))
+        if (!step.Place(judged: block.EntityClass == null))
           continue;
         BlockPos[] cells =
         [
