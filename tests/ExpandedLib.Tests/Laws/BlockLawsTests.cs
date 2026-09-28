@@ -907,8 +907,11 @@ public class BlockLawsTests {
     Assert.Equal(4, law.Cases);
   }
 
-  // Fails when IsValidNetworkNeighbour asks only the walk's source whether it accepts the other.
+  // Fails when IsValidNetworkNeighbour asks only the walk's source whether it accepts the other, or
+  // the law counts a pair that does not join as a case: only the accepters' and the refusers' own
+  // pairs join, four faces each.
   [Fact]
+  [PlantedDefect(typeof(NetworkLaw), nameof(NetworkLaw.Run))]
   public void A_refusal_from_one_side_keeps_the_pair_apart_from_both() {
     BlockLaws.Law law = NetworkLaw.Run(
       Stand(Node("accepter", "test-accepter"), Node("refuser", "test-refuser")),
@@ -917,7 +920,7 @@ public class BlockLawsTests {
 
     Assert.Empty(law.Findings);
     Assert.Equal(2, law.Blocks);
-    Assert.Equal(4 * 2 * 2, law.Cases);
+    Assert.Equal(4 * 2, law.Cases);
   }
 
   #endregion

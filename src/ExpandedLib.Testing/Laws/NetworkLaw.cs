@@ -23,13 +23,14 @@ public static class NetworkLaw {
   /// then runs <see cref="Block.OnBlockPlaced"/>) and its cells resolved per network. Per network
   /// type, face and kind (the blocktype with its unplaced groups) the first connector stands for
   /// the rest. A pair whose second structure would overlap the first is skipped. A finding is a
-  /// pair joined from one side only, and a placement or walk that throws.</remarks>
+  /// pair joined from one side only, and a placement or walk that throws. A pair that joins from
+  /// both sides is a case, so a network whose members stop joining shows as fewer cases.</remarks>
   /// <param name="world">A world holding every variant of the blocks judged and the network types
   /// they name (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose blocks are judged; members of other domains in the
   /// world are met as partners, never judged.</param>
-  /// <returns>The law's blocktypes, pairs walked and findings, each keyed by the variant code of
-  /// the pair's first member.</returns>
+  /// <returns>The law's blocktypes, pairs joined from both sides and findings, each keyed by the
+  /// variant code of the pair's first member.</returns>
   public static BlockLaws.Law Run(TestWorld world, string domain) {
     var findings = new List<string>();
     var sites = new BlockLaws.Sites();
@@ -122,8 +123,9 @@ public static class NetworkLaw {
   }
 
   /// <summary>Stands <paramref name="a"/> at <paramref name="at"/> and <paramref name="b"/> so
-  /// its connector faces <paramref name="a"/>'s, and walks from both; false when the pair was
-  /// skipped.</summary>
+  /// its connector faces <paramref name="a"/>'s, and walks from both.</summary>
+  /// <returns>Whether each walk reaches the other; false for a pair skipped, one whose placement
+  /// threw, and one joined from one side only.</returns>
   private static bool Walk(
     TestWorld world,
     Connector a,
@@ -149,7 +151,7 @@ public static class NetworkLaw {
       !Stand(world, a.Variant, at, $"paired {pair}", findings)
       || !Stand(world, b.Variant, other, $"paired {pair}", findings)
     )
-      return true;
+      return false;
     try {
       bool there = Joins(world, from, to, a.Network),
         back = Joins(world, to, from, a.Network);
@@ -159,12 +161,13 @@ public static class NetworkLaw {
             ? $"{a.Variant.Code} {pair}: its walk reaches the other, the other's does not reach it"
             : $"{a.Variant.Code} {pair}: the other's walk reaches it, its own does not reach the other"
         );
+      return there && back;
     } catch (Exception e) {
       findings.Add(
         $"{a.Variant.Code} {pair}: the walk threw {BlockLaws.Describe(e)}"
       );
+      return false;
     }
-    return true;
   }
 
   private static bool Joins(

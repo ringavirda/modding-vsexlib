@@ -26,7 +26,7 @@ public static class BlockLaws {
   /// blocktypes (codes less their variant parts, with their variant group names), or for the formed
   /// laws structures, one per variant <c>MultiblockLaw.OneFacing</c> picks.</param>
   /// <param name="Cases">Cases it ran: placements, breaks, structures stood up, block entities
-  /// read or reloaded, faces a neighbour came and went on, network pairs walked,
+  /// read or reloaded, faces a neighbour came and went on, network pairs joined from both sides,
   /// clicks made, on a block or a formed structure, or accepted stacks followed.</param>
   /// <param name="Findings">One line per finding, each starting with the variant code it is
   /// about and a space.</param>
