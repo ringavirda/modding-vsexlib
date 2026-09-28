@@ -10,9 +10,9 @@ namespace ExpandedLib.Checks;
 /// <summary>
 /// Checks that every registered block code resolves to a name in the <c>en</c> locale, matched
 /// against <see cref="ICheckSource.BlockCodes"/>. An unresolved key renders as the raw key in game.
-/// A lang key carrying <c>*</c> matches as the game's lang matches it: one trailing <c>*</c> as a
-/// prefix, any other as a wildcard over the whole key.
 /// </summary>
+/// <remarks>A lang key carrying <c>*</c> matches as the game's lang matches it: one trailing
+/// <c>*</c> as a prefix, any other as a wildcard over the whole key.</remarks>
 public static class LangCoverageCheck {
   private const string EnglishLocale = "en";
 
