@@ -29,8 +29,8 @@ public static class InteractionLaw {
   /// carrying its tree, less its position. A finding is a throw or log, an entity off its cell after
   /// the placement, a click or the first reload, and a named click both refuse or that changes
   /// nothing, or a right-click help line carrying both items and a <c>ShouldApply</c>, which the
-  /// engine ignores on such a line; a variant stops at its first. <see cref="BlockBehaviorUnplaceable"/> blocks are
-  /// skipped.</remarks>
+  /// engine ignores on such a line; a variant stops at its first.
+  /// <see cref="BlockBehaviorUnplaceable"/> blocks are skipped.</remarks>
   /// <param name="world">A world holding the blocks judged and the items their help names
   /// (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose blocks are judged.</param>
