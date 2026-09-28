@@ -8,10 +8,9 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Checks that every lang key a mod's own source hands to <c>Lang.Get</c> (and its <c>IfExists</c>,
-/// <c>Matching</c> and per-language <c>L</c> forms), <c>SendLocalisedMessage</c>,
-/// <c>ActionLangCode</c> or <c>SendIngameError</c> exists in every locale it ships. Only literal
-/// keys are checked; a key built by concatenation is skipped.
+/// Checks that every literal lang key a mod's source hands to <c>Lang.Get</c>/<c>GetL</c>/
+/// <c>GetMatching</c>/<c>GetIfExists</c>, <c>SendLocalisedMessage</c>, <c>ActionLangCode</c> or
+/// <c>SendIngameError</c> exists in every locale it ships; a concatenated key is skipped.
 /// </summary>
 public static class LangCallSites {
   #region Call-site scanning
