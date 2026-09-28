@@ -87,13 +87,12 @@ public static class InteractionLaw {
   /// <see cref="MultiblockLaw.Run"/> completes it, and clicks each of its cells holding a block
   /// outside <c>game</c> as <see cref="Run"/> clicks a block's cells, on a fresh structure
   /// each.</summary>
-  /// <remarks>A finding is a placement of the anchor or of a filled cell, or a click, that throws
-  /// or logs, the anchor's entity off its cell after a click, a named click both refuse or that
-  /// changes nothing, and a help line carrying both items and a <c>ShouldApply</c>; a cell is judged
-  /// no further after its first. A structure whose placements are clean and that still does not form
-  /// (no multiblock entity, a cell no registered block satisfies, incomplete) is left to the
-  /// multiblock law and not counted. A click's findings are keyed by the anchor's code and name the
-  /// block clicked; a placement's, by the block placed.</remarks>
+  /// <remarks>A finding is a placement of the anchor or a filled cell, or a click, that throws or
+  /// logs, the anchor's entity off its cell after a click, a named click both refuse or that
+  /// changes nothing, and a help line carrying both items and a <c>ShouldApply</c>; a cell is
+  /// judged no further after its first. A structure that places cleanly and does not form is left
+  /// to the multiblock law, uncounted. A click's findings are keyed by the anchor's code and name
+  /// the block clicked; a placement's, by the block placed.</remarks>
   /// <param name="world">A world holding the blocks judged, the blocks their layouts name and the
   /// items their help names (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose structures are formed.</param>

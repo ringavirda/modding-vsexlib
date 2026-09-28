@@ -138,12 +138,11 @@ public static class DefinitionGoldens {
       );
   }
 
-  /// <summary>Completeness of the golden set: <c>missing</c> is defs with no golden file under
-  /// <paramref name="goldenRoot"/> nor, for <see cref="OlderSeries"/>, under
-  /// <see cref="SeriesRoot"/>; <c>orphans</c> is golden files no def claims, there and under
-  /// <see cref="SeriesRoot"/>, bar a shared one a marker (<see cref="AbsentSuffix"/>) excuses on
-  /// that series, and every stale marker: one whose def that series has, or whose shared golden
-  /// is gone.</summary>
+  /// <summary>Completeness of the golden set: <c>missing</c> is defs with no golden under
+  /// <paramref name="goldenRoot"/> nor, on <see cref="OlderSeries"/>, <see cref="SeriesRoot"/>;
+  /// <c>orphans</c> is golden files no def claims in either, bar a shared one its marker
+  /// (<see cref="AbsentSuffix"/>) excuses, and every stale marker: one whose def the series has, or
+  /// whose shared golden is gone.</summary>
   /// <returns>Each list sorted; an orphan under <paramref name="goldenRoot"/> is named relative to
   /// it, one under <see cref="SeriesRoot"/> relative to that folder's parent, so it starts with
   /// the folder's name.</returns>
@@ -251,17 +250,13 @@ public static class DefinitionGoldens {
   /// output: every golden when <c>EXLIB_WRITE_GOLDENS</c> is <c>1</c>, else those whose
   /// <see cref="RelativePath"/> contains one of its comma-separated fragments. Opt-in: call only
   /// when <see cref="WriteRequested"/>.</summary>
-  /// <remarks>On <see cref="OlderSeries"/> the shared goldens are left as they are: a selected def
-  /// whose output differs from its shared golden, or has none, is written under
-  /// <see cref="SeriesRoot"/>, and a series golden of a def that no longer differs is deleted. A
-  /// selected shared golden whose def the series lacks gets its marker
-  /// (<see cref="AbsentSuffix"/>), and a selected stale marker is deleted. A series write reads the
-  /// shared goldens, so it runs after the current series' write, never beside it.
-  /// A fragment whose first <c>/</c>-separated segment is another domain and whose second is a
-  /// game asset category (a key of <see cref="AssetCategory.categories"/>, such as
-  /// <c>blocktypes</c>, <c>itemtypes</c> or <c>recipes</c>) belongs to another assembly's goldens,
-  /// is skipped here and never throws. A fragment naming a domain no suite has, with such a
-  /// category, is skipped the same way.</remarks>
+  /// <remarks>On <see cref="OlderSeries"/>, run after the current series' write, the shared goldens
+  /// stay: a selected def differing from its shared golden, or without one, is written under
+  /// <see cref="SeriesRoot"/>, a series golden no longer differing is deleted, a selected shared
+  /// golden the series lacks gets its marker and a selected stale marker is deleted. A fragment
+  /// whose first <c>/</c>-separated segment is another domain, or a domain no suite has, and whose
+  /// second is a game asset category (a key of <see cref="AssetCategory.categories"/>) is left to
+  /// another assembly's goldens and skipped.</remarks>
   /// <exception cref="InvalidOperationException">Any other fragment matches none of
   /// <paramref name="domain"/>'s goldens (on <see cref="OlderSeries"/>, nor a shared golden the
   /// series lacks); the message names the value and the fragment and says a fragment starts with
