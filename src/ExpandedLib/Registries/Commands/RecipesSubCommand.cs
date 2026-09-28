@@ -28,10 +28,15 @@ public sealed class RecipesSubCommand : RegistrySubCommand<RecipeProfile> {
   protected override string Describe(RecipeProfile profile) =>
     $"{profile.Code}: {profile.GetLevel()}";
 
-  protected override TextCommandResult Set(RecipeProfile profile, string[] args) {
+  protected override TextCommandResult Set(
+    RecipeProfile profile,
+    string[] args,
+    string languageCode
+  ) {
     if (args.Length == 0)
       return TextCommandResult.Success(
-        Lang.Get(
+        Lang.GetL(
+          languageCode,
           "exlib:command-recipes-status",
           profile.Code,
           profile.GetLevel()
@@ -41,7 +46,8 @@ public sealed class RecipesSubCommand : RegistrySubCommand<RecipeProfile> {
     string level = args[0].ToLowerInvariant();
     if (!profile.Levels.Contains(level))
       return TextCommandResult.Error(
-        Lang.Get(
+        Lang.GetL(
+          languageCode,
           "exlib:command-recipes-invalid",
           level,
           string.Join(", ", profile.Levels)
@@ -50,12 +56,17 @@ public sealed class RecipesSubCommand : RegistrySubCommand<RecipeProfile> {
 
     if (level == profile.GetLevel())
       return TextCommandResult.Success(
-        Lang.Get("exlib:command-recipes-retain", profile.Code, level)
+        Lang.GetL(
+          languageCode,
+          "exlib:command-recipes-retain",
+          profile.Code,
+          level
+        )
       );
 
     profile.SetLevel(level);
     return TextCommandResult.Success(
-      Lang.Get("exlib:command-recipes-set", profile.Code, level)
+      Lang.GetL(languageCode, "exlib:command-recipes-set", profile.Code, level)
     );
   }
 }

@@ -30,20 +30,31 @@ public sealed class ConfigSubCommand : RegistrySubCommand<IExConfigAccess> {
   protected override string Describe(IExConfigAccess config) =>
     $"{config.ModId} ({config.FileName})";
 
+  // Keep '<' and '>' out of the result strings; both break the client's rendering.
   protected override TextCommandResult Set(
     IExConfigAccess config,
-    string[] args
+    string[] args,
+    string languageCode
   ) {
     if (args.Length == 0)
-      return TextCommandResult.Success(ListValues(config));
+      return TextCommandResult.Success(ListValues(config, languageCode));
 
     string name = args[0];
 
     // Read: print the current value.
     if (args.Length < 2) {
       if (!config.TryGet(name, out var canonical, out var value))
-        return Err("exlib:command-config-novalue", name, config.ModId);
-      return Ok("exlib:command-config-current", canonical, value);
+        return TextCommandResult.Error(
+          Lang.GetL(
+            languageCode,
+            "exlib:command-config-novalue",
+            name,
+            config.ModId
+          )
+        );
+      return TextCommandResult.Success(
+        Lang.GetL(languageCode, "exlib:command-config-current", canonical, value)
+      );
     }
 
     // Write: parse, validate, set and persist (applied immediately).
@@ -55,50 +66,53 @@ public sealed class ConfigSubCommand : RegistrySubCommand<IExConfigAccess> {
         ?.BroadcastSection(config);
 
     return result.Status switch {
-      ExConfigEditStatus.Ok => Ok(
-        "exlib:command-config-set",
-        result.Name,
-        result.OldValue,
-        result.NewValue
+      ExConfigEditStatus.Ok => TextCommandResult.Success(
+        Lang.GetL(
+          languageCode,
+          "exlib:command-config-set",
+          result.Name,
+          result.OldValue,
+          result.NewValue
+        )
       ),
-      ExConfigEditStatus.ParseFailed => Err(
-        "exlib:command-config-parsefail",
-        raw,
-        result.Name,
-        result.Expected
+      ExConfigEditStatus.ParseFailed => TextCommandResult.Error(
+        Lang.GetL(
+          languageCode,
+          "exlib:command-config-parsefail",
+          raw,
+          result.Name,
+          result.Expected
+        )
       ),
-      ExConfigEditStatus.OutOfRange => Err(
-        "exlib:command-config-range",
-        result.Name,
-        result.Range
+      ExConfigEditStatus.OutOfRange => TextCommandResult.Error(
+        Lang.GetL(
+          languageCode,
+          "exlib:command-config-range",
+          result.Name,
+          result.Range
+        )
       ),
-      _ => Err("exlib:command-config-novalue", name, config.ModId),
+      _ => TextCommandResult.Error(
+        Lang.GetL(
+          languageCode,
+          "exlib:command-config-novalue",
+          name,
+          config.ModId
+        )
+      ),
     };
   }
 
-  // StatusMessage/MessageParams resolve once via Lang.GetL in the caller's language.
-  // Keep ':' and '<'/'>' out of the result strings; both break the client's rendering.
-  private static TextCommandResult Ok(string key, params object?[] args) =>
-    new() {
-      Status = EnumCommandStatus.Success,
-      StatusMessage = key,
-      MessageParams = args,
-    };
-
-  private static TextCommandResult Err(string key, params object?[] args) =>
-    new() {
-      Status = EnumCommandStatus.Error,
-      StatusMessage = key,
-      MessageParams = args,
-    };
-
-  private static string ListValues(IExConfigAccess config) {
+  private static string ListValues(
+    IExConfigAccess config,
+    string languageCode
+  ) {
     var lines = config.ValueNames.Select(n =>
       config.TryGet(n, out var canonical, out var value)
         ? $"  {canonical} = {value}"
         : n
     );
-    return Lang.Get("exlib:command-config-values", config.ModId)
+    return Lang.GetL(languageCode, "exlib:command-config-values", config.ModId)
       + "\n"
       + string.Join("\n", lines);
   }

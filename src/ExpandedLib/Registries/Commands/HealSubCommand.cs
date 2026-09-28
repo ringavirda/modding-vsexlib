@@ -21,13 +21,21 @@ public sealed class HealSubCommand : IExSubCommand {
     parent
       .BeginSubCommand("heal")
       .WithDescription(Lang.Get("exlib:command-heal-desc"))
-      .HandleWith(_ => Dispatch(healer))
+      .HandleWith(args => Dispatch(healer, args.LanguageCode))
       .EndSubCommand();
   }
 
-  /// <summary>The command's logic with fluent arg parsing stripped, callable directly by a test.</summary>
-  internal static TextCommandResult Dispatch(BlockEntityHealModSystem healer) =>
+  /// <summary>The command's logic with fluent arg parsing stripped, callable directly by a test;
+  /// the reply is worded in <paramref name="languageCode"/>.</summary>
+  internal static TextCommandResult Dispatch(
+    BlockEntityHealModSystem healer,
+    string languageCode
+  ) =>
     TextCommandResult.Success(
-      Lang.Get("exlib:command-heal-result", healer.HealLoadedChunks())
+      Lang.GetL(
+        languageCode,
+        "exlib:command-heal-result",
+        healer.HealLoadedChunks()
+      )
     );
 }

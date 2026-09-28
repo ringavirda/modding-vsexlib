@@ -23,7 +23,9 @@ public class WidgetSubCommandTests {
     command.Register(new TestWorld().Api, null!, parent);
 
     Assert.NotNull(handler);
-    TextCommandResult result = handler!(null!);
+    TextCommandResult result = handler!(
+      new TextCommandCallingArgs { LanguageCode = "en" }
+    );
 
     Assert.Equal(EnumCommandStatus.Success, result.Status);
     Assert.Equal("widgetdomain:command-widget-result", result.StatusMessage);

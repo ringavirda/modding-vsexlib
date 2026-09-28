@@ -15,19 +15,28 @@ namespace ExpandedLib.Registries;
 public sealed class ExmodCommand : IExCommand {
   public void Register(ICoreAPI api, Mod mod) {
     bool isClient = api.Side == EnumAppSide.Client;
-    string descKey = isClient
-      ? "command-exmod-desc-client"
-      : "command-exmod-desc-server";
-    string helpKey = isClient
-      ? "command-exmod-help-client"
-      : "command-exmod-help-server";
 
     // ChatCommands is per-side: client hosts ".exmod", server hosts "/exmod".
     string privilege = isClient ? Privilege.chat : Privilege.controlserver;
 
     api.ChatCommands.GetOrCreate("exmod")
       .RequiresPrivilege(privilege)
-      .WithDescription(Lang.Get($"exlib:{descKey}"))
-      .HandleWith(_ => TextCommandResult.Success(Lang.Get($"exlib:{helpKey}")));
+      .WithDescription(
+        Lang.Get(
+          isClient
+            ? "exlib:command-exmod-desc-client"
+            : "exlib:command-exmod-desc-server"
+        )
+      )
+      .HandleWith(args =>
+        TextCommandResult.Success(
+          Lang.GetL(
+            args.LanguageCode,
+            isClient
+              ? "exlib:command-exmod-help-client"
+              : "exlib:command-exmod-help-server"
+          )
+        )
+      );
   }
 }

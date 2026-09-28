@@ -45,7 +45,15 @@ public abstract class RegistrySubCommand<T> : IExSubCommand
   protected abstract string Describe(T entry);
 
   /// <summary>Handles a resolved <paramref name="entry"/> against the words typed following its code: empty for "show this entry", one or more to set something.</summary>
-  protected abstract TextCommandResult Set(T entry, string[] args);
+  /// <param name="entry">The entry the typed code resolved to.</param>
+  /// <param name="args">The words after the code, split on spaces; empty for the bare code.</param>
+  /// <param name="languageCode">The caller's language (the server's own for the console), for
+  /// <c>Lang.GetL</c>: the reply is formatted here and reaches the caller as written.</param>
+  protected abstract TextCommandResult Set(
+    T entry,
+    string[] args,
+    string languageCode
+  );
 
   /// <summary>Lang key for "no code was given and nothing is registered".</summary>
   protected abstract string NoneRegisteredKey { get; }
@@ -71,34 +79,42 @@ public abstract class RegistrySubCommand<T> : IExSubCommand
   }
 
   private TextCommandResult OnCommand(TextCommandCallingArgs args) =>
-    Dispatch(args[0] as string, args[1] as string);
+    Dispatch(args[0] as string, args[1] as string, args.LanguageCode);
 
-  /// <summary>The command's logic with fluent arg parsing stripped: <c>code</c> is the first word (null for the bare command), <c>rest</c> the remaining text.</summary>
-  internal TextCommandResult Dispatch(string? code, string? rest) {
+  /// <summary>The command's logic with fluent arg parsing stripped: <c>code</c> is the first word (null for the bare command), <c>rest</c> the remaining text; the reply is worded in <c>languageCode</c>.</summary>
+  internal TextCommandResult Dispatch(
+    string? code,
+    string? rest,
+    string languageCode
+  ) {
     if (code is not string c)
-      return TextCommandResult.Success(ListEntries());
+      return TextCommandResult.Success(ListEntries(languageCode));
 
     T? entry = _resolve(c);
     if (entry == null)
-      return TextCommandResult.Error(Lang.Get(UnknownCodeKey, c, KnownCodes()));
+      return TextCommandResult.Error(
+        Lang.GetL(languageCode, UnknownCodeKey, c, KnownCodes())
+      );
 
     string trimmed = rest?.Trim() ?? "";
     string[] tail =
       trimmed.Length == 0
         ? []
         : trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-    return Set(entry, tail);
+    return Set(entry, tail, languageCode);
   }
 
-  private string ListEntries() {
+  private string ListEntries(string languageCode) {
     string[] codes = _codes().OrderBy(c => c).ToArray();
     if (codes.Length == 0)
-      return Lang.Get(NoneRegisteredKey);
+      return Lang.GetL(languageCode, NoneRegisteredKey);
 
     var lines = codes.Select(c =>
       _resolve(c) is { } entry ? $"  {Describe(entry)}" : c
     );
-    return Lang.Get(ListHeaderKey) + "\n" + string.Join("\n", lines);
+    return Lang.GetL(languageCode, ListHeaderKey)
+      + "\n"
+      + string.Join("\n", lines);
   }
 
   private string KnownCodes() => string.Join(", ", _codes().OrderBy(c => c));

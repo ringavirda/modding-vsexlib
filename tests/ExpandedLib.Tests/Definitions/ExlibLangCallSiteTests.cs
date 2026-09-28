@@ -76,4 +76,19 @@ public class ExlibLangCallSiteTests {
       LangCallSites.Keys("plantedcalls", files.Path("src"))
     );
   }
+
+  // Fails when the scan skips a key a registry sub-command returns from a lang-key property.
+  [Fact]
+  public void A_key_a_property_returns_is_scanned() {
+    using var files = new PlantedFiles();
+    files.Write(
+      "src/Planted.cs",
+      "protected override string ListHeaderKey => \"plantedcalls:greeting\";"
+    );
+
+    Assert.Equal(
+      [("Planted.cs", "plantedcalls:greeting")],
+      LangCallSites.Keys("plantedcalls", files.Path("src"))
+    );
+  }
 }

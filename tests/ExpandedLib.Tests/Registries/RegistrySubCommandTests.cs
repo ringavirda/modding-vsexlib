@@ -34,7 +34,11 @@ public class RegistrySubCommandTests {
       $"{entry.Code}={entry.Value}";
 
     // Mirrors ConfigSubCommand's two-level shape: field+value writes, field alone errors, no words shows the current one.
-    protected override TextCommandResult Set(Widget entry, string[] args) {
+    protected override TextCommandResult Set(
+      Widget entry,
+      string[] args,
+      string languageCode
+    ) {
       if (args.Length == 0)
         return TextCommandResult.Success($"current: {entry.Value}");
       if (args.Length == 1)
@@ -59,7 +63,7 @@ public class RegistrySubCommandTests {
       new Widget { Code = "b", Value = "2" }
     );
 
-    TextCommandResult result = cmd.Dispatch(null, null);
+    TextCommandResult result = cmd.Dispatch(null, null, "en");
 
     Assert.Equal(EnumCommandStatus.Success, result.Status);
     Assert.Contains("a=1", result.StatusMessage);
@@ -70,7 +74,7 @@ public class RegistrySubCommandTests {
   public void A_code_with_no_further_words_calls_Set_with_no_args() {
     var cmd = Command(new Widget { Code = "a", Value = "1" });
 
-    TextCommandResult result = cmd.Dispatch("a", null);
+    TextCommandResult result = cmd.Dispatch("a", null, "en");
 
     Assert.Equal(EnumCommandStatus.Success, result.Status);
     Assert.Equal("current: 1", result.StatusMessage);
@@ -81,7 +85,7 @@ public class RegistrySubCommandTests {
     var widget = new Widget { Code = "a", Value = "1" };
     var cmd = Command(widget);
 
-    TextCommandResult result = cmd.Dispatch("a", "field 2");
+    TextCommandResult result = cmd.Dispatch("a", "field 2", "en");
 
     Assert.Equal(EnumCommandStatus.Success, result.Status);
     Assert.Equal("2", widget.Value);
@@ -92,7 +96,7 @@ public class RegistrySubCommandTests {
   public void An_unknown_code_errors_without_calling_Set() {
     var cmd = Command(new Widget { Code = "a", Value = "1" });
 
-    TextCommandResult result = cmd.Dispatch("nope", "2");
+    TextCommandResult result = cmd.Dispatch("nope", "2", "en");
 
     Assert.Equal(EnumCommandStatus.Error, result.Status);
   }
@@ -102,7 +106,7 @@ public class RegistrySubCommandTests {
     // The base only decides "show" versus "hand these words to Set"; Set decides how many it needs.
     var cmd = Command(new Widget { Code = "a", Value = "1" });
 
-    TextCommandResult result = cmd.Dispatch("a", "field");
+    TextCommandResult result = cmd.Dispatch("a", "field", "en");
 
     Assert.Equal(EnumCommandStatus.Error, result.Status);
     Assert.Equal("missing a value for 'field'", result.StatusMessage);
@@ -112,7 +116,7 @@ public class RegistrySubCommandTests {
   public void A_bare_code_with_only_whitespace_after_it_is_treated_as_show() {
     var cmd = Command(new Widget { Code = "a", Value = "1" });
 
-    TextCommandResult result = cmd.Dispatch("a", "   ");
+    TextCommandResult result = cmd.Dispatch("a", "   ", "en");
 
     Assert.Equal(EnumCommandStatus.Success, result.Status);
     Assert.Equal("current: 1", result.StatusMessage);

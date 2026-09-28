@@ -311,6 +311,10 @@ see the git history.
 - `WikiParity.Check` (ExpandedLib.Testing) reports a page from which no symbol resolved against the
   assembly, since nothing on it was checked; its new `symbolFree` parameter names pages that name no
   API on purpose.
+- **`RegistrySubCommand<T>.Set` takes the caller's language** as a third parameter,
+  `languageCode`, for `Lang.GetL`.
+- `LangCallSites` (ExpandedLib.Testing) also reads the key a `...Key =>` property returns, such as a
+  registry sub-command's `ListHeaderKey`.
 
 ### Removed
 
@@ -318,6 +322,9 @@ see the git history.
 
 ### Fixed
 
+- **`/exmod` replies reach each caller in their own language**: the root's help, `heal`, `verify`,
+  `recipes` and `config`, the server console in the server's. `config` no longer prints its bare
+  lang key on the server console.
 - **`TestWorld`**: the accessor's `SpawnBlockEntity`, which a block's `OnBlockPlaced` calls, runs the
   spawned entity's `OnBlockPlaced` with the placing stack, as the engine's does; `Register(Block)`
   gives a block without sounds empty ones, as the engine's registration does, so vanilla code

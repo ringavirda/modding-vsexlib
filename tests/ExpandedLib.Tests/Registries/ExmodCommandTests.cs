@@ -166,7 +166,8 @@ public class ExmodCommandTests {
 
     TextCommandResult result = VerifySubCommand.Dispatch(
       world.Api,
-      "nosuchmod"
+      "nosuchmod",
+      "en"
     );
 
     Assert.Equal(EnumCommandStatus.Error, result.Status);
@@ -178,7 +179,11 @@ public class ExmodCommandTests {
     var world = new TestWorld();
     world.Mods.Add("stub", "1.0.0");
 
-    TextCommandResult result = VerifySubCommand.Dispatch(world.Api, "stub");
+    TextCommandResult result = VerifySubCommand.Dispatch(
+      world.Api,
+      "stub",
+      "en"
+    );
 
     Assert.Equal(EnumCommandStatus.Success, result.Status);
     Assert.Contains("command-verify-summary", result.StatusMessage);
@@ -194,7 +199,7 @@ public class ExmodCommandTests {
     var healer = new BlockEntityHealModSystem();
     ReflectionHelpers.SetField(healer, "_sapi", world.Api);
 
-    TextCommandResult result = HealSubCommand.Dispatch(healer);
+    TextCommandResult result = HealSubCommand.Dispatch(healer, "en");
 
     // A bare world has no orphaned block entities to heal.
     Assert.Equal(EnumCommandStatus.Success, result.Status);

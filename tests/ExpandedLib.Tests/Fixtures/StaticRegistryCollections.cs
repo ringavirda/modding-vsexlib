@@ -20,3 +20,8 @@ public class ExCheckRegistryCollection { }
 
 [CollectionDefinition("WorldState", DisableParallelization = true)]
 public class WorldStateCollection { }
+
+[CollectionDefinition(LangCollection.Name, DisableParallelization = true)]
+public class LangCollection {
+  public const string Name = "Lang";
+}

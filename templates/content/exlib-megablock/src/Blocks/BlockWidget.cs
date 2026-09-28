@@ -68,10 +68,9 @@ public class BlockWidget
       is BlockEntityWidget widget
     )
       widget.RegisterClick();
-    (byPlayer as IServerPlayer)?.SendMessage(
+    (byPlayer as IServerPlayer)?.SendLocalisedMessage(
       GlobalConstants.GeneralChatGroup,
-      Lang.Get("widgetdomain:widget-clicked"),
-      EnumChatType.Notification
+      "widgetdomain:widget-clicked"
     );
     return true;
   }

@@ -21,12 +21,17 @@ public sealed class VerifySubCommand : IExSubCommand {
       .BeginSubCommand("verify")
       .WithDescription(Lang.Get("exlib:command-verify-desc"))
       .WithArgs(api.ChatCommands.Parsers.OptionalWord("domain"))
-      .HandleWith(args => Dispatch(api, args[0] as string))
+      .HandleWith(args => Dispatch(api, args[0] as string, args.LanguageCode))
       .EndSubCommand();
   }
 
-  /// <summary>The command's logic with fluent arg parsing stripped, callable directly by a test.</summary>
-  internal static TextCommandResult Dispatch(ICoreAPI api, string? domain) {
+  /// <summary>The command's logic with fluent arg parsing stripped, callable directly by a test;
+  /// the reply is worded in <paramref name="languageCode"/>.</summary>
+  internal static TextCommandResult Dispatch(
+    ICoreAPI api,
+    string? domain,
+    string languageCode
+  ) {
     domain = domain?.ToLowerInvariant();
 
     if (domain != null) {
@@ -36,7 +41,8 @@ public sealed class VerifySubCommand : IExSubCommand {
       ];
       if (!loaded.Contains(domain))
         return TextCommandResult.Error(
-          Lang.Get(
+          Lang.GetL(
+            languageCode,
             "exlib:command-verify-unknown",
             domain,
             string.Join(", ", loaded)
@@ -50,15 +56,31 @@ public sealed class VerifySubCommand : IExSubCommand {
 
     // Logged in full regardless of what the chat window can show.
     ExlibChecks.Log(api.Logger, results);
+    return Report(results, languageCode);
+  }
 
+  /// <summary>The chat reply over <paramref name="results"/>: a summary line, the first ten errors
+  /// and a count of the rest, worded in <paramref name="languageCode"/>. An error when any check
+  /// found one.</summary>
+  internal static TextCommandResult Report(
+    IReadOnlyList<CheckResult> results,
+    string languageCode
+  ) {
     List<string> errors = [.. results.SelectMany(r => r.Errors)];
     var lines = new List<string>
     {
-      Lang.Get("exlib:command-verify-summary", results.Count, errors.Count),
+      Lang.GetL(
+        languageCode,
+        "exlib:command-verify-summary",
+        results.Count,
+        errors.Count
+      ),
     };
     lines.AddRange(errors.Take(10));
     if (errors.Count > 10)
-      lines.Add(Lang.Get("exlib:command-verify-more", errors.Count - 10));
+      lines.Add(
+        Lang.GetL(languageCode, "exlib:command-verify-more", errors.Count - 10)
+      );
 
     return errors.Count == 0
       ? TextCommandResult.Success(string.Join("\n", lines))
