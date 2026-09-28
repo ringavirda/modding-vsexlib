@@ -186,7 +186,10 @@ public class DefinitionGoldensTests {
     );
 
     Assert.Empty(missing);
-    Assert.Equal(["goldens-1.21/plantedgoldens/blocktypes/stray.json"], orphans);
+    Assert.Equal(
+      ["goldens-1.21/plantedgoldens/blocktypes/stray.json"],
+      orphans
+    );
   }
 
   // Fails when a series write rewrites the shared goldens, writes a series golden that matches the

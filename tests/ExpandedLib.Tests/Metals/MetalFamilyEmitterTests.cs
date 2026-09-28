@@ -406,15 +406,17 @@ public class MetalFamilyEmitterTests {
     Assert.Equal(defs.Count, items.Count);
     foreach ((ExItemDef def, Item item) in defs.Zip(items)) {
       var behaviors = (JArray)def.ToJson()["behaviors"]!;
+      JToken storable = behaviors.Single(b =>
+        (string?)b["name"] == "GroundStorable"
+      );
+      var loaded = item
+        .CollectibleBehaviors.OfType<CollectibleBehaviorGroundStorable>()
+        .Single();
+
       Assert.Equal(behaviors.Count, item.CollectibleBehaviors.Length);
       Assert.Equal(
-        (string?)behaviors.Single(b => (string?)b["name"] == "GroundStorable")[
-          "properties"
-        ]!["layout"],
-        item
-          .CollectibleBehaviors.OfType<CollectibleBehaviorGroundStorable>()
-          .Single()
-          .StorageProps?.Layout.ToString()
+        (string?)storable["properties"]!["layout"],
+        loaded.StorageProps?.Layout.ToString()
       );
     }
   }
