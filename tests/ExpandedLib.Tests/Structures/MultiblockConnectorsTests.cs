@@ -82,6 +82,17 @@ public class MultiblockConnectorsTests {
     Assert.Equal("n", Assert.Single(missing).OutwardFace);
   }
 
+  // Fails when the outline tints only the cells whose code differs.
+  [Fact]
+  public void The_outline_tints_a_node_turned_out_of_its_mark() {
+    Scene scene = Scene.WithNode("s");
+    scene.Completes();
+
+    var outline = scene.Machine.IncompleteOutline();
+
+    Assert.Equal([scene.Rig.Cell(0, 0, 1)], outline.Select(c => c.At));
+  }
+
   #endregion
 
   #region The layout

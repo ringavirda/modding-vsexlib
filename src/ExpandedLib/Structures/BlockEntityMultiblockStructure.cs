@@ -367,7 +367,7 @@ public abstract class BlockEntityMultiblockStructure
           "incomplete",
           GetIncompleteMessage(missingCount)
         );
-        HighlightIncompleteSafe(_highlightedStructure, byPlayer);
+        HighlightIncompleteSafe(byPlayer);
       } else {
         clientApi.TriggerIngameError(this, "complete", GetCompleteMessage());
         _highlightedStructure?.ClearHighlights(Api.World, byPlayer);
@@ -473,57 +473,37 @@ public abstract class BlockEntityMultiblockStructure
     return map;
   }
 
-  /// <summary>Highlights incomplete slots, falling back to a neutral tint when a wanted code resolves to no block.</summary>
-  private void HighlightIncompleteSafe(
-    MultiblockStructure structure,
-    IPlayer player
-  ) {
-    var offsets = structure.TransformedOffsets;
-    if (offsets == null)
-      return;
-
-    var positions = new List<BlockPos>();
-    var colors = new List<int>();
-
-    foreach (var offset in offsets) {
-      // Same rotation-resolved code the completion walk uses.
-      if (WantedCodeAt(offset) is not AssetLocation wanted)
-        continue;
-
-      Block actual = Api.World.BlockAccessor.GetBlockRaw(
-        Pos.X + offset.X,
-        Pos.InternalY + offset.Y,
-        Pos.Z + offset.Z
-      );
-      if (WildcardUtil.Match(wanted, actual.Code))
-        continue;
-
-      positions.Add(new BlockPos(offset.X, offset.Y, offset.Z).Add(Pos));
-
-      if (actual.Id != 0) {
-        // Wrong solid block: red tint.
-        colors.Add(ColorUtil.ColorFromRgba(215, 94, 94, 0x60));
-        continue;
-      }
-
-      // Empty slot: tint with the wanted block's color, or neutral blue when it resolves to none.
-      Block[] matches = Api.World.SearchBlocks(wanted);
-      if (matches.Length == 0) {
-        colors.Add(ColorUtil.ColorFromRgba(94, 94, 215, 0x60));
-        continue;
-      }
-
-      int color = matches[0].GetColor(Api as ICoreClientAPI, Pos) & 0xFFFFFF;
-      color |= 0x60 << 24;
-      colors.Add(color);
-    }
-
+  /// <summary>Tints every cell <see cref="IncompleteBlockCount"/> names for <paramref name="player"/>.</summary>
+  private void HighlightIncompleteSafe(IPlayer player) {
+    List<(BlockPos At, int Color)> outline = IncompleteOutline();
     Api.World.HighlightBlocks(
       player,
       MultiblockStructure.HighlightSlotId,
-      positions,
-      colors
+      [.. outline.Select(c => c.At)],
+      [.. outline.Select(c => c.Color)]
     );
+  }
+
+  /// <summary>The build outline: every cell <see cref="IncompleteBlockCount"/> names, a misfaced
+  /// connector included, with its tint. An occupied cell is red; an empty one takes the wanted block's
+  /// colour, or a neutral blue when the wanted code resolves to no block.</summary>
+  /// <returns>World positions and ARGB tints; empty when the structure is complete or not loaded.</returns>
+  internal List<(BlockPos At, int Color)> IncompleteOutline() {
+    var outline = new List<(BlockPos At, int Color)>();
+    IncompleteBlockCount(cell => outline.Add((cell.At, OutlineColor(cell))));
+    return outline;
+  }
+
+  private int OutlineColor(MissingCell cell) {
+    if (cell.Actual.Id != 0)
+      return ColorUtil.ColorFromRgba(215, 94, 94, 0x60);
+
+    Block[] matches = Api.World.SearchBlocks(cell.Wanted);
+    if (matches.Length == 0)
+      return ColorUtil.ColorFromRgba(94, 94, 215, 0x60);
+
+    return (matches[0].GetColor(Api as ICoreClientAPI, Pos) & 0xFFFFFF)
+      | (0x60 << 24);
   }
 
   private static readonly AssetLocation AirCode = new("game:air");
