@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ExpandedLib.Testing;
@@ -9,7 +11,8 @@ namespace ExpandedLib.Tests;
 
 /// <summary><see cref="TestWorld.LoadAssets(System.Collections.Generic.IReadOnlyList{string}, string)"/>
 /// over the PatchTarget and PatchSource fixtures: fxsource's patches, applied by the game's own patch
-/// loader, add variants to fxtarget's <c>thing</c> and its own <c>other</c>.</summary>
+/// loader, add variants to fxtarget's <c>thing</c>, its own <c>other</c> and vanilla's
+/// <c>crushed</c>.</summary>
 public class PatchedLoadTests(ITestOutputHelper output) {
   private static string Fixture(string name) =>
     Path.Combine(
@@ -23,6 +26,7 @@ public class PatchedLoadTests(ITestOutputHelper output) {
 
   private static readonly string Target = Fixture("PatchTarget");
   private static readonly string Source = Fixture("PatchSource");
+  private static readonly string MissingTarget = Fixture("PatchMissingTarget");
 
   private static bool Has(TestWorld world, string code) =>
     world.World.GetBlock(new AssetLocation(code)) != null;
@@ -40,7 +44,7 @@ public class PatchedLoadTests(ITestOutputHelper output) {
     );
     output.WriteLine(summary);
     Assert.Equal(EnumLogType.Notification, type);
-    Assert.Contains("successfully applied 1 patches", summary);
+    Assert.Contains("successfully applied 3 patches", summary);
   }
 
   // Fails when each mod's patches apply as that mod loads, before a later mod's assets are in the
@@ -115,4 +119,77 @@ public class PatchedLoadTests(ITestOutputHelper output) {
     foreach (Block block in loaded)
       Assert.Same(block, world.World.GetBlock(block.BlockId));
   }
+
+  // Fails when the vanilla file a patch names is not mirrored into the load.
+  [Fact]
+  public void A_patch_into_a_vanilla_file_adds_its_variant() {
+    using var world = new TestWorld();
+
+    world.LoadAssets([Target, Source]);
+
+    Assert.NotNull(
+      world.World.GetItem(new AssetLocation("game:crushed-fxore"))
+    );
+  }
+
+  // Fails when every survival itemtype is mirrored, not only the file a patch names. The base game's
+  // own blocktypes load with or without a patch, so the patch-free load is the baseline for blocks.
+  [Fact]
+  public void The_only_vanilla_collectibles_a_patch_adds_are_its_files() {
+    using var world = new TestWorld();
+    using var unpatched = new TestWorld();
+    string[] before = [.. GameItems(world)];
+
+    world.LoadAssets([Target, Source]);
+    unpatched.LoadAssets([Target]);
+
+    string[] added = [.. GameItems(world).Except(before)];
+    Assert.Contains("game:crushed-fxore", added);
+    Assert.All(added, code => Assert.StartsWith("game:crushed-", code));
+    Assert.Equal(GameBlocks(unpatched).Order(), GameBlocks(world).Order());
+  }
+
+  // Fails when the load throws on a patch target the install lacks (the game: file), and when a
+  // target outside game: is read from the install (fxmissing's crushed.json is found there).
+  [Fact]
+  public void A_patch_into_a_file_the_load_lacks_is_logged() {
+    using var world = new TestWorld();
+    string[] notFound =
+    [
+      "File game:itemtypes/fxmissing.json not found",
+      "File fxmissing:itemtypes/resource/crushed/crushed.json not found",
+    ];
+    foreach (string fragment in notFound)
+      world.Log.Expect(NotFoundType, fragment);
+
+    world.LoadAssets([MissingTarget]);
+
+    Assert.All(
+      notFound,
+      fragment =>
+        Assert.Contains(
+          world.Log.Entries,
+          e =>
+            e.Type == NotFoundType
+            && e.Message.EndsWith(fragment, StringComparison.Ordinal)
+        )
+    );
+  }
+
+  // The game's patch loader logs a missing file as an Error from 1.22, as VerboseDebug before.
+#if GAME_GE_1_22
+  private const EnumLogType NotFoundType = EnumLogType.Error;
+#else
+  private const EnumLogType NotFoundType = EnumLogType.VerboseDebug;
+#endif
+
+  private static IEnumerable<string> GameItems(TestWorld world) =>
+    world
+      .World.Items.Where(i => i.Code?.Domain == "game")
+      .Select(i => i.Code.ToString());
+
+  private static IEnumerable<string> GameBlocks(TestWorld world) =>
+    world
+      .World.Blocks.Where(b => b.Code?.Domain == "game")
+      .Select(b => b.Code.ToString());
 }

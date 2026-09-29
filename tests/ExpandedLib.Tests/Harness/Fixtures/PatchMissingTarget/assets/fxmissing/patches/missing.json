@@ -1,0 +1,14 @@
+[
+  {
+    "op": "add",
+    "file": "game:itemtypes/fxmissing.json",
+    "path": "/variantgroups/0/states/-",
+    "value": "x"
+  },
+  {
+    "op": "add",
+    "file": "fxmissing:itemtypes/resource/crushed/crushed.json",
+    "path": "/variantgroups/0/states/-",
+    "value": "x"
+  }
+]

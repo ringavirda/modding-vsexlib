@@ -1,0 +1,14 @@
+[
+  {
+    "op": "add",
+    "file": "game:itemtypes/resource/crushed/crushed.json",
+    "path": "/variantgroups/0/states/-",
+    "value": "fxore"
+  },
+  {
+    "op": "add",
+    "file": "game:itemtypes/resource/crushed/crushed.json",
+    "path": "/attributes/fxmarked",
+    "value": true
+  }
+]

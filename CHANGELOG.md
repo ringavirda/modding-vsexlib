@@ -232,8 +232,11 @@ see the git history.
   every listed mod joins `Mods` before anything starts, each mod's systems start in list order, and
   the game's own `ModJsonPatchLoader` applies every listed mod's patches before the object loader
   runs once. A patch's `dependsOn` is met by exlib and the listed mods, its `condition` reads
-  `Config.Tree`, and the loader's "JsonPatch Loader: ..." line lands in `Log`. A vanilla file a patch
-  names is not loaded, so that patch is not applied. `LoadAssets(modPath, gamePath?)` is the list of
+  `Config.Tree`, and the loader's "JsonPatch Loader: ..." line lands in `Log`. Each `game:` file a
+  listed mod's patch names without a wildcard is read from the install's `assets/survival` into the
+  load, whatever the patch's conditions, and its types load and register beside the mods'; no other
+  survival type loads, and a file the install lacks is logged by the loader as "File ... not found"
+  while the load goes on. `LoadAssets(modPath, gamePath?)` is the list of
   one, so a mod's patches into its own files apply too. The ExpandedLib.Testing package now depends
   on Newtonsoft.Json 13.0.4, which replaces the 13.0.1 a test host brings in every consumer's test
   bin; the game's patch loader needs the newer one, and a consumer adds nothing.

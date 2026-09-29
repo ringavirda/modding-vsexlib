@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using ExpandedLib.Definitions;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
 using NSubstitute.Core;
@@ -26,7 +27,8 @@ namespace ExpandedLib.Testing;
 public sealed partial class TestWorld {
   /// <summary>Loads one mod's real assets as <see cref="LoadAssets(IReadOnlyList{string}, string)"/>
   /// loads a list of one, so the mod's patches into its own files apply; of vanilla survival and
-  /// creative, only the survival world properties load, which a <c>loadFromProperties</c> reads.</summary>
+  /// creative, only the survival world properties load, which a <c>loadFromProperties</c> reads,
+  /// and the survival files the mod's patches name.</summary>
   /// <remarks>exlib's <c>StartPre</c> first empties every per-world registry
   /// (<see cref="Registries.ExWorldState"/>). Every system started is disposed when the load ends,
   /// thrown or not. A block's api, resolved <c>drops</c> and <c>OnLoaded</c> are the caller's.</remarks>
@@ -38,6 +40,7 @@ public sealed partial class TestWorld {
   /// the load registered in its class registry (<see cref="RegisterClasses"/>).</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, no <c>modinfo.json</c>
   /// resolves, or a mod that is not a content mod has no compiled dll under <c>bin/</c>.</exception>
+  /// <exception cref="JsonReaderException">The mod's patch file is not JSON.</exception>
   public TestWorld LoadAssets(string modPath, string? gamePath = null) =>
     LoadAssets([modPath], gamePath);
 
@@ -45,16 +48,18 @@ public sealed partial class TestWorld {
   /// every listed mod in <see cref="Mods"/> before any system starts, then the game's own patch loader
   /// and object loader, each run once over them all.</summary>
   /// <remarks>A patch's <c>dependsOn</c> is met by exlib, the listed mods and any id <see cref="Mods"/>
-  /// held before, never by <c>game</c>; its <c>condition</c> reads <see cref="Config"/>'s <c>Tree</c>;
-  /// a vanilla file it names is not loaded, so it is not applied. The loader's "JsonPatch Loader: ..."
-  /// line lands in <see cref="Log"/>. This package carries the Newtonsoft.Json the loader needs; a
-  /// consumer's test project adds nothing.</remarks>
+  /// held before, never by <c>game</c>; its <c>condition</c> reads <see cref="Config"/>'s <c>Tree</c>.
+  /// Each <c>game:</c> file a patch names without a wildcard is read from <c>assets/survival</c>
+  /// whatever its conditions, and its types load as the mods' do; a file the install lacks is logged
+  /// as not found. The loader's summary lands in <see cref="Log"/>; this package carries the
+  /// Newtonsoft.Json the loader needs.</remarks>
   /// <param name="modPaths">Mod folders in load order, each as <see cref="LoadAssets(string, string)"/>
   /// takes one; an empty list loads the base game alone.</param>
   /// <param name="gamePath">As <see cref="LoadAssets(string, string)"/> takes it.</param>
   /// <returns>This world, as <see cref="LoadAssets(string, string)"/> returns it.</returns>
   /// <exception cref="InvalidOperationException">As <see cref="LoadAssets(string, string)"/> throws it,
   /// for any listed folder, or VSEssentials no longer holds the patch or object loader.</exception>
+  /// <exception cref="JsonReaderException">A listed mod's patch file is not JSON.</exception>
   public TestWorld LoadAssets(
     IReadOnlyList<string> modPaths,
     string? gamePath = null
@@ -80,6 +85,7 @@ public sealed partial class TestWorld {
       mgr.Add(asset.Location, asset);
     foreach (ListedMod mod in mods)
       MirrorAssets(mgr, Path.Combine(mod.Path, "assets", mod.Id), mod.Id);
+    MirrorPatchedVanilla(mgr, survival, [.. mods.Select(m => m.Id)]);
 
     // GamePaths.AssetsPath/Lang.Load are process-wide statics the object loader needs primed; safe
     // to set repeatedly.
@@ -315,6 +321,39 @@ public sealed partial class TestWorld {
     ) {
       item.ItemId = _nextItemId++;
       Register(item);
+    }
+  }
+
+  /// <summary>Adds to <paramref name="mgr"/> each <c>game:</c> file that a patch of one of
+  /// <paramref name="modIds"/> names, read from <paramref name="survival"/>, whatever the patch's
+  /// conditions. A wildcard target names no file and a file the install lacks is not added; the
+  /// patch loader meets both as the game's does.</summary>
+  /// <exception cref="JsonReaderException">A listed mod's patch file is not JSON.</exception>
+  private static void MirrorPatchedVanilla(
+    AssetManager mgr,
+    IAssetOrigin survival,
+    IReadOnlyCollection<string> modIds
+  ) {
+    HashSet<AssetLocation> targets = [];
+    foreach (
+      IAsset patches in mgr.AllAssets.Values.Where(a =>
+        modIds.Contains(a.Location.Domain)
+        && a.Location.Path.StartsWith("patches/", StringComparison.Ordinal)
+      )
+    )
+      foreach (
+        JObject patch in JToken.Parse(patches.ToText()).Children<JObject>()
+      )
+        if (patch["file"] is JValue { Value: string file })
+          targets.Add(
+            AssetLocation
+              .Create(file, patches.Location.Domain)
+              .WithPathAppendixOnce(".json")
+          );
+    foreach (AssetLocation target in targets) {
+      string path = Path.Combine(survival.OriginPath, target.Path);
+      if (target.Domain == GlobalConstants.DefaultDomain && File.Exists(path))
+        mgr.Add(target, new Asset(File.ReadAllBytes(path), target, survival));
     }
   }
 
