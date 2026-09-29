@@ -177,17 +177,26 @@ public static class ExSounds {
 
   /// <summary>Drops a disposed loop; a loop never tracked is ignored.</summary>
   internal static void Untrack(ExSoundLoop loop) {
-    lock (Loaded)
-      Loaded.RemoveAll(r => !r.TryGetTarget(out ExSoundLoop? l) || l == loop);
+    lock (Loaded) {
+      int at = IndexOf(loop);
+      if (at >= 0)
+        Loaded.RemoveAt(at);
+    }
   }
 
   /// <summary>Whether <paramref name="loop"/> is registered to follow
   /// <see cref="MachineVolume"/>.</summary>
   internal static bool Tracks(ExSoundLoop loop) {
     lock (Loaded)
-      return Loaded.Exists(r =>
-        r.TryGetTarget(out ExSoundLoop? l) && l == loop
-      );
+      return IndexOf(loop) >= 0;
+  }
+
+  // Caller holds the lock on Loaded.
+  private static int IndexOf(ExSoundLoop loop) {
+    for (int i = 0; i < Loaded.Count; i++)
+      if (Loaded[i].TryGetTarget(out ExSoundLoop? held) && held == loop)
+        return i;
+    return -1;
   }
 
   private static List<ExSoundLoop> LoadedLoops() {
