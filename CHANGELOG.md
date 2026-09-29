@@ -460,6 +460,10 @@ see the git history.
   test, while another test's world loaded, keyed the assembly's classes under the assembly's name and
   their block entities came up without their behaviours. The map is safe to read while another
   thread registers.
+- **`RecipeCodesCheck` expands a clayforming, knapping or smithing recipe's output.** It read the
+  `{name}` holes of a grid recipe's `ingredients` only, so an output a recipe's single `ingredient`
+  or listed `ingredients` binds through `allowedVariants` was reported unexpanded
+  (`smex:toolmold-{color}-raw-plate`) although every variant is registered.
 
 ## [0.8.2] - 2026-09-15
 

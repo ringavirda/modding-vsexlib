@@ -19,6 +19,7 @@ public class RecipeCodesTests {
   private const string Wild = "plantedrecipeswild";
   private const string Rocks = "plantedrecipesrocks";
   private const string Open = "plantedrecipesopen";
+  private const string Voxel = "plantedrecipesvoxel";
   private static readonly Assembly Here = typeof(RecipeCodesTests).Assembly;
 
   private static ExRecipeDef Output(string domain, string code) =>
@@ -75,12 +76,40 @@ public class RecipeCodesTests {
         }
       );
 
+  /// <summary>A <paramref name="category"/> recipe outputting a crate per wood in
+  /// <paramref name="woods"/>, its named plank written as <c>ingredient</c> or as the one element of
+  /// <c>ingredients</c>.</summary>
+  private static ExRecipeDef Voxels(
+    string domain,
+    string category,
+    string key,
+    params string[] woods
+  ) {
+    var plank = new JObject {
+      ["type"] = "item",
+      ["code"] = "game:plank-*",
+      ["name"] = "wood",
+      ["allowedVariants"] = new JArray(woods),
+    };
+    return ExRecipeDef
+      .Create(domain, category, "crates")
+      .Add(
+        new JObject {
+          [key] = key == "ingredient" ? plank : new JArray(plank),
+          ["output"] = new JObject {
+            ["type"] = "block",
+            ["code"] = $"{domain}:crate-{{wood}}",
+          },
+        }
+      );
+  }
+
   /// <summary>Declares its crate only under <see cref="Missing"/> and <see cref="Present"/>, so
   /// other scans of this assembly never see it.</summary>
   private sealed class Crate : IExBlockDefProvider {
     public static IEnumerable<ExBlockDef> Definitions(string domain) =>
       domain switch {
-        Missing or Present or Wild or Open =>
+        Missing or Present or Wild or Open or Voxel =>
         [
           ExBlockDef
             .Create(domain, "crate")
@@ -109,6 +138,11 @@ public class RecipeCodesTests {
         [
           AnyPlank(domain, "crates", $"{domain}:crate-{{wood}}"),
           AnyPlank(domain, "boxes", $"{domain}:box-{{wood}}"),
+        ],
+        Voxel =>
+        [
+          Voxels(domain, "clayforming", "ingredient", "oak", "birch"),
+          Voxels(domain, "smithing", "ingredients", "pine", "larch"),
         ],
         _ => [],
       };
@@ -189,6 +223,21 @@ public class RecipeCodesTests {
         ),
       ],
       RecipeCodes.UnresolvableOutputs(Open, Here)
+    );
+  }
+
+  // Fails when RecipeCodesCheck.Placeholders stops reading a single ingredient or a listed one, so
+  // the output is reported unexpanded as crate-{wood}.
+  [Fact]
+  public void A_voxel_recipe_output_expands_from_its_ingredient() {
+    Assert.Equal(
+      [
+        "plantedrecipesvoxel:recipes/clayforming/crates.json: plantedrecipesvoxel:crate-birch",
+        "plantedrecipesvoxel:recipes/smithing/crates.json: plantedrecipesvoxel:crate-larch",
+      ],
+      RecipeCodesCheck
+        .Run(new AssemblyCheckSource((Voxel, Here)), Voxel)
+        .Errors.Order()
     );
   }
 }

@@ -8,7 +8,7 @@ using Vintagestory.API.Util;
 namespace ExpandedLib.Checks;
 
 /// <summary>
-/// Checks that every grid recipe's block output in the mod's own domain names a block the mod
+/// Checks that every recipe's block output in the mod's own domain names a block the mod
 /// registers, matched against <see cref="ICheckSource.BlockCodes"/>. Item outputs are not covered.
 /// </summary>
 public static class RecipeCodesCheck {
@@ -51,7 +51,7 @@ public static class RecipeCodesCheck {
     }
   }
 
-  // Every concrete block code in the domain's own namespace that a grid recipe outputs, with its
+  // Every concrete block code in the domain's own namespace that a recipe outputs, with its
   // placeholders expanded, paired with the file the recipe sits in.
   internal static IEnumerable<(AssetLocation File, string Code)> Outputs(
     ICheckSource source,
@@ -81,31 +81,33 @@ public static class RecipeCodesCheck {
 
   // The names of the recipe's named ingredients that carry no allowedVariants.
   private static IEnumerable<string> OpenNames(JObject recipe) =>
-    recipe["ingredients"] is JObject ingredients
-      ? ingredients
-        .Properties()
-        .Where(slot =>
-          slot.Value["name"] != null
-          && slot.Value["allowedVariants"] is not JArray
-        )
-        .Select(slot => (string)slot.Value["name"]!)
-      : [];
+    Ingredients(recipe)
+      .Where(i => i["name"] != null && i["allowedVariants"] is not JArray)
+      .Select(i => (string)i["name"]!);
 
   // The {name} holes a recipe's output can carry, mapped to the states an ingredient binds them to.
   internal static Dictionary<string, string[]> Placeholders(JObject recipe) {
     var holes = new Dictionary<string, string[]>(StringComparer.Ordinal);
-    if (recipe["ingredients"] is not JObject ingredients)
-      return holes;
-
-    foreach (JProperty slot in ingredients.Properties()) {
+    foreach (JObject ingredient in Ingredients(recipe)) {
       if (
-        slot.Value["name"] is not { } name
-        || slot.Value["allowedVariants"] is not JArray states
+        ingredient["name"] is not { } name
+        || ingredient["allowedVariants"] is not JArray states
       )
         continue;
       holes[(string)name!] = [.. states.Select(s => (string)s!)];
     }
     return holes;
+  }
+
+  // A grid recipe keys its ingredients by pattern letter; a clayforming, knapping or smithing
+  // recipe lists them or names a single ingredient.
+  private static IEnumerable<JObject> Ingredients(JObject recipe) {
+    IEnumerable<JToken> all = recipe["ingredients"] switch {
+      JObject keyed => keyed.Properties().Select(p => p.Value),
+      JArray listed => listed,
+      _ => recipe["ingredient"] is { } single ? [single] : [],
+    };
+    return all.OfType<JObject>();
   }
 
   internal static IEnumerable<string> Expand(
