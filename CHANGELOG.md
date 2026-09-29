@@ -468,6 +468,7 @@ see the git history.
   block or item no mod registers any more, the game fills in a stand-in marked `IsMissing`;
   `AssetCheckSource` handed those on as registered codes and collectibles, so `LangCoverageCheck`
   reported each as unnamed. They are no longer yielded, and no check reads them.
+- **A block network type registered twice is logged with one `[exlib]`**, not two.
 
 ## [0.8.2] - 2026-09-15
 

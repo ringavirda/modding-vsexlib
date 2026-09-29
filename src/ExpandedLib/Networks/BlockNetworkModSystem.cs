@@ -32,7 +32,7 @@ public class BlockNetworkModSystem : ModSystem {
     _factories[networkType] = factory;
     if (replaced)
       Mod?.Logger?.Notification(
-        "[exlib] Block network type '{0}' re-registered; the later factory wins.",
+        "Block network type '{0}' re-registered; the later factory wins.",
         networkType
       );
     return replaced;
