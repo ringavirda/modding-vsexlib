@@ -353,6 +353,14 @@ see the git history.
   as the game does, so a variant group that reads them (`"loadFromProperties":
   "abstract/horizontalorientation"`) registers every variant; it registered one block without the
   group's variant.
+- **`StructureBreaks`** expects a block's own drops as the game's `Block.GetDrops` makes them: each
+  block behaviour's drops, then its `drops` unless a behaviour prevents them, so a structure with
+  vanilla's `HorizontalOrientable` is expected to drop its `dropBlockFace` variant (`north` by
+  default); it read only `drops` and failed every other facing. A block class that overrides
+  `GetDrops` is still held to its `drops` alone. A construction stage wildcard with
+  no `allowedVariants` is paid in a variant the world holds that it matches, less its
+  `skipVariants`, as the game takes any; it could not stand such a stage up, and still names the
+  stage and the wildcard when the world holds none.
 - **`LangCoverageCheck`** reads a lang key with a `*` inside it (`block-toolmold-*-fired-plate`) as
   the game's lang does, a wildcard over the whole key; it read such a key as a literal and reported
   every block the key names.

@@ -6,6 +6,7 @@ using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -47,6 +48,8 @@ public class StructureBreaksTests
         world.RegisterClass("test-throwsonbreak", typeof(ThrowsOnBreak));
         world.RegisterClass("test-dropsnothing", typeof(DropsNothing));
         world.RegisterClass("test-plain", typeof(PlainBe));
+        world.RegisterClass("test-addsstick", typeof(AddsAStick));
+        world.RegisterClass("test-onlyflint", typeof(OnlyAFlint));
         prepare(world);
       }
     );
@@ -99,7 +102,7 @@ public class StructureBreaksTests
     );
   }
 
-  // Fails when AddDefinitionDrops adds nothing to the expected drops.
+  // Fails when AddOwnDrops adds nothing to the expected drops.
   [Fact]
   [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.Run))]
   public void A_break_that_drops_nothing_fails_against_the_definition_drops()
@@ -110,6 +113,72 @@ public class StructureBreaksTests
     Assert.All(
       result.Failures,
       f => Assert.EndsWith("dropped test:empty x0 (expected: 1..1)", f)
+    );
+  }
+
+  // Fails when AddOwnDrops leaves out a behaviour's stacks that do not replace the definition drops.
+  [Fact]
+  public void A_behaviour_adding_to_the_drops_is_expected_beside_them()
+  {
+    StructureBreaks.Result result = Run(
+      world => world.RegisterItem("game:stick"),
+      Mega("adds").Behavior("test-addsstick")
+    );
+
+    Assert.True(result.Failures.Count == 0, string.Join("\n", result.Failures));
+    Assert.All(
+      result.Spawned,
+      s =>
+        Assert.Equal(
+          ["game:stick x1", "test:adds x1"],
+          s.Stacks.Select(t => $"{t.Collectible.Code} x{t.StackSize}")
+            .Order(StringComparer.Ordinal)
+        )
+    );
+  }
+
+  // Fails when AddOwnDrops reads the behaviours of a block whose class overrides GetDrops: the stick
+  // the class never drops is then expected.
+  [Fact]
+  public void A_class_overriding_its_drops_is_held_to_its_definition_drops()
+  {
+    StructureBreaks.Result result = Run(
+      world => world.RegisterItem("game:stick"),
+      Mega("overrides", "test-dropsnothing")
+        .NoDrops()
+        .Behavior("test-addsstick")
+    );
+
+    Assert.True(result.Failures.Count == 0, string.Join("\n", result.Failures));
+    Assert.Equal(1 + TwoCells.Length, result.Breaks);
+    Assert.All(result.Spawned, s => Assert.Empty(s.Stacks));
+  }
+
+  // Fails when AddOwnDrops reads a behaviour that prevents what follows as one that passes through:
+  // the earlier behaviour's stick and the block itself are then expected.
+  [Fact]
+  public void A_behaviour_preventing_what_follows_leaves_only_its_own_drops()
+  {
+    StructureBreaks.Result result = Run(
+      world =>
+      {
+        world.RegisterItem("game:stick");
+        world.RegisterItem("game:flint");
+      },
+      Mega("only").Behavior("test-addsstick").Behavior("test-onlyflint")
+    );
+
+    Assert.True(result.Failures.Count == 0, string.Join("\n", result.Failures));
+    Assert.Equal(1 + TwoCells.Length, result.Breaks);
+    Assert.All(
+      result.Spawned,
+      s =>
+        Assert.Equal(
+          "game:flint x1",
+          Assert.Single(s.Stacks) is var t
+            ? $"{t.Collectible.Code} x{t.StackSize}"
+            : null
+        )
     );
   }
 
@@ -226,8 +295,76 @@ public class StructureBreaksTests
       f =>
       {
         Assert.Contains("could not be stood up", f);
-        Assert.Contains("names no allowed variant", f);
+        Assert.Contains(
+          "stage 1 stores wildcard 'wood' for game:plank-* but names no allowed variant, and the world holds none",
+          f
+        );
       }
+    );
+  }
+
+  // Fails when Offers pays a wildcard without allowed variants in nothing the world holds (the
+  // stage cannot be stood up), or in a variant the ingredient skips (the game refuses birch).
+  [Fact]
+  public void A_stored_wildcard_with_no_allowed_variant_is_paid_in_one_the_world_holds()
+  {
+    StructureBreaks.Result result = Run(
+      world =>
+      {
+        int id = 61000;
+        foreach (string wood in new[] { "birch", "oak", "pine" })
+          world.Register(
+            TestBlocks.Configure(
+              new Block(),
+              $"game:plank-{wood}",
+              id++,
+              ("wood", wood)
+            )
+          );
+      },
+      Mega("anywood")
+        .EntityClass("test-plain")
+        .EntityBehavior(
+          "ExRightClickConstructable",
+          JObject.Parse(
+            """
+            {
+              "stages": [
+                { "requireStacks": [{ "type": "item", "code": "game:stick", "quantity": 1 }] },
+                {
+                  "requireStacks": [
+                    {
+                      "type": "block",
+                      "code": "game:plank-*",
+                      "quantity": 2,
+                      "storeWildCard": "wood",
+                      "skipVariants": ["birch"]
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+          )
+        )
+    );
+
+    Assert.True(result.Failures.Count == 0, string.Join("\n", result.Failures));
+    Assert.Equal((1 + 3) * (1 + TwoCells.Length), result.Breaks);
+    Assert.Equal(
+      "game:plank-oak x2, game:stick x1",
+      string.Join(
+        ", ",
+        result
+          .Spawned.Single(s =>
+            s.Stage == 1
+            && s.Cell == -1
+            && s.Paid == StructureBreaks.Payment.Survival
+          )
+          .Stacks.Select(s => $"{s.Collectible.Code} x{s.StackSize}")
+          .Where(s => !s.StartsWith("test:", StringComparison.Ordinal))
+          .Order(StringComparer.Ordinal)
+      )
     );
   }
 
@@ -468,6 +605,32 @@ public class StructureBreaksTests
   private static bool IsFrame(Block block) =>
     block.Code.Path.StartsWith("frame-");
 
+  // Fails when AddOwnDrops reads only the definition drops, or adds them after a behaviour prevented
+  // the default: vanilla's HorizontalOrientable drops the north variant of every facing.
+  [Fact]
+  public void A_block_dropping_its_behaviours_face_breaks_clean_from_every_cell()
+  {
+    using TestWorld world = LoadFixture();
+
+    StructureBreaks.Result result = StructureBreaks.Run(
+      world,
+      b => b.Code.Path.StartsWith("turned-")
+    );
+
+    Assert.True(result.Failures.Count == 0, string.Join("\n", result.Failures));
+    Assert.Equal(2 * (1 + TwoCells.Length), result.Breaks);
+    Assert.All(
+      result.Spawned,
+      s =>
+        Assert.Equal(
+          "breakfixture:turned-north x1",
+          Assert.Single(s.Stacks) is var t
+            ? $"{t.Collectible.Code} x{t.StackSize}"
+            : null
+        )
+    );
+  }
+
   // Fails when LoadAssets keeps the loader's classes from the world, when the run registers no
   // mechanical power system, or when the fixture's metal plate loses its storeWildCard.
   [Fact]
@@ -520,8 +683,8 @@ public class StructureBreaksTests
 
     StructureBreaks.Result result = StructureBreaks.Run(world);
 
-    Assert.Equal(2, result.Blocks);
-    Assert.Equal(4, result.Variants);
+    Assert.Equal(3, result.Blocks);
+    Assert.Equal(6, result.Variants);
     Assert.Equal(2 * 3 * (1 + TwoCells.Length), result.Failures.Count);
     Assert.All(
       result.Failures,
@@ -598,6 +761,32 @@ public class StructureBreaksTests
   }
 
   private sealed class PlainBe : BlockEntity { }
+
+  private sealed class AddsAStick(Block block) : BlockBehavior(block)
+  {
+    public override ItemStack[] GetDrops(
+      IWorldAccessor world,
+      BlockPos pos,
+      IPlayer byPlayer,
+      ref float dropQuantityMultiplier,
+      ref EnumHandling handling
+    ) => [new ItemStack(world.GetItem(new AssetLocation("game:stick")))];
+  }
+
+  private sealed class OnlyAFlint(Block block) : BlockBehavior(block)
+  {
+    public override ItemStack[] GetDrops(
+      IWorldAccessor world,
+      BlockPos pos,
+      IPlayer byPlayer,
+      ref float dropQuantityMultiplier,
+      ref EnumHandling handling
+    )
+    {
+      handling = EnumHandling.PreventSubsequent;
+      return [new ItemStack(world.GetItem(new AssetLocation("game:flint")))];
+    }
+  }
 
   private sealed class TakesAnyMetal(BlockEntity be)
     : ExRightClickConstructable(be)

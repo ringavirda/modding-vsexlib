@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 using Vintagestory.GameContent.Mechanics;
 
@@ -24,8 +25,10 @@ namespace ExpandedLib.Testing;
 /// interaction, the game's <see cref="RightClickConstruction"/>, in each <see cref="Payment"/>, and
 /// broken from every cell at each stage, partly built or complete; one without is broken from every
 /// cell. A break passes when nothing throws, no cell of the structure is left standing, and the
-/// drops are the block's: its resolved <c>drops</c> plus stage 0's materials and what every paid
-/// stage took, at the configured salvage ratio.</remarks>
+/// drops are the block's: what its block behaviours and its resolved <c>drops</c> yield, as the
+/// game's own <see cref="Block.GetDrops"/> combines them (its <c>drops</c> alone when its class
+/// overrides that method), plus stage 0's materials and what every paid stage took, at the
+/// configured salvage ratio.</remarks>
 public static class StructureBreaks
 {
   /// <summary>How a player pays a construction stage.</summary>
@@ -389,6 +392,8 @@ public static class StructureBreaks
     Block block;
     BlockPos[] fillers;
     var expected = new Dictionary<string, (float Low, float High)>();
+    TestPlayer player = world.Player();
+    player.GameMode = EnumGameMode.Survival;
     try
     {
       block = site.Block();
@@ -410,7 +415,6 @@ public static class StructureBreaks
         noMoreCells = true;
         return null;
       }
-      AddDefinitionDrops(block, expected);
       if (built is { } k && Construction(world, at) is { } behavior)
         Pay(
           world,
@@ -421,6 +425,7 @@ public static class StructureBreaks
           payment ?? Payment.Survival,
           expected
         );
+      AddOwnDrops(world, at, block, player.Player, expected);
     }
     catch (Exception e)
     {
@@ -429,8 +434,6 @@ public static class StructureBreaks
     }
 
     BlockPos target = cell < 0 ? at : fillers[cell];
-    TestPlayer player = world.Player();
-    player.GameMode = EnumGameMode.Survival;
     world.Drops.Clear();
     try
     {
@@ -461,22 +464,83 @@ public static class StructureBreaks
       : null;
   }
 
-  /// <summary>Adds the block's resolved <c>drops</c> (the block itself when the definition names
-  /// none) to <paramref name="expected"/>.</summary>
-  private static void AddDefinitionDrops(
+  /// <summary>Adds to <paramref name="expected"/> what <paramref name="block"/> at
+  /// <paramref name="pos"/> drops by the rule of the game's own <see cref="Block.GetDrops"/>, or
+  /// its resolved <c>drops</c> alone when its class overrides that method.</summary>
+  /// <remarks>The game's rule: each block behaviour's drops in order, and after them the resolved
+  /// <c>drops</c> (the block itself when the definition names none) unless a behaviour prevented
+  /// the default; a behaviour that prevents what follows leaves only its own. Runs each
+  /// behaviour's <see cref="BlockBehavior.GetDrops"/> in the test world as
+  /// <paramref name="player"/> breaking it, and takes its stacks at the size that one call
+  /// returns.</remarks>
+  private static void AddOwnDrops(
+    TestWorld world,
+    BlockPos pos,
     Block block,
+    IPlayer player,
     Dictionary<string, (float Low, float High)> expected
   )
   {
+    var fromBehaviors = new List<ItemStack>();
+    bool preventDefault = false;
+    float multiplier = 1f;
+    BlockBehavior[] behaviors = TakesTheGamesDrops(block)
+      ? block.BlockBehaviors ?? []
+      : [];
+    foreach (BlockBehavior behavior in behaviors)
+    {
+      EnumHandling handled = EnumHandling.PassThrough;
+      ItemStack[]? stacks = behavior.GetDrops(
+        world.World,
+        pos,
+        player,
+        ref multiplier,
+        ref handled
+      );
+      if (handled == EnumHandling.PreventSubsequent)
+      {
+        fromBehaviors = [.. stacks ?? []];
+        preventDefault = true;
+        break;
+      }
+      fromBehaviors.AddRange(stacks ?? []);
+      preventDefault |= handled == EnumHandling.PreventDefault;
+    }
+
+    foreach (ItemStack stack in fromBehaviors)
+      Expect(
+        expected,
+        stack.Collectible.Code.ToString(),
+        stack.StackSize,
+        stack.StackSize
+      );
+    if (preventDefault)
+      return;
     foreach (BlockDropItemStack drop in block.Drops ?? [])
       if (drop.Code != null)
         Expect(
           expected,
           drop.Code.ToString(),
-          drop.Quantity.avg - drop.Quantity.var,
-          drop.Quantity.avg + drop.Quantity.var
+          (drop.Quantity.avg - drop.Quantity.var) * multiplier,
+          (drop.Quantity.avg + drop.Quantity.var) * multiplier
         );
   }
+
+  /// <summary>Whether <paramref name="block"/>'s class keeps the game's own
+  /// <see cref="Block.GetDrops"/>.</summary>
+  private static bool TakesTheGamesDrops(Block block) =>
+    block
+      .GetType()
+      .GetMethod(
+        nameof(Block.GetDrops),
+        [
+          typeof(IWorldAccessor),
+          typeof(BlockPos),
+          typeof(IPlayer),
+          typeof(float),
+        ]
+      )
+      ?.DeclaringType == typeof(Block);
 
   /// <summary>One ingredient as a stage offers it: its code with the stored keys filled and, for a
   /// wildcard, the allowed variant this stage pays it in.</summary>
@@ -503,11 +567,13 @@ public static class StructureBreaks
   /// <paramref name="expected"/> what breaking it refunds: stage 0's materials and what each stage
   /// took, at the salvage ratio, once a stage is paid.</summary>
   /// <remarks>A wildcard ingredient is paid in its next allowed variant, one wildcard stage after
-  /// another. Before paying a stage from the hotbar, a key the stage stores is offered in two
+  /// another; one that names none, which the game matches against any code, in the next variant of
+  /// it the world holds. Before paying a stage from the hotbar, a key the stage stores is offered in two
   /// variants, and the stage must refuse it. What a stage paid with Ctrl held took is what the game
   /// records: its codes with the stored keys filled.</remarks>
-  /// <exception cref="InvalidOperationException">A wildcard ingredient names no allowed variant, a
-  /// stage is not paid, or a stage takes a stored key in two variants.</exception>
+  /// <exception cref="InvalidOperationException">A wildcard ingredient names no allowed variant and
+  /// the world holds none of it, a stage is not paid, or a stage takes a stored key in two
+  /// variants.</exception>
   private static void Pay(
     TestWorld world,
     BlockPos at,
@@ -529,7 +595,13 @@ public static class StructureBreaks
     int turn = 0;
     for (int i = 1; i <= built; i++)
     {
-      Offer[] offers = Offers(rcc.Stages[i], i, rcc.StoredWildCards, turn);
+      Offer[] offers = Offers(
+        world,
+        rcc.Stages[i],
+        i,
+        rcc.StoredWildCards,
+        turn
+      );
       foreach (Offer offer in offers)
         Resolvable(world, offer.Code, offer.Type, offer.Key, offer.Variant);
       var stores = new Dictionary<string, string>(rcc.StoredWildCards);
@@ -614,11 +686,13 @@ public static class StructureBreaks
   }
 
   /// <summary>What stage <paramref name="index"/> offers, its stored keys filled from
-  /// <paramref name="stored"/> and each wildcard paid in the allowed variant
+  /// <paramref name="stored"/> and each wildcard paid in the allowed variant, or when it names
+  /// none the variant <paramref name="world"/> holds (<see cref="Held"/>),
   /// <paramref name="turn"/> steps on.</summary>
-  /// <exception cref="InvalidOperationException">A wildcard ingredient names no allowed
-  /// variant.</exception>
+  /// <exception cref="InvalidOperationException">A wildcard ingredient names no allowed variant
+  /// and <paramref name="world"/> holds none of it.</exception>
   private static Offer[] Offers(
+    TestWorld world,
     Vintagestory.GameContent.ConstructionStage stage,
     int index,
     IReadOnlyDictionary<string, string> stored,
@@ -638,12 +712,13 @@ public static class StructureBreaks
             null,
             []
           );
-        string[] allowed = ing.AllowedVariants is { Length: > 0 } a
-          ? a
+        string[] allowed =
+          ing.AllowedVariants is { Length: > 0 } a ? a
+          : Held(world, pattern, ing) is { Length: > 0 } h ? h
           : throw new InvalidOperationException(
             ing.StoreWildCard is { } key
-              ? $"stage {index} stores wildcard '{key}' for {ing.Code} but names no allowed variant"
-              : $"stage {index} asks for {ing.Code} but names no allowed variant"
+              ? $"stage {index} stores wildcard '{key}' for {ing.Code} but names no allowed variant, and the world holds none"
+              : $"stage {index} asks for {ing.Code} but names no allowed variant, and the world holds none"
           );
         string variant = allowed[turn % allowed.Length];
         return new Offer(
@@ -657,6 +732,37 @@ public static class StructureBreaks
         );
       }),
     ];
+
+  /// <summary>The values <paramref name="pattern"/>'s wildcard takes over the items or blocks, as
+  /// <paramref name="ingredient"/> asks, that <paramref name="world"/> holds, less its skipped
+  /// variants, in ordinal order; empty when none matches.</summary>
+  private static string[] Held(
+    TestWorld world,
+    string pattern,
+    ConstructionIngredient ingredient
+  )
+  {
+    var wildcard = new AssetLocation(pattern);
+    IEnumerable<CollectibleObject> held =
+      ingredient.Type == EnumItemClass.Item
+        ? world.World.Items
+        : world.World.Blocks;
+    return
+    [
+      .. held.Where(c =>
+          c?.Code != null
+          && WildcardUtil.Match(wildcard, c.Code, null)
+          && !(
+            ingredient.SkipVariants != null
+            && WildcardUtil.Match(wildcard, c.Code, ingredient.SkipVariants)
+          )
+        )
+        .Select(c => WildcardUtil.GetWildcardValue(wildcard, c.Code))
+        .OfType<string>()
+        .Distinct()
+        .Order(StringComparer.Ordinal),
+    ];
+  }
 
   /// <summary>Offers stage <paramref name="index"/> the first key it stores in two variants: one
   /// storing ingredient in another allowed variant than the rest, or a lone storing ingredient of

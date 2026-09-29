@@ -1,0 +1,12 @@
+{
+  "code": "turned",
+  "class": "ExFilledMegastructure",
+  "variantgroups": [{ "code": "side", "states": ["north", "east"] }],
+  "behaviors": [{ "name": "HorizontalOrientable" }],
+  "attributes": {
+    "fillerOffsets": [
+      { "x": -1, "y": 0, "z": 0 },
+      { "x": 1, "y": 0, "z": 0 }
+    ]
+  }
+}
