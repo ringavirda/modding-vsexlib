@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -211,6 +212,181 @@ public class AssetCheckSourceTests {
     Assert.True(asset.Origin.TryLoadAsset(asset));
     Assert.Equal(data, asset.Data);
   }
+
+  #region Held recipes
+
+  private const string Held = "heldplanted";
+
+  // Five grid recipes of one input, a gear: #0 named, #1 to #4 unnamed and so all named by the
+  // file; and #2, named, of another input, a rod.
+  private const string Machines = """
+    [
+      { "name": "Boiler", "ingredientPattern": "G", "width": 1, "height": 1,
+        "ingredients": { "G": { "type": "item", "code": "heldplanted:gear" } },
+        "output": { "type": "block", "code": "heldplanted:boiler" } },
+      { "ingredientPattern": "G", "width": 1, "height": 1,
+        "ingredients": { "G": { "type": "item", "code": "heldplanted:gear" } },
+        "output": { "type": "block", "code": "heldplanted:engine-{kind}" } },
+      { "name": "Pump", "ingredientPattern": "R", "width": 1, "height": 1,
+        "ingredients": { "R": { "type": "item", "code": "heldplanted:rod" } },
+        "output": { "type": "block", "code": "heldplanted:pump" } },
+      { "ingredientPattern": "G", "width": 1, "height": 1,
+        "ingredients": { "G": { "type": "item", "code": "heldplanted:gear" } },
+        "output": { "type": "block", "code": "heldplanted:crate" } },
+      { "ingredientPattern": "G", "width": 1, "height": 1,
+        "ingredients": { "G": { "type": "item", "code": "heldplanted:gear" } },
+        "output": { "type": "block", "code": "heldplanted:chest" } }
+    ]
+    """;
+
+  private static readonly AssetLocation MachinesFile = new(
+    Held,
+    "recipes/grid/machines.json"
+  );
+
+  private static IAsset RecipeAsset(AssetLocation file, string text) =>
+    ExSyntheticAsset.Create(
+      file,
+      Encoding.UTF8.GetBytes(text),
+      new ExDefinitionOrigin()
+    );
+
+  private static GridRecipe Holding(AssetLocation name, string output) =>
+    new() {
+      Name = name,
+      Output = new CraftingRecipeIngredient {
+        Type = EnumItemClass.Block,
+        Code = new AssetLocation(output),
+      },
+    };
+
+  // A world whose grid registry holds only the given recipes of MachinesFile.
+  private static TestWorld MachinesWorld(params GridRecipe[] held) {
+    var world = new TestWorld();
+    world.Mods.Add(Held, "1.0.0", dependencies: "exlib");
+    world
+      .Api.Assets.GetMany("recipes/", Held)
+      .Returns([RecipeAsset(MachinesFile, Machines)]);
+    world.World.GridRecipes.Returns([.. held]);
+    return world;
+  }
+
+  private static string Collision(int a, string labelA, int b, string labelB) =>
+    $"{Held}:recipes/grid/machines.json#{a} ({labelA}) and "
+    + $"{Held}:recipes/grid/machines.json#{b} ({labelB}) match the same input";
+
+  // Fails when Recipes drops a recipe its registry holds under the JSON name or the file, or reads
+  // a file's {kind} as literal text.
+  [Fact]
+  public void A_recipe_the_game_still_holds_collides_and_asks() {
+    using TestWorld world = MachinesWorld(
+      Holding(AssetLocation.Create("Boiler", Held), "heldplanted:boiler"),
+      Holding(MachinesFile, "heldplanted:engine-steam"),
+      Holding(AssetLocation.Create("Pump", Held), "heldplanted:pump"),
+      Holding(MachinesFile, "heldplanted:crate"),
+      Holding(MachinesFile, "heldplanted:chest")
+    );
+    var source = new AssetCheckSource(world.Api);
+
+    Assert.Contains(
+      Collision(0, "Boiler", 1, "heldplanted:engine-{kind}"),
+      GridRecipeCollisionCheck.Run(source, Held).Errors
+    );
+    IReadOnlyList<string> asks = ObtainabilityCheck.Run(source, Held).Errors;
+    Assert.Contains(asks, e => e.Contains("heldplanted:gear (item"));
+    Assert.Contains(asks, e => e.Contains("heldplanted:rod (item"));
+  }
+
+  // Fails when Recipes reads a recipe its registry no longer holds, holds a recipe by its name
+  // alone without its output, or renumbers the recipes after one it leaves out.
+  [Fact]
+  public void A_recipe_removed_after_load_neither_collides_nor_asks() {
+    using TestWorld world = MachinesWorld(
+      Holding(MachinesFile, "heldplanted:engine-steam"),
+      Holding(MachinesFile, "heldplanted:crate")
+    );
+    var source = new AssetCheckSource(world.Api);
+
+    Assert.Equal(
+      [Collision(1, "heldplanted:engine-{kind}", 3, "heldplanted:crate")],
+      GridRecipeCollisionCheck.Run(source, Held).Errors
+    );
+    IReadOnlyList<string> asks = ObtainabilityCheck.Run(source, Held).Errors;
+    Assert.Contains(asks, e => e.Contains("heldplanted:gear (item"));
+    Assert.DoesNotContain(asks, e => e.Contains("heldplanted:rod"));
+  }
+
+  // Fails when Recipes matches a recipe's Name without its domain.
+  [Fact]
+  public void Two_recipes_named_alike_in_two_domains_are_told_apart() {
+    using var world = new TestWorld();
+    const string Boiler = """
+      { "name": "Cornish Boiler", "ingredientPattern": "P", "width": 1, "height": 1,
+        "ingredients": { "P": { "type": "item", "code": "game:plank" } },
+        "output": { "type": "block", "code": "game:crate" } }
+      """;
+    foreach (string domain in new[] { Held, "heldother" }) {
+      world.Mods.Add(domain, "1.0.0", dependencies: "exlib");
+      world
+        .Api.Assets.GetMany("recipes/", domain)
+        .Returns([
+          RecipeAsset(new(domain, "recipes/grid/boiler.json"), Boiler),
+        ]);
+    }
+    world.World.GridRecipes.Returns([
+      Holding(
+        AssetLocation.Create("Cornish Boiler", "heldother"),
+        "game:crate"
+      ),
+    ]);
+    var source = new AssetCheckSource(world.Api);
+
+    Assert.Empty(source.Recipes(Held));
+    Assert.Equal(
+      "heldother:recipes/grid/boiler.json",
+      Assert.Single(source.Recipes("heldother")).File.ToString()
+    );
+  }
+
+  // Fails when Recipes drops another folder's recipe or one of a registry the game does not run,
+  // or reads one its running registry no longer holds or one with no output.
+  [Fact]
+  public void Only_the_registries_the_game_runs_filter_their_folders() {
+    using var world = new TestWorld();
+    world.Mods.Add(Held, "1.0.0", dependencies: "exlib");
+    const string Plate = """
+      { "ingredient": { "type": "item", "code": "heldplanted:bar" },
+        "output": { "type": "item", "code": "heldplanted:plate" } }
+      """;
+    world
+      .Api.Assets.GetMany("recipes/", Held)
+      .Returns([
+        RecipeAsset(new(Held, "recipes/smithing/plate.json"), Plate),
+        RecipeAsset(new(Held, "recipes/alloy/bronze.json"), Plate),
+        RecipeAsset(
+          new(Held, "recipes/grid/nooutput.json"),
+          """{ "ingredientPattern": "G", "width": 1, "height": 1 }"""
+        ),
+      ]);
+    world.World.GridRecipes.Returns([
+      Holding(new(Held, "recipes/grid/nooutput.json"), "heldplanted:any"),
+    ]);
+    var source = new AssetCheckSource(world.Api);
+
+    Assert.Equal(
+      ["recipes/smithing/plate.json", "recipes/alloy/bronze.json"],
+      source.Recipes(Held).Select(r => r.File.Path)
+    );
+
+    world.Mods.Register(new RecipeRegistrySystem());
+
+    Assert.Equal(
+      ["recipes/alloy/bronze.json"],
+      new AssetCheckSource(world.Api).Recipes(Held).Select(r => r.File.Path)
+    );
+  }
+
+  #endregion
 
 #if GAME_GE_1_22
   // Fails when the harness stops loading a collectible's tags, or Tagged stops matching an

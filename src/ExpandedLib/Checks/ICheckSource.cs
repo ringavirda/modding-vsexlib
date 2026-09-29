@@ -23,6 +23,10 @@ public interface ICheckSource {
 
   /// <summary>Every recipe <paramref name="domain"/> ships, one entry per recipe object; a
   /// multi-recipe file yields one entry per element.</summary>
+  /// <remarks>A loaded game's source leaves out the recipes the game no longer holds
+  /// (<see cref="AssetCheckSource.Recipes"/>). An element yielded still a child of its file's
+  /// parsed array is numbered by its place among that array's objects, the ones left out
+  /// included; any other is numbered by its place among its file's entries.</remarks>
   IEnumerable<(AssetLocation File, JObject Json)> Recipes(string domain);
 
   /// <summary>Every lang file <paramref name="domain"/> ships, as its locale code (e.g. <c>"en"</c>,

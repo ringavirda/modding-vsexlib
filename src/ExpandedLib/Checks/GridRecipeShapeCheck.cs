@@ -86,7 +86,10 @@ public static class GridRecipeShapeCheck {
     var positions = new Dictionary<string, int>(StringComparer.Ordinal);
     foreach ((AssetLocation file, JObject json) in source.Recipes(domain)) {
       string at = file.ToShortString();
-      int position = positions[at] = positions.GetValueOrDefault(at, -1) + 1;
+      // A recipe keeps its place in its file's array when the source leaves others out.
+      int position = json.Parent is JArray siblings
+        ? siblings.Take(siblings.IndexOf(json)).Count(t => t is JObject)
+        : positions[at] = positions.GetValueOrDefault(at, -1) + 1;
       if (!file.Path.StartsWith("recipes/grid/", StringComparison.Ordinal))
         continue;
       string pattern = (string?)Prop(json, "ingredientPattern") ?? "";

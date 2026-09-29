@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Definitions;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 #if GAME_GE_1_22
 using Vintagestory.API.Datastructures;
@@ -14,8 +16,8 @@ using Vintagestory.API.Datastructures;
 namespace ExpandedLib.Checks;
 
 /// <summary>The in-game <see cref="ICheckSource"/> and <see cref="ILoadedGame"/>: codes and recipes
-/// from <see cref="ICoreAPI.Assets"/>, definitions from <see cref="ExDefinitions"/>, collectibles
-/// and recipe outputs from the world. A domain is exlib and every mod that depends on it.</summary>
+/// from <see cref="ICoreAPI.Assets"/>, recipes only while the game holds them, definitions from
+/// <see cref="ExDefinitions"/>, collectibles and recipe outputs from the world. A domain is exlib and every mod that depends on it.</summary>
 /// <remarks>The blocks and items the game fills in for codes a save maps and nothing registers
 /// (<see cref="CollectibleObject.IsMissing"/>) are left out of every code and collectible it
 /// yields.</remarks>
@@ -43,10 +45,91 @@ public sealed class AssetCheckSource(ICoreAPI api) : ILoadedGame {
     api.World.Items.Where(i => i?.Code != null && !i.IsMissing);
 
   /// <inheritdoc/>
+  /// <remarks>Only the recipes the game still holds. A grid, smithing, clay forming, knapping or
+  /// barrel recipe is read while its registry holds a recipe of the same <c>Name</c> whose output
+  /// code the file's matches, each <c>{name}</c> in the file's code standing for any text. The
+  /// game names a recipe by its JSON <c>name</c>, in the file's domain, else by its file. A
+  /// recipe of another folder, or of a registry the game does not run, is read as its file
+  /// has it.</remarks>
   public IEnumerable<(AssetLocation File, JObject Json)> Recipes(string domain) {
     foreach (IAsset asset in api.Assets.GetMany("recipes/", domain))
       foreach (JObject recipe in ReadRecipeObjects(asset))
-        yield return (asset.Location, recipe);
+        if (IsHeld(asset.Location, recipe))
+          yield return (asset.Location, recipe);
+  }
+
+  private static readonly Regex Placeholder = new(@"\{[^}]*\}");
+
+  private Dictionary<string, ILookup<string, AssetLocation>>? _held;
+
+  private bool IsHeld(AssetLocation file, JObject recipe) {
+    string[] folders = file.Path.Split('/');
+    if (
+      folders.Length < 3
+      || !(_held ??= HeldRecipes()).TryGetValue(
+        folders[1],
+        out ILookup<string, AssetLocation>? held
+      )
+    )
+      return true;
+    if (
+      recipe.GetValue("output", StringComparison.OrdinalIgnoreCase)
+        is not JObject output
+      || output.GetValue("code", StringComparison.OrdinalIgnoreCase)
+        is not JValue { Type: JTokenType.String } code
+    )
+      return false;
+    AssetLocation name = recipe.GetValue(
+      "name",
+      StringComparison.OrdinalIgnoreCase
+    )
+      is JValue { Type: JTokenType.String } named
+      ? AssetLocation.Create((string)named!, file.Domain)
+      : file;
+    var made = AssetLocation.Create(
+      Placeholder.Replace((string)code!, "*"),
+      file.Domain
+    );
+    return held[name.ToString()].Any(o => WildcardUtil.Match(made, o));
+  }
+
+  // Per recipe folder, each held recipe's output code under its Name, matched case-insensitively.
+  private Dictionary<string, ILookup<string, AssetLocation>> HeldRecipes() {
+    var held = new Dictionary<string, ILookup<string, AssetLocation>>(
+      StringComparer.Ordinal
+    );
+    void Add(
+      string folder,
+      IEnumerable<(AssetLocation? Name, AssetLocation? Output)> recipes
+    ) =>
+      held[folder] = recipes
+        .Where(r => r.Name != null && r.Output != null)
+        .ToLookup(
+          r => r.Name!.ToString(),
+          r => r.Output!,
+          StringComparer.OrdinalIgnoreCase
+        );
+    if (api.World.GridRecipes is { } grid)
+      Add("grid", grid.Select(r => (r.Name, r.Output?.Code)));
+    if (api.ModLoader.GetModSystem<RecipeRegistrySystem>() is { } registry) {
+      Add(
+        "smithing",
+        registry.SmithingRecipes.Select(r => (r.Name, r.Output?.Code))
+      );
+      Add(
+        "clayforming",
+        registry.ClayFormingRecipes.Select(r => (r.Name, r.Output?.Code))
+      );
+      Add(
+        "knapping",
+        registry.KnappingRecipes.Select(r => (r.Name, r.Output?.Code))
+      );
+      Add(
+        "barrel",
+        registry.BarrelRecipes.Select(r => (r.Name, r.Output?.Code))
+      );
+    }
+    return held;
   }
 
   /// <inheritdoc/>
