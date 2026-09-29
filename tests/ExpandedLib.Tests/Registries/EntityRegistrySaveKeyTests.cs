@@ -34,7 +34,7 @@ public class EntityRegistrySaveKeyTests : IDisposable {
   }
 
   public void Dispose() {
-    var domains = (Dictionary<Assembly, string>)Field("_domainByAssembly");
+    var domains = (IDictionary<Assembly, string>)Field("_domainByAssembly");
     var primaries = (Dictionary<Type, string>)Field("_primaryKeys");
     foreach (Assembly asm in _emitted) {
       domains.Remove(asm);

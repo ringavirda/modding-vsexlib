@@ -29,6 +29,15 @@ public class RegistrationKeyTests : IDisposable {
   // This assembly starts unregistered, as in a world no mod of it has started in yet.
   public RegistrationKeyTests() {
     EntityRegistry.ResetForWorld();
+    (
+      (IDictionary<Assembly, string>)
+        typeof(EntityRegistry)
+          .GetField(
+            "_domainByAssembly",
+            BindingFlags.NonPublic | BindingFlags.Static
+          )!
+          .GetValue(null)!
+    ).Remove(typeof(RegistrationKeyTests).Assembly);
     EntityRegistry.Logger = _log;
   }
 
@@ -42,7 +51,7 @@ public class RegistrationKeyTests : IDisposable {
       "_domainByAssembly",
       BindingFlags.NonPublic | BindingFlags.Static
     )!;
-    var map = (Dictionary<Assembly, string>)field.GetValue(null)!;
+    var map = (IDictionary<Assembly, string>)field.GetValue(null)!;
     map.Remove(typeof(IndustryModule).Assembly);
     ExDefinitions.Clear();
   }

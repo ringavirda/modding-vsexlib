@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -95,21 +96,27 @@ public static class EntityRegistry {
     ExDefinitions.DiscoverContributors(asm);
   }
 
-  // Assembly -> the domain its registrable types are keyed under.
-  private static readonly Dictionary<Assembly, string> _domainByAssembly = [];
+  // Assembly -> the domain its registrable types are keyed under; kept across world loads.
+  private static readonly ConcurrentDictionary<
+    Assembly,
+    string
+  > _domainByAssembly = new();
 
-  /// <summary>Forgets every assembly's recorded domain and every block entity's primary key; run
-  /// when a world starts loading.</summary>
-  internal static void ResetForWorld() {
-    _domainByAssembly.Clear();
-    _primaryKeys.Clear();
-  }
+  /// <summary>Forgets every block entity's primary key; run when a world starts loading. The
+  /// domain each assembly was registered under is kept.</summary>
+  internal static void ResetForWorld() => _primaryKeys.Clear();
 
   /// <summary>
   /// The domain <paramref name="asm"/>'s registrable types are keyed under: its
-  /// <see cref="ExDomainAttribute"/> if it declares one, else the modid it was registered with, else
-  /// <paramref name="fallback"/>.
+  /// <see cref="ExDomainAttribute"/> if it declares one, else the modid its last
+  /// <see cref="RegisterAll"/> in this process used, else <paramref name="fallback"/>.
   /// </summary>
+  /// <remarks>A world starting to load in the same process does not forget a recorded modid. Safe
+  /// to call from any thread, while another registers.</remarks>
+  /// <param name="asm">The assembly whose types are keyed.</param>
+  /// <param name="fallback">The domain returned, with a Warning to <see cref="Logger"/>, for an
+  /// assembly that declares no domain and was never registered.</param>
+  /// <returns>The domain, never null.</returns>
   public static string DomainOf(Assembly asm, string fallback) {
     string? declared = asm.GetCustomAttribute<ExDomainAttribute>()?.Domain;
     if (declared != null)

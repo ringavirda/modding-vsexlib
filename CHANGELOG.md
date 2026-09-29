@@ -450,6 +450,12 @@ see the git history.
 - **`TestWorld`'s `ExchangeBlock` runs the block entity's `OnExchanged`**, with the new block, after
   the cell holds it and keeping the entity, as the engine's does; a part that rebuilds on an exchange
   no longer needs its test to call `OnExchanged` itself.
+- **`EntityRegistry.DomainOf` keeps the modid an assembly was registered with across world loads.**
+  A world starting to load in the same process emptied the map, so `TestWorld.RegisterClasses` in one
+  test, while another test's world loaded, keyed the assembly's classes under the assembly's name and
+  their block entities came up without their behaviours. The map is safe to read while another
+  thread registers.
+
 ## [0.8.2] - 2026-09-15
 
 ### Added

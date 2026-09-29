@@ -24,7 +24,7 @@ public class EntityRegistryBareAliasTests : IDisposable {
   private Type OuterB => _widgets.GetType("OuterB.BlockEntityWidget")!;
 
   public void Dispose() {
-    var domainMap = (Dictionary<Assembly, string>)Field("_domainByAssembly");
+    var domainMap = (IDictionary<Assembly, string>)Field("_domainByAssembly");
     var primaries = (Dictionary<Type, string>)Field("_primaryKeys");
     domainMap.Remove(_widgets);
     foreach (Type type in _widgets.GetTypes())

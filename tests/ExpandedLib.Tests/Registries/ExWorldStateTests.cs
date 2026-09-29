@@ -38,6 +38,8 @@ public class ExWorldStateTests {
       "the root keys the game's item loader reads, constant",
     ["ExpandedLib.Config.ExConfigDocument._byApi"] = WeakByWorld,
     ["ExpandedLib.Registries.EntityRegistry._bareKeysIssued"] = WeakByWorld,
+    ["ExpandedLib.Registries.EntityRegistry._domainByAssembly"] =
+      "each registered assembly's modid, the same in every world it loads in",
     ["ExpandedLib.Structures.JsonMultiblockLayout._resolved"] = WeakByWorld,
     ["ExpandedLib.Structures.CellRole._single"] = TypeInitializers,
     ["ExpandedLib.Helpers.ExHighlightSlots._slots"] = TypeInitializers,

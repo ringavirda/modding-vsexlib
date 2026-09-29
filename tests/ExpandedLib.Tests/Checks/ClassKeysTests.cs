@@ -96,7 +96,7 @@ public class ClassKeysTests {
   [Fact]
   public void A_type_is_keyed_under_its_own_assembly_domain_only() {
     var registered =
-      (Dictionary<Assembly, string>)
+      (IDictionary<Assembly, string>)
         typeof(EntityRegistry)
           .GetField(
             "_domainByAssembly",

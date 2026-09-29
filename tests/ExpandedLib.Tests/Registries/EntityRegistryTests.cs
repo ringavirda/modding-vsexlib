@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Reflection;
 using ExpandedLib.Registries;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
@@ -16,6 +18,15 @@ public class EntityRegistryTests {
   // This assembly starts unregistered, as in a world no mod of it has started in yet.
   public EntityRegistryTests() {
     EntityRegistry.ResetForWorld();
+    (
+      (IDictionary<Assembly, string>)
+        typeof(EntityRegistry)
+          .GetField(
+            "_domainByAssembly",
+            BindingFlags.NonPublic | BindingFlags.Static
+          )!
+          .GetValue(null)!
+    ).Remove(typeof(EntityRegistryTests).Assembly);
     EntityRegistry.Logger = null;
   }
 

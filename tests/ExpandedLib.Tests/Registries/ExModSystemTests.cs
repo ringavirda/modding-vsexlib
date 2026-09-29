@@ -27,7 +27,7 @@ public class ExModSystemTests : IDisposable {
       "_domainByAssembly",
       BindingFlags.NonPublic | BindingFlags.Static
     )!;
-    var map = (Dictionary<Assembly, string>)field.GetValue(null)!;
+    var map = (IDictionary<Assembly, string>)field.GetValue(null)!;
     map.Remove(typeof(ExModSystemTests).Assembly);
     ExDefinitions.Clear();
     Checks.ExCheckRegistry.Clear();

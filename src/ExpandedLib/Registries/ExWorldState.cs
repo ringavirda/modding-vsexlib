@@ -12,8 +12,8 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Registries;
 
 /// <summary>Returns exlib's process-wide registries to their fresh-process state when a world
-/// starts loading, so nothing of the previous world in the same process survives into the
-/// next.</summary>
+/// starts loading, so nothing of the previous world in the same process survives into the next but
+/// the domain each assembly was registered under (<see cref="EntityRegistry.DomainOf"/>).</summary>
 public static class ExWorldState {
   /// <summary>Whether a world starting to load on <paramref name="api"/>'s side empties the
   /// process-wide state the previous world left and fills the catalogues at <c>AssetsFinalize</c>:
