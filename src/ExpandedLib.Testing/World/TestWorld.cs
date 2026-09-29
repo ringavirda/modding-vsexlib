@@ -38,6 +38,9 @@ public sealed partial class TestWorld : IDisposable {
   public BlockNetworkModSystem Networks { get; } = new();
 
   /// <summary>The fake block accessor handed to every production network call.</summary>
+  /// <remarks><c>ExchangeBlock</c> puts the new block in the cell, keeps the cell's block entity and
+  /// then runs its <see cref="BlockEntity.OnExchanged"/> with the new block, as the engine's
+  /// does.</remarks>
   public IBlockAccessor Accessor { get; }
 
   /// <summary>The fake server world (calendar, item-drop spawning) exposed as
@@ -989,7 +992,7 @@ public sealed partial class TestWorld : IDisposable {
       return;
     _blocks[pos] = b;
     if (_blockEntities.TryGetValue(pos, out var be))
-      be.Block = b;
+      be.OnExchanged(b);
   }
 
   private void DoBreak(BlockPos pos, IPlayer? byPlayer, float dropMultiplier) {

@@ -447,7 +447,9 @@ see the git history.
   `PatchCategoryWhenLoaded`, which takes none, so its `Dispose` reverts the id's patches only when no
   `PatchOnce` hold is left on the id; beside a holder of the same id, its category stays until that
   holder's last `UnpatchAll`.
-
+- **`TestWorld`'s `ExchangeBlock` runs the block entity's `OnExchanged`**, with the new block, after
+  the cell holds it and keeping the entity, as the engine's does; a part that rebuilds on an exchange
+  no longer needs its test to call `OnExchanged` itself.
 ## [0.8.2] - 2026-09-15
 
 ### Added

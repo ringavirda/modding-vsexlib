@@ -7,7 +7,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>The harness lifecycle helpers: <see cref="TestWorld.Reload"/>'s save/discard/reload
-/// sequence, and a discarded block entity's ticking stops.</summary>
+/// sequence, a discarded block entity's ticking stops, and the accessor's break and exchange
+/// hooks.</summary>
 public class TestWorldLifecycleTests {
   [Fact]
   public void Reload_round_trips_state_and_the_old_instance_stops_ticking() {
@@ -78,6 +79,40 @@ public class TestWorldLifecycleTests {
     Assert.True(be.RemovedCalled);
     Assert.Null(world.GetBlockEntity(pos));
     Assert.Same(world.Air, world.GetBlock(pos));
+  }
+
+  // Fails when ExchangeBlock sets the entity's Block without running OnExchanged (Seen stays null),
+  // and when it runs OnExchanged before the cell holds the new block (InCell is the old block).
+  [Fact]
+  public void ExchangeBlock_runs_the_kept_entity_OnExchanged_after_the_cell_changes() {
+    var world = new TestWorld();
+    var pos = new BlockPos(3, 0, 0);
+    var before = TestBlocks.Configure(new Block(), "test:exchange-before", 4);
+    var after = TestBlocks.Configure(new Block(), "test:exchange-after", 5);
+    world.Register(after);
+    var be = new ExchangeBe();
+    world.Place(pos, before, be);
+    world.Initialize(be);
+
+    world.Accessor.ExchangeBlock(after.BlockId, pos);
+
+    Assert.Same(after, be.Seen);
+    Assert.Same(after, be.InCell);
+    Assert.Same(after, be.Block);
+    Assert.Same(be, world.GetBlockEntity(pos));
+  }
+
+  /// <summary>Records the block its <see cref="OnExchanged"/> was handed and the block its cell held
+  /// then.</summary>
+  private sealed class ExchangeBe : BlockEntity {
+    public Block? Seen;
+    public Block? InCell;
+
+    public override void OnExchanged(Block block) {
+      Seen = block;
+      InCell = Api.World.BlockAccessor.GetBlock(Pos);
+      base.OnExchanged(block);
+    }
   }
 
   /// <summary>Records that its break/removed lifecycle hooks ran.</summary>
