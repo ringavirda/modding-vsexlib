@@ -234,9 +234,9 @@ see the git history.
   runs once. A patch's `dependsOn` is met by exlib and the listed mods, its `condition` reads
   `Config.Tree`, and the loader's "JsonPatch Loader: ..." line lands in `Log`. A vanilla file a patch
   names is not loaded, so that patch is not applied. `LoadAssets(modPath, gamePath?)` is the list of
-  one, so a mod's patches into its own files apply too. Applying a patch needs a newer Newtonsoft.Json
-  than the 13.0.1 a test host brings, so a test project whose loads apply patches references the
-  Newtonsoft.Json package.
+  one, so a mod's patches into its own files apply too. The ExpandedLib.Testing package now depends
+  on Newtonsoft.Json 13.0.4, which replaces the 13.0.1 a test host brings in every consumer's test
+  bin; the game's patch loader needs the newer one, and a consumer adds nothing.
 
 ### Changed
 

@@ -47,8 +47,8 @@ public sealed partial class TestWorld {
   /// <remarks>A patch's <c>dependsOn</c> is met by exlib, the listed mods and any id <see cref="Mods"/>
   /// held before, never by <c>game</c>; its <c>condition</c> reads <see cref="Config"/>'s <c>Tree</c>;
   /// a vanilla file it names is not loaded, so it is not applied. The loader's "JsonPatch Loader: ..."
-  /// line lands in <see cref="Log"/>. Applying a patch needs a newer Newtonsoft.Json than the 13.0.1 a
-  /// test host brings.</remarks>
+  /// line lands in <see cref="Log"/>. This package carries the Newtonsoft.Json the loader needs; a
+  /// consumer's test project adds nothing.</remarks>
   /// <param name="modPaths">Mod folders in load order, each as <see cref="LoadAssets(string, string)"/>
   /// takes one; an empty list loads the base game alone.</param>
   /// <param name="gamePath">As <see cref="LoadAssets(string, string)"/> takes it.</param>

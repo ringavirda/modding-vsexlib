@@ -67,10 +67,6 @@
       <HintPath>$(GamePath)/Lib/0Harmony.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>$(GamePath)/Lib/Newtonsoft.Json.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>
@@ -81,6 +77,9 @@
          a test assembly; every consumer of this harness is an xUnit project, so this is not a new
          runtime dependency for anyone who links it. -->
     <PackageReference Include="xunit.extensibility.core" />
+    <!-- Flows to every consumer's test bin over the Newtonsoft.Json 13.0.1 the test host brings,
+         which lacks the JToken.WriteTo(JsonWriter) the game's patch loader calls. -->
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 
   <ItemGroup>
