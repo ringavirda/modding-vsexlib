@@ -144,6 +144,49 @@ public class ConfigMigrationTests {
   }
 
   [Fact]
+  public void Reset_notice_names_only_the_fields_it_reset() {
+    var stored = new FakeConfig { ConfigVersion = "0.9.0", ValueA = 5 };
+    var logger = new RecordingLogger();
+    logger.Expect(EnumLogType.Warning, "names unknown field 'Gone'");
+    var (api, _) = FakeApi(stored, runningVersion: "0.9.2", logger: logger);
+    var store = Store(
+      new ExConfigMigration {
+        ToVersion = "0.9.1",
+        ResetFields = ["ValueA", "Gone"],
+      }
+    );
+
+    store.Load(api);
+
+    // Fails if the notice joins the row's names instead of the reset properties.
+    Assert.Contains(
+      logger.Entries,
+      e =>
+        e.Type == EnumLogType.Notification
+        && e.Message.EndsWith("reset ValueA to defaults on upgrade to 0.9.1.")
+    );
+  }
+
+  [Fact]
+  public void A_row_naming_no_field_of_the_config_logs_no_reset_notice() {
+    var stored = new FakeConfig { ConfigVersion = "0.9.0" };
+    var logger = new RecordingLogger();
+    logger.Expect(EnumLogType.Warning, "names unknown field 'Gone'");
+    var (api, _) = FakeApi(stored, runningVersion: "0.9.2", logger: logger);
+    var store = Store(
+      new ExConfigMigration { ToVersion = "0.9.1", ResetFields = ["Gone"] }
+    );
+
+    store.Load(api);
+
+    // Fails if the notice is logged when nothing was reset.
+    Assert.DoesNotContain(
+      logger.Entries,
+      e => e.Message.Contains("Config: reset", System.StringComparison.Ordinal)
+    );
+  }
+
+  [Fact]
   public void Empty_reset_fields_resets_the_whole_config() {
     var stored = new FakeConfig {
       ConfigVersion = "0.9.0",

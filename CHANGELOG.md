@@ -340,6 +340,9 @@ see the git history.
 
 ### Fixed
 
+- **A config migration's upgrade notice names only the fields it reset.** A name in
+  `ExConfigMigration.ResetFields` that is not a property of the config still logs its Warning, and is
+  no longer listed as reset; a row that resets nothing logs no notice.
 - **A structure's `nosnow` cells take snow as its chunk loads again.** Vanilla's snow catch-up
   (`WeatherSimulationSnowAccum`) runs on the chunk thread as a column loads, before the structure's
   block entity marks its cells again. The marks are keyed by the structure's position, stay while its

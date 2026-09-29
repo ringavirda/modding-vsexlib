@@ -168,14 +168,17 @@ public sealed class ExConfigRegister<TConfig> : IExConfigAccess
       toReset = writable;
     }
 
-    foreach (var p in toReset)
+    var reset = toReset.ToList();
+    foreach (var p in reset)
       p.SetValue(config, p.GetValue(defaults));
 
+    if (reset.Count == 0)
+      return;
     logger.Notification(
       "[{0}] Config: reset {1} to defaults on upgrade to {2}.",
       _modId,
       m.ResetFields is { Length: > 0 }
-        ? string.Join(", ", m.ResetFields)
+        ? string.Join(", ", reset.Select(p => p.Name))
         : "all values",
       m.ToVersion
     );
