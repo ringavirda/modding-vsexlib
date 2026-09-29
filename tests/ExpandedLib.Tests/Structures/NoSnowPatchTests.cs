@@ -20,7 +20,7 @@ public class NoSnowPatchTests {
     using var fixture = Patched();
     var block = new Block();
     var marked = new BlockPos(8000, 10, 0);
-    object owner = new();
+    var owner = new BlockPos(8001, 10, 0);
     NoSnowCells.Mark(owner, [marked]);
     try {
       Assert.False(block.AllowSnowCoverage(null!, marked));
@@ -38,7 +38,7 @@ public class NoSnowPatchTests {
     var block = new Block { snowCovered1 = snowy };
     block.notSnowCovered = block;
     var marked = new BlockPos(8100, 10, 0);
-    object owner = new();
+    var owner = new BlockPos(8101, 10, 0);
     NoSnowCells.Mark(owner, [marked]);
     try {
       Assert.Same(block, block.GetSnowCoveredVariant(marked, 2));
@@ -64,7 +64,7 @@ public class NoSnowPatchTests {
   [Fact]
   public void Clearing_drops_every_owners_marks() {
     var cell = new BlockPos(8300, 10, 0);
-    NoSnowCells.Mark(new object(), [cell]);
+    NoSnowCells.Mark(new BlockPos(8301, 10, 0), [cell]);
 
     NoSnowCells.Clear();
 

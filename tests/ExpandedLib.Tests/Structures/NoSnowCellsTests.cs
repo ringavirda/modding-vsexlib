@@ -81,17 +81,45 @@ public class NoSnowCellsTests {
     Assert.False(NoSnowCells.IsMarked(floor));
   }
 
-  // Fails when OnBlockUnloaded does not unmark.
+  // Fails when OnBlockUnloaded unmarks.
   [Fact]
-  public void Unloading_the_core_drops_its_marks() {
+  public void Unloading_the_core_keeps_its_marks() {
     var anchor = new BlockPos(3000, 10, 0);
     var (world, _) = Formed(anchor);
     BlockPos floor = anchor.AddCopy(2, 0, 0);
-    Assert.True(NoSnowCells.IsMarked(floor));
 
     world.Unload(anchor);
 
+    Assert.True(NoSnowCells.IsMarked(floor));
+    NoSnowCells.Unmark(anchor);
+  }
+
+  // Fails when Initialize and SetStructureAngle mark nothing.
+  [Fact]
+  public void A_reloaded_core_marks_its_floor_again() {
+    var anchor = new BlockPos(3100, 10, 0);
+    var (world, _) = Formed(anchor);
+    BlockPos floor = anchor.AddCopy(2, 0, 0);
+    NoSnowCells.Unmark(anchor);
+
+    world.Reload(anchor);
+
+    Assert.True(NoSnowCells.IsMarked(floor));
+    world.Accessor.BreakBlock(anchor, null);
     Assert.False(NoSnowCells.IsMarked(floor));
+  }
+
+  // Fails when OnBlockRemoved unmarks on the client too.
+  [Fact]
+  public void A_client_side_core_removed_leaves_the_servers_marks() {
+    var anchor = new BlockPos(3200, 10, 0);
+    var (world, machine) = Formed(anchor);
+    machine.Api = world.ClientApi;
+
+    machine.OnBlockRemoved();
+
+    Assert.True(NoSnowCells.IsMarked(anchor.AddCopy(2, 0, 0)));
+    NoSnowCells.Unmark(anchor);
   }
 
   // Fails when Mark adds to an owner's cells instead of replacing them.
@@ -148,8 +176,8 @@ public class NoSnowCellsTests {
   [Fact]
   public void A_cell_two_owners_mark_stays_marked_until_both_let_go() {
     var cell = new BlockPos(6000, 10, 0);
-    object first = new();
-    object second = new();
+    var first = new BlockPos(6001, 10, 0);
+    var second = new BlockPos(6002, 10, 0);
     NoSnowCells.Mark(first, [cell]);
     NoSnowCells.Mark(second, [cell.Copy()]);
 
@@ -160,10 +188,36 @@ public class NoSnowCellsTests {
     Assert.False(NoSnowCells.IsMarked(cell));
   }
 
+  // Fails when a mark at an owner's position adds to the cells an earlier mark there left.
+  [Fact]
+  public void A_second_mark_at_one_position_replaces_the_first() {
+    var owner = new BlockPos(6100, 10, 0);
+    var old = new BlockPos(6101, 10, 0);
+    var now = new BlockPos(6102, 10, 0);
+    NoSnowCells.Mark(owner, [old]);
+
+    NoSnowCells.Mark(owner.Copy(), [now]);
+
+    Assert.False(NoSnowCells.IsMarked(old));
+    Assert.True(NoSnowCells.IsMarked(now));
+    NoSnowCells.Unmark(owner);
+  }
+
+  // Fails when Mark or Unmark stops checking its owner for null.
+  [Fact]
+  public void A_null_owner_is_refused() {
+    Assert.Throws<System.ArgumentNullException>(() =>
+      NoSnowCells.Mark(null!, [])
+    );
+    Assert.Throws<System.ArgumentNullException>(() =>
+      NoSnowCells.Unmark(null!)
+    );
+  }
+
   // Fails when the key drops the dimension (Y instead of InternalY).
   [Fact]
   public void A_mark_holds_in_its_own_dimension_only() {
-    object owner = new();
+    var owner = new BlockPos(7001, 10, 0, 1);
     NoSnowCells.Mark(owner, [new BlockPos(7000, 10, 0, 1)]);
     try {
       Assert.True(NoSnowCells.IsMarked(new BlockPos(7000, 10, 0, 1)));

@@ -48,7 +48,7 @@ public class SingleplayerTeardownTests : IDisposable {
     ExpandedLibModSystem server = Exlib(world);
     ExpandedLibModSystem client = Exlib(world);
     var pos = new BlockPos(1, 2, 3, 0);
-    object owner = new();
+    var owner = new BlockPos(2, 2, 3, 0);
     MethodBase target = AccessTools.Method(
       typeof(Block),
       nameof(Block.AllowSnowCoverage)

@@ -169,12 +169,10 @@ public abstract class BlockEntityMultiblockStructure
   }
 
   private void MarkNoSnowCells() {
-    if (Api?.Side == EnumAppSide.Server)
+    if (Api?.Side == EnumAppSide.Server && Pos != null)
       NoSnowCells.Mark(
-        this,
-        _structure == null || Pos == null
-          ? _noCells
-          : CellsWithRole(CellRoles.NoSnow)
+        Pos,
+        _structure == null ? _noCells : CellsWithRole(CellRoles.NoSnow)
       );
   }
 
@@ -624,16 +622,17 @@ public abstract class BlockEntityMultiblockStructure
   public override void OnBlockRemoved() {
     base.OnBlockRemoved();
     StopStructureTick();
-    NoSnowCells.Unmark(this);
+    if (Api?.Side == EnumAppSide.Server)
+      NoSnowCells.Unmark(Pos);
     if (Api is ICoreClientAPI capi)
       _highlightedStructure?.ClearHighlights(Api.World, capi.World.Player);
   }
 
-  /// <summary>Chunk unload: stops this instance's listeners, drops its <see cref="NoSnowCells"/> and clears its client-side build outline.</summary>
+  /// <summary>Chunk unload: stops this instance's listeners and clears its client-side build outline.
+  /// Its <see cref="NoSnowCells"/> marks stay until the structure is removed.</summary>
   public override void OnBlockUnloaded() {
     base.OnBlockUnloaded();
     StopStructureTick();
-    NoSnowCells.Unmark(this);
     if (Api is ICoreClientAPI capi)
       _highlightedStructure?.ClearHighlights(Api.World, capi.World.Player);
   }

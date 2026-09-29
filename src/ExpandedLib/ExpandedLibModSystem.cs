@@ -43,6 +43,9 @@ public class ExpandedLibModSystem : ModSystem {
 
     // Applied once per process whichever side starts first; each side holds it until its Dispose.
     _harmony = ExHarmony.PatchOnce(Mod, GetType().Assembly);
+
+    if (api is ICoreServerAPI sapi)
+      NoSnowCells.Attach(sapi);
   }
 
   /// <summary>Loads the shared catalogues (liquids, material roles, process routes, process jobs, bay

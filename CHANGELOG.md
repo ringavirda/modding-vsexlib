@@ -147,8 +147,9 @@ see the git history.
   factory's.
 - **`CellRoles.NoSnow`**: a layout cell marked with it takes no weather snow while the structure
   stands, neither a snow layer on top nor a snow-covered variant. The structure's server-side block
-  entity lists its marked cells in the new `NoSnowCells` as soon as its facing is known and drops
-  them when the core is broken or unloaded; `NoSnowCells.Mark`/`Unmark` serve any other owner.
+  entity lists its marked cells in the new `NoSnowCells` as soon as its facing is known, keeps
+  them while its chunk is unloaded and drops them when the core is broken; the marks are saved with
+  the world. `NoSnowCells.Mark`/`Unmark` serve any other owner, keyed by the owner's position.
 - **`StructureBreaks`** (ExpandedLib.Testing): stands up every code-first definition with filler
   offsets or construction stages, in every variant, and breaks it as a survival player from every
   cell at every construction stage. A break fails when it
@@ -339,6 +340,12 @@ see the git history.
 
 ### Fixed
 
+- **A structure's `nosnow` cells take snow as its chunk loads again.** Vanilla's snow catch-up
+  (`WeatherSimulationSnowAccum`) runs on the chunk thread as a column loads, before the structure's
+  block entity marks its cells again. The marks are keyed by the structure's position, stay while its
+  chunk is unloaded, are saved with the world (`exlib:nosnowcells`) and are read back at
+  `SaveGameLoaded`, before any chunk loads; a saved mark whose structure is gone when its column
+  loads is released then.
 - **`/exmod` replies reach each caller in their own language**: the root's help, `heal`, `verify`,
   `recipes` and `config`, the server console in the server's. `config` no longer prints its bare
   lang key on the server console.
