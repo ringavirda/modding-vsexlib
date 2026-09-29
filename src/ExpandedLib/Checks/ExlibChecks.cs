@@ -9,7 +9,8 @@ namespace ExpandedLib.Checks;
 /// the loaded checks against an <see cref="ILoadedGame"/>. A mod exempts a finding it ships
 /// knowingly with <see cref="Exempt(string, string, string[], string)"/> and declares what its
 /// machines make with <see cref="Produces"/>.</summary>
-/// <remarks>The server calls <see cref="All(ICoreAPI)"/> at <c>EnumServerRunPhase.GameReady</c>;
+/// <remarks>The server calls <see cref="All(ICoreAPI)"/> at <c>EnumServerRunPhase.GameReady</c>,
+/// where a recipe a mod removed after loading is not read and one the game refused at load is;
 /// <c>/exmod verify</c> calls <see cref="Verify"/>, which adds the loaded checks. A mod's own
 /// <see cref="ExCheckRegisterAttribute"/>-decorated checks run after the content checks.</remarks>
 public static class ExlibChecks {
@@ -115,7 +116,9 @@ public static class ExlibChecks {
       ),
     ];
 
-  /// <summary>Runs every check against the live game state, over a fresh <see cref="AssetCheckSource"/>.</summary>
+  /// <summary>Runs every check against the live game state, over a fresh
+  /// <see cref="AssetCheckSource"/>, which leaves out the recipes a mod removed after the server
+  /// loaded its assets.</summary>
   public static IReadOnlyList<CheckResult> All(ICoreAPI api) =>
     All(new AssetCheckSource(api));
 

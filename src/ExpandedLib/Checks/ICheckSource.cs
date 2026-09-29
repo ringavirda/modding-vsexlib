@@ -23,7 +23,7 @@ public interface ICheckSource {
 
   /// <summary>Every recipe <paramref name="domain"/> ships, one entry per recipe object; a
   /// multi-recipe file yields one entry per element.</summary>
-  /// <remarks>A loaded game's source leaves out the recipes the game no longer holds
+  /// <remarks>A loaded game's source leaves out the recipes a mod removed after loading
   /// (<see cref="AssetCheckSource.Recipes"/>). An element yielded still a child of its file's
   /// parsed array is numbered by its place among that array's objects, the ones left out
   /// included; any other is numbered by its place among its file's entries.</remarks>

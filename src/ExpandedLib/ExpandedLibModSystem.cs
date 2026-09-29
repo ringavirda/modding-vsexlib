@@ -50,9 +50,12 @@ public class ExpandedLibModSystem : ModSystem {
 
   /// <summary>Loads the shared catalogues (liquids, material roles, process routes, process jobs, bay
   /// occupancy) from every domain's <c>config/</c> once the asset-patch pipeline has merged all mods'
-  /// JSON. A singleplayer client loads no catalogue: it reads its own server's
-  /// (<see cref="ExWorldState.ResetsOnLoad"/>).</summary>
+  /// JSON; a singleplayer client reads its own server's (<see cref="ExWorldState.ResetsOnLoad"/>). A
+  /// server notes the recipes its registries hold, after the game's recipe loaders and before any
+  /// mod's <c>StartServerSide</c> removes one.</summary>
   public override void AssetsFinalize(ICoreAPI api) {
+    if (api.Side == EnumAppSide.Server)
+      Checks.AssetCheckSource.NoteHeldRecipes(api);
     if (ExWorldState.ResetsOnLoad(api))
       LoadCatalogues(api);
   }

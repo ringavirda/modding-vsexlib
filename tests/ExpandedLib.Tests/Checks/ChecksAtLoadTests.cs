@@ -51,10 +51,10 @@ public sealed class ChecksAtLoadTests : System.IDisposable {
     );
   }
 
-  // Fails when exlib's StartServerSide runs the content checks itself, or runs them at a run phase
-  // other than GameReady.
+  // Fails when the checks run before GameReady, the held recipes are noted at GameReady or never,
+  // or a recipe the game refused at load is left out as a removed one is.
   [Fact]
-  public void The_server_runs_the_checks_after_a_later_mods_removal() {
+  public void The_server_reads_a_refused_recipe_and_skips_one_a_later_mod_removed() {
     using var world = new TestWorld();
     world.Mods.Add("laterplanted", "1.0.0", dependencies: "exlib");
     AssetLocation file = new("laterplanted", "recipes/grid/crates.json");
@@ -68,7 +68,10 @@ public sealed class ChecksAtLoadTests : System.IDisposable {
           "output": { "type": "block", "code": "laterplanted:chest" } },
         { "ingredientPattern": "P", "width": 1, "height": 1,
           "ingredients": { "P": { "type": "item", "code": "game:plank" } },
-          "output": { "type": "block", "code": "laterplanted:barrel" } }
+          "output": { "type": "block", "code": "laterplanted:barrel" } },
+        { "ingredientPattern": "S", "width": 1, "height": 1,
+          "ingredients": { "S": { "type": "item", "code": "game:stick" } },
+          "output": { "type": "block", "code": "laterplanted:nosuchblock" } }
       ]
       """;
     world
@@ -120,6 +123,7 @@ public sealed class ChecksAtLoadTests : System.IDisposable {
     var logger = new ErrorLines();
     world.Api.Logger.Returns(logger);
     try {
+      exlib.AssetsFinalize(world.Api);
       exlib.StartServerSide(world.Api);
       held.RemoveAt(1);
       foreach ((EnumServerRunPhase phase, System.Action run) in phases)
@@ -137,6 +141,13 @@ public sealed class ChecksAtLoadTests : System.IDisposable {
       logger
         .Lines.Where(e => e.Contains("match the same input"))
         .Select(e => e.Replace("[exlib]", "").Trim())
+    );
+    Assert.Contains(
+      logger.Lines,
+      e =>
+        e.Contains(
+          "laterplanted:recipes/grid/crates.json: laterplanted:nosuchblock"
+        )
     );
   }
 

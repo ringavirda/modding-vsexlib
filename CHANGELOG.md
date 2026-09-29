@@ -475,13 +475,16 @@ see the git history.
   `AssetCheckSource` handed those on as registered codes and collectibles, so `LangCoverageCheck`
   reported each as unnamed. They are no longer yielded, and no check reads them.
 - **A block network type registered twice is logged with one `[exlib]`**, not two.
-- **The checks read only the recipes the game still holds.** `AssetCheckSource` read every recipe
-  file, so a recipe a mod takes out of the registries in its `StartServerSide` was still held
-  against the rest: `GridRecipeCollisionCheck` reported it colliding, and `ObtainabilityCheck`
-  asked for its ingredients. A grid, smithing, clay forming, knapping or barrel recipe is now read
-  while its registry holds a recipe of the same `Name` (its JSON `name` in its file's domain, else
-  its file) whose output its file's output code matches, a `{name}` standing for any text. A
-  recipe the game refused at load is left out too; the game logs that refusal itself. Other recipe
+- **The checks leave out the recipes a mod removed after loading.** `AssetCheckSource` read every
+  recipe file, so a recipe a mod takes out of the registries in its `StartServerSide` was still
+  held against the rest: `GridRecipeCollisionCheck` reported it colliding, and
+  `ObtainabilityCheck` asked for its ingredients. The server now notes which recipes its registries
+  hold at exlib's `AssetsFinalize`, once the game's recipe loaders have run and before any mod's
+  `StartServerSide`. A grid, smithing, clay forming, knapping or barrel recipe is left out when its
+  registry held a recipe of the same `Name` (its JSON `name` in its file's domain, else its file)
+  whose output its file's output code matches, a `{name}` standing for any text, and holds none
+  now. A recipe the game refused at load is still read, so `RecipeCodesCheck`,
+  `GridRecipeShapeCheck` and `GameReferencesCheck` name its file and its bad code. Other recipe
   folders, and the sources that read files with no game running, are read as before. A grid
   recipe's `#n` is its place in its file however many are left out.
 
