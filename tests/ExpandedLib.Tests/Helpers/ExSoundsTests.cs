@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Registries;
@@ -289,6 +290,61 @@ public class ExSoundsTests : IDisposable {
     Assert.False(loop.IsPlaying);
   }
 
+  // Fails when the MachineVolume setter stops re-applying the volume to the loaded loops.
+  [Fact]
+  public void A_loaded_loop_takes_a_new_machine_volume_without_an_update() {
+    ICoreClientAPI capi = LoopApi(out List<ILoadedSound> loaded);
+    var loop = new ExSoundLoop(ExSounds.Fire, 0.8f);
+    loop.Update(capi, At, true);
+
+    ExSounds.MachineVolume = 0.5f;
+
+    Assert.True(ExSounds.Tracks(loop));
+    loaded[0].Received(1).SetVolume(0.4f);
+  }
+
+  // Fails when Dispose leaves the loop registered.
+  [Fact]
+  public void A_disposed_loop_leaves_the_machine_volume_registry() {
+    ICoreClientAPI capi = LoopApi(out List<ILoadedSound> loaded);
+    var loop = new ExSoundLoop(ExSounds.Fire, 0.8f);
+    loop.Update(capi, At, true);
+    loop.Dispose();
+
+    ExSounds.MachineVolume = 0.5f;
+
+    Assert.False(ExSounds.Tracks(loop));
+    loaded[0].DidNotReceive().SetVolume(Arg.Any<float>());
+  }
+
+  // Fails when a loop registers before its sound has loaded.
+  [Fact]
+  public void A_loop_never_loaded_is_not_registered() {
+    ICoreClientAPI capi = LoopApi(out List<ILoadedSound> loaded);
+    var idle = new ExSoundLoop(ExSounds.Fire);
+    var serverSide = new ExSoundLoop(ExSounds.Fire);
+    idle.Update(capi, At, false);
+    serverSide.Update(Substitute.For<ICoreServerAPI>(), At, true);
+
+    ExSounds.MachineVolume = 0.5f;
+
+    Assert.Empty(loaded);
+    Assert.False(ExSounds.Tracks(idle));
+    Assert.False(ExSounds.Tracks(serverSide));
+  }
+
+  // Fails when the registry holds its loops strongly.
+  [Fact]
+  public void The_registry_does_not_keep_an_undisposed_loop_alive() {
+    WeakReference<ExSoundLoop> dropped = LoadAndDrop(LoopApi(out _));
+
+    GC.Collect();
+    GC.WaitForPendingFinalizers();
+    GC.Collect();
+
+    Assert.False(dropped.TryGetTarget(out _));
+  }
+
   #endregion
 
   #region Command
@@ -414,6 +470,13 @@ public class ExSoundsTests : IDisposable {
       volume: 0.6f
     );
     return client;
+  }
+
+  [MethodImpl(MethodImplOptions.NoInlining)]
+  private static WeakReference<ExSoundLoop> LoadAndDrop(ICoreClientAPI capi) {
+    var loop = new ExSoundLoop(ExSounds.Fire);
+    loop.Update(capi, At, true);
+    return new WeakReference<ExSoundLoop>(loop);
   }
 
   private static ICoreClientAPI LoopApi(out List<ILoadedSound> loaded) =>

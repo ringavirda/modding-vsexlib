@@ -9,8 +9,12 @@ namespace ExpandedLib.Industry.Helpers;
 /// <see cref="Dispose"/>. Inert on the server.</summary>
 /// <remarks><see cref="Update"/> loads it the first time the machine runs, starts and stops it with
 /// the machine, and re-applies <see cref="Volume"/> times <see cref="ExSounds.MachineVolume"/> and
-/// <see cref="Pitch"/> when either changes. A disposed loop never loads again. The owner calls
-/// <see cref="Dispose"/> from both <c>OnBlockRemoved</c> and <c>OnBlockUnloaded</c>.</remarks>
+/// <see cref="Pitch"/> when either changes. A loaded loop also takes a new
+/// <see cref="ExSounds.MachineVolume"/> the moment it is set, without an <see cref="Update"/>;
+/// <see cref="ExSounds"/> holds it only weakly from load to <see cref="Dispose"/>. A disposed loop
+/// never loads again. The owner calls <see cref="Dispose"/> from both <c>OnBlockRemoved</c> and
+/// <c>OnBlockUnloaded</c>. Client main thread only, as are the block entity calls that drive
+/// it.</remarks>
 public sealed class ExSoundLoop : IDisposable {
   private readonly AssetLocation _sound;
   private readonly float _range;
@@ -64,12 +68,9 @@ public sealed class ExSoundLoop : IDisposable {
       _appliedPitch = Pitch;
       if (_loaded == null)
         return;
+      ExSounds.Track(this);
     }
-    float volume = Volume * ExSounds.MachineVolume;
-    if (volume != _appliedVolume) {
-      _loaded.SetVolume(volume);
-      _appliedVolume = volume;
-    }
+    ApplyVolume();
     if (Pitch != _appliedPitch) {
       _loaded.SetPitch(Pitch);
       _appliedPitch = Pitch;
@@ -81,8 +82,24 @@ public sealed class ExSoundLoop : IDisposable {
   /// <summary>Stops and releases the sound; later <see cref="Update"/> calls do nothing.</summary>
   public void Dispose() {
     IsDisposed = true;
-    _loaded?.Stop();
-    _loaded?.Dispose();
+    if (_loaded == null)
+      return;
+    ExSounds.Untrack(this);
+    _loaded.Stop();
+    _loaded.Dispose();
     _loaded = null;
+  }
+
+  /// <summary>Sets the loaded sound to <see cref="Volume"/> times
+  /// <see cref="ExSounds.MachineVolume"/> when that differs from what it plays at; does nothing
+  /// before load or after <see cref="Dispose"/>.</summary>
+  internal void ApplyVolume() {
+    if (_loaded == null)
+      return;
+    float volume = Volume * ExSounds.MachineVolume;
+    if (volume == _appliedVolume)
+      return;
+    _loaded.SetVolume(volume);
+    _appliedVolume = volume;
   }
 }

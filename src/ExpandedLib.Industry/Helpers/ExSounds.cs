@@ -149,12 +149,57 @@ public static class ExSounds {
   /// <summary>Client-side multiplier (0-1) on every sound these helpers and <see cref="ExSoundLoop"/>
   /// play, set from the player's <c>.exmod sound</c> preference; 1 by default. Values outside 0-1
   /// are clamped.</summary>
+  /// <remarks>Setting it re-applies the volume to every loaded, undisposed
+  /// <see cref="ExSoundLoop"/> before it returns, so a playing machine follows at once. Set it on the
+  /// client main thread, where the <c>.exmod sound</c> command and the preference load at
+  /// <c>LevelFinalize</c> run and where loops load and dispose.</remarks>
   public static float MachineVolume {
     get => _machineVolume;
-    set => _machineVolume = Math.Clamp(value, 0f, 1f);
+    set {
+      _machineVolume = Math.Clamp(value, 0f, 1f);
+      foreach (ExSoundLoop loop in LoadedLoops())
+        loop.ApplyVolume();
+    }
   }
 
   private static float _machineVolume = 1f;
+
+  // Held weakly: a loop whose owner never disposes it is still collected with its block entity.
+  private static readonly List<WeakReference<ExSoundLoop>> Loaded = [];
+
+  /// <summary>Registers a loop that has just loaded its sound.</summary>
+  internal static void Track(ExSoundLoop loop) {
+    lock (Loaded) {
+      Loaded.RemoveAll(r => !r.TryGetTarget(out _));
+      Loaded.Add(new WeakReference<ExSoundLoop>(loop));
+    }
+  }
+
+  /// <summary>Drops a disposed loop; a loop never tracked is ignored.</summary>
+  internal static void Untrack(ExSoundLoop loop) {
+    lock (Loaded)
+      Loaded.RemoveAll(r => !r.TryGetTarget(out ExSoundLoop? l) || l == loop);
+  }
+
+  /// <summary>Whether <paramref name="loop"/> is registered to follow
+  /// <see cref="MachineVolume"/>.</summary>
+  internal static bool Tracks(ExSoundLoop loop) {
+    lock (Loaded)
+      return Loaded.Exists(r =>
+        r.TryGetTarget(out ExSoundLoop? l) && l == loop
+      );
+  }
+
+  private static List<ExSoundLoop> LoadedLoops() {
+    var live = new List<ExSoundLoop>();
+    lock (Loaded) {
+      Loaded.RemoveAll(r => !r.TryGetTarget(out _));
+      foreach (WeakReference<ExSoundLoop> r in Loaded)
+        if (r.TryGetTarget(out ExSoundLoop? loop))
+          live.Add(loop);
+    }
+    return live;
+  }
 
   internal const string ChannelName = "exlibSound";
 

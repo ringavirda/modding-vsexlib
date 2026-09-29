@@ -79,6 +79,8 @@ public class ExWorldStateTests {
     ["ExpandedLib.Helpers.ExMeasure.<System>k__BackingField"] =
       PlayerPreference,
     ["ExpandedLib.Industry.Helpers.ExSounds._machineVolume"] = PlayerPreference,
+    ["ExpandedLib.Industry.Helpers.ExSounds.Loaded"] =
+      "weak references to the client's loaded loops; each leaves on its own Dispose",
     ["ExpandedLib.Structures.StructureFillers.<FillerCode>k__BackingField"] =
       "the one filler block exlib's Start names, the same in every world",
     ["ExpandedLib.ExlibValues._store._api"] =
