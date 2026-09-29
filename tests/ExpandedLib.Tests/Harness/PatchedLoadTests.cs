@@ -54,9 +54,8 @@ public class PatchedLoadTests(ITestOutputHelper output) {
     Assert.True(Has(world, "fxtarget:thing-c"));
   }
 
-  // Fails when the listed mods join Mods only after the patch loader has run, so the inverted
-  // dependency is met beside fxtarget; and when the single-mod load skips the patch loader, so fxsource
-  // alone has no other-x.
+  // Fails when the listed mods join Mods after the patch loader runs (other-x beside fxtarget), and
+  // when the single-mod load skips the patch loader (no other-x alone).
   [Fact]
   public void An_inverted_dependency_is_unmet_beside_its_mod_and_met_without_it() {
     using var both = new TestWorld();

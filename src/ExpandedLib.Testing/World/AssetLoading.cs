@@ -24,11 +24,12 @@ namespace ExpandedLib.Testing;
 /// <see cref="Block"/>/<see cref="Item"/> instances.
 /// </summary>
 public sealed partial class TestWorld {
-  /// <summary>Loads one mod's real assets through the game's own asset manager, patch loader and
-  /// object loader and registers the resulting <see cref="Block"/>/<see cref="Item"/> instances, as
-  /// <see cref="LoadAssets(IReadOnlyList{string}, string)"/> loads a list of one.</summary>
-  /// <remarks>The mod's own patches into its own files apply, and a patch's <c>dependsOn</c> is met by
-  /// exlib and this mod.</remarks>
+  /// <summary>Loads one mod's real assets as <see cref="LoadAssets(IReadOnlyList{string}, string)"/>
+  /// loads a list of one, so the mod's patches into its own files apply; of vanilla survival and
+  /// creative, only the survival world properties load, which a <c>loadFromProperties</c> reads.</summary>
+  /// <remarks>exlib's <c>StartPre</c> first empties every per-world registry
+  /// (<see cref="Registries.ExWorldState"/>). Every system started is disposed when the load ends,
+  /// thrown or not. A block's api, resolved <c>drops</c> and <c>OnLoaded</c> are the caller's.</remarks>
   /// <param name="modPath">A mod's or sample's folder: <c>modinfo.json</c> and <c>bin/</c> at its root
   /// or under <c>src/</c>, assets under <c>assets/&lt;modid&gt;/</c>; a content mod has no dll.</param>
   /// <param name="gamePath">The game install to read base assets and vanilla mods from; defaults to
@@ -40,40 +41,20 @@ public sealed partial class TestWorld {
   public TestWorld LoadAssets(string modPath, string? gamePath = null) =>
     LoadAssets([modPath], gamePath);
 
-  /// <summary>Loads several mods' real assets as one game loads them, through the game's own asset
-  /// manager, patch loader and object loader, and registers the resulting
-  /// <see cref="Block"/>/<see cref="Item"/> instances; of vanilla survival and creative, only the
-  /// survival world properties load, which a <c>loadFromProperties</c> reads.</summary>
-  /// <remarks>One asset manager holds the base assets, the survival world properties and each
-  /// listed mod's assets under its modid. Every listed mod joins <see cref="Mods"/> before anything
-  /// starts, with its modid, version and <c>modinfo.json</c> dependency ids. The install's vanilla
-  /// mod systems register their classes first, so a vanilla-only load logs nothing. exlib's driver
-  /// then runs its <c>StartPre</c>, emptying every per-world registry
-  /// (<see cref="Registries.ExWorldState"/>), every exlib mod system its <c>Start</c>, and each listed
-  /// mod's systems theirs, mod by mod in list order. exlib's definitions load once, then the game's
-  /// <c>ModJsonPatchLoader</c> applies every listed mod's patches, then the object loader runs once.
-  /// A patch sees every listed mod's files, whichever mod comes first. Its <c>dependsOn</c> is met by
-  /// exlib and the listed mods only, never by <c>game</c>, <c>creative</c> or <c>survival</c>, and
-  /// by any other id <see cref="Mods"/> held before the load. Its <c>condition</c> reads
-  /// <see cref="Config"/>'s <c>Tree</c> as it stands when the load starts. A vanilla file a patch
-  /// names is not in the manager, so the patch loader logs it as not found and the patch is not
-  /// applied. The patch loader's summary line, "JsonPatch Loader: ...", lands in <see cref="Log"/>
-  /// as a Notification. Applying a patch calls Newtonsoft.Json's <c>JToken.WriteTo(JsonWriter)</c>,
-  /// which the 13.0.1 a test host brings lacks, so a test project whose loads apply patches references
-  /// the Newtonsoft.Json package itself. Every system started is disposed when the load ends, thrown or not, the
-  /// last-started first. A block's api, resolved <c>drops</c> and <c>OnLoaded</c> are the
-  /// caller's.</remarks>
-  /// <param name="modPaths">Mod or sample folders in load order, as the game's sorted mod list gives
-  /// it; each has <c>modinfo.json</c> and <c>bin/</c> at its root or under <c>src/</c>, assets under
-  /// <c>assets/&lt;modid&gt;/</c>, and a content mod no dll. An empty list loads the base game
-  /// alone.</param>
-  /// <param name="gamePath">The game install to read base assets and vanilla mods from; defaults to
-  /// <see cref="VsAssemblyResolver.InstallPath"/>.</param>
-  /// <returns>This world, holding each loaded block and item under an id of its own and every class
-  /// the load registered in its class registry (<see cref="RegisterClasses"/>).</returns>
-  /// <exception cref="InvalidOperationException">No game install resolves, a listed folder resolves
-  /// no <c>modinfo.json</c> or one without a modid, a mod that is not a content mod has no compiled
-  /// dll under <c>bin/</c>, or VSEssentials no longer holds the patch or object loader.</exception>
+  /// <summary>Loads several mods as one game does: every listed mod's assets in one asset manager,
+  /// every listed mod in <see cref="Mods"/> before any system starts, then the game's own patch loader
+  /// and object loader, each run once over them all.</summary>
+  /// <remarks>A patch's <c>dependsOn</c> is met by exlib, the listed mods and any id <see cref="Mods"/>
+  /// held before, never by <c>game</c>; its <c>condition</c> reads <see cref="Config"/>'s <c>Tree</c>;
+  /// a vanilla file it names is not loaded, so it is not applied. The loader's "JsonPatch Loader: ..."
+  /// line lands in <see cref="Log"/>. Applying a patch needs a newer Newtonsoft.Json than the 13.0.1 a
+  /// test host brings.</remarks>
+  /// <param name="modPaths">Mod folders in load order, each as <see cref="LoadAssets(string, string)"/>
+  /// takes one; an empty list loads the base game alone.</param>
+  /// <param name="gamePath">As <see cref="LoadAssets(string, string)"/> takes it.</param>
+  /// <returns>This world, as <see cref="LoadAssets(string, string)"/> returns it.</returns>
+  /// <exception cref="InvalidOperationException">As <see cref="LoadAssets(string, string)"/> throws it,
+  /// for any listed folder, or VSEssentials no longer holds the patch or object loader.</exception>
   public TestWorld LoadAssets(
     IReadOnlyList<string> modPaths,
     string? gamePath = null
