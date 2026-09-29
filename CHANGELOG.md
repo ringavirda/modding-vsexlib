@@ -227,6 +227,16 @@ see the git history.
 - **`RegistrySubCommand<T>.CallerLanguage`**: the language of the caller a `Set` override is
   answering, the server's own for the console, for `Lang.GetL`. It is valid only while `Set` runs
   for a dispatched command and throws `InvalidOperationException` outside it.
+- **`TestWorld.LoadAssets(modPaths, gamePath?)`** (ExpandedLib.Testing) loads several mods as one
+  game does, the list order being the load order: one asset manager holds every listed mod's assets,
+  every listed mod joins `Mods` before anything starts, each mod's systems start in list order, and
+  the game's own `ModJsonPatchLoader` applies every listed mod's patches before the object loader
+  runs once. A patch's `dependsOn` is met by exlib and the listed mods, its `condition` reads
+  `Config.Tree`, and the loader's "JsonPatch Loader: ..." line lands in `Log`. A vanilla file a patch
+  names is not loaded, so that patch is not applied. `LoadAssets(modPath, gamePath?)` is the list of
+  one, so a mod's patches into its own files apply too. Applying a patch needs a newer Newtonsoft.Json
+  than the 13.0.1 a test host brings, so a test project whose loads apply patches references the
+  Newtonsoft.Json package.
 
 ### Changed
 

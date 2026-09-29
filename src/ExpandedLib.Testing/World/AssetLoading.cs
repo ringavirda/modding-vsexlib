@@ -24,14 +24,11 @@ namespace ExpandedLib.Testing;
 /// <see cref="Block"/>/<see cref="Item"/> instances.
 /// </summary>
 public sealed partial class TestWorld {
-  /// <summary>Loads one mod's real assets through the game's own asset manager and object loader and
-  /// registers the resulting <see cref="Block"/>/<see cref="Item"/> instances; of vanilla survival and
-  /// creative, only the survival world properties load, which a <c>loadFromProperties</c> reads.</summary>
-  /// <remarks>The install's vanilla mod systems register their classes first, so a vanilla-only
-  /// load logs nothing. exlib's driver then runs its <c>StartPre</c>, emptying every per-world
-  /// registry (<see cref="Registries.ExWorldState"/>), and every exlib mod system its <c>Start</c>,
-  /// before the mod's. Every system started is disposed when the load ends, thrown or not, the mod's
-  /// first. A block's api, resolved <c>drops</c> and <c>OnLoaded</c> are the caller's.</remarks>
+  /// <summary>Loads one mod's real assets through the game's own asset manager, patch loader and
+  /// object loader and registers the resulting <see cref="Block"/>/<see cref="Item"/> instances, as
+  /// <see cref="LoadAssets(IReadOnlyList{string}, string)"/> loads a list of one.</summary>
+  /// <remarks>The mod's own patches into its own files apply, and a patch's <c>dependsOn</c> is met by
+  /// exlib and this mod.</remarks>
   /// <param name="modPath">A mod's or sample's folder: <c>modinfo.json</c> and <c>bin/</c> at its root
   /// or under <c>src/</c>, assets under <c>assets/&lt;modid&gt;/</c>; a content mod has no dll.</param>
   /// <param name="gamePath">The game install to read base assets and vanilla mods from; defaults to
@@ -40,39 +37,54 @@ public sealed partial class TestWorld {
   /// the load registered in its class registry (<see cref="RegisterClasses"/>).</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, no <c>modinfo.json</c>
   /// resolves, or a mod that is not a content mod has no compiled dll under <c>bin/</c>.</exception>
-  public TestWorld LoadAssets(string modPath, string? gamePath = null) {
+  public TestWorld LoadAssets(string modPath, string? gamePath = null) =>
+    LoadAssets([modPath], gamePath);
+
+  /// <summary>Loads several mods' real assets as one game loads them, through the game's own asset
+  /// manager, patch loader and object loader, and registers the resulting
+  /// <see cref="Block"/>/<see cref="Item"/> instances; of vanilla survival and creative, only the
+  /// survival world properties load, which a <c>loadFromProperties</c> reads.</summary>
+  /// <remarks>One asset manager holds the base assets, the survival world properties and each
+  /// listed mod's assets under its modid. Every listed mod joins <see cref="Mods"/> before anything
+  /// starts, with its modid, version and <c>modinfo.json</c> dependency ids. The install's vanilla
+  /// mod systems register their classes first, so a vanilla-only load logs nothing. exlib's driver
+  /// then runs its <c>StartPre</c>, emptying every per-world registry
+  /// (<see cref="Registries.ExWorldState"/>), every exlib mod system its <c>Start</c>, and each listed
+  /// mod's systems theirs, mod by mod in list order. exlib's definitions load once, then the game's
+  /// <c>ModJsonPatchLoader</c> applies every listed mod's patches, then the object loader runs once.
+  /// A patch sees every listed mod's files, whichever mod comes first. Its <c>dependsOn</c> is met by
+  /// exlib and the listed mods only, never by <c>game</c>, <c>creative</c> or <c>survival</c>, and
+  /// by any other id <see cref="Mods"/> held before the load. Its <c>condition</c> reads
+  /// <see cref="Config"/>'s <c>Tree</c> as it stands when the load starts. A vanilla file a patch
+  /// names is not in the manager, so the patch loader logs it as not found and the patch is not
+  /// applied. The patch loader's summary line, "JsonPatch Loader: ...", lands in <see cref="Log"/>
+  /// as a Notification. Applying a patch calls Newtonsoft.Json's <c>JToken.WriteTo(JsonWriter)</c>,
+  /// which the 13.0.1 a test host brings lacks, so a test project whose loads apply patches references
+  /// the Newtonsoft.Json package itself. Every system started is disposed when the load ends, thrown or not, the
+  /// last-started first. A block's api, resolved <c>drops</c> and <c>OnLoaded</c> are the
+  /// caller's.</remarks>
+  /// <param name="modPaths">Mod or sample folders in load order, as the game's sorted mod list gives
+  /// it; each has <c>modinfo.json</c> and <c>bin/</c> at its root or under <c>src/</c>, assets under
+  /// <c>assets/&lt;modid&gt;/</c>, and a content mod no dll. An empty list loads the base game
+  /// alone.</param>
+  /// <param name="gamePath">The game install to read base assets and vanilla mods from; defaults to
+  /// <see cref="VsAssemblyResolver.InstallPath"/>.</param>
+  /// <returns>This world, holding each loaded block and item under an id of its own and every class
+  /// the load registered in its class registry (<see cref="RegisterClasses"/>).</returns>
+  /// <exception cref="InvalidOperationException">No game install resolves, a listed folder resolves
+  /// no <c>modinfo.json</c> or one without a modid, a mod that is not a content mod has no compiled
+  /// dll under <c>bin/</c>, or VSEssentials no longer holds the patch or object loader.</exception>
+  public TestWorld LoadAssets(
+    IReadOnlyList<string> modPaths,
+    string? gamePath = null
+  ) {
     gamePath ??=
       VsAssemblyResolver.InstallPath
       ?? throw new InvalidOperationException(
         "No game install found - set the game's env var or provision .game/<slug>."
       );
     string assetsPath = Path.Combine(gamePath, "assets");
-
-    // modinfo.json presence picks src/ vs. the mod's own root; checked directly since a stale
-    // ignored bin/ can outlive a layout move.
-    string modRoot = File.Exists(Path.Combine(modPath, "modinfo.json"))
-      ? modPath
-      : Path.Combine(modPath, "src");
-
-    string modInfoPath = Path.Combine(modRoot, "modinfo.json");
-    if (!File.Exists(modInfoPath))
-      throw new InvalidOperationException(
-        $"No modinfo.json under '{modPath}' or '{modRoot}'."
-      );
-    var modInfoJson = JObject.Parse(File.ReadAllText(modInfoPath));
-    string modId =
-      (string?)modInfoJson["modid"]
-      ?? throw new InvalidOperationException($"'{modInfoPath}' has no modid.");
-    string version = (string?)modInfoJson["version"] ?? "0.0.0";
-    bool isContentMod = string.Equals(
-      (string?)modInfoJson["type"],
-      "content",
-      StringComparison.OrdinalIgnoreCase
-    );
-
-    Assembly? modAssembly = isContentMod
-      ? null
-      : Assembly.LoadFrom(FindModAssembly(modRoot, modId));
+    List<ListedMod> mods = [.. modPaths.Select(ReadListedMod)];
 
     // The base game domain only.
     var mgr = new AssetManager(assetsPath, EnumAppSide.Server);
@@ -85,7 +97,8 @@ public sealed partial class TestWorld {
       )
     )
       mgr.Add(asset.Location, asset);
-    MirrorAssets(mgr, Path.Combine(modPath, "assets", modId), modId);
+    foreach (ListedMod mod in mods)
+      MirrorAssets(mgr, Path.Combine(mod.Path, "assets", mod.Id), mod.Id);
 
     // GamePaths.AssetsPath/Lang.Load are process-wide statics the object loader needs primed; safe
     // to set repeatedly.
@@ -100,11 +113,27 @@ public sealed partial class TestWorld {
       mgr,
       out ClassRegistry rawClassRegistry
     );
+    foreach (ListedMod mod in mods)
+      Mods.Add(mod.Id, mod.Version, true, mod.Dependencies);
     PassedOverVanillaSystems = StartVanillaMods(gamePath, rawClassRegistry);
     var started = new List<ModSystem>();
     try {
       StartExlib(loaderApi, started);
-      LoadMod(loaderApi, modAssembly, modId, version, started);
+      foreach (ListedMod mod in mods)
+        StartMod(loaderApi, mod, started);
+      // The manager refuses a single asset until the game marks every asset loaded, which it does
+      // before the AssetsLoaded stage; the patch loader reads each file it patches that way.
+      ReflectionHelpers.SetField(mgr, "allAssetsLoaded", true);
+      new ExDefinitionModSystem().AssetsLoaded(loaderApi);
+      RunVanillaLoader(
+        loaderApi,
+        "Vintagestory.ServerMods.NoObf.ModJsonPatchLoader"
+      );
+      RunVanillaLoader(
+        loaderApi,
+        "Vintagestory.ServerMods.NoObf.ModRegistryObjectTypeLoader"
+      );
+      RegisterLoaded(loaderApi);
     } finally {
       for (int i = started.Count - 1; i >= 0; i--)
         started[i].Dispose();
@@ -161,7 +190,10 @@ public sealed partial class TestWorld {
     Lang.Load(Log, mgr, "en");
 
     ICoreServerAPI loaderApi = BuildLoaderApi(mgr, out _);
-    RunObjectLoader(loaderApi);
+    RunVanillaLoader(
+      loaderApi,
+      "Vintagestory.ServerMods.NoObf.ModRegistryObjectTypeLoader"
+    );
     // Vanilla collectibles read world properties from the api's assets in OnLoaded, which the
     // manager refuses until the game marks every asset loaded.
     ReflectionHelpers.SetField(mgr, "allAssetsLoaded", true);
@@ -197,31 +229,75 @@ public sealed partial class TestWorld {
     return loaded;
   }
 
-  /// <summary>The mod systems the last <see cref="LoadAssets"/> started, exlib's then the mod's, in
-  /// start order; every one was disposed, the mod's first, before it returned.</summary>
+  /// <summary>The mod systems the last <see cref="LoadAssets(IReadOnlyList{string}, string)"/>
+  /// started, exlib's then each listed mod's, in start order; every one was disposed, the
+  /// last-started first, before it returned.</summary>
   internal IReadOnlyList<ModSystem> LoadedSystems { get; private set; } = [];
 
   /// <summary>The full names of the install's vanilla mod systems whose <c>Start</c> threw against
-  /// the last <see cref="LoadAssets"/>'s class-registration API, in start order.</summary>
+  /// the last <see cref="LoadAssets(IReadOnlyList{string}, string)"/>'s class-registration API, in start order.</summary>
   internal IReadOnlyList<string> PassedOverVanillaSystems {
     get;
     private set;
   } = [];
 
+  /// <summary>A listed mod as <see cref="LoadAssets(IReadOnlyList{string}, string)"/> reads its
+  /// folder: <paramref name="Assembly"/> is null for a content mod.</summary>
+  private sealed record ListedMod(
+    string Path,
+    string Id,
+    string Version,
+    string[] Dependencies,
+    Assembly? Assembly
+  );
+
+  /// <exception cref="InvalidOperationException">No <c>modinfo.json</c> or modid resolves, or a mod
+  /// that is not a content mod has no compiled dll under <c>bin/</c>.</exception>
+  private static ListedMod ReadListedMod(string modPath) {
+    // modinfo.json presence picks src/ vs. the mod's own root; checked directly since a stale
+    // ignored bin/ can outlive a layout move.
+    string modRoot = File.Exists(Path.Combine(modPath, "modinfo.json"))
+      ? modPath
+      : Path.Combine(modPath, "src");
+
+    string modInfoPath = Path.Combine(modRoot, "modinfo.json");
+    if (!File.Exists(modInfoPath))
+      throw new InvalidOperationException(
+        $"No modinfo.json under '{modPath}' or '{modRoot}'."
+      );
+    var modInfoJson = JObject.Parse(File.ReadAllText(modInfoPath));
+    string modId =
+      (string?)modInfoJson["modid"]
+      ?? throw new InvalidOperationException($"'{modInfoPath}' has no modid.");
+    bool isContentMod = string.Equals(
+      (string?)modInfoJson["type"],
+      "content",
+      StringComparison.OrdinalIgnoreCase
+    );
+    return new ListedMod(
+      modPath,
+      modId,
+      (string?)modInfoJson["version"] ?? "0.0.0",
+      [
+        .. (modInfoJson["dependencies"] as JObject)
+          ?.Properties()
+          .Select(p => p.Name)
+          ?? [],
+      ],
+      isContentMod ? null : Assembly.LoadFrom(FindModAssembly(modRoot, modId))
+    );
+  }
+
   // Lists each system in started before its Start: the game keeps a system whose Start throws and
   // disposes it with the rest.
-  private void LoadMod(
+  private void StartMod(
     ICoreServerAPI loaderApi,
-    Assembly? modAssembly,
-    string modId,
-    string version,
+    ListedMod listed,
     List<ModSystem> started
   ) {
-    Mods.Add(modId, version);
-    Mod mod = Mods.GetMod(modId)!;
-
+    Mod mod = Mods.GetMod(listed.Id)!;
     foreach (
-      Type t in (modAssembly?.GetTypes() ?? []).Where(t =>
+      Type t in (listed.Assembly?.GetTypes() ?? []).Where(t =>
         typeof(ModSystem).IsAssignableFrom(t) && !t.IsAbstract
       )
     ) {
@@ -232,11 +308,11 @@ public sealed partial class TestWorld {
         sys.Start(loaderApi);
       }
     }
-    // Runs regardless of whether the mod is code-first; a plain-JSON mod is a no-op here.
-    new ExDefinitionModSystem().AssetsLoaded(loaderApi);
+  }
 
-    RunObjectLoader(loaderApi);
-
+  /// <summary>Gives every block and item registered through <paramref name="loaderApi"/> an id of
+  /// its own and registers it in this world.</summary>
+  private void RegisterLoaded(ICoreServerAPI loaderApi) {
     foreach (
       Block block in loaderApi
         .ReceivedCalls()
@@ -502,15 +578,16 @@ public sealed partial class TestWorld {
     }
   }
 
-  /// <summary>Reflectively runs <c>ModRegistryObjectTypeLoader.AssetsLoaded</c>, found by name each
-  /// call to avoid a version-fragile static reference.</summary>
-  private static void RunObjectLoader(ICoreServerAPI api) {
+  /// <summary>Reflectively runs the <c>AssetsLoaded</c> of the VSEssentials mod system named
+  /// <paramref name="typeName"/>, found by name each call to avoid a version-fragile static
+  /// reference.</summary>
+  /// <exception cref="InvalidOperationException">VSEssentials holds no such type, or it cannot be
+  /// constructed.</exception>
+  private static void RunVanillaLoader(ICoreServerAPI api, string typeName) {
     Type loaderType =
-      Assembly
-        .Load("VSEssentials")
-        .GetType("Vintagestory.ServerMods.NoObf.ModRegistryObjectTypeLoader")
+      Assembly.Load("VSEssentials").GetType(typeName)
       ?? throw new InvalidOperationException(
-        "VSEssentials no longer exposes Vintagestory.ServerMods.NoObf.ModRegistryObjectTypeLoader."
+        $"VSEssentials no longer exposes {typeName}."
       );
     object loader =
       Activator.CreateInstance(loaderType, nonPublic: true)
@@ -518,7 +595,9 @@ public sealed partial class TestWorld {
         $"Could not construct {loaderType.FullName}."
       );
     try {
-      loaderType.GetMethod("AssetsLoaded")!.Invoke(loader, [api]);
+      loaderType
+        .GetMethod("AssetsLoaded", [typeof(ICoreAPI)])!
+        .Invoke(loader, [api]);
     } catch (TargetInvocationException e) when (e.InnerException != null) {
       throw e.InnerException;
     }

@@ -1,0 +1,4 @@
+{
+  "code": "thing",
+  "variantgroups": [{ "code": "kind", "states": ["a", "b"] }]
+}

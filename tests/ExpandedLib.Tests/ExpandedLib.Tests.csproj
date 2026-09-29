@@ -43,6 +43,9 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <!-- Mocking framework for faking the game's big API interfaces in BE/unit tests. -->
     <PackageReference Include="NSubstitute" />
+    <!-- The test host brings Newtonsoft.Json 13.0.1, which lacks the JToken.WriteTo(JsonWriter) the
+         game's patch loader calls to save a patched file (PatchedLoadTests). -->
+    <PackageReference Include="Newtonsoft.Json" />
     <!-- ExConfigGeneratorFailureTests drives ExConfigGenerator directly through a CSharpGeneratorDriver
          to exercise its #error and diagnostic paths, which cannot be exercised through a fixture
          compiled into this assembly (a bad fixture would fail the whole assembly's build). -->

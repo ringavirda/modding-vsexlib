@@ -1,0 +1,23 @@
+[
+  {
+    "op": "add",
+    "file": "fxtarget:blocktypes/thing.json",
+    "path": "/variantgroups/0/states/-",
+    "value": "c",
+    "dependsOn": [{ "modid": "fxtarget" }]
+  },
+  {
+    "op": "add",
+    "file": "fxsource:blocktypes/other.json",
+    "path": "/variantgroups/0/states/-",
+    "value": "x",
+    "dependsOn": [{ "modid": "fxtarget", "invert": true }]
+  },
+  {
+    "op": "add",
+    "file": "fxsource:blocktypes/other.json",
+    "path": "/variantgroups/0/states/-",
+    "value": "y",
+    "condition": { "when": "fxflag", "isValue": "on" }
+  }
+]
