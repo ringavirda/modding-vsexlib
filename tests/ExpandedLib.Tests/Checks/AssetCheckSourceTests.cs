@@ -30,6 +30,45 @@ public class AssetCheckSourceTests {
     Assert.Equal(["dependent", "exlib"], source.Domains.OrderBy(d => d));
   }
 
+  // Fails when AssetCheckSource.Blocks or Items keeps a collectible the game marks IsMissing.
+  [Fact]
+  public void The_stand_ins_for_codes_nothing_registers_are_left_out() {
+    using var world = new TestWorld();
+    world
+      .Register(new Block { Code = new("dependent:crate"), BlockId = 900 })
+      .Register(
+        new Block {
+          Code = new("dependent:gone"),
+          BlockId = 901,
+          IsMissing = true,
+        }
+      );
+    world.RegisterItem("dependent:plank");
+    world.Register(
+      new Item {
+        Code = new("dependent:goneitem"),
+        ItemId = 902,
+        IsMissing = true,
+      }
+    );
+    var source = new AssetCheckSource(world.Api);
+
+    Assert.Contains(new AssetLocation("dependent:crate"), source.BlockCodes);
+    Assert.DoesNotContain(
+      new AssetLocation("dependent:gone"),
+      source.BlockCodes
+    );
+    Assert.Contains(new AssetLocation("dependent:plank"), source.ItemCodes);
+    Assert.DoesNotContain(
+      new AssetLocation("dependent:goneitem"),
+      source.ItemCodes
+    );
+    Assert.DoesNotContain(
+      source.Collectibles,
+      c => c.Code.Path is "gone" or "goneitem"
+    );
+  }
+
   // Fails when BlockTypes stops reading the domain's blocktype assets or keeps an unparsable one.
   [Fact]
   public void BlockTypes_reads_each_parsable_blocktype_of_the_domain() {

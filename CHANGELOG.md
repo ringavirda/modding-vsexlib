@@ -464,6 +464,10 @@ see the git history.
   `{name}` holes of a grid recipe's `ingredients` only, so an output a recipe's single `ingredient`
   or listed `ingredients` binds through `allowedVariants` was reported unexpanded
   (`smex:toolmold-{color}-raw-plate`) although every variant is registered.
+- **The checks leave out the stand-ins an old world's missing codes get.** On a save that maps a
+  block or item no mod registers any more, the game fills in a stand-in marked `IsMissing`;
+  `AssetCheckSource` handed those on as registered codes and collectibles, so `LangCoverageCheck`
+  reported each as unnamed. They are no longer yielded, and no check reads them.
 
 ## [0.8.2] - 2026-09-15
 

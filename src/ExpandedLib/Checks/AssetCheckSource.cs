@@ -16,6 +16,9 @@ namespace ExpandedLib.Checks;
 /// <summary>The in-game <see cref="ICheckSource"/> and <see cref="ILoadedGame"/>: codes and recipes
 /// from <see cref="ICoreAPI.Assets"/>, definitions from <see cref="ExDefinitions"/>, collectibles
 /// and recipe outputs from the world. A domain is exlib and every mod that depends on it.</summary>
+/// <remarks>The blocks and items the game fills in for codes a save maps and nothing registers
+/// (<see cref="CollectibleObject.IsMissing"/>) are left out of every code and collectible it
+/// yields.</remarks>
 public sealed class AssetCheckSource(ICoreAPI api) : ILoadedGame {
   /// <inheritdoc/>
   public IEnumerable<string> Domains =>
@@ -28,12 +31,16 @@ public sealed class AssetCheckSource(ICoreAPI api) : ILoadedGame {
       .Distinct();
 
   /// <inheritdoc/>
-  public IEnumerable<AssetLocation> BlockCodes =>
-    api.World.Blocks.Where(b => b?.Code != null).Select(b => b.Code);
+  public IEnumerable<AssetLocation> BlockCodes => Blocks.Select(b => b.Code);
 
   /// <inheritdoc/>
-  public IEnumerable<AssetLocation> ItemCodes =>
-    api.World.Items.Where(i => i?.Code != null).Select(i => i.Code);
+  public IEnumerable<AssetLocation> ItemCodes => Items.Select(i => i.Code);
+
+  private IEnumerable<Block> Blocks =>
+    api.World.Blocks.Where(b => b?.Code != null && !b.IsMissing);
+
+  private IEnumerable<Item> Items =>
+    api.World.Items.Where(i => i?.Code != null && !i.IsMissing);
 
   /// <inheritdoc/>
   public IEnumerable<(AssetLocation File, JObject Json)> Recipes(string domain) {
@@ -77,10 +84,7 @@ public sealed class AssetCheckSource(ICoreAPI api) : ILoadedGame {
 
   /// <inheritdoc/>
   public IEnumerable<CollectibleObject> Collectibles =>
-    api
-      .World.Blocks.Where(b => b?.Code != null)
-      .Cast<CollectibleObject>()
-      .Concat(api.World.Items.Where(i => i?.Code != null));
+    Blocks.Cast<CollectibleObject>().Concat(Items);
 
   /// <inheritdoc/>
   /// <remarks>The recipe registries yield only the grid recipes when the game runs no
@@ -130,10 +134,9 @@ public sealed class AssetCheckSource(ICoreAPI api) : ILoadedGame {
       )
         if (stage.IsStoppingPoint)
           yield return new("processroutes", EnumItemClass.Item, new(stage.Code!));
-    foreach (Item item in api.World.Items)
+    foreach (Item item in Items)
       if (
-        item?.Code != null
-        && ItemDie.TryParse(
+        ItemDie.TryParse(
           item.Attributes?[ItemDie.AttributeKey],
           out ProcessJobSet? set,
           out _
