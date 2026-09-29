@@ -109,8 +109,9 @@ public class ExlibConfig : IExVersionedConfig {
   #endregion
 
   #region Diagnostics
-  /// <summary>Whether <c>ExpandedLibModSystem.AssetsFinalize</c> runs
-  /// <c>ExpandedLib.Checks.ExlibChecks.All</c> after the catalogues load and logs the results.</summary>
+  /// <summary>Whether the server runs <c>ExpandedLib.Checks.ExlibChecks.All</c> at
+  /// <c>EnumServerRunPhase.GameReady</c>, after every mod's <c>StartServerSide</c>, and logs the
+  /// results.</summary>
   public bool RunChecksOnLoad { get; set; } = true;
   #endregion
 }

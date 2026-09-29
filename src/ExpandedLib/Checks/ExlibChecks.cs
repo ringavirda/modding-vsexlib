@@ -9,7 +9,7 @@ namespace ExpandedLib.Checks;
 /// the loaded checks against an <see cref="ILoadedGame"/>. A mod exempts a finding it ships
 /// knowingly with <see cref="Exempt(string, string, string[], string)"/> and declares what its
 /// machines make with <see cref="Produces"/>.</summary>
-/// <remarks><see cref="ExpandedLibModSystem.AssetsFinalize"/> calls <see cref="All(ICoreAPI)"/>;
+/// <remarks>The server calls <see cref="All(ICoreAPI)"/> at <c>EnumServerRunPhase.GameReady</c>;
 /// <c>/exmod verify</c> calls <see cref="Verify"/>, which adds the loaded checks. A mod's own
 /// <see cref="ExCheckRegisterAttribute"/>-decorated checks run after the content checks.</remarks>
 public static class ExlibChecks {

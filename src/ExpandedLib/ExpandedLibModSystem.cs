@@ -50,17 +50,11 @@ public class ExpandedLibModSystem : ModSystem {
 
   /// <summary>Loads the shared catalogues (liquids, material roles, process routes, process jobs, bay
   /// occupancy) from every domain's <c>config/</c> once the asset-patch pipeline has merged all mods'
-  /// JSON, then, on a server, runs the content checks; a client receives no recipes. A singleplayer
-  /// client loads no catalogue: it reads its own server's (<see cref="ExWorldState.ResetsOnLoad"/>).
-  /// </summary>
+  /// JSON. A singleplayer client loads no catalogue: it reads its own server's
+  /// (<see cref="ExWorldState.ResetsOnLoad"/>).</summary>
   public override void AssetsFinalize(ICoreAPI api) {
     if (ExWorldState.ResetsOnLoad(api))
       LoadCatalogues(api);
-
-    // The content guards - dangling recipe codes, uncovered lang, pinned network nodes and the rest.
-    // RunChecksOnLoad opts out; also available on demand with /exmod verify.
-    if (ExlibValues.RunChecksOnLoad && api.Side == EnumAppSide.Server)
-      Checks.ExlibChecks.Log(api.Logger, Checks.ExlibChecks.All(api));
   }
 
   private static void LoadCatalogues(ICoreAPI api) {
@@ -109,6 +103,16 @@ public class ExpandedLibModSystem : ModSystem {
 
       // Applies every registered mod's selected recipe-cost level to the live, host-authoritative recipes.
       ExRecipeProfiles.ApplyAll(api);
+
+      // The content guards, after every mod's StartServerSide, so a recipe a mod removes there is
+      // not read. RunChecksOnLoad opts out; also available on demand with /exmod verify.
+      api.Event.ServerRunPhase(
+        EnumServerRunPhase.GameReady,
+        () => {
+          if (ExlibValues.RunChecksOnLoad)
+            Checks.ExlibChecks.Log(api.Logger, Checks.ExlibChecks.All(api));
+        }
+      );
 
       // Repeats the StartPre finding to every joining player.
       if (_incompatible is { } message)
