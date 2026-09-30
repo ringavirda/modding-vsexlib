@@ -125,35 +125,40 @@ public class ExWorldStateTests {
   public void A_server_load_start_empties_every_static_collection_that_is_not_a_cache() {
     var filled = new List<StaticCells.Fill>();
     var unfillable = new List<string>();
-    foreach ((string root, FieldInfo field) in StaticCells.Roots(Assemblies))
-      if (!Caches.ContainsKey(root))
-        StaticCells.FillRoot(
-          root,
-          field,
-          Caches.ContainsKey,
-          filled,
-          unfillable
-        );
-    Assert.Empty(unfillable);
-    Assert.Contains(
-      filled,
-      f => f.Path.StartsWith("ExpandedLib.Definitions.ExDefinitions._blocks")
-    );
-    Assert.True(filled.Count >= 40, $"only {filled.Count} collections filled");
+    try {
+      foreach ((string root, FieldInfo field) in StaticCells.Roots(Assemblies))
+        if (!Caches.ContainsKey(root))
+          StaticCells.FillRoot(
+            root,
+            field,
+            Caches.ContainsKey,
+            filled,
+            unfillable
+          );
+      Assert.Empty(unfillable);
+      Assert.Contains(
+        filled,
+        f => f.Path.StartsWith("ExpandedLib.Definitions.ExDefinitions._blocks")
+      );
+      Assert.True(filled.Count >= 40, $"only {filled.Count} collections filled");
 
-    var world = new TestWorld();
-    Driver(world).StartPre(world.Api);
+      var world = new TestWorld();
+      Driver(world).StartPre(world.Api);
 
-    string[] survivors =
-    [
-      .. filled.Where(f => f.Survives()).Select(f => f.Path),
-    ];
-    Assert.True(
-      survivors.Length == 0,
-      "Survives a load start - reset it where it is owned (ExWorldState, IndustryModule.StartPre) "
-        + "or list it as a cache with its reason:\n"
-        + string.Join("\n", survivors)
-    );
+      string[] survivors =
+      [
+        .. filled.Where(f => f.Survives()).Select(f => f.Path),
+      ];
+      Assert.True(
+        survivors.Length == 0,
+        "Survives a load start - reset it where it is owned (ExWorldState, IndustryModule.StartPre) "
+          + "or list it as a cache with its reason:\n"
+          + string.Join("\n", survivors)
+      );
+    } finally {
+      var reset = new TestWorld();
+      Driver(reset).StartPre(reset.Api);
+    }
   }
 
   // Fails when a settable static's reset goes: recovery fallback, mold gate, sound channel, filler
@@ -162,30 +167,35 @@ public class ExWorldStateTests {
   public void A_server_load_start_returns_every_settable_static_value_it_holds() {
     var planted = new List<StaticCells.Fill>();
     var unplantable = new List<string>();
-    foreach ((string root, FieldInfo field) in StaticCells.Roots(Assemblies))
-      if (!Caches.ContainsKey(root))
-        StaticCells.PlantValue(root, field, planted, unplantable);
-    Assert.Empty(unplantable);
-    Assert.Contains(
-      planted,
-      f =>
-        f.Path
-        == "ExpandedLib.Industry.Metals.MetalRegistry.<DefaultRecoveryFallback>k__BackingField"
-    );
+    try {
+      foreach ((string root, FieldInfo field) in StaticCells.Roots(Assemblies))
+        if (!Caches.ContainsKey(root))
+          StaticCells.PlantValue(root, field, planted, unplantable);
+      Assert.Empty(unplantable);
+      Assert.Contains(
+        planted,
+        f =>
+          f.Path
+          == "ExpandedLib.Industry.Metals.MetalRegistry.<DefaultRecoveryFallback>k__BackingField"
+      );
 
-    var world = new TestWorld();
-    Driver(world).StartPre(world.Api);
+      var world = new TestWorld();
+      Driver(world).StartPre(world.Api);
 
-    string[] survivors =
-    [
-      .. planted.Where(f => f.Survives()).Select(f => f.Path),
-    ];
-    Assert.True(
-      survivors.Length == 0,
-      "Survives a load start - reset it where it is owned (ExWorldState, IndustryModule.StartPre) "
-        + "or list it as a cache with its reason:\n"
-        + string.Join("\n", survivors)
-    );
+      string[] survivors =
+      [
+        .. planted.Where(f => f.Survives()).Select(f => f.Path),
+      ];
+      Assert.True(
+        survivors.Length == 0,
+        "Survives a load start - reset it where it is owned (ExWorldState, IndustryModule.StartPre) "
+          + "or list it as a cache with its reason:\n"
+          + string.Join("\n", survivors)
+      );
+    } finally {
+      var reset = new TestWorld();
+      Driver(reset).StartPre(reset.Api);
+    }
   }
 
   // Fails when the liquid reset stops seeding the built-in media, or keeps a registered one.
