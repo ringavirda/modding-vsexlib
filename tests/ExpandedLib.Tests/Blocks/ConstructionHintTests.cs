@@ -94,6 +94,24 @@ public class ConstructionHintTests {
     );
   }
 
+  // Fails when a construction builds a new hint array for each look instead of keeping its last
+  // answer while the stage and the stored variants are unchanged.
+  [Fact]
+  public void Two_looks_at_one_construction_return_the_same_hint() {
+    TestWorld world = MetalWorld();
+    ExRightClickConstructable behavior = Construction(
+      world,
+      world.ClientApi,
+      new BlockPos(0, 0, 0, 0)
+    );
+
+    WorldInteraction[]? first = Hint(behavior);
+    WorldInteraction[]? second = Hint(behavior);
+
+    Assert.NotNull(first);
+    Assert.Same(first, second);
+  }
+
   // Fails when a paid stage builds the hint, as vanilla's OnInteract does on the server.
   [Fact]
   public void A_paid_stage_scans_nothing() {
