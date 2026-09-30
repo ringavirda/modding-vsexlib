@@ -18,6 +18,11 @@ see the git history.
 
 ### Changed
 
+- On 1.22 `ExRightClickConstructable` is no longer a `BEBehaviorRightClickConstructable`, so
+  `GetBehavior` of the vanilla type no longer finds it. `OnAttemptConstruct` is a `System.Func`, and
+  the `Stages` property and the protected `rcc` field, `brokenDropsRatio` and `updateShape` are gone.
+- On 1.20 and 1.21 a paid stage plays its place sound, and `GetBlockInfo`'s stage line shows to
+  creative players only.
 - The package pages and READMEs link to the wiki at exwiki.felled-stars.org; the GitHub wiki is no
   longer published.
 
