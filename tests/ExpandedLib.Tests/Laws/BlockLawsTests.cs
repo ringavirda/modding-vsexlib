@@ -1508,11 +1508,38 @@ public class BlockLawsTests {
     Assert.Equal(2, law.Cases);
     Assert.Equal(
       [
-        "test:sheds held 1 game:waterportion put into its inventory, and broken "
+        "test:sheds held 1 game:chisel-bismuthbronze put into its inventory, and broken "
           + "dropped 0",
       ],
       law.Findings
     );
+  }
+
+  // Fails when the palette an inventory is offered is left in registry order, so the item a
+  // finding names follows the order the items were registered in.
+  [Fact]
+  [PlantedDefect(typeof(ContainerLaw), nameof(ContainerLaw.Run))]
+  public void The_item_a_finding_names_does_not_depend_on_registration_order() {
+    ExItemDef first = ExItemDef.Create("aaa", "first");
+    ExItemDef second = ExItemDef.Create("aaa", "second");
+
+    string[] Findings(params ExItemDef[] items) =>
+      [
+        .. ContainerLaw
+          .Run(Hands(items, Entity("sheds", "test-shedsnothing")), "test")
+          .Findings,
+      ];
+
+    string[] forward = Findings(first, second);
+
+    Assert.Equal(
+      [
+        "test:sheds held 1 aaa:first put into its inventory, and broken "
+          + "dropped 0",
+      ],
+      forward
+    );
+    Assert.Equal(forward, Findings(second, first));
   }
 
   // Fails when the formed pass follows a stack at the anchor rather than the cell that took it,

@@ -7,6 +7,10 @@ see the git history.
 
 ## [Unreleased]
 
+### Fixed
+
+- The container law names the same item on every machine.
+
 ### Changed
 
 - The package pages and READMEs link to the wiki at exwiki.felled-stars.org; the GitHub wiki is no

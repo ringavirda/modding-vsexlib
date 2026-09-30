@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -155,11 +156,16 @@ public static class ContainerLaw {
     };
   }
 
-  /// <summary>Every item, then every block but air, of <paramref name="world"/>.</summary>
+  /// <summary>Every item, then every block but air, of <paramref name="world"/>, each group in
+  /// ordinal order of code, whatever order the registry holds them in.</summary>
   private static CollectibleObject[] Palette(TestWorld world) =>
     [
-      .. world.World.Items.Where(i => i?.Code != null),
-      .. world.World.Blocks.Where(b => b?.Code != null && b.Id != 0),
+      .. world
+        .World.Items.Where(i => i?.Code != null)
+        .OrderBy(i => i.Code.ToString(), StringComparer.Ordinal),
+      .. world
+        .World.Blocks.Where(b => b?.Code != null && b.Id != 0)
+        .OrderBy(b => b.Code.ToString(), StringComparer.Ordinal),
     ];
 
   private static (CollectibleObject, int, string)? ByClick(
