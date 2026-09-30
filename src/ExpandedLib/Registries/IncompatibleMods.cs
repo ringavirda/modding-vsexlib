@@ -12,14 +12,14 @@ namespace ExpandedLib.Registries;
 /// <summary>The published mods whose releases built against exlib 0.7 cannot load beside this
 /// version.</summary>
 internal static class IncompatibleMods {
-  /// <summary>Mod id to the name players know the mod by and the first release that loads beside
-  /// this version.</summary>
+  /// <summary>Mod id to the name players know the mod by, the first release that loads beside this
+  /// version, and the first release of the line just below it, whose owners keep exlib 0.8.3.</summary>
   internal static readonly IReadOnlyDictionary<
     string,
-    (string Name, string MinVersion)
-  > Known = new Dictionary<string, (string, string)> {
-    ["smex"] = ("Steelmaking Expanded", "0.10.0"),
-    ["ppex"] = ("Pipes and Power Expanded", "0.7.0"),
+    (string Name, string MinVersion, string PriorLine)
+  > Known = new Dictionary<string, (string, string, string)> {
+    ["smex"] = ("Steelmaking Expanded", "0.10.1", "0.10.0"),
+    ["ppex"] = ("Pipes and Power Expanded", "0.7.1", "0.7.0"),
   };
 
   /// <summary>The one message the log and the chat carry, or <c>null</c> when no known mod is
@@ -29,21 +29,29 @@ internal static class IncompatibleMods {
 
   /// <summary>Overload against an explicit <paramref name="modRoots"/> set. A mod the loader has
   /// enabled is judged by its loaded version alone; one it has not (a failed load) by the newest
-  /// copy of it in the roots.</summary>
+  /// copy of it in the roots. The exlib to keep is 0.8.3 when every outdated mod is on the line
+  /// just below its <see cref="Known"/> version, 0.7.2 otherwise.</summary>
   internal static string? Message(
     IModLoader loader,
     string exlibVersion,
     IEnumerable<string> modRoots
   ) {
     string[] roots = modRoots.ToArray();
-    List<string> needed = Known
+    var outdated = Known
       .Where(kv => IsOutdated(loader, kv.Key, kv.Value.MinVersion, roots))
-      .Select(kv => $"{kv.Value.Name} {kv.Value.MinVersion} or later")
       .ToList();
-    if (needed.Count == 0)
+    if (outdated.Count == 0)
       return null;
-    return $"exlib {exlibVersion} needs {string.Join(" and ", needed)}: "
-      + "update, or keep exlib 0.7.2 with the installed versions.";
+    string needed = string.Join(
+      " and ",
+      outdated.Select(kv => $"{kv.Value.Name} {kv.Value.MinVersion} or later")
+    );
+    bool priorLine = outdated.All(kv =>
+      Installed(loader, kv.Key, roots)
+        .Any(v => IsAtLeast(v, kv.Value.PriorLine))
+    );
+    return $"exlib {exlibVersion} needs {needed}: "
+      + $"update, or keep exlib {(priorLine ? "0.8.3" : "0.7.2")} with the installed versions.";
   }
 
   // The game's binaries and data Mods folders.
@@ -57,15 +65,23 @@ internal static class IncompatibleMods {
     string minVersion,
     string[] modRoots
   ) {
-    if (loader.IsModEnabled(modId))
-      return !IsAtLeast(loader.GetMod(modId)?.Info?.Version, minVersion);
-    List<string?> onDisk = modRoots
-      .SelectMany(DiskModInfos)
-      .Where(info => info.ModId == modId)
-      .Select(info => info.Version)
-      .ToList();
-    return onDisk.Count > 0 && !onDisk.Any(v => IsAtLeast(v, minVersion));
+    List<string?> installed = Installed(loader, modId, modRoots);
+    return installed.Count > 0 && !installed.Any(v => IsAtLeast(v, minVersion));
   }
+
+  // The loaded version alone, or every copy on disk when the mod is not loaded.
+  private static List<string?> Installed(
+    IModLoader loader,
+    string modId,
+    string[] modRoots
+  ) =>
+    loader.IsModEnabled(modId)
+      ? [loader.GetMod(modId)?.Info?.Version]
+      : modRoots
+        .SelectMany(DiskModInfos)
+        .Where(info => info.ModId == modId)
+        .Select(info => info.Version)
+        .ToList();
 
   // A missing version counts as below the minimum; GameVersion reads an unparsable part as 0.
   private static bool IsAtLeast(string? version, string minVersion) =>

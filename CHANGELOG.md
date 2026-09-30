@@ -5,7 +5,7 @@ All notable changes to this mod are documented here. The format is based on
 [Semantic Versioning](https://semver.org/). For changes before this file existed,
 see the git history.
 
-## [Unreleased]
+## [0.8.4] - 2026-09-30
 
 ### Fixed
 
@@ -23,6 +23,8 @@ see the git history.
   the `Stages` property and the protected `rcc` field, `brokenDropsRatio` and `updateShape` are gone.
 - On 1.20 and 1.21 a paid stage plays its place sound, and `GetBlockInfo`'s stage line shows to
   creative players only.
+- ppex 0.7.0 and smex 0.10.0 no longer load beside this version: the log and the chat name them
+  and tell players on that line to keep exlib 0.8.3.
 - The package pages and READMEs link to the wiki at exwiki.felled-stars.org; the GitHub wiki is no
   longer published.
 
