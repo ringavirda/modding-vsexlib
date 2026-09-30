@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
-using Newtonsoft.Json.Linq;
 using ExpandedLib.Blocks;
 using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
 using NSubstitute;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -51,7 +51,9 @@ public class ConstructionHintTests {
   }
 
   private static int Scans(IWorldAccessor world) =>
-    world.ReceivedCalls().Count(c => c.GetMethodInfo().Name == "get_Collectibles");
+    world
+      .ReceivedCalls()
+      .Count(c => c.GetMethodInfo().Name == "get_Collectibles");
 
   private static WorldInteraction[]? Hint(ExRightClickConstructable behavior) {
     return behavior.GetConstructionInteractionHelp();
@@ -122,7 +124,10 @@ public class ConstructionHintTests {
     );
 
     var rcc = ReflectionHelpers.GetField(behavior, "rcc")!;
-    Assert.Equal(1, (int)ReflectionHelpers.GetField(rcc, "CurrentCompletedStage")!);
+    Assert.Equal(
+      1,
+      (int)ReflectionHelpers.GetField(rcc, "CurrentCompletedStage")!
+    );
     Assert.Equal(0, Scans(world.World));
   }
 
@@ -160,7 +165,8 @@ public class ConstructionHintTests {
     world.ClientApi.World.ClearReceivedCalls();
     Hint(behavior);
 
-    var rcc = (ExRightClickConstruction)ReflectionHelpers.GetField(behavior, "rcc")!;
+    var rcc = (ExRightClickConstruction)
+      ReflectionHelpers.GetField(behavior, "rcc")!;
     LoadStage(rcc, "steel");
     WorldInteraction[]? hint = Hint(behavior);
 
@@ -181,14 +187,24 @@ public class ConstructionHintTests {
       world.ClientApi,
       new BlockPos(0, 0, 0, 0)
     );
-    var rcc = (ExRightClickConstruction)ReflectionHelpers.GetField(behavior, "rcc")!;
-    rcc.Stages = new[] {
+    var rcc = (ExRightClickConstruction)
+      ReflectionHelpers.GetField(behavior, "rcc")!;
+    rcc.Stages = new[]
+    {
       new ExConstructionStage(),
-      new ExConstructionStage {
-        RequireStacks = new[] { Widget("item", null, null, null, "game:widget-a") },
+      new ExConstructionStage
+      {
+        RequireStacks = new[]
+        {
+          Widget("item", null, null, null, "game:widget-a"),
+        },
       },
-      new ExConstructionStage {
-        RequireStacks = new[] { Widget("item", null, null, null, "game:widget-b") },
+      new ExConstructionStage
+      {
+        RequireStacks = new[]
+        {
+          Widget("item", null, null, null, "game:widget-b"),
+        },
       },
     };
     rcc.CurrentCompletedStage = 0;
@@ -208,7 +224,8 @@ public class ConstructionHintTests {
       world.ClientApi,
       new BlockPos(0, 0, 0, 0)
     );
-    var rcc = (ExRightClickConstruction)ReflectionHelpers.GetField(behavior, "rcc")!;
+    var rcc = (ExRightClickConstruction)
+      ReflectionHelpers.GetField(behavior, "rcc")!;
     LoadStage(rcc, "iron");
     Assert.Equal(new[] { "game:rod-iron 1" }, Listed(Hint(behavior)![0]));
 
@@ -253,7 +270,10 @@ public class ConstructionHintTests {
     Assert.Equal(2, Scans(second.ClientApi.World));
     Assert.Same(
       second.GetItem(new AssetLocation("game:metalplate-iron")),
-      hint![0].Itemstacks.First(s => s.Collectible.Code.Path == "metalplate-iron").Collectible
+      hint!
+        [0]
+        .Itemstacks.First(s => s.Collectible.Code.Path == "metalplate-iron")
+        .Collectible
     );
   }
 
@@ -269,7 +289,8 @@ public class ConstructionHintTests {
       Code = new AssetLocation(code),
       AllowedVariants = allowed,
       SkipVariants = skip,
-      Attributes = attributes == null ? null : new JsonObject(JToken.Parse(attributes)),
+      Attributes =
+        attributes == null ? null : new JsonObject(JToken.Parse(attributes)),
     };
 
   // Fails when the cache key omits the ingredient field the case varies: Type, AllowedVariants,
@@ -279,41 +300,55 @@ public class ConstructionHintTests {
   [InlineData("allowed")]
   [InlineData("skip")]
   [InlineData("attributes")]
-  public void Ingredients_differing_in_one_field_scan_and_list_separately(string field) {
+  public void Ingredients_differing_in_one_field_scan_and_list_separately(
+    string field
+  ) {
     TestWorld world = new();
     world.RegisterItem("game:widget-a").VariantStrict["variant"] = "a";
     world.RegisterItem("game:widget-b").VariantStrict["variant"] = "b";
     world.Register(TestBlocks.Configure(new Block(), "game:widget-c", 5100));
 
-    (ExConstructionIngredient left, ExConstructionIngredient right, string[] listedLeft, string[] listedRight) =
-      field switch {
-        "type" => (
-          Widget("item", null, null, null),
-          Widget("block", null, null, null),
-          new[] { "game:widget-a 1", "game:widget-b 1" },
-          new[] { "game:widget-c 1" }
-        ),
-        "allowed" => (
-          Widget("item", new[] { "a" }, null, null),
-          Widget("item", new[] { "b" }, null, null),
-          new[] { "game:widget-a 1" },
-          new[] { "game:widget-b 1" }
-        ),
-        "skip" => (
-          Widget("item", null, new[] { "a" }, null),
-          Widget("item", null, new[] { "b" }, null),
-          new[] { "game:widget-b 1" },
-          new[] { "game:widget-a 1" }
-        ),
-        _ => (
-          Widget("item", null, null, "{\"flag\":true}", "game:widget-a"),
-          Widget("item", null, null, null, "game:widget-a"),
-          Array.Empty<string>(),
-          new[] { "game:widget-a 1" }
-        ),
-      };
-    ExRightClickConstructable first = Construction(world, world.ClientApi, new BlockPos(0, 0, 0, 0));
-    ExRightClickConstructable second = Construction(world, world.ClientApi, new BlockPos(1, 0, 0, 0));
+    (
+      ExConstructionIngredient left,
+      ExConstructionIngredient right,
+      string[] listedLeft,
+      string[] listedRight
+    ) = field switch {
+      "type" => (
+        Widget("item", null, null, null),
+        Widget("block", null, null, null),
+        new[] { "game:widget-a 1", "game:widget-b 1" },
+        new[] { "game:widget-c 1" }
+      ),
+      "allowed" => (
+        Widget("item", new[] { "a" }, null, null),
+        Widget("item", new[] { "b" }, null, null),
+        new[] { "game:widget-a 1" },
+        new[] { "game:widget-b 1" }
+      ),
+      "skip" => (
+        Widget("item", null, new[] { "a" }, null),
+        Widget("item", null, new[] { "b" }, null),
+        new[] { "game:widget-b 1" },
+        new[] { "game:widget-a 1" }
+      ),
+      _ => (
+        Widget("item", null, null, "{\"flag\":true}", "game:widget-a"),
+        Widget("item", null, null, null, "game:widget-a"),
+        Array.Empty<string>(),
+        new[] { "game:widget-a 1" }
+      ),
+    };
+    ExRightClickConstructable first = Construction(
+      world,
+      world.ClientApi,
+      new BlockPos(0, 0, 0, 0)
+    );
+    ExRightClickConstructable second = Construction(
+      world,
+      world.ClientApi,
+      new BlockPos(1, 0, 0, 0)
+    );
     Stage(first, left);
     Stage(second, right);
     world.ClientApi.World.ClearReceivedCalls();
@@ -326,9 +361,14 @@ public class ConstructionHintTests {
     Assert.Equal(2, Scans(world.ClientApi.World));
   }
 
-  private static void Stage(ExRightClickConstructable behavior, ExConstructionIngredient ingredient) {
-    var rcc = (ExRightClickConstruction)ReflectionHelpers.GetField(behavior, "rcc")!;
-    rcc.Stages = new[] {
+  private static void Stage(
+    ExRightClickConstructable behavior,
+    ExConstructionIngredient ingredient
+  ) {
+    var rcc = (ExRightClickConstruction)
+      ReflectionHelpers.GetField(behavior, "rcc")!;
+    rcc.Stages = new[]
+    {
       new ExConstructionStage(),
       new ExConstructionStage { RequireStacks = new[] { ingredient } },
     };

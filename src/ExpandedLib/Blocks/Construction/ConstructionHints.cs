@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 namespace ExpandedLib.Blocks;
 
@@ -63,7 +63,10 @@ internal static class ConstructionHints {
     foreach (var collectible in world.Collectibles)
       if (
         collectible != null
-        && ingredient.SatisfiesAsIngredient(new ItemStack(collectible, 1), false)
+        && ingredient.SatisfiesAsIngredient(
+          new ItemStack(collectible, 1),
+          false
+        )
       )
         matching.Add(collectible);
     return entries[key] = matching.ToArray();

@@ -177,7 +177,10 @@ public class ExRightClickConstructable
     if (byPlayer?.WorldData.CurrentGameMode == EnumGameMode.Creative)
       return;
     foreach (
-      var drop in GetConstructionDrops(EffectiveBrokenDropsRatio, Api.World.Rand)
+      var drop in GetConstructionDrops(
+        EffectiveBrokenDropsRatio,
+        Api.World.Rand
+      )
     )
 #if GAME_GE_1_22
       Api.World.SpawnItemEntity(drop, Pos, null);

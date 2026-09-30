@@ -26,13 +26,15 @@ public class ExConstructionIngredient : CraftingRecipeIngredient {
   public string? StoreWildCard;
 
 #if GAME_GE_1_22
-  public override ExConstructionIngredient Clone() {
+  public override ExConstructionIngredient Clone()
+  {
     ExConstructionIngredient result = new();
     CloneTo(result);
     return result;
   }
 
-  protected override void CloneTo(object cloneTo) {
+  protected override void CloneTo(object cloneTo)
+  {
     base.CloneTo(cloneTo);
     if (cloneTo is ExConstructionIngredient ingredient)
       ingredient.StoreWildCard = StoreWildCard;

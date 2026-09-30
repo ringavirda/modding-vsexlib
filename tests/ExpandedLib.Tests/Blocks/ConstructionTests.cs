@@ -298,16 +298,19 @@ public class ConstructionTests {
   public void The_tree_the_behaviour_writes_holds_the_games_keys() {
     Site site = Metalwork();
     ReflectionHelpers.SetField(Rcc(site.Behavior), "CurrentCompletedStage", 2);
-    ((Dictionary<string, string>)
-      ReflectionHelpers.GetField(Rcc(site.Behavior), "StoredWildCards")!)[
-      "metal"
-    ] = "steel";
+    (
+      (Dictionary<string, string>)
+        ReflectionHelpers.GetField(Rcc(site.Behavior), "StoredWildCards")!
+    )["metal"] = "steel";
     var tree = new TreeAttribute();
 
     site.Behavior.ToTreeAttributes(tree);
 
     Assert.Equal(2, tree.GetInt("currentStage", -1));
-    Assert.Equal("steel", tree.GetTreeAttribute("wildcards")?.GetString("metal"));
+    Assert.Equal(
+      "steel",
+      tree.GetTreeAttribute("wildcards")?.GetString("metal")
+    );
   }
 
   // Fails when the payment plays nothing: a stage paid with a block plays that block's place sound.
