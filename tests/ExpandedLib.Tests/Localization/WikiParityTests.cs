@@ -15,10 +15,6 @@ public class WikiParityTests {
   /// <summary>Identifiers the wiki writes as code that are deliberately not exlib types.</summary>
   private static readonly string[] KnownAbsent =
   [
-    // Compiled only under the legacy !GAME_GE_1_22 guard; absent from this guard's assembly.
-    "ExConstructionIngredient",
-    "ExConstructionStage",
-    "ExRightClickConstruction",
     // Registered class strings, not C# class names; a JSON blocktype writes these.
     "ExFilledMegastructure",
     "ExMultiblock",

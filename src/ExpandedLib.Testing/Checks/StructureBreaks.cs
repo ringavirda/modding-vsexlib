@@ -22,7 +22,7 @@ namespace ExpandedLib.Testing;
 /// and breaks it as a survival player, through the engine's break and removal hooks
 /// (<see cref="TestWorld.BreakRunsBlockHooks"/>, <see cref="TestWorld.RunsRemovalHooks"/>).</summary>
 /// <remarks>A structure with construction stages is paid stage by stage through its own
-/// interaction, the game's <see cref="RightClickConstruction"/>, in each <see cref="Payment"/>, and
+/// interaction, <see cref="ExRightClickConstruction"/>, in each <see cref="Payment"/>, and
 /// broken from every cell at each stage, partly built or complete; one without is broken from every
 /// cell. A break passes when nothing throws, no cell of the structure is left standing, and the
 /// drops are the block's: what its block behaviours and its resolved <c>drops</c> yield, as the
@@ -361,9 +361,9 @@ public static class StructureBreaks
     BlockPos at
   ) => world.GetBlockEntity(at)?.GetBehavior<ExRightClickConstructable>();
 
-  private static RightClickConstruction Rcc(
+  private static ExRightClickConstruction Rcc(
     ExRightClickConstructable behavior
-  ) => (RightClickConstruction)ReflectionHelpers.GetField(behavior, "rcc")!;
+  ) => (ExRightClickConstruction)ReflectionHelpers.GetField(behavior, "rcc")!;
 
   /// <summary>Stands the variant <paramref name="code"/> up at <paramref name="site"/>, pays it to
   /// stage <paramref name="built"/> (null for a structure without stages) in
@@ -584,7 +584,7 @@ public static class StructureBreaks
     Dictionary<string, (float Low, float High)> expected
   )
   {
-    RightClickConstruction rcc = Rcc(behavior);
+    ExRightClickConstruction rcc = Rcc(behavior);
     TestPlayer payer = world.Player("payer");
     payer.GameMode =
       payment == Payment.Survival
@@ -615,7 +615,7 @@ public static class StructureBreaks
           stores[offer.Key!] = offer.Variant!;
       if (i + 1 < rcc.Stages.Length)
         foreach (
-          ConstructionIngredient next in rcc.Stages[i + 1].RequireStacks ?? []
+          ExConstructionIngredient next in rcc.Stages[i + 1].RequireStacks ?? []
         )
           if (
             Filled(next.Code.ToString(), stores) is var code
@@ -662,7 +662,7 @@ public static class StructureBreaks
         .BlockEntityBehaviors.First(b => b.Name == "ExRightClickConstructable")
         .properties["brokenDropsRatio"]
         .AsFloat(1f);
-    foreach (ConstructionIngredient ing in rcc.Stages[0].RequireStacks ?? [])
+    foreach (ExConstructionIngredient ing in rcc.Stages[0].RequireStacks ?? [])
     {
       string code = Filled(ing.Code.ToString(), rcc.StoredWildCards);
       if (
@@ -693,7 +693,7 @@ public static class StructureBreaks
   /// and <paramref name="world"/> holds none of it.</exception>
   private static Offer[] Offers(
     TestWorld world,
-    Vintagestory.GameContent.ConstructionStage stage,
+    ExConstructionStage stage,
     int index,
     IReadOnlyDictionary<string, string> stored,
     int turn
@@ -739,7 +739,7 @@ public static class StructureBreaks
   private static string[] Held(
     TestWorld world,
     string pattern,
-    ConstructionIngredient ingredient
+    ExConstructionIngredient ingredient
   )
   {
     var wildcard = new AssetLocation(pattern);
@@ -771,7 +771,7 @@ public static class StructureBreaks
   private static void OfferMixed(
     TestWorld world,
     ExRightClickConstructable behavior,
-    RightClickConstruction rcc,
+    ExRightClickConstruction rcc,
     TestPlayer payer,
     Offer[] offers,
     int index,

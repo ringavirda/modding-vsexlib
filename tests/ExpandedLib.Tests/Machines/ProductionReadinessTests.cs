@@ -221,21 +221,6 @@ public class ProductionReadinessTests {
     TestConstructedMachine machine
   ) {
     var rcc = new ExRightClickConstructable(machine);
-#if GAME_GE_1_22
-    ReflectionHelpers.SetField(
-      rcc,
-      "rcc",
-      new RightClickConstruction
-      {
-        Stages =
-        [
-          new Vintagestory.GameContent.ConstructionStage(),
-          new Vintagestory.GameContent.ConstructionStage(),
-        ],
-        CurrentCompletedStage = 0,
-      }
-    );
-#else
     ReflectionHelpers.SetField(
       rcc,
       "rcc",
@@ -244,7 +229,6 @@ public class ProductionReadinessTests {
         CurrentCompletedStage = 0,
       }
     );
-#endif
     machine.Behaviors.Add(rcc);
     return rcc;
   }

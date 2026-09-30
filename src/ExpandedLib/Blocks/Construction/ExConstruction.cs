@@ -1,14 +1,14 @@
-// Legacy-only port of vanilla 1.22's right-click construction subsystem; not compiled on 1.22.
-#if !GAME_GE_1_22
+// exlib's right-click construction subsystem, compiled on every game version.
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Runtime.CompilerServices;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 
 namespace ExpandedLib.Blocks;
 
@@ -25,15 +25,34 @@ public class ExConstructionStage {
 public class ExConstructionIngredient : CraftingRecipeIngredient {
   public string? StoreWildCard;
 
+#if GAME_GE_1_22
+  public override ExConstructionIngredient Clone() {
+    ExConstructionIngredient result = new();
+    CloneTo(result);
+    return result;
+  }
+
+  protected override void CloneTo(object cloneTo) {
+    base.CloneTo(cloneTo);
+    if (cloneTo is ExConstructionIngredient ingredient)
+      ingredient.StoreWildCard = StoreWildCard;
+  }
+
+  internal bool MatchesByPattern => MatchingType != EnumRecipeMatchType.Exact;
+#else
   // Base Clone() is non-virtual in the legacy API; hidden here with a derived-typed clone.
   public new ExConstructionIngredient Clone() {
     var c = CloneTo<ExConstructionIngredient>();
     c.StoreWildCard = StoreWildCard;
     return c;
   }
+
+  internal bool MatchesByPattern => IsWildCard;
+#endif
 }
 
-/// <summary>Port of vanilla <c>RightClickConstruction</c>: the per-block construction state and logic.</summary>
+/// <summary>The per-block construction state and logic behind <see cref="ExRightClickConstructable"/>:
+/// which stage is built, which variants the paid stages stored, and the stage payment.</summary>
 public class ExRightClickConstruction {
   public ExConstructionStage[] Stages = Array.Empty<ExConstructionStage>();
   public int CurrentCompletedStage;
@@ -41,15 +60,35 @@ public class ExRightClickConstruction {
 
   private ICoreAPI api = null!;
   private string codeForErrorLogging = "";
+  private Func<Vec3d>? positionForSound;
 
+  /// <summary>Binds the stage table and the api; a paid stage then plays no sound.</summary>
+  /// <param name="stages">The stages, or null for none.</param>
+  /// <param name="api">The api whose world resolves ingredients.</param>
+  /// <param name="codeForErrorLogging">Names this construction in resolve warnings.</param>
   public void LateInit(
-    ExConstructionStage[] stages,
+    ExConstructionStage[]? stages,
     ICoreAPI api,
+    string codeForErrorLogging
+  ) => LateInit(stages, api, null, codeForErrorLogging);
+
+  /// <summary>Binds the stage table and the api; a paid stage plays the sound of the first
+  /// material taken at <paramref name="positionForSound"/>.</summary>
+  /// <param name="stages">The stages, or null for none.</param>
+  /// <param name="api">The api whose world resolves ingredients.</param>
+  /// <param name="positionForSound">The world position a paid stage's sound plays at; null plays
+  /// none.</param>
+  /// <param name="codeForErrorLogging">Names this construction in resolve warnings.</param>
+  public void LateInit(
+    ExConstructionStage[]? stages,
+    ICoreAPI api,
+    Func<Vec3d>? positionForSound,
     string codeForErrorLogging
   ) {
     Stages = stages ?? Array.Empty<ExConstructionStage>();
     this.api = api;
     this.codeForErrorLogging = codeForErrorLogging;
+    this.positionForSound = positionForSound;
   }
 
   public bool OnInteract(EntityAgent byEntity, ItemSlot handslot) {
@@ -77,28 +116,32 @@ public class ExRightClickConstruction {
     return new List<string>(set).ToArray();
   }
 
+  /// <summary>The materials of every completed stage, inclusive of the last built, each ingredient
+  /// resolved with the stored variants and its stack size scaled by <paramref name="dropRatio"/>
+  /// and rounded at random.</summary>
+  /// <param name="dropRatio">The fraction of each stack returned, 0..1.</param>
+  /// <param name="rnd">The rounding source; null rounds without randomness.</param>
+  /// <returns>The stacks, empty below stage 1. An ingredient that does not resolve is
+  /// left out.</returns>
+  [MethodImpl(MethodImplOptions.NoInlining)]
   public ItemStack[] GetDrops(float dropRatio = 1f, Random? rnd = null) {
     if (CurrentCompletedStage < 1)
       return Array.Empty<ItemStack>();
 
-    // Inclusive bound: the last built stage's materials are recovered too.
     var list = new List<ItemStack>();
     for (int i = 0; i <= CurrentCompletedStage; i++) {
       var stage = Stages[i];
       if (stage.RequireStacks == null)
         continue;
       foreach (var ingredient in stage.RequireStacks) {
+        var resolved = ingredient.Clone();
         foreach (var wc in StoredWildCards)
-          ingredient.FillPlaceHolder(wc.Key, wc.Value);
-
-        var resolved = ingredient;
-        if (ingredient.StoreWildCard != null) {
-          resolved = (ExConstructionIngredient)ingredient.Clone();
+          resolved.FillPlaceHolder(wc.Key, wc.Value);
+        if (resolved.StoreWildCard != null)
           resolved.Code.Path = resolved.Code.Path.Replace(
             "*",
-            StoredWildCards[ingredient.StoreWildCard]
+            StoredWildCards[resolved.StoreWildCard]
           );
-        }
 
         if (
           resolved.Resolve(
@@ -131,7 +174,7 @@ public class ExRightClickConstruction {
     var toTake = new List<KeyValuePair<ItemSlot, int>>();
     var remaining = new List<ExConstructionIngredient>();
     foreach (var ing in stage.RequireStacks)
-      remaining.Add((ExConstructionIngredient)ing.Clone());
+      remaining.Add(ing.Clone());
 
     var newWildcards = new Dictionary<string, string>();
     bool creativeInstant =
@@ -141,26 +184,13 @@ public class ExRightClickConstruction {
     foreach (var ing in remaining) {
       foreach (var wc in StoredWildCards)
         ing.FillPlaceHolder(wc.Key, wc.Value);
-      // Legacy API uses IsWildCard rather than 1.22's MatchingType enum.
       if (
         !ing.Resolve(
           api.World,
           $"Require stack for construction stage on {codeForErrorLogging}"
-        ) && !ing.IsWildCard
+        ) && !ing.MatchesByPattern
       )
         return false;
-    }
-
-    if (
-      !creativeInstant
-      && ConstructionPayment.MixedVariant(
-        remaining.Select(i => ((CraftingRecipeIngredient)i, i.StoreWildCard)),
-        hotbar
-      )
-        is { } mixed
-    ) {
-      ConstructionPayment.Refuse(api, this, mixed);
-      return false;
     }
 
     foreach (var slot in hotbar) {
@@ -200,7 +230,7 @@ public class ExRightClickConstruction {
           Lang.Get(
             "ingameerror-missingstack",
             ing.Quantity,
-            ing.IsWildCard
+            ing.MatchesByPattern
               ? Lang.Get(ing.Name ?? "")
               : ing.ResolvedItemStack.GetName()
           )
@@ -211,12 +241,36 @@ public class ExRightClickConstruction {
     foreach (var wc in newWildcards)
       StoredWildCards[wc.Key] = wc.Value;
 
-    if (!creativeInstant)
+    if (!creativeInstant) {
+      bool soundPlayed = false;
       foreach (var take in toTake) {
+        if (
+          !soundPlayed
+          && PlaceSound(take.Key.Itemstack) is { } sound
+          && positionForSound?.Invoke() is { } at
+        ) {
+          soundPlayed = true;
+          api.World.PlaySoundAt(sound, at.X, at.Y, at.Z, player);
+        }
         take.Key.TakeOut(take.Value);
         take.Key.MarkDirty();
       }
+    }
     return true;
+  }
+
+  private static AssetLocation? PlaceSound(ItemStack stack) {
+    AssetLocation? sound = null;
+    if (stack.Block != null)
+#if GAME_GE_1_22
+      sound = stack.Block.Sounds?.Place.Location;
+#else
+      sound = stack.Block.Sounds?.Place;
+#endif
+    return sound
+      ?? stack
+        .Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()
+        ?.StorageProps?.PlaceRemoveSound?.WithPathPrefixOnce("sounds/");
   }
 
   public void ToTreeAttributes(ITreeAttribute tree) {
@@ -236,8 +290,10 @@ public class ExRightClickConstruction {
     CurrentCompletedStage = tree.GetInt("currentStage", 0);
   }
 
-  /// <summary>The build-material hover help for the next stage, or null when construction is
-  /// complete.</summary>
+  /// <summary>The build-material hover help for the next stage.</summary>
+  /// <returns>One interaction per required ingredient listing the stacks that satisfy it, or null
+  /// when construction is complete, the stage requires nothing, or an ingredient does not
+  /// resolve. The arrays are shared; callers do not mutate them.</returns>
   public WorldInteraction[]? GetInteractionHelp() {
     if (CurrentCompletedStage + 1 >= Stages.Length)
       return null;
@@ -246,7 +302,8 @@ public class ExRightClickConstruction {
       return null;
 
     var list = new List<WorldInteraction>();
-    foreach (var ingredient in stage.RequireStacks) {
+    foreach (var required in stage.RequireStacks) {
+      var ingredient = required.Clone();
       foreach (var wc in StoredWildCards)
         ingredient.FillPlaceHolder(wc.Key, wc.Value);
       if (
@@ -285,4 +342,3 @@ public class ExRightClickConstruction {
     return list.ToArray();
   }
 }
-#endif

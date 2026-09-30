@@ -35,6 +35,8 @@ public static class SoundUse {
   private static readonly Dictionary<string, string> DirectCallAllowed = new() {
     ["ExpandedLib.Industry/Helpers/ExSounds.cs"] =
       "the helpers every other sound goes through; they apply MachineVolume and the sound type",
+    ["ExpandedLib/Blocks/Construction/ExConstruction.cs"] =
+      "the paid material's own place sound, played as the game's construction plays it, not a machine sound",
   };
 
   private static readonly Regex ClipLengthOf = new(

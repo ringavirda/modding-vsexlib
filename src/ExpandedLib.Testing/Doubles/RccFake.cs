@@ -1,6 +1,5 @@
 using ExpandedLib.Blocks;
 using Vintagestory.API.Common;
-using Vintagestory.GameContent;
 
 namespace ExpandedLib.Testing;
 
@@ -9,20 +8,10 @@ namespace ExpandedLib.Testing;
 /// field. Re-apply after a real <c>Initialize</c>, which clears it.</summary>
 public static class RccFake {
   public static void Complete(BlockEntity be) {
-    // The single, already-completed construction state set into the behavior's "rcc" field: vanilla's
-    // RightClickConstruction on 1.22, exlib's ExRightClickConstruction port on 1.20/1.21.
-#if GAME_GE_1_22
-    var construction = new RightClickConstruction
-    {
-      Stages = [new ConstructionStage()],
-      CurrentCompletedStage = 0,
-    };
-#else
     var construction = new ExRightClickConstruction {
       Stages = [new ExConstructionStage()],
       CurrentCompletedStage = 0,
     };
-#endif
     var rcc = new ExRightClickConstructable(be);
     ReflectionHelpers.SetField(rcc, "rcc", construction);
 

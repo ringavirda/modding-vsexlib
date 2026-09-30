@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using ExpandedLib.Blocks;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -266,24 +268,137 @@ public class ConstructionTests {
 
   #endregion
 
+  #region Save data, sound and drops
+
+  // Fails when the behaviour reads other keys than the ones the game's construction writes: the
+  // stage and the stored metal are then lost.
+  [Fact]
+  public void A_tree_written_by_the_games_construction_loads_at_its_stage() {
+    Site site = Metalwork();
+    var tree = new TreeAttribute();
+#if GAME_GE_1_22
+    var vanilla = new RightClickConstruction { CurrentCompletedStage = 2 };
+    vanilla.StoredWildCards["metal"] = "iron";
+    vanilla.ToTreeAttributes(tree);
+#else
+    var wildcards = new TreeAttribute();
+    wildcards["metal"] = new StringAttribute("iron");
+    tree["wildcards"] = wildcards;
+    tree.SetInt("currentStage", 2);
+#endif
+
+    site.Behavior.FromTreeAttributes(tree, site.World.World);
+
+    Assert.Equal(2, site.Behavior.CurrentCompletedStage);
+    Assert.Equal("iron", StoredMetal(site.Behavior));
+  }
+
+  // Fails when the behaviour writes other keys than the ones the game's construction reads.
+  [Fact]
+  public void The_tree_the_behaviour_writes_holds_the_games_keys() {
+    Site site = Metalwork();
+    ReflectionHelpers.SetField(Rcc(site.Behavior), "CurrentCompletedStage", 2);
+    ((Dictionary<string, string>)
+      ReflectionHelpers.GetField(Rcc(site.Behavior), "StoredWildCards")!)[
+      "metal"
+    ] = "steel";
+    var tree = new TreeAttribute();
+
+    site.Behavior.ToTreeAttributes(tree);
+
+    Assert.Equal(2, tree.GetInt("currentStage", -1));
+    Assert.Equal("steel", tree.GetTreeAttribute("wildcards")?.GetString("metal"));
+  }
+
+  // Fails when the payment plays nothing: a stage paid with a block plays that block's place sound.
+  [Fact]
+  public void A_stage_paid_with_a_block_plays_its_place_sound_once_at_the_block() {
+    var world = new TestWorld();
+    var plank = TestBlocks.Configure(new Block(), "game:plank-oak", 6001);
+    plank.Sounds = new BlockSounds();
+#if GAME_GE_1_22
+    plank.Sounds.Place = new SoundAttributes(
+      new AssetLocation("game:sounds/block/planks"),
+      true
+    );
+#else
+    plank.Sounds.Place = new AssetLocation("game:sounds/block/planks");
+#endif
+    ReflectionHelpers.SetField(plank, "api", world.Api);
+    world.Register(plank);
+    var be = new StubBlockEntity {
+      Block = TestBlocks.Configure(new Block(), "stub:planked", 6002),
+      Pos = new BlockPos(3, 4, 5, 0),
+    };
+    be.Initialize(world.Api);
+    var behavior = new ExRightClickConstructable(be);
+    behavior.Initialize(
+      world.Api,
+      new JsonObject(
+        new Definitions.ConstructionStages()
+          .Stage(_ => { })
+          .Stage(s => s.Require("game:plank-oak", 2, type: "block"))
+          .Build()
+      )
+    );
+    TestPlayer payer = world.Player();
+    payer.GameMode = EnumGameMode.Survival;
+    payer.Hotbar[0].Itemstack = new ItemStack(plank, 2);
+    world.World.ClearReceivedCalls();
+
+    EnumHandling handling = EnumHandling.PassThrough;
+    behavior.OnBlockInteractStart(
+      world.World,
+      payer.Player,
+      new BlockSelection { Position = be.Pos },
+      ref handling
+    );
+
+    Assert.Equal(1, behavior.CurrentCompletedStage);
+    world
+      .World.Received(1)
+      .PlaySoundAt(
+        Arg.Is<AssetLocation>(l => l.ToString() == "game:sounds/block/planks"),
+        3.5,
+        4.5,
+        5.5,
+        payer.Player,
+        Arg.Any<bool>(),
+        Arg.Any<float>(),
+        Arg.Any<float>()
+      );
+  }
+
+  // Fails when GetConstructionDrops loses NoInlining: ppex patches it by name.
+  [Fact]
+  public void GetConstructionDrops_is_not_inlined() {
+    Assert.True(
+      typeof(ExRightClickConstructable)
+        .GetMethod(nameof(ExRightClickConstructable.GetConstructionDrops))!
+        .MethodImplementationFlags.HasFlag(MethodImplAttributes.NoInlining)
+    );
+  }
+
+  // Fails when ExRightClickConstruction.GetDrops loses NoInlining: ppex patches it by name.
+  [Fact]
+  public void The_construction_GetDrops_is_not_inlined() {
+    Assert.True(
+      typeof(ExRightClickConstruction)
+        .GetMethod(nameof(ExRightClickConstruction.GetDrops))!
+        .MethodImplementationFlags.HasFlag(MethodImplAttributes.NoInlining)
+    );
+  }
+
+  #endregion
+
   #region ConstructedAnimator.IsConstructed
 
-  // 1.22 uses RightClickConstruction/ConstructionStage; 1.20/1.21 use
-  // ExRightClickConstruction/ExConstructionStage. Both land on the field named "rcc".
   private static ExRightClickConstructable CompletedRcc(BlockEntity be) {
     var rcc = new ExRightClickConstructable(be);
-#if GAME_GE_1_22
-    var construction = new RightClickConstruction
-    {
-      Stages = [new ConstructionStage()],
-      CurrentCompletedStage = 0,
-    };
-#else
     var construction = new ExRightClickConstruction {
       Stages = [new ExConstructionStage()],
       CurrentCompletedStage = 0,
     };
-#endif
     ReflectionHelpers.SetField(rcc, "rcc", construction);
     return rcc;
   }
