@@ -10,6 +10,8 @@ see the git history.
 ### Fixed
 
 - The container law names the same item on every machine.
+- The multiblock template's tests attach the core before raising its structure, so a scaffolded
+  multiblock's tests pass.
 
 ### Changed
 

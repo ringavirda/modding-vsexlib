@@ -25,6 +25,7 @@ public class WidgetTests {
       ("side", "n")
     );
     world.Place(new BlockPos(10, 10, 10), block, widget);
+    world.Attach(widget);
 
     ExBlockDef def = BlockWidget.Definitions("widgetdomain").Single();
     StructureRig structure = StructureRig.Around(world, widget, def, angle: 0);
