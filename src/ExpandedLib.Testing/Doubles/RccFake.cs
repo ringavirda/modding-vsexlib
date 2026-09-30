@@ -4,7 +4,7 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Testing;
 
 /// <summary>Makes a machine entity that gates on an <see cref="ExRightClickConstructable"/> (boiler,
-/// engine) read as fully constructed, by planting a completed stage into the private <c>_rcc</c>
+/// engine) read as fully constructed, by planting a completed stage into the private <c>rcc</c>
 /// field. Re-apply after a real <c>Initialize</c>, which clears it.</summary>
 public static class RccFake {
   public static void Complete(BlockEntity be) {

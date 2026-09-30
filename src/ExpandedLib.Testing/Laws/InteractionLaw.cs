@@ -241,8 +241,8 @@ public static class InteractionLaw {
   internal static bool Unplaceable(Block block) =>
     block.BlockBehaviors?.Any(b => b is BlockBehaviorUnplaceable) == true;
 
-  /// <summary>A survival test player whose active slot is the first of its hotbar, where the
-  /// game's construction pays from.</summary>
+  /// <summary>A survival test player whose active slot is the first of its hotbar, where
+  /// exlib's construction pays from.</summary>
   internal static TestPlayer User(TestWorld world) {
     TestPlayer player = world.Player("user");
     player.GameMode = EnumGameMode.Survival;

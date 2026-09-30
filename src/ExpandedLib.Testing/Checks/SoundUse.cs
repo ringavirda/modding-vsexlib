@@ -36,7 +36,7 @@ public static class SoundUse {
     ["ExpandedLib.Industry/Helpers/ExSounds.cs"] =
       "the helpers every other sound goes through; they apply MachineVolume and the sound type",
     ["ExpandedLib/Blocks/Construction/ExConstruction.cs"] =
-      "the paid material's own place sound, played as the game's construction plays it, not a machine sound",
+      "the paying block's place sound at the block's centre, for the paying player; not a machine sound",
   };
 
   private static readonly Regex ClipLengthOf = new(

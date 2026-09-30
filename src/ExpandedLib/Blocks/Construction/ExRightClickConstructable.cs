@@ -115,6 +115,10 @@ public class ExRightClickConstructable
   /// <summary>Pays the next stage from the player's hotbar when <see cref="OnAttemptConstruct"/>
   /// admits it, then updates <see cref="shape"/> and marks the block entity dirty. Always
   /// prevents the default handling.</summary>
+  /// <param name="world">The world the block is in; unused.</param>
+  /// <param name="byPlayer">The player who clicked; pays from their hotbar.</param>
+  /// <param name="blockSel">The clicked cell, passed to <see cref="OnAttemptConstruct"/>.</param>
+  /// <param name="handling">Set to <see cref="EnumHandling.PreventDefault"/>.</param>
   /// <returns>False when <see cref="OnAttemptConstruct"/> refused; otherwise true, whether or
   /// not a stage was built.</returns>
   public bool OnBlockInteractStart(
@@ -202,6 +206,10 @@ public class ExRightClickConstructable
     rcc.GetInteractionHelp();
 
   /// <summary>The hover help of a placed block: the next construction stage's materials.</summary>
+  /// <param name="world">The world the block is in; unused.</param>
+  /// <param name="selection">The looked-at cell; unused.</param>
+  /// <param name="forPlayer">The looking player; unused.</param>
+  /// <param name="handling">Left as it came.</param>
   /// <returns>Null when construction is complete or the next stage requires nothing.</returns>
   public WorldInteraction[]? GetPlacedBlockInteractionHelp(
     IWorldAccessor world,

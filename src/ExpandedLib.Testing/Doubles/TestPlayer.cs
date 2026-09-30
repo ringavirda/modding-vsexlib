@@ -57,7 +57,7 @@ public sealed class TestPlayer {
   }
 
   /// <summary>Whether the player holds Ctrl; backed by <see cref="Entity"/>'s own controls, where
-  /// the game's creative construction reads it.</summary>
+  /// exlib's creative construction reads it.</summary>
   public bool CtrlHeld {
     get => Entity.Controls.CtrlKey;
     set => Entity.Controls.CtrlKey = value;
