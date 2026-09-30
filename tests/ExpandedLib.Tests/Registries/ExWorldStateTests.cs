@@ -140,7 +140,10 @@ public class ExWorldStateTests {
         filled,
         f => f.Path.StartsWith("ExpandedLib.Definitions.ExDefinitions._blocks")
       );
-      Assert.True(filled.Count >= 40, $"only {filled.Count} collections filled");
+      Assert.True(
+        filled.Count >= 40,
+        $"only {filled.Count} collections filled"
+      );
 
       var world = new TestWorld();
       Driver(world).StartPre(world.Api);
