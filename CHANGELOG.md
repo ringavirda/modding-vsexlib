@@ -7,6 +7,11 @@ see the git history.
 
 ## [Unreleased]
 
+### Changed
+
+- The package pages and READMEs link to the wiki at exwiki.felled-stars.org; the GitHub wiki is no
+  longer published.
+
 ## [0.8.3] - 2026-09-29
 
 ### Added

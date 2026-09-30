@@ -103,11 +103,10 @@ scripts/                    the exmod launchers this repo checks in
 dist/                       release output (zips, NuGet packages) - not checked in
 ```
 
-The design pages and the GitHub wiki source live in the private exdocs repository, under
+The design pages and the wiki source live in the private exdocs repository, under
 `exdocs/exlib/design/` and `exdocs/exlib/wiki/`, cloned beside this one: the `docs` entry of
 `exmod.json` names it (`../exdocs/exlib`). The wiki guards read the pages from there and fail when
-the clone is missing. The Sync Wiki workflow publishes `exdocs/exlib/wiki` to this repository's
-GitHub wiki.
+the clone is missing. The wiki is served at [exwiki](https://exwiki.felled-stars.org/modders/).
 
 ## Packages
 

@@ -7,11 +7,11 @@ the invisible cells of a mega-block, heat sources and sinks, and the metals cata
 `exlib.industry.dll` and is driven by exlib's module system, so a mod that depends on `exlib` has
 it loaded already; this package is the compile-time reference.
 
-Full docs on the wiki: [Block Networks](https://github.com/ringavirda/modding-vsexlib/wiki/Block-Networks)
+Full docs on the wiki: [Block Networks](https://exwiki.felled-stars.org/modders/0.8/Block-Networks/)
 (pipes, molten metal, mechanical power),
-[Extending Processes](https://github.com/ringavirda/modding-vsexlib/wiki/Extending-Processes)
+[Extending Processes](https://exwiki.felled-stars.org/modders/0.8/Extending-Processes/)
 (routes, jobs, metals) and the Industry section of the
-[Supported API](https://github.com/ringavirda/modding-vsexlib/wiki/Supported-API).
+[Supported API](https://exwiki.felled-stars.org/modders/0.8/Supported-API/).
 
 Reference it beside `ExpandedLib`, not instead of it: the build plumbing exlib ships (the game
 reference, the asset globs, the generators' inputs) does not flow through this package's
