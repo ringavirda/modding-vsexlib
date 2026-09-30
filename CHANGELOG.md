@@ -9,6 +9,9 @@ see the git history.
 
 ### Fixed
 
+- Looking at an unfinished structure no longer stalls a frame. The hint's matching items are worked
+  out once per world for each material, a paid stage works out none, and exlib runs its own
+  construction on 1.22 as on 1.20 and 1.21, half-built structures keeping their stage.
 - The container law names the same item on every machine.
 - The multiblock template's tests attach the core before raising its structure, so a scaffolded
   multiblock's tests pass.

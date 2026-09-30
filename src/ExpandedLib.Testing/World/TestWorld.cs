@@ -60,8 +60,8 @@ public sealed partial class TestWorld : IDisposable {
   /// <c>StartClientSide</c> and code that branches on the client.</summary>
   /// <remarks>Its <c>World</c> is a client world whose <c>Side</c> is
   /// <see cref="EnumAppSide.Client"/>, reading the same <see cref="Accessor"/>, calendar, config,
-  /// logger and block and item lookups as <see cref="World"/>. Code handed <see cref="Api"/> runs
-  /// its server branch; code handed this runs its client branch.</remarks>
+  /// logger, block and item lookups and <c>Collectibles</c> as <see cref="World"/>. Code handed
+  /// <see cref="Api"/> runs its server branch; code handed this runs its client branch.</remarks>
   public ICoreClientAPI ClientApi { get; }
 
   /// <summary>Channel pairs handed out by <see cref="Channels"/>, keyed by channel name.</summary>
@@ -926,6 +926,12 @@ public sealed partial class TestWorld : IDisposable {
     w.GetItem(Arg.Any<AssetLocation>())
       .Returns(ci => GetItem(ci.Arg<AssetLocation>()));
     w.GetItem(Arg.Any<int>()).Returns(ci => GetItem(ci.Arg<int>()));
+    w.Collectibles.Returns(ci =>
+      _itemsByCode
+        .Values.Cast<CollectibleObject>()
+        .Concat(_blocksById.Values)
+        .ToList()
+    );
     return w;
   }
 

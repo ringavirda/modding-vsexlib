@@ -290,19 +290,54 @@ public class ExRightClickConstruction {
     CurrentCompletedStage = tree.GetInt("currentStage", 0);
   }
 
+  private WorldInteraction[]? hint;
+  private ExConstructionStage[]? hintStages;
+  private int hintNextStage = -1;
+  private readonly Dictionary<string, string> hintWildCards = new();
+
   /// <summary>The build-material hover help for the next stage.</summary>
   /// <returns>One interaction per required ingredient listing the stacks that satisfy it, or null
   /// when construction is complete, the stage requires nothing, or an ingredient does not
-  /// resolve. The arrays are shared; callers do not mutate them.</returns>
+  /// resolve. The last answer is kept while the stages, the next stage and the stored variants
+  /// are unchanged, and the world is scanned once per distinct filled ingredient. The arrays are
+  /// shared; callers do not mutate them.</returns>
   public WorldInteraction[]? GetInteractionHelp() {
-    if (CurrentCompletedStage + 1 >= Stages.Length)
+    int next = CurrentCompletedStage + 1;
+    if (next >= Stages.Length)
       return null;
-    var stage = Stages[CurrentCompletedStage + 1];
-    if (stage.RequireStacks == null)
+    if (Stages[next].RequireStacks == null)
       return null;
+    if (
+      hintStages == Stages
+      && hintNextStage == next
+      && SameWildCards(hintWildCards, StoredWildCards)
+    )
+      return hint;
 
+    hint = BuildInteractionHelp(Stages[next]);
+    hintStages = Stages;
+    hintNextStage = next;
+    hintWildCards.Clear();
+    foreach (var wc in StoredWildCards)
+      hintWildCards[wc.Key] = wc.Value;
+    return hint;
+  }
+
+  private static bool SameWildCards(
+    Dictionary<string, string> a,
+    Dictionary<string, string> b
+  ) {
+    if (a.Count != b.Count)
+      return false;
+    foreach (var wc in b)
+      if (!a.TryGetValue(wc.Key, out var value) || value != wc.Value)
+        return false;
+    return true;
+  }
+
+  private WorldInteraction[]? BuildInteractionHelp(ExConstructionStage stage) {
     var list = new List<WorldInteraction>();
-    foreach (var required in stage.RequireStacks) {
+    foreach (var required in stage.RequireStacks!) {
       var ingredient = required.Clone();
       foreach (var wc in StoredWildCards)
         ingredient.FillPlaceHolder(wc.Key, wc.Value);
@@ -314,15 +349,10 @@ public class ExRightClickConstruction {
       )
         return null;
 
-      var stacks = new List<ItemStack>();
-      foreach (var collectible in api.World.Collectibles) {
-        var stack = new ItemStack(collectible, 1);
-        if (ingredient.SatisfiesAsIngredient(stack, false)) {
-          stack.StackSize = ingredient.Quantity;
-          stacks.Add(stack);
-        }
-      }
-      var matching = stacks.ToArray();
+      var collectibles = ConstructionHints.Matching(api.World, ingredient);
+      var matching = new ItemStack[collectibles.Length];
+      for (int i = 0; i < matching.Length; i++)
+        matching[i] = new ItemStack(collectibles[i], ingredient.Quantity);
       list.Add(
         new WorldInteraction {
           ActionLangCode = stage.ActionLangCode,
