@@ -38,6 +38,7 @@ public class ExWorldStateTests {
       "the root keys the game's item loader reads, constant",
     ["ExpandedLib.Config.ExConfigDocument._byApi"] = WeakByWorld,
     ["ExpandedLib.Checks.AssetCheckSource.HeldAtLoad"] = WeakByWorld,
+    ["ExpandedLib.Blocks.ConstructionHints.Worlds"] = WeakByWorld,
     ["ExpandedLib.Registries.EntityRegistry._bareKeysIssued"] = WeakByWorld,
     ["ExpandedLib.Registries.EntityRegistry._domainByAssembly"] =
       "each registered assembly's modid, the same in every world it loads in",
