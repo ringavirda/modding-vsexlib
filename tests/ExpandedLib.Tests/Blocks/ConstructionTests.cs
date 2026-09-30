@@ -313,7 +313,8 @@ public class ConstructionTests {
     );
   }
 
-  // Fails when the payment plays nothing: a stage paid with a block plays that block's place sound.
+  // Fails when the payment plays nothing, or plays the sound once per slot paid from: a stage paid
+  // with a block from two slots plays that block's place sound once.
   [Fact]
   public void A_stage_paid_with_a_block_plays_its_place_sound_once_at_the_block() {
     var world = new TestWorld();
@@ -346,7 +347,8 @@ public class ConstructionTests {
     );
     TestPlayer payer = world.Player();
     payer.GameMode = EnumGameMode.Survival;
-    payer.Hotbar[0].Itemstack = new ItemStack(plank, 2);
+    payer.Hotbar[0].Itemstack = new ItemStack(plank, 1);
+    payer.Hotbar[1].Itemstack = new ItemStack(plank, 1);
     world.World.ClearReceivedCalls();
 
     EnumHandling handling = EnumHandling.PassThrough;
