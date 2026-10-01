@@ -32,12 +32,11 @@ public class ExlibConfig : IExVersionedConfig {
   [ExConfigRange(1, 1_000_000)] // pipe capacity divides pressure - must stay positive
   public float LitresPerPipe { get; set; } = 30f;
 
-  /// <summary>Gas (L) a leaking gas run loses each network tick, however many ends are open; not
-  /// scaled by the tick's dt. Also caps a vent to atmosphere.</summary>
+  /// <summary>Gas (L/s) each open end of a gas run loses at 1 atm; the loss is in proportion to the
+  /// run's pressure.</summary>
   public float GasLeakRate { get; set; } = 8.0f;
 
-  /// <summary>Liquid (L/s) a leaking water run drains, however many ends are open; scaled by the
-  /// tick's dt.</summary>
+  /// <summary>Liquid (L/s) each open end of a water run drains.</summary>
   public float LiquidLeakRate { get; set; } = 10.0f;
 
   /// <summary>Water (L) lost to natural evaporation per in-game day (pipe water pool and the boiler

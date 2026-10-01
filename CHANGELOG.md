@@ -15,6 +15,15 @@ see the git history.
 - The container law names the same item on every machine.
 - The multiblock template's tests attach the core before raising its structure, so a scaffolded
   multiblock's tests pass.
+- A leaking pipe run loses gas and water per open end and per second of the tick, and gas in
+  proportion to the run's pressure: one open end at 1 atm still loses `GasLeakRate`, two lose twice
+  that, and a run at half an atmosphere loses half.
+
+### Added
+
+- **`PipeNetwork.HasDraught`** and **`IPipeDraught`**: a run has draught through a chimney its vent
+  strategy classifies or a node whose block entity draws it up a stack. Open ends to air give none,
+  so a fire can ask for a stack instead of judging its flue by back-pressure.
 
 ### Changed
 

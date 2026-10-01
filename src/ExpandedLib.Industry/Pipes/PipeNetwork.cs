@@ -601,6 +601,41 @@ public class PipeNetwork : BlockNetwork {
     }
   }
 
+  /// <summary>
+  /// Whether the run has draught: a vent its strategy classifies on an open face (a chimney), or a
+  /// node whose block entity draws it up a stack (<see cref="IPipeDraught"/>). Open ends to air
+  /// give none. Walks every node; <c>false</c> without the network system.
+  /// </summary>
+  public bool HasDraught(IBlockAccessor blockAccessor) {
+    if (NetworkSystem is not BlockNetworkModSystem manager)
+      return false;
+    foreach (BlockPos pos in Nodes) {
+      if (
+        blockAccessor.GetBlockEntity(pos) is IPipeDraught { GivesDraught: true }
+      )
+        return true;
+      if (
+        blockAccessor.GetBlock(pos) is not BlockNetworkNode node
+        || VentFor(node) is not IPipeVentStrategy vent
+      )
+        continue;
+      foreach (
+        BlockFacing face in manager.GetOpenConnectorFaces(
+          blockAccessor,
+          pos,
+          node
+        )
+      ) {
+        Block neighbour = blockAccessor.GetBlock(pos.AddCopy(face));
+        if (
+          vent.TryClassifyVent(blockAccessor, node, pos, face, neighbour, out _)
+        )
+          return true;
+      }
+    }
+    return false;
+  }
+
   /// <summary>The strategy that classifies <paramref name="node"/>'s faces: the one its block
   /// supplies, else the factory's; <c>null</c> when neither exists.</summary>
   private IPipeVentStrategy? VentFor(BlockNetworkNode node) {
@@ -636,17 +671,29 @@ public class PipeNetwork : BlockNetwork {
     }
   }
 
-  /// <summary>Leak loss: a gas leak relieves pressure at a fixed rate regardless of opening
-  /// count; a water leak drains at a fixed rate.</summary>
+  /// <summary>Leak loss through every open end: a gas run loses
+  /// <see cref="ExlibValues.GasLeakRate"/> per end at 1 atm, in proportion to its pressure; a water
+  /// run drains <see cref="ExlibValues.LiquidLeakRate"/> per end. Both are per second of
+  /// <paramref name="dt"/>.</summary>
   private void ApplyLeakLoss(float dt, PipeNetworkState state, TickPass pass) {
     if (pass.TotalLeaks > 0 && state.Volume > 0f) {
       if (pass.Liquid) {
-        float lost = Math.Min(state.Volume, ExlibValues.LiquidLeakRate * dt);
+        float lost = Math.Min(
+          state.Volume,
+          ExlibValues.LiquidLeakRate * pass.TotalLeaks * dt
+        );
         state.Volume -= lost;
         if (state.Volume <= 0f)
           state.Pressure = 0f;
       } else {
-        float lost = Math.Min(state.Volume, ExlibValues.GasLeakRate);
+        float pressure = PipeNetworkState.ComputeGasPressure(
+          state.Volume,
+          state.MaxVolume
+        );
+        float lost = Math.Min(
+          state.Volume,
+          ExlibValues.GasLeakRate * pass.TotalLeaks * pressure * dt
+        );
         state.Volume -= lost;
         float ambient = ExlibValues.PipeAmbientTemperature;
         if (state.Temperature > ambient)
