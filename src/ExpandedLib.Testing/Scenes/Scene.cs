@@ -7,11 +7,9 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Test-facing builder over <see cref="TestWorld"/> for integration tests: lays out blocks, network
-/// nodes and machines in one shared world, then advances them with <see cref="Step"/>. Placement is
-/// grid-based and additive; <see cref="Build"/> must be called once after all placements.
-/// <see cref="At"/> and <see cref="Every"/> schedule actions, a player's among them, against the
-/// scene's clock, <see cref="Second"/>.
+/// Test-facing builder over <see cref="TestWorld"/>: lays out blocks, nodes and machines,
+/// advances them with <see cref="Step"/> and runs what <see cref="At"/> and <see cref="Every"/>
+/// schedule. Placement is grid-based and additive; call <see cref="Build"/> once after it.
 /// </summary>
 public sealed class Scene {
   /// <summary>The underlying in-memory world (store, graph manager, fake API).</summary>

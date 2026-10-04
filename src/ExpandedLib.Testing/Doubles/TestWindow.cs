@@ -4,10 +4,9 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// A block entity's window as <see cref="TestPlayer"/> works it: each verb hands the entity's
-/// <see cref="BlockEntity.OnReceivedClientPacket"/> the packet the game's block-entity dialog sends,
-/// as the server's block-entity packet handler does, so the entity's own open/close handshake,
-/// access check and the engine's slot protocol (<c>InvNetworkUtil.HandleClientPacket</c>) run.
+/// A block entity's window as <see cref="TestPlayer"/> works it: each verb hands
+/// <see cref="BlockEntity.OnReceivedClientPacket"/> the packet the game's dialog sends, so the
+/// entity's handshake, access check and the engine's slot protocol run.
 /// </summary>
 /// <remarks>Only the server half runs: no dialog is drawn and no client inventory predicts the
 /// click. The server's handler checks nothing about the player before the entity does, and the

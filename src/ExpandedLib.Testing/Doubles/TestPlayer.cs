@@ -99,29 +99,22 @@ public sealed class TestPlayer {
   public TestWindow Window(BlockEntity entity) =>
     new(this, entity ?? throw new ArgumentNullException(nameof(entity)));
 
-  /// <summary>Right-clicks the block at <paramref name="pos"/> as the server handles a player's
-  /// block use: a spectator or a player without use access to the cell gets nothing, then
-  /// <see cref="Block.OnBlockInteractStart"/>; when it takes the click,
-  /// <see cref="Block.OnBlockInteractStep"/> every <see cref="InteractStepSeconds"/> of
-  /// <paramref name="seconds"/> with the seconds held so far, and
-  /// <see cref="Block.OnBlockInteractStop"/> once, when a step declines or at
-  /// <paramref name="seconds"/>.</summary>
-  /// <remarks>The hold runs inside the call: the world's ticks do not run between its steps. The
-  /// keys are held for the call only. The held collectible's own interaction, the reach test and
-  /// the server's use events are not run.</remarks>
+  /// <summary>Right-clicks the block at <paramref name="pos"/> as the server handles a block
+  /// use: <see cref="Block.OnBlockInteractStart"/>, then, when it takes the click,
+  /// <see cref="Block.OnBlockInteractStep"/> every <see cref="InteractStepSeconds"/> with the
+  /// seconds held so far, and <see cref="Block.OnBlockInteractStop"/> once, when a step declines
+  /// or the hold ends.</summary>
+  /// <remarks>A spectator, or a player the claims refuse use of the cell, gets nothing. World
+  /// ticks do not run during the hold; the keys last for the call only. The held collectible's
+  /// interaction, the reach test and the server's use events are not run.</remarks>
   /// <param name="pos">The cell clicked.</param>
-  /// <param name="held">Put in <see cref="ActiveSlot"/> before the click; null leaves the hand as
-  /// it is.</param>
-  /// <param name="sneak">Holds sneak (<c>Sneak</c> and <c>ShiftKey</c>).</param>
-  /// <param name="ctrl">Holds Ctrl (<c>CtrlKey</c> and <c>Sprint</c>).</param>
-  /// <param name="seconds">How long the button is held, in seconds, 0 or more; 0 is a click with no
-  /// step.</param>
-  /// <param name="face">The face clicked, at its centre; <see cref="BlockFacing.UP"/> for
-  /// null.</param>
-  /// <returns>What <see cref="Block.OnBlockInteractStart"/> answered; false when it was not
-  /// called.</returns>
-  /// <exception cref="ArgumentOutOfRangeException"><paramref name="seconds"/> is negative or not
-  /// a number.</exception>
+  /// <param name="held">Put in <see cref="ActiveSlot"/> first; null leaves the hand.</param>
+  /// <param name="sneak">Holds <c>Sneak</c> and <c>ShiftKey</c>.</param>
+  /// <param name="ctrl">Holds <c>CtrlKey</c> and <c>Sprint</c>.</param>
+  /// <param name="seconds">The hold in seconds, 0 or more; 0 clicks with no step.</param>
+  /// <param name="face">The face clicked, at its centre; null for <c>BlockFacing.UP</c>.</param>
+  /// <returns><see cref="Block.OnBlockInteractStart"/>'s answer; false when not called.</returns>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="seconds"/> is negative or NaN.</exception>
   public bool Interact(
     BlockPos pos,
     ItemStack? held = null,
