@@ -573,6 +573,8 @@ internal static class SetupReadings {
       return new ValueReading(SetupJson.Literal(token, where));
     JObject node = SetupJson.Object(token, where);
     string[] forms = [.. Forms.Where(f => node[f] != null)];
+    if (forms.Contains("network"))
+      forms = [.. forms.Where(f => f != "member")];
     if (forms.Length != 1)
       throw where.Fail(
         forms.Length == 0
