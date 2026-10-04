@@ -50,7 +50,11 @@ public class TestWorldRemovalTickTests {
     var world = new TestWorld();
     var pos = new BlockPos(id, 0, 0);
     var be = new TickBe();
-    world.Place(pos, TestBlocks.Configure(new Block(), $"test:ticker{id}", id), be);
+    world.Place(
+      pos,
+      TestBlocks.Configure(new Block(), $"test:ticker{id}", id),
+      be
+    );
     world.Initialize(be);
     world.FireBlockEntityTicks();
     Assert.Equal(1, be.Ticks);
