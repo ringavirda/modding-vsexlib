@@ -45,8 +45,8 @@ public sealed partial class TestWorld {
   /// <remarks>A world holding that registry answers <see cref="Api"/>'s and <see cref="World"/>'s
   /// <c>ClassRegistry</c> from it, and creates a block entity the accessor spawns without a
   /// <see cref="RegisterBlockEntityFactory"/> factory from it, with its declared behaviours, as the
-  /// engine does; <see cref="RegisterBlockEntityBehaviorFactory"/> has no effect on such a
-  /// world.</remarks>
+  /// engine does, building a behaviour named in <see cref="RegisterBlockEntityBehaviorFactory"/>
+  /// from its factory.</remarks>
   /// <returns>This world.</returns>
   public TestWorld RegisterClasses(params Assembly[] assemblies) {
     foreach (Assembly asm in assemblies) {
@@ -281,7 +281,10 @@ public sealed partial class TestWorld {
     if (_classes != null)
       return _classes;
     _classes = new ClassRegistry();
-    var registry = new ClassRegistryAPI(World, _classes);
+    IClassRegistryAPI registry = BehaviorFactoryCallHandler.Over(
+      new ClassRegistryAPI(World, _classes),
+      _behaviorFactories
+    );
     Api.ClassRegistry.Returns(registry);
     ((ICoreAPI)Api).ClassRegistry.Returns(registry);
     World.ClassRegistry.Returns(registry);

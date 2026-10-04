@@ -39,7 +39,9 @@ public sealed partial class TestWorld : IDisposable {
   public BlockNetworkModSystem Networks { get; } = new();
 
   /// <summary>The fake block accessor handed to every production network call.</summary>
-  /// <remarks><c>ExchangeBlock</c> puts the new block in the cell, keeps the cell's block entity and
+  /// <remarks><c>GetBlockEntity&lt;T&gt;</c> answers as <c>GetBlockEntity</c> does, cast to
+  /// <c>T</c>: null when the cell holds no entity, its chunk is away, or the entity is not a
+  /// <c>T</c>. <c>ExchangeBlock</c> puts the new block in the cell, keeps the cell's block entity and
   /// then runs its <see cref="BlockEntity.OnExchanged"/> with the new block, as the engine's
   /// does. Each cell holds a solid layer and a fluid layer: a read with a
   /// <see cref="BlockLayersAccess"/> value answers as <see cref="GetBlock(BlockPos, int)"/> does,
@@ -321,18 +323,56 @@ public sealed partial class TestWorld : IDisposable {
     };
   }
 
-  /// <summary>Registers a factory the fake class registry builds <paramref name="classname"/> from,
-  /// the headless stand-in for the behaviour registry.</summary>
+  private readonly Dictionary<
+    string,
+    System.Func<BlockEntity, BlockEntityBehavior>
+  > _behaviorFactories = new();
+
+  /// <summary>Registers a factory that <see cref="Api"/>'s and <see cref="World"/>'s
+  /// <c>ClassRegistry.CreateBlockEntityBehavior</c> build the block-entity behaviour
+  /// <paramref name="classname"/> from, for the entity it is handed.</summary>
+  /// <remarks>Beside a real class registry (<see cref="RegisterClasses"/>,
+  /// <see cref="RegisterClass"/>), whether made before or after this call, the factory wins over a
+  /// class registered under the same name, and <c>GetBlockEntityBehaviorClass</c> answers
+  /// <paramref name="classname"/> with <see cref="BlockEntityBehavior"/> when the registry holds no
+  /// class of that name, so an entity the registry builds for a block declaring
+  /// <paramref name="classname"/> gets the factory's behaviour. A later factory for the same name
+  /// replaces the earlier.</remarks>
+  /// <param name="classname">The behaviour's registered name, as a block's
+  /// <c>entityBehaviors</c> or a filler cell names it.</param>
+  /// <param name="factory">Builds the behaviour for the block entity passed.</param>
+  /// <returns>This world.</returns>
   public TestWorld RegisterBlockEntityBehaviorFactory(
     string classname,
     System.Func<BlockEntity, BlockEntityBehavior> factory
   ) {
-    Api.ClassRegistry.CreateBlockEntityBehavior(
-        Arg.Any<BlockEntity>(),
-        classname
-      )
-      .Returns(ci => factory(ci.Arg<BlockEntity>()));
+    _behaviorFactories[classname] = factory;
+    if (_classes == null)
+      Api.ClassRegistry.CreateBlockEntityBehavior(
+          Arg.Any<BlockEntity>(),
+          classname
+        )
+        .Returns(ci => factory(ci.Arg<BlockEntity>()));
     return this;
+  }
+
+  /// <summary>Builds a <typeparamref name="T"/>, runs its <see cref="ModSystem.Start"/> against
+  /// <see cref="Api"/> and registers it in <see cref="Mods"/>, so the mod loader's
+  /// <c>GetModSystem</c> answers it: the way to stand up a vanilla system a block or behaviour asks
+  /// the loader for (<c>ModSystemBlockReinforcement</c> for <c>BlockBehaviorLockable</c>).</summary>
+  /// <remarks>Its <c>StartServerSide</c>, <c>StartClientSide</c> and asset hooks are not run, and
+  /// the classes its <c>Start</c> registers through <see cref="Api"/> are not recorded in a class
+  /// registry. Each call builds and registers another instance; <c>GetModSystem</c> answers the
+  /// first registered.</remarks>
+  /// <typeparam name="T">The mod system type.</typeparam>
+  /// <returns>The started system.</returns>
+  /// <exception cref="Exception">Whatever the system's <c>Start</c> throws.</exception>
+  public T StartModSystem<T>()
+    where T : ModSystem, new() {
+    var system = new T();
+    system.Start(Api);
+    Mods.Register(system);
+    return system;
   }
 
   /// <summary>Registers a factory that <c>BlockAccessor.SpawnBlockEntity(classname, pos)</c> uses
@@ -703,6 +743,12 @@ public sealed partial class TestWorld : IDisposable {
       );
     a.GetBlockEntity(Arg.Any<BlockPos>())
       .Returns(ci => ReadBlockEntity(ci.Arg<BlockPos>()));
+    // GetBlockEntity<T> is an open generic NSubstitute cannot bind by type.
+    SubstitutionContext
+      .Current.GetCallRouterFor(a)
+      .RegisterCustomCallHandlerFactory(_ => new TypedBlockEntityCallHandler(
+        ReadBlockEntity
+      ));
     // Resolve-by-code; orientation behaviours read a null here as an undeclared variant.
     a.GetBlock(Arg.Any<AssetLocation>())
       .Returns(ci => GetByCode(ci.Arg<AssetLocation>()));
