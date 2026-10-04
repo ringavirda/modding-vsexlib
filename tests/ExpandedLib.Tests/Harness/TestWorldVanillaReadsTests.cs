@@ -105,7 +105,10 @@ public class TestWorldVanillaReadsTests {
     world.Accessor.SetBlock(Declaring("test-made", world).Id, Cell);
 
     Assert.NotNull(built);
-    Assert.Same(built, world.GetBlockEntity(Cell)!.GetBehavior<MarkerBehavior>());
+    Assert.Same(
+      built,
+      world.GetBlockEntity(Cell)!.GetBehavior<MarkerBehavior>()
+    );
   }
 
   // Fails when a factory registered before the real registry exists stays on the substitute.
@@ -121,7 +124,10 @@ public class TestWorldVanillaReadsTests {
 
     world.Accessor.SetBlock(Declaring("test-made", world).Id, Cell);
 
-    Assert.Same(built, world.GetBlockEntity(Cell)!.GetBehavior<MarkerBehavior>());
+    Assert.Same(
+      built,
+      world.GetBlockEntity(Cell)!.GetBehavior<MarkerBehavior>()
+    );
   }
 
   // Fails when the registry's own class wins over a factory of the same name.
@@ -145,7 +151,10 @@ public class TestWorldVanillaReadsTests {
   private static Block Declaring(string behavior, TestWorld world) {
     Block block = TestBlocks.Configure(new Block(), "test:declaring", 63);
     block.EntityClass = "test-plain";
-    block.BlockEntityBehaviors = [new BlockEntityBehaviorType { Name = behavior }];
+    block.BlockEntityBehaviors =
+    [
+      new BlockEntityBehaviorType { Name = behavior },
+    ];
     world.Register(block);
     return block;
   }

@@ -12,13 +12,19 @@ namespace ExpandedLib.Testing;
 /// the registry's, or <see cref="BlockEntityBehavior"/> when the registry holds none.</summary>
 internal sealed class BehaviorFactoryCallHandler(
   IClassRegistryAPI registry,
-  IReadOnlyDictionary<string, System.Func<BlockEntity, BlockEntityBehavior>> factories
+  IReadOnlyDictionary<
+    string,
+    System.Func<BlockEntity, BlockEntityBehavior>
+  > factories
 ) : ICallHandler {
   /// <summary>A substitute registry answering through this handler; <paramref name="factories"/> is
   /// read on each call, so a factory added later takes effect.</summary>
   public static IClassRegistryAPI Over(
     IClassRegistryAPI registry,
-    IReadOnlyDictionary<string, System.Func<BlockEntity, BlockEntityBehavior>> factories
+    IReadOnlyDictionary<
+      string,
+      System.Func<BlockEntity, BlockEntityBehavior>
+    > factories
   ) {
     var substitute = Substitute.For<IClassRegistryAPI>();
     SubstitutionContext
@@ -39,8 +45,10 @@ internal sealed class BehaviorFactoryCallHandler(
         [BlockEntity be, string name]
       ) when factories.TryGetValue(name, out var factory):
         return RouteAction.Return(factory(be));
-      case (nameof(IClassRegistryAPI.GetBlockEntityBehaviorClass), [string name])
-        when factories.ContainsKey(name):
+      case (
+        nameof(IClassRegistryAPI.GetBlockEntityBehaviorClass),
+        [string name]
+      ) when factories.ContainsKey(name):
         return RouteAction.Return(
           registry.GetBlockEntityBehaviorClass(name)
             ?? typeof(BlockEntityBehavior)
