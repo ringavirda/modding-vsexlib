@@ -975,6 +975,14 @@ public sealed partial class TestWorld : IDisposable {
     )
       replaced.OnBlockRemoved(World, pos);
 
+    if (
+      RunsRemovalHooks
+      && _blocks.TryGetValue(pos, out Block? previous)
+      && previous.BlockId != id
+      && _blockEntities.Remove(pos, out BlockEntity? removed)
+    )
+      removed.OnBlockRemoved();
+
     if (id == 0) {
       _blocks.Remove(pos);
       _blockEntities.Remove(pos);
@@ -993,7 +1001,6 @@ public sealed partial class TestWorld : IDisposable {
         || existing.Block != b
       )
     ) {
-      // Tears the stale block entity down first so it cannot keep ticking.
       existing?.OnBlockUnloaded();
       DoSpawnBlockEntity(entityClass, pos);
     }

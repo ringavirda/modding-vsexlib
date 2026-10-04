@@ -9,6 +9,8 @@ see the git history.
 
 ### Fixed
 
+- **`TestWorld` removal** (ExpandedLib.Testing): a block entity whose cell is set to air or replaced
+  stops ticking, as the game's `OnBlockRemoved` unregisters its listeners.
 - Looking at an unfinished structure no longer stalls a frame. The hint's matching items are worked
   out once per world for each material, a paid stage works out none, and exlib runs its own
   construction on 1.22 as on 1.20 and 1.21, half-built structures keeping their stage.
