@@ -3,3 +3,6 @@
 
 # Shell scripts must stay LF-terminated or they fail to run (the shebang would carry a CR).
 *.sh text eol=lf
+
+# A recording fixture is compared byte for byte with what the writer emits.
+tests/ExpandedLib.Tests/Scenarios/Fixtures/*.json text eol=lf
