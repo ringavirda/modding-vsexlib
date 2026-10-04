@@ -107,9 +107,9 @@ public sealed class TestPlayer {
   /// seconds held so far, and <see cref="Block.OnBlockInteractStop"/> once, when a step declines
   /// or the hold ends.</summary>
   /// <remarks>A spectator, or a player the claims refuse use of the cell, gets nothing. World
-  /// ticks do not run during the hold; the keys, held on <see cref="Entity"/>'s controls and read
-  /// the same through <c>Player.WorldData.EntityControls</c>, last for the call only. The held collectible's
-  /// interaction, the reach test and the server's use events are not run.</remarks>
+  /// ticks do not run during the hold; the keys, on <see cref="Entity"/>'s controls, last for the
+  /// call only. The held collectible's interaction, the reach test and the server's use events are
+  /// not run.</remarks>
   /// <param name="pos">The cell clicked.</param>
   /// <param name="held">Put in <see cref="ActiveSlot"/> first; null leaves the hand.</param>
   /// <param name="sneak">Holds <c>Sneak</c> and <c>ShiftKey</c>.</param>
