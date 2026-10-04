@@ -10,6 +10,8 @@ namespace ExpandedLib.Testing;
 /// Test-facing builder over <see cref="TestWorld"/> for integration tests: lays out blocks, network
 /// nodes and machines in one shared world, then advances them with <see cref="Step"/>. Placement is
 /// grid-based and additive; <see cref="Build"/> must be called once after all placements.
+/// <see cref="At"/> and <see cref="Every"/> schedule actions, a player's among them, against the
+/// scene's clock, <see cref="Second"/>.
 /// </summary>
 public sealed class Scene {
   /// <summary>The underlying in-memory world (store, graph manager, fake API).</summary>
@@ -17,7 +19,13 @@ public sealed class Scene {
 
   private readonly List<(BlockPos pos, string networkType)> _pendingNodes =
     new();
+  private readonly List<(int first, int period, Action action)> _scheduled =
+    new();
   private bool _built;
+
+  /// <summary>The seconds <see cref="Step"/> has run, from 0; second <c>t</c>'s ticks are the ones
+  /// that take the clock from <c>t</c> to <c>t + 1</c>.</summary>
+  public int Second { get; private set; }
 
   /// <summary>Registers a network factory, as a mod does at startup.</summary>
   public Scene Network(
@@ -82,15 +90,71 @@ public sealed class Scene {
     return this;
   }
 
-  /// <summary>Advances the simulation by <paramref name="seconds"/> server ticks. Each tick fires all
-  /// block-entity production ticks first, then ticks all networks (flow, leak, burst, broadcast) -
-  /// the same order the live server uses.</summary>
+  /// <summary>Schedules <paramref name="action"/> to run once, before second
+  /// <paramref name="second"/>'s ticks.</summary>
+  /// <param name="second">The scene second, <see cref="Second"/> or later.</param>
+  /// <param name="action">Run by <see cref="Step"/>; actions due at one second run in the order
+  /// they were scheduled.</param>
+  /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="second"/> has already
+  /// passed.</exception>
+  public Scene At(int second, Action action) =>
+    Schedule(second, 0, action, nameof(second));
+
+  /// <summary>Schedules <paramref name="action"/> to run before the ticks of second
+  /// <paramref name="first"/> and of every <paramref name="period"/> seconds after it.</summary>
+  /// <param name="period">Seconds between runs, 1 or more.</param>
+  /// <param name="action">Run by <see cref="Step"/>; actions due at one second run in the order
+  /// they were scheduled.</param>
+  /// <param name="first">The first scene second it runs at, <see cref="Second"/> or later.</param>
+  /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="period"/> is below 1, or
+  /// <paramref name="first"/> has already passed.</exception>
+  public Scene Every(int period, Action action, int first = 0) {
+    if (period < 1)
+      throw new ArgumentOutOfRangeException(
+        nameof(period),
+        period,
+        "a period is 1 second or more"
+      );
+    return Schedule(first, period, action, nameof(first));
+  }
+
+  private Scene Schedule(int first, int period, Action action, string name) {
+    ArgumentNullException.ThrowIfNull(action);
+    if (first < Second)
+      throw new ArgumentOutOfRangeException(
+        name,
+        first,
+        $"second {first} has passed; the scene is at {Second}"
+      );
+    _scheduled.Add((first, period, action));
+    return this;
+  }
+
+  /// <summary>Advances the simulation by <paramref name="seconds"/> server ticks. Each second runs
+  /// the actions <see cref="At"/> and <see cref="Every"/> scheduled for it, then fires all
+  /// block-entity production ticks, then ticks all networks (flow, leak, burst, broadcast) - the
+  /// same order the live server uses.</summary>
   public void Step(int seconds = 1) {
     if (!_built)
       Build();
     for (int i = 0; i < seconds; i++) {
+      RunScheduled();
       World.FireBlockEntityTicks();
       World.Tick(1);
+      Second++;
+    }
+  }
+
+  private void RunScheduled() {
+    foreach (var (first, period, action) in _scheduled.ToArray()) {
+      bool due =
+        period == 0
+          ? Second == first
+          : Second >= first && (Second - first) % period == 0;
+      if (due)
+        action();
     }
   }
 
