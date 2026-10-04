@@ -48,7 +48,7 @@ public class TestPlayerInteractTests {
     ) => Calls.Add($"stop {secondsUsed:0.0}");
   }
 
-  private static readonly BlockPos At = new(0, 1, 0);
+  private static BlockPos At => new(0, 1, 0);
 
   private static (TestWorld, Lever, TestPlayer) Stand() {
     var world = new TestWorld();

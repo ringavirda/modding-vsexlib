@@ -129,8 +129,9 @@ public class DoublesTests {
     using var world = new TestWorld();
     InventoryGeneric chest = TestInventory.Of(world, 4, "chest-1");
 
-    Assert.IsType<Vintagestory.Common.InventoryNetworkUtil>(
-      chest.InvNetworkUtil
+    Assert.Equal(
+      "Vintagestory.Common.InventoryNetworkUtil",
+      chest.InvNetworkUtil.GetType().FullName
     );
   }
 

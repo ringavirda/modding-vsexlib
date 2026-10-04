@@ -217,9 +217,13 @@ public sealed class TestPlayer {
 
     InventoryGeneric hotbar = TestInventory.Of(world, 12, $"hotbar-{uid}");
     InventoryGeneric mouse = TestInventory.Of(world, 1, $"mouse-{uid}");
-    player.InventoryManager.Returns(
-      Inventories(player, activeSlot, hotbar, mouse)
+    IPlayerInventoryManager manager = Inventories(
+      player,
+      activeSlot,
+      hotbar,
+      mouse
     );
+    player.InventoryManager.Returns(manager);
 
     return new TestPlayer(
       world,

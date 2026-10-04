@@ -68,6 +68,7 @@ public sealed class TestWindow {
     ItemStack held =
       Player.ActiveSlot.Itemstack
       ?? throw new InvalidOperationException("the hand holds nothing to put");
+    int count = held.StackSize;
     cursor.Itemstack = held;
     Player.ActiveSlot.Itemstack = null;
     Click(inventory, slotId);
@@ -75,8 +76,8 @@ public sealed class TestWindow {
     Player.ActiveSlot.Itemstack = left;
     cursor.Itemstack = null;
     return left != null && left.Collectible == held.Collectible
-      ? held.StackSize - left.StackSize
-      : held.StackSize;
+      ? count - left.StackSize
+      : count;
   }
 
   /// <summary>Takes the stack in slot <paramref name="slotId"/>: sends the left click on that slot

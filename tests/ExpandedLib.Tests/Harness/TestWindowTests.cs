@@ -64,10 +64,9 @@ public class TestWindowTests {
 
   private sealed class Bare : BlockEntity { }
 
-  private static readonly BlockPos At = new(0, 1, 0);
+  private static BlockPos At => new(0, 1, 0);
 
-  private static (TestWorld, T, TestPlayer, Item) Stand<T>(T entity)
-    where T : BlockEntity {
+  private static (TestWorld, TestPlayer, Item) Stand(BlockEntity entity) {
     var world = new TestWorld();
     Block block = TestBlocks.Configure(new Block(), "test:window", 1);
     entity.Pos = At.Copy();
@@ -77,7 +76,7 @@ public class TestWindowTests {
       station.DisablePickRangeCheck();
     Item ingot = world.RegisterItem("game:ingot-iron");
     ingot.MaxStackSize = 64;
-    return (world, entity, world.Player(), ingot);
+    return (world, world.Player(), ingot);
   }
 
   private static void RefuseClaims(TestWorld world) =>
@@ -94,7 +93,8 @@ public class TestWindowTests {
   // Fails when the put does not reach the station's slot packet path.
   [Fact]
   public void A_put_lands_in_the_slot_and_empties_the_hand() {
-    var (world, station, player, ingot) = Stand(new Station());
+    var station = new Station();
+    var (world, player, ingot) = Stand(station);
     TestWindow window = player.Window(station);
     player.Hold(new ItemStack(ingot, 5));
 
@@ -112,7 +112,8 @@ public class TestWindowTests {
   // engine's slot path.
   [Fact]
   public void A_put_into_an_output_slot_is_refused_by_the_slot() {
-    var (world, station, player, ingot) = Stand(new Station());
+    var station = new Station();
+    var (world, player, ingot) = Stand(station);
     TestWindow window = player.Window(station);
     player.Hold(new ItemStack(ingot, 5));
 
@@ -128,7 +129,8 @@ public class TestWindowTests {
   // open.
   [Fact]
   public void A_put_without_open_lands_as_the_games_slot_click_does() {
-    var (world, station, player, ingot) = Stand(new Station());
+    var station = new Station();
+    var (world, player, ingot) = Stand(station);
     player.Hold(new ItemStack(ingot, 3));
 
     int moved = player.Window(station).Put(0);
@@ -142,7 +144,8 @@ public class TestWindowTests {
   // stops rolling the client back.
   [Fact]
   public void A_put_without_claim_access_changes_nothing_and_rolls_back() {
-    var (world, station, player, ingot) = Stand(new Station());
+    var station = new Station();
+    var (world, player, ingot) = Stand(station);
     TestWindow window = player.Window(station);
     player.Hold(new ItemStack(ingot, 5));
     window.Open();
@@ -165,7 +168,8 @@ public class TestWindowTests {
   // Fails when the take does not move the slot's stack to the hand through the cursor.
   [Fact]
   public void A_take_moves_the_slots_stack_into_the_hand() {
-    var (world, station, player, ingot) = Stand(new Station());
+    var station = new Station();
+    var (world, player, ingot) = Stand(station);
     TestWindow window = player.Window(station);
     station.Inventory[0].Itemstack = new ItemStack(ingot, 4);
 
@@ -181,7 +185,8 @@ public class TestWindowTests {
   // Fails when a button's packet does not reach the station's own handler with its id and data.
   [Fact]
   public void A_button_reaches_the_station_with_its_id_and_data() {
-    var (world, station, player, ingot) = Stand(new Station());
+    var station = new Station();
+    var (world, player, ingot) = Stand(station);
     TestWindow window = player.Window(station);
     byte[] data = [7, 9];
 
@@ -196,7 +201,8 @@ public class TestWindowTests {
   // Fails when Close does not send the close packet the station closes the inventory on.
   [Fact]
   public void Closing_closes_the_inventory_for_the_player() {
-    var (world, station, player, ingot) = Stand(new Station());
+    var station = new Station();
+    var (world, player, ingot) = Stand(station);
     TestWindow window = player.Window(station);
 
     window.Open();
@@ -207,7 +213,8 @@ public class TestWindowTests {
 
   [Fact]
   public void A_button_id_at_or_below_close_is_refused() {
-    var (world, station, player, ingot) = Stand(new Station());
+    var station = new Station();
+    var (world, player, ingot) = Stand(station);
 
     Assert.Throws<ArgumentOutOfRangeException>(() =>
       player.Window(station).Press(TestWindow.ClosePacketId)
@@ -216,7 +223,8 @@ public class TestWindowTests {
 
   [Fact]
   public void A_put_with_an_empty_hand_or_a_full_cursor_throws() {
-    var (world, station, player, ingot) = Stand(new Station());
+    var station = new Station();
+    var (world, player, ingot) = Stand(station);
     TestWindow window = player.Window(station);
 
     Assert.Throws<InvalidOperationException>(() => window.Put(0));
@@ -228,7 +236,8 @@ public class TestWindowTests {
 
   [Fact]
   public void A_take_with_a_full_hand_throws() {
-    var (world, station, player, ingot) = Stand(new Station());
+    var station = new Station();
+    var (world, player, ingot) = Stand(station);
     player.Hold(new ItemStack(ingot, 1));
 
     Assert.Throws<InvalidOperationException>(() =>
@@ -238,7 +247,7 @@ public class TestWindowTests {
 
   [Fact]
   public void A_slot_verb_on_an_entity_without_an_inventory_throws() {
-    var (world, _, player, ingot) = Stand(new Station());
+    var (world, player, ingot) = Stand(new Station());
     player.Hold(new ItemStack(ingot, 1));
 
     Assert.Throws<InvalidOperationException>(() =>
@@ -254,7 +263,8 @@ public class TestWindowTests {
   // its claim check refuses.
   [Fact]
   public void The_hoppers_handshake_takes_a_top_off_and_refuses_without_claims() {
-    var (world, hopper, player, ingot) = Stand(new Hopper());
+    var hopper = new Hopper();
+    var (world, player, ingot) = Stand(hopper);
     TestWindow window = player.Window(hopper);
     player.Hold(new ItemStack(ingot, 8));
 
