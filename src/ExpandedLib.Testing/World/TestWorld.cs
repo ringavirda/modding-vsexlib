@@ -714,15 +714,9 @@ public sealed partial class TestWorld : IDisposable {
         x.SetBlock(Arg.Any<int>(), Arg.Any<BlockPos>(), Arg.Any<ItemStack>())
       )
       .Do(ci => DoSetBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1)));
-    a.When(x =>
-        x.SetBlock(Arg.Any<int>(), Arg.Any<BlockPos>(), Arg.Any<int>())
-      )
+    a.When(x => x.SetBlock(Arg.Any<int>(), Arg.Any<BlockPos>(), Arg.Any<int>()))
       .Do(ci =>
-        DoSetBlock(
-          ci.ArgAt<int>(0),
-          ci.ArgAt<BlockPos>(1),
-          ci.ArgAt<int>(2)
-        )
+        DoSetBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1), ci.ArgAt<int>(2))
       );
     a.When(x => x.ExchangeBlock(Arg.Any<int>(), Arg.Any<BlockPos>()))
       .Do(ci => DoExchangeBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1)));

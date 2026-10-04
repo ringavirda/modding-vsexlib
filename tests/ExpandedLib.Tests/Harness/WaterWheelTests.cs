@@ -11,7 +11,8 @@ namespace ExpandedLib.Tests;
 
 /// <summary>A vanilla waterwheel over the game's own water blocks, held in the fluid layer, driving
 /// a vanilla axle through a started <see cref="MechanicalPowerMod"/>.</summary>
-public class WaterWheelTests {
+public class WaterWheelTests
+{
   private static BlockPos Hub => new(10, 10, 10);
 
   private static BlockPos AxlePos => Hub.SouthCopy();
@@ -23,7 +24,8 @@ public class WaterWheelTests {
   // Fails when the world drops the tick listener a mod system registers through World, or when the
   // accessor's fluid-layer read answers the solid layer.
   [Fact]
-  public void A_wheel_in_water_flowing_above_its_minimum_turns_its_line() {
+  public void A_wheel_in_water_flowing_above_its_minimum_turns_its_line()
+  {
     using TestWorld world = Wheel("rapidwater-e-7");
     Assert.True(
       FlowSpeed(world, "rapidwater-e-7") > MinFlowSpeed(world),
@@ -41,7 +43,8 @@ public class WaterWheelTests {
 
   // Fails when the still variant's water is placed as its flowing east variant.
   [Fact]
-  public void A_wheel_in_still_water_stays_at_rest() {
+  public void A_wheel_in_still_water_stays_at_rest()
+  {
     using TestWorld world = Wheel("rapidwater-still-7");
 
     Run(world, 20);
@@ -53,7 +56,8 @@ public class WaterWheelTests {
 
   // Fails when the slow water is placed as rapid water.
   [Fact]
-  public void A_wheel_in_water_flowing_below_its_minimum_stays_at_rest() {
+  public void A_wheel_in_water_flowing_below_its_minimum_stays_at_rest()
+  {
     using TestWorld world = Wheel("water-e-7");
     Assert.True(FlowSpeed(world, "water-e-7") <= MinFlowSpeed(world));
 
@@ -64,7 +68,8 @@ public class WaterWheelTests {
 
   // Fails when the accessor's SetBlock into the fluid layer writes nothing.
   [Fact]
-  public void A_turning_wheel_slows_the_rapid_water_leaving_it() {
+  public void A_turning_wheel_slows_the_rapid_water_leaving_it()
+  {
     using TestWorld world = Wheel("rapidwater-e-7");
     BlockPos exit = Hub.AddCopy(2, -1, 0);
 
@@ -78,7 +83,8 @@ public class WaterWheelTests {
 
   /// <summary>A built north-side wheel at <see cref="Hub"/> on an axle south of it, over a channel
   /// of <paramref name="water"/> along X under the wheel and two cells past it each way.</summary>
-  private static TestWorld Wheel(string water) {
+  private static TestWorld Wheel(string water)
+  {
     var world = new TestWorld();
     world.RegisterVanillaClasses();
     var power = new MechanicalPowerMod();
@@ -104,7 +110,8 @@ public class WaterWheelTests {
 
   /// <summary>Runs every listener <paramref name="seconds"/> seconds in 20 ms steps, the interval of
   /// the mechanical power tick.</summary>
-  private static void Run(TestWorld world, int seconds) {
+  private static void Run(TestWorld world, int seconds)
+  {
     for (int i = 0; i < seconds * 50; i++)
       world.AdvanceBlockEntityTime(20);
   }
