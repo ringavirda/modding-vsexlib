@@ -916,7 +916,8 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   private static void WireInventoryNetworkUtil(ICoreAPI api) =>
-    api.ClassRegistry.CreateInvNetworkUtil(
+    api
+      .ClassRegistry.CreateInvNetworkUtil(
         Arg.Any<InventoryBase>(),
         Arg.Any<ICoreAPI>()
       )

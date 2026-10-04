@@ -76,7 +76,9 @@ public class SceneScheduleTests {
     Assert.Throws<ArgumentOutOfRangeException>(() =>
       scene.Every(2, () => { }, first: 1)
     );
-    Assert.Throws<ArgumentOutOfRangeException>(() => scene.Every(0, () => { }, 3));
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+      scene.Every(0, () => { }, 3)
+    );
     Assert.Throws<ArgumentNullException>(() => scene.At(3, null!));
   }
 }

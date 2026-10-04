@@ -124,9 +124,7 @@ public sealed class TestWindow {
   private ItemSlot Cursor() {
     ItemSlot cursor = Player.Mouse[0];
     if (!cursor.Empty)
-      throw new InvalidOperationException(
-        "the cursor already holds a stack"
-      );
+      throw new InvalidOperationException("the cursor already holds a stack");
     return cursor;
   }
 }
