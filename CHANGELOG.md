@@ -35,6 +35,11 @@ see the git history.
   dialog sends and the engine's slot protocol, holds a right-click stepped every 0.1 s, and a scene
   runs a player's actions at a second or on a period, before that second's ticks.
   `TestPlayer.Mouse` is the cursor a put or a take passes through.
+- **`TestWorld` fluid layer and mod-system ticks** (ExpandedLib.Testing): each cell holds a solid
+  and a fluid layer, read and written per `BlockLayersAccess` as the game does
+  (`TestWorld.GetBlock(pos, layer)`), and a tick listener a mod system registers through `World`
+  runs beside the block entities'. A vanilla waterwheel in placed rapid water turns its line under
+  a started `MechanicalPowerMod`; in still or slow water it stays at rest.
 
 ### Changed
 

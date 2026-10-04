@@ -20,6 +20,7 @@ namespace ExpandedLib.Testing;
 /// block-network test suite.</summary>
 public sealed partial class TestWorld : IDisposable {
   private readonly Dictionary<BlockPos, Block> _blocks = new();
+  private readonly Dictionary<BlockPos, Block> _fluids = new();
   private readonly Dictionary<BlockPos, BlockEntity> _blockEntities = new();
   private readonly Dictionary<int, Block> _blocksById = new();
   private readonly Dictionary<string, Block> _blocksByCode = new();
@@ -40,7 +41,12 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>The fake block accessor handed to every production network call.</summary>
   /// <remarks><c>ExchangeBlock</c> puts the new block in the cell, keeps the cell's block entity and
   /// then runs its <see cref="BlockEntity.OnExchanged"/> with the new block, as the engine's
-  /// does.</remarks>
+  /// does. Each cell holds a solid layer and a fluid layer: a read with a
+  /// <see cref="BlockLayersAccess"/> value answers as <see cref="GetBlock(BlockPos, int)"/> does,
+  /// <c>SetBlock</c> without a layer puts a block whose <see cref="Block.ForFluidsLayer"/> is true
+  /// into the fluid layer and empties the solid one, and <c>SetBlock</c> with
+  /// <see cref="BlockLayersAccess.Solid"/> or <see cref="BlockLayersAccess.Fluid"/> writes that layer
+  /// alone.</remarks>
   public IBlockAccessor Accessor { get; }
 
   /// <summary>The fake server world (calendar, item-drop spawning) exposed as
@@ -185,12 +191,20 @@ public sealed partial class TestWorld : IDisposable {
 
   /// <summary>Places <paramref name="block"/> (and optional <paramref name="be"/>) at
   /// <paramref name="pos"/>, registering the block in the id/code lookup.</summary>
-  /// <remarks>In a world holding a class registry (<see cref="RegisterClasses"/>), logs a Warning
-  /// when <paramref name="block"/> names an <c>EntityClass</c> other than the one
+  /// <remarks>A block whose <see cref="Block.ForFluidsLayer"/> is true (water, lava, lake ice) goes
+  /// into the cell's fluid layer and empties its solid layer and block entity, as the engine's
+  /// <c>SetBlock</c> does; any other goes into the solid layer and leaves the fluid. In a world
+  /// holding a class registry (<see cref="RegisterClasses"/>), logs a Warning when
+  /// <paramref name="block"/> names an <c>EntityClass</c> other than the one
   /// <paramref name="be"/>'s type is registered under.</remarks>
   public TestWorld Place(BlockPos pos, Block block, BlockEntity? be = null) {
     Register(block);
-    _blocks[pos] = block;
+    if (block.ForFluidsLayer) {
+      _fluids[pos] = block;
+      _blocks.Remove(pos);
+      _blockEntities.Remove(pos);
+    } else
+      _blocks[pos] = block;
     if (be != null) {
       be.Pos = pos.Copy();
       be.Block = block;
@@ -409,10 +423,39 @@ public sealed partial class TestWorld : IDisposable {
 
   #region Store access
 
-  /// <summary>What the store holds at <paramref name="pos"/>, whether or not its chunk is
-  /// loaded.</summary>
+  /// <summary>What the store holds at <paramref name="pos"/>, whether or not its chunk is loaded:
+  /// the solid layer's block, else the fluid layer's, else <see cref="Air"/>.</summary>
   public Block GetBlock(BlockPos pos) =>
-    _blocks.TryGetValue(pos, out var b) ? b : Air;
+    GetBlock(pos, BlockLayersAccess.Default);
+
+  /// <summary>What the store holds at <paramref name="pos"/> as the engine reads
+  /// <paramref name="layer"/>, whether or not its chunk is loaded.</summary>
+  /// <param name="pos">The cell.</param>
+  /// <param name="layer">A <see cref="BlockLayersAccess"/> value: <c>Default</c> reads the solid
+  /// layer, else the fluid; <c>SolidBlocks</c> the solid layer; <c>Fluid</c> the fluid layer;
+  /// <c>FluidOrSolid</c> the fluid layer, else the solid; <c>MostSolid</c> a fluid-layer block that
+  /// is not a liquid (ice), else the solid layer, so liquid water reads as air there.</param>
+  /// <returns>The block read, or <see cref="Air"/> when the layers read hold none.</returns>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="layer"/> is none of the five
+  /// values.</exception>
+  public Block GetBlock(BlockPos pos, int layer) {
+    Block? solid = _blocks.GetValueOrDefault(pos);
+    Block? fluid = _fluids.GetValueOrDefault(pos);
+    return layer switch {
+      BlockLayersAccess.Default => solid ?? fluid ?? Air,
+      BlockLayersAccess.SolidBlocks => solid ?? Air,
+      BlockLayersAccess.Fluid => fluid ?? Air,
+      BlockLayersAccess.FluidOrSolid => fluid ?? solid ?? Air,
+      BlockLayersAccess.MostSolid => fluid is { } ice && !ice.IsLiquid()
+        ? ice
+        : solid ?? Air,
+      _ => throw new ArgumentOutOfRangeException(
+        nameof(layer),
+        layer,
+        "not a BlockLayersAccess value"
+      ),
+    };
+  }
 
   /// <summary>What the store holds at <paramref name="pos"/>, whether or not its chunk is
   /// loaded.</summary>
@@ -457,10 +500,13 @@ public sealed partial class TestWorld : IDisposable {
     return this;
   }
 
-  /// <summary>What <see cref="Accessor"/> sees at <paramref name="pos"/>: the placed block, or
-  /// <see cref="Air"/> when its chunk is away.</summary>
-  private Block ReadBlock(BlockPos pos) =>
-    IsChunkLoaded(pos) ? GetBlock(pos) : Air;
+  /// <summary>What <see cref="Accessor"/> sees at <paramref name="pos"/> in
+  /// <paramref name="layer"/>: the placed block, or <see cref="Air"/> when its chunk is
+  /// away.</summary>
+  private Block ReadBlock(
+    BlockPos pos,
+    int layer = BlockLayersAccess.Default
+  ) => IsChunkLoaded(pos) ? GetBlock(pos, layer) : Air;
 
   /// <summary>What <see cref="Accessor"/> sees at <paramref name="pos"/>: the live block entity, or
   /// <c>null</c> when its chunk is away.</summary>
@@ -503,8 +549,9 @@ public sealed partial class TestWorld : IDisposable {
       Networks.ServerTick(Accessor, 1f);
   }
 
-  /// <summary>Fires every block-entity server tick listener registered through <see cref="Api"/>
-  /// (i.e. via <c>BlockEntity.RegisterGameTickListener</c>), <paramref name="times"/> times.</summary>
+  /// <summary>Fires every server tick listener registered through <see cref="Api"/>'s event API
+  /// (<c>BlockEntity.RegisterGameTickListener</c>) or through <see cref="World"/> (a mod system's
+  /// own tick), <paramref name="times"/> times, each with <paramref name="dt"/>.</summary>
   public void FireBlockEntityTicks(float dt = 1f, int times = 1) {
     for (int i = 0; i < times; i++)
       foreach (var listener in _tickListeners.Values.ToList())
@@ -512,7 +559,8 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   /// <summary>Advances block-entity sim time by <paramref name="totalMs"/> ms, firing each listener
-  /// once per whole interval it registered.</summary>
+  /// <see cref="FireBlockEntityTicks"/> fires once per whole interval it registered, one listener's
+  /// fires before the next listener's.</summary>
   public void AdvanceBlockEntityTime(int totalMs) =>
     AdvanceBlockEntityTime(totalMs, null);
 
@@ -615,9 +663,19 @@ public sealed partial class TestWorld : IDisposable {
 
     a.GetBlock(Arg.Any<BlockPos>())
       .Returns(ci => ReadBlock(ci.Arg<BlockPos>()));
-    // The fluid/solid-layer overload (BlockLayersAccess) reads the same store.
     a.GetBlock(Arg.Any<BlockPos>(), Arg.Any<int>())
-      .Returns(ci => ReadBlock(ci.Arg<BlockPos>()));
+      .Returns(ci => ReadBlock(ci.Arg<BlockPos>(), ci.ArgAt<int>(1)));
+    a.GetBlock(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>())
+      .Returns(ci =>
+        ReadBlock(
+          new BlockPos(ci.ArgAt<int>(0), ci.ArgAt<int>(1), ci.ArgAt<int>(2)),
+          ci.ArgAt<int>(3)
+        )
+      );
+    a.GetMostSolidBlock(Arg.Any<BlockPos>())
+      .Returns(ci =>
+        ReadBlock(ci.Arg<BlockPos>(), BlockLayersAccess.MostSolid)
+      );
     // The one accessor call that can tell an absent cell from an unreadable one.
     a.GetChunkAtBlockPos(Arg.Any<BlockPos>())
       .Returns(ci => IsChunkLoaded(ci.Arg<BlockPos>()) ? _loadedChunk : null);
@@ -639,7 +697,8 @@ public sealed partial class TestWorld : IDisposable {
       )
       .Returns(ci =>
         ReadBlock(
-          new BlockPos(ci.ArgAt<int>(0), ci.ArgAt<int>(1), ci.ArgAt<int>(2))
+          new BlockPos(ci.ArgAt<int>(0), ci.ArgAt<int>(1), ci.ArgAt<int>(2)),
+          ci.ArgAt<int>(3)
         )
       );
     a.GetBlockEntity(Arg.Any<BlockPos>())
@@ -655,6 +714,16 @@ public sealed partial class TestWorld : IDisposable {
         x.SetBlock(Arg.Any<int>(), Arg.Any<BlockPos>(), Arg.Any<ItemStack>())
       )
       .Do(ci => DoSetBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1)));
+    a.When(x =>
+        x.SetBlock(Arg.Any<int>(), Arg.Any<BlockPos>(), Arg.Any<int>())
+      )
+      .Do(ci =>
+        DoSetBlock(
+          ci.ArgAt<int>(0),
+          ci.ArgAt<BlockPos>(1),
+          ci.ArgAt<int>(2)
+        )
+      );
     a.When(x => x.ExchangeBlock(Arg.Any<int>(), Arg.Any<BlockPos>()))
       .Do(ci => DoExchangeBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1)));
     a.When(x => x.MarkBlockDirty(Arg.Any<BlockPos>())).Do(_ => { });
@@ -733,6 +802,18 @@ public sealed partial class TestWorld : IDisposable {
     w.Config.Returns(Config.Tree);
     // Particle/sound helpers read world.Rand.
     w.Rand.Returns(new Random(1));
+    // A mod system's own tick (MechanicalPowerMod's 20 ms network step) runs beside the block
+    // entities'.
+    w.RegisterGameTickListener(
+        Arg.Any<System.Action<float>>(),
+        Arg.Any<int>(),
+        Arg.Any<int>()
+      )
+      .Returns(ci =>
+        AddTickListener(ci.Arg<System.Action<float>>(), ci.ArgAt<int>(1))
+      );
+    w.When(x => x.UnregisterGameTickListener(Arg.Any<long>()))
+      .Do(ci => RemoveTickListener(ci.Arg<long>()));
     // No land claims: every player may build and use everywhere until a test restubs TryAccess.
     w.Claims.TryAccess(
         Arg.Any<IPlayer>(),
@@ -882,11 +963,7 @@ public sealed partial class TestWorld : IDisposable {
     // Honours UnregisterGameTickListener so a torn-down block entity stops ticking.
     events
       .When(x => x.UnregisterGameTickListener(Arg.Any<long>()))
-      .Do(ci => {
-        long id = ci.Arg<long>();
-        _tickListeners.Remove(id);
-        _tickAccumMs.Remove(id);
-      });
+      .Do(ci => RemoveTickListener(ci.Arg<long>()));
 
     return api;
   }
@@ -967,7 +1044,22 @@ public sealed partial class TestWorld : IDisposable {
     return id;
   }
 
+  private void RemoveTickListener(long id) {
+    _tickListeners.Remove(id);
+    _tickAccumMs.Remove(id);
+  }
+
   private void DoSetBlock(int id, BlockPos pos) {
+    if (
+      _blocksById.TryGetValue(id, out Block? fluid)
+      && id != 0
+      && fluid.ForFluidsLayer
+    ) {
+      DoSetBlock(0, pos);
+      _fluids[pos] = fluid;
+      return;
+    }
+
     if (
       RunsRemovalHooks
       && _blocks.TryGetValue(pos, out Block? replaced)
@@ -1003,6 +1095,27 @@ public sealed partial class TestWorld : IDisposable {
     ) {
       existing?.OnBlockUnloaded();
       DoSpawnBlockEntity(entityClass, pos);
+    }
+  }
+
+  private void DoSetBlock(int id, BlockPos pos, int layer) {
+    switch (layer) {
+      case BlockLayersAccess.Solid:
+        DoSetBlock(id, pos);
+        return;
+      case BlockLayersAccess.Fluid when id == 0:
+        _fluids.Remove(pos);
+        return;
+      case BlockLayersAccess.Fluid:
+        if (_blocksById.TryGetValue(id, out Block? b))
+          _fluids[pos] = b;
+        return;
+      default:
+        throw new ArgumentOutOfRangeException(
+          nameof(layer),
+          layer,
+          "SetBlock writes the Solid or the Fluid layer"
+        );
     }
   }
 
