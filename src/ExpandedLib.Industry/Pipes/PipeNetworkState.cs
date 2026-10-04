@@ -24,6 +24,15 @@ public class PipeNetworkState {
   /// fill ratio until brim-full, then <see cref="FeedPressure"/>.</summary>
   public float Pressure { get; set; }
 
+  /// <summary>
+  /// <see cref="Pressure"/> (atm) as the run's last network tick left it, after its leaks and vents.
+  /// It stands for the whole second until the next network tick, so every machine that reads it in
+  /// that second reads the same figure whichever order the game ticks them in; produce and consume
+  /// calls between ticks leave it alone. A run restored, merged or split starts from its
+  /// <see cref="Pressure"/>; a run first charged since the last tick reads 0. Not saved.
+  /// </summary>
+  public float SettledPressure { get; set; }
+
   /// <summary>Pump-commanded feed pressure (atm) for a liquid run; realised as
   /// <see cref="Pressure"/> only once brim-full. Unused for gas.</summary>
   public float FeedPressure { get; set; }

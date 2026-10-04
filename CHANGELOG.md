@@ -24,6 +24,10 @@ see the git history.
 - **`PipeNetwork.HasDraught`** and **`IPipeDraught`**: a run has draught through a chimney its vent
   strategy classifies or a node whose block entity draws it up a stack. Open ends to air give none,
   so a fire can ask for a stack instead of judging its flue by back-pressure.
+- **`PipeNetworkState.SettledPressure`**: a run's pressure as its last network tick left it, after
+  its leaks and vents, standing until the next tick. Machines that read it in the same second read
+  the same figure whatever order the game runs them in; a restored, merged or split run starts from
+  its live pressure.
 
 ### Changed
 

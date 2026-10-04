@@ -50,6 +50,8 @@ public class PipeNetwork : BlockNetwork {
 
   public override void RestoreState(object? state) {
     State = state as PipeNetworkState;
+    if (State != null)
+      State.SettledPressure = State.Pressure;
   }
 
   // Per-second throughput accumulators (litres), folded into State.FlowRate each tick.
@@ -349,6 +351,7 @@ public class PipeNetwork : BlockNetwork {
           State.FeedPressure
         )
         : PipeNetworkState.ComputeGasPressure(State.Volume, State.MaxVolume);
+      State.SettledPressure = State.Pressure;
       return;
     }
 
@@ -393,6 +396,7 @@ public class PipeNetwork : BlockNetwork {
         State.Volume,
         State.MaxVolume
       );
+    State.SettledPressure = State.Pressure;
   }
 
   public override void OnSplitFragment(
@@ -431,6 +435,7 @@ public class PipeNetwork : BlockNetwork {
         )
         : PipeNetworkState.ComputeGasPressure(frag, maxVolume),
     };
+    State.SettledPressure = State.Pressure;
   }
 
   #endregion
@@ -469,6 +474,14 @@ public class PipeNetwork : BlockNetwork {
     RepressureAfterVentLeak(state, pass);
     ApplyPassiveCooling(state, pass, dt);
     ClearIfEmptyAndIdle(state, pass);
+    if (State != null)
+      State.SettledPressure = state.IsLiquid
+        ? PipeNetworkState.ComputeLiquidPressure(
+          state.Volume,
+          state.MaxVolume,
+          state.FeedPressure
+        )
+        : PipeNetworkState.ComputeGasPressure(state.Volume, state.MaxVolume);
 
     if (pass.Changed)
       BroadcastUpdate(blockAccessor);
