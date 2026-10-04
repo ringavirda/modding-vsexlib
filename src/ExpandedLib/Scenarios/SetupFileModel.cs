@@ -324,13 +324,18 @@ internal sealed class SetupFileModel {
   }
 
   private static (int From, int To) Window(JToken? token, SetupJson.Where where, int seconds) {
-    if (token == null)
-      return (seconds - seconds / 3, seconds);
+    int from = seconds - seconds / 3;
+    int to = seconds;
+    if (token == null) {
+      if (to - from < 2)
+        throw where.Fail($"the last third of {seconds} s is under 2 s; the file takes a \"steady\".");
+      return (from, to);
+    }
     JArray a = SetupJson.Array(token, where);
     if (a.Count != 2)
       throw where.Fail("expected [from, to].");
-    int from = SetupJson.Integer(a[0], where.At(0));
-    int to = SetupJson.Integer(a[1], where.At(1));
+    from = SetupJson.Integer(a[0], where.At(0));
+    to = SetupJson.Integer(a[1], where.At(1));
     if (from < 0 || to > seconds || to - from < 2)
       throw where.Fail($"[{from}, {to}] is not a window of at least 2 s inside the {seconds} s run.");
     return (from, to);
