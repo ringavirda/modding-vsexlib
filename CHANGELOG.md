@@ -28,6 +28,11 @@ see the git history.
   its leaks and vents, standing until the next tick. Machines that read it in the same second read
   the same figure whatever order the game runs them in; a restored, merged or split run starts from
   its live pressure.
+- **`TestWindow`, `TestPlayer.Interact` and `Scene.At`/`Every`** (ExpandedLib.Testing): a test
+  player opens a block entity's window, puts, takes and presses its buttons through the packets the
+  dialog sends and the engine's slot protocol, holds a right-click stepped every 0.1 s, and a scene
+  runs a player's actions at a second or on a period, before that second's ticks.
+  `TestPlayer.Mouse` is the cursor a put or a take passes through.
 
 ### Changed
 
