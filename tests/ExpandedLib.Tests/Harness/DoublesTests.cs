@@ -83,6 +83,57 @@ public class DoublesTests {
     Assert.Equal(12, player.Hotbar.Count);
   }
 
+  // Fails when the manager does not answer the engine's cursor id with Mouse: the slot protocol
+  // reads the cursor as GetInventory("mouse-" + WorldData.PlayerUID)[0].
+  [Fact]
+  public void The_cursor_answers_under_the_engines_id() {
+    using var world = new TestWorld();
+    TestPlayer player = world.Player("paying");
+    IPlayerInventoryManager manager = player.Player.InventoryManager;
+
+    Assert.Same(
+      player.Mouse,
+      manager.GetInventory("mouse-" + player.Player.WorldData.PlayerUID)
+    );
+    Assert.Same(player.Mouse[0], manager.MouseItemSlot);
+    Assert.Same(player.Hotbar, manager.GetOwnInventory("hotbar"));
+  }
+
+  // Fails when OpenInventory does not hold the inventory and run its Open, or CloseInventory does
+  // not run its Close.
+  [Fact]
+  public void Opening_holds_the_inventory_and_closing_lets_it_go() {
+    using var world = new TestWorld();
+    TestPlayer player = world.Player();
+    InventoryGeneric chest = TestInventory.Of(world, 4, "chest-1");
+    IPlayerInventoryManager manager = player.Player.InventoryManager;
+
+    manager.OpenInventory(chest);
+
+    Assert.True(chest.HasOpened(player.Player));
+    Assert.Same(chest, manager.GetInventory("chest-1"));
+    Assert.Contains(chest, manager.OpenedInventories);
+    Assert.True(manager.GetInventory("chest-1", out InventoryBase? found));
+    Assert.Same(chest, found);
+
+    manager.CloseInventory(chest);
+
+    Assert.False(chest.HasOpened(player.Player));
+    Assert.DoesNotContain(chest, manager.OpenedInventories);
+  }
+
+  // Fails when the world's class registry hands an inventory a substitute network util: a slot
+  // packet would then move nothing.
+  [Fact]
+  public void An_inventory_carries_the_engines_network_util() {
+    using var world = new TestWorld();
+    InventoryGeneric chest = TestInventory.Of(world, 4, "chest-1");
+
+    Assert.IsType<Vintagestory.Common.InventoryNetworkUtil>(
+      chest.InvNetworkUtil
+    );
+  }
+
   // Fails when the entity's right hand is not the active slot: vanilla reads a held tool there.
   [Fact]
   public void The_entitys_right_hand_is_the_active_slot() {

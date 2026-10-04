@@ -54,6 +54,9 @@ public sealed partial class TestWorld : IDisposable {
 
   /// <summary>A server-side core API wired to this world; assign it to a block entity's <c>Api</c>,
   /// or use <see cref="Attach"/>.</summary>
+  /// <remarks>Its <c>ClassRegistry.CreateInvNetworkUtil</c> builds the engine's own
+  /// <c>InventoryNetworkUtil</c>, so an inventory's <c>InvNetworkUtil.HandleClientPacket</c> moves
+  /// stacks as the server does; <see cref="ClientApi"/>'s does the same.</remarks>
   public ICoreServerAPI Api { get; }
 
   /// <summary>A client-side core API wired to this world, for exercising a <c>ModSystem</c>'s
@@ -845,6 +848,10 @@ public sealed partial class TestWorld : IDisposable {
     api.Network.Returns(network);
     coreApi.Network.Returns(network);
 
+    // An inventory's InvNetworkUtil is the engine's own, so a block entity's slot packets run the
+    // server's slot protocol.
+    WireInventoryNetworkUtil(api);
+
     // Captures server tick listeners for FireBlockEntityTicks; only the RegisterGameTickListener
     // overload this game version calls is mocked.
 #if GAME_GE_1_22
@@ -903,8 +910,20 @@ public sealed partial class TestWorld : IDisposable {
     api.Network.Returns(network);
     coreApi.Network.Returns(network);
 
+    WireInventoryNetworkUtil(api);
+
     return api;
   }
+
+  private static void WireInventoryNetworkUtil(ICoreAPI api) =>
+    api.ClassRegistry.CreateInvNetworkUtil(
+        Arg.Any<InventoryBase>(),
+        Arg.Any<ICoreAPI>()
+      )
+      .Returns(ci => new Vintagestory.Common.InventoryNetworkUtil(
+        ci.Arg<InventoryBase>(),
+        ci.Arg<ICoreAPI>()
+      ));
 
   private IClientWorldAccessor BuildClientWorld(ICoreClientAPI api) {
     var w = Substitute.For<IClientWorldAccessor>();
