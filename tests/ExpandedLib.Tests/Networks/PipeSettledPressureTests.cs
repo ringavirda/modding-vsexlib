@@ -7,10 +7,9 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Covers <see cref="PipeNetworkState.SettledPressure"/>: set by the network tick after its leaks,
-/// left alone by produce and consume calls between ticks, and taken from the live pressure when a
-/// run is restored, merged or split. The runs are east-west lines of stand-in nodes whose two end
-/// connectors face air, so every tick leaks gas from them.
+/// Covers <see cref="PipeNetworkState.SettledPressure"/> through the network tick, produce and consume,
+/// restore, merge and split. The runs are east-west lines of stand-in nodes whose two end connectors
+/// face air, so every tick leaks gas from them.
 /// </summary>
 public class PipeSettledPressureTests {
   #region Fixtures
