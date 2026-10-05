@@ -44,10 +44,13 @@ public class ReleasedHistoryTests {
 
   // Fails when exlib's seed loses a 0.8.x row, or a row gains a code no tag shipped.
   [Fact]
-  public void Exlibs_seed_holds_the_three_0_8_releases_adding_no_code() {
+  public void Exlibs_seed_holds_its_0_8_releases_adding_no_code() {
     var rows = ReleasedHistory.Releases("exlib");
 
-    Assert.Equal(["0.8.0", "0.8.1", "0.8.2"], rows.Select(r => r.Version));
+    Assert.Equal(
+      ["0.8.0", "0.8.1", "0.8.2", "0.8.4"],
+      rows.Select(r => r.Version)
+    );
     Assert.All(rows, r => Assert.Empty(r.Added));
     Assert.Equal(
       ["exlib:structurefiller"],
