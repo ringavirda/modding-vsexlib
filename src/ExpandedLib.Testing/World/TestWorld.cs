@@ -78,6 +78,10 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Channel pairs handed out by <see cref="Channels"/>, keyed by channel name.</summary>
   private readonly Dictionary<string, TestChannels> _channels = new();
 
+  /// <summary>The latest <see cref="TestPlayer"/> made per uid; <c>PlayerByUid</c> answers from
+  /// it.</summary>
+  private readonly Dictionary<string, IPlayer> _playersByUid = new();
+
   /// <summary>The <see cref="RecordingLogger"/> wired as both <see cref="Api"/>'s and
   /// <see cref="World"/>'s <c>Logger</c>; a real object, not a substitute.</summary>
   public RecordingLogger Log { get; } = new();
@@ -158,6 +162,11 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Builds a <see cref="TestPlayer"/> standing in this world.</summary>
   public TestPlayer Player(string uid = "test", string name = "Tester") =>
     TestPlayer.Create(this, uid, name);
+
+  /// <summary>Makes <c>PlayerByUid(uid)</c> answer <paramref name="player"/>, replacing an earlier
+  /// player of that uid.</summary>
+  internal void AddPlayer(string uid, IPlayer player) =>
+    _playersByUid[uid] = player;
 
   /// <summary>Deletes <see cref="ConfigFiles"/>'s temp directory.</summary>
   public void Dispose() => ConfigFiles.Dispose();
@@ -836,6 +845,8 @@ public sealed partial class TestWorld : IDisposable {
   private IServerWorldAccessor BuildWorld() {
     var w = Substitute.For<IServerWorldAccessor>();
     w.Side.Returns(EnumAppSide.Server);
+    w.PlayerByUid(Arg.Any<string>())
+      .Returns(ci => _playersByUid.GetValueOrDefault(ci.Arg<string>()));
     w.BlockAccessor.Returns(Accessor);
     w.Calendar.Returns(Calendar);
     w.Logger.Returns(Log);

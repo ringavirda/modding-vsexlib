@@ -209,7 +209,7 @@ public sealed class TestPlayer {
     player.PlayerName.Returns(name);
     player.WorldData.PlayerUID.Returns(uid);
     player.WorldData.EntityControls.Returns(entity.Controls);
-    world.World.PlayerByUid(uid).Returns(player);
+    world.AddPlayer(uid, player);
 
     InventoryGeneric hotbar = TestInventory.Of(world, 12, $"hotbar-{uid}");
     InventoryGeneric mouse = TestInventory.Of(world, 1, $"mouse-{uid}");
