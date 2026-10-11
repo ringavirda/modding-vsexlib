@@ -254,8 +254,6 @@ internal sealed class SetupLayout {
         )
         .Select(e => e.Glyph)
     );
-    if (gone.Count == 0)
-      return this;
     return new SetupLayout(
       Origin,
       [.. Entries.Where(e => !gone.Contains(e.Glyph))],
