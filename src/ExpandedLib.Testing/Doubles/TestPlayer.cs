@@ -67,7 +67,9 @@ public sealed class TestPlayer {
   public InventoryGeneric Mouse { get; }
 
   /// <summary>The substituted entity behind <see cref="Player"/>; its <c>Controls</c> field is the
-  /// genuine <see cref="EntityPlayer"/> initialiser, not a substitute.</summary>
+  /// genuine <see cref="EntityPlayer"/> initialiser, not a substitute, and the same object
+  /// <see cref="Player"/>'s <c>WorldData.EntityControls</c> answers, so a key set on either reads
+  /// on both.</summary>
   public EntityPlayer Entity { get; }
 
   /// <summary>Whether the player is sneaking; backed by <see cref="Entity"/>'s own controls.</summary>
@@ -206,6 +208,7 @@ public sealed class TestPlayer {
     player.PlayerUID.Returns(uid);
     player.PlayerName.Returns(name);
     player.WorldData.PlayerUID.Returns(uid);
+    player.WorldData.EntityControls.Returns(entity.Controls);
     world.World.PlayerByUid(uid).Returns(player);
 
     InventoryGeneric hotbar = TestInventory.Of(world, 12, $"hotbar-{uid}");

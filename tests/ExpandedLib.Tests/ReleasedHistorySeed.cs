@@ -33,5 +33,6 @@ public static class ReleasedHistorySeed {
     ReleasedHistory.Register("exlib", "0.8.0", []);
     ReleasedHistory.Register("exlib", "0.8.1", []);
     ReleasedHistory.Register("exlib", "0.8.2", []);
+    ReleasedHistory.Register("exlib", "0.8.4", []);
   }
 }

@@ -5,10 +5,14 @@ All notable changes to this mod are documented here. The format is based on
 [Semantic Versioning](https://semver.org/). For changes before this file existed,
 see the git history.
 
-## [0.8.4] - 2026-09-30
+## [0.8.4] - 2026-10-05
 
 ### Fixed
 
+- **`TestWorld` reads** (ExpandedLib.Testing): the accessor's typed `GetBlockEntity<T>` answers as the
+  untyped read does; a test player's `WorldData.EntityControls` is its entity's controls, so the keys
+  `Interact` holds read the same either way; a block entity behaviour factory takes effect beside a real
+  class registry and wins over a class of the same name.
 - **`TestWorld` removal** (ExpandedLib.Testing): a block entity whose cell is set to air or replaced
   stops ticking, as the game's `OnBlockRemoved` unregisters its listeners.
 - Looking at an unfinished structure no longer stalls a frame. The hint's matching items are worked
@@ -23,6 +27,9 @@ see the git history.
 
 ### Added
 
+- **`TestWorld.StartModSystem<T>()`** (ExpandedLib.Testing): builds a mod system, runs its `Start` and
+  registers it with the world's mod loader, so a block behaviour that asks for a vanilla system (the
+  lockable door's `ModSystemBlockReinforcement`) finds it. Its server, client and asset hooks do not run.
 - **`PipeNetwork.HasDraught`** and **`IPipeDraught`**: a run has draught through a chimney its vent
   strategy classifies or a node whose block entity draws it up a stack. Open ends to air give none,
   so a fire can ask for a stack instead of judging its flue by back-pressure.
