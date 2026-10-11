@@ -228,6 +228,21 @@ internal sealed class SetupLayout {
     return result;
   }
 
+  /// <summary>
+  /// Refuses an entry with an <c>id</c> that none of this drawing and <paramref name="variants"/>
+  /// (the results of <see cref="ForVariant"/>) draws.
+  /// </summary>
+  /// <exception cref="SetupFileException">An entry with an id is drawn in no drawing.</exception>
+  public void RequireDrawn(IEnumerable<SetupLayout> variants) {
+    SetupLayout[] drawings = [this, .. variants];
+    foreach (LayoutEntry e in Entries.Where(e => e.Id != null))
+      if (!drawings.Any(d => d.Cells.Any(c => c.Symbol == e.Glyph)))
+        throw LegendWhere(e)
+          .Fail(
+            $"\"{e.Id}\" is drawn in no drawing; an entry with an id is drawn once in one."
+          );
+  }
+
   private SetupLayout Replacing(string id, JObject body, SetupJson.Where where) {
     LayoutEntry? old = Entries.FirstOrDefault(e => e.Id == id);
     if (old == null)
@@ -281,11 +296,9 @@ internal sealed class SetupLayout {
       GridPlane.Horizontal,
       origin.X,
       origin.Z,
-      new GridOptions(
-        SpaceAdvancesColumn: true,
-        Empty: '\0',
-        KeepBlankRows: true
-      )
+      new GridOptions(SpaceAdvancesColumn: true, Empty: '\0') {
+        KeepBlankRows = true,
+      }
     );
     if (layers == null)
       return grid;
@@ -531,11 +544,11 @@ internal sealed class SetupLayout {
     );
     foreach (LayoutEntry e in Entries) {
       if (e.Id != null) {
-        int n = Cells.Count(c => c.Symbol == e.Glyph);
-        if (n != 1)
+        var at = Cells.Where(c => c.Symbol == e.Glyph).ToList();
+        if (at.Count > 1)
           throw LegendWhere(e)
             .Fail(
-              $"\"{e.Id}\" is drawn {n} times; an entry with an id is drawn once."
+              $"\"{e.Id}\" is drawn {at.Count} times, at {string.Join(", ", at.Select(c => Describe((c.X, c.Y, c.Z))))}; an entry with an id is drawn once in a drawing."
             );
       }
       if (e.Target != null && !blockIds.Contains(e.Target))

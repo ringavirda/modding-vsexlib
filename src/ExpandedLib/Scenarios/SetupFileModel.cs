@@ -405,8 +405,11 @@ internal sealed class SetupFileModel {
             ((JObject)v.Body["layers"]!, variantsWhere.In(v.Name).In("layers"))
           )
       );
-      foreach (SetupVariant v in variants)
-        drawn.ForVariant(v.Body, variantsWhere.In(v.Name));
+      drawn.RequireDrawn(
+        variants
+          .Select(v => drawn.ForVariant(v.Body, variantsWhere.In(v.Name)))
+          .ToList()
+      );
     }
 
     return new SetupFileModel {

@@ -18,7 +18,7 @@ public class CellGridTests {
       GridPlane.Horizontal,
       0,
       0,
-      new GridOptions(KeepBlankRows: true)
+      new GridOptions { KeepBlankRows = true }
     );
     var trimmed = new CellGrid(GridPlane.Horizontal, 0, 0);
 

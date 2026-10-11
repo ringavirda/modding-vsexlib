@@ -14,13 +14,14 @@ public enum GridPlane {
 /// <param name="SpaceAdvancesColumn">Whether a space is a gap rather than a spacer between cells.</param>
 /// <param name="Empty">The glyph that draws nothing but still advances the column.</param>
 /// <param name="Anchor">The glyph whose position <see cref="CellGrid.AnchorCell"/> reports, or null.</param>
-/// <param name="KeepBlankRows">Whether blank rows at the start and end of a level count as rows rather than being trimmed.</param>
 public sealed record GridOptions(
   bool SpaceAdvancesColumn = false,
   char Empty = '.',
-  char? Anchor = null,
-  bool KeepBlankRows = false
-);
+  char? Anchor = null
+) {
+  /// <summary>Whether blank rows at the start and end of a level count as rows rather than being trimmed.</summary>
+  public bool KeepBlankRows { get; init; }
+}
 
 /// <summary>
 /// Turns rows of symbols into a cell list for one plane (<see cref="GridPlane"/>); <see cref="Add"/> is

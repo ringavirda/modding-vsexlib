@@ -322,22 +322,73 @@ public class SetupLayoutTests {
 
     Assert.Contains("layout.legend.M", message);
     Assert.Contains("\"m\" is drawn 2 times", message);
+    Assert.Contains("cell (0, 0, 0), cell (1, 0, 0)", message);
   }
 
-  // Fails when an entry with an id that a variant's layers clear away is accepted.
+  // Fails when an id entry drawn once by the main case and once, elsewhere, by a variant is refused as drawn twice.
   [Fact]
-  public void An_entry_with_an_id_drawn_by_no_cell_is_refused() {
+  public void An_entry_with_an_id_is_counted_in_each_drawing_alone() {
     SetupLayout main = Load(
       """
       { legend: { "M": { id: "m", code: "x:m" } }, layers: { "0": ["M"] } }
       """
     );
 
-    var e = Assert.Throws<SetupFileException>(() =>
-      main.ForVariant(JObject.Parse("""{ layers: { "0": ["."] } }"""), Where)
+    SetupLayout variant = main.ForVariant(
+      JObject.Parse("""{ layers: { "0": [".M"] } }"""),
+      Where
     );
 
-    Assert.Contains("\"m\" is drawn 0 times", e.Message);
+    Assert.Equal("M(0,0,0)", Cells(main));
+    Assert.Equal("M(1,0,0)", Cells(variant));
+  }
+
+  // Fails when an id entry only a variant draws is refused in the main case.
+  [Fact]
+  public void An_entry_with_an_id_only_a_variant_draws_loads() {
+    SetupLayout main = SetupLayout.Parse(
+      JObject.Parse(
+        """
+        { legend: { "M": { id: "m", code: "x:m" } }, layers: { "0": ["."] } }
+        """
+      ),
+      Where,
+      [(JObject.Parse("""{ "0": ["M"] }"""), Where.In("v"))]
+    );
+
+    SetupLayout variant = main.ForVariant(
+      JObject.Parse("""{ layers: { "0": ["M"] } }"""),
+      Where
+    );
+
+    Assert.Empty(main.Cells);
+    main.RequireDrawn([variant]);
+    Assert.Equal("M(0,0,0)", Cells(variant));
+  }
+
+  // Fails when an id entry that no drawing draws is accepted, or the message loses the legend entry.
+  [Fact]
+  public void An_entry_with_an_id_drawn_in_no_drawing_is_refused() {
+    SetupLayout main = SetupLayout.Parse(
+      JObject.Parse(
+        """
+        { legend: { "M": { id: "m", code: "x:m" } }, layers: { "0": ["."] } }
+        """
+      ),
+      Where,
+      [(JObject.Parse("""{ "0": ["M"] }"""), Where.In("v"))]
+    );
+    SetupLayout variant = main.ForVariant(
+      JObject.Parse("""{ layers: { "0": ["M"] }, drop: ["m"] }"""),
+      Where
+    );
+
+    var e = Assert.Throws<SetupFileException>(() =>
+      main.RequireDrawn([variant])
+    );
+
+    Assert.Contains("layout.legend.M", e.Message);
+    Assert.Contains("\"m\" is drawn in no drawing", e.Message);
   }
 
   // Fails when a layer key that is not a whole number is accepted.
