@@ -11,6 +11,24 @@ namespace ExpandedLib.Tests;
 /// trimming, the space and empty-glyph rules, the anchor and the cross-call duplicate check.
 /// </summary>
 public class CellGridTests {
+  // Fails when KeepBlankRows still trims the blank rows, or trims by default.
+  [Fact]
+  public void KeepBlankRows_counts_the_blank_rows_at_the_ends_and_the_default_trims_them() {
+    var kept = new CellGrid(
+      GridPlane.Horizontal,
+      0,
+      0,
+      new GridOptions(KeepBlankRows: true)
+    );
+    var trimmed = new CellGrid(GridPlane.Horizontal, 0, 0);
+
+    kept.Add(0, "\n\nA");
+    trimmed.Add(0, "\n\nA");
+
+    Assert.Equal(new LayoutCell(0, 0, 2, 'A'), Assert.Single(kept.Cells));
+    Assert.Equal(new LayoutCell(0, 0, 0, 'A'), Assert.Single(trimmed.Cells));
+  }
+
   [Fact]
   public void Horizontal_maps_rows_to_z_and_columns_to_x() {
     var grid = new CellGrid(GridPlane.Horizontal, originA: -1, originB: 0);

@@ -120,6 +120,9 @@ internal sealed class SetupFileModel {
   /// <summary>The <c>layout</c> object as written, or null.</summary>
   public JObject? Layout { get; private init; }
 
+  /// <summary>The drawing <see cref="Layout"/> reads as, or null when the file has none.</summary>
+  public SetupLayout? Drawn { get; private init; }
+
   public IReadOnlyList<SetupStep> Steps { get; private init; } = [];
 
   public int Seconds { get; private init; }
@@ -389,6 +392,23 @@ internal sealed class SetupFileModel {
         );
     }
 
+    SetupLayout? drawn = null;
+    if (layout != null) {
+      SetupJson.Where layoutWhere = top.In("layout");
+      SetupJson.Where variantsWhere = top.In("variants");
+      drawn = SetupLayout.Parse(
+        layout,
+        layoutWhere,
+        variants
+          .Where(v => v.Body["layers"] is JObject)
+          .Select(v =>
+            ((JObject)v.Body["layers"]!, variantsWhere.In(v.Name).In("layers"))
+          )
+      );
+      foreach (SetupVariant v in variants)
+        drawn.ForVariant(v.Body, variantsWhere.In(v.Name));
+    }
+
     return new SetupFileModel {
       File = file,
       Setup = setup,
@@ -399,6 +419,7 @@ internal sealed class SetupFileModel {
       Mods = mods,
       Game = game,
       Layout = layout,
+      Drawn = drawn,
       Steps = steps,
       Seconds = seconds,
       Steady = steady,

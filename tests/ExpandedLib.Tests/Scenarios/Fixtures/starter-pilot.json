@@ -1,0 +1,141 @@
+{
+  "setup": "starter-steam-power",
+  "description": "A fired Cornish boiler drives a Watt engine and its pump, relief valves keep both mains in balance.",
+  "follows": ["wiki/ppex/Getting-started.md"],
+  "mods": ["ppex", "smex"],
+  "game": "1.22",
+  "layout": {
+    "origin": [-1, -7],
+    "legend": {
+      "B": { "id": "boiler", "code": "ppex:boilercornish-north" },
+      "b": { "cells": "boiler" },
+      "o": { "port": "boiler" },
+      "F": { "id": "fire", "code": "game:coalpile" },
+      "X": { "id": "exhaust", "code": "ppex:pipe-outlet-fire-u" },
+      "C": { "id": "chimney", "code": "game:claybrickchimney-four-red-ns" },
+      "-": { "run": "steam", "code": "ppex:pipe-straight-we-iron" },
+      "V": { "id": "steam-valve", "code": "ppex:pipe-pressurevalve-ns-iron",
+             "tree": { "gatePressure": 3.5 } },
+      "=": { "run": "pond", "code": "ppex:pipe-straight-we-iron" },
+      "I": { "id": "intake", "code": "ppex:pipe-fluidintake-w" },
+      "~": { "run": "feed", "code": "ppex:pipe-straight-we-iron",
+             "apart": [{ "at": [2, 8, -6], "face": "d" }] },
+      "#": { "run": "feed", "code": "ppex:pipe-passthrough-fire-ns",
+             "family": ["ppex:pipe-passthrough-fire-*", "ppex:pipe-passthroughbend-fire-*"] },
+      "E": { "id": "engine", "code": "ppex:enginewatt-north", "complete": "all" },
+      "e": { "cells": "engine" },
+      "P": { "id": "pump", "code": "ppex:enginefluidpump-east" },
+      "W": { "id": "water-valve", "code": "ppex:pipe-pressurevalve-sn-iron",
+             "tree": { "gatePressure": 0.5 } },
+      "^": { "open": true }
+    },
+    "layers": {
+      "11": [
+        "",
+        "",
+        "    e",
+        "    e",
+        "    e"
+      ],
+      "10": [
+        "",
+        "",
+        "    e",
+        " C  e",
+        "    e",
+        " ---",
+        "  V"
+      ],
+      "9": [
+        "",
+        "",
+        " b  e",
+        " X  e",
+        "bbb e",
+        "bob-",
+        "bbb",
+        "bbb",
+        " b",
+        " b"
+      ],
+      "8": [
+        "   W",
+        "  ~~~~",
+        "bbb P~",
+        "bbb e~",
+        "bbb E~",
+        "bbb--",
+        "bbb",
+        "bBb",
+        "bFb",
+        "bbb"
+      ],
+      "7": [
+        "",
+        "  ~~",
+        "bbb~=I",
+        "bbb~",
+        "bbb~",
+        "bbb~",
+        "bbb~",
+        "b#b~",
+        "b#b~",
+        "b#b~",
+        " ~~~"
+      ]
+    }
+  },
+  "steps": [
+    { "complete": { "of": "boiler" } },
+    { "set": { "at": { "of": "boiler" }, "member": { "_waterVolume": 500, "_steamVolume": 0, "_state": "Idle" } } },
+    { "ignite": { "at": { "of": "fire" } } }
+  ],
+  "seconds": 1200,
+  "steady": [800, 1200],
+  "record": {
+    "runs": { "steam": {}, "exhaust": {}, "feed": { "at": { "of": "boiler", "beyond": "d" } }, "pond": {} },
+    "machines": {
+      "boiler": {
+        "series": {
+          "state": { "words": [
+            { "when": { "member": "_choked", "equals": true }, "word": "choked" },
+            { "when": { "member": "_steamLeaking", "equals": true }, "word": "blowing" },
+            { "member": "_state", "lower": true } ] },
+          "water": { "member": "_waterVolume", "unit": "L" },
+          "pressure": { "member": "InternalPressure", "unit": "atm" }
+        },
+        "constants": { "max": { "static": "PipesAndPowerExpanded.PpexValues.CornishBoilerMaxOutputPressure", "unit": "atm" } }
+      },
+      "engine": { "series": { "state": { "words": [
+        { "when": { "member": "IsBroken", "equals": true }, "word": "broken" },
+        { "when": { "member": "IsRunning", "equals": true }, "word": "running" }, "idle" ] },
+        "pressure": { "member": "InletPressure", "unit": "atm" } } }
+    }
+  },
+  "checks": [
+    { "id": "a", "says": "the boiler never chokes", "never": { "series": "boiler.state", "equals": "choked" } },
+    { "id": "b", "says": "no limit reached, no pipe lost, the engine never breaks",
+      "never": { "any": [ { "series": "boiler.pressure", "min": { "static": "PipesAndPowerExpanded.PpexValues.CornishBoilerMaxOutputPressure" } },
+                          { "series": "engine.state", "equals": "broken" } ] } },
+    { "id": "b-intact", "says": "no pipe bursts", "intact": ["steam", "feed", "pond"] },
+    { "id": "c", "says": "the engine holds its band and runs", "window": "steady",
+      "always": { "all": [ { "series": "engine.pressure", "min": 2, "max": 4 }, { "series": "engine.state", "equals": "running" } ] } },
+    { "id": "e", "says": "the steam run carries the drawn 32 L/s", "mean": { "series": "steam.flow", "equals": 32, "within": 0.5 } },
+    { "id": "f", "says": "every value steady", "steady": "*", "orders": "drawn" }
+  ],
+  "variants": {
+    "no-chimney": { "drop": ["chimney"], "fails": "a" },
+    "open-end": {
+      "layers": { "10": ["", "", "", "", "  ^"] },
+      "checks": [
+        { "id": "open-engage", "says": "the steam main never reaches the engine's engage pressure",
+          "never": { "series": "steam.pressure", "min": { "static": "PipesAndPowerExpanded.PpexValues.WattEngineEngagePressure" } } },
+        { "id": "open-idle", "says": "the engine never runs", "never": { "series": "engine.state", "equals": "running" } },
+        { "id": "open-limit", "says": "the boiler never reaches its limit",
+          "never": { "series": "boiler.pressure", "min": { "static": "PipesAndPowerExpanded.PpexValues.CornishBoilerMaxOutputPressure" } } },
+        { "id": "open-intact", "says": "no pipe bursts", "intact": ["steam", "feed", "pond"] } ] },
+    "water-gate-1.5": { "replace": { "water-valve": { "id": "water-valve", "code": "ppex:pipe-pressurevalve-sn-iron",
+                                                     "tree": { "gatePressure": 1.5 } } } }
+  },
+  "tickOrders": ["engine", "pump", "water-valve", "boiler"]
+}

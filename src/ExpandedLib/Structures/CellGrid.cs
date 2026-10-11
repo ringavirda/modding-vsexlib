@@ -14,10 +14,12 @@ public enum GridPlane {
 /// <param name="SpaceAdvancesColumn">Whether a space is a gap rather than a spacer between cells.</param>
 /// <param name="Empty">The glyph that draws nothing but still advances the column.</param>
 /// <param name="Anchor">The glyph whose position <see cref="CellGrid.AnchorCell"/> reports, or null.</param>
+/// <param name="KeepBlankRows">Whether blank rows at the start and end of a level count as rows rather than being trimmed.</param>
 public sealed record GridOptions(
   bool SpaceAdvancesColumn = false,
   char Empty = '.',
-  char? Anchor = null
+  char? Anchor = null,
+  bool KeepBlankRows = false
 );
 
 /// <summary>
@@ -59,7 +61,10 @@ public sealed class CellGrid {
   /// <exception cref="System.InvalidOperationException">A cell this call draws already sits at a position an earlier call drew.</exception>
   public CellGrid Add(int depth, string grid) {
     string[] rows = grid.Replace("\r", "").Split('\n');
-    TrimBlankEnds(rows, out int first, out int last);
+    int first = 0;
+    int last = rows.Length - 1;
+    if (!_options.KeepBlankRows)
+      TrimBlankEnds(rows, out first, out last);
 
     int rowIndex = 0;
     for (int r = first; r <= last; r++) {
