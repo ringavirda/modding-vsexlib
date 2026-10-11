@@ -514,7 +514,7 @@ public class SetupRecordingTests : IDisposable {
     SetupRecording recording = Empty();
     recording
       .Machine("m", "test:m-north")
-      .State(new Counter { Value = new string('x', (SetupRecording.MaxBytes + beyond) / 2) });
+      .State(new Counter { Value = new string('x', (1024 * 1024 + beyond) / 2) });
     Finished(recording, new ReadingContext(null));
 
     if (refused)
