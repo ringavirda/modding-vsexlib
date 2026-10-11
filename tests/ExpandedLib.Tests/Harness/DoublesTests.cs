@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Xunit;
@@ -200,6 +201,46 @@ public class DoublesTests {
     Assert.Equal(5, world.Api.ObjectCache["key"]);
   }
 
+  // Fails when PlayerByUid answers the first player made for a uid, or answers a player for a uid
+  // nobody made.
+  [Fact]
+  public void PlayerByUid_answers_the_latest_player_made_for_a_uid_and_null_for_an_unknown_one() {
+    using var world = new TestWorld();
+    world.Player("alpha");
+    TestPlayer latest = world.Player("alpha");
+    TestPlayer other = world.Player("beta");
+
+    Assert.Same(latest.Player, world.World.PlayerByUid("alpha"));
+    Assert.Same(other.Player, world.World.PlayerByUid("beta"));
+    Assert.Null(world.World.PlayerByUid("nobody"));
+  }
+
+  // Fails when Create configures world.World's PlayerByUid once per player: each such Returns scans
+  // every call the world has recorded, so the batch slows with the calls before it.
+  [Fact]
+  public void Making_players_costs_the_same_after_the_world_has_recorded_many_calls() {
+    using (var warm = new TestWorld())
+      MakePlayersMs(warm, 200);
+    using var fresh = new TestWorld();
+    double freshMs = MakePlayersMs(fresh, 200);
+
+    using var busy = new TestWorld();
+    for (int i = 0; i < 50_000; i++)
+      _ = busy.World.Side;
+    double busyMs = MakePlayersMs(busy, 200);
+
+    Assert.True(
+      busyMs < 10 * freshMs,
+      $"200 players took {busyMs:0.0} ms after 50 000 recorded calls, {freshMs:0.0} ms in a fresh world"
+    );
+  }
+
+  private static double MakePlayersMs(TestWorld world, int count) {
+    var clock = Stopwatch.StartNew();
+    for (int i = 0; i < count; i++)
+      world.Player($"p{i}");
+    return clock.Elapsed.TotalMilliseconds;
+  }
   #endregion
 
   #region ModConfig
