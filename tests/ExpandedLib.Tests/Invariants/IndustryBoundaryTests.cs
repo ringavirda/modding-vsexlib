@@ -89,6 +89,7 @@ public class IndustryBoundaryTests {
     "ExpandedLib.Networks",
     "ExpandedLib.Catalogues",
     "ExpandedLib.Checks",
+    "ExpandedLib.Scenarios",
     "ExpandedLib.Helpers",
     "ExpandedLib.Legacy",
   ];
