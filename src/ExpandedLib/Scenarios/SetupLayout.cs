@@ -77,16 +77,19 @@ internal sealed class SetupLayout {
   private readonly Dictionary<char, LayoutEntry> _byGlyph = [];
   private readonly Dictionary<(int X, int Y, int Z), char> _drawn = [];
   private readonly SetupJson.Where _where;
+  private readonly bool _checkPorts;
 
   private SetupLayout(
     (int X, int Z) origin,
     IReadOnlyList<LayoutEntry> entries,
     Dictionary<(int X, int Y, int Z), char> drawn,
-    SetupJson.Where where
+    SetupJson.Where where,
+    bool checkPorts = true
   ) {
     Origin = origin;
     Entries = entries;
     _where = where;
+    _checkPorts = checkPorts;
     foreach (LayoutEntry entry in entries)
       _byGlyph[entry.Glyph] = entry;
     foreach (var (pos, glyph) in drawn)
@@ -185,14 +188,13 @@ internal sealed class SetupLayout {
   /// </summary>
   /// <exception cref="SetupFileException">The drawing breaks a rule of setups.md, What the reader refuses.</exception>
   public SetupLayout ForVariant(JObject variant, SetupJson.Where where) {
-    SetupLayout result = this;
+    var drawn = new Dictionary<(int X, int Y, int Z), char>(_drawn);
     if (variant["layers"] != null) {
       SetupJson.Where lw = where.In("layers");
       var legend = new SymbolLegend<LayoutEntry>(DuplicatePolicy.Replace);
       foreach (LayoutEntry e in Entries)
         legend.Map(e.Glyph, e);
       CellGrid overlay = Draw(variant["layers"], Origin, legend, lw);
-      var drawn = new Dictionary<(int X, int Y, int Z), char>(_drawn);
       foreach (LayoutCell c in overlay.Cells)
         switch (c.Symbol) {
           case ' ':
@@ -204,8 +206,8 @@ internal sealed class SetupLayout {
             drawn[(c.X, c.Y, c.Z)] = c.Symbol;
             break;
         }
-      result = new SetupLayout(Origin, Entries, drawn, _where);
     }
+    SetupLayout result = new(Origin, Entries, drawn, where);
     if (variant["replace"] is JObject replace)
       foreach (JProperty p in replace.Properties())
         if (p.Value is JObject body)
@@ -214,6 +216,11 @@ internal sealed class SetupLayout {
             body,
             where.In("replace").In(p.Name)
           );
+        else if (Entries.Any(e => e.Id == p.Name))
+          throw where
+            .In("replace")
+            .In(p.Name)
+            .Fail("expected a legend entry object.");
     if (variant["drop"] is JArray drop)
       result = result.Without(
         drop.Select(t => (string?)t).OfType<string>().ToList()
@@ -235,7 +242,8 @@ internal sealed class SetupLayout {
       Origin,
       [.. Entries.Select(e => e.Glyph == old.Glyph ? entry : e)],
       _drawn,
-      _where
+      _where,
+      _checkPorts
     );
   }
 
@@ -255,7 +263,8 @@ internal sealed class SetupLayout {
       _drawn
         .Where(kv => !gone.Contains(kv.Value))
         .ToDictionary(kv => kv.Key, kv => kv.Value),
-      _where
+      _where,
+      false
     );
   }
 
@@ -533,7 +542,7 @@ internal sealed class SetupLayout {
         throw LegendWhere(e)
           .Fail($"\"{e.Target}\" is the id of no block entry.");
     }
-    foreach (LayoutCell c in Cells) {
+    foreach (LayoutCell c in Cells.Where(_ => _checkPorts)) {
       LayoutEntry e = EntryOf(c);
       if (e.Kind is not (LayoutEntryKind.Port or LayoutEntryKind.Open))
         continue;
@@ -560,6 +569,10 @@ internal sealed class SetupLayout {
       List<LayoutCell> cells = [.. Cells.Where(c => glyphs.Contains(c.Symbol))];
       if (cells.Count == 0)
         continue;
+      foreach (LayoutEntry e in group.Skip(1).Where(e => e.From != null))
+        throw LegendWhere(e)
+          .In("from")
+          .Fail("from sits on the run's first entry.");
       runs.Add(
         new LayoutRun(
           group.Key,

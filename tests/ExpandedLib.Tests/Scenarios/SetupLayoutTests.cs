@@ -134,6 +134,21 @@ public class SetupLayoutTests {
     Assert.Equal("e", Letters(port.Joins));
   }
 
+  // Fails when a dropped run that a port or open cell sat beside is refused as a port beside no run.
+  [Fact]
+  public void A_variant_may_drop_the_run_a_port_sits_beside() {
+    SetupLayout main = LoadPilot();
+
+    SetupLayout variant = main.ForVariant(
+      JObject.Parse("""{ drop: ["steam"] }"""),
+      Where
+    );
+
+    Assert.DoesNotContain(variant.Runs, r => r.Id == "steam");
+    Assert.DoesNotContain(variant.Cells, c => c.Symbol == '-');
+    Assert.Contains(variant.Cells, c => c.Symbol == 'o');
+  }
+
   // Fails when the glyph a variant alone draws counts as unused, or its layers are not laid
   // over the main drawing.
   [Fact]
@@ -479,6 +494,20 @@ public class SetupLayoutTests {
     Assert.Contains("(4, 0, 0) is no cell of run \"r\"", message);
   }
 
+  // Fails when a from on a run's later entry is accepted and ignored.
+  [Fact]
+  public void A_from_on_a_later_entry_of_a_run_is_refused() {
+    string message = Refused(
+      $$"""
+      { legend: { "a": { run: "r", {{Pipe}} }, "b": { run: "r", {{Pipe}}, from: [1, 0, 0] } },
+        layers: { "0": ["aab"] } }
+      """
+    );
+
+    Assert.Contains("layout.legend.b.from", message);
+    Assert.Contains("from sits on the run's first entry", message);
+  }
+
   // Fails when an origin of three numbers is accepted.
   [Fact]
   public void An_origin_that_is_not_a_pair_is_refused() {
@@ -563,6 +592,26 @@ public class SetupLayoutTests {
     Assert.Equal("A", string.Concat(variant.Entries.Select(e => e.Glyph)));
   }
 
+  // Fails when a replace naming a drawn entry with a value that is not an object is accepted.
+  [Fact]
+  public void A_replace_of_a_drawn_entry_by_a_non_object_is_refused() {
+    SetupLayout main = Load(
+      """
+      { legend: { "V": { id: "valve", code: "x:v" } }, layers: { "0": ["V"] } }
+      """
+    );
+
+    var e = Assert.Throws<SetupFileException>(() =>
+      main.ForVariant(
+        JObject.Parse("""{ replace: { valve: 7 } }"""),
+        new SetupJson.Where(File, "variants").In("shut")
+      )
+    );
+
+    Assert.StartsWith("plant.json: variants.shut.replace.valve", e.Message);
+    Assert.Contains("expected a legend entry object", e.Message);
+  }
+
   // Fails when a replaced entry loses its id or keeps its old code.
   [Fact]
   public void A_replace_gives_the_entry_new_keys_and_keeps_its_id() {
@@ -596,10 +645,11 @@ public class SetupLayoutTests {
     var e = Assert.Throws<SetupFileException>(() =>
       main.ForVariant(
         JObject.Parse("""{ layers: { "0": [" ."] } }"""),
-        Where.In("variants").In("cut")
+        new SetupJson.Where(File, "variants").In("cut")
       )
     );
 
+    Assert.StartsWith("plant.json: variants.cut", e.Message);
     Assert.Contains("not one connected piece", e.Message);
   }
 
@@ -654,6 +704,7 @@ public class SetupLayoutTests {
       SetupFileModel.Parse(file, "s.json")
     );
 
+    Assert.StartsWith("s.json: variants.cut", e.Message);
     Assert.Contains("not one connected piece", e.Message);
   }
 
