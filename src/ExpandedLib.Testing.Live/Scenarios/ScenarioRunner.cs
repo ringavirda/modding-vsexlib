@@ -242,7 +242,8 @@ internal sealed class ScenarioRunner {
   private void Finish() {
     Emit(ScenarioOutput.Done(_run, _passed, _failed));
     _api.Event.UnregisterGameTickListener(_tick);
-    _api.Event.OnGetClimate -= _hold;
+    if (!_keep)
+      _api.Event.OnGetClimate -= _hold;
     _api.Logger.EntryAdded -= _feed;
     Active = false;
   }

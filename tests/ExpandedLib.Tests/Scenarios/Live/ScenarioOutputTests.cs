@@ -14,6 +14,7 @@ public class ScenarioOutputTests {
       ScenarioOutput.Run(2, 3, 12.2, "1.22.7")
     );
 
+  /// <summary>Fails when the case line moves the plot's height and depth (V50).</summary>
   [Fact]
   public void The_case_line_gives_the_absolute_plot_origin() =>
     Assert.Equal(
@@ -34,6 +35,7 @@ public class ScenarioOutputTests {
     );
   }
 
+  /// <summary>Fails when a fail line drops its reason (V51), or a skipped line its state (V52).</summary>
   [Fact]
   public void A_failed_and_a_skipped_step_print_their_reason_and_state() {
     Assert.Equal(

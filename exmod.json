@@ -3,9 +3,9 @@
   "solution": "ExpandedLib.sln",
   "series": ["1.22", "1.21", "1.20"],
   "mods": {
-    "exlib": { "path": "src/ExpandedLib" },
-    "exliblive": { "path": "src/ExpandedLib.Testing.Live" }
+    "exlib": { "path": "src/ExpandedLib" }
   },
+  "live": { "path": "src/ExpandedLib.Testing.Live" },
   "samples": {
     "twintubblower": { "path": "samples/TwinTubBlower", "tests": "samples/TwinTubBlower/tests" },
     "burdenmaker":   { "path": "samples/BurdenMaker",   "tests": "samples/BurdenMaker/tests" },

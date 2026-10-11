@@ -34,6 +34,7 @@ public class CaseRunTests {
     return (fixture, run, ticks);
   }
 
+  /// <summary>Fails when a case whose steps hold is not marked passed (V55).</summary>
   [Fact]
   public void A_case_whose_steps_hold_passes_after_the_settle_wait() {
     (LiveFixture fixture, ScenarioCaseRun run, int ticks) = Go(

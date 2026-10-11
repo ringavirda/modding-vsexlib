@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
@@ -55,13 +56,14 @@ internal sealed class CompleteStep : ScenarioStep {
     BlockPos cell,
     StepReport report
   ) {
-    if (
-      ctx.Setup.BlockEntityAt(cell)
-      is not BlockEntityMultiblockStructure structure
-    ) {
-      report.Value = "no layout to complete";
-      yield break;
-    }
+    BlockEntity? entity = ctx.Setup.BlockEntityAt(cell);
+    if (entity is not BlockEntityMultiblockStructure structure)
+      throw new StepFailure(
+        entity?.GetBehavior<ExRightClickConstructable>() != null
+          ? $"{FailureDetail.Cell(cell)} is a construction, whose stages need the scenario player."
+          : $"{FailureDetail.Cell(cell)} is neither a multiblock nor a construction, so it has nothing to complete.",
+        Suspect.Scenario
+      );
     var missing = new List<BlockEntityMultiblockStructure.MissingCell>();
     structure.IncompleteBlockCount(missing.Add);
     Dictionary<BlockPos, (int X, int Y, int Z)> authored =

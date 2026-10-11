@@ -102,6 +102,8 @@ public class PlotTests {
   private static ScenarioErrors Watch(params string[] allowed) =>
     new([.. allowed.Select(p => new Regex(p))]);
 
+  /// <summary>Fails when a fatal entry does not fail the case (V53), or a warning is not listed
+  /// (V54).</summary>
   [Fact]
   public void An_error_or_fatal_entry_fails_and_a_warning_is_only_listed() {
     ScenarioErrors errors = Watch();
