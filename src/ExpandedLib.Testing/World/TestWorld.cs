@@ -103,10 +103,21 @@ public sealed partial class TestWorld : IDisposable {
   private readonly Dictionary<long, int> _tickAccumMs = new();
   private long _nextListenerId;
 
+  private readonly Dictionary<long, DelayedCallback> _callbacks = new();
+
+  // Sim time (ms) since the world was built; a delayed callback is due once this reaches its DueMs.
+  private long _clockMs;
+
   /// <summary>A captured block-entity tick listener: its callback and requested interval (ms).</summary>
   private readonly record struct TickListener(
     System.Action<float> Callback,
     int IntervalMs
+  );
+
+  /// <summary>A captured one-shot delayed callback and the sim time (ms) it is due at.</summary>
+  private readonly record struct DelayedCallback(
+    System.Action<float> Callback,
+    long DueMs
   );
 
   /// <summary>Item stacks spawned by the simulation.</summary>
@@ -600,16 +611,19 @@ public sealed partial class TestWorld : IDisposable {
 
   /// <summary>Fires every server tick listener registered through <see cref="Api"/>'s event API
   /// (<c>BlockEntity.RegisterGameTickListener</c>) or through <see cref="World"/> (a mod system's
-  /// own tick), <paramref name="times"/> times, each with <paramref name="dt"/>.</summary>
+  /// own tick), <paramref name="times"/> times, each with <paramref name="dt"/>; then advances sim
+  /// time by <paramref name="dt"/> seconds per time and fires the delayed callbacks that come due.</summary>
   public void FireBlockEntityTicks(float dt = 1f, int times = 1) {
-    for (int i = 0; i < times; i++)
+    for (int i = 0; i < times; i++) {
       foreach (var listener in _tickListeners.Values.ToList())
         listener.Callback(dt);
+      AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
+    }
   }
 
   /// <summary>Advances block-entity sim time by <paramref name="totalMs"/> ms, firing each listener
   /// <see cref="FireBlockEntityTicks"/> fires once per whole interval it registered, one listener's
-  /// fires before the next listener's.</summary>
+  /// fires before the next listener's, then the delayed callbacks that come due.</summary>
   public void AdvanceBlockEntityTime(int totalMs) =>
     AdvanceBlockEntityTime(totalMs, null);
 
@@ -637,6 +651,7 @@ public sealed partial class TestWorld : IDisposable {
       if (_tickListeners.ContainsKey(id))
         _tickAccumMs[id] = accum;
     }
+    AdvanceCallbacks(totalMs);
   }
 
   /// <summary>Moves the calendar forward without ticking, for calendar-driven effects (evaporation).</summary>
@@ -865,6 +880,12 @@ public sealed partial class TestWorld : IDisposable {
       );
     w.When(x => x.UnregisterGameTickListener(Arg.Any<long>()))
       .Do(ci => RemoveTickListener(ci.Arg<long>()));
+    w.RegisterCallback(Arg.Any<System.Action<float>>(), Arg.Any<int>())
+      .Returns(ci =>
+        AddCallback(ci.Arg<System.Action<float>>(), ci.ArgAt<int>(1))
+      );
+    w.When(x => x.UnregisterCallback(Arg.Any<long>()))
+      .Do(ci => RemoveCallback(ci.Arg<long>()));
     // No land claims: every player may build and use everywhere until a test restubs TryAccess.
     w.Claims.TryAccess(
         Arg.Any<IPlayer>(),
@@ -1016,6 +1037,17 @@ public sealed partial class TestWorld : IDisposable {
       .When(x => x.UnregisterGameTickListener(Arg.Any<long>()))
       .Do(ci => RemoveTickListener(ci.Arg<long>()));
 
+    // Delayed callbacks registered by a block entity or the API; honours UnregisterCallback so a
+    // removed entity's callbacks never fire.
+    events
+      .RegisterCallback(Arg.Any<System.Action<float>>(), Arg.Any<int>())
+      .Returns(ci =>
+        AddCallback(ci.Arg<System.Action<float>>(), ci.ArgAt<int>(1))
+      );
+    events
+      .When(x => x.UnregisterCallback(Arg.Any<long>()))
+      .Do(ci => RemoveCallback(ci.Arg<long>()));
+
     return api;
   }
 
@@ -1098,6 +1130,28 @@ public sealed partial class TestWorld : IDisposable {
   private void RemoveTickListener(long id) {
     _tickListeners.Remove(id);
     _tickAccumMs.Remove(id);
+  }
+
+  private long AddCallback(System.Action<float> callback, int delayMs) {
+    long id = ++_nextListenerId;
+    _callbacks[id] = new DelayedCallback(callback, _clockMs + delayMs);
+    return id;
+  }
+
+  private void RemoveCallback(long id) => _callbacks.Remove(id);
+
+  private void AdvanceCallbacks(long ms) {
+    _clockMs += ms;
+    // Snapshot: a callback may unregister others, and one it registers is due no earlier than the next step.
+    foreach (long id in _callbacks.Keys.ToList()) {
+      if (
+        !_callbacks.TryGetValue(id, out DelayedCallback due)
+        || due.DueMs > _clockMs
+      )
+        continue; // already removed by an earlier callback this step
+      _callbacks.Remove(id);
+      due.Callback((_clockMs - due.DueMs) / 1000f);
+    }
   }
 
   private void DoSetBlock(int id, BlockPos pos) {
