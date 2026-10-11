@@ -208,8 +208,9 @@ public sealed partial class SetupScene : IDisposable {
       World.Mods.Register(power);
       power.Start(World.Api);
     }
-    foreach (Block filler in World.World.Blocks.OfType<BlockStructureFiller>())
-      Ready(filler);
+    foreach (Block block in World.World.Blocks.ToArray())
+      if (block is { Id: not 0 } && _file.Mods.Contains(block.Code.Domain))
+        Ready(block);
   }
 
   private void Ready(Block block) {
@@ -262,7 +263,13 @@ public sealed partial class SetupScene : IDisposable {
   }
 
   private static int AngleOf(Block block) =>
-    (block as BlockFilledMegastructure)?.StructureAngle ?? 0;
+    block switch {
+      BlockFilledMegastructure mega => mega.StructureAngle,
+      IFillerHost => ExOrientation.AngleFromSide(
+        block.Variant?["side"] ?? block.Variant?["orientation"]
+      ),
+      _ => 0,
+    };
 
   private SetupFrame? FrameOf(Block block, BlockPos pos) {
     BlockEntity? be = World.GetBlockEntity(pos);

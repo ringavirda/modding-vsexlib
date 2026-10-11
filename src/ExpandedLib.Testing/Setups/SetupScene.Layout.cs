@@ -134,9 +134,7 @@ public sealed partial class SetupScene {
   }
 
   private static string Letters(IEnumerable<BlockFacing> faces) =>
-    string.Concat(
-      BlockFacing.ALLFACES.Where(faces.Contains).Select(f => f.Code[0])
-    );
+    string.Concat(faces.Select(f => f.Code[0]).Distinct().Order());
 
   private static (int X, int Y, int Z) Step((int X, int Y, int Z) p, BlockFacing f) =>
     (p.X + f.Normali.X, p.Y + f.Normali.Y, p.Z + f.Normali.Z);

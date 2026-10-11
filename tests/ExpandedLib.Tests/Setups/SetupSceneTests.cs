@@ -1,5 +1,6 @@
 #if GAME_GE_1_22
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ExpandedLib.Blocks;
@@ -17,7 +18,9 @@ namespace ExpandedLib.Tests.Setups;
 /// <summary>What <see cref="SetupScene.Build"/> places from a setup file, kind by kind (setups.md,
 /// Placement kinds), and what it refuses.</summary>
 [Collection("Setups")]
-public class SetupSceneTests {
+public class SetupSceneTests : IDisposable {
+  public void Dispose() => SetupPlacers.Clear();
+
   #region Fixtures
 
   private const string Plated = "platedpipes:pipe-plated-";
@@ -302,6 +305,310 @@ public class SetupSceneTests {
     using SetupScene scene = Build(file);
 
     Assert.Equal(Plated + "straight-we", CodeAt(scene, 2, 0, 1));
+  }
+
+  #endregion
+
+  #region Megablocks and mechanical lines
+
+  private static SetupFile FromFile(string name, System.Func<string, string> edit) =>
+    SetupFile.Parse(edit(File.ReadAllText(FilePath(name))), name);
+
+  private static bool IsConstructed(SetupScene scene) {
+    BlockEntity be = scene.World.GetBlockEntity(scene.PositionOf("blower"))!;
+    return (bool)be.GetType().GetProperty("IsConstructed")!.GetValue(be)!;
+  }
+
+  private static BlockPos[] SolidCells(SetupScene scene) =>
+    [
+      .. from x in Enumerable.Range(-6, 13)
+      from y in Enumerable.Range(-6, 13)
+      from z in Enumerable.Range(-6, 13)
+      let pos = new BlockPos(x, y, z)
+      where scene.World.GetBlock(pos).Id != 0
+      select pos,
+    ];
+
+  private static MechanicalNetwork?[] Lines(SetupScene scene) =>
+    [
+      .. scene.World.BlockEntities
+        .SelectMany(kv => kv.Value.Behaviors.OfType<BEBehaviorMPBase>())
+        .Select(b => b.Network),
+    ];
+
+  // Fails when the megablock's own OnBlockPlaced is not run: its fillers would not stand and the
+  // drawn cells would hold air.
+  [Fact]
+  public void A_megablock_stands_its_footprint_on_the_drawn_cells()
+  {
+    using SetupScene scene = BuildFile("blower-alone.json");
+
+    BlockPos[] solid = SolidCells(scene);
+
+    Assert.Equal(6, solid.Length);
+    Assert.Contains(scene.PositionOf("blower"), solid);
+    Assert.All(
+      solid.Where(c => !c.Equals(scene.PositionOf("blower"))),
+      c => Assert.IsAssignableFrom<BlockStructureFiller>(scene.World.GetBlock(c))
+    );
+  }
+
+  // Fails when a layout cell of the structure is left without a glyph and the load does not
+  // say so.
+  [Fact]
+  public void A_cells_glyph_one_short_fails_the_load_naming_the_cell()
+  {
+    SetupFile file = FromFile(
+      "blower-alone.json",
+      t => t.Replace("\"2\": [\"b\", \"b\", \"b\"]", "\"2\": [\"b\", \"b\"]")
+    );
+
+    string message = Refused(file);
+
+    Assert.Contains("legend \"B\"", message);
+    Assert.Contains("of the structure is drawn with no glyph", message);
+  }
+
+  // Fails when a cells glyph outside the structure's cells is not refused.
+  [Fact]
+  public void A_cells_glyph_outside_the_structure_fails_the_load_naming_it()
+  {
+    SetupFile file = FromFile(
+      "blower-alone.json",
+      t => t.Replace("\"layers\": {", "\"layers\": {\"5\": [\"b\"], ")
+    );
+
+    string message = Refused(file);
+
+    Assert.Contains("is outside the cells of \"blower\"", message);
+  }
+
+  // Fails when the mechanical join leaves the two blowers' port behaviours on separate lines, or
+  // joins a lone blower's behaviour to a line of its own.
+  [Fact]
+  public void Two_blowers_face_to_face_share_one_line_and_a_lone_blower_has_none()
+  {
+    using SetupScene paired = BuildFile("blowers-paired.json");
+    using SetupScene alone = BuildFile("blower-alone.json");
+
+    MechanicalNetwork?[] pairedLines = Lines(paired);
+    MechanicalNetwork?[] aloneLines = Lines(alone);
+
+    Assert.NotEmpty(pairedLines);
+    Assert.All(pairedLines, l => Assert.NotNull(l));
+    Assert.Single(pairedLines.Distinct());
+    Assert.NotEmpty(aloneLines);
+    Assert.All(aloneLines, l => Assert.Null(l));
+  }
+
+  #endregion
+
+  #region Completing
+
+  // Fails when complete does not raise the cells the smoke stack reports missing or wait for its
+  // monitor tick.
+  [Fact]
+  public void Completing_the_smoke_stack_raises_its_cells_until_the_structure_is_complete()
+  {
+    using SetupScene scene = BuildFile("smoke-stack.json");
+
+    var stack = (BlockEntityMultiblockStructure)
+      scene.World.GetBlockEntity(scene.PositionOf("stack"))!;
+
+    Assert.True(stack.StructureComplete);
+  }
+
+  // Fails when complete on a construction does not run RccFake.Complete.
+  [Fact]
+  public void Completing_the_blower_completes_its_construction()
+  {
+    SetupFile file = FromFile(
+      "blower-alone.json",
+      t => t.Replace("\"code\": \"twintubblower:blower-twintubblower-n\"", "\"code\": \"twintubblower:blower-twintubblower-n\", \"complete\": \"all\"")
+    );
+
+    using SetupScene built = Build(file);
+    using SetupScene bare = BuildFile("blower-alone.json");
+
+    Assert.False(IsConstructed(bare));
+    Assert.True(IsConstructed(built));
+  }
+
+  // Fails when a complete step on a block that is neither a multiblock nor a construction is
+  // accepted.
+  [Fact]
+  public void Completing_a_block_with_nothing_to_complete_fails_naming_it()
+  {
+    SetupFile file = Inline(
+      "platedpipes",
+      Pipes(Run('P', "main", "straight-we") + ", " + Open, "oPo"),
+      "[{\"complete\": {\"of\": \"main\"}}]"
+    );
+
+    string message = Refused(file);
+
+    Assert.Contains("steps[0]", message);
+    Assert.Contains("neither a multiblock nor a construction", message);
+  }
+
+  #endregion
+
+  #region Placers
+
+  private sealed class SlabPlacer(string? standIn, List<string> log) : ISetupPlacer
+  {
+    public bool Takes(string code) => code == "setupfixture:slab";
+
+    public string? StandIn(string code) => standIn;
+
+    public void Place(SetupScene scene, Block block, BlockPos pos)
+    {
+      log.Add($"{standIn}@{pos.X}");
+      scene.World.Accessor.SetBlock(block.BlockId, pos);
+    }
+  }
+
+  private const string TwoSlabs =
+    "[{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0]}}, "
+    + "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [1, 0, 0]}}]";
+
+  // Fails when a registered placer is bypassed for the composed kinds, or its stand-in is printed
+  // once per placement and not once per code.
+  [Fact]
+  public void A_registered_placer_places_its_code_and_its_stand_in_is_listed_once()
+  {
+    var log = new List<string>();
+    SetupPlacers.Register(new SlabPlacer("a plain slab", log));
+
+    using SetupScene scene = Build(Inline("setupfixture", null, TwoSlabs));
+
+    Assert.Equal(["a plain slab@0", "a plain slab@1"], log);
+    Assert.Equal(["stand-in setupfixture:slab: a plain slab"], scene.StandIns);
+    Assert.Equal("setupfixture:slab", CodeAt(scene, 1, 0, 0));
+  }
+
+  // Fails when the first registered placer taking a code is not the only one to place it, or a
+  // placer that departs nowhere still prints a stand-in.
+  [Fact]
+  public void The_first_placer_taking_a_code_places_it_alone()
+  {
+    var first = new List<string>();
+    var second = new List<string>();
+    SetupPlacers.Register(new SlabPlacer(null, first));
+    SetupPlacers.Register(new SlabPlacer("later", second));
+
+    using SetupScene scene = Build(Inline("setupfixture", null, TwoSlabs));
+
+    Assert.Equal(2, first.Count);
+    Assert.Empty(second);
+    Assert.Empty(scene.StandIns);
+  }
+
+  #endregion
+
+  #region Refusals
+
+  public static TheoryData<string, string, string> Refused_steps =>
+    new() {
+      { "paste", "{\"file\": \"x\", \"at\": [0, 0, 0]}", "the fake world has no structure files to paste" },
+      { "power", "{}", "the fake world has no creative power source" },
+      { "source", "{}", "the fake world has no creative medium source" },
+      { "break", "{\"at\": [0, 0, 0]}", "the fake world has no player to break with" },
+      { "reload", "{}", "the fake world has no chunk save and load to reload through" },
+      { "advance", "{\"hours\": 1}", "the fake world has no game calendar to advance" },
+      { "run", "{\"code\": \"setupfixture:slab\", \"from\": [0, 0, 0], \"to\": [2, 0, 0]}", "is not built by the harness reader yet" },
+      { "insert", "{\"at\": [0, 0, 0], \"stack\": \"x\"}", "is not built by the harness reader yet" },
+      { "set", "{\"at\": [0, 0, 0], \"tree\": {}}", "is not built by the harness reader yet" },
+      { "call", "{\"at\": [0, 0, 0], \"method\": \"m\"}", "is not built by the harness reader yet" },
+      { "interact", "{\"at\": [0, 0, 0]}", "is not built by the harness reader yet" },
+      { "window", "{\"at\": [0, 0, 0]}", "is not built by the harness reader yet" },
+      { "ignite", "{\"at\": [0, 0, 0]}", "is not built by the harness reader yet" },
+      { "wait", "{\"seconds\": 1}", "is not built by the harness reader yet" },
+      { "repeat", "{\"steps\": []}", "is not built by the harness reader yet" },
+    };
+
+  // Fails when a step kind the fake world cannot run, or the reader does not build yet, is let
+  // through to a scene that silently skips it.
+  [Theory]
+  [MemberData(nameof(Refused_steps))]
+  public void A_step_kind_the_reader_cannot_run_is_refused_by_name(
+    string kind,
+    string body,
+    string reason
+  )
+  {
+    SetupFile file = Inline("setupfixture", null, $"[{{\"{kind}\": {body}}}]");
+
+    string message = Refused(file);
+
+    Assert.Contains("steps[0]", message);
+    Assert.Contains($"\"{kind}\"", message);
+    Assert.Contains(reason, message);
+  }
+
+  public static TheoryData<string, string, string> Refused_placements =>
+    new() {
+      { "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"by\": \"player\"}}", "steps[0]", "by the player is refused" },
+      { "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"complete\": 1}}", "steps[0]", "to a stage is refused" },
+      { "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"tree\": {}}}", "steps[0]", "\"tree\" is not built" },
+      { "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"materials\": {}}}", "steps[0]", "\"materials\" is not built" },
+    };
+
+  // Fails when a place or complete key the fake world cannot honour is accepted and ignored.
+  [Theory]
+  [MemberData(nameof(Refused_placements))]
+  public void A_place_or_complete_key_the_fake_world_cannot_honour_is_refused(
+    string steps,
+    string where,
+    string reason
+  )
+  {
+    SetupFile file = Inline("setupfixture", null, $"[{steps}]");
+
+    string message = Refused(file);
+
+    Assert.Contains(where, message);
+    Assert.Contains(reason, message);
+  }
+
+  // Fails when a layout entry carrying a key the reader does not build is placed without it.
+  [Fact]
+  public void A_layout_entry_with_a_tree_is_refused_naming_the_glyph()
+  {
+    SetupFile file = Inline(
+      "setupfixture",
+      "{\"legend\": {\"s\": {\"code\": \"setupfixture:slab\", \"tree\": {}}}, \"layers\": {\"0\": [\"s\"]}}"
+    );
+
+    string message = Refused(file);
+
+    Assert.Contains("legend \"s\"", message);
+    Assert.Contains("\"tree\" is not built", message);
+  }
+
+  // Fails when a code the load did not register places as air or throws something other than the
+  // load's own message.
+  [Fact]
+  public void A_code_the_load_did_not_register_fails_naming_it()
+  {
+    SetupFile file = Inline(
+      "setupfixture",
+      null,
+      "[{\"place\": {\"code\": \"setupfixture:nothing\", \"at\": [0, 0, 0]}}]"
+    );
+
+    string message = Refused(file);
+
+    Assert.Contains("\"setupfixture:nothing\" is not registered by the load", message);
+  }
+
+  // Fails when the folders do not have to match the file's mods one to one.
+  [Fact]
+  public void A_folder_count_that_differs_from_the_mods_is_refused()
+  {
+    SetupFile file = Inline("setupfixture", null);
+
+    Assert.Throws<ArgumentException>(() => SetupScene.Build(file, []));
   }
 
   #endregion
