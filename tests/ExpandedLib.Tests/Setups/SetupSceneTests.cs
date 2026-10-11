@@ -401,9 +401,48 @@ public class SetupSceneTests : IDisposable {
     Assert.All(aloneLines, l => Assert.Null(l));
   }
 
+  // Fails when a megablock is placed over a cell its footprint needs, or the message leaves out
+  // the cell.
+  [Fact]
+  public void A_footprint_cell_that_is_not_air_fails_the_placement_naming_it()
+  {
+    SetupFile file = SetupFile.Parse(
+      "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"twintubblower\", \"setupfixture\"], "
+        + "\"steps\": [{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 1, -1]}}, "
+        + "{\"place\": {\"code\": \"twintubblower:blower-twintubblower-n\", \"at\": [0, 1, 0]}}], "
+        + "\"seconds\": 10, \"record\": {}}",
+      "t.json"
+    );
+
+    string message = Refused(file);
+
+    Assert.Contains("steps[1]", message);
+    Assert.Contains("footprint cell (0, 1, -1)", message);
+    Assert.Contains("holds setupfixture:slab", message);
+  }
+
+  // Fails when a family no loaded block takes is read as an empty family that places nothing.
+  [Fact]
+  public void A_family_no_loaded_block_takes_fails_the_load_naming_it()
+  {
+    SetupFile file = Inline(
+      "platedpipes",
+      Pipes(
+        Run('P', "main", "straight-we", "\"" + Plated + "nothing-*\"") + ", " + Open,
+        "oPo"
+      )
+    );
+
+    string message = Refused(file);
+
+    Assert.Contains("run \"main\" legend \"P\"", message);
+    Assert.Contains("no loaded block takes the family", message);
+  }
+
   #endregion
 
   #region Completing
+
 
   // Fails when complete does not raise the cells the smoke stack reports missing or wait for its
   // monitor tick.
