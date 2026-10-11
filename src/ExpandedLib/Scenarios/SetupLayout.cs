@@ -23,11 +23,8 @@ internal enum LayoutEntryKind {
 internal sealed record LayoutApart(int X, int Y, int Z, BlockFacing Face);
 
 /// <summary>
-/// A legend entry. <see cref="Id"/> is the entry's own id, <see cref="Run"/> the run a run entry
-/// belongs to, <see cref="Target"/> the id a <c>cells</c> or <c>port</c> entry names, and
-/// <see cref="Family"/> the wildcards a run entry's shapes come from. <see cref="Body"/> is the
-/// entry as written, for the keys the reader leaves to the harness (<c>complete</c>,
-/// <c>materials</c>, <c>tree</c>).
+/// A legend entry. <see cref="Target"/> is the id a <c>cells</c> or <c>port</c> entry names;
+/// <see cref="Body"/> is the entry as written, for the keys left to the harness.
 /// </summary>
 internal sealed record LayoutEntry(
   char Glyph,
@@ -60,10 +57,8 @@ internal sealed record LayoutRun(
 );
 
 /// <summary>
-/// A setup file's drawing (setups.md, The layout) read over one <see cref="CellGrid"/> and a
-/// <see cref="SymbolLegend{TPayload}"/>: the entries in legend order, the cells in reading order and
-/// the runs with their joins and path order. Faces that depend on a loaded block (rule 2) and the
-/// shapes a family fits are the harness reader's.
+/// A setup file's drawing (setups.md, The layout): entries in legend order, cells in reading order,
+/// runs with their joins and path order. Rule 2 faces and family shapes are the harness reader's.
 /// </summary>
 internal sealed class SetupLayout {
   private static readonly Regex PipeStraight = new(
