@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Threading;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -69,9 +72,14 @@ internal sealed class ScenarioPlot(PlotBox box, int[] size) {
   /// columns have loaded.</summary>
   public BlockPos Origin { get; private set; } = new(0, 0, 0);
 
-  /// <summary>Loads and keeps the plot's chunk columns, then sets <see cref="Origin"/> and
-  /// calls <paramref name="onLoaded"/> on the main thread.</summary>
-  public void Load(ICoreServerAPI api, Action onLoaded) =>
+  /// <summary>Whether the plot's chunk columns have loaded.</summary>
+  public bool Loaded => Volatile.Read(ref _loaded) == 1;
+
+  private int _loaded;
+
+  /// <summary>Starts loading and keeping the plot's chunk columns; <see cref="Loaded"/> turns
+  /// true when they are ready.</summary>
+  public void Load(ICoreServerAPI api) =>
     api.WorldManager.LoadChunkColumnPriority(
       box.MinColumnX,
       box.MinColumnZ,
@@ -79,15 +87,18 @@ internal sealed class ScenarioPlot(PlotBox box, int[] size) {
       box.MaxColumnZ,
       new ChunkLoadOptions {
         KeepLoaded = true,
-        OnLoaded = () => {
-          int ground = api.World.BlockAccessor.GetTerrainMapheightAt(
-            new BlockPos(box.CenterX, 0, box.CenterZ)
-          );
-          Origin = new BlockPos(box.CenterX, ground + 1, box.CenterZ);
-          onLoaded();
-        },
+        OnLoaded = () => Volatile.Write(ref _loaded, 1),
       }
     );
+
+  /// <summary>Sets <see cref="Origin"/> from the loaded ground; call on the main thread once
+  /// <see cref="Loaded"/>.</summary>
+  public void Locate(IWorldAccessor world) {
+    int ground = world.BlockAccessor.GetTerrainMapheightAt(
+      new BlockPos(box.CenterX, 0, box.CenterZ)
+    );
+    Origin = new BlockPos(box.CenterX, ground + 1, box.CenterZ);
+  }
 
   /// <summary>The plot's cuboid from <c>y = 0</c> up, absolute: the cells <see cref="Clear"/>
   /// empties and a failed case saves.</summary>
@@ -122,5 +133,43 @@ internal sealed class ScenarioPlot(PlotBox box, int[] size) {
       )
     )
       item.Die(EnumDespawnReason.Removed);
+  }
+}
+
+/// <summary>The climate every region that holds a plot keeps (scenarios.md, Climate): 20 C and no
+/// rain.</summary>
+internal sealed class ClimateHold(int regionSize) {
+  public const float Temperature = 20f;
+  public const float Rainfall = 0f;
+
+  private readonly HashSet<(int X, int Z)> _regions = [];
+
+  /// <summary>The region index of block coordinate <paramref name="block"/>.</summary>
+  public static int Region(int block, int regionSize) =>
+    (int)Math.Floor(block / (double)regionSize);
+
+  /// <summary>Holds the region of the block at (<paramref name="x"/>, <paramref name="z"/>).</summary>
+  public void Hold(int x, int z) =>
+    _regions.Add((Region(x, regionSize), Region(z, regionSize)));
+
+  /// <summary>The <c>OnGetClimate</c> handler: overwrites every climate read inside a held
+  /// region, in every mode.</summary>
+  public void Apply(
+    ref ClimateCondition climate,
+    BlockPos pos,
+    EnumGetClimateMode mode,
+    double totalDays
+  ) {
+    if (
+      climate == null
+      || !_regions.Contains(
+        (Region(pos.X, regionSize), Region(pos.Z, regionSize))
+      )
+    )
+      return;
+    climate.Temperature = Temperature;
+    climate.WorldGenTemperature = Temperature;
+    climate.Rainfall = Rainfall;
+    climate.WorldgenRainfall = Rainfall;
   }
 }

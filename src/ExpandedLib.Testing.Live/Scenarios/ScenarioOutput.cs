@@ -26,7 +26,8 @@ internal static class ScenarioOutput {
     string what,
     string? value
   ) =>
-    $"{Prefix}   {label} {kind} {what} ok" + (value == null ? "" : $": {value}");
+    $"{Prefix}   {label} {kind} {what} ok"
+    + (value == null ? "" : $": {value}");
 
   public static string StepFail(
     string label,

@@ -27,13 +27,15 @@ internal sealed class CallStep : ScenarioStep {
     var o = (JObject)step.Body;
     BlockPos local = ctx.Position(step, o["at"], "at");
     BlockEntity be = SetStep.EntityAt(ctx, local);
-    (object root, IReadOnlyList<string> path) = StepValues.Root(be, (string)o["method"]!);
+    (object root, IReadOnlyList<string> path) = StepValues.Root(
+      be,
+      (string)o["method"]!
+    );
     string name = path[0];
     JArray args = o["args"] as JArray ?? [];
     MethodInfo[] candidates =
     [
-      .. root
-        .GetType()
+      .. root.GetType()
         .GetMethods(BindingFlags.Instance | BindingFlags.Public)
         .Where(m => m.Name == name && m.GetParameters().Length == args.Count),
     ];
@@ -45,14 +47,19 @@ internal sealed class CallStep : ScenarioStep {
     MethodInfo method = candidates[0];
     object?[] values =
     [
-      .. method.GetParameters().Select((p, i) => StepValues.Convert(ctx, args[i], p.ParameterType)),
+      .. method
+        .GetParameters()
+        .Select((p, i) => StepValues.Convert(ctx, args[i], p.ParameterType)),
     ];
     object? result = method.Invoke(root, values);
     ctx.Touched.Add(local.Copy());
 
     object read = SetupValues.Normalize(result);
     if (o["returns"] != null) {
-      object expected = SetupJson.Literal(o["returns"], ctx.Where(step).In("returns"));
+      object expected = SetupJson.Literal(
+        o["returns"],
+        ctx.Where(step).In("returns")
+      );
       bool same =
         read is float a && expected is float b
           ? Math.Abs(a - b) <= CompareTest.Tolerance
@@ -65,7 +72,9 @@ internal sealed class CallStep : ScenarioStep {
     string left = string.Concat(
       values
         .OfType<ItemSlot>()
-        .Select(s => $"; slot holds {(s.Empty ? "nothing" : $"{s.Itemstack.Collectible.Code} x{s.StackSize}")}")
+        .Select(s =>
+          $"; slot holds {(s.Empty ? "nothing" : $"{s.Itemstack.Collectible.Code} x{s.StackSize}")}"
+        )
     );
     report.Value = SetupValues.Text(read) + left;
     yield break;

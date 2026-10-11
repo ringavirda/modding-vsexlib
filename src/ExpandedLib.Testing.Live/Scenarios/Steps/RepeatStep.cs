@@ -41,7 +41,9 @@ internal sealed class RepeatStep : ScenarioStep {
       );
     var reading = new ReadingContext(ctx.Setup);
     for (int round = 1; ; round++) {
-      foreach (bool wait in ScenarioSteps.Run(ctx, step.Steps, $"{label}.{round}."))
+      foreach (
+        bool wait in ScenarioSteps.Run(ctx, step.Steps, $"{label}.{round}.")
+      )
         yield return wait;
       if (until.Count > 0 && until.All(t => t.Holds(reading))) {
         report.Value = $"{round} round(s), until held";

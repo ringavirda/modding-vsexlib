@@ -49,6 +49,11 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
 
+  <!-- The live mod builds an empty assembly outside 1.22. -->
+  <ItemGroup Condition="'$(IsCurrentGame)' != 'true'">
+    <Compile Remove="Scenarios/Live/**" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- Copy exlib.dll into the test bin so the runner can load it headlessly (the game is not
          present to provide it). It is a normal managed assembly; its VS deps are resolved by
@@ -56,6 +61,7 @@
     <ProjectReference Include="..\..\src\ExpandedLib\ExpandedLib.csproj" />
     <ProjectReference Include="..\..\src\ExpandedLib.Industry\ExpandedLib.Industry.csproj" />
     <ProjectReference Include="..\..\src\ExpandedLib.Testing\ExpandedLib.Testing.csproj" />
+    <ProjectReference Include="..\..\src\ExpandedLib.Testing.Live\ExpandedLib.Testing.Live.csproj" />
     <!-- ExModSystemTests needs a real [ExConfigRegister] config in THIS assembly so its generated
          accessor carries [ExConfigAccessor] for ExConfig.LoadAll to find. -->
     <ProjectReference

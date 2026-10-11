@@ -31,11 +31,17 @@ internal sealed class SetStep : ScenarioStep {
       BlockEntity be = EntityAt(ctx, local);
       var member = (JObject)o["member"]!;
       foreach (JProperty property in member.Properties()) {
-        (object root, IReadOnlyList<string> path) = StepValues.Root(be, property.Name);
+        (object root, IReadOnlyList<string> path) = StepValues.Root(
+          be,
+          property.Name
+        );
         StepValues.SetMember(ctx, root, path, property.Value);
       }
       be.MarkDirty();
-      report.Value = string.Join(", ", member.Properties().Select(p => $"{p.Name}={p.Value}"));
+      report.Value = string.Join(
+        ", ",
+        member.Properties().Select(p => $"{p.Name}={p.Value}")
+      );
     }
     ctx.Touched.Add(local.Copy());
     yield break;
@@ -46,7 +52,11 @@ internal sealed class SetStep : ScenarioStep {
   /// <returns>The keys written, as <c>key=value</c>.</returns>
   /// <exception cref="StepFailure">There is no block entity, a key is not in its tree, or a
   /// key's type cannot be written.</exception>
-  public static string WriteTree(ScenarioContext ctx, BlockPos local, JObject values) {
+  public static string WriteTree(
+    ScenarioContext ctx,
+    BlockPos local,
+    JObject values
+  ) {
     BlockEntity be = EntityAt(ctx, local);
     var tree = new TreeAttribute();
     be.ToTreeAttributes(tree);
@@ -86,7 +96,10 @@ internal sealed class SetStep : ScenarioStep {
     }
     be.FromTreeAttributes(tree, ctx.World);
     be.MarkDirty();
-    return string.Join(", ", values.Properties().Select(p => $"{p.Name}={p.Value}"));
+    return string.Join(
+      ", ",
+      values.Properties().Select(p => $"{p.Name}={p.Value}")
+    );
   }
 
   public static BlockEntity EntityAt(ScenarioContext ctx, BlockPos local) =>

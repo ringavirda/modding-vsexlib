@@ -7,17 +7,19 @@ namespace ExpandedLib.Testing.Live;
 /// <summary>The table of step kinds the live runner runs, and the sequence that runs a list of
 /// them.</summary>
 internal static class ScenarioSteps {
-  private static readonly Dictionary<string, ScenarioStep> Table = new ScenarioStep[] {
-    new PlaceStep(),
-    new CompleteStep(),
-    new FillStep(),
-    new SetStep(),
-    new CallStep(),
-    new InsertStep(),
-    new ExpectStep(),
-    new WaitStep(),
-    new RepeatStep(),
-  }.ToDictionary(s => s.Kind);
+  private static readonly Dictionary<string, ScenarioStep> Table =
+    new ScenarioStep[]
+    {
+      new PlaceStep(),
+      new CompleteStep(),
+      new FillStep(),
+      new SetStep(),
+      new CallStep(),
+      new InsertStep(),
+      new ExpectStep(),
+      new WaitStep(),
+      new RepeatStep(),
+    }.ToDictionary(s => s.Kind);
 
   public static IEnumerable<string> Kinds => Table.Keys;
 
@@ -33,6 +35,9 @@ internal static class ScenarioSteps {
     return null;
   }
 
+  /// <summary>The short form of <paramref name="step"/> its output line names.</summary>
+  public static string What(SetupStep step) => Table[step.Kind].What(step);
+
   /// <summary>Runs <paramref name="steps"/> in order. Each step's output line is
   /// <paramref name="prefix"/> and its 1-based index.</summary>
   /// <exception cref="StepFailure">A step failed; its FAIL line and detail are already
@@ -47,6 +52,7 @@ internal static class ScenarioSteps {
       ScenarioStep impl = Table[step.Kind];
       string label = prefix + (i + 1);
       string what = impl.What(step);
+      ctx.Current = label;
       var report = new StepReport();
       ctx.Resolved.Clear();
       using IEnumerator<bool> running = impl.Run(ctx, step, label, report)
@@ -92,7 +98,10 @@ internal static class ScenarioSteps {
   /// <summary>An exception as a failure prints it: type, message and its first stack
   /// frames.</summary>
   public static string Describe(System.Exception e) {
-    System.Exception inner = e is System.Reflection.TargetInvocationException { InnerException: { } i } ? i : e;
+    System.Exception inner = e
+      is System.Reflection.TargetInvocationException { InnerException: { } i }
+      ? i
+      : e;
     string[] frames =
     [
       .. (inner.StackTrace ?? "")

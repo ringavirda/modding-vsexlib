@@ -25,7 +25,10 @@ internal sealed class PlaceStep : ScenarioStep {
       return "\"facing\" is for place by \"player\".";
     if (o["materials"] != null)
       return "\"materials\" belongs to construction stages, which need the scenario player.";
-    if (o["complete"] is { } c && !(c.Type == JTokenType.String && (string?)c == "all"))
+    if (
+      o["complete"] is { } c
+      && !(c.Type == JTokenType.String && (string?)c == "all")
+    )
       return "\"complete\" to a stage needs the scenario player.";
     return null;
   }
@@ -44,7 +47,11 @@ internal sealed class PlaceStep : ScenarioStep {
     [
       .. block is IFillerHost host
         ? StructureFillers
-          .FootprintCells(host, local, (block as BlockFilledMegastructure)?.StructureAngle ?? 0)
+          .FootprintCells(
+            host,
+            local,
+            (block as BlockFilledMegastructure)?.StructureAngle ?? 0
+          )
           .Select(c => c.Pos)
         : [],
     ];

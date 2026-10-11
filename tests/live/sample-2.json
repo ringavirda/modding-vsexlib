@@ -1,0 +1,12 @@
+{
+  "setup": "sample-2",
+  "description": "A fill lays a row of blocks and a wait lets the server run over them.",
+  "mods": [],
+  "steps": [
+    { "fill": { "code": "game:rock-granite", "from": [0, 0, 0], "to": [2, 0, 0] } },
+    { "wait": 1 },
+    { "expect": { "at": [2, 0, 0], "block": "game:rock-granite" } }
+  ],
+  "seconds": 6,
+  "record": {}
+}

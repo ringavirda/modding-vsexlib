@@ -13,14 +13,26 @@ internal sealed class ScenarioErrors(IReadOnlyList<Regex> allowed) {
 
   private readonly List<string> _errors = [];
   private readonly List<string> _warnings = [];
+  private readonly object _gate = new();
   private int _reported;
 
   /// <summary>Every entry that fails the case, in order.</summary>
-  public IReadOnlyList<string> Errors => _errors;
+  public IReadOnlyList<string> Errors {
+    get {
+      lock (_gate)
+        return [.. _errors];
+    }
+  }
 
-  public IReadOnlyList<string> Warnings => _warnings;
+  public IReadOnlyList<string> Warnings {
+    get {
+      lock (_gate)
+        return [.. _warnings];
+    }
+  }
 
-  /// <summary>Takes one log entry; <paramref name="text"/> is its formatted message.</summary>
+  /// <summary>Takes one log entry from any thread; <paramref name="text"/> is its formatted
+  /// message.</summary>
   public void Add(EnumLogType type, string text) {
     if (text.StartsWith(ScenarioOutput.Prefix))
       return;
@@ -28,13 +40,17 @@ internal sealed class ScenarioErrors(IReadOnlyList<Regex> allowed) {
       type == EnumLogType.Notification
       && text.Contains("Recreated")
       && text.Contains(Recreated);
-    if (type is EnumLogType.Error or EnumLogType.Fatal || recreated) {
-      if (!allowed.Any(r => r.IsMatch(text)))
-        _errors.Add(text);
-    } else if (type == EnumLogType.Warning)
-      _warnings.Add(text);
+    lock (_gate)
+      if (type is EnumLogType.Error or EnumLogType.Fatal || recreated) {
+        if (!allowed.Any(r => r.IsMatch(text)))
+          _errors.Add(text);
+      } else if (type == EnumLogType.Warning)
+        _warnings.Add(text);
   }
 
   /// <summary>The first failing entry not yet taken, or null.</summary>
-  public string? TakeNew() => _reported < _errors.Count ? _errors[_reported++] : null;
+  public string? TakeNew() {
+    lock (_gate)
+      return _reported < _errors.Count ? _errors[_reported++] : null;
+  }
 }

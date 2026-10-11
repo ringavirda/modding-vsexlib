@@ -41,6 +41,14 @@ internal sealed class ScenarioContext(
   /// <summary>Every position the running step resolved, by the key that named it.</summary>
   public List<(string Key, BlockPos Local)> Resolved { get; } = [];
 
+  /// <summary>The label of the step running now, such as <c>3</c> or <c>3.2.1</c> inside a
+  /// <c>repeat</c>; empty before the first.</summary>
+  public string Current { get; set; } = "";
+
+  /// <summary>The 1-based index of the top-level step <see cref="Current"/> sits in, or 0.</summary>
+  public int TopLevel =>
+    int.TryParse(Current.Split('.')[0], out int top) ? top : 0;
+
   public void Line(string line) => output(line);
 
   public SetupJson.Where Where(SetupStep step) =>
@@ -53,7 +61,9 @@ internal sealed class ScenarioContext(
   /// block does not have.</exception>
   public BlockPos Position(SetupStep step, JToken? token, string key) {
     try {
-      BlockPos local = SetupPosition.Parse(token, Where(step).In(key)).Resolve(setup);
+      BlockPos local = SetupPosition
+        .Parse(token, Where(step).In(key))
+        .Resolve(setup);
       Resolved.Add((key, local));
       return local;
     } catch (SetupFileException e) {

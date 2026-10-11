@@ -6,6 +6,7 @@ using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace ExpandedLib.Testing.Live;
 
@@ -23,7 +24,10 @@ internal sealed class CompleteStep : ScenarioStep {
     var o = (JObject)step.Body;
     if (o["materials"] != null)
       return "\"materials\" belongs to construction stages, which need the scenario player.";
-    if (o["to"] is { } to && !(to.Type == JTokenType.String && (string?)to == "all"))
+    if (
+      o["to"] is { } to
+      && !(to.Type == JTokenType.String && (string?)to == "all")
+    )
       return "\"to\" a stage needs the scenario player.";
     return null;
   }
@@ -51,16 +55,17 @@ internal sealed class CompleteStep : ScenarioStep {
     BlockPos cell,
     StepReport report
   ) {
-    if (ctx.Setup.BlockEntityAt(cell) is not BlockEntityMultiblockStructure structure) {
+    if (
+      ctx.Setup.BlockEntityAt(cell)
+      is not BlockEntityMultiblockStructure structure
+    ) {
       report.Value = "no layout to complete";
       yield break;
     }
     var missing = new List<BlockEntityMultiblockStructure.MissingCell>();
     structure.IncompleteBlockCount(missing.Add);
-    Dictionary<BlockPos, (int X, int Y, int Z)> authored = structure.LayoutCells.ToDictionary(
-      c => c.At,
-      c => c.Local
-    );
+    Dictionary<BlockPos, (int X, int Y, int Z)> authored =
+      structure.LayoutCells.ToDictionary(c => c.At, c => c.Local);
     var chosen = new List<string>();
     foreach (var wanted in missing) {
       BlockPos local = ctx.Setup.Local(wanted.At);
@@ -103,12 +108,18 @@ internal sealed class CompleteStep : ScenarioStep {
   }
 
   private static Block Choose(ScenarioContext ctx, AssetLocation wanted) {
-    var code = new AssetLocation(wanted.Domain, ExWildcards.FirstAlternative(wanted.Path));
+    var code = new AssetLocation(
+      wanted.Domain,
+      ExWildcards.FirstAlternative(wanted.Path)
+    );
     Block? block = code.Path.Contains('*')
       ? ctx.World.SearchBlocks(code).FirstOrDefault(b => b.Id != 0)
       : ctx.World.GetBlock(code);
     return block is { Id: not 0 }
       ? block
-      : throw new StepFailure($"no registered block matches \"{wanted}\".", Suspect.Scenario);
+      : throw new StepFailure(
+        $"no registered block matches \"{wanted}\".",
+        Suspect.Scenario
+      );
   }
 }

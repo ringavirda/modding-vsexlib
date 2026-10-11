@@ -26,9 +26,13 @@ internal static class StepValues {
   ) {
     var location = new AssetLocation(code);
     CollectibleObject? collectible =
-      ctx.World.GetItem(location) ?? (CollectibleObject?)ctx.World.GetBlock(location);
+      ctx.World.GetItem(location)
+      ?? (CollectibleObject?)ctx.World.GetBlock(location);
     if (collectible == null || collectible.Id == 0)
-      throw new StepFailure($"\"{code}\" is no item or block code.", Suspect.Scenario);
+      throw new StepFailure(
+        $"\"{code}\" is no item or block code.",
+        Suspect.Scenario
+      );
     var stack = new ItemStack(collectible, count);
     if (temperature is { } t)
       collectible.SetTemperature(ctx.World, stack, t);
@@ -48,11 +52,19 @@ internal static class StepValues {
         Suspect.Scenario
       );
     if (type == typeof(ItemStack) || type == typeof(ItemSlot)) {
-      var o = token as JObject
-        ?? throw new StepFailure("a stack is { \"stack\": code, \"count\": n }.", Suspect.Scenario);
+      var o =
+        token as JObject
+        ?? throw new StepFailure(
+          "a stack is { \"stack\": code, \"count\": n }.",
+          Suspect.Scenario
+        );
       ItemStack stack = Stack(
         ctx,
-        (string?)o["stack"] ?? throw new StepFailure("a stack takes \"stack\".", Suspect.Scenario),
+        (string?)o["stack"]
+          ?? throw new StepFailure(
+            "a stack takes \"stack\".",
+            Suspect.Scenario
+          ),
         (int?)o["count"] ?? 1
       );
       return type == typeof(ItemStack) ? stack : new DummySlot(stack);
@@ -63,7 +75,8 @@ internal static class StepValues {
       return Enum.Parse(type, (string)token!, ignoreCase: true);
     try {
       return token.ToObject(type);
-    } catch (Exception e) when (e is FormatException or JsonException or InvalidCastException) {
+    } catch (Exception e)
+        when (e is FormatException or JsonException or InvalidCastException) {
       throw new StepFailure(
         $"{token} does not convert to {type.Name}.",
         Suspect.Scenario,
@@ -95,7 +108,10 @@ internal static class StepValues {
     IReadOnlyList<string> path,
     JToken token
   ) {
-    object holder = path.Count == 1 ? root : SetupMembers.Walk(root, [.. path.Take(path.Count - 1)], ctx.World)!;
+    object holder =
+      path.Count == 1
+        ? root
+        : SetupMembers.Walk(root, [.. path.Take(path.Count - 1)], ctx.World)!;
     string name = path[^1];
     for (Type? t = holder.GetType(); t != null; t = t.BaseType) {
       if (t.GetField(name, Instance | BindingFlags.DeclaredOnly) is { } field) {

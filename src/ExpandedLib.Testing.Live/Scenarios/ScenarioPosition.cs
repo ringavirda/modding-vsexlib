@@ -67,17 +67,18 @@ internal sealed class ScenarioWorld(
       BlockEntityAt(local) as BlockEntityMultiblockStructure;
     if (block is not IFillerHost && structure == null)
       return null;
-    int angle = (block as BlockFilledMegastructure)?.StructureAngle
+    int angle =
+      (block as BlockFilledMegastructure)?.StructureAngle
       ?? structure?.LayoutAngle
       ?? 0;
-    IReadOnlyList<FillerCell> footprint =
-      block is IFillerHost host
-        ? StructureFillers.FootprintCells(host, local, angle)
-        : [];
-    Func<Vec3i, BlockPos>? layout =
+    IReadOnlyList<FillerCell> footprint = block is IFillerHost host
+      ? StructureFillers.FootprintCells(host, local, angle)
+      : [];
+    System.Func<Vec3i, BlockPos>? layout =
       structure == null
         ? null
-        : offset => Local(structure.PeripheralCell(offset.X, offset.Y, offset.Z));
+        : offset =>
+          Local(structure.PeripheralCell(offset.X, offset.Y, offset.Z));
     return new SetupFrame(local.Copy(), angle, footprint, layout);
   }
 }

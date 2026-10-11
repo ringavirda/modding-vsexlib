@@ -48,7 +48,10 @@ internal sealed class ExpectStep : ScenarioStep {
           throw new StepFailure(
             $"read {test.Describe(reading)}, expected {o.ToString(Formatting.None)}"
           );
-      report.Value = string.Join("; ", step.Tests.Select(t => t.Describe(reading)));
+      report.Value = string.Join(
+        "; ",
+        step.Tests.Select(t => t.Describe(reading))
+      );
     }
     yield break;
   }
@@ -57,20 +60,31 @@ internal sealed class ExpectStep : ScenarioStep {
     string mode = (string)o["footprint"]!;
     SetupPlacement placed =
       ctx.Setup.Placed((string)o["of"]!)
-      ?? throw new StepFailure($"\"{o["of"]}\" has placed nothing.", Suspect.Scenario);
+      ?? throw new StepFailure(
+        $"\"{o["of"]}\" has placed nothing.",
+        Suspect.Scenario
+      );
     SetupFrame frame =
       placed.Frame
-      ?? throw new StepFailure($"\"{o["of"]}\" is no exlib structure.", Suspect.Scenario);
+      ?? throw new StepFailure(
+        $"\"{o["of"]}\" is no exlib structure.",
+        Suspect.Scenario
+      );
     Block principal = ctx.Setup.BlockAt(frame.Principal);
     BlockPos principalAbsolute = ctx.Setup.Absolute(frame.Principal);
-    List<BlockPos> cells = [frame.Principal, .. frame.Footprint.Select(c => c.Pos)];
+    List<BlockPos> cells =
+    [
+      frame.Principal,
+      .. frame.Footprint.Select(c => c.Pos),
+    ];
     foreach (BlockPos cell in cells.Distinct()) {
       ctx.Touched.Add(cell.Copy());
       bool holds = mode switch {
         "air" => ctx.IsAir(cell),
         "filled" => ctx.Setup.BlockAt(cell).Id == principal.Id
           || (
-            ctx.Setup.BlockEntityAt(cell) is BlockEntityStructureFiller { Principal: { } p }
+            ctx.Setup.BlockEntityAt(cell)
+              is BlockEntityStructureFiller { Principal: { } p }
             && p.Equals(principalAbsolute)
           ),
         _ => throw new StepFailure(
@@ -87,7 +101,8 @@ internal sealed class ExpectStep : ScenarioStep {
   }
 
   private static string Same(ScenarioContext ctx, SetupStep step, JObject o) {
-    string type = (string?)o["network"]
+    string type =
+      (string?)o["network"]
       ?? throw new StepFailure("\"same\" takes \"network\".", Suspect.Scenario);
     BlockPos at = ctx.Position(step, o["at"], "at");
     BlockPos other = ctx.Position(step, o["same"], "same");

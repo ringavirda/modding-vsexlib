@@ -20,12 +20,15 @@ internal static class FailureDetail {
 
   public static IReadOnlyList<string> Lines(
     ScenarioContext ctx,
-    SetupStep step,
+    SetupStep? step,
     StepFailure failure
   ) {
-    var lines = new List<string> {
-      "step " + new JObject { [step.Kind] = step.Body }.ToString(Formatting.None),
-    };
+    var lines = new List<string>();
+    if (step != null)
+      lines.Add(
+        "step "
+          + new JObject { [step.Kind] = step.Body }.ToString(Formatting.None)
+      );
     foreach ((string key, BlockPos local) in ctx.Resolved)
       lines.Add(
         $"position {key}: plot {Cell(local)} absolute {Cell(ctx.Setup.Absolute(local))}"
@@ -63,7 +66,10 @@ internal static class FailureDetail {
       }
 
     foreach ((string id, SetupPlacement placed) in ctx.Setup.AllPlaced)
-      if (ctx.Setup.BlockEntityAt(placed.Cell) is BlockEntityMultiblockStructure structure)
+      if (
+        ctx.Setup.BlockEntityAt(placed.Cell)
+        is BlockEntityMultiblockStructure structure
+      )
         structure.IncompleteBlockCount(m =>
           lines.Add(
             $"missing {id}: {Cell(ctx.Setup.Local(m.At))} wanted {m.Wanted} actual {m.Actual.Code}"

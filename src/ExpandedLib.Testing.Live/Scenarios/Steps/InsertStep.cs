@@ -45,7 +45,9 @@ internal sealed class InsertStep : ScenarioStep {
         ? container.Inventory[(int)o["slot"]!]
         : container.Inventory.GetBestSuitedSlot(source).slot;
     if (target == null)
-      throw new StepFailure($"{stack.Collectible.Code} fits no slot of the inventory.");
+      throw new StepFailure(
+        $"{stack.Collectible.Code} fits no slot of the inventory."
+      );
     int moved = source.TryPutInto(ctx.World, target, count);
     if (moved < count)
       throw new StepFailure(
