@@ -53,10 +53,9 @@ internal static class SetupDigits {
 }
 
 /// <summary>
-/// What a setup did, per second: every run's medium, flow, pressure, temperature and volume, and
-/// every machine's state and values, written as schema 1 (setups.md, What is recorded). A series
-/// is a change list: <c>[second, value]</c> is written when the rounded value differs from the
-/// last one. Numbers keep <see cref="SetupDigits"/> places.
+/// What a setup did, per second, as schema 1 (setups.md, What is recorded): each run's medium, flow,
+/// pressure, temperature and volume, each machine's state and values. A series writes
+/// <c>[second, value]</c> when the value rounded to <see cref="SetupDigits"/> places changes.
 /// </summary>
 internal sealed class SetupRecording {
   /// <summary>Largest file <see cref="Save"/> writes, in bytes.</summary>
