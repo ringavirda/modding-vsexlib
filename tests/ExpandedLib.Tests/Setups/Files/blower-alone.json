@@ -1,0 +1,19 @@
+{
+  "setup": "blower-alone",
+  "description": "One twin-tub blower with its footprint drawn.",
+  "mods": ["twintubblower"],
+  "layout": {
+    "legend": {
+      "B": { "id": "blower", "code": "twintubblower:blower-twintubblower-n" },
+      "b": { "cells": "blower" }
+    },
+    "layers": {
+      "2": ["b", "b", "b"],
+      "1": ["b", "b", "B"]
+    },
+    "origin": [0, -2]
+  },
+  "steps": [],
+  "seconds": 10,
+  "record": {}
+}

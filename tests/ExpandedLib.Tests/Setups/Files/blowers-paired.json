@@ -1,0 +1,21 @@
+{
+  "setup": "blowers-paired",
+  "description": "Two twin-tub blowers with their ports face to face.",
+  "mods": ["twintubblower"],
+  "layout": {
+    "legend": {
+      "A": { "id": "first", "code": "twintubblower:blower-twintubblower-n" },
+      "a": { "cells": "first" },
+      "B": { "id": "second", "code": "twintubblower:blower-twintubblower-s" },
+      "b": { "cells": "second" }
+    },
+    "layers": {
+      "2": [" a", " a", "ba", "b", "b"],
+      "1": [" a", " a", "BA", "b", "b"]
+    },
+    "origin": [0, -2]
+  },
+  "steps": [],
+  "seconds": 10,
+  "record": {}
+}
