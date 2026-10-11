@@ -14,10 +14,9 @@ using Vintagestory.GameContent.Mechanics;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// A setup file built into a fresh world: its mods loaded through <see cref="TestWorld.LoadAssets(IReadOnlyList{string}, string)"/>,
-/// its layout and its <c>place</c>, <c>complete</c> and <c>fill</c> steps placed by the kinds of
-/// setups.md (Placement kinds), and the mechanical lines joined. Running, sampling and checking
-/// belong to the steps and readings this class does not build yet.
+/// A setup file built into a fresh world: its mods loaded, its layout and its <c>place</c>,
+/// <c>complete</c> and <c>fill</c> steps placed by the kinds of setups.md (Placement kinds), and the
+/// mechanical lines joined. Running, sampling and checking are not built yet.
 /// </summary>
 public sealed partial class SetupScene : IDisposable
 {

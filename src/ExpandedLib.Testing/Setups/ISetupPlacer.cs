@@ -5,9 +5,8 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Places a block the composed placement kinds cannot: one that needs a neighbour's state, a class
-/// the fake world lacks, an engine path no double reaches (setups.md, Placers and stand-ins).
-/// Registered with <see cref="SetupPlacers.Register"/> before the first case.
+/// Places a block the composed placement kinds cannot (setups.md, Placers and stand-ins); registered
+/// with <see cref="SetupPlacers.Register"/> before the first case.
 /// </summary>
 public interface ISetupPlacer
 {
