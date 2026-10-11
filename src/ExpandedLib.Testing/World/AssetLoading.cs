@@ -11,6 +11,7 @@ using NSubstitute.Core;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.Common;
 #if GAME_GE_1_22
 using Vintagestory.API.Datastructures;
@@ -63,6 +64,19 @@ public sealed partial class TestWorld {
   public TestWorld LoadAssets(
     IReadOnlyList<string> modPaths,
     string? gamePath = null
+  ) => LoadAssets(modPaths, gamePath, []);
+
+  /// <summary>As <see cref="LoadAssets(IReadOnlyList{string}, string)"/>, and the vanilla survival
+  /// blocktype files that define <paramref name="vanillaCodes"/> load with the mods.</summary>
+  /// <param name="modPaths">As the public overload takes them.</param>
+  /// <param name="gamePath">As the public overload takes it.</param>
+  /// <param name="vanillaCodes">Block codes in the <c>game</c> domain, with or without the domain,
+  /// <c>*</c> allowed; one no vanilla file defines loads nothing.</param>
+  /// <returns>This world.</returns>
+  internal TestWorld LoadAssets(
+    IReadOnlyList<string> modPaths,
+    string? gamePath,
+    IReadOnlyCollection<string> vanillaCodes
   ) {
     gamePath ??=
       VsAssemblyResolver.InstallPath
@@ -86,6 +100,7 @@ public sealed partial class TestWorld {
     foreach (ListedMod mod in mods)
       MirrorAssets(mgr, Path.Combine(mod.Path, "assets", mod.Id), mod.Id);
     MirrorPatchedVanilla(mgr, survival, [.. mods.Select(m => m.Id)]);
+    MirrorVanillaBlocks(mgr, survival, vanillaCodes);
 
     // GamePaths.AssetsPath/Lang.Load are process-wide statics the object loader needs primed; safe
     // to set repeatedly.
@@ -355,6 +370,70 @@ public sealed partial class TestWorld {
       if (target.Domain == GlobalConstants.DefaultDomain && File.Exists(path))
         mgr.Add(target, new Asset(File.ReadAllBytes(path), target, survival));
     }
+  }
+
+  /// <summary>Adds to <paramref name="mgr"/> each survival blocktype file whose <c>code</c> and
+  /// variant groups can define one of <paramref name="codes"/>: the code is the file's, or the
+  /// file's followed by one token per variant group, a group with listed states taking only those.
+  /// A file that does not parse is skipped.</summary>
+  private static void MirrorVanillaBlocks(
+    AssetManager mgr,
+    IAssetOrigin survival,
+    IReadOnlyCollection<string> codes
+  ) {
+    string[] wanted =
+    [
+      .. codes.Select(c => c.StartsWith("game:") ? c[5..] : c),
+    ];
+    if (wanted.Length == 0)
+      return;
+    foreach (
+      IAsset asset in survival.GetAssets(
+        AssetCategory.blocktypes,
+        shouldLoad: true
+      )
+    ) {
+      JObject file;
+      try {
+        file = JObject.Parse(asset.ToText());
+      } catch (JsonException) {
+        continue;
+      }
+      if (file["code"] is not JValue { Value: string code })
+        continue;
+      JToken[] groups = [.. file["variantgroups"] ?? new JArray()];
+      if (wanted.Any(w => DefinesCode(code, groups, w)))
+        mgr.Add(asset.Location, asset);
+    }
+  }
+
+  private static bool DefinesCode(string code, JToken[] groups, string wanted) {
+    string[] tokens = wanted.Split('-');
+    string[] stem = code.Split('-');
+    int total = stem.Length + groups.Length;
+    if (
+      tokens.Length != total
+      && !(wanted.EndsWith('*') && tokens.Length < total)
+    )
+      return false;
+    if (!StemMatches(stem, tokens))
+      return false;
+    for (int i = 0; i < groups.Length && stem.Length + i < tokens.Length; i++)
+      if (groups[i]["states"] is JArray states)
+        if (
+          !states.Any(s =>
+            WildcardUtil.Match(tokens[stem.Length + i], (string?)s ?? "")
+          )
+        )
+          return false;
+    return true;
+  }
+
+  private static bool StemMatches(string[] stem, string[] tokens) {
+    for (int i = 0; i < stem.Length; i++)
+      if (i >= tokens.Length || !WildcardUtil.Match(tokens[i], stem[i]))
+        return false;
+    return true;
   }
 
   /// <summary>Copies every asset under <paramref name="fullPath"/> for <paramref name="domain"/> into

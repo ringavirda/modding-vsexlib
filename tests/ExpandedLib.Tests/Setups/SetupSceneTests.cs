@@ -588,6 +588,141 @@ public class SetupSceneTests : IDisposable
 
   #endregion
 
+  #region Vanilla blocks and foreign nodes
+
+  private static SetupScene BuildWithWires(SetupFile file) =>
+    SetupScene.Build(
+      file,
+      [.. file.Mods.Select(ModPath)],
+      world =>
+      {
+        foreach (
+          TestNetworkBlock wire in TestNetworkBlock.Family(
+            "molten",
+            "platedpipes:wire",
+            "Axis",
+            ["ns", "we"],
+            firstId: 9000
+          )
+        )
+          world.Register(wire);
+      }
+    );
+
+  // Fails when a `game:` code the layout or a step names is not resolved to its vanilla blocktype file, so the
+  // load never registers the coal pile or the chimney course.
+  [Fact]
+  public void A_game_block_the_layout_or_a_step_names_is_loaded_and_placed()
+  {
+    SetupFile file = Inline(
+      "setupfixture",
+      "{\"legend\": {\"F\": {\"code\": \"game:coalpile\"}}, "
+        + "\"layers\": {\"0\": [\"F\"]}}",
+      "[{\"place\": {\"code\": \"game:claybrickchimney-four-red-ns\", \"at\": [1, 0, 0]}}]"
+    );
+
+    using SetupScene scene = Build(file);
+
+    Assert.Equal("game:coalpile", CodeAt(scene, 0, 0, 0));
+    Assert.Equal("game:claybrickchimney-four-red-ns", CodeAt(scene, 1, 0, 0));
+  }
+
+  // Fails when a vanilla file whose stem matches loads for a code none of its states define, or
+  // an unknown `game:` code stops failing the file.
+  [Fact]
+  public void A_game_code_no_vanilla_file_defines_fails_naming_it()
+  {
+    SetupFile file = Inline(
+      "setupfixture",
+      null,
+      "[{\"place\": {\"code\": \"game:claybrickchimney-four-mauve-ns\", \"at\": [0, 0, 0]}}]"
+    );
+
+    string message = Refused(file);
+
+    Assert.Contains(
+      "\"game:claybrickchimney-four-mauve-ns\" is not registered by the load",
+      message
+    );
+  }
+
+  // Fails when a wildcard `game:` code in a family is matched literally against a variant group's
+  // states, so the file it names does not load.
+  [Fact]
+  public void A_wildcard_game_code_loads_the_file_it_matches()
+  {
+    SetupFile file = Inline(
+      "platedpipes",
+      Pipes(
+        Run(
+          'P',
+          "main",
+          "straight-we",
+          "[\"" + Plated + "straight-*\", \"game:charcoalpile-*\"]"
+        )
+          + ", "
+          + Open,
+        "oPo"
+      )
+    );
+
+    using SetupScene scene = Build(file);
+
+    Assert.NotNull(
+      scene.World.World.GetBlock(new AssetLocation("game:charcoalpile-3"))
+    );
+  }
+
+  // Fails when rule 2 opens a run cell toward a connector of another network type.
+  [Fact]
+  public void A_run_cell_stays_closed_beside_a_connector_of_another_network_type()
+  {
+    SetupFile file = Inline(
+      "platedpipes",
+      Pipes(
+        "\"W\": {\"code\": \"platedpipes:wire-ns\"}, "
+          + Run('P', "main", "straight-we")
+          + ", "
+          + Open,
+        " W",
+        "oPo"
+      )
+    );
+
+    using SetupScene scene = BuildWithWires(file);
+
+    Assert.Equal(Plated + "straight-we", CodeAt(scene, 1, 0, 1));
+  }
+
+  // Fails when a family holding blocks of two network types is accepted.
+  [Fact]
+  public void A_family_of_two_network_types_fails_the_load_naming_both()
+  {
+    SetupFile file = Inline(
+      "platedpipes",
+      Pipes(
+        Run(
+          'P',
+          "main",
+          "straight-we",
+          "[\"" + Plated + "straight-*\", \"platedpipes:wire-*\"]"
+        )
+          + ", "
+          + Open,
+        "oPo"
+      )
+    );
+
+    string message = Assert
+      .Throws<InvalidOperationException>(() => BuildWithWires(file))
+      .Message;
+
+    Assert.Contains("more than one network type", message);
+    Assert.Contains("pipe and molten", message);
+  }
+
+  #endregion
+
   #region Refusals
 
   public static TheoryData<string, string, string> Refused_steps =>

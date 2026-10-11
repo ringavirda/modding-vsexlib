@@ -107,7 +107,16 @@ public sealed partial class SetupScene : IDisposable
   /// run, or one not built yet; a code the load did not register; a cell that is not air; a run cell
   /// no block of its family fits, or two fit; a drawn structure that disagrees with its cells; a
   /// <c>complete</c> that does not complete; the message names the file and where.</exception>
-  public static SetupScene Build(SetupFile file, IReadOnlyList<string> modPaths)
+  public static SetupScene Build(
+    SetupFile file,
+    IReadOnlyList<string> modPaths
+  ) => Build(file, modPaths, null);
+
+  internal static SetupScene Build(
+    SetupFile file,
+    IReadOnlyList<string> modPaths,
+    Action<TestWorld>? afterLoad
+  )
   {
     ArgumentNullException.ThrowIfNull(file);
     ArgumentNullException.ThrowIfNull(modPaths);
@@ -121,6 +130,7 @@ public sealed partial class SetupScene : IDisposable
     {
       scene.Refuse();
       scene.Load(modPaths);
+      afterLoad?.Invoke(scene.World);
       scene.PlaceLayout();
       scene.RunSteps();
       SetupMechanical.Join(scene.World);
@@ -217,7 +227,7 @@ public sealed partial class SetupScene : IDisposable
 
   private void Load(IReadOnlyList<string> modPaths)
   {
-    World.LoadAssets(modPaths);
+    World.LoadAssets(modPaths, null, VanillaCodes());
     if (World.Mods.GetModSystem<MechanicalPowerMod>() == null)
     {
       var power = new MechanicalPowerMod();
@@ -227,6 +237,25 @@ public sealed partial class SetupScene : IDisposable
     foreach (Block block in World.World.Blocks.ToArray())
       if (block is { Id: not 0 } && _file.Mods.Contains(block.Code.Domain))
         Ready(block);
+  }
+
+  private string[] VanillaCodes()
+  {
+    IEnumerable<JToken> roots =
+    [
+      .. Model.Layout == null ? [] : (JToken[])[Model.Layout],
+      .. Model.Steps.SelectMany(s => s.All()).Select(s => s.Body),
+    ];
+    return
+    [
+      .. roots
+        .SelectMany(r => r is JContainer c ? c.DescendantsAndSelf() : [r])
+        .OfType<JValue>()
+        .Select(v => v.Value as string)
+        .OfType<string>()
+        .Where(v => v.StartsWith("game:"))
+        .Distinct(),
+    ];
   }
 
   private void Ready(Block block)
