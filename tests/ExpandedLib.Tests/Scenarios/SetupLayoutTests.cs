@@ -466,6 +466,58 @@ public class SetupLayoutTests {
     Assert.Contains(reason, message);
   }
 
+  // Fails when a from naming a cell outside its run is accepted.
+  [Fact]
+  public void A_from_naming_no_cell_of_the_run_is_refused() {
+    string message = Refused(
+      $$"""
+      { legend: { "p": { run: "r", {{Pipe}}, from: [4, 0, 0] } }, layers: { "0": ["pp"] } }
+      """
+    );
+
+    Assert.Contains("layout.legend.p.from", message);
+    Assert.Contains("(4, 0, 0) is no cell of run \"r\"", message);
+  }
+
+  // Fails when an origin of three numbers is accepted.
+  [Fact]
+  public void An_origin_that_is_not_a_pair_is_refused() {
+    string message = Refused(
+      """
+      { origin: [1, 2, 3], legend: { "A": { code: "x:a" } }, layers: { "0": ["A"] } }
+      """
+    );
+
+    Assert.Contains("layout.origin", message);
+    Assert.Contains("[x, z]", message);
+  }
+
+  // Fails when an open entry set to false is accepted.
+  [Fact]
+  public void An_open_entry_that_is_not_true_is_refused() {
+    string message = Refused(
+      $$"""
+      { legend: { "o": { open: false }, "p": { run: "r", {{Pipe}} } }, layers: { "0": ["op"] } }
+      """
+    );
+
+    Assert.Contains("layout.legend.o.open", message);
+    Assert.Contains("expected true", message);
+  }
+
+  // Fails when a key the entry kind does not take is accepted.
+  [Fact]
+  public void An_entry_key_its_kind_does_not_take_is_refused() {
+    string message = Refused(
+      $$"""
+      { legend: { "p": { run: "r", {{Pipe}}, tree: {} } }, layers: { "0": ["p"] } }
+      """
+    );
+
+    Assert.Contains("layout.legend.p", message);
+    Assert.Contains("unknown key \"tree\"", message);
+  }
+
   #endregion
 
   #region Variants
@@ -551,6 +603,25 @@ public class SetupLayoutTests {
     Assert.Contains("not one connected piece", e.Message);
   }
 
+  // Fails when a drop or replace naming no entry (a step's id) changes the drawing.
+  [Fact]
+  public void A_drop_or_replace_naming_no_entry_leaves_the_drawing() {
+    SetupLayout main = Load(
+      """
+      { legend: { "A": { code: "x:a" } }, layers: { "0": ["A"] } }
+      """
+    );
+
+    SetupLayout variant = main.ForVariant(
+      JObject.Parse(
+        """{ drop: ["step"], replace: { step: { code: "x:b" } } }"""
+      ),
+      Where
+    );
+
+    Assert.Equal("A(0,0,0)", Cells(variant));
+  }
+
   // Fails when a layout is not read by the file model, or its refusals lose the file's name.
   [Fact]
   public void The_file_model_reads_its_layout_and_refuses_one_that_breaks_a_rule() {
@@ -567,6 +638,23 @@ public class SetupLayoutTests {
 
     Assert.Equal("A(0,0,0)", Cells(model.Drawn!));
     Assert.StartsWith("s.json: layout.layers.0[0]", e.Message);
+  }
+
+  // Fails when the file model checks the main drawing only and not a variant's.
+  [Fact]
+  public void The_file_model_refuses_a_variant_drawing_that_breaks_a_rule() {
+    string file = """
+      { setup: "s", description: "d", mods: [], seconds: 10, steps: [],
+        record: { machines: { a: { series: { state: "on" } } } },
+        layout: { legend: { "a": { id: "a", code: "x:a" }, "p": { run: "r", code: "x:pipe-straight-we-iron" } }, layers: { "0": ["appp"] } },
+        variants: { cut: { layers: { "0": ["  ."] } } } }
+      """;
+
+    var e = Assert.Throws<SetupFileException>(() =>
+      SetupFileModel.Parse(file, "s.json")
+    );
+
+    Assert.Contains("not one connected piece", e.Message);
   }
 
   #endregion
