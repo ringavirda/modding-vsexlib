@@ -1,0 +1,84 @@
+{
+  "setup": "smoke-stack",
+  "description": "A smoke stack drawn with its layout cells, completed by the harness.",
+  "mods": [
+    "smokestack"
+  ],
+  "layout": {
+    "legend": {
+      "S": {
+        "id": "stack",
+        "code": "smokestack:smokestack-intake-tier3-n",
+        "complete": "all"
+      },
+      "c": {
+        "cells": "stack"
+      }
+    },
+    "layers": {
+      "11": [
+        ".c",
+        "c.c",
+        ".c"
+      ],
+      "10": [
+        ".c",
+        "c.c",
+        ".c"
+      ],
+      "9": [
+        ".c",
+        "c.c",
+        ".c"
+      ],
+      "8": [
+        ".c",
+        "c.c",
+        ".c"
+      ],
+      "7": [
+        ".c",
+        "c.c",
+        ".c"
+      ],
+      "6": [
+        ".c",
+        "c.c",
+        ".c"
+      ],
+      "5": [
+        ".c",
+        "c.c",
+        ".c"
+      ],
+      "4": [
+        ".c",
+        "c.c",
+        ".c"
+      ],
+      "3": [
+        ".c",
+        "c.c",
+        ".c"
+      ],
+      "2": [
+        "ccc",
+        "c.c",
+        "ccc"
+      ],
+      "1": [
+        "cSc",
+        "c.c",
+        "ccc"
+      ],
+      "0": [
+        "ccc",
+        "ccc",
+        "ccc"
+      ]
+    }
+  },
+  "steps": [],
+  "seconds": 10,
+  "record": {}
+}

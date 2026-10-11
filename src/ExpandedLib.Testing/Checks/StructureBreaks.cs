@@ -255,7 +255,7 @@ public static class StructureBreaks
   /// <summary>Gives <paramref name="block"/> <paramref name="world"/>'s api, resolves its
   /// <c>drops</c> there, registering a stand-in for each it does not hold, and runs its
   /// <see cref="Block.OnLoaded"/>, as the engine does once the object loader is done.</summary>
-  private static void Ready(TestWorld world, Block block)
+  internal static void Ready(TestWorld world, Block block)
   {
     ReflectionHelpers.SetField(block, "api", world.Api);
     foreach (BlockDropItemStack drop in block.Drops ?? [])
