@@ -88,27 +88,42 @@ internal sealed class SetupCheck {
     );
     string id = SetupJson.String(node["id"], where.In("id"));
     if (!SetupJson.IsId(id))
-      throw where.In("id").Fail($"\"{id}\" is not lower case words joined by -.");
+      throw where
+        .In("id")
+        .Fail($"\"{id}\" is not lower case words joined by -.");
     string says = SetupJson.String(node["says"], where.In("says"));
     string[] kinds =
     [
-      .. new[] { "never", "always", "steady", "mean", "intact" }.Where(k => node[k] != null),
+      .. new[] { "never", "always", "steady", "mean", "intact" }.Where(k =>
+        node[k] != null
+      ),
     ];
     if (kinds.Length != 1)
       throw where.Fail("takes one of never, always, steady, mean and intact.");
-    string window = node["window"] == null
-      ? "all"
-      : SetupJson.String(node["window"], where.In("window"));
+    string window =
+      node["window"] == null
+        ? "all"
+        : SetupJson.String(node["window"], where.In("window"));
     if (window is not ("all" or "steady"))
-      throw where.In("window").Fail($"\"{window}\" is not \"all\" or \"steady\".");
-    string orders = node["orders"] == null
-      ? "all"
-      : SetupJson.String(node["orders"], where.In("orders"));
+      throw where
+        .In("window")
+        .Fail($"\"{window}\" is not \"all\" or \"steady\".");
+    string orders =
+      node["orders"] == null
+        ? "all"
+        : SetupJson.String(node["orders"], where.In("orders"));
     if (orders is not ("all" or "drawn"))
-      throw where.In("orders").Fail($"\"{orders}\" is not \"all\" or \"drawn\".");
+      throw where
+        .In("orders")
+        .Fail($"\"{orders}\" is not \"all\" or \"drawn\".");
     string kind = kinds[0];
     SetupJson.Where at = where.In(kind);
-    var scope = new ReadingScope(null, InRecord: false, InCheck: true, references);
+    var scope = new ReadingScope(
+      null,
+      InRecord: false,
+      InCheck: true,
+      references
+    );
     bool steadyWindow = window == "steady";
     bool allOrders = orders == "all";
     switch (kind) {
@@ -122,7 +137,10 @@ internal sealed class SetupCheck {
           SteadyWindow = steadyWindow,
           AllOrders = allOrders,
           Test = test,
-          Sampled = [.. test.Readings.SelectMany(r => r.All()).OfType<SampledReading>()],
+          Sampled =
+          [
+            .. test.Readings.SelectMany(r => r.All()).OfType<SampledReading>(),
+          ],
         };
       }
       case "steady": {
@@ -175,7 +193,9 @@ internal sealed class SetupCheck {
   /// <summary>Runs the check over a finished <paramref name="recording"/> whose
   /// <see cref="Sampled"/> readings were sampled every second; null when it holds.</summary>
   public SetupCheckFailure? Run(SetupRecording recording) {
-    var ctx = new ReadingContext(null, recording) { Phase = ReadingPhase.Check };
+    var ctx = new ReadingContext(null, recording) {
+      Phase = ReadingPhase.Check,
+    };
     int from = SteadyWindow ? recording.SteadyFrom : 0;
     int to = SteadyWindow ? recording.SteadyTo : recording.Seconds;
     switch (Kind) {
@@ -190,18 +210,30 @@ internal sealed class SetupCheck {
         for (int t = from; t < to; t++) {
           ctx.Second = t;
           if (_intact!.Read(ctx) is false)
-            return new SetupCheckFailure(Id, Says, t, $"a cell of {string.Join(", ", Runs)} is air");
+            return new SetupCheckFailure(
+              Id,
+              Says,
+              t,
+              $"a cell of {string.Join(", ", Runs)} is air"
+            );
         }
         return null;
       case SetupCheckKind.Steady: {
         IReadOnlyList<string> unsteady = recording.Unsteady();
         string[] failing =
         [
-          .. Series == null ? unsteady : unsteady.Where(s => s == Series.Describe),
+          .. Series == null
+            ? unsteady
+            : unsteady.Where(s => s == Series.Describe),
         ];
         return failing.Length == 0
           ? null
-          : new SetupCheckFailure(Id, Says, -1, "unsteady " + string.Join(", ", failing));
+          : new SetupCheckFailure(
+            Id,
+            Says,
+            -1,
+            "unsteady " + string.Join(", ", failing)
+          );
       }
       default: {
         double mean = recording.SteadyMean(Series!.Id, Series.Name);

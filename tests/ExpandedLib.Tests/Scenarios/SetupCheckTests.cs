@@ -22,7 +22,12 @@ public class SetupCheckTests {
   /// <summary>A finished recording whose machine <c>m</c> records <c>v</c> in atm and the
   /// state word of each second, "on" when none is given.</summary>
   private static SetupRecording Recorded(float[] values, string[]? words = null) {
-    var recording = new SetupRecording("setup", "1.22", [("exlib", "1.0.0")], Seconds);
+    var recording = new SetupRecording(
+      "setup",
+      "1.22",
+      [("exlib", "1.0.0")],
+      Seconds
+    );
     recording
       .Machine("m", "test:m")
       .State(new Script([.. words ?? Enumerable.Repeat("on", Seconds)]))
@@ -34,7 +39,8 @@ public class SetupCheckTests {
     return recording;
   }
 
-  private static float[] Repeat(float value) => [.. Enumerable.Repeat(value, Seconds)];
+  private static float[] Repeat(float value) =>
+    [.. Enumerable.Repeat(value, Seconds)];
 
   private static SetupCheck Check(string json) =>
     SetupCheck.Parse(
@@ -62,7 +68,10 @@ public class SetupCheckTests {
     Assert.Null(check.Run(Recorded(Repeat(1f))));
     Assert.NotNull(failure);
     Assert.Equal(3, failure!.Second);
-    Assert.Equal("check no-choke (v stays under 5) fails at second 3: m.v = 6", failure.ToString());
+    Assert.Equal(
+      "check no-choke (v stays under 5) fails at second 3: m.v = 6",
+      failure.ToString()
+    );
   }
 
   // Fails when a steady window check reads seconds before the window.
@@ -91,12 +100,14 @@ public class SetupCheckTests {
     SetupRecording recording = Recorded(Repeat(1f), words);
 
     SetupCheckFailure? star = Check(
-      """{ "id": "all-steady", "says": "everything settles", "steady": "*" }"""
-    ).Run(recording);
+        """{ "id": "all-steady", "says": "everything settles", "steady": "*" }"""
+      )
+      .Run(recording);
 
     Assert.Equal("unsteady m.state", star!.Readings);
     Assert.Null(
-      Check("""{ "id": "v-steady", "says": "v settles", "steady": "m.v" }""").Run(recording)
+      Check("""{ "id": "v-steady", "says": "v settles", "steady": "m.v" }""")
+        .Run(recording)
     );
   }
 
@@ -112,14 +123,17 @@ public class SetupCheckTests {
 
     Assert.Null(
       Check(
-        """{ "id": "rate", "says": "v means 2", "mean": { "series": "m.v", "equals": 2, "within": 0.01 } }"""
-      ).Run(recording)
+          """{ "id": "rate", "says": "v means 2", "mean": { "series": "m.v", "equals": 2, "within": 0.01 } }"""
+        )
+        .Run(recording)
     );
     Assert.Equal(
       "m.v steady mean = 2",
       Check(
-        """{ "id": "rate", "says": "v means 2.5", "mean": { "series": "m.v", "equals": 2.5, "within": 0.4 } }"""
-      ).Run(recording)!.Readings
+          """{ "id": "rate", "says": "v means 2.5", "mean": { "series": "m.v", "equals": 2.5, "within": 0.4 } }"""
+        )
+        .Run(recording)!
+        .Readings
     );
   }
 
@@ -128,12 +142,19 @@ public class SetupCheckTests {
   public void Intact_fails_at_the_first_second_a_run_cell_is_air() {
     var world = new SetupTestWorld();
     Block pipe = TestBlocks.Configure(new Block(), "test:pipe", 1);
-    world.Test.Place(new BlockPos(0, 0, 0), pipe).Place(new BlockPos(0, 0, 1), pipe);
+    world
+      .Test.Place(new BlockPos(0, 0, 0), pipe)
+      .Place(new BlockPos(0, 0, 1), pipe);
     world.Laid("steam", new BlockPos(0, 0, 0), new BlockPos(0, 0, 1));
     SetupCheck check = Check(
       """{ "id": "no-burst", "says": "the steam run holds", "intact": ["steam"] }"""
     );
-    var recording = new SetupRecording("setup", "1.22", [("exlib", "1.0.0")], 6);
+    var recording = new SetupRecording(
+      "setup",
+      "1.22",
+      [("exlib", "1.0.0")],
+      6
+    );
     var ctx = new ReadingContext(world);
     for (int t = 0; t < 6; t++) {
       ctx.Second = t;
@@ -153,7 +174,10 @@ public class SetupCheckTests {
   [Fact]
   public void A_world_reading_in_a_check_is_read_back_from_its_samples() {
     var world = new SetupTestWorld();
-    world.Test.Place(new BlockPos(0, 0, 0), TestBlocks.Configure(new Block(), "test:b", 1));
+    world.Test.Place(
+      new BlockPos(0, 0, 0),
+      TestBlocks.Configure(new Block(), "test:b", 1)
+    );
     SetupCheck check = Check(
       """
       { "id": "unmoved", "says": "the block stays",
@@ -182,9 +206,15 @@ public class SetupCheckTests {
     SetupRecording recording = Recorded(Repeat(6f));
     SetupCheck[] checks =
     [
-      Check("""{ "id": "a", "says": "a", "always": { "series": "m.v", "min": 5 } }"""),
-      Check("""{ "id": "b", "says": "b", "never": { "series": "m.v", "min": 5 } }"""),
-      Check("""{ "id": "c", "says": "c", "never": { "series": "m.v", "max": 7 } }"""),
+      Check(
+        """{ "id": "a", "says": "a", "always": { "series": "m.v", "min": 5 } }"""
+      ),
+      Check(
+        """{ "id": "b", "says": "b", "never": { "series": "m.v", "min": 5 } }"""
+      ),
+      Check(
+        """{ "id": "c", "says": "c", "never": { "series": "m.v", "max": 7 } }"""
+      ),
     ];
 
     Assert.Equal("b", SetupCheck.First(checks, recording)!.Id);
@@ -194,7 +224,9 @@ public class SetupCheckTests {
   [Fact]
   public void A_check_naming_two_kinds_is_refused() {
     var e = Assert.Throws<SetupFileException>(() =>
-      Check("""{ "id": "a", "says": "a", "steady": "*", "intact": ["steam"] }""")
+      Check(
+        """{ "id": "a", "says": "a", "steady": "*", "intact": ["steam"] }"""
+      )
     );
 
     Assert.Equal(

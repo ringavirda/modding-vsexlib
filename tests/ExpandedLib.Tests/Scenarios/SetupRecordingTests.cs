@@ -69,14 +69,18 @@ public class SetupRecordingTests : IDisposable {
     return Finished(recording, new ReadingContext(null));
   }
 
-  private static SetupRecording Finished(SetupRecording recording, ReadingContext ctx) {
+  private static SetupRecording Finished(
+    SetupRecording recording,
+    ReadingContext ctx
+  ) {
     recording.Start(ctx);
     for (int t = 0; t < recording.Seconds; t++)
       recording.Sample(t, ctx);
     return recording;
   }
 
-  private static float[] Repeat(float value) => [.. Enumerable.Repeat(value, Seconds)];
+  private static float[] Repeat(float value) =>
+    [.. Enumerable.Repeat(value, Seconds)];
 
   private static JsonNode Parse(string text) => JsonNode.Parse(text)!;
 
@@ -127,7 +131,14 @@ public class SetupRecordingTests : IDisposable {
   // Fails when the steady word is the last one, the first, or the one with most changes.
   [Fact]
   public void The_steady_word_is_the_one_held_longest_in_the_window() {
-    string[] words = [.. Enumerable.Repeat("idle", 8), "run", "run", "run", "idle"];
+    string[] words =
+    [
+      .. Enumerable.Repeat("idle", 8),
+      "run",
+      "run",
+      "run",
+      "idle",
+    ];
 
     Assert.Equal("run", Scripted(Repeat(1f), words).Steady()["m.state"]);
   }
@@ -135,7 +146,14 @@ public class SetupRecordingTests : IDisposable {
   // Fails when a tie in held time goes to the later word.
   [Fact]
   public void A_tied_steady_word_goes_to_the_one_held_first() {
-    string[] words = [.. Enumerable.Repeat("idle", 8), "run", "run", "idle", "idle"];
+    string[] words =
+    [
+      .. Enumerable.Repeat("idle", 8),
+      "run",
+      "run",
+      "idle",
+      "idle",
+    ];
 
     Assert.Equal("run", Scripted(Repeat(1f), words).Steady()["m.state"]);
   }
@@ -264,7 +282,10 @@ public class SetupRecordingTests : IDisposable {
   public void A_constant_is_read_once_after_the_build() {
     SetupRecording recording = Empty();
     var gate = new Counter { Value = 3.5f };
-    recording.Machine("k", "test:k").State(new Counter()).Constant("gate", "atm", gate);
+    recording
+      .Machine("k", "test:k")
+      .State(new Counter())
+      .Constant("gate", "atm", gate);
     var ctx = new ReadingContext(null);
     recording.Start(ctx);
     gate.Value = 9f;
@@ -294,7 +315,9 @@ public class SetupRecordingTests : IDisposable {
     recording.Run("fed", new BlockPos(0, 0, 0));
     recording.Run("dry", new BlockPos(5, 0, 0));
 
-    var runs = Parse(Finished(recording, new ReadingContext(world)).Text())["runs"]!;
+    var runs = Parse(Finished(recording, new ReadingContext(world)).Text())[
+      "runs"
+    ]!;
 
     Assert.Equal(
       "{\"medium\":\"Steam\",\"flow\":1.23,\"pressure\":2.000,\"temperature\":150.0,\"volume\":3.00}",
@@ -327,7 +350,10 @@ public class SetupRecordingTests : IDisposable {
     world.Test.PlaceNode(new BlockPos(0, 0, 0), "molten", "ns");
     world.Test.PlaceNode(new BlockPos(0, 0, 1), "molten", "ns");
     world.Molten(new BlockPos(0, 0, 0), new MoltenCellReading(0, "", 0f));
-    world.Molten(new BlockPos(0, 0, 1), new MoltenCellReading(40, "game:ingot-iron", 1450f));
+    world.Molten(
+      new BlockPos(0, 0, 1),
+      new MoltenCellReading(40, "game:ingot-iron", 1450f)
+    );
     var entered = new Counter { Value = 10f };
     SetupRecording recording = new(Name, "1.22", [("exlib", "0.9.0")], 6);
     recording.MoltenRun("canal", new BlockPos(0, 0, 0), entered);
@@ -340,9 +366,18 @@ public class SetupRecordingTests : IDisposable {
 
     var canal = Parse(recording.Text())["runs"]!["canal"]!;
 
-    Assert.Equal("[[0,2.00],[1,3.00],[3,0.00]]", canal["series"]!["flow"]!.ToJsonString());
-    Assert.Equal("[[0,\"molten-iron\"]]", canal["series"]!["medium"]!.ToJsonString());
-    Assert.Equal("[[0,1450.0]]", canal["series"]!["temperature"]!.ToJsonString());
+    Assert.Equal(
+      "[[0,2.00],[1,3.00],[3,0.00]]",
+      canal["series"]!["flow"]!.ToJsonString()
+    );
+    Assert.Equal(
+      "[[0,\"molten-iron\"]]",
+      canal["series"]!["medium"]!.ToJsonString()
+    );
+    Assert.Equal(
+      "[[0,1450.0]]",
+      canal["series"]!["temperature"]!.ToJsonString()
+    );
     Assert.Equal("[[0,40.00]]", canal["series"]!["volume"]!.ToJsonString());
     Assert.Equal("u/s", canal["units"]!["flow"]!.GetValue<string>());
   }
@@ -376,10 +411,19 @@ public class SetupRecordingTests : IDisposable {
     var map = SetupMods.Map(["siex", "iiex", "other"], Versions, "0.9.9");
 
     Assert.Equal(
-      new[] { ("exlib", "0.9.1"), ("siex", "0.2.0"), ("iiex", "0.1.0"), ("other", "0.3.0") },
+      new[]
+      {
+        ("exlib", "0.9.1"),
+        ("siex", "0.2.0"),
+        ("iiex", "0.1.0"),
+        ("other", "0.3.0"),
+      },
       map
     );
-    Assert.Equal(("exlib", "0.9.9"), SetupMods.Map(["siex"], Versions, "0.9.9")[0]);
+    Assert.Equal(
+      ("exlib", "0.9.9"),
+      SetupMods.Map(["siex"], Versions, "0.9.9")[0]
+    );
   }
 
   // Fails when a modinfo's version or exlib dependency is read case-sensitively or missed.
@@ -387,9 +431,14 @@ public class SetupRecordingTests : IDisposable {
   public void A_modinfo_names_its_version_and_the_exlib_it_requires() {
     Assert.Equal(
       new SetupModVersions("0.1.0", "0.9.1"),
-      SetupMods.FromModInfo("""{ "Version": "0.1.0", "Dependencies": { "ExLib": "0.9.1" } }""")
+      SetupMods.FromModInfo(
+        """{ "Version": "0.1.0", "Dependencies": { "ExLib": "0.9.1" } }"""
+      )
     );
-    Assert.Equal(new SetupModVersions("0.2.0", null), SetupMods.FromModInfo("""{ "version": "0.2.0" }"""));
+    Assert.Equal(
+      new SetupModVersions("0.2.0", null),
+      SetupMods.FromModInfo("""{ "version": "0.2.0" }""")
+    );
   }
 
   // Fails when the same recording writes different bytes the second time.
@@ -470,7 +519,10 @@ public class SetupRecordingTests : IDisposable {
   [Fact]
   public void A_committed_file_with_a_stale_header_fails() {
     string text = Scripted(Repeat(1f)).Save(_folder, write: false);
-    File.WriteAllText(Committed, text.Replace("\"iiex\":\"0.1.0\"", "\"iiex\":\"0.0.1\""));
+    File.WriteAllText(
+      Committed,
+      text.Replace("\"iiex\":\"0.1.0\"", "\"iiex\":\"0.0.1\"")
+    );
 
     Assert.Throws<SetupRecordingMismatchException>(() =>
       Scripted(Repeat(1f)).Save(_folder, write: false)
@@ -491,7 +543,10 @@ public class SetupRecordingTests : IDisposable {
 
   private static SetupRecording ConstantRecording(float max) {
     SetupRecording recording = Empty();
-    recording.Machine("k", "test:k").State(new Counter()).Constant("max", "atm", new Counter { Value = max });
+    recording
+      .Machine("k", "test:k")
+      .State(new Counter())
+      .Constant("max", "atm", new Counter { Value = max });
     return Finished(recording, new ReadingContext(null));
   }
 
@@ -501,7 +556,10 @@ public class SetupRecordingTests : IDisposable {
   [InlineData("starter-steam-power, setup", true)]
   [InlineData("starter-steam-power", false)]
   [InlineData(null, false)]
-  public void The_write_variable_names_the_setups_it_rewrites(string? value, bool writes) {
+  public void The_write_variable_names_the_setups_it_rewrites(
+    string? value,
+    bool writes
+  ) {
     Assert.Equal(writes, SetupRecording.Writes(value, Name));
   }
 
@@ -514,11 +572,15 @@ public class SetupRecordingTests : IDisposable {
     SetupRecording recording = Empty();
     recording
       .Machine("m", "test:m-north")
-      .State(new Counter { Value = new string('x', (1024 * 1024 + beyond) / 2) });
+      .State(
+        new Counter { Value = new string('x', (1024 * 1024 + beyond) / 2) }
+      );
     Finished(recording, new ReadingContext(null));
 
     if (refused)
-      Assert.Throws<InvalidOperationException>(() => recording.Save(_folder, write: false));
+      Assert.Throws<InvalidOperationException>(() =>
+        recording.Save(_folder, write: false)
+      );
     else
       recording.Save(_folder, write: false);
 
@@ -532,7 +594,10 @@ public class SetupRecordingTests : IDisposable {
       new[] { "line 2: committed b1, recorded b2" },
       SetupRecording.Differences("a\nb1\nc", "a\nb2\nc")
     );
-    Assert.Equal(new[] { "line 2: committed absent, recorded b" }, SetupRecording.Differences("a", "a\nb"));
+    Assert.Equal(
+      new[] { "line 2: committed absent, recorded b" },
+      SetupRecording.Differences("a", "a\nb")
+    );
   }
 
   #endregion

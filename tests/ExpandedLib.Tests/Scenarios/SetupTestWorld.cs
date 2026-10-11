@@ -34,7 +34,10 @@ internal sealed class SetupTestWorld : ISetupWorld {
   /// <summary>Records <paramref name="cells"/> as what <paramref name="id"/> laid, the first
   /// as its cell.</summary>
   public SetupTestWorld Laid(string id, params BlockPos[] cells) {
-    _placed[id] = new SetupPlacement(cells[0].Copy(), [.. cells.Select(c => c.Copy())]);
+    _placed[id] = new SetupPlacement(
+      cells[0].Copy(),
+      [.. cells.Select(c => c.Copy())]
+    );
     return this;
   }
 

@@ -139,7 +139,8 @@ internal static class SetupMembers {
         throw new SetupReadingException(
           $"\"{string.Join('.', path.Take(i))}\" is null."
         );
-      MemberInfo member = Find(at.GetType(), path[i])
+      MemberInfo member =
+        Find(at.GetType(), path[i])
         ?? throw new SetupReadingException(
           $"{at.GetType().Name} has no member \"{path[i]}\"."
         );
@@ -199,23 +200,22 @@ internal static class SetupMembers {
 }
 
 /// <summary><c>{ at, member: path, or? }</c>: a member of the block entity at the cell.</summary>
-internal sealed class MemberReading(
-  SetupPosition at,
-  string path,
-  object? or
-) : Reading {
+internal sealed class MemberReading(SetupPosition at, string path, object? or)
+  : Reading {
   private readonly string[] _path = path.Split('.');
 
   public override object Read(ReadingContext ctx) {
     BlockPos pos = at.Resolve(ctx.World);
     BlockEntity? be = ctx.World.BlockEntityAt(pos);
     if (be == null)
-      return or ?? throw new SetupReadingException($"No block entity at {pos}.");
+      return or
+        ?? throw new SetupReadingException($"No block entity at {pos}.");
     object root = be;
     IReadOnlyList<string> path = _path;
-    BlockEntityBehavior? behavior = _path.Length > 1
-      ? be.Behaviors?.FirstOrDefault(b => b.GetType().Name == _path[0])
-      : null;
+    BlockEntityBehavior? behavior =
+      _path.Length > 1
+        ? be.Behaviors?.FirstOrDefault(b => b.GetType().Name == _path[0])
+        : null;
     if (behavior != null) {
       root = behavior;
       path = _path[1..];
@@ -240,7 +240,8 @@ internal sealed class TreeReading(SetupPosition at, string key, object? or)
     BlockPos pos = at.Resolve(ctx.World);
     BlockEntity? be = ctx.World.BlockEntityAt(pos);
     if (be == null)
-      return or ?? throw new SetupReadingException($"No block entity at {pos}.");
+      return or
+        ?? throw new SetupReadingException($"No block entity at {pos}.");
     var tree = new TreeAttribute();
     be.ToTreeAttributes(tree);
     IAttribute? value = tree[key];
@@ -256,8 +257,7 @@ internal sealed class TreeReading(SetupPosition at, string key, object? or)
 }
 
 /// <summary><c>{ at, block: wildcard }</c>: whether the cell's block matches.</summary>
-internal sealed class BlockReading(SetupPosition at, string wildcard)
-  : Reading {
+internal sealed class BlockReading(SetupPosition at, string wildcard) : Reading {
   private readonly AssetLocation _wildcard = new(wildcard);
 
   public override object Read(ReadingContext ctx) {
@@ -284,7 +284,8 @@ internal sealed class NetworkReading(
     if (_path == null)
       return network != null;
     if (network == null)
-      return or ?? throw new SetupReadingException($"No {type} network at {pos}.");
+      return or
+        ?? throw new SetupReadingException($"No {type} network at {pos}.");
     object? state = SetupMembers.Has(network.GetType(), "State")
       ? SetupMembers.Walk(network, ["State"], null)
       : null;
@@ -297,7 +298,8 @@ internal sealed class NetworkReading(
     );
   }
 
-  public override string Describe => type + (member == null ? "" : " " + member);
+  public override string Describe =>
+    type + (member == null ? "" : " " + member);
 }
 
 /// <summary><c>{ static: "Type.Member" }</c>: a static field, property or constant, read
@@ -313,7 +315,9 @@ internal sealed class StaticReading(string name) : Reading {
       throw new SetupReadingException($"\"{name}\" is not Type.Member.");
     string typeName = name[..dot];
     string memberName = name[(dot + 1)..];
-    Type type = AppDomain.CurrentDomain.GetAssemblies()
+    Type type =
+      AppDomain
+        .CurrentDomain.GetAssemblies()
         .Select(a => a.GetType(typeName))
         .FirstOrDefault(t => t != null)
       ?? throw new SetupReadingException($"No type \"{typeName}\" is loaded.");
@@ -322,13 +326,13 @@ internal sealed class StaticReading(string name) : Reading {
       | BindingFlags.Public
       | BindingFlags.NonPublic
       | BindingFlags.FlattenHierarchy;
-    object? value = type.GetField(memberName, Static) is { } field
-      ? field.GetValue(null)
+    object? value =
+      type.GetField(memberName, Static) is { } field ? field.GetValue(null)
       : type.GetProperty(memberName, Static) is { } property
         ? property.GetValue(null)
-        : throw new SetupReadingException(
-          $"{typeName} has no static \"{memberName}\"."
-        );
+      : throw new SetupReadingException(
+        $"{typeName} has no static \"{memberName}\"."
+      );
     return SetupValues.Normalize(value);
   }
 
@@ -429,7 +433,8 @@ internal sealed class ChangeReading(Reading inner, bool rise) : Reading {
     return _change;
   }
 
-  public override string Describe => (rise ? "rise " : "delta ") + inner.Describe;
+  public override string Describe =>
+    (rise ? "rise " : "delta ") + inner.Describe;
 }
 
 /// <summary><c>{ before: r }</c>: the reading taken before the second's ticks.</summary>
@@ -477,7 +482,8 @@ internal sealed class SeriesReading(string id, string name) : Reading {
 internal sealed class IntactReading(IReadOnlyList<string> runs) : Reading {
   public override object Read(ReadingContext ctx) {
     foreach (string run in runs) {
-      SetupPlacement placed = ctx.World.Placed(run)
+      SetupPlacement placed =
+        ctx.World.Placed(run)
         ?? throw new SetupReadingException($"\"{run}\" has placed nothing.");
       if (placed.Cells.Any(c => ctx.World.BlockAt(c).Id == 0))
         return false;
@@ -559,7 +565,11 @@ internal static class SetupReadings {
     Reading reading = ParseForm(token, where, scope);
     return
       scope.InCheck
-      && reading is MemberReading or TreeReading or BlockReading or NetworkReading
+      && reading
+        is MemberReading
+          or TreeReading
+          or BlockReading
+          or NetworkReading
       ? new SampledReading(reading)
       : reading;
   }
@@ -612,9 +622,10 @@ internal static class SetupReadings {
       }
       case "network": {
         SetupJson.RefuseUnknown(node, where, "at", "network", "member", "or");
-        string? member = node["member"] == null
-          ? null
-          : SetupJson.String(node["member"], where.In("member"));
+        string? member =
+          node["member"] == null
+            ? null
+            : SetupJson.String(node["member"], where.In("member"));
         if (member == null && node["or"] != null)
           throw where.In("or").Fail("takes a \"member\".");
         return new NetworkReading(
@@ -638,7 +649,10 @@ internal static class SetupReadings {
       }
       case "sum" or "product": {
         SetupJson.RefuseUnknown(node, where, form);
-        return new ArithmeticReading(form, Many(node[form], where.In(form), scope));
+        return new ArithmeticReading(
+          form,
+          Many(node[form], where.In(form), scope)
+        );
       }
       case "quotient": {
         SetupJson.RefuseUnknown(node, where, form);

@@ -46,27 +46,40 @@ internal sealed class SetupPosition {
     if (token is JArray)
       return new(Triple(token, where), null, Frame.None, null, null);
     JObject node = SetupJson.Object(token, where);
-    SetupJson.RefuseUnknown(node, where, "of", "cell", "layout", "port", "beyond");
+    SetupJson.RefuseUnknown(
+      node,
+      where,
+      "of",
+      "cell",
+      "layout",
+      "port",
+      "beyond"
+    );
     string of = SetupJson.String(node["of"], where.In("of"));
-    string[] frames = [.. new[] { "cell", "layout", "port" }.Where(k => node[k] != null)];
+    string[] frames =
+    [
+      .. new[] { "cell", "layout", "port" }.Where(k => node[k] != null),
+    ];
     if (frames.Length > 1)
       throw where.Fail("takes one of \"cell\", \"layout\" and \"port\".");
-    Frame frame = frames.Length == 0
-      ? Frame.None
-      : frames[0] switch {
-        "cell" => Frame.Cell,
-        "layout" => Frame.Layout,
-        _ => Frame.Port,
-      };
-    Vec3i? offset = frames.Length == 0
-      ? null
-      : Triple(node[frames[0]], where.In(frames[0]));
+    Frame frame =
+      frames.Length == 0
+        ? Frame.None
+        : frames[0] switch {
+          "cell" => Frame.Cell,
+          "layout" => Frame.Layout,
+          _ => Frame.Port,
+        };
+    Vec3i? offset =
+      frames.Length == 0 ? null : Triple(node[frames[0]], where.In(frames[0]));
     BlockFacing? beyond = null;
     if (node["beyond"] != null) {
       string face = SetupJson.String(node["beyond"], where.In("beyond"));
       beyond = face is "n" or "e" or "s" or "w" or "u" or "d"
         ? ExOrientation.FacingFromSide(face)
-        : throw where.In("beyond").Fail($"\"{face}\" is not n, e, s, w, u or d.");
+        : throw where
+          .In("beyond")
+          .Fail($"\"{face}\" is not n, e, s, w, u or d.");
     }
     return new(null, of, frame, offset, beyond);
   }
@@ -77,7 +90,8 @@ internal sealed class SetupPosition {
   public BlockPos Resolve(ISetupWorld world) {
     if (_plain is { } p)
       return new BlockPos(p.X, p.Y, p.Z);
-    SetupPlacement placed = world.Placed(Of!)
+    SetupPlacement placed =
+      world.Placed(Of!)
       ?? throw new SetupFileException($"\"{Of}\" has placed nothing.");
     SetupFrame? frame = placed.Frame;
     if (_frame != Frame.None && frame == null)
@@ -93,9 +107,10 @@ internal sealed class SetupPosition {
     };
     if (_beyond == null)
       return cell;
-    BlockFacing face = frame == null
-      ? _beyond
-      : ExOrientation.RotateFacing(_beyond, frame.Angle);
+    BlockFacing face =
+      frame == null
+        ? _beyond
+        : ExOrientation.RotateFacing(_beyond, frame.Angle);
     return cell.AddCopy(face);
   }
 
@@ -107,11 +122,12 @@ internal sealed class SetupPosition {
   private BlockPos PortCell(SetupFrame frame) {
     BlockPos at = FootprintCell(frame);
     var cell = frame.Footprint.FirstOrDefault(c => c.Pos.Equals(at));
-    BlockFacing face = cell.PortFace == null
-      ? throw new SetupFileException(
-        $"\"{Of}\" declares no port at [{_offset!.X}, {_offset.Y}, {_offset.Z}]."
-      )
-      : ExOrientation.FacingFromSide(cell.PortFace)!;
+    BlockFacing face =
+      cell.PortFace == null
+        ? throw new SetupFileException(
+          $"\"{Of}\" declares no port at [{_offset!.X}, {_offset.Y}, {_offset.Z}]."
+        )
+        : ExOrientation.FacingFromSide(cell.PortFace)!;
     return at.AddCopy(face);
   }
 

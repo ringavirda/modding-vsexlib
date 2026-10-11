@@ -41,7 +41,11 @@ internal static class SetupDigits {
   /// <summary><paramref name="value"/> rounded to <paramref name="digits"/> places away from
   /// zero, invariant culture, negative zero written as zero.</summary>
   public static string Fixed(float value, int digits) {
-    double rounded = Math.Round((double)value, digits, MidpointRounding.AwayFromZero);
+    double rounded = Math.Round(
+      (double)value,
+      digits,
+      MidpointRounding.AwayFromZero
+    );
     if (rounded == 0d)
       rounded = 0d;
     return rounded.ToString("F" + digits, CultureInfo.InvariantCulture);
@@ -112,7 +116,13 @@ internal sealed class SetupRecording {
     string game,
     IReadOnlyList<(string Mod, string Version)> mods
   ) {
-    var recording = new SetupRecording(file.Setup, game, mods, file.Seconds, file.Steady);
+    var recording = new SetupRecording(
+      file.Setup,
+      game,
+      mods,
+      file.Seconds,
+      file.Steady
+    );
     foreach (RecordedRunSpec run in file.Record.Runs) {
       BlockPos at = run.At.Resolve(world);
       if (run.Entered == null)
@@ -121,7 +131,9 @@ internal sealed class SetupRecording {
         recording.MoltenRun(run.Id, at, run.Entered);
     }
     foreach (RecordedMachineSpec spec in file.Record.Machines) {
-      RecordedMachine machine = recording.Machine(spec.Id, spec.Code).State(spec.State);
+      RecordedMachine machine = recording
+        .Machine(spec.Id, spec.Code)
+        .State(spec.State);
       foreach (var (name, unit, reading) in spec.Series)
         machine.Value(name, unit, reading);
       foreach (var (name, unit, reading) in spec.Constants)
@@ -142,7 +154,11 @@ internal sealed class SetupRecording {
   /// written after the pipe runs; its flow is the <c>rise</c> of <paramref name="entered"/>, the
   /// units that have entered the run.</summary>
   public RecordedMoltenRun MoltenRun(string id, BlockPos pos, Reading entered) {
-    var run = new RecordedMoltenRun(id, pos, new ChangeReading(entered, rise: true));
+    var run = new RecordedMoltenRun(
+      id,
+      pos,
+      new ChangeReading(entered, rise: true)
+    );
     _moltenRuns.Add(run);
     return run;
   }
@@ -191,9 +207,13 @@ internal sealed class SetupRecording {
     if (!_started)
       throw new InvalidOperationException($"Sample({second}) before Start.");
     if (second != _samples)
-      throw new InvalidOperationException($"Sample({second}) after {_samples} samples.");
+      throw new InvalidOperationException(
+        $"Sample({second}) after {_samples} samples."
+      );
     if (second >= Seconds)
-      throw new InvalidOperationException($"Sample({second}) past {Seconds} s.");
+      throw new InvalidOperationException(
+        $"Sample({second}) past {Seconds} s."
+      );
     ctx.Phase = ReadingPhase.After;
     ctx.Second = second;
     foreach (RecordedRun run in _runs)
@@ -212,7 +232,8 @@ internal sealed class SetupRecording {
   /// a string for a word.</summary>
   /// <exception cref="SetupReadingException">No such series, or the second is not recorded.</exception>
   public object ValueAt(string id, string name, int second) {
-    Series series = Find(id, name)
+    Series series =
+      Find(id, name)
       ?? throw new SetupReadingException($"No series {id}.{name} is recorded.");
     if (second < 0 || second >= _samples)
       throw new SetupReadingException($"{id}.{name} has no second {second}.");
@@ -229,7 +250,9 @@ internal sealed class SetupRecording {
   }
 
   private Series? Find(string id, string name) =>
-    AllSeries().FirstOrDefault(s => s.Owner == id && s.Series.Name == name).Series;
+    AllSeries()
+      .FirstOrDefault(s => s.Owner == id && s.Series.Name == name)
+      .Series;
 
   /// <summary>The steady figure of every series, keyed <c>{id}.{series}</c>: a number is the
   /// time-weighted mean over the steady window, a word the one held longest in it (the
@@ -270,7 +293,9 @@ internal sealed class SetupRecording {
   public string Save(string folder, bool write) {
     string text = Text();
     if (Encoding.UTF8.GetByteCount(text) > MaxBytes)
-      throw new InvalidOperationException($"{_setup} recording is over {MaxBytes} bytes.");
+      throw new InvalidOperationException(
+        $"{_setup} recording is over {MaxBytes} bytes."
+      );
     string committed = Path.Combine(folder, _setup + ".json");
     string received = Path.Combine(folder, _setup + ".received.json");
     Directory.CreateDirectory(folder);
@@ -308,9 +333,17 @@ internal sealed class SetupRecording {
       if (a == b)
         continue;
       int at = 0;
-      while (a != null && b != null && at < a.Length && at < b.Length && a[at] == b[at])
+      while (
+        a != null
+        && b != null
+        && at < a.Length
+        && at < b.Length
+        && a[at] == b[at]
+      )
         at++;
-      differences.Add($"line {i + 1}: committed {Around(a, at)}, recorded {Around(b, at)}");
+      differences.Add(
+        $"line {i + 1}: committed {Around(a, at)}, recorded {Around(b, at)}"
+      );
     }
     return differences;
   }
@@ -321,12 +354,16 @@ internal sealed class SetupRecording {
       return "absent";
     int from = Math.Max(0, at - 40);
     int to = Math.Min(line.Length, at + 40);
-    return (from > 0 ? "..." : "") + line[from..to] + (to < line.Length ? "..." : "");
+    return (from > 0 ? "..." : "")
+      + line[from..to]
+      + (to < line.Length ? "..." : "");
   }
 
   private void RequireComplete() {
     if (_samples != Seconds)
-      throw new InvalidOperationException($"{_setup} has {_samples} of {Seconds} samples.");
+      throw new InvalidOperationException(
+        $"{_setup} has {_samples} of {Seconds} samples."
+      );
   }
 
   private IEnumerable<(string Owner, Series Series)> AllSeries() =>
@@ -343,8 +380,14 @@ internal sealed class SetupRecording {
     text.Append("{\"schema\":1,\"setup\":").Append(Quote(_setup));
     text.Append(",\"game\":").Append(Quote(_game));
     text.Append(",\"mods\":{")
-      .Append(string.Join(",", _mods.Select(m => Quote(m.Mod) + ":" + Quote(m.Version))));
-    text.Append("},\"seconds\":").Append(Seconds.ToString(CultureInfo.InvariantCulture));
+      .Append(
+        string.Join(
+          ",",
+          _mods.Select(m => Quote(m.Mod) + ":" + Quote(m.Version))
+        )
+      );
+    text.Append("},\"seconds\":")
+      .Append(Seconds.ToString(CultureInfo.InvariantCulture));
     text.Append(",\"steady\":[")
       .Append(SteadyFrom.ToString(CultureInfo.InvariantCulture))
       .Append(',')
@@ -355,12 +398,17 @@ internal sealed class SetupRecording {
         ",\n",
         _runs
           .Select(r => Entry(r.Id, r.Json(SteadyFrom, SteadyTo)))
-          .Concat(_moltenRuns.Select(r => Entry(r.Id, r.Json(SteadyFrom, SteadyTo))))
+          .Concat(
+            _moltenRuns.Select(r => Entry(r.Id, r.Json(SteadyFrom, SteadyTo)))
+          )
       )
     );
     text.Append("},\n\"machines\":{");
     text.Append(
-      string.Join(",\n", _machines.Select(m => Entry(m.Id, m.Json(SteadyFrom, SteadyTo))))
+      string.Join(
+        ",\n",
+        _machines.Select(m => Entry(m.Id, m.Json(SteadyFrom, SteadyTo)))
+      )
     );
     text.Append("}}\n");
     return text.ToString();
@@ -404,25 +452,41 @@ internal sealed class SetupRecording {
     );
     foreach (JsonProperty run in root.GetProperty("runs").EnumerateObject()) {
       JsonElement at = run.Value.GetProperty("at");
-      var pos = new BlockPos(at[0].GetInt32(), at[1].GetInt32(), at[2].GetInt32());
-      bool molten = run.Value.GetProperty("units").GetProperty("flow").GetString() == "u/s";
+      var pos = new BlockPos(
+        at[0].GetInt32(),
+        at[1].GetInt32(),
+        at[2].GetInt32()
+      );
+      bool molten =
+        run.Value.GetProperty("units").GetProperty("flow").GetString() == "u/s";
       IEnumerable<Series> all = molten
         ? recording.MoltenRun(run.Name, pos, new ValueReading(0f)).All
         : recording.Run(run.Name, pos).All;
       ReadSeries(run.Value.GetProperty("series"), all);
     }
-    foreach (JsonProperty entry in root.GetProperty("machines").EnumerateObject()) {
+    foreach (
+      JsonProperty entry in root.GetProperty("machines").EnumerateObject()
+    ) {
       RecordedMachine machine = recording.Machine(
         entry.Name,
         entry.Value.GetProperty("code").GetString()!
       );
-      foreach (JsonProperty unit in entry.Value.GetProperty("units").EnumerateObject())
+      foreach (
+        JsonProperty unit in entry.Value.GetProperty("units").EnumerateObject()
+      )
         machine.Value(unit.Name, unit.Value.GetString()!, new ValueReading(0f));
-      foreach (JsonProperty constant in entry.Value.GetProperty("constants").EnumerateObject())
+      foreach (
+        JsonProperty constant in entry
+          .Value.GetProperty("constants")
+          .EnumerateObject()
+      )
         machine.Constant(
           constant.Name,
           constant.Value[1].GetString()!,
-          float.Parse(constant.Value[0].GetRawText(), CultureInfo.InvariantCulture)
+          float.Parse(
+            constant.Value[0].GetRawText(),
+            CultureInfo.InvariantCulture
+          )
         );
       ReadSeries(entry.Value.GetProperty("series"), machine.All);
     }
@@ -444,7 +508,8 @@ internal sealed class SetupRecording {
 
   /// <summary>One recorded quantity: its change list and how it is rounded.</summary>
   internal sealed class Series {
-    private readonly List<(int Second, string Text, double Number)> _changes = [];
+    private readonly List<(int Second, string Text, double Number)> _changes =
+    [];
     private readonly bool _word;
     private readonly int _digits;
 
@@ -464,12 +529,15 @@ internal sealed class SetupRecording {
 
     public static Series Word(string name) => new(name, null, 0, word: true);
 
-    public void Add(int second, float value) => Add(second, SetupDigits.Fixed(value, _digits));
+    public void Add(int second, float value) =>
+      Add(second, SetupDigits.Fixed(value, _digits));
 
     public void Add(int second, string text) {
       if (_changes.Count > 0 && _changes[^1].Text == text)
         return;
-      double number = _word ? 0d : double.Parse(text, CultureInfo.InvariantCulture);
+      double number = _word
+        ? 0d
+        : double.Parse(text, CultureInfo.InvariantCulture);
       _changes.Add((second, text, number));
     }
 
@@ -497,7 +565,9 @@ internal sealed class SetupRecording {
         .Select(t => At(t).Text)
         .GroupBy(w => w)
         .OrderByDescending(g => g.Count())
-        .ThenBy(g => Enumerable.Range(from, to - from).First(t => At(t).Text == g.Key))
+        .ThenBy(g =>
+          Enumerable.Range(from, to - from).First(t => At(t).Text == g.Key)
+        )
         .First()
         .Key;
 
@@ -543,14 +613,26 @@ internal sealed class SetupRecording {
   internal sealed class RecordedRun {
     private readonly BlockPos _pos;
     private readonly Series _medium = Series.Word("medium");
-    private readonly Series _flow = Series.Number("flow", "l/s", SetupDigits.Volume);
-    private readonly Series _pressure = Series.Number("pressure", "atm", SetupDigits.Pressure);
+    private readonly Series _flow = Series.Number(
+      "flow",
+      "l/s",
+      SetupDigits.Volume
+    );
+    private readonly Series _pressure = Series.Number(
+      "pressure",
+      "atm",
+      SetupDigits.Pressure
+    );
     private readonly Series _temperature = Series.Number(
       "temperature",
       "C",
       SetupDigits.Temperature
     );
-    private readonly Series _volume = Series.Number("volume", "L", SetupDigits.Volume);
+    private readonly Series _volume = Series.Number(
+      "volume",
+      "L",
+      SetupDigits.Volume
+    );
 
     public string Id { get; }
 
@@ -559,20 +641,33 @@ internal sealed class SetupRecording {
       Id = id;
     }
 
-    public IEnumerable<Series> All => [_medium, _flow, _pressure, _temperature, _volume];
+    public IEnumerable<Series> All =>
+      [_medium, _flow, _pressure, _temperature, _volume];
 
     public void RequireNetwork(ISetupWorld world) {
       if (world.NetworkAt(_pos, "pipe") == null)
-        throw new SetupReadingException($"Run {Id} at {_pos} is on no pipe network.");
+        throw new SetupReadingException(
+          $"Run {Id} at {_pos} is on no pipe network."
+        );
     }
 
     public void Sample(int second, ISetupWorld world) {
       object? network = world.NetworkAt(_pos, "pipe");
-      object? state = network == null ? null : SetupMembers.Walk(network, ["State"], null);
-      _medium.Add(second, state == null ? "" : (string)Member(state, "MediumType"));
+      object? state =
+        network == null ? null : SetupMembers.Walk(network, ["State"], null);
+      _medium.Add(
+        second,
+        state == null ? "" : (string)Member(state, "MediumType")
+      );
       _flow.Add(second, state == null ? 0f : (float)Member(state, "FlowRate"));
-      _pressure.Add(second, state == null ? 0f : (float)Member(state, "Pressure"));
-      _temperature.Add(second, state == null ? 0f : (float)Member(state, "Temperature"));
+      _pressure.Add(
+        second,
+        state == null ? 0f : (float)Member(state, "Pressure")
+      );
+      _temperature.Add(
+        second,
+        state == null ? 0f : (float)Member(state, "Temperature")
+      );
       _volume.Add(second, state == null ? 0f : (float)Member(state, "Volume"));
     }
 
@@ -583,11 +678,17 @@ internal sealed class SetupRecording {
       "{\"at\":["
       + $"{_pos.X},{_pos.Y},{_pos.Z}"
       + "],\"units\":{"
-      + string.Join(",", All.Skip(1).Select(s => Quote(s.Name) + ":" + Quote(s.Unit!)))
+      + string.Join(
+        ",",
+        All.Skip(1).Select(s => Quote(s.Name) + ":" + Quote(s.Unit!))
+      )
       + "},\n\"series\":{"
       + string.Join(",\n", All.Select(s => s.Json()))
       + "},\n\"steady\":{"
-      + string.Join(",", All.Select(s => Quote(s.Name) + ":" + s.SteadyJson(from, to)))
+      + string.Join(
+        ",",
+        All.Select(s => Quote(s.Name) + ":" + s.SteadyJson(from, to))
+      )
       + "}}";
   }
 
@@ -599,13 +700,21 @@ internal sealed class SetupRecording {
   internal sealed class RecordedMoltenRun {
     private readonly BlockPos _pos;
     private readonly Series _medium = Series.Word("medium");
-    private readonly Series _flow = Series.Number("flow", "u/s", SetupDigits.Volume);
+    private readonly Series _flow = Series.Number(
+      "flow",
+      "u/s",
+      SetupDigits.Volume
+    );
     private readonly Series _temperature = Series.Number(
       "temperature",
       "C",
       SetupDigits.Temperature
     );
-    private readonly Series _volume = Series.Number("volume", "u", SetupDigits.Volume);
+    private readonly Series _volume = Series.Number(
+      "volume",
+      "u",
+      SetupDigits.Volume
+    );
 
     public string Id { get; }
 
@@ -622,25 +731,39 @@ internal sealed class SetupRecording {
 
     public void RequireNetwork(ISetupWorld world) {
       if (world.NetworkAt(_pos, "molten") == null)
-        throw new SetupReadingException($"Run {Id} at {_pos} is on no molten network.");
+        throw new SetupReadingException(
+          $"Run {Id} at {_pos} is on no molten network."
+        );
     }
 
     public void Sample(int second, ReadingContext ctx) {
-      List<MoltenCellReading> holding = [.. Cells(ctx.World).Where(c => c.Amount > 0)];
+      List<MoltenCellReading> holding =
+      [
+        .. Cells(ctx.World).Where(c => c.Amount > 0),
+      ];
       string metal = holding.Count == 0 ? "" : holding[0].Metal;
       _medium.Add(
         second,
-        metal.Length == 0 ? "" : "molten-" + new AssetLocation(metal).Path.Replace("ingot-", "")
+        metal.Length == 0
+          ? ""
+          : "molten-" + new AssetLocation(metal).Path.Replace("ingot-", "")
       );
       _flow.Add(second, Entered.Number(ctx));
-      _temperature.Add(second, holding.Count == 0 ? 0f : holding.Max(c => c.Temperature));
+      _temperature.Add(
+        second,
+        holding.Count == 0 ? 0f : holding.Max(c => c.Temperature)
+      );
       _volume.Add(second, holding.Sum(c => c.Amount));
     }
 
     /// <summary>The run's cells, nearest the recorded cell first.</summary>
     private IEnumerable<MoltenCellReading> Cells(ISetupWorld world) =>
       ((world.NetworkAt(_pos, "molten") as BlockNetwork)?.Nodes ?? [])
-        .OrderBy(p => Math.Abs(p.X - _pos.X) + Math.Abs(p.Y - _pos.Y) + Math.Abs(p.Z - _pos.Z))
+        .OrderBy(p =>
+          Math.Abs(p.X - _pos.X)
+          + Math.Abs(p.Y - _pos.Y)
+          + Math.Abs(p.Z - _pos.Z)
+        )
         .ThenBy(p => (p.X, p.Y, p.Z))
         .Select(world.MoltenCellAt)
         .OfType<MoltenCellReading>();
@@ -649,11 +772,17 @@ internal sealed class SetupRecording {
       "{\"at\":["
       + $"{_pos.X},{_pos.Y},{_pos.Z}"
       + "],\"units\":{"
-      + string.Join(",", All.Skip(1).Select(s => Quote(s.Name) + ":" + Quote(s.Unit!)))
+      + string.Join(
+        ",",
+        All.Skip(1).Select(s => Quote(s.Name) + ":" + Quote(s.Unit!))
+      )
       + "},\n\"series\":{"
       + string.Join(",\n", All.Select(s => s.Json()))
       + "},\n\"steady\":{"
-      + string.Join(",", All.Select(s => Quote(s.Name) + ":" + s.SteadyJson(from, to)))
+      + string.Join(
+        ",",
+        All.Select(s => Quote(s.Name) + ":" + s.SteadyJson(from, to))
+      )
       + "}}";
   }
 
@@ -661,7 +790,11 @@ internal sealed class SetupRecording {
   internal sealed class RecordedMachine {
     private readonly Series _state = Series.Word("state");
     private readonly List<(Series Series, Reading Read)> _values = [];
-    private readonly List<(string Name, string Unit, Reading Read)> _constants = [];
+    private readonly List<(
+      string Name,
+      string Unit,
+      Reading Read
+    )> _constants = [];
     private readonly List<float> _constantValues = [];
     private Reading? _readState;
 
@@ -674,7 +807,8 @@ internal sealed class SetupRecording {
       Code = code;
     }
 
-    public IEnumerable<Series> All => new[] { _state }.Concat(_values.Select(v => v.Series));
+    public IEnumerable<Series> All =>
+      new[] { _state }.Concat(_values.Select(v => v.Series));
 
     public IEnumerable<Reading> Readings =>
       new[] { _readState }
@@ -717,7 +851,10 @@ internal sealed class SetupRecording {
       _state.Add(
         second,
         SetupValues.Text(
-          (_readState ?? throw new InvalidOperationException($"{Id} has no state.")).Read(ctx)
+          (
+            _readState
+            ?? throw new InvalidOperationException($"{Id} has no state.")
+          ).Read(ctx)
         )
       );
       foreach (var (series, read) in _values)
@@ -728,11 +865,17 @@ internal sealed class SetupRecording {
       "{\"code\":"
       + Quote(Code)
       + ",\"units\":{"
-      + string.Join(",", _values.Select(v => Quote(v.Series.Name) + ":" + Quote(v.Series.Unit!)))
+      + string.Join(
+        ",",
+        _values.Select(v => Quote(v.Series.Name) + ":" + Quote(v.Series.Unit!))
+      )
       + "},\n\"series\":{"
       + string.Join(",\n", All.Select(s => s.Json()))
       + "},\n\"steady\":{"
-      + string.Join(",", All.Select(s => Quote(s.Name) + ":" + s.SteadyJson(from, to)))
+      + string.Join(
+        ",",
+        All.Select(s => Quote(s.Name) + ":" + s.SteadyJson(from, to))
+      )
       + "},\n\"constants\":{"
       + string.Join(
         ",",

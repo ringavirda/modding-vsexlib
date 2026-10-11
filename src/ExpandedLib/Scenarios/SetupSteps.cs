@@ -8,14 +8,18 @@ namespace ExpandedLib.Scenarios;
 /// resolved once every declaration is known.</summary>
 internal sealed class SetupReferences {
   private readonly List<(string Id, SetupJson.Where Where)> _placements = [];
-  private readonly List<(SeriesReading Reading, SetupJson.Where Where)> _series =
-    [];
+  private readonly List<(
+    SeriesReading Reading,
+    SetupJson.Where Where
+  )> _series = [];
 
   public IReadOnlyList<(string Id, SetupJson.Where Where)> Placements =>
     _placements;
 
-  public IReadOnlyList<(SeriesReading Reading, SetupJson.Where Where)> SeriesNamed =>
-    _series;
+  public IReadOnlyList<(
+    SeriesReading Reading,
+    SetupJson.Where Where
+  )> SeriesNamed => _series;
 
   public void Position(SetupPosition position, SetupJson.Where where) {
     if (position.Of != null)
@@ -64,7 +68,17 @@ internal sealed class SetupStep(
 /// <summary>Parses steps (scenarios.md, Steps, with the kinds setups.md adds).</summary>
 internal static class SetupSteps {
   private static readonly Dictionary<string, string[]> Keys = new() {
-    ["place"] = ["id", "code", "at", "by", "facing", "complete", "materials", "tree"],
+    ["place"] =
+    [
+      "id",
+      "code",
+      "at",
+      "by",
+      "facing",
+      "complete",
+      "materials",
+      "tree",
+    ],
     ["complete"] = ["of", "to", "materials"],
     ["run"] = ["id", "code", "from", "via", "to", "family", "open"],
     ["paste"] = ["file", "at", "angle", "origin"],
@@ -142,7 +156,10 @@ internal static class SetupSteps {
     params string[] refused
   ) {
     JObject node = SetupJson.Object(token, where);
-    string[] kinds = [.. node.Properties().Select(p => p.Name).Where(Keys.ContainsKey)];
+    string[] kinds =
+    [
+      .. node.Properties().Select(p => p.Name).Where(Keys.ContainsKey),
+    ];
     if (kinds.Length != 1)
       throw where.Fail(
         kinds.Length == 0 ? "names no step kind." : "names two step kinds."
@@ -167,7 +184,8 @@ internal static class SetupSteps {
     if (o["id"] != null) {
       id = SetupJson.String(o["id"], at.In("id"));
       if (!SetupJson.IsId(id))
-        throw at.In("id").Fail($"\"{id}\" is not lower case words joined by -.");
+        throw at.In("id")
+          .Fail($"\"{id}\" is not lower case words joined by -.");
     }
     if (kind == "set" && (o["tree"] == null) == (o["member"] == null))
       throw at.Fail("takes one of \"tree\" and \"member\".");
@@ -177,26 +195,47 @@ internal static class SetupSteps {
       references.Placement(SetupJson.String(o["of"], at.In("of")), at.In("of"));
     foreach (string key in new[] { "at", "from", "to", "same" })
       if (o[key] != null)
-        references.Position(SetupPosition.Parse(o[key], at.In(key)), at.In(key));
+        references.Position(
+          SetupPosition.Parse(o[key], at.In(key)),
+          at.In(key)
+        );
     if (o["via"] is { } via)
-      foreach (var (v, i) in SetupJson.Array(via, at.In("via")).Select((v, i) => (v, i)))
+      foreach (
+        var (v, i) in SetupJson
+          .Array(via, at.In("via"))
+          .Select((v, i) => (v, i))
+      )
         references.Position(
           SetupPosition.Parse(v, at.In("via").At(i)),
           at.In("via").At(i)
         );
     if (kind == "run" && o["open"] is { } open)
-      foreach (var (v, i) in SetupJson.Array(open, at.In("open")).Select((v, i) => (v, i))) {
+      foreach (
+        var (v, i) in SetupJson
+          .Array(open, at.In("open"))
+          .Select((v, i) => (v, i))
+      ) {
         SetupJson.Where w = at.In("open").At(i);
         JObject face = SetupJson.Object(v, w);
         SetupJson.RefuseUnknown(face, w, "at", "face");
-        references.Position(SetupPosition.Parse(face["at"], w.In("at")), w.In("at"));
+        references.Position(
+          SetupPosition.Parse(face["at"], w.In("at")),
+          w.In("at")
+        );
         SetupJson.String(face["face"], w.In("face"));
       }
-    var scope = new ReadingScope(null, InRecord: false, InCheck: false, references);
+    var scope = new ReadingScope(
+      null,
+      InRecord: false,
+      InCheck: false,
+      references
+    );
     var tests = new List<ReadingTest>();
     if (kind is "wait" or "repeat") {
       if (o["until"] != null)
-        tests.AddRange(ReadingTests.ParseList(o["until"], at.In("until"), scope));
+        tests.AddRange(
+          ReadingTests.ParseList(o["until"], at.In("until"), scope)
+        );
       if (o["hold"] != null)
         tests.AddRange(ReadingTests.ParseList(o["hold"], at.In("hold"), scope));
     }
@@ -208,9 +247,10 @@ internal static class SetupSteps {
       && o["drops"] == null
     )
       tests.Add(ReadingTests.Parse(o, at, scope));
-    IReadOnlyList<SetupStep> steps = kind == "repeat"
-      ? ParseList(o["steps"], at.In("steps"), references, refused)
-      : [];
+    IReadOnlyList<SetupStep> steps =
+      kind == "repeat"
+        ? ParseList(o["steps"], at.In("steps"), references, refused)
+        : [];
     return new SetupStep(kind, o, id, where.Path, steps, tests);
   }
 }

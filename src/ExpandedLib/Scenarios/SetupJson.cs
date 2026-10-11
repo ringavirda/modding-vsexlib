@@ -53,7 +53,9 @@ internal static class SetupJson {
     public Where At(int index) => new(File, $"{Path}[{index}]");
 
     public SetupFileException Fail(string message) =>
-      new(Path.Length == 0 ? $"{File}: {message}" : $"{File}: {Path}: {message}");
+      new(
+        Path.Length == 0 ? $"{File}: {message}" : $"{File}: {Path}: {message}"
+      );
 
     public override string ToString() => Path;
   }

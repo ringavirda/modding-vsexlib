@@ -21,7 +21,8 @@ internal static class SetupMods {
     string exlibVersion
   ) {
     SetupModVersions[] each = [.. mods.Select(versions)];
-    string exlib = each.Select(v => v.Exlib).FirstOrDefault(v => v != null) ?? exlibVersion;
+    string exlib =
+      each.Select(v => v.Exlib).FirstOrDefault(v => v != null) ?? exlibVersion;
     return [("exlib", exlib), .. mods.Select((m, i) => (m, each[i].Version))];
   }
 
@@ -30,10 +31,12 @@ internal static class SetupMods {
   public static SetupModVersions FromModInfo(string json) {
     JObject node = JObject.Parse(json);
     string version =
-      node.GetValue("version", StringComparison.OrdinalIgnoreCase)?.Value<string>()
+      node.GetValue("version", StringComparison.OrdinalIgnoreCase)
+        ?.Value<string>()
       ?? throw new InvalidOperationException("The modinfo names no version.");
     string? exlib = (
-      node.GetValue("dependencies", StringComparison.OrdinalIgnoreCase) as JObject
+      node.GetValue("dependencies", StringComparison.OrdinalIgnoreCase)
+      as JObject
     )
       ?.GetValue("exlib", StringComparison.OrdinalIgnoreCase)
       ?.Value<string>();

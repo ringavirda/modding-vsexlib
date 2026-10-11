@@ -31,7 +31,10 @@ public class SetupFileModelTests {
       }
       """
     );
-    root.Merge(JObject.Parse(changes), new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
+    root.Merge(
+      JObject.Parse(changes),
+      new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace }
+    );
     return root.ToString();
   }
 
@@ -57,7 +60,10 @@ public class SetupFileModelTests {
     Assert.True(model.SteppedClock);
     Assert.Equal(225d, model.Timeout);
     Assert.Equal("game:stone", model.Placements["boiler"]);
-    Assert.Equal(new[] { "heat" }, model.Record.Machines[0].Series.Select(s => s.Name));
+    Assert.Equal(
+      new[] { "heat" },
+      model.Record.Machines[0].Series.Select(s => s.Name)
+    );
   }
 
   // Fails when the machine's code is not taken from the step that places it.
@@ -69,7 +75,9 @@ public class SetupFileModelTests {
   // Fails when a variant name holding a dot is refused, as the spec's water-gate-1.5 does.
   [Fact]
   public void A_variant_name_may_hold_a_dot() {
-    SetupFileModel model = Load("""{ "variants": { "water-gate-1.5": { "seconds": 50 } } }""");
+    SetupFileModel model = Load(
+      """{ "variants": { "water-gate-1.5": { "seconds": 50 } } }"""
+    );
 
     Assert.Equal("water-gate-1.5", model.Variants.Single().Name);
   }
@@ -77,11 +85,16 @@ public class SetupFileModelTests {
   // Fails when a comment or an unquoted key is refused, or a key written twice is read.
   [Fact]
   public void A_file_reads_as_an_asset_reads_and_refuses_a_key_twice() {
-    string text = Text().Replace("{", "{ // a comment\n").Replace("\"seconds\"", "seconds");
+    string text = Text()
+      .Replace("{", "{ // a comment\n")
+      .Replace("\"seconds\"", "seconds");
 
     Assert.Equal(100, SetupFileModel.Parse(text, File).Seconds);
     var e = Assert.Throws<SetupFileException>(() =>
-      SetupFileModel.Parse(text.Replace("seconds:", "seconds: 5, seconds:"), File)
+      SetupFileModel.Parse(
+        text.Replace("seconds:", "seconds: 5, seconds:"),
+        File
+      )
     );
     Assert.StartsWith("boiler.json: ", e.Message);
     Assert.Contains("seconds", e.Message);
@@ -96,14 +109,19 @@ public class SetupFileModelTests {
   public void An_unknown_step_key_names_the_file_and_the_step() {
     Assert.Equal(
       "boiler.json: steps[0] (place): unknown key \"cod\".",
-      Refused("""{ "steps": [{ "place": { "code": "game:stone", "cod": 1, "at": [0, 0, 0] } }] }""")
+      Refused(
+        """{ "steps": [{ "place": { "code": "game:stone", "cod": 1, "at": [0, 0, 0] } }] }"""
+      )
     );
   }
 
   // Fails when an unknown root key passes.
   [Fact]
   public void An_unknown_root_key_is_refused() {
-    Assert.Equal("boiler.json: unknown key \"secs\".", Refused("""{ "secs": 5 }"""));
+    Assert.Equal(
+      "boiler.json: unknown key \"secs\".",
+      Refused("""{ "secs": 5 }""")
+    );
   }
 
   // Fails when a scenario file's cases or matrix is read as part of a setup.
@@ -191,7 +209,9 @@ public class SetupFileModelTests {
   public void An_intact_naming_no_run_is_refused() {
     Assert.Equal(
       "boiler.json: checks: check \"c\": \"boiler\" is no run.",
-      Refused("""{ "checks": [{ "id": "c", "says": "s", "intact": ["boiler"] }] }""")
+      Refused(
+        """{ "checks": [{ "id": "c", "says": "s", "intact": ["boiler"] }] }"""
+      )
     );
   }
 

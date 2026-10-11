@@ -48,11 +48,9 @@ internal sealed class CompareTest(
   }
 
   private static bool Same(object value, object expected) =>
-    value is float a && expected is float b
-      ? Math.Abs(a - b) <= Tolerance
-      : value is bool p && expected is bool q
-        ? p == q
-        : SetupValues.Text(value) == SetupValues.Text(expected);
+    value is float a && expected is float b ? Math.Abs(a - b) <= Tolerance
+    : value is bool p && expected is bool q ? p == q
+    : SetupValues.Text(value) == SetupValues.Text(expected);
 
   public override string Describe(ReadingContext ctx) =>
     $"{subject.Describe} = {SetupValues.Text(subject.Read(ctx))}";
@@ -92,7 +90,13 @@ internal sealed class CombinedTest(string op, IReadOnlyList<ReadingTest> tests)
 
 /// <summary>Parses tests (setups.md, Readings): a reading's keys beside its test keys.</summary>
 internal static class ReadingTests {
-  private static readonly string[] TestKeys = ["equals", "matches", "min", "max"];
+  private static readonly string[] TestKeys =
+  [
+    "equals",
+    "matches",
+    "min",
+    "max",
+  ];
 
   /// <exception cref="SetupFileException">The test is malformed.</exception>
   public static ReadingTest Parse(
