@@ -10,10 +10,12 @@ namespace ExpandedLib.Testing;
 /// A setup file read and validated: its keys, ids, layout, steps, readings and checks (setups.md,
 /// The file). <see cref="SetupScene.Build"/> builds it into a world.
 /// </summary>
-public sealed class SetupFile {
+public sealed class SetupFile
+{
   internal SetupFileModel Model { get; }
 
-  private SetupFile(SetupFileModel model) {
+  private SetupFile(SetupFileModel model)
+  {
     Model = model;
   }
 
@@ -36,10 +38,14 @@ public sealed class SetupFile {
   /// <exception cref="InvalidOperationException">The file is malformed, names an unknown key, breaks
   /// a rule of setups.md (What the reader refuses) or names an id nobody declares; the message names
   /// the file, where and the key.</exception>
-  public static SetupFile Parse(string text, string name) {
-    try {
+  public static SetupFile Parse(string text, string name)
+  {
+    try
+    {
       return new SetupFile(SetupFileModel.Parse(text, name));
-    } catch (SetupFileException e) {
+    }
+    catch (SetupFileException e)
+    {
       throw new InvalidOperationException(e.Message, e);
     }
   }

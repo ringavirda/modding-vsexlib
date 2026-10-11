@@ -9,7 +9,8 @@ namespace ExpandedLib.Testing;
 /// the fake world lacks, an engine path no double reaches (setups.md, Placers and stand-ins).
 /// Registered with <see cref="SetupPlacers.Register"/> before the first case.
 /// </summary>
-public interface ISetupPlacer {
+public interface ISetupPlacer
+{
   /// <summary>Whether this placer places <paramref name="code"/>; the first registered placer that
   /// takes a code places it alone.</summary>
   /// <param name="code">A block code, such as <c>ppex:boilercornish-n</c>.</param>

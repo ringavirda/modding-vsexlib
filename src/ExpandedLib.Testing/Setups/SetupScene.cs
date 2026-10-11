@@ -19,7 +19,8 @@ namespace ExpandedLib.Testing;
 /// setups.md (Placement kinds), and the mechanical lines joined. Running, sampling and checking
 /// belong to the steps and readings this class does not build yet.
 /// </summary>
-public sealed partial class SetupScene : IDisposable {
+public sealed partial class SetupScene : IDisposable
+{
   private static readonly string[] Unbuilt =
   [
     "run",
@@ -34,7 +35,8 @@ public sealed partial class SetupScene : IDisposable {
     "repeat",
   ];
 
-  private static readonly Dictionary<string, string> Lacking = new() {
+  private static readonly Dictionary<string, string> Lacking = new()
+  {
     ["paste"] = "the fake world has no structure files to paste",
     ["power"] = "the fake world has no creative power source",
     ["source"] = "the fake world has no creative medium source",
@@ -49,7 +51,8 @@ public sealed partial class SetupScene : IDisposable {
   private readonly HashSet<int> _ready = [];
   private readonly List<string> _standIns = [];
 
-  private SetupScene(SetupFile file) {
+  private SetupScene(SetupFile file)
+  {
     _file = file;
     View = new SetupWorldView(World, _placed);
   }
@@ -105,7 +108,8 @@ public sealed partial class SetupScene : IDisposable {
   /// run, or one not built yet; a code the load did not register; a cell that is not air; a run cell
   /// no block of its family fits, or two fit; a drawn structure that disagrees with its cells; a
   /// <c>complete</c> that does not complete; the message names the file and where.</exception>
-  public static SetupScene Build(SetupFile file, IReadOnlyList<string> modPaths) {
+  public static SetupScene Build(SetupFile file, IReadOnlyList<string> modPaths)
+  {
     ArgumentNullException.ThrowIfNull(file);
     ArgumentNullException.ThrowIfNull(modPaths);
     if (modPaths.Count != file.Mods.Count)
@@ -114,17 +118,22 @@ public sealed partial class SetupScene : IDisposable {
         nameof(modPaths)
       );
     var scene = new SetupScene(file);
-    try {
+    try
+    {
       scene.Refuse();
       scene.Load(modPaths);
       scene.PlaceLayout();
       scene.RunSteps();
       SetupMechanical.Join(scene.World);
       scene.Scene.Build();
-    } catch (SetupFileException e) {
+    }
+    catch (SetupFileException e)
+    {
       scene.Dispose();
       throw new InvalidOperationException(e.Message, e);
-    } catch {
+    }
+    catch
+    {
       scene.Dispose();
       throw;
     }
@@ -136,12 +145,15 @@ public sealed partial class SetupScene : IDisposable {
   private InvalidOperationException Fail(string where, string message) =>
     new($"{_file.Name}: {where}: {message}");
 
-  private static string Describe(BlockPos pos) => $"({pos.X}, {pos.Y}, {pos.Z})";
+  private static string Describe(BlockPos pos) =>
+    $"({pos.X}, {pos.Y}, {pos.Z})";
 
   #region Refusals
 
-  private void Refuse() {
-    foreach (SetupStep step in Model.Steps.SelectMany(s => s.All())) {
+  private void Refuse()
+  {
+    foreach (SetupStep step in Model.Steps.SelectMany(s => s.All()))
+    {
       JToken body = step.Body;
       if (Lacking.TryGetValue(step.Kind, out string? lacks))
         throw Fail(step.Path, $"\"{step.Kind}\" is refused: {lacks}.");
@@ -150,7 +162,8 @@ public sealed partial class SetupScene : IDisposable {
           step.Path,
           $"\"{step.Kind}\" is not built by the harness reader yet."
         );
-      switch (step.Kind) {
+      switch (step.Kind)
+      {
         case "place":
           if ((string?)body["by"] == "player")
             throw Fail(
@@ -181,8 +194,10 @@ public sealed partial class SetupScene : IDisposable {
           );
   }
 
-  private void RefuseKeys(string where, JToken body, params string[] keys) {
-    foreach (string key in keys) {
+  private void RefuseKeys(string where, JToken body, params string[] keys)
+  {
+    foreach (string key in keys)
+    {
       JToken? value = body[key];
       if (value == null)
         continue;
@@ -201,9 +216,11 @@ public sealed partial class SetupScene : IDisposable {
 
   #region Loading
 
-  private void Load(IReadOnlyList<string> modPaths) {
+  private void Load(IReadOnlyList<string> modPaths)
+  {
     World.LoadAssets(modPaths);
-    if (World.Mods.GetModSystem<MechanicalPowerMod>() == null) {
+    if (World.Mods.GetModSystem<MechanicalPowerMod>() == null)
+    {
       var power = new MechanicalPowerMod();
       World.Mods.Register(power);
       power.Start(World.Api);
@@ -213,14 +230,16 @@ public sealed partial class SetupScene : IDisposable {
         Ready(block);
   }
 
-  private void Ready(Block block) {
+  private void Ready(Block block)
+  {
     if (_ready.Add(block.BlockId))
       StructureBreaks.Ready(World, block);
   }
 
-  private Block Resolve(string code, string where) {
+  private Block Resolve(string code, string where)
+  {
     Block? block = World.World.GetBlock(new AssetLocation(code));
-    if (block == null || block.Id == 0)
+    if (block == null)
       throw Fail(where, $"\"{code}\" is not registered by the load.");
     return block;
   }
@@ -229,15 +248,22 @@ public sealed partial class SetupScene : IDisposable {
 
   #region Placing
 
-  private void Put(Block block, BlockPos pos, string where) {
+  private void Put(Block block, BlockPos pos, string where)
+  {
     string code = block.Code.ToString();
     BlockPos at = pos.Copy();
     HashSet<long> before = World.TickListenerIds();
-    if (SetupPlacers.For(code) is { } placer) {
-      if (placer.StandIn(code) is { } text && !_standIns.Any(s => s.StartsWith($"stand-in {code}: ")))
+    if (SetupPlacers.For(code) is { } placer)
+    {
+      if (
+        placer.StandIn(code) is { } text
+        && !_standIns.Any(s => s.StartsWith($"stand-in {code}: "))
+      )
         _standIns.Add($"stand-in {code}: {text}");
       placer.Place(this, block, at);
-    } else {
+    }
+    else
+    {
       Ready(block);
       Block held = World.GetBlock(at);
       if (held.Id != 0)
@@ -263,7 +289,8 @@ public sealed partial class SetupScene : IDisposable {
   }
 
   private static int AngleOf(Block block) =>
-    block switch {
+    block switch
+    {
       BlockFilledMegastructure mega => mega.StructureAngle,
       IFillerHost => ExOrientation.AngleFromSide(
         block.Variant?["side"] ?? block.Variant?["orientation"]
@@ -271,9 +298,11 @@ public sealed partial class SetupScene : IDisposable {
       _ => 0,
     };
 
-  private SetupFrame? FrameOf(Block block, BlockPos pos) {
+  private SetupFrame? FrameOf(Block block, BlockPos pos)
+  {
     BlockEntity? be = World.GetBlockEntity(pos);
-    if (block is IFillerHost host) {
+    if (block is IFillerHost host)
+    {
       int angle = AngleOf(block);
       return new SetupFrame(
         pos.Copy(),
@@ -295,17 +324,28 @@ public sealed partial class SetupScene : IDisposable {
   }
 
   private void Record(string id, BlockPos pos, Block block) =>
-    _placed[id] = new SetupPlacement(pos.Copy(), [pos.Copy()], FrameOf(block, pos));
+    _placed[id] = new SetupPlacement(
+      pos.Copy(),
+      [pos.Copy()],
+      FrameOf(block, pos)
+    );
 
-  private void Complete(BlockPos pos, string where) {
+  private void Complete(BlockPos pos, string where)
+  {
     Block block = World.GetBlock(pos);
     BlockEntity be =
       World.GetBlockEntity(pos)
-      ?? throw Fail(where, $"cell {Describe(pos)} has no block entity to complete.");
+      ?? throw Fail(
+        where,
+        $"cell {Describe(pos)} has no block entity to complete."
+      );
     bool completed = false;
-    if (SetupStructureCheck.IsMultiblock(block, be)) {
+    if (SetupStructureCheck.IsMultiblock(block, be))
+    {
       var multiblock = (BlockEntityMultiblockStructure)be;
-      StructureRig rig = StructureRig.Around(World, multiblock, multiblock.LayoutAngle).Raise();
+      StructureRig rig = StructureRig
+        .Around(World, multiblock, multiblock.LayoutAngle)
+        .Raise();
       HashSet<long> own = _listeners.GetValueOrDefault(pos) ?? [];
       for (int i = 0; i < 2 && !multiblock.StructureComplete; i++)
         World.AdvanceBlockEntityTime(3000, own);
@@ -316,7 +356,8 @@ public sealed partial class SetupScene : IDisposable {
         );
       completed = true;
     }
-    if (be.GetBehavior<ExRightClickConstructable>() != null) {
+    if (be.GetBehavior<ExRightClickConstructable>() != null)
+    {
       RccFake.Complete(be);
       completed = true;
     }
@@ -336,17 +377,16 @@ public sealed partial class SetupScene : IDisposable {
       .Parse(step.Body[key], new SetupJson.Where(_file.Name, step.Path).In(key))
       .Resolve(View);
 
-  private void RunSteps() {
+  private void RunSteps()
+  {
     foreach (SetupStep step in Model.Steps)
-      switch (step.Kind) {
+      switch (step.Kind)
+      {
         case "place":
           PlaceStep(step);
           break;
         case "complete":
-          Complete(
-            PositionOf((string)step.Body["of"]!),
-            step.Path
-          );
+          Complete(PositionOf((string)step.Body["of"]!), step.Path);
           break;
         case "fill":
           FillStep(step);
@@ -354,7 +394,8 @@ public sealed partial class SetupScene : IDisposable {
       }
   }
 
-  private void PlaceStep(SetupStep step) {
+  private void PlaceStep(SetupStep step)
+  {
     Block block = Resolve((string)step.Body["code"]!, step.Path);
     BlockPos at = At(step, "at");
     Put(block, at, step.Path);
@@ -364,19 +405,21 @@ public sealed partial class SetupScene : IDisposable {
       Complete(at, step.Path);
   }
 
-  private void FillStep(SetupStep step) {
+  private void FillStep(SetupStep step)
+  {
     Block block = Resolve((string)step.Body["code"]!, step.Path);
     BlockPos from = At(step, "from");
     BlockPos to = At(step, "to");
     var cells = new List<BlockPos>();
     for (int x = Math.Min(from.X, to.X); x <= Math.Max(from.X, to.X); x++)
-      for (int y = Math.Min(from.Y, to.Y); y <= Math.Max(from.Y, to.Y); y++)
-        for (int z = Math.Min(from.Z, to.Z); z <= Math.Max(from.Z, to.Z); z++) {
-          var cell = new BlockPos(x, y, z);
-          cells.Add(cell);
-          if (World.GetBlock(cell).Code?.Equals(block.Code) != true)
-            Put(block, cell, step.Path);
-        }
+    for (int y = Math.Min(from.Y, to.Y); y <= Math.Max(from.Y, to.Y); y++)
+    for (int z = Math.Min(from.Z, to.Z); z <= Math.Max(from.Z, to.Z); z++)
+    {
+      var cell = new BlockPos(x, y, z);
+      cells.Add(cell);
+      if (World.GetBlock(cell).Code?.Equals(block.Code) != true)
+        Put(block, cell, step.Path);
+    }
     if (step.Id != null)
       _placed[step.Id] = new SetupPlacement(cells[0], cells);
   }

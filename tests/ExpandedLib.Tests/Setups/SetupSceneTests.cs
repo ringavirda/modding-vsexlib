@@ -18,7 +18,8 @@ namespace ExpandedLib.Tests.Setups;
 /// <summary>What <see cref="SetupScene.Build"/> places from a setup file, kind by kind (setups.md,
 /// Placement kinds), and what it refuses.</summary>
 [Collection("Setups")]
-public class SetupSceneTests : IDisposable {
+public class SetupSceneTests : IDisposable
+{
   public void Dispose() => SetupPlacers.Clear();
 
   #region Fixtures
@@ -26,11 +27,19 @@ public class SetupSceneTests : IDisposable {
   private const string Plated = "platedpipes:pipe-plated-";
 
   private const string PlatedFamily =
-    "[\"" + Plated + "straight-*\", \"" + Plated + "bend-*\", \"" + Plated
-    + "tjunction-*\", \"" + Plated + "xjunction-*\"]";
+    "[\""
+    + Plated
+    + "straight-*\", \""
+    + Plated
+    + "bend-*\", \""
+    + Plated
+    + "tjunction-*\", \""
+    + Plated
+    + "xjunction-*\"]";
 
   private static string ModPath(string id) =>
-    id switch {
+    id switch
+    {
       "platedpipes" => Path.Combine(RepoPaths.Root, "samples", "PlatedPipes"),
       "twintubblower" => Path.Combine(
         RepoPaths.Root,
@@ -91,7 +100,12 @@ public class SetupSceneTests : IDisposable {
     + string.Join(", ", rows.Select(r => "\"" + r + "\""))
     + "]}}";
 
-  private static string Run(char glyph, string id, string code, string family = PlatedFamily) =>
+  private static string Run(
+    char glyph,
+    string id,
+    string code,
+    string family = PlatedFamily
+  ) =>
     $"\"{glyph}\": {{\"run\": \"{id}\", \"code\": \"{Plated}{code}\", \"family\": {family}}}";
 
   private const string Open = "\"o\": {\"open\": true}";
@@ -188,7 +202,12 @@ public class SetupSceneTests : IDisposable {
   {
     SetupFile file = Inline(
       "platedpipes",
-      Pipes(Run('P', "main", "straight-we") + ", " + Open, "oPP.", "..P.", "..o.")
+      Pipes(
+        Run('P', "main", "straight-we") + ", " + Open,
+        "oPP.",
+        "..P.",
+        "..o."
+      )
     );
 
     using SetupScene scene = Build(file);
@@ -209,7 +228,9 @@ public class SetupSceneTests : IDisposable {
     SetupFile file = Inline(
       "platedpipes",
       Pipes(
-        Run('P', "main", "straight-we", "\"" + Plated + "straight-*\"") + ", " + Open,
+        Run('P', "main", "straight-we", "\"" + Plated + "straight-*\"")
+          + ", "
+          + Open,
         "oPP.",
         "..P.",
         "..o."
@@ -253,7 +274,10 @@ public class SetupSceneTests : IDisposable {
       "platedpipes",
       Pipes(
         Run('P', "main", "straight-we")
-          + ", \"V\": {\"code\": \"" + Plated + "straight-ns\"}, " + Open,
+          + ", \"V\": {\"code\": \""
+          + Plated
+          + "straight-ns\"}, "
+          + Open,
         "..V..",
         "oPPPo"
       )
@@ -276,7 +300,10 @@ public class SetupSceneTests : IDisposable {
       "platedpipes",
       Pipes(
         Run('P', "main", "straight-we")
-          + ", \"V\": {\"code\": \"" + Plated + "straight-we\"}, " + Open,
+          + ", \"V\": {\"code\": \""
+          + Plated
+          + "straight-we\"}, "
+          + Open,
         "..V..",
         "oPPPo"
       )
@@ -296,7 +323,10 @@ public class SetupSceneTests : IDisposable {
       "platedpipes",
       Pipes(
         Run('P', "main", "straight-we")
-          + ", " + Run('Q', "side", "straight-we") + ", " + Open,
+          + ", "
+          + Run('Q', "side", "straight-ns")
+          + ", "
+          + Open,
         ".oQo.",
         "oPPPo"
       )
@@ -311,10 +341,13 @@ public class SetupSceneTests : IDisposable {
 
   #region Megablocks and mechanical lines
 
-  private static SetupFile FromFile(string name, System.Func<string, string> edit) =>
-    SetupFile.Parse(edit(File.ReadAllText(FilePath(name))), name);
+  private static SetupFile FromFile(
+    string name,
+    System.Func<string, string> edit
+  ) => SetupFile.Parse(edit(File.ReadAllText(FilePath(name))), name);
 
-  private static bool IsConstructed(SetupScene scene) {
+  private static bool IsConstructed(SetupScene scene)
+  {
     BlockEntity be = scene.World.GetBlockEntity(scene.PositionOf("blower"))!;
     return (bool)be.GetType().GetProperty("IsConstructed")!.GetValue(be)!;
   }
@@ -331,8 +364,10 @@ public class SetupSceneTests : IDisposable {
 
   private static MechanicalNetwork?[] Lines(SetupScene scene) =>
     [
-      .. scene.World.BlockEntities
-        .SelectMany(kv => kv.Value.Behaviors.OfType<BEBehaviorMPBase>())
+      .. scene
+        .World.BlockEntities.SelectMany(kv =>
+          kv.Value.Behaviors.OfType<BEBehaviorMPBase>()
+        )
         .Select(b => b.Network),
     ];
 
@@ -349,7 +384,8 @@ public class SetupSceneTests : IDisposable {
     Assert.Contains(scene.PositionOf("blower"), solid);
     Assert.All(
       solid.Where(c => !c.Equals(scene.PositionOf("blower"))),
-      c => Assert.IsAssignableFrom<BlockStructureFiller>(scene.World.GetBlock(c))
+      c =>
+        Assert.IsAssignableFrom<BlockStructureFiller>(scene.World.GetBlock(c))
     );
   }
 
@@ -428,7 +464,9 @@ public class SetupSceneTests : IDisposable {
     SetupFile file = Inline(
       "platedpipes",
       Pipes(
-        Run('P', "main", "straight-we", "\"" + Plated + "nothing-*\"") + ", " + Open,
+        Run('P', "main", "straight-we", "\"" + Plated + "nothing-*\"")
+          + ", "
+          + Open,
         "oPo"
       )
     );
@@ -463,7 +501,11 @@ public class SetupSceneTests : IDisposable {
   {
     SetupFile file = FromFile(
       "blower-alone.json",
-      t => t.Replace("\"code\": \"twintubblower:blower-twintubblower-n\"", "\"code\": \"twintubblower:blower-twintubblower-n\", \"complete\": \"all\"")
+      t =>
+        t.Replace(
+          "\"code\": \"twintubblower:blower-twintubblower-n\"",
+          "\"code\": \"twintubblower:blower-twintubblower-n\", \"complete\": \"all\""
+        )
     );
 
     using SetupScene built = Build(file);
@@ -494,7 +536,8 @@ public class SetupSceneTests : IDisposable {
 
   #region Placers
 
-  private sealed class SlabPlacer(string? standIn, List<string> log) : ISetupPlacer
+  private sealed class SlabPlacer(string? standIn, List<string> log)
+    : ISetupPlacer
   {
     public bool Takes(string code) => code == "setupfixture:slab";
 
@@ -548,20 +591,65 @@ public class SetupSceneTests : IDisposable {
   #region Refusals
 
   public static TheoryData<string, string, string> Refused_steps =>
-    new() {
-      { "paste", "{\"file\": \"x\", \"at\": [0, 0, 0]}", "the fake world has no structure files to paste" },
+    new()
+    {
+      {
+        "paste",
+        "{\"file\": \"x\", \"at\": [0, 0, 0]}",
+        "the fake world has no structure files to paste"
+      },
       { "power", "{}", "the fake world has no creative power source" },
       { "source", "{}", "the fake world has no creative medium source" },
-      { "break", "{\"at\": [0, 0, 0]}", "the fake world has no player to break with" },
-      { "reload", "{}", "the fake world has no chunk save and load to reload through" },
-      { "advance", "{\"hours\": 1}", "the fake world has no game calendar to advance" },
-      { "run", "{\"code\": \"setupfixture:slab\", \"from\": [0, 0, 0], \"to\": [2, 0, 0]}", "is not built by the harness reader yet" },
-      { "insert", "{\"at\": [0, 0, 0], \"stack\": \"x\"}", "is not built by the harness reader yet" },
-      { "set", "{\"at\": [0, 0, 0], \"tree\": {}}", "is not built by the harness reader yet" },
-      { "call", "{\"at\": [0, 0, 0], \"method\": \"m\"}", "is not built by the harness reader yet" },
-      { "interact", "{\"at\": [0, 0, 0]}", "is not built by the harness reader yet" },
-      { "window", "{\"at\": [0, 0, 0]}", "is not built by the harness reader yet" },
-      { "ignite", "{\"at\": [0, 0, 0]}", "is not built by the harness reader yet" },
+      {
+        "break",
+        "{\"at\": [0, 0, 0]}",
+        "the fake world has no player to break with"
+      },
+      {
+        "reload",
+        "{}",
+        "the fake world has no chunk save and load to reload through"
+      },
+      {
+        "advance",
+        "{\"hours\": 1}",
+        "the fake world has no game calendar to advance"
+      },
+      {
+        "run",
+        "{\"code\": \"setupfixture:slab\", \"from\": [0, 0, 0], \"to\": [2, 0, 0]}",
+        "is not built by the harness reader yet"
+      },
+      {
+        "insert",
+        "{\"at\": [0, 0, 0], \"stack\": \"x\"}",
+        "is not built by the harness reader yet"
+      },
+      {
+        "set",
+        "{\"at\": [0, 0, 0], \"tree\": {}}",
+        "is not built by the harness reader yet"
+      },
+      {
+        "call",
+        "{\"at\": [0, 0, 0], \"method\": \"m\"}",
+        "is not built by the harness reader yet"
+      },
+      {
+        "interact",
+        "{\"at\": [0, 0, 0]}",
+        "is not built by the harness reader yet"
+      },
+      {
+        "window",
+        "{\"at\": [0, 0, 0]}",
+        "is not built by the harness reader yet"
+      },
+      {
+        "ignite",
+        "{\"at\": [0, 0, 0]}",
+        "is not built by the harness reader yet"
+      },
       { "wait", "{\"seconds\": 1}", "is not built by the harness reader yet" },
       { "repeat", "{\"steps\": []}", "is not built by the harness reader yet" },
     };
@@ -586,11 +674,28 @@ public class SetupSceneTests : IDisposable {
   }
 
   public static TheoryData<string, string, string> Refused_placements =>
-    new() {
-      { "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"by\": \"player\"}}", "steps[0]", "by the player is refused" },
-      { "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"complete\": 1}}", "steps[0]", "to a stage is refused" },
-      { "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"tree\": {}}}", "steps[0]", "\"tree\" is not built" },
-      { "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"materials\": {}}}", "steps[0]", "\"materials\" is not built" },
+    new()
+    {
+      {
+        "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"by\": \"player\"}}",
+        "steps[0]",
+        "by the player is refused"
+      },
+      {
+        "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"complete\": 1}}",
+        "steps[0]",
+        "to a stage is refused"
+      },
+      {
+        "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"tree\": {}}}",
+        "steps[0]",
+        "\"tree\" is not built"
+      },
+      {
+        "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"materials\": {}}}",
+        "steps[0]",
+        "\"materials\" is not built"
+      },
     };
 
   // Fails when a place or complete key the fake world cannot honour is accepted and ignored.
@@ -638,7 +743,10 @@ public class SetupSceneTests : IDisposable {
 
     string message = Refused(file);
 
-    Assert.Contains("\"setupfixture:nothing\" is not registered by the load", message);
+    Assert.Contains(
+      "\"setupfixture:nothing\" is not registered by the load",
+      message
+    );
   }
 
   // Fails when the folders do not have to match the file's mods one to one.

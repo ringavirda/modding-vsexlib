@@ -12,7 +12,8 @@ namespace ExpandedLib.Testing;
 
 /// <summary>Checks a drawn machine against the cells its structure occupies (setups.md,
 /// Structures).</summary>
-internal static class SetupStructureCheck {
+internal static class SetupStructureCheck
+{
   /// <summary>Whether <paramref name="block"/> at <paramref name="pos"/> is a multiblock whose
   /// layout the rig reads.</summary>
   public static bool IsMultiblock(Block block, BlockEntity? be) =>
@@ -27,7 +28,8 @@ internal static class SetupStructureCheck {
     Block block,
     BlockPos pos,
     int angle
-  ) {
+  )
+  {
     var cells = new List<BlockPos>();
     if (block is IFillerHost host)
       cells.AddRange(
@@ -37,7 +39,11 @@ internal static class SetupStructureCheck {
     if (IsMultiblock(block, be))
       cells.AddRange(
         StructureRig
-          .Around(world, (BlockEntityMultiblockStructure)be!, ((BlockEntityMultiblockStructure)be!).LayoutAngle)
+          .Around(
+            world,
+            (BlockEntityMultiblockStructure)be!,
+            ((BlockEntityMultiblockStructure)be!).LayoutAngle
+          )
           .Cells.Where(c => new AssetLocation(c.Wanted).Path != "air")
           .Select(c => c.Pos)
       );
@@ -57,7 +63,8 @@ internal static class SetupStructureCheck {
     SetupLayout layout,
     LayoutEntry entry,
     IReadOnlyList<(int X, int Y, int Z)> structure
-  ) {
+  )
+  {
     var inside = new HashSet<(int X, int Y, int Z)>(structure);
     if (entry.Id != null)
       foreach (LayoutCell c in layout.Cells)

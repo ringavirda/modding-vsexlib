@@ -9,13 +9,15 @@ namespace ExpandedLib.Testing;
 
 /// <summary>Joins the mechanical behaviours of a placed scene into the lines the scene steps
 /// (setups.md, Placement kinds).</summary>
-internal static class SetupMechanical {
+internal static class SetupMechanical
+{
   /// <summary>Takes every mechanical behaviour out of the lines placement made, then gives each
   /// group of behaviours whose blocks answer <c>HasMechPowerConnectorAt</c> across their shared
   /// faces one new line; a behaviour with no such neighbour joins none.</summary>
   /// <param name="world">The scene's world; its <see cref="MechanicalPowerMod"/> makes the
   /// lines.</param>
-  public static void Join(TestWorld world) {
+  public static void Join(TestWorld world)
+  {
     var power = world.Mods.GetModSystem<MechanicalPowerMod>();
     if (power == null)
       return;
@@ -27,17 +29,19 @@ internal static class SetupMechanical {
     ];
     foreach (BEBehaviorMPBase behavior in all)
       behavior.LeaveNetwork();
-    ((MechPowerData)ReflectionHelpers.GetField(power, "data")!)
-      .networksById.Clear();
+    (
+      (MechPowerData)ReflectionHelpers.GetField(power, "data")!
+    ).networksById.Clear();
 
     int[] group = [.. Enumerable.Range(0, all.Count)];
     int Root(int i) => group[i] == i ? i : group[i] = Root(group[i]);
     for (int i = 0; i < all.Count; i++)
-      for (int j = i + 1; j < all.Count; j++)
-        if (Connected(world, all[i].Position, all[j].Position))
-          group[Root(j)] = Root(i);
+    for (int j = i + 1; j < all.Count; j++)
+      if (Connected(world, all[i].Position, all[j].Position))
+        group[Root(j)] = Root(i);
 
-    foreach (var line in Enumerable.Range(0, all.Count).GroupBy(Root)) {
+    foreach (var line in Enumerable.Range(0, all.Count).GroupBy(Root))
+    {
       if (line.Count() < 2)
         continue;
       MechanicalNetwork network = power.CreateNetwork(all[line.First()]);
@@ -46,7 +50,8 @@ internal static class SetupMechanical {
     }
   }
 
-  private static bool Connected(TestWorld world, BlockPos a, BlockPos b) {
+  private static bool Connected(TestWorld world, BlockPos a, BlockPos b)
+  {
     BlockFacing? face = BlockFacing.ALLFACES.FirstOrDefault(f =>
       a.AddCopy(f).Equals(b)
     );

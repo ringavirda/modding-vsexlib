@@ -10,7 +10,8 @@ namespace ExpandedLib.Testing;
 internal sealed class SetupWorldView(
   TestWorld world,
   IReadOnlyDictionary<string, SetupPlacement> placed
-) : ISetupWorld {
+) : ISetupWorld
+{
   public IWorldAccessor World => world.World;
 
   public BlockEntity? BlockEntityAt(BlockPos pos) => world.GetBlockEntity(pos);
