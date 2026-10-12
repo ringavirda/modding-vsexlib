@@ -150,7 +150,8 @@ public class PlotTests {
     Assert.Null(errors.TakeNew());
   }
 
-  /// <summary>Fails when a plot spanning two regions holds only the region of its centre (S53).</summary>
+  /// <summary>Fails when a plot spanning two regions holds only the first one along X (S53) or along Z
+  /// (S67).</summary>
   [Fact]
   public void A_plot_holds_every_region_its_columns_span() {
     var climate = new ClimateHold(512);
@@ -158,6 +159,11 @@ public class PlotTests {
     Assert.Equal(ClimateHold.Temperature, TemperatureAt(climate, 100, 5));
     Assert.Equal(ClimateHold.Temperature, TemperatureAt(climate, 520, 5));
     Assert.Equal(5f, TemperatureAt(climate, 1100, 5));
+    var south = new ClimateHold(512);
+    south.Hold(new PlotBox(0, 15, 0, 16, 16, 512));
+    Assert.Equal(ClimateHold.Temperature, TemperatureAt(south, 5, 100));
+    Assert.Equal(ClimateHold.Temperature, TemperatureAt(south, 5, 520));
+    Assert.Equal(5f, TemperatureAt(south, 5, 1100));
   }
 
   private static float TemperatureAt(ClimateHold climate, int x, int z) {

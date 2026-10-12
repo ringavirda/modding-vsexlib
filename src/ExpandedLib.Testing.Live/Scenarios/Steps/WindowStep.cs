@@ -157,6 +157,8 @@ internal sealed class WindowStep : ScenarioStep {
       : count;
   }
 
+  /// <summary>The one slot index a take names.</summary>
+  /// <exception cref="StepFailure">The slot is missing or not an integer.</exception>
   public static int TakeSlot(JObject take) =>
     take["slot"] is { Type: JTokenType.Integer } slot
       ? (int)slot

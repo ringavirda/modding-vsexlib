@@ -17,6 +17,11 @@ internal sealed class IgniteStep : ScenarioStep {
   /// <summary>The seconds an ignition is held when the step names none.</summary>
   public const double DefaultSeconds = 5;
 
+  /// <summary>The seconds the step holds the ignition: its <c>seconds</c>, else
+  /// <see cref="DefaultSeconds"/>.</summary>
+  public static double Seconds(JObject body) =>
+    (double?)body["seconds"] ?? DefaultSeconds;
+
   public override string Kind => "ignite";
 
   public override string What(SetupStep step) =>
@@ -64,7 +69,7 @@ internal sealed class IgniteStep : ScenarioStep {
       ctx.World.BlockAccessor.GetBlock(at)
         .GetInterface<IIgnitable>(ctx.World, at)
       ?? throw new StepFailure($"{code} is not ignitable.", Suspect.Scenario);
-    double seconds = (double?)o["seconds"] ?? DefaultSeconds;
+    double seconds = Seconds(o);
     EntityAgent entity = player.Player.Entity;
     ctx.Touched.Add(local.Copy());
     double started = ctx.Now;

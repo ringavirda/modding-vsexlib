@@ -18,8 +18,8 @@ public class ScenarioPlayerVerbTests {
     Assert.False(InteractStep.StillHeld(1.0, 1));
   }
 
-  /// <summary>Fails when a block that stops the hold keeps being stepped (S60), or a hold stops no later than
-  /// its seconds (S61).</summary>
+  /// <summary>Fails when a block that stops the hold keeps being stepped (S60), or a hold goes on past its
+  /// seconds (S61).</summary>
   [Fact]
   public void A_hold_ends_when_a_step_stops_it_or_its_seconds_pass() {
     Assert.True(InteractStep.Goes(true, 0.5, 1));
@@ -53,10 +53,12 @@ public class ScenarioPlayerVerbTests {
     }
   }
 
-  /// <summary>Fails when an ignition without seconds is held for other than 5 s (S66).</summary>
+  /// <summary>Fails when an ignition without seconds is held for other than 5 s (S66, S68).</summary>
   [Fact]
   public void An_ignite_without_seconds_is_held_for_five() {
     Assert.Equal(5, IgniteStep.DefaultSeconds);
+    Assert.Equal(5, IgniteStep.Seconds(new JObject()));
+    Assert.Equal(2, IgniteStep.Seconds(new JObject { ["seconds"] = 2 }));
   }
 
   /// <summary>Fails when a key sets the wrong control (S28), or a control is left set by a key that is
