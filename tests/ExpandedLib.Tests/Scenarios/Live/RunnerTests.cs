@@ -86,7 +86,7 @@ public class RunnerTests {
       IServerPlayer? chat = null,
       PlotAllocator? plots = null,
       ClimateHold? climate = null
-    ) => new(Api, names, false, chat, plots, climate);
+    ) => new(Api, names, false, chat, plots, climate, withPlayer: false);
 
     public void Tick(int times, long now = 0) {
       _now = now;

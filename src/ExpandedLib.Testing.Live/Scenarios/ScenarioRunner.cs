@@ -10,6 +10,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
+using Vintagestory.Server;
 
 namespace ExpandedLib.Testing.Live;
 
@@ -41,6 +42,8 @@ internal sealed class ScenarioRunner {
   private ScenarioContext? _ctx;
   private ScenarioCaseRun? _caseRun;
   private IEnumerator<bool>? _steps;
+  private ScenarioPlayer? _player;
+  private bool _playerBroken;
 
   /// <summary>True while a run has cases left or one running.</summary>
   public bool Active { get; private set; }
@@ -58,13 +61,16 @@ internal sealed class ScenarioRunner {
   /// left standing stay clear; null starts a new one when the first case starts.</param>
   /// <param name="climate">The climate hold earlier runs used, so its handler is registered
   /// once; null starts a new one.</param>
+  /// <param name="withPlayer">False runs the cases without the scenario player, for a world that is
+  /// not a running server.</param>
   public ScenarioRunner(
     ICoreServerAPI api,
     IReadOnlyList<string> names,
     bool keep,
     IServerPlayer? chatTo,
     PlotAllocator? plots = null,
-    ClimateHold? climate = null
+    ClimateHold? climate = null,
+    bool withPlayer = true
   ) {
     _api = api;
     _keep = keep;
@@ -93,6 +99,8 @@ internal sealed class ScenarioRunner {
         GameVersion.OverallVersion
       )
     );
+    if (withPlayer && names.Count > 0)
+      StartPlayer();
     if (names.Count == 0) {
       Emit(ScenarioOutput.Error("run", "no case selected"));
       Finish();
@@ -102,6 +110,23 @@ internal sealed class ScenarioRunner {
   private PlotAllocator PlotsAtSpawn() {
     EntityPos spawn = _api.World.DefaultSpawnPosition;
     return new PlotAllocator(spawn.AsBlockPos.X, spawn.AsBlockPos.Z);
+  }
+
+  private void StartPlayer() {
+    _player = ScenarioPlayer.Start(
+      (ServerMain)_api.World,
+      _api.World.DefaultSpawnPosition.AsBlockPos,
+      out string? failure
+    );
+    if (failure == null)
+      return;
+    _playerBroken = true;
+    Emit(
+      ScenarioOutput.Error(
+        "player",
+        $"{failure} (game {GameVersion.OverallVersion})"
+      )
+    );
   }
 
   private void Tick(float dt) {
@@ -136,6 +161,12 @@ internal sealed class ScenarioRunner {
       return;
     }
     string name = _names.Dequeue();
+    if (_playerBroken) {
+      _run++;
+      _failed++;
+      Emit(ScenarioOutput.Error(name, "the scenario player failed its check"));
+      return;
+    }
     if (!TryLoad(name, out ScenarioCase? scenario, out string? error)) {
       _run++;
       _failed++;
@@ -215,6 +246,7 @@ internal sealed class ScenarioRunner {
         ScenarioOutput.Fail(_name, failedStep.ToString(), suspect, run.Seconds)
       );
     }
+    _player?.Park();
     Reset();
   }
 
@@ -260,6 +292,7 @@ internal sealed class ScenarioRunner {
 
   private void Finish() {
     Emit(ScenarioOutput.Done(_run, _passed, _failed));
+    _player?.Stop();
     _api.Event.UnregisterGameTickListener(_tick);
     if (!_keep) {
       _api.Event.OnGetClimate -= _hold;
