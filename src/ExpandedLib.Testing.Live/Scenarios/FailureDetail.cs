@@ -58,28 +58,50 @@ internal static class FailureDetail {
         $"cell {Cell(local)} {ctx.Setup.BlockAt(local).Code} {ctx.Setup.BlockEntityAt(local)?.GetType().Name ?? "-"}"
       );
 
-    foreach (BlockPos local in ctx.Expected)
-      if (ctx.Setup.BlockEntityAt(local) is { } be) {
-        var tree = new TreeAttribute();
-        be.ToTreeAttributes(tree);
-        lines.Add($"tree {Cell(local)} {tree.ToJsonToken()}");
+    Guarded(
+      lines,
+      () => {
+        foreach (BlockPos local in ctx.Expected)
+          if (ctx.Setup.BlockEntityAt(local) is { } be) {
+            var tree = new TreeAttribute();
+            be.ToTreeAttributes(tree);
+            lines.Add($"tree {Cell(local)} {tree.ToJsonToken()}");
+          }
       }
+    );
 
-    foreach ((string id, SetupPlacement placed) in ctx.Setup.AllPlaced)
-      if (
-        ctx.Setup.BlockEntityAt(placed.Cell)
-        is BlockEntityMultiblockStructure structure
-      )
-        structure.IncompleteBlockCount(m =>
-          lines.Add(
-            $"missing {id}: {Cell(ctx.Setup.Local(m.At))} wanted {m.Wanted} actual {m.Actual.Code}"
-              + (m.OutwardFace == null ? "" : $" outward face {m.OutwardFace}")
+    Guarded(
+      lines,
+      () => {
+        foreach ((string id, SetupPlacement placed) in ctx.Setup.AllPlaced)
+          if (
+            ctx.Setup.BlockEntityAt(placed.Cell)
+            is BlockEntityMultiblockStructure structure
           )
-        );
+            structure.IncompleteBlockCount(m =>
+              lines.Add(
+                $"missing {id}: {Cell(ctx.Setup.Local(m.At))} wanted {m.Wanted} actual {m.Actual.Code}"
+                  + (
+                    m.OutwardFace == null
+                      ? ""
+                      : $" outward face {m.OutwardFace}"
+                  )
+              )
+            );
+      }
+    );
 
     lines.AddRange(ctx.Errors.Errors.Select(e => "error " + e));
     lines.AddRange(ctx.Errors.Warnings.Select(w => "warning " + w));
     return lines;
+  }
+
+  private static void Guarded(List<string> lines, Action section) {
+    try {
+      section();
+    } catch (Exception e) {
+      lines.Add($"detail failed: {ScenarioSteps.Describe(e)}");
+    }
   }
 
   public static string Cell(BlockPos pos) => $"[{pos.X}, {pos.Y}, {pos.Z}]";

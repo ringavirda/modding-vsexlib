@@ -14,6 +14,8 @@ namespace ExpandedLib.Testing.Live;
 [EditorBrowsable(EditorBrowsableState.Never)]
 public sealed class ScenarioSubCommand : IExSubCommand {
   private ScenarioRunner? _runner;
+  private PlotAllocator? _plots;
+  private ClimateHold? _climate;
 
   public string ParentName => "exmod";
 
@@ -39,11 +41,16 @@ public sealed class ScenarioSubCommand : IExSubCommand {
     );
     bool keep = words.Contains("keep");
     string[] names = [.. words.Where(w => w != "keep")];
+    int[] spawn = api.WorldManager.DefaultSpawnPosition;
+    _plots ??= new PlotAllocator(spawn[0], spawn[2]);
+    _climate ??= new ClimateHold(api.WorldManager.RegionSize);
     _runner = new ScenarioRunner(
       api,
       names,
       keep,
-      args.Caller.Player as IServerPlayer
+      args.Caller.Player as IServerPlayer,
+      _plots,
+      _climate
     );
     return TextCommandResult.Success(
       $"Scenario run started: {names.Length} name(s)."

@@ -21,6 +21,7 @@ public class StructureStepTests {
     public int Count;
     public string Name = "a";
     public int Charge;
+    public bool Armed;
     public InventoryGeneric Slots { get; set; } = null!;
 
     public IInventory Inventory => Slots;
@@ -34,6 +35,8 @@ public class StructureStepTests {
     public int Add(int a, int b) => a + b;
 
     public override void ToTreeAttributes(ITreeAttribute tree) {
+      if (Armed)
+        throw new System.InvalidOperationException("tree armed");
       base.ToTreeAttributes(tree);
       tree.SetInt("count", Count);
       tree.SetString("name", Name);
@@ -603,4 +606,28 @@ public class StructureStepTests {
   }
 
   #endregion
+
+  /// <summary>Fails when a throw inside the failure detail's tree section escapes instead of
+  /// printing a detail failed line (V91).</summary>
+  [Fact]
+  public void A_block_entity_that_throws_in_the_detail_still_fails_the_step_with_its_lines() {
+    var scene = new Scene();
+    var failure = Assert.Throws<StepFailure>(() =>
+      scene.Drive(
+        $$"""
+        [
+          {{PlaceProbe}},
+          { "set": { "at": { "of": "p" }, "member": { "Armed": true } } },
+          { "expect": { "at": { "of": "p" }, "tree": "count", "equals": 0 } }
+        ]
+        """
+      )
+    );
+    Assert.Contains("tree armed", failure.Message);
+    Assert.Contains(
+      scene.Fixture.Lines,
+      l => l.Contains("| detail failed: ") && l.Contains("tree armed")
+    );
+    Assert.Contains(scene.Fixture.Lines, l => l.Contains("| suspect mod"));
+  }
 }

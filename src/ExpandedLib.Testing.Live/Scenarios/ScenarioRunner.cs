@@ -49,22 +49,31 @@ internal sealed class ScenarioRunner {
   /// <param name="keep">Leaves every plot standing when its case ends.</param>
   /// <param name="chatTo">A joined player who also gets the case, pass, fail and done lines in
   /// chat, or null.</param>
+  /// <param name="plots">The allocator earlier runs used, so plots a <paramref name="keep"/> run
+  /// left standing stay clear; null starts a new one.</param>
+  /// <param name="climate">The climate hold earlier runs used, so its handler is registered
+  /// once; null starts a new one.</param>
   public ScenarioRunner(
     ICoreServerAPI api,
     IReadOnlyList<string> names,
     bool keep,
-    IServerPlayer? chatTo
+    IServerPlayer? chatTo,
+    PlotAllocator? plots = null,
+    ClimateHold? climate = null
   ) {
     _api = api;
     _keep = keep;
     _chatTo = chatTo;
     _names = new Queue<string>(names);
     int[] spawn = api.WorldManager.DefaultSpawnPosition;
-    _plots = new PlotAllocator(spawn[0], spawn[2]);
-    _climate = new ClimateHold(api.WorldManager.RegionSize);
+    _plots = plots ?? new PlotAllocator(spawn[0], spawn[2]);
+    _climate = climate ?? new ClimateHold(api.WorldManager.RegionSize);
     _hold = _climate.Apply;
     _feed = (type, message, args) => _errors?.Add(type, Format(message, args));
-    api.Event.OnGetClimate += _hold;
+    if (!_climate.Attached) {
+      api.Event.OnGetClimate += _hold;
+      _climate.Attached = true;
+    }
     api.Logger.EntryAdded += _feed;
     Active = true;
     _tick = api.Event.RegisterGameTickListener(Tick, TickMilliseconds);
@@ -242,8 +251,10 @@ internal sealed class ScenarioRunner {
   private void Finish() {
     Emit(ScenarioOutput.Done(_run, _passed, _failed));
     _api.Event.UnregisterGameTickListener(_tick);
-    if (!_keep)
+    if (!_keep) {
       _api.Event.OnGetClimate -= _hold;
+      _climate.Attached = false;
+    }
     _api.Logger.EntryAdded -= _feed;
     Active = false;
   }

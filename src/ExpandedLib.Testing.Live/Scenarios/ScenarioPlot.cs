@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -142,7 +143,11 @@ internal sealed class ClimateHold(int regionSize) {
   public const float Temperature = 20f;
   public const float Rainfall = 0f;
 
-  private readonly HashSet<(int X, int Z)> _regions = [];
+  private volatile ImmutableHashSet<(int X, int Z)> _regions = [];
+
+  /// <summary>Whether the <c>OnGetClimate</c> handler is registered; set by the runner that
+  /// registers it.</summary>
+  public bool Attached { get; set; }
 
   /// <summary>The region index of block coordinate <paramref name="block"/>.</summary>
   public static int Region(int block, int regionSize) =>
@@ -150,7 +155,7 @@ internal sealed class ClimateHold(int regionSize) {
 
   /// <summary>Holds the region of the block at (<paramref name="x"/>, <paramref name="z"/>).</summary>
   public void Hold(int x, int z) =>
-    _regions.Add((Region(x, regionSize), Region(z, regionSize)));
+    _regions = _regions.Add((Region(x, regionSize), Region(z, regionSize)));
 
   /// <summary>The <c>OnGetClimate</c> handler: overwrites every climate read inside a held
   /// region, in every mode.</summary>

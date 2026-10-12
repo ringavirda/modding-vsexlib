@@ -1,4 +1,6 @@
+using System.IO;
 using ExpandedLib.Scenarios;
+using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using Xunit;
 
@@ -144,4 +146,38 @@ public class CaseTests {
         """[{ "place": { "id": "a", "code": "game:stone", "at": [0, 0, 0] } }, { "wait": { "until": { "at": { "of": "a" }, "block": "game:stone" } } }]"""
       )
     );
+
+  /// <summary>Fails when a committed sample stops loading or stops giving its verdict (V92): the
+  /// files extools runs live share the setup model with the other readers.</summary>
+  [Theory]
+  [InlineData("sample", true, 0)]
+  [InlineData("sample-2", true, 0)]
+  [InlineData("sample-fails", false, 2)]
+  public void A_committed_sample_loads_and_gives_its_verdict(
+    string name,
+    bool passes,
+    int failedStep
+  ) {
+    string path = Path.Combine(RepoPaths.Root, "tests", "live", name + ".json");
+    ScenarioCase scenario = ScenarioCase.Load(
+      "exlib/" + name,
+      File.ReadAllText(path),
+      name + ".json"
+    );
+    var fixture = new LiveFixture();
+    fixture.Test.Register(
+      new Vintagestory.API.Common.Block {
+        BlockId = 6,
+        Code = new Vintagestory.API.Common.AssetLocation("game:rock-granite"),
+      }
+    );
+    var run = new ScenarioCaseRun(scenario, fixture.Context);
+    foreach (bool _ in run.Run()) {
+      fixture.Clock += 0.5;
+      if (fixture.Clock > 1000)
+        break;
+    }
+    Assert.Equal(passes, run.Passed);
+    Assert.Equal(failedStep, run.FailedStep);
+  }
 }
