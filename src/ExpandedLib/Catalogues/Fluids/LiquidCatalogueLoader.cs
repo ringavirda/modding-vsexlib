@@ -24,7 +24,7 @@ public static class LiquidCatalogueLoader {
           errors.Add($"{read.Sources[i]}: skipping liquid def with no code");
           continue;
         }
-        ExLiquids.Register(def);
+        ExLiquids.Register(def, read.Sources[i]);
         entries++;
       }
     }

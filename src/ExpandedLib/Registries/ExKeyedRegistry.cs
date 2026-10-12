@@ -37,9 +37,12 @@ public sealed class ExKeyedRegistry<T> {
 
   /// <summary>Registers an item under its derived code. An item already under that code is
   /// replaced and a Warning naming both registrants is logged, unless both describe alike.</summary>
-  public void Register(T item) {
+  public void Register(T item) => Register(item, _owner(item));
+
+  /// <summary>Registers an item under its derived code with <paramref name="owner"/> as its
+  /// registrant, named in the Warning a later replacement logs.</summary>
+  internal void Register(T item, string owner) {
     string key = _key(item);
-    string owner = _owner(item);
     if (
       !Quiet
       && _owners.TryGetValue(key, out string? previous)
@@ -51,11 +54,11 @@ public sealed class ExKeyedRegistry<T> {
   }
 
   /// <summary>Registers an item under its derived code, replacing any item there without a
-  /// Warning.</summary>
+  /// Warning. The item has no registrant, so a later replacement is silent.</summary>
   internal void Update(T item) {
     string key = _key(item);
     _items[key] = item;
-    _owners[key] = _owner(item);
+    _owners.Remove(key);
   }
 
   /// <summary>Drops every registered item.</summary>

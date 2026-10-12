@@ -48,7 +48,7 @@ public static class MetalCatalogueLoader {
       string moltenItem = new AssetLocation("game", "ingot-" + code).ToString();
       if (MetalRegistry.TryGet(moltenItem, out _))
         continue; // two worldproperties listing the same metal - derive once
-      MetalRegistry.Register(
+      MetalRegistry.RegisterBaseline(
         new MetalDef { Code = code, MoltenItem = moltenItem }
       );
     }
@@ -73,7 +73,10 @@ public static class MetalCatalogueLoader {
         );
         continue;
       }
-      MetalRegistry.Register(def);
+      MetalRegistry.Register(
+        def,
+        sources != null && i < sources.Count ? sources[i] : "unknown source"
+      );
       registered++;
     }
     return registered;

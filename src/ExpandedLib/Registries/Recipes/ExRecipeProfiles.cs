@@ -13,7 +13,7 @@ public static class ExRecipeProfiles {
     p => p.GetLevel.Method.DeclaringType?.FullName ?? p.Code
   );
 
-  /// <summary>Registers a mod's profile; one already under the code is replaced with a Warning.</summary>
+  /// <summary>Registers a mod's profile; one already under the code is replaced with a Warning unless both describe alike.</summary>
   public static void Register(RecipeProfile profile) =>
     _profiles.Register(profile);
 
