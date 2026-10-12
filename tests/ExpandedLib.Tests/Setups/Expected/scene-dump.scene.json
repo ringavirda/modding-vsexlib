@@ -2,6 +2,7 @@
  "cells": [
   {"at": [2,0,0], "code": "platedpipes:pipe-plated-straight-we", "id": "low-west", "role": "block", "network": "A", "open": ["e", "w"]},
   {"at": [5,0,0], "code": "platedpipes:pipe-plated-straight-we", "id": "low-east", "role": "block", "network": "B", "open": ["e", "w"]},
+  {"at": [4,1,-6], "code": "setupgate:gatepos", "role": "block", "open": ["w"]},
   {"at": [1,1,-5], "code": "platedpipes:pipe-plated-straight-ns", "id": "feed", "role": "block", "network": "C", "open": ["n"]},
   {"at": [1,1,-4], "code": "platedpipes:pipe-plated-straight-ns", "id": "feed", "role": "block", "network": "C"},
   {"at": [1,1,-3], "code": "platedpipes:pipe-plated-straight-ns", "id": "feed", "role": "block", "network": "C"},

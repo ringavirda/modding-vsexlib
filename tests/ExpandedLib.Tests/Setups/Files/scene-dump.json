@@ -1,7 +1,7 @@
 {
   "setup": "scene-dump",
-  "description": "Two blowers back to back, a plated run off the first blower's outlet to an open end, and two lone pipes placed out of cell order.",
-  "mods": ["twintubblower", "platedpipes"],
+  "description": "Two blowers back to back, a plated run off the first blower's outlet to an open end, two lone pipes placed out of cell order and a connector block standing alone.",
+  "mods": ["twintubblower", "platedpipes", "setupgate"],
   "layout": {
     "legend": {
       "A": { "id": "first", "code": "twintubblower:blower-twintubblower-n" },
@@ -21,11 +21,12 @@
           "platedpipes:pipe-plated-xjunction-*"
         ]
       },
+      "G": { "code": "setupgate:gatepos" },
       "o": { "open": true }
     },
     "layers": {
       "2": ["", "", "", "", " a", " a", "ba", "b", "b"],
-      "1": [" o", " P", " P", " P", " p", " a", "BA", "b", "b"]
+      "1": [" o  G", " P", " P", " P", " p", " a", "BA", "b", "b"]
     },
     "origin": [0, -6]
   },

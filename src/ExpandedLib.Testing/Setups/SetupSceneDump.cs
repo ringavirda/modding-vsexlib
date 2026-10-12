@@ -204,7 +204,7 @@ internal static class SetupSceneDump
             + "}"
         );
       }
-      if (!e.Cell.Fluid)
+      if (!e.Cell.Fluid && e.Filler?.PortFace == null)
       {
         List<string> open = OpenFaces(world, e.Cell.At, e.Net?.NetworkType);
         if (open.Count > 0)
