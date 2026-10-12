@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using ExpandedLib.Helpers;
+using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Networks;
 using ExpandedLib.Structures;
 using Vintagestory.API.Common;
@@ -19,6 +21,19 @@ namespace ExpandedLib.Testing;
 internal static class SetupSceneDump
 {
   private sealed record Cell(BlockPos At, Block Block, bool Fluid);
+
+  private sealed record Entry(
+    Cell Cell,
+    BlockEntityStructureFiller? Filler,
+    List<BEBehaviorMPBase> Mechanical,
+    string Role,
+    string? Id,
+    string? Owner,
+    BlockPos? Principal,
+    BlockNetwork? Net,
+    string? Network,
+    string? Line
+  );
 
   /// <summary>Writes <paramref name="scene"/> as <c>setup-scene/1</c>. Cells run by y, then z,
   /// then x, a solid entry before a fluid one at the same cell. Network keys run A, B, ...
@@ -60,8 +75,7 @@ internal static class SetupSceneDump
     Dictionary<MechanicalNetwork, string> lineKeys = new(
       ReferenceEqualityComparer.Instance
     );
-    Dictionary<string, List<string>> networkIds = [];
-    Dictionary<string, List<string>> lineIds = [];
+    Dictionary<string, List<string>> ids = [];
     Dictionary<string, int> lineMembers = [];
     List<BlockNetwork> networks = [];
 
@@ -73,17 +87,9 @@ internal static class SetupSceneDump
         .Select(p => p.Key)
         .FirstOrDefault();
 
-    StringBuilder text = new();
-    text.Append("{\"format\": \"setup-scene/1\", \"setup\": ")
-      .Append(Quote(setup))
-      .Append(", \"variant\": ")
-      .Append(variant == null ? "null" : Quote(variant))
-      .Append(", \"game\": ")
-      .Append(Quote(GameVersion.ShortGameVersion))
-      .Append(",\n \"cells\": [\n");
-    for (int i = 0; i < cells.Count; i++)
+    List<Entry> entries = [];
+    foreach (Cell cell in cells)
     {
-      Cell cell = cells[i];
       BlockEntity? entity = cell.Fluid ? null : world.GetBlockEntity(cell.At);
       BlockEntityStructureFiller? filler = entity as BlockEntityStructureFiller;
       List<BEBehaviorMPBase> mechanical =
@@ -108,16 +114,17 @@ internal static class SetupSceneDump
         cell.Fluid || role is "filler" or "port" ? null : IdAt(cell.At);
       string? owner = id ?? (principal == null ? null : IdAt(principal));
 
+      BlockNetwork? net = cell.Fluid ? null : world.NetworkAt(cell.At);
       string? network = null;
-      if (!cell.Fluid && world.NetworkAt(cell.At) is { } net)
+      if (net != null)
       {
         if (!networkKeys.TryGetValue(net, out network))
         {
           network = networkKeys[net] = NetworkKey(networkKeys.Count);
           networks.Add(net);
-          networkIds[network] = [];
+          ids[network] = [];
         }
-        Add(networkIds[network], owner);
+        Add(ids[network], owner);
       }
       string? line = null;
       if (
@@ -128,30 +135,84 @@ internal static class SetupSceneDump
         if (!lineKeys.TryGetValue(mech, out line))
         {
           line = lineKeys[mech] = "M" + (lineKeys.Count + 1);
-          lineIds[line] = [];
+          ids[line] = [];
           lineMembers[line] = 0;
         }
-        Add(lineIds[line], owner);
+        Add(ids[line], owner);
         lineMembers[line] += mechanical.Count(b => b.Network == mech);
       }
+      entries.Add(
+        new Entry(
+          cell,
+          filler,
+          mechanical,
+          role,
+          id,
+          owner,
+          principal,
+          net,
+          network,
+          line
+        )
+      );
+    }
+    Dictionary<BlockPos, string> lineAt = entries
+      .Where(e => e.Line != null)
+      .ToDictionary(e => e.Cell.At, e => e.Line!);
 
+    StringBuilder text = new();
+    text.Append("{\"format\": \"setup-scene/1\", \"setup\": ")
+      .Append(Quote(setup))
+      .Append(", \"variant\": ")
+      .Append(variant == null ? "null" : Quote(variant))
+      .Append(", \"game\": ")
+      .Append(Quote(GameVersion.ShortGameVersion))
+      .Append(",\n \"cells\": [\n");
+    for (int i = 0; i < entries.Count; i++)
+    {
+      Entry e = entries[i];
       List<string> parts =
       [
-        "\"at\": " + Position(cell.At),
-        "\"code\": " + Quote(cell.Block.Code.ToString()),
+        "\"at\": " + Position(e.Cell.At),
+        "\"code\": " + Quote(e.Cell.Block.Code.ToString()),
       ];
-      if (id != null)
-        parts.Add("\"id\": " + Quote(id));
-      parts.Add("\"role\": " + Quote(role));
-      if (principal != null)
-        parts.Add("\"principal\": " + Position(principal));
-      if (network != null)
-        parts.Add("\"network\": " + Quote(network));
-      if (line != null)
-        parts.Add("\"line\": " + Quote(line));
+      if (e.Id != null)
+        parts.Add("\"id\": " + Quote(e.Id));
+      parts.Add("\"role\": " + Quote(e.Role));
+      if (e.Principal != null)
+        parts.Add("\"principal\": " + Position(e.Principal));
+      if (e.Role == "port")
+      {
+        (BlockFacing? face, string type, string? joins) = PortOf(
+          e,
+          world,
+          networkKeys,
+          lineAt
+        );
+        Add(joins == null ? [] : ids[joins], e.Owner);
+        parts.Add(
+          "\"port\": {\"face\": "
+            + (face == null ? "null" : Quote(face.Code[0].ToString()))
+            + ", \"type\": "
+            + Quote(type)
+            + ", \"joins\": "
+            + (joins == null ? "null" : Quote(joins))
+            + "}"
+        );
+      }
+      if (e.Network != null)
+        parts.Add("\"network\": " + Quote(e.Network));
+      if (e.Line != null)
+        parts.Add("\"line\": " + Quote(e.Line));
+      if (e.Net != null)
+      {
+        List<string> open = OpenFaces(world, e.Cell.At, e.Net.NetworkType);
+        if (open.Count > 0)
+          parts.Add("\"open\": " + Strings(open));
+      }
       text.Append("  {")
         .Append(string.Join(", ", parts))
-        .Append(i < cells.Count - 1 ? "},\n" : "}\n");
+        .Append(i < entries.Count - 1 ? "},\n" : "}\n");
     }
     text.Append(" ],\n \"networks\": ")
       .Append(
@@ -160,21 +221,86 @@ internal static class SetupSceneDump
           {
             string key = networkKeys[n];
             return $"{{\"key\": {Quote(key)}, \"type\": {Quote(n.NetworkType)}, "
-              + $"\"nodes\": {n.Nodes.Count}, \"ids\": {Strings(networkIds[key])}}}";
+              + $"\"nodes\": {n.Nodes.Count}, \"ids\": {Strings(ids[key])}}}";
           })
         )
       )
       .Append(",\n \"lines\": ")
       .Append(
         Entries(
-          lineIds.Select(l =>
-            $"{{\"key\": {Quote(l.Key)}, \"members\": {lineMembers[l.Key]}, "
-            + $"\"ids\": {Strings(l.Value)}}}"
+          lineKeys.Values.Select(key =>
+            $"{{\"key\": {Quote(key)}, \"members\": {lineMembers[key]}, "
+            + $"\"ids\": {Strings(ids[key])}}}"
           )
         )
       )
       .Append("}\n");
     return text.ToString();
+  }
+
+  private static (BlockFacing? Face, string Type, string? Joins) PortOf(
+    Entry entry,
+    TestWorld world,
+    Dictionary<BlockNetwork, string> networkKeys,
+    Dictionary<BlockPos, string> lineAt
+  )
+  {
+    BlockPos at = entry.Cell.At;
+    if (entry.Filler?.PortFace != null)
+    {
+      BlockFacing? face = ExOrientation.FacingFromSide(entry.Filler.PortFace);
+      string type = entry.Filler.PortNetworkType ?? "";
+      if (face == null)
+        return (null, type, null);
+      BlockPos faced = at.AddCopy(face);
+      BlockNetwork? net = world.NetworkAt(faced);
+      bool joins =
+        net != null
+        && net.NetworkType == type
+        && NetworkMembership
+          .Resolve(world.Accessor, faced, type)
+          ?.HasConnectorAt(world.Accessor, faced, face.Opposite) == true;
+      return (face, type, joins ? networkKeys[net!] : null);
+    }
+    BlockFacing? mechanicalFace = entry
+      .Mechanical.OfType<BEBehaviorMPFillerPort>()
+      .FirstOrDefault()
+      ?.PortFacing;
+    string? joined =
+      mechanicalFace == null ? entry.Line
+      : lineAt.TryGetValue(at.AddCopy(mechanicalFace), out string? key)
+      && key == entry.Line
+        ? key
+      : null;
+    return (mechanicalFace, "mechanical", joined);
+  }
+
+  private static List<string> OpenFaces(
+    TestWorld world,
+    BlockPos at,
+    string type
+  )
+  {
+    INetworkMember? member = NetworkMembership.Resolve(
+      world.Accessor,
+      at,
+      type
+    );
+    if (member == null)
+      return [];
+    return
+    [
+      .. BlockFacing
+        .ALLFACES.Where(f => member.HasConnectorAt(world.Accessor, at, f))
+        .Where(f =>
+        {
+          BlockPos next = at.AddCopy(f);
+          return NetworkMembership
+              .Resolve(world.Accessor, next, type)
+              ?.HasConnectorAt(world.Accessor, next, f.Opposite) != true;
+        })
+        .Select(f => f.Code[0].ToString()),
+    ];
   }
 
   private static void Add(List<string> ids, string? id)

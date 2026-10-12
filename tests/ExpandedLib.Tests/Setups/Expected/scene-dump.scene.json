@@ -1,0 +1,29 @@
+{"format": "setup-scene/1", "setup": "scene-dump", "variant": null, "game": "1.22.6",
+ "cells": [
+  {"at": [2,0,0], "code": "platedpipes:pipe-plated-straight-we", "id": "low-west", "role": "block", "network": "A", "open": ["e", "w"]},
+  {"at": [5,0,0], "code": "platedpipes:pipe-plated-straight-we", "id": "low-east", "role": "block", "network": "B", "open": ["e", "w"]},
+  {"at": [1,1,-5], "code": "platedpipes:pipe-plated-straight-ns", "id": "feed", "role": "block", "network": "C", "open": ["n"]},
+  {"at": [1,1,-4], "code": "platedpipes:pipe-plated-straight-ns", "id": "feed", "role": "block", "network": "C"},
+  {"at": [1,1,-3], "code": "platedpipes:pipe-plated-straight-ns", "id": "feed", "role": "block", "network": "C"},
+  {"at": [1,1,-2], "code": "exlib:structurefiller", "role": "filler", "principal": [1,1,0], "network": "C"},
+  {"at": [1,1,-1], "code": "exlib:structurefiller", "role": "filler", "principal": [1,1,0], "network": "C"},
+  {"at": [0,1,0], "code": "twintubblower:blower-twintubblower-s", "id": "second", "role": "core", "network": "D"},
+  {"at": [1,1,0], "code": "twintubblower:blower-twintubblower-n", "id": "first", "role": "core", "network": "C"},
+  {"at": [0,1,1], "code": "exlib:structurefiller", "role": "filler", "principal": [0,1,0], "network": "D"},
+  {"at": [0,1,2], "code": "exlib:structurefiller", "role": "filler", "principal": [0,1,0], "network": "D", "open": ["s"]},
+  {"at": [1,2,-2], "code": "exlib:structurefiller", "role": "filler", "principal": [1,1,0]},
+  {"at": [1,2,-1], "code": "exlib:structurefiller", "role": "filler", "principal": [1,1,0]},
+  {"at": [0,2,0], "code": "exlib:structurefiller", "role": "port", "principal": [0,1,0], "port": {"face": "e", "type": "mechanical", "joins": "M1"}, "line": "M1"},
+  {"at": [1,2,0], "code": "exlib:structurefiller", "role": "port", "principal": [1,1,0], "port": {"face": "w", "type": "mechanical", "joins": "M1"}, "line": "M1"},
+  {"at": [0,2,1], "code": "exlib:structurefiller", "role": "filler", "principal": [0,1,0]},
+  {"at": [0,2,2], "code": "exlib:structurefiller", "role": "filler", "principal": [0,1,0]}
+ ],
+ "networks": [
+  {"key": "A", "type": "pipe", "nodes": 1, "ids": ["low-west"]},
+  {"key": "B", "type": "pipe", "nodes": 1, "ids": ["low-east"]},
+  {"key": "C", "type": "pipe", "nodes": 6, "ids": ["feed", "first"]},
+  {"key": "D", "type": "pipe", "nodes": 3, "ids": ["second"]}
+ ],
+ "lines": [
+  {"key": "M1", "members": 2, "ids": ["second", "first"]}
+ ]}

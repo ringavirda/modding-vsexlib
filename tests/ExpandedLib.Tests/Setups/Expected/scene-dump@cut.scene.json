@@ -1,0 +1,27 @@
+{"format": "setup-scene/1", "setup": "scene-dump", "variant": "cut", "game": "1.22.6",
+ "cells": [
+  {"at": [2,0,0], "code": "platedpipes:pipe-plated-straight-we", "id": "low-west", "role": "block", "network": "A", "open": ["e", "w"]},
+  {"at": [5,0,0], "code": "platedpipes:pipe-plated-straight-we", "id": "low-east", "role": "block", "network": "B", "open": ["e", "w"]},
+  {"at": [1,1,-5], "code": "platedpipes:pipe-plated-straight-ns", "id": "feed", "role": "block", "network": "C", "open": ["n"]},
+  {"at": [1,1,-4], "code": "platedpipes:pipe-plated-straight-ns", "id": "feed", "role": "block", "network": "C", "open": ["s"]},
+  {"at": [1,1,-2], "code": "exlib:structurefiller", "role": "filler", "principal": [1,1,0], "network": "D", "open": ["n"]},
+  {"at": [1,1,-1], "code": "exlib:structurefiller", "role": "filler", "principal": [1,1,0], "network": "D"},
+  {"at": [1,1,0], "code": "twintubblower:blower-twintubblower-n", "id": "first", "role": "core", "network": "D"},
+  {"at": [0,1,1], "code": "twintubblower:blower-twintubblower-s", "id": "moved", "role": "core", "network": "E"},
+  {"at": [0,1,2], "code": "exlib:structurefiller", "role": "filler", "principal": [0,1,1], "network": "E"},
+  {"at": [0,1,3], "code": "exlib:structurefiller", "role": "filler", "principal": [0,1,1], "network": "E", "open": ["s"]},
+  {"at": [1,2,-2], "code": "exlib:structurefiller", "role": "filler", "principal": [1,1,0]},
+  {"at": [1,2,-1], "code": "exlib:structurefiller", "role": "filler", "principal": [1,1,0]},
+  {"at": [1,2,0], "code": "exlib:structurefiller", "role": "port", "principal": [1,1,0], "port": {"face": "w", "type": "mechanical", "joins": null}},
+  {"at": [0,2,1], "code": "exlib:structurefiller", "role": "port", "principal": [0,1,1], "port": {"face": "e", "type": "mechanical", "joins": null}},
+  {"at": [0,2,2], "code": "exlib:structurefiller", "role": "filler", "principal": [0,1,1]},
+  {"at": [0,2,3], "code": "exlib:structurefiller", "role": "filler", "principal": [0,1,1]}
+ ],
+ "networks": [
+  {"key": "A", "type": "pipe", "nodes": 1, "ids": ["low-west"]},
+  {"key": "B", "type": "pipe", "nodes": 1, "ids": ["low-east"]},
+  {"key": "C", "type": "pipe", "nodes": 2, "ids": ["feed"]},
+  {"key": "D", "type": "pipe", "nodes": 3, "ids": ["first"]},
+  {"key": "E", "type": "pipe", "nodes": 3, "ids": ["moved"]}
+ ],
+ "lines": []}
