@@ -84,7 +84,16 @@ internal static class SetupSteps {
     ["paste"] = ["file", "at", "angle", "origin"],
     ["power"] = ["at", "face", "speed", "torque"],
     ["source"] = ["at", "face", "medium", "rate", "pressure", "temperature"],
-    ["insert"] = ["at", "stack", "count", "temperature", "slot"],
+    ["insert"] =
+    [
+      "at",
+      "stack",
+      "count",
+      "temperature",
+      "slot",
+      "content",
+      "litres",
+    ],
     ["set"] = ["at", "tree", "member"],
     ["call"] = ["at", "method", "args", "returns"],
     ["interact"] = ["at", "with", "keys", "face", "seconds", "returns"],

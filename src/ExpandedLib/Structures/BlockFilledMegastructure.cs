@@ -38,6 +38,12 @@ public class BlockFilledMegastructure : Block, IFillerHost {
     BlockPos pos
   ) => FootprintCells(pos);
 
+  /// <summary><see cref="ReservedCells"/> for the harness that places this block by the world.</summary>
+  internal List<FillerCell> ReservedCellsAt(
+    IWorldAccessor world,
+    BlockPos pos
+  ) => ReservedCells(world, pos);
+
   /// <summary>Whether a principal at <paramref name="pos"/> finds room for its fillers: by default,
   /// every <see cref="ReservedCells"/> cell is air or replaceable by the filler.</summary>
   /// <returns>False makes <see cref="CanPlaceBlock"/> refuse with <c>notenoughspace</c>.</returns>

@@ -81,7 +81,8 @@ public sealed class SetupCaseRow : IXunitSerializable
 /// <summary>What <see cref="SetupCases.Run"/> loads a case with and where it writes its recording.</summary>
 public sealed class SetupRunOptions
 {
-  /// <summary>The folder of the mod with the given id, holding its <c>modinfo.json</c>.</summary>
+  /// <summary>The folder of the mod with the given id, holding its <c>modinfo.json</c> or a
+  /// <c>src</c> folder that does.</summary>
   public required Func<string, string> ModFolder { get; init; }
 
   /// <summary>The <c>Recordings</c> folder; a recording goes under the game series that ran it,
@@ -157,6 +158,15 @@ public static class SetupCases
     }
   }
 
+  /// <summary>The mod's <c>modinfo.json</c>, at the folder root or under <c>src</c>.</summary>
+  private static string ModInfoPath(string modFolder)
+  {
+    string root = Path.Combine(modFolder, "modinfo.json");
+    return System.IO.File.Exists(root)
+      ? root
+      : Path.Combine(modFolder, "src", "modinfo.json");
+  }
+
   /// <summary>Builds and runs the case <paramref name="row"/> names, judges its checks, and for a
   /// case that records writes or compares its recording (<c>EX_WRITE_SETUPS</c> names the setups to
   /// write). A tick-order case judges only the checks that hold in every order and records nothing.</summary>
@@ -175,9 +185,7 @@ public static class SetupCases
       file.Mods,
       id =>
         SetupMods.FromModInfo(
-          System.IO.File.ReadAllText(
-            Path.Combine(options.ModFolder(id), "modinfo.json")
-          )
+          System.IO.File.ReadAllText(ModInfoPath(options.ModFolder(id)))
         ),
       options.ExlibVersion
     );

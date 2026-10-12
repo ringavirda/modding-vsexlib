@@ -47,6 +47,14 @@ public class SetupSceneTests : IDisposable
         "TwinTubBlower"
       ),
       "smokestack" => Path.Combine(RepoPaths.Root, "samples", "SmokeStack"),
+      "setupgate" => Path.Combine(
+        RepoPaths.Root,
+        "tests",
+        "ExpandedLib.Tests",
+        "Setups",
+        "Fixtures",
+        "SetupGate"
+      ),
       "setupfixture" => Path.Combine(
         RepoPaths.Root,
         "tests",
@@ -513,6 +521,80 @@ public class SetupSceneTests : IDisposable
 
     Assert.False(IsConstructed(bare));
     Assert.True(IsConstructed(built));
+  }
+
+  // Fails when complete leaves the block's own construction behaviour at its first stage, so the
+  // production tick it gates never runs.
+  [Fact]
+  public void Completing_the_blower_completes_the_constructable_behaviour_that_gates_its_production()
+  {
+    SetupFile file = FromFile(
+      "blower-alone.json",
+      t =>
+        t.Replace(
+          "\"code\": \"twintubblower:blower-twintubblower-n\"",
+          "\"code\": \"twintubblower:blower-twintubblower-n\", \"complete\": \"all\""
+        )
+    );
+
+    using SetupScene built = Build(file);
+    using SetupScene bare = BuildFile("blower-alone.json");
+
+    Assert.False(ConstructableOf(bare).IsReadyToProduce);
+    Assert.True(ConstructableOf(built).IsReadyToProduce);
+  }
+
+  private static ExRightClickConstructable ConstructableOf(SetupScene scene) =>
+    scene
+      .World.GetBlockEntity(scene.PositionOf("blower"))!
+      .GetBehavior<ExRightClickConstructable>();
+
+  private static SetupScene BuildGates(SetupFile file) =>
+    SetupScene.Build(
+      file,
+      [.. file.Mods.Select(ModPath)],
+      null,
+      w => w.RegisterClass("SetupGateBlock", typeof(SetupGateBlock))
+    );
+
+  private static SetupFile GateBesideARun(string gate, bool gateFirst)
+  {
+    string run = Run('P', "main", "straight-we");
+    string block = "\"G\": {\"code\": \"setupgate:" + gate + "\"}";
+    return SetupFile.Parse(
+      "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"platedpipes\", \"setupgate\"], "
+        + "\"layout\": "
+        + Pipes(
+          Open + ", " + (gateFirst ? block + ", " + run : run + ", " + block),
+          "oPG"
+        )
+        + ", \"steps\": [], \"seconds\": 10, \"record\": {}}",
+      "t.json"
+    );
+  }
+
+  // Fails when a run reads a placed neighbour's connector without its position, so a block that
+  // answers by position is not joined.
+  [Fact]
+  public void A_run_joins_a_placed_neighbour_that_answers_by_position()
+  {
+    using SetupScene scene = BuildGates(
+      GateBesideARun("gatepos", gateFirst: true)
+    );
+
+    Assert.Equal("platedpipes:pipe-plated-straight-we", CodeAt(scene, 1, 0, 0));
+  }
+
+  // Fails when a run asks a neighbour that is not placed yet for its connector by position, so a
+  // block that answers without one is not joined.
+  [Fact]
+  public void A_run_joins_a_neighbour_not_yet_placed_by_its_position_less_connector()
+  {
+    using SetupScene scene = BuildGates(
+      GateBesideARun("gateless", gateFirst: false)
+    );
+
+    Assert.Equal("platedpipes:pipe-plated-straight-we", CodeAt(scene, 1, 0, 0));
   }
 
   // Fails when a complete step on a block that is neither a multiblock nor a construction is

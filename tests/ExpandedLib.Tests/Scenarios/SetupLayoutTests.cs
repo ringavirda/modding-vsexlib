@@ -262,6 +262,28 @@ public class SetupLayoutTests {
     );
   }
 
+  // Fails when a tier-first straight pipe code takes anything but the four shapes of its tier, or
+  // the tier wildcard widens to the valves and fittings that share the tier prefix.
+  [Fact]
+  public void A_tier_first_straight_pipe_code_takes_the_four_shapes_of_its_tier() {
+    SetupLayout layout = Load(
+      """
+      { legend: { "a": { run: "r", code: "iiex:pipe-cast-straight-ns" } }, layers: { "0": ["a"] } }
+      """
+    );
+
+    Assert.Equal(
+      new[]
+      {
+        "iiex:pipe-cast-straight-*",
+        "iiex:pipe-cast-bend-*",
+        "iiex:pipe-cast-tjunction-*",
+        "iiex:pipe-cast-xjunction-*",
+      },
+      layout.Runs[0].Entries[0].Family.ToArray()
+    );
+  }
+
   #endregion
 
   #region Refusals

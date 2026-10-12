@@ -67,10 +67,10 @@ public sealed partial class TestWorld {
   ) => LoadAssets(modPaths, gamePath, []);
 
   /// <summary>As <see cref="LoadAssets(IReadOnlyList{string}, string)"/>, and the vanilla survival
-  /// blocktype files that define <paramref name="vanillaCodes"/> load with the mods.</summary>
+  /// blocktype and itemtype files that define <paramref name="vanillaCodes"/> load with the mods.</summary>
   /// <param name="modPaths">As the public overload takes them.</param>
   /// <param name="gamePath">As the public overload takes it.</param>
-  /// <param name="vanillaCodes">Block codes in the <c>game</c> domain, with or without the domain,
+  /// <param name="vanillaCodes">Block and item codes in the <c>game</c> domain, with or without the domain,
   /// <c>*</c> allowed; one no vanilla file defines loads nothing.</param>
   /// <returns>This world.</returns>
   internal TestWorld LoadAssets(
@@ -100,7 +100,7 @@ public sealed partial class TestWorld {
     foreach (ListedMod mod in mods)
       MirrorAssets(mgr, Path.Combine(mod.Path, "assets", mod.Id), mod.Id);
     MirrorPatchedVanilla(mgr, survival, [.. mods.Select(m => m.Id)]);
-    MirrorVanillaBlocks(mgr, survival, vanillaCodes);
+    MirrorVanillaTypes(mgr, survival, vanillaCodes);
 
     // GamePaths.AssetsPath/Lang.Load are process-wide statics the object loader needs primed; safe
     // to set repeatedly.
@@ -372,12 +372,12 @@ public sealed partial class TestWorld {
     }
   }
 
-  /// <summary>Adds to <paramref name="mgr"/> each survival blocktype file whose <c>code</c> can
-  /// begin one of <paramref name="codes"/>: the code is the file's, or the file's followed by a
-  /// <c>-</c>, or a wildcard's literal text before its first <c>*</c> and the file's code lead into
-  /// one another. Which codes the file then defines is left to registration. A file that does not
-  /// parse is skipped.</summary>
-  private static void MirrorVanillaBlocks(
+  /// <summary>Adds to <paramref name="mgr"/> each survival blocktype and itemtype file whose
+  /// <c>code</c> can begin one of <paramref name="codes"/>: the code is the file's, or the file's
+  /// followed by a <c>-</c>, or a wildcard's literal text before its first <c>*</c> and the file's
+  /// code lead into one another. Which codes the file then defines is left to registration. A file
+  /// that does not parse is skipped.</summary>
+  private static void MirrorVanillaTypes(
     AssetManager mgr,
     IAssetOrigin survival,
     IReadOnlyCollection<string> codes
@@ -389,23 +389,22 @@ public sealed partial class TestWorld {
     if (wanted.Length == 0)
       return;
     foreach (
-      IAsset asset in survival.GetAssets(
-        AssetCategory.blocktypes,
-        shouldLoad: true
-      )
-    ) {
-      JObject file;
-      try {
-        file = JObject.Parse(asset.ToText());
-      } catch (JsonException) {
-        continue;
+      AssetCategory category in (AssetCategory[])
+        [AssetCategory.blocktypes, AssetCategory.itemtypes]
+    )
+      foreach (IAsset asset in survival.GetAssets(category, shouldLoad: true)) {
+        JObject file;
+        try {
+          file = JObject.Parse(asset.ToText());
+        } catch (JsonException) {
+          continue;
+        }
+        if (
+          file["code"] is JValue { Value: string code }
+          && wanted.Any(w => MayDefine(code, w))
+        )
+          mgr.Add(asset.Location, asset);
       }
-      if (
-        file["code"] is JValue { Value: string code }
-        && wanted.Any(w => MayDefine(code, w))
-      )
-        mgr.Add(asset.Location, asset);
-    }
   }
 
   private static bool MayDefine(string code, string wanted) {
