@@ -36,7 +36,8 @@ public sealed class ExKeyedRegistry<T> {
   internal bool Quiet { get; init; }
 
   /// <summary>Registers an item under its derived code. An item already under that code is
-  /// replaced and a Warning naming both registrants is logged, unless both describe alike.</summary>
+  /// replaced and a Warning naming both registrants is logged, unless the same registrant registers
+  /// the key again.</summary>
   public void Register(T item) => Register(item, _owner(item));
 
   /// <summary>Registers an item under its derived code with <paramref name="owner"/> as its

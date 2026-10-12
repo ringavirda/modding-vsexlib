@@ -46,3 +46,39 @@ public class ExLiquidsLoaderTests {
     Assert.Empty(report.Errors);
   }
 }
+
+/// <summary>The loader names each catalogue file as the registrant of its liquids, so a key two
+/// files define warns and a file loaded twice does not.</summary>
+[Collection("ExLiquids")]
+public class LiquidCatalogueLoaderWarningTests : RegistryLogFixture {
+  private const string Brine = """{ "liquids": [ { "code": "Brine" } ] }""";
+
+  [Fact]
+  public void A_key_two_sources_define_warns_once_naming_both_sources() {
+    ICoreAPI api = FakeAssetApi.Create(
+      "config/liquids.json",
+      ("iiex:config/liquids.json", Brine),
+      ("siex:config/liquids.json", Brine)
+    );
+    Log.Expect(EnumLogType.Warning, "");
+
+    LiquidCatalogueLoader.Load(api);
+
+    string warning = Only("'Brine'");
+    Assert.Contains("iiex:config/liquids.json", warning);
+    Assert.Contains("siex:config/liquids.json", warning);
+  }
+
+  [Fact]
+  public void The_same_source_loaded_twice_logs_no_warning() {
+    ICoreAPI api = FakeAssetApi.Create(
+      "config/liquids.json",
+      ("iiex:config/liquids.json", Brine)
+    );
+
+    LiquidCatalogueLoader.Load(api);
+    LiquidCatalogueLoader.Load(api);
+
+    Assert.Empty(Log.Warnings);
+  }
+}

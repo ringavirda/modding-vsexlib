@@ -13,7 +13,7 @@ public static class ExConfigProfiles {
     c => c.GetType().FullName ?? c.ModId
   );
 
-  /// <summary>Registers a mod's manageable config store; one already under the mod id is replaced with a Warning unless both describe alike. Called from the generated
+  /// <summary>Registers a mod's manageable config store; one already under the mod id is replaced with a Warning unless the same registrant registers it again. Called from the generated
   /// accessor's <c>Load</c> for any config marked <c>Manageable</c>.</summary>
   public static void Register(IExConfigAccess config) =>
     _configs.Register(config);
