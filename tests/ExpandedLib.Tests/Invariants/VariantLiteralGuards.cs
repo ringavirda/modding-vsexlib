@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using ExpandedLib.Definitions;
 using ExpandedLib.Testing;
 using Xunit;
@@ -22,6 +23,14 @@ public class VariantLiteralGuards(ITestOutputHelper output) {
 
   [Fact]
   public void Every_compared_literal_is_a_declared_state() {
+    Premise.NotEmpty(
+      Directory.EnumerateFiles(
+        RepoPaths.Src("exlib"),
+        "*.cs",
+        SearchOption.AllDirectories
+      ),
+      "exlib sources"
+    );
     VariantLiterals.Result result = VariantLiterals.Check(
       new List<IExDef>(),
       RepoPaths.Src("exlib")
