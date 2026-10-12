@@ -804,21 +804,6 @@ public class SetupSceneTests : IDisposable
         "{\"code\": \"setupfixture:slab\", \"from\": [0, 0, 0], \"to\": [2, 0, 0]}",
         "is not built by the harness reader yet"
       },
-      {
-        "interact",
-        "{\"at\": [0, 0, 0]}",
-        "is not built by the harness reader yet"
-      },
-      {
-        "window",
-        "{\"at\": [0, 0, 0]}",
-        "is not built by the harness reader yet"
-      },
-      {
-        "ignite",
-        "{\"at\": [0, 0, 0]}",
-        "is not built by the harness reader yet"
-      },
       { "wait", "{\"seconds\": 1}", "is not built by the harness reader yet" },
       { "repeat", "{\"steps\": []}", "is not built by the harness reader yet" },
     };

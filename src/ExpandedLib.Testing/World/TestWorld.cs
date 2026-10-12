@@ -612,7 +612,9 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Fires every server tick listener registered through <see cref="Api"/>'s event API
   /// (<c>BlockEntity.RegisterGameTickListener</c>) or through <see cref="World"/> (a mod system's
   /// own tick), <paramref name="times"/> times, each with <paramref name="dt"/>; then advances sim
-  /// time by <paramref name="dt"/> seconds per time and fires the delayed callbacks that come due.</summary>
+  /// time by <paramref name="dt"/> seconds per time and fires the delayed callbacks that come due.
+  /// Only <c>RegisterCallback(Action&lt;float&gt;, int)</c> is captured: the other overloads return 0
+  /// and never fire.</summary>
   public void FireBlockEntityTicks(float dt = 1f, int times = 1) {
     for (int i = 0; i < times; i++) {
       foreach (var listener in _tickListeners.Values.ToList())
@@ -631,7 +633,8 @@ public sealed partial class TestWorld : IDisposable {
   internal HashSet<long> TickListenerIds() => [.. _tickListeners.Keys];
 
   /// <summary>Advances block-entity sim time by <paramref name="totalMs"/> ms for the listeners in
-  /// <paramref name="only"/>, or for every listener when it is null.</summary>
+  /// <paramref name="only"/>, or for every listener when it is null. Delayed callbacks that come due
+  /// fire scene-wide, whichever listeners <paramref name="only"/> names.</summary>
   internal void AdvanceBlockEntityTime(int totalMs, IReadOnlySet<long>? only) {
     // Snapshot: a listener may unregister (or a block entity may register a new one) while firing.
     foreach (long id in _tickListeners.Keys.ToList()) {

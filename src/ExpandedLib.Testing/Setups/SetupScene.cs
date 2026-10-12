@@ -15,17 +15,15 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// A setup file built into a fresh world: its mods and the vanilla blocktypes its <c>game:</c> codes
-/// name loaded, its layout and its place, complete, fill, insert, set and call steps run, and the
-/// mechanical lines joined. Running, sampling and checking are not built yet.
+/// name loaded, its layout and its place, complete, fill, insert, set, call, interact, window and
+/// ignite steps run, and the mechanical lines joined. Running, sampling and checking are not built
+/// yet.
 /// </summary>
 public sealed partial class SetupScene : IDisposable
 {
   private static readonly string[] Unbuilt =
   [
     "run",
-    "interact",
-    "window",
-    "ignite",
     "expect",
     "wait",
     "repeat",
@@ -108,7 +106,11 @@ public sealed partial class SetupScene : IDisposable
   /// <c>set</c> of a member or tree key the entity lacks, of a tree key whose attribute type it
   /// cannot write, or of an enum name the type lacks; a <c>call</c> of a behaviour the entity lacks
   /// or a method of no public name and argument count, of a method that threw, or whose result is
-  /// not the step's <c>returns</c>; the message names the file and where.</exception>
+  /// not the step's <c>returns</c>; an <c>interact</c> with a key, a face or a hold it cannot take, or
+  /// whose answer is not its <c>returns</c>; a <c>window</c> at an entity with no inventory, a put with
+  /// no slot, a press or put it cannot send, or a take into a hand still holding a stack; an
+  /// <c>ignite</c> of a block that is not ignitable or not lit within its seconds; the message names
+  /// the file and where.</exception>
   public static SetupScene Build(
     SetupFile file,
     IReadOnlyList<string> modPaths
@@ -431,6 +433,15 @@ public sealed partial class SetupScene : IDisposable
           break;
         case "call":
           CallStep(step);
+          break;
+        case "interact":
+          InteractStep(step);
+          break;
+        case "window":
+          WindowStep(step);
+          break;
+        case "ignite":
+          IgniteStep(step);
           break;
       }
   }

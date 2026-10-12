@@ -511,7 +511,7 @@ internal sealed class SetupLayout {
     );
   }
 
-  private static BlockFacing? FaceOf(string letter) =>
+  internal static BlockFacing? FaceOf(string letter) =>
     letter switch {
       "n" => BlockFacing.NORTH,
       "e" => BlockFacing.EAST,

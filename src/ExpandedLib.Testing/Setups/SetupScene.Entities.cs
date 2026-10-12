@@ -38,7 +38,10 @@ public sealed partial class SetupScene
       (CollectibleObject?)World.World.GetItem(location)
       ?? World.World.GetBlock(location)
       ?? throw Fail(where, $"\"{code}\" is not registered by the load.");
-    return new ItemStack(collectible, (int?)body["count"] ?? 1);
+    var stack = new ItemStack(collectible, (int?)body["count"] ?? 1);
+    if (body["temperature"] is { } temperature)
+      stack.Collectible.SetTemperature(World.World, stack, (float)temperature);
+    return stack;
   }
 
   private void InsertStep(SetupStep step)
@@ -50,8 +53,6 @@ public sealed partial class SetupScene
         $"{be.GetType().Name} at {Describe(at)} has no inventory."
       );
     ItemStack stack = StackOf(step.Body, step.Path);
-    if (step.Body["temperature"] is { } temperature)
-      stack.Collectible.SetTemperature(World.World, stack, (float)temperature);
     int count = stack.StackSize;
     var source = new DummySlot(stack);
     ItemSlot? target = step.Body["slot"] is { } slot

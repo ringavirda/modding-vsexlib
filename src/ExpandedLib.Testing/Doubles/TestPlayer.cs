@@ -124,6 +124,17 @@ public sealed class TestPlayer {
     bool ctrl = false,
     float seconds = 0f,
     BlockFacing? face = null
+  ) => Interact(pos, held, sneak, ctrl, false, seconds, face, null);
+
+  internal bool Interact(
+    BlockPos pos,
+    ItemStack? held,
+    bool sneak,
+    bool ctrl,
+    bool sprint,
+    float seconds,
+    BlockFacing? face,
+    Action? eachSecond
   ) {
     if (!(seconds >= 0f))
       throw new ArgumentOutOfRangeException(
@@ -156,25 +167,40 @@ public sealed class TestPlayer {
       controls.Sprint
     );
     controls.Sneak = controls.ShiftKey = sneak;
-    controls.CtrlKey = controls.Sprint = ctrl;
+    controls.CtrlKey = ctrl;
+    controls.Sprint = ctrl || sprint;
     try {
       Block block = _world.Accessor.GetBlock(pos);
       if (!block.OnBlockInteractStart(_world.World, Player, selection))
         return false;
-      int steps = (int)Math.Floor(seconds / InteractStepSeconds + 1e-4);
-      for (int i = 1; i <= steps; i++) {
-        float used = i * InteractStepSeconds;
-        if (!block.OnBlockInteractStep(used, _world.World, Player, selection)) {
-          block.OnBlockInteractStop(used, _world.World, Player, selection);
-          return true;
-        }
-      }
-      block.OnBlockInteractStop(seconds, _world.World, Player, selection);
+      float used = HoldSteps(
+        seconds,
+        s => block.OnBlockInteractStep(s, _world.World, Player, selection),
+        eachSecond
+      );
+      block.OnBlockInteractStop(used, _world.World, Player, selection);
       return true;
     } finally {
       (controls.Sneak, controls.ShiftKey, controls.CtrlKey, controls.Sprint) =
         was;
     }
+  }
+
+  internal static float HoldSteps(
+    float seconds,
+    System.Func<float, bool> step,
+    Action? eachSecond
+  ) {
+    int perSecond = (int)Math.Round(1f / InteractStepSeconds);
+    int steps = (int)Math.Floor(seconds / InteractStepSeconds + 1e-4);
+    for (int i = 1; i <= steps; i++) {
+      float used = i * InteractStepSeconds;
+      if (!step(used))
+        return used;
+      if (eachSecond != null && i % perSecond == 0)
+        eachSecond();
+    }
+    return seconds;
   }
 
   /// <summary>
