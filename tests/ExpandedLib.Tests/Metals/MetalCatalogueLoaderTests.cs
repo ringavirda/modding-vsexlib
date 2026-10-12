@@ -62,7 +62,8 @@ public class MetalCatalogueLoaderTests {
           MoltenItem = "game:ingot-iron",
           GlowMinTemp = 520f,
         },
-      }
+      },
+      sources: new[] { "exlib" }
     );
     Assert.Equal(520f, MetalRegistry.GlowMinTempOf(iron)); // overlay wins
     Assert.Single(MetalRegistry.All); // replaced, not duplicated

@@ -48,6 +48,7 @@ public class ExWorldStateTests {
       "each registered assembly's modid, the same in every world it loads in",
     ["ExpandedLib.Structures.JsonMultiblockLayout._resolved"] = WeakByWorld,
     ["ExpandedLib.Structures.CellRole._single"] = TypeInitializers,
+    ["ExpandedLib.Structures.CellRole._owners"] = TypeInitializers,
     ["ExpandedLib.Helpers.ExHighlightSlots._slots"] = TypeInitializers,
     ["ExpandedLib.Helpers.ExMeasure._conversions"] =
       "unit conversions rebuilt whenever the language's unit symbols change",
