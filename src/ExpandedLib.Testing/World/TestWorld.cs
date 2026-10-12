@@ -609,12 +609,10 @@ public sealed partial class TestWorld : IDisposable {
       Networks.ServerTick(Accessor, 1f);
   }
 
-  /// <summary>Fires every server tick listener registered through <see cref="Api"/>'s event API
-  /// (<c>BlockEntity.RegisterGameTickListener</c>) or through <see cref="World"/> (a mod system's
-  /// own tick), <paramref name="times"/> times, each with <paramref name="dt"/>; then advances sim
-  /// time by <paramref name="dt"/> seconds per time and fires the delayed callbacks that come due.
-  /// Only <c>RegisterCallback(Action&lt;float&gt;, int)</c> is captured: the other overloads return 0
-  /// and never fire.</summary>
+  /// <summary>Fires every server tick listener registered through <see cref="Api"/> or
+  /// <see cref="World"/>, <paramref name="times"/> times, each with <paramref name="dt"/>; then
+  /// advances sim time by <paramref name="dt"/> seconds per time and fires the delayed callbacks
+  /// that come due. Only <c>RegisterCallback(Action&lt;float&gt;, int)</c> is captured.</summary>
   public void FireBlockEntityTicks(float dt = 1f, int times = 1) {
     for (int i = 0; i < times; i++) {
       foreach (var listener in _tickListeners.Values.ToList())

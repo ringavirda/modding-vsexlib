@@ -14,10 +14,8 @@ using Vintagestory.GameContent.Mechanics;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// A setup file built into a fresh world: its mods and the vanilla blocktypes its <c>game:</c> codes
-/// name loaded, its layout and its place, complete, fill, insert, set, call, interact, window,
-/// ignite, expect, wait and repeat steps run, and the mechanical lines joined. Running, sampling
-/// and checking are not built yet.
+/// A setup file built into a fresh world: mods and vanilla codes loaded, layout placed, every step
+/// but run executed and the mechanical lines joined. Running and checking are not built yet.
 /// </summary>
 public sealed partial class SetupScene : IDisposable
 {
@@ -94,18 +92,10 @@ public sealed partial class SetupScene : IDisposable
   /// <exception cref="ArgumentException"><paramref name="modPaths"/> does not hold one folder for
   /// each of the file's mods.</exception>
   /// <exception cref="InvalidOperationException">The file uses a step kind the fake world cannot
-  /// run, or one not built yet; a code the load did not register; a cell that is not air; a run cell
-  /// no block of its family fits, or two fit; a drawn structure that disagrees with its cells; a
-  /// <c>complete</c> that does not complete; a step at a cell with no block entity; an <c>insert</c>
-  /// into an entity with no inventory, to a slot past the end, or of a stack not taken whole; a
-  /// <c>set</c> of a member or tree key the entity lacks, of a tree key whose attribute type it
-  /// cannot write, or of an enum name the type lacks; a <c>call</c> of a behaviour the entity lacks
-  /// or a method of no public name and argument count, of a method that threw, or whose result is
-  /// not the step's <c>returns</c>; an <c>interact</c> with a key, a face or a hold it cannot take, or
-  /// whose answer is not its <c>returns</c>; a <c>window</c> at an entity with no inventory, a put with
-  /// no slot, a press or put it cannot send, or a take into a hand still holding a stack; an
-  /// <c>ignite</c> of a block that is not ignitable or not lit within its seconds; the message names
-  /// the file and where.</exception>
+  /// run or the reader has not built; or a step fails: a code the load did not register, a cell
+  /// that is not air, a layout or run that does not fit, a step at a cell without the block entity,
+  /// member, key, slot or method it names, a hold, <c>returns</c>, <c>wait</c> or <c>repeat</c> not
+  /// met, or an <c>expect</c> that does not hold. The message names the file and where.</exception>
   public static SetupScene Build(
     SetupFile file,
     IReadOnlyList<string> modPaths
