@@ -149,4 +149,51 @@ public class SelectiveElementsTests {
       result.Findings
     );
   }
+
+  private static SelectiveElements.Result RunStage(
+    System.Action<ConstructionStage> stage
+  ) {
+    using var files = new PlantedFiles();
+    files.Write("shapes/machine.json", Shape);
+    return SelectiveElements.Check(
+      [
+        ExBlockDef
+          .Create("plantedshape", "stack")
+          .Shape("plantedshape:machine")
+          .Construction(c => c.Stage(stage)),
+      ],
+      "plantedshape",
+      files.Path("shapes")
+    );
+  }
+
+  // Fails when the stages table is not read.
+  [Theory]
+  [InlineData("Plate", "no element Plate")]
+  [InlineData("Root/Basement", "no element Basement under Root")]
+  [PlantedDefect(typeof(SelectiveElements), nameof(SelectiveElements.Check))]
+  public void A_stage_element_that_is_not_a_path_from_the_root_is_reported(
+    string name,
+    string reason
+  ) {
+    SelectiveElements.Result added = RunStage(s => s.AddElements(name));
+    SelectiveElements.Result removed = RunStage(s => s.RemoveElements(name));
+
+    Assert.Equal(1, added.Paths);
+    Assert.Equal(
+      [$"plantedshape/blocktypes/stack.json: {name}/*: {reason}"],
+      added.Findings
+    );
+    Assert.Equal(added.Findings, removed.Findings);
+  }
+
+  [Fact]
+  public void A_stage_element_that_is_a_path_from_the_root_passes() {
+    SelectiveElements.Result result = RunStage(s =>
+      s.AddElements("Root", "Root/Base")
+    );
+
+    Assert.Equal(2, result.Paths);
+    Assert.Empty(result.Findings);
+  }
 }

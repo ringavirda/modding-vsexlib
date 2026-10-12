@@ -5,8 +5,8 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>Every lang value exlib's source sends to chat is free of raw markup; the rule is
-/// <see cref="ChatText"/>'.</summary>
+/// <summary>Every lang value exlib's source sends to chat, through a literal, a key property or a
+/// method in the same file, is free of raw markup; the rule is <see cref="ChatText"/>.</summary>
 [GuardOf(typeof(ChatText), nameof(ChatText.Check))]
 public class ChatTextGuards {
   private static readonly Dictionary<string, string> Allowed = new();

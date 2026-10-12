@@ -43,14 +43,20 @@ public static class LangCallSites {
     RegexOptions.Compiled | RegexOptions.IgnoreCase
   );
 
-  /// <summary>The source text between an opening parenthesis and the one that closes it. String
-  /// contents are not parsed.</summary>
-  internal static string ArgumentRegion(string source, int openParen) {
+  /// <summary>The source text between an opening bracket (a parenthesis unless
+  /// <paramref name="open"/> says otherwise) and the one that closes it. String contents are not
+  /// parsed.</summary>
+  internal static string ArgumentRegion(
+    string source,
+    int openParen,
+    char open = '(',
+    char close = ')'
+  ) {
     int depth = 0;
     for (int i = openParen; i < source.Length; i++) {
-      if (source[i] == '(')
+      if (source[i] == open)
         depth++;
-      else if (source[i] == ')' && --depth == 0)
+      else if (source[i] == close && --depth == 0)
         return source[(openParen + 1)..i];
     }
     return source[(openParen + 1)..];

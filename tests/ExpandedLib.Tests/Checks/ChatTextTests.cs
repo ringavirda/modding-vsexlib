@@ -92,4 +92,31 @@ public class ChatTextTests {
     Assert.Equal(["plantedchat:note"], keys);
     Assert.Empty(findings);
   }
+
+  // Fails when a method called in the arguments is not followed into its body.
+  [Theory]
+  [InlineData(
+    "TextCommandResult.Success(List()); string List() => Lang.Get(\"plantedchat:note\");"
+  )]
+  [InlineData(
+    "TextCommandResult.Success(List()); string List() { return Lang.Get(\"plantedchat:note\"); }"
+  )]
+  public void A_method_called_in_the_arguments_is_read(string source) {
+    var (keys, findings) = Run(source, """{ "note": "a < b" }""");
+
+    Assert.Equal(["plantedchat:note"], keys);
+    Assert.Equal(["en: plantedchat:note (Planted.cs): raw <"], findings);
+  }
+
+  // Fails when a key property named in the arguments is not resolved.
+  [Fact]
+  public void A_key_property_named_in_the_arguments_is_read() {
+    var (keys, findings) = Run(
+      "TextCommandResult.Error(Lang.Get(NoteKey)); string NoteKey => \"plantedchat:note\";",
+      """{ "note": "a -> b" }"""
+    );
+
+    Assert.Equal(["plantedchat:note"], keys);
+    Assert.Equal(["en: plantedchat:note (Planted.cs): raw >"], findings);
+  }
 }
