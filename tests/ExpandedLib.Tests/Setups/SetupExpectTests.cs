@@ -289,9 +289,22 @@ public class SetupExpectTests : IDisposable
       )
       .Message;
 
+    string other = Assert
+      .Throws<InvalidOperationException>(() =>
+        Build(
+          Inline(
+            "platedpipes",
+            "[{\"expect\": {\"at\": [1, 0, 0], \"network\": \"molten\"}}]",
+            PipeLayout
+          )
+        )
+      )
+      .Message;
+
     Assert.NotNull(scene);
     Assert.Contains("steps[1]", message);
     Assert.Contains("pipe MediumType", message);
+    Assert.Contains("steps[0]", other);
   }
 
   // Fails when two cells of one network are read as two, or a cell outside any network as in one.
