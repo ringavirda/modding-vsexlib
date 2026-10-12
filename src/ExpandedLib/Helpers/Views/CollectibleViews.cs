@@ -67,8 +67,34 @@ internal static class CollectibleViews {
   }
 
   /// <summary>A box in voxels: <paramref name="From"/> and <paramref name="To"/> are its corners in the frame
-  /// whose axes are <paramref name="Axes"/>, the unit vectors of the shape's frame.</summary>
-  internal sealed record ViewBox(Vec3d From, Vec3d To, Vec3d[] Axes) {
+  /// whose axes are <paramref name="Axes"/>, unit vectors in the shape's frame. <paramref name="Drawn"/> holds
+  /// the eight corners of each drawn element in the shape's frame.</summary>
+  internal sealed record ViewBox(
+    Vec3d From,
+    Vec3d To,
+    Vec3d[] Axes,
+    IReadOnlyList<Vec3d[]> Drawn
+  ) {
+    /// <summary>The point of a drawn element's bounding box nearest <paramref name="p"/>, in the shape's
+    /// frame, with its distance in voxels.</summary>
+    internal Vec3d Nearest(Vec3d p, out double distance) {
+      Vec3d best = p;
+      distance = double.PositiveInfinity;
+      foreach (Vec3d[] corners in Drawn) {
+        var q = new Vec3d(
+          Math.Clamp(p.X, corners.Min(c => c.X), corners.Max(c => c.X)),
+          Math.Clamp(p.Y, corners.Min(c => c.Y), corners.Max(c => c.Y)),
+          Math.Clamp(p.Z, corners.Min(c => c.Z), corners.Max(c => c.Z))
+        );
+        double d = q.DistanceTo(p);
+        if (d < distance) {
+          distance = d;
+          best = q;
+        }
+      }
+      return best;
+    }
+
     /// <summary>The three side lengths in voxels, longest first.</summary>
     internal double[] Extents() {
       double[] e = [To.X - From.X, To.Y - From.Y, To.Z - From.Z];
@@ -77,6 +103,11 @@ internal static class CollectibleViews {
       return e;
     }
   }
+
+  /// <summary>Whether <paramref name="collectible"/> declares <c>attributes.itemViews.kind</c> as
+  /// <c>none</c>, which leaves its transforms to the game.</summary>
+  internal static bool OptedOut(CollectibleObject collectible) =>
+    collectible.Attributes?["itemViews"]?["kind"]?.AsString() == "none";
 
   private static ItemViewKind Declared(CollectibleObject collectible) {
     string? name = collectible.Attributes?["itemViews"]?["kind"]?.AsString();
@@ -256,8 +287,11 @@ internal static class CollectibleViews {
       return null;
     var frames = new List<double[,]> { Identity };
     var points = new List<Vec3d>();
+    var turned = new List<Vec3d[]>();
     foreach (Element e in drawn) {
-      points.AddRange(e.Corners.Select(turn.Apply));
+      Vec3d[] corners = e.Corners.Select(turn.Apply).ToArray();
+      turned.Add(corners);
+      points.AddRange(corners);
       double[,] frame = Mul(turn.R, e.Frame);
       if (!shapeFrame && frames.All(g => !SameFrame(g, frame)))
         frames.Add(frame);
@@ -287,7 +321,8 @@ internal static class CollectibleViews {
             new Vec3d(frame[0, 0], frame[1, 0], frame[2, 0]),
             new Vec3d(frame[0, 1], frame[1, 1], frame[2, 1]),
             new Vec3d(frame[0, 2], frame[1, 2], frame[2, 2]),
-          ]
+          ],
+          turned
         );
       }
     }
@@ -320,7 +355,7 @@ internal static class CollectibleViews {
   };
 
   // Rx * Ry * Rz with angles in degrees, column vectors: the order the shape format composes its rotations in.
-  private static double[,] Rotation(Vec3d degrees) =>
+  internal static double[,] Rotation(Vec3d degrees) =>
     Mul(Mul(RotationX(degrees.X), RotationY(degrees.Y)), RotationZ(degrees.Z));
 
   private static double[,] RotationX(double degrees) {
@@ -359,7 +394,7 @@ internal static class CollectibleViews {
     };
   }
 
-  private static double[,] Mul(double[,] a, double[,] b) {
+  internal static double[,] Mul(double[,] a, double[,] b) {
     var r = new double[3, 3];
     for (int i = 0; i < 3; i++)
       for (int j = 0; j < 3; j++)
@@ -368,7 +403,7 @@ internal static class CollectibleViews {
     return r;
   }
 
-  private static Vec3d Mul(double[,] m, Vec3d v) =>
+  internal static Vec3d Mul(double[,] m, Vec3d v) =>
     new(
       m[0, 0] * v.X + m[0, 1] * v.Y + m[0, 2] * v.Z,
       m[1, 0] * v.X + m[1, 1] * v.Y + m[1, 2] * v.Z,

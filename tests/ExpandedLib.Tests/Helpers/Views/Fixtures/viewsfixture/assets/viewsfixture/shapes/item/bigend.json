@@ -1,0 +1,25 @@
+{
+  "textures": {
+    "tex": "viewsfixture:item/tex"
+  },
+  "elements": [
+    {
+      "name": "head",
+      "from": [ 0, 0, 0 ],
+      "to": [ 10, 3, 3 ],
+      "faces": {
+        "north": { "texture": "#tex", "uv": [ 0, 0, 10, 3 ] },
+        "up": { "texture": "#tex", "uv": [ 0, 0, 10, 3 ] }
+      }
+    },
+    {
+      "name": "shaft",
+      "from": [ 10, 1, 1 ],
+      "to": [ 40, 2, 2 ],
+      "faces": {
+        "north": { "texture": "#tex", "uv": [ 0, 0, 30, 1 ] },
+        "up": { "texture": "#tex", "uv": [ 0, 0, 30, 1 ] }
+      }
+    }
+  ]
+}

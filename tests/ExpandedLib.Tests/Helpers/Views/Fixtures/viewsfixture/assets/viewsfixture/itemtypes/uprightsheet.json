@@ -1,0 +1,7 @@
+{
+  "code": "uprightsheet",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/uprightsheet"
+  }
+}

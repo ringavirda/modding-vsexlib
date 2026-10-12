@@ -1,0 +1,20 @@
+{
+  "textures": {
+    "tex": "viewsfixture:item/tex"
+  },
+  "elements": [
+    {
+      "name": "sheet",
+      "from": [ 3.5, 3.5, 0 ],
+      "to": [ 12.5, 12.5, 1 ],
+      "faces": {
+        "north": { "texture": "#tex", "uv": [ 0, 0, 9, 9 ] },
+        "south": { "texture": "#tex", "uv": [ 0, 0, 9, 9 ] },
+        "east": { "texture": "#tex", "uv": [ 0, 0, 9, 1 ] },
+        "west": { "texture": "#tex", "uv": [ 0, 0, 9, 1 ] },
+        "up": { "texture": "#tex", "uv": [ 0, 0, 9, 1 ] },
+        "down": { "texture": "#tex", "uv": [ 0, 0, 9, 1 ] }
+      }
+    }
+  ]
+}
