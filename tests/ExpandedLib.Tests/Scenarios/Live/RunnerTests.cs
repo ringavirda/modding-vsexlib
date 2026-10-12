@@ -149,8 +149,8 @@ public class RunnerTests {
     using var run = new Run();
     run.WriteSample();
     EntityPos? spawn = null;
-    run.Api.World.DefaultSpawnPosition.Returns<EntityPos>(
-      _ => spawn ?? throw new NullReferenceException()
+    run.Api.World.DefaultSpawnPosition.Returns<EntityPos>(_ =>
+      spawn ?? throw new NullReferenceException()
     );
     var runner = run.Start(["exlib/sample"]);
     spawn = new EntityPos(0, 100, 0);
