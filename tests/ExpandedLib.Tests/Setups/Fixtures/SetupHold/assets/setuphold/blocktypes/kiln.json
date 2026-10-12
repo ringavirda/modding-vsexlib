@@ -1,0 +1,1 @@
+{ "code": "kiln", "class": "SetupHoldBlock", "entityClass": "SetupHoldEntity", "attributes": { "ignitesAt": 4.5 } }

@@ -210,6 +210,18 @@ public class SetupHoldTests
     Assert.Equal(1, EntityAt(scene, "lamp").Fires);
   }
 
+  // Fails when an ignite under the default seconds gives up before a block that lights past four.
+  [Fact]
+  public void An_ignite_under_the_default_seconds_lights_a_block_that_lights_at_four_and_a_half()
+  {
+    using SetupScene scene = Build(
+      "[{\"place\": {\"id\": \"kiln\", \"code\": \"setuphold:kiln\", \"at\": [0, 0, 0]}}, "
+        + "{\"ignite\": {\"at\": {\"of\": \"kiln\"}}}]"
+    );
+
+    Assert.Equal(4.5f, Assert.Single(BlockAt(scene, "kiln").Overs), 1);
+  }
+
   // Fails when a block that refuses the ignite is lit anyway.
   [Fact]
   public void An_ignite_of_a_block_that_refuses_fails_the_step()
@@ -348,7 +360,9 @@ public class SetupHoldTests
   }
 
   // Fails when a press id that is a slot, open or close packet, a byte outside 0 to 255, a slot range
-  // that runs backwards, or a put without a slot is let through.
+  // that runs backwards, or a put without a slot is let through; and when a slot or byte that is not a
+  // whole number, a negative slot, a one-entry or three-entry slot range, a take without a slot, a take
+  // of a range, or a press without an id is let through.
   [Theory]
   [InlineData(
     "\"press\": {\"id\": 1001}",
@@ -366,6 +380,33 @@ public class SetupHoldTests
     "\"put\": {\"stack\": \"setuphold:slab\", \"count\": 1}",
     "put needs a slot."
   )]
+  [InlineData(
+    "\"put\": {\"slot\": [0], \"stack\": \"setuphold:slab\", \"count\": 1}",
+    "slot range needs [first, last], not 1 entries."
+  )]
+  [InlineData(
+    "\"put\": {\"slot\": [0, 1, 2], \"stack\": \"setuphold:slab\", \"count\": 1}",
+    "slot range needs [first, last], not 3 entries."
+  )]
+  [InlineData(
+    "\"put\": {\"slot\": -1, \"stack\": \"setuphold:slab\", \"count\": 1}",
+    "slot -1 is negative."
+  )]
+  [InlineData(
+    "\"put\": {\"slot\": \"a\", \"stack\": \"setuphold:slab\", \"count\": 1}",
+    "\"a\" is not a whole number."
+  )]
+  [InlineData(
+    "\"press\": {\"id\": 1005, \"data\": [\"a\"]}",
+    "\"a\" is not a whole number."
+  )]
+  [InlineData("\"press\": {\"data\": [1]}", "press needs an id.")]
+  [InlineData("\"take\": {}", "take needs a slot.")]
+  [InlineData(
+    "\"take\": {\"slot\": [0, 1]}",
+    "take takes one slot; the [first, last] range is for put."
+  )]
+  [InlineData("\"take\": {\"slot\": -1}", "slot -1 is negative.")]
   public void A_window_body_the_window_cannot_send_fails_the_step(
     string body,
     string reason

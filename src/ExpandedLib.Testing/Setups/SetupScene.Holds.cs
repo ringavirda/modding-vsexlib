@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Scenarios;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -70,7 +71,7 @@ public sealed partial class SetupScene
         step.Path,
         $"{block.Code} at {Describe(at)} is not ignitable."
       );
-    float seconds = (float?)step.Body["seconds"] ?? 3f;
+    float seconds = (float?)step.Body["seconds"] ?? 5f;
     EnumIgniteState? answer = null;
     float held = TestPlayer.HoldSteps(
       seconds,
@@ -126,6 +127,14 @@ public sealed partial class SetupScene
       }
     if (step.Body["take"] is JObject take)
     {
+      JToken takeSlot =
+        take["slot"] ?? throw Fail(step.Path, "take needs a slot.");
+      if (takeSlot is JArray)
+        throw Fail(
+          step.Path,
+          "take takes one slot; the [first, last] range is for put."
+        );
+      int index = SlotOf(takeSlot, step.Path);
       if (!Player.ActiveSlot.Empty)
       {
         ItemStack held = Player.ActiveSlot.Itemstack!;
@@ -134,11 +143,14 @@ public sealed partial class SetupScene
           $"the hand holds {held.StackSize} {held.Collectible.Code}; a take needs it empty."
         );
       }
-      Verb(() => window.Take((int)take["slot"]!));
+      Verb(() => window.Take(index));
     }
     if (step.Body["press"] is JObject press)
     {
-      int id = (int)press["id"]!;
+      int id = WholeOf(
+        press["id"] ?? throw Fail(step.Path, "press needs an id."),
+        step.Path
+      );
       if (id <= TestWindow.ClosePacketId)
         throw Fail(
           step.Path,
@@ -173,17 +185,36 @@ public sealed partial class SetupScene
   private List<int> SlotsOf(JToken slot, string where)
   {
     if (slot is not JArray range)
-      return [(int)slot];
-    int first = (int)range[0];
-    int last = (int)range[1];
+      return [SlotOf(slot, where)];
+    if (range.Count != 2)
+      throw Fail(
+        where,
+        $"slot range needs [first, last], not {range.Count} entries."
+      );
+    int first = SlotOf(range[0], where);
+    int last = SlotOf(range[1], where);
     return last < first
       ? throw Fail(where, $"slot range [{first}, {last}] runs backwards.")
       : Enumerable.Range(first, last - first + 1).ToList();
   }
 
+  private int SlotOf(JToken slot, string where)
+  {
+    int index = WholeOf(slot, where);
+    return index < 0 ? throw Fail(where, $"slot {index} is negative.") : index;
+  }
+
+  private int WholeOf(JToken value, string where) =>
+    value.Type == JTokenType.Integer
+      ? (int)value
+      : throw Fail(
+        where,
+        $"{value.ToString(Formatting.None)} is not a whole number."
+      );
+
   private byte[] BytesOf(JArray values, string where) =>
     values
-      .Select(v => (int)v)
+      .Select(v => WholeOf(v, where))
       .Select(n =>
         n is >= 0 and <= 255
           ? (byte)n
