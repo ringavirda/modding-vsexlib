@@ -34,7 +34,7 @@ public static class LangCallSites {
   );
 
   // Case-insensitive on purpose: a key is lower-case by convention, and a capital is a typo.
-  private static readonly Regex Literal = new(
+  internal static readonly Regex Literal = new(
     "\"([a-z0-9]+:[a-z0-9-]+)\"",
     RegexOptions.Compiled | RegexOptions.IgnoreCase
   );
@@ -45,7 +45,7 @@ public static class LangCallSites {
 
   /// <summary>The source text between an opening parenthesis and the one that closes it. String
   /// contents are not parsed.</summary>
-  private static string ArgumentRegion(string source, int openParen) {
+  internal static string ArgumentRegion(string source, int openParen) {
     int depth = 0;
     for (int i = openParen; i < source.Length; i++) {
       if (source[i] == '(')
