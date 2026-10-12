@@ -9,8 +9,9 @@ using Vintagestory.Server;
 
 namespace ExpandedLib.Testing.Live;
 
-/// <summary>The server-side survival player a run's cases act through, built from the engine's own
-/// classes with no connection (scenarios.md, The scenario player).</summary>
+/// <summary>The server-side player a run's cases act through, built from the engine's own classes
+/// with no connection and marked connected so the engine reads its game mode (scenarios.md, The
+/// scenario player).</summary>
 internal sealed class ScenarioPlayer {
   public const string Uid = "exlib-scenario";
   private const string Name = "Scenario";
@@ -75,11 +76,22 @@ internal sealed class ScenarioPlayer {
         out Type? inventory,
         out failure
       )
+      || !PlayerCheck.Read(
+        "ServerWorldPlayerData.connected",
+        () =>
+          typeof(ServerWorldPlayerData).GetField(
+            "connected",
+            BindingFlags.Instance | BindingFlags.NonPublic
+          ),
+        f => f != null,
+        out FieldInfo? connected,
+        out failure
+      )
     )
       return null;
     ScenarioPlayer made;
     try {
-      made = Build(server, row, systems!, inventory!);
+      made = Build(server, row, systems!, inventory!, connected!);
     } catch (Exception e) {
       failure = $"build: threw {e.GetType().Name}: {e.Message}";
       return null;
@@ -112,9 +124,21 @@ internal sealed class ScenarioPlayer {
         () => {
           ((IWorldPlayerData)made._data).CurrentGameMode =
             EnumGameMode.Survival;
-          return made._data.GameMode;
+          return ((IWorldPlayerData)made._data).CurrentGameMode;
         },
         m => m == EnumGameMode.Survival,
+        out _,
+        out failure
+      )
+      && PlayerCheck.Read(
+        "BuildAccess",
+        () =>
+          server.WorldMap.TestBlockAccess(
+            made.Player,
+            new BlockSelection { Position = at.Copy() },
+            EnumBlockAccessFlags.BuildOrBreak
+          ),
+        r => r == EnumWorldAccessResponse.Granted,
         out _,
         out failure
       )
@@ -145,6 +169,15 @@ internal sealed class ScenarioPlayer {
   /// of it, on its level.</summary>
   public static Vec3d Stand(BlockPos at) => new(at.X + 0.5, at.Y, at.Z + 2.5);
 
+  /// <summary>The point, relative to the clicked block, where a click on its <paramref name="face"/>
+  /// lands: the middle of that face.</summary>
+  public static Vec3d Hit(BlockFacing face) =>
+    new(
+      0.5 + 0.5 * face.Normali.X,
+      0.5 + 0.5 * face.Normali.Y,
+      0.5 + 0.5 * face.Normali.Z
+    );
+
   /// <summary>The yaw and pitch, in radians, that turn a player at <paramref name="eye"/> toward
   /// <paramref name="target"/> in the engine's view convention (yaw 0 looks along -Z).</summary>
   public static (float Yaw, float Pitch) Look(Vec3d eye, Vec3d target) {
@@ -159,7 +192,7 @@ internal sealed class ScenarioPlayer {
 
   /// <summary>Places <paramref name="block"/> into <paramref name="at"/> the way a player's click on
   /// the <paramref name="face"/> of the block beside it does (<c>Block.TryPlaceBlock</c> with the
-  /// active slot's stack, then the did-place event): moved into place in survival, the slot filled,
+  /// active slot's stack, then the did-place event): moved into place in survival mode, the slot filled,
   /// then emptied and the player parked again.</summary>
   /// <param name="block">The block to hold and place.</param>
   /// <param name="at">The absolute cell the block goes into.</param>
@@ -176,10 +209,14 @@ internal sealed class ScenarioPlayer {
     _data.FreeMove = false;
     Vec3d stand = Stand(at);
     MoveTo(stand);
-    var hit = new Vec3d(0.5, 1, 0.5);
+    Vec3d hit = Hit(face);
     Vec3d eye = stand.AddCopy(_data.EntityPlayer.LocalEyePos);
+    Vec3i n = face.Normali;
     (_data.EntityPlayer.ServerPos.Yaw, _data.EntityPlayer.ServerPos.Pitch) =
-      Look(eye, new Vec3d(at.X + hit.X, at.Y + hit.Y - 1, at.Z + hit.Z));
+      Look(
+        eye,
+        new Vec3d(at.X - n.X + hit.X, at.Y - n.Y + hit.Y, at.Z - n.Z + hit.Z)
+      );
     _data.EntityPlayer.Pos.SetFrom(_data.EntityPlayer.ServerPos);
     ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
     slot.Itemstack = new ItemStack(block);
@@ -234,16 +271,19 @@ internal sealed class ScenarioPlayer {
     ServerMain server,
     BlockPos row,
     FieldInfo systems,
-    Type inventory
+    Type inventory,
+    FieldInfo connected
   ) {
     BlockPos park = ParkCell(row);
     ServerWorldPlayerData data = ServerWorldPlayerData.CreateNew(Name, Uid);
     data.Init(server);
+    connected.SetValue(data, true);
     data.EntityPlayer.Code = server
       .GetEntityType(GlobalConstants.EntityPlayerTypeCode)
       .Code;
     data.EntityPlayer.WatchedAttributes.SetString("playerUID", Uid);
     var player = new ServerPlayer(server, data);
+    player.serverdata.RoleCode = "admin";
     server.PlayerDataManager.WorldDataByUID[Uid] = data;
     server.PlayersByUid[Uid] = player;
     object join = ((Array)systems.GetValue(server)!)

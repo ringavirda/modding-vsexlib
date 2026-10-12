@@ -14,6 +14,10 @@ using Vintagestory.Server;
 
 namespace ExpandedLib.Testing.Live;
 
+/// <summary>Builds the scenario player: null with <paramref name="failure"/> null for none, null
+/// with a failure when the build threw, or the player.</summary>
+internal delegate ScenarioPlayer? PlayerStart(out string? failure);
+
 /// <summary>Runs the named scenarios one case at a time on the server's main thread, each on a
 /// plot of its own, and logs the <c>[scenario]</c> lines (scenarios.md, Output).</summary>
 internal sealed class ScenarioRunner {
@@ -61,8 +65,9 @@ internal sealed class ScenarioRunner {
   /// left standing stay clear; null starts a new one when the first case starts.</param>
   /// <param name="climate">The climate hold earlier runs used, so its handler is registered
   /// once; null starts a new one.</param>
-  /// <param name="withPlayer">False runs the cases without the scenario player, for a world that is
-  /// not a running server.</param>
+  /// <param name="startPlayer">Builds the scenario player before the first case; null builds the
+  /// engine's own at the default spawn, and a substitute serves a world that is not a running
+  /// server.</param>
   public ScenarioRunner(
     ICoreServerAPI api,
     IReadOnlyList<string> names,
@@ -70,7 +75,7 @@ internal sealed class ScenarioRunner {
     IServerPlayer? chatTo,
     PlotAllocator? plots = null,
     ClimateHold? climate = null,
-    bool withPlayer = true
+    PlayerStart? startPlayer = null
   ) {
     _api = api;
     _keep = keep;
@@ -99,8 +104,8 @@ internal sealed class ScenarioRunner {
         GameVersion.OverallVersion
       )
     );
-    if (withPlayer && names.Count > 0)
-      StartPlayer();
+    if (names.Count > 0)
+      StartPlayer(startPlayer ?? StartEngine);
     if (names.Count == 0) {
       Emit(ScenarioOutput.Error("run", "no case selected"));
       Finish();
@@ -112,12 +117,15 @@ internal sealed class ScenarioRunner {
     return new PlotAllocator(spawn.AsBlockPos.X, spawn.AsBlockPos.Z);
   }
 
-  private void StartPlayer() {
-    _player = ScenarioPlayer.Start(
+  private ScenarioPlayer? StartEngine(out string? failure) =>
+    ScenarioPlayer.Start(
       (ServerMain)_api.World,
       _api.World.DefaultSpawnPosition.AsBlockPos,
-      out string? failure
+      out failure
     );
+
+  private void StartPlayer(PlayerStart start) {
+    _player = start(out string? failure);
     if (failure == null)
       return;
     _playerBroken = true;

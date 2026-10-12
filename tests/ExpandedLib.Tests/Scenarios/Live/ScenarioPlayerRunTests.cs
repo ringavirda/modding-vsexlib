@@ -40,6 +40,41 @@ public class ScenarioPlayerRunTests {
     );
   }
 
+  /// <summary>Fails when a turning path is called straight (S21), or a straight one has a turn (S22).</summary>
+  [Fact]
+  public void A_path_with_a_turn_names_the_turn_cell() {
+    var bent = RunStep.Path(
+      new BlockPos(0, 0, 0),
+      [new BlockPos(2, 0, 0)],
+      new BlockPos(2, 0, 2)
+    );
+    BlockPos turn = Assert.IsType<BlockPos>(RunStep.FirstTurn(bent));
+    Assert.Equal((2, 0, 0), (turn.X, turn.Y, turn.Z));
+    var straight = RunStep.Path(
+      new BlockPos(0, 0, 0),
+      [new BlockPos(2, 0, 0)],
+      new BlockPos(4, 0, 0)
+    );
+    Assert.Null(RunStep.FirstTurn(straight));
+  }
+
+  /// <summary>Fails when the cell past the first end is taken from the wrong side (S23), or past the last (S24).</summary>
+  [Fact]
+  public void The_cells_beyond_a_run_continue_its_end_legs() {
+    var cells = RunStep.Path(new BlockPos(1, 0, 0), [], new BlockPos(3, 0, 0));
+    (BlockPos before, BlockPos after) = RunStep.Beyond(cells);
+    Assert.Equal(("0,0,0", "4,0,0"), (Cells([before]), Cells([after])));
+  }
+
+  /// <summary>Fails when the hit point is fixed at the top (S25) or leaves the clicked face (S26).</summary>
+  [Fact]
+  public void The_hit_is_the_middle_of_the_clicked_face() {
+    Vec3d east = ScenarioPlayer.Hit(BlockFacing.EAST);
+    Vec3d down = ScenarioPlayer.Hit(BlockFacing.DOWN);
+    Assert.Equal((1.0, 0.5, 0.5), (east.X, east.Y, east.Z));
+    Assert.Equal((0.5, 0.0, 0.5), (down.X, down.Y, down.Z));
+  }
+
   /// <summary>Fails when a leg along two axes is accepted (S7).</summary>
   [Fact]
   public void A_leg_along_two_axes_fails_the_step() {

@@ -10,9 +10,9 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Testing.Live;
 
-/// <summary><c>run</c>: the scenario player places the straight segment by hand in every cell of the
-/// path, the pipes orient themselves, and every <c>open</c> face is then a connector of the block that
-/// went down.</summary>
+/// <summary><c>run</c>: the scenario player places the straight segment by hand in every cell of a
+/// straight path, the pipes orient themselves along it, and every <c>open</c> face is then a connector of
+/// the block that went down. A path with a turn is refused, since one blocktype is never a bend.</summary>
 internal sealed class RunStep : ScenarioStep {
   public override string Kind => "run";
 
@@ -50,6 +50,34 @@ internal sealed class RunStep : ScenarioStep {
       }
     }
     return cells;
+  }
+
+  /// <summary>The first cell of <paramref name="cells"/> where the path changes direction, or null
+  /// when it runs straight.</summary>
+  public static BlockPos? FirstTurn(IReadOnlyList<BlockPos> cells) {
+    for (int i = 1; i + 1 < cells.Count; i++)
+      if (
+        cells[i - 1].X - cells[i].X != cells[i].X - cells[i + 1].X
+        || cells[i - 1].Y - cells[i].Y != cells[i].Y - cells[i + 1].Y
+        || cells[i - 1].Z - cells[i].Z != cells[i].Z - cells[i + 1].Z
+      )
+        return cells[i];
+    return null;
+  }
+
+  /// <summary>The cells just past each end of a path of at least two cells, along its first and last
+  /// legs.</summary>
+  public static (BlockPos Before, BlockPos After) Beyond(
+    IReadOnlyList<BlockPos> cells
+  ) {
+    BlockPos a = cells[0];
+    BlockPos b = cells[1];
+    BlockPos y = cells[^2];
+    BlockPos z = cells[^1];
+    return (
+      a.AddCopy(a.X - b.X, a.Y - b.Y, a.Z - b.Z),
+      z.AddCopy(z.X - y.X, z.Y - y.Y, z.Z - y.Z)
+    );
   }
 
   /// <summary>The face the player clicks to place each of <paramref name="cells"/>: the face of the
@@ -106,6 +134,11 @@ internal sealed class RunStep : ScenarioStep {
       .. (o["via"] as JArray ?? []).Select(v => ctx.Position(step, v, "via")),
     ];
     List<BlockPos> cells = Path(from, via, to);
+    if (FirstTurn(cells) is { } turn)
+      throw new StepFailure(
+        $"the path turns at {FailureDetail.Cell(turn)}, and a run places one straight blocktype, which is never a bend.",
+        Suspect.Scenario
+      );
     foreach (BlockPos cell in cells)
       if (cell.Y >= 0 && !ctx.IsAir(cell))
         throw new StepFailure(
@@ -133,15 +166,27 @@ internal sealed class RunStep : ScenarioStep {
     yield return true;
     foreach (JToken each in o["open"] as JArray ?? [])
       CheckOpen(ctx, step, (JObject)each);
-    if (block is INetworkMember { NetworkType: var type })
-      for (int i = 1; i < cells.Count; i++)
+    if (block is INetworkMember { NetworkType: var type }) {
+      List<BlockPos> joined = [.. cells];
+      if (cells.Count > 1) {
+        (BlockPos before, BlockPos after) = Beyond(cells);
+        foreach (BlockPos outside in new[] { before, after })
+          if (
+            ctx.Setup.BlockAt(outside)
+              is INetworkMember { NetworkType: var other }
+            && other == type
+          )
+            joined.Add(outside);
+      }
+      for (int i = 1; i < joined.Count; i++)
         if (
-          ctx.Setup.NetworkAt(cells[0], type) is not { } first
-          || !ReferenceEquals(first, ctx.Setup.NetworkAt(cells[i], type))
+          ctx.Setup.NetworkAt(joined[0], type) is not { } first
+          || !ReferenceEquals(first, ctx.Setup.NetworkAt(joined[i], type))
         )
           throw new StepFailure(
-            $"{FailureDetail.Cell(cells[0])} and {FailureDetail.Cell(cells[i])} are not in one {type} network."
+            $"{FailureDetail.Cell(joined[0])} and {FailureDetail.Cell(joined[i])} are not in one {type} network."
           );
+    }
     if (step.Id != null)
       ctx.Setup.Place(step.Id, new SetupPlacement(cells[0].Copy(), cells));
     report.Value = $"{cells.Count} cell(s) of {block.Code}";
