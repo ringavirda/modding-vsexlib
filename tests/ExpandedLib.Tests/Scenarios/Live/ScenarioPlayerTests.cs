@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ExpandedLib.Testing.Live;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -59,5 +60,49 @@ public class ScenarioPlayerTests {
   public void The_park_cell_sits_sixteen_blocks_above_the_row() {
     BlockPos park = ScenarioPlayer.ParkCell(new BlockPos(100, 50, -7));
     Assert.Equal((100, 66, -7), (park.X, park.Y, park.Z));
+  }
+
+  /// <summary>Fails when a build that throws is not undone (S56), or its failure drops the
+  /// exception's message (S57).</summary>
+  [Fact]
+  public void A_build_that_throws_is_undone_and_names_the_exception() {
+    bool undone = false;
+    string? made = PlayerCheck.Assemble<string>(
+      () => throw new InvalidOperationException("boom"),
+      () => undone = true,
+      out string? failure
+    );
+    Assert.Null(made);
+    Assert.True(undone);
+    Assert.Equal("build: threw InvalidOperationException: boom", failure);
+  }
+
+  /// <summary>Fails when a build that returns is undone (S59).</summary>
+  [Fact]
+  public void A_build_that_returns_is_not_undone() {
+    bool undone = false;
+    string? made = PlayerCheck.Assemble(
+      () => "built",
+      () => undone = true,
+      out string? failure
+    );
+    Assert.Equal("built", made);
+    Assert.False(undone);
+    Assert.Null(failure);
+  }
+
+  /// <summary>Fails when the player's uid stays in a map it is removed from (S58), or when another
+  /// key goes with it.</summary>
+  [Fact]
+  public void Forget_removes_the_uid_from_every_map_and_no_other_key() {
+    var players = new Dictionary<string, int> {
+      [ScenarioPlayer.Uid] = 1,
+      ["other"] = 2,
+    };
+    var worlds = new Dictionary<string, int> { [ScenarioPlayer.Uid] = 3 };
+    ScenarioPlayer.Forget(ScenarioPlayer.Uid, players, worlds);
+    Assert.False(players.ContainsKey(ScenarioPlayer.Uid));
+    Assert.Equal(2, players["other"]);
+    Assert.False(worlds.ContainsKey(ScenarioPlayer.Uid));
   }
 }

@@ -20,6 +20,9 @@ internal static class ScenarioSteps {
       new ExpectStep(),
       new WaitStep(),
       new RepeatStep(),
+      new InteractStep(),
+      new WindowStep(),
+      new IgniteStep(),
     }.ToDictionary(s => s.Kind);
 
   public static IEnumerable<string> Kinds => Table.Keys;

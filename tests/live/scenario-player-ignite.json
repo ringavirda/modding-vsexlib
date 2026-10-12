@@ -1,0 +1,12 @@
+{
+  "setup": "scenario-player-ignite",
+  "description": "A charcoal pit lights under the scenario player's held ignition, with the 5 s default.",
+  "mods": [],
+  "steps": [
+    { "place": { "code": "game:charcoalpit", "at": [0, 0, 0] } },
+    { "ignite": { "at": [0, 0, 0] } },
+    { "expect": { "at": [0, 0, 0], "member": "Lit", "equals": true } }
+  ],
+  "seconds": 12,
+  "record": {}
+}

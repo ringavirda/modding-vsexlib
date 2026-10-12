@@ -1,10 +1,13 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.Server;
 
 namespace ExpandedLib.Testing.Live;
@@ -20,6 +23,7 @@ internal sealed class ScenarioPlayer {
   private readonly ServerMain _server;
   private readonly ServerWorldPlayerData _data;
   private readonly BlockPos _park;
+  private int _uses;
 
   private ScenarioPlayer(
     ServerMain server,
@@ -31,7 +35,14 @@ internal sealed class ScenarioPlayer {
     _data = data;
     _park = park;
     Player = player;
+    server.EventManager.DidUseBlock += CountUse;
   }
+
+  /// <summary>How many did-use events the server has fired for any player since the scenario player was built.</summary>
+  public int Uses => _uses;
+
+  private void CountUse(IServerPlayer player, BlockSelection selection) =>
+    _uses++;
 
   /// <summary>The engine's player the steps act through.</summary>
   public ServerPlayer Player { get; }
@@ -47,8 +58,9 @@ internal sealed class ScenarioPlayer {
   /// <param name="row">The block the default spawn stands on.</param>
   /// <param name="failure">Null when every check holds; otherwise the first check's failure, as
   /// <c>&lt;check&gt;: read &lt;value&gt;</c> or <c>&lt;check&gt;: threw &lt;type&gt;: &lt;message&gt;</c>.</param>
-  /// <returns>The player, which must be <see cref="Stop"/>ped, or null when the build threw. A player
-  /// whose check failed is returned unparked.</returns>
+  /// <returns>The player, which must be <see cref="Stop"/>ped; null when a member resolved by name is
+  /// missing or the build threw, after which the player's entries are removed from the server's maps.
+  /// A player whose check failed is returned unparked.</returns>
   public static ScenarioPlayer? Start(
     ServerMain server,
     BlockPos row,
@@ -89,15 +101,21 @@ internal sealed class ScenarioPlayer {
       )
     )
       return null;
-    ScenarioPlayer made;
-    try {
-      made = Build(server, row, systems!, inventory!, connected!);
-    } catch (Exception e) {
-      failure = $"build: threw {e.GetType().Name}: {e.Message}";
+    ScenarioPlayer? made = PlayerCheck.Assemble(
+      () => Build(server, row, systems!, inventory!, connected!),
+      () =>
+        Forget(
+          Uid,
+          server.PlayersByUid,
+          server.PlayerDataManager.WorldDataByUID,
+          server.PlayerDataManager.PlayerDataByUid
+        ),
+      out failure
+    );
+    if (made == null)
       return null;
-    }
     BlockPos at = made._park;
-    bool passed =
+    _ =
       PlayerCheck.Read(
         "PlayerByUid",
         () => ((IWorldAccessor)server).PlayerByUid(Uid),
@@ -151,9 +169,17 @@ internal sealed class ScenarioPlayer {
         held => held,
         out _,
         out failure
+      )
+      && PlayerCheck.Read(
+        "Park",
+        () => {
+          made.Park();
+          return true;
+        },
+        held => held,
+        out _,
+        out failure
       );
-    if (passed)
-      made.Park();
     return made;
   }
 
@@ -163,6 +189,12 @@ internal sealed class ScenarioPlayer {
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Creative;
     _data.FreeMove = true;
     MoveTo(_park);
+  }
+
+  /// <summary>Puts the player in survival mode without free movement, where it stays until it is parked.</summary>
+  public void Survive() {
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
   }
 
   /// <summary>The cell the player stands in to place into <paramref name="at"/>: two blocks south
@@ -207,17 +239,12 @@ internal sealed class ScenarioPlayer {
   ) {
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
     _data.FreeMove = false;
-    Vec3d stand = Stand(at);
-    MoveTo(stand);
     Vec3d hit = Hit(face);
-    Vec3d eye = stand.AddCopy(_data.EntityPlayer.LocalEyePos);
     Vec3i n = face.Normali;
-    (_data.EntityPlayer.ServerPos.Yaw, _data.EntityPlayer.ServerPos.Pitch) =
-      Look(
-        eye,
-        new Vec3d(at.X - n.X + hit.X, at.Y - n.Y + hit.Y, at.Z - n.Z + hit.Z)
-      );
-    _data.EntityPlayer.Pos.SetFrom(_data.EntityPlayer.ServerPos);
+    Aim(
+      at,
+      new Vec3d(at.X - n.X + hit.X, at.Y - n.Y + hit.Y, at.Z - n.Z + hit.Z)
+    );
     ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
     slot.Itemstack = new ItemStack(block);
     try {
@@ -256,15 +283,171 @@ internal sealed class ScenarioPlayer {
     }
   }
 
+  /// <summary>Stands the player in reach of the block at <paramref name="at"/>, facing its
+  /// <paramref name="face"/>, without a click.</summary>
+  /// <param name="at">The absolute cell of the block.</param>
+  /// <param name="face">The face the player looks at.</param>
+  public void Face(BlockPos at, BlockFacing face) {
+    Vec3d hit = Hit(face);
+    Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
+  }
+
+  /// <summary>Holds <paramref name="stack"/> in the active slot and <paramref name="keys"/>, stands the
+  /// player facing <paramref name="face"/> of the block at <paramref name="at"/>, and right-clicks it. The did-use event fires right after
+  /// <c>Block.OnBlockInteractStart</c> whatever it answered, as the server does on the start of a block use.</summary>
+  /// <param name="at">The absolute cell of the block used.</param>
+  /// <param name="face">The face the click lands on.</param>
+  /// <param name="stack">What the hand holds, or null for an empty hand.</param>
+  /// <param name="keys">Names read by <see cref="Hold"/>.</param>
+  /// <param name="selection">The selection the hold's later calls pass to the block.</param>
+  /// <returns>What <c>Block.OnBlockInteractStart</c> answered.</returns>
+  public bool UseStart(
+    BlockPos at,
+    BlockFacing face,
+    ItemStack? stack,
+    IReadOnlyList<string> keys,
+    out BlockSelection selection
+  ) {
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+    Vec3d hit = Hit(face);
+    Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
+    Hold(Player.Entity.Controls, keys);
+    Player.InventoryManager.ActiveHotbarSlot.Itemstack = stack;
+    selection = new BlockSelection {
+      Position = at.Copy(),
+      Face = face,
+      HitPosition = hit,
+    };
+    bool answered = _server
+      .BlockAccessor.GetBlock(at)
+      .OnBlockInteractStart(_server, Player, selection);
+    _server.EventManager.TriggerDidUseBlock(Player, selection);
+    return answered;
+  }
+
+  /// <summary>Fills the hotbar with <paramref name="supply"/>, stands the player facing the
+  /// <paramref name="face"/> of the block at <paramref name="at"/> in survival with no key held, and
+  /// right-clicks it; the did-use event fires right after <c>Block.OnBlockInteractStart</c>, and the hotbar is
+  /// then emptied and the player parked.</summary>
+  /// <param name="at">The absolute cell of the block built.</param>
+  /// <param name="face">The face the click lands on.</param>
+  /// <param name="supply">One stack per hotbar slot, from the first.</param>
+  /// <param name="left">What the hotbar held after the click: each stack's code and size, or <c>empty</c>.</param>
+  /// <returns>What <c>Block.OnBlockInteractStart</c> answered; the did-use event fires right after it.</returns>
+  /// <exception cref="InvalidOperationException">More stacks than hotbar slots.</exception>
+  public bool Construct(
+    BlockPos at,
+    BlockFacing face,
+    IReadOnlyList<ItemStack> supply,
+    out string left
+  ) {
+    IInventory hotbar = Player.InventoryManager.GetHotbarInventory();
+    if (supply.Count > hotbar.Count)
+      throw new InvalidOperationException(
+        $"a stage asks for {supply.Count} stacks and the hotbar has {hotbar.Count} slots."
+      );
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+    Vec3d hit = Hit(face);
+    Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
+    Hold(Player.Entity.Controls, []);
+    try {
+      for (int i = 0; i < hotbar.Count; i++)
+        hotbar[i].Itemstack = i < supply.Count ? supply[i] : null;
+      var selection = new BlockSelection {
+        Position = at.Copy(),
+        Face = face,
+        HitPosition = hit,
+      };
+      bool answered = _server
+        .BlockAccessor.GetBlock(at)
+        .OnBlockInteractStart(_server, Player, selection);
+      _server.EventManager.TriggerDidUseBlock(Player, selection);
+      string[] held =
+      [
+        .. hotbar
+          .Where(s => !s.Empty)
+          .Select(s => $"{s.Itemstack.Collectible.Code} x {s.StackSize}"),
+      ];
+      left = held.Length == 0 ? "empty" : string.Join(", ", held);
+      return answered;
+    } finally {
+      foreach (ItemSlot slot in hotbar)
+        slot.Itemstack = null;
+      Park();
+    }
+  }
+
+  /// <summary>One held tick of the interaction: the player is stood and aimed again, then
+  /// <c>Block.OnBlockInteractStep</c> runs with the seconds held so far.</summary>
+  /// <returns>What the block answered; false when the block stops the hold.</returns>
+  public bool UseStep(BlockSelection selection, double secondsHeld) {
+    BlockPos at = selection.Position;
+    Aim(
+      at,
+      new Vec3d(
+        at.X + selection.HitPosition.X,
+        at.Y + selection.HitPosition.Y,
+        at.Z + selection.HitPosition.Z
+      )
+    );
+    return _server
+      .BlockAccessor.GetBlock(at)
+      .OnBlockInteractStep((float)secondsHeld, _server, Player, selection);
+  }
+
+  /// <summary>Ends the interaction with <c>Block.OnBlockInteractStop</c>.</summary>
+  /// <param name="secondsHeld">The seconds the hold has run.</param>
+  public void UseStop(BlockSelection selection, double secondsHeld) {
+    _server
+      .BlockAccessor.GetBlock(selection.Position)
+      .OnBlockInteractStop((float)secondsHeld, _server, Player, selection);
+  }
+
+  /// <summary>What the active slot holds: the stack's code and size, or <c>empty hand</c>.</summary>
+  public string HandText() {
+    ItemStack? held = Player.InventoryManager.ActiveHotbarSlot.Itemstack;
+    return held == null
+      ? "empty hand"
+      : $"{held.Collectible.Code} x {held.StackSize}";
+  }
+
+  /// <summary>Empties the active slot, releases the keys and parks the player.</summary>
+  public void Release() {
+    Player.InventoryManager.ActiveHotbarSlot.Itemstack = null;
+    Hold(Player.Entity.Controls, []);
+    Park();
+  }
+
+  /// <summary>Sets the sneak, ctrl and sprint controls to the names in <paramref name="keys"/> and
+  /// clears the others.</summary>
+  /// <param name="keys">Any of <c>sneak</c>, <c>ctrl</c> and <c>sprint</c>.</param>
+  internal static void Hold(EntityControls controls, IReadOnlyList<string> keys) {
+    controls.Sneak = keys.Contains("sneak");
+    controls.CtrlKey = keys.Contains("ctrl");
+    controls.Sprint = keys.Contains("sprint");
+  }
+
   /// <summary>Despawns the player and removes it from the server's player maps.</summary>
   public void Stop() {
+    _server.EventManager.DidUseBlock -= CountUse;
     _server.DespawnEntity(
       _data.EntityPlayer,
       new EntityDespawnData { Reason = EnumDespawnReason.Removed }
     );
-    _server.PlayersByUid.Remove(Uid);
-    _server.PlayerDataManager.WorldDataByUID.Remove(Uid);
-    _server.PlayerDataManager.PlayerDataByUid.Remove(Uid);
+    Forget(
+      Uid,
+      _server.PlayersByUid,
+      _server.PlayerDataManager.WorldDataByUID,
+      _server.PlayerDataManager.PlayerDataByUid
+    );
+  }
+
+  /// <summary>Removes <paramref name="uid"/> from each of the maps.</summary>
+  internal static void Forget(string uid, params IDictionary[] maps) {
+    foreach (IDictionary map in maps)
+      map.Remove(uid);
   }
 
   private static ScenarioPlayer Build(
@@ -295,6 +478,15 @@ internal sealed class ScenarioPlayer {
     made.MoveTo(park);
     server.SpawnEntity(data.EntityPlayer);
     return made;
+  }
+
+  private void Aim(BlockPos at, Vec3d target) {
+    Vec3d stand = Stand(at);
+    MoveTo(stand);
+    Vec3d eye = stand.AddCopy(_data.EntityPlayer.LocalEyePos);
+    (_data.EntityPlayer.ServerPos.Yaw, _data.EntityPlayer.ServerPos.Pitch) =
+      Look(eye, target);
+    _data.EntityPlayer.Pos.SetFrom(_data.EntityPlayer.ServerPos);
   }
 
   private void MoveTo(BlockPos at) =>

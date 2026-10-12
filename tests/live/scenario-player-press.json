@@ -1,0 +1,13 @@
+{
+  "setup": "scenario-player-press",
+  "description": "The scenario player presses a barrel's seal button, packet 1337, and the barrel is sealed.",
+  "mods": [],
+  "steps": [
+    { "place": { "code": "game:barrel", "at": [0, 0, 0] } },
+    { "expect": { "at": [0, 0, 0], "member": "Sealed", "equals": false } },
+    { "window": { "at": [0, 0, 0], "press": { "id": 1337 } } },
+    { "expect": { "at": [0, 0, 0], "member": "Sealed", "equals": true } }
+  ],
+  "seconds": 8,
+  "record": {}
+}

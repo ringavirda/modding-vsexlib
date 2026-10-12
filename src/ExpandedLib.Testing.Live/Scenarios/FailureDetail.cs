@@ -44,7 +44,7 @@ internal static class FailureDetail {
         (cause.StackTrace ?? "")
           .Split('\n', StringSplitOptions.RemoveEmptyEntries)
           .Take(StackFrames)
-          .Select(f => "at " + f.Trim().Replace("at ", ""))
+          .Select(FrameLine)
       );
 
     var cells = new List<BlockPos>();
@@ -102,6 +102,14 @@ internal static class FailureDetail {
     } catch (Exception e) {
       lines.Add($"detail failed: {ScenarioSteps.Describe(e)}");
     }
+  }
+
+  internal static string FrameLine(string line) {
+    string frame = line.Trim();
+    return "at "
+      + (
+        frame.StartsWith("at ", StringComparison.Ordinal) ? frame[3..] : frame
+      );
   }
 
   public static string Cell(BlockPos pos) => $"[{pos.X}, {pos.Y}, {pos.Z}]";
