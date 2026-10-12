@@ -290,6 +290,24 @@ public class SetupSceneDumpTests : IDisposable
     Assert.False(CellAt(wholeDump, 1, 1, -4).TryGetProperty("open", out _));
   }
 
+  // Fails when the open-face pass walks network cells only: the lone port filler stands on no
+  // network, so its connector face is never listed.
+  [Fact]
+  public void A_connector_standing_alone_lists_its_face_open()
+  {
+    using SetupScene scene = Build(null);
+    MakePort(scene, new BlockPos(8, 0, 0), "n", "pipe");
+    using JsonDocument dump = Dump(scene);
+
+    JsonElement cell = CellAt(dump, 8, 0, 0);
+
+    Assert.False(cell.TryGetProperty("network", out _));
+    Assert.Equal(
+      ["n"],
+      cell.GetProperty("open").EnumerateArray().Select(f => f.GetString())
+    );
+  }
+
   // Fails when the ports' share of ids is dropped: the blower's filler stands on no network, so
   // only the pipe's own id is listed.
   [Fact]

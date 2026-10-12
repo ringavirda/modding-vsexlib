@@ -204,9 +204,9 @@ internal static class SetupSceneDump
             + "}"
         );
       }
-      if (e.Net != null)
+      if (!e.Cell.Fluid)
       {
-        List<string> open = OpenFaces(world, e.Cell.At, e.Net.NetworkType);
+        List<string> open = OpenFaces(world, e.Cell.At, e.Net?.NetworkType);
         if (open.Count > 0)
           parts.Add("\"open\": " + Strings(open));
       }
@@ -278,27 +278,43 @@ internal static class SetupSceneDump
   private static List<string> OpenFaces(
     TestWorld world,
     BlockPos at,
-    string type
+    string? networkType
   )
   {
-    INetworkMember? member = NetworkMembership.Resolve(
-      world.Accessor,
-      at,
-      type
-    );
-    if (member == null)
-      return [];
+    List<(INetworkMember Member, string Type)> members = [];
+    foreach (
+      string type in new[] { networkType }
+        .Concat(
+          NetworkMembership
+            .MembersOf(world.GetBlockEntity(at))
+            .Select(m => m.NetworkTypeAt(world.Accessor, at))
+        )
+        .Append(
+          (world.GetBlock(at) as INetworkConnector)?.NetworkTypeAt(
+            world.Accessor,
+            at
+          )
+        )
+        .OfType<string>()
+        .Where(t => t.Length > 0)
+        .Distinct()
+    )
+      if (NetworkMembership.Resolve(world.Accessor, at, type) is { } member)
+        members.Add((member, type));
     return
     [
       .. BlockFacing
-        .ALLFACES.Where(f => member.HasConnectorAt(world.Accessor, at, f))
-        .Where(f =>
-        {
-          BlockPos next = at.AddCopy(f);
-          return NetworkMembership
-              .Resolve(world.Accessor, next, type)
-              ?.HasConnectorAt(world.Accessor, next, f.Opposite) != true;
-        })
+        .ALLFACES.Where(f =>
+          members.Any(m =>
+          {
+            if (!m.Member.HasConnectorAt(world.Accessor, at, f))
+              return false;
+            BlockPos next = at.AddCopy(f);
+            return NetworkMembership
+                .Resolve(world.Accessor, next, m.Type)
+                ?.HasConnectorAt(world.Accessor, next, f.Opposite) != true;
+          })
+        )
         .Select(f => f.Code[0].ToString()),
     ];
   }
