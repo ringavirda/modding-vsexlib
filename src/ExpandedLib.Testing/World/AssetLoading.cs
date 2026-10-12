@@ -66,6 +66,27 @@ public sealed partial class TestWorld {
     string? gamePath = null
   ) => LoadAssets(modPaths, gamePath, []);
 
+  /// <summary>Loads the game as a running server holds it: every survival blocktype and itemtype
+  /// (<see cref="VanillaSkips"/> lists the files left out), the listed mods' types, the shapes and
+  /// textures of the listed mods and of survival in the asset manager <c>Api.Assets</c> answers
+  /// from, and each started mod system's <c>AssetsFinalize</c> in the game's execute order.</summary>
+  /// <remarks>Loads as <see cref="LoadAssets(IReadOnlyList{string}, string)"/> does, which also empties every
+  /// per-world registry (<see cref="Registries.ExWorldState"/>) for the whole test process; a test
+  /// assembly that seeds one re-seeds it after the call. The load mirrors about 200 MB of art. A
+  /// system's <c>AssetsFinalize</c> that throws ends the load with its exception.</remarks>
+  /// <param name="modPaths">Mod folders in load order, as <see cref="LoadAssets(string, string)"/>
+  /// takes one; an empty list loads survival alone.</param>
+  /// <param name="gamePath">As <see cref="LoadAssets(string, string)"/> takes it.</param>
+  /// <returns>This world, as <see cref="LoadAssets(IReadOnlyList{string}, string)"/> returns it, with
+  /// <c>Api.Assets</c> answering shapes and textures.</returns>
+  /// <exception cref="InvalidOperationException">As <see cref="LoadAssets(IReadOnlyList{string}, string)"/>
+  /// throws it.</exception>
+  /// <exception cref="JsonReaderException">A listed mod's patch file is not JSON.</exception>
+  public TestWorld LoadAsGame(
+    IReadOnlyList<string> modPaths,
+    string? gamePath = null
+  ) => Load(modPaths, gamePath, ["*"], asGame: true);
+
   /// <summary>As <see cref="LoadAssets(IReadOnlyList{string}, string)"/>, and the vanilla survival
   /// blocktype and itemtype files that define <paramref name="vanillaCodes"/> load with the mods.</summary>
   /// <param name="modPaths">As the public overload takes them.</param>
@@ -77,6 +98,13 @@ public sealed partial class TestWorld {
     IReadOnlyList<string> modPaths,
     string? gamePath,
     IReadOnlyCollection<string> vanillaCodes
+  ) => Load(modPaths, gamePath, vanillaCodes, asGame: false);
+
+  private TestWorld Load(
+    IReadOnlyList<string> modPaths,
+    string? gamePath,
+    IReadOnlyCollection<string> vanillaCodes,
+    bool asGame
   ) {
     gamePath ??=
       VsAssemblyResolver.InstallPath
@@ -98,7 +126,14 @@ public sealed partial class TestWorld {
     )
       mgr.Add(asset.Location, asset);
     foreach (ListedMod mod in mods)
-      MirrorAssets(mgr, Path.Combine(mod.Path, "assets", mod.Id), mod.Id);
+      MirrorAssets(
+        mgr,
+        Path.Combine(mod.Path, "assets", mod.Id),
+        mod.Id,
+        asGame
+      );
+    if (asGame)
+      MirrorArt(mgr.Add, survival);
     MirrorPatchedVanilla(mgr, survival, [.. mods.Select(m => m.Id)]);
     var skips = new List<(string File, string Reason)>();
     MirrorVanillaTypes(mgr.Add, survival, vanillaCodes, skips);
@@ -137,6 +172,11 @@ public sealed partial class TestWorld {
         "Vintagestory.ServerMods.NoObf.ModRegistryObjectTypeLoader"
       );
       RegisterLoaded(loaderApi);
+      if (asGame) {
+        ((ICoreAPI)Api).Assets.Returns(mgr);
+        foreach (ModSystem system in FinalizeOrder(started))
+          system.AssetsFinalize(loaderApi);
+      }
     } finally {
       for (int i = started.Count - 1; i >= 0; i--)
         started[i].Dispose();
@@ -146,6 +186,12 @@ public sealed partial class TestWorld {
     }
     return this;
   }
+
+  /// <summary>The systems in the order the game calls their <c>AssetsFinalize</c>: ascending
+  /// <c>ExecuteOrder</c>, ties in list order.</summary>
+  internal static List<ModSystem> FinalizeOrder(
+    IEnumerable<ModSystem> systems
+  ) => [.. systems.OrderBy(s => s.ExecuteOrder())];
 
   /// <summary>Loads the install's vanilla survival block and item types named by
   /// <paramref name="blocks"/> and <paramref name="items"/> through the game's own object loader
@@ -458,7 +504,8 @@ public sealed partial class TestWorld {
   private static void MirrorAssets(
     AssetManager mgr,
     string fullPath,
-    string domain
+    string domain,
+    bool withArt = false
   ) {
     if (!Directory.Exists(fullPath))
       return;
@@ -466,7 +513,26 @@ public sealed partial class TestWorld {
     foreach (AssetCategory cat in KnownCategories)
       foreach (IAsset a in origin.GetAssets(cat, shouldLoad: true))
         mgr.Add(a.Location, a);
+    if (withArt)
+      MirrorArt(mgr.Add, origin);
   }
+
+  /// <summary>Passes to <paramref name="add"/> every shape and texture asset of
+  /// <paramref name="origin"/>.</summary>
+  private static void MirrorArt(
+    Action<AssetLocation, IAsset> add,
+    IAssetOrigin origin
+  ) {
+    foreach (AssetCategory cat in ArtCategories)
+      foreach (IAsset a in origin.GetAssets(cat, shouldLoad: true))
+        add(a.Location, a);
+  }
+
+  private static readonly AssetCategory[] ArtCategories =
+  [
+    AssetCategory.shapes,
+    AssetCategory.textures,
+  ];
 
   private static readonly AssetCategory[] KnownCategories =
   [
