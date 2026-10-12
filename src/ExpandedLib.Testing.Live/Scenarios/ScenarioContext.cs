@@ -29,6 +29,9 @@ internal sealed class ScenarioContext(
 
   public string File => file;
 
+  /// <summary>The scenario player the steps that act as a player use; null when the run has none.</summary>
+  public ScenarioPlayer? Player { get; set; }
+
   /// <summary>Plot-local cells a step placed; <c>complete</c> never replaces one.</summary>
   public HashSet<BlockPos> Placed { get; } = [];
 

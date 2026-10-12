@@ -141,6 +141,84 @@ internal sealed class ScenarioPlayer {
     MoveTo(_park);
   }
 
+  /// <summary>The cell the player stands in to place into <paramref name="at"/>: two blocks south
+  /// of it, on its level.</summary>
+  public static Vec3d Stand(BlockPos at) => new(at.X + 0.5, at.Y, at.Z + 2.5);
+
+  /// <summary>The yaw and pitch, in radians, that turn a player at <paramref name="eye"/> toward
+  /// <paramref name="target"/> in the engine's view convention (yaw 0 looks along -Z).</summary>
+  public static (float Yaw, float Pitch) Look(Vec3d eye, Vec3d target) {
+    double dx = target.X - eye.X;
+    double dy = target.Y - eye.Y;
+    double dz = target.Z - eye.Z;
+    return (
+      (float)Math.Atan2(-dx, -dz),
+      (float)Math.Atan2(dy, Math.Sqrt(dx * dx + dz * dz))
+    );
+  }
+
+  /// <summary>Places <paramref name="block"/> into <paramref name="at"/> the way a player's click on
+  /// the <paramref name="face"/> of the block beside it does (<c>Block.TryPlaceBlock</c> with the
+  /// active slot's stack, then the did-place event): moved into place in survival, the slot filled,
+  /// then emptied and the player parked again.</summary>
+  /// <param name="block">The block to hold and place.</param>
+  /// <param name="at">The absolute cell the block goes into.</param>
+  /// <param name="face">The face of the neighbouring block the click lands on.</param>
+  /// <param name="failure">Null when the block was placed; otherwise the failure code the block gave.</param>
+  /// <returns>Whether the block went down.</returns>
+  public bool Place(
+    Block block,
+    BlockPos at,
+    BlockFacing face,
+    out string? failure
+  ) {
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+    Vec3d stand = Stand(at);
+    MoveTo(stand);
+    var hit = new Vec3d(0.5, 1, 0.5);
+    Vec3d eye = stand.AddCopy(_data.EntityPlayer.LocalEyePos);
+    (_data.EntityPlayer.ServerPos.Yaw, _data.EntityPlayer.ServerPos.Pitch) =
+      Look(eye, new Vec3d(at.X + hit.X, at.Y + hit.Y - 1, at.Z + hit.Z));
+    _data.EntityPlayer.Pos.SetFrom(_data.EntityPlayer.ServerPos);
+    ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
+    slot.Itemstack = new ItemStack(block);
+    try {
+      var selection = new BlockSelection {
+        Position = at.Copy(),
+        Face = face,
+        HitPosition = hit,
+        DidOffset = true,
+      };
+      int before = _server.BlockAccessor.GetBlock(at).Id;
+      string code = "";
+      if (
+        !block.TryPlaceBlock(
+          _server,
+          Player,
+          slot.Itemstack,
+          selection,
+          ref code
+        )
+      ) {
+        failure = code == "" ? "refused" : code;
+        return false;
+      }
+      _server.TriggerNeighbourBlocksUpdate(at);
+      _server.EventManager.TriggerDidPlaceBlock(
+        Player,
+        before,
+        selection,
+        slot.Itemstack
+      );
+      failure = null;
+      return true;
+    } finally {
+      slot.Itemstack = null;
+      Park();
+    }
+  }
+
   /// <summary>Despawns the player and removes it from the server's player maps.</summary>
   public void Stop() {
     _server.DespawnEntity(
@@ -180,8 +258,11 @@ internal sealed class ScenarioPlayer {
     return made;
   }
 
-  private void MoveTo(BlockPos at) {
-    _data.EntityPlayer.ServerPos.SetPos(at.X + 0.5, at.Y, at.Z + 0.5);
+  private void MoveTo(BlockPos at) =>
+    MoveTo(new Vec3d(at.X + 0.5, at.Y, at.Z + 0.5));
+
+  private void MoveTo(Vec3d at) {
+    _data.EntityPlayer.ServerPos.SetPos(at.X, at.Y, at.Z);
     _data.EntityPlayer.Pos.SetFrom(_data.EntityPlayer.ServerPos);
   }
 }

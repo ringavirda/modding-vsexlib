@@ -201,7 +201,9 @@ internal sealed class ScenarioRunner {
       _errors,
       Emit,
       Path.GetFileName(File(_name))
-    );
+    ) {
+      Player = _player,
+    };
     Emit(ScenarioOutput.Case(_name, plot.Origin));
     _caseRun = new ScenarioCaseRun(scenario, _ctx);
     _steps = _caseRun.Run().GetEnumerator();
