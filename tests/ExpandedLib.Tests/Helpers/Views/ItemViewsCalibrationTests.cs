@@ -97,6 +97,167 @@ public class ItemViewsCalibrationTests {
       );
   }
 
+  private static float[] Numbers(ModelTransform tf) =>
+    [
+      tf.Translation.X,
+      tf.Translation.Y,
+      tf.Translation.Z,
+      tf.Rotation.X,
+      tf.Rotation.Y,
+      tf.Rotation.Z,
+      tf.Origin.X,
+      tf.Origin.Y,
+      tf.Origin.Z,
+      tf.ScaleXYZ.X,
+      tf.ScaleXYZ.Y,
+      tf.ScaleXYZ.Z,
+    ];
+
+  // The largest projected extent of the drawn box under a slot transform, over the slot's 48 pixels.
+  private static double SlotSpan(
+    CollectibleViews.ViewBox box,
+    ModelTransform tf
+  ) {
+    double[,] m = CollectibleViews.Rotation(
+      new Vec3d(tf.Rotation.X, tf.Rotation.Y, tf.Rotation.Z)
+    );
+    var corners = box.Drawn.SelectMany(c => c).ToArray();
+    double[][] p =
+    [
+      .. corners.Select(c =>
+      {
+        Vec3d v = CollectibleViews.Mul(
+          m,
+          new Vec3d(c.X / 16, c.Y / 16, c.Z / 16)
+        );
+        return new[] { v.X, v.Y };
+      }),
+    ];
+    double w = p.Max(q => q[0]) - p.Min(q => q[0]);
+    double h = p.Max(q => q[1]) - p.Min(q => q[1]);
+    return 25.6 * tf.ScaleXYZ.X * Math.Max(w, h) / 48;
+  }
+
+  // Fails when ViewReferences' ground scales move 50%, and when the slot scale moves 50%.
+  [Theory]
+  [InlineData("game:spear-generic-flint")]
+  [InlineData("game:spear-generic-copper")]
+  [InlineData("game:spear-scrap-scrap")]
+  [InlineData("game:oar-crude-aged")]
+  [InlineData("game:plank-aged")]
+  [InlineData("game:stick")]
+  [InlineData("game:prospectingpick-iron")]
+  public void Held_out_slots_and_grounds_match_their_shipped_views(string code) {
+    Item item = Coll(code);
+    ItemViewSet set = Compute(item);
+    double ground =
+      Math.Abs(set.Ground.ScaleXYZ.X - item.GroundTransform.ScaleXYZ.X)
+      / item.GroundTransform.ScaleXYZ.X;
+    CollectibleViews.ViewBox box = CollectibleViews.BoxOf(World.Api, item)!;
+    double shipped = SlotSpan(box, item.GuiTransform);
+    double span = Math.Abs(SlotSpan(box, set.Gui) - shipped) / shipped;
+    Assert.True(ground <= 0.35, $"{code}: ground k off by {ground:P1}");
+    Assert.True(span <= 0.33, $"{code}: slot span off by {span:P1}");
+  }
+
+  // Fails when a ground lay puts the shortest axis anywhere but up, and when it does not rest on y 0.
+  [Theory]
+  [InlineData("game:ingot-iron")]
+  [InlineData("game:metalplate-iron")]
+  [InlineData("viewsfixture:uprightsheet")]
+  [InlineData("game:spear-generic-flint")]
+  public void A_ground_item_lies_flat_and_rests_on_the_floor(string code) {
+    Item item = Coll(code);
+    ItemViewSet set = Compute(item);
+    ModelTransform g = set.Ground;
+    double[,] m = CollectibleViews.Mul(
+      CollectibleViews.Mul(
+        CollectibleViews.Rotation(new Vec3d(0, g.Rotation.Y, 0)),
+        CollectibleViews.Rotation(new Vec3d(0, 0, g.Rotation.Z))
+      ),
+      CollectibleViews.Rotation(new Vec3d(g.Rotation.X, 0, 0))
+    );
+    Vec3d up = CollectibleViews.Mul(m, set.BoxAxes![2]);
+    Vec3d along = CollectibleViews.Mul(m, set.BoxAxes[0]);
+    Assert.True(Math.Abs(up.Y) > 0.999, $"{code}: shortest axis {up}");
+    Assert.True(Math.Abs(along.X) > 0.999, $"{code}: longest axis {along}");
+    double low = CollectibleViews
+      .BoxOf(World.Api, item)!
+      .Drawn.SelectMany(c => c)
+      .Min(c =>
+        CollectibleViews
+          .Mul(
+            m,
+            new Vec3d(
+              c.X / 16 - g.Origin.X,
+              c.Y / 16 - g.Origin.Y,
+              c.Z / 16 - g.Origin.Z
+            )
+          )
+          .Y
+      );
+    Assert.Equal(0, g.Translation.Y + 0.2 * g.ScaleXYZ.X * low, 3);
+  }
+
+  // Fails when the refusal is removed.
+  [Theory]
+  [InlineData(ItemViewKind.None)]
+  [InlineData(ItemViewKind.Tool)]
+  [InlineData(ItemViewKind.Workpiece)]
+  public void Compute_refuses_kinds_whose_reference_is_a_collectible(
+    ItemViewKind kind
+  ) {
+    Assert.Throws<ArgumentException>(() =>
+      ItemViews.Compute(World.Api, Coll("game:stick").Shape, kind)
+    );
+  }
+
+  // Fails when the overload returns the kind's game defaults.
+  [Fact]
+  public void The_shape_overload_equals_the_collectible_overload() {
+    Item spear = Coll("game:spear-generic-iron");
+    ItemViewSet byItem = Compute(spear);
+    ItemViewSet byShape = ItemViews.Compute(
+      World.Api,
+      spear.Shape,
+      ItemViewKind.Longtool
+    );
+    Assert.Equal(ItemViewKind.Longtool, byItem.Kind);
+    Assert.Equal(Numbers(byItem.Gui), Numbers(byShape.Gui));
+    Assert.Equal(Numbers(byItem.TpHand), Numbers(byShape.TpHand));
+    Assert.Equal(Numbers(byItem.Ground), Numbers(byShape.Ground));
+    Assert.NotEqual(
+      Numbers(ModelTransform.ItemDefaultGui()),
+      Numbers(byShape.Gui)
+    );
+  }
+
+  // Fails when a shape that does not load is not refused.
+  [Fact]
+  public void A_shape_that_does_not_load_is_refused() {
+    var ex = Assert.Throws<InvalidOperationException>(() =>
+      ItemViews.Compute(
+        World.Api,
+        new CompositeShape {
+          Base = new AssetLocation("viewsfixture:item/nope"),
+        },
+        ItemViewKind.Lump
+      )
+    );
+    Assert.Contains("viewsfixture:item/nope", ex.Message);
+  }
+
+  // Fails when the longtool's slot origin leaves 0.84 of its length, or its scale ignores the length.
+  [Fact]
+  public void A_longtool_slot_is_the_spears_close_up_scaled_by_length() {
+    Item spear = Coll("game:spear-generic-flint");
+    ItemViewSet set = Compute(spear);
+    double length = set.BoxTo!.X - set.BoxFrom!.X;
+    Assert.Equal(2.26 * 46.75 / length, set.Gui.ScaleXYZ.X, 3);
+    double along = (set.Gui.Origin.X * 16 - set.BoxFrom.X) / length;
+    Assert.Equal(0.84, along, 3);
+  }
+
   // Fails when a grip is left where the reference's fractions put it instead of moved onto the drawn shape.
   [Theory]
   [InlineData("game:spear-generic-flint")]

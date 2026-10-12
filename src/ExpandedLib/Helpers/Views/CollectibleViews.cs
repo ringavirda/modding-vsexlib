@@ -121,14 +121,16 @@ internal static class CollectibleViews {
     );
   }
 
-  private static ViewBox? ItemBox(ICoreAPI api, CompositeShape? shape) =>
+  /// <summary>The drawn box of <paramref name="shape"/> as an item draws it, in voxels; null for no shape, a
+  /// shape that does not load, or one with no drawn face.</summary>
+  internal static ViewBox? ItemBox(ICoreAPI api, CompositeShape? shape) =>
     shape == null
       ? null
       : Measure(
         api,
         shape.Base.ToString(),
         shape.SelectiveElements,
-        new Vec3d(),
+        new Vec3d(shape.rotateX, shape.rotateY, shape.rotateZ),
         false
       );
 

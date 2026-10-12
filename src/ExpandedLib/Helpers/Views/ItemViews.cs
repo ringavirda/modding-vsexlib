@@ -8,13 +8,13 @@ using static ExpandedLib.Helpers.ViewReferences;
 
 namespace ExpandedLib.Helpers;
 
-/// <summary>Computes the views of an item from its shape: the third-person hand transform and held clips of
-/// the kind its drawn box gives it, copied from the vanilla item that kind follows.</summary>
+/// <summary>Computes the views of an item from its shape: the slot, third-person hand and ground transforms and
+/// the held clips of the kind its drawn box gives it, copied from the vanilla item that kind follows.</summary>
 public static class ItemViews {
   /// <summary>Computes the views of <paramref name="collectible"/>. The kind is its declared
   /// <c>attributes.itemViews.kind</c> or the one its drawn box gives; <c>attributes.itemViews.tip</c> names
   /// the working end of a longtool or tool as a sign and an axis letter ("+y"). The slot and ground views
-  /// are the game's defaults for an item.</summary>
+  /// are computed from the box as well.</summary>
   /// <param name="api">The api of the side whose world is loaded.</param>
   /// <param name="collectible">The collectible to compute.</param>
   /// <returns>The views; null for a block, a collectible that declares kind <c>none</c>, one with no
@@ -44,15 +44,48 @@ public static class ItemViews {
         return Held(kind.Value, box, tip, carried);
       kind = ByBox(box.Extents(), false, false);
     }
-    HandReference? reference = kind switch {
+    HandReference? reference = ReferenceOf(kind.Value);
+    return reference == null ? null : Held(kind.Value, box, tip, reference);
+  }
+
+  /// <summary>Computes the views of an item drawn as <paramref name="shape"/> and laid out as
+  /// <paramref name="kind"/>, for a mod that wants the numbers without a collectible.</summary>
+  /// <param name="api">The api of the side whose world is loaded.</param>
+  /// <param name="shape">The shape's base, selectiveElements and rotateX/Y/Z are read.</param>
+  /// <param name="kind">Longtool, Plate, Bulk, Bar or Lump.</param>
+  /// <param name="tip">The working end of a longtool as a sign and an axis letter ("+y"), or null.</param>
+  /// <returns>The views, as the collectible overload gives an item of that shape and kind.</returns>
+  /// <exception cref="ArgumentException"><paramref name="kind"/> is None, Tool, Workpiece or a block kind,
+  /// whose reference is a collectible or a block; or <paramref name="tip"/> is not a sign and one of x, y, z.</exception>
+  /// <exception cref="InvalidOperationException">The shape does not load or has no drawn face.</exception>
+  public static ItemViewSet Compute(
+    ICoreAPI api,
+    CompositeShape shape,
+    ItemViewKind kind,
+    string? tip = null
+  ) {
+    HandReference reference =
+      ReferenceOf(kind)
+      ?? throw new ArgumentException(
+        $"kind {kind} has no fixed reference to lay a shape out against",
+        nameof(kind)
+      );
+    ViewBox box =
+      ItemBox(api, shape)
+      ?? throw new InvalidOperationException(
+        $"shape {shape.Base} does not load or has no drawn face"
+      );
+    return Held(kind, box, tip, reference);
+  }
+
+  private static HandReference? ReferenceOf(ItemViewKind kind) =>
+    kind switch {
       ItemViewKind.Longtool => Spear,
       ItemViewKind.Plate => MetalPlate,
       ItemViewKind.Bulk or ItemViewKind.Lump => Ingot,
       ItemViewKind.Bar => Rod,
       _ => null,
     };
-    return reference == null ? null : Held(kind.Value, box, tip, reference);
-  }
 
   /// <summary>The vanilla item whose views a tool follows: among the game's items carrying the same <c>tool</c>
   /// value, the shortest code beginning with the value and a dash, else the first code; null when none carries it.</summary>
@@ -136,7 +169,16 @@ public static class ItemViews {
       new Vec3d(tf.Rotation.X, tf.Rotation.Y, tf.Rotation.Z),
       s,
       [.. u.Select((v, k) => (v - lay.Lo[k]) / lay.Extent(k))],
-      off
+      off,
+      carrier.GuiTransform == null
+        ? new Vec3d()
+        : new Vec3d(
+          carrier.GuiTransform.Rotation.X,
+          carrier.GuiTransform.Rotation.Y,
+          carrier.GuiTransform.Rotation.Z
+        ),
+      carrier.GroundTransform?.ScaleXYZ.X
+        ?? ModelTransform.ItemDefaultGround().ScaleXYZ.X
     );
   }
 
@@ -208,9 +250,9 @@ public static class ItemViews {
     };
     return new ItemViewSet(
       kind,
-      ModelTransform.ItemDefaultGui(),
+      Slot(kind, lay, reference, turn),
       hand,
-      ModelTransform.ItemDefaultGround(),
+      Ground(lay, reference),
       idle,
       idle,
       kind == ItemViewKind.Longtool ? SpearHit : null,
@@ -220,6 +262,113 @@ public static class ItemViews {
       lay.Axes,
       grip
     );
+  }
+
+  // The reference's slot rotation after the lay's turn, the origin on the box centre (a longtool's on the
+  // spear's close-up), and a translation that puts the origin on the slot centre.
+  private static ModelTransform Slot(
+    ItemViewKind kind,
+    Lay lay,
+    HandReference reference,
+    double[,] turn
+  ) {
+    double[,] r = Mul(Rotation(reference.GuiRotation), turn);
+    double[] mid = [.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)];
+    bool longtool = kind == ItemViewKind.Longtool;
+    if (longtool)
+      mid[0] = lay.Lo[0] + SpearSlotOrigin * lay.Extent(0);
+    Vec3d o = lay.Point(mid);
+    double reach = 0;
+    for (int c = 0; c < 8; c++) {
+      Vec3d corner = lay.Point([
+        (c & 1) == 0 ? lay.Lo[0] : lay.Hi[0],
+        (c & 2) == 0 ? lay.Lo[1] : lay.Hi[1],
+        (c & 4) == 0 ? lay.Lo[2] : lay.Hi[2],
+      ]);
+      Vec3d v = Mul(
+        r,
+        new Vec3d(corner.X - o.X, corner.Y - o.Y, corner.Z - o.Z)
+      );
+      reach = Math.Max(reach, Math.Max(Math.Abs(v.X), Math.Abs(v.Y)));
+    }
+    double span = 2 * reach / 16;
+    double s = longtool
+      ? SpearSlotScale * SpearLength / lay.Extent(0)
+      : SlotSpan * SlotPixels / (SlotItemPixels * span);
+    Vec3d euler = Euler(r);
+    return new ModelTransform {
+      Translation = new FastVec3f(
+        (float)(SlotShiftX - o.X / 16),
+        (float)(SlotShiftY - o.Y / 16),
+        0
+      ),
+      Rotation = new FastVec3f(
+        (float)Wrap(euler.X),
+        (float)Wrap(euler.Y),
+        (float)Wrap(euler.Z)
+      ),
+      Origin = new FastVec3f(
+        (float)(o.X / 16),
+        (float)(o.Y / 16),
+        (float)(o.Z / 16)
+      ),
+      Scale = (float)s,
+      Rotate = true,
+    };
+  }
+
+  // The short axis vertical and the long axis along x, the origin on the box centre, resting on y 0.
+  private static ModelTransform Ground(Lay lay, HandReference reference) {
+    double handed =
+      Det(
+        new double[,]
+        {
+          { lay.Axes[0].X, lay.Axes[0].Y, lay.Axes[0].Z },
+          { lay.Axes[1].X, lay.Axes[1].Y, lay.Axes[1].Z },
+          { lay.Axes[2].X, lay.Axes[2].Y, lay.Axes[2].Z },
+        }
+      ) > 0
+        ? -1
+        : 1;
+    double[,] target =
+    {
+      { 1, 0, 0 },
+      { 0, 0, 1 },
+      { 0, handed, 0 },
+    };
+    var r = new double[3, 3];
+    for (int i = 0; i < 3; i++)
+      for (int j = 0; j < 3; j++)
+        for (int k = 0; k < 3; k++)
+          r[i, j] += target[i, k] * Lay.Component(lay.Axes[k], j);
+    // The game turns about y, then z, then x: the angles of Ry * Rz * Rx are Euler's of the relabelled matrix.
+    int[] next = [1, 2, 0];
+    var relabelled = new double[3, 3];
+    for (int i = 0; i < 3; i++)
+      for (int j = 0; j < 3; j++)
+        relabelled[i, j] = r[next[i], next[j]];
+    Vec3d euler = Euler(relabelled);
+    Vec3d o = lay.Point([.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)]);
+    double s = reference.GroundScale;
+    return new ModelTransform {
+      Translation = new FastVec3f(
+        0,
+        (float)(GroundUnit * s * lay.Extent(2) / 32),
+        0
+      ),
+      Rotation = new FastVec3f(
+        (float)Wrap(euler.Z),
+        (float)Wrap(euler.X),
+        (float)Wrap(euler.Y)
+      ),
+      Origin = new FastVec3f(
+        (float)(o.X / 16),
+        (float)(o.Y / 16),
+        (float)(o.Z / 16)
+      ),
+      Scale = (float)s,
+      Rotate = true,
+    };
   }
 
   // Fractions along the lay's two longer axes, a clearance across the shortest; a point farther
