@@ -8,9 +8,9 @@ using Newtonsoft.Json.Linq;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Guards the lang values a mod sends to chat. Chat output is VTML: a raw <c>&lt;</c> swallows the
-/// rest of the message, a bare <c>&gt;</c> (as in <c>-&gt;</c>) blanks a command result or
-/// notification line, and <c>&lt;hk&gt;</c> is a handbook tag chat does not resolve.
+/// Guards the lang values a mod sends to chat: a raw <c>&lt;</c>, a raw <c>&gt;</c> and an
+/// <c>&lt;hk&gt;</c> tag are findings. The rationale is in exdocs/exlib/design/testing.md,
+/// Content checks and source laws.
 /// </summary>
 public static class ChatText {
   private static readonly Regex Sink = new(
@@ -34,12 +34,12 @@ public static class ChatText {
     RegexOptions.Compiled
   );
 
-  /// <summary>Runs the rule over the lang keys named in the arguments of a chat call
-  /// (<c>SendLocalisedMessage</c>, <c>SendMessage</c>, <c>ShowChatMessage</c>,
-  /// <c>TextCommandResult.Success</c> and <c>.Error</c>), as literals or as <c>const</c> /
-  /// <c>static readonly</c> string fields and <c>...Key =&gt;</c> properties assigned a literal key.
-  /// A call in the arguments to a method declared in the same file is followed one level into its
-  /// body. A key built by concatenation or passed through a variable is not read.</summary>
+  /// <summary>Runs the rule over the lang keys named in the arguments of a chat call, as literals
+  /// or through a <c>const</c>, <c>static readonly</c> or <c>...Key =&gt;</c> string assigned a
+  /// literal key; a key built by concatenation or held in a variable is not read.</summary>
+  /// <remarks>The chat calls are <c>SendLocalisedMessage</c>, <c>SendMessage</c>,
+  /// <c>ShowChatMessage</c> and <c>TextCommandResult.Success</c> or <c>.Error</c>; a call in the
+  /// arguments to a method declared in the same file is followed one level into its body.</remarks>
   /// <param name="domain">The mod's domain; a literal key of another domain is skipped.</param>
   /// <param name="srcDir">The mod's source folder, read recursively for <c>*.cs</c> outside
   /// <c>bin</c> and <c>obj</c>.</param>

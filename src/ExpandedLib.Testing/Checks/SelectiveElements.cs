@@ -11,10 +11,8 @@ namespace ExpandedLib.Testing;
 /// Guards the <c>selectiveElements</c> a definition writes, and the <c>addElements</c> and
 /// <c>removeElements</c> of its construction stages, against the shape it points at.
 /// </summary>
-/// <remarks>The game matches one path segment at a time: an exact name draws the element and drops
-/// its children, so <c>Base</c> draws an empty picture wherever the block's own mesh is used; the
-/// subtree form is <c>Base/*</c>. A construction stage turns each name into <c>name/*</c>, so the
-/// name is a path from the shape's root elements.</remarks>
+/// <remarks>An exact name draws its element and drops the children; the subtree form is
+/// <c>Base/*</c>. The matching rule is in exdocs/exlib/design/mechanics/process-extension.md.</remarks>
 public static class SelectiveElements {
   /// <summary>What one run read and found.</summary>
   /// <param name="Lists">The <c>selectiveElements</c> arrays read, in <c>shape</c> and every
@@ -29,15 +27,12 @@ public static class SelectiveElements {
   );
 
   /// <summary>Runs the rule over every <c>selectiveElements</c> array in <paramref name="defs"/>,
-  /// against the <c>base</c> shape of the object that carries it. A path ending in <c>/*</c> or
-  /// in a prefix wildcard such as <c>Axle*</c> names the subtree; a path ending in an exact name
-  /// is a finding when that element has children, and passes on a leaf. Every
-  /// <c>addElements</c> and <c>removeElements</c> name of a <c>stages</c> table is judged as
-  /// <c>name/*</c> against each <c>base</c> in the definition's <c>shape</c> and
-  /// <c>shapebytype</c>.</summary>
-  /// <remarks>A shape of another domain is not read. On a definition with <c>shapebytype</c>, a
-  /// list beside no <c>base</c> is the one <c>ToJson</c> spreads into the entries, which are read
-  /// instead.</remarks>
+  /// and over the <c>addElements</c> and <c>removeElements</c> names of each <c>stages</c> table
+  /// judged as <c>name/*</c>, against the <c>base</c> shapes of the object that carries them.</summary>
+  /// <remarks>A path ending in <c>/*</c> or in a prefix wildcard such as <c>Axle*</c> names the
+  /// subtree and passes; an exact name is a finding when that element has children. A shape of
+  /// another domain is not read. On a definition with <c>shapebytype</c>, a list beside no
+  /// <c>base</c> is the one <c>ToJson</c> spreads into the entries, which are read instead.</remarks>
   /// <param name="defs">The definitions to read.</param>
   /// <param name="domain">The mod's domain; a <c>base</c> naming another domain is skipped.</param>
   /// <param name="shapesDirectory">The mod's <c>assets/{domain}/shapes</c> folder.</param>
