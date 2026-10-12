@@ -83,6 +83,15 @@ public class SetupExpectTests : IDisposable
             "SetupHoldEntity",
             () => new SetupHoldEntity()
           )
+          .RegisterClass("SetupHoldEmber", typeof(SetupHoldEmber))
+          .RegisterBlockEntityFactory(
+            "SetupHoldEmber",
+            () => new SetupHoldEmber()
+          )
+          .RegisterBlockEntityBehaviorFactory(
+            "SetupSpin",
+            be => new SetupSpin(be)
+          )
     );
 
   private static SetupScene Box(string steps) =>
@@ -347,21 +356,19 @@ public class SetupExpectTests : IDisposable
     + rest
     + "}}";
 
-  // Fails when the mechanical type reads no vanilla network, or one of the three members is not read.
+  // Fails when the mechanical type reads no vanilla network, reads the line the game's discovery made
+  // instead of the scene's, does not step the scene's lines, or reads a member other than
+  // NetworkResistance.
   [Fact]
-  public void An_expect_network_mechanical_reads_the_line_s_speed_torque_and_resistance()
+  public void An_expect_network_mechanical_reads_the_stepped_line_s_resistance()
   {
     using SetupScene scene = Build(
       Inline(
         "twintubblower",
-        "["
-          + MechanicalExpect("\"member\": \"Speed\", \"equals\": 0")
-          + ", "
+        "[{\"wait\": 1}, "
           + MechanicalExpect(
-            "\"member\": \"TotalAvailableTorque\", \"equals\": 0"
+            "\"member\": \"NetworkResistance\", \"min\": 0.0001"
           )
-          + ", "
-          + MechanicalExpect("\"member\": \"NetworkResistance\", \"equals\": 0")
           + ", {\"expect\": {\"at\": [1, 2, 0], \"network\": \"mechanical\", \"same\": [0, 2, 0]}}]",
         PairLayout
       )
@@ -392,6 +399,33 @@ public class SetupExpectTests : IDisposable
     Assert.NotNull(scene);
     Assert.Contains("mechanical Speed", slow);
     Assert.Contains("No mechanical network", none);
+  }
+
+  // Fails when the mechanical Speed is read with its sign, or the torque is read from another member.
+  [Fact]
+  public void An_expect_network_mechanical_reads_a_reversed_line_s_speed_without_its_sign()
+  {
+    const string axles =
+      "{\"place\": {\"id\": \"first\", \"code\": \"setuphold:spinaxle-ns\", \"at\": [0, 0, 0]}}, "
+      + "{\"place\": {\"code\": \"setuphold:spinaxle-ns\", \"at\": [0, 0, 1]}}, "
+      + "{\"call\": {\"at\": [0, 0, 0], \"method\": \"SetupSpin.Drive\", \"args\": [-2, 3]}}";
+    const string line =
+      "{\"expect\": {\"at\": [0, 0, 1], \"network\": \"mechanical\", ";
+
+    using SetupScene scene = Build(
+      Inline(
+        "setuphold",
+        "["
+          + axles
+          + ", "
+          + line
+          + "\"member\": \"Speed\", \"equals\": 2}}, "
+          + line
+          + "\"member\": \"TotalAvailableTorque\", \"equals\": 3}}]"
+      )
+    );
+
+    Assert.NotNull(scene);
   }
 
   #endregion
@@ -553,16 +587,25 @@ public class SetupExpectTests : IDisposable
     Assert.Contains("\"complete\" to a stage is refused", message);
   }
 
-  // Fails when a complete to something that is neither "all" nor a whole number loads.
-  [Fact]
-  public void A_complete_to_a_word_other_than_all_fails_the_parse()
+  // Fails when a complete to a word, a fraction or a bool loads, or escapes the parse as a raw cast
+  // exception instead of naming the key.
+  [Theory]
+  [InlineData("\"some\"")]
+  [InlineData("2.5")]
+  [InlineData("2.0")]
+  [InlineData("true")]
+  public void A_complete_to_something_other_than_all_or_a_whole_number_fails_the_parse(
+    string to
+  )
   {
-    Exception e = Assert.ThrowsAny<Exception>(() =>
+    InvalidOperationException e = Assert.Throws<InvalidOperationException>(() =>
       Inline(
         "setupbox",
         "["
           + PlaceBox
-          + ", {\"complete\": {\"of\": \"box\", \"to\": \"some\"}}]"
+          + ", {\"complete\": {\"of\": \"box\", \"to\": "
+          + to
+          + "}}]"
       )
     );
 

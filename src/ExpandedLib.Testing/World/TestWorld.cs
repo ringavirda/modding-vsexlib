@@ -614,11 +614,18 @@ public sealed partial class TestWorld : IDisposable {
   /// advances sim time by <paramref name="dt"/> seconds per time and fires the delayed callbacks
   /// that come due. Only <c>RegisterCallback(Action&lt;float&gt;, int)</c> is captured.</summary>
   public void FireBlockEntityTicks(float dt = 1f, int times = 1) {
-    for (int i = 0; i < times; i++) {
-      foreach (var listener in _tickListeners.Values.ToList())
+    for (int i = 0; i < times; i++)
+      FireBlockEntityTicks(dt, new HashSet<long>());
+  }
+
+  /// <summary>Fires every listener not in <paramref name="except"/> once with
+  /// <paramref name="dt"/>, then advances sim time by <paramref name="dt"/> seconds and fires the
+  /// delayed callbacks that come due.</summary>
+  internal void FireBlockEntityTicks(float dt, IReadOnlySet<long> except) {
+    foreach (var (id, listener) in _tickListeners.ToList())
+      if (!except.Contains(id))
         listener.Callback(dt);
-      AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
-    }
+    AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
   }
 
   /// <summary>Advances block-entity sim time by <paramref name="totalMs"/> ms, firing each listener
@@ -634,6 +641,13 @@ public sealed partial class TestWorld : IDisposable {
   /// <paramref name="only"/>, or for every listener when it is null. Delayed callbacks that come due
   /// fire scene-wide, whichever listeners <paramref name="only"/> names.</summary>
   internal void AdvanceBlockEntityTime(int totalMs, IReadOnlySet<long>? only) {
+    StepListeners(totalMs, only);
+    AdvanceCallbacks(totalMs);
+  }
+
+  /// <summary>Fires the listeners in <paramref name="only"/>, or every listener when it is null,
+  /// once per whole interval of <paramref name="totalMs"/> ms; no delayed callback comes due.</summary>
+  internal void StepListeners(int totalMs, IReadOnlySet<long>? only) {
     // Snapshot: a listener may unregister (or a block entity may register a new one) while firing.
     foreach (long id in _tickListeners.Keys.ToList()) {
       if (only != null && !only.Contains(id))
@@ -652,7 +666,6 @@ public sealed partial class TestWorld : IDisposable {
       if (_tickListeners.ContainsKey(id))
         _tickAccumMs[id] = accum;
     }
-    AdvanceCallbacks(totalMs);
   }
 
   /// <summary>Moves the calendar forward without ticking, for calendar-driven effects (evaporation).</summary>

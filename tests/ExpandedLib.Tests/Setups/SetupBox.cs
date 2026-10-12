@@ -69,9 +69,8 @@ internal sealed class SetupBox : BlockEntityContainer
 
   public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
   {
+    base.GetBlockInfo(forPlayer, dsc);
     dsc.AppendLine($"Level: {Level}");
-    foreach (BlockEntityBehavior behavior in Behaviors)
-      behavior.GetBlockInfo(forPlayer, dsc);
   }
 
   public string Poke(int n, BoxState state, ItemStack stack, IPlayer player)

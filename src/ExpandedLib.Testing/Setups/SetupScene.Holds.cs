@@ -59,7 +59,13 @@ public sealed partial class SetupScene
   {
     BlockPos at = At(step, "at");
     Block block = World.GetBlock(at);
-    if (block is not IIgnitable ignitable)
+    if (
+      SetupPlacers.For(block.Code.ToString()) is { } placer
+      && placer.Ignite(this, at)
+    )
+      return;
+    IIgnitable? ignitable = block.GetInterface<IIgnitable>(World.World, at);
+    if (ignitable == null)
       throw Fail(
         step.Path,
         $"{block.Code} at {Describe(at)} is not ignitable."
@@ -149,8 +155,9 @@ public sealed partial class SetupScene
 
   private void TickSecond()
   {
-    World.FireBlockEntityTicks();
+    World.FireBlockEntityTicks(1f, _lineListeners);
     World.Tick(1);
+    World.StepListeners(1000, _lineListeners);
   }
 
   private List<int> SlotsOf(JToken slot, string where)

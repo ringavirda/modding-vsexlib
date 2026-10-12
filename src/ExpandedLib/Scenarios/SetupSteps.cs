@@ -197,7 +197,10 @@ internal static class SetupSteps {
       kind == "complete"
       && o["to"] is { } stage
       && stage is not JValue { Type: JTokenType.Integer }
-      && (string?)(stage as JValue)?.Value != "all"
+      && !(
+        stage is JValue { Type: JTokenType.String } name
+        && (string?)name == "all"
+      )
     )
       throw at.In("to").Fail("takes \"all\" or a whole number.");
     foreach (string key in new[] { "at", "from", "to", "same" })

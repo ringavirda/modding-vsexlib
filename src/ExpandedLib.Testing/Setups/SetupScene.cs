@@ -37,6 +37,8 @@ public sealed partial class SetupScene : IDisposable
   private readonly Dictionary<BlockPos, HashSet<long>> _listeners = [];
   private readonly HashSet<int> _ready = [];
   private readonly List<string> _standIns = [];
+  private HashSet<long> _lineListeners = [];
+  private bool _joined;
 
   private SetupScene(SetupFile file)
   {
@@ -124,7 +126,7 @@ public sealed partial class SetupScene : IDisposable
       afterLoad?.Invoke(scene.World);
       scene.PlaceLayout();
       scene.RunSteps();
-      SetupMechanical.Join(scene.World);
+      scene.JoinLines();
       scene.Scene.Build();
     }
     catch (SetupFileException e)
@@ -230,10 +232,13 @@ public sealed partial class SetupScene : IDisposable
     World.LoadAssets(modPaths, null, VanillaCodes());
     if (World.Mods.GetModSystem<MechanicalPowerMod>() == null)
     {
+      HashSet<long> before = World.TickListenerIds();
       var power = new MechanicalPowerMod();
       World.Mods.Register(power);
       power.Start(World.Api);
+      _lineListeners = [.. World.TickListenerIds().Except(before)];
     }
+    BlockLaws.StartRooms(World);
     foreach (Block block in World.World.Blocks.ToArray())
       if (block is { Id: not 0 } && _file.Mods.Contains(block.Code.Domain))
         Ready(block);
@@ -407,9 +412,22 @@ public sealed partial class SetupScene : IDisposable
 
   private void RunSteps() => RunSteps(Model.Steps);
 
+  private void JoinLines()
+  {
+    if (_joined)
+      return;
+    SetupMechanical.Join(World);
+    _joined = true;
+  }
+
   private void RunSteps(IEnumerable<SetupStep> steps)
   {
     foreach (SetupStep step in steps)
+    {
+      if (step.Kind is "place" or "complete" or "fill")
+        _joined = false;
+      else
+        JoinLines();
       switch (step.Kind)
       {
         case "place":
@@ -449,6 +467,7 @@ public sealed partial class SetupScene : IDisposable
           RepeatStep(step);
           break;
       }
+    }
   }
 
   private void PlaceStep(SetupStep step)

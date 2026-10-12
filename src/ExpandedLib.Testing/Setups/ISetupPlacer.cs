@@ -27,5 +27,14 @@ public interface ISetupPlacer
   /// <param name="block">The loaded block <see cref="Takes"/> accepted.</param>
   /// <param name="pos">The cell, in world coordinates.</param>
   void Place(SetupScene scene, Block block, BlockPos pos);
+
+  /// <summary>Lights the block this placer placed at <paramref name="pos"/>, at once and without
+  /// ticking, when it can; an <c>ignite</c> step asks the placer of the cell's code before it holds
+  /// the game's ignite. The default answers false.</summary>
+  /// <param name="scene">The scene being built.</param>
+  /// <param name="pos">The cell the step names, in world coordinates.</param>
+  /// <returns>True when the block is lit and the step is done; false to hold the game's ignite on
+  /// the block.</returns>
+  bool Ignite(SetupScene scene, BlockPos pos) => false;
 }
 #endif

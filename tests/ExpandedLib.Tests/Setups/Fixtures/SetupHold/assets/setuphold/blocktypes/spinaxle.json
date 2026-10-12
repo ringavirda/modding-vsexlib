@@ -1,0 +1,7 @@
+{
+  "code": "spinaxle",
+  "class": "BlockAxle",
+  "entityClass": "Generic",
+  "entityBehaviors": [{ "name": "MPAxle" }, { "name": "SetupSpin" }],
+  "variantgroups": [{ "code": "rotation", "states": ["ns"] }]
+}

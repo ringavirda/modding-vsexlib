@@ -150,25 +150,7 @@ public static class BlockLaws {
     var power = new MechanicalPowerMod();
     world.Mods.Register(power);
     power.Start(world.Api);
-    // A container's info reads the climate: 20 C everywhere, at any date.
-    world
-      .Accessor.GetClimateAt(
-        Arg.Any<BlockPos>(),
-        Arg.Any<EnumGetClimateMode>(),
-        Arg.Any<double>()
-      )
-      .Returns(_ => new ClimateCondition { Temperature = 20 });
-    var rooms = new RoomRegistry();
-    world.Mods.Register(rooms);
-    rooms.Start(world.Api);
-#if GAME_GE_1_21
-    // The registry caches its accessor per thread; a later world would read an earlier one's cells.
-    ReflectionHelpers.SetStaticField(
-      typeof(RoomRegistry),
-      "blockAccessor",
-      null
-    );
-#endif
+    StartRooms(world);
     prepare?.Invoke(world);
     if (items != null)
       world.LoadVanilla(VanillaBlocks, VanillaItems);
@@ -188,6 +170,30 @@ public static class BlockLaws {
       reinforcement.Start(world.Api);
     }
     return world;
+  }
+
+  /// <summary>Stubs a climate of 20 C everywhere, at any date, and registers and starts a
+  /// <see cref="RoomRegistry"/> in <paramref name="world"/>, so a container's block info reads
+  /// its room.</summary>
+  internal static void StartRooms(TestWorld world) {
+    world
+      .Accessor.GetClimateAt(
+        Arg.Any<BlockPos>(),
+        Arg.Any<EnumGetClimateMode>(),
+        Arg.Any<double>()
+      )
+      .Returns(_ => new ClimateCondition { Temperature = 20 });
+    var rooms = new RoomRegistry();
+    world.Mods.Register(rooms);
+    rooms.Start(world.Api);
+#if GAME_GE_1_21
+    // The registry caches its accessor per thread; a later world would read an earlier one's cells.
+    ReflectionHelpers.SetStaticField(
+      typeof(RoomRegistry),
+      "blockAccessor",
+      null
+    );
+#endif
   }
 
   /// <summary>The vanilla blocktypes the worlds of the hand laws load: the containers and vessels

@@ -5,6 +5,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
+using Vintagestory.GameContent.Mechanics;
 
 namespace ExpandedLib.Tests.Setups;
 
@@ -90,6 +91,46 @@ internal sealed class SetupHoldEntity : BlockEntity
   {
     base.Initialize(api);
     RegisterGameTickListener(_ => Fires++, 1000);
+  }
+}
+
+internal sealed class SetupHoldEmber : BlockEntity, IIgnitable
+{
+  public readonly List<float> Overs = [];
+
+  public EnumIgniteState OnTryIgniteBlock(
+    EntityAgent byEntity,
+    BlockPos pos,
+    float secondsIgniting
+  ) =>
+    secondsIgniting >= 1f
+      ? EnumIgniteState.IgniteNow
+      : EnumIgniteState.Ignitable;
+
+  public EnumIgniteState OnTryIgniteStack(
+    EntityAgent byEntity,
+    BlockPos pos,
+    ItemSlot slot,
+    float secondsIgniting
+  ) => EnumIgniteState.NotIgnitable;
+
+  public void OnTryIgniteBlockOver(
+    EntityAgent byEntity,
+    BlockPos pos,
+    float secondsIgniting,
+    ref EnumHandling handling
+  ) => Overs.Add(secondsIgniting);
+}
+
+internal sealed class SetupSpin(BlockEntity be) : BlockEntityBehavior(be)
+{
+  public void Drive(float speed, float torque)
+  {
+    MechanicalNetwork line = Blockentity
+      .GetBehavior<BEBehaviorMPBase>()
+      .Network;
+    line.Speed = speed;
+    line.TotalAvailableTorque = torque;
   }
 }
 

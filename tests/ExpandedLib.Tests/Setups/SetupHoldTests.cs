@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests.Setups;
@@ -30,7 +31,10 @@ public class SetupHoldTests
   private const string Lamp =
     "{\"place\": {\"id\": \"lamp\", \"code\": \"setuphold:lamp\", \"at\": [0, 0, 0]}}";
 
-  private static SetupScene Build(string steps) =>
+  private static SetupScene Build(
+    string steps,
+    Action<TestWorld>? afterLoad = null
+  ) =>
     SetupScene.Build(
       SetupFile.Parse(
         "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setuphold\"], \"steps\": "
@@ -39,7 +43,7 @@ public class SetupHoldTests
         "t.json"
       ),
       [FixturePath],
-      null,
+      afterLoad,
       w =>
         w.RegisterClass("SetupHoldBlock", typeof(SetupHoldBlock))
           .RegisterClass("SetupHoldEntity", typeof(SetupHoldEntity))
@@ -47,12 +51,22 @@ public class SetupHoldTests
             "SetupHoldEntity",
             () => new SetupHoldEntity()
           )
+          .RegisterClass("SetupHoldEmber", typeof(SetupHoldEmber))
+          .RegisterBlockEntityFactory(
+            "SetupHoldEmber",
+            () => new SetupHoldEmber()
+          )
           .RegisterClass("SetupHoldBox", typeof(SetupHoldBox))
           .RegisterBlockEntityFactory("SetupHoldBox", () => new SetupHoldBox())
     );
 
-  private static string Refused(string steps) =>
-    Assert.Throws<InvalidOperationException>(() => Build(steps)).Message;
+  private static string Refused(
+    string steps,
+    Action<TestWorld>? afterLoad = null
+  ) =>
+    Assert
+      .Throws<InvalidOperationException>(() => Build(steps, afterLoad))
+      .Message;
 
   private static SetupHoldBlock BlockAt(SetupScene scene, string id) =>
     Assert.IsType<SetupHoldBlock>(scene.World.GetBlock(scene.PositionOf(id)));
@@ -198,13 +212,18 @@ public class SetupHoldTests
   [Fact]
   public void An_ignite_of_a_block_that_refuses_fails_the_step()
   {
+    SetupHoldBlock? latch = null;
     string message = Refused(
       "[{\"place\": {\"id\": \"latch\", \"code\": \"setuphold:latch\", \"at\": [0, 0, 0]}}, "
-        + "{\"ignite\": {\"at\": {\"of\": \"latch\"}}}]"
+        + "{\"ignite\": {\"at\": {\"of\": \"latch\"}}}]",
+      w =>
+        latch = (SetupHoldBlock)
+          w.World.GetBlock(new AssetLocation("setuphold", "latch"))
     );
 
     Assert.Contains("steps[1]", message);
     Assert.Contains("setuphold:latch at (0, 0, 0) is not ignitable.", message);
+    Assert.Equal(1, latch!.Tries);
   }
 
   // Fails when a block with no IIgnitable is treated as lit.
@@ -232,6 +251,65 @@ public class SetupHoldTests
       "setuphold:lamp at (0, 0, 0) is not lit within 0.5 seconds.",
       message
     );
+  }
+
+  // Fails when an ignite looks for IIgnitable on the block class alone, so a block entity that is one
+  // is not lit.
+  [Fact]
+  public void An_ignite_lights_a_block_whose_entity_is_ignitable()
+  {
+    using SetupScene scene = Build(
+      "[{\"place\": {\"id\": \"ember\", \"code\": \"setuphold:ember\", \"at\": [0, 0, 0]}}, "
+        + "{\"ignite\": {\"at\": {\"of\": \"ember\"}}}]"
+    );
+
+    Assert.Equal(
+      [1f],
+      Assert
+        .IsType<SetupHoldEmber>(
+          scene.World.GetBlockEntity(scene.PositionOf("ember"))
+        )
+        .Overs
+    );
+  }
+
+  // Fails when an ignite holds the game's ignite on a block whose placer answers it.
+  [Fact]
+  public void An_ignite_of_a_block_whose_placer_lights_it_acts_at_once()
+  {
+    var placer = new IgnitingPlacer();
+    SetupPlacers.Register(placer);
+    try
+    {
+      using SetupScene scene = Build(
+        "[{\"place\": {\"id\": \"slab\", \"code\": \"setuphold:slab\", \"at\": [2, 0, 0]}}, "
+          + "{\"ignite\": {\"at\": {\"of\": \"slab\"}}}]"
+      );
+
+      Assert.Equal([scene.PositionOf("slab")], placer.Lit);
+    }
+    finally
+    {
+      SetupPlacers.Clear();
+    }
+  }
+
+  private sealed class IgnitingPlacer : ISetupPlacer
+  {
+    public readonly List<BlockPos> Lit = [];
+
+    public bool Takes(string code) => code == "setuphold:slab";
+
+    public string? StandIn(string code) => null;
+
+    public void Place(SetupScene scene, Block block, BlockPos pos) =>
+      scene.World.Accessor.SetBlock(block.BlockId, pos);
+
+    public bool Ignite(SetupScene scene, BlockPos pos)
+    {
+      Lit.Add(pos.Copy());
+      return true;
+    }
   }
 
   // Fails when a window skips the open, put, take or close packet.
