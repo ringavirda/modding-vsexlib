@@ -67,8 +67,14 @@ internal static class CollectibleViews {
   }
 
   /// <summary>A box in voxels: <paramref name="From"/> and <paramref name="To"/> are its corners in the frame
-  /// whose axes are <paramref name="Axes"/>, the unit vectors of the shape's frame.</summary>
-  internal sealed record ViewBox(Vec3d From, Vec3d To, Vec3d[] Axes) {
+  /// whose axes are <paramref name="Axes"/>, the unit vectors of the shape's frame. <paramref name="Elements"/> holds
+  /// each drawn element's axis-aligned corners in the shape's frame, in voxels.</summary>
+  internal sealed record ViewBox(
+    Vec3d From,
+    Vec3d To,
+    Vec3d[] Axes,
+    IReadOnlyList<(Vec3d Lo, Vec3d Hi)> Elements
+  ) {
     /// <summary>The three side lengths in voxels, longest first.</summary>
     internal double[] Extents() {
       double[] e = [To.X - From.X, To.Y - From.Y, To.Z - From.Z];
@@ -263,6 +269,15 @@ internal static class CollectibleViews {
         frames.Add(frame);
     }
 
+    var elements = drawn
+      .Select(e => {
+        Vec3d[] c = e.Corners.Select(turn.Apply).ToArray();
+        return (
+          new Vec3d(c.Min(v => v.X), c.Min(v => v.Y), c.Min(v => v.Z)),
+          new Vec3d(c.Max(v => v.X), c.Max(v => v.Y), c.Max(v => v.Z))
+        );
+      })
+      .ToList();
     ViewBox? best = null;
     double bestVolume = double.PositiveInfinity;
     foreach (double[,] frame in frames) {
@@ -287,7 +302,8 @@ internal static class CollectibleViews {
             new Vec3d(frame[0, 0], frame[1, 0], frame[2, 0]),
             new Vec3d(frame[0, 1], frame[1, 1], frame[2, 1]),
             new Vec3d(frame[0, 2], frame[1, 2], frame[2, 2]),
-          ]
+          ],
+          elements
         );
       }
     }

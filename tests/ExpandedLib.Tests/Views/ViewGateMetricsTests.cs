@@ -51,4 +51,63 @@ public class ViewGateMetricsTests {
     Assert.Contains("game:ingot-steel", ingots.Codes);
     Assert.True(ingots.Codes.Count > 5);
   }
+
+  // Fails when the hand pose is taken at rest instead of the clip's frame 0: the spear's first-person axis then equals its third-person one.
+  [Fact]
+  public void Hand_metrics_match_the_spec_rows() {
+    HandMetrics spear = ViewGates.Hand(
+      World,
+      GroupOf("game:spear-generic-iron")
+    );
+    Assert.Equal(1.24, spear.Size, 0.02);
+    Assert.Equal(
+      0,
+      ViewGates.AxisDegrees(World, GroupOf("game:spear-generic-iron")),
+      0.02
+    );
+    HandMetrics fp = ViewGates.Hand(
+      World,
+      GroupOf("game:spear-generic-iron"),
+      true
+    );
+    Assert.Equal(
+      8.9,
+      Math.Acos(
+        spear.Axis.X * fp.Axis.X
+          + spear.Axis.Y * fp.Axis.Y
+          + spear.Axis.Z * fp.Axis.Z
+      )
+        * 180
+        / Math.PI,
+      0.5
+    );
+    Assert.Equal(
+      0.68,
+      ViewGates.Hand(World, GroupOf("game:rod-iron")).Size,
+      0.02
+    );
+    Assert.Equal(
+      0.32,
+      ViewGates.Hand(World, GroupOf("game:metalplate-iron")).Grip!.Value,
+      0.02
+    );
+    Assert.Equal(
+      0,
+      ViewGates.Hand(World, GroupOf("game:hay-normal-ud")).Centre!.Value,
+      0.02
+    );
+    Assert.Equal(
+      0.259,
+      ViewGates.Hand(World, GroupOf("game:stonebricks-granite")).Centre!.Value,
+      0.02
+    );
+  }
+
+  // Fails when G10 compares the box axis's sign: the reversed box reads near 180 degrees.
+  [Fact]
+  public void Blackbronze_spear_axis_is_judged_by_its_working_end() {
+    ViewGroup spear = GroupOf("game:spear-generic-blackbronze");
+    Assert.InRange(ViewGates.AxisDegrees(World, spear), 0, 3.3);
+    Assert.InRange(ViewGates.AxisDegrees(World, spear, true), 0, 3.3);
+  }
 }

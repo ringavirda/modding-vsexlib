@@ -10,6 +10,11 @@ internal sealed class SeraphPose {
   /// <summary>The shape the player's entity draws, which holds the clips and the <c>RightHand</c> attachment point.</summary>
   internal const string ShapePath = "game:entity/humanoid/seraph-faceless";
 
+  // A clip enters at easing factor 0 and reaches full weight after dt * EaseInSpeed; this step at this speed reaches it
+  // in one call and advances the clip by 3e-5 of a frame.
+  private const float FrameStep = 1e-6f;
+  private const float FullWeightSpeed = 1e9f;
+
   private SeraphPose(Mat4 itemAnchor, AttachmentPoint attachment) {
     ItemAnchor = itemAnchor;
     Attachment = attachment;
@@ -52,8 +57,12 @@ internal sealed class SeraphPose {
     );
     var active = new Dictionary<string, AnimationMetaData>();
     if (clip != null)
-      active[clip] = new AnimationMetaData { Code = clip, Animation = clip };
-    animator.OnFrame(active, 0);
+      active[clip] = new AnimationMetaData {
+        Code = clip,
+        Animation = clip,
+        EaseInSpeed = FullWeightSpeed,
+      };
+    animator.OnFrame(active, FrameStep);
     AttachmentPointAndPose hand = animator.GetAttachmentPointPose("RightHand");
     return new SeraphPose(
       Mat4.FromColumnMajor(hand.AnimModelMatrix),
