@@ -5,6 +5,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Linq;
 using System.Text.Json;
+using ExpandedLib.Networks;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
@@ -23,11 +24,20 @@ public class SetupSceneDumpTests : IDisposable
   public void Dispose() => SetupPlacers.Clear();
 
   private static string ModPath(string id) =>
-    Path.Combine(
-      RepoPaths.Root,
-      "samples",
-      id == "platedpipes" ? "PlatedPipes" : "TwinTubBlower"
-    );
+    id == "setupgate"
+      ? Path.Combine(
+        RepoPaths.Root,
+        "tests",
+        "ExpandedLib.Tests",
+        "Setups",
+        "Fixtures",
+        "SetupGate"
+      )
+      : Path.Combine(
+        RepoPaths.Root,
+        "samples",
+        id == "platedpipes" ? "PlatedPipes" : "TwinTubBlower"
+      );
 
   private static SetupScene Build(string? variant)
   {
@@ -43,7 +53,12 @@ public class SetupSceneDumpTests : IDisposable
     );
     if (variant != null)
       file = file.ForVariant(variant);
-    return SetupScene.Build(file, [.. file.Mods.Select(ModPath)]);
+    return SetupScene.Build(
+      file,
+      [.. file.Mods.Select(ModPath)],
+      null,
+      w => w.RegisterClass("SetupGateBlock", typeof(SetupGateBlock))
+    );
   }
 
   private static JsonDocument Dump(SetupScene scene, string? variant = null) =>
@@ -240,6 +255,18 @@ public class SetupSceneDumpTests : IDisposable
     Assert.Null(Joins(PortOf(CellAt(dump, 5, 0, 1))));
   }
 
+  // Fails when a typed port is walked for open faces: the port that joins nothing then lists its
+  // face under open as well as under joins.
+  [Fact]
+  public void An_unjoined_port_is_not_also_listed_open()
+  {
+    using SetupScene scene = Build(null);
+    MakePort(scene, new BlockPos(5, 0, 1), "n", "pipe");
+    using JsonDocument dump = Dump(scene);
+
+    Assert.False(CellAt(dump, 5, 0, 1).TryGetProperty("open", out _));
+  }
+
   // Fails when PortFacing is read reversed: each port then faces its own blower's side and
   // finds no line there.
   [Fact]
@@ -288,6 +315,55 @@ public class SetupSceneDumpTests : IDisposable
       end.GetProperty("open").EnumerateArray().Select(f => f.GetString())
     );
     Assert.False(CellAt(wholeDump, 1, 1, -4).TryGetProperty("open", out _));
+  }
+
+  // Fails when the open-face pass walks network cells only: the gate stands on no network, so
+  // its connector face is never listed.
+  [Fact]
+  public void A_connector_block_standing_alone_lists_its_face_open()
+  {
+    using SetupScene scene = Build(null);
+    using JsonDocument dump = Dump(scene);
+
+    JsonElement cell = CellAt(dump, 4, 1, -6);
+
+    Assert.False(cell.TryGetProperty("network", out _));
+    Assert.Equal(
+      ["w"],
+      cell.GetProperty("open").EnumerateArray().Select(f => f.GetString())
+    );
+  }
+
+  // Fails when the cell's memberships are not read: the cell stands on one network, so the
+  // other membership's type is never known and its north face is never listed.
+  [Fact]
+  public void A_second_membership_of_another_type_lists_its_face_open()
+  {
+    using SetupScene scene = Build(null);
+    scene.World.RegisterBlockEntityBehaviorFactory(
+      "test.MoltenMember",
+      be => new TestMember(be, "molten", BlockFacing.WEST)
+    );
+    scene.World.RegisterBlockEntityBehaviorFactory(
+      "test.PipeMember",
+      be => new TestMember(be, "pipe", BlockFacing.NORTH)
+    );
+    scene.World.PlaceFiller(
+      new BlockPos(8, 0, 0),
+      [
+        new FillerBehavior("test.MoltenMember", null, null),
+        new FillerBehavior("test.PipeMember", null, null),
+      ],
+      scene.PositionOf("first")
+    );
+    using JsonDocument dump = Dump(scene);
+
+    JsonElement cell = CellAt(dump, 8, 0, 0);
+
+    Assert.Equal(
+      ["n", "w"],
+      cell.GetProperty("open").EnumerateArray().Select(f => f.GetString())
+    );
   }
 
   // Fails when the ports' share of ids is dropped: the blower's filler stands on no network, so
@@ -408,6 +484,16 @@ public class SetupSceneDumpTests : IDisposable
       MaskGame(golden),
       MaskGame(SetupSceneDump.Of(scene, "scene-dump", variant))
     );
+  }
+
+  private sealed class TestMember : BEBehaviorNetworkMember
+  {
+    public TestMember(BlockEntity be, string type, BlockFacing face)
+      : base(be)
+    {
+      NetworkType = type;
+      Connectors = [face];
+    }
   }
 
   private sealed class PlainMechanical(BlockEntity be) : BEBehaviorMPBase(be)
