@@ -17,8 +17,6 @@ public static class ExLiquids {
     "ExLiquids"
   );
 
-  private const string BuiltIn = "the built-in media";
-
   static ExLiquids() => SeedDefaults();
 
   /// <summary>The medium policy the pipe network consults (over the current registry contents).</summary>
@@ -60,41 +58,37 @@ public static class ExLiquids {
 
   /// <summary>Registers the four built-in media. Idempotent.</summary>
   public static void SeedDefaults() {
-    _defs.Register(
+    _defs.Update(
       new LiquidDef {
         Code = "Air",
         Phase = LiquidPhase.Gas,
         Priority = 0,
-      },
-      BuiltIn
+      }
     );
-    _defs.Register(
+    _defs.Update(
       new LiquidDef {
         Code = "Steam",
         Phase = LiquidPhase.Gas,
         Priority = 10,
         CondensesTo = "Water",
         CondenseBelowC = 100f,
-      },
-      BuiltIn
+      }
     );
-    _defs.Register(
+    _defs.Update(
       new LiquidDef {
         Code = "Exhaust",
         Phase = LiquidPhase.Gas,
         Priority = 20,
-      },
-      BuiltIn
+      }
     );
-    _defs.Register(
+    _defs.Update(
       new LiquidDef {
         Code = "Water",
         Phase = LiquidPhase.Liquid,
         Priority = 0,
         VaporisesTo = "Steam",
         BoilPointC = 100f,
-      },
-      BuiltIn
+      }
     );
   }
 

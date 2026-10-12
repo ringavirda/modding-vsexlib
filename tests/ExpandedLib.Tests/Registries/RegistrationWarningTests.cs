@@ -223,13 +223,10 @@ public class LiquidRegistrationWarningTests : RegistryLogFixture {
   }
 
   [Fact]
-  public void ExLiquids_names_the_built_ins_when_an_overlay_redefines_one() {
-    Log.Expect(EnumLogType.Warning, "");
+  public void ExLiquids_is_silent_when_an_overlay_redefines_a_built_in() {
     ExLiquids.Register(Steam(90f), "modone/config/liquids.json");
 
-    string warning = Only("ExLiquids");
-    Assert.Contains("the built-in media", warning);
-    Assert.Contains("modone/config/liquids.json", warning);
+    None("ExLiquids");
   }
 
   [Fact]
