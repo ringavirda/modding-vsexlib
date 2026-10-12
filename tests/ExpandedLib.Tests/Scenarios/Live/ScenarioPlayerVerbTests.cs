@@ -2,6 +2,7 @@ using System.Linq;
 using ExpandedLib.Testing.Live;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 using Xunit;
 
@@ -15,6 +16,47 @@ public class ScenarioPlayerVerbTests {
   public void A_hold_goes_on_while_the_time_held_is_under_its_seconds() {
     Assert.True(InteractStep.StillHeld(0.9, 1));
     Assert.False(InteractStep.StillHeld(1.0, 1));
+  }
+
+  /// <summary>Fails when a block that stops the hold keeps being stepped (S60), or a hold stops no later than
+  /// its seconds (S61).</summary>
+  [Fact]
+  public void A_hold_ends_when_a_step_stops_it_or_its_seconds_pass() {
+    Assert.True(InteractStep.Goes(true, 0.5, 1));
+    Assert.False(InteractStep.Goes(false, 0.5, 1));
+    Assert.False(InteractStep.Goes(true, 1, 1));
+  }
+
+  /// <summary>Fails when a use the claims refuse passes (S62), or the refusal drops the cell (S63).</summary>
+  [Fact]
+  public void A_use_the_claims_refuse_fails_the_step_naming_the_cell() {
+    InteractStep.RequireUse(true, new BlockPos(1, 2, 3));
+    var e = Assert.Throws<StepFailure>(() =>
+      InteractStep.RequireUse(false, new BlockPos(1, 2, 3))
+    );
+    Assert.Contains("the player may not use", e.Message);
+    Assert.Contains("1, 2, 3", e.Message);
+  }
+
+  /// <summary>Fails when a take of a range or a name is read as an index (S64), or an index is read as the
+  /// next slot (S65).</summary>
+  [Fact]
+  public void A_take_names_one_slot_index() {
+    Assert.Equal(2, WindowStep.TakeSlot(JObject.Parse("{\"slot\":2}")));
+    foreach (
+      string body in new[] { "{}", "{\"slot\":[0,1]}", "{\"slot\":\"0\"}" }
+    ) {
+      var e = Assert.Throws<StepFailure>(() =>
+        WindowStep.TakeSlot(JObject.Parse(body))
+      );
+      Assert.Equal("\"take\" takes one \"slot\" index.", e.Message);
+    }
+  }
+
+  /// <summary>Fails when an ignition without seconds is held for other than 5 s (S66).</summary>
+  [Fact]
+  public void An_ignite_without_seconds_is_held_for_five() {
+    Assert.Equal(5, IgniteStep.DefaultSeconds);
   }
 
   /// <summary>Fails when a key sets the wrong control (S28), or a control is left set by a key that is
@@ -47,7 +89,7 @@ public class ScenarioPlayerVerbTests {
     Assert.Equal("\"alt\" is not a key the scenario player holds.", e.Message);
   }
 
-  /// <summary>Fails when an interaction runs without the scenario player (S39).</summary>
+  /// <summary>Fails when an interaction runs without the scenario player (S31).</summary>
   [Fact]
   public void An_interact_without_the_scenario_player_fails_the_step() {
     var fixture = new LiveFixture();
@@ -99,8 +141,8 @@ public class ScenarioPlayerVerbTests {
     Assert.Equal("\"window\" needs the scenario player.", e.Message);
   }
 
-  /// <summary>Fails when a lit answer reads as waiting (S32), a refused answer for a block that does not
-  /// prevent the default reads as waiting (S33), or a hold at its own length keeps waiting (S34).</summary>
+  /// <summary>Fails when a lit answer reads as waiting (S32), a prevent-default refusal reads as
+  /// waiting (S33), or a hold at its own length keeps waiting (S34).</summary>
   [Fact]
   public void An_ignition_answer_reads_lit_refused_timed_out_or_waiting() {
     Assert.Equal(

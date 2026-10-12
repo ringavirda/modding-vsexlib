@@ -24,6 +24,19 @@ internal sealed class InteractStep : ScenarioStep {
   /// <paramref name="seconds"/>.</summary>
   public static bool StillHeld(double held, double seconds) => held < seconds;
 
+  /// <summary>Whether the hold goes on: the block answered the last step <paramref name="stepped"/> and
+  /// the time held is still under <paramref name="seconds"/>.</summary>
+  public static bool Goes(bool stepped, double held, double seconds) =>
+    stepped && StillHeld(held, seconds);
+
+  /// <summary>Fails the step when the claims do not let the player use the block at
+  /// <paramref name="local"/>.</summary>
+  /// <exception cref="StepFailure">The use is not <paramref name="allowed"/>.</exception>
+  public static void RequireUse(bool allowed, BlockPos local) {
+    if (!allowed)
+      throw new StepFailure($"the player may not use {local}.");
+  }
+
   /// <summary>The keys a step holds, each one of <c>sneak</c>, <c>ctrl</c> or <c>sprint</c>.</summary>
   /// <exception cref="StepFailure">A name is none of them.</exception>
   public static string[] KeyNames(JToken? token) {
@@ -70,10 +83,10 @@ internal sealed class InteractStep : ScenarioStep {
     string[] keys = KeyNames(o["keys"]);
     double seconds = (double?)o["seconds"] ?? 0;
     ctx.Touched.Add(local.Copy());
-    if (
-      !ctx.World.Claims.TryAccess(player.Player, at, EnumBlockAccessFlags.Use)
-    )
-      throw new StepFailure($"the player may not use {local}.");
+    RequireUse(
+      ctx.World.Claims.TryAccess(player.Player, at, EnumBlockAccessFlags.Use),
+      local
+    );
     bool answered = player.UseStart(
       at,
       face,
@@ -84,10 +97,10 @@ internal sealed class InteractStep : ScenarioStep {
     try {
       double started = ctx.Now;
       if (answered) {
-        while (StillHeld(ctx.Now - started, seconds)) {
+        bool stepped = true;
+        while (Goes(stepped, ctx.Now - started, seconds)) {
           yield return true;
-          if (!player.UseStep(selection, ctx.Now - started))
-            break;
+          stepped = player.UseStep(selection, ctx.Now - started);
         }
         player.UseStop(selection, ctx.Now - started);
       }

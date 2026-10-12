@@ -284,7 +284,8 @@ internal sealed class ScenarioPlayer {
   }
 
   /// <summary>Holds <paramref name="stack"/> in the active slot and <paramref name="keys"/>, stands the
-  /// player facing <paramref name="face"/> of the block at <paramref name="at"/>, and right-clicks it.</summary>
+  /// player facing <paramref name="face"/> of the block at <paramref name="at"/>, and right-clicks it. The did-use event fires right after
+  /// <c>Block.OnBlockInteractStart</c>, as the server does on the start of a block use.</summary>
   /// <param name="at">The absolute cell of the block used.</param>
   /// <param name="face">The face the click lands on.</param>
   /// <param name="stack">What the hand holds, or null for an empty hand.</param>
@@ -350,6 +351,7 @@ internal sealed class ScenarioPlayer {
       bool answered = _server
         .BlockAccessor.GetBlock(at)
         .OnBlockInteractStart(_server, Player, selection);
+      _server.EventManager.TriggerDidUseBlock(Player, selection);
       string[] held =
       [
         .. hotbar
@@ -383,13 +385,12 @@ internal sealed class ScenarioPlayer {
       .OnBlockInteractStep((float)secondsHeld, _server, Player, selection);
   }
 
-  /// <summary>Ends the interaction: <c>Block.OnBlockInteractStop</c>, then the did-use event.</summary>
+  /// <summary>Ends the interaction with <c>Block.OnBlockInteractStop</c>.</summary>
   /// <param name="secondsHeld">The seconds the hold has run.</param>
   public void UseStop(BlockSelection selection, double secondsHeld) {
     _server
       .BlockAccessor.GetBlock(selection.Position)
       .OnBlockInteractStop((float)secondsHeld, _server, Player, selection);
-    _server.EventManager.TriggerDidUseBlock(Player, selection);
   }
 
   /// <summary>What the active slot holds: the stack's code and size, or <c>empty hand</c>.</summary>

@@ -14,6 +14,9 @@ namespace ExpandedLib.Testing.Live;
 /// <c>IIgnitable.OnTryIgniteBlock</c> with the seconds held so far, until it answers <c>IgniteNow</c>, which
 /// is followed by one <c>OnTryIgniteBlockOver</c>.</summary>
 internal sealed class IgniteStep : ScenarioStep {
+  /// <summary>The seconds an ignition is held when the step names none.</summary>
+  public const double DefaultSeconds = 5;
+
   public override string Kind => "ignite";
 
   public override string What(SetupStep step) =>
@@ -61,7 +64,7 @@ internal sealed class IgniteStep : ScenarioStep {
       ctx.World.BlockAccessor.GetBlock(at)
         .GetInterface<IIgnitable>(ctx.World, at)
       ?? throw new StepFailure($"{code} is not ignitable.", Suspect.Scenario);
-    double seconds = (double?)o["seconds"] ?? 5;
+    double seconds = (double?)o["seconds"] ?? DefaultSeconds;
     EntityAgent entity = player.Player.Entity;
     ctx.Touched.Add(local.Copy());
     double started = ctx.Now;

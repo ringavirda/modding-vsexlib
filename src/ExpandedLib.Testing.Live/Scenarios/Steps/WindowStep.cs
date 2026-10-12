@@ -157,7 +157,7 @@ internal sealed class WindowStep : ScenarioStep {
       : count;
   }
 
-  private static int TakeSlot(JObject take) =>
+  public static int TakeSlot(JObject take) =>
     take["slot"] is { Type: JTokenType.Integer } slot
       ? (int)slot
       : throw new StepFailure(
