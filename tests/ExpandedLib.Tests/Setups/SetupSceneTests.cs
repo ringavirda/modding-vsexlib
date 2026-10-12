@@ -801,8 +801,7 @@ public class SetupSceneTests : IDisposable
       },
     };
 
-  // Fails when a step kind the fake world cannot run, or the reader does not build yet, is let
-  // through to a scene that silently skips it.
+  // Fails when a step kind the fake world cannot run is let through to a scene that silently skips it.
   [Theory]
   [MemberData(nameof(Refused_steps))]
   public void A_step_kind_the_reader_cannot_run_is_refused_by_name(
