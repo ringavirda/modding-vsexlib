@@ -221,18 +221,27 @@ public class DoublesTests {
   public void Making_players_costs_the_same_after_the_world_has_recorded_many_calls() {
     using (var warm = new TestWorld())
       MakePlayersMs(warm, 200);
-    using var fresh = new TestWorld();
-    double freshMs = MakePlayersMs(fresh, 200);
-
-    using var busy = new TestWorld();
-    for (int i = 0; i < 50_000; i++)
-      _ = busy.World.Side;
-    double busyMs = MakePlayersMs(busy, 200);
+    double freshMs = FastestOfThreeMs(world => MakePlayersMs(world, 200));
+    double busyMs = FastestOfThreeMs(world => {
+      for (int i = 0; i < 200_000; i++)
+        _ = world.World.Side;
+      return MakePlayersMs(world, 200);
+    });
 
     Assert.True(
-      busyMs < 10 * freshMs,
-      $"200 players took {busyMs:0.0} ms after 50 000 recorded calls, {freshMs:0.0} ms in a fresh world"
+      busyMs < 3 * freshMs,
+      $"200 players took {busyMs:0.0} ms after 200 000 recorded calls, {freshMs:0.0} ms in a fresh world"
     );
+  }
+
+  // The fastest of three fresh worlds, so a collection pause in a parallel test cannot fail the ratio.
+  private static double FastestOfThreeMs(System.Func<TestWorld, double> run) {
+    double fastest = double.MaxValue;
+    for (int i = 0; i < 3; i++) {
+      using var world = new TestWorld();
+      fastest = System.Math.Min(fastest, run(world));
+    }
+    return fastest;
   }
 
   private static double MakePlayersMs(TestWorld world, int count) {
