@@ -1,12 +1,17 @@
 #if GAME_GE_1_22
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Linq;
 using System.Text.Json;
+using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
+using Vintagestory.GameContent.Mechanics;
 using Xunit;
 
 namespace ExpandedLib.Tests.Setups;
@@ -297,6 +302,89 @@ public class SetupSceneDumpTests : IDisposable
     Assert.Equal(["low-west", "first"], Ids(dump, "A"));
   }
 
+  // Fails when the fluid layer is left out of the enumeration, its role is not "fluid", or the
+  // fluid entry sorts before the solid one at the same cell.
+  [Fact]
+  public void A_fluid_under_a_solid_cell_is_listed_after_it_with_the_fluid_role()
+  {
+    using SetupScene scene = Build(null);
+    Block water = TestBlocks.Configure(
+      new BlockForFluidsLayer(),
+      "test:water",
+      71
+    );
+    water.MatterState = EnumMatterState.Liquid;
+    Block stone = TestBlocks.Configure(new Block(), "test:stone", 73);
+    scene.World.Register(water).Register(stone);
+    scene
+      .World.Place(new BlockPos(9, 0, 0), water)
+      .Place(new BlockPos(9, 0, 0), stone);
+    using JsonDocument dump = Dump(scene);
+
+    JsonElement[] entries =
+    [
+      .. dump
+        .RootElement.GetProperty("cells")
+        .EnumerateArray()
+        .Where(c => At(c).SequenceEqual([9, 0, 0])),
+    ];
+
+    Assert.Equal(
+      ["block", "fluid"],
+      entries.Select(c => c.GetProperty("role").GetString())
+    );
+    Assert.Equal("test:stone", entries[0].GetProperty("code").GetString());
+    Assert.Equal("test:water", entries[1].GetProperty("code").GetString());
+    Assert.False(entries[1].TryGetProperty("id", out _));
+  }
+
+  // Fails when the smallest placement is not preferred (the order by cell count) or ties do
+  // not break by ordinal id.
+  [Fact]
+  public void A_cell_held_by_two_placements_takes_the_smallest_then_the_first_id()
+  {
+    using SetupScene scene = Build(null);
+    var placed = (Dictionary<string, SetupPlacement>)scene.Placements;
+    BlockPos shared = new(5, 0, 0);
+    placed["0-wide"] = new SetupPlacement(
+      shared,
+      [shared, new BlockPos(6, 0, 0)]
+    );
+    placed["b-tie"] = new SetupPlacement(shared, [shared]);
+    placed["a-tie"] = new SetupPlacement(shared, [shared]);
+    using JsonDocument dump = Dump(scene);
+
+    Assert.Equal("a-tie", CellAt(dump, 5, 0, 0).GetProperty("id").GetString());
+  }
+
+  // Fails when a mechanical port with no face takes its line from the facing lookup instead of
+  // the cell's own line, or is written with a face.
+  [Fact]
+  public void A_mechanical_port_with_no_face_joins_its_own_line()
+  {
+    using SetupScene scene = Build(null);
+    scene.World.RegisterBlockEntityBehaviorFactory(
+      "test.PlainMechanical",
+      be => new PlainMechanical(be)
+    );
+    BlockPos at = new(8, 0, 0);
+    scene.World.PlaceFiller(
+      at,
+      [new FillerBehavior("test.PlainMechanical", null, null)],
+      scene.PositionOf("first")
+    );
+    using JsonDocument dump = Dump(scene);
+
+    JsonElement cell = CellAt(dump, 8, 0, 0);
+    JsonElement port = PortOf(cell);
+
+    Assert.Equal("port", cell.GetProperty("role").GetString());
+    Assert.Equal(JsonValueKind.Null, port.GetProperty("face").ValueKind);
+    Assert.Equal("mechanical", port.GetProperty("type").GetString());
+    Assert.Equal(cell.GetProperty("line").GetString(), Joins(port));
+    Assert.NotNull(Joins(port));
+  }
+
   // Fails when a cell's keys are written in another order (code before at).
   [Theory]
   [InlineData(null)]
@@ -320,6 +408,17 @@ public class SetupSceneDumpTests : IDisposable
       MaskGame(golden),
       MaskGame(SetupSceneDump.Of(scene, "scene-dump", variant))
     );
+  }
+
+  private sealed class PlainMechanical(BlockEntity be) : BEBehaviorMPBase(be)
+  {
+    public override void SetOrientations()
+    {
+      OutFacingForNetworkDiscovery = BlockFacing.EAST;
+      AxisSign = [-1, 0, 0];
+    }
+
+    public override float GetResistance() => 0f;
   }
 
   private static string MaskGame(string text) =>

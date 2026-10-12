@@ -13,8 +13,8 @@
   {"at": [0,1,2], "code": "exlib:structurefiller", "role": "filler", "principal": [0,1,0], "network": "D", "open": ["s"]},
   {"at": [1,2,-2], "code": "exlib:structurefiller", "role": "filler", "principal": [1,1,0]},
   {"at": [1,2,-1], "code": "exlib:structurefiller", "role": "filler", "principal": [1,1,0]},
-  {"at": [0,2,0], "code": "exlib:structurefiller", "role": "port", "principal": [0,1,0], "port": {"face": "e", "type": "mechanical", "joins": "M1"}, "line": "M1"},
-  {"at": [1,2,0], "code": "exlib:structurefiller", "role": "port", "principal": [1,1,0], "port": {"face": "w", "type": "mechanical", "joins": "M1"}, "line": "M1"},
+  {"at": [0,2,0], "code": "exlib:structurefiller", "role": "port", "principal": [0,1,0], "line": "M1", "port": {"face": "e", "type": "mechanical", "joins": "M1"}},
+  {"at": [1,2,0], "code": "exlib:structurefiller", "role": "port", "principal": [1,1,0], "line": "M1", "port": {"face": "w", "type": "mechanical", "joins": "M1"}},
   {"at": [0,2,1], "code": "exlib:structurefiller", "role": "filler", "principal": [0,1,0]},
   {"at": [0,2,2], "code": "exlib:structurefiller", "role": "filler", "principal": [0,1,0]}
  ],

@@ -181,6 +181,10 @@ internal static class SetupSceneDump
       parts.Add("\"role\": " + Quote(e.Role));
       if (e.Principal != null)
         parts.Add("\"principal\": " + Position(e.Principal));
+      if (e.Network != null)
+        parts.Add("\"network\": " + Quote(e.Network));
+      if (e.Line != null)
+        parts.Add("\"line\": " + Quote(e.Line));
       if (e.Role == "port")
       {
         (BlockFacing? face, string type, string? joins) = PortOf(
@@ -200,10 +204,6 @@ internal static class SetupSceneDump
             + "}"
         );
       }
-      if (e.Network != null)
-        parts.Add("\"network\": " + Quote(e.Network));
-      if (e.Line != null)
-        parts.Add("\"line\": " + Quote(e.Line));
       if (e.Net != null)
       {
         List<string> open = OpenFaces(world, e.Cell.At, e.Net.NetworkType);
