@@ -351,6 +351,10 @@ public class SetupExpectTests : IDisposable
     + "\"B\": {\"id\": \"second\", \"code\": \"twintubblower:blower-twintubblower-s\"}, \"b\": {\"cells\": \"second\"}}, "
     + "\"layers\": {\"2\": [\" a\", \" a\", \"ba\", \"b\", \"b\"], \"1\": [\" a\", \" a\", \"BA\", \"b\", \"b\"]}, \"origin\": [0, -2]}";
 
+  private const string LoneLayout =
+    "{\"legend\": {\"A\": {\"id\": \"first\", \"code\": \"twintubblower:blower-twintubblower-n\"}, \"a\": {\"cells\": \"first\"}}, "
+    + "\"layers\": {\"2\": [\" a\", \" a\", \" a\"], \"1\": [\" a\", \" a\", \" A\"]}, \"origin\": [0, -2]}";
+
   private static string MechanicalExpect(string rest) =>
     "{\"expect\": {\"at\": [1, 2, 0], \"network\": \"mechanical\", "
     + rest
@@ -399,6 +403,22 @@ public class SetupExpectTests : IDisposable
     Assert.NotNull(scene);
     Assert.Contains("mechanical Speed", slow);
     Assert.Contains("No mechanical network", none);
+  }
+
+  // Fails when a step reads the line the game's discovery made, which gives a lone blower a line, instead
+  // of the scene's joined lines, which give it none.
+  [Fact]
+  public void An_expect_network_mechanical_in_the_steps_finds_no_line_for_a_lone_blower()
+  {
+    using SetupScene scene = Build(
+      Inline(
+        "twintubblower",
+        "[" + MechanicalExpect("\"equals\": false") + "]",
+        LoneLayout
+      )
+    );
+
+    Assert.NotNull(scene);
   }
 
   // Fails when the mechanical Speed is read with its sign, or the torque is read from another member.
