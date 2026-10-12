@@ -16,6 +16,7 @@ internal sealed class CaseConfig : IExVersionedConfig
   public string? ConfigVersion { get; set; }
   public int Level { get; set; } = 1;
   public float Rate { get; set; } = 0.5f;
+  public bool Enabled { get; set; }
 }
 
 /// <summary>The harness cases a setup file makes: its checks in order, its variants' deltas and
@@ -304,7 +305,7 @@ public class SetupCaseTests : IDisposable
       Cases(
         "\"seeded\": {\"after\": {\"lay\": [{\"set\": {\"at\": {\"of\": \"lay\"}, \"member\": {\"Level\": 9}}}]}}",
         Check("hold", "always", Series("lay", "equals", 9)),
-        steps: "[]",
+        steps: "[{\"expect\": {\"at\": {\"of\": \"lay\"}, \"member\": \"Level\", \"equals\": 9}}]",
         layout: layout,
         record: Level("lay")
       )
@@ -352,6 +353,32 @@ public class SetupCaseTests : IDisposable
     Assert.Throws<InvalidOperationException>(() => variant.PositionOf("c"));
   }
 
+  // Fails when a machine replaced by another id is still sampled under its old one.
+  [Fact]
+  public void A_variant_that_replaces_a_recorded_id_does_not_sample_the_old_one()
+  {
+    const string layout =
+      "{\"legend\": {\"B\": {\"id\": \"lay\", \"code\": \"setupbox:box\"}}, \"layers\": {\"1\": [\"B\"]}}";
+    SetupFile file = Parse(
+      Cases(
+        "\"far-b\": {\"replace\": {\"b\": {\"place\": {\"id\": \"far\", \"code\": \"setupbox:box\", \"at\": [3, 0, 0]}}}}, "
+          + "\"new-lay\": {\"replace\": {\"lay\": {\"id\": \"other\", \"code\": \"setupbox:box\"}}}",
+        layout: layout,
+        record: Level("a") + ", " + Level("b") + ", " + Level("lay")
+      )
+    );
+
+    using SetupScene far = Build(file.ForVariant("far-b"));
+    using SetupScene other = Build(file.ForVariant("new-lay"));
+    SetupRecording byStep = far.Run(Mods);
+    SetupRecording byEntry = other.Run(Mods);
+
+    Assert.False(byStep.Has("b", "level"));
+    Assert.True(byStep.Has("lay", "level"));
+    Assert.False(byEntry.Has("lay", "level"));
+    Assert.True(byEntry.Has("b", "level"));
+  }
+
   // Fails when a variant's own checks are replaced by the main case's.
   [Fact]
   public void A_variant_s_own_checks_replace_the_main_case_s()
@@ -391,6 +418,32 @@ public class SetupCaseTests : IDisposable
     Assert.False(File.Exists(Path.Combine(_folder, "cases.json")));
   }
 
+  // Fails when a variant that gives seconds alone keeps the main case's steady window.
+  [Fact]
+  public void A_variant_with_seconds_alone_takes_the_last_third_as_its_steady_window()
+  {
+    SetupFile file = Parse(Cases("\"long\": {\"seconds\": 9}"));
+
+    using SetupScene variant = Build(file.ForVariant("long"));
+    SetupRecording recording = variant.Run(Mods);
+
+    Assert.Equal((6, 9), (recording.SteadyFrom, recording.SteadyTo));
+  }
+
+  // Fails when a config value that is not a number, a boolean or text is accepted.
+  [Fact]
+  public void A_config_value_that_is_not_a_scalar_is_refused()
+  {
+    var error = Assert.Throws<InvalidOperationException>(() =>
+      Parse(Cases("", config: "{\"casesmod\": {\"Level\": null}}"))
+    );
+    Assert.Throws<InvalidOperationException>(() =>
+      Parse(Cases("", config: "{\"casesmod\": {\"Level\": {\"a\": 1}}}"))
+    );
+
+    Assert.Contains("config.casesmod.Level", error.Message);
+  }
+
   // Fails when a variant without record is taken to write one, or the main case is not.
   [Fact]
   public void Only_the_main_case_and_a_variant_with_record_write_a_recording()
@@ -414,7 +467,7 @@ public class SetupCaseTests : IDisposable
   [Fact]
   public void A_variant_the_file_does_not_hold_is_refused()
   {
-    SetupFile file = Parse(Cases(""));
+    SetupFile file = Parse(Cases("\"one\": {\"drop\": [\"b\"]}"));
 
     Assert.Throws<ArgumentException>(() => file.ForVariant("nothing"));
   }
@@ -500,13 +553,17 @@ public class SetupCaseTests : IDisposable
   {
     ExConfigRegister<CaseConfig> store = Store();
     SetupFile file = Parse(
-      Cases("", config: "{\"casesmod\": {\"Level\": 7, \"Rate\": 2.5}}")
+      Cases(
+        "",
+        config: "{\"casesmod\": {\"Level\": 7, \"Rate\": 2.5, \"Enabled\": true}}"
+      )
     );
 
     using SetupScene scene = Build(file, store);
 
     Assert.Equal(7, store.Config.Level);
     Assert.Equal(2.5f, store.Config.Rate);
+    Assert.True(store.Config.Enabled);
   }
 
   // Fails when the register keeps the case's values after the scene is disposed.
