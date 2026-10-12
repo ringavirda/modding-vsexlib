@@ -166,6 +166,12 @@ internal sealed class ScenarioPlayer {
     MoveTo(_park);
   }
 
+  /// <summary>Puts the player in survival mode without free movement, where it stays until it is parked.</summary>
+  public void Survive() {
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+  }
+
   /// <summary>The cell the player stands in to place into <paramref name="at"/>: two blocks south
   /// of it, on its level.</summary>
   public static Vec3d Stand(BlockPos at) => new(at.X + 0.5, at.Y, at.Z + 2.5);
@@ -276,8 +282,8 @@ internal sealed class ScenarioPlayer {
     IReadOnlyList<string> keys,
     out BlockSelection selection
   ) {
-    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Creative;
-    _data.FreeMove = true;
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
     Vec3d hit = Hit(face);
     Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
     Hold(Player.Entity.Controls, keys);
@@ -343,12 +349,23 @@ internal sealed class ScenarioPlayer {
     }
   }
 
-  /// <summary>One held tick of the interaction: <c>Block.OnBlockInteractStep</c> with the seconds held so far.</summary>
+  /// <summary>One held tick of the interaction: the player is stood and aimed again, then
+  /// <c>Block.OnBlockInteractStep</c> runs with the seconds held so far.</summary>
   /// <returns>What the block answered; false when the block stops the hold.</returns>
-  public bool UseStep(BlockSelection selection, double secondsHeld) =>
-    _server
-      .BlockAccessor.GetBlock(selection.Position)
+  public bool UseStep(BlockSelection selection, double secondsHeld) {
+    BlockPos at = selection.Position;
+    Aim(
+      at,
+      new Vec3d(
+        at.X + selection.HitPosition.X,
+        at.Y + selection.HitPosition.Y,
+        at.Z + selection.HitPosition.Z
+      )
+    );
+    return _server
+      .BlockAccessor.GetBlock(at)
       .OnBlockInteractStep((float)secondsHeld, _server, Player, selection);
+  }
 
   /// <summary>Ends the interaction: <c>Block.OnBlockInteractStop</c>, then the did-use event.</summary>
   /// <param name="secondsHeld">The seconds the hold has run.</param>

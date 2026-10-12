@@ -58,7 +58,8 @@ internal sealed class IgniteStep : ScenarioStep {
     BlockPos at = ctx.Setup.Absolute(local);
     string code = ctx.Setup.BlockAt(local).Code.ToString();
     IIgnitable ignitable =
-      ctx.World.BlockAccessor.GetBlock(at) as IIgnitable
+      ctx.World.BlockAccessor.GetBlock(at)
+        .GetInterface<IIgnitable>(ctx.World, at)
       ?? throw new StepFailure($"{code} is not ignitable.", Suspect.Scenario);
     double seconds = (double?)o["seconds"] ?? 5;
     EntityAgent entity = player.Player.Entity;

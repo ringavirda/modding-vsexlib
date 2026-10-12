@@ -11,7 +11,7 @@ namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>window</c>: works a block entity's dialog through the entity's own client packet handler, as
 /// the dialog sends it: open, a slot click for each put or take with the stack on the cursor, a button,
-/// then close. The hand is cleared when the step ends.</summary>
+/// then close. The hand is cleared and the player parked when the step ends.</summary>
 internal sealed class WindowStep : ScenarioStep {
   private const int OpenPacketId = 1000;
   private const int ClosePacketId = 1001;
@@ -79,6 +79,7 @@ internal sealed class WindowStep : ScenarioStep {
       );
     BlockPos local = ctx.Position(step, o["at"], "at");
     BlockEntity be = SetStep.EntityAt(ctx, local);
+    player.Survive();
     player.Face(ctx.Setup.Absolute(local), BlockFacing.SOUTH);
     ServerPlayer who = player.Player;
     ctx.Touched.Add(local.Copy());
@@ -91,7 +92,7 @@ internal sealed class WindowStep : ScenarioStep {
       if (o["put"] is JObject put)
         done.Add(Put(ctx, who, be, put));
       if (o["take"] is JObject take)
-        done.Add(Take(who, be, (int)take["slot"]!));
+        done.Add(Take(who, be, TakeSlot(take)));
       if (o["press"] is JObject press) {
         int id = ButtonId((int)press["id"]!);
         byte[]? data = press["data"] is JArray values ? Data(values) : null;
@@ -104,7 +105,7 @@ internal sealed class WindowStep : ScenarioStep {
       }
       report.Value = string.Join("; ", done);
     } finally {
-      who.InventoryManager.ActiveHotbarSlot.Itemstack = null;
+      player.Release();
     }
     yield break;
   }
@@ -155,6 +156,14 @@ internal sealed class WindowStep : ScenarioStep {
       ? count - left.StackSize
       : count;
   }
+
+  private static int TakeSlot(JObject take) =>
+    take["slot"] is { Type: JTokenType.Integer } slot
+      ? (int)slot
+      : throw new StepFailure(
+        "\"take\" takes one \"slot\" index.",
+        Suspect.Scenario
+      );
 
   private static string Take(ServerPlayer who, BlockEntity be, int slot) {
     ItemSlot hand = who.InventoryManager.ActiveHotbarSlot;

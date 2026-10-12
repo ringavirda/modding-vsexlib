@@ -70,6 +70,10 @@ internal sealed class InteractStep : ScenarioStep {
     string[] keys = KeyNames(o["keys"]);
     double seconds = (double?)o["seconds"] ?? 0;
     ctx.Touched.Add(local.Copy());
+    if (
+      !ctx.World.Claims.TryAccess(player.Player, at, EnumBlockAccessFlags.Use)
+    )
+      throw new StepFailure($"the player may not use {local}.");
     bool answered = player.UseStart(
       at,
       face,
@@ -79,11 +83,14 @@ internal sealed class InteractStep : ScenarioStep {
     );
     try {
       double started = ctx.Now;
-      while (StillHeld(ctx.Now - started, seconds)) {
-        yield return true;
-        player.UseStep(selection, ctx.Now - started);
+      if (answered) {
+        while (StillHeld(ctx.Now - started, seconds)) {
+          yield return true;
+          if (!player.UseStep(selection, ctx.Now - started))
+            break;
+        }
+        player.UseStop(selection, ctx.Now - started);
       }
-      player.UseStop(selection, ctx.Now - started);
       report.Value = $"hand: {player.HandText()}";
       if (o["returns"] is { } returns && (bool)returns != answered)
         throw new StepFailure(

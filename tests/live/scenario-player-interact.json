@@ -1,10 +1,11 @@
 {
   "setup": "scenario-player-interact",
-  "description": "A held interact on a chest starts its container and runs for its seconds.",
+  "description": "A held interact on a resin log harvests it once the hold reaches the block's harvest time.",
   "mods": [],
   "steps": [
-    { "place": { "code": "game:chest-east", "at": [0, 0, 0] } },
-    { "interact": { "at": [0, 0, 0], "seconds": 1, "returns": true } }
+    { "place": { "code": "game:log-resin-pine-ud", "at": [0, 0, 0] } },
+    { "interact": { "at": [0, 0, 0], "seconds": 1.2, "returns": true } },
+    { "expect": { "at": [0, 0, 0], "block": "game:log-resinharvested-pine-ud" } }
   ],
   "seconds": 8,
   "record": {}
