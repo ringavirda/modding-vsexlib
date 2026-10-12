@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using ExpandedLib.Networks;
+using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -22,19 +25,54 @@ public class BlockNetworkModSystem : ModSystem {
   /// <summary>Networks whose connectivity could not be decided, mapped to their unreadable node positions.</summary>
   private readonly Dictionary<Guid, HashSet<BlockPos>> _unreadableNodes = [];
 
-  /// <summary>Registers the factory for <paramref name="networkType"/>, replacing any earlier factory for the same type.</summary>
+  private readonly Dictionary<string, string> _factoryOwners = [];
+
+  /// <summary>Registers the factory for <paramref name="networkType"/>, replacing any earlier factory for the same type.
+  /// A type already held by another assembly is replaced with a Warning naming both assemblies; use
+  /// <see cref="ReplaceNetworkType"/> to replace on purpose.</summary>
   /// <returns><c>true</c> when an earlier factory for the type was replaced.</returns>
+  [MethodImpl(MethodImplOptions.NoInlining)]
   public bool RegisterNetworkType(
     string networkType,
     Func<BlockNetwork> factory
+  ) =>
+    RegisterNetworkType(
+      networkType,
+      factory,
+      Assembly.GetCallingAssembly().GetName().Name ?? "unknown assembly"
+    );
+
+  internal bool RegisterNetworkType(
+    string networkType,
+    Func<BlockNetwork> factory,
+    string owner
   ) {
     bool replaced = _factories.ContainsKey(networkType);
-    _factories[networkType] = factory;
-    if (replaced)
-      Mod?.Logger?.Notification(
-        "Block network type '{0}' re-registered; the later factory wins.",
-        networkType
+    if (
+      replaced
+      && _factoryOwners.TryGetValue(networkType, out string? previous)
+      && previous != owner
+    )
+      RegistryLog.Replaced(
+        "BlockNetworkModSystem",
+        networkType,
+        previous,
+        owner
       );
+    _factories[networkType] = factory;
+    _factoryOwners[networkType] = owner;
+    return replaced;
+  }
+
+  /// <summary>Replaces the factory for <paramref name="networkType"/> on purpose, logging nothing; the
+  /// calling assembly becomes the type's owner. Adds the type when none is registered.</summary>
+  /// <returns><c>true</c> when an earlier factory for the type was replaced.</returns>
+  [MethodImpl(MethodImplOptions.NoInlining)]
+  public bool ReplaceNetworkType(string networkType, Func<BlockNetwork> factory) {
+    bool replaced = _factories.ContainsKey(networkType);
+    _factories[networkType] = factory;
+    _factoryOwners[networkType] =
+      Assembly.GetCallingAssembly().GetName().Name ?? "unknown assembly";
     return replaced;
   }
 

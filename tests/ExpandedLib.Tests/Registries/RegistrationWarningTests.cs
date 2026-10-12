@@ -3,9 +3,13 @@ using System.Linq;
 using ExpandedLib.Blocks;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Config;
+using ExpandedLib.Helpers;
+using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Industry.Metals;
 using ExpandedLib.Industry.Pipes;
+using ExpandedLib.Networks;
 using ExpandedLib.Registries;
+using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Xunit;
@@ -375,5 +379,111 @@ public class MetalRegistrationWarningTests : RegistryLogFixture {
     );
 
     Assert.Contains("ExpandedLib.Tests", Only("MetalRegistry codes"));
+  }
+
+  private static BlockNetwork Net(BlockNetworkModSystem networks) =>
+    new MpEnergyNetwork(networks);
+
+  [Fact]
+  public void BlockNetworkModSystem_names_both_owners_of_a_type_taken_twice() {
+    Log.Expect(EnumLogType.Warning, "");
+    var networks = new BlockNetworkModSystem();
+    networks.RegisterNetworkType("plantednet", () => Net(networks), "modone");
+    bool replaced = networks.RegisterNetworkType(
+      "plantednet",
+      () => Net(networks),
+      "modtwo"
+    );
+
+    string warning = Only("BlockNetworkModSystem");
+    Assert.Contains("'plantednet'", warning);
+    Assert.Contains("modone", warning);
+    Assert.Contains("modtwo", warning);
+    Assert.True(replaced);
+  }
+
+  [Fact]
+  public void BlockNetworkModSystem_is_silent_for_one_owner_twice() {
+    var networks = new BlockNetworkModSystem();
+    networks.RegisterNetworkType("plantednet", () => Net(networks), "modone");
+    networks.RegisterNetworkType("plantednet", () => Net(networks), "modone");
+
+    None("BlockNetworkModSystem");
+  }
+
+  [Fact]
+  public void BlockNetworkModSystem_public_register_names_the_calling_assembly() {
+    Log.Expect(EnumLogType.Warning, "");
+    var networks = new BlockNetworkModSystem();
+    networks.RegisterNetworkType("plantednet", () => Net(networks), "modone");
+    networks.RegisterNetworkType("plantednet", () => Net(networks));
+
+    string warning = Only("BlockNetworkModSystem");
+    Assert.Contains("modone", warning);
+    Assert.Contains("ExpandedLib.Tests", warning);
+  }
+
+  [Fact]
+  public void BlockNetworkModSystem_replace_call_is_silent_and_wins() {
+    var networks = new BlockNetworkModSystem();
+    networks.RegisterNetworkType("plantednet", () => Net(networks), "modone");
+    Func<BlockNetwork> later = () => Net(networks);
+    bool replaced = networks.ReplaceNetworkType("plantednet", later);
+
+    None("BlockNetworkModSystem");
+    Assert.True(replaced);
+    Assert.False(networks.ReplaceNetworkType("plantednet2", later));
+  }
+
+  [Fact]
+  public void ExBlockNames_names_both_owners_of_a_group_taken_twice() {
+    Log.Expect(EnumLogType.Warning, "");
+    ExBlockNames.AddVariantQualifier("plantedgroup", "a:", "modone");
+    ExBlockNames.AddVariantQualifier("plantedgroup", "b:", "modtwo");
+
+    string warning = Only("ExBlockNames");
+    Assert.Contains("'plantedgroup'", warning);
+    Assert.Contains("modone", warning);
+    Assert.Contains("modtwo", warning);
+    ExBlockNames.RemoveVariantQualifier("plantedgroup");
+  }
+
+  [Fact]
+  public void ExBlockNames_is_silent_for_one_owner_twice() {
+    ExBlockNames.AddVariantQualifier("plantedgroup", "a:", "modone");
+    ExBlockNames.AddVariantQualifier("plantedgroup", "b:", "modone");
+
+    None("ExBlockNames");
+    ExBlockNames.RemoveVariantQualifier("plantedgroup");
+  }
+
+  [Fact]
+  public void CellRole_names_both_owners_of_a_key_declared_twice() {
+    Log.Expect(EnumLogType.Warning, "");
+    CellRole.Of("plantedrole", false, "modone");
+    CellRole.Of("plantedrole", true, "modtwo");
+
+    string warning = Only("CellRole");
+    Assert.Contains("'plantedrole'", warning);
+    Assert.Contains("modone", warning);
+    Assert.Contains("modtwo", warning);
+    Assert.True(new CellRole("plantedrole").IsSingle);
+  }
+
+  [Fact]
+  public void CellRole_is_silent_for_one_owner_twice() {
+    CellRole.Of("plantedrole2", false, "modone");
+    CellRole.Of("plantedrole2", true, "modone");
+
+    None("CellRole");
+  }
+
+  [Fact]
+  public void CellRole_public_of_names_the_calling_assembly() {
+    Log.Expect(EnumLogType.Warning, "");
+    CellRole.Of("plantedrole3", false, "modone");
+    CellRole.Of("plantedrole3");
+
+    Assert.Contains("ExpandedLib.Tests", Only("CellRole"));
   }
 }

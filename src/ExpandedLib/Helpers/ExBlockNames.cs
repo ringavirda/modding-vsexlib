@@ -1,4 +1,7 @@
 using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
@@ -14,14 +17,38 @@ public static class ExBlockNames {
   private static readonly List<(string Group, string LangPrefix)> _qualifiers =
   [];
 
+  private static readonly Dictionary<string, string> _owners = [];
+
   /// <summary>The registered variant groups, in the order <see cref="Decorate"/> applies them.</summary>
   internal static IReadOnlyList<(string Group, string LangPrefix)> Qualifiers =>
     _qualifiers;
 
-  /// <summary>Registers a variant group so <see cref="Decorate"/> also qualifies on it.</summary>
+  /// <summary>Registers a variant group so <see cref="Decorate"/> also qualifies on it. A group already
+  /// registered replaces its prefix in place; when another assembly registered it, a Warning names both.</summary>
   /// <param name="variantGroup">The block variant key to test (e.g. <c>"refractory"</c>).</param>
   /// <param name="langPrefix">Prepended to the variant value to form the lang key looked up.</param>
-  public static void AddVariantQualifier(string variantGroup, string langPrefix) {
+  [MethodImpl(MethodImplOptions.NoInlining)]
+  public static void AddVariantQualifier(
+    string variantGroup,
+    string langPrefix
+  ) =>
+    AddVariantQualifier(
+      variantGroup,
+      langPrefix,
+      Assembly.GetCallingAssembly().GetName().Name ?? "unknown assembly"
+    );
+
+  internal static void AddVariantQualifier(
+    string variantGroup,
+    string langPrefix,
+    string owner
+  ) {
+    if (
+      _owners.TryGetValue(variantGroup, out string? previous)
+      && previous != owner
+    )
+      RegistryLog.Replaced("ExBlockNames", variantGroup, previous, owner);
+    _owners[variantGroup] = owner;
     for (int i = 0; i < _qualifiers.Count; i++) {
       if (_qualifiers[i].Group == variantGroup) {
         _qualifiers[i] = (variantGroup, langPrefix);
@@ -32,11 +59,16 @@ public static class ExBlockNames {
   }
 
   /// <summary>Drops every registered variant group; run when a world starts loading.</summary>
-  internal static void ResetForWorld() => _qualifiers.Clear();
+  internal static void ResetForWorld() {
+    _qualifiers.Clear();
+    _owners.Clear();
+  }
 
   /// <summary>Removes a registered variant group, if any; internal, test-only teardown.</summary>
-  internal static void RemoveVariantQualifier(string variantGroup) =>
+  internal static void RemoveVariantQualifier(string variantGroup) {
     _qualifiers.RemoveAll(q => q.Group == variantGroup);
+    _owners.Remove(variantGroup);
+  }
 
   /// <summary>Decorates <paramref name="baseName"/> with the recognised variant values of
   /// <paramref name="block"/>: metal, rock, brick, then every group added through
