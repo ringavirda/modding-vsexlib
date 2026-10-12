@@ -1,0 +1,67 @@
+{
+  "setup": "entity-steps",
+  "description": "A box filled, inserted into, set and called by the entity steps.",
+  "mods": [
+    "setupbox"
+  ],
+  "steps": [
+    {
+      "fill": {
+        "id": "ground",
+        "code": "setupbox:slab",
+        "from": [0, 0, 0],
+        "to": [2, 0, 2]
+      }
+    },
+    {
+      "place": {
+        "id": "box",
+        "code": "setupbox:box",
+        "at": [1, 1, 1]
+      }
+    },
+    {
+      "insert": {
+        "at": {"of": "box"},
+        "stack": "setupbox:slab",
+        "count": 3,
+        "slot": 1
+      }
+    },
+    {
+      "set": {
+        "at": {"of": "box"},
+        "member": {
+          "_count": 7,
+          "_state": "Running"
+        }
+      }
+    },
+    {
+      "set": {
+        "at": {"of": "box"},
+        "tree": {
+          "level": 4
+        }
+      }
+    },
+    {
+      "call": {
+        "at": {"of": "box"},
+        "method": "Poke",
+        "args": [
+          2,
+          "Running",
+          {
+            "stack": "setupbox:slab",
+            "count": 5
+          },
+          "player"
+        ],
+        "returns": "2:Running:5:test"
+      }
+    }
+  ],
+  "seconds": 10,
+  "record": {}
+}

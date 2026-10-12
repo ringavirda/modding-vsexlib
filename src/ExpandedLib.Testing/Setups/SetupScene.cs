@@ -23,9 +23,6 @@ public sealed partial class SetupScene : IDisposable
   private static readonly string[] Unbuilt =
   [
     "run",
-    "insert",
-    "set",
-    "call",
     "interact",
     "window",
     "ignite",
@@ -115,7 +112,8 @@ public sealed partial class SetupScene : IDisposable
   internal static SetupScene Build(
     SetupFile file,
     IReadOnlyList<string> modPaths,
-    Action<TestWorld>? afterLoad
+    Action<TestWorld>? afterLoad,
+    Action<TestWorld>? beforeLoad = null
   )
   {
     ArgumentNullException.ThrowIfNull(file);
@@ -129,6 +127,7 @@ public sealed partial class SetupScene : IDisposable
     try
     {
       scene.Refuse();
+      beforeLoad?.Invoke(scene.World);
       scene.Load(modPaths);
       afterLoad?.Invoke(scene.World);
       scene.PlaceLayout();
@@ -418,6 +417,15 @@ public sealed partial class SetupScene : IDisposable
           break;
         case "fill":
           FillStep(step);
+          break;
+        case "insert":
+          InsertStep(step);
+          break;
+        case "set":
+          SetStep(step);
+          break;
+        case "call":
+          CallStep(step);
           break;
       }
   }

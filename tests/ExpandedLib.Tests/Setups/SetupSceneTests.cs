@@ -756,21 +756,6 @@ public class SetupSceneTests : IDisposable
         "is not built by the harness reader yet"
       },
       {
-        "insert",
-        "{\"at\": [0, 0, 0], \"stack\": \"x\"}",
-        "is not built by the harness reader yet"
-      },
-      {
-        "set",
-        "{\"at\": [0, 0, 0], \"tree\": {}}",
-        "is not built by the harness reader yet"
-      },
-      {
-        "call",
-        "{\"at\": [0, 0, 0], \"method\": \"m\"}",
-        "is not built by the harness reader yet"
-      },
-      {
         "interact",
         "{\"at\": [0, 0, 0]}",
         "is not built by the harness reader yet"
