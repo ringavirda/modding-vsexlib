@@ -311,7 +311,8 @@ public sealed partial class SetupScene : IDisposable
         throw Fail(where, $"cell {Describe(at)} holds {held.Code}, not air.");
       if (block is IFillerHost host)
         foreach (
-          FillerCell cell in StructureFillers.FootprintCells(
+          FillerCell cell in SetupStructureCheck.Footprint(
+            World.World,
             host,
             at,
             AngleOf(block)
@@ -348,7 +349,7 @@ public sealed partial class SetupScene : IDisposable
       return new SetupFrame(
         pos.Copy(),
         angle,
-        StructureFillers.FootprintCells(host, pos, angle),
+        SetupStructureCheck.Footprint(World.World, host, pos, angle),
         SetupStructureCheck.IsMultiblock(block, be)
           ? o => ExOrientation.GlobalPos(pos, o.X, o.Y, o.Z, angle)
           : null

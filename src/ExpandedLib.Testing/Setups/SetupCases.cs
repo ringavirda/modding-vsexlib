@@ -81,7 +81,8 @@ public sealed class SetupCaseRow : IXunitSerializable
 /// <summary>What <see cref="SetupCases.Run"/> loads a case with and where it writes its recording.</summary>
 public sealed class SetupRunOptions
 {
-  /// <summary>The folder of the mod with the given id, holding its <c>modinfo.json</c>.</summary>
+  /// <summary>The folder of the mod with the given id, holding its <c>modinfo.json</c> or a
+  /// <c>src</c> folder that does.</summary>
   public required Func<string, string> ModFolder { get; init; }
 
   /// <summary>The <c>Recordings</c> folder; a recording goes under the game series that ran it,
@@ -166,6 +167,14 @@ public static class SetupCases
   /// order case names its order) and the check; or the file cannot be built; or a tick-order
   /// machine registered no listener.</exception>
   /// <exception cref="SetupRecordingMismatchException">The recording differs from the committed file.</exception>
+  private static string ModInfoPath(string modFolder)
+  {
+    string root = Path.Combine(modFolder, "modinfo.json");
+    return System.IO.File.Exists(root)
+      ? root
+      : Path.Combine(modFolder, "src", "modinfo.json");
+  }
+
   public static void Run(SetupCaseRow row, SetupRunOptions options)
   {
     ArgumentNullException.ThrowIfNull(row);
@@ -175,9 +184,7 @@ public static class SetupCases
       file.Mods,
       id =>
         SetupMods.FromModInfo(
-          System.IO.File.ReadAllText(
-            Path.Combine(options.ModFolder(id), "modinfo.json")
-          )
+          System.IO.File.ReadAllText(ModInfoPath(options.ModFolder(id)))
         ),
       options.ExlibVersion
     );

@@ -21,6 +21,18 @@ internal static class SetupStructureCheck
     && block.Attributes?.Token is JObject attributes
     && attributes["multiblockStructure"] is JObject;
 
+  /// <summary>The footprint cells a principal at <paramref name="pos"/> takes in
+  /// <paramref name="world"/>: a mega-block's reserved cells, else its whole footprint.</summary>
+  public static List<FillerCell> Footprint(
+    IWorldAccessor world,
+    IFillerHost host,
+    BlockPos pos,
+    int angle
+  ) =>
+    host is BlockFilledMegastructure mega
+      ? mega.ReservedCellsAt(world, pos)
+      : StructureFillers.FootprintCells(host, pos, angle);
+
   /// <summary>The cells the structure at <paramref name="pos"/> occupies besides its principal:
   /// the footprint, and the layout cells that do not want air.</summary>
   public static IReadOnlyList<(int X, int Y, int Z)> Cells(
@@ -33,7 +45,7 @@ internal static class SetupStructureCheck
     var cells = new List<BlockPos>();
     if (block is IFillerHost host)
       cells.AddRange(
-        StructureFillers.FootprintCells(host, pos, angle).Select(c => c.Pos)
+        Footprint(world.World, host, pos, angle).Select(c => c.Pos)
       );
     BlockEntity? be = world.GetBlockEntity(pos);
     if (IsMultiblock(block, be))

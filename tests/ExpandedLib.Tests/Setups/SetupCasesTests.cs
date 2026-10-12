@@ -283,6 +283,55 @@ public class SetupCasesTests : IDisposable
   private const string Late =
     "\"after\": {\"b\": [{\"set\": {\"at\": [0, 0, 0], \"member\": {\"Level\": 2}}}]}";
 
+  // Fails when Run reads modinfo.json only at the mod folder's root, so a mod laid out under src/
+  // throws FileNotFoundException.
+  [Fact]
+  public void A_mod_whose_modinfo_sits_under_src_runs()
+  {
+    string mod = Path.Combine(_folder, "srcmod");
+    string src = Path.Combine(mod, "src");
+    Directory.CreateDirectory(src);
+    File.Copy(
+      Path.Combine(SetupCaseTests.BoxPath, "modinfo.json"),
+      Path.Combine(src, "modinfo.json")
+    );
+    string assets = Path.Combine(SetupCaseTests.BoxPath, "assets");
+    foreach (
+      string file in Directory.GetFiles(
+        assets,
+        "*",
+        SearchOption.AllDirectories
+      )
+    )
+    {
+      string to = Path.Combine(
+        mod,
+        "assets",
+        Path.GetRelativePath(assets, file)
+      );
+      Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+      File.Copy(file, to);
+    }
+    Write("c.json", SetupCaseTests.Cases(""));
+    SetupRunOptions options = new()
+    {
+      ModFolder = _ => mod,
+      Recordings = Recordings,
+      ExlibVersion = "0.8.4",
+      BeforeLoad = w =>
+      {
+        SetupCaseTests.Register(w);
+        SetupTickOrderTests.Register(w, []);
+      },
+    };
+
+    SetupCases.Run(Row("cases"), options);
+
+    Assert.Single(
+      Directory.GetFiles(Recordings, "cases.json", SearchOption.AllDirectories)
+    );
+  }
+
   // Fails when a passing main case writes no recording, or writes it outside the folder of the
   // series that ran it.
   [Fact]

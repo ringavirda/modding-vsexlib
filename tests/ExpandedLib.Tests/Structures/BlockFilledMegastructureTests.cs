@@ -127,6 +127,17 @@ public class BlockFilledMegastructureTests {
     Assert.Same(world.Air, world.GetBlock(Upper));
   }
 
+  // Fails when the setup harness's footprint reads FootprintCells instead of ReservedCells.
+  [Fact]
+  public void The_setup_footprint_of_a_mega_block_is_its_ReservedCells() {
+    var mega = new SkipsLowerCell();
+    var (world, _) = Stand(mega);
+
+    var cells = SetupStructureCheck.Footprint(world.World, mega, At, 0);
+
+    Assert.Equal(Upper, Assert.Single(cells).Pos);
+  }
+
   // Fails when CanPlaceBlock runs StructureFillers.CanPlace itself instead of asking HasRoom.
   [Fact]
   public void HasRoom_decides_the_footprint_refusal() {
