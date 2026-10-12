@@ -1,10 +1,12 @@
 #if GAME_GE_1_22
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Networks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -14,9 +16,16 @@ namespace ExpandedLib.Testing;
 public sealed partial class SetupScene
 {
   private readonly Dictionary<
-    char,
+    string,
     IReadOnlyList<(Block Block, string Faces)>
   > _family = [];
+
+  private readonly Dictionary<BlockPos, RunCell> _runCells = [];
+
+  private sealed record RunCell(
+    IReadOnlyList<(Block Block, string Faces)> Family,
+    HashSet<BlockFacing> Faces
+  );
 
   private void PlaceLayout()
   {
@@ -93,7 +102,7 @@ public sealed partial class SetupScene
     {
       string where = $"run \"{run.Id}\" legend \"{cell.Entry.Glyph}\"";
       IReadOnlyList<(Block Block, string Faces)> family = Family(
-        cell.Entry,
+        cell.Entry.Family,
         where
       );
       string type = ((INetworkConnector)family[0].Block).NetworkType;
@@ -119,33 +128,138 @@ public sealed partial class SetupScene
         )
           faces.Add(face);
       }
-      string wanted = Letters(faces);
       var pos = new BlockPos(cell.Cell.X, cell.Cell.Y, cell.Cell.Z);
-      Block[] fits =
-      [
-        .. family.Where(f => f.Faces == wanted).Select(f => f.Block),
-      ];
-      if (fits.Length != 1)
-        throw Fail(
-          where,
-          fits.Length == 0
-            ? $"cell {Describe(pos)} needs a block with the faces {wanted}, and none of {string.Join(", ", cell.Entry.Family)} has them."
-            : $"cell {Describe(pos)} needs a block with the faces {wanted}, and {string.Join(" and ", fits.Select(b => b.Code.ToString()))} both have them."
-        );
-      Put(fits[0], pos, where);
+      Block block = LayCell(family, faces, pos, where);
       laid.Add(pos);
       if (cell.Entry.Id != null)
-        Record(cell.Entry.Id, pos, fits[0]);
+        Record(cell.Entry.Id, pos, block);
     }
     _placed[run.Id] = new SetupPlacement(laid[0], laid);
   }
 
-  private IReadOnlyList<(Block Block, string Faces)> Family(
-    LayoutEntry entry,
+  private Block LayCell(
+    IReadOnlyList<(Block Block, string Faces)> family,
+    HashSet<BlockFacing> faces,
+    BlockPos pos,
     string where
   )
   {
-    if (_family.TryGetValue(entry.Glyph, out var cached))
+    string wanted = Letters(faces);
+    Block[] fits =
+    [
+      .. family.Where(f => f.Faces == wanted).Select(f => f.Block),
+    ];
+    if (fits.Length != 1)
+      throw Fail(
+        where,
+        fits.Length == 0
+          ? $"cell {Describe(pos)} needs a block with the faces {wanted}, and none of {string.Join(", ", family.Select(f => f.Block.Code))} has them."
+          : $"cell {Describe(pos)} needs a block with the faces {wanted}, and {string.Join(" and ", fits.Select(b => b.Code.ToString()))} both have them."
+      );
+    Put(fits[0], pos, where);
+    _runCells[pos] = new RunCell(family, faces);
+    return fits[0];
+  }
+
+  private void RunStep(SetupStep step)
+  {
+    JToken body = step.Body;
+    var at = new SetupJson.Where(_file.Name, step.Path);
+    string code = (string)body["code"]!;
+    IReadOnlyList<(Block Block, string Faces)> family = Family(
+      SetupLayout.RunFamily(code, body["family"], at, "step"),
+      step.Path
+    );
+    List<BlockPos> corners = [At(step, "from")];
+    if (body["via"] is JArray via)
+      for (int i = 0; i < via.Count; i++)
+        corners.Add(
+          SetupPosition.Parse(via[i], at.In("via").At(i)).Resolve(View)
+        );
+    corners.Add(At(step, "to"));
+    var path = new List<BlockPos> { corners[0] };
+    var faces = new Dictionary<BlockPos, HashSet<BlockFacing>>();
+    Join(faces, corners[0]);
+    for (int i = 1; i < corners.Count; i++)
+    {
+      BlockPos from = corners[i - 1];
+      BlockPos to = corners[i];
+      int[] delta = [to.X - from.X, to.Y - from.Y, to.Z - from.Z];
+      if (delta.Count(d => d != 0) > 1)
+        throw Fail(
+          step.Path,
+          $"the leg from {Describe(from)} to {Describe(to)} does not run along one axis."
+        );
+      BlockFacing? toward = BlockFacing.ALLFACES.FirstOrDefault(f =>
+        Math.Sign(delta[0]) == f.Normali.X
+        && Math.Sign(delta[1]) == f.Normali.Y
+        && Math.Sign(delta[2]) == f.Normali.Z
+      );
+      if (toward == null)
+        continue;
+      for (BlockPos cell = from; !cell.Equals(to); )
+      {
+        BlockPos next = cell.AddCopy(toward);
+        Join(faces, cell).Add(toward);
+        Join(faces, next).Add(toward.Opposite);
+        path.Add(next);
+        cell = next;
+      }
+    }
+    if (body["open"] is JArray opens)
+      for (int i = 0; i < opens.Count; i++)
+      {
+        SetupJson.Where w = at.In("open").At(i);
+        BlockPos cell = SetupPosition
+          .Parse(opens[i]["at"], w.In("at"))
+          .Resolve(View);
+        string letter = (string)opens[i]["face"]!;
+        BlockFacing face =
+          SetupLayout.FaceOf(letter)
+          ?? throw Fail(
+            step.Path,
+            $"open face \"{letter}\" is not one of n, e, s, w, u, d."
+          );
+        if (!faces.ContainsKey(cell))
+          throw Fail(
+            step.Path,
+            $"open at {Describe(cell)} is no cell of the run."
+          );
+        faces[cell].Add(face);
+        if (_runCells.TryGetValue(cell.AddCopy(face), out RunCell? other))
+        {
+          other.Faces.Add(face.Opposite);
+          World.Accessor.SetBlock(0, cell.AddCopy(face));
+          LayCell(other.Family, other.Faces, cell.AddCopy(face), step.Path);
+        }
+      }
+    var laid = new List<BlockPos>();
+    foreach (BlockPos cell in path.Distinct())
+    {
+      LayCell(family, faces[cell], cell, step.Path);
+      laid.Add(cell);
+    }
+    if (step.Id != null)
+      _placed[step.Id] = new SetupPlacement(laid[0], laid);
+  }
+
+  private static HashSet<BlockFacing> Join(
+    Dictionary<BlockPos, HashSet<BlockFacing>> faces,
+    BlockPos cell
+  )
+  {
+    if (!faces.TryGetValue(cell, out HashSet<BlockFacing>? set))
+      faces[cell] = set = [];
+    return set;
+  }
+
+  private IReadOnlyList<(Block Block, string Faces)> Family(
+    IReadOnlyList<string> wildcards,
+    string where
+  )
+  {
+    string key = string.Join("|", wildcards);
+    if (_family.TryGetValue(key, out var cached))
       return cached;
     (Block Block, string Faces)[] blocks =
     [
@@ -153,7 +267,7 @@ public sealed partial class SetupScene
         .World.Blocks.Where(b =>
           b.Id != 0
           && b is INetworkConnector
-          && entry.Family.Any(w => WildcardUtil.Match(w, b.Code.ToString()))
+          && wildcards.Any(w => WildcardUtil.Match(w, b.Code.ToString()))
         )
         .Select(b =>
           (
@@ -176,10 +290,10 @@ public sealed partial class SetupScene
       throw Fail(
         where,
         types.Length == 0
-          ? $"no loaded block takes the family {string.Join(", ", entry.Family)}."
-          : $"the family {string.Join(", ", entry.Family)} holds blocks of more than one network type, {string.Join(" and ", types)}."
+          ? $"no loaded block takes the family {string.Join(", ", wildcards)}."
+          : $"the family {string.Join(", ", wildcards)} holds blocks of more than one network type, {string.Join(" and ", types)}."
       );
-    return _family[entry.Glyph] = blocks;
+    return _family[key] = blocks;
   }
 
   private static string Letters(IEnumerable<BlockFacing> faces) =>

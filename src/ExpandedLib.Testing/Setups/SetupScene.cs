@@ -20,8 +20,6 @@ namespace ExpandedLib.Testing;
 /// </summary>
 public sealed partial class SetupScene : IDisposable
 {
-  private static readonly string[] Unbuilt = ["run"];
-
   private static readonly Dictionary<string, string> Lacking = new()
   {
     ["paste"] = "the fake world has no structure files to paste",
@@ -174,11 +172,6 @@ public sealed partial class SetupScene : IDisposable
       JToken body = step.Body;
       if (Lacking.TryGetValue(step.Kind, out string? lacks))
         throw Fail(step.Path, $"\"{step.Kind}\" is refused: {lacks}.");
-      if (Unbuilt.Contains(step.Kind))
-        throw Fail(
-          step.Path,
-          $"\"{step.Kind}\" is not built by the harness reader yet."
-        );
       switch (step.Kind)
       {
         case "place":
@@ -437,7 +430,7 @@ public sealed partial class SetupScene : IDisposable
   {
     foreach (SetupStep step in steps)
     {
-      if (step.Kind is "place" or "complete" or "fill")
+      if (step.Kind is "place" or "complete" or "fill" or "run")
         _joined = false;
       else
         JoinLines();
@@ -451,6 +444,9 @@ public sealed partial class SetupScene : IDisposable
           break;
         case "fill":
           FillStep(step);
+          break;
+        case "run":
+          RunStep(step);
           break;
         case "insert":
           InsertStep(step);

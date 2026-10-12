@@ -427,6 +427,36 @@ internal sealed class SetupLayout {
     }
   }
 
+  /// <summary>The wildcards of the codes a run's shapes come from: <paramref name="family"/> as
+  /// written, or for a straight pipe code the four shapes of its material.</summary>
+  /// <param name="code">The run's straight segment.</param>
+  /// <param name="family">The <c>family</c> key, a string or an array, or null.</param>
+  /// <param name="where">The entry or step the key belongs to.</param>
+  /// <param name="owner">What the message calls the owner: <c>entry</c> or <c>step</c>.</param>
+  internal static IReadOnlyList<string> RunFamily(
+    string code,
+    JToken? family,
+    SetupJson.Where where,
+    string owner
+  ) {
+    if (family == null) {
+      Match m = PipeStraight.Match(code);
+      if (!m.Success)
+        throw where.Fail(
+          $"the code \"{code}\" is not a straight pipe, so the {owner} needs \"family\"."
+        );
+      return
+      [
+        .. Shapes.Select(s =>
+          $"{m.Groups["domain"].Value}:pipe-{s}-*-{m.Groups["material"].Value}"
+        ),
+      ];
+    }
+    return family is JArray
+      ? SetupJson.Strings(family, where.In("family"))
+      : [SetupJson.String(family, where.In("family"))];
+  }
+
   private static LayoutEntry ParseRun(
     char glyph,
     JObject e,
@@ -446,23 +476,7 @@ internal sealed class SetupLayout {
     );
     string run = required("run");
     string code = required("code");
-    IReadOnlyList<string> family;
-    if (e["family"] == null) {
-      Match m = PipeStraight.Match(code);
-      if (!m.Success)
-        throw where.Fail(
-          $"the code \"{code}\" is not a straight pipe, so the entry needs \"family\"."
-        );
-      family =
-      [
-        .. Shapes.Select(s =>
-          $"{m.Groups["domain"].Value}:pipe-{s}-*-{m.Groups["material"].Value}"
-        ),
-      ];
-    } else if (e["family"] is JArray)
-      family = SetupJson.Strings(e["family"], where.In("family"));
-    else
-      family = [SetupJson.String(e["family"], where.In("family"))];
+    IReadOnlyList<string> family = RunFamily(code, e["family"], where, "entry");
 
     var apart = new List<LayoutApart>();
     if (e["apart"] != null) {
