@@ -123,6 +123,22 @@ public class LoadAsGameTests
     Assert.False(Directory.Exists(firstDir));
   }
 
+  // Fails when the cache ignores the load generation: another load emptied the registries under it.
+  [Fact]
+  public void The_cache_rebuilds_after_another_load_and_restores()
+  {
+    TestWorld first = GameWorlds.Get([PngFixture]);
+    new TestWorld().LoadAssets([]);
+    int restored = 0;
+
+    TestWorld again = GameWorlds.Get([PngFixture], restore: _ => restored++);
+    TestWorld cached = GameWorlds.Get([PngFixture], restore: _ => restored++);
+
+    Assert.NotSame(first, again);
+    Assert.Same(again, cached);
+    Assert.Equal(1, restored);
+  }
+
   // Fails when the register callback is skipped, or runs after the load.
   [Fact]
   public void The_cache_registers_classes_before_the_load()

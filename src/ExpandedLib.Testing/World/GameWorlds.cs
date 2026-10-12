@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ExpandedLib.Registries;
 
 namespace ExpandedLib.Testing;
 
@@ -10,22 +11,30 @@ internal static class GameWorlds {
   private static readonly object Gate = new();
   private static string? _key;
   private static TestWorld? _world;
+  private static int _generation;
 
   /// <summary>Returns the world loaded for <paramref name="modPaths"/>, building it when the held
-  /// one belongs to another mod list; the old world is disposed first, so the per-world registries
-  /// always belong to the world returned. The caller never disposes the result.</summary>
+  /// one belongs to another mod list or another load has emptied the per-world registries since;
+  /// the old world is disposed first, so the registries always belong to the world returned. The caller never disposes the result.</summary>
   /// <param name="modPaths">Mod folders in load order; the same list in the same order is the same key.</param>
   /// <param name="register">Runs on a new world before its load, to register the caller's classes;
   /// null registers none.</param>
+  /// <param name="restore">Runs on a world after each build that finishes, to re-seed the registries
+  /// the load emptied; null seeds none.</param>
   /// <param name="gamePath">As <see cref="TestWorld.LoadAsGame"/> takes it.</param>
   internal static TestWorld Get(
     IReadOnlyList<string> modPaths,
     Action<TestWorld>? register = null,
-    string? gamePath = null
+    string? gamePath = null,
+    Action<TestWorld>? restore = null
   ) {
     string key = string.Join('|', modPaths);
     lock (Gate) {
-      if (_world != null && _key == key)
+      if (
+        _world != null
+        && _key == key
+        && _generation == ExWorldState.LoadGeneration
+      )
         return _world;
       _world?.Dispose();
       _world = null;
@@ -33,6 +42,8 @@ internal static class GameWorlds {
       try {
         register?.Invoke(world);
         world.LoadAsGame(modPaths, gamePath);
+        _generation = ExWorldState.LoadGeneration;
+        restore?.Invoke(world);
       } catch {
         world.Dispose();
         throw;

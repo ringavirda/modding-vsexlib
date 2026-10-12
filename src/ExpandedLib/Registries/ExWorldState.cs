@@ -29,12 +29,18 @@ public static class ExWorldState {
     api.Side == EnumAppSide.Server
     || api is ICoreClientAPI { IsSinglePlayer: false };
 
+  /// <summary>Counts the resets <see cref="ResetOnLoad"/> has made in this process; a holder of
+  /// per-world state compares it to the value it saw to learn another load emptied the registries.</summary>
+  internal static int LoadGeneration { get; private set; }
+
   /// <summary>When <see cref="ResetsOnLoad"/> holds, empties every per-world registry exlib owns;
   /// <see cref="ExLiquids"/> keeps its four built-in media. Runs first in exlib's own driver's
   /// <c>StartPre</c>, before any mod's <c>Start</c> registers.</summary>
   internal static void ResetOnLoad(ICoreAPI api) {
     if (!ResetsOnLoad(api))
       return;
+
+    LoadGeneration++;
 
     ExDefinitions.Clear();
     EntityRegistry.ResetForWorld();

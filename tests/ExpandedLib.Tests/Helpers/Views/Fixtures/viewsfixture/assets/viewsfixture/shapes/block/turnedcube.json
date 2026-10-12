@@ -1,0 +1,17 @@
+{
+  "textures": {
+    "tex": "viewsfixture:block/tex"
+  },
+  "elements": [
+    {
+      "name": "cube",
+      "from": [ 0, 0, 0 ],
+      "to": [ 16, 16, 16 ],
+      "rotationY": 45,
+      "rotationOrigin": [ 8, 8, 8 ],
+      "faces": {
+        "up": { "texture": "#tex", "uv": [ 0, 0, 16, 16 ] }
+      }
+    }
+  ]
+}

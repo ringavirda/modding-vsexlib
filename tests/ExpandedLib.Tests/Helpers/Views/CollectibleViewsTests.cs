@@ -64,6 +64,29 @@ public class CollectibleViewsTests {
     Assert.Equal(kind, KindOf(Coll(code)));
   }
 
+  // Fails when a child is placed without its parent's from.
+  [Fact]
+  public void A_child_element_sits_at_its_parents_from() {
+    double[] spear = ExtentsOf("game:spear-generic-iron");
+    Assert.Equal(46.747, spear[0], 2);
+    Assert.Equal(4.0, spear[1], 2);
+    Assert.Equal(2.348, spear[2], 2);
+    double[] stick = ExtentsOf("game:stick");
+    Assert.Equal(16, stick[0], 2);
+    Assert.Equal(2.648, stick[1], 2);
+    Assert.Equal(1.6, stick[2], 2);
+  }
+
+  // Fails when a block takes the least-volume frame: the turned cube is a cube there, multicell in the shape's.
+  [Fact]
+  public void A_block_boxes_in_the_shape_frame() {
+    var block = new Block {
+      Code = new AssetLocation("viewsfixture:turnedcube"),
+      Shape = Shape("viewsfixture:block/turnedcube"),
+    };
+    Assert.Equal(ItemViewKind.Multicell, KindOf(block));
+  }
+
   [Fact]
   public void A_selection_boxes_only_the_elements_it_keeps() {
     var item = new Item {

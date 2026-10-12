@@ -97,7 +97,8 @@ internal static class CollectibleViews {
         api,
         shape.Base.ToString(),
         shape.SelectiveElements,
-        new Vec3d()
+        new Vec3d(),
+        false
       );
 
   private static ViewBox? BlockBox(ICoreAPI api, Block block) {
@@ -108,7 +109,8 @@ internal static class CollectibleViews {
       shape?.SelectiveElements,
       shape == null
         ? new Vec3d()
-        : new Vec3d(shape.rotateX, shape.rotateY, shape.rotateZ)
+        : new Vec3d(shape.rotateX, shape.rotateY, shape.rotateZ),
+      true
     );
   }
 
@@ -116,10 +118,11 @@ internal static class CollectibleViews {
     ICoreAPI api,
     string basePath,
     string[]? keep,
-    Vec3d rotation
+    Vec3d rotation,
+    bool shapeFrame
   ) {
     string key =
-      $"{basePath}|{string.Join(',', keep ?? [])}|{rotation.X}|{rotation.Y}|{rotation.Z}";
+      $"{basePath}|{string.Join(',', keep ?? [])}|{rotation.X}|{rotation.Y}|{rotation.Z}|{shapeFrame}";
     if (Boxes.TryGetValue(key, out ViewBox? cached))
       return cached;
     Shape? shape = ExMeshCache.LoadShape(
@@ -129,7 +132,9 @@ internal static class CollectibleViews {
         .WithPathAppendixOnce(".json")
     );
     ViewBox? box =
-      shape == null ? null : Fit(Drawn(shape, keep), Pose.Turn(rotation));
+      shape == null
+        ? null
+        : Fit(Drawn(shape, keep), Pose.Turn(rotation), shapeFrame);
     Boxes[key] = box;
     return box;
   }
@@ -168,7 +173,13 @@ internal static class CollectibleViews {
       Pose pose = parent.Then(Local(el));
       if (IsDrawn(el))
         drawn.Add(new Element(Corners(el, pose), pose.R));
-      Walk(el.Children, pose, path, keep, drawn);
+      Walk(
+        el.Children,
+        pose.Then(new Pose(Identity, Vec(el.From))),
+        path,
+        keep,
+        drawn
+      );
     }
   }
 
@@ -194,8 +205,8 @@ internal static class CollectibleViews {
   }
 
   // The frame among the identity and each drawn element's own rotation (after the turn) with the least
-  // volume; a tie keeps the earlier frame, so the identity wins a tie.
-  private static ViewBox? Fit(List<Element> drawn, Pose turn) {
+  // volume; a tie keeps the earlier frame, so the identity wins a tie. With shapeFrame only the identity.
+  private static ViewBox? Fit(List<Element> drawn, Pose turn, bool shapeFrame) {
     if (drawn.Count == 0)
       return null;
     var frames = new List<double[,]> { Identity };
@@ -203,7 +214,7 @@ internal static class CollectibleViews {
     foreach (Element e in drawn) {
       points.AddRange(e.Corners.Select(turn.Apply));
       double[,] frame = Mul(turn.R, e.Frame);
-      if (frames.All(g => !SameFrame(g, frame)))
+      if (!shapeFrame && frames.All(g => !SameFrame(g, frame)))
         frames.Add(frame);
     }
 
