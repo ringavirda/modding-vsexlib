@@ -15,7 +15,7 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// A setup file built into a fresh world: mods and vanilla codes loaded, layout placed, every step
-/// but run executed and the mechanical lines joined. Running and checking are not built yet.
+/// but run executed and the mechanical lines joined. Checking is not built yet.
 /// </summary>
 public sealed partial class SetupScene : IDisposable
 {
