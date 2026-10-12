@@ -119,9 +119,9 @@ public class WholeVanillaLoadTests(ITestOutputHelper output) {
     );
   }
 
-  // Fails when the object loader's errors are left out of VanillaSkips.
+  // Fails when the world's logged errors are left out of VanillaSkips.
   [Fact]
-  public void An_object_loader_error_is_listed_as_a_skip() {
+  public void A_logged_error_is_listed_as_a_skip() {
     string modPath = Directory
       .CreateTempSubdirectory("exlib-vanilla-skips-")
       .FullName;
@@ -149,7 +149,7 @@ public class WholeVanillaLoadTests(ITestOutputHelper output) {
       Assert.Contains(
         world.VanillaSkips,
         s =>
-          s.File == "(object loader)" && s.Reason.Contains("NoSuchPlantedClass")
+          s.File == "(load errors)" && s.Reason.Contains("NoSuchPlantedClass")
       );
     } finally {
       Directory.Delete(modPath, recursive: true);

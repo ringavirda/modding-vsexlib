@@ -1,0 +1,25 @@
+{
+  "textures": {
+    "tex": "viewsfixture:item/tex"
+  },
+  "elements": [
+    {
+      "name": "arm",
+      "from": [ 0, 0, 0 ],
+      "to": [ 4, 2, 2 ],
+      "faces": {
+        "up": { "texture": "#tex", "uv": [ 0, 0, 4, 2 ] }
+      },
+      "children": [
+        {
+          "name": "tip",
+          "from": [ 10, 0, 0 ],
+          "to": [ 12, 2, 2 ],
+          "faces": {
+            "up": { "texture": "#tex", "uv": [ 0, 0, 2, 2 ] }
+          }
+        }
+      ]
+    }
+  ]
+}

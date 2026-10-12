@@ -154,21 +154,67 @@ internal static class CollectibleViews {
 
   private static List<Element> Drawn(Shape shape, string[]? keep) {
     var drawn = new List<Element>();
-    Walk(shape.Elements, Pose.Identity, "", keep, drawn);
+    Walk(
+      shape.Elements,
+      Pose.Identity,
+      keep is { Length: > 0 } ? keep : null,
+      drawn
+    );
     return drawn;
+  }
+
+  // The game's per-segment selection: an exactly named element draws without its children,
+  // "name/*" or a trailing '*' draws the subtree, "name/rest" passes "rest" to the children.
+  private static bool SelectiveMatch(
+    string needle,
+    string[] haystack,
+    out string[] children
+  ) {
+    children = [];
+    foreach (string text in haystack) {
+      if (text.Length == 0)
+        continue;
+      if (text == needle)
+        return true;
+      if (
+        text == "*"
+        || text == needle + "/*"
+        || (
+          text[^1] == '*'
+          && needle.StartsWith(text[..^1], StringComparison.Ordinal)
+        )
+      ) {
+        children = ["*"];
+        return true;
+      }
+      if (
+        text.IndexOf('/') != needle.Length
+        || !text.StartsWith(needle, StringComparison.Ordinal)
+      )
+        continue;
+      children =
+      [
+        .. haystack
+          .Where(h =>
+            h.IndexOf('/') == needle.Length
+            && h.StartsWith(needle, StringComparison.Ordinal)
+          )
+          .Select(h => h[(needle.Length + 1)..]),
+      ];
+      return true;
+    }
+    return false;
   }
 
   private static void Walk(
     ShapeElement[]? elements,
     Pose parent,
-    string parentPath,
     string[]? keep,
     List<Element> drawn
   ) {
     foreach (ShapeElement el in elements ?? []) {
-      string path =
-        parentPath.Length == 0 ? el.Name ?? "" : parentPath + "/" + el.Name;
-      if (keep is { Length: > 0 } && !ExShapeElements.Matches(path, keep))
+      string[]? childKeep = null;
+      if (keep != null && !SelectiveMatch(el.Name ?? "", keep, out childKeep))
         continue;
       Pose pose = parent.Then(Local(el));
       if (IsDrawn(el))
@@ -176,8 +222,7 @@ internal static class CollectibleViews {
       Walk(
         el.Children,
         pose.Then(new Pose(Identity, Vec(el.From))),
-        path,
-        keep,
+        childKeep,
         drawn
       );
     }

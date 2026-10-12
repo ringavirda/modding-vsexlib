@@ -123,6 +123,33 @@ public class LoadAsGameTests
     Assert.False(Directory.Exists(firstDir));
   }
 
+  // Fails when the key is the joined paths as written: the same folder spelled another way builds again.
+  [Fact]
+  public void The_cache_keys_on_full_paths()
+  {
+    TestWorld first = GameWorlds.Get([PngFixture]);
+
+    TestWorld again = GameWorlds.Get([
+      Path.Combine(PngFixture, "..", "png") + Path.DirectorySeparatorChar,
+    ]);
+
+    Assert.Same(first, again);
+  }
+
+  // Fails when the key leaves out the game path: another install gets the held world.
+  [Fact]
+  public void The_cache_keys_on_the_game_path()
+  {
+    TestWorld first = GameWorlds.Get([PngFixture]);
+
+    TestWorld other = GameWorlds.Get(
+      [PngFixture],
+      gamePath: VsAssemblyResolver.InstallPath
+    );
+
+    Assert.NotSame(first, other);
+  }
+
   // Fails when the cache ignores the load generation: another load emptied the registries under it.
   [Fact]
   public void The_cache_rebuilds_after_another_load_and_restores()

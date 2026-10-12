@@ -67,7 +67,7 @@ public sealed partial class TestWorld {
   ) => LoadAssets(modPaths, gamePath, []);
 
   /// <summary>Loads the game as a running server holds it: every survival blocktype and itemtype
-  /// (<see cref="VanillaSkips"/> lists the files left out), the listed mods' types, the shapes and
+  /// (a file that does not parse or has no <c>code</c> is left out), the listed mods' types, the shapes and
   /// textures of the listed mods and of survival in the asset manager <c>Api.Assets</c> answers
   /// from, and each started mod system's <c>AssetsFinalize</c> in the game's execute order.</summary>
   /// <remarks>Loads as <see cref="LoadAssets(IReadOnlyList{string}, string)"/> does, which also empties every
@@ -181,7 +181,7 @@ public sealed partial class TestWorld {
       for (int i = started.Count - 1; i >= 0; i--)
         started[i].Dispose();
       LoadedSystems = started;
-      skips.AddRange(Log.Errors.Select(e => ("(object loader)", e)));
+      skips.AddRange(Log.Errors.Select(e => ("(load errors)", e)));
       VanillaSkips = skips;
     }
     return this;
@@ -286,8 +286,9 @@ public sealed partial class TestWorld {
   internal IReadOnlyList<ModSystem> LoadedSystems { get; private set; } = [];
 
   /// <summary>The vanilla type files the last <see cref="LoadAssets(IReadOnlyList{string}, string)"/>
-  /// left out, each with the reason: a file that does not parse or has no <c>code</c>, and the object
-  /// loader's own errors, whose file is <c>(object loader)</c>.</summary>
+  /// left out, each with the reason: a file that does not parse or has no <c>code</c>, and every
+  /// error the world's log held after the load, from any loader or mod system, whose file is
+  /// <c>(load errors)</c>.</summary>
   internal IReadOnlyList<(string File, string Reason)> VanillaSkips {
     get;
     private set;
