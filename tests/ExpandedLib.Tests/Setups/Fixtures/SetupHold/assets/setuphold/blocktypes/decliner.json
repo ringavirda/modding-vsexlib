@@ -1,0 +1,1 @@
+{ "code": "decliner", "class": "SetupHoldBlock", "entityClass": "SetupHoldEntity", "attributes": { "declinesAt": 0.5 } }

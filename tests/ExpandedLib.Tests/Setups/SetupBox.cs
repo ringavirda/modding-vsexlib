@@ -1,4 +1,5 @@
 #if GAME_GE_1_22
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.GameContent;
@@ -66,6 +67,12 @@ internal sealed class SetupBox : BlockEntityContainer
     Label = tree.GetString("label");
   }
 
+  public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+  {
+    base.GetBlockInfo(forPlayer, dsc);
+    dsc.AppendLine($"Level: {Level}");
+  }
+
   public string Poke(int n, BoxState state, ItemStack stack, IPlayer player)
   {
     Poked = (n, state, stack, player);
@@ -78,5 +85,8 @@ internal sealed class BoxBehaviour(BlockEntity be) : BlockEntityBehavior(be)
   public int Nudged;
 
   public int Nudge(int by) => Nudged += by;
+
+  public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc) =>
+    dsc.AppendLine($"Nudged: {Nudged}");
 }
 #endif

@@ -38,7 +38,10 @@ public sealed partial class SetupScene
       (CollectibleObject?)World.World.GetItem(location)
       ?? World.World.GetBlock(location)
       ?? throw Fail(where, $"\"{code}\" is not registered by the load.");
-    return new ItemStack(collectible, (int?)body["count"] ?? 1);
+    var stack = new ItemStack(collectible, (int?)body["count"] ?? 1);
+    if (body["temperature"] is { } temperature)
+      stack.Collectible.SetTemperature(World.World, stack, (float)temperature);
+    return stack;
   }
 
   private void InsertStep(SetupStep step)
@@ -50,16 +53,16 @@ public sealed partial class SetupScene
         $"{be.GetType().Name} at {Describe(at)} has no inventory."
       );
     ItemStack stack = StackOf(step.Body, step.Path);
-    if (step.Body["temperature"] is { } temperature)
-      stack.Collectible.SetTemperature(World.World, stack, (float)temperature);
     int count = stack.StackSize;
     var source = new DummySlot(stack);
     ItemSlot? target = step.Body["slot"] is { } slot
-      ? (int)slot < inventory.Count
+      ? (int)slot >= 0 && (int)slot < inventory.Count
         ? inventory[(int)slot]
         : throw Fail(
           step.Path,
-          $"slot {(int)slot} is past the inventory's {inventory.Count}."
+          (int)slot < 0
+            ? $"slot {(int)slot} is negative."
+            : $"slot {(int)slot} is past the inventory's {inventory.Count}."
         )
       : inventory.GetBestSuitedSlot(source)?.slot;
     int moved =
@@ -105,20 +108,38 @@ public sealed partial class SetupScene
     JToken value,
     string where,
     string key
-  ) =>
-    old switch
+  )
+  {
+    try
     {
-      IntAttribute => new IntAttribute((int)value),
-      LongAttribute => new LongAttribute((long)value),
-      FloatAttribute => new FloatAttribute((float)value),
-      DoubleAttribute => new DoubleAttribute((double)value),
-      BoolAttribute => new BoolAttribute((bool)value),
-      StringAttribute => new StringAttribute((string?)value),
-      _ => throw Fail(
+      return old switch
+      {
+        IntAttribute => new IntAttribute((int)value),
+        LongAttribute => new LongAttribute((long)value),
+        FloatAttribute => new FloatAttribute((float)value),
+        DoubleAttribute => new DoubleAttribute((double)value),
+        BoolAttribute => new BoolAttribute((bool)value),
+        StringAttribute => new StringAttribute((string?)value),
+        _ => throw Fail(
+          where,
+          $"tree key \"{key}\" holds a {old.GetType().Name}, which \"set\" does not write."
+        ),
+      };
+    }
+    catch (Exception e)
+      when (e
+          is FormatException
+            or InvalidCastException
+            or OverflowException
+            or ArgumentException
+      )
+    {
+      throw Fail(
         where,
-        $"tree key \"{key}\" holds a {old.GetType().Name}, which \"set\" does not write."
-      ),
-    };
+        $"{value} does not fit tree key \"{key}\", a {old.GetType().Name}: {e.Message}"
+      );
+    }
+  }
 
   private void WriteMember(
     object target,
@@ -250,7 +271,20 @@ public sealed partial class SetupScene
     if (bare.IsEnum)
     {
       if (value.Type != JTokenType.String)
-        return Enum.ToObject(bare, (int)value);
+        try
+        {
+          return Enum.ToObject(bare, (int)value);
+        }
+        catch (Exception e)
+          when (e
+              is FormatException
+                or InvalidCastException
+                or OverflowException
+                or ArgumentException
+          )
+        {
+          throw Fail(where, $"{value} is not a member of {bare.Name}.");
+        }
       return Enum.TryParse(bare, (string)value!, false, out object? member)
         ? member
         : throw Fail(

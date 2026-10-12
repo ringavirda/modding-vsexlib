@@ -1,8 +1,11 @@
 #if GAME_GE_1_22
+using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using ExpandedLib.Scenarios;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent.Mechanics;
 
 namespace ExpandedLib.Testing;
 
@@ -12,6 +15,11 @@ internal sealed class SetupWorldView(
   IReadOnlyDictionary<string, SetupPlacement> placed
 ) : ISetupWorld
 {
+  private readonly ConditionalWeakTable<
+    MechanicalNetwork,
+    MechanicalLine
+  > _lines = new();
+
   public IWorldAccessor World => world.World;
 
   public BlockEntity? BlockEntityAt(BlockPos pos) => world.GetBlockEntity(pos);
@@ -19,12 +27,28 @@ internal sealed class SetupWorldView(
   public Block BlockAt(BlockPos pos) => world.GetBlock(pos);
 
   public object? NetworkAt(BlockPos pos, string type) =>
-    world.NetworkAt(pos) is { } network && network.NetworkType == type
-      ? network
-      : null;
+    type == "mechanical"
+      ? world.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.Network
+        is { } line
+        ? _lines.GetValue(line, l => new MechanicalLine(l))
+        : null
+      : world.NetworkAt(pos) is { } network && network.NetworkType == type
+        ? network
+        : null;
 
   public MoltenCellReading? MoltenCellAt(BlockPos pos) => null;
 
   public SetupPlacement? Placed(string id) => placed.GetValueOrDefault(id);
+}
+
+/// <summary>A mechanical line as a setup reads it: the speed without its sign, the torque and the
+/// resistance.</summary>
+internal sealed class MechanicalLine(MechanicalNetwork network)
+{
+  public float Speed => Math.Abs(network.Speed);
+
+  public float TotalAvailableTorque => network.TotalAvailableTorque;
+
+  public float NetworkResistance => network.NetworkResistance;
 }
 #endif

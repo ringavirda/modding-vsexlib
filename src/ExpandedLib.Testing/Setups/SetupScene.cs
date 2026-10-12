@@ -14,22 +14,12 @@ using Vintagestory.GameContent.Mechanics;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// A setup file built into a fresh world: its mods and the vanilla blocktypes its <c>game:</c> codes
-/// name loaded, its layout and its place, complete, fill, insert, set and call steps run, and the
-/// mechanical lines joined. Running, sampling and checking are not built yet.
+/// A setup file built into a fresh world: mods and vanilla codes loaded, layout placed, every step
+/// but run executed and the mechanical lines joined. Running and checking are not built yet.
 /// </summary>
 public sealed partial class SetupScene : IDisposable
 {
-  private static readonly string[] Unbuilt =
-  [
-    "run",
-    "interact",
-    "window",
-    "ignite",
-    "expect",
-    "wait",
-    "repeat",
-  ];
+  private static readonly string[] Unbuilt = ["run"];
 
   private static readonly Dictionary<string, string> Lacking = new()
   {
@@ -39,6 +29,7 @@ public sealed partial class SetupScene : IDisposable
     ["break"] = "the fake world has no player to break with",
     ["reload"] = "the fake world has no chunk save and load to reload through",
     ["advance"] = "the fake world has no game calendar to advance",
+    ["climate"] = "the fake world has no weather to hold a climate with",
   };
 
   private readonly SetupFile _file;
@@ -46,6 +37,8 @@ public sealed partial class SetupScene : IDisposable
   private readonly Dictionary<BlockPos, HashSet<long>> _listeners = [];
   private readonly HashSet<int> _ready = [];
   private readonly List<string> _standIns = [];
+  private HashSet<long> _lineListeners = [];
+  private bool _joined;
 
   private SetupScene(SetupFile file)
   {
@@ -101,14 +94,10 @@ public sealed partial class SetupScene : IDisposable
   /// <exception cref="ArgumentException"><paramref name="modPaths"/> does not hold one folder for
   /// each of the file's mods.</exception>
   /// <exception cref="InvalidOperationException">The file uses a step kind the fake world cannot
-  /// run, or one not built yet; a code the load did not register; a cell that is not air; a run cell
-  /// no block of its family fits, or two fit; a drawn structure that disagrees with its cells; a
-  /// <c>complete</c> that does not complete; a step at a cell with no block entity; an <c>insert</c>
-  /// into an entity with no inventory, to a slot past the end, or of a stack not taken whole; a
-  /// <c>set</c> of a member or tree key the entity lacks, of a tree key whose attribute type it
-  /// cannot write, or of an enum name the type lacks; a <c>call</c> of a behaviour the entity lacks
-  /// or a method of no public name and argument count, of a method that threw, or whose result is
-  /// not the step's <c>returns</c>; the message names the file and where.</exception>
+  /// run or the reader has not built; or a step fails: a code the load did not register, a cell
+  /// that is not air, a layout or run that does not fit, a step at a cell without the block entity,
+  /// member, key, slot or method it names, a hold, <c>returns</c>, <c>wait</c> or <c>repeat</c> not
+  /// met, or an <c>expect</c> that does not hold. The message names the file and where.</exception>
   public static SetupScene Build(
     SetupFile file,
     IReadOnlyList<string> modPaths
@@ -137,7 +126,7 @@ public sealed partial class SetupScene : IDisposable
       afterLoad?.Invoke(scene.World);
       scene.PlaceLayout();
       scene.RunSteps();
-      SetupMechanical.Join(scene.World);
+      scene.JoinLines();
       scene.Scene.Build();
     }
     catch (SetupFileException e)
@@ -165,6 +154,8 @@ public sealed partial class SetupScene : IDisposable
 
   private void Refuse()
   {
+    if (Model.HasClimate)
+      throw Fail("climate", $"\"climate\" is refused: {Lacking["climate"]}.");
     foreach (SetupStep step in Model.Steps.SelectMany(s => s.All()))
     {
       JToken body = step.Body;
@@ -184,6 +175,13 @@ public sealed partial class SetupScene : IDisposable
               "\"place\" by the player is refused: the fake world has no player to place with."
             );
           RefuseKeys(step.Path, body, "complete", "materials", "tree");
+          break;
+        case "expect":
+          if (body["drops"] != null)
+            throw Fail(
+              step.Path,
+              "\"expect drops\" is refused: the fake world has no item entities, a spawned drop is a stack in TestWorld.Drops."
+            );
           break;
         case "complete":
           if (body["to"] != null && (string?)body["to"] != "all")
@@ -234,10 +232,13 @@ public sealed partial class SetupScene : IDisposable
     World.LoadAssets(modPaths, null, VanillaCodes());
     if (World.Mods.GetModSystem<MechanicalPowerMod>() == null)
     {
+      HashSet<long> before = World.TickListenerIds();
       var power = new MechanicalPowerMod();
       World.Mods.Register(power);
       power.Start(World.Api);
+      _lineListeners = [.. World.TickListenerIds().Except(before)];
     }
+    BlockLaws.StartRooms(World);
     foreach (Block block in World.World.Blocks.ToArray())
       if (block is { Id: not 0 } && _file.Mods.Contains(block.Code.Domain))
         Ready(block);
@@ -409,9 +410,24 @@ public sealed partial class SetupScene : IDisposable
       .Parse(step.Body[key], new SetupJson.Where(_file.Name, step.Path).In(key))
       .Resolve(View);
 
-  private void RunSteps()
+  private void RunSteps() => RunSteps(Model.Steps);
+
+  private void JoinLines()
   {
-    foreach (SetupStep step in Model.Steps)
+    if (_joined)
+      return;
+    SetupMechanical.Join(World);
+    _joined = true;
+  }
+
+  private void RunSteps(IEnumerable<SetupStep> steps)
+  {
+    foreach (SetupStep step in steps)
+    {
+      if (step.Kind is "place" or "complete" or "fill")
+        _joined = false;
+      else
+        JoinLines();
       switch (step.Kind)
       {
         case "place":
@@ -432,7 +448,26 @@ public sealed partial class SetupScene : IDisposable
         case "call":
           CallStep(step);
           break;
+        case "interact":
+          InteractStep(step);
+          break;
+        case "window":
+          WindowStep(step);
+          break;
+        case "ignite":
+          IgniteStep(step);
+          break;
+        case "expect":
+          ExpectStep(step);
+          break;
+        case "wait":
+          WaitStep(step);
+          break;
+        case "repeat":
+          RepeatStep(step);
+          break;
       }
+    }
   }
 
   private void PlaceStep(SetupStep step)

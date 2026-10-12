@@ -1,0 +1,1 @@
+{ "code": "dial", "class": "SetupHoldBlock", "entityClass": "SetupHoldEntity", "attributes": { "takes": true } }

@@ -137,6 +137,9 @@ internal sealed class SetupFileModel {
   /// <summary>The live timeout in seconds of server clock, the build and the run.</summary>
   public double Timeout { get; private init; }
 
+  /// <summary>Whether the file holds a <c>climate</c>.</summary>
+  public bool HasClimate { get; private init; }
+
   public IReadOnlyList<SetupDuring> During { get; private init; } = [];
 
   public SetupRecordSpec Record { get; private init; } = new([], []);
@@ -428,6 +431,7 @@ internal sealed class SetupFileModel {
       Steady = steady,
       SteppedClock = stepped,
       Timeout = timeout,
+      HasClimate = root["climate"] != null,
       During = during,
       Record = record,
       Checks = checks,
