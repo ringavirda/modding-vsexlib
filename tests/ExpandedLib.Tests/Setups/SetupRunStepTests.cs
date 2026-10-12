@@ -95,6 +95,22 @@ public class SetupRunStepTests : IDisposable
     Assert.Equal(Plated + "straight-ns", codes[4]);
   }
 
+  // Fails when a run that comes back to its first cell lays and reports that cell twice.
+  [Fact]
+  public void A_run_that_closes_on_its_first_cell_lays_it_once()
+  {
+    using SetupScene scene = Build(
+      "",
+      Step(
+        "\"id\": \"ring\", \"from\": [0, 0, 0], \"via\": [[2, 0, 0], [2, 0, 2], [0, 0, 2]], \"to\": [0, 0, 0]"
+      )
+    );
+
+    Assert.Equal(8, scene.CellsOf("ring").Count);
+    Assert.Equal(8, scene.CellsOf("ring").Distinct().Count());
+    Assert.Equal(Plated + "bend-se", Codes(scene, "ring")[0]);
+  }
+
   // Fails when an open face does not join the run to a cell of an earlier run, or that cell does
   // not gain the face back as the tee its three faces name.
   [Fact]

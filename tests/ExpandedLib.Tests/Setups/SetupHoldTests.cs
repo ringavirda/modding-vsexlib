@@ -59,6 +59,7 @@ public class SetupHoldTests
       .RegisterBlockEntityFactory("SetupHoldEmber", () => new SetupHoldEmber())
       .RegisterClass("SetupHoldBox", typeof(SetupHoldBox))
       .RegisterBlockEntityFactory("SetupHoldBox", () => new SetupHoldBox());
+    SetupTickOrderTests.RegisterTick(w, []);
   }
 
   private static string Refused(

@@ -105,6 +105,10 @@ internal sealed class SetupTickEntity(List<string> log) : BlockEntity
     RegisterGameTickListener(OnTick, 1000);
   }
 
+  public void ListenLate() => RegisterGameTickListener(OnLate, 1000);
+
+  private void OnLate(float dt) => log.Add("late");
+
   private void OnTick(float dt)
   {
     Count++;
@@ -124,10 +128,9 @@ internal sealed class SetupTickBehavior(BlockEntity be, List<string> log)
   public override void Initialize(ICoreAPI api, JsonObject properties)
   {
     base.Initialize(api, properties);
-    Blockentity.RegisterGameTickListener(
-      _ => log.Add(Blockentity.Pos.X.ToString()),
-      1000
-    );
+    string x = Blockentity.Pos.X.ToString();
+    List<string> sink = log;
+    Blockentity.RegisterGameTickListener(_ => sink.Add(x), 1000);
   }
 }
 

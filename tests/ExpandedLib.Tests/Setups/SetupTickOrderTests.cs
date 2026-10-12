@@ -34,6 +34,10 @@ public class SetupTickOrderTests
   internal static void Register(TestWorld w, List<string> log)
   {
     SetupHoldTests.Register(w);
+    RegisterTick(w, log);
+  }
+
+  internal static TestWorld RegisterTick(TestWorld w, List<string> log) =>
     w.RegisterClass("SetupTickEntity", typeof(SetupTickEntity))
       .RegisterBlockEntityFactory(
         "SetupTickEntity",
@@ -43,7 +47,6 @@ public class SetupTickOrderTests
         "SetupTickBehavior",
         be => new SetupTickBehavior(be, log)
       );
-  }
 
   private static SetupScene Build(List<string> log, params string[] steps) =>
     SetupScene.Build(
@@ -210,6 +213,27 @@ public class SetupTickOrderTests
     scene.Run(Mods);
 
     Assert.All(Seconds(log, 3), s => Assert.Equal(["1", "0", "2"], s));
+  }
+
+  // Fails when a listener registered after the machine was placed is not counted as its machine's.
+  [Fact]
+  public void A_listener_registered_after_placement_belongs_to_the_machine_that_owns_it()
+  {
+    var log = new List<string>();
+    using SetupScene scene = Build(
+      log,
+      Place("a", 0),
+      Place("b", 1),
+      Place("c", 2)
+    );
+    var a = (SetupTickEntity)
+      scene.World.Accessor.GetBlockEntity(scene.PositionOf("a"));
+    a.ListenLate();
+
+    scene.Order(["a", "c", "network"]);
+    scene.Run(Mods);
+
+    Assert.All(Seconds(log, 4), s => Assert.Equal(["1", "0", "late", "2"], s));
   }
 
   // Fails when a machine that registered no listener is let into an order.

@@ -97,7 +97,9 @@ public class SetupRunTests : IDisposable
       [ModPath(mod)],
       null,
       w =>
-        w.RegisterClass("SetupBox", typeof(BlockEntity))
+        SetupTickOrderTests
+          .RegisterTick(w, [])
+          .RegisterClass("SetupBox", typeof(BlockEntity))
           .RegisterBlockEntityFactory(
             "SetupBox",
             () =>
