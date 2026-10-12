@@ -360,9 +360,7 @@ public class SetupExpectTests : IDisposable
     + rest
     + "}}";
 
-  // Fails when the mechanical type reads no vanilla network, reads the line the game's discovery made
-  // instead of the scene's, does not step the scene's lines, or reads a member other than
-  // NetworkResistance.
+  // Fails when the type reads no network, the unjoined line, an unstepped line or another member.
   [Fact]
   public void An_expect_network_mechanical_reads_the_stepped_line_s_resistance()
   {
