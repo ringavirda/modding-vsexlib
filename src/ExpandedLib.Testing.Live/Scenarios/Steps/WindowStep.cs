@@ -79,6 +79,7 @@ internal sealed class WindowStep : ScenarioStep {
       );
     BlockPos local = ctx.Position(step, o["at"], "at");
     BlockEntity be = SetStep.EntityAt(ctx, local);
+    player.Face(ctx.Setup.Absolute(local), BlockFacing.SOUTH);
     ServerPlayer who = player.Player;
     ctx.Touched.Add(local.Copy());
     var done = new List<string>();

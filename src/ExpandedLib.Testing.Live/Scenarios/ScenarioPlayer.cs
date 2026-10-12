@@ -252,6 +252,15 @@ internal sealed class ScenarioPlayer {
     }
   }
 
+  /// <summary>Stands the player in reach of the block at <paramref name="at"/>, facing its
+  /// <paramref name="face"/>, without a click.</summary>
+  /// <param name="at">The absolute cell of the block.</param>
+  /// <param name="face">The face the player looks at.</param>
+  public void Face(BlockPos at, BlockFacing face) {
+    Vec3d hit = Hit(face);
+    Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
+  }
+
   /// <summary>Holds <paramref name="stack"/> in the active slot and <paramref name="keys"/>, stands the
   /// player facing <paramref name="face"/> of the block at <paramref name="at"/>, and right-clicks it.</summary>
   /// <param name="at">The absolute cell of the block used.</param>
