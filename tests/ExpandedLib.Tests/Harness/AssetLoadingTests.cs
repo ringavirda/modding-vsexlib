@@ -282,9 +282,8 @@ public class AssetLoadingTests
     Assert.Empty(second.Log.Errors);
   }
 
-  // Fails when a vanilla load leaves the thread pool without a logger, so a worker that throws
-  // ends the test host instead of being logged. The pool is process-wide and other classes load
-  // vanilla in parallel, so the test never clears its logger.
+  // Fails when a vanilla load leaves the thread pool without a logger. The logger is process-wide
+  // and parallel loads need it, so the test never clears it.
   [Fact]
   public void A_vanilla_load_gives_the_thread_pool_a_logger()
   {
