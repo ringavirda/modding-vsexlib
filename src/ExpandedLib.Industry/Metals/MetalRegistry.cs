@@ -21,17 +21,23 @@ public static class MetalRegistry {
   public static CatalogueContributors Contributors { get; } = new();
 
   // Indexed by molten-item AssetLocation and by short Code.
-  private static readonly ExKeyedRegistry<MetalDef> _byMoltenItem = new(d =>
-    Normalize(d.MoltenItem)
+  private static readonly ExKeyedRegistry<MetalDef> _byMoltenItem = new(
+    d => Normalize(d.MoltenItem),
+    "MetalRegistry molten items",
+    d => $"the {d.Code} metal"
   );
-  private static readonly ExKeyedRegistry<MetalDef> _byCode = new(d => d.Code);
+  private static readonly ExKeyedRegistry<MetalDef> _byCode = new(
+    d => d.Code,
+    "MetalRegistry codes",
+    d => $"the {d.MoltenItem} metal"
+  );
 
   private static readonly IReadOnlyList<string> DefaultMedia = new[]
   {
     "molten",
   };
 
-  /// <summary>Registers (or replaces) a metal by both its molten-item code and its short code.</summary>
+  /// <summary>Registers a metal by both its molten-item code and its short code; a metal already under either is replaced with a Warning.</summary>
   public static void Register(MetalDef def) {
     _byMoltenItem.Register(def);
     _byCode.Register(def);

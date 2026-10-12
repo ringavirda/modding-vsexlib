@@ -30,9 +30,21 @@ public static class ExPreferences {
   public static IEnumerable<IExPreference> All => _registered.Values;
 
   /// <summary>Adds a preference definition; a later registration with the same
-  /// <see cref="IExPreference.Key"/> replaces the earlier one.</summary>
-  public static void Register(IExPreference preference) =>
+  /// <see cref="IExPreference.Key"/> replaces the earlier one; one of another type logs a Warning naming
+  /// both types.</summary>
+  public static void Register(IExPreference preference) {
+    if (
+      _registered.TryGetValue(preference.Key, out IExPreference? previous)
+      && previous.GetType() != preference.GetType()
+    )
+      RegistryLog.Replaced(
+        "ExPreferences",
+        preference.Key,
+        previous.GetType().FullName ?? preference.Key,
+        preference.GetType().FullName ?? preference.Key
+      );
     _registered[preference.Key] = preference;
+  }
 
   /// <summary>Drops every registered preference and the loaded store, as in a fresh process. Run
   /// when a world starts loading.</summary>

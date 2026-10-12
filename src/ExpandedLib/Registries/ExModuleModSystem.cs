@@ -24,6 +24,7 @@ public class ExModuleModSystem : ModSystem {
 
     Definitions.ExDefinitions.Logger = api.Logger;
     EntityRegistry.Logger = api.Logger;
+    RegistryLog.Logger = api.Logger;
 
     ExlibValues.Load(api);
 

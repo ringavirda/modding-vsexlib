@@ -10,7 +10,11 @@ namespace ExpandedLib.Catalogues;
 /// <see cref="IMediumTaxonomy"/> the pipe network reads.
 /// </summary>
 public static class ExLiquids {
-  private static readonly ExKeyedRegistry<LiquidDef> _defs = new(d => d.Code);
+  private static readonly ExKeyedRegistry<LiquidDef> _defs = new(
+    d => d.Code,
+    "ExLiquids",
+    d => $"a {d.Phase} medium of priority {d.Priority}"
+  );
 
   static ExLiquids() => SeedDefaults();
 
@@ -21,7 +25,7 @@ public static class ExLiquids {
   /// starts loading.</summary>
   public static CatalogueContributors Contributors { get; } = new();
 
-  /// <summary>Registers (or replaces) a medium by its <see cref="LiquidDef.Code"/>.</summary>
+  /// <summary>Registers a medium by its <see cref="LiquidDef.Code"/>; a medium already under that code is replaced with a Warning.</summary>
   public static void Register(LiquidDef def) => _defs.Register(def);
 
   /// <summary>Looks up a medium by code (case-insensitive).</summary>

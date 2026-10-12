@@ -14,15 +14,21 @@ namespace ExpandedLib.Definitions;
 public static class ExDefinitions {
   private static readonly ExKeyedRegistry<ExBlockDef> _blocks = new(d =>
     d.Location.ToString()
-  );
+  ) {
+    Quiet = true,
+  };
 
   private static readonly ExKeyedRegistry<ExItemDef> _items = new(d =>
     d.Location.ToString()
-  );
+  ) {
+    Quiet = true,
+  };
 
   private static readonly ExKeyedRegistry<ExRecipeDef> _recipes = new(d =>
     d.Location.ToString()
-  );
+  ) {
+    Quiet = true,
+  };
 
   // Location -> the assembly whose provider last registered it.
   private static readonly Dictionary<string, Assembly> _blockProviders = new(
@@ -79,7 +85,7 @@ public static class ExDefinitions {
     _recipes.Register(def);
   }
 
-  // Records which assembly registered `location` this time, and logs when that differs from last time.
+  // Records which assembly registered `location` this time, and warns when that differs from last time.
   private static void TrackProvider(
     Dictionary<string, Assembly> providers,
     string location,
@@ -89,7 +95,7 @@ public static class ExDefinitions {
       providers.TryGetValue(location, out Assembly? prior)
       && prior != providerAssembly
     )
-      Logger?.Notification(
+      Logger?.Warning(
         "[exlib] {0} re-registered by {1} (was {2})",
         location,
         providerAssembly.GetName().Name,

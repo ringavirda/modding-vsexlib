@@ -7,11 +7,13 @@ namespace ExpandedLib.Registries;
 /// expose recipe-cost levels. Owns the shared apply pipeline. Emptied when a world starts loading
 /// (<see cref="ExWorldState"/>).</summary>
 public static class ExRecipeProfiles {
-  private static readonly ExKeyedRegistry<RecipeProfile> _profiles = new(p =>
-    p.Code
+  private static readonly ExKeyedRegistry<RecipeProfile> _profiles = new(
+    p => p.Code,
+    "ExRecipeProfiles",
+    p => p.GetLevel.Method.DeclaringType?.FullName ?? p.Code
   );
 
-  /// <summary>Registers (or replaces) a mod's profile.</summary>
+  /// <summary>Registers a mod's profile; one already under the code is replaced with a Warning.</summary>
   public static void Register(RecipeProfile profile) =>
     _profiles.Register(profile);
 

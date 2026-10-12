@@ -10,3 +10,6 @@ using System.Runtime.CompilerServices;
 // Reads the block signals, missing cells and tree comparison the live scenario runner drives, and
 // the setup files it runs.
 [assembly: InternalsVisibleTo("ExpandedLib.Testing.Live")]
+
+// Logs a replaced registration through the registration log.
+[assembly: InternalsVisibleTo("exlib.industry")]
