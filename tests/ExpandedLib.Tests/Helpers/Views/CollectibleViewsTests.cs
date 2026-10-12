@@ -40,6 +40,7 @@ public class CollectibleViewsTests {
     baseCode == null
       ? null
       : new CompositeShape { Base = new AssetLocation(baseCode) };
+
   [Fact]
   public void Metalbit_boxes_its_drawn_faces() {
     double[] extents = ExtentsOf("game:nugget-hematite");
@@ -47,10 +48,12 @@ public class CollectibleViewsTests {
     Assert.Equal(1.5, extents[1], 3);
     Assert.Equal(1.5, extents[2], 3);
   }
+
   [Fact]
   public void Stick_boxes_in_its_least_volume_frame() {
     Assert.Equal(ItemViewKind.Bar, KindOf(Coll("game:stick")));
   }
+
   [Theory]
   [InlineData("game:spear-generic-iron", ItemViewKind.Longtool)]
   [InlineData("game:ingot-iron", ItemViewKind.Lump)]
@@ -60,6 +63,7 @@ public class CollectibleViewsTests {
   public void Reference_items_classify(string code, ItemViewKind kind) {
     Assert.Equal(kind, KindOf(Coll(code)));
   }
+
   [Fact]
   public void A_selection_boxes_only_the_elements_it_keeps() {
     var item = new Item {
@@ -74,11 +78,13 @@ public class CollectibleViewsTests {
     Assert.Equal(1.5, extents[1], 3);
     Assert.Equal(1.0, extents[2], 3);
   }
+
   [Fact]
   public void A_declared_kind_overrides_the_box() {
     Assert.Equal(ItemViewKind.Lump, KindOf(Coll("viewsfixture:declaredlump")));
     Assert.Equal(ItemViewKind.Bar, KindOf(Coll("game:stick")));
   }
+
   [Fact]
   public void A_declared_none_classifies_by_the_box() {
     var item = new Item {
@@ -90,6 +96,7 @@ public class CollectibleViewsTests {
     };
     Assert.Equal(ItemViewKind.Bar, KindOf(item));
   }
+
   [Fact]
   public void A_declared_kind_in_capitals_is_refused() {
     var item = new Item {
@@ -100,10 +107,12 @@ public class CollectibleViewsTests {
     };
     Assert.Throws<InvalidOperationException>(() => KindOf(item));
   }
+
   [Fact]
   public void A_work_item_is_a_workpiece_without_a_shape() {
     Assert.Equal(ItemViewKind.Workpiece, KindOf(new ItemWorkItem()));
   }
+
   [Fact]
   public void An_item_with_no_drawn_box_has_no_kind() {
     Assert.Null(KindOf(new Item()));
@@ -112,6 +121,7 @@ public class CollectibleViewsTests {
     );
     Assert.Null(KindOf(new Item { Shape = Shape("viewsfixture:item/empty") }));
   }
+
   [Theory]
   [InlineData(
     "viewsfixture:block/offset",
@@ -132,6 +142,7 @@ public class CollectibleViewsTests {
     };
     Assert.Equal(kind, KindOf(block));
   }
+
   [Fact]
   public void A_block_turns_its_inventory_shape_about_the_block_centre() {
     var block = new Block {
@@ -149,6 +160,7 @@ public class CollectibleViewsTests {
     Assert.Equal(2, box.To.Y, 3);
     Assert.Equal(16, box.To.Z, 3);
   }
+
   [Theory]
   [InlineData(16, 16, 16, ItemViewKind.Cube)]
   [InlineData(15, 15, 15, ItemViewKind.Cube)]
@@ -164,6 +176,7 @@ public class CollectibleViewsTests {
   ) {
     Assert.Equal(kind, CollectibleViews.ByBox([l, m, s], true, false));
   }
+
   [Theory]
   [InlineData(32, 5, 1, false, ItemViewKind.Longtool)]
   [InlineData(10, 8, 2, true, ItemViewKind.Tool)]

@@ -324,14 +324,14 @@ internal static class CollectibleViews {
     internal static Pose Identity =>
       new(CollectibleViews.Identity, new Vec3d());
 
-      internal static Pose Turn(Vec3d degrees) {
+    internal static Pose Turn(Vec3d degrees) {
       double[,] r = Rotation(degrees);
       return new Pose(r, Centre - Mul(r, Centre));
     }
 
     internal Vec3d Apply(Vec3d p) => Mul(R, p) + T;
 
-      internal Pose Then(Pose child) => new(Mul(R, child.R), Apply(child.T));
+    internal Pose Then(Pose child) => new(Mul(R, child.R), Apply(child.T));
   }
 
   private readonly record struct Element(Vec3d[] Corners, double[,] Frame);
