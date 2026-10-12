@@ -31,7 +31,15 @@ public class SetupEntityStepTests : IDisposable
       null,
       w =>
         w.RegisterClass("SetupBox", typeof(BlockEntity))
-          .RegisterBlockEntityFactory("SetupBox", () => new SetupBox())
+          .RegisterBlockEntityFactory(
+            "SetupBox",
+            () =>
+            {
+              var box = new SetupBox();
+              box.Behaviors.Add(new BoxBehaviour(box));
+              return box;
+            }
+          )
     );
 
   private static SetupScene BuildSample() =>
@@ -120,8 +128,8 @@ public class SetupEntityStepTests : IDisposable
     );
   }
 
-  // Fails when insert stops at the first slot the inventory suits instead of the named one being
-  // optional: without a slot the stack lands in slot 0.
+  // Fails when an insert without a slot takes slot 0 instead of the slot the inventory picks: the
+  // inventory prefers the slot already holding the stack.
   [Fact]
   public void An_insert_without_a_slot_takes_the_slot_the_inventory_picks()
   {
@@ -129,13 +137,39 @@ public class SetupEntityStepTests : IDisposable
       SetupFile.Parse(
         "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupbox\"], \"steps\": ["
           + PlaceBox
+          + ", {\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"setupbox:slab\", \"slot\": 1}}"
           + ", {\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"setupbox:slab\"}}"
           + "], \"seconds\": 10, \"record\": {}}",
         "t.json"
       )
     );
 
-    Assert.Equal(1, BoxOf(scene).Inventory[0].Itemstack?.StackSize);
+    SetupBox box = BoxOf(scene);
+
+    Assert.Null(box.Inventory[0].Itemstack);
+    Assert.Equal(2, box.Inventory[1].Itemstack?.StackSize);
+  }
+
+  // Fails when insert drops its temperature.
+  [Fact]
+  public void An_insert_with_a_temperature_heats_the_stack()
+  {
+    using SetupScene scene = Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupbox\"], \"steps\": ["
+          + PlaceBox
+          + ", {\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"setupbox:slab\", \"slot\": 0, \"temperature\": 850}}"
+          + "], \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      )
+    );
+
+    ItemStack stack = BoxOf(scene).Inventory[0].Itemstack!;
+
+    Assert.Equal(
+      850f,
+      stack.Collectible.GetTemperature(scene.World.World, stack)
+    );
   }
 
   // Fails when a stack the slot cannot take in full is counted as inserted.
@@ -228,13 +262,87 @@ public class SetupEntityStepTests : IDisposable
   }
 
   // Fails when call passes its arguments unconverted: the enum name, the stack and the player
-  // reach the method as strings or objects, and the sample's returns line does not match.
+  // must reach Poke as their types, with the count and the player the file named.
   [Fact]
   public void A_call_converts_its_arguments_and_checks_what_it_returns()
   {
     using SetupScene scene = BuildSample();
 
-    Assert.NotNull(scene.World.GetBlockEntity(scene.PositionOf("box")));
+    var (n, state, stack, player) = BoxOf(scene).Poked!.Value;
+
+    Assert.Equal(2, n);
+    Assert.Equal(BoxState.Running, state);
+    Assert.Equal(5, stack.StackSize);
+    Assert.Equal("setupbox:slab", stack.Collectible.Code.ToString());
+    Assert.Equal("test", player.PlayerUID);
+  }
+
+  // Fails when a method written Behaviour.Method is looked up on the entity instead of its behaviour,
+  // or the behaviour is not found by type name.
+  [Fact]
+  public void A_call_on_a_behaviour_reaches_the_behaviour()
+  {
+    using SetupScene scene = Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupbox\"], \"steps\": ["
+          + PlaceBox
+          + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"BoxBehaviour.Nudge\", \"args\": [3], \"returns\": 3}}"
+          + "], \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      )
+    );
+
+    Assert.Equal(3, BoxOf(scene).GetBehavior<BoxBehaviour>()!.Nudged);
+  }
+
+  // Fails when a behaviour the entity lacks is skipped silently.
+  [Fact]
+  public void A_call_on_a_behaviour_the_entity_lacks_fails_the_step()
+  {
+    string message = Refused(
+      "["
+        + PlaceBox
+        + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Missing.Nudge\", \"args\": [3]}}]"
+    );
+
+    Assert.Contains("has no behaviour Missing", message);
+  }
+
+  // Fails when set tree retypes a key as an int whatever it held, or writes the wrong attribute for
+  // a long, float, double, bool or string.
+  [Fact]
+  public void A_set_tree_writes_each_attribute_type_it_holds()
+  {
+    using SetupScene scene = Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupbox\"], \"steps\": ["
+          + PlaceBox
+          + ", {\"set\": {\"at\": {\"of\": \"box\"}, \"tree\": {\"big\": 5000000000, \"ratio\": 0.5, \"exact\": 2.25, \"on\": true, \"label\": \"hot\"}}}"
+          + "], \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      )
+    );
+
+    SetupBox box = BoxOf(scene);
+
+    Assert.Equal(5000000000L, box.Big);
+    Assert.Equal(0.5f, box.Ratio);
+    Assert.Equal(2.25, box.Exact);
+    Assert.True(box.On);
+    Assert.Equal("hot", box.Label);
+  }
+
+  // Fails when set tree overwrites an attribute of a type it cannot write.
+  [Fact]
+  public void A_set_tree_key_of_a_type_set_cannot_write_fails_the_step()
+  {
+    string message = Refused(
+      "["
+        + PlaceBox
+        + ", {\"set\": {\"at\": {\"of\": \"box\"}, \"tree\": {\"raw\": 1}}}]"
+    );
+
+    Assert.Contains("tree key \"raw\" holds a ByteArrayAttribute", message);
   }
 
   // Fails when returns is not compared with the value the method gave.

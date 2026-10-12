@@ -14,9 +14,10 @@ using Vintagestory.GameContent.Mechanics;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// A setup file built into a fresh world: its mods loaded, its layout and its <c>place</c>,
-/// <c>complete</c> and <c>fill</c> steps placed by the kinds of setups.md (Placement kinds), and the
-/// mechanical lines joined. Running, sampling and checking are not built yet.
+/// A setup file built into a fresh world: its mods and the vanilla blocktypes its <c>game:</c> codes
+/// name loaded, its layout and its <c>place</c>, <c>complete</c>, <c>fill</c>, <c>insert</c>,
+/// <c>set</c> and <c>call</c> steps run, and the mechanical lines joined. Running, sampling and
+/// checking are not built yet.
 /// </summary>
 public sealed partial class SetupScene : IDisposable
 {
@@ -103,7 +104,12 @@ public sealed partial class SetupScene : IDisposable
   /// <exception cref="InvalidOperationException">The file uses a step kind the fake world cannot
   /// run, or one not built yet; a code the load did not register; a cell that is not air; a run cell
   /// no block of its family fits, or two fit; a drawn structure that disagrees with its cells; a
-  /// <c>complete</c> that does not complete; the message names the file and where.</exception>
+  /// <c>complete</c> that does not complete; a step at a cell with no block entity; an <c>insert</c>
+  /// into an entity with no inventory, to a slot past the end, or of a stack not taken whole; a
+  /// <c>set</c> of a member or tree key the entity lacks, of a tree key whose attribute type it
+  /// cannot write, or of an enum name the type lacks; a <c>call</c> of a behaviour the entity lacks
+  /// or a method of no public name and argument count, of a method that threw, or whose result is
+  /// not the step's <c>returns</c>; the message names the file and where.</exception>
   public static SetupScene Build(
     SetupFile file,
     IReadOnlyList<string> modPaths

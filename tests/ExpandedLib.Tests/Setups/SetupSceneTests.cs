@@ -673,6 +673,55 @@ public class SetupSceneTests : IDisposable
     );
   }
 
+  // Fails when a file is loaded only for a code with one token per variant group, so a hyphenated state
+  // such as ported-north loads nothing.
+  [Fact]
+  public void A_game_code_with_a_hyphenated_variant_state_is_loaded_and_placed()
+  {
+    SetupFile file = Inline(
+      "setupfixture",
+      null,
+      "[{\"place\": {\"code\": \"game:archimedesscrew-ported-north\", \"at\": [0, 0, 0]}}]"
+    );
+
+    using SetupScene scene = Build(file);
+
+    Assert.Equal("game:archimedesscrew-ported-north", CodeAt(scene, 0, 0, 0));
+  }
+
+  // Fails when a wildcard `game:` code ending in `*` loads no file, or one with a `*` mid-code loads
+  // none.
+  [Theory]
+  [InlineData("game:claybrickchimney-*")]
+  [InlineData("game:claybrickchimney-*-ns")]
+  public void A_wildcard_game_code_spanning_variant_groups_loads_the_file(
+    string wildcard
+  )
+  {
+    SetupFile file = Inline(
+      "platedpipes",
+      Pipes(
+        Run(
+          'P',
+          "main",
+          "straight-we",
+          "[\"" + Plated + "straight-*\", \"" + wildcard + "\"]"
+        )
+          + ", "
+          + Open,
+        "oPo"
+      )
+    );
+
+    using SetupScene scene = Build(file);
+
+    Assert.NotNull(
+      scene.World.World.GetBlock(
+        new AssetLocation("game:claybrickchimney-four-red-ns")
+      )
+    );
+  }
+
   // Fails when rule 2 opens a run cell toward a connector of another network type.
   [Fact]
   public void A_run_cell_stays_closed_beside_a_connector_of_another_network_type()
