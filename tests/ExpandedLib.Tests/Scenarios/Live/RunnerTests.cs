@@ -1,3 +1,4 @@
+using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using NSubstitute;
 using Vintagestory.API.Common;
@@ -16,7 +17,7 @@ public class RunnerTests {
     manager.RegionSize.Returns(512);
     api.Event.Returns(events);
     api.WorldManager.Returns(manager);
-    api.Logger.Returns(Substitute.For<ILogger>());
+    api.Logger.Returns(new RecordingLogger());
     _ = new ScenarioRunner(api, [], keep, null);
     return events;
   }
