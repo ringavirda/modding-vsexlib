@@ -78,6 +78,29 @@ public class SetupEntityStepTests : IDisposable
       scene.World.GetBlockEntity(scene.PositionOf("box"))
     );
 
+  // Fails when the load mirrors vanilla blocktype files only, so a `game:` item a step names is not
+  // registered.
+  [Fact]
+  public void A_game_item_a_step_names_is_loaded_and_inserted()
+  {
+    using SetupScene scene = Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupbox\"], \"steps\": ["
+          + PlaceBox
+          + ", {\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"game:charcoal\", \"count\": 3, \"slot\": 1}}"
+          + "], \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      )
+    );
+
+    SetupBox box = BoxOf(scene);
+    Assert.Equal(3, box.Inventory[1].Itemstack?.StackSize);
+    Assert.Equal(
+      "game:charcoal",
+      box.Inventory[1].Itemstack?.Collectible.Code.ToString()
+    );
+  }
+
   // Fails when a fill over a cell that is not air is let through instead of failing the step.
   [Fact]
   public void A_fill_over_a_cell_that_is_not_air_fails_the_step()

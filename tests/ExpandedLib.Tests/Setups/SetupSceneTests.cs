@@ -515,6 +515,32 @@ public class SetupSceneTests : IDisposable
     Assert.True(IsConstructed(built));
   }
 
+  // Fails when complete leaves the block's own construction behaviour at its first stage, so the
+  // production tick it gates never runs.
+  [Fact]
+  public void Completing_the_blower_completes_the_constructable_behaviour_that_gates_its_production()
+  {
+    SetupFile file = FromFile(
+      "blower-alone.json",
+      t =>
+        t.Replace(
+          "\"code\": \"twintubblower:blower-twintubblower-n\"",
+          "\"code\": \"twintubblower:blower-twintubblower-n\", \"complete\": \"all\""
+        )
+    );
+
+    using SetupScene built = Build(file);
+    using SetupScene bare = BuildFile("blower-alone.json");
+
+    Assert.False(ConstructableOf(bare).IsReadyToProduce);
+    Assert.True(ConstructableOf(built).IsReadyToProduce);
+  }
+
+  private static ExRightClickConstructable ConstructableOf(SetupScene scene) =>
+    scene
+      .World.GetBlockEntity(scene.PositionOf("blower"))!
+      .GetBehavior<ExRightClickConstructable>();
+
   // Fails when a complete step on a block that is neither a multiblock nor a construction is
   // accepted.
   [Fact]

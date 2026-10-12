@@ -137,10 +137,19 @@ public sealed partial class SetupScene
         LayoutEntry neighbour = layout.EntryOf(next);
         if (neighbour.Kind != LayoutEntryKind.Block)
           continue;
+        var at = new BlockPos(next.X, next.Y, next.Z);
         if (
           Resolve(neighbour.Code!, where) is INetworkConnector connector
           && connector.NetworkType == type
-          && connector.HasConnectorAt(face.Opposite)
+          && (
+            ReferenceEquals(World.Accessor.GetBlock(at), connector)
+              ? ((INetworkMember)connector).HasConnectorAt(
+                World.Accessor,
+                at,
+                face.Opposite
+              )
+              : connector.HasConnectorAt(face.Opposite)
+          )
         )
           faces.Add(face);
       }

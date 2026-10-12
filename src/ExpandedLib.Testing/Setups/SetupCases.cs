@@ -158,6 +158,15 @@ public static class SetupCases
     }
   }
 
+  /// <summary>The mod's <c>modinfo.json</c>, at the folder root or under <c>src</c>.</summary>
+  private static string ModInfoPath(string modFolder)
+  {
+    string root = Path.Combine(modFolder, "modinfo.json");
+    return System.IO.File.Exists(root)
+      ? root
+      : Path.Combine(modFolder, "src", "modinfo.json");
+  }
+
   /// <summary>Builds and runs the case <paramref name="row"/> names, judges its checks, and for a
   /// case that records writes or compares its recording (<c>EX_WRITE_SETUPS</c> names the setups to
   /// write). A tick-order case judges only the checks that hold in every order and records nothing.</summary>
@@ -167,14 +176,6 @@ public static class SetupCases
   /// order case names its order) and the check; or the file cannot be built; or a tick-order
   /// machine registered no listener.</exception>
   /// <exception cref="SetupRecordingMismatchException">The recording differs from the committed file.</exception>
-  private static string ModInfoPath(string modFolder)
-  {
-    string root = Path.Combine(modFolder, "modinfo.json");
-    return System.IO.File.Exists(root)
-      ? root
-      : Path.Combine(modFolder, "src", "modinfo.json");
-  }
-
   public static void Run(SetupCaseRow row, SetupRunOptions options)
   {
     ArgumentNullException.ThrowIfNull(row);

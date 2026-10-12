@@ -398,9 +398,14 @@ public sealed partial class SetupScene : IDisposable
         );
       completed = true;
     }
-    if (be.GetBehavior<ExRightClickConstructable>() != null)
+    if (be.GetBehavior<ExRightClickConstructable>() is { } construction)
     {
       RccFake.Complete(be);
+      if (
+        ReflectionHelpers.GetField(construction, "rcc")
+        is ExRightClickConstruction built
+      )
+        built.CurrentCompletedStage = Math.Max(0, built.Stages.Length - 1);
       completed = true;
     }
     if (!completed)
