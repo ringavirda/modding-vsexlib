@@ -1,0 +1,12 @@
+{
+  "code": "declaredlump",
+  "class": "Item",
+  "shape": {
+    "base": "game:item/stick"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "lump"
+    }
+  }
+}

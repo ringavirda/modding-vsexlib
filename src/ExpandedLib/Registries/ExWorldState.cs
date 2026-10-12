@@ -54,5 +54,6 @@ public static class ExWorldState {
     ProcessRouteRegistry.ResetForWorld();
     ProcessJobRegistry.ResetForWorld();
     BayOccupancyRegistry.ResetForWorld();
+    CollectibleViews.ResetForWorld();
   }
 }

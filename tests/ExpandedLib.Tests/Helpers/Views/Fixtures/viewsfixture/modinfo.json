@@ -1,0 +1,9 @@
+{
+  "type": "content",
+  "modid": "viewsfixture",
+  "name": "Views fixture",
+  "version": "1.0.0",
+  "dependencies": {
+    "exlib": "*"
+  }
+}

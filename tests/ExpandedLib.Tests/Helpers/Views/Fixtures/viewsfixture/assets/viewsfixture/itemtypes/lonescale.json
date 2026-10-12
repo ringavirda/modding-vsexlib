@@ -1,0 +1,10 @@
+{
+  "code": "lonescale",
+  "class": "Item",
+  "shape": {
+    "base": "game:item/plate"
+  },
+  "guiTransform": {
+    "scale": 1.3
+  }
+}
