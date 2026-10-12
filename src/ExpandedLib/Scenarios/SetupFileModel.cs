@@ -45,13 +45,25 @@ internal sealed record SetupDuring(
   IReadOnlyList<SetupStep> Steps
 );
 
-/// <summary>A <c>variants</c> entry, its keys checked and its ids resolved; what it does to
-/// the case is the harness reader's.</summary>
+/// <summary>One value of a <c>config</c> key: the mod id, the register's value name and the
+/// scalar written.</summary>
+internal sealed record SetupConfigValue(string Mod, string Key, JValue Value);
+
+/// <summary>A <c>variants</c> entry, its keys checked and its ids resolved. A null member is a key
+/// the variant does not give, which keeps the main case's.</summary>
 internal sealed record SetupVariant(
   string Name,
   JObject Body,
   IReadOnlyList<SetupCheck>? Checks,
-  string? Fails
+  string? Fails,
+  IReadOnlySet<string> Drop,
+  IReadOnlyDictionary<string, SetupStep> Replace,
+  IReadOnlyList<(string Id, IReadOnlyList<SetupStep> Steps)> After,
+  IReadOnlyList<SetupConfigValue> Config,
+  int? Seconds,
+  (int From, int To)? Steady,
+  IReadOnlyList<SetupDuring>? During,
+  string? Record
 );
 
 /// <summary>
@@ -76,6 +88,7 @@ internal sealed class SetupFileModel {
     "record",
     "checks",
     "variants",
+    "config",
     "tickOrders",
     "figure",
     "plot",
@@ -106,59 +119,70 @@ internal sealed class SetupFileModel {
     RegexOptions.CultureInvariant
   );
 
-  public string File { get; private init; } = "";
+  public string File { get; private set; } = "";
 
-  public string Setup { get; private init; } = "";
+  public string Setup { get; private set; } = "";
 
-  public string Description { get; private init; } = "";
+  public string Description { get; private set; } = "";
 
-  public IReadOnlyList<string> Mods { get; private init; } = [];
+  public IReadOnlyList<string> Mods { get; private set; } = [];
 
   /// <summary>The first game series the file runs on, <c>1.22</c> by default.</summary>
-  public string Game { get; private init; } = "1.22";
+  public string Game { get; private set; } = "1.22";
 
   /// <summary>The <c>layout</c> object as written, or null.</summary>
-  public JObject? Layout { get; private init; }
+  public JObject? Layout { get; private set; }
 
   /// <summary>The drawing <see cref="Layout"/> reads as, or null when the file has none.</summary>
-  public SetupLayout? Drawn { get; private init; }
+  public SetupLayout? Drawn { get; private set; }
 
-  public IReadOnlyList<SetupStep> Steps { get; private init; } = [];
+  public IReadOnlyList<SetupStep> Steps { get; private set; } = [];
 
-  public int Seconds { get; private init; }
+  public int Seconds { get; private set; }
 
   /// <summary>The steady window, <c>[From, To)</c>.</summary>
-  public (int From, int To) Steady { get; private init; }
+  public (int From, int To) Steady { get; private set; }
 
   /// <summary>Whether the live clock is stepped (<c>"stepped"</c>, the default) rather than
   /// real.</summary>
-  public bool SteppedClock { get; private init; } = true;
+  public bool SteppedClock { get; private set; } = true;
 
   /// <summary>The live timeout in seconds of server clock, the build and the run.</summary>
-  public double Timeout { get; private init; }
+  public double Timeout { get; private set; }
 
   /// <summary>Whether the file holds a <c>climate</c>.</summary>
-  public bool HasClimate { get; private init; }
+  public bool HasClimate { get; private set; }
 
-  public IReadOnlyList<SetupDuring> During { get; private init; } = [];
+  public IReadOnlyList<SetupDuring> During { get; private set; } = [];
 
-  public SetupRecordSpec Record { get; private init; } = new([], []);
+  public SetupRecordSpec Record { get; private set; } = new([], []);
 
-  public IReadOnlyList<SetupCheck> Checks { get; private init; } = [];
+  public IReadOnlyList<SetupCheck> Checks { get; private set; } = [];
 
-  public IReadOnlyList<SetupVariant> Variants { get; private init; } = [];
+  public IReadOnlyList<SetupVariant> Variants { get; private set; } = [];
 
-  public IReadOnlyList<string> TickOrders { get; private init; } = [];
+  /// <summary>The config values the case runs with, in file order.</summary>
+  public IReadOnlyList<SetupConfigValue> Config { get; private set; } = [];
+
+  /// <summary>The id of the check that must fail first, for a variant case that gives one.</summary>
+  public string? Fails { get; private set; }
+
+  /// <summary>The name the case's recording is written under; the setup id for the main case.</summary>
+  public string RecordName { get; private set; } = "";
+
+  /// <summary>Whether the case writes and compares a recording: the main case, and a variant
+  /// that names one.</summary>
+  public bool RecordsOwn { get; private set; } = true;
+
+  public IReadOnlyList<string> TickOrders { get; private set; } = [];
 
   /// <summary>Every id a step or a legend entry places, with the code it places when it
   /// names one.</summary>
-  public IReadOnlyDictionary<string, string?> Placements {
-    get;
-    private init;
-  } = new Dictionary<string, string?>();
+  public IReadOnlyDictionary<string, string?> Placements { get; private set; } =
+    new Dictionary<string, string?>();
 
   /// <summary>The ids of runs: <c>run</c> steps with an id and the legend's <c>run</c>s.</summary>
-  public IReadOnlySet<string> Runs { get; private init; } =
+  public IReadOnlySet<string> Runs { get; private set; } =
     new HashSet<string>();
 
   /// <summary>Parses a setup file's <paramref name="text"/>; <paramref name="file"/> names it in
@@ -330,6 +354,11 @@ internal sealed class SetupFileModel {
         checks.Add(check);
       }
 
+    IReadOnlyList<SetupConfigValue> config =
+      root["config"] == null
+        ? []
+        : ParseConfig(root["config"], top.In("config"));
+
     var variants = new List<SetupVariant>();
     if (root["variants"] != null) {
       JObject all = SetupJson.Object(root["variants"], top.In("variants"));
@@ -346,7 +375,10 @@ internal sealed class SetupFileModel {
             references,
             Declare,
             DeclareSteps,
-            checks
+            checks,
+            steps,
+            during,
+            seconds
           )
         );
       }
@@ -436,6 +468,8 @@ internal sealed class SetupFileModel {
       Record = record,
       Checks = checks,
       Variants = variants,
+      Config = config,
+      RecordName = setup,
       TickOrders = tickOrders,
       Placements = placements,
       Runs = runs,
@@ -655,24 +689,50 @@ internal sealed class SetupFileModel {
     SetupReferences references,
     Action<string, string, SetupJson.Where> declare,
     Action<IEnumerable<SetupStep>> declareSteps,
-    IReadOnlyList<SetupCheck> mainChecks
+    IReadOnlyList<SetupCheck> mainChecks,
+    IReadOnlyList<SetupStep> mainSteps,
+    IReadOnlyList<SetupDuring> mainDuring,
+    int mainSeconds
   ) {
+    HashSet<string> stepIds =
+    [
+      .. mainSteps
+        .Concat(mainDuring.SelectMany(d => d.Steps))
+        .SelectMany(s => s.All())
+        .Select(s => s.Id)
+        .OfType<string>(),
+    ];
     JObject node = SetupJson.Object(token, where);
     SetupJson.RefuseUnknown(node, where, VariantKeys);
+    var drop = new HashSet<string>();
     if (node["drop"] != null)
       foreach (
         var (id, i) in SetupJson
           .Strings(node["drop"], where.In("drop"))
           .Select((id, i) => (id, i))
-      )
+      ) {
         references.Placement(id, where.In("drop").At(i));
+        drop.Add(id);
+      }
+    var replace = new Dictionary<string, SetupStep>();
     if (node["replace"] != null)
       foreach (
         JProperty p in SetupJson
           .Object(node["replace"], where.In("replace"))
           .Properties()
-      )
+      ) {
         references.Placement(p.Name, where.In("replace").In(p.Name));
+        if (!stepIds.Contains(p.Name))
+          continue;
+        SetupStep step = SetupSteps.Parse(
+          p.Value,
+          where.In("replace").In(p.Name),
+          references
+        );
+        replace[p.Name] = step;
+        declareSteps(step.Id == p.Name ? step.Steps : [step]);
+      }
+    var after = new List<(string, IReadOnlyList<SetupStep>)>();
     if (node["after"] != null)
       foreach (
         JProperty p in SetupJson
@@ -680,36 +740,40 @@ internal sealed class SetupFileModel {
           .Properties()
       ) {
         references.Placement(p.Name, where.In("after").In(p.Name));
-        declareSteps(
-          SetupSteps.ParseList(
-            p.Value,
-            where.In("after").In(p.Name),
-            references
-          )
+        IReadOnlyList<SetupStep> inserted = SetupSteps.ParseList(
+          p.Value,
+          where.In("after").In(p.Name),
+          references
         );
+        declareSteps(inserted);
+        after.Add((p.Name, inserted));
       }
-    if (node["config"] != null)
-      foreach (
-        JProperty p in SetupJson
-          .Object(node["config"], where.In("config"))
-          .Properties()
-      )
-        SetupJson.Object(p.Value, where.In("config").In(p.Name));
-    if (
-      node["seconds"] != null
-      && SetupJson.Integer(node["seconds"], where.In("seconds")) < 3
-    )
-      throw where.In("seconds").Fail("runs at least 3 seconds.");
-    if (node["during"] != null)
-      declareSteps(
-        ParseDuring(node["during"], where.In("during"), references)
-          .SelectMany(d => d.Steps)
-      );
-    if (
-      node["record"] != null
-      && !SetupJson.IsId(SetupJson.String(node["record"], where.In("record")))
-    )
-      throw where.In("record").Fail("is not lower case words joined by -.");
+    IReadOnlyList<SetupConfigValue> config =
+      node["config"] == null
+        ? []
+        : ParseConfig(node["config"], where.In("config"));
+    int? seconds = null;
+    if (node["seconds"] != null) {
+      seconds = SetupJson.Integer(node["seconds"], where.In("seconds"));
+      if (seconds < 3)
+        throw where.In("seconds").Fail("runs at least 3 seconds.");
+    }
+    (int From, int To)? steady =
+      node["steady"] != null
+        ? Window(node["steady"], where.In("steady"), seconds ?? mainSeconds)
+      : seconds != null ? Window(null, where.In("seconds"), seconds.Value)
+      : null;
+    IReadOnlyList<SetupDuring>? during = null;
+    if (node["during"] != null) {
+      during = ParseDuring(node["during"], where.In("during"), references);
+      declareSteps(during.SelectMany(d => d.Steps));
+    }
+    string? record = null;
+    if (node["record"] != null) {
+      record = SetupJson.String(node["record"], where.In("record"));
+      if (!SetupJson.IsId(record))
+        throw where.In("record").Fail("is not lower case words joined by -.");
+    }
     if (
       node["tickOrders"] != null
       && !SetupJson.Bool(node["tickOrders"], where.In("tickOrders"))
@@ -742,6 +806,143 @@ internal sealed class SetupFileModel {
       if (!(checks ?? mainChecks).Any(c => c.Id == fails))
         throw where.In("fails").Fail($"\"{fails}\" is no check of this case.");
     }
-    return new SetupVariant(name, node, checks, fails);
+    return new SetupVariant(
+      name,
+      node,
+      checks,
+      fails,
+      drop,
+      replace,
+      after,
+      config,
+      seconds,
+      steady,
+      during,
+      record
+    );
+  }
+
+  private static IReadOnlyList<SetupConfigValue> ParseConfig(
+    JToken? token,
+    SetupJson.Where where
+  ) {
+    var values = new List<SetupConfigValue>();
+    foreach (JProperty mod in SetupJson.Object(token, where).Properties())
+      foreach (
+        JProperty key in SetupJson
+          .Object(mod.Value, where.In(mod.Name))
+          .Properties()
+      ) {
+        if (key.Value is not JValue { Type: not JTokenType.Null } value)
+          throw where
+            .In(mod.Name)
+            .In(key.Name)
+            .Fail("is a number, a boolean or text.");
+        values.Add(new SetupConfigValue(mod.Name, key.Name, value));
+      }
+    return values;
+  }
+
+  /// <summary>The model of the harness case <paramref name="variant"/> makes from this one: its
+  /// steps, drawing, timing, checks, recording and config with the variant's delta applied.</summary>
+  /// <exception cref="SetupFileException">The variant's layers or entry replacements break a rule
+  /// of setups.md, What the reader refuses; the message names the variant.</exception>
+  public SetupFileModel ForVariant(SetupVariant variant) {
+    SetupJson.Where where = new SetupJson.Where(File, "")
+      .In("variants")
+      .In(variant.Name);
+    var seen = new HashSet<string>();
+    IReadOnlyList<SetupStep> edited = Edit(Steps, variant, seen);
+    IEnumerable<SetupDuring> duringOf = variant.During ?? During;
+    SetupDuring[] during =
+    [
+      .. duringOf.Select(d => d with { Steps = Edit(d.Steps, variant, seen) }),
+    ];
+    IEnumerable<SetupStep> placed = variant
+      .After.Where(a => !seen.Contains(a.Id) && !variant.Drop.Contains(a.Id))
+      .SelectMany(a => a.Steps);
+    SetupFileModel model = (SetupFileModel)MemberwiseClone();
+    model.File = $"{File} {Setup}/{variant.Name}";
+    model.Steps = [.. placed, .. edited];
+    model.During = during;
+    model.Drawn = Drawn?.ForVariant(variant.Body, where);
+    model.Seconds = variant.Seconds ?? Seconds;
+    model.Steady = variant.Steady ?? Steady;
+    model.Checks = variant.Checks ?? Checks;
+    model.Fails = variant.Fails;
+    model.Config =
+    [
+      .. Config.Where(c =>
+        !variant.Config.Any(v => v.Mod == c.Mod && v.Key == c.Key)
+      ),
+      .. variant.Config,
+    ];
+    model.RecordName = variant.Record ?? Setup;
+    model.RecordsOwn = variant.Record != null;
+    HashSet<string> gone =
+    [
+      .. variant.Drop,
+      .. variant.Replace.Where(r => r.Value.Id != r.Key).Select(r => r.Key),
+      .. (variant.Body["replace"] as JObject)
+        ?.Properties()
+        .Where(p =>
+          !variant.Replace.ContainsKey(p.Name)
+          && p.Value is JObject { } body
+          && body["id"] is JValue { Type: JTokenType.String } id
+          && (string?)id != p.Name
+        )
+        .Select(p => p.Name)
+        ?? [],
+    ];
+    model.Record = new SetupRecordSpec(
+      [.. Record.Runs.Where(r => !gone.Contains(r.Id))],
+      [.. Record.Machines.Where(m => !gone.Contains(m.Id))]
+    );
+    foreach (SetupCheck check in model.Checks)
+      foreach (
+        SeriesReading series in (check.Test?.Readings ?? [])
+          .SelectMany(r => r.All())
+          .OfType<SeriesReading>()
+          .Concat(check.Series == null ? [] : [check.Series])
+      )
+        if (gone.Contains(series.Id))
+          throw where.Fail(
+            $"check \"{check.Id}\" reads {series.Describe}, which the case does not record."
+          );
+    return model;
+  }
+
+  private static IReadOnlyList<SetupStep> Edit(
+    IReadOnlyList<SetupStep> steps,
+    SetupVariant variant,
+    HashSet<string> seen
+  ) {
+    var result = new List<SetupStep>();
+    foreach (SetupStep step in steps) {
+      string? id = step.Id;
+      if (id != null)
+        seen.Add(id);
+      if (id != null && variant.Drop.Contains(id))
+        continue;
+      SetupStep kept =
+        id != null && variant.Replace.TryGetValue(id, out SetupStep? other)
+          ? other
+          : step;
+      if (kept.Steps.Count > 0)
+        kept = new SetupStep(
+          kept.Kind,
+          kept.Body,
+          kept.Id,
+          kept.Path,
+          Edit(kept.Steps, variant, seen),
+          kept.Tests
+        );
+      result.Add(kept);
+      if (id != null)
+        foreach (var (target, inserted) in variant.After)
+          if (target == id)
+            result.AddRange(inserted);
+    }
+    return result;
   }
 }

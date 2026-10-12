@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ExpandedLib.Scenarios;
 
 namespace ExpandedLib.Testing;
@@ -30,6 +31,33 @@ public sealed class SetupFile
 
   /// <summary>The first game series the file runs on, such as <c>1.22</c>.</summary>
   public string Game => Model.Game;
+
+  /// <summary>The names of the file's <c>variants</c>, in file order.</summary>
+  internal IReadOnlyList<string> VariantNames =>
+    [.. Model.Variants.Select(v => v.Name)];
+
+  /// <summary>The file for the harness case <c>&lt;setup&gt;/&lt;name&gt;</c>: the main case with
+  /// the variant's delta applied.</summary>
+  /// <exception cref="ArgumentException">The file has no variant by that name.</exception>
+  /// <exception cref="InvalidOperationException">The variant's layers or entry replacements break
+  /// a rule of setups.md, What the reader refuses.</exception>
+  internal SetupFile ForVariant(string name)
+  {
+    SetupVariant variant =
+      Model.Variants.FirstOrDefault(v => v.Name == name)
+      ?? throw new ArgumentException(
+        $"{Name} has no variant \"{name}\".",
+        nameof(name)
+      );
+    try
+    {
+      return new SetupFile(Model.ForVariant(variant));
+    }
+    catch (SetupFileException e)
+    {
+      throw new InvalidOperationException(e.Message, e);
+    }
+  }
 
   /// <summary>Reads and validates <paramref name="text"/>.</summary>
   /// <param name="text">A setup file's JSON.</param>

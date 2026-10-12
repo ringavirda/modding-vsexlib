@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
+using ExpandedLib.Config;
 using ExpandedLib.Helpers;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
@@ -15,7 +16,7 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// A setup file built into a fresh world: mods and vanilla codes loaded, layout placed, every step
-/// but run executed and the mechanical lines joined. Checking is not built yet.
+/// but run executed and the mechanical lines joined.
 /// </summary>
 public sealed partial class SetupScene : IDisposable
 {
@@ -38,6 +39,11 @@ public sealed partial class SetupScene : IDisposable
   private readonly HashSet<int> _ready = [];
   private readonly List<string> _standIns = [];
   private HashSet<long> _lineListeners = [];
+  private readonly List<(
+    IExConfigAccess Access,
+    string Name,
+    string Old
+  )> _config = [];
   private bool _joined;
 
   private SetupScene(SetupFile file)
@@ -62,7 +68,13 @@ public sealed partial class SetupScene : IDisposable
   internal ISetupWorld View { get; }
 
   /// <summary>Releases the scene's world.</summary>
-  public void Dispose() => World.Dispose();
+  public void Dispose()
+  {
+    for (int i = _config.Count - 1; i >= 0; i--)
+      _config[i].Access.Set(_config[i].Name, _config[i].Old);
+    _config.Clear();
+    World.Dispose();
+  }
 
   /// <summary>The cell the layout entry or step with <paramref name="id"/> placed; a run's first
   /// cell.</summary>
@@ -124,6 +136,7 @@ public sealed partial class SetupScene : IDisposable
       beforeLoad?.Invoke(scene.World);
       scene.Load(modPaths);
       afterLoad?.Invoke(scene.World);
+      scene.ApplyConfig();
       scene.PlaceLayout();
       scene.RunSteps();
       scene.JoinLines();

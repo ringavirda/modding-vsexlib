@@ -116,7 +116,7 @@ internal sealed class SetupRecording {
     IReadOnlyList<(string Mod, string Version)> mods
   ) {
     var recording = new SetupRecording(
-      file.Setup,
+      file.RecordName,
       game,
       mods,
       file.Seconds,

@@ -501,6 +501,11 @@ internal sealed class SampledReading(Reading inner) : Reading {
 
   public override IEnumerable<Reading> Children => [inner];
 
+  public override void Start(ReadingContext ctx) {
+    _values.Clear();
+    base.Start(ctx);
+  }
+
   /// <summary>Reads and keeps second <see cref="ReadingContext.Second"/>'s value; seconds are
   /// sampled in order from 0.</summary>
   public void Sample(ReadingContext ctx) {
