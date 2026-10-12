@@ -628,6 +628,54 @@ public sealed partial class TestWorld : IDisposable {
     AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
   }
 
+  /// <summary>Fires every listener not in <paramref name="except"/> once with
+  /// <paramref name="dt"/> in firing order, runs <paramref name="network"/> just before the
+  /// listener <paramref name="networkBefore"/> (after the last when it is null or fires nowhere),
+  /// then advances sim time and fires the delayed callbacks that come due.</summary>
+  internal void FireBlockEntityTicks(
+    float dt,
+    IReadOnlySet<long> except,
+    System.Action network,
+    long? networkBefore
+  ) {
+    bool ran = false;
+    foreach (var (id, listener) in _tickListeners.ToList()) {
+      if (except.Contains(id))
+        continue;
+      if (!ran && id == networkBefore) {
+        network();
+        ran = true;
+      }
+      listener.Callback(dt);
+    }
+    if (!ran)
+      network();
+    AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
+  }
+
+  /// <summary>The tick listeners in firing order, each with its id and callback.</summary>
+  internal List<(long Id, System.Action<float> Callback)> TickCallbacks() =>
+    [.. _tickListeners.Select(l => (l.Key, l.Value.Callback))];
+
+  /// <summary>Moves the listeners of each set in <paramref name="groups"/> to the end of the firing
+  /// order, the first group's first, in the order the sets are given; the rest keep their order
+  /// ahead of them.</summary>
+  internal void MoveListenersLast(IReadOnlyList<IReadOnlySet<long>> groups) {
+    var entries = _tickListeners.ToList();
+    List<long> moved =
+    [
+      .. groups
+        .SelectMany(g => entries.Where(e => g.Contains(e.Key)))
+        .Select(e => e.Key)
+        .Distinct(),
+    ];
+    _tickListeners.Clear();
+    foreach (var entry in entries.Where(e => !moved.Contains(e.Key)))
+      _tickListeners.Add(entry.Key, entry.Value);
+    foreach (long id in moved)
+      _tickListeners.Add(id, entries.First(e => e.Key == id).Value);
+  }
+
   /// <summary>Advances block-entity sim time by <paramref name="totalMs"/> ms, firing each listener
   /// <see cref="FireBlockEntityTicks"/> fires once per whole interval it registered, one listener's
   /// fires before the next listener's, then the delayed callbacks that come due.</summary>

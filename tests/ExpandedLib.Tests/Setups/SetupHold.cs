@@ -94,6 +94,43 @@ internal sealed class SetupHoldEntity : BlockEntity
   }
 }
 
+internal sealed class SetupTickEntity(List<string> log) : BlockEntity
+{
+  public int Count;
+  public int Lag;
+
+  public override void Initialize(ICoreAPI api)
+  {
+    base.Initialize(api);
+    RegisterGameTickListener(OnTick, 1000);
+  }
+
+  private void OnTick(float dt)
+  {
+    Count++;
+    log.Add(Pos.X.ToString());
+    foreach (int dx in new[] { 1, -1 })
+      if (
+        Api.World.BlockAccessor.GetBlockEntity(Pos.AddCopy(dx, 0, 0))
+        is SetupTickEntity peer
+      )
+        Lag = peer.Count - Count;
+  }
+}
+
+internal sealed class SetupTickBehavior(BlockEntity be, List<string> log)
+  : BlockEntityBehavior(be)
+{
+  public override void Initialize(ICoreAPI api, JsonObject properties)
+  {
+    base.Initialize(api, properties);
+    Blockentity.RegisterGameTickListener(
+      _ => log.Add(Blockentity.Pos.X.ToString()),
+      1000
+    );
+  }
+}
+
 internal sealed class SetupHoldEmber : BlockEntity, IIgnitable
 {
   public readonly List<float> Overs = [];

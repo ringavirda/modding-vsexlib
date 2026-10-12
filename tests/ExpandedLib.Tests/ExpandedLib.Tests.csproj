@@ -41,6 +41,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <!-- SetupCasesTests drives SetupTheoryDiscoverer directly. -->
+    <PackageReference Include="xunit.extensibility.execution" />
     <!-- Mocking framework for faking the game's big API interfaces in BE/unit tests. -->
     <PackageReference Include="NSubstitute" />
     <!-- ExConfigGeneratorFailureTests drives ExConfigGenerator directly through a CSharpGeneratorDriver

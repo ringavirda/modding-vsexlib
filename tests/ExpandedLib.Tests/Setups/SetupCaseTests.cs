@@ -35,7 +35,7 @@ public class SetupCaseTests : IDisposable
       Directory.Delete(_folder, recursive: true);
   }
 
-  private static readonly string BoxPath = Path.Combine(
+  internal static readonly string BoxPath = Path.Combine(
     RepoPaths.Root,
     "tests",
     "ExpandedLib.Tests",
@@ -58,12 +58,12 @@ public class SetupCaseTests : IDisposable
   private static string SetA(int level) =>
     "{\"set\": {\"at\": [0, 0, 0], \"member\": {\"Level\": " + level + "}}}";
 
-  private static string Level(string id) =>
+  internal static string Level(string id) =>
     "\""
     + id
     + "\": {\"series\": {\"state\": {\"words\": [\"idle\"]}, \"level\": {\"member\": \"Level\", \"unit\": \"u\"}}}";
 
-  private static string Check(string id, string op, string test) =>
+  internal static string Check(string id, string op, string test) =>
     "{\"id\": \""
     + id
     + "\", \"says\": \""
@@ -74,10 +74,10 @@ public class SetupCaseTests : IDisposable
     + test
     + "}";
 
-  private static string Series(string id, string key, int value) =>
+  internal static string Series(string id, string key, int value) =>
     "{\"series\": \"" + id + ".level\", \"" + key + "\": " + value + "}";
 
-  private static string Cases(
+  internal static string Cases(
     string variants,
     string checks = "",
     string config = "",
@@ -108,18 +108,22 @@ public class SetupCaseTests : IDisposable
       file,
       [BoxPath],
       store == null ? null : _ => ExConfigProfiles.Register(store),
-      w =>
-        w.RegisterClass("SetupBox", typeof(BlockEntity))
-          .RegisterBlockEntityFactory(
-            "SetupBox",
-            () =>
-            {
-              var box = new SetupBox();
-              box.Behaviors.Add(new BoxBehaviour(box));
-              return box;
-            }
-          )
+      Register
     );
+
+  internal static void Register(TestWorld w)
+  {
+    w.RegisterClass("SetupBox", typeof(BlockEntity))
+      .RegisterBlockEntityFactory(
+        "SetupBox",
+        () =>
+        {
+          var box = new SetupBox();
+          box.Behaviors.Add(new BoxBehaviour(box));
+          return box;
+        }
+      );
+  }
 
   private static SetupFile Parse(string text) =>
     SetupFile.Parse(text, "cases.json");

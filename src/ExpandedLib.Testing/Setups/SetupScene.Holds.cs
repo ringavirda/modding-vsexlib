@@ -155,8 +155,18 @@ public sealed partial class SetupScene
 
   private void TickSecond()
   {
-    World.FireBlockEntityTicks(1f, _lineListeners);
-    World.Tick(1);
+    if (_ordered)
+      World.FireBlockEntityTicks(
+        1f,
+        _lineListeners,
+        NetworkTick,
+        _networkBefore
+      );
+    else
+    {
+      World.FireBlockEntityTicks(1f, _lineListeners);
+      NetworkTick();
+    }
     World.StepListeners(1000, _lineListeners);
   }
 

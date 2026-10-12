@@ -57,12 +57,17 @@ public sealed partial class SetupScene
     );
 
   /// <summary>Runs the case's checks in file order over <paramref name="recording"/>.</summary>
+  /// <param name="recording">What <see cref="Run"/> recorded.</param>
+  /// <param name="ordersOnly">Judges only the checks that hold in every tick order.</param>
   /// <returns>Null when the case passes: no check fails, or for a variant with <c>fails</c> the
   /// first failing check is that one. Else the message naming the check, its <c>says</c>, the
   /// second and the readings.</returns>
-  internal string? Judge(SetupRecording recording)
+  internal string? Judge(SetupRecording recording, bool ordersOnly = false)
   {
-    SetupCheckFailure? failure = SetupCheck.First(Model.Checks, recording);
+    SetupCheckFailure? failure = SetupCheck.First(
+      Model.Checks.Where(c => !ordersOnly || c.AllOrders),
+      recording
+    );
     if (Model.Fails is not { } expected)
       return failure?.ToString();
     if (failure == null)

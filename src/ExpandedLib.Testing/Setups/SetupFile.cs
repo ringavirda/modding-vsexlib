@@ -36,6 +36,17 @@ public sealed class SetupFile
   internal IReadOnlyList<string> VariantNames =>
     [.. Model.Variants.Select(v => v.Name)];
 
+  /// <summary>The ids <c>tickOrders</c> names, in file order; empty when the file names none.</summary>
+  internal IReadOnlyList<string> TickOrderIds => Model.TickOrders;
+
+  /// <summary>The names of the variants that run in every tick order, in file order.</summary>
+  internal IReadOnlyList<string> OrderedVariantNames =>
+    [
+      .. Model
+        .Variants.Where(v => v.Body["tickOrders"] != null)
+        .Select(v => v.Name),
+    ];
+
   /// <summary>The file for the harness case <c>&lt;setup&gt;/&lt;name&gt;</c>: the main case with
   /// the variant's delta applied.</summary>
   /// <exception cref="ArgumentException">The file has no variant by that name.</exception>

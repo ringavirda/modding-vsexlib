@@ -48,6 +48,7 @@ public sealed partial class SetupScene : IDisposable
   {
     _file = file;
     View = new SetupWorldView(World, _placed);
+    NetworkTick = () => World.Tick(1);
   }
 
   /// <summary>The scene the file was built into.</summary>
