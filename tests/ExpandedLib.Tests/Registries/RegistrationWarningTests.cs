@@ -12,6 +12,7 @@ using ExpandedLib.Registries;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -423,16 +424,79 @@ public class MetalRegistrationWarningTests : RegistryLogFixture {
     Assert.Contains("ExpandedLib.Tests", warning);
   }
 
+  // Fails when ReplaceNetworkType does not store the factory, or does not hand the type's owner to
+  // the replacing assembly.
   [Fact]
   public void BlockNetworkModSystem_replace_call_is_silent_and_wins() {
-    var networks = new BlockNetworkModSystem();
-    networks.RegisterNetworkType("plantednet", () => Net(networks), "modone");
-    Func<BlockNetwork> later = () => Net(networks);
-    bool replaced = networks.ReplaceNetworkType("plantednet", later);
+    Log.Expect(EnumLogType.Warning, "");
+    var world = new TestWorld();
+    var networks = world.Networks;
+    bool replacementUsed = false;
+    networks.RegisterNetworkType(
+      "plantednet",
+      () => new StubNetwork(networks),
+      "modone"
+    );
+    bool replaced = networks.ReplaceNetworkType(
+      "plantednet",
+      () => {
+        replacementUsed = true;
+        return new StubNetwork(networks);
+      }
+    );
 
     None("BlockNetworkModSystem");
     Assert.True(replaced);
-    Assert.False(networks.ReplaceNetworkType("plantednet2", later));
+    Assert.False(
+      networks.ReplaceNetworkType(
+        "plantednet2",
+        () => new StubNetwork(networks)
+      )
+    );
+    world.PlaceNode(new BlockPos(1, 1, 1), "plantednet", "we");
+    Assert.True(replacementUsed);
+
+    networks.RegisterNetworkType("plantednet", () => new StubNetwork(networks));
+    None("BlockNetworkModSystem");
+    networks.RegisterNetworkType(
+      "plantednet",
+      () => new StubNetwork(networks),
+      "modthree"
+    );
+    string warning = Only("BlockNetworkModSystem");
+    Assert.Contains("registered by ExpandedLib.Tests", warning);
+    Assert.Contains("modthree", warning);
+  }
+
+  // Fails when the harness registers under its own assembly's name instead of the caller's.
+  [Fact]
+  public void TestWorld_and_Scene_register_networks_under_the_calling_assembly() {
+    Log.Expect(EnumLogType.Warning, "");
+    var world = new TestWorld();
+    world.RegisterNetwork("plantednet", sys => new StubNetwork(sys));
+    world.Networks.RegisterNetworkType(
+      "plantednet",
+      () => new StubNetwork(world.Networks),
+      "modone"
+    );
+    Assert.Contains(
+      "registered by ExpandedLib.Tests",
+      Only("BlockNetworkModSystem")
+    );
+
+    var scene = new Scene();
+    scene.Network("plantednet2", sys => new StubNetwork(sys));
+    scene.World.Networks.RegisterNetworkType(
+      "plantednet2",
+      () => new StubNetwork(scene.World.Networks),
+      "modone"
+    );
+    Assert.Contains(
+      Log.Warnings,
+      w =>
+        w.Contains("'plantednet2'")
+        && w.Contains("registered by ExpandedLib.Tests")
+    );
   }
 
   [Fact]

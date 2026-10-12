@@ -25,12 +25,21 @@ public sealed class Scene {
   /// that take the clock from <c>t</c> to <c>t + 1</c>.</summary>
   public int Second { get; private set; }
 
-  /// <summary>Registers a network factory, as a mod does at startup.</summary>
+  /// <summary>Registers a network factory, as a mod does at startup; the calling assembly is the
+  /// type's owner.</summary>
+  [System.Runtime.CompilerServices.MethodImpl(
+    System.Runtime.CompilerServices.MethodImplOptions.NoInlining
+  )]
   public Scene Network(
     string type,
     System.Func<BlockNetworkModSystem, BlockNetwork> factory
   ) {
-    World.RegisterNetwork(type, factory);
+    World.RegisterNetwork(
+      type,
+      factory,
+      System.Reflection.Assembly.GetCallingAssembly().GetName().Name
+        ?? "unknown assembly"
+    );
     return this;
   }
 
