@@ -281,5 +281,27 @@ public class AssetLoadingTests
     Assert.Empty(second.Log.Warnings);
     Assert.Empty(second.Log.Errors);
   }
+
+  // Fails when a vanilla load leaves the thread pool without a logger, so a worker that throws
+  // ends the test host instead of being logged.
+  [Fact]
+  public void A_vanilla_load_gives_the_thread_pool_a_logger()
+  {
+    var pool = TyronThreadPool.Inst;
+    var was = pool.Logger;
+    pool.Logger = null;
+    try
+    {
+      using var world = new TestWorld();
+
+      world.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "BurdenMaker"));
+
+      Assert.NotNull(pool.Logger);
+    }
+    finally
+    {
+      pool.Logger = was;
+    }
+  }
 }
 #endif

@@ -666,6 +666,7 @@ public sealed partial class TestWorld {
   /// <exception cref="InvalidOperationException">VSEssentials holds no such type, or it cannot be
   /// constructed.</exception>
   private static void RunVanillaLoader(ICoreServerAPI api, string typeName) {
+    TyronThreadPool.Inst.Logger ??= new ThreadPoolLogger();
     Type loaderType =
       Assembly.Load("VSEssentials").GetType(typeName)
       ?? throw new InvalidOperationException(
