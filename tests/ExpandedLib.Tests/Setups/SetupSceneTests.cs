@@ -799,11 +799,6 @@ public class SetupSceneTests : IDisposable
         "{\"hours\": 1}",
         "the fake world has no game calendar to advance"
       },
-      {
-        "run",
-        "{\"code\": \"setupfixture:slab\", \"from\": [0, 0, 0], \"to\": [2, 0, 0]}",
-        "is not built by the harness reader yet"
-      },
     };
 
   // Fails when a step kind the fake world cannot run, or the reader does not build yet, is let

@@ -44,21 +44,23 @@ public class SetupHoldTests
       ),
       [FixturePath],
       afterLoad,
-      w =>
-        w.RegisterClass("SetupHoldBlock", typeof(SetupHoldBlock))
-          .RegisterClass("SetupHoldEntity", typeof(SetupHoldEntity))
-          .RegisterBlockEntityFactory(
-            "SetupHoldEntity",
-            () => new SetupHoldEntity()
-          )
-          .RegisterClass("SetupHoldEmber", typeof(SetupHoldEmber))
-          .RegisterBlockEntityFactory(
-            "SetupHoldEmber",
-            () => new SetupHoldEmber()
-          )
-          .RegisterClass("SetupHoldBox", typeof(SetupHoldBox))
-          .RegisterBlockEntityFactory("SetupHoldBox", () => new SetupHoldBox())
+      Register
     );
+
+  internal static void Register(TestWorld w)
+  {
+    w.RegisterClass("SetupHoldBlock", typeof(SetupHoldBlock))
+      .RegisterClass("SetupHoldEntity", typeof(SetupHoldEntity))
+      .RegisterBlockEntityFactory(
+        "SetupHoldEntity",
+        () => new SetupHoldEntity()
+      )
+      .RegisterClass("SetupHoldEmber", typeof(SetupHoldEmber))
+      .RegisterBlockEntityFactory("SetupHoldEmber", () => new SetupHoldEmber())
+      .RegisterClass("SetupHoldBox", typeof(SetupHoldBox))
+      .RegisterBlockEntityFactory("SetupHoldBox", () => new SetupHoldBox());
+    SetupTickOrderTests.RegisterTick(w, []);
+  }
 
   private static string Refused(
     string steps,

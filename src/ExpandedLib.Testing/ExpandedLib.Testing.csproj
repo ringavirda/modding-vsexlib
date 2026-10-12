@@ -77,6 +77,8 @@
          a test assembly; every consumer of this harness is an xUnit project, so this is not a new
          runtime dependency for anyone who links it. -->
     <PackageReference Include="xunit.extensibility.core" />
+    <!-- SetupTheoryDiscoverer skips a setup row below its file's game series. -->
+    <PackageReference Include="xunit.extensibility.execution" />
     <!-- Flows to every consumer's test bin over the Newtonsoft.Json 13.0.1 the test host brings,
          which lacks the JToken.WriteTo(JsonWriter) the game's patch loader calls. -->
     <PackageReference Include="Newtonsoft.Json" />

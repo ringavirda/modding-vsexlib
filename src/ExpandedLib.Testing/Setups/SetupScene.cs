@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
+using ExpandedLib.Config;
 using ExpandedLib.Helpers;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
@@ -15,12 +16,10 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// A setup file built into a fresh world: mods and vanilla codes loaded, layout placed, every step
-/// but run executed and the mechanical lines joined. Running and checking are not built yet.
+/// but run executed and the mechanical lines joined.
 /// </summary>
 public sealed partial class SetupScene : IDisposable
 {
-  private static readonly string[] Unbuilt = ["run"];
-
   private static readonly Dictionary<string, string> Lacking = new()
   {
     ["paste"] = "the fake world has no structure files to paste",
@@ -38,12 +37,18 @@ public sealed partial class SetupScene : IDisposable
   private readonly HashSet<int> _ready = [];
   private readonly List<string> _standIns = [];
   private HashSet<long> _lineListeners = [];
+  private readonly List<(
+    IExConfigAccess Access,
+    string Name,
+    string Old
+  )> _config = [];
   private bool _joined;
 
   private SetupScene(SetupFile file)
   {
     _file = file;
     View = new SetupWorldView(World, _placed);
+    NetworkTick = () => World.Tick(1);
   }
 
   /// <summary>The scene the file was built into.</summary>
@@ -62,7 +67,13 @@ public sealed partial class SetupScene : IDisposable
   internal ISetupWorld View { get; }
 
   /// <summary>Releases the scene's world.</summary>
-  public void Dispose() => World.Dispose();
+  public void Dispose()
+  {
+    for (int i = _config.Count - 1; i >= 0; i--)
+      _config[i].Access.Set(_config[i].Name, _config[i].Old);
+    _config.Clear();
+    World.Dispose();
+  }
 
   /// <summary>The cell the layout entry or step with <paramref name="id"/> placed; a run's first
   /// cell.</summary>
@@ -124,6 +135,7 @@ public sealed partial class SetupScene : IDisposable
       beforeLoad?.Invoke(scene.World);
       scene.Load(modPaths);
       afterLoad?.Invoke(scene.World);
+      scene.ApplyConfig();
       scene.PlaceLayout();
       scene.RunSteps();
       scene.JoinLines();
@@ -156,16 +168,11 @@ public sealed partial class SetupScene : IDisposable
   {
     if (Model.HasClimate)
       throw Fail("climate", $"\"climate\" is refused: {Lacking["climate"]}.");
-    foreach (SetupStep step in Model.Steps.SelectMany(s => s.All()))
+    foreach (SetupStep step in Model.AllSteps.SelectMany(s => s.All()))
     {
       JToken body = step.Body;
       if (Lacking.TryGetValue(step.Kind, out string? lacks))
         throw Fail(step.Path, $"\"{step.Kind}\" is refused: {lacks}.");
-      if (Unbuilt.Contains(step.Kind))
-        throw Fail(
-          step.Path,
-          $"\"{step.Kind}\" is not built by the harness reader yet."
-        );
       switch (step.Kind)
       {
         case "place":
@@ -249,7 +256,7 @@ public sealed partial class SetupScene : IDisposable
     IEnumerable<JToken> roots =
     [
       .. Model.Layout == null ? [] : (JToken[])[Model.Layout],
-      .. Model.Steps.SelectMany(s => s.All()).Select(s => s.Body),
+      .. Model.AllSteps.SelectMany(s => s.All()).Select(s => s.Body),
     ];
     return
     [
@@ -424,7 +431,7 @@ public sealed partial class SetupScene : IDisposable
   {
     foreach (SetupStep step in steps)
     {
-      if (step.Kind is "place" or "complete" or "fill")
+      if (step.Kind is "place" or "complete" or "fill" or "run")
         _joined = false;
       else
         JoinLines();
@@ -438,6 +445,9 @@ public sealed partial class SetupScene : IDisposable
           break;
         case "fill":
           FillStep(step);
+          break;
+        case "run":
+          RunStep(step);
           break;
         case "insert":
           InsertStep(step);
