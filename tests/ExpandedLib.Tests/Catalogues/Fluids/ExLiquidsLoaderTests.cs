@@ -47,11 +47,13 @@ public class ExLiquidsLoaderTests {
   }
 }
 
-/// <summary>The loader names each catalogue file as the registrant of its liquids, so a key two
-/// files define warns and a file loaded twice does not.</summary>
+/// <summary>The loader names each entry's mod (the domain of its file) as the registrant, so a key
+/// two mods define warns, and a mod's own files and a reload do not.</summary>
 [Collection("ExLiquids")]
 public class LiquidCatalogueLoaderWarningTests : RegistryLogFixture {
   private const string Brine = """{ "liquids": [ { "code": "Brine" } ] }""";
+  private const string Steam =
+    """{ "liquids": [ { "code": "Steam", "phase": "Gas", "priority": 10 } ] }""";
 
   [Fact]
   public void A_key_two_sources_define_warns_once_naming_both_sources() {
@@ -65,8 +67,51 @@ public class LiquidCatalogueLoaderWarningTests : RegistryLogFixture {
     LiquidCatalogueLoader.Load(api);
 
     string warning = Only("'Brine'");
-    Assert.Contains("iiex:config/liquids.json", warning);
-    Assert.Contains("siex:config/liquids.json", warning);
+    Assert.Contains("registered by iiex", warning);
+    Assert.Contains("siex", warning);
+  }
+
+  // Fails when the loader takes the owner from the asset path instead of its domain.
+  [Fact]
+  public void A_key_one_mod_defines_in_two_files_logs_no_warning() {
+    ICoreAPI api = FakeAssetApi.Create(
+      "config/liquids.json",
+      ("iiex:config/liquids.json", Brine),
+      ("iiex:config/more/liquids.json", Brine)
+    );
+
+    LiquidCatalogueLoader.Load(api);
+
+    Assert.Empty(Log.Warnings);
+  }
+
+  // Fails when the loader takes the owner from the asset path instead of its domain.
+  [Fact]
+  public void The_exlib_catalogue_repeating_the_built_ins_logs_no_warning() {
+    ICoreAPI api = FakeAssetApi.Create(
+      "config/liquids.json",
+      ("exlib:config/liquids.json", Steam)
+    );
+
+    LiquidCatalogueLoader.Load(api);
+
+    Assert.Empty(Log.Warnings);
+  }
+
+  // Fails when the built-in media are seeded without the exlib owner.
+  [Fact]
+  public void Another_mods_catalogue_replacing_a_built_in_warns_naming_exlib_and_the_mod() {
+    ICoreAPI api = FakeAssetApi.Create(
+      "config/liquids.json",
+      ("iiex:config/liquids.json", Steam)
+    );
+    Log.Expect(EnumLogType.Warning, "");
+
+    LiquidCatalogueLoader.Load(api);
+
+    string warning = Only("'Steam'");
+    Assert.Contains("registered by exlib", warning);
+    Assert.Contains("iiex", warning);
   }
 
   [Fact]

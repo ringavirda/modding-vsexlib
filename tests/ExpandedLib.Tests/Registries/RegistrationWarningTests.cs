@@ -197,190 +197,6 @@ public class RegistrationWarningTests : RegistryLogFixture {
     Assert.Contains(nameof(ConfigB), warning);
     ExConfigProfiles.ResetForWorld();
   }
-}
-
-/// <summary><see cref="ExLiquids"/> warns when a code is taken twice.</summary>
-[Collection("ExLiquids")]
-public class LiquidRegistrationWarningTests : RegistryLogFixture {
-  public LiquidRegistrationWarningTests() {
-    ExLiquids.Clear();
-    ExLiquids.SeedDefaults();
-  }
-
-  private static LiquidDef Steam(float below, string code = "Steam") =>
-    new() {
-      Code = code,
-      Phase = LiquidPhase.Gas,
-      Priority = 10,
-      CondenseBelowC = below,
-    };
-
-  [Fact]
-  public void ExLiquids_names_both_sources_of_a_code_redefined_with_alike_phase_and_priority() {
-    Log.Expect(EnumLogType.Warning, "");
-    ExLiquids.Register(Steam(90f, "Vapour"), "modone/config/liquids.json");
-    ExLiquids.Register(Steam(80f, "Vapour"), "modtwo/config/liquids.json");
-
-    string warning = Only("ExLiquids");
-    Assert.Contains("'Vapour'", warning);
-    Assert.Contains("modone/config/liquids.json", warning);
-    Assert.Contains("modtwo/config/liquids.json", warning);
-  }
-
-  [Fact]
-  public void ExLiquids_is_silent_when_an_overlay_redefines_a_built_in() {
-    ExLiquids.Register(Steam(90f), "modone/config/liquids.json");
-
-    None("ExLiquids");
-  }
-
-  [Fact]
-  public void ExLiquids_is_silent_for_one_source_twice() {
-    var planted = new LiquidDef { Code = "Planted", Phase = LiquidPhase.Gas };
-    ExLiquids.Register(planted, "modone/config/liquids.json");
-    ExLiquids.Register(planted, "modone/config/liquids.json");
-
-    None("ExLiquids");
-  }
-
-  [Fact]
-  public void ExLiquids_public_register_names_the_calling_assembly() {
-    Log.Expect(EnumLogType.Warning, "");
-    ExLiquids.Register(Steam(90f, "Vapour"), "modone/config/liquids.json");
-    ExLiquids.Register(Steam(80f, "Vapour"));
-
-    string warning = Only("ExLiquids");
-    Assert.Contains("modone/config/liquids.json", warning);
-    Assert.Contains("ExpandedLib.Tests", warning);
-  }
-}
-
-/// <summary><see cref="ExRecipeProfiles"/> warns when a code is taken twice.</summary>
-[Collection(nameof(RecipeProfileRegistryCollection))]
-public class RecipeProfileRegistrationWarningTests : RegistryLogFixture {
-  private static class FromA {
-    internal static RecipeProfile Profile(string code) =>
-      new() {
-        Code = code,
-        Catalogue = () => throw new NotSupportedException(),
-        Defaults = () => throw new NotSupportedException(),
-        GetLevel = () => "normal",
-        SetLevel = _ => { },
-        SaveCatalogue = () => { },
-      };
-  }
-
-  private static class FromB {
-    internal static RecipeProfile Profile(string code) =>
-      new() {
-        Code = code,
-        Catalogue = () => throw new NotSupportedException(),
-        Defaults = () => throw new NotSupportedException(),
-        GetLevel = () => "cheap",
-        SetLevel = _ => { },
-        SaveCatalogue = () => { },
-      };
-  }
-
-  [Fact]
-  public void ExRecipeProfiles_names_the_code_taken_twice() {
-    Log.Expect(EnumLogType.Warning, "");
-    ExRecipeProfiles.Register(FromA.Profile("plantedprofile"));
-    ExRecipeProfiles.Register(FromB.Profile("plantedprofile"));
-
-    string warning = Only("ExRecipeProfiles");
-    Assert.Contains("'plantedprofile'", warning);
-    Assert.Contains(nameof(FromA), warning);
-    Assert.Contains(nameof(FromB), warning);
-    ExRecipeProfiles.Unregister("plantedprofile");
-  }
-}
-
-/// <summary><see cref="MetalRegistry"/> warns when a molten item or a code is taken twice.</summary>
-[Collection("MetalRegistry")]
-public class MetalRegistrationWarningTests : RegistryLogFixture {
-  public MetalRegistrationWarningTests() => MetalRegistry.Clear();
-
-  [Fact]
-  public void MetalRegistry_names_both_sources_of_a_metal_redefined_with_a_different_glow() {
-    Log.Expect(EnumLogType.Warning, "");
-    MetalRegistry.Register(
-      new MetalDef {
-        Code = "plantedmetal",
-        MoltenItem = "planted:one",
-        GlowMinTemp = 500f,
-      },
-      "modone/config/metals/a.json"
-    );
-    MetalRegistry.Register(
-      new MetalDef {
-        Code = "plantedmetal",
-        MoltenItem = "planted:one",
-        GlowMinTemp = 600f,
-      },
-      "modtwo/config/metals/a.json"
-    );
-
-    string warning = Only("MetalRegistry codes");
-    Assert.Contains("'plantedmetal'", warning);
-    Assert.Contains("modone/config/metals/a.json", warning);
-    Assert.Contains("modtwo/config/metals/a.json", warning);
-    Only("MetalRegistry molten items");
-  }
-
-  [Fact]
-  public void MetalRegistry_is_silent_for_one_source_twice() {
-    var def = new MetalDef {
-      Code = "plantedmetal",
-      MoltenItem = "planted:one",
-    };
-    MetalRegistry.Register(def, "modone/config/metals/a.json");
-    MetalRegistry.Register(def, "modone/config/metals/a.json");
-
-    None("MetalRegistry");
-  }
-
-  [Fact]
-  public void MetalCatalogueLoader_overlay_over_the_baseline_is_silent_and_over_an_overlay_warns() {
-    Log.Expect(EnumLogType.Warning, "");
-    MetalCatalogueLoader.Populate(
-      ["iron"],
-      [
-        new MetalDef
-        {
-          Code = "iron",
-          MoltenItem = "game:ingot-iron",
-          GlowMinTemp = 500f,
-        },
-        new MetalDef
-        {
-          Code = "iron",
-          MoltenItem = "game:ingot-iron",
-          GlowMinTemp = 600f,
-        },
-      ],
-      null,
-      ["modone/config/metals/a.json", "modtwo/config/metals/a.json"]
-    );
-
-    string warning = Only("MetalRegistry codes");
-    Assert.Contains("modone/config/metals/a.json", warning);
-    Assert.Contains("modtwo/config/metals/a.json", warning);
-  }
-
-  [Fact]
-  public void MetalRegistry_public_register_names_the_calling_assembly() {
-    Log.Expect(EnumLogType.Warning, "");
-    MetalRegistry.Register(
-      new MetalDef { Code = "plantedmetal", MoltenItem = "planted:one" },
-      "modone/config/metals/a.json"
-    );
-    MetalRegistry.Register(
-      new MetalDef { Code = "plantedmetal", MoltenItem = "planted:one" }
-    );
-
-    Assert.Contains("ExpandedLib.Tests", Only("MetalRegistry codes"));
-  }
 
   private static BlockNetwork Net(BlockNetworkModSystem networks) =>
     new MpEnergyNetwork(networks);
@@ -502,23 +318,46 @@ public class MetalRegistrationWarningTests : RegistryLogFixture {
   [Fact]
   public void ExBlockNames_names_both_owners_of_a_group_taken_twice() {
     Log.Expect(EnumLogType.Warning, "");
-    ExBlockNames.AddVariantQualifier("plantedgroup", "a:", "modone");
-    ExBlockNames.AddVariantQualifier("plantedgroup", "b:", "modtwo");
+    try {
+      ExBlockNames.AddVariantQualifier("plantedgroup", "a:", "modone");
+      ExBlockNames.AddVariantQualifier("plantedgroup", "b:", "modtwo");
 
-    string warning = Only("ExBlockNames");
-    Assert.Contains("'plantedgroup'", warning);
-    Assert.Contains("modone", warning);
-    Assert.Contains("modtwo", warning);
-    ExBlockNames.RemoveVariantQualifier("plantedgroup");
+      string warning = Only("ExBlockNames");
+      Assert.Contains("'plantedgroup'", warning);
+      Assert.Contains("modone", warning);
+      Assert.Contains("modtwo", warning);
+    } finally {
+      ExBlockNames.RemoveVariantQualifier("plantedgroup");
+    }
   }
 
   [Fact]
   public void ExBlockNames_is_silent_for_one_owner_twice() {
-    ExBlockNames.AddVariantQualifier("plantedgroup", "a:", "modone");
-    ExBlockNames.AddVariantQualifier("plantedgroup", "b:", "modone");
+    try {
+      ExBlockNames.AddVariantQualifier("plantedgroup", "a:", "modone");
+      ExBlockNames.AddVariantQualifier("plantedgroup", "b:", "modone");
 
-    None("ExBlockNames");
-    ExBlockNames.RemoveVariantQualifier("plantedgroup");
+      None("ExBlockNames");
+    } finally {
+      ExBlockNames.RemoveVariantQualifier("plantedgroup");
+    }
+  }
+
+  // Fails when the public AddVariantQualifier registers under a constant owner instead of the
+  // calling assembly.
+  [Fact]
+  public void ExBlockNames_public_add_names_the_calling_assembly() {
+    Log.Expect(EnumLogType.Warning, "");
+    try {
+      ExBlockNames.AddVariantQualifier("plantedgroup3", "a:", "modone");
+      ExBlockNames.AddVariantQualifier("plantedgroup3", "b:");
+
+      string warning = Only("ExBlockNames");
+      Assert.Contains("modone", warning);
+      Assert.Contains("ExpandedLib.Tests", warning);
+    } finally {
+      ExBlockNames.RemoveVariantQualifier("plantedgroup3");
+    }
   }
 
   [Fact]
@@ -549,5 +388,244 @@ public class MetalRegistrationWarningTests : RegistryLogFixture {
     CellRole.Of("plantedrole3");
 
     Assert.Contains("ExpandedLib.Tests", Only("CellRole"));
+  }
+}
+
+/// <summary><see cref="ExLiquids"/> warns when a code is taken twice.</summary>
+[Collection("ExLiquids")]
+public class LiquidRegistrationWarningTests : RegistryLogFixture {
+  public LiquidRegistrationWarningTests() {
+    ExLiquids.Clear();
+    ExLiquids.SeedDefaults();
+  }
+
+  private static LiquidDef Steam(float below, string code = "Steam") =>
+    new() {
+      Code = code,
+      Phase = LiquidPhase.Gas,
+      Priority = 10,
+      CondenseBelowC = below,
+    };
+
+  [Fact]
+  public void ExLiquids_names_both_sources_of_a_code_redefined_with_alike_phase_and_priority() {
+    Log.Expect(EnumLogType.Warning, "");
+    ExLiquids.Register(Steam(90f, "Vapour"), "modone/config/liquids.json");
+    ExLiquids.Register(Steam(80f, "Vapour"), "modtwo/config/liquids.json");
+
+    string warning = Only("ExLiquids");
+    Assert.Contains("'Vapour'", warning);
+    Assert.Contains("modone/config/liquids.json", warning);
+    Assert.Contains("modtwo/config/liquids.json", warning);
+  }
+
+  // Fails when the built-in media are seeded without the exlib owner.
+  [Fact]
+  public void ExLiquids_warns_naming_exlib_when_an_overlay_redefines_a_built_in() {
+    Log.Expect(EnumLogType.Warning, "");
+    ExLiquids.Register(Steam(90f), "modone");
+
+    string warning = Only("ExLiquids");
+    Assert.Contains("'Steam'", warning);
+    Assert.Contains("registered by exlib", warning);
+    Assert.Contains("modone", warning);
+  }
+
+  // Fails when SeedDefaults registers with a different owner on each call.
+  [Fact]
+  public void ExLiquids_is_silent_when_exlib_reseeds_its_built_ins() {
+    ExLiquids.SeedDefaults();
+    ExLiquids.SeedDefaults();
+
+    None("ExLiquids");
+  }
+
+  [Fact]
+  public void ExLiquids_is_silent_for_one_source_twice() {
+    var planted = new LiquidDef { Code = "Planted", Phase = LiquidPhase.Gas };
+    ExLiquids.Register(planted, "modone/config/liquids.json");
+    ExLiquids.Register(planted, "modone/config/liquids.json");
+
+    None("ExLiquids");
+  }
+
+  [Fact]
+  public void ExLiquids_public_register_names_the_calling_assembly() {
+    Log.Expect(EnumLogType.Warning, "");
+    ExLiquids.Register(Steam(90f, "Vapour"), "modone/config/liquids.json");
+    ExLiquids.Register(Steam(80f, "Vapour"));
+
+    string warning = Only("ExLiquids");
+    Assert.Contains("modone/config/liquids.json", warning);
+    Assert.Contains("ExpandedLib.Tests", warning);
+  }
+}
+
+/// <summary><see cref="ExRecipeProfiles"/> warns when a code is taken twice.</summary>
+[Collection(nameof(RecipeProfileRegistryCollection))]
+public class RecipeProfileRegistrationWarningTests : RegistryLogFixture {
+  private static class FromA {
+    internal static RecipeProfile Profile(string code) =>
+      new() {
+        Code = code,
+        Catalogue = () => throw new NotSupportedException(),
+        Defaults = () => throw new NotSupportedException(),
+        GetLevel = () => "normal",
+        SetLevel = _ => { },
+        SaveCatalogue = () => { },
+      };
+  }
+
+  private static class FromB {
+    internal static RecipeProfile Profile(string code) =>
+      new() {
+        Code = code,
+        Catalogue = () => throw new NotSupportedException(),
+        Defaults = () => throw new NotSupportedException(),
+        GetLevel = () => "cheap",
+        SetLevel = _ => { },
+        SaveCatalogue = () => { },
+      };
+  }
+
+  [Fact]
+  public void ExRecipeProfiles_names_the_code_taken_twice() {
+    Log.Expect(EnumLogType.Warning, "");
+    ExRecipeProfiles.Register(FromA.Profile("plantedprofile"));
+    ExRecipeProfiles.Register(FromB.Profile("plantedprofile"));
+
+    string warning = Only("ExRecipeProfiles");
+    Assert.Contains("'plantedprofile'", warning);
+    Assert.Contains(nameof(FromA), warning);
+    Assert.Contains(nameof(FromB), warning);
+    ExRecipeProfiles.Unregister("plantedprofile");
+  }
+}
+
+/// <summary><see cref="MetalRegistry"/> warns when a molten item or a code is taken twice.</summary>
+[Collection("MetalRegistry")]
+public class MetalRegistrationWarningTests : RegistryLogFixture {
+  public MetalRegistrationWarningTests() => MetalRegistry.Clear();
+
+  [Fact]
+  public void MetalRegistry_names_both_sources_of_a_metal_redefined_with_a_different_glow() {
+    Log.Expect(EnumLogType.Warning, "");
+    MetalRegistry.Register(
+      new MetalDef {
+        Code = "plantedmetal",
+        MoltenItem = "planted:one",
+        GlowMinTemp = 500f,
+      },
+      "modone/config/metals/a.json"
+    );
+    MetalRegistry.Register(
+      new MetalDef {
+        Code = "plantedmetal",
+        MoltenItem = "planted:one",
+        GlowMinTemp = 600f,
+      },
+      "modtwo/config/metals/a.json"
+    );
+
+    string warning = Only("MetalRegistry codes");
+    Assert.Contains("'plantedmetal'", warning);
+    Assert.Contains("modone/config/metals/a.json", warning);
+    Assert.Contains("modtwo/config/metals/a.json", warning);
+    Only("MetalRegistry molten items");
+  }
+
+  [Fact]
+  public void MetalRegistry_is_silent_for_one_source_twice() {
+    var def = new MetalDef {
+      Code = "plantedmetal",
+      MoltenItem = "planted:one",
+    };
+    MetalRegistry.Register(def, "modone/config/metals/a.json");
+    MetalRegistry.Register(def, "modone/config/metals/a.json");
+
+    None("MetalRegistry");
+  }
+
+  // Fails when the baseline metals are registered without the exlib owner, or the overlay owner is
+  // taken from the path instead of the domain.
+  [Fact]
+  public void MetalCatalogueLoader_overlay_over_the_baseline_names_exlib_and_over_an_overlay_names_the_first_overlay() {
+    Log.Expect(EnumLogType.Warning, "");
+    MetalCatalogueLoader.Populate(
+      ["iron"],
+      [
+        new MetalDef
+        {
+          Code = "iron",
+          MoltenItem = "game:ingot-iron",
+          GlowMinTemp = 500f,
+        },
+        new MetalDef
+        {
+          Code = "iron",
+          MoltenItem = "game:ingot-iron",
+          GlowMinTemp = 600f,
+        },
+      ],
+      null,
+      ["modone:config/metals/a.json", "modtwo:config/metals/a.json"]
+    );
+
+    string[] warnings =
+    [
+      .. Log.Warnings.Where(w => w.Contains("MetalRegistry codes")),
+    ];
+    Assert.Equal(2, warnings.Length);
+    Assert.Contains("registered by exlib", warnings[0]);
+    Assert.Contains("modone", warnings[0]);
+    Assert.Contains("registered by modone", warnings[1]);
+    Assert.Contains("modtwo", warnings[1]);
+  }
+
+  // Fails when the overlay owner is taken from the path instead of the domain.
+  [Fact]
+  public void MetalCatalogueLoader_exlib_overlay_over_the_baseline_is_silent() {
+    MetalCatalogueLoader.Populate(
+      ["iron"],
+      [
+        new MetalDef
+        {
+          Code = "iron",
+          MoltenItem = "game:ingot-iron",
+          GlowMinTemp = 500f,
+        },
+      ],
+      null,
+      ["exlib:config/metals/iron.json"]
+    );
+
+    None("MetalRegistry");
+    Assert.Equal(
+      500f,
+      MetalRegistry.GlowMinTempOf(new AssetLocation("game:ingot-iron"))
+    );
+  }
+
+  [Fact]
+  public void MetalRegistry_is_silent_when_exlib_registers_a_baseline_metal_again() {
+    var def = new MetalDef { Code = "iron", MoltenItem = "game:ingot-iron" };
+    MetalRegistry.RegisterBaseline(def);
+    MetalRegistry.RegisterBaseline(def);
+
+    None("MetalRegistry");
+  }
+
+  [Fact]
+  public void MetalRegistry_public_register_names_the_calling_assembly() {
+    Log.Expect(EnumLogType.Warning, "");
+    MetalRegistry.Register(
+      new MetalDef { Code = "plantedmetal", MoltenItem = "planted:one" },
+      "modone/config/metals/a.json"
+    );
+    MetalRegistry.Register(
+      new MetalDef { Code = "plantedmetal", MoltenItem = "planted:one" }
+    );
+
+    Assert.Contains("ExpandedLib.Tests", Only("MetalRegistry codes"));
   }
 }

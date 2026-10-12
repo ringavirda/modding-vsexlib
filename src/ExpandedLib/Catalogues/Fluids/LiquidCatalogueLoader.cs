@@ -6,7 +6,8 @@ namespace ExpandedLib.Catalogues;
 /// <summary>Populates <see cref="ExLiquids"/> from every domain's <c>config/liquids.json</c>.</summary>
 public static class LiquidCatalogueLoader {
   /// <summary>Re-seeds the built-ins, overlays every domain's <c>config/liquids.json</c> and runs
-  /// the code contributors.</summary>
+  /// the code contributors. An overlay entry is owned by the mod whose domain it came from; one that
+  /// replaces a built-in or another mod's medium logs a Warning, unless the same mod owns both.</summary>
   public static CatalogueLoadReport Load(ICoreAPI api) {
     ExLiquids.Clear();
     ExLiquids.SeedDefaults();
@@ -24,7 +25,7 @@ public static class LiquidCatalogueLoader {
           errors.Add($"{read.Sources[i]}: skipping liquid def with no code");
           continue;
         }
-        ExLiquids.Register(def, read.Sources[i]);
+        ExLiquids.Register(def, AssetCatalogueLoader.OwnerOf(read.Sources[i]));
         entries++;
       }
     }

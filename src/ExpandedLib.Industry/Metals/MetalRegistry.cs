@@ -52,8 +52,7 @@ public static class MetalRegistry {
   }
 
   internal static void RegisterBaseline(MetalDef def) {
-    _byMoltenItem.Update(def);
-    _byCode.Update(def);
+    Register(def, "exlib");
   }
 
   /// <summary>Drops every registered metal.</summary>

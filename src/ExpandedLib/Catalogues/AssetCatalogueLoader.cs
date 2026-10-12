@@ -50,6 +50,14 @@ public static class AssetCatalogueLoader {
     return new ReadResult<T>(items, sources, files, errors);
   }
 
+  /// <summary>The mod that owns a catalogue entry read from <paramref name="source"/>: the domain of
+  /// the asset location (<c>exlib:config/liquids.json</c> is <c>exlib</c>), so two files of one mod
+  /// are one registrant. A source without a domain is its own owner.</summary>
+  internal static string OwnerOf(string source) {
+    int colon = source.IndexOf(':');
+    return colon > 0 ? source[..colon] : source;
+  }
+
   // A fresh settings instance per asset: ToObject<T> may add a domain-specific converter to it.
   private static T? SafeToObject<T>(IAsset asset, List<string> errors)
     where T : class {

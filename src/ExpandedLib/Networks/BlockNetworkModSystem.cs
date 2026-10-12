@@ -30,6 +30,8 @@ public class BlockNetworkModSystem : ModSystem {
   /// <summary>Registers the factory for <paramref name="networkType"/>, replacing any earlier factory for the same type.
   /// A type already held by another assembly is replaced with a Warning naming both assemblies; use
   /// <see cref="ReplaceNetworkType"/> to replace on purpose.</summary>
+  /// <param name="networkType">The network type key blocks name in their network behaviour.</param>
+  /// <param name="factory">Builds a fresh network of that type.</param>
   /// <returns><c>true</c> when an earlier factory for the type was replaced.</returns>
   [MethodImpl(MethodImplOptions.NoInlining)]
   public bool RegisterNetworkType(
@@ -66,6 +68,8 @@ public class BlockNetworkModSystem : ModSystem {
 
   /// <summary>Replaces the factory for <paramref name="networkType"/> on purpose, logging nothing; the
   /// calling assembly becomes the type's owner. Adds the type when none is registered.</summary>
+  /// <param name="networkType">The network type key blocks name in their network behaviour.</param>
+  /// <param name="factory">Builds a fresh network of that type.</param>
   /// <returns><c>true</c> when an earlier factory for the type was replaced.</returns>
   [MethodImpl(MethodImplOptions.NoInlining)]
   public bool ReplaceNetworkType(string networkType, Func<BlockNetwork> factory) {
