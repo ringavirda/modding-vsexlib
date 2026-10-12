@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -48,8 +49,9 @@ internal sealed class ScenarioPlayer {
   /// <param name="row">The block the default spawn stands on.</param>
   /// <param name="failure">Null when every check holds; otherwise the first check's failure, as
   /// <c>&lt;check&gt;: read &lt;value&gt;</c> or <c>&lt;check&gt;: threw &lt;type&gt;: &lt;message&gt;</c>.</param>
-  /// <returns>The player, which must be <see cref="Stop"/>ped, or null when the build threw. A player
-  /// whose check failed is returned unparked.</returns>
+  /// <returns>The player, which must be <see cref="Stop"/>ped; null when a member resolved by name is
+  /// missing or the build threw, after which the player's entries are removed from the server's maps.
+  /// A player whose check failed is returned unparked.</returns>
   public static ScenarioPlayer? Start(
     ServerMain server,
     BlockPos row,
@@ -90,15 +92,21 @@ internal sealed class ScenarioPlayer {
       )
     )
       return null;
-    ScenarioPlayer made;
-    try {
-      made = Build(server, row, systems!, inventory!, connected!);
-    } catch (Exception e) {
-      failure = $"build: threw {e.GetType().Name}: {e.Message}";
+    ScenarioPlayer? made = PlayerCheck.Assemble(
+      () => Build(server, row, systems!, inventory!, connected!),
+      () =>
+        Forget(
+          Uid,
+          server.PlayersByUid,
+          server.PlayerDataManager.WorldDataByUID,
+          server.PlayerDataManager.PlayerDataByUid
+        ),
+      out failure
+    );
+    if (made == null)
       return null;
-    }
     BlockPos at = made._park;
-    bool passed =
+    _ =
       PlayerCheck.Read(
         "PlayerByUid",
         () => ((IWorldAccessor)server).PlayerByUid(Uid),
@@ -152,9 +160,17 @@ internal sealed class ScenarioPlayer {
         held => held,
         out _,
         out failure
+      )
+      && PlayerCheck.Read(
+        "Park",
+        () => {
+          made.Park();
+          return true;
+        },
+        held => held,
+        out _,
+        out failure
       );
-    if (passed)
-      made.Park();
     return made;
   }
 
@@ -406,9 +422,18 @@ internal sealed class ScenarioPlayer {
       _data.EntityPlayer,
       new EntityDespawnData { Reason = EnumDespawnReason.Removed }
     );
-    _server.PlayersByUid.Remove(Uid);
-    _server.PlayerDataManager.WorldDataByUID.Remove(Uid);
-    _server.PlayerDataManager.PlayerDataByUid.Remove(Uid);
+    Forget(
+      Uid,
+      _server.PlayersByUid,
+      _server.PlayerDataManager.WorldDataByUID,
+      _server.PlayerDataManager.PlayerDataByUid
+    );
+  }
+
+  /// <summary>Removes <paramref name="uid"/> from each of the maps.</summary>
+  internal static void Forget(string uid, params IDictionary[] maps) {
+    foreach (IDictionary map in maps)
+      map.Remove(uid);
   }
 
   private static ScenarioPlayer Build(

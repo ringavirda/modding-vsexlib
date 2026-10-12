@@ -185,7 +185,7 @@ internal sealed class ScenarioRunner {
     _case = scenario;
     _plots ??= PlotsAtSpawn();
     PlotBox box = _plots.Next(scenario!.Plot[0], scenario.Plot[2]);
-    _climate.Hold(box.CenterX, box.CenterZ);
+    _climate.Hold(box);
     _plot = new ScenarioPlot(box, scenario.Plot);
     _loadStarted = Seconds();
     _plot.Load(_api);

@@ -196,4 +196,15 @@ public class StepTests {
     Assert.Contains("suspect mod", lines);
     Assert.StartsWith("step {\"place\"", lines[0]);
   }
+
+  /// <summary>Fails when a stack frame loses the text after its leading "at " (S54), or when a
+  /// frame without the prefix loses its first characters (S55).</summary>
+  [Fact]
+  public void A_stack_frame_keeps_every_at_after_its_leading_one() {
+    Assert.Equal(
+      "at Probe.Run() in /home/a sat at/x.cs:line 4",
+      FailureDetail.FrameLine("   at Probe.Run() in /home/a sat at/x.cs:line 4")
+    );
+    Assert.Equal("at bare text", FailureDetail.FrameLine("bare text"));
+  }
 }

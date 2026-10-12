@@ -153,9 +153,24 @@ internal sealed class ClimateHold(int regionSize) {
   public static int Region(int block, int regionSize) =>
     (int)Math.Floor(block / (double)regionSize);
 
-  /// <summary>Holds the region of the block at (<paramref name="x"/>, <paramref name="z"/>).</summary>
-  public void Hold(int x, int z) =>
-    _regions = _regions.Add((Region(x, regionSize), Region(z, regionSize)));
+  /// <summary>Holds every region the plot's chunk columns span.</summary>
+  public void Hold(PlotBox box) {
+    int firstX = Region(box.MinColumnX * PlotAllocator.ColumnSize, regionSize);
+    int lastX = Region(
+      (box.MaxColumnX + 1) * PlotAllocator.ColumnSize - 1,
+      regionSize
+    );
+    int firstZ = Region(box.MinColumnZ * PlotAllocator.ColumnSize, regionSize);
+    int lastZ = Region(
+      (box.MaxColumnZ + 1) * PlotAllocator.ColumnSize - 1,
+      regionSize
+    );
+    ImmutableHashSet<(int X, int Z)>.Builder regions = _regions.ToBuilder();
+    for (int x = firstX; x <= lastX; x++)
+      for (int z = firstZ; z <= lastZ; z++)
+        regions.Add((x, z));
+    _regions = regions.ToImmutable();
+  }
 
   /// <summary>The <c>OnGetClimate</c> handler: overwrites every climate read inside a held
   /// region, in every mode.</summary>

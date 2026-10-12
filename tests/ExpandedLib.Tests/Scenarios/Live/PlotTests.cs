@@ -67,7 +67,7 @@ public class PlotTests {
   [Fact]
   public void A_held_region_reads_twenty_degrees_and_no_rain_in_all_four_figures() {
     var hold = new ClimateHold(512);
-    hold.Hold(1000, 1000);
+    hold.Hold(new PlotBox(31, 31, 31, 31, 1008, 1008));
     ClimateCondition climate = Cold();
     hold.Apply(
       ref climate,
@@ -88,7 +88,7 @@ public class PlotTests {
   [InlineData(1000, 1000 + 512)]
   public void A_region_that_holds_no_plot_keeps_the_games_climate(int x, int z) {
     var hold = new ClimateHold(512);
-    hold.Hold(1000, 1000);
+    hold.Hold(new PlotBox(31, 31, 31, 31, 1008, 1008));
     ClimateCondition climate = Cold();
     hold.Apply(
       ref climate,
@@ -148,5 +148,26 @@ public class PlotTests {
     errors.Add(EnumLogType.Error, "one");
     Assert.Equal("one", errors.TakeNew());
     Assert.Null(errors.TakeNew());
+  }
+
+  /// <summary>Fails when a plot spanning two regions holds only the region of its centre (S53).</summary>
+  [Fact]
+  public void A_plot_holds_every_region_its_columns_span() {
+    var climate = new ClimateHold(512);
+    climate.Hold(new PlotBox(15, 0, 16, 0, 512, 16));
+    Assert.Equal(ClimateHold.Temperature, TemperatureAt(climate, 100, 5));
+    Assert.Equal(ClimateHold.Temperature, TemperatureAt(climate, 520, 5));
+    Assert.Equal(5f, TemperatureAt(climate, 1100, 5));
+  }
+
+  private static float TemperatureAt(ClimateHold climate, int x, int z) {
+    var condition = new ClimateCondition { Temperature = 5f };
+    climate.Apply(
+      ref condition,
+      new BlockPos(x, 5, z),
+      EnumGetClimateMode.NowValues,
+      0
+    );
+    return condition.Temperature;
   }
 }
