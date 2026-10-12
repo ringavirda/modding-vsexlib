@@ -103,6 +103,12 @@ public sealed class SetupRunOptions
   /// <c>EX_WRITE_SETUPS</c>.</summary>
   public string WriteVariable { get; init; } = SetupScene.DefaultWriteVariable;
 
+  /// <summary>The environment variable that names the folder <see cref="SetupCases.Run"/> writes
+  /// each row's scene dump to, as <c>&lt;setup&gt;.scene.json</c> or <c>&lt;setup&gt;@&lt;variant&gt;.scene.json</c>;
+  /// unset or empty writes none. Default <c>EX_SETUP_SCENES</c>.</summary>
+  public string ScenesVariable { get; init; } =
+    SetupScene.DefaultScenesVariable;
+
   /// <summary>Receives each <c>stand-in</c> line the case's placers print, or null to drop them.</summary>
   public Action<string>? Output { get; init; }
 }
@@ -169,13 +175,17 @@ public static class SetupCases
 
   /// <summary>Builds and runs the case <paramref name="row"/> names, judges its checks, and for a
   /// case that records writes or compares its recording (<c>EX_WRITE_SETUPS</c> names the setups to
-  /// write). A tick-order case judges only the checks that hold in every order and records nothing.</summary>
+  /// write). A case with no tick order also writes its built scene to <c>&lt;setup&gt;[@&lt;variant&gt;].scene.json</c> in the
+  /// folder named by the environment variable <see cref="SetupRunOptions.ScenesVariable"/>, when that is set. A tick-order case judges
+  /// only the checks that hold in every order and records nothing.</summary>
   /// <param name="row">A row from <see cref="In"/>.</param>
   /// <param name="options">The mod folders, recordings folder and hooks the case runs with.</param>
   /// <exception cref="InvalidOperationException">A check fails, the message naming the case (so an
   /// order case names its order) and the check; or the file cannot be built; or a tick-order
   /// machine registered no listener.</exception>
   /// <exception cref="SetupRecordingMismatchException">The recording differs from the committed file.</exception>
+  /// <exception cref="IOException">The scenes folder cannot be created or the scene file written.</exception>
+  /// <exception cref="UnauthorizedAccessException">The scenes folder or file is not writable.</exception>
   public static void Run(SetupCaseRow row, SetupRunOptions options)
   {
     ArgumentNullException.ThrowIfNull(row);
@@ -197,6 +207,18 @@ public static class SetupCases
     );
     foreach (string line in scene.StandIns)
       options.Output?.Invoke(line);
+    if (
+      row.Order == null
+      && Environment.GetEnvironmentVariable(options.ScenesVariable)
+        is { Length: > 0 } scenes
+    )
+    {
+      Directory.CreateDirectory(scenes);
+      File.WriteAllText(
+        Path.Combine(scenes, SceneFile(row)),
+        SetupSceneDump.Of(scene, row.Setup, row.Variant)
+      );
+    }
     if (row.Order != null)
       scene.Order(row.Order.Split(','));
     SetupRecording recording = scene.Run(mods, Series());
@@ -209,6 +231,9 @@ public static class SetupCases
         options.WriteVariable
       );
   }
+
+  private static string SceneFile(SetupCaseRow row) =>
+    row.Setup + (row.Variant == null ? "" : "@" + row.Variant) + ".scene.json";
 
   private static string Series() =>
     string.Join('.', GameVersion.ShortGameVersion.Split('.').Take(2));

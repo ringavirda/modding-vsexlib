@@ -39,6 +39,12 @@ public sealed partial class TestWorld {
   internal IEnumerable<KeyValuePair<BlockPos, BlockEntity>> BlockEntities =>
     _blockEntities;
 
+  /// <summary>Every cell of the solid layer, loaded chunk or not.</summary>
+  internal IEnumerable<KeyValuePair<BlockPos, Block>> SolidBlocks => _blocks;
+
+  /// <summary>Every cell of the fluid layer, loaded chunk or not.</summary>
+  internal IEnumerable<KeyValuePair<BlockPos, Block>> FluidBlocks => _fluids;
+
   /// <summary>Registers every <see cref="RegisterAttribute"/>-decorated block, block entity, item
   /// and behaviour class in <paramref name="assemblies"/> under the key the game registers it by, in
   /// a real class registry; classes of other kinds are skipped.</summary>

@@ -97,6 +97,8 @@ public sealed partial class SetupScene : IDisposable
         $"{_file.Name}: \"{id}\" has placed nothing."
       );
 
+  internal IReadOnlyDictionary<string, SetupPlacement> Placements => _placed;
+
   /// <summary>Builds <paramref name="file"/> into a fresh world.</summary>
   /// <param name="file">The validated file.</param>
   /// <param name="modPaths">The folders of the file's <see cref="SetupFile.Mods"/>, in the same

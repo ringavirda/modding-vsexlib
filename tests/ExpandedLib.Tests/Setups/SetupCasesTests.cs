@@ -25,15 +25,26 @@ public class SetupCasesTests : IDisposable
 
   private string Recordings => Path.Combine(_folder, "Recordings");
 
+  private string Scenes => Path.Combine(_folder, "Scenes");
+
+  private const string ScenesVar = "EX_TEST_SETUP_SCENES";
+
+  private readonly string? _savedScenes = Environment.GetEnvironmentVariable(
+    "EX_SETUP_SCENES"
+  );
+
   public SetupCasesTests()
   {
     Environment.SetEnvironmentVariable("EX_WRITE_SETUPS", null);
+    Environment.SetEnvironmentVariable(ScenesVar, null);
     Directory.CreateDirectory(_folder);
   }
 
   public void Dispose()
   {
     SetupPlacers.Clear();
+    Environment.SetEnvironmentVariable(ScenesVar, null);
+    Environment.SetEnvironmentVariable("EX_SETUP_SCENES", _savedScenes);
     if (Directory.Exists(_folder))
       Directory.Delete(_folder, recursive: true);
   }
@@ -50,7 +61,10 @@ public class SetupCasesTests : IDisposable
   private void Write(string name, string text) =>
     File.WriteAllText(Path.Combine(_folder, name), text);
 
-  private SetupRunOptions Options(Action<string>? output = null) =>
+  private SetupRunOptions Options(
+    Action<string>? output = null,
+    string? scenesVariable = null
+  ) =>
     new()
     {
       ModFolder = id => id == "setuphold" ? HoldPath : SetupCaseTests.BoxPath,
@@ -62,6 +76,7 @@ public class SetupCasesTests : IDisposable
         SetupTickOrderTests.Register(w, []);
       },
       Output = output,
+      ScenesVariable = scenesVariable ?? "EX_SETUP_SCENES",
     };
 
   private IReadOnlyList<SetupCaseRow> Rows() =>
@@ -480,6 +495,68 @@ public class SetupCasesTests : IDisposable
     SetupCases.Run(Row("ticks@b,a,network"), Options());
 
     Assert.False(Directory.Exists(Recordings));
+  }
+
+  // Fails when a tick-order row rewrites its case's dump, or a variant's dump is named without its
+  // variant.
+  [Fact]
+  public void A_run_writes_each_case_s_scene_dump_by_setup_and_variant_and_a_tick_order_row_none()
+  {
+    Environment.SetEnvironmentVariable(ScenesVar, Scenes);
+    Write(
+      "c.json",
+      SetupCaseTests
+        .Cases("\"low-gear\": {\"tickOrders\": true}")
+        .Replace("\"steps\":", "\"tickOrders\": [\"a\", \"b\"], \"steps\":")
+    );
+
+    SetupCases.Run(Row("cases"), Options(scenesVariable: ScenesVar));
+    File.WriteAllText(Path.Combine(Scenes, "cases.scene.json"), "kept");
+    SetupCases.Run(
+      Row("cases@a,b,network"),
+      Options(scenesVariable: ScenesVar)
+    );
+    SetupCases.Run(Row("cases/low-gear"), Options(scenesVariable: ScenesVar));
+
+    Assert.Equal(
+      ["cases.scene.json", "cases@low-gear.scene.json"],
+      Directory
+        .GetFiles(Scenes)
+        .Select(Path.GetFileName)
+        .Order(StringComparer.Ordinal)
+    );
+    Assert.Equal(
+      "kept",
+      File.ReadAllText(Path.Combine(Scenes, "cases.scene.json"))
+    );
+    Assert.Contains(
+      "\"setup\": \"cases\"",
+      File.ReadAllText(Path.Combine(Scenes, "cases@low-gear.scene.json"))
+    );
+  }
+
+  // Fails when a run writes its dump to the default variable's folder rather than the one the
+  // options name, or writes one for an empty variable.
+  [Fact]
+  public void A_run_writes_its_scene_dump_only_to_the_folder_its_options_name()
+  {
+    Environment.SetEnvironmentVariable("EX_SETUP_SCENES", Scenes);
+    Write("c.json", SetupCaseTests.Cases(""));
+
+    SetupCases.Run(
+      Row("cases"),
+      Options(scenesVariable: "EX_TEST_UNSET_SCENES")
+    );
+    Environment.SetEnvironmentVariable(ScenesVar, "");
+    SetupCases.Run(Row("cases"), Options(scenesVariable: ScenesVar));
+    Assert.False(Directory.Exists(Scenes));
+
+    Environment.SetEnvironmentVariable(ScenesVar, Scenes);
+    SetupCases.Run(Row("cases"), Options(scenesVariable: ScenesVar));
+    Assert.Equal(
+      ["cases.scene.json"],
+      Directory.GetFiles(Scenes).Select(Path.GetFileName)
+    );
   }
 
   #endregion
