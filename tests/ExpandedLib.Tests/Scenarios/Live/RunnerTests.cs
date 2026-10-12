@@ -85,8 +85,24 @@ public class RunnerTests {
       string[] names,
       IServerPlayer? chat = null,
       PlotAllocator? plots = null,
-      ClimateHold? climate = null
-    ) => new(Api, names, false, chat, plots, climate);
+      ClimateHold? climate = null,
+      PlayerStart? player = null
+    ) =>
+      new(
+        Api,
+        names,
+        false,
+        chat,
+        plots,
+        climate,
+        player
+          ?? (
+            (out string? failure) => {
+              failure = null;
+              return null;
+            }
+          )
+      );
 
     public void Tick(int times, long now = 0) {
       _now = now;
@@ -121,6 +137,40 @@ public class RunnerTests {
     );
     Assert.Contains(
       "[scenario] done: 1 case(s) run, 0 passed, 1 failed.",
+      run.Lines
+    );
+  }
+
+  /// <summary>Fails when a broken player prints no error line (S17), the line drops the game version (S18), a case still runs (S19), or the cases are not counted as failed (S20).</summary>
+  [Fact]
+  public void A_broken_player_fails_every_case_with_one_player_line() {
+    using var run = new Run();
+    run.WriteSample();
+    var runner = run.Start(
+      ["exlib/sample", "exlib/missing"],
+      player: (out string? failure) => {
+        failure = "GameMode: read Spectator";
+        return null;
+      }
+    );
+    run.Tick(4);
+    Assert.False(runner.Active);
+    Assert.Single(run.Lines, l => l.StartsWith("[scenario] error player:"));
+    Assert.Contains(
+      run.Lines,
+      l =>
+        l.StartsWith("[scenario] error player: GameMode: read Spectator (game ")
+    );
+    Assert.Contains(
+      "[scenario] error exlib/sample: the scenario player failed its check",
+      run.Lines
+    );
+    Assert.Contains(
+      "[scenario] error exlib/missing: the scenario player failed its check",
+      run.Lines
+    );
+    Assert.Contains(
+      "[scenario] done: 2 case(s) run, 0 passed, 2 failed.",
       run.Lines
     );
   }

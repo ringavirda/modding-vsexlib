@@ -1,0 +1,21 @@
+{
+  "setup": "scenario-player-open",
+  "description": "The faces a run opens are connectors of the pipes that went down.",
+  "mods": [],
+  "steps": [
+    {
+      "run": {
+        "id": "line",
+        "code": "platedpipes:pipe-plated-straight-we",
+        "from": [0, 0, 0],
+        "to": [3, 0, 0],
+        "open": [
+          { "at": [0, 0, 0], "face": "w" },
+          { "at": [3, 0, 0], "face": "e" }
+        ]
+      }
+    }
+  ],
+  "seconds": 8,
+  "record": {}
+}

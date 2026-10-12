@@ -11,6 +11,7 @@ internal static class ScenarioSteps {
     new ScenarioStep[]
     {
       new PlaceStep(),
+      new RunStep(),
       new CompleteStep(),
       new FillStep(),
       new SetStep(),

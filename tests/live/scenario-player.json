@@ -1,0 +1,19 @@
+{
+  "setup": "scenario-player",
+  "description": "The scenario player lays a run of pipe by hand, cell by cell.",
+  "mods": [],
+  "steps": [
+    {
+      "run": {
+        "id": "line",
+        "code": "platedpipes:pipe-plated-straight-we",
+        "from": [0, 0, 0],
+        "to": [2, 0, 0]
+      }
+    },
+    { "expect": { "at": [1, 0, 0], "block": "platedpipes:pipe-plated-straight-we" } },
+    { "expect": { "at": [2, 0, 0], "network": "pipe", "same": [0, 0, 0] } }
+  ],
+  "seconds": 8,
+  "record": {}
+}
