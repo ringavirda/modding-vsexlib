@@ -33,7 +33,7 @@ internal sealed record LayoutEntry(
   string? Code,
   string? Run,
   string? Target,
-  IReadOnlyList<string> Family,
+  IReadOnlyList<string>? Family,
   IReadOnlyList<LayoutApart> Apart,
   (int X, int Y, int Z)? From,
   JObject Body
@@ -432,19 +432,17 @@ internal sealed class SetupLayout {
   /// <param name="code">The run's straight segment.</param>
   /// <param name="family">The <c>family</c> key, a string or an array, or null.</param>
   /// <param name="where">The entry or step the key belongs to.</param>
-  /// <param name="owner">What the message calls the owner: <c>entry</c> or <c>step</c>.</param>
-  internal static IReadOnlyList<string> RunFamily(
+  /// <returns>The wildcards; null when no <c>family</c> is written and <paramref name="code"/> is
+  /// no straight pipe, so the loaded blocktype's orientation group names the family.</returns>
+  internal static IReadOnlyList<string>? RunFamily(
     string code,
     JToken? family,
-    SetupJson.Where where,
-    string owner
+    SetupJson.Where where
   ) {
     if (family == null) {
       Match m = PipeStraight.Match(code);
       if (!m.Success)
-        throw where.Fail(
-          $"the code \"{code}\" is not a straight pipe, so the {owner} needs \"family\"."
-        );
+        return null;
       return
       [
         .. Shapes.Select(s =>
@@ -476,7 +474,7 @@ internal sealed class SetupLayout {
     );
     string run = required("run");
     string code = required("code");
-    IReadOnlyList<string> family = RunFamily(code, e["family"], where, "entry");
+    IReadOnlyList<string>? family = RunFamily(code, e["family"], where);
 
     var apart = new List<LayoutApart>();
     if (e["apart"] != null) {

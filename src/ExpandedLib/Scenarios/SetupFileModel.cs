@@ -568,6 +568,13 @@ internal sealed class SetupFileModel {
           throw w.In("at")
             .Fail($"second {second} is not inside the {seconds} s run.");
       }
+      if (
+        node["from"] != null
+        && SetupJson.Integer(node["from"], w.In("from")) is var start
+        && start >= seconds
+      )
+        throw w.In("from")
+          .Fail($"second {start} is not inside the {seconds} s run.");
       int period =
         node["every"] == null
           ? 1
@@ -790,7 +797,14 @@ internal sealed class SetupFileModel {
         seconds ?? mainSeconds
       );
       declareSteps(during.SelectMany(d => d.Steps));
-    }
+    } else if (seconds is { } own)
+      foreach (var (d, i) in mainDuring.Select((d, i) => (d, i)))
+        if ((d.At ?? d.From) >= own)
+          throw where
+            .In("seconds")
+            .Fail(
+              $"{own} ends the run before the inherited during[{i}].{(d.At != null ? "at" : "from")}, second {d.At ?? d.From}."
+            );
     string? record = null;
     if (node["record"] != null) {
       record = SetupJson.String(node["record"], where.In("record"));

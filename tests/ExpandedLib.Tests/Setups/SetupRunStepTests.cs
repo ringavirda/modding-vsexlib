@@ -194,9 +194,9 @@ public class SetupRunStepTests : IDisposable
     );
   }
 
-  // Fails when a code that is not a straight pipe takes a family from nowhere.
+  // Fails when a code no load registered takes a family from nowhere.
   [Fact]
-  public void A_code_that_is_not_a_straight_pipe_needs_a_family_naming_the_step()
+  public void A_code_no_load_registered_fails_naming_the_step()
   {
     InvalidOperationException e = Assert.Throws<InvalidOperationException>(() =>
       Build(
@@ -208,7 +208,75 @@ public class SetupRunStepTests : IDisposable
     );
 
     Assert.Contains("steps[0]", e.Message);
-    Assert.Contains("so the step needs \"family\"", e.Message);
+    Assert.Contains(Plated + "wire\" is not registered by the load", e.Message);
+  }
+
+  // Fails when the orientation group of the code is not turned into a wildcard: the run along z
+  // needs straight-ns, not the straight-we the code names.
+  [Fact]
+  public void A_step_without_a_family_takes_its_codes_orientation_group_as_the_wildcard()
+  {
+    using SetupScene scene = Build(
+      "",
+      "[{\"run\": {\"id\": \"lane\", \"code\": \""
+        + Plated
+        + "straight-we\", \"from\": [0, 0, 0], \"to\": [0, 0, 3], "
+        + "\"open\": [{\"at\": [0, 0, 0], \"face\": \"n\"}, {\"at\": [0, 0, 3], \"face\": \"s\"}]}}]"
+    );
+
+    Assert.Equal(
+      [.. Enumerable.Repeat(Plated + "straight-ns", 4)],
+      Codes(scene, "lane")
+    );
+  }
+
+  // Fails when a layout run entry without a family is not resolved from its blocktype.
+  [Fact]
+  public void A_layout_run_without_a_family_takes_its_codes_orientation_group_as_the_wildcard()
+  {
+    using SetupScene scene = Build(
+      "{\"legend\": {\"P\": {\"run\": \"base\", \"code\": \""
+        + Plated
+        + "straight-we\"}, \"o\": {\"open\": true}}, \"layers\": {\"0\": [\"oPPo\"]}}",
+      "[]"
+    );
+
+    Assert.Equal(
+      [.. Enumerable.Repeat(Plated + "straight-we", 2)],
+      Codes(scene, "base")
+    );
+  }
+
+  // Fails when a code with neither group is turned into a wildcard instead of standing for itself.
+  [Fact]
+  public void A_code_with_no_orientation_or_side_group_is_its_own_family()
+  {
+    InvalidOperationException e = Assert.Throws<InvalidOperationException>(() =>
+      SetupHoldTests.Build(
+        "[{\"run\": {\"code\": \"setuphold:lamp\", \"from\": [0, 0, 0], \"to\": [1, 0, 0]}}]"
+      )
+    );
+
+    Assert.Contains(
+      "no loaded block takes the family setuphold:lamp.",
+      e.Message
+    );
+  }
+
+  // Fails when a code with both groups picks one of them.
+  [Fact]
+  public void A_code_with_both_an_orientation_and_a_side_group_needs_a_family()
+  {
+    InvalidOperationException e = Assert.Throws<InvalidOperationException>(() =>
+      SetupHoldTests.Build(
+        "[{\"run\": {\"code\": \"setuphold:twogroups-ns-n\", \"from\": [0, 0, 0], \"to\": [1, 0, 0]}}]"
+      )
+    );
+
+    Assert.Contains(
+      "setuphold:twogroups-ns-n has both an orientation and a side group",
+      e.Message
+    );
   }
 
   // Fails when a path whose cell no family block fits is laid with some other block.

@@ -1,0 +1,7 @@
+{
+  "code": "twogroups",
+  "variantgroups": [
+    { "code": "orientation", "states": ["ns"] },
+    { "code": "side", "states": ["n"] }
+  ]
+}

@@ -118,6 +118,7 @@ public sealed partial class SetupScene
       string where = $"run \"{run.Id}\" legend \"{cell.Entry.Glyph}\"";
       IReadOnlyList<(Block Block, string Faces)> family = Family(
         cell.Entry.Family,
+        cell.Entry.Code!,
         where
       );
       string type = ((INetworkConnector)family[0].Block).NetworkType;
@@ -182,7 +183,8 @@ public sealed partial class SetupScene
     var at = new SetupJson.Where(_file.Name, step.Path);
     string code = (string)body["code"]!;
     IReadOnlyList<(Block Block, string Faces)> family = Family(
-      SetupLayout.RunFamily(code, body["family"], at, "step"),
+      SetupLayout.RunFamily(code, body["family"], at),
+      code,
       step.Path
     );
     List<BlockPos> corners = [At(step, "from")];
@@ -268,11 +270,35 @@ public sealed partial class SetupScene
     return set;
   }
 
+  private IReadOnlyList<string> OrientedFamily(string code, string where)
+  {
+    Block block =
+      World.World.GetBlock(new AssetLocation(code))
+      ?? throw Fail(where, $"\"{code}\" is not registered by the load.");
+    string[] groups =
+    [
+      .. new[] { "orientation", "side" }.Where(block.Variant.ContainsKey),
+    ];
+    if (groups.Length > 1)
+      throw Fail(
+        where,
+        $"{code} has both an orientation and a side group, so the run needs \"family\"."
+      );
+    return
+    [
+      groups.Length == 0
+        ? code
+        : block.CodeWithVariant(groups[0], "*").ToString(),
+    ];
+  }
+
   private IReadOnlyList<(Block Block, string Faces)> Family(
-    IReadOnlyList<string> wildcards,
+    IReadOnlyList<string>? declared,
+    string code,
     string where
   )
   {
+    IReadOnlyList<string> wildcards = declared ?? OrientedFamily(code, where);
     string key = string.Join("|", wildcards);
     if (_family.TryGetValue(key, out var cached))
       return cached;

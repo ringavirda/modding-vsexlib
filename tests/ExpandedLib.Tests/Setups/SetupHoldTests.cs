@@ -31,7 +31,7 @@ public class SetupHoldTests
   private const string Lamp =
     "{\"place\": {\"id\": \"lamp\", \"code\": \"setuphold:lamp\", \"at\": [0, 0, 0]}}";
 
-  private static SetupScene Build(
+  internal static SetupScene Build(
     string steps,
     Action<TestWorld>? afterLoad = null
   ) =>
@@ -405,6 +405,26 @@ public class SetupHoldTests
     "take takes one slot; the [first, last] range is for put."
   )]
   [InlineData("\"take\": {\"slot\": -1}", "slot -1 is negative.")]
+  [InlineData(
+    "\"put\": {\"slot\": 5, \"stack\": \"setuphold:slab\", \"count\": 1}",
+    "slot 5 is past the inventory's 2."
+  )]
+  [InlineData(
+    "\"put\": {\"slot\": [0, 5], \"stack\": \"setuphold:slab\", \"count\": 1}",
+    "slot 2 is past the inventory's 2."
+  )]
+  [InlineData("\"take\": {\"slot\": 5}", "slot 5 is past the inventory's 2.")]
+  [InlineData("\"put\": {\"slot\": 0}", "needs its \"stack\" code.")]
+  [InlineData("\"open\": \"yes\"", "open is \"yes\", not true or false.")]
+  [InlineData("\"close\": 1", "close is 1, not true or false.")]
+  [InlineData(
+    "\"put\": {\"slot\": 3000000000, \"stack\": \"setuphold:slab\", \"count\": 1}",
+    "3000000000 is out of range."
+  )]
+  [InlineData(
+    "\"put\": {\"slot\": 0, \"stack\": \"setuphold:slab\", \"count\": \"two\"}",
+    "\"two\" is not a whole number."
+  )]
   public void A_window_body_the_window_cannot_send_fails_the_step(
     string body,
     string reason

@@ -95,6 +95,44 @@ public class SetupFileModelTests {
     Assert.Contains("second 60", message);
   }
 
+  // Fails when a variant's shorter seconds leaves an inherited action at or past its end.
+  [Fact]
+  public void A_variant_shorter_than_an_inherited_action_is_refused_naming_both() {
+    const string during =
+      """{ "during": [{ "at": 60, "step": { "wait": { "seconds": 1 } } }], "variants": { "short": { "seconds": SECONDS } } }""";
+
+    Assert.Equal(
+      (int?)61,
+      Load(during.Replace("SECONDS", "61")).Variants.Single().Seconds
+    );
+    string message = Refused(during.Replace("SECONDS", "60"));
+    Assert.Contains("variants.short.seconds", message);
+    Assert.Contains("during[0].at, second 60", message);
+  }
+
+  // Fails when a variant's shorter seconds leaves an inherited every or when action starting at or
+  // past its end.
+  [Fact]
+  public void A_variant_shorter_than_an_inherited_from_is_refused_naming_it() {
+    string message = Refused(
+      """{ "during": [{ "every": 5, "from": 70, "step": { "wait": { "seconds": 1 } } }], "variants": { "short": { "seconds": 50 } } }"""
+    );
+
+    Assert.Contains("variants.short.seconds", message);
+    Assert.Contains("during[0].from, second 70", message);
+  }
+
+  // Fails when an every action starting at or past the run's seconds loads.
+  [Fact]
+  public void An_every_action_starting_at_or_past_the_runs_seconds_is_refused_naming_it() {
+    string message = Refused(
+      """{ "during": [{ "every": 5, "from": 100, "step": { "wait": { "seconds": 1 } } }] }"""
+    );
+
+    Assert.Contains("during[0].from", message);
+    Assert.Contains("second 100", message);
+  }
+
   // Fails when a variant name holding a dot is refused, as the spec's water-gate-1.5 does.
   [Fact]
   public void A_variant_name_may_hold_a_dot() {

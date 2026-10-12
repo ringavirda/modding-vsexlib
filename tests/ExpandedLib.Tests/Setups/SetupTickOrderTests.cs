@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ExpandedLib.Testing;
+using Vintagestory.GameContent.Mechanics;
 using Xunit;
 
 namespace ExpandedLib.Tests.Setups;
@@ -162,6 +163,31 @@ public class SetupTickOrderTests
       Seconds(log, 5),
       s => Assert.Equal(["1", "3", "2", "0", "network"], s)
     );
+  }
+
+  private static long LineTicks(SetupScene scene) =>
+    scene.World.Mods.GetModSystem<MechanicalPowerMod>()!.getTickNumber();
+
+  // Fails when the mechanical power listener also fires with the one-second tick, whichever way the
+  // second is ordered: it takes 50 ticks of 20 ms a second and no more.
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public void The_mechanical_listener_ticks_fifty_times_a_second_and_not_with_the_second(
+    bool ordered
+  )
+  {
+    var log = new List<string>();
+    using SetupScene scene = Four(log);
+    if (ordered)
+      scene.Order(["a", "network"]);
+    long before = LineTicks(scene);
+
+    scene.Run(Mods);
+
+    int seconds = log.Count / 5;
+    Assert.True(seconds > 0);
+    Assert.Equal(50 * seconds, LineTicks(scene) - before);
   }
 
   // Fails when the network tick runs before the wrong machine: the one before it, the first of the

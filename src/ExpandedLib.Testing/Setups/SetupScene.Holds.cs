@@ -100,6 +100,17 @@ public sealed partial class SetupScene
   {
     BlockEntity entity = EntityAt(step, out _);
     TestWindow window = Player.Window(entity);
+    void Within(int slot)
+    {
+      if (
+        entity is IBlockEntityContainer { Inventory: { } inventory }
+        && slot >= inventory.Count
+      )
+        throw Fail(
+          step.Path,
+          $"slot {slot} is past the inventory's {inventory.Count}."
+        );
+    }
     void Verb(Action verb)
     {
       try
@@ -112,19 +123,21 @@ public sealed partial class SetupScene
       }
     }
 
-    if ((bool?)step.Body["open"] == true)
+    if (FlagOf(step, "open"))
       Verb(window.Open);
     if (step.Body["put"] is JObject put)
-      foreach (
-        int slot in SlotsOf(
-          put["slot"] ?? throw Fail(step.Path, "put needs a slot."),
-          step.Path
-        )
-      )
+    {
+      List<int> slots = SlotsOf(
+        put["slot"] ?? throw Fail(step.Path, "put needs a slot."),
+        step.Path
+      );
+      slots.ForEach(Within);
+      foreach (int slot in slots)
       {
         Player.Hold(StackOf(put, step.Path));
         Verb(() => window.Put(slot));
       }
+    }
     if (step.Body["take"] is JObject take)
     {
       JToken takeSlot =
@@ -135,6 +148,7 @@ public sealed partial class SetupScene
           "take takes one slot; the [first, last] range is for put."
         );
       int index = SlotOf(takeSlot, step.Path);
+      Within(index);
       if (!Player.ActiveSlot.Empty)
       {
         ItemStack held = Player.ActiveSlot.Itemstack!;
@@ -161,9 +175,20 @@ public sealed partial class SetupScene
         : null;
       Verb(() => window.Press(id, data));
     }
-    if ((bool?)step.Body["close"] == true)
+    if (FlagOf(step, "close"))
       Verb(window.Close);
   }
+
+  private bool FlagOf(SetupStep step, string key) =>
+    step.Body[key] switch
+    {
+      null => false,
+      { Type: JTokenType.Boolean } flag => (bool)flag,
+      { } other => throw Fail(
+        step.Path,
+        $"{key} is {other.ToString(Formatting.None)}, not true or false."
+      ),
+    };
 
   private void TickSecond()
   {
@@ -204,13 +229,22 @@ public sealed partial class SetupScene
     return index < 0 ? throw Fail(where, $"slot {index} is negative.") : index;
   }
 
-  private int WholeOf(JToken value, string where) =>
-    value.Type == JTokenType.Integer
-      ? (int)value
-      : throw Fail(
+  private int WholeOf(JToken value, string where)
+  {
+    if (value.Type != JTokenType.Integer)
+      throw Fail(
         where,
         $"{value.ToString(Formatting.None)} is not a whole number."
       );
+    return
+      value is JValue { Value: int or long }
+      && (long)value is >= int.MinValue and <= int.MaxValue
+      ? (int)value
+      : throw Fail(
+        where,
+        $"{value.ToString(Formatting.None)} is out of range."
+      );
+  }
 
   private byte[] BytesOf(JArray values, string where) =>
     values

@@ -499,17 +499,17 @@ public class SetupLayoutTests {
     Assert.Contains(reason, message);
   }
 
-  // Fails when a run code that is not a straight pipe is accepted without a family.
+  // Fails when a run code that is not a straight pipe is given a family at load, which only a loaded
+  // blocktype can name.
   [Fact]
-  public void A_run_entry_that_is_no_straight_pipe_needs_its_family() {
-    string message = Refused(
+  public void A_run_entry_that_is_no_straight_pipe_keeps_a_null_family() {
+    SetupLayout layout = Load(
       """
       { legend: { "p": { run: "r", code: "x:pipe-fluidintake-w" } }, layers: { "0": ["p"] } }
       """
     );
 
-    Assert.Contains("layout.legend.p", message);
-    Assert.Contains("needs \"family\"", message);
+    Assert.Null(layout.Runs[0].Entries[0].Family);
   }
 
   // Fails when an entry that is none of the five kinds, or two of them, is accepted.

@@ -32,13 +32,18 @@ public sealed partial class SetupScene
 
   private ItemStack StackOf(JToken body, string where)
   {
-    string code = (string)body["stack"]!;
+    string code =
+      (string?)body["stack"]
+      ?? throw Fail(where, "a stack needs its \"stack\" code.");
     var location = new AssetLocation(code);
     CollectibleObject collectible =
       (CollectibleObject?)World.World.GetItem(location)
       ?? World.World.GetBlock(location)
       ?? throw Fail(where, $"\"{code}\" is not registered by the load.");
-    var stack = new ItemStack(collectible, (int?)body["count"] ?? 1);
+    var stack = new ItemStack(
+      collectible,
+      body["count"] is { } count ? WholeOf(count, where) : 1
+    );
     if (body["temperature"] is { } temperature)
       stack.Collectible.SetTemperature(World.World, stack, (float)temperature);
     return stack;
