@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Vintagestory.API.Common;
@@ -207,17 +208,12 @@ internal sealed class ScenarioPlayer {
   ) {
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
     _data.FreeMove = false;
-    Vec3d stand = Stand(at);
-    MoveTo(stand);
     Vec3d hit = Hit(face);
-    Vec3d eye = stand.AddCopy(_data.EntityPlayer.LocalEyePos);
     Vec3i n = face.Normali;
-    (_data.EntityPlayer.ServerPos.Yaw, _data.EntityPlayer.ServerPos.Pitch) =
-      Look(
-        eye,
-        new Vec3d(at.X - n.X + hit.X, at.Y - n.Y + hit.Y, at.Z - n.Z + hit.Z)
-      );
-    _data.EntityPlayer.Pos.SetFrom(_data.EntityPlayer.ServerPos);
+    Aim(
+      at,
+      new Vec3d(at.X - n.X + hit.X, at.Y - n.Y + hit.Y, at.Z - n.Z + hit.Z)
+    );
     ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
     slot.Itemstack = new ItemStack(block);
     try {
@@ -254,6 +250,77 @@ internal sealed class ScenarioPlayer {
       slot.Itemstack = null;
       Park();
     }
+  }
+
+  /// <summary>Holds <paramref name="stack"/> in the active slot and <paramref name="keys"/>, stands the
+  /// player facing <paramref name="face"/> of the block at <paramref name="at"/>, and right-clicks it.</summary>
+  /// <param name="at">The absolute cell of the block used.</param>
+  /// <param name="face">The face the click lands on.</param>
+  /// <param name="stack">What the hand holds, or null for an empty hand.</param>
+  /// <param name="keys">Names read by <see cref="Hold"/>.</param>
+  /// <param name="selection">The selection the hold's later calls pass to the block.</param>
+  /// <returns>What <c>Block.OnBlockInteractStart</c> answered.</returns>
+  public bool UseStart(
+    BlockPos at,
+    BlockFacing face,
+    ItemStack? stack,
+    IReadOnlyList<string> keys,
+    out BlockSelection selection
+  ) {
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Creative;
+    _data.FreeMove = true;
+    Vec3d hit = Hit(face);
+    Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
+    Hold(Player.Entity.Controls, keys);
+    Player.InventoryManager.ActiveHotbarSlot.Itemstack = stack;
+    selection = new BlockSelection {
+      Position = at.Copy(),
+      Face = face,
+      HitPosition = hit,
+    };
+    return _server
+      .BlockAccessor.GetBlock(at)
+      .OnBlockInteractStart(_server, Player, selection);
+  }
+
+  /// <summary>One held tick of the interaction: <c>Block.OnBlockInteractStep</c> with the seconds held so far.</summary>
+  /// <returns>What the block answered; false when the block stops the hold.</returns>
+  public bool UseStep(BlockSelection selection, double secondsHeld) =>
+    _server
+      .BlockAccessor.GetBlock(selection.Position)
+      .OnBlockInteractStep((float)secondsHeld, _server, Player, selection);
+
+  /// <summary>Ends the interaction: <c>Block.OnBlockInteractStop</c>, then the did-use event.</summary>
+  /// <param name="secondsHeld">The seconds the hold has run.</param>
+  public void UseStop(BlockSelection selection, double secondsHeld) {
+    _server
+      .BlockAccessor.GetBlock(selection.Position)
+      .OnBlockInteractStop((float)secondsHeld, _server, Player, selection);
+    _server.EventManager.TriggerDidUseBlock(Player, selection);
+  }
+
+  /// <summary>What the active slot holds: the stack's code and size, or <c>empty hand</c>.</summary>
+  public string HandText() {
+    ItemStack? held = Player.InventoryManager.ActiveHotbarSlot.Itemstack;
+    return held == null
+      ? "empty hand"
+      : $"{held.Collectible.Code} x {held.StackSize}";
+  }
+
+  /// <summary>Empties the active slot, releases the keys and parks the player.</summary>
+  public void Release() {
+    Player.InventoryManager.ActiveHotbarSlot.Itemstack = null;
+    Hold(Player.Entity.Controls, []);
+    Park();
+  }
+
+  /// <summary>Sets the sneak, ctrl and sprint controls to the names in <paramref name="keys"/> and
+  /// clears the others.</summary>
+  /// <param name="keys">Any of <c>sneak</c>, <c>ctrl</c> and <c>sprint</c>.</param>
+  internal static void Hold(EntityControls controls, IReadOnlyList<string> keys) {
+    controls.Sneak = keys.Contains("sneak");
+    controls.CtrlKey = keys.Contains("ctrl");
+    controls.Sprint = keys.Contains("sprint");
   }
 
   /// <summary>Despawns the player and removes it from the server's player maps.</summary>
@@ -295,6 +362,15 @@ internal sealed class ScenarioPlayer {
     made.MoveTo(park);
     server.SpawnEntity(data.EntityPlayer);
     return made;
+  }
+
+  private void Aim(BlockPos at, Vec3d target) {
+    Vec3d stand = Stand(at);
+    MoveTo(stand);
+    Vec3d eye = stand.AddCopy(_data.EntityPlayer.LocalEyePos);
+    (_data.EntityPlayer.ServerPos.Yaw, _data.EntityPlayer.ServerPos.Pitch) =
+      Look(eye, target);
+    _data.EntityPlayer.Pos.SetFrom(_data.EntityPlayer.ServerPos);
   }
 
   private void MoveTo(BlockPos at) =>

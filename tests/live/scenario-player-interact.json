@@ -1,0 +1,11 @@
+{
+  "setup": "scenario-player-interact",
+  "description": "A held interact on a chest starts its container and runs for its seconds.",
+  "mods": [],
+  "steps": [
+    { "place": { "code": "game:chest-east", "at": [0, 0, 0] } },
+    { "interact": { "at": [0, 0, 0], "seconds": 1, "returns": true } }
+  ],
+  "seconds": 8,
+  "record": {}
+}
