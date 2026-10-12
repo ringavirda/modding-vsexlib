@@ -4,6 +4,7 @@ using System.IO;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 using Xunit;
 
 namespace ExpandedLib.Tests.Setups;
@@ -99,6 +100,42 @@ public class SetupEntityStepTests : IDisposable
       "game:charcoal",
       box.Inventory[1].Itemstack?.Collectible.Code.ToString()
     );
+  }
+
+  // Fails when a stack's content and litres are dropped, leaving the vessel empty.
+  [Fact]
+  public void A_stack_with_a_content_holds_those_litres()
+  {
+    using SetupScene scene = Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupbox\"], \"steps\": ["
+          + PlaceBox
+          + ", {\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"game:woodbucket\", \"content\": \"game:waterportion\", \"litres\": 7, \"slot\": 1}}"
+          + "], \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      )
+    );
+
+    ItemStack held = BoxOf(scene).Inventory[1].Itemstack!;
+    var vessel = (BlockLiquidContainerBase)held.Collectible;
+    Assert.Equal(7f, vessel.GetCurrentLitres(held), 2);
+    Assert.Equal(
+      "game:waterportion",
+      vessel.GetContent(held).Collectible.Code.ToString()
+    );
+  }
+
+  // Fails when a content on an item that is no liquid container is let through instead of failing.
+  [Fact]
+  public void A_content_on_a_stack_that_holds_no_liquid_fails_the_step()
+  {
+    string message = Refused(
+      "["
+        + PlaceBox
+        + ", {\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"game:charcoal\", \"content\": \"game:waterportion\", \"litres\": 1}}]"
+    );
+
+    Assert.Contains("is not a liquid container", message);
   }
 
   // Fails when a fill over a cell that is not air is let through instead of failing the step.
