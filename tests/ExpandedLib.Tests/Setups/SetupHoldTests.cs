@@ -180,7 +180,7 @@ public class SetupHoldTests
     Assert.Contains(reason, message);
   }
 
-  // Fails when an ignite does not hold the seconds it is given, or ticks no second.
+  // Fails when an ignite does not hold the seconds it is given, or does not tick the second it ends.
   [Fact]
   public void An_ignite_of_a_block_that_answers_ignite_now_holds_until_then()
   {
@@ -191,6 +191,7 @@ public class SetupHoldTests
     SetupHoldBlock lamp = BlockAt(scene, "lamp");
     Assert.Equal(15, lamp.Tries);
     Assert.Equal([1.5f], lamp.Overs);
+    Assert.Equal(1, EntityAt(scene, "lamp").Fires);
   }
 
   // Fails when a block that refuses the ignite is lit anyway.

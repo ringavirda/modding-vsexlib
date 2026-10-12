@@ -1,1 +1,1 @@
-{ "code": "lamp", "class": "SetupHoldBlock", "attributes": { "ignitesAt": 1.5 } }
+{ "code": "lamp", "class": "SetupHoldBlock", "entityClass": "SetupHoldEntity", "attributes": { "ignitesAt": 1.5 } }
