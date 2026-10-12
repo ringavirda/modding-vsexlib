@@ -16,8 +16,8 @@ using Vintagestory.GameContent.Mechanics;
 namespace ExpandedLib.Testing;
 
 /// <summary>A built scene as the <c>setup-scene/1</c> text the scene renderer reads: every
-/// non-air cell with its setup id, role, network key and line key, then the networks and
-/// lines.</summary>
+/// non-air cell with its setup id, role, principal, network and line keys, port and open faces,
+/// then the networks and lines.</summary>
 internal static class SetupSceneDump
 {
   private sealed record Cell(BlockPos At, Block Block, bool Fluid);
@@ -35,7 +35,7 @@ internal static class SetupSceneDump
     string? Line
   );
 
-  /// <summary>Writes <paramref name="scene"/> as <c>setup-scene/1</c>. Cells run by y, then z,
+  /// <summary>The <c>setup-scene/1</c> text of <paramref name="scene"/>. Cells run by y, then z,
   /// then x, a solid entry before a fluid one at the same cell. Network keys run A, B, ...
   /// Z, AA, AB, ... and line keys M1, M2, ..., each given in the order of the key's first
   /// cell.</summary>

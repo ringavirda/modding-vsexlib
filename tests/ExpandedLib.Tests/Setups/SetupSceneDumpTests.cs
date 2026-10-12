@@ -16,7 +16,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests.Setups;
 
-/// <summary>What <c>SetupSceneDump</c> writes for a built scene (setups.md, The dump).</summary>
+/// <summary>What <c>SetupSceneDump</c> writes for a built scene (setups.md, Scene dumps).</summary>
 [Collection("Setups")]
 public class SetupSceneDumpTests : IDisposable
 {
