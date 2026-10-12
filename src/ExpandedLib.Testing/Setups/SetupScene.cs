@@ -15,9 +15,8 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// A setup file built into a fresh world: its mods and the vanilla blocktypes its <c>game:</c> codes
-/// name loaded, its layout and its <c>place</c>, <c>complete</c>, <c>fill</c>, <c>insert</c>,
-/// <c>set</c> and <c>call</c> steps run, and the mechanical lines joined. Running, sampling and
-/// checking are not built yet.
+/// name loaded, its layout and its place, complete, fill, insert, set and call steps run, and the
+/// mechanical lines joined. Running, sampling and checking are not built yet.
 /// </summary>
 public sealed partial class SetupScene : IDisposable
 {
