@@ -100,7 +100,8 @@ public sealed partial class TestWorld {
     foreach (ListedMod mod in mods)
       MirrorAssets(mgr, Path.Combine(mod.Path, "assets", mod.Id), mod.Id);
     MirrorPatchedVanilla(mgr, survival, [.. mods.Select(m => m.Id)]);
-    MirrorVanillaTypes(mgr, survival, vanillaCodes);
+    var skips = new List<(string File, string Reason)>();
+    MirrorVanillaTypes(mgr.Add, survival, vanillaCodes, skips);
 
     // GamePaths.AssetsPath/Lang.Load are process-wide statics the object loader needs primed; safe
     // to set repeatedly.
@@ -140,6 +141,8 @@ public sealed partial class TestWorld {
       for (int i = started.Count - 1; i >= 0; i--)
         started[i].Dispose();
       LoadedSystems = started;
+      skips.AddRange(Log.Errors.Select(e => ("(object loader)", e)));
+      VanillaSkips = skips;
     }
     return this;
   }
@@ -235,6 +238,14 @@ public sealed partial class TestWorld {
   /// started, exlib's then each listed mod's, in start order; every one was disposed, the
   /// last-started first, before it returned.</summary>
   internal IReadOnlyList<ModSystem> LoadedSystems { get; private set; } = [];
+
+  /// <summary>The vanilla type files the last <see cref="LoadAssets(IReadOnlyList{string}, string)"/>
+  /// left out, each with the reason: a file that does not parse or has no <c>code</c>, and the object
+  /// loader's own errors, whose file is <c>(object loader)</c>.</summary>
+  internal IReadOnlyList<(string File, string Reason)> VanillaSkips {
+    get;
+    private set;
+  } = [];
 
   /// <summary>The full names of the install's vanilla mod systems whose <c>Start</c> threw against
   /// the last <see cref="LoadAssets(IReadOnlyList{string}, string)"/>'s class-registration API, in start order.</summary>
@@ -372,22 +383,40 @@ public sealed partial class TestWorld {
     }
   }
 
-  /// <summary>Adds to <paramref name="mgr"/> each survival blocktype and itemtype file whose
+  /// <summary>As the delegate overload, over the files of <c>blocktypes</c> and <c>itemtypes</c>
+  /// under <paramref name="originPath"/>, adding them nowhere.</summary>
+  /// <returns>The locations added.</returns>
+  internal static List<AssetLocation> MirrorVanillaTypes(
+    string originPath,
+    IReadOnlyCollection<string> codes,
+    List<(string File, string Reason)> skips
+  ) =>
+    MirrorVanillaTypes(
+      (_, _) => { },
+      new PathOrigin("game", originPath),
+      codes,
+      skips
+    );
+
+  /// <summary>Passes to <paramref name="add"/> each survival blocktype and itemtype file whose
   /// <c>code</c> can begin one of <paramref name="codes"/>: the code is the file's, or the file's
   /// followed by a <c>-</c>, or a wildcard's literal text before its first <c>*</c> and the file's
   /// code lead into one another. Which codes the file then defines is left to registration. A file
-  /// that does not parse is skipped.</summary>
-  private static void MirrorVanillaTypes(
-    AssetManager mgr,
+  /// that does not parse, or has no string <c>code</c>, is added to <paramref name="skips"/>.</summary>
+  /// <returns>The locations passed to <paramref name="add"/>.</returns>
+  internal static List<AssetLocation> MirrorVanillaTypes(
+    Action<AssetLocation, IAsset> add,
     IAssetOrigin survival,
-    IReadOnlyCollection<string> codes
+    IReadOnlyCollection<string> codes,
+    List<(string File, string Reason)> skips
   ) {
     string[] wanted =
     [
       .. codes.Select(c => c.StartsWith("game:") ? c[5..] : c),
     ];
+    List<AssetLocation> added = [];
     if (wanted.Length == 0)
-      return;
+      return added;
     foreach (
       AssetCategory category in (AssetCategory[])
         [AssetCategory.blocktypes, AssetCategory.itemtypes]
@@ -396,15 +425,20 @@ public sealed partial class TestWorld {
         JObject file;
         try {
           file = JObject.Parse(asset.ToText());
-        } catch (JsonException) {
+        } catch (JsonException e) {
+          skips.Add((asset.Location.ToString(), e.Message));
           continue;
         }
-        if (
-          file["code"] is JValue { Value: string code }
-          && wanted.Any(w => MayDefine(code, w))
-        )
-          mgr.Add(asset.Location, asset);
+        if (file["code"] is not JValue { Value: string code }) {
+          skips.Add((asset.Location.ToString(), "no code"));
+          continue;
+        }
+        if (wanted.Any(w => MayDefine(code, w))) {
+          add(asset.Location, asset);
+          added.Add(asset.Location);
+        }
       }
+    return added;
   }
 
   private static bool MayDefine(string code, string wanted) {
