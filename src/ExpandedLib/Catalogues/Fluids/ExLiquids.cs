@@ -17,6 +17,8 @@ public static class ExLiquids {
     "ExLiquids"
   );
 
+  private const string BuiltInOwner = "exlib";
+
   static ExLiquids() => SeedDefaults();
 
   /// <summary>The medium policy the pipe network consults (over the current registry contents).</summary>
@@ -56,39 +58,44 @@ public static class ExLiquids {
     Contributors.Clear();
   }
 
-  /// <summary>Registers the four built-in media. Idempotent.</summary>
+  /// <summary>Registers the four built-in media, owned by <c>exlib</c>, so a later registrant
+  /// replacing one logs a Warning. Idempotent.</summary>
   public static void SeedDefaults() {
-    _defs.Update(
+    _defs.Register(
       new LiquidDef {
         Code = "Air",
         Phase = LiquidPhase.Gas,
         Priority = 0,
-      }
+      },
+      BuiltInOwner
     );
-    _defs.Update(
+    _defs.Register(
       new LiquidDef {
         Code = "Steam",
         Phase = LiquidPhase.Gas,
         Priority = 10,
         CondensesTo = "Water",
         CondenseBelowC = 100f,
-      }
+      },
+      BuiltInOwner
     );
-    _defs.Update(
+    _defs.Register(
       new LiquidDef {
         Code = "Exhaust",
         Phase = LiquidPhase.Gas,
         Priority = 20,
-      }
+      },
+      BuiltInOwner
     );
-    _defs.Update(
+    _defs.Register(
       new LiquidDef {
         Code = "Water",
         Phase = LiquidPhase.Liquid,
         Priority = 0,
         VaporisesTo = "Steam",
         BoilPointC = 100f,
-      }
+      },
+      BuiltInOwner
     );
   }
 

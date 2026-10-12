@@ -3,11 +3,16 @@ using System.Linq;
 using ExpandedLib.Blocks;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Config;
+using ExpandedLib.Helpers;
+using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Industry.Metals;
 using ExpandedLib.Industry.Pipes;
+using ExpandedLib.Networks;
 using ExpandedLib.Registries;
+using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -192,6 +197,198 @@ public class RegistrationWarningTests : RegistryLogFixture {
     Assert.Contains(nameof(ConfigB), warning);
     ExConfigProfiles.ResetForWorld();
   }
+
+  private static BlockNetwork Net(BlockNetworkModSystem networks) =>
+    new MpEnergyNetwork(networks);
+
+  [Fact]
+  public void BlockNetworkModSystem_names_both_owners_of_a_type_taken_twice() {
+    Log.Expect(EnumLogType.Warning, "");
+    var networks = new BlockNetworkModSystem();
+    networks.RegisterNetworkType("plantednet", () => Net(networks), "modone");
+    bool replaced = networks.RegisterNetworkType(
+      "plantednet",
+      () => Net(networks),
+      "modtwo"
+    );
+
+    string warning = Only("BlockNetworkModSystem");
+    Assert.Contains("'plantednet'", warning);
+    Assert.Contains("modone", warning);
+    Assert.Contains("modtwo", warning);
+    Assert.True(replaced);
+  }
+
+  [Fact]
+  public void BlockNetworkModSystem_is_silent_for_one_owner_twice() {
+    var networks = new BlockNetworkModSystem();
+    networks.RegisterNetworkType("plantednet", () => Net(networks), "modone");
+    networks.RegisterNetworkType("plantednet", () => Net(networks), "modone");
+
+    None("BlockNetworkModSystem");
+  }
+
+  [Fact]
+  public void BlockNetworkModSystem_public_register_names_the_calling_assembly() {
+    Log.Expect(EnumLogType.Warning, "");
+    var networks = new BlockNetworkModSystem();
+    networks.RegisterNetworkType("plantednet", () => Net(networks), "modone");
+    networks.RegisterNetworkType("plantednet", () => Net(networks));
+
+    string warning = Only("BlockNetworkModSystem");
+    Assert.Contains("modone", warning);
+    Assert.Contains("ExpandedLib.Tests", warning);
+  }
+
+  // Fails when ReplaceNetworkType does not store the factory, or does not hand the type's owner to
+  // the replacing assembly.
+  [Fact]
+  public void BlockNetworkModSystem_replace_call_is_silent_and_wins() {
+    Log.Expect(EnumLogType.Warning, "");
+    var world = new TestWorld();
+    var networks = world.Networks;
+    bool replacementUsed = false;
+    networks.RegisterNetworkType(
+      "plantednet",
+      () => new StubNetwork(networks),
+      "modone"
+    );
+    bool replaced = networks.ReplaceNetworkType(
+      "plantednet",
+      () => {
+        replacementUsed = true;
+        return new StubNetwork(networks);
+      }
+    );
+
+    None("BlockNetworkModSystem");
+    Assert.True(replaced);
+    Assert.False(
+      networks.ReplaceNetworkType(
+        "plantednet2",
+        () => new StubNetwork(networks)
+      )
+    );
+    world.PlaceNode(new BlockPos(1, 1, 1), "plantednet", "we");
+    Assert.True(replacementUsed);
+
+    networks.RegisterNetworkType("plantednet", () => new StubNetwork(networks));
+    None("BlockNetworkModSystem");
+    networks.RegisterNetworkType(
+      "plantednet",
+      () => new StubNetwork(networks),
+      "modthree"
+    );
+    string warning = Only("BlockNetworkModSystem");
+    Assert.Contains("registered by ExpandedLib.Tests", warning);
+    Assert.Contains("modthree", warning);
+  }
+
+  // Fails when the harness registers under its own assembly's name instead of the caller's.
+  [Fact]
+  public void TestWorld_and_Scene_register_networks_under_the_calling_assembly() {
+    Log.Expect(EnumLogType.Warning, "");
+    var world = new TestWorld();
+    world.RegisterNetwork("plantednet", sys => new StubNetwork(sys));
+    world.Networks.RegisterNetworkType(
+      "plantednet",
+      () => new StubNetwork(world.Networks),
+      "modone"
+    );
+    Assert.Contains(
+      "registered by ExpandedLib.Tests",
+      Only("BlockNetworkModSystem")
+    );
+
+    var scene = new Scene();
+    scene.Network("plantednet2", sys => new StubNetwork(sys));
+    scene.World.Networks.RegisterNetworkType(
+      "plantednet2",
+      () => new StubNetwork(scene.World.Networks),
+      "modone"
+    );
+    Assert.Contains(
+      Log.Warnings,
+      w =>
+        w.Contains("'plantednet2'")
+        && w.Contains("registered by ExpandedLib.Tests")
+    );
+  }
+
+  [Fact]
+  public void ExBlockNames_names_both_owners_of_a_group_taken_twice() {
+    Log.Expect(EnumLogType.Warning, "");
+    try {
+      ExBlockNames.AddVariantQualifier("plantedgroup", "a:", "modone");
+      ExBlockNames.AddVariantQualifier("plantedgroup", "b:", "modtwo");
+
+      string warning = Only("ExBlockNames");
+      Assert.Contains("'plantedgroup'", warning);
+      Assert.Contains("modone", warning);
+      Assert.Contains("modtwo", warning);
+    } finally {
+      ExBlockNames.RemoveVariantQualifier("plantedgroup");
+    }
+  }
+
+  [Fact]
+  public void ExBlockNames_is_silent_for_one_owner_twice() {
+    try {
+      ExBlockNames.AddVariantQualifier("plantedgroup", "a:", "modone");
+      ExBlockNames.AddVariantQualifier("plantedgroup", "b:", "modone");
+
+      None("ExBlockNames");
+    } finally {
+      ExBlockNames.RemoveVariantQualifier("plantedgroup");
+    }
+  }
+
+  // Fails when the public AddVariantQualifier registers under a constant owner instead of the
+  // calling assembly.
+  [Fact]
+  public void ExBlockNames_public_add_names_the_calling_assembly() {
+    Log.Expect(EnumLogType.Warning, "");
+    try {
+      ExBlockNames.AddVariantQualifier("plantedgroup3", "a:", "modone");
+      ExBlockNames.AddVariantQualifier("plantedgroup3", "b:");
+
+      string warning = Only("ExBlockNames");
+      Assert.Contains("modone", warning);
+      Assert.Contains("ExpandedLib.Tests", warning);
+    } finally {
+      ExBlockNames.RemoveVariantQualifier("plantedgroup3");
+    }
+  }
+
+  [Fact]
+  public void CellRole_names_both_owners_of_a_key_declared_twice() {
+    Log.Expect(EnumLogType.Warning, "");
+    CellRole.Of("plantedrole", false, "modone");
+    CellRole.Of("plantedrole", true, "modtwo");
+
+    string warning = Only("CellRole");
+    Assert.Contains("'plantedrole'", warning);
+    Assert.Contains("modone", warning);
+    Assert.Contains("modtwo", warning);
+    Assert.True(new CellRole("plantedrole").IsSingle);
+  }
+
+  [Fact]
+  public void CellRole_is_silent_for_one_owner_twice() {
+    CellRole.Of("plantedrole2", false, "modone");
+    CellRole.Of("plantedrole2", true, "modone");
+
+    None("CellRole");
+  }
+
+  [Fact]
+  public void CellRole_public_of_names_the_calling_assembly() {
+    Log.Expect(EnumLogType.Warning, "");
+    CellRole.Of("plantedrole3", false, "modone");
+    CellRole.Of("plantedrole3");
+
+    Assert.Contains("ExpandedLib.Tests", Only("CellRole"));
+  }
 }
 
 /// <summary><see cref="ExLiquids"/> warns when a code is taken twice.</summary>
@@ -222,9 +419,23 @@ public class LiquidRegistrationWarningTests : RegistryLogFixture {
     Assert.Contains("modtwo/config/liquids.json", warning);
   }
 
+  // Fails when the built-in media are seeded without the exlib owner.
   [Fact]
-  public void ExLiquids_is_silent_when_an_overlay_redefines_a_built_in() {
-    ExLiquids.Register(Steam(90f), "modone/config/liquids.json");
+  public void ExLiquids_warns_naming_exlib_when_an_overlay_redefines_a_built_in() {
+    Log.Expect(EnumLogType.Warning, "");
+    ExLiquids.Register(Steam(90f), "modone");
+
+    string warning = Only("ExLiquids");
+    Assert.Contains("'Steam'", warning);
+    Assert.Contains("registered by exlib", warning);
+    Assert.Contains("modone", warning);
+  }
+
+  // Fails when SeedDefaults registers with a different owner on each call.
+  [Fact]
+  public void ExLiquids_is_silent_when_exlib_reseeds_its_built_ins() {
+    ExLiquids.SeedDefaults();
+    ExLiquids.SeedDefaults();
 
     None("ExLiquids");
   }
@@ -335,8 +546,10 @@ public class MetalRegistrationWarningTests : RegistryLogFixture {
     None("MetalRegistry");
   }
 
+  // Fails when the baseline metals are registered without the exlib owner, or the overlay owner is
+  // taken from the path instead of the domain.
   [Fact]
-  public void MetalCatalogueLoader_overlay_over_the_baseline_is_silent_and_over_an_overlay_warns() {
+  public void MetalCatalogueLoader_overlay_over_the_baseline_names_exlib_and_over_an_overlay_names_the_first_overlay() {
     Log.Expect(EnumLogType.Warning, "");
     MetalCatalogueLoader.Populate(
       ["iron"],
@@ -355,12 +568,51 @@ public class MetalRegistrationWarningTests : RegistryLogFixture {
         },
       ],
       null,
-      ["modone/config/metals/a.json", "modtwo/config/metals/a.json"]
+      ["modone:config/metals/a.json", "modtwo:config/metals/a.json"]
     );
 
-    string warning = Only("MetalRegistry codes");
-    Assert.Contains("modone/config/metals/a.json", warning);
-    Assert.Contains("modtwo/config/metals/a.json", warning);
+    string[] warnings =
+    [
+      .. Log.Warnings.Where(w => w.Contains("MetalRegistry codes")),
+    ];
+    Assert.Equal(2, warnings.Length);
+    Assert.Contains("registered by exlib", warnings[0]);
+    Assert.Contains("modone", warnings[0]);
+    Assert.Contains("registered by modone", warnings[1]);
+    Assert.Contains("modtwo", warnings[1]);
+  }
+
+  // Fails when the overlay owner is taken from the path instead of the domain.
+  [Fact]
+  public void MetalCatalogueLoader_exlib_overlay_over_the_baseline_is_silent() {
+    MetalCatalogueLoader.Populate(
+      ["iron"],
+      [
+        new MetalDef
+        {
+          Code = "iron",
+          MoltenItem = "game:ingot-iron",
+          GlowMinTemp = 500f,
+        },
+      ],
+      null,
+      ["exlib:config/metals/iron.json"]
+    );
+
+    None("MetalRegistry");
+    Assert.Equal(
+      500f,
+      MetalRegistry.GlowMinTempOf(new AssetLocation("game:ingot-iron"))
+    );
+  }
+
+  [Fact]
+  public void MetalRegistry_is_silent_when_exlib_registers_a_baseline_metal_again() {
+    var def = new MetalDef { Code = "iron", MoltenItem = "game:ingot-iron" };
+    MetalRegistry.RegisterBaseline(def);
+    MetalRegistry.RegisterBaseline(def);
+
+    None("MetalRegistry");
   }
 
   [Fact]

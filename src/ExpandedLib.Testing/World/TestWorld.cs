@@ -202,12 +202,28 @@ public sealed partial class TestWorld : IDisposable {
 
   #region Setup
 
-  /// <summary>Registers a typed-network factory, exactly as a mod would in <c>ModSystem.Start</c>.</summary>
+  /// <summary>Registers a typed-network factory, exactly as a mod would in <c>ModSystem.Start</c>;
+  /// the calling assembly is the type's owner.</summary>
+  [System.Runtime.CompilerServices.MethodImpl(
+    System.Runtime.CompilerServices.MethodImplOptions.NoInlining
+  )]
   public TestWorld RegisterNetwork(
     string networkType,
     System.Func<BlockNetworkModSystem, BlockNetwork> factory
+  ) =>
+    RegisterNetwork(
+      networkType,
+      factory,
+      System.Reflection.Assembly.GetCallingAssembly().GetName().Name
+        ?? "unknown assembly"
+    );
+
+  internal TestWorld RegisterNetwork(
+    string networkType,
+    System.Func<BlockNetworkModSystem, BlockNetwork> factory,
+    string owner
   ) {
-    Networks.RegisterNetworkType(networkType, () => factory(Networks));
+    Networks.RegisterNetworkType(networkType, () => factory(Networks), owner);
     return this;
   }
 

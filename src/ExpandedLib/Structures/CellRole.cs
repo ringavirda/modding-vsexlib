@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using ExpandedLib.Registries;
 
 namespace ExpandedLib.Structures;
 
@@ -8,21 +11,39 @@ namespace ExpandedLib.Structures;
 /// by the mod that owns the machine; equality and hashing are by <see cref="Key"/> alone.
 /// </summary>
 public readonly record struct CellRole(string Key) {
-  // Whether each key was last minted single-cell. A conflicting later declaration simply wins.
+  // Whether each key was last minted single-cell, and the assembly that declared it. A conflicting later declaration wins.
   private static readonly Dictionary<string, bool> _single = new(
     StringComparer.Ordinal
   );
+  private static readonly Dictionary<string, string> _owners = new(
+    StringComparer.Ordinal
+  );
 
-  /// <summary>Declares the role named <paramref name="key"/>, single-cell when <paramref name="single"/> is true. A caller that only looks up an existing role uses <c>new CellRole(key)</c> instead.</summary>
+  /// <summary>Declares the role named <paramref name="key"/>, single-cell when <paramref name="single"/> is true. A caller that only looks up an existing role uses <c>new CellRole(key)</c> instead.
+  /// A key declared by another assembly is taken over with a Warning naming both; its own assembly may declare it again silently.</summary>
   /// <exception cref="ArgumentException"><paramref name="key"/> is null, empty or all whitespace.</exception>
-  public static CellRole Of(string key, bool single = false) {
+  [MethodImpl(MethodImplOptions.NoInlining)]
+  public static CellRole Of(string key, bool single = false) =>
+    Of(
+      key,
+      single,
+      Assembly.GetCallingAssembly().GetName().Name ?? "unknown assembly"
+    );
+
+  internal static CellRole Of(string key, bool single, string owner) {
     if (string.IsNullOrWhiteSpace(key))
       throw new ArgumentException(
         "A cell role key cannot be blank.",
         nameof(key)
       );
-    lock (_single)
+    string? previous;
+    lock (_single) {
       _single[key] = single;
+      _owners.TryGetValue(key, out previous);
+      _owners[key] = owner;
+    }
+    if (previous != null && previous != owner)
+      RegistryLog.Replaced("CellRole", key, previous, owner);
     return new CellRole(key);
   }
 

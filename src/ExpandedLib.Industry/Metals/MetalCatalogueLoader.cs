@@ -31,8 +31,9 @@ public static class MetalCatalogueLoader {
 
   /// <summary>The two passes over already-read inputs: a convention baseline, then the
   /// <paramref name="overlays"/>. The caller must clear the registry first.</summary>
-  /// <param name="sources">One source location per entry of <paramref name="overlays"/>, same index.
-  /// Null reads as "unknown source".</param>
+  /// <param name="sources">One source location (<c>domain:path</c>) per entry of
+  /// <paramref name="overlays"/>, same index; its domain owns the entry, and an overlay replacing a
+  /// baseline metal or another mod's logs a Warning. Null reads as "unknown source".</param>
   /// <returns>How many of <paramref name="overlays"/> were registered.</returns>
   internal static int Populate(
     IEnumerable<string> baselineCodes,
@@ -75,7 +76,9 @@ public static class MetalCatalogueLoader {
       }
       MetalRegistry.Register(
         def,
-        sources != null && i < sources.Count ? sources[i] : "unknown source"
+        AssetCatalogueLoader.OwnerOf(
+          sources != null && i < sources.Count ? sources[i] : "unknown source"
+        )
       );
       registered++;
     }
