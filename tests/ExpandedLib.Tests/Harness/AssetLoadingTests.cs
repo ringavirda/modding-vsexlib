@@ -283,25 +283,16 @@ public class AssetLoadingTests
   }
 
   // Fails when a vanilla load leaves the thread pool without a logger, so a worker that throws
-  // ends the test host instead of being logged.
+  // ends the test host instead of being logged. The pool is process-wide and other classes load
+  // vanilla in parallel, so the test never clears its logger.
   [Fact]
   public void A_vanilla_load_gives_the_thread_pool_a_logger()
   {
-    var pool = TyronThreadPool.Inst;
-    var was = pool.Logger;
-    pool.Logger = null;
-    try
-    {
-      using var world = new TestWorld();
+    using var world = new TestWorld();
 
-      world.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "BurdenMaker"));
+    world.LoadAssets(Path.Combine(RepoPaths.Root, "samples", "BurdenMaker"));
 
-      Assert.NotNull(pool.Logger);
-    }
-    finally
-    {
-      pool.Logger = was;
-    }
+    Assert.NotNull(TyronThreadPool.Inst.Logger);
   }
 }
 #endif
