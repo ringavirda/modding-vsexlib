@@ -2,6 +2,7 @@ using System.Linq;
 using ExpandedLib.Testing.Live;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.GameContent;
 using Xunit;
 
 namespace ExpandedLib.Tests.Scenarios.Live;
@@ -55,5 +56,83 @@ public class ScenarioPlayerVerbTests {
       .Model.Steps;
     var e = Assert.Throws<StepFailure>(() => fixture.Run(steps));
     Assert.Equal("\"interact\" needs the scenario player.", e.Message);
+  }
+
+  /// <summary>Fails when a range runs short of its last slot (S35), a backward range passes (S36), or an
+  /// index reads as the next slot (S37).</summary>
+  [Fact]
+  public void A_window_slot_is_an_index_or_its_inclusive_range() {
+    Assert.Equal(new[] { 3 }, WindowStep.Slots(JToken.Parse("3")));
+    Assert.Equal(new[] { 2, 3, 4 }, WindowStep.Slots(JToken.Parse("[2,4]")));
+    var e = Assert.Throws<StepFailure>(() =>
+      WindowStep.Slots(JToken.Parse("[4,2]"))
+    );
+    Assert.Equal("the slot range [4, 2] runs backward.", e.Message);
+  }
+
+  /// <summary>Fails when a value past 255 is sent as a byte (S38).</summary>
+  [Fact]
+  public void Press_data_is_bytes_from_0_to_255() {
+    Assert.Equal(
+      new byte[] { 0, 255 },
+      WindowStep.Data(JArray.Parse("[0,255]"))
+    );
+    Assert.Throws<StepFailure>(() => WindowStep.Data(JArray.Parse("[256]")));
+  }
+
+  /// <summary>Fails when the open, close or a slot packet is taken for a button (S39).</summary>
+  [Fact]
+  public void A_button_packet_is_above_the_close_packet() {
+    Assert.Equal(1002, WindowStep.ButtonId(1002));
+    var e = Assert.Throws<StepFailure>(() => WindowStep.ButtonId(1001));
+    Assert.Equal("press 1001: a button's packet id is above 1001.", e.Message);
+  }
+
+  /// <summary>Fails when a window runs without the scenario player (S40).</summary>
+  [Fact]
+  public void A_window_without_the_scenario_player_fails_the_step() {
+    var fixture = new LiveFixture();
+    var steps = LiveFixture
+      .Case("""[{ window: { at: [0,0,0], open: true } }]""")
+      .Model.Steps;
+    var e = Assert.Throws<StepFailure>(() => fixture.Run(steps));
+    Assert.Equal("\"window\" needs the scenario player.", e.Message);
+  }
+
+  /// <summary>Fails when a lit answer reads as waiting (S32), a refused answer for a block that does not
+  /// prevent the default reads as waiting (S33), or a hold at its own length keeps waiting (S34).</summary>
+  [Fact]
+  public void An_ignition_answer_reads_lit_refused_timed_out_or_waiting() {
+    Assert.Equal(
+      IgniteStep.IgniteVerdict.Lit,
+      IgniteStep.Verdict(EnumIgniteState.IgniteNow, 0.1, 5)
+    );
+    Assert.Equal(
+      IgniteStep.IgniteVerdict.Wait,
+      IgniteStep.Verdict(EnumIgniteState.Ignitable, 3.9, 5)
+    );
+    Assert.Equal(
+      IgniteStep.IgniteVerdict.TimedOut,
+      IgniteStep.Verdict(EnumIgniteState.Ignitable, 5, 5)
+    );
+    Assert.Equal(
+      IgniteStep.IgniteVerdict.Refused,
+      IgniteStep.Verdict(EnumIgniteState.NotIgnitable, 0, 5)
+    );
+    Assert.Equal(
+      IgniteStep.IgniteVerdict.Refused,
+      IgniteStep.Verdict(EnumIgniteState.NotIgnitablePreventDefault, 0, 5)
+    );
+  }
+
+  /// <summary>Fails when an ignition runs without the scenario player (S41).</summary>
+  [Fact]
+  public void An_ignite_without_the_scenario_player_fails_the_step() {
+    var fixture = new LiveFixture();
+    var steps = LiveFixture
+      .Case("""[{ ignite: { at: [0,0,0] } }]""")
+      .Model.Steps;
+    var e = Assert.Throws<StepFailure>(() => fixture.Run(steps));
+    Assert.Equal("\"ignite\" needs the scenario player.", e.Message);
   }
 }
