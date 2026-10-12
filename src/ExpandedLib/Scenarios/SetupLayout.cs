@@ -66,6 +66,11 @@ internal sealed class SetupLayout {
     RegexOptions.CultureInvariant
   );
 
+  private static readonly Regex PipeStraightTier = new(
+    "^(?<domain>[^:]+):pipe-(?<tier>[a-z]+)-straight-[neswud]+$",
+    RegexOptions.CultureInvariant
+  );
+
   private static readonly string[] Shapes =
   [
     "straight",
@@ -428,7 +433,8 @@ internal sealed class SetupLayout {
   }
 
   /// <summary>The wildcards of the codes a run's shapes come from: <paramref name="family"/> as
-  /// written, or for a straight pipe code the four shapes of its material.</summary>
+  /// written, or for a straight pipe code (<c>pipe-straight-&lt;faces&gt;-&lt;material&gt;</c> or
+  /// <c>pipe-&lt;tier&gt;-straight-&lt;faces&gt;</c>) its four shapes.</summary>
   /// <param name="code">The run's straight segment.</param>
   /// <param name="family">The <c>family</c> key, a string or an array, or null.</param>
   /// <param name="where">The entry or step the key belongs to.</param>
@@ -440,6 +446,14 @@ internal sealed class SetupLayout {
     SetupJson.Where where
   ) {
     if (family == null) {
+      Match t = PipeStraightTier.Match(code);
+      if (t.Success)
+        return
+        [
+          .. Shapes.Select(s =>
+            $"{t.Groups["domain"].Value}:pipe-{t.Groups["tier"].Value}-{s}-*"
+          ),
+        ];
       Match m = PipeStraight.Match(code);
       if (!m.Success)
         return null;
