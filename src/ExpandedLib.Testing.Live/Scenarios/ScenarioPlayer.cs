@@ -283,7 +283,6 @@ internal sealed class ScenarioPlayer {
       .Code;
     data.EntityPlayer.WatchedAttributes.SetString("playerUID", Uid);
     var player = new ServerPlayer(server, data);
-    player.serverdata.RoleCode = "admin";
     server.PlayerDataManager.WorldDataByUID[Uid] = data;
     server.PlayersByUid[Uid] = player;
     object join = ((Array)systems.GetValue(server)!)
