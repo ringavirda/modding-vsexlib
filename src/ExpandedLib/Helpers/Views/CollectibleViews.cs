@@ -172,7 +172,6 @@ internal static class CollectibleViews {
     }
   }
 
-  // The element's rotation about its own rotationOrigin, as the shape's parent chain composes it.
   private static Pose Local(ShapeElement el) {
     double[,] r = Rotation(new Vec3d(el.RotationX, el.RotationY, el.RotationZ));
     Vec3d origin = Vec(el.RotationOrigin);
@@ -247,7 +246,6 @@ internal static class CollectibleViews {
     return true;
   }
 
-  // The point's coordinates on the frame's axes, which are the frame's columns.
   private static Vec3d Project(double[,] frame, Vec3d p) =>
     new(
       frame[0, 0] * p.X + frame[1, 0] * p.Y + frame[2, 0] * p.Z,
@@ -326,16 +324,14 @@ internal static class CollectibleViews {
     internal static Pose Identity =>
       new(CollectibleViews.Identity, new Vec3d());
 
-    // The turn of a composite shape about the block centre.
-    internal static Pose Turn(Vec3d degrees) {
+      internal static Pose Turn(Vec3d degrees) {
       double[,] r = Rotation(degrees);
       return new Pose(r, Centre - Mul(r, Centre));
     }
 
     internal Vec3d Apply(Vec3d p) => Mul(R, p) + T;
 
-    // This map applied after child's: the world pose of a child element.
-    internal Pose Then(Pose child) => new(Mul(R, child.R), Apply(child.T));
+      internal Pose Then(Pose child) => new(Mul(R, child.R), Apply(child.T));
   }
 
   private readonly record struct Element(Vec3d[] Corners, double[,] Frame);
