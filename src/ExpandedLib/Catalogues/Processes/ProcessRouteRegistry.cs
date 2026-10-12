@@ -23,7 +23,11 @@ public sealed class ProcessRouteRegistry {
     Contributors.Clear();
   }
 
-  private readonly ExKeyedRegistry<ProcessRoute> _byFamily = new(r => r.Family);
+  private readonly ExKeyedRegistry<ProcessRoute> _byFamily = new(
+    r => r.Family,
+    "ProcessRouteRegistry",
+    r => $"a route of {r.Stages.Length} stages"
+  );
 
   /// <summary>Merges <paramref name="route"/> into the family it names. Returns one message per
   /// clash, empty when the contribution was taken whole.</summary>
@@ -47,7 +51,7 @@ public sealed class ProcessRouteRegistry {
       foreach (string family in incoming.AcceptedBy)
         Absorb(stages, incoming, family, route.Family, conflicts);
 
-    _byFamily.Register(merged with { Shape = shape, Stages = [.. stages] });
+    _byFamily.Update(merged with { Shape = shape, Stages = [.. stages] });
     return conflicts;
   }
 

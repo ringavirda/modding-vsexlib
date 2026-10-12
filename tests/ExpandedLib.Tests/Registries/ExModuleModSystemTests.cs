@@ -40,6 +40,7 @@ public class ExModuleModSystemTests {
 
     Assert.Same(world.Api.Logger, ExDefinitions.Logger);
     Assert.Same(world.Api.Logger, EntityRegistry.Logger);
+    Assert.Same(world.Api.Logger, RegistryLog.Logger);
     Assert.True(world.Api.World.Config.GetBool(ExModules.FlagKey("industry")));
   }
 

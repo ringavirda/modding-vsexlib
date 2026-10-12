@@ -7,11 +7,13 @@ namespace ExpandedLib.Config;
 /// config</c> command, keyed by mod id. Emptied when a world starts loading
 /// (<see cref="ExWorldState"/>).</summary>
 public static class ExConfigProfiles {
-  private static readonly ExKeyedRegistry<IExConfigAccess> _configs = new(c =>
-    c.ModId
+  private static readonly ExKeyedRegistry<IExConfigAccess> _configs = new(
+    c => c.ModId,
+    "ExConfigProfiles",
+    c => c.GetType().FullName ?? c.ModId
   );
 
-  /// <summary>Registers (or replaces) a mod's manageable config store. Called from the generated
+  /// <summary>Registers a mod's manageable config store; one already under the mod id is replaced with a Warning unless both describe alike. Called from the generated
   /// accessor's <c>Load</c> for any config marked <c>Manageable</c>.</summary>
   public static void Register(IExConfigAccess config) =>
     _configs.Register(config);

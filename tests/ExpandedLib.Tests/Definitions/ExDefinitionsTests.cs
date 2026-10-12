@@ -7,8 +7,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Pins the re-registration notification on <see cref="ExDefinitions.Logger"/>: silent from the
-/// same assembly, a Notification from a different one.
+/// Pins the re-registration warning on <see cref="ExDefinitions.Logger"/>: silent from the
+/// same assembly, a Warning from a different one.
 /// </summary>
 [Collection("ExDefinitions")]
 public class ExDefinitionsTests {
@@ -33,7 +33,7 @@ public class ExDefinitionsTests {
   }
 
   [Fact]
-  public void Re_registering_from_a_different_assembly_logs_a_notification() {
+  public void Re_registering_from_a_different_assembly_logs_a_warning() {
     var logger = new RecordingLogger();
     ExDefinitions.Logger = logger;
 
@@ -46,11 +46,14 @@ public class ExDefinitionsTests {
       typeof(ExDefinitions).Assembly
     );
 
-    Assert.Equal(EnumLogType.Notification, Assert.Single(logger.Entries).Type);
+    logger.Expect(EnumLogType.Warning, "re-registered");
+    Assert.Equal(EnumLogType.Warning, Assert.Single(logger.Entries).Type);
+    string warning = Assert.Single(logger.Warnings);
+    Assert.Contains("re-registered by exlib (was ExpandedLib.Tests)", warning);
   }
 
   [Fact]
-  public void Re_registering_an_item_from_a_different_assembly_logs_a_notification() {
+  public void Re_registering_an_item_from_a_different_assembly_logs_a_warning() {
     var logger = new RecordingLogger();
     ExDefinitions.Logger = logger;
 
@@ -63,7 +66,10 @@ public class ExDefinitionsTests {
       typeof(ExDefinitions).Assembly
     );
 
-    Assert.Equal(EnumLogType.Notification, Assert.Single(logger.Entries).Type);
+    logger.Expect(EnumLogType.Warning, "re-registered");
+    Assert.Equal(EnumLogType.Warning, Assert.Single(logger.Entries).Type);
+    string warning = Assert.Single(logger.Warnings);
+    Assert.Contains("re-registered by exlib (was ExpandedLib.Tests)", warning);
   }
 
   [Fact]

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 
@@ -10,7 +12,10 @@ namespace ExpandedLib.Catalogues;
 /// <see cref="IMediumTaxonomy"/> the pipe network reads.
 /// </summary>
 public static class ExLiquids {
-  private static readonly ExKeyedRegistry<LiquidDef> _defs = new(d => d.Code);
+  private static readonly ExKeyedRegistry<LiquidDef> _defs = new(
+    d => d.Code,
+    "ExLiquids"
+  );
 
   static ExLiquids() => SeedDefaults();
 
@@ -21,8 +26,17 @@ public static class ExLiquids {
   /// starts loading.</summary>
   public static CatalogueContributors Contributors { get; } = new();
 
-  /// <summary>Registers (or replaces) a medium by its <see cref="LiquidDef.Code"/>.</summary>
-  public static void Register(LiquidDef def) => _defs.Register(def);
+  /// <summary>Registers a medium by its <see cref="LiquidDef.Code"/>; a medium already under that code is replaced with a Warning
+  /// naming the calling assembly and the previous registrant, unless the same assembly registered it.</summary>
+  [MethodImpl(MethodImplOptions.NoInlining)]
+  public static void Register(LiquidDef def) =>
+    _defs.Register(
+      def,
+      Assembly.GetCallingAssembly().GetName().Name ?? "unknown assembly"
+    );
+
+  internal static void Register(LiquidDef def, string source) =>
+    _defs.Register(def, source);
 
   /// <summary>Looks up a medium by code (case-insensitive).</summary>
   public static bool TryGet(string code, out LiquidDef def) =>
@@ -44,14 +58,14 @@ public static class ExLiquids {
 
   /// <summary>Registers the four built-in media. Idempotent.</summary>
   public static void SeedDefaults() {
-    Register(
+    _defs.Update(
       new LiquidDef {
         Code = "Air",
         Phase = LiquidPhase.Gas,
         Priority = 0,
       }
     );
-    Register(
+    _defs.Update(
       new LiquidDef {
         Code = "Steam",
         Phase = LiquidPhase.Gas,
@@ -60,14 +74,14 @@ public static class ExLiquids {
         CondenseBelowC = 100f,
       }
     );
-    Register(
+    _defs.Update(
       new LiquidDef {
         Code = "Exhaust",
         Phase = LiquidPhase.Gas,
         Priority = 20,
       }
     );
-    Register(
+    _defs.Update(
       new LiquidDef {
         Code = "Water",
         Phase = LiquidPhase.Liquid,

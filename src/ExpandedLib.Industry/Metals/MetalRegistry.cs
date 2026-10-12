@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
@@ -21,20 +23,37 @@ public static class MetalRegistry {
   public static CatalogueContributors Contributors { get; } = new();
 
   // Indexed by molten-item AssetLocation and by short Code.
-  private static readonly ExKeyedRegistry<MetalDef> _byMoltenItem = new(d =>
-    Normalize(d.MoltenItem)
+  private static readonly ExKeyedRegistry<MetalDef> _byMoltenItem = new(
+    d => Normalize(d.MoltenItem),
+    "MetalRegistry molten items"
   );
-  private static readonly ExKeyedRegistry<MetalDef> _byCode = new(d => d.Code);
+  private static readonly ExKeyedRegistry<MetalDef> _byCode = new(
+    d => d.Code,
+    "MetalRegistry codes"
+  );
 
   private static readonly IReadOnlyList<string> DefaultMedia = new[]
   {
     "molten",
   };
 
-  /// <summary>Registers (or replaces) a metal by both its molten-item code and its short code.</summary>
-  public static void Register(MetalDef def) {
-    _byMoltenItem.Register(def);
-    _byCode.Register(def);
+  /// <summary>Registers a metal by both its molten-item code and its short code; a metal already under either is replaced with a Warning
+  /// naming the calling assembly and the previous registrant, unless the same assembly registered it.</summary>
+  [MethodImpl(MethodImplOptions.NoInlining)]
+  public static void Register(MetalDef def) =>
+    Register(
+      def,
+      Assembly.GetCallingAssembly().GetName().Name ?? "unknown assembly"
+    );
+
+  internal static void Register(MetalDef def, string source) {
+    _byMoltenItem.Register(def, source);
+    _byCode.Register(def, source);
+  }
+
+  internal static void RegisterBaseline(MetalDef def) {
+    _byMoltenItem.Update(def);
+    _byCode.Update(def);
   }
 
   /// <summary>Drops every registered metal.</summary>

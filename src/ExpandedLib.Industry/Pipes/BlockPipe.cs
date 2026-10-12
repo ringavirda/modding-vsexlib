@@ -226,9 +226,29 @@ public partial class BlockPipe
     _jointByTier.Clear();
   }
 
-  /// <summary>Registers the plain-segment burst pressure (atm) for a <paramref name="tier"/>.</summary>
+  /// <summary>Registers the plain-segment burst pressure (atm) for a <paramref name="tier"/>; a
+  /// later registration for the tier replaces the earlier one; one from another assembly logs a Warning
+  /// naming both assemblies.</summary>
   public static void RegisterBurst(string tier, Func<float> burstPressure) =>
-    _burstByTier[tier] = burstPressure;
+    RegisterTier(_burstByTier, "BlockPipe burst", tier, burstPressure);
+
+  private static void RegisterTier(
+    Dictionary<string, Func<float>> table,
+    string name,
+    string tier,
+    Func<float> value
+  ) {
+    if (
+      table.TryGetValue(tier, out Func<float>? previous)
+      && Registrant(previous) != Registrant(value)
+    )
+      RegistryLog.Replaced(name, tier, Registrant(previous), Registrant(value));
+    table[tier] = value;
+  }
+
+  private static string Registrant(Func<float> getter) =>
+    getter.Method.DeclaringType?.Assembly.GetName().Name
+    ?? "an unknown assembly";
 
   /// <summary>Pressure (atm) above which this pipe bursts, read from the per-tier registry keyed by
   /// this block's <see cref="Tier"/>, or <see cref="DefaultBurstPressure"/> when unregistered.</summary>
@@ -251,9 +271,11 @@ public partial class BlockPipe
 
   private const float DefaultThroughput = 120f;
 
-  /// <summary>Registers the throughput (L/s) for a <paramref name="tier"/>.</summary>
+  /// <summary>Registers the throughput (L/s) for a <paramref name="tier"/>; a later registration
+  /// for the tier replaces the earlier one; one from another assembly logs a Warning naming both
+  /// assemblies.</summary>
   public static void RegisterThroughput(string tier, Func<float> throughput) =>
-    _throughputByTier[tier] = throughput;
+    RegisterTier(_throughputByTier, "BlockPipe throughput", tier, throughput);
 
   /// <summary>Litres per second this pipe will pass, read from the per-tier registry keyed by this
   /// block's <see cref="Tier"/>, or <see cref="DefaultThroughput"/> when unregistered; unlimited when
@@ -277,9 +299,22 @@ public partial class BlockPipe
   /// <summary>Joint family of the rolled (HP) tier; it bolts to nothing.</summary>
   public const string WeldedJoint = "welded";
 
-  /// <summary>Registers the joint family for a <paramref name="tier"/>.</summary>
-  public static void RegisterJoint(string tier, string jointFamily) =>
+  /// <summary>Registers the joint family for a <paramref name="tier"/>; a later registration for
+  /// the tier with another family replaces the earlier one and logs a Warning naming both
+  /// families.</summary>
+  public static void RegisterJoint(string tier, string jointFamily) {
+    if (
+      _jointByTier.TryGetValue(tier, out string? previous)
+      && previous != jointFamily
+    )
+      RegistryLog.Replaced(
+        "BlockPipe joint",
+        tier,
+        $"the {previous} joint",
+        $"the {jointFamily} joint"
+      );
     _jointByTier[tier] = jointFamily;
+  }
 
   /// <summary>The coupling this pipe presents, resolved from the per-tier registry by its own
   /// <see cref="Tier"/>; a pipe whose tier is null or has no registered joint takes the

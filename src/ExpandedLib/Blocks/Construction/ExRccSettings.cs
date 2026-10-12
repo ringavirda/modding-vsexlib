@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ExpandedLib.Registries;
 
 namespace ExpandedLib.Blocks;
 
@@ -11,11 +12,25 @@ public static class ExRccSettings {
     new();
 
   /// <summary>Registers the salvage fraction (0..1) for broken RCC mega-blocks of
-  /// <paramref name="domain"/>.</summary>
-  public static void RegisterBrokenDropsRatio(
-    string domain,
-    Func<float> ratio
-  ) => _brokenDropsRatios[domain] = ratio;
+  /// <paramref name="domain"/>; a later registration for the domain replaces the earlier one; one
+  /// from another assembly logs a Warning naming both assemblies.</summary>
+  public static void RegisterBrokenDropsRatio(string domain, Func<float> ratio) {
+    if (
+      _brokenDropsRatios.TryGetValue(domain, out Func<float>? previous)
+      && Registrant(previous) != Registrant(ratio)
+    )
+      RegistryLog.Replaced(
+        "ExRccSettings",
+        domain,
+        Registrant(previous),
+        Registrant(ratio)
+      );
+    _brokenDropsRatios[domain] = ratio;
+  }
+
+  private static string Registrant(Func<float> getter) =>
+    getter.Method.DeclaringType?.Assembly.GetName().Name
+    ?? "an unknown assembly";
 
   /// <summary>The configured salvage fraction for <paramref name="domain"/>, or null when none is
   /// registered.</summary>
