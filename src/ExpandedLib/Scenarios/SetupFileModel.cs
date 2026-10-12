@@ -339,7 +339,7 @@ internal sealed class SetupFileModel {
     IReadOnlyList<SetupDuring> during =
       root["during"] == null
         ? []
-        : ParseDuring(root["during"], top.In("during"), references);
+        : ParseDuring(root["during"], top.In("during"), references, seconds);
     DeclareSteps(during.SelectMany(d => d.Steps));
 
     SetupRecordSpec record = ParseRecord(
@@ -516,7 +516,8 @@ internal sealed class SetupFileModel {
   private static IReadOnlyList<SetupDuring> ParseDuring(
     JToken? token,
     SetupJson.Where where,
-    SetupReferences references
+    SetupReferences references,
+    int seconds
   ) {
     var during = new List<SetupDuring>();
     foreach (
@@ -561,6 +562,12 @@ internal sealed class SetupFileModel {
             references,
             "complete"
           );
+      if (node["at"] != null) {
+        int second = SetupJson.Integer(node["at"], w.In("at"));
+        if (second >= seconds)
+          throw w.In("at")
+            .Fail($"second {second} is not inside the {seconds} s run.");
+      }
       int period =
         node["every"] == null
           ? 1
@@ -776,7 +783,12 @@ internal sealed class SetupFileModel {
       : null;
     IReadOnlyList<SetupDuring>? during = null;
     if (node["during"] != null) {
-      during = ParseDuring(node["during"], where.In("during"), references);
+      during = ParseDuring(
+        node["during"],
+        where.In("during"),
+        references,
+        seconds ?? mainSeconds
+      );
       declareSteps(during.SelectMany(d => d.Steps));
     }
     string? record = null;

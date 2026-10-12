@@ -20,6 +20,11 @@ public class SetupRunTests : IDisposable
     "exlib-setup-run-" + Guid.NewGuid().ToString("N")
   );
 
+  public SetupRunTests()
+  {
+    Environment.SetEnvironmentVariable("EX_WRITE_SETUPS", null);
+  }
+
   public void Dispose()
   {
     Environment.SetEnvironmentVariable("EX_WRITE_SETUPS", null);
@@ -335,7 +340,7 @@ public class SetupRunTests : IDisposable
     Directory.CreateDirectory(_folder);
     string committed = Path.Combine(_folder, "run.json");
     File.WriteAllText(committed, "stale");
-    Environment.SetEnvironmentVariable("EX_WRITE_SETUPS", "1");
+    Environment.SetEnvironmentVariable("EX_WRITE_SETUPS", "run");
     using SetupScene scene = Build("setuphold", $"[{Dial}]", "[]", DialRecord);
     string text = scene.Record(scene.Run(HoldMods), _folder);
     Assert.Equal(text, File.ReadAllText(committed));

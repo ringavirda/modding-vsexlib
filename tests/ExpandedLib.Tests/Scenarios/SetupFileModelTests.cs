@@ -72,6 +72,29 @@ public class SetupFileModelTests {
     Assert.Equal("game:stone", Load().Record.Machines[0].Code);
   }
 
+  // Fails when an action at a second the run never reaches loads.
+  [Fact]
+  public void An_action_at_or_past_the_runs_seconds_is_refused_naming_it() {
+    string during(int at) =>
+      $$"""{ "during": [{ "at": {{at}}, "step": { "wait": { "seconds": 1 } } }] }""";
+
+    Assert.Equal(1, Load(during(99)).During.Count);
+    string message = Refused(during(100));
+    Assert.Contains("during[0].at", message);
+    Assert.Contains("second 100", message);
+  }
+
+  // Fails when a variant's during is judged against the main case's seconds, not its own.
+  [Fact]
+  public void A_variants_action_past_its_own_seconds_is_refused() {
+    string message = Refused(
+      """{ "variants": { "short": { "seconds": 50, "during": [{ "at": 60, "step": { "wait": { "seconds": 1 } } }] } } }"""
+    );
+
+    Assert.Contains("short", message);
+    Assert.Contains("second 60", message);
+  }
+
   // Fails when a variant name holding a dot is refused, as the spec's water-gate-1.5 does.
   [Fact]
   public void A_variant_name_may_hold_a_dot() {

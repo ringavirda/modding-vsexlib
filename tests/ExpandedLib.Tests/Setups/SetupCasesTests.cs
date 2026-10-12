@@ -27,6 +27,7 @@ public class SetupCasesTests : IDisposable
 
   public SetupCasesTests()
   {
+    Environment.SetEnvironmentVariable("EX_WRITE_SETUPS", null);
     Directory.CreateDirectory(_folder);
   }
 

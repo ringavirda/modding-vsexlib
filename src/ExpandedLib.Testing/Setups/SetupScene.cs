@@ -105,7 +105,8 @@ public sealed partial class SetupScene : IDisposable
   /// <exception cref="ArgumentException"><paramref name="modPaths"/> does not hold one folder for
   /// each of the file's mods.</exception>
   /// <exception cref="InvalidOperationException">The file uses a step kind the fake world cannot
-  /// run or the reader has not built; or a step fails: a code the load did not register, a cell
+  /// run or a key the reader refuses (<c>tree</c>, <c>materials</c>, a <c>complete</c> to a
+  /// stage); or a step fails: a code the load did not register, a cell
   /// that is not air, a layout or run that does not fit, a step at a cell without the block entity,
   /// member, key, slot or method it names, a hold, <c>returns</c>, <c>wait</c> or <c>repeat</c> not
   /// met, or an <c>expect</c> that does not hold. The message names the file and where.</exception>
@@ -225,7 +226,7 @@ public sealed partial class SetupScene : IDisposable
         where,
         key == "complete"
           ? "\"complete\" to a stage is refused: the fake world completes every stage or none."
-          : $"\"{key}\" is not built by the harness reader yet."
+          : $"\"{key}\" is not built; the harness reader refuses it."
       );
     }
   }
