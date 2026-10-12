@@ -319,7 +319,7 @@ internal static class CollectibleViews {
       m[2, 0] * v.X + m[2, 1] * v.Y + m[2, 2] * v.Z
     );
 
-  // A rigid map x -> R x + T, in shape voxels.
+  // A rigid map taking x to R x + T, in shape voxels.
   private readonly record struct Pose(double[,] R, Vec3d T) {
     internal static Pose Identity =>
       new(CollectibleViews.Identity, new Vec3d());
