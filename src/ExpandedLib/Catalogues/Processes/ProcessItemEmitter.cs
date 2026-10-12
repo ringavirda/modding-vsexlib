@@ -91,10 +91,12 @@ public static class ProcessItemEmitter {
       .MaxStackSize(DefaultStackSize)
       .CreativeCommon("*");
 
-    // The family's shape file, drawn at this stage's element; no element is the whole file.
+    // The family's shape file, drawn at this stage's element and its children; no element is the whole file.
     def = def.Shape(route.Shape ?? FallbackShape);
     if (route.Shape != null && stage.Element != null)
-      def = def.ShapeSelectiveElements(stage.Element);
+      def = def.ShapeSelectiveElements(
+        stage.Element.EndsWith('*') ? stage.Element : stage.Element + "/*"
+      );
 
     return def;
   }

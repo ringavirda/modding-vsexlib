@@ -133,13 +133,13 @@ public class ProcessItemEmitterTests {
   #region What the generated item looks like
 
   [Fact]
-  public void The_item_is_drawn_by_its_own_element_of_the_family_shape() {
+  public void The_item_is_drawn_by_its_own_element_and_children_of_the_family_shape() {
     // The generated item renders as the stage element within the family's shape file.
     JObject shape = (JObject)Json(Assert.Single(Emit(BarRoute)))["shape"]!;
 
     Assert.Equal("iiex:item/smithed/shingled-bar", shape["base"]!.ToString());
     Assert.Equal(
-      ["Grooved200"],
+      ["Grooved200/*"],
       shape["selectiveElements"]!.Select(e => e.ToString())
     );
   }
