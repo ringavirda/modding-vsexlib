@@ -1,0 +1,76 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework Condition="'$(Legacy)' != 'true'"
+      >$(CurrentGameTfm)</TargetFramework>
+    <TargetFrameworks Condition="'$(Legacy)' == 'true'"
+      >$(AllGameTfms)</TargetFrameworks>
+    <LangVersion>14</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath
+      Condition="'$(IsCurrentGame)' != 'true' and '$(TargetFramework)' != ''"
+      >bin\$(Configuration)\$(TargetFramework)\Mods\mod</OutputPath>
+    <OutputPath Condition="'$(OutputPath)' == ''"
+      >bin\$(Configuration)\Mods\mod</OutputPath>
+    <Nullable>enable</Nullable>
+    <AssemblyName>ExpandedLib.Testing.Live</AssemblyName>
+    <RootNamespace>ExpandedLib.Testing.Live</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- 1.22 only: the legacy lanes build an empty assembly, so the lane's staging still finds the
+       mod folder and its modinfo.json. -->
+  <ItemGroup Condition="'$(IsCurrentGame)' != 'true'">
+    <Compile Remove="**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IsCurrentGame)' == 'true'">
+    <Reference Include="VintagestoryAPI">
+      <HintPath>$(GamePath)/VintagestoryAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="VintagestoryLib">
+      <HintPath>$(GamePath)/VintagestoryLib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="VGameContent">
+      <HintPath>$(GamePath)/Mods/VSSurvivalMod.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="VGameContent">
+      <HintPath>$(GamePath)/Mods/VSEssentials.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GamePath)/Lib/0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(GamePath)/Lib/Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <ProjectReference Include="..\ExpandedLib\ExpandedLib.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\ExpandedLib.Industry\ExpandedLib.Industry.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="modinfo.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Target
+    Name="RewriteModinfoGameVersion"
+    AfterTargets="Build"
+    Condition="'$(GameVersion)' != ''"
+  >
+    <WriteLinesToFile
+      File="$(OutDir)modinfo.json"
+      Lines="$([System.IO.File]::ReadAllText('$(OutDir)modinfo.json').Replace('&quot;game&quot;: &quot;$(CurrentGameVer)&quot;', '&quot;game&quot;: &quot;$(GameVersion)&quot;'))"
+      Overwrite="true"
+    />
+  </Target>
+</Project>

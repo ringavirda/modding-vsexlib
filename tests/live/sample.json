@@ -1,0 +1,11 @@
+{
+  "setup": "sample",
+  "description": "A block placed by the world stays where it was put.",
+  "mods": [],
+  "steps": [
+    { "place": { "id": "stone", "code": "game:rock-granite", "at": [0, 0, 0] } },
+    { "expect": { "at": { "of": "stone" }, "block": "game:rock-granite" } }
+  ],
+  "seconds": 6,
+  "record": {}
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
+  "type": "Code",
+  "modid": "exliblive",
+  "name": "Expanded Library Live Scenarios",
+  "authors": ["fallenstar"],
+  "description": "Runs exlib scenario and setup files against a live server. Test tooling; never shipped.",
+  "version": "0.8.4",
+  "side": "Server",
+  "requiredOnClient": false,
+  "dependencies": {
+    "game": "1.22.0",
+    "exlib": "0.8.4"
+  }
+}

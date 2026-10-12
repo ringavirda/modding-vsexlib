@@ -5,6 +5,7 @@
   "mods": {
     "exlib": { "path": "src/ExpandedLib" }
   },
+  "live": { "path": "src/ExpandedLib.Testing.Live" },
   "samples": {
     "twintubblower": { "path": "samples/TwinTubBlower", "tests": "samples/TwinTubBlower/tests" },
     "burdenmaker":   { "path": "samples/BurdenMaker",   "tests": "samples/BurdenMaker/tests" },

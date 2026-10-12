@@ -161,6 +161,26 @@ public class VersionPinTests {
     );
   }
 
+  [Fact]
+  public void The_live_scenario_mod_takes_exlibs_own_version_and_exlib_dependency() {
+    string version = ModinfoVersion;
+    string file = Path.Combine(
+      RepoPaths.Root,
+      "src",
+      "ExpandedLib.Testing.Live",
+      "modinfo.json"
+    );
+    string text = File.ReadAllText(file);
+    Match own = Regex.Match(text, @"""version""\s*:\s*""([^""]+)""");
+    Assert.True(own.Success, $"{file} names no \"version\".");
+    Assert.Equal(version, own.Groups[1].Value);
+    Assert.True(
+      ExlibDependency.Matches(text).Count > 0,
+      $"{file} names no \"exlib\" dependency."
+    );
+    Assert.Empty(StaleExlibDependencies(text, version));
+  }
+
   // Fails when StalePackagePins passes a stale or missing version, counts another package, or
   // reads attributes in one order only.
   [Fact]
