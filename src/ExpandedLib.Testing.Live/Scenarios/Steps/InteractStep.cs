@@ -87,6 +87,7 @@ internal sealed class InteractStep : ScenarioStep {
       ctx.World.Claims.TryAccess(player.Player, at, EnumBlockAccessFlags.Use),
       local
     );
+    int uses = player.Uses;
     bool answered = player.UseStart(
       at,
       face,
@@ -95,6 +96,10 @@ internal sealed class InteractStep : ScenarioStep {
       out BlockSelection selection
     );
     try {
+      if (player.Uses != uses + 1)
+        throw new StepFailure(
+          $"the server fired {player.Uses - uses} did-use events for one click, not 1."
+        );
       double started = ctx.Now;
       if (answered) {
         bool stepped = true;

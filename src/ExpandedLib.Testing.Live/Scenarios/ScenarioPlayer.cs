@@ -7,6 +7,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.Server;
 
 namespace ExpandedLib.Testing.Live;
@@ -22,6 +23,7 @@ internal sealed class ScenarioPlayer {
   private readonly ServerMain _server;
   private readonly ServerWorldPlayerData _data;
   private readonly BlockPos _park;
+  private int _uses;
 
   private ScenarioPlayer(
     ServerMain server,
@@ -33,7 +35,14 @@ internal sealed class ScenarioPlayer {
     _data = data;
     _park = park;
     Player = player;
+    server.EventManager.DidUseBlock += CountUse;
   }
+
+  /// <summary>How many did-use events the server has fired for any player since the scenario player was built.</summary>
+  public int Uses => _uses;
+
+  private void CountUse(IServerPlayer player, BlockSelection selection) =>
+    _uses++;
 
   /// <summary>The engine's player the steps act through.</summary>
   public ServerPlayer Player { get; }
@@ -285,7 +294,7 @@ internal sealed class ScenarioPlayer {
 
   /// <summary>Holds <paramref name="stack"/> in the active slot and <paramref name="keys"/>, stands the
   /// player facing <paramref name="face"/> of the block at <paramref name="at"/>, and right-clicks it. The did-use event fires right after
-  /// <c>Block.OnBlockInteractStart</c>, as the server does on the start of a block use.</summary>
+  /// <c>Block.OnBlockInteractStart</c> whatever it answered, as the server does on the start of a block use.</summary>
   /// <param name="at">The absolute cell of the block used.</param>
   /// <param name="face">The face the click lands on.</param>
   /// <param name="stack">What the hand holds, or null for an empty hand.</param>
@@ -310,19 +319,22 @@ internal sealed class ScenarioPlayer {
       Face = face,
       HitPosition = hit,
     };
-    return _server
+    bool answered = _server
       .BlockAccessor.GetBlock(at)
       .OnBlockInteractStart(_server, Player, selection);
+    _server.EventManager.TriggerDidUseBlock(Player, selection);
+    return answered;
   }
 
   /// <summary>Fills the hotbar with <paramref name="supply"/>, stands the player facing the
   /// <paramref name="face"/> of the block at <paramref name="at"/> in survival with no key held, and
-  /// right-clicks it; the hotbar is then emptied and the player parked.</summary>
+  /// right-clicks it; the did-use event fires right after <c>Block.OnBlockInteractStart</c>, and the hotbar is
+  /// then emptied and the player parked.</summary>
   /// <param name="at">The absolute cell of the block built.</param>
   /// <param name="face">The face the click lands on.</param>
   /// <param name="supply">One stack per hotbar slot, from the first.</param>
   /// <param name="left">What the hotbar held after the click: each stack's code and size, or <c>empty</c>.</param>
-  /// <returns>What <c>Block.OnBlockInteractStart</c> answered.</returns>
+  /// <returns>What <c>Block.OnBlockInteractStart</c> answered; the did-use event fires right after it.</returns>
   /// <exception cref="InvalidOperationException">More stacks than hotbar slots.</exception>
   public bool Construct(
     BlockPos at,
@@ -419,6 +431,7 @@ internal sealed class ScenarioPlayer {
 
   /// <summary>Despawns the player and removes it from the server's player maps.</summary>
   public void Stop() {
+    _server.EventManager.DidUseBlock -= CountUse;
     _server.DespawnEntity(
       _data.EntityPlayer,
       new EntityDespawnData { Reason = EnumDespawnReason.Removed }
