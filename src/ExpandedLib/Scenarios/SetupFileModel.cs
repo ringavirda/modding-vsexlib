@@ -138,6 +138,17 @@ internal sealed class SetupFileModel {
 
   public IReadOnlyList<SetupStep> Steps { get; private set; } = [];
 
+  /// <summary>The steps a variant inserts after a layout entry, run as soon as that entry is
+  /// placed.</summary>
+  public IReadOnlyList<(string Id, IReadOnlyList<SetupStep> Steps)> AfterEntry {
+    get;
+    private set;
+  } = [];
+
+  /// <summary>The <see cref="Steps"/> and the steps inserted after layout entries.</summary>
+  public IEnumerable<SetupStep> AllSteps =>
+    Steps.Concat(AfterEntry.SelectMany(a => a.Steps));
+
   public int Seconds { get; private set; }
 
   /// <summary>The steady window, <c>[From, To)</c>.</summary>
@@ -858,12 +869,15 @@ internal sealed class SetupFileModel {
     [
       .. duringOf.Select(d => d with { Steps = Edit(d.Steps, variant, seen) }),
     ];
-    IEnumerable<SetupStep> placed = variant
-      .After.Where(a => !seen.Contains(a.Id) && !variant.Drop.Contains(a.Id))
-      .SelectMany(a => a.Steps);
     SetupFileModel model = (SetupFileModel)MemberwiseClone();
     model.File = $"{File} {Setup}/{variant.Name}";
-    model.Steps = [.. placed, .. edited];
+    model.Steps = edited;
+    model.AfterEntry =
+    [
+      .. variant.After.Where(a =>
+        !seen.Contains(a.Id) && !variant.Drop.Contains(a.Id)
+      ),
+    ];
     model.During = during;
     model.Drawn = Drawn?.ForVariant(variant.Body, where);
     model.Seconds = variant.Seconds ?? Seconds;

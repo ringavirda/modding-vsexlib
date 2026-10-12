@@ -197,6 +197,45 @@ public class SetupTickOrderTests
     );
   }
 
+  // Fails when the drawn second fires a delayed callback after the network tick instead of before it.
+  [Fact]
+  public void A_delayed_callback_fires_before_the_network_tick_in_the_drawn_second()
+  {
+    var log = new List<string>();
+    using SetupScene scene = Four(log);
+    (
+      (SetupTickEntity)
+        scene.World.Accessor.GetBlockEntity(scene.PositionOf("a"))
+    ).CallLater();
+
+    scene.Run(Mods);
+
+    Assert.Equal(
+      ["0", "1", "2", "3", "callback", "network"],
+      Seconds(log, 6)[0]
+    );
+  }
+
+  // Fails when an order that puts the network tick last fires a delayed callback after it.
+  [Fact]
+  public void A_delayed_callback_fires_before_a_network_tick_an_order_puts_last()
+  {
+    var log = new List<string>();
+    using SetupScene scene = Four(log);
+    (
+      (SetupTickEntity)
+        scene.World.Accessor.GetBlockEntity(scene.PositionOf("a"))
+    ).CallLater();
+
+    scene.Order(["c", "a", "network"]);
+    scene.Run(Mods);
+
+    Assert.Equal(
+      ["1", "3", "2", "0", "callback", "network"],
+      Seconds(log, 6)[0]
+    );
+  }
+
   // Fails when a listener a behaviour registers is not counted as its machine's.
   [Fact]
   public void A_listener_a_behavior_registers_belongs_to_its_machine()

@@ -8,17 +8,22 @@ namespace ExpandedLib.Testing;
 
 public sealed partial class SetupScene
 {
-  private const string WriteVariable = "EX_WRITE_SETUPS";
+  internal const string DefaultWriteVariable = "EX_WRITE_SETUPS";
 
   /// <summary>Runs the file's <c>seconds</c>: each second its due <c>during</c> actions, then its
   /// ticks, then the <c>record</c> sample of that second.</summary>
   /// <param name="mods">The header's <c>mods</c> map, in order.</param>
-  internal SetupRecording Run(IReadOnlyList<(string Mod, string Version)> mods)
+  /// <param name="game">The game series that runs the case, as the recording names it; null for
+  /// the file's <c>game</c>.</param>
+  internal SetupRecording Run(
+    IReadOnlyList<(string Mod, string Version)> mods,
+    string? game = null
+  )
   {
     SetupRecording recording = SetupRecording.ForFile(
       Model,
       View,
-      Model.Game,
+      game ?? Model.Game,
       mods
     );
     var reading = new ReadingContext(View, recording);
@@ -31,6 +36,7 @@ public sealed partial class SetupScene
       foreach (SetupDuring action in Model.During)
         if (Due(action, second, reading))
           RunSteps(action.Steps);
+      JoinLines();
       recording.Before(second, reading);
       TickSecond();
       recording.Sample(second, reading);
@@ -45,13 +51,20 @@ public sealed partial class SetupScene
   internal bool RecordsOwn => Model.RecordsOwn;
 
   /// <summary>Writes the recording into <paramref name="folder"/> when the file is absent or
-  /// <c>EX_WRITE_SETUPS</c> names it, else compares it with the committed file.</summary>
+  /// <paramref name="writeVariable"/> names it, else compares it with the committed file.</summary>
+  /// <param name="recording">What <see cref="Run"/> recorded.</param>
+  /// <param name="folder">The folder holding the committed file.</param>
+  /// <param name="writeVariable">The environment variable that is <c>1</c> or names the setups to write.</param>
   /// <exception cref="SetupRecordingMismatchException">The recording differs from the committed file.</exception>
-  internal string Record(SetupRecording recording, string folder) =>
+  internal string Record(
+    SetupRecording recording,
+    string folder,
+    string writeVariable = DefaultWriteVariable
+  ) =>
     recording.Save(
       folder,
       SetupRecording.Writes(
-        Environment.GetEnvironmentVariable(WriteVariable),
+        Environment.GetEnvironmentVariable(writeVariable),
         Model.RecordName
       )
     );

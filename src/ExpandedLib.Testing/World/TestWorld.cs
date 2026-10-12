@@ -630,8 +630,9 @@ public sealed partial class TestWorld : IDisposable {
 
   /// <summary>Fires every listener not in <paramref name="except"/> once with
   /// <paramref name="dt"/> in firing order, runs <paramref name="network"/> just before the
-  /// listener <paramref name="networkBefore"/> (after the last when it is null or fires nowhere),
-  /// then advances sim time and fires the delayed callbacks that come due.</summary>
+  /// listener <paramref name="networkBefore"/>, advances sim time and fires the delayed callbacks
+  /// that come due, and runs <paramref name="network"/> last when it has not run (it is null or
+  /// fires nowhere).</summary>
   internal void FireBlockEntityTicks(
     float dt,
     IReadOnlySet<long> except,
@@ -648,9 +649,9 @@ public sealed partial class TestWorld : IDisposable {
       }
       listener.Callback(dt);
     }
+    AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
     if (!ran)
       network();
-    AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
   }
 
   /// <summary>The tick listeners in firing order, each with its id and callback.</summary>

@@ -320,6 +320,37 @@ public class SetupCaseTests : IDisposable
     Assert.Equal([9, 9, 9, 9, 9, 9], Levels(variant.Run(Mods), "lay"));
   }
 
+  // Fails when steps after a layout entry wait until every entry is placed.
+  [Fact]
+  public void A_variant_runs_the_steps_after_an_entry_before_the_next_entry_is_placed()
+  {
+    const string layout =
+      "{\"legend\": {\"B\": {\"id\": \"first\", \"code\": \"setupbox:box\"}, \"C\": {\"id\": \"second\", \"code\": \"setupbox:box\"}}, \"layers\": {\"1\": [\"BC\"]}}";
+    const string seesSecond =
+      "{\"expect\": {\"at\": {\"of\": \"second\"}, \"member\": \"Level\", \"equals\": 0}}";
+    SetupFile file = Parse(
+      Cases(
+        "\"early\": {\"after\": {\"first\": ["
+          + seesSecond
+          + "]}}, \"late\": {\"after\": {\"second\": ["
+          + seesSecond
+          + "]}}",
+        Check("hold", "always", Series("first", "equals", 0)),
+        steps: "[]",
+        layout: layout,
+        record: Level("first")
+      )
+    );
+
+    using SetupScene late = Build(file.ForVariant("late"));
+    var early = Assert.Throws<InvalidOperationException>(() =>
+      Build(file.ForVariant("early"))
+    );
+
+    Assert.NotNull(late);
+    Assert.Contains("second", early.Message);
+  }
+
   // Fails when a dropped layout entry's after steps still run, or its record is still sampled.
   [Fact]
   public void A_variant_that_drops_a_layout_entry_drops_the_steps_after_it()

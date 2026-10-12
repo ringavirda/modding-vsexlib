@@ -122,6 +122,10 @@ public class SetupRunTests : IDisposable
           )
           .RegisterClass("SetupHoldBox", typeof(SetupHoldBox))
           .RegisterBlockEntityFactory("SetupHoldBox", () => new SetupHoldBox())
+          .RegisterBlockEntityBehaviorFactory(
+            "SetupSpin",
+            be => new SetupSpin(be)
+          )
     );
 
   private static double[] Series(
@@ -220,6 +224,109 @@ public class SetupRunTests : IDisposable
     );
     SetupRecording recording = scene.Run(BoxMods);
     Assert.Equal([0, 5, 5, 5, 5, 5], Series(recording, "box", "level"));
+  }
+
+  // Fails when a when action latches to its first checked second, or runs once.
+  [Fact]
+  public void A_when_action_runs_again_each_time_its_test_comes_true()
+  {
+    using SetupScene scene = Build(
+      "setupbox",
+      $"[{Box}, {SetLevel(3)}]",
+      "["
+        + During("\"at\": 1, \"step\": " + SetLevel(5))
+        + ", "
+        + During("\"at\": 3, \"step\": " + SetLevel(3))
+        + ", "
+        + During(
+          "\"every\": 1, \"when\": {\"at\": [0, 0, 0], \"member\": \"Level\", \"equals\": 3}, \"step\": "
+            + SetLevel(0)
+        )
+        + "]",
+      BoxRecord
+    );
+    SetupRecording recording = scene.Run(BoxMods);
+    Assert.Equal([0, 5, 5, 0, 0, 0], Series(recording, "box", "level"));
+  }
+
+  // Fails when a when action tests its reading in a second its period skips.
+  [Fact]
+  public void A_when_action_does_not_run_in_a_second_its_period_skips()
+  {
+    using SetupScene scene = Build(
+      "setupbox",
+      $"[{Box}]",
+      "["
+        + During("\"at\": 1, \"step\": " + SetLevel(3))
+        + ", "
+        + During("\"at\": 2, \"step\": " + SetLevel(8))
+        + ", "
+        + During(
+          "\"every\": 2, \"when\": {\"at\": [0, 0, 0], \"member\": \"Level\", \"equals\": 3}, \"step\": "
+            + SetLevel(0)
+        )
+        + "]",
+      BoxRecord
+    );
+    SetupRecording recording = scene.Run(BoxMods);
+    Assert.Equal([0, 3, 8, 8, 8, 8], Series(recording, "box", "level"));
+  }
+
+  // Fails when the lines are not joined after a during action that ends with a placement.
+  [Fact]
+  public void A_during_placement_joins_the_mechanical_lines_before_the_second_ticks()
+  {
+    const string axle =
+      "{\"place\": {\"id\": \"first\", \"code\": \"setuphold:spinaxle-ns\", \"at\": [0, 0, 0]}}, "
+      + "{\"place\": {\"code\": \"setuphold:spinaxle-ns\", \"at\": [0, 0, 2]}}";
+    const string middle =
+      "{\"place\": {\"code\": \"setuphold:spinaxle-ns\", \"at\": [0, 0, 1]}}";
+    using SetupScene scene = Build(
+      "setuphold",
+      $"[{axle}]",
+      "[" + During("\"at\": 1, \"step\": " + middle) + "]",
+      "{\"machines\": {\"first\": {\"series\": {\"state\": {\"words\": [\"idle\"]}, \"speed\": {\"network\": \"mechanical\", \"member\": \"Speed\", \"or\": -1, \"unit\": \"u\"}}}}}"
+    );
+    SetupRecording recording = scene.Run(HoldMods);
+    Assert.Equal([-1, 0, 0, 0, 0, 0], Series(recording, "first", "speed"));
+  }
+
+  // Fails when the recording names the file's game instead of the series that ran it.
+  [Fact]
+  public void Record_names_the_game_series_that_ran_the_case()
+  {
+    using SetupScene scene = Build("setuphold", $"[{Dial}]", "[]", DialRecord);
+    string text = scene.Record(scene.Run(HoldMods, "9.9"), _folder);
+    Assert.Contains("\"game\":\"9.9\"", text);
+  }
+
+  // Fails when Record reads EX_WRITE_SETUPS whatever variable it is given.
+  [Fact]
+  public void Record_writes_the_setup_when_the_variable_it_is_given_names_it()
+  {
+    Directory.CreateDirectory(_folder);
+    string committed = Path.Combine(_folder, "run.json");
+    File.WriteAllText(committed, "stale");
+    Environment.SetEnvironmentVariable("LEGACY_WRITE_SETUPS", "1");
+    try
+    {
+      using SetupScene scene = Build(
+        "setuphold",
+        $"[{Dial}]",
+        "[]",
+        DialRecord
+      );
+      string text = scene.Record(
+        scene.Run(HoldMods),
+        _folder,
+        "LEGACY_WRITE_SETUPS"
+      );
+      Assert.Equal(text, File.ReadAllText(committed));
+    }
+    finally
+    {
+      Environment.SetEnvironmentVariable("LEGACY_WRITE_SETUPS", null);
+    }
   }
 
   [Fact]

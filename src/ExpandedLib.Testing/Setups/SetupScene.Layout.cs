@@ -32,6 +32,7 @@ public sealed partial class SetupScene
     if (Model.Drawn is not { } layout)
       return;
     foreach (LayoutEntry entry in layout.Entries)
+    {
       switch (entry.Kind)
       {
         case LayoutEntryKind.Block:
@@ -42,9 +43,23 @@ public sealed partial class SetupScene
           break;
         case LayoutEntryKind.Run:
           if (layout.Runs.FirstOrDefault(r => r.Entries[0] == entry) is { } run)
+          {
             PlaceRun(layout, run);
+            if (run.Id != entry.Id)
+              RunAfterEntry(run.Id);
+          }
           break;
       }
+      if (entry.Id != null)
+        RunAfterEntry(entry.Id);
+    }
+  }
+
+  private void RunAfterEntry(string id)
+  {
+    foreach (var (target, steps) in Model.AfterEntry)
+      if (target == id)
+        RunSteps(steps);
   }
 
   private void PlaceDrawn(

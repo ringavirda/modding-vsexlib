@@ -98,6 +98,10 @@ public sealed class SetupRunOptions
   /// <summary>Runs before the mods load, as <see cref="SetupScene.Build"/> takes it.</summary>
   public Action<TestWorld>? BeforeLoad { get; init; }
 
+  /// <summary>The environment variable that is <c>1</c> or names the setups to write; default
+  /// <c>EX_WRITE_SETUPS</c>.</summary>
+  public string WriteVariable { get; init; } = SetupScene.DefaultWriteVariable;
+
   /// <summary>Receives each <c>stand-in</c> line the case's placers print, or null to drop them.</summary>
   public Action<string>? Output { get; init; }
 }
@@ -187,11 +191,15 @@ public static class SetupCases
       options.Output?.Invoke(line);
     if (row.Order != null)
       scene.Order(row.Order.Split(','));
-    SetupRecording recording = scene.Run(mods);
+    SetupRecording recording = scene.Run(mods, Series());
     if (scene.Judge(recording, row.Order != null) is { } verdict)
       throw new InvalidOperationException($"{row}: {verdict}");
     if (row.Order == null && scene.RecordsOwn)
-      scene.Record(recording, Path.Combine(options.Recordings, Series()));
+      scene.Record(
+        recording,
+        Path.Combine(options.Recordings, Series()),
+        options.WriteVariable
+      );
   }
 
   private static string Series() =>

@@ -107,6 +107,9 @@ internal sealed class SetupTickEntity(List<string> log) : BlockEntity
 
   public void ListenLate() => RegisterGameTickListener(OnLate, 1000);
 
+  public void CallLater() =>
+    Api.Event.RegisterCallback(_ => log.Add("callback"), 1);
+
   private void OnLate(float dt) => log.Add("late");
 
   private void OnTick(float dt)
