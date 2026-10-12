@@ -34,6 +34,9 @@ public class ExRightClickConstructable
   /// <summary>The index of the last stage built, 0 before any is paid.</summary>
   public int CurrentCompletedStage => rcc.CurrentCompletedStage;
 
+  /// <summary>The construction state behind this behavior: its stages and stored variants.</summary>
+  internal ExRightClickConstruction Construction => rcc;
+
   /// <summary>Raised with the new <see cref="shape"/> whenever a stage is built or the state is
   /// saved.</summary>
   public event Action<CompositeShape>? OnShapeChanged;

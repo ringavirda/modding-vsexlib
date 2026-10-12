@@ -11,9 +11,10 @@ using Vintagestory.API.Util;
 
 namespace ExpandedLib.Testing.Live;
 
-/// <summary><c>complete</c>: the layout part. Every cell the structure's block entity reports
-/// missing is raised with the first registered block matching the wanted code, then the step
-/// waits for the entity's own monitor tick to see the structure whole.</summary>
+/// <summary><c>complete</c>: the layout part raises every cell the structure's block entity reports
+/// missing with the first registered block matching the wanted code, then waits for the entity's own
+/// monitor tick to see the structure whole; the stage part walks the construction through the
+/// scenario player.</summary>
 internal sealed class CompleteStep : ScenarioStep {
   private static readonly AssetLocation AirCode = new("game:air");
 
@@ -21,49 +22,66 @@ internal sealed class CompleteStep : ScenarioStep {
 
   public override string What(SetupStep step) => (string)step.Body["of"]!;
 
-  public override string? Refuse(SetupStep step) {
-    var o = (JObject)step.Body;
-    if (o["materials"] != null)
-      return "\"materials\" belongs to construction stages, which need the scenario player.";
-    if (
-      o["to"] is { } to
-      && !(to.Type == JTokenType.String && (string?)to == "all")
-    )
-      return "\"to\" a stage needs the scenario player.";
-    return null;
-  }
-
   public override IEnumerable<bool> Run(
     ScenarioContext ctx,
     SetupStep step,
     string label,
     StepReport report
   ) {
+    var o = (JObject)step.Body;
     BlockPos cell = ctx.Position(step, SetupPositionOf(step), "of");
-    foreach (bool wait in Raise(ctx, cell, report))
+    foreach (bool wait in Complete(ctx, cell, o["to"], o["materials"], report))
       yield return wait;
   }
 
   private static JToken SetupPositionOf(SetupStep step) =>
     new JObject { ["of"] = step.Body["of"] };
 
-  /// <summary>Raises the missing layout cells of the structure at plot-local
-  /// <paramref name="cell"/>; yields while it waits for the monitor tick.</summary>
-  /// <exception cref="StepFailure">A wanted code matches no block, or the structure is not
-  /// whole when the wait ends.</exception>
-  public static IEnumerable<bool> Raise(
+  /// <summary>Brings the block at plot-local <paramref name="cell"/> up to <paramref name="to"/>:
+  /// its layout when it is a multiblock structure, then its construction stages when it carries
+  /// <see cref="ExRightClickConstructable"/>.</summary>
+  /// <param name="to">The stage to stop at, or "all" or null for the last.</param>
+  /// <param name="materials">The variant each stored wildcard key is supplied in, or null.</param>
+  /// <exception cref="StepFailure">The block has neither part, a stage needs the scenario player
+  /// that is not there, or a part does not complete.</exception>
+  public static IEnumerable<bool> Complete(
     ScenarioContext ctx,
     BlockPos cell,
+    JToken? to,
+    JToken? materials,
     StepReport report
   ) {
     BlockEntity? entity = ctx.Setup.BlockEntityAt(cell);
-    if (entity is not BlockEntityMultiblockStructure structure)
+    var construction = entity?.GetBehavior<ExRightClickConstructable>();
+    var structure = entity as BlockEntityMultiblockStructure;
+    if (structure == null && construction == null)
       throw new StepFailure(
-        entity?.GetBehavior<ExRightClickConstructable>() != null
-          ? $"{FailureDetail.Cell(cell)} is a construction, whose stages need the scenario player."
-          : $"{FailureDetail.Cell(cell)} is neither a multiblock nor a construction, so it has nothing to complete.",
+        $"{FailureDetail.Cell(cell)} is neither a multiblock nor a construction, so it has nothing to complete.",
         Suspect.Scenario
       );
+    if (structure != null)
+      foreach (bool wait in Raise(ctx, cell, structure, report))
+        yield return wait;
+    if (construction != null)
+      foreach (
+        bool wait in ConstructionWalk.Walk(
+          ctx,
+          cell,
+          construction,
+          to,
+          materials,
+          report
+        )
+      )
+        yield return wait;
+  }
+
+  private static IEnumerable<bool> Raise(
+    ScenarioContext ctx,
+    BlockPos cell,
+    BlockEntityMultiblockStructure structure,
+    StepReport report
+  ) {
     var missing = new List<BlockEntityMultiblockStructure.MissingCell>();
     structure.IncompleteBlockCount(missing.Add);
     Dictionary<BlockPos, (int X, int Y, int Z)> authored =

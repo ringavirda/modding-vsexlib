@@ -292,6 +292,57 @@ internal sealed class ScenarioPlayer {
       .OnBlockInteractStart(_server, Player, selection);
   }
 
+  /// <summary>Fills the hotbar with <paramref name="supply"/>, stands the player facing the
+  /// <paramref name="face"/> of the block at <paramref name="at"/> in survival with no key held, and
+  /// right-clicks it; the hotbar is then emptied and the player parked.</summary>
+  /// <param name="at">The absolute cell of the block built.</param>
+  /// <param name="face">The face the click lands on.</param>
+  /// <param name="supply">One stack per hotbar slot, from the first.</param>
+  /// <param name="left">What the hotbar held after the click: each stack's code and size, or <c>empty</c>.</param>
+  /// <returns>What <c>Block.OnBlockInteractStart</c> answered.</returns>
+  /// <exception cref="InvalidOperationException">More stacks than hotbar slots.</exception>
+  public bool Construct(
+    BlockPos at,
+    BlockFacing face,
+    IReadOnlyList<ItemStack> supply,
+    out string left
+  ) {
+    IInventory hotbar = Player.InventoryManager.GetHotbarInventory();
+    if (supply.Count > hotbar.Count)
+      throw new InvalidOperationException(
+        $"a stage asks for {supply.Count} stacks and the hotbar has {hotbar.Count} slots."
+      );
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+    Vec3d hit = Hit(face);
+    Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
+    Hold(Player.Entity.Controls, []);
+    try {
+      for (int i = 0; i < hotbar.Count; i++)
+        hotbar[i].Itemstack = i < supply.Count ? supply[i] : null;
+      var selection = new BlockSelection {
+        Position = at.Copy(),
+        Face = face,
+        HitPosition = hit,
+      };
+      bool answered = _server
+        .BlockAccessor.GetBlock(at)
+        .OnBlockInteractStart(_server, Player, selection);
+      string[] held =
+      [
+        .. hotbar
+          .Where(s => !s.Empty)
+          .Select(s => $"{s.Itemstack.Collectible.Code} x {s.StackSize}"),
+      ];
+      left = held.Length == 0 ? "empty" : string.Join(", ", held);
+      return answered;
+    } finally {
+      foreach (ItemSlot slot in hotbar)
+        slot.Itemstack = null;
+      Park();
+    }
+  }
+
   /// <summary>One held tick of the interaction: <c>Block.OnBlockInteractStep</c> with the seconds held so far.</summary>
   /// <returns>What the block answered; false when the block stops the hold.</returns>
   public bool UseStep(BlockSelection selection, double secondsHeld) =>

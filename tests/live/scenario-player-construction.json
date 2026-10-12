@@ -1,0 +1,12 @@
+{
+  "setup": "scenario-player-construction",
+  "description": "A blower is built stage by stage by the scenario player, paid from its hotbar in survival.",
+  "mods": [],
+  "steps": [
+    { "place": { "id": "blower", "code": "twintubblower:blower-twintubblower-n", "at": [0, 0, 0] } },
+    { "complete": { "of": "blower", "materials": { "metal": "iron" } } },
+    { "expect": { "at": { "of": "blower" }, "member": "ExRightClickConstructable.IsComplete", "equals": true } }
+  ],
+  "seconds": 12,
+  "record": {}
+}

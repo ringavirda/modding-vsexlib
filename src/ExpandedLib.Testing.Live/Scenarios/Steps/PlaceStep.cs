@@ -23,13 +23,6 @@ internal sealed class PlaceStep : ScenarioStep {
       return "place by \"player\" needs the scenario player.";
     if (o["facing"] != null)
       return "\"facing\" is for place by \"player\".";
-    if (o["materials"] != null)
-      return "\"materials\" belongs to construction stages, which need the scenario player.";
-    if (
-      o["complete"] is { } c
-      && !(c.Type == JTokenType.String && (string?)c == "all")
-    )
-      return "\"complete\" to a stage needs the scenario player.";
     return null;
   }
 
@@ -74,7 +67,15 @@ internal sealed class PlaceStep : ScenarioStep {
       SetStep.WriteTree(ctx, local, tree);
     report.Value = $"{block.Code} at plot {FailureDetail.Cell(local)}";
     if (o["complete"] != null)
-      foreach (bool wait in CompleteStep.Raise(ctx, local, report))
+      foreach (
+        bool wait in CompleteStep.Complete(
+          ctx,
+          local,
+          o["complete"],
+          o["materials"],
+          report
+        )
+      )
         yield return wait;
   }
 }
