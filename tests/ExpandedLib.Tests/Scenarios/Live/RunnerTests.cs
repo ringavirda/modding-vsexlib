@@ -5,6 +5,7 @@ using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using NSubstitute;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using Xunit;
@@ -17,7 +18,6 @@ public class RunnerTests {
     var api = Substitute.For<ICoreServerAPI>();
     var events = Substitute.For<IServerEventAPI>();
     var manager = Substitute.For<IWorldManagerAPI>();
-    manager.DefaultSpawnPosition.Returns([0, 100, 0]);
     manager.RegionSize.Returns(512);
     api.Event.Returns(events);
     api.WorldManager.Returns(manager);
@@ -52,10 +52,10 @@ public class RunnerTests {
 
     public Run() {
       var manager = Substitute.For<IWorldManagerAPI>();
-      manager.DefaultSpawnPosition.Returns([0, 100, 0]);
       manager.RegionSize.Returns(512);
       var world = Substitute.For<IServerWorldAccessor>();
       world.ElapsedMilliseconds.Returns(_ => _now);
+      world.DefaultSpawnPosition.Returns(new EntityPos(0, 100, 0));
       Api.Event.Returns(Events);
       Api.WorldManager.Returns(manager);
       Api.World.Returns(world);
@@ -140,6 +140,23 @@ public class RunnerTests {
       "[scenario] done: 1 case(s) run, 0 passed, 1 failed.",
       run.Lines
     );
+  }
+
+  /// <summary>Fails when the world spawn is read where the run starts instead of when its first case
+  /// does, while the world has no spawn yet.</summary>
+  [Fact]
+  public void The_world_spawn_is_read_when_the_first_case_starts() {
+    using var run = new Run();
+    run.WriteSample();
+    EntityPos? spawn = null;
+    run.Api.World.DefaultSpawnPosition.Returns<EntityPos>(
+      _ => spawn ?? throw new NullReferenceException()
+    );
+    var runner = run.Start(["exlib/sample"]);
+    spawn = new EntityPos(0, 100, 0);
+    run.Tick(2);
+    Assert.True(runner.Active);
+    Assert.DoesNotContain(run.Lines, line => line.Contains("error"));
   }
 
   /// <summary>Fails when a case whose plot never loads is not counted as run (V97) or as failed

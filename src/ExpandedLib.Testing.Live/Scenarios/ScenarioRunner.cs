@@ -5,6 +5,7 @@ using System.Linq;
 using ExpandedLib.Networks;
 using ExpandedLib.Scenarios;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -22,7 +23,7 @@ internal sealed class ScenarioRunner {
   private readonly bool _keep;
   private readonly IServerPlayer? _chatTo;
   private readonly Queue<string> _names;
-  private readonly PlotAllocator _plots;
+  private PlotAllocator? _plots;
   private readonly ClimateHold _climate;
   private readonly List<ScenarioPlot> _held = [];
   private readonly long _tick;
@@ -44,13 +45,17 @@ internal sealed class ScenarioRunner {
   /// <summary>True while a run has cases left or one running.</summary>
   public bool Active { get; private set; }
 
+  /// <summary>The allocator this run hands plots from, or null until its first case
+  /// starts.</summary>
+  public PlotAllocator? Plots => _plots;
+
   /// <param name="names">Scenario names, <c>&lt;modid&gt;/&lt;path&gt;</c>, read from
   /// <c>&lt;dataPath&gt;/Scenarios</c>.</param>
   /// <param name="keep">Leaves every plot standing when its case ends.</param>
   /// <param name="chatTo">A joined player who also gets the case, pass, fail and done lines in
   /// chat, or null.</param>
   /// <param name="plots">The allocator earlier runs used, so plots a <paramref name="keep"/> run
-  /// left standing stay clear; null starts a new one.</param>
+  /// left standing stay clear; null starts a new one when the first case starts.</param>
   /// <param name="climate">The climate hold earlier runs used, so its handler is registered
   /// once; null starts a new one.</param>
   public ScenarioRunner(
@@ -65,8 +70,7 @@ internal sealed class ScenarioRunner {
     _keep = keep;
     _chatTo = chatTo;
     _names = new Queue<string>(names);
-    int[] spawn = api.WorldManager.DefaultSpawnPosition;
-    _plots = plots ?? new PlotAllocator(spawn[0], spawn[2]);
+    _plots = plots;
     _climate = climate ?? new ClimateHold(api.WorldManager.RegionSize);
     _hold = _climate.Apply;
     _feed = (type, message, args) => _errors?.Add(type, Format(message, args));
@@ -93,6 +97,11 @@ internal sealed class ScenarioRunner {
       Emit(ScenarioOutput.Error("run", "no case selected"));
       Finish();
     }
+  }
+
+  private PlotAllocator PlotsAtSpawn() {
+    EntityPos spawn = _api.World.DefaultSpawnPosition;
+    return new PlotAllocator(spawn.AsBlockPos.X, spawn.AsBlockPos.Z);
   }
 
   private void Tick(float dt) {
@@ -135,6 +144,7 @@ internal sealed class ScenarioRunner {
     }
     _name = name;
     _case = scenario;
+    _plots ??= PlotsAtSpawn();
     PlotBox box = _plots.Next(scenario!.Plot[0], scenario.Plot[2]);
     _climate.Hold(box.CenterX, box.CenterZ);
     _plot = new ScenarioPlot(box, scenario.Plot);
