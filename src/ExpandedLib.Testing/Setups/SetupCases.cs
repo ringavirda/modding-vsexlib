@@ -103,6 +103,12 @@ public sealed class SetupRunOptions
   /// <c>EX_WRITE_SETUPS</c>.</summary>
   public string WriteVariable { get; init; } = SetupScene.DefaultWriteVariable;
 
+  /// <summary>The environment variable that names the folder <see cref="SetupCases.Run"/> writes
+  /// each row's scene dump to, as <c>&lt;setup&gt;.scene.json</c> or <c>&lt;setup&gt;@&lt;variant&gt;.scene.json</c>;
+  /// unset or empty writes none. Default <c>EX_SETUP_SCENES</c>.</summary>
+  public string ScenesVariable { get; init; } =
+    SetupScene.DefaultScenesVariable;
+
   /// <summary>Receives each <c>stand-in</c> line the case's placers print, or null to drop them.</summary>
   public Action<string>? Output { get; init; }
 }
@@ -197,6 +203,18 @@ public static class SetupCases
     );
     foreach (string line in scene.StandIns)
       options.Output?.Invoke(line);
+    if (
+      row.Order == null
+      && Environment.GetEnvironmentVariable(options.ScenesVariable)
+        is { Length: > 0 } scenes
+    )
+    {
+      Directory.CreateDirectory(scenes);
+      File.WriteAllText(
+        Path.Combine(scenes, SceneFile(row)),
+        SetupSceneDump.Of(scene, row.Setup, row.Variant)
+      );
+    }
     if (row.Order != null)
       scene.Order(row.Order.Split(','));
     SetupRecording recording = scene.Run(mods, Series());
@@ -209,6 +227,9 @@ public static class SetupCases
         options.WriteVariable
       );
   }
+
+  private static string SceneFile(SetupCaseRow row) =>
+    row.Setup + (row.Variant == null ? "" : "@" + row.Variant) + ".scene.json";
 
   private static string Series() =>
     string.Join('.', GameVersion.ShortGameVersion.Split('.').Take(2));

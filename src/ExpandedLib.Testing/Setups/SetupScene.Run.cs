@@ -9,6 +9,7 @@ namespace ExpandedLib.Testing;
 public sealed partial class SetupScene
 {
   internal const string DefaultWriteVariable = "EX_WRITE_SETUPS";
+  internal const string DefaultScenesVariable = "EX_SETUP_SCENES";
 
   /// <summary>Runs the file's <c>seconds</c>: each second its due <c>during</c> actions, then its
   /// ticks, then the <c>record</c> sample of that second.</summary>
