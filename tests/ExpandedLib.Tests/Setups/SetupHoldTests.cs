@@ -359,10 +359,8 @@ public class SetupHoldTests
     Assert.Equal(new byte[] { 1, 255 }, data);
   }
 
-  // Fails when a press id that is a slot, open or close packet, a byte outside 0 to 255, a slot range
-  // that runs backwards, or a put without a slot is let through; and when a slot or byte that is not a
-  // whole number, a negative slot, a one-entry or three-entry slot range, a take without a slot, a take
-  // of a range, or a press without an id is let through.
+  // Fails when a window body the packets cannot carry is let through: a bad press id, byte or slot, a
+  // missing id or slot, a take of a range, or a slot range that is not two entries.
   [Theory]
   [InlineData(
     "\"press\": {\"id\": 1001}",
