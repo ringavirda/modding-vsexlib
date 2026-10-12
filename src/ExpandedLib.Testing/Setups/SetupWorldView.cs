@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ExpandedLib.Scenarios;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent.Mechanics;
 
 namespace ExpandedLib.Testing;
 
@@ -19,9 +20,11 @@ internal sealed class SetupWorldView(
   public Block BlockAt(BlockPos pos) => world.GetBlock(pos);
 
   public object? NetworkAt(BlockPos pos, string type) =>
-    world.NetworkAt(pos) is { } network && network.NetworkType == type
+    type == "mechanical"
+      ? world.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.Network
+    : world.NetworkAt(pos) is { } network && network.NetworkType == type
       ? network
-      : null;
+    : null;
 
   public MoltenCellReading? MoltenCellAt(BlockPos pos) => null;
 

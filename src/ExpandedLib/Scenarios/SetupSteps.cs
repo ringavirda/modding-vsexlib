@@ -193,8 +193,15 @@ internal static class SetupSteps {
       references.Placement(SetupJson.String(o["of"], at.In("of")), at.In("of"));
     if (kind == "expect" && o["of"] != null)
       references.Placement(SetupJson.String(o["of"], at.In("of")), at.In("of"));
+    if (
+      kind == "complete"
+      && o["to"] is { } stage
+      && stage is not JValue { Type: JTokenType.Integer }
+      && (string?)(stage as JValue)?.Value != "all"
+    )
+      throw at.In("to").Fail("takes \"all\" or a whole number.");
     foreach (string key in new[] { "at", "from", "to", "same" })
-      if (o[key] != null)
+      if (o[key] != null && !(kind == "complete" && key == "to"))
         references.Position(
           SetupPosition.Parse(o[key], at.In(key)),
           at.In(key)

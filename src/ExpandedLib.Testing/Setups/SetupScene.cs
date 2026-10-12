@@ -15,19 +15,13 @@ namespace ExpandedLib.Testing;
 
 /// <summary>
 /// A setup file built into a fresh world: its mods and the vanilla blocktypes its <c>game:</c> codes
-/// name loaded, its layout and its place, complete, fill, insert, set, call, interact, window and
-/// ignite steps run, and the mechanical lines joined. Running, sampling and checking are not built
-/// yet.
+/// name loaded, its layout and its place, complete, fill, insert, set, call, interact, window,
+/// ignite, expect, wait and repeat steps run, and the mechanical lines joined. Running, sampling
+/// and checking are not built yet.
 /// </summary>
 public sealed partial class SetupScene : IDisposable
 {
-  private static readonly string[] Unbuilt =
-  [
-    "run",
-    "expect",
-    "wait",
-    "repeat",
-  ];
+  private static readonly string[] Unbuilt = ["run"];
 
   private static readonly Dictionary<string, string> Lacking = new()
   {
@@ -37,6 +31,7 @@ public sealed partial class SetupScene : IDisposable
     ["break"] = "the fake world has no player to break with",
     ["reload"] = "the fake world has no chunk save and load to reload through",
     ["advance"] = "the fake world has no game calendar to advance",
+    ["climate"] = "the fake world has no weather to hold a climate with",
   };
 
   private readonly SetupFile _file;
@@ -167,6 +162,8 @@ public sealed partial class SetupScene : IDisposable
 
   private void Refuse()
   {
+    if (Model.HasClimate)
+      throw Fail("climate", $"\"climate\" is refused: {Lacking["climate"]}.");
     foreach (SetupStep step in Model.Steps.SelectMany(s => s.All()))
     {
       JToken body = step.Body;
@@ -186,6 +183,13 @@ public sealed partial class SetupScene : IDisposable
               "\"place\" by the player is refused: the fake world has no player to place with."
             );
           RefuseKeys(step.Path, body, "complete", "materials", "tree");
+          break;
+        case "expect":
+          if (body["drops"] != null)
+            throw Fail(
+              step.Path,
+              "\"expect drops\" is refused: the fake world has no item entities, a spawned drop is a stack in TestWorld.Drops."
+            );
           break;
         case "complete":
           if (body["to"] != null && (string?)body["to"] != "all")
@@ -411,9 +415,11 @@ public sealed partial class SetupScene : IDisposable
       .Parse(step.Body[key], new SetupJson.Where(_file.Name, step.Path).In(key))
       .Resolve(View);
 
-  private void RunSteps()
+  private void RunSteps() => RunSteps(Model.Steps);
+
+  private void RunSteps(IEnumerable<SetupStep> steps)
   {
-    foreach (SetupStep step in Model.Steps)
+    foreach (SetupStep step in steps)
       switch (step.Kind)
       {
         case "place":
@@ -442,6 +448,15 @@ public sealed partial class SetupScene : IDisposable
           break;
         case "ignite":
           IgniteStep(step);
+          break;
+        case "expect":
+          ExpectStep(step);
+          break;
+        case "wait":
+          WaitStep(step);
+          break;
+        case "repeat":
+          RepeatStep(step);
           break;
       }
   }
