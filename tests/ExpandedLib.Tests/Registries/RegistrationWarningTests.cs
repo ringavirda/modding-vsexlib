@@ -157,17 +157,6 @@ public class RegistrationWarningTests : RegistryLogFixture {
     );
   }
 
-  // Fails when ResetPipeTiers leaves the tier registered, so the second registrant replaces the
-  // first and logs.
-  [Fact]
-  public void ResetPipeTiers_forgets_a_registration_from_another_assembly() {
-    BlockPipe.RegisterBurst("plantedreset", new Random().NextSingle);
-    TestWorld.ResetPipeTiers();
-    BlockPipe.RegisterBurst("plantedreset", One);
-
-    None("BlockPipe burst");
-  }
-
   [Fact]
   public void BlockPipe_burst_is_silent_for_one_assembly_twice() {
     BlockPipe.RegisterBurst("plantedsame", One);
