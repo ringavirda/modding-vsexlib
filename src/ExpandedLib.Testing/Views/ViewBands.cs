@@ -60,6 +60,7 @@ internal static class ViewBands {
     new Dictionary<string, double> {
       ["G1"] = 0.02,
       ["G2"] = 1,
+      ["G3"] = 0.02,
       ["G5"] = 0.02,
       ["G6"] = 0.02,
       ["G7"] = 0.02,
@@ -88,7 +89,7 @@ internal static class ViewBands {
     string[] Gates
   );
 
-  private static readonly string[] SlotGates = ["G1", "G2", "G5", "G6"];
+  private static readonly string[] SlotGates = ["G1", "G2", "G3", "G5", "G6"];
 
   private static readonly string[] ItemGates = [.. SlotGates, "G7"];
 

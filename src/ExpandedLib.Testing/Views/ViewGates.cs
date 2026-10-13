@@ -34,10 +34,11 @@ internal sealed record ViewGroup(
   internal bool IsBlock => Representative is Block;
 }
 
-/// <summary>G1 slot.span and G2 slot.centre of a group.</summary>
+/// <summary>G1 slot.span, G2 slot.centre and G3 slot.face of a group.</summary>
 /// <param name="Span">The largest projected extent of the box, over the 48 px slot.</param>
 /// <param name="Centre">The distance from the footprint's centre to the slot's centre, in pixels.</param>
-internal sealed record SlotMetrics(double Span, double Centre);
+/// <param name="Face">The area the drawn faces cover in the slot, over the box's largest face at that scale.</param>
+internal sealed record SlotMetrics(double Span, double Centre, double Face);
 
 /// <summary>G5 ground.rest and G6 ground.size of a group.</summary>
 /// <param name="Rest">The lowest point of the posed box above the item's position, in blocks.</param>
@@ -57,7 +58,7 @@ internal sealed record HandMetrics(
 );
 
 /// <summary>Every gate's metrics of a group.</summary>
-/// <param name="Slot">G1 and G2.</param>
+/// <param name="Slot">G1, G2 and G3.</param>
 /// <param name="Ground">G5 and G6.</param>
 /// <param name="Hand">G7, G8, G10's axis and G13 in third person.</param>
 /// <param name="HandFp">The hand metrics with the seraph at the first-person clip; null for a block.</param>
@@ -263,8 +264,8 @@ internal static class ViewGates {
     return (p.Min(v => v.X), p.Min(v => v.Y), p.Max(v => v.X), p.Max(v => v.Y));
   }
 
-  /// <summary>G1 and G2 of <paramref name="group"/> in the inventory slot.</summary>
-  /// <param name="guiScale">The GUI scale.</param>
+  /// <summary>G1, G2 and G3 of <paramref name="group"/> in the inventory slot.</summary>
+  /// <param name="guiScale">The GUI scale; G3 is sampled at 4 points per slot pixel each way at scale 1.</param>
   internal static SlotMetrics Slot(ViewGroup group, double guiScale = 1) {
     (double x0, double y0, double x1, double y1) = SlotBounds(
       group,
@@ -273,8 +274,69 @@ internal static class ViewGates {
     );
     return new SlotMetrics(
       Math.Max(x1 - x0, y1 - y0) / (SlotPx * guiScale),
-      Math.Sqrt(Math.Pow((x0 + x1) / 2, 2) + Math.Pow((y0 + y1) / 2, 2))
+      Math.Sqrt(Math.Pow((x0 + x1) / 2, 2) + Math.Pow((y0 + y1) / 2, 2)),
+      FaceCover(group, guiScale)
     );
+  }
+
+  private const int FaceSamples = 4;
+
+  // The corner indices of each face of an element, in the game's face order, cyclic around the quad.
+  private static readonly int[][] FaceCorners =
+  [
+    [0, 1, 3, 2],
+    [1, 3, 7, 5],
+    [4, 5, 7, 6],
+    [0, 2, 6, 4],
+    [2, 3, 7, 6],
+    [0, 1, 5, 4],
+  ];
+
+  private static double FaceCover(ViewGroup group, double guiScale) {
+    Mat4 m = ViewMatrices.Slot(group.Gui, group.IsBlock, guiScale);
+    var covered = new HashSet<(int, int)>();
+    for (int e = 0; e < group.Box.Drawn.Count; e++)
+      for (int f = 0; f < 6; f++) {
+        if (!group.Box.Faces[e][f])
+          continue;
+        Vec3d[] q = FaceCorners[f]
+          .Select(i => m.Apply(group.Box.Drawn[e][i] / 16))
+          .ToArray();
+        Cover(covered, q[0], q[1], q[2]);
+        Cover(covered, q[0], q[2], q[3]);
+      }
+    double[] side = group.Box.Extents();
+    double pxPerVoxel =
+      ViewMatrices.SlotItemPx * guiScale * group.Gui.ScaleXYZ.X / 16;
+    double largest = side[0] * side[1] * pxPerVoxel * pxPerVoxel;
+    double cell = 1.0 / (FaceSamples * FaceSamples);
+    return covered.Count * cell / largest;
+  }
+
+  private static void Cover(
+    HashSet<(int, int)> covered,
+    Vec3d a,
+    Vec3d b,
+    Vec3d c
+  ) {
+    double area = (b.X - a.X) * (c.Y - a.Y) - (c.X - a.X) * (b.Y - a.Y);
+    int x0 = (int)
+      Math.Ceiling(Math.Min(a.X, Math.Min(b.X, c.X)) * FaceSamples - 0.5);
+    int x1 = (int)
+      Math.Floor(Math.Max(a.X, Math.Max(b.X, c.X)) * FaceSamples - 0.5);
+    int y0 = (int)
+      Math.Ceiling(Math.Min(a.Y, Math.Min(b.Y, c.Y)) * FaceSamples - 0.5);
+    int y1 = (int)
+      Math.Floor(Math.Max(a.Y, Math.Max(b.Y, c.Y)) * FaceSamples - 0.5);
+    for (int i = x0; i <= x1; i++)
+      for (int j = y0; j <= y1; j++) {
+        double x = (i + 0.5) / FaceSamples,
+          y = (j + 0.5) / FaceSamples;
+        double u = ((b.X - x) * (c.Y - y) - (c.X - x) * (b.Y - y)) / area;
+        double v = ((c.X - x) * (a.Y - y) - (a.X - x) * (c.Y - y)) / area;
+        if (u >= 0 && v >= 0 && u + v <= 1)
+          covered.Add((i, j));
+      }
   }
 
   /// <summary>G5 and G6 of <paramref name="group"/> on the ground, at no yaw and no scale jitter.</summary>
@@ -422,12 +484,13 @@ internal static class ViewGates {
     );
 
   /// <summary>The value of the banded gate <paramref name="gate"/> in <paramref name="metrics"/>.</summary>
-  /// <param name="gate">A gate id of view-bands.json: G1, G2, G5, G6, G7, G10, G10fp or G13.</param>
+  /// <param name="gate">A gate id of view-bands.json: G1, G2, G3, G5, G6, G7, G10, G10fp or G13.</param>
   /// <returns>NaN when the group has no such metric.</returns>
   internal static double ValueOf(GroupMetrics metrics, string gate) =>
     gate switch {
       "G1" => metrics.Slot.Span,
       "G2" => metrics.Slot.Centre,
+      "G3" => metrics.Slot.Face,
       "G5" => metrics.Ground.Rest,
       "G6" => metrics.Ground.Size,
       "G7" => metrics.Hand.Size,
@@ -446,6 +509,7 @@ internal static class ViewGates {
   [
     ("G1", "G1", "slot.span", "gui"),
     ("G2", "G2", "slot.centre", "gui"),
+    ("G3", "G3", "slot.face", "gui"),
     ("G5", "G5", "ground.rest", "ground"),
     ("G6", "G6", "ground.size", "ground"),
     ("G7", "G7", "hand.size", "tp"),

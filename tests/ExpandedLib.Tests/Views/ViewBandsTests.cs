@@ -242,8 +242,11 @@ public class ViewBandsTests {
         Assert.Equal(want[row, col], got[row, col], Precision);
   }
 
-  private static (ViewGroup Group, GroupMetrics Metrics) Reference(string gate) {
-    string code = gate switch {
+  private static (ViewGroup Group, GroupMetrics Metrics) Reference(
+    string gate,
+    string? code = null
+  ) {
+    code ??= gate switch {
       "G10" or "G10fp" => "game:spear-generic-iron",
       "G13" => "game:hay-normal-ud",
       _ => "game:ingot-iron",
@@ -256,6 +259,7 @@ public class ViewBandsTests {
     gate switch {
       "G1" => m with { Slot = m.Slot with { Span = v } },
       "G2" => m with { Slot = m.Slot with { Centre = v } },
+      "G3" => m with { Slot = m.Slot with { Face = v } },
       "G5" => m with { Ground = m.Ground with { Rest = v } },
       "G6" => m with { Ground = m.Ground with { Size = v } },
       "G7" => m with { Hand = m.Hand with { Size = v } },
@@ -272,6 +276,8 @@ public class ViewBandsTests {
   [InlineData("G1", "G1", "slot.span", 1)]
   [InlineData("G1", "G1", "slot.span", -1)]
   [InlineData("G2", "G2", "slot.centre", 1)]
+  [InlineData("G3", "G3", "slot.face", 1)]
+  [InlineData("G3", "G3", "slot.face", -1)]
   [InlineData("G5", "G5", "ground.rest", 1)]
   [InlineData("G5", "G5", "ground.rest", -1)]
   [InlineData("G6", "G6", "ground.size", 1)]
@@ -384,5 +390,40 @@ public class ViewBandsTests {
     );
     Assert.EndsWith("G13 hand.centre", finding.Key);
     Assert.Empty(ViewGates.Judge(Bands, group, metrics));
+  }
+
+  // Fails when G3's comparison is inverted, and when the raster counts #null faces.
+  [Fact]
+  public void An_edge_on_plate_fails_G3() {
+    (ViewGroup plate, GroupMetrics metrics) = Reference(
+      "G3",
+      "game:metalplate-iron"
+    );
+    Assert.Empty(ViewGates.Judge(Bands, plate, metrics));
+
+    ModelTransform upright = plate.Gui.Clone();
+    upright.Rotation = new FastVec3f(0, -44, -180);
+    ViewGroup edgeOn = plate with { Gui = upright };
+    ViewFinding finding = Assert.Single(
+      ViewGates.Judge(Bands, edgeOn, ViewGates.Measure(World, edgeOn))
+    );
+    Assert.EndsWith("G3 slot.face", finding.Key);
+  }
+
+  // Fails when the raster counts #null faces: a plate whose broad faces are #null then covers as much as the metalplate.
+  [Fact]
+  public void The_face_raster_skips_null_faces() {
+    ViewGroup plate = GroupOf("game:metalplate-iron");
+    var hollowItem = World.World.GetItem(
+      new AssetLocation("viewsfixture:hollowplate")
+    );
+    ViewGroup hollow = ViewGates.GroupOf(World, hollowItem)! with {
+      Gui = plate.Gui,
+    };
+    Assert.Equal(plate.Box.Extents(), hollow.Box.Extents());
+    double full = ViewGates.Slot(plate).Face;
+    double edges = ViewGates.Slot(hollow).Face;
+    Assert.True(full > 0.5, $"{full}");
+    Assert.True(edges < full / 2, $"{edges} against {full}");
   }
 }

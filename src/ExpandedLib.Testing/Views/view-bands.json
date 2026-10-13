@@ -17,6 +17,14 @@
         "low": 0.0,
         "high": 3.1778
       },
+      "G3": {
+        "min": 0.6595,
+        "max": 1.3457,
+        "minCode": "plank-aged",
+        "maxCode": "rod-copper",
+        "low": 0.5935,
+        "high": 1.4803
+      },
       "G5": {
         "min": -0.0062,
         "max": 0.0,
@@ -58,6 +66,14 @@
         "maxCode": "hub-light4way-iron",
         "low": 0.0,
         "high": 5.2721
+      },
+      "G3": {
+        "min": 0.7171,
+        "max": 1.288,
+        "minCode": "hub-light4way-iron",
+        "maxCode": "ironbloom",
+        "low": 0.6454,
+        "high": 1.4168
       },
       "G5": {
         "min": -0.1106,
@@ -108,6 +124,14 @@
         "maxCode": "devastatedsoil-0",
         "low": 0.0,
         "high": 1.7071
+      },
+      "G3": {
+        "min": 1.6827,
+        "max": 1.6827,
+        "minCode": "devastatedsoil-0",
+        "maxCode": "devastatedsoil-0",
+        "low": 1.5144,
+        "high": 1.8509
       },
       "G5": {
         "min": 0.0,
@@ -167,6 +191,14 @@
         "low": 0.0,
         "high": 94.5059
       },
+      "G3": {
+        "min": 0.2715,
+        "max": 0.845,
+        "minCode": "spear-ranseur-ruined",
+        "maxCode": "spear-generic-chert",
+        "low": 0.2444,
+        "high": 0.9295
+      },
       "G5": {
         "min": -0.115,
         "max": 0.0137,
@@ -208,6 +240,14 @@
         "maxCode": "metalbit-blistersteel",
         "low": 0.0,
         "high": 3.8345
+      },
+      "G3": {
+        "min": 1.0473,
+        "max": 1.1102,
+        "minCode": "ingot-blistersteel",
+        "maxCode": "metalbit-blistersteel",
+        "low": 0.9425,
+        "high": 1.2213
       },
       "G5": {
         "min": 0.0,
@@ -259,6 +299,14 @@
         "low": 0.0,
         "high": 6.3627
       },
+      "G3": {
+        "min": 0.3587,
+        "max": 1.214,
+        "minCode": "largegear3",
+        "maxCode": "pulverizerframe-north",
+        "low": 0.3228,
+        "high": 1.3354
+      },
       "G5": {
         "min": -0.2475,
         "max": 0.1333,
@@ -309,6 +357,14 @@
         "low": 0.0,
         "high": 6.4049
       },
+      "G3": {
+        "min": 0.9014,
+        "max": 1.3602,
+        "minCode": "transmission-ns",
+        "maxCode": "chute-straight-ns",
+        "low": 0.8112,
+        "high": 1.4962
+      },
       "G5": {
         "min": -0.1261,
         "max": 0.075,
@@ -351,6 +407,14 @@
         "low": 0.0,
         "high": 1.607
       },
+      "G3": {
+        "min": 0.6356,
+        "max": 0.6356,
+        "minCode": "metalplate-bismuth",
+        "maxCode": "metalplate-bismuth",
+        "low": 0.572,
+        "high": 0.6991
+      },
       "G5": {
         "min": 0.0,
         "max": 0.0,
@@ -392,6 +456,14 @@
         "maxCode": "axe-chert",
         "low": 0.0,
         "high": 24.5045
+      },
+      "G3": {
+        "min": 0.1383,
+        "max": 0.8879,
+        "minCode": "scythe-copper",
+        "maxCode": "sling",
+        "low": 0.1183,
+        "high": 0.9767
       },
       "G5": {
         "min": -0.042,
