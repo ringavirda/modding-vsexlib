@@ -25,10 +25,10 @@ internal static class ViewReferences {
 
   internal static readonly HandReference Spear = new(
     [X, Y, Z],
-    2.34,
+    2.3478,
     new Vec3d(-90, 0, 0),
     0.80,
-    [0.38, 0.53, 0.71],
+    [0.3842, 0.5325, 0.7043],
     0,
     new Vec3d(33, 0, -127),
     3.4
@@ -39,8 +39,8 @@ internal static class ViewReferences {
     1,
     new Vec3d(94, 0, 0),
     0.75,
-    [0.44, 0.07, -0.32],
-    0.32,
+    [0.4407, 0.0692, -0.3209],
+    0.3209,
     new Vec3d(-30, -44, -180),
     3.31
   );
@@ -50,7 +50,7 @@ internal static class ViewReferences {
     2,
     new Vec3d(0, -71, 18),
     0.75,
-    [0.74, 0.48, 0.95],
+    [0.7432, 0.4847, 0.9476],
     0,
     new Vec3d(149, -36, 0),
     4.8
@@ -61,7 +61,7 @@ internal static class ViewReferences {
     2,
     new Vec3d(85, 0, 2),
     0.68,
-    [0.24, 0.44, 0.87],
+    [0.2394, 0.4369, 0.8673],
     0,
     new Vec3d(-48, 134, 171),
     4
@@ -90,10 +90,10 @@ internal static class ViewReferences {
   /// slot scale is this close-up scaled by the ratio of lengths.</summary>
   internal const double SpearSlotScale = 2.26;
 
-  internal const double SpearLength = 46.75;
+  internal const double SpearLength = 46.7475;
 
   /// <summary>How far along a longtool's length, from the butt, its slot origin lies.</summary>
-  internal const double SpearSlotOrigin = 0.84;
+  internal const double SpearSlotOrigin = 0.8394;
 
   /// <summary>Blocks per mesh unit of a ground scale of 1.</summary>
   internal const double GroundUnit = 0.2;
@@ -104,15 +104,15 @@ internal static class ViewReferences {
 
   /// <summary>A partial block's reference extents: the slot span as a share of the slot, and the longest
   /// extent in blocks on the ground and in the hand.</summary>
-  internal const double PartialSlotSpan = 0.710;
+  internal const double PartialSlotSpan = 0.7101;
 
   internal const double PartialGroundLong = 0.300;
-  internal const double PartialHeldLong = 0.300;
+  internal const double PartialHeldLong = 0.400;
 
   /// <summary>A multicell block's reference extents, as for a partial block.</summary>
-  internal const double MulticellSlotSpan = 0.888;
+  internal const double MulticellSlotSpan = 0.8884;
 
-  internal const double MulticellGroundLong = 0.863;
+  internal const double MulticellGroundLong = 0.8629;
   internal const double MulticellHeldLong = 1.200;
 
   /// <summary>A block lies on its largest face on the ground when its shortest extent is at most this

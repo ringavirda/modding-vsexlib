@@ -247,15 +247,19 @@ public class ItemViewsCalibrationTests {
     Assert.Contains("viewsfixture:item/nope", ex.Message);
   }
 
-  // Fails when the longtool's slot origin leaves 0.84 of its length, or its scale ignores the length.
+  // Fails when the longtool's slot origin leaves SpearSlotOrigin of its length, or its scale ignores the length.
   [Fact]
   public void A_longtool_slot_is_the_spears_close_up_scaled_by_length() {
     Item spear = Coll("game:spear-generic-flint");
     ItemViewSet set = Compute(spear);
     double length = set.BoxTo!.X - set.BoxFrom!.X;
-    Assert.Equal(2.26 * 46.75 / length, set.Gui.ScaleXYZ.X, 3);
+    Assert.Equal(
+      ViewReferences.SpearSlotScale * ViewReferences.SpearLength / length,
+      set.Gui.ScaleXYZ.X,
+      1e-4
+    );
     double along = (set.Gui.Origin.X * 16 - set.BoxFrom.X) / length;
-    Assert.Equal(0.84, along, 3);
+    Assert.Equal(ViewReferences.SpearSlotOrigin, along, 1e-4);
   }
 
   // Fails when a grip is left where the reference's fractions put it instead of moved onto the drawn shape.

@@ -174,7 +174,7 @@ internal static class ViewBands {
       [
         "brickslabs-fire-north-free",
         "clayshinglelabs-black-north-free",
-        "tileslab-2x2-center-blue-north-free",
+        "tileslab-2x2-plain-blue-north-free",
         "woodenaxle-ud",
         "transmission-ns",
         "chute-cross-ns",
@@ -529,7 +529,7 @@ internal static class ViewBands {
     return lines;
   }
 
-  // The upper middle of the ascending values, as sweep_blocks.py takes its median.
+  // The upper middle of the ascending values.
   private static double UpperMiddle(double[] values) {
     double[] sorted = [.. values.Order()];
     return sorted[sorted.Length / 2];

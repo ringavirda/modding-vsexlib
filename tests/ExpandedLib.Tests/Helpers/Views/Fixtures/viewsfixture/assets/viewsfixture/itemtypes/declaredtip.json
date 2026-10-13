@@ -1,0 +1,14 @@
+{
+  "code": "declaredtip",
+  "class": "Item",
+  "heldRightTpIdleAnimation": "spearidle",
+  "shape": {
+    "base": "viewsfixture:item/declaredtip"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "longtool",
+      "tip": "+x"
+    }
+  }
+}

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ExpandedLib.Helpers;
@@ -66,38 +67,42 @@ public class ViewBandsTests {
     Assert.Equal(
       ViewReferences.Spear.Scale,
       rules["spear"]["handScale"],
-      0.005
+      Precision
     );
     Assert.Equal(
       ViewReferences.MetalPlate.Scale,
       rules["metalplate"]["handScale"],
-      0.005
+      Precision
     );
     Assert.Equal(
       ViewReferences.Ingot.Scale,
       rules["ingot"]["handScale"],
-      0.005
+      Precision
     );
-    Assert.Equal(ViewReferences.Rod.Scale, rules["rod"]["handScale"], 0.005);
+    Assert.Equal(
+      ViewReferences.Rod.Scale,
+      rules["rod"]["handScale"],
+      Precision
+    );
     Assert.Equal(
       ViewReferences.Spear.GroundScale,
       rules["spear"]["groundScale"],
-      0.05
+      Precision
     );
     Assert.Equal(
       ViewReferences.MetalPlate.GroundScale,
       rules["metalplate"]["groundScale"],
-      0.05
+      Precision
     );
     Assert.Equal(
       ViewReferences.Ingot.GroundScale,
       rules["ingot"]["groundScale"],
-      0.05
+      Precision
     );
     Assert.Equal(
       ViewReferences.Rod.GroundScale,
       rules["rod"]["groundScale"],
-      0.05
+      Precision
     );
   }
 
@@ -106,63 +111,135 @@ public class ViewBandsTests {
   public void View_bands_agree_with_the_rotations_and_spear_constants() {
     var rules = Bands.Rules;
     foreach (
-      (string name, ViewReferences.HandReference reference) in new[]
-      {
-        ("spear", ViewReferences.Spear),
-        ("metalplate", ViewReferences.MetalPlate),
-        ("ingot", ViewReferences.Ingot),
-        ("rod", ViewReferences.Rod),
-      }
+      (string name, ViewReferences.HandReference reference) in References()
     ) {
-      Assert.Equal(reference.Rotation.X, rules[name]["handRotationX"], 0.5);
-      Assert.Equal(reference.Rotation.Y, rules[name]["handRotationY"], 0.5);
-      Assert.Equal(reference.Rotation.Z, rules[name]["handRotationZ"], 0.5);
-      Assert.Equal(reference.GuiRotation.X, rules[name]["guiRotationX"], 0.5);
-      Assert.Equal(reference.GuiRotation.Y, rules[name]["guiRotationY"], 0.5);
-      Assert.Equal(reference.GuiRotation.Z, rules[name]["guiRotationZ"], 0.5);
+      AssertSameRotation(reference.Rotation, rules[name], "handRotation");
+      AssertSameRotation(reference.GuiRotation, rules[name], "guiRotation");
     }
     Assert.Equal(
       ViewReferences.SpearSlotScale,
       rules["spear"]["slotScale"],
-      0.005
+      Precision
     );
-    Assert.Equal(ViewReferences.SpearLength, rules["spear"]["length"], 0.005);
+    Assert.Equal(
+      ViewReferences.SpearLength,
+      rules["spear"]["length"],
+      Precision
+    );
+    Assert.Equal(
+      ViewReferences.SpearSlotOrigin,
+      rules["spear"]["slotOrigin"],
+      Precision
+    );
   }
 
-  // Fails when a block median moves off the partial or multicell reference set it copies: the partial slot span 0.710 raised to 0.75.
+  // Fails when a grip fraction, the gap or the thickness moves off the vanilla item it copies: the spear's grip x 0.3842 raised to 0.3852.
+  [Fact]
+  public void View_bands_agree_with_the_grip_constants() {
+    var rules = Bands.Rules;
+    foreach (
+      (string name, ViewReferences.HandReference reference) in References()
+    ) {
+      for (int k = 0; k < 3; k++)
+        Assert.Equal(
+          reference.Grip[k],
+          rules[name]["grip" + "XYZ"[k]],
+          Precision
+        );
+      Assert.Equal(reference.OffDrawn, rules[name]["offDrawn"], Precision);
+      Assert.Equal(reference.Thickness, rules[name]["thickness"], Precision);
+    }
+  }
+
+  // Fails when a block median moves off the partial or multicell reference set it copies: the partial slot span 0.7101 raised to 0.7111.
   [Fact]
   public void View_bands_agree_with_the_block_medians() {
     var rules = Bands.Rules;
     Assert.Equal(
       ViewReferences.PartialSlotSpan,
       rules["partial"]["slotSpan"],
-      0.01
+      Precision
     );
     Assert.Equal(
       ViewReferences.PartialGroundLong,
       rules["partial"]["groundLong"],
-      0.005
+      Precision
     );
     Assert.Equal(
       ViewReferences.PartialHeldLong,
       rules["partial"]["heldLong"],
-      0.005
+      Precision
     );
     Assert.Equal(
       ViewReferences.MulticellSlotSpan,
       rules["multicell"]["slotSpan"],
-      0.01
+      Precision
     );
     Assert.Equal(
       ViewReferences.MulticellGroundLong,
       rules["multicell"]["groundLong"],
-      0.005
+      Precision
     );
     Assert.Equal(
       ViewReferences.MulticellHeldLong,
       rules["multicell"]["heldLong"],
-      0.005
+      Precision
     );
+  }
+
+  // Fails when a reference member leaves the band of a gate its set calibrates: the boar spear when its tip entry is dropped,
+  // the erel spear when the working end is taken from the far end from the grip.
+  [Fact]
+  public void Every_reference_member_passes_the_gates_it_calibrates() {
+    IReadOnlyList<ViewGroup> groups = ViewGates.Groups(World, "game");
+    foreach (ViewBands.ReferenceSet set in ViewBands.Sets) {
+      string kind = set.Kind.ToString().ToLowerInvariant();
+      foreach (
+        (ViewGroup group, string code) in ViewBands.Resolve(World, groups, set)
+      ) {
+        GroupMetrics metrics = ViewGates.Measure(World, group);
+        foreach (string gate in set.Gates) {
+          double v = ViewGates.ValueOf(metrics, gate);
+          if (double.IsNaN(v))
+            continue;
+          Band band = Bands.Bands[kind][gate];
+          Assert.True(
+            v >= band.Low && v <= band.High,
+            $"{code} [{kind}] {gate} {v} outside {band.Low}..{band.High}"
+          );
+        }
+      }
+    }
+  }
+
+  private const double Precision = 1e-4;
+
+  private static (
+    string Name,
+    ViewReferences.HandReference Reference
+  )[] References() =>
+    [
+      ("spear", ViewReferences.Spear),
+      ("metalplate", ViewReferences.MetalPlate),
+      ("ingot", ViewReferences.Ingot),
+      ("rod", ViewReferences.Rod),
+    ];
+
+  // Each entry of the two rotation matrices agrees, since several Euler triples give one orientation.
+  private static void AssertSameRotation(
+    Vec3d expected,
+    IReadOnlyDictionary<string, double> rule,
+    string key
+  ) {
+    Mat4 want = Mat4.Identity.RotateXYZ(expected.X, expected.Y, expected.Z);
+    Mat4 got = Mat4.Identity.RotateXYZ(
+      rule[key + "X"],
+      rule[key + "Y"],
+      rule[key + "Z"]
+    );
+    for (int row = 0; row < 4; row++)
+      for (int col = 0; col < 4; col++)
+        Assert.Equal(want[row, col], got[row, col], Precision);
   }
 
   private static (ViewGroup Group, GroupMetrics Metrics) Reference(string gate) {

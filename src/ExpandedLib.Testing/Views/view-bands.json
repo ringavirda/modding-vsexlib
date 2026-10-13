@@ -88,8 +88,8 @@
       "G1": {
         "min": 0.7822,
         "max": 0.7822,
-        "minCode": "rock-andesite",
-        "maxCode": "rock-andesite",
+        "minCode": "devastatedsoil-0",
+        "maxCode": "devastatedsoil-0",
         "low": 0.704,
         "high": 0.8605
       },
@@ -97,31 +97,31 @@
         "min": 0.0,
         "max": 0.2587,
         "minCode": "hay-normal-ud",
-        "maxCode": "rock-andesite",
+        "maxCode": "devastatedsoil-0",
         "low": 0.0,
         "high": 0.2846
       },
       "G2": {
         "min": 0.7071,
         "max": 0.7071,
-        "minCode": "rock-andesite",
-        "maxCode": "rock-andesite",
+        "minCode": "devastatedsoil-0",
+        "maxCode": "devastatedsoil-0",
         "low": 0.0,
         "high": 1.7071
       },
       "G5": {
         "min": 0.0,
         "max": 0.0,
-        "minCode": "rock-andesite",
-        "maxCode": "rock-andesite",
+        "minCode": "devastatedsoil-0",
+        "maxCode": "devastatedsoil-0",
         "low": -0.02,
         "high": 0.02
       },
       "G6": {
         "min": 0.3,
         "max": 0.3,
-        "minCode": "rock-andesite",
-        "maxCode": "rock-andesite",
+        "minCode": "devastatedsoil-0",
+        "maxCode": "devastatedsoil-0",
         "low": 0.27,
         "high": 0.33
       },
@@ -129,7 +129,7 @@
         "min": 0.3,
         "max": 0.4,
         "minCode": "hay-normal-ud",
-        "maxCode": "rock-andesite",
+        "maxCode": "devastatedsoil-0",
         "low": 0.27,
         "high": 0.44
       }
@@ -154,7 +154,7 @@
       "G10fp": {
         "min": 0.0,
         "max": 3.0,
-        "minCode": "spear-generic-erel",
+        "minCode": "spear-generic-chert",
         "maxCode": "spear-scrap-scrap",
         "low": 0.0,
         "high": 3.3
@@ -296,8 +296,8 @@
       "G13": {
         "min": 0.0,
         "max": 0.3369,
-        "minCode": "chute-straight-ns",
-        "maxCode": "brickslabs-four-black-north-free",
+        "minCode": "chute-cross-ns",
+        "maxCode": "brickslabs-fire-north-free",
         "low": 0.0,
         "high": 0.3706
       },
@@ -305,7 +305,7 @@
         "min": 0.7071,
         "max": 5.4049,
         "minCode": "chute-straight-ns",
-        "maxCode": "brickslabs-four-black-north-free",
+        "maxCode": "brickslabs-fire-north-free",
         "low": 0.0,
         "high": 6.4049
       },
@@ -440,6 +440,9 @@
   },
   "rules": {
     "ingot": {
+      "gripX": 0.7432,
+      "gripY": 0.4847,
+      "gripZ": 0.9476,
       "groundScale": 4.8,
       "guiRotationX": 149.0,
       "guiRotationY": -36.0,
@@ -447,9 +450,14 @@
       "handRotationX": 0.0,
       "handRotationY": -71.0,
       "handRotationZ": 18.0,
-      "handScale": 0.75
+      "handScale": 0.75,
+      "offDrawn": 0.0,
+      "thickness": 2.0
     },
     "metalplate": {
+      "gripX": 0.4407,
+      "gripY": 0.0692,
+      "gripZ": -0.3209,
       "groundScale": 3.31,
       "guiRotationX": -30.0,
       "guiRotationY": -44.0,
@@ -457,19 +465,24 @@
       "handRotationX": 94.0,
       "handRotationY": 0.0,
       "handRotationZ": 0.0,
-      "handScale": 0.75
+      "handScale": 0.75,
+      "offDrawn": 0.3209,
+      "thickness": 1.0
     },
     "multicell": {
-      "groundLong": 0.8614,
+      "groundLong": 0.8629,
       "heldLong": 1.2,
-      "slotSpan": 0.8816
+      "slotSpan": 0.8884
     },
     "partial": {
       "groundLong": 0.3,
-      "heldLong": 0.3,
-      "slotSpan": 0.7153
+      "heldLong": 0.4,
+      "slotSpan": 0.7101
     },
     "rod": {
+      "gripX": 0.2394,
+      "gripY": 0.4369,
+      "gripZ": 0.8673,
       "groundScale": 4.0,
       "guiRotationX": -48.0,
       "guiRotationY": 134.0,
@@ -477,9 +490,14 @@
       "handRotationX": 85.0,
       "handRotationY": 0.0,
       "handRotationZ": 2.0,
-      "handScale": 0.68
+      "handScale": 0.68,
+      "offDrawn": 0.0,
+      "thickness": 2.0
     },
     "spear": {
+      "gripX": 0.3842,
+      "gripY": 0.5325,
+      "gripZ": 0.7043,
       "groundScale": 3.4,
       "guiRotationX": 33.0,
       "guiRotationY": 0.0,
@@ -489,7 +507,10 @@
       "handRotationZ": 0.0,
       "handScale": 0.8,
       "length": 46.7475,
-      "slotScale": 2.26
+      "offDrawn": 0.0,
+      "slotOrigin": 0.8394,
+      "slotScale": 2.26,
+      "thickness": 2.3478
     }
   }
 }

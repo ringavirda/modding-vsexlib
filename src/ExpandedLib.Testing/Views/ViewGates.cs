@@ -389,7 +389,8 @@ internal static class ViewGates {
   /// fractions of its lay's extents, and its gap to the nearest drawn element.</summary>
   /// <param name="world">A world from <see cref="TestWorld.LoadAsGame"/>.</param>
   /// <param name="group">The group to solve.</param>
-  /// <returns>Three fractions, longest lay axis first, in 0 to 1 across the box; the gap in voxels.</returns>
+  /// <returns>Three fractions, longest lay axis first, each along its own lay axis from the low face (0) to the high
+  /// face (1), so a value below 0 or above 1 lies off the drawn box; then the gap in voxels to the nearest drawn element.</returns>
   internal static (double[] Fractions, double Gap) GripOf(
     TestWorld world,
     ViewGroup group
@@ -398,7 +399,11 @@ internal static class ViewGates {
     ModelTransform tf = ViewMatrices.Transform(c, ViewTarget.Hand);
     SeraphPose pose = SeraphPose.At(world.Api, HeldClip(world, HeldCode(c)));
     double[] at = GripPoint(tf, pose);
-    Lay lay = Lay.Of(group.Box, true, TipOf(c));
+    Lay lay = Lay.Of(
+      group.Box,
+      group.Kind is ItemViewKind.Longtool or ItemViewKind.Tool,
+      TipOf(c)
+    );
     double[] u = lay.Coords(new Vec3d(at[0], at[1], at[2]));
     return (
       [

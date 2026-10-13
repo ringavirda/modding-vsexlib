@@ -111,12 +111,12 @@ public class ItemViewsBlockTests(ITestOutputHelper output) {
   // Fails when a block median in ViewReferences moves 20%: the partial's slot, ground or held extent, or
   // the multicell's, and the held-out block then leaves its kind's median.
   [Theory]
-  [InlineData("game:forge", ItemViewKind.Partial, 0.710, 0.300, 0.300)]
+  [InlineData("game:forge", ItemViewKind.Partial, 0.7101, 0.300, 0.400)]
   [InlineData(
     "game:bellows-crude-north",
     ItemViewKind.Multicell,
-    0.888,
-    0.863,
+    0.8884,
+    0.8629,
     1.200
   )]
   public void Held_out_blocks_meet_their_kind_medians(
