@@ -379,6 +379,19 @@ public static class InteractionLaw {
     ];
   }
 
+  /// <summary>The click on the principal's cell that <paramref name="help"/> advertises: its keys and
+  /// the first item it names, an empty hand for none.</summary>
+  internal static Click ClickOf(WorldInteraction help, BlockSelection selection) {
+    ItemStack? stack = Named(help, selection).FirstOrDefault();
+    return new Click(
+      new Vec3i(0, 0, 0),
+      KeysOf(help),
+      stack?.Collectible,
+      stack == null ? 0 : Math.Max(1, stack.StackSize),
+      help.ActionLangCode
+    );
+  }
+
   /// <summary>The first of <paramref name="named"/> whose variant agrees with
   /// <paramref name="hand"/>'s on every group both carry, as a stage storing a metal takes one
   /// metal throughout; the first of them when none agrees, null when there are none.</summary>

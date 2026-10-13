@@ -215,6 +215,7 @@ public class BEBehaviorClipActions(BlockEntity blockentity)
         }.Init()
       );
     state.CurrentFrame = frame;
+    state.EasingFactor = 1f;
   }
 
   private static float MoveToward(float from, float to, float step) =>
