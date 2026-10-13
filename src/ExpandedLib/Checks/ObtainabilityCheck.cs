@@ -69,25 +69,16 @@ public static class ObtainabilityCheck {
     return new CheckResult("Obtainability", domain, errors);
   }
 
-  /// <summary>The codes vanilla's world gives a survival player with no recipe: item class, code
-  /// pattern, and where it comes from.</summary>
-  internal static IEnumerable<(
-    EnumItemClass Type,
-    string Pattern,
-    string Source
-  )> WorldSources() =>
-    [(EnumItemClass.Block, "game:gravel-*", "worldgen, dug where it lies")];
-
   // A block's type and its states in every group its placement does not write: the orientation
   // groups, and the connector faces a network node's placement and its neighbours rewrite.
-  private static string KindOf(Block block) {
+  internal static string KindOf(CollectibleObject collectible) {
     var placed = new HashSet<string>(
-      BlockSignals.PlacedGroupsOf(block),
+      collectible is Block block ? BlockSignals.PlacedGroupsOf(block) : [],
       StringComparer.Ordinal
     );
-    return TypeOf(block)
+    return TypeOf(collectible)
       + string.Concat(
-        block
+        collectible
           .Variant?.Where(v => !placed.Contains(v.Key))
           .Select(v => $"|{v.Key}={v.Value}")
           ?? []
@@ -148,8 +139,8 @@ public static class ObtainabilityCheck {
           )
             Add(drop.Type, drop.Code);
       }
-      foreach ((EnumItemClass type, string pattern, _) in WorldSources())
-        Add(type, new AssetLocation(pattern));
+      foreach (GatheredSources.Source source in GatheredSources.All)
+        Add(source.Type, new AssetLocation(source.Pattern));
     }
 
     // Adds every loaded collectible code matches, of either class; false when it matches none.

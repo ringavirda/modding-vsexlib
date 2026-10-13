@@ -407,4 +407,21 @@ public sealed class ObtainabilityCheckTests : IDisposable {
 
     Assert.Single(ExlibChecks.Produced());
   }
+
+  // Fails when ObtainabilityCheck reads fewer codes than GatheredSources lists.
+  [Fact]
+  [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
+  public void Every_gathered_source_makes_what_it_lists() =>
+    Assert.Empty(
+      Findings(
+        new LoadedStubGame(
+          Asking(
+            ("item", "game:stick"),
+            ("block", "game:rock-granite"),
+            ("item", "game:flint"),
+            ("block", "game:log-placed-oak-ud")
+          )
+        )
+      )
+    );
 }
