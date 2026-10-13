@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
@@ -422,6 +423,11 @@ public sealed partial class TestWorld : IDisposable {
     _beFactories[classname] = factory;
     return this;
   }
+
+  /// <summary>Drops every pipe tier's burst, throughput and joint registration, as a world load
+  /// does. A test that seeds its own ratings calls it first, so its registrations replace
+  /// nothing that a mod's load left behind.</summary>
+  public static void ResetPipeTiers() => BlockPipe.ResetForWorld();
 
   /// <summary>Registers a block in the id/code lookup without placing it (for orientation-variant
   /// swaps). A block without <see cref="Block.Sounds"/> is given empty ones, as the engine's
@@ -1241,14 +1247,20 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   private void DoSetBlock(int id, BlockPos pos, ItemStack? placedBy) {
-    DoSetBlock(id, pos);
     if (
       _blocksById.TryGetValue(id, out Block? placed) && !placed.ForFluidsLayer
-    )
+    ) {
+      WriteCell(id, pos, spawnEntity: false);
       placed.OnBlockPlaced(World, pos, placedBy);
+      return;
+    }
+    DoSetBlock(id, pos);
   }
 
-  private void DoSetBlock(int id, BlockPos pos) {
+  private void DoSetBlock(int id, BlockPos pos) =>
+    WriteCell(id, pos, spawnEntity: true);
+
+  private void WriteCell(int id, BlockPos pos, bool spawnEntity) {
     if (
       _blocksById.TryGetValue(id, out Block? fluid)
       && id != 0
@@ -1286,7 +1298,8 @@ public sealed partial class TestWorld : IDisposable {
     // Engine parity: placing a block with an entity class (re)creates its block entity when a
     // factory is registered for it.
     if (
-      b.EntityClass is { } entityClass
+      spawnEntity
+      && b.EntityClass is { } entityClass
       && (
         !_blockEntities.TryGetValue(pos, out var existing)
         || existing.Block != b
