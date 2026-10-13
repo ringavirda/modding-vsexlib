@@ -1,0 +1,7 @@
+{
+  "code": "greensand",
+  "class": "Item",
+  "shape": {
+    "base": "game:item/food/flour"
+  }
+}

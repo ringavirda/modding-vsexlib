@@ -108,4 +108,29 @@ internal static class ViewReferences {
   internal const string SpearIdle = "spearidle";
   internal const string SpearHit = "spearhit";
   internal const string BulkHold = "holdbothhandslarge";
+
+  /// <summary>A partial block's reference extents: the slot span as a share of the slot, and the longest
+  /// extent in blocks on the ground and in the hand.</summary>
+  internal const double PartialSlotSpan = 0.710;
+
+  internal const double PartialGroundLong = 0.300;
+  internal const double PartialHeldLong = 0.300;
+
+  /// <summary>A multicell block's reference extents, as for a partial block.</summary>
+  internal const double MulticellSlotSpan = 0.888;
+
+  internal const double MulticellGroundLong = 0.863;
+  internal const double MulticellHeldLong = 1.200;
+
+  /// <summary>A block lies on its largest face on the ground when its shortest extent is at most this
+  /// fraction of its longest.</summary>
+  internal const double LeafRatio = 4;
+
+  /// <summary>The game's hit and use clips, which a collectible keeps when it sets none.</summary>
+  internal const string DefaultHit = "breakhand";
+
+  internal const string DefaultUse = "interactstatic";
+
+  internal const string BlockReady = "heldblockready";
+  internal const string BlockUse = "twohandplaceblock";
 }

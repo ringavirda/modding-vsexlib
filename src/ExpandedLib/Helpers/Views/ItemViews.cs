@@ -14,11 +14,12 @@ public static class ItemViews {
   /// <summary>Computes the views of <paramref name="collectible"/>. The kind is its declared
   /// <c>attributes.itemViews.kind</c> or the one its drawn box gives; <c>attributes.itemViews.tip</c> names
   /// the working end of a longtool or tool as a sign and an axis letter ("+y"). The slot and ground views
-  /// are computed from the box as well.</summary>
+  /// are computed from the box as well. A block takes the game's block rotations with its origins on the drawn box.
+  /// A mod item with no declared kind, tool or tip that draws a game item's shape takes that item's shipped views.</summary>
   /// <param name="api">The api of the side whose world is loaded.</param>
   /// <param name="collectible">The collectible to compute.</param>
-  /// <returns>The views; null for a block, a collectible that declares kind <c>none</c>, one with no
-  /// drawn box, and one that declares a block kind.</returns>
+  /// <returns>The views; null for a collectible that declares kind <c>none</c>, one with no drawn box, an item
+  /// that declares a block kind and a block that declares an item kind.</returns>
   /// <exception cref="InvalidOperationException">The declared kind is not a kind name in lower case, or a
   /// workpiece is computed in a world with no vanilla work item.</exception>
   /// <exception cref="ArgumentException">The declared tip is not a sign and one of x, y, z.</exception>
@@ -26,14 +27,28 @@ public static class ItemViews {
     ICoreAPI api,
     CollectibleObject collectible
   ) {
-    if (collectible is not Item item || OptedOut(collectible))
+    if (OptedOut(collectible))
       return null;
     ItemViewKind? kind = KindOf(api, collectible);
+    ViewBox? box = BoxOf(api, collectible);
+    if (collectible is Block) {
+      return
+        kind
+          is ItemViewKind.Cube
+            or ItemViewKind.Partial
+            or ItemViewKind.Multicell
+        && box != null
+        ? ViewBlocks.Compute(kind.Value, box)
+        : null;
+    }
+    if (collectible is not Item item)
+      return null;
     if (kind == ItemViewKind.Workpiece)
       return Workpiece(api);
-    ViewBox? box = BoxOf(api, collectible);
     if (kind == null || box == null)
       return null;
+    if (VanillaShape(api, item) is { } twin)
+      return Shipped(api, item, twin, box);
 
     string? tip = item.Attributes?["itemViews"]?["tip"]?.AsString();
     if (kind == ItemViewKind.Tool) {
@@ -114,6 +129,54 @@ public static class ItemViews {
       .FirstOrDefault();
   }
 
+  // The game item that draws the same shape as a mod item with no declared kind, tool or tip; the first by
+  // ordinal code. A game item has none.
+  private static Item? VanillaShape(ICoreAPI api, Item item) {
+    if (
+      item.Code?.Domain == "game"
+      || item.Shape?.Base == null
+      || item.Tool != null
+      || item.Attributes?["itemViews"].Exists == true
+    )
+      return null;
+    string[] keep = item.Shape.SelectiveElements ?? [];
+    return api
+      .World.Items.Where(i =>
+        i?.Code?.Domain == "game"
+        && i.Shape?.Base != null
+        && i.Shape.Base.Equals(item.Shape.Base)
+        && keep.SequenceEqual(i.Shape.SelectiveElements ?? [])
+      )
+      .OrderBy(i => i.Code.ToString(), StringComparer.Ordinal)
+      .FirstOrDefault();
+  }
+
+  // The shipped views of a game item, for a mod item that draws its shape.
+  private static ItemViewSet Shipped(
+    ICoreAPI api,
+    Item item,
+    Item twin,
+    ViewBox box
+  ) {
+    ModelTransform hand =
+      twin.TpHandTransform?.Clone() ?? ModelTransform.ItemDefaultTp();
+    Lay lay = Lay.Of(box, true, null);
+    return new ItemViewSet(
+      ByBox(box.Extents(), false, false),
+      twin.GuiTransform?.Clone() ?? ModelTransform.ItemDefaultGui(),
+      hand,
+      twin.GroundTransform?.Clone() ?? ModelTransform.ItemDefaultGround(),
+      twin.HeldRightTpIdleAnimation,
+      twin.HeldRightReadyAnimation,
+      twin.HeldTpHitAnimation == DefaultHit ? null : twin.HeldTpHitAnimation,
+      twin.HeldTpUseAnimation == DefaultUse ? null : twin.HeldTpUseAnimation,
+      new Vec3d(lay.Lo[0], lay.Lo[1], lay.Lo[2]),
+      new Vec3d(lay.Hi[0], lay.Hi[1], lay.Hi[2]),
+      lay.Axes,
+      HandGrip(hand)
+    );
+  }
+
   private static ItemViewSet Workpiece(ICoreAPI api) {
     Item reference = api
       .World.Items.Where(i => i is ItemWorkItem && i.Code?.Domain == "game")
@@ -135,14 +198,8 @@ public static class ItemViews {
     );
   }
 
-  // The hand reference a carrier's shipped views make: its grip is the point of its shape that its hand
-  // transform puts on the hand.
-  private static HandReference? FromCarrier(ICoreAPI api, Item carrier) {
-    ModelTransform? tf = carrier.TpHandTransform;
-    ViewBox? box = BoxOf(api, carrier);
-    if (tf == null || box == null)
-      return null;
-    Lay lay = Lay.Of(box, true, null);
+  // The point of the shape, in voxels, that a hand transform puts on the hand.
+  private static Vec3d HandGrip(ModelTransform tf) {
     double s = tf.ScaleXYZ.X;
     double[,] r = Rotation(
       new Vec3d(tf.Rotation.X, tf.Rotation.Y - HandYaw, tf.Rotation.Z)
@@ -160,7 +217,19 @@ public static class ItemViews {
         -o.Z / s - tf.Translation.Z
       )
     );
-    var grip = new Vec3d((o.X + q.X) * 16, (o.Y + q.Y) * 16, (o.Z + q.Z) * 16);
+    return new Vec3d((o.X + q.X) * 16, (o.Y + q.Y) * 16, (o.Z + q.Z) * 16);
+  }
+
+  // The hand reference a carrier's shipped views make: its grip is the point of its shape that its hand
+  // transform puts on the hand.
+  private static HandReference? FromCarrier(ICoreAPI api, Item carrier) {
+    ModelTransform? tf = carrier.TpHandTransform;
+    ViewBox? box = BoxOf(api, carrier);
+    if (tf == null || box == null)
+      return null;
+    Lay lay = Lay.Of(box, true, null);
+    double s = tf.ScaleXYZ.X;
+    Vec3d grip = HandGrip(tf);
     double[] u = lay.Coords(grip);
     box.Nearest(grip, out double off);
     return new HandReference(

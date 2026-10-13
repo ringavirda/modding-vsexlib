@@ -338,8 +338,7 @@ public class ItemViewsCalibrationTests {
   }
 
   [Fact]
-  public void A_block_and_an_item_with_no_shape_compute_nothing() {
-    Assert.Null(ItemViews.Compute(World.Api, new Block()));
+  public void An_item_with_no_shape_computes_nothing() {
     Assert.Null(ItemViews.Compute(World.Api, new Item()));
   }
 
