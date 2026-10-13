@@ -46,7 +46,8 @@ public sealed partial class TestWorld : IDisposable {
   /// does. Each cell holds a solid layer and a fluid layer: a read with a
   /// <see cref="BlockLayersAccess"/> value answers as <see cref="GetBlock(BlockPos, int)"/> does,
   /// <c>SetBlock</c> without a layer puts a block whose <see cref="Block.ForFluidsLayer"/> is true
-  /// into the fluid layer and empties the solid one, and <c>SetBlock</c> with
+  /// into the fluid layer and empties the solid one, <c>SetBlock</c> with a stack also runs a solid
+  /// block's <see cref="Block.OnBlockPlaced"/> with it, and <c>SetBlock</c> with
   /// <see cref="BlockLayersAccess.Solid"/> or <see cref="BlockLayersAccess.Fluid"/> writes that layer
   /// alone.</remarks>
   public IBlockAccessor Accessor { get; }
@@ -862,7 +863,13 @@ public sealed partial class TestWorld : IDisposable {
     a.When(x =>
         x.SetBlock(Arg.Any<int>(), Arg.Any<BlockPos>(), Arg.Any<ItemStack>())
       )
-      .Do(ci => DoSetBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1)));
+      .Do(ci =>
+        DoSetBlock(
+          ci.ArgAt<int>(0),
+          ci.ArgAt<BlockPos>(1),
+          ci.ArgAt<ItemStack>(2)
+        )
+      );
     a.When(x => x.SetBlock(Arg.Any<int>(), Arg.Any<BlockPos>(), Arg.Any<int>()))
       .Do(ci =>
         DoSetBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1), ci.ArgAt<int>(2))
@@ -1231,6 +1238,14 @@ public sealed partial class TestWorld : IDisposable {
       _callbacks.Remove(id);
       due.Callback((_clockMs - due.DueMs) / 1000f);
     }
+  }
+
+  private void DoSetBlock(int id, BlockPos pos, ItemStack? placedBy) {
+    DoSetBlock(id, pos);
+    if (
+      _blocksById.TryGetValue(id, out Block? placed) && !placed.ForFluidsLayer
+    )
+      placed.OnBlockPlaced(World, pos, placedBy);
   }
 
   private void DoSetBlock(int id, BlockPos pos) {

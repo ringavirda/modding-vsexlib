@@ -259,7 +259,10 @@ public sealed partial class SetupScene : IDisposable
     IEnumerable<JToken> roots =
     [
       .. Model.Layout == null ? [] : (JToken[])[Model.Layout],
-      .. Model.AllSteps.SelectMany(s => s.All()).Select(s => s.Body),
+      .. Model
+        .AllSteps.Concat(Model.During.SelectMany(d => d.Steps))
+        .SelectMany(s => s.All())
+        .Select(s => s.Body),
     ];
     return
     [

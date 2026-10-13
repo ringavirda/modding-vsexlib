@@ -44,7 +44,12 @@ internal sealed class ScenarioWorld(
   }
 
   public MoltenCellReading? MoltenCellAt(BlockPos pos) =>
-    BlockEntityAt(pos)?.GetBehavior<BEBehaviorMoltenCell>() is { } cell
+    (
+      BlockEntityAt(pos) is { } be
+        ? be as IMoltenCell ?? be.GetBehavior<BEBehaviorMoltenCell>()
+        : null
+    )
+      is { } cell
       ? new MoltenCellReading(
         cell.CellAmount,
         cell.CellMetalType,

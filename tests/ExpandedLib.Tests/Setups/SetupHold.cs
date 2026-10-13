@@ -1,5 +1,6 @@
 #if GAME_GE_1_22
 using System.Collections.Generic;
+using ExpandedLib.Industry.Molten;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -200,5 +201,37 @@ internal sealed class SetupHoldBox : BlockEntityContainer
       player.InventoryManager?.OpenInventory(Inventory);
     Packets.Add((packetid, data, _inventory[0].Itemstack?.StackSize ?? 0));
   }
+}
+
+internal sealed class SetupMoltenEntity : BlockEntity, IMoltenCell
+{
+  public int CellAmount { get; set; }
+
+  public string CellMetalType { get; set; } = "";
+
+  public float CellTemperature { get; set; }
+
+  public int MaxUnitCapacity => 50;
+
+  public bool Sealed => false;
+
+  public bool Solidified => false;
+
+  public bool IsFlowSource => false;
+
+  public bool AcceptsSubMinimumFlow => false;
+
+  public void EnsureMetalStack(IWorldAccessor world) { }
+
+  public int PushMetalRaw(
+    int amount,
+    string metalType,
+    float temperature,
+    IWorldAccessor world
+  ) => 0;
+
+  public int DrainMetal(int amount) => 0;
+
+  public void UpdateThermal(IWorldAccessor world) { }
 }
 #endif
