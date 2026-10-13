@@ -124,6 +124,7 @@ internal static class SetupSteps {
     ["fill"] = ["id", "code", "from", "to"],
     ["window"] = ["at", "open", "put", "take", "press", "close"],
     ["ignite"] = ["at", "seconds"],
+    ["craft"] = ["at", "output", "recipe", "times", "with"],
   };
 
   private static readonly Dictionary<string, string[]> Required = new() {
@@ -137,6 +138,7 @@ internal static class SetupSteps {
     ["interact"] = ["at"],
     ["window"] = ["at"],
     ["ignite"] = ["at"],
+    ["craft"] = ["output"],
     ["break"] = ["at"],
     ["repeat"] = ["steps"],
     ["advance"] = ["hours"],
@@ -196,6 +198,8 @@ internal static class SetupSteps {
         throw at.In("id")
           .Fail($"\"{id}\" is not lower case words joined by -.");
     }
+    if (kind == "craft")
+      ValidateCraft(o, at);
     if (kind == "set" && (o["tree"] == null) == (o["member"] == null))
       throw at.Fail("takes one of \"tree\" and \"member\".");
     if (kind == "complete")
@@ -271,5 +275,20 @@ internal static class SetupSteps {
         ? ParseList(o["steps"], at.In("steps"), references, refused)
         : [];
     return new SetupStep(kind, o, id, where.Path, steps, tests);
+  }
+
+  private static void ValidateCraft(JObject o, SetupJson.Where at) {
+    SetupJson.String(o["output"], at.In("output"));
+    if (o["recipe"] != null)
+      SetupJson.String(o["recipe"], at.In("recipe"));
+    if (o["times"] != null && SetupJson.Integer(o["times"], at.In("times")) < 1)
+      throw at.In("times").Fail("takes a whole number of at least 1.");
+    if (o["with"] != null)
+      foreach (
+        JProperty pick in SetupJson
+          .Object(o["with"], at.In("with"))
+          .Properties()
+      )
+        SetupJson.String(pick.Value, at.In("with").In(pick.Name));
   }
 }

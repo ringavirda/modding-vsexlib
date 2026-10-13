@@ -19,7 +19,7 @@ public sealed partial class SetupScene
 
   private TestPlayer? _player;
 
-  private TestPlayer Player => _player ??= World.Player();
+  internal TestPlayer Player => _player ??= World.Player();
 
   private BlockEntity EntityAt(SetupStep step, out BlockPos at)
   {

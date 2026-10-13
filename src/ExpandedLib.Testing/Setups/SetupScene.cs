@@ -239,7 +239,20 @@ public sealed partial class SetupScene : IDisposable
 
   private void Load(IReadOnlyList<string> modPaths)
   {
-    World.LoadAssets(modPaths, null, VanillaCodes());
+    bool crafts = EveryStep().Any(s => s.Kind == "craft");
+    World.LoadAssets(modPaths, null, VanillaCodes(), crafts);
+    if (crafts)
+    {
+      foreach (
+        CollectibleObject collectible in World
+          .World.Items.Where(i => i?.Code != null)
+          .Cast<CollectibleObject>()
+          .Concat(World.World.Blocks.Where(b => b is { Id: not 0 }))
+      )
+        if (ReflectionHelpers.GetField(collectible, "api") == null)
+          collectible.OnLoadedNative(World.Api);
+      World.LoadRecipes();
+    }
     if (World.Mods.GetModSystem<MechanicalPowerMod>() == null)
     {
       HashSet<long> before = World.TickListenerIds();
@@ -254,15 +267,17 @@ public sealed partial class SetupScene : IDisposable
         Ready(block);
   }
 
+  private IEnumerable<SetupStep> EveryStep() =>
+    Model
+      .AllSteps.Concat(Model.During.SelectMany(d => d.Steps))
+      .SelectMany(s => s.All());
+
   private string[] VanillaCodes()
   {
     IEnumerable<JToken> roots =
     [
       .. Model.Layout == null ? [] : (JToken[])[Model.Layout],
-      .. Model
-        .AllSteps.Concat(Model.During.SelectMany(d => d.Steps))
-        .SelectMany(s => s.All())
-        .Select(s => s.Body),
+      .. EveryStep().Select(s => s.Body),
     ];
     return
     [
@@ -478,6 +493,9 @@ public sealed partial class SetupScene : IDisposable
           break;
         case "ignite":
           IgniteStep(step);
+          break;
+        case "craft":
+          CraftStep(step);
           break;
         case "expect":
           ExpectStep(step);

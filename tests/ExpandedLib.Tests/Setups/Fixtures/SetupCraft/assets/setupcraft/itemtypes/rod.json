@@ -1,0 +1,4 @@
+{
+  "code": "rod",
+  "variantgroups": [{ "code": "metal", "states": ["copper", "iron"] }]
+}

@@ -28,6 +28,13 @@ public sealed partial class TestWorld {
 
   private IAssetManager? _loadedAssets;
 
+  private static readonly string[] RecipePaths =
+  [
+    "recipes/grid",
+    "recipes/smithing",
+    "recipes/clayforming",
+  ];
+
   /// <summary>The smithing recipes <see cref="LoadRecipes"/> kept, in load order.</summary>
   public IReadOnlyList<SmithingRecipe> SmithingRecipes => _smithingRecipes;
 
@@ -128,6 +135,25 @@ public sealed partial class TestWorld {
       }
     }
     return (loaded, failed);
+  }
+
+  /// <summary>The <c>game:</c> codes the grid, smithing and clay forming recipe assets in
+  /// <paramref name="assets"/> name, wildcards and placeholders as written; a code with no domain
+  /// is the game's.</summary>
+  private IReadOnlyCollection<string> RecipeVanillaCodes(IAssetManager assets) {
+    var codes = new HashSet<string>();
+    foreach (string path in RecipePaths)
+      foreach (
+        (AssetLocation _, JToken content) in assets.GetMany<JToken>(Log, path)
+      )
+        foreach (JToken token in content.SelectTokens("$..code"))
+          if (
+            token is JValue { Value: string code }
+            && new AssetLocation(code)
+              is { Domain: "game", Path: { Length: > 0 } } location
+          )
+            codes.Add($"game:{location.Path}");
+    return codes;
   }
 
   private static void WireRecipeMatching(IEventAPI events) {

@@ -1,0 +1,206 @@
+[
+  {
+    "name": "setupcraft:frame",
+    "ingredientPattern": "RR,PP",
+    "width": 2,
+    "height": 2,
+    "ingredients": {
+      "R": {
+        "type": "item",
+        "code": "setupcraft:rod-*",
+        "quantity": 1
+      },
+      "P": {
+        "type": "item",
+        "code": "setupcraft:plate",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "item",
+      "code": "setupcraft:frame",
+      "quantity": 3
+    }
+  },
+  {
+    "name": "setupcraft:frame-alt",
+    "ingredientPattern": "PR,PR",
+    "width": 2,
+    "height": 2,
+    "ingredients": {
+      "R": {
+        "type": "item",
+        "code": "setupcraft:rod-*",
+        "quantity": 1
+      },
+      "P": {
+        "type": "item",
+        "code": "setupcraft:plate",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "item",
+      "code": "setupcraft:frame",
+      "quantity": 3
+    }
+  },
+  {
+    "name": "setupcraft:pin",
+    "ingredientPattern": "MR",
+    "width": 2,
+    "height": 1,
+    "ingredients": {
+      "M": {
+        "type": "item",
+        "code": "setupcraft:mallet",
+        "quantity": 1,
+        "isTool": true
+      },
+      "R": {
+        "type": "item",
+        "code": "setupcraft:rod-*",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "item",
+      "code": "setupcraft:pin",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupcraft:knob",
+    "ingredientPattern": "RS,P_",
+    "width": 2,
+    "height": 2,
+    "ingredients": {
+      "R": {
+        "type": "item",
+        "code": "setupcraft:rod-*",
+        "quantity": 1
+      },
+      "S": {
+        "type": "item",
+        "code": "setupcraft:stud",
+        "quantity": 1
+      },
+      "P": {
+        "type": "item",
+        "code": "setupcraft:plate",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "item",
+      "code": "setupcraft:knob",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupcraft:wide",
+    "ingredientPattern": "RRR,PPP,RRR",
+    "width": 3,
+    "height": 3,
+    "ingredients": {
+      "R": {
+        "type": "item",
+        "code": "setupcraft:rod-*",
+        "quantity": 1
+      },
+      "P": {
+        "type": "item",
+        "code": "setupcraft:plate",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "item",
+      "code": "setupcraft:wide",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupcraft:member",
+    "ingredientPattern": "_____,_____,__DR_,_____,_____",
+    "width": 5,
+    "height": 5,
+    "ingredients": {
+      "D": {
+        "type": "item",
+        "code": "setupcraft:diagram-set",
+        "quantity": 1
+      },
+      "R": {
+        "type": "item",
+        "code": "setupcraft:rod-*",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "item",
+      "code": "setupcraft:member",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupcraft:long",
+    "ingredientPattern": "RRRR",
+    "width": 4,
+    "height": 1,
+    "ingredients": {
+      "R": {
+        "type": "item",
+        "code": "setupcraft:rod-*",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "item",
+      "code": "setupcraft:long",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupcraft:tall",
+    "ingredientPattern": "P,P,P,P",
+    "width": 1,
+    "height": 4,
+    "ingredients": {
+      "P": {
+        "type": "item",
+        "code": "setupcraft:plate",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "item",
+      "code": "setupcraft:tall",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupcraft:mix",
+    "ingredientPattern": "R_P",
+    "width": 3,
+    "height": 1,
+    "ingredients": {
+      "R": {
+        "type": "item",
+        "code": "setupcraft:rod-*",
+        "quantity": 1
+      },
+      "P": {
+        "type": "item",
+        "code": "setupcraft:plate",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "item",
+      "code": "setupcraft:mix",
+      "quantity": 1
+    },
+    "shapeless": true
+  }
+]
