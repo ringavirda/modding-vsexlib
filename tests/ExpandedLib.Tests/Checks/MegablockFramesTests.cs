@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Definitions;
+using ExpandedLib.Helpers;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Xunit;
@@ -37,6 +39,8 @@ public class MegablockFramesTests {
   /// <summary>A principal declaring the given cells.</summary>
   private sealed class Declared(params JObject[] cells) : IFillerHost {
     public JsonObject FillerOffsets => new(new JArray(cells));
+
+    public int StructureAngle => 0;
   }
 
   /// <summary>A principal reserving the cells east of it, <paramref name="length"/> blocks in all.</summary>
@@ -215,6 +219,33 @@ public class MegablockFramesTests {
     );
   }
 
+  // Fails when leaves under one part are reported as the part's worst one.
+  [Fact]
+  [PlantedDefect(typeof(MegablockFrames), nameof(MegablockFrames.Misfit))]
+  public void Each_leaf_element_reaching_too_far_has_its_own_line() {
+    using var files = new PlantedFiles();
+    string shape = files.Write(
+      "shapes/two.json",
+      """
+      { "elements": [ { "name": "Root", "from": [0, 0, 0], "to": [16, 16, 16], "children": [
+        { "name": "Part", "from": [0, 0, 0], "to": [16, 16, 16], "children": [
+          { "name": "a", "from": [16, 0, 0], "to": [24, 16, 16] },
+          { "name": "b", "from": [24, 0, 0], "to": [32, 16, 16] } ] } ] } ] }
+      """
+    );
+
+    string? misfit = MegablockFrames.Misfit(shape, 0, Principal(1), 0);
+
+    Assert.NotNull(misfit);
+    Assert.Equal(
+      [
+        "draws 'Root/Part/b' 16 voxels past cell (1, 0, 0) from the principal, 4 allowed",
+        "draws 'Root/Part/a' 8 voxels past cell (1, 0, 0) from the principal, 4 allowed",
+      ],
+      misfit.Split('\n').Select(l => l.Split(" (the shape")[0])
+    );
+  }
+
   // Fails when an entry covers only the element it names and not the elements under it.
   [Fact]
   [PlantedDefect(typeof(MegablockFrames), nameof(MegablockFrames.Misfit))]
@@ -266,10 +297,53 @@ public class MegablockFramesTests {
     Assert.Null(MegablockFrames.Misfit(shape, angle, Principal(3), angle));
   }
 
-  private static ExBlockDef Long(string code, int spinOffset) =>
+  // Fails when a box keeps its north frame while the footprint turns.
+  [Theory]
+  [PlantedDefect(typeof(MegablockFrames), nameof(MegablockFrames.Misfit))]
+  [InlineData(90)]
+  [InlineData(180)]
+  [InlineData(270)]
+  public void A_collision_box_turns_with_the_facing(int angle) {
+    using var files = new PlantedFiles();
+    string shape = files.Write(
+      "shapes/end.json",
+      """
+      { "elements": [ { "name": "end", "from": [24, 0, 0], "to": [32, 16, 16] } ] }
+      """
+    );
+    JObject farHalf = new() {
+      ["x1"] = 0.5,
+      ["y1"] = 0,
+      ["z1"] = 0,
+      ["x2"] = 1,
+      ["y2"] = 1,
+      ["z2"] = 1,
+    };
+
+    Assert.Null(
+      MegablockFrames.Misfit(
+        shape,
+        angle,
+        new Declared(Cell(1, farHalf)),
+        angle
+      )
+    );
+  }
+
+  private sealed class PlainHost : Block, IFillerHost {
+    public JsonObject? FillerOffsets => Attributes?["fillerOffsets"];
+
+    public int StructureAngle => ExOrientation.AngleFromSide(Variant["side"]);
+  }
+
+  private static ExBlockDef Long(
+    string code,
+    int spinOffset,
+    string @class = "ExFilledMegastructure"
+  ) =>
     ExBlockDef
       .Create("test", code)
-      .Class("ExFilledMegastructure")
+      .Class(@class)
       .SideVariant()
       .FillerOffsets([new(1, 0, 0), new(2, 0, 0)])
       .ShapeSpunPerOrientation("test:" + code, spinOffset);
@@ -284,6 +358,7 @@ public class MegablockFramesTests {
       defs,
       [typeof(BlockStructureFiller).Assembly],
       reaches,
+      world => world.RegisterClass("test-plainhost", typeof(PlainHost)),
       shapeFile: shapeBase =>
         files.Path("shapes/" + shapeBase.Split(':')[1] + ".json")
     );
@@ -307,6 +382,19 @@ public class MegablockFramesTests {
         .Distinct()
         .Order(System.StringComparer.Ordinal)
     );
+  }
+
+  // Fails when a host that is not a BlockFilledMegastructure is measured at angle 0, not its own StructureAngle.
+  [Fact]
+  [PlantedDefect(typeof(MegablockFrames), nameof(MegablockFrames.Run))]
+  public void A_host_outside_the_base_class_is_turned_by_its_own_structure_angle() {
+    using var files = new PlantedFiles();
+    files.Write("shapes/plain.json", Shape);
+
+    BlockLaws.Law law = Run(files, null, Long("plain", 0, "test-plainhost"));
+
+    Assert.Equal(4, law.Cases);
+    Assert.Empty(law.Findings);
   }
 
   // Fails when the reaches file is read per variant instead of by shape base, or its leftovers go unreported.
@@ -356,7 +444,9 @@ public class MegablockFramesTests {
     );
   }
 
+  // Fails when an entry's cell or max is read from the wrong field, or a shape base's list is dropped.
   [Fact]
+  [PlantedDefect(typeof(MegablockFrames), nameof(MegablockFrames.ReadReaches))]
   public void Reaches_are_read_by_shape_base() {
     using var files = new PlantedFiles();
     string path = files.Write(

@@ -248,6 +248,8 @@ public class StructureFillerBoxesTests {
 
   private sealed class Host(JsonObject? offsets) : IFillerHost {
     public JsonObject? FillerOffsets { get; } = offsets;
+
+    public int StructureAngle => 0;
   }
 
   #endregion

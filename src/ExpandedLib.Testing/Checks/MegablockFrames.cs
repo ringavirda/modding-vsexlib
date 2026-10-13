@@ -45,8 +45,9 @@ public static class MegablockFrames {
   /// <param name="reaches">Reaches accepted past <paramref name="overhang"/>, each up to its
   /// <see cref="MegablockReach.Max"/>; null accepts none.</param>
   /// <returns>Null when nothing reaches past its limit and every entry is used. Otherwise a line
-  /// per cell and top-level part reaching too far (cell, element, voxels; the first adds the
-  /// spin and angle that must agree), then a line per entry naming no element or reached by none.</returns>
+  /// per cell and leaf element reaching too far (the element's path, its worst reach in voxels
+  /// and the cell; the first ends with the spin and angle that must agree), then a line per
+  /// entry naming no element or reached by none.</returns>
   /// <exception cref="System.IO.FileNotFoundException">The shape file is missing.</exception>
   public static string? Misfit(
     string shapePath,
@@ -81,7 +82,7 @@ public static class MegablockFrames {
   /// <summary>
   /// Runs <see cref="Misfit"/>'s measure over every loaded variant of every
   /// <see cref="IFillerHost"/> block of <paramref name="domain"/> that declares cells and a shape,
-  /// with the variant's resolved shape base, <c>rotateY</c> and <c>StructureAngle</c>.
+  /// at its resolved shape base and <c>rotateY</c> and its own <c>StructureAngle</c>.
   /// </summary>
   /// <param name="defs">Block and item definitions; others, and exlib's filler, are skipped.</param>
   /// <param name="assemblies">Where the definitions' classes live, exlib's included.</param>
@@ -137,7 +138,7 @@ public static class MegablockFrames {
           []
         );
         int spin = (int)Math.Round(block.Shape.rotateY);
-        int angle = (block as BlockFilledMegastructure)?.StructureAngle ?? 0;
+        int angle = ((IFillerHost)block).StructureAngle;
         Outcome outcome = Judge(
           shapeFile(shapeBase),
           spin,
@@ -290,11 +291,8 @@ public static class MegablockFrames {
       .Select(r => ExOrientation.RotateOffset(r.Cell, angle))
       .ToList();
     var used = new HashSet<int>();
-    var groups =
-      new Dictionary<
-        (Vec3i Cell, string Group),
-        (float Reach, string Path, string? Note)
-      >();
+    var found =
+      new List<(float Reach, Vec3i Cell, string Path, string? Note)>();
     foreach (((Vec3i cell, string path), float reach) in worst) {
       if (reach <= limit + 1e-6f)
         continue;
@@ -310,20 +308,18 @@ public static class MegablockFrames {
           continue;
         note = $", past its allowed {reaches[hit].Max:0.###}";
       }
-      var key = (cell, string.Join("/", Bare(path).Split('/').Take(2)));
-      if (!groups.TryGetValue(key, out var g) || reach > g.Reach)
-        groups[key] = (reach, path, note);
+      found.Add((reach, cell, path, note));
     }
 
     List<string> past =
     [
-      .. groups
-        .OrderByDescending(g => g.Value.Reach)
-        .ThenBy(g => g.Key.Group, StringComparer.Ordinal)
-        .Select(g =>
-          $"draws '{g.Value.Path}' {g.Value.Reach:0.##} voxels past cell "
-          + $"({g.Key.Cell.X}, {g.Key.Cell.Y}, {g.Key.Cell.Z}) from the principal, "
-          + $"{limit:0.###} allowed{g.Value.Note}"
+      .. found
+        .OrderByDescending(f => f.Reach)
+        .ThenBy(f => f.Path, StringComparer.Ordinal)
+        .Select(f =>
+          $"draws '{f.Path}' {f.Reach:0.##} voxels past cell "
+          + $"({f.Cell.X}, {f.Cell.Y}, {f.Cell.Z}) from the principal, "
+          + $"{limit:0.###} allowed{f.Note}"
         ),
     ];
     return new Outcome(past, used, unknown);

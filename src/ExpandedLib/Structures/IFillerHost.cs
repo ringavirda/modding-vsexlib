@@ -6,4 +6,8 @@ namespace ExpandedLib.Structures;
 public interface IFillerHost {
   /// <summary>The block's <c>fillerOffsets</c> JSON node, or null if none.</summary>
   JsonObject? FillerOffsets { get; }
+
+  /// <summary>The turn in degrees (0, 90, 180 or 270) that takes the north-frame <c>fillerOffsets</c>
+  /// to this variant's placement.</summary>
+  int StructureAngle { get; }
 }
