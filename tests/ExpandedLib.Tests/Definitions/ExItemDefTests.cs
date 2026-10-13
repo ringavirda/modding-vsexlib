@@ -506,7 +506,6 @@ public class ExItemDefTests {
       "megablocks are blocks; items cannot be part of one",
     ["MultiblockLayout(Action<MultiblockLayoutBuilder>)"] =
       "megablocks are blocks; items cannot be part of one",
-    // Clip actions drive a block entity's animator.
     ["ClipAction(ClipAction)"] =
       "clip actions drive a block entity's animator; items have none",
     ["ClipActionByType(String,ClipAction)"] =
