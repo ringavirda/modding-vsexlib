@@ -19,6 +19,8 @@ public static class ClipLaws
 
   internal const string KeyName = "animator key";
 
+  internal const string ExceptionsName = "clip exceptions";
+
   /// <summary>Traces the <see cref="Blocks.ClipPose.Frame"/> actions every variant of
   /// <paramref name="defs"/> declares, and the animator cache key every animated variant builds under.</summary>
   /// <remarks>An action's <c>by</c> help lines are clicked on the server entity, repeated until its
@@ -28,11 +30,12 @@ public static class ClipLaws
   /// <param name="defs">Block and item definitions; others are skipped.</param>
   /// <param name="assemblies">Where the definitions' classes live, exlib's included.</param>
   /// <param name="exceptionsFile">A <c>clip-actions.json</c>; a known row accepts its law's findings under
-  /// its key and is itself a finding when it accepts none. Null or missing accepts nothing.</param>
+  /// its key and is itself a finding when it accepts none, and a known row under a law name that did not
+  /// run is a finding of <c>clip exceptions</c>. Null or missing accepts nothing.</param>
   /// <param name="prepare">Registers on the world what the blocks need, before any is defined.</param>
   /// <param name="assetRoot">Maps a domain to the directory holding its <c>shapes</c> folder; null reads
   /// <c>RepoPaths.Assets</c>.</param>
-  /// <returns>The laws <c>clip action</c>, <c>clip time</c> and <c>animator key</c>, in order.</returns>
+  /// <returns>The laws <c>clip action</c>, <c>clip time</c>, <c>animator key</c> and <c>clip exceptions</c>, in order.</returns>
   /// <exception cref="InvalidOperationException">A declaration is malformed or names a clip its shape
   /// lacks, or a declaring block's shape is missing.</exception>
   public static BlockLaws.Result Run(
@@ -59,10 +62,12 @@ public static class ClipLaws
     var found = new List<(string Code, ClipProblem Problem)>();
     (int keyTypes, int twins) = trace.Keys(found);
     (int types, int actions, int timed) = trace.Actions(found);
+    string[] ran = [ActionName, TimeName, KeyName];
     return new BlockLaws.Result([
       Law(ActionName, types, actions, found, exceptions),
       Law(TimeName, types, timed, found, exceptions),
       Law(KeyName, keyTypes, twins, found, exceptions),
+      new BlockLaws.Law(ExceptionsName, 0, 0, exceptions.UnnamedLaws(ran)),
     ]);
   }
 

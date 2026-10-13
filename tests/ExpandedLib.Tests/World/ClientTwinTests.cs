@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using ExpandedLib.Testing;
 using NSubstitute;
@@ -36,12 +37,15 @@ public class ClientTwinTests {
     return block;
   }
 
-  private static HandDoor PlaceDoor(TestWorld world, BlockPos pos) {
-    var door = new HandDoor();
-    world.Place(pos, DoorBlock(), door);
-    world.Initialize(door);
-    return door;
+  private static T Place<T>(TestWorld world, BlockPos pos, T entity)
+    where T : BlockEntity {
+    world.Place(pos, DoorBlock(), entity);
+    world.Initialize(entity);
+    return entity;
   }
+
+  private static HandDoor PlaceDoor(TestWorld world, BlockPos pos) =>
+    Place(world, pos, new HandDoor());
 
   private static (HandDoor Server, ClientTwin Twin) Standing(
     TestWorld world,
@@ -107,13 +111,87 @@ public class ClientTwinTests {
   public void A_twin_reads_its_neighbours_twin() {
     using var world = DoorWorld();
     var beside = new BlockPos(1, 64, 0);
-    HandDoor first = PlaceDoor(world, Here);
-    HandDoor second = PlaceDoor(world, beside);
+    var first = Place(world, Here, new NeighbourDoor());
+    var second = Place(world, beside, new NeighbourDoor());
     var twins = ClientTwin.Stand(world, first, second);
     IBlockAccessor clientAccessor = world.ClientApi.World.BlockAccessor;
 
+    Assert.Same(twins[1].Twin, ((NeighbourDoor)twins[0].Twin).Seen);
     Assert.Same(twins[1].Twin, clientAccessor.GetBlockEntity(beside));
     Assert.Null(clientAccessor.GetBlockEntity(new BlockPos(5, 64, 5)));
+  }
+
+  [Fact]
+  public void A_client_tick_gets_the_seconds_since_it_last_fired() {
+    using var world = DoorWorld();
+    var twin = ClientTwin.Stand(world, Place(world, Here, new TimedDoor()))[0];
+
+    twin.Frames(0.02f, 6);
+
+    var seconds = ((TimedDoor)twin.Twin).Seconds;
+    Assert.Equal(2, seconds.Count);
+    Assert.Equal(0.06f, seconds[0], 0.001f);
+    Assert.Equal(0.06f, seconds[1], 0.001f);
+  }
+
+  [Fact]
+  public void A_client_tick_on_the_world_overload_fires_with_the_seconds() {
+    using var world = DoorWorld();
+    var twin = ClientTwin.Stand(world, Place(world, Here, new WorldTickDoor()))[
+      0
+    ];
+
+    twin.Frames(0.02f, 6);
+
+    var seconds = ((WorldTickDoor)twin.Twin).Seconds;
+    Assert.Equal(2, seconds.Count);
+    Assert.Equal(0.06f, seconds[0], 0.001f);
+  }
+
+  [Fact]
+  public void A_client_tick_error_goes_to_the_entitys_handler() {
+    using var world = DoorWorld();
+    var twin = ClientTwin.Stand(world, Place(world, Here, new ErringDoor()))[0];
+
+    twin.Frames(0.05f, 1);
+
+    var errors = ((ErringDoor)twin.Twin).Errors;
+    Assert.Single(errors);
+    Assert.IsType<InvalidOperationException>(errors[0]);
+  }
+
+  [Fact]
+  public void Releasing_a_twin_removes_its_renderers_and_ticks() {
+    using var world = DoorWorld();
+    int renderers = world.ClientRendererCount;
+    int ticks = world.ClientTickCount;
+    var twin = ClientTwin.Stand(world, Place(world, Here, new RenderingDoor()))[
+      0
+    ];
+    Assert.True(world.ClientTickCount > ticks);
+
+    world.ReleaseClientTwin(twin.Twin);
+
+    Assert.Equal(renderers, world.ClientRendererCount);
+    Assert.Equal(ticks, world.ClientTickCount);
+    Assert.Null(world.ClientApi.World.BlockAccessor.GetBlockEntity(Here));
+  }
+
+  [Fact]
+  public void A_stand_that_fails_releases_the_twins_it_made() {
+    using var world = DoorWorld();
+    var good = Place(world, Here, new RenderingDoor());
+    var bad = Place(world, new BlockPos(1, 64, 0), new StandFailingDoor());
+    int renderers = world.ClientRendererCount;
+    int ticks = world.ClientTickCount;
+
+    Assert.Throws<InvalidOperationException>(() =>
+      ClientTwin.Stand(world, good, bad)
+    );
+
+    Assert.Equal(renderers, world.ClientRendererCount);
+    Assert.Equal(ticks, world.ClientTickCount);
+    Assert.Null(world.ClientApi.World.BlockAccessor.GetBlockEntity(Here));
   }
 
   [Fact]
@@ -198,6 +276,75 @@ public class ClientTwinTests {
         new AssetLocation("game:shapes/block/blastpowdersack.json")
       )
     );
+  }
+
+  private sealed class NeighbourDoor : BlockEntity {
+    public BlockEntity? Seen { get; private set; }
+
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      if (api.Side == EnumAppSide.Client)
+        Seen = api.World.BlockAccessor.GetBlockEntity(
+          new BlockPos(Pos.X + 1, Pos.Y, Pos.Z)
+        );
+    }
+  }
+
+  private sealed class TimedDoor : BlockEntity {
+    public List<float> Seconds { get; } = new();
+
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      if (api.Side == EnumAppSide.Client)
+        RegisterGameTickListener(dt => Seconds.Add(dt), 50);
+    }
+  }
+
+  private sealed class WorldTickDoor : BlockEntity {
+    public List<float> Seconds { get; } = new();
+
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      if (api.Side == EnumAppSide.Client)
+        RegisterGameTickListener((_, _, dt) => Seconds.Add(dt), 50);
+    }
+  }
+
+  private sealed class ErringDoor : BlockEntity {
+    public List<Exception> Errors { get; } = new();
+
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      if (api.Side == EnumAppSide.Client)
+        RegisterGameTickListener(
+          _ => throw new InvalidOperationException("the tick threw"),
+          50
+        );
+    }
+
+    public override void TickingExceptionHandler(Exception e) => Errors.Add(e);
+  }
+
+  private sealed class RenderingDoor : BlockEntity {
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      if (api.Side != EnumAppSide.Client)
+        return;
+      ((ICoreClientAPI)api).Event.RegisterRenderer(
+        new CountingRenderer(),
+        EnumRenderStage.Opaque,
+        "rendering"
+      );
+      RegisterGameTickListener(_ => { }, 50);
+    }
+  }
+
+  private sealed class StandFailingDoor : BlockEntity {
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      if (api.Side == EnumAppSide.Client)
+        throw new InvalidOperationException("the twin cannot stand");
+    }
   }
 
   private sealed class CountingRenderer : IRenderer {

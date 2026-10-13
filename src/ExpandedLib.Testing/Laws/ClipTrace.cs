@@ -57,6 +57,7 @@ internal sealed class ClipTrace
   private const int SettledSteps = 5;
   private const int MaxClicks = 64;
   private const string CacheName = "animUtil-animCache";
+  private const string NoAnimator = "has no animator after its first frame";
 
   private readonly TestWorld _world;
   private readonly string _domain;
@@ -174,14 +175,26 @@ internal sealed class ClipTrace
         )
           continue;
         animated = true;
+        ClientTwin? twin = null;
         try
         {
-          ClientTwin twin = ClientTwin.Stand(_world, entity)[0];
+          twin = ClientTwin.Stand(_world, entity)[0];
           twin.Frames(Dt, 1);
-          built.Add(
-            (block.Code.ToString(), ShapeOf(block), CacheKeyOf(twin.Animator!))
-          );
-          twin.Twin.OnBlockRemoved();
+          if (twin.Animator is not { } animator)
+            found.Add(
+              (
+                block.Code.ToString(),
+                new ClipProblem(
+                  ClipLaws.KeyName,
+                  $"{block.Shape.Base} twin",
+                  NoAnimator
+                )
+              )
+            );
+          else
+            built.Add(
+              (block.Code.ToString(), ShapeOf(block), CacheKeyOf(animator))
+            );
         }
         catch (Exception e)
         {
@@ -195,6 +208,11 @@ internal sealed class ClipTrace
               )
             )
           );
+        }
+        finally
+        {
+          if (twin != null)
+            _world.ReleaseClientTwin(twin.Twin);
         }
       }
       if (animated)
@@ -272,6 +290,11 @@ internal sealed class ClipTrace
       ClientTwin twin = StandTwin(step, 2);
       try
       {
+        if (twin.Animator == null)
+        {
+          Add(ClipLaws.ActionName, NoAnimator);
+          return new ClipTraced(problems, null, null, 0);
+        }
         twin.Sync();
         if (!Worked(step, twin, action, true, Add))
           return new ClipTraced(problems, null, null, 0);
@@ -289,18 +312,24 @@ internal sealed class ClipTrace
       }
       finally
       {
-        twin.Twin.OnBlockRemoved();
+        _world.ReleaseClientTwin(twin.Twin);
       }
 
       BlockLaws.EntityCase loadStep = Place(block);
       Work(loadStep, action, true);
       ClientTwin loaded = StandTwin(loadStep, 1);
-      if (!Near(Poses(loaded, parts), end, moving))
-        Add(
-          ClipLaws.ActionName,
-          "loaded at its far end, it does not show the end pose on its first frame"
-        );
-      loaded.Twin.OnBlockRemoved();
+      try
+      {
+        if (!Near(Poses(loaded, parts), end, moving))
+          Add(
+            ClipLaws.ActionName,
+            "loaded at its far end, it does not show the end pose on its first frame"
+          );
+      }
+      finally
+      {
+        _world.ReleaseClientTwin(loaded.Twin);
+      }
     }
     catch (Exception e)
     {
@@ -491,7 +520,15 @@ internal sealed class ClipTrace
           $"{step.Block.Code} has no block entity."
         )
     )[0];
-    twin.Frames(Dt, frames);
+    try
+    {
+      twin.Frames(Dt, frames);
+    }
+    catch
+    {
+      _world.ReleaseClientTwin(twin.Twin);
+      throw;
+    }
     return twin;
   }
 

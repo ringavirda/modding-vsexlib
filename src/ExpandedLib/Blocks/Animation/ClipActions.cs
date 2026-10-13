@@ -26,7 +26,8 @@ public sealed class ClipActions {
   /// <param name="block">The block, loaded.</param>
   /// <returns>The actions; <see cref="None"/> when the block declares no <c>clipActions</c>.</returns>
   /// <exception cref="InvalidOperationException">An entry names no clip, has neither a
-  /// <c>state</c> nor a <c>by</c> line, or is a lock.</exception>
+  /// <c>state</c> nor a <c>by</c> line, has a <c>pose</c> that is not frame, play, run or lock, has a
+  /// <c>range</c> that is not two distinct numbers, or is a lock.</exception>
   public static ClipActions Of(Block block) {
     JsonObject[]? entries = block.Attributes?["clipActions"]?.AsArray();
     if (entries == null)

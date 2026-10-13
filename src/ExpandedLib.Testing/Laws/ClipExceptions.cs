@@ -55,6 +55,15 @@ internal sealed record ClipExceptions(
     ];
   }
 
+  /// <summary>One finding per known law name that none of <paramref name="laws"/> is.</summary>
+  /// <param name="laws">The names of the laws that ran.</param>
+  internal IReadOnlyList<string> UnnamedLaws(IReadOnlyList<string> laws) =>
+    [
+      .. Known
+        .Keys.Where(k => !laws.Contains(k))
+        .Select(k => $"{k} | known law names no law that ran; remove it"),
+    ];
+
   private static Dictionary<string, string> Reasons(JToken? token) =>
     (token as JObject)
       ?.Properties()

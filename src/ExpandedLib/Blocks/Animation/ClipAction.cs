@@ -88,18 +88,37 @@ public sealed record ClipAction(string Clip) {
       throw new InvalidOperationException(
         $"{owner}: clip action '{clip}' has neither a state nor a by line, so nothing works it."
       );
-    ClipPose? pose = entry["pose"].Exists
-      ? Enum.Parse<ClipPose>(entry["pose"].AsString()!, ignoreCase: true)
-      : null;
+    ClipPose? pose = null;
+    if (entry["pose"].Exists) {
+      string text = entry["pose"].AsString() ?? "";
+      if (
+        !Enum.TryParse<ClipPose>(text, ignoreCase: true, out ClipPose parsed)
+        || !Enum.IsDefined(parsed)
+      )
+        throw new InvalidOperationException(
+          $"{owner}: clip action '{clip}' has pose '{text}', which is not frame, play, run or lock."
+        );
+      pose = parsed;
+    }
     if (pose == ClipPose.Lock)
       throw new InvalidOperationException(
         $"{owner}: clip action '{clip}' is a lock, which is not built yet."
       );
-    float[]? range = entry["range"].AsArray<float>();
+    (float Low, float High)? range = null;
+    if (entry["range"].Exists) {
+      if (
+        entry["range"].AsArray<float>() is not [var low, var high]
+        || low == high
+      )
+        throw new InvalidOperationException(
+          $"{owner}: clip action '{clip}' has a range that is not two distinct numbers."
+        );
+      range = (low, high);
+    }
     return new ClipAction(clip) {
       Pose = pose,
       State = state,
-      Range = range is [var low, var high] ? (low, high) : null,
+      Range = range,
       When = entry["when"].Exists ? entry["when"].AsFloat() : null,
       By = by,
       Seconds = entry["seconds"].Exists ? entry["seconds"].AsFloat() : null,

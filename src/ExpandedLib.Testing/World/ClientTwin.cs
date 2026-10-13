@@ -57,7 +57,7 @@ public sealed class ClientTwin {
 
   /// <summary>Advances the client frame clock <paramref name="n"/> frames of <paramref name="dt"/>
   /// seconds each: in every frame the captured client tick listeners whose interval has come due
-  /// fire, then the captured renderers fire in stage order.</summary>
+  /// fire, each with the seconds since it last fired, then the captured renderers fire in stage order.</summary>
   /// <remarks>The clock belongs to the whole world, so the renderers and ticks of every twin stood in
   /// it advance together.</remarks>
   /// <param name="dt">Seconds per frame, above zero.</param>
@@ -78,7 +78,13 @@ public sealed class ClientTwin {
     params BlockEntity[] servers
   ) {
     BlockEntity[] twins = servers.Select(world.NewClientTwin).ToArray();
-    world.InitializeClientTwins(twins);
+    try {
+      world.InitializeClientTwins(twins);
+    } catch {
+      foreach (BlockEntity twin in twins)
+        world.ReleaseClientTwin(twin);
+      throw;
+    }
     return servers
       .Select((server, i) => new ClientTwin(world, server, twins[i]))
       .ToArray();
@@ -86,10 +92,18 @@ public sealed class ClientTwin {
 }
 
 public sealed partial class TestWorld {
-  private sealed class ClientTick(Action<float> callback, int intervalMs) {
+  private sealed class ClientTick(
+    Action<float> callback,
+    int intervalMs,
+    Action<Exception>? errorHandler,
+    BlockEntity? owner,
+    double startMs
+  ) {
     public Action<float> Callback { get; } = callback;
     public int IntervalMs { get; } = intervalMs;
-    public float AccumMs { get; set; }
+    public Action<Exception>? ErrorHandler { get; } = errorHandler;
+    public BlockEntity? Owner { get; } = owner;
+    public double LastMs { get; set; } = startMs;
   }
 
   private readonly Dictionary<string, object> _clientCache = new();
@@ -98,9 +112,12 @@ public sealed partial class TestWorld {
   private readonly HashSet<BlockPos> _clientDirty = new();
   private readonly List<(
     EnumRenderStage Stage,
-    IRenderer Renderer
+    IRenderer Renderer,
+    BlockEntity? Owner
   )> _clientRenderers = new();
   private readonly Dictionary<long, ClientTick> _clientTicks = new();
+  private double _clientClockMs;
+  private BlockEntity? _initialising;
   private readonly List<Action> _mainThreadTasks = new();
   private readonly Dictionary<string, string> _clientAssetRoots = new();
   private readonly HashSet<string> _clientShapeDomains = new();
@@ -141,7 +158,33 @@ public sealed partial class TestWorld {
       _clientTwins[twin.Pos] = twin;
     foreach (BlockEntity twin in twins) {
       twin.Api = ClientApi;
-      twin.Initialize(ClientApi);
+      _initialising = twin;
+      try {
+        twin.Initialize(ClientApi);
+      } finally {
+        _initialising = null;
+      }
+    }
+  }
+
+  internal void ReleaseClientTwin(BlockEntity twin) {
+    try {
+      if (twin.Api != null)
+        twin.OnBlockRemoved();
+    } finally {
+      if (
+        _clientTwins.TryGetValue(twin.Pos, out BlockEntity? held)
+        && ReferenceEquals(held, twin)
+      )
+        _clientTwins.Remove(twin.Pos);
+      _clientRenderers.RemoveAll(r => ReferenceEquals(r.Owner, twin));
+      foreach (
+        long id in _clientTicks
+          .Where(t => ReferenceEquals(t.Value.Owner, twin))
+          .Select(t => t.Key)
+          .ToList()
+      )
+        _clientTicks.Remove(id);
     }
   }
 
@@ -151,17 +194,26 @@ public sealed partial class TestWorld {
 
   internal int QueuedMainThreadTasks => _mainThreadTasks.Count;
 
+  internal int ClientRendererCount => _clientRenderers.Count;
+
+  internal int ClientTickCount => _clientTicks.Count;
+
   internal void StepClientFrames(float dt, int n) {
     for (int i = 0; i < n; i++) {
+      _clientClockMs += dt * 1000.0;
       foreach (ClientTick tick in _clientTicks.Values.ToList()) {
-        tick.AccumMs += dt * 1000f;
-        if (tick.AccumMs < tick.IntervalMs)
+        if (_clientClockMs - tick.LastMs < tick.IntervalMs)
           continue;
-        tick.AccumMs -= tick.IntervalMs;
-        tick.Callback(dt);
+        float elapsed = (float)((_clientClockMs - tick.LastMs) / 1000.0);
+        tick.LastMs = _clientClockMs;
+        try {
+          tick.Callback(elapsed);
+        } catch (Exception e) when (tick.ErrorHandler != null) {
+          tick.ErrorHandler(e);
+        }
       }
       foreach (
-        (EnumRenderStage stage, IRenderer renderer) in _clientRenderers
+        (EnumRenderStage stage, IRenderer renderer, _) in _clientRenderers
           .Where(r => FiresOnClient(r.Renderer))
           .OrderBy(r => r.Stage)
           .ToList()
@@ -234,7 +286,7 @@ public sealed partial class TestWorld {
       )
       .Do(ci =>
         _clientRenderers.Add(
-          (ci.ArgAt<EnumRenderStage>(1), ci.ArgAt<IRenderer>(0))
+          (ci.ArgAt<EnumRenderStage>(1), ci.ArgAt<IRenderer>(0), _initialising)
         )
       );
     events
@@ -256,7 +308,31 @@ public sealed partial class TestWorld {
         Arg.Any<int>(),
         Arg.Any<int>()
       )
-      .Returns(ci => AddClientTick(ci.Arg<Action<float>>(), ci.ArgAt<int>(3)));
+      .Returns(ci =>
+        AddClientTick(
+          ci.Arg<Action<float>>(),
+          ci.ArgAt<int>(3),
+          ci.Arg<Action<Exception>>()
+        )
+      );
+    events
+      .RegisterGameTickListener(
+        Arg.Any<Action<IWorldAccessor, BlockPos, float>>(),
+        Arg.Any<BlockPos>(),
+        Arg.Any<Action<Exception>>(),
+        Arg.Any<int>(),
+        Arg.Any<int>()
+      )
+      .Returns(ci =>
+      {
+        var callback = ci.Arg<Action<IWorldAccessor, BlockPos, float>>();
+        BlockPos pos = ci.Arg<BlockPos>();
+        return AddClientTick(
+          dt => callback(ClientApi.World, pos, dt),
+          ci.ArgAt<int>(3),
+          ci.Arg<Action<Exception>>()
+        );
+      });
 #else
     events
       .RegisterGameTickListener(
@@ -265,16 +341,32 @@ public sealed partial class TestWorld {
         Arg.Any<int>(),
         Arg.Any<int>()
       )
-      .Returns(ci => AddClientTick(ci.Arg<Action<float>>(), ci.ArgAt<int>(2)));
+      .Returns(ci =>
+        AddClientTick(
+          ci.Arg<Action<float>>(),
+          ci.ArgAt<int>(2),
+          ci.Arg<Action<Exception>>()
+        )
+      );
 #endif
     events
       .When(x => x.UnregisterGameTickListener(Arg.Any<long>()))
       .Do(ci => _clientTicks.Remove(ci.Arg<long>()));
   }
 
-  private long AddClientTick(Action<float> callback, int intervalMs) {
+  private long AddClientTick(
+    Action<float> callback,
+    int intervalMs,
+    Action<Exception>? errorHandler
+  ) {
     long id = ++_nextClientListenerId;
-    _clientTicks[id] = new ClientTick(callback, intervalMs);
+    _clientTicks[id] = new ClientTick(
+      callback,
+      intervalMs,
+      errorHandler,
+      _initialising,
+      _clientClockMs
+    );
     return id;
   }
 

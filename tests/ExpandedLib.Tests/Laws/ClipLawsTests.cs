@@ -51,6 +51,8 @@ public class ClipLawsTests(ITestOutputHelper output)
     world.RegisterClass("test-half", typeof(HalfDoor));
     world.RegisterClass("test-key", typeof(KeyDoor));
     world.RegisterClass("test-throws", typeof(ThrowingDoor));
+    world.RegisterClass("test-unbuilt", typeof(UnbuiltDoor));
+    world.RegisterClass("test-renderthrow", typeof(RenderThrowDoor));
   }
 
   private static BlockLaws.Result Run(
@@ -406,6 +408,71 @@ public class ClipLawsTests(ITestOutputHelper output)
     );
   }
 
+  [Fact]
+  [PlantedDefect(typeof(ClipLaws), nameof(ClipLaws.Run))]
+  public void A_twin_that_throws_while_framed_does_not_poison_the_next_block()
+  {
+    BlockLaws.Result result = Run(
+      Leaf("athrow", "test-renderthrow"),
+      Driven("drivendoor", "test-door", "door", Toggle())
+    );
+
+    Assert.Single(
+      result[ClipLaws.KeyName].Findings,
+      f => f.StartsWith("cliptrace:door twin | threw InvalidOperationException")
+    );
+    Assert.All(
+      result.Laws.SelectMany(l => l.Findings),
+      f => Assert.Contains("| cliptrace:athrow", f)
+    );
+  }
+
+  [Fact]
+  [PlantedDefect(typeof(ClipLaws), nameof(ClipLaws.Run))]
+  public void An_animatable_entity_with_no_animator_is_its_own_finding()
+  {
+    BlockLaws.Result result = Run(Leaf("unbuiltdoor", "test-unbuilt"));
+
+    Assert.Equal(
+      [
+        "cliptrace:door twin | has no animator after its first frame | cliptrace:unbuiltdoor",
+      ],
+      result[ClipLaws.KeyName].Findings
+    );
+    Assert.Equal(
+      [
+        "cliptrace:door open | has no animator after its first frame | cliptrace:unbuiltdoor",
+      ],
+      result[ClipLaws.ActionName].Findings
+    );
+  }
+
+  [Fact]
+  [PlantedDefect(typeof(ClipLaws), nameof(ClipLaws.Run))]
+  public void A_known_row_under_a_law_that_did_not_run_is_a_finding()
+  {
+    string file = Exceptions(
+      """{"known": {"clip-action": {"cliptrace:door open": "AT9"}}}"""
+    );
+    try
+    {
+      BlockLaws.Result result = Run(
+        file,
+        Driven("drivendoor", "test-door", "door", Toggle())
+      );
+
+      Assert.Equal(
+        ["clip-action | known law names no law that ran; remove it"],
+        result[ClipLaws.ExceptionsName].Findings
+      );
+      Assert.Empty(result[ClipLaws.ActionName].Findings);
+    }
+    finally
+    {
+      File.Delete(file);
+    }
+  }
+
   private static string Exceptions(string json)
   {
     string file = Path.GetTempFileName();
@@ -672,6 +739,37 @@ public class ClipLawsTests(ITestOutputHelper output)
       if (api.Side == EnumAppSide.Client)
         throw new InvalidOperationException("the twin cannot stand");
     }
+  }
+
+  private sealed class UnbuiltDoor : BlockEntity
+  {
+    public UnbuiltDoor() => Behaviors.Add(new BEBehaviorAnimatable(this));
+  }
+
+  private sealed class RenderThrowDoor : BlockEntity
+  {
+    public override void Initialize(ICoreAPI api)
+    {
+      base.Initialize(api);
+      if (api is ICoreClientAPI capi)
+        capi.Event.RegisterRenderer(
+          new ThrowingRenderer(),
+          EnumRenderStage.Opaque,
+          "throws"
+        );
+    }
+  }
+
+  private sealed class ThrowingRenderer : IRenderer
+  {
+    public double RenderOrder => 0;
+
+    public int RenderRange => 0;
+
+    public void OnRenderFrame(float deltaTime, EnumRenderStage stage) =>
+      throw new InvalidOperationException("the renderer threw");
+
+    public void Dispose() { }
   }
 }
 #endif

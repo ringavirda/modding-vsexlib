@@ -140,6 +140,59 @@ public class ClipActionTests {
   }
 
   [Fact]
+  public void An_unknown_pose_is_refused() {
+    using var world = NewWorld();
+    Block block = Define(
+      world,
+      Def("posed")
+        .Attribute(
+          "clipActions",
+          new JArray(
+            new JObject {
+              ["clip"] = "open",
+              ["state"] = "s",
+              ["pose"] = "frames",
+            }
+          )
+        )
+    );
+
+    var e = Assert.Throws<InvalidOperationException>(() =>
+      ClipActions.Of(block)
+    );
+
+    Assert.Contains("pose 'frames'", e.Message);
+  }
+
+  [Theory]
+  [InlineData("[1, 1]")]
+  [InlineData("[1]")]
+  [InlineData("[0, 1, 2]")]
+  public void A_range_that_is_not_two_distinct_numbers_is_refused(string range) {
+    using var world = NewWorld();
+    Block block = Define(
+      world,
+      Def("ranged")
+        .Attribute(
+          "clipActions",
+          new JArray(
+            new JObject {
+              ["clip"] = "open",
+              ["state"] = "s",
+              ["range"] = JToken.Parse(range),
+            }
+          )
+        )
+    );
+
+    var e = Assert.Throws<InvalidOperationException>(() =>
+      ClipActions.Of(block)
+    );
+
+    Assert.Contains("not two distinct numbers", e.Message);
+  }
+
+  [Fact]
   public void A_clip_the_shape_lacks_is_refused_on_resolve() {
     using var world = NewWorld();
     ClipActions actions = ClipActions.Of(
