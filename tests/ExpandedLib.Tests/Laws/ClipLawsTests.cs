@@ -322,7 +322,9 @@ public class ClipLawsTests(ITestOutputHelper output)
     BlockLaws.Result result = Run(Leaf("midfast", "test-midfast"));
 
     Assert.Equal(
-      ["cliptrace:door open | forward settles in 0.25 s against 0.5 s | cliptrace:midfast"],
+      [
+        "cliptrace:door open | forward settles in 0.25 s against 0.5 s | cliptrace:midfast",
+      ],
       result[ClipLaws.TimeName].Findings.Where(f => f.Contains("forward"))
     );
   }
@@ -1091,7 +1093,10 @@ public class ClipLawsTests(ITestOutputHelper output)
     private void Aim()
     {
       _opened |= Open;
-      _target = Open ? Reach : _opened ? 0f : Rest;
+      _target =
+        Open ? Reach
+        : _opened ? 0f
+        : Rest;
     }
 
     private void Pose(float dt)

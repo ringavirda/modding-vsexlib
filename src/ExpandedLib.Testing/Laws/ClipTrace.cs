@@ -54,6 +54,7 @@ internal sealed class ClipTrace
   internal const float Dt = 1f / 60f;
 
   private const float Degrees = 0.5f;
+
   // Poses carry translations in blocks (offset / 16), so 0.05 voxel is 0.05 / 16.
   private const float Voxels = 0.05f / 16f;
   private const int SettledSteps = 5;
@@ -429,13 +430,31 @@ internal sealed class ClipTrace
           Add(ClipLaws.ActionName, "forward plays no clip");
           return new ClipTraced(problems, forward, null, 0);
         }
-        timed += Judge("forward", forward, seconds, last, moving, start, end, Add);
+        timed += Judge(
+          "forward",
+          forward,
+          seconds,
+          last,
+          moving,
+          start,
+          end,
+          Add
+        );
         if (!play)
         {
           if (!Worked(step, twin, action, false, Add))
             return new ClipTraced(problems, forward, null, timed);
           reverse = Walk(twin, action, parts, start, moving, seconds);
-          timed += Judge("reverse", reverse, seconds, last, moving, end, start, Add);
+          timed += Judge(
+            "reverse",
+            reverse,
+            seconds,
+            last,
+            moving,
+            end,
+            start,
+            Add
+          );
         }
       }
       finally
@@ -681,8 +700,14 @@ internal sealed class ClipTrace
     bool forward = way == "forward";
     ClipSample begin = walked.Samples[0];
     ClipSample finish = walked.Samples[^1];
-    float f0 = begin.Active ? begin.Frame : forward ? 0f : last;
-    float f1 = finish.Active ? finish.Frame : forward ? last : 0f;
+    float f0 =
+      begin.Active ? begin.Frame
+      : forward ? 0f
+      : last;
+    float f1 =
+      finish.Active ? finish.Frame
+      : forward ? last
+      : 0f;
     float expected = seconds * Math.Abs(f1 - f0) / last;
     float time = arrived * Dt;
     if (Math.Abs(time - expected) > Math.Max(0.1f * expected, 2 * Dt))
