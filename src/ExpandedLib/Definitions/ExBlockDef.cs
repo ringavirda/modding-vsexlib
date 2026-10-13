@@ -798,6 +798,15 @@ public sealed class ExBlockDef : IExDef {
     return this;
   }
 
+  /// <summary>Sets <c>attributes.itemViews</c>, which the load pass and <see cref="ItemViews"/> read.</summary>
+  /// <param name="kind">Cube, Partial, Multicell or None, written as its lower-case name; <see cref="ItemViewKind.None"/>
+  /// keeps the game's defaults.</param>
+  public ExBlockDef Views(ItemViewKind kind) =>
+    Attribute(
+      "itemViews",
+      new JObject { ["kind"] = kind.ToString().ToLowerInvariant() }
+    );
+
   /// <summary>Merges every property of a POCO/anonymous object into <c>attributes</c> at once.
   /// Later calls overwrite by key.</summary>
   public ExBlockDef Attributes(object poco) {
