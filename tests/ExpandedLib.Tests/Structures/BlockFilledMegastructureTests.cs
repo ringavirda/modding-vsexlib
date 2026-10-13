@@ -50,6 +50,28 @@ public class BlockFilledMegastructureTests {
     Assert.Empty(StructureFillers.ReadOffsets(block.FillerOffsets));
   }
 
+  // Fails when IFillerHost.StructureAngle's default returns 0 for every block, or reads only the
+  // side variant.
+  [Theory]
+  [InlineData("side", "e", 270)]
+  [InlineData("side", "w", 90)]
+  [InlineData("orientation", "s", 180)]
+  [InlineData("type", "n", 0)]
+  public void A_host_without_its_own_angle_turns_by_its_side_or_orientation(
+    string group,
+    string value,
+    int expected
+  ) {
+    var block = new PlainHost();
+    block.VariantStrict[group] = value;
+
+    Assert.Equal(expected, ((IFillerHost)block).StructureAngle);
+  }
+
+  private sealed class PlainHost : Block, IFillerHost {
+    public JsonObject? FillerOffsets => null;
+  }
+
   #region Reserved cells and room
 
   private static readonly BlockPos At = new(10, 10, 10);
