@@ -92,12 +92,14 @@ public class StructureStepTests {
 
     public Scene() {
       TestWorld world = Fixture.Test;
+      world.Filler.EntityClass = "structurefiller";
       world
         .Register(Brick)
         .Register(Node)
         .Register(Probe)
         .Register(Construct)
         .Register(Machine)
+        .Register(world.Filler)
         .RegisterNetwork("test", sys => new StubNetwork(sys))
         .RegisterBlockEntityFactory(
           "probe",
@@ -108,6 +110,10 @@ public class StructureStepTests {
           }
         )
         .RegisterBlockEntityFactory("construct", () => new Construction())
+        .RegisterBlockEntityFactory(
+          "structurefiller",
+          () => new BlockEntityStructureFiller()
+        )
         .RegisterBlockEntityFactory(
           "machine",
           () => new TestMegablock { Angle = 0 }
@@ -529,12 +535,7 @@ public class StructureStepTests {
       ]
       """
     );
-    scene.Run(steps.Take(1));
-    scene.Fixture.Test.PlaceFiller(
-      new BlockPos(102, 53, 103),
-      principal: new BlockPos(102, 53, 104)
-    );
-    scene.Run(steps.Skip(1).Take(1));
+    scene.Run(steps.Take(2));
     Assert.Contains(
       scene.Fixture.Lines,
       l => l.Contains(" expect ") && l.EndsWith("ok: 2 cell(s) filled")
