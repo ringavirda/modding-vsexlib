@@ -370,27 +370,19 @@ public class ViewBandsTests {
   [Fact]
   public void A_floating_block_fails_G13() {
     (ViewGroup group, GroupMetrics metrics) = Reference("G13");
-    CollectibleObject block = group.Representative;
-    ModelTransform authored = block.TpHandTransform;
-    try {
-      ModelTransform raised = ViewMatrices
-        .Transform(block, ViewTarget.Hand)
-        .Clone();
-      raised.Translation = new FastVec3f(
-        raised.Translation.X,
-        raised.Translation.Y + 6,
-        raised.Translation.Z
-      );
-      block.TpHandTransform = raised;
-      GroupMetrics floating = ViewGates.Measure(World, group);
-      Assert.Equal(1.8, floating.Hand.Centre!.Value, 0.05);
-      ViewFinding finding = Assert.Single(
-        ViewGates.Judge(Bands, group, floating)
-      );
-      Assert.EndsWith("G13 hand.centre", finding.Key);
-    } finally {
-      block.TpHandTransform = authored;
-    }
+    ModelTransform raised = group.Hand.Clone();
+    raised.Translation = new FastVec3f(
+      raised.Translation.X,
+      raised.Translation.Y + 6,
+      raised.Translation.Z
+    );
+    ViewGroup lifted = group with { Hand = raised };
+    GroupMetrics floating = ViewGates.Measure(World, lifted);
+    Assert.Equal(1.8, floating.Hand.Centre!.Value, 0.05);
+    ViewFinding finding = Assert.Single(
+      ViewGates.Judge(Bands, lifted, floating)
+    );
+    Assert.EndsWith("G13 hand.centre", finding.Key);
     Assert.Empty(ViewGates.Judge(Bands, group, metrics));
   }
 }

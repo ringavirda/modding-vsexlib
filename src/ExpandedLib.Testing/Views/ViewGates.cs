@@ -16,12 +16,20 @@ namespace ExpandedLib.Testing;
 /// <param name="Box">The drawn box, in voxels.</param>
 /// <param name="Representative">The first member in code order; the metrics are composed from it.</param>
 /// <param name="Codes">Every member's code, in code order.</param>
+/// <param name="Gui">The slot transform the group is measured on.</param>
+/// <param name="Hand">The third-person hand transform the group is measured on.</param>
+/// <param name="Ground">The ground transform the group is measured on.</param>
+/// <param name="Held">The animation code the group is held with.</param>
 internal sealed record ViewGroup(
   string Key,
   ItemViewKind Kind,
   CollectibleViews.ViewBox Box,
   CollectibleObject Representative,
-  IReadOnlyList<string> Codes
+  IReadOnlyList<string> Codes,
+  ModelTransform Gui,
+  ModelTransform Hand,
+  ModelTransform Ground,
+  string Held
 ) {
   internal bool IsBlock => Representative is Block;
 }
@@ -62,6 +70,28 @@ internal sealed record GroupMetrics(
   HandMetrics? HandFp,
   double? Axis,
   double? AxisFp
+);
+
+/// <summary>One gate's row of a group, as the dump writes it.</summary>
+/// <param name="Gate">The gate id.</param>
+/// <param name="Name">The gate's name.</param>
+/// <param name="Target">The view it is read on: <c>gui</c>, <c>tp</c>, <c>fp</c> or <c>ground</c>.</param>
+/// <param name="Value">The group's value.</param>
+/// <param name="Min">The lower limit; null for a gate judged on its upper end only.</param>
+/// <param name="Max">The upper limit.</param>
+/// <param name="Ends">The reference codes at the band's lower and upper end, without domain; null for G8.</param>
+/// <param name="Pass">Whether the value is within the limits.</param>
+/// <param name="Detail">What a failing row says after its key: the value and the limits.</param>
+internal sealed record GateReading(
+  string Gate,
+  string Name,
+  string Target,
+  double Value,
+  double? Min,
+  double Max,
+  string[]? Ends,
+  bool Pass,
+  string Detail
 );
 
 /// <summary>A gate a group fails.</summary>
@@ -109,38 +139,138 @@ internal static class ViewGates {
       members.Add(c);
     }
     var result = new List<ViewGroup>();
-    foreach ((string key, List<CollectibleObject> members) in groups) {
-      CollectibleObject first = members[0];
-      ItemViewKind? kind = CollectibleViews.KindOf(world.Api, first);
-      CollectibleViews.ViewBox? box = CollectibleViews.BoxOf(world.Api, first);
-      if (kind == null || box == null)
-        continue;
-      result.Add(
-        new ViewGroup(
-          key,
-          kind.Value,
-          box,
-          first,
-          members.Select(m => m.Code.ToString()).ToList()
-        )
-      );
-    }
+    foreach ((string key, List<CollectibleObject> members) in groups)
+      if (Build(world, key, members) is { } group)
+        result.Add(group);
     return result;
+  }
+
+  /// <summary>The group of one collectible, measured on its resolved transforms and held code.</summary>
+  /// <param name="world">A world from <see cref="TestWorld.LoadAsGame"/>.</param>
+  /// <param name="collectible">The collectible to group.</param>
+  /// <returns>The group, whose only code is the collectible's; null when it has no kind or no drawn box.</returns>
+  internal static ViewGroup? GroupOf(
+    TestWorld world,
+    CollectibleObject collectible
+  ) => Build(world, KeyOf(collectible), [collectible]);
+
+  private static ViewGroup? Build(
+    TestWorld world,
+    string key,
+    IReadOnlyList<CollectibleObject> members
+  ) {
+    CollectibleObject first = members[0];
+    ItemViewKind? kind = CollectibleViews.KindOf(world.Api, first);
+    CollectibleViews.ViewBox? box = CollectibleViews.BoxOf(world.Api, first);
+    if (kind == null || box == null)
+      return null;
+    return new ViewGroup(
+      key,
+      kind.Value,
+      box,
+      first,
+      members.Select(m => m.Code.ToString()).ToList(),
+      ViewMatrices.Transform(first, ViewTarget.Gui),
+      ViewMatrices.Transform(first, ViewTarget.Hand),
+      ViewMatrices.Transform(first, ViewTarget.Ground),
+      HeldCode(first)
+    );
+  }
+
+  /// <summary>The group measured on <paramref name="views"/> in place of its resolved transforms, kind and clips.</summary>
+  /// <param name="group">The group the views are for.</param>
+  /// <param name="views">The views to measure; a clip that is null leaves the collectible's own.</param>
+  internal static ViewGroup Measured(ViewGroup group, ItemViewSet views) =>
+    group with {
+      Kind = views.Kind,
+      Gui = views.Gui,
+      Hand = views.TpHand,
+      Ground = views.Ground,
+      Held = HeldCode(
+        group.IsBlock,
+        views.IdleClip ?? group.Representative.HeldRightTpIdleAnimation,
+        views.ReadyClip ?? group.Representative.HeldRightReadyAnimation
+      ),
+    };
+
+  /// <summary>Writes the file of each of <paramref name="groups"/> under the folder <see cref="ViewDump.DefaultVariable"/> names,
+  /// measured on the group's resolved views.</summary>
+  /// <param name="world">The world the groups come from.</param>
+  /// <param name="groups">The groups to write.</param>
+  /// <returns>The paths written; none when the variable is not set.</returns>
+  internal static IReadOnlyList<string> Dump(
+    TestWorld world,
+    IEnumerable<ViewGroup> groups
+  ) {
+    var paths = new List<string>();
+    foreach (ViewGroup group in groups) {
+      CollectibleObject c = group.Representative;
+      CollectibleViews.ViewBox box = group.Box;
+      string? Clip(string? s) => string.IsNullOrEmpty(s) ? null : s;
+      var views = new ItemViewSet(
+        group.Kind,
+        group.Gui,
+        group.Hand,
+        group.Ground,
+        Clip(c.HeldRightTpIdleAnimation),
+        Clip(c.HeldRightReadyAnimation),
+        Clip(c.HeldTpHitAnimation),
+        Clip(c.HeldTpUseAnimation),
+        box.From,
+        box.To,
+        box.Axes,
+        null
+      );
+      if (
+        ViewDump.Write(
+          world,
+          "",
+          group.Codes[0],
+          group,
+          views,
+          ViewDump.DefaultVariable
+        ) is { } path
+      )
+        paths.Add(path);
+    }
+    return paths;
+  }
+
+  /// <summary>The group's slot footprint at GUI scale 1: the bounds of the projected box as x0, y0, x1, y1 in pixels from
+  /// the slot's top left, y down.</summary>
+  internal static double[] Footprint(ViewGroup group) {
+    (double x0, double y0, double x1, double y1) = SlotBounds(
+      group,
+      1,
+      SlotPx / 2
+    );
+    return [x0, y0, x1, y1];
+  }
+
+  private static (double X0, double Y0, double X1, double Y1) SlotBounds(
+    ViewGroup group,
+    double guiScale,
+    double offset
+  ) {
+    Mat4 m = ViewMatrices.Slot(
+      group.Gui,
+      group.IsBlock,
+      guiScale,
+      offset,
+      offset
+    );
+    Vec3d[] p = Corners(group.Box).Select(m.Apply).ToArray();
+    return (p.Min(v => v.X), p.Min(v => v.Y), p.Max(v => v.X), p.Max(v => v.Y));
   }
 
   /// <summary>G1 and G2 of <paramref name="group"/> in the inventory slot.</summary>
   /// <param name="guiScale">The GUI scale.</param>
   internal static SlotMetrics Slot(ViewGroup group, double guiScale = 1) {
-    Mat4 m = ViewMatrices.Slot(
-      ViewMatrices.Transform(group.Representative, ViewTarget.Gui),
-      group.IsBlock,
-      guiScale
+    (double x0, double y0, double x1, double y1) = SlotBounds(
+      group,
+      guiScale,
+      0
     );
-    Vec3d[] p = Corners(group.Box).Select(m.Apply).ToArray();
-    double x0 = p.Min(v => v.X),
-      x1 = p.Max(v => v.X),
-      y0 = p.Min(v => v.Y),
-      y1 = p.Max(v => v.Y);
     return new SlotMetrics(
       Math.Max(x1 - x0, y1 - y0) / (SlotPx * guiScale),
       Math.Sqrt(Math.Pow((x0 + x1) / 2, 2) + Math.Pow((y0 + y1) / 2, 2))
@@ -149,10 +279,7 @@ internal static class ViewGates {
 
   /// <summary>G5 and G6 of <paramref name="group"/> on the ground, at no yaw and no scale jitter.</summary>
   internal static GroundMetrics Ground(ViewGroup group) {
-    ModelTransform tf = ViewMatrices.Transform(
-      group.Representative,
-      ViewTarget.Ground
-    );
+    ModelTransform tf = group.Ground;
     Vec3d[] p = Corners(group.Box)
       .Select(ViewMatrices.Ground(tf).Apply)
       .ToArray();
@@ -166,11 +293,16 @@ internal static class ViewGates {
   /// <summary>The animation code a stack is held with: a block's is <c>holdbothhandslarge</c>, an item's its idle, else
   /// its ready, else <c>helditemready</c>.</summary>
   internal static string HeldCode(CollectibleObject collectible) =>
-    collectible is Block ? BlockHeldClip
-    : !string.IsNullOrEmpty(collectible.HeldRightTpIdleAnimation)
-      ? collectible.HeldRightTpIdleAnimation
-    : !string.IsNullOrEmpty(collectible.HeldRightReadyAnimation)
-      ? collectible.HeldRightReadyAnimation
+    HeldCode(
+      collectible is Block,
+      collectible.HeldRightTpIdleAnimation,
+      collectible.HeldRightReadyAnimation
+    );
+
+  private static string HeldCode(bool block, string? idle, string? ready) =>
+    block ? BlockHeldClip
+    : !string.IsNullOrEmpty(idle) ? idle
+    : !string.IsNullOrEmpty(ready) ? ready
     : "helditemready";
 
   /// <summary>The seraph shape's clip the game plays for <paramref name="code"/>: the player's animation list maps the
@@ -214,10 +346,10 @@ internal static class ViewGates {
     bool firstPerson = false
   ) {
     CollectibleObject c = group.Representative;
-    ModelTransform tf = ViewMatrices.Transform(c, ViewTarget.Hand);
+    ModelTransform tf = group.Hand;
     SeraphPose pose = SeraphPose.At(
       world.Api,
-      HeldClip(world, HeldCode(c), firstPerson)
+      HeldClip(world, group.Held, firstPerson)
     );
     Mat4 m = firstPerson
       ? ViewMatrices.HandFp(tf, pose)
@@ -268,13 +400,7 @@ internal static class ViewGates {
     CollectibleObject spear = world.World.GetItem(
       new AssetLocation(SpearReference)
     );
-    ViewGroup reference = new(
-      KeyOf(spear),
-      CollectibleViews.KindOf(world.Api, spear)!.Value,
-      CollectibleViews.BoxOf(world.Api, spear)!,
-      spear,
-      [SpearReference]
-    );
+    ViewGroup reference = GroupOf(world, spear)!;
     double dot = Dot(
       Hand(world, group, firstPerson).Axis,
       Hand(world, reference, firstPerson).Axis
@@ -311,20 +437,106 @@ internal static class ViewGates {
       _ => throw new ArgumentException($"{gate} is not a banded gate"),
     };
 
-  private static readonly (string Id, string Gate, string Name)[] Judged =
+  private static readonly (
+    string Id,
+    string Gate,
+    string Name,
+    string Target
+  )[] Judged =
   [
-    ("G1", "G1", "slot.span"),
-    ("G2", "G2", "slot.centre"),
-    ("G5", "G5", "ground.rest"),
-    ("G6", "G6", "ground.size"),
-    ("G7", "G7", "hand.size"),
-    ("G10", "G10", "hand.axis"),
-    ("G10fp", "G10", "hand.axis.fp"),
-    ("G13", "G13", "hand.centre"),
+    ("G1", "G1", "slot.span", "gui"),
+    ("G2", "G2", "slot.centre", "gui"),
+    ("G5", "G5", "ground.rest", "ground"),
+    ("G6", "G6", "ground.size", "ground"),
+    ("G7", "G7", "hand.size", "tp"),
+    ("G10", "G10", "hand.axis", "tp"),
+    ("G10fp", "G10", "hand.axis.fp", "fp"),
+    ("G13", "G13", "hand.centre", "tp"),
   ];
 
-  /// <summary>The gates <paramref name="group"/> fails against <paramref name="bands"/>: each banded gate outside its
-  /// kind's band (G2, G10 and G13 on the upper end only) and G8 beyond its limit, in third and first person.</summary>
+  /// <summary>Every gate <paramref name="group"/> is judged on against <paramref name="bands"/>, as the dump writes it: each
+  /// banded gate in its kind's band (G2, G10 and G13 on the upper end only) and G8 against its limit, in third and first
+  /// person.</summary>
+  /// <param name="bands">The bands to judge against.</param>
+  /// <param name="group">The group; a workpiece has no band and no reading.</param>
+  /// <param name="metrics">The metrics of <paramref name="group"/> from <see cref="Measure"/>.</param>
+  /// <returns>One reading per judged gate, in gate order; a gate the group has no metric for has none.</returns>
+  internal static IReadOnlyList<GateReading> Readings(
+    ViewBandData bands,
+    ViewGroup group,
+    GroupMetrics metrics
+  ) {
+    var readings = new List<GateReading>();
+    if (group.Kind == ItemViewKind.Workpiece)
+      return readings;
+    string kind = group.Kind.ToString().ToLowerInvariant();
+
+    foreach ((string id, string gate, string name, string target) in Judged) {
+      if (!bands.Bands[kind].TryGetValue(id, out Band? band))
+        continue;
+      double v = ValueOf(metrics, id);
+      if (double.IsNaN(v))
+        continue;
+      string[] ends = [band.MinCode, band.MaxCode];
+      if (ViewBands.UpperOnly.Contains(id))
+        readings.Add(
+          new GateReading(
+            gate,
+            name,
+            target,
+            v,
+            null,
+            band.High,
+            ends,
+            v <= band.High,
+            $"{Fmt(v)} above {Fmt(band.High)} ({band.MaxCode} {Fmt(band.Max)})"
+          )
+        );
+      else
+        readings.Add(
+          new GateReading(
+            gate,
+            name,
+            target,
+            v,
+            band.Low,
+            band.High,
+            ends,
+            v >= band.Low && v <= band.High,
+            $"{Fmt(v)} outside {Fmt(band.Low)}..{Fmt(band.High)} ({band.MinCode} {Fmt(band.Min)}, {band.MaxCode} {Fmt(band.Max)})"
+          )
+        );
+    }
+
+    double limit = bands.Limits[
+      group.Kind == ItemViewKind.Bulk ? "G8Bulk" : "G8"
+    ];
+    if (metrics.Hand.Grip is { } grip)
+      readings.Add(Grip("hand.grip", "tp", grip, limit));
+    if (metrics.HandFp?.Grip is { } gripFp)
+      readings.Add(Grip("hand.grip.fp", "fp", gripFp, limit));
+    return readings;
+  }
+
+  private static GateReading Grip(
+    string name,
+    string target,
+    double grip,
+    double limit
+  ) =>
+    new(
+      "G8",
+      name,
+      target,
+      grip,
+      null,
+      limit,
+      null,
+      grip <= limit,
+      $"{Fmt(grip)} above {Fmt(limit)} voxel"
+    );
+
+  /// <summary>The gates <paramref name="group"/> fails against <paramref name="bands"/>: the readings that do not pass.</summary>
   /// <param name="bands">The bands to judge against.</param>
   /// <param name="group">The group; a workpiece has no band and fails none.</param>
   /// <param name="metrics">The metrics of <paramref name="group"/> from <see cref="Measure"/>.</param>
@@ -334,49 +546,22 @@ internal static class ViewGates {
     ViewGroup group,
     GroupMetrics metrics
   ) {
-    var findings = new List<ViewFinding>();
-    if (group.Kind == ItemViewKind.Workpiece)
-      return findings;
     string kind = group.Kind.ToString().ToLowerInvariant();
-    string view = group.Representative.Code.ToString();
+    string view = group.Codes[0];
     string codes =
       group.Codes.Count > 1
         ? $" for {group.Codes.Count} codes: {string.Join(", ", group.Codes)}"
         : "";
-    void Add(string gate, string name, string detail) {
-      string key = $"{view} [{kind}] {gate} {name}";
-      findings.Add(new ViewFinding(key, $"{key} {detail}{codes}"));
-    }
-
-    foreach ((string id, string gate, string name) in Judged) {
-      if (!bands.Bands[kind].TryGetValue(id, out Band? band))
-        continue;
-      double v = ValueOf(metrics, id);
-      if (double.IsNaN(v))
-        continue;
-      if (ViewBands.UpperOnly.Contains(id)) {
-        if (v > band.High)
-          Add(
-            gate,
-            name,
-            $"{Fmt(v)} above {Fmt(band.High)} ({band.MaxCode} {Fmt(band.Max)})"
-          );
-      } else if (v < band.Low || v > band.High)
-        Add(
-          gate,
-          name,
-          $"{Fmt(v)} outside {Fmt(band.Low)}..{Fmt(band.High)} ({band.MinCode} {Fmt(band.Min)}, {band.MaxCode} {Fmt(band.Max)})"
-        );
-    }
-
-    double limit = bands.Limits[
-      group.Kind == ItemViewKind.Bulk ? "G8Bulk" : "G8"
+    return
+    [
+      .. Readings(bands, group, metrics)
+        .Where(r => !r.Pass)
+        .Select(r =>
+        {
+          string key = $"{view} [{kind}] {r.Gate} {r.Name}";
+          return new ViewFinding(key, $"{key} {r.Detail}{codes}");
+        }),
     ];
-    if (metrics.Hand.Grip is { } grip && grip > limit)
-      Add("G8", "hand.grip", $"{Fmt(grip)} above {Fmt(limit)} voxel");
-    if (metrics.HandFp?.Grip is { } gripFp && gripFp > limit)
-      Add("G8", "hand.grip.fp", $"{Fmt(gripFp)} above {Fmt(limit)} voxel");
-    return findings;
   }
 
   private static string Fmt(double v) =>
@@ -395,14 +580,13 @@ internal static class ViewGates {
     TestWorld world,
     ViewGroup group
   ) {
-    CollectibleObject c = group.Representative;
-    ModelTransform tf = ViewMatrices.Transform(c, ViewTarget.Hand);
-    SeraphPose pose = SeraphPose.At(world.Api, HeldClip(world, HeldCode(c)));
+    ModelTransform tf = group.Hand;
+    SeraphPose pose = SeraphPose.At(world.Api, HeldClip(world, group.Held));
     double[] at = GripPoint(tf, pose);
     Lay lay = Lay.Of(
       group.Box,
       group.Kind is ItemViewKind.Longtool or ItemViewKind.Tool,
-      TipOf(c)
+      TipOf(group.Representative)
     );
     double[] u = lay.Coords(new Vec3d(at[0], at[1], at[2]));
     return (
@@ -508,7 +692,7 @@ internal static class ViewGates {
         $"{s.Base}@{s.rotateX},{s.rotateY},{s.rotateZ}"
       );
 
-  private static string TransformKey(ModelTransform t) =>
+  internal static string TransformKey(ModelTransform t) =>
     string.Create(
       CultureInfo.InvariantCulture,
       $"{t.Translation}/{t.Rotation}/{t.Origin}/{t.ScaleXYZ}/{t.Rotate}"

@@ -150,19 +150,11 @@ public class ViewGateMetricsTests {
     ViewGroup declared = ViewGates
       .Groups(World, "viewsfixture")
       .Single(g => g.Codes.Contains("viewsfixture:declaredtip"));
-    Item item = World.World.GetItem(
-      new AssetLocation("viewsfixture:declaredtip")
-    );
     Item spear = World.World.GetItem(
       new AssetLocation("game:spear-generic-iron")
     );
-    ModelTransform authored = item.TpHandTransform;
-    try {
-      item.TpHandTransform = spear.TpHandTransform.Clone();
-      Assert.InRange(ViewGates.AxisDegrees(World, declared), 0, 3.3);
-    } finally {
-      item.TpHandTransform = authored;
-    }
+    ViewGroup held = declared with { Hand = spear.TpHandTransform.Clone() };
+    Assert.InRange(ViewGates.AxisDegrees(World, held), 0, 3.3);
   }
 
   // Fails when the animation code is matched case-sensitively, or when an unmapped code is posed as a clip.
