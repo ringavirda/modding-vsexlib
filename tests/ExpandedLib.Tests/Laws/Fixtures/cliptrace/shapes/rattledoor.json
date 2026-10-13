@@ -1,0 +1,112 @@
+{
+  "textureWidth": 16,
+  "textureHeight": 16,
+  "textures": {
+    "all": "block/stone"
+  },
+  "elements": [
+    {
+      "name": "leaf",
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        1,
+        16,
+        16
+      ],
+      "faces": {}
+    }
+  ],
+  "animations": [
+    {
+      "name": "open",
+      "code": "open",
+      "quantityFrames": 31,
+      "onAnimationEnd": "Hold",
+      "onActivityStopped": "Stop",
+      "keyframes": [
+        {
+          "frame": 0,
+          "elements": {
+            "leaf": {
+              "rotationX": 0,
+              "rotationY": 0,
+              "rotationZ": 0
+            }
+          }
+        },
+        {
+          "frame": 30,
+          "elements": {
+            "leaf": {
+              "rotationX": 0,
+              "rotationY": 90,
+              "rotationZ": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "shake",
+      "code": "shake",
+      "quantityFrames": 31,
+      "onAnimationEnd": "Hold",
+      "onActivityStopped": "Stop",
+      "keyframes": [
+        {
+          "frame": 0,
+          "elements": {
+            "leaf": {
+              "rotationX": 0,
+              "rotationY": 0,
+              "rotationZ": 0
+            }
+          }
+        },
+        {
+          "frame": 30,
+          "elements": {
+            "leaf": {
+              "rotationX": 0,
+              "rotationY": 90,
+              "rotationZ": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "rattle",
+      "code": "rattle",
+      "quantityFrames": 31,
+      "onAnimationEnd": "Hold",
+      "onActivityStopped": "Stop",
+      "keyframes": [
+        {
+          "frame": 0,
+          "elements": {
+            "leaf": {
+              "rotationX": 0,
+              "rotationY": 0,
+              "rotationZ": 0
+            }
+          }
+        },
+        {
+          "frame": 30,
+          "elements": {
+            "leaf": {
+              "rotationX": 0,
+              "rotationY": 90,
+              "rotationZ": 0
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

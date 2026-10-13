@@ -1,0 +1,63 @@
+#if GAME_GE_1_22
+using System.Linq;
+using ExpandedLib.Definitions;
+using ExpandedLib.Industry;
+using ExpandedLib.Structures;
+using ExpandedLib.Testing;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace BurdenMaker.Tests;
+
+/// <summary>Every burdenmaker clip is driven by an action or listed static, every action plays its clip
+/// without a jump in its set time on a client twin, and no two shapes share an animator key. The rule
+/// is <see cref="ClipLaws"/>'s; the findings the sample accepts are in <c>clip-actions.json</c>.</summary>
+[GuardOf(typeof(ClipLaws), nameof(ClipLaws.Run))]
+public class ClipActionGuards(ITestOutputHelper output)
+{
+  // Fails when a burdenmaker clip has no action and no static row, an action ends away from its pose or
+  // outside its time, or a known row matches no finding.
+  [Fact]
+  public void Every_burdenmaker_clip_has_a_driver_and_plays_as_declared()
+  {
+    var defs = DefinitionGoldens.Collect(
+      "burdenmaker",
+      typeof(BurdenMaker.Blocks.BlockBurdenmaker).Assembly
+    );
+    Premise.Covers(defs.Select(DefinitionGoldens.RelativePath), "burdenmaker");
+    BlockLaws.Result result = ClipLaws.Run(
+      "burdenmaker",
+      defs,
+      [
+        typeof(BlockStructureFiller).Assembly,
+        typeof(IndustryModule).Assembly,
+        typeof(BurdenMaker.Blocks.BlockBurdenmaker).Assembly,
+      ],
+      System.IO.Path.Combine(
+        RepoPaths.Mod("burdenmaker"),
+        "tests",
+        "Invariants",
+        "clip-actions.json"
+      )
+    );
+    foreach (BlockLaws.Law law in result.Laws)
+    {
+      output.WriteLine(law.ToString());
+      foreach (string finding in law.Findings)
+        output.WriteLine("  " + finding);
+    }
+    Assert.All(
+      result.Laws,
+      law =>
+        Assert.True(
+          law.Findings.Count == 0,
+          string.Join("\n", law.Findings.Prepend(law.ToString()))
+        )
+    );
+    Assert.True(
+      result.Laws.Single(l => l.Name == "clip driver").Blocks >= 1,
+      "the clip driver law saw no burdenmaker blocktype with clips"
+    );
+  }
+}
+#endif

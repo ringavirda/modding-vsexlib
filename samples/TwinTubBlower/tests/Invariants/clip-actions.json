@@ -1,0 +1,9 @@
+{
+  "static": {},
+  "known": {
+    "clip driver": {
+      "twintubblower:furnace/twintubmpblower cycle": "CP M7a: the cycle is driven by the blower's own code until lock exists",
+      "twintubblower:furnace/twintubmpblower idle": "CP M7a: the idle pose is driven by the blower's own code until lock exists"
+    }
+  }
+}

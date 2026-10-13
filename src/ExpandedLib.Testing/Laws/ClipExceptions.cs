@@ -55,6 +55,15 @@ internal sealed record ClipExceptions(
     ];
   }
 
+  /// <summary>One finding per static row whose clip is not among <paramref name="undriven"/>.</summary>
+  /// <param name="undriven">The keys of the clips no action drives.</param>
+  internal IReadOnlyList<string> UnusedStatic(IReadOnlySet<string> undriven) =>
+    [
+      .. Static
+        .Keys.Where(k => !undriven.Contains(k))
+        .Select(k => $"{k} | static row matches no undriven clip; remove it"),
+    ];
+
   /// <summary>One finding per known law name that none of <paramref name="laws"/> is.</summary>
   /// <param name="laws">The names of the laws that ran.</param>
   internal IReadOnlyList<string> UnnamedLaws(IReadOnlyList<string> laws) =>

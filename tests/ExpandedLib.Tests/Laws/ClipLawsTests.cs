@@ -478,6 +478,95 @@ public class ClipLawsTests(ITestOutputHelper output)
     }
   }
 
+  [Fact]
+  [PlantedDefect(typeof(ClipLaws), nameof(ClipLaws.Run))]
+  public void An_undeclared_clip_has_no_driver()
+  {
+    BlockLaws.Result result = Run(Rattle("rattledoor"));
+
+    Assert.Equal(
+      [
+        "cliptrace:rattledoor rattle | no action drives the clip | cliptrace:rattledoor",
+      ],
+      result[ClipLaws.DriverName].Findings
+    );
+    Assert.Equal(3, result[ClipLaws.DriverName].Cases);
+  }
+
+  [Fact]
+  [PlantedDefect(typeof(ClipLaws), nameof(ClipLaws.Run))]
+  public void A_static_clip_with_its_reason_passes_and_an_unused_one_fails()
+  {
+    string file = Exceptions(
+      """
+      {"static": {
+        "cliptrace:rattledoor rattle": "swung by the sample's own code",
+        "cliptrace:door open": "an action drives it"}}
+      """
+    );
+    try
+    {
+      BlockLaws.Result result = Run(
+        file,
+        Rattle("rattledoor"),
+        Driven("drivendoor", "test-door", "door", Toggle())
+      );
+
+      Assert.Equal(
+        [
+          "cliptrace:door open | static row matches no undriven clip; remove it",
+        ],
+        result[ClipLaws.DriverName].Findings
+      );
+    }
+    finally
+    {
+      File.Delete(file);
+    }
+  }
+
+  [Fact]
+  [PlantedDefect(typeof(ClipLaws), nameof(ClipLaws.Run))]
+  public void An_action_naming_a_clip_the_shape_lacks_is_a_finding()
+  {
+    BlockLaws.Result result = ClipLaws.Run(
+      "cliptrace",
+      [
+        Driven(
+          "ghostclip",
+          "test-door",
+          "door",
+          new ClipAction("slam") { State = "doorOpen", Seconds = 1f }
+        ),
+      ],
+      Exlib,
+      null,
+      world =>
+      {
+        Prepare(world);
+        world.Log.Expect(
+          EnumLogType.Error,
+          "names a clip the shape does not have"
+        );
+      },
+      _ => Fixtures
+    );
+
+    Assert.Equal(
+      [
+        "cliptrace:door slam | names a clip the shape does not have | cliptrace:ghostclip",
+        "cliptrace:door open | no action drives the clip | cliptrace:ghostclip",
+      ],
+      result[ClipLaws.DriverName].Findings
+    );
+  }
+
+  private static ExBlockDef Rattle(string code) =>
+    Leaf(code, "test-door", "rattledoor")
+      .ClipAction(
+        new ClipAction("shake") { Pose = ClipPose.Run, State = "shaking" }
+      );
+
   private static string Exceptions(string json)
   {
     string file = Path.GetTempFileName();

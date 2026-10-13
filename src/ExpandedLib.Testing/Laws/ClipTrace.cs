@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
+using ExpandedLib.Helpers;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -120,6 +121,8 @@ internal sealed class ClipTrace
         if (declared.Declared.Count == 0)
           continue;
         ClipReference reference = ClipReference.Load(_world, block);
+        if (!declared.Declared.All(a => reference.HasClip(a.Clip)))
+          continue;
         foreach (
           ClipAction action in declared
             .Resolve(reference.Shape)
@@ -139,6 +142,88 @@ internal sealed class ClipTrace
         types++;
     }
     return (types, actions, timed);
+  }
+
+  /// <summary>Compares the clips each variant's shape carries with the clips its actions name.</summary>
+  /// <param name="found">Receives a finding for each clip no action drives and is not a static row, and for
+  /// each action naming a clip the shape lacks.</param>
+  /// <param name="exceptions">The file whose static rows excuse a clip from having a driver.</param>
+  /// <returns>Blocktypes whose shape carries clips, clips judged across their variants, and the keys of
+  /// every clip no action drives, static or not.</returns>
+  internal (int Types, int Clips, HashSet<string> Undriven) Drivers(
+    List<(string Code, ClipProblem Problem)> found,
+    ClipExceptions exceptions
+  )
+  {
+    var clipsByShape = new Dictionary<string, string[]>();
+    var undriven = new HashSet<string>(StringComparer.Ordinal);
+    int types = 0,
+      judged = 0;
+    foreach (
+      IGrouping<string, Block> type in BlockLaws.Blocktypes(_world, _domain)
+    )
+    {
+      bool carries = false;
+      foreach (Block block in type)
+      {
+        if (block.Shape?.Base == null)
+          continue;
+        string shape = block.Shape.Base.ToString();
+        if (!clipsByShape.TryGetValue(shape, out string[]? clips))
+          clipsByShape[shape] = clips = [
+            .. ExMeshCache
+              .LoadShape(_world.ClientApi, ExMeshCache.ShapePathOf(block))
+              ?.Animations?.Select(a => a.Code)
+              ?? [],
+          ];
+        if (clips.Length == 0)
+          continue;
+        carries = true;
+        judged += clips.Length;
+        string[] named =
+        [
+          .. ClipActions.Of(block).Declared.Select(a => a.Clip),
+        ];
+        foreach (
+          string ghost in named.Where(n =>
+            !clips.Contains(n, StringComparer.OrdinalIgnoreCase)
+          )
+        )
+          found.Add(
+            (
+              block.Code.ToString(),
+              new ClipProblem(
+                ClipLaws.DriverName,
+                $"{shape} {ghost}",
+                "names a clip the shape does not have"
+              )
+            )
+          );
+        foreach (
+          string clip in clips.Where(c =>
+            !named.Contains(c, StringComparer.OrdinalIgnoreCase)
+          )
+        )
+        {
+          string key = $"{shape} {clip}";
+          undriven.Add(key);
+          if (!exceptions.Static.ContainsKey(key))
+            found.Add(
+              (
+                block.Code.ToString(),
+                new ClipProblem(
+                  ClipLaws.DriverName,
+                  key,
+                  "no action drives the clip"
+                )
+              )
+            );
+        }
+      }
+      if (carries)
+        types++;
+    }
+    return (types, judged, undriven);
   }
 
   /// <summary>Stands every animated variant's twin on one shared animator cache, in code order,
