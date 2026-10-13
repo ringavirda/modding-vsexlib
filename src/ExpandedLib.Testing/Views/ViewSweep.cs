@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using ExpandedLib.Helpers;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -47,11 +49,15 @@ internal static class ViewSweep {
     foreach (ViewGroup group in ViewGates.Groups(world, domain))
       foreach (string code in group.Codes)
         groups[Key(group.IsBlock, code)] = group;
-    Dictionary<
+    ViewBandData bands = ViewBands.Embedded;
+    ConcurrentDictionary<
       ViewGroup,
       (string[] Failed, string Note, string? Error)
     > measured = [];
-    ViewBandData bands = ViewBands.Embedded;
+    Parallel.ForEach(
+      groups.Values.Distinct(),
+      group => measured[group] = Measure(world, bands, group)
+    );
     Dictionary<string, List<TypeFile>> sources = Sources();
 
     var collectibles = world
@@ -76,8 +82,7 @@ internal static class ViewSweep {
       if (c is Block { BlockId: 0 })
         skip = "air";
       else if (groups.TryGetValue(Key(c is Block, code), out ViewGroup? group)) {
-        if (!measured.TryGetValue(group, out var m))
-          measured[group] = m = Measure(world, bands, group);
+        var m = measured[group];
         if (m.Error != null)
           skip = m.Error;
         else {
@@ -143,6 +148,7 @@ internal static class ViewSweep {
       [
         .. ViewGates
           .Readings(bands, group, metrics)
+          .Concat(ViewGates.Rules(world, group))
           .Where(r => !r.Pass)
           .Select(r => r.Gate + (r.Target == "fp" ? "fp" : "")),
       ];

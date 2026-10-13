@@ -45,6 +45,7 @@ public class ViewSweepTests
 
   // Fails when a texture-only item is dropped without a row, and when an item and a block with one code share a group. EX_ITEM_VIEWS_SWEEP=<file> also writes the sweep there.
   [Fact]
+  [Trait("Speed", "Slow")]
   public void Sweep_covers_every_vanilla_collectible()
   {
     var rows = ViewSweep.Rows(World, "game");
@@ -101,6 +102,7 @@ public class ViewSweepTests
   // Fails when each source file's first variant is not the one with the lowest id, and when a file that shares its code
   // with another takes the other's variants.
   [Fact]
+  [Trait("Speed", "Slow")]
   public void Each_source_file_has_one_first_variant_the_lowest_id()
   {
     var rows = ViewSweep.Rows(World, "game");
@@ -126,6 +128,7 @@ public class ViewSweepTests
 
   // Fails when the writer ignores its variable and writes anyway, or writes without the counts.
   [Fact]
+  [Trait("Speed", "Slow")]
   public void The_sweep_is_written_where_its_variable_says()
   {
     string path = Path.Combine(
