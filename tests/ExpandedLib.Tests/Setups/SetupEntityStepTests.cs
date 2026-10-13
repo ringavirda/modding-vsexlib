@@ -102,6 +102,29 @@ public class SetupEntityStepTests : IDisposable
     );
   }
 
+  // Fails when the load reads the build steps only, so a `game:` item a `during` step names is not
+  // registered.
+  [Fact]
+  public void A_game_item_a_during_step_names_is_loaded_and_inserted()
+  {
+    using SetupScene scene = Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupbox\"], \"steps\": ["
+          + PlaceBox
+          + "], \"during\": [{\"at\": 1, \"step\": {\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"game:charcoal\", \"count\": 3, \"slot\": 1}}}]"
+          + ", \"seconds\": 6, \"record\": {}}",
+        "t.json"
+      )
+    );
+
+    scene.Run([("exlib", "0.8.4"), ("setupbox", "1.0.0")]);
+
+    Assert.Equal(
+      "game:charcoal",
+      BoxOf(scene).Inventory[1].Itemstack?.Collectible.Code.ToString()
+    );
+  }
+
   // Fails when a stack's content and litres are dropped, leaving the vessel empty.
   [Fact]
   public void A_stack_with_a_content_holds_those_litres()

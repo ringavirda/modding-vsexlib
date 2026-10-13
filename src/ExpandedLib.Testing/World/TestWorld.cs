@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
@@ -46,7 +47,8 @@ public sealed partial class TestWorld : IDisposable {
   /// does. Each cell holds a solid layer and a fluid layer: a read with a
   /// <see cref="BlockLayersAccess"/> value answers as <see cref="GetBlock(BlockPos, int)"/> does,
   /// <c>SetBlock</c> without a layer puts a block whose <see cref="Block.ForFluidsLayer"/> is true
-  /// into the fluid layer and empties the solid one, and <c>SetBlock</c> with
+  /// into the fluid layer and empties the solid one, <c>SetBlock</c> with a stack also runs a solid
+  /// block's <see cref="Block.OnBlockPlaced"/> with it, and <c>SetBlock</c> with
   /// <see cref="BlockLayersAccess.Solid"/> or <see cref="BlockLayersAccess.Fluid"/> writes that layer
   /// alone.</remarks>
   public IBlockAccessor Accessor { get; }
@@ -421,6 +423,11 @@ public sealed partial class TestWorld : IDisposable {
     _beFactories[classname] = factory;
     return this;
   }
+
+  /// <summary>Drops every pipe tier's burst, throughput and joint registration, as a world load
+  /// does. A test that seeds its own ratings calls it first, so its registrations replace
+  /// nothing that a mod's load left behind.</summary>
+  public static void ResetPipeTiers() => BlockPipe.ResetForWorld();
 
   /// <summary>Registers a block in the id/code lookup without placing it (for orientation-variant
   /// swaps). A block without <see cref="Block.Sounds"/> is given empty ones, as the engine's
@@ -862,7 +869,13 @@ public sealed partial class TestWorld : IDisposable {
     a.When(x =>
         x.SetBlock(Arg.Any<int>(), Arg.Any<BlockPos>(), Arg.Any<ItemStack>())
       )
-      .Do(ci => DoSetBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1)));
+      .Do(ci =>
+        DoSetBlock(
+          ci.ArgAt<int>(0),
+          ci.ArgAt<BlockPos>(1),
+          ci.ArgAt<ItemStack>(2)
+        )
+      );
     a.When(x => x.SetBlock(Arg.Any<int>(), Arg.Any<BlockPos>(), Arg.Any<int>()))
       .Do(ci =>
         DoSetBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1), ci.ArgAt<int>(2))
@@ -1233,7 +1246,21 @@ public sealed partial class TestWorld : IDisposable {
     }
   }
 
-  private void DoSetBlock(int id, BlockPos pos) {
+  private void DoSetBlock(int id, BlockPos pos, ItemStack? placedBy) {
+    if (
+      _blocksById.TryGetValue(id, out Block? placed) && !placed.ForFluidsLayer
+    ) {
+      WriteCell(id, pos, spawnEntity: false);
+      placed.OnBlockPlaced(World, pos, placedBy);
+      return;
+    }
+    DoSetBlock(id, pos);
+  }
+
+  private void DoSetBlock(int id, BlockPos pos) =>
+    WriteCell(id, pos, spawnEntity: true);
+
+  private void WriteCell(int id, BlockPos pos, bool spawnEntity) {
     if (
       _blocksById.TryGetValue(id, out Block? fluid)
       && id != 0
@@ -1271,7 +1298,8 @@ public sealed partial class TestWorld : IDisposable {
     // Engine parity: placing a block with an entity class (re)creates its block entity when a
     // factory is registered for it.
     if (
-      b.EntityClass is { } entityClass
+      spawnEntity
+      && b.EntityClass is { } entityClass
       && (
         !_blockEntities.TryGetValue(pos, out var existing)
         || existing.Block != b

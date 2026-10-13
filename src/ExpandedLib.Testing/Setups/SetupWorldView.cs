@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using ExpandedLib.Industry.Molten;
 using ExpandedLib.Scenarios;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -36,7 +37,18 @@ internal sealed class SetupWorldView(
         ? network
         : null;
 
-  public MoltenCellReading? MoltenCellAt(BlockPos pos) => null;
+  public MoltenCellReading? MoltenCellAt(BlockPos pos)
+  {
+    BlockEntity? be = world.GetBlockEntity(pos);
+    return
+      (be as IMoltenCell ?? be?.GetBehavior<BEBehaviorMoltenCell>()) is { } cell
+      ? new MoltenCellReading(
+        cell.CellAmount,
+        cell.CellMetalType,
+        cell.CellTemperature
+      )
+      : null;
+  }
 
   public SetupPlacement? Placed(string id) => placed.GetValueOrDefault(id);
 }
