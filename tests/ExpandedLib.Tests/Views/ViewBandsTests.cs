@@ -392,7 +392,7 @@ public class ViewBandsTests {
     Assert.Empty(ViewGates.Judge(Bands, group, metrics));
   }
 
-  // Fails when G3's comparison is inverted, and when the raster counts #null faces.
+  // Fails when G3's comparison is inverted; the first Assert.Empty on the reference plate catches it.
   [Fact]
   public void An_edge_on_plate_fails_G3() {
     (ViewGroup plate, GroupMetrics metrics) = Reference(
@@ -427,11 +427,9 @@ public class ViewBandsTests {
     Assert.True(edges < full / 2, $"{edges} against {full}");
   }
 
-  private static (
-    ViewGroup Group,
-    GroupMetrics Metrics,
-    ViewGates.ViewTwin Twin
-  ) Greensand(Action<ItemViewSet>? change = null) {
+  private static (ViewGroup Group, GroupMetrics Metrics) Greensand(
+    Action<ItemViewSet>? change = null
+  ) {
     Item greensand = World.World.GetItem(
       new AssetLocation("viewsfixture:greensand")
     );
@@ -441,33 +439,29 @@ public class ViewBandsTests {
       ViewGates.GroupOf(World, greensand)!,
       views
     );
-    return (
-      group,
-      ViewGates.Measure(World, group),
-      ViewGates.TwinOf(World, group)!
-    );
+    return (group, ViewGates.Measure(World, group));
   }
 
   // Fails when the twin branch is dropped: greensand is then judged by its kind's band and limit.
   [Fact]
   public void A_vanilla_shape_twin_is_judged_against_its_twin() {
-    (ViewGroup group, GroupMetrics metrics, ViewGates.ViewTwin twin) =
-      Greensand();
-    Assert.StartsWith("flour-", twin.Code);
-    Assert.Empty(ViewGates.Judge(Bands, group, metrics, twin));
+    (ViewGroup group, GroupMetrics metrics) = Greensand();
+    Assert.StartsWith("flour-", metrics.Twin!.Code);
+    Assert.Empty(ViewGates.Judge(Bands, group, metrics));
     GateReading grip = ViewGates
-      .Readings(Bands, group, metrics, twin)
+      .Readings(Bands, group, metrics)
       .Single(r => r.Name == "hand.grip");
     Assert.True(grip.Value > 1, $"{grip.Value}");
     Assert.True(grip.Pass);
-    Assert.NotEmpty(ViewGates.Judge(Bands, group, metrics));
+    Assert.NotEmpty(
+      ViewGates.Judge(Bands, group, metrics with { Twin = null })
+    );
   }
 
   // Fails when the message takes the kind's end codes: the finding then names the kind's reference, not the twin.
   [Fact]
   public void A_twin_off_its_twins_values_names_the_twin() {
-    (_, _, ViewGates.ViewTwin twin) = Greensand();
-    (ViewGroup group, GroupMetrics metrics, _) = Greensand(set =>
+    (ViewGroup group, GroupMetrics metrics) = Greensand(set =>
       set.TpHand.ScaleXYZ = new FastVec3f(
         set.TpHand.ScaleXYZ.X * 2,
         set.TpHand.ScaleXYZ.Y * 2,
@@ -475,9 +469,9 @@ public class ViewBandsTests {
       )
     );
     ViewFinding finding = Assert.Single(
-      ViewGates.Judge(Bands, group, metrics, twin),
+      ViewGates.Judge(Bands, group, metrics),
       f => f.Key.EndsWith("G7 hand.size")
     );
-    Assert.Contains($"({twin.Code} ", finding.Message);
+    Assert.Contains($"({metrics.Twin!.Code} ", finding.Message);
   }
 }

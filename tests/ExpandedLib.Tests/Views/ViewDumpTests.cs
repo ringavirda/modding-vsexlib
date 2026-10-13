@@ -235,4 +235,44 @@ public class ViewDumpTests {
     );
     Assert.All(paths, p => Assert.True(File.Exists(p)));
   }
+
+  // Fails when Measure drops the twin: the grip is then judged by the kind's limit and the ends name the kind's references. Fails when an upper-only gate's lower end is named.
+  [Fact]
+  public void Dump_judges_a_vanilla_shape_item_by_its_twin() {
+    Item greensand = World.World.GetItem(
+      new AssetLocation("viewsfixture:greensand")
+    );
+    ItemViewSet views = ItemViews.Compute(World.Api, greensand)!;
+    ViewGroup group = ViewGates.Measured(
+      ViewGates.GroupOf(World, greensand)!,
+      views
+    );
+    GroupMetrics metrics = ViewGates.Measure(World, group);
+    double twinGrip = metrics.Twin!.Metrics.Hand.Grip!.Value;
+    Assert.True(twinGrip > 1, $"{twinGrip}");
+
+    JObject file = Read(
+      With(
+        Variable,
+        TempDir(),
+        () =>
+          ViewDump.Write(
+            World,
+            "",
+            "viewsfixture:greensand",
+            greensand,
+            views,
+            Variable
+          )
+      )
+    );
+    JToken grip = file["gates"]!.Single(g => (string?)g["name"] == "hand.grip");
+    Assert.Equal(twinGrip * 1.1, (double)grip["max"]!, 0.001);
+    Assert.True((bool)grip["pass"]!);
+    JToken banded = file["gates"]!.First(g => g["ends"]!.HasValues);
+    Assert.StartsWith("flour-", (string)banded["ends"]![1]!);
+    JToken upper = file["gates"]!.Single(g => (string?)g["gate"] == "G2");
+    Assert.Equal(JTokenType.Null, upper["ends"]![0]!.Type);
+    Assert.Equal(JTokenType.Null, upper["min"]!.Type);
+  }
 }
