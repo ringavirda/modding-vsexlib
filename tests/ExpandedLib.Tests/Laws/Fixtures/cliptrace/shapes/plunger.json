@@ -1,0 +1,29 @@
+{
+  "textureWidth": 16,
+  "textureHeight": 16,
+  "textures": {
+    "all": "block/stone"
+  },
+  "elements": [
+    {
+      "name": "rotor",
+      "from": [0, 0, 0],
+      "to": [16, 1, 16],
+      "faces": {}
+    }
+  ],
+  "animations": [
+    {
+      "name": "spin",
+      "code": "spin",
+      "quantityFrames": 61,
+      "onAnimationEnd": "Repeat",
+      "onActivityStopped": "Stop",
+      "keyframes": [
+        { "frame": 0, "elements": { "rotor": { "rotationX": 0, "rotationY": 0, "rotationZ": 0 } } },
+        { "frame": 30, "elements": { "rotor": { "rotationX": 0, "rotationY": 90, "rotationZ": 0 } } },
+        { "frame": 60, "elements": { "rotor": { "rotationX": 0, "rotationY": 0, "rotationZ": 0 } } }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using BurdenMaker.BlockEntities;
+using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
 using ExpandedLib.Registries;
@@ -55,7 +56,25 @@ public partial class BlockBurdenmaker
         )
         .Behavior("ExOrientable")
         .Behavior("BlockEntityInteract")
-        .EntityBehavior("Animatable")
+        .EntityBehavior("ClipActions")
+        .ClipAction(
+          new ClipAction("open")
+          {
+            Pose = ClipPose.Play,
+            State = "gateOpen",
+            When = 1f,
+            Seconds = 1f,
+          }
+        )
+        .ClipAction(
+          new ClipAction("closed")
+          {
+            Pose = ClipPose.Play,
+            State = "gateOpen",
+            When = 0f,
+            Seconds = 1f,
+          }
+        )
         .Construction(c =>
           c.Stage(s => s.AddElements("Root/Base"))
             .Stage(s =>

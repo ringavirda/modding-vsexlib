@@ -36,6 +36,8 @@ public class ClipActionsBehaviorTests {
     new TestWorld()
       .ClientAssets("cliptrace", Fixtures)
       .RegisterClass("test-door", typeof(DoorEntity))
+      .RegisterClass("test-claim", typeof(ClaimDoor))
+      .RegisterClass("test-keyed", typeof(KeyedDoor))
       .RegisterClass("ClipActions", typeof(BEBehaviorClipActions));
 
   private static ExBlockDef DoorDef(string code, string shape) =>
@@ -254,7 +256,7 @@ public class ClipActionsBehaviorTests {
   [Fact]
   public void A_pose_that_is_not_a_frame_is_left_alone() {
     using var world = NewWorld();
-    var (door, twin) = Stand(
+    var (_, twin) = Stand(
       world,
       DoorDef("rundoor", "drivendoor")
         .ClipAction(
@@ -262,10 +264,199 @@ public class ClipActionsBehaviorTests {
         )
     );
 
-    Open(door, twin, true);
+    Behavior(twin).SetTarget("open", 1f);
     twin.Frames(Dt, 5);
 
     Assert.Equal(0, Active(twin));
+  }
+
+  private static ExBlockDef Swing() =>
+    DoorDef("gatedoor", "gatedoor")
+      .ClipAction(
+        new ClipAction("open") {
+          Pose = ClipPose.Play,
+          State = "doorOpen",
+          When = 1f,
+          Seconds = 1f,
+        }
+      )
+      .ClipAction(
+        new ClipAction("closed") {
+          Pose = ClipPose.Play,
+          State = "doorOpen",
+          When = 0f,
+          Seconds = 1f,
+        }
+      );
+
+  private static ExBlockDef Fan(float seconds = 2f) =>
+    DoorDef("fanblock", "fan")
+      .ClipAction(
+        new ClipAction("spin") {
+          Pose = ClipPose.Run,
+          State = "lean",
+          Seconds = seconds,
+        }
+      );
+
+  private static float FrameOf(ClientTwin twin, string clip) =>
+    twin.Animator!.GetAnimationState(clip)!.CurrentFrame;
+
+  private static bool Playing(ClientTwin twin, string clip) =>
+    Behavior(twin).animUtil.activeAnimationsByAnimCode.ContainsKey(clip);
+
+  [Fact]
+  public void A_play_state_loaded_shows_its_clip_at_its_last_frame() {
+    using var world = NewWorld();
+    var (_, twin) = Stand(world, Swing(), door => door.Open = true);
+
+    twin.Frames(Dt, 1);
+
+    Assert.Equal(30f, FrameOf(twin, "open"), 0.01f);
+    Assert.False(Playing(twin, "closed"));
+  }
+
+  [Fact]
+  public void A_play_clip_starts_at_its_first_frame_and_stops_its_group() {
+    using var world = NewWorld();
+    var (door, twin) = Stand(world, Swing());
+    twin.Frames(Dt, 1);
+    Assert.True(Playing(twin, "closed"));
+
+    Open(door, twin, true);
+    twin.Frames(Dt, 29);
+
+    Assert.False(Playing(twin, "closed"));
+    Assert.InRange(FrameOf(twin, "open"), 13f, 17f);
+    twin.Frames(Dt, 40);
+    Assert.Equal(30f, FrameOf(twin, "open"), 0.01f);
+  }
+
+  [Fact]
+  public void Play_chooses_a_clip_of_a_group() {
+    using var world = NewWorld();
+    var (_, twin) = Stand(world, Swing());
+    twin.Frames(Dt, 1);
+
+    Behavior(twin).Play("open");
+    twin.Frames(Dt, 5);
+
+    Assert.True(Playing(twin, "open"));
+    Assert.False(Playing(twin, "closed"));
+  }
+
+  [Fact]
+  public void A_clip_declared_with_another_pose_is_not_played_or_run() {
+    using var world = NewWorld();
+    var (_, twin) = Stand(world, Driven(), door => door.Open = true);
+    twin.Frames(Dt, 1);
+
+    Behavior(twin).Play("open");
+    Behavior(twin).Run("open", 1f);
+    twin.Frames(Dt, 5);
+
+    Assert.True(
+      Behavior(twin).animUtil.activeAnimationsByAnimCode["open"].AnimationSpeed
+        < 0.01f
+    );
+    Assert.Equal(30f, Frame(twin), 0.01f);
+  }
+
+  [Fact]
+  public void A_run_rate_follows_its_state() {
+    using var world = NewWorld();
+    var (_, twin) = Stand(world, Fan(), door => door.Lean = 2f);
+
+    twin.Frames(Dt, 30);
+
+    Assert.InRange(FrameOf(twin, "spin"), 29f, 32f);
+  }
+
+  [Fact]
+  public void Run_holds_a_clip_at_rate_zero_where_it_is() {
+    using var world = NewWorld();
+    var (_, twin) = Stand(world, DoorDef("plainfan", "fan"));
+    twin.Frames(Dt, 1);
+
+    Behavior(twin).Run("spin", 1f);
+    twin.Frames(Dt, 30);
+    Behavior(twin).Run("spin", 0f);
+    twin.Frames(Dt, 2);
+    float held = FrameOf(twin, "spin");
+    twin.Frames(Dt, 20);
+
+    Assert.InRange(held, 10f, 40f);
+    Assert.Equal(held, FrameOf(twin, "spin"), 0.1f);
+    Assert.True(Playing(twin, "spin"));
+  }
+
+  [Fact]
+  public void A_run_clip_picked_by_its_state_replaces_the_one_it_leaves() {
+    using var world = NewWorld();
+    var (door, twin) = Stand(
+      world,
+      DoorDef("twofans", "rattledoor")
+        .ClipAction(
+          new ClipAction("shake") {
+            Pose = ClipPose.Run,
+            State = "lean",
+            When = 0f,
+          }
+        )
+        .ClipAction(
+          new ClipAction("rattle") {
+            Pose = ClipPose.Run,
+            State = "lean",
+            When = 1f,
+          }
+        )
+    );
+    twin.Frames(Dt, 3);
+    Assert.True(Playing(twin, "shake"));
+    Assert.False(Playing(twin, "rattle"));
+
+    door.Lean = 1f;
+    door.MarkDirty();
+    twin.Sync();
+    twin.Frames(Dt, 3);
+
+    Assert.True(Playing(twin, "rattle"));
+    Assert.False(Playing(twin, "shake"));
+  }
+
+  [Fact]
+  public void A_claimed_build_is_posed_by_the_behaviour() {
+    using var world = NewWorld();
+    var (door, twin) = Stand(
+      world,
+      DoorDef("claimdoor", "drivendoor")
+        .EntityClass("test-claim")
+        .ClipAction(new ClipAction("open") { State = "doorOpen", Seconds = 1f })
+    );
+    twin.Frames(Dt, 3);
+
+    var cache = (IDictionary)world.ClientApi.ObjectCache["animUtil-animCache"];
+    Assert.True(cache.Contains("animutil-claimed-key"));
+    Assert.False(cache.Contains("animutil-cliptrace:drivendoor"));
+    Open(door, twin, true);
+    twin.Frames(Dt, 70);
+    Assert.Equal(30f, Frame(twin), 0.01f);
+  }
+
+  // Fails when ConstructedAnimator's default key is a constant instead of AnimatorKeys.Of.
+  [Fact]
+  public void A_constructed_animator_keys_its_cache_by_the_block_by_default() {
+    using var world = NewWorld();
+    var (_, twin) = Stand(
+      world,
+      DoorDef("keyeddoor", "drivendoor")
+        .EntityClass("test-keyed")
+        .ClipAction(new ClipAction("open") { State = "doorOpen", Seconds = 1f })
+    );
+    twin.Frames(Dt, 3);
+
+    var cache = (IDictionary)world.ClientApi.ObjectCache["animUtil-animCache"];
+    Assert.True(cache.Contains("animutil-cliptrace:drivendoor"));
   }
 
   [Fact]
@@ -319,7 +510,23 @@ public class ClipActionsBehaviorTests {
     Assert.Equal(0, Active(twin));
   }
 
-  private sealed class DoorEntity : BlockEntity {
+  private sealed class ClaimDoor : DoorEntity {
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      if (api is ICoreClientAPI)
+        new ConstructedAnimator(this, () => "claimed-key").Initialize();
+    }
+  }
+
+  private sealed class KeyedDoor : DoorEntity {
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      if (api is ICoreClientAPI)
+        new ConstructedAnimator(this).Initialize();
+    }
+  }
+
+  private class DoorEntity : BlockEntity {
     public bool Open { get; set; }
 
     public float Lean { get; set; }

@@ -1028,12 +1028,18 @@
 		{
 			"name": "closed",
 			"code": "closed",
-			"quantityframes": 30,
-			"onActivityStopped": "EaseOut",
-			"onAnimationEnd": "Repeat",
+			"quantityframes": 31,
+			"onActivityStopped": "Stop",
+			"onAnimationEnd": "Hold",
 			"keyframes": [
 				{
 					"frame": 0,
+					"elements": {
+						"Lid": { "offsetX": 0.0, "offsetY": 0.0, "offsetZ": 8.0 }
+					}
+				},
+				{
+					"frame": 30,
 					"elements": {
 						"Lid": { "offsetX": 0.0, "offsetY": 0.0, "offsetZ": 0.0 }
 					}
@@ -1044,12 +1050,18 @@
 		{
 			"name": "open",
 			"code": "open",
-			"quantityframes": 30,
-			"onActivityStopped": "EaseOut",
-			"onAnimationEnd": "Repeat",
+			"quantityframes": 31,
+			"onActivityStopped": "Stop",
+			"onAnimationEnd": "Hold",
 			"keyframes": [
 				{
 					"frame": 0,
+					"elements": {
+						"Lid": { "offsetX": 0.0, "offsetY": 0.0, "offsetZ": 0.0 }
+					}
+				},
+				{
+					"frame": 30,
 					"elements": {
 						"Lid": { "offsetX": 0.0, "offsetY": 0.0, "offsetZ": 8.0 }
 					}

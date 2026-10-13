@@ -41,6 +41,11 @@ internal sealed class ClipReference
   internal float Last(string clip) =>
     Shape.Animations.First(a => a.Code == clip).QuantityFrames - 1;
 
+  internal bool HasClip(string clip) =>
+    Shape.Animations.Any(a =>
+      string.Equals(a.Code, clip, StringComparison.OrdinalIgnoreCase)
+    );
+
   internal bool HasPart(string part) =>
     new ClientAnimator(
       () => 1,

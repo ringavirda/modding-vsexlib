@@ -95,9 +95,9 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
       api
     );
 
-    // Resolved on both sides; builds and poses on the client only.
-    _animator = new ConstructedAnimator(this, () => AnimCacheKey);
-    _animator.Initialize(ApplyPose);
+    // Resolved on both sides; builds on the client only, and the ClipActions behaviour poses the gate.
+    _animator = new ConstructedAnimator(this);
+    _animator.Initialize();
 
     if (api is ICoreClientAPI capi)
       InitSurfaces(capi);
@@ -106,10 +106,6 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     if (api.Side == EnumAppSide.Server && _gateOpen && OreUnits + FluxUnits > 0)
       StartDrain();
   }
-
-  // Lazy: a wrench rotation changes the variant.
-  private string AnimCacheKey =>
-    "burdenmaker-" + Block.Variant["side"] + (_gateOpen ? "-open" : "-closed");
 
   public override void OnBlockRemoved() {
     StopDrain();
@@ -134,13 +130,11 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     tree.SetInt("batchTotal", _batchTotal);
   }
 
-  /// <summary>Reads the batch and gate state written by <see cref="ToTreeAttributes"/>; re-poses
-  /// the client's animator when the gate state changes.</summary>
+  /// <summary>Reads the batch and gate state written by <see cref="ToTreeAttributes"/>.</summary>
   public override void FromTreeAttributes(
     ITreeAttribute tree,
     IWorldAccessor worldForResolving
   ) {
-    bool wasOpen = _gateOpen;
     base.FromTreeAttributes(tree, worldForResolving);
     _gateOpen = tree.GetBool("gateOpen");
     _batchInProgress = tree.GetBool("batchInProgress");
@@ -149,27 +143,7 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
       tree.GetFloat("batchFlux")
     );
     _batchTotal = tree.GetInt("batchTotal");
-    if (Api?.Side == EnumAppSide.Client && _gateOpen != wasOpen)
-      ApplyPose();
     UpdateSurfaces();
-  }
-
-  /// <summary>Poses the permanent animation: <c>closed</c> at rest, <c>open</c> while the lid is
-  /// drawn back.</summary>
-  private void ApplyPose() {
-    string clip = _gateOpen ? "open" : "closed";
-    _animator?.Pose(util => {
-      util.StopAnimation(_gateOpen ? "closed" : "open");
-      util.StartAnimation(
-        new AnimationMetaData {
-          Animation = clip,
-          Code = clip,
-          AnimationSpeed = 1f,
-          EaseInSpeed = 3f,
-          EaseOutSpeed = 3f,
-        }.Init()
-      );
-    });
   }
 
   #endregion
@@ -428,7 +402,6 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     if (_gateOpen) {
       _gateOpen = false;
       StopDrain();
-      ApplyPose();
       MarkDirty(true);
       return true;
     }
@@ -452,7 +425,6 @@ public class BlockEntityBurdenmaker : ExBlockEntityContainer {
     }
 
     _gateOpen = true;
-    ApplyPose();
     StartDrain();
     MarkDirty(true);
     return true;

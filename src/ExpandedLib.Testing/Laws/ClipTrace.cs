@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
+using ExpandedLib.Helpers;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -100,7 +101,7 @@ internal sealed class ClipTrace
     ];
   }
 
-  /// <summary>Traces the declared frame actions of every variant in the domain.</summary>
+  /// <summary>Traces the declared frame, play and run actions of every variant in the domain.</summary>
   /// <returns>Blocktypes traced, actions traced, and ways judged for time.</returns>
   internal (int Types, int Actions, int Timed) Actions(
     List<(string Code, ClipProblem Problem)> found
@@ -120,15 +121,24 @@ internal sealed class ClipTrace
         if (declared.Declared.Count == 0)
           continue;
         ClipReference reference = ClipReference.Load(_world, block);
-        foreach (
-          ClipAction action in declared
-            .Resolve(reference.Shape)
-            .Where(a => a.Pose == ClipPose.Frame)
-        )
+        if (!declared.Declared.All(a => reference.HasClip(a.Clip)))
+          continue;
+        IReadOnlyList<ClipAction> resolved = declared.Resolve(reference.Shape);
+        foreach (ClipAction action in resolved)
         {
+          ClipAction? from = null;
+          if (action.Pose == ClipPose.Play)
+            from = resolved.FirstOrDefault(a =>
+              a != action
+              && a.Pose == ClipPose.Play
+              && a.State != null
+              && a.State == action.State
+            );
+          else if (action.Pose != ClipPose.Frame && action.Pose != ClipPose.Run)
+            continue;
           traced = true;
           actions++;
-          ClipTraced result = Trace(block, action, reference);
+          ClipTraced result = Trace(block, action, reference, from);
           timed += result.Timed;
           found.AddRange(
             result.Problems.Select(p => (block.Code.ToString(), p))
@@ -139,6 +149,88 @@ internal sealed class ClipTrace
         types++;
     }
     return (types, actions, timed);
+  }
+
+  /// <summary>Compares the clips each variant's shape carries with the clips its actions name.</summary>
+  /// <param name="found">Receives a finding for each clip no action drives and is not a static row, and for
+  /// each action naming a clip the shape lacks.</param>
+  /// <param name="exceptions">The file whose static rows excuse a clip from having a driver.</param>
+  /// <returns>Blocktypes whose shape carries clips, clips judged across their variants, and the keys of
+  /// every clip no action drives, static or not.</returns>
+  internal (int Types, int Clips, HashSet<string> Undriven) Drivers(
+    List<(string Code, ClipProblem Problem)> found,
+    ClipExceptions exceptions
+  )
+  {
+    var clipsByShape = new Dictionary<string, string[]>();
+    var undriven = new HashSet<string>(StringComparer.Ordinal);
+    int types = 0,
+      judged = 0;
+    foreach (
+      IGrouping<string, Block> type in BlockLaws.Blocktypes(_world, _domain)
+    )
+    {
+      bool carries = false;
+      foreach (Block block in type)
+      {
+        if (block.Shape?.Base == null)
+          continue;
+        string shape = block.Shape.Base.ToString();
+        if (!clipsByShape.TryGetValue(shape, out string[]? clips))
+          clipsByShape[shape] = clips = [
+            .. ExMeshCache
+              .LoadShape(_world.ClientApi, ExMeshCache.ShapePathOf(block))
+              ?.Animations?.Select(a => a.Code)
+              ?? [],
+          ];
+        if (clips.Length == 0)
+          continue;
+        carries = true;
+        judged += clips.Length;
+        string[] named =
+        [
+          .. ClipActions.Of(block).Declared.Select(a => a.Clip),
+        ];
+        foreach (
+          string ghost in named.Where(n =>
+            !clips.Contains(n, StringComparer.OrdinalIgnoreCase)
+          )
+        )
+          found.Add(
+            (
+              block.Code.ToString(),
+              new ClipProblem(
+                ClipLaws.DriverName,
+                $"{shape} {ghost}",
+                "names a clip the shape does not have"
+              )
+            )
+          );
+        foreach (
+          string clip in clips.Where(c =>
+            !named.Contains(c, StringComparer.OrdinalIgnoreCase)
+          )
+        )
+        {
+          string key = $"{shape} {clip}";
+          undriven.Add(key);
+          if (!exceptions.Static.ContainsKey(key))
+            found.Add(
+              (
+                block.Code.ToString(),
+                new ClipProblem(
+                  ClipLaws.DriverName,
+                  key,
+                  "no action drives the clip"
+                )
+              )
+            );
+        }
+      }
+      if (carries)
+        types++;
+    }
+    return (types, judged, undriven);
   }
 
   /// <summary>Stands every animated variant's twin on one shared animator cache, in code order,
@@ -166,6 +258,21 @@ internal sealed class ClipTrace
           null,
           null
         );
+        if (step == null && Animated(block))
+        {
+          animated = true;
+          found.Add(
+            (
+              block.Code.ToString(),
+              new ClipProblem(
+                ClipLaws.KeyName,
+                $"{block.Shape.Base} twin",
+                "could not be placed to stand its twin"
+              )
+            )
+          );
+          continue;
+        }
         if (
           step?.Entity is not { } entity
           || (
@@ -249,14 +356,21 @@ internal sealed class ClipTrace
     return (types, built.Count);
   }
 
-  /// <summary>Works <paramref name="action"/> both ways on a fresh twin of
-  /// <paramref name="block"/>, then loads a twin with the far end already set, and judges each.</summary>
+  /// <summary>Works <paramref name="action"/> on a fresh twin of <paramref name="block"/>, then loads a
+  /// twin with the state already set, and judges each. A frame action is worked both ways; a play action
+  /// is entered from <paramref name="from"/>; a run action is run and stopped.</summary>
+  /// <param name="from">For a play action, the action of its group the block rests in before; null enters
+  /// from the clip's own first frame.</param>
   internal ClipTraced Trace(
     Block block,
     ClipAction action,
-    ClipReference reference
+    ClipReference reference,
+    ClipAction? from = null
   )
   {
+    if (action.Pose == ClipPose.Run)
+      return TraceRun(block, action, reference);
+    bool play = action.Pose == ClipPose.Play;
     string shape = block.Shape.Base.ToString();
     string key = $"{shape} {action.Clip}";
     var problems = new List<ClipProblem>();
@@ -274,7 +388,10 @@ internal sealed class ClipTrace
           $"names the part '{ghost}', which the shape does not have"
         );
       float seconds = action.Seconds!.Value;
-      var start = reference.Pose(action.Clip, 0f, parts);
+      var start =
+        play && from != null
+          ? reference.Pose(from.Clip, reference.Last(from.Clip), parts)
+          : reference.Pose(action.Clip, 0f, parts);
       var end = reference.Pose(action.Clip, reference.Last(action.Clip), parts);
       List<(string Part, int Channel)> moving = Moving(start, end);
       if (moving.Count == 0)
@@ -296,6 +413,12 @@ internal sealed class ClipTrace
           return new ClipTraced(problems, null, null, 0);
         }
         twin.Sync();
+        if (play && from != null)
+        {
+          Work(step, from, true);
+          twin.Sync();
+          twin.Frames(Dt, Settle(from));
+        }
         if (!Worked(step, twin, action, true, Add))
           return new ClipTraced(problems, null, null, 0);
         forward = Walk(twin, action, parts, end, moving, seconds);
@@ -305,10 +428,13 @@ internal sealed class ClipTrace
           return new ClipTraced(problems, forward, null, 0);
         }
         timed += Judge("forward", forward, seconds, moving, start, end, Add);
-        if (!Worked(step, twin, action, false, Add))
-          return new ClipTraced(problems, forward, null, timed);
-        reverse = Walk(twin, action, parts, start, moving, seconds);
-        timed += Judge("reverse", reverse, seconds, moving, end, start, Add);
+        if (!play)
+        {
+          if (!Worked(step, twin, action, false, Add))
+            return new ClipTraced(problems, forward, null, timed);
+          reverse = Walk(twin, action, parts, start, moving, seconds);
+          timed += Judge("reverse", reverse, seconds, moving, end, start, Add);
+        }
       }
       finally
       {
@@ -342,6 +468,154 @@ internal sealed class ClipTrace
       );
     }
     return new ClipTraced(problems, forward, reverse, timed);
+  }
+
+  private ClipTraced TraceRun(
+    Block block,
+    ClipAction action,
+    ClipReference reference
+  )
+  {
+    string shape = block.Shape.Base.ToString();
+    string key = $"{shape} {action.Clip}";
+    var problems = new List<ClipProblem>();
+    void Add(string law, string message) =>
+      problems.Add(new ClipProblem(law, key, message));
+    ClipWay? forward = null,
+      reverse = null;
+    int timed = 0;
+    try
+    {
+      string[] parts = [.. action.Parts!.Where(reference.HasPart)];
+      foreach (string ghost in action.Parts!.Except(parts))
+        Add(
+          ClipLaws.ActionName,
+          $"names the part '{ghost}', which the shape does not have"
+        );
+      float seconds = action.Seconds!.Value;
+      var start = reference.Pose(action.Clip, 0f, parts);
+      var end = Reach(reference, action.Clip, start, parts);
+      List<(string Part, int Channel)> moving = Moving(start, end);
+      if (moving.Count == 0)
+      {
+        Add(ClipLaws.ActionName, "moves no part in any frame");
+        return new ClipTraced(problems, null, null, 0);
+      }
+
+      BlockLaws.EntityCase step = Place(block);
+      ClientTwin twin = StandTwin(step, 2);
+      try
+      {
+        if (twin.Animator == null)
+        {
+          Add(ClipLaws.ActionName, NoAnimator);
+          return new ClipTraced(problems, null, null, 0);
+        }
+        twin.Sync();
+        if (!Worked(step, twin, action, true, Add))
+          return new ClipTraced(problems, null, null, 0);
+        forward = WalkFor(
+          twin,
+          action,
+          parts,
+          Math.Max(6, (int)Math.Ceiling(0.4f * seconds / Dt))
+        );
+        if (!forward.Played)
+        {
+          Add(ClipLaws.ActionName, "forward plays no clip");
+          return new ClipTraced(problems, forward, null, 0);
+        }
+        timed += JudgeRate(
+          forward,
+          reference.Last(action.Clip) + 1,
+          seconds,
+          Add
+        );
+        if (action.When == null)
+        {
+          if (!Worked(step, twin, action, false, Add))
+            return new ClipTraced(problems, forward, null, timed);
+          reverse = WalkFor(twin, action, parts, 2 * SettledSteps);
+          if (Jumps(reverse, moving, start, end, seconds))
+            Add(
+              ClipLaws.ActionName,
+              "stopping moves a part more than three even steps in one tick"
+            );
+        }
+      }
+      finally
+      {
+        _world.ReleaseClientTwin(twin.Twin);
+      }
+
+      BlockLaws.EntityCase loadStep = Place(block);
+      Work(loadStep, action, true);
+      ClientTwin loaded = StandTwin(loadStep, 2);
+      try
+      {
+        if (
+          loaded.Animator?.GetAnimationState(action.Clip)
+          is not { Active: true }
+        )
+          Add(
+            ClipLaws.ActionName,
+            "loaded running, it does not run on its first frame"
+          );
+      }
+      finally
+      {
+        _world.ReleaseClientTwin(loaded.Twin);
+      }
+    }
+    catch (Exception e)
+    {
+      problems.Add(
+        new ClipProblem(
+          ClipLaws.ActionName,
+          $"{shape} twin",
+          $"threw {BlockLaws.Describe(e)}"
+        )
+      );
+    }
+    return new ClipTraced(problems, forward, reverse, timed);
+  }
+
+  private static int Settle(ClipAction action) =>
+    (int)Math.Ceiling((2 * action.Seconds!.Value + 1) / Dt) + SettledSteps;
+
+  private static int JudgeRate(
+    ClipWay walked,
+    float quantity,
+    float seconds,
+    Action<string, string> add
+  )
+  {
+    ClipSample first = walked.Samples[1];
+    ClipSample last = walked.Samples[^1];
+    float rate = (last.Frame - first.Frame) / ((last.Tick - first.Tick) * Dt);
+    float time = rate > 0f ? quantity / rate : float.PositiveInfinity;
+    if (Math.Abs(time - seconds) > Math.Max(0.1f * seconds, 2 * Dt))
+      add(
+        ClipLaws.TimeName,
+        $"run cycles in {time:0.##} s against {seconds:0.##} s"
+      );
+    return 1;
+  }
+
+  private ClipWay WalkFor(
+    ClientTwin twin,
+    ClipAction action,
+    string[] parts,
+    int ticks
+  )
+  {
+    var samples = new List<ClipSample> { Sample(twin, action, parts, 0) };
+    for (int tick = 1; tick <= ticks; tick++)
+    {
+      twin.Frames(Dt, 1);
+      samples.Add(Sample(twin, action, parts, tick));
+    }
+    return new ClipWay(samples, samples.Any(s => s.Active), null);
   }
 
   private bool Worked(
@@ -502,6 +776,31 @@ internal sealed class ClipTrace
       ),
     ];
 
+  private static bool Animated(Block block) =>
+    ClipActions.Of(block).Declared.Count > 0
+    || block.BlockEntityBehaviors.Any(b => b.Name == "Animatable");
+
+  private static Dictionary<string, float[]> Reach(
+    ClipReference reference,
+    string clip,
+    IReadOnlyDictionary<string, float[]> start,
+    string[] parts
+  )
+  {
+    var reach = start.ToDictionary(p => p.Key, p => (float[])p.Value.Clone());
+    for (int frame = 1; frame <= (int)reference.Last(clip); frame++)
+      foreach (
+        (string part, float[] pose) in reference.Pose(clip, frame, parts)
+      )
+        for (int c = 0; c < 6; c++)
+          if (
+            Math.Abs(pose[c] - start[part][c])
+            > Math.Abs(reach[part][c] - start[part][c])
+          )
+            reach[part][c] = pose[c];
+    return reach;
+  }
+
   private static float Tolerance(int channel) => channel < 3 ? Degrees : Voxels;
 
   private BlockLaws.EntityCase Place(Block block) =>
@@ -569,9 +868,12 @@ internal sealed class ClipTrace
   )
   {
     BlockEntity entity = step.Entity!;
+    if (action.Pose == ClipPose.Play || action.When != null)
+      return Enter(step, action);
     if (action.By is not { Length: > 0 } by)
     {
-      WriteState(entity, action, forward);
+      (float low, float high) = action.Range ?? (0f, 1f);
+      WriteState(entity, action.State!, forward ? high : low);
       return Effect.Changed;
     }
     InteractionLaw.Click? click = ClickFor(step, Line(action, forward));
@@ -589,13 +891,45 @@ internal sealed class ClipTrace
     return changed ? Effect.Changed : Effect.Unchanged;
   }
 
-  private void WriteState(BlockEntity entity, ClipAction action, bool forward)
+  private Effect Enter(BlockLaws.EntityCase step, ClipAction action)
+  {
+    BlockEntity entity = step.Entity!;
+    float when = action.When ?? 1f;
+    if (
+      action.State is { } state
+      && Math.Abs(StateOf(entity, state) - when) < 0.001f
+    )
+      return Effect.Unchanged;
+    if (action.By is not { Length: > 0 })
+    {
+      if (action.State == null)
+        return Effect.NoLine;
+      WriteState(entity, action.State, when);
+      return Effect.Changed;
+    }
+    InteractionLaw.Click? click = ClickFor(step, Line(action, true));
+    if (click == null)
+      return Effect.NoLine;
+    byte[] before = TreeOf(entity);
+    InteractionLaw.Press(_world, _player, step, click, judged: false);
+    return before.AsSpan().SequenceEqual(TreeOf(entity))
+      ? Effect.Unchanged
+      : Effect.Changed;
+  }
+
+  private static float StateOf(BlockEntity entity, string key)
   {
     var tree = new TreeAttribute();
     entity.ToTreeAttributes(tree);
-    (float low, float high) = action.Range ?? (0f, 1f);
-    float value = forward ? high : low;
-    string key = action.State!;
+    return tree[key] is BoolAttribute
+      ? (tree.GetAsBool(key) ? 1f : 0f)
+      : (float)tree.GetDecimal(key);
+  }
+
+  private void WriteState(BlockEntity entity, string key, float value)
+  {
+    var tree = new TreeAttribute();
+    entity.ToTreeAttributes(tree);
     switch (tree[key])
     {
       case BoolAttribute:
