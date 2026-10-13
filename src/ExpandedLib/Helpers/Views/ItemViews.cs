@@ -15,7 +15,7 @@ public static class ItemViews {
   /// <c>attributes.itemViews.kind</c> or the one its drawn box gives; <c>attributes.itemViews.tip</c> names
   /// the working end of a longtool or tool as a sign and an axis letter ("+y"). The slot and ground views
   /// are computed from the box as well. A block takes the game's block rotations with its origins on the drawn box.
-  /// A mod item with no declared kind, tool or tip that draws a game item's shape takes that item's shipped views.</summary>
+  /// A mod item with no <c>attributes.itemViews</c> key and no tool that draws a game item's shape takes that item's shipped views.</summary>
   /// <param name="api">The api of the side whose world is loaded.</param>
   /// <param name="collectible">The collectible to compute.</param>
   /// <returns>The views; null for a collectible that declares kind <c>none</c>, one with no drawn box, an item
@@ -167,7 +167,9 @@ public static class ItemViews {
       hand,
       twin.GroundTransform?.Clone() ?? ModelTransform.ItemDefaultGround(),
       twin.HeldRightTpIdleAnimation,
-      twin.HeldRightReadyAnimation,
+      twin.HeldRightReadyAnimation == DefaultReady
+        ? null
+        : twin.HeldRightReadyAnimation,
       twin.HeldTpHitAnimation == DefaultHit ? null : twin.HeldTpHitAnimation,
       twin.HeldTpUseAnimation == DefaultUse ? null : twin.HeldTpUseAnimation,
       new Vec3d(lay.Lo[0], lay.Lo[1], lay.Lo[2]),

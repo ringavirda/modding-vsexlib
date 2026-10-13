@@ -279,4 +279,13 @@ public class ItemViewsBlockTests(ITestOutputHelper output) {
     Assert.Equal(flour.HeldRightReadyAnimation, set.ReadyClip);
     Assert.NotNull(set.IdleClip);
   }
+
+  // Fails when the twin's default ready clip is passed through: plainbar reports "helditemready".
+  [Fact]
+  public void A_twin_with_the_default_ready_clip_leaves_it_unset() {
+    Item bar = World.World.GetItem(new AssetLocation("viewsfixture:plainbar"));
+    Item twin = World.World.GetItem(new AssetLocation("game:ingot-iron"));
+    Assert.Equal("helditemready", twin.HeldRightReadyAnimation);
+    Assert.Null(ItemViews.Compute(World.Api, bar)!.ReadyClip);
+  }
 }

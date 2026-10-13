@@ -67,13 +67,6 @@ internal static class ViewReferences {
     4
   );
 
-  /// <summary>The right hand of the seraph at frame 0 of holdbothhandslarge, in voxels of the seraph shape.</summary>
-  internal static readonly Vec3d HoldBothHandsLargeRightHand = new(
-    -0.01,
-    16.17,
-    5.10
-  );
-
   /// <summary>The rotation about Y in degrees that the seraph's right-hand attachment point carries and a hand rotation adds to.</summary>
   internal const double HandYaw = 180;
 
@@ -130,6 +123,8 @@ internal static class ViewReferences {
   internal const string DefaultHit = "breakhand";
 
   internal const string DefaultUse = "interactstatic";
+
+  internal const string DefaultReady = "helditemready";
 
   internal const string BlockReady = "heldblockready";
   internal const string BlockUse = "twohandplaceblock";
