@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -50,6 +51,84 @@ public static class ShapeExtents {
       [.. Enumerable.Range(0, 3).Select(i => corners.Min(c => c[i]))],
       [.. Enumerable.Range(0, 3).Select(i => corners.Max(c => c[i]))]
     );
+  }
+
+  /// <summary>One element of a shape with the surface of its box sampled.</summary>
+  /// <param name="Path">The element's names from the top of the tree, joined with <c>/</c>.</param>
+  /// <param name="Leaf">Whether the element has no children.</param>
+  /// <param name="Middle">The centre of the element's box, in voxels.</param>
+  /// <param name="Points">Points on the six faces of the element's box, in voxels, at most the
+  /// sampling step apart, rotations composed down the tree.</param>
+  internal sealed record DrawnElement(
+    string Path,
+    bool Leaf,
+    float[] Middle,
+    List<float[]> Points
+  );
+
+  /// <summary>Every element of <paramref name="path"/> with its box surface sampled on a
+  /// <paramref name="step"/>-voxel grid, parents before their children.</summary>
+  internal static List<DrawnElement> Surfaces(string path, float step) {
+    var found = new List<DrawnElement>();
+    JObject shape = JObject.Parse(File.ReadAllText(path));
+    foreach (JToken el in shape["elements"] ?? new JArray())
+      Sample(el, Mat4f.Create(), "", step, found);
+    return found;
+  }
+
+  private static void Sample(
+    JToken element,
+    float[] parent,
+    string parentPath,
+    float step,
+    List<DrawnElement> found
+  ) {
+    float[] from = Point(element["from"]);
+    float[] to = Point(element["to"]);
+    float[] transform = Mat4f.Mul(Mat4f.Create(), parent, Local(element, from));
+    string name = (string?)element["name"] ?? "";
+    string full = parentPath.Length == 0 ? name : parentPath + "/" + name;
+    float[] size = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+    JToken? children = element["children"];
+
+    var points = new List<float[]>();
+    float[][] axes =
+    [
+      .. size.Select(s =>
+        Enumerable
+          .Range(0, Math.Max(2, (int)Math.Ceiling(s / step) + 1))
+          .Select(i => i * s / Math.Max(1, (int)Math.Ceiling(s / step)))
+          .ToArray()
+      ),
+    ];
+    for (int fixedAxis = 0; fixedAxis < 3; fixedAxis++) {
+      int a = (fixedAxis + 1) % 3,
+        b = (fixedAxis + 2) % 3;
+      foreach (float face in new[] { 0f, size[fixedAxis] })
+        foreach (float u in axes[a])
+          foreach (float v in axes[b]) {
+            var local = new float[3];
+            local[fixedAxis] = face;
+            local[a] = u;
+            local[b] = v;
+            points.Add(
+              Mat4f.MulWithVec4(transform, local[0], local[1], local[2], 1f)[..3]
+            );
+          }
+    }
+
+    found.Add(
+      new DrawnElement(
+        full,
+        children == null || !children.Any(),
+        Mat4f.MulWithVec4(transform, size[0] / 2, size[1] / 2, size[2] / 2, 1f)[
+          ..3
+        ],
+        points
+      )
+    );
+    foreach (JToken child in children ?? new JArray())
+      Sample(child, transform, full, step, found);
   }
 
   private static JToken? Find(JToken? elements, string name) {
