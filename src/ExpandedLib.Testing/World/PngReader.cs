@@ -17,6 +17,19 @@ internal readonly record struct OpaqueRect(int X0, int Y0, int X1, int Y1) {
 internal static class PngReader {
   private static readonly byte[] Signature = [137, 80, 78, 71, 13, 10, 26, 10];
 
+  /// <summary>Reads the pixel size of a PNG from its header.</summary>
+  /// <param name="png">The file's bytes.</param>
+  /// <returns>The width and height, in pixels.</returns>
+  /// <exception cref="InvalidDataException">The bytes are not a PNG with a header.</exception>
+  internal static (int Width, int Height) Size(byte[] png) {
+    if (png.Length < 24 || !png.AsSpan(0, 8).SequenceEqual(Signature))
+      throw new InvalidDataException("Not a PNG.");
+    return (
+      BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16)),
+      BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20))
+    );
+  }
+
   /// <summary>Finds the smallest rectangle holding every pixel whose alpha is above 0. A palette
   /// image takes its alpha from <c>tRNS</c> and is opaque without one.</summary>
   /// <param name="png">The file's bytes.</param>

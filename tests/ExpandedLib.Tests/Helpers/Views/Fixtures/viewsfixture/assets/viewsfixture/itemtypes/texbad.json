@@ -1,0 +1,7 @@
+{
+  "code": "texbad",
+  "class": "Item",
+  "textures": {
+    "texbad": { "base": "item/texbad" }
+  }
+}
