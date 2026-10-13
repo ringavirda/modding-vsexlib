@@ -40,7 +40,6 @@ public static class GatheredSources {
       new(EnumItemClass.Block, "game:ore-*", "worldgen, mined with a pickaxe"),
       new(EnumItemClass.Block, "game:gravel-*", "worldgen, dug where it lies"),
       new(EnumItemClass.Block, "game:sand-*", "worldgen, dug where it lies"),
-      new(EnumItemClass.Block, "game:soil-*", "worldgen, dug where it lies"),
       new(EnumItemClass.Block, "game:peat-*", "worldgen, dug where it lies"),
       new(EnumItemClass.Block, "game:rawclay-*", "worldgen, dug where it lies"),
       new(EnumItemClass.Block, "game:log-*", "felled trees, cut with an axe"),
@@ -62,6 +61,31 @@ public static class GatheredSources {
       new(EnumItemClass.Item, "game:flint", "loose flint, picked up by hand"),
       new(EnumItemClass.Item, "game:clay-*", "dug clay, taken by hand"),
       new(EnumItemClass.Item, "game:drygrass", "tall grass, cut with a knife"),
+      new(
+        EnumItemClass.Item,
+        "game:fruit-*",
+        "fruit picked from bushes and trees by hand"
+      ),
+      new(
+        EnumItemClass.Block,
+        "game:mushroom-*",
+        "wild mushrooms, picked by hand"
+      ),
+      new(
+        EnumItemClass.Item,
+        "game:redmeat-*",
+        "creature drops, skinned or butchered"
+      ),
+      new(
+        EnumItemClass.Item,
+        "game:bushmeat-*",
+        "creature drops, skinned or butchered"
+      ),
+      new(
+        EnumItemClass.Item,
+        "game:poultry-*",
+        "creature drops, skinned or butchered"
+      ),
       new(
         EnumItemClass.Item,
         "game:bone",

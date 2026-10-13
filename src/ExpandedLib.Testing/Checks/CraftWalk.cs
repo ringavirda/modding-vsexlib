@@ -182,8 +182,11 @@ public static class CraftWalk
     int trust = Enumerable
       .Range(0, edges.Count)
       .Count(i => fired[i] && edges[i].OnTrust);
+    int inputless = ExlibChecks
+      .Produced()
+      .Count(d => d.Domain == domain && d.At == null);
     return new Result(
-      $"craft walk {domain}: {asked.Length} kinds, {count} recipes fired (0 executed, {count} followed), 0 undeclared, {trust} on trust, {failures.Length} failures",
+      $"craft walk {domain}: {asked.Length} kinds, {count} recipes fired (0 executed, {count} followed), {inputless} undeclared, {trust} on trust, {failures.Length} failures",
       failures
     );
   }

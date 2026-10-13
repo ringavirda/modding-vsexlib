@@ -1,6 +1,8 @@
 #if GAME_GE_1_22
 using System;
 using System.Linq;
+using ExpandedLib.Catalogues;
+using ExpandedLib.Checks;
 using ExpandedLib.Testing;
 using Xunit;
 using Xunit.Abstractions;
@@ -13,12 +15,21 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
 {
   private readonly PlantedFiles _files = new();
 
-  public void Dispose() => _files.Dispose();
+  public void Dispose()
+  {
+    _files.Dispose();
+    ExlibChecks.ClearDeclarations();
+    ProcessJobRegistry.Shared.Clear();
+    ProcessRouteRegistry.Shared.Clear();
+  }
 
   private static string Item(string code) =>
     $"{{ \"code\": \"{code}\", \"creativeinventory\": {{ \"general\": [\"*\"] }} }}";
 
-  private static string Recipe(string input, string output) =>
+  // A code with no creative tab: the walk reports the edges that wait on it, not the kind itself.
+  private static string Plain(string code) => $"{{ \"code\": \"{code}\" }}";
+
+  private static string Recipe(string input, string output, string type = "item") =>
     $$"""
       {
         "name": "walk:{{output}}",
@@ -26,7 +37,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
         "width": 1,
         "height": 1,
         "ingredients": { "A": { "type": "item", "code": "{{input}}" } },
-        "output": { "type": "item", "code": "walk:{{output}}" }
+        "output": { "type": "{{type}}", "code": "walk:{{output}}" }
       }
       """;
 
@@ -226,6 +237,175 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.Equal(CraftWalkClass.GridStation, Class("long"));
     Assert.Equal(CraftWalkClass.GridStation, Class("tall"));
     Assert.Equal(CraftWalkClass.GridStation, Class("member"));
+  }
+
+  private static string Tower(string stack) =>
+    $$"""
+      {
+        "code": "tower",
+        "creativeinventory": { "general": [ "*" ] },
+        "entityBehaviors": [
+          {
+            "name": "ExRightClickConstructable",
+            "properties": {
+              "stages": [
+                { "requireStacks": [ { "type": "item", "code": "{{stack}}", "quantity": 1 } ] }
+              ]
+            }
+          }
+        ]
+      }
+      """;
+
+  // Fails when a structure ignores its stage's required stacks, or its recipe reaches the
+  // structure rather than its core.
+  [Fact]
+  public void A_structure_is_reached_only_when_its_core_and_stage_stacks_are()
+  {
+    _files.Write("assets/walk/blocktypes/tower.json", Tower("walk:a"));
+    _files.Write("assets/walk/itemtypes/a.json", Plain("a"));
+    using TestWorld reached = Planted(
+      [],
+      [Recipe(Stick, "a"), Recipe(Stick, "tower", "block")],
+      Stick
+    );
+    Assert.Empty(Walk(reached).Findings);
+
+    using TestWorld noStack = Planted(
+      [],
+      [Recipe(Stick, "tower", "block")],
+      Stick
+    );
+    Assert.Contains(
+      Walk(noStack).Findings,
+      f => f.StartsWith("walk:tower | ") && f.Contains("waits on walk:a,")
+    );
+  }
+
+  // Fails when a machine product fires without its machine block reached.
+  [Fact]
+  public void A_machine_product_waits_on_its_machine_block()
+  {
+    _files.Write("assets/walk/itemtypes/press.json", Plain("press"));
+    using TestWorld reached = Planted(
+      ["made"],
+      [Recipe(Stick, "press")],
+      Stick
+    );
+    ExlibChecks.Produces("walk", "walk:made", "the press", "walk:press", Stick);
+    Assert.Empty(Walk(reached).Findings);
+
+    using TestWorld unreached = Planted(["made"], [], Stick);
+    ExlibChecks.Produces("walk", "walk:made", "the press", "walk:press", Stick);
+    Assert.Contains(
+      Walk(unreached).Findings,
+      f => f.StartsWith("walk:made | ") && f.Contains("waits on walk:press,")
+    );
+  }
+
+  // Fails when a three-argument declaration is not counted as undeclared, or fires.
+  [Fact]
+  public void A_three_argument_declaration_is_undeclared_and_fires_nothing()
+  {
+    using TestWorld world = Planted(
+      ["press", "made"],
+      [Recipe(Stick, "press")],
+      Stick
+    );
+    ExlibChecks.Produces("walk", "walk:made", "the press");
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Contains("1 undeclared", result.Summary);
+    Assert.Contains(
+      result.Findings,
+      f => f.StartsWith("walk:made | ") && f.Contains("no recipe makes it")
+    );
+  }
+
+  // Fails when a job fires without the block Runs names reached, or the block is not read.
+  [Fact]
+  public void A_job_output_waits_on_the_block_runs_names()
+  {
+    _files.Write("assets/walk/itemtypes/shear.json", Plain("shear"));
+    using TestWorld reached = Planted(
+      ["bar"],
+      [Recipe(Stick, "shear")],
+      Stick
+    );
+    ExlibChecks.Runs("walk", "walkshear", "walk:shear");
+    ProcessJobRegistry.Shared.Contribute(
+      new ProcessJobSet(
+        ProcessJobSet.CurrentSchema,
+        "walkshear",
+        [new ProcessJob(Stick, "walk:bar", 1, null, null, 0f)]
+      )
+    );
+    Assert.Empty(Walk(reached).Findings);
+
+    using TestWorld unreached = Planted(["bar"], [], Stick);
+    ExlibChecks.Runs("walk", "walkshear", "walk:shear");
+    ProcessJobRegistry.Shared.Contribute(
+      new ProcessJobSet(
+        ProcessJobSet.CurrentSchema,
+        "walkshear",
+        [new ProcessJob(Stick, "walk:bar", 1, null, null, 0f)]
+      )
+    );
+    Assert.Contains(
+      Walk(unreached).Findings,
+      f => f.StartsWith("walk:bar | ") && f.Contains("waits on walk:shear,")
+    );
+  }
+
+  // Fails when a stop waits on the thickest stop, which has no edge of its own, or on no machine.
+  [Fact]
+  public void A_route_stop_waits_on_the_next_thicker_stop_and_its_machine()
+  {
+    _files.Write("assets/walk/itemtypes/shear.json", Plain("shear"));
+    _files.Write("assets/walk/itemtypes/thick.json", Plain("thick"));
+    var route = new ProcessRoute(
+      ProcessRoute.CurrentSchema,
+      "walkfamily",
+      null,
+      [
+        new ProcessStage(2f, null, ["walkshear"], "walk:thick"),
+        new ProcessStage(1f, null, ["walkshear"], "walk:thin"),
+      ]
+    );
+    using TestWorld reached = Planted(
+      ["thin"],
+      [Recipe(Stick, "shear"), Recipe(Stick, "thick")],
+      Stick
+    );
+    ExlibChecks.Runs("walk", "walkshear", "walk:shear");
+    ProcessRouteRegistry.Shared.Contribute(route);
+    Assert.Empty(Walk(reached).Findings);
+
+    using TestWorld noThick = Planted(
+      ["thin"],
+      [Recipe(Stick, "shear")],
+      Stick
+    );
+    ExlibChecks.Runs("walk", "walkshear", "walk:shear");
+    ProcessRouteRegistry.Shared.Contribute(route);
+    Assert.Contains(
+      Walk(noThick).Findings,
+      f => f.StartsWith("walk:thin | ") && f.Contains("waits on walk:thick,")
+    );
+  }
+
+  // Fails when a declaration with a block is accepted without an input, or kept twice.
+  [Fact]
+  public void A_declaration_with_a_block_names_an_input_and_is_kept_once()
+  {
+    Assert.Throws<ArgumentException>(
+      () => ExlibChecks.Produces("walk", "walk:made", "the press", "walk:press")
+    );
+
+    ExlibChecks.Produces("walk", "walk:made", "the press", "walk:press", Stick);
+    ExlibChecks.Produces("walk", "walk:made", "the press", "walk:press", Stick);
+    Assert.Single(ExlibChecks.Produced());
   }
 }
 #endif

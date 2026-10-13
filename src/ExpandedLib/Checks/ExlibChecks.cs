@@ -53,6 +53,8 @@ public static class ExlibChecks {
 
   private static readonly List<Declaration> _produced = [];
 
+  private static readonly List<Runner> _runners = [];
+
   private sealed record Exemption(
     string Domain,
     string Rule,
@@ -72,8 +74,29 @@ public static class ExlibChecks {
       $"{Rule} exemption of {string.Join(" + ", Codes)}";
   }
 
-  /// <summary>One code a mod declared with <see cref="Produces"/>.</summary>
-  internal sealed record Declaration(string Domain, string Code, string Source);
+  /// <summary>One code a mod declared with <see cref="Produces"/>. <paramref name="At"/> and
+  /// <paramref name="From"/> are null and empty for the three-argument form.</summary>
+  internal sealed record Declaration(
+    string Domain,
+    string Code,
+    string Source,
+    string? At,
+    string[] From
+  ) {
+    public bool Equals(Declaration? other) =>
+      other is not null
+      && Domain == other.Domain
+      && Code == other.Code
+      && Source == other.Source
+      && At == other.At
+      && From.SequenceEqual(other.From);
+
+    public override int GetHashCode() =>
+      HashCode.Combine(Domain, Code, Source, At);
+  }
+
+  /// <summary>One block a mod declared with <see cref="Runs"/>.</summary>
+  internal sealed record Runner(string Domain, string Machine, string BlockCode);
 
   /// <summary>Runs every check against every domain <paramref name="source"/> covers.</summary>
   public static IReadOnlyList<CheckResult> All(ICheckSource source) =>
@@ -198,20 +221,89 @@ public static class ExlibChecks {
       (code, nameof(code)),
       (source, nameof(source))
     );
-    var declaration = new Declaration(domain, code, source);
+    var declaration = new Declaration(domain, code, source, null, []);
     if (!_produced.Contains(declaration))
       _produced.Add(declaration);
+  }
+
+  /// <summary>Declares that a machine makes <paramref name="code"/> from the codes in
+  /// <paramref name="from"/>, in the block <paramref name="at"/>. The craft walk fires it once
+  /// <paramref name="at"/> and every <paramref name="from"/> code are reached.</summary>
+  /// <param name="domain">The declaring mod's domain, whose craft walk reads the declaration.</param>
+  /// <param name="code">A domain-qualified code or wildcard, e.g. <c>"iiex:diagram-*"</c>; a
+  /// wildcard gives one edge per loaded code it matches.</param>
+  /// <param name="source">The machine that makes it, named when the declaration is
+  /// reported.</param>
+  /// <param name="at">A domain-qualified block code or wildcard for the machine's block.</param>
+  /// <param name="from">One or more domain-qualified input codes or wildcards.</param>
+  /// <exception cref="ArgumentException">An argument is null or empty, or <paramref
+  /// name="from"/> holds no input.</exception>
+  /// <remarks>The same declaration given twice is kept once. The three-argument form has no inputs:
+  /// the craft walk counts it as undeclared and never fires it.</remarks>
+  public static void Produces(
+    string domain,
+    string code,
+    string source,
+    string at,
+    params string[] from
+  ) {
+    Require(
+      "a declaration names all four",
+      (domain, nameof(domain)),
+      (code, nameof(code)),
+      (source, nameof(source)),
+      (at, nameof(at))
+    );
+    if (from is not { Length: > 0 })
+      throw new ArgumentException(
+        "a declaration names at least one input",
+        nameof(from)
+      );
+    Require(
+      "a declaration names every input",
+      [.. from.Select(f => (f, nameof(from)))]
+    );
+    var declaration = new Declaration(domain, code, source, at, [.. from]);
+    if (!_produced.Contains(declaration))
+      _produced.Add(declaration);
+  }
+
+  /// <summary>Declares that the block <paramref name="blockCode"/> runs the process catalogue
+  /// filed under <paramref name="machine"/>: its terminal jobs, and the stopping points of the
+  /// routes that machine accepts. The craft walk fires each of those once the block and the input
+  /// are reached.</summary>
+  /// <param name="domain">The declaring mod's domain, whose craft walk reads the declaration.</param>
+  /// <param name="machine">The key a job set files its jobs under, or a route stage's accepting
+  /// family, e.g. <c>"shear"</c>.</param>
+  /// <param name="blockCode">A domain-qualified block code or wildcard for the machine's
+  /// block.</param>
+  /// <exception cref="ArgumentException">An argument is null or empty.</exception>
+  /// <remarks>The same declaration given twice is kept once.</remarks>
+  public static void Runs(string domain, string machine, string blockCode) {
+    Require(
+      "a runner names all three",
+      (domain, nameof(domain)),
+      (machine, nameof(machine)),
+      (blockCode, nameof(blockCode))
+    );
+    var runner = new Runner(domain, machine, blockCode);
+    if (!_runners.Contains(runner))
+      _runners.Add(runner);
   }
 
   /// <summary>Every <see cref="Produces"/> declaration of the current world, in call
   /// order.</summary>
   internal static IReadOnlyList<Declaration> Produced() => _produced;
 
-  /// <summary>Drops every exemption and every <see cref="Produces"/> declaration; run when a
-  /// world starts loading.</summary>
+  /// <summary>Every <see cref="Runs"/> declaration of the current world, in call order.</summary>
+  internal static IReadOnlyList<Runner> Runners() => _runners;
+
+  /// <summary>Drops every exemption and every <see cref="Produces"/> and <see cref="Runs"/>
+  /// declaration; run when a world starts loading.</summary>
   internal static void ClearDeclarations() {
     _exemptions.Clear();
     _produced.Clear();
+    _runners.Clear();
   }
 
   private static void Require(

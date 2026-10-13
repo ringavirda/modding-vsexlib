@@ -2,8 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
+using ExpandedLib.Catalogues;
+using ExpandedLib.Checks;
 using ExpandedLib.Machines;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 
 namespace ExpandedLib.Testing;
@@ -110,7 +115,174 @@ internal static class CraftWalkEdges
             null
           )
         );
+    Dictionary<string, JArray> constructions = Constructions(all, domain);
+    for (int i = 0; i < edges.Count; i++)
+      if (constructions.ContainsKey(edges[i].Output))
+        edges[i] = edges[i] with { Output = CoreOf(edges[i].Output) };
+    edges.AddRange(Jobs(domain, all));
+    edges.AddRange(Routes(domain, all));
+    edges.AddRange(Products(domain, all));
+    edges.AddRange(Structures(constructions, all));
     return edges;
+  }
+
+  private static string CoreOf(string structure) => "core:" + structure;
+
+  private static readonly Regex Placeholder = new(@"\{[^}]*\}");
+
+  // The loaded codes a pattern matches; a `{state}` placeholder matches any state.
+  private static WalkNeed Pattern(
+    IReadOnlyList<CollectibleObject> all,
+    string pattern
+  ) =>
+    new(
+      pattern,
+      [
+        .. all
+          .Where(c =>
+            WildcardUtil.Match(
+              new AssetLocation(Placeholder.Replace(pattern, "*")),
+              c.Code
+            )
+          )
+          .Select(c => c.Code.ToString()),
+      ]
+    );
+
+  private static IEnumerable<ExlibChecks.Runner> Runners(string domain) =>
+    ExlibChecks.Runners().Where(r => r.Domain == domain);
+
+  // The construction blocks of the domain, by code, with their stages as the block's behaviour
+  // stores them.
+  private static Dictionary<string, JArray> Constructions(
+    IReadOnlyList<CollectibleObject> all,
+    string domain
+  )
+  {
+    var found = new Dictionary<string, JArray>(StringComparer.Ordinal);
+    foreach (Block block in all.OfType<Block>())
+      if (
+        block.Code.Domain == domain
+        && block
+          .BlockEntityBehaviors?.FirstOrDefault(b =>
+            b.Name == "ExRightClickConstructable"
+          )
+          ?.properties?.Token?["stages"] is JArray stages
+      )
+        found[block.Code.ToString()] = stages;
+    return found;
+  }
+
+  // A terminal job runs on its machine's block, from its input to its output.
+  private static IEnumerable<WalkEdge> Jobs(
+    string domain,
+    IReadOnlyList<CollectibleObject> all
+  )
+  {
+    foreach (ExlibChecks.Runner runner in Runners(domain))
+      foreach (ProcessJob job in ProcessJobRegistry.Shared.Jobs(runner.Machine))
+        if (new AssetLocation(job.Output).Domain == domain)
+          yield return new WalkEdge(
+            "process job",
+            $"{runner.Machine} job on {job.Input}",
+            CraftWalkClass.Followed,
+            [Pattern(all, job.Input), Pattern(all, runner.BlockCode)],
+            job.Output,
+            false
+          );
+  }
+
+  // A route's stopping point is reached from the next thicker stopping point the machine takes.
+  // The thickest stopping point has no edge: only its own source makes it.
+  private static IEnumerable<WalkEdge> Routes(
+    string domain,
+    IReadOnlyList<CollectibleObject> all
+  )
+  {
+    foreach (ExlibChecks.Runner runner in Runners(domain))
+      foreach (string family in ProcessRouteRegistry.Shared.Families)
+      {
+        ProcessRoute? route = ProcessRouteRegistry.Shared.Route(family);
+        if (route == null)
+          continue;
+        var stops = route
+          .Stages.Where(s =>
+            s.IsStoppingPoint && !s.HalfStep && s.IsAcceptedBy(runner.Machine)
+          )
+          .Select(s => (Code: s.Code!, s.Thickness))
+          .ToList();
+        foreach (var stop in stops)
+        {
+          var thicker = stops.Where(p => p.Thickness > stop.Thickness).ToList();
+          if (
+            thicker.Count == 0
+            || new AssetLocation(stop.Code).Domain != domain
+          )
+            continue;
+          var prior = thicker.MinBy(p => p.Thickness);
+          yield return new WalkEdge(
+            "route",
+            $"{runner.Machine} stop on {stop.Code}",
+            CraftWalkClass.Followed,
+            [Pattern(all, prior.Code), Pattern(all, runner.BlockCode)],
+            stop.Code,
+            false
+          );
+        }
+      }
+  }
+
+  // A machine product waits on its block and every input it names.
+  private static IEnumerable<WalkEdge> Products(
+    string domain,
+    IReadOnlyList<CollectibleObject> all
+  )
+  {
+    foreach (
+      ExlibChecks.Declaration declared in ExlibChecks
+        .Produced()
+        .Where(d => d.Domain == domain && d.At != null)
+    )
+      foreach (string output in Pattern(all, declared.Code).Codes)
+        yield return new WalkEdge(
+          "machine product",
+          declared.Source,
+          CraftWalkClass.Followed,
+          [
+            Pattern(all, declared.At!),
+            .. declared.From.Select(f => Pattern(all, f)),
+          ],
+          output,
+          false
+        );
+  }
+
+  // A structure waits on its core, reached from the recipe that yields the core block, and on
+  // every stage's required stacks.
+  private static IEnumerable<WalkEdge> Structures(
+    Dictionary<string, JArray> constructions,
+    IReadOnlyList<CollectibleObject> all
+  )
+  {
+    foreach ((string code, JArray stages) in constructions)
+    {
+      var needs = new List<WalkNeed> { new(CoreOf(code), [CoreOf(code)]) };
+      foreach (JToken stage in stages)
+        if (stage["requireStacks"] is JArray stacks)
+          foreach (JToken stack in stacks)
+            if (
+              ((string?)stack["code"] ?? (string?)stack["name"]) is { } wanted
+            )
+              needs.Add(Pattern(all, wanted));
+      yield return new WalkEdge(
+        "construction",
+        code,
+        CraftWalkClass.Followed,
+        [.. needs.DistinctBy(n => n.Label)],
+        code,
+        false
+      );
+    }
   }
 
   private static AssetLocation? OutputOf(JsonItemStack? stack) =>
