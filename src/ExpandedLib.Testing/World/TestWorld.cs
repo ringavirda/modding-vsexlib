@@ -75,6 +75,8 @@ public sealed partial class TestWorld : IDisposable {
   /// block entities answered by the client twins stood through <see cref="ClientTwin.Stand"/>, and the
   /// same calendar, config, logger, block and item lookups and <c>Collectibles</c> as <see cref="World"/>.
   /// Code handed <see cref="Api"/> runs its server branch; code handed this runs its client branch.</remarks>
+  /// <exception cref="InvalidOperationException">The first shape read through the client's asset manager
+  /// finds no game install: the game's env var is unset and no <c>.game/&lt;slug&gt;</c> is provisioned.</exception>
   public ICoreClientAPI ClientApi { get; }
 
   /// <summary>Channel pairs handed out by <see cref="Channels"/>, keyed by channel name.</summary>

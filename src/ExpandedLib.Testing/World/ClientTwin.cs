@@ -22,7 +22,8 @@ namespace ExpandedLib.Testing;
 /// <remarks>The twin is made of the server entity's class, reads the server's tree once, and is
 /// initialised against <see cref="TestWorld.ClientApi"/>. Its client object cache, asset manager,
 /// tesselator, renderer registry and tick listeners are fakes; the fake records what it is handed
-/// and runs no game thread, so a renderer's main-thread start is queued and never runs.</remarks>
+/// and runs no game thread, so a renderer's main-thread start is queued and never runs. The first
+/// shape a twin reads needs a game install; see <see cref="TestWorld.ClientApi"/>.</remarks>
 public sealed class ClientTwin {
   private readonly TestWorld _world;
 
@@ -73,6 +74,9 @@ public sealed class ClientTwin {
   /// <param name="world">The world the twins stand in.</param>
   /// <param name="servers">Server entities, one twin each, in the order returned.</param>
   /// <returns>One twin per server entity, in the order given.</returns>
+  /// <exception cref="InvalidOperationException">The first shape read finds no game install.</exception>
+  /// <exception cref="Exception">A twin's own <c>FromTreeAttributes</c> or <c>Initialize</c> throws; the
+  /// twins already made are released and the exception passes through unchanged.</exception>
   public static ClientTwin[] Stand(
     TestWorld world,
     params BlockEntity[] servers
