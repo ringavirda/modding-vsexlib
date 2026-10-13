@@ -96,7 +96,11 @@ public static class ExlibChecks {
   }
 
   /// <summary>One block a mod declared with <see cref="Runs"/>.</summary>
-  internal sealed record Runner(string Domain, string Machine, string BlockCode);
+  internal sealed record Runner(
+    string Domain,
+    string Machine,
+    string BlockCode
+  );
 
   /// <summary>Runs every check against every domain <paramref name="source"/> covers.</summary>
   public static IReadOnlyList<CheckResult> All(ICheckSource source) =>

@@ -29,7 +29,11 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
   // A code with no creative tab is not a kind, so the edges waiting on it are the findings.
   private static string Plain(string code) => $"{{ \"code\": \"{code}\" }}";
 
-  private static string Recipe(string input, string output, string type = "item") =>
+  private static string Recipe(
+    string input,
+    string output,
+    string type = "item"
+  ) =>
     $$"""
       {
         "name": "walk:{{output}}",
@@ -316,11 +320,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
   public void A_job_output_waits_on_the_block_runs_names()
   {
     _files.Write("assets/walk/itemtypes/shear.json", Plain("shear"));
-    using TestWorld reached = Planted(
-      ["bar"],
-      [Recipe(Stick, "shear")],
-      Stick
-    );
+    using TestWorld reached = Planted(["bar"], [Recipe(Stick, "shear")], Stick);
     ExlibChecks.Runs("walk", "walkshear", "walk:shear");
     ProcessJobRegistry.Shared.Contribute(
       new ProcessJobSet(
@@ -351,17 +351,19 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
   {
     _files.Write("assets/walk/itemtypes/shear.json", Plain("shear"));
     _files.Write("assets/walk/itemtypes/thick.json", Plain("thick"));
+    _files.Write("assets/walk/itemtypes/mid.json", Plain("mid"));
     var route = new ProcessRoute(
       ProcessRoute.CurrentSchema,
       "walkfamily",
       null,
       [
-        new ProcessStage(2f, null, ["walkshear"], "walk:thick"),
+        new ProcessStage(3f, null, ["walkshear"], "walk:thick"),
+        new ProcessStage(2f, null, ["walkshear"], "walk:mid"),
         new ProcessStage(1f, null, ["walkshear"], "walk:thin"),
       ]
     );
     using TestWorld reached = Planted(
-      ["thin"],
+      ["thin", "mid"],
       [Recipe(Stick, "shear"), Recipe(Stick, "thick")],
       Stick
     );
@@ -369,24 +371,29 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     ProcessRouteRegistry.Shared.Contribute(route);
     Assert.Empty(Walk(reached).Findings);
 
-    using TestWorld noThick = Planted(
+    using TestWorld nearest = Planted(
       ["thin"],
-      [Recipe(Stick, "shear")],
+      [Recipe(Stick, "shear"), Recipe(Stick, "mid")],
       Stick
     );
     ExlibChecks.Runs("walk", "walkshear", "walk:shear");
     ProcessRouteRegistry.Shared.Contribute(route);
+    Assert.Empty(Walk(nearest).Findings);
+
+    using TestWorld noMid = Planted(["thin"], [Recipe(Stick, "shear")], Stick);
+    ExlibChecks.Runs("walk", "walkshear", "walk:shear");
+    ProcessRouteRegistry.Shared.Contribute(route);
     Assert.Contains(
-      Walk(noThick).Findings,
-      f => f.StartsWith("walk:thin | ") && f.Contains("waits on walk:thick,")
+      Walk(noMid).Findings,
+      f => f.StartsWith("walk:mid | ") && f.Contains("waits on walk:thick,")
     );
   }
 
   [Fact]
   public void A_declaration_with_a_block_names_an_input_and_is_kept_once()
   {
-    Assert.Throws<ArgumentException>(
-      () => ExlibChecks.Produces("walk", "walk:made", "the press", "walk:press")
+    Assert.Throws<ArgumentException>(() =>
+      ExlibChecks.Produces("walk", "walk:made", "the press", "walk:press")
     );
 
     ExlibChecks.Produces("walk", "walk:made", "the press", "walk:press", Stick);

@@ -12,8 +12,12 @@ namespace ExpandedLib.Testing;
 /// creative-tab kind of a domain must be reached, and every recipe of the domain must be able to
 /// fire, round by round.</summary>
 /// <remarks>The walk starts from <see cref="GatheredSources"/> and the mod's kit, fires every
-/// recipe whose ingredients are all reached, and repeats until nothing fires. Vanilla recipes are
-/// not walked: a <c>game:</c> code is reached only when it is gathered or in the kit.</remarks>
+/// edge whose needs are all reached, and repeats until nothing fires. The edges are the grid,
+/// smithing and clay forming recipes; the process jobs and route stopping points of each
+/// <c>ExlibChecks.Runs</c> block; the <c>ExlibChecks.Produces</c> declarations that name a block;
+/// and each construction, which waits on its <c>core:</c> code and on every stage's required
+/// stacks. Vanilla recipes are not walked: a <c>game:</c> code is reached only when it is gathered
+/// or in the kit.</remarks>
 public static class CraftWalk
 {
   /// <summary>What one walk read and found.</summary>

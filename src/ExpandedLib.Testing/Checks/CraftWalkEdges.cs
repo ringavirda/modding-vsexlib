@@ -138,8 +138,7 @@ internal static class CraftWalkEdges
     new(
       pattern,
       [
-        .. all
-          .Where(c =>
+        .. all.Where(c =>
             WildcardUtil.Match(
               new AssetLocation(Placeholder.Replace(pattern, "*")),
               c.Code
@@ -165,7 +164,8 @@ internal static class CraftWalkEdges
           .BlockEntityBehaviors?.FirstOrDefault(b =>
             b.Name == "ExRightClickConstructable"
           )
-          ?.properties?.Token?["stages"] is JArray stages
+          ?.properties?.Token?["stages"]
+          is JArray stages
       )
         found[block.Code.ToString()] = stages;
     return found;
@@ -177,16 +177,16 @@ internal static class CraftWalkEdges
   )
   {
     foreach (ExlibChecks.Runner runner in Runners(domain))
-      foreach (ProcessJob job in ProcessJobRegistry.Shared.Jobs(runner.Machine))
-        if (new AssetLocation(job.Output).Domain == domain)
-          yield return new WalkEdge(
-            "process job",
-            $"{runner.Machine} job on {job.Input}",
-            CraftWalkClass.Followed,
-            [Pattern(all, job.Input), Pattern(all, runner.BlockCode)],
-            job.Output,
-            false
-          );
+    foreach (ProcessJob job in ProcessJobRegistry.Shared.Jobs(runner.Machine))
+      if (new AssetLocation(job.Output).Domain == domain)
+        yield return new WalkEdge(
+          "process job",
+          $"{runner.Machine} job on {job.Input}",
+          CraftWalkClass.Followed,
+          [Pattern(all, job.Input), Pattern(all, runner.BlockCode)],
+          job.Output,
+          false
+        );
   }
 
   // The thickest stopping point of a route has no edge; only its own source makes it.
@@ -196,36 +196,33 @@ internal static class CraftWalkEdges
   )
   {
     foreach (ExlibChecks.Runner runner in Runners(domain))
-      foreach (string family in ProcessRouteRegistry.Shared.Families)
+    foreach (string family in ProcessRouteRegistry.Shared.Families)
+    {
+      ProcessRoute? route = ProcessRouteRegistry.Shared.Route(family);
+      if (route == null)
+        continue;
+      var stops = route
+        .Stages.Where(s =>
+          s.IsStoppingPoint && !s.HalfStep && s.IsAcceptedBy(runner.Machine)
+        )
+        .Select(s => (Code: s.Code!, s.Thickness))
+        .ToList();
+      foreach (var stop in stops)
       {
-        ProcessRoute? route = ProcessRouteRegistry.Shared.Route(family);
-        if (route == null)
+        var thicker = stops.Where(p => p.Thickness > stop.Thickness).ToList();
+        if (thicker.Count == 0 || new AssetLocation(stop.Code).Domain != domain)
           continue;
-        var stops = route
-          .Stages.Where(s =>
-            s.IsStoppingPoint && !s.HalfStep && s.IsAcceptedBy(runner.Machine)
-          )
-          .Select(s => (Code: s.Code!, s.Thickness))
-          .ToList();
-        foreach (var stop in stops)
-        {
-          var thicker = stops.Where(p => p.Thickness > stop.Thickness).ToList();
-          if (
-            thicker.Count == 0
-            || new AssetLocation(stop.Code).Domain != domain
-          )
-            continue;
-          var prior = thicker.MinBy(p => p.Thickness);
-          yield return new WalkEdge(
-            "route",
-            $"{runner.Machine} stop on {stop.Code}",
-            CraftWalkClass.Followed,
-            [Pattern(all, prior.Code), Pattern(all, runner.BlockCode)],
-            stop.Code,
-            false
-          );
-        }
+        var prior = thicker.MinBy(p => p.Thickness);
+        yield return new WalkEdge(
+          "route",
+          $"{runner.Machine} stop on {stop.Code}",
+          CraftWalkClass.Followed,
+          [Pattern(all, prior.Code), Pattern(all, runner.BlockCode)],
+          stop.Code,
+          false
+        );
       }
+    }
   }
 
   private static IEnumerable<WalkEdge> Products(
@@ -238,18 +235,18 @@ internal static class CraftWalkEdges
         .Produced()
         .Where(d => d.Domain == domain && d.At != null)
     )
-      foreach (string output in Pattern(all, declared.Code).Codes)
-        yield return new WalkEdge(
-          "machine product",
-          declared.Source,
-          CraftWalkClass.Followed,
-          [
-            Pattern(all, declared.At!),
-            .. declared.From.Select(f => Pattern(all, f)),
-          ],
-          output,
-          false
-        );
+    foreach (string output in Pattern(all, declared.Code).Codes)
+      yield return new WalkEdge(
+        "machine product",
+        declared.Source,
+        CraftWalkClass.Followed,
+        [
+          Pattern(all, declared.At!),
+          .. declared.From.Select(f => Pattern(all, f)),
+        ],
+        output,
+        false
+      );
   }
 
   private static IEnumerable<WalkEdge> Structures(
