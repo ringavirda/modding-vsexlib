@@ -92,6 +92,9 @@ public static class MegablockFrames {
   /// <returns>The law <c>megablock frames</c>: a reach too far is keyed by the variant's code;
   /// an entry naming no element, one reached by no variant, and one for an undrawn shape by the
   /// shape base.</returns>
+  /// <exception cref="System.IO.FileNotFoundException">A host's shape file is missing.</exception>
+  /// <exception cref="InvalidCastException">An entry of <paramref name="reachesFile"/> lacks a field or
+  /// has one of the wrong type.</exception>
   public static BlockLaws.Law Run(
     string domain,
     IEnumerable<IExDef> defs,
