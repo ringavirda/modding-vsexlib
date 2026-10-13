@@ -8,7 +8,6 @@ using static ExpandedLib.Helpers.ViewReferences;
 using FastVec3f = Vintagestory.API.MathTools.Vec3f;
 #endif
 
-
 namespace ExpandedLib.Helpers;
 
 /// <summary>The views of a block: the game's block rotations, with the origins on the drawn box and, for a

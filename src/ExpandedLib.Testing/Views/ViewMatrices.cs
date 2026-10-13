@@ -6,7 +6,6 @@ using Vintagestory.API.MathTools;
 using FastVec3f = Vintagestory.API.MathTools.Vec3f;
 #endif
 
-
 namespace ExpandedLib.Testing;
 
 /// <summary>Which of a collectible's transforms a matrix applies.</summary>

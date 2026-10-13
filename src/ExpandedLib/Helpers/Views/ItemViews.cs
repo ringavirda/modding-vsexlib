@@ -9,7 +9,6 @@ using static ExpandedLib.Helpers.ViewReferences;
 using FastVec3f = Vintagestory.API.MathTools.Vec3f;
 #endif
 
-
 namespace ExpandedLib.Helpers;
 
 /// <summary>Computes the views of an item from its shape: the slot, third-person hand and ground transforms and
