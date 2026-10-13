@@ -42,7 +42,6 @@ public class TestWorldDefaultsTests {
 
     Assert.Equal(EnumAppSide.Client, client.Side);
     Assert.Same(client, ((ICoreAPI)world.ClientApi).World);
-    Assert.Same(world.Accessor, client.BlockAccessor);
     Assert.Same(block, client.BlockAccessor.GetBlock(Pos));
     Assert.Same(block, client.GetBlock(new AssetLocation("test:shared")));
     Assert.Same(world.Log, client.Logger);

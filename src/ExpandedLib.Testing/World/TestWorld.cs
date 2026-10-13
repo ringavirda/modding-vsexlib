@@ -71,9 +71,10 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>A client-side core API wired to this world, for exercising a <c>ModSystem</c>'s
   /// <c>StartClientSide</c> and code that branches on the client.</summary>
   /// <remarks>Its <c>World</c> is a client world whose <c>Side</c> is
-  /// <see cref="EnumAppSide.Client"/>, reading the same <see cref="Accessor"/>, calendar, config,
-  /// logger, block and item lookups and <c>Collectibles</c> as <see cref="World"/>. Code handed
-  /// <see cref="Api"/> runs its server branch; code handed this runs its client branch.</remarks>
+  /// <see cref="EnumAppSide.Client"/>, reading the same block store as <see cref="Accessor"/>, with
+  /// block entities answered by the client twins stood through <see cref="ClientTwin.Stand"/>, and the
+  /// same calendar, config, logger, block and item lookups and <c>Collectibles</c> as <see cref="World"/>.
+  /// Code handed <see cref="Api"/> runs its server branch; code handed this runs its client branch.</remarks>
   public ICoreClientAPI ClientApi { get; }
 
   /// <summary>Channel pairs handed out by <see cref="Channels"/>, keyed by channel name.</summary>
@@ -802,9 +803,8 @@ public sealed partial class TestWorld : IDisposable {
 
   #region Fake wiring
 
-  private IBlockAccessor BuildAccessor() {
-    var a = Substitute.For<IBlockAccessor>();
-
+  // The block reads the server and the client accessor answer from the same store.
+  private void StubBlockReads(IBlockAccessor a) {
     a.GetBlock(Arg.Any<BlockPos>())
       .Returns(ci => ReadBlock(ci.Arg<BlockPos>()));
     a.GetBlock(Arg.Any<BlockPos>(), Arg.Any<int>())
@@ -845,6 +845,12 @@ public sealed partial class TestWorld : IDisposable {
           ci.ArgAt<int>(3)
         )
       );
+  }
+
+  private IBlockAccessor BuildAccessor() {
+    var a = Substitute.For<IBlockAccessor>();
+
+    StubBlockReads(a);
     a.GetBlockEntity(Arg.Any<BlockPos>())
       .Returns(ci => ReadBlockEntity(ci.Arg<BlockPos>()));
     // GetBlockEntity<T> is an open generic NSubstitute cannot bind by type.
@@ -877,6 +883,8 @@ public sealed partial class TestWorld : IDisposable {
     a.When(x => x.ExchangeBlock(Arg.Any<int>(), Arg.Any<BlockPos>()))
       .Do(ci => DoExchangeBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1)));
     a.When(x => x.MarkBlockDirty(Arg.Any<BlockPos>())).Do(_ => { });
+    a.When(x => x.MarkBlockEntityDirty(Arg.Any<BlockPos>()))
+      .Do(ci => _serverDirty.Add(ci.Arg<BlockPos>()));
     a.When(x =>
         x.SpawnBlockEntity(
           Arg.Any<string>(),
@@ -1157,6 +1165,7 @@ public sealed partial class TestWorld : IDisposable {
     coreApi.Network.Returns(network);
 
     WireInventoryNetworkUtil(api);
+    WireClientFake(api);
 
     return api;
   }
@@ -1176,7 +1185,8 @@ public sealed partial class TestWorld : IDisposable {
     var w = Substitute.For<IClientWorldAccessor>();
     w.Side.Returns(EnumAppSide.Client);
     w.Api.Returns(api);
-    w.BlockAccessor.Returns(Accessor);
+    IBlockAccessor clientAccessor = BuildClientAccessor();
+    w.BlockAccessor.Returns(clientAccessor);
     // IClientWorldAccessor re-declares Calendar as IClientGameCalendar; code reading it through
     // IWorldAccessor gets the server world's calendar.
     ((IWorldAccessor)w).Calendar.Returns(Calendar);
