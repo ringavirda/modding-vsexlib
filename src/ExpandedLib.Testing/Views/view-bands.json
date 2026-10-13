@@ -4,7 +4,7 @@
       "G1": {
         "min": 0.7949,
         "max": 0.9161,
-        "minCode": "rod-bismuthbronze",
+        "minCode": "rod-copper",
         "maxCode": "stick",
         "low": 0.7154,
         "high": 1.0078
@@ -12,7 +12,7 @@
       "G2": {
         "min": 0.2211,
         "max": 2.1778,
-        "minCode": "rod-bismuthbronze",
+        "minCode": "rod-copper",
         "maxCode": "plank-aged",
         "low": 0.0,
         "high": 3.1778
@@ -21,7 +21,7 @@
         "min": -0.0062,
         "max": 0.0,
         "minCode": "stick",
-        "maxCode": "rod-bismuthbronze",
+        "maxCode": "rod-copper",
         "low": -0.0262,
         "high": 0.02
       },
@@ -96,7 +96,7 @@
       "G13": {
         "min": 0.0,
         "max": 0.2587,
-        "minCode": "hay-aged-ns",
+        "minCode": "hay-normal-ud",
         "maxCode": "rock-andesite",
         "low": 0.0,
         "high": 0.2846
@@ -128,7 +128,7 @@
       "G7": {
         "min": 0.3,
         "max": 0.4,
-        "minCode": "hay-aged-ns",
+        "minCode": "hay-normal-ud",
         "maxCode": "rock-andesite",
         "low": 0.27,
         "high": 0.44
@@ -146,7 +146,7 @@
       "G10": {
         "min": 0.0,
         "max": 3.0,
-        "minCode": "spear-boar-ruined",
+        "minCode": "spear-generic-chert",
         "maxCode": "spear-scrap-scrap",
         "low": 0.0,
         "high": 3.3
@@ -178,8 +178,8 @@
       "G6": {
         "min": 0.68,
         "max": 0.9,
-        "minCode": "spear-boar-ruined",
-        "maxCode": "oar-crude-acacia",
+        "minCode": "spear-generic-chert",
+        "maxCode": "oar-crude-aged",
         "low": 0.612,
         "high": 0.99
       },
@@ -196,40 +196,40 @@
       "G1": {
         "min": 0.5899,
         "max": 0.7632,
-        "minCode": "metalbit-bismuth",
-        "maxCode": "ingot-bismuth",
+        "minCode": "metalbit-blistersteel",
+        "maxCode": "ingot-blistersteel",
         "low": 0.5309,
         "high": 0.8395
       },
       "G2": {
         "min": 2.0422,
         "max": 2.8345,
-        "minCode": "ingot-bismuth",
-        "maxCode": "metalbit-bismuth",
+        "minCode": "ingot-blistersteel",
+        "maxCode": "metalbit-blistersteel",
         "low": 0.0,
         "high": 3.8345
       },
       "G5": {
         "min": 0.0,
         "max": 0.0,
-        "minCode": "ingot-bismuth",
-        "maxCode": "ingot-bismuth",
+        "minCode": "ingot-blistersteel",
+        "maxCode": "ingot-blistersteel",
         "low": -0.02,
         "high": 0.02
       },
       "G6": {
         "min": 0.96,
         "max": 1.0,
-        "minCode": "ingot-bismuth",
-        "maxCode": "metalbit-bismuth",
+        "minCode": "ingot-blistersteel",
+        "maxCode": "metalbit-blistersteel",
         "low": 0.864,
         "high": 1.1
       },
       "G7": {
         "min": 0.7,
         "max": 0.75,
-        "minCode": "metalbit-bismuth",
-        "maxCode": "ingot-bismuth",
+        "minCode": "metalbit-blistersteel",
+        "maxCode": "ingot-blistersteel",
         "low": 0.63,
         "high": 0.825
       }
@@ -238,7 +238,7 @@
       "G1": {
         "min": 0.8124,
         "max": 1.4751,
-        "minCode": "bed-wood-feet-east",
+        "minCode": "bed-wood-head-north",
         "maxCode": "largegear3",
         "low": 0.7312,
         "high": 1.6227
@@ -246,8 +246,8 @@
       "G13": {
         "min": 0.1448,
         "max": 0.4438,
-        "minCode": "verticalboiler-east",
-        "maxCode": "bed-wood-feet-east",
+        "minCode": "verticalboiler-north",
+        "maxCode": "bed-wood-head-north",
         "low": 0.0,
         "high": 0.4881
       },
@@ -261,16 +261,16 @@
       },
       "G5": {
         "min": -0.2475,
-        "max": 0.0,
-        "minCode": "doorkiln-fire",
-        "maxCode": "bed-wood-feet-east",
+        "max": 0.1333,
+        "minCode": "doorkiln-tier1",
+        "maxCode": "metaldoor-barred-iron",
         "low": -0.2723,
-        "high": 0.02
+        "high": 0.1533
       },
       "G6": {
         "min": 0.5625,
         "max": 1.8,
-        "minCode": "trunk-east",
+        "minCode": "trunk-north",
         "maxCode": "door-devastation-towergate",
         "low": 0.5063,
         "high": 1.98
@@ -278,7 +278,7 @@
       "G7": {
         "min": 0.5916,
         "max": 1.83,
-        "minCode": "verticalboiler-east",
+        "minCode": "verticalboiler-north",
         "maxCode": "door-devastation-towergate",
         "low": 0.5324,
         "high": 2.013
@@ -287,49 +287,49 @@
     "partial": {
       "G1": {
         "min": 0.6713,
-        "max": 1.0108,
-        "minCode": "chute-elbow-down-east",
-        "maxCode": "woodenaxle-ns",
+        "max": 0.8979,
+        "minCode": "chute-elbow-up-north",
+        "maxCode": "woodenaxle-ud",
         "low": 0.6042,
-        "high": 1.1119
+        "high": 0.9877
       },
       "G13": {
         "min": 0.0,
-        "max": 0.2662,
+        "max": 0.3369,
         "minCode": "chute-straight-ns",
-        "maxCode": "brickslabs-eight-black-down-free",
+        "maxCode": "brickslabs-four-black-north-free",
         "low": 0.0,
-        "high": 0.2928
+        "high": 0.3706
       },
       "G2": {
         "min": 0.7071,
-        "max": 4.741,
+        "max": 5.4049,
         "minCode": "chute-straight-ns",
-        "maxCode": "chute-elbow-down-east",
+        "maxCode": "brickslabs-four-black-north-free",
         "low": 0.0,
-        "high": 5.741
+        "high": 6.4049
       },
       "G5": {
-        "min": -0.2055,
+        "min": -0.1261,
         "max": 0.075,
-        "minCode": "woodenaxle-ns",
+        "minCode": "transmission-ns",
         "maxCode": "chute-straight-ns",
-        "low": -0.2261,
+        "low": -0.1461,
         "high": 0.095
       },
       "G6": {
         "min": 0.225,
         "max": 0.5403,
-        "minCode": "chute-elbow-down-east",
-        "maxCode": "woodenaxle-ns",
+        "minCode": "chute-elbow-up-north",
+        "maxCode": "woodenaxle-ud",
         "low": 0.2025,
         "high": 0.5944
       },
       "G7": {
         "min": 0.225,
         "max": 0.5503,
-        "minCode": "chute-elbow-down-east",
-        "maxCode": "woodenaxle-ns",
+        "minCode": "chute-elbow-up-north",
+        "maxCode": "woodenaxle-ud",
         "low": 0.2025,
         "high": 0.6054
       }
@@ -441,19 +441,55 @@
   "rules": {
     "ingot": {
       "groundScale": 4.8,
+      "guiRotationX": 149.0,
+      "guiRotationY": -36.0,
+      "guiRotationZ": 0.0,
+      "handRotationX": 0.0,
+      "handRotationY": -71.0,
+      "handRotationZ": 18.0,
       "handScale": 0.75
     },
     "metalplate": {
       "groundScale": 3.31,
+      "guiRotationX": -30.0,
+      "guiRotationY": -44.0,
+      "guiRotationZ": -180.0,
+      "handRotationX": 94.0,
+      "handRotationY": 0.0,
+      "handRotationZ": 0.0,
       "handScale": 0.75
+    },
+    "multicell": {
+      "groundLong": 0.8614,
+      "heldLong": 1.2,
+      "slotSpan": 0.8816
+    },
+    "partial": {
+      "groundLong": 0.3,
+      "heldLong": 0.3,
+      "slotSpan": 0.7153
     },
     "rod": {
       "groundScale": 4.0,
+      "guiRotationX": -48.0,
+      "guiRotationY": 134.0,
+      "guiRotationZ": 171.0,
+      "handRotationX": 85.0,
+      "handRotationY": 0.0,
+      "handRotationZ": 2.0,
       "handScale": 0.68
     },
     "spear": {
       "groundScale": 3.4,
-      "handScale": 0.8
+      "guiRotationX": 33.0,
+      "guiRotationY": 0.0,
+      "guiRotationZ": -127.0,
+      "handRotationX": -90.0,
+      "handRotationY": 0.0,
+      "handRotationZ": 0.0,
+      "handScale": 0.8,
+      "length": 46.7475,
+      "slotScale": 2.26
     }
   }
 }

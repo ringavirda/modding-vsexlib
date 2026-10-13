@@ -39,7 +39,8 @@ public class ViewBandsTests {
       ViewBands.Write(computed);
       return;
     }
-    Assert.Empty(ViewBands.Differences(computed, Bands));
+    var diffs = ViewBands.Differences(computed, Bands);
+    Assert.True(diffs.Count == 0, string.Join("\n", diffs));
   }
 
   // Fails when the check for an unmatched entry is dropped: the set then loses a member without a word.
@@ -53,7 +54,7 @@ public class ViewBandsTests {
       ["G1"]
     );
     InvalidOperationException e = Assert.Throws<InvalidOperationException>(() =>
-      ViewBands.Resolve(ViewGates.Groups(World, "game"), set)
+      ViewBands.Resolve(World, ViewGates.Groups(World, "game"), set)
     );
     Assert.Contains("no-such-thing", e.Message);
   }
@@ -97,6 +98,70 @@ public class ViewBandsTests {
       ViewReferences.Rod.GroundScale,
       rules["rod"]["groundScale"],
       0.05
+    );
+  }
+
+  // Fails when a reference rotation moves off the vanilla item it copies: the rod's hand rotation about x 85 raised to 87.
+  [Fact]
+  public void View_bands_agree_with_the_rotations_and_spear_constants() {
+    var rules = Bands.Rules;
+    foreach (
+      (string name, ViewReferences.HandReference reference) in new[]
+      {
+        ("spear", ViewReferences.Spear),
+        ("metalplate", ViewReferences.MetalPlate),
+        ("ingot", ViewReferences.Ingot),
+        ("rod", ViewReferences.Rod),
+      }
+    ) {
+      Assert.Equal(reference.Rotation.X, rules[name]["handRotationX"], 0.5);
+      Assert.Equal(reference.Rotation.Y, rules[name]["handRotationY"], 0.5);
+      Assert.Equal(reference.Rotation.Z, rules[name]["handRotationZ"], 0.5);
+      Assert.Equal(reference.GuiRotation.X, rules[name]["guiRotationX"], 0.5);
+      Assert.Equal(reference.GuiRotation.Y, rules[name]["guiRotationY"], 0.5);
+      Assert.Equal(reference.GuiRotation.Z, rules[name]["guiRotationZ"], 0.5);
+    }
+    Assert.Equal(
+      ViewReferences.SpearSlotScale,
+      rules["spear"]["slotScale"],
+      0.005
+    );
+    Assert.Equal(ViewReferences.SpearLength, rules["spear"]["length"], 0.005);
+  }
+
+  // Fails when a block median moves off the partial or multicell reference set it copies: the partial slot span 0.710 raised to 0.75.
+  [Fact]
+  public void View_bands_agree_with_the_block_medians() {
+    var rules = Bands.Rules;
+    Assert.Equal(
+      ViewReferences.PartialSlotSpan,
+      rules["partial"]["slotSpan"],
+      0.01
+    );
+    Assert.Equal(
+      ViewReferences.PartialGroundLong,
+      rules["partial"]["groundLong"],
+      0.005
+    );
+    Assert.Equal(
+      ViewReferences.PartialHeldLong,
+      rules["partial"]["heldLong"],
+      0.005
+    );
+    Assert.Equal(
+      ViewReferences.MulticellSlotSpan,
+      rules["multicell"]["slotSpan"],
+      0.01
+    );
+    Assert.Equal(
+      ViewReferences.MulticellGroundLong,
+      rules["multicell"]["groundLong"],
+      0.005
+    );
+    Assert.Equal(
+      ViewReferences.MulticellHeldLong,
+      rules["multicell"]["heldLong"],
+      0.005
     );
   }
 

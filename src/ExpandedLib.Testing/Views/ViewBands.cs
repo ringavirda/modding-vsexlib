@@ -75,7 +75,7 @@ internal static class ViewBands {
   /// <summary>A kind's reference set: codes by exact match, or by prefix when an entry ends in a dash.</summary>
   /// <param name="Kind">The kind the set calibrates.</param>
   /// <param name="Entries">The codes, without domain, of the vanilla collectibles in the set.</param>
-  /// <param name="First">Whether a prefix entry takes only its first code in ordinal order.</param>
+  /// <param name="First">Whether a prefix entry takes only its first code in load order, the lowest block or item id.</param>
   /// <param name="AnyKind">Whether a member's group may box as another kind than <paramref name="Kind"/>.</param>
   /// <param name="Gates">The gates the set calibrates.</param>
   internal sealed record ReferenceSet(
@@ -191,7 +191,7 @@ internal static class ViewBands {
         "door-plank-",
         "irondoor-",
         "door-crude",
-        "door-ruined-rough1",
+        "metaldoor-barred-iron",
         "door-ruined-barred1",
         "door-devastation-towergate",
         "doorkiln-",
@@ -277,12 +277,17 @@ internal static class ViewBands {
     );
   }
 
-  /// <summary>The groups of <paramref name="set"/>, each with the first of its member codes the set names.</summary>
+  /// <summary>The groups of <paramref name="set"/>, each with the first of its member codes the set names, in load order.</summary>
   /// <exception cref="InvalidOperationException">An entry names no collectible of the set's kind.</exception>
   internal static IReadOnlyList<(ViewGroup Group, string Code)> Resolve(
+    TestWorld world,
     IReadOnlyList<ViewGroup> groups,
     ReferenceSet set
   ) {
+    var ids = new Dictionary<string, int>();
+    foreach (CollectibleObject c in world.World.Collectibles)
+      if (c.Code != null)
+        ids.TryAdd(c.Code.ToString(), c.Id);
     var found = new List<(ViewGroup Group, string Code)>();
     foreach (string entry in set.Entries) {
       bool prefix = entry.EndsWith('-');
@@ -291,7 +296,7 @@ internal static class ViewBands {
         .SelectMany(g =>
           g.Codes.Where(c => Matches(c, entry, prefix)).Select(c => (g, c))
         )
-        .OrderBy(h => h.c, StringComparer.Ordinal)
+        .OrderBy(h => ids[h.c])
         .ToList();
       if (hits.Count == 0)
         throw new InvalidOperationException(
@@ -325,7 +330,7 @@ internal static class ViewBands {
       StringComparer.Ordinal
     );
     foreach (ReferenceSet set in Sets) {
-      var members = Resolve(groups, set);
+      var members = Resolve(world, groups, set);
       string kind = set.Kind.ToString().ToLowerInvariant();
       if (!bands.TryGetValue(kind, out var gates))
         bands[kind] = gates = new SortedDictionary<string, Band>(
@@ -344,7 +349,7 @@ internal static class ViewBands {
 
     var carriers = new SortedDictionary<string, string>(StringComparer.Ordinal);
     foreach (ReferenceSet set in Sets.Where(s => s.Kind == ItemViewKind.Tool))
-      foreach (var (group, _) in Resolve(groups, set)) {
+      foreach (var (group, _) in Resolve(world, groups, set)) {
         var tool = ((Item)group.Representative).Tool;
         Item? carrier = ItemViews.CarrierOf(world.Api, tool, null);
         if (tool != null && carrier != null)
@@ -357,17 +362,59 @@ internal static class ViewBands {
     );
     foreach ((string name, string code) in RuleItems) {
       ViewGroup group = groups.Single(g => g.Codes.Contains(code));
+      ModelTransform hand = ViewMatrices.Transform(
+        group.Representative,
+        ViewTarget.Hand
+      );
+      ModelTransform gui = ViewMatrices.Transform(
+        group.Representative,
+        ViewTarget.Gui
+      );
       rules[name] = new SortedDictionary<string, double>(StringComparer.Ordinal) {
-        ["handScale"] = Round(
-          ViewMatrices
-            .Transform(group.Representative, ViewTarget.Hand)
-            .ScaleXYZ.X
-        ),
+        ["handScale"] = Round(hand.ScaleXYZ.X),
         ["groundScale"] = Round(
           ViewMatrices
             .Transform(group.Representative, ViewTarget.Ground)
             .ScaleXYZ.X
         ),
+        ["handRotationX"] = Round(hand.Rotation.X),
+        ["handRotationY"] = Round(hand.Rotation.Y),
+        ["handRotationZ"] = Round(hand.Rotation.Z),
+        ["guiRotationX"] = Round(gui.Rotation.X),
+        ["guiRotationY"] = Round(gui.Rotation.Y),
+        ["guiRotationZ"] = Round(gui.Rotation.Z),
+      };
+      if (name == "spear") {
+        rules[name]["slotScale"] = Round(gui.ScaleXYZ.X);
+        rules[name]["length"] = Round(
+          new[]
+          {
+            group.Box.To.X - group.Box.From.X,
+            group.Box.To.Y - group.Box.From.Y,
+            group.Box.To.Z - group.Box.From.Z,
+          }.Max()
+        );
+      }
+    }
+    foreach (
+      ItemViewKind kind in new[]
+      {
+        ItemViewKind.Partial,
+        ItemViewKind.Multicell,
+      }
+    ) {
+      var members = Sets.Where(s => s.Kind == kind)
+        .SelectMany(s => Resolve(world, groups, s))
+        .ToList();
+      double MedianOf(string gate) =>
+        Median([.. members.Select(m => SetValue(Of(m.Group), gate))]);
+      rules[kind.ToString().ToLowerInvariant()] = new SortedDictionary<
+        string,
+        double
+      >(StringComparer.Ordinal) {
+        ["slotSpan"] = Round(MedianOf("G1")),
+        ["groundLong"] = Round(MedianOf("G6")),
+        ["heldLong"] = Round(MedianOf("G7")),
       };
     }
     return new ViewBandData(
@@ -456,6 +503,12 @@ internal static class ViewBands {
         lines.Add($"rules {name} differ");
     }
     return lines;
+  }
+
+  private static double Median(double[] values) {
+    double[] sorted = [.. values.Order()];
+    int n = sorted.Length;
+    return n % 2 == 1 ? sorted[n / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
   }
 
   private static string Short(string code) => code[(code.IndexOf(':') + 1)..];
