@@ -89,6 +89,47 @@ public class BlockFilledMegastructureTests {
     );
   }
 
+  // Fails when ReadOffsets defaults allowAttach to true, FootprintCells drops the flag, or PlaceFillers
+  // writes a constant to the block entity.
+  [Fact]
+  public void Only_the_cell_that_declares_allowAttach_accepts_attachments_once_placed() {
+    var world = new TestWorld();
+    var mega = new FakeMega {
+      Attributes = new JsonObject(
+        JToken.Parse(
+          """{ "fillerOffsets": [{ "x": 1, "y": 0, "z": 0, "allowAttach": true }, { "x": 2, "y": 0, "z": 0 }] }"""
+        )
+      ),
+    };
+    world.Register(
+      TestBlocks.Configure(mega, "exlib:mega-n", 1, ("side", "n"))
+    );
+    Block filler = TestBlocks.Configure(
+      new BlockStructureFiller(),
+      StructureFillers.FillerCode.ToString(),
+      2
+    );
+    filler.SideSolid = new SmallBoolArray(0x3F);
+    world.Register(filler);
+    BlockPos opted = At.AddCopy(1, 0, 0);
+    BlockPos plain = At.AddCopy(2, 0, 0);
+    world.Place(opted, filler, new BlockEntityStructureFiller());
+    world.Place(plain, filler, new BlockEntityStructureFiller());
+
+    StructureFillers.PlaceFillers(
+      world.World,
+      At,
+      StructureFillers.FootprintCells(mega, At, mega.StructureAngle)
+    );
+
+    Assert.True(
+      filler.CanAttachBlockAt(world.Accessor, filler, opted, BlockFacing.UP)
+    );
+    Assert.False(
+      filler.CanAttachBlockAt(world.Accessor, filler, plain, BlockFacing.UP)
+    );
+  }
+
   // Fails when CanPlaceBlock or OnBlockPlaced reads FootprintCells instead of ReservedCells.
   [Fact]
   public void A_cell_left_out_of_ReservedCells_is_neither_checked_nor_filled() {
