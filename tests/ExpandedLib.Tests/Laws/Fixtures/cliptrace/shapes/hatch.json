@@ -1,0 +1,28 @@
+{
+  "textureWidth": 16,
+  "textureHeight": 16,
+  "textures": {
+    "all": "block/stone"
+  },
+  "elements": [
+    {
+      "name": "lid",
+      "from": [0, 15, 0],
+      "to": [16, 16, 16],
+      "faces": {}
+    }
+  ],
+  "animations": [
+    {
+      "name": "open",
+      "code": "open",
+      "quantityFrames": 21,
+      "onAnimationEnd": "Hold",
+      "onActivityStopped": "Stop",
+      "keyframes": [
+        { "frame": 0, "elements": { "lid": { "rotationX": 0, "rotationY": 0, "rotationZ": 0 } } },
+        { "frame": 20, "elements": { "lid": { "rotationX": 0, "rotationY": 0, "rotationZ": -80 } } }
+      ]
+    }
+  ]
+}
