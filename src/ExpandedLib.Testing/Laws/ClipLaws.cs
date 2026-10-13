@@ -21,17 +21,15 @@ public static class ClipLaws
 
   internal const string ExceptionsName = "clip exceptions";
 
-  /// <summary>Traces the <see cref="Blocks.ClipPose.Frame"/> actions every variant of
-  /// <paramref name="defs"/> declares, and the animator cache key every animated variant builds under.</summary>
-  /// <remarks>An action's <c>by</c> help lines are clicked on the server entity, repeated until its
-  /// tree stops changing; with no <c>by</c> its <c>state</c> key is written into the server's tree.
-  /// A finding is <c>key | what | variant codes</c>.</remarks>
+  /// <summary>Traces the <see cref="Blocks.ClipPose.Frame"/> actions of every variant of
+  /// <paramref name="defs"/> and the animator cache key each animated variant builds under.</summary>
+  /// <remarks>A finding is <c>key | what | variant codes</c>; an action's <c>by</c> lines are clicked
+  /// on the server entity until its tree stops changing.</remarks>
   /// <param name="domain">The domain whose blocks are judged.</param>
   /// <param name="defs">Block and item definitions; others are skipped.</param>
   /// <param name="assemblies">Where the definitions' classes live, exlib's included.</param>
   /// <param name="exceptionsFile">A <c>clip-actions.json</c>; a known row accepts its law's findings under
-  /// its key and is itself a finding when it accepts none, and a known row under a law name that did not
-  /// run is a finding of <c>clip exceptions</c>. Null or missing accepts nothing.</param>
+  /// its key, and is a finding when it accepts none or names a law that did not run. Null or missing accepts nothing.</param>
   /// <param name="prepare">Registers on the world what the blocks need, before any is defined.</param>
   /// <param name="assetRoot">Maps a domain to the directory holding its <c>shapes</c> folder; null reads
   /// <c>RepoPaths.Assets</c>.</param>

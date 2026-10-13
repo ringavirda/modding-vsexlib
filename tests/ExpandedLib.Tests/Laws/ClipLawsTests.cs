@@ -83,6 +83,7 @@ public class ClipLawsTests(ITestOutputHelper output)
       .Class("test-toggleblock")
       .Shape("cliptrace:" + shape)
       .EntityClass(entity)
+      .EntityBehavior("ClipActions")
       .ClipAction(action ?? Toggle());
 
   private static ExBlockDef Driven(
@@ -424,6 +425,10 @@ public class ClipLawsTests(ITestOutputHelper output)
     Assert.All(
       result.Laws.SelectMany(l => l.Findings),
       f => Assert.Contains("| cliptrace:athrow", f)
+    );
+    Assert.DoesNotContain(
+      result.Laws.SelectMany(l => l.Findings),
+      f => f.Contains("cliptrace:drivendoor")
     );
   }
 

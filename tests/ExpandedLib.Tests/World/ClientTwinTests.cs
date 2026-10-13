@@ -37,15 +37,16 @@ public class ClientTwinTests {
     return block;
   }
 
-  private static T Place<T>(TestWorld world, BlockPos pos, T entity)
-    where T : BlockEntity {
+  private static void Place(TestWorld world, BlockPos pos, BlockEntity entity) {
     world.Place(pos, DoorBlock(), entity);
     world.Initialize(entity);
-    return entity;
   }
 
-  private static HandDoor PlaceDoor(TestWorld world, BlockPos pos) =>
-    Place(world, pos, new HandDoor());
+  private static HandDoor PlaceDoor(TestWorld world, BlockPos pos) {
+    var door = new HandDoor();
+    Place(world, pos, door);
+    return door;
+  }
 
   private static (HandDoor Server, ClientTwin Twin) Standing(
     TestWorld world,
@@ -111,8 +112,10 @@ public class ClientTwinTests {
   public void A_twin_reads_its_neighbours_twin() {
     using var world = DoorWorld();
     var beside = new BlockPos(1, 64, 0);
-    var first = Place(world, Here, new NeighbourDoor());
-    var second = Place(world, beside, new NeighbourDoor());
+    var first = new NeighbourDoor();
+    Place(world, Here, first);
+    var second = new NeighbourDoor();
+    Place(world, beside, second);
     var twins = ClientTwin.Stand(world, first, second);
     IBlockAccessor clientAccessor = world.ClientApi.World.BlockAccessor;
 
@@ -124,7 +127,9 @@ public class ClientTwinTests {
   [Fact]
   public void A_client_tick_gets_the_seconds_since_it_last_fired() {
     using var world = DoorWorld();
-    var twin = ClientTwin.Stand(world, Place(world, Here, new TimedDoor()))[0];
+    var door = new TimedDoor();
+    Place(world, Here, door);
+    var twin = ClientTwin.Stand(world, door)[0];
 
     twin.Frames(0.02f, 6);
 
@@ -137,9 +142,9 @@ public class ClientTwinTests {
   [Fact]
   public void A_client_tick_on_the_world_overload_fires_with_the_seconds() {
     using var world = DoorWorld();
-    var twin = ClientTwin.Stand(world, Place(world, Here, new WorldTickDoor()))[
-      0
-    ];
+    var door = new WorldTickDoor();
+    Place(world, Here, door);
+    var twin = ClientTwin.Stand(world, door)[0];
 
     twin.Frames(0.02f, 6);
 
@@ -151,7 +156,9 @@ public class ClientTwinTests {
   [Fact]
   public void A_client_tick_error_goes_to_the_entitys_handler() {
     using var world = DoorWorld();
-    var twin = ClientTwin.Stand(world, Place(world, Here, new ErringDoor()))[0];
+    var door = new ErringDoor();
+    Place(world, Here, door);
+    var twin = ClientTwin.Stand(world, door)[0];
 
     twin.Frames(0.05f, 1);
 
@@ -165,9 +172,9 @@ public class ClientTwinTests {
     using var world = DoorWorld();
     int renderers = world.ClientRendererCount;
     int ticks = world.ClientTickCount;
-    var twin = ClientTwin.Stand(world, Place(world, Here, new RenderingDoor()))[
-      0
-    ];
+    var door = new RenderingDoor();
+    Place(world, Here, door);
+    var twin = ClientTwin.Stand(world, door)[0];
     Assert.True(world.ClientTickCount > ticks);
 
     world.ReleaseClientTwin(twin.Twin);
@@ -180,8 +187,10 @@ public class ClientTwinTests {
   [Fact]
   public void A_stand_that_fails_releases_the_twins_it_made() {
     using var world = DoorWorld();
-    var good = Place(world, Here, new RenderingDoor());
-    var bad = Place(world, new BlockPos(1, 64, 0), new StandFailingDoor());
+    var good = new RenderingDoor();
+    Place(world, Here, good);
+    var bad = new StandFailingDoor();
+    Place(world, new BlockPos(1, 64, 0), bad);
     int renderers = world.ClientRendererCount;
     int ticks = world.ClientTickCount;
 
