@@ -1,3 +1,4 @@
+#if GAME_GE_1_22
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 
@@ -7,7 +8,8 @@ namespace ExpandedLib.Machines;
 /// A block entity that crafts through its window: it lists every order it crafts, and a runner
 /// lays an order's inputs with slot clicks, presses the order's button and takes its outputs.
 /// </summary>
-public interface ICraftStation {
+public interface ICraftStation
+{
   /// <summary>Every way this station crafts, from the recipes <paramref name="world"/> has
   /// loaded.</summary>
   /// <param name="world">The world whose loaded recipes and collectibles the orders read.</param>
@@ -48,3 +50,4 @@ public sealed record CraftOrder(
   ItemStack Product,
   GridRecipe? Grid = null
 );
+#endif

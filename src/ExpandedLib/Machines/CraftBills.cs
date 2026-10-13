@@ -1,3 +1,4 @@
+#if GAME_GE_1_22
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +9,8 @@ namespace ExpandedLib.Machines;
 
 /// <summary>What the craft step's runners share: which orders make a product and the stack a
 /// slot is laid with.</summary>
-internal static class CraftBills {
+internal static class CraftBills
+{
   /// <summary>Whether <paramref name="order"/> makes <paramref name="wanted"/>, by the recipe
   /// named <paramref name="recipe"/> when that is not null.</summary>
   public static bool Makes(
@@ -32,10 +34,12 @@ internal static class CraftBills {
     IWorldAccessor world,
     CraftInput input,
     JObject? with
-  ) {
+  )
+  {
     CraftingRecipeIngredient ingredient = input.Ingredient;
     ItemStack stack;
-    if (with?[input.Name] is JValue { Value: string picked }) {
+    if (with?[input.Name] is JValue { Value: string picked })
+    {
       var code = new AssetLocation(picked);
       CollectibleObject chosen =
         (CollectibleObject?)world.GetItem(code)
@@ -50,7 +54,8 @@ internal static class CraftBills {
         );
       return stack;
     }
-    if (ingredient.MatchingType == EnumRecipeMatchType.Exact) {
+    if (ingredient.MatchingType == EnumRecipeMatchType.Exact)
+    {
       stack = ingredient.ResolvedItemStack!.Clone();
       stack.StackSize = ingredient.Quantity;
       return stack;
@@ -63,3 +68,4 @@ internal static class CraftBills {
       .First(s => ingredient.SatisfiesAsIngredient(s));
   }
 }
+#endif

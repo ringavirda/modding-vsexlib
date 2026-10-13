@@ -1037,8 +1037,10 @@ public sealed partial class TestWorld : IDisposable {
         )
       )
       .Do(ci => Drops.Add(ci.Arg<ItemStack>()));
+#if GAME_GE_1_22
     w.GridRecipes.Returns(_gridRecipes);
     w.FastSearchRecipesByIngredient.Returns(_fastSearchRecipes);
+#endif
     // The full registries a content check enumerates; computed on each read.
     w.Blocks.Returns(ci => (IList<Block>)_blocksById.Values.ToList());
     w.Items.Returns(ci => (IList<Item>)_itemsByCode.Values.ToList());
@@ -1090,7 +1092,9 @@ public sealed partial class TestWorld : IDisposable {
     var events = Substitute.For<IServerEventAPI>();
     api.Event.Returns(events);
     coreApi.Event.Returns(events);
+#if GAME_GE_1_22
     WireRecipeMatching(events);
+#endif
 
     // RegisterChannel hands out this world's memoised pair; see Channels.
     var network = Substitute.For<IServerNetworkAPI>();
@@ -1213,8 +1217,10 @@ public sealed partial class TestWorld : IDisposable {
         .Concat(_blocksById.Values)
         .ToList()
     );
+#if GAME_GE_1_22
     w.GridRecipes.Returns(_gridRecipes);
     w.FastSearchRecipesByIngredient.Returns(_fastSearchRecipes);
+#endif
     return w;
   }
 

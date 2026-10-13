@@ -242,17 +242,7 @@ public sealed partial class SetupScene : IDisposable
     bool crafts = EveryStep().Any(s => s.Kind == "craft");
     World.LoadAssets(modPaths, null, VanillaCodes(), crafts);
     if (crafts)
-    {
-      foreach (
-        CollectibleObject collectible in World
-          .World.Items.Where(i => i?.Code != null)
-          .Cast<CollectibleObject>()
-          .Concat(World.World.Blocks.Where(b => b is { Id: not 0 }))
-      )
-        if (ReflectionHelpers.GetField(collectible, "api") == null)
-          collectible.OnLoadedNative(World.Api);
       World.LoadRecipes();
-    }
     if (World.Mods.GetModSystem<MechanicalPowerMod>() == null)
     {
       HashSet<long> before = World.TickListenerIds();

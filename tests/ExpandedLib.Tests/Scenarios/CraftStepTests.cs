@@ -388,6 +388,24 @@ public class CraftStepTests : IDisposable
     );
   }
 
+  // Fails when HandGrid.Orders leaves the ingredient's name off its inputs.
+  [Fact]
+  public void Craft_with_a_code_the_hand_grid_slot_does_not_take_fails()
+  {
+    string message = Refused(
+      "setupcraft",
+      BenchPath,
+      "[{\"craft\": {\"output\": \""
+        + Frame
+        + "\", \"with\": {\"R\": \"setupcraft:plate\"}}}]"
+    );
+
+    Assert.Contains(
+      "with R: setupcraft:plate is not an ingredient the slot takes",
+      message
+    );
+  }
+
   // Fails when with takes a code the ingredient does not fit.
   [Fact]
   public void Craft_with_a_code_the_slot_does_not_take_fails()

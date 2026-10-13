@@ -1,3 +1,4 @@
+#if GAME_GE_1_22
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +17,8 @@ namespace ExpandedLib.Testing;
 /// Recipes in <see cref="TestWorld"/>: the game's own recipe loader run over the assets a load
 /// mirrored, and the recipe lists and ingredient index the game's recipes read.
 /// </summary>
-public sealed partial class TestWorld {
+public sealed partial class TestWorld
+{
   private readonly List<GridRecipe> _gridRecipes = [];
   private readonly List<SmithingRecipe> _smithingRecipes = [];
   private readonly List<ClayFormingRecipe> _clayFormingRecipes = [];
@@ -50,17 +52,27 @@ public sealed partial class TestWorld {
   /// second call empties the lists and the ingredient index first. Vanilla's recipe files are not
   /// mirrored, so only the listed mods' recipes load, those a mod's definitions inject included.
   /// A recipe that fails to resolve is the loader's log line in <see cref="Log"/> and a count, never
-  /// a throw.</remarks>
+  /// a throw. Every item and block not yet loaded gets its <c>OnLoadedNative</c> first, since a
+  /// recipe's <c>Matches</c> reads the collectible's api.</remarks>
   /// <returns>The recipes kept and the recipes that failed to resolve, over the three
   /// kinds.</returns>
   /// <exception cref="InvalidOperationException">No <c>LoadAssets</c> or <c>LoadAsGame</c> ran on this
   /// world.</exception>
-  public (int Loaded, int Failed) LoadRecipes() {
+  public (int Loaded, int Failed) LoadRecipes()
+  {
     IAssetManager assets =
       _loadedAssets
       ?? throw new InvalidOperationException(
         "LoadRecipes needs LoadAssets or LoadAsGame first."
       );
+    foreach (
+      CollectibleObject collectible in World
+        .Items.Where(i => i?.Code != null)
+        .Cast<CollectibleObject>()
+        .Concat(World.Blocks.Where(b => b is { Id: not 0 }))
+    )
+      if (ReflectionHelpers.GetField(collectible, "api") == null)
+        collectible.OnLoadedNative(Api);
     _gridRecipes.Clear();
     _smithingRecipes.Clear();
     _clayFormingRecipes.Clear();
@@ -103,7 +115,8 @@ public sealed partial class TestWorld {
     bool classExclusive,
     Action<IRecipeBase> keep
   )
-    where T : IRecipeBase {
+    where T : IRecipeBase
+  {
     int loaded = 0;
     int failed = 0;
     foreach (
@@ -111,15 +124,19 @@ public sealed partial class TestWorld {
         Log,
         path
       )
-    ) {
-      IEnumerable<JToken> tokens = content switch {
+    )
+    {
+      IEnumerable<JToken> tokens = content switch
+      {
         JObject o => [o],
         JArray a => a,
         _ => [],
       };
-      foreach (JToken token in tokens) {
+      foreach (JToken token in tokens)
+      {
         T? recipe = token.ToObject<T>(location.Domain);
-        if (recipe == null) {
+        if (recipe == null)
+        {
           Log.Error($"Failed to parse {name} recipe: {location}");
           continue;
         }
@@ -139,24 +156,26 @@ public sealed partial class TestWorld {
 
   /// <summary>The <c>game:</c> codes the grid, smithing and clay forming recipe assets in
   /// <paramref name="assets"/> name, wildcards and placeholders as written; a code with no domain
-  /// is the game's.</summary>
-  private IReadOnlyCollection<string> RecipeVanillaCodes(IAssetManager assets) {
+  /// takes the domain of the file that names it, as the game's loader reads it.</summary>
+  private IReadOnlyCollection<string> RecipeVanillaCodes(IAssetManager assets)
+  {
     var codes = new HashSet<string>();
     foreach (string path in RecipePaths)
-      foreach (
-        (AssetLocation _, JToken content) in assets.GetMany<JToken>(Log, path)
+    foreach (
+      (AssetLocation file, JToken content) in assets.GetMany<JToken>(Log, path)
+    )
+    foreach (JToken token in content.SelectTokens("$..code"))
+      if (
+        token is JValue { Value: string code }
+        && AssetLocation.Create(code, file.Domain)
+          is { Domain: "game", Path: { Length: > 0 } } location
       )
-        foreach (JToken token in content.SelectTokens("$..code"))
-          if (
-            token is JValue { Value: string code }
-            && new AssetLocation(code)
-              is { Domain: "game", Path: { Length: > 0 } } location
-          )
-            codes.Add($"game:{location.Path}");
+        codes.Add($"game:{location.Path}");
     return codes;
   }
 
-  private static void WireRecipeMatching(IEventAPI events) {
+  private static void WireRecipeMatching(IEventAPI events)
+  {
     var gridHandlers = new List<MatchGridRecipeDelegate>();
     var recipeHandlers = new List<MatchRecipeDelegate>();
     events
@@ -195,3 +214,4 @@ public sealed partial class TestWorld {
       );
   }
 }
+#endif

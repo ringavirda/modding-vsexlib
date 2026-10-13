@@ -280,7 +280,9 @@ public sealed partial class TestWorld {
     var events = Substitute.For<IClientEventAPI>();
     api.Event.Returns(events);
     coreApi.Event.Returns(events);
+#if GAME_GE_1_22
     WireRecipeMatching(events);
+#endif
     events
       .When(x =>
         x.RegisterRenderer(

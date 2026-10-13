@@ -138,12 +138,7 @@ public sealed partial class TestWorld {
       MirrorArt(mgr.Add, survival);
     MirrorPatchedVanilla(mgr, survival, [.. mods.Select(m => m.Id)]);
     var skips = new List<(string File, string Reason)>();
-    List<AssetLocation> mirrored = MirrorVanillaTypes(
-      mgr.Add,
-      survival,
-      vanillaCodes,
-      skips
-    );
+    MirrorVanillaTypes(mgr.Add, survival, vanillaCodes, skips);
 
     // GamePaths.AssetsPath/Lang.Load are process-wide statics the object loader needs primed; safe
     // to set repeatedly.
@@ -174,23 +169,28 @@ public sealed partial class TestWorld {
         loaderApi,
         "Vintagestory.ServerMods.NoObf.ModJsonPatchLoader"
       );
+#if GAME_GE_1_22
       if (recipeCodes)
         MirrorVanillaTypes(
-          (location, asset) => {
-            if (!mirrored.Contains(location))
+          (location, asset) =>
+          {
+            if (!mgr.AllAssets.ContainsKey(location))
               mgr.Add(location, asset);
           },
           survival,
           RecipeVanillaCodes(mgr),
           skips
         );
+#endif
       RunVanillaLoader(
         loaderApi,
         "Vintagestory.ServerMods.NoObf.ModRegistryObjectTypeLoader"
       );
       RegisterLoaded(loaderApi);
       ((ICoreAPI)Api).Assets.Returns(mgr);
+#if GAME_GE_1_22
       _loadedAssets = mgr;
+#endif
       if (asGame) {
         foreach (ModSystem system in FinalizeOrder(started))
           system.AssetsFinalize(loaderApi);

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Xunit;
 
@@ -30,8 +31,6 @@ public class HarnessRecipesTests
       null,
       Vanilla
     );
-    foreach (Item item in world.World.Items.Where(i => i?.Code != null))
-      item.OnLoadedNative(world.Api);
     return world;
   }
 
@@ -126,6 +125,60 @@ public class HarnessRecipesTests
     world.Api.Event.MatchesRecipe += (_, _, _) => false;
 
     Assert.False(StraightMatches(world, player));
+  }
+
+  // Fails when TriggerMatchesRecipe's grid overload answers true whatever the handlers say.
+  [Fact]
+  public void A_refusing_grid_handler_refuses_in_the_harness()
+  {
+    using TestWorld world = Loaded();
+    world.LoadRecipes();
+    TestPlayer player = world.Player();
+    Assert.True(StraightMatches(world, player));
+    world.Api.Event.MatchesGridRecipe += (_, _, _, _) => false;
+
+    Assert.False(StraightMatches(world, player));
+  }
+
+  // Fails when GridRecipes or FastSearchRecipesByIngredient is left unwired on the client world.
+  [Fact]
+  public void The_client_world_reads_the_loaded_recipes_and_their_index()
+  {
+    using TestWorld world = Loaded();
+    world.LoadRecipes();
+    IWorldAccessor client = world.ClientApi.World;
+
+    GridRecipe straight = client.GridRecipes.First(r =>
+      r.Output.Code.ToString() == Straight
+    );
+    CraftingRecipeIngredient plate = straight.ResolvedIngredients.Single(i =>
+      i.Code.Path.StartsWith("metalplate-")
+    );
+
+    Assert.StartsWith(
+      "game:metalplate-",
+      plate.ResolvedItemStack.Collectible.Code.ToString()
+    );
+    Assert.NotEmpty(client.FastSearchRecipesByIngredient);
+  }
+
+  // Fails when the client event API is left without the recipe-matching wiring.
+  [Fact]
+  public void A_refusing_handler_on_the_client_refuses_the_client_event()
+  {
+    using TestWorld world = Loaded();
+    world.LoadRecipes();
+    TestPlayer player = world.Player();
+    IClientEventAPI events = world.ClientApi.Event;
+    GridRecipe straight = StraightRecipes(world)[0];
+    Assert.True(
+      events.TriggerMatchesRecipe(player.Player, straight, Bill(world), 3)
+    );
+    events.MatchesGridRecipe += (_, _, _, _) => false;
+
+    Assert.False(
+      events.TriggerMatchesRecipe(player.Player, straight, Bill(world), 3)
+    );
   }
 }
 #endif
