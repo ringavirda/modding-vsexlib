@@ -146,6 +146,27 @@ public class ItemViewsBlockTests(ITestOutputHelper output) {
     );
     Assert.Equal(0.5, set.Gui.Origin.X, 3);
     Assert.Equal(0, GroundRest(Box(block), set.Ground), 3);
+    CollectibleViews.ViewBox box = Box(block);
+    double longest = box.Extents()[0] / 16;
+    output.WriteLine(
+      $"game:plaster-plain {box.Extents()[0]:F2} x {box.Extents()[1]:F2} x {box.Extents()[2]:F2}: span {SlotSpan(box, set.Gui):F3}, ground {set.Ground.ScaleXYZ.X * 0.2 * longest:F3}, held {set.TpHand.ScaleXYZ.X * longest:F3}"
+    );
+  }
+
+  // Fails when a block's held clips are not the game's block clips: BlockReady, BlockUse or the idle clip changed, or
+  // a hit clip set.
+  [Theory]
+  [InlineData("game:forge")]
+  [InlineData("game:plaster-plain")]
+  public void A_block_is_held_with_the_block_clips(string code) {
+    ItemViewSet set = ItemViews.Compute(
+      World.Api,
+      World.World.GetBlock(new AssetLocation(code))
+    )!;
+    Assert.Equal("holdbothhandslarge", set.IdleClip);
+    Assert.Equal("heldblockready", set.ReadyClip);
+    Assert.Null(set.HitClip);
+    Assert.Equal("twohandplaceblock", set.UseClip);
   }
 
   // Fails when the ground translation is not taken from the drawn bottom (the forge floats or sinks), or the
@@ -202,12 +223,13 @@ public class ItemViewsBlockTests(ITestOutputHelper output) {
     );
   }
 
-  // Fails when the leaf rule is dropped: a slab then stands on its edge on the ground.
-  [Fact]
-  public void A_leaf_lies_on_its_largest_face() {
-    Block slab = World.World.GetBlock(
-      new AssetLocation("game:glasspane-leaded-aged-ns")
-    );
+  // Fails when the leaf rule is dropped, or either of its thin-axis branches: a slab then stands on its edge on the
+  // ground, the ns pane thin in z and the ew pane thin in x.
+  [Theory]
+  [InlineData("game:glasspane-leaded-aged-ns")]
+  [InlineData("game:glasspane-leaded-aged-ew")]
+  public void A_leaf_lies_on_its_largest_face(string code) {
+    Block slab = World.World.GetBlock(new AssetLocation(code));
     ItemViewSet set = ItemViews.Compute(World.Api, slab)!;
     double[] ext = Box(slab).Extents();
     double[,] turn = CollectibleViews.Mul(

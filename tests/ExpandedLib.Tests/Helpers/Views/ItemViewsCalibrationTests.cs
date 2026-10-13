@@ -474,4 +474,36 @@ public class ItemViewsCalibrationTests {
       $"grip offset in the hand {got} against the metal plate's {want}"
     );
   }
+
+  // Fails when the composite rotation is dropped from the item box, in either overload: the turned stick then lays
+  // its axes as the unturned one does.
+  [Fact]
+  public void A_turned_item_shape_turns_its_box_axes() {
+    Item stick = Coll("game:stick");
+    Item turned = Coll("viewsfixture:turnedstick");
+    ItemViewSet plain = Compute(stick);
+    ItemViewSet byItem = Compute(turned);
+    ItemViewSet byShape = ItemViews.Compute(
+      World.Api,
+      turned.Shape,
+      ItemViewKind.Bar
+    );
+    Vec3d expected = CollectibleViews.Mul(
+      CollectibleViews.Rotation(new Vec3d(0, 90, 0)),
+      plain.BoxAxes![0]
+    );
+    Assert.Equal(
+      plain.BoxTo!.X - plain.BoxFrom!.X,
+      byItem.BoxTo!.X - byItem.BoxFrom!.X,
+      3
+    );
+    foreach (ItemViewSet set in new[] { byItem, byShape }) {
+      Vec3d a = set.BoxAxes![0];
+      double dot = Math.Abs(
+        a.X * expected.X + a.Y * expected.Y + a.Z * expected.Z
+      );
+      Assert.True(dot > 0.999, $"turned axis {a} against {expected}");
+    }
+    Assert.True(Math.Abs(plain.BoxAxes[0].X) < 0.999);
+  }
 }
