@@ -192,7 +192,7 @@ public class PublicSurfaceTests {
     string page = File.ReadAllText(PagePath);
 
     // A name resolves when it is a public or nested-public type of exlib.dll or
-    // exlib.industry.dll, a generator type, or a legacy type gated by `#if !GAME_GE_*`.
+    // exlib.industry.dll, a generator type, a legacy type gated by `#if !GAME_GE_*`, or on a legacy build a type in a file that opens with `#if GAME_GE_1_22`.
     IReadOnlyList<string> missing = Unresolved(
       page,
       typeof(ExpandedLibModSystem)
@@ -298,7 +298,15 @@ public class PublicSurfaceTests {
       )
     ) {
       string text = File.ReadAllText(file);
-      if (!LegacyGuard.IsMatch(text))
+#if !GAME_GE_1_22
+      bool currentOnly = text.StartsWith(
+        "#if GAME_GE_1_22",
+        StringComparison.Ordinal
+      );
+#else
+      bool currentOnly = false;
+#endif
+      if (!LegacyGuard.IsMatch(text) && !currentOnly)
         continue;
       foreach (Match m in LegacyTypeDecl.Matches(text))
         yield return m.Groups[1].Value;

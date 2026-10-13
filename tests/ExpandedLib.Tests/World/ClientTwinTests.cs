@@ -64,7 +64,12 @@ public class ClientTwinTests {
     Assert.IsType<ClientAnimator>(twin.Animator);
     Assert.True(world.ClientApi.ObjectCache.ContainsKey("animUtil-animCache"));
     Assert.False(world.Api.ObjectCache.ContainsKey("animUtil-animCache"));
+#if GAME_GE_1_22
     Assert.Equal(1, world.QueuedMainThreadTasks);
+#else
+    // Below 1.22 AnimationUtil.InitializeAnimator queues a task beside the renderer's.
+    Assert.Equal(2, world.QueuedMainThreadTasks);
+#endif
   }
 
   [Fact]
@@ -139,8 +144,10 @@ public class ClientTwinTests {
     Assert.Equal(0.06f, seconds[1], 0.001f);
   }
 
+#if GAME_GE_1_22
   [Fact]
-  public void A_client_tick_on_the_world_overload_fires_with_the_seconds() {
+  public void A_client_tick_on_the_world_overload_fires_with_the_seconds()
+  {
     using var world = DoorWorld();
     var door = new WorldTickDoor();
     Place(world, Here, door);
@@ -152,6 +159,7 @@ public class ClientTwinTests {
     Assert.Equal(2, seconds.Count);
     Assert.Equal(0.06f, seconds[0], 0.001f);
   }
+#endif
 
   [Fact]
   public void A_client_tick_error_goes_to_the_entitys_handler() {
@@ -309,15 +317,19 @@ public class ClientTwinTests {
     }
   }
 
-  private sealed class WorldTickDoor : BlockEntity {
+#if GAME_GE_1_22
+  private sealed class WorldTickDoor : BlockEntity
+  {
     public List<float> Seconds { get; } = new();
 
-    public override void Initialize(ICoreAPI api) {
+    public override void Initialize(ICoreAPI api)
+    {
       base.Initialize(api);
       if (api.Side == EnumAppSide.Client)
         RegisterGameTickListener((_, _, dt) => Seconds.Add(dt), 50);
     }
   }
+#endif
 
   private sealed class ErringDoor : BlockEntity {
     public List<Exception> Errors { get; } = new();

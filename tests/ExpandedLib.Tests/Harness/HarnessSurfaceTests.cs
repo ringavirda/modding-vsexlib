@@ -27,6 +27,28 @@ public class HarnessSurfaceTests {
       .Select(name => name.Contains('`') ? name[..name.IndexOf('`')] : name)
       .Distinct();
 
+#if !GAME_GE_1_22
+  private static readonly Regex CurrentOnlyTypeDecl = new(
+    @"^\s*public\s+(?:static\s+|sealed\s+|abstract\s+|partial\s+|readonly\s+)*"
+      + @"(?:record\s+struct|record\s+class|class|struct|record|interface|enum)\s+(\w+)",
+    RegexOptions.Multiline
+  );
+
+  private static IEnumerable<string> CurrentOnlyTypeNames() =>
+    Directory
+      .EnumerateFiles(
+        Path.Combine(RepoPaths.Root, "src", "ExpandedLib.Testing"),
+        "*.cs",
+        SearchOption.AllDirectories
+      )
+      .Select(File.ReadAllText)
+      .Where(text =>
+        text.StartsWith("#if GAME_GE_1_22", StringComparison.Ordinal)
+      )
+      .SelectMany(text => CurrentOnlyTypeDecl.Matches(text))
+      .Select(m => m.Groups[1].Value);
+#endif
+
   public static IEnumerable<object[]> Types() =>
     PublicTypeNames()
       .OrderBy(n => n, StringComparer.Ordinal)
@@ -45,9 +67,9 @@ public class HarnessSurfaceTests {
   public void Every_type_named_in_the_where_things_are_table_exists() {
     var known = PublicTypeNames().ToHashSet(StringComparer.Ordinal);
 #if !GAME_GE_1_22
-    // The page documents the 1.22 harness; StructureBreaks and BreakLaw compile on 1.22 only.
-    known.Add("StructureBreaks");
-    known.Add("BreakLaw");
+    // The page documents the 1.22 harness; the files that open with #if GAME_GE_1_22 compile there only.
+    foreach (string name in CurrentOnlyTypeNames())
+      known.Add(name);
 #endif
 
     // The "Where things are" table's rows, up to the next blank line.

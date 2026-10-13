@@ -112,6 +112,7 @@ public class ItemViewsBlockTests(ITestOutputHelper output) {
   // the multicell's, and the held-out block then leaves its kind's median.
   [Theory]
   [InlineData("game:forge", ItemViewKind.Partial, 0.7101, 0.300, 0.400)]
+#if GAME_GE_1_22
   [InlineData(
     "game:bellows-crude-north",
     ItemViewKind.Multicell,
@@ -119,6 +120,7 @@ public class ItemViewsBlockTests(ITestOutputHelper output) {
     0.8629,
     1.200
   )]
+#endif
   public void Held_out_blocks_meet_their_kind_medians(
     string code,
     ItemViewKind kind,
@@ -189,7 +191,9 @@ public class ItemViewsBlockTests(ITestOutputHelper output) {
   // slot origin is off the drawn box centre.
   [Theory]
   [InlineData("game:forge")]
+#if GAME_GE_1_22
   [InlineData("game:bellows-crude-north")]
+#endif
   [InlineData("game:plaster-plain")]
   public void A_block_sits_on_its_box(string code) {
     Block block = World.World.GetBlock(new AssetLocation(code));
@@ -220,7 +224,9 @@ public class ItemViewsBlockTests(ITestOutputHelper output) {
   // Fails when the hand translation is not the one that puts the box centre where the default puts a cube's.
   [Theory]
   [InlineData("game:forge")]
+#if GAME_GE_1_22
   [InlineData("game:bellows-crude-north")]
+#endif
   public void A_block_is_carried_by_its_centre(string code) {
     Block block = World.World.GetBlock(new AssetLocation(code));
     CollectibleViews.ViewBox box = Box(block);

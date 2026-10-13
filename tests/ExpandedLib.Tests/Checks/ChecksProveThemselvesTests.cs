@@ -22,6 +22,14 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
       "the file compiles on 1.22 and later only",
     ["BreakLaw: the file names no type in ExpandedLib.Testing"] =
       "the file compiles on 1.22 and later only",
+    ["ClipExceptions: the file names no type in ExpandedLib.Testing"] =
+      "the file compiles on 1.22 and later only",
+    ["ClipLaws: the file names no type in ExpandedLib.Testing"] =
+      "the file compiles on 1.22 and later only",
+    ["ClipReference: the file names no type in ExpandedLib.Testing"] =
+      "the file compiles on 1.22 and later only",
+    ["ClipTrace: the file names no type in ExpandedLib.Testing"] =
+      "the file compiles on 1.22 and later only",
 #endif
   };
 

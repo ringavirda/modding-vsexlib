@@ -64,9 +64,11 @@ public class ViewGateMetricsTests {
     Assert.True(ingots.Codes.Count > 5);
   }
 
+#if GAME_GE_1_22
   // Fails when the hand pose is taken at rest instead of the clip's frame 0: the spear's first-person axis then equals its third-person one.
   [Fact]
-  public void Hand_metrics_match_the_spec_rows() {
+  public void Hand_metrics_match_the_spec_rows()
+  {
     HandMetrics spear = ViewGates.Hand(
       World,
       GroupOf("game:spear-generic-iron")
@@ -114,10 +116,13 @@ public class ViewGateMetricsTests {
       0.02
     );
   }
+#endif
 
+#if GAME_GE_1_22
   // Fails when G10 takes the box axis's sign in place of the working end: the unturned blackbronze then reads near 180.
   [Fact]
-  public void Spear_axis_is_judged_by_its_working_end() {
+  public void Spear_axis_is_judged_by_its_working_end()
+  {
     ViewGroup spear = GroupOf("game:spear-generic-blackbronze");
     Assert.InRange(ViewGates.AxisDegrees(World, spear), 0, 3.3);
     Assert.InRange(ViewGates.AxisDegrees(World, spear, true), 0, 3.3);
@@ -126,7 +131,8 @@ public class ViewGateMetricsTests {
       new AssetLocation("game:spear-generic-blackbronze")
     );
     ModelTransform authored = item.TpHandTransform;
-    try {
+    try
+    {
       ModelTransform turned = authored.Clone();
       turned.Rotation = new FastVec3f(
         authored.Rotation.X,
@@ -139,14 +145,19 @@ public class ViewGateMetricsTests {
         170,
         180
       );
-    } finally {
+    }
+    finally
+    {
       item.TpHandTransform = authored;
     }
   }
+#endif
 
+#if GAME_GE_1_22
   // Fails when G10 ignores a declared tip: the count rule then takes the butt for the working end and the axis reads near 180.
   [Fact]
-  public void A_declared_tip_sets_the_working_end() {
+  public void A_declared_tip_sets_the_working_end()
+  {
     ViewGroup declared = ViewGates
       .Groups(World, "viewsfixture")
       .Single(g => g.Codes.Contains("viewsfixture:declaredtip"));
@@ -156,6 +167,7 @@ public class ViewGateMetricsTests {
     ViewGroup held = declared with { Hand = spear.TpHandTransform.Clone() };
     Assert.InRange(ViewGates.AxisDegrees(World, held), 0, 3.3);
   }
+#endif
 
   // Fails when the animation code is matched case-sensitively, or when an unmapped code is posed as a clip.
   [Fact]

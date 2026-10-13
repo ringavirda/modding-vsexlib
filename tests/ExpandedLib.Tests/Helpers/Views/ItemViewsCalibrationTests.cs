@@ -212,9 +212,11 @@ public class ItemViewsCalibrationTests {
     );
   }
 
+#if GAME_GE_1_22
   // Fails when the overload returns the kind's game defaults.
   [Fact]
-  public void The_shape_overload_equals_the_collectible_overload() {
+  public void The_shape_overload_equals_the_collectible_overload()
+  {
     Item spear = Coll("game:spear-generic-iron");
     ItemViewSet byItem = Compute(spear);
     ItemViewSet byShape = ItemViews.Compute(
@@ -231,6 +233,7 @@ public class ItemViewsCalibrationTests {
       Numbers(byShape.Gui)
     );
   }
+#endif
 
   // Fails when a shape that does not load is not refused.
   [Fact]

@@ -84,9 +84,11 @@ public class ViewMatricesTests {
     Assert.Equal(3.51, p.Z * 16, 0.05);
   }
 
+#if GAME_GE_1_22
   // Fails when S(s) is left out of the hand matrix: the spear is then 2.92 block long.
   [Fact]
-  public void Iron_spear_is_held_2_34_block_long() {
+  public void Iron_spear_is_held_2_34_block_long()
+  {
     CollectibleObject spear = Coll("game:spear-generic-iron");
     CollectibleViews.ViewBox box = CollectibleViews.BoxOf(World.Api, spear)!;
     Mat4 hand = ViewMatrices.Hand(
@@ -98,6 +100,7 @@ public class ViewMatricesTests {
     Vec3d b = hand.Apply(AxisEnd(box, axis, 1));
     Assert.Equal(2.34, (a - b).Length(), 0.02);
   }
+#endif
 
   // Fails when the game's resolution of an omitted key is not the type default: the origin is then 0.
   [Fact]

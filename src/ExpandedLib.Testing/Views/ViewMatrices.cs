@@ -2,6 +2,10 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+#if !GAME_GE_1_21
+using FastVec3f = Vintagestory.API.MathTools.Vec3f;
+#endif
+
 
 namespace ExpandedLib.Testing;
 

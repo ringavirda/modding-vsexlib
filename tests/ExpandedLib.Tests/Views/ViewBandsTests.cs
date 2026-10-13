@@ -31,18 +31,22 @@ public class ViewBandsTests {
 
   private static ViewBandData Bands => ViewBands.Embedded;
 
+#if GAME_GE_1_22
   // Fails when one band's minimum is raised 10% past the set's: the difference names the vanilla code at that end.
   // EXLIB_WRITE_VIEW_BANDS=1 rewrites view-bands.json instead.
   [Fact]
-  public void Bands_equal_what_the_reference_sets_compute() {
+  public void Bands_equal_what_the_reference_sets_compute()
+  {
     ViewBandData computed = ViewBands.Compute(World);
-    if (ViewBands.WriteRequested) {
+    if (ViewBands.WriteRequested)
+    {
       ViewBands.Write(computed);
       return;
     }
     var diffs = ViewBands.Differences(computed, Bands);
     Assert.True(diffs.Count == 0, string.Join("\n", diffs));
   }
+#endif
 
   // Fails when the check for an unmatched entry is dropped: the set then loses a member without a word.
   [Fact]
@@ -187,18 +191,23 @@ public class ViewBandsTests {
     );
   }
 
+#if GAME_GE_1_22
   // Fails when a reference member leaves the band of a gate its set calibrates: the boar spear when its tip entry is dropped,
   // the chert spear when the working end is taken from the far end from the grip.
   [Fact]
-  public void Every_reference_member_passes_the_gates_it_calibrates() {
+  public void Every_reference_member_passes_the_gates_it_calibrates()
+  {
     IReadOnlyList<ViewGroup> groups = ViewGates.Groups(World, "game");
-    foreach (ViewBands.ReferenceSet set in ViewBands.Sets) {
+    foreach (ViewBands.ReferenceSet set in ViewBands.Sets)
+    {
       string kind = set.Kind.ToString().ToLowerInvariant();
       foreach (
         (ViewGroup group, string code) in ViewBands.Resolve(World, groups, set)
-      ) {
+      )
+      {
         GroupMetrics metrics = ViewGates.Measure(World, group);
-        foreach (string gate in set.Gates) {
+        foreach (string gate in set.Gates)
+        {
           double v = ViewGates.ValueOf(metrics, gate);
           if (double.IsNaN(v))
             continue;
@@ -211,6 +220,7 @@ public class ViewBandsTests {
       }
     }
   }
+#endif
 
   private const double Precision = 1e-4;
 
@@ -286,8 +296,10 @@ public class ViewBandsTests {
   [InlineData("G7", "G7", "hand.size", -1)]
   [InlineData("G8", "G8", "hand.grip", 1)]
   [InlineData("G8fp", "G8", "hand.grip.fp", 1)]
+#if GAME_GE_1_22
   [InlineData("G10", "G10", "hand.axis", 1)]
   [InlineData("G10fp", "G10", "hand.axis.fp", 1)]
+#endif
   [InlineData("G13", "G13", "hand.centre", 1)]
   public void Each_banded_gate_has_a_fixture_only_it_rejects(
     string id,

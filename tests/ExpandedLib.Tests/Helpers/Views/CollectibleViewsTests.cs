@@ -59,7 +59,9 @@ public class CollectibleViewsTests {
   // Fails when the bar threshold is 2M (the ingot is then a bar), and when L, M, S follow the
   // declaration order (the plate lies on edge and is no plate).
   [Theory]
+#if GAME_GE_1_22
   [InlineData("game:spear-generic-iron", ItemViewKind.Longtool)]
+#endif
   [InlineData("game:ingot-iron", ItemViewKind.Lump)]
   [InlineData("game:metalplate-iron", ItemViewKind.Plate)]
   [InlineData("game:rod-iron", ItemViewKind.Bar)]
@@ -68,9 +70,11 @@ public class CollectibleViewsTests {
     Assert.Equal(kind, KindOf(Coll(code)));
   }
 
+#if GAME_GE_1_22
   // Fails when a child is placed without its parent's from.
   [Fact]
-  public void A_child_element_sits_at_its_parents_from() {
+  public void A_child_element_sits_at_its_parents_from()
+  {
     double[] spear = ExtentsOf("game:spear-generic-iron");
     Assert.Equal(46.747, spear[0], 2);
     Assert.Equal(4.0, spear[1], 2);
@@ -80,6 +84,7 @@ public class CollectibleViewsTests {
     Assert.Equal(2.648, stick[1], 2);
     Assert.Equal(1.6, stick[2], 2);
   }
+#endif
 
   // Fails when a block takes the least-volume frame: the turned cube is a cube there, multicell in the shape's.
   [Fact]

@@ -4,6 +4,10 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using static ExpandedLib.Helpers.CollectibleViews;
 using static ExpandedLib.Helpers.ViewReferences;
+#if !GAME_GE_1_21
+using FastVec3f = Vintagestory.API.MathTools.Vec3f;
+#endif
+
 
 namespace ExpandedLib.Helpers;
 

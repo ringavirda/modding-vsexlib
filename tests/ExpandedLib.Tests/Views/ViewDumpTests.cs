@@ -259,9 +259,11 @@ public class ViewDumpTests {
     Assert.Equal("viewsfixture:item/tex", (string?)file["textures"]!["tex"]);
   }
 
+#if GAME_GE_1_22
   // Fails when the default variable name is misspelt: ViewGates then writes nothing under EX_ITEM_VIEWS, which a run may preset to keep the files.
   [Fact]
-  public void Dump_writes_under_the_default_variable() {
+  public void Dump_writes_under_the_default_variable()
+  {
     string dir = Environment.GetEnvironmentVariable("EX_ITEM_VIEWS")
       is { Length: > 0 } set
       ? set
@@ -277,6 +279,7 @@ public class ViewDumpTests {
     );
     Assert.All(paths, p => Assert.True(File.Exists(p)));
   }
+#endif
 
   // Fails when Measure drops the twin: the grip is then judged by the kind's limit and the ends name the kind's references. Fails when an upper-only gate's lower end is named.
   [Fact]

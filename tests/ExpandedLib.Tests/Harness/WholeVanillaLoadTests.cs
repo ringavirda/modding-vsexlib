@@ -98,7 +98,9 @@ public class WholeVanillaLoadTests(ITestOutputHelper output) {
     foreach (
       string code in (string[])
         [
+#if GAME_GE_1_22
           "spear-generic-iron",
+#endif
           "oar-crude-aged",
           "ingot-iron",
           "metalbit-iron",
