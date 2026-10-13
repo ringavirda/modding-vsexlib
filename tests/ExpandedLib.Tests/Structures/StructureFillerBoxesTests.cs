@@ -180,6 +180,88 @@ public class StructureFillerBoxesTests {
 
   #endregion
 
+  #region Attachment
+
+  [Theory]
+  [InlineData(false, false)]
+  [InlineData(true, true)]
+  public void A_cell_is_an_attachment_surface_only_when_it_opted_in(
+    bool allowAttach,
+    bool expected
+  ) {
+    var block = TestBlocks.Configure(
+      new BlockStructureFiller(),
+      "exlib:structurefiller",
+      70
+    );
+    block.SideSolid = new SmallBoolArray(0x3F);
+    var pos = new BlockPos(0, 0, 0);
+    var ba = AccessorWith(
+      pos,
+      new BlockEntityStructureFiller { AllowAttach = allowAttach }
+    );
+
+    Assert.Equal(
+      expected,
+      block.CanAttachBlockAt(ba, block, pos, BlockFacing.UP)
+    );
+  }
+
+  [Fact]
+  public void A_cell_without_a_block_entity_is_not_an_attachment_surface() {
+    var block = TestBlocks.Configure(
+      new BlockStructureFiller(),
+      "exlib:structurefiller",
+      70
+    );
+    block.SideSolid = new SmallBoolArray(0x3F);
+
+    Assert.False(
+      block.CanAttachBlockAt(
+        Substitute.For<IBlockAccessor>(),
+        block,
+        new BlockPos(0, 0, 0),
+        BlockFacing.UP
+      )
+    );
+  }
+
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public void AllowAttach_round_trips_through_the_save_tree(bool allowAttach) {
+    var restored = RoundTrip(
+      new BlockEntityStructureFiller { AllowAttach = allowAttach }
+    );
+
+    Assert.Equal(allowAttach, restored.AllowAttach);
+  }
+
+  #endregion
+
+  #region Orientation
+
+  [Theory]
+  [InlineData(0, 11, 12)]
+  [InlineData(90, 12, 9)]
+  [InlineData(180, 9, 8)]
+  [InlineData(270, 8, 11)]
+  public void Offsets_declared_in_the_north_frame_are_turned_by_the_angle(
+    int angle,
+    int expectedX,
+    int expectedZ
+  ) {
+    var host = new Host(Offsets("[{ \"x\": 1, \"y\": 3, \"z\": 2 }]"));
+
+    var cell = Assert.Single(
+      StructureFillers.FootprintCells(host, new BlockPos(10, 5, 10), angle)
+    );
+
+    Assert.Equal(new BlockPos(expectedX, 8, expectedZ), cell.Pos);
+  }
+
+  #endregion
+
   #region Helpers
 
   private static JsonObject Offsets(string json) => new(JArray.Parse(json));
