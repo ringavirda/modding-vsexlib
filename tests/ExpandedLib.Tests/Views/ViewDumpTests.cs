@@ -50,6 +50,9 @@ public class ViewDumpTests {
   private static JObject Read(string? path) =>
     JObject.Parse(File.ReadAllText(path!));
 
+  private static string[] Keys(JToken? token) =>
+    ((JObject)token!).Properties().Select(p => p.Name).ToArray();
+
   // Fails when the footprint is taken at GUI scale 2: the slot bounds then move off the scale-1 matrices.
   [Fact]
   public void Dump_writes_every_key_in_order() {
@@ -92,6 +95,41 @@ public class ViewDumpTests {
       ],
       file.Properties().Select(p => p.Name)
     );
+    Assert.Equal(
+      [
+        "base",
+        "selectiveElements",
+        "overlays",
+        "rotateX",
+        "rotateY",
+        "rotateZ",
+      ],
+      Keys(file["shape"])
+    );
+    Assert.Equal(["from", "to"], Keys(file["box"]));
+    Assert.Equal(["idle", "ready", "hit", "use"], Keys(file["clips"]));
+    foreach (string transform in new[] { "gui", "tp", "ground" }) {
+      Assert.Equal(
+        ["translation", "rotation", "origin", "scaleXyz", "rotate"],
+        Keys(file[transform])
+      );
+      foreach (
+        string vector in new[]
+        {
+          "translation",
+          "rotation",
+          "origin",
+          "scaleXyz",
+        }
+      )
+        Assert.Equal(["x", "y", "z"], Keys(file[transform]![vector]));
+    }
+    Assert.NotEmpty(file["gates"]!);
+    foreach (JToken row in file["gates"]!)
+      Assert.Equal(
+        ["gate", "name", "target", "value", "min", "max", "ends", "pass"],
+        Keys(row)
+      );
     Assert.Equal("item-views/1", (string?)file["format"]);
     Assert.Equal("plate", (string?)file["kind"]);
 
@@ -167,24 +205,28 @@ public class ViewDumpTests {
     );
   }
 
-  // Fails when the variable check is removed: the unset variable then still writes.
+  // Fails when the variable check is removed: the unset variable then throws from Path.Combine on a null root.
   [Fact]
   public void Dump_writes_only_on_request() {
     string dir = TempDir();
-    string? path = With(
-      Variable,
-      null,
-      () =>
-        ViewDump.Write(
-          World,
-          dir,
-          "viewsfixture:uprightsheet",
-          Sheet,
-          SheetViews,
-          Variable
+    Exception? thrown = Record.Exception(() =>
+      Assert.Null(
+        With(
+          Variable,
+          null,
+          () =>
+            ViewDump.Write(
+              World,
+              dir,
+              "viewsfixture:uprightsheet",
+              Sheet,
+              SheetViews,
+              Variable
+            )
         )
+      )
     );
-    Assert.Null(path);
+    Assert.Null(thrown);
     Assert.Empty(Directory.GetFileSystemEntries(dir));
   }
 

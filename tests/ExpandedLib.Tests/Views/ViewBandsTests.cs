@@ -188,7 +188,7 @@ public class ViewBandsTests {
   }
 
   // Fails when a reference member leaves the band of a gate its set calibrates: the boar spear when its tip entry is dropped,
-  // the erel spear when the working end is taken from the far end from the grip.
+  // the chert spear when the working end is taken from the far end from the grip.
   [Fact]
   public void Every_reference_member_passes_the_gates_it_calibrates() {
     IReadOnlyList<ViewGroup> groups = ViewGates.Groups(World, "game");
