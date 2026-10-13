@@ -960,6 +960,41 @@ public sealed class ExBlockDef : IExDef {
     return this;
   }
 
+  /// <summary>Declares a clip action in <c>attributes.clipActions</c>, appending to the actions
+  /// already declared.</summary>
+  /// <param name="action">The action; see <see cref="Blocks.ClipAction"/>.</param>
+  /// <returns>This definition.</returns>
+  public ExBlockDef ClipAction(ClipAction action) {
+    JObject attributes = Nested("attributes");
+    if (attributes["clipActions"] is not JArray actions) {
+      actions = new JArray();
+      attributes["clipActions"] = actions;
+    }
+    actions.Add(action.ToJson());
+    return this;
+  }
+
+  /// <summary>Declares a clip action for the variants matching <paramref name="wildcard"/>, in
+  /// <c>attributesByType.{wildcard}.clipActions</c>, appending to the actions already declared for
+  /// that wildcard. The game gives a variant the first wildcard it matches, so a variant takes the
+  /// actions of that wildcard alone.</summary>
+  /// <param name="wildcard">A variant-code wildcard, such as <c>*-slow</c>.</param>
+  /// <param name="action">The action; see <see cref="Blocks.ClipAction"/>.</param>
+  /// <returns>This definition.</returns>
+  public ExBlockDef ClipActionByType(string wildcard, ClipAction action) {
+    JObject byType = Nested("attributesByType");
+    if (byType[wildcard] is not JObject attributes) {
+      attributes = new JObject();
+      byType[wildcard] = attributes;
+    }
+    if (attributes["clipActions"] is not JArray actions) {
+      actions = new JArray();
+      attributes["clipActions"] = actions;
+    }
+    actions.Add(action.ToJson());
+    return this;
+  }
+
   /// <summary>Adds a <c>{wildcard: value}</c> entry to a top-level <c>{key}ByType</c> map
   /// (accumulates).</summary>
   /// <param name="key">The map's key, ending in <c>ByType</c> (any case), e.g.

@@ -506,6 +506,11 @@ public class ExItemDefTests {
       "megablocks are blocks; items cannot be part of one",
     ["MultiblockLayout(Action<MultiblockLayoutBuilder>)"] =
       "megablocks are blocks; items cannot be part of one",
+    // Clip actions drive a block entity's animator.
+    ["ClipAction(ClipAction)"] =
+      "clip actions drive a block entity's animator; items have none",
+    ["ClipActionByType(String,ClipAction)"] =
+      "clip actions drive a block entity's animator; items have none",
     // Emits { translation, rotation, scale }, no origin.
     ["TpHandTransform(Double,Double,Double,Double,Double,Double,Double)"] =
       "the no-origin shape; the item builder has no seven-double overload",
