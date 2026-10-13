@@ -8,6 +8,7 @@ using ExpandedLib.Helpers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Testing;
 
@@ -65,9 +66,10 @@ internal static class ViewBands {
       ["G13"] = 0.02,
     };
 
-  /// <summary>The farthest in voxels the grip may lie from a drawn element, and for bulk items.</summary>
+  /// <summary>The farthest a grip may lie from a drawn element, in voxels.</summary>
   internal const double GripLimit = 1;
 
+  /// <summary>The farthest a bulk item's grip may lie from a drawn element, in voxels.</summary>
   internal const double BulkGripLimit = 2.1;
 
   private const double Share = 0.1;
@@ -92,7 +94,7 @@ internal static class ViewBands {
 
   private static readonly string[] BlockGates = [.. ItemGates, "G13"];
 
-  /// <summary>The reference sets, spears first so the hand gates of longtools see only them.</summary>
+  /// <summary>The reference sets. The spear set alone calibrates the longtool hand gates G7, G10 and G10fp.</summary>
   internal static readonly IReadOnlyList<ReferenceSet> Sets =
   [
     new(
@@ -151,61 +153,69 @@ internal static class ViewBands {
     new(
       ItemViewKind.Cube,
       [
-        "rock-",
-        "soil-",
-        "planks-",
-        "stonebricks-",
-        "cobblestone-",
-        "log-",
-        "hay-",
-        "sand-",
-        "gravel-",
-        "mudbrick-",
-        "devastatedsoil-",
+        "devastatedsoil-0",
+        "hay-normal-ud",
+        "mudbrick-light",
+        "soil-verylow-none",
+        "cobblestone-andesite",
+        "gravel-andesite",
+        "rock-andesite",
+        "sand-andesite",
+        "stonebricks-suevite",
+        "log-grown-aged-ud",
+        "planks-aged-ns",
       ],
-      true,
+      false,
       false,
       BlockGates
     ),
     new(
       ItemViewKind.Partial,
       [
-        "brickslabs-",
-        "mudbrickslab-",
-        "clayshinglelabs-",
-        "tileslab-",
-        "chute-straight-",
-        "chute-elbow-",
-        "chute-t-",
-        "chute-cross-",
-        "woodenaxle-",
-        "transmission-",
+        "brickslabs-fire-north-free",
+        "clayshinglelabs-black-north-free",
+        "tileslab-2x2-center-blue-north-free",
+        "woodenaxle-ud",
+        "transmission-ns",
+        "chute-cross-ns",
+        "chute-straight-ns",
+        "chute-t-ns",
+        "chute-elbow-up-north",
+        "mudbrickslab-dark-north-free",
+        "tileslab-2x2-plain-travertine-north-free",
       ],
-      true,
+      false,
       false,
       BlockGates
     ),
     new(
       ItemViewKind.Multicell,
       [
-        "door-plank-",
-        "irondoor-",
-        "door-crude",
+        "doorkiln-tier1",
+        "door-devastation-towergate",
+        "door-plank-north-down-closed-left",
+        "irondoor-north-down-closed-left",
+        "largegear3",
+        "pulverizerframe-north",
         "metaldoor-barred-iron",
         "door-ruined-barred1",
-        "door-devastation-towergate",
-        "doorkiln-",
-        "bed-wood-",
-        "trunk-",
-        "largegear3",
-        "pulverizerframe-",
-        "verticalboiler-",
+        "verticalboiler-north",
+        "bed-wood-head-north",
+        "trunk-north",
+        "door-crude",
       ],
-      true,
+      false,
       false,
       BlockGates
     ),
   ];
+
+  /// <summary>The working end of the vanilla spears that <see cref="Lay.Of"/>'s count rule gets wrong, by shape base; each is <c>+x</c>.</summary>
+  internal static readonly IReadOnlyDictionary<string, string> TipByShape =
+    new Dictionary<string, string> {
+      ["game:item/tool/spear/ruined/boar"] = "+x",
+      ["game:item/tool/spear/ruined/ranseur"] = "+x",
+    };
 
   /// <summary>The reference item each of the view rule's references copies from, by name.</summary>
   private static readonly (string Name, string Code)[] RuleItems =
@@ -303,7 +313,7 @@ internal static class ViewBands {
           $"the {set.Kind.ToString().ToLowerInvariant()} reference set names {entry}, which no {set.Kind.ToString().ToLowerInvariant()} collectible matches"
         );
       foreach (var hit in set.First ? hits.Take(1) : hits)
-        if (found.All(f => f.Group != hit.g))
+        if (!prefix || found.All(f => f.Group != hit.g))
           found.Add(hit);
     }
     return found;
@@ -341,7 +351,9 @@ internal static class ViewBands {
           gate,
           [
             .. members
-              .Select(m => (SetValue(Of(m.Group), gate), Short(m.Code)))
+              .Select(m =>
+                (ViewGates.ValueOf(Of(m.Group), gate), Short(m.Code))
+              )
               .Where(v => !double.IsNaN(v.Item1)),
           ]
         );
@@ -384,8 +396,24 @@ internal static class ViewBands {
         ["guiRotationY"] = Round(gui.Rotation.Y),
         ["guiRotationZ"] = Round(gui.Rotation.Z),
       };
+      (double[] grip, double gap) = ViewGates.GripOf(world, group);
+      rules[name]["gripX"] = Round(grip[0]);
+      rules[name]["gripY"] = Round(grip[1]);
+      rules[name]["gripZ"] = Round(grip[2]);
+      rules[name]["offDrawn"] = Round(gap);
+      rules[name]["thickness"] = Round(
+        Lay.Of(group.Box, false, null).Extent(2)
+      );
       if (name == "spear") {
         rules[name]["slotScale"] = Round(gui.ScaleXYZ.X);
+        Lay lay = Lay.Of(group.Box, true, null);
+        rules[name]["slotOrigin"] = Round(
+          (
+            lay.Coords(
+              new Vec3d(16 * gui.Origin.X, 16 * gui.Origin.Y, 16 * gui.Origin.Z)
+            )[0] - lay.Lo[0]
+          ) / lay.Extent(0)
+        );
         rules[name]["length"] = Round(
           new[]
           {
@@ -407,7 +435,9 @@ internal static class ViewBands {
         .SelectMany(s => Resolve(world, groups, s))
         .ToList();
       double MedianOf(string gate) =>
-        Median([.. members.Select(m => SetValue(Of(m.Group), gate))]);
+        UpperMiddle([
+          .. members.Select(m => ViewGates.ValueOf(Of(m.Group), gate)),
+        ]);
       rules[kind.ToString().ToLowerInvariant()] = new SortedDictionary<
         string,
         double
@@ -426,12 +456,6 @@ internal static class ViewBands {
       carriers,
       rules
     );
-  }
-
-  // The value a reference group adds to a gate's band; the axis gates take the angle between lines, the lesser of the angle and its supplement.
-  private static double SetValue(GroupMetrics metrics, string gate) {
-    double v = ViewGates.ValueOf(metrics, gate);
-    return gate is "G10" or "G10fp" ? Math.Min(v, 180 - v) : v;
   }
 
   /// <summary>The text of view-bands.json for <paramref name="data"/>: indented, keys in ordinal order, line feeds.</summary>
@@ -505,10 +529,10 @@ internal static class ViewBands {
     return lines;
   }
 
-  private static double Median(double[] values) {
+  // The upper middle of the ascending values, as sweep_blocks.py takes its median.
+  private static double UpperMiddle(double[] values) {
     double[] sorted = [.. values.Order()];
-    int n = sorted.Length;
-    return n % 2 == 1 ? sorted[n / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+    return sorted[sorted.Length / 2];
   }
 
   private static string Short(string code) => code[(code.IndexOf(':') + 1)..];

@@ -39,7 +39,7 @@ internal sealed record GroundMetrics(double Rest, double Size);
 /// <summary>G7, G8, G10 and G13 of a group in a hand.</summary>
 /// <param name="Size">The hand scale; a longtool's held length over the seraph's height; a block's longest held side, in blocks.</param>
 /// <param name="Grip">The distance from the point of the shape that lands on the hand to the nearest drawn element's box, in voxels; null for a block.</param>
-/// <param name="Axis">The unit vector of the box's longest axis in the pose's frame, along the box's own axis.</param>
+/// <param name="Axis">The unit vector of the working end's direction in the pose's frame: the longest axis of <c>Lay.Of</c>, oriented to the working end.</param>
 /// <param name="Centre">The distance from the posed box centre to where the block defaults put a cube's centre, in blocks; null for an item.</param>
 internal sealed record HandMetrics(
   double Size,
@@ -230,15 +230,10 @@ internal static class ViewGates {
       group.Box.To.Z - group.Box.From.Z,
     ];
     int longest = Array.IndexOf(side, side.Max());
-    Vec3d axis = m.Apply(group.Box.Axes[longest]) - m.Apply(new Vec3d());
+    Vec3d axis =
+      m.Apply(Lay.Of(group.Box, true, TipOf(c)).Axes[0]) - m.Apply(new Vec3d());
     axis /= axis.Length();
     double? grip = group.IsBlock ? null : GripGap(group.Box, tf, pose);
-    if (grip != null) {
-      double[] at = GripPoint(tf, pose);
-      double[] from = [group.Box.From.X, group.Box.From.Y, group.Box.From.Z];
-      if (at[longest] - from[longest] > side[longest] / 2)
-        axis = new Vec3d() - axis;
-    }
 
     double scale = tf.ScaleXYZ.X;
     double size =
@@ -262,8 +257,8 @@ internal static class ViewGates {
     return new HandMetrics(size, grip, axis, null);
   }
 
-  /// <summary>G10 of <paramref name="group"/>: the angle between its held long axis and the iron spear's, each pointing
-  /// from the grip toward the box end farther from it.</summary>
+  /// <summary>G10 of <paramref name="group"/>: the angle between the held directions of its working end and of the iron
+  /// spear's.</summary>
   /// <returns>Degrees, 0 to 180.</returns>
   internal static double AxisDegrees(
     TestWorld world,
@@ -390,6 +385,41 @@ internal static class ViewGates {
   private static double Dot(Vec3d a, Vec3d b) =>
     a.X * b.X + a.Y * b.Y + a.Z * b.Z;
 
+  /// <summary>The solved third-person grip of <paramref name="group"/>: the point of its shape that lands on the hand, as
+  /// fractions of its lay's extents, and its gap to the nearest drawn element.</summary>
+  /// <param name="world">A world from <see cref="TestWorld.LoadAsGame"/>.</param>
+  /// <param name="group">The group to solve.</param>
+  /// <returns>Three fractions, longest lay axis first, in 0 to 1 across the box; the gap in voxels.</returns>
+  internal static (double[] Fractions, double Gap) GripOf(
+    TestWorld world,
+    ViewGroup group
+  ) {
+    CollectibleObject c = group.Representative;
+    ModelTransform tf = ViewMatrices.Transform(c, ViewTarget.Hand);
+    SeraphPose pose = SeraphPose.At(world.Api, HeldClip(world, HeldCode(c)));
+    double[] at = GripPoint(tf, pose);
+    Lay lay = Lay.Of(group.Box, true, TipOf(c));
+    double[] u = lay.Coords(new Vec3d(at[0], at[1], at[2]));
+    return (
+      [
+        .. Enumerable
+          .Range(0, 3)
+          .Select(k => (u[k] - lay.Lo[k]) / lay.Extent(k)),
+      ],
+      GripGap(group.Box, tf, pose)
+    );
+  }
+
+  /// <summary>The working end a group's longest axis points at: the collectible's declared <c>itemViews.tip</c>, else
+  /// the vanilla shape's entry in <see cref="ViewBands.TipByShape"/>, else null, which leaves the end to the count rule.</summary>
+  private static string? TipOf(CollectibleObject c) =>
+    c.Attributes?["itemViews"]?["tip"]?.AsString()
+    ?? (
+      c is Item { Shape.Base: { } shapeBase }
+        ? ViewBands.TipByShape.GetValueOrDefault(shapeBase.ToString())
+        : null
+    );
+
   private static double GripGap(
     CollectibleViews.ViewBox box,
     ModelTransform tf,
@@ -402,7 +432,7 @@ internal static class ViewGates {
   }
 
   // The shape point that lands on the hand solves hand(p) = anchor origin, so the anchor and the pose drop out.
-  private static double[] GripPoint(ModelTransform tf, SeraphPose pose) {
+  internal static double[] GripPoint(ModelTransform tf, SeraphPose pose) {
     AttachmentPoint ap = pose.Attachment;
     Mat4 turn = Mat4.Identity.RotateXYZ(
       ap.RotationX + tf.Rotation.X,
