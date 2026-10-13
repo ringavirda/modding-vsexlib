@@ -267,9 +267,12 @@ internal static class ViewSweep {
   private static string Name(ItemViewKind kind) =>
     kind.ToString().ToLowerInvariant();
 
+  // A variant group with no code loads its code from a properties file, and a group that loads from properties has states
+  // the file does not list: both are counted, and the latter is a wildcard.
   private sealed record TypeFile(
     string Path,
-    Dictionary<string, string[]> States
+    Dictionary<string, string[]> States,
+    int Loaded
   );
 
   private static Dictionary<string, List<TypeFile>> Sources() {
@@ -295,19 +298,43 @@ internal static class ViewSweep {
             string key = category.Code + "/" + code;
             if (!sources.TryGetValue(key, out List<TypeFile>? files))
               sources[key] = files = [];
-            files.Add(new TypeFile(asset.Location.Path, VariantStates(file)));
+            files.Add(
+              new TypeFile(
+                asset.Location.Path,
+                VariantStates(file, out int loaded),
+                loaded
+              )
+            );
           } catch (Newtonsoft.Json.JsonException) { }
         }
     return sources;
   }
 
-  private static Dictionary<string, string[]> VariantStates(JObject file) {
+  // A later group of a code that an earlier one has adds its states to it.
+  private static Dictionary<string, string[]> VariantStates(
+    JObject file,
+    out int loaded
+  ) {
     var states = new Dictionary<string, string[]>();
-    foreach (JToken group in file["variantgroups"] as JArray ?? [])
-      states[(string?)group["code"] ?? ""] =
-      [
-        .. (group["states"] as JArray ?? []).Select(s => (string?)s ?? ""),
-      ];
+    loaded = 0;
+    foreach (JToken group in file["variantgroups"] as JArray ?? []) {
+      if ((string?)group["code"] is not { } code) {
+        loaded++;
+        continue;
+      }
+      bool wildcard =
+        group["loadFromProperties"] != null
+        || (
+          states.TryGetValue(code, out string[]? before) && before.Length == 0
+        );
+      states[code] = wildcard
+        ? []
+        :
+        [
+          .. states.GetValueOrDefault(code) ?? [],
+          .. (group["states"] as JArray ?? []).Select(s => (string?)s ?? ""),
+        ];
+    }
     return states;
   }
 
@@ -336,9 +363,9 @@ internal static class ViewSweep {
   }
 
   private static bool Holds(TypeFile file, CollectibleObject c) =>
-    file.States.Count == c.Variant.Count
-    && c.Variant.All(v =>
-      file.States.TryGetValue(v.Key, out string[]? states)
-      && (states.Length == 0 || states.Contains(v.Value))
+    c.Variant.Count - file.States.Count == file.Loaded
+    && file.States.All(g =>
+      c.Variant.TryGetValue(g.Key, out string? value)
+      && (g.Value.Length == 0 || g.Value.Contains(value))
     );
 }

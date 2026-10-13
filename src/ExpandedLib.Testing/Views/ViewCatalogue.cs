@@ -150,9 +150,13 @@ internal sealed class ViewCatalogue {
 
   /// <summary>The G12 failure of each row whose code no collectible of <paramref name="world"/> has.</summary>
   /// <param name="world">A world from <see cref="TestWorld.LoadAsGame"/>.</param>
+  /// <param name="domain">The domain whose rows are checked; null checks every row.</param>
   /// <returns>One finding per unregistered row, in page and line order, whose message names the row's page and line;
   /// empty when every row names a collectible.</returns>
-  internal IReadOnlyList<ViewFinding> Unregistered(TestWorld world) {
+  internal IReadOnlyList<ViewFinding> Unregistered(
+    TestWorld world,
+    string? domain = null
+  ) {
     string[] codes =
     [
       .. world
@@ -161,7 +165,12 @@ internal sealed class ViewCatalogue {
     ];
     return
     [
-      .. Rows.Where(r => !codes.Any(r.Matches))
+      .. Rows.Where(r =>
+          (
+            domain == null
+            || r.Code.StartsWith(domain + ":", StringComparison.Ordinal)
+          ) && !codes.Any(r.Matches)
+        )
         .Select(r =>
         {
           string key = $"{r.Code} [catalogue] G12 unregistered";

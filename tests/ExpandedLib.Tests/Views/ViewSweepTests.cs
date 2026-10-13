@@ -1,4 +1,4 @@
-// The sweep reads the game's survival type files and art, which only the current game version ships.
+// The sweep covers the current game version; 1.20 ships no blocktypes/aquatic/coral-brain.json, which the source column test names.
 #if GAME_GE_1_22
 using System;
 using System.IO;
@@ -138,7 +138,7 @@ public class ViewSweepTests
   }
 
   // Fails when each source file's first variant is not the one with the lowest id, and when a file that shares its code
-  // with another takes the other's variants.
+  // with another takes the other's variants, whether it names its groups, loads them from properties or adds to one.
   [Fact]
   [Trait("Speed", "Slow")]
   public void Each_source_file_has_one_first_variant_the_lowest_id()
@@ -162,6 +162,31 @@ public class ViewSweepTests
       rows.Where(r => r.Source != "").GroupBy(r => r.Source),
       g => Assert.Equal(g.Min(IdOf), IdOf(g.Single(r => r.First)))
     );
+    foreach (
+      (string code, string source) in new[]
+      {
+        ("game:door-2x2gate-pine", "blocktypes/wood/woodtyped/door.json"),
+        ("game:door-1x2heavy-aged", "blocktypes/metal/door.json"),
+        ("game:door-plank-east-up-opened-right", "blocktypes/legacy/door.json"),
+        (
+          "game:brickstairs-eight-black-down-east-free",
+          "blocktypes/clay/brickstairscourse.json"
+        ),
+        (
+          "game:brickstairs-fire-down-east-free",
+          "blocktypes/clay/brickstairs.json"
+        ),
+        ("game:mushroom-commonmorel-normal", "blocktypes/plant/mushroom.json"),
+        (
+          "game:mushroom-beardedtooth-harvested-north",
+          "blocktypes/plant/mushroom-side.json"
+        ),
+      }
+    )
+      Assert.Equal(
+        source,
+        rows.Single(r => r.Type == "block" && r.Code == code).Source
+      );
     Assert.Equal(
       "blocktypes/aquatic/coral-brain.json",
       rows.Single(r =>

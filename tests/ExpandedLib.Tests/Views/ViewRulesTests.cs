@@ -114,6 +114,17 @@ public class ViewRulesTests {
 
     Assert.Equal(["G9", "G9fp"], Failing(sunk));
     Assert.True(ViewGates.HeldFloor(World, sunk) < -1);
+    Assert.Equal(
+      -ViewGates.HeldFloor(World, sunk),
+      double.Parse(
+        ViewGates
+          .Rules(World, sunk)
+          .First(r => r.Gate == "G9")
+          .Detail.Split(' ')[0],
+        System.Globalization.CultureInfo.InvariantCulture
+      ),
+      0.01
+    );
 
     ViewGroup hay = GroupOf("game:hay-normal-ud");
     Assert.True(ViewGates.HeldFloor(World, hay, true) >= 0);
@@ -247,18 +258,21 @@ public class ViewRulesTests {
       "viewsfixture"
     )!;
 
-  // Fails when G12's comparison is inverted: the sheet drawn 9 x 1 x 9 then fails its own row and passes a row of
-  // 1 x 1 x 10. The fixture's uprightsheet stands in for rivetrod.
+  // Fails when G12's comparison is inverted: the rivetrod drawn 1 x 1 x 40 then passes a row of 1 x 1 x 10 and the
+  // uprightsheet fails its own row.
   [Fact]
   public void A_child_segment_on_rivetrod_fails() {
-    ViewGroup sheet = Sheet;
+    ViewGroup rod = ViewGates
+      .Groups(World, "viewsfixture")
+      .Single(g => g.Codes.Contains("viewsfixture:rivetrod"));
 
-    Assert.Equal(0, Catalogue("sized").Reading(sheet)!.Value, 0.001);
-    GateReading wrong = Catalogue("wrong").Reading(sheet)!;
+    GateReading wrong = Catalogue("wrong").Reading(rod)!;
 
     Assert.False(wrong.Pass);
-    Assert.Equal(8, wrong.Value, 0.001);
+    Assert.Equal(30, wrong.Value, 0.001);
+    Assert.Contains("1 x 1 x 40 against 1 x 1 x 10 at", wrong.Detail);
     Assert.Contains("stock.md:3", wrong.Detail);
+    Assert.Equal(0, Catalogue("sized").Reading(Sheet)!.Value, 0.001);
     Assert.Null(Catalogue("sized").Reading(GroupOf("game:metalplate-iron")));
   }
 
@@ -301,4 +315,38 @@ public class ViewRulesTests {
       finding.Message
     );
   }
+
+#if GAME_GE_1_22
+  // Fails when Findings leaves out the unregistered rows: phantom then has no finding. A domain with no collectibles has
+  // none of the pages' rows, so it fails when the rows are not cut to the domain.
+  [Fact]
+  public void Findings_carry_the_unregistered_rows_of_the_domain()
+  {
+    ViewCatalogue sized = Catalogue("sized");
+
+    ViewFinding phantom = Assert.Single(
+      ViewGates.Findings(World, "viewsfixture", sized),
+      f => f.Key.EndsWith("G12 unregistered")
+    );
+
+    Assert.Equal(
+      "viewsfixture:phantom [catalogue] G12 unregistered",
+      phantom.Key
+    );
+    Assert.Contains("stock.md:9", phantom.Message);
+    Assert.Empty(ViewGates.Findings(World, "nodomain", sized));
+  }
+
+  // Fails when Findings leaves out the rules: the rivetrod then has no G12 finding.
+  [Fact]
+  public void Findings_carry_the_catalogue_rule_of_each_group()
+  {
+    Assert.Contains(
+      ViewGates.Findings(World, "viewsfixture", Catalogue("wrong")),
+      f =>
+        f.Key.StartsWith("viewsfixture:rivetrod")
+        && f.Key.EndsWith("G12 catalogue")
+    );
+  }
+#endif
 }

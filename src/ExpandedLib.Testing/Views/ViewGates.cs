@@ -775,7 +775,7 @@ internal static class ViewGates {
       double.PositiveInfinity,
       null,
       low >= 0,
-      $"{Fmt(low)} below the floor"
+      $"{Fmt(-low)} below the floor"
     );
   }
 
@@ -897,6 +897,34 @@ internal static class ViewGates {
     ViewBandData bands,
     ViewGroup group,
     GroupMetrics metrics
+  ) => Failures(group, Readings(bands, group, metrics));
+
+  /// <summary>Every finding of the collectibles of <paramref name="domain"/>: the banded gates and the rules of each group,
+  /// then the catalogue rows of the domain that no collectible has.</summary>
+  /// <param name="world">A world from <see cref="TestWorld.LoadAsGame"/>.</param>
+  /// <param name="domain">The domain of the collectible codes.</param>
+  /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
+  /// <returns>The findings in group order, then one G12 finding per unregistered row of <paramref name="domain"/> in page
+  /// and line order, whose message names the row's page and line.</returns>
+  internal static IReadOnlyList<ViewFinding> Findings(
+    TestWorld world,
+    string domain,
+    ViewCatalogue? catalogue = null
+  ) {
+    ViewBandData bands = ViewBands.Embedded;
+    var findings = new List<ViewFinding>();
+    foreach (ViewGroup group in Groups(world, domain)) {
+      findings.AddRange(Judge(bands, group, Measure(world, group)));
+      findings.AddRange(Failures(group, Rules(world, group, catalogue)));
+    }
+    if (catalogue != null)
+      findings.AddRange(catalogue.Unregistered(world, domain));
+    return findings;
+  }
+
+  private static IReadOnlyList<ViewFinding> Failures(
+    ViewGroup group,
+    IEnumerable<GateReading> readings
   ) {
     string kind = group.Kind.ToString().ToLowerInvariant();
     string view = group.Codes[0];
@@ -906,7 +934,7 @@ internal static class ViewGates {
         : "";
     return
     [
-      .. Readings(bands, group, metrics)
+      .. readings
         .Where(r => !r.Pass)
         .Select(r =>
         {

@@ -1,3 +1,3 @@
 | Item | Section x length |
 |---|---|
-| `uprightsheet` | 1 x 1 x 10 |
+| `rivetrod` | 1 x 1 x 10 |
