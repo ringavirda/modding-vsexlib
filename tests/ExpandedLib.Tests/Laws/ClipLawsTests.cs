@@ -50,6 +50,9 @@ public class ClipLawsTests(ITestOutputHelper output)
     world.RegisterClass("test-quiet", typeof(QuietDoor));
     world.RegisterClass("test-jump", typeof(JumpLoadDoor));
     world.RegisterClass("test-half", typeof(HalfDoor));
+    world.RegisterClass("test-short", typeof(ShortSlider));
+    world.RegisterClass("test-mid", typeof(MidDoor));
+    world.RegisterClass("test-midfast", typeof(MidFastDoor));
     world.RegisterClass("test-key", typeof(KeyDoor));
     world.RegisterClass("test-throws", typeof(ThrowingDoor));
     world.RegisterClass("test-unbuilt", typeof(UnbuiltDoor));
@@ -266,6 +269,61 @@ public class ClipLawsTests(ITestOutputHelper output)
     Assert.Contains(
       "cliptrace:door open | forward ends away from the clip's end pose | cliptrace:halfdoor",
       result[ClipLaws.ActionName].Findings
+    );
+  }
+
+  // Fails when the arrival tolerance on a translation is 0.05 block instead of 0.05 voxel.
+  [Fact]
+  [PlantedDefect(typeof(ClipLaws), nameof(ClipLaws.Run))]
+  public void A_part_half_a_voxel_short_of_its_end_pose_is_not_arrived()
+  {
+    BlockLaws.Result result = Run(Leaf("shortslider", "test-short", "slider"));
+
+    Assert.Contains(
+      "cliptrace:slider open | forward ends away from the clip's end pose | cliptrace:shortslider",
+      result[ClipLaws.ActionName].Findings
+    );
+  }
+
+  // Fails when the reference pose is read after a full second of the clip's advance.
+  [Fact]
+  public void A_reference_pose_is_read_at_the_frame_asked()
+  {
+    TestWorld world = BlockLaws.Stand(
+      [Leaf("spindledoor", "test-door", "spindle")],
+      Exlib,
+      Prepare
+    );
+    world.ClientAssets("cliptrace", Fixtures);
+    Block block = world.World.Blocks.First(b => b?.Code?.Path == "spindledoor");
+    ClipReference reference = ClipReference.Load(world, block);
+
+    float[] first = reference.Pose("open", 0f, ["leaf"])["leaf"];
+    float[] quarter = reference.Pose("open", 15f, ["leaf"])["leaf"];
+
+    Assert.Equal(0f, first[1], 1e-3f);
+    Assert.Equal(720f, quarter[1], 1e-3f);
+  }
+
+  // Fails when a walk from half the clip is judged against the whole clip's seconds.
+  [Fact]
+  public void A_walk_from_half_the_clip_is_timed_by_the_part_it_travels()
+  {
+    BlockLaws.Result result = Run(Leaf("middoor", "test-mid"));
+
+    Assert.All(result.Laws, law => Assert.Empty(law.Findings));
+    Assert.Equal(2, result[ClipLaws.TimeName].Cases);
+  }
+
+  [Fact]
+  [PlantedDefect(typeof(ClipLaws), nameof(ClipLaws.Run))]
+  public void A_walk_from_half_the_clip_at_twice_the_rate_misses_its_time()
+  {
+    BlockLaws.Result result = Run(Leaf("midfast", "test-midfast"));
+
+    Assert.Equal(
+      ["cliptrace:door open | forward settles in 0.25 s against 0.5 s | cliptrace:midfast"],
+      result[ClipLaws.TimeName].Findings.Where(f => f.Contains("forward"))
     );
   }
 
@@ -988,12 +1046,15 @@ public class ClipLawsTests(ITestOutputHelper output)
 
     private float _target;
     private float _frame;
+    private bool _opened;
 
     protected HandLeaf() => Behaviors.Add(new BEBehaviorAnimatable(this));
 
     protected virtual float Speed => 1f;
 
     protected virtual float Reach => 1f;
+
+    protected virtual float Rest => 0f;
 
     protected virtual bool SnapsShut => false;
 
@@ -1012,7 +1073,7 @@ public class ClipLawsTests(ITestOutputHelper output)
       if (api.Side != EnumAppSide.Client)
         return;
       Util.InitializeAnimator(Key);
-      _target = Open ? Reach : 0f;
+      Aim();
       _frame = ShowsTheLoadAtOnce ? _target * Last : 0f;
       RegisterGameTickListener(Pose, 1);
     }
@@ -1024,7 +1085,13 @@ public class ClipLawsTests(ITestOutputHelper output)
     {
       base.FromTreeAttributes(tree, worldAccessForResolve);
       if (Api == null || FollowsTheSync)
-        _target = Open ? Reach : 0f;
+        Aim();
+    }
+
+    private void Aim()
+    {
+      _opened |= Open;
+      _target = Open ? Reach : _opened ? 0f : Rest;
     }
 
     private void Pose(float dt)
@@ -1084,6 +1151,21 @@ public class ClipLawsTests(ITestOutputHelper output)
   private sealed class HalfDoor : HandLeaf
   {
     protected override float Reach => 0.5f;
+  }
+
+  private sealed class ShortSlider : HandLeaf
+  {
+    protected override float Reach => 1f - 0.5f / 16f;
+  }
+
+  private class MidDoor : HandLeaf
+  {
+    protected override float Rest => 0.5f;
+  }
+
+  private sealed class MidFastDoor : MidDoor
+  {
+    protected override float Speed => 2f;
   }
 
   private sealed class KeyDoor : HandLeaf { }

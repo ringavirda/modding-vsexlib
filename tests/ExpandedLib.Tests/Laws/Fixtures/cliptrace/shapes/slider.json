@@ -1,0 +1,54 @@
+{
+  "textureWidth": 16,
+  "textureHeight": 16,
+  "textures": {
+    "all": "block/stone"
+  },
+  "elements": [
+    {
+      "name": "leaf",
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        1,
+        16,
+        16
+      ],
+      "faces": {}
+    }
+  ],
+  "animations": [
+    {
+      "name": "open",
+      "code": "open",
+      "quantityFrames": 31,
+      "onAnimationEnd": "Hold",
+      "onActivityStopped": "Stop",
+      "keyframes": [
+        {
+          "frame": 0,
+          "elements": {
+            "leaf": {
+              "offsetX": 0,
+              "offsetY": 0,
+              "offsetZ": 0
+            }
+          }
+        },
+        {
+          "frame": 30,
+          "elements": {
+            "leaf": {
+              "offsetX": 16,
+              "offsetY": 0,
+              "offsetZ": 0
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

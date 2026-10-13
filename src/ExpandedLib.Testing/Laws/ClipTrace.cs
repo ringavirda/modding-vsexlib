@@ -54,7 +54,8 @@ internal sealed class ClipTrace
   internal const float Dt = 1f / 60f;
 
   private const float Degrees = 0.5f;
-  private const float Voxels = 0.05f;
+  // Poses carry translations in blocks (offset / 16), so 0.05 voxel is 0.05 / 16.
+  private const float Voxels = 0.05f / 16f;
   private const int SettledSteps = 5;
   private const int MaxClicks = 64;
   private const string CacheName = "animUtil-animCache";
@@ -388,11 +389,12 @@ internal sealed class ClipTrace
           $"names the part '{ghost}', which the shape does not have"
         );
       float seconds = action.Seconds!.Value;
+      float last = reference.Last(action.Clip);
       var start =
         play && from != null
           ? reference.Pose(from.Clip, reference.Last(from.Clip), parts)
           : reference.Pose(action.Clip, 0f, parts);
-      var end = reference.Pose(action.Clip, reference.Last(action.Clip), parts);
+      var end = reference.Pose(action.Clip, last, parts);
       List<(string Part, int Channel)> moving = Moving(start, end);
       if (moving.Count == 0)
       {
@@ -427,13 +429,13 @@ internal sealed class ClipTrace
           Add(ClipLaws.ActionName, "forward plays no clip");
           return new ClipTraced(problems, forward, null, 0);
         }
-        timed += Judge("forward", forward, seconds, moving, start, end, Add);
+        timed += Judge("forward", forward, seconds, last, moving, start, end, Add);
         if (!play)
         {
           if (!Worked(step, twin, action, false, Add))
             return new ClipTraced(problems, forward, null, timed);
           reverse = Walk(twin, action, parts, start, moving, seconds);
-          timed += Judge("reverse", reverse, seconds, moving, end, start, Add);
+          timed += Judge("reverse", reverse, seconds, last, moving, end, start, Add);
         }
       }
       finally
@@ -659,6 +661,7 @@ internal sealed class ClipTrace
     string way,
     ClipWay walked,
     float seconds,
+    float last,
     List<(string Part, int Channel)> moving,
     IReadOnlyDictionary<string, float[]> from,
     IReadOnlyDictionary<string, float[]> to,
@@ -675,11 +678,17 @@ internal sealed class ClipTrace
       add(ClipLaws.ActionName, $"{way} ends away from the clip's end pose");
       return 0;
     }
+    bool forward = way == "forward";
+    ClipSample begin = walked.Samples[0];
+    ClipSample finish = walked.Samples[^1];
+    float f0 = begin.Active ? begin.Frame : forward ? 0f : last;
+    float f1 = finish.Active ? finish.Frame : forward ? last : 0f;
+    float expected = seconds * Math.Abs(f1 - f0) / last;
     float time = arrived * Dt;
-    if (Math.Abs(time - seconds) > Math.Max(0.1f * seconds, 2 * Dt))
+    if (Math.Abs(time - expected) > Math.Max(0.1f * expected, 2 * Dt))
       add(
         ClipLaws.TimeName,
-        $"{way} settles in {time:0.##} s against {seconds:0.##} s"
+        $"{way} settles in {time:0.##} s against {expected:0.##} s"
       );
     return 1;
   }
