@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using ExpandedLib.Helpers;
 using ExpandedLib.Testing;
-using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Xunit;
@@ -46,6 +45,36 @@ public class ViewMatricesTests {
     return tf;
   }
 
+  // Fails when a clip is posed at rest (its easing factor left at 0) or the anchor is read at its element centre
+  // instead of its From corner. The positions are fk.py's, in voxels.
+  [Theory]
+  [InlineData("spearidle-fp", 6.63, 16.62, -2.61)]
+  [InlineData("holdbothhandslarge", -0.01, 16.17, 5.10)]
+  public void Right_hand_at_a_clip_is_where_fk_puts_it(
+    string clip,
+    double x,
+    double y,
+    double z
+  ) {
+    Vec3d p = SeraphPose.At(World.Api, clip).ItemAnchor.Position;
+    Assert.Equal(x, p.X * 16, 0.05);
+    Assert.Equal(y, p.Y * 16, 0.05);
+    Assert.Equal(z, p.Z * 16, 0.05);
+  }
+
+  // Fails when a pose is built again per call: the same clip then gives a new object.
+  [Fact]
+  public void A_clip_is_posed_once_per_api() {
+    Assert.Same(
+      SeraphPose.At(World.Api, "spearidle"),
+      SeraphPose.At(World.Api, "spearidle")
+    );
+    Assert.NotSame(
+      SeraphPose.At(World.Api, "spearidle"),
+      SeraphPose.At(World.Api, null)
+    );
+  }
+
   // Fails when the anchor is read at its element centre instead of its From corner.
   [Fact]
   public void Right_hand_at_rest_is_where_fk_puts_it() {
@@ -70,34 +99,18 @@ public class ViewMatricesTests {
     Assert.Equal(2.34, (a - b).Length(), 0.02);
   }
 
-  // Fails when the resolver writes zero for an omitted key instead of the type default: the origin is then 0.
+  // Fails when the game's resolution of an omitted key is not the type default: the origin is then 0.
   [Fact]
   public void Omitted_transform_keys_keep_the_type_default() {
     ModelTransform expected = ModelTransform.ItemDefaultGui();
-    JObject authored = (JObject)
-      JObject.Parse(
-        File.ReadAllText(
-          Path.Combine(
-            Fixture,
-            "assets",
-            "viewsfixture",
-            "itemtypes",
-            "lonescale.json"
-          )
-        )
-      )["guiTransform"]!;
-    foreach (
-      ModelTransform gui in new[]
-      {
-        ViewMatrices.Transform(Coll("viewsfixture:lonescale"), ViewTarget.Gui),
-        ViewMatrices.Resolve(authored, expected),
-      }
-    ) {
-      Assert.Equal(expected.Translation, gui.Translation);
-      Assert.Equal(expected.Rotation, gui.Rotation);
-      Assert.Equal(expected.Origin, gui.Origin);
-      Assert.Equal(new FastVec3f(1.3f, 1.3f, 1.3f), gui.ScaleXYZ);
-    }
+    ModelTransform gui = ViewMatrices.Transform(
+      Coll("viewsfixture:lonescale"),
+      ViewTarget.Gui
+    );
+    Assert.Equal(expected.Translation, gui.Translation);
+    Assert.Equal(expected.Rotation, gui.Rotation);
+    Assert.Equal(expected.Origin, gui.Origin);
+    Assert.Equal(new FastVec3f(1.3f, 1.3f, 1.3f), gui.ScaleXYZ);
   }
 
   // Fails when a transform without keys is not the type default, or the block and item defaults swap.
@@ -111,9 +124,15 @@ public class ViewMatricesTests {
       ModelTransform.BlockDefaultGround().ScaleXYZ,
       ViewMatrices.Transform(new Block(), ViewTarget.Ground).ScaleXYZ
     );
-    Assert.Equal(
-      ModelTransform.ItemDefaultGui().Rotate,
-      ViewMatrices.Transform(new Item(), ViewTarget.Gui).Rotate
+    Assert.False(
+      ViewMatrices
+        .Transform(Coll("viewsfixture:lonescale"), ViewTarget.Gui)
+        .Rotate
+    );
+    Assert.False(
+      ViewMatrices
+        .Transform(Coll("game:metalplate-iron"), ViewTarget.Gui)
+        .Rotate
     );
   }
 

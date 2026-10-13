@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -21,9 +20,6 @@ internal static class ViewMatrices {
 
   /// <summary>The player's eye height in blocks, the pivot of the first-person pitch follow.</summary>
   internal const double EyeHeight = 1.7;
-
-  /// <summary>The first-person hands' projection, in degrees, at the game's default <c>fpHandsFoV</c>.</summary>
-  internal const double FpHandsFov = 75;
 
   /// <summary>The pitch of a level gaze, in radians; the pitch follow turns by the pitch less this.</summary>
   internal const double LevelPitch = Math.PI;
@@ -55,35 +51,6 @@ internal static class ViewMatrices {
       (false, ViewTarget.Hand) => ModelTransform.ItemDefaultTp(),
       _ => ModelTransform.ItemDefaultGround(),
     };
-
-  /// <summary>The transform an itemtype's JSON describes: every key it names, and the type default for the keys it
-  /// omits (<c>translation</c>, <c>rotation</c>, <c>origin</c>, <c>scale</c> or <c>scaleXyz</c>, <c>rotate</c>).</summary>
-  /// <param name="authored">The JSON object of the transform; null when the itemtype has none.</param>
-  /// <param name="defaults">The type default; it is not changed.</param>
-  internal static ModelTransform Resolve(
-    JObject? authored,
-    ModelTransform defaults
-  ) {
-    ModelTransform r = defaults.Clone();
-    if (authored == null)
-      return r;
-    if (authored["translation"] is JObject t)
-      r.Translation = Vec(t);
-    if (authored["rotation"] is JObject rot)
-      r.Rotation = Vec(rot);
-    if (authored["origin"] is JObject o)
-      r.Origin = Vec(o);
-    if (authored["scale"] is JValue s)
-      r.Scale = (float)s;
-    if (authored["scaleXyz"] is JObject xyz)
-      r.ScaleXYZ = Vec(xyz);
-    if (authored["rotate"] is JValue rotate)
-      r.Rotate = (bool)rotate;
-    return r;
-  }
-
-  private static FastVec3f Vec(JObject o) =>
-    new((float)(o["x"] ?? 0), (float)(o["y"] ?? 0), (float)(o["z"] ?? 0));
 
   /// <summary>The matrix that takes a mesh point to the inventory slot, in pixels with y down, from the slot's
   /// centre; an item sits 3 px left and 1 px above the centre, a block does not and turns 180 degrees more about x.</summary>

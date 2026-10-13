@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Vintagestory.API.Common;
 
 namespace ExpandedLib.Testing;
@@ -14,6 +15,11 @@ internal sealed class SeraphPose {
   // in one call and advances the clip by 3e-5 of a frame.
   private const float FrameStep = 1e-6f;
   private const float FullWeightSpeed = 1e9f;
+
+  private static readonly ConditionalWeakTable<
+    ICoreAPI,
+    Dictionary<string, SeraphPose>
+  > Poses = new();
 
   private SeraphPose(Mat4 itemAnchor, AttachmentPoint attachment) {
     ItemAnchor = itemAnchor;
@@ -45,13 +51,23 @@ internal sealed class SeraphPose {
     return shape;
   }
 
-  /// <summary>Poses the seraph with the game's own animator.</summary>
+  /// <summary>Poses the seraph with the game's own animator; a pose is built once per api and clip.</summary>
   /// <param name="api">An api whose assets hold the game's shapes.</param>
   /// <param name="clip">A clip code of the shape, such as <c>spearidle</c> or <c>spearidle-fp</c>, at its frame 0;
   /// null for the rest pose.</param>
   /// <exception cref="InvalidOperationException">The shape does not load.</exception>
   /// <exception cref="ArgumentException">The shape has no clip <paramref name="clip"/>.</exception>
   internal static SeraphPose At(ICoreAPI api, string? clip) {
+    Dictionary<string, SeraphPose> cache = Poses.GetOrCreateValue(api);
+    lock (cache) {
+      string key = clip ?? "";
+      if (!cache.TryGetValue(key, out SeraphPose? pose))
+        cache[key] = pose = Build(api, clip);
+      return pose;
+    }
+  }
+
+  private static SeraphPose Build(ICoreAPI api, string? clip) {
     Shape shape = Load(api);
     if (clip != null && shape.Animations.All(a => a.Code != clip))
       throw new ArgumentException(
