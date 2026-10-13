@@ -1,0 +1,10 @@
+{
+  "setup": "scenario-player-craft",
+  "description": "The scenario player crafts the plated straight pipe in its own crafting grid and finds two of it in its hotbar.",
+  "mods": [],
+  "steps": [
+    { "craft": { "output": "platedpipes:pipe-plated-straight-ns" } }
+  ],
+  "seconds": 6,
+  "record": {}
+}

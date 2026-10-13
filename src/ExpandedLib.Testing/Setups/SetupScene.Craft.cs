@@ -39,7 +39,10 @@ public sealed partial class SetupScene
     else
       orders = HandGrid.Orders(World.World);
 
-    CraftOrder[] makes = [.. orders.Where(o => Makes(o, wanted, recipe))];
+    CraftOrder[] makes =
+    [
+      .. orders.Where(o => CraftBills.Makes(o, wanted, recipe)),
+    ];
     if (makes.Length == 0)
       throw Fail(
         step.Path,
@@ -68,23 +71,19 @@ public sealed partial class SetupScene
     Stow(made);
   }
 
-  private static bool Makes(
-    CraftOrder order,
-    AssetLocation wanted,
-    string? recipe
-  ) =>
-    order.Product.Collectible.Code.Equals(wanted)
-    && (recipe == null || order.Recipe == recipe);
-
   private string StationsMaking(AssetLocation wanted, string? recipe)
   {
     var names = new List<string>();
-    if (HandGrid.Orders(World.World).Any(o => Makes(o, wanted, recipe)))
+    if (
+      HandGrid.Orders(World.World).Any(o => CraftBills.Makes(o, wanted, recipe))
+    )
       names.Add("the hand grid");
     foreach ((string id, SetupPlacement placed) in _placed)
       if (
         World.GetBlockEntity(placed.Cell) is ICraftStation craft
-        && craft.Orders(World.World).Any(o => Makes(o, wanted, recipe))
+        && craft
+          .Orders(World.World)
+          .Any(o => CraftBills.Makes(o, wanted, recipe))
       )
         names.Add($"{id} ({World.GetBlock(placed.Cell).Code})");
     return names.Count == 0 ? "no loaded station" : string.Join(", ", names);
@@ -178,38 +177,14 @@ public sealed partial class SetupScene
 
   private ItemStack Laid(CraftInput input, JObject? with, string where)
   {
-    CraftingRecipeIngredient ingredient = input.Ingredient;
-    ItemStack stack;
-    if (with?[input.Name] is JValue { Value: string picked })
+    try
     {
-      var code = new AssetLocation(picked);
-      CollectibleObject chosen =
-        (CollectibleObject?)World.World.GetItem(code)
-        ?? World.World.GetBlock(code)
-        ?? throw Fail(
-          where,
-          $"with {input.Name}: \"{picked}\" is not registered by the load."
-        );
-      stack = new ItemStack(chosen, ingredient.Quantity);
-      if (!ingredient.SatisfiesAsIngredient(stack))
-        throw Fail(
-          where,
-          $"with {input.Name}: {picked} is not an ingredient the slot takes."
-        );
-      return stack;
+      return CraftBills.Laid(World.World, input, with);
     }
-    if (ingredient.MatchingType == EnumRecipeMatchType.Exact)
+    catch (InvalidOperationException e)
     {
-      stack = ingredient.ResolvedItemStack!.Clone();
-      stack.StackSize = ingredient.Quantity;
-      return stack;
+      throw Fail(where, e.Message);
     }
-    IEnumerable<CollectibleObject> pool =
-      ingredient.Type == EnumItemClass.Item
-        ? World.World.Items.Where(i => i?.Code != null)
-        : World.World.Blocks.Where(b => b?.Code != null && b.Id != 0);
-    return pool.Select(c => new ItemStack(c, ingredient.Quantity))
-      .First(s => ingredient.SatisfiesAsIngredient(s));
   }
 
   private void Stow(IEnumerable<ItemStack> made)

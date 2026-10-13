@@ -141,7 +141,7 @@ internal sealed class WindowStep : ScenarioStep {
     return $"{moved} x {stack.Collectible.Code}";
   }
 
-  private static int PutOnce(ServerPlayer who, BlockEntity be, int slot) {
+  internal static int PutOnce(ServerPlayer who, BlockEntity be, int slot) {
     ItemSlot hand = who.InventoryManager.ActiveHotbarSlot;
     ItemSlot cursor = who.InventoryManager.MouseItemSlot;
     ItemStack held = hand.Itemstack!;
@@ -167,7 +167,7 @@ internal sealed class WindowStep : ScenarioStep {
         Suspect.Scenario
       );
 
-  private static string Take(ServerPlayer who, BlockEntity be, int slot) {
+  internal static string Take(ServerPlayer who, BlockEntity be, int slot) {
     ItemSlot hand = who.InventoryManager.ActiveHotbarSlot;
     ItemSlot cursor = who.InventoryManager.MouseItemSlot;
     if (!hand.Empty)
@@ -181,7 +181,7 @@ internal sealed class WindowStep : ScenarioStep {
     return $"took {taken.StackSize} x {taken.Collectible.Code}";
   }
 
-  private static void Click(ServerPlayer who, BlockEntity be, int slot) {
+  internal static void Click(ServerPlayer who, BlockEntity be, int slot) {
     if (be is not IBlockEntityContainer { Inventory: InventoryBase inventory })
       throw new StepFailure(
         $"{be.GetType().Name} has no inventory to click.",
