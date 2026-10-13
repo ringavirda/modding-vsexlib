@@ -48,6 +48,27 @@ internal sealed record HandMetrics(
   double? Centre
 );
 
+/// <summary>Every gate's metrics of a group.</summary>
+/// <param name="Slot">G1 and G2.</param>
+/// <param name="Ground">G5 and G6.</param>
+/// <param name="Hand">G7, G8, G10's axis and G13 in third person.</param>
+/// <param name="HandFp">The hand metrics with the seraph at the first-person clip; null for a block.</param>
+/// <param name="Axis">G10, in degrees; null unless the group is a longtool.</param>
+/// <param name="AxisFp">G10 in first person, in degrees; null unless the group is a longtool.</param>
+internal sealed record GroupMetrics(
+  SlotMetrics Slot,
+  GroundMetrics Ground,
+  HandMetrics Hand,
+  HandMetrics? HandFp,
+  double? Axis,
+  double? AxisFp
+);
+
+/// <summary>A gate a group fails.</summary>
+/// <param name="Key">The identity <c>&lt;view&gt; [&lt;kind&gt;] &lt;gate&gt; &lt;name&gt;</c>, which a known-findings list matches.</param>
+/// <param name="Message">The key followed by the value, the band or limit and the group's codes.</param>
+internal sealed record ViewFinding(string Key, string Message);
+
 /// <summary>The view gates, composed from the resolved collectibles of a loaded game world.</summary>
 internal static class ViewGates {
   /// <summary>The side of an inventory slot at GUI scale 1, in pixels.</summary>
@@ -265,6 +286,106 @@ internal static class ViewGates {
     );
     return Math.Acos(Math.Clamp(dot, -1, 1)) * 180 / Math.PI;
   }
+
+  /// <summary>Every banded gate's metric of <paramref name="group"/>.</summary>
+  internal static GroupMetrics Measure(TestWorld world, ViewGroup group) =>
+    new(
+      Slot(group),
+      Ground(group),
+      Hand(world, group),
+      group.IsBlock ? null : Hand(world, group, true),
+      group.Kind == ItemViewKind.Longtool ? AxisDegrees(world, group) : null,
+      group.Kind == ItemViewKind.Longtool
+        ? AxisDegrees(world, group, true)
+        : null
+    );
+
+  /// <summary>The value of the banded gate <paramref name="gate"/> in <paramref name="metrics"/>.</summary>
+  /// <param name="gate">A gate id of view-bands.json: G1, G2, G5, G6, G7, G10, G10fp or G13.</param>
+  /// <returns>NaN when the group has no such metric.</returns>
+  internal static double ValueOf(GroupMetrics metrics, string gate) =>
+    gate switch {
+      "G1" => metrics.Slot.Span,
+      "G2" => metrics.Slot.Centre,
+      "G5" => metrics.Ground.Rest,
+      "G6" => metrics.Ground.Size,
+      "G7" => metrics.Hand.Size,
+      "G10" => metrics.Axis ?? double.NaN,
+      "G10fp" => metrics.AxisFp ?? double.NaN,
+      "G13" => metrics.Hand.Centre ?? double.NaN,
+      _ => throw new ArgumentException($"{gate} is not a banded gate"),
+    };
+
+  private static readonly (string Id, string Gate, string Name)[] Judged =
+  [
+    ("G1", "G1", "slot.span"),
+    ("G2", "G2", "slot.centre"),
+    ("G5", "G5", "ground.rest"),
+    ("G6", "G6", "ground.size"),
+    ("G7", "G7", "hand.size"),
+    ("G10", "G10", "hand.axis"),
+    ("G10fp", "G10", "hand.axis.fp"),
+    ("G13", "G13", "hand.centre"),
+  ];
+
+  /// <summary>The gates <paramref name="group"/> fails against <paramref name="bands"/>: each banded gate outside its
+  /// kind's band (G2, G10 and G13 on the upper end only) and G8 beyond its limit, in third and first person.</summary>
+  /// <param name="bands">The bands to judge against.</param>
+  /// <param name="group">The group; a workpiece has no band and fails none.</param>
+  /// <param name="metrics">The metrics of <paramref name="group"/> from <see cref="Measure"/>.</param>
+  /// <returns>One finding per failing gate, in gate order.</returns>
+  internal static IReadOnlyList<ViewFinding> Judge(
+    ViewBandData bands,
+    ViewGroup group,
+    GroupMetrics metrics
+  ) {
+    var findings = new List<ViewFinding>();
+    if (group.Kind == ItemViewKind.Workpiece)
+      return findings;
+    string kind = group.Kind.ToString().ToLowerInvariant();
+    string view = group.Representative.Code.ToString();
+    string codes =
+      group.Codes.Count > 1
+        ? $" for {group.Codes.Count} codes: {string.Join(", ", group.Codes)}"
+        : "";
+    void Add(string gate, string name, string detail) {
+      string key = $"{view} [{kind}] {gate} {name}";
+      findings.Add(new ViewFinding(key, $"{key} {detail}{codes}"));
+    }
+
+    foreach ((string id, string gate, string name) in Judged) {
+      if (!bands.Bands[kind].TryGetValue(id, out Band? band))
+        continue;
+      double v = ValueOf(metrics, id);
+      if (double.IsNaN(v))
+        continue;
+      if (ViewBands.UpperOnly.Contains(id)) {
+        if (v > band.High)
+          Add(
+            gate,
+            name,
+            $"{Fmt(v)} above {Fmt(band.High)} ({band.MaxCode} {Fmt(band.Max)})"
+          );
+      } else if (v < band.Low || v > band.High)
+        Add(
+          gate,
+          name,
+          $"{Fmt(v)} outside {Fmt(band.Low)}..{Fmt(band.High)} ({band.MinCode} {Fmt(band.Min)}, {band.MaxCode} {Fmt(band.Max)})"
+        );
+    }
+
+    double limit = bands.Limits[
+      group.Kind == ItemViewKind.Bulk ? "G8Bulk" : "G8"
+    ];
+    if (metrics.Hand.Grip is { } grip && grip > limit)
+      Add("G8", "hand.grip", $"{Fmt(grip)} above {Fmt(limit)} voxel");
+    if (metrics.HandFp?.Grip is { } gripFp && gripFp > limit)
+      Add("G8", "hand.grip.fp", $"{Fmt(gripFp)} above {Fmt(limit)} voxel");
+    return findings;
+  }
+
+  private static string Fmt(double v) =>
+    v.ToString("0.00", CultureInfo.InvariantCulture);
 
   private static double Dot(Vec3d a, Vec3d b) =>
     a.X * b.X + a.Y * b.Y + a.Z * b.Z;

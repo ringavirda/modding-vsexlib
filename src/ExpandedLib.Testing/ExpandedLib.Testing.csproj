@@ -40,6 +40,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Views\view-bands.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="VintagestoryAPI">
       <HintPath>$(GamePath)/VintagestoryAPI.dll</HintPath>
       <Private>false</Private>
