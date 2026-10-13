@@ -115,7 +115,7 @@ public class ViewGateMetricsTests {
     );
   }
 
-  // Fails when G10 compares the box axis's sign or the grip side is dropped: the reversed spear then reads near 0.
+  // Fails when G10 takes the box axis's sign in place of the working end: the unturned blackbronze then reads near 180.
   [Fact]
   public void Spear_axis_is_judged_by_its_working_end() {
     ViewGroup spear = GroupOf("game:spear-generic-blackbronze");
@@ -142,6 +142,19 @@ public class ViewGateMetricsTests {
     } finally {
       item.TpHandTransform = authored;
     }
+  }
+
+  // Fails when G10 ignores a declared tip: the count rule then takes the butt for the working end and the axis reads near 180.
+  [Fact]
+  public void A_declared_tip_sets_the_working_end() {
+    ViewGroup declared = ViewGates
+      .Groups(World, "viewsfixture")
+      .Single(g => g.Codes.Contains("viewsfixture:declaredtip"));
+    Item spear = World.World.GetItem(
+      new AssetLocation("game:spear-generic-iron")
+    );
+    ViewGroup held = declared with { Hand = spear.TpHandTransform.Clone() };
+    Assert.InRange(ViewGates.AxisDegrees(World, held), 0, 3.3);
   }
 
   // Fails when the animation code is matched case-sensitively, or when an unmapped code is posed as a clip.

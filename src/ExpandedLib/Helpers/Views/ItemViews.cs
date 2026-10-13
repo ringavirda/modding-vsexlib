@@ -104,17 +104,22 @@ public static class ItemViews {
 
   /// <summary>The vanilla item whose views a tool follows: among the game's items carrying the same <c>tool</c>
   /// value, the shortest code beginning with the value and a dash, else the first code; null when none carries it.</summary>
-  internal static Item? CarrierOf(ICoreAPI api, Item item) {
-    if (item.Tool is not { } tool)
+  internal static Item? CarrierOf(ICoreAPI api, Item item) =>
+    CarrierOf(api, item.Tool, item);
+
+  /// <summary>The vanilla item whose views the tool value <paramref name="tool"/> follows, as
+  /// <see cref="CarrierOf(ICoreAPI, Item)"/> picks it, leaving <paramref name="except"/> out of the choice.</summary>
+  internal static Item? CarrierOf(ICoreAPI api, EnumTool? tool, Item? except) {
+    if (tool is not { } value)
       return null;
-    string prefix = tool.ToString().ToLowerInvariant() + "-";
+    string prefix = value.ToString().ToLowerInvariant() + "-";
     Item[] carriers =
     [
       .. api.World.Items.Where(i =>
         i?.Code != null
-        && i != item
+        && i != except
         && i.Code.Domain == "game"
-        && i.Tool == tool
+        && i.Tool == value
       ),
     ];
     Item[] named =
@@ -131,7 +136,7 @@ public static class ItemViews {
 
   // The game item that draws the same shape as a mod item with no declared kind or tip; the first by
   // ordinal code. A game item has none.
-  private static Item? VanillaShape(ICoreAPI api, Item item) {
+  internal static Item? VanillaShape(ICoreAPI api, Item item) {
     if (
       item.Code?.Domain == "game"
       || item.Shape?.Base == null

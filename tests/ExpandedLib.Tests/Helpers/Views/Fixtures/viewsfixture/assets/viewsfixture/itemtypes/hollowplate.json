@@ -1,0 +1,7 @@
+{
+  "code": "hollowplate",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/hollowplate"
+  }
+}

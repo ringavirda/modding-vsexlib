@@ -1,0 +1,20 @@
+{
+  "textures": {
+    "tex": "viewsfixture:item/tex"
+  },
+  "elements": [
+    {
+      "name": "plate",
+      "from": [ 3.5, 0, 3.5 ],
+      "to": [ 12.5, 1, 12.5 ],
+      "faces": {
+        "north": { "texture": "#tex", "uv": [ 0, 0, 9, 1 ] },
+        "south": { "texture": "#tex", "uv": [ 0, 0, 9, 1 ] },
+        "east": { "texture": "#tex", "uv": [ 0, 0, 9, 1 ] },
+        "west": { "texture": "#tex", "uv": [ 0, 0, 9, 1 ] },
+        "up": { "texture": "#null", "uv": [ 0, 0, 9, 9 ] },
+        "down": { "texture": "#null", "uv": [ 0, 0, 9, 9 ] }
+      }
+    }
+  ]
+}

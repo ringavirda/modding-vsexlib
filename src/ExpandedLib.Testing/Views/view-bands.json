@@ -1,0 +1,588 @@
+{
+  "bands": {
+    "bar": {
+      "G1": {
+        "min": 0.7949,
+        "max": 0.9161,
+        "minCode": "rod-copper",
+        "maxCode": "stick",
+        "low": 0.7154,
+        "high": 1.0078
+      },
+      "G2": {
+        "min": 0.2211,
+        "max": 2.1778,
+        "minCode": "rod-copper",
+        "maxCode": "plank-aged",
+        "low": 0.0,
+        "high": 3.1778
+      },
+      "G3": {
+        "min": 0.6595,
+        "max": 1.3457,
+        "minCode": "plank-aged",
+        "maxCode": "rod-copper",
+        "low": 0.5935,
+        "high": 1.4803
+      },
+      "G5": {
+        "min": -0.0062,
+        "max": 0.0,
+        "minCode": "stick",
+        "maxCode": "rod-copper",
+        "low": -0.0262,
+        "high": 0.02
+      },
+      "G6": {
+        "min": 0.65,
+        "max": 1.0,
+        "minCode": "plank-aged",
+        "maxCode": "stick",
+        "low": 0.585,
+        "high": 1.1
+      },
+      "G7": {
+        "min": 0.59,
+        "max": 0.86,
+        "minCode": "stick",
+        "maxCode": "plank-aged",
+        "low": 0.531,
+        "high": 0.946
+      }
+    },
+    "bulk": {
+      "G1": {
+        "min": 0.7403,
+        "max": 1.1062,
+        "minCode": "ironbloom",
+        "maxCode": "grindstone-sandstone",
+        "low": 0.6663,
+        "high": 1.2168
+      },
+      "G2": {
+        "min": 0.9552,
+        "max": 4.2721,
+        "minCode": "grindstone-sandstone",
+        "maxCode": "hub-light4way-iron",
+        "low": 0.0,
+        "high": 5.2721
+      },
+      "G3": {
+        "min": 0.7171,
+        "max": 1.288,
+        "minCode": "hub-light4way-iron",
+        "maxCode": "ironbloom",
+        "low": 0.6454,
+        "high": 1.4168
+      },
+      "G5": {
+        "min": -0.1106,
+        "max": 0.0,
+        "minCode": "grindstone-sandstone",
+        "maxCode": "hub-light4way-iron",
+        "low": -0.1306,
+        "high": 0.02
+      },
+      "G6": {
+        "min": 0.556,
+        "max": 1.0,
+        "minCode": "bracket-heavy-iron",
+        "maxCode": "grindstone-sandstone",
+        "low": 0.5004,
+        "high": 1.1
+      },
+      "G7": {
+        "min": 0.65,
+        "max": 1.0,
+        "minCode": "rawcheese-salted",
+        "maxCode": "bracket-heavy-iron",
+        "low": 0.585,
+        "high": 1.1
+      }
+    },
+    "cube": {
+      "G1": {
+        "min": 0.7822,
+        "max": 0.7822,
+        "minCode": "devastatedsoil-0",
+        "maxCode": "devastatedsoil-0",
+        "low": 0.704,
+        "high": 0.8605
+      },
+      "G13": {
+        "min": 0.0,
+        "max": 0.2587,
+        "minCode": "hay-normal-ud",
+        "maxCode": "devastatedsoil-0",
+        "low": 0.0,
+        "high": 0.2846
+      },
+      "G2": {
+        "min": 0.7071,
+        "max": 0.7071,
+        "minCode": "devastatedsoil-0",
+        "maxCode": "devastatedsoil-0",
+        "low": 0.0,
+        "high": 1.7071
+      },
+      "G3": {
+        "min": 1.6827,
+        "max": 1.6827,
+        "minCode": "devastatedsoil-0",
+        "maxCode": "devastatedsoil-0",
+        "low": 1.5144,
+        "high": 1.8509
+      },
+      "G5": {
+        "min": 0.0,
+        "max": 0.0,
+        "minCode": "devastatedsoil-0",
+        "maxCode": "devastatedsoil-0",
+        "low": -0.02,
+        "high": 0.02
+      },
+      "G6": {
+        "min": 0.3,
+        "max": 0.3,
+        "minCode": "devastatedsoil-0",
+        "maxCode": "devastatedsoil-0",
+        "low": 0.27,
+        "high": 0.33
+      },
+      "G7": {
+        "min": 0.3,
+        "max": 0.4,
+        "minCode": "hay-normal-ud",
+        "maxCode": "devastatedsoil-0",
+        "low": 0.27,
+        "high": 0.44
+      }
+    },
+    "longtool": {
+      "G1": {
+        "min": 2.1131,
+        "max": 3.5621,
+        "minCode": "spear-generic-erel",
+        "maxCode": "spear-generic-ornatesilver",
+        "low": 1.9018,
+        "high": 3.9184
+      },
+      "G10": {
+        "min": 0.0,
+        "max": 3.0,
+        "minCode": "spear-generic-chert",
+        "maxCode": "spear-scrap-scrap",
+        "low": 0.0,
+        "high": 3.3
+      },
+      "G10fp": {
+        "min": 0.0,
+        "max": 3.0,
+        "minCode": "spear-generic-chert",
+        "maxCode": "spear-scrap-scrap",
+        "low": 0.0,
+        "high": 3.3
+      },
+      "G2": {
+        "min": 28.4823,
+        "max": 85.9145,
+        "minCode": "spear-generic-erel",
+        "maxCode": "spear-generic-ornategold",
+        "low": 0.0,
+        "high": 94.5059
+      },
+      "G3": {
+        "min": 0.2715,
+        "max": 0.845,
+        "minCode": "spear-ranseur-ruined",
+        "maxCode": "spear-generic-chert",
+        "low": 0.2444,
+        "high": 0.9295
+      },
+      "G5": {
+        "min": -0.115,
+        "max": 0.0137,
+        "minCode": "spear-fork-ruined",
+        "maxCode": "spear-boar-ruined",
+        "low": -0.135,
+        "high": 0.0337
+      },
+      "G6": {
+        "min": 0.68,
+        "max": 0.9,
+        "minCode": "spear-generic-chert",
+        "maxCode": "oar-crude-aged",
+        "low": 0.612,
+        "high": 0.99
+      },
+      "G7": {
+        "min": 0.9224,
+        "max": 1.4263,
+        "minCode": "spear-generic-erel",
+        "maxCode": "spear-fork-ruined",
+        "low": 0.8301,
+        "high": 1.5689
+      }
+    },
+    "lump": {
+      "G1": {
+        "min": 0.5899,
+        "max": 0.7632,
+        "minCode": "metalbit-blistersteel",
+        "maxCode": "ingot-blistersteel",
+        "low": 0.5309,
+        "high": 0.8395
+      },
+      "G2": {
+        "min": 2.0422,
+        "max": 2.8345,
+        "minCode": "ingot-blistersteel",
+        "maxCode": "metalbit-blistersteel",
+        "low": 0.0,
+        "high": 3.8345
+      },
+      "G3": {
+        "min": 1.0473,
+        "max": 1.1102,
+        "minCode": "ingot-blistersteel",
+        "maxCode": "metalbit-blistersteel",
+        "low": 0.9425,
+        "high": 1.2213
+      },
+      "G5": {
+        "min": 0.0,
+        "max": 0.0,
+        "minCode": "ingot-blistersteel",
+        "maxCode": "ingot-blistersteel",
+        "low": -0.02,
+        "high": 0.02
+      },
+      "G6": {
+        "min": 0.96,
+        "max": 1.0,
+        "minCode": "ingot-blistersteel",
+        "maxCode": "metalbit-blistersteel",
+        "low": 0.864,
+        "high": 1.1
+      },
+      "G7": {
+        "min": 0.7,
+        "max": 0.75,
+        "minCode": "metalbit-blistersteel",
+        "maxCode": "ingot-blistersteel",
+        "low": 0.63,
+        "high": 0.825
+      }
+    },
+    "multicell": {
+      "G1": {
+        "min": 0.8124,
+        "max": 1.4751,
+        "minCode": "bed-wood-head-north",
+        "maxCode": "largegear3",
+        "low": 0.7312,
+        "high": 1.6227
+      },
+      "G13": {
+        "min": 0.1448,
+        "max": 0.4438,
+        "minCode": "verticalboiler-north",
+        "maxCode": "bed-wood-head-north",
+        "low": 0.0,
+        "high": 0.4881
+      },
+      "G2": {
+        "min": 0.6661,
+        "max": 5.3627,
+        "minCode": "door-ruined-barred1",
+        "maxCode": "door-devastation-towergate",
+        "low": 0.0,
+        "high": 6.3627
+      },
+      "G3": {
+        "min": 0.3587,
+        "max": 1.214,
+        "minCode": "largegear3",
+        "maxCode": "pulverizerframe-north",
+        "low": 0.3228,
+        "high": 1.3354
+      },
+      "G5": {
+        "min": -0.2475,
+        "max": 0.1333,
+        "minCode": "doorkiln-tier1",
+        "maxCode": "metaldoor-barred-iron",
+        "low": -0.2723,
+        "high": 0.1533
+      },
+      "G6": {
+        "min": 0.5625,
+        "max": 1.8,
+        "minCode": "trunk-north",
+        "maxCode": "door-devastation-towergate",
+        "low": 0.5063,
+        "high": 1.98
+      },
+      "G7": {
+        "min": 0.5916,
+        "max": 1.83,
+        "minCode": "verticalboiler-north",
+        "maxCode": "door-devastation-towergate",
+        "low": 0.5324,
+        "high": 2.013
+      }
+    },
+    "partial": {
+      "G1": {
+        "min": 0.6713,
+        "max": 0.8979,
+        "minCode": "chute-elbow-up-north",
+        "maxCode": "woodenaxle-ud",
+        "low": 0.6042,
+        "high": 0.9877
+      },
+      "G13": {
+        "min": 0.0,
+        "max": 0.3369,
+        "minCode": "chute-cross-ns",
+        "maxCode": "brickslabs-fire-north-free",
+        "low": 0.0,
+        "high": 0.3706
+      },
+      "G2": {
+        "min": 0.7071,
+        "max": 5.4049,
+        "minCode": "chute-straight-ns",
+        "maxCode": "brickslabs-fire-north-free",
+        "low": 0.0,
+        "high": 6.4049
+      },
+      "G3": {
+        "min": 0.9014,
+        "max": 1.3602,
+        "minCode": "transmission-ns",
+        "maxCode": "chute-straight-ns",
+        "low": 0.8112,
+        "high": 1.4962
+      },
+      "G5": {
+        "min": -0.1261,
+        "max": 0.075,
+        "minCode": "transmission-ns",
+        "maxCode": "chute-straight-ns",
+        "low": -0.1461,
+        "high": 0.095
+      },
+      "G6": {
+        "min": 0.225,
+        "max": 0.5403,
+        "minCode": "chute-elbow-up-north",
+        "maxCode": "woodenaxle-ud",
+        "low": 0.2025,
+        "high": 0.5944
+      },
+      "G7": {
+        "min": 0.225,
+        "max": 0.5503,
+        "minCode": "chute-elbow-up-north",
+        "maxCode": "woodenaxle-ud",
+        "low": 0.2025,
+        "high": 0.6054
+      }
+    },
+    "plate": {
+      "G1": {
+        "min": 0.7848,
+        "max": 0.7848,
+        "minCode": "metalplate-bismuth",
+        "maxCode": "metalplate-bismuth",
+        "low": 0.7063,
+        "high": 0.8632
+      },
+      "G2": {
+        "min": 0.607,
+        "max": 0.607,
+        "minCode": "metalplate-bismuth",
+        "maxCode": "metalplate-bismuth",
+        "low": 0.0,
+        "high": 1.607
+      },
+      "G3": {
+        "min": 0.6356,
+        "max": 0.6356,
+        "minCode": "metalplate-bismuth",
+        "maxCode": "metalplate-bismuth",
+        "low": 0.572,
+        "high": 0.6991
+      },
+      "G5": {
+        "min": 0.0,
+        "max": 0.0,
+        "minCode": "metalplate-bismuth",
+        "maxCode": "metalplate-bismuth",
+        "low": -0.02,
+        "high": 0.02
+      },
+      "G6": {
+        "min": 0.662,
+        "max": 0.662,
+        "minCode": "metalplate-bismuth",
+        "maxCode": "metalplate-bismuth",
+        "low": 0.5958,
+        "high": 0.7282
+      },
+      "G7": {
+        "min": 0.75,
+        "max": 0.75,
+        "minCode": "metalplate-bismuth",
+        "maxCode": "metalplate-bismuth",
+        "low": 0.675,
+        "high": 0.825
+      }
+    },
+    "tool": {
+      "G1": {
+        "min": 0.7203,
+        "max": 1.457,
+        "minCode": "sling",
+        "maxCode": "axe-chert",
+        "low": 0.6483,
+        "high": 1.6027
+      },
+      "G2": {
+        "min": 0.3482,
+        "max": 22.2768,
+        "minCode": "wrench-copper",
+        "maxCode": "axe-chert",
+        "low": 0.0,
+        "high": 24.5045
+      },
+      "G3": {
+        "min": 0.1383,
+        "max": 0.8879,
+        "minCode": "scythe-copper",
+        "maxCode": "sling",
+        "low": 0.1183,
+        "high": 0.9767
+      },
+      "G5": {
+        "min": -0.042,
+        "max": 0.0576,
+        "minCode": "sling",
+        "maxCode": "prospectingpick-copper",
+        "low": -0.062,
+        "high": 0.0776
+      },
+      "G6": {
+        "min": 0.68,
+        "max": 0.96,
+        "minCode": "axe-chert",
+        "maxCode": "bow-simple",
+        "low": 0.612,
+        "high": 1.056
+      },
+      "G7": {
+        "min": 0.7,
+        "max": 1.15,
+        "minCode": "wrench-copper",
+        "maxCode": "bow-simple",
+        "low": 0.63,
+        "high": 1.265
+      }
+    }
+  },
+  "limits": {
+    "G8": 1.0,
+    "G8Bulk": 2.1
+  },
+  "carriers": {
+    "axe": "game:axe-chert",
+    "bow": "game:bow-long",
+    "chisel": "game:chisel-iron",
+    "hammer": "game:hammer-gold",
+    "hoe": "game:hoe-gold",
+    "pickaxe": "game:pickaxe-gold",
+    "saw": "game:saw-gold",
+    "scythe": "game:scythe-gold",
+    "shears": "game:shears-gold",
+    "shovel": "game:shovel-gold",
+    "sling": "game:sling",
+    "sword": "game:blade-arming-ruined",
+    "wrench": "game:wrench-gold"
+  },
+  "rules": {
+    "ingot": {
+      "gripX": 0.7432,
+      "gripY": 0.4847,
+      "gripZ": 0.9476,
+      "groundScale": 4.8,
+      "guiRotationX": 149.0,
+      "guiRotationY": -36.0,
+      "guiRotationZ": 0.0,
+      "handRotationX": 0.0,
+      "handRotationY": -71.0,
+      "handRotationZ": 18.0,
+      "handScale": 0.75,
+      "offDrawn": 0.0,
+      "thickness": 2.0
+    },
+    "metalplate": {
+      "gripX": 0.4407,
+      "gripY": 0.0692,
+      "gripZ": -0.3209,
+      "groundScale": 3.31,
+      "guiRotationX": -30.0,
+      "guiRotationY": -44.0,
+      "guiRotationZ": -180.0,
+      "handRotationX": 94.0,
+      "handRotationY": 0.0,
+      "handRotationZ": 0.0,
+      "handScale": 0.75,
+      "offDrawn": 0.3209,
+      "thickness": 1.0
+    },
+    "multicell": {
+      "groundLong": 0.8629,
+      "heldLong": 1.2,
+      "slotSpan": 0.8884
+    },
+    "partial": {
+      "groundLong": 0.3,
+      "heldLong": 0.4,
+      "slotSpan": 0.7101
+    },
+    "rod": {
+      "gripX": 0.2394,
+      "gripY": 0.4369,
+      "gripZ": 0.8673,
+      "groundScale": 4.0,
+      "guiRotationX": -48.0,
+      "guiRotationY": 134.0,
+      "guiRotationZ": 171.0,
+      "handRotationX": 85.0,
+      "handRotationY": 0.0,
+      "handRotationZ": 2.0,
+      "handScale": 0.68,
+      "offDrawn": 0.0,
+      "thickness": 2.0
+    },
+    "spear": {
+      "gripX": 0.3842,
+      "gripY": 0.5325,
+      "gripZ": 0.7043,
+      "groundScale": 3.4,
+      "guiRotationX": 33.0,
+      "guiRotationY": 0.0,
+      "guiRotationZ": -127.0,
+      "handRotationX": -90.0,
+      "handRotationY": 0.0,
+      "handRotationZ": 0.0,
+      "handScale": 0.8,
+      "length": 46.7475,
+      "offDrawn": 0.0,
+      "slotOrigin": 0.8394,
+      "slotScale": 2.26,
+      "thickness": 2.3478
+    }
+  }
+}

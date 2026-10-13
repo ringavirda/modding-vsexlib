@@ -67,13 +67,15 @@ internal static class CollectibleViews {
   }
 
   /// <summary>A box in voxels: <paramref name="From"/> and <paramref name="To"/> are its corners in the frame
-  /// whose axes are <paramref name="Axes"/>, unit vectors in the shape's frame. <paramref name="Drawn"/> holds
-  /// the eight corners of each drawn element in the shape's frame.</summary>
+  /// whose axes are <paramref name="Axes"/>, unit vectors in the shape's frame. <paramref name="Drawn"/> holds the
+  /// eight corners of each drawn element in the shape's frame, corner i high in x, y, z by bits 0, 1, 2 of i.
+  /// <paramref name="Faces"/> flags, per drawn element, its drawn faces in the order north, east, south, west, up, down.</summary>
   internal sealed record ViewBox(
     Vec3d From,
     Vec3d To,
     Vec3d[] Axes,
-    IReadOnlyList<Vec3d[]> Drawn
+    IReadOnlyList<Vec3d[]> Drawn,
+    IReadOnlyList<bool[]> Faces
   ) {
     /// <summary>The point of a drawn element's bounding box nearest <paramref name="p"/>, in the shape's
     /// frame, with its distance in voxels.</summary>
@@ -185,6 +187,16 @@ internal static class CollectibleViews {
         == true;
   }
 
+  private static bool[] FacesOf(ShapeElement el) =>
+    [
+      .. Enumerable
+        .Range(0, 6)
+        .Select(i =>
+          el.FacesResolved?.ElementAtOrDefault(i)
+            is { Texture: not null and not "null" }
+        ),
+    ];
+
   private static List<Element> Drawn(Shape shape, string[]? keep) {
     var drawn = new List<Element>();
     Walk(
@@ -251,7 +263,7 @@ internal static class CollectibleViews {
         continue;
       Pose pose = parent.Then(Local(el));
       if (IsDrawn(el))
-        drawn.Add(new Element(Corners(el, pose), pose.R));
+        drawn.Add(new Element(Corners(el, pose), pose.R, FacesOf(el)));
       Walk(
         el.Children,
         pose.Then(new Pose(Identity, Vec(el.From))),
@@ -324,7 +336,8 @@ internal static class CollectibleViews {
             new Vec3d(frame[0, 1], frame[1, 1], frame[2, 1]),
             new Vec3d(frame[0, 2], frame[1, 2], frame[2, 2]),
           ],
-          turned
+          turned,
+          drawn.Select(e => e.Faces).ToList()
         );
       }
     }
@@ -427,5 +440,9 @@ internal static class CollectibleViews {
     internal Pose Then(Pose child) => new(Mul(R, child.R), Apply(child.T));
   }
 
-  private readonly record struct Element(Vec3d[] Corners, double[,] Frame);
+  private readonly record struct Element(
+    Vec3d[] Corners,
+    double[,] Frame,
+    bool[] Faces
+  );
 }
