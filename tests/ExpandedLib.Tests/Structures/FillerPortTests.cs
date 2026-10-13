@@ -1,8 +1,11 @@
 using ExpandedLib.Definitions;
+using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Structures;
+using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent.Mechanics;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -93,6 +96,25 @@ public class FillerPortTests {
     );
     Assert.Equal(expected, cell.PortFace);
     Assert.Equal("pipe", cell.PortNetworkType);
+  }
+
+  [Theory]
+  [InlineData(2f, -3f, 6f)]
+  [InlineData(0.5f, 4f, 2f)]
+  public void PortSpeedIsTheNetworkSpeedGearedAndAbsolute(
+    float ratio,
+    float networkSpeed,
+    float expected
+  ) {
+    var be = new BlockEntityStructureFiller();
+    var port = MechPower.Attach(
+      be,
+      new BEBehaviorMPFillerPort(be),
+      MechPower.Network(networkSpeed)
+    );
+    port.GearedRatio = ratio;
+
+    Assert.Equal(expected, port.Speed, 4);
   }
 
   private static JsonObject Offsets(string json) => new(JArray.Parse(json));
