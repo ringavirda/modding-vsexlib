@@ -16,12 +16,9 @@ internal static class ItemViewsPass {
 
   /// <summary>Replaces each transform equal to the game's default for its type with the computed one and
   /// fills each absent held clip; an authored transform or clip stays. Collectibles that declare kind
-  /// <c>none</c>, texture-only items and collectibles of other domains are left as they are, and a shape
-  /// that does not load leaves its collectible as it is with a warning.</summary>
+  /// <c>none</c>, texture-only items and other domains are left as they are. A shape that does not load, or a
+  /// declaration that does not parse, leaves its collectible as it is with a warning or an error naming its code.</summary>
   /// <param name="api">The api of either side, after the object loader.</param>
-  /// <exception cref="InvalidOperationException">A collectible declares an <c>attributes.itemViews.kind</c>
-  /// that is not a kind name in lower case.</exception>
-  /// <exception cref="ArgumentException">A collectible declares a tip that is not a sign and one of x, y, z.</exception>
   internal static void Run(ICoreAPI api) {
     HashSet<string> domains =
     [
@@ -45,7 +42,18 @@ internal static class ItemViewsPass {
         || CollectibleViews.OptedOut(collectible)
       )
         continue;
-      ItemViewSet? views = ItemViews.Compute(api, collectible);
+      ItemViewSet? views;
+      try {
+        views = ItemViews.Compute(api, collectible);
+      } catch (Exception e)
+          when (e is InvalidOperationException or ArgumentException) {
+        api.Logger.Error(
+          "{0}: item views left as the game's, the declaration does not parse: {1}",
+          collectible.Code,
+          e.Message
+        );
+        continue;
+      }
       if (views == null) {
         WarnUnloadedShape(api, collectible);
         continue;

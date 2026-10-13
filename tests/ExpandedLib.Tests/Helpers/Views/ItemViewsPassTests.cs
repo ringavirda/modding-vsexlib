@@ -1,5 +1,3 @@
-// The load pass reads the vanilla game's art, which the legacy lanes do not provision.
-#if GAME_GE_1_22
 using System.IO;
 using System.Linq;
 using ExpandedLib.Helpers;
@@ -12,8 +10,7 @@ namespace ExpandedLib.Tests;
 /// <summary>What the finalize pass leaves on the collectibles of a mod that depends on exlib, on the whole
 /// vanilla game with the views fixture mod.</summary>
 [Collection("ItemViews")]
-public class ItemViewsPassTests
-{
+public class ItemViewsPassTests {
   private static string Fixture =>
     Path.Combine(
       RepoPaths.Root,
@@ -23,6 +20,17 @@ public class ItemViewsPassTests
       "Views",
       "Fixtures",
       "viewsfixture"
+    );
+
+  private static string FaultFixture =>
+    Path.Combine(
+      RepoPaths.Root,
+      "tests",
+      "ExpandedLib.Tests",
+      "Helpers",
+      "Views",
+      "Fixtures",
+      "viewsfaults"
     );
 
   private static TestWorld World => GameWorlds.Get([Fixture]);
@@ -38,8 +46,7 @@ public class ItemViewsPassTests
 
   // Fails when the pass is skipped, and when an absent clip is read as null only: breakhand stays.
   [Fact]
-  public void An_untransformed_long_item_gets_computed_views_and_clips()
-  {
+  public void An_untransformed_long_item_gets_computed_views_and_clips() {
     Item item = ItemOf("viewsfixture:longshaft");
 
     ItemViewSet views = ItemViews.Compute(World.Api, item)!;
@@ -60,8 +67,7 @@ public class ItemViewsPassTests
 
   // Fails when an absent clip is read as null only: helditemready and interactstatic stay.
   [Fact]
-  public void An_untransformed_block_gets_the_block_clips()
-  {
+  public void An_untransformed_block_gets_the_block_clips() {
     Block block = World.World.GetBlock(
       new AssetLocation("viewsfixture:offsetblock")
     );
@@ -76,8 +82,7 @@ public class ItemViewsPassTests
 
   // Fails when the pass overwrites authored values.
   [Fact]
-  public void An_authored_gui_is_kept_and_hand_and_ground_computed()
-  {
+  public void An_authored_gui_is_kept_and_hand_and_ground_computed() {
     Item item = ItemOf("viewsfixture:authoredshaft");
     ItemViewSet views = ItemViews.Compute(World.Api, item)!;
 
@@ -90,8 +95,7 @@ public class ItemViewsPassTests
 
   // Fails when the domain filter is dropped: a vanilla item still at the game's defaults is computed.
   [Fact]
-  public void Game_items_are_untouched()
-  {
+  public void Game_items_are_untouched() {
     Item[] atDefaults =
     [
       .. World
@@ -112,8 +116,7 @@ public class ItemViewsPassTests
 
   // Fails when none is read as no declaration.
   [Fact]
-  public void Kind_none_keeps_the_defaults()
-  {
+  public void Kind_none_keeps_the_defaults() {
     Item item = ItemOf("viewsfixture:noneshaft");
 
     Assert.True(Same(ModelTransform.ItemDefaultGui(), item.GuiTransform));
@@ -123,5 +126,51 @@ public class ItemViewsPassTests
     Assert.Equal("helditemready", item.HeldRightReadyAnimation);
     Assert.Null(item.HeldRightTpIdleAnimation);
   }
+
+  // Fails when a declaration that does not parse stops the pass, when a shape that does not load is not
+  // warned about, or when the pass reports a loaded shape as missing.
+  [Fact]
+  public void A_declaration_that_does_not_parse_leaves_its_item_and_the_pass_goes_on() {
+    using var world = new TestWorld();
+    world.LoadAsGame([Fixture, FaultFixture]);
+    world.Log.Expect(EnumLogType.Error, "viewsfaults:badkind");
+    world.Log.Expect(EnumLogType.Error, "viewsfaults:badtip");
+    world.Log.Expect(EnumLogType.Warning, "viewsfaults:missingshape");
+
+    Assert.Contains(
+      world.Log.Errors,
+      e => e.Contains("viewsfaults:badkind") && e.Contains("'Longtool'")
+    );
+    Assert.Contains(
+      world.Log.Errors,
+      e => e.Contains("viewsfaults:badtip") && e.Contains("'+w'")
+    );
+    Assert.Contains(
+      world.Log.Warnings,
+      w =>
+        w.Contains("viewsfaults:missingshape")
+        && w.Contains("viewsfixture:item/nowhere")
+    );
+    Assert.DoesNotContain(
+      world.Log.Warnings,
+      w => w.Contains("viewsfixture:longshaft")
+    );
+    foreach (string code in new[] { "badkind", "badtip", "missingshape" })
+      Assert.True(
+        Same(
+          ModelTransform.ItemDefaultGui(),
+          world
+            .World.GetItem(new AssetLocation("viewsfaults:" + code))
+            .GuiTransform
+        )
+      );
+    Assert.False(
+      Same(
+        ModelTransform.ItemDefaultGui(),
+        world
+          .World.GetItem(new AssetLocation("viewsfixture:longshaft"))
+          .GuiTransform
+      )
+    );
+  }
 }
-#endif

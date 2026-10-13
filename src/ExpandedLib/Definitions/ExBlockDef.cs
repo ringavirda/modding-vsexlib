@@ -801,11 +801,27 @@ public sealed class ExBlockDef : IExDef {
   /// <summary>Sets <c>attributes.itemViews</c>, which the load pass and <see cref="ItemViews"/> read.</summary>
   /// <param name="kind">Cube, Partial, Multicell or None, written as its lower-case name; <see cref="ItemViewKind.None"/>
   /// keeps the game's defaults.</param>
-  public ExBlockDef Views(ItemViewKind kind) =>
-    Attribute(
+  /// <exception cref="ArgumentException"><paramref name="kind"/> is an item kind; the load pass would leave the
+  /// block at the game's views without a warning.</exception>
+  public ExBlockDef Views(ItemViewKind kind) {
+    if (
+      kind
+      is not (
+        ItemViewKind.None
+        or ItemViewKind.Cube
+        or ItemViewKind.Partial
+        or ItemViewKind.Multicell
+      )
+    )
+      throw new ArgumentException(
+        $"Views(kind) takes a block kind (Cube, Partial, Multicell or None), not {kind}.",
+        nameof(kind)
+      );
+    return Attribute(
       "itemViews",
       new JObject { ["kind"] = kind.ToString().ToLowerInvariant() }
     );
+  }
 
   /// <summary>Merges every property of a POCO/anonymous object into <c>attributes</c> at once.
   /// Later calls overwrite by key.</summary>
