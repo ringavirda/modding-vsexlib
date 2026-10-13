@@ -26,7 +26,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
   private static string Item(string code) =>
     $"{{ \"code\": \"{code}\", \"creativeinventory\": {{ \"general\": [\"*\"] }} }}";
 
-  // A code with no creative tab: the walk reports the edges that wait on it, not the kind itself.
+  // A code with no creative tab is not a kind, so the edges waiting on it are the findings.
   private static string Plain(string code) => $"{{ \"code\": \"{code}\" }}";
 
   private static string Recipe(string input, string output, string type = "item") =>
@@ -81,7 +81,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
 
   private const string Stick = "game:stick";
 
-  // Fails when a recipe fires without its ingredients being reached, or the rounds stop early.
   [Fact]
   public void A_chain_from_a_gathered_code_passes()
   {
@@ -100,7 +99,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     );
   }
 
-  // Fails when unreached kinds go unreported.
   [Fact]
   public void Dropping_the_middle_recipe_fails_naming_its_output()
   {
@@ -118,7 +116,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.Contains("1 failures", result.Summary);
   }
 
-  // Fails when the kit check is skipped.
   [Fact]
   public void A_game_input_in_neither_list_fails_naming_it_and_the_kit_clears_it()
   {
@@ -139,7 +136,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.Empty(with.Findings);
   }
 
-  // Fails when a kit row that matches nothing loaded passes.
   [Fact]
   public void A_kit_row_matching_nothing_fails()
   {
@@ -156,7 +152,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     );
   }
 
-  // Fails when stale rows pass.
   [Fact]
   public void A_known_row_whose_kind_passes_fails_as_stale()
   {
@@ -173,7 +168,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     );
   }
 
-  // Fails when a known row stops accepting its failure.
   [Fact]
   public void A_known_row_accepts_its_failure()
   {
@@ -212,7 +206,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
       """;
   }
 
-  // Fails when the class ignores width or height.
   [Fact]
   public void A_recipe_wider_or_taller_than_the_hand_grid_is_a_grid_station_recipe()
   {
@@ -257,8 +250,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
       }
       """;
 
-  // Fails when a structure ignores its stage's required stacks, or its recipe reaches the
-  // structure rather than its core.
   [Fact]
   public void A_structure_is_reached_only_when_its_core_and_stage_stacks_are()
   {
@@ -282,7 +273,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     );
   }
 
-  // Fails when a machine product fires without its machine block reached.
   [Fact]
   public void A_machine_product_waits_on_its_machine_block()
   {
@@ -303,7 +293,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     );
   }
 
-  // Fails when a three-argument declaration is not counted as undeclared, or fires.
   [Fact]
   public void A_three_argument_declaration_is_undeclared_and_fires_nothing()
   {
@@ -323,7 +312,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     );
   }
 
-  // Fails when a job fires without the block Runs names reached, or the block is not read.
   [Fact]
   public void A_job_output_waits_on_the_block_runs_names()
   {
@@ -358,7 +346,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     );
   }
 
-  // Fails when a stop waits on the thickest stop, which has no edge of its own, or on no machine.
   [Fact]
   public void A_route_stop_waits_on_the_next_thicker_stop_and_its_machine()
   {
@@ -395,7 +382,6 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     );
   }
 
-  // Fails when a declaration with a block is accepted without an input, or kept twice.
   [Fact]
   public void A_declaration_with_a_block_names_an_input_and_is_kept_once()
   {

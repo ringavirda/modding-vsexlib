@@ -152,8 +152,6 @@ internal static class CraftWalkEdges
   private static IEnumerable<ExlibChecks.Runner> Runners(string domain) =>
     ExlibChecks.Runners().Where(r => r.Domain == domain);
 
-  // The construction blocks of the domain, by code, with their stages as the block's behaviour
-  // stores them.
   private static Dictionary<string, JArray> Constructions(
     IReadOnlyList<CollectibleObject> all,
     string domain
@@ -173,7 +171,6 @@ internal static class CraftWalkEdges
     return found;
   }
 
-  // A terminal job runs on its machine's block, from its input to its output.
   private static IEnumerable<WalkEdge> Jobs(
     string domain,
     IReadOnlyList<CollectibleObject> all
@@ -192,8 +189,7 @@ internal static class CraftWalkEdges
           );
   }
 
-  // A route's stopping point is reached from the next thicker stopping point the machine takes.
-  // The thickest stopping point has no edge: only its own source makes it.
+  // The thickest stopping point of a route has no edge; only its own source makes it.
   private static IEnumerable<WalkEdge> Routes(
     string domain,
     IReadOnlyList<CollectibleObject> all
@@ -232,7 +228,6 @@ internal static class CraftWalkEdges
       }
   }
 
-  // A machine product waits on its block and every input it names.
   private static IEnumerable<WalkEdge> Products(
     string domain,
     IReadOnlyList<CollectibleObject> all
@@ -257,8 +252,6 @@ internal static class CraftWalkEdges
         );
   }
 
-  // A structure waits on its core, reached from the recipe that yields the core block, and on
-  // every stage's required stacks.
   private static IEnumerable<WalkEdge> Structures(
     Dictionary<string, JArray> constructions,
     IReadOnlyList<CollectibleObject> all
