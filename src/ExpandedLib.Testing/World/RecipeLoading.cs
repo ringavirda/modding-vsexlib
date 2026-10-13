@@ -1,0 +1,171 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using ExpandedLib.Registries;
+using Newtonsoft.Json.Linq;
+using NSubstitute;
+using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
+using Vintagestory.API.Util;
+using Vintagestory.GameContent;
+using Vintagestory.ServerMods;
+
+namespace ExpandedLib.Testing;
+
+/// <summary>
+/// Recipes in <see cref="TestWorld"/>: the game's own recipe loader run over the assets a load
+/// mirrored, and the recipe lists and ingredient index the game's recipes read.
+/// </summary>
+public sealed partial class TestWorld {
+  private readonly List<GridRecipe> _gridRecipes = [];
+  private readonly List<SmithingRecipe> _smithingRecipes = [];
+  private readonly List<ClayFormingRecipe> _clayFormingRecipes = [];
+
+  private readonly System.Collections.Generic.OrderedDictionary<
+    IRecipeIngredientBase,
+    List<IRecipeBase>
+  > _fastSearchRecipes = new();
+
+  private IAssetManager? _loadedAssets;
+
+  /// <summary>The smithing recipes <see cref="LoadRecipes"/> kept, in load order.</summary>
+  public IReadOnlyList<SmithingRecipe> SmithingRecipes => _smithingRecipes;
+
+  /// <summary>The clay forming recipes <see cref="LoadRecipes"/> kept, in load order.</summary>
+  public IReadOnlyList<ClayFormingRecipe> ClayFormingRecipes =>
+    _clayFormingRecipes;
+
+  /// <summary>Loads the grid, smithing and clay forming recipes of the assets the last
+  /// <c>LoadAssets</c> or <c>LoadAsGame</c> mirrored, through the game's own
+  /// <c>RecipeLoader.LoadRecipe</c>, then runs exlib's recipe-cost pass at each registered
+  /// profile's selected level.</summary>
+  /// <remarks>Grid recipes land in <c>World.GridRecipes</c> on the server and client worlds. A
+  /// second call empties the lists and the ingredient index first. Vanilla's recipe files are not
+  /// mirrored, so only the listed mods' recipes load, those a mod's definitions inject included.
+  /// A recipe that fails to resolve is the loader's log line in <see cref="Log"/> and a count, never
+  /// a throw.</remarks>
+  /// <returns>The recipes kept and the recipes that failed to resolve, over the three
+  /// kinds.</returns>
+  /// <exception cref="InvalidOperationException">No <c>LoadAssets</c> or <c>LoadAsGame</c> ran on this
+  /// world.</exception>
+  public (int Loaded, int Failed) LoadRecipes() {
+    IAssetManager assets =
+      _loadedAssets
+      ?? throw new InvalidOperationException(
+        "LoadRecipes needs LoadAssets or LoadAsGame first."
+      );
+    _gridRecipes.Clear();
+    _smithingRecipes.Clear();
+    _clayFormingRecipes.Clear();
+    _fastSearchRecipes.Clear();
+    bool classExclusive = Config.Tree.GetBool("classExclusiveRecipes", true);
+
+    (int Loaded, int Failed) grid = LoadKind<GridRecipe>(
+      assets,
+      "grid",
+      "recipes/grid",
+      classExclusive,
+      r => _gridRecipes.Add((GridRecipe)r)
+    );
+    (int Loaded, int Failed) smithing = LoadKind<SmithingRecipe>(
+      assets,
+      "smithing",
+      "recipes/smithing",
+      classExclusive,
+      r => _smithingRecipes.Add((SmithingRecipe)r)
+    );
+    (int Loaded, int Failed) clay = LoadKind<ClayFormingRecipe>(
+      assets,
+      "clay forming",
+      "recipes/clayforming",
+      classExclusive,
+      r => _clayFormingRecipes.Add((ClayFormingRecipe)r)
+    );
+    RecipeBase.CollectiblePreSearchResultsCache.Clear();
+    ExRecipeProfiles.ApplyAll(Api);
+    return (
+      grid.Loaded + smithing.Loaded + clay.Loaded,
+      grid.Failed + smithing.Failed + clay.Failed
+    );
+  }
+
+  private (int Loaded, int Failed) LoadKind<T>(
+    IAssetManager assets,
+    string name,
+    string path,
+    bool classExclusive,
+    Action<IRecipeBase> keep
+  )
+    where T : IRecipeBase {
+    int loaded = 0;
+    int failed = 0;
+    foreach (
+      (AssetLocation location, JToken content) in assets.GetMany<JToken>(
+        Log,
+        path
+      )
+    ) {
+      IEnumerable<JToken> tokens = content switch {
+        JObject o => [o],
+        JArray a => a,
+        _ => [],
+      };
+      foreach (JToken token in tokens) {
+        T? recipe = token.ToObject<T>(location.Domain);
+        if (recipe == null) {
+          Log.Error($"Failed to parse {name} recipe: {location}");
+          continue;
+        }
+        RecipeLoader.LoadRecipe(
+          Api,
+          location,
+          recipe,
+          classExclusive,
+          keep,
+          ref loaded,
+          ref failed
+        );
+      }
+    }
+    return (loaded, failed);
+  }
+
+  private static void WireRecipeMatching(IEventAPI events) {
+    var gridHandlers = new List<MatchGridRecipeDelegate>();
+    var recipeHandlers = new List<MatchRecipeDelegate>();
+    events
+      .When(e => e.MatchesGridRecipe += Arg.Any<MatchGridRecipeDelegate>())
+      .Do(ci => gridHandlers.Add(ci.Arg<MatchGridRecipeDelegate>()));
+    events
+      .When(e => e.MatchesRecipe += Arg.Any<MatchRecipeDelegate>())
+      .Do(ci => recipeHandlers.Add(ci.Arg<MatchRecipeDelegate>()));
+    events
+      .TriggerMatchesRecipe(
+        Arg.Any<IPlayer>(),
+        Arg.Any<GridRecipe>(),
+        Arg.Any<ItemSlot[]>(),
+        Arg.Any<int>()
+      )
+      .Returns(ci =>
+        gridHandlers.All(h =>
+          h(
+            ci.Arg<IPlayer>(),
+            ci.Arg<GridRecipe>(),
+            ci.Arg<ItemSlot[]>(),
+            ci.Arg<int>()
+          )
+        )
+      );
+    events
+      .TriggerMatchesRecipe(
+        Arg.Any<IPlayer>(),
+        Arg.Any<IRecipeBase>(),
+        Arg.Any<ItemSlot[]>()
+      )
+      .Returns(ci =>
+        recipeHandlers.All(h =>
+          h(ci.Arg<IPlayer>(), ci.Arg<IRecipeBase>(), ci.Arg<ItemSlot[]>())
+        )
+      );
+  }
+}

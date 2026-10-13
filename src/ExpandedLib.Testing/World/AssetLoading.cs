@@ -172,8 +172,9 @@ public sealed partial class TestWorld {
         "Vintagestory.ServerMods.NoObf.ModRegistryObjectTypeLoader"
       );
       RegisterLoaded(loaderApi);
+      ((ICoreAPI)Api).Assets.Returns(mgr);
+      _loadedAssets = mgr;
       if (asGame) {
-        ((ICoreAPI)Api).Assets.Returns(mgr);
         foreach (ModSystem system in FinalizeOrder(started))
           system.AssetsFinalize(loaderApi);
       }

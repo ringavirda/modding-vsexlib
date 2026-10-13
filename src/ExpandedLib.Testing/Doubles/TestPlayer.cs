@@ -208,7 +208,8 @@ public sealed class TestPlayer {
   /// <see cref="IServerPlayer"/> or, failing that, a plain <see cref="IPlayer"/>.
   /// </summary>
   /// <remarks>Makes <paramref name="world"/> answer <see cref="IWorldAccessor.PlayerByUid"/> for
-  /// <paramref name="uid"/> with the new player, replacing an earlier player of that uid.</remarks>
+  /// <paramref name="uid"/> with the new player, replacing an earlier player of that uid. The
+  /// entity's <c>Api</c> is the world's, as a recipe's <c>Matches</c> reads it.</remarks>
   public static TestPlayer Create(
     TestWorld world,
     string uid = "test",
@@ -216,6 +217,7 @@ public sealed class TestPlayer {
   ) {
     EntityPlayer entity = Substitute.For<EntityPlayer>();
     entity.World = world.World;
+    entity.Api = world.Api;
     entity.WatchedAttributes.SetString("playerUID", uid);
 
     var activeSlot = new DummySlot();
