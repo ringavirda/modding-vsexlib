@@ -704,7 +704,7 @@ internal static class ViewGates {
   /// <param name="world">The world the group comes from.</param>
   /// <param name="group">The group to judge.</param>
   /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
-  /// <returns>G4 on the ground, G9 in third person and, for an item, in first person, G11, and G12 when a row of
+  /// <returns>G4 on the ground, G9 in third and first person, G11, and G12 when a row of
   /// <paramref name="catalogue"/> names one of the group's codes, each with its pass or failure.</returns>
   internal static IReadOnlyList<GateReading> Rules(
     TestWorld world,
@@ -753,8 +753,7 @@ internal static class ViewGates {
     }
 
     readings.Add(Floor(world, group, false));
-    if (!group.IsBlock)
-      readings.Add(Floor(world, group, true));
+    readings.Add(Floor(world, group, true));
     readings.Add(Clips(world, group));
     if (catalogue?.Reading(group) is { } sized)
       readings.Add(sized);
@@ -800,19 +799,38 @@ internal static class ViewGates {
         ),
         Authored(c.HeldTpHitAnimation, fresh.HeldTpHitAnimation),
         Authored(c.HeldTpUseAnimation, fresh.HeldTpUseAnimation),
+        Authored(c.HeldLeftTpIdleAnimation, fresh.HeldLeftTpIdleAnimation),
+        Authored(c.HeldLeftReadyAnimation, fresh.HeldLeftReadyAnimation),
       }.Distinct(StringComparer.OrdinalIgnoreCase)
     )
       if (!string.IsNullOrEmpty(set) && !known.Contains(set))
         problems.Add($"{set} is not a player animation");
-    if (
-      group.Kind == ItemViewKind.Longtool
-      && string.Equals(
-        held,
-        "helditemready",
-        StringComparison.OrdinalIgnoreCase
+    if (group.Kind == ItemViewKind.Longtool) {
+      if (
+        !string.Equals(held, LongtoolIdle, StringComparison.OrdinalIgnoreCase)
       )
-    )
-      problems.Add("a long tool is held on helditemready");
+        problems.Add($"a long tool is held on {held}, not {LongtoolIdle}");
+      if (
+        !string.Equals(
+          c.HeldRightReadyAnimation,
+          LongtoolIdle,
+          StringComparison.OrdinalIgnoreCase
+        )
+      )
+        problems.Add(
+          $"a long tool is readied on {c.HeldRightReadyAnimation ?? "nothing"}, not {LongtoolIdle}"
+        );
+      if (
+        !string.Equals(
+          c.HeldTpHitAnimation,
+          LongtoolHit,
+          StringComparison.OrdinalIgnoreCase
+        )
+      )
+        problems.Add(
+          $"a long tool hits with {c.HeldTpHitAnimation ?? "nothing"}, not {LongtoolHit}"
+        );
+    }
     if (
       group.Kind == ItemViewKind.Bulk
       && !string.Equals(held, BlockHeldClip, StringComparison.OrdinalIgnoreCase)
@@ -840,6 +858,10 @@ internal static class ViewGates {
 
   // The ready clip the game gives a block; player.json has no animation of the name.
   private const string BlockReadyDefault = "heldblockready";
+
+  // The clips of the iron spear, which every long tool takes.
+  private const string LongtoolIdle = "spearidle";
+  private const string LongtoolHit = "spearhit";
 
   private static string? Authored(string? set, params string?[] defaults) =>
     defaults.Any(d => string.Equals(set, d, StringComparison.OrdinalIgnoreCase))

@@ -6,9 +6,6 @@ using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Xunit;
-#if !GAME_GE_1_21
-using FastVec3f = Vintagestory.API.MathTools.Vec3f;
-#endif
 
 namespace ExpandedLib.Tests;
 
@@ -100,7 +97,8 @@ public class ViewRulesTests {
     Assert.Empty(Failing(slab with { Ground = flat }));
   }
 
-  // Fails when G9's comparison is inverted: the held plate then fails it and the plate below the floor passes.
+  // Fails when G9's comparison is inverted: the held plate then fails it and the plate below the floor passes. The hay
+  // block sunk below the floor fails G9 and G9fp, so a block's first-person floor is judged too.
   [Fact]
   public void An_item_held_below_the_floor_fails_G9() {
     ViewGroup plate = GroupOf("game:metalplate-iron");
@@ -116,16 +114,32 @@ public class ViewRulesTests {
 
     Assert.Equal(["G9", "G9fp"], Failing(sunk));
     Assert.True(ViewGates.HeldFloor(World, sunk) < -1);
+
+    ViewGroup hay = GroupOf("game:hay-normal-ud");
+    Assert.True(ViewGates.HeldFloor(World, hay, true) >= 0);
+
+    ModelTransform lowHay = hay.Hand.Clone();
+    lowHay.Translation = new FastVec3f(
+      lowHay.Translation.X,
+      lowHay.Translation.Y,
+      lowHay.Translation.Z - 200
+    );
+    ViewGroup sunkHay = hay with { Hand = lowHay };
+
+    Assert.Equal(["G9", "G9fp"], Failing(sunkHay));
+    Assert.True(ViewGates.HeldFloor(World, sunkHay, true) < -1);
   }
 
-  // Fails when the clip match is made case-sensitive: SpearIdle then fails. A long tool on helditemready fails G11
-  // alone, and a block held on a clip other than the two it takes fails it.
+#if GAME_GE_1_22
+  // Fails when the clip match is made case-sensitive: SpearIdle then fails. A long tool held on any clip but spearidle
+  // fails G11 alone; a plate held on crudeOarIdle, a clip that resolves, passes.
   [Theory]
   [InlineData("helditemready", true)]
   [InlineData("spearidlee", true)]
-  [InlineData("crudeOarIdle", false)]
+  [InlineData("crudeOarIdle", true)]
   [InlineData("SpearIdle", false)]
-  public void Clip_rules(string held, bool fails) {
+  public void Clip_rules(string held, bool fails)
+  {
     ViewGroup spear = GroupOf("game:spear-generic-iron");
     Assert.Equal(ItemViewKind.Longtool, spear.Kind);
     Assert.Empty(Failing(spear));
@@ -134,6 +148,62 @@ public class ViewRulesTests {
 
     Assert.Equal(fails ? ["G11"] : [], failing);
   }
+
+  // Fails when a plate held on a clip that resolves is judged as a long tool: crudeOarIdle passes G11 on a plate.
+  [Fact]
+  public void A_plate_held_on_a_resolving_clip_passes_G11()
+  {
+    ViewGroup plate = GroupOf("game:metalplate-iron");
+    Assert.Empty(Failing(plate with { Held = "crudeOarIdle" }));
+  }
+
+  // Fails when a long tool is readied or hit on a clip other than the spear's: the ready clip and the hit clip are each
+  // read from the representative and take G11 alone.
+  [Fact]
+  public void A_long_tool_readied_or_hit_on_another_clip_fails_G11()
+  {
+    CollectibleObject spear = GroupOf("game:spear-generic-iron").Representative;
+    string? ready = spear.HeldRightReadyAnimation;
+    string? hit = spear.HeldTpHitAnimation;
+    try
+    {
+      spear.HeldRightReadyAnimation = "crudeOarIdle";
+      Assert.Equal(["G11"], Failing(GroupOf("game:spear-generic-iron")));
+      spear.HeldRightReadyAnimation = ready;
+
+      spear.HeldTpHitAnimation = "breakhand";
+      Assert.Equal(["G11"], Failing(GroupOf("game:spear-generic-iron")));
+    }
+    finally
+    {
+      spear.HeldRightReadyAnimation = ready;
+      spear.HeldTpHitAnimation = hit;
+    }
+  }
+
+  // Fails when a left-hand clip is not read: a misspelt left idle or left ready clip then fails G11 alone.
+  [Fact]
+  public void A_misspelt_left_hand_clip_fails_G11()
+  {
+    CollectibleObject spear = GroupOf("game:spear-generic-iron").Representative;
+    string? idle = spear.HeldLeftTpIdleAnimation;
+    string? ready = spear.HeldLeftReadyAnimation;
+    try
+    {
+      spear.HeldLeftTpIdleAnimation = "spearidlee";
+      Assert.Equal(["G11"], Failing(GroupOf("game:spear-generic-iron")));
+      spear.HeldLeftTpIdleAnimation = idle;
+
+      spear.HeldLeftReadyAnimation = "spearidlee";
+      Assert.Equal(["G11"], Failing(GroupOf("game:spear-generic-iron")));
+    }
+    finally
+    {
+      spear.HeldLeftTpIdleAnimation = idle;
+      spear.HeldLeftReadyAnimation = ready;
+    }
+  }
+#endif
 
   // Fails when a bulk item or a block is allowed any resolving clip: a bulk plate or a hay block held on spearidle then
   // passes.
@@ -216,7 +286,7 @@ public class ViewRulesTests {
   }
 
   // Fails when pig.md's header is not excluded: plainbar then enters the catalogue. A game: row, a Proposed row, a
-  // composite row and a row with no size are skipped, and an unregistered code is named.
+  // composite row and a row with no size are skipped, and an unregistered code fails G12, naming its row.
   [Fact]
   public void Rows_skip_in_order() {
     ViewCatalogue sized = Catalogue("sized");
@@ -225,9 +295,10 @@ public class ViewRulesTests {
       ["viewsfixture:uprightsheet", "viewsfixture:phantom"],
       sized.Rows.Select(r => r.Code)
     );
-    Assert.Equal(
-      ["viewsfixture:phantom"],
-      sized.Unregistered(World).Select(r => r.Code)
+    ViewFinding finding = Assert.Single(sized.Unregistered(World));
+    Assert.Contains(
+      sized.Rows.Single(r => r.Code == "viewsfixture:phantom").Where,
+      finding.Message
     );
   }
 }

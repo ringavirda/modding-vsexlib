@@ -148,16 +148,29 @@ internal sealed class ViewCatalogue {
         .Select(g => g.Key),
     ];
 
-  /// <summary>The rows whose code no collectible of <paramref name="world"/> has.</summary>
+  /// <summary>The G12 failure of each row whose code no collectible of <paramref name="world"/> has.</summary>
   /// <param name="world">A world from <see cref="TestWorld.LoadAsGame"/>.</param>
-  internal IReadOnlyList<CatalogueRow> Unregistered(TestWorld world) {
+  /// <returns>One finding per unregistered row, in page and line order, whose message names the row's page and line;
+  /// empty when every row names a collectible.</returns>
+  internal IReadOnlyList<ViewFinding> Unregistered(TestWorld world) {
     string[] codes =
     [
       .. world
         .World.Collectibles.Where(c => c.Code != null)
         .Select(c => c.Code.ToString()),
     ];
-    return [.. Rows.Where(r => !codes.Any(r.Matches))];
+    return
+    [
+      .. Rows.Where(r => !codes.Any(r.Matches))
+        .Select(r =>
+        {
+          string key = $"{r.Code} [catalogue] G12 unregistered";
+          return new ViewFinding(
+            key,
+            $"{key} at {r.Where}: no collectible has this code"
+          );
+        }),
+    ];
   }
 
   /// <summary>The rule G12 catalogue for <paramref name="group"/>: its box against every row that names one of its codes.</summary>

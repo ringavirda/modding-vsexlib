@@ -97,10 +97,11 @@ internal static class ViewSweep {
           CollectibleViews.ViewBox? box = TextureBox.Of(world.Api, item);
           if (box == null)
             skip = "texture has no opaque pixel";
-          else
-            kind = Name(
-              CollectibleViews.ByBox(box.Extents(), false, item.Tool != null)
-            );
+          else {
+            ViewGroup texture = TextureGroup(item, box);
+            kind = Name(texture.Kind);
+            failed = Failed(world, texture, catalogue);
+          }
         } catch (Exception e)
             when (e
                 is NotSupportedException
@@ -134,6 +135,35 @@ internal static class ViewSweep {
       ),
     ];
   }
+
+  // The group of a texture-only item: its texture's box with the item's own transforms and clips.
+  private static ViewGroup TextureGroup(
+    Item item,
+    CollectibleViews.ViewBox box
+  ) =>
+    new(
+      Key(false, item.Code.ToString()),
+      CollectibleViews.ByBox(box.Extents(), false, item.Tool != null),
+      box,
+      item,
+      [item.Code.ToString()],
+      ViewMatrices.Transform(item, ViewTarget.Gui),
+      ViewMatrices.Transform(item, ViewTarget.Hand),
+      ViewMatrices.Transform(item, ViewTarget.Ground),
+      ViewGates.HeldCode(item)
+    );
+
+  private static string[] Failed(
+    TestWorld world,
+    ViewGroup group,
+    ViewCatalogue? catalogue
+  ) =>
+    [
+      .. ViewGates
+        .Rules(world, group, catalogue)
+        .Where(r => !r.Pass)
+        .Select(r => r.Gate + (r.Target == "fp" ? "fp" : "")),
+    ];
 
   // Items and blocks have their own registries, so a code can name one of each.
   private static string Key(bool block, string code) =>
@@ -237,7 +267,10 @@ internal static class ViewSweep {
   private static string Name(ItemViewKind kind) =>
     kind.ToString().ToLowerInvariant();
 
-  private sealed record TypeFile(string Path, string[] VariantCodes);
+  private sealed record TypeFile(
+    string Path,
+    Dictionary<string, string[]> States
+  );
 
   private static Dictionary<string, List<TypeFile>> Sources() {
     var sources = new Dictionary<string, List<TypeFile>>();
@@ -262,34 +295,37 @@ internal static class ViewSweep {
             string key = category.Code + "/" + code;
             if (!sources.TryGetValue(key, out List<TypeFile>? files))
               sources[key] = files = [];
-            files.Add(
-              new TypeFile(
-                asset.Location.Path,
-                [
-                  .. (file["variantgroups"] as JArray ?? [])
-                .Select(g => (string?)g["code"] ?? "")
-                .Order(StringComparer.Ordinal),
-                ]
-              )
-            );
+            files.Add(new TypeFile(asset.Location.Path, VariantStates(file)));
           } catch (Newtonsoft.Json.JsonException) { }
         }
     return sources;
   }
 
-  // Several files can share a code (ore-graded and ore-ungraded); the one whose variant groups are the collectible's
-  // variant keys wins, else the first by path.
+  private static Dictionary<string, string[]> VariantStates(JObject file) {
+    var states = new Dictionary<string, string[]>();
+    foreach (JToken group in file["variantgroups"] as JArray ?? [])
+      states[(string?)group["code"] ?? ""] =
+      [
+        .. (group["states"] as JArray ?? []).Select(s => (string?)s ?? ""),
+      ];
+    return states;
+  }
+
+  // Several files can share a code (coral-brain and coral-tube are both coral): the first by path whose variant states
+  // hold each of the collectible's variant values wins, else the first by path.
   private static string SourceOf(
     Dictionary<string, List<TypeFile>> sources,
     CollectibleObject c
   ) {
     string prefix = c is Block ? "blocktypes/" : "itemtypes/";
-    string[] keys = [.. c.Variant.Keys.Order(StringComparer.Ordinal)];
     string path = c.Code.Path;
     while (true) {
       if (sources.TryGetValue(prefix + path, out List<TypeFile>? files))
         return (
-          files.FirstOrDefault(f => f.VariantCodes.SequenceEqual(keys))
+          files
+            .Where(f => Holds(f, c))
+            .OrderBy(f => f.Path, StringComparer.Ordinal)
+            .FirstOrDefault()
           ?? files.OrderBy(f => f.Path, StringComparer.Ordinal).First()
         ).Path;
       int cut = path.LastIndexOf('-');
@@ -298,4 +334,11 @@ internal static class ViewSweep {
       path = path[..cut];
     }
   }
+
+  private static bool Holds(TypeFile file, CollectibleObject c) =>
+    file.States.Count == c.Variant.Count
+    && c.Variant.All(v =>
+      file.States.TryGetValue(v.Key, out string[]? states)
+      && (states.Length == 0 || states.Contains(v.Value))
+    );
 }

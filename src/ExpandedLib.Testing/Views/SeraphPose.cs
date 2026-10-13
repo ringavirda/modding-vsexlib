@@ -21,6 +21,11 @@ internal sealed class SeraphPose {
     Dictionary<string, SeraphPose>
   > Poses = new();
 
+  private static readonly ConditionalWeakTable<
+    ICoreAPI,
+    IReadOnlySet<string>
+  > ClipSets = new();
+
   private SeraphPose(Mat4 itemAnchor, AttachmentPoint attachment) {
     ItemAnchor = itemAnchor;
     Attachment = attachment;
@@ -37,7 +42,10 @@ internal sealed class SeraphPose {
   /// <param name="api">An api whose assets hold the game's shapes.</param>
   /// <exception cref="InvalidOperationException">The shape does not load.</exception>
   internal static IReadOnlySet<string> Clips(ICoreAPI api) =>
-    Load(api).Animations.Select(a => a.Code).ToHashSet();
+    ClipSets.GetValue(
+      api,
+      a => Load(a).Animations.Select(x => x.Code).ToHashSet()
+    );
 
   private static Shape Load(ICoreAPI api) {
     Shape shape =

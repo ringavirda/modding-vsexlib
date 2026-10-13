@@ -6,6 +6,7 @@ using System.Linq;
 using ExpandedLib.Helpers;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -75,6 +76,43 @@ public class ViewSweepTests
     ViewSweep.Write(World);
   }
 
+  // Fails when a texture-only item's rules are not read: the texture plate on its edge then fails G4 alone, and the
+  // flat one passes them all.
+  [Fact]
+  public void A_texture_only_item_on_edge_fails_G4()
+  {
+    var item = (Item)
+      World.World.GetItem(new AssetLocation("viewsfixture:texonly"));
+    ModelTransform authored = item.GroundTransform;
+    try
+    {
+      Assert.Empty(
+        ViewSweep
+          .Rows(World, "viewsfixture")
+          .Single(r => r.Code == item.Code.ToString())
+          .Failed
+      );
+
+      ModelTransform edge = ViewMatrices
+        .Transform(item, ViewTarget.Ground)
+        .Clone();
+      edge.Rotation = new FastVec3f(0, edge.Rotation.Y, edge.Rotation.Z);
+      item.GroundTransform = edge;
+
+      Assert.Equal(
+        ["G4"],
+        ViewSweep
+          .Rows(World, "viewsfixture")
+          .Single(r => r.Code == item.Code.ToString())
+          .Failed
+      );
+    }
+    finally
+    {
+      item.GroundTransform = authored;
+    }
+  }
+
   // Fails when a texture-only box reads its height from the texture's width.
   [Fact]
   public void A_texture_only_item_is_boxed_from_its_opaque_pixels()
@@ -123,6 +161,18 @@ public class ViewSweepTests
     Assert.All(
       rows.Where(r => r.Source != "").GroupBy(r => r.Source),
       g => Assert.Equal(g.Min(IdOf), IdOf(g.Single(r => r.First)))
+    );
+    Assert.Equal(
+      "blocktypes/aquatic/coral-brain.json",
+      rows.Single(r =>
+        r.Type == "block" && r.Code == "game:coral-brain-blue-1"
+      ).Source
+    );
+    Assert.Equal(
+      "blocktypes/aquatic/coral-tube.json",
+      rows.Single(r =>
+        r.Type == "block" && r.Code == "game:coral-tube-brown-1"
+      ).Source
     );
   }
 
