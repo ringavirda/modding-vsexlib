@@ -1,0 +1,8 @@
+{
+  "code": "pickaxefixture",
+  "class": "Item",
+  "tool": "pickaxe",
+  "shape": {
+    "base": "game:item/tool/pickaxe"
+  }
+}

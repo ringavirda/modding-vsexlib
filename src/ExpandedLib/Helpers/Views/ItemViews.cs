@@ -15,7 +15,7 @@ public static class ItemViews {
   /// <c>attributes.itemViews.kind</c> or the one its drawn box gives; <c>attributes.itemViews.tip</c> names
   /// the working end of a longtool or tool as a sign and an axis letter ("+y"). The slot and ground views
   /// are computed from the box as well. A block takes the game's block rotations with its origins on the drawn box.
-  /// A mod item with no <c>attributes.itemViews</c> key and no tool that draws a game item's shape takes that item's shipped views.</summary>
+  /// A mod item with no <c>attributes.itemViews</c> key that draws a game item's shape takes that item's shipped views.</summary>
   /// <param name="api">The api of the side whose world is loaded.</param>
   /// <param name="collectible">The collectible to compute.</param>
   /// <returns>The views; null for a collectible that declares kind <c>none</c>, one with no drawn box, an item
@@ -129,13 +129,12 @@ public static class ItemViews {
       .FirstOrDefault();
   }
 
-  // The game item that draws the same shape as a mod item with no declared kind, tool or tip; the first by
+  // The game item that draws the same shape as a mod item with no declared kind or tip; the first by
   // ordinal code. A game item has none.
   private static Item? VanillaShape(ICoreAPI api, Item item) {
     if (
       item.Code?.Domain == "game"
       || item.Shape?.Base == null
-      || item.Tool != null
       || item.Attributes?["itemViews"].Exists == true
     )
       return null;

@@ -61,6 +61,22 @@ public class ItemViewsBlockTests(ITestOutputHelper output) {
     return 25.6 * tf.ScaleXYZ.X * Math.Max(w, h) / 48;
   }
 
+  private static float[] Numbers(ModelTransform tf) =>
+    [
+      tf.Translation.X,
+      tf.Translation.Y,
+      tf.Translation.Z,
+      tf.Rotation.X,
+      tf.Rotation.Y,
+      tf.Rotation.Z,
+      tf.Origin.X,
+      tf.Origin.Y,
+      tf.Origin.Z,
+      tf.ScaleXYZ.X,
+      tf.ScaleXYZ.Y,
+      tf.ScaleXYZ.Z,
+    ];
+
   // The ground pose: the lowest drawn point under it, which rests on y 0.
   private static double GroundRest(
     CollectibleViews.ViewBox box,
@@ -185,6 +201,22 @@ public class ItemViewsBlockTests(ITestOutputHelper output) {
     Assert.Equal((box.From.Z + box.To.Z) / 32, set.Gui.Origin.Z, 3);
   }
 
+  // Fails when the cube's ground translation is dropped: the lifted bottom then sits 0.5 voxel above the ground.
+  [Fact]
+  public void A_cube_with_a_lifted_bottom_rests_on_the_ground() {
+    var block = new Block {
+      Code = new AssetLocation("viewsfixture:lifted"),
+      Shape = new CompositeShape {
+        Base = new AssetLocation("viewsfixture:block/lifted"),
+      },
+    };
+    CollectibleViews.ViewBox box = Box(block);
+    ItemViewSet set = ItemViews.Compute(World.Api, block)!;
+    Assert.Equal(0.5, box.From.Y, 3);
+    Assert.Equal(ItemViewKind.Cube, set.Kind);
+    Assert.Equal(0, GroundRest(box, set.Ground), 3);
+  }
+
   // Fails when the hand translation is not the one that puts the box centre where the default puts a cube's.
   [Theory]
   [InlineData("game:forge")]
@@ -257,27 +289,28 @@ public class ItemViewsBlockTests(ITestOutputHelper output) {
     );
     Item flour = World.World.GetItem(new AssetLocation("game:flour-spelt"));
     ItemViewSet set = ItemViews.Compute(World.Api, greensand)!;
-    static float[] Numbers(ModelTransform tf) =>
-      [
-        tf.Translation.X,
-        tf.Translation.Y,
-        tf.Translation.Z,
-        tf.Rotation.X,
-        tf.Rotation.Y,
-        tf.Rotation.Z,
-        tf.Origin.X,
-        tf.Origin.Y,
-        tf.Origin.Z,
-        tf.ScaleXYZ.X,
-        tf.ScaleXYZ.Y,
-        tf.ScaleXYZ.Z,
-      ];
     Assert.Equal(Numbers(flour.GuiTransform), Numbers(set.Gui));
     Assert.Equal(Numbers(flour.TpHandTransform), Numbers(set.TpHand));
     Assert.Equal(Numbers(flour.GroundTransform), Numbers(set.Ground));
     Assert.Equal(flour.HeldRightTpIdleAnimation, set.IdleClip);
     Assert.Equal(flour.HeldRightReadyAnimation, set.ReadyClip);
     Assert.NotNull(set.IdleClip);
+  }
+
+  // Fails when the tool exemption returns: the pickaxe-shaped fixture then takes the carrier's held views.
+  [Fact]
+  public void A_tool_that_draws_a_game_shape_takes_its_shipped_views() {
+    Item pick = World.World.GetItem(
+      new AssetLocation("viewsfixture:pickaxefixture")
+    );
+    Item pickaxe = World.World.GetItem(
+      new AssetLocation("game:pickaxe-bismuthbronze")
+    );
+    ItemViewSet set = ItemViews.Compute(World.Api, pick)!;
+    Assert.Equal(Numbers(pickaxe.GuiTransform), Numbers(set.Gui));
+    Assert.Equal(Numbers(pickaxe.TpHandTransform), Numbers(set.TpHand));
+    Assert.Equal(Numbers(pickaxe.GroundTransform), Numbers(set.Ground));
+    Assert.Equal(pickaxe.HeldRightTpIdleAnimation, set.IdleClip);
   }
 
   // Fails when the twin's default ready clip is passed through: plainbar reports "helditemready".

@@ -1,0 +1,15 @@
+{
+  "textures": {
+    "tex": "viewsfixture:block/tex"
+  },
+  "elements": [
+    {
+      "name": "cube",
+      "from": [ 0, 0.5, 0 ],
+      "to": [ 16, 16.5, 16 ],
+      "faces": {
+        "up": { "texture": "#tex", "uv": [ 0, 0, 16, 16 ] }
+      }
+    }
+  ]
+}

@@ -407,9 +407,9 @@ public class ItemViewsCalibrationTests {
   public void A_tool_without_a_carrier_is_laid_by_its_box() {
     EnumTool tool = Enum.GetValues<EnumTool>()
       .First(t => World.World.Items.All(i => i?.Tool != t));
-    Item stick = Variant("game:stick", null);
-    stick.Tool = tool;
-    Assert.Equal(ItemViewKind.Bar, Compute(stick).Kind);
+    Item sheet = Variant("viewsfixture:uprightsheet", null);
+    sheet.Tool = tool;
+    Assert.Equal(ItemViewKind.Plate, Compute(sheet).Kind);
   }
 
   // Fails when the longest code is taken for the carrier, or the order is not ordinal.
