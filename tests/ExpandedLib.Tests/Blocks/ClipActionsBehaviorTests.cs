@@ -347,14 +347,18 @@ public class ClipActionsBehaviorTests {
   [Fact]
   public void A_clip_declared_with_another_pose_is_not_played_or_run() {
     using var world = NewWorld();
-    var (_, twin) = Stand(world, Driven());
+    var (_, twin) = Stand(world, Driven(), door => door.Open = true);
     twin.Frames(Dt, 1);
 
     Behavior(twin).Play("open");
     Behavior(twin).Run("open", 1f);
     twin.Frames(Dt, 5);
 
-    Assert.Equal(0, Active(twin));
+    Assert.True(
+      Behavior(twin).animUtil.activeAnimationsByAnimCode["open"].AnimationSpeed
+        < 0.01f
+    );
+    Assert.Equal(30f, Frame(twin), 0.01f);
   }
 
   [Fact]

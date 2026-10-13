@@ -25,9 +25,8 @@ public static class ClipLaws
   internal const string ExceptionsName = "clip exceptions";
 
   /// <summary>Traces the <see cref="Blocks.ClipPose.Frame"/>, <see cref="Blocks.ClipPose.Play"/> and
-  /// <see cref="Blocks.ClipPose.Run"/> actions of every variant of
-  /// <paramref name="defs"/>, the animator cache key each animated variant builds under, and the
-  /// driver of every clip its shape carries.</summary>
+  /// <see cref="Blocks.ClipPose.Run"/> actions of every variant of <paramref name="defs"/>, the animator
+  /// cache key each animated variant builds under, and the driver of every clip its shape carries.</summary>
   /// <remarks>A finding is <c>key | what | variant codes</c>.</remarks>
   /// <param name="domain">The domain whose blocks are judged.</param>
   /// <param name="defs">Block and item definitions; others are skipped.</param>
@@ -38,7 +37,7 @@ public static class ClipLaws
   /// <param name="prepare">Registers on the world what the blocks need, before any is defined.</param>
   /// <param name="assetRoot">Maps a domain to the directory holding its <c>shapes</c> folder; null reads
   /// <c>RepoPaths.Assets</c>.</param>
-  /// <returns>The laws <c>clip action</c>, <c>clip time</c>, <c>animator key</c>, <c>clip driver</c> and <c>clip exceptions</c>, in order.</returns>
+  /// <returns>The five laws, clip action, clip time, animator key, clip driver and clip exceptions.</returns>
   /// <exception cref="InvalidOperationException">A declaration is malformed, or a declaring block's shape
   /// is missing.</exception>
   public static BlockLaws.Result Run(
