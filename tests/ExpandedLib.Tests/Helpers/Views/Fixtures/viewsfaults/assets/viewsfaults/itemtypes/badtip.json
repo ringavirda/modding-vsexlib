@@ -1,0 +1,13 @@
+{
+  "code": "badtip",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/longshaft"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "longtool",
+      "tip": "+w"
+    }
+  }
+}

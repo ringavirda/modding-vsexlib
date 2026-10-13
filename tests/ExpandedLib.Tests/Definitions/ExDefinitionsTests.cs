@@ -1,7 +1,10 @@
+using System;
 using System.Reflection;
 using ExpandedLib.Definitions;
+using ExpandedLib.Helpers;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -83,6 +86,53 @@ public class ExDefinitionsTests {
     ExDefinitions.RegisterBlock(
       ExBlockDef.Create("d", "c"),
       typeof(ExDefinitions).Assembly
+    );
+  }
+
+  // Fails when the kind is written as the enum's name.
+  [Fact]
+  public void Views_writes_the_item_views_attribute() {
+    var item = new Item {
+      Attributes = new JsonObject(
+        ExItemDef.Create("d", "c").Views(ItemViewKind.Longtool, "+y").ToJson()[
+          "attributes"
+        ]!.DeepClone()
+      ),
+    };
+
+    Assert.Equal("longtool", item.Attributes["itemViews"]["kind"].AsString());
+    Assert.Equal("+y", item.Attributes["itemViews"]["tip"].AsString());
+    Assert.Equal(ItemViewKind.Longtool, CollectibleViews.KindOf(null!, item));
+  }
+
+  // Fails when the kind is written as the enum's name.
+  [Fact]
+  public void A_block_view_kind_is_written_without_a_tip() {
+    var block = ExBlockDef
+      .Create("d", "c")
+      .Views(ItemViewKind.Partial)
+      .ToJson();
+
+    Assert.Equal(
+      "partial",
+      (string?)block["attributes"]!["itemViews"]!["kind"]
+    );
+    Assert.Null(block["attributes"]!["itemViews"]!["tip"]);
+  }
+
+  // Fails when a block accepts an item kind: the load pass would leave the block at the game's views.
+  [Fact]
+  public void A_block_view_of_an_item_kind_is_refused() {
+    Assert.Throws<ArgumentException>(() =>
+      ExBlockDef.Create("d", "c").Views(ItemViewKind.Longtool)
+    );
+  }
+
+  // Fails when an item accepts a block kind: the load pass would leave the item at the game's views.
+  [Fact]
+  public void An_item_view_of_a_block_kind_is_refused() {
+    Assert.Throws<ArgumentException>(() =>
+      ExItemDef.Create("d", "c").Views(ItemViewKind.Cube)
     );
   }
 }

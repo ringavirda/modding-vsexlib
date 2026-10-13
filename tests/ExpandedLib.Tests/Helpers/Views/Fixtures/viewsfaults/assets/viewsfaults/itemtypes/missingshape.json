@@ -1,0 +1,12 @@
+{
+  "code": "missingshape",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/nowhere"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "longtool"
+    }
+  }
+}

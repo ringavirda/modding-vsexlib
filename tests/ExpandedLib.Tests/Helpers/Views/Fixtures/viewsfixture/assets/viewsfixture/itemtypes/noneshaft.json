@@ -1,0 +1,12 @@
+{
+  "code": "noneshaft",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/longshaft"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "none"
+    }
+  }
+}

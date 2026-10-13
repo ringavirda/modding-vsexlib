@@ -1,0 +1,7 @@
+{
+  "code": "longshaft",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/longshaft"
+  }
+}

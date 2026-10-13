@@ -51,9 +51,9 @@ public sealed partial class TestWorld {
   /// <remarks>A patch's <c>dependsOn</c> is met by exlib, the listed mods and any id <see cref="Mods"/>
   /// held before, never by <c>game</c>; its <c>condition</c> reads <see cref="Config"/>'s <c>Tree</c>.
   /// Each <c>game:</c> file a patch names without a wildcard is read from <c>assets/survival</c>
-  /// whatever its conditions, and its types load as the mods' do; a file the install lacks is logged
-  /// as not found. The loader's summary lands in <see cref="Log"/>; this package carries the
-  /// Newtonsoft.Json the loader needs.</remarks>
+  /// whatever its conditions; a file the install lacks is logged as not found. A listed mod's
+  /// <c>modinfo.json</c> dependencies besides <c>game</c>, <c>survival</c> and <c>creative</c> load
+  /// before it, once, from <see cref="RepoPaths.Assets"/>'s folder; an unreadable one is skipped.</remarks>
   /// <param name="modPaths">Mod folders in load order, each as <see cref="LoadAssets(string, string)"/>
   /// takes one; an empty list loads the base game alone.</param>
   /// <param name="gamePath">As <see cref="LoadAssets(string, string)"/> takes it.</param>
@@ -114,7 +114,7 @@ public sealed partial class TestWorld {
         "No game install found - set the game's env var or provision .game/<slug>."
       );
     string assetsPath = Path.Combine(gamePath, "assets");
-    List<ListedMod> mods = [.. modPaths.Select(ReadListedMod)];
+    List<ListedMod> mods = ReadWithDependencies(modPaths);
 
     // The base game domain only.
     var mgr = new AssetManager(assetsPath, EnumAppSide.Server);
@@ -154,7 +154,8 @@ public sealed partial class TestWorld {
       out ClassRegistry rawClassRegistry
     );
     foreach (ListedMod mod in mods)
-      Mods.Add(mod.Id, mod.Version, true, mod.Dependencies);
+      if (Mods.GetMod(mod.Id) == null)
+        Mods.Add(mod.Id, mod.Version, true, mod.Dependencies);
     PassedOverVanillaSystems = StartVanillaMods(gamePath, rawClassRegistry);
     var started = new List<ModSystem>();
     try {
@@ -321,7 +322,7 @@ public sealed partial class TestWorld {
 
   /// <summary>A listed mod as <see cref="LoadAssets(IReadOnlyList{string}, string)"/> reads its
   /// folder: <paramref name="Assembly"/> is null for a content mod.</summary>
-  private sealed record ListedMod(
+  internal sealed record ListedMod(
     string Path,
     string Id,
     string Version,
@@ -329,9 +330,49 @@ public sealed partial class TestWorld {
     Assembly? Assembly
   );
 
+  /// <summary>Reads <paramref name="modPaths"/> in order, each preceded by the dependencies its
+  /// <c>modinfo.json</c> names that are not listed or read already: the ids other than
+  /// <c>game</c>, <c>survival</c> and <c>creative</c>, in the folder <see cref="RepoPaths.Assets"/>
+  /// finds for the id. exlib is read for its assets alone, its systems being started apart. A dependency
+  /// whose folder cannot be read is skipped.</summary>
+  /// <exception cref="InvalidOperationException">No <c>modinfo.json</c> or modid resolves in a
+  /// listed folder, or a listed mod that is not a content mod has no compiled dll under
+  /// <c>bin/</c>.</exception>
+  internal static List<ListedMod> ReadWithDependencies(
+    IReadOnlyList<string> modPaths
+  ) {
+    List<ListedMod> listed = [.. modPaths.Select(p => ReadListedMod(p))];
+    HashSet<string> known = new(
+      listed.Select(m => m.Id),
+      StringComparer.OrdinalIgnoreCase
+    );
+    List<ListedMod> ordered = [];
+
+    void Add(ListedMod mod) {
+      foreach (string id in mod.Dependencies) {
+        if (id is "game" or "survival" or "creative" || !known.Add(id))
+          continue;
+        string assets = RepoPaths.Assets(id);
+        try {
+          Add(
+            ReadListedMod(
+              Path.GetDirectoryName(Path.GetDirectoryName(assets))!,
+              withCode: id != "exlib"
+            )
+          );
+        } catch (InvalidOperationException) { }
+      }
+      ordered.Add(mod);
+    }
+
+    foreach (ListedMod mod in listed)
+      Add(mod);
+    return ordered;
+  }
+
   /// <exception cref="InvalidOperationException">No <c>modinfo.json</c> or modid resolves, or a mod
   /// that is not a content mod has no compiled dll under <c>bin/</c>.</exception>
-  private static ListedMod ReadListedMod(string modPath) {
+  private static ListedMod ReadListedMod(string modPath, bool withCode = true) {
     // modinfo.json presence picks src/ vs. the mod's own root; checked directly since a stale
     // ignored bin/ can outlive a layout move.
     string modRoot = File.Exists(Path.Combine(modPath, "modinfo.json"))
@@ -362,7 +403,9 @@ public sealed partial class TestWorld {
           .Select(p => p.Name)
           ?? [],
       ],
-      isContentMod ? null : Assembly.LoadFrom(FindModAssembly(modRoot, modId))
+      isContentMod || !withCode
+        ? null
+        : Assembly.LoadFrom(FindModAssembly(modRoot, modId))
     );
   }
 

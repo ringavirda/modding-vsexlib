@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Helpers;
 using ExpandedLib.Registries;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -371,6 +372,32 @@ public sealed class ExItemDef : IExDef {
   public ExItemDef Attribute(string key, object value) {
     Nested("attributes")[key] = value as JToken ?? JToken.FromObject(value);
     return this;
+  }
+
+  /// <summary>Sets <c>attributes.itemViews</c>, which the load pass and <see cref="ItemViews"/> read: the kind
+  /// the item's views are laid out as, and for a long tool the end that works.</summary>
+  /// <param name="kind">Written as its lower-case name; <see cref="ItemViewKind.None"/> keeps the game's defaults.</param>
+  /// <param name="tip">The working end of a longtool or tool as a sign and an axis letter in the shape's frame
+  /// ("+y"), or null to take the end the drawn elements give; read when the views are computed, not here. A
+  /// tip that is not a sign and one of x, y, z is logged as an error naming the item at load, and the item keeps
+  /// the game's views.</param>
+  /// <exception cref="ArgumentException"><paramref name="kind"/> is a block kind; the load pass would leave the
+  /// item at the game's views without a warning.</exception>
+  public ExItemDef Views(ItemViewKind kind, string? tip = null) {
+    if (
+      kind
+      is ItemViewKind.Cube
+        or ItemViewKind.Partial
+        or ItemViewKind.Multicell
+    )
+      throw new ArgumentException(
+        $"Views(kind, tip) takes an item kind, not the block kind {kind}.",
+        nameof(kind)
+      );
+    var views = new JObject { ["kind"] = kind.ToString().ToLowerInvariant() };
+    if (tip != null)
+      views["tip"] = tip;
+    return Attribute("itemViews", views);
   }
 
   /// <summary>Merges every property of a POCO/anonymous object into <c>attributes</c> at once.

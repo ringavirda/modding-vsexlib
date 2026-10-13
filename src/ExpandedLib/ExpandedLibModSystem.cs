@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ExpandedLib.Catalogues;
+using ExpandedLib.Helpers;
 using ExpandedLib.Registries;
 using ExpandedLib.Structures;
 using HarmonyLib;
@@ -49,15 +50,15 @@ public class ExpandedLibModSystem : ModSystem {
   }
 
   /// <summary>Loads the shared catalogues (liquids, material roles, process routes, process jobs, bay
-  /// occupancy) from every domain's <c>config/</c> once the asset-patch pipeline has merged all mods'
-  /// JSON; a singleplayer client reads its own server's (<see cref="ExWorldState.ResetsOnLoad"/>). A
-  /// server notes the recipes its registries hold, after the game's recipe loaders and before any
-  /// mod's <c>StartServerSide</c> removes one.</summary>
+  /// occupancy) from every domain's <c>config/</c> after the asset patches; a singleplayer client reads its
+  /// own server's (<see cref="ExWorldState.ResetsOnLoad"/>). A server notes the recipes its registries hold
+  /// before any mod's <c>StartServerSide</c> removes one. Either side then fills the item views of dependent mods.</summary>
   public override void AssetsFinalize(ICoreAPI api) {
     if (api.Side == EnumAppSide.Server)
       Checks.AssetCheckSource.NoteHeldRecipes(api);
     if (ExWorldState.ResetsOnLoad(api))
       LoadCatalogues(api);
+    ItemViewsPass.Run(api);
   }
 
   private static void LoadCatalogues(ICoreAPI api) {
