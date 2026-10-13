@@ -58,6 +58,10 @@ public class ClipActionGuards(ITestOutputHelper output)
         )
     );
     Assert.True(
+      result.Laws.Single(l => l.Name == "animator key").Blocks >= 1,
+      "the animator key law saw no twintubblower blocktype with an animator"
+    );
+    Assert.True(
       result.Laws.Single(l => l.Name == "clip driver").Blocks >= 1,
       "the clip driver law saw no twintubblower blocktype with clips"
     );

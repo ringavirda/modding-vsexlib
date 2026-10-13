@@ -258,6 +258,21 @@ internal sealed class ClipTrace
           null,
           null
         );
+        if (step == null && Animated(block))
+        {
+          animated = true;
+          found.Add(
+            (
+              block.Code.ToString(),
+              new ClipProblem(
+                ClipLaws.KeyName,
+                $"{block.Shape.Base} twin",
+                "could not be placed to stand its twin"
+              )
+            )
+          );
+          continue;
+        }
         if (
           step?.Entity is not { } entity
           || (
@@ -479,14 +494,11 @@ internal sealed class ClipTrace
         );
       float seconds = action.Seconds!.Value;
       var start = reference.Pose(action.Clip, 0f, parts);
-      var end = reference.Pose(action.Clip, reference.Last(action.Clip), parts);
+      var end = Reach(reference, action.Clip, start, parts);
       List<(string Part, int Channel)> moving = Moving(start, end);
       if (moving.Count == 0)
       {
-        Add(
-          ClipLaws.ActionName,
-          "moves no part between its first and last frame"
-        );
+        Add(ClipLaws.ActionName, "moves no part in any frame");
         return new ClipTraced(problems, null, null, 0);
       }
 
@@ -763,6 +775,31 @@ internal sealed class ClipTrace
           .Select(c => (part, c))
       ),
     ];
+
+  private static bool Animated(Block block) =>
+    ClipActions.Of(block).Declared.Count > 0
+    || block.BlockEntityBehaviors.Any(b => b.Name == "Animatable");
+
+  private static Dictionary<string, float[]> Reach(
+    ClipReference reference,
+    string clip,
+    IReadOnlyDictionary<string, float[]> start,
+    string[] parts
+  )
+  {
+    var reach = start.ToDictionary(p => p.Key, p => (float[])p.Value.Clone());
+    for (int frame = 1; frame <= (int)reference.Last(clip); frame++)
+      foreach (
+        (string part, float[] pose) in reference.Pose(clip, frame, parts)
+      )
+        for (int c = 0; c < 6; c++)
+          if (
+            Math.Abs(pose[c] - start[part][c])
+            > Math.Abs(reach[part][c] - start[part][c])
+          )
+            reach[part][c] = pose[c];
+    return reach;
+  }
 
   private static float Tolerance(int channel) => channel < 3 ? Degrees : Voxels;
 

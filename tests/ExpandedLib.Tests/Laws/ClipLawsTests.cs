@@ -591,11 +591,12 @@ public class ClipLawsTests(ITestOutputHelper output)
     string code = "spinner",
     string entity = "test-hatch",
     string state = "raised",
-    float? when = null
+    float? when = null,
+    string shape = "fan"
   ) =>
     ExBlockDef
       .Create("cliptrace", code)
-      .Shape("cliptrace:fan")
+      .Shape("cliptrace:" + shape)
       .EntityClass(entity)
       .EntityBehavior("ClipActions")
       .ClipAction(
@@ -709,6 +710,17 @@ public class ClipLawsTests(ITestOutputHelper output)
   public void A_run_clip_picked_by_its_state_runs_and_holds_nothing_back()
   {
     BlockLaws.Result result = Run(Spinner("pickedspinner", when: 1f));
+
+    Assert.All(result.Laws, law => Assert.Empty(law.Findings));
+    Assert.Equal(1, result[ClipLaws.TimeName].Cases);
+  }
+
+  // Fails when the moving channels come from the first and last frame alone: a plunger going 0, 90, 0
+  // is then found to move no part.
+  [Fact]
+  public void A_run_clip_whose_last_frame_equals_its_first_still_moves()
+  {
+    BlockLaws.Result result = Run(Spinner("plungerspinner", shape: "plunger"));
 
     Assert.All(result.Laws, law => Assert.Empty(law.Findings));
     Assert.Equal(1, result[ClipLaws.TimeName].Cases);

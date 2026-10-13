@@ -37,6 +37,7 @@ public class ClipActionsBehaviorTests {
       .ClientAssets("cliptrace", Fixtures)
       .RegisterClass("test-door", typeof(DoorEntity))
       .RegisterClass("test-claim", typeof(ClaimDoor))
+      .RegisterClass("test-keyed", typeof(KeyedDoor))
       .RegisterClass("ClipActions", typeof(BEBehaviorClipActions));
 
   private static ExBlockDef DoorDef(string code, string shape) =>
@@ -442,6 +443,22 @@ public class ClipActionsBehaviorTests {
     Assert.Equal(30f, Frame(twin), 0.01f);
   }
 
+  // Fails when ConstructedAnimator's default key is a constant instead of AnimatorKeys.Of.
+  [Fact]
+  public void A_constructed_animator_keys_its_cache_by_the_block_by_default() {
+    using var world = NewWorld();
+    var (_, twin) = Stand(
+      world,
+      DoorDef("keyeddoor", "drivendoor")
+        .EntityClass("test-keyed")
+        .ClipAction(new ClipAction("open") { State = "doorOpen", Seconds = 1f })
+    );
+    twin.Frames(Dt, 3);
+
+    var cache = (IDictionary)world.ClientApi.ObjectCache["animUtil-animCache"];
+    Assert.True(cache.Contains("animutil-cliptrace:drivendoor"));
+  }
+
   [Fact]
   public void A_paused_game_does_not_move_the_clip() {
     using var world = NewWorld();
@@ -498,6 +515,14 @@ public class ClipActionsBehaviorTests {
       base.Initialize(api);
       if (api is ICoreClientAPI)
         new ConstructedAnimator(this, () => "claimed-key").Initialize();
+    }
+  }
+
+  private sealed class KeyedDoor : DoorEntity {
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      if (api is ICoreClientAPI)
+        new ConstructedAnimator(this).Initialize();
     }
   }
 
