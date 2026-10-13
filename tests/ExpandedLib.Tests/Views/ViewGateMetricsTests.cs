@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using ExpandedLib.Testing;
+using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -36,11 +38,21 @@ public class ViewGateMetricsTests {
     Assert.Equal(0.000, ground.Rest, 0.01);
     Assert.Equal(0.66, ground.Size, 0.01);
 
-    Assert.Equal(0.96, ViewGates.Ground(GroupOf("game:ingot-iron")).Size, 0.01);
+    ViewGroup ingot = GroupOf("game:ingot-iron");
+    SlotMetrics ingotSlot = ViewGates.Slot(ingot);
+    GroundMetrics ingotGround = ViewGates.Ground(ingot);
+    Assert.Equal(0.763, ingotSlot.Span, 0.01);
+    Assert.Equal(2.042, ingotSlot.Centre, 0.01);
+    Assert.Equal(0.000, ingotGround.Rest, 0.01);
+    Assert.Equal(0.96, ingotGround.Size, 0.01);
 
     ViewGroup hay = GroupOf("game:hay-normal-ud");
-    Assert.Equal(0.782, ViewGates.Slot(hay).Span, 0.01);
-    Assert.Equal(0.300, ViewGates.Ground(hay).Size, 0.01);
+    SlotMetrics haySlot = ViewGates.Slot(hay);
+    GroundMetrics hayGround = ViewGates.Ground(hay);
+    Assert.Equal(0.782, haySlot.Span, 0.01);
+    Assert.Equal(0.707, haySlot.Centre, 0.01);
+    Assert.Equal(0.000, hayGround.Rest, 0.01);
+    Assert.Equal(0.300, hayGround.Size, 0.01);
   }
 
   // Fails when the group key adds the code: the ingot's metals then form one group each.
@@ -103,11 +115,69 @@ public class ViewGateMetricsTests {
     );
   }
 
-  // Fails when G10 compares the box axis's sign: the reversed box reads near 180 degrees.
+  // Fails when G10 compares the box axis's sign or the grip side is dropped: the reversed spear then reads near 0.
   [Fact]
-  public void Blackbronze_spear_axis_is_judged_by_its_working_end() {
+  public void Spear_axis_is_judged_by_its_working_end() {
     ViewGroup spear = GroupOf("game:spear-generic-blackbronze");
     Assert.InRange(ViewGates.AxisDegrees(World, spear), 0, 3.3);
     Assert.InRange(ViewGates.AxisDegrees(World, spear, true), 0, 3.3);
+
+    Item item = World.World.GetItem(
+      new AssetLocation("game:spear-generic-blackbronze")
+    );
+    ModelTransform authored = item.TpHandTransform;
+    try {
+      ModelTransform turned = authored.Clone();
+      turned.Rotation = new FastVec3f(
+        authored.Rotation.X,
+        authored.Rotation.Y + 180,
+        authored.Rotation.Z
+      );
+      item.TpHandTransform = turned;
+      Assert.InRange(
+        ViewGates.AxisDegrees(World, GroupOf("game:spear-generic-blackbronze")),
+        170,
+        180
+      );
+    } finally {
+      item.TpHandTransform = authored;
+    }
+  }
+
+  // Fails when the animation code is matched case-sensitively, or when an unmapped code is posed as a clip.
+  [Fact]
+  public void Held_code_resolves_through_the_players_animation_list() {
+    string? scythe = ViewGates.HeldClip(World, "scytheIdle");
+    Assert.NotNull(scythe);
+    Assert.Equal(scythe, ViewGates.HeldClip(World, "scytheidle"));
+    Assert.Equal("idle1", ViewGates.HeldClip(World, "idle"));
+    Assert.Null(ViewGates.HeldClip(World, "beginholditem"));
+
+    HandMetrics axe = ViewGates.Hand(World, GroupOf("game:axe-scrap-scrap"));
+    Assert.Equal(0.950, axe.Size, 0.01);
+    Assert.Equal(0.000, axe.Grip!.Value, 0.01);
+    HandMetrics scytheHand = ViewGates.Hand(
+      World,
+      GroupOf("game:scythe-copper")
+    );
+    Assert.Equal(0.800, scytheHand.Size, 0.01);
+    Assert.Equal(0.079, scytheHand.Grip!.Value, 0.01);
+  }
+
+  // Fails when the hit clip leaves the group key: the two ingots then share a group.
+  [Fact]
+  public void Groups_split_on_the_hit_clip() {
+    Item ingot = World.World.GetItem(new AssetLocation("game:ingot-copper"));
+    string? authored = ingot.HeldTpHitAnimation;
+    try {
+      ingot.HeldTpHitAnimation = "axechop";
+      Assert.DoesNotContain(
+        "game:ingot-iron",
+        GroupOf("game:ingot-copper").Codes
+      );
+    } finally {
+      ingot.HeldTpHitAnimation = authored;
+    }
+    Assert.Contains("game:ingot-iron", GroupOf("game:ingot-copper").Codes);
   }
 }

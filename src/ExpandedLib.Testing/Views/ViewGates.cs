@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using ExpandedLib.Helpers;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
@@ -57,6 +58,11 @@ internal static class ViewGates {
 
   /// <summary>The clip a block is carried with.</summary>
   internal const string BlockHeldClip = "holdbothhandslarge";
+
+  /// <summary>The asset whose animation list maps animation codes to the seraph's clips.</summary>
+  internal static readonly AssetLocation PlayerAsset = new(
+    "game:entities/humanoid/player.json"
+  );
 
   /// <summary>The itemtype whose held long axis G10 compares against.</summary>
   internal const string SpearReference = "game:spear-generic-iron";
@@ -136,9 +142,9 @@ internal static class ViewGates {
     );
   }
 
-  /// <summary>The clip a stack is held with: a block's is <c>holdbothhandslarge</c>, an item's its idle, else its ready,
-  /// else <c>helditemready</c>.</summary>
-  internal static string HeldClip(CollectibleObject collectible) =>
+  /// <summary>The animation code a stack is held with: a block's is <c>holdbothhandslarge</c>, an item's its idle, else
+  /// its ready, else <c>helditemready</c>.</summary>
+  internal static string HeldCode(CollectibleObject collectible) =>
     collectible is Block ? BlockHeldClip
     : !string.IsNullOrEmpty(collectible.HeldRightTpIdleAnimation)
       ? collectible.HeldRightTpIdleAnimation
@@ -146,12 +152,41 @@ internal static class ViewGates {
       ? collectible.HeldRightReadyAnimation
     : "helditemready";
 
-  /// <summary>G7, G8, G10 and G13 of <paramref name="group"/>, with the seraph at frame 0 of its held clip.</summary>
+  /// <summary>The seraph shape's clip the game plays for <paramref name="code"/>: the player's animation list maps the
+  /// code, ignoring case, to a clip, and the first-person hands take that clip's <c>-fp</c> twin.</summary>
+  /// <param name="world">A world from <see cref="TestWorld.LoadAsGame"/>.</param>
+  /// <param name="code">An animation code, such as an item's <c>heldRightTpIdleAnimation</c>.</param>
+  /// <param name="firstPerson">Whether to take the <c>-fp</c> twin.</param>
+  /// <returns>The clip code; null when the player has no such animation or its shape lacks the clip, which plays
+  /// nothing and leaves the seraph at rest.</returns>
+  internal static string? HeldClip(
+    TestWorld world,
+    string code,
+    bool firstPerson = false
+  ) {
+    IAsset player = world.Api.Assets.Get(PlayerAsset);
+    AnimationMetaData? meta = JsonObject
+      .FromJson(player.ToText())["client"]["animations"]
+      .AsArray<AnimationMetaData>()
+      ?.FirstOrDefault(a =>
+        string.Equals(a.Code, code, StringComparison.OrdinalIgnoreCase)
+      );
+    if (meta?.Animation == null)
+      return null;
+    string clip = meta.Animation + (firstPerson ? "-fp" : "");
+    return SeraphPose
+      .Clips(world.Api)
+      .FirstOrDefault(c =>
+        string.Equals(c, clip, StringComparison.OrdinalIgnoreCase)
+      );
+  }
+
+  /// <summary>G7, G8, G10 and G13 of <paramref name="group"/>, with the seraph at frame 0 of its held clip, or at rest
+  /// when the game plays none.</summary>
   /// <param name="world">The world the group comes from.</param>
   /// <param name="group">The group to measure.</param>
   /// <param name="firstPerson">Whether to pose the clip's <c>-fp</c> twin and take the first-person hand matrix; the
   /// block centre is then not measured.</param>
-  /// <exception cref="ArgumentException">The shape of the seraph has no such clip.</exception>
   internal static HandMetrics Hand(
     TestWorld world,
     ViewGroup group,
@@ -161,7 +196,7 @@ internal static class ViewGates {
     ModelTransform tf = ViewMatrices.Transform(c, ViewTarget.Hand);
     SeraphPose pose = SeraphPose.At(
       world.Api,
-      HeldClip(c) + (firstPerson ? "-fp" : "")
+      HeldClip(world, HeldCode(c), firstPerson)
     );
     Mat4 m = firstPerson
       ? ViewMatrices.HandFp(tf, pose)
@@ -176,6 +211,13 @@ internal static class ViewGates {
     int longest = Array.IndexOf(side, side.Max());
     Vec3d axis = m.Apply(group.Box.Axes[longest]) - m.Apply(new Vec3d());
     axis /= axis.Length();
+    double? grip = group.IsBlock ? null : GripGap(group.Box, tf, pose);
+    if (grip != null) {
+      double[] at = GripPoint(tf, pose);
+      double[] from = [group.Box.From.X, group.Box.From.Y, group.Box.From.Z];
+      if (at[longest] - from[longest] > side[longest] / 2)
+        axis = new Vec3d() - axis;
+    }
 
     double scale = tf.ScaleXYZ.X;
     double size =
@@ -196,11 +238,12 @@ internal static class ViewGates {
         firstPerson ? null : (m.Apply(centre) - cube).Length()
       );
     }
-    return new HandMetrics(size, GripGap(group.Box, tf, pose), axis, null);
+    return new HandMetrics(size, grip, axis, null);
   }
 
-  /// <summary>G10 of <paramref name="group"/>: the angle between its held long axis and the iron spear's, as lines.</summary>
-  /// <returns>Degrees, 0 to 90.</returns>
+  /// <summary>G10 of <paramref name="group"/>: the angle between its held long axis and the iron spear's, each pointing
+  /// from the grip toward the box end farther from it.</summary>
+  /// <returns>Degrees, 0 to 180.</returns>
   internal static double AxisDegrees(
     TestWorld world,
     ViewGroup group,
@@ -216,24 +259,34 @@ internal static class ViewGates {
       spear,
       [SpearReference]
     );
-    double dot = Math.Abs(
-      Dot(
-        Hand(world, group, firstPerson).Axis,
-        Hand(world, reference, firstPerson).Axis
-      )
+    double dot = Dot(
+      Hand(world, group, firstPerson).Axis,
+      Hand(world, reference, firstPerson).Axis
     );
-    return Math.Acos(Math.Min(1, dot)) * 180 / Math.PI;
+    return Math.Acos(Math.Clamp(dot, -1, 1)) * 180 / Math.PI;
   }
 
   private static double Dot(Vec3d a, Vec3d b) =>
     a.X * b.X + a.Y * b.Y + a.Z * b.Z;
 
-  // The shape point that lands on the hand solves hand(p) = anchor origin, so the anchor and the pose drop out.
   private static double GripGap(
     CollectibleViews.ViewBox box,
     ModelTransform tf,
     SeraphPose pose
   ) {
+    double[] g = GripPoint(tf, pose);
+    var grip = new Vec3d(g[0], g[1], g[2]);
+    return box.Elements.Min(e =>
+      Math.Sqrt(
+        Math.Pow(Math.Max(Math.Max(e.Lo.X - grip.X, 0), grip.X - e.Hi.X), 2)
+          + Math.Pow(Math.Max(Math.Max(e.Lo.Y - grip.Y, 0), grip.Y - e.Hi.Y), 2)
+          + Math.Pow(Math.Max(Math.Max(e.Lo.Z - grip.Z, 0), grip.Z - e.Hi.Z), 2)
+      )
+    );
+  }
+
+  // The shape point that lands on the hand solves hand(p) = anchor origin, so the anchor and the pose drop out.
+  private static double[] GripPoint(ModelTransform tf, SeraphPose pose) {
     AttachmentPoint ap = pose.Attachment;
     Mat4 turn = Mat4.Identity.RotateXYZ(
       ap.RotationX + tf.Rotation.X,
@@ -247,18 +300,12 @@ internal static class ViewGates {
       -(ap.PosZ / 16 + tf.Translation.Z) - tf.Origin.Z / tf.ScaleXYZ.Z,
     ];
     double[] o = [tf.Origin.X, tf.Origin.Y, tf.Origin.Z];
-    var grip = new Vec3d(
+    return
+    [
       16 * (o[0] + turn[0, 0] * w[0] + turn[1, 0] * w[1] + turn[2, 0] * w[2]),
       16 * (o[1] + turn[0, 1] * w[0] + turn[1, 1] * w[1] + turn[2, 1] * w[2]),
-      16 * (o[2] + turn[0, 2] * w[0] + turn[1, 2] * w[1] + turn[2, 2] * w[2])
-    );
-    return box.Elements.Min(e =>
-      Math.Sqrt(
-        Math.Pow(Math.Max(Math.Max(e.Lo.X - grip.X, 0), grip.X - e.Hi.X), 2)
-          + Math.Pow(Math.Max(Math.Max(e.Lo.Y - grip.Y, 0), grip.Y - e.Hi.Y), 2)
-          + Math.Pow(Math.Max(Math.Max(e.Lo.Z - grip.Z, 0), grip.Z - e.Hi.Z), 2)
-      )
-    );
+      16 * (o[2] + turn[0, 2] * w[0] + turn[1, 2] * w[1] + turn[2, 2] * w[2]),
+    ];
   }
 
   /// <summary>The eight corners of <paramref name="box"/> in mesh units (blocks), in the shape's frame.</summary>
@@ -294,6 +341,7 @@ internal static class ViewGates {
       TransformKey(ViewMatrices.Transform(c, ViewTarget.Ground)),
       c.HeldRightTpIdleAnimation,
       c.HeldRightReadyAnimation,
+      c.HeldTpHitAnimation,
       c.HeldTpUseAnimation,
       c.Attributes?["itemViews"]?["kind"]?.AsString(),
       c.Tool,

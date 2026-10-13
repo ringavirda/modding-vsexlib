@@ -27,13 +27,13 @@ internal sealed class SeraphPose {
   /// <summary>The <c>RightHand</c> attachment point the held item's transform adds to.</summary>
   internal AttachmentPoint Attachment { get; }
 
-  /// <summary>Poses the seraph with the game's own animator.</summary>
+  /// <summary>The codes of the clips the seraph's shape holds.</summary>
   /// <param name="api">An api whose assets hold the game's shapes.</param>
-  /// <param name="clip">A clip code of the shape, such as <c>spearidle</c> or <c>spearidle-fp</c>, at its frame 0;
-  /// null for the rest pose.</param>
   /// <exception cref="InvalidOperationException">The shape does not load.</exception>
-  /// <exception cref="ArgumentException">The shape has no clip <paramref name="clip"/>.</exception>
-  internal static SeraphPose At(ICoreAPI api, string? clip) {
+  internal static IReadOnlySet<string> Clips(ICoreAPI api) =>
+    Load(api).Animations.Select(a => a.Code).ToHashSet();
+
+  private static Shape Load(ICoreAPI api) {
     Shape shape =
       Shape.TryGet(
         api,
@@ -42,6 +42,17 @@ internal sealed class SeraphPose {
           .WithPathAppendixOnce(".json")
       ) ?? throw new InvalidOperationException($"{ShapePath} does not load.");
     shape.InitForAnimations(api.Logger, ShapePath);
+    return shape;
+  }
+
+  /// <summary>Poses the seraph with the game's own animator.</summary>
+  /// <param name="api">An api whose assets hold the game's shapes.</param>
+  /// <param name="clip">A clip code of the shape, such as <c>spearidle</c> or <c>spearidle-fp</c>, at its frame 0;
+  /// null for the rest pose.</param>
+  /// <exception cref="InvalidOperationException">The shape does not load.</exception>
+  /// <exception cref="ArgumentException">The shape has no clip <paramref name="clip"/>.</exception>
+  internal static SeraphPose At(ICoreAPI api, string? clip) {
+    Shape shape = Load(api);
     if (clip != null && shape.Animations.All(a => a.Code != clip))
       throw new ArgumentException(
         $"{ShapePath} has no clip '{clip}'.",
