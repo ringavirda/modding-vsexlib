@@ -24,7 +24,8 @@ public static class ClipLaws
 
   internal const string ExceptionsName = "clip exceptions";
 
-  /// <summary>Traces the <see cref="Blocks.ClipPose.Frame"/> actions of every variant of
+  /// <summary>Traces the <see cref="Blocks.ClipPose.Frame"/>, <see cref="Blocks.ClipPose.Play"/> and
+  /// <see cref="Blocks.ClipPose.Run"/> actions of every variant of
   /// <paramref name="defs"/>, the animator cache key each animated variant builds under, and the
   /// driver of every clip its shape carries.</summary>
   /// <remarks>A finding is <c>key | what | variant codes</c>.</remarks>

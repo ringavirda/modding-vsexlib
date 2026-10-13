@@ -1,9 +1,4 @@
 {
   "static": {},
-  "known": {
-    "clip driver": {
-      "burdenmaker:ore/burdenmaker open": "AT6: the gate is posed by BlockEntityBurdenmaker, not declared",
-      "burdenmaker:ore/burdenmaker closed": "AT6: the gate is posed by BlockEntityBurdenmaker, not declared"
-    }
-  }
+  "known": {}
 }

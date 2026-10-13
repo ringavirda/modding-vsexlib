@@ -41,6 +41,7 @@ public class ClipLawsTests(ITestOutputHelper output)
     world.RegisterClass("test-stepblock", typeof(StepBlock));
     world.RegisterClass("test-door", typeof(DoorEntity));
     world.RegisterClass("test-hatch", typeof(HatchEntity));
+    world.RegisterClass("test-late", typeof(LateHatch));
     world.RegisterClass("test-gate", typeof(GateEntity));
     world.RegisterClass("test-stuck", typeof(StuckDoor));
     world.RegisterClass("test-snap", typeof(SnapDoor));
@@ -561,6 +562,235 @@ public class ClipLawsTests(ITestOutputHelper output)
     );
   }
 
+  private static ExBlockDef Swing(string code = "gatedoor") =>
+    Driven(
+        code,
+        "test-door",
+        "gatedoor",
+        new ClipAction("open")
+        {
+          Pose = ClipPose.Play,
+          State = "doorOpen",
+          When = 1f,
+          By = ["cliptrace:toggle"],
+          Seconds = 1f,
+        }
+      )
+      .ClipAction(
+        new ClipAction("closed")
+        {
+          Pose = ClipPose.Play,
+          State = "doorOpen",
+          When = 0f,
+          By = ["cliptrace:toggle"],
+          Seconds = 1f,
+        }
+      );
+
+  private static ExBlockDef Spinner(
+    string code = "spinner",
+    string entity = "test-hatch",
+    string state = "raised",
+    float? when = null
+  ) =>
+    ExBlockDef
+      .Create("cliptrace", code)
+      .Shape("cliptrace:fan")
+      .EntityClass(entity)
+      .EntityBehavior("ClipActions")
+      .ClipAction(
+        new ClipAction("spin")
+        {
+          Pose = ClipPose.Run,
+          State = state,
+          When = when,
+          Seconds = 1f,
+        }
+      );
+
+  [Fact]
+  public void A_play_pair_passes_every_clip_law()
+  {
+    BlockLaws.Result result = Run(Swing(), Spinner());
+
+    Assert.All(result.Laws, law => Assert.Empty(law.Findings));
+    Assert.Equal(3, result[ClipLaws.ActionName].Cases);
+    Assert.Equal(3, result[ClipLaws.TimeName].Cases);
+  }
+
+  // Fails when a play clip starts at its last frame, which jumps the leaf to the open pose.
+  [Fact]
+  public void Play_clips_cross_without_a_jump()
+  {
+    TestWorld world = BlockLaws.Stand([Swing()], Exlib, Prepare);
+    world.ClientAssets("cliptrace", Fixtures);
+    Block block = world.World.Blocks.First(b => b?.Code?.Path == "gatedoor");
+    ClipReference reference = ClipReference.Load(world, block);
+    ClipAction[] actions = [.. ClipActions.Of(block).Resolve(reference.Shape)];
+
+    foreach (ClipAction action in actions)
+    {
+      ClipTraced traced = new ClipTrace(world, "cliptrace").Trace(
+        block,
+        action,
+        reference,
+        actions.Single(a => a != action)
+      );
+
+      Assert.Empty(traced.Problems);
+      float[] leaf =
+      [
+        .. traced.Forward!.Samples.Select(s => s.Poses["leaf"][1]),
+      ];
+      Assert.Equal(action.Clip == "open" ? 0f : 90f, leaf[0], 0.1f);
+      Assert.InRange(
+        leaf.Zip(leaf.Skip(1), (a, b) => Math.Abs(b - a)).Max(),
+        0f,
+        3 * 90f / 60f
+      );
+      Assert.Equal(60, traced.Forward.Arrived);
+    }
+  }
+
+  // Fails when a clip is stopped with Stop: the rotor snaps from the middle of its turn to frame 0.
+  [Fact]
+  public void A_run_clip_stops_without_a_jump()
+  {
+    TestWorld world = BlockLaws.Stand([Spinner()], Exlib, Prepare);
+    world.ClientAssets("cliptrace", Fixtures);
+    Block block = world.World.Blocks.First(b => b?.Code?.Path == "spinner");
+    ClipReference reference = ClipReference.Load(world, block);
+    ClipAction action = ClipActions.Of(block).Resolve(reference.Shape).Single();
+
+    ClipTraced traced = new ClipTrace(world, "cliptrace").Trace(
+      block,
+      action,
+      reference
+    );
+
+    Assert.Empty(traced.Problems);
+    float turned = traced.Forward!.Samples[^1].Poses["rotor"][1];
+    Assert.InRange(turned, 100f, 200f);
+    Assert.All(
+      traced.Reverse!.Samples,
+      s => Assert.InRange(s.Poses["rotor"][1], turned - 0.5f, turned + 8f)
+    );
+  }
+
+  // Fails when the run rate is not the clip's frames over its seconds.
+  [Fact]
+  public void A_run_clip_that_cycles_in_another_time_misses_its_time()
+  {
+    TestWorld world = BlockLaws.Stand([Spinner()], Exlib, Prepare);
+    world.ClientAssets("cliptrace", Fixtures);
+    Block block = world.World.Blocks.First(b => b?.Code?.Path == "spinner");
+    ClipReference reference = ClipReference.Load(world, block);
+    ClipAction action = ClipActions.Of(block).Resolve(reference.Shape).Single();
+
+    ClipTraced traced = new ClipTrace(world, "cliptrace").Trace(
+      block,
+      action with
+      {
+        Seconds = 2f,
+      },
+      reference
+    );
+
+    Assert.Single(traced.Problems);
+    Assert.Equal(ClipLaws.TimeName, traced.Problems[0].Law);
+    Assert.StartsWith(
+      "run cycles in 1 s against 2 s",
+      traced.Problems[0].Message
+    );
+  }
+
+  // Fails when a run clip chosen by its when value is not run at its pace.
+  [Fact]
+  public void A_run_clip_picked_by_its_state_runs_and_holds_nothing_back()
+  {
+    BlockLaws.Result result = Run(Spinner("pickedspinner", when: 1f));
+
+    Assert.All(result.Laws, law => Assert.Empty(law.Findings));
+    Assert.Equal(1, result[ClipLaws.TimeName].Cases);
+  }
+
+  [Fact]
+  public void A_run_clip_that_never_hears_its_state_plays_no_clip()
+  {
+    BlockLaws.Result result = Run(Spinner("deafspinner", state: "nokey"));
+
+    Assert.Equal(
+      ["cliptrace:fan spin | forward plays no clip | cliptrace:deafspinner"],
+      result[ClipLaws.ActionName].Findings
+    );
+  }
+
+  [Fact]
+  public void A_run_clip_a_load_does_not_start_is_found()
+  {
+    BlockLaws.Result result = Run(Spinner("latespinner", "test-late"));
+
+    Assert.Equal(
+      [
+        "cliptrace:fan spin | loaded running, it does not run on its first frame | cliptrace:latespinner",
+      ],
+      result[ClipLaws.ActionName].Findings
+    );
+  }
+
+  [Fact]
+  public void A_play_action_entered_in_its_own_state_changes_nothing()
+  {
+    BlockLaws.Result result = Run(
+      Driven(
+        "lonedoor",
+        "test-door",
+        "gatedoor",
+        new ClipAction("closed")
+        {
+          Pose = ClipPose.Play,
+          State = "doorOpen",
+          When = 0f,
+          Seconds = 1f,
+        }
+      )
+    );
+
+    Assert.Equal(
+      [
+        "cliptrace:gatedoor closed | the forward line '' changes nothing in the server's tree | cliptrace:lonedoor",
+      ],
+      result[ClipLaws.ActionName].Findings
+    );
+  }
+
+  [Fact]
+  public void A_play_action_whose_help_line_is_missing_is_found()
+  {
+    BlockLaws.Result result = Run(
+      Driven(
+        "linedoor",
+        "test-door",
+        "gatedoor",
+        new ClipAction("open")
+        {
+          Pose = ClipPose.Play,
+          State = "doorOpen",
+          When = 1f,
+          By = ["cliptrace:nothere"],
+          Seconds = 1f,
+        }
+      )
+    );
+
+    Assert.Equal(
+      [
+        "cliptrace:gatedoor open | has no right-click help line 'cliptrace:nothere' for the forward action | cliptrace:linedoor",
+      ],
+      result[ClipLaws.ActionName].Findings
+    );
+  }
+
   private static ExBlockDef Rattle(string code) =>
     Leaf(code, "test-door", "rattledoor")
       .ClipAction(
@@ -622,6 +852,27 @@ public class ClipLawsTests(ITestOutputHelper output)
     {
       base.FromTreeAttributes(tree, worldAccessForResolve);
       Raised = tree.GetFloat("raised");
+    }
+  }
+
+  private sealed class LateHatch : BlockEntity
+  {
+    public float Raised { get; set; }
+
+    public override void ToTreeAttributes(ITreeAttribute tree)
+    {
+      base.ToTreeAttributes(tree);
+      tree.SetFloat("raised", Raised);
+    }
+
+    public override void FromTreeAttributes(
+      ITreeAttribute tree,
+      IWorldAccessor worldAccessForResolve
+    )
+    {
+      Raised = tree.GetFloat("raised");
+      if (Api != null)
+        base.FromTreeAttributes(tree, worldAccessForResolve);
     }
   }
 

@@ -10,7 +10,7 @@ namespace ExpandedLib.Blocks;
 /// constructed, animator-rendered mega-blocks.</summary>
 public sealed class ConstructedAnimator {
   private readonly BlockEntity _be;
-  private readonly Func<string> _cacheKey;
+  private readonly Func<string>? _cacheKey;
   private readonly Action<BlockEntityAnimationUtil, MeshData>? _onAnimatorBuilt;
   private readonly Func<ITexPositionSource?>? _texSource;
 
@@ -23,7 +23,8 @@ public sealed class ConstructedAnimator {
   private Action? _repose;
 
   /// <param name="be">The owning block entity.</param>
-  /// <param name="cacheKey">Per-block animator/shape cache key, evaluated lazily.</param>
+  /// <param name="cacheKey">Per-block animator/shape cache key, evaluated lazily; null is
+  /// <see cref="AnimatorKeys.Of"/> of the entity's current block.</param>
   /// <param name="onAnimatorBuilt">Optional hook run after each successful (re)build, before the
   /// pose.</param>
   /// <param name="texSource">Optional texture source for the build, evaluated per build.</param>
@@ -31,7 +32,7 @@ public sealed class ConstructedAnimator {
   /// build.</param>
   public ConstructedAnimator(
     BlockEntity be,
-    Func<string> cacheKey,
+    Func<string>? cacheKey = null,
     Action<BlockEntityAnimationUtil, MeshData>? onAnimatorBuilt = null,
     Func<ITexPositionSource?>? texSource = null,
     System.Func<string[]?, string[]?>? composeElements = null
@@ -59,10 +60,16 @@ public sealed class ConstructedAnimator {
   /// <summary>Resolves the animatable and construction behaviors, wires construction-stage
   /// re-tessellation, builds the initial mesh and applies the first pose. Safe to call on any
   /// side.</summary>
-  public void Initialize(Action repose) {
+  /// <remarks>When the entity has a <see cref="BEBehaviorClipActions"/>, this animator
+  /// <see cref="BEBehaviorClipActions.Claim"/>s the build: the behaviour poses the animator built here and
+  /// never builds its own.</remarks>
+  /// <param name="repose">Applies the pose after each build; null when the entity's clip actions pose
+  /// it.</param>
+  public void Initialize(Action? repose = null) {
     _repose = repose;
     _animatable = _be.GetBehavior<BEBehaviorAnimatable>();
     _rcc = _be.GetBehavior<ExRightClickConstructable>();
+    _be.GetBehavior<BEBehaviorClipActions>()?.Claim();
 
     if (_be.Api is not ICoreClientAPI || _animatable == null)
       return;
@@ -99,7 +106,7 @@ public sealed class ConstructedAnimator {
 
     // CreateMesh resolves a fresh shape each call; rotation is applied by the renderer, not the mesh.
     MeshData meshData = util.CreateMesh(
-      _cacheKey(),
+      Key(),
       null,
       out Shape resolvedShape,
       _texSource?.Invoke(),
@@ -107,7 +114,7 @@ public sealed class ConstructedAnimator {
     );
 
     util.InitializeAnimator(
-      _cacheKey(),
+      Key(),
       meshData,
       resolvedShape,
       new Vec3f(0, _be.Block.Shape.rotateY, 0)
@@ -118,6 +125,8 @@ public sealed class ConstructedAnimator {
     if (_ready)
       _onAnimatorBuilt?.Invoke(util, meshData);
   }
+
+  private string Key() => _cacheKey?.Invoke() ?? AnimatorKeys.Of(_be.Block);
 
   /// <summary>Runs <paramref name="pose"/> against the animation utility only on a client with a
   /// live animator. A no-op otherwise.</summary>

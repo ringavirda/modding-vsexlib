@@ -49,6 +49,22 @@
         "y": 1,
         "z": -1
       }
+    ],
+    "clipActions": [
+      {
+        "clip": "open",
+        "pose": "play",
+        "state": "gateOpen",
+        "when": 1.0,
+        "seconds": 1.0
+      },
+      {
+        "clip": "closed",
+        "pose": "play",
+        "state": "gateOpen",
+        "when": 0.0,
+        "seconds": 1.0
+      }
     ]
   },
   "behaviors": [
@@ -61,7 +77,7 @@
   ],
   "entityBehaviors": [
     {
-      "name": "Animatable"
+      "name": "ClipActions"
     },
     {
       "name": "ExRightClickConstructable",
