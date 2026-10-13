@@ -12,7 +12,7 @@ using FastVec3f = Vintagestory.API.MathTools.Vec3f;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>The rules G4, G9 and G11, on the whole vanilla game with the views fixture mod.</summary>
+/// <summary>The rules G4, G9, G11 and G12, on the whole vanilla game with the views fixture mod.</summary>
 [Collection("ItemViews")]
 public class ViewRulesTests {
   private static string Fixture =>
@@ -156,5 +156,78 @@ public class ViewRulesTests {
     } finally {
       block.HeldRightTpIdleAnimation = authored;
     }
+  }
+
+  private static ViewGroup Sheet =>
+    ViewGates
+      .Groups(World, "viewsfixture")
+      .Single(g => g.Codes.Contains("viewsfixture:uprightsheet"));
+
+  private static ViewCatalogue Catalogue(string name) =>
+    ViewCatalogue.Load(
+      Path.Combine(
+        RepoPaths.Root,
+        "tests",
+        "ExpandedLib.Tests",
+        "Views",
+        "Fixtures",
+        "catalogue",
+        name
+      ),
+      "viewsfixture"
+    )!;
+
+  // Fails when G12's comparison is inverted: the sheet drawn 9 x 1 x 9 then fails its own row and passes a row of
+  // 1 x 1 x 10. The fixture's uprightsheet stands in for rivetrod.
+  [Fact]
+  public void A_child_segment_on_rivetrod_fails() {
+    ViewGroup sheet = Sheet;
+
+    Assert.Equal(0, Catalogue("sized").Reading(sheet)!.Value, 0.001);
+    GateReading wrong = Catalogue("wrong").Reading(sheet)!;
+
+    Assert.False(wrong.Pass);
+    Assert.Equal(8, wrong.Value, 0.001);
+    Assert.Contains("stock.md:3", wrong.Detail);
+    Assert.Null(Catalogue("sized").Reading(GroupOf("game:metalplate-iron")));
+  }
+
+  // Fails when only the first page's row is read: the sheet matches a.md and then passes.
+  [Fact]
+  public void Two_pages_that_disagree_fail() {
+    ViewCatalogue pages = Catalogue("disagree");
+    GateReading reading = pages.Reading(Sheet)!;
+
+    Assert.False(reading.Pass);
+    Assert.Contains("b.md:3", reading.Detail);
+    Assert.Equal(["viewsfixture:uprightsheet"], pages.Disagreements());
+    Assert.Empty(Catalogue("sized").Disagreements());
+  }
+
+  // Fails when the root check is removed: the missing folder then loads as an empty catalogue.
+  [Fact]
+  public void A_missing_configured_root_throws() {
+    string missing = Path.Combine(RepoPaths.Root, "no-such-docs");
+
+    Assert.Throws<DirectoryNotFoundException>(() =>
+      ViewCatalogue.Load(missing, "viewsfixture")
+    );
+    Assert.Null(ViewCatalogue.Load(null, "viewsfixture"));
+  }
+
+  // Fails when pig.md's header is not excluded: plainbar then enters the catalogue. A game: row, a Proposed row, a
+  // composite row and a row with no size are skipped, and an unregistered code is named.
+  [Fact]
+  public void Rows_skip_in_order() {
+    ViewCatalogue sized = Catalogue("sized");
+
+    Assert.Equal(
+      ["viewsfixture:uprightsheet", "viewsfixture:phantom"],
+      sized.Rows.Select(r => r.Code)
+    );
+    Assert.Equal(
+      ["viewsfixture:phantom"],
+      sized.Unregistered(World).Select(r => r.Code)
+    );
   }
 }

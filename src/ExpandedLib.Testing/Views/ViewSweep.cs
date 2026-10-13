@@ -44,19 +44,21 @@ internal static class ViewSweep {
   /// <param name="domain">The domain of the collectible codes.</param>
   /// <returns>One row per collectible, in code order: boxed with a kind, or skipped with the reason. A collectible
   /// whose measurement throws is skipped with the exception's message.</returns>
+  /// <exception cref="DirectoryNotFoundException">The repository's configured docs root does not exist.</exception>
   internal static IReadOnlyList<SweepRow> Rows(TestWorld world, string domain) {
     Dictionary<string, ViewGroup> groups = [];
     foreach (ViewGroup group in ViewGates.Groups(world, domain))
       foreach (string code in group.Codes)
         groups[Key(group.IsBlock, code)] = group;
     ViewBandData bands = ViewBands.Embedded;
+    ViewCatalogue? catalogue = ViewCatalogue.Load(RepoPaths.DocsRoot, domain);
     ConcurrentDictionary<
       ViewGroup,
       (string[] Failed, string Note, string? Error)
     > measured = [];
     Parallel.ForEach(
       groups.Values.Distinct(),
-      group => measured[group] = Measure(world, bands, group)
+      group => measured[group] = Measure(world, bands, catalogue, group)
     );
     Dictionary<string, List<TypeFile>> sources = Sources();
 
@@ -140,6 +142,7 @@ internal static class ViewSweep {
   private static (string[] Failed, string Note, string? Error) Measure(
     TestWorld world,
     ViewBandData bands,
+    ViewCatalogue? catalogue,
     ViewGroup group
   ) {
     try {
@@ -148,7 +151,7 @@ internal static class ViewSweep {
       [
         .. ViewGates
           .Readings(bands, group, metrics)
-          .Concat(ViewGates.Rules(world, group))
+          .Concat(ViewGates.Rules(world, group, catalogue))
           .Where(r => !r.Pass)
           .Select(r => r.Gate + (r.Target == "fp" ? "fp" : "")),
       ];

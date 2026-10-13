@@ -699,15 +699,17 @@ internal static class ViewGates {
 
   private static readonly string[] BlockClips = [BlockHeldClip, "holdunderarm"];
 
-  /// <summary>The rules G4 ground.flat, G9 hand.floor and G11 clips of <paramref name="group"/>. They hold for every
+  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips and G12 catalogue of <paramref name="group"/>. They hold for every
   /// collectible whatever vanilla does and are not banded.</summary>
   /// <param name="world">The world the group comes from.</param>
   /// <param name="group">The group to judge.</param>
-  /// <returns>G4 on the ground, G9 in third person and, for an item, in first person, and G11, each with its pass or
-  /// failure.</returns>
+  /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
+  /// <returns>G4 on the ground, G9 in third person and, for an item, in first person, G11, and G12 when a row of
+  /// <paramref name="catalogue"/> names one of the group's codes, each with its pass or failure.</returns>
   internal static IReadOnlyList<GateReading> Rules(
     TestWorld world,
-    ViewGroup group
+    ViewGroup group,
+    ViewCatalogue? catalogue = null
   ) {
     var readings = new List<GateReading>();
 
@@ -754,6 +756,8 @@ internal static class ViewGates {
     if (!group.IsBlock)
       readings.Add(Floor(world, group, true));
     readings.Add(Clips(world, group));
+    if (catalogue?.Reading(group) is { } sized)
+      readings.Add(sized);
     return readings;
   }
 
