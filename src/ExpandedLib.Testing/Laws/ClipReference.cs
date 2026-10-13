@@ -68,13 +68,13 @@ internal sealed class ClipReference
       Shape.Elements,
       Shape.JointsById
     );
-    animator.OnFrame(
-      new Dictionary<string, AnimationMetaData>
-      {
-        [clip] = ClipTrace.Hold(clip, frame),
-      },
-      1f
-    );
+    var held = new Dictionary<string, AnimationMetaData>
+    {
+      [clip] = ClipTrace.Hold(clip, frame),
+    };
+    animator.OnFrame(held, 1f);
+    animator.GetAnimationState(clip).CurrentFrame = frame;
+    animator.OnFrame(held, 0f);
     return parts.ToDictionary(p => p, p => ClipTrace.PoseOf(animator, p));
   }
 }
