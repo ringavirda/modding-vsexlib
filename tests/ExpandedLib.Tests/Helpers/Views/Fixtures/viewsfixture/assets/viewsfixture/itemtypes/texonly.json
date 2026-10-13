@@ -1,0 +1,7 @@
+{
+  "code": "texonly",
+  "class": "Item",
+  "textures": {
+    "texonly": { "base": "item/texonly" }
+  }
+}

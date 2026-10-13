@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -10,7 +11,7 @@ namespace ExpandedLib.Helpers;
 /// <summary>The box a collectible's drawn faces fill, and the kind the box gives it.</summary>
 internal static class CollectibleViews {
   // Keyed by shape path, selection and rotation. A null entry is a shape that does not load or has no drawn face.
-  private static readonly Dictionary<string, ViewBox?> Boxes = new();
+  private static readonly ConcurrentDictionary<string, ViewBox?> Boxes = new();
 
   // The centre of a 16-voxel block: the pivot a composite shape's rotation turns about.
   private static readonly Vec3d Centre = new(8, 8, 8);

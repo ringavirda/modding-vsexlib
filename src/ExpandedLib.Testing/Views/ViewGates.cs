@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using ExpandedLib.Helpers;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -387,11 +388,8 @@ internal static class ViewGates {
     string code,
     bool firstPerson = false
   ) {
-    IAsset player = world.Api.Assets.Get(PlayerAsset);
-    AnimationMetaData? meta = JsonObject
-      .FromJson(player.ToText())["client"]["animations"]
-      .AsArray<AnimationMetaData>()
-      ?.FirstOrDefault(a =>
+    AnimationMetaData? meta = PlayerList(world.Api)
+      .FirstOrDefault(a =>
         string.Equals(a.Code, code, StringComparison.OrdinalIgnoreCase)
       );
     if (meta?.Animation == null)
@@ -417,13 +415,8 @@ internal static class ViewGates {
   ) {
     CollectibleObject c = group.Representative;
     ModelTransform tf = group.Hand;
-    SeraphPose pose = SeraphPose.At(
-      world.Api,
-      HeldClip(world, group.Held, firstPerson)
-    );
-    Mat4 m = firstPerson
-      ? ViewMatrices.HandFp(tf, pose)
-      : ViewMatrices.Hand(tf, pose);
+    SeraphPose pose = HeldPose(world, group, firstPerson);
+    Mat4 m = HeldMatrix(group, pose, firstPerson);
 
     double[] side =
     [
@@ -457,6 +450,38 @@ internal static class ViewGates {
       );
     }
     return new HandMetrics(size, grip, axis, null);
+  }
+
+  private static SeraphPose HeldPose(
+    TestWorld world,
+    ViewGroup group,
+    bool firstPerson
+  ) => SeraphPose.At(world.Api, HeldClip(world, group.Held, firstPerson));
+
+  private static Mat4 HeldMatrix(
+    ViewGroup group,
+    SeraphPose pose,
+    bool firstPerson
+  ) =>
+    firstPerson
+      ? ViewMatrices.HandFp(group.Hand, pose)
+      : ViewMatrices.Hand(group.Hand, pose);
+
+  /// <summary>The height of the lowest corner of the held box of <paramref name="group"/>, in blocks above the floor.</summary>
+  /// <param name="world">The world the group comes from.</param>
+  /// <param name="group">The group to measure.</param>
+  /// <param name="firstPerson">Whether to pose the clip's <c>-fp</c> twin and take the first-person hand matrix.</param>
+  internal static double HeldFloor(
+    TestWorld world,
+    ViewGroup group,
+    bool firstPerson = false
+  ) {
+    Mat4 m = HeldMatrix(
+      group,
+      HeldPose(world, group, firstPerson),
+      firstPerson
+    );
+    return Corners(group.Box).Min(c => m.Apply(c).Y);
   }
 
   /// <summary>G10 of <paramref name="group"/>: the angle between the held directions of its working end and of the iron
@@ -662,6 +687,207 @@ internal static class ViewGates {
     );
   }
 
+  /// <summary>The ground transform's rotation alone, which stands the box on the ground.</summary>
+  private static Mat4 GroundTurn(ModelTransform tf) =>
+    Mat4
+      .Identity.RotateY(tf.Rotation.Y)
+      .RotateZ(tf.Rotation.Z)
+      .RotateX(tf.Rotation.X);
+
+  private const double FlatTolerance = 0.5;
+  private const double UprightDegrees = 1;
+
+  private static readonly string[] BlockClips = [BlockHeldClip, "holdunderarm"];
+
+  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips and G12 catalogue of <paramref name="group"/>. They hold for every
+  /// collectible whatever vanilla does and are not banded.</summary>
+  /// <param name="world">The world the group comes from.</param>
+  /// <param name="group">The group to judge.</param>
+  /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
+  /// <returns>G4 on the ground, G9 in third and first person, G11, and G12 when a row of
+  /// <paramref name="catalogue"/> names one of the group's codes, each with its pass or failure.</returns>
+  internal static IReadOnlyList<GateReading> Rules(
+    TestWorld world,
+    ViewGroup group,
+    ViewCatalogue? catalogue = null
+  ) {
+    var readings = new List<GateReading>();
+
+    Mat4 turn = GroundTurn(group.Ground);
+    double[] extents = group.Box.Extents();
+    double length = extents[0],
+      thickness = extents[2];
+    double[] y = Corners(group.Box).Select(c => turn.Apply(c).Y * 16).ToArray();
+    double vertical = y.Max() - y.Min();
+    if (!group.IsBlock || thickness <= length / 4) {
+      double off = Math.Abs(vertical - thickness);
+      readings.Add(
+        new GateReading(
+          "G4",
+          "ground.flat",
+          "ground",
+          off,
+          null,
+          FlatTolerance,
+          null,
+          off <= FlatTolerance,
+          $"{Fmt(off)} voxel from the flat extent above {Fmt(FlatTolerance)}"
+        )
+      );
+    } else {
+      Vec3d up = turn.Apply(new Vec3d(0, 1, 0));
+      double tilt = Math.Acos(Math.Clamp(up.Y, -1, 1)) * 180 / Math.PI;
+      readings.Add(
+        new GateReading(
+          "G4",
+          "ground.flat",
+          "ground",
+          tilt,
+          null,
+          UprightDegrees,
+          null,
+          tilt <= UprightDegrees,
+          $"{Fmt(tilt)} degrees off vertical above {Fmt(UprightDegrees)}"
+        )
+      );
+    }
+
+    readings.Add(Floor(world, group, false));
+    readings.Add(Floor(world, group, true));
+    readings.Add(Clips(world, group));
+    if (catalogue?.Reading(group) is { } sized)
+      readings.Add(sized);
+    return readings;
+  }
+
+  private static GateReading Floor(
+    TestWorld world,
+    ViewGroup group,
+    bool firstPerson
+  ) {
+    double low = HeldFloor(world, group, firstPerson);
+    return new GateReading(
+      "G9",
+      firstPerson ? "hand.floor.fp" : "hand.floor",
+      firstPerson ? "fp" : "tp",
+      low,
+      0,
+      double.PositiveInfinity,
+      null,
+      low >= 0,
+      $"{Fmt(-low)} below the floor"
+    );
+  }
+
+  private static GateReading Clips(TestWorld world, ViewGroup group) {
+    CollectibleObject c = group.Representative;
+    HashSet<string> known = PlayerAnimations(world);
+    string held =
+      group.IsBlock && !string.IsNullOrEmpty(c.HeldRightTpIdleAnimation)
+        ? c.HeldRightTpIdleAnimation
+        : group.Held;
+    var problems = new List<string>();
+    CollectibleObject fresh = group.IsBlock ? new Block() : new Item();
+    foreach (
+      string? set in new[]
+      {
+        held,
+        Authored(
+          c.HeldRightReadyAnimation,
+          fresh.HeldRightReadyAnimation,
+          BlockReadyDefault
+        ),
+        Authored(c.HeldTpHitAnimation, fresh.HeldTpHitAnimation),
+        Authored(c.HeldTpUseAnimation, fresh.HeldTpUseAnimation),
+        Authored(c.HeldLeftTpIdleAnimation, fresh.HeldLeftTpIdleAnimation),
+        Authored(c.HeldLeftReadyAnimation, fresh.HeldLeftReadyAnimation),
+      }.Distinct(StringComparer.OrdinalIgnoreCase)
+    )
+      if (!string.IsNullOrEmpty(set) && !known.Contains(set))
+        problems.Add($"{set} is not a player animation");
+    if (group.Kind == ItemViewKind.Longtool) {
+      if (
+        !string.Equals(held, LongtoolIdle, StringComparison.OrdinalIgnoreCase)
+      )
+        problems.Add($"a long tool is held on {held}, not {LongtoolIdle}");
+      if (
+        !string.Equals(
+          c.HeldRightReadyAnimation,
+          LongtoolIdle,
+          StringComparison.OrdinalIgnoreCase
+        )
+      )
+        problems.Add(
+          $"a long tool is readied on {c.HeldRightReadyAnimation ?? "nothing"}, not {LongtoolIdle}"
+        );
+      if (
+        !string.Equals(
+          c.HeldTpHitAnimation,
+          LongtoolHit,
+          StringComparison.OrdinalIgnoreCase
+        )
+      )
+        problems.Add(
+          $"a long tool hits with {c.HeldTpHitAnimation ?? "nothing"}, not {LongtoolHit}"
+        );
+    }
+    if (
+      group.Kind == ItemViewKind.Bulk
+      && !string.Equals(held, BlockHeldClip, StringComparison.OrdinalIgnoreCase)
+    )
+      problems.Add($"a bulk item is held on {held}, not {BlockHeldClip}");
+    if (
+      group.IsBlock
+      && !BlockClips.Contains(held, StringComparer.OrdinalIgnoreCase)
+    )
+      problems.Add(
+        $"a block is held on {held}, not {string.Join(" or ", BlockClips)}"
+      );
+    return new GateReading(
+      "G11",
+      "clips",
+      "tp",
+      problems.Count,
+      null,
+      0,
+      null,
+      problems.Count == 0,
+      string.Join("; ", problems)
+    );
+  }
+
+  // The ready clip the game gives a block; player.json has no animation of the name.
+  private const string BlockReadyDefault = "heldblockready";
+
+  // The clips of the iron spear, which every long tool takes.
+  private const string LongtoolIdle = "spearidle";
+  private const string LongtoolHit = "spearhit";
+
+  private static string? Authored(string? set, params string?[] defaults) =>
+    defaults.Any(d => string.Equals(set, d, StringComparison.OrdinalIgnoreCase))
+      ? null
+      : set;
+
+  private static HashSet<string> PlayerAnimations(TestWorld world) =>
+    PlayerList(world.Api)
+      .Select(a => a.Code)
+      .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+  private static readonly ConditionalWeakTable<
+    ICoreAPI,
+    AnimationMetaData[]
+  > PlayerLists = new();
+
+  private static AnimationMetaData[] PlayerList(ICoreAPI api) =>
+    PlayerLists.GetValue(
+      api,
+      a =>
+        JsonObject
+          .FromJson(a.Assets.Get(PlayerAsset).ToText())["client"]["animations"]
+          .AsArray<AnimationMetaData>()
+        ?? []
+    );
+
   /// <summary>The gates <paramref name="group"/> fails against <paramref name="bands"/>: the readings that do not pass.</summary>
   /// <param name="bands">The bands to judge against.</param>
   /// <param name="group">The group; a workpiece has no band and fails none.</param>
@@ -671,6 +897,34 @@ internal static class ViewGates {
     ViewBandData bands,
     ViewGroup group,
     GroupMetrics metrics
+  ) => Failures(group, Readings(bands, group, metrics));
+
+  /// <summary>Every finding of the collectibles of <paramref name="domain"/>: the banded gates and the rules of each group,
+  /// then the catalogue rows of the domain that no collectible has.</summary>
+  /// <param name="world">A world from <see cref="TestWorld.LoadAsGame"/>.</param>
+  /// <param name="domain">The domain of the collectible codes.</param>
+  /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
+  /// <returns>The findings in group order, then one G12 finding per unregistered row of <paramref name="domain"/> in page
+  /// and line order, whose message names the row's page and line.</returns>
+  internal static IReadOnlyList<ViewFinding> Findings(
+    TestWorld world,
+    string domain,
+    ViewCatalogue? catalogue = null
+  ) {
+    ViewBandData bands = ViewBands.Embedded;
+    var findings = new List<ViewFinding>();
+    foreach (ViewGroup group in Groups(world, domain)) {
+      findings.AddRange(Judge(bands, group, Measure(world, group)));
+      findings.AddRange(Failures(group, Rules(world, group, catalogue)));
+    }
+    if (catalogue != null)
+      findings.AddRange(catalogue.Unregistered(world, domain));
+    return findings;
+  }
+
+  private static IReadOnlyList<ViewFinding> Failures(
+    ViewGroup group,
+    IEnumerable<GateReading> readings
   ) {
     string kind = group.Kind.ToString().ToLowerInvariant();
     string view = group.Codes[0];
@@ -680,7 +934,7 @@ internal static class ViewGates {
         : "";
     return
     [
-      .. Readings(bands, group, metrics)
+      .. readings
         .Where(r => !r.Pass)
         .Select(r =>
         {

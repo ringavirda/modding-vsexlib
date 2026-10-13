@@ -365,6 +365,24 @@ public class LoadAsGameTests
     Assert.Throws<InvalidDataException>(() =>
       PngReader.OpaqueBounds([1, 2, 3])
     );
+
+    string[] viewsFixture =
+    [
+      Path.Combine(
+        RepoPaths.Root,
+        "tests",
+        "ExpandedLib.Tests",
+        "Helpers",
+        "Views",
+        "Fixtures",
+        "viewsfixture"
+      ),
+    ];
+    SweepRow row = ViewSweep
+      .Rows(GameWorlds.Get(viewsFixture), "viewsfixture")
+      .Single(r => r.Code == "viewsfixture:texbad");
+    Assert.Null(row.Kind);
+    Assert.Contains("Bit depth 16", row.Skip);
   }
 }
 #endif

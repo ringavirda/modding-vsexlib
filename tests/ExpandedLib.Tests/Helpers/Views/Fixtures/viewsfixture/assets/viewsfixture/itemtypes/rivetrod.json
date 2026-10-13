@@ -1,0 +1,7 @@
+{
+  "code": "rivetrod",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/rivetrod"
+  }
+}
