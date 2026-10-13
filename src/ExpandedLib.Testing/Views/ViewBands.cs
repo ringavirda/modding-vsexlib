@@ -73,7 +73,8 @@ internal static class ViewBands {
   /// <summary>The farthest a bulk item's grip may lie from a drawn element, in voxels.</summary>
   internal const double BulkGripLimit = 2.1;
 
-  private const double Share = 0.1;
+  /// <summary>The share of an end's magnitude a band or a twin's value widens by.</summary>
+  internal const double Share = 0.1;
 
   /// <summary>A kind's reference set: codes by exact match, or by prefix when an entry ends in a dash.</summary>
   /// <param name="Kind">The kind the set calibrates.</param>

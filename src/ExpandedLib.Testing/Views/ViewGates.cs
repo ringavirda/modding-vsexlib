@@ -518,17 +518,36 @@ internal static class ViewGates {
     ("G13", "G13", "hand.centre", "tp"),
   ];
 
+  /// <summary>The game item a mod item takes its views from, with the metrics those views give.</summary>
+  /// <param name="Code">The twin's code without its domain.</param>
+  /// <param name="Metrics">The twin's metrics from <see cref="Measure"/>.</param>
+  internal sealed record ViewTwin(string Code, GroupMetrics Metrics);
+
+  /// <summary>The game item whose shipped views <paramref name="group"/> takes, measured on its own views.</summary>
+  /// <param name="world">The world the group comes from.</param>
+  /// <param name="group">The group; only an item that the vanilla-shape rule matches has a twin.</param>
+  /// <returns>The twin; null when the group is a block, declares its own views, or draws no game item's shape.</returns>
+  internal static ViewTwin? TwinOf(TestWorld world, ViewGroup group) =>
+    group.Representative is Item item
+    && ItemViews.VanillaShape(world.Api, item) is { } twin
+    && GroupOf(world, twin) is { } twinGroup
+      ? new ViewTwin(twin.Code.Path, Measure(world, twinGroup))
+      : null;
+
   /// <summary>Every gate <paramref name="group"/> is judged on against <paramref name="bands"/>, as the dump writes it: each
   /// banded gate in its kind's band (G2, G10 and G13 on the upper end only) and G8 against its limit, in third and first
-  /// person.</summary>
+  /// person. With a twin each banded gate is judged against the twin's value widened as a band widens it, and G8 against the
+  /// larger of the limit and the twin's grip plus 10%.</summary>
   /// <param name="bands">The bands to judge against.</param>
   /// <param name="group">The group; a workpiece has no band and no reading.</param>
   /// <param name="metrics">The metrics of <paramref name="group"/> from <see cref="Measure"/>.</param>
+  /// <param name="twin">The group's twin from <see cref="TwinOf"/>, or null to judge by the kind.</param>
   /// <returns>One reading per judged gate, in gate order; a gate the group has no metric for has none.</returns>
   internal static IReadOnlyList<GateReading> Readings(
     ViewBandData bands,
     ViewGroup group,
-    GroupMetrics metrics
+    GroupMetrics metrics,
+    ViewTwin? twin = null
   ) {
     var readings = new List<GateReading>();
     if (group.Kind == ItemViewKind.Workpiece)
@@ -536,12 +555,24 @@ internal static class ViewGates {
     string kind = group.Kind.ToString().ToLowerInvariant();
 
     foreach ((string id, string gate, string name, string target) in Judged) {
-      if (!bands.Bands[kind].TryGetValue(id, out Band? band))
-        continue;
+      Band? band;
+      if (twin == null) {
+        if (!bands.Bands[kind].TryGetValue(id, out band))
+          continue;
+      } else {
+        double own = ValueOf(twin.Metrics, id);
+        if (double.IsNaN(own))
+          continue;
+        band = ViewBands.BandOf(id, [(own, twin.Code)]);
+      }
       double v = ValueOf(metrics, id);
       if (double.IsNaN(v))
         continue;
       string[] ends = [band.MinCode, band.MaxCode];
+      string said =
+        twin == null
+          ? $"({band.MinCode} {Fmt(band.Min)}, {band.MaxCode} {Fmt(band.Max)})"
+          : $"({twin.Code} {Fmt(band.Min)})";
       if (ViewBands.UpperOnly.Contains(id))
         readings.Add(
           new GateReading(
@@ -553,7 +584,9 @@ internal static class ViewGates {
             band.High,
             ends,
             v <= band.High,
-            $"{Fmt(v)} above {Fmt(band.High)} ({band.MaxCode} {Fmt(band.Max)})"
+            twin == null
+              ? $"{Fmt(v)} above {Fmt(band.High)} ({band.MaxCode} {Fmt(band.Max)})"
+              : $"{Fmt(v)} above {Fmt(band.High)} {said}"
           )
         );
       else
@@ -567,7 +600,7 @@ internal static class ViewGates {
             band.High,
             ends,
             v >= band.Low && v <= band.High,
-            $"{Fmt(v)} outside {Fmt(band.Low)}..{Fmt(band.High)} ({band.MinCode} {Fmt(band.Min)}, {band.MaxCode} {Fmt(band.Max)})"
+            $"{Fmt(v)} outside {Fmt(band.Low)}..{Fmt(band.High)} {said}"
           )
         );
     }
@@ -576,9 +609,20 @@ internal static class ViewGates {
       group.Kind == ItemViewKind.Bulk ? "G8Bulk" : "G8"
     ];
     if (metrics.Hand.Grip is { } grip)
-      readings.Add(Grip("hand.grip", "tp", grip, limit));
+      readings.Add(
+        Grip("hand.grip", "tp", grip, limit, twin, twin?.Metrics.Hand.Grip)
+      );
     if (metrics.HandFp?.Grip is { } gripFp)
-      readings.Add(Grip("hand.grip.fp", "fp", gripFp, limit));
+      readings.Add(
+        Grip(
+          "hand.grip.fp",
+          "fp",
+          gripFp,
+          limit,
+          twin,
+          twin?.Metrics.HandFp?.Grip
+        )
+      );
     return readings;
   }
 
@@ -586,9 +630,13 @@ internal static class ViewGates {
     string name,
     string target,
     double grip,
-    double limit
-  ) =>
-    new(
+    double limit,
+    ViewTwin? twin,
+    double? twinGrip
+  ) {
+    if (twin != null && twinGrip is { } own)
+      limit = Math.Max(limit, own * (1 + ViewBands.Share));
+    return new(
       "G8",
       name,
       target,
@@ -597,18 +645,23 @@ internal static class ViewGates {
       limit,
       null,
       grip <= limit,
-      $"{Fmt(grip)} above {Fmt(limit)} voxel"
+      twin != null && twinGrip is { } shown
+        ? $"{Fmt(grip)} above {Fmt(limit)} ({twin.Code} {Fmt(shown)})"
+        : $"{Fmt(grip)} above {Fmt(limit)} voxel"
     );
+  }
 
   /// <summary>The gates <paramref name="group"/> fails against <paramref name="bands"/>: the readings that do not pass.</summary>
   /// <param name="bands">The bands to judge against.</param>
   /// <param name="group">The group; a workpiece has no band and fails none.</param>
   /// <param name="metrics">The metrics of <paramref name="group"/> from <see cref="Measure"/>.</param>
+  /// <param name="twin">The group's twin from <see cref="TwinOf"/>, or null to judge by the kind.</param>
   /// <returns>One finding per failing gate, in gate order.</returns>
   internal static IReadOnlyList<ViewFinding> Judge(
     ViewBandData bands,
     ViewGroup group,
-    GroupMetrics metrics
+    GroupMetrics metrics,
+    ViewTwin? twin = null
   ) {
     string kind = group.Kind.ToString().ToLowerInvariant();
     string view = group.Codes[0];
@@ -618,7 +671,7 @@ internal static class ViewGates {
         : "";
     return
     [
-      .. Readings(bands, group, metrics)
+      .. Readings(bands, group, metrics, twin)
         .Where(r => !r.Pass)
         .Select(r =>
         {

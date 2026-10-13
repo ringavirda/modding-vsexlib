@@ -426,4 +426,58 @@ public class ViewBandsTests {
     Assert.True(full > 0.5, $"{full}");
     Assert.True(edges < full / 2, $"{edges} against {full}");
   }
+
+  private static (
+    ViewGroup Group,
+    GroupMetrics Metrics,
+    ViewGates.ViewTwin Twin
+  ) Greensand(Action<ItemViewSet>? change = null) {
+    Item greensand = World.World.GetItem(
+      new AssetLocation("viewsfixture:greensand")
+    );
+    ItemViewSet views = ItemViews.Compute(World.Api, greensand)!;
+    change?.Invoke(views);
+    ViewGroup group = ViewGates.Measured(
+      ViewGates.GroupOf(World, greensand)!,
+      views
+    );
+    return (
+      group,
+      ViewGates.Measure(World, group),
+      ViewGates.TwinOf(World, group)!
+    );
+  }
+
+  // Fails when the twin branch is dropped: greensand is then judged by its kind's band and limit.
+  [Fact]
+  public void A_vanilla_shape_twin_is_judged_against_its_twin() {
+    (ViewGroup group, GroupMetrics metrics, ViewGates.ViewTwin twin) =
+      Greensand();
+    Assert.StartsWith("flour-", twin.Code);
+    Assert.Empty(ViewGates.Judge(Bands, group, metrics, twin));
+    GateReading grip = ViewGates
+      .Readings(Bands, group, metrics, twin)
+      .Single(r => r.Name == "hand.grip");
+    Assert.True(grip.Value > 1, $"{grip.Value}");
+    Assert.True(grip.Pass);
+    Assert.NotEmpty(ViewGates.Judge(Bands, group, metrics));
+  }
+
+  // Fails when the message takes the kind's end codes: the finding then names the kind's reference, not the twin.
+  [Fact]
+  public void A_twin_off_its_twins_values_names_the_twin() {
+    (_, _, ViewGates.ViewTwin twin) = Greensand();
+    (ViewGroup group, GroupMetrics metrics, _) = Greensand(set =>
+      set.TpHand.ScaleXYZ = new FastVec3f(
+        set.TpHand.ScaleXYZ.X * 2,
+        set.TpHand.ScaleXYZ.Y * 2,
+        set.TpHand.ScaleXYZ.Z * 2
+      )
+    );
+    ViewFinding finding = Assert.Single(
+      ViewGates.Judge(Bands, group, metrics, twin),
+      f => f.Key.EndsWith("G7 hand.size")
+    );
+    Assert.Contains($"({twin.Code} ", finding.Message);
+  }
 }

@@ -136,7 +136,7 @@ public static class ItemViews {
 
   // The game item that draws the same shape as a mod item with no declared kind or tip; the first by
   // ordinal code. A game item has none.
-  private static Item? VanillaShape(ICoreAPI api, Item item) {
+  internal static Item? VanillaShape(ICoreAPI api, Item item) {
     if (
       item.Code?.Domain == "game"
       || item.Shape?.Base == null

@@ -171,7 +171,8 @@ public static class ViewDump {
     IReadOnlyList<GateReading> gates = ViewGates.Readings(
       ViewBands.Embedded,
       group,
-      metrics
+      metrics,
+      ViewGates.TwinOf(world, group)
     );
     double[] footprint = ViewGates.Footprint(group);
     double[]? grip = group.IsBlock
