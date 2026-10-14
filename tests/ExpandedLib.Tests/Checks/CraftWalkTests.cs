@@ -104,6 +104,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
   }
 
   [Fact]
+  [PlantedDefect(typeof(CraftWalk), nameof(CraftWalk.Run))]
   public void Dropping_the_middle_recipe_fails_naming_its_output()
   {
     using TestWorld world = Planted(
