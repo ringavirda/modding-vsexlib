@@ -23,8 +23,8 @@ internal sealed record LayoutPlacing(
 /// order before the first step, each run laid by the scenario player, and every structure checked
 /// against its drawing. A run cell of a network block is laid as the member of its family whose
 /// faces are the cell's drawn faces, and one the block's own placement orients otherwise is turned
-/// to them with the wrench; any other run cell is laid as its entry's code. Prints one line per placing entry, labelled <c>L</c> and its place among
-/// them.</summary>
+/// to them with the wrench; any other run cell is laid as its entry's code. Prints one line per
+/// placing entry, labelled <c>L</c> and its place among them.</summary>
 internal static class SetupLayoutWalk {
   /// <summary>The placing entries of <paramref name="layout"/> in placement order.</summary>
   public static IReadOnlyList<LayoutPlacing> Plan(SetupLayout layout) {
@@ -244,13 +244,15 @@ internal static class SetupLayoutWalk {
     while (Faces() != wanted) {
       if (wrench == null || !wrench(ctx.Setup.Absolute(cell), 1))
         throw new StepFailure(
-          $"{offered[^1]} at {FailureDetail.Cell(cell)} holds the faces {Faces()}, the drawing has {wanted}, and it cannot be turned with a wrench.",
+          $"{offered[^1]} at {FailureDetail.Cell(cell)} holds the faces {Faces()}, "
+            + $"the drawing has {wanted}, and it cannot be turned with a wrench.",
           Suspect.Mod
         );
       string now = ctx.Setup.BlockAt(cell).Code.ToString();
       if (offered.Contains(now))
         throw new StepFailure(
-          $"the wrench never turned {offered[0]} at {FailureDetail.Cell(cell)} to the drawn faces {wanted}; it offered {string.Join(", ", offered)}.",
+          $"the wrench never turned {offered[0]} at {FailureDetail.Cell(cell)} to "
+            + $"the drawn faces {wanted}; it offered {string.Join(", ", offered)}.",
           Suspect.Mod
         );
       offered.Add(now);

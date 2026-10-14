@@ -53,6 +53,12 @@ internal sealed class BreakStep : ScenarioStep {
   /// <summary>The stacks a block at <paramref name="at"/> declares it drops for
   /// <paramref name="breaker"/>: <c>Block.GetDrops</c> of the principal when the cell is a
   /// filler, plus the construction's refund when the principal is a construction.</summary>
+  /// <param name="world">The world the block stands in.</param>
+  /// <param name="at">The absolute cell struck; a filler cell resolves to its principal.</param>
+  /// <param name="breaker">Who breaks it. Null (the world) includes the construction refund; a
+  /// Creative player excludes it, as <c>ExRightClickConstructable.OnBlockBroken</c> scatters none for
+  /// one.</param>
+  /// <returns>The declared stacks, before any rounding of the refund.</returns>
   public static List<ItemStack> DeclaredDrops(
     IWorldAccessor world,
     BlockPos at,
@@ -72,15 +78,12 @@ internal sealed class BreakStep : ScenarioStep {
       entity?.GetBehavior<ExRightClickConstructable>() is { } construction
       && breaker?.WorldData.CurrentGameMode != EnumGameMode.Creative
     ) {
-      float ratio =
-        ExRccSettings.BrokenDropsRatio(block.Code.Domain)
-        ?? entity
-          .Block.BlockEntityBehaviors.First(b =>
-            b.Name == "ExRightClickConstructable"
-          )
-          .properties["brokenDropsRatio"]
-          .AsFloat(1f);
-      declared.AddRange(construction.GetConstructionDrops(ratio, world.Rand));
+      declared.AddRange(
+        construction.GetConstructionDrops(
+          construction.EffectiveBrokenDropsRatio,
+          world.Rand
+        )
+      );
     }
     return declared;
   }
@@ -214,7 +217,9 @@ internal sealed class BreakStep : ScenarioStep {
     if (player == null) {
       declared = DeclaredDrops(ctx.World, at, null);
       ctx.World.BlockAccessor.BreakBlock(at, null);
-    } else if (
+    } else {
+      int breaks = player.Breaks;
+      if (
         !player.Break(
           at,
           stack,
@@ -223,9 +228,14 @@ internal sealed class BreakStep : ScenarioStep {
           out string? refused
         )
       )
-      throw new StepFailure(
-        $"{block} at {FailureDetail.Cell(local)}: {refused}."
-      );
+        throw new StepFailure(
+          $"{block} at {FailureDetail.Cell(local)}: {refused}."
+        );
+      if (player.Breaks != breaks + 1)
+        throw new StepFailure(
+          $"the server fired {player.Breaks - breaks} did-break events for one break, not 1."
+        );
+    }
     PackLedger.Give(ctx, stack);
     yield return true;
     List<ItemStack> dropped = [];

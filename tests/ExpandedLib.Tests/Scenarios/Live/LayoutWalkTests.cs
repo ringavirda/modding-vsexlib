@@ -349,10 +349,11 @@ public class LayoutWalkTests {
   }
 
   /// <summary>A player that places by the pipe's own <c>TryPlaceBlock</c>, which orients it by its
-  /// neighbours, and a wrench that turns through <c>IWrenchOrientable.Rotate</c>.</summary>
+  /// neighbours, then updates the neighbours as the scenario player does, and a wrench that turns through <c>IWrenchOrientable.Rotate</c>.</summary>
   private static (RunStep.PlayerPlace Place, RunStep.PlayerWrench Wrench) Hands(
     LiveFixture fixture,
-    List<BlockPos>? turned = null
+    List<BlockPos>? turned = null,
+    List<BlockPos>? updated = null
   ) {
     TestPlayer player = fixture.Test.Player("placer");
     player.GameMode = EnumGameMode.Survival;
@@ -377,6 +378,10 @@ public class LayoutWalkTests {
           },
           ref code
         );
+        if (went) {
+          fixture.Test.NotifyNeighbours(at);
+          updated?.Add(at.Copy());
+        }
         failure = went ? null : code;
         return went;
       },
@@ -462,6 +467,28 @@ public class LayoutWalkTests {
     Assert.Equal("ne", FacesAt(fixture, 0, 0, 1));
     Assert.NotEmpty(turned);
     AssertOneNetwork(fixture, (0, 0, 1), (1, 0, 1));
+  }
+
+  // Fails when the stub place stops updating the neighbours of a placed cell, so the next cell's
+  // placement no longer reaches the turned one, or the walk lets that update take it off its drawn faces.
+  [Fact]
+  public void A_turned_cell_keeps_its_drawn_faces_after_the_next_cell_is_placed() {
+    LiveFixture fixture = PipeFixture();
+    var turned = new List<BlockPos>();
+    var updated = new List<BlockPos>();
+    (RunStep.PlayerPlace place, RunStep.PlayerWrench wrench) = Hands(
+      fixture,
+      turned,
+      updated
+    );
+    Walk(fixture, Pipes("o..", "PPo"), place, wrench);
+    Assert.NotEmpty(turned);
+    Assert.Contains(
+      new BlockPos(1, 0, 1),
+      updated.Select(fixture.Context.Setup.Local)
+    );
+    Assert.Equal("ne", FacesAt(fixture, 0, 0, 1));
+    Assert.Equal("ew", FacesAt(fixture, 1, 0, 1));
   }
 
   // Fails when a drawn face set that no family member has is found only after cells are laid, or is not a scenario fault.

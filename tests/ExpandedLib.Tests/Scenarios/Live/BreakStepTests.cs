@@ -3,12 +3,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using ExpandedLib.Blocks;
+using ExpandedLib.Definitions;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
+using Newtonsoft.Json.Linq;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -289,6 +293,64 @@ public class BreakStepTests
     List<ItemStack> declared = BreakStep.DeclaredDrops(world.World, cell, null);
 
     Assert.Equal(2, BreakStep.Sum(declared)["test:ore"]);
+  }
+
+  private sealed class StubBlockEntity : BlockEntity;
+
+  /// <summary>A world holding a construction at <see cref="Cell"/> with two sticks paid in its
+  /// second stage and that stage completed, so its refund is two sticks at ratio 1.</summary>
+  private static TestWorld PaidConstruction()
+  {
+    var world = new TestWorld();
+    world.RegisterItem("game:stick");
+    var block = TestBlocks.Configure(new Block(), "test:frame", 85);
+    var entity = new StubBlockEntity { Block = block, Pos = Cell.Copy() };
+    world.Place(Cell, block, entity);
+    entity.Initialize(world.Api);
+    var construction = new ExRightClickConstructable(entity);
+    construction.Initialize(
+      world.Api,
+      new JsonObject(
+        new ConstructionStages()
+          .Stage(_ => { })
+          .Stage(s => s.Require("game:stick", 2))
+          .Build()
+      )
+    );
+    entity.Behaviors.Add(construction);
+    ReflectionHelpers.SetField(
+      ReflectionHelpers.GetField(construction, "rcc")!,
+      "CurrentCompletedStage",
+      1
+    );
+    return world;
+  }
+
+  /// <summary>Fails when the construction refund is left out for a survival breaker or the world, or
+  /// is declared for a Creative one, for which <c>ExRightClickConstructable.OnBlockBroken</c> scatters
+  /// nothing.</summary>
+  [Fact]
+  public void A_construction_declares_its_refund_except_to_a_creative_breaker()
+  {
+    TestWorld world = PaidConstruction();
+    TestPlayer survival = world.Player("survivor");
+    survival.GameMode = EnumGameMode.Survival;
+    TestPlayer creative = world.Player("creator");
+    creative.GameMode = EnumGameMode.Creative;
+
+    Assert.Equal(
+      2,
+      BreakStep.Sum(
+        BreakStep.DeclaredDrops(world.World, Cell, survival.Player)
+      )["game:stick"]
+    );
+    Assert.Equal(
+      2,
+      BreakStep.Sum(BreakStep.DeclaredDrops(world.World, Cell, null))[
+        "game:stick"
+      ]
+    );
+    Assert.Empty(BreakStep.DeclaredDrops(world.World, Cell, creative.Player));
   }
 }
 #endif

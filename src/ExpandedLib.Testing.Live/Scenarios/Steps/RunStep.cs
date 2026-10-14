@@ -127,6 +127,8 @@ internal sealed class RunStep : ScenarioStep {
   );
 
   /// <summary>Turns the block at an absolute cell one step with the wrench.</summary>
+  /// <param name="at">The absolute cell of the block.</param>
+  /// <param name="dir">1 for the next orientation of the block's cycle, -1 for the one before.</param>
   /// <returns>Whether the block answers a wrench.</returns>
   public delegate bool PlayerWrench(BlockPos at, int dir);
 

@@ -96,8 +96,17 @@ internal static class SetupRunFamily
 
   /// <summary>The faces a run cell is drawn with: its joins and opens, and each face toward a drawn
   /// block entry of the same network type that has a connector toward the cell.</summary>
-  /// <param name="resolve">The block a legend code names.</param>
+  /// <param name="layout">The drawing whose cells are read.</param>
+  /// <param name="cell">The run cell whose faces are wanted.</param>
+  /// <param name="type">The network type a neighbour must share to add a face.</param>
+  /// <param name="resolve">The block a legend code names; what it throws for an unknown code passes
+  /// through.</param>
+  /// <param name="accessor">Reads the block already placed at a neighbour's position.</param>
   /// <param name="absolute">Maps a layout cell to the position the accessor reads it at.</param>
+  /// <returns>The faces: the cell's joins and opens, then each toward a drawn block that connects
+  /// back.</returns>
+  /// <exception cref="InvalidCastException">A placed connector toward the cell is not an
+  /// <see cref="INetworkMember"/>.</exception>
   public static HashSet<BlockFacing> DrawnFaces(
     SetupLayout layout,
     LayoutRunCell cell,

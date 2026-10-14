@@ -27,6 +27,7 @@ internal sealed class ScenarioPlayer {
   private readonly BlockPos _park;
   private readonly PlayerAntiAbuseMonitor? _abuse;
   private int _uses;
+  private int _breaks;
 
   private ScenarioPlayer(
     ServerMain server,
@@ -41,6 +42,7 @@ internal sealed class ScenarioPlayer {
     _park = park;
     Player = player;
     server.EventManager.DidUseBlock += CountUse;
+    server.EventManager.DidBreakBlock += CountBreak;
   }
 
   /// <summary>How many did-use events the server has fired for any player since the scenario player was built.</summary>
@@ -48,6 +50,15 @@ internal sealed class ScenarioPlayer {
 
   private void CountUse(IServerPlayer player, BlockSelection selection) =>
     _uses++;
+
+  /// <summary>How many did-break events the server has fired for any player since the scenario player was built.</summary>
+  public int Breaks => _breaks;
+
+  private void CountBreak(
+    IServerPlayer player,
+    int oldBlockId,
+    BlockSelection selection
+  ) => _breaks++;
 
   /// <summary>The engine's player the steps act through.</summary>
   public ServerPlayer Player { get; }
@@ -551,18 +562,19 @@ internal sealed class ScenarioPlayer {
     Park();
   }
 
-  /// <summary>Sets the sneak, ctrl and sprint controls to the names in <paramref name="keys"/> and
+  /// <summary>Sets the sneak (and shift), ctrl (and sprint) and sprint controls to the names in <paramref name="keys"/> and
   /// clears the others.</summary>
   /// <param name="keys">Any of <c>sneak</c>, <c>ctrl</c> and <c>sprint</c>.</param>
   internal static void Hold(EntityControls controls, IReadOnlyList<string> keys) {
-    controls.Sneak = keys.Contains("sneak");
+    controls.Sneak = controls.ShiftKey = keys.Contains("sneak");
     controls.CtrlKey = keys.Contains("ctrl");
-    controls.Sprint = keys.Contains("sprint");
+    controls.Sprint = controls.CtrlKey || keys.Contains("sprint");
   }
 
   /// <summary>Despawns the player and removes it from the server's player maps.</summary>
   public void Stop() {
     _server.EventManager.DidUseBlock -= CountUse;
+    _server.EventManager.DidBreakBlock -= CountBreak;
     _server.DespawnEntity(
       _data.EntityPlayer,
       new EntityDespawnData { Reason = EnumDespawnReason.Removed }

@@ -31,6 +31,18 @@ public sealed partial class SetupScene : IDisposable
     ["climate"] = "the fake world has no weather to hold a climate with",
   };
 
+  /// <summary>The first verb of <paramref name="file"/> that the fake world lacks, which only the live
+  /// runner runs.</summary>
+  /// <returns>The verb (<c>climate</c> for a file that holds a climate), or null when the harness runs
+  /// every step.</returns>
+  internal static string? LackedVerb(SetupFile file) =>
+    file.Model.HasClimate
+      ? "climate"
+      : SetupStepWalk
+        .Of(file.Model)
+        .Select(step => step.Kind)
+        .FirstOrDefault(Lacking.ContainsKey);
+
   private readonly SetupFile _file;
   private readonly Dictionary<string, SetupPlacement> _placed = [];
   private readonly Dictionary<BlockPos, HashSet<long>> _listeners = [];

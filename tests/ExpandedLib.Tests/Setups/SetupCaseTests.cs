@@ -50,9 +50,9 @@ public class SetupCaseTests : IDisposable
     ("setupbox", "1.0.0"),
   ];
 
-  private const string PlaceA =
+  internal const string PlaceA =
     "{\"place\": {\"id\": \"a\", \"code\": \"setupbox:box\", \"at\": [0, 0, 0]}}";
-  private const string PlaceB =
+  internal const string PlaceB =
     "{\"place\": {\"id\": \"b\", \"code\": \"setupbox:box\", \"at\": [1, 0, 0]}}";
 
   private static string SetA(int level) =>

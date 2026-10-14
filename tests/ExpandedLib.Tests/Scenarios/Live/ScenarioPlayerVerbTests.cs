@@ -154,13 +154,13 @@ public class ScenarioPlayerVerbTests {
     var controls = new EntityControls();
     ScenarioPlayer.Hold(controls, ["ctrl"]);
     Assert.Equal(
-      (false, true, false),
-      (controls.Sneak, controls.CtrlKey, controls.Sprint)
+      (false, false, true, true),
+      (controls.Sneak, controls.ShiftKey, controls.CtrlKey, controls.Sprint)
     );
     ScenarioPlayer.Hold(controls, ["sprint", "sneak"]);
     Assert.Equal(
-      (true, false, true),
-      (controls.Sneak, controls.CtrlKey, controls.Sprint)
+      (true, true, false, true),
+      (controls.Sneak, controls.ShiftKey, controls.CtrlKey, controls.Sprint)
     );
   }
 

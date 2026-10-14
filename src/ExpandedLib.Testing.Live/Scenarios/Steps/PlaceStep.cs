@@ -40,8 +40,8 @@ internal sealed class PlaceStep : ScenarioStep {
     List<BlockPos> footprint =
     [
       .. block is IFillerHost host
-        ? StructureFillers
-          .FootprintCells(
+        ? ctx
+          .Setup.Footprint(
             host,
             local,
             (block as BlockFilledMegastructure)?.StructureAngle ?? 0
