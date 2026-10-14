@@ -238,6 +238,67 @@ public class FillerControlBoxesTests {
     );
   }
 
+  // Fails when the saved boxes are read before the principal's answer, or the north offset or angle is not passed.
+  [Theory]
+  [InlineData(0)]
+  [InlineData(90)]
+  [InlineData(180)]
+  [InlineData(270)]
+  public void A_principal_answers_the_filler_collision(int angle) {
+    var scene = new Scene(angle);
+    Cuboidf answer = new(0.1f, 0f, 0.1f, 0.4f, 0.3f, 0.4f);
+    var asked = new List<(Vec3i Offset, int Angle)>();
+    scene.Principal.CellCollision = (offset, a) => {
+      asked.Add((offset, a));
+      return new[] { answer };
+    };
+    BlockPos pos = scene.Cell(1, 0, 0, saved: [PanelBody]);
+
+    AssertBox(
+      answer,
+      Assert.Single(scene.Filler.GetCollisionBoxes(scene.Accessor, pos))
+    );
+    (Vec3i offset, int seenAngle) = Assert.Single(asked);
+    Assert.Equal(1, offset.X);
+    Assert.Equal(0, offset.Y);
+    Assert.Equal(0, offset.Z);
+    Assert.Equal(angle, seenAngle);
+  }
+
+  // Fails when a null answer is read as an empty collision instead of keeping the row's boxes.
+  [Fact]
+  public void A_null_answer_keeps_the_row() {
+    var scene = new Scene();
+    scene.Principal.CellCollision = (_, _) => null;
+    BlockPos pos = scene.Cell(1, 0, 0, saved: [PanelBody]);
+
+    AssertBox(
+      PanelCollision,
+      Assert.Single(scene.Filler.GetCollisionBoxes(scene.Accessor, pos))
+    );
+  }
+
+  // Fails when the first answer is kept, so a later query returns it instead of the entity's current answer.
+  [Fact]
+  public void The_answer_is_read_at_every_query() {
+    var scene = new Scene();
+    Cuboidf first = new(0f, 0f, 0f, 0.5f, 0.5f, 0.5f);
+    Cuboidf second = new(0f, 0f, 0f, 0.25f, 0.25f, 0.25f);
+    Cuboidf current = first;
+    scene.Principal.CellCollision = (_, _) => new[] { current };
+    BlockPos pos = scene.Cell(1, 0, 0);
+
+    AssertBox(
+      first,
+      Assert.Single(scene.Filler.GetCollisionBoxes(scene.Accessor, pos))
+    );
+    current = second;
+    AssertBox(
+      second,
+      Assert.Single(scene.Filler.GetCollisionBoxes(scene.Accessor, pos))
+    );
+  }
+
   // Fails when Compose reads an empty collision as the full cube.
   [Fact]
   public void Empty_collision_has_none() {
@@ -593,11 +654,15 @@ public class FillerControlBoxesTests {
     public JsonObject? FillerOffsets => Attributes?["fillerOffsets"];
   }
 
-  private sealed class StatesEntity : BlockEntity, IControlStates {
+  private sealed class StatesEntity : BlockEntity, IControlStates, ICellCollision {
     public readonly Dictionary<string, ControlState> States = [];
+    public System.Func<Vec3i, int, Cuboidf[]?>? CellCollision;
 
     public ControlState? StateOf(string controlId) =>
       States.TryGetValue(controlId, out ControlState state) ? state : null;
+
+    public Cuboidf[]? CollisionAt(Vec3i northOffset, int angle) =>
+      CellCollision?.Invoke(northOffset, angle);
   }
 
   private sealed class StatesBehavior(BlockEntity be)

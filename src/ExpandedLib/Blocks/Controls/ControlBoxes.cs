@@ -158,10 +158,21 @@ public static class ControlBoxes {
       }
     );
 
+  private static Cuboidf[]? EntityCollision(
+    IBlockAccessor accessor,
+    BlockPos principalPos,
+    Vec3i northOffset,
+    int angle
+  ) =>
+    accessor.GetBlockEntity(principalPos) is ICellCollision answers
+      ? answers.CollisionAt(northOffset, angle)
+      : null;
+
   /// <summary>
   /// The boxes a filler at <paramref name="pos"/> answers with, composed from its principal's
   /// <c>fillerOffsets</c> row at the north offset <c>RotateOffset(pos - principal, (360 - angle) % 360)</c>,
-  /// <c>angle</c> the host's <see cref="IFillerHost.StructureAngle"/>.
+  /// <c>angle</c> the host's <see cref="IFillerHost.StructureAngle"/>. An <see cref="ICellCollision"/> entity
+  /// on the principal replaces the composed collision when it answers non-null.
   /// </summary>
   /// <returns>False when the filler has no principal, the principal is gone or is not an
   /// <see cref="IFillerHost"/>, or its definition has no row with box keys at that offset.</returns>
@@ -200,7 +211,8 @@ public static class ControlBoxes {
       static (_, a) => new PlacedCell(a.row.Turned(a.angle)),
       (row, angle)
     );
-    boxes = placed.At(accessor, principalPos);
+    (Cuboidf[] collision, Cuboidf[] selection) = placed.At(accessor, principalPos);
+    boxes = (EntityCollision(accessor, principalPos, north, angle) ?? collision, selection);
     return true;
   }
 
@@ -227,11 +239,8 @@ public static class ControlBoxes {
     return node != null && node.Exists ? CellBoxes.Read(node) : null;
   }
 
-  private static PlacedCell? PlacedFor(Block block) {
-    PrincipalTable table = PrincipalOf(block);
-    if (table.Row == null)
-      return null;
-    int angle =
+  private static PlacedCell? PlacedFor(Block block, out int angle) {
+    angle =
       (
         (
           block is IFillerHost host
@@ -242,6 +251,9 @@ public static class ControlBoxes {
         ) % 360
         + 360
       ) % 360;
+    PrincipalTable table = PrincipalOf(block);
+    if (table.Row == null)
+      return null;
     return table.Turned.GetOrAdd(
       angle,
       static (_, a) => new PlacedCell(a.Row.Turned(a.angle)),
@@ -252,14 +264,21 @@ public static class ControlBoxes {
   /// <summary>
   /// The collision boxes of <paramref name="block"/>'s own cell at <paramref name="pos"/>, from its
   /// <c>principalCell</c> turned by <see cref="IFillerHost.StructureAngle"/> (else its <c>side</c> or
-  /// <c>orientation</c>) and the control states there. For a principal that is no mega-block or node.
+  /// <c>orientation</c>) and the control states there. An <see cref="ICellCollision"/> entity at
+  /// <paramref name="pos"/> that answers non-null replaces those boxes. For a principal that is no mega-block or node.
   /// </summary>
   /// <returns>Null when the block has no <c>principalCell</c>; the caller then answers as its base does.</returns>
   public static Cuboidf[]? Collision(
     Block block,
     IBlockAccessor accessor,
     BlockPos pos
-  ) => PlacedFor(block)?.At(accessor, pos).Collision;
+  ) {
+    PlacedCell? cell = PlacedFor(block, out int angle);
+    if (cell == null)
+      return null;
+    return EntityCollision(accessor, pos, new Vec3i(0, 0, 0), angle)
+      ?? cell.At(accessor, pos).Collision;
+  }
 
 #if GAME_GE_1_22
   /// <summary>The selection boxes of <paramref name="block"/>'s own cell, as <see cref="Collision"/>
@@ -269,7 +288,7 @@ public static class ControlBoxes {
     Block block,
     IBlockAccessor accessor,
     BlockPos pos
-  ) => PlacedFor(block)?.At(accessor, pos).Selection;
+  ) => PlacedFor(block, out _)?.At(accessor, pos).Selection;
 #endif
 
   #endregion
