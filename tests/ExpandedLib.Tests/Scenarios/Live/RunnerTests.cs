@@ -41,7 +41,7 @@ public class RunnerTests {
       Path.GetTempPath(),
       "exlib-runner-" + Guid.NewGuid().ToString("N")
     );
-    private Action<float>? _tick;
+    private readonly System.Collections.Generic.List<Action<float>> _ticks = [];
     private long _now;
 
     public ICoreServerAPI Api { get; } = Substitute.For<ICoreServerAPI>();
@@ -64,8 +64,8 @@ public class RunnerTests {
       Events
         .RegisterGameTickListener(Arg.Any<Action<float>>(), Arg.Any<int>())
         .Returns(call => {
-          _tick = call.Arg<Action<float>>();
-          return 1L;
+          _ticks.Add(call.Arg<Action<float>>());
+          return _ticks.Count;
         });
       Directory.CreateDirectory(Path.Combine(_dir, "exlib"));
     }
@@ -107,7 +107,8 @@ public class RunnerTests {
     public void Tick(int times, long now = 0) {
       _now = now;
       for (int i = 0; i < times; i++)
-        _tick!(0.1f);
+        foreach (Action<float> tick in _ticks.ToArray())
+          tick(0.1f);
     }
 
     public string[] Lines =>
@@ -229,6 +230,43 @@ public class RunnerTests {
       "[scenario] done: 1 case(s) run, 0 passed, 1 failed.",
       run.Lines
     );
+  }
+
+  /// <summary>Fails when a case's sampler is not built with the runner (V104), or is left listening
+  /// after its case is abandoned (V105).</summary>
+  [Fact]
+  public void A_case_that_is_abandoned_mid_run_unregisters_its_sampler() {
+    using var run = new Run();
+    run.Write(
+      "exlib/sampled",
+      """
+      { "setup": "sampled", "description": "a case", "mods": [], "seconds": 6,
+        "record": { "machines": {} }, "steps": [] }
+      """
+    );
+    Action? loaded = null;
+    run.Api.WorldManager.When(m =>
+        m.LoadChunkColumnPriority(
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<ChunkLoadOptions>()
+        )
+      )
+      .Do(call => loaded = call.Arg<ChunkLoadOptions>().OnLoaded);
+    run.Start(["exlib/sampled"]);
+    run.Tick(2);
+    loaded!();
+    run.Tick(2);
+    run.Events.Received(1)
+      .RegisterGameTickListener(Arg.Any<Action<float>>(), 1000);
+    run.Events.DidNotReceive().UnregisterGameTickListener(Arg.Any<long>());
+    run.Api.World.ElapsedMilliseconds.Returns<long>(_ =>
+      throw new InvalidOperationException("clock lost")
+    );
+    run.Tick(1);
+    run.Events.Received(1).UnregisterGameTickListener(2);
   }
 
   /// <summary>Fails when the chat filter lets the run or error lines through (V100) or drops the

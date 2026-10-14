@@ -6,6 +6,7 @@ using ExpandedLib.Testing.Live;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent.Mechanics;
 
 namespace ExpandedLib.Tests.Scenarios.Live;
 
@@ -35,11 +36,13 @@ internal sealed class LiveFixture {
     : this(false, allowed) { }
 
   private LiveFixture(bool samples, string[] allowed) {
-    if (samples)
+    if (samples) {
       Test.LoadAssets([
         Path.Combine(RepoPaths.Root, "samples", "TwinTubBlower"),
         Path.Combine(RepoPaths.Root, "samples", "PlatedPipes"),
       ]);
+      Test.StartModSystem<MechanicalPowerMod>();
+    }
     Test.Register(Stone);
     Errors = new ScenarioErrors([
       .. System.Linq.Enumerable.Select(
@@ -69,8 +72,19 @@ internal sealed class LiveFixture {
     return root.ToString();
   }
 
-  public static ScenarioCase Case(string steps, string extra = "{}") =>
-    ScenarioCase.Load("exlib/case", Text(steps, extra), "case.json");
+  public static ScenarioCase Case(
+    string steps,
+    string extra = "{}",
+    string series = "1.22",
+    params string[] loaded
+  ) =>
+    ScenarioCase.Load(
+      "exlib/case",
+      Text(steps, extra),
+      "case.json",
+      loaded,
+      series
+    );
 
   /// <summary>Runs <paramref name="steps"/> to the end, moving the clock by
   /// <paramref name="stepSeconds"/> per tick; returns how many ticks it yielded.</summary>

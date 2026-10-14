@@ -45,6 +45,7 @@ internal sealed class ScenarioRunner {
   private double _loadStarted;
   private ScenarioContext? _ctx;
   private ScenarioCaseRun? _caseRun;
+  private SetupSampler? _sampler;
   private IEnumerator<bool>? _steps;
   private ScenarioPlayer? _player;
   private bool _playerBroken;
@@ -217,7 +218,15 @@ internal sealed class ScenarioRunner {
           : SetupPack.Start(scenario.Model, _ => null),
     };
     Emit(ScenarioOutput.Case(_name, plot.Origin));
-    _caseRun = new ScenarioCaseRun(scenario, _ctx);
+    _sampler = new SetupSampler(
+      _api.Event,
+      scenario,
+      _ctx,
+      Series(),
+      [.. _api.ModLoader.Mods.Select(m => m.Info)],
+      Path.Combine(_api.GetOrCreateDataPath("Scenarios"), "recordings")
+    );
+    _caseRun = new ScenarioCaseRun(scenario, _ctx, _sampler);
     _steps = _caseRun.Run().GetEnumerator();
   }
 
@@ -295,6 +304,8 @@ internal sealed class ScenarioRunner {
   }
 
   private void Reset() {
+    _sampler?.Stop();
+    _sampler = null;
     _steps?.Dispose();
     _steps = null;
     _caseRun = null;
@@ -332,7 +343,9 @@ internal sealed class ScenarioRunner {
       scenario = ScenarioCase.Load(
         name,
         System.IO.File.ReadAllText(path),
-        Path.GetFileName(path)
+        Path.GetFileName(path),
+        [.. _api.ModLoader.Mods.Select(m => m.Info.ModID)],
+        Series()
       );
       return true;
     } catch (SetupFileException e) {
@@ -346,6 +359,9 @@ internal sealed class ScenarioRunner {
       return false;
     }
   }
+
+  private static string Series() =>
+    string.Join('.', GameVersion.ShortGameVersion.Split('.').Take(2));
 
   private string File(string name) =>
     Path.Combine(_api.GetOrCreateDataPath("Scenarios"), name + ".json");

@@ -248,15 +248,4 @@ internal sealed class SetupCheck {
       }
     }
   }
-
-  /// <summary>Runs <paramref name="checks"/> in order; the first that fails, or null.</summary>
-  public static SetupCheckFailure? First(
-    IEnumerable<SetupCheck> checks,
-    SetupRecording recording
-  ) {
-    foreach (SetupCheck check in checks)
-      if (check.Run(recording) is { } failure)
-        return failure;
-    return null;
-  }
 }

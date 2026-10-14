@@ -20,6 +20,9 @@ public partial class BlockStructureFiller
   : Block,
     INetworkConnector,
     IMechanicalPowerBlock,
+#if GAME_GE_1_22
+    ICustomSelectionBoxRender,
+#endif
     IExBlockDefProvider {
   #region Code-first definition
 
@@ -295,7 +298,7 @@ public partial class BlockStructureFiller
   /// <summary>Answers a wrench (<see cref="IWrenchOrientable"/>) with the principal's rotation,
   /// run with the selection moved to the principal's cell, so a wrench on any cell turns the whole
   /// structure; null for an orphaned cell or a principal that does not orient. Every other
-  /// interface is answered as <see cref="Block.GetInterface{T}"/> answers it.</summary>
+  /// interface is answered as <see cref="Block.GetInterface{T}"/> answers it. On 1.22 the filler always answers <see cref="ICustomSelectionBoxRender"/>.</summary>
   public override T GetInterface<T>(IWorldAccessor world, BlockPos pos) {
     if (
       typeof(T) == typeof(IWrenchOrientable)
@@ -306,6 +309,16 @@ public partial class BlockStructureFiller
       return (T)(object)new PrincipalWrench(principal, pp);
     return base.GetInterface<T>(world, pos);
   }
+
+#if GAME_GE_1_22
+  /// <summary>Outlines the hit control whole through <see cref="ControlOutline"/>; a structure whose
+  /// principal has no <c>controls</c> table is outlined as vanilla outlines the hit cell. Available on
+  /// 1.22 only.</summary>
+  public void RenderSelectionBoxes(
+    BlockSelection blockSel,
+    RenderBoxDelegate renderBoxHandler
+  ) => ControlOutline.Render(this, api, blockSel, renderBoxHandler);
+#endif
 
   private sealed class PrincipalWrench(
     IWrenchOrientable principal,

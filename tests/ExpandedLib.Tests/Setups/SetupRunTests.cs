@@ -292,6 +292,28 @@ public class SetupRunTests : IDisposable
     Assert.Equal([0, 5, 5, 0, 0, 0], Series(recording, "box", "level"));
   }
 
+  // Fails when the run materialises the second's due actions before running them, so a when
+  // action tests its reading before an earlier action of that second has run.
+  [Fact]
+  public void A_when_action_sees_the_step_an_earlier_action_ran_in_the_same_second()
+  {
+    using SetupScene scene = Build(
+      "setupbox",
+      $"[{Box}]",
+      "["
+        + During("\"at\": 1, \"step\": " + SetLevel(3))
+        + ", "
+        + During(
+          "\"every\": 1, \"when\": {\"at\": [0, 0, 0], \"member\": \"Level\", \"equals\": 3}, \"step\": "
+            + SetLevel(0)
+        )
+        + "]",
+      BoxRecord
+    );
+    SetupRecording recording = scene.Run(BoxMods);
+    Assert.Equal([0, 0, 0, 0, 0, 0], Series(recording, "box", "level"));
+  }
+
   // Fails when a when action tests its reading in a second its period skips.
   [Fact]
   public void A_when_action_does_not_run_in_a_second_its_period_skips()

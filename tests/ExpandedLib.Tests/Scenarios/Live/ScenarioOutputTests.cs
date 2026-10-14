@@ -83,4 +83,25 @@ public class ScenarioOutputTests {
   [Fact]
   public void Chat_lines_escape_angle_brackets() =>
     Assert.Equal("a &lt;b&gt;", ScenarioOutput.ForChat("a <b>"));
+
+  /// <summary>Fails when a step line that failed (a reason ending in ok) or a detail line ending
+  /// in ok counts as an ok line, or an ok line with a value does not.</summary>
+  [Fact]
+  public void Only_a_step_that_held_is_an_ok_line() {
+    Assert.True(
+      ScenarioOutput.IsStepOk(ScenarioOutput.StepOk("1", "set", "{at}", null))
+    );
+    Assert.True(
+      ScenarioOutput.IsStepOk(ScenarioOutput.StepOk("1", "set", "{at}", "a=1"))
+    );
+    Assert.False(
+      ScenarioOutput.IsStepOk(
+        ScenarioOutput.StepFail("1", "set", "{at}", "not ok")
+      )
+    );
+    Assert.False(ScenarioOutput.IsStepOk(ScenarioOutput.Detail("it is ok")));
+    Assert.False(
+      ScenarioOutput.IsStepOk(ScenarioOutput.Skipped("1", "set", "{at}"))
+    );
+  }
 }

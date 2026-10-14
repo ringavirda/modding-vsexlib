@@ -93,7 +93,9 @@ internal sealed class RunStep : ScenarioStep {
     return faces;
   }
 
-  private static BlockFacing Toward(BlockPos from, BlockPos to) =>
+  /// <summary>The face of <paramref name="from"/> that looks toward the adjacent cell
+  /// <paramref name="to"/>.</summary>
+  public static BlockFacing Toward(BlockPos from, BlockPos to) =>
     BlockFacing.ALLFACES.Single(f =>
       f.Normali.X == Math.Sign(to.X - from.X)
       && f.Normali.Y == Math.Sign(to.Y - from.Y)
@@ -112,6 +114,121 @@ internal sealed class RunStep : ScenarioStep {
     connects(face)
       ? null
       : $"face {face.Code} of {FailureDetail.Cell(cell)} is not a connector of {code}.";
+
+  /// <summary>Places a block by the scenario player at an absolute cell, the click landing on
+  /// <paramref name="face"/> of a neighbour.</summary>
+  /// <param name="failure">Null when the block went down; otherwise the code the player gave.</param>
+  /// <returns>Whether the block went down.</returns>
+  public delegate bool PlayerPlace(
+    Block block,
+    BlockPos at,
+    BlockFacing face,
+    out string? failure
+  );
+
+  /// <summary>Lays a straight path by the player: <paramref name="blocks"/> in the order of
+  /// <paramref name="cells"/>, each placed on the click that its neighbour in the path gives it.</summary>
+  /// <exception cref="StepFailure">The path turns, a cell holds a block other than air at or above
+  /// y 0, or the player cannot place a block.</exception>
+  public static void Lay(
+    ScenarioContext ctx,
+    PlayerPlace place,
+    IReadOnlyList<Block> blocks,
+    IReadOnlyList<BlockPos> cells
+  ) {
+    if (FirstTurn(cells) is { } turn)
+      throw new StepFailure(
+        $"the path turns at {FailureDetail.Cell(turn)}, and a run places one straight blocktype, which is never a bend.",
+        Suspect.Scenario
+      );
+    LayCells(ctx, place, blocks, cells, ClickFaces(cells));
+  }
+
+  /// <summary>Lays <paramref name="blocks"/> in the order of <paramref name="cells"/> with no check on the
+  /// path's shape, each placed on the click that its entry of <paramref name="faces"/> gives it.</summary>
+  /// <exception cref="StepFailure">A cell holds a block other than air at or above y 0, or the
+  /// player cannot place a block.</exception>
+  public static void LayCells(
+    ScenarioContext ctx,
+    PlayerPlace place,
+    IReadOnlyList<Block> blocks,
+    IReadOnlyList<BlockPos> cells,
+    IReadOnlyList<BlockFacing> faces
+  ) {
+    foreach (BlockPos cell in cells)
+      if (cell.Y >= 0 && !ctx.IsAir(cell))
+        throw new StepFailure(
+          $"{FailureDetail.Cell(cell)} holds {ctx.Setup.BlockAt(cell).Code}, not air.",
+          Suspect.Scenario
+        );
+    for (int i = 0; i < cells.Count; i++) {
+      BlockPos cell = cells[i];
+      Block block = blocks[i];
+      PackLedger.DrawBlock(ctx, block.Code.ToString(), cell.ToString());
+      if (
+        !place(block, ctx.Setup.Absolute(cell), faces[i], out string? failure)
+      )
+        throw new StepFailure(
+          $"the player could not place {block.Code} at {FailureDetail.Cell(cell)}: {failure}.",
+          Suspect.Mod
+        );
+      ctx.Placed.Add(cell.Copy());
+      ctx.Touched.Add(cell.Copy());
+    }
+  }
+
+  /// <summary>Fails when two network cells of a placed run are not in one network, the cells just past
+  /// each end of the run counted in.</summary>
+  /// <exception cref="StepFailure">Two of the cells are in different networks.</exception>
+  public static void CheckJoined(
+    ScenarioContext ctx,
+    IReadOnlyList<BlockPos> cells,
+    Block block
+  ) {
+    if (block is INetworkMember { NetworkType: var type }) {
+      List<BlockPos> joined = [.. cells];
+      if (cells.Count > 1) {
+        (BlockPos before, BlockPos after) = Beyond(cells);
+        foreach (BlockPos outside in new[] { before, after })
+          if (
+            ctx.Setup.BlockAt(outside)
+              is INetworkMember { NetworkType: var other }
+            && other == type
+          )
+            joined.Add(outside);
+      }
+      for (int i = 1; i < joined.Count; i++)
+        if (
+          ctx.Setup.NetworkAt(joined[0], type) is not { } first
+          || !ReferenceEquals(first, ctx.Setup.NetworkAt(joined[i], type))
+        )
+          throw new StepFailure(
+            $"{FailureDetail.Cell(joined[0])} and {FailureDetail.Cell(joined[i])} are not in one {type} network."
+          );
+    }
+  }
+
+  /// <summary>Fails when <paramref name="face"/> of the placed block at the plot-local
+  /// <paramref name="cell"/> is not one of its connectors.</summary>
+  /// <exception cref="StepFailure">The face is not a connector of the block there.</exception>
+  public static void CheckFace(
+    ScenarioContext ctx,
+    BlockPos cell,
+    BlockFacing face
+  ) {
+    Block placed = ctx.Setup.BlockAt(cell);
+    BlockPos at = ctx.Setup.Absolute(cell);
+    string? failure = OpenFailure(
+      cell,
+      face,
+      placed.Code.ToString(),
+      f =>
+        placed is INetworkMember member
+        && member.HasConnectorAt(ctx.World.BlockAccessor, at, f)
+    );
+    if (failure != null)
+      throw new StepFailure(failure);
+  }
 
   public override IEnumerable<bool> Run(
     ScenarioContext ctx,
@@ -134,60 +251,11 @@ internal sealed class RunStep : ScenarioStep {
       .. (o["via"] as JArray ?? []).Select(v => ctx.Position(step, v, "via")),
     ];
     List<BlockPos> cells = Path(from, via, to);
-    if (FirstTurn(cells) is { } turn)
-      throw new StepFailure(
-        $"the path turns at {FailureDetail.Cell(turn)}, and a run places one straight blocktype, which is never a bend.",
-        Suspect.Scenario
-      );
-    foreach (BlockPos cell in cells)
-      if (cell.Y >= 0 && !ctx.IsAir(cell))
-        throw new StepFailure(
-          $"{FailureDetail.Cell(cell)} holds {ctx.Setup.BlockAt(cell).Code}, not air.",
-          Suspect.Scenario
-        );
-    List<BlockFacing> faces = ClickFaces(cells);
-    for (int i = 0; i < cells.Count; i++) {
-      BlockPos cell = cells[i];
-      PackLedger.DrawBlock(ctx, block.Code.ToString(), cell.ToString());
-      if (
-        !player.Place(
-          block,
-          ctx.Setup.Absolute(cell),
-          faces[i],
-          out string? failure
-        )
-      )
-        throw new StepFailure(
-          $"the player could not place {block.Code} at {FailureDetail.Cell(cell)}: {failure}.",
-          Suspect.Mod
-        );
-      ctx.Placed.Add(cell.Copy());
-      ctx.Touched.Add(cell.Copy());
-    }
+    Lay(ctx, player.Place, [.. cells.Select(_ => block)], cells);
     yield return true;
     foreach (JToken each in o["open"] as JArray ?? [])
       CheckOpen(ctx, step, (JObject)each);
-    if (block is INetworkMember { NetworkType: var type }) {
-      List<BlockPos> joined = [.. cells];
-      if (cells.Count > 1) {
-        (BlockPos before, BlockPos after) = Beyond(cells);
-        foreach (BlockPos outside in new[] { before, after })
-          if (
-            ctx.Setup.BlockAt(outside)
-              is INetworkMember { NetworkType: var other }
-            && other == type
-          )
-            joined.Add(outside);
-      }
-      for (int i = 1; i < joined.Count; i++)
-        if (
-          ctx.Setup.NetworkAt(joined[0], type) is not { } first
-          || !ReferenceEquals(first, ctx.Setup.NetworkAt(joined[i], type))
-        )
-          throw new StepFailure(
-            $"{FailureDetail.Cell(joined[0])} and {FailureDetail.Cell(joined[i])} are not in one {type} network."
-          );
-    }
+    CheckJoined(ctx, cells, block);
     if (step.Id != null)
       ctx.Setup.Place(step.Id, new SetupPlacement(cells[0].Copy(), cells));
     report.Value = $"{cells.Count} cell(s) of {block.Code}";
@@ -203,17 +271,6 @@ internal sealed class RunStep : ScenarioStep {
     BlockFacing face =
       ExOrientation.FacingFromSide(token)
       ?? throw new StepFailure($"\"{token}\" is not a face.", Suspect.Scenario);
-    Block placed = ctx.Setup.BlockAt(cell);
-    BlockPos at = ctx.Setup.Absolute(cell);
-    string? failure = OpenFailure(
-      cell,
-      face,
-      placed.Code.ToString(),
-      f =>
-        placed is INetworkMember member
-        && member.HasConnectorAt(ctx.World.BlockAccessor, at, f)
-    );
-    if (failure != null)
-      throw new StepFailure(failure);
+    CheckFace(ctx, cell, face);
   }
 }

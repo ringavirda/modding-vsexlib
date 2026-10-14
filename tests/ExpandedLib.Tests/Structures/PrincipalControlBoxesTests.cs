@@ -142,6 +142,49 @@ public class PrincipalControlBoxesTests {
     );
   }
 
+  // Fails when a host node's collision ignores its entity's answer.
+  [Fact]
+  public void A_host_node_follows_its_principal_entity() {
+    var node = Prepare(
+      new HostNode(),
+      Cell,
+      "ns",
+      ExOrientation.SideFromAngle(90)
+    );
+    var accessor = Substitute.For<IBlockAccessor>();
+    Cuboidf answer = new(0.2f, 0f, 0.2f, 0.6f, 0.4f, 0.6f);
+    var be = new CellEntity {
+      Pos = Pos,
+      Block = node,
+      Answer = new[] { answer },
+    };
+    accessor.GetBlockEntity(Pos).Returns(be);
+
+    AssertBox(answer, Assert.Single(node.GetCollisionBoxes(accessor, Pos)));
+    Assert.Equal(90, ((IFillerHost)node).StructureAngle);
+  }
+
+  // Fails when the principal's own collision ignores its entity's answer, or the answer is asked at another cell.
+  [Fact]
+  public void A_principal_entity_answers_its_own_cell() {
+    var scene = new MegaScene(Cell);
+    MegaBlock block = scene.Block;
+    IBlockAccessor accessor = scene.Accessor;
+    Cuboidf answer = new(0.2f, 0f, 0.2f, 0.6f, 0.4f, 0.6f);
+    var be = new CellEntity {
+      Pos = Pos,
+      Block = block,
+      Answer = new[] { answer },
+    };
+    accessor.GetBlockEntity(Pos).Returns(be);
+
+    AssertBox(answer, Assert.Single(block.GetCollisionBoxes(accessor, Pos)));
+    Vec3i offset = Assert.Single(be.Asked);
+    Assert.Equal(0, offset.X);
+    Assert.Equal(0, offset.Y);
+    Assert.Equal(0, offset.Z);
+  }
+
   // Fails when a row with doors answers cached arrays instead of composing from the door state.
   [Fact]
   public void Principal_doors_follow_state() {
@@ -257,5 +300,15 @@ public class PrincipalControlBoxesTests {
 
     public ControlState? StateOf(string controlId) =>
       States.TryGetValue(controlId, out ControlState state) ? state : null;
+  }
+
+  private sealed class CellEntity : BlockEntity, ICellCollision {
+    public Cuboidf[]? Answer;
+    public readonly List<Vec3i> Asked = [];
+
+    public Cuboidf[]? CollisionAt(Vec3i northOffset, int angle) {
+      Asked.Add(northOffset);
+      return Answer;
+    }
   }
 }

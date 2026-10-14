@@ -901,6 +901,23 @@ public class SetupSceneTests : IDisposable
     Assert.Contains(reason, message);
   }
 
+  // Fails when the refusal walks steps only, so a paste inside during is built and skipped.
+  [Fact]
+  public void A_step_kind_the_reader_cannot_run_is_refused_inside_during()
+  {
+    SetupFile file = SetupFile.Parse(
+      "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupfixture\"], \"steps\": [], "
+        + "\"during\": [{\"at\": 2, \"step\": {\"paste\": {\"file\": \"x\", \"at\": [0, 0, 0]}}}], "
+        + "\"seconds\": 10, \"record\": {}}",
+      "t.json"
+    );
+
+    string message = Refused(file);
+
+    Assert.Contains("during[0]", message);
+    Assert.Contains("the fake world has no structure files to paste", message);
+  }
+
   public static TheoryData<string, string, string> Refused_placements =>
     new()
     {
