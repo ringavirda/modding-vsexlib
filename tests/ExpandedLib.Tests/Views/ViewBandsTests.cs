@@ -64,6 +64,17 @@ public class ViewBandsTests {
     Assert.Contains("no-such-thing", e.Message);
   }
 
+  // Fails when the lump set goes back to ingot- and metalbit-: no member has a gapped silhouette, so the lowest G3 value rises to 1.05.
+  [Fact]
+  public void The_lump_set_holds_a_gapped_part() {
+    var groups = ViewGates.Groups(World, "game");
+    double lowest = ViewBands
+      .Sets.Where(s => s.Kind == ItemViewKind.Lump)
+      .SelectMany(s => ViewBands.Resolve(World, groups, s))
+      .Min(m => ViewGates.Measure(World, m.Group).Slot.Face);
+    Assert.True(lowest < 0.6, $"the lowest lump G3 value is {lowest}");
+  }
+
   // Fails when a rule number moves off the vanilla reference it copies: the rod's hand scale 0.68 raised to 0.70.
   [Fact]
   public void View_bands_agree_with_the_rules_constants() {

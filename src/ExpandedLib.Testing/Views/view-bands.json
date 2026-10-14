@@ -242,12 +242,12 @@
         "high": 3.8345
       },
       "G3": {
-        "min": 1.0473,
-        "max": 1.1102,
-        "minCode": "ingot-blistersteel",
-        "maxCode": "metalbit-blistersteel",
-        "low": 0.9425,
-        "high": 1.2213
+        "min": 0.3551,
+        "max": 1.6256,
+        "minCode": "bladehead-falx-tinbronze",
+        "maxCode": "poundercap-tinbronze",
+        "low": 0.3196,
+        "high": 1.7881
       },
       "G5": {
         "min": 0.0,
