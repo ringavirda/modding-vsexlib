@@ -5,14 +5,26 @@ using System.Text.RegularExpressions;
 
 namespace ExpandedLib.Scenarios;
 
+/// <summary>What a run did with its pack, as the recording's <c>pack</c> section keeps it: the stacks
+/// it started with, the stacks left, the blocks standing and every draw in the order made.</summary>
+internal sealed record SetupPackRecord(
+  IReadOnlyDictionary<string, int> Start,
+  IReadOnlyDictionary<string, int> End,
+  IReadOnlyDictionary<string, int> Standing,
+  IReadOnlyList<(string Where, string Code, int Count)> Draws
+);
+
 /// <summary>
 /// The stacks, metal units and standing blocks a setup's <c>pack</c> holds (setups.md, The pack).
-/// Codes are read as keys, a key holding a <c>*</c> matches every code the wildcard covers.
+/// Codes are read as keys, a key holding a <c>*</c> matches every code the wildcard covers; a
+/// drawn code holding a <c>*</c> draws from every key it covers.
 /// </summary>
 internal sealed class SetupPack {
   private readonly SetupPackSpec _spec;
   private readonly Dictionary<string, int> _held = [];
   private readonly List<string> _standing = [];
+  private readonly List<(string Where, string Code, int Count)> _draws = [];
+  private Dictionary<string, int> _start = [];
 
   private SetupPack(SetupPackSpec spec) {
     _spec = spec;
@@ -42,14 +54,16 @@ internal sealed class SetupPack {
       foreach (var (code, count) in EndsOf(id, stageOf).EndStacks)
         pack.Add(code, count * runs);
     Standing(spec, stageOf, new List<string>(), pack._standing);
+    pack._start = pack.Snapshot();
     return pack;
   }
 
   /// <summary>The stacks and units of <paramref name="code"/> the pack holds, summed over every key
   /// that matches it.</summary>
-  /// <param name="code">A stack code, or a metal unit as <c>metal:&lt;code&gt;</c>.</param>
+  /// <param name="code">A stack code, or a metal unit as <c>metal:&lt;code&gt;</c>; a <c>*</c> in
+  /// it covers every key the wildcard reaches.</param>
   public int Held(string code) =>
-    _held.Where(k => Matches(k.Key, code)).Sum(k => k.Value);
+    _held.Where(k => Reaches(k.Key, code)).Sum(k => k.Value);
 
   /// <summary>The pack code of a molten cell's metal.</summary>
   /// <param name="metalType">The cell's full metal code, such as <c>game:ingot-iron</c>.</param>
@@ -64,21 +78,36 @@ internal sealed class SetupPack {
   /// <summary>Takes <paramref name="count"/> of <paramref name="code"/> out of the pack.</summary>
   /// <param name="code">A stack code, or a metal unit as <c>metal:&lt;code&gt;</c>.</param>
   /// <param name="count">The stacks or units taken, at least 1.</param>
+  /// <param name="where">The step that takes them, kept in the draw log.</param>
   /// <exception cref="InvalidOperationException">The pack holds fewer than <paramref name="count"/>;
   /// the message names the code and both counts, and nothing is taken.</exception>
-  public void Draw(string code, int count) {
+  public void Draw(string code, int count, string where = "") {
     int held = Held(code);
     if (held < count)
       throw new InvalidOperationException(
         $"the pack holds {held} of {code}; the step takes {count}."
       );
     int left = count;
-    foreach (string key in _held.Keys.Where(k => Matches(k, code)).ToList()) {
+    foreach (string key in _held.Keys.Where(k => Reaches(k, code)).ToList()) {
       int take = Math.Min(left, _held[key]);
       _held[key] -= take;
       left -= take;
     }
+    _draws.Add((where, code, count));
   }
+
+  /// <summary>What the run did with the pack, for the recording.</summary>
+  /// <param name="standing">The codes of the blocks standing at the end of the run, one per
+  /// block.</param>
+  public SetupPackRecord Record(IEnumerable<string> standing) =>
+    new(
+      _start,
+      Snapshot(),
+      standing
+        .GroupBy(c => c, StringComparer.Ordinal)
+        .ToDictionary(g => g.Key, g => g.Count()),
+      [.. _draws]
+    );
 
   /// <summary>Adds <paramref name="count"/> of <paramref name="code"/> to the pack: a stack or metal
   /// the run made or took back.</summary>
@@ -128,8 +157,14 @@ internal sealed class SetupPack {
   /// under <c>"stacks"</c>.</summary>
   public bool DrawsBlocks => _spec.Scope == "all";
 
+  private Dictionary<string, int> Snapshot() =>
+    _held.Where(k => k.Value > 0).ToDictionary(k => k.Key, k => k.Value);
+
   private void Add(string code, int count) =>
     _held[code] = _held.GetValueOrDefault(code) + count;
+
+  private static bool Reaches(string key, string code) =>
+    Matches(key, code) || (code.Contains('*') && Matches(code, key));
 
   // A * in a key stands for any run of characters.
   private static bool Matches(string key, string code) =>

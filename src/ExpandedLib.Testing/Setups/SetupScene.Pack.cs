@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
+using ExpandedLib.Blocks;
 using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using Newtonsoft.Json.Linq;
@@ -13,6 +15,7 @@ namespace ExpandedLib.Testing;
 public sealed partial class SetupScene
 {
   private SetupPack? _pack;
+  private int _spawnsSeen;
 
   private void StartPack(System.Func<string, SetupFileModel?>? stages)
   {
@@ -34,7 +37,7 @@ public sealed partial class SetupScene
       return;
     try
     {
-      _pack.Draw(code, count);
+      _pack.Draw(code, count, where);
     }
     catch (InvalidOperationException e)
     {
@@ -56,6 +59,56 @@ public sealed partial class SetupScene
     if (_pack is not { DrawsBlocks: true } || _pack.TakeStanding(code))
       return;
     Draw(where, code, 1);
+  }
+
+  private void DrawStages(string where, ExRightClickConstruction construction)
+  {
+    if (_pack is not { DrawsBlocks: true })
+      return;
+    for (
+      int i = construction.CurrentCompletedStage + 1;
+      i < construction.Stages.Length;
+      i++
+    )
+      foreach (
+        ExConstructionIngredient need in construction.Stages[i].RequireStacks
+          ?? []
+      )
+        Draw(
+          where,
+          Regex.Replace(need.Code.ToString(), @"\{[^}]*\}", "*"),
+          need.Quantity
+        );
+  }
+
+  private void GiveSpawns()
+  {
+    List<(ItemStack Stack, Vec3d At)> spawns = World.Spawns;
+    if (_pack == null || _laid.Count == 0)
+    {
+      _spawnsSeen = spawns.Count;
+      return;
+    }
+    var cells = _laid.Concat(
+      _placed.Values.SelectMany(p => p.Cells).Select(c => (c.X, c.Y, c.Z))
+    );
+    int x0 = cells.Min(c => c.X) - 1,
+      x1 = cells.Max(c => c.X) + 1;
+    int y0 = cells.Min(c => c.Y) - 1,
+      y1 = cells.Max(c => c.Y) + 1;
+    int z0 = cells.Min(c => c.Z) - 1,
+      z1 = cells.Max(c => c.Z) + 1;
+    foreach (var (stack, at) in spawns.Skip(_spawnsSeen))
+      if (
+        Math.Floor(at.X) >= x0
+        && Math.Floor(at.X) <= x1
+        && Math.Floor(at.Y) >= y0
+        && Math.Floor(at.Y) <= y1
+        && Math.Floor(at.Z) >= z0
+        && Math.Floor(at.Z) <= z1
+      )
+        Give(stack);
+    _spawnsSeen = spawns.Count;
   }
 
   private void DrawMetal(string where, IEnumerable<BlockPos> cells)
@@ -94,10 +147,10 @@ public sealed partial class SetupScene
       Draw(where, bill.Key, bill.Sum(s => s.StackSize) * times);
   }
 
-  private void CheckPack()
+  private SetupPackRecord? CheckPack()
   {
     if (_pack == null)
-      return;
+      return null;
     BlockPos[] cells =
     [
       .. _placed
@@ -107,17 +160,23 @@ public sealed partial class SetupScene
     ];
     foreach (var (metal, units) in MetalIn(cells))
       _pack.Give(metal, units);
+    string[] standing =
+    [
+      .. cells
+        .Select(c => World.GetBlock(c))
+        .Where(b => b.Id != 0)
+        .Select(b => b.Code.ToString()),
+    ];
     try
     {
-      _pack.CheckStanding([
-        .. cells.Select(c => World.GetBlock(c).Code.ToString()),
-      ]);
+      _pack.CheckStanding(standing);
       _pack.CheckEnds();
     }
     catch (InvalidOperationException e)
     {
       throw Fail("pack", e.Message);
     }
+    return _pack.Record(standing);
   }
 }
 #endif

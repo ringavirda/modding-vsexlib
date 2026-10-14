@@ -1,0 +1,24 @@
+{
+  "code": "frame",
+  "entityClass": "SetupFrame",
+  "entityBehaviors": [
+    {
+      "name": "ExRightClickConstructable",
+      "properties": {
+        "stages": [
+          {},
+          {
+            "requireStacks": [
+              { "type": "item", "code": "game:stick", "quantity": 2 }
+            ]
+          },
+          {
+            "requireStacks": [
+              { "type": "item", "code": "game:plank-{wood}", "quantity": 3 }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

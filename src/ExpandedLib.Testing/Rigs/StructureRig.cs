@@ -44,6 +44,12 @@ public sealed class StructureRig {
   /// </summary>
   public IReadOnlyList<(BlockPos Pos, string Wanted)> Cells { get; }
 
+  /// <summary>The cells <see cref="Raise"/> has filled so far with the code the layout wants
+  /// there: wildcards kept, an alternation reduced to its first branch.</summary>
+  public IReadOnlyList<(BlockPos Pos, string Code)> Raised => _raised;
+
+  private readonly List<(BlockPos Pos, string Code)> _raised = [];
+
   private StructureRig(
     TestWorld world,
     BlockEntityMultiblockStructure anchor,
@@ -224,6 +230,15 @@ public sealed class StructureRig {
       _world.Place(
         cell.At,
         faces.Length > 0 ? ConnectorStandIn(concrete, faces) : StandIn(concrete)
+      );
+      _raised.Add(
+        (
+          cell.At,
+          new AssetLocation(
+            cell.Wanted.Domain,
+            ExWildcards.FirstAlternative(cell.Wanted.Path)
+          ).ToString()
+        )
       );
     }
     return this;

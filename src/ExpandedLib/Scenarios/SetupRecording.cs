@@ -70,6 +70,10 @@ internal sealed class SetupRecording {
   private int _samples;
   private bool _started;
 
+  /// <summary>What the run did with its pack, written as the <c>pack</c> section; null for a file
+  /// without a <c>pack</c>, which writes no section.</summary>
+  internal SetupPackRecord? Pack { get; set; }
+
   /// <summary>The last <see cref="Sample"/> second plus one.</summary>
   public int Samples => _samples;
 
@@ -409,9 +413,49 @@ internal sealed class SetupRecording {
         _machines.Select(m => Entry(m.Id, m.Json(SteadyFrom, SteadyTo)))
       )
     );
-    text.Append("}}\n");
+    text.Append('}');
+    if (Pack != null)
+      text.Append(",\n\"pack\":").Append(PackJson(Pack));
+    text.Append("}\n");
     return text.ToString();
   }
+
+  private static string PackJson(SetupPackRecord pack) =>
+    "{\n\"start\":"
+    + CountsJson(pack.Start)
+    + ",\n\"end\":"
+    + CountsJson(pack.End)
+    + ",\n\"standing\":"
+    + CountsJson(pack.Standing)
+    + ",\n\"draws\":["
+    + string.Join(
+      ",\n",
+      pack.Draws.Select(d =>
+        "["
+        + Quote(d.Where)
+        + ","
+        + Quote(d.Code)
+        + ","
+        + d.Count.ToString(CultureInfo.InvariantCulture)
+        + "]"
+      )
+    )
+    + "]}";
+
+  private static string CountsJson(IReadOnlyDictionary<string, int> counts) =>
+    "{"
+    + string.Join(
+      ",",
+      counts
+        .OrderBy(c => c.Key, StringComparer.Ordinal)
+        .Select(c =>
+          Quote(c.Key) + ":" + c.Value.ToString(CultureInfo.InvariantCulture)
+        )
+    )
+    + "}";
+
+  private static Dictionary<string, int> ReadCounts(JsonElement counts) =>
+    counts.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetInt32());
 
   private static string Entry(string id, string body) => Quote(id) + ":" + body;
 
@@ -489,6 +533,19 @@ internal sealed class SetupRecording {
         );
       ReadSeries(entry.Value.GetProperty("series"), machine.All);
     }
+    if (root.TryGetProperty("pack", out JsonElement pack))
+      recording.Pack = new SetupPackRecord(
+        ReadCounts(pack.GetProperty("start")),
+        ReadCounts(pack.GetProperty("end")),
+        ReadCounts(pack.GetProperty("standing")),
+        [
+          .. pack.GetProperty("draws")
+            .EnumerateArray()
+            .Select(d =>
+              (d[0].GetString()!, d[1].GetString()!, d[2].GetInt32())
+            ),
+        ]
+      );
     recording._samples = seconds;
     recording._started = true;
     return recording;

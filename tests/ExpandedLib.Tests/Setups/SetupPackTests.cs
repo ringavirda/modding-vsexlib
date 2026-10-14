@@ -243,5 +243,125 @@ public class SetupPackTests
       error.Message
     );
   }
+
+  private static SetupFileModel WithSteps(string? pack, string steps) =>
+    SetupFileModel.Parse(
+      "{ \"setup\": \"pack-steps\", \"description\": \"x\", \"mods\": [], \"steps\": "
+        + steps
+        + ", \"seconds\": 9, \"record\": {}"
+        + (pack == null ? "" : ", \"pack\": " + pack)
+        + " }",
+      "pack-steps.json"
+    );
+
+  // Fails when power or source loads under scope "all", or when the refusal also catches scope
+  // "stacks".
+  [Theory]
+  [InlineData(
+    "power",
+    "{ \"at\": [0, 0, 0], \"face\": \"n\", \"speed\": 1, \"torque\": 1 }"
+  )]
+  [InlineData(
+    "source",
+    "{ \"at\": [0, 0, 0], \"face\": \"n\", \"medium\": \"steam\" }"
+  )]
+  public void A_live_only_verb_is_refused_under_scope_all_and_read_under_stacks(
+    string kind,
+    string body
+  )
+  {
+    string steps = "[{ \"" + kind + "\": " + body + " }]";
+
+    SetupFileException error = Assert.Throws<SetupFileException>(() =>
+      WithSteps("{ \"scope\": \"all\" }", steps)
+    );
+    SetupFileModel stacks = WithSteps("{ \"scope\": \"stacks\" }", steps);
+
+    Assert.Equal(
+      "pack-steps.json: steps[0]: \""
+        + kind
+        + "\" is a live-only verb, refused under pack scope \"all\": the stage builds what it drives.",
+      error.Message
+    );
+    Assert.Equal(kind, stacks.Steps[0].Kind);
+  }
+
+  // Fails when the refusal reads only the main steps, so a during step slips through.
+  [Fact]
+  public void A_live_only_verb_in_a_during_action_is_refused_under_scope_all()
+  {
+    SetupFileException error = Assert.Throws<SetupFileException>(() =>
+      SetupFileModel.Parse(
+        "{ \"setup\": \"pack-steps\", \"description\": \"x\", \"mods\": [], \"steps\": [], \"seconds\": 9, \"record\": {}, \"pack\": { \"scope\": \"all\" }, \"during\": [{ \"at\": 2, \"steps\": [{ \"power\": { \"at\": [0, 0, 0], \"face\": \"n\", \"speed\": 1, \"torque\": 1 } }] }] }",
+        "pack-steps.json"
+      )
+    );
+
+    Assert.Contains("\"power\" is a live-only verb", error.Message);
+  }
+
+  // Fails when draws and gives are dropped from the step, or read as other counts.
+  [Fact]
+  public void A_step_carries_its_draws_and_gives_in_file_order()
+  {
+    SetupFileModel model = WithSteps(
+      "{ \"scope\": \"all\" }",
+      "[{ \"wait\": 1, \"draws\": { \"game:flint\": 2, \"game:stick\": 1 }, \"gives\": { \"game:charcoal\": 3 } }]"
+    );
+
+    SetupStep step = model.Steps[0];
+
+    Assert.Equal([("game:flint", 2), ("game:stick", 1)], step.Draws);
+    Assert.Equal([("game:charcoal", 3)], step.Gives);
+  }
+
+  // Fails when draws or gives load in a file with no pack, where nothing could account them.
+  [Theory]
+  [InlineData("draws")]
+  [InlineData("gives")]
+  public void Draws_and_gives_need_a_pack(string key)
+  {
+    SetupFileException error = Assert.Throws<SetupFileException>(() =>
+      WithSteps(
+        null,
+        "[{ \"wait\": 1, \"" + key + "\": { \"game:flint\": 1 } }]"
+      )
+    );
+
+    Assert.Equal(
+      "pack-steps.json: steps[0]: \"" + key + "\" needs a file-level \"pack\".",
+      error.Message
+    );
+  }
+
+  // Fails when a draw's count is not checked as at least 1.
+  [Fact]
+  public void A_draw_of_none_is_refused()
+  {
+    SetupFileException error = Assert.Throws<SetupFileException>(() =>
+      WithSteps(
+        "{ \"scope\": \"all\" }",
+        "[{ \"wait\": 1, \"draws\": { \"game:flint\": 0 } }]"
+      )
+    );
+
+    Assert.Contains("is at least 1.", error.Message);
+  }
+
+  // Fails when a wildcard code asked of the pack does not reach the concrete keys it covers.
+  [Fact]
+  public void A_wildcard_draw_takes_from_the_concrete_stacks_it_covers()
+  {
+    SetupPack pack = SetupPack.Start(
+      Inline(
+        "{ \"scope\": \"all\", \"gathered\": { \"game:plank-oak\": 2, \"game:plank-pine\": 2 } }"
+      ),
+      _ => null
+    );
+
+    pack.Draw("game:plank-*", 3);
+
+    Assert.Equal(1, pack.Held("game:plank-*"));
+  }
 }
 #endif

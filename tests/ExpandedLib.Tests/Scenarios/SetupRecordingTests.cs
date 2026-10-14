@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
@@ -598,6 +599,59 @@ public class SetupRecordingTests : IDisposable {
       new[] { "line 2: committed absent, recorded b" },
       SetupRecording.Differences("a", "a\nb")
     );
+  }
+
+  #endregion
+
+  #region Pack section
+
+  private static SetupPackRecord PackRecord() =>
+    new(
+      new Dictionary<string, int> { ["game:log-*"] = 4, ["game:flint"] = 1 },
+      new Dictionary<string, int> { ["game:log-*"] = 1 },
+      new Dictionary<string, int> { ["iiex:bench"] = 1 },
+      [("steps[2]", "game:log-*", 3), ("steps[0]", "game:flint", 1)]
+    );
+
+  // Fails when the section drops a part of the pack's record, sorts the draws, or writes the
+  // counts in an order other than the code's.
+  [Fact]
+  public void A_pack_record_writes_start_end_standing_and_the_draws_in_order() {
+    SetupRecording recording = Scripted(Repeat(1f));
+    recording.Pack = PackRecord();
+
+    JsonNode pack = Parse(recording.Text())["pack"]!;
+
+    Assert.Equal(
+      "{\"game:flint\":1,\"game:log-*\":4}",
+      pack["start"]!.ToJsonString()
+    );
+    Assert.Equal("{\"game:log-*\":1}", pack["end"]!.ToJsonString());
+    Assert.Equal("{\"iiex:bench\":1}", pack["standing"]!.ToJsonString());
+    Assert.Equal(
+      "[[\"steps[2]\",\"game:log-*\",3],[\"steps[0]\",\"game:flint\",1]]",
+      pack["draws"]!.ToJsonString()
+    );
+  }
+
+  // Fails when a recording without a pack writes a pack section.
+  [Fact]
+  public void A_recording_without_a_pack_writes_no_pack_section() {
+    string text = Scripted(Repeat(1f)).Text();
+
+    Assert.Null(Parse(text)["pack"]);
+  }
+
+  // Fails when reading a recording back drops its pack section.
+  [Fact]
+  public void A_pack_section_reads_back_to_the_same_bytes() {
+    SetupRecording recording = Scripted(Repeat(1f));
+    recording.Pack = PackRecord();
+    string text = recording.Text();
+
+    string again = SetupRecording.Parse(text).Text();
+
+    Assert.Equal(text, again);
   }
 
   #endregion

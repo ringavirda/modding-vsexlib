@@ -416,6 +416,19 @@ internal sealed class SetupFileModel {
       }
     }
 
+    RefusePackSteps(
+      file,
+      pack,
+      steps
+        .Concat(during.SelectMany(d => d.Steps))
+        .Concat(
+          variants.SelectMany(v =>
+            v.Replace.Values.Concat(v.After.SelectMany(a => a.Steps))
+              .Concat(v.During?.SelectMany(d => d.Steps) ?? [])
+          )
+        )
+    );
+
     IReadOnlyList<string> tickOrders = [];
     if (root["tickOrders"] != null) {
       tickOrders = SetupJson.Strings(root["tickOrders"], top.In("tickOrders"));
@@ -702,7 +715,25 @@ internal sealed class SetupFileModel {
     );
   }
 
-  private static IReadOnlyList<(string Code, int Count)> Counts(
+  private static void RefusePackSteps(
+    string file,
+    SetupPackSpec? pack,
+    IEnumerable<SetupStep> steps
+  ) {
+    foreach (SetupStep step in steps.SelectMany(s => s.All())) {
+      var where = new SetupJson.Where(file, step.Path);
+      if (pack == null && (step.Draws.Count > 0 || step.Gives.Count > 0))
+        throw where.Fail(
+          $"\"{(step.Draws.Count > 0 ? "draws" : "gives")}\" needs a file-level \"pack\"."
+        );
+      if (pack?.Scope == "all" && step.Kind is "power" or "source")
+        throw where.Fail(
+          $"\"{step.Kind}\" is a live-only verb, refused under pack scope \"all\": the stage builds what it drives."
+        );
+    }
+  }
+
+  internal static IReadOnlyList<(string Code, int Count)> Counts(
     JToken? token,
     SetupJson.Where where
   ) {
@@ -717,7 +748,7 @@ internal sealed class SetupFileModel {
     ];
   }
 
-  private static int PositiveCount(JToken? token, SetupJson.Where where) {
+  internal static int PositiveCount(JToken? token, SetupJson.Where where) {
     int count = SetupJson.Integer(token, where);
     if (count < 1)
       throw where.Fail("is at least 1.");
@@ -1095,7 +1126,9 @@ internal sealed class SetupFileModel {
           kept.Id,
           kept.Path,
           Edit(kept.Steps, variant, seen),
-          kept.Tests
+          kept.Tests,
+          kept.Draws,
+          kept.Gives
         );
       result.Add(kept);
       if (id != null)

@@ -127,6 +127,10 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Item stacks spawned by the simulation.</summary>
   public List<ItemStack> Drops { get; } = new();
 
+  /// <summary>Every item entity the simulation spawned, in order, with the position it spawned at.
+  /// Nothing clears it; <see cref="Drops"/> holds the same stacks without positions.</summary>
+  public List<(ItemStack Stack, Vec3d At)> Spawns { get; } = new();
+
   /// <summary>Whether <see cref="Accessor"/>'s <c>BreakBlock</c> runs the broken block's own
   /// <see cref="Block.OnBlockBroken"/> with the breaking player, as the engine does; true by
   /// default.</summary>
@@ -1027,7 +1031,10 @@ public sealed partial class TestWorld : IDisposable {
           Arg.Any<Vec3d>()
         )
       )
-      .Do(ci => Drops.Add(ci.Arg<ItemStack>()));
+      .Do(ci => {
+        Drops.Add(ci.Arg<ItemStack>());
+        Spawns.Add((ci.Arg<ItemStack>(), ci.ArgAt<Vec3d>(1)));
+      });
     // The overload Block.SpawnDropsAndRemoveBlock spawns a broken block's drops through.
     w.When(x =>
         x.SpawnItemEntity(
@@ -1036,7 +1043,10 @@ public sealed partial class TestWorld : IDisposable {
           Arg.Any<Vec3d>()
         )
       )
-      .Do(ci => Drops.Add(ci.Arg<ItemStack>()));
+      .Do(ci => {
+        Drops.Add(ci.Arg<ItemStack>());
+        Spawns.Add((ci.Arg<ItemStack>(), ci.Arg<BlockPos>().ToVec3d()));
+      });
 #if GAME_GE_1_22
     w.GridRecipes.Returns(_gridRecipes);
     w.FastSearchRecipesByIngredient.Returns(_fastSearchRecipes);

@@ -332,5 +332,115 @@ public class SetupPackStepTests : IDisposable
       )
     );
   }
+
+  private static string Spill(int dx) =>
+    "{\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupcraft:plate\", 2, "
+    + dx
+    + "]}}";
+
+  private static string InsertPlates(int count) =>
+    "{\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"setupcraft:plate\", \"count\": "
+    + count
+    + ", \"slot\": 0}}";
+
+  // Fails when a step's draws are not taken, so a call the runner cannot see costs the pack nothing.
+  [Fact]
+  public void A_steps_draws_are_taken_before_it_runs()
+  {
+    string steps(string draws) =>
+      "["
+      + Box
+      + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupcraft:plate\", 1, 9]}, \"draws\": "
+      + draws
+      + "}]";
+
+    using SetupScene scene = Build(
+      Gathered("stacks", "{\"setupcraft:rod-iron\": 2}"),
+      steps("{\"setupcraft:rod-iron\": 2}")
+    );
+
+    Assert.NotNull(scene);
+    Assert.Equal(
+      "t.json: steps[1]: the pack holds 2 of setupcraft:rod-iron; the step takes 3.",
+      Refused(
+        Gathered("stacks", "{\"setupcraft:rod-iron\": 2}"),
+        steps("{\"setupcraft:rod-iron\": 3}")
+      )
+    );
+  }
+
+  // Fails when a step's gives are not added to the pack, so the stack it names is not there to draw.
+  [Fact]
+  public void A_steps_gives_are_drawn_by_a_later_step()
+  {
+    string steps(int count) =>
+      "["
+      + Box
+      + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupcraft:plate\", 1, 9]}, \"gives\": {\"setupcraft:plate\": 2}}"
+      + ", "
+      + InsertPlates(count)
+      + "]";
+
+    using SetupScene scene = Build(Gathered("stacks", "{}"), steps(2));
+
+    var box = (SetupBox)scene.World.GetBlockEntity(scene.PositionOf("box"))!;
+    Assert.Equal(2, box.Inventory[0].Itemstack?.StackSize);
+    Assert.Equal(
+      "t.json: steps[2]: the pack holds 2 of setupcraft:plate; the step takes 3.",
+      Refused(Gathered("stacks", "{}"), steps(3))
+    );
+  }
+
+  // Fails when an item entity spawned beside the case's blocks is not given to the pack at the
+  // step's end.
+  [Fact]
+  public void A_spawned_stack_beside_the_blocks_is_given()
+  {
+    using SetupScene scene = Build(
+      Gathered("stacks", "{}"),
+      "[" + Box + ", " + Spill(1) + ", " + InsertPlates(2) + "]"
+    );
+
+    var box = (SetupBox)scene.World.GetBlockEntity(scene.PositionOf("box"))!;
+    Assert.Equal(2, box.Inventory[0].Itemstack?.StackSize);
+  }
+
+  // Fails when every spawn is given whatever its position, so the bounds are ignored.
+  [Fact]
+  public void A_spawned_stack_outside_the_blocks_bounds_is_not_given()
+  {
+    string message = Refused(
+      Gathered("stacks", "{}"),
+      "[" + Box + ", " + Spill(2) + ", " + InsertPlates(2) + "]"
+    );
+
+    Assert.Equal(
+      "t.json: steps[2]: the pack holds 0 of setupcraft:plate; the step takes 2.",
+      message
+    );
+  }
+
+  // Fails when a spawn is given again at the end of each later step.
+  [Fact]
+  public void A_spawned_stack_is_given_once()
+  {
+    string message = Refused(
+      Gathered("stacks", "{}"),
+      "["
+        + Box
+        + ", "
+        + Spill(1)
+        + ", "
+        + InsertPlates(2)
+        + ", "
+        + InsertPlates(1)
+        + "]"
+    );
+
+    Assert.Equal(
+      "t.json: steps[3]: the pack holds 0 of setupcraft:plate; the step takes 1.",
+      message
+    );
+  }
 }
 #endif

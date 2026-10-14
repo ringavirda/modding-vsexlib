@@ -43,6 +43,7 @@ public sealed partial class SetupScene : IDisposable
     string Old
   )> _config = [];
   private readonly bool _borrowed;
+  private readonly HashSet<(int X, int Y, int Z)> _laid = [];
   private bool _joined;
 
   private SetupScene(SetupFile file, Scene? scene = null)
@@ -344,6 +345,7 @@ public sealed partial class SetupScene : IDisposable
     if (draws)
       DrawBlock(where, kind ?? code);
     BlockPos at = pos.Copy();
+    _laid.Add((at.X, at.Y, at.Z));
     HashSet<long> before = World.TickListenerIds();
     if (SetupPlacers.For(code) is { } placer)
     {
@@ -439,6 +441,8 @@ public sealed partial class SetupScene : IDisposable
       StructureRig rig = StructureRig
         .Around(World, multiblock, multiblock.LayoutAngle)
         .Raise();
+      foreach (var (_, raised) in rig.Raised)
+        DrawBlock(where, raised);
       HashSet<long> own = _listeners.GetValueOrDefault(pos) ?? [];
       for (int i = 0; i < 2 && !multiblock.StructureComplete; i++)
         World.AdvanceBlockEntityTime(3000, own);
@@ -451,6 +455,7 @@ public sealed partial class SetupScene : IDisposable
     }
     if (be.GetBehavior<ExRightClickConstructable>() is { } construction)
     {
+      DrawStages(where, construction.Construction);
       RccFake.Complete(be);
       if (
         ReflectionHelpers.GetField(construction, "rcc")
@@ -493,6 +498,8 @@ public sealed partial class SetupScene : IDisposable
         _joined = false;
       else
         JoinLines();
+      foreach (var (code, count) in step.Draws)
+        Draw(step.Path, code, count);
       switch (step.Kind)
       {
         case "place":
@@ -538,6 +545,9 @@ public sealed partial class SetupScene : IDisposable
           RepeatStep(step);
           break;
       }
+      foreach (var (code, count) in step.Gives)
+        _pack?.Give(code, count);
+      GiveSpawns();
     }
   }
 

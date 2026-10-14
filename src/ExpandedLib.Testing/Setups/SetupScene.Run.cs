@@ -44,7 +44,7 @@ public sealed partial class SetupScene
       foreach (SampledReading kept in sampled)
         kept.Sample(reading);
     }
-    CheckPack();
+    recording.Pack = CheckPack();
     return recording;
   }
 

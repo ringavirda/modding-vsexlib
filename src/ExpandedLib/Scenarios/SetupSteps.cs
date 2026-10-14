@@ -41,7 +41,9 @@ internal sealed class SetupStep(
   string? id,
   string path,
   IReadOnlyList<SetupStep> steps,
-  IReadOnlyList<ReadingTest> tests
+  IReadOnlyList<ReadingTest> tests,
+  IReadOnlyList<(string Code, int Count)>? draws = null,
+  IReadOnlyList<(string Code, int Count)>? gives = null
 ) {
   public string Kind => kind;
 
@@ -59,6 +61,14 @@ internal sealed class SetupStep(
   /// <summary>The conditions the step polls or expects, parsed as tests: a <c>wait</c>'s
   /// <c>until</c> and <c>hold</c>, a <c>repeat</c>'s <c>until</c>, an <c>expect</c>.</summary>
   public IReadOnlyList<ReadingTest> Tests => tests;
+
+  /// <summary>The stacks the step's <c>draws</c> takes from the pack besides what its kind draws, in
+  /// file order; empty when it has none.</summary>
+  public IReadOnlyList<(string Code, int Count)> Draws => draws ?? [];
+
+  /// <summary>The stacks the step's <c>gives</c> adds to the pack besides what its kind gives, in
+  /// file order; empty when it has none.</summary>
+  public IReadOnlyList<(string Code, int Count)> Gives => gives ?? [];
 
   /// <summary>This step and every step under it, depth first.</summary>
   public IEnumerable<SetupStep> All() =>
@@ -176,7 +186,23 @@ internal static class SetupSteps {
         kinds.Length == 0 ? "names no step kind." : "names two step kinds."
       );
     string kind = kinds[0];
-    SetupJson.RefuseUnknown(node, where, kind, "guide", "design");
+    SetupJson.RefuseUnknown(
+      node,
+      where,
+      kind,
+      "guide",
+      "design",
+      "draws",
+      "gives"
+    );
+    IReadOnlyList<(string Code, int Count)> draws = SetupFileModel.Counts(
+      node["draws"],
+      where.In("draws")
+    );
+    IReadOnlyList<(string Code, int Count)> gives = SetupFileModel.Counts(
+      node["gives"],
+      where.In("gives")
+    );
     if (refused.Contains(kind))
       throw where.Fail($"\"{kind}\" is not a step here.");
     var at = new SetupJson.Where(where.File, $"{where.Path} ({kind})");
@@ -184,7 +210,7 @@ internal static class SetupSteps {
     if (kind == "wait" && body is JValue) {
       if (SetupJson.Number(body, at) < 0)
         throw at.Fail("waits no negative time.");
-      return new SetupStep(kind, body, null, where.Path, [], []);
+      return new SetupStep(kind, body, null, where.Path, [], [], draws, gives);
     }
     JObject o = SetupJson.Object(body, at);
     SetupJson.RefuseUnknown(o, at, Keys[kind]);
@@ -274,7 +300,7 @@ internal static class SetupSteps {
       kind == "repeat"
         ? ParseList(o["steps"], at.In("steps"), references, refused)
         : [];
-    return new SetupStep(kind, o, id, where.Path, steps, tests);
+    return new SetupStep(kind, o, id, where.Path, steps, tests, draws, gives);
   }
 
   private static void ValidateCraft(JObject o, SetupJson.Where at) {
