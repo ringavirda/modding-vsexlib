@@ -71,6 +71,81 @@ public class CaseTests {
       Refused(Place, $"{{ \"{key}\": {value} }}")
     );
 
+  /// <summary>Fails when the live refusal walks <c>steps</c> only, so a step kind the runner does
+  /// not run is let through inside a variant's <c>after</c> (V35).</summary>
+  [Fact]
+  public void A_step_kind_the_runner_does_not_run_is_refused_inside_a_variants_after() {
+    string message = Assert
+      .Throws<SetupFileException>(() =>
+        ScenarioCase.Load(
+          "exlib/case",
+          LiveFixture.Text(
+            Place,
+            """{ variants: { later: { after: { a: [{ "advance": { "hours": 1 } }] } } } }"""
+          ),
+          "case.json",
+          [],
+          "1.22"
+        )
+      )
+      .Message;
+    Assert.Contains("\"advance\" is not a step the live runner runs yet", message);
+  }
+
+  /// <summary>Fails when the live refusal walks <c>steps</c> only, so a <c>paste</c> inside
+  /// <c>during</c> reaches the key refusal's text instead of its own (V41).</summary>
+  [Fact]
+  public void A_paste_inside_during_is_refused_naming_the_action() {
+    string message = Refused(
+      Place,
+      """{ during: [{ at: 2, step: { "paste": { "file": "x", "at": [0, 0, 0] } } }] }"""
+    );
+    Assert.Contains("during[0]", message);
+    Assert.Contains("\"paste\" is not a step the live runner runs yet", message);
+  }
+
+  /// <summary>Fails when a <c>game</c> above the server's series is accepted (V36).</summary>
+  [Fact]
+  public void A_game_above_the_servers_series_is_refused() =>
+    Assert.Equal(
+      "case.json: game: needs 1.23; the server runs 1.22.",
+      Assert
+        .Throws<SetupFileException>(() =>
+          LiveFixture.Case(Place, """{ game: "1.23" }""")
+        )
+        .Message
+    );
+
+  /// <summary>Fails when the series compare is dropped and an older game is refused too (V37).</summary>
+  [Fact]
+  public void A_game_at_or_below_the_servers_series_is_read() =>
+    Assert.Equal("1.21", LiveFixture.Case(Place, """{ game: "1.21" }""").Model.Game);
+
+  /// <summary>Fails when a mod the server has not loaded is accepted (V38).</summary>
+  [Fact]
+  public void A_mod_that_is_not_loaded_is_refused() =>
+    Assert.Equal(
+      "case.json: mods: \"siex\" is not loaded.",
+      Assert
+        .Throws<SetupFileException>(() =>
+          LiveFixture.Case(
+            Place,
+            """{ mods: ["iiex", "siex"] }""",
+            "1.22",
+            "iiex"
+          )
+        )
+        .Message
+    );
+
+  /// <summary>Fails when a loaded mod is refused (V39).</summary>
+  [Fact]
+  public void Loaded_mods_are_read() =>
+    Assert.Equal(
+      ["iiex"],
+      LiveFixture.Case(Place, """{ mods: ["iiex"] }""", "1.22", "iiex").Model.Mods
+    );
+
   /// <summary>Fails when tickOrders is dropped from the refused list (V33).</summary>
   [Fact]
   public void Tick_orders_are_refused() =>
@@ -188,7 +263,9 @@ public class CaseTests {
     ScenarioCase scenario = ScenarioCase.Load(
       "exlib/" + name,
       File.ReadAllText(path),
-      name + ".json"
+      name + ".json",
+      [],
+      "1.22"
     );
     var fixture = new LiveFixture();
     fixture.Test.Register(

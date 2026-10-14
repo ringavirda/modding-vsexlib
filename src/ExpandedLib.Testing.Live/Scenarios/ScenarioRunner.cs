@@ -332,7 +332,9 @@ internal sealed class ScenarioRunner {
       scenario = ScenarioCase.Load(
         name,
         System.IO.File.ReadAllText(path),
-        Path.GetFileName(path)
+        Path.GetFileName(path),
+        [.. _api.ModLoader.Mods.Select(m => m.Info.ModID)],
+        string.Join('.', GameVersion.ShortGameVersion.Split('.').Take(2))
       );
       return true;
     } catch (SetupFileException e) {

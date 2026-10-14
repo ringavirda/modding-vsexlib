@@ -200,7 +200,7 @@ public sealed partial class SetupScene : IDisposable
   {
     if (Model.HasClimate)
       throw Fail("climate", $"\"climate\" is refused: {Lacking["climate"]}.");
-    foreach (SetupStep step in Model.AllSteps.SelectMany(s => s.All()))
+    foreach (SetupStep step in SetupStepWalk.Of(Model))
     {
       JToken body = step.Body;
       if (Lacking.TryGetValue(step.Kind, out string? lacks))

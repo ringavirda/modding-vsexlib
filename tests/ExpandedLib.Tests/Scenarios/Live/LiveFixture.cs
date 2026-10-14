@@ -72,8 +72,19 @@ internal sealed class LiveFixture {
     return root.ToString();
   }
 
-  public static ScenarioCase Case(string steps, string extra = "{}") =>
-    ScenarioCase.Load("exlib/case", Text(steps, extra), "case.json");
+  public static ScenarioCase Case(
+    string steps,
+    string extra = "{}",
+    string series = "1.22",
+    params string[] loaded
+  ) =>
+    ScenarioCase.Load(
+      "exlib/case",
+      Text(steps, extra),
+      "case.json",
+      loaded,
+      series
+    );
 
   /// <summary>Runs <paramref name="steps"/> to the end, moving the clock by
   /// <paramref name="stepSeconds"/> per tick; returns how many ticks it yielded.</summary>

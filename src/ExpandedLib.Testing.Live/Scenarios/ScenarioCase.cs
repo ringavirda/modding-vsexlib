@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ExpandedLib.Scenarios;
 using Newtonsoft.Json.Linq;
+using Vintagestory.API.Config;
 
 namespace ExpandedLib.Testing.Live;
 
@@ -43,22 +45,36 @@ internal sealed class ScenarioCase(
   public double Timeout => model.Timeout;
 
   /// <summary>Parses <paramref name="text"/> as the scenario <paramref name="name"/> read from
-  /// <paramref name="file"/>.</summary>
-  /// <exception cref="SetupFileException">The file is malformed, or uses a key or a step the
-  /// live runner does not run yet; the message names the file, where and the reason.</exception>
-  public static ScenarioCase Load(string name, string text, string file) {
+  /// <paramref name="file"/>, for a server running game series <paramref name="series"/>
+  /// (<c>1.22</c>) with the mods <paramref name="loadedMods"/> loaded.</summary>
+  /// <exception cref="SetupFileException">The file is malformed, uses a key or a step the
+  /// live runner does not run yet, needs a newer series, or names a mod that is not loaded;
+  /// the message names the file, where and the reason.</exception>
+  public static ScenarioCase Load(
+    string name,
+    string text,
+    string file,
+    IReadOnlyCollection<string> loadedMods,
+    string series
+  ) {
     SetupFileModel model = SetupFileModel.Parse(text, file);
     JObject root = SetupJson.ParseObject(text, file);
     var top = new SetupJson.Where(file, "");
+    foreach (SetupStep step in SetupStepWalk.Of(model))
+      if (ScenarioSteps.Refusal(step) is { } reason)
+        throw top.Fail(reason);
     foreach (string key in Refused)
       if (root[key] != null)
         throw top.In(key).Fail("is not read by the live runner yet.");
     if (model.Record.Runs.Count > 0 || model.Record.Machines.Count > 0)
       throw top.In("record")
         .Fail("recording is not read by the live runner yet.");
-    foreach (SetupStep step in model.Steps)
-      if (ScenarioSteps.Refusal(step) is { } reason)
-        throw top.In("steps").Fail(reason);
+    if (!GameVersion.IsAtLeastVersion(series, model.Game))
+      throw top.In("game")
+        .Fail($"needs {model.Game}; the server runs {series}.");
+    foreach (string mod in model.Mods)
+      if (!loadedMods.Contains(mod, StringComparer.OrdinalIgnoreCase))
+        throw top.In("mods").Fail($"\"{mod}\" is not loaded.");
     if (model.Pack is { After.Count: > 0 })
       throw top.In("pack")
         .In("after")
