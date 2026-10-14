@@ -92,7 +92,10 @@ public class ControlAimTests
   public void A_cell_without_selection_boxes_has_no_controls()
   {
     var (world, _, player) = Stand();
-    world.Place(new BlockPos(3, 1, 0), TestBlocks.Configure(new Bare(), "test:bare", 2));
+    world.Place(
+      new BlockPos(3, 1, 0),
+      TestBlocks.Configure(new Bare(), "test:bare", 2)
+    );
 
     ArgumentException none = Assert.Throws<ArgumentException>(() =>
       player.UseControl(new BlockPos(3, 1, 0), "lever")
