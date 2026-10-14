@@ -23,6 +23,7 @@ public static class CraftWalk
 {
   /// <summary>The station name <see cref="CraftedEdge.Station"/> carries for a craft in the hand
   /// grid.</summary>
+  [CheckHelper("names the hand grid as a crafted edge's station")]
   public const string HandGridName = "the hand grid";
 
   /// <summary>One grid recipe the walk crafted.</summary>
