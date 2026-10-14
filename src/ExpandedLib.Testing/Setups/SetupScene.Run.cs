@@ -40,6 +40,7 @@ public sealed partial class SetupScene
       JoinLines();
       recording.Before(second, reading);
       TickSecond();
+      GiveSpawns();
       recording.Sample(second, reading);
       foreach (SampledReading kept in sampled)
         kept.Sample(reading);

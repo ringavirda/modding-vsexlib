@@ -178,6 +178,77 @@ public class SetupPackTests
     Assert.False(pack.TakeStanding("iiex:anvil"));
   }
 
+  // Fails when a stage reached through two afters adds its standing block once per path, so a second
+  // place is free.
+  [Fact]
+  public void A_stage_reached_through_two_afters_leaves_its_standing_block_free_once()
+  {
+    SetupPack pack = Pack("pack-diamond");
+    Assert.True(pack.TakeStanding("iiex:workbench-bench"));
+    Assert.False(pack.TakeStanding("iiex:workbench-bench"));
+  }
+
+  // Fails when a concrete draw takes from a wildcard key before its own key, so a later draw of
+  // another variant finds nothing.
+  [Fact]
+  public void A_concrete_draw_takes_its_own_key_before_a_wildcard_key()
+  {
+    SetupPack pack = SetupPack.Start(
+      Inline(
+        "{ \"scope\": \"stacks\", \"gathered\": { \"game:log-*\": 5, \"game:log-oak\": 5 } }"
+      ),
+      Resolve
+    );
+
+    pack.Draw("game:log-oak", 5);
+    pack.Draw("game:log-birch", 1);
+
+    Assert.Equal(4, pack.Held("game:log-*"));
+  }
+
+  // Fails when a wildcard draw spans keys, so a stage needing three planks pays with two oak and one
+  // pine.
+  [Fact]
+  public void A_wildcard_draw_takes_all_of_it_from_one_key()
+  {
+    SetupPack pack = SetupPack.Start(
+      Inline(
+        "{ \"scope\": \"stacks\", \"gathered\": { \"game:plank-oak\": 2, \"game:plank-pine\": 1 } }"
+      ),
+      Resolve
+    );
+
+    InvalidOperationException error = Assert.Throws<InvalidOperationException>(
+      () => pack.Draw("game:plank-*", 3, "steps[0]", "3,0,0")
+    );
+    Assert.Equal(
+      "the pack holds 3 of game:plank-* under no one key; the step takes 3.",
+      error.Message
+    );
+  }
+
+  // Fails when a later wildcard draw at the same position takes from another key than the first
+  // draw did, so the construction pays two woods.
+  [Fact]
+  public void A_later_wildcard_draw_at_a_position_takes_the_key_the_first_took()
+  {
+    SetupPack pack = SetupPack.Start(
+      Inline(
+        "{ \"scope\": \"stacks\", \"gathered\": { \"game:plank-oak\": 1, \"game:plank-pine\": 3 } }"
+      ),
+      Resolve
+    );
+
+    pack.Draw("game:plank-*", 1, "steps[0]", "3,0,0");
+    InvalidOperationException error = Assert.Throws<InvalidOperationException>(
+      () => pack.Draw("game:plank-*", 2, "steps[1]", "3,0,0")
+    );
+    Assert.Equal(
+      "the pack holds 0 of game:plank-*; the step takes 2.",
+      error.Message
+    );
+  }
+
   // Fails when standing blocks are read from the direct after only, not through the chain.
   [Fact]
   public void StandingBlockCarriesThroughAChainOfAfters()
@@ -359,9 +430,9 @@ public class SetupPackTests
       _ => null
     );
 
-    pack.Draw("game:plank-*", 3);
+    pack.Draw("game:plank-*", 2);
 
-    Assert.Equal(1, pack.Held("game:plank-*"));
+    Assert.Equal(2, pack.Held("game:plank-*"));
   }
 }
 #endif

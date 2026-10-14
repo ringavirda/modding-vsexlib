@@ -17,13 +17,14 @@ internal sealed record SetupPackRecord(
 /// <summary>
 /// The stacks, metal units and standing blocks a setup's <c>pack</c> holds (setups.md, The pack).
 /// Codes are read as keys, a key holding a <c>*</c> matches every code the wildcard covers; a
-/// drawn code holding a <c>*</c> draws from every key it covers.
+/// drawn code holding a <c>*</c> draws from one key that covers its whole count.
 /// </summary>
 internal sealed class SetupPack {
   private readonly SetupPackSpec _spec;
   private readonly Dictionary<string, int> _held = [];
   private readonly List<string> _standing = [];
   private readonly List<(string Where, string Code, int Count)> _draws = [];
+  private readonly Dictionary<(string Pin, string Code), string> _pins = [];
   private Dictionary<string, int> _start = [];
 
   private SetupPack(SetupPackSpec spec) {
@@ -53,7 +54,7 @@ internal sealed class SetupPack {
     foreach (var (id, runs) in spec.After)
       foreach (var (code, count) in EndsOf(id, stageOf).EndStacks)
         pack.Add(code, count * runs);
-    Standing(spec, stageOf, new List<string>(), pack._standing);
+    Standing(spec, stageOf, new List<string>(), new HashSet<string>(), pack._standing);
     pack._start = pack.Snapshot();
     return pack;
   }
@@ -65,6 +66,11 @@ internal sealed class SetupPack {
   public int Held(string code) =>
     _held.Where(k => Reaches(k.Key, code)).Sum(k => k.Value);
 
+  /// <summary>The concrete stack codes the pack holds stock of; a key holding a <c>*</c> is left
+  /// out.</summary>
+  public IEnumerable<string> HeldKeys =>
+    _held.Where(k => k.Value > 0 && !k.Key.Contains('*')).Select(k => k.Key);
+
   /// <summary>The pack code of a molten cell's metal.</summary>
   /// <param name="metalType">The cell's full metal code, such as <c>game:ingot-iron</c>.</param>
   /// <returns>The metal as <c>metal:&lt;code&gt;</c>, <c>metal:iron</c> for the example.</returns>
@@ -75,20 +81,27 @@ internal sealed class SetupPack {
       ""
     );
 
-  /// <summary>Takes <paramref name="count"/> of <paramref name="code"/> out of the pack.</summary>
+  /// <summary>Takes <paramref name="count"/> of <paramref name="code"/> out of the pack. A concrete
+  /// code takes from its own key first, then from other concrete keys, then from wildcard keys. A
+  /// code holding a <c>*</c> takes all of it from one key: the first that holds the whole count, and
+  /// the same key for every later draw of that code under the same <paramref name="pin"/>.</summary>
   /// <param name="code">A stack code, or a metal unit as <c>metal:&lt;code&gt;</c>.</param>
   /// <param name="count">The stacks or units taken, at least 1.</param>
   /// <param name="where">The step that takes them, kept in the draw log.</param>
-  /// <exception cref="InvalidOperationException">The pack holds fewer than <paramref name="count"/>;
-  /// the message names the code and both counts, and nothing is taken.</exception>
-  public void Draw(string code, int count, string where = "") {
-    int held = Held(code);
+  /// <param name="pin">The construction or structure a wildcard draw belongs to, as its position;
+  /// null for none.</param>
+  /// <exception cref="InvalidOperationException">The pack holds fewer than <paramref name="count"/>,
+  /// or a wildcard code has no one key holding it; the message names the code and both counts, and
+  /// nothing is taken.</exception>
+  public void Draw(string code, int count, string where = "", string? pin = null) {
+    List<string> keys = code.Contains('*') ? [Single(code, count, pin)] : Reached(code);
+    int held = keys.Sum(k => _held[k]);
     if (held < count)
       throw new InvalidOperationException(
         $"the pack holds {held} of {code}; the step takes {count}."
       );
     int left = count;
-    foreach (string key in _held.Keys.Where(k => Reaches(k, code)).ToList()) {
+    foreach (string key in keys) {
       int take = Math.Min(left, _held[key]);
       _held[key] -= take;
       left -= take;
@@ -166,6 +179,30 @@ internal sealed class SetupPack {
   private static bool Reaches(string key, string code) =>
     Matches(key, code) || (code.Contains('*') && Matches(code, key));
 
+  private List<string> Reached(string code) =>
+    _held
+      .Where(k => k.Value > 0 && Reaches(k.Key, code))
+      .Select(k => k.Key)
+      .OrderBy(k => k == code ? 0 : (k.Contains('*') ? 2 : 1))
+      .ToList();
+
+  private string Single(string code, int count, string? pin) {
+    if (pin != null && _pins.TryGetValue((pin, code), out string? pinned))
+      return pinned;
+    string? key = Reached(code).FirstOrDefault(k => _held[k] >= count);
+    if (key == null) {
+      int total = Held(code);
+      throw new InvalidOperationException(
+        total < count
+          ? $"the pack holds {total} of {code}; the step takes {count}."
+          : $"the pack holds {total} of {code} under no one key; the step takes {count}."
+      );
+    }
+    if (pin != null)
+      _pins[(pin, code)] = key;
+    return key;
+  }
+
   // A * in a key stands for any run of characters.
   private static bool Matches(string key, string code) =>
     key == code
@@ -175,15 +212,18 @@ internal sealed class SetupPack {
     SetupPackSpec spec,
     Func<string, SetupFileModel?> stageOf,
     List<string> path,
+    HashSet<string> visited,
     List<string> into
   ) {
     foreach (var (id, _) in spec.After) {
       if (path.Contains(id))
         throw new InvalidOperationException($"after cycles through \"{id}\".");
+      if (!visited.Add(id))
+        continue;
       SetupPackSpec stage = EndsOf(id, stageOf);
       into.AddRange(stage.EndStanding);
       path.Add(id);
-      Standing(stage, stageOf, path, into);
+      Standing(stage, stageOf, path, visited, into);
       path.RemoveAt(path.Count - 1);
     }
   }

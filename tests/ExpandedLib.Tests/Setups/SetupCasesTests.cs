@@ -298,6 +298,51 @@ public class SetupCasesTests : IDisposable
   private const string Late =
     "\"after\": {\"b\": [{\"set\": {\"at\": [0, 0, 0], \"member\": {\"Level\": 2}}}]}";
 
+  // Fails when an after id resolves to no file of its name beside the running file, when the
+  // StageFile option is ignored, or when a file of another setup name is loaded for the id.
+  [Fact]
+  public void An_after_id_resolves_to_the_file_of_its_name_beside_the_running_file()
+  {
+    string folder = Path.Combine(
+      RepoPaths.Root,
+      "tests",
+      "ExpandedLib.Tests",
+      "Setups",
+      "Files",
+      "pack"
+    );
+    string later = Path.Combine(folder, "pack-later.json");
+
+    Assert.Equal(
+      "pack-earlier",
+      SetupCases.StageOf("exlib/setups/pack-earlier", later, StageOptions())!.Setup
+    );
+    Assert.Null(SetupCases.StageOf("exlib/setups/pack-missing", later, StageOptions()));
+    Assert.Null(
+      SetupCases.StageOf(
+        "exlib/setups/pack-earlier",
+        later,
+        StageOptions(_ => null)
+      )
+    );
+    Assert.Null(
+      SetupCases.StageOf(
+        "exlib/setups/pack-earlier",
+        later,
+        StageOptions(_ => later)
+      )
+    );
+  }
+
+  private static SetupRunOptions StageOptions(System.Func<string, string?>? stageFile = null) =>
+    new()
+    {
+      ModFolder = _ => "",
+      Recordings = "",
+      ExlibVersion = "0.8.4",
+      StageFile = stageFile,
+    };
+
   // Fails when Run reads modinfo.json only at the mod folder's root, so a mod laid out under src/
   // throws FileNotFoundException.
   [Fact]

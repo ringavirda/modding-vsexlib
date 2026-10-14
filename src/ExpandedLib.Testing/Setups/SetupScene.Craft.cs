@@ -218,6 +218,8 @@ public sealed partial class SetupScene
 
   private ItemStack Laid(CraftInput input, JObject? with, string where)
   {
+    if (_pack != null && with?[input.Name] == null && PackedLaid(input) is { } held)
+      return held;
     try
     {
       return CraftBills.Laid(World.World, input, with);

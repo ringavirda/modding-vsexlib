@@ -31,13 +31,13 @@ public sealed partial class SetupScene
     }
   }
 
-  private void Draw(string where, string code, int count)
+  private void Draw(string where, string code, int count, string? pin = null)
   {
     if (_pack == null || count <= 0)
       return;
     try
     {
-      _pack.Draw(code, count, where);
+      _pack.Draw(code, count, where, pin);
     }
     catch (InvalidOperationException e)
     {
@@ -54,14 +54,18 @@ public sealed partial class SetupScene
       _pack?.Give(stack.Collectible.Code.ToString(), stack.StackSize);
   }
 
-  private void DrawBlock(string where, string code)
+  private void DrawBlock(string where, string code, string? pin = null)
   {
     if (_pack is not { DrawsBlocks: true } || _pack.TakeStanding(code))
       return;
-    Draw(where, code, 1);
+    Draw(where, code, 1, pin);
   }
 
-  private void DrawStages(string where, ExRightClickConstruction construction)
+  private void DrawStages(
+    string where,
+    ExRightClickConstruction construction,
+    string pin
+  )
   {
     if (_pack is not { DrawsBlocks: true })
       return;
@@ -77,7 +81,8 @@ public sealed partial class SetupScene
         Draw(
           where,
           Regex.Replace(need.Code.ToString(), @"\{[^}]*\}", "*"),
-          need.Quantity
+          need.Quantity,
+          pin
         );
   }
 
@@ -129,6 +134,23 @@ public sealed partial class SetupScene
       .GroupBy(r => SetupPack.MetalCode(r.Metal))
       .Select(g => (g.Key, g.Sum(r => r.Amount)));
 
+  private ItemStack? PackedLaid(CraftInput input)
+  {
+    foreach (string key in _pack!.HeldKeys)
+    {
+      var code = new AssetLocation(key);
+      CollectibleObject? item =
+        (CollectibleObject?)World.World.GetItem(code)
+        ?? World.World.GetBlock(code);
+      if (item == null)
+        continue;
+      var stack = new ItemStack(item, input.Ingredient.Quantity);
+      if (input.Ingredient.SatisfiesAsIngredient(stack))
+        return stack;
+    }
+    return null;
+  }
+
   private void DrawBill(
     string where,
     CraftOrder order,
@@ -158,7 +180,15 @@ public sealed partial class SetupScene
         .GroupBy(c => (c.X, c.Y, c.Z))
         .Select(g => g.First()),
     ];
-    foreach (var (metal, units) in MetalIn(cells))
+    BlockPos[] molten =
+    [
+      .. _laid
+        .Select(c => new BlockPos(c.X, c.Y, c.Z))
+        .Concat(cells)
+        .GroupBy(c => (c.X, c.Y, c.Z))
+        .Select(g => g.First()),
+    ];
+    foreach (var (metal, units) in MetalIn(molten))
       _pack.Give(metal, units);
     string[] standing =
     [

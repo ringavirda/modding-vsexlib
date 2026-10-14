@@ -1,0 +1,12 @@
+{
+  "setup": "pack-diamond",
+  "description": "A stage that starts from pack-earlier and from pack-later, which both start from pack-earlier.",
+  "mods": [],
+  "steps": [],
+  "seconds": 9,
+  "record": {},
+  "pack": {
+    "scope": "all",
+    "after": { "exlib/setups/pack-earlier": 1, "exlib/setups/pack-later": 1 }
+  }
+}

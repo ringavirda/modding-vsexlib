@@ -67,6 +67,37 @@ public class SetupPackCompleteTests : IDisposable
           .RegisterClass("SetupFrame", typeof(SetupFrame))
     );
 
+  private static SetupScene BuildWithBox(string pack, string steps) =>
+    SetupScene.Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"smokestack\", \"setupbox\"], \"steps\": ["
+          + steps
+          + "], \"seconds\": 10, \"record\": {}, \"pack\": "
+          + pack
+          + "}",
+        "t.json"
+      ),
+      [
+        ModPath("smokestack"),
+        Path.Combine(
+          RepoPaths.Root,
+          "tests",
+          "ExpandedLib.Tests",
+          "Setups",
+          "Fixtures",
+          "SetupBox"
+        ),
+      ],
+      null,
+      w =>
+        w.RegisterClass(
+            "ExRightClickConstructable",
+            typeof(ExpandedLib.Blocks.ExRightClickConstructable)
+          )
+          .RegisterClass("SetupBox", typeof(BlockEntity))
+          .RegisterBlockEntityFactory("SetupBox", () => new SetupBox())
+    );
+
   private static string Refused(string mod, string pack, string steps) =>
     Assert
       .Throws<InvalidOperationException>(() => Build(mod, pack, steps))
@@ -118,6 +149,26 @@ public class SetupPackCompleteTests : IDisposable
     Assert.Empty(pack.End);
   }
 
+  // Fails when a construction's planks are drawn across two woods, so a stage needing three planks
+  // completes with two oak and one pine.
+  [Fact]
+  public void A_construction_whose_planks_are_split_across_woods_fails_at_complete()
+  {
+    string message = Refused(
+      "setupbuild",
+      Gathered(
+        "all",
+        "{\"setupbuild:frame\": 1, \"game:stick\": 2, \"game:plank-oak\": 2, \"game:plank-pine\": 1}"
+      ),
+      Frame
+    );
+
+    Assert.Equal(
+      "t.json: steps[0]: the pack holds 3 of game:plank-* under no one key; the step takes 3.",
+      message
+    );
+  }
+
   // Fails when complete draws under scope "stacks", where a construction is built free.
   [Fact]
   public void A_construction_under_scope_stacks_draws_nothing()
@@ -143,6 +194,26 @@ public class SetupPackCompleteTests : IDisposable
 
     Assert.StartsWith("t.json: steps[0]: the pack holds 0 of ", message);
     Assert.EndsWith("; the step takes 1.", message);
+  }
+
+  // Fails when a structure's raised cells are left out of the spawn bounds, so a spawn two cells
+  // above its core is not given.
+  [Fact]
+  public void A_spawn_above_a_completed_structure_is_given()
+  {
+    using SetupScene scene = BuildWithBox(
+      "{\"scope\": \"stacks\", \"gathered\": {}, \"ends\": {\"stacks\": {\"setupbox:box\": 2}}}",
+      "{\"place\": {\"id\": \"box\", \"code\": \"setupbox:box\", \"at\": [-6, 0, 0]}}"
+        + ", "
+        + Stack
+        + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupbox:box\", 2, 6, 3, 0]}}"
+    );
+
+    SetupPackRecord pack = scene.Run(
+      [("exlib", "0.8.4"), ("smokestack", "1.0.0"), ("setupbox", "1.0.0")]
+    ).Pack!;
+
+    Assert.Equal(2, pack.End["setupbox:box"]);
   }
 
   // Fails when the raised cells are drawn once for all, or under the step's own block.

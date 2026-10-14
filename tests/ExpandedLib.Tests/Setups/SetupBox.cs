@@ -73,11 +73,33 @@ internal sealed class SetupBox : BlockEntityContainer
     dsc.AppendLine($"Level: {Level}");
   }
 
-  public void Spill(string code, int count, int dx) =>
+  public bool Spilling;
+
+  public void Arm() => Spilling = true;
+
+  public void Spill(string code, int count, int dx, int dy, int dz)
+  {
+    var at = new AssetLocation(code);
+    CollectibleObject item =
+      (CollectibleObject?)Api.World.GetItem(at) ?? Api.World.GetBlock(at);
     Api.World.SpawnItemEntity(
-      new ItemStack(Api.World.GetItem(new AssetLocation(code)), count),
-      Pos.ToVec3d().Add(dx + 0.5, 0.5, 0.5)
+      new ItemStack(item, count),
+      Pos.ToVec3d().Add(dx + 0.5, dy + 0.5, dz + 0.5)
     );
+  }
+
+  public override void Initialize(ICoreAPI api)
+  {
+    base.Initialize(api);
+    RegisterGameTickListener(
+      _ =>
+      {
+        if (Spilling)
+          Spill("setupbox:box", 1, 0, 0, 0);
+      },
+      1000
+    );
+  }
 
   public string Poke(int n, BoxState state, ItemStack stack, IPlayer player)
   {

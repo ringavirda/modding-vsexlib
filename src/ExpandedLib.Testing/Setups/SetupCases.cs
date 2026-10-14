@@ -238,22 +238,21 @@ public static class SetupCases
       );
   }
 
-  private static SetupFileModel? StageOf(
+  internal static SetupFileModel? StageOf(
     string id,
     string running,
     SetupRunOptions options
   )
   {
+    string name = id[(id.LastIndexOf('/') + 1)..];
     string? path =
       options.StageFile != null
         ? options.StageFile(id)
-        : Path.Combine(
-          Path.GetDirectoryName(running)!,
-          id[(id.LastIndexOf('/') + 1)..] + ".json"
-        );
-    return path != null && System.IO.File.Exists(path)
-      ? SetupFile.Load(path).Model
-      : null;
+        : Path.Combine(Path.GetDirectoryName(running)!, name + ".json");
+    if (path == null || !System.IO.File.Exists(path))
+      return null;
+    SetupFileModel model = SetupFile.Load(path).Model;
+    return model.Setup == name ? model : null;
   }
 
   private static string SceneFile(SetupCaseRow row) =>

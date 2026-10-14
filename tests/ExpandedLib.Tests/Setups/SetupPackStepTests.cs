@@ -333,9 +333,13 @@ public class SetupPackStepTests : IDisposable
     );
   }
 
-  private static string Spill(int dx) =>
+  private static string Spill(int dx, int dy = 0, int dz = 0) =>
     "{\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupcraft:plate\", 2, "
     + dx
+    + ", "
+    + dy
+    + ", "
+    + dz
     + "]}}";
 
   private static string InsertPlates(int count) =>
@@ -350,7 +354,7 @@ public class SetupPackStepTests : IDisposable
     string steps(string draws) =>
       "["
       + Box
-      + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupcraft:plate\", 1, 9]}, \"draws\": "
+      + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupcraft:plate\", 1, 9, 0, 0]}, \"draws\": "
       + draws
       + "}]";
 
@@ -376,7 +380,7 @@ public class SetupPackStepTests : IDisposable
     string steps(int count) =>
       "["
       + Box
-      + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupcraft:plate\", 1, 9]}, \"gives\": {\"setupcraft:plate\": 2}}"
+      + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupcraft:plate\", 1, 9, 0, 0]}, \"gives\": {\"setupcraft:plate\": 2}}"
       + ", "
       + InsertPlates(count)
       + "]";
@@ -418,6 +422,77 @@ public class SetupPackStepTests : IDisposable
       "t.json: steps[2]: the pack holds 0 of setupcraft:plate; the step takes 2.",
       message
     );
+  }
+
+  // Fails when a spawn one cell past the bounds on any side is given, so that side's guard is
+  // unproven.
+  [Theory]
+  [InlineData(-2, 0, 0)]
+  [InlineData(0, 2, 0)]
+  [InlineData(0, -2, 0)]
+  [InlineData(0, 0, 2)]
+  [InlineData(0, 0, -2)]
+  public void A_spawned_stack_past_each_bound_is_not_given(int dx, int dy, int dz)
+  {
+    string message = Refused(
+      Gathered("stacks", "{}"),
+      "[" + Box + ", " + Spill(dx, dy, dz) + ", " + InsertPlates(2) + "]"
+    );
+
+    Assert.Equal(
+      "t.json: steps[2]: the pack holds 0 of setupcraft:plate; the step takes 2.",
+      message
+    );
+  }
+
+  // Fails when a spawn made by a tick is not given by the end of that second, so a stage that
+  // ends with it reads 0.
+  [Fact]
+  public void A_spawn_made_by_a_tick_is_given_by_the_end_of_that_second()
+  {
+    using SetupScene scene = Build(
+      "{\"scope\": \"stacks\", \"gathered\": {}, \"ends\": {\"stacks\": {\"setupbox:box\": 1}}}",
+      "[" + Box + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Arm\"}}]"
+    );
+
+    SetupPackRecord pack = scene.Run(Mods).Pack!;
+
+    Assert.Equal(
+      scene.World.Spawns.Count(s => s.Stack.Collectible.Code.Path == "box"),
+      pack.End["setupbox:box"]
+    );
+  }
+
+  // Fails when a fill's metal is read only from the cells it names, so an unnamed fill ends with 0.
+  [Fact]
+  public void The_metal_of_an_unnamed_fill_is_read_at_the_end()
+  {
+    using SetupScene scene = Build(
+      "{\"scope\": \"stacks\", \"gathered\": {\"metal:iron\": 80}, \"ends\": {\"stacks\": {\"metal:iron\": 80}}}",
+      "[{\"fill\": {\"code\": \"setupmelt:melt\", \"from\": [0, 0, 0], \"to\": [1, 0, 0]}}]"
+    );
+
+    SetupPackRecord pack = scene.Run(Mods).Pack!;
+
+    Assert.Equal(80, pack.End["metal:iron"]);
+  }
+
+  // Fails when a concrete ingredient is laid as the first registered variant rather than the one the
+  // pack holds, so the craft draws a rod the pack does not have.
+  [Fact]
+  public void A_wildcard_ingredient_is_laid_as_the_variant_the_pack_holds()
+  {
+    using SetupScene scene = Build(
+      Gathered("stacks", "{\"setupcraft:rod-iron\": 2, \"setupcraft:plate\": 2}"),
+      "["
+        + Bench
+        + ", {\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \"setupcraft:frame\"}}"
+        + ", {\"insert\": {\"at\": {\"of\": \"bench\"}, \"stack\": \"setupcraft:frame\", \"count\": 3, \"slot\": 2}}]"
+    );
+
+    var bench = (CraftFixtureBench)
+      scene.World.GetBlockEntity(scene.PositionOf("bench"))!;
+    Assert.Equal(3, bench.Inventory[2].Itemstack?.StackSize);
   }
 
   // Fails when a spawn is given again at the end of each later step.
