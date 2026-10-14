@@ -39,6 +39,15 @@ public sealed class CraftingGridTests : IDisposable {
       }
       """;
 
+  private static string ShapelessRecipe(
+    string name,
+    string pattern,
+    int width,
+    int height
+  ) =>
+    Recipe(name, pattern, width, height)
+      .Replace("\"width\"", "\"shapeless\": true, \"width\"");
+
   private static string Cells(int width, int height, int at) =>
     string.Join(
       ",",
@@ -138,6 +147,35 @@ public sealed class CraftingGridTests : IDisposable {
       Collisions(right, left)
     );
   }
+
+  // Fails when Collisions takes the grids declared for the checked domain, not every domain's.
+  [Fact]
+  public void Two_recipes_of_a_domain_meeting_at_another_domains_bench_are_reported_with_it() {
+    ExlibChecks.CraftingGrid("stub", 5, Station);
+    const string other = "other:recipes/grid/planted.json";
+    var source = new RecipeStubSource()
+      .Recipe(other, Recipe("right", "__P", 3, 1))
+      .Recipe(other, Recipe("left", "P__", 3, 1));
+    string line =
+      $"{other}#0 (right) and {other}#1 (left) match the same input in the 5x5 grid of {Station}";
+
+    Assert.Equal([line], GridRecipeCollisionCheck.Run(source, "other").Errors);
+    Assert.Empty(GridRecipeShapeCheck.Run(source, "other").Errors);
+  }
+
+  // Fails when the pair is judged without Fits on the first recipe.
+  [Fact]
+  public void A_shapeless_recipe_wider_than_the_grid_does_not_collide_with_a_hand_recipe() =>
+    Assert.Empty(
+      GridRecipeCollisionCheck
+        .Run(
+          new RecipeStubSource()
+            .Recipe(File, ShapelessRecipe("wide", "P___", 4, 1))
+            .Recipe(File, Recipe("hand", "P", 1, 1)),
+          "stub"
+        )
+        .Errors
+    );
 
   // Fails when a pair colliding in the hand grid is reported again for a larger grid, or its line
   // names a larger grid.

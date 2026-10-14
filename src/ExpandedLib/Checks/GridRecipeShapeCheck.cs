@@ -28,7 +28,8 @@ public static class GridRecipeShapeCheck {
   /// <param name="domain">The domain whose grid recipes are checked.</param>
   /// <returns>The check's <see cref="CheckResult"/>, named <c>GridRecipeShape</c>, one error per
   /// unplaced key, keyless letter, pattern not filling its grid and oversized grid; no errors when
-  /// none.</returns>
+  /// none. The size bound is the largest grid declared for <paramref name="domain"/> with
+  /// <see cref="ExlibChecks.CraftingGrid"/>, 3x3 when none.</returns>
   public static CheckResult Run(ICheckSource source, string domain) {
     var errors = new List<string>();
     int bound = ExlibChecks.Grids(domain).Max(g => g.Size);

@@ -41,7 +41,8 @@ public static class GridRecipeCollisionCheck {
   /// <param name="domain">The domain whose grid recipes are checked.</param>
   /// <returns>The check's <see cref="CheckResult"/>, named <c>GridRecipeCollision</c>, one error
   /// per colliding pair; no errors when none. A pair across two domains is reported in the run
-  /// of each.</returns>
+  /// of each. Pairs are judged in the hand grid and every grid any domain declared with
+  /// <see cref="ExlibChecks.CraftingGrid"/>, so the result depends on those declarations.</returns>
   public static CheckResult Run(ICheckSource source, string domain) {
     List<Craft> own = [.. Crafts(source, domain)];
     List<Craft> others =
@@ -56,7 +57,7 @@ public static class GridRecipeCollisionCheck {
       domain,
       own,
       others,
-      ExlibChecks.Grids(domain),
+      ExlibChecks.AllGrids(),
       withinOwn: true
     );
   }

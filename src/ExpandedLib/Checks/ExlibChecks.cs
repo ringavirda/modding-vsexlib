@@ -353,6 +353,18 @@ public static class ExlibChecks {
         .Distinct(),
     ];
 
+  /// <summary>The grids any domain declared, for the collision checks: the hand grid, then every
+  /// larger declared one, smallest first.</summary>
+  internal static IReadOnlyList<Grid> AllGrids() =>
+    [
+      HandGrid,
+      .. _grids
+        .Where(g => g.Size > HandGrid.Size)
+        .OrderBy(g => g.Size)
+        .Select(g => new Grid(g.Size, g.Station))
+        .Distinct(),
+    ];
+
   /// <summary>Every <see cref="Produces"/> declaration of the current world, in call
   /// order.</summary>
   internal static IReadOnlyList<Declaration> Produced() => _produced;
