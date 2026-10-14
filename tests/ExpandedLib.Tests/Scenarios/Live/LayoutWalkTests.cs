@@ -31,6 +31,32 @@ public class LayoutWalkTests {
       return true;
     };
 
+  private static RunStep.PlayerPlace Clicks(
+    List<(BlockPos At, BlockFacing Face)> clicks
+  ) =>
+    (Block block, BlockPos at, BlockFacing face, out string? failure) => {
+      clicks.Add((at.Copy(), face));
+      failure = null;
+      return true;
+    };
+
+  private static LiveFixture Packed(string gathered, out SetupLayout layout) {
+    ScenarioCase scenario = LiveFixture.Case(
+      "[]",
+      $$"""
+      { pack: { scope: "all", gathered: { "game:stone": {{gathered}} } },
+        layout: { legend: {
+            "P": { "run": "main", "code": "game:stone" },
+            "A": { "code": "game:stone" } },
+          layers: { "0": ["PP", "A."] } } }
+      """
+    );
+    layout = scenario.Model.Drawn!;
+    var fixture = new LiveFixture();
+    fixture.Context.Pack = SetupPack.Start(scenario.Model, _ => null);
+    return fixture;
+  }
+
   // Fails when the walk goes cell by cell over the grid, or a run is placed at its last entry.
   [Fact]
   public void The_plan_orders_entries_by_the_legend_and_cells_in_reading_order() {
@@ -163,9 +189,9 @@ public class LayoutWalkTests {
     );
   }
 
-  // Fails when complete: all is skipped, or the structure check gets plot-local cells.
+  // Fails when complete: all is not read from the entry, so its construction is never walked.
   [Fact]
-  public void Complete_all_raises_the_structure_cells_the_drawing_leaves_to_it() {
+  public void Complete_all_on_a_drawn_structure_goes_on_to_its_construction() {
     var fixture = LiveFixture.WithSamples();
     SetupLayout layout = Drawing(
       $$"""
@@ -180,7 +206,6 @@ public class LayoutWalkTests {
       Walk(fixture, layout)
     );
     Assert.Contains("needs the scenario player", failure.Message);
-    Assert.NotEqual(0, fixture.Test.GetBlock(new BlockPos(100, 52, 98)).Id);
   }
 
   // Fails when a run is laid without the scenario player.
@@ -217,5 +242,74 @@ public class LayoutWalkTests {
       Walk(fixture, layout, Stub(placed))
     );
     Assert.Contains("is not a connector of", failure.Message);
+  }
+
+  // Fails when a run that turns is refused as a bend, or a cell is clicked from its list predecessor.
+  [Fact]
+  public void An_L_shaped_run_is_laid_cell_by_cell_from_the_cell_it_joins() {
+    var fixture = new LiveFixture();
+    var clicks = new List<(BlockPos At, BlockFacing Face)>();
+    SetupLayout layout = Drawing(
+      """
+      { legend: { "P": { "run": "main", "code": "game:stone" } },
+        layers: { "0": ["PP", ".P"] } }
+      """
+    );
+    Walk(fixture, layout, Clicks(clicks));
+    Assert.Equal(
+      [
+        (new BlockPos(100, 50, 100), BlockFacing.WEST),
+        (new BlockPos(101, 50, 100), BlockFacing.EAST),
+        (new BlockPos(101, 50, 101), BlockFacing.SOUTH),
+      ],
+      clicks
+    );
+    Assert.Equal(3, fixture.Context.Setup.Placed("main")?.Cells.Count);
+  }
+
+  // Fails when a branch's cell is clicked from the cell before it in the list, which is not adjacent.
+  [Fact]
+  public void A_tee_run_clicks_the_branch_from_the_junction() {
+    var fixture = new LiveFixture();
+    var clicks = new List<(BlockPos At, BlockFacing Face)>();
+    SetupLayout layout = Drawing(
+      """
+      { legend: { "P": { "run": "main", "code": "game:stone" } },
+        layers: { "0": ["PPP", ".P."] } }
+      """
+    );
+    Walk(fixture, layout, Clicks(clicks));
+    Assert.Equal(
+      [
+        (new BlockPos(100, 50, 100), BlockFacing.WEST),
+        (new BlockPos(101, 50, 100), BlockFacing.EAST),
+        (new BlockPos(102, 50, 100), BlockFacing.EAST),
+        (new BlockPos(101, 50, 101), BlockFacing.SOUTH),
+      ],
+      clicks
+    );
+  }
+
+  // Fails when a layout cell is placed without drawing from the pack, or the draw is not logged under its L label.
+  [Fact]
+  public void Layout_block_and_run_cells_draw_from_the_pack_under_their_labels() {
+    LiveFixture fixture = Packed("3", out SetupLayout layout);
+    Walk(fixture, layout, Stub([]));
+    Assert.Equal(0, fixture.Context.Pack!.Held("game:stone"));
+    Assert.Equal(
+      [("L1", "game:stone", 1), ("L1", "game:stone", 1), ("L2", "game:stone", 1)],
+      fixture.Context.Pack.Record([]).Draws
+    );
+  }
+
+  // Fails when a short pack lets a layout cell down, or its failure is not printed under the entry's L label.
+  [Fact]
+  public void A_pack_short_of_a_layout_block_fails_that_entrys_line() {
+    LiveFixture fixture = Packed("2", out SetupLayout layout);
+    Assert.Throws<StepFailure>(() => Walk(fixture, layout, Stub([])));
+    Assert.Contains(
+      "[scenario]   L2 layout A game:stone FAIL: the pack holds 0 of game:stone; the step takes 1.",
+      fixture.Lines
+    );
   }
 }

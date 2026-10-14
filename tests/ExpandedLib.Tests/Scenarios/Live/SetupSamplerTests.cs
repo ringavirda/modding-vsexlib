@@ -6,6 +6,7 @@ using ExpandedLib.Scenarios;
 using ExpandedLib.Testing.Live;
 using NSubstitute;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Xunit;
 
@@ -105,6 +106,16 @@ public class SetupSamplerTests : IDisposable {
     Assert.True(rig.Sampler.Done);
     Assert.Equal("unset", rig.Sampler.Recording!.ValueAt("a", "state", 1));
     Assert.Equal("set", rig.Sampler.Recording.ValueAt("a", "state", 2));
+  }
+
+  /// <summary>Fails when a block a <c>during</c> action places is not handed to the case's context,
+  /// so the end-of-run checks never see it.</summary>
+  [Fact]
+  public void A_block_a_during_action_places_reaches_the_cases_placed_cells() {
+    var rig = new Rig($"[{{ \"at\": 2, \"step\": {Place} }}]", _folder);
+    rig.Begin();
+    rig.Fires(3);
+    Assert.Contains(new BlockPos(1, 0, 0), rig.Fixture.Context.Placed);
   }
 
   /// <summary>Fails when the sampler waits on an action that runs past its firing, which leaves

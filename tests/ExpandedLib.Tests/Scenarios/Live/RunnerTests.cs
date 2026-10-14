@@ -232,6 +232,43 @@ public class RunnerTests {
     );
   }
 
+  /// <summary>Fails when a case's sampler is not built with the runner (V104), or is left listening
+  /// after its case is abandoned (V105).</summary>
+  [Fact]
+  public void A_case_that_is_abandoned_mid_run_unregisters_its_sampler() {
+    using var run = new Run();
+    run.Write(
+      "exlib/sampled",
+      """
+      { "setup": "sampled", "description": "a case", "mods": [], "seconds": 6,
+        "record": { "machines": {} }, "steps": [] }
+      """
+    );
+    Action? loaded = null;
+    run.Api.WorldManager.When(m =>
+        m.LoadChunkColumnPriority(
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<ChunkLoadOptions>()
+        )
+      )
+      .Do(call => loaded = call.Arg<ChunkLoadOptions>().OnLoaded);
+    run.Start(["exlib/sampled"]);
+    run.Tick(2);
+    loaded!();
+    run.Tick(2);
+    run.Events.Received(1)
+      .RegisterGameTickListener(Arg.Any<Action<float>>(), 1000);
+    run.Events.DidNotReceive().UnregisterGameTickListener(Arg.Any<long>());
+    run.Api.World.ElapsedMilliseconds.Returns<long>(_ =>
+      throw new InvalidOperationException("clock lost")
+    );
+    run.Tick(1);
+    run.Events.Received(1).UnregisterGameTickListener(2);
+  }
+
   /// <summary>Fails when the chat filter lets the run or error lines through (V100) or drops the
   /// done line (V101).</summary>
   [Fact]

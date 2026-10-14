@@ -144,6 +144,15 @@ internal sealed class SetupSampler(
   }
 
   private void Pump() {
+    try {
+      PumpActions();
+    } finally {
+      ctx.Placed.UnionWith(_actions!.Placed);
+      ctx.SpawnsSeen.UnionWith(_actions.SpawnsSeen);
+    }
+  }
+
+  private void PumpActions() {
     while (Failure == null) {
       if (_acting != null) {
         try {
@@ -166,13 +175,14 @@ internal sealed class SetupSampler(
       (int second, IEnumerator<SetupDuring> due) = _queued.Peek();
       if (due.MoveNext()) {
         SetupDuring action = due.Current;
+        _actions!.SpawnsSeen.UnionWith(ctx.SpawnsSeen);
         int index =
           1
           + scenario
             .Model.During.TakeWhile(a => !ReferenceEquals(a, action))
             .Count();
         _acting = ScenarioSteps
-          .Run(_actions!, action.Steps, $"d{index}@{second}.")
+          .Run(_actions, action.Steps, $"d{index}@{second}.")
           .GetEnumerator();
         return true;
       }

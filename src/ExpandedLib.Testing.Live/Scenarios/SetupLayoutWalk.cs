@@ -58,6 +58,7 @@ internal static class SetupLayoutWalk {
     int placed = 0;
     foreach (LayoutPlacing p in Plan(layout)) {
       string label = "L" + ++placed;
+      ctx.Current = label;
       string what = Describe(p.Entry);
       var report = new StepReport();
       using IEnumerator<bool> running = Place(ctx, layout, p, place, report)
@@ -146,7 +147,7 @@ internal static class SetupLayoutWalk {
     [
       .. run.Cells.Select(c => new BlockPos(c.Cell.X, c.Cell.Y, c.Cell.Z)),
     ];
-    RunStep.Lay(ctx, place!, blocks, laid);
+    RunStep.LayCells(ctx, place, blocks, laid, ClickFaces(run));
     yield return true;
     foreach (LayoutRunCell cell in run.Cells)
       foreach (BlockFacing face in cell.Opens)
@@ -161,6 +162,55 @@ internal static class SetupLayoutWalk {
         ctx.Setup.Place(id, new SetupPlacement(laid[i], [laid[i]]));
     ctx.Setup.Place(run.Id, new SetupPlacement(laid[0], laid));
     report.Value = $"{laid.Count} cell(s) of {run.Id}";
+  }
+
+  /// <summary>The click face of each cell of <paramref name="run"/>: the face of the cell it was
+  /// reached from in the depth-first path that looks toward it, and for the first cell the face of
+  /// its first neighbour that looks back. A single cell is clicked from below.</summary>
+  private static List<BlockFacing> ClickFaces(LayoutRun run) {
+    var at = run.Cells.ToDictionary(c => (c.Cell.X, c.Cell.Y, c.Cell.Z));
+    var parent = new Dictionary<(int, int, int), BlockPos>();
+    var seen = new HashSet<(int, int, int)>();
+    void Visit(LayoutRunCell cell) {
+      var key = (cell.Cell.X, cell.Cell.Y, cell.Cell.Z);
+      seen.Add(key);
+      foreach (BlockFacing f in cell.Joins) {
+        var next = (
+          key.Item1 + f.Normali.X,
+          key.Item2 + f.Normali.Y,
+          key.Item3 + f.Normali.Z
+        );
+        if (at.TryGetValue(next, out LayoutRunCell? to) && !seen.Contains(next)) {
+          parent[next] = new BlockPos(key.Item1, key.Item2, key.Item3);
+          Visit(to);
+        }
+      }
+    }
+    Visit(run.Cells[0]);
+    var faces = new List<BlockFacing>();
+    for (int i = 0; i < run.Cells.Count; i++) {
+      var cell = new BlockPos(
+        run.Cells[i].Cell.X,
+        run.Cells[i].Cell.Y,
+        run.Cells[i].Cell.Z
+      );
+      if (i > 0)
+        faces.Add(RunStep.Toward(parent[(cell.X, cell.Y, cell.Z)], cell));
+      else if (run.Cells.Count == 1)
+        faces.Add(BlockFacing.UP);
+      else
+        faces.Add(
+          RunStep.Toward(
+            new BlockPos(
+              run.Cells[1].Cell.X,
+              run.Cells[1].Cell.Y,
+              run.Cells[1].Cell.Z
+            ),
+            cell
+          )
+        );
+    }
+    return faces;
   }
 
   private static void CheckStructure(

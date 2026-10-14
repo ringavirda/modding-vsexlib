@@ -93,7 +93,9 @@ internal sealed class RunStep : ScenarioStep {
     return faces;
   }
 
-  private static BlockFacing Toward(BlockPos from, BlockPos to) =>
+  /// <summary>The face of <paramref name="from"/> that looks toward the adjacent cell
+  /// <paramref name="to"/>.</summary>
+  public static BlockFacing Toward(BlockPos from, BlockPos to) =>
     BlockFacing.ALLFACES.Single(f =>
       f.Normali.X == Math.Sign(to.X - from.X)
       && f.Normali.Y == Math.Sign(to.Y - from.Y)
@@ -139,13 +141,26 @@ internal sealed class RunStep : ScenarioStep {
         $"the path turns at {FailureDetail.Cell(turn)}, and a run places one straight blocktype, which is never a bend.",
         Suspect.Scenario
       );
+    LayCells(ctx, place, blocks, cells, ClickFaces(cells));
+  }
+
+  /// <summary>Lays <paramref name="blocks"/> in the order of <paramref name="cells"/> with no check on the
+  /// path's shape, each placed on the click that its entry of <paramref name="faces"/> gives it.</summary>
+  /// <exception cref="StepFailure">A cell holds a block other than air at or above y 0, or the
+  /// player cannot place a block.</exception>
+  public static void LayCells(
+    ScenarioContext ctx,
+    PlayerPlace place,
+    IReadOnlyList<Block> blocks,
+    IReadOnlyList<BlockPos> cells,
+    IReadOnlyList<BlockFacing> faces
+  ) {
     foreach (BlockPos cell in cells)
       if (cell.Y >= 0 && !ctx.IsAir(cell))
         throw new StepFailure(
           $"{FailureDetail.Cell(cell)} holds {ctx.Setup.BlockAt(cell).Code}, not air.",
           Suspect.Scenario
         );
-    List<BlockFacing> faces = ClickFaces(cells);
     for (int i = 0; i < cells.Count; i++) {
       BlockPos cell = cells[i];
       Block block = blocks[i];
