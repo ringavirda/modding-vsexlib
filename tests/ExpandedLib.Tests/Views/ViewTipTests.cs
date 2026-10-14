@@ -33,7 +33,9 @@ public class ViewTipTests {
         .World.GetItem(new AssetLocation("viewsfixture:declaredtip"))
         .Shape,
       Attributes = new JsonObject(
-        JToken.Parse($"{{\"itemViews\":{{\"kind\":\"{kind}\",\"tip\":\"{tip}\"}}}}")
+        JToken.Parse(
+          $"{{\"itemViews\":{{\"kind\":\"{kind}\",\"tip\":\"{tip}\"}}}}"
+        )
       ),
     };
 
@@ -92,7 +94,9 @@ public class ViewTipTests {
     Assert.Equal(1, box.Axes[0].X, 3);
     double grip = box.From.X + f[0] * (box.To.X - box.From.X);
     ViewGroup held = group with {
-      Box = box with { From = new Vec3d(2 * grip - box.To.X - 1, box.From.Y, box.From.Z) },
+      Box = box with {
+        From = new Vec3d(2 * grip - box.To.X - 1, box.From.Y, box.From.Z),
+      },
     };
 
     GateReading g14 = Tip(held);

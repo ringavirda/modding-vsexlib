@@ -274,7 +274,9 @@ public static class ItemViews {
     double[,] slotTurn = Turn(lay, reference, out _);
     HandReference grasp =
       tip != null && kind is ItemViewKind.Lump or ItemViewKind.Bulk
-        ? Rod with { Scale = reference.Scale }
+        ? Rod with {
+          Scale = reference.Scale,
+        }
         : reference;
     double[,] turn = Turn(lay, grasp, out bool mirrored);
     double[,] r = Mul(
