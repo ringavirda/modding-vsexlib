@@ -442,6 +442,30 @@ public class LayoutWalkTests {
     AssertOneNetwork(fixture, (1, 0, 0), (2, 0, 0), (2, 0, 1));
   }
 
+  // Fails when the ground cell under a run keeps its natural block, so the player's placement is refused.
+  [Fact]
+  public void A_run_on_a_layer_below_ground_replaces_the_natural_block() {
+    LiveFixture fixture = PipeFixture();
+    fixture.Context.SetBlock(fixture.Stone, new BlockPos(1, -1, 0));
+    fixture.Context.SetBlock(fixture.Stone, new BlockPos(2, -1, 0));
+    (RunStep.PlayerPlace place, RunStep.PlayerWrench wrench) = Hands(fixture);
+    Walk(
+      fixture,
+      Drawing("{ legend: { " + PipeRun + " }, layers: { \"-1\": [\"oPPo\"] } }"),
+      place,
+      wrench
+    );
+    Assert.Equal(
+      "platedpipes:pipe-plated-straight-we",
+      BlockAt(fixture, 1, -1, 0).Code.ToString()
+    );
+    Assert.Equal(
+      "platedpipes:pipe-plated-straight-we",
+      BlockAt(fixture, 2, -1, 0).Code.ToString()
+    );
+    AssertOneNetwork(fixture, (1, -1, 0), (2, -1, 0));
+  }
+
   // Fails when the tee cell is laid as the entry's straight.
   [Fact]
   public void A_teed_run_ends_as_one_network() {
