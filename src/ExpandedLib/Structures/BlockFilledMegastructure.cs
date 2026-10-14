@@ -5,7 +5,9 @@ using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+#if GAME_GE_1_22
 using Vintagestory.GameContent;
+#endif
 
 namespace ExpandedLib.Structures;
 

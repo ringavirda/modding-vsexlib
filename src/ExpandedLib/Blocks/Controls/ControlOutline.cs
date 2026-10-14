@@ -80,6 +80,11 @@ public static class ControlOutline
     }
   }
 
+  /// <summary>The cell the game draws <paramref name="sel"/> at: its position, moved onto the opposite face
+  /// when the selection carries the offset a placement leaves behind.</summary>
+  internal static BlockPos SelectedPos(BlockSelection sel) =>
+    sel.DidOffset ? sel.Position.AddCopy(sel.Face.Opposite) : sel.Position;
+
   /// <summary>
   /// Draws the outline of <paramref name="sel"/> through <paramref name="render"/> in vanilla's width and in
   /// <paramref name="block"/>'s selection colour: <see cref="Boxes"/> when it answers, else the hit cell's
@@ -99,7 +104,7 @@ public static class ControlOutline
     if (api.Side != EnumAppSide.Client || api is not ICoreClientAPI client)
       return;
     IBlockAccessor accessor = api.World.BlockAccessor;
-    BlockPos pos = sel.Position;
+    BlockPos pos = SelectedPos(sel);
     float width = 1.6f * ClientSettings.Wireframethickness;
     Vec4f color = block.GetSelectionColor(client, pos);
 

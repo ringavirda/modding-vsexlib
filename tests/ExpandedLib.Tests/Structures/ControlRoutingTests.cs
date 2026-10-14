@@ -203,17 +203,19 @@ public class ControlRoutingTests
     Assert.Equal("body", scene.Principal.Ran);
   }
 
-  // Fails when Route returns true though no handler took the click.
+  // Fails when a held block no longer skips the forward to the principal.
   [Fact]
-  public void Nothing_taken_returns_false()
+  public void A_held_block_on_an_attach_cell_is_left_to_the_engine()
   {
     using var scene = new Scene();
     scene.FillerEntity.AllowAttach = true;
-    scene.Player.Hold(scene.Wrench);
+    scene.Player.Hold(scene.Brick);
 
-    bool handled = scene.Start("anvil");
+    bool handled = scene.Start(null);
 
     Assert.False(handled);
+    Assert.Null(scene.Principal.Ran);
+    Assert.Null(scene.Principal.StartSelection);
   }
 
   #endregion
@@ -233,6 +235,10 @@ public class ControlRoutingTests
     );
     public readonly ItemStack Wrench = new(
       new Item { Code = new AssetLocation("test:wrench"), ItemId = 902 }
+    );
+
+    public readonly ItemStack Brick = new(
+      TestBlocks.Configure(new Block(), "test:brick", 51)
     );
 
     public Scene(bool withBody = true)

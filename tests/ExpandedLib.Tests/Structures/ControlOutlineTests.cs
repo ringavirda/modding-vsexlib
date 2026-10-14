@@ -168,6 +168,22 @@ public class ControlOutlineTests
     AssertVanillaLook(scene, new BlockPos(11, 5, 10), looks);
   }
 
+  // Fails when the offset a placement leaves on the selection is ignored.
+  [Theory]
+  [InlineData(true, 4)]
+  [InlineData(false, 5)]
+  public void The_outline_is_drawn_at_the_offset_cell(bool offset, int y)
+  {
+    var sel = new BlockSelection
+    {
+      Position = new BlockPos(11, 5, 10),
+      Face = BlockFacing.UP,
+      DidOffset = offset,
+    };
+
+    Assert.Equal(new BlockPos(11, y, 10), ControlOutline.SelectedPos(sel));
+  }
+
   #endregion
 
   #region Interface
