@@ -9,7 +9,7 @@ public class LiveFixtureTests {
   // Fails when the fixture loads game:stone only.
   [Fact]
   public void The_world_holds_the_blower_a_plated_pipe_and_stone() {
-    var fixture = new LiveFixture();
+    var fixture = LiveFixture.WithSamples();
 
     Block blower = fixture.Test.World.GetBlock(
       new AssetLocation("twintubblower:blower-twintubblower-n")

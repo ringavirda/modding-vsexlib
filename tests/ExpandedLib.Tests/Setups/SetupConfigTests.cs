@@ -1,3 +1,4 @@
+#if GAME_GE_1_22
 using System;
 using System.Collections.Generic;
 using ExpandedLib.Config;
@@ -65,3 +66,4 @@ public class SetupConfigTests {
     );
   }
 }
+#endif

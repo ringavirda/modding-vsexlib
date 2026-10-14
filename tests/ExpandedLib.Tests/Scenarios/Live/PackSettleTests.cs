@@ -79,4 +79,23 @@ public class PackSettleTests {
       l => l.Contains(" pack ") && l.Contains("FAIL:")
     );
   }
+
+  /// <summary>Fails when the pack check runs after a settle failure and overwrites it: a short
+  /// <c>ends</c> would replace the logged error's verdict.</summary>
+  [Fact]
+  public void A_settle_error_is_not_overwritten_by_the_pack_check() {
+    (LiveFixture fixture, ScenarioCaseRun run) = Go(
+      (f, _) => {
+        if (f.Clock >= 1)
+          f.Errors.Add(EnumLogType.Error, "late tick threw");
+      }
+    );
+
+    Assert.False(run.Passed);
+    Assert.Equal(2, run.FailedStep);
+    Assert.Equal(Suspect.Mod, run.Suspect);
+    Assert.Single(fixture.Lines, l => l.Contains("FAIL:"));
+    Assert.Contains(fixture.Lines, l => l.Contains(" settle "));
+    Assert.DoesNotContain(fixture.Lines, l => l.Contains(" pack "));
+  }
 }
