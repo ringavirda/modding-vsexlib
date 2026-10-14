@@ -14,8 +14,8 @@ namespace ExpandedLib.Blocks;
 /// cell's <see cref="CellBoxes.Selection"/> that it names carries the id as vanilla's
 /// <c>CuboidfWithId</c>; on 1.21 and 1.20 the id rides only here.</summary>
 /// <param name="Id">The control id, non-empty; it matches a <see cref="BlockControl.Id"/>.</param>
-/// <param name="Box">Cell units 0..1, north frame. The same instance as the selection entry it
-/// equals, or the appended one.</param>
+/// <param name="Box">Cell units 0..1, north frame. When the cell has a Selection, the same instance as
+/// the entry it names; Compose and Turned rely on that identity.</param>
 public sealed record ControlBox(string Id, Cuboidf Box);
 
 /// <summary>The leaves of one door in one cell. All boxes are cell units 0..1, north frame.</summary>

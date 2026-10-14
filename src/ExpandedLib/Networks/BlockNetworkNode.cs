@@ -504,52 +504,32 @@ public abstract class BlockNetworkNode
   public override Cuboidf[] GetCollisionBoxes(
     IBlockAccessor blockAccessor,
     BlockPos pos
-  ) =>
-    Type != null
-    && Orientation != null
-    && cellCache.TryGetValue($"{Type}-{Orientation}", out var cell)
-      ? cell.At(blockAccessor, pos).Collision
-      : CachedCollisionBoxes(blockAccessor, pos);
-
-  private Cuboidf[] CachedCollisionBoxes(
-    IBlockAccessor blockAccessor,
-    BlockPos pos
-  ) =>
-    Type != null
-    && Orientation != null
-    && collisionBoxesCache.TryGetValue(
-      $"{Type}-{Orientation}",
-      out Cuboidf[]? boxes
-    )
+  ) {
+    if (Type == null || Orientation == null)
+      return base.GetCollisionBoxes(blockAccessor, pos);
+    string key = $"{Type}-{Orientation}";
+    if (cellCache.Count > 0 && cellCache.TryGetValue(key, out var cell))
+      return cell.At(blockAccessor, pos).Collision;
+    return collisionBoxesCache.TryGetValue(key, out Cuboidf[]? boxes)
       ? boxes
       : base.GetCollisionBoxes(blockAccessor, pos);
+  }
 
   public override Cuboidf[] GetSelectionBoxes(
     IBlockAccessor blockAccessor,
     BlockPos pos
-  ) =>
+  ) {
+    if (Type == null || Orientation == null)
+      return base.GetSelectionBoxes(blockAccessor, pos);
+    string key = $"{Type}-{Orientation}";
 #if GAME_GE_1_22
-    Type != null
-    && Orientation != null
-    && cellCache.TryGetValue($"{Type}-{Orientation}", out var cell)
-      ? cell.At(blockAccessor, pos).Selection
-      : CachedSelectionBoxes(blockAccessor, pos);
-#else
-    CachedSelectionBoxes(blockAccessor, pos);
+    if (cellCache.Count > 0 && cellCache.TryGetValue(key, out var cell))
+      return cell.At(blockAccessor, pos).Selection;
 #endif
-
-  private Cuboidf[] CachedSelectionBoxes(
-    IBlockAccessor blockAccessor,
-    BlockPos pos
-  ) =>
-    Type != null
-    && Orientation != null
-    && selectionBoxesCache.TryGetValue(
-      $"{Type}-{Orientation}",
-      out Cuboidf[]? boxes
-    )
+    return selectionBoxesCache.TryGetValue(key, out Cuboidf[]? boxes)
       ? boxes
       : base.GetSelectionBoxes(blockAccessor, pos);
+  }
 
   /// <summary>Returns the Euler rotation angles in degrees for <paramref name="orientation"/>.</summary>
   protected virtual void GetRotations(

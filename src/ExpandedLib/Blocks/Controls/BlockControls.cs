@@ -45,7 +45,7 @@ public static class BlockControls {
         new BlockControl(
           row["id"].AsString() ?? "",
           row["kind"].AsString() ?? "",
-          row["alsoIds"].AsArray<string>() ?? [],
+          row["alsoIds"].AsArray<string>()?.OfType<string>().ToArray() ?? [],
           row["stage"].AsInt(0)
         )
       );

@@ -22,7 +22,9 @@ public static class ControlBoxes {
   /// leaves, control boxes, then body boxes; a Hidden control drops its own, and an emptied selection
   /// falls back to the collision body. On 1.22 leaves and controls carry their id.
   /// </summary>
-  /// <param name="turned">The cell's boxes already turned into the placed orientation.</param>
+  /// <param name="turned">The cell's boxes already turned into the placed orientation. When the cell has a
+  /// <see cref="CellBoxes.Selection"/>, each <see cref="ControlBox.Box"/> must be the same instance as the
+  /// entry it names: Compose drops that entry by reference and substitutes the id-carrying copy.</param>
   /// <param name="state">The state of a control id; ids nothing owns are <see cref="ControlState.Shown"/>.</param>
   public static (Cuboidf[] Collision, Cuboidf[] Selection) Compose(
     CellBoxes turned,
@@ -195,7 +197,8 @@ public static class ControlBoxes {
 
     PlacedCell placed = table.Turned.GetOrAdd(
       (north.X, north.Y, north.Z, angle),
-      _ => new PlacedCell(row.Turned(angle))
+      static (_, a) => new PlacedCell(a.row.Turned(a.angle)),
+      (row, angle)
     );
     boxes = placed.At(accessor, principalPos);
     return true;
@@ -241,7 +244,8 @@ public static class ControlBoxes {
       ) % 360;
     return table.Turned.GetOrAdd(
       angle,
-      _ => new PlacedCell(table.Row.Turned(angle))
+      static (_, a) => new PlacedCell(a.Row.Turned(a.angle)),
+      (table.Row, angle)
     );
   }
 
