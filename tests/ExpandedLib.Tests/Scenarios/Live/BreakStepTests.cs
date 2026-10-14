@@ -1,10 +1,14 @@
 #if GAME_GE_1_22
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using NSubstitute;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -35,6 +39,30 @@ public class BreakStepTests
     ) => [new ItemStack(Ore, 2)];
   }
 
+  private sealed class Recorder : Block
+  {
+    public int Broken;
+    public IPlayer? By;
+    public Action<BlockPos>? Spawn;
+
+    public override void OnBlockBroken(
+      IWorldAccessor world,
+      BlockPos pos,
+      IPlayer byPlayer,
+      float dropQuantityMultiplier = 1f
+    )
+    {
+      Broken++;
+      By = byPlayer;
+      Spawn?.Invoke(pos);
+    }
+  }
+
+  private static readonly ScenarioPlayer Unbuilt = (ScenarioPlayer)
+    RuntimeHelpers.GetUninitializedObject(typeof(ScenarioPlayer));
+
+  private static readonly BlockPos Cell = new(100, 50, 100);
+
   /// <summary>Fails when a tool below the block's tier is let through, or a tool that meets it, or
   /// a block that needs none, is refused.</summary>
   [Fact]
@@ -46,16 +74,118 @@ public class BreakStepTests
     Assert.Null(ScenarioPlayer.TierRefusal(0, 0));
   }
 
-  /// <summary>Fails when a break by the world is given the scenario player, or a break by the player
-  /// is not.</summary>
+  /// <summary>Fails when the gate reads the block's tier or the held tool's from anywhere but the block
+  /// and the slot's stack: a tool of the tier passes, a lower one and an empty hand are refused, a block
+  /// that needs none passes an empty hand.</summary>
+  [Fact]
+  public void The_tier_gate_reads_the_block_and_the_slots_tool()
+  {
+    var world = new TestWorld();
+    Block hard = TestBlocks.Configure(new Block(), "test:hard", 82);
+    hard.RequiredMiningTier = 2;
+    Block soft = TestBlocks.Configure(new Block(), "test:soft", 83);
+    var pick = new Item
+    {
+      Code = new AssetLocation("test:pick"),
+      ItemId = 912,
+      ToolTier = 2,
+    };
+    var stick = new Item
+    {
+      Code = new AssetLocation("test:stick"),
+      ItemId = 913,
+      ToolTier = 1,
+    };
+
+    string? Gate(Block block, Item? held) =>
+      ScenarioPlayer.TierGate(
+        block,
+        world.World,
+        Cell,
+        new DummySlot(held == null ? null : new ItemStack(held))
+      );
+
+    Assert.Null(Gate(hard, pick));
+    Assert.NotNull(Gate(hard, stick));
+    Assert.NotNull(Gate(hard, null));
+    Assert.Null(Gate(soft, null));
+  }
+
+  /// <summary>Fails when a break by the world is run as the scenario player, which a player given to the
+  /// run would show as a break that is not the block's own with no breaker.</summary>
   [Fact]
   public void A_break_by_the_world_has_no_breaker()
   {
-    IPlayer player = new TestWorld().Player().Player;
+    var fixture = new LiveFixture();
+    fixture.Context.Player = Unbuilt;
+    var block = TestBlocks.Configure(new Recorder(), "test:recorder", 84);
+    fixture.Test.Place(Cell, block);
 
-    Assert.Null(BreakStep.Breaker("world", player));
-    Assert.Same(player, BreakStep.Breaker("player", player));
+    fixture.Run(
+      LiveFixture
+        .Case("""[{ "break": { "at": [0, 0, 0], "by": "world" } }]""")
+        .Model.Steps
+    );
+
+    Assert.Equal(1, block.Broken);
+    Assert.Null(block.By);
   }
+
+  /// <summary>Fails when drops are collected only near the struck cell, so a drop spawned at the far end
+  /// of the plot is missed, or when an item entity that was there before the break is counted.</summary>
+  [Fact]
+  public void Drops_are_the_items_the_break_spawned_within_the_plot()
+  {
+    var fixture = new LiveFixture();
+    var block = TestBlocks.Configure(new Recorder(), "test:recorder", 84);
+    fixture.Test.Place(Cell, block);
+    var present = new List<(BlockPos At, EntityItem Item)>
+    {
+      (new BlockPos(105, 51, 100), Spawned(1, new ItemStack(Flint, 1))),
+    };
+    block.Spawn = _ =>
+      present.Add((new BlockPos(108, 51, 100), Spawned(2, new ItemStack(Ore, 3))));
+    fixture.Test.World.GetEntitiesInsideCuboid(
+      Arg.Any<BlockPos>(),
+      Arg.Any<BlockPos>(),
+      Arg.Any<ActionConsumable<Entity>>()
+    )
+      .Returns(call =>
+      {
+        var min = call.ArgAt<BlockPos>(0);
+        var max = call.ArgAt<BlockPos>(1);
+        return present
+          .Where(p =>
+            p.At.X >= min.X
+            && p.At.X <= max.X
+            && p.At.Y >= min.Y
+            && p.At.Y <= max.Y
+            && p.At.Z >= min.Z
+            && p.At.Z <= max.Z
+          )
+          .Select(p => (Entity)p.Item)
+          .ToArray();
+      });
+    fixture.Context.PlotBounds = (
+      new BlockPos(92, 50, 92),
+      new BlockPos(116, 82, 116)
+    );
+
+    fixture.Run(
+      LiveFixture
+        .Case("""[{ "break": { "at": [0, 0, 0], "by": "world" } }]""")
+        .Model.Steps
+    );
+
+    Assert.Equal(
+      ["test:ore"],
+      fixture.Context.LastBreak!.Dropped.Select(d => d.Collectible.Code.ToString())
+    );
+    Assert.Equal(3, fixture.Context.LastBreak.Dropped[0].StackSize);
+  }
+
+  private static EntityItem Spawned(long id, ItemStack stack) =>
+    new() { EntityId = id, Itemstack = stack };
 
   /// <summary>Fails when the listed counts compare the first stack of a code instead of the sum of
   /// every stack of it.</summary>
@@ -90,7 +220,8 @@ public class BreakStepTests
   }
 
   /// <summary>Fails when declared drops allow a count more than 1 off, a code that dropped without
-  /// being declared, or a declared code that did not drop.</summary>
+  /// being declared, or a declared code that did not drop; or when a code declared in two stacks is
+  /// held to one rounding instead of two.</summary>
   [Fact]
   public void Declared_drops_allow_a_rounding_of_one_and_the_same_codes()
   {
@@ -108,6 +239,11 @@ public class BreakStepTests
       )
     );
     Assert.NotNull(BreakStep.DeclaredMismatch(declared, []));
+
+    ItemStack[] twice = [new(Ore, 2), new(Ore, 1)];
+    Assert.Null(BreakStep.DeclaredMismatch(twice, [new ItemStack(Ore, 5)]));
+    Assert.Null(BreakStep.DeclaredMismatch(twice, [new ItemStack(Ore, 1)]));
+    Assert.NotNull(BreakStep.DeclaredMismatch(twice, [new ItemStack(Ore, 6)]));
   }
 
   /// <summary>Fails when the declared drops of a plain block are not its own

@@ -21,7 +21,8 @@ internal sealed record BreakRecord(
 /// <summary><c>break</c>: takes the block at <c>at</c> down as the scenario player in survival holding
 /// <c>with</c> (<c>by: "player"</c>, the default) or as the world with no breaker
 /// (<c>by: "world"</c>). The block's declared drops are read just before, and the item entities the
-/// break spawned are collected one tick after it for <c>expect drops</c>.</summary>
+/// break spawned, within the plot and 2 blocks around it, are collected one tick after it for
+/// <c>expect drops</c>.</summary>
 internal sealed class BreakStep : ScenarioStep {
   private const int Margin = 2;
 
@@ -40,12 +41,14 @@ internal sealed class BreakStep : ScenarioStep {
     return null;
   }
 
-  /// <summary>The player a break by <paramref name="by"/> acts as.</summary>
+  /// <summary>The scenario player a break by <paramref name="by"/> acts as.</summary>
   /// <param name="by"><c>player</c> or <c>world</c>.</param>
-  /// <param name="scenarioPlayer">The scenario player.</param>
+  /// <param name="scenarioPlayer">The scenario player, or null when the run has none.</param>
   /// <returns>Null for <c>world</c>, whose break has no breaker.</returns>
-  public static IPlayer? Breaker(string by, IPlayer? scenarioPlayer) =>
-    by == "world" ? null : scenarioPlayer;
+  public static ScenarioPlayer? Actor(
+    string by,
+    ScenarioPlayer? scenarioPlayer
+  ) => by == "world" ? null : scenarioPlayer;
 
   /// <summary>The stacks a block at <paramref name="at"/> declares it drops for
   /// <paramref name="breaker"/>: <c>Block.GetDrops</c> of the principal when the cell is a
@@ -117,14 +120,18 @@ internal sealed class BreakStep : ScenarioStep {
   }
 
   /// <summary>How <paramref name="dropped"/> differs from <paramref name="declared"/>, or null when
-  /// both name the same codes and each code's total differs by no more than 1, the rounding of a
-  /// fractional salvage.</summary>
+  /// both name the same codes and each code's total differs by no more than the number of declared
+  /// stacks of that code, one rounding of a fractional salvage per stack.</summary>
   public static string? DeclaredMismatch(
     IEnumerable<ItemStack> declared,
     IEnumerable<ItemStack> dropped
   ) {
-    Dictionary<string, int> want = Sum(declared);
+    ItemStack[] declaredStacks = [.. declared];
+    Dictionary<string, int> want = Sum(declaredStacks);
     Dictionary<string, int> got = Sum(dropped);
+    Dictionary<string, int> stacks = declaredStacks
+      .GroupBy(s => s.Collectible.Code.ToString())
+      .ToDictionary(g => g.Key, g => g.Count());
     List<string> wrong =
     [
       .. want
@@ -133,13 +140,30 @@ internal sealed class BreakStep : ScenarioStep {
         .Where(c =>
           !want.ContainsKey(c)
           || !got.ContainsKey(c)
-          || Math.Abs(want[c] - got[c]) > 1
+          || Math.Abs(want[c] - got[c]) > stacks[c]
         )
         .Select(c =>
           $"{c} x{got.GetValueOrDefault(c)}, declared x{want.GetValueOrDefault(c)}"
         ),
     ];
     return wrong.Count == 0 ? null : string.Join("; ", wrong);
+  }
+
+  private static List<EntityItem> ItemsAround(
+    ScenarioContext ctx,
+    BlockPos at
+  ) {
+    (BlockPos min, BlockPos max) = ctx.PlotBounds ?? (at, at);
+    return
+    [
+      .. ctx
+        .World.GetEntitiesInsideCuboid(
+          new BlockPos(min.X - Margin, min.Y - Margin, min.Z - Margin),
+          new BlockPos(max.X + Margin + 1, max.Y + Margin + 1, max.Z + Margin + 1),
+          e => e is EntityItem
+        )
+        .Cast<EntityItem>(),
+    ];
   }
 
   public override IEnumerable<bool> Run(
@@ -150,7 +174,7 @@ internal sealed class BreakStep : ScenarioStep {
   ) {
     var o = (JObject)step.Body;
     string by = (string?)o["by"] ?? "player";
-    ScenarioPlayer? player = by == "world" ? null : ctx.Player;
+    ScenarioPlayer? player = Actor(by, ctx.Player);
     if (by == "player" && player == null)
       throw new StepFailure(
         "\"break\" by the player needs the scenario player.",
@@ -183,31 +207,32 @@ internal sealed class BreakStep : ScenarioStep {
       )
     )
       throw new StepFailure($"the player may not break {local}.");
-    List<ItemStack> declared = DeclaredDrops(
-      ctx.World,
-      at,
-      Breaker(by, player?.Player)
-    );
     string block = ctx.Setup.BlockAt(local).Code.ToString();
-    if (player == null)
+    HashSet<long> before = [.. ItemsAround(ctx, at).Select(e => e.EntityId)];
+    List<ItemStack> declared;
+    if (player == null) {
+      declared = DeclaredDrops(ctx.World, at, null);
       ctx.World.BlockAccessor.BreakBlock(at, null);
-    else if (!player.Break(at, stack, out string? refused))
+    } else if (
+      !player.Break(
+        at,
+        stack,
+        p => DeclaredDrops(ctx.World, at, p),
+        out declared,
+        out string? refused
+      )
+    )
       throw new StepFailure(
         $"{block} at {FailureDetail.Cell(local)}: {refused}."
       );
     PackLedger.Give(ctx, stack);
     yield return true;
     List<ItemStack> dropped = [];
-    foreach (
-      Entity each in ctx.World.GetEntitiesInsideCuboid(
-        new BlockPos(at.X - Margin, at.Y - Margin, at.Z - Margin),
-        new BlockPos(at.X + Margin + 1, at.Y + Margin + 1, at.Z + Margin + 1),
-        e => e is EntityItem
-      )
-    ) {
-      dropped.Add(((EntityItem)each).Itemstack.Clone());
-      each.Die(EnumDespawnReason.Removed);
-    }
+    foreach (EntityItem each in ItemsAround(ctx, at))
+      if (!before.Contains(each.EntityId)) {
+        dropped.Add(each.Itemstack.Clone());
+        each.Die(EnumDespawnReason.Removed);
+      }
     ctx.LastBreak = new BreakRecord(declared, dropped);
     report.Value =
       $"{block} by {by}, dropped "

@@ -25,14 +25,17 @@ internal sealed class ScenarioPlayer {
   private readonly ServerMain _server;
   private readonly ServerWorldPlayerData _data;
   private readonly BlockPos _park;
+  private readonly PlayerAntiAbuseMonitor? _abuse;
   private int _uses;
 
   private ScenarioPlayer(
     ServerMain server,
     ServerWorldPlayerData data,
     ServerPlayer player,
-    BlockPos park
+    BlockPos park,
+    PlayerAntiAbuseMonitor? abuse
   ) {
+    _abuse = abuse;
     _server = server;
     _data = data;
     _park = park;
@@ -294,16 +297,46 @@ internal sealed class ScenarioPlayer {
       ? $"the block needs tool tier {required}, the hand holds tier {held}"
       : null;
 
+  /// <summary>The refusal the block at <paramref name="at"/> gives the tool in <paramref name="slot"/>,
+  /// read from the block's required mining tier and the held collectible's tool tier.</summary>
+  /// <param name="block">The block being broken.</param>
+  /// <param name="world">The world the block stands in.</param>
+  /// <param name="at">The absolute cell of the block.</param>
+  /// <param name="slot">The slot the tool sits in; an empty slot is an empty hand, tier 0.</param>
+  /// <returns>Null when the tool meets the block's tier.</returns>
+  public static string? TierGate(
+    Block block,
+    IWorldAccessor world,
+    BlockPos at,
+    ItemSlot slot
+  ) =>
+    TierRefusal(
+      block.GetRequiredMiningTier(world, at),
+      slot.Itemstack?.Collectible.GetToolTier(slot) ?? 0
+    );
+
   /// <summary>Breaks the block at <paramref name="at"/> the way a player's break does
   /// (<c>ServerSystemBlockSimulation.TryModifyBlockInWorld</c>, break branch): in survival holding
   /// <paramref name="stack"/>, past the mining-tier check, through the server's break event, then
   /// <c>Collectible.OnBlockBrokenWith</c> for a held stack or <c>Block.OnBlockBroken</c> for an empty
-  /// hand. The slot is emptied and the player parked after.</summary>
+  /// hand, then the neighbour update and the did-break event, which the server's anti-abuse monitor
+  /// counts against a player it has an entry for (added here when its tick has dropped it). The slot
+  /// is emptied and the player parked after.</summary>
   /// <param name="at">The absolute cell of the block.</param>
   /// <param name="stack">What the hand holds, or null for an empty hand.</param>
+  /// <param name="declare">Reads the drops the block declares; called once with the player after it is
+  /// in survival mode with <paramref name="stack"/> in hand, before the break.</param>
+  /// <param name="declared">What <paramref name="declare"/> returned; empty when the tier check refused.</param>
   /// <param name="failure">Null when the break ran; otherwise the tier refusal.</param>
   /// <returns>Whether the break ran.</returns>
-  public bool Break(BlockPos at, ItemStack? stack, out string? failure) {
+  public bool Break(
+    BlockPos at,
+    ItemStack? stack,
+    System.Func<IPlayer, List<ItemStack>> declare,
+    out List<ItemStack> declared,
+    out string? failure
+  ) {
+    declared = [];
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
     _data.FreeMove = false;
     BlockFacing face = BlockFacing.UP;
@@ -313,12 +346,10 @@ internal sealed class ScenarioPlayer {
     slot.Itemstack = stack;
     try {
       Block block = _server.BlockAccessor.GetBlock(at);
-      failure = TierRefusal(
-        block.GetRequiredMiningTier(_server, at),
-        stack?.Collectible.GetToolTier(slot) ?? 0
-      );
+      failure = TierGate(block, _server, at, slot);
       if (failure != null)
         return false;
+      declared = declare(Player);
       var selection = new BlockSelection {
         Position = at.Copy(),
         Face = face,
@@ -345,6 +376,9 @@ internal sealed class ScenarioPlayer {
         else
           block.OnBlockBroken(_server, at, Player, dropQuantity);
       }
+      _server.TriggerNeighbourBlocksUpdate(at);
+      _abuse?.OnPlayerJoin(Player);
+      _server.EventManager.TriggerDidBreakBlock(Player, block.Id, selection);
       return true;
     } finally {
       slot.Itemstack = null;
@@ -571,7 +605,15 @@ internal sealed class ScenarioPlayer {
     inventory
       .GetMethod("OnPlayerJoin", [typeof(ServerPlayer)])!
       .Invoke(join, [player]);
-    var made = new ScenarioPlayer(server, data, player, park);
+    var made = new ScenarioPlayer(
+      server,
+      data,
+      player,
+      park,
+      ((Array)systems.GetValue(server)!)
+        .OfType<PlayerAntiAbuseMonitor>()
+        .SingleOrDefault()
+    );
     made.MoveTo(park);
     server.SpawnEntity(data.EntityPlayer);
     return made;
