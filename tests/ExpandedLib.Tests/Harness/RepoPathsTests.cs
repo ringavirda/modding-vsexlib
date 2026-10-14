@@ -66,8 +66,11 @@ public class RepoPathsDocsRootTests {
   /// made the process's repo root until disposed.</summary>
   private sealed class Workspace : IDisposable {
     private readonly string? _previousRoot = DefinitionGoldens.RepoRootOverride;
+    private readonly string? _previousDocsRoot =
+      Environment.GetEnvironmentVariable("EXDOCS_ROOT");
 
     public Workspace(string manifest) {
+      Environment.SetEnvironmentVariable("EXDOCS_ROOT", null);
       Files.Write("repo/exmod.json", manifest);
       DefinitionGoldens.RepoRootOverride = Files.Path("repo");
     }
@@ -76,6 +79,7 @@ public class RepoPathsDocsRootTests {
 
     public void Dispose() {
       DefinitionGoldens.RepoRootOverride = _previousRoot;
+      Environment.SetEnvironmentVariable("EXDOCS_ROOT", _previousDocsRoot);
       Files.Dispose();
     }
   }
@@ -93,6 +97,44 @@ public class RepoPathsDocsRootTests {
     Assert.Equal(docsRoot, RepoPaths.DocsRoot);
     Assert.Equal(Path.Combine(docsRoot, "wiki"), RepoPaths.Wiki);
     Assert.Equal(Path.Combine(docsRoot, "iiex"), RepoPaths.Docs("iiex"));
+  }
+
+  // Fails when EXDOCS_ROOT is ignored, or when the whole entry rather than its last folder is
+  // appended to it.
+  [Fact]
+  public void EXDOCS_ROOT_points_the_docs_root_at_the_last_folder_of_the_entry_inside_it() {
+    using var workspace = new Workspace(WithDocs);
+    string checkout = workspace.Files.Path("lane/exdocs-foo");
+    string docsRoot = Path.Combine(checkout, "exmods");
+    Directory.CreateDirectory(docsRoot);
+    Environment.SetEnvironmentVariable("EXDOCS_ROOT", checkout);
+
+    Assert.Equal(docsRoot, RepoPaths.DocsRoot);
+    Assert.Equal(Path.Combine(docsRoot, "wiki"), RepoPaths.Wiki);
+    Assert.Equal(Path.Combine(docsRoot, "iiex"), RepoPaths.Docs("iiex"));
+  }
+
+  // Fails when an empty EXDOCS_ROOT replaces the manifest's entry.
+  [Fact]
+  public void An_empty_EXDOCS_ROOT_keeps_the_manifests_entry() {
+    using var workspace = new Workspace(WithDocs);
+    string docsRoot = workspace.Files.Path("exdocs/exmods");
+    Directory.CreateDirectory(docsRoot);
+    Environment.SetEnvironmentVariable("EXDOCS_ROOT", "");
+
+    Assert.Equal(docsRoot, RepoPaths.DocsRoot);
+  }
+
+  // Fails when a missing folder under EXDOCS_ROOT falls back to the manifest's entry.
+  [Fact]
+  public void EXDOCS_ROOT_without_the_entrys_folder_throws_naming_the_path() {
+    using var workspace = new Workspace(WithDocs);
+    Directory.CreateDirectory(workspace.Files.Path("exdocs/exmods"));
+    string checkout = workspace.Files.Path("lane/exdocs-foo");
+    Environment.SetEnvironmentVariable("EXDOCS_ROOT", checkout);
+
+    var ex = Assert.Throws<DirectoryNotFoundException>(() => RepoPaths.Wiki);
+    Assert.Contains(Path.Combine(checkout, "exmods"), ex.Message);
   }
 
   // Fails when a manifest without a docs entry resolves a docs root anyway.

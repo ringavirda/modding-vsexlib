@@ -56,11 +56,10 @@ public static class RepoPaths {
     return Path.Combine(Mod(mod), "assets", domain);
   }
 
-  /// <summary>The absolute docs root named by the <c>docs</c> entry of <c>exmod.json</c>, a path
-  /// relative to the repository root such as <c>../exdocs/exlib</c>; null when the manifest has no
-  /// such entry, or no manifest exists.</summary>
-  /// <exception cref="DirectoryNotFoundException">The entry names a folder that does not
-  /// exist.</exception>
+  /// <summary>The absolute docs root named by the <c>docs</c> entry of <c>exmod.json</c>, such as
+  /// <c>../exdocs/exlib</c>; null when there is no entry or manifest. A non-empty <c>EXDOCS_ROOT</c>
+  /// environment variable replaces the entry's parent with that exdocs checkout.</summary>
+  /// <exception cref="DirectoryNotFoundException">The resolved folder does not exist.</exception>
   public static string? DocsRoot {
     get {
       string? root = RepoManifest.Docs;

@@ -84,6 +84,15 @@ public static class RepoManifest {
     string? docs = doc["docs"] is JValue { Value: string docsEntry }
       ? Path.GetFullPath(Resolve(root, docsEntry))
       : null;
+    if (
+      docs != null
+      && Environment.GetEnvironmentVariable("EXDOCS_ROOT")
+        is { Length: > 0 } docsCheckout
+    )
+      docs = Path.Combine(
+        Path.GetFullPath(docsCheckout),
+        Path.GetFileName(docs.TrimEnd(Path.DirectorySeparatorChar))
+      );
 
     return new Manifest(mods, samples, tests, overlays, docs);
   }
