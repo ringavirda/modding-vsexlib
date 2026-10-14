@@ -5,6 +5,9 @@ using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+#if GAME_GE_1_22
+using Vintagestory.GameContent;
+#endif
 
 namespace ExpandedLib.Structures;
 
@@ -13,7 +16,12 @@ namespace ExpandedLib.Structures;
 /// reserved with invisible <see cref="BlockStructureFiller"/> cells.
 /// </summary>
 [BlockRegister("ExFilledMegastructure", PrefixModId = false)]
-public class BlockFilledMegastructure : Block, IFillerHost {
+public class BlockFilledMegastructure
+  : Block,
+#if GAME_GE_1_22
+    ICustomSelectionBoxRender,
+#endif
+    IFillerHost {
   /// <summary>The block's <c>fillerOffsets</c> attribute, or null if none.</summary>
   public virtual JsonObject? FillerOffsets => Attributes?["fillerOffsets"];
 
@@ -40,6 +48,22 @@ public class BlockFilledMegastructure : Block, IFillerHost {
   ) =>
     ControlBoxes.Selection(this, blockAccessor, pos)
     ?? base.GetSelectionBoxes(blockAccessor, pos);
+#endif
+
+#if GAME_GE_1_22
+  /// <summary>Answers <see cref="ICustomSelectionBoxRender"/> only when the block has a <c>controls</c>
+  /// table, so a block without one is outlined as vanilla outlines it. Available on 1.22 only.</summary>
+  public override T GetInterface<T>(IWorldAccessor world, BlockPos pos) =>
+    typeof(T) == typeof(ICustomSelectionBoxRender)
+    && BlockControls.Of(this).Count == 0
+      ? null!
+      : base.GetInterface<T>(world, pos);
+
+  /// <summary>Outlines the hit control whole through <see cref="ControlOutline"/>.</summary>
+  public void RenderSelectionBoxes(
+    BlockSelection blockSel,
+    RenderBoxDelegate renderBoxHandler
+  ) => ControlOutline.Render(this, api, blockSel, renderBoxHandler);
 #endif
 
   /// <summary>The block's world footprint cells for a principal at <paramref name="pos"/>.</summary>
