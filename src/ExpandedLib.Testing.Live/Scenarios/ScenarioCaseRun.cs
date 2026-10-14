@@ -35,8 +35,11 @@ internal sealed class ScenarioCaseRun(
     int failedAt = 0;
     string? failedLabel = null;
     RunStep.PlayerPlace? place = ctx.Player is { } player ? player.Place : null;
+    RunStep.PlayerWrench? wrench = ctx.Player is { } turner
+      ? turner.Wrench
+      : null;
     IEnumerable<bool> layout = scenario.Model.Drawn is { } drawn
-      ? SetupLayoutWalk.Run(ctx, drawn, place)
+      ? SetupLayoutWalk.Run(ctx, drawn, place, wrench)
       : Enumerable.Empty<bool>();
     using (
       IEnumerator<bool> running = layout

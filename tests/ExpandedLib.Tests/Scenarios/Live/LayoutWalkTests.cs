@@ -1,9 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Networks;
 using ExpandedLib.Scenarios;
+using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 using Xunit;
 
 namespace ExpandedLib.Tests.Scenarios.Live;
@@ -19,9 +23,12 @@ public class LayoutWalkTests {
   private static void Walk(
     LiveFixture fixture,
     SetupLayout layout,
-    RunStep.PlayerPlace? place = null
+    RunStep.PlayerPlace? place = null,
+    RunStep.PlayerWrench? wrench = null
   ) {
-    foreach (bool _ in SetupLayoutWalk.Run(fixture.Context, layout, place)) { }
+    foreach (
+      bool _ in SetupLayoutWalk.Run(fixture.Context, layout, place, wrench)
+    ) { }
   }
 
   private static RunStep.PlayerPlace Stub(List<BlockPos> placed) =>
@@ -315,5 +322,186 @@ public class LayoutWalkTests {
       "[scenario]   L2 layout A game:stone FAIL: the pack holds 0 of game:stone; the step takes 1.",
       fixture.Lines
     );
+  }
+
+  private const string PipeRun = """
+    "P": { "run": "main", "code": "platedpipes:pipe-plated-straight-we",
+      "family": ["platedpipes:pipe-plated-straight-*", "platedpipes:pipe-plated-bend-*",
+                 "platedpipes:pipe-plated-tjunction-*", "platedpipes:pipe-plated-xjunction-*"] },
+    "o": { "open": true }
+    """;
+
+  private static SetupLayout Pipes(params string[] rows) =>
+    Drawing(
+      "{ legend: { "
+        + PipeRun
+        + " }, layers: { \"0\": ["
+        + string.Join(", ", rows.Select(r => $"\"{r}\""))
+        + "] } }"
+    );
+
+  private static LiveFixture PipeFixture() {
+    LiveFixture fixture = LiveFixture.WithSamples();
+    foreach (Block block in fixture.Test.World.Blocks.ToArray())
+      if (block is { Id: not 0, Code.Domain: "platedpipes" })
+        StructureBreaks.Ready(fixture.Test, block);
+    return fixture;
+  }
+
+  /// <summary>A player that places by the pipe's own <c>TryPlaceBlock</c>, which orients it by its
+  /// neighbours, and a wrench that turns through <c>IWrenchOrientable.Rotate</c>.</summary>
+  private static (RunStep.PlayerPlace Place, RunStep.PlayerWrench Wrench) Hands(
+    LiveFixture fixture,
+    List<BlockPos>? turned = null
+  ) {
+    TestPlayer player = fixture.Test.Player("placer");
+    player.GameMode = EnumGameMode.Survival;
+    player.Entity.LocalEyePos.Returns(new Vec3d());
+    IWorldAccessor world = fixture.Test.World;
+    return (
+      (Block block, BlockPos at, BlockFacing face, out string? failure) => {
+        player.Entity.Pos.SetPos(at.X + 0.5, at.Y + 0.5, at.Z - 3.5);
+        string code = "";
+        bool went = block.TryPlaceBlock(
+          world,
+          player.Player,
+          new ItemStack(block),
+          new BlockSelection {
+            Position = at.Copy(),
+            Face = face,
+            HitPosition = new Vec3d(
+              0.5 + 0.5 * face.Normali.X,
+              0.5 + 0.5 * face.Normali.Y,
+              0.5 + 0.5 * face.Normali.Z
+            ),
+          },
+          ref code
+        );
+        failure = went ? null : code;
+        return went;
+      },
+      (at, dir) => {
+        if (
+          world
+            .BlockAccessor.GetBlock(at)
+            .GetInterface<IWrenchOrientable>(world, at)
+          is not { } turnable
+        )
+          return false;
+        turned?.Add(at.Copy());
+        turnable.Rotate(
+          player.Entity,
+          new BlockSelection { Position = at.Copy(), Face = BlockFacing.UP },
+          dir
+        );
+        return true;
+      }
+    );
+  }
+
+  private static Block BlockAt(LiveFixture fixture, int x, int y, int z) =>
+    fixture.Context.Setup.BlockAt(new BlockPos(x, y, z));
+
+  private static string FacesAt(LiveFixture fixture, int x, int y, int z) =>
+    SetupRunFamily.FacesOf((INetworkConnector)BlockAt(fixture, x, y, z));
+
+  private static void AssertOneNetwork(
+    LiveFixture fixture,
+    params (int X, int Y, int Z)[] cells
+  ) {
+    BlockNetwork? first = fixture.Test.Networks.GetNetworkAt(
+      fixture.Context.Setup.Absolute(
+        new BlockPos(cells[0].X, cells[0].Y, cells[0].Z)
+      )
+    );
+    Assert.NotNull(first);
+    foreach ((int x, int y, int z) in cells)
+      Assert.Same(
+        first,
+        fixture.Test.Networks.GetNetworkAt(
+          fixture.Context.Setup.Absolute(new BlockPos(x, y, z))
+        )
+      );
+  }
+
+  // Fails when the walk lays the entry's straight code in every run cell, so the corner is no bend.
+  [Fact]
+  public void A_run_with_a_drawn_bend_ends_as_one_network_on_its_drawn_faces() {
+    LiveFixture fixture = PipeFixture();
+    (RunStep.PlayerPlace place, RunStep.PlayerWrench wrench) = Hands(fixture);
+    Walk(fixture, Pipes("oPP", "..P", "..o"), place, wrench);
+    Assert.Contains("bend", BlockAt(fixture, 2, 0, 0).Code.Path);
+    Assert.Equal("sw", FacesAt(fixture, 2, 0, 0));
+    Assert.Equal("ew", FacesAt(fixture, 1, 0, 0));
+    Assert.Equal("ns", FacesAt(fixture, 2, 0, 1));
+    AssertOneNetwork(fixture, (1, 0, 0), (2, 0, 0), (2, 0, 1));
+  }
+
+  // Fails when the tee cell is laid as the entry's straight.
+  [Fact]
+  public void A_teed_run_ends_as_one_network() {
+    LiveFixture fixture = PipeFixture();
+    (RunStep.PlayerPlace place, RunStep.PlayerWrench wrench) = Hands(fixture);
+    Walk(fixture, Pipes("oPPPo", "..P..", "..o.."), place, wrench);
+    Assert.Contains("tjunction", BlockAt(fixture, 2, 0, 0).Code.Path);
+    Assert.Equal("esw", FacesAt(fixture, 2, 0, 0));
+    AssertOneNetwork(fixture, (1, 0, 0), (2, 0, 0), (3, 0, 0), (2, 0, 1));
+  }
+
+  // Fails when the wrench step is left out of the walk, or the placed bend is not compared with its drawn faces.
+  [Fact]
+  public void A_bend_placed_on_other_faces_is_turned_to_its_drawn_ones() {
+    LiveFixture fixture = PipeFixture();
+    var turned = new List<BlockPos>();
+    (RunStep.PlayerPlace place, RunStep.PlayerWrench wrench) = Hands(
+      fixture,
+      turned
+    );
+    Walk(fixture, Pipes("o..", "PPo"), place, wrench);
+    Assert.Contains("bend", BlockAt(fixture, 0, 0, 1).Code.Path);
+    Assert.Equal("ne", FacesAt(fixture, 0, 0, 1));
+    Assert.NotEmpty(turned);
+    AssertOneNetwork(fixture, (0, 0, 1), (1, 0, 1));
+  }
+
+  // Fails when a drawn face set that no family member has is found only after cells are laid, or is not a scenario fault.
+  [Fact]
+  public void A_run_cell_whose_drawn_faces_no_member_has_is_refused_before_anything_is_laid() {
+    LiveFixture fixture = PipeFixture();
+    var clicks = new List<(BlockPos At, BlockFacing Face)>();
+    StepFailure failure = Assert.Throws<StepFailure>(() =>
+      Walk(fixture, Pipes("PPo"), Clicks(clicks))
+    );
+    Assert.Contains("needs a block with the faces e", failure.Message);
+    Assert.Equal(Suspect.Scenario, failure.Suspect);
+    Assert.Empty(clicks);
+  }
+
+  // Fails when a wrench that leaves the block as it was loops on or is not reported as the mod's fault.
+  [Fact]
+  public void A_bend_the_wrench_never_turns_to_its_drawn_faces_fails_naming_the_cell_and_orientations() {
+    LiveFixture fixture = PipeFixture();
+    (RunStep.PlayerPlace place, _) = Hands(fixture);
+    StepFailure failure = Assert.Throws<StepFailure>(() =>
+      Walk(fixture, Pipes("o..", "PPo"), place, (_, _) => true)
+    );
+    Assert.Contains("never turned", failure.Message);
+    Assert.Contains("[0, 0, 1]", failure.Message);
+    Assert.Contains("ne", failure.Message);
+    Assert.Contains("bend", failure.Message);
+    Assert.Equal(Suspect.Mod, failure.Suspect);
+  }
+
+  // Fails when a block that cannot be turned is left on its own faces or not reported as the mod's fault.
+  [Fact]
+  public void A_bend_with_no_wrench_to_turn_it_fails_naming_the_cell_and_faces() {
+    LiveFixture fixture = PipeFixture();
+    (RunStep.PlayerPlace place, _) = Hands(fixture);
+    StepFailure failure = Assert.Throws<StepFailure>(() =>
+      Walk(fixture, Pipes("o..", "PPo"), place)
+    );
+    Assert.Contains("cannot be turned with a wrench", failure.Message);
+    Assert.Contains("the drawing has ne", failure.Message);
+    Assert.Equal(Suspect.Mod, failure.Suspect);
   }
 }

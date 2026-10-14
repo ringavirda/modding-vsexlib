@@ -9,7 +9,6 @@ using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace ExpandedLib.Testing;
 
@@ -111,7 +110,6 @@ public sealed partial class SetupScene
 
   private void PlaceRun(SetupLayout layout, LayoutRun run)
   {
-    var drawn = layout.Cells.ToDictionary(c => (c.X, c.Y, c.Z));
     var laid = new List<BlockPos>();
     foreach (LayoutRunCell cell in run.Cells)
     {
@@ -121,38 +119,14 @@ public sealed partial class SetupScene
         cell.Entry.Code!,
         where
       );
-      string type = ((INetworkConnector)family[0].Block).NetworkType;
-      var faces = new HashSet<BlockFacing>(cell.Joins.Concat(cell.Opens));
-      foreach (BlockFacing face in BlockFacing.ALLFACES)
-      {
-        if (faces.Contains(face))
-          continue;
-        if (
-          !drawn.TryGetValue(
-            Step((cell.Cell.X, cell.Cell.Y, cell.Cell.Z), face),
-            out LayoutCell next
-          )
-        )
-          continue;
-        LayoutEntry neighbour = layout.EntryOf(next);
-        if (neighbour.Kind != LayoutEntryKind.Block)
-          continue;
-        var at = new BlockPos(next.X, next.Y, next.Z);
-        if (
-          Resolve(neighbour.Code!, where) is INetworkConnector connector
-          && connector.NetworkType == type
-          && (
-            ReferenceEquals(World.Accessor.GetBlock(at), connector)
-              ? ((INetworkMember)connector).HasConnectorAt(
-                World.Accessor,
-                at,
-                face.Opposite
-              )
-              : connector.HasConnectorAt(face.Opposite)
-          )
-        )
-          faces.Add(face);
-      }
+      HashSet<BlockFacing> faces = SetupRunFamily.DrawnFaces(
+        layout,
+        cell,
+        ((INetworkConnector)family[0].Block).NetworkType,
+        code => Resolve(code, where),
+        World.Accessor,
+        at => at
+      );
       var pos = new BlockPos(cell.Cell.X, cell.Cell.Y, cell.Cell.Z);
       Block block = LayCell(family, faces, pos, where, cell.Entry.Code);
       laid.Add(pos);
@@ -170,21 +144,18 @@ public sealed partial class SetupScene
     string? kind = null
   )
   {
-    string wanted = Letters(faces);
-    Block[] fits =
-    [
-      .. family.Where(f => f.Faces == wanted).Select(f => f.Block),
-    ];
-    if (fits.Length != 1)
-      throw Fail(
-        where,
-        fits.Length == 0
-          ? $"cell {Describe(pos)} needs a block with the faces {wanted}, and none of {string.Join(", ", family.Select(f => f.Block.Code))} has them."
-          : $"cell {Describe(pos)} needs a block with the faces {wanted}, and {string.Join(" and ", fits.Select(b => b.Code.ToString()))} both have them."
-      );
-    Put(fits[0], pos, where, kind, kind != null);
+    Block chosen;
+    try
+    {
+      chosen = SetupRunFamily.Choose(family, faces, Describe(pos));
+    }
+    catch (InvalidOperationException e)
+    {
+      throw Fail(where, e.Message);
+    }
+    Put(chosen, pos, where, kind, kind != null);
     _runCells[pos] = new RunCell(family, faces);
-    return fits[0];
+    return chosen;
   }
 
   private void RunStep(SetupStep step)
@@ -280,81 +251,28 @@ public sealed partial class SetupScene
     return set;
   }
 
-  private IReadOnlyList<string> OrientedFamily(string code, string where)
-  {
-    Block block =
-      World.World.GetBlock(new AssetLocation(code))
-      ?? throw Fail(where, $"\"{code}\" is not registered by the load.");
-    string[] groups =
-    [
-      .. new[] { "orientation", "side" }.Where(block.Variant.ContainsKey),
-    ];
-    if (groups.Length > 1)
-      throw Fail(
-        where,
-        $"{code} has both an orientation and a side group, so the run needs \"family\"."
-      );
-    return
-    [
-      groups.Length == 0
-        ? code
-        : block.CodeWithVariant(groups[0], "*").ToString(),
-    ];
-  }
-
   private IReadOnlyList<(Block Block, string Faces)> Family(
     IReadOnlyList<string>? declared,
     string code,
     string where
   )
   {
-    IReadOnlyList<string> wildcards = declared ?? OrientedFamily(code, where);
-    string key = string.Join("|", wildcards);
-    if (_family.TryGetValue(key, out var cached))
-      return cached;
-    (Block Block, string Faces)[] blocks =
-    [
-      .. World
-        .World.Blocks.Where(b =>
-          b.Id != 0
-          && b is INetworkConnector
-          && wildcards.Any(w => WildcardUtil.Match(w, b.Code.ToString()))
-        )
-        .Select(b =>
-          (
-            b,
-            Letters(
-              BlockFacing.ALLFACES.Where(f =>
-                ((INetworkConnector)b).HasConnectorAt(f)
-              )
-            )
-          )
-        ),
-    ];
-    string[] types =
-    [
-      .. blocks
-        .Select(b => ((INetworkConnector)b.Block).NetworkType)
-        .Distinct(),
-    ];
-    if (types.Length != 1)
-      throw Fail(
-        where,
-        types.Length == 0
-          ? $"no loaded block takes the family {string.Join(", ", wildcards)}."
-          : $"the family {string.Join(", ", wildcards)} holds blocks of more than one network type, {string.Join(" and ", types)}."
+    try
+    {
+      IReadOnlyList<string> wildcards = SetupRunFamily.Wildcards(
+        World.World,
+        declared,
+        code
       );
-    return _family[key] = blocks;
+      string key = string.Join("|", wildcards);
+      if (_family.TryGetValue(key, out var cached))
+        return cached;
+      return _family[key] = SetupRunFamily.Members(World.World, wildcards);
+    }
+    catch (InvalidOperationException e)
+    {
+      throw Fail(where, e.Message);
+    }
   }
-
-  private static string Letters(IEnumerable<BlockFacing> faces) =>
-    string.Concat(
-      BlockFacing.ALLFACES.Where(faces.Contains).Select(f => f.Code[0])
-    );
-
-  private static (int X, int Y, int Z) Step(
-    (int X, int Y, int Z) p,
-    BlockFacing f
-  ) => (p.X + f.Normali.X, p.Y + f.Normali.Y, p.Z + f.Normali.Z);
 }
 #endif

@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Definitions;
+using ExpandedLib.Networks;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
@@ -19,7 +21,9 @@ internal sealed record LayoutPlacing(
 
 /// <summary><c>layout</c> read by the live runner: the entries are placed by the world in legend
 /// order before the first step, each run laid by the scenario player, and every structure checked
-/// against its drawing. Prints one line per placing entry, labelled <c>L</c> and its place among
+/// against its drawing. A run cell of a network block is laid as the member of its family whose
+/// faces are the cell's drawn faces, and one the block's own placement orients otherwise is turned
+/// to them with the wrench; any other run cell is laid as its entry's code. Prints one line per placing entry, labelled <c>L</c> and its place among
 /// them.</summary>
 internal static class SetupLayoutWalk {
   /// <summary>The placing entries of <paramref name="layout"/> in placement order.</summary>
@@ -48,12 +52,17 @@ internal static class SetupLayoutWalk {
 
   /// <summary>Walks <paramref name="layout"/> in the order of <see cref="Plan"/>.</summary>
   /// <param name="place">Places a run's cells by the scenario player; null when the case has none.</param>
-  /// <exception cref="StepFailure">An entry does not place, a structure disagrees with its drawing, or
-  /// a run is drawn and <paramref name="place"/> is null. The entry's FAIL line is printed first.</exception>
+  /// <param name="wrench">Turns a placed network block by the scenario player's wrench; null for none.</param>
+  /// <exception cref="StepFailure">An entry does not place, a structure disagrees with its drawing, a
+  /// run is drawn and <paramref name="place"/> is null, a run cell's drawn faces are no member of its
+  /// family (suspect scenario), a run cell stays off its drawn faces through every orientation the
+  /// wrench offers, or the cells of a run are not in one network (suspect mod). The entry's FAIL line
+  /// is printed first.</exception>
   public static IEnumerable<bool> Run(
     ScenarioContext ctx,
     SetupLayout layout,
-    RunStep.PlayerPlace? place
+    RunStep.PlayerPlace? place,
+    RunStep.PlayerWrench? wrench = null
   ) {
     int placed = 0;
     foreach (LayoutPlacing p in Plan(layout)) {
@@ -61,7 +70,14 @@ internal static class SetupLayoutWalk {
       ctx.Current = label;
       string what = Describe(p.Entry);
       var report = new StepReport();
-      using IEnumerator<bool> running = Place(ctx, layout, p, place, report)
+      using IEnumerator<bool> running = Place(
+          ctx,
+          layout,
+          p,
+          place,
+          wrench,
+          report
+        )
         .GetEnumerator();
       while (true) {
         bool more;
@@ -91,10 +107,11 @@ internal static class SetupLayoutWalk {
     SetupLayout layout,
     LayoutPlacing p,
     RunStep.PlayerPlace? place,
+    RunStep.PlayerWrench? wrench,
     StepReport report
   ) =>
     p.Run is { } run
-      ? PlaceRun(ctx, run, place, report)
+      ? PlaceRun(ctx, layout, run, place, wrench, report)
       : PlaceBlock(ctx, layout, p.Entry, p.Cells, report);
 
   private static IEnumerable<bool> PlaceBlock(
@@ -133,8 +150,10 @@ internal static class SetupLayoutWalk {
 
   private static IEnumerable<bool> PlaceRun(
     ScenarioContext ctx,
+    SetupLayout layout,
     LayoutRun run,
     RunStep.PlayerPlace? place,
+    RunStep.PlayerWrench? wrench,
     StepReport report
   ) {
     if (place == null)
@@ -142,12 +161,56 @@ internal static class SetupLayoutWalk {
         "\"run\" needs the scenario player.",
         Suspect.Scenario
       );
-    List<Block> blocks = [.. run.Cells.Select(c => ctx.BlockOf(c.Entry.Code!))];
     List<BlockPos> laid =
     [
       .. run.Cells.Select(c => new BlockPos(c.Cell.X, c.Cell.Y, c.Cell.Z)),
     ];
-    RunStep.LayCells(ctx, place, blocks, laid, ClickFaces(run));
+    var wanted = new string?[run.Cells.Count];
+    var blocks = new List<Block>();
+    for (int i = 0; i < run.Cells.Count; i++) {
+      LayoutRunCell cell = run.Cells[i];
+      Block entry = ctx.BlockOf(cell.Entry.Code!);
+      if (entry is not INetworkConnector connector) {
+        blocks.Add(entry);
+        continue;
+      }
+      try {
+        IReadOnlyList<string> wildcards = SetupRunFamily.Wildcards(
+          ctx.World,
+          cell.Entry.Family,
+          cell.Entry.Code!
+        );
+        HashSet<BlockFacing> faces = SetupRunFamily.DrawnFaces(
+          layout,
+          cell,
+          connector.NetworkType,
+          ctx.BlockOf,
+          ctx.World.BlockAccessor,
+          at => ctx.Setup.Absolute(at)
+        );
+        blocks.Add(
+          SetupRunFamily.Choose(
+            SetupRunFamily.Members(ctx.World, wildcards),
+            faces,
+            FailureDetail.Cell(laid[i])
+          )
+        );
+        wanted[i] = SetupRunFamily.Letters(faces);
+      } catch (InvalidOperationException e) {
+        throw new StepFailure(e.Message, Suspect.Scenario);
+      }
+    }
+    RunStep.LayCells(
+      ctx,
+      place,
+      blocks,
+      laid,
+      ClickFaces(run),
+      i => {
+        if (wanted[i] is { } faces)
+          Turn(ctx, wrench, laid[i], faces);
+      }
+    );
     yield return true;
     foreach (LayoutRunCell cell in run.Cells)
       foreach (BlockFacing face in cell.Opens)
@@ -162,6 +225,36 @@ internal static class SetupLayoutWalk {
         ctx.Setup.Place(id, new SetupPlacement(laid[i], [laid[i]]));
     ctx.Setup.Place(run.Id, new SetupPlacement(laid[0], laid));
     report.Value = $"{laid.Count} cell(s) of {run.Id}";
+  }
+
+  /// <summary>Turns the network block just placed at <paramref name="cell"/> with the wrench until
+  /// its connectors are <paramref name="wanted"/>, stopping when an orientation comes round
+  /// again.</summary>
+  private static void Turn(
+    ScenarioContext ctx,
+    RunStep.PlayerWrench? wrench,
+    BlockPos cell,
+    string wanted
+  ) {
+    string Faces() =>
+      ctx.Setup.BlockAt(cell) is INetworkConnector held
+        ? SetupRunFamily.FacesOf(held)
+        : "";
+    List<string> offered = [ctx.Setup.BlockAt(cell).Code.ToString()];
+    while (Faces() != wanted) {
+      if (wrench == null || !wrench(ctx.Setup.Absolute(cell), 1))
+        throw new StepFailure(
+          $"{offered[^1]} at {FailureDetail.Cell(cell)} holds the faces {Faces()}, the drawing has {wanted}, and it cannot be turned with a wrench.",
+          Suspect.Mod
+        );
+      string now = ctx.Setup.BlockAt(cell).Code.ToString();
+      if (offered.Contains(now))
+        throw new StepFailure(
+          $"the wrench never turned {offered[0]} at {FailureDetail.Cell(cell)} to the drawn faces {wanted}; it offered {string.Join(", ", offered)}.",
+          Suspect.Mod
+        );
+      offered.Add(now);
+    }
   }
 
   /// <summary>The click face of each cell of <paramref name="run"/>: the face of the cell it was

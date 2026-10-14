@@ -9,6 +9,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.GameContent;
 using Vintagestory.Server;
 
 namespace ExpandedLib.Testing.Live;
@@ -282,6 +283,32 @@ internal sealed class ScenarioPlayer {
       slot.Itemstack = null;
       Park();
     }
+  }
+
+  /// <summary>Turns the block at <paramref name="at"/> one step with the wrench, through
+  /// <c>IWrenchOrientable.Rotate</c> as the game's wrench calls it, the player as the turning
+  /// entity.</summary>
+  /// <param name="at">The absolute cell of the block.</param>
+  /// <param name="dir">1 for the next orientation of the block's cycle, -1 for the one before.</param>
+  /// <returns>Whether the block answers a wrench at all.</returns>
+  public bool Wrench(BlockPos at, int dir) {
+    if (
+      _server
+        .BlockAccessor.GetBlock(at)
+        .GetInterface<IWrenchOrientable>(_server, at)
+      is not { } turnable
+    )
+      return false;
+    turnable.Rotate(
+      Player.Entity,
+      new BlockSelection {
+        Position = at.Copy(),
+        Face = BlockFacing.UP,
+        HitPosition = Hit(BlockFacing.UP),
+      },
+      dir
+    );
+    return true;
   }
 
   /// <summary>Stands the player in reach of the block at <paramref name="at"/>, facing its
