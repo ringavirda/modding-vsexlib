@@ -56,11 +56,7 @@ internal sealed class ExpectStep : ScenarioStep {
     yield break;
   }
 
-  private static string Drops(
-    ScenarioContext ctx,
-    SetupStep step,
-    JObject o
-  ) {
+  private static string Drops(ScenarioContext ctx, SetupStep step, JObject o) {
     BreakRecord last =
       ctx.LastBreak
       ?? throw new StepFailure("no break has run.", Suspect.Scenario);

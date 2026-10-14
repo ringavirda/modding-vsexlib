@@ -192,7 +192,9 @@ internal sealed class BreakStep : ScenarioStep {
     if (player == null)
       ctx.World.BlockAccessor.BreakBlock(at, null);
     else if (!player.Break(at, stack, out string? refused))
-      throw new StepFailure($"{block} at {FailureDetail.Cell(local)}: {refused}.");
+      throw new StepFailure(
+        $"{block} at {FailureDetail.Cell(local)}: {refused}."
+      );
     PackLedger.Give(ctx, stack);
     yield return true;
     List<ItemStack> dropped = [];

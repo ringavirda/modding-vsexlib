@@ -12,17 +12,21 @@ namespace ExpandedLib.Tests.Scenarios.Live;
 
 /// <summary>The <c>break</c> step's pure parts: the tier check, who breaks, the drops a block declares
 /// and how <c>expect drops</c> reads what dropped (scenarios.md, <c>break</c>).</summary>
-public class BreakStepTests {
-  private static readonly Item Ore = new() {
+public class BreakStepTests
+{
+  private static readonly Item Ore = new()
+  {
     Code = new AssetLocation("test:ore"),
     ItemId = 910,
   };
-  private static readonly Item Flint = new() {
+  private static readonly Item Flint = new()
+  {
     Code = new AssetLocation("test:flint"),
     ItemId = 911,
   };
 
-  private sealed class Dropper : Block {
+  private sealed class Dropper : Block
+  {
     public override ItemStack[] GetDrops(
       IWorldAccessor world,
       BlockPos pos,
@@ -34,7 +38,8 @@ public class BreakStepTests {
   /// <summary>Fails when a tool below the block's tier is let through, or a tool that meets it, or
   /// a block that needs none, is refused.</summary>
   [Fact]
-  public void A_held_tool_below_the_blocks_tier_is_refused() {
+  public void A_held_tool_below_the_blocks_tier_is_refused()
+  {
     Assert.NotNull(ScenarioPlayer.TierRefusal(2, 1));
     Assert.NotNull(ScenarioPlayer.TierRefusal(1, 0));
     Assert.Null(ScenarioPlayer.TierRefusal(2, 2));
@@ -44,7 +49,8 @@ public class BreakStepTests {
   /// <summary>Fails when a break by the world is given the scenario player, or a break by the player
   /// is not.</summary>
   [Fact]
-  public void A_break_by_the_world_has_no_breaker() {
+  public void A_break_by_the_world_has_no_breaker()
+  {
     IPlayer player = new TestWorld().Player().Player;
 
     Assert.Null(BreakStep.Breaker("world", player));
@@ -54,7 +60,8 @@ public class BreakStepTests {
   /// <summary>Fails when the listed counts compare the first stack of a code instead of the sum of
   /// every stack of it.</summary>
   [Fact]
-  public void Drops_sum_per_code() {
+  public void Drops_sum_per_code()
+  {
     ItemStack[] dropped = [new(Ore, 2), new(Flint, 1), new(Ore, 3)];
 
     Assert.Null(BreakStep.Mismatch([("test:ore", 5)], dropped, false));
@@ -64,7 +71,8 @@ public class BreakStepTests {
   /// <summary>Fails when exact ignores a stack the list does not name, or refuses one without
   /// exact.</summary>
   [Fact]
-  public void Exact_drops_refuse_an_unlisted_stack() {
+  public void Exact_drops_refuse_an_unlisted_stack()
+  {
     ItemStack[] dropped = [new(Ore, 2), new(Flint, 1)];
 
     Assert.Null(BreakStep.Mismatch([("test:ore", 2)], dropped, false));
@@ -74,7 +82,8 @@ public class BreakStepTests {
 
   /// <summary>Fails when a listed code that dropped nothing passes.</summary>
   [Fact]
-  public void A_listed_code_that_did_not_drop_fails() {
+  public void A_listed_code_that_did_not_drop_fails()
+  {
     string? mismatch = BreakStep.Mismatch([("test:ore", 1)], [], false);
 
     Assert.Contains("test:ore x0, expected x1", mismatch);
@@ -83,7 +92,8 @@ public class BreakStepTests {
   /// <summary>Fails when declared drops allow a count more than 1 off, a code that dropped without
   /// being declared, or a declared code that did not drop.</summary>
   [Fact]
-  public void Declared_drops_allow_a_rounding_of_one_and_the_same_codes() {
+  public void Declared_drops_allow_a_rounding_of_one_and_the_same_codes()
+  {
     ItemStack[] declared = [new(Ore, 3)];
 
     Assert.Null(BreakStep.DeclaredMismatch(declared, [new ItemStack(Ore, 4)]));
@@ -103,7 +113,8 @@ public class BreakStepTests {
   /// <summary>Fails when the declared drops of a plain block are not its own
   /// <c>Block.GetDrops</c>.</summary>
   [Fact]
-  public void A_block_declares_its_own_drops() {
+  public void A_block_declares_its_own_drops()
+  {
     var world = new TestWorld();
     var at = new BlockPos(2, 2, 2);
     world.Place(at, TestBlocks.Configure(new Dropper(), "test:dropper", 80));
@@ -115,7 +126,8 @@ public class BreakStepTests {
 
   /// <summary>Fails when a filler cell declares its own (empty) drops instead of its principal's.</summary>
   [Fact]
-  public void A_filler_declares_its_principals_drops() {
+  public void A_filler_declares_its_principals_drops()
+  {
     var world = new TestWorld();
     var principal = new BlockPos(4, 4, 4);
     var cell = new BlockPos(5, 4, 4);
