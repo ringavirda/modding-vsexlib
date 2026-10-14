@@ -375,9 +375,9 @@ public sealed class ExItemDef : IExDef {
   }
 
   /// <summary>Sets <c>attributes.itemViews</c>, which the load pass and <see cref="ItemViews"/> read: the kind
-  /// the item's views are laid out as, and for a long tool the end that works.</summary>
+  /// the item's views are laid out as, and the end that works.</summary>
   /// <param name="kind">Written as its lower-case name; <see cref="ItemViewKind.None"/> keeps the game's defaults.</param>
-  /// <param name="tip">The working end of a longtool or tool as a sign and an axis letter in the shape's frame
+  /// <param name="tip">The working end as a sign and an axis letter in the shape's frame
   /// ("+y"), or null to take the end the drawn elements give; read when the views are computed, not here. A
   /// tip that is not a sign and one of x, y, z is logged as an error naming the item at load, and the item keeps
   /// the game's views.</param>

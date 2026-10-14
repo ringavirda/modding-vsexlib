@@ -699,13 +699,14 @@ internal static class ViewGates {
 
   private static readonly string[] BlockClips = [BlockHeldClip, "holdunderarm"];
 
-  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips and G12 catalogue of <paramref name="group"/>. They hold for every
+  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips, G12 catalogue and G14 hand.tip of <paramref name="group"/>. They hold for every
   /// collectible whatever vanilla does and are not banded.</summary>
   /// <param name="world">The world the group comes from.</param>
   /// <param name="group">The group to judge.</param>
   /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
-  /// <returns>G4 on the ground, G9 in third and first person, G11, and G12 when a row of
-  /// <paramref name="catalogue"/> names one of the group's codes, each with its pass or failure.</returns>
+  /// <returns>G4 on the ground, G9 in third and first person, G11, G14 when the group's collectible declares an
+  /// <c>itemViews.tip</c>, and G12 when a row of <paramref name="catalogue"/> names one of the group's codes, each
+  /// with its pass or failure.</returns>
   internal static IReadOnlyList<GateReading> Rules(
     TestWorld world,
     ViewGroup group,
@@ -755,9 +756,40 @@ internal static class ViewGates {
     readings.Add(Floor(world, group, false));
     readings.Add(Floor(world, group, true));
     readings.Add(Clips(world, group));
+    if (!group.IsBlock && DeclaredTip(group.Representative) is { } tip)
+      readings.Add(TipUp(world, group, tip));
     if (catalogue?.Reading(group) is { } sized)
       readings.Add(sized);
     return readings;
+  }
+
+  private static string? DeclaredTip(CollectibleObject c) =>
+    c.Attributes?["itemViews"]?["tip"]?.AsString();
+
+  private static GateReading TipUp(TestWorld world, ViewGroup group, string tip) {
+    Lay lay = Lay.Of(group.Box, true, tip);
+    SeraphPose pose = HeldPose(world, group, false);
+    Mat4 m = HeldMatrix(group, pose, false);
+    double[] mid = [.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)];
+    Vec3d At(double along) => m.Apply(lay.Point([along, mid[1], mid[2]]) / 16);
+    double rise = (At(lay.Hi[0]).Y - At(lay.Lo[0]).Y) * 16;
+    double[] g = GripPoint(group.Hand, pose);
+    double grip = lay.Coords(new Vec3d(g[0], g[1], g[2]))[0];
+    bool up = rise > 0;
+    bool handle = grip <= mid[0];
+    return new GateReading(
+      "G14",
+      "hand.tip",
+      "tp",
+      rise,
+      0,
+      double.PositiveInfinity,
+      null,
+      up && handle,
+      up
+        ? $"the grip at {Fmt(grip)} voxels is not in the handle half below {Fmt(mid[0])}"
+        : $"the tip end {Fmt(-rise)} voxel below the grip end"
+    );
   }
 
   private static GateReading Floor(
@@ -965,7 +997,8 @@ internal static class ViewGates {
     double[] at = GripPoint(tf, pose);
     Lay lay = Lay.Of(
       group.Box,
-      group.Kind is ItemViewKind.Longtool or ItemViewKind.Tool,
+      group.Kind is ItemViewKind.Longtool or ItemViewKind.Tool
+        || DeclaredTip(group.Representative) != null,
       TipOf(group.Representative)
     );
     double[] u = lay.Coords(new Vec3d(at[0], at[1], at[2]));

@@ -16,7 +16,7 @@ namespace ExpandedLib.Helpers;
 public static class ItemViews {
   /// <summary>Computes the views of <paramref name="collectible"/>. The kind is its declared
   /// <c>attributes.itemViews.kind</c> or the one its drawn box gives; <c>attributes.itemViews.tip</c> names
-  /// the working end of a longtool or tool as a sign and an axis letter ("+y"). The slot and ground views
+  /// the working end of an item as a sign and an axis letter ("+y"). The slot and ground views
   /// are computed from the box as well. A block takes the game's block rotations with its origins on the drawn box.
   /// A mod item with no <c>attributes.itemViews</c> key that draws a game item's shape takes that item's shipped views.</summary>
   /// <param name="api">The api of the side whose world is loaded.</param>
@@ -71,7 +71,7 @@ public static class ItemViews {
   /// <param name="api">The api of the side whose world is loaded.</param>
   /// <param name="shape">The shape's base, selectiveElements and rotateX/Y/Z are read.</param>
   /// <param name="kind">Longtool, Plate, Bulk, Bar or Lump.</param>
-  /// <param name="tip">The working end of a longtool as a sign and an axis letter ("+y"), or null.</param>
+  /// <param name="tip">The working end as a sign and an axis letter ("+y"), or null.</param>
   /// <returns>The views, as the collectible overload gives an item of that shape and kind.</returns>
   /// <exception cref="ArgumentException"><paramref name="kind"/> is None, Tool, Workpiece or a block kind,
   /// whose reference is a collectible or a block; or <paramref name="tip"/> is not a sign and one of x, y, z.</exception>
@@ -268,40 +268,31 @@ public static class ItemViews {
   ) {
     Lay lay = Lay.Of(
       box,
-      kind is ItemViewKind.Longtool or ItemViewKind.Tool,
+      kind is ItemViewKind.Longtool or ItemViewKind.Tool || tip != null,
       tip
     );
-    var turn = new double[3, 3];
-    for (int k = 0; k < 3; k++)
-      for (int i = 0; i < 3; i++)
-        for (int j = 0; j < 3; j++)
-          turn[i, j] +=
-            Lay.Component(reference.Axes[k], i) * Lay.Component(lay.Axes[k], j);
-    bool mirrored = Det(turn) < 0;
-    if (mirrored)
-      for (int i = 0; i < 3; i++)
-        for (int j = 0; j < 3; j++)
-          turn[i, j] -=
-            2
-            * Lay.Component(reference.Axes[2], i)
-            * Lay.Component(lay.Axes[2], j);
-
+    double[,] slotTurn = Turn(lay, reference, out _);
+    HandReference grasp =
+      tip != null && kind is ItemViewKind.Lump or ItemViewKind.Bulk
+        ? Rod with { Scale = reference.Scale }
+        : reference;
+    double[,] turn = Turn(lay, grasp, out bool mirrored);
     double[,] r = Mul(
       Rotation(
         new Vec3d(
-          reference.Rotation.X,
-          reference.Rotation.Y - HandYaw,
-          reference.Rotation.Z
+          grasp.Rotation.X,
+          grasp.Rotation.Y - HandYaw,
+          grasp.Rotation.Z
         )
       ),
       turn
     );
     Vec3d euler = Euler(r);
     Vec3d grip =
-      kind == ItemViewKind.Bulk
+      kind == ItemViewKind.Bulk && tip == null
         ? BulkGrip(lay, box)
-        : Grip(lay, box, reference, mirrored);
-    double s = reference.Scale;
+        : Grip(lay, box, grasp, mirrored);
+    double s = grasp.Scale;
     ModelTransform hand = new() {
       Translation = new FastVec3f(
         (float)(-grip.X / 16 / s),
@@ -328,7 +319,7 @@ public static class ItemViews {
     };
     return new ItemViewSet(
       kind,
-      Slot(kind, lay, reference, turn),
+      Slot(kind, lay, reference, slotTurn),
       hand,
       Ground(lay, reference),
       idle,
@@ -340,6 +331,30 @@ public static class ItemViews {
       lay.Axes,
       grip
     );
+  }
+
+  // The matrix that carries the lay's axes onto the reference's, mirrored about the shortest where the two
+  // frames differ in handedness.
+  private static double[,] Turn(
+    Lay lay,
+    HandReference reference,
+    out bool mirrored
+  ) {
+    var turn = new double[3, 3];
+    for (int k = 0; k < 3; k++)
+      for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
+          turn[i, j] +=
+            Lay.Component(reference.Axes[k], i) * Lay.Component(lay.Axes[k], j);
+    mirrored = Det(turn) < 0;
+    if (mirrored)
+      for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
+          turn[i, j] -=
+            2
+            * Lay.Component(reference.Axes[2], i)
+            * Lay.Component(lay.Axes[2], j);
+    return turn;
   }
 
   // The reference's slot rotation after the lay's turn, the origin on the box centre (a longtool's on the
