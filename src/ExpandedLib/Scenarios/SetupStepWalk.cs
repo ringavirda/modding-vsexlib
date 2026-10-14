@@ -17,8 +17,7 @@ internal static class SetupStepWalk {
       .Concat(model.During.SelectMany(d => d.Steps))
       .Concat(
         model.Variants.SelectMany(v =>
-          v
-            .Replace.Values.Concat(v.After.SelectMany(a => a.Steps))
+          v.Replace.Values.Concat(v.After.SelectMany(a => a.Steps))
             .Concat(v.During?.SelectMany(d => d.Steps) ?? [])
         )
       )

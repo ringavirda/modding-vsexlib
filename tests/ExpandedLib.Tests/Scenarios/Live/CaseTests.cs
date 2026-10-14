@@ -89,7 +89,10 @@ public class CaseTests {
         )
       )
       .Message;
-    Assert.Contains("\"advance\" is not a step the live runner runs yet", message);
+    Assert.Contains(
+      "\"advance\" is not a step the live runner runs yet",
+      message
+    );
   }
 
   /// <summary>Fails when the live refusal walks <c>steps</c> only, so a <c>paste</c> inside
@@ -101,7 +104,10 @@ public class CaseTests {
       """{ during: [{ at: 2, step: { "paste": { "file": "x", "at": [0, 0, 0] } } }] }"""
     );
     Assert.Contains("during[0]", message);
-    Assert.Contains("\"paste\" is not a step the live runner runs yet", message);
+    Assert.Contains(
+      "\"paste\" is not a step the live runner runs yet",
+      message
+    );
   }
 
   /// <summary>Fails when a <c>game</c> above the server's series is accepted (V36).</summary>
@@ -119,7 +125,10 @@ public class CaseTests {
   /// <summary>Fails when the series compare is dropped and an older game is refused too (V37).</summary>
   [Fact]
   public void A_game_at_or_below_the_servers_series_is_read() =>
-    Assert.Equal("1.21", LiveFixture.Case(Place, """{ game: "1.21" }""").Model.Game);
+    Assert.Equal(
+      "1.21",
+      LiveFixture.Case(Place, """{ game: "1.21" }""").Model.Game
+    );
 
   /// <summary>Fails when a mod the server has not loaded is accepted (V38).</summary>
   [Fact]
@@ -143,7 +152,9 @@ public class CaseTests {
   public void Loaded_mods_are_read() =>
     Assert.Equal(
       ["iiex"],
-      LiveFixture.Case(Place, """{ mods: ["iiex"] }""", "1.22", "iiex").Model.Mods
+      LiveFixture
+        .Case(Place, """{ mods: ["iiex"] }""", "1.22", "iiex")
+        .Model.Mods
     );
 
   /// <summary>Fails when tickOrders is dropped from the refused list (V33).</summary>
