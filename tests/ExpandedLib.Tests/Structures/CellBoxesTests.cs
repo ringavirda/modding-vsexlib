@@ -49,8 +49,10 @@ public class CellBoxesTests {
     }
     """;
 
-  private const string Box = """{ "x1": 0, "y1": 0, "z1": 0, "x2": 0.5, "y2": 0.5, "z2": 0.5 }""";
-  private const string Other = """{ "x1": 0.5, "y1": 0, "z1": 0, "x2": 1, "y2": 0.5, "z2": 0.5 }""";
+  private const string Box =
+    """{ "x1": 0, "y1": 0, "z1": 0, "x2": 0.5, "y2": 0.5, "z2": 0.5 }""";
+  private const string Other =
+    """{ "x1": 0.5, "y1": 0, "z1": 0, "x2": 1, "y2": 0.5, "z2": 0.5 }""";
 
   #region Read
 
@@ -67,12 +69,24 @@ public class CellBoxesTests {
     var door = Assert.Single(boxes.Doors!);
     Assert.Equal("counterlid", door.Control);
     Assert.False(door.OpenCollides);
-    AssertBox(new Cuboidf(0.75f, 0.125f, 0.375f, 1f, 0.375f, 0.625f), Assert.Single(door.Shut));
-    AssertBox(new Cuboidf(0.9375f, 0.1875f, 0.4375f, 1f, 0.25f, 0.5625f), Assert.Single(door.Open));
-    AssertBox(new Cuboidf(0.875f, 0f, 0.375f, 1f, 1f, 0.625f), Assert.Single(door.Opening));
+    AssertBox(
+      new Cuboidf(0.75f, 0.125f, 0.375f, 1f, 0.375f, 0.625f),
+      Assert.Single(door.Shut)
+    );
+    AssertBox(
+      new Cuboidf(0.9375f, 0.1875f, 0.4375f, 1f, 0.25f, 0.5625f),
+      Assert.Single(door.Open)
+    );
+    AssertBox(
+      new Cuboidf(0.875f, 0f, 0.375f, 1f, 1f, 0.625f),
+      Assert.Single(door.Opening)
+    );
 #if GAME_GE_1_22
     Assert.Equal("counter", ((CuboidfWithId)boxes.Selection[6]).Id);
-    Assert.All(boxes.Selection.Take(6), b => Assert.IsNotType<CuboidfWithId>(b));
+    Assert.All(
+      boxes.Selection.Take(6),
+      b => Assert.IsNotType<CuboidfWithId>(b)
+    );
 #endif
   }
 
@@ -142,8 +156,14 @@ public class CellBoxesTests {
 
     CellBoxes turned = boxes.Turned(angle);
 
-    AssertBoxes(ExOrientation.RotateBoxes(boxes.Collision!, angle), turned.Collision!);
-    AssertBoxes(ExOrientation.RotateBoxes(boxes.Selection!, angle), turned.Selection!);
+    AssertBoxes(
+      ExOrientation.RotateBoxes(boxes.Collision!, angle),
+      turned.Collision!
+    );
+    AssertBoxes(
+      ExOrientation.RotateBoxes(boxes.Selection!, angle),
+      turned.Selection!
+    );
     AssertBoxes(
       ExOrientation.RotateBoxes(boxes.Doors![0].Shut, angle),
       turned.Doors![0].Shut
@@ -164,10 +184,21 @@ public class CellBoxesTests {
   public void Turned_by_function_applies_it_to_every_box() {
     CellBoxes boxes = ReadRow(TwinTubCell)!;
 
-    CellBoxes lifted = boxes.Turned(b => new Cuboidf(b.X1, b.Y1 + 1, b.Z1, b.X2, b.Y2 + 1, b.Z2));
+    CellBoxes lifted = boxes.Turned(b => new Cuboidf(
+      b.X1,
+      b.Y1 + 1,
+      b.Z1,
+      b.X2,
+      b.Y2 + 1,
+      b.Z2
+    ));
 
     Assert.Equal(boxes.Selection![6].Y1 + 1, lifted.Selection![6].Y1, 4);
-    Assert.Equal(boxes.Doors![0].Shut[0].Y2 + 1, lifted.Doors![0].Shut[0].Y2, 4);
+    Assert.Equal(
+      boxes.Doors![0].Shut[0].Y2 + 1,
+      lifted.Doors![0].Shut[0].Y2,
+      4
+    );
 #if GAME_GE_1_22
     Assert.Equal("counter", ((CuboidfWithId)lifted.Selection[6]).Id);
 #endif
@@ -229,7 +260,9 @@ public class CellBoxesTests {
 
     Assert.Equal(
       """[{"x":1,"y":0,"z":0,"allowAttach":true},{"x":0,"y":1,"z":0,"collisionBox":{"x1":0.0,"y1":0.0,"z1":0.0,"x2":1.0,"y2":0.5,"z2":1.0},"portFace":"west","portNetwork":"mpenergy"}]""",
-      json["attributes"]!["fillerOffsets"]!.ToString(Newtonsoft.Json.Formatting.None)
+      json["attributes"]!["fillerOffsets"]!.ToString(
+        Newtonsoft.Json.Formatting.None
+      )
     );
   }
 
@@ -256,7 +289,12 @@ public class CellBoxesTests {
     );
     Assert.Throws<ArgumentException>(() =>
       StructureFootprint.Validate([
-        new FillerCellSpec(1, 0, 0, Doors: [new DoorLeaf("", [], [], [], false)]),
+        new FillerCellSpec(
+          1,
+          0,
+          0,
+          Doors: [new DoorLeaf("", [], [], [], false)]
+        ),
       ])
     );
   }
@@ -332,7 +370,10 @@ public class CellBoxesTests {
       .ToJson();
 
     Assert.NotNull(json["attributes"]!["principalCell"]!["collisionBox"]);
-    Assert.Equal("valve", (string?)json["attributes"]!["controls"]![0]!["kind"]);
+    Assert.Equal(
+      "valve",
+      (string?)json["attributes"]!["controls"]![0]!["kind"]
+    );
   }
 
   #endregion

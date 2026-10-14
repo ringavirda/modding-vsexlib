@@ -149,7 +149,9 @@ public sealed record CellBoxes(
   /// <paramref name="turn"/> may drop the id (<c>Cuboidf.RotatedCopy</c> does); it is re-attached by
   /// position.</summary>
   public CellBoxes Turned(Func<Cuboidf, Cuboidf> turn) {
-    Cuboidf[]? selection = Selection?.Select(b => TurnKeepingId(b, turn)).ToArray();
+    Cuboidf[]? selection = Selection
+      ?.Select(b => TurnKeepingId(b, turn))
+      .ToArray();
     return new CellBoxes(
       Collision?.Select(turn).ToArray(),
       selection,
@@ -162,11 +164,13 @@ public sealed record CellBoxes(
         })
         .ToArray(),
       Doors
-        ?.Select(d => d with {
-          Shut = [.. d.Shut.Select(turn)],
-          Open = [.. d.Open.Select(turn)],
-          Opening = [.. d.Opening.Select(turn)],
-        })
+        ?.Select(d =>
+          d with {
+            Shut = [.. d.Shut.Select(turn)],
+            Open = [.. d.Open.Select(turn)],
+            Opening = [.. d.Opening.Select(turn)],
+          }
+        )
         .ToArray()
     );
   }
