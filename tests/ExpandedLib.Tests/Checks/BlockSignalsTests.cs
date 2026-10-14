@@ -432,6 +432,92 @@ public class BlockSignalsTests {
 
   #endregion
 
+  #region Controls
+
+  private const string Box =
+    """{ "x1": 0, "y1": 0, "z1": 0, "x2": 1, "y2": 0.5, "z2": 1 }""";
+
+  private Block Hosting(string fillerRow) {
+    Block host = TestBlocks.Configure(
+      new BlockFilledMegastructure(),
+      "exlib:probe",
+      1
+    );
+    host.Attributes = Attributes(
+      "{ \"fillerOffsets\": [ { \"x\": 1, \"y\": 0, \"z\": 0, "
+        + fillerRow
+        + " } ] }"
+    );
+    return host;
+  }
+
+  // Fails when a controls table is not read as a control.
+  [Fact]
+  public void A_controls_table_is_a_control() {
+    Block block = Plain();
+    block.Attributes = Attributes(
+      """{ "controls": [ { "id": "dial", "kind": "hud" } ] }"""
+    );
+
+    Assert.True(Read(block).Controls);
+    Assert.Contains("controls", Read(block).Names());
+  }
+
+  // Fails when a principalCell row is not read as a control.
+  [Fact]
+  public void A_principal_cell_is_a_control() {
+    Block block = Plain();
+    block.Attributes = Attributes(
+      "{ \"principalCell\": { \"collisionBoxes\": [ " + Box + " ] } }"
+    );
+
+    Assert.True(Read(block).Controls);
+    Assert.Contains("controls", Read(block).Names());
+  }
+
+  // Fails when a footprint cell whose only box key is selectionBoxes is not read as a control.
+  [Fact]
+  public void A_cell_with_selection_boxes_is_a_control() {
+    Block host = Hosting("\"selectionBoxes\": [ " + Box + " ]");
+
+    Assert.True(Read(host).Controls);
+    Assert.Contains("controls", Read(host).Names());
+  }
+
+  // Fails when a footprint cell with a controls row is not read as a control.
+  [Fact]
+  public void A_cell_with_a_control_box_is_a_control() {
+    Block host = Hosting(
+      "\"controls\": [ { \"id\": \"dial\", \"box\": " + Box + " } ]"
+    );
+
+    Assert.True(Read(host).Controls);
+  }
+
+  // Fails when a footprint cell with a doors row is not read as a control.
+  [Fact]
+  public void A_cell_with_a_door_is_a_control() {
+    Block host = Hosting(
+      "\"doors\": [ { \"control\": \"hatch\", \"opening\": [], \"open\": [], \"shut\": [ "
+        + Box
+        + " ] } ]"
+    );
+
+    Assert.True(Read(host).Controls);
+  }
+
+  // Fails when a block with no control declaration reads as one.
+  [Fact]
+  public void A_plain_block_and_a_plain_cell_are_no_control() {
+    Block host = Hosting("\"collisionBoxes\": [ " + Box + " ]");
+
+    Assert.False(Read(Plain()).Controls);
+    Assert.DoesNotContain("controls", Read(Plain()).Names());
+    Assert.False(Read(host).Controls);
+  }
+
+  #endregion
+
   #region Census order
 
   // Fails when Names yields a name AllNames does not list.

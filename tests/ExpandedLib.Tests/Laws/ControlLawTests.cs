@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
+using ExpandedLib.Registries;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
@@ -39,8 +40,23 @@ public class ControlLawTests
   private static void Prepare(TestWorld world) =>
     world.RegisterClass("test-stripsids", typeof(StripsIds));
 
+  private static void PrepareStrippingFillers(TestWorld world)
+  {
+    Prepare(world);
+    world.RegisterClass(
+      EntityRegistry.KeyFor("exlib", typeof(BlockStructureFiller)),
+      typeof(StripsFillerIds)
+    );
+  }
+
   private static BlockLaws.Law Run(params ExBlockDef[] defs) =>
     ControlLaw.Run(BlockLaws.Stand(defs, Exlib, Prepare), "test");
+
+  private static BlockLaws.Law RunStrippingFillers(params ExBlockDef[] defs) =>
+    ControlLaw.Run(
+      BlockLaws.Stand(defs, Exlib, PrepareStrippingFillers),
+      "test"
+    );
 
   private static JArray Table(
     params (string Id, string Kind, string[] Also)[] rows
@@ -235,6 +251,26 @@ public class ControlLawTests
     );
   }
 
+  // Fails when the law judges a control box against the collision boxes of a cell that declares its
+  // selection, so a control inside the drawing's collision is named.
+  [Fact]
+  [PlantedDefect(typeof(ControlLaw), nameof(ControlLaw.Run))]
+  public void A_control_box_inside_the_drawings_collision_is_left_alone()
+  {
+    Cuboidf column = new(0.2f, 0f, 0.2f, 0.8f, 1f, 0.8f);
+    var cell = new CellBoxes(
+      [Slab, column],
+      [Slab, Dial],
+      [new ControlBox("dial", Dial)]
+    );
+
+    BlockLaws.Law law = Run(Machine("housed", cell, Table(("dial", "hud", []))));
+
+    Assert.Equal(1, law.Blocks);
+    Assert.Equal(4, law.Cases);
+    Assert.Empty(law.Findings);
+  }
+
   // Fails when the law stops comparing the block's boxes with the default beside a principalCell.
   [Fact]
   [PlantedDefect(typeof(ControlLaw), nameof(ControlLaw.Run))]
@@ -254,6 +290,49 @@ public class ControlLawTests
       Sides(
         "twice",
         "declares collisionboxes or selectionboxes beside principalCell"
+      ),
+      law
+    );
+  }
+
+  // Fails when the law drops the selectionboxes arm of the check beside a principalCell.
+  [Fact]
+  [PlantedDefect(typeof(ControlLaw), nameof(ControlLaw.Run))]
+  public void Top_level_selection_boxes_beside_a_principal_cell_are_named()
+  {
+    ExBlockDef def = Machine(
+        "selected",
+        null,
+        Table(("dial", "hud", [])),
+        DialCell()
+      )
+      .SelectionBox(0f, 0f, 0f, 1f, 0.5f, 1f);
+
+    BlockLaws.Law law = Run(def);
+
+    AssertFindings(
+      Sides(
+        "selected",
+        "declares collisionboxes or selectionboxes beside principalCell"
+      ),
+      law
+    );
+  }
+
+  // Fails when the law skips the cells of the fillers a host raises, or never maps their offsets to
+  // the placed positions.
+  [Fact]
+  [PlantedDefect(typeof(ControlLaw), nameof(ControlLaw.Run))]
+  public void A_filler_cell_selecting_a_control_without_its_id_is_named()
+  {
+    ExBlockDef def = Machine("hollow", DialCell(), Table(("dial", "hud", [])));
+
+    BlockLaws.Law law = RunStrippingFillers(def);
+
+    AssertFindings(
+      Sides(
+        "hollow",
+        "placed selects controls without their id: dial in (1, 0, 0)"
       ),
       law
     );
@@ -302,6 +381,18 @@ public class ControlLawTests
     Assert.Equal(1, law.Blocks);
     Assert.Equal(4, law.Cases);
     Assert.Empty(law.Findings);
+  }
+
+  private sealed class StripsFillerIds : BlockStructureFiller
+  {
+    public override Cuboidf[] GetSelectionBoxes(
+      IBlockAccessor blockAccessor,
+      BlockPos pos
+    ) =>
+      [
+        .. base.GetSelectionBoxes(blockAccessor, pos)
+          .Select(b => new Cuboidf(b.X1, b.Y1, b.Z1, b.X2, b.Y2, b.Z2)),
+      ];
   }
 
   private sealed class StripsIds : BlockFilledMegastructure

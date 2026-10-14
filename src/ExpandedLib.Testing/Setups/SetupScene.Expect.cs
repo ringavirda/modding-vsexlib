@@ -81,7 +81,10 @@ public sealed partial class SetupScene
     }
     var text = new StringBuilder();
     if (step.Body["control"] == null)
+    {
+      Player.LookAway();
       be.GetBlockInfo(Player.Player, text);
+    }
     else
     {
       try

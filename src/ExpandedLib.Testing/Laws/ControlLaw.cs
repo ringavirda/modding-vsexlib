@@ -29,9 +29,10 @@ public static class ControlLaw
   /// <remarks>A finding, at most one line per check and variant: a control or door id a cell names that the
   /// table lacks; a door on a control whose kind is not <c>door</c>; a table id no control box and no
   /// door carries; an alsoId that is itself a table id; in one cell, a control box overlapping another
-  /// control's box or a body box (collision boxes, and selection boxes that are no control's) by more
-  /// than 1e-4 on every axis; top-level collision or selection boxes beside <c>principalCell</c>
-  /// (which cannot be told from none when they equal the game's default cube); a placed cell whose
+  /// control's box or a body box (the cell's selection boxes that are no control's, or its collision
+  /// boxes when it declares no selection) by more than 1e-4 on every axis; top-level collision or
+  /// selection boxes beside <c>principalCell</c> (which cannot be told from none when they equal the
+  /// game's default cube); a placed cell whose
   /// selection lacks a control's id. A control whose table <c>stage</c> is above 0 is hidden at
   /// placement and is left out of the last check. A variant that fails to place is left to the placement
   /// law. The variants of a block are its facings.</remarks>
@@ -177,13 +178,9 @@ public static class ControlLaw
   private static bool Overlapping(CellBoxes cell)
   {
     Cuboidf[] controls = [.. (cell.Controls ?? []).Select(c => c.Box)];
-    Cuboidf[] body =
-    [
-      .. (cell.Collision ?? [FullCube]),
-      .. (cell.Selection ?? []).Where(b =>
-        !controls.Any(c => ReferenceEquals(c, b))
-      ),
-    ];
+    Cuboidf[] body = cell.Selection is { } selection
+      ? [.. selection.Where(b => !controls.Any(c => ReferenceEquals(c, b)))]
+      : cell.Collision ?? [FullCube];
     for (int i = 0; i < controls.Length; i++)
     {
       for (int j = i + 1; j < controls.Length; j++)

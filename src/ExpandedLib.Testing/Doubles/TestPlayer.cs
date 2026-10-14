@@ -211,6 +211,9 @@ public sealed class TestPlayer {
     );
     Player.CurrentBlockSelection.Returns(selection);
   }
+
+  internal void LookAway() =>
+    Player.CurrentBlockSelection.Returns((BlockSelection)null!);
 #endif
 
   private bool Use(

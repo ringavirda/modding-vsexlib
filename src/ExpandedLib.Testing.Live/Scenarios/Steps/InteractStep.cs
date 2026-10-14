@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using ExpandedLib.Scenarios;
 using Newtonsoft.Json;
@@ -40,6 +42,32 @@ internal sealed class InteractStep : ScenarioStep {
   /// <summary>The control an interact step clicks, its <c>control</c> key, or null for the block's body.</summary>
   public static string? ControlOf(JObject o) => (string?)o["control"];
 
+  /// <summary>The selection an interact step clicks: the cell's body at the middle of <paramref name="face"/>,
+  /// or the box of control <paramref name="control"/> when one is named.</summary>
+  /// <param name="accessor">The accessor the cell's selection boxes are read through.</param>
+  /// <param name="at">The absolute cell clicked.</param>
+  /// <param name="control">The id of the control's box, or null for the body.</param>
+  /// <param name="face">The face the click lands on.</param>
+  /// <exception cref="StepFailure"><paramref name="control"/> is no box's id of the cell.</exception>
+  public static BlockSelection SelectionFor(
+    IBlockAccessor accessor,
+    BlockPos at,
+    string? control,
+    BlockFacing face
+  ) {
+    if (control == null)
+      return new BlockSelection {
+        Position = at.Copy(),
+        Face = face,
+        HitPosition = ScenarioPlayer.Hit(face),
+      };
+    try {
+      return ControlAim.Selection(accessor, at, control, face);
+    } catch (ArgumentException e) {
+      throw new StepFailure(e.Message, Suspect.Scenario);
+    }
+  }
+
   /// <summary>The keys a step holds, each one of <c>sneak</c>, <c>ctrl</c> or <c>sprint</c>.</summary>
   /// <exception cref="StepFailure">A name is none of them.</exception>
   public static string[] KeyNames(JToken? token) {
@@ -75,6 +103,12 @@ internal sealed class InteractStep : ScenarioStep {
           Suspect.Scenario
         )
       : BlockFacing.SOUTH;
+    BlockSelection selection = SelectionFor(
+      ctx.World.BlockAccessor,
+      at,
+      ControlOf(o),
+      face
+    );
     ItemStack? stack = o["with"] is JObject hand
       ? StepValues.Stack(
         ctx,
@@ -93,12 +127,7 @@ internal sealed class InteractStep : ScenarioStep {
       local
     );
     int uses = player.Uses;
-    string? control = ControlOf(o);
-    BlockSelection selection;
-    bool answered =
-      control == null
-        ? player.UseStart(at, face, stack, keys, out selection)
-        : player.UseControl(at, control, face, stack, keys, out selection);
+    bool answered = player.UseStart(at, selection, stack, keys);
     try {
       if (player.Uses != uses + 1)
         throw new StepFailure(

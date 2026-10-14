@@ -1,1 +1,1 @@
-{ "code": "valve", "class": "SetupControlBlock", "entityClass": "SetupHoldEntity", "attributes": {} }
+{ "code": "valve", "class": "SetupControlBlock", "entityClass": "SetupControlEntity", "attributes": {} }

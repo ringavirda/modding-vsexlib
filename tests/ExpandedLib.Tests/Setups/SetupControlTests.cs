@@ -1,6 +1,7 @@
 #if GAME_GE_1_22
 using System;
 using System.IO;
+using System.Text;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -41,6 +42,14 @@ internal sealed class SetupControlBlock : Block
   ) => $"Reads: {forPlayer.CurrentBlockSelection?.SelectionBoxId ?? "body"}";
 }
 
+internal sealed class SetupControlEntity : BlockEntity
+{
+  public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc) =>
+    dsc.AppendLine(
+      $"Reads: {forPlayer.CurrentBlockSelection?.SelectionBoxId ?? "body"}"
+    );
+}
+
 /// <summary>The <c>control</c> key of the <c>interact</c> and <c>expect</c> <c>info</c> steps: the click lands on
 /// the named control's box, and the info reads that box (setups.md, What the harness runs).</summary>
 [Collection("Setups")]
@@ -71,7 +80,12 @@ public class SetupControlTests
       w =>
       {
         SetupHoldTests.Register(w);
-        w.RegisterClass("SetupControlBlock", typeof(SetupControlBlock));
+        w.RegisterClass("SetupControlBlock", typeof(SetupControlBlock))
+          .RegisterClass("SetupControlEntity", typeof(SetupControlEntity))
+          .RegisterBlockEntityFactory(
+            "SetupControlEntity",
+            () => new SetupControlEntity()
+          );
       }
     );
 
@@ -95,14 +109,16 @@ public class SetupControlTests
     );
   }
 
-  // Fails when the info step reads the body's line for a control, or the control's line for the body.
+  // Fails when the info step reads the body's line for a control, or a body info step after a control one
+  // still looks at that control.
   [Fact]
   public void A_setup_expect_info_with_a_control_reads_that_controls_line()
   {
     using SetupScene scene = Build(
       "["
         + Valve
-        + ", {\"expect\": {\"at\": [0, 0, 0], \"info\": \"^Reads: handle$\", \"control\": \"handle\"}}]"
+        + ", {\"expect\": {\"at\": [0, 0, 0], \"info\": \"^Reads: handle$\", \"control\": \"handle\"}}"
+        + ", {\"expect\": {\"at\": [0, 0, 0], \"info\": \"^Reads: body$\"}}]"
     );
 
     Assert.NotNull(scene);

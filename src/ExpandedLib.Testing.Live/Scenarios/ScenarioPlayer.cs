@@ -294,51 +294,21 @@ internal sealed class ScenarioPlayer {
   }
 
   /// <summary>Holds <paramref name="stack"/> in the active slot and <paramref name="keys"/>, stands the
-  /// player facing <paramref name="face"/> of the block at <paramref name="at"/>, and right-clicks it. The did-use event fires right after
-  /// <c>Block.OnBlockInteractStart</c> whatever it answered, as the server does on the start of a block use.</summary>
+  /// player facing <paramref name="selection"/>'s hit on the block at <paramref name="at"/>, and
+  /// right-clicks it. The did-use event fires right after <c>Block.OnBlockInteractStart</c> whatever it
+  /// answered, as the server does on the start of a block use.</summary>
   /// <param name="at">The absolute cell of the block used.</param>
-  /// <param name="face">The face the click lands on.</param>
+  /// <param name="selection">What the click lands on, as <see cref="InteractStep.SelectionFor"/> builds it;
+  /// the hold's later calls pass it to the block.</param>
   /// <param name="stack">What the hand holds, or null for an empty hand.</param>
   /// <param name="keys">Names read by <see cref="Hold"/>.</param>
-  /// <param name="selection">The selection the hold's later calls pass to the block.</param>
   /// <returns>What <c>Block.OnBlockInteractStart</c> answered.</returns>
   public bool UseStart(
     BlockPos at,
-    BlockFacing face,
+    BlockSelection selection,
     ItemStack? stack,
-    IReadOnlyList<string> keys,
-    out BlockSelection selection
-  ) {
-    Vec3d hit = Hit(face);
-    selection = new BlockSelection {
-      Position = at.Copy(),
-      Face = face,
-      HitPosition = hit,
-    };
-    return Start(at, selection, stack, keys);
-  }
-
-  /// <summary>As <see cref="UseStart"/>, on the selection of control <paramref name="control"/>'s box, so the
-  /// block reads the control's id from it.</summary>
-  /// <param name="at">The absolute cell of the block used.</param>
-  /// <param name="control">The id of the control, as its box carries it.</param>
-  /// <param name="face">The side of the control's box the click lands on, at its centre.</param>
-  /// <param name="stack">What the hand holds, or null for an empty hand.</param>
-  /// <param name="keys">Names read by <see cref="Hold"/>.</param>
-  /// <param name="selection">The selection the hold's later calls pass to the block.</param>
-  /// <returns>What <c>Block.OnBlockInteractStart</c> answered.</returns>
-  /// <exception cref="ArgumentException"><paramref name="control"/> is no box's id of the cell.</exception>
-  public bool UseControl(
-    BlockPos at,
-    string control,
-    BlockFacing face,
-    ItemStack? stack,
-    IReadOnlyList<string> keys,
-    out BlockSelection selection
-  ) {
-    selection = ControlAim.Selection(_server.BlockAccessor, at, control, face);
-    return Start(at, selection, stack, keys);
-  }
+    IReadOnlyList<string> keys
+  ) => Start(at, selection, stack, keys);
 
   private bool Start(
     BlockPos at,
