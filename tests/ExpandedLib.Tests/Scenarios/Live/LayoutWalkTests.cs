@@ -297,7 +297,11 @@ public class LayoutWalkTests {
     Walk(fixture, layout, Stub([]));
     Assert.Equal(0, fixture.Context.Pack!.Held("game:stone"));
     Assert.Equal(
-      [("L1", "game:stone", 1), ("L1", "game:stone", 1), ("L2", "game:stone", 1)],
+      [
+        ("L1", "game:stone", 1),
+        ("L1", "game:stone", 1),
+        ("L2", "game:stone", 1),
+      ],
       fixture.Context.Pack.Record([]).Draws
     );
   }
