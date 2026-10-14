@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Definitions;
-using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
-namespace ExpandedLib.Testing;
+namespace ExpandedLib.Scenarios;
 
 /// <summary>Checks a drawn machine against the cells its structure occupies (setups.md,
 /// Structures).</summary>
@@ -36,7 +35,7 @@ internal static class SetupStructureCheck
   /// <summary>The cells the structure at <paramref name="pos"/> occupies besides its principal:
   /// the footprint, and the layout cells that do not want air.</summary>
   public static IReadOnlyList<(int X, int Y, int Z)> Cells(
-    TestWorld world,
+    IWorldAccessor world,
     Block block,
     BlockPos pos,
     int angle
@@ -44,21 +43,18 @@ internal static class SetupStructureCheck
   {
     var cells = new List<BlockPos>();
     if (block is IFillerHost host)
-      cells.AddRange(
-        Footprint(world.World, host, pos, angle).Select(c => c.Pos)
-      );
-    BlockEntity? be = world.GetBlockEntity(pos);
+      cells.AddRange(Footprint(world, host, pos, angle).Select(c => c.Pos));
+    BlockEntity? be = world.BlockAccessor.GetBlockEntity(pos);
     if (IsMultiblock(block, be))
+    {
+      var anchor = (BlockEntityMultiblockStructure)be!;
       cells.AddRange(
-        StructureRig
-          .Around(
-            world,
-            (BlockEntityMultiblockStructure)be!,
-            ((BlockEntityMultiblockStructure)be!).LayoutAngle
-          )
-          .Cells.Where(c => new AssetLocation(c.Wanted).Path != "air")
+        SetupStructureCells
+          .Of(anchor, (JObject)block.Attributes!.Token, anchor.LayoutAngle)
+          .Where(c => new AssetLocation(c.Wanted).Path != "air")
           .Select(c => c.Pos)
       );
+    }
     return
     [
       .. cells

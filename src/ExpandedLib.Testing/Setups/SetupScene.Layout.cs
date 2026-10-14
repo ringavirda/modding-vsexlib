@@ -99,7 +99,7 @@ public sealed partial class SetupScene
       .. SetupStructureCheck.Failures(
         layout,
         entry,
-        SetupStructureCheck.Cells(World, block, pos, angle)
+        SetupStructureCheck.Cells(World.World, block, pos, angle)
       ),
     ];
     if (failures.Length > 0)

@@ -84,7 +84,8 @@ public class SetupRunTests : IDisposable
     string mod,
     string steps,
     string during,
-    string record
+    string record,
+    string checks = "[]"
   ) =>
     SetupScene.Build(
       SetupFile.Parse(
@@ -96,6 +97,8 @@ public class SetupRunTests : IDisposable
           + during
           + ", \"seconds\": 6, \"record\": "
           + record
+          + ", \"checks\": "
+          + checks
           + "}",
         "run.json"
       ),
@@ -209,6 +212,38 @@ public class SetupRunTests : IDisposable
     );
     SetupRecording recording = scene.Run(BoxMods);
     Assert.Equal([0, 0, 7, 0, 7, 0], Series(recording, "box", "level"));
+  }
+
+  private const string DrawnCheck =
+    "{\"id\": \"drawn\", \"says\": \"drawn says\", \"orders\": \"drawn\", \"always\": {\"series\": \"box.level\", \"equals\": 9}}";
+  private const string OrderedCheck =
+    "{\"id\": \"ordered\", \"says\": \"ordered says\", \"always\": {\"series\": \"box.level\", \"equals\": 8}}";
+
+  // Fails when a drawn check is judged under ordersOnly.
+  [Fact]
+  public void Judging_orders_only_skips_a_drawn_check_and_fails_on_an_ordered_one()
+  {
+    using SetupScene scene = Build(
+      "setupbox",
+      $"[{Box}]",
+      "[]",
+      BoxRecord,
+      $"[{DrawnCheck}, {OrderedCheck}]"
+    );
+    SetupRecording recording = scene.Run(BoxMods);
+    var run = new SetupRun(scene.File.Model, recording);
+
+    Assert.StartsWith("check drawn (drawn says) fails at second 0", run.Judge());
+    Assert.StartsWith(
+      "check ordered (ordered says) fails at second 0",
+      run.Judge(ordersOnly: true)
+    );
+    IReadOnlyList<SetupVerdict> verdicts = run.Verdicts(ordersOnly: true);
+    Assert.Equal([0, 1], verdicts.Select(v => v.Index));
+    Assert.True(verdicts[0].Skipped);
+    Assert.Null(verdicts[0].Failure);
+    Assert.False(verdicts[1].Skipped);
+    Assert.Equal("ordered", verdicts[1].Failure!.Id);
   }
 
   [Fact]

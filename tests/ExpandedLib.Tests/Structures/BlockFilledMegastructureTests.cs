@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;

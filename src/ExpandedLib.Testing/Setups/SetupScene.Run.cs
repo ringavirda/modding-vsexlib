@@ -1,7 +1,6 @@
 #if GAME_GE_1_22
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using ExpandedLib.Scenarios;
 
 namespace ExpandedLib.Testing;
@@ -21,32 +20,20 @@ public sealed partial class SetupScene
     string? game = null
   )
   {
-    SetupRecording recording = SetupRecording.ForFile(
-      Model,
-      View,
-      game ?? Model.Game,
-      mods
-    );
-    var reading = new ReadingContext(View, recording);
-    recording.Start(reading);
-    SampledReading[] sampled = [.. Model.Checks.SelectMany(c => c.Sampled)];
-    foreach (SampledReading kept in sampled)
-      kept.Start(reading);
+    var run = new SetupRun(Model, View, game ?? Model.Game, mods);
+    run.Start();
     for (int second = 0; second < Model.Seconds; second++)
     {
-      foreach (SetupDuring action in Model.During)
-        if (Due(action, second, reading))
-          RunSteps(action.Steps);
+      foreach (SetupDuring action in run.Due(second))
+        RunSteps(action.Steps);
       JoinLines();
-      recording.Before(second, reading);
+      run.Before(second);
       TickSecond();
       GiveSpawns();
-      recording.Sample(second, reading);
-      foreach (SampledReading kept in sampled)
-        kept.Sample(reading);
+      run.Sample(second);
     }
-    recording.Pack = CheckPack();
-    return recording;
+    run.Recording.Pack = CheckPack();
+    return run.Recording;
   }
 
   /// <summary>Whether the case writes and compares a recording of its own: the main case, and a
@@ -78,28 +65,7 @@ public sealed partial class SetupScene
   /// <returns>Null when the case passes: no check fails, or for a variant with <c>fails</c> the
   /// first failing check is that one. Else the message naming the check, its <c>says</c>, the
   /// second and the readings.</returns>
-  internal string? Judge(SetupRecording recording, bool ordersOnly = false)
-  {
-    SetupCheckFailure? failure = SetupCheck.First(
-      Model.Checks.Where(c => !ordersOnly || c.AllOrders),
-      recording
-    );
-    if (Model.Fails is not { } expected)
-      return failure?.ToString();
-    if (failure == null)
-      return $"check {expected} should fail first, and no check fails";
-    return failure.Id == expected
-      ? null
-      : $"check {expected} should fail first, but {failure}";
-  }
-
-  private bool Due(SetupDuring action, int second, ReadingContext reading)
-  {
-    if (action.At is { } at)
-      return at == second;
-    if (second < action.From || (second - action.From) % action.Period != 0)
-      return false;
-    return action.When.All(t => Holds(t, reading, "during"));
-  }
+  internal string? Judge(SetupRecording recording, bool ordersOnly = false) =>
+    new SetupRun(Model, recording).Judge(ordersOnly);
 }
 #endif

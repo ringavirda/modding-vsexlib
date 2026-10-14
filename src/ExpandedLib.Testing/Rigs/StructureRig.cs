@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
+using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -145,50 +146,15 @@ public sealed class StructureRig {
           + $"its layout to {turned}."
       );
 
-    var layout = (JObject)attributes["multiblockStructure"]!;
-    // Authored glyph per block number, read straight off the JSON to avoid AssetLocation re-domaining.
-    var codeByNumber = ((JObject)layout["blockNumbers"]!)
-      .Properties()
-      .ToDictionary(p => (int)p.Value!, p => p.Name);
-
-    MultiblockStructure structure = new JsonObject(
-      layout
-    ).AsObject<MultiblockStructure>()!;
-    structure.InitForUse(angle);
-
-    MultiblockFacings facings = MultiblockFacings.FromAttributes(
-      new JsonObject(attributes)
+    IReadOnlyList<(BlockPos, string)> cells = SetupStructureCells.Of(
+      anchor,
+      attributes,
+      angle
     );
-
-    var cells = new List<(BlockPos, string)>();
-    foreach (BlockOffsetAndNumber offset in structure.TransformedOffsets!)
-      cells.Add(
-        (
-          anchor.Pos.AddCopy(offset.X, offset.Y, offset.Z),
-          Demand(facings, codeByNumber[offset.W], angle)
-        )
-      );
     return new StructureRig(world, anchor, angle, cells);
   }
 
   private static int Normal(int angle) => ((angle % 360) + 360) % 360;
-
-  /// <summary>
-  /// What a cell authored as <paramref name="authored"/> requires once the structure is turned to
-  /// <paramref name="angle"/>.
-  /// </summary>
-  private static string Demand(
-    MultiblockFacings facings,
-    string authored,
-    int angle
-  ) {
-    if (facings.IsEmpty)
-      return authored;
-
-    var code = new AssetLocation(authored);
-    AssetLocation rotated = facings.Rotate(code, angle);
-    return rotated.Equals(code) ? authored : rotated.ToString();
-  }
 
   /// <summary>The world position of a structure-local offset at this rig's rotation.</summary>
   public BlockPos Cell(int localX, int localY, int localZ) =>
