@@ -225,7 +225,8 @@ public partial class BlockStructureFiller
     bool placingBlock =
       held?.Block != null && held.Collectible is not BlockLiquidContainerBase;
     bool forwards =
-      !placingBlock || held?.Block?.HasBehavior<BlockBehaviorCanIgnite>() == true;
+      !placingBlock
+      || held?.Block?.HasBehavior<BlockBehaviorCanIgnite>() == true;
 
     // Cell-aware principals (IFillerInteractionTarget) also get the clicked cell.
     if (
