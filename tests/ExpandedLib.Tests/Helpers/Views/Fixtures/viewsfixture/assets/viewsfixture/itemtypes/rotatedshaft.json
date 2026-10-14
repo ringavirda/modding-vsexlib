@@ -1,0 +1,13 @@
+{
+  "code": "rotatedshaft",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/longshaft"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "bar",
+      "guiRotation": [ 20, 50, 70 ]
+    }
+  }
+}

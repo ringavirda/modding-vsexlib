@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
@@ -111,6 +112,21 @@ internal static class CollectibleViews {
   /// <c>none</c>, which leaves its transforms to the game.</summary>
   internal static bool OptedOut(CollectibleObject collectible) =>
     collectible.Attributes?["itemViews"]?["kind"]?.AsString() == "none";
+
+  /// <summary>The declared <c>attributes.itemViews.guiRotation</c> of <paramref name="collectible"/> in degrees
+  /// about x, y and z; null when none is declared.</summary>
+  /// <exception cref="ArgumentException">The declared value is not an array of three numbers.</exception>
+  internal static Vec3d? GuiRotationOf(CollectibleObject collectible) {
+    JsonObject? node = collectible.Attributes?["itemViews"]?["guiRotation"];
+    if (node == null || !node.Exists)
+      return null;
+    double[]? v = node.IsArray() ? node.AsArray<double>() : null;
+    if (v is not { Length: 3 })
+      throw new ArgumentException(
+        $"{collectible.Code}: attributes.itemViews.guiRotation is not an array of three numbers"
+      );
+    return new Vec3d(v[0], v[1], v[2]);
+  }
 
   private static ItemViewKind Declared(CollectibleObject collectible) {
     string? name = collectible.Attributes?["itemViews"]?["kind"]?.AsString();

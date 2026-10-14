@@ -41,7 +41,7 @@ public static class ItemViews {
             or ItemViewKind.Partial
             or ItemViewKind.Multicell
         && box != null
-        ? ViewBlocks.Compute(kind.Value, box)
+        ? ViewBlocks.Compute(kind.Value, box, GuiRotationOf(collectible))
         : null;
     }
     if (collectible is not Item item)
@@ -54,16 +54,19 @@ public static class ItemViews {
       return Shipped(api, item, twin, box);
 
     string? tip = item.Attributes?["itemViews"]?["tip"]?.AsString();
+    Vec3d? guiRotation = GuiRotationOf(item);
     if (kind == ItemViewKind.Tool) {
       Item? carrier = CarrierOf(api, item);
       HandReference? carried =
         carrier == null ? null : FromCarrier(api, carrier);
       if (carried != null)
-        return Held(kind.Value, box, tip, carried);
+        return Held(kind.Value, box, tip, carried, guiRotation);
       kind = ByBox(box.Extents(), false, false);
     }
     HandReference? reference = ReferenceOf(kind.Value);
-    return reference == null ? null : Held(kind.Value, box, tip, reference);
+    return reference == null
+      ? null
+      : Held(kind.Value, box, tip, reference, guiRotation);
   }
 
   /// <summary>Computes the views of an item drawn as <paramref name="shape"/> and laid out as
@@ -72,6 +75,8 @@ public static class ItemViews {
   /// <param name="shape">The shape's base, selectiveElements and rotateX/Y/Z are read.</param>
   /// <param name="kind">Longtool, Plate, Bulk, Bar or Lump.</param>
   /// <param name="tip">The working end as a sign and an axis letter ("+y"), or null.</param>
+  /// <param name="guiRotation">The slot rotation in degrees about x, y and z, or null for the kind's; the slot
+  /// origin and scale are computed for it.</param>
   /// <returns>The views, as the collectible overload gives an item of that shape and kind.</returns>
   /// <exception cref="ArgumentException"><paramref name="kind"/> is None, Tool, Workpiece or a block kind,
   /// whose reference is a collectible or a block; or <paramref name="tip"/> is not a sign and one of x, y, z.</exception>
@@ -80,7 +85,8 @@ public static class ItemViews {
     ICoreAPI api,
     CompositeShape shape,
     ItemViewKind kind,
-    string? tip = null
+    string? tip = null,
+    Vec3d? guiRotation = null
   ) {
     HandReference reference =
       ReferenceOf(kind)
@@ -93,7 +99,7 @@ public static class ItemViews {
       ?? throw new InvalidOperationException(
         $"shape {shape.Base} does not load or has no drawn face"
       );
-    return Held(kind, box, tip, reference);
+    return Held(kind, box, tip, reference, guiRotation);
   }
 
   private static HandReference? ReferenceOf(ItemViewKind kind) =>
@@ -264,7 +270,8 @@ public static class ItemViews {
     ItemViewKind kind,
     ViewBox box,
     string? tip,
-    HandReference reference
+    HandReference reference,
+    Vec3d? guiRotation
   ) {
     Lay lay = Lay.Of(
       box,
@@ -321,7 +328,7 @@ public static class ItemViews {
     };
     return new ItemViewSet(
       kind,
-      Slot(kind, lay, reference, slotTurn),
+      Slot(kind, lay, reference, slotTurn, guiRotation),
       hand,
       Ground(lay, reference),
       idle,
@@ -359,15 +366,19 @@ public static class ItemViews {
     return turn;
   }
 
-  // The reference's slot rotation after the lay's turn, the origin on the box centre (a longtool's on the
+  // The reference's slot rotation after the lay's turn, or the declared one, the origin on the box centre (a longtool's on the
   // spear's close-up), and a translation that puts the origin on the slot centre.
   private static ModelTransform Slot(
     ItemViewKind kind,
     Lay lay,
     HandReference reference,
-    double[,] turn
+    double[,] turn,
+    Vec3d? guiRotation
   ) {
-    double[,] r = Mul(Rotation(reference.GuiRotation), turn);
+    double[,] r =
+      guiRotation != null
+        ? Rotation(guiRotation)
+        : Mul(Rotation(reference.GuiRotation), turn);
     double[] mid = [.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)];
     bool longtool = kind == ItemViewKind.Longtool;
     if (longtool)

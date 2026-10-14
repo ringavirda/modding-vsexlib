@@ -801,9 +801,12 @@ public sealed class ExBlockDef : IExDef {
   /// <summary>Sets <c>attributes.itemViews</c>, which the load pass and <see cref="ItemViews"/> read.</summary>
   /// <param name="kind">Cube, Partial, Multicell or None, written as its lower-case name; <see cref="ItemViewKind.None"/>
   /// keeps the game's defaults.</param>
+  /// <param name="guiRotation">The slot rotation in degrees about x, y and z, or null for the game's; a partial or
+  /// multicell block's slot scale is computed for it. The hand and ground views are unchanged, and an authored
+  /// <see cref="GuiTransform(object)"/> still wins.</param>
   /// <exception cref="ArgumentException"><paramref name="kind"/> is an item kind; the load pass would leave the
   /// block at the game's views without a warning.</exception>
-  public ExBlockDef Views(ItemViewKind kind) {
+  public ExBlockDef Views(ItemViewKind kind, Vec3d? guiRotation = null) {
     if (
       kind
       is not (
@@ -817,10 +820,14 @@ public sealed class ExBlockDef : IExDef {
         $"Views(kind) takes a block kind (Cube, Partial, Multicell or None), not {kind}.",
         nameof(kind)
       );
-    return Attribute(
-      "itemViews",
-      new JObject { ["kind"] = kind.ToString().ToLowerInvariant() }
-    );
+    var views = new JObject { ["kind"] = kind.ToString().ToLowerInvariant() };
+    if (guiRotation != null)
+      views["guiRotation"] = new JArray(
+        guiRotation.X,
+        guiRotation.Y,
+        guiRotation.Z
+      );
+    return Attribute("itemViews", views);
   }
 
   /// <summary>Merges every property of a POCO/anonymous object into <c>attributes</c> at once.

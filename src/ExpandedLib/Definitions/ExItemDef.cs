@@ -5,6 +5,7 @@ using ExpandedLib.Helpers;
 using ExpandedLib.Registries;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Definitions;
 
@@ -381,9 +382,16 @@ public sealed class ExItemDef : IExDef {
   /// ("+y"), or null to take the end the drawn elements give; read when the views are computed, not here. A
   /// tip that is not a sign and one of x, y, z is logged as an error naming the item at load, and the item keeps
   /// the game's views.</param>
+  /// <param name="guiRotation">The slot rotation in degrees about x, y and z, or null for the kind's. The slot
+  /// origin and scale are computed for it, as for the kind's own; the hand and ground views are unchanged, and
+  /// an authored <see cref="GuiTransform(object)"/> still wins.</param>
   /// <exception cref="ArgumentException"><paramref name="kind"/> is a block kind; the load pass would leave the
   /// item at the game's views without a warning.</exception>
-  public ExItemDef Views(ItemViewKind kind, string? tip = null) {
+  public ExItemDef Views(
+    ItemViewKind kind,
+    string? tip = null,
+    Vec3d? guiRotation = null
+  ) {
     if (
       kind
       is ItemViewKind.Cube
@@ -397,6 +405,12 @@ public sealed class ExItemDef : IExDef {
     var views = new JObject { ["kind"] = kind.ToString().ToLowerInvariant() };
     if (tip != null)
       views["tip"] = tip;
+    if (guiRotation != null)
+      views["guiRotation"] = new JArray(
+        guiRotation.X,
+        guiRotation.Y,
+        guiRotation.Z
+      );
     return Attribute("itemViews", views);
   }
 
