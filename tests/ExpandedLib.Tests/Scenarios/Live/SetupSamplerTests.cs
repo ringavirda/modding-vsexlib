@@ -16,8 +16,7 @@ namespace ExpandedLib.Tests.Scenarios.Live;
 public class SetupSamplerTests : IDisposable {
   private const string Place =
     """{ "place": { "id": "b", "code": "game:stone", "at": [1, 0, 0] } }""";
-  private const string Record =
-    """
+  private const string Record = """
     { "machines": { "a": { "series": { "state": { "words": [
       { "when": { "at": [1, 0, 0], "block": "game:stone" }, "word": "set" }, "unset" ] } } } } }
     """;
@@ -82,7 +81,9 @@ public class SetupSamplerTests : IDisposable {
     }
 
     public void Begin() {
-      foreach (bool _ in ScenarioSteps.Run(Fixture.Context, Case.Model.Steps, ""))
+      foreach (
+        bool _ in ScenarioSteps.Run(Fixture.Context, Case.Model.Steps, "")
+      )
         Fixture.Clock += 0.5;
       Sampler.Start();
     }
@@ -139,7 +140,10 @@ public class SetupSamplerTests : IDisposable {
     Assert.True(rig.Sampler.Failure.Reported);
     string[] lines = [.. rig.Fixture.Lines.Skip(before)];
     Assert.DoesNotContain(lines, ScenarioOutput.IsStepOk);
-    Assert.Contains(lines, l => l.Contains(" d2@3.1 expect ") && l.Contains("FAIL"));
+    Assert.Contains(
+      lines,
+      l => l.Contains(" d2@3.1 expect ") && l.Contains("FAIL")
+    );
     Assert.False(rig.Sampler.Done);
   }
 
@@ -175,7 +179,8 @@ public class SetupSamplerTests : IDisposable {
     ModInfo[] infos =
     [
       new() { ModID = "exlib", Version = "0.8.4" },
-      new() {
+      new()
+      {
         ModID = "siex",
         Version = "0.9.9",
         Dependencies = [new ModDependency("exlib", "0.5.0")],

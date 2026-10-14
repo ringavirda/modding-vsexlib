@@ -22,7 +22,8 @@ internal sealed class SetupSampler(
 ) {
   private const int PeriodMilliseconds = 1000;
 
-  private readonly Queue<(int Second, IEnumerator<SetupDuring> Due)> _queued = [];
+  private readonly Queue<(int Second, IEnumerator<SetupDuring> Due)> _queued =
+  [];
   private SetupRun? _run;
   private ScenarioContext? _actions;
   private IEnumerator<bool>? _acting;
@@ -41,7 +42,8 @@ internal sealed class SetupSampler(
   public SetupRecording? Recording => _run?.Recording;
 
   /// <summary>The recording's path under the server's data path, as the output line names it.</summary>
-  public string RecordPath => $"Scenarios/recordings/{scenario.Model.RecordName}.json";
+  public string RecordPath =>
+    $"Scenarios/recordings/{scenario.Model.RecordName}.json";
 
   /// <summary>The recording's <c>mods</c> map over the loaded mods, in the file's order.</summary>
   /// <exception cref="InvalidOperationException">A listed mod is not among <paramref name="loaded"/>.</exception>
@@ -164,7 +166,11 @@ internal sealed class SetupSampler(
       (int second, IEnumerator<SetupDuring> due) = _queued.Peek();
       if (due.MoveNext()) {
         SetupDuring action = due.Current;
-        int index = 1 + scenario.Model.During.TakeWhile(a => !ReferenceEquals(a, action)).Count();
+        int index =
+          1
+          + scenario
+            .Model.During.TakeWhile(a => !ReferenceEquals(a, action))
+            .Count();
         _acting = ScenarioSteps
           .Run(_actions!, action.Steps, $"d{index}@{second}.")
           .GetEnumerator();
@@ -179,11 +185,11 @@ internal sealed class SetupSampler(
     try {
       action();
     } catch (Exception e)
-      when (e
-          is SetupFileException
-            or SetupReadingException
-            or InvalidOperationException
-      ) {
+        when (e
+            is SetupFileException
+              or SetupReadingException
+              or InvalidOperationException
+        ) {
       Fail(
         new StepFailure(
           e.Message,

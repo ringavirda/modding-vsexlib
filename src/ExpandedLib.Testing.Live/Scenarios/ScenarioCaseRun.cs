@@ -95,12 +95,12 @@ internal sealed class ScenarioCaseRun(
           failure = stopped.Reported
             ? stopped
             : Report(
-                failedAt,
-                "run",
-                "record",
-                stopped.Message,
-                stopped.Suspect
-              );
+              failedAt,
+              "run",
+              "record",
+              stopped.Message,
+              stopped.Suspect
+            );
         }
         failure = Record(failure, steps.Count + 1);
         if (failure != null)
