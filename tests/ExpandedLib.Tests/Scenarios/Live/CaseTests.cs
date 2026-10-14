@@ -126,7 +126,12 @@ public class CaseTests {
   [Fact]
   public void A_pack_without_an_after_is_read() =>
     Assert.NotNull(
-      LiveFixture.Case(Place, """{ pack: { scope: "all", gathered: { "game:stone": 1 } } }""").Model.Pack
+      LiveFixture
+        .Case(
+          Place,
+          """{ pack: { scope: "all", gathered: { "game:stone": 1 } } }"""
+        )
+        .Model.Pack
     );
 
   /// <summary>Fails when a step the live runner cannot run is accepted (V29).</summary>

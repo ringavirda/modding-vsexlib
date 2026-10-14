@@ -60,7 +60,8 @@ internal static class ScenarioSteps {
       ctx.Current = label;
       var report = new StepReport();
       ctx.Resolved.Clear();
-      using IEnumerator<bool> running = PackLedger.Accounted(ctx, step, impl.Run(ctx, step, label, report))
+      using IEnumerator<bool> running = PackLedger
+        .Accounted(ctx, step, impl.Run(ctx, step, label, report))
         .GetEnumerator();
       while (true) {
         bool more;

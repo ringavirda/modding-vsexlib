@@ -61,7 +61,9 @@ internal sealed class ScenarioCase(
       if (ScenarioSteps.Refusal(step) is { } reason)
         throw top.In("steps").Fail(reason);
     if (model.Pack is { After.Count: > 0 })
-      throw top.In("pack").In("after").Fail("is not read by the live runner yet.");
+      throw top.In("pack")
+        .In("after")
+        .Fail("is not read by the live runner yet.");
 
     int[] plot = [16, 16, 16];
     if (root["plot"] != null) {

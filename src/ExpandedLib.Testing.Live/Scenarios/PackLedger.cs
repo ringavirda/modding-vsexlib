@@ -52,7 +52,11 @@ internal static class PackLedger {
   }
 
   /// <exception cref="StepFailure">The pack holds too few of <paramref name="code"/>.</exception>
-  public static void DrawBlock(ScenarioContext ctx, string code, string? pin = null) {
+  public static void DrawBlock(
+    ScenarioContext ctx,
+    string code,
+    string? pin = null
+  ) {
     if (ctx.Pack is not { DrawsBlocks: true } || ctx.Pack.TakeStanding(code))
       return;
     Draw(ctx, code, 1, pin);
@@ -99,8 +103,8 @@ internal static class PackLedger {
       pack.Give(metal, units);
     string[] standing =
     [
-      .. ctx.Placed
-        .Select(c => ctx.Setup.BlockAt(c))
+      .. ctx
+        .Placed.Select(c => ctx.Setup.BlockAt(c))
         .Where(b => b.Id != 0)
         .Select(b => b.Code.ToString()),
     ];

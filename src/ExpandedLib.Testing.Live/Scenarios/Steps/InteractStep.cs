@@ -111,7 +111,10 @@ internal sealed class InteractStep : ScenarioStep {
         }
         player.UseStop(selection, ctx.Now - started);
       }
-      PackLedger.Give(ctx, player.Player.InventoryManager.ActiveHotbarSlot.Itemstack);
+      PackLedger.Give(
+        ctx,
+        player.Player.InventoryManager.ActiveHotbarSlot.Itemstack
+      );
       report.Value = $"hand: {player.HandText()}";
       if (o["returns"] is { } returns && (bool)returns != answered)
         throw new StepFailure(

@@ -93,7 +93,7 @@ internal sealed class WindowStep : ScenarioStep {
         done.Add(Put(ctx, who, be, put));
       if (o["take"] is JObject take)
         done.Add(Take(who, be, TakeSlot(take)));
-        PackLedger.Give(ctx, who.InventoryManager.ActiveHotbarSlot.Itemstack);
+      PackLedger.Give(ctx, who.InventoryManager.ActiveHotbarSlot.Itemstack);
       if (o["press"] is JObject press) {
         int id = ButtonId((int)press["id"]!);
         byte[]? data = press["data"] is JArray values ? Data(values) : null;

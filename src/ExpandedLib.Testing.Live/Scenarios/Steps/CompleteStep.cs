@@ -102,7 +102,11 @@ internal sealed class CompleteStep : ScenarioStep {
       )
         continue;
       Block block = Choose(ctx, wanted.Wanted);
-      PackLedger.DrawBlock(ctx, WantedCode(wanted.Wanted).ToString(), local.ToString());
+      PackLedger.DrawBlock(
+        ctx,
+        WantedCode(wanted.Wanted).ToString(),
+        local.ToString()
+      );
       ctx.SetBlock(block, local);
       chosen.Add(block.Code.ToString());
     }
