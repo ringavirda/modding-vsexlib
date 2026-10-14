@@ -32,12 +32,12 @@ internal sealed class SetupRun {
     string game,
     IReadOnlyList<(string Mod, string Version)> mods
   )
-    : this(model, SetupRecording.ForFile(model, world, game, mods), world) {}
+    : this(model, SetupRecording.ForFile(model, world, game, mods), world) { }
 
   /// <summary>A run that only judges a finished <paramref name="recording"/>: <see cref="Judge"/>
   /// and <see cref="Verdicts"/>.</summary>
   public SetupRun(SetupFileModel model, SetupRecording recording)
-    : this(model, recording, null) {}
+    : this(model, recording, null) { }
 
   private SetupRun(
     SetupFileModel model,
@@ -120,9 +120,10 @@ internal sealed class SetupRun {
       return false;
     try {
       return action.When.All(t => t.Holds(_reading));
-    }
-    catch (SetupReadingException e) {
-      throw new InvalidOperationException($"{_model.File}: during: {e.Message}");
+    } catch (SetupReadingException e) {
+      throw new InvalidOperationException(
+        $"{_model.File}: during: {e.Message}"
+      );
     }
   }
 }

@@ -10,8 +10,11 @@ namespace ExpandedLib.Scenarios;
 /// <see cref="ExConfigProfiles"/>, and set back when the case ends.</summary>
 /// <param name="file">The setup file's name, which starts every failure message.</param>
 internal sealed class SetupConfig(string file) {
-  private readonly List<(IExConfigAccess Access, string Name, string Old)> _held =
-    [];
+  private readonly List<(
+    IExConfigAccess Access,
+    string Name,
+    string Old
+  )> _held = [];
 
   /// <summary>Writes each value in order, remembering what the register held.</summary>
   /// <param name="values">The case's <c>config</c> values.</param>

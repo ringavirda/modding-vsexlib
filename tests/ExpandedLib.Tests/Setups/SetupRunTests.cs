@@ -233,7 +233,10 @@ public class SetupRunTests : IDisposable
     SetupRecording recording = scene.Run(BoxMods);
     var run = new SetupRun(scene.File.Model, recording);
 
-    Assert.StartsWith("check drawn (drawn says) fails at second 0", run.Judge());
+    Assert.StartsWith(
+      "check drawn (drawn says) fails at second 0",
+      run.Judge()
+    );
     Assert.StartsWith(
       "check ordered (ordered says) fails at second 0",
       run.Judge(ordersOnly: true)
