@@ -62,4 +62,54 @@ public class SetupStepWalkTests {
     );
     Assert.Contains(SetupStepWalk.Of(model), s => s.Kind == "advance");
   }
+
+  // Fails when the walk skips the steps a variant replaces.
+  [Fact]
+  public void The_walk_yields_a_variants_replacing_step() {
+    SetupFileModel model = Model(
+      """
+      {
+        steps: [{ "place": { "id": "a", "code": "game:stone", "at": [0, 0, 0] } }],
+        variants: { other: { replace: { a: { "place": { "id": "a", "code": "game:dirt", "at": [0, 0, 0] } } } } }
+      }
+      """
+    );
+    SetupStep[] places = [.. SetupStepWalk.Of(model).Where(s => s.Kind == "place")];
+    Assert.Equal(2, places.Length);
+    Assert.Contains(places, s => s.Path.Contains("replace"));
+  }
+
+  // Fails when the walk skips the during actions a variant brings of its own.
+  [Fact]
+  public void The_walk_yields_a_variants_own_during_steps() {
+    SetupFileModel model = Model(
+      """
+      {
+        variants: { busy: { during: [{ at: 2, step: { "advance": { "hours": 1 } } }] } }
+      }
+      """
+    );
+    SetupStep advance = SetupStepWalk.Of(model).Single(s => s.Kind == "advance");
+    Assert.Contains("busy", advance.Path);
+    Assert.Contains("during[0]", advance.Path);
+  }
+
+  // Fails when the walk skips the steps a variant's model runs after a layout entry.
+  [Fact]
+  public void The_walk_yields_the_steps_run_after_a_layout_entry() {
+    SetupFileModel model = Model(
+      """
+      {
+        layout: { legend: { "A": { id: "lay", code: "game:stone" } }, layers: { "0": ["A"] } },
+        variants: { later: { after: { lay: [{ "advance": { "hours": 1 } }] } } }
+      }
+      """
+    );
+    SetupFileModel applied = model.ForVariant(model.Variants.Single());
+    Assert.Single(applied.AfterEntry);
+    Assert.Equal(
+      2,
+      SetupStepWalk.Of(applied).Count(s => s.Kind == "advance")
+    );
+  }
 }

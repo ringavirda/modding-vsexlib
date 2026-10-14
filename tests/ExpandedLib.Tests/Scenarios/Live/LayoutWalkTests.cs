@@ -66,19 +66,19 @@ public class LayoutWalkTests {
           "P": { "run": "main", "code": "game:stone" },
           "A": { "code": "game:stone" },
           "Q": { "run": "main", "code": "game:stone" } },
-        layers: { "0": ["PPQ", "AAA"] } }
+        layers: { "0": ["AAA", "PPQ"] } }
       """
     );
     IReadOnlyList<LayoutPlacing> plan = SetupLayoutWalk.Plan(layout);
     Assert.Equal(2, plan.Count);
     Assert.Equal("main", plan[0].Run?.Id);
     Assert.Equal(
-      [(0, 0, 0), (1, 0, 0), (2, 0, 0)],
+      [(0, 0, 1), (1, 0, 1), (2, 0, 1)],
       plan[0].Cells.Select(c => (c.X, c.Y, c.Z))
     );
     Assert.Equal('A', plan[1].Entry.Glyph);
     Assert.Equal(
-      [(0, 0, 1), (1, 0, 1), (2, 0, 1)],
+      [(0, 0, 0), (1, 0, 0), (2, 0, 0)],
       plan[1].Cells.Select(c => (c.X, c.Y, c.Z))
     );
   }

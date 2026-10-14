@@ -6,6 +6,7 @@ using ExpandedLib.Scenarios;
 using ExpandedLib.Testing.Live;
 using NSubstitute;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Xunit;
@@ -317,5 +318,56 @@ public class SetupSamplerTests : IDisposable {
     (ScenarioCaseRun run, _) = Drive(rig);
     Assert.False(run.Passed);
     Assert.Contains(rig.Fixture.Lines, l => l.Contains(" run record FAIL: "));
+  }
+
+  private static Rig Packed(
+    string folder,
+    List<Entity> spawned,
+    out EntityItem flint
+  ) {
+    var rig = new Rig(
+      "",
+      folder,
+      $$"""{ "pack": { "scope": "stacks", "gathered": {} }, "during": [{ "at": 2, "step": {{Place}} }], "record": {{Record}} }"""
+    );
+    rig.Fixture.Context.Pack = SetupPack.Start(rig.Case.Model, _ => null);
+    Item item = rig.Fixture.Test.RegisterItem("game:flint");
+    flint = new EntityItem { EntityId = 7, Itemstack = new ItemStack(item, 1) };
+    flint.Pos.SetPos(0.5, 0.5, 0.5);
+    rig.Fixture.Test.World.GetEntitiesInsideCuboid(
+        Arg.Any<BlockPos>(),
+        Arg.Any<BlockPos>(),
+        Arg.Any<ActionConsumable<Entity>>()
+      )
+      .Returns(call =>
+        spawned.Where(e => call.ArgAt<ActionConsumable<Entity>>(2)(e)).ToArray()
+      );
+    return rig;
+  }
+
+  /// <summary>Fails when the entities an action's context saw spawn are not merged back into the
+  /// case's context, which a later step then gives again.</summary>
+  [Fact]
+  public void An_item_a_during_action_sees_spawn_is_marked_seen_on_the_cases_context() {
+    var spawned = new List<Entity>();
+    Rig rig = Packed(_folder, spawned, out EntityItem flint);
+    rig.Begin();
+    spawned.Add(flint);
+    rig.Fires(3);
+    Assert.Contains(7L, rig.Fixture.Context.SpawnsSeen);
+    Assert.Equal(1, rig.Fixture.Context.Pack!.Held("game:flint"));
+  }
+
+  /// <summary>Fails when an action's context starts without the entities the case's context has
+  /// seen, which gives an item spawned before the action a second time.</summary>
+  [Fact]
+  public void An_item_the_case_has_given_is_not_given_again_by_a_during_action() {
+    var spawned = new List<Entity>();
+    Rig rig = Packed(_folder, spawned, out EntityItem flint);
+    spawned.Add(flint);
+    rig.Begin();
+    Assert.Equal(1, rig.Fixture.Context.Pack!.Held("game:flint"));
+    rig.Fires(3);
+    Assert.Equal(1, rig.Fixture.Context.Pack.Held("game:flint"));
   }
 }
