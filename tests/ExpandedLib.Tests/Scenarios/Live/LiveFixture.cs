@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
@@ -8,8 +9,8 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Tests.Scenarios.Live;
 
-/// <summary>A plot at (100, 50, 100) in a <see cref="TestWorld"/> that knows <c>game:stone</c>,
-/// with a clock the test moves and the lines the steps print.</summary>
+/// <summary>A plot at (100, 50, 100) in a <see cref="TestWorld"/> that knows <c>game:stone</c>, the
+/// twin-tub blower and the plated pipes, with a clock the test moves and the lines the steps print.</summary>
 internal sealed class LiveFixture {
   public static readonly BlockPos Origin = new(100, 50, 100);
 
@@ -27,6 +28,10 @@ internal sealed class LiveFixture {
   public ScenarioContext Context { get; }
 
   public LiveFixture(params string[] allowed) {
+    Test.LoadAssets([
+      Path.Combine(RepoPaths.Root, "samples", "TwinTubBlower"),
+      Path.Combine(RepoPaths.Root, "samples", "PlatedPipes"),
+    ]);
     Test.Register(Stone);
     Errors = new ScenarioErrors([
       .. System.Linq.Enumerable.Select(
