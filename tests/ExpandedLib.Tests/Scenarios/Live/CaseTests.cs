@@ -87,15 +87,16 @@ public class CaseTests {
       )
     );
 
-  /// <summary>Fails when a layout is dropped from the refused list (V34).</summary>
+  /// <summary>Fails when a layout is refused again, or its drawing is not read (V34).</summary>
   [Fact]
-  public void A_layout_is_refused() =>
-    Assert.Contains(
-      "not read by the live runner",
-      Refused(
-        Place,
-        """{ layout: { origin: [0, 0], legend: { "A": { code: "x:a" } }, layers: { "0": ["A"] } } }"""
-      )
+  public void A_layout_is_read() =>
+    Assert.NotNull(
+      LiveFixture
+        .Case(
+          "[]",
+          """{ layout: { origin: [0, 0], legend: { "A": { code: "x:a" } }, layers: { "0": ["A"] } } }"""
+        )
+        .Model.Drawn
     );
 
   /// <summary>Fails when a recorded machine no longer refuses the file (V28).</summary>

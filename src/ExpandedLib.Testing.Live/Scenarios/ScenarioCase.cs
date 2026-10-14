@@ -19,7 +19,6 @@ internal sealed class ScenarioCase(
 
   private static readonly string[] Refused =
   [
-    "layout",
     "during",
     "checks",
     "climate",

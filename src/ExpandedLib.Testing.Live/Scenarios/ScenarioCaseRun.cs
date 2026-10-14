@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Scenarios;
 
 namespace ExpandedLib.Testing.Live;
@@ -25,9 +26,14 @@ internal sealed class ScenarioCaseRun(
     double start = ctx.Now;
     StepFailure? failure = null;
     int failedAt = 0;
+    RunStep.PlayerPlace? place = ctx.Player is { } player ? player.Place : null;
+    IEnumerable<bool> layout =
+      scenario.Model.Drawn is { } drawn
+        ? SetupLayoutWalk.Run(ctx, drawn, place)
+        : Enumerable.Empty<bool>();
     using (
-      IEnumerator<bool> running = ScenarioSteps
-        .Run(ctx, steps, "")
+      IEnumerator<bool> running = layout
+        .Concat(ScenarioSteps.Run(ctx, steps, ""))
         .GetEnumerator()
     ) {
       while (failure == null) {

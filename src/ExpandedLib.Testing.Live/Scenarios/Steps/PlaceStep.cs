@@ -26,16 +26,17 @@ internal sealed class PlaceStep : ScenarioStep {
     return null;
   }
 
-  public override IEnumerable<bool> Run(
+  /// <summary>Sets <paramref name="block"/> at the plot-local <paramref name="local"/> and returns the
+  /// cells it fills: <paramref name="local"/> first, then a megablock's footprint.</summary>
+  /// <param name="code">The code the draw ledger names <paramref name="block"/> by.</param>
+  /// <exception cref="StepFailure">A cell the block fills holds a block other than air at or above
+  /// y 0.</exception>
+  public static List<BlockPos> Put(
     ScenarioContext ctx,
-    SetupStep step,
-    string label,
-    StepReport report
+    Block block,
+    string code,
+    BlockPos local
   ) {
-    var o = (JObject)step.Body;
-    string code = (string)o["code"]!;
-    Block block = ctx.BlockOf(code);
-    BlockPos local = ctx.Position(step, o["at"], "at");
     List<BlockPos> footprint =
     [
       .. block is IFillerHost host
@@ -59,6 +60,20 @@ internal sealed class PlaceStep : ScenarioStep {
     ctx.SetBlock(block, local);
     foreach (BlockPos cell in cells)
       ctx.Placed.Add(cell.Copy());
+    return cells;
+  }
+
+  public override IEnumerable<bool> Run(
+    ScenarioContext ctx,
+    SetupStep step,
+    string label,
+    StepReport report
+  ) {
+    var o = (JObject)step.Body;
+    string code = (string)o["code"]!;
+    Block block = ctx.BlockOf(code);
+    BlockPos local = ctx.Position(step, o["at"], "at");
+    List<BlockPos> cells = Put(ctx, block, code, local);
     if (step.Id != null)
       ctx.Setup.Place(
         step.Id,
