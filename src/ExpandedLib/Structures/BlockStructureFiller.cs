@@ -363,23 +363,26 @@ public partial class BlockStructureFiller
     );
   }
 
+  /// <summary>Breaks the structure through the principal's <c>OnBlockBroken</c>. Once that returns, the
+  /// struck cell is cleared when the principal's block is gone from its cell and the cell still holds
+  /// this principal's filler. A principal that keeps itself through its own break (a shovel dig that
+  /// leaves the structure standing) keeps every filler, the struck one included. A cell the break
+  /// handed to a filler of another principal is left as it is.</summary>
   public override void OnBlockBroken(
     IWorldAccessor world,
     BlockPos pos,
     IPlayer byPlayer,
     float dropQuantityMultiplier = 1f
   ) {
-    // Breaking any filler breaks the whole structure via the principal's OnBlockBroken.
     if (!TryGetPrincipal(world, pos, out var pp, out var pb)) {
       base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
       return;
     }
     pb.OnBlockBroken(world, pp, byPlayer, dropQuantityMultiplier);
 
-    // Removes this cell in case the principal's break did not clear it, unless the break handed the
-    // cell to a filler of another principal.
     if (
-      world.BlockAccessor.GetBlock(pos).Id == BlockId
+      world.BlockAccessor.GetBlock(pp).Id != pb.Id
+      && world.BlockAccessor.GetBlock(pos).Id == BlockId
       && (
         world.BlockAccessor.GetBlockEntity(pos)
           is not BlockEntityStructureFiller { Principal: { } now }
