@@ -25,7 +25,7 @@ internal static class ControlAim
     BlockFacing? face
   )
   {
-    Cuboidf[] boxes = accessor.GetBlock(cell).GetSelectionBoxes(accessor, cell);
+    Cuboidf[] boxes = accessor.GetBlock(cell).GetSelectionBoxes(accessor, cell) ?? [];
     int index = Array.FindIndex(
       boxes,
       b => b is CuboidfWithId { Id: var id } && id == controlId

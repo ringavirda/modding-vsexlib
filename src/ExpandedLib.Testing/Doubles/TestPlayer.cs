@@ -196,7 +196,7 @@ public sealed class TestPlayer {
     );
 
   /// <summary>Makes control <paramref name="control"/> of the block at <paramref name="pos"/> the player's
-  /// looked-at selection, the one a block's info and a click's selection read.</summary>
+  /// looked-at selection, the one a block's info reads.</summary>
   /// <param name="pos">The cell whose control is looked at.</param>
   /// <param name="control">The id of the control, as its box carries it.</param>
   /// <exception cref="ArgumentException"><paramref name="control"/> is no box's id of the cell; the message

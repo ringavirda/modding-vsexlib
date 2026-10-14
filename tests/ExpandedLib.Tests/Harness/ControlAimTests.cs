@@ -40,6 +40,14 @@ public class ControlAimTests
     }
   }
 
+  private sealed class Bare : Block
+  {
+    public override Cuboidf[] GetSelectionBoxes(
+      IBlockAccessor blockAccessor,
+      BlockPos pos
+    ) => null!;
+  }
+
   private static BlockPos At => new(0, 1, 0);
 
   private static (TestWorld, Panel, TestPlayer) Stand()
@@ -79,6 +87,19 @@ public class ControlAimTests
     Assert.Null(panel.Seen);
   }
 
+  // Fails when a cell whose block returns no selection boxes throws a null error instead of naming no controls.
+  [Fact]
+  public void A_cell_without_selection_boxes_has_no_controls()
+  {
+    var (world, _, player) = Stand();
+    world.Place(new BlockPos(3, 1, 0), TestBlocks.Configure(new Bare(), "test:bare", 2));
+
+    ArgumentException none = Assert.Throws<ArgumentException>(() =>
+      player.UseControl(new BlockPos(3, 1, 0), "lever")
+    );
+    Assert.Contains("its controls are none", none.Message);
+  }
+
   // Fails when the hit lands at the cell face's centre instead of the centre of the box's face.
   [Fact]
   public void The_hit_lies_inside_the_box()
@@ -89,6 +110,11 @@ public class ControlAimTests
     Assert.Equal(0.5, panel.Hit!.X);
     Assert.Equal(1.0, panel.Hit.Y);
     Assert.Equal(0.375, panel.Hit.Z);
+
+    Assert.True(player.UseControl(At, "handle", face: BlockFacing.SOUTH));
+    Assert.Equal(0.5, panel.Hit.X);
+    Assert.Equal(0.75, panel.Hit.Y);
+    Assert.Equal(0.5, panel.Hit.Z);
   }
 
   // Fails when LookAt sets the selection's box index without its id.
