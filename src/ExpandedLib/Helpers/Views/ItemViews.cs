@@ -25,7 +25,8 @@ public static class ItemViews {
   /// that declares a block kind and a block that declares an item kind.</returns>
   /// <exception cref="InvalidOperationException">The declared kind is not a kind name in lower case, or a
   /// workpiece is computed in a world with no vanilla work item.</exception>
-  /// <exception cref="ArgumentException">The declared tip is not a sign and one of x, y, z.</exception>
+  /// <exception cref="ArgumentException">The declared tip is not a sign and one of x, y, z, or the declared
+  /// <c>guiRotation</c> is not an array of three numbers.</exception>
   public static ItemViewSet? Compute(
     ICoreAPI api,
     CollectibleObject collectible
@@ -60,13 +61,13 @@ public static class ItemViews {
       HandReference? carried =
         carrier == null ? null : FromCarrier(api, carrier);
       if (carried != null)
-        return Held(kind.Value, box, tip, carried, guiRotation);
+        return Held(api, kind.Value, box, tip, carried, guiRotation);
       kind = ByBox(box.Extents(), false, false);
     }
     HandReference? reference = ReferenceOf(kind.Value);
     return reference == null
       ? null
-      : Held(kind.Value, box, tip, reference, guiRotation);
+      : Held(api, kind.Value, box, tip, reference, guiRotation);
   }
 
   /// <summary>Computes the views of an item drawn as <paramref name="shape"/> and laid out as
@@ -76,7 +77,7 @@ public static class ItemViews {
   /// <param name="kind">Longtool, Plate, Bulk, Bar or Lump.</param>
   /// <param name="tip">The working end as a sign and an axis letter ("+y"), or null.</param>
   /// <param name="guiRotation">The slot rotation in degrees about x, y and z, or null for the kind's; the slot
-  /// origin and scale are computed for it.</param>
+  /// origin is computed for it, and its scale too except for a longtool's, which keeps the spear's close-up.</param>
   /// <returns>The views, as the collectible overload gives an item of that shape and kind.</returns>
   /// <exception cref="ArgumentException"><paramref name="kind"/> is None, Tool, Workpiece or a block kind,
   /// whose reference is a collectible or a block; or <paramref name="tip"/> is not a sign and one of x, y, z.</exception>
@@ -99,7 +100,7 @@ public static class ItemViews {
       ?? throw new InvalidOperationException(
         $"shape {shape.Base} does not load or has no drawn face"
       );
-    return Held(kind, box, tip, reference, guiRotation);
+    return Held(api, kind, box, tip, reference, guiRotation);
   }
 
   private static HandReference? ReferenceOf(ItemViewKind kind) =>
@@ -237,12 +238,16 @@ public static class ItemViews {
 
   // The hand reference a carrier's shipped views make: its grip is the point of its shape that its hand
   // transform puts on the hand.
-  private static HandReference? FromCarrier(ICoreAPI api, Item carrier) {
+  private static HandReference? FromCarrier(
+    ICoreAPI api,
+    Item carrier,
+    string? tip = null
+  ) {
     ModelTransform? tf = carrier.TpHandTransform;
     ViewBox? box = BoxOf(api, carrier);
     if (tf == null || box == null)
       return null;
-    Lay lay = Lay.Of(box, true, null);
+    Lay lay = Lay.Of(box, true, tip);
     double s = tf.ScaleXYZ.X;
     Vec3d grip = HandGrip(tf);
     double[] u = lay.Coords(grip);
@@ -266,25 +271,28 @@ public static class ItemViews {
     );
   }
 
+  // The game item whose hold a tipped item copies, with its working end up and out of the fist; null when
+  // the world has none.
+  private static Item? TipCarrier(ICoreAPI api) =>
+    api.World.GetItem(new AssetLocation(TipHoldCode));
+
   private static ItemViewSet Held(
+    ICoreAPI api,
     ItemViewKind kind,
     ViewBox box,
     string? tip,
     HandReference reference,
     Vec3d? guiRotation
   ) {
-    Lay lay = Lay.Of(
-      box,
-      kind is ItemViewKind.Longtool or ItemViewKind.Tool || tip != null,
-      tip
-    );
-    double[,] slotTurn = Turn(lay, reference, out _);
+    bool longHeld = kind is ItemViewKind.Longtool or ItemViewKind.Tool;
+    Lay slotLay = Lay.Of(box, longHeld, tip);
+    Lay lay = tip != null ? Lay.Of(box, true, tip) : slotLay;
+    double[,] slotTurn = Turn(slotLay, reference, out _);
+    Item? knife = tip != null && !longHeld ? TipCarrier(api) : null;
+    HandReference? hold =
+      knife == null ? null : FromCarrier(api, knife, TipHoldEnd);
     HandReference grasp =
-      tip != null && kind is ItemViewKind.Lump or ItemViewKind.Bulk
-        ? Rod with {
-          Scale = reference.Scale,
-        }
-        : reference;
+      hold == null ? reference : hold with { Scale = reference.Scale };
     double[,] turn = Turn(lay, grasp, out bool mirrored);
     double[,] r = Mul(
       Rotation(
@@ -321,18 +329,27 @@ public static class ItemViews {
       Scale = (float)s,
       Rotate = true,
     };
-    string? idle = kind switch {
-      ItemViewKind.Longtool => SpearIdle,
-      ItemViewKind.Bulk => BulkHold,
-      _ => null,
-    };
+    string? idle =
+      hold != null
+        ? null
+        : kind switch {
+          ItemViewKind.Longtool => SpearIdle,
+          ItemViewKind.Bulk => BulkHold,
+          _ => null,
+        };
+    string? ready =
+      hold != null
+        ? knife!.HeldRightReadyAnimation == DefaultReady
+          ? null
+          : knife.HeldRightReadyAnimation
+        : idle;
     return new ItemViewSet(
       kind,
-      Slot(kind, lay, reference, slotTurn, guiRotation),
+      Slot(kind, slotLay, reference, slotTurn, guiRotation),
       hand,
-      Ground(lay, reference),
+      Ground(slotLay, reference),
       idle,
-      idle,
+      ready,
       kind == ItemViewKind.Longtool ? SpearHit : null,
       null,
       new Vec3d(lay.Lo[0], lay.Lo[1], lay.Lo[2]),

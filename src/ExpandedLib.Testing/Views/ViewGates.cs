@@ -697,6 +697,9 @@ internal static class ViewGates {
   private const double FlatTolerance = 0.5;
   private const double UprightDegrees = 1;
 
+  /// <summary>The least elevation in degrees at which a handle-held item carries its declared tip; the iron chisel's is 25 and the generic iron knife's 32.</summary>
+  internal const double TipElevationDegrees = 20;
+
   private static readonly string[] BlockClips = [BlockHeldClip, "holdunderarm"];
 
   /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips, G12 catalogue and G14 hand.tip of <paramref name="group"/>. They hold for every
@@ -766,29 +769,47 @@ internal static class ViewGates {
   private static string? DeclaredTip(CollectibleObject c) =>
     c.Attributes?["itemViews"]?["tip"]?.AsString();
 
+  // The held elevation of the working end of a group, in degrees above horizontal, negative when it
+  // points below the grip end; tip null takes the end the box gives.
+  internal static double TipElevation(
+    TestWorld world,
+    ViewGroup group,
+    string? tip
+  ) {
+    Lay lay = Lay.Of(group.Box, true, tip);
+    Mat4 m = HeldMatrix(group, HeldPose(world, group, false), false);
+    double[] mid = [.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)];
+    Vec3d At(double along) => m.Apply(lay.Point([along, mid[1], mid[2]]) / 16);
+    Vec3d axis = At(lay.Hi[0]) - At(lay.Lo[0]);
+    return Math.Asin(Math.Clamp(axis.Y / axis.Length(), -1, 1)) * 180 / Math.PI;
+  }
+
   private static GateReading TipUp(TestWorld world, ViewGroup group, string tip) {
     Lay lay = Lay.Of(group.Box, true, tip);
     SeraphPose pose = HeldPose(world, group, false);
-    Mat4 m = HeldMatrix(group, pose, false);
+    double rise = TipElevation(world, group, tip);
     double[] mid = [.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)];
-    Vec3d At(double along) => m.Apply(lay.Point([along, mid[1], mid[2]]) / 16);
-    double rise = (At(lay.Hi[0]).Y - At(lay.Lo[0]).Y) * 16;
     double[] g = GripPoint(group.Hand, pose);
     double grip = lay.Coords(new Vec3d(g[0], g[1], g[2]))[0];
-    bool up = rise > 0;
+    double min = group.Kind is ItemViewKind.Longtool or ItemViewKind.Tool
+      ? 0
+      : TipElevationDegrees;
+    bool up = rise > min;
     bool handle = grip <= mid[0];
     return new GateReading(
       "G14",
       "hand.tip",
       "tp",
       rise,
-      0,
+      min,
       double.PositiveInfinity,
       null,
       up && handle,
       up
-        ? $"the grip at {Fmt(grip)} voxels is not in the handle half below {Fmt(mid[0])}"
-        : $"the tip end {Fmt(-rise)} voxel below the grip end"
+          ? $"the grip at {Fmt(grip)} voxels is not in the handle half below {Fmt(mid[0])}"
+        : rise > 0
+          ? $"the tip end {Fmt(rise)} degrees above the grip end, below {Fmt(min)}"
+        : $"the tip end {Fmt(-rise)} degrees below the grip end"
     );
   }
 

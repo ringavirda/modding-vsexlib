@@ -182,13 +182,20 @@ public class ViewGuiRotationTests {
     Assert.Equal([4d, 5d, 6d], block!.Select(t => (double)t));
   }
 
-  // Fails when a malformed rotation is read as none: the item then keeps the kind's slot with no word.
-  [Fact]
-  public void A_gui_rotation_that_is_not_three_numbers_is_refused() {
+  // Fails when a malformed rotation is read as none, or the number check is dropped: a string or null entry then
+  // throws a JSON exception, a numeral string is accepted, and the load pass dies on it.
+  [Theory]
+  [InlineData("[1,2]")]
+  [InlineData("[\"a\",0,0]")]
+  [InlineData("[1,null,3]")]
+  [InlineData("[\"1\",\"2\",\"3\"]")]
+  public void A_gui_rotation_that_is_not_three_numbers_is_refused(string value) {
     Assert.Throws<ArgumentException>(() =>
       ItemViews.Compute(
         World.Api,
-        Barred("{\"itemViews\":{\"kind\":\"bar\",\"guiRotation\":[1,2]}}")
+        Barred(
+          $"{{\"itemViews\":{{\"kind\":\"bar\",\"guiRotation\":{value}}}}}"
+        )
       )
     );
   }

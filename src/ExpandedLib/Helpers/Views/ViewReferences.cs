@@ -67,6 +67,12 @@ internal static class ViewReferences {
     4
   );
 
+  /// <summary>The game item whose hold a declared tip copies for the kinds a handle holds.</summary>
+  internal const string TipHoldCode = "game:knife-generic-iron";
+
+  /// <summary>The working end of <see cref="TipHoldCode"/> as a sign and an axis letter in its shape's frame.</summary>
+  internal const string TipHoldEnd = "+x";
+
   /// <summary>The rotation about Y in degrees that the seraph's right-hand attachment point carries and a hand rotation adds to.</summary>
   internal const double HandYaw = 180;
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -120,11 +121,14 @@ internal static class CollectibleViews {
     JsonObject? node = collectible.Attributes?["itemViews"]?["guiRotation"];
     if (node == null || !node.Exists)
       return null;
-    double[]? v = node.IsArray() ? node.AsArray<double>() : null;
-    if (v is not { Length: 3 })
+    if (
+      node.Token is not JArray { Count: 3 } a
+      || !a.All(t => t.Type is JTokenType.Integer or JTokenType.Float)
+    )
       throw new ArgumentException(
         $"{collectible.Code}: attributes.itemViews.guiRotation is not an array of three numbers"
       );
+    double[] v = a.Select(t => (double)t).ToArray();
     return new Vec3d(v[0], v[1], v[2]);
   }
 
