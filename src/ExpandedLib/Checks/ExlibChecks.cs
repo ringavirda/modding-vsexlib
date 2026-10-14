@@ -106,7 +106,10 @@ public static class ExlibChecks {
   internal sealed record Grid(int Size, string Station);
 
   /// <summary>The hand crafting grid every domain's recipes are crafted in.</summary>
-  internal static readonly Grid Hand = new(GridRecipeShapeCheck.GridSize, "hand");
+  internal static readonly Grid Hand = new(
+    GridRecipeShapeCheck.GridSize,
+    "hand"
+  );
 
   /// <summary>One block a mod declared with <see cref="Runs"/>.</summary>
   internal sealed record Runner(
@@ -344,7 +347,11 @@ public static class ExlibChecks {
   /// <summary>The grids <paramref name="domain"/>'s recipes are crafted in: the hand grid, then
   /// every larger one declared for it, smallest first.</summary>
   internal static IReadOnlyList<Grid> Grids(string domain) =>
-    Ordered(_grids.Where(g => g.Domain == domain).Select(g => new Grid(g.Size, g.Station)));
+    Ordered(
+      _grids
+        .Where(g => g.Domain == domain)
+        .Select(g => new Grid(g.Size, g.Station))
+    );
 
   /// <summary>The grids any domain declared, for the collision checks: the hand grid, then every
   /// larger declared one, smallest first.</summary>
@@ -354,7 +361,10 @@ public static class ExlibChecks {
   /// <summary>The hand grid, then each of <paramref name="grids"/> larger than it once, smallest
   /// first.</summary>
   internal static IReadOnlyList<Grid> Ordered(IEnumerable<Grid> grids) =>
-    [Hand, .. grids.Where(g => g.Size > Hand.Size).Distinct().OrderBy(g => g.Size)];
+    [
+      Hand,
+      .. grids.Where(g => g.Size > Hand.Size).Distinct().OrderBy(g => g.Size),
+    ];
 
   /// <summary>Every <see cref="Produces"/> declaration of the current world, in call
   /// order.</summary>

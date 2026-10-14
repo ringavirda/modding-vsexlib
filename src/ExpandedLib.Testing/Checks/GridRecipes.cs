@@ -54,16 +54,23 @@ public static class GridRecipes {
         nameof(family)
       );
     var source = new AssemblyCheckSource(family);
-    IReadOnlyList<ExlibChecks.Grid>? held =
-      grids is null
-        ? null
-        : ExlibChecks.Ordered(
-          grids.Select(g => new ExlibChecks.Grid(g.Size, g.Station))
-        );
+    IReadOnlyList<ExlibChecks.Grid>? held = grids is null
+      ? null
+      : ExlibChecks.Ordered(
+        grids.Select(g => new ExlibChecks.Grid(g.Size, g.Station))
+      );
     CheckResult[] results =
     [
-      GridRecipeShapeCheck.Run(source, domain, held ?? ExlibChecks.Grids(domain)),
-      GridRecipeCollisionCheck.Run(source, domain, held ?? ExlibChecks.AllGrids()),
+      GridRecipeShapeCheck.Run(
+        source,
+        domain,
+        held ?? ExlibChecks.Grids(domain)
+      ),
+      GridRecipeCollisionCheck.Run(
+        source,
+        domain,
+        held ?? ExlibChecks.AllGrids()
+      ),
       GridOutputVariantCheck.Run(source, domain),
     ];
     return new Result(
