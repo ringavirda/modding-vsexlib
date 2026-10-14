@@ -359,7 +359,8 @@ public class FillerControlBoxesTests {
 #if GAME_GE_1_22
   // Fails when the empty-selection fallback ignores whether a control was hidden.
   [Fact]
-  public void An_explicit_empty_selection_leaves_the_cell_unselectable() {
+  public void An_explicit_empty_selection_leaves_the_cell_unselectable()
+  {
     var scene = new Scene();
     BlockPos pos = scene.Cell(8, 0, 0);
 

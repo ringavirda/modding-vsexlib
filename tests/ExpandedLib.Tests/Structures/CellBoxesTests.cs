@@ -99,7 +99,9 @@ public class CellBoxesTests {
   // Fails when Read turns an explicit empty `selectionBoxes` into null.
   [Fact]
   public void An_empty_selection_reads_as_an_empty_array() {
-    CellBoxes boxes = ReadRow($$"""{ "collisionBoxes": [{{Box}}], "selectionBoxes": [] }""")!;
+    CellBoxes boxes = ReadRow(
+      $$"""{ "collisionBoxes": [{{Box}}], "selectionBoxes": [] }"""
+    )!;
 
     Assert.NotNull(boxes.Selection);
     Assert.Empty(boxes.Selection);
