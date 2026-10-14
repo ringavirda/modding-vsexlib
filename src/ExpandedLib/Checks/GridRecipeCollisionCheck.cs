@@ -64,9 +64,9 @@ public static class GridRecipeCollisionCheck {
   /// <summary>The result named <paramref name="check"/>: one line per pair of
   /// <paramref name="own"/> with <paramref name="others"/>, and of two of <paramref name="own"/>
   /// when <paramref name="withinOwn"/>, that match the same input, each with the two recipes'
-  /// <see cref="Craft.At"/> as its subjects. A pair is judged in each of <paramref name="grids"/>
-  /// both fit in and reported once, with the first grid it collides in named when that is not the
-  /// hand grid.</summary>
+  /// <see cref="Craft.At"/> as its subjects.</summary>
+  /// <remarks>A pair is judged in each of <paramref name="grids"/> both fit in and reported once,
+  /// the first grid it collides in named when that is not the hand grid.</remarks>
   internal static CheckResult Collisions(
     string check,
     string domain,
