@@ -56,6 +56,14 @@ internal sealed class ScenarioWorld(
     return network is { } found && found.NetworkType == type ? found : null;
   }
 
+  public IReadOnlyList<BlockPos> NetworkCells(
+    BlockPos at,
+    string networkType
+  ) =>
+    NetworkAt(at, networkType) is BlockNetwork network
+      ? [.. network.Nodes.Select(Local)]
+      : [];
+
   public MoltenCellReading? MoltenCellAt(BlockPos pos) =>
     (
       BlockEntityAt(pos) is { } be

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using ExpandedLib.Industry.Molten;
+using ExpandedLib.Networks;
 using ExpandedLib.Scenarios;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -36,6 +37,14 @@ internal sealed class SetupWorldView(
       : world.NetworkAt(pos) is { } network && network.NetworkType == type
         ? network
         : null;
+
+  public IReadOnlyList<BlockPos> NetworkCells(
+    BlockPos at,
+    string networkType
+  ) =>
+    NetworkAt(at, networkType) is BlockNetwork network
+      ? [.. network.Nodes]
+      : [];
 
   public MoltenCellReading? MoltenCellAt(BlockPos pos)
   {

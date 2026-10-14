@@ -830,7 +830,8 @@ internal sealed class SetupRecording {
 
     /// <summary>The run's cells, nearest the recorded cell first.</summary>
     private IEnumerable<MoltenCellReading> Cells(ISetupWorld world) =>
-      ((world.NetworkAt(_pos, "molten") as BlockNetwork)?.Nodes ?? [])
+      world
+        .NetworkCells(_pos, "molten")
         .OrderBy(p =>
           Math.Abs(p.X - _pos.X)
           + Math.Abs(p.Y - _pos.Y)
