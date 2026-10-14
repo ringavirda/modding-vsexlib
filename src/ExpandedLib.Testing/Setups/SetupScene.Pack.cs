@@ -134,23 +134,6 @@ public sealed partial class SetupScene
       .GroupBy(r => SetupPack.MetalCode(r.Metal))
       .Select(g => (g.Key, g.Sum(r => r.Amount)));
 
-  private ItemStack? PackedLaid(CraftInput input)
-  {
-    foreach (string key in _pack!.HeldKeys)
-    {
-      var code = new AssetLocation(key);
-      CollectibleObject? item =
-        (CollectibleObject?)World.World.GetItem(code)
-        ?? World.World.GetBlock(code);
-      if (item == null)
-        continue;
-      var stack = new ItemStack(item, input.Ingredient.Quantity);
-      if (input.Ingredient.SatisfiesAsIngredient(stack))
-        return stack;
-    }
-    return null;
-  }
-
   private void DrawBill(
     string where,
     CraftOrder order,

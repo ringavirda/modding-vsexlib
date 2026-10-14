@@ -6,6 +6,7 @@ using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -62,29 +63,58 @@ internal static class PackLedger {
     Draw(ctx, code, 1, pin);
   }
 
+  /// <summary>Draws the stacks of the stages <paramref name="construction"/> still has to pay up to
+  /// <paramref name="target"/>; a <c>{placeholder}</c> in a code reads as the variant
+  /// <paramref name="materials"/> names for it, or as <c>*</c>.</summary>
+  /// <param name="target">The last stage index the walk builds.</param>
   /// <exception cref="StepFailure">The pack holds too few of a stage's stacks.</exception>
   public static void DrawStages(
     ScenarioContext ctx,
     ExRightClickConstruction construction,
-    string pin
+    string pin,
+    int target,
+    IReadOnlyDictionary<string, string> materials
   ) {
     if (ctx.Pack is not { DrawsBlocks: true })
       return;
-    for (
-      int i = construction.CurrentCompletedStage + 1;
-      i < construction.Stages.Length;
-      i++
-    )
+    for (int i = construction.CurrentCompletedStage + 1; i <= target; i++)
       foreach (
         ExConstructionIngredient need in construction.Stages[i].RequireStacks
           ?? []
       )
         Draw(
           ctx,
-          Regex.Replace(need.Code.ToString(), @"\{[^}]*\}", "*"),
+          Regex.Replace(
+            need.Code.ToString(),
+            @"\{([^}]*)\}",
+            m => materials.GetValueOrDefault(m.Groups[1].Value, "*")
+          ),
           need.Quantity,
           pin
         );
+  }
+
+  /// <summary>Lays <paramref name="input"/> for a craft: the stack the pack holds when
+  /// <paramref name="with"/> names nothing for the input, otherwise the first loaded
+  /// variant.</summary>
+  /// <exception cref="StepFailure">The input has no loaded collectible, or <paramref name="with"/>
+  /// names none.</exception>
+  public static ItemStack Laid(
+    ScenarioContext ctx,
+    CraftInput input,
+    JObject? with
+  ) {
+    if (
+      ctx.Pack != null
+      && with?[input.Name] == null
+      && ctx.Pack.Laid(ctx.World, input) is { } held
+    )
+      return held;
+    try {
+      return CraftBills.Laid(ctx.World, input, with);
+    } catch (InvalidOperationException e) {
+      throw new StepFailure(e.Message, Suspect.Scenario, e);
+    }
   }
 
   public static void Give(ScenarioContext ctx, ItemStack? stack) {
@@ -128,26 +158,24 @@ internal static class PackLedger {
       .Select(g => (g.Key, g.Sum(r => r.Amount)));
 
   private static void GiveSpawns(ScenarioContext ctx) {
-    if (ctx.Pack == null)
-      return;
-    if (ctx.Placed.Count == 0)
+    if (ctx.Pack == null || ctx.Placed.Count == 0)
       return;
     var cells = ctx.Placed.Select(c => ctx.Setup.Absolute(c)).ToList();
-    var min = new BlockPos(
-      cells.Min(c => c.X) - 1,
-      cells.Min(c => c.Y) - 1,
-      cells.Min(c => c.Z) - 1
-    );
-    var max = new BlockPos(
-      cells.Max(c => c.X) + 1,
-      cells.Max(c => c.Y) + 1,
-      cells.Max(c => c.Z) + 1
-    );
+    int x0 = cells.Min(c => c.X) - 1,
+      x1 = cells.Max(c => c.X) + 1;
+    int y0 = cells.Min(c => c.Y) - 1,
+      y1 = cells.Max(c => c.Y) + 1;
+    int z0 = cells.Min(c => c.Z) - 1,
+      z1 = cells.Max(c => c.Z) + 1;
     foreach (
       Entity each in ctx.World.GetEntitiesInsideCuboid(
-        min,
-        max,
-        e => e is EntityItem
+        new BlockPos(x0, y0, z0),
+        new BlockPos(x1 + 1, y1 + 1, z1 + 1),
+        e =>
+          e is EntityItem
+          && Math.Floor(e.Pos.X) <= x1
+          && Math.Floor(e.Pos.Y) <= y1
+          && Math.Floor(e.Pos.Z) <= z1
       )
     )
       if (each is EntityItem item && ctx.SpawnsSeen.Add(each.EntityId))

@@ -1,0 +1,29 @@
+{
+  "setup": "scenario-player-pack-spawn",
+  "description": "Four iron ingots are put in a chest and the chest is broken, so the ingots spill beside it and the pack gets them back.",
+  "mods": [],
+  "pack": {
+    "scope": "all",
+    "gathered": {
+      "game:chest-east": 1,
+      "game:ingot-iron": 4
+    },
+    "ends": {
+      "stacks": { "game:ingot-iron": 4 }
+    }
+  },
+  "steps": [
+    { "place": { "id": "chest", "code": "game:chest-east", "at": [0, 0, 0] } },
+    {
+      "window": {
+        "at": [0, 0, 0],
+        "open": true,
+        "put": { "slot": 0, "stack": "game:ingot-iron", "count": 4 },
+        "close": true
+      }
+    },
+    { "call": { "at": { "of": "chest" }, "method": "OnBlockBroken", "args": [null] } }
+  ],
+  "seconds": 8,
+  "record": {}
+}

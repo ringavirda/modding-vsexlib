@@ -1,0 +1,16 @@
+{
+  "setup": "scenario-player-pack-short-draws",
+  "description": "The pack holds one stick and the step draws two, so the step fails before it runs.",
+  "mods": [],
+  "pack": {
+    "scope": "stacks",
+    "gathered": {
+      "game:stick": 1
+    }
+  },
+  "steps": [
+    { "place": { "code": "game:chest-east", "at": [0, 0, 0] }, "draws": { "game:stick": 2 } }
+  ],
+  "seconds": 8,
+  "record": {}
+}

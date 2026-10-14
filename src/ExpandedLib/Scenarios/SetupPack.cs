@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using ExpandedLib.Machines;
 
 namespace ExpandedLib.Scenarios;
 
@@ -76,6 +77,31 @@ internal sealed class SetupPack {
   /// out.</summary>
   public IEnumerable<string> HeldKeys =>
     _held.Where(k => k.Value > 0 && !k.Key.Contains('*')).Select(k => k.Key);
+
+  /// <summary>The stack that lays <paramref name="input"/> from what the pack holds: the first
+  /// concrete key whose collectible satisfies the ingredient.</summary>
+  /// <param name="world">Resolves each held key to an item or block.</param>
+  /// <returns>A stack of the ingredient's quantity, or null when no held key satisfies it.</returns>
+  public Vintagestory.API.Common.ItemStack? Laid(
+    Vintagestory.API.Common.IWorldAccessor world,
+    CraftInput input
+  ) {
+    foreach (string key in HeldKeys) {
+      var code = new Vintagestory.API.Common.AssetLocation(key);
+      Vintagestory.API.Common.CollectibleObject? item =
+        (Vintagestory.API.Common.CollectibleObject?)world.GetItem(code)
+        ?? world.GetBlock(code);
+      if (item == null)
+        continue;
+      var stack = new Vintagestory.API.Common.ItemStack(
+        item,
+        input.Ingredient.Quantity
+      );
+      if (input.Ingredient.SatisfiesAsIngredient(stack))
+        return stack;
+    }
+    return null;
+  }
 
   /// <summary>The pack code of a molten cell's metal.</summary>
   /// <param name="metalType">The cell's full metal code, such as <c>game:ingot-iron</c>.</param>

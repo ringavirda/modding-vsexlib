@@ -221,7 +221,7 @@ public sealed partial class SetupScene
     if (
       _pack != null
       && with?[input.Name] == null
-      && PackedLaid(input) is { } held
+      && _pack.Laid(World.World, input) is { } held
     )
       return held;
     try

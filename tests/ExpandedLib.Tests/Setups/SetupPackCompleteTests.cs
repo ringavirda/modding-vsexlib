@@ -12,6 +12,12 @@ namespace ExpandedLib.Tests.Setups;
 internal sealed class SetupFrame : BlockEntity
 {
   private ExpandedLib.Blocks.ExRightClickConstructable? _rcc;
+
+  public void Stock(IPlayer who, int count) =>
+    who.InventoryManager.GetHotbarInventory()[0].Itemstack = new ItemStack(
+      Api.World.GetItem(new AssetLocation("game:stick")),
+      count
+    );
 }
 
 /// <summary>What a <c>complete</c> draws from a setup's pack: the cells it raises and every stage
@@ -58,13 +64,17 @@ public class SetupPackCompleteTests : IDisposable
         "t.json"
       ),
       [ModPath(mod)],
-      null,
+      w => w.RegisterItem("game:stick"),
       w =>
         w.RegisterClass(
             "ExRightClickConstructable",
             typeof(ExpandedLib.Blocks.ExRightClickConstructable)
           )
           .RegisterClass("SetupFrame", typeof(SetupFrame))
+          .RegisterClass(
+            "BlockEntityInteract",
+            typeof(Vintagestory.GameContent.BlockBehaviorBlockEntityInteract)
+          )
     );
 
   private static SetupScene BuildWithBox(string pack, string steps) =>
@@ -147,6 +157,32 @@ public class SetupPackCompleteTests : IDisposable
       pack.Draws
     );
     Assert.Empty(pack.End);
+  }
+
+  // Fails when complete draws a stage the hand already paid, so the sticks of stage 1 are drawn
+  // again at the complete and the pack runs short.
+  [Fact]
+  public void A_stage_paid_before_complete_is_not_drawn_again()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("all", Paid),
+      "{\"place\": {\"id\": \"frame\", \"code\": \"setupbuild:frame\", \"at\": [0, 0, 0]}}"
+        + ", {\"call\": {\"at\": {\"of\": \"frame\"}, \"method\": \"Stock\", \"args\": [\"player\", 2]}}"
+        + ", {\"interact\": {\"at\": {\"of\": \"frame\"}, \"with\": {\"stack\": \"game:stick\", \"count\": 2}}}"
+        + ", {\"complete\": {\"of\": \"frame\"}}"
+    );
+
+    SetupPackRecord pack = scene.Run(Mods).Pack!;
+
+    Assert.Equal(
+      [
+        ("steps[0]", "setupbuild:frame", 1),
+        ("steps[2]", "game:stick", 2),
+        ("steps[3]", "game:plank-*", 3),
+      ],
+      pack.Draws
+    );
   }
 
   // Fails when a construction's planks are drawn across two woods, so a stage needing three planks

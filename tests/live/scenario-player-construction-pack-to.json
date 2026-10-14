@@ -1,0 +1,22 @@
+{
+  "setup": "scenario-player-construction-pack-to",
+  "description": "A blower is built to stage 2 from a pack that holds only the first two stages' stacks, so the complete draws nothing for the stages it does not build.",
+  "mods": [],
+  "pack": {
+    "scope": "all",
+    "gathered": {
+      "twintubblower:blower-twintubblower-n": 1,
+      "game:supportbeam-oak": 4,
+      "game:metalnailsandstrips-iron": 2,
+      "game:plank-oak": 4,
+      "game:woodenaxle-ud": 1,
+      "game:rod-iron": 2
+    }
+  },
+  "steps": [
+    { "place": { "id": "blower", "code": "twintubblower:blower-twintubblower-n", "at": [0, 0, 0] } },
+    { "complete": { "of": "blower", "to": 2, "materials": { "metal": "iron" } } }
+  ],
+  "seconds": 12,
+  "record": {}
+}

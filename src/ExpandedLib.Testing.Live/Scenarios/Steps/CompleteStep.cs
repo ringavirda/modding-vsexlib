@@ -63,9 +63,13 @@ internal sealed class CompleteStep : ScenarioStep {
       foreach (bool wait in Raise(ctx, cell, structure, report))
         yield return wait;
     if (construction != null) {
-      PackLedger.DrawStages(ctx, construction.Construction, cell.ToString());
-    }
-    if (construction != null)
+      PackLedger.DrawStages(
+        ctx,
+        construction.Construction,
+        cell.ToString(),
+        ConstructionWalk.Target(to, construction.Construction.Stages.Length),
+        ConstructionWalk.Materials(materials)
+      );
       foreach (
         bool wait in ConstructionWalk.Walk(
           ctx,
@@ -77,6 +81,7 @@ internal sealed class CompleteStep : ScenarioStep {
         )
       )
         yield return wait;
+    }
   }
 
   private static IEnumerable<bool> Raise(

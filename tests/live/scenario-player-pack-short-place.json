@@ -1,0 +1,16 @@
+{
+  "setup": "scenario-player-pack-short-place",
+  "description": "The pack holds no chest, so the place fails at its step.",
+  "mods": [],
+  "pack": {
+    "scope": "all",
+    "gathered": {
+      "game:stick": 1
+    }
+  },
+  "steps": [
+    { "place": { "code": "game:chest-east", "at": [0, 0, 0] } }
+  ],
+  "seconds": 8,
+  "record": {}
+}

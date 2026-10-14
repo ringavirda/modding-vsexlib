@@ -114,7 +114,7 @@ internal sealed class CraftStep : ScenarioStep {
     foreach (
       var bill in order
         .Inputs.Where(i => !i.Ingredient.IsTool)
-        .Select(i => Laid(ctx, i, with))
+        .Select(i => PackLedger.Laid(ctx, i, with))
         .GroupBy(s => s.Collectible.Code.ToString())
     )
       PackLedger.Draw(ctx, bill.Key, bill.Sum(s => s.StackSize) * times);
@@ -139,18 +139,6 @@ internal sealed class CraftStep : ScenarioStep {
     return names.Count == 0 ? "no loaded station" : string.Join(", ", names);
   }
 
-  private static ItemStack Laid(
-    ScenarioContext ctx,
-    CraftInput input,
-    JObject? with
-  ) {
-    try {
-      return CraftBills.Laid(ctx.World, input, with);
-    } catch (System.InvalidOperationException e) {
-      throw new StepFailure(e.Message, Suspect.Scenario, e);
-    }
-  }
-
   private static IEnumerable<ItemStack> CraftAt(
     ScenarioContext ctx,
     ScenarioPlayer player,
@@ -170,7 +158,7 @@ internal sealed class CraftStep : ScenarioStep {
     ).Inventory;
     entity.OnReceivedClientPacket(who, 1000, null);
     foreach (CraftInput input in order.Inputs) {
-      ItemStack laid = Laid(ctx, input, with);
+      ItemStack laid = PackLedger.Laid(ctx, input, with);
       hand.Itemstack = laid;
       int moved = WindowStep.PutOnce(who, entity, input.Slot);
       hand.Itemstack = null;
@@ -220,7 +208,7 @@ internal sealed class CraftStep : ScenarioStep {
       grid[i].Itemstack = null;
     foreach (CraftInput input in order.Inputs) {
       ItemSlot slot = grid[input.Slot];
-      slot.Itemstack = Laid(ctx, input, with);
+      slot.Itemstack = PackLedger.Laid(ctx, input, with);
       grid.DidModifyItemSlot(slot);
     }
     int output = HandGrid.Size * HandGrid.Size;
@@ -264,7 +252,7 @@ internal sealed class CraftStep : ScenarioStep {
         .Select(_ => (ItemSlot)new DummySlot()),
     ];
     foreach (CraftInput input in order.Inputs)
-      slots[input.Slot].Itemstack = Laid(ctx, input, with);
+      slots[input.Slot].Itemstack = PackLedger.Laid(ctx, input, with);
     if (!recipe.Matches(who, ctx.World, slots, HandGrid.Size))
       throw new StepFailure(
         $"the hand grid's matcher refuses the bill of {order.Recipe}."

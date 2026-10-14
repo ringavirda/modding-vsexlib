@@ -1,0 +1,24 @@
+{
+  "setup": "scenario-player-construction-pack-short",
+  "description": "A blower is built from a pack that holds seven of the eight plates the last two stages take, so the complete fails at its step.",
+  "mods": [],
+  "pack": {
+    "scope": "all",
+    "gathered": {
+      "twintubblower:blower-twintubblower-n": 1,
+      "game:supportbeam-oak": 4,
+      "game:metalnailsandstrips-iron": 6,
+      "game:plank-oak": 8,
+      "game:woodenaxle-ud": 1,
+      "game:rod-iron": 2,
+      "game:metalplate-iron": 7
+    }
+  },
+  "steps": [
+    { "place": { "id": "blower", "code": "twintubblower:blower-twintubblower-n", "at": [0, 0, 0] } },
+    { "complete": { "of": "blower", "materials": { "metal": "iron" } } },
+    { "expect": { "at": { "of": "blower" }, "member": "ExRightClickConstructable.IsComplete", "equals": true } }
+  ],
+  "seconds": 12,
+  "record": {}
+}

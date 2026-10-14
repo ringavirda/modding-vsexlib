@@ -1,0 +1,16 @@
+{
+  "setup": "scenario-player-pack-short-craft",
+  "description": "The pack holds the strips but no plate, so the craft of the plated pipe fails at its step.",
+  "mods": [],
+  "pack": {
+    "scope": "all",
+    "gathered": {
+      "game:metalnailsandstrips-iron": 1
+    }
+  },
+  "steps": [
+    { "craft": { "output": "platedpipes:pipe-plated-straight-ns" } }
+  ],
+  "seconds": 8,
+  "record": {}
+}
