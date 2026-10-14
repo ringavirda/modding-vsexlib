@@ -1,5 +1,11 @@
 #if GAME_GE_1_22
+using System;
+using System.Linq;
+using ExpandedLib.Industry.MechanicalPower;
+using ExpandedLib.Registries;
+using ExpandedLib.Structures;
 using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -11,11 +17,18 @@ namespace ExpandedLib.Tests;
 
 /// <summary>A vanilla waterwheel over the game's own water blocks, held in the fluid layer, driving
 /// a vanilla axle through a started <see cref="MechanicalPowerMod"/>.</summary>
+[Collection(ExHarmonyCollection.Name)]
 public class WaterWheelTests
 {
   private static BlockPos Hub => new(10, 10, 10);
 
   private static BlockPos AxlePos => Hub.SouthCopy();
+
+  private static BlockPos CagePos => AxlePos.SouthCopy();
+
+  private static BlockPos GearPos => AxlePos.AddCopy(0, 0, 2);
+
+  private static BlockPos PortPos => GearPos.UpCopy();
 
   /// <summary>The speed vanilla's <c>MechanicalNetwork.updateNetwork</c> holds a network with no free
   /// torque at, rad per tick-step.</summary>
@@ -81,20 +94,103 @@ public class WaterWheelTests
     );
   }
 
+  // Fails when the Postfix that restores the ratio is dropped, or when the industry module's
+  // PatchHarmony is off: the first water check after the reload writes ratio 1 over the wheel's 5.5.
+  [Fact]
+  public void Coupling_WheelRatioSurvivesReload()
+  {
+    using TestWorld world = Wheel("rapidwater-e-7", throughGear: true);
+    ExModuleInfo industry = ExModules.All.Single(m =>
+      m.Host == "exlib" && m.Id == "industry"
+    );
+    var host = new ExModuleHost(
+      world.Mods.GetMod("exlib")!,
+      new ExModuleSet([industry], [])
+    );
+    host.Start(world.Api);
+    try
+    {
+      Run(world, 20);
+      SeedFromPort(world);
+      Assert.InRange(Mp(world, Hub).GearedRatio, 5.4f, 5.6f);
+
+      world.Reload(Hub);
+      Run(world, 20);
+
+      var wheel = world
+        .GetBlockEntity(Hub)!
+        .GetBehavior<BEBehaviorMPWaterWheel>();
+      Assert.NotEqual(0f, (float)ReflectionHelpers.GetField(wheel, "dir")!);
+      Assert.Same(wheel.Network, Mp(world, PortPos).Network);
+      Assert.InRange(wheel.GearedRatio, 5.4f, 5.6f);
+    }
+    finally
+    {
+      host.Dispose();
+    }
+  }
+
+  /// <summary>Models a load that initialises the port before the wheel: the networks are gone, and
+  /// the port, reloaded alone, seeds a network the placed wheel is spread into.</summary>
+  private static void SeedFromPort(TestWorld world)
+  {
+    var power = world.Api.ModLoader.GetModSystem<MechanicalPowerMod>();
+    var data = (MechPowerData)ReflectionHelpers.GetField(power, "data")!;
+    foreach (MechanicalNetwork network in data.networksById.Values)
+      network.Valid = false;
+    data.networksById.Clear();
+    world.Reload(PortPos);
+  }
+
   /// <summary>A built north-side wheel at <see cref="Hub"/> on an axle south of it, over a channel
-  /// of <paramref name="water"/> along X under the wheel and two cells past it each way.</summary>
-  private static TestWorld Wheel(string water)
+  /// of <paramref name="water"/> along X under the wheel and two cells past it each way. With
+  /// <paramref name="throughGear"/>, the axle runs on into a cage gear on a large gear, and a filler
+  /// port above the large gear is placed first, so the port seeds the network.</summary>
+  private static TestWorld Wheel(string water, bool throughGear = false)
   {
     var world = new TestWorld();
     world.RegisterVanillaClasses();
     var power = new MechanicalPowerMod();
     world.Mods.Register(power);
     power.Start(world.Api);
-    world.LoadVanilla(["water", "rapidwater", "waterwheel", "axle"], []);
+    world.LoadVanilla(
+      throughGear
+        ?
+        [
+          "water",
+          "rapidwater",
+          "waterwheel",
+          "axle",
+          "angledgears",
+          "largegear3m",
+        ]
+        : ["water", "rapidwater", "waterwheel", "axle"],
+      []
+    );
 
     Block waterBlock = Get(world, water);
     for (int dx = -2; dx <= 2; dx++)
       world.Place(Hub.AddCopy(dx, -1, 0), waterBlock);
+    if (throughGear)
+    {
+      world.RegisterBlockEntityBehaviorFactory(
+        "exlib.BEBehaviorMPFillerPort",
+        be => new BEBehaviorMPFillerPort(be)
+      );
+      world.PlaceFiller(
+        PortPos,
+        [
+          new FillerBehavior(
+            "exlib.BEBehaviorMPFillerPort",
+            BlockFacing.DOWN,
+            new JsonObject(JObject.Parse("{ \"resistance\": 0.001 }"))
+          ),
+        ],
+        PortPos
+      );
+      world.Accessor.SetBlock(Get(world, "largegear3").BlockId, GearPos);
+      world.Accessor.SetBlock(Get(world, "angledgears-nn").BlockId, CagePos);
+    }
     world.Accessor.SetBlock(Get(world, "woodenaxle-ns").BlockId, AxlePos);
     world.Accessor.SetBlock(Get(world, "waterwheel-3m-north").BlockId, Hub);
 

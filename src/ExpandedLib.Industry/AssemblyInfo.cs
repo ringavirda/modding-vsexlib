@@ -4,4 +4,4 @@ using ExpandedLib.Registries;
 [assembly: ExDomain("exlib")]
 
 // A framework module, hosted by exlib itself. Its Mod is exlib's, not "industry".
-[assembly: ExModule("industry", Mod = "exlib")]
+[assembly: ExModule("industry", Mod = "exlib", PatchHarmony = true)]
