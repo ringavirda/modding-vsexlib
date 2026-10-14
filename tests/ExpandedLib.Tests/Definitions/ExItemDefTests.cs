@@ -500,6 +500,14 @@ public class ExItemDefTests {
       "megablocks are blocks; items cannot be part of one",
     ["FillerOffsetsByType(String,IEnumerable<FillerCellSpec>)"] =
       "megablocks are blocks; items cannot be part of one",
+    ["PrincipalCell(CellBoxes)"] =
+      "a principal's cell boxes; items have no cells",
+    ["PrincipalCellByType(String,CellBoxes)"] =
+      "a principal's cell boxes; items have no cells",
+    ["Controls(BlockControl[])"] =
+      "controls are boxes on a placed block; items have none",
+    ["ControlsByType(String,BlockControl[])"] =
+      "controls are boxes on a placed block; items have none",
     ["Construction(Action<ConstructionStages>)"] =
       "megablocks are blocks; items cannot be part of one",
     ["Multiblock(Action<MultiblockBuilder>)"] =
