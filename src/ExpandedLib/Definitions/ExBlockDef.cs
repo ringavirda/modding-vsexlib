@@ -870,6 +870,59 @@ public sealed class ExBlockDef : IExDef {
     string typeWildcard,
     IEnumerable<FillerCellSpec> cells
   ) {
+    ByType(typeWildcard)["fillerOffsets"] = SerializeFillerCells(cells);
+    return this;
+  }
+
+  /// <summary>Sets <c>attributes.principalCell</c>, the boxes of the principal's own cell: the keys of a
+  /// <c>fillerOffsets</c> row without offset, behaviours or ports. A def with a principal cell has no
+  /// top-level <c>collisionboxes</c> or <c>selectionboxes</c>.</summary>
+  public ExBlockDef PrincipalCell(CellBoxes boxes) {
+    Nested("attributes")["principalCell"] = PrincipalRow(boxes);
+    return this;
+  }
+
+  /// <summary>Per-type principal cell: sets <c>attributesByType.{typeWildcard}.principalCell</c>.
+  /// Accumulates; call once per type wildcard.</summary>
+  public ExBlockDef PrincipalCellByType(string typeWildcard, CellBoxes boxes) {
+    ByType(typeWildcard)["principalCell"] = PrincipalRow(boxes);
+    return this;
+  }
+
+  /// <summary>Sets <c>attributes.controls</c>, the block's control table (id, kind, alsoIds, stage).</summary>
+  public ExBlockDef Controls(params BlockControl[] controls) {
+    Nested("attributes")["controls"] = ControlRows(controls);
+    return this;
+  }
+
+  /// <summary>Per-type control table: sets <c>attributesByType.{typeWildcard}.controls</c>.
+  /// Accumulates; call once per type wildcard.</summary>
+  public ExBlockDef ControlsByType(
+    string typeWildcard,
+    params BlockControl[] controls
+  ) {
+    ByType(typeWildcard)["controls"] = ControlRows(controls);
+    return this;
+  }
+
+  private static JObject PrincipalRow(CellBoxes boxes) {
+    var row = new JObject();
+    boxes.WriteTo(row);
+    return row;
+  }
+
+  private static JArray ControlRows(IEnumerable<BlockControl> controls) =>
+    new(
+      controls.Select(c => new JObject {
+        ["id"] = c.Id,
+        ["kind"] = c.Kind,
+        ["alsoIds"] = new JArray(c.AlsoIds),
+        ["stage"] = c.Stage,
+      })
+    );
+
+  // Returns the attributesByType object of one type wildcard, creating it if absent.
+  private JObject ByType(string typeWildcard) {
     if (_root["attributesByType"] is not JObject byType) {
       byType = new JObject();
       _root["attributesByType"] = byType;
@@ -878,8 +931,7 @@ public sealed class ExBlockDef : IExDef {
       attrs = new JObject();
       byType[typeWildcard] = attrs;
     }
-    attrs["fillerOffsets"] = SerializeFillerCells(cells);
-    return this;
+    return attrs;
   }
 
   /// <summary>Shared with <see cref="ExpandedLib.Structures.JsonMultiblockLayout"/>.</summary>
@@ -906,12 +958,12 @@ public sealed class ExBlockDef : IExDef {
         }
         entry["behaviors"] = behaviors;
       }
-      if (cell.CollisionBoxes is { Count: > 0 } boxes)
-        // One box writes `collisionBox`, several `collisionBoxes`.
-        entry[boxes.Count == 1 ? "collisionBox" : "collisionBoxes"] =
-          boxes.Count == 1
-            ? Corners(boxes[0])
-            : new JArray(boxes.Select(Corners));
+      new CellBoxes(
+        cell.CollisionBoxes?.ToArray(),
+        cell.SelectionBoxes?.ToArray(),
+        cell.Controls,
+        cell.Doors
+      ).WriteTo(entry);
       if (cell.AllowAttach)
         entry["allowAttach"] = true;
       if (cell.PortFace != null)
@@ -924,7 +976,7 @@ public sealed class ExBlockDef : IExDef {
   }
 
   // Just the two corners, in vanilla's own lowercase spelling.
-  private static JObject Corners(Cuboidf box) =>
+  internal static JObject Corners(Cuboidf box) =>
     new() {
       ["x1"] = box.X1,
       ["y1"] = box.Y1,
