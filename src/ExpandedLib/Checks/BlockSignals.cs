@@ -233,9 +233,10 @@ internal sealed class BlockSignals {
         BlockControls.Of(block).Count > 0
         || ControlBoxes.PrincipalRow(block) != null
         || footprint.Any(c =>
-          c.Boxes is { Selection: not null }
-          or { Controls.Count: > 0 }
-          or { Doors.Count: > 0 }
+          c.Boxes
+            is { Selection: not null }
+              or { Controls.Count: > 0 }
+              or { Doors.Count: > 0 }
         ),
     };
   }

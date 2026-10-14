@@ -12,7 +12,8 @@ namespace ExpandedLib.Testing;
 /// <summary>A block's controls are declared whole: every id a cell or door names is in its
 /// <c>controls</c> table, every table row has a box, no control box lies over another control's or
 /// the body's, and the placed block selects each control box with its id.</summary>
-public static class ControlLaw {
+public static class ControlLaw
+{
   internal const string Name = "control";
 
   private const float Overlap = 1e-4f;
@@ -39,22 +40,31 @@ public static class ControlLaw {
   /// <param name="domain">The domain whose blocks are judged.</param>
   /// <returns>The law's blocktypes, variants judged and findings, each keyed by the variant's
   /// code.</returns>
-  public static BlockLaws.Law Run(TestWorld world, string domain) {
+  public static BlockLaws.Law Run(TestWorld world, string domain)
+  {
     var findings = new List<string>();
     var sites = new BlockLaws.Sites();
     int blocks = 0,
       cases = 0;
     foreach (
       IGrouping<string, Block> type in BlockLaws.Blocktypes(world, domain)
-    ) {
-      Block[] declaring = [.. type.Where(b => BlockLaws.Signals(world, b).Controls)];
+    )
+    {
+      Block[] declaring =
+      [
+        .. type.Where(b => BlockLaws.Signals(world, b).Controls),
+      ];
       if (declaring.Length == 0)
         continue;
       blocks++;
-      foreach (Block block in declaring) {
+      foreach (Block block in declaring)
+      {
         cases++;
         string code = block.Code.ToString();
-        IReadOnlyList<(string Label, CellBoxes Boxes)> cells = CellsOf(world, block);
+        IReadOnlyList<(string Label, CellBoxes Boxes)> cells = CellsOf(
+          world,
+          block
+        );
         findings.AddRange(Declared(code, block, cells));
         findings.AddRange(Placed(world, block, cells, sites.Next()));
       }
@@ -65,14 +75,19 @@ public static class ControlLaw {
   private static IReadOnlyList<(string Label, CellBoxes Boxes)> CellsOf(
     TestWorld world,
     Block block
-  ) {
+  )
+  {
     var cells = new List<(string, CellBoxes)>();
     if (ControlBoxes.PrincipalRow(block) is { } principal)
       cells.Add(("principal", principal));
     if (block is IFillerHost host)
-      foreach (FillerOffset cell in StructureFillers.ReadOffsets(host.FillerOffsets))
+      foreach (
+        FillerOffset cell in StructureFillers.ReadOffsets(host.FillerOffsets)
+      )
         if (cell.Boxes != null)
-          cells.Add(($"({cell.Offset.X}, {cell.Offset.Y}, {cell.Offset.Z})", cell.Boxes));
+          cells.Add(
+            ($"({cell.Offset.X}, {cell.Offset.Y}, {cell.Offset.Z})", cell.Boxes)
+          );
     return cells;
   }
 
@@ -80,7 +95,8 @@ public static class ControlLaw {
     string code,
     Block block,
     IReadOnlyList<(string Label, CellBoxes Boxes)> cells
-  ) {
+  )
+  {
     IReadOnlyList<BlockControl> table = BlockControls.Of(block);
     var ids = table.Select(c => c.Id).ToHashSet();
 
@@ -88,7 +104,8 @@ public static class ControlLaw {
     [
       .. cells
         .SelectMany(c =>
-          (c.Boxes.Controls ?? []).Select(x => x.Id)
+          (c.Boxes.Controls ?? [])
+            .Select(x => x.Id)
             .Concat((c.Boxes.Doors ?? []).Select(d => d.Control))
         )
         .Where(id => !ids.Contains(id))
@@ -141,9 +158,7 @@ public static class ControlLaw {
 
     if (
       ControlBoxes.PrincipalRow(block) != null
-      && (
-        !IsDefault(block.CollisionBoxes) || !IsDefault(block.SelectionBoxes)
-      )
+      && (!IsDefault(block.CollisionBoxes) || !IsDefault(block.SelectionBoxes))
     )
       yield return $"{code} declares collisionboxes or selectionboxes beside principalCell";
   }
@@ -159,14 +174,18 @@ public static class ControlLaw {
     || Math.Abs(a.Y2 - b.Y2) > Overlap
     || Math.Abs(a.Z2 - b.Z2) > Overlap;
 
-  private static bool Overlapping(CellBoxes cell) {
+  private static bool Overlapping(CellBoxes cell)
+  {
     Cuboidf[] controls = [.. (cell.Controls ?? []).Select(c => c.Box)];
     Cuboidf[] body =
     [
       .. (cell.Collision ?? [FullCube]),
-      .. (cell.Selection ?? []).Where(b => !controls.Any(c => ReferenceEquals(c, b))),
+      .. (cell.Selection ?? []).Where(b =>
+        !controls.Any(c => ReferenceEquals(c, b))
+      ),
     ];
-    for (int i = 0; i < controls.Length; i++) {
+    for (int i = 0; i < controls.Length; i++)
+    {
       for (int j = i + 1; j < controls.Length; j++)
         if (Intersect(controls[i], controls[j]))
           return true;
@@ -186,28 +205,41 @@ public static class ControlLaw {
     Block block,
     IReadOnlyList<(string Label, CellBoxes Boxes)> cells,
     BlockPos at
-  ) {
+  )
+  {
     if (!cells.Any(c => c.Boxes.Controls is { Count: > 0 }))
       yield break;
-    try {
+    try
+    {
       world.Accessor.SetBlock(block.BlockId, at);
       block.OnBlockPlaced(world.World, at, new ItemStack(block));
-    } catch (Exception) {
+    }
+    catch (Exception)
+    {
       yield break;
     }
 
     var positions = new Dictionary<string, BlockPos> { ["principal"] = at };
-    if (block is IFillerHost host) {
+    if (block is IFillerHost host)
+    {
       BlockPos[] standing = BlockLaws.FillersOf(world, at);
       int[] angles = block is BlockFilledMegastructure mega
         ? [mega.StructureAngle]
         : Angles;
-      foreach (int angle in angles) {
-        List<FillerCell> footprint = StructureFillers.FootprintCells(host, at, angle);
+      foreach (int angle in angles)
+      {
+        List<FillerCell> footprint = StructureFillers.FootprintCells(
+          host,
+          at,
+          angle
+        );
         if (!footprint.Select(f => f.Pos).ToHashSet().SetEquals(standing))
           continue;
-        List<FillerOffset> offsets = StructureFillers.ReadOffsets(host.FillerOffsets);
-        for (int i = 0; i < offsets.Count; i++) {
+        List<FillerOffset> offsets = StructureFillers.ReadOffsets(
+          host.FillerOffsets
+        );
+        for (int i = 0; i < offsets.Count; i++)
+        {
           Vec3i o = offsets[i].Offset;
           positions[$"({o.X}, {o.Y}, {o.Z})"] = footprint[i].Pos;
         }
@@ -216,7 +248,8 @@ public static class ControlLaw {
     }
 
     var lacking = new List<string>();
-    foreach ((string label, CellBoxes boxes) in cells) {
+    foreach ((string label, CellBoxes boxes) in cells)
+    {
       if (!positions.TryGetValue(label, out BlockPos? pos))
         continue;
       Cuboidf[] selection =
@@ -224,14 +257,19 @@ public static class ControlLaw {
       foreach (ControlBox control in boxes.Controls ?? [])
         if (
           BlockControls.Find(block, control.Id) is not { Stage: > 0 }
-          && !selection.Any(b => b is CuboidfWithId { Id: { } id } && id == control.Id)
+          && !selection.Any(b =>
+            b is CuboidfWithId { Id: { } id } && id == control.Id
+          )
         )
           lacking.Add($"{control.Id} in {label}");
     }
 
-    try {
+    try
+    {
       world.Accessor.SetBlock(0, at);
-    } catch (Exception) {
+    }
+    catch (Exception)
+    {
       // A removal that throws is the megablock law's finding.
     }
     if (lacking.Count > 0)
