@@ -12,7 +12,6 @@ namespace ExpandedLib.Scenarios;
 internal sealed class SetupPack {
   private readonly SetupPackSpec _spec;
   private readonly Dictionary<string, int> _held = [];
-  private readonly Dictionary<string, int> _given = [];
   private readonly List<string> _standing = [];
 
   private SetupPack(SetupPackSpec spec) {
@@ -52,6 +51,16 @@ internal sealed class SetupPack {
   public int Held(string code) =>
     _held.Where(k => Matches(k.Key, code)).Sum(k => k.Value);
 
+  /// <summary>The pack code of a molten cell's metal.</summary>
+  /// <param name="metalType">The cell's full metal code, such as <c>game:ingot-iron</c>.</param>
+  /// <returns>The metal as <c>metal:&lt;code&gt;</c>, <c>metal:iron</c> for the example.</returns>
+  public static string MetalCode(string metalType) =>
+    "metal:"
+    + new Vintagestory.API.Common.AssetLocation(metalType).Path.Replace(
+      "ingot-",
+      ""
+    );
+
   /// <summary>Takes <paramref name="count"/> of <paramref name="code"/> out of the pack.</summary>
   /// <param name="code">A stack code, or a metal unit as <c>metal:&lt;code&gt;</c>.</param>
   /// <param name="count">The stacks or units taken, at least 1.</param>
@@ -71,11 +80,11 @@ internal sealed class SetupPack {
     }
   }
 
-  /// <summary>Records <paramref name="count"/> of <paramref name="code"/> handed on by the run.</summary>
+  /// <summary>Adds <paramref name="count"/> of <paramref name="code"/> to the pack: a stack or metal
+  /// the run made or took back.</summary>
   /// <param name="code">A stack code, or a metal unit as <c>metal:&lt;code&gt;</c>.</param>
   /// <param name="count">The stacks or units handed on, at least 1.</param>
-  public void Give(string code, int count) =>
-    _given[code] = _given.GetValueOrDefault(code) + count;
+  public void Give(string code, int count) => Add(code, count);
 
   /// <summary>Takes the first standing block that matches <paramref name="code"/> off the list.</summary>
   /// <param name="code">The block's code.</param>
@@ -89,19 +98,35 @@ internal sealed class SetupPack {
     return true;
   }
 
-  /// <summary>Checks that the run handed on every stack and metal unit its <c>ends</c> declares, at
+  /// <summary>Checks that the pack holds every stack and metal unit its <c>ends</c> declares, at
   /// least the declared count of each.</summary>
-  /// <exception cref="InvalidOperationException">A declared stack or unit was handed on short; the
+  /// <exception cref="InvalidOperationException">A declared stack or unit is held short; the
   /// message names the code and both counts.</exception>
   public void CheckEnds() {
     foreach (var (code, count) in _spec.EndStacks) {
-      int given = _given.GetValueOrDefault(code);
-      if (given < count)
+      int held = Held(code);
+      if (held < count)
         throw new InvalidOperationException(
-          $"the stage ends with {given} of {code}; it declares {count}."
+          $"the stage ends with {held} of {code}; it declares {count}."
         );
     }
   }
+
+  /// <summary>Checks that a block matching each <c>ends.standing</c> code stands.</summary>
+  /// <param name="standing">The codes of the blocks standing at the end of the run.</param>
+  /// <exception cref="InvalidOperationException">A declared code matches no standing block; the
+  /// message names it.</exception>
+  public void CheckStanding(IReadOnlyCollection<string> standing) {
+    foreach (string code in _spec.EndStanding)
+      if (!standing.Any(s => Matches(code, s)))
+        throw new InvalidOperationException(
+          $"the stage ends with no {code} standing."
+        );
+  }
+
+  /// <summary>Whether placed blocks are drawn from the pack: true under <c>scope: "all"</c>, false
+  /// under <c>"stacks"</c>.</summary>
+  public bool DrawsBlocks => _spec.Scope == "all";
 
   private void Add(string code, int count) =>
     _held[code] = _held.GetValueOrDefault(code) + count;

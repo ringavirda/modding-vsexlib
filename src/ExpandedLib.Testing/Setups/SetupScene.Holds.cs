@@ -35,9 +35,12 @@ public sealed partial class SetupScene
           step.Path,
           $"\"{(string)letter}\" is not one of n, e, s, w, u, d."
         );
-    Player.Hold(
-      step.Body["with"] is { } held ? StackOf(held, step.Path) : null
-    );
+    ItemStack? with = step.Body["with"] is { } held
+      ? StackOf(held, step.Path)
+      : null;
+    if (with != null)
+      Draw(step.Path, with);
+    Player.Hold(with);
     bool answer = Player.Interact(
       at,
       null,
@@ -48,6 +51,7 @@ public sealed partial class SetupScene
       face,
       TickSecond
     );
+    Give(Player.ActiveSlot.Itemstack);
     if (step.Body["returns"] is { } expected && (bool)expected != answer)
       throw Fail(
         step.Path,
@@ -134,7 +138,9 @@ public sealed partial class SetupScene
       slots.ForEach(Within);
       foreach (int slot in slots)
       {
-        Player.Hold(StackOf(put, step.Path));
+        ItemStack laid = StackOf(put, step.Path);
+        Draw(step.Path, laid);
+        Player.Hold(laid);
         Verb(() => window.Put(slot));
       }
     }
@@ -158,6 +164,7 @@ public sealed partial class SetupScene
         );
       }
       Verb(() => window.Take(index));
+      Give(Player.ActiveSlot.Itemstack);
     }
     if (step.Body["press"] is JObject press)
     {

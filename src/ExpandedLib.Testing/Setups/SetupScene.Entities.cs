@@ -99,6 +99,7 @@ public sealed partial class SetupScene
       );
     ItemStack stack = StackOf(step.Body, step.Path);
     int count = stack.StackSize;
+    Draw(step.Path, stack);
     var source = new DummySlot(stack);
     ItemSlot? target = step.Body["slot"] is { } slot
       ? (int)slot >= 0 && (int)slot < inventory.Count

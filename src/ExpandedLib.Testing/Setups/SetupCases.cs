@@ -109,6 +109,11 @@ public sealed class SetupRunOptions
   public string ScenesVariable { get; init; } =
     SetupScene.DefaultScenesVariable;
 
+  /// <summary>The setup file an <c>after</c> id of a <c>pack</c> names, as <c>&lt;mod&gt;/setups/&lt;setup&gt;</c>;
+  /// returns its path, or null when the id names none. Default: <c>&lt;setup&gt;.json</c> beside
+  /// the file that runs.</summary>
+  public Func<string, string?>? StageFile { get; init; }
+
   /// <summary>Receives each <c>stand-in</c> line the case's placers print, or null to drop them.</summary>
   public Action<string>? Output { get; init; }
 }
@@ -203,7 +208,8 @@ public static class SetupCases
       row.Variant == null ? file : file.ForVariant(row.Variant),
       [.. file.Mods.Select(options.ModFolder)],
       options.AfterLoad,
-      options.BeforeLoad
+      options.BeforeLoad,
+      id => StageOf(id, row.File, options)
     );
     foreach (string line in scene.StandIns)
       options.Output?.Invoke(line);
@@ -230,6 +236,24 @@ public static class SetupCases
         Path.Combine(options.Recordings, Series()),
         options.WriteVariable
       );
+  }
+
+  private static SetupFileModel? StageOf(
+    string id,
+    string running,
+    SetupRunOptions options
+  )
+  {
+    string? path =
+      options.StageFile != null
+        ? options.StageFile(id)
+        : Path.Combine(
+          Path.GetDirectoryName(running)!,
+          id[(id.LastIndexOf('/') + 1)..] + ".json"
+        );
+    return path != null && System.IO.File.Exists(path)
+      ? SetupFile.Load(path).Model
+      : null;
   }
 
   private static string SceneFile(SetupCaseRow row) =>

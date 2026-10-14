@@ -125,7 +125,8 @@ public sealed partial class SetupScene : IDisposable
     SetupFile file,
     IReadOnlyList<string> modPaths,
     Action<TestWorld>? afterLoad,
-    Action<TestWorld>? beforeLoad = null
+    Action<TestWorld>? beforeLoad = null,
+    System.Func<string, SetupFileModel?>? stages = null
   )
   {
     ArgumentNullException.ThrowIfNull(file);
@@ -143,6 +144,7 @@ public sealed partial class SetupScene : IDisposable
       scene.Load(modPaths);
       afterLoad?.Invoke(scene.World);
       scene.ApplyConfig();
+      scene.StartPack(stages);
       scene.PlaceLayout();
       scene.RunSteps();
       scene.JoinLines();
@@ -330,9 +332,17 @@ public sealed partial class SetupScene : IDisposable
 
   #region Placing
 
-  private void Put(Block block, BlockPos pos, string where)
+  private void Put(
+    Block block,
+    BlockPos pos,
+    string where,
+    string? kind = null,
+    bool draws = true
+  )
   {
     string code = block.Code.ToString();
+    if (draws)
+      DrawBlock(where, kind ?? code);
     BlockPos at = pos.Copy();
     HashSet<long> before = World.TickListenerIds();
     if (SetupPlacers.For(code) is { } placer)
@@ -548,6 +558,7 @@ public sealed partial class SetupScene : IDisposable
     BlockPos from = At(step, "from");
     BlockPos to = At(step, "to");
     var cells = new List<BlockPos>();
+    var put = new List<BlockPos>();
     for (int x = Math.Min(from.X, to.X); x <= Math.Max(from.X, to.X); x++)
     for (int y = Math.Min(from.Y, to.Y); y <= Math.Max(from.Y, to.Y); y++)
     for (int z = Math.Min(from.Z, to.Z); z <= Math.Max(from.Z, to.Z); z++)
@@ -555,8 +566,12 @@ public sealed partial class SetupScene : IDisposable
       var cell = new BlockPos(x, y, z);
       cells.Add(cell);
       if (World.GetBlock(cell).Code?.Equals(block.Code) != true)
-        Put(block, cell, step.Path);
+      {
+        Put(block, cell, step.Path, draws: false);
+        put.Add(cell);
+      }
     }
+    DrawMetal(step.Path, put);
     if (step.Id != null)
       _placed[step.Id] = new SetupPlacement(cells[0], cells);
   }

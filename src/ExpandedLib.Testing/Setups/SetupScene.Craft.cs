@@ -52,6 +52,7 @@ public sealed partial class SetupScene
       );
     CraftOrder order = makes[0];
 
+    DrawBill(step.Path, order, with, times);
     var made = new List<ItemStack>();
     for (int i = 0; i < times; i++)
       made.AddRange(
@@ -60,6 +61,7 @@ public sealed partial class SetupScene
           : CraftAt(step.Path, entity, station, order, with)
       );
     Verify(step.Path, station, made, order, times);
+    made.ForEach(Give);
     Stow(made);
   }
 

@@ -154,7 +154,7 @@ public sealed partial class SetupScene
           faces.Add(face);
       }
       var pos = new BlockPos(cell.Cell.X, cell.Cell.Y, cell.Cell.Z);
-      Block block = LayCell(family, faces, pos, where);
+      Block block = LayCell(family, faces, pos, where, cell.Entry.Code);
       laid.Add(pos);
       if (cell.Entry.Id != null)
         Record(cell.Entry.Id, pos, block);
@@ -166,7 +166,8 @@ public sealed partial class SetupScene
     IReadOnlyList<(Block Block, string Faces)> family,
     HashSet<BlockFacing> faces,
     BlockPos pos,
-    string where
+    string where,
+    string? kind = null
   )
   {
     string wanted = Letters(faces);
@@ -181,7 +182,7 @@ public sealed partial class SetupScene
           ? $"cell {Describe(pos)} needs a block with the faces {wanted}, and none of {string.Join(", ", family.Select(f => f.Block.Code))} has them."
           : $"cell {Describe(pos)} needs a block with the faces {wanted}, and {string.Join(" and ", fits.Select(b => b.Code.ToString()))} both have them."
       );
-    Put(fits[0], pos, where);
+    Put(fits[0], pos, where, kind, kind != null);
     _runCells[pos] = new RunCell(family, faces);
     return fits[0];
   }
@@ -262,7 +263,7 @@ public sealed partial class SetupScene
     var laid = new List<BlockPos>();
     foreach (BlockPos cell in path.Distinct())
     {
-      LayCell(family, faces[cell], cell, step.Path);
+      LayCell(family, faces[cell], cell, step.Path, code);
       laid.Add(cell);
     }
     if (step.Id != null)
