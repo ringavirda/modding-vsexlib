@@ -308,7 +308,7 @@ internal static class CraftWalkEdges
     );
   }
 
-  private static WalkNeed Need(
+  internal static WalkNeed Need(
     CraftingRecipeIngredient ingredient,
     IReadOnlyList<CollectibleObject> all,
     Dictionary<string, WalkNeed> cache

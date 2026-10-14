@@ -42,17 +42,20 @@ public sealed partial class SetupScene : IDisposable
     string Name,
     string Old
   )> _config = [];
+  private readonly bool _borrowed;
   private bool _joined;
 
-  private SetupScene(SetupFile file)
+  private SetupScene(SetupFile file, Scene? scene = null)
   {
     _file = file;
+    _borrowed = scene != null;
+    Scene = scene ?? new();
     View = new SetupWorldView(World, _placed);
     NetworkTick = () => World.Tick(1);
   }
 
   /// <summary>The scene the file was built into.</summary>
-  public Scene Scene { get; } = new();
+  public Scene Scene { get; }
 
   /// <summary>The scene's world.</summary>
   public TestWorld World => Scene.World;
@@ -72,7 +75,8 @@ public sealed partial class SetupScene : IDisposable
     for (int i = _config.Count - 1; i >= 0; i--)
       _config[i].Access.Set(_config[i].Name, _config[i].Old);
     _config.Clear();
-    World.Dispose();
+    if (!_borrowed)
+      World.Dispose();
   }
 
   /// <summary>The cell the layout entry or step with <paramref name="id"/> placed; a run's first
@@ -155,6 +159,29 @@ public sealed partial class SetupScene : IDisposable
       throw;
     }
     return scene;
+  }
+
+  /// <summary>A scene over a world that is already loaded, for code that places and crafts in it
+  /// as a setup does. Disposing the scene leaves the world alone.</summary>
+  /// <param name="world">The loaded world.</param>
+  /// <param name="name">What failure messages call the scene.</param>
+  internal static SetupScene Over(TestWorld world, string name) =>
+    new(
+      SetupFile.Parse(
+        "{\"setup\": \"" + name + "\", \"description\": \"" + name + "\", \"mods\": [], \"steps\": [], \"seconds\": 10, \"record\": {}}",
+        name
+      ),
+      new Scene(world)
+    );
+
+  /// <summary>Places <paramref name="block"/> at <paramref name="at"/> as a <c>place</c> step does
+  /// and records it under <paramref name="id"/>.</summary>
+  /// <exception cref="InvalidOperationException">The cell is not air or a placer refuses the
+  /// block.</exception>
+  internal void PlaceAt(string id, Block block, BlockPos at)
+  {
+    Put(block, at, id);
+    Record(id, at, block);
   }
 
   private SetupFileModel Model => _file.Model;

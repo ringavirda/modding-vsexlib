@@ -1,13 +1,75 @@
 #if GAME_GE_1_22
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Checks;
+using ExpandedLib.Machines;
 using ExpandedLib.Testing;
+using Vintagestory.API.Common;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace ExpandedLib.Tests;
+
+// Crafts the recipes of a 1 x 1 input a press hands to the output slot, refusing the recipe in
+// Refused.
+internal sealed class WalkFixtureBench : BlockEntityMachineStation, ICraftStation
+{
+  public const int Press = 1002;
+
+  public static string? Refused;
+  public static readonly List<string> Laid = [];
+
+  protected override MachineSlotSpec[] SlotSpecs =>
+    [MachineSlotSpec.AnyInput(), MachineSlotSpec.Output()];
+
+  public override string InventoryClassName => "walk-fixture-bench";
+
+  public override void Initialize(ICoreAPI api)
+  {
+    base.Initialize(api);
+    this.DisablePickRangeCheck();
+  }
+
+  public IReadOnlyList<CraftOrder> Orders(IWorldAccessor world) =>
+    [
+      .. world
+        .GridRecipes.Where(r => r.Width > HandGrid.Size)
+        .Select(r => new CraftOrder(
+          r.Name.ToString(),
+          [
+            .. r.ResolvedIngredients!.OfType<CraftingRecipeIngredient>()
+              .Select((ingredient, i) => new CraftInput(0, ingredient.Id, ingredient)),
+          ],
+          Press,
+          Encoding.UTF8.GetBytes(r.Name.ToString()),
+          [1],
+          r.Output!.ResolvedItemStack.Clone(),
+          r
+        )),
+    ];
+
+  protected override bool OnStationPacket(
+    IPlayer player,
+    int packetid,
+    byte[] data
+  )
+  {
+    if (packetid != Press)
+      return false;
+    Laid.Add(Inventory[0].Itemstack.Collectible.Code.ToString());
+    string name = Encoding.UTF8.GetString(data);
+    Inventory[0].Itemstack = null;
+    if (name == Refused)
+      return true;
+    Inventory[1].Itemstack = Api
+      .World.GridRecipes.First(r => r.Name.ToString() == name)
+      .Output.ResolvedItemStack.Clone();
+    return true;
+  }
+}
 
 /// <summary><see cref="CraftWalk"/> over a planted domain <c>walk</c> whose recipes chain from
 /// vanilla codes.</summary>
@@ -17,6 +79,8 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
 
   public void Dispose()
   {
+    WalkFixtureBench.Refused = null;
+    WalkFixtureBench.Laid.Clear();
     _files.Dispose();
     ExlibChecks.ClearDeclarations();
     ProcessJobRegistry.Shared.Clear();
@@ -62,6 +126,12 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
       "[" + string.Join(",", recipes) + "]"
     );
     var world = new TestWorld();
+    world
+      .RegisterClass("WalkFixtureBench", typeof(WalkFixtureBench))
+      .RegisterBlockEntityFactory(
+        "WalkFixtureBench",
+        () => new WalkFixtureBench()
+      );
     world.LoadAssets([_files.Root], null, vanilla);
     world.LoadRecipes();
     return world;
@@ -98,7 +168,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
 
     Assert.Empty(result.Findings);
     Assert.Equal(
-      "craft walk walk: 3 kinds, 3 recipes fired (0 executed, 3 followed), 0 undeclared, 0 on trust, 0 failures",
+      "craft walk walk: 3 kinds, 3 recipes fired (3 executed, 0 followed), 0 undeclared, 0 on trust, 0 failures",
       result.Summary
     );
   }
@@ -187,7 +257,12 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.Contains("0 failures", result.Summary);
   }
 
-  private static string Sized(string output, int width, int height)
+  private static string Sized(
+    string output,
+    int width,
+    int height,
+    string input = "walk:a"
+  )
   {
     string[] rows =
     [
@@ -205,7 +280,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
         "ingredientPattern": "{{string.Join(",", rows)}}",
         "width": {{width}},
         "height": {{height}},
-        "ingredients": { "A": { "type": "item", "code": "walk:a" } },
+        "ingredients": { "A": { "type": "item", "code": "{{input}}" } },
         "output": { "type": "item", "code": "walk:{{output}}" }
       }
       """;
@@ -400,6 +475,94 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     ExlibChecks.Produces("walk", "walk:made", "the press", "walk:press", Stick);
     ExlibChecks.Produces("walk", "walk:made", "the press", "walk:press", Stick);
     Assert.Single(ExlibChecks.Produced());
+  }
+
+  private const string Bench =
+    "{ \"code\": \"bench\", \"entityClass\": \"WalkFixtureBench\" }";
+
+  private TestWorld WithBench(string[] items, string[] recipes)
+  {
+    _files.Write("assets/walk/blocktypes/bench.json", Bench);
+    return Planted(items, recipes, Stick);
+  }
+
+  // Fails when CraftAt stops throwing on a press that yields nothing.
+  [Fact]
+  public void A_station_that_yields_nothing_fails_as_refusing()
+  {
+    using TestWorld world = WithBench(
+      ["a", "member"],
+      [Recipe(Stick, "a"), Sized("member", 5, 5)]
+    );
+    WalkFixtureBench.Refused = "walk:member";
+
+    CraftWalk.Result result = Walk(world);
+
+    string finding = Assert.Single(result.Findings);
+    Assert.StartsWith("walk:member | station refuses: ", finding);
+    Assert.Contains("yielded nothing", finding);
+    Assert.Contains("(1 executed, 1 followed)", result.Summary);
+  }
+
+  // Fails when the walk counts a recipe the matcher refused as executed.
+  [Fact]
+  public void A_hand_grid_recipe_the_matcher_refuses_fails_as_not_matching()
+  {
+    using TestWorld world = Planted(
+      ["a", "b"],
+      [Recipe(Stick, "a"), Recipe("walk:a", "b")],
+      Stick
+    );
+    world.Api.Event.MatchesGridRecipe += (_, recipe, _, _) =>
+      recipe.Name.ToString() != "walk:b";
+
+    CraftWalk.Result result = Walk(world);
+
+    string finding = Assert.Single(result.Findings);
+    Assert.StartsWith("walk:b | does not match: ", finding);
+    Assert.Contains("2 recipes fired (1 executed, 1 followed)", result.Summary);
+  }
+
+  // Fails when the walk lays the first loaded variant of a wildcard, not the first reached one.
+  [Fact]
+  public void A_wildcard_lays_the_first_variant_the_walk_reached()
+  {
+    string[] variants = ["w-1", "w-2"];
+    foreach (string variant in variants)
+      _files.Write($"assets/walk/itemtypes/{variant}.json", Plain(variant));
+    string[] loaded;
+    using (TestWorld probe = WithBench(["member"], []))
+      loaded =
+      [
+        .. probe
+          .World.Items.Where(i => i?.Code.Domain == "walk" && variants.Contains(i.Code.Path))
+          .Select(i => i.Code.Path),
+      ];
+    using TestWorld world = WithBench(
+      ["member"],
+      [Recipe(Stick, loaded[1]), Sized("member", 5, 5, "walk:w-*")]
+    );
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Empty(result.Findings);
+    Assert.Equal(["walk:" + loaded[1]], WalkFixtureBench.Laid);
+  }
+
+  // Fails when the width check in HandGrid.Orders goes: the hand grid then takes the set member.
+  [Fact]
+  public void A_set_member_is_crafted_at_the_bench_and_the_hand_grid_refuses_it()
+  {
+    using TestWorld world = WithBench(
+      ["a", "member"],
+      [Recipe(Stick, "a"), Sized("member", 5, 5)]
+    );
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Empty(result.Findings);
+    Assert.Equal(["walk:a"], WalkFixtureBench.Laid);
+    Assert.Contains("2 recipes fired (2 executed, 0 followed)", result.Summary);
   }
 }
 #endif
