@@ -65,12 +65,6 @@ internal sealed class ScenarioCaseRun(
           )
         );
     } else {
-      try {
-        PackLedger.Finish(ctx);
-      } catch (StepFailure e) {
-        failedAt = steps.Count + 1;
-        failure = Report(failedAt, "pack", "ends", e.Message);
-      }
       double end = ctx.Now + scenario.Settle;
       while (failure == null) {
         try {
@@ -81,13 +75,23 @@ internal sealed class ScenarioCaseRun(
             failedAt,
             "settle",
             $"{scenario.Settle} s",
-            e.Message
+            e.Message,
+            e.Suspect
           );
           break;
         }
+        PackLedger.GiveSpawns(ctx);
         if (ctx.Now >= end)
           break;
         yield return true;
+      }
+      if (failure == null) {
+        try {
+          PackLedger.Finish(ctx);
+        } catch (StepFailure e) {
+          failedAt = steps.Count + 1;
+          failure = Report(failedAt, "pack", "ends", e.Message, e.Suspect);
+        }
       }
     }
 
@@ -98,8 +102,14 @@ internal sealed class ScenarioCaseRun(
       Suspect = failure.Suspect;
   }
 
-  private StepFailure Report(int step, string kind, string what, string reason) {
-    var failure = new StepFailure(reason, Live.Suspect.Mod) { Reported = true };
+  private StepFailure Report(
+    int step,
+    string kind,
+    string what,
+    string reason,
+    string suspect = Live.Suspect.Mod
+  ) {
+    var failure = new StepFailure(reason, suspect) { Reported = true };
     ctx.Line(ScenarioOutput.StepFail(step.ToString(), kind, what, reason));
     foreach (string line in FailureDetail.Lines(ctx, null, failure))
       ctx.Line(ScenarioOutput.Detail(line));

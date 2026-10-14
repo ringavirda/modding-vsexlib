@@ -157,7 +157,9 @@ internal static class PackLedger {
       .GroupBy(r => SetupPack.MetalCode(r.Metal))
       .Select(g => (g.Key, g.Sum(r => r.Amount)));
 
-  private static void GiveSpawns(ScenarioContext ctx) {
+  /// <summary>Gives the pack the item entities that landed within one cell of the placed blocks and
+  /// were not given before; does nothing without a pack or placed blocks.</summary>
+  internal static void GiveSpawns(ScenarioContext ctx) {
     if (ctx.Pack == null || ctx.Placed.Count == 0)
       return;
     var cells = ctx.Placed.Select(c => ctx.Setup.Absolute(c)).ToList();
