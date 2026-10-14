@@ -27,7 +27,10 @@ public interface IControlStates {
 
 /// <summary>Implemented by a principal's block entity to answer the collision of its cells from the entity's
 /// state, for a body whose shape follows its contents. The answer replaces the cell's row collision; the
-/// selection stays the row's. Read on physics threads through the box lookups, so it must not block or mutate.
+/// selection stays the row's. The entity is asked for a filler whose <c>fillerOffsets</c> row carries box keys,
+/// and for the principal's own cell of a block with a <c>principalCell</c> that is a mega-block, an
+/// <c>IFillerHost</c> node or a <c>ControlBoxes.Collision</c> caller. Read on physics threads through the
+/// box lookups, so it must not block or mutate.
 /// The client answers from its copy of the entity's tree: the server writes the state into the tree and calls
 /// <c>MarkDirty(true)</c> on every change, as vanilla's coal pile does.</summary>
 public interface ICellCollision {

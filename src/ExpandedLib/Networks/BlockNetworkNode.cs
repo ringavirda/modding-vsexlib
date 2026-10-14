@@ -512,7 +512,16 @@ public abstract class BlockNetworkNode
       return base.GetCollisionBoxes(blockAccessor, pos);
     string key = $"{Type}-{Orientation}";
     if (cellCache.Count > 0 && cellCache.TryGetValue(key, out var cell))
-      return cell.At(blockAccessor, pos).Collision;
+      return (
+          this is IFillerHost host
+            ? ControlBoxes.EntityCollision(
+              blockAccessor,
+              pos,
+              new Vec3i(0, 0, 0),
+              ((host.StructureAngle % 360) + 360) % 360
+            )
+            : null
+        ) ?? cell.At(blockAccessor, pos).Collision;
     return collisionBoxesCache.TryGetValue(key, out Cuboidf[]? boxes)
       ? boxes
       : base.GetCollisionBoxes(blockAccessor, pos);

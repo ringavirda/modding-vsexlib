@@ -112,21 +112,27 @@ public class ControlOutlineTests
     Assert.Equal(1f, box.X2, 4);
   }
 
-  // Fails when a block without a table gets the whole-structure boxes.
+  // Fails when a block without a table gets the whole-structure boxes, or the outline's width or colour leaves vanilla's.
   [Fact]
   public void No_table_draws_like_vanilla()
   {
     var scene = new Scene(withTable: false);
     var drawn = new List<Cuboidf>();
+    var looks = new List<(float, Vec4f)>();
 
     Assert.Null(scene.Boxes(new BlockPos(11, 5, 10), null));
     ControlOutline.Render(
       scene.Filler,
       scene.Api,
       new BlockSelection { Position = new BlockPos(11, 5, 10) },
-      (box, width, color) => drawn.Add(box)
+      (box, width, color) =>
+      {
+        drawn.Add(box);
+        looks.Add((width, color));
+      }
     );
 
+    AssertVanillaLook(scene, new BlockPos(11, 5, 10), looks);
     Cuboidf[] own = scene.Filler.GetSelectionBoxes(
       scene.Accessor,
       new BlockPos(11, 5, 10)
@@ -135,12 +141,13 @@ public class ControlOutlineTests
     Assert.Equal(own[0].X2, drawn[0].X2, 4);
   }
 
-  // Fails when Render draws the hit cell instead of the boxes it was given.
+  // Fails when Render draws the hit cell instead of the boxes it was given, or the outline's width or colour leaves vanilla's.
   [Fact]
   public void Render_draws_every_cell_of_the_control()
   {
     var scene = new Scene();
     var drawn = new List<Cuboidf>();
+    var looks = new List<(float, Vec4f)>();
 
     ControlOutline.Render(
       scene.Filler,
@@ -150,10 +157,15 @@ public class ControlOutlineTests
         Position = new BlockPos(11, 5, 10),
         SelectionBoxId = "valve",
       },
-      (box, width, color) => drawn.Add(box)
+      (box, width, color) =>
+      {
+        drawn.Add(box);
+        looks.Add((width, color));
+      }
     );
 
     Assert.Equal(4, drawn.Count);
+    AssertVanillaLook(scene, new BlockPos(11, 5, 10), looks);
   }
 
   #endregion
@@ -205,6 +217,32 @@ public class ControlOutlineTests
   #endregion
 
   #region Fixture
+
+  private static void AssertVanillaLook(
+    Scene scene,
+    BlockPos pos,
+    List<(float Width, Vec4f Color)> looks
+  )
+  {
+    Vec4f expected = scene.Filler.GetSelectionColor(scene.Api, pos);
+    float thickness = (float)
+      System
+        .Type.GetType(
+          "Vintagestory.Client.NoObf.ClientSettings, VintagestoryLib",
+          throwOnError: true
+        )!
+        .GetProperty("Wireframethickness")!
+        .GetValue(null)!;
+    Assert.NotEmpty(looks);
+    foreach ((float width, Vec4f color) in looks)
+    {
+      Assert.Equal(1.6f * thickness, width, 4);
+      Assert.Equal(expected.R, color.R, 4);
+      Assert.Equal(expected.G, color.G, 4);
+      Assert.Equal(expected.B, color.B, 4);
+      Assert.Equal(expected.A, color.A, 4);
+    }
+  }
 
   private sealed class Scene
   {

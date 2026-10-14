@@ -31,7 +31,9 @@ public readonly record struct ControlHit(string? Id, IReadOnlyList<string> Ids) 
       return Body;
     var ids = new List<string> { id };
     if (BlockControls.Find(principal, id) is { } row)
-      ids.AddRange(row.AlsoIds);
+      foreach (string also in row.AlsoIds)
+        if (ControlBoxes.StateOf(entity, also) != ControlState.Hidden)
+          ids.Add(also);
     return new ControlHit(id, ids);
 #else
     return Body;

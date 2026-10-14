@@ -142,6 +142,28 @@ public class PrincipalControlBoxesTests {
     );
   }
 
+  // Fails when a host node's collision ignores its entity's answer.
+  [Fact]
+  public void A_host_node_follows_its_principal_entity() {
+    var node = Prepare(
+      new HostNode(),
+      Cell,
+      "ns",
+      ExOrientation.SideFromAngle(90)
+    );
+    var accessor = Substitute.For<IBlockAccessor>();
+    Cuboidf answer = new(0.2f, 0f, 0.2f, 0.6f, 0.4f, 0.6f);
+    var be = new CellEntity {
+      Pos = Pos,
+      Block = node,
+      Answer = new[] { answer },
+    };
+    accessor.GetBlockEntity(Pos).Returns(be);
+
+    AssertBox(answer, Assert.Single(node.GetCollisionBoxes(accessor, Pos)));
+    Assert.Equal(90, ((IFillerHost)node).StructureAngle);
+  }
+
   // Fails when the principal's own collision ignores its entity's answer, or the answer is asked at another cell.
   [Fact]
   public void A_principal_entity_answers_its_own_cell() {

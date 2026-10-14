@@ -93,6 +93,26 @@ public class ControlRoutingTests
     Assert.Equal(["anvil", "botdie"], hit.Ids);
   }
 
+  // Fails when ControlHit.Of keeps an alsoId whose state is Hidden.
+  [Fact]
+  public void A_hidden_alsoId_is_not_tried()
+  {
+    using var scene = new Scene();
+    scene.Principal.States["botdie"] = ControlState.Hidden;
+    scene.Player.Hold(scene.Die);
+
+    ControlHit hit = ControlHit.Of(
+      scene.PrincipalBlock,
+      scene.PrincipalEntity,
+      scene.Selection("anvil")
+    );
+    bool handled = scene.Start("anvil");
+
+    Assert.Equal(["anvil"], hit.Ids);
+    Assert.False(handled);
+    Assert.Null(scene.Principal.Ran);
+  }
+
   // Fails when LookedAt does not check that the selection is on the structure.
   [Fact]
   public void LookedAt_is_empty_off_the_structure()

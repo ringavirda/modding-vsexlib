@@ -158,7 +158,7 @@ public static class ControlBoxes {
       }
     );
 
-  private static Cuboidf[]? EntityCollision(
+  internal static Cuboidf[]? EntityCollision(
     IBlockAccessor accessor,
     BlockPos principalPos,
     Vec3i northOffset,
