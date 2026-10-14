@@ -23,8 +23,6 @@ internal sealed class ExpectStep : ScenarioStep {
     var o = (JObject)step.Body;
     if (o["info"] != null)
       return "expect \"info\" needs the scenario player's language.";
-    if (o["drops"] != null)
-      return "expect \"drops\" needs the scenario player's break.";
     return null;
   }
 
@@ -37,7 +35,9 @@ internal sealed class ExpectStep : ScenarioStep {
     var o = (JObject)step.Body;
     if (o["at"] != null)
       ctx.Expected.Add(ctx.Position(step, o["at"], "at"));
-    if (o["footprint"] != null)
+    if (o["drops"] != null)
+      report.Value = Drops(ctx, step, o);
+    else if (o["footprint"] != null)
       report.Value = Footprint(ctx, o);
     else if (o["same"] != null)
       report.Value = Same(ctx, step, o);
@@ -54,6 +54,57 @@ internal sealed class ExpectStep : ScenarioStep {
       );
     }
     yield break;
+  }
+
+  private static string Drops(
+    ScenarioContext ctx,
+    SetupStep step,
+    JObject o
+  ) {
+    BreakRecord last =
+      ctx.LastBreak
+      ?? throw new StepFailure("no break has run.", Suspect.Scenario);
+    string? mismatch;
+    if (o["drops"] is { Type: JTokenType.String } word) {
+      if ((string)word! != "declared")
+        throw new StepFailure(
+          $"drops is a list or \"declared\", not \"{(string)word!}\".",
+          Suspect.Scenario
+        );
+      mismatch = BreakStep.DeclaredMismatch(last.Declared, last.Dropped);
+    } else
+      mismatch = BreakStep.Mismatch(
+        ListedDrops(o["drops"]),
+        last.Dropped,
+        (bool?)o["exact"] ?? false
+      );
+    if (mismatch != null)
+      throw new StepFailure($"dropped {mismatch}.");
+    return string.Join(
+      ", ",
+      BreakStep.Sum(last.Dropped).Select(d => $"{d.Key} x{d.Value}")
+    );
+  }
+
+  private static List<(string Code, int Count)> ListedDrops(JToken? token) {
+    if (token is not JArray list)
+      throw new StepFailure(
+        "drops is a list of { code, count } or \"declared\".",
+        Suspect.Scenario
+      );
+    return
+    [
+      .. list.Select(e =>
+        e is JObject { } entry
+        && (string?)entry["code"] is { } code
+        && (int?)entry["count"] is { } count
+          ? (code, count)
+          : throw new StepFailure(
+            "a drops entry is { code, count }.",
+            Suspect.Scenario
+          )
+      ),
+    ];
   }
 
   private static string Footprint(ScenarioContext ctx, JObject o) {

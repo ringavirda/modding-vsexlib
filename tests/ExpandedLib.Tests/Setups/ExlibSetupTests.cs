@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ExpandedLib.Testing;
 using Xunit;
 
@@ -37,8 +38,13 @@ public class ExlibSetupTests : IDisposable
     ExlibVersion = "0.8.4",
   };
 
+  /// <summary>Setups that use verbs the harness refuses; only the live runner runs them.</summary>
+  private static readonly string[] LiveOnly = ["live-break"];
+
   public static IEnumerable<object[]> Rows() =>
-    SetupCases.In(Path.Combine(Tests, "live", "setups"));
+    SetupCases
+      .In(Path.Combine(Tests, "live", "setups"))
+      .Where(r => !LiveOnly.Contains(((SetupCaseRow)r[0]).Setup));
 
   [SetupTheory, MemberData(nameof(Rows))]
   public void Case(SetupCaseRow row) => SetupCases.Run(row, Options);

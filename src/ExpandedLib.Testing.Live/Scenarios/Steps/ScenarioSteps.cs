@@ -24,6 +24,7 @@ internal static class ScenarioSteps {
       new WindowStep(),
       new IgniteStep(),
       new CraftStep(),
+      new BreakStep(),
     }.ToDictionary(s => s.Kind);
 
   public static IEnumerable<string> Kinds => Table.Keys;

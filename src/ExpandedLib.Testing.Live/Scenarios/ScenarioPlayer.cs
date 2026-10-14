@@ -285,6 +285,73 @@ internal sealed class ScenarioPlayer {
     }
   }
 
+  /// <summary>The refusal a held tool gets from a block that needs a better one, or null when the tool
+  /// meets the block's tier.</summary>
+  /// <param name="required">The block's required mining tier; 0 or less needs no tool.</param>
+  /// <param name="held">The held collectible's tool tier, 0 for an empty hand.</param>
+  public static string? TierRefusal(int required, int held) =>
+    required > 0 && held < required
+      ? $"the block needs tool tier {required}, the hand holds tier {held}"
+      : null;
+
+  /// <summary>Breaks the block at <paramref name="at"/> the way a player's break does
+  /// (<c>ServerSystemBlockSimulation.TryModifyBlockInWorld</c>, break branch): in survival holding
+  /// <paramref name="stack"/>, past the mining-tier check, through the server's break event, then
+  /// <c>Collectible.OnBlockBrokenWith</c> for a held stack or <c>Block.OnBlockBroken</c> for an empty
+  /// hand. The slot is emptied and the player parked after.</summary>
+  /// <param name="at">The absolute cell of the block.</param>
+  /// <param name="stack">What the hand holds, or null for an empty hand.</param>
+  /// <param name="failure">Null when the break ran; otherwise the tier refusal.</param>
+  /// <returns>Whether the break ran.</returns>
+  public bool Break(BlockPos at, ItemStack? stack, out string? failure) {
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+    BlockFacing face = BlockFacing.UP;
+    Vec3d hit = Hit(face);
+    Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
+    ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
+    slot.Itemstack = stack;
+    try {
+      Block block = _server.BlockAccessor.GetBlock(at);
+      failure = TierRefusal(
+        block.GetRequiredMiningTier(_server, at),
+        stack?.Collectible.GetToolTier(slot) ?? 0
+      );
+      if (failure != null)
+        return false;
+      var selection = new BlockSelection {
+        Position = at.Copy(),
+        Face = face,
+        HitPosition = hit,
+        Block = block,
+      };
+      float dropQuantity = 1f;
+      EnumHandling handling = EnumHandling.PassThrough;
+      _server.EventManager.TriggerBreakBlock(
+        Player,
+        selection,
+        ref dropQuantity,
+        ref handling
+      );
+      if (handling == EnumHandling.PassThrough) {
+        if (stack != null)
+          stack.Collectible.OnBlockBrokenWith(
+            _server,
+            Player.Entity,
+            slot,
+            selection,
+            dropQuantity
+          );
+        else
+          block.OnBlockBroken(_server, at, Player, dropQuantity);
+      }
+      return true;
+    } finally {
+      slot.Itemstack = null;
+      Park();
+    }
+  }
+
   /// <summary>Turns the block at <paramref name="at"/> one step with the wrench, through
   /// <c>IWrenchOrientable.Rotate</c> as the game's wrench calls it, the player as the turning
   /// entity.</summary>

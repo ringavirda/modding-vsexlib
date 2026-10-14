@@ -1,0 +1,33 @@
+{
+  "setup": "live-break",
+  "description": "Two vanilla planks blocks, one broken by the scenario player with an empty hand and one by the world, each dropping the planks it declares.",
+  "mods": [],
+  "steps": [
+    { "place": { "code": "game:planks-aged-we", "at": [0, 0, 0] } },
+    { "break": { "at": [0, 0, 0] } },
+    {
+      "expect": {
+        "at": [0, 0, 0],
+        "block": "game:air"
+      }
+    },
+    {
+      "expect": {
+        "drops": [{ "code": "game:planks-aged-ud", "count": 1 }],
+        "exact": true
+      }
+    },
+    { "expect": { "drops": "declared" } },
+    { "place": { "code": "game:planks-aged-we", "at": [2, 0, 0] } },
+    { "break": { "at": [2, 0, 0], "by": "world" } },
+    {
+      "expect": {
+        "drops": [{ "code": "game:planks-aged-ud", "count": 1 }],
+        "exact": true
+      }
+    },
+    { "expect": { "drops": "declared" } }
+  ],
+  "seconds": 6,
+  "record": {}
+}
