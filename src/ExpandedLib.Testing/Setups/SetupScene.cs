@@ -37,11 +37,7 @@ public sealed partial class SetupScene : IDisposable
   private readonly HashSet<int> _ready = [];
   private readonly List<string> _standIns = [];
   private HashSet<long> _lineListeners = [];
-  private readonly List<(
-    IExConfigAccess Access,
-    string Name,
-    string Old
-  )> _config = [];
+  private readonly SetupConfig _config;
   private readonly bool _borrowed;
   private readonly HashSet<(int X, int Y, int Z)> _laid = [];
   private bool _joined;
@@ -49,6 +45,7 @@ public sealed partial class SetupScene : IDisposable
   private SetupScene(SetupFile file, Scene? scene = null)
   {
     _file = file;
+    _config = new SetupConfig(file.Name);
     _borrowed = scene != null;
     Scene = scene ?? new();
     View = new SetupWorldView(World, _placed);
@@ -73,9 +70,7 @@ public sealed partial class SetupScene : IDisposable
   /// <summary>Releases the scene's world.</summary>
   public void Dispose()
   {
-    for (int i = _config.Count - 1; i >= 0; i--)
-      _config[i].Access.Set(_config[i].Name, _config[i].Old);
-    _config.Clear();
+    _config.Restore();
     if (!_borrowed)
       World.Dispose();
   }
@@ -144,7 +139,7 @@ public sealed partial class SetupScene : IDisposable
       beforeLoad?.Invoke(scene.World);
       scene.Load(modPaths);
       afterLoad?.Invoke(scene.World);
-      scene.ApplyConfig();
+      scene._config.Apply(scene.Model.Config);
       scene.StartPack(stages);
       scene.PlaceLayout();
       scene.RunSteps();
