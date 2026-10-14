@@ -451,7 +451,9 @@ public class LayoutWalkTests {
     (RunStep.PlayerPlace place, RunStep.PlayerWrench wrench) = Hands(fixture);
     Walk(
       fixture,
-      Drawing("{ legend: { " + PipeRun + " }, layers: { \"-1\": [\"oPPo\"] } }"),
+      Drawing(
+        "{ legend: { " + PipeRun + " }, layers: { \"-1\": [\"oPPo\"] } }"
+      ),
       place,
       wrench
     );
