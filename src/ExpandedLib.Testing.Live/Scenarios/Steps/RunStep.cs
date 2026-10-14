@@ -196,7 +196,11 @@ internal sealed class RunStep : ScenarioStep {
   /// <summary>Fails when <paramref name="face"/> of the placed block at the plot-local
   /// <paramref name="cell"/> is not one of its connectors.</summary>
   /// <exception cref="StepFailure">The face is not a connector of the block there.</exception>
-  public static void CheckFace(ScenarioContext ctx, BlockPos cell, BlockFacing face) {
+  public static void CheckFace(
+    ScenarioContext ctx,
+    BlockPos cell,
+    BlockFacing face
+  ) {
     Block placed = ctx.Setup.BlockAt(cell);
     BlockPos at = ctx.Setup.Absolute(cell);
     string? failure = OpenFailure(

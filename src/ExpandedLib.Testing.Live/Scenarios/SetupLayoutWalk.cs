@@ -37,16 +37,9 @@ internal static class SetupLayoutWalk {
           );
           break;
         case LayoutEntryKind.Run:
-          if (
-            layout.Runs.FirstOrDefault(r => r.Entries[0] == entry)
-              is { } run
-          )
+          if (layout.Runs.FirstOrDefault(r => r.Entries[0] == entry) is { } run)
             plan.Add(
-              new LayoutPlacing(
-                entry,
-                run,
-                [.. run.Cells.Select(c => c.Cell)]
-              )
+              new LayoutPlacing(entry, run, [.. run.Cells.Select(c => c.Cell)])
             );
           break;
       }
@@ -166,10 +159,7 @@ internal static class SetupLayoutWalk {
     for (int i = 0; i < laid.Count; i++)
       if (run.Cells[i].Entry.Id is { } id)
         ctx.Setup.Place(id, new SetupPlacement(laid[i], [laid[i]]));
-    ctx.Setup.Place(
-      run.Id,
-      new SetupPlacement(laid[0], laid)
-    );
+    ctx.Setup.Place(run.Id, new SetupPlacement(laid[0], laid));
     report.Value = $"{laid.Count} cell(s) of {run.Id}";
   }
 
@@ -181,18 +171,16 @@ internal static class SetupLayoutWalk {
     BlockPos local
   ) {
     BlockEntity? be = ctx.Setup.BlockEntityAt(local);
-    if (block is not IFillerHost && !SetupStructureCheck.IsMultiblock(block, be))
+    if (
+      block is not IFillerHost
+      && !SetupStructureCheck.IsMultiblock(block, be)
+    )
       return;
     int angle = ctx.Setup.FrameAt(local)?.Angle ?? 0;
     List<(int X, int Y, int Z)> structure =
     [
       .. SetupStructureCheck
-        .Cells(
-          ctx.World,
-          block,
-          ctx.Setup.Absolute(local),
-          angle
-        )
+        .Cells(ctx.World, block, ctx.Setup.Absolute(local), angle)
         .Select(c =>
         {
           BlockPos l = ctx.Setup.Local(new BlockPos(c.X, c.Y, c.Z));
