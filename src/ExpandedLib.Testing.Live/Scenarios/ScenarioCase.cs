@@ -21,7 +21,6 @@ internal sealed class ScenarioCase(
 
   private static readonly string[] Refused =
   [
-    "during",
     "checks",
     "climate",
     "variants",
@@ -66,9 +65,6 @@ internal sealed class ScenarioCase(
     foreach (string key in Refused)
       if (root[key] != null)
         throw top.In(key).Fail("is not read by the live runner yet.");
-    if (model.Record.Runs.Count > 0 || model.Record.Machines.Count > 0)
-      throw top.In("record")
-        .Fail("recording is not read by the live runner yet.");
     if (!GameVersion.IsAtLeastVersion(series, model.Game))
       throw top.In("game")
         .Fail($"needs {model.Game}; the server runs {series}.");

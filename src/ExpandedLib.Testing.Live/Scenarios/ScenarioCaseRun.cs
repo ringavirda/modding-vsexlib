@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using ExpandedLib.Scenarios;
 
@@ -8,7 +10,8 @@ namespace ExpandedLib.Testing.Live;
 /// and the skipped, step and detail lines. <see cref="Run"/> is advanced once per server tick.</summary>
 internal sealed class ScenarioCaseRun(
   ScenarioCase scenario,
-  ScenarioContext ctx
+  ScenarioContext ctx,
+  SetupSampler? sampler = null
 ) {
   /// <summary>Whether the case passed; meaningful once <see cref="Run"/> has finished.</summary>
   public bool Passed { get; private set; }
@@ -70,6 +73,39 @@ internal sealed class ScenarioCaseRun(
           )
         );
     } else {
+      if (sampler != null) {
+        sampler.Start();
+        while (sampler.Failure == null && !sampler.Done) {
+          if (ctx.Now - start > scenario.Timeout) {
+            failedAt = steps.Count + 1;
+            failure = Report(
+              failedAt,
+              "run",
+              "record",
+              $"still running after {scenario.Timeout} s."
+            );
+            break;
+          }
+          yield return true;
+          sampler.Advance();
+        }
+        sampler.Stop();
+        if (failure == null && sampler.Failure is { } stopped) {
+          failedAt = steps.Count + 1;
+          failure = stopped.Reported
+            ? stopped
+            : Report(
+                failedAt,
+                "run",
+                "record",
+                stopped.Message,
+                stopped.Suspect
+              );
+        }
+        failure = Record(failure, steps.Count + 1);
+        if (failure != null)
+          failedAt = steps.Count + 1;
+      }
       double end = ctx.Now + scenario.Settle;
       while (failure == null) {
         try {
@@ -105,6 +141,23 @@ internal sealed class ScenarioCaseRun(
     FailedStep = failedAt;
     if (failure != null)
       Suspect = failure.Suspect;
+  }
+
+  private StepFailure? Record(StepFailure? failure, int step) {
+    try {
+      if (sampler!.Save() && failure == null)
+        ctx.Line(
+          ScenarioOutput.StepOk(
+            "run",
+            "record",
+            $"{scenario.Model.Seconds} s, {sampler.RecordPath}",
+            null
+          )
+        );
+      return failure;
+    } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+      return failure ?? Report(step, "run", "record", e.Message);
+    }
   }
 
   private StepFailure Report(

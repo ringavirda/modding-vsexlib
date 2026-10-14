@@ -41,7 +41,7 @@ public class RunnerTests {
       Path.GetTempPath(),
       "exlib-runner-" + Guid.NewGuid().ToString("N")
     );
-    private Action<float>? _tick;
+    private readonly System.Collections.Generic.List<Action<float>> _ticks = [];
     private long _now;
 
     public ICoreServerAPI Api { get; } = Substitute.For<ICoreServerAPI>();
@@ -64,8 +64,8 @@ public class RunnerTests {
       Events
         .RegisterGameTickListener(Arg.Any<Action<float>>(), Arg.Any<int>())
         .Returns(call => {
-          _tick = call.Arg<Action<float>>();
-          return 1L;
+          _ticks.Add(call.Arg<Action<float>>());
+          return _ticks.Count;
         });
       Directory.CreateDirectory(Path.Combine(_dir, "exlib"));
     }
@@ -107,7 +107,8 @@ public class RunnerTests {
     public void Tick(int times, long now = 0) {
       _now = now;
       for (int i = 0; i < times; i++)
-        _tick!(0.1f);
+        foreach (Action<float> tick in _ticks.ToArray())
+          tick(0.1f);
     }
 
     public string[] Lines =>

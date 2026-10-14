@@ -291,10 +291,11 @@ internal sealed class SetupRecording {
   /// <paramref name="write"/> is set, else compares the whole text with it: an equal text
   /// deletes <c>{setup}.received.json</c>, a differing one writes it. Returns the text.
   /// </summary>
-  /// <exception cref="InvalidOperationException">The recording is incomplete or over <see cref="MaxBytes"/>.</exception>
+  /// <exception cref="InvalidOperationException">The recording is incomplete and not
+  /// <paramref name="partial"/>, has under 3 samples when it is, or is over <see cref="MaxBytes"/>.</exception>
   /// <exception cref="SetupRecordingMismatchException">The text differs from the committed file.</exception>
-  public string Save(string folder, bool write) {
-    string text = Text();
+  public string Save(string folder, bool write, bool partial = false) {
+    string text = partial ? TextSoFar() : Text();
     if (Encoding.UTF8.GetByteCount(text) > MaxBytes)
       throw new InvalidOperationException(
         $"{_setup} recording is over {MaxBytes} bytes."
@@ -379,6 +380,21 @@ internal sealed class SetupRecording {
   /// <exception cref="InvalidOperationException">The recording is incomplete.</exception>
   public string Text() {
     RequireComplete();
+    return Render(Seconds, SteadyFrom, SteadyTo);
+  }
+
+  /// <summary>The text of a run that ended early: the seconds sampled, with the default steady
+  /// window of that length.</summary>
+  /// <exception cref="InvalidOperationException">Fewer than 3 seconds were sampled.</exception>
+  public string TextSoFar() {
+    if (_samples < 3)
+      throw new InvalidOperationException(
+        $"{_setup} has {_samples} samples, under the 3 a recording needs."
+      );
+    return Render(_samples, _samples - _samples / 3, _samples);
+  }
+
+  private string Render(int seconds, int steadyFrom, int steadyTo) {
     var text = new StringBuilder();
     text.Append("{\"schema\":1,\"setup\":").Append(Quote(_setup));
     text.Append(",\"game\":").Append(Quote(_game));
@@ -390,19 +406,19 @@ internal sealed class SetupRecording {
         )
       );
     text.Append("},\"seconds\":")
-      .Append(Seconds.ToString(CultureInfo.InvariantCulture));
+      .Append(seconds.ToString(CultureInfo.InvariantCulture));
     text.Append(",\"steady\":[")
-      .Append(SteadyFrom.ToString(CultureInfo.InvariantCulture))
+      .Append(steadyFrom.ToString(CultureInfo.InvariantCulture))
       .Append(',')
-      .Append(SteadyTo.ToString(CultureInfo.InvariantCulture))
+      .Append(steadyTo.ToString(CultureInfo.InvariantCulture))
       .Append("],\n\"runs\":{");
     text.Append(
       string.Join(
         ",\n",
         _runs
-          .Select(r => Entry(r.Id, r.Json(SteadyFrom, SteadyTo)))
+          .Select(r => Entry(r.Id, r.Json(steadyFrom, steadyTo)))
           .Concat(
-            _moltenRuns.Select(r => Entry(r.Id, r.Json(SteadyFrom, SteadyTo)))
+            _moltenRuns.Select(r => Entry(r.Id, r.Json(steadyFrom, steadyTo)))
           )
       )
     );
@@ -410,7 +426,7 @@ internal sealed class SetupRecording {
     text.Append(
       string.Join(
         ",\n",
-        _machines.Select(m => Entry(m.Id, m.Json(SteadyFrom, SteadyTo)))
+        _machines.Select(m => Entry(m.Id, m.Json(steadyFrom, steadyTo)))
       )
     );
     text.Append('}');

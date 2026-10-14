@@ -1,3 +1,13 @@
 {"schema":1,"setup":"live-reader","game":"1.22","mods":{"exlib":"0.8.4","platedpipes":"1.0.0","twintubblower":"1.0.0"},"seconds":20,"steady":[14,20],
-"runs":{},
-"machines":{}}
+"runs":{"main":{"at":[2,1,0],"units":{"flow":"l/s","pressure":"atm","temperature":"C","volume":"L"},
+"series":{"medium":[[0,""]],
+"flow":[[0,0.00]],
+"pressure":[[0,0.000]],
+"temperature":[[0,0.0]],
+"volume":[[0,0.00]]},
+"steady":{"medium":"","flow":0.00,"pressure":0.000,"temperature":0.0,"volume":0.00}}},
+"machines":{"blower":{"code":"twintubblower:blower-twintubblower-n","units":{"speed":"rad/s"},
+"series":{"state":[[0,"idle"],[5,"turning"],[12,"idle"]],
+"speed":[[0,0.000],[5,0.500],[12,0.000]]},
+"steady":{"state":"idle","speed":0.000},
+"constants":{}}}}

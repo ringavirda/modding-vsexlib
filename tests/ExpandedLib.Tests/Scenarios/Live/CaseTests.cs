@@ -55,12 +55,11 @@ public class CaseTests {
     Assert.Contains("not negative", Refused(Place, "{ settle: -0.5 }"));
 
   /// <summary>Fails when the named key is dropped from the refused list (V24 climate, V25
-  /// variants, V26 during, V27 checks); each input is valid to the setup model, so only this
+  /// variants, V27 checks); each input is valid to the setup model, so only this
   /// guard rejects it.</summary>
   [Theory]
   [InlineData("climate", "{ temperature: -10, rainfall: 1 }")]
   [InlineData("variants", "{}")]
-  [InlineData("during", "[]")]
   [InlineData("checks", "[]")]
   public void A_key_the_live_runner_does_not_read_yet_is_refused(
     string key,
@@ -185,16 +184,19 @@ public class CaseTests {
         .Model.Drawn
     );
 
-  /// <summary>Fails when a recorded machine no longer refuses the file (V28).</summary>
+  /// <summary>Fails when a file with a <c>during</c> action and a recorded machine is refused.</summary>
   [Fact]
-  public void A_recording_is_refused() =>
-    Assert.Contains(
-      "recording is not read",
-      Refused(
-        Place,
-        """{ record: { machines: { a: { series: { state: "on" } } } } }"""
-      )
+  public void A_during_action_and_a_recording_are_read() {
+    ScenarioCase scenario = LiveFixture.Case(
+      Place,
+      """
+      { during: [{ at: 1, step: { wait: 1 } }],
+        record: { machines: { a: { series: { state: "on" } } } } }
+      """
     );
+    Assert.Single(scenario.Model.During);
+    Assert.Single(scenario.Model.Record.Machines);
+  }
 
   /// <summary>Fails when a pack that starts from another stage is read, since the live runner has
   /// no stage files to start it from.</summary>

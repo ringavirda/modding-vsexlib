@@ -29,6 +29,14 @@ internal static class ScenarioOutput {
     $"{Prefix}   {label} {kind} {what} ok"
     + (value == null ? "" : $": {value}");
 
+  /// <summary>Whether <paramref name="line"/> is a <see cref="StepOk"/> line: a step line that
+  /// neither failed nor is a detail line.</summary>
+  public static bool IsStepOk(string line) =>
+    line.StartsWith($"{Prefix}   ")
+    && !line.StartsWith($"{Prefix}   | ")
+    && !line.Contains(" FAIL: ")
+    && (line.EndsWith(" ok") || line.Contains(" ok: "));
+
   public static string StepFail(
     string label,
     string kind,

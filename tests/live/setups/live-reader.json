@@ -32,6 +32,38 @@
       }
     }
   ],
+  "during": [
+    {
+      "at": 5,
+      "step": {
+        "set": { "at": { "of": "blower" }, "tree": { "blowerSpeed": 0.5 } }
+      }
+    },
+    {
+      "at": 12,
+      "step": {
+        "set": { "at": { "of": "blower" }, "tree": { "blowerSpeed": 0 } }
+      }
+    }
+  ],
   "seconds": 20,
-  "record": {}
+  "record": {
+    "runs": { "main": {} },
+    "machines": {
+      "blower": {
+        "series": {
+          "state": {
+            "words": [
+              {
+                "when": { "tree": "blowerSpeed", "min": 0.01 },
+                "word": "turning"
+              },
+              "idle"
+            ]
+          },
+          "speed": { "tree": "blowerSpeed", "unit": "rad/s" }
+        }
+      }
+    }
+  }
 }
