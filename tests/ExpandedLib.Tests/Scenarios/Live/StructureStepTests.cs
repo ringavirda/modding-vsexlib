@@ -281,9 +281,9 @@ public class StructureStepTests {
     );
   }
 
-  // Fails when a drawn entry's complete: all is dropped, so the layout walk leaves the structure unbuilt.
+  /// <summary>Fails when a drawn entry's complete: all is dropped, so the layout walk leaves the structure unbuilt.</summary>
   [Fact]
-  public void The_layout_walk_completes_a_drawn_structure_and_waits_for_the_monitor() {
+  public void The_layout_walk_completes_a_drawn_structure() {
     var scene = new Scene();
     SetupLayout layout = LiveFixture
       .Case(
