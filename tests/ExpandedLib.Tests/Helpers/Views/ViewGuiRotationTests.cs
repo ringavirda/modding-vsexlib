@@ -77,7 +77,11 @@ public class ViewGuiRotationTests {
       Vec3d v = CollectibleViews.Mul(m, p);
       reach = Math.Max(reach, Math.Max(Math.Abs(v.X), Math.Abs(v.Y)));
     }
-    return tf.ScaleXYZ.X * 2 * reach / 16 * ViewReferences.SlotItemPixels
+    return tf.ScaleXYZ.X
+      * 2
+      * reach
+      / 16
+      * ViewReferences.SlotItemPixels
       / ViewReferences.SlotPixels;
   }
 
@@ -99,9 +103,7 @@ public class ViewGuiRotationTests {
     ItemViewSet bare = ItemViews.Compute(World.Api, Barred(plain))!;
     ItemViewSet turned = ItemViews.Compute(
       World.Api,
-      Barred(
-        "{\"itemViews\":{\"kind\":\"bar\",\"guiRotation\":[20,50,70]}}"
-      )
+      Barred("{\"itemViews\":{\"kind\":\"bar\",\"guiRotation\":[20,50,70]}}")
     )!;
 
     Assert.True(Same(bare.TpHand, turned.TpHand));
