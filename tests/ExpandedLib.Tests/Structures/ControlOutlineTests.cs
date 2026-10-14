@@ -22,10 +22,13 @@ public class ControlOutlineTests
 {
   private static readonly BlockPos PrincipalPos = new(10, 5, 10);
 
-  private const string Controls = """[{ "id": "valve", "kind": "valve" }, { "id": "hatch", "kind": "door" }]""";
+  private const string Controls =
+    """[{ "id": "valve", "kind": "valve" }, { "id": "hatch", "kind": "door" }]""";
 
-  private const string Valve = """{ "x1": 0.1, "y1": 0.5, "z1": 0.1, "x2": 0.4, "y2": 0.9, "z2": 0.4 }""";
-  private const string Body = """{ "x1": 0, "y1": 0, "z1": 0, "x2": 1, "y2": 0.5, "z2": 1 }""";
+  private const string Valve =
+    """{ "x1": 0.1, "y1": 0.5, "z1": 0.1, "x2": 0.4, "y2": 0.9, "z2": 0.4 }""";
+  private const string Body =
+    """{ "x1": 0, "y1": 0, "z1": 0, "x2": 1, "y2": 0.5, "z2": 1 }""";
 
   private static readonly string Cell = $$"""
     "collisionBoxes": [{{Body}}],
@@ -77,10 +80,7 @@ public class ControlOutlineTests
 
     Cuboidf[] boxes = scene.Boxes(PrincipalPos, null)!;
 
-    Assert.Equal(
-      [0f, 0f, 1f, 2f, 3f],
-      boxes.Select(b => b.X1).OrderBy(x => x)
-    );
+    Assert.Equal([0f, 0f, 1f, 2f, 3f], boxes.Select(b => b.X1).OrderBy(x => x));
     Assert.Contains(boxes, b => b.Y2 > 1f);
   }
 

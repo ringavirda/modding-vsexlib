@@ -12,7 +12,8 @@ namespace ExpandedLib.Blocks;
 /// <summary>Draws the selection outline of a control as a whole: every box that shares the hit box's id
 /// across the principal's cell and its fillers, or every body box when the hit has no id. Available on
 /// 1.22 only.</summary>
-public static class ControlOutline {
+public static class ControlOutline
+{
   /// <summary>
   /// The boxes to outline for a hit on <paramref name="hitPos"/>: the boxes with <paramref name="hitId"/>
   /// in the principal's cell and in each filler cell still linked to that principal, or the id-less boxes of
@@ -27,12 +28,12 @@ public static class ControlOutline {
     IBlockAccessor accessor,
     BlockPos hitPos,
     string? hitId
-  ) {
-    BlockPos principalPos =
-      accessor.GetBlockEntity(hitPos)
-        is BlockEntityStructureFiller { Principal: { } linked }
-        ? linked
-        : hitPos;
+  )
+  {
+    BlockPos principalPos = accessor.GetBlockEntity(hitPos)
+      is BlockEntityStructureFiller { Principal: { } linked }
+      ? linked
+      : hitPos;
     Block principal = accessor.GetBlock(principalPos);
     if (BlockControls.Of(principal).Count == 0)
       return null;
@@ -63,11 +64,13 @@ public static class ControlOutline {
     BlockPos cell,
     BlockPos hitPos,
     string? hitId
-  ) {
+  )
+  {
     Cuboidf[]? boxes = accessor
       .GetBlock(cell)
       .GetSelectionBoxes(accessor, cell);
-    foreach (Cuboidf box in boxes ?? []) {
+    foreach (Cuboidf box in boxes ?? [])
+    {
       string? id = (box as CuboidfWithId)?.Id;
       if (id == hitId)
         into.Add(
@@ -91,7 +94,8 @@ public static class ControlOutline {
     ICoreAPI api,
     BlockSelection sel,
     RenderBoxDelegate render
-  ) {
+  )
+  {
     if (api.Side != EnumAppSide.Client || api is not ICoreClientAPI client)
       return;
     IBlockAccessor accessor = api.World.BlockAccessor;
@@ -100,7 +104,8 @@ public static class ControlOutline {
     Vec4f color = block.GetSelectionColor(client, pos);
 
     Cuboidf[]? boxes = Boxes(accessor, pos, sel.SelectionBoxId);
-    if (boxes != null) {
+    if (boxes != null)
+    {
       foreach (Cuboidf box in boxes)
         render(box, width, color);
       return;
@@ -108,7 +113,8 @@ public static class ControlOutline {
 
     Cuboidf[] own = block.GetSelectionBoxes(accessor, pos);
     bool partial = block.DoPartialSelection(api.World, pos);
-    for (int i = 0; i < own.Length; i++) {
+    for (int i = 0; i < own.Length; i++)
+    {
       if (partial)
         i = sel.SelectionBoxIndex;
       if (own.Length <= i)

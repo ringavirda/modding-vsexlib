@@ -3,9 +3,9 @@ using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
-using Vintagestory.GameContent;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 
 namespace ExpandedLib.Structures;
 
