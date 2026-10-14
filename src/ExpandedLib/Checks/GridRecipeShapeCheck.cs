@@ -9,7 +9,8 @@ namespace ExpandedLib.Checks;
 /// <summary>
 /// Checks every grid recipe in a domain against the pattern the game reads: each ingredient key
 /// is placed by <c>ingredientPattern</c>, each pattern letter has an ingredient, the pattern
-/// fills its declared width and height, and the grid is at most 3x3.
+/// fills its declared width and height, and the grid is at most the largest
+/// crafting grid declared for the domain (<see cref="ExlibChecks.CraftingGrid"/>), 3x3 when none.
 /// </summary>
 /// <remarks>A key the pattern never places is never consumed and never shown, so two recipes
 /// differing only in it take the same input. A letter with no key or a pattern of another length
@@ -17,7 +18,8 @@ namespace ExpandedLib.Checks;
 /// or taller than the crafting grid never matches (<c>GridRecipe.Matches</c>). A grid recipe is one under <c>recipes/grid/</c>; its properties
 /// are read case-insensitively, as the game's loader reads them.</remarks>
 public static class GridRecipeShapeCheck {
-  /// <summary>The crafting grid's width and height, in slots.</summary>
+  /// <summary>The hand crafting grid's width and height, in slots, and a recipe's grid size when
+  /// it declares none.</summary>
   internal const int GridSize = 3;
 
   /// <summary>Every key, letter, pattern length or grid size in <paramref name="domain"/>'s grid
@@ -29,6 +31,7 @@ public static class GridRecipeShapeCheck {
   /// none.</returns>
   public static CheckResult Run(ICheckSource source, string domain) {
     var errors = new List<string>();
+    int bound = ExlibChecks.Grids(domain).Max(g => g.Size);
     foreach (GridEntry recipe in Recipes(source, domain)) {
       foreach (
         string key in recipe.Ingredients.Keys.Where(k =>
@@ -46,10 +49,10 @@ public static class GridRecipeShapeCheck {
           $"{recipe.Where}: pattern {recipe.RawPattern} has {recipe.Cells.Count} slots, "
             + $"not {recipe.Width}x{recipe.Height}"
         );
-      if (recipe.Width > GridSize || recipe.Height > GridSize)
+      if (recipe.Width > bound || recipe.Height > bound)
         errors.Add(
           $"{recipe.Where}: grid {recipe.Width}x{recipe.Height} is larger than "
-            + $"{GridSize}x{GridSize}"
+            + $"{bound}x{bound}"
         );
     }
     return new CheckResult("GridRecipeShape", domain, errors);

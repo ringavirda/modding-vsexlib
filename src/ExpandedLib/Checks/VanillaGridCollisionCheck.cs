@@ -26,6 +26,7 @@ public static class VanillaGridCollisionCheck {
         domain,
         [.. Crafts(game, domain)],
         [.. Crafts(game, "game")],
+        ExlibChecks.Grids(domain),
         withinOwn: false
       );
 }

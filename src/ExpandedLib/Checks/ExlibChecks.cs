@@ -8,7 +8,8 @@ namespace ExpandedLib.Checks;
 /// <summary>Runs every content check ExpandedLib ships against one <see cref="ICheckSource"/>, and
 /// the loaded checks against an <see cref="ILoadedGame"/>. A mod exempts a finding it ships
 /// knowingly with <see cref="Exempt(string, string, string[], string)"/> and declares what its
-/// machines make with <see cref="Produces"/>.</summary>
+/// machines make with <see cref="Produces"/> and the crafting grids they offer with <see
+/// cref="CraftingGrid"/>.</summary>
 /// <remarks>The server calls <see cref="All(ICoreAPI)"/> at <c>EnumServerRunPhase.GameReady</c>,
 /// where a recipe a mod removed after loading is not read and one the game refused at load is;
 /// <c>/exmod verify</c> calls <see cref="Verify"/>, which adds the loaded checks. A mod's own
@@ -55,6 +56,8 @@ public static class ExlibChecks {
 
   private static readonly List<Runner> _runners = [];
 
+  private static readonly List<DeclaredGrid> _grids = [];
+
   private sealed record Exemption(
     string Domain,
     string Rule,
@@ -94,6 +97,16 @@ public static class ExlibChecks {
     public override int GetHashCode() =>
       HashCode.Combine(Domain, Code, Source, At);
   }
+
+  /// <summary>One crafting grid a mod declared with <see cref="CraftingGrid"/>.</summary>
+  private sealed record DeclaredGrid(string Domain, int Size, string Station);
+
+  /// <summary>A crafting grid grid recipes are matched in: <paramref name="Size"/> slots wide and
+  /// high, on <paramref name="Station"/>.</summary>
+  internal sealed record Grid(int Size, string Station);
+
+  /// <summary>The hand crafting grid every domain's recipes are crafted in.</summary>
+  internal static readonly Grid HandGrid = new(3, "hand");
 
   /// <summary>One block a mod declared with <see cref="Runs"/>.</summary>
   internal sealed record Runner(
@@ -295,6 +308,52 @@ public static class ExlibChecks {
       _runners.Add(runner);
   }
 
+  /// <summary>Declares a crafting grid larger than the hand grid in which a domain's grid recipes
+  /// are crafted, such as a workbench's 5 x 5. <see cref="GridRecipeShapeCheck"/> accepts a
+  /// recipe up to the largest grid declared for its domain, and <see
+  /// cref="GridRecipeCollisionCheck"/> and <see cref="VanillaGridCollisionCheck"/> judge two
+  /// recipes in every grid both fit in. The station matches every loaded grid recipe, so a 3 x 3
+  /// recipe of any domain meets a larger one there. Call it from a mod's <c>Start</c>; a world
+  /// starting to load drops every declaration.</summary>
+  /// <param name="domain">The declaring mod's domain, whose recipes the grid bounds.</param>
+  /// <param name="size">The grid's width and height in slots; at least 1. A size of 3 or less
+  /// adds nothing to the hand grid.</param>
+  /// <param name="station">The block that crafts in it, named when a collision in the grid is
+  /// reported.</param>
+  /// <exception cref="ArgumentException"><paramref name="domain"/> or <paramref
+  /// name="station"/> is null or empty.</exception>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="size"/> is below 1.</exception>
+  /// <remarks>The same declaration given twice is kept once. A run with no declaration holds the
+  /// hand grid (3 x 3) alone, as an offline source does.</remarks>
+  public static void CraftingGrid(string domain, int size, string station) {
+    Require(
+      "a grid names its domain and station",
+      (domain, nameof(domain)),
+      (station, nameof(station))
+    );
+    if (size < 1)
+      throw new ArgumentOutOfRangeException(
+        nameof(size),
+        size,
+        "a grid has a slot"
+      );
+    var grid = new DeclaredGrid(domain, size, station);
+    if (!_grids.Contains(grid))
+      _grids.Add(grid);
+  }
+
+  /// <summary>The grids <paramref name="domain"/>'s recipes are crafted in: the hand grid, then
+  /// every larger one declared for it, smallest first.</summary>
+  internal static IReadOnlyList<Grid> Grids(string domain) =>
+    [
+      HandGrid,
+      .. _grids
+        .Where(g => g.Domain == domain && g.Size > HandGrid.Size)
+        .OrderBy(g => g.Size)
+        .Select(g => new Grid(g.Size, g.Station))
+        .Distinct(),
+    ];
+
   /// <summary>Every <see cref="Produces"/> declaration of the current world, in call
   /// order.</summary>
   internal static IReadOnlyList<Declaration> Produced() => _produced;
@@ -302,9 +361,10 @@ public static class ExlibChecks {
   /// <summary>Every <see cref="Runs"/> declaration of the current world, in call order.</summary>
   internal static IReadOnlyList<Runner> Runners() => _runners;
 
-  /// <summary>Drops every exemption and every <see cref="Produces"/> and <see cref="Runs"/>
-  /// declaration; run when a world starts loading.</summary>
+  /// <summary>Drops every exemption and every <see cref="Produces"/>, <see cref="Runs"/> and
+  /// <see cref="CraftingGrid"/> declaration; run when a world starts loading.</summary>
   internal static void ClearDeclarations() {
+    _grids.Clear();
     _exemptions.Clear();
     _produced.Clear();
     _runners.Clear();
