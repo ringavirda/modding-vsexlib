@@ -308,13 +308,11 @@ public static class ExlibChecks {
       _runners.Add(runner);
   }
 
-  /// <summary>Declares a crafting grid larger than the hand grid in which a domain's grid recipes
-  /// are crafted, such as a workbench's 5 x 5. <see cref="GridRecipeShapeCheck"/> accepts a
-  /// recipe up to the largest grid declared for its domain, and <see
-  /// cref="GridRecipeCollisionCheck"/> and <see cref="VanillaGridCollisionCheck"/> judge two
-  /// recipes in every grid both fit in. The station matches every loaded grid recipe, so a 3 x 3
-  /// recipe of any domain meets a larger one there. Call it from a mod's <c>Start</c>; a world
-  /// starting to load drops every declaration.</summary>
+  /// <summary>Declares a crafting grid larger than the hand's that a station offers, such as a
+  /// workbench's 5 x 5. The shape check accepts a recipe up to the largest grid declared for its
+  /// domain, and the collision checks hold two recipes against each other in every grid both fit
+  /// in. Call it from a mod's <c>Start</c>; a world starting to load drops every
+  /// declaration.</summary>
   /// <param name="domain">The declaring mod's domain, whose recipes the grid bounds.</param>
   /// <param name="size">The grid's width and height in slots; at least 1. A size of 3 or less
   /// adds nothing to the hand grid.</param>
@@ -323,8 +321,9 @@ public static class ExlibChecks {
   /// <exception cref="ArgumentException"><paramref name="domain"/> or <paramref
   /// name="station"/> is null or empty.</exception>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="size"/> is below 1.</exception>
-  /// <remarks>The same declaration given twice is kept once. A run with no declaration holds the
-  /// hand grid (3 x 3) alone, as an offline source does.</remarks>
+  /// <remarks>The same declaration given twice is kept once. The station matches every loaded
+  /// grid recipe, so a 3 x 3 recipe of any domain meets a larger one there. A run with no
+  /// declaration holds the hand grid (3 x 3) alone.</remarks>
   public static void CraftingGrid(string domain, int size, string station) {
     Require(
       "a grid names its domain and station",

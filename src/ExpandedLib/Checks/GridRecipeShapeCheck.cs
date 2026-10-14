@@ -9,13 +9,13 @@ namespace ExpandedLib.Checks;
 /// <summary>
 /// Checks every grid recipe in a domain against the pattern the game reads: each ingredient key
 /// is placed by <c>ingredientPattern</c>, each pattern letter has an ingredient, the pattern
-/// fills its declared width and height, and the grid is at most the largest
-/// crafting grid declared for the domain (<see cref="ExlibChecks.CraftingGrid"/>), 3x3 when none.
+/// fills its declared width and height, and the grid fits the domain's largest crafting grid.
 /// </summary>
 /// <remarks>A key the pattern never places is never consumed and never shown, so two recipes
 /// differing only in it take the same input. A letter with no key or a pattern of another length
 /// than width times height fails the recipe at load (<c>GridRecipe.Resolve</c>), and a grid wider
-/// or taller than the crafting grid never matches (<c>GridRecipe.Matches</c>). A grid recipe is one under <c>recipes/grid/</c>; its properties
+/// or taller than the largest crafting grid, 3x3 unless
+/// <see cref="ExlibChecks.CraftingGrid"/> declares more, never matches (<c>GridRecipe.Matches</c>). A grid recipe is one under <c>recipes/grid/</c>; its properties
 /// are read case-insensitively, as the game's loader reads them.</remarks>
 public static class GridRecipeShapeCheck {
   /// <summary>The hand crafting grid's width and height, in slots, and a recipe's grid size when
