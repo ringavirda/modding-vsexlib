@@ -351,25 +351,23 @@ public class SetupPackStepTests : IDisposable
   [Fact]
   public void A_steps_draws_are_taken_before_it_runs()
   {
-    string steps(string draws) =>
+    string steps(int draws) =>
       "["
       + Box
-      + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupcraft:plate\", 1, 9, 0, 0]}, \"draws\": "
+      + ", {\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"setupcraft:plate\", \"count\": 2, \"slot\": 0}, \"draws\": {\"setupcraft:plate\": "
       + draws
-      + "}]";
+      + "}}]";
 
     using SetupScene scene = Build(
-      Gathered("stacks", "{\"setupcraft:rod-iron\": 2}"),
-      steps("{\"setupcraft:rod-iron\": 2}")
+      Gathered("stacks", "{\"setupcraft:plate\": 3}"),
+      steps(1)
     );
 
-    Assert.NotNull(scene);
+    var box = (SetupBox)scene.World.GetBlockEntity(scene.PositionOf("box"))!;
+    Assert.Equal(2, box.Inventory[0].Itemstack?.StackSize);
     Assert.Equal(
-      "t.json: steps[1]: the pack holds 2 of setupcraft:rod-iron; the step takes 3.",
-      Refused(
-        Gathered("stacks", "{\"setupcraft:rod-iron\": 2}"),
-        steps("{\"setupcraft:rod-iron\": 3}")
-      )
+      "t.json: steps[1]: the pack holds 1 of setupcraft:plate; the step takes 2.",
+      Refused(Gathered("stacks", "{\"setupcraft:plate\": 2}"), steps(1))
     );
   }
 

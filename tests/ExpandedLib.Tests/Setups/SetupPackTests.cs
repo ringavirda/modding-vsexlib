@@ -379,13 +379,19 @@ public class SetupPackTests
   {
     SetupFileModel model = WithSteps(
       "{ \"scope\": \"all\" }",
-      "[{ \"wait\": 1, \"draws\": { \"game:flint\": 2, \"game:stick\": 1 }, \"gives\": { \"game:charcoal\": 3 } }]"
+      "[{ \"wait\": 1, \"draws\": { \"game:flint\": 2, \"game:stick\": 1 }, \"gives\": { \"game:charcoal\": 3 } }"
+        + ", { \"wait\": { \"seconds\": 1 }, \"draws\": { \"game:stick\": 3 }, \"gives\": { \"game:flint\": 4 } }]"
     );
 
     SetupStep step = model.Steps[0];
 
     Assert.Equal([("game:flint", 2), ("game:stick", 1)], step.Draws);
     Assert.Equal([("game:charcoal", 3)], step.Gives);
+
+    SetupStep bodied = model.Steps[1];
+
+    Assert.Equal([("game:stick", 3)], bodied.Draws);
+    Assert.Equal([("game:flint", 4)], bodied.Gives);
   }
 
   // Fails when draws or gives load in a file with no pack, where nothing could account them.
