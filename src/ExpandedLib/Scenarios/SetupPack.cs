@@ -64,9 +64,7 @@ internal sealed class SetupPack {
         $"the pack holds {held} of {code}; the step takes {count}."
       );
     int left = count;
-    foreach (
-      string key in _held.Keys.Where(k => Matches(k, code)).ToList()
-    ) {
+    foreach (string key in _held.Keys.Where(k => Matches(k, code)).ToList()) {
       int take = Math.Min(left, _held[key]);
       _held[key] -= take;
       left -= take;
@@ -121,9 +119,7 @@ internal sealed class SetupPack {
   ) {
     foreach (var (id, _) in spec.After) {
       if (path.Contains(id))
-        throw new InvalidOperationException(
-          $"after cycles through \"{id}\"."
-        );
+        throw new InvalidOperationException($"after cycles through \"{id}\".");
       SetupPackSpec stage = EndsOf(id, stageOf);
       into.AddRange(stage.EndStanding);
       path.Add(id);

@@ -641,7 +641,9 @@ internal sealed class SetupFileModel {
       throw where.Fail("takes a \"scope\".");
     string scope = SetupJson.String(node["scope"], where.In("scope"));
     if (scope is not ("all" or "stacks"))
-      throw where.In("scope").Fail($"\"{scope}\" is not \"all\" or \"stacks\".");
+      throw where
+        .In("scope")
+        .Fail($"\"{scope}\" is not \"all\" or \"stacks\".");
     var after = new List<(string Id, int Runs)>();
     if (node["after"] != null)
       foreach (
@@ -667,7 +669,9 @@ internal sealed class SetupFileModel {
         JObject grant = SetupJson.Object(item, w);
         SetupJson.RefuseUnknown(grant, w, "code", "count", "until");
         if (grant["until"] == null)
-          throw w.Fail("takes an \"until\" naming the task that writes the stage.");
+          throw w.Fail(
+            "takes an \"until\" naming the task that writes the stage."
+          );
         grants.Add(
           new SetupGrant(
             SetupJson.String(grant["code"], w.In("code")),
@@ -704,7 +708,8 @@ internal sealed class SetupFileModel {
   ) {
     if (token == null)
       return [];
-    return [
+    return
+    [
       .. SetupJson
         .Object(token, where)
         .Properties()

@@ -36,7 +36,8 @@ public class SetupPackTests
       : null;
   }
 
-  private static SetupPack Pack(string name) => SetupPack.Start(Load(name), Resolve);
+  private static SetupPack Pack(string name) =>
+    SetupPack.Start(Load(name), Resolve);
 
   private static SetupFileModel Inline(string pack) =>
     SetupFileModel.Parse(
@@ -49,7 +50,10 @@ public class SetupPackTests
   // Fails when a pack's keys or counts are read without their checks; one row per guard.
   [Theory]
   [InlineData("{ \"after\": {} }", "takes a \"scope\".")]
-  [InlineData("{ \"scope\": \"some\" }", "\"some\" is not \"all\" or \"stacks\".")]
+  [InlineData(
+    "{ \"scope\": \"some\" }",
+    "\"some\" is not \"all\" or \"stacks\"."
+  )]
   [InlineData(
     "{ \"scope\": \"all\", \"after\": { \"play-stations\": 1 } }",
     "is not a mod and a setup id"
@@ -73,7 +77,9 @@ public class SetupPackTests
   [InlineData("{ \"scope\": \"all\", \"bogus\": 1 }", "unknown key \"bogus\".")]
   public void PackRefusesMalformedKeys(string pack, string message)
   {
-    SetupFileException error = Assert.Throws<SetupFileException>(() => Inline(pack));
+    SetupFileException error = Assert.Throws<SetupFileException>(() =>
+      Inline(pack)
+    );
     Assert.Contains(message, error.Message);
   }
 
@@ -111,9 +117,13 @@ public class SetupPackTests
   {
     SetupPack pack = Pack("pack-later");
     InvalidOperationException error = Assert.Throws<InvalidOperationException>(
-      () => pack.Draw("metal:iron", 1601)
+      () =>
+        pack.Draw("metal:iron", 1601)
     );
-    Assert.Equal("the pack holds 1600 of metal:iron; the step takes 1601.", error.Message);
+    Assert.Equal(
+      "the pack holds 1600 of metal:iron; the step takes 1601.",
+      error.Message
+    );
     Assert.Equal(1600, pack.Held("metal:iron"));
   }
 
@@ -133,7 +143,9 @@ public class SetupPackTests
   {
     SetupPack pack = Pack("pack-earlier");
     pack.Give("metal:iron", 800);
-    InvalidOperationException error = Assert.Throws<InvalidOperationException>(pack.CheckEnds);
+    InvalidOperationException error = Assert.Throws<InvalidOperationException>(
+      pack.CheckEnds
+    );
     Assert.Equal(
       "the stage ends with 0 of iiex:diagram-molten-straight; it declares 1.",
       error.Message
@@ -147,8 +159,13 @@ public class SetupPackTests
     SetupPack pack = Pack("pack-earlier");
     pack.Give("iiex:diagram-molten-straight", 1);
     pack.Give("metal:iron", 799);
-    InvalidOperationException error = Assert.Throws<InvalidOperationException>(pack.CheckEnds);
-    Assert.Equal("the stage ends with 799 of metal:iron; it declares 800.", error.Message);
+    InvalidOperationException error = Assert.Throws<InvalidOperationException>(
+      pack.CheckEnds
+    );
+    Assert.Equal(
+      "the stage ends with 799 of metal:iron; it declares 800.",
+      error.Message
+    );
   }
 
   // Fails when a taken standing block stays on the list, so a second place is free too.
@@ -178,9 +195,13 @@ public class SetupPackTests
       "{ \"scope\": \"all\", \"after\": { \"exlib/setups/pack-missing\": 1 } }"
     );
     InvalidOperationException error = Assert.Throws<InvalidOperationException>(
-      () => SetupPack.Start(root, Resolve)
+      () =>
+        SetupPack.Start(root, Resolve)
     );
-    Assert.Equal("after names \"exlib/setups/pack-missing\", which no file has.", error.Message);
+    Assert.Equal(
+      "after names \"exlib/setups/pack-missing\", which no file has.",
+      error.Message
+    );
   }
 
   // Fails when an after onto a file with no pack is read as no ends rather than refused.
@@ -191,7 +212,8 @@ public class SetupPackTests
       "{ \"scope\": \"all\", \"after\": { \"exlib/setups/pack-nopack\": 1 } }"
     );
     InvalidOperationException error = Assert.Throws<InvalidOperationException>(
-      () => SetupPack.Start(root, Resolve)
+      () =>
+        SetupPack.Start(root, Resolve)
     );
     Assert.Equal(
       "after names \"exlib/setups/pack-nopack\", whose file has no pack.",
@@ -203,7 +225,9 @@ public class SetupPackTests
   [Fact]
   public void StartNeedsAPack()
   {
-    Assert.Throws<ArgumentException>(() => SetupPack.Start(Load("pack-nopack"), Resolve));
+    Assert.Throws<ArgumentException>(() =>
+      SetupPack.Start(Load("pack-nopack"), Resolve)
+    );
   }
 
   // Fails when an after cycle is not refused; the chain would never end.
@@ -211,9 +235,13 @@ public class SetupPackTests
   public void AfterCycleIsRefused()
   {
     InvalidOperationException error = Assert.Throws<InvalidOperationException>(
-      () => SetupPack.Start(Load("pack-loop-a"), Resolve)
+      () =>
+        SetupPack.Start(Load("pack-loop-a"), Resolve)
     );
-    Assert.Equal("after cycles through \"exlib/setups/pack-loop-b\".", error.Message);
+    Assert.Equal(
+      "after cycles through \"exlib/setups/pack-loop-b\".",
+      error.Message
+    );
   }
 }
 #endif
