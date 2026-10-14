@@ -569,6 +569,33 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.Empty(result.Findings);
     Assert.Equal(["walk:a"], WalkFixtureBench.Laid);
     Assert.Contains("2 recipes fired (2 executed, 0 followed)", result.Summary);
+    Assert.Equal(
+      [
+        new CraftWalk.CraftedEdge("walk:a", "walk:a", CraftWalk.HandGridName),
+        new CraftWalk.CraftedEdge("walk:member", "walk:member", "walk:bench"),
+      ],
+      result.Crafted
+    );
+  }
+
+  // Fails when a fired station recipe that no placed station holds is skipped without a finding.
+  [Fact]
+  public void A_set_member_no_placed_station_holds_fails()
+  {
+    using TestWorld world = Planted(
+      ["a", "member"],
+      [Recipe(Stick, "a"), Sized("member", 5, 5)],
+      Stick
+    );
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Equal(
+      ["walk:member | no placed station holds walk:member"],
+      result.Findings
+    );
+    Assert.Contains("(1 executed, 1 followed)", result.Summary);
+    Assert.DoesNotContain(result.Crafted, c => c.Output == "walk:member");
   }
 }
 #endif

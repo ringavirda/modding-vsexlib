@@ -22,7 +22,8 @@ internal static class CraftWalkRuns
   );
 
   /// <summary>Crafts every fired grid edge once and appends a failure for each craft the matcher
-  /// or the station refuses and for each set member the hand grid takes.</summary>
+  /// or the station refuses, for each set member the hand grid takes and for each station recipe no
+  /// placed station holds.</summary>
   /// <param name="world">The loaded world.</param>
   /// <param name="domain">The domain whose blocks are placed as stations.</param>
   /// <param name="edges">The walk's edges.</param>
@@ -30,6 +31,7 @@ internal static class CraftWalkRuns
   /// <param name="reached">The round each code was reached in.</param>
   /// <param name="all">Every loaded item and block.</param>
   /// <param name="found">The failures, as key and line.</param>
+  /// <param name="crafted">Receives each craft that succeeded, with where it was made.</param>
   /// <returns>For each edge, whether it was crafted without a refusal.</returns>
   internal static bool[] Execute(
     TestWorld world,
@@ -38,7 +40,8 @@ internal static class CraftWalkRuns
     int[] round,
     Dictionary<string, int> reached,
     IReadOnlyList<CollectibleObject> all,
-    List<(string Key, string Line)> found
+    List<(string Key, string Line)> found,
+    List<CraftWalk.CraftedEdge> crafted
   )
   {
     var executed = new bool[edges.Count];
@@ -75,7 +78,16 @@ internal static class CraftWalkRuns
             break;
           }
       if (order == null)
+      {
+        if (edge.Class == CraftWalkClass.GridStation)
+          found.Add(
+            (
+              edge.Output,
+              $"{edge.Output} | no placed station holds {edge.Name}"
+            )
+          );
         continue;
+      }
       try
       {
         scene.CraftOnce(
@@ -85,6 +97,13 @@ internal static class CraftWalkRuns
           Bill(order, all, cache, reached, round[i])
         );
         executed[i] = true;
+        crafted.Add(
+          new CraftWalk.CraftedEdge(
+            edge.Output,
+            edge.Name,
+            at?.Name ?? CraftWalk.HandGridName
+          )
+        );
       }
       catch (InvalidOperationException e)
       {

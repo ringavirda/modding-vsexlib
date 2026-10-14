@@ -21,12 +21,33 @@ namespace ExpandedLib.Testing;
 /// each block of the domain with a block entity; the other edges are followed.</para></remarks>
 public static class CraftWalk
 {
+  /// <summary>The station name <see cref="CraftedEdge.Station"/> carries for a craft in the hand
+  /// grid.</summary>
+  [CheckHelper("names the hand grid as a crafted edge's station")]
+  public const string HandGridName = "the hand grid";
+
+  /// <summary>One grid recipe the walk crafted.</summary>
+  /// <param name="Output">The code of the recipe's product.</param>
+  /// <param name="Recipe">The recipe's name.</param>
+  /// <param name="Station">The code of the placed block it was crafted at, or
+  /// <see cref="HandGridName"/>.</param>
+  public sealed record CraftedEdge(
+    string Output,
+    string Recipe,
+    string Station
+  );
+
   /// <summary>What one walk read and found.</summary>
   /// <param name="Summary">One line: <c>craft walk &lt;domain&gt;: K kinds, R recipes fired (E executed,
   /// G followed), U undeclared, T on trust, F failures</c>.</param>
   /// <param name="Findings">One line per failure, <c>key | what</c>, less the known rows, then one
   /// per known row that matched no failure; empty when the walk is clean.</param>
-  public sealed record Result(string Summary, IReadOnlyList<string> Findings)
+  /// <param name="Crafted">Each grid recipe the walk crafted without a refusal.</param>
+  public sealed record Result(
+    string Summary,
+    IReadOnlyList<string> Findings,
+    IReadOnlyList<CraftedEdge> Crafted
+  )
   {
     /// <summary>The summary line, then each finding indented.</summary>
     public override string ToString() =>
@@ -103,6 +124,7 @@ public static class CraftWalk
       }
     }
 
+    var crafted = new List<CraftedEdge>();
     bool[] executed = CraftWalkRuns.Execute(
       world,
       domain,
@@ -110,7 +132,8 @@ public static class CraftWalk
       firedIn,
       reached,
       all,
-      found
+      found,
+      crafted
     );
 
     Dictionary<string, WalkNeed> undeclared = [];
@@ -205,7 +228,8 @@ public static class CraftWalk
       .Count(d => d.Domain == domain && d.At == null);
     return new Result(
       $"craft walk {domain}: {asked.Length} kinds, {count} recipes fired ({ran} executed, {count - ran} followed), {inputless} undeclared, {trust} on trust, {failures.Length} failures",
-      failures
+      failures,
+      crafted
     );
   }
 
