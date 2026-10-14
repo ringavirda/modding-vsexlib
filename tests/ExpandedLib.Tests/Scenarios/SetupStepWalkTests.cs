@@ -74,7 +74,10 @@ public class SetupStepWalkTests {
       }
       """
     );
-    SetupStep[] places = [.. SetupStepWalk.Of(model).Where(s => s.Kind == "place")];
+    SetupStep[] places =
+    [
+      .. SetupStepWalk.Of(model).Where(s => s.Kind == "place"),
+    ];
     Assert.Equal(2, places.Length);
     Assert.Contains(places, s => s.Path.Contains("replace"));
   }
@@ -89,7 +92,9 @@ public class SetupStepWalkTests {
       }
       """
     );
-    SetupStep advance = SetupStepWalk.Of(model).Single(s => s.Kind == "advance");
+    SetupStep advance = SetupStepWalk
+      .Of(model)
+      .Single(s => s.Kind == "advance");
     Assert.Contains("busy", advance.Path);
     Assert.Contains("during[0]", advance.Path);
   }
@@ -107,9 +112,6 @@ public class SetupStepWalkTests {
     );
     SetupFileModel applied = model.ForVariant(model.Variants.Single());
     Assert.Single(applied.AfterEntry);
-    Assert.Equal(
-      2,
-      SetupStepWalk.Of(applied).Count(s => s.Kind == "advance")
-    );
+    Assert.Equal(2, SetupStepWalk.Of(applied).Count(s => s.Kind == "advance"));
   }
 }

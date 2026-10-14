@@ -297,9 +297,7 @@ public class StructureStepTests {
         """
       )
       .Model.Drawn!;
-    foreach (
-      bool _ in SetupLayoutWalk.Run(scene.Fixture.Context, layout, null)
-    ) {
+    foreach (bool _ in SetupLayoutWalk.Run(scene.Fixture.Context, layout, null)) {
       scene.Fixture.Test.AdvanceBlockEntityTime(3000);
       scene.Fixture.Clock += 3;
     }
