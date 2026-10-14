@@ -78,6 +78,7 @@ internal sealed class SetupPack {
   public IEnumerable<string> HeldKeys =>
     _held.Where(k => k.Value > 0 && !k.Key.Contains('*')).Select(k => k.Key);
 
+#if GAME_GE_1_22
   /// <summary>The stack that lays <paramref name="input"/> from what the pack holds: the first
   /// concrete key whose collectible satisfies the ingredient.</summary>
   /// <param name="world">Resolves each held key to an item or block.</param>
@@ -102,6 +103,7 @@ internal sealed class SetupPack {
     }
     return null;
   }
+#endif
 
   /// <summary>The pack code of a molten cell's metal.</summary>
   /// <param name="metalType">The cell's full metal code, such as <c>game:ingot-iron</c>.</param>
