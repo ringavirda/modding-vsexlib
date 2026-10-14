@@ -151,10 +151,10 @@ internal sealed class RunStep : ScenarioStep {
   }
 
   /// <summary>Lays <paramref name="blocks"/> in the order of <paramref name="cells"/> with no check on the
-  /// path's shape, each placed on the click that its entry of <paramref name="faces"/> gives it. A cell
-  /// below y 0 that holds a block is ground and is cleared to air before its block goes down. The block
-  /// that goes down is the one the block's own placement picks, which need not be the one
-  /// given.</summary>
+  /// path's shape, each placed on the click that its entry of <paramref name="faces"/> gives it. The
+  /// block that goes down is the one the block's own placement picks, which need not be the one
+  /// given. A cell below y 0 is not checked: it is ground, which the caller has dug when it must be
+  /// clear.</summary>
   /// <param name="placed">Called with the index of each cell right after its block went down, before the
   /// next is placed; null for none.</param>
   /// <exception cref="StepFailure">A cell holds a block other than air at or above y 0, the
@@ -177,8 +177,6 @@ internal sealed class RunStep : ScenarioStep {
       BlockPos cell = cells[i];
       Block block = blocks[i];
       PackLedger.DrawBlock(ctx, block.Code.ToString(), cell.ToString());
-      if (cell.Y < 0 && !ctx.IsAir(cell))
-        ctx.SetBlock(ctx.World.GetBlock(0), cell);
       if (
         !place(block, ctx.Setup.Absolute(cell), faces[i], out string? failure)
       )

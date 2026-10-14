@@ -24,7 +24,9 @@ internal sealed record LayoutPlacing(
 /// against its drawing. A run cell of a network block is laid as the member of its family whose
 /// faces are the cell's drawn faces, and one the block's own placement orients otherwise is turned
 /// to them with the wrench; any other run cell is laid as its entry's code. Prints one line per
-/// placing entry, labelled <c>L</c> and its place among them.</summary>
+/// placing entry, labelled <c>L</c> and its place among them. Before the first entry is laid, every
+/// cell of the placing entries below y 0 is dug to air, as a player clears a hole before building in
+/// it; above ground nothing is cleared.</summary>
 internal static class SetupLayoutWalk {
   /// <summary>The placing entries of <paramref name="layout"/> in placement order.</summary>
   public static IReadOnlyList<LayoutPlacing> Plan(SetupLayout layout) {
@@ -65,7 +67,9 @@ internal static class SetupLayoutWalk {
     RunStep.PlayerWrench? wrench = null
   ) {
     int placed = 0;
-    foreach (LayoutPlacing p in Plan(layout)) {
+    IReadOnlyList<LayoutPlacing> plan = Plan(layout);
+    Dig(ctx, plan);
+    foreach (LayoutPlacing p in plan) {
       string label = "L" + ++placed;
       ctx.Current = label;
       string what = Describe(p.Entry);
@@ -97,6 +101,15 @@ internal static class SetupLayoutWalk {
       }
       ctx.Line(ScenarioOutput.StepOk(label, "layout", what, report.Value));
     }
+  }
+
+  private static void Dig(ScenarioContext ctx, IEnumerable<LayoutPlacing> plan) {
+    foreach (LayoutCell cell in plan.SelectMany(p => p.Cells))
+      if (cell.Y < 0) {
+        var local = new BlockPos(cell.X, cell.Y, cell.Z);
+        if (!ctx.IsAir(local))
+          ctx.SetBlock(ctx.World.GetBlock(0), local);
+      }
   }
 
   private static string Describe(LayoutEntry entry) =>
@@ -166,6 +179,7 @@ internal static class SetupLayoutWalk {
       .. run.Cells.Select(c => new BlockPos(c.Cell.X, c.Cell.Y, c.Cell.Z)),
     ];
     var wanted = new string?[run.Cells.Count];
+    HashSet<BlockFacing>? firstDrawn = null;
     var blocks = new List<Block>();
     for (int i = 0; i < run.Cells.Count; i++) {
       LayoutRunCell cell = run.Cells[i];
@@ -196,16 +210,21 @@ internal static class SetupLayoutWalk {
           )
         );
         wanted[i] = SetupRunFamily.Letters(faces);
+        if (i == 0)
+          firstDrawn = faces;
       } catch (InvalidOperationException e) {
         throw new StepFailure(e.Message, Suspect.Scenario);
       }
     }
+    List<BlockFacing> clicks = ClickFaces(run);
+    if (run.Cells.Count == 1 && firstDrawn is { Count: > 0 })
+      clicks[0] = firstDrawn.OrderBy(f => f.Index).First().Opposite;
     RunStep.LayCells(
       ctx,
       place,
       blocks,
       laid,
-      ClickFaces(run),
+      clicks,
       i => {
         if (wanted[i] is { } faces)
           Turn(ctx, wrench, laid[i], faces);
@@ -261,7 +280,8 @@ internal static class SetupLayoutWalk {
 
   /// <summary>The click face of each cell of <paramref name="run"/>: the face of the cell it was
   /// reached from in the depth-first path that looks toward it, and for the first cell the face of
-  /// its first neighbour that looks back. A single cell is clicked from below.</summary>
+  /// its first neighbour that looks back. A single cell is clicked from below; the walk replaces that
+  /// with the click from the side of its lowest-indexed drawn face when it has one.</summary>
   private static List<BlockFacing> ClickFaces(LayoutRun run) {
     var at = run.Cells.ToDictionary(c => (c.Cell.X, c.Cell.Y, c.Cell.Z));
     var parent = new Dictionary<(int, int, int), BlockPos>();

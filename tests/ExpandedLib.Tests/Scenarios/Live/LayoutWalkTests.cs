@@ -442,7 +442,7 @@ public class LayoutWalkTests {
     AssertOneNetwork(fixture, (1, 0, 0), (2, 0, 0), (2, 0, 1));
   }
 
-  // Fails when the ground cell under a run keeps its natural block, so the player's placement is refused.
+  // Fails when the walk digs nothing before laying, so the ground cells of the run stay stone and the player's placement is refused.
   [Fact]
   public void A_run_on_a_layer_below_ground_replaces_the_natural_block() {
     LiveFixture fixture = PipeFixture();
@@ -466,6 +466,27 @@ public class LayoutWalkTests {
       BlockAt(fixture, 2, -1, 0).Code.ToString()
     );
     AssertOneNetwork(fixture, (1, -1, 0), (2, -1, 0));
+  }
+
+  // Fails when a one-cell run is clicked from below whatever it is drawn on, so the wrench's cycle holds
+  // only the orientations that face down and never reaches the drawn bend.
+  [Fact]
+  public void A_one_cell_bend_is_clicked_from_the_side_of_a_drawn_face() {
+    LiveFixture fixture = PipeFixture();
+    (RunStep.PlayerPlace place, RunStep.PlayerWrench wrench) = Hands(fixture);
+    Walk(
+      fixture,
+      Drawing(
+        "{ legend: { "
+          + PipeRun
+          + ", \"I\": { \"code\": \"platedpipes:pipe-plated-straight-we\" } },"
+          + " layers: { \"1\": [\".o\"], \"0\": [\".PI\"] } }"
+      ),
+      place,
+      wrench
+    );
+    Assert.Contains("bend", BlockAt(fixture, 1, 0, 0).Code.Path);
+    Assert.Equal("eu", FacesAt(fixture, 1, 0, 0));
   }
 
   // Fails when the tee cell is laid as the entry's straight.
