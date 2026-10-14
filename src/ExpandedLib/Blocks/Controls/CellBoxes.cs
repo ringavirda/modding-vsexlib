@@ -33,10 +33,9 @@ public sealed record DoorLeaf(
 );
 
 /// <summary>
-/// The boxes of one cell as data: collision, selection, the controls on it and its doors. Read from a
-/// <c>fillerOffsets</c> row or a <c>principalCell</c> attribute, written back by
-/// <see cref="WriteTo"/>, turned into the placed orientation by <see cref="Turned(int)"/>. Ids ride the
-/// selection boxes only on 1.22 (<c>CuboidfWithId</c>); on 1.21 and 1.20 a hit carries no id.
+/// The boxes of one cell as data: collision, selection, controls and doors, read from a
+/// <c>fillerOffsets</c> row or <c>principalCell</c> attribute. Ids ride the selection boxes on 1.22
+/// only (<c>CuboidfWithId</c>).
 /// </summary>
 /// <param name="Collision">Cell units 0..1 (a principal cell may pass them), north frame. Null is the
 /// full cube; an empty array is no collision.</param>
@@ -53,11 +52,9 @@ public sealed record CellBoxes(
   private const float Tolerance = 1e-4f;
 
   /// <summary>
-  /// Reads the box keys of a row: <c>collisionBoxes</c> (or the single <c>collisionBox</c>),
-  /// <c>selectionBoxes</c>, <c>controls</c> [{id, box}] and <c>doors</c>
-  /// [{control, shut, open, opening, openCollides}]. A control box equal within 1e-4 to a selection entry
-  /// names that entry; one equal to none is appended after the entries, and is dropped from the
-  /// selection when the row has no <c>selectionBoxes</c>.
+  /// Reads a row's <c>collisionBoxes</c> (or <c>collisionBox</c>), <c>selectionBoxes</c>, <c>controls</c>
+  /// and <c>doors</c>. A control box equal within 1e-4 to a selection entry names it; any other is
+  /// appended, or dropped when the row has no <c>selectionBoxes</c>.
   /// </summary>
   /// <returns>Null when the row has none of the box keys.</returns>
   public static CellBoxes? Read(JsonObject row) {

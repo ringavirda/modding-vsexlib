@@ -99,6 +99,11 @@ public class FillerControlBoxesTests {
         "controls": [{ "id": "knob", "box": { "x1": 0, "y1": 0.5, "z1": 0, "x2": 0.25, "y2": 0.75, "z2": 0.25 } }]
       },
       {
+        "x": 8, "y": 0, "z": 0,
+        "collisionBoxes": [{ "x1": 0, "y1": 0, "z1": 0, "x2": 1, "y2": 1, "z2": 1 }],
+        "selectionBoxes": []
+      },
+      {
         "x": 0, "y": 1, "z": 0,
         "collisionBoxes": [
           { "x1": 0.0, "y1": 0.25, "z1": 0.25, "x2": 0.375, "y2": 0.75, "z2": 0.75 },
@@ -347,6 +352,21 @@ public class FillerControlBoxesTests {
     AssertBox(
       Full,
       Assert.Single(scene.Filler.GetSelectionBoxes(scene.Accessor, pos))
+    );
+  }
+#endif
+
+#if GAME_GE_1_22
+  // Fails when the empty-selection fallback ignores whether a control was hidden.
+  [Fact]
+  public void An_explicit_empty_selection_leaves_the_cell_unselectable() {
+    var scene = new Scene();
+    BlockPos pos = scene.Cell(8, 0, 0);
+
+    Assert.Empty(scene.Filler.GetSelectionBoxes(scene.Accessor, pos));
+    AssertBox(
+      Full,
+      Assert.Single(scene.Filler.GetCollisionBoxes(scene.Accessor, pos))
     );
   }
 #endif

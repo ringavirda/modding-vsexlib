@@ -18,13 +18,9 @@ public static class ControlBoxes {
   ];
 
   /// <summary>
-  /// The collision and selection boxes of one cell for the given control states.
-  /// Collision is the shut leaves (and open ones whose door says <c>OpenCollides</c>), then the body;
-  /// a null <see cref="CellBoxes.Collision"/> is the full cube. Selection is the door leaves of the
-  /// current state, then the control boxes, then the body boxes: the selection entries that are not
-  /// control boxes, or the collision body when the row has no selection. On 1.22 leaves and control
-  /// boxes are <c>CuboidfWithId</c> carrying their control id. A Hidden control drops its boxes and
-  /// leaves; when that leaves the selection empty the cell selects as its collision body.
+  /// The collision and selection boxes of one cell for the given control states. Selection is the door
+  /// leaves, control boxes, then body boxes; a Hidden control drops its own, and an emptied selection
+  /// falls back to the collision body. On 1.22 leaves and controls carry their id.
   /// </summary>
   /// <param name="turned">The cell's boxes already turned into the placed orientation.</param>
   /// <param name="state">The state of a control id; ids nothing owns are <see cref="ControlState.Shown"/>.</param>
@@ -161,10 +157,9 @@ public static class ControlBoxes {
     );
 
   /// <summary>
-  /// The boxes a filler at <paramref name="pos"/> answers with, composed from its row on the
-  /// principal block's <c>fillerOffsets</c> at the north offset
-  /// <c>RotateOffset(pos - principal, (360 - angle) % 360)</c>, <c>angle</c> being the host's
-  /// <see cref="IFillerHost.StructureAngle"/>.
+  /// The boxes a filler at <paramref name="pos"/> answers with, composed from its principal's
+  /// <c>fillerOffsets</c> row at the north offset <c>RotateOffset(pos - principal, (360 - angle) % 360)</c>,
+  /// <c>angle</c> the host's <see cref="IFillerHost.StructureAngle"/>.
   /// </summary>
   /// <returns>False when the filler has no principal, the principal is gone or is not an
   /// <see cref="IFillerHost"/>, or its definition has no row with box keys at that offset.</returns>
@@ -251,11 +246,9 @@ public static class ControlBoxes {
   }
 
   /// <summary>
-  /// The collision boxes of <paramref name="block"/>'s own cell at <paramref name="pos"/>, composed from
-  /// its <c>principalCell</c> attribute turned by its <see cref="IFillerHost.StructureAngle"/> (a block
-  /// that is not an <see cref="IFillerHost"/> by its <c>side</c> or <c>orientation</c> variant) and by
-  /// the control states of the block entity at <paramref name="pos"/>. For a principal whose base is
-  /// not a mega-block or a network node; those answer it themselves.
+  /// The collision boxes of <paramref name="block"/>'s own cell at <paramref name="pos"/>, from its
+  /// <c>principalCell</c> turned by <see cref="IFillerHost.StructureAngle"/> (else its <c>side</c> or
+  /// <c>orientation</c>) and the control states there. For a principal that is no mega-block or node.
   /// </summary>
   /// <returns>Null when the block has no <c>principalCell</c>; the caller then answers as its base does.</returns>
   public static Cuboidf[]? Collision(

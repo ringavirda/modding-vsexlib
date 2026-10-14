@@ -90,9 +90,19 @@ public class CellBoxesTests {
 #endif
   }
 
+  // Fails when Read returns a cell for a row with none of the box keys.
   [Fact]
   public void A_row_without_box_keys_reads_as_null() {
     Assert.Null(ReadRow("""{ "x": 1, "y": 0, "z": 0, "allowAttach": true }"""));
+  }
+
+  // Fails when Read turns an explicit empty `selectionBoxes` into null.
+  [Fact]
+  public void An_empty_selection_reads_as_an_empty_array() {
+    CellBoxes boxes = ReadRow($$"""{ "collisionBoxes": [{{Box}}], "selectionBoxes": [] }""")!;
+
+    Assert.NotNull(boxes.Selection);
+    Assert.Empty(boxes.Selection);
   }
 
   // Fails when control boxes are always appended (8 boxes).
@@ -180,6 +190,7 @@ public class CellBoxesTests {
 #endif
   }
 
+  // Fails when Turned(Func) skips the doors or the selection boxes, or drops the control id.
   [Fact]
   public void Turned_by_function_applies_it_to_every_box() {
     CellBoxes boxes = ReadRow(TwinTubCell)!;
@@ -266,6 +277,7 @@ public class CellBoxesTests {
     );
   }
 
+  // Fails when an empty collision list is written as no `collisionBoxes` key.
   [Fact]
   public void An_empty_collision_list_serialises_as_an_empty_array() {
     JObject json = ExBlockDef
@@ -299,6 +311,7 @@ public class CellBoxesTests {
     );
   }
 
+  // Fails when WithBoxes copies fewer than the four members onto the cell, or changes a cell no row names.
   [Fact]
   public void WithBoxes_sets_the_four_members_by_offset() {
     var counter = new Cuboidf(0.5f, 0f, 0f, 1f, 0.5f, 0.5f);
@@ -361,6 +374,7 @@ public class CellBoxesTests {
     Assert.Equal(2, (int?)type["controls"]![0]!["stage"]);
   }
 
+  // Fails when PrincipalCell or Controls write outside `attributes`, or leave out a control's kind.
   [Fact]
   public void The_principal_cell_and_controls_write_under_attributes() {
     JObject json = ExBlockDef
@@ -380,7 +394,7 @@ public class CellBoxesTests {
 
   #region Block table
 
-  // Fails when the alsoIds are read in reverse.
+  // Fails when the alsoIds are read in reverse, or a row's `stage` is ignored.
   [Fact]
   public void AlsoIds_read_in_table_order() {
     Block block = TestBlocks.Configure(new Block(), "exlib:t", 1);
@@ -405,6 +419,7 @@ public class CellBoxesTests {
     Assert.Same(table, BlockControls.Of(block));
   }
 
+  // Fails when BlockControls.Of returns a row for a block without a `controls` table.
   [Fact]
   public void A_block_without_the_table_has_no_controls() {
     Block block = TestBlocks.Configure(new Block(), "exlib:t", 2);

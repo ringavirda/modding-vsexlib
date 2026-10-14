@@ -368,7 +368,7 @@ public static class MegablockFrames {
     ) {
       Vec3i cell = ExOrientation.RotateOffset(offset.Offset, angle);
       Cuboidf[]? own =
-        offset.CollisionBoxes == null
+        offset.CollisionBoxes is not { Length: > 0 }
           ? null
           : ExOrientation.RotateBoxes(offset.CollisionBoxes, angle);
       if (own == null)

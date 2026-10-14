@@ -32,12 +32,9 @@ public readonly record struct FillerBehaviorSpec(
 }
 
 /// <summary>
-/// One north-orientation footprint cell for a mega-block, authored in C#: offset from the principal, attach
-/// flag, and any hosted <see cref="FillerBehaviorSpec"/> behaviours. May also carry a passive
-/// <see cref="PortFace"/>/<see cref="PortNetworkType"/> port. <see cref="CollisionBoxes"/> null is the full
-/// cube and empty is no collision; <see cref="SelectionBoxes"/> null selects from the collision boxes and
-/// door leaves, empty leaves the cell unselectable; <see cref="Controls"/> and <see cref="Doors"/> are
-/// written as the plan's <c>controls</c> and <c>doors</c> rows. All boxes are cell units 0..1, north frame.
+/// One north-orientation footprint cell for a mega-block: offset, attach flag, behaviours, optional port
+/// and boxes in cell units 0..1. <see cref="CollisionBoxes"/> null is the full cube, empty none;
+/// <see cref="SelectionBoxes"/> null follows collision and leaves, empty is unselectable.
 /// </summary>
 public readonly record struct FillerCellSpec(
   int X,

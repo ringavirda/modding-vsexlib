@@ -8,10 +8,8 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Structures;
 
 /// <summary>
-/// A structure-local filler cell from the <c>fillerOffsets</c> JSON array: offset from the principal,
-/// attach flag, optional per-cell collision boxes for a partial fill, and an optional passive network
-/// port face/type pair, all in north orientation. <c>Boxes</c> is the cell's whole box data (collision,
-/// selection, controls, doors); null when the row has none of the box keys.
+/// A structure-local filler cell from the <c>fillerOffsets</c> JSON array, in north orientation: offset,
+/// attach flag, optional passive port, and <c>Boxes</c>, the cell's box data (null without box keys).
 /// </summary>
 public readonly record struct FillerOffset(
   Vec3i Offset,
