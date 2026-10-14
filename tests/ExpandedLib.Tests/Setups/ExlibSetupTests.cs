@@ -47,10 +47,7 @@ public class ExlibSetupTests : IDisposable
   [Fact]
   public void The_setups_folder_yields_the_reader_setup()
   {
-    Assert.Contains(
-      Rows(),
-      r => ((SetupCaseRow)r[0]).Setup == "live-reader"
-    );
+    Assert.Contains(Rows(), r => ((SetupCaseRow)r[0]).Setup == "live-reader");
   }
 
   public void Dispose() => SetupPlacers.Clear();
