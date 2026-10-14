@@ -87,6 +87,10 @@ internal sealed class BlockSignals {
   /// (<see cref="IBlockEntityContainer"/>).</summary>
   internal bool Inventory { get; private init; }
 
+  /// <summary>Whether the block declares a <c>controls</c> table or a <c>principalCell</c>, or a
+  /// footprint cell row with selection, control or door keys.</summary>
+  internal bool Controls { get; private init; }
+
   /// <summary>Whether the block joins an mpenergy run.</summary>
   internal bool MpEnergyMember => Networks.Contains(MpEnergy);
 
@@ -116,6 +120,8 @@ internal sealed class BlockSignals {
       yield return "mp connector";
     if (Inventory)
       yield return "inventory";
+    if (Controls)
+      yield return "controls";
   }
 
   /// <summary>Every name <see cref="Names"/> can yield, in census order.</summary>
@@ -133,6 +139,7 @@ internal sealed class BlockSignals {
       "mpenergy",
       "mp connector",
       "inventory",
+      "controls",
     ];
 
   /// <summary>Reads the signals of <paramref name="block"/>.</summary>
@@ -222,6 +229,15 @@ internal sealed class BlockSignals {
       Inventory =
         entityType != null
         && typeof(IBlockEntityContainer).IsAssignableFrom(entityType),
+      Controls =
+        BlockControls.Of(block).Count > 0
+        || ControlBoxes.PrincipalRow(block) != null
+        || footprint.Any(c =>
+          c.Boxes
+            is { Selection: not null }
+              or { Controls.Count: > 0 }
+              or { Doors.Count: > 0 }
+        ),
     };
   }
 

@@ -1,4 +1,5 @@
 using System.Linq;
+using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -11,6 +12,91 @@ namespace ExpandedLib.Tests.Scenarios.Live;
 /// <summary>The scenario player's held verbs: the hold, its keys, the window's packets and the ignition
 /// verdicts (scenarios.md, The scenario player).</summary>
 public class ScenarioPlayerVerbTests {
+  /// <summary>Fails when an interact step drops its control key, so every click lands on the body.</summary>
+  [Fact]
+  public void An_interact_step_names_its_control_and_none_without_one() {
+    Assert.Equal(
+      "handle",
+      InteractStep.ControlOf(
+        JObject.Parse("{\"at\": [0, 0, 0], \"control\": \"handle\"}")
+      )
+    );
+    Assert.Null(InteractStep.ControlOf(JObject.Parse("{\"at\": [0, 0, 0]}")));
+  }
+
+  private sealed class Panel : Block {
+    public override Cuboidf[] GetSelectionBoxes(
+      IBlockAccessor blockAccessor,
+      BlockPos pos
+    ) =>
+      [
+        new CuboidfWithId(new Cuboidf(0.25f, 0.5f, 0.25f, 0.75f, 1f, 0.5f))
+        {
+          Id = "handle",
+        },
+        new Cuboidf(0f, 0f, 0f, 1f, 0.5f, 1f),
+      ];
+  }
+
+  private static (TestWorld, BlockPos) PanelWorld() {
+    var world = new TestWorld();
+    var at = new BlockPos(0, 1, 0);
+    world.Place(at, TestBlocks.Configure(new Panel(), "test:panel", 1));
+    return (world, at);
+  }
+
+  /// <summary>Fails when an interact step with a control key selects the body, or the control's box is
+  /// aimed at anywhere but inside it.</summary>
+  [Fact]
+  public void An_interact_step_with_a_control_selects_its_box() {
+    var (world, at) = PanelWorld();
+
+    BlockSelection selection = InteractStep.SelectionFor(
+      world.Accessor,
+      at,
+      "handle",
+      BlockFacing.UP
+    );
+
+    Assert.Equal("handle", selection.SelectionBoxId);
+    Assert.Equal(0, selection.SelectionBoxIndex);
+    Assert.Equal(new Vec3d(0.5, 1.0, 0.375), selection.HitPosition);
+  }
+
+  /// <summary>Fails when an interact step with no control key selects a box, or aims anywhere but the
+  /// middle of the face.</summary>
+  [Fact]
+  public void An_interact_step_without_a_control_selects_the_body() {
+    var (world, at) = PanelWorld();
+
+    BlockSelection selection = InteractStep.SelectionFor(
+      world.Accessor,
+      at,
+      null,
+      BlockFacing.SOUTH
+    );
+
+    Assert.Null(selection.SelectionBoxId);
+    Assert.Equal(BlockFacing.SOUTH, selection.Face);
+    Assert.Equal(new Vec3d(0.5, 0.5, 1.0), selection.HitPosition);
+    Assert.Equal(at, selection.Position);
+  }
+
+  /// <summary>Fails when an unknown control id escapes as an argument exception, or fails the step without
+  /// naming the controls the cell has or blaming the scenario.</summary>
+  [Fact]
+  public void An_interact_step_naming_an_unknown_control_fails_the_step() {
+    var (world, at) = PanelWorld();
+
+    var e = Assert.Throws<StepFailure>(() =>
+      InteractStep.SelectionFor(world.Accessor, at, "lever", BlockFacing.UP)
+    );
+
+    Assert.Contains("has no control \"lever\"", e.Message);
+    Assert.Contains("its controls are handle.", e.Message);
+    Assert.Equal(Suspect.Scenario, e.Suspect);
+  }
+
   /// <summary>Fails when a hold runs past its seconds (S27).</summary>
   [Fact]
   public void A_hold_goes_on_while_the_time_held_is_under_its_seconds() {

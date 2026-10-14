@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using ExpandedLib.Blocks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -293,32 +294,34 @@ internal sealed class ScenarioPlayer {
   }
 
   /// <summary>Holds <paramref name="stack"/> in the active slot and <paramref name="keys"/>, stands the
-  /// player facing <paramref name="face"/> of the block at <paramref name="at"/>, and right-clicks it. The did-use event fires right after
-  /// <c>Block.OnBlockInteractStart</c> whatever it answered, as the server does on the start of a block use.</summary>
+  /// player facing <paramref name="selection"/>'s hit on the block at <paramref name="at"/>, and
+  /// right-clicks it. The did-use event fires right after <c>Block.OnBlockInteractStart</c> whatever it
+  /// answered, as the server does on the start of a block use.</summary>
   /// <param name="at">The absolute cell of the block used.</param>
-  /// <param name="face">The face the click lands on.</param>
+  /// <param name="selection">What the click lands on, as <see cref="InteractStep.SelectionFor"/> builds it;
+  /// the hold's later calls pass it to the block.</param>
   /// <param name="stack">What the hand holds, or null for an empty hand.</param>
   /// <param name="keys">Names read by <see cref="Hold"/>.</param>
-  /// <param name="selection">The selection the hold's later calls pass to the block.</param>
   /// <returns>What <c>Block.OnBlockInteractStart</c> answered.</returns>
   public bool UseStart(
     BlockPos at,
-    BlockFacing face,
+    BlockSelection selection,
     ItemStack? stack,
-    IReadOnlyList<string> keys,
-    out BlockSelection selection
+    IReadOnlyList<string> keys
+  ) => Start(at, selection, stack, keys);
+
+  private bool Start(
+    BlockPos at,
+    BlockSelection selection,
+    ItemStack? stack,
+    IReadOnlyList<string> keys
   ) {
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
     _data.FreeMove = false;
-    Vec3d hit = Hit(face);
+    Vec3d hit = selection.HitPosition;
     Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
     Hold(Player.Entity.Controls, keys);
     Player.InventoryManager.ActiveHotbarSlot.Itemstack = stack;
-    selection = new BlockSelection {
-      Position = at.Copy(),
-      Face = face,
-      HitPosition = hit,
-    };
     bool answered = _server
       .BlockAccessor.GetBlock(at)
       .OnBlockInteractStart(_server, Player, selection);
