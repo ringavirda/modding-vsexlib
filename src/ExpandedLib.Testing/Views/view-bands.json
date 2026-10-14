@@ -227,51 +227,51 @@
     "lump": {
       "G1": {
         "min": 0.5899,
-        "max": 0.7632,
+        "max": 1.1941,
         "minCode": "metalbit-blistersteel",
-        "maxCode": "ingot-blistersteel",
+        "maxCode": "hammerhead-copper",
         "low": 0.5309,
-        "high": 0.8395
+        "high": 1.3136
       },
       "G2": {
-        "min": 2.0422,
-        "max": 2.8345,
-        "minCode": "ingot-blistersteel",
-        "maxCode": "metalbit-blistersteel",
+        "min": 0.4865,
+        "max": 19.8612,
+        "minCode": "arrowhead-copper",
+        "maxCode": "hammerhead-copper",
         "low": 0.0,
-        "high": 3.8345
+        "high": 21.8473
       },
       "G3": {
-        "min": 1.0473,
-        "max": 1.1102,
-        "minCode": "ingot-blistersteel",
-        "maxCode": "metalbit-blistersteel",
-        "low": 0.9425,
-        "high": 1.2213
+        "min": 0.3551,
+        "max": 1.6256,
+        "minCode": "bladehead-falx-tinbronze",
+        "maxCode": "poundercap-tinbronze",
+        "low": 0.3196,
+        "high": 1.7881
       },
       "G5": {
-        "min": 0.0,
-        "max": 0.0,
-        "minCode": "ingot-blistersteel",
-        "maxCode": "ingot-blistersteel",
-        "low": -0.02,
-        "high": 0.02
+        "min": -0.0851,
+        "max": 0.0131,
+        "minCode": "largegear-temporal",
+        "maxCode": "knifeblade-chert",
+        "low": -0.1051,
+        "high": 0.0331
       },
       "G6": {
-        "min": 0.96,
+        "min": 0.556,
         "max": 1.0,
-        "minCode": "ingot-blistersteel",
+        "minCode": "bracket-heavy-iron",
         "maxCode": "metalbit-blistersteel",
-        "low": 0.864,
+        "low": 0.5004,
         "high": 1.1
       },
       "G7": {
-        "min": 0.7,
-        "max": 0.75,
-        "minCode": "metalbit-blistersteel",
-        "maxCode": "ingot-blistersteel",
-        "low": 0.63,
-        "high": 0.825
+        "min": 0.61,
+        "max": 1.0,
+        "minCode": "gear-temporal",
+        "maxCode": "bracket-heavy-iron",
+        "low": 0.549,
+        "high": 1.1
       }
     },
     "multicell": {
