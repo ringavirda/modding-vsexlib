@@ -264,7 +264,9 @@ public class ControlLawTests
       [new ControlBox("dial", Dial)]
     );
 
-    BlockLaws.Law law = Run(Machine("housed", cell, Table(("dial", "hud", []))));
+    BlockLaws.Law law = Run(
+      Machine("housed", cell, Table(("dial", "hud", [])))
+    );
 
     Assert.Equal(1, law.Blocks);
     Assert.Equal(4, law.Cases);

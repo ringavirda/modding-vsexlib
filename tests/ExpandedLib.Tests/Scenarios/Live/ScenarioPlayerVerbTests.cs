@@ -30,7 +30,8 @@ public class ScenarioPlayerVerbTests {
       BlockPos pos
     ) =>
       [
-        new CuboidfWithId(new Cuboidf(0.25f, 0.5f, 0.25f, 0.75f, 1f, 0.5f)) {
+        new CuboidfWithId(new Cuboidf(0.25f, 0.5f, 0.25f, 0.75f, 1f, 0.5f))
+        {
           Id = "handle",
         },
         new Cuboidf(0f, 0f, 0f, 1f, 0.5f, 1f),
