@@ -129,6 +129,20 @@ public class MegablockFramesTests {
     );
   }
 
+  // Fails when a cell with `collisionBoxes: []` adds no declared box and its drawn part is reported.
+  [Fact]
+  [PlantedDefect(typeof(MegablockFrames), nameof(MegablockFrames.Misfit))]
+  public void A_cell_without_collision_still_counts_as_declared() {
+    using var files = new PlantedFiles();
+    string shape = files.Write("shapes/long.json", Shape);
+    JObject open = Cell(1);
+    open["collisionBoxes"] = new JArray();
+
+    Assert.Null(
+      MegablockFrames.Misfit(shape, 0, new Declared(open, Cell(2)), 0)
+    );
+  }
+
   // Fails when an entry's max is ignored: the 16-voxel reach passes at 16 and fails at 15.5.
   [Fact]
   [PlantedDefect(typeof(MegablockFrames), nameof(MegablockFrames.Misfit))]

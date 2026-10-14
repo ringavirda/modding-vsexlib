@@ -55,11 +55,11 @@ public class StructureFillerBoxesTests {
   }
 
   [Fact]
-  public void An_empty_collisionBoxes_array_falls_back_to_null() {
+  public void An_empty_collisionBoxes_array_reads_as_no_collision() {
     var offsets = ReadOffsets(
       "[{ \"x\": 0, \"y\": 0, \"z\": 0, \"collisionBoxes\": [] }]"
     );
-    Assert.Null(Assert.Single(offsets).CollisionBoxes);
+    Assert.Empty(Assert.Single(offsets).CollisionBoxes!);
   }
 
   #endregion

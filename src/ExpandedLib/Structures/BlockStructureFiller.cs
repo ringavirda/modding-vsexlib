@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
@@ -133,25 +134,33 @@ public partial class BlockStructureFiller
     return false;
   }
 
-  // A cell the mega-block only partially fills carries its own boxes on the BE; a full-cube cell falls
-  // back to the definition's box.
+  // A cell answers from its row on the principal's definition; a row-less cell or an orphan falls back
+  // to the boxes saved on the BE, then to the definition's box.
   public override Cuboidf[] GetCollisionBoxes(
     IBlockAccessor blockAccessor,
     BlockPos pos
-  ) =>
-    blockAccessor.GetBlockEntity(pos)
-      is BlockEntityStructureFiller { CollisionBoxes: { Length: > 0 } boxes }
+  ) {
+    var be = blockAccessor.GetBlockEntity(pos) as BlockEntityStructureFiller;
+    if (ControlBoxes.TryFiller(blockAccessor, pos, be, out var composed))
+      return composed.Collision;
+    return be is { CollisionBoxes: { Length: > 0 } boxes }
       ? boxes
       : base.GetCollisionBoxes(blockAccessor, pos);
+  }
 
   public override Cuboidf[] GetSelectionBoxes(
     IBlockAccessor blockAccessor,
     BlockPos pos
-  ) =>
-    blockAccessor.GetBlockEntity(pos)
-      is BlockEntityStructureFiller { CollisionBoxes: { Length: > 0 } boxes }
+  ) {
+    var be = blockAccessor.GetBlockEntity(pos) as BlockEntityStructureFiller;
+#if GAME_GE_1_22
+    if (ControlBoxes.TryFiller(blockAccessor, pos, be, out var composed))
+      return composed.Selection;
+#endif
+    return be is { CollisionBoxes: { Length: > 0 } boxes }
       ? boxes
       : base.GetSelectionBoxes(blockAccessor, pos);
+  }
 
   /// <summary>Inherits the principal's interaction sounds so the invisible footprint is not silent.</summary>
   public override BlockSounds GetSounds(

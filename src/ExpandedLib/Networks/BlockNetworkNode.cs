@@ -6,6 +6,7 @@ using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
+using ExpandedLib.Structures;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -451,6 +452,10 @@ public abstract class BlockNetworkNode
 
   /// <summary>Pre-computes rotated collision and selection box arrays for every (type, orientation) pair.</summary>
   protected virtual void PrecomputeRotatedBoxes() {
+    if (ControlBoxes.PrincipalRow(this) is { } row) {
+      PrecomputeCells(row);
+      return;
+    }
     if (CollisionBoxes == null || CollisionBoxes.Length == 0)
       return;
     Vec3d pivot = new(0.5, 0.5, 0.5);
@@ -476,31 +481,55 @@ public abstract class BlockNetworkNode
     }
   }
 
+  private readonly Dictionary<string, ControlBoxes.PlacedCell> cellCache = [];
+
+  // A host node turns its cell by StructureAngle as its fillers turn; any other node by its
+  // orientation's 3D rotation, with ids re-attached by CellBoxes.Turned.
+  private void PrecomputeCells(CellBoxes row) {
+    Vec3d pivot = new(0.5, 0.5, 0.5);
+    foreach (var kvp in AllowedOrientations) {
+      foreach (string orient in kvp.Value) {
+        CellBoxes turned;
+        if (this is IFillerHost host)
+          turned = row.Turned(((host.StructureAngle % 360) + 360) % 360);
+        else {
+          GetRotations(orient, out float rotX, out float rotY, out float rotZ);
+          turned = row.Turned(box => box.RotatedCopy(rotX, rotY, rotZ, pivot));
+        }
+        cellCache[$"{kvp.Key}-{orient}"] = new ControlBoxes.PlacedCell(turned);
+      }
+    }
+  }
+
   public override Cuboidf[] GetCollisionBoxes(
     IBlockAccessor blockAccessor,
     BlockPos pos
-  ) =>
-    Type != null
-    && Orientation != null
-    && collisionBoxesCache.TryGetValue(
-      $"{Type}-{Orientation}",
-      out Cuboidf[]? boxes
-    )
+  ) {
+    if (Type == null || Orientation == null)
+      return base.GetCollisionBoxes(blockAccessor, pos);
+    string key = $"{Type}-{Orientation}";
+    if (cellCache.Count > 0 && cellCache.TryGetValue(key, out var cell))
+      return cell.At(blockAccessor, pos).Collision;
+    return collisionBoxesCache.TryGetValue(key, out Cuboidf[]? boxes)
       ? boxes
       : base.GetCollisionBoxes(blockAccessor, pos);
+  }
 
   public override Cuboidf[] GetSelectionBoxes(
     IBlockAccessor blockAccessor,
     BlockPos pos
-  ) =>
-    Type != null
-    && Orientation != null
-    && selectionBoxesCache.TryGetValue(
-      $"{Type}-{Orientation}",
-      out Cuboidf[]? boxes
-    )
+  ) {
+    if (Type == null || Orientation == null)
+      return base.GetSelectionBoxes(blockAccessor, pos);
+    string key = $"{Type}-{Orientation}";
+#if GAME_GE_1_22
+    if (cellCache.Count > 0 && cellCache.TryGetValue(key, out var cell))
+      return cell.At(blockAccessor, pos).Selection;
+#endif
+    return selectionBoxesCache.TryGetValue(key, out Cuboidf[]? boxes)
       ? boxes
       : base.GetSelectionBoxes(blockAccessor, pos);
+  }
 
   /// <summary>Returns the Euler rotation angles in degrees for <paramref name="orientation"/>.</summary>
   protected virtual void GetRotations(

@@ -43,6 +43,9 @@ public class ExWorldStateTests {
     ["ExpandedLib.Config.ExConfigDocument._byApi"] = WeakByWorld,
     ["ExpandedLib.Checks.AssetCheckSource.HeldAtLoad"] = WeakByWorld,
     ["ExpandedLib.Blocks.ConstructionHints.Worlds"] = WeakByWorld,
+    ["ExpandedLib.Blocks.BlockControls.Tables"] = WeakByWorld,
+    ["ExpandedLib.Blocks.ControlBoxes.Tables"] = WeakByWorld,
+    ["ExpandedLib.Blocks.ControlBoxes.Principals"] = WeakByWorld,
     ["ExpandedLib.Registries.EntityRegistry._bareKeysIssued"] = WeakByWorld,
     ["ExpandedLib.Registries.EntityRegistry._domainByAssembly"] =
       "each registered assembly's modid, the same in every world it loads in",

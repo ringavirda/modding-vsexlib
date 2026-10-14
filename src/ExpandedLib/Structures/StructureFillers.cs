@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -7,9 +8,8 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Structures;
 
 /// <summary>
-/// A structure-local filler cell from the <c>fillerOffsets</c> JSON array: offset from the principal,
-/// attach flag, optional per-cell collision boxes for a partial fill, and an optional passive network
-/// port face/type pair, all in north orientation.
+/// A structure-local filler cell from the <c>fillerOffsets</c> JSON array, in north orientation: offset,
+/// attach flag, optional passive port, and <c>Boxes</c>, the cell's box data (null without box keys).
 /// </summary>
 public readonly record struct FillerOffset(
   Vec3i Offset,
@@ -17,7 +17,8 @@ public readonly record struct FillerOffset(
   Cuboidf[]? CollisionBoxes,
   FillerBehavior[]? Behaviors = null,
   string? PortFace = null,
-  string? PortNetworkType = null
+  string? PortNetworkType = null,
+  CellBoxes? Boxes = null
 );
 
 /// <summary>
@@ -76,7 +77,8 @@ public static class StructureFillers {
           ReadBoxes(entry),
           ReadBehaviors(entry),
           entry["portFace"].AsString(),
-          entry["portNetwork"].AsString()
+          entry["portNetwork"].AsString(),
+          CellBoxes.Read(entry)
         )
       );
     }
@@ -115,13 +117,16 @@ public static class StructureFillers {
 
   /// <summary>
   /// Reads a cell's optional partial-fill cuboids, north orientation: <c>collisionBoxes</c> (array)
-  /// takes precedence, else a single <c>collisionBox</c>, else null.
+  /// takes precedence (an empty array reads as an empty array: no collision), else a single
+  /// <c>collisionBox</c>, else null (the full cube).
   /// </summary>
-  private static Cuboidf[]? ReadBoxes(JsonObject entry) {
+  internal static Cuboidf[]? ReadBoxes(JsonObject entry) {
     if (entry["collisionBoxes"].Exists) {
       var nodes = entry["collisionBoxes"].AsArray();
-      if (nodes == null || nodes.Length == 0)
+      if (nodes == null)
         return null;
+      if (nodes.Length == 0)
+        return [];
       var boxes = new List<Cuboidf>(nodes.Length);
       foreach (var node in nodes)
         if (node.AsObject<Cuboidf>() is { } box)

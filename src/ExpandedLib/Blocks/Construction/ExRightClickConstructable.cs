@@ -21,7 +21,8 @@ public class ExRightClickConstructable
 #else
     IInteractable,
 #endif
-    IProductionReadiness {
+    IProductionReadiness,
+    IControlStates {
   private readonly ExRightClickConstruction rcc = new();
   private float brokenDropsRatio = 1f;
 
@@ -57,6 +58,14 @@ public class ExRightClickConstructable
   /// <summary>Stops the production tick while unfinished, unless <see cref="GatesProduction"/>
   /// opts out.</summary>
   public bool StopsProductionWhenNotReady => GatesProduction;
+
+  /// <summary>Hidden for a control in the block's <c>controls</c> table whose <c>Stage</c> is above
+  /// <see cref="CurrentCompletedStage"/>; null for every other id.</summary>
+  public ControlState? StateOf(string controlId) =>
+    BlockControls.Find(Blockentity.Block, controlId) is { } control
+    && control.Stage > CurrentCompletedStage
+      ? ControlState.Hidden
+      : null;
 
   public ExRightClickConstructable(BlockEntity blockentity)
     : base(blockentity) {

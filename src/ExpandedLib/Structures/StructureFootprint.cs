@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
 using Vintagestory.API.MathTools;
 
@@ -30,9 +32,9 @@ public readonly record struct FillerBehaviorSpec(
 }
 
 /// <summary>
-/// One north-orientation footprint cell for a mega-block, authored in C#: offset from the principal, attach
-/// flag, and any hosted <see cref="FillerBehaviorSpec"/> behaviours. May also carry a passive
-/// <see cref="PortFace"/>/<see cref="PortNetworkType"/> port.
+/// One north-orientation footprint cell for a mega-block: offset, attach flag, behaviours, optional port
+/// and boxes in cell units 0..1. <see cref="CollisionBoxes"/> null is the full cube, empty none;
+/// <see cref="SelectionBoxes"/> null follows collision and leaves, empty is unselectable.
 /// </summary>
 public readonly record struct FillerCellSpec(
   int X,
@@ -42,7 +44,10 @@ public readonly record struct FillerCellSpec(
   IReadOnlyList<FillerBehaviorSpec>? Behaviors = null,
   IReadOnlyList<Cuboidf>? CollisionBoxes = null,
   string? PortFace = null,
-  string? PortNetworkType = null
+  string? PortNetworkType = null,
+  IReadOnlyList<Cuboidf>? SelectionBoxes = null,
+  IReadOnlyList<ControlBox>? Controls = null,
+  IReadOnlyList<DoorLeaf>? Doors = null
 );
 
 /// <summary>
@@ -105,6 +110,40 @@ public static class StructureFootprint {
     return builder.Build();
   }
 
+  /// <summary>
+  /// The cells with the box members of <paramref name="table"/> set by offset: collision, selection,
+  /// controls and doors are replaced by the table's, so a null collision is the full cube. Cells the table
+  /// does not name are unchanged.
+  /// </summary>
+  /// <param name="cells">The result of <see cref="Layout"/>.</param>
+  /// <param name="table">Boxes keyed by the north-frame offset (X, Y, Z) of a cell.</param>
+  /// <exception cref="ArgumentException">An offset of <paramref name="table"/> that no cell has.</exception>
+  public static IReadOnlyList<FillerCellSpec> WithBoxes(
+    this IReadOnlyList<FillerCellSpec> cells,
+    IReadOnlyDictionary<(int X, int Y, int Z), CellBoxes> table
+  ) {
+    var known = cells.Select(c => (c.X, c.Y, c.Z)).ToHashSet();
+    foreach ((int X, int Y, int Z) at in table.Keys)
+      if (!known.Contains(at))
+        throw new ArgumentException(
+          $"Boxes name the offset ({at.X},{at.Y},{at.Z}), which no footprint cell has."
+        );
+
+    var result = new List<FillerCellSpec>(cells.Count);
+    foreach (FillerCellSpec cell in cells)
+      result.Add(
+        table.TryGetValue((cell.X, cell.Y, cell.Z), out CellBoxes? boxes)
+          ? cell with {
+            CollisionBoxes = boxes.Collision,
+            SelectionBoxes = boxes.Selection,
+            Controls = boxes.Controls,
+            Doors = boxes.Doors,
+          }
+          : cell
+      );
+    return result;
+  }
+
   /// <summary>Column offsets from the centre out: <c>0, +1, -1, +2, -2, ...</c> up to <paramref name="halfWidth"/>.</summary>
   private static IEnumerable<int> ColumnsCentreOut(int halfWidth) {
     yield return 0;
@@ -116,7 +155,8 @@ public static class StructureFootprint {
 
   /// <summary>
   /// Validates a footprint: no cell may sit at the principal origin, and no two cells may share a
-  /// position. Throws <see cref="ArgumentException"/> on a violation.
+  /// position, and no control or door may have an empty id. Throws <see cref="ArgumentException"/> on a
+  /// violation.
   /// </summary>
   public static void Validate(IReadOnlyList<FillerCellSpec> cells) {
     var seen = new HashSet<(int, int, int)>();
@@ -124,6 +164,14 @@ public static class StructureFootprint {
       if (cell.X == 0 && cell.Y == 0 && cell.Z == 0)
         throw new ArgumentException(
           "Filler footprint contains the principal origin (0,0,0); the principal already occupies it."
+        );
+      if (cell.Controls?.Any(c => string.IsNullOrEmpty(c.Id)) == true)
+        throw new ArgumentException(
+          $"Filler cell ({cell.X},{cell.Y},{cell.Z}) has a control with an empty id."
+        );
+      if (cell.Doors?.Any(d => string.IsNullOrEmpty(d.Control)) == true)
+        throw new ArgumentException(
+          $"Filler cell ({cell.X},{cell.Y},{cell.Z}) has a door with an empty control id."
         );
       if (!seen.Add((cell.X, cell.Y, cell.Z)))
         throw new ArgumentException(
