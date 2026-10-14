@@ -36,28 +36,26 @@ public class PackSettleTests {
   /// spawns: a stack that lands after the last step is missing at the end.</summary>
   [Fact]
   public void An_item_spawned_during_the_settle_counts_toward_the_ends_stack() {
-    (LiveFixture fixture, ScenarioCaseRun run) = Go(
-      setup: f => {
-        Item flint = f.Test.RegisterItem("game:flint");
-        var spawned = new EntityItem {
-          EntityId = 7,
-          Itemstack = new ItemStack(flint, 1),
-        };
-        spawned.Pos.SetPos(100.5, 50.5, 100.5);
-        f.Test.World.GetEntitiesInsideCuboid(
+    (LiveFixture fixture, ScenarioCaseRun run) = Go(setup: f => {
+      Item flint = f.Test.RegisterItem("game:flint");
+      var spawned = new EntityItem {
+        EntityId = 7,
+        Itemstack = new ItemStack(flint, 1),
+      };
+      spawned.Pos.SetPos(100.5, 50.5, 100.5);
+      f.Test.World.GetEntitiesInsideCuboid(
           Arg.Any<BlockPos>(),
           Arg.Any<BlockPos>(),
           Arg.Any<ActionConsumable<Entity>>()
         )
-          .Returns(call =>
-            f.Clock >= 1.5
-              ? new Entity[] { spawned }
-                .Where(e => call.ArgAt<ActionConsumable<Entity>>(2)(e))
-                .ToArray()
-              : []
-          );
-      }
-    );
+        .Returns(call =>
+          f.Clock >= 1.5
+            ? new Entity[] { spawned }
+              .Where(e => call.ArgAt<ActionConsumable<Entity>>(2)(e))
+              .ToArray()
+            : []
+        );
+    });
 
     Assert.True(run.Passed);
     Assert.Equal(1, fixture.Context.Pack!.Held("game:flint"));
