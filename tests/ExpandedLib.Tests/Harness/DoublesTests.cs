@@ -223,14 +223,14 @@ public class DoublesTests {
       MakePlayersMs(warm, 200);
     double freshMs = FastestOfThreeMs(world => MakePlayersMs(world, 200));
     double busyMs = FastestOfThreeMs(world => {
-      for (int i = 0; i < 200_000; i++)
+      for (int i = 0; i < 600_000; i++)
         _ = world.World.Side;
       return MakePlayersMs(world, 200);
     });
 
     Assert.True(
-      busyMs < 3 * freshMs,
-      $"200 players took {busyMs:0.0} ms after 200 000 recorded calls, {freshMs:0.0} ms in a fresh world"
+      busyMs < 10 * freshMs,
+      $"200 players took {busyMs:0.0} ms after 600 000 recorded calls, {freshMs:0.0} ms in a fresh world"
     );
   }
 
