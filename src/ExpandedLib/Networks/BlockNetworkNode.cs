@@ -21,6 +21,9 @@ namespace ExpandedLib.Networks;
 public abstract class BlockNetworkNode
   : Block,
     IWrenchOrientable,
+#if GAME_GE_1_22
+    ICustomSelectionBoxRender,
+#endif
     INetworkConnector {
   /// <summary>Populated from the block's variant map; specifies the shape family (e.g. "straight", "bend").</summary>
   public string? Type { get; protected set; }
@@ -530,6 +533,22 @@ public abstract class BlockNetworkNode
       ? boxes
       : base.GetSelectionBoxes(blockAccessor, pos);
   }
+
+#if GAME_GE_1_22
+  /// <summary>Answers <see cref="ICustomSelectionBoxRender"/> only when the block has a <c>controls</c>
+  /// table, so a block without one is outlined as vanilla outlines it. Available on 1.22 only.</summary>
+  public override T GetInterface<T>(IWorldAccessor world, BlockPos pos) =>
+    typeof(T) == typeof(ICustomSelectionBoxRender)
+    && BlockControls.Of(this).Count == 0
+      ? null!
+      : base.GetInterface<T>(world, pos);
+
+  /// <summary>Outlines the hit control whole through <see cref="ControlOutline"/>.</summary>
+  public void RenderSelectionBoxes(
+    BlockSelection blockSel,
+    RenderBoxDelegate renderBoxHandler
+  ) => ControlOutline.Render(this, api, blockSel, renderBoxHandler);
+#endif
 
   /// <summary>Returns the Euler rotation angles in degrees for <paramref name="orientation"/>.</summary>
   protected virtual void GetRotations(
