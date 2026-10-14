@@ -219,7 +219,8 @@ public class SetupPackTests
     );
 
     InvalidOperationException error = Assert.Throws<InvalidOperationException>(
-      () => pack.Draw("game:plank-*", 3, "steps[0]", "3,0,0")
+      () =>
+        pack.Draw("game:plank-*", 3, "steps[0]", "3,0,0")
     );
     Assert.Equal(
       "the pack holds 3 of game:plank-* under no one key; the step takes 3.",
@@ -241,7 +242,8 @@ public class SetupPackTests
 
     pack.Draw("game:plank-*", 1, "steps[0]", "3,0,0");
     InvalidOperationException error = Assert.Throws<InvalidOperationException>(
-      () => pack.Draw("game:plank-*", 2, "steps[1]", "3,0,0")
+      () =>
+        pack.Draw("game:plank-*", 2, "steps[1]", "3,0,0")
     );
     Assert.Equal(
       "the pack holds 0 of game:plank-*; the step takes 2.",

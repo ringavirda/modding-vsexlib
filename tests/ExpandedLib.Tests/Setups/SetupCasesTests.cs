@@ -315,9 +315,13 @@ public class SetupCasesTests : IDisposable
 
     Assert.Equal(
       "pack-earlier",
-      SetupCases.StageOf("exlib/setups/pack-earlier", later, StageOptions())!.Setup
+      SetupCases
+        .StageOf("exlib/setups/pack-earlier", later, StageOptions())!
+        .Setup
     );
-    Assert.Null(SetupCases.StageOf("exlib/setups/pack-missing", later, StageOptions()));
+    Assert.Null(
+      SetupCases.StageOf("exlib/setups/pack-missing", later, StageOptions())
+    );
     Assert.Null(
       SetupCases.StageOf(
         "exlib/setups/pack-earlier",
@@ -334,7 +338,9 @@ public class SetupCasesTests : IDisposable
     );
   }
 
-  private static SetupRunOptions StageOptions(System.Func<string, string?>? stageFile = null) =>
+  private static SetupRunOptions StageOptions(
+    System.Func<string, string?>? stageFile = null
+  ) =>
     new()
     {
       ModFolder = _ => "",

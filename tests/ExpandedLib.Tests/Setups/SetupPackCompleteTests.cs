@@ -209,9 +209,9 @@ public class SetupPackCompleteTests : IDisposable
         + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupbox:box\", 2, 6, 3, 0]}}"
     );
 
-    SetupPackRecord pack = scene.Run(
-      [("exlib", "0.8.4"), ("smokestack", "1.0.0"), ("setupbox", "1.0.0")]
-    ).Pack!;
+    SetupPackRecord pack = scene
+      .Run([("exlib", "0.8.4"), ("smokestack", "1.0.0"), ("setupbox", "1.0.0")])
+      .Pack!;
 
     Assert.Equal(2, pack.End["setupbox:box"]);
   }

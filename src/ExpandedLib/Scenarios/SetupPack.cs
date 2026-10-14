@@ -54,7 +54,13 @@ internal sealed class SetupPack {
     foreach (var (id, runs) in spec.After)
       foreach (var (code, count) in EndsOf(id, stageOf).EndStacks)
         pack.Add(code, count * runs);
-    Standing(spec, stageOf, new List<string>(), new HashSet<string>(), pack._standing);
+    Standing(
+      spec,
+      stageOf,
+      new List<string>(),
+      new HashSet<string>(),
+      pack._standing
+    );
     pack._start = pack.Snapshot();
     return pack;
   }
@@ -93,8 +99,15 @@ internal sealed class SetupPack {
   /// <exception cref="InvalidOperationException">The pack holds fewer than <paramref name="count"/>,
   /// or a wildcard code has no one key holding it; the message names the code and both counts, and
   /// nothing is taken.</exception>
-  public void Draw(string code, int count, string where = "", string? pin = null) {
-    List<string> keys = code.Contains('*') ? [Single(code, count, pin)] : Reached(code);
+  public void Draw(
+    string code,
+    int count,
+    string where = "",
+    string? pin = null
+  ) {
+    List<string> keys = code.Contains('*')
+      ? [Single(code, count, pin)]
+      : Reached(code);
     int held = keys.Sum(k => _held[k]);
     if (held < count)
       throw new InvalidOperationException(

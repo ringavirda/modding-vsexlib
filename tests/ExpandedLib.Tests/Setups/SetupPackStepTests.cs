@@ -432,7 +432,11 @@ public class SetupPackStepTests : IDisposable
   [InlineData(0, -2, 0)]
   [InlineData(0, 0, 2)]
   [InlineData(0, 0, -2)]
-  public void A_spawned_stack_past_each_bound_is_not_given(int dx, int dy, int dz)
+  public void A_spawned_stack_past_each_bound_is_not_given(
+    int dx,
+    int dy,
+    int dz
+  )
   {
     string message = Refused(
       Gathered("stacks", "{}"),
@@ -452,7 +456,9 @@ public class SetupPackStepTests : IDisposable
   {
     using SetupScene scene = Build(
       "{\"scope\": \"stacks\", \"gathered\": {}, \"ends\": {\"stacks\": {\"setupbox:box\": 1}}}",
-      "[" + Box + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Arm\"}}]"
+      "["
+        + Box
+        + ", {\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Arm\"}}]"
     );
 
     SetupPackRecord pack = scene.Run(Mods).Pack!;
@@ -483,7 +489,10 @@ public class SetupPackStepTests : IDisposable
   public void A_wildcard_ingredient_is_laid_as_the_variant_the_pack_holds()
   {
     using SetupScene scene = Build(
-      Gathered("stacks", "{\"setupcraft:rod-iron\": 2, \"setupcraft:plate\": 2}"),
+      Gathered(
+        "stacks",
+        "{\"setupcraft:rod-iron\": 2, \"setupcraft:plate\": 2}"
+      ),
       "["
         + Bench
         + ", {\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \"setupcraft:frame\"}}"
