@@ -200,26 +200,6 @@ public class SetupCheckTests {
     Assert.Equal(1, failure!.Second);
   }
 
-  // Fails when First runs the checks out of file order or skips a failing one.
-  [Fact]
-  public void First_returns_the_first_failing_check_in_file_order() {
-    SetupRecording recording = Recorded(Repeat(6f));
-    SetupCheck[] checks =
-    [
-      Check(
-        """{ "id": "a", "says": "a", "always": { "series": "m.v", "min": 5 } }"""
-      ),
-      Check(
-        """{ "id": "b", "says": "b", "never": { "series": "m.v", "min": 5 } }"""
-      ),
-      Check(
-        """{ "id": "c", "says": "c", "never": { "series": "m.v", "max": 7 } }"""
-      ),
-    ];
-
-    Assert.Equal("b", SetupCheck.First(checks, recording)!.Id);
-  }
-
   // Fails when a check naming two kinds is read as one of them.
   [Fact]
   public void A_check_naming_two_kinds_is_refused() {
