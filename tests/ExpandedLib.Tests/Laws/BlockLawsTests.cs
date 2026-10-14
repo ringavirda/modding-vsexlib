@@ -1705,6 +1705,7 @@ public class BlockLawsTests {
         "break",
         "multiblock",
         "megablock",
+        "control",
         "info",
         "reload",
         "neighbour",
