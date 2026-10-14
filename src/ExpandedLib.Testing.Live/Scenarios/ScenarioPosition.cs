@@ -30,6 +30,19 @@ internal sealed class ScenarioWorld(
   public BlockPos Local(BlockPos absolute) =>
     new(absolute.X - origin.X, absolute.Y - origin.Y, absolute.Z - origin.Z);
 
+  /// <summary>The cells the host at plot-local <paramref name="local"/> reserves, as plot-local
+  /// cells: a megablock's <c>ReservedCells</c>, which a sub-machine narrows to leave its host's.</summary>
+  public List<FillerCell> Footprint(
+    IFillerHost host,
+    BlockPos local,
+    int angle
+  ) =>
+    [
+      .. SetupStructureCheck
+        .Footprint(world, host, Absolute(local), angle)
+        .Select(c => c with { Pos = Local(c.Pos) }),
+    ];
+
   public BlockEntity? BlockEntityAt(BlockPos pos) =>
     world.BlockAccessor.GetBlockEntity(Absolute(pos));
 
@@ -42,6 +55,14 @@ internal sealed class ScenarioWorld(
     BlockNetwork? network = networks?.GetNetworkAt(Absolute(pos));
     return network is { } found && found.NetworkType == type ? found : null;
   }
+
+  public IReadOnlyList<BlockPos> NetworkCells(
+    BlockPos at,
+    string networkType
+  ) =>
+    NetworkAt(at, networkType) is BlockNetwork network
+      ? [.. network.Nodes.Select(Local)]
+      : [];
 
   public MoltenCellReading? MoltenCellAt(BlockPos pos) =>
     (
@@ -77,7 +98,7 @@ internal sealed class ScenarioWorld(
       ?? structure?.LayoutAngle
       ?? 0;
     IReadOnlyList<FillerCell> footprint = block is IFillerHost host
-      ? StructureFillers.FootprintCells(host, local, angle)
+      ? Footprint(host, local, angle)
       : [];
     System.Func<Vec3i, BlockPos>? layout =
       structure == null

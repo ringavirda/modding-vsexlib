@@ -63,6 +63,20 @@ public class FillerBreakTests
     Assert.Equal(0, world.Accessor.GetBlock(EastCell).Id);
   }
 
+  // Fails when the filler clears its cell without checking that the principal's block is gone: a
+  // principal that keeps itself through its break would lose the struck cell.
+  [Fact]
+  public void A_principal_that_keeps_itself_keeps_the_struck_filler()
+  {
+    var (world, filler, mega) = NewWorld();
+    mega.KeepSelf = true;
+
+    Break(world, EastCell);
+
+    Assert.Equal(mega.Id, world.Accessor.GetBlock(PrincipalPos).Id);
+    Assert.Equal(filler.Id, world.Accessor.GetBlock(EastCell).Id);
+  }
+
   #endregion
 
   #region Helpers
@@ -120,9 +134,21 @@ public class FillerBreakTests
   private sealed class HandOverMega : BlockFilledMegastructure
   {
     public bool KeepFillers;
+    public bool KeepSelf;
     public Action? OnRemoved;
 
     public override int StructureAngle => 0;
+
+    public override void OnBlockBroken(
+      IWorldAccessor world,
+      BlockPos pos,
+      IPlayer byPlayer,
+      float dropQuantityMultiplier = 1f
+    )
+    {
+      if (!KeepSelf)
+        base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+    }
 
     public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos)
     {

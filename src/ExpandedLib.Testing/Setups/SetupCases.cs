@@ -127,7 +127,8 @@ public static class SetupCases
   /// <summary>Every case of every <c>*.json</c> file directly in <paramref name="folder"/>, in file
   /// name order: the main case, each variant, then, when the file names <c>tickOrders</c>, the main
   /// case and each variant that sets <c>tickOrders</c> in each tick order. A row for a file whose
-  /// <c>game</c> is above the running game carries the reason in <see cref="SetupCaseRow.Skip"/>.</summary>
+  /// <c>game</c> is above the running game, or whose steps use a verb the fake world lacks, carries the
+  /// reason in <see cref="SetupCaseRow.Skip"/>: <c>live only: &lt;verb&gt;</c> for the verb.</summary>
   /// <param name="folder">A folder of setup files; recordings in a folder below it are not read.</param>
   /// <returns>One argument array per row, holding the <see cref="SetupCaseRow"/>.</returns>
   /// <exception cref="InvalidOperationException">A file is malformed or breaks a rule of setups.md.</exception>
@@ -145,7 +146,9 @@ public static class SetupCases
         GameVersion.ShortGameVersion,
         file.Game
       )
-        ? null
+        ? SetupScene.LackedVerb(file) is { } verb
+          ? $"live only: {verb}"
+          : null
         : $"{file.Name} needs game {file.Game}, this is {GameVersion.ShortGameVersion}.";
       SetupCaseRow Row(string? variant, string[]? order = null) =>
         new(

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ExpandedLib.Networks;
 using ExpandedLib.Structures;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -20,6 +21,11 @@ internal interface ISetupWorld {
   /// <summary>The network of <paramref name="type"/> (<c>pipe</c>, <c>molten</c>,
   /// <c>mechanical</c>, ...) the cell is a node of, or null.</summary>
   object? NetworkAt(BlockPos pos, string type);
+
+  /// <summary>The cells of the <see cref="BlockNetwork"/> of <paramref name="networkType"/> that the
+  /// setup-local cell <paramref name="at"/> is a node of, as setup-local positions in no particular
+  /// order. Empty when the cell is in no such network or the type is not a block network's.</summary>
+  IReadOnlyList<BlockPos> NetworkCells(BlockPos at, string networkType);
 
   /// <summary>What a molten cell's block entity holds, or null when the cell holds none.</summary>
   MoltenCellReading? MoltenCellAt(BlockPos pos);

@@ -9,6 +9,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.GameContent;
 using Vintagestory.Server;
 
 namespace ExpandedLib.Testing.Live;
@@ -24,19 +25,24 @@ internal sealed class ScenarioPlayer {
   private readonly ServerMain _server;
   private readonly ServerWorldPlayerData _data;
   private readonly BlockPos _park;
+  private readonly PlayerAntiAbuseMonitor? _abuse;
   private int _uses;
+  private int _breaks;
 
   private ScenarioPlayer(
     ServerMain server,
     ServerWorldPlayerData data,
     ServerPlayer player,
-    BlockPos park
+    BlockPos park,
+    PlayerAntiAbuseMonitor? abuse
   ) {
+    _abuse = abuse;
     _server = server;
     _data = data;
     _park = park;
     Player = player;
     server.EventManager.DidUseBlock += CountUse;
+    server.EventManager.DidBreakBlock += CountBreak;
   }
 
   /// <summary>How many did-use events the server has fired for any player since the scenario player was built.</summary>
@@ -44,6 +50,15 @@ internal sealed class ScenarioPlayer {
 
   private void CountUse(IServerPlayer player, BlockSelection selection) =>
     _uses++;
+
+  /// <summary>How many did-break events the server has fired for any player since the scenario player was built.</summary>
+  public int Breaks => _breaks;
+
+  private void CountBreak(
+    IServerPlayer player,
+    int oldBlockId,
+    BlockSelection selection
+  ) => _breaks++;
 
   /// <summary>The engine's player the steps act through.</summary>
   public ServerPlayer Player { get; }
@@ -284,6 +299,130 @@ internal sealed class ScenarioPlayer {
     }
   }
 
+  /// <summary>The refusal a held tool gets from a block that needs a better one, or null when the tool
+  /// meets the block's tier.</summary>
+  /// <param name="required">The block's required mining tier; 0 or less needs no tool.</param>
+  /// <param name="held">The held collectible's tool tier, 0 for an empty hand.</param>
+  public static string? TierRefusal(int required, int held) =>
+    required > 0 && held < required
+      ? $"the block needs tool tier {required}, the hand holds tier {held}"
+      : null;
+
+  /// <summary>The refusal the block at <paramref name="at"/> gives the tool in <paramref name="slot"/>,
+  /// read from the block's required mining tier and the held collectible's tool tier.</summary>
+  /// <param name="block">The block being broken.</param>
+  /// <param name="world">The world the block stands in.</param>
+  /// <param name="at">The absolute cell of the block.</param>
+  /// <param name="slot">The slot the tool sits in; an empty slot is an empty hand, tier 0.</param>
+  /// <returns>Null when the tool meets the block's tier.</returns>
+  public static string? TierGate(
+    Block block,
+    IWorldAccessor world,
+    BlockPos at,
+    ItemSlot slot
+  ) =>
+    TierRefusal(
+      block.GetRequiredMiningTier(world, at),
+      slot.Itemstack?.Collectible.GetToolTier(slot) ?? 0
+    );
+
+  /// <summary>Breaks the block at <paramref name="at"/> the way a player's break does
+  /// (<c>ServerSystemBlockSimulation.TryModifyBlockInWorld</c>, break branch): in survival holding
+  /// <paramref name="stack"/>, past the mining-tier check, through the server's break event, then
+  /// <c>Collectible.OnBlockBrokenWith</c> for a held stack or <c>Block.OnBlockBroken</c> for an empty
+  /// hand, then the neighbour update and the did-break event, which the server's anti-abuse monitor
+  /// counts against a player it has an entry for (added here when its tick has dropped it). The slot
+  /// is emptied and the player parked after.</summary>
+  /// <param name="at">The absolute cell of the block.</param>
+  /// <param name="stack">What the hand holds, or null for an empty hand.</param>
+  /// <param name="declare">Reads the drops the block declares; called once with the player after it is
+  /// in survival mode with <paramref name="stack"/> in hand, before the break.</param>
+  /// <param name="declared">What <paramref name="declare"/> returned; empty when the tier check refused.</param>
+  /// <param name="failure">Null when the break ran; otherwise the tier refusal.</param>
+  /// <returns>Whether the break ran.</returns>
+  public bool Break(
+    BlockPos at,
+    ItemStack? stack,
+    System.Func<IPlayer, List<ItemStack>> declare,
+    out List<ItemStack> declared,
+    out string? failure
+  ) {
+    declared = [];
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+    BlockFacing face = BlockFacing.UP;
+    Vec3d hit = Hit(face);
+    Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
+    ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
+    slot.Itemstack = stack;
+    try {
+      Block block = _server.BlockAccessor.GetBlock(at);
+      failure = TierGate(block, _server, at, slot);
+      if (failure != null)
+        return false;
+      declared = declare(Player);
+      var selection = new BlockSelection {
+        Position = at.Copy(),
+        Face = face,
+        HitPosition = hit,
+        Block = block,
+      };
+      float dropQuantity = 1f;
+      EnumHandling handling = EnumHandling.PassThrough;
+      _server.EventManager.TriggerBreakBlock(
+        Player,
+        selection,
+        ref dropQuantity,
+        ref handling
+      );
+      if (handling == EnumHandling.PassThrough) {
+        if (stack != null)
+          stack.Collectible.OnBlockBrokenWith(
+            _server,
+            Player.Entity,
+            slot,
+            selection,
+            dropQuantity
+          );
+        else
+          block.OnBlockBroken(_server, at, Player, dropQuantity);
+      }
+      _server.TriggerNeighbourBlocksUpdate(at);
+      _abuse?.OnPlayerJoin(Player);
+      _server.EventManager.TriggerDidBreakBlock(Player, block.Id, selection);
+      return true;
+    } finally {
+      slot.Itemstack = null;
+      Park();
+    }
+  }
+
+  /// <summary>Turns the block at <paramref name="at"/> one step with the wrench, through
+  /// <c>IWrenchOrientable.Rotate</c> as the game's wrench calls it, the player as the turning
+  /// entity.</summary>
+  /// <param name="at">The absolute cell of the block.</param>
+  /// <param name="dir">1 for the next orientation of the block's cycle, -1 for the one before.</param>
+  /// <returns>Whether the block answers a wrench at all.</returns>
+  public bool Wrench(BlockPos at, int dir) {
+    if (
+      _server
+        .BlockAccessor.GetBlock(at)
+        .GetInterface<IWrenchOrientable>(_server, at)
+      is not { } turnable
+    )
+      return false;
+    turnable.Rotate(
+      Player.Entity,
+      new BlockSelection {
+        Position = at.Copy(),
+        Face = BlockFacing.UP,
+        HitPosition = Hit(BlockFacing.UP),
+      },
+      dir
+    );
+    return true;
+  }
+
   /// <summary>Stands the player in reach of the block at <paramref name="at"/>, facing its
   /// <paramref name="face"/>, without a click.</summary>
   /// <param name="at">The absolute cell of the block.</param>
@@ -423,18 +562,19 @@ internal sealed class ScenarioPlayer {
     Park();
   }
 
-  /// <summary>Sets the sneak, ctrl and sprint controls to the names in <paramref name="keys"/> and
+  /// <summary>Sets the sneak (and shift), ctrl (and sprint) and sprint controls to the names in <paramref name="keys"/> and
   /// clears the others.</summary>
   /// <param name="keys">Any of <c>sneak</c>, <c>ctrl</c> and <c>sprint</c>.</param>
   internal static void Hold(EntityControls controls, IReadOnlyList<string> keys) {
-    controls.Sneak = keys.Contains("sneak");
+    controls.Sneak = controls.ShiftKey = keys.Contains("sneak");
     controls.CtrlKey = keys.Contains("ctrl");
-    controls.Sprint = keys.Contains("sprint");
+    controls.Sprint = controls.CtrlKey || keys.Contains("sprint");
   }
 
   /// <summary>Despawns the player and removes it from the server's player maps.</summary>
   public void Stop() {
     _server.EventManager.DidUseBlock -= CountUse;
+    _server.EventManager.DidBreakBlock -= CountBreak;
     _server.DespawnEntity(
       _data.EntityPlayer,
       new EntityDespawnData { Reason = EnumDespawnReason.Removed }
@@ -477,7 +617,15 @@ internal sealed class ScenarioPlayer {
     inventory
       .GetMethod("OnPlayerJoin", [typeof(ServerPlayer)])!
       .Invoke(join, [player]);
-    var made = new ScenarioPlayer(server, data, player, park);
+    var made = new ScenarioPlayer(
+      server,
+      data,
+      player,
+      park,
+      ((Array)systems.GetValue(server)!)
+        .OfType<PlayerAntiAbuseMonitor>()
+        .SingleOrDefault()
+    );
     made.MoveTo(park);
     server.SpawnEntity(data.EntityPlayer);
     return made;

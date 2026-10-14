@@ -1,0 +1,61 @@
+{
+  "setup": "live-break",
+  "description": "Vanilla planks broken by the scenario player with an empty hand and by the world, granite broken by the player with a copper pickaxe, and the gravel above a broken plank leaving its cell, tall grass cut with a copper knife dropping the dry grass only a knife declares, each break dropping what it declares.",
+  "mods": [],
+  "steps": [
+    { "place": { "code": "game:planks-aged-we", "at": [0, 0, 0] } },
+    { "break": { "at": [0, 0, 0] } },
+    {
+      "expect": {
+        "at": [0, 0, 0],
+        "block": "game:air"
+      }
+    },
+    {
+      "expect": {
+        "drops": [{ "code": "game:planks-aged-ud", "count": 1 }],
+        "exact": true
+      }
+    },
+    { "expect": { "drops": "declared" } },
+    { "place": { "code": "game:planks-aged-we", "at": [2, 0, 0] } },
+    { "break": { "at": [2, 0, 0], "by": "world" } },
+    {
+      "expect": {
+        "drops": [{ "code": "game:planks-aged-ud", "count": 1 }],
+        "exact": true
+      }
+    },
+    { "expect": { "drops": "declared" } },
+    { "place": { "code": "game:rock-granite", "at": [4, 0, 0] } },
+    {
+      "break": {
+        "at": [4, 0, 0],
+        "with": { "stack": "game:pickaxe-copper" }
+      }
+    },
+    { "expect": { "at": [4, 0, 0], "block": "game:air" } },
+    { "expect": { "drops": "declared" } },
+    { "place": { "code": "game:planks-aged-we", "at": [6, 0, 0] } },
+    { "place": { "code": "game:muddygravel", "at": [6, 1, 0] } },
+    { "break": { "at": [6, 0, 0] } },
+    { "wait": 3 },
+    { "expect": { "at": [6, 1, 0], "block": "game:air" } },
+    { "place": { "code": "game:tallgrass-tall-free", "at": [8, 0, 0] } },
+    {
+      "break": {
+        "at": [8, 0, 0],
+        "with": { "stack": "game:knife-generic-copper" }
+      }
+    },
+    {
+      "expect": {
+        "drops": [{ "code": "game:drygrass", "count": 1 }],
+        "exact": true
+      }
+    },
+    { "expect": { "drops": "declared" } }
+  ],
+  "seconds": 6,
+  "record": {}
+}

@@ -32,6 +32,13 @@ internal sealed class ScenarioContext(
   /// <summary>The scenario player the steps that act as a player use; null when the run has none.</summary>
   public ScenarioPlayer? Player { get; set; }
 
+  /// <summary>What the last <c>break</c> declared and dropped; null before the first.</summary>
+  public BreakRecord? LastBreak { get; set; }
+
+  /// <summary>The plot's cuboid, absolute, that <c>break</c> collects drops within; null when the run has
+  /// no plot, which narrows the collection to the struck cell.</summary>
+  public (BlockPos Min, BlockPos Max)? PlotBounds { get; set; }
+
   /// <summary>The pack the case draws from and gives to; null when the case has no pack.</summary>
   public SetupPack? Pack { get; set; }
 

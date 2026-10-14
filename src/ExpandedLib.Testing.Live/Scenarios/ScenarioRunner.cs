@@ -213,6 +213,7 @@ internal sealed class ScenarioRunner {
       Path.GetFileName(File(_name))
     ) {
       Player = _player,
+      PlotBounds = plot.Bounds(),
       Pack =
         scenario.Model.Pack == null
           ? null

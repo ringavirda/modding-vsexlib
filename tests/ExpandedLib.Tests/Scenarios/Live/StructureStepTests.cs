@@ -60,6 +60,15 @@ public class StructureStepTests {
     }
   }
 
+  private sealed class SubMachine : BlockFilledMegastructure {
+    public override int StructureAngle => 0;
+
+    protected override List<FillerCell> ReservedCells(
+      IWorldAccessor world,
+      BlockPos pos
+    ) => [];
+  }
+
   private sealed class Scene {
     public LiveFixture Fixture { get; } = new();
 
@@ -660,5 +669,39 @@ public class StructureStepTests {
       l => l.Contains("| detail failed: ") && l.Contains("tree armed")
     );
     Assert.Contains(scene.Fixture.Lines, l => l.Contains("| suspect mod"));
+  }
+
+  // Fails when the place step checks the raw footprint for air, so a sub-machine whose reserved cells
+  // leave out the filler of the host it shares is refused on that filler.
+  [Fact]
+  public void A_sub_machine_is_placed_over_the_filler_its_host_owns() {
+    var scene = new Scene();
+    LiveFixture fixture = scene.Fixture;
+    Block sub = TestBlocks.Configure(
+      new SubMachine {
+        Attributes = new JsonObject(
+          JToken.Parse(
+            "{ \"fillerOffsets\": [ { \"x\": 1, \"y\": 0, \"z\": -1 } ] }"
+          )
+        ),
+      },
+      "exlib:submachine",
+      24
+    );
+    fixture.Test.Register(sub);
+    fixture.Context.SetBlock(fixture.Test.Filler, new BlockPos(1, 0, 0));
+
+    List<BlockPos> cells = PlaceStep.Put(
+      fixture.Context,
+      sub,
+      "exlib:submachine",
+      new BlockPos(0, 0, 1)
+    );
+
+    Assert.Equal([new BlockPos(0, 0, 1)], cells);
+    Assert.Equal(
+      sub.Id,
+      fixture.Context.Setup.BlockAt(new BlockPos(0, 0, 1)).Id
+    );
   }
 }

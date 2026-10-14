@@ -126,6 +126,12 @@ internal sealed class RunStep : ScenarioStep {
     out string? failure
   );
 
+  /// <summary>Turns the block at an absolute cell one step with the wrench.</summary>
+  /// <param name="at">The absolute cell of the block.</param>
+  /// <param name="dir">1 for the next orientation of the block's cycle, -1 for the one before.</param>
+  /// <returns>Whether the block answers a wrench.</returns>
+  public delegate bool PlayerWrench(BlockPos at, int dir);
+
   /// <summary>Lays a straight path by the player: <paramref name="blocks"/> in the order of
   /// <paramref name="cells"/>, each placed on the click that its neighbour in the path gives it.</summary>
   /// <exception cref="StepFailure">The path turns, a cell holds a block other than air at or above
@@ -145,15 +151,21 @@ internal sealed class RunStep : ScenarioStep {
   }
 
   /// <summary>Lays <paramref name="blocks"/> in the order of <paramref name="cells"/> with no check on the
-  /// path's shape, each placed on the click that its entry of <paramref name="faces"/> gives it.</summary>
-  /// <exception cref="StepFailure">A cell holds a block other than air at or above y 0, or the
-  /// player cannot place a block.</exception>
+  /// path's shape, each placed on the click that its entry of <paramref name="faces"/> gives it. The
+  /// block that goes down is the one the block's own placement picks, which need not be the one
+  /// given. A cell below y 0 is not checked: it is ground, which the caller has dug when it must be
+  /// clear.</summary>
+  /// <param name="placed">Called with the index of each cell right after its block went down, before the
+  /// next is placed; null for none.</param>
+  /// <exception cref="StepFailure">A cell holds a block other than air at or above y 0, the
+  /// player cannot place a block, or <paramref name="placed"/> throws.</exception>
   public static void LayCells(
     ScenarioContext ctx,
     PlayerPlace place,
     IReadOnlyList<Block> blocks,
     IReadOnlyList<BlockPos> cells,
-    IReadOnlyList<BlockFacing> faces
+    IReadOnlyList<BlockFacing> faces,
+    Action<int>? placed = null
   ) {
     foreach (BlockPos cell in cells)
       if (cell.Y >= 0 && !ctx.IsAir(cell))
@@ -174,6 +186,7 @@ internal sealed class RunStep : ScenarioStep {
         );
       ctx.Placed.Add(cell.Copy());
       ctx.Touched.Add(cell.Copy());
+      placed?.Invoke(i);
     }
   }
 

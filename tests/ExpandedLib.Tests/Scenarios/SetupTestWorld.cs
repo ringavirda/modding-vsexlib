@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Networks;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
@@ -25,6 +26,14 @@ internal sealed class SetupTestWorld : ISetupWorld {
     Test.NetworkAt(pos) is { } network && network.NetworkType == type
       ? network
       : null;
+
+  public IReadOnlyList<BlockPos> NetworkCells(
+    BlockPos at,
+    string networkType
+  ) =>
+    NetworkAt(at, networkType) is BlockNetwork network
+      ? [.. network.Nodes]
+      : [];
 
   public MoltenCellReading? MoltenCellAt(BlockPos pos) =>
     _molten.TryGetValue(pos, out MoltenCellReading cell) ? cell : null;

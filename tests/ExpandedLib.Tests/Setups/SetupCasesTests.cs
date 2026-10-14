@@ -177,6 +177,33 @@ public class SetupCasesTests : IDisposable
     );
   }
 
+  // Fails when a file whose steps use a verb the fake world lacks yields a runnable row, or one
+  // skipped without naming the verb.
+  [Fact]
+  public void A_file_with_a_live_only_verb_yields_rows_skipped_with_the_verb()
+  {
+    Write(
+      "live.json",
+      SetupCaseTests.Cases(
+        "\"low\": {}",
+        steps: $"[{SetupCaseTests.PlaceA}, {SetupCaseTests.PlaceB}, {{\"break\": {{\"at\": [0, 0, 0]}}}}]"
+      )
+    );
+    Write("now.json", SetupCaseTests.Cases("\"low\": {}"));
+
+    var rows = Rows();
+
+    Assert.Equal(2, rows.Count(r => r.File.EndsWith("live.json")));
+    Assert.All(
+      rows.Where(r => r.File.EndsWith("live.json")),
+      r => Assert.Equal("live only: break", r.Skip)
+    );
+    Assert.All(
+      rows.Where(r => r.File.EndsWith("now.json")),
+      r => Assert.Null(r.Skip)
+    );
+  }
+
   // Fails when the orders miss the main case or the variants that ask for them, or reach a variant
   // that does not.
   [Fact]

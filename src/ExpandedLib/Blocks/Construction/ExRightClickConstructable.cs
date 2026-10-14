@@ -183,7 +183,7 @@ public class ExRightClickConstructable
   }
 
   // The salvage fraction, from the owning mod's config when it registered one, else JSON/default.
-  private float EffectiveBrokenDropsRatio =>
+  internal float EffectiveBrokenDropsRatio =>
     ExRccSettings.BrokenDropsRatio(Block.Code.Domain) ?? brokenDropsRatio;
 
   /// <summary>Scatters the materials of every completed stage at the configured salvage fraction;
