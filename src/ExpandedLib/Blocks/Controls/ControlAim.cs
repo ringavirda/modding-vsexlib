@@ -7,7 +7,8 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Blocks;
 
 /// <summary>Aims a click at a control's selection box, for the harness to send as the player's selection.</summary>
-internal static class ControlAim {
+internal static class ControlAim
+{
   /// <summary>The selection a click on control <paramref name="controlId"/> of the cell at
   /// <paramref name="cell"/> carries: its box's index and id among the cell's selection boxes, and the hit at
   /// the centre of the box's <paramref name="face"/> side.</summary>
@@ -22,13 +23,15 @@ internal static class ControlAim {
     BlockPos cell,
     string controlId,
     BlockFacing? face
-  ) {
+  )
+  {
     Cuboidf[] boxes = accessor.GetBlock(cell).GetSelectionBoxes(accessor, cell);
     int index = Array.FindIndex(
       boxes,
       b => b is CuboidfWithId { Id: var id } && id == controlId
     );
-    if (index < 0) {
+    if (index < 0)
+    {
       string[] ids = boxes
         .OfType<CuboidfWithId>()
         .Select(b => b.Id)
@@ -43,7 +46,8 @@ internal static class ControlAim {
     }
     BlockFacing side = face ?? BlockFacing.UP;
     Cuboidf box = boxes[index];
-    return new BlockSelection {
+    return new BlockSelection
+    {
       Position = cell.Copy(),
       Face = side,
       HitPosition = new Vec3d(
@@ -57,6 +61,8 @@ internal static class ControlAim {
   }
 
   private static double Side(int normal, float low, float high) =>
-    normal > 0 ? high : normal < 0 ? low : (low + high) / 2.0;
+    normal > 0 ? high
+    : normal < 0 ? low
+    : (low + high) / 2.0;
 }
 #endif

@@ -106,7 +106,16 @@ internal static class SetupSteps {
     ],
     ["set"] = ["at", "tree", "member"],
     ["call"] = ["at", "method", "args", "returns"],
-    ["interact"] = ["at", "with", "keys", "face", "seconds", "returns", "control"],
+    ["interact"] =
+    [
+      "at",
+      "with",
+      "keys",
+      "face",
+      "seconds",
+      "returns",
+      "control",
+    ],
     ["wait"] = ["seconds", "until", "max", "hold"],
     ["advance"] = ["hours"],
     ["reload"] = [],

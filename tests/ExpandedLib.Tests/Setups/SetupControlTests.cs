@@ -17,7 +17,10 @@ internal sealed class SetupControlBlock : Block
     BlockPos pos
   ) =>
     [
-      new CuboidfWithId(new Cuboidf(0.25f, 0.5f, 0.25f, 0.75f, 1f, 0.5f)) { Id = "handle" },
+      new CuboidfWithId(new Cuboidf(0.25f, 0.5f, 0.25f, 0.75f, 1f, 0.5f))
+      {
+        Id = "handle",
+      },
       new Cuboidf(0f, 0f, 0f, 1f, 0.5f, 1f),
     ];
 
@@ -35,8 +38,7 @@ internal sealed class SetupControlBlock : Block
     IWorldAccessor world,
     BlockPos pos,
     IPlayer forPlayer
-  ) =>
-    $"Reads: {forPlayer.CurrentBlockSelection?.SelectionBoxId ?? "body"}";
+  ) => $"Reads: {forPlayer.CurrentBlockSelection?.SelectionBoxId ?? "body"}";
 }
 
 /// <summary>The <c>control</c> key of the <c>interact</c> and <c>expect</c> <c>info</c> steps: the click lands on
@@ -110,13 +112,12 @@ public class SetupControlTests
   [Fact]
   public void An_unknown_control_fails_the_interact_step()
   {
-    InvalidOperationException e = Assert.Throws<InvalidOperationException>(
-      () =>
-        Build(
-          "["
-            + Valve
-            + ", {\"interact\": {\"at\": {\"of\": \"valve\"}, \"control\": \"nope\"}}]"
-        )
+    InvalidOperationException e = Assert.Throws<InvalidOperationException>(() =>
+      Build(
+        "["
+          + Valve
+          + ", {\"interact\": {\"at\": {\"of\": \"valve\"}, \"control\": \"nope\"}}]"
+      )
     );
     Assert.Contains("has no control \"nope\"", e.Message);
   }

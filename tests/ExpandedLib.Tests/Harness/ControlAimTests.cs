@@ -9,8 +9,10 @@ namespace ExpandedLib.Tests;
 
 /// <summary><see cref="TestPlayer.UseControl"/> and <see cref="TestPlayer.LookAt"/>: a click and a look on a
 /// control's selection box carry the box's id, and an unknown id names the ids the cell has.</summary>
-public class ControlAimTests {
-  private sealed class Panel : Block {
+public class ControlAimTests
+{
+  private sealed class Panel : Block
+  {
     public string? Seen;
     public Vec3d? Hit;
 
@@ -19,7 +21,10 @@ public class ControlAimTests {
       BlockPos pos
     ) =>
       [
-        new CuboidfWithId(new Cuboidf(0.25f, 0.5f, 0.25f, 0.75f, 1f, 0.5f)) { Id = "handle" },
+        new CuboidfWithId(new Cuboidf(0.25f, 0.5f, 0.25f, 0.75f, 1f, 0.5f))
+        {
+          Id = "handle",
+        },
         new Cuboidf(0f, 0f, 0f, 1f, 0.5f, 1f),
       ];
 
@@ -27,7 +32,8 @@ public class ControlAimTests {
       IWorldAccessor world,
       IPlayer byPlayer,
       BlockSelection blockSel
-    ) {
+    )
+    {
       Seen = blockSel.SelectionBoxId;
       Hit = blockSel.HitPosition;
       return true;
@@ -36,7 +42,8 @@ public class ControlAimTests {
 
   private static BlockPos At => new(0, 1, 0);
 
-  private static (TestWorld, Panel, TestPlayer) Stand() {
+  private static (TestWorld, Panel, TestPlayer) Stand()
+  {
     var world = new TestWorld();
     var panel = TestBlocks.Configure(new Panel(), "test:panel", 1);
     world.Place(At, panel);
@@ -45,7 +52,8 @@ public class ControlAimTests {
 
   // Fails when a control click reaches the block without the id of the box it hit.
   [Fact]
-  public void UseControl_sends_the_id() {
+  public void UseControl_sends_the_id()
+  {
     var (_, panel, player) = Stand();
 
     Assert.True(player.UseControl(At, "handle"));
@@ -54,17 +62,18 @@ public class ControlAimTests {
 
   // Fails when an unknown id falls back to the first box instead of naming the ids the cell has.
   [Fact]
-  public void An_unknown_id_names_the_cells_ids() {
+  public void An_unknown_id_names_the_cells_ids()
+  {
     var (world, panel, player) = Stand();
     var plain = TestBlocks.Configure(new Block(), "test:plain", 1);
     world.Place(new BlockPos(2, 1, 0), plain);
 
-    ArgumentException known = Assert.Throws<ArgumentException>(
-      () => player.UseControl(At, "lever")
+    ArgumentException known = Assert.Throws<ArgumentException>(() =>
+      player.UseControl(At, "lever")
     );
     Assert.Contains("its controls are handle.", known.Message);
-    ArgumentException none = Assert.Throws<ArgumentException>(
-      () => player.UseControl(new BlockPos(2, 1, 0), "lever")
+    ArgumentException none = Assert.Throws<ArgumentException>(() =>
+      player.UseControl(new BlockPos(2, 1, 0), "lever")
     );
     Assert.Contains("its controls are none", none.Message);
     Assert.Null(panel.Seen);
@@ -72,7 +81,8 @@ public class ControlAimTests {
 
   // Fails when the hit lands at the cell face's centre instead of the centre of the box's face.
   [Fact]
-  public void The_hit_lies_inside_the_box() {
+  public void The_hit_lies_inside_the_box()
+  {
     var (_, panel, player) = Stand();
 
     Assert.True(player.UseControl(At, "handle", face: BlockFacing.UP));
@@ -83,7 +93,8 @@ public class ControlAimTests {
 
   // Fails when LookAt sets the selection's box index without its id.
   [Fact]
-  public void LookAt_sets_the_selection_id() {
+  public void LookAt_sets_the_selection_id()
+  {
     var (_, _, player) = Stand();
 
     player.LookAt(At, "handle");
