@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
@@ -24,6 +25,22 @@ public class BlockFilledMegastructure : Block, IFillerHost {
     base.OnLoaded(api);
     JsonMultiblockLayout.Resolve(this, api.Logger);
   }
+
+  public override Cuboidf[] GetCollisionBoxes(
+    IBlockAccessor blockAccessor,
+    BlockPos pos
+  ) =>
+    ControlBoxes.Collision(this, blockAccessor, pos)
+    ?? base.GetCollisionBoxes(blockAccessor, pos);
+
+#if GAME_GE_1_22
+  public override Cuboidf[] GetSelectionBoxes(
+    IBlockAccessor blockAccessor,
+    BlockPos pos
+  ) =>
+    ControlBoxes.Selection(this, blockAccessor, pos)
+    ?? base.GetSelectionBoxes(blockAccessor, pos);
+#endif
 
   /// <summary>The block's world footprint cells for a principal at <paramref name="pos"/>.</summary>
   protected List<FillerCell> FootprintCells(BlockPos pos) =>

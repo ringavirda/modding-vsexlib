@@ -6,6 +6,7 @@ using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
+using ExpandedLib.Structures;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -451,6 +452,10 @@ public abstract class BlockNetworkNode
 
   /// <summary>Pre-computes rotated collision and selection box arrays for every (type, orientation) pair.</summary>
   protected virtual void PrecomputeRotatedBoxes() {
+    if (ControlBoxes.PrincipalRow(this) is { } row) {
+      PrecomputeCells(row);
+      return;
+    }
     if (CollisionBoxes == null || CollisionBoxes.Length == 0)
       return;
     Vec3d pivot = new(0.5, 0.5, 0.5);
@@ -476,7 +481,37 @@ public abstract class BlockNetworkNode
     }
   }
 
+  private readonly Dictionary<string, ControlBoxes.PlacedCell> cellCache = [];
+
+  // A host node turns its cell by StructureAngle as its fillers turn; any other node by its
+  // orientation's 3D rotation, with ids re-attached by CellBoxes.Turned.
+  private void PrecomputeCells(CellBoxes row) {
+    Vec3d pivot = new(0.5, 0.5, 0.5);
+    foreach (var kvp in AllowedOrientations) {
+      foreach (string orient in kvp.Value) {
+        CellBoxes turned;
+        if (this is IFillerHost host)
+          turned = row.Turned(((host.StructureAngle % 360) + 360) % 360);
+        else {
+          GetRotations(orient, out float rotX, out float rotY, out float rotZ);
+          turned = row.Turned(box => box.RotatedCopy(rotX, rotY, rotZ, pivot));
+        }
+        cellCache[$"{kvp.Key}-{orient}"] = new ControlBoxes.PlacedCell(turned);
+      }
+    }
+  }
+
   public override Cuboidf[] GetCollisionBoxes(
+    IBlockAccessor blockAccessor,
+    BlockPos pos
+  ) =>
+    Type != null
+    && Orientation != null
+    && cellCache.TryGetValue($"{Type}-{Orientation}", out var cell)
+      ? cell.At(blockAccessor, pos).Collision
+      : CachedCollisionBoxes(blockAccessor, pos);
+
+  private Cuboidf[] CachedCollisionBoxes(
     IBlockAccessor blockAccessor,
     BlockPos pos
   ) =>
@@ -490,6 +525,20 @@ public abstract class BlockNetworkNode
       : base.GetCollisionBoxes(blockAccessor, pos);
 
   public override Cuboidf[] GetSelectionBoxes(
+    IBlockAccessor blockAccessor,
+    BlockPos pos
+  ) =>
+#if GAME_GE_1_22
+    Type != null
+    && Orientation != null
+    && cellCache.TryGetValue($"{Type}-{Orientation}", out var cell)
+      ? cell.At(blockAccessor, pos).Selection
+      : CachedSelectionBoxes(blockAccessor, pos);
+#else
+    CachedSelectionBoxes(blockAccessor, pos);
+#endif
+
+  private Cuboidf[] CachedSelectionBoxes(
     IBlockAccessor blockAccessor,
     BlockPos pos
   ) =>

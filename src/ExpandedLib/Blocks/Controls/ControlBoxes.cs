@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using ExpandedLib.Helpers;
 using ExpandedLib.Structures;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Blocks;
@@ -119,16 +120,28 @@ public static class ControlBoxes {
 
   private sealed class RowTable(Dictionary<(int, int, int), CellBoxes> north) {
     public readonly Dictionary<(int, int, int), CellBoxes> North = north;
-    public readonly ConcurrentDictionary<(int, int, int, int), Placed> Turned =
-      new();
+    public readonly ConcurrentDictionary<
+      (int, int, int, int),
+      PlacedCell
+    > Turned = new();
   }
 
-  private sealed class Placed(CellBoxes boxes) {
+  internal sealed class PlacedCell(CellBoxes boxes) {
     public readonly CellBoxes Boxes = boxes;
-    public readonly (Cuboidf[] Collision, Cuboidf[] Selection)? Static =
+    private readonly (Cuboidf[] Collision, Cuboidf[] Selection)? _static =
       boxes.Controls is { Count: > 0 } || boxes.Doors is { Count: > 0 }
         ? null
         : Compose(boxes, _ => ControlState.Shown);
+
+    public (Cuboidf[] Collision, Cuboidf[] Selection) At(
+      IBlockAccessor accessor,
+      BlockPos principalPos
+    ) {
+      if (_static is { } cached)
+        return cached;
+      BlockEntity? principalBe = accessor.GetBlockEntity(principalPos);
+      return Compose(Boxes, id => StateOf(principalBe, id));
+    }
   }
 
   private static readonly ConditionalWeakTable<Block, RowTable> Tables = new();
@@ -185,18 +198,82 @@ public static class ControlBoxes {
     )
       return false;
 
-    Placed placed = table.Turned.GetOrAdd(
+    PlacedCell placed = table.Turned.GetOrAdd(
       (north.X, north.Y, north.Z, angle),
-      _ => new Placed(row.Turned(angle))
+      _ => new PlacedCell(row.Turned(angle))
     );
-    if (placed.Static is { } cached) {
-      boxes = cached;
-      return true;
-    }
-    BlockEntity? principalBe = accessor.GetBlockEntity(principalPos);
-    boxes = Compose(placed.Boxes, id => StateOf(principalBe, id));
+    boxes = placed.At(accessor, principalPos);
     return true;
   }
+
+  #endregion
+
+  #region Principal cell
+
+  private sealed class PrincipalTable(CellBoxes? row) {
+    public readonly CellBoxes? Row = row;
+    public readonly ConcurrentDictionary<int, PlacedCell> Turned = new();
+  }
+
+  private static readonly ConditionalWeakTable<
+    Block,
+    PrincipalTable
+  > Principals = new();
+
+  private static PrincipalTable PrincipalOf(Block block) =>
+    Principals.GetValue(block, b => new PrincipalTable(PrincipalRow(b)));
+
+  /// <summary>The block's own cell from <c>attributes.principalCell</c>, or null without one.</summary>
+  internal static CellBoxes? PrincipalRow(Block block) {
+    JsonObject? node = block.Attributes?["principalCell"];
+    return node != null && node.Exists ? CellBoxes.Read(node) : null;
+  }
+
+  private static PlacedCell? PlacedFor(Block block) {
+    PrincipalTable table = PrincipalOf(block);
+    if (table.Row == null)
+      return null;
+    int angle =
+      (
+        (
+          block is IFillerHost host
+            ? host.StructureAngle
+            : ExOrientation.AngleFromSide(
+              block.Variant?["side"] ?? block.Variant?["orientation"]
+            )
+        ) % 360
+        + 360
+      ) % 360;
+    return table.Turned.GetOrAdd(
+      angle,
+      _ => new PlacedCell(table.Row.Turned(angle))
+    );
+  }
+
+  /// <summary>
+  /// The collision boxes of <paramref name="block"/>'s own cell at <paramref name="pos"/>, composed from
+  /// its <c>principalCell</c> attribute turned by its <see cref="IFillerHost.StructureAngle"/> (a block
+  /// that is not an <see cref="IFillerHost"/> by its <c>side</c> or <c>orientation</c> variant) and by
+  /// the control states of the block entity at <paramref name="pos"/>. For a principal whose base is
+  /// not a mega-block or a network node; those answer it themselves.
+  /// </summary>
+  /// <returns>Null when the block has no <c>principalCell</c>; the caller then answers as its base does.</returns>
+  public static Cuboidf[]? Collision(
+    Block block,
+    IBlockAccessor accessor,
+    BlockPos pos
+  ) => PlacedFor(block)?.At(accessor, pos).Collision;
+
+#if GAME_GE_1_22
+  /// <summary>The selection boxes of <paramref name="block"/>'s own cell, as <see cref="Collision"/>
+  /// composes the collision. Available on 1.22 only.</summary>
+  /// <returns>Null when the block has no <c>principalCell</c>.</returns>
+  public static Cuboidf[]? Selection(
+    Block block,
+    IBlockAccessor accessor,
+    BlockPos pos
+  ) => PlacedFor(block)?.At(accessor, pos).Selection;
+#endif
 
   #endregion
 }
