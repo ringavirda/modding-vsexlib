@@ -654,7 +654,10 @@ public class FillerControlBoxesTests {
     public JsonObject? FillerOffsets => Attributes?["fillerOffsets"];
   }
 
-  private sealed class StatesEntity : BlockEntity, IControlStates, ICellCollision {
+  private sealed class StatesEntity
+    : BlockEntity,
+      IControlStates,
+      ICellCollision {
     public readonly Dictionary<string, ControlState> States = [];
     public System.Func<Vec3i, int, Cuboidf[]?>? CellCollision;
 

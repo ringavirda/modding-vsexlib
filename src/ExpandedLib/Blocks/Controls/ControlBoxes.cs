@@ -211,8 +211,14 @@ public static class ControlBoxes {
       static (_, a) => new PlacedCell(a.row.Turned(a.angle)),
       (row, angle)
     );
-    (Cuboidf[] collision, Cuboidf[] selection) = placed.At(accessor, principalPos);
-    boxes = (EntityCollision(accessor, principalPos, north, angle) ?? collision, selection);
+    (Cuboidf[] collision, Cuboidf[] selection) = placed.At(
+      accessor,
+      principalPos
+    );
+    boxes = (
+      EntityCollision(accessor, principalPos, north, angle) ?? collision,
+      selection
+    );
     return true;
   }
 

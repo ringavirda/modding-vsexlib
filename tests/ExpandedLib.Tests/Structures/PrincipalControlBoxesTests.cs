@@ -149,7 +149,11 @@ public class PrincipalControlBoxesTests {
     MegaBlock block = scene.Block;
     IBlockAccessor accessor = scene.Accessor;
     Cuboidf answer = new(0.2f, 0f, 0.2f, 0.6f, 0.4f, 0.6f);
-    var be = new CellEntity { Pos = Pos, Block = block, Answer = new[] { answer } };
+    var be = new CellEntity {
+      Pos = Pos,
+      Block = block,
+      Answer = new[] { answer },
+    };
     accessor.GetBlockEntity(Pos).Returns(be);
 
     AssertBox(answer, Assert.Single(block.GetCollisionBoxes(accessor, Pos)));
