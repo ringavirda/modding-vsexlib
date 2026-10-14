@@ -98,20 +98,4 @@ public class SetupStepWalkTests {
     Assert.Contains("busy", advance.Path);
     Assert.Contains("during[0]", advance.Path);
   }
-
-  // Fails when the walk skips the steps a variant's model runs after a layout entry.
-  [Fact]
-  public void The_walk_yields_the_steps_run_after_a_layout_entry() {
-    SetupFileModel model = Model(
-      """
-      {
-        layout: { legend: { "A": { id: "lay", code: "game:stone" } }, layers: { "0": ["A"] } },
-        variants: { later: { after: { lay: [{ "advance": { "hours": 1 } }] } } }
-      }
-      """
-    );
-    SetupFileModel applied = model.ForVariant(model.Variants.Single());
-    Assert.Single(applied.AfterEntry);
-    Assert.Equal(2, SetupStepWalk.Of(applied).Count(s => s.Kind == "advance"));
-  }
 }

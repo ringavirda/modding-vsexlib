@@ -320,6 +320,83 @@ public class SetupSamplerTests : IDisposable {
     Assert.Contains(rig.Fixture.Lines, l => l.Contains(" run record FAIL: "));
   }
 
+  private static string Checked(string checks) =>
+    $$"""{ "record": {{Record}}, "checks": {{checks}} }""";
+
+  /// <summary>Fails when the checks are not judged over the written recording (Judge not called),
+  /// a passing check prints no ok line, the failing check's line takes another label than its
+  /// place in the file, its detail lines are dropped, the first failure does not fail the case, or
+  /// the checks after it are judged instead of skipped.</summary>
+  [Fact]
+  public void The_first_failing_check_fails_the_case_and_the_rest_print_as_skipped() {
+    var rig = new Rig(
+      "[]",
+      _folder,
+      Checked(
+        """
+        [
+          { "id": "never-set", "says": "b stays unset", "never": { "series": "a.state", "equals": "set" } },
+          { "id": "always-set", "says": "b is set", "always": { "series": "a.state", "equals": "set" } },
+          { "id": "never-unset", "says": "b is never unset", "never": { "series": "a.state", "equals": "unset" } }
+        ]
+        """
+      )
+    );
+    (ScenarioCaseRun run, _) = Drive(rig);
+    List<string> lines = rig.Fixture.Lines;
+    Assert.False(run.Passed);
+    Assert.Equal("c2", run.FailedLabel);
+    Assert.Contains("[scenario]   c1 check never-set ok", lines);
+    Assert.Contains(
+      "[scenario]   c2 check always-set FAIL: check always-set (b is set) fails at second 0: a.state = unset",
+      lines
+    );
+    Assert.Contains("[scenario]   | says b is set", lines);
+    Assert.Contains("[scenario]   | second 0", lines);
+    Assert.Contains("[scenario]   | readings a.state = unset", lines);
+    Assert.Contains("[scenario]   c3 check never-unset skipped", lines);
+    Assert.True(File.Exists(Path.Combine(_folder, "case.json")));
+  }
+
+  /// <summary>Fails when a check marked <c>drawn</c> that the recording would fail is judged
+  /// (Verdicts is not asked for the orders-only set), or prints no skipped line with the reason.</summary>
+  [Fact]
+  public void A_drawn_check_prints_as_skipped_and_never_fails_the_case() {
+    var rig = new Rig(
+      "[]",
+      _folder,
+      Checked(
+        """
+        [{ "id": "drawn-set", "says": "b is set", "orders": "drawn", "always": { "series": "a.state", "equals": "set" } }]
+        """
+      )
+    );
+    (ScenarioCaseRun run, _) = Drive(rig);
+    Assert.True(run.Passed);
+    Assert.Contains(
+      "[scenario]   c1 check drawn-set (drawn order: judged in the harness only) skipped",
+      rig.Fixture.Lines
+    );
+    Assert.DoesNotContain(rig.Fixture.Lines, l => l.Contains(" FAIL"));
+  }
+
+  /// <summary>Fails when a variant's <c>seconds</c> replaces the main case's in the live run.</summary>
+  [Fact]
+  public void A_variants_seconds_are_not_applied_to_the_live_run() {
+    var rig = new Rig(
+      "[]",
+      _folder,
+      $$"""{ "record": {{Record}}, "variants": { "slow": { "seconds": 12 } } }"""
+    );
+    (ScenarioCaseRun run, _) = Drive(rig);
+    Assert.True(run.Passed);
+    Assert.Equal(6, rig.Sampler.Recording!.Seconds);
+    Assert.Contains(
+      "[scenario]   run record 6 s, Scenarios/recordings/case.json ok",
+      rig.Fixture.Lines
+    );
+  }
+
   private static Rig Packed(
     string folder,
     List<Entity> spawned,

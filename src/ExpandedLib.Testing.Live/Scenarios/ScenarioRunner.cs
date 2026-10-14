@@ -46,6 +46,7 @@ internal sealed class ScenarioRunner {
   private ScenarioContext? _ctx;
   private ScenarioCaseRun? _caseRun;
   private SetupSampler? _sampler;
+  private SetupConfig? _config;
   private IEnumerator<bool>? _steps;
   private ScenarioPlayer? _player;
   private bool _playerBroken;
@@ -217,6 +218,8 @@ internal sealed class ScenarioRunner {
           ? null
           : SetupPack.Start(scenario.Model, _ => null),
     };
+    _config = new SetupConfig(Path.GetFileName(File(_name)));
+    _config.Apply(scenario.Model.Config);
     Emit(ScenarioOutput.Case(_name, plot.Origin));
     _sampler = new SetupSampler(
       _api.Event,
@@ -236,7 +239,7 @@ internal sealed class ScenarioRunner {
     ScenarioPlot plot = _plot!;
     bool passed = run.Passed;
     string suspect = run.Suspect;
-    int failedStep = run.FailedStep;
+    string failedStep = run.FailedLabel;
     if (!passed)
       Save(plot, ctx);
     if (!_keep) {
@@ -245,13 +248,13 @@ internal sealed class ScenarioRunner {
         ctx.ThrowIfLogged();
       } catch (Exception e) when (passed) {
         passed = false;
-        failedStep = _case!.Model.Steps.Count + 1;
+        failedStep = (_case!.Model.Steps.Count + 1).ToString();
         suspect = Suspect.Mod;
         string reason =
           e is StepFailure ? e.Message : ScenarioSteps.Describe(e);
         Emit(
           ScenarioOutput.StepFail(
-            failedStep.ToString(),
+            failedStep,
             "clear",
             "plot",
             reason
@@ -266,9 +269,10 @@ internal sealed class ScenarioRunner {
     } else {
       _failed++;
       Emit(
-        ScenarioOutput.Fail(_name, failedStep.ToString(), suspect, run.Seconds)
+        ScenarioOutput.Fail(_name, failedStep, suspect, run.Seconds)
       );
     }
+    RestoreConfig();
     _player?.Park();
     Reset();
   }
@@ -300,7 +304,13 @@ internal sealed class ScenarioRunner {
   private void Abandon() {
     _run++;
     _failed++;
+    RestoreConfig();
     Reset();
+  }
+
+  private void RestoreConfig() {
+    _config?.Restore();
+    _config = null;
   }
 
   private void Reset() {
