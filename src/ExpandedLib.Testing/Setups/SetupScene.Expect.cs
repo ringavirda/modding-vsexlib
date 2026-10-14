@@ -80,7 +80,22 @@ public sealed partial class SetupScene
       throw Fail(step.Path, $"info is not a regex: {e.Message}");
     }
     var text = new StringBuilder();
-    be.GetBlockInfo(Player.Player, text);
+    if (step.Body["control"] == null)
+      be.GetBlockInfo(Player.Player, text);
+    else
+    {
+      try
+      {
+        Player.LookAt(at, (string)step.Body["control"]!);
+      }
+      catch (ArgumentException e)
+      {
+        throw Fail(step.Path, e.Message);
+      }
+      text.Append(
+        World.GetBlock(at).GetPlacedBlockInfo(World.World, at, Player.Player)
+      );
+    }
     string[] lines = text.ToString()
       .Split(
         '\n',

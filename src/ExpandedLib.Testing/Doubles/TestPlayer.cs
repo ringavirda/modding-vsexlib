@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Blocks;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -135,6 +136,92 @@ public sealed class TestPlayer {
     float seconds,
     BlockFacing? face,
     Action? eachSecond
+  ) =>
+    Use(
+      pos,
+      held,
+      sneak,
+      ctrl,
+      sprint,
+      seconds,
+      FaceSelection(pos, face ?? BlockFacing.UP),
+      eachSecond
+    );
+
+#if GAME_GE_1_22
+  /// <summary>Right-clicks control <paramref name="control"/> of the block at <paramref name="pos"/>: as
+  /// <see cref="Interact(BlockPos, ItemStack?, bool, bool, float, BlockFacing?)"/>, with the selection on the
+  /// control's box, so the block reads the control's id from it.</summary>
+  /// <param name="pos">The cell whose control is clicked.</param>
+  /// <param name="control">The id of the control, as its box carries it.</param>
+  /// <param name="held">Put in <see cref="ActiveSlot"/> first; null leaves the hand.</param>
+  /// <param name="sneak">Holds <c>Sneak</c> and <c>ShiftKey</c>.</param>
+  /// <param name="ctrl">Holds <c>CtrlKey</c> and <c>Sprint</c>.</param>
+  /// <param name="seconds">The hold in seconds, 0 or more; 0 clicks with no step.</param>
+  /// <param name="face">The side of the control's box clicked, at its centre; null for the top.</param>
+  /// <returns><see cref="Block.OnBlockInteractStart"/>'s answer; false when not called.</returns>
+  /// <exception cref="ArgumentException"><paramref name="control"/> is no box's id of the cell; the message
+  /// names the ids the cell has.</exception>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="seconds"/> is negative or NaN.</exception>
+  public bool UseControl(
+    BlockPos pos,
+    string control,
+    ItemStack? held = null,
+    bool sneak = false,
+    bool ctrl = false,
+    float seconds = 0f,
+    BlockFacing? face = null
+  ) => UseControl(pos, control, held, sneak, ctrl, false, seconds, face, null);
+
+  internal bool UseControl(
+    BlockPos pos,
+    string control,
+    ItemStack? held,
+    bool sneak,
+    bool ctrl,
+    bool sprint,
+    float seconds,
+    BlockFacing? face,
+    Action? eachSecond
+  ) =>
+    Use(
+      pos,
+      held,
+      sneak,
+      ctrl,
+      sprint,
+      seconds,
+      ControlAim.Selection(_world.Accessor, pos, control, face),
+      eachSecond
+    );
+
+  /// <summary>Makes control <paramref name="control"/> of the block at <paramref name="pos"/> the player's
+  /// looked-at selection, the one a block's info and a click's selection read.</summary>
+  /// <param name="pos">The cell whose control is looked at.</param>
+  /// <param name="control">The id of the control, as its box carries it.</param>
+  /// <exception cref="ArgumentException"><paramref name="control"/> is no box's id of the cell; the message
+  /// names the ids the cell has.</exception>
+  public void LookAt(BlockPos pos, string control)
+  {
+    BlockSelection selection = ControlAim.Selection(
+      _world.Accessor,
+      pos,
+      control,
+      null
+    );
+    Player.CurrentBlockSelection.Returns(selection);
+  }
+#endif
+
+  private bool Use(
+    BlockPos pos,
+    ItemStack? held,
+    bool sneak,
+    bool ctrl,
+    bool sprint,
+    float seconds,
+    BlockSelection selection,
+    Action? eachSecond
   ) {
     if (!(seconds >= 0f))
       throw new ArgumentOutOfRangeException(
@@ -149,16 +236,6 @@ public sealed class TestPlayer {
     if (!_world.World.Claims.TryAccess(Player, pos, EnumBlockAccessFlags.Use))
       return false;
 
-    BlockFacing side = face ?? BlockFacing.UP;
-    var selection = new BlockSelection {
-      Position = pos.Copy(),
-      Face = side,
-      HitPosition = new Vec3d(
-        0.5 + 0.5 * side.Normali.X,
-        0.5 + 0.5 * side.Normali.Y,
-        0.5 + 0.5 * side.Normali.Z
-      ),
-    };
     EntityControls controls = Entity.Controls;
     (bool, bool, bool, bool) was = (
       controls.Sneak,
@@ -185,6 +262,17 @@ public sealed class TestPlayer {
         was;
     }
   }
+
+  private static BlockSelection FaceSelection(BlockPos pos, BlockFacing side) =>
+    new() {
+      Position = pos.Copy(),
+      Face = side,
+      HitPosition = new Vec3d(
+        0.5 + 0.5 * side.Normali.X,
+        0.5 + 0.5 * side.Normali.Y,
+        0.5 + 0.5 * side.Normali.Z
+      ),
+    };
 
   internal static float HoldSteps(
     float seconds,

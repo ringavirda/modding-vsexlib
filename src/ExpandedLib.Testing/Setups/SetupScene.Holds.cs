@@ -41,16 +41,38 @@ public sealed partial class SetupScene
     if (with != null)
       Draw(step.Path, with);
     Player.Hold(with);
-    bool answer = Player.Interact(
-      at,
-      null,
-      keys.Contains("sneak"),
-      keys.Contains("ctrl"),
-      keys.Contains("sprint"),
-      seconds,
-      face,
-      TickSecond
-    );
+    string? control = (string?)step.Body["control"];
+    bool answer;
+    try
+    {
+      answer =
+        control == null
+          ? Player.Interact(
+            at,
+            null,
+            keys.Contains("sneak"),
+            keys.Contains("ctrl"),
+            keys.Contains("sprint"),
+            seconds,
+            face,
+            TickSecond
+          )
+          : Player.UseControl(
+            at,
+            control,
+            null,
+            keys.Contains("sneak"),
+            keys.Contains("ctrl"),
+            keys.Contains("sprint"),
+            seconds,
+            face,
+            TickSecond
+          );
+    }
+    catch (ArgumentException e)
+    {
+      throw Fail(step.Path, e.Message);
+    }
     Give(Player.ActiveSlot.Itemstack);
     if (step.Body["returns"] is { } expected && (bool)expected != answer)
       throw Fail(

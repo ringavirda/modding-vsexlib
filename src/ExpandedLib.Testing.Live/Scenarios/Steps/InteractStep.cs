@@ -37,6 +37,9 @@ internal sealed class InteractStep : ScenarioStep {
       throw new StepFailure($"the player may not use {local}.");
   }
 
+  /// <summary>The control an interact step clicks, its <c>control</c> key, or null for the block's body.</summary>
+  public static string? ControlOf(JObject o) => (string?)o["control"];
+
   /// <summary>The keys a step holds, each one of <c>sneak</c>, <c>ctrl</c> or <c>sprint</c>.</summary>
   /// <exception cref="StepFailure">A name is none of them.</exception>
   public static string[] KeyNames(JToken? token) {
@@ -90,13 +93,12 @@ internal sealed class InteractStep : ScenarioStep {
       local
     );
     int uses = player.Uses;
-    bool answered = player.UseStart(
-      at,
-      face,
-      stack,
-      keys,
-      out BlockSelection selection
-    );
+    string? control = ControlOf(o);
+    BlockSelection selection;
+    bool answered =
+      control == null
+        ? player.UseStart(at, face, stack, keys, out selection)
+        : player.UseControl(at, control, face, stack, keys, out selection);
     try {
       if (player.Uses != uses + 1)
         throw new StepFailure(

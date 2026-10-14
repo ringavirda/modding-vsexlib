@@ -11,6 +11,13 @@ namespace ExpandedLib.Tests.Scenarios.Live;
 /// <summary>The scenario player's held verbs: the hold, its keys, the window's packets and the ignition
 /// verdicts (scenarios.md, The scenario player).</summary>
 public class ScenarioPlayerVerbTests {
+  /// <summary>Fails when an interact step drops its control key, so every click lands on the body.</summary>
+  [Fact]
+  public void An_interact_step_names_its_control_and_none_without_one() {
+    Assert.Equal("handle", InteractStep.ControlOf(JObject.Parse("{\"at\": [0, 0, 0], \"control\": \"handle\"}")));
+    Assert.Null(InteractStep.ControlOf(JObject.Parse("{\"at\": [0, 0, 0]}")));
+  }
+
   /// <summary>Fails when a hold runs past its seconds (S27).</summary>
   [Fact]
   public void A_hold_goes_on_while_the_time_held_is_under_its_seconds() {
