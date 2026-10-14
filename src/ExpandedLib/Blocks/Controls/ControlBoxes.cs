@@ -170,10 +170,13 @@ public static class ControlBoxes {
 
   /// <summary>
   /// The boxes a filler at <paramref name="pos"/> answers with, composed from its principal's
-  /// <c>fillerOffsets</c> row at the north offset <c>RotateOffset(pos - principal, (360 - angle) % 360)</c>,
-  /// <c>angle</c> the host's <see cref="IFillerHost.StructureAngle"/>. An <see cref="ICellCollision"/> entity
-  /// on the principal replaces the composed collision when it answers non-null.
+  /// <c>fillerOffsets</c> row.
   /// </summary>
+  /// <remarks>
+  /// The row is read at the north offset <c>RotateOffset(pos - principal, (360 - angle) % 360)</c>, <c>angle</c>
+  /// the host's <see cref="IFillerHost.StructureAngle"/>. An <see cref="ICellCollision"/> entity on the principal
+  /// replaces the composed collision when it answers non-null.
+  /// </remarks>
   /// <returns>False when the filler has no principal, the principal is gone or is not an
   /// <see cref="IFillerHost"/>, or its definition has no row with box keys at that offset.</returns>
   internal static bool TryFiller(
@@ -269,10 +272,13 @@ public static class ControlBoxes {
 
   /// <summary>
   /// The collision boxes of <paramref name="block"/>'s own cell at <paramref name="pos"/>, from its
-  /// <c>principalCell</c> turned by <see cref="IFillerHost.StructureAngle"/> (else its <c>side</c> or
-  /// <c>orientation</c>) and the control states there. An <see cref="ICellCollision"/> entity at
-  /// <paramref name="pos"/> that answers non-null replaces those boxes. For a principal that is no mega-block or node.
+  /// <c>principalCell</c> and the control states there.
   /// </summary>
+  /// <remarks>
+  /// The cell is turned by <see cref="IFillerHost.StructureAngle"/> (else its <c>side</c> or <c>orientation</c>).
+  /// An <see cref="ICellCollision"/> entity at <paramref name="pos"/> that answers non-null replaces those boxes.
+  /// For a principal that is no mega-block or node.
+  /// </remarks>
   /// <returns>Null when the block has no <c>principalCell</c>; the caller then answers as its base does.</returns>
   public static Cuboidf[]? Collision(
     Block block,

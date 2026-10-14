@@ -22,10 +22,12 @@ public sealed record ControlContext(
 
 /// <summary>
 /// Sends a click on a principal to the handler of the control it hit. A control's handler works only on that
-/// control's box; the body takes machine-wide verbs only. Built once per principal block and called from its
-/// <see cref="Structures.IFillerInteractionTarget.OnFillerInteractStart"/> and
-/// <c>OnBlockInteractStart</c>.
+/// control's box; the body takes machine-wide verbs only.
 /// </summary>
+/// <remarks>
+/// Built once per principal block and called from its <see cref="Structures.IFillerInteractionTarget.OnFillerInteractStart"/>
+/// and <c>OnBlockInteractStart</c>.
+/// </remarks>
 public sealed class ControlRouter {
   private sealed record Entry(
     string Id,
@@ -67,11 +69,13 @@ public sealed class ControlRouter {
   }
 
   /// <summary>
-  /// Routes a click. A hit on a control tries the hit id, then its alsoIds, each against its handlers in
-  /// registration order whose held predicate accepts the held item; the first runs and its answer is returned.
-  /// A hit on no control, on an id whose state is Hidden, or on a control none of whose handlers takes the held
-  /// item goes to the body handler for the first two and returns false for the last.
+  /// Routes a click to the first handler that takes it: the hit id's, then each alsoIds id's, in registration order,
+  /// among handlers whose held predicate accepts the held item.
   /// </summary>
+  /// <remarks>
+  /// A hit on no control, or on an id whose state is Hidden, goes to the body handler; a control none of whose
+  /// handlers takes the held item returns false.
+  /// </remarks>
   /// <param name="world">The world of the click.</param>
   /// <param name="player">The clicking player.</param>
   /// <param name="principalSel">The selection at the principal's cell, as the filler forwards it.</param>
