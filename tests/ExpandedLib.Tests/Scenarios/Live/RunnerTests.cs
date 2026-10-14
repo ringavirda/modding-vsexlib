@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using System.Linq;
 using ExpandedLib.Config;
-using ExpandedLib.Tests.Setups;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
+using ExpandedLib.Tests.Setups;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -276,7 +276,10 @@ public class RunnerTests {
   private const string RunnerMod = "runnerconfigmod";
 
   private static ExConfigRegister<CaseConfig> ConfigStore() {
-    var store = new ExConfigRegister<CaseConfig>("runnerconfig.json", RunnerMod);
+    var store = new ExConfigRegister<CaseConfig>(
+      "runnerconfig.json",
+      RunnerMod
+    );
     ExConfigProfiles.Register(store);
     return store;
   }

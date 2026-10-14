@@ -202,9 +202,7 @@ internal sealed class ScenarioCaseRun(
         failure = new StepFailure(failed.ToString(), Live.Suspect.Mod) {
           Reported = true,
         };
-        ctx.Line(
-          ScenarioOutput.StepFail(at, "check", id, failed.ToString())
-        );
+        ctx.Line(ScenarioOutput.StepFail(at, "check", id, failed.ToString()));
         ctx.Line(ScenarioOutput.Detail($"check {failed.Id}"));
         ctx.Line(ScenarioOutput.Detail($"says {failed.Says}"));
         ctx.Line(ScenarioOutput.Detail($"second {failed.Second}"));

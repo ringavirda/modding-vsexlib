@@ -252,14 +252,7 @@ internal sealed class ScenarioRunner {
         suspect = Suspect.Mod;
         string reason =
           e is StepFailure ? e.Message : ScenarioSteps.Describe(e);
-        Emit(
-          ScenarioOutput.StepFail(
-            failedStep,
-            "clear",
-            "plot",
-            reason
-          )
-        );
+        Emit(ScenarioOutput.StepFail(failedStep, "clear", "plot", reason));
       } catch (Exception) { }
     }
     _run++;
@@ -268,9 +261,7 @@ internal sealed class ScenarioRunner {
       Emit(ScenarioOutput.Pass(_name, run.Seconds));
     } else {
       _failed++;
-      Emit(
-        ScenarioOutput.Fail(_name, failedStep, suspect, run.Seconds)
-      );
+      Emit(ScenarioOutput.Fail(_name, failedStep, suspect, run.Seconds));
     }
     RestoreConfig();
     _player?.Park();
