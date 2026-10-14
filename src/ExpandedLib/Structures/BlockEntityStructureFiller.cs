@@ -20,7 +20,9 @@ public class BlockEntityStructureFiller : BlockEntity {
   /// <summary>Whether other blocks may attach to this cell. Defaults to false.</summary>
   public bool AllowAttach { get; set; }
 
-  /// <summary>Per-cell collision/selection boxes, already rotated into the placed orientation, or null for a plain full cube.</summary>
+  /// <summary>Per-cell collision boxes saved at placement, already rotated into the placed orientation, or
+  /// null for a plain full cube. Read only when the principal's definition has no row for this cell or the
+  /// principal is gone; otherwise the row answers.</summary>
   public Cuboidf[]? CollisionBoxes { get; set; }
 
   /// <summary>Single-char face code of the network port this cell exposes, or null for a plain filler.</summary>
