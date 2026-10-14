@@ -281,6 +281,36 @@ public class StructureStepTests {
     );
   }
 
+  /// <summary>Fails when a drawn entry's complete: all is dropped, so the layout walk leaves the structure unbuilt.</summary>
+  [Fact]
+  public void The_layout_walk_completes_a_drawn_structure() {
+    var scene = new Scene();
+    SetupLayout layout = LiveFixture
+      .Case(
+        "[]",
+        """
+        { layout: { legend: {
+            "Y": { "id": "n", "code": "exlib:probe-node-n" },
+            "M": { "id": "m", "code": "exlib:probe-n", "complete": "all" },
+            "B": { "cells": "m" } },
+          layers: { "0": ["MBB", "Y.."] } } }
+        """
+      )
+      .Model.Drawn!;
+    foreach (bool _ in SetupLayoutWalk.Run(scene.Fixture.Context, layout, null)) {
+      scene.Fixture.Test.AdvanceBlockEntityTime(3000);
+      scene.Fixture.Clock += 3;
+    }
+    Assert.Equal(scene.Brick.Id, scene.Block(1, 0, 0).Id);
+    Assert.Equal(scene.Brick.Id, scene.Block(2, 0, 0).Id);
+    Assert.True(
+      (
+        (TestMegablock)
+          scene.Fixture.Context.Setup.BlockEntityAt(new BlockPos(0, 0, 0))!
+      ).StructureComplete
+    );
+  }
+
   /// <summary>Fails when the place step does not hand a multiblock to complete (V65).</summary>
   [Fact]
   public void A_place_with_complete_raises_the_missing_cells_and_waits_for_the_monitor() {

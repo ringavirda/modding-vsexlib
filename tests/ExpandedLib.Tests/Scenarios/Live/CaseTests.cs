@@ -54,13 +54,10 @@ public class CaseTests {
   public void A_negative_settle_is_refused() =>
     Assert.Contains("not negative", Refused(Place, "{ settle: -0.5 }"));
 
-  /// <summary>Fails when the named key is dropped from the refused list (V24 climate, V25
-  /// variants, V27 checks); each input is valid to the setup model, so only this
-  /// guard rejects it.</summary>
+  /// <summary>Fails when climate is dropped from the refused list (V24); the input is valid to
+  /// the setup model, so only this guard rejects it.</summary>
   [Theory]
   [InlineData("climate", "{ temperature: -10, rainfall: 1 }")]
-  [InlineData("variants", "{}")]
-  [InlineData("checks", "[]")]
   public void A_key_the_live_runner_does_not_read_yet_is_refused(
     string key,
     string value
@@ -156,21 +153,26 @@ public class CaseTests {
         .Model.Mods
     );
 
-  /// <summary>Fails when tickOrders is dropped from the refused list (V33).</summary>
+  /// <summary>Fails when tickOrders, variants or checks are refused again, or their reading is
+  /// dropped from the model the live case runs.</summary>
   [Fact]
-  public void Tick_orders_are_refused() =>
-    Assert.Contains(
-      "not read by the live runner",
-      Refused(
-        """
-        [
-          { "place": { "id": "a", "code": "game:stone", "at": [0, 0, 0] } },
-          { "place": { "id": "b", "code": "game:stone", "at": [1, 0, 0] } }
-        ]
-        """,
-        """{ tickOrders: ["a", "b"] }"""
-      )
+  public void Tick_orders_variants_and_checks_are_read() {
+    ScenarioCase scenario = LiveFixture.Case(
+      """
+      [
+        { "place": { "id": "a", "code": "game:stone", "at": [0, 0, 0] } },
+        { "place": { "id": "b", "code": "game:stone", "at": [1, 0, 0] } }
+      ]
+      """,
+      """
+      { tickOrders: ["a", "b"], variants: { slow: { seconds: 12 } },
+        checks: [{ id: "held", says: "a holds", always: { at: [0, 0, 0], block: "game:stone" } }] }
+      """
     );
+    Assert.Equal(["a", "b"], scenario.Model.TickOrders);
+    Assert.Equal("slow", Assert.Single(scenario.Model.Variants).Name);
+    Assert.Equal("held", Assert.Single(scenario.Model.Checks).Id);
+  }
 
   /// <summary>Fails when a layout is refused again, or its drawing is not read (V34).</summary>
   [Fact]

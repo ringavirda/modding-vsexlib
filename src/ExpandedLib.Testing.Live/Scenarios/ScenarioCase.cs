@@ -19,13 +19,7 @@ internal sealed class ScenarioCase(
 ) {
   public const double DefaultSettle = 3;
 
-  private static readonly string[] Refused =
-  [
-    "checks",
-    "climate",
-    "variants",
-    "tickOrders",
-  ];
+  private static readonly string[] Refused = ["climate"];
 
   /// <summary>The scenario's name, <c>&lt;modid&gt;/&lt;path&gt;</c>.</summary>
   public string Name => name;

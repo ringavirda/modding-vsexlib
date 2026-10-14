@@ -6,6 +6,7 @@ using ExpandedLib.Scenarios;
 using ExpandedLib.Testing.Live;
 using NSubstitute;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Xunit;
@@ -317,5 +318,133 @@ public class SetupSamplerTests : IDisposable {
     (ScenarioCaseRun run, _) = Drive(rig);
     Assert.False(run.Passed);
     Assert.Contains(rig.Fixture.Lines, l => l.Contains(" run record FAIL: "));
+  }
+
+  private static string Checked(string checks) =>
+    $$"""{ "record": {{Record}}, "checks": {{checks}} }""";
+
+  /// <summary>Fails when the checks are not judged over the written recording (Judge not called),
+  /// a passing check prints no ok line, the failing check's line takes another label than its
+  /// place in the file, its detail lines are dropped, the first failure does not fail the case, or
+  /// the checks after it are judged instead of skipped.</summary>
+  [Fact]
+  public void The_first_failing_check_fails_the_case_and_the_rest_print_as_skipped() {
+    var rig = new Rig(
+      "[]",
+      _folder,
+      Checked(
+        """
+        [
+          { "id": "never-set", "says": "b stays unset", "never": { "series": "a.state", "equals": "set" } },
+          { "id": "always-set", "says": "b is set", "always": { "series": "a.state", "equals": "set" } },
+          { "id": "never-unset", "says": "b is never unset", "never": { "series": "a.state", "equals": "unset" } }
+        ]
+        """
+      )
+    );
+    (ScenarioCaseRun run, _) = Drive(rig);
+    List<string> lines = rig.Fixture.Lines;
+    Assert.False(run.Passed);
+    Assert.Equal("c2", run.FailedLabel);
+    Assert.Contains("[scenario]   c1 check never-set ok", lines);
+    Assert.Contains(
+      "[scenario]   c2 check always-set FAIL: check always-set (b is set) fails at second 0: a.state = unset",
+      lines
+    );
+    Assert.Contains("[scenario]   | says b is set", lines);
+    Assert.Contains("[scenario]   | second 0", lines);
+    Assert.Contains("[scenario]   | readings a.state = unset", lines);
+    Assert.Contains("[scenario]   c3 check never-unset skipped", lines);
+    Assert.True(File.Exists(Path.Combine(_folder, "case.json")));
+  }
+
+  /// <summary>Fails when a check marked <c>drawn</c> that the recording would fail is judged
+  /// (Verdicts is not asked for the orders-only set), or prints no skipped line with the reason.</summary>
+  [Fact]
+  public void A_drawn_check_prints_as_skipped_and_never_fails_the_case() {
+    var rig = new Rig(
+      "[]",
+      _folder,
+      Checked(
+        """
+        [{ "id": "drawn-set", "says": "b is set", "orders": "drawn", "always": { "series": "a.state", "equals": "set" } }]
+        """
+      )
+    );
+    (ScenarioCaseRun run, _) = Drive(rig);
+    Assert.True(run.Passed);
+    Assert.Contains(
+      "[scenario]   c1 check drawn-set (drawn order: judged in the harness only) skipped",
+      rig.Fixture.Lines
+    );
+    Assert.DoesNotContain(rig.Fixture.Lines, l => l.Contains(" FAIL"));
+  }
+
+  /// <summary>Fails when a variant's <c>seconds</c> replaces the main case's in the live run.</summary>
+  [Fact]
+  public void A_variants_seconds_are_not_applied_to_the_live_run() {
+    var rig = new Rig(
+      "[]",
+      _folder,
+      $$"""{ "record": {{Record}}, "variants": { "slow": { "seconds": 12 } } }"""
+    );
+    (ScenarioCaseRun run, _) = Drive(rig);
+    Assert.True(run.Passed);
+    Assert.Equal(6, rig.Sampler.Recording!.Seconds);
+    Assert.Contains(
+      "[scenario]   run record 6 s, Scenarios/recordings/case.json ok",
+      rig.Fixture.Lines
+    );
+  }
+
+  private static Rig Packed(
+    string folder,
+    List<Entity> spawned,
+    out EntityItem flint
+  ) {
+    var rig = new Rig(
+      "",
+      folder,
+      $$"""{ "pack": { "scope": "stacks", "gathered": {} }, "during": [{ "at": 2, "step": {{Place}} }], "record": {{Record}} }"""
+    );
+    rig.Fixture.Context.Pack = SetupPack.Start(rig.Case.Model, _ => null);
+    Item item = rig.Fixture.Test.RegisterItem("game:flint");
+    flint = new EntityItem { EntityId = 7, Itemstack = new ItemStack(item, 1) };
+    flint.Pos.SetPos(0.5, 0.5, 0.5);
+    rig.Fixture.Test.World.GetEntitiesInsideCuboid(
+        Arg.Any<BlockPos>(),
+        Arg.Any<BlockPos>(),
+        Arg.Any<ActionConsumable<Entity>>()
+      )
+      .Returns(call =>
+        spawned.Where(e => call.ArgAt<ActionConsumable<Entity>>(2)(e)).ToArray()
+      );
+    return rig;
+  }
+
+  /// <summary>Fails when the entities an action's context saw spawn are not merged back into the
+  /// case's context, which a later step then gives again.</summary>
+  [Fact]
+  public void An_item_a_during_action_sees_spawn_is_marked_seen_on_the_cases_context() {
+    var spawned = new List<Entity>();
+    Rig rig = Packed(_folder, spawned, out EntityItem flint);
+    rig.Begin();
+    spawned.Add(flint);
+    rig.Fires(3);
+    Assert.Contains(7L, rig.Fixture.Context.SpawnsSeen);
+    Assert.Equal(1, rig.Fixture.Context.Pack!.Held("game:flint"));
+  }
+
+  /// <summary>Fails when an action's context starts without the entities the case's context has
+  /// seen, which gives an item spawned before the action a second time.</summary>
+  [Fact]
+  public void An_item_the_case_has_given_is_not_given_again_by_a_during_action() {
+    var spawned = new List<Entity>();
+    Rig rig = Packed(_folder, spawned, out EntityItem flint);
+    spawned.Add(flint);
+    rig.Begin();
+    Assert.Equal(1, rig.Fixture.Context.Pack!.Held("game:flint"));
+    rig.Fires(3);
+    Assert.Equal(1, rig.Fixture.Context.Pack.Held("game:flint"));
   }
 }

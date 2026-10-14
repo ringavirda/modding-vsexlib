@@ -1,11 +1,14 @@
 {
   "setup": "live-reader",
-  "description": "A twin-tub blower with a run of three plated pipe cells and open ends, the first beside its origin cell.",
+  "description": "A twin-tub blower with a run of three plated pipe cells and open ends, the first beside its origin cell, and a second blower with no run.",
   "mods": ["platedpipes", "twintubblower"],
+  "config": { "twintubblower": { "TwinTubBlowerMaxSpeed": 1.2 } },
   "layout": {
     "legend": {
       "B": { "id": "blower", "code": "twintubblower:blower-twintubblower-n" },
       "b": { "cells": "blower" },
+      "C": { "id": "blower2", "code": "twintubblower:blower-twintubblower-n" },
+      "c": { "cells": "blower2" },
       "P": {
         "run": "main",
         "code": "platedpipes:pipe-plated-straight-we",
@@ -19,8 +22,8 @@
       "o": { "open": true }
     },
     "layers": {
-      "2": ["b", "b", "b"],
-      "1": ["b", "b", "BoPPPo"]
+      "2": ["b", "b", "b", "c", "c", "c"],
+      "1": ["b", "b", "BoPPPo", "c", "c", "C"]
     },
     "origin": [0, -2]
   },
@@ -64,6 +67,42 @@
           "speed": { "tree": "blowerSpeed", "unit": "rad/s" }
         }
       }
+    }
+  },
+  "checks": [
+    {
+      "id": "no-overspeed",
+      "says": "the blower never turns past its default maximum",
+      "never": { "series": "blower.speed", "min": 1.5 }
+    },
+    {
+      "id": "idle-at-the-end",
+      "says": "the blower is idle through the steady window",
+      "window": "steady",
+      "always": { "series": "blower.state", "equals": "idle" }
+    },
+    {
+      "id": "half-speed-cap",
+      "says": "the blower never turns past half speed, judged in the drawn tick order only",
+      "orders": "drawn",
+      "always": { "series": "blower.speed", "max": 0.5 }
+    },
+    {
+      "id": "config-holds",
+      "says": "the case's config sets the blower's maximum speed",
+      "always": {
+        "static": "TwinTubBlower.TwinTubBlowerValues.TwinTubBlowerMaxSpeed",
+        "min": 1.19,
+        "max": 1.21
+      }
+    }
+  ],
+  "tickOrders": ["blower", "blower2"],
+  "variants": {
+    "stock-speed": {
+      "config": { "twintubblower": { "TwinTubBlowerMaxSpeed": 1.5 } },
+      "seconds": 24,
+      "fails": "config-holds"
     }
   }
 }

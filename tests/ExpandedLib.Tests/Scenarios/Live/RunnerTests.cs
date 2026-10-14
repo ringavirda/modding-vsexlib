@@ -1,8 +1,10 @@
 using System;
 using System.IO;
 using System.Linq;
+using ExpandedLib.Config;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
+using ExpandedLib.Tests.Setups;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -13,6 +15,7 @@ using Xunit;
 namespace ExpandedLib.Tests.Scenarios.Live;
 
 /// <summary>The runner's own bookkeeping around a run, over a substitute server.</summary>
+[Collection("Setups")]
 public class RunnerTests {
   private static IServerEventAPI Finished(bool keep) {
     var api = Substitute.For<ICoreServerAPI>();
@@ -86,12 +89,13 @@ public class RunnerTests {
       IServerPlayer? chat = null,
       PlotAllocator? plots = null,
       ClimateHold? climate = null,
-      PlayerStart? player = null
+      PlayerStart? player = null,
+      bool keep = false
     ) =>
       new(
         Api,
         names,
-        false,
+        keep,
         chat,
         plots,
         climate,
@@ -267,6 +271,84 @@ public class RunnerTests {
     );
     run.Tick(1);
     run.Events.Received(1).UnregisterGameTickListener(2);
+  }
+
+  private const string RunnerMod = "runnerconfigmod";
+
+  private static ExConfigRegister<CaseConfig> ConfigStore() {
+    var store = new ExConfigRegister<CaseConfig>(
+      "runnerconfig.json",
+      RunnerMod
+    );
+    ExConfigProfiles.Register(store);
+    return store;
+  }
+
+  private static ScenarioRunner StartConfigured(
+    Run run,
+    out Func<Action?> loaded
+  ) {
+    run.Write(
+      "exlib/configured",
+      $$"""
+      { "setup": "configured", "description": "a case", "mods": [], "seconds": 6,
+        "config": { "{{RunnerMod}}": { "Level": 7 } },
+        "record": { "machines": {} }, "steps": [] }
+      """
+    );
+    Action? onLoaded = null;
+    run.Api.WorldManager.When(m =>
+        m.LoadChunkColumnPriority(
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<ChunkLoadOptions>()
+        )
+      )
+      .Do(call => onLoaded = call.Arg<ChunkLoadOptions>().OnLoaded);
+    loaded = () => onLoaded;
+    ScenarioRunner runner = run.Start(["exlib/configured"], keep: true);
+    run.Tick(2);
+    return runner;
+  }
+
+  /// <summary>Fails when the case's config is not applied before its steps (Apply not called), or
+  /// is left in the register after a passed case (Restore left out of EndCase).</summary>
+  [Fact]
+  public void A_passed_case_runs_with_its_config_and_sets_the_register_back() {
+    using var run = new Run();
+    ExConfigRegister<CaseConfig> store = ConfigStore();
+    ScenarioRunner runner = StartConfigured(run, out Func<Action?> loaded);
+    loaded()!();
+    long now = 0;
+    run.Tick(1, now += 500);
+    Assert.Equal(7, store.Config.Level);
+    for (int i = 0; i < 40 && runner.Active; i++)
+      run.Tick(1, now += 500);
+    Assert.False(runner.Active);
+    Assert.Contains(
+      "[scenario] done: 1 case(s) run, 1 passed, 0 failed.",
+      run.Lines
+    );
+    Assert.Equal(1, store.Config.Level);
+  }
+
+  /// <summary>Fails when an abandoned case leaves its config in the register (Restore left out of
+  /// Abandon).</summary>
+  [Fact]
+  public void An_abandoned_case_sets_the_register_back() {
+    using var run = new Run();
+    ExConfigRegister<CaseConfig> store = ConfigStore();
+    StartConfigured(run, out Func<Action?> loaded);
+    loaded()!();
+    run.Tick(1);
+    Assert.Equal(7, store.Config.Level);
+    run.Api.World.ElapsedMilliseconds.Returns<long>(_ =>
+      throw new InvalidOperationException("clock lost")
+    );
+    run.Tick(1);
+    Assert.Equal(1, store.Config.Level);
   }
 
   /// <summary>Fails when the chat filter lets the run or error lines through (V100) or drops the
