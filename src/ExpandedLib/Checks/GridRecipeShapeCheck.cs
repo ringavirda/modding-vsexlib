@@ -30,9 +30,22 @@ public static class GridRecipeShapeCheck {
   /// unplaced key, keyless letter, pattern not filling its grid and oversized grid; no errors when
   /// none. The size bound is the largest grid declared for <paramref name="domain"/> with
   /// <see cref="ExlibChecks.CraftingGrid"/>, 3x3 when none.</returns>
-  public static CheckResult Run(ICheckSource source, string domain) {
+  public static CheckResult Run(ICheckSource source, string domain) =>
+    Run(source, domain, ExlibChecks.Grids(domain));
+
+  /// <summary>Runs the check with <paramref name="grids"/> as the grids held: the hand grid, then the
+  /// larger ones smallest first, as <see cref="ExlibChecks.Ordered"/> returns them.</summary>
+  internal static CheckResult Run(
+    ICheckSource source,
+    string domain,
+    IReadOnlyList<ExlibChecks.Grid> grids
+  ) {
     var errors = new List<string>();
-    int bound = ExlibChecks.Grids(domain).Max(g => g.Size);
+    ExlibChecks.Grid bound = grids.MaxBy(g => g.Size)!;
+    string limit =
+      bound == ExlibChecks.Hand
+        ? $"{bound.Size}x{bound.Size}"
+        : $"the {bound.Size}x{bound.Size} grid of {bound.Station}";
     foreach (GridEntry recipe in Recipes(source, domain)) {
       foreach (
         string key in recipe.Ingredients.Keys.Where(k =>
@@ -50,10 +63,10 @@ public static class GridRecipeShapeCheck {
           $"{recipe.Where}: pattern {recipe.RawPattern} has {recipe.Cells.Count} slots, "
             + $"not {recipe.Width}x{recipe.Height}"
         );
-      if (recipe.Width > bound || recipe.Height > bound)
+      if (recipe.Width > bound.Size || recipe.Height > bound.Size)
         errors.Add(
           $"{recipe.Where}: grid {recipe.Width}x{recipe.Height} is larger than "
-            + $"{bound}x{bound}"
+            + limit
         );
     }
     return new CheckResult("GridRecipeShape", domain, errors);

@@ -10,8 +10,8 @@ namespace ExpandedLib.Tests;
 /// <summary><see cref="ExlibChecks.CraftingGrid"/> and the grid checks that read it: a recipe up
 /// to the declared size is accepted, and two recipes are held against each other in every grid
 /// both fit in.</summary>
-public sealed class CraftingGridTests : IDisposable {
-  public CraftingGridTests() {
+public sealed class GridRecipeGridTests : IDisposable {
+  public GridRecipeGridTests() {
     TestModDomain.Register();
     ExlibChecks.ClearDeclarations();
   }
@@ -103,8 +103,22 @@ public sealed class CraftingGridTests : IDisposable {
 
     ExlibChecks.CraftingGrid("stub", 4, Station);
     Assert.Equal(
-      [$"{File}#0 (member): grid 5x5 is larger than 4x4"],
+      [$"{File}#0 (member): grid 5x5 is larger than the 4x4 grid of {Station}"],
       Shape(Member("member"))
+    );
+  }
+
+  // Fails when the shape check bounds a recipe by the first larger grid declared rather than the
+  // largest, or refuses it without naming that grid.
+  [Fact]
+  public void A_recipe_is_bounded_by_the_largest_grid_the_domain_declares() {
+    ExlibChecks.CraftingGrid("stub", 7, "the mill");
+    ExlibChecks.CraftingGrid("stub", 5, Station);
+
+    Assert.Empty(Shape(Recipe("seven", Cells(7, 7, 0), 7, 7)));
+    Assert.Equal(
+      [$"{File}#0 (eight): grid 8x8 is larger than the 7x7 grid of the mill"],
+      Shape(Recipe("eight", Cells(8, 8, 0), 8, 8))
     );
   }
 

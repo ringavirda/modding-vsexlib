@@ -43,7 +43,16 @@ public static class GridRecipeCollisionCheck {
   /// per colliding pair; no errors when none. A pair across two domains is reported in the run
   /// of each. Pairs are judged in the hand grid and every grid any domain declared with
   /// <see cref="ExlibChecks.CraftingGrid"/>, so the result depends on those declarations.</returns>
-  public static CheckResult Run(ICheckSource source, string domain) {
+  public static CheckResult Run(ICheckSource source, string domain) =>
+    Run(source, domain, ExlibChecks.AllGrids());
+
+  /// <summary>Runs the check judging pairs in <paramref name="grids"/>: the hand grid, then the
+  /// larger ones smallest first, as <see cref="ExlibChecks.Ordered"/> returns them.</summary>
+  internal static CheckResult Run(
+    ICheckSource source,
+    string domain,
+    IReadOnlyList<ExlibChecks.Grid> grids
+  ) {
     List<Craft> own = [.. Crafts(source, domain)];
     List<Craft> others =
     [
@@ -57,7 +66,7 @@ public static class GridRecipeCollisionCheck {
       domain,
       own,
       others,
-      ExlibChecks.AllGrids(),
+      grids,
       withinOwn: true
     );
   }
@@ -91,7 +100,7 @@ public static class GridRecipeCollisionCheck {
             string line =
               $"{own[i].Where} and {other.Where} match the same input"
               + (
-                grid == ExlibChecks.HandGrid
+                grid == ExlibChecks.Hand
                   ? ""
                   : $" in the {grid.Size}x{grid.Size} grid of {grid.Station}"
               );

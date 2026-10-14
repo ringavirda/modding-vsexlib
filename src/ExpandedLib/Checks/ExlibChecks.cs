@@ -101,12 +101,12 @@ public static class ExlibChecks {
   /// <summary>One crafting grid a mod declared with <see cref="CraftingGrid"/>.</summary>
   private sealed record DeclaredGrid(string Domain, int Size, string Station);
 
-  /// <summary>A crafting grid grid recipes are matched in: <paramref name="Size"/> slots wide and
+  /// <summary>A crafting grid that grid recipes are matched in: <paramref name="Size"/> slots wide and
   /// high, on <paramref name="Station"/>.</summary>
   internal sealed record Grid(int Size, string Station);
 
   /// <summary>The hand crafting grid every domain's recipes are crafted in.</summary>
-  internal static readonly Grid HandGrid = new(3, "hand");
+  internal static readonly Grid Hand = new(GridRecipeShapeCheck.GridSize, "hand");
 
   /// <summary>One block a mod declared with <see cref="Runs"/>.</summary>
   internal sealed record Runner(
@@ -316,8 +316,8 @@ public static class ExlibChecks {
   /// <param name="domain">The declaring mod's domain, whose recipes the grid bounds.</param>
   /// <param name="size">The grid's width and height in slots; at least 1. A size of 3 or less
   /// adds nothing to the hand grid.</param>
-  /// <param name="station">The block that crafts in it, named when a collision in the grid is
-  /// reported.</param>
+  /// <param name="station">The station's name as a finding reads, e.g. <c>"the workbench"</c>: a
+  /// refusal or collision in the grid says it is in the grid <c>of</c> that name.</param>
   /// <exception cref="ArgumentException"><paramref name="domain"/> or <paramref
   /// name="station"/> is null or empty.</exception>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="size"/> is below 1.</exception>
@@ -344,26 +344,17 @@ public static class ExlibChecks {
   /// <summary>The grids <paramref name="domain"/>'s recipes are crafted in: the hand grid, then
   /// every larger one declared for it, smallest first.</summary>
   internal static IReadOnlyList<Grid> Grids(string domain) =>
-    [
-      HandGrid,
-      .. _grids
-        .Where(g => g.Domain == domain && g.Size > HandGrid.Size)
-        .OrderBy(g => g.Size)
-        .Select(g => new Grid(g.Size, g.Station))
-        .Distinct(),
-    ];
+    Ordered(_grids.Where(g => g.Domain == domain).Select(g => new Grid(g.Size, g.Station)));
 
   /// <summary>The grids any domain declared, for the collision checks: the hand grid, then every
   /// larger declared one, smallest first.</summary>
   internal static IReadOnlyList<Grid> AllGrids() =>
-    [
-      HandGrid,
-      .. _grids
-        .Where(g => g.Size > HandGrid.Size)
-        .OrderBy(g => g.Size)
-        .Select(g => new Grid(g.Size, g.Station))
-        .Distinct(),
-    ];
+    Ordered(_grids.Select(g => new Grid(g.Size, g.Station)));
+
+  /// <summary>The hand grid, then each of <paramref name="grids"/> larger than it once, smallest
+  /// first.</summary>
+  internal static IReadOnlyList<Grid> Ordered(IEnumerable<Grid> grids) =>
+    [Hand, .. grids.Where(g => g.Size > Hand.Size).Distinct().OrderBy(g => g.Size)];
 
   /// <summary>Every <see cref="Produces"/> declaration of the current world, in call
   /// order.</summary>

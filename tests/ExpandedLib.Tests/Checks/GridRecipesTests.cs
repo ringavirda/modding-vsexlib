@@ -62,6 +62,27 @@ public class GridRecipesTests {
         : [];
   }
 
+  private const string Wide = "plantedwide";
+
+  /// <summary>Declares a 5 x 5 recipe only under <see cref="Wide"/>, which no hand grid holds.</summary>
+  private sealed class WideRecipes : IExRecipeDefProvider {
+    public static IEnumerable<ExRecipeDef> Definitions(string domain) =>
+      domain == Wide
+        ?
+        [
+          ExRecipeDef
+            .Create(domain, "grid", "wide")
+            .Grid(g =>
+              g.Name("member")
+                .Pattern("P________________________")
+                .Size(5, 5)
+                .Ingredient("P", i => i.Item("game:plank-oak"))
+                .OutputItem("game:stick")
+            ),
+        ]
+        : [];
+  }
+
   /// <summary>Declares its oriented tap only under <see cref="Planted"/>.</summary>
   private sealed class PlantedTap : IExBlockDefProvider {
     public static IEnumerable<ExBlockDef> Definitions(string domain) =>
@@ -97,6 +118,26 @@ public class GridRecipesTests {
           + "plantedgrid:tap-n is not the creative default plantedgrid:tap-s",
       ],
       result.Findings
+    );
+  }
+
+  // Fails when Check ignores its grids, so a 5 x 5 recipe is refused with them given.
+  [Fact]
+  public void Grids_given_to_Check_hold_its_recipes_for_that_run_alone() {
+    GridRecipes.Result held = GridRecipes.Check(
+      Wide,
+      [(5, "the workbench")],
+      (Wide, Here)
+    );
+    Assert.Empty(held.Findings);
+    Assert.Equal(1, held.Recipes);
+
+    GridRecipes.Result bare = GridRecipes.Check(Wide, null, (Wide, Here));
+    Assert.Equal(
+      [
+        "GridRecipeShape: plantedwide:recipes/grid/wide.json#0 (member): grid 5x5 is larger than 3x3",
+      ],
+      bare.Findings
     );
   }
 
