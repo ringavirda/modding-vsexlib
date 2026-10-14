@@ -86,8 +86,10 @@ internal sealed class SetupPack {
   public Vintagestory.API.Common.ItemStack? Laid(
     Vintagestory.API.Common.IWorldAccessor world,
     CraftInput input
-  ) {
-    foreach (string key in HeldKeys) {
+  )
+  {
+    foreach (string key in HeldKeys)
+    {
       var code = new Vintagestory.API.Common.AssetLocation(key);
       Vintagestory.API.Common.CollectibleObject? item =
         (Vintagestory.API.Common.CollectibleObject?)world.GetItem(code)
