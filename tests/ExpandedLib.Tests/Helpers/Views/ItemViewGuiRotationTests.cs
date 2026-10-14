@@ -15,7 +15,7 @@ namespace ExpandedLib.Tests;
 /// <summary>A declared gui rotation: the slot view takes it and recomputes its origin and scale, on the views
 /// fixture mod.</summary>
 [Collection("ItemViews")]
-public class ViewGuiRotationTests {
+public class ItemViewGuiRotationTests {
   private static string Fixture =>
     Path.Combine(
       RepoPaths.Root,

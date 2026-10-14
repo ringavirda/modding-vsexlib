@@ -379,9 +379,9 @@ public sealed class ExItemDef : IExDef {
   /// the item's views are laid out as, and the end that works.</summary>
   /// <param name="kind">Written as its lower-case name; <see cref="ItemViewKind.None"/> keeps the game's defaults.</param>
   /// <param name="tip">The working end as a sign and an axis letter in the shape's frame
-  /// ("+y"), or null to take the end the drawn elements give; read when the views are computed, not here. A
-  /// tip that is not a sign and one of x, y, z is logged as an error naming the item at load, and the item keeps
-  /// the game's views.</param>
+  /// ("+y"), or null to take the end the drawn elements give for a longtool or tool and to leave a lump,
+  /// bar, plate or bulk unoriented; read when the views are computed, not here. A tip that is not a sign
+  /// and one of x, y, z is logged as an error naming the item at load, and the item keeps the game's views.</param>
   /// <param name="guiRotation">The slot rotation in degrees about x, y and z, or null for the kind's. The slot
   /// origin and scale are computed for it, as for the kind's own; the hand and ground views are unchanged, and
   /// an authored <see cref="GuiTransform(object)"/> still wins.</param>

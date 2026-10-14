@@ -1113,6 +1113,7 @@ internal static class ViewGates {
       c.HeldTpHitAnimation,
       c.HeldTpUseAnimation,
       c.Attributes?["itemViews"]?["kind"]?.AsString(),
+      c.Attributes?["itemViews"]?["tip"]?.AsString(),
       c.Tool,
       c is ItemWorkItem
     );

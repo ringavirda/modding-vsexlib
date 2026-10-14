@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ExpandedLib.Helpers;
@@ -12,7 +13,7 @@ namespace ExpandedLib.Tests;
 
 /// <summary>A declared tip held up in every kind, and G14 hand.tip, on the views fixture mod.</summary>
 [Collection("ItemViews")]
-public class ViewTipTests {
+public class ItemViewTipTests {
   private static string Fixture =>
     Path.Combine(
       RepoPaths.Root,
@@ -181,6 +182,22 @@ public class ViewTipTests {
         code
       );
     }
+  }
+
+  // Fails when KeyOf leaves the tip out: the tipless twin then represents declaredtip and G14 is never read for it.
+  [Fact]
+  public void A_tipped_item_grouped_with_a_tipless_twin_is_judged() {
+    IReadOnlyList<ViewGroup> groups = ViewGates.Groups(World, "viewsfixture");
+    ViewGroup tipped = groups.Single(g =>
+      g.Codes.Contains("viewsfixture:authoredtipped")
+    );
+    ViewGroup twin = groups.Single(g =>
+      g.Codes.Contains("viewsfixture:authoredplain")
+    );
+    Assert.DoesNotContain("viewsfixture:authoredplain", tipped.Codes);
+    GateReading g14 = Tip(tipped);
+    Assert.True(g14.Pass, g14.Detail);
+    Assert.DoesNotContain(ViewGates.Rules(World, twin), r => r.Gate == "G14");
   }
 
   // Fails when a tipped longtool or carrier tool leaves its kind's own hold, as when it takes the tip grasp.
