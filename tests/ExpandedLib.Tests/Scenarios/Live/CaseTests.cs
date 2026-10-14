@@ -109,6 +109,26 @@ public class CaseTests {
       )
     );
 
+  /// <summary>Fails when a pack that starts from another stage is read, since the live runner has
+  /// no stage files to start it from.</summary>
+  [Fact]
+  public void A_pack_after_another_stage_is_refused() =>
+    Assert.Contains(
+      "not read by the live runner",
+      Refused(
+        Place,
+        """{ pack: { scope: "all", after: { "iiex/setups/play-stations": 1 } } }"""
+      )
+    );
+
+  /// <summary>Fails when a pack without an <c>after</c> is refused, since a stage that starts from
+  /// its gathered stacks alone must load.</summary>
+  [Fact]
+  public void A_pack_without_an_after_is_read() =>
+    Assert.NotNull(
+      LiveFixture.Case(Place, """{ pack: { scope: "all", gathered: { "game:stone": 1 } } }""").Model.Pack
+    );
+
   /// <summary>Fails when a step the live runner cannot run is accepted (V29).</summary>
   [Fact]
   public void A_step_kind_the_live_runner_has_no_step_for_is_refused() =>

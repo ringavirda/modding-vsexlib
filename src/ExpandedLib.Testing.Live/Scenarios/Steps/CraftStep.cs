@@ -70,6 +70,7 @@ internal sealed class CraftStep : ScenarioStep {
         Suspect.Scenario
       );
 
+    DrawBill(ctx, order, with, times);
     var made = new List<ItemStack>();
     string how = "";
     try {
@@ -95,9 +96,28 @@ internal sealed class CraftStep : ScenarioStep {
       throw new StepFailure(
         $"{station} made {string.Join(", ", made.Select(s => $"{s.StackSize} {s.Collectible.Code}"))}, not {expected} {wanted}."
       );
+    foreach (ItemStack stack in made)
+      PackLedger.Give(ctx, stack);
     Stow(player, made);
     report.Value = $"{expected} x {wanted} at {station}{how}";
     yield break;
+  }
+
+  private static void DrawBill(
+    ScenarioContext ctx,
+    CraftOrder order,
+    JObject? with,
+    int times
+  ) {
+    if (ctx.Pack == null)
+      return;
+    foreach (
+      var bill in order
+        .Inputs.Where(i => !i.Ingredient.IsTool)
+        .Select(i => Laid(ctx, i, with))
+        .GroupBy(s => s.Collectible.Code.ToString())
+    )
+      PackLedger.Draw(ctx, bill.Key, bill.Sum(s => s.StackSize) * times);
   }
 
   private static string StationsMaking(

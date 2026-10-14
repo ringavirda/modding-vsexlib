@@ -80,6 +80,8 @@ internal sealed class InteractStep : ScenarioStep {
         (float?)hand["temperature"]
       )
       : null;
+    if (stack != null)
+      PackLedger.Draw(ctx, stack.Collectible.Code.ToString(), stack.StackSize);
     string[] keys = KeyNames(o["keys"]);
     double seconds = (double?)o["seconds"] ?? 0;
     ctx.Touched.Add(local.Copy());
@@ -109,6 +111,7 @@ internal sealed class InteractStep : ScenarioStep {
         }
         player.UseStop(selection, ctx.Now - started);
       }
+      PackLedger.Give(ctx, player.Player.InventoryManager.ActiveHotbarSlot.Itemstack);
       report.Value = $"hand: {player.HandText()}";
       if (o["returns"] is { } returns && (bool)returns != answered)
         throw new StepFailure(

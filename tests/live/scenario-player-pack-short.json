@@ -1,0 +1,25 @@
+{
+  "setup": "scenario-player-pack-short",
+  "description": "The pack holds three iron ingots, so the window put of four fails at its step, and the chest it placed first stands.",
+  "mods": [],
+  "pack": {
+    "scope": "all",
+    "gathered": {
+      "game:chest-east": 1,
+      "game:ingot-iron": 3
+    }
+  },
+  "steps": [
+    { "place": { "code": "game:chest-east", "at": [0, 0, 0] } },
+    {
+      "window": {
+        "at": [0, 0, 0],
+        "open": true,
+        "put": { "slot": 0, "stack": "game:ingot-iron", "count": 4 },
+        "close": true
+      }
+    }
+  ],
+  "seconds": 8,
+  "record": {}
+}

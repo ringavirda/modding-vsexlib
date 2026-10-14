@@ -93,6 +93,7 @@ internal sealed class WindowStep : ScenarioStep {
         done.Add(Put(ctx, who, be, put));
       if (o["take"] is JObject take)
         done.Add(Take(who, be, TakeSlot(take)));
+        PackLedger.Give(ctx, who.InventoryManager.ActiveHotbarSlot.Itemstack);
       if (o["press"] is JObject press) {
         int id = ButtonId((int)press["id"]!);
         byte[]? data = press["data"] is JArray values ? Data(values) : null;
@@ -122,6 +123,7 @@ internal sealed class WindowStep : ScenarioStep {
       (int?)put["count"] ?? 1
     );
     int wanted = stack.StackSize;
+    PackLedger.Draw(ctx, stack.Collectible.Code.ToString(), wanted);
     ItemSlot hand = who.InventoryManager.ActiveHotbarSlot;
     hand.Itemstack = stack;
     int moved = 0;

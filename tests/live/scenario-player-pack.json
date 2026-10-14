@@ -1,0 +1,38 @@
+{
+  "setup": "scenario-player-pack",
+  "description": "The scenario player places a chest from the pack, puts four iron ingots in it and takes them back, then crafts two plated pipes from the plate and strips the pack holds.",
+  "mods": [],
+  "pack": {
+    "scope": "all",
+    "gathered": {
+      "game:chest-east": 1,
+      "game:ingot-iron": 4,
+      "game:metalplate-iron": 1,
+      "game:metalnailsandstrips-iron": 1,
+      "game:stick": 1
+    },
+    "ends": {
+      "stacks": { "game:ingot-iron": 4, "game:stick": 1, "platedpipes:pipe-plated-straight-ns": 2 },
+      "standing": [ "game:chest-east" ]
+    }
+  },
+  "steps": [
+    { "place": { "code": "game:chest-east", "at": [0, 0, 0] } },
+    {
+      "window": {
+        "at": [0, 0, 0],
+        "open": true,
+        "put": { "slot": 0, "stack": "game:ingot-iron", "count": 4 },
+        "close": true
+      }
+    },
+    {
+      "window": { "at": [0, 0, 0], "open": true, "take": { "slot": 0 }, "close": true },
+      "draws": { "game:stick": 1 },
+      "gives": { "game:stick": 1 }
+    },
+    { "craft": { "output": "platedpipes:pipe-plated-straight-ns" } }
+  ],
+  "seconds": 8,
+  "record": {}
+}

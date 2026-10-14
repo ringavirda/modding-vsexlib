@@ -32,6 +32,12 @@ internal sealed class ScenarioContext(
   /// <summary>The scenario player the steps that act as a player use; null when the run has none.</summary>
   public ScenarioPlayer? Player { get; set; }
 
+  /// <summary>The pack the case draws from and gives to; null when the case has no pack.</summary>
+  public SetupPack? Pack { get; set; }
+
+  /// <summary>The item entities already given to the pack, by entity id.</summary>
+  public HashSet<long> SpawnsSeen { get; } = [];
+
   /// <summary>Plot-local cells a step placed; <c>complete</c> never replaces one.</summary>
   public HashSet<BlockPos> Placed { get; } = [];
 

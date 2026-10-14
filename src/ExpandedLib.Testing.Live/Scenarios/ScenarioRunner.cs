@@ -211,6 +211,9 @@ internal sealed class ScenarioRunner {
       Path.GetFileName(File(_name))
     ) {
       Player = _player,
+      Pack = scenario.Model.Pack == null
+        ? null
+        : SetupPack.Start(scenario.Model, _ => null),
     };
     Emit(ScenarioOutput.Case(_name, plot.Origin));
     _caseRun = new ScenarioCaseRun(scenario, _ctx);

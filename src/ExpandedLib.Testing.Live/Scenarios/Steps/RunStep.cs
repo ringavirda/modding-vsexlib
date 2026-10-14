@@ -148,6 +148,7 @@ internal sealed class RunStep : ScenarioStep {
     List<BlockFacing> faces = ClickFaces(cells);
     for (int i = 0; i < cells.Count; i++) {
       BlockPos cell = cells[i];
+      PackLedger.DrawBlock(ctx, block.Code.ToString(), cell.ToString());
       if (
         !player.Place(
           block,

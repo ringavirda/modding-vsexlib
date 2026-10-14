@@ -65,6 +65,12 @@ internal sealed class ScenarioCaseRun(
           )
         );
     } else {
+      try {
+        PackLedger.Finish(ctx);
+      } catch (StepFailure e) {
+        failedAt = steps.Count + 1;
+        failure = Report(failedAt, "pack", "ends", e.Message);
+      }
       double end = ctx.Now + scenario.Settle;
       while (failure == null) {
         try {

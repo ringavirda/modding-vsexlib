@@ -48,6 +48,7 @@ internal sealed class InsertStep : ScenarioStep {
       throw new StepFailure(
         $"{stack.Collectible.Code} fits no slot of the inventory."
       );
+    PackLedger.Draw(ctx, stack.Collectible.Code.ToString(), count);
     int moved = source.TryPutInto(ctx.World, target, count);
     if (moved < count)
       throw new StepFailure(

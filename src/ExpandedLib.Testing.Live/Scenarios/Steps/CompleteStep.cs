@@ -62,6 +62,9 @@ internal sealed class CompleteStep : ScenarioStep {
     if (structure != null)
       foreach (bool wait in Raise(ctx, cell, structure, report))
         yield return wait;
+    if (construction != null) {
+      PackLedger.DrawStages(ctx, construction.Construction, cell.ToString());
+    }
     if (construction != null)
       foreach (
         bool wait in ConstructionWalk.Walk(
@@ -99,6 +102,7 @@ internal sealed class CompleteStep : ScenarioStep {
       )
         continue;
       Block block = Choose(ctx, wanted.Wanted);
+      PackLedger.DrawBlock(ctx, WantedCode(wanted.Wanted).ToString(), local.ToString());
       ctx.SetBlock(block, local);
       chosen.Add(block.Code.ToString());
     }
@@ -127,11 +131,11 @@ internal sealed class CompleteStep : ScenarioStep {
     }
   }
 
+  private static AssetLocation WantedCode(AssetLocation wanted) =>
+    new(wanted.Domain, ExWildcards.FirstAlternative(wanted.Path));
+
   private static Block Choose(ScenarioContext ctx, AssetLocation wanted) {
-    var code = new AssetLocation(
-      wanted.Domain,
-      ExWildcards.FirstAlternative(wanted.Path)
-    );
+    AssetLocation code = WantedCode(wanted);
     Block? block = code.Path.Contains('*')
       ? ctx.World.SearchBlocks(code).FirstOrDefault(b => b.Id != 0)
       : ctx.World.GetBlock(code);

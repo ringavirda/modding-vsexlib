@@ -55,6 +55,7 @@ internal sealed class PlaceStep : ScenarioStep {
           $"{FailureDetail.Cell(cell)} holds {ctx.Setup.BlockAt(cell).Code}, not air.",
           Suspect.Scenario
         );
+    PackLedger.DrawBlock(ctx, code, local.ToString());
     ctx.SetBlock(block, local);
     foreach (BlockPos cell in cells)
       ctx.Placed.Add(cell.Copy());
