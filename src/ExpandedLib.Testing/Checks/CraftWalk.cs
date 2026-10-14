@@ -30,7 +30,11 @@ public static class CraftWalk
   /// <param name="Recipe">The recipe's name.</param>
   /// <param name="Station">The code of the placed block it was crafted at, or
   /// <see cref="HandGridName"/>.</param>
-  public sealed record CraftedEdge(string Output, string Recipe, string Station);
+  public sealed record CraftedEdge(
+    string Output,
+    string Recipe,
+    string Station
+  );
 
   /// <summary>What one walk read and found.</summary>
   /// <param name="Summary">One line: <c>craft walk &lt;domain&gt;: K kinds, R recipes fired (E executed,
