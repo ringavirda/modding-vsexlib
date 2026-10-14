@@ -13,13 +13,21 @@ namespace ExpandedLib.Testing;
 /// </summary>
 public sealed class Scene {
   /// <summary>The underlying in-memory world (store, graph manager, fake API).</summary>
-  public TestWorld World { get; } = new();
+  public TestWorld World { get; }
 
   private readonly List<(BlockPos pos, string networkType)> _pendingNodes =
     new();
   private readonly List<(int first, int period, Action action)> _scheduled =
     new();
   private bool _built;
+
+  /// <summary>A scene over a fresh world.</summary>
+  public Scene()
+    : this(new()) { }
+
+  internal Scene(TestWorld world) {
+    World = world;
+  }
 
   /// <summary>The seconds <see cref="Step"/> has run, from 0; second <c>t</c>'s ticks are the ones
   /// that take the clock from <c>t</c> to <c>t + 1</c>.</summary>

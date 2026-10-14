@@ -56,19 +56,58 @@ public sealed partial class SetupScene
     for (int i = 0; i < times; i++)
       made.AddRange(
         entity == null
-          ? CraftInHand(step, order, with)
-          : CraftAt(step, entity, station, order, with)
+          ? CraftInHand(step.Path, order, with)
+          : CraftAt(step.Path, entity, station, order, with)
       );
+    Verify(step.Path, station, made, order, times);
+    Stow(made);
+  }
 
+  /// <summary>Crafts <paramref name="order"/> once at <paramref name="entity"/>, or in the hand
+  /// grid when it is null, and checks what came out against the order's product.</summary>
+  /// <param name="where">What a failure message names.</param>
+  /// <param name="entity">The placed station, or null for the hand grid.</param>
+  /// <param name="order">An order of the hand grid or of <paramref name="entity"/>.</param>
+  /// <param name="with">The collectible to lay for each input, by input name; null for the
+  /// ingredient's first loaded variant.</param>
+  /// <returns>The stacks the craft made.</returns>
+  /// <exception cref="InvalidOperationException">The matcher refuses the bill, the station takes
+  /// less than it is laid or yields nothing, or the product is not the order's.</exception>
+  internal IReadOnlyList<ItemStack> CraftOnce(
+    string where,
+    BlockEntity? entity,
+    CraftOrder order,
+    JObject? with
+  )
+  {
+    string station = entity == null ? "the hand grid" : $"{entity.Block.Code}";
+    List<ItemStack> made =
+    [
+      .. entity == null
+        ? CraftInHand(where, order, with)
+        : CraftAt(where, entity, station, order, with),
+    ];
+    Verify(where, station, made, order, 1);
+    return made;
+  }
+
+  private void Verify(
+    string where,
+    string station,
+    List<ItemStack> made,
+    CraftOrder order,
+    int times
+  )
+  {
+    AssetLocation wanted = order.Product.Collectible.Code;
     int expected = order.Product.StackSize * times;
     int count = made.Where(s => s.Collectible.Code.Equals(wanted))
       .Sum(s => s.StackSize);
     if (count != expected || made.Any(s => !s.Collectible.Code.Equals(wanted)))
       throw Fail(
-        step.Path,
+        where,
         $"{station} made {string.Join(", ", made.Select(s => $"{s.StackSize} {s.Collectible.Code}"))}, not {expected} {wanted}."
       );
-    Stow(made);
   }
 
   private string StationsMaking(AssetLocation wanted, string? recipe)
@@ -90,7 +129,7 @@ public sealed partial class SetupScene
   }
 
   private IEnumerable<ItemStack> CraftInHand(
-    SetupStep step,
+    string where,
     CraftOrder order,
     JObject? with
   )
@@ -104,10 +143,10 @@ public sealed partial class SetupScene
     ];
     _handGrid = grid;
     foreach (CraftInput input in order.Inputs)
-      grid[input.Slot].Itemstack = Laid(input, with, step.Path);
+      grid[input.Slot].Itemstack = Laid(input, with, where);
     if (!recipe.Matches(Player.Player, World.World, grid, HandGrid.Size))
       throw Fail(
-        step.Path,
+        where,
         $"the hand grid's matcher refuses the bill of {order.Recipe}."
       );
     var output = new DummySlot();
@@ -119,7 +158,7 @@ public sealed partial class SetupScene
   }
 
   private IEnumerable<ItemStack> CraftAt(
-    SetupStep step,
+    string where,
     BlockEntity entity,
     string station,
     CraftOrder order,
@@ -135,20 +174,20 @@ public sealed partial class SetupScene
       }
       catch (InvalidOperationException e)
       {
-        throw Fail(step.Path, e.Message);
+        throw Fail(where, e.Message);
       }
     }
 
     Verb(window.Open);
     foreach (CraftInput input in order.Inputs)
     {
-      ItemStack laid = Laid(input, with, step.Path);
+      ItemStack laid = Laid(input, with, where);
       Player.Hold(laid);
       int left = 0;
       Verb(() => left = window.Put(input.Slot));
       if (left < laid.StackSize)
         throw Fail(
-          step.Path,
+          where,
           $"slot {input.Slot} of {station} took {left} of the {laid.StackSize} {laid.Collectible.Code} laid for {input.Name}."
         );
     }
@@ -169,7 +208,7 @@ public sealed partial class SetupScene
     Verb(window.Close);
     if (taken.Count == 0)
       throw Fail(
-        step.Path,
+        where,
         $"the press of {order.Product.Collectible.Code} at {station} yielded nothing: the station refused."
       );
     return taken;

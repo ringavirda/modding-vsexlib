@@ -11,13 +11,14 @@ namespace ExpandedLib.Testing;
 /// <summary>Walks a mod's whole craft chain from the codes a player takes from the world: every
 /// creative-tab kind of a domain must be reached, and every recipe of the domain must be able to
 /// fire, round by round.</summary>
-/// <remarks>The walk starts from <see cref="GatheredSources"/> and the mod's kit, fires every
-/// edge whose needs are all reached, and repeats until nothing fires. The edges are the grid,
-/// smithing and clay forming recipes; the process jobs and route stopping points of each
-/// <c>ExlibChecks.Runs</c> block; the <c>ExlibChecks.Produces</c> declarations that name a block;
-/// and each construction, which waits on its <c>core:</c> code and on every stage's required
-/// stacks. Vanilla recipes are not walked: a <c>game:</c> code is reached only when it is gathered
-/// or in the kit.</remarks>
+/// <remarks>The walk starts from <see cref="GatheredSources"/> and the mod's kit and fires every
+/// edge whose needs are all reached: grid, smithing and clay forming recipes, process jobs and
+/// route stopping points, <c>ExlibChecks.Produces</c> declarations that name a block, and
+/// constructions. Vanilla recipes are not walked.
+/// <para>Each fired grid recipe is then crafted once, with the first wildcard variant reached before
+/// it fired: at the hand grid when it fits 3 x 3, else at the first placed
+/// <see cref="ExpandedLib.Machines.ICraftStation"/> whose orders hold it. The stations are one of
+/// each block of the domain with a block entity; the other edges are followed.</para></remarks>
 public static class CraftWalk
 {
   /// <summary>What one walk read and found.</summary>
@@ -81,6 +82,7 @@ public static class CraftWalk
 
     List<WalkEdge> edges = CraftWalkEdges.Read(world, domain, all);
     var fired = new bool[edges.Count];
+    var firedIn = new int[edges.Count];
     int rounds = 0;
     while (true)
     {
@@ -96,9 +98,20 @@ public static class CraftWalk
       foreach (int i in ready)
       {
         fired[i] = true;
+        firedIn[i] = rounds;
         reached.TryAdd(edges[i].Output, rounds);
       }
     }
+
+    bool[] executed = CraftWalkRuns.Execute(
+      world,
+      domain,
+      edges,
+      firedIn,
+      reached,
+      all,
+      found
+    );
 
     Dictionary<string, WalkNeed> undeclared = [];
     for (int i = 0; i < edges.Count; i++)
@@ -183,6 +196,7 @@ public static class CraftWalk
         .Select(k => $"{k} | known row matches no failure; remove it"),
     ];
     int count = fired.Count(f => f);
+    int ran = executed.Count(e => e);
     int trust = Enumerable
       .Range(0, edges.Count)
       .Count(i => fired[i] && edges[i].OnTrust);
@@ -190,7 +204,7 @@ public static class CraftWalk
       .Produced()
       .Count(d => d.Domain == domain && d.At == null);
     return new Result(
-      $"craft walk {domain}: {asked.Length} kinds, {count} recipes fired (0 executed, {count} followed), {inputless} undeclared, {trust} on trust, {failures.Length} failures",
+      $"craft walk {domain}: {asked.Length} kinds, {count} recipes fired ({ran} executed, {count - ran} followed), {inputless} undeclared, {trust} on trust, {failures.Length} failures",
       failures
     );
   }
