@@ -149,17 +149,18 @@ internal sealed class BreakStep : ScenarioStep {
     return wrong.Count == 0 ? null : string.Join("; ", wrong);
   }
 
-  private static List<EntityItem> ItemsAround(
-    ScenarioContext ctx,
-    BlockPos at
-  ) {
+  private static List<EntityItem> ItemsAround(ScenarioContext ctx, BlockPos at) {
     (BlockPos min, BlockPos max) = ctx.PlotBounds ?? (at, at);
     return
     [
       .. ctx
         .World.GetEntitiesInsideCuboid(
           new BlockPos(min.X - Margin, min.Y - Margin, min.Z - Margin),
-          new BlockPos(max.X + Margin + 1, max.Y + Margin + 1, max.Z + Margin + 1),
+          new BlockPos(
+            max.X + Margin + 1,
+            max.Y + Margin + 1,
+            max.Z + Margin + 1
+          ),
           e => e is EntityItem
         )
         .Cast<EntityItem>(),
@@ -214,14 +215,14 @@ internal sealed class BreakStep : ScenarioStep {
       declared = DeclaredDrops(ctx.World, at, null);
       ctx.World.BlockAccessor.BreakBlock(at, null);
     } else if (
-      !player.Break(
-        at,
-        stack,
-        p => DeclaredDrops(ctx.World, at, p),
-        out declared,
-        out string? refused
+        !player.Break(
+          at,
+          stack,
+          p => DeclaredDrops(ctx.World, at, p),
+          out declared,
+          out string? refused
+        )
       )
-    )
       throw new StepFailure(
         $"{block} at {FailureDetail.Cell(local)}: {refused}."
       );

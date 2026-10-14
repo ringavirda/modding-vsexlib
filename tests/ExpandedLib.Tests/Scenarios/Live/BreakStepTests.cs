@@ -144,12 +144,15 @@ public class BreakStepTests
       (new BlockPos(105, 51, 100), Spawned(1, new ItemStack(Flint, 1))),
     };
     block.Spawn = _ =>
-      present.Add((new BlockPos(108, 51, 100), Spawned(2, new ItemStack(Ore, 3))));
-    fixture.Test.World.GetEntitiesInsideCuboid(
-      Arg.Any<BlockPos>(),
-      Arg.Any<BlockPos>(),
-      Arg.Any<ActionConsumable<Entity>>()
-    )
+      present.Add(
+        (new BlockPos(108, 51, 100), Spawned(2, new ItemStack(Ore, 3)))
+      );
+    fixture
+      .Test.World.GetEntitiesInsideCuboid(
+        Arg.Any<BlockPos>(),
+        Arg.Any<BlockPos>(),
+        Arg.Any<ActionConsumable<Entity>>()
+      )
       .Returns(call =>
       {
         var min = call.ArgAt<BlockPos>(0);
@@ -179,7 +182,9 @@ public class BreakStepTests
 
     Assert.Equal(
       ["test:ore"],
-      fixture.Context.LastBreak!.Dropped.Select(d => d.Collectible.Code.ToString())
+      fixture.Context.LastBreak!.Dropped.Select(d =>
+        d.Collectible.Code.ToString()
+      )
     );
     Assert.Equal(3, fixture.Context.LastBreak.Dropped[0].StackSize);
   }
