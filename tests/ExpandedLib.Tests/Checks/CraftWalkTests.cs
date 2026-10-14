@@ -15,7 +15,9 @@ namespace ExpandedLib.Tests;
 
 // Crafts the recipes of a 1 x 1 input a press hands to the output slot, refusing the recipe in
 // Refused.
-internal sealed class WalkFixtureBench : BlockEntityMachineStation, ICraftStation
+internal sealed class WalkFixtureBench
+  : BlockEntityMachineStation,
+    ICraftStation
 {
   public const int Press = 1002;
 
@@ -41,7 +43,9 @@ internal sealed class WalkFixtureBench : BlockEntityMachineStation, ICraftStatio
           r.Name.ToString(),
           [
             .. r.ResolvedIngredients!.OfType<CraftingRecipeIngredient>()
-              .Select((ingredient, i) => new CraftInput(0, ingredient.Id, ingredient)),
+              .Select(
+                (ingredient, i) => new CraftInput(0, ingredient.Id, ingredient)
+              ),
           ],
           Press,
           Encoding.UTF8.GetBytes(r.Name.ToString()),
@@ -535,7 +539,9 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
       loaded =
       [
         .. probe
-          .World.Items.Where(i => i?.Code.Domain == "walk" && variants.Contains(i.Code.Path))
+          .World.Items.Where(i =>
+            i?.Code.Domain == "walk" && variants.Contains(i.Code.Path)
+          )
           .Select(i => i.Code.Path),
       ];
     using TestWorld world = WithBench(

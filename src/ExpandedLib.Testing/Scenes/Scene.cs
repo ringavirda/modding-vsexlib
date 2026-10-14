@@ -22,7 +22,8 @@ public sealed class Scene {
   private bool _built;
 
   /// <summary>A scene over a fresh world.</summary>
-  public Scene() : this(new()) { }
+  public Scene()
+    : this(new()) { }
 
   internal Scene(TestWorld world) {
     World = world;

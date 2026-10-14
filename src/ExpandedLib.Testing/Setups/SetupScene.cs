@@ -168,7 +168,11 @@ public sealed partial class SetupScene : IDisposable
   internal static SetupScene Over(TestWorld world, string name) =>
     new(
       SetupFile.Parse(
-        "{\"setup\": \"" + name + "\", \"description\": \"" + name + "\", \"mods\": [], \"steps\": [], \"seconds\": 10, \"record\": {}}",
+        "{\"setup\": \""
+          + name
+          + "\", \"description\": \""
+          + name
+          + "\", \"mods\": [], \"steps\": [], \"seconds\": 10, \"record\": {}}",
         name
       ),
       new Scene(world)

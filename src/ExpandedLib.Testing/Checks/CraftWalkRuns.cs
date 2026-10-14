@@ -66,8 +66,8 @@ internal static class CraftWalkRuns
       else
         foreach (Station station in stations)
           if (
-            station.Orders.FirstOrDefault(o => Holds(o, recipe, edge))
-            is { } held
+            station.Orders.FirstOrDefault(o => Holds(o, recipe, edge)) is
+            { } held
           )
           {
             order = held;
@@ -101,10 +101,17 @@ internal static class CraftWalkRuns
     return executed;
   }
 
-  private static bool Holds(CraftOrder order, GridRecipe recipe, WalkEdge edge) =>
+  private static bool Holds(
+    CraftOrder order,
+    GridRecipe recipe,
+    WalkEdge edge
+  ) =>
     order.Grid == recipe
-    || (order.Grid == null && order.Recipe == edge.Name
-      && order.Product.Collectible.Code.ToString() == edge.Output);
+    || (
+      order.Grid == null
+      && order.Recipe == edge.Name
+      && order.Product.Collectible.Code.ToString() == edge.Output
+    );
 
   // Places one of each block of the domain that has a block entity, a cell of its own apiece, and
   // keeps those whose entity is a craft station.
@@ -118,8 +125,7 @@ internal static class CraftWalkRuns
     var stations = new List<Station>();
     int n = 0;
     foreach (
-      Block block in all
-        .OfType<Block>()
+      Block block in all.OfType<Block>()
         .Where(b => b.Code.Domain == domain && b.EntityClass != null)
     )
     {
@@ -161,7 +167,9 @@ internal static class CraftWalkRuns
         continue;
       string? pick = CraftWalkEdges
         .Need(input.Ingredient, all, cache)
-        .Codes.FirstOrDefault(c => reached.TryGetValue(c, out int r) && r < round);
+        .Codes.FirstOrDefault(c =>
+          reached.TryGetValue(c, out int r) && r < round
+        );
       if (pick != null)
         with[input.Name] = pick;
     }
