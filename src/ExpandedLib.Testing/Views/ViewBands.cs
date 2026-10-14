@@ -96,7 +96,7 @@ internal static class ViewBands {
 
   private static readonly string[] BlockGates = [.. ItemGates, "G13"];
 
-  /// <summary>The reference sets. The spear set alone calibrates the longtool hand gates G7, G10 and G10fp. The lump set samples ingots and bits (solid) and made parts with gaps in their silhouette: hammer, arrow, blade and knife heads, gears, brackets, hubs and padlocks.</summary>
+  /// <summary>The reference sets. The spear set alone calibrates the longtool hand gates G7, G10 and G10fp. The ingot and bit lump set calibrates every gate but G3; the lump G3 set adds made parts with gaps in their silhouette (hammer, arrow, blade and knife heads, gears, brackets, hubs and padlocks) and calibrates G3 alone.</summary>
   internal static readonly IReadOnlyList<ReferenceSet> Sets =
   [
     new(
@@ -140,6 +140,13 @@ internal static class ViewBands {
     ),
     new(
       ItemViewKind.Lump,
+      ["ingot-", "metalbit-"],
+      false,
+      false,
+      ["G1", "G2", "G5", "G6", "G7"]
+    ),
+    new(
+      ItemViewKind.Lump,
       [
         "ingot-",
         "metalbit-",
@@ -157,7 +164,7 @@ internal static class ViewBands {
       ],
       false,
       false,
-      ItemGates
+      ["G3"]
     ),
     new(
       ItemViewKind.Bulk,
