@@ -22,20 +22,16 @@ public static class ControlLaw
 
   private static readonly int[] Angles = [0, 90, 180, 270];
 
-  /// <summary>Reads the <c>controls</c> table, <c>principalCell</c> and <c>fillerOffsets</c> boxes of
-  /// every block of <paramref name="domain"/> that declares a control, a principal cell or a cell row
-  /// with selection, control or door keys, then places each of its variants and reads the selection
-  /// boxes of every cell that holds a control.</summary>
-  /// <remarks>A finding, at most one line per check and variant: a control or door id a cell names that the
-  /// table lacks; a door on a control whose kind is not <c>door</c>; a table id no control box and no
-  /// door carries; an alsoId that is itself a table id; in one cell, a control box overlapping another
-  /// control's box or a body box (the cell's selection boxes that are no control's, or its collision
-  /// boxes when it declares no selection) by more than 1e-4 on every axis; top-level collision or
-  /// selection boxes beside <c>principalCell</c> (which cannot be told from none when they equal the
-  /// game's default cube); a placed cell whose
-  /// selection lacks a control's id. A control whose table <c>stage</c> is above 0 is hidden at
-  /// placement and is left out of the last check. A variant that fails to place is left to the placement
-  /// law. The variants of a block are its facings.</remarks>
+  /// <summary>Reads the <c>controls</c> table, <c>principalCell</c> and <c>fillerOffsets</c> boxes of every
+  /// block of <paramref name="domain"/> that declares a control, a principal cell or a cell row with selection,
+  /// control or door keys, then places each variant (its facings) and reads every control cell's selection.</summary>
+  /// <remarks>One finding per check and variant: a control or door id a cell names that the table lacks; a door
+  /// on a control whose kind is not <c>door</c>; a table id no box and no door carries; an alsoId that is a table
+  /// id; in one cell, a control box overlapping another control's box or a body box (the selection boxes that are
+  /// no control's, or the collision boxes when the cell declares no selection) by more than 1e-4 on every axis;
+  /// top-level collision or selection boxes beside <c>principalCell</c> other than the default cube; a placed cell
+  /// whose selection lacks a control's id. A control whose <c>stage</c> is above 0 is hidden at placement and
+  /// skips the last check; a variant that fails to place is left to the placement law.</remarks>
   /// <param name="world">A world holding every variant of the blocks judged and exlib's structure
   /// filler (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose blocks are judged.</param>
