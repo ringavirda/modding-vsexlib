@@ -1,0 +1,12 @@
+{
+  "setup": "pack-last",
+  "description": "A stage that starts from pack-later, which holds the standing bench of pack-earlier.",
+  "mods": [],
+  "steps": [],
+  "seconds": 9,
+  "record": {},
+  "pack": {
+    "scope": "all",
+    "after": { "exlib/setups/pack-later": 1 }
+  }
+}

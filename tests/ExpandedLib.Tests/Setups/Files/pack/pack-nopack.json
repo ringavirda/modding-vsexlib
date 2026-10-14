@@ -1,0 +1,8 @@
+{
+  "setup": "pack-nopack",
+  "description": "A setup with no pack, which an after cannot start from.",
+  "mods": [],
+  "steps": [],
+  "seconds": 9,
+  "record": {}
+}

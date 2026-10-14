@@ -35,6 +35,21 @@ internal sealed record SetupRecordSpec(
   IReadOnlyList<RecordedMachineSpec> Machines
 );
 
+/// <summary>A file's <c>pack</c> as written: its scope, the stages it starts from with their runs,
+/// its gathered stacks and grants, and what its <c>ends</c> hands on.</summary>
+internal sealed record SetupPackSpec(
+  string Scope,
+  IReadOnlyList<(string Id, int Runs)> After,
+  IReadOnlyList<(string Code, int Count)> Gathered,
+  IReadOnlyList<SetupGrant> Grants,
+  IReadOnlyList<(string Code, int Count)> EndStacks,
+  IReadOnlyList<string> EndStanding
+);
+
+/// <summary>A <c>grants</c> entry: stacks a stage takes because the stage that writes them is not
+/// written, and the task that writes it.</summary>
+internal sealed record SetupGrant(string Code, int Count, string Until);
+
 /// <summary>One <c>during</c> action: at a second, every <c>Period</c> seconds from
 /// <c>From</c>, or when its tests hold on the checked seconds.</summary>
 internal sealed record SetupDuring(
@@ -86,6 +101,7 @@ internal sealed class SetupFileModel {
     "clock",
     "during",
     "record",
+    "pack",
     "checks",
     "variants",
     "config",
@@ -167,6 +183,9 @@ internal sealed class SetupFileModel {
   public IReadOnlyList<SetupDuring> During { get; private set; } = [];
 
   public SetupRecordSpec Record { get; private set; } = new([], []);
+
+  /// <summary>The file's <c>pack</c> (setups.md, The pack), or null when the file has none.</summary>
+  public SetupPackSpec? Pack { get; private set; }
 
   public IReadOnlyList<SetupCheck> Checks { get; private set; } = [];
 
@@ -348,6 +367,8 @@ internal sealed class SetupFileModel {
       references,
       placements
     );
+    SetupPackSpec? pack =
+      root["pack"] == null ? null : ParsePack(root["pack"], top.In("pack"));
 
     var checks = new List<SetupCheck>();
     if (root["checks"] != null)
@@ -477,6 +498,7 @@ internal sealed class SetupFileModel {
       HasClimate = root["climate"] != null,
       During = during,
       Record = record,
+      Pack = pack,
       Checks = checks,
       Variants = variants,
       Config = config,
@@ -602,6 +624,99 @@ internal sealed class SetupFileModel {
       );
     }
     return during;
+  }
+
+  private static SetupPackSpec ParsePack(JToken? token, SetupJson.Where where) {
+    JObject node = SetupJson.Object(token, where);
+    SetupJson.RefuseUnknown(
+      node,
+      where,
+      "scope",
+      "after",
+      "gathered",
+      "grants",
+      "ends"
+    );
+    if (node["scope"] == null)
+      throw where.Fail("takes a \"scope\".");
+    string scope = SetupJson.String(node["scope"], where.In("scope"));
+    if (scope is not ("all" or "stacks"))
+      throw where.In("scope").Fail($"\"{scope}\" is not \"all\" or \"stacks\".");
+    var after = new List<(string Id, int Runs)>();
+    if (node["after"] != null)
+      foreach (
+        JProperty p in SetupJson
+          .Object(node["after"], where.In("after"))
+          .Properties()
+      ) {
+        SetupJson.Where w = where.In("after").In(p.Name);
+        if (!Regex.IsMatch(p.Name, "^[a-z0-9]+/setups/[a-z0-9]+(-[a-z0-9]+)*$"))
+          throw w.Fail(
+            $"\"{p.Name}\" is not a mod and a setup id, such as iiex/setups/play-stations."
+          );
+        after.Add((p.Name, PositiveCount(p.Value, w)));
+      }
+    var grants = new List<SetupGrant>();
+    if (node["grants"] != null)
+      foreach (
+        var (item, i) in SetupJson
+          .Array(node["grants"], where.In("grants"))
+          .Select((g, i) => (g, i))
+      ) {
+        SetupJson.Where w = where.In("grants").At(i);
+        JObject grant = SetupJson.Object(item, w);
+        SetupJson.RefuseUnknown(grant, w, "code", "count", "until");
+        if (grant["until"] == null)
+          throw w.Fail("takes an \"until\" naming the task that writes the stage.");
+        grants.Add(
+          new SetupGrant(
+            SetupJson.String(grant["code"], w.In("code")),
+            PositiveCount(grant["count"], w.In("count")),
+            SetupJson.String(grant["until"], w.In("until"))
+          )
+        );
+      }
+    IReadOnlyList<(string Code, int Count)> endStacks = [];
+    IReadOnlyList<string> endStanding = [];
+    if (node["ends"] != null) {
+      JObject ends = SetupJson.Object(node["ends"], where.In("ends"));
+      SetupJson.RefuseUnknown(ends, where.In("ends"), "stacks", "standing");
+      endStacks = Counts(ends["stacks"], where.In("ends").In("stacks"));
+      if (ends["standing"] != null)
+        endStanding = SetupJson.Strings(
+          ends["standing"],
+          where.In("ends").In("standing")
+        );
+    }
+    return new SetupPackSpec(
+      scope,
+      after,
+      Counts(node["gathered"], where.In("gathered")),
+      grants,
+      endStacks,
+      endStanding
+    );
+  }
+
+  private static IReadOnlyList<(string Code, int Count)> Counts(
+    JToken? token,
+    SetupJson.Where where
+  ) {
+    if (token == null)
+      return [];
+    return [
+      .. SetupJson
+        .Object(token, where)
+        .Properties()
+        .Select(p => (p.Name, PositiveCount(p.Value, where.In(p.Name)))),
+    ];
+  }
+
+  private static int PositiveCount(JToken? token, SetupJson.Where where) {
+    int count = SetupJson.Integer(token, where);
+    if (count < 1)
+      throw where.Fail("is at least 1.");
+    return count;
   }
 
   private static SetupRecordSpec ParseRecord(

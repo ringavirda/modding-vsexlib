@@ -1,0 +1,13 @@
+{
+  "setup": "pack-later",
+  "description": "A stage that starts from two runs of pack-earlier and hands on a casting plate.",
+  "mods": [],
+  "steps": [],
+  "seconds": 9,
+  "record": {},
+  "pack": {
+    "scope": "stacks",
+    "after": { "exlib/setups/pack-earlier": 2 },
+    "ends": { "stacks": { "iiex:castplate-heavy": 2 } }
+  }
+}

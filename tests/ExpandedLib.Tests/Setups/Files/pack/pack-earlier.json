@@ -1,0 +1,17 @@
+{
+  "setup": "pack-earlier",
+  "description": "A stage that takes logs and a grant, and hands on a molten diagram, iron and a standing bench.",
+  "mods": [],
+  "steps": [],
+  "seconds": 9,
+  "record": {},
+  "pack": {
+    "scope": "all",
+    "gathered": { "game:log-*": 16 },
+    "grants": [ { "code": "iiex:castplate-heavy", "count": 1, "until": "CL3" } ],
+    "ends": {
+      "stacks": { "iiex:diagram-molten-straight": 1, "metal:iron": 800 },
+      "standing": [ "iiex:workbench-*" ]
+    }
+  }
+}

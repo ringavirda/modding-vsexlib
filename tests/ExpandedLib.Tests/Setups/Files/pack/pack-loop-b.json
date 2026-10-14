@@ -1,0 +1,12 @@
+{
+  "setup": "pack-loop-b",
+  "description": "A stage whose after names pack-loop-a, which names it back.",
+  "mods": [],
+  "steps": [],
+  "seconds": 9,
+  "record": {},
+  "pack": {
+    "scope": "all",
+    "after": { "exlib/setups/pack-loop-a": 1 }
+  }
+}
