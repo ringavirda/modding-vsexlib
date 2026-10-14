@@ -20,10 +20,31 @@ public class FillerControlBoxesTests {
 
   private static readonly Cuboidf Full = new(0f, 0f, 0f, 1f, 1f, 1f);
 
-  private static readonly Cuboidf PanelCollision = new(0f, 0f, 0f, 0.5f, 0.5f, 0.5f);
-  private static readonly Cuboidf PanelValve = new(0f, 0.5f, 0f, 0.5f, 1f, 0.5f);
+  private static readonly Cuboidf PanelCollision = new(
+    0f,
+    0f,
+    0f,
+    0.5f,
+    0.5f,
+    0.5f
+  );
+  private static readonly Cuboidf PanelValve = new(
+    0f,
+    0.5f,
+    0f,
+    0.5f,
+    1f,
+    0.5f
+  );
   private static readonly Cuboidf PanelBody = new(0.5f, 0f, 0f, 1f, 1f, 1f);
-  private static readonly Cuboidf MirrorCollision = new(0.5f, 0f, 0.5f, 1f, 1f, 1f);
+  private static readonly Cuboidf MirrorCollision = new(
+    0.5f,
+    0f,
+    0.5f,
+    1f,
+    1f,
+    1f
+  );
   private static readonly Cuboidf DoorBody = new(0f, 0f, 0f, 1f, 0.25f, 1f);
   private static readonly Cuboidf DoorShut = new(0.75f, 0.25f, 0f, 1f, 1f, 1f);
   private static readonly Cuboidf DoorOpen = new(0f, 0.25f, 0.75f, 1f, 1f, 1f);
@@ -107,7 +128,8 @@ public class FillerControlBoxesTests {
 #if GAME_GE_1_22
   // Fails when GetSelectionBoxes returns the collision boxes.
   [Fact]
-  public void Selection_differs_from_collision() {
+  public void Selection_differs_from_collision()
+  {
     var scene = new Scene();
     BlockPos pos = scene.Cell(1, 0, 0);
 
@@ -122,8 +144,10 @@ public class FillerControlBoxesTests {
 
   // Fails when Compose returns plain Cuboidf for the control boxes.
   [Fact]
-  public void Control_boxes_carry_their_id_at_every_facing() {
-    foreach (int angle in new[] { 0, 90, 180, 270 }) {
+  public void Control_boxes_carry_their_id_at_every_facing()
+  {
+    foreach (int angle in new[] { 0, 90, 180, 270 })
+    {
       var scene = new Scene(angle);
       BlockPos pos = scene.Cell(1, 0, 0);
 
@@ -135,10 +159,19 @@ public class FillerControlBoxesTests {
       Assert.IsType<Cuboidf>(selection[1]);
       AssertBox(ExOrientation.RotateBoxes([PanelBody], angle)[0], selection[1]);
 
-      Cuboidf[] appended = scene.Filler.GetSelectionBoxes(scene.Accessor, scene.Cell(6, 0, 0));
+      Cuboidf[] appended = scene.Filler.GetSelectionBoxes(
+        scene.Accessor,
+        scene.Cell(6, 0, 0)
+      );
       var knob = Assert.IsType<CuboidfWithId>(appended[0]);
       Assert.Equal("knob", knob.Id);
-      AssertBox(ExOrientation.RotateBoxes([new Cuboidf(0f, 0.5f, 0f, 0.25f, 0.75f, 0.25f)], angle)[0], knob);
+      AssertBox(
+        ExOrientation.RotateBoxes(
+          [new Cuboidf(0f, 0.5f, 0f, 0.25f, 0.75f, 0.25f)],
+          angle
+        )[0],
+        knob
+      );
     }
   }
 #endif
@@ -168,7 +201,12 @@ public class FillerControlBoxesTests {
   [Fact]
   public void The_def_outranks_the_saved_boxes() {
     var scene = new Scene();
-    BlockPos pos = scene.Cell(1, 0, 0, saved: [new Cuboidf(0.1f, 0.1f, 0.1f, 0.2f, 0.2f, 0.2f)]);
+    BlockPos pos = scene.Cell(
+      1,
+      0,
+      0,
+      saved: [new Cuboidf(0.1f, 0.1f, 0.1f, 0.2f, 0.2f, 0.2f)]
+    );
 
     AssertBox(
       PanelCollision,
@@ -242,9 +280,15 @@ public class FillerControlBoxesTests {
     Cuboidf[] open = scene.Filler.GetCollisionBoxes(scene.Accessor, colliding);
     Assert.Equal(2, open.Length);
     AssertBox(DoorOpen, open[0]);
-    AssertBox(DoorBody, Assert.Single(scene.Filler.GetCollisionBoxes(scene.Accessor, passable)));
+    AssertBox(
+      DoorBody,
+      Assert.Single(scene.Filler.GetCollisionBoxes(scene.Accessor, passable))
+    );
 #if GAME_GE_1_22
-    Cuboidf[] selection = scene.Filler.GetSelectionBoxes(scene.Accessor, passable);
+    Cuboidf[] selection = scene.Filler.GetSelectionBoxes(
+      scene.Accessor,
+      passable
+    );
     Assert.Equal(2, selection.Length);
     var leaf = Assert.IsType<CuboidfWithId>(selection[0]);
     Assert.Equal("hatch", leaf.Id);
@@ -266,24 +310,44 @@ public class FillerControlBoxesTests {
     BlockPos door = scene.Cell(3, 0, 0);
     BlockPos panel = scene.Cell(1, 0, 0);
 
-    AssertBox(DoorBody, Assert.Single(scene.Filler.GetCollisionBoxes(scene.Accessor, door)));
+    AssertBox(
+      DoorBody,
+      Assert.Single(scene.Filler.GetCollisionBoxes(scene.Accessor, door))
+    );
 #if GAME_GE_1_22
-    AssertBox(DoorBody, Assert.Single(scene.Filler.GetSelectionBoxes(scene.Accessor, door)));
-    AssertBox(PanelBody, Assert.Single(scene.Filler.GetSelectionBoxes(scene.Accessor, panel)));
+    AssertBox(
+      DoorBody,
+      Assert.Single(scene.Filler.GetSelectionBoxes(scene.Accessor, door))
+    );
+    AssertBox(
+      PanelBody,
+      Assert.Single(scene.Filler.GetSelectionBoxes(scene.Accessor, panel))
+    );
 #endif
   }
 
 #if GAME_GE_1_22
   // Fails when a cell left with no selection by a Hidden control keeps the empty selection.
   [Fact]
-  public void A_hidden_control_alone_in_its_cell_selects_the_body() {
+  public void A_hidden_control_alone_in_its_cell_selects_the_body()
+  {
     var scene = new Scene();
     BlockPos pos = scene.Cell(5, 0, 0);
-    Assert.Equal("dial", Assert.IsType<CuboidfWithId>(Assert.Single(scene.Filler.GetSelectionBoxes(scene.Accessor, pos))).Id);
+    Assert.Equal(
+      "dial",
+      Assert
+        .IsType<CuboidfWithId>(
+          Assert.Single(scene.Filler.GetSelectionBoxes(scene.Accessor, pos))
+        )
+        .Id
+    );
 
     scene.Principal.States["dial"] = ControlState.Hidden;
 
-    AssertBox(Full, Assert.Single(scene.Filler.GetSelectionBoxes(scene.Accessor, pos)));
+    AssertBox(
+      Full,
+      Assert.Single(scene.Filler.GetSelectionBoxes(scene.Accessor, pos))
+    );
   }
 #endif
 
@@ -295,8 +359,14 @@ public class FillerControlBoxesTests {
     scene.Principal.Behaviors.Add(behaviour);
     behaviour.States["hatch"] = ControlState.Open;
 
-    Assert.Equal(ControlState.Open, ControlBoxes.StateOf(scene.Principal, "hatch"));
-    Assert.Equal(ControlState.Shown, ControlBoxes.StateOf(scene.Principal, "valve"));
+    Assert.Equal(
+      ControlState.Open,
+      ControlBoxes.StateOf(scene.Principal, "hatch")
+    );
+    Assert.Equal(
+      ControlState.Shown,
+      ControlBoxes.StateOf(scene.Principal, "valve")
+    );
     Assert.Equal(ControlState.Shown, ControlBoxes.StateOf(null, "hatch"));
     AssertBox(
       DoorOpen,
@@ -307,19 +377,30 @@ public class FillerControlBoxesTests {
   // Fails when Stage is ignored.
   [Fact]
   public void A_control_is_hidden_below_its_stage() {
-    var scene = new Scene(controls: """[{ "id": "valve", "kind": "valve", "stage": 3 }]""");
+    var scene = new Scene(
+      controls: """[{ "id": "valve", "kind": "valve", "stage": 3 }]"""
+    );
     ExRightClickConstructable rcc = scene.AddConstruction(stage: 2);
     BlockPos pos = scene.Cell(1, 0, 0);
 
-    Assert.Equal(ControlState.Hidden, ControlBoxes.StateOf(scene.Principal, "valve"));
+    Assert.Equal(
+      ControlState.Hidden,
+      ControlBoxes.StateOf(scene.Principal, "valve")
+    );
     Assert.Null(rcc.StateOf("other"));
 #if GAME_GE_1_22
-    AssertBox(PanelBody, Assert.Single(scene.Filler.GetSelectionBoxes(scene.Accessor, pos)));
+    AssertBox(
+      PanelBody,
+      Assert.Single(scene.Filler.GetSelectionBoxes(scene.Accessor, pos))
+    );
 #endif
 
     scene.SetStage(rcc, 3);
 
-    Assert.Equal(ControlState.Shown, ControlBoxes.StateOf(scene.Principal, "valve"));
+    Assert.Equal(
+      ControlState.Shown,
+      ControlBoxes.StateOf(scene.Principal, "valve")
+    );
 #if GAME_GE_1_22
     Assert.Equal(2, scene.Filler.GetSelectionBoxes(scene.Accessor, pos).Length);
 #endif
@@ -329,7 +410,9 @@ public class FillerControlBoxesTests {
   [Fact]
   public void Hidden_outranks_another_behaviours_answer() {
     foreach (bool counterFirst in new[] { true, false }) {
-      var scene = new Scene(controls: """[{ "id": "valve", "kind": "valve", "stage": 3 }]""");
+      var scene = new Scene(
+        controls: """[{ "id": "valve", "kind": "valve", "stage": 3 }]"""
+      );
       var counter = new StatesBehavior(scene.Principal);
       counter.States["valve"] = ControlState.Open;
       if (counterFirst)
@@ -338,7 +421,10 @@ public class FillerControlBoxesTests {
       if (!counterFirst)
         scene.Principal.Behaviors.Add(counter);
 
-      Assert.Equal(ControlState.Hidden, ControlBoxes.StateOf(scene.Principal, "valve"));
+      Assert.Equal(
+        ControlState.Hidden,
+        ControlBoxes.StateOf(scene.Principal, "valve")
+      );
     }
   }
 
@@ -347,17 +433,22 @@ public class FillerControlBoxesTests {
 #if GAME_GE_1_22
   // Fails when the door leaves are appended after the control boxes.
   [Fact]
-  public void A_lid_leaf_wins_a_tie_over_the_counter_box() {
+  public void A_lid_leaf_wins_a_tie_over_the_counter_box()
+  {
     var scene = new Scene();
     BlockPos pos = scene.Cell(0, 1, 0);
     var air = new Block { SideSolid = new SmallBoolArray(0) };
     var supplier = Substitute.For<IWorldIntersectionSupplier>();
     supplier.blockAccessor.Returns(scene.Accessor);
-    scene.Accessor.GetBlock(Arg.Any<BlockPos>(), BlockLayersAccess.Fluid).Returns(air);
+    scene
+      .Accessor.GetBlock(Arg.Any<BlockPos>(), BlockLayersAccess.Fluid)
+      .Returns(air);
     supplier.GetBlock(Arg.Any<BlockPos>()).Returns(scene.Filler);
     supplier
       .GetBlockIntersectionBoxes(Arg.Any<BlockPos>())
-      .Returns(call => scene.Filler.GetSelectionBoxes(scene.Accessor, call.Arg<BlockPos>()));
+      .Returns(call =>
+        scene.Filler.GetSelectionBoxes(scene.Accessor, call.Arg<BlockPos>())
+      );
     var test = new AABBIntersectionTest(supplier);
     test.ray.origin.Set(pos.X + 2.0, pos.Y + 0.2, pos.Z + 0.5);
     test.ray.dir.Set(-1, 0, 0);
@@ -384,7 +475,8 @@ public class FillerControlBoxesTests {
 
     Assert.Equal(
       ["allowAttach", "cboxes", "cx", "cy", "cz"],
-      tree.Keys.Where(k => !k.StartsWith("pos") && k != "blockCode").OrderBy(k => k)
+      tree.Keys.Where(k => !k.StartsWith("pos") && k != "blockCode")
+        .OrderBy(k => k)
     );
   }
 
@@ -407,9 +499,15 @@ public class FillerControlBoxesTests {
     public readonly IBlockAccessor Accessor = Substitute.For<IBlockAccessor>();
     private readonly int _angle;
 
-    public Scene(int angle = 0, bool principalGone = false, string? controls = null) {
+    public Scene(
+      int angle = 0,
+      bool principalGone = false,
+      string? controls = null
+    ) {
       _angle = angle;
-      var attributes = new JObject { ["fillerOffsets"] = JArray.Parse(Offsets) };
+      var attributes = new JObject {
+        ["fillerOffsets"] = JArray.Parse(Offsets),
+      };
       if (controls != null)
         attributes["controls"] = JArray.Parse(controls);
       var host = TestBlocks.Configure(
@@ -419,25 +517,33 @@ public class FillerControlBoxesTests {
         ("side", ExOrientation.SideFromAngle(angle))
       );
       host.Attributes = new JsonObject(attributes);
-      Filler = TestBlocks.Configure(new BlockStructureFiller(), "exlib:structurefiller", 70);
+      Filler = TestBlocks.Configure(
+        new BlockStructureFiller(),
+        "exlib:structurefiller",
+        70
+      );
       Filler.CollisionBoxes = [Full];
       Filler.SelectionBoxes = [Full];
       Principal = new StatesEntity { Pos = PrincipalPos, Block = host };
-      Accessor.GetBlock(PrincipalPos).Returns(principalGone ? new Block() : host);
+      Accessor
+        .GetBlock(PrincipalPos)
+        .Returns(principalGone ? new Block() : host);
       Accessor.GetBlockEntity(PrincipalPos).Returns(Principal);
     }
 
     public BlockPos Cell(int x, int y, int z, Cuboidf[]? saved = null) {
       Vec3i r = ExOrientation.RotateOffset(x, y, z, _angle);
       BlockPos pos = PrincipalPos.AddCopy(r.X, r.Y, r.Z);
-      Accessor.GetBlockEntity(pos).Returns(
-        new BlockEntityStructureFiller {
-          Pos = pos,
-          Block = Filler,
-          Principal = PrincipalPos.Copy(),
-          CollisionBoxes = saved,
-        }
-      );
+      Accessor
+        .GetBlockEntity(pos)
+        .Returns(
+          new BlockEntityStructureFiller {
+            Pos = pos,
+            Block = Filler,
+            Principal = PrincipalPos.Copy(),
+            CollisionBoxes = saved,
+          }
+        );
       return pos;
     }
 
@@ -453,7 +559,10 @@ public class FillerControlBoxesTests {
         rcc,
         "rcc",
         new ExRightClickConstruction {
-          Stages = [.. Enumerable.Range(0, 4).Select(_ => new ExConstructionStage())],
+          Stages =
+          [
+            .. Enumerable.Range(0, 4).Select(_ => new ExConstructionStage()),
+          ],
           CurrentCompletedStage = stage,
         }
       );
@@ -470,7 +579,9 @@ public class FillerControlBoxesTests {
       States.TryGetValue(controlId, out ControlState state) ? state : null;
   }
 
-  private sealed class StatesBehavior(BlockEntity be) : BlockEntityBehavior(be), IControlStates {
+  private sealed class StatesBehavior(BlockEntity be)
+    : BlockEntityBehavior(be),
+      IControlStates {
     public readonly Dictionary<string, ControlState> States = [];
 
     public ControlState? StateOf(string controlId) =>

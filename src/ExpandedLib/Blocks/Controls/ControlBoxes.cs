@@ -11,7 +11,10 @@ namespace ExpandedLib.Blocks;
 /// <summary>Composes a cell's collision and selection boxes from its <see cref="CellBoxes"/> and the
 /// states of its controls, and finds a filler's row on its principal's definition.</summary>
 public static class ControlBoxes {
-  private static readonly Cuboidf[] FullCube = [new Cuboidf(0f, 0f, 0f, 1f, 1f, 1f)];
+  private static readonly Cuboidf[] FullCube =
+  [
+    new Cuboidf(0f, 0f, 0f, 1f, 1f, 1f),
+  ];
 
   /// <summary>
   /// The collision and selection boxes of one cell for the given control states.
@@ -92,7 +95,10 @@ public static class ControlBoxes {
       _ => so,
     };
 
-  private static bool IsControlBox(IReadOnlyList<ControlBox>? controls, Cuboidf box) {
+  private static bool IsControlBox(
+    IReadOnlyList<ControlBox>? controls,
+    Cuboidf box
+  ) {
     foreach (ControlBox control in controls ?? [])
       if (ReferenceEquals(control.Box, box))
         return true;
@@ -113,7 +119,8 @@ public static class ControlBoxes {
 
   private sealed class RowTable(Dictionary<(int, int, int), CellBoxes> north) {
     public readonly Dictionary<(int, int, int), CellBoxes> North = north;
-    public readonly ConcurrentDictionary<(int, int, int, int), Placed> Turned = new();
+    public readonly ConcurrentDictionary<(int, int, int, int), Placed> Turned =
+      new();
   }
 
   private sealed class Placed(CellBoxes boxes) {
@@ -131,7 +138,9 @@ public static class ControlBoxes {
       principal,
       _ => {
         var north = new Dictionary<(int, int, int), CellBoxes>();
-        foreach (FillerOffset off in StructureFillers.ReadOffsets(host.FillerOffsets))
+        foreach (
+          FillerOffset off in StructureFillers.ReadOffsets(host.FillerOffsets)
+        )
           if (off.Boxes != null)
             north[(off.Offset.X, off.Offset.Y, off.Offset.Z)] = off.Boxes;
         return new RowTable(north);
@@ -156,7 +165,11 @@ public static class ControlBoxes {
     if (filler?.Principal is not { } principalPos)
       return false;
     Block? principal = accessor.GetBlock(principalPos);
-    if (principal == null || principal.Id == 0 || principal is not IFillerHost host)
+    if (
+      principal == null
+      || principal.Id == 0
+      || principal is not IFillerHost host
+    )
       return false;
 
     int angle = ((host.StructureAngle % 360) + 360) % 360;
@@ -167,7 +180,9 @@ public static class ControlBoxes {
       (360 - angle) % 360
     );
     RowTable table = TableOf(principal, host);
-    if (!table.North.TryGetValue((north.X, north.Y, north.Z), out CellBoxes? row))
+    if (
+      !table.North.TryGetValue((north.X, north.Y, north.Z), out CellBoxes? row)
+    )
       return false;
 
     Placed placed = table.Turned.GetOrAdd(
