@@ -5,12 +5,9 @@ namespace ExpandedLib.Scenarios;
 
 /// <summary>Every step a setup case runs.</summary>
 internal static class SetupStepWalk {
-  /// <summary>
-  /// Every step of <paramref name="model"/> with the steps under it (a repeat's body): the main
-  /// <c>steps</c>, the steps inserted after layout entries, each <c>during</c> action's steps, and
-  /// each variant's replaced steps, <c>after</c> steps and own <c>during</c> actions. A step's
-  /// <see cref="SetupStep.Path"/> names where the file wrote it.
-  /// </summary>
+  /// <summary>Every step of <paramref name="model"/> with a repeat's body under it: the main
+  /// <c>steps</c>, those after layout entries, each <c>during</c> action's, and each variant's replaced,
+  /// <c>after</c> and own <c>during</c> steps. <see cref="SetupStep.Path"/> names where the file wrote each.</summary>
   public static IEnumerable<SetupStep> Of(SetupFileModel model) =>
     model
       .Steps.Concat(model.AfterEntry.SelectMany(a => a.Steps))
