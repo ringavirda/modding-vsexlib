@@ -17,7 +17,9 @@ public static class VanillaGridCollisionCheck {
   /// <param name="domain">The domain whose grid recipes are checked; <c>game</c> itself reports
   /// nothing.</param>
   /// <returns>The check's <see cref="CheckResult"/>, named <c>VanillaGridCollision</c>, one error
-  /// per colliding pair; no errors when none.</returns>
+  /// per colliding pair; no errors when none. Pairs are judged in the hand grid and every grid any
+  /// domain declared with <see cref="ExlibChecks.CraftingGrid"/>, so the result depends on those
+  /// declarations.</returns>
   public static CheckResult Run(ILoadedGame game, string domain) =>
     domain == "game"
       ? new("VanillaGridCollision", domain, [])
@@ -26,6 +28,7 @@ public static class VanillaGridCollisionCheck {
         domain,
         [.. Crafts(game, domain)],
         [.. Crafts(game, "game")],
+        ExlibChecks.AllGrids(),
         withinOwn: false
       );
 }

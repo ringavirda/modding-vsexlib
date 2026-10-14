@@ -219,14 +219,18 @@ public partial class BlockStructureFiller
     IPlayer byPlayer,
     BlockSelection blockSel
   ) {
-    // A held placeable block skips the forward, except a liquid container, which the principal must see.
+    // A held placeable block skips the forward, except a liquid container and a flame (a block with
+    // BlockBehaviorCanIgnite), which the principal must see.
     ItemStack? held = byPlayer.InventoryManager?.ActiveHotbarSlot?.Itemstack;
     bool placingBlock =
       held?.Block != null && held.Collectible is not BlockLiquidContainerBase;
+    bool forwards =
+      !placingBlock
+      || held?.Block?.HasBehavior<BlockBehaviorCanIgnite>() == true;
 
     // Cell-aware principals (IFillerInteractionTarget) also get the clicked cell.
     if (
-      !placingBlock
+      forwards
       && TryGetPrincipal(world, blockSel.Position, out var pp, out var pb)
     ) {
       BlockSelection psel = Repoint(blockSel, pp);

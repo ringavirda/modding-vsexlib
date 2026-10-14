@@ -460,8 +460,8 @@ public class GridRecipeCollisionCheckTests {
       )
     );
 
-  // Fails when Run reads a disabled recipe, a recipe with a keyless letter, one larger than 3x3,
-  // or one whose pattern does not fill its grid.
+  // Fails when Run reads a disabled recipe, a recipe with a keyless letter, a recipe the first or
+  // second Fits guard keeps out of the hand grid, or one whose pattern does not fill its grid.
   [Fact]
   public void A_recipe_the_game_refuses_or_never_matches_is_skipped() =>
     Assert.Empty(

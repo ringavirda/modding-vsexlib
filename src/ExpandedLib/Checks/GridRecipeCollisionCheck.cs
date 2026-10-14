@@ -41,8 +41,18 @@ public static class GridRecipeCollisionCheck {
   /// <param name="domain">The domain whose grid recipes are checked.</param>
   /// <returns>The check's <see cref="CheckResult"/>, named <c>GridRecipeCollision</c>, one error
   /// per colliding pair; no errors when none. A pair across two domains is reported in the run
-  /// of each.</returns>
-  public static CheckResult Run(ICheckSource source, string domain) {
+  /// of each. Pairs are judged in the hand grid and every grid any domain declared with
+  /// <see cref="ExlibChecks.CraftingGrid"/>, so the result depends on those declarations.</returns>
+  public static CheckResult Run(ICheckSource source, string domain) =>
+    Run(source, domain, ExlibChecks.AllGrids());
+
+  /// <summary>Runs the check judging pairs in <paramref name="grids"/>: the hand grid, then the
+  /// larger ones smallest first, as <see cref="ExlibChecks.Ordered"/> returns them.</summary>
+  internal static CheckResult Run(
+    ICheckSource source,
+    string domain,
+    IReadOnlyList<ExlibChecks.Grid> grids
+  ) {
     List<Craft> own = [.. Crafts(source, domain)];
     List<Craft> others =
     [
@@ -56,6 +66,7 @@ public static class GridRecipeCollisionCheck {
       domain,
       own,
       others,
+      grids,
       withinOwn: true
     );
   }
@@ -64,11 +75,14 @@ public static class GridRecipeCollisionCheck {
   /// <paramref name="own"/> with <paramref name="others"/>, and of two of <paramref name="own"/>
   /// when <paramref name="withinOwn"/>, that match the same input, each with the two recipes'
   /// <see cref="Craft.At"/> as its subjects.</summary>
+  /// <remarks>A pair is judged in each of <paramref name="grids"/> both fit in and reported once,
+  /// the first grid it collides in named when that is not the hand grid.</remarks>
   internal static CheckResult Collisions(
     string check,
     string domain,
     IReadOnlyList<Craft> own,
     IReadOnlyList<Craft> others,
+    IReadOnlyList<ExlibChecks.Grid> grids,
     bool withinOwn
   ) {
     var errors = new List<string>();
@@ -77,12 +91,23 @@ public static class GridRecipeCollisionCheck {
     );
     for (int i = 0; i < own.Count; i++)
       foreach (Craft other in (withinOwn ? own.Skip(i + 1) : []).Concat(others))
-        if (Collide(own[i], other)) {
-          string line =
-            $"{own[i].Where} and {other.Where} match the same input";
-          errors.Add(line);
-          subjects[line] = [own[i].At, other.At];
-        }
+        foreach (ExlibChecks.Grid grid in grids)
+          if (
+            Fits(own[i], grid.Size)
+            && Fits(other, grid.Size)
+            && Collide(own[i], other, grid.Size)
+          ) {
+            string line =
+              $"{own[i].Where} and {other.Where} match the same input"
+              + (
+                grid == ExlibChecks.Hand
+                  ? ""
+                  : $" in the {grid.Size}x{grid.Size} grid of {grid.Station}"
+              );
+            errors.Add(line);
+            subjects[line] = [own[i].At, other.At];
+            break;
+          }
     return new CheckResult(check, domain, errors) { Subjects = subjects };
   }
 
@@ -123,11 +148,7 @@ public static class GridRecipeCollisionCheck {
         && !(bool)Prop(recipe.Json, "enabled")!
       )
         continue;
-      if (
-        recipe.Width > GridSize
-        || recipe.Height > GridSize
-        || recipe.Width * recipe.Height != recipe.Cells.Count
-      )
+      if (recipe.Width * recipe.Height != recipe.Cells.Count)
         continue;
       JObject?[] placed =
       [
@@ -249,13 +270,16 @@ public static class GridRecipeCollisionCheck {
       ? new Slot(type, one.Domain, [one.Path])
       : new Slot(type, null, null, Members: members);
 
-  private static bool Collide(Craft a, Craft b) {
+  private static bool Fits(Craft c, int size) =>
+    c.Width <= size && c.Height <= size;
+
+  private static bool Collide(Craft a, Craft b, int size) {
     if (!a.Shapeless && !b.Shapeless) {
       if (a.BoxWidth != b.BoxWidth || a.BoxHeight != b.BoxHeight)
         return false;
-      if (!Meets(a.Left, a.Width, b.Left, b.Width))
+      if (!Meets(a.Left, a.Width, b.Left, b.Width, size))
         return false;
-      if (!Meets(a.Top, a.Height, b.Top, b.Height))
+      if (!Meets(a.Top, a.Height, b.Top, b.Height, size))
         return false;
       return a.Variants.Any(x =>
         b.Variants.Any(y => SameBox(Box(a, x), Box(b, y)))
@@ -271,10 +295,16 @@ public static class GridRecipeCollisionCheck {
   }
 
   // Whether two boxes starting at offsets from and other can sit at one column of the grid; a
-  // recipe of width w lays its box anywhere from its offset to its offset plus 3 - w.
-  private static bool Meets(int from, int width, int other, int otherWidth) =>
+  // recipe of width w lays its box anywhere from its offset to its offset plus size - w.
+  private static bool Meets(
+    int from,
+    int width,
+    int other,
+    int otherWidth,
+    int size
+  ) =>
     Math.Max(from, other)
-    <= Math.Min(from + GridSize - width, other + GridSize - otherWidth);
+    <= Math.Min(from + size - width, other + size - otherWidth);
 
   private static Slot?[] Box(Craft c, Slot?[] slots) =>
     [
