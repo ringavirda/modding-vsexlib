@@ -13,7 +13,11 @@ namespace ExpandedLib.Helpers;
 /// <summary>The views of a block: the game's block rotations, with the origins on the drawn box and, for a
 /// partial or multicell block, the scales that give its kind's reference extents.</summary>
 internal static class ViewBlocks {
-  internal static ItemViewSet Compute(ItemViewKind kind, ViewBox box) {
+  internal static ItemViewSet Compute(
+    ItemViewKind kind,
+    ViewBox box,
+    Vec3d? guiRotation = null
+  ) {
     double[] ext =
     [
       box.To.X - box.From.X,
@@ -33,6 +37,12 @@ internal static class ViewBlocks {
     ModelTransform tp = ModelTransform.BlockDefaultTp();
     ModelTransform ground = ModelTransform.BlockDefaultGround();
     gui.Origin = Origin(c);
+    if (guiRotation != null)
+      gui.Rotation = new FastVec3f(
+        (float)guiRotation.X,
+        (float)guiRotation.Y,
+        (float)guiRotation.Z
+      );
 
     if (kind == ItemViewKind.Cube) {
       ground.Translation = new FastVec3f(

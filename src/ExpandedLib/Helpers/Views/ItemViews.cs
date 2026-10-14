@@ -16,7 +16,7 @@ namespace ExpandedLib.Helpers;
 public static class ItemViews {
   /// <summary>Computes the views of <paramref name="collectible"/>. The kind is its declared
   /// <c>attributes.itemViews.kind</c> or the one its drawn box gives; <c>attributes.itemViews.tip</c> names
-  /// the working end of a longtool or tool as a sign and an axis letter ("+y"). The slot and ground views
+  /// the working end of an item as a sign and an axis letter ("+y"). The slot and ground views
   /// are computed from the box as well. A block takes the game's block rotations with its origins on the drawn box.
   /// A mod item with no <c>attributes.itemViews</c> key that draws a game item's shape takes that item's shipped views.</summary>
   /// <param name="api">The api of the side whose world is loaded.</param>
@@ -25,7 +25,8 @@ public static class ItemViews {
   /// that declares a block kind and a block that declares an item kind.</returns>
   /// <exception cref="InvalidOperationException">The declared kind is not a kind name in lower case, or a
   /// workpiece is computed in a world with no vanilla work item.</exception>
-  /// <exception cref="ArgumentException">The declared tip is not a sign and one of x, y, z.</exception>
+  /// <exception cref="ArgumentException">The declared tip is not a sign and one of x, y, z, or the declared
+  /// <c>guiRotation</c> is not an array of three numbers.</exception>
   public static ItemViewSet? Compute(
     ICoreAPI api,
     CollectibleObject collectible
@@ -41,7 +42,7 @@ public static class ItemViews {
             or ItemViewKind.Partial
             or ItemViewKind.Multicell
         && box != null
-        ? ViewBlocks.Compute(kind.Value, box)
+        ? ViewBlocks.Compute(kind.Value, box, GuiRotationOf(collectible))
         : null;
     }
     if (collectible is not Item item)
@@ -54,16 +55,19 @@ public static class ItemViews {
       return Shipped(api, item, twin, box);
 
     string? tip = item.Attributes?["itemViews"]?["tip"]?.AsString();
+    Vec3d? guiRotation = GuiRotationOf(item);
     if (kind == ItemViewKind.Tool) {
       Item? carrier = CarrierOf(api, item);
       HandReference? carried =
         carrier == null ? null : FromCarrier(api, carrier);
       if (carried != null)
-        return Held(kind.Value, box, tip, carried);
+        return Held(api, kind.Value, box, tip, carried, guiRotation);
       kind = ByBox(box.Extents(), false, false);
     }
     HandReference? reference = ReferenceOf(kind.Value);
-    return reference == null ? null : Held(kind.Value, box, tip, reference);
+    return reference == null
+      ? null
+      : Held(api, kind.Value, box, tip, reference, guiRotation);
   }
 
   /// <summary>Computes the views of an item drawn as <paramref name="shape"/> and laid out as
@@ -71,7 +75,9 @@ public static class ItemViews {
   /// <param name="api">The api of the side whose world is loaded.</param>
   /// <param name="shape">The shape's base, selectiveElements and rotateX/Y/Z are read.</param>
   /// <param name="kind">Longtool, Plate, Bulk, Bar or Lump.</param>
-  /// <param name="tip">The working end of a longtool as a sign and an axis letter ("+y"), or null.</param>
+  /// <param name="tip">The working end as a sign and an axis letter ("+y"), or null.</param>
+  /// <param name="guiRotation">The slot rotation in degrees about x, y and z, or null for the kind's; the slot
+  /// origin is computed for it, and its scale too except for a longtool's, which keeps the spear's close-up.</param>
   /// <returns>The views, as the collectible overload gives an item of that shape and kind.</returns>
   /// <exception cref="ArgumentException"><paramref name="kind"/> is None, Tool, Workpiece or a block kind,
   /// whose reference is a collectible or a block; or <paramref name="tip"/> is not a sign and one of x, y, z.</exception>
@@ -80,7 +86,8 @@ public static class ItemViews {
     ICoreAPI api,
     CompositeShape shape,
     ItemViewKind kind,
-    string? tip = null
+    string? tip = null,
+    Vec3d? guiRotation = null
   ) {
     HandReference reference =
       ReferenceOf(kind)
@@ -93,7 +100,7 @@ public static class ItemViews {
       ?? throw new InvalidOperationException(
         $"shape {shape.Base} does not load or has no drawn face"
       );
-    return Held(kind, box, tip, reference);
+    return Held(api, kind, box, tip, reference, guiRotation);
   }
 
   private static HandReference? ReferenceOf(ItemViewKind kind) =>
@@ -231,12 +238,16 @@ public static class ItemViews {
 
   // The hand reference a carrier's shipped views make: its grip is the point of its shape that its hand
   // transform puts on the hand.
-  private static HandReference? FromCarrier(ICoreAPI api, Item carrier) {
+  private static HandReference? FromCarrier(
+    ICoreAPI api,
+    Item carrier,
+    string? tip = null
+  ) {
     ModelTransform? tf = carrier.TpHandTransform;
     ViewBox? box = BoxOf(api, carrier);
     if (tf == null || box == null)
       return null;
-    Lay lay = Lay.Of(box, true, null);
+    Lay lay = Lay.Of(box, true, tip);
     double s = tf.ScaleXYZ.X;
     Vec3d grip = HandGrip(tf);
     double[] u = lay.Coords(grip);
@@ -260,48 +271,45 @@ public static class ItemViews {
     );
   }
 
+  // The game item whose hold a tipped item copies, with its working end up and out of the fist; null when
+  // the world has none.
+  private static Item? TipCarrier(ICoreAPI api) =>
+    api.World.GetItem(new AssetLocation(TipHoldCode));
+
   private static ItemViewSet Held(
+    ICoreAPI api,
     ItemViewKind kind,
     ViewBox box,
     string? tip,
-    HandReference reference
+    HandReference reference,
+    Vec3d? guiRotation
   ) {
-    Lay lay = Lay.Of(
-      box,
-      kind is ItemViewKind.Longtool or ItemViewKind.Tool,
-      tip
-    );
-    var turn = new double[3, 3];
-    for (int k = 0; k < 3; k++)
-      for (int i = 0; i < 3; i++)
-        for (int j = 0; j < 3; j++)
-          turn[i, j] +=
-            Lay.Component(reference.Axes[k], i) * Lay.Component(lay.Axes[k], j);
-    bool mirrored = Det(turn) < 0;
-    if (mirrored)
-      for (int i = 0; i < 3; i++)
-        for (int j = 0; j < 3; j++)
-          turn[i, j] -=
-            2
-            * Lay.Component(reference.Axes[2], i)
-            * Lay.Component(lay.Axes[2], j);
-
+    bool longHeld = kind is ItemViewKind.Longtool or ItemViewKind.Tool;
+    Lay slotLay = Lay.Of(box, longHeld, tip);
+    Lay lay = tip != null ? Lay.Of(box, true, tip) : slotLay;
+    double[,] slotTurn = Turn(slotLay, reference, out _);
+    Item? knife = tip != null && !longHeld ? TipCarrier(api) : null;
+    HandReference? hold =
+      knife == null ? null : FromCarrier(api, knife, TipHoldEnd);
+    HandReference grasp =
+      hold == null ? reference : hold with { Scale = reference.Scale };
+    double[,] turn = Turn(lay, grasp, out bool mirrored);
     double[,] r = Mul(
       Rotation(
         new Vec3d(
-          reference.Rotation.X,
-          reference.Rotation.Y - HandYaw,
-          reference.Rotation.Z
+          grasp.Rotation.X,
+          grasp.Rotation.Y - HandYaw,
+          grasp.Rotation.Z
         )
       ),
       turn
     );
     Vec3d euler = Euler(r);
     Vec3d grip =
-      kind == ItemViewKind.Bulk
+      kind == ItemViewKind.Bulk && tip == null
         ? BulkGrip(lay, box)
-        : Grip(lay, box, reference, mirrored);
-    double s = reference.Scale;
+        : Grip(lay, box, grasp, mirrored);
+    double s = grasp.Scale;
     ModelTransform hand = new() {
       Translation = new FastVec3f(
         (float)(-grip.X / 16 / s),
@@ -321,18 +329,27 @@ public static class ItemViews {
       Scale = (float)s,
       Rotate = true,
     };
-    string? idle = kind switch {
-      ItemViewKind.Longtool => SpearIdle,
-      ItemViewKind.Bulk => BulkHold,
-      _ => null,
-    };
+    string? idle =
+      hold != null
+        ? null
+        : kind switch {
+          ItemViewKind.Longtool => SpearIdle,
+          ItemViewKind.Bulk => BulkHold,
+          _ => null,
+        };
+    string? ready =
+      hold != null
+        ? knife!.HeldRightReadyAnimation == DefaultReady
+          ? null
+          : knife.HeldRightReadyAnimation
+        : idle;
     return new ItemViewSet(
       kind,
-      Slot(kind, lay, reference, turn),
+      Slot(kind, slotLay, reference, slotTurn, guiRotation),
       hand,
-      Ground(lay, reference),
+      Ground(slotLay, reference),
       idle,
-      idle,
+      ready,
       kind == ItemViewKind.Longtool ? SpearHit : null,
       null,
       new Vec3d(lay.Lo[0], lay.Lo[1], lay.Lo[2]),
@@ -342,15 +359,43 @@ public static class ItemViews {
     );
   }
 
-  // The reference's slot rotation after the lay's turn, the origin on the box centre (a longtool's on the
+  // The matrix that carries the lay's axes onto the reference's, mirrored about the shortest where the two
+  // frames differ in handedness.
+  private static double[,] Turn(
+    Lay lay,
+    HandReference reference,
+    out bool mirrored
+  ) {
+    var turn = new double[3, 3];
+    for (int k = 0; k < 3; k++)
+      for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
+          turn[i, j] +=
+            Lay.Component(reference.Axes[k], i) * Lay.Component(lay.Axes[k], j);
+    mirrored = Det(turn) < 0;
+    if (mirrored)
+      for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
+          turn[i, j] -=
+            2
+            * Lay.Component(reference.Axes[2], i)
+            * Lay.Component(lay.Axes[2], j);
+    return turn;
+  }
+
+  // The reference's slot rotation after the lay's turn, or the declared one, the origin on the box centre (a longtool's on the
   // spear's close-up), and a translation that puts the origin on the slot centre.
   private static ModelTransform Slot(
     ItemViewKind kind,
     Lay lay,
     HandReference reference,
-    double[,] turn
+    double[,] turn,
+    Vec3d? guiRotation
   ) {
-    double[,] r = Mul(Rotation(reference.GuiRotation), turn);
+    double[,] r =
+      guiRotation != null
+        ? Rotation(guiRotation)
+        : Mul(Rotation(reference.GuiRotation), turn);
     double[] mid = [.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)];
     bool longtool = kind == ItemViewKind.Longtool;
     if (longtool)

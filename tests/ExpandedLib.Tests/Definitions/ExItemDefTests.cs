@@ -518,7 +518,7 @@ public class ExItemDefTests {
       "clip actions drive a block entity's animator; items have none",
     ["ClipActionByType(String,ClipAction)"] =
       "clip actions drive a block entity's animator; items have none",
-    ["Views(ItemViewKind)"] =
+    ["Views(ItemViewKind,Vec3d)"] =
       "a block has no working end; the item builder's Views also takes a tip",
     // Emits { translation, rotation, scale }, no origin.
     ["TpHandTransform(Double,Double,Double,Double,Double,Double,Double)"] =
@@ -527,8 +527,8 @@ public class ExItemDefTests {
 
   // Signatures only ExItemDef has.
   private static readonly Dictionary<string, string> ItemOnlySignatures = new() {
-    ["Views(ItemViewKind,String)"] =
-      "the tip names a working end; the block builder's Views takes the kind only",
+    ["Views(ItemViewKind,String,Vec3d)"] =
+      "the tip names a working end; the block builder's Views takes the kind and the rotation only",
     ["GrindingProps(Object)"] =
       "the quern grinding recipe; blocks are never ground",
   };

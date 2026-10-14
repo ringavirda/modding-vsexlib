@@ -1,0 +1,13 @@
+{
+  "code": "rotatedblock",
+  "class": "Block",
+  "shape": {
+    "base": "viewsfixture:block/offset"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "partial",
+      "guiRotation": [ 30, 60, 10 ]
+    }
+  }
+}

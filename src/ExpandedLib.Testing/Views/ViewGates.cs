@@ -697,15 +697,19 @@ internal static class ViewGates {
   private const double FlatTolerance = 0.5;
   private const double UprightDegrees = 1;
 
+  /// <summary>The least elevation in degrees at which a handle-held item carries its declared tip; the iron chisel's is 25 and the generic iron knife's 32.</summary>
+  internal const double TipElevationDegrees = 20;
+
   private static readonly string[] BlockClips = [BlockHeldClip, "holdunderarm"];
 
-  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips and G12 catalogue of <paramref name="group"/>. They hold for every
+  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips, G12 catalogue and G14 hand.tip of <paramref name="group"/>. They hold for every
   /// collectible whatever vanilla does and are not banded.</summary>
   /// <param name="world">The world the group comes from.</param>
   /// <param name="group">The group to judge.</param>
   /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
-  /// <returns>G4 on the ground, G9 in third and first person, G11, and G12 when a row of
-  /// <paramref name="catalogue"/> names one of the group's codes, each with its pass or failure.</returns>
+  /// <returns>G4 on the ground, G9 in third and first person, G11, G14 when the group's collectible declares an
+  /// <c>itemViews.tip</c>, and G12 when a row of <paramref name="catalogue"/> names one of the group's codes, each
+  /// with its pass or failure.</returns>
   internal static IReadOnlyList<GateReading> Rules(
     TestWorld world,
     ViewGroup group,
@@ -755,9 +759,58 @@ internal static class ViewGates {
     readings.Add(Floor(world, group, false));
     readings.Add(Floor(world, group, true));
     readings.Add(Clips(world, group));
+    if (!group.IsBlock && DeclaredTip(group.Representative) is { } tip)
+      readings.Add(TipUp(world, group, tip));
     if (catalogue?.Reading(group) is { } sized)
       readings.Add(sized);
     return readings;
+  }
+
+  private static string? DeclaredTip(CollectibleObject c) =>
+    c.Attributes?["itemViews"]?["tip"]?.AsString();
+
+  // The held elevation of the working end of a group, in degrees above horizontal, negative when it
+  // points below the grip end; tip null takes the end the box gives.
+  internal static double TipElevation(
+    TestWorld world,
+    ViewGroup group,
+    string? tip
+  ) {
+    Lay lay = Lay.Of(group.Box, true, tip);
+    Mat4 m = HeldMatrix(group, HeldPose(world, group, false), false);
+    double[] mid = [.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)];
+    Vec3d At(double along) => m.Apply(lay.Point([along, mid[1], mid[2]]) / 16);
+    Vec3d axis = At(lay.Hi[0]) - At(lay.Lo[0]);
+    return Math.Asin(Math.Clamp(axis.Y / axis.Length(), -1, 1)) * 180 / Math.PI;
+  }
+
+  private static GateReading TipUp(TestWorld world, ViewGroup group, string tip) {
+    Lay lay = Lay.Of(group.Box, true, tip);
+    SeraphPose pose = HeldPose(world, group, false);
+    double rise = TipElevation(world, group, tip);
+    double[] mid = [.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)];
+    double[] g = GripPoint(group.Hand, pose);
+    double grip = lay.Coords(new Vec3d(g[0], g[1], g[2]))[0];
+    double min = group.Kind is ItemViewKind.Longtool or ItemViewKind.Tool
+      ? 0
+      : TipElevationDegrees;
+    bool up = rise > min;
+    bool handle = grip <= mid[0];
+    return new GateReading(
+      "G14",
+      "hand.tip",
+      "tp",
+      rise,
+      min,
+      double.PositiveInfinity,
+      null,
+      up && handle,
+      up
+          ? $"the grip at {Fmt(grip)} voxels is not in the handle half below {Fmt(mid[0])}"
+        : rise > 0
+          ? $"the tip end {Fmt(rise)} degrees above the grip end, below {Fmt(min)}"
+        : $"the tip end {Fmt(-rise)} degrees below the grip end"
+    );
   }
 
   private static GateReading Floor(
@@ -965,7 +1018,8 @@ internal static class ViewGates {
     double[] at = GripPoint(tf, pose);
     Lay lay = Lay.Of(
       group.Box,
-      group.Kind is ItemViewKind.Longtool or ItemViewKind.Tool,
+      group.Kind is ItemViewKind.Longtool or ItemViewKind.Tool
+        || DeclaredTip(group.Representative) != null,
       TipOf(group.Representative)
     );
     double[] u = lay.Coords(new Vec3d(at[0], at[1], at[2]));
@@ -1059,6 +1113,7 @@ internal static class ViewGates {
       c.HeldTpHitAnimation,
       c.HeldTpUseAnimation,
       c.Attributes?["itemViews"]?["kind"]?.AsString(),
+      c.Attributes?["itemViews"]?["tip"]?.AsString(),
       c.Tool,
       c is ItemWorkItem
     );
