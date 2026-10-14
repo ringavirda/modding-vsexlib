@@ -9,15 +9,17 @@ namespace ExpandedLib.Checks;
 /// <summary>
 /// Checks every grid recipe in a domain against the pattern the game reads: each ingredient key
 /// is placed by <c>ingredientPattern</c>, each pattern letter has an ingredient, the pattern
-/// fills its declared width and height, and the grid is at most 3x3.
+/// fills its declared width and height, and the grid fits the domain's largest crafting grid.
 /// </summary>
 /// <remarks>A key the pattern never places is never consumed and never shown, so two recipes
 /// differing only in it take the same input. A letter with no key or a pattern of another length
 /// than width times height fails the recipe at load (<c>GridRecipe.Resolve</c>), and a grid wider
-/// or taller than the crafting grid never matches (<c>GridRecipe.Matches</c>). A grid recipe is one under <c>recipes/grid/</c>; its properties
+/// or taller than the largest crafting grid, 3x3 unless
+/// <see cref="ExlibChecks.CraftingGrid"/> declares more, never matches (<c>GridRecipe.Matches</c>). A grid recipe is one under <c>recipes/grid/</c>; its properties
 /// are read case-insensitively, as the game's loader reads them.</remarks>
 public static class GridRecipeShapeCheck {
-  /// <summary>The crafting grid's width and height, in slots.</summary>
+  /// <summary>The hand crafting grid's width and height, in slots, and a recipe's grid size when
+  /// it declares none.</summary>
   internal const int GridSize = 3;
 
   /// <summary>Every key, letter, pattern length or grid size in <paramref name="domain"/>'s grid
@@ -26,9 +28,24 @@ public static class GridRecipeShapeCheck {
   /// <param name="domain">The domain whose grid recipes are checked.</param>
   /// <returns>The check's <see cref="CheckResult"/>, named <c>GridRecipeShape</c>, one error per
   /// unplaced key, keyless letter, pattern not filling its grid and oversized grid; no errors when
-  /// none.</returns>
-  public static CheckResult Run(ICheckSource source, string domain) {
+  /// none. The size bound is the largest grid declared for <paramref name="domain"/> with
+  /// <see cref="ExlibChecks.CraftingGrid"/>, 3x3 when none.</returns>
+  public static CheckResult Run(ICheckSource source, string domain) =>
+    Run(source, domain, ExlibChecks.Grids(domain));
+
+  /// <summary>Runs the check with <paramref name="grids"/> as the grids held: the hand grid, then the
+  /// larger ones smallest first, as <see cref="ExlibChecks.Ordered"/> returns them.</summary>
+  internal static CheckResult Run(
+    ICheckSource source,
+    string domain,
+    IReadOnlyList<ExlibChecks.Grid> grids
+  ) {
     var errors = new List<string>();
+    ExlibChecks.Grid bound = grids.MaxBy(g => g.Size)!;
+    string limit =
+      bound == ExlibChecks.Hand
+        ? $"{bound.Size}x{bound.Size}"
+        : $"the {bound.Size}x{bound.Size} grid of {bound.Station}";
     foreach (GridEntry recipe in Recipes(source, domain)) {
       foreach (
         string key in recipe.Ingredients.Keys.Where(k =>
@@ -46,10 +63,10 @@ public static class GridRecipeShapeCheck {
           $"{recipe.Where}: pattern {recipe.RawPattern} has {recipe.Cells.Count} slots, "
             + $"not {recipe.Width}x{recipe.Height}"
         );
-      if (recipe.Width > GridSize || recipe.Height > GridSize)
+      if (recipe.Width > bound.Size || recipe.Height > bound.Size)
         errors.Add(
           $"{recipe.Where}: grid {recipe.Width}x{recipe.Height} is larger than "
-            + $"{GridSize}x{GridSize}"
+            + limit
         );
     }
     return new CheckResult("GridRecipeShape", domain, errors);
