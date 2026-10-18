@@ -21,8 +21,10 @@ namespace ExpandedLib.Testing;
 /// <see cref="ExpandedLib.Machines.ICraftStation"/> whose orders hold it. A recipe with a
 /// <see cref="CraftSequence"/> is crafted at a station by holding its steps, the hand grid must refuse
 /// it, and every tool its steps name must be reached. A sequence of the domain must name a loaded
-/// grid recipe and shed only loaded items and blocks. The stations are one of each block of the domain with a block
-/// entity; the other edges are followed.</para></remarks>
+/// grid recipe and shed only loaded items and blocks. The stations are one of each block of the
+/// domain with a block entity, completed as a setup's <c>complete</c> does when the entity carries an
+/// <see cref="ExpandedLib.Blocks.ExRightClickConstructable"/>, so a construction-gated station
+/// crafts instead of refusing; the other edges are followed.</para></remarks>
 public static class CraftWalk
 {
   /// <summary>The station name <see cref="CraftedEdge.Station"/> carries for a craft in the hand

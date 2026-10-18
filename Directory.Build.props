@@ -158,6 +158,16 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
+  <!-- ppex and smex declare exlib 0.8.4 as a minimum, so a change to the public surface that breaks
+       a binary compiled against 0.8.4 fails the pack. -->
+  <PropertyGroup
+    Condition="'$(MSBuildProjectName)' == 'ExpandedLib'
+      or '$(MSBuildProjectName)' == 'ExpandedLib.Industry'"
+  >
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.8.4</PackageValidationBaselineVersion>
+  </PropertyGroup>
+
   <!-- The icon, packed to the package root under its own name. ExpandedLib.csproj owns
        src/ExpandedLib/modicon.png and declares this item itself, next to its own copy of the
        file (see the comment there for why a plain Include here would collide with it and silently

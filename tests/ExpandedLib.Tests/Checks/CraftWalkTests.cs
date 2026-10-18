@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using ExpandedLib.Blocks;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Checks;
 using ExpandedLib.Machines;
@@ -29,6 +30,8 @@ internal sealed class WalkFixtureBench
 
   public override string InventoryClassName => "walk-fixture-bench";
 
+  private ExRightClickConstructable? _rcc;
+
   public override void Initialize(ICoreAPI api)
   {
     base.Initialize(api);
@@ -36,6 +39,9 @@ internal sealed class WalkFixtureBench
   }
 
   public IReadOnlyList<CraftOrder> Orders(IWorldAccessor world) =>
+    PressOrders(world);
+
+  internal static IReadOnlyList<CraftOrder> PressOrders(IWorldAccessor world) =>
     [
       .. world
         .GridRecipes.Where(r =>
@@ -90,7 +96,11 @@ internal sealed class WalkFixtureBench
     byte[] data
   )
   {
-    if (packetid != Press)
+    if (
+      packetid != Press
+      || (_rcc ??= GetBehavior<ExRightClickConstructable>())
+        is { IsComplete: false }
+    )
       return false;
     Laid.Add(Inventory[0].Itemstack.Collectible.Code.ToString());
     string name = Encoding.UTF8.GetString(data);
@@ -128,6 +138,46 @@ internal sealed class WalkFixtureBenchBlock : Block
     IPlayer byPlayer,
     BlockSelection blockSel
   ) => Bench(world, blockSel)?.Work(world, byPlayer, secondsUsed) ?? false;
+}
+
+// A WalkFixtureBench that reads its construction through the behaviour on every press and keeps no
+// _rcc or _animator field.
+internal sealed class WalkFixtureUncachedBench
+  : BlockEntityMachineStation,
+    ICraftStation
+{
+  protected override MachineSlotSpec[] SlotSpecs =>
+    [MachineSlotSpec.AnyInput(), MachineSlotSpec.Output()];
+
+  public override string InventoryClassName => "walk-fixture-uncached-bench";
+
+  public override void Initialize(ICoreAPI api)
+  {
+    base.Initialize(api);
+    this.DisablePickRangeCheck();
+  }
+
+  public IReadOnlyList<CraftOrder> Orders(IWorldAccessor world) =>
+    WalkFixtureBench.PressOrders(world);
+
+  protected override bool OnStationPacket(
+    IPlayer player,
+    int packetid,
+    byte[] data
+  )
+  {
+    if (
+      packetid != WalkFixtureBench.Press
+      || GetBehavior<ExRightClickConstructable>() is { IsComplete: false }
+    )
+      return false;
+    string name = Encoding.UTF8.GetString(data);
+    Inventory[0].Itemstack = null;
+    Inventory[1].Itemstack = Api
+      .World.GridRecipes.First(r => r.Name.ToString() == name)
+      .Output.ResolvedItemStack.Clone();
+    return true;
+  }
 }
 
 /// <summary><see cref="CraftWalk"/> over a planted domain <c>walk</c> whose recipes chain from
@@ -189,9 +239,13 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     world
       .RegisterClass("WalkFixtureBench", typeof(WalkFixtureBench))
       .RegisterClass("WalkFixtureBenchBlock", typeof(WalkFixtureBenchBlock))
-      .RegisterBlockEntityFactory(
-        "WalkFixtureBench",
-        () => new WalkFixtureBench()
+      .RegisterClass(
+        "WalkFixtureUncachedBench",
+        typeof(WalkFixtureUncachedBench)
+      )
+      .RegisterClass(
+        "ExRightClickConstructable",
+        typeof(ExRightClickConstructable)
       );
     world.LoadAssets([_files.Root], null, vanilla);
     world.LoadRecipes();
@@ -683,6 +737,68 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.StartsWith("walk:member | station refuses: ", finding);
     Assert.Contains("yielded nothing", finding);
     Assert.Contains("(1 executed, 1 followed)", result.Summary);
+  }
+
+  // Fails when Place skips CompleteConstruction, so a bench that refuses until built is walked unbuilt.
+  [Fact]
+  public void A_station_that_refuses_until_built_is_completed_before_it_is_walked()
+  {
+    _files.Write(
+      "assets/walk/blocktypes/gated.json",
+      """
+      {
+        "code": "gated",
+        "entityClass": "WalkFixtureBench",
+        "entityBehaviors": [
+          {
+            "name": "ExRightClickConstructable",
+            "properties": { "stages": [{}, { "requireStacks": [] }] }
+          }
+        ]
+      }
+      """
+    );
+    using TestWorld world = Planted(
+      ["a", "member"],
+      [Recipe(Stick, "a"), Sized("member", 5, 5)],
+      Stick
+    );
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Empty(result.Findings);
+    Assert.Contains("(2 executed, 0 followed)", result.Summary);
+  }
+
+  // Fails when Place completes a construction by RccFake without checking the entity keeps an _rcc or _animator field.
+  [Fact]
+  public void A_gated_station_that_caches_no_construction_field_is_walked()
+  {
+    _files.Write(
+      "assets/walk/blocktypes/uncached.json",
+      """
+      {
+        "code": "uncached",
+        "entityClass": "WalkFixtureUncachedBench",
+        "entityBehaviors": [
+          {
+            "name": "ExRightClickConstructable",
+            "properties": { "stages": [{}, { "requireStacks": [] }] }
+          }
+        ]
+      }
+      """
+    );
+    using TestWorld world = Planted(
+      ["a", "member"],
+      [Recipe(Stick, "a"), Sized("member", 5, 5)],
+      Stick
+    );
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Empty(result.Findings);
+    Assert.Contains("(2 executed, 0 followed)", result.Summary);
   }
 
   // Fails when the walk counts a recipe the matcher refused as executed.

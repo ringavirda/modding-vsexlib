@@ -157,8 +157,10 @@ internal static class CraftWalkRuns
       && order.Product.Collectible.Code.ToString() == edge.Output
     );
 
-  // Places one of each block of the domain that has a block entity, a cell of its own apiece, and
-  // keeps those whose entity is a craft station.
+  /// <summary>Places one of each block of the domain that has a block entity, a cell of its own
+  /// apiece, and keeps those whose entity is a craft station. A station whose entity carries
+  /// <c>ExRightClickConstructable</c> is completed, as a setup's <c>complete</c> step does, before
+  /// its orders are read; any other is placed as it is.</summary>
   private static List<Station> Place(
     SetupScene scene,
     TestWorld world,
@@ -183,6 +185,12 @@ internal static class CraftWalkRuns
         continue;
       }
       if (world.GetBlockEntity(at) is ICraftStation craft)
+      {
+        scene.CompleteConstruction(
+          (BlockEntity)craft,
+          at,
+          block.Code.ToString()
+        );
         stations.Add(
           new Station(
             block.Code.ToString(),
@@ -190,6 +198,7 @@ internal static class CraftWalkRuns
             craft.Orders(world.World)
           )
         );
+      }
     }
     return stations;
   }

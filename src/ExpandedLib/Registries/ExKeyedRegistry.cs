@@ -18,6 +18,10 @@ public sealed class ExKeyedRegistry<T> {
   private readonly string _table;
 
   /// <param name="keySelector">Derives the registry code from an item (e.g. <c>c =&gt; c.ModId</c>).</param>
+  public ExKeyedRegistry(Func<T, string> keySelector)
+    : this(keySelector, null, null) { }
+
+  /// <param name="keySelector">Derives the registry code from an item (e.g. <c>c =&gt; c.ModId</c>).</param>
   /// <param name="table">Names the registry in the warning a replacement logs; the item type's name
   /// when null.</param>
   /// <param name="owner">Describes an item's registrant in that warning; the item's
