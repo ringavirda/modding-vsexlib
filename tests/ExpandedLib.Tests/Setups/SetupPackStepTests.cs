@@ -57,6 +57,7 @@ public class SetupPackStepTests : IDisposable
             CellTemperature = 1500f,
           }
       )
+      .RegisterClass("CraftFixtureBenchBlock", typeof(CraftFixtureBenchBlock))
       .RegisterClass("CraftFixtureBench", typeof(CraftFixtureBench))
       .RegisterBlockEntityFactory(
         "CraftFixtureBench",
