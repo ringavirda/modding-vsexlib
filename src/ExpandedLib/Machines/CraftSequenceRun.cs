@@ -34,10 +34,8 @@ public enum CraftSequenceProgress
 }
 
 /// <summary>
-/// The labour a station drives for one <see cref="CraftSequence"/>: which step the player is on, how
-/// long the current step has been held, the tool wear each finished step costs and the bill, product
-/// and byproducts at the last step. World state lives in the slots; the run keeps the step index and
-/// the held time only.
+/// The labour a station drives for one <see cref="CraftSequence"/>: step index, held time, tool wear
+/// and the bill, product and byproducts at the last step. World state lives in the slots.
 /// </summary>
 /// <param name="sequence">The sequence worked.</param>
 /// <param name="order">The order whose <see cref="CraftOrder.Inputs"/> are the bill and whose
@@ -72,11 +70,8 @@ public sealed class CraftSequenceRun(
   }
 
   /// <summary>
-  /// Advances the run by <paramref name="dt"/> seconds of the player holding the current step. A hold
-  /// whose tools do not match, or whose bill is not laid, does nothing and drops the held time; a
-  /// bill that goes missing returns the run to its first step. A finished step wears the tools it
-  /// names; the last one also consumes the bill and fills the outputs, and a run that finishes a
-  /// one-step sequence starts again on the next hold.
+  /// Advances the run by <paramref name="dt"/> seconds of the player holding the current step; a hold
+  /// whose bill or hands do not match does nothing, and the last step crafts.
   /// </summary>
   /// <param name="world">The world byproduct codes resolve in.</param>
   /// <param name="dt">Seconds held since the last call; 0 or more.</param>
