@@ -329,10 +329,7 @@ public class StepTests {
       "with: game:woodbucket x 1 (10 L game:waterportion), hand: game:woodbucket x 1",
       InteractStep.HandLine(before, "game:woodbucket x 1")
     );
-    Assert.Equal(
-      "hand: empty hand",
-      InteractStep.HandLine(null, "empty hand")
-    );
+    Assert.Equal("hand: empty hand", InteractStep.HandLine(null, "empty hand"));
   }
 
   /// <summary>Fails when a content without its litres is let through, or blames the mod.</summary>
