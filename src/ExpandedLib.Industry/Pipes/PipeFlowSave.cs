@@ -34,11 +34,7 @@ internal static class PipeFlowSave {
   public static string Key(byte slot) => $"pf{slot}";
 
   /// <summary>Writes <paramref name="save"/> into <paramref name="host"/> under the key of <paramref name="slot"/>, replacing an earlier entry.</summary>
-  public static void Write(
-    ITreeAttribute host,
-    byte slot,
-    PipeNodeSave save
-  ) {
+  public static void Write(ITreeAttribute host, byte slot, PipeNodeSave save) {
     var tree = new TreeAttribute();
     tree.SetInt("v", FormatVersion);
     tree.SetDouble("g", save.GasKg);
