@@ -434,7 +434,8 @@ public sealed partial class SetupScene : IDisposable
 
   /// <summary>Brings the <see cref="ExRightClickConstructable"/> of the entity at
   /// <paramref name="pos"/> to its last stage, drawing the stages' requirements from the pack, and
-  /// plants a completed construction in the entity as <see cref="RccFake.Complete"/> does.</summary>
+  /// plants a completed construction in the entity as <see cref="RccFake.Complete"/> does when the
+  /// entity caches its construction in an <c>_animator</c> or <c>_rcc</c> field.</summary>
   /// <param name="be">The block entity at <paramref name="pos"/>.</param>
   /// <param name="pos">The entity's cell.</param>
   /// <param name="where">The step path a pack shortfall is reported under.</param>
@@ -445,7 +446,11 @@ public sealed partial class SetupScene : IDisposable
     if (be.GetBehavior<ExRightClickConstructable>() is not { } construction)
       return false;
     DrawStages(where, construction.Construction, Describe(pos));
-    RccFake.Complete(be);
+    if (
+      ReflectionHelpers.TryGetField(be, "_animator", out _)
+      || ReflectionHelpers.TryGetField(be, "_rcc", out _)
+    )
+      RccFake.Complete(be);
     if (
       ReflectionHelpers.GetField(construction, "rcc")
       is ExRightClickConstruction built
