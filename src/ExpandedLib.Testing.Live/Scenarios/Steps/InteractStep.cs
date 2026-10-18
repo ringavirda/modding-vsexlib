@@ -13,7 +13,7 @@ namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>interact</c>: the scenario player right-clicks the block as a held mouse button does. The
 /// block is stepped on each runner tick for <c>seconds</c>, then stopped; the hand is cleared once the
-/// report has read what it held.</summary>
+/// report has read what it held, unless the step says <c>keep</c>; the off hand is always cleared.</summary>
 internal sealed class InteractStep : ScenarioStep {
   private static readonly string[] Names = ["sneak", "ctrl", "sprint"];
 
@@ -68,6 +68,24 @@ internal sealed class InteractStep : ScenarioStep {
     }
   }
 
+  /// <summary>Whether the step leaves the hand's stack in the active slot, its <c>keep</c> key.</summary>
+  public static bool Keeps(JObject o) => (bool?)o["keep"] ?? false;
+
+  /// <summary>The stack an interact step clicks with: <paramref name="with"/> when the step names one,
+  /// else what <paramref name="active"/> holds.</summary>
+  public static ItemStack? ClickStack(ItemStack? with, ItemSlot active) =>
+    with ?? active.Itemstack;
+
+  /// <summary>The stack the pack takes back as an interact step ends: nothing when the step keeps the hand,
+  /// else what <paramref name="active"/> holds.</summary>
+  public static ItemStack? Returned(ItemSlot active, bool keep) =>
+    keep ? null : active.Itemstack;
+
+  /// <summary>Ends the step's hold on <paramref name="player"/>, leaving its hand when the step says
+  /// <c>keep</c>.</summary>
+  public static void Finish(IHandRelease player, JObject o) =>
+    player.Release(Keeps(o));
+
   /// <summary>The keys a step holds, each one of <c>sneak</c>, <c>ctrl</c> or <c>sprint</c>.</summary>
   /// <exception cref="StepFailure">A name is none of them.</exception>
   public static string[] KeyNames(JToken? token) {
@@ -112,8 +130,18 @@ internal sealed class InteractStep : ScenarioStep {
     ItemStack? stack = o["with"] is JObject hand
       ? StepValues.Held(ctx, hand)
       : null;
+    ItemSlot active = player.Player.InventoryManager.ActiveHotbarSlot;
     if (stack != null)
       PackLedger.Draw(ctx, stack.Collectible.Code.ToString(), stack.StackSize);
+    ItemStack? offHand = o["offHand"] is JObject off
+      ? StepValues.Held(ctx, off)
+      : null;
+    if (offHand != null)
+      PackLedger.Draw(
+        ctx,
+        offHand.Collectible.Code.ToString(),
+        offHand.StackSize
+      );
     string? withText = stack == null ? null : ScenarioPlayer.StackText(stack);
     string[] keys = KeyNames(o["keys"]);
     double seconds = (double?)o["seconds"] ?? 0;
@@ -123,7 +151,13 @@ internal sealed class InteractStep : ScenarioStep {
       local
     );
     int uses = player.Uses;
-    bool answered = player.UseStart(at, selection, stack, keys);
+    bool answered = player.UseStart(
+      at,
+      selection,
+      ClickStack(stack, active),
+      keys,
+      offHand
+    );
     try {
       if (player.Uses != uses + 1)
         throw new StepFailure(
@@ -138,9 +172,10 @@ internal sealed class InteractStep : ScenarioStep {
         }
         player.UseStop(selection, ctx.Now - started);
       }
+      PackLedger.Give(ctx, Returned(active, Keeps(o)));
       PackLedger.Give(
         ctx,
-        player.Player.InventoryManager.ActiveHotbarSlot.Itemstack
+        player.Player.InventoryManager.OffhandHotbarSlot.Itemstack
       );
       report.Value = HandLine(withText, player.HandText());
       if (o["returns"] is { } returns && (bool)returns != answered)
@@ -148,7 +183,7 @@ internal sealed class InteractStep : ScenarioStep {
           $"OnBlockInteractStart answered {answered}, not {(bool)returns}."
         );
     } finally {
-      player.Release();
+      Finish(player, o);
     }
   }
 
@@ -156,4 +191,11 @@ internal sealed class InteractStep : ScenarioStep {
   /// the hand after the click.</summary>
   internal static string HandLine(string? with, string hand) =>
     with == null ? $"hand: {hand}" : $"with: {with}, hand: {hand}";
+}
+
+/// <summary>What an interact step needs of the player as it ends.</summary>
+internal interface IHandRelease {
+  /// <summary>Releases the keys and empties the hands, leaving the active slot's stack when
+  /// <paramref name="keep"/>.</summary>
+  void Release(bool keep = false);
 }

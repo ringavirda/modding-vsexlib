@@ -333,6 +333,64 @@ public class SetupPackStepTests : IDisposable
     );
   }
 
+  private const string PlateHand =
+    ", {\"interact\": {\"at\": {\"of\": \"box\"}, \"with\": {\"stack\": \"setupcraft:plate\", \"count\": 2}, \"keep\": true}}";
+
+  private static string InsertPlatesIntoBox(int count) =>
+    ", {\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"setupcraft:plate\", \"count\": "
+    + count
+    + ", \"slot\": 0}}]";
+
+  // Fails when a kept interact gives its stack back to the pack, so a second kept interact with no stack
+  // gives the same plates again and an insert of more than were gathered passes.
+  [Fact]
+  public void A_kept_stack_is_given_back_only_once_the_hand_is_released()
+  {
+    string pack = Gathered("stacks", "{\"setupcraft:plate\": 2}");
+    string keepAgain =
+      ", {\"interact\": {\"at\": {\"of\": \"box\"}, \"keep\": true}}";
+
+    Assert.Contains(
+      "steps[3]: the pack holds 0 of setupcraft:plate; the step takes 4.",
+      Refused(pack, "[" + Box + PlateHand + keepAgain + InsertPlatesIntoBox(4))
+    );
+  }
+
+  // Fails when an interact with no stack and no keep empties the kept hand before the click, so the kept
+  // plates are never given back and the insert of them is refused.
+  [Fact]
+  public void An_interact_without_keep_after_a_kept_one_clicks_with_and_returns_the_kept_stack()
+  {
+    using SetupScene scene = Build(
+      Gathered("stacks", "{\"setupcraft:plate\": 2}"),
+      "["
+        + Box
+        + PlateHand
+        + ", {\"interact\": {\"at\": {\"of\": \"box\"}}}"
+        + InsertPlatesIntoBox(2)
+    );
+
+    var box = (SetupBox)scene.World.GetBlockEntity(scene.PositionOf("box"))!;
+    Assert.Equal(2, box.Inventory[0].Itemstack?.StackSize);
+  }
+
+  // Fails when a craft stows its product in the active slot, where no slot index of an expect reads it.
+  [Fact]
+  public void A_crafts_product_is_read_by_slot_outside_the_active_one()
+  {
+    using SetupScene scene = Build(
+      Gathered("stacks", "{\"setupcraft:rod-*\": 2, \"setupcraft:plate\": 2}"),
+      "["
+        + Bench
+        + ", {\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \"setupcraft:frame\"}}"
+        + ", {\"expect\": {\"slot\": 1, \"code\": \"setupcraft:frame\"}}"
+        + ", {\"expect\": {\"slot\": 0, \"code\": null}}"
+        + ", {\"select\": {\"slot\": 1}}]"
+    );
+
+    Assert.NotNull(scene.Player.StackInSlot(1));
+  }
+
   private static string Spill(int dx, int dy = 0, int dz = 0) =>
     "{\"call\": {\"at\": {\"of\": \"box\"}, \"method\": \"Spill\", \"args\": [\"setupcraft:plate\", 2, "
     + dx

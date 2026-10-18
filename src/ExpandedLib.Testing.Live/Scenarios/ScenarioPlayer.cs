@@ -17,7 +17,7 @@ namespace ExpandedLib.Testing.Live;
 /// <summary>The server-side player a run's cases act through, built from the engine's own classes
 /// with no connection and marked connected so the engine reads its game mode (scenarios.md, The
 /// scenario player).</summary>
-internal sealed class ScenarioPlayer {
+internal sealed class ScenarioPlayer : IHandRelease {
   public const string Uid = "exlib-scenario";
   private const string Name = "Scenario";
   private const int ParkHeight = 16;
@@ -28,6 +28,7 @@ internal sealed class ScenarioPlayer {
   private readonly PlayerAntiAbuseMonitor? _abuse;
   private int _uses;
   private int _breaks;
+  private int _slotChanges;
 
   private ScenarioPlayer(
     ServerMain server,
@@ -43,6 +44,7 @@ internal sealed class ScenarioPlayer {
     Player = player;
     server.EventManager.DidUseBlock += CountUse;
     server.EventManager.DidBreakBlock += CountBreak;
+    server.EventManager.AfterActiveSlotChanged += CountSlotChange;
   }
 
   /// <summary>How many did-use events the server has fired for any player since the scenario player was built.</summary>
@@ -50,6 +52,14 @@ internal sealed class ScenarioPlayer {
 
   private void CountUse(IServerPlayer player, BlockSelection selection) =>
     _uses++;
+
+  /// <summary>How many after-active-slot-changed events the server has fired for any player since the scenario player was built.</summary>
+  public int SlotChanges => _slotChanges;
+
+  private void CountSlotChange(
+    IServerPlayer player,
+    ActiveSlotChangeEventArgs args
+  ) => _slotChanges++;
 
   /// <summary>How many did-break events the server has fired for any player since the scenario player was built.</summary>
   public int Breaks => _breaks;
@@ -441,19 +451,22 @@ internal sealed class ScenarioPlayer {
   /// the hold's later calls pass it to the block.</param>
   /// <param name="stack">What the hand holds, or null for an empty hand.</param>
   /// <param name="keys">Names read by <see cref="Hold"/>.</param>
+  /// <param name="offHand">What the off hand holds, or null for an empty one.</param>
   /// <returns>What <c>Block.OnBlockInteractStart</c> answered.</returns>
   public bool UseStart(
     BlockPos at,
     BlockSelection selection,
     ItemStack? stack,
-    IReadOnlyList<string> keys
-  ) => Start(at, selection, stack, keys);
+    IReadOnlyList<string> keys,
+    ItemStack? offHand = null
+  ) => Start(at, selection, stack, keys, offHand);
 
   private bool Start(
     BlockPos at,
     BlockSelection selection,
     ItemStack? stack,
-    IReadOnlyList<string> keys
+    IReadOnlyList<string> keys,
+    ItemStack? offHand
   ) {
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
     _data.FreeMove = false;
@@ -461,6 +474,7 @@ internal sealed class ScenarioPlayer {
     Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
     Hold(Player.Entity.Controls, keys);
     Player.InventoryManager.ActiveHotbarSlot.Itemstack = stack;
+    Player.InventoryManager.OffhandHotbarSlot.Itemstack = offHand;
     bool answered = _server
       .BlockAccessor.GetBlock(at)
       .OnBlockInteractStart(_server, Player, selection);
@@ -539,6 +553,25 @@ internal sealed class ScenarioPlayer {
       .OnBlockInteractStep((float)secondsHeld, _server, Player, selection);
   }
 
+  /// <summary>Makes hotbar slot <paramref name="slot"/> the active one as the server's hotbar-slot packet
+  /// does: the before event may veto it, then the slot is set, a stack too hot to hold is dropped, and
+  /// the after event fires.</summary>
+  /// <returns>Whether the change went ahead.</returns>
+  public bool Select(int slot) {
+    int from = Player.ActiveSlot;
+    if (
+      !_server.EventManager.TriggerBeforeActiveSlotChanged(Player, from, slot)
+    )
+      return false;
+    Player.ActiveSlot = slot;
+    Player.InventoryManager.ActiveHotbarSlot.Inventory.DropSlotIfHot(
+      Player.InventoryManager.ActiveHotbarSlot,
+      Player
+    );
+    _server.EventManager.TriggerAfterActiveSlotChanged(Player, from, slot);
+    return true;
+  }
+
   /// <summary>Ends the interaction with <c>Block.OnBlockInteractStop</c>.</summary>
   /// <param name="secondsHeld">The seconds the hold has run.</param>
   public void UseStop(BlockSelection selection, double secondsHeld) {
@@ -566,9 +599,19 @@ internal sealed class ScenarioPlayer {
     return text;
   }
 
-  /// <summary>Empties the active slot, releases the keys and parks the player.</summary>
-  public void Release() {
-    Player.InventoryManager.ActiveHotbarSlot.Itemstack = null;
+  /// <summary>The stack the active slot holds after a step.</summary>
+  /// <param name="held">What the slot holds.</param>
+  /// <param name="keep">Whether the step leaves the hand as it ends.</param>
+  public static ItemStack? HandAfter(ItemStack? held, bool keep) =>
+    keep ? held : null;
+
+  /// <summary>Releases the keys, parks the player, empties the off hand and empties the active slot unless
+  /// <paramref name="keep"/>.</summary>
+  /// <param name="keep">Whether the active slot keeps its stack for the steps that follow.</param>
+  public void Release(bool keep = false) {
+    ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
+    slot.Itemstack = HandAfter(slot.Itemstack, keep);
+    Player.InventoryManager.OffhandHotbarSlot.Itemstack = null;
     Hold(Player.Entity.Controls, []);
     Park();
   }
@@ -586,6 +629,7 @@ internal sealed class ScenarioPlayer {
   public void Stop() {
     _server.EventManager.DidUseBlock -= CountUse;
     _server.EventManager.DidBreakBlock -= CountBreak;
+    _server.EventManager.AfterActiveSlotChanged -= CountSlotChange;
     _server.DespawnEntity(
       _data.EntityPlayer,
       new EntityDespawnData { Reason = EnumDespawnReason.Removed }

@@ -1,0 +1,1 @@
+{ "code": "plug", "class": "SetupHoldCanalBlock", "entityClass": "SetupHoldCanal", "attributes": { "temperature": 900 } }

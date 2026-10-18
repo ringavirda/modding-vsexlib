@@ -19,7 +19,43 @@ public readonly record struct FillerOffset(
   string? PortFace = null,
   string? PortNetworkType = null,
   CellBoxes? Boxes = null
-);
+) {
+  /// <summary>The cell without box data, as built before <see cref="Boxes"/> existed.</summary>
+  public FillerOffset(
+    Vec3i offset,
+    bool allowAttach,
+    Cuboidf[]? collisionBoxes,
+    FillerBehavior[]? behaviors,
+    string? portFace,
+    string? portNetworkType
+  )
+    : this(
+      offset,
+      allowAttach,
+      collisionBoxes,
+      behaviors,
+      portFace,
+      portNetworkType,
+      null
+    ) { }
+
+  /// <summary>Deconstructs the six members that existed before <see cref="Boxes"/>.</summary>
+  public void Deconstruct(
+    out Vec3i offset,
+    out bool allowAttach,
+    out Cuboidf[]? collisionBoxes,
+    out FillerBehavior[]? behaviors,
+    out string? portFace,
+    out string? portNetworkType
+  ) {
+    offset = Offset;
+    allowAttach = AllowAttach;
+    collisionBoxes = CollisionBoxes;
+    behaviors = Behaviors;
+    portFace = PortFace;
+    portNetworkType = PortNetworkType;
+  }
+}
 
 /// <summary>
 /// A resolved world-space filler cell: attach flag, and collision boxes, behaviour connector faces
