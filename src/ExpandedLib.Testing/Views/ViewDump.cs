@@ -255,7 +255,7 @@ public static class ViewDump {
     + $"      \"target\": {Str(g.Target)},\n"
     + $"      \"value\": {Num(g.Value)},\n"
     + $"      \"min\": {(g.Min is { } min ? Num(min) : "null")},\n"
-    + $"      \"max\": {Num(g.Max)},\n"
+    + $"      \"max\": {(double.IsPositiveInfinity(g.Max) ? "null" : Num(g.Max))},\n"
     + $"      \"ends\": {(g.Ends == null ? "null" : $"[{string.Join(", ", g.Ends.Select(Str))}]")},\n"
     + $"      \"pass\": {(g.Pass ? "true" : "false")}\n"
     + "    }";

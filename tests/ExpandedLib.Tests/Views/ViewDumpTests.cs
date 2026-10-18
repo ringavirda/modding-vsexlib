@@ -205,7 +205,7 @@ public class ViewDumpTests {
     );
   }
 
-  // Fails when the dump drops the rule readings: a tipped item then carries no G14 row, nor G4, G9 or G11.
+  // Fails when the dump drops the rule readings: a tipped item then carries no G14 row, nor G4, G9 or G11; or when an unbounded max is written as a bare Infinity token instead of null.
   [Fact]
   public void Dump_carries_the_rule_readings_of_a_tipped_item() {
     Item tipped = World.World.GetItem(
@@ -236,7 +236,14 @@ public class ViewDumpTests {
       .Single(r => r.Gate == "G14");
     JToken g14 = file["gates"]!.Single(g => (string?)g["gate"] == "G14");
     Assert.Equal(expected.Value, (double)g14["value"]!, 0.001);
-    Assert.Equal(expected.Max, (double)g14["max"]!, 0.001);
+    if (double.IsPositiveInfinity(expected.Max))
+      Assert.Equal(JTokenType.Null, g14["max"]!.Type);
+    else
+      Assert.Equal(expected.Max, (double)g14["max"]!, 0.001);
+    if (expected.Min is { } min)
+      Assert.Equal(min, (double)g14["min"]!, 0.001);
+    else
+      Assert.Equal(JTokenType.Null, g14["min"]!.Type);
     Assert.Equal(expected.Pass, (bool)g14["pass"]!);
     foreach (string rule in new[] { "G4", "G9", "G11" })
       Assert.Contains(file["gates"]!, g => (string?)g["gate"] == rule);
