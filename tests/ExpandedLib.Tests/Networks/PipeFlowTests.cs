@@ -711,11 +711,11 @@ public class PipeFlowTests {
     Assert.True(net.Store.FlowKgPerSecond(0) > 0);
   }
 
-  // Fails when a pipeflow run merges or splits as if it supported it.
+  // Fails when a pipeflow run splits by proportion as if it did not partition by node keys.
   [Fact]
-  public void Network_RefusesMergeAndSplit() {
+  public void Network_RefusesProportionalSplit() {
     var net = new PipeFlowNetwork(null!);
-    Assert.Throws<NotSupportedException>(() => net.OnMerge(net, null!));
+    Assert.True(net.SupportsPartialSplit);
     Assert.Throws<NotSupportedException>(() =>
       net.OnSplitFragment(net, (Vintagestory.API.Common.IBlockAccessor)null!)
     );
