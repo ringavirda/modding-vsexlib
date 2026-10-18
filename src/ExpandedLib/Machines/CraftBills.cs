@@ -93,7 +93,10 @@ internal static class CraftBills
       return new ItemStack(
         world.Items.FirstOrDefault(i =>
           i?.Code != null && WildcardUtil.Match(pattern, i.Code.ToString())
-        ) ?? throw new InvalidOperationException($"no loaded item matches {pattern}."),
+        )
+          ?? throw new InvalidOperationException(
+            $"no loaded item matches {pattern}."
+          ),
         1
       );
     drawn =

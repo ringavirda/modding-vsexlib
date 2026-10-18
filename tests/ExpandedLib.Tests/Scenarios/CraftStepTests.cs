@@ -142,7 +142,8 @@ internal sealed class CraftFixtureBenchBlock : Block
   private static CraftFixtureBench? Bench(
     IWorldAccessor world,
     BlockSelection selection
-  ) => world.BlockAccessor.GetBlockEntity(selection.Position) as CraftFixtureBench;
+  ) =>
+    world.BlockAccessor.GetBlockEntity(selection.Position) as CraftFixtureBench;
 
   public override bool OnBlockInteractStart(
     IWorldAccessor world,
@@ -709,7 +710,10 @@ public class CraftStepTests : IDisposable
       .Throws<InvalidOperationException>(() => BuildSequenced(""))
       .Message;
 
-    Assert.Contains("does not take the hold of step 1 of setupcraft:frame", message);
+    Assert.Contains(
+      "does not take the hold of step 1 of setupcraft:frame",
+      message
+    );
   }
 
   // Fails when a pack key that matches a tool but names nothing loaded is passed over.
@@ -725,7 +729,10 @@ public class CraftStepTests : IDisposable
       )
       .Message;
 
-    Assert.Contains("setupcraft:ghost, which the load did not register", message);
+    Assert.Contains(
+      "setupcraft:ghost, which the load did not register",
+      message
+    );
   }
 }
 #endif

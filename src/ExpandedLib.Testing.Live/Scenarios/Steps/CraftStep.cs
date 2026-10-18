@@ -81,7 +81,9 @@ internal sealed class CraftStep : ScenarioStep {
           player.Survive();
           player.Face(ctx.Setup.Absolute(local!), BlockFacing.SOUTH);
           ctx.Touched.Add(local!.Copy());
-          if (CraftSequenceRegistry.Shared.Sequence(order.Recipe) is { } sequence) {
+          if (
+            CraftSequenceRegistry.Shared.Sequence(order.Recipe) is { } sequence
+          ) {
             var worked = new List<ItemStack>();
             foreach (
               bool more in WorkSequence(
