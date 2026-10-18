@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Scenarios;
+using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 using Xunit;
 
 namespace ExpandedLib.Tests.Scenarios.Live;
@@ -206,5 +208,127 @@ public class StepTests {
       FailureDetail.FrameLine("   at Probe.Run() in /home/a sat at/x.cs:line 4")
     );
     Assert.Equal("at bare text", FailureDetail.FrameLine("bare text"));
+  }
+
+  private sealed class VesselBox : BlockEntity, IBlockEntityContainer {
+    public InventoryGeneric Slots { get; set; } = null!;
+
+    public IInventory Inventory => Slots;
+
+    public string InventoryClassName => "vessel";
+
+    public void DropContents(Vec3d atPos) { }
+
+    public void CheckInventoryClearedMidTick() { }
+  }
+
+  private static LiveFixture VesselFixture() {
+    var fixture = new LiveFixture();
+    fixture.Test.LoadAssets(
+      [],
+      null,
+      ["game:woodbucket", "game:waterportion", "game:charcoal"]
+    );
+    StructureBreaks.Ready(
+      fixture.Test,
+      fixture.Test.World.GetBlock(new AssetLocation("game:woodbucket"))
+    );
+    Block box = TestBlocks.Configure(
+      new Block { EntityClass = "vessel" },
+      "exlib:vessel",
+      900
+    );
+    fixture
+      .Test.Register(box)
+      .RegisterBlockEntityFactory(
+        "vessel",
+        () =>
+          new VesselBox {
+            Slots = new InventoryGeneric(
+              1,
+              "vessel",
+              null,
+              fixture.Test.Api
+            ),
+          }
+      );
+    fixture.Run(
+      Steps(
+        """[{ "place": { "id": "v", "code": "exlib:vessel", "at": [0, 0, 0] } }]"""
+      )
+    );
+    return fixture;
+  }
+
+  private static ItemStack Held(LiveFixture fixture) =>
+    ((VesselBox)fixture.Context.Setup.BlockEntityAt(new BlockPos(0, 0, 0))!)
+      .Slots[0]
+      .Itemstack;
+
+  /// <summary>Fails when an insert drops the stack's content and litres, leaving the vessel empty.</summary>
+  [Fact]
+  public void An_insert_of_a_bucket_with_a_content_leaves_those_litres_in_it() {
+    LiveFixture fixture = VesselFixture();
+    fixture.Run(
+      Steps(
+        """[{ "insert": { "at": [0, 0, 0], "stack": "game:woodbucket", "content": "game:waterportion", "litres": 7 } }]"""
+      )
+    );
+    ItemStack held = Held(fixture);
+    var bucket = (BlockLiquidContainerBase)held.Collectible;
+    Assert.Equal(7f, bucket.GetCurrentLitres(held), 2);
+    Assert.Equal(
+      "game:waterportion",
+      bucket.GetContent(held).Collectible.Code.ToString()
+    );
+  }
+
+  /// <summary>Fails when a hand's content and litres are dropped on the way to its stack (the interact,
+  /// break and window steps read their stack there).</summary>
+  [Fact]
+  public void A_held_object_with_a_content_makes_a_filled_stack() {
+    LiveFixture fixture = VesselFixture();
+    ItemStack stack = StepValues.Held(
+      fixture.Context,
+      Newtonsoft.Json.Linq.JObject.Parse(
+        """{ "stack": "game:woodbucket", "content": "game:waterportion", "litres": 7 }"""
+      )
+    );
+    Assert.Equal(
+      7f,
+      ((BlockLiquidContainerBase)stack.Collectible).GetCurrentLitres(stack),
+      2
+    );
+  }
+
+  /// <summary>Fails when a content on a stack that is no liquid container is let through, or blames the
+  /// mod instead of the scenario.</summary>
+  [Fact]
+  public void A_content_on_charcoal_fails_the_step_and_blames_the_scenario() {
+    LiveFixture fixture = VesselFixture();
+    StepFailure failure = Assert.Throws<StepFailure>(() =>
+      fixture.Run(
+        Steps(
+          """[{ "insert": { "at": [0, 0, 0], "stack": "game:charcoal", "content": "game:waterportion", "litres": 1 } }]"""
+        )
+      )
+    );
+    Assert.Equal(Suspect.Scenario, failure.Suspect);
+    Assert.Contains("is not a liquid container", failure.Message);
+  }
+
+  /// <summary>Fails when a content without its litres is let through, or blames the mod.</summary>
+  [Fact]
+  public void A_content_without_litres_fails_the_step_and_blames_the_scenario() {
+    LiveFixture fixture = VesselFixture();
+    StepFailure failure = Assert.Throws<StepFailure>(() =>
+      fixture.Run(
+        Steps(
+          """[{ "insert": { "at": [0, 0, 0], "stack": "game:woodbucket", "content": "game:waterportion" } }]"""
+        )
+      )
+    );
+    Assert.Equal(Suspect.Scenario, failure.Suspect);
+    Assert.Contains("needs its \"litres\"", failure.Message);
   }
 }

@@ -547,12 +547,19 @@ internal sealed class ScenarioPlayer {
       .OnBlockInteractStop((float)secondsHeld, _server, Player, selection);
   }
 
-  /// <summary>What the active slot holds: the stack's code and size, or <c>empty hand</c>.</summary>
+  /// <summary>What the active slot holds: the stack's code and size, with the litres and code of a
+  /// liquid container's content, or <c>empty hand</c>.</summary>
   public string HandText() {
     ItemStack? held = Player.InventoryManager.ActiveHotbarSlot.Itemstack;
-    return held == null
-      ? "empty hand"
-      : $"{held.Collectible.Code} x {held.StackSize}";
+    if (held == null)
+      return "empty hand";
+    string text = $"{held.Collectible.Code} x {held.StackSize}";
+    if (
+      held.Collectible is BlockLiquidContainerBase vessel
+      && vessel.GetContent(held) is { } content
+    )
+      return $"{text} ({vessel.GetCurrentLitres(held)} L {content.Collectible.Code})";
+    return text;
   }
 
   /// <summary>Empties the active slot, releases the keys and parks the player.</summary>
