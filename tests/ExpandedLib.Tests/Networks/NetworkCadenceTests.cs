@@ -58,7 +58,10 @@ public class NetworkCadenceTests {
   private static (TestWorld World, List<string> Log) NewWorld() {
     var log = new List<string>();
     var w = new TestWorld();
-    w.RegisterNetwork("lumped", sys => new RecordingNetwork(sys, "lumped", log));
+    w.RegisterNetwork(
+      "lumped",
+      sys => new RecordingNetwork(sys, "lumped", log)
+    );
     w.RegisterNetwork("fast", sys => new FastNetwork(sys, log));
     return (w, log);
   }
