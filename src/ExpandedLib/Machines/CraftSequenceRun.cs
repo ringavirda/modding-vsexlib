@@ -202,8 +202,17 @@ public sealed class CraftSequenceRun(
       var code = new AssetLocation(by.Code);
       CollectibleObject? shed =
         by.Type == "block" ? world.GetBlock(code) : world.GetItem(code);
-      if (shed != null)
-        wanted.Add(new ItemStack(shed, by.Quantity));
+      if (shed == null)
+      {
+        world.Logger.Error(
+          "Craft sequence {0}: byproduct {1} is no loaded {2}; the craft sheds none of it.",
+          sequence.Recipe,
+          by.Code,
+          by.Type
+        );
+        continue;
+      }
+      wanted.Add(new ItemStack(shed, by.Quantity));
     }
 
     ItemStack?[] after =

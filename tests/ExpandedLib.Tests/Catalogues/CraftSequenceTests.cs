@@ -19,7 +19,7 @@ public sealed class CraftSequenceTests
       "machine": "workbench",
       "sequences": [
         {
-          "recipe": "iiex:recipes/grid/shaft-hand",
+          "recipe": "iiex:shaft hand",
           "steps": [
             { "tool": "game:chisel-*", "offhand": "game:hammer-*", "seconds": 3, "help": "iiex:craftstep-shaft-hand-1" },
             { "tool": "iiex:file-*", "seconds": 2, "help": "iiex:craftstep-shaft-hand-2" },
@@ -115,7 +115,7 @@ public sealed class CraftSequenceTests
         ("iiex:config/craftsequences/workbench.json", ShaftHand),
         (
           "othermod:config/craftsequences/workbench.json",
-          """{ "machine": "workbench", "sequences": [ { "recipe": "iiex:recipes/grid/shaft-hand", "steps": [ { "tool": "othermod:saw-*" } ] } ] }"""
+          """{ "machine": "workbench", "sequences": [ { "recipe": "iiex:shaft hand", "steps": [ { "tool": "othermod:saw-*" } ] } ] }"""
         ),
       ],
       registry
@@ -125,7 +125,7 @@ public sealed class CraftSequenceTests
     Assert.StartsWith("othermod:config/craftsequences/workbench.json:", clash);
     CraftSequence held = registry.Sequence(
       "workbench",
-      "iiex:recipes/grid/shaft-hand"
+      "iiex:shaft hand"
     )!;
     Assert.Equal(4, held.Steps.Length);
   }
@@ -148,7 +148,7 @@ public sealed class CraftSequenceTests
     );
 
     Assert.Empty(errors);
-    Assert.NotNull(registry.Sequence("lathe", "iiex:recipes/grid/shaft-hand"));
+    Assert.NotNull(registry.Sequence("lathe", "iiex:shaft hand"));
     Assert.Equal(2, registry.Machines.Count);
   }
 
@@ -175,8 +175,8 @@ public sealed class CraftSequenceTests
       ]);
       using var world = new TestWorld();
       CraftSequenceGate.Register(world.Api.Event);
-      GridRecipe sequenced = Recipe("iiex:recipes/grid/shaft-hand");
-      GridRecipe plain = Recipe("iiex:recipes/grid/plain");
+      GridRecipe sequenced = Recipe("iiex:shaft hand");
+      GridRecipe plain = Recipe("iiex:plain");
 
       Assert.False(Matches(world, sequenced));
       Assert.True(Matches(world, plain));

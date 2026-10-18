@@ -19,8 +19,9 @@ namespace ExpandedLib.Testing;
 /// <para>Each fired grid recipe is then crafted once, with the first wildcard variant reached before
 /// it fired: at the hand grid when it fits 3 x 3, else at the first placed
 /// <see cref="ExpandedLib.Machines.ICraftStation"/> whose orders hold it. A recipe with a
-/// <see cref="CraftSequence"/> is crafted at a station, the hand grid must refuse it, and every tool
-/// its steps name must be reached. The stations are one of each block of the domain with a block
+/// <see cref="CraftSequence"/> is crafted at a station by holding its steps, the hand grid must refuse
+/// it, and every tool its steps name must be reached. A sequence of the domain must name a loaded
+/// grid recipe and shed only loaded items and blocks. The stations are one of each block of the domain with a block
 /// entity; the other edges are followed.</para></remarks>
 public static class CraftWalk
 {
@@ -165,6 +166,36 @@ public static class CraftWalk
               )
             );
     }
+
+    foreach (string machine in CraftSequenceRegistry.Shared.Machines)
+      foreach (CraftSequence sequence in CraftSequenceRegistry.Shared.Sequences(machine))
+      {
+        if (new AssetLocation(sequence.Recipe).Domain != domain)
+          continue;
+        if (
+          !world.World.GridRecipes.Any(r =>
+            string.Equals(
+              r.Name?.ToString(),
+              sequence.Recipe,
+              StringComparison.OrdinalIgnoreCase
+            )
+          )
+        )
+          found.Add(
+            (
+              sequence.Recipe,
+              $"{sequence.Recipe} | the sequence of {machine} names no loaded grid recipe"
+            )
+          );
+        foreach (CraftByproduct by in sequence.Byproducts)
+          if (!all.Any(c => c.Code.Equals(new AssetLocation(by.Code))))
+            found.Add(
+              (
+                sequence.Recipe,
+                $"{sequence.Recipe} | the sequence of {machine} sheds {by.Code}, which no loaded item or block is"
+              )
+            );
+      }
 
     Dictionary<string, WalkNeed> undeclared = [];
     for (int i = 0; i < edges.Count; i++)

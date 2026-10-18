@@ -58,6 +58,32 @@ internal sealed class WalkFixtureBench
         )),
     ];
 
+  private CraftSequenceRun? _run;
+  private float _used;
+
+  public void StartHold() => _used = 0f;
+
+  public bool Work(IWorldAccessor world, IPlayer player, float used)
+  {
+    float dt = used - _used;
+    _used = used;
+    CraftOrder order = Orders(world)
+      .First(o => CraftSequenceRegistry.Shared.Sequence(o.Recipe) != null);
+    _run ??= new CraftSequenceRun(
+      CraftSequenceRegistry.Shared.Sequence(order.Recipe)!,
+      order,
+      [.. Inventory],
+      new Random(1)
+    );
+    return _run.Hold(
+        world,
+        dt,
+        player.Entity.RightHandItemSlot,
+        player.Entity.LeftHandItemSlot,
+        false
+      ) == CraftSequenceProgress.Working;
+  }
+
   protected override bool OnStationPacket(
     IPlayer player,
     int packetid,
@@ -76,6 +102,31 @@ internal sealed class WalkFixtureBench
       .Output.ResolvedItemStack.Clone();
     return true;
   }
+}
+
+internal sealed class WalkFixtureBenchBlock : Block
+{
+  private static WalkFixtureBench? Bench(
+    IWorldAccessor world,
+    BlockSelection selection
+  ) => world.BlockAccessor.GetBlockEntity(selection.Position) as WalkFixtureBench;
+
+  public override bool OnBlockInteractStart(
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  )
+  {
+    Bench(world, blockSel)?.StartHold();
+    return true;
+  }
+
+  public override bool OnBlockInteractStep(
+    float secondsUsed,
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  ) => Bench(world, blockSel)?.Work(world, byPlayer, secondsUsed) ?? false;
 }
 
 /// <summary><see cref="CraftWalk"/> over a planted domain <c>walk</c> whose recipes chain from
@@ -136,6 +187,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     var world = new TestWorld();
     world
       .RegisterClass("WalkFixtureBench", typeof(WalkFixtureBench))
+      .RegisterClass("WalkFixtureBenchBlock", typeof(WalkFixtureBenchBlock))
       .RegisterBlockEntityFactory(
         "WalkFixtureBench",
         () => new WalkFixtureBench()
@@ -293,13 +345,83 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.Empty(result.Findings);
     CraftWalk.CraftedEdge crafted = Assert.Single(result.Crafted);
     Assert.NotEqual(CraftWalk.HandGridName, crafted.Station);
+    Assert.Empty(WalkFixtureBench.Laid);
+  }
+
+  // Fails when the walk presses the sequenced recipe's button instead of holding its steps.
+  [Fact]
+  public void A_station_that_takes_no_hold_fails_a_sequenced_recipe()
+  {
+    _files.Write(
+      "assets/walk/blocktypes/bench.json",
+      Bench.Replace("WalkFixtureBenchBlock", "Block")
+    );
+    using TestWorld world = Planted(["a"], [Recipe(Stick, "a")], Stick);
+    Sequence("walk:a", Stick);
+
+    CraftWalk.Result result = Walk(world);
+
+    string finding = Assert.Single(result.Findings);
+    Assert.StartsWith("walk:a | station refuses: ", finding);
+    Assert.Contains("does not take the hold of step 1 of walk:a", finding);
+  }
+
+  // Fails when a sequence keyed on a name no loaded recipe has passes the walk.
+  [Fact]
+  public void A_sequence_naming_no_loaded_recipe_fails()
+  {
+    using TestWorld world = WithBench(["a"], [Recipe(Stick, "a")]);
+    Sequence("walk:recipes/grid/walk", Stick);
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Contains(
+      "walk:recipes/grid/walk | the sequence of bench names no loaded grid recipe",
+      result.Findings
+    );
+  }
+
+  // Fails when a byproduct code that matches no loaded collectible passes the walk.
+  [Fact]
+  public void A_sequence_shedding_an_unloaded_code_fails()
+  {
+    using TestWorld world = WithBench(["a"], [Recipe(Stick, "a")]);
+    world.Log.Expect(EnumLogType.Error, "walk:ghost");
+    CraftSequenceLoader.Load([
+      (
+        "walk:config/craftsequences/walk.json",
+        """
+        {
+          "machine": "bench",
+          "sequences": [
+            {
+              "recipe": "walk:a",
+              "steps": [ { "tool": "game:stick", "seconds": 2 } ],
+              "byproducts": [ { "type": "item", "code": "walk:ghost", "quantity": 1 } ]
+            }
+          ]
+        }
+        """
+      ),
+    ]);
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Contains(
+      "walk:a | the sequence of bench sheds walk:ghost, which no loaded item or block is",
+      result.Findings
+    );
   }
 
   // Fails when the walk stops checking the tool a sequence step names.
   [Fact]
   public void A_step_naming_an_unreached_tool_fails_and_a_reached_one_passes()
   {
-    using TestWorld world = WithBench(["a"], [Recipe(Stick, "a")]);
+    using TestWorld world = WithBench(
+      ["a"],
+      [Recipe(Stick, "a")],
+      "game:wrench-iron"
+    );
     Sequence("walk:a", "game:wrench-*");
 
     CraftWalk.Result result = Walk(world);
@@ -532,12 +654,16 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
   }
 
   private const string Bench =
-    "{ \"code\": \"bench\", \"entityClass\": \"WalkFixtureBench\" }";
+    "{ \"code\": \"bench\", \"class\": \"WalkFixtureBenchBlock\", \"entityClass\": \"WalkFixtureBench\" }";
 
-  private TestWorld WithBench(string[] items, string[] recipes)
+  private TestWorld WithBench(
+    string[] items,
+    string[] recipes,
+    params string[] vanilla
+  )
   {
     _files.Write("assets/walk/blocktypes/bench.json", Bench);
-    return Planted(items, recipes, Stick);
+    return Planted(items, recipes, [Stick, .. vanilla]);
   }
 
   // Fails when CraftAt stops throwing on a press that yields nothing.

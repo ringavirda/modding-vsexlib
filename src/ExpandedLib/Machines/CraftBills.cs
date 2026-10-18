@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Catalogues;
 using ExpandedLib.Scenarios;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -22,6 +23,47 @@ internal static class CraftBills
   ) =>
     order.Product.Collectible.Code.Equals(wanted)
     && (recipe == null || order.Recipe == recipe);
+
+  /// <summary>What <paramref name="times"/> crafts of <paramref name="order"/> make: its product and
+  /// the byproducts of <paramref name="sequence"/>, each code counted once.</summary>
+  /// <param name="order">The order crafted.</param>
+  /// <param name="sequence">The order's craft sequence, or null for none.</param>
+  /// <param name="times">How many crafts; at least 1.</param>
+  /// <returns>The count of each collectible code, the product first.</returns>
+  public static Dictionary<string, int> Yield(
+    CraftOrder order,
+    CraftSequence? sequence,
+    int times
+  )
+  {
+    var wanted = new Dictionary<string, int>
+    {
+      [order.Product.Collectible.Code.ToString()] =
+        order.Product.StackSize * times,
+    };
+    foreach (CraftByproduct by in sequence?.Byproducts ?? [])
+    {
+      string code = new AssetLocation(by.Code).ToString();
+      wanted[code] = wanted.GetValueOrDefault(code) + (by.Quantity * times);
+    }
+    return wanted;
+  }
+
+  /// <summary>Whether <paramref name="made"/> holds exactly the codes and counts of
+  /// <paramref name="wanted"/>.</summary>
+  /// <param name="made">The stacks a craft took out.</param>
+  /// <param name="wanted">What <see cref="Yield"/> answered.</param>
+  public static bool Yielded(
+    IEnumerable<ItemStack> made,
+    IReadOnlyDictionary<string, int> wanted
+  )
+  {
+    Dictionary<string, int> got = made
+      .GroupBy(s => s.Collectible.Code.ToString())
+      .ToDictionary(g => g.Key, g => g.Sum(s => s.StackSize));
+    return got.Count == wanted.Count
+      && wanted.All(w => got.GetValueOrDefault(w.Key) == w.Value);
+  }
 
   /// <summary>The stack that fills <paramref name="input"/>: the collectible
   /// <paramref name="with"/> names under the input's name, else the ingredient's own item when it

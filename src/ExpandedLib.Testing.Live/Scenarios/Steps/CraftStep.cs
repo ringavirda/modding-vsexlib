@@ -112,11 +112,14 @@ internal sealed class CraftStep : ScenarioStep {
     }
 
     int expected = order.Product.StackSize * times;
-    int count = made.Where(s => s.Collectible.Code.Equals(wanted))
-      .Sum(s => s.StackSize);
-    if (count != expected || made.Any(s => !s.Collectible.Code.Equals(wanted)))
+    Dictionary<string, int> yielded = CraftBills.Yield(
+      order,
+      CraftSequenceRegistry.Shared.Sequence(order.Recipe),
+      times
+    );
+    if (!CraftBills.Yielded(made, yielded))
       throw new StepFailure(
-        $"{station} made {string.Join(", ", made.Select(s => $"{s.StackSize} {s.Collectible.Code}"))}, not {expected} {wanted}."
+        $"{station} made {string.Join(", ", made.Select(s => $"{s.StackSize} {s.Collectible.Code}"))}, not {string.Join(", ", yielded.Select(w => $"{w.Value} {w.Key}"))}."
       );
     foreach (ItemStack stack in made)
       PackLedger.Give(ctx, stack);

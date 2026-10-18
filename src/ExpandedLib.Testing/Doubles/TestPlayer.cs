@@ -67,7 +67,8 @@ public sealed class TestPlayer {
   public ItemSlot OffhandSlot => _offhandSlot;
 
   /// <summary>The inventory <c>InventoryManager.GetHotbarInventory()</c> returns: a real, empty
-  /// 12-slot inventory, as the game's hotbar, the last slot the off hand.</summary>
+  /// 12-slot inventory, as the game's hotbar. Its last slot is not <see cref="OffhandSlot"/>, which
+  /// <c>InventoryManager.OffhandHotbarSlot</c> answers.</summary>
   public InventoryGeneric Hotbar { get; }
 
   /// <summary>The player's mouse cursor: a real, empty 1-slot inventory under the id
@@ -348,6 +349,7 @@ public sealed class TestPlayer {
     IPlayerInventoryManager manager = Inventories(
       player,
       activeSlot,
+      offhandSlot,
       hotbar,
       mouse
     );
@@ -368,6 +370,7 @@ public sealed class TestPlayer {
   private static IPlayerInventoryManager Inventories(
     IPlayer player,
     DummySlot activeSlot,
+    DummySlot offhandSlot,
     InventoryGeneric hotbar,
     InventoryGeneric mouse
   ) {
@@ -377,6 +380,7 @@ public sealed class TestPlayer {
     };
     var manager = Substitute.For<IPlayerInventoryManager>();
     manager.ActiveHotbarSlot.Returns(activeSlot);
+    manager.OffhandHotbarSlot.Returns(offhandSlot);
     manager.GetHotbarInventory().Returns(hotbar);
     manager.MouseItemSlot.Returns(_ => mouse[0]);
     manager.Inventories.Returns(held);

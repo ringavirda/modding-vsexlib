@@ -18,6 +18,7 @@ internal sealed class CraftFixtureBench
 {
   public const int Press = 1002;
   public const int OutputSlot = 4;
+  public const int ByproductSlot = 5;
 
   public static bool Refuses;
   public static bool MakesWrong;
@@ -31,6 +32,7 @@ internal sealed class CraftFixtureBench
       ),
       MachineSlotSpec.AnyInput(),
       MachineSlotSpec.AnyInput(),
+      MachineSlotSpec.Output(),
       MachineSlotSpec.Output(),
     ];
 
@@ -65,7 +67,7 @@ internal sealed class CraftFixtureBench
           ],
           Press,
           null,
-          [OutputSlot],
+          [OutputSlot, ByproductSlot],
           r.Output!.ResolvedItemStack.Clone(),
           r
         )),
@@ -688,6 +690,42 @@ public class CraftStepTests : IDisposable
     );
 
     Assert.Equal(3, Carried(scene, Frame));
+  }
+
+  private static string Shedding(string code) =>
+    Hammered.Replace(
+      "]}]}",
+      "]," + "\"byproducts\": [{\"type\": \"item\", \"code\": \"" + code + "\", \"quantity\": 1}]}]}"
+    );
+
+  // Fails when the check counts only the product, or the byproducts are not given to the pack.
+  [Fact]
+  public void Craft_of_a_sequenced_recipe_takes_its_byproducts_and_gives_them_to_the_pack()
+  {
+    using SetupScene scene = BuildSequenced(
+      PackOf(Tools, "\"setupcraft:pin\": 1"),
+      Shedding("setupcraft:pin")
+    );
+
+    Assert.Equal(3, Carried(scene, Frame));
+    Assert.Equal(1, Carried(scene, "setupcraft:pin"));
+  }
+
+  // Fails when a step's tool is not drawn from the pack, so one tool serves both hands.
+  [Fact]
+  public void Craft_of_a_sequenced_recipe_draws_a_tool_for_each_hand()
+  {
+    string message = Assert
+      .Throws<InvalidOperationException>(() =>
+        BuildSequenced(
+          PackOf(", \"setupcraft:mallet\": 1"),
+          Hammered.Replace("setupcraft:stud", "setupcraft:mallet")
+        )
+      )
+      .Message;
+
+    Assert.Contains("step 2 of setupcraft:frame", message);
+    Assert.Contains("the pack holds no setupcraft:mallet", message);
   }
 
   // Fails when a case without a pack gets no tool made for the step.

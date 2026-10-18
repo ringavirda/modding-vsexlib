@@ -59,7 +59,7 @@ public sealed partial class SetupScene
       made.AddRange(
         entity == null
           ? CraftInHand(step.Path, order, with)
-          : CraftAt(step.Path, entity, station, order, with, true)
+          : CraftAt(step.Path, entity, station, order, with)
       );
     Verify(step.Path, station, made, order, times);
     made.ForEach(Give);
@@ -67,8 +67,9 @@ public sealed partial class SetupScene
   }
 
   /// <summary>Crafts <paramref name="order"/> once at <paramref name="entity"/>, or in the hand
-  /// grid when it is null, and checks what came out against the order's product. A station crafts
-  /// by its order's button even when the recipe has a craft sequence.</summary>
+  /// grid when it is null, and checks what came out against the order's product and its sequence's
+  /// byproducts. A station holds the steps of a recipe that has a craft sequence, with tools made
+  /// without a pack.</summary>
   /// <param name="where">What a failure message names.</param>
   /// <param name="entity">The placed station, or null for the hand grid.</param>
   /// <param name="order">An order of the hand grid or of <paramref name="entity"/>.</param>
@@ -89,7 +90,7 @@ public sealed partial class SetupScene
     [
       .. entity == null
         ? CraftInHand(where, order, with)
-        : CraftAt(where, entity, station, order, with, false),
+        : CraftAt(where, entity, station, order, with),
     ];
     Verify(where, station, made, order, 1);
     return made;
@@ -103,14 +104,15 @@ public sealed partial class SetupScene
     int times
   )
   {
-    AssetLocation wanted = order.Product.Collectible.Code;
-    int expected = order.Product.StackSize * times;
-    int count = made.Where(s => s.Collectible.Code.Equals(wanted))
-      .Sum(s => s.StackSize);
-    if (count != expected || made.Any(s => !s.Collectible.Code.Equals(wanted)))
+    Dictionary<string, int> wanted = CraftBills.Yield(
+      order,
+      CraftSequenceRegistry.Shared.Sequence(order.Recipe),
+      times
+    );
+    if (!CraftBills.Yielded(made, wanted))
       throw Fail(
         where,
-        $"{station} made {string.Join(", ", made.Select(s => $"{s.StackSize} {s.Collectible.Code}"))}, not {expected} {wanted}."
+        $"{station} made {string.Join(", ", made.Select(s => $"{s.StackSize} {s.Collectible.Code}"))}, not {string.Join(", ", wanted.Select(w => $"{w.Value} {w.Key}"))}."
       );
   }
 
@@ -166,8 +168,7 @@ public sealed partial class SetupScene
     BlockEntity entity,
     string station,
     CraftOrder order,
-    JObject? with,
-    bool bySequence
+    JObject? with
   )
   {
     TestWindow window = Player.Window(entity);
@@ -196,10 +197,7 @@ public sealed partial class SetupScene
           $"slot {input.Slot} of {station} took {left} of the {laid.StackSize} {laid.Collectible.Code} laid for {input.Name}."
         );
     }
-    if (
-      bySequence
-      && CraftSequenceRegistry.Shared.Sequence(order.Recipe) is { } sequence
-    )
+    if (CraftSequenceRegistry.Shared.Sequence(order.Recipe) is { } sequence)
       WorkSequence(where, entity, station, order, sequence);
     else
       Verb(() => window.Press(order.PressId!.Value, order.PressData));

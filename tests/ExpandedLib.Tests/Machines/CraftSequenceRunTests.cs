@@ -35,6 +35,8 @@ public sealed class CraftSequenceRunTests
       new DummySlot(),
     ];
     public bool ViceOpen;
+
+    public TestWorld World => _world;
     public CraftSequenceRun Run;
 
     public Bench(
@@ -47,7 +49,7 @@ public sealed class CraftSequenceRunTests
       Part = _world.RegisterItem("test:part");
       Bit = _world.RegisterItem("test:bit");
       var order = new CraftOrder(
-        "test:recipes/grid/part",
+        "test:part",
         [
           new CraftInput(
             BillSlot,
@@ -67,7 +69,7 @@ public sealed class CraftSequenceRunTests
         new ItemStack(Part, 1)
       );
       Run = new CraftSequenceRun(
-        new CraftSequence("test:recipes/grid/part", steps, byproducts ?? []),
+        new CraftSequence("test:part", steps, byproducts ?? []),
         order,
         Slots,
         new Random(seed)
@@ -310,6 +312,27 @@ public sealed class CraftSequenceRunTests
     Assert.Equal(bench.Part.Code, bench.Slots[1].Itemstack!.Collectible.Code);
     Assert.Equal(2, bench.Held(2));
     Assert.Equal(bench.Bit.Code, bench.Slots[2].Itemstack!.Collectible.Code);
+  }
+
+  // Fails when a byproduct code that resolves to nothing is dropped without an error line.
+  [Fact]
+  public void A_byproduct_that_resolves_to_nothing_is_logged_and_the_product_still_lands()
+  {
+    using var bench = new Bench(
+      [Step("test:file")],
+      byproducts: [new CraftByproduct("item", "test:ghost", 1)]
+    );
+    bench.Active.Itemstack = new ItemStack(bench.Tool("test:file"));
+    bench.World.Log.Expect(EnumLogType.Error, "test:ghost");
+
+    Assert.Equal(CraftSequenceProgress.Crafted, bench.Hold());
+
+    Assert.Equal(1, bench.Held(1));
+    Assert.Equal(0, bench.Held(2));
+    Assert.Contains(
+      bench.World.Log.Errors,
+      e => e.Contains("test:ghost") && e.Contains("test:part")
+    );
   }
 
   // Fails when a missing bill leaves the run mid-sequence.
