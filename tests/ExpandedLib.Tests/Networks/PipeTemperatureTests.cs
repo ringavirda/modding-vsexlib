@@ -151,7 +151,7 @@ public class PipeTemperatureTests {
     store.SetWall(node, Wall(), 150);
     store.SetAmbient(node, 5);
 
-    for (int i = 0; i < 20000 && !store.Asleep; i++)
+    for (int i = 0; i < 20000; i++)
       store.Step(1);
 
     Assert.True(store.Asleep);
@@ -159,16 +159,15 @@ public class PipeTemperatureTests {
     Assert.InRange(store.WallTemperatureC(node), 5, 6.001);
   }
 
-  // Fails when the run is put to sleep while a walled node is still more than 1 C from ambient, which freezes its cooling.
+  // Fails when a hot walled run stops cooling once it rests.
   [Fact]
-  public void HotRun_StaysAwakeWhileItCools() {
+  public void HotRun_KeepsCoolingWhileItRests() {
     var store = new PipeFlowStore();
     int node = Add(store, 0, AtmosphereKg, 150);
     store.SetWall(node, Wall(capacity: 1e6), 150);
 
     for (int i = 0; i < 50; i++) {
       store.Step(0.2);
-      Assert.False(store.Asleep);
     }
     Assert.True(store.TemperatureC(node) < 150);
     Assert.True(store.WallTemperatureC(node) < 150);
