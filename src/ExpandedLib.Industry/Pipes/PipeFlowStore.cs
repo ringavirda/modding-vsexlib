@@ -19,6 +19,8 @@ internal sealed class PipeFlowStore {
   private const double AmbientK = 293.15;
   private const double RestFlow = 1e-6;
   private const double RestPressureStepPa = 1;
+  private const double ThermalTickSeconds = 1;
+  private const double ThermalWakePa = 50;
   private const double KelvinOffset = 273.15;
   private const double HeatCapacityPerGasConstant = 3.5;
   private const double DefaultAmbientC = 20;
@@ -110,6 +112,7 @@ internal sealed class PipeFlowStore {
   private double[] _shift = [];
   private bool _conductanceMoved;
   private bool _asleep;
+  private double _restSeconds;
 
   private enum OpeningMode {
     Linear,
@@ -365,7 +368,10 @@ internal sealed class PipeFlowStore {
   }
 
   /// <summary>Wakes a resting run so the next <see cref="Step"/> solves.</summary>
-  public void Wake() => _asleep = false;
+  public void Wake() {
+    _asleep = false;
+    _restSeconds = 0;
+  }
 
   /// <summary>Mean mass flow out of the run through <paramref name="opening"/> over the last step in kg/s; negative while air enters.</summary>
   public double OpeningFlowKgPerSecond(int opening) {
@@ -551,13 +557,15 @@ internal sealed class PipeFlowStore {
     return sum;
   }
 
-  /// <summary>Advances the run by <paramref name="dt"/> seconds with one linearised backward-Euler solve, repeated once when a conductance moved by more than a factor 2. Stable at any step; the step only sets accuracy. A node cannot be emptied below zero: its outflows and draws are scaled to what it holds plus what flows into it in the same step. An opening that leaves its choked range during the solve is solved again as a linear nozzle. A resting run does nothing; the step that finds the run at rest puts it to sleep.</summary>
+  /// <summary>Advances the run by <paramref name="dt"/> seconds with one linearised backward-Euler solve, repeated once when a conductance moved by more than a factor 2. Stable at any step; the step only sets accuracy. A node cannot be emptied below zero: its outflows and draws are scaled to what it holds plus what flows into it in the same step. An opening that leaves its choked range during the solve is solved again as a linear nozzle. A resting run solves no flow; the step that finds the run at rest puts it to sleep. While it sleeps, a walled node more than 1 C from ambient is cooled, condensed and settled in a thermal tick once per second of stepped time, and the run wakes when the tick moves a node's pressure by more than 50 Pa or changes a node's phase.</summary>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="dt"/> is not above zero.</exception>
   public void Step(double dt) {
     if (dt <= 0)
       throw new ArgumentOutOfRangeException(nameof(dt));
-    if (_asleep)
+    if (_asleep) {
+      ThermalTick(dt);
       return;
+    }
     int n = NodeCount;
     int m = EdgeCount;
     int k = OpeningCount;
@@ -1032,15 +1040,39 @@ internal sealed class PipeFlowStore {
     return limited;
   }
 
-  private bool AtRest() {
+  private void ThermalTick(double dt) {
+    if (!HasThermalDrift())
+      return;
+    _restSeconds += dt;
+    if (_restSeconds < ThermalTickSeconds)
+      return;
     int n = NodeCount;
+    var pressure = new double[n];
+    var liquid = new bool[n];
+    var gas = new bool[n];
+    for (int i = 0; i < n; i++) {
+      pressure[i] = Pressure(i);
+      liquid[i] = _liquid[i] > MinContentKg;
+      gas[i] = _gas[i] > MinContentKg;
+      _heatStart[i] = HeatContent(i);
+      _heatIn[i] = 0;
+    }
+    double elapsed = _restSeconds;
+    _restSeconds = 0;
+    ExchangeWithWalls(elapsed);
     for (int i = 0; i < n; i++)
       if (
-        (_pending[i] != 0 && !_frozen[i])
-        || Math.Abs(Pressure(i) - _pressure[i]) > RestPressureStepPa
-      )
-        return false;
-    for (int i = 0; i < n; i++)
+        Math.Abs(Pressure(i) - pressure[i]) > ThermalWakePa
+        || (_liquid[i] > MinContentKg) != liquid[i]
+        || (_gas[i] > MinContentKg) != gas[i]
+      ) {
+        Wake();
+        return;
+      }
+  }
+
+  private bool HasThermalDrift() {
+    for (int i = 0; i < NodeCount; i++)
       if (
         _wallCapacity[i] > 0
         && !_frozen[i]
@@ -1048,6 +1080,17 @@ internal sealed class PipeFlowStore {
           Math.Abs(_temperatureC[i] - _ambientC[i]) > ThermalRestC
           || Math.Abs(_wallC[i] - _ambientC[i]) > ThermalRestC
         )
+      )
+        return true;
+    return false;
+  }
+
+  private bool AtRest() {
+    int n = NodeCount;
+    for (int i = 0; i < n; i++)
+      if (
+        (_pending[i] != 0 && !_frozen[i])
+        || Math.Abs(Pressure(i) - _pressure[i]) > RestPressureStepPa
       )
         return false;
     for (int e = 0; e < EdgeCount; e++)

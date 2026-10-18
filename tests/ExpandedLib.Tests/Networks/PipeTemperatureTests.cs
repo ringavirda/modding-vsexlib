@@ -1,3 +1,4 @@
+using System;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
@@ -236,6 +237,74 @@ public class PipeTemperatureTests {
     int taken = copy.IndexOf(Cell(0));
     Assert.True(copy.WallTemperatureC(taken) < 90);
     Assert.True(copy.TemperatureC(taken) < 90);
+  }
+
+  #endregion
+
+  #region Rest
+
+  // Fails when a sleeping hot walled run gets no thermal tick, so its temperature stands still, or when the tick solves flow and counts a step.
+  [Fact]
+  public void Rest_HotRunCoolsAtOneHertzWithoutSolving() {
+    var store = new PipeFlowStore();
+    int node = Add(store, 0, AtmosphereKg, 60);
+    store.SetWall(node, Wall(outerAreaM2: 0.01), 60);
+    store.Step(1e-6);
+    Assert.True(store.Asleep);
+
+    int solved = store.StepsSolved;
+    double before = store.TemperatureC(node);
+    store.Step(0.4);
+    Assert.Equal(before, store.TemperatureC(node));
+    for (int i = 0; i < 20; i++)
+      store.Step(0.4);
+
+    Assert.True(store.Asleep);
+    Assert.Equal(solved, store.StepsSolved);
+    Assert.True(store.TemperatureC(node) < before);
+    Assert.True(store.WallTemperatureC(node) < 60);
+  }
+
+  // Fails when a thermal tick that moves a node's pressure by more than 50 Pa leaves the run asleep.
+  [Fact]
+  public void Rest_TickMovingPressureWakesTheRun() {
+    var store = new PipeFlowStore();
+    int node = Add(store, 0, AtmosphereKg, 60);
+    store.SetWall(node, Wall(capacity: 10), 60);
+    store.Step(1e-6);
+    Assert.True(store.Asleep);
+
+    store.Step(1);
+
+    Assert.False(store.Asleep);
+    int solved = store.StepsSolved;
+    store.Step(0.2);
+    Assert.Equal(solved + 1, store.StepsSolved);
+  }
+
+  // Fails when a thermal tick that condenses steam, moving the pressure by less than 50 Pa, leaves the run asleep.
+  [Fact]
+  public void Rest_TickChangingPhaseWakesTheRun() {
+    var store = new PipeFlowStore();
+    int node = store.AddNode(Cell(0), Volume, 0, 4e-4, 25, GasConstant, 0, 0, true);
+    store.SetWall(node, Wall(outerAreaM2: 0.01), 25);
+    store.Step(1e-6);
+    Assert.True(store.Asleep);
+    Assert.Equal(0, store.LiquidKg(node));
+
+    double pressure = store.PressurePa(node);
+    for (int i = 0; i < 40000 && store.Asleep; i++) {
+      store.Step(1);
+      Assert.InRange(
+        Math.Abs(store.PressurePa(node) - pressure),
+        0,
+        50
+      );
+      pressure = store.PressurePa(node);
+    }
+
+    Assert.False(store.Asleep);
+    Assert.True(store.LiquidKg(node) > 0);
   }
 
   #endregion
