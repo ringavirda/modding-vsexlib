@@ -17,7 +17,7 @@ namespace ExpandedLib.Testing.Live;
 /// <summary>The server-side player a run's cases act through, built from the engine's own classes
 /// with no connection and marked connected so the engine reads its game mode (scenarios.md, The
 /// scenario player).</summary>
-internal sealed class ScenarioPlayer {
+internal sealed class ScenarioPlayer : IHandRelease {
   public const string Uid = "exlib-scenario";
   private const string Name = "Scenario";
   private const int ParkHeight = 16;

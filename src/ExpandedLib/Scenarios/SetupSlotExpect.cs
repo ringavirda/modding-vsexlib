@@ -15,9 +15,13 @@ internal static class SetupSlotExpect {
   public static bool Is(JObject body) => body["slot"] != null;
 
   /// <summary>Checks the keys of a slot reading.</summary>
-  /// <exception cref="SetupFileException">The slot is no hotbar index, <c>code</c> is neither a string nor
+  /// <exception cref="SetupFileException">The body has a key besides those or none of <c>code</c>,
+  /// <c>count</c> and <c>attribute</c>, the slot is no hotbar index, <c>code</c> is neither a string nor
   /// null, <c>count</c> is no whole number, or <c>attribute</c> lacks a <c>key</c> or an <c>equals</c>.</exception>
   public static void Validate(JObject body, SetupJson.Where at) {
+    SetupJson.RefuseUnknown(body, at, "slot", "code", "count", "attribute");
+    if (!body.ContainsKey("code") && !body.ContainsKey("count") && !body.ContainsKey("attribute"))
+      throw at.Fail("a slot reading needs code, count or attribute.");
     int slot = SetupJson.Integer(body["slot"], at.In("slot"));
     if (slot < 0 || slot >= Slots)
       throw at.In("slot").Fail($"takes a hotbar index from 0 to {Slots - 1}.");

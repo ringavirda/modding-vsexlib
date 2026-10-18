@@ -71,6 +71,21 @@ internal sealed class InteractStep : ScenarioStep {
   /// <summary>Whether the step leaves the hand's stack in the active slot, its <c>keep</c> key.</summary>
   public static bool Keeps(JObject o) => (bool?)o["keep"] ?? false;
 
+  /// <summary>The stack an interact step clicks with: <paramref name="with"/> when the step names one,
+  /// else what <paramref name="active"/> holds.</summary>
+  public static ItemStack? ClickStack(ItemStack? with, ItemSlot active) =>
+    with ?? active.Itemstack;
+
+  /// <summary>The stack the pack takes back as an interact step ends: nothing when the step keeps the hand,
+  /// else what <paramref name="active"/> holds.</summary>
+  public static ItemStack? Returned(ItemSlot active, bool keep) =>
+    keep ? null : active.Itemstack;
+
+  /// <summary>Ends the step's hold on <paramref name="player"/>, leaving its hand when the step says
+  /// <c>keep</c>.</summary>
+  public static void Finish(IHandRelease player, JObject o) =>
+    player.Release(Keeps(o));
+
   /// <summary>The keys a step holds, each one of <c>sneak</c>, <c>ctrl</c> or <c>sprint</c>.</summary>
   /// <exception cref="StepFailure">A name is none of them.</exception>
   public static string[] KeyNames(JToken? token) {
@@ -115,11 +130,7 @@ internal sealed class InteractStep : ScenarioStep {
     ItemStack? stack = o["with"] is JObject hand
       ? StepValues.Held(ctx, hand)
       : null;
-    ItemStack? carried = player
-      .Player
-      .InventoryManager
-      .ActiveHotbarSlot
-      .Itemstack;
+    ItemSlot active = player.Player.InventoryManager.ActiveHotbarSlot;
     if (stack != null)
       PackLedger.Draw(ctx, stack.Collectible.Code.ToString(), stack.StackSize);
     ItemStack? offHand = o["offHand"] is JObject off
@@ -140,7 +151,13 @@ internal sealed class InteractStep : ScenarioStep {
       local
     );
     int uses = player.Uses;
-    bool answered = player.UseStart(at, selection, stack ?? carried, keys, offHand);
+    bool answered = player.UseStart(
+      at,
+      selection,
+      ClickStack(stack, active),
+      keys,
+      offHand
+    );
     try {
       if (player.Uses != uses + 1)
         throw new StepFailure(
@@ -155,10 +172,7 @@ internal sealed class InteractStep : ScenarioStep {
         }
         player.UseStop(selection, ctx.Now - started);
       }
-      PackLedger.Give(
-        ctx,
-        player.Player.InventoryManager.ActiveHotbarSlot.Itemstack
-      );
+      PackLedger.Give(ctx, Returned(active, Keeps(o)));
       PackLedger.Give(
         ctx,
         player.Player.InventoryManager.OffhandHotbarSlot.Itemstack
@@ -169,7 +183,7 @@ internal sealed class InteractStep : ScenarioStep {
           $"OnBlockInteractStart answered {answered}, not {(bool)returns}."
         );
     } finally {
-      player.Release(Keeps(o));
+      Finish(player, o);
     }
   }
 
@@ -177,4 +191,11 @@ internal sealed class InteractStep : ScenarioStep {
   /// the hand after the click.</summary>
   internal static string HandLine(string? with, string hand) =>
     with == null ? $"hand: {hand}" : $"with: {with}, hand: {hand}";
+}
+
+/// <summary>What an interact step needs of the player as it ends.</summary>
+internal interface IHandRelease {
+  /// <summary>Releases the keys and empties the hands, leaving the active slot's stack when
+  /// <paramref name="keep"/>.</summary>
+  void Release(bool keep);
 }

@@ -2,6 +2,7 @@ using System.Linq;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using Newtonsoft.Json.Linq;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
@@ -184,6 +185,59 @@ public class ScenarioPlayerVerbTests {
 
     Assert.Same(stack, ScenarioPlayer.HandAfter(stack, keep: true));
     Assert.Null(ScenarioPlayer.HandAfter(stack, keep: false));
+  }
+
+  private sealed class RecordingHand : IHandRelease {
+    public bool? Kept;
+
+    public void Release(bool keep) => Kept = keep;
+  }
+
+  /// <summary>Fails when the step's release ignores its keep key, so a kept hand empties.</summary>
+  [Fact]
+  public void An_interact_step_releases_the_player_with_the_keep_of_its_body() {
+    var kept = new RecordingHand();
+    InteractStep.Finish(kept, JObject.Parse("{\"keep\": true}"));
+    var spent = new RecordingHand();
+    InteractStep.Finish(spent, JObject.Parse("{}"));
+
+    Assert.True(kept.Kept);
+    Assert.False(spent.Kept);
+  }
+
+  /// <summary>Fails when the click ignores the carried stack for a step with no <c>with</c>, or prefers it
+  /// to the step's own.</summary>
+  [Fact]
+  public void An_interact_step_clicks_with_its_own_stack_else_the_carried_one() {
+    var carried = new ItemStack(new Item(), 1);
+    var own = new ItemStack(new Item(), 2);
+    var slot = new DummySlot(carried);
+
+    Assert.Same(own, InteractStep.ClickStack(own, slot));
+    Assert.Same(carried, InteractStep.ClickStack(null, slot));
+  }
+
+  /// <summary>Fails when a kept hand is handed back to the pack, or an unkept one is not.</summary>
+  [Fact]
+  public void An_interact_step_returns_the_hand_to_the_pack_only_when_it_does_not_keep() {
+    var stack = new ItemStack(new Item(), 2);
+    var slot = new DummySlot(stack);
+
+    Assert.Null(InteractStep.Returned(slot, keep: true));
+    Assert.Same(stack, InteractStep.Returned(slot, keep: false));
+  }
+
+  /// <summary>Fails when the live slot read is off by one from the index <c>select</c> takes.</summary>
+  [Fact]
+  public void An_expect_of_a_slot_reads_the_hotbar_at_the_index_given() {
+    var inventory = Substitute.For<IInventory>();
+    var at2 = new ItemStack(new Item(), 2);
+    var at3 = new ItemStack(new Item(), 3);
+    inventory[2].Returns(new DummySlot(at2));
+    inventory[3].Returns(new DummySlot(at3));
+
+    Assert.Same(at2, ExpectStep.SlotStack(inventory, 2));
+    Assert.Same(at3, ExpectStep.SlotStack(inventory, 3));
   }
 
   /// <summary>Fails when a name the player does not hold passes (S30).</summary>

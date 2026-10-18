@@ -41,7 +41,7 @@ public sealed partial class SetupScene
       : null;
     if (with != null)
       Draw(step.Path, with);
-    if (with != null || !keep)
+    if (with != null)
       Player.Hold(with);
     ItemStack? offHand = step.Body["offHand"] is { } off
       ? StackOf(off, step.Path)
@@ -81,7 +81,8 @@ public sealed partial class SetupScene
     {
       throw Fail(step.Path, e.Message);
     }
-    Give(Player.ActiveSlot.Itemstack);
+    if (!keep)
+      Give(Player.ActiveSlot.Itemstack);
     Give(Player.OffHandSlot.Itemstack);
     if (step.Body["returns"] is { } expected && (bool)expected != answer)
       throw Fail(

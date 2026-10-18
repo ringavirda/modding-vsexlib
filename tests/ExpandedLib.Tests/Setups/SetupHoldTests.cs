@@ -577,11 +577,27 @@ public class SetupHoldTests
   {
     Assert.Contains(
       "takes a hotbar index from 0 to 11",
-      Refused("[{\"expect\": {\"slot\": 12}}]")
+      Refused("[{\"expect\": {\"slot\": 12, \"code\": null}}]")
     );
     Assert.Contains(
       "expected a whole number",
       Refused("[{\"expect\": {\"slot\": 0, \"count\": \"three\"}}]")
+    );
+  }
+
+  // Fails when a slot reading lets through a key it does not read, or a body that tests nothing.
+  [Fact]
+  public void A_slot_reading_refuses_other_expect_keys_and_a_body_that_checks_nothing()
+  {
+    Assert.Contains(
+      "unknown key \"block\"",
+      Refused(
+        "[{\"expect\": {\"slot\": 0, \"block\": \"setuphold:slab\", \"count\": 1}}]"
+      )
+    );
+    Assert.Contains(
+      "needs code, count or attribute",
+      Refused("[{\"expect\": {\"slot\": 0}}]")
     );
   }
 

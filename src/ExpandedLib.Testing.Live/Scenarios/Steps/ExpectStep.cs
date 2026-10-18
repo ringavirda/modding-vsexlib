@@ -58,6 +58,12 @@ internal sealed class ExpectStep : ScenarioStep {
     yield break;
   }
 
+  /// <summary>The stack the hotbar holds at the index <c>select</c> takes.</summary>
+  /// <param name="hotbar">The player's hotbar inventory.</param>
+  /// <param name="slot">The index, from 0.</param>
+  public static ItemStack? SlotStack(IInventory hotbar, int slot) =>
+    hotbar[slot].Itemstack;
+
   private static string Slot(ScenarioContext ctx, JObject o) {
     ScenarioPlayer player =
       ctx.Player
@@ -66,9 +72,10 @@ internal sealed class ExpectStep : ScenarioStep {
         Suspect.Scenario
       );
     int slot = SetupSlotExpect.SlotOf(o);
-    ItemStack? stack = player
-      .Player.InventoryManager.GetHotbarInventory()[slot]
-      .Itemstack;
+    ItemStack? stack = SlotStack(
+      player.Player.InventoryManager.GetHotbarInventory(),
+      slot
+    );
     if (SetupSlotExpect.Mismatch(o, stack) is { } mismatch)
       throw new StepFailure($"hotbar slot {slot} {mismatch}.");
     return $"slot {slot}: {SetupSlotExpect.Describe(stack)}";
