@@ -16,13 +16,17 @@ internal static class StepValues {
     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
   /// <summary>A stack of <paramref name="count"/> of the item or block with
-  /// <paramref name="code"/>.</summary>
-  /// <exception cref="StepFailure">The code names neither an item nor a block.</exception>
+  /// <paramref name="code"/>, holding <paramref name="litres"/> of the liquid item
+  /// <paramref name="content"/> when one is named.</summary>
+  /// <exception cref="StepFailure">The code names neither an item nor a block, or a content is
+  /// named for a stack that is no liquid container or takes fewer litres than asked.</exception>
   public static ItemStack Stack(
     ScenarioContext ctx,
     string code,
     int count,
-    float? temperature = null
+    float? temperature = null,
+    string? content = null,
+    float? litres = null
   ) {
     var location = new AssetLocation(code);
     CollectibleObject? collectible =
@@ -36,8 +40,24 @@ internal static class StepValues {
     var stack = new ItemStack(collectible, count);
     if (temperature is { } t)
       collectible.SetTemperature(ctx.World, stack, t);
+    if (content != null)
+      if (HeldContent.Fill(ctx.World, stack, content, litres) is { } refusal)
+        throw new StepFailure(refusal, Suspect.Scenario);
     return stack;
   }
+
+  /// <summary>The stack a step object describes with its <c>stack</c>, <c>count</c>,
+  /// <c>temperature</c>, <c>content</c> and <c>litres</c> keys.</summary>
+  /// <exception cref="StepFailure">As <see cref="Stack"/>.</exception>
+  public static ItemStack Held(ScenarioContext ctx, JObject o) =>
+    Stack(
+      ctx,
+      (string)o["stack"]!,
+      (int?)o["count"] ?? 1,
+      (float?)o["temperature"],
+      (string?)o["content"],
+      (float?)o["litres"]
+    );
 
   /// <summary>The value of <paramref name="token"/> as <paramref name="type"/>: null, numbers,
   /// strings (enum names and asset codes too), booleans, and <c>{ stack, count }</c> for an
@@ -65,7 +85,10 @@ internal static class StepValues {
             "a stack takes \"stack\".",
             Suspect.Scenario
           ),
-        (int?)o["count"] ?? 1
+        (int?)o["count"] ?? 1,
+        (float?)o["temperature"],
+        (string?)o["content"],
+        (float?)o["litres"]
       );
       return type == typeof(ItemStack) ? stack : new DummySlot(stack);
     }

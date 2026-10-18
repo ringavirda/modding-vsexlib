@@ -48,45 +48,19 @@ public sealed partial class SetupScene
     if (body["temperature"] is { } temperature)
       stack.Collectible.SetTemperature(World.World, stack, (float)temperature);
     if (body["content"] is { } content)
-      Fill(stack, (string)content!, body["litres"], where);
+    {
+      if (stack.Collectible is BlockLiquidContainerBase vessel)
+        Ready(vessel);
+      string? refusal = HeldContent.Fill(
+        World.World,
+        stack,
+        (string)content!,
+        (float?)body["litres"]
+      );
+      if (refusal != null)
+        throw Fail(where, refusal);
+    }
     return stack;
-  }
-
-  private void Fill(
-    ItemStack container,
-    string contentCode,
-    JToken? litres,
-    string where
-  )
-  {
-    if (container.Collectible is not BlockLiquidContainerBase vessel)
-      throw Fail(
-        where,
-        $"\"{container.Collectible.Code}\" is not a liquid container, so it holds no \"content\"."
-      );
-    Item liquid =
-      World.World.GetItem(new AssetLocation(contentCode))
-      ?? throw Fail(where, $"\"{contentCode}\" is not registered by the load.");
-    float amount = litres is null
-      ? throw Fail(where, "a \"content\" needs its \"litres\".")
-      : (float)litres;
-    container.Attributes ??= new TreeAttribute();
-    Ready(vessel);
-    var poured = new ItemStack(liquid);
-    float perLitre =
-      BlockLiquidContainerBase.GetContainableProps(poured)?.ItemsPerLitre
-      ?? throw Fail(
-        where,
-        $"\"{contentCode}\" is no liquid a container takes."
-      );
-    poured.StackSize = (int)Math.Ceiling(perLitre * amount);
-    vessel.TryPutLiquid(container, poured, amount);
-    float held = vessel.GetCurrentLitres(container);
-    if (held < amount - 0.001f)
-      throw Fail(
-        where,
-        $"\"{container.Collectible.Code}\" took {held} of the {amount} litres of \"{contentCode}\"."
-      );
   }
 
   private void InsertStep(SetupStep step)

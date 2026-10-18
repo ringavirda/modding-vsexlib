@@ -27,7 +27,7 @@ public sealed partial class SetupScene : IDisposable
     ["source"] = "the fake world has no creative medium source",
     ["break"] = "the fake world has no player to break with",
     ["reload"] = "the fake world has no chunk save and load to reload through",
-    ["advance"] = "the fake world has no game calendar to advance",
+    ["advance"] = "the harness does not skip game time",
     ["climate"] = "the fake world has no weather to hold a climate with",
   };
 
