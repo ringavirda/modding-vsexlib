@@ -115,7 +115,7 @@ public sealed class TestPlayer {
   /// <remarks>A <c>BeforeActiveSlotChanged</c> handler answering <see cref="EnumHandling.PreventDefault"/> or
   /// <see cref="EnumHandling.PreventSubsequent"/> vetoes the change. The stack of the slot left, held in
   /// <see cref="ActiveSlot"/> or in its <see cref="Hotbar"/> slot, goes back to that slot, and the stack of
-  /// <paramref name="slot"/> moves into <see cref="ActiveSlot"/>. A stack hotter than
+  /// <paramref name="slot"/> moves into <see cref="ActiveSlot"/>. As <c>DropSlotIfHot</c> does, a stack hotter than
   /// <c>GlobalConstants.TooHotToTouchTemperature</c> is then dropped through <c>InventoryManager.DropItem</c>,
   /// unless the player is in creative mode, the collectible allows hot crafting or the off hand holds a
   /// <c>heatResistant</c> item. <c>InventoryManager.ActiveHotbarSlotNumber</c> answers the new number. Nothing
