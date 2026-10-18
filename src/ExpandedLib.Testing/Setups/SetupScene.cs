@@ -571,6 +571,9 @@ public sealed partial class SetupScene : IDisposable
         case "advance":
           AdvanceStep(step);
           break;
+        case "select":
+          SelectStep(step);
+          break;
         case "repeat":
           RepeatStep(step);
           break;

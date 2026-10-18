@@ -361,4 +361,29 @@ public class StepTests {
     Assert.Equal(Suspect.Scenario, failure.Suspect);
     Assert.Contains("took 10 of the 11 litres", failure.Message);
   }
+
+  /// <summary>Fails when the live runner refuses advance, or moves the calendar by other than the
+  /// span.</summary>
+  [Fact]
+  public void An_advance_moves_the_calendar_by_its_hours_and_prints_it() {
+    var fixture = new LiveFixture();
+    double before = fixture.Test.Calendar.TotalHours;
+    int ticks = fixture.Run(Steps("""[{ "advance": { "hours": 0.1 } }]"""));
+    Assert.Equal(0.1, fixture.Test.Calendar.TotalHours - before, 4);
+    Assert.Equal(12, ticks);
+    Assert.Contains(
+      "[scenario]   1 advance 0.10 h ok: calendar 0.00 h to 0.10 h",
+      fixture.Lines
+    );
+  }
+
+  /// <summary>Fails when a select without the scenario player passes.</summary>
+  [Fact]
+  public void A_select_without_the_scenario_player_fails_the_step() {
+    var fixture = new LiveFixture();
+    StepFailure failure = Assert.Throws<StepFailure>(() =>
+      fixture.Run(Steps("""[{ "select": { "slot": 2 } }]"""))
+    );
+    Assert.Contains("needs the scenario player", failure.Message);
+  }
 }

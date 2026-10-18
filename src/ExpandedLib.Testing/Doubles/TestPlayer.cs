@@ -27,8 +27,12 @@ public sealed class TestPlayer {
 
   private const int OffHandIndex = 11;
 
+  /// <summary>The hotbar slots <see cref="Select"/> chooses among, numbered from 0.</summary>
+  public const int HotbarSlots = 10;
+
   private readonly TestWorld _world;
   private readonly DummySlot _activeSlot;
+  private int _activeNumber;
 
   private TestPlayer(
     TestWorld world,
@@ -101,6 +105,41 @@ public sealed class TestPlayer {
   /// <summary>The player's off-hand slot, the last slot of <see cref="Hotbar"/> and the slot
   /// <see cref="Entity"/>'s <c>LeftHandItemSlot</c> answers.</summary>
   public ItemSlot OffHandSlot => Hotbar[OffHandIndex];
+
+  /// <summary>The number of the active hotbar slot, 0 until <see cref="Select"/> changes it.</summary>
+  public int ActiveNumber => _activeNumber;
+
+  /// <summary>Makes hotbar slot <paramref name="slot"/> the active one, as the player's number keys do:
+  /// the active stack goes back to the slot it came from, the stack of <paramref name="slot"/> moves into
+  /// <see cref="ActiveSlot"/>, <c>InventoryManager.ActiveHotbarSlotNumber</c> answers the new number, and the
+  /// server's <c>AfterActiveSlotChanged</c> is raised once with the old and the new number. Nothing
+  /// happens, and no event is raised, when <paramref name="slot"/> is already active.</summary>
+  /// <param name="slot">The hotbar slot, 0 up to <see cref="HotbarSlots"/> exclusive.</param>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="slot"/> is not a hotbar slot.</exception>
+  /// <exception cref="InvalidOperationException">This lane's game assembly cannot proxy <see cref="IServerPlayer"/>, so there is no server event to raise.</exception>
+  public void Select(int slot) {
+    if (slot < 0 || slot >= HotbarSlots)
+      throw new ArgumentOutOfRangeException(
+        nameof(slot),
+        slot,
+        $"a hotbar slot is 0 to {HotbarSlots - 1}"
+      );
+    IServerPlayer server =
+      ServerPlayer
+      ?? throw new InvalidOperationException(
+        "this lane cannot proxy IServerPlayer, so no slot-change event is raised"
+      );
+    int from = _activeNumber;
+    if (slot == from)
+      return;
+    Hotbar[from].Itemstack = _activeSlot.Itemstack;
+    _activeSlot.Itemstack = Hotbar[slot].Itemstack;
+    Hotbar[slot].Itemstack = null;
+    _activeNumber = slot;
+    _world.Api.Event.AfterActiveSlotChanged += Raise.Event<
+      Action<IServerPlayer, ActiveSlotChangeEventArgs>
+    >(server, new ActiveSlotChangeEventArgs(from, slot));
+  }
 
   /// <summary>Puts <paramref name="stack"/> in <see cref="OffHandSlot"/>, or empties it for <c>null</c>.</summary>
   public void HoldOffHand(ItemStack? stack) => OffHandSlot.Itemstack = stack;
@@ -350,7 +389,7 @@ public sealed class TestPlayer {
     );
     player.InventoryManager.Returns(manager);
 
-    return new TestPlayer(
+    var made = new TestPlayer(
       world,
       player,
       serverPlayer,
@@ -359,6 +398,8 @@ public sealed class TestPlayer {
       hotbar,
       mouse
     );
+    manager.ActiveHotbarSlotNumber.Returns(_ => made._activeNumber);
+    return made;
   }
 
   private static IPlayerInventoryManager Inventories(

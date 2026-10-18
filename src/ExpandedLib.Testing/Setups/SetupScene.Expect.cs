@@ -214,6 +214,19 @@ public sealed partial class SetupScene
       TickSecond();
   }
 
+  private void SelectStep(SetupStep step)
+  {
+    int slot = (int)step.Body["slot"]!;
+    try
+    {
+      Player.Select(slot);
+    }
+    catch (ArgumentOutOfRangeException e)
+    {
+      throw Fail(step.Path, e.Message);
+    }
+  }
+
   private static string Seconds(double value) =>
     value.ToString("F1", CultureInfo.InvariantCulture);
 
