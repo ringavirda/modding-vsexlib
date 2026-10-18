@@ -695,7 +695,10 @@ public class CraftStepTests : IDisposable
   private static string Shedding(string code) =>
     Hammered.Replace(
       "]}]}",
-      "]," + "\"byproducts\": [{\"type\": \"item\", \"code\": \"" + code + "\", \"quantity\": 1}]}]}"
+      "],"
+        + "\"byproducts\": [{\"type\": \"item\", \"code\": \""
+        + code
+        + "\", \"quantity\": 1}]}]}"
     );
 
   // Fails when the check counts only the product, or the byproducts are not given to the pack.

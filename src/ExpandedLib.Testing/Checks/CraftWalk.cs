@@ -168,34 +168,36 @@ public static class CraftWalk
     }
 
     foreach (string machine in CraftSequenceRegistry.Shared.Machines)
-      foreach (CraftSequence sequence in CraftSequenceRegistry.Shared.Sequences(machine))
-      {
-        if (new AssetLocation(sequence.Recipe).Domain != domain)
-          continue;
-        if (
-          !world.World.GridRecipes.Any(r =>
-            string.Equals(
-              r.Name?.ToString(),
-              sequence.Recipe,
-              StringComparison.OrdinalIgnoreCase
-            )
+    foreach (
+      CraftSequence sequence in CraftSequenceRegistry.Shared.Sequences(machine)
+    )
+    {
+      if (new AssetLocation(sequence.Recipe).Domain != domain)
+        continue;
+      if (
+        !world.World.GridRecipes.Any(r =>
+          string.Equals(
+            r.Name?.ToString(),
+            sequence.Recipe,
+            StringComparison.OrdinalIgnoreCase
           )
         )
+      )
+        found.Add(
+          (
+            sequence.Recipe,
+            $"{sequence.Recipe} | the sequence of {machine} names no loaded grid recipe"
+          )
+        );
+      foreach (CraftByproduct by in sequence.Byproducts)
+        if (!all.Any(c => c.Code.Equals(new AssetLocation(by.Code))))
           found.Add(
             (
               sequence.Recipe,
-              $"{sequence.Recipe} | the sequence of {machine} names no loaded grid recipe"
+              $"{sequence.Recipe} | the sequence of {machine} sheds {by.Code}, which no loaded item or block is"
             )
           );
-        foreach (CraftByproduct by in sequence.Byproducts)
-          if (!all.Any(c => c.Code.Equals(new AssetLocation(by.Code))))
-            found.Add(
-              (
-                sequence.Recipe,
-                $"{sequence.Recipe} | the sequence of {machine} sheds {by.Code}, which no loaded item or block is"
-              )
-            );
-      }
+    }
 
     Dictionary<string, WalkNeed> undeclared = [];
     for (int i = 0; i < edges.Count; i++)

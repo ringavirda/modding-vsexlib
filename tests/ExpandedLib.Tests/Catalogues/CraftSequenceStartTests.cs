@@ -40,7 +40,9 @@ public class CraftSequenceStartTests
 
       exlib.Start(world.Api);
 
-      Assert.False(world.Api.Event.TriggerMatchesRecipe(null!, sequenced, [], 3));
+      Assert.False(
+        world.Api.Event.TriggerMatchesRecipe(null!, sequenced, [], 3)
+      );
     }
     finally
     {

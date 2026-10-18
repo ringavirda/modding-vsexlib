@@ -123,10 +123,7 @@ public sealed class CraftSequenceTests
 
     string clash = Assert.Single(errors);
     Assert.StartsWith("othermod:config/craftsequences/workbench.json:", clash);
-    CraftSequence held = registry.Sequence(
-      "workbench",
-      "iiex:shaft hand"
-    )!;
+    CraftSequence held = registry.Sequence("workbench", "iiex:shaft hand")!;
     Assert.Equal(4, held.Steps.Length);
   }
 

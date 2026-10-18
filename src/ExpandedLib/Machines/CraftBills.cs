@@ -58,8 +58,9 @@ internal static class CraftBills
     IReadOnlyDictionary<string, int> wanted
   )
   {
-    Dictionary<string, int> got = made
-      .GroupBy(s => s.Collectible.Code.ToString())
+    Dictionary<string, int> got = made.GroupBy(s =>
+        s.Collectible.Code.ToString()
+      )
       .ToDictionary(g => g.Key, g => g.Sum(s => s.StackSize));
     return got.Count == wanted.Count
       && wanted.All(w => got.GetValueOrDefault(w.Key) == w.Value);

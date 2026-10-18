@@ -109,7 +109,8 @@ internal sealed class WalkFixtureBenchBlock : Block
   private static WalkFixtureBench? Bench(
     IWorldAccessor world,
     BlockSelection selection
-  ) => world.BlockAccessor.GetBlockEntity(selection.Position) as WalkFixtureBench;
+  ) =>
+    world.BlockAccessor.GetBlockEntity(selection.Position) as WalkFixtureBench;
 
   public override bool OnBlockInteractStart(
     IWorldAccessor world,
