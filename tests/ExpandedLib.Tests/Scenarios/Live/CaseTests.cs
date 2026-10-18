@@ -274,9 +274,7 @@ public class CaseTests {
   public void A_step_under_a_repeat_is_refused_too() =>
     Assert.Contains(
       "\"reload\"",
-      Refused(
-        """[{ "repeat": { "times": 2, "steps": [{ "reload": {} }] } }]"""
-      )
+      Refused("""[{ "repeat": { "times": 2, "steps": [{ "reload": {} }] } }]""")
     );
 
   /// <summary>Fails when a wait for a condition may run without a cap (V32).</summary>

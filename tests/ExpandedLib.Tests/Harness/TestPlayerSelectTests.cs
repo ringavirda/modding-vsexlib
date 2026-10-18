@@ -8,7 +8,11 @@ namespace ExpandedLib.Tests;
 
 /// <summary><see cref="TestPlayer.Select"/>: the active hotbar slot changed as the number keys do.</summary>
 public class TestPlayerSelectTests {
-  private static (TestWorld World, TestPlayer Player, List<(int From, int To)> Events) Stand() {
+  private static (
+    TestWorld World,
+    TestPlayer Player,
+    List<(int From, int To)> Events
+  ) Stand() {
     var world = new TestWorld();
     TestPlayer player = world.Player();
     var events = new List<(int, int)>();

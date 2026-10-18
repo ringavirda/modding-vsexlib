@@ -155,7 +155,9 @@ public sealed partial class TestWorld : IDisposable {
 
     Calendar = Substitute.For<IGameCalendar>();
     PushCalendar();
-    Calendar.When(c => c.Add(Arg.Any<float>())).Do(ci => AdvanceHours(ci.Arg<float>()));
+    Calendar
+      .When(c => c.Add(Arg.Any<float>()))
+      .Do(ci => AdvanceHours(ci.Arg<float>()));
 
     Mods.Add("exlib", "1.0.0").Register(Networks);
 
