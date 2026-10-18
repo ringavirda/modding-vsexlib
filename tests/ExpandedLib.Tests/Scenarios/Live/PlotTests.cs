@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 using ExpandedLib.Testing.Live;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Xunit;
@@ -175,5 +176,87 @@ public class PlotTests {
       0
     );
     return condition.Temperature;
+  }
+
+  private const string DeepFill =
+    """[{ "fill": { "code": "game:water-still-7", "from": [6, -3, 8], "to": [8, -5, 10] } }]""";
+
+  /// <summary>Fails when the lowest cell scan skips a fill's <c>from</c> or <c>to</c>.</summary>
+  [Fact]
+  public void The_lowest_y_of_a_file_is_its_deepest_fill_cell() {
+    Assert.Equal(-5, LiveFixture.Case(DeepFill).LowestY);
+    Assert.Equal(0, LiveFixture.Case("[]").LowestY);
+  }
+
+  /// <summary>Fails when the origin is not raised for the deepest cell, or the ground is not
+  /// laid under the raised plot.</summary>
+  [Fact]
+  public void A_plot_with_a_cell_five_below_zero_gets_an_origin_that_holds_it() {
+    var blocks = Substitute.For<IBlockAccessor>();
+    var world = Substitute.For<IWorldAccessor>();
+    world.BlockAccessor.Returns(blocks);
+    blocks.GetTerrainMapheightAt(Arg.Any<BlockPos>()).Returns(2);
+    blocks.GetBlock(Arg.Any<BlockPos>()).Returns(new Block { BlockId = 7 });
+    var set = new System.Collections.Generic.List<(int X, int Y, int Z)>();
+    blocks
+      .When(b => b.SetBlock(7, Arg.Any<BlockPos>()))
+      .Do(c => {
+        var p = c.ArgAt<BlockPos>(1);
+        set.Add((p.X, p.Y, p.Z));
+      });
+    var plot = new ScenarioPlot(new PlotBox(0, 0, 1, 1, 32, 32), [2, 2, 2]);
+    int lowest = LiveFixture.Case(DeepFill).LowestY;
+
+    plot.Locate(world, lowest);
+
+    Assert.True(plot.Origin.Y + lowest >= 1);
+    Assert.Equal(6, plot.Origin.Y);
+    Assert.Equal(5 * 5 * 3, set.Count);
+    Assert.Contains((30, 3, 34), set);
+    Assert.Contains((34, 5, 30), set);
+    Assert.All(set, p => Assert.InRange(p.Y, 3, 5));
+  }
+
+  /// <summary>Fails when a plot whose cells all sit at or above 0 is lifted or has ground laid
+  /// under it.</summary>
+  [Fact]
+  public void A_plot_with_no_cell_below_zero_sits_one_above_the_terrain() {
+    var blocks = Substitute.For<IBlockAccessor>();
+    var world = Substitute.For<IWorldAccessor>();
+    world.BlockAccessor.Returns(blocks);
+    blocks.GetTerrainMapheightAt(Arg.Any<BlockPos>()).Returns(2);
+    var plot = new ScenarioPlot(new PlotBox(0, 0, 1, 1, 32, 32), [2, 2, 2]);
+
+    plot.Locate(world, 0);
+
+    Assert.Equal(3, plot.Origin.Y);
+    blocks.DidNotReceiveWithAnyArgs().SetBlock(default, default!);
+  }
+
+  /// <summary>Fails when the world bound check on one side is dropped: below the floor, at the
+  /// height, before x 0 or past z.</summary>
+  [Theory]
+  [InlineData(0, -51, 0)]
+  [InlineData(0, 206, 0)]
+  [InlineData(-101, 0, 0)]
+  [InlineData(0, 0, 924)]
+  public void A_cell_outside_the_world_fails_its_step_naming_the_cell(
+    int x,
+    int y,
+    int z
+  ) {
+    var fixture = new LiveFixture();
+    StepFailure failure = Assert.Throws<StepFailure>(() =>
+      fixture.Run(
+        LiveFixture
+          .Case(
+            $$"""[{ "fill": { "code": "game:stone", "from": [{{x}}, {{y}}, {{z}}], "to": [{{x}}, {{y}}, {{z}}] } }]"""
+          )
+          .Model.Steps
+      )
+    );
+    Assert.Equal(Suspect.Scenario, failure.Suspect);
+    Assert.Contains($"[{x}, {y}, {z}]", failure.Message);
+    Assert.Contains("outside the world", failure.Message);
   }
 }
