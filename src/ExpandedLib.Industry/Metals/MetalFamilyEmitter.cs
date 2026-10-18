@@ -52,7 +52,8 @@ public static class MetalFamilyEmitter {
   public static IEnumerable<string> KnownTools => MetalToolEmitter.KnownTools;
 
   /// <summary>Every resource and tool item def for every opted-in metal in
-  /// <paramref name="metals"/>.</summary>
+  /// <paramref name="metals"/>. A resource def's <c>Code</c> is the form's base code with a one-state
+  /// <c>metal</c> group, and it registers as <c>&lt;domain&gt;:&lt;form&gt;-&lt;metal&gt;</c>.</summary>
   public static IEnumerable<ExItemDef> Emit(IEnumerable<MetalDef> metals) {
     foreach (MetalDef metal in metals) {
       if (
@@ -103,7 +104,8 @@ public static class MetalFamilyEmitter {
       : def;
 
   // Code, asset path, and the density/storage/creative-tab surface every form shares. The one-state
-  // "metal" group is what vanilla's ItemIngot, ItemMetalPlate and ItemWorkItem read as Variant["metal"].
+  // "metal" group is what vanilla's ItemIngot and ItemMetalPlate read as Variant["metal"]
+  // (anvil tier, the workitem lookup, the same-metal check).
   private static ExItemDef Begin(
     MetalDef m,
     string domain,

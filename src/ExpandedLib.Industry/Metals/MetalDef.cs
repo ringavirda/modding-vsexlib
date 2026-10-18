@@ -77,8 +77,8 @@ public class MetalDef {
 
   /// <summary>Anvil tier written as the <c>requiresAnvilTier</c> attribute on the generated ingot and plate,
   /// which vanilla's <c>ItemIngot</c> and <c>ItemMetalPlate</c> read in place of the metal's vanilla tier
-  /// (metal tier minus 1: steel 3, bronze 1, copper 0). Null -> the attribute is not written and vanilla's own lookup applies,
-  /// which for a metal vanilla does not list is tier 0, any anvil.</summary>
+  /// (metal tier minus 1: steel 3, bronze 1, copper 0). Null -> the attribute is not written and vanilla's
+  /// own lookup applies, which for a metal vanilla does not list is tier 0, any anvil.</summary>
   public int? RequiresAnvilTier { get; set; }
 
   /// <summary>Tool family to generate for this metal, or null for a feedstock that makes no
