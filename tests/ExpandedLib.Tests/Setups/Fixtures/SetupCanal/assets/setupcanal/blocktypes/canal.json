@@ -1,0 +1,1 @@
+{ "code": "canal", "class": "SetupHoldCanalBlock", "entityClass": "SetupHoldCanal", "attributes": { "temperature": 1600 } }

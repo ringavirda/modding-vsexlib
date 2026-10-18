@@ -1,0 +1,11 @@
+{
+  "setup": "scenario-player-offhand",
+  "description": "An interact with an off-hand stack puts it in the scenario player's real off-hand slot for the click and empties it after; the click fires one did-use event.",
+  "mods": [],
+  "steps": [
+    { "place": { "code": "game:log-resin-pine-ud", "at": [0, 0, 0] } },
+    { "interact": { "at": [0, 0, 0], "offHand": { "stack": "game:hammer-copper" }, "returns": true } }
+  ],
+  "seconds": 8,
+  "record": {}
+}

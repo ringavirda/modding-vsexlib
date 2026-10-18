@@ -27,7 +27,6 @@ public sealed partial class SetupScene : IDisposable
     ["source"] = "the fake world has no creative medium source",
     ["break"] = "the fake world has no player to break with",
     ["reload"] = "the fake world has no chunk save and load to reload through",
-    ["advance"] = "the harness does not skip game time",
     ["climate"] = "the fake world has no weather to hold a climate with",
   };
 
@@ -568,6 +567,12 @@ public sealed partial class SetupScene : IDisposable
           break;
         case "wait":
           WaitStep(step);
+          break;
+        case "advance":
+          AdvanceStep(step);
+          break;
+        case "select":
+          SelectStep(step);
           break;
         case "repeat":
           RepeatStep(step);
