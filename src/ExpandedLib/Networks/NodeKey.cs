@@ -3,12 +3,12 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Networks;
 
-/// <summary>
-/// Identity of one node in a network that holds several nodes per cell: a cell position and a slot.
+/// <summary>Identity of one node in a network that holds several nodes per cell: a cell position and a slot.</summary>
+/// <remarks>
 /// Slot 0 is the cell's centre, 1..6 a piece lying on face N, E, S, W, U, D (bits 0-2) with its lane in
 /// bits 3-4 (0 is the middle lane), and <see cref="PortBase"/> + i is port i of the machine at the cell.
 /// A network type that does not use slots has one node per cell, at slot 0.
-/// </summary>
+/// </remarks>
 /// <param name="Pos">The cell. Callers must not mutate it after building the key.</param>
 /// <param name="Slot">The slot within the cell.</param>
 public readonly record struct NodeKey(BlockPos Pos, byte Slot) {
