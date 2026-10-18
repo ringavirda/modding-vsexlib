@@ -102,14 +102,16 @@ public static class MetalFamilyEmitter {
       ? def.Attribute("requiresAnvilTier", tier)
       : def;
 
-  // Code, asset path, and the density/storage/creative-tab surface every form shares.
+  // Code, asset path, and the density/storage/creative-tab surface every form shares. The one-state
+  // "metal" group is what vanilla's ItemIngot, ItemMetalPlate and ItemWorkItem read as Variant["metal"].
   private static ExItemDef Begin(
     MetalDef m,
     string domain,
     string codePrefix
   ) =>
     ExItemDef
-      .Create(domain, codePrefix + "-" + m.Code, m.Code + "/" + codePrefix)
+      .Create(domain, codePrefix, m.Code + "/" + codePrefix)
+      .VariantGroup("metal", m.Code)
       .MaterialDensity(DensityOf(m))
       .StorageFlags(5)
       .CreativeCommon("*");
