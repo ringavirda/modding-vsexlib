@@ -74,10 +74,7 @@ public class PipeFlowTests {
 
     for (int step = 0; step < 500; step++) {
       for (int i = 0; i < 6; i++)
-        store.SetSource(
-          rng.Next(0, nodes),
-          (rng.NextDouble() - 0.5) * 0.05
-        );
+        store.SetSource(rng.Next(0, nodes), (rng.NextDouble() - 0.5) * 0.05);
       store.Step(0.2);
       Assert.Equal(start + store.SourceLedgerKg, store.TotalGasKg(), 9);
       for (int i = 0; i < nodes; i++)
@@ -171,8 +168,8 @@ public class PipeFlowTests {
   [InlineData((int)FlowPipeClass.Wrought, 0.02)]
   public void Friction_ByClass(int pipeClass, double friction) {
     Assert.Equal(friction, ((FlowPipeClass)pipeClass).Friction());
-    Assert.Throws<ArgumentOutOfRangeException>(
-      () => ((FlowPipeClass)99).Friction()
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+      ((FlowPipeClass)99).Friction()
     );
   }
 
@@ -250,8 +247,16 @@ public class PipeFlowTests {
   // Fails when fill from eliminating a node on a loop is not carried into the factorisation.
   [Fact]
   public void Solver_MatchesDenseSolveOnALoop() {
-    var edges = new (int A, int B)[] {
-      (0, 1), (1, 2), (2, 3), (3, 4), (4, 0), (1, 3), (5, 2), (5, 4),
+    var edges = new (int A, int B)[]
+    {
+      (0, 1),
+      (1, 2),
+      (2, 3),
+      (3, 4),
+      (4, 0),
+      (1, 3),
+      (5, 2),
+      (5, 4),
     };
     const int n = 6;
     int[] from = [.. Array.ConvertAll(edges, e => e.A)];
@@ -319,7 +324,7 @@ public class PipeFlowTests {
     store.AddEdge(4, added, Bore, 1, FlowPipeClass.Cast);
     store.Step(0.2);
     Assert.Equal(2, store.OrderBuilds);
-    Assert.Equal(5, store.IndexOf(NodeKey.Centre(new BlockPos(9, 0, 0))) );
+    Assert.Equal(5, store.IndexOf(NodeKey.Centre(new BlockPos(9, 0, 0))));
   }
 
   #endregion
@@ -346,8 +351,8 @@ public class PipeFlowTests {
   public void Network_RefusesMergeAndSplit() {
     var net = new PipeFlowNetwork(null!);
     Assert.Throws<NotSupportedException>(() => net.OnMerge(net, null!));
-    Assert.Throws<NotSupportedException>(
-      () => net.OnSplitFragment(net, (Vintagestory.API.Common.IBlockAccessor)null!)
+    Assert.Throws<NotSupportedException>(() =>
+      net.OnSplitFragment(net, (Vintagestory.API.Common.IBlockAccessor)null!)
     );
   }
 
@@ -357,11 +362,11 @@ public class PipeFlowTests {
     var store = new PipeFlowStore();
     Add(store, 0, 0.001);
     Assert.Throws<ArgumentException>(() => Add(store, 0, 0.001));
-    Assert.Throws<ArgumentOutOfRangeException>(
-      () => Add(store, 1, 0.001, volume: 0)
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+      Add(store, 1, 0.001, volume: 0)
     );
-    Assert.Throws<ArgumentOutOfRangeException>(
-      () => store.AddEdge(0, 0, Bore, 1, FlowPipeClass.Cast)
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+      store.AddEdge(0, 0, Bore, 1, FlowPipeClass.Cast)
     );
     Assert.Throws<ArgumentOutOfRangeException>(() => store.Step(0));
     Assert.Throws<ArgumentOutOfRangeException>(() => store.SetShare(0, 0.5));
