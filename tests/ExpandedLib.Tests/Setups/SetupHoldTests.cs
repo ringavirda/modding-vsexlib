@@ -479,10 +479,8 @@ public class SetupHoldTests
     "{\"place\": {\"id\": \"canal\", \"code\": \"setuphold:canal\", \"at\": [0, 0, 0]}}";
   private const string Plug =
     "{\"place\": {\"id\": \"plug\", \"code\": \"setuphold:plug\", \"at\": [0, 0, 0]}}";
-  private const string Chisel =
-    "{\"stack\": \"setuphold:chisel\"}";
-  private const string Hammer =
-    "{\"stack\": \"setuphold:hammer\"}";
+  private const string Chisel = "{\"stack\": \"setuphold:chisel\"}";
+  private const string Hammer = "{\"stack\": \"setuphold:hammer\"}";
 
   private static SetupHoldCanal CanalAt(SetupScene scene, string id) =>
     Assert.IsType<SetupHoldCanal>(
