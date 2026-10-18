@@ -110,16 +110,16 @@ public sealed class TestPlayer {
   /// <summary>The number of the active hotbar slot, 0 until <see cref="Select"/> changes it.</summary>
   public int ActiveNumber => _activeNumber;
 
-  /// <summary>Makes hotbar slot <paramref name="slot"/> the active one, as the player's number keys do:
-  /// the server's <c>BeforeActiveSlotChanged</c> handlers may veto it (any answering
-  /// <see cref="EnumHandling.PreventDefault"/> or <see cref="EnumHandling.PreventSubsequent"/>), then the
-  /// stack of the slot left, held in <see cref="ActiveSlot"/> or in its <see cref="Hotbar"/> slot, goes back to
-  /// that slot, the stack of <paramref name="slot"/> moves into <see cref="ActiveSlot"/>, a stack hotter than
-  /// <c>GlobalConstants.TooHotToTouchTemperature</c> is dropped through <c>InventoryManager.DropItem</c> unless
-  /// the player is in creative mode, the collectible allows hot crafting or the off hand holds a
-  /// <c>heatResistant</c> item, <c>InventoryManager.ActiveHotbarSlotNumber</c> answers the new number, and the
-  /// server's <c>AfterActiveSlotChanged</c> is raised once with the old and the new number. Nothing
-  /// happens, and no event is raised, when <paramref name="slot"/> is already active or the change is vetoed.</summary>
+  /// <summary>Makes hotbar slot <paramref name="slot"/> the active one, as the player's number keys do, and
+  /// raises the server's <c>AfterActiveSlotChanged</c> once with the old and the new number.</summary>
+  /// <remarks>A <c>BeforeActiveSlotChanged</c> handler answering <see cref="EnumHandling.PreventDefault"/> or
+  /// <see cref="EnumHandling.PreventSubsequent"/> vetoes the change. The stack of the slot left, held in
+  /// <see cref="ActiveSlot"/> or in its <see cref="Hotbar"/> slot, goes back to that slot, and the stack of
+  /// <paramref name="slot"/> moves into <see cref="ActiveSlot"/>. A stack hotter than
+  /// <c>GlobalConstants.TooHotToTouchTemperature</c> is then dropped through <c>InventoryManager.DropItem</c>,
+  /// unless the player is in creative mode, the collectible allows hot crafting or the off hand holds a
+  /// <c>heatResistant</c> item. <c>InventoryManager.ActiveHotbarSlotNumber</c> answers the new number. Nothing
+  /// happens, and no event is raised, when <paramref name="slot"/> is already active or the change is vetoed.</remarks>
   /// <param name="slot">The hotbar slot, 0 up to <see cref="HotbarSlots"/> exclusive.</param>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="slot"/> is not a hotbar slot.</exception>
   /// <exception cref="InvalidOperationException">The slot left holds a stack in <see cref="ActiveSlot"/> and another in its <see cref="Hotbar"/> slot.</exception>
