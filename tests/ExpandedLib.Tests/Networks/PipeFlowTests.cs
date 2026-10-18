@@ -232,7 +232,11 @@ public class PipeFlowTests {
 
     store.Step(0.01);
 
-    Assert.Equal(expected, store.FlowKgPerSecond(edge), Math.Abs(expected) * 1e-2);
+    Assert.Equal(
+      expected,
+      store.FlowKgPerSecond(edge),
+      Math.Abs(expected) * 1e-2
+    );
   }
 
   // Fails when the gravity term is dropped from the drop or has the wrong sign.
