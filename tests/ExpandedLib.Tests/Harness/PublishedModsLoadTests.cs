@@ -80,9 +80,7 @@ public class PublishedModsLoadTests
     return compiled;
   }
 
-  // Fails when a public member the published ppex or smex calls is renamed or removed in exlib: compiling
-  // the assembly's methods throws a missing-member error. A no-op when the legacy line's release zips are
-  // not beside the checkout.
+  // Fails when a public member the published ppex or smex calls is renamed in exlib; a no-op without the release zips.
   [Fact]
   public void Published_ppex_and_smex_compile_against_this_exlib()
   {
