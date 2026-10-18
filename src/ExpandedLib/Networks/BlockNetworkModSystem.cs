@@ -20,12 +20,23 @@ public class BlockNetworkModSystem : ModSystem {
   #region Graph storage
   private readonly Dictionary<Guid, BlockNetwork> _networks = [];
   private readonly Dictionary<BlockPos, Guid> _posToNetwork = [];
+  private readonly Dictionary<NodeKey, Guid> _nodeToNetwork = [];
+
+  /// <summary>The slots indexed for each claimed position, so a removal or move needs no world read.</summary>
+  private readonly Dictionary<BlockPos, byte[]> _slotsAt = [];
   private readonly Dictionary<string, Func<BlockNetwork>> _factories = [];
 
   /// <summary>Networks whose connectivity could not be decided, mapped to their unreadable node positions.</summary>
   private readonly Dictionary<Guid, HashSet<BlockPos>> _unreadableNodes = [];
 
   private readonly Dictionary<string, string> _factoryOwners = [];
+
+  /// <summary>Milliseconds between the server listener's fires; the finest cadence a network's <see cref="BlockNetwork.StepIntervalMs"/> resolves to.</summary>
+  public const int ListenerIntervalMs = 200;
+
+  private readonly Dictionary<string, int> _phaseMs = [];
+
+  private readonly Dictionary<string, int> _sinceStepMs = [];
 
   /// <summary>Registers the factory for <paramref name="networkType"/>, replacing any earlier factory for the same type.
   /// A type already held by another assembly is replaced with a Warning naming both assemblies; use
@@ -89,8 +100,8 @@ public class BlockNetworkModSystem : ModSystem {
   public override void StartServerSide(ICoreServerAPI api) {
     ServerWorld = api.World;
     api.Event.RegisterGameTickListener(
-      dt => ServerTick(api.World.BlockAccessor, dt),
-      1000
+      dt => ListenerTick(api.World.BlockAccessor, dt),
+      ListenerIntervalMs
     );
   }
 
@@ -100,6 +111,13 @@ public class BlockNetworkModSystem : ModSystem {
   /// <summary>Returns the network that owns <paramref name="pos"/>, or <c>null</c>.</summary>
   public BlockNetwork? GetNetworkAt(BlockPos pos) =>
     _posToNetwork.TryGetValue(pos, out Guid id)
+    && _networks.TryGetValue(id, out var net)
+      ? net
+      : null;
+
+  /// <summary>Returns the network that owns the node <paramref name="key"/>, or <c>null</c>.</summary>
+  public BlockNetwork? GetNetworkAt(NodeKey key) =>
+    _nodeToNetwork.TryGetValue(key, out Guid id)
     && _networks.TryGetValue(id, out var net)
       ? net
       : null;
@@ -176,14 +194,12 @@ public class BlockNetworkModSystem : ModSystem {
         return;
       }
 
-      net.Nodes.Add(pos);
+      Claim(net, pos, SlotsOf(world, pos, networkType));
       _networks[net.Id] = net;
-      _posToNetwork[pos] = net.Id;
       net.OnTopologyChanged();
     } else {
       var primaryNet = adjacentNetworks[0];
-      primaryNet.Nodes.Add(pos);
-      _posToNetwork[pos] = primaryNet.Id;
+      Claim(primaryNet, pos, SlotsOf(world, pos, networkType));
 
       for (int i = 1; i < adjacentNetworks.Count; i++) {
         var netToMerge = adjacentNetworks[i];
@@ -191,8 +207,7 @@ public class BlockNetworkModSystem : ModSystem {
           continue;
 
         foreach (var nPos in netToMerge.Nodes) {
-          primaryNet.Nodes.Add(nPos);
-          _posToNetwork[nPos] = primaryNet.Id;
+          Claim(primaryNet, nPos, SlotsHeldAt(nPos));
         }
 
         // A suspended review carries over to the merged network.
@@ -230,6 +245,7 @@ public class BlockNetworkModSystem : ModSystem {
 
     network.Nodes.Remove(pos);
     _posToNetwork.Remove(pos);
+    Unindex(network, pos);
 
     if (network.Nodes.Count == 0) {
       DissolveNetwork(netId);
@@ -313,8 +329,7 @@ public class BlockNetworkModSystem : ModSystem {
       var bfsQueue = new Queue<BlockPos>();
       bfsQueue.Enqueue(newStart);
       unassigned.Remove(newStart);
-      newNet.Nodes.Add(newStart);
-      _posToNetwork[newStart] = newNet.Id;
+      Claim(newNet, newStart, SlotsHeldAt(newStart));
 
       while (bfsQueue.Count > 0) {
         BlockPos curr = bfsQueue.Dequeue();
@@ -323,14 +338,16 @@ public class BlockNetworkModSystem : ModSystem {
         ) {
           if (unassigned.Contains(adj)) {
             unassigned.Remove(adj);
-            newNet.Nodes.Add(adj);
-            _posToNetwork[adj] = newNet.Id;
+            Claim(newNet, adj, SlotsHeldAt(adj));
             bfsQueue.Enqueue(adj);
           }
         }
       }
 
-      newNet.OnSplitFragment(network, world);
+      if (newNet.SupportsPartialSplit)
+        newNet.OnSplitFragment(network, newNet.NodeKeys);
+      else
+        newNet.OnSplitFragment(network, world);
       newNet.OnTopologyChanged();
 
       if (broadcast)
@@ -347,6 +364,44 @@ public class BlockNetworkModSystem : ModSystem {
     network.OnTopologyChanged();
     if (broadcast)
       network.BroadcastUpdate(world);
+  }
+
+  /// <summary>Adds <paramref name="pos"/> to <paramref name="net"/> with a node at each of <paramref name="slots"/>, replacing the position's earlier index entries.</summary>
+  private void Claim(BlockNetwork net, BlockPos pos, byte[] slots) {
+    net.Nodes.Add(pos);
+    _posToNetwork[pos] = net.Id;
+    _slotsAt[pos] = slots;
+    foreach (byte slot in slots) {
+      var key = new NodeKey(pos, slot);
+      net.NodeKeys.Add(key);
+      _nodeToNetwork[key] = net.Id;
+    }
+  }
+
+  /// <summary>Drops the index entries of <paramref name="pos"/> held for <paramref name="net"/>.</summary>
+  private void Unindex(BlockNetwork net, BlockPos pos) {
+    if (!_slotsAt.Remove(pos, out byte[]? slots))
+      return;
+    foreach (byte slot in slots) {
+      var key = new NodeKey(pos, slot);
+      net.NodeKeys.Remove(key);
+      _nodeToNetwork.Remove(key);
+    }
+  }
+
+  private byte[] SlotsHeldAt(BlockPos pos) =>
+    _slotsAt.TryGetValue(pos, out byte[]? slots) ? slots : [0];
+
+  /// <summary>The slots the member at <paramref name="pos"/> holds nodes at, slot 0 alone when it has none or declares none.</summary>
+  private static byte[] SlotsOf(
+    IBlockAccessor world,
+    BlockPos pos,
+    string networkType
+  ) {
+    var slots = NetworkMembership
+      .Resolve(world, pos, networkType)
+      ?.Slots(world, pos);
+    return slots == null || slots.Count == 0 ? [0] : [.. slots.Distinct()];
   }
 
   /// <summary>Drops <paramref name="netId"/> and anything the graph remembers about it.</summary>
@@ -393,8 +448,10 @@ public class BlockNetworkModSystem : ModSystem {
 
     foreach (var id in oldNetIds) {
       if (_networks.TryGetValue(id, out var oldNet)) {
-        foreach (var p in oldNet.Nodes)
+        foreach (var p in oldNet.Nodes) {
           _posToNetwork.Remove(p);
+          Unindex(oldNet, p);
+        }
         DissolveNetwork(id);
       }
     }
@@ -406,8 +463,7 @@ public class BlockNetworkModSystem : ModSystem {
       newNet.InheritStateFrom(rootOldNet);
 
     foreach (var pos in reachable) {
-      newNet.Nodes.Add(pos);
-      _posToNetwork[pos] = newNet.Id;
+      Claim(newNet, pos, SlotsOf(world, pos, networkType));
     }
 
     _networks[newNet.Id] = newNet;
@@ -420,13 +476,71 @@ public class BlockNetworkModSystem : ModSystem {
   }
 
   #region Tick
-  /// <summary>One second of graph work: resumes any suspended connectivity review, then dispatches <see cref="BlockNetwork.OnTick"/> for every live network.</summary>
-  public void ServerTick(IBlockAccessor blockAccessor, float dt) {
-    // dt is capped at 2x the 1000ms tick interval, matching BlockEntityProductionMachine's grace timer.
-    dt = GameMath.Min(dt, 2f);
+  /// <summary>Advances server time by <paramref name="dt"/> and steps every live network of each type whose
+  /// <see cref="BlockNetwork.StepIntervalMs"/> (read from the type's first live network) has accrued, as the server
+  /// listener does every <see cref="ListenerIntervalMs"/>. Time accrues per type and keeps its overshoot. A stepped
+  /// network gets <see cref="BlockNetwork.OnTick"/> with the seconds since its type last stepped (at most twice the
+  /// interval), then <see cref="BlockNetwork.OnTickPublished"/> once every due network has stepped.</summary>
+  /// <param name="blockAccessor">The accessor the networks read and write through.</param>
+  /// <param name="dt">Seconds since the previous call, normally <see cref="ListenerIntervalMs"/> / 1000.</param>
+  public void ListenerTick(IBlockAccessor blockAccessor, float dt) {
+    int elapsedMs = (int)Math.Round(dt * 1000f);
     ResumeSuspendedReviews(blockAccessor);
-    foreach (var network in _networks.Values.ToList())
-      network.OnTick(blockAccessor, dt, this);
+    var live = _networks.Values.ToList();
+    var types = live.GroupBy(n => n.NetworkType).ToList();
+    foreach (string stale in _phaseMs.Keys.ToList())
+      if (!types.Any(g => g.Key == stale)) {
+        _phaseMs.Remove(stale);
+        _sinceStepMs.Remove(stale);
+      }
+
+    var due = new List<(BlockNetwork Network, int AccruedMs)>();
+    foreach (var group in types) {
+      string type = group.Key;
+      int interval = Math.Max(1, group.First().StepIntervalMs);
+      int phase = _phaseMs.GetValueOrDefault(type) + elapsedMs;
+      int since = _sinceStepMs.GetValueOrDefault(type) + elapsedMs;
+      if (phase >= interval) {
+        foreach (var network in group)
+          due.Add((network, Math.Min(since, 2 * interval)));
+        phase = Math.Min(phase - interval, interval - 1);
+        since = 0;
+      }
+      _phaseMs[type] = phase;
+      _sinceStepMs[type] = since;
+    }
+
+    Step(blockAccessor, due);
+  }
+
+  /// <summary>Steps every live network once with <paramref name="dt"/> seconds, whatever its
+  /// <see cref="BlockNetwork.StepIntervalMs"/> and the time accrued, capped at twice the interval; resumes any
+  /// suspended connectivity review first and calls <see cref="BlockNetwork.OnTickPublished"/> afterwards. For callers
+  /// that drive the graph themselves; the server listener goes through <see cref="ListenerTick"/>.</summary>
+  /// <param name="blockAccessor">The accessor the networks read and write through.</param>
+  /// <param name="dt">Seconds the step covers.</param>
+  public void ServerTick(IBlockAccessor blockAccessor, float dt) {
+    ResumeSuspendedReviews(blockAccessor);
+    int ms = (int)Math.Round(dt * 1000f);
+    Step(
+      blockAccessor,
+      [
+        .. _networks.Values.Select(n =>
+          (n, Math.Min(ms, 2 * Math.Max(1, n.StepIntervalMs)))
+        ),
+      ]
+    );
+  }
+
+  private void Step(
+    IBlockAccessor blockAccessor,
+    List<(BlockNetwork Network, int AccruedMs)> due
+  ) {
+    foreach (var (network, accruedMs) in due)
+      network.OnTick(blockAccessor, accruedMs / 1000f, this);
+    foreach (var (network, _) in due)
+      if (_networks.ContainsKey(network.Id))
+        network.OnTickPublished(blockAccessor, this);
   }
 
   /// <summary>Re-decides connectivity for every network a missing chunk left suspended, once one of its unreadable cells is readable again.</summary>
@@ -586,6 +700,8 @@ public class BlockNetworkModSystem : ModSystem {
   public override void Dispose() {
     _networks.Clear();
     _posToNetwork.Clear();
+    _nodeToNetwork.Clear();
+    _slotsAt.Clear();
     _unreadableNodes.Clear();
     base.Dispose();
   }
