@@ -627,11 +627,11 @@ public sealed partial class TestWorld : IDisposable {
   #region Time
 
   /// <summary>Advances the simulation by <paramref name="seconds"/> seconds through
-  /// <see cref="BlockNetworkModSystem.ServerTick"/>, in the server listener's 200 ms fires, five per second.</summary>
+  /// <see cref="BlockNetworkModSystem.ListenerTick"/>, in the server listener's 200 ms fires, five per second.</summary>
   public void Tick(int seconds = 1) {
     const float fire = BlockNetworkModSystem.ListenerIntervalMs / 1000f;
     for (int i = 0; i < seconds * 5; i++)
-      Networks.ServerTick(Accessor, fire);
+      Networks.ListenerTick(Accessor, fire);
   }
 
   /// <summary>Fires every server tick listener registered through <see cref="Api"/> or

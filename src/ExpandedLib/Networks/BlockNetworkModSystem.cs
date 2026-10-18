@@ -98,7 +98,7 @@ public class BlockNetworkModSystem : ModSystem {
   public override void StartServerSide(ICoreServerAPI api) {
     ServerWorld = api.World;
     api.Event.RegisterGameTickListener(
-      dt => ServerTick(api.World.BlockAccessor, dt),
+      dt => ListenerTick(api.World.BlockAccessor, dt),
       ListenerIntervalMs
     );
   }
@@ -475,20 +475,21 @@ public class BlockNetworkModSystem : ModSystem {
 
   #region Tick
   /// <summary>Advances server time by <paramref name="dt"/> and steps every live network whose type's
-  /// <see cref="BlockNetwork.StepIntervalMs"/> has accrued: resumes any suspended connectivity review, dispatches
-  /// <see cref="BlockNetwork.OnTick"/> with the accrued seconds (at most twice the interval), then calls
-  /// <see cref="BlockNetwork.OnTickPublished"/> on each network that stepped. Time accrues per network type, so a
-  /// network rebuilt between ticks keeps its type's phase.</summary>
+  /// <see cref="BlockNetwork.StepIntervalMs"/> has accrued, as the server listener does every
+  /// <see cref="ListenerIntervalMs"/>. Time accrues per network type, so a network rebuilt between calls keeps its
+  /// type's phase. A stepped network gets <see cref="BlockNetwork.OnTick"/> with the accrued seconds (at most twice
+  /// the interval), then, after every due network has stepped, <see cref="BlockNetwork.OnTickPublished"/>.</summary>
   /// <param name="blockAccessor">The accessor the networks read and write through.</param>
   /// <param name="dt">Seconds since the previous call, normally <see cref="ListenerIntervalMs"/> / 1000.</param>
-  public void ServerTick(IBlockAccessor blockAccessor, float dt) {
+  public void ListenerTick(IBlockAccessor blockAccessor, float dt) {
     int elapsedMs = (int)Math.Round(dt * 1000f);
     ResumeSuspendedReviews(blockAccessor);
-    var stepped = new List<BlockNetwork>();
     var live = _networks.Values.ToList();
     foreach (string stale in _accruedMs.Keys.ToList())
       if (!live.Any(n => n.NetworkType == stale))
         _accruedMs.Remove(stale);
+
+    var due = new List<(BlockNetwork Network, int AccruedMs)>();
     var accruedNow = new Dictionary<string, int>();
     foreach (var network in live) {
       string type = network.NetworkType;
@@ -496,24 +497,40 @@ public class BlockNetworkModSystem : ModSystem {
         accrued = _accruedMs.GetValueOrDefault(type) + elapsedMs;
         accruedNow[type] = accrued;
       }
-      int interval = Math.Max(1, network.StepIntervalMs);
-      if (accrued < interval)
-        continue;
+      if (accrued >= Math.Max(1, network.StepIntervalMs))
+        due.Add((network, accrued));
+    }
+    foreach (var (type, accrued) in accruedNow)
+      _accruedMs[type] = due.Any(d => d.Network.NetworkType == type)
+        ? 0
+        : accrued;
+
+    Step(blockAccessor, due);
+  }
+
+  /// <summary>Steps every live network once with <paramref name="dt"/> seconds, whatever its
+  /// <see cref="BlockNetwork.StepIntervalMs"/> and the time accrued, capped at twice the interval; resumes any
+  /// suspended connectivity review first and calls <see cref="BlockNetwork.OnTickPublished"/> afterwards. For callers
+  /// that drive the graph themselves; the server listener goes through <see cref="ListenerTick"/>.</summary>
+  /// <param name="blockAccessor">The accessor the networks read and write through.</param>
+  /// <param name="dt">Seconds the step covers.</param>
+  public void ServerTick(IBlockAccessor blockAccessor, float dt) {
+    ResumeSuspendedReviews(blockAccessor);
+    int ms = (int)Math.Round(dt * 1000f);
+    Step(blockAccessor, [.. _networks.Values.Select(n => (n, ms))]);
+  }
+
+  private void Step(
+    IBlockAccessor blockAccessor,
+    List<(BlockNetwork Network, int AccruedMs)> due
+  ) {
+    foreach (var (network, accruedMs) in due)
       network.OnTick(
         blockAccessor,
-        Math.Min(accrued, 2 * interval) / 1000f,
+        Math.Min(accruedMs, 2 * Math.Max(1, network.StepIntervalMs)) / 1000f,
         this
       );
-      stepped.Add(network);
-    }
-    foreach (var (type, accrued) in accruedNow) {
-      int interval = Math.Max(
-        1,
-        live.First(n => n.NetworkType == type).StepIntervalMs
-      );
-      _accruedMs[type] = accrued >= interval ? 0 : accrued;
-    }
-    foreach (var network in stepped)
+    foreach (var (network, _) in due)
       if (_networks.ContainsKey(network.Id))
         network.OnTickPublished(blockAccessor, this);
   }

@@ -109,7 +109,7 @@ public class NetworkCadenceTests {
     var lumped = Place(w, "lumped", new BlockPos(0, 0, 0));
     var fast = Place(w, "fast", new BlockPos(5, 0, 0));
 
-    w.Networks.ServerTick(w.Accessor, 10f);
+    w.Networks.ListenerTick(w.Accessor, 10f);
 
     Assert.Equal([2f], lumped.Steps);
     Assert.Equal([0.4f], fast.Steps);
@@ -125,14 +125,14 @@ public class NetworkCadenceTests {
 
     w.Tick(1);
     log.Clear();
-    w.Networks.ServerTick(w.Accessor, 0.2f);
+    w.Networks.ListenerTick(w.Accessor, 0.2f);
 
     Assert.Equal(["tick fast", "published fast"], log);
 
     for (int i = 0; i < 3; i++)
-      w.Networks.ServerTick(w.Accessor, 0.2f);
+      w.Networks.ListenerTick(w.Accessor, 0.2f);
     log.Clear();
-    w.Networks.ServerTick(w.Accessor, 0.2f);
+    w.Networks.ListenerTick(w.Accessor, 0.2f);
 
     Assert.Equal(
       ["tick lumped", "tick fast", "published lumped", "published fast"],
@@ -147,15 +147,29 @@ public class NetworkCadenceTests {
     var pos = new BlockPos(0, 0, 0);
     var before = Place(w, "lumped", pos);
     for (int i = 0; i < 3; i++)
-      w.Networks.ServerTick(w.Accessor, 0.2f);
+      w.Networks.ListenerTick(w.Accessor, 0.2f);
 
     var after = (RecordingNetwork)
       w.Networks.RebuildFromRoot(w.Accessor, pos, "lumped")!;
     Assert.NotSame(before, after);
-    w.Networks.ServerTick(w.Accessor, 0.2f);
+    w.Networks.ListenerTick(w.Accessor, 0.2f);
     Assert.Empty(after.Steps);
-    w.Networks.ServerTick(w.Accessor, 0.2f);
+    w.Networks.ListenerTick(w.Accessor, 0.2f);
 
     Assert.Equal([1f], after.Steps);
+  }
+
+  // Fails when ServerTick waits for the interval to accrue instead of stepping each network once per call.
+  [Fact]
+  public void ServerTick_steps_every_network_once_with_its_dt() {
+    var (w, _) = NewWorld();
+    var lumped = Place(w, "lumped", new BlockPos(0, 0, 0));
+    var fast = Place(w, "fast", new BlockPos(5, 0, 0));
+
+    w.Networks.ServerTick(w.Accessor, 0.5f);
+    w.Networks.ServerTick(w.Accessor, 5f);
+
+    Assert.Equal([0.5f, 2f], lumped.Steps);
+    Assert.Equal([0.4f, 0.4f], fast.Steps);
   }
 }
