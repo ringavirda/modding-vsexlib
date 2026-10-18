@@ -244,12 +244,7 @@ public class StepTests {
         "vessel",
         () =>
           new VesselBox {
-            Slots = new InventoryGeneric(
-              1,
-              "vessel",
-              null,
-              fixture.Test.Api
-            ),
+            Slots = new InventoryGeneric(1, "vessel", null, fixture.Test.Api),
           }
       );
     fixture.Run(
