@@ -73,15 +73,22 @@ public class RecipeLoadingTests
     );
   }
 
-  // Fails when LoadRecipes keeps a grid recipe whose output code kept its placeholder and so has no stack.
+  // Fails when LoadRecipes keeps a grid recipe whose output code kept its placeholder and so has no stack,
+  // or returns (loaded, failed) without moving the filter's rejects from loaded to failed.
   [Fact]
   public void No_kept_grid_recipe_has_a_null_output_stack()
   {
     using TestWorld world = Loaded("game:plank-*", "game:chest-*");
 
-    (_, int failed) = world.LoadRecipes();
+    (int loaded, int failed) = world.LoadRecipes();
 
     Assert.True(failed > 0);
+    Assert.Equal(
+      world.World.GridRecipes.Count
+        + world.SmithingRecipes.Count
+        + world.ClayFormingRecipes.Count,
+      loaded
+    );
     Assert.NotEmpty(world.World.GridRecipes);
     Assert.All(
       world.World.GridRecipes,

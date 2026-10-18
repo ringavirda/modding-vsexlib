@@ -54,8 +54,8 @@ public sealed partial class TestWorld
   /// second call empties the lists and the ingredient index first. The game's smithing and clay
   /// forming recipes are not mirrored, so only the listed mods' load, those a mod's definitions
   /// inject included. The game's grid recipes (<c>assets/survival/recipes/grid</c>) load beside the
-  /// mods'. A grid recipe with no output stack or exact-ingredient stack counts as failed, as one
-  /// that fails to resolve does: a loader log line in <see cref="Log"/> and a count, never a throw.
+  /// mods'. A grid recipe with no output stack or exact-ingredient stack counts as failed,
+  /// never a throw; a mod's is also a warning in <see cref="Log"/>, a game recipe's only a count.
   /// Every item and block not yet loaded gets its <c>OnLoadedNative</c> first, since a recipe's
   /// <c>Matches</c> reads the collectible's api.</remarks>
   /// <returns>The recipes kept and the recipes that failed to resolve, over the three
@@ -164,12 +164,19 @@ public sealed partial class TestWorld
     int loaded = 0;
     int failed = 0;
     int rejected = 0;
+    string domain = "";
     void Keep(IRecipeBase recipe)
     {
       if (accept == null || accept(recipe))
         keep(recipe);
       else
+      {
+        if (domain != "game")
+          Log.Warning(
+            $"{name} recipe {recipe.Name}: output or an exact ingredient has no stack; not kept."
+          );
         rejected++;
+      }
     }
     foreach (
       (AssetLocation location, JToken content) in assets.GetMany<JToken>(
@@ -184,7 +191,8 @@ public sealed partial class TestWorld
         JArray a => a,
         _ => [],
       };
-      bool vanilla = location.Domain == "game";
+      domain = location.Domain;
+      bool vanilla = domain == "game";
       if (vanilla)
         SetRecipeLogger(QuietLogger);
       try
