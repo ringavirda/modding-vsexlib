@@ -73,17 +73,21 @@ public class RecipeLoadingTests
     );
   }
 
-  // Fails when HandGrid.Orders reads the output stack of a loaded recipe whose output did not resolve.
+  // Fails when LoadRecipes keeps a grid recipe whose output code kept its placeholder and so has no stack.
   [Fact]
-  public void The_hand_grid_orders_only_recipes_whose_output_resolved()
+  public void No_kept_grid_recipe_has_a_null_output_stack()
   {
     using TestWorld world = Loaded("game:plank-*", "game:chest-*");
-    world.LoadRecipes();
 
-    IReadOnlyList<CraftOrder> orders = HandGrid.Orders(world.World);
+    (_, int failed) = world.LoadRecipes();
 
-    Assert.NotEmpty(orders);
-    Assert.All(orders, o => Assert.NotNull(o.Product));
+    Assert.True(failed > 0);
+    Assert.NotEmpty(world.World.GridRecipes);
+    Assert.All(
+      world.World.GridRecipes,
+      r => Assert.NotNull(r.Output?.ResolvedItemStack)
+    );
+    Assert.NotEmpty(HandGrid.Orders(world.World));
   }
 }
 #endif

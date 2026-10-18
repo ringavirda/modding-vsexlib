@@ -54,8 +54,8 @@ public sealed partial class TestWorld
   /// second call empties the lists and the ingredient index first. The game's smithing and clay
   /// forming recipes are not mirrored, so only the listed mods' load, those a mod's definitions
   /// inject included. The game's grid recipes (<c>assets/survival/recipes/grid</c>) load beside the
-  /// mods'; one whose ingredients or output the world has not loaded fails to resolve. A recipe that
-  /// fails to resolve is the loader's log line in <see cref="Log"/> and a count, never a throw.
+  /// mods'. A grid recipe with no output stack or exact-ingredient stack counts as failed, as one
+  /// that fails to resolve does: a loader log line in <see cref="Log"/> and a count, never a throw.
   /// Every item and block not yet loaded gets its <c>OnLoadedNative</c> first, since a recipe's
   /// <c>Matches</c> reads the collectible's api.</remarks>
   /// <returns>The recipes kept and the recipes that failed to resolve, over the three
@@ -89,7 +89,8 @@ public sealed partial class TestWorld
       "grid",
       "recipes/grid",
       classExclusive,
-      r => _gridRecipes.Add((GridRecipe)r)
+      r => _gridRecipes.Add((GridRecipe)r),
+      r => r is GridRecipe g && ResolvedToStacks(g)
     );
     (int Loaded, int Failed) smithing = LoadKind<SmithingRecipe>(
       assets,
@@ -155,12 +156,21 @@ public sealed partial class TestWorld
     string name,
     string path,
     bool classExclusive,
-    Action<IRecipeBase> keep
+    Action<IRecipeBase> keep,
+    System.Func<IRecipeBase, bool>? accept = null
   )
     where T : IRecipeBase
   {
     int loaded = 0;
     int failed = 0;
+    int rejected = 0;
+    void Keep(IRecipeBase recipe)
+    {
+      if (accept == null || accept(recipe))
+        keep(recipe);
+      else
+        rejected++;
+    }
     foreach (
       (AssetLocation location, JToken content) in assets.GetMany<JToken>(
         Log,
@@ -192,7 +202,7 @@ public sealed partial class TestWorld
             location,
             recipe,
             classExclusive,
-            keep,
+            Keep,
             ref loaded,
             ref failed
           );
@@ -204,8 +214,16 @@ public sealed partial class TestWorld
           SetRecipeLogger(Log);
       }
     }
-    return (loaded, failed);
+    return (loaded - rejected, failed + rejected);
   }
+
+  private static bool ResolvedToStacks(GridRecipe recipe) =>
+    recipe.Output?.ResolvedItemStack != null
+    && (recipe.ResolvedIngredients ?? []).All(i =>
+      i is null
+      || i.MatchingType != EnumRecipeMatchType.Exact
+      || i.ResolvedItemStack != null
+    );
 
   /// <summary>The <c>game:</c> codes the grid, smithing and clay forming recipe assets in
   /// <paramref name="assets"/> name, wildcards and placeholders as written; a code with no domain

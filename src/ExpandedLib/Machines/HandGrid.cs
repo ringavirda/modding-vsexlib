@@ -11,8 +11,7 @@ public static class HandGrid
   public const int Size = 3;
 
   /// <summary>Every loaded grid recipe the hand grid can hold, each laid at the grid's top left.
-  /// A recipe wider or taller than <see cref="Size"/>, or whose output did not resolve to a stack, is
-  /// left out.</summary>
+  /// A recipe wider or taller than <see cref="Size"/> is left out.</summary>
   /// <param name="world">The world whose <c>GridRecipes</c> are read.</param>
   /// <returns>One order per recipe, in load order; the slots are row-major over the 3 x 3 grid.
   /// A shapeless recipe's inputs fill slots from 0.</returns>
@@ -21,11 +20,7 @@ public static class HandGrid
     var orders = new List<CraftOrder>();
     foreach (GridRecipe recipe in world.GridRecipes)
     {
-      if (
-        recipe.Width > Size
-        || recipe.Height > Size
-        || recipe.Output?.ResolvedItemStack == null
-      )
+      if (recipe.Width > Size || recipe.Height > Size)
         continue;
       var inputs = new List<CraftInput>();
       for (int i = 0; i < recipe.ResolvedIngredients!.Length; i++)
@@ -47,7 +42,7 @@ public static class HandGrid
           null,
           null,
           [],
-          recipe.Output.ResolvedItemStack.Clone(),
+          recipe.Output!.ResolvedItemStack!.Clone(),
           recipe
         )
       );
