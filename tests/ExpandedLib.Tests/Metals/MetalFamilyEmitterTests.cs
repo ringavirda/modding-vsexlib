@@ -377,6 +377,42 @@ public class MetalFamilyEmitterTests {
   }
 
   [Fact]
+  public void An_anvil_tier_is_written_on_the_ingot_and_the_plate_only() {
+    // Fails when the attribute is dropped from a form the anvil works, or written on a form it does not.
+    MetalDef m = new() {
+      Code = "foo",
+      MoltenItem = "mymod:ingot-foo",
+      GenerateItemFamily = true,
+      ItemForms = ["ingot", "plate", "rod", "nails", "bits"],
+      RequiresAnvilTier = 3,
+    };
+
+    foreach (ExItemDef def in Emit(m)) {
+      JToken? tier = def.ToJson()["attributes"]?["requiresAnvilTier"];
+      if (def.Code is "ingot-foo" or "metalplate-foo")
+        Assert.Equal(3, (int)tier!);
+      else
+        Assert.Null(tier);
+    }
+  }
+
+  [Fact]
+  public void A_metal_without_an_anvil_tier_writes_no_attribute() {
+    // Fails when the attribute is written for a null tier.
+    MetalDef m = new() {
+      Code = "foo",
+      MoltenItem = "mymod:ingot-foo",
+      GenerateItemFamily = true,
+      ItemForms = ["ingot", "plate"],
+    };
+
+    Assert.All(
+      Emit(m),
+      d => Assert.Null(d.ToJson()["attributes"]?["requiresAnvilTier"])
+    );
+  }
+
+  [Fact]
   public void Every_non_ingot_form_smelts_back_to_the_metals_own_ingot() {
     // Plates, rods, nails and bits recover the alloy. Tools carry no combustibleProps.
     foreach (
