@@ -4,10 +4,8 @@ using System.Collections.Generic;
 namespace ExpandedLib.Industry.Pipes;
 
 /// <summary>
-/// Sparse LU solver for the pipe-flow step matrix, which is diagonally dominant and may be unsymmetric but
-/// always has a symmetric pattern. It factors without pivoting in an elimination order computed once per
-/// topology: the node of least remaining degree first, so a tree eliminates leaves first with no fill and a
-/// loop adds fill along its length only.
+/// Sparse LU solver for the pipe-flow step matrix (diagonally dominant, symmetric pattern), factoring without
+/// pivoting in an elimination order cached per topology: least remaining degree first.
 /// </summary>
 internal sealed class PipeFlowSolver {
   private int _nodeCount;
