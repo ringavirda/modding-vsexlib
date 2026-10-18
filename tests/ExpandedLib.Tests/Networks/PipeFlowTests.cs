@@ -207,6 +207,34 @@ public class PipeFlowTests {
     Assert.Equal(before, store.GasKg(0));
   }
 
+  // Fails when the flowing density is taken from the side of the bare pressure difference instead of the side the
+  // height-corrected drop flows from.
+  [Fact]
+  public void EdgeLaw_UsesTheDensityOfTheSideTheDropFlowsFrom() {
+    var store = new PipeFlowStore();
+    store.AddNode(NodeKey.Centre(new BlockPos(0, 0, 0)), 1000, 0, 1000, 400);
+    store.AddNode(NodeKey.Centre(new BlockPos(1, 0, 0)), 1000, 3000, 2200, 20);
+    int edge = store.AddEdge(0, 1, 0.1, 4, FlowPipeClass.Plated, 0.5);
+    double dp = store.PressurePa(0) - store.PressurePa(1);
+    double rho = 2.2;
+    double drop = dp + rho * 9.80665 * (0 - 3000);
+    Assert.True(dp > 0);
+    Assert.True(drop < 0);
+    double expected =
+      0.5
+      * Math.PI
+      * 0.1
+      * 0.1
+      / 4
+      * Math.Sqrt(2 * rho * 0.1 / (0.025 * 4))
+      * drop
+      / Math.Sqrt(Math.Abs(drop));
+
+    store.Step(0.01);
+
+    Assert.Equal(expected, store.FlowKgPerSecond(edge), Math.Abs(expected) * 1e-2);
+  }
+
   // Fails when the gravity term is dropped from the drop or has the wrong sign.
   [Fact]
   public void Head_StandingGasSettlesWithHeight() {

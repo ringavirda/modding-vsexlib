@@ -220,7 +220,8 @@ internal sealed class PipeFlowStore {
       int a = _from[e];
       int b = _to[e];
       double dp = _pressure[a] - _pressure[b];
-      double rho = dp >= 0 ? _density[a] : _density[b];
+      double lift = _density[a] * Gravity * (_height[a] - _height[b]);
+      double rho = dp + lift >= 0 ? _density[a] : _density[b];
       double drop = dp + rho * Gravity * (_height[a] - _height[b]);
       double k =
         _share[e]
@@ -235,9 +236,9 @@ internal sealed class PipeFlowStore {
       _solver.AddDiagonal(a, g);
       _solver.AddDiagonal(b, g);
       _solver.AddEdge(e, -g, -g);
-      double lift = g * rho * Gravity * (_height[b] - _height[a]);
-      _rhs[a] += lift;
-      _rhs[b] -= lift;
+      double liftRhs = g * rho * Gravity * (_height[b] - _height[a]);
+      _rhs[a] += liftRhs;
+      _rhs[b] -= liftRhs;
     }
     _solver.Solve(_rhs);
 

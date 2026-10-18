@@ -107,10 +107,10 @@ public abstract class BlockNetwork(BlockNetworkModSystem system) {
     );
 
   /// <summary>Milliseconds of server time between <see cref="OnTick"/> calls for this type. The system's listener
-  /// fires every 200 ms and steps the network once this much time has accrued, passing the accrued time as
-  /// <c>dt</c> capped at twice the interval. 1000 by default; a value below 200 steps once per listener fire. The
-  /// value is fixed per network type: it is read from one live network of the type, so every network of a type
-  /// returns the same value.</summary>
+  /// fires every 200 ms and steps the network once this much time has accrued; <c>dt</c> is the time since the type
+  /// last stepped, capped at twice the interval, and the accrued remainder carries to the next step. 1000 by
+  /// default; a value below 200 steps once per listener fire. Every network of a type must return the same value:
+  /// the system reads it once from the type's first live network and ignores what the others return.</summary>
   public virtual int StepIntervalMs => 1000;
 
   /// <summary>Called once per listener fire for each network that stepped in that fire, after every network has

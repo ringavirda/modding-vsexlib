@@ -124,6 +124,22 @@ public class NetworkCadenceTests {
     Assert.Equal([0.4f], fast.Steps);
   }
 
+  // Fails when the carried phase is cut to phase - interval instead of min(phase - interval, interval - 1), so a
+  // long stall is paid back as a burst of steps.
+  [Fact]
+  public void A_stall_is_not_paid_back_as_a_burst() {
+    var (w, _) = NewWorld();
+    var lumped = Place(w, "lumped", new BlockPos(0, 0, 0));
+    var fast = Place(w, "fast", new BlockPos(5, 0, 0));
+
+    w.Networks.ListenerTick(w.Accessor, 10f);
+    for (int i = 0; i < 25; i++)
+      w.Networks.ListenerTick(w.Accessor, 0.2f);
+
+    Assert.Equal(1 + 5, lumped.Steps.Count);
+    Assert.Equal(1 + 25, fast.Steps.Count);
+  }
+
   // Fails when OnTickPublished runs after each network's own step instead of after every network has stepped,
   // or runs for a network that did not step.
   [Fact]
