@@ -34,7 +34,9 @@ public class BlockNetworkModSystem : ModSystem {
   /// <summary>Milliseconds between the server listener's fires; the finest cadence a network's <see cref="BlockNetwork.StepIntervalMs"/> resolves to.</summary>
   public const int ListenerIntervalMs = 200;
 
-  private readonly Dictionary<string, int> _accruedMs = [];
+  private readonly Dictionary<string, int> _phaseMs = [];
+
+  private readonly Dictionary<string, int> _sinceStepMs = [];
 
   /// <summary>Registers the factory for <paramref name="networkType"/>, replacing any earlier factory for the same type.
   /// A type already held by another assembly is replaced with a Warning naming both assemblies; use
@@ -474,36 +476,39 @@ public class BlockNetworkModSystem : ModSystem {
   }
 
   #region Tick
-  /// <summary>Advances server time by <paramref name="dt"/> and steps every live network whose type's
-  /// <see cref="BlockNetwork.StepIntervalMs"/> has accrued, as the server listener does every
-  /// <see cref="ListenerIntervalMs"/>. Time accrues per network type, so a network rebuilt between calls keeps its
-  /// type's phase. A stepped network gets <see cref="BlockNetwork.OnTick"/> with the accrued seconds (at most twice
-  /// the interval), then, after every due network has stepped, <see cref="BlockNetwork.OnTickPublished"/>.</summary>
+  /// <summary>Advances server time by <paramref name="dt"/> and steps every live network of each type whose
+  /// <see cref="BlockNetwork.StepIntervalMs"/> (read from the type's first live network) has accrued, as the server
+  /// listener does every <see cref="ListenerIntervalMs"/>. Time accrues per type and keeps its overshoot. A stepped
+  /// network gets <see cref="BlockNetwork.OnTick"/> with the seconds since its type last stepped (at most twice the
+  /// interval), then <see cref="BlockNetwork.OnTickPublished"/> once every due network has stepped.</summary>
   /// <param name="blockAccessor">The accessor the networks read and write through.</param>
   /// <param name="dt">Seconds since the previous call, normally <see cref="ListenerIntervalMs"/> / 1000.</param>
   public void ListenerTick(IBlockAccessor blockAccessor, float dt) {
     int elapsedMs = (int)Math.Round(dt * 1000f);
     ResumeSuspendedReviews(blockAccessor);
     var live = _networks.Values.ToList();
-    foreach (string stale in _accruedMs.Keys.ToList())
-      if (!live.Any(n => n.NetworkType == stale))
-        _accruedMs.Remove(stale);
+    var types = live.GroupBy(n => n.NetworkType).ToList();
+    foreach (string stale in _phaseMs.Keys.ToList())
+      if (!types.Any(g => g.Key == stale)) {
+        _phaseMs.Remove(stale);
+        _sinceStepMs.Remove(stale);
+      }
 
     var due = new List<(BlockNetwork Network, int AccruedMs)>();
-    var accruedNow = new Dictionary<string, int>();
-    foreach (var network in live) {
-      string type = network.NetworkType;
-      if (!accruedNow.TryGetValue(type, out int accrued)) {
-        accrued = _accruedMs.GetValueOrDefault(type) + elapsedMs;
-        accruedNow[type] = accrued;
+    foreach (var group in types) {
+      string type = group.Key;
+      int interval = Math.Max(1, group.First().StepIntervalMs);
+      int phase = _phaseMs.GetValueOrDefault(type) + elapsedMs;
+      int since = _sinceStepMs.GetValueOrDefault(type) + elapsedMs;
+      if (phase >= interval) {
+        foreach (var network in group)
+          due.Add((network, Math.Min(since, 2 * interval)));
+        phase = Math.Min(phase - interval, interval - 1);
+        since = 0;
       }
-      if (accrued >= Math.Max(1, network.StepIntervalMs))
-        due.Add((network, accrued));
+      _phaseMs[type] = phase;
+      _sinceStepMs[type] = since;
     }
-    foreach (var (type, accrued) in accruedNow)
-      _accruedMs[type] = due.Any(d => d.Network.NetworkType == type)
-        ? 0
-        : accrued;
 
     Step(blockAccessor, due);
   }
@@ -517,7 +522,14 @@ public class BlockNetworkModSystem : ModSystem {
   public void ServerTick(IBlockAccessor blockAccessor, float dt) {
     ResumeSuspendedReviews(blockAccessor);
     int ms = (int)Math.Round(dt * 1000f);
-    Step(blockAccessor, [.. _networks.Values.Select(n => (n, ms))]);
+    Step(
+      blockAccessor,
+      [
+        .. _networks.Values.Select(n =>
+          (n, Math.Min(ms, 2 * Math.Max(1, n.StepIntervalMs)))
+        ),
+      ]
+    );
   }
 
   private void Step(
@@ -527,7 +539,7 @@ public class BlockNetworkModSystem : ModSystem {
     foreach (var (network, accruedMs) in due)
       network.OnTick(
         blockAccessor,
-        Math.Min(accruedMs, 2 * Math.Max(1, network.StepIntervalMs)) / 1000f,
+        accruedMs / 1000f,
         this
       );
     foreach (var (network, _) in due)

@@ -13,16 +13,20 @@ namespace ExpandedLib.Tests;
 /// The shipped ppex and smex assemblies, built before the current exlib, compiled against this exlib's
 /// public surface.
 /// </summary>
-public class PublishedModsLoadTests
-{
-  private static string? ReleaseFolder()
-  {
+public class PublishedModsLoadTests {
+  private sealed class ReleasesFactAttribute : FactAttribute {
+    public ReleasesFactAttribute() {
+      if (ReleaseFolder() == null)
+        Skip = "exmods-legacy/dist/Releases/1.22.0 is not beside the checkout";
+    }
+  }
+
+  private static string? ReleaseFolder() {
     for (
       var dir = new DirectoryInfo(AppContext.BaseDirectory);
       dir != null;
       dir = dir.Parent
-    )
-    {
+    ) {
       string candidate = Path.Combine(
         dir.FullName,
         "exmods-legacy",
@@ -36,8 +40,7 @@ public class PublishedModsLoadTests
     return null;
   }
 
-  private static Assembly Extract(string zip, string dll, string into)
-  {
+  private static Assembly Extract(string zip, string dll, string into) {
     using var archive = ZipFile.OpenRead(zip);
     archive
       .Entries.Single(e => e.Name == dll)
@@ -45,11 +48,9 @@ public class PublishedModsLoadTests
     return Assembly.LoadFrom(Path.Combine(into, dll));
   }
 
-  private static int Compile(Assembly assembly)
-  {
+  private static int Compile(Assembly assembly) {
     int compiled = 0;
-    foreach (Type type in assembly.GetTypes())
-    {
+    foreach (Type type in assembly.GetTypes()) {
       if (type.ContainsGenericParameters)
         continue;
       foreach (
@@ -69,8 +70,7 @@ public class PublishedModsLoadTests
                 | BindingFlags.DeclaredOnly
             )
           )
-      )
-      {
+      ) {
         if (method.IsAbstract || method.ContainsGenericParameters)
           continue;
         RuntimeHelpers.PrepareMethod(method.MethodHandle);
@@ -80,16 +80,12 @@ public class PublishedModsLoadTests
     return compiled;
   }
 
-  // Fails when a public member the published ppex or smex calls is renamed in exlib; a no-op without the release zips.
-  [Fact]
-  public void Published_ppex_and_smex_compile_against_this_exlib()
-  {
-    string? releases = ReleaseFolder();
-    if (releases == null)
-      return;
+  // Fails when a public member the published ppex or smex calls is renamed in exlib; skipped without the release zips.
+  [ReleasesFact]
+  public void Published_ppex_and_smex_compile_against_this_exlib() {
+    string releases = ReleaseFolder()!;
     string into = Directory.CreateTempSubdirectory("published-mods").FullName;
-    try
-    {
+    try {
       string ppex = Directory.GetFiles(releases, "ppex_*.zip").Single();
       string smex = Directory.GetFiles(releases, "smex_*.zip").Single();
 
@@ -101,8 +97,7 @@ public class PublishedModsLoadTests
       Assert.True(ppexMethods > 100, $"ppex compiled {ppexMethods} methods");
       Assert.True(smexMethods > 100, $"smex compiled {smexMethods} methods");
     }
-    finally
-    {
+    finally {
       Directory.Delete(into, recursive: true);
     }
   }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
@@ -55,6 +56,14 @@ public class NetworkCadenceTests {
     public override int StepIntervalMs => 200;
   }
 
+  private sealed class MixedNetwork(
+    BlockNetworkModSystem system,
+    List<string> log
+  ) : RecordingNetwork(system, "mixed", log) {
+    public override int StepIntervalMs =>
+      Nodes.Any(p => p.X == 0) ? 1000 : 200;
+  }
+
   private static (TestWorld World, List<string> Log) NewWorld() {
     var log = new List<string>();
     var w = new TestWorld();
@@ -63,6 +72,7 @@ public class NetworkCadenceTests {
       sys => new RecordingNetwork(sys, "lumped", log)
     );
     w.RegisterNetwork("fast", sys => new FastNetwork(sys, log));
+    w.RegisterNetwork("mixed", sys => new MixedNetwork(sys, log));
     return (w, log);
   }
 
@@ -171,5 +181,35 @@ public class NetworkCadenceTests {
 
     Assert.Equal([0.5f, 2f], lumped.Steps);
     Assert.Equal([0.4f, 0.4f], fast.Steps);
+  }
+
+  // Fails when a late fire resets the type's phase to zero instead of keeping its overshoot, or dt is not the real
+  // time since the type's last step.
+  [Fact]
+  public void Late_fires_keep_the_cadence_and_the_elapsed_time() {
+    var (w, _) = NewWorld();
+    var net = Place(w, "lumped", new BlockPos(0, 0, 0));
+
+    int fires = (int)(60f / 0.233f);
+    for (int i = 0; i < fires; i++)
+      w.Networks.ListenerTick(w.Accessor, 0.233f);
+
+    double elapsed = fires * 0.233;
+    Assert.InRange(net.Steps.Count, 59, 61);
+    Assert.InRange(net.Steps.Sum(), elapsed - 1.0, elapsed);
+    Assert.All(net.Steps, dt => Assert.InRange(dt, 0.9f, 1.2f));
+  }
+
+  // Fails when each network reads its own interval, so a network whose type's first network is slower steps faster.
+  [Fact]
+  public void A_types_interval_is_read_once_for_all_its_networks() {
+    var (w, _) = NewWorld();
+    var slow = Place(w, "mixed", new BlockPos(0, 0, 0));
+    var other = Place(w, "mixed", new BlockPos(5, 0, 0));
+
+    w.Tick(1);
+
+    Assert.Equal([1f], slow.Steps);
+    Assert.Equal([1f], other.Steps);
   }
 }
