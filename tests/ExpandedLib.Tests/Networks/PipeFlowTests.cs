@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
+using ExpandedLib.Testing;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -12,6 +14,8 @@ namespace ExpandedLib.Tests;
 /// <see cref="PipeFlowSolver"/> and <see cref="PipeFlowNetwork"/>.
 /// </summary>
 public class PipeFlowTests {
+  private static readonly IBlockAccessor Loaded = new TestWorld().Accessor;
+
   #region Fixtures
 
   private const double Volume = 0.02;
@@ -663,7 +667,7 @@ public class PipeFlowTests {
     int edge = store.AddEdge(0, 1, Bore, 1, FlowPipeClass.Cast);
     int open = store.AddOpening(1, 0.0001, Atm, FlowGas.Steam);
 
-    net.OnTick(null!, 0.2f, null!);
+    net.OnTick(Loaded, 0.2f, null!);
     Assert.Equal(0d, store.PublishedPressurePa(0));
     Assert.Equal(0d, store.PublishedFlowKgPerSecond(edge));
     Assert.Equal(0d, store.PublishedOpeningFlowKgPerSecond(open));
@@ -683,7 +687,7 @@ public class PipeFlowTests {
     Assert.Equal(store.OpeningLedger(open), store.PublishedOpeningLedger(open));
     Assert.NotEqual(0d, store.PublishedOpeningLedger(open));
 
-    net.OnTick(null!, 0.2f, null!);
+    net.OnTick(Loaded, 0.2f, null!);
     Assert.NotEqual(store.PressurePa(0), pressure);
     Assert.Equal(pressure, store.PublishedPressurePa(0));
   }
@@ -700,7 +704,7 @@ public class PipeFlowTests {
     Add(net.Store, 1, 0.001);
     net.Store.AddEdge(0, 1, Bore, 1, FlowPipeClass.Cast);
 
-    net.OnTick(null!, 0.2f, null!);
+    net.OnTick(Loaded, 0.2f, null!);
 
     Assert.Equal("pipeflow", net.NetworkType);
     Assert.Equal(200, net.StepIntervalMs);

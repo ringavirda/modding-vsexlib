@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
+using ExpandedLib.Testing;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Xunit;
 using Xunit.Abstractions;
@@ -13,6 +15,8 @@ public class PipeFlowBench(ITestOutputHelper output) {
   private const int Nodes = 2100;
   private const int WarmSteps = 50;
   private const int TimedSteps = 400;
+
+  private static readonly IBlockAccessor Loaded = new TestWorld().Accessor;
 
   // Fails when the generated plant does not step to finite pressures or loses mass beyond its ledgers.
   [Fact]
@@ -62,7 +66,7 @@ public class PipeFlowBench(ITestOutputHelper output) {
   }
 
   private static void Tick(PipeFlowNetwork net) {
-    net.OnTick(null!, 0.2f, null!);
+    net.OnTick(Loaded, 0.2f, null!);
     net.OnTickPublished(null!, null!);
   }
 }
