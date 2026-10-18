@@ -362,15 +362,15 @@ public class StepTests {
     Assert.Contains("took 10 of the 11 litres", failure.Message);
   }
 
-  /// <summary>Fails when the live runner refuses advance, or moves the calendar by other than the
-  /// span.</summary>
+  /// <summary>Fails when the live runner refuses advance, moves the calendar by other than the span, or
+  /// yields fewer than ten runner ticks per world second of it.</summary>
   [Fact]
   public void An_advance_moves_the_calendar_by_its_hours_and_prints_it() {
     var fixture = new LiveFixture();
     double before = fixture.Test.Calendar.TotalHours;
     int ticks = fixture.Run(Steps("""[{ "advance": { "hours": 0.1 } }]"""));
     Assert.Equal(0.1, fixture.Test.Calendar.TotalHours - before, 4);
-    Assert.Equal(12, ticks);
+    Assert.Equal(120, ticks);
     Assert.Contains(
       "[scenario]   1 advance 0.10 h ok: calendar 0.00 h to 0.10 h",
       fixture.Lines

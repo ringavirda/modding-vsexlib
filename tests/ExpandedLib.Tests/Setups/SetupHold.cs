@@ -31,6 +31,8 @@ internal sealed class SetupHoldCanal : BlockEntity, IChiselableMolten
 {
   public BEBehaviorMoltenCell Cell { get; private set; } = null!;
 
+  public int Ticks { get; private set; }
+
   public bool HasChiselableContent => Cell.Solidified && Cell.CellAmount > 0;
 
   public bool CanChiselOut => Cell.Solidified;
@@ -49,6 +51,7 @@ internal sealed class SetupHoldCanal : BlockEntity, IChiselableMolten
       api.World
     );
     Cell.UpdateThermal(api.World);
+    RegisterGameTickListener(_ => Ticks++, 1000);
   }
 
   public ItemStack? ChiselOut()

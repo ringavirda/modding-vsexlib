@@ -5,6 +5,7 @@ using ExpandedLib.Blocks;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -110,12 +111,18 @@ public sealed class TestPlayer {
   public int ActiveNumber => _activeNumber;
 
   /// <summary>Makes hotbar slot <paramref name="slot"/> the active one, as the player's number keys do:
-  /// the active stack goes back to the slot it came from, the stack of <paramref name="slot"/> moves into
-  /// <see cref="ActiveSlot"/>, <c>InventoryManager.ActiveHotbarSlotNumber</c> answers the new number, and the
+  /// the server's <c>BeforeActiveSlotChanged</c> handlers may veto it (any answering
+  /// <see cref="EnumHandling.PreventDefault"/> or <see cref="EnumHandling.PreventSubsequent"/>), then the
+  /// stack of the slot left, held in <see cref="ActiveSlot"/> or in its <see cref="Hotbar"/> slot, goes back to
+  /// that slot, the stack of <paramref name="slot"/> moves into <see cref="ActiveSlot"/>, a stack hotter than
+  /// <c>GlobalConstants.TooHotToTouchTemperature</c> is dropped through <c>InventoryManager.DropItem</c> unless
+  /// the player is in creative mode, the collectible allows hot crafting or the off hand holds a
+  /// <c>heatResistant</c> item, <c>InventoryManager.ActiveHotbarSlotNumber</c> answers the new number, and the
   /// server's <c>AfterActiveSlotChanged</c> is raised once with the old and the new number. Nothing
-  /// happens, and no event is raised, when <paramref name="slot"/> is already active.</summary>
+  /// happens, and no event is raised, when <paramref name="slot"/> is already active or the change is vetoed.</summary>
   /// <param name="slot">The hotbar slot, 0 up to <see cref="HotbarSlots"/> exclusive.</param>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="slot"/> is not a hotbar slot.</exception>
+  /// <exception cref="InvalidOperationException">The slot left holds a stack in <see cref="ActiveSlot"/> and another in its <see cref="Hotbar"/> slot.</exception>
   /// <exception cref="InvalidOperationException">This lane's game assembly cannot proxy <see cref="IServerPlayer"/>, so there is no server event to raise.</exception>
   public void Select(int slot) {
     if (slot < 0 || slot >= HotbarSlots)
@@ -132,13 +139,83 @@ public sealed class TestPlayer {
     int from = _activeNumber;
     if (slot == from)
       return;
-    Hotbar[from].Itemstack = _activeSlot.Itemstack;
+    ItemStack? leaving = _activeSlot.Itemstack;
+    if (
+      leaving != null
+      && Hotbar[from].Itemstack is { } kept
+      && kept != leaving
+    )
+      throw new InvalidOperationException(
+        $"hotbar slot {from} and the active slot both hold a stack, so one would be lost"
+      );
+    if (!AllowsChange(server, from, slot))
+      return;
+    Hotbar[from].Itemstack = leaving ?? Hotbar[from].Itemstack;
     _activeSlot.Itemstack = Hotbar[slot].Itemstack;
     Hotbar[slot].Itemstack = null;
     _activeNumber = slot;
+    DropIfTooHot();
     _world.Api.Event.AfterActiveSlotChanged += Raise.Event<
       Action<IServerPlayer, ActiveSlotChangeEventArgs>
     >(server, new ActiveSlotChangeEventArgs(from, slot));
+  }
+
+  private bool AllowsChange(IServerPlayer server, int from, int to) {
+    var handlers =
+      new List<Vintagestory.API.Common.Func<
+        IServerPlayer,
+        ActiveSlotChangeEventArgs,
+        EnumHandling
+      >>();
+    foreach (NSubstitute.Core.ICall call in _world.Api.Event.ReceivedCalls()) {
+      string name = call.GetMethodInfo().Name;
+      if (name == "add_BeforeActiveSlotChanged")
+        handlers.Add(
+          (Vintagestory.API.Common.Func<
+            IServerPlayer,
+            ActiveSlotChangeEventArgs,
+            EnumHandling
+          >)
+            call.GetOriginalArguments()[0]!
+        );
+      else if (name == "remove_BeforeActiveSlotChanged")
+        handlers.Remove(
+          (Vintagestory.API.Common.Func<
+            IServerPlayer,
+            ActiveSlotChangeEventArgs,
+            EnumHandling
+          >)
+            call.GetOriginalArguments()[0]!
+        );
+    }
+    var args = new ActiveSlotChangeEventArgs(from, to);
+    bool allowed = true;
+    foreach (var handler in handlers)
+      switch (handler(server, args)) {
+        case EnumHandling.PreventSubsequent:
+          return false;
+        case EnumHandling.PreventDefault:
+          allowed = false;
+          break;
+      }
+    return allowed;
+  }
+
+  private void DropIfTooHot() {
+    ItemStack? stack = _activeSlot.Itemstack;
+    if (stack == null || GameMode == EnumGameMode.Creative)
+      return;
+    CollectibleObject collectible = stack.Collectible;
+    if (
+      collectible.Attributes?.IsTrue("allowHotCrafting") == true
+      || collectible.GetTemperature(_world.World, stack)
+        <= GlobalConstants.TooHotToTouchTemperature
+      || OffHandSlot.Itemstack?.Collectible.Attributes?.IsTrue("heatResistant")
+        == true
+    )
+      return;
+    Player.InventoryManager.DropItem(_activeSlot, true);
+    _activeSlot.Itemstack = null;
   }
 
   /// <summary>Puts <paramref name="stack"/> in <see cref="OffHandSlot"/>, or empties it for <c>null</c>.</summary>
@@ -414,6 +491,10 @@ public sealed class TestPlayer {
     };
     var manager = Substitute.For<IPlayerInventoryManager>();
     manager.ActiveHotbarSlot.Returns(activeSlot);
+    manager.OffhandHotbarSlot.Returns(hotbar[OffHandIndex]);
+    manager.OffhandTool.Returns(_ =>
+      hotbar[OffHandIndex].Itemstack?.Collectible.GetTool(hotbar[OffHandIndex])
+    );
     manager.GetHotbarInventory().Returns(hotbar);
     manager.MouseItemSlot.Returns(_ => mouse[0]);
     manager.Inventories.Returns(held);

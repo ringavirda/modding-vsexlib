@@ -80,6 +80,18 @@ public class SetupCanalTests
     );
   }
 
+  // Fails when advance moves the calendar in one jump instead of ticking the block entities between,
+  // so a 1000 ms listener runs fewer than twelve times across 0.1 h.
+  [Fact]
+  public void Advance_TicksTheBlockEntityListenerOncePerWorldSecond()
+  {
+    using SetupScene scene = Build(
+      "[" + Canal + ", {\"advance\": {\"hours\": 0.1}}]"
+    );
+
+    Assert.Equal(12, CanalAt(scene, "canal").Ticks);
+  }
+
   // Fails when advance takes a negative span, which would run the calendar back.
   [Fact]
   public void Advance_of_negative_hours_fails_the_step()
