@@ -31,6 +31,11 @@ public class BlockNetworkModSystem : ModSystem {
 
   private readonly Dictionary<string, string> _factoryOwners = [];
 
+  /// <summary>Milliseconds between the server listener's fires; the finest cadence a network's <see cref="BlockNetwork.StepIntervalMs"/> resolves to.</summary>
+  public const int ListenerIntervalMs = 200;
+
+  private readonly Dictionary<Guid, int> _accruedMs = [];
+
   /// <summary>Registers the factory for <paramref name="networkType"/>, replacing any earlier factory for the same type.
   /// A type already held by another assembly is replaced with a Warning naming both assemblies; use
   /// <see cref="ReplaceNetworkType"/> to replace on purpose.</summary>
@@ -94,7 +99,7 @@ public class BlockNetworkModSystem : ModSystem {
     ServerWorld = api.World;
     api.Event.RegisterGameTickListener(
       dt => ServerTick(api.World.BlockAccessor, dt),
-      1000
+      ListenerIntervalMs
     );
   }
 
@@ -400,6 +405,7 @@ public class BlockNetworkModSystem : ModSystem {
   /// <summary>Drops <paramref name="netId"/> and anything the graph remembers about it.</summary>
   private void DissolveNetwork(Guid netId) {
     _networks.Remove(netId);
+    _accruedMs.Remove(netId);
     _unreadableNodes.Remove(netId);
   }
   #endregion
@@ -469,13 +475,34 @@ public class BlockNetworkModSystem : ModSystem {
   }
 
   #region Tick
-  /// <summary>One second of graph work: resumes any suspended connectivity review, then dispatches <see cref="BlockNetwork.OnTick"/> for every live network.</summary>
+  /// <summary>Advances server time by <paramref name="dt"/> and steps every live network whose
+  /// <see cref="BlockNetwork.StepIntervalMs"/> has accrued: resumes any suspended connectivity review, dispatches
+  /// <see cref="BlockNetwork.OnTick"/> with the accrued seconds (at most twice the interval), then calls
+  /// <see cref="BlockNetwork.OnTickPublished"/> on each network that stepped.</summary>
+  /// <param name="blockAccessor">The accessor the networks read and write through.</param>
+  /// <param name="dt">Seconds since the previous call, normally <see cref="ListenerIntervalMs"/> / 1000.</param>
   public void ServerTick(IBlockAccessor blockAccessor, float dt) {
-    // dt is capped at 2x the 1000ms tick interval, matching BlockEntityProductionMachine's grace timer.
-    dt = GameMath.Min(dt, 2f);
+    int elapsedMs = (int)Math.Round(dt * 1000f);
     ResumeSuspendedReviews(blockAccessor);
-    foreach (var network in _networks.Values.ToList())
-      network.OnTick(blockAccessor, dt, this);
+    var stepped = new List<BlockNetwork>();
+    foreach (var network in _networks.Values.ToList()) {
+      int interval = Math.Max(1, network.StepIntervalMs);
+      int accrued = _accruedMs.GetValueOrDefault(network.Id) + elapsedMs;
+      if (accrued < interval) {
+        _accruedMs[network.Id] = accrued;
+        continue;
+      }
+      _accruedMs[network.Id] = 0;
+      network.OnTick(
+        blockAccessor,
+        Math.Min(accrued, 2 * interval) / 1000f,
+        this
+      );
+      stepped.Add(network);
+    }
+    foreach (var network in stepped)
+      if (_networks.ContainsKey(network.Id))
+        network.OnTickPublished(blockAccessor, this);
   }
 
   /// <summary>Re-decides connectivity for every network a missing chunk left suspended, once one of its unreadable cells is readable again.</summary>

@@ -106,7 +106,22 @@ public abstract class BlockNetwork(BlockNetworkModSystem system) {
       $"{GetType().Name} sets SupportsPartialSplit without overriding OnSplitFragment(original, fragmentKeys)."
     );
 
-  /// <summary>Called once per server tick for each live network of this type.</summary>
+  /// <summary>Milliseconds of server time between <see cref="OnTick"/> calls for this type. The system's listener
+  /// fires every 200 ms and steps the network once this much time has accrued, passing the accrued time as
+  /// <c>dt</c> capped at twice the interval. 1000 by default; read each tick, so a value below 200 steps once per
+  /// listener fire.</summary>
+  public virtual int StepIntervalMs => 1000;
+
+  /// <summary>Called once per listener fire for each network that stepped in that fire, after every network has
+  /// stepped.</summary>
+  /// <param name="world">The block accessor the tick ran with.</param>
+  /// <param name="manager">The owning graph.</param>
+  public virtual void OnTickPublished(
+    IBlockAccessor world,
+    BlockNetworkModSystem manager
+  ) { }
+
+  /// <summary>Called each time <see cref="StepIntervalMs"/> of server time has passed for each live network of this type.</summary>
   public abstract void OnTick(
     IBlockAccessor world,
     float dt,
