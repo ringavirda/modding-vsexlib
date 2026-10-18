@@ -537,11 +537,7 @@ public class BlockNetworkModSystem : ModSystem {
     List<(BlockNetwork Network, int AccruedMs)> due
   ) {
     foreach (var (network, accruedMs) in due)
-      network.OnTick(
-        blockAccessor,
-        accruedMs / 1000f,
-        this
-      );
+      network.OnTick(blockAccessor, accruedMs / 1000f, this);
     foreach (var (network, _) in due)
       if (_networks.ContainsKey(network.Id))
         network.OnTickPublished(blockAccessor, this);

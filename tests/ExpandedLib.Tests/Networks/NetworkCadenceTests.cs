@@ -60,8 +60,7 @@ public class NetworkCadenceTests {
     BlockNetworkModSystem system,
     List<string> log
   ) : RecordingNetwork(system, "mixed", log) {
-    public override int StepIntervalMs =>
-      Nodes.Any(p => p.X == 0) ? 1000 : 200;
+    public override int StepIntervalMs => Nodes.Any(p => p.X == 0) ? 1000 : 200;
   }
 
   private static (TestWorld World, List<string> Log) NewWorld() {
