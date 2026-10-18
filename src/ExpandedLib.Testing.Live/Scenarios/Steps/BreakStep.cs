@@ -188,12 +188,7 @@ internal sealed class BreakStep : ScenarioStep {
     BlockPos at = ctx.Setup.Absolute(local);
     ctx.Touched.Add(local.Copy());
     ItemStack? stack = o["with"] is JObject hand
-      ? StepValues.Stack(
-        ctx,
-        (string)hand["stack"]!,
-        (int?)hand["count"] ?? 1,
-        (float?)hand["temperature"]
-      )
+      ? StepValues.Held(ctx, hand)
       : null;
     if (stack != null)
       PackLedger.Draw(ctx, stack.Collectible.Code.ToString(), stack.StackSize);

@@ -196,7 +196,7 @@ internal sealed class ScenarioRunner {
   private void StartCase() {
     ScenarioPlot plot = _plot!;
     ScenarioCase scenario = _case!;
-    plot.Locate(_api.World);
+    plot.Locate(_api.World, scenario.LowestY);
     _held.Add(plot);
     _errors = new ScenarioErrors(scenario.AllowErrors);
     var world = new ScenarioWorld(

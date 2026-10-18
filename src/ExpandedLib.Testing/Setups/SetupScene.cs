@@ -27,7 +27,7 @@ public sealed partial class SetupScene : IDisposable
     ["source"] = "the fake world has no creative medium source",
     ["break"] = "the fake world has no player to break with",
     ["reload"] = "the fake world has no chunk save and load to reload through",
-    ["advance"] = "the fake world has no game calendar to advance",
+    ["advance"] = "the harness does not skip game time",
     ["climate"] = "the fake world has no weather to hold a climate with",
   };
 
@@ -432,6 +432,33 @@ public sealed partial class SetupScene : IDisposable
       FrameOf(block, pos)
     );
 
+  /// <summary>Brings the <see cref="ExRightClickConstructable"/> of the entity at
+  /// <paramref name="pos"/> to its last stage, drawing the stages' requirements from the pack, and
+  /// plants a completed construction in the entity as <see cref="RccFake.Complete"/> does when the
+  /// entity caches its construction in an <c>_animator</c> or <c>_rcc</c> field.</summary>
+  /// <param name="be">The block entity at <paramref name="pos"/>.</param>
+  /// <param name="pos">The entity's cell.</param>
+  /// <param name="where">The step path a pack shortfall is reported under.</param>
+  /// <returns>Whether the entity carries a construction; false leaves it untouched.</returns>
+  /// <exception cref="InvalidOperationException">The pack lacks a stage's requirement.</exception>
+  internal bool CompleteConstruction(BlockEntity be, BlockPos pos, string where)
+  {
+    if (be.GetBehavior<ExRightClickConstructable>() is not { } construction)
+      return false;
+    DrawStages(where, construction.Construction, Describe(pos));
+    if (
+      ReflectionHelpers.TryGetField(be, "_animator", out _)
+      || ReflectionHelpers.TryGetField(be, "_rcc", out _)
+    )
+      RccFake.Complete(be);
+    if (
+      ReflectionHelpers.GetField(construction, "rcc")
+      is ExRightClickConstruction built
+    )
+      built.CurrentCompletedStage = Math.Max(0, built.Stages.Length - 1);
+    return true;
+  }
+
   private void Complete(BlockPos pos, string where)
   {
     Block block = World.GetBlock(pos);
@@ -463,17 +490,8 @@ public sealed partial class SetupScene : IDisposable
         );
       completed = true;
     }
-    if (be.GetBehavior<ExRightClickConstructable>() is { } construction)
-    {
-      DrawStages(where, construction.Construction, Describe(pos));
-      RccFake.Complete(be);
-      if (
-        ReflectionHelpers.GetField(construction, "rcc")
-        is ExRightClickConstruction built
-      )
-        built.CurrentCompletedStage = Math.Max(0, built.Stages.Length - 1);
+    if (CompleteConstruction(be, pos, where))
       completed = true;
-    }
     if (!completed)
       throw Fail(
         where,

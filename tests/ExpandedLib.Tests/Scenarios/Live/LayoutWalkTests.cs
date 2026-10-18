@@ -64,6 +64,21 @@ public class LayoutWalkTests {
     return fixture;
   }
 
+  // Fails when LayCells does not require a run cell inside the world before the player places it.
+  [Fact]
+  public void A_run_cell_outside_the_world_fails_naming_the_scenario_not_the_player() {
+    SetupLayout layout = Drawing(
+      """{ origin: [-101, 0], legend: { "P": { "run": "main", "code": "game:stone" } }, layers: { "0": ["P"] } }"""
+    );
+    var placed = new List<BlockPos>();
+    StepFailure failure = Assert.Throws<StepFailure>(() =>
+      Walk(new LiveFixture(), layout, Stub(placed))
+    );
+    Assert.Equal(Suspect.Scenario, failure.Suspect);
+    Assert.Contains("outside the world", failure.Message);
+    Assert.Empty(placed);
+  }
+
   // Fails when the walk goes cell by cell over the grid, or a run is placed at its last entry.
   [Fact]
   public void The_plan_orders_entries_by_the_legend_and_cells_in_reading_order() {
