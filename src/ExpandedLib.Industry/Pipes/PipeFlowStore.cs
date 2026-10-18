@@ -34,6 +34,9 @@ internal sealed class PipeFlowStore {
   private const double DrainDischarge = 0.8;
   private const double SeaLevelPa = 101325;
   private const double AirHeadPaPerM = 11.8;
+  private const int PhaseIterations = 40;
+  private const double PhaseLowC = -40;
+  private const double PhaseHighC = 370;
 
   private readonly Dictionary<NodeKey, int> _index = [];
   private readonly PipeFlowSolver _solver = new();
@@ -53,7 +56,7 @@ internal sealed class PipeFlowStore {
   private double[] _activeTemperatureC = new double[16];
   private double[] _wallC = new double[16];
   private double[] _wallCapacity = new double[16];
-  private double[] _wallInnerUa = new double[16];
+  private double[] _wallInnerArea = new double[16];
   private double[] _wallOuterUa = new double[16];
   private double[] _ambientC = new double[16];
 
@@ -96,6 +99,8 @@ internal sealed class PipeFlowStore {
   private double[] _inflowLiquid = [];
   private double[] _liquidWeight = [];
   private double[] _heat = [];
+  private double[] _heatStart = [];
+  private double[] _heatIn = [];
   private bool[] _full = [];
   private bool[] _edgeLiquid = [];
   private double[] _conductance = [];
@@ -145,7 +150,7 @@ internal sealed class PipeFlowStore {
   /// <param name="gasConstant">Specific gas constant in J/(kg K).</param>
   /// <param name="liquidKg">Liquid water held, in kg. The node counts as full from 99 % of its volume, where its pressure follows the liquid branch.</param>
   /// <param name="airKg">Air held in the void beside the gas, in kg; only a water node holds any.</param>
-  /// <param name="water">True for a node of a water run: air that enters through an opening or arrives with the gas phase is kept as air beside the steam, not as steam.</param>
+  /// <param name="water">True for a node of a water run: air that enters through an opening or arrives with the gas phase is kept as air beside the steam, not as steam, and the node holds its steam and liquid in equilibrium. Each step condenses steam above the saturation pressure of the node's temperature and boils liquid below it, the latent heat moving the node's temperature, until the node is liquid-full.</param>
   /// <exception cref="ArgumentException"><paramref name="key"/> is already in the store, or <paramref name="airKg"/> is above zero on a node that is not a water node.</exception>
   /// <exception cref="ArgumentOutOfRangeException">The volume or gas constant is not above zero, or the gas, liquid or air is negative.</exception>
   public int AddNode(
@@ -194,7 +199,7 @@ internal sealed class PipeFlowStore {
       Array.Resize(ref _activeTemperatureC, size);
       Array.Resize(ref _wallC, size);
       Array.Resize(ref _wallCapacity, size);
-      Array.Resize(ref _wallInnerUa, size);
+      Array.Resize(ref _wallInnerArea, size);
       Array.Resize(ref _wallOuterUa, size);
       Array.Resize(ref _ambientC, size);
     }
@@ -210,7 +215,7 @@ internal sealed class PipeFlowStore {
     _activeTemperatureC[i] = double.NaN;
     _wallC[i] = temperatureC;
     _wallCapacity[i] = 0;
-    _wallInnerUa[i] = 0;
+    _wallInnerArea[i] = 0;
     _wallOuterUa[i] = 0;
     _ambientC[i] = DefaultAmbientC;
     NodeCount++;
@@ -429,7 +434,7 @@ internal sealed class PipeFlowStore {
     return _wallC[node];
   }
 
-  /// <summary>Gives <paramref name="node"/> a wall that exchanges heat with its content and with the ambient, replacing an earlier wall. A node without a wall keeps its content temperature except where flows mix it.</summary>
+  /// <summary>Gives <paramref name="node"/> a wall that exchanges heat with its content and with the ambient, replacing an earlier wall. The inner coefficient is 30 W/(m2 K) for gas, 5,000 while steam in a water node meets a colder wall and 500 for a liquid-full node. A node without a wall keeps its content temperature except where flows mix it.</summary>
   /// <param name="node">Index of the node.</param>
   /// <param name="wall">The wall's capacity and areas.</param>
   /// <param name="wallTemperatureC">The wall's temperature in C.</param>
@@ -441,7 +446,7 @@ internal sealed class PipeFlowStore {
     if (wall.InnerAreaM2 < 0 || wall.OuterAreaM2 < 0)
       throw new ArgumentOutOfRangeException(nameof(wall));
     _wallCapacity[node] = wall.CapacityJPerK;
-    _wallInnerUa[node] = wall.InnerUaWPerK;
+    _wallInnerArea[node] = wall.InnerAreaM2;
     _wallOuterUa[node] = wall.OuterUaWPerK;
     _wallC[node] = wallTemperatureC;
     Wake();
@@ -568,6 +573,7 @@ internal sealed class PipeFlowStore {
       _full[i] = LiquidFull(i);
       _density[i] = _full[i] ? LiquidDensity : (_gas[i] + _air[i]) / Void(i);
       _heat[i] = Heat(i);
+      _heatStart[i] = HeatContent(i);
     }
 
     Assemble(dt, _pressure);
@@ -615,6 +621,7 @@ internal sealed class PipeFlowStore {
     for (int pass = 0; pass < n && Rescale(dt); pass++) { }
 
     Array.Clear(_shift, 0, n);
+    Array.Clear(_heatIn, 0, n);
     for (int e = 0; e < m; e++) {
       int a = _from[e];
       int b = _to[e];
@@ -624,6 +631,7 @@ internal sealed class PipeFlowStore {
       int to = moved > 0 ? b : a;
       int from = moved > 0 ? a : b;
       if (liquid) {
+        _heatIn[to] += Math.Abs(moved) * LiquidHeat;
         _shift[to] +=
           Math.Abs(moved)
           * LiquidHeat
@@ -631,9 +639,11 @@ internal sealed class PipeFlowStore {
         _liquid[a] -= moved;
         _liquid[b] += moved;
       } else {
+        _heatIn[to] += Math.Abs(moved) * _heat[from];
         _shift[to] +=
           Math.Abs(moved)
-          * (_heat[from] * Kelvin(from) - _heat[to] * Kelvin(to));
+          * _heat[from]
+          * (_temperatureC[from] - _temperatureC[to]);
         MoveGas(from, to, Math.Abs(moved));
       }
       _flow[e] = moved / dt;
@@ -646,11 +656,13 @@ internal sealed class PipeFlowStore {
       if (liquid)
         _liquid[node] -= moved;
       else {
-        if (moved < 0)
+        if (moved < 0) {
+          _heatIn[node] -= moved * _heat[node];
           _shift[node] -=
             moved
             * _heat[node]
             * (_ambientC[node] + KelvinOffset - Kelvin(node));
+        }
         DrawGas(node, moved);
       }
       _openLedger[o] -= moved;
@@ -659,9 +671,12 @@ internal sealed class PipeFlowStore {
     }
     for (int i = 0; i < n; i++) {
       double applied = _active[i] * dt * (_active[i] < 0 ? _scale[i] : 1);
-      if (applied > 0 && !double.IsNaN(_activeTemperatureC[i]))
-        _shift[i] +=
-          applied * _heat[i] * (_activeTemperatureC[i] - _temperatureC[i]);
+      if (applied > 0) {
+        _heatIn[i] += applied * _heat[i];
+        if (!double.IsNaN(_activeTemperatureC[i]))
+          _shift[i] +=
+            applied * _heat[i] * (_activeTemperatureC[i] - _temperatureC[i]);
+      }
       _gas[i] += applied;
       SourceLedgerKg += applied;
       if (_gas[i] < 0)
@@ -672,8 +687,11 @@ internal sealed class PipeFlowStore {
         _liquid[i] = 0;
     }
     for (int i = 0; i < n; i++)
-      if (_gas[i] + _air[i] + _liquid[i] > MinContentKg)
-        _temperatureC[i] += _shift[i] / HeatContent(i);
+      if (
+        _gas[i] + _air[i] + _liquid[i] > MinContentKg
+        && _heatStart[i] + _heatIn[i] > 0
+      )
+        _temperatureC[i] += _shift[i] / (_heatStart[i] + _heatIn[i]);
     ExchangeWithWalls(dt);
 
     _asleep = AtRest();
@@ -724,11 +742,15 @@ internal sealed class PipeFlowStore {
 
   private void ExchangeWithWalls(double dt) {
     for (int i = 0; i < NodeCount; i++) {
-      double wallCapacity = _wallCapacity[i];
-      if (wallCapacity <= 0 || _frozen[i])
+      if (_frozen[i])
         continue;
-      double content = HeatContent(i);
-      double inner = _wallInnerUa[i] * dt;
+      if (_water[i] && !LiquidFull(i) && SettlePhases(i, dt))
+        continue;
+      double wallCapacity = _wallCapacity[i];
+      if (wallCapacity <= 0)
+        continue;
+      double content = Math.Max(HeatContent(i), _heatStart[i] + _heatIn[i]);
+      double inner = _wallInnerArea[i] * InnerCoefficient(i) * dt;
       double coupled =
         content > MinContentKg ? inner * content / (content + inner) : 0;
       double outer = _wallOuterUa[i] * dt;
@@ -744,6 +766,75 @@ internal sealed class PipeFlowStore {
           (content * _temperatureC[i] + inner * wallNew) / (content + inner);
       _wallC[i] = wallNew;
     }
+  }
+
+  private double InnerCoefficient(int i) {
+    if (!_water[i])
+      return PipeWall.InnerGasCoefficient;
+    if (LiquidFull(i))
+      return PipeWall.InnerWaterCoefficient;
+    return _gas[i] > MinContentKg && _temperatureC[i] > _wallC[i]
+      ? PipeWall.InnerCondensingCoefficient
+      : PipeWall.InnerGasCoefficient;
+  }
+
+  private double SaturatedGas(int i, double temperatureC, double voidM3) =>
+    PipeSteam.SaturationPressurePa(temperatureC)
+    * voidM3
+    / (_gasConstant[i] * (temperatureC + KelvinOffset));
+
+  private bool SettlePhases(int i, double dt) {
+    double gas = _gas[i];
+    double liquid = _liquid[i];
+    double air = _air[i];
+    double total = gas + liquid;
+    if (total + air <= MinContentKg)
+      return false;
+    double tc = _temperatureC[i];
+    double voidM3 = Void(i);
+    bool walled = _wallCapacity[i] > 0;
+    if (!walled && liquid <= MinContentKg && gas <= SaturatedGas(i, tc, voidM3))
+      return true;
+
+    double steamHeat = HeatCapacityPerGasConstant * _gasConstant[i];
+    double airHeat = air * HeatCapacityPerGasConstant * GasOrifice.AirConstant;
+    double start =
+      (gas * steamHeat + liquid * LiquidHeat + airHeat) * tc
+      + gas * PipeSteam.LatentZeroJPerKg;
+    double inner = walled ? _wallInnerArea[i] * InnerCoefficient(i) * dt : 0;
+    double outer = walled ? _wallOuterUa[i] * dt : 0;
+    double wallCapacity = _wallCapacity[i];
+    double wall = _wallC[i];
+    double ambient = _ambientC[i];
+    double denominator = wallCapacity + inner + outer;
+
+    double low = PhaseLowC;
+    double high = PhaseHighC;
+    for (int iteration = 0; iteration < PhaseIterations; iteration++) {
+      double t = 0.5 * (low + high);
+      double steam = Math.Min(SaturatedGas(i, t, voidM3), total);
+      double wallNew = walled
+        ? (wallCapacity * wall + inner * t + outer * ambient) / denominator
+        : 0;
+      double residual =
+        (steam * steamHeat + (total - steam) * LiquidHeat + airHeat) * t
+        + steam * PipeSteam.LatentZeroJPerKg
+        - start
+        + inner * (t - wallNew);
+      if (residual > 0)
+        high = t;
+      else
+        low = t;
+    }
+    double settled = 0.5 * (low + high);
+    double steamNew = Math.Min(SaturatedGas(i, settled, voidM3), total);
+    _gas[i] = steamNew;
+    _liquid[i] = total - steamNew;
+    _temperatureC[i] = settled;
+    if (walled)
+      _wallC[i] =
+        (wallCapacity * wall + inner * settled + outer * ambient) / denominator;
+    return true;
   }
 
   private bool CrossedChoke() {
@@ -994,7 +1085,7 @@ internal sealed class PipeFlowStore {
       _activeTemperatureC[to] = source._activeTemperatureC[from];
       _wallC[to] = source._wallC[from];
       _wallCapacity[to] = source._wallCapacity[from];
-      _wallInnerUa[to] = source._wallInnerUa[from];
+      _wallInnerArea[to] = source._wallInnerArea[from];
       _wallOuterUa[to] = source._wallOuterUa[from];
       _ambientC[to] = source._ambientC[from];
       _frozen[to] = source._frozen[from];
@@ -1082,9 +1173,10 @@ internal sealed class PipeFlowStore {
       0,
       1
     );
+    double flash = FlashCapacity(i);
     if (blend <= 0) {
       liquidWeight = _pressure[i] / (LiquidDensity * constant * kelvin);
-      return voidM3 / (constant * kelvin);
+      return voidM3 / (constant * kelvin) + flash;
     }
     double gasSlope =
       (1 - blend) * constant * kelvin / voidM3
@@ -1093,7 +1185,25 @@ internal sealed class PipeFlowStore {
       (1 - blend) * _pressure[i] / (LiquidDensity * voidM3)
       + blend * LiquidStiffnessPa / (LiquidDensity * _volume[i]);
     liquidWeight = liquidSlope / gasSlope;
-    return 1 / gasSlope;
+    return 1 / gasSlope + flash;
+  }
+
+  private double FlashCapacity(int i) {
+    if (!_water[i] || _liquid[i] <= MinContentKg)
+      return 0;
+    double t = _temperatureC[i];
+    double latent =
+      PipeSteam.LatentZeroJPerKg
+      + (HeatCapacityPerGasConstant * _gasConstant[i] - LiquidHeat) * t;
+    double open = Math.Clamp(
+      (FullFill - Fill(i)) / (FullFill - BlendStartFill),
+      0,
+      1
+    );
+    return open
+      * _liquid[i]
+      * LiquidHeat
+      / (latent * PipeSteam.SaturationSlopePaPerK(t));
   }
 
   private void MoveGas(int from, int to, double kg) {
@@ -1151,6 +1261,8 @@ internal sealed class PipeFlowStore {
       _inflowLiquid = new double[size];
       _liquidWeight = new double[size];
       _heat = new double[size];
+      _heatStart = new double[size];
+      _heatIn = new double[size];
       _full = new bool[size];
       _trial = new double[size];
       _shift = new double[size];

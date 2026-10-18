@@ -20,6 +20,7 @@ public class PipeLiquidTests {
   private const double FullKg = 0.99 * 1000 * Volume;
   private const double Atmosphere = 101325;
   private const double SteamConstant = 461.5;
+  private const double AirConstant = 287;
 
   private static NodeKey Cell(int index) =>
     NodeKey.Centre(new BlockPos(index, 0, 0));
@@ -116,9 +117,25 @@ public class PipeLiquidTests {
   public void Condenser_KeepsVacuumBesideOpenTap() {
     var store = new PipeFlowStore();
     double vacuum = SteamKg(0.2 * Atmosphere, 0.5);
-    int condenser = Add(store, 0, vacuum, 0, 0, 0.5);
-    int middle = Add(store, 1, SteamKg(0.2 * Atmosphere, Volume));
-    int tap = Add(store, 2, SteamKg(0.2 * Atmosphere, Volume));
+    int condenser = Add(store, 0, vacuum, 0, 0, 0.5, 70);
+    int middle = Add(
+      store,
+      1,
+      SteamKg(0.2 * Atmosphere, Volume),
+      0,
+      0,
+      Volume,
+      70
+    );
+    int tap = Add(
+      store,
+      2,
+      SteamKg(0.2 * Atmosphere, Volume),
+      0,
+      0,
+      Volume,
+      70
+    );
     int first = store.AddEdge(
       condenser,
       middle,
@@ -155,13 +172,13 @@ public class PipeLiquidTests {
       Volume,
       0,
       SteamKg(Atmosphere, Volume) * 0.5,
-      20,
+      100,
       SteamConstant,
       0,
       SteamKg(Atmosphere, Volume) * 0.5,
       true
     );
-    int sink = Add(store, 1, 0);
+    int sink = Add(store, 1, 0, temperatureC: 100);
     store.AddEdge(source, sink, Bore, 1, FlowPipeClass.Cast);
     double start = store.TotalGasKg();
 
@@ -185,24 +202,37 @@ public class PipeLiquidTests {
   [Fact]
   public void Drain_PassesLiquidThenGas() {
     var store = new PipeFlowStore();
-    double steam = SteamKg(3 * Atmosphere, Volume / 2);
-    int node = Add(store, 0, steam, 10);
+    double steam =
+      PipeSteam.SaturationPressurePa(20)
+      * (Volume - 0.01)
+      / (SteamConstant * 293.15);
+    int node = store.AddNode(
+      Cell(0),
+      Volume,
+      0,
+      steam,
+      20,
+      SteamConstant,
+      10,
+      3 * Atmosphere * (Volume / 2) / (AirConstant * 293.15),
+      true
+    );
     store.AddOpening(node, 1e-4, Atmosphere, FlowGas.Steam, true);
     double start = store.TotalGasKg() + store.TotalLiquidKg();
 
     store.Step(0.2);
 
     Assert.True(store.LiquidKg(node) < 10);
-    Assert.Equal(steam, store.GasKg(node), 12);
+    Assert.InRange(store.GasKg(node), steam * 0.95, steam * 1.05);
     Assert.True(store.OpeningFlowKgPerSecond(0) > 0);
 
     for (int i = 0; i < 2000 && store.LiquidKg(node) > 0; i++)
       store.Step(0.2);
     Assert.Equal(0, store.LiquidKg(node));
-    double gasWhenDry = store.GasKg(node);
+    double gasWhenDry = store.TotalGasKg();
     Run(store, 50);
 
-    Assert.True(store.GasKg(node) < gasWhenDry);
+    Assert.True(store.TotalGasKg() < gasWhenDry);
     Assert.Equal(
       start + store.OpeningLedgerKg,
       store.TotalGasKg() + store.TotalLiquidKg(),

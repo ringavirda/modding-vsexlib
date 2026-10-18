@@ -14,6 +14,12 @@ internal readonly record struct PipeWall(
   /// <summary>Content-to-wall coefficient for gas in W/(m2 K).</summary>
   public const double InnerGasCoefficient = 30;
 
+  /// <summary>Steam-to-wall coefficient while steam condenses on a colder wall in W/(m2 K).</summary>
+  public const double InnerCondensingCoefficient = 5000;
+
+  /// <summary>Liquid-to-wall coefficient of a liquid-full node in W/(m2 K).</summary>
+  public const double InnerWaterCoefficient = 500;
+
   /// <summary>Wall-to-ambient coefficient of a bare wall in W/(m2 K).</summary>
   public const double OuterBareCoefficient = 15;
 
