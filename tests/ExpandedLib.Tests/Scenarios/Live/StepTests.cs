@@ -312,6 +312,29 @@ public class StepTests {
     Assert.Contains("is not a liquid container", failure.Message);
   }
 
+  /// <summary>Fails when an interact line drops the stack it was clicked with, so a bucket that poured and
+  /// one never filled print alike.</summary>
+  [Fact]
+  public void An_interact_line_names_the_with_stack_before_the_hand_after() {
+    LiveFixture fixture = VesselFixture();
+    ItemStack bucket = StepValues.Held(
+      fixture.Context,
+      Newtonsoft.Json.Linq.JObject.Parse(
+        """{ "stack": "game:woodbucket", "content": "game:waterportion", "litres": 10 }"""
+      )
+    );
+    string before = ScenarioPlayer.StackText(bucket);
+    Assert.Equal("game:woodbucket x 1 (10 L game:waterportion)", before);
+    Assert.Equal(
+      "with: game:woodbucket x 1 (10 L game:waterportion), hand: game:woodbucket x 1",
+      InteractStep.HandLine(before, "game:woodbucket x 1")
+    );
+    Assert.Equal(
+      "hand: empty hand",
+      InteractStep.HandLine(null, "empty hand")
+    );
+  }
+
   /// <summary>Fails when a content without its litres is let through, or blames the mod.</summary>
   [Fact]
   public void A_content_without_litres_fails_the_step_and_blames_the_scenario() {

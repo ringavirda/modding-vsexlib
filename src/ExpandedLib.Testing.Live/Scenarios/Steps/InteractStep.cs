@@ -114,6 +114,7 @@ internal sealed class InteractStep : ScenarioStep {
       : null;
     if (stack != null)
       PackLedger.Draw(ctx, stack.Collectible.Code.ToString(), stack.StackSize);
+    string? withText = stack == null ? null : ScenarioPlayer.StackText(stack);
     string[] keys = KeyNames(o["keys"]);
     double seconds = (double?)o["seconds"] ?? 0;
     ctx.Touched.Add(local.Copy());
@@ -141,7 +142,7 @@ internal sealed class InteractStep : ScenarioStep {
         ctx,
         player.Player.InventoryManager.ActiveHotbarSlot.Itemstack
       );
-      report.Value = $"hand: {player.HandText()}";
+      report.Value = HandLine(withText, player.HandText());
       if (o["returns"] is { } returns && (bool)returns != answered)
         throw new StepFailure(
           $"OnBlockInteractStart answered {answered}, not {(bool)returns}."
@@ -150,4 +151,9 @@ internal sealed class InteractStep : ScenarioStep {
       player.Release();
     }
   }
+
+  /// <summary>The step's output value: the stack the click was made with, when the step named one, then
+  /// the hand after the click.</summary>
+  internal static string HandLine(string? with, string hand) =>
+    with == null ? $"hand: {hand}" : $"with: {with}, hand: {hand}";
 }

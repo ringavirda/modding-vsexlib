@@ -879,7 +879,7 @@ public class SetupSceneTests : IDisposable
       {
         "advance",
         "{\"hours\": 1}",
-        "the fake world has no game calendar to advance"
+        "the harness does not skip game time"
       },
     };
 
