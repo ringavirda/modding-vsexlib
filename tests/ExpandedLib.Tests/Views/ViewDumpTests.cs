@@ -231,7 +231,9 @@ public class ViewDumpTests {
       ViewGates.GroupOf(World, tipped)!,
       views
     );
-    GateReading expected = ViewGates.Rules(World, group).Single(r => r.Gate == "G14");
+    GateReading expected = ViewGates
+      .Rules(World, group)
+      .Single(r => r.Gate == "G14");
     JToken g14 = file["gates"]!.Single(g => (string?)g["gate"] == "G14");
     Assert.Equal(expected.Value, (double)g14["value"]!, 0.001);
     Assert.Equal(expected.Max, (double)g14["max"]!, 0.001);
