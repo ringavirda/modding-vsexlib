@@ -59,6 +59,7 @@ public static class ExWorldState {
     MaterialRoleRegistry.ResetForWorld();
     ProcessRouteRegistry.ResetForWorld();
     ProcessJobRegistry.ResetForWorld();
+    CraftSequenceRegistry.ResetForWorld();
     BayOccupancyRegistry.ResetForWorld();
     CollectibleViews.ResetForWorld();
   }

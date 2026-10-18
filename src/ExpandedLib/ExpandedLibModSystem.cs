@@ -45,11 +45,16 @@ public class ExpandedLibModSystem : ModSystem {
     // Applied once per process whichever side starts first; each side holds it until its Dispose.
     _harmony = ExHarmony.PatchOnce(Mod, GetType().Assembly);
 
+#if GAME_GE_1_22
+    // Turns a sequenced recipe away from every grid but its machine's, on both sides.
+    Machines.CraftSequenceGate.Register(api.Event);
+#endif
+
     if (api is ICoreServerAPI sapi)
       NoSnowCells.Attach(sapi);
   }
 
-  /// <summary>Loads the shared catalogues (liquids, material roles, process routes, process jobs, bay
+  /// <summary>Loads the shared catalogues (liquids, material roles, process routes, process jobs, craft sequences, bay
   /// occupancy) from every domain's <c>config/</c> after the asset patches; a singleplayer client reads its
   /// own server's (<see cref="ExWorldState.ResetsOnLoad"/>). A server notes the recipes its registries hold
   /// before any mod's <c>StartServerSide</c> removes one. Either side then fills the item views of dependent mods.</summary>
@@ -72,6 +77,9 @@ public class ExpandedLibModSystem : ModSystem {
 
     // The terminal half of the same contract: every machine's job table.
     ProcessJobLoader.Load(api).Log(api.Logger);
+
+    // The labour behind each bench recipe, by machine.
+    CraftSequenceLoader.Load(api).Log(api.Logger);
 
     // What each store's items occupy; also each store's whitelist.
     BayOccupancyLoader.Load(api).Log(api.Logger);

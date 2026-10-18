@@ -38,7 +38,10 @@ internal sealed class WalkFixtureBench
   public IReadOnlyList<CraftOrder> Orders(IWorldAccessor world) =>
     [
       .. world
-        .GridRecipes.Where(r => r.Width > HandGrid.Size)
+        .GridRecipes.Where(r =>
+          r.Width > HandGrid.Size
+          || CraftSequenceRegistry.Shared.Sequence(r.Name.ToString()) != null
+        )
         .Select(r => new CraftOrder(
           r.Name.ToString(),
           [
@@ -89,6 +92,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     ExlibChecks.ClearDeclarations();
     ProcessJobRegistry.Shared.Clear();
     ProcessRouteRegistry.Shared.Clear();
+    CraftSequenceRegistry.Shared.Clear();
   }
 
   private static string Item(string code) =>
@@ -259,6 +263,52 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
 
     Assert.Empty(result.Findings);
     Assert.Contains("0 failures", result.Summary);
+  }
+
+  private static void Sequence(string recipe, string tool) =>
+    CraftSequenceLoader.Load([
+      (
+        "walk:config/craftsequences/walk.json",
+        $$"""
+        {
+          "machine": "bench",
+          "sequences": [
+            { "recipe": "{{recipe}}", "steps": [ { "tool": "{{tool}}", "seconds": 2 } ] }
+          ]
+        }
+        """
+      ),
+    ]);
+
+  // Fails when the gate lets the hand grid match a sequenced recipe, or the walk crafts a
+  // sequenced recipe in the hand grid.
+  [Fact]
+  public void A_sequenced_recipe_is_crafted_at_its_station_and_the_hand_grid_refuses_it()
+  {
+    using TestWorld world = WithBench(["a"], [Recipe(Stick, "a")]);
+    Sequence("walk:a", Stick);
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Empty(result.Findings);
+    CraftWalk.CraftedEdge crafted = Assert.Single(result.Crafted);
+    Assert.NotEqual(CraftWalk.HandGridName, crafted.Station);
+  }
+
+  // Fails when the walk stops checking the tool a sequence step names.
+  [Fact]
+  public void A_step_naming_an_unreached_tool_fails_and_a_reached_one_passes()
+  {
+    using TestWorld world = WithBench(["a"], [Recipe(Stick, "a")]);
+    Sequence("walk:a", "game:wrench-*");
+
+    CraftWalk.Result result = Walk(world);
+
+    string finding = Assert.Single(result.Findings);
+    Assert.Equal(
+      "walk:a | walk:a step 1 names game:wrench-*, which nothing reached",
+      finding
+    );
   }
 
   private static string Sized(

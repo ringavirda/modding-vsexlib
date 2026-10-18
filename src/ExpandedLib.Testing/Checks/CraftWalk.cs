@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Catalogues;
 using ExpandedLib.Checks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
@@ -17,8 +18,10 @@ namespace ExpandedLib.Testing;
 /// constructions. Vanilla recipes are not walked.
 /// <para>Each fired grid recipe is then crafted once, with the first wildcard variant reached before
 /// it fired: at the hand grid when it fits 3 x 3, else at the first placed
-/// <see cref="ExpandedLib.Machines.ICraftStation"/> whose orders hold it. The stations are one of
-/// each block of the domain with a block entity; the other edges are followed.</para></remarks>
+/// <see cref="ExpandedLib.Machines.ICraftStation"/> whose orders hold it. A recipe with a
+/// <see cref="CraftSequence"/> is crafted at a station, the hand grid must refuse it, and every tool
+/// its steps name must be reached. The stations are one of each block of the domain with a block
+/// entity; the other edges are followed.</para></remarks>
 public static class CraftWalk
 {
   /// <summary>The station name <see cref="CraftedEdge.Station"/> carries for a craft in the hand
@@ -135,6 +138,33 @@ public static class CraftWalk
       found,
       crafted
     );
+
+    for (int i = 0; i < edges.Count; i++)
+    {
+      if (!fired[i] || edges[i].Sequence is not { } sequence)
+        continue;
+      var named = new HashSet<string>(StringComparer.Ordinal);
+      for (int step = 0; step < sequence.Steps.Length; step++)
+        foreach (
+          string pattern in new[]
+          {
+            sequence.Steps[step].Tool,
+            sequence.Steps[step].Offhand,
+          }.OfType<string>()
+        )
+          if (
+            named.Add(pattern)
+            && !all.Any(c =>
+              reached.ContainsKey(c.Code.ToString()) && Matches(pattern, c)
+            )
+          )
+            found.Add(
+              (
+                edges[i].Output,
+                $"{edges[i].Output} | {edges[i].Name} step {step + 1} names {pattern}, which nothing reached"
+              )
+            );
+    }
 
     Dictionary<string, WalkNeed> undeclared = [];
     for (int i = 0; i < edges.Count; i++)

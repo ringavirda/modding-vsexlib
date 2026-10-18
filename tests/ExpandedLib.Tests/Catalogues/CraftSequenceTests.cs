@@ -1,0 +1,195 @@
+#if GAME_GE_1_22
+using System.Collections.Generic;
+using System.Linq;
+using ExpandedLib.Catalogues;
+using ExpandedLib.Machines;
+using ExpandedLib.Testing;
+using Vintagestory.API.Common;
+using Xunit;
+
+namespace ExpandedLib.Tests;
+
+/// <summary>The craft-sequence catalogue: loading, merging by machine and the grid gate that turns a
+/// sequenced recipe away from every grid but its machine's.</summary>
+public sealed class CraftSequenceTests
+{
+  private const string ShaftHand = """
+    {
+      "schema": 1,
+      "machine": "workbench",
+      "sequences": [
+        {
+          "recipe": "iiex:recipes/grid/shaft-hand",
+          "steps": [
+            { "tool": "game:chisel-*", "offhand": "game:hammer-*", "seconds": 3, "help": "iiex:craftstep-shaft-hand-1" },
+            { "tool": "iiex:file-*", "seconds": 2, "help": "iiex:craftstep-shaft-hand-2" },
+            { "tool": null, "seconds": 1, "animation": "fitting", "at": "vice" },
+            { "tool": "game:chisel-*", "offhand": "game:hammer-*", "seconds": 3 }
+          ],
+          "byproducts": [ { "type": "item", "code": "iiex:metalbit-castiron", "quantity": 1 } ]
+        }
+      ]
+    }
+    """;
+
+  private static List<CraftSequenceSet> Parse(
+    out List<string> errors,
+    string json
+  ) =>
+    CraftSequenceLoader.Parse(
+      [("iiex:config/craftsequences/workbench.json", json)],
+      out errors
+    );
+
+  // Fails when the loader keeps one step or drops the off-hand tool.
+  [Fact]
+  public void A_four_step_sequence_with_an_offhand_tool_loads_whole()
+  {
+    List<CraftSequenceSet> sets = Parse(out List<string> errors, ShaftHand);
+
+    Assert.Empty(errors);
+    CraftSequence sequence = Assert.Single(Assert.Single(sets).Sequences);
+    Assert.Equal(
+      ["game:chisel-*", "iiex:file-*", null, "game:chisel-*"],
+      sequence.Steps.Select(s => s.Tool)
+    );
+    Assert.Equal(
+      ["game:hammer-*", null, null, "game:hammer-*"],
+      sequence.Steps.Select(s => s.Offhand)
+    );
+    Assert.Equal([3f, 2f, 1f, 3f], sequence.Steps.Select(s => s.Seconds));
+    Assert.Equal(CraftStep.Vice, sequence.Steps[2].At);
+    Assert.Equal("fitting", sequence.Steps[2].Animation);
+    Assert.Equal("iiex:craftstep-shaft-hand-1", sequence.Steps[0].Help);
+    CraftByproduct byproduct = Assert.Single(sequence.Byproducts);
+    Assert.Equal("iiex:metalbit-castiron", byproduct.Code);
+  }
+
+  // Fails when the loader accepts a sequence with no steps.
+  [Fact]
+  public void A_sequence_with_no_steps_is_reported_and_skipped()
+  {
+    List<CraftSequenceSet> sets = Parse(
+      out List<string> errors,
+      """{ "machine": "workbench", "sequences": [ { "recipe": "iiex:r", "steps": [] } ] }"""
+    );
+
+    Assert.Empty(sets);
+    Assert.Contains("no steps", Assert.Single(errors));
+  }
+
+  // Fails when the loader stops auditing a step's keys.
+  [Fact]
+  public void A_step_naming_an_unknown_key_is_reported_and_skipped()
+  {
+    List<CraftSequenceSet> sets = Parse(
+      out List<string> errors,
+      """{ "machine": "workbench", "sequences": [ { "recipe": "iiex:r", "steps": [ { "tol": "x" } ] } ] }"""
+    );
+
+    Assert.Empty(sets);
+    Assert.Contains("tol", Assert.Single(errors));
+  }
+
+  // Fails when the loader reads an unknown step position.
+  [Fact]
+  public void A_step_at_an_unknown_place_is_reported_and_skipped()
+  {
+    List<CraftSequenceSet> sets = Parse(
+      out List<string> errors,
+      """{ "machine": "workbench", "sequences": [ { "recipe": "iiex:r", "steps": [ { "at": "floor" } ] } ] }"""
+    );
+
+    Assert.Empty(sets);
+    Assert.Contains("floor", Assert.Single(errors));
+  }
+
+  // Fails when a later declaration replaces the first or goes unreported.
+  [Fact]
+  public void A_second_declaration_for_one_recipe_loses_and_is_reported()
+  {
+    var registry = new CraftSequenceRegistry();
+
+    List<string> errors = CraftSequenceLoader.Load(
+      [
+        ("iiex:config/craftsequences/workbench.json", ShaftHand),
+        (
+          "othermod:config/craftsequences/workbench.json",
+          """{ "machine": "workbench", "sequences": [ { "recipe": "iiex:recipes/grid/shaft-hand", "steps": [ { "tool": "othermod:saw-*" } ] } ] }"""
+        ),
+      ],
+      registry
+    );
+
+    string clash = Assert.Single(errors);
+    Assert.StartsWith("othermod:config/craftsequences/workbench.json:", clash);
+    CraftSequence held = registry.Sequence(
+      "workbench",
+      "iiex:recipes/grid/shaft-hand"
+    )!;
+    Assert.Equal(4, held.Steps.Length);
+  }
+
+  // Fails when the registry files a sequence under the wrong machine.
+  [Fact]
+  public void Another_machine_may_declare_the_same_recipe()
+  {
+    var registry = new CraftSequenceRegistry();
+
+    List<string> errors = CraftSequenceLoader.Load(
+      [
+        ("a:config/craftsequences/a.json", ShaftHand),
+        (
+          "b:config/craftsequences/b.json",
+          ShaftHand.Replace("workbench", "lathe")
+        ),
+      ],
+      registry
+    );
+
+    Assert.Empty(errors);
+    Assert.NotNull(registry.Sequence("lathe", "iiex:recipes/grid/shaft-hand"));
+    Assert.Equal(2, registry.Machines.Count);
+  }
+
+  private static GridRecipe Recipe(string name) =>
+    new()
+    {
+      Name = new AssetLocation(name),
+      Width = 2,
+      Height = 2,
+    };
+
+  private static bool Matches(TestWorld world, GridRecipe recipe) =>
+    world.Api.Event.TriggerMatchesRecipe(null!, recipe, [], 3);
+
+  // Fails when the handler checks width only: the 2 x 2 sequenced recipe would match unmarked.
+  [Fact]
+  public void A_sequenced_recipe_is_refused_in_the_hand_grid_and_matched_at_its_machine()
+  {
+    CraftSequenceRegistry.Shared.Clear();
+    try
+    {
+      CraftSequenceLoader.Load([
+        ("iiex:config/craftsequences/w.json", ShaftHand),
+      ]);
+      using var world = new TestWorld();
+      CraftSequenceGate.Register(world.Api.Event);
+      GridRecipe sequenced = Recipe("iiex:recipes/grid/shaft-hand");
+      GridRecipe plain = Recipe("iiex:recipes/grid/plain");
+
+      Assert.False(Matches(world, sequenced));
+      Assert.True(Matches(world, plain));
+      using (CraftSequenceGate.At("workbench"))
+        Assert.True(Matches(world, sequenced));
+      using (CraftSequenceGate.At("lathe"))
+        Assert.False(Matches(world, sequenced));
+      Assert.False(Matches(world, sequenced));
+    }
+    finally
+    {
+      CraftSequenceRegistry.Shared.Clear();
+    }
+  }
+}
+#endif
