@@ -188,6 +188,20 @@ public class PlotTests {
     Assert.Equal(0, LiveFixture.Case("[]").LowestY);
   }
 
+  /// <summary>Fails when the lowest cell scan skips a drawn layout cell.</summary>
+  [Fact]
+  public void The_lowest_y_of_a_file_is_its_deepest_layout_cell() {
+    Assert.Equal(
+      -3,
+      LiveFixture
+        .Case(
+          "[]",
+          """{ layout: { legend: { "A": { code: "game:stone" } }, layers: { "-3": ["A"] } } }"""
+        )
+        .LowestY
+    );
+  }
+
   /// <summary>Fails when the origin is not raised for the deepest cell, or the ground is not
   /// laid under the raised plot.</summary>
   [Fact]
@@ -217,8 +231,7 @@ public class PlotTests {
     Assert.All(set, p => Assert.InRange(p.Y, 3, 5));
   }
 
-  /// <summary>Fails when a plot whose cells all sit at or above 0 is lifted or has ground laid
-  /// under it.</summary>
+  /// <summary>Fails when the origin of a plot with no cell below 0 is lifted (originY from ground + 2).</summary>
   [Fact]
   public void A_plot_with_no_cell_below_zero_sits_one_above_the_terrain() {
     var blocks = Substitute.For<IBlockAccessor>();
@@ -234,11 +247,13 @@ public class PlotTests {
   }
 
   /// <summary>Fails when the world bound check on one side is dropped: below the floor, at the
-  /// height, before x 0 or past z.</summary>
+  /// height, before x 0, past x, before z 0 or past z.</summary>
   [Theory]
   [InlineData(0, -51, 0)]
   [InlineData(0, 206, 0)]
   [InlineData(-101, 0, 0)]
+  [InlineData(924, 0, 0)]
+  [InlineData(0, 0, -101)]
   [InlineData(0, 0, 924)]
   public void A_cell_outside_the_world_fails_its_step_naming_the_cell(
     int x,

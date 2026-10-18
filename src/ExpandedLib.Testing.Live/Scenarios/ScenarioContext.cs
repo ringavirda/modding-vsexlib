@@ -87,10 +87,9 @@ internal sealed class ScenarioContext(
     }
   }
 
-  /// <summary>Sets <paramref name="block"/> into the plot-local cell as the block accessor
-  /// does a placed block, so its entity is created and a megablock fills its footprint.</summary>
+  /// <summary>Fails a plot-local cell whose absolute position lies outside the world.</summary>
   /// <exception cref="StepFailure">The cell lies outside the world; the scenario is suspect.</exception>
-  public void SetBlock(Block block, BlockPos local) {
+  public void RequireInWorld(BlockPos local) {
     BlockPos at = setup.Absolute(local);
     IBlockAccessor blocks = world.BlockAccessor;
     if (
@@ -105,6 +104,14 @@ internal sealed class ScenarioContext(
         $"{FailureDetail.Cell(local)} lies outside the world (absolute {FailureDetail.Cell(at)}).",
         Suspect.Scenario
       );
+  }
+
+  /// <summary>Sets <paramref name="block"/> into the plot-local cell as the block accessor
+  /// does a placed block, so its entity is created and a megablock fills its footprint.</summary>
+  /// <exception cref="StepFailure">The cell lies outside the world; the scenario is suspect.</exception>
+  public void SetBlock(Block block, BlockPos local) {
+    RequireInWorld(local);
+    BlockPos at = setup.Absolute(local);
     world.BlockAccessor.SetBlock(block.BlockId, at, new ItemStack(block));
     if (block is BlockMPBase power)
       power.WasPlaced(world, at, null);

@@ -326,4 +326,19 @@ public class StepTests {
     Assert.Equal(Suspect.Scenario, failure.Suspect);
     Assert.Contains("needs its \"litres\"", failure.Message);
   }
+
+  /// <summary>Fails when the short-fill check returns null, letting a bucket hold fewer litres than asked.</summary>
+  [Fact]
+  public void A_fill_past_the_capacity_fails_the_step_and_blames_the_scenario() {
+    LiveFixture fixture = VesselFixture();
+    StepFailure failure = Assert.Throws<StepFailure>(() =>
+      fixture.Run(
+        Steps(
+          """[{ "insert": { "at": [0, 0, 0], "stack": "game:woodbucket", "content": "game:waterportion", "litres": 11 } }]"""
+        )
+      )
+    );
+    Assert.Equal(Suspect.Scenario, failure.Suspect);
+    Assert.Contains("took 10 of the 11 litres", failure.Message);
+  }
 }
