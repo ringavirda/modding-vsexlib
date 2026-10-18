@@ -876,7 +876,6 @@ public class SetupSceneTests : IDisposable
         "{}",
         "the fake world has no chunk save and load to reload through"
       },
-      { "advance", "{\"hours\": 1}", "the harness does not skip game time" },
     };
 
   // Fails when a step kind the fake world cannot run is let through to a scene that silently skips it.
