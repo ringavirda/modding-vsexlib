@@ -26,6 +26,11 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
       Store.Step(dt);
   }
 
+  public override void OnTickPublished(
+    IBlockAccessor world,
+    BlockNetworkModSystem manager
+  ) => Store.Publish();
+
   public override void OnMerge(BlockNetwork other, IBlockAccessor world) =>
     throw new NotSupportedException("A pipeflow run does not merge yet.");
 

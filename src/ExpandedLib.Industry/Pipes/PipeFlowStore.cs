@@ -12,6 +12,11 @@ namespace ExpandedLib.Industry.Pipes;
 internal sealed class PipeFlowStore {
   private const double Gravity = 9.80665;
   private const double MinDropPa = 1;
+  private const double MaxConductanceStep = 4;
+  private const double PicardRatio = 2;
+  private const double AmbientK = 293.15;
+  private const double RestFlow = 1e-6;
+  private const double RestPressureStepPa = 1;
   private const double KelvinOffset = 273.15;
 
   private readonly Dictionary<NodeKey, int> _index = [];
@@ -32,6 +37,23 @@ internal sealed class PipeFlowStore {
   private double[] _friction = new double[16];
   private double[] _share = new double[16];
   private double[] _flow = new double[16];
+  private double[] _prevUnit = new double[16];
+
+  private int[] _openNode = new int[4];
+  private double[] _openArea = new double[4];
+  private double[] _openOutside = new double[4];
+  private FlowGas[] _openGas = new FlowGas[4];
+  private double[] _openPrev = new double[4];
+  private double[] _openLedger = new double[4];
+  private double[] _openFlow = new double[4];
+  private OpeningMode[] _openMode = new OpeningMode[4];
+  private double[] _openCoeff = new double[4];
+  private double[] _openLimited = new double[4];
+
+  private double[] _pubPressure = [];
+  private double[] _pubFlow = [];
+  private double[] _pubOpenFlow = [];
+  private double[] _pubOpenLedger = [];
 
   private double[] _pressure = [];
   private double[] _density = [];
@@ -40,13 +62,37 @@ internal sealed class PipeFlowStore {
   private double[] _outgoing = [];
   private double[] _conductance = [];
   private double[] _edgeDensity = [];
+  private double[] _unit = [];
+  private double[] _trial = [];
+  private bool _conductanceMoved;
+  private bool _asleep;
+
+  private enum OpeningMode {
+    Linear,
+    ChokedOut,
+    ChokedIn,
+  }
 
   public int NodeCount { get; private set; }
 
   public int EdgeCount { get; private set; }
 
-  /// <summary>Net mass in kg that sources and sinks have added to the run: the sum of every node's gas equals its starting total plus this.</summary>
+  public int OpeningCount { get; private set; }
+
+  /// <summary>Net mass in kg that openings have passed into the run: negative when the run has vented. Together with <see cref="SourceLedgerKg"/> it closes the balance: the sum of every node's gas equals its starting total plus both.</summary>
+  public double OpeningLedgerKg { get; private set; }
+
+  /// <summary>Net mass in kg that sources and sinks have added to the run: the sum of every node's gas equals its starting total plus this and <see cref="OpeningLedgerKg"/>.</summary>
   public double SourceLedgerKg { get; private set; }
+
+  /// <summary>True while the run rests: <see cref="Step"/> does nothing until something wakes it.</summary>
+  public bool Asleep => _asleep;
+
+  /// <summary>How many steps have been solved; a step skipped asleep is not counted.</summary>
+  public int StepsSolved { get; private set; }
+
+  /// <summary>Linearisations the last solved step used: 1, or 2 when a conductance moved by more than a factor 2.</summary>
+  public int LastStepPasses { get; private set; }
 
   /// <summary>How many times the solver computed its elimination order.</summary>
   public int OrderBuilds => _solver.OrderBuilds;
@@ -94,6 +140,7 @@ internal sealed class PipeFlowStore {
     _gasConstant[i] = gasConstant;
     NodeCount++;
     UpdateTopology();
+    Wake();
     return i;
   }
 
@@ -132,6 +179,7 @@ internal sealed class PipeFlowStore {
       Array.Resize(ref _friction, size);
       Array.Resize(ref _share, size);
       Array.Resize(ref _flow, size);
+      Array.Resize(ref _prevUnit, size);
     }
     _from[e] = a;
     _to[e] = b;
@@ -139,9 +187,79 @@ internal sealed class PipeFlowStore {
     _length[e] = lengthM;
     _friction[e] = pipeClass.Friction();
     _share[e] = share;
+    _prevUnit[e] = 0;
     EdgeCount++;
     UpdateTopology();
+    Wake();
     return e;
+  }
+
+  /// <summary>Opens <paramref name="node"/> to a fixed outside pressure through an orifice and returns the opening index. Gas leaves while the node is above <paramref name="outsidePa"/> and air enters while it is below.</summary>
+  /// <param name="node">Index of the node.</param>
+  /// <param name="areaM2">Orifice area in m2, zero or more.</param>
+  /// <param name="outsidePa">Absolute outside pressure in Pa, zero or more.</param>
+  /// <param name="gas">Gas the node holds; picks the choked coefficient and exponent of the outflow.</param>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist, or the area or outside pressure is negative.</exception>
+  public int AddOpening(int node, double areaM2, double outsidePa, FlowGas gas) {
+    CheckNode(node);
+    if (areaM2 < 0)
+      throw new ArgumentOutOfRangeException(nameof(areaM2));
+    if (outsidePa < 0)
+      throw new ArgumentOutOfRangeException(nameof(outsidePa));
+    int o = OpeningCount;
+    if (o == _openNode.Length) {
+      int size = o * 2;
+      Array.Resize(ref _openNode, size);
+      Array.Resize(ref _openArea, size);
+      Array.Resize(ref _openOutside, size);
+      Array.Resize(ref _openGas, size);
+      Array.Resize(ref _openPrev, size);
+      Array.Resize(ref _openLedger, size);
+      Array.Resize(ref _openFlow, size);
+      Array.Resize(ref _openMode, size);
+      Array.Resize(ref _openCoeff, size);
+      Array.Resize(ref _openLimited, size);
+    }
+    _openNode[o] = node;
+    _openArea[o] = areaM2;
+    _openOutside[o] = outsidePa;
+    _openGas[o] = gas;
+    _openPrev[o] = 0;
+    OpeningCount++;
+    Wake();
+    return o;
+  }
+
+  /// <summary>Sets the area of <paramref name="opening"/> in m2 from the next step; 0 closes it.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The opening does not exist or <paramref name="areaM2"/> is negative.</exception>
+  public void SetOpeningArea(int opening, double areaM2) {
+    CheckOpening(opening);
+    if (areaM2 < 0)
+      throw new ArgumentOutOfRangeException(nameof(areaM2));
+    _openArea[opening] = areaM2;
+    Wake();
+  }
+
+  /// <summary>Wakes a resting run so the next <see cref="Step"/> solves.</summary>
+  public void Wake() => _asleep = false;
+
+  /// <summary>Mean mass flow out of the run through <paramref name="opening"/> over the last step in kg/s; negative while air enters.</summary>
+  public double OpeningFlowKgPerSecond(int opening) {
+    CheckOpening(opening);
+    return _openFlow[opening];
+  }
+
+  /// <summary>Net mass in kg that <paramref name="opening"/> has passed into the run: negative when it has vented.</summary>
+  public double OpeningLedger(int opening) {
+    CheckOpening(opening);
+    return _openLedger[opening];
+  }
+
+  /// <summary>The last step's conductance of <paramref name="edge"/> with its share left out, in kg/(s Pa): the secant of the edge law at the drop the step started with, limited to a factor 4 of the step before.</summary>
+  public double UnitConductance(int edge) {
+    if ((uint)edge >= (uint)EdgeCount)
+      throw new ArgumentOutOfRangeException(nameof(edge));
+    return _prevUnit[edge];
   }
 
   /// <summary>The index of the node keyed <paramref name="key"/>.</summary>
@@ -155,12 +273,15 @@ internal sealed class PipeFlowStore {
       throw new ArgumentOutOfRangeException(nameof(edge));
     CheckShare(share);
     _share[edge] = share;
+    Wake();
   }
 
   /// <summary>Declares a source of <paramref name="kgPerSecond"/> into <paramref name="node"/> (negative draws from it), replacing its earlier declaration. It applies from the next step.</summary>
   public void SetSource(int node, double kgPerSecond) {
     CheckNode(node);
     _pending[node] = kgPerSecond;
+    if (kgPerSecond != 0)
+      Wake();
   }
 
   /// <summary>The source in force at <paramref name="node"/>, in kg/s: the declaration the last step started with.</summary>
@@ -196,13 +317,16 @@ internal sealed class PipeFlowStore {
     return sum;
   }
 
-  /// <summary>Advances the run by <paramref name="dt"/> seconds with one linearised backward-Euler solve. Stable at any step; the step only sets accuracy. A node cannot be emptied below zero: its outflows and draws are scaled for the step.</summary>
+  /// <summary>Advances the run by <paramref name="dt"/> seconds with one linearised backward-Euler solve, repeated once when a conductance moved by more than a factor 2. Stable at any step; the step only sets accuracy. A node cannot be emptied below zero: its outflows and draws are scaled for the step. A resting run does nothing; the step that finds the run at rest puts it to sleep.</summary>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="dt"/> is not above zero.</exception>
   public void Step(double dt) {
     if (dt <= 0)
       throw new ArgumentOutOfRangeException(nameof(dt));
+    if (_asleep)
+      return;
     int n = NodeCount;
     int m = EdgeCount;
+    int k = OpeningCount;
     Array.Copy(_pending, _active, n);
 
     for (int i = 0; i < n; i++) {
@@ -210,37 +334,17 @@ internal sealed class PipeFlowStore {
       _density[i] = _gas[i] / _volume[i];
     }
 
-    _solver.Begin();
-    for (int i = 0; i < n; i++) {
-      double capacity = _volume[i] / (_gasConstant[i] * Kelvin(i));
-      _solver.AddDiagonal(i, capacity / dt);
-      _rhs[i] = capacity / dt * _pressure[i] + _active[i];
-    }
-    for (int e = 0; e < m; e++) {
-      int a = _from[e];
-      int b = _to[e];
-      double dp = _pressure[a] - _pressure[b];
-      double lift = _density[a] * Gravity * (_height[a] - _height[b]);
-      double rho = dp + lift >= 0 ? _density[a] : _density[b];
-      double drop = dp + rho * Gravity * (_height[a] - _height[b]);
-      double k =
-        _share[e]
-        * Math.PI
-        * _bore[e]
-        * _bore[e]
-        / 4
-        * Math.Sqrt(2 * rho * _bore[e] / (_friction[e] * _length[e]));
-      double g = k / Math.Sqrt(Math.Max(Math.Abs(drop), MinDropPa));
-      _conductance[e] = g;
-      _edgeDensity[e] = rho;
-      _solver.AddDiagonal(a, g);
-      _solver.AddDiagonal(b, g);
-      _solver.AddEdge(e, -g, -g);
-      double liftRhs = g * rho * Gravity * (_height[b] - _height[a]);
-      _rhs[a] += liftRhs;
-      _rhs[b] -= liftRhs;
-    }
+    Assemble(dt, _pressure);
     _solver.Solve(_rhs);
+    LastStepPasses = 1;
+    if (_conductanceMoved) {
+      Array.Copy(_rhs, _trial, n);
+      Assemble(dt, _trial);
+      _solver.Solve(_rhs);
+      LastStepPasses = 2;
+    }
+    StepsSolved++;
+    Array.Copy(_unit, _prevUnit, m);
 
     for (int e = 0; e < m; e++) {
       int a = _from[e];
@@ -253,6 +357,16 @@ internal sealed class PipeFlowStore {
           + _edgeDensity[e] * Gravity * (_height[a] - _height[b])
         );
     }
+    for (int o = 0; o < k; o++) {
+      _openFlow[o] = _openMode[o] switch {
+        OpeningMode.ChokedOut => _openCoeff[o]
+          * Math.Max(_rhs[_openNode[o]], 0),
+        OpeningMode.ChokedIn => -_openCoeff[o],
+        _ => _openCoeff[o] * (_rhs[_openNode[o]] - _openOutside[o]),
+      };
+      if (_openMode[o] == OpeningMode.Linear)
+        _openPrev[o] = _openLimited[o];
+    }
 
     Array.Fill(_scale, 1d, 0, n);
     var outgoing = _outgoing;
@@ -263,6 +377,9 @@ internal sealed class PipeFlowStore {
       else
         outgoing[_to[e]] -= _flow[e] * dt;
     }
+    for (int o = 0; o < k; o++)
+      if (_openFlow[o] > 0)
+        outgoing[_openNode[o]] += _openFlow[o] * dt;
     for (int i = 0; i < n; i++) {
       if (_active[i] < 0)
         outgoing[i] -= _active[i] * dt;
@@ -278,11 +395,179 @@ internal sealed class PipeFlowStore {
       _gas[b] += moved;
       _flow[e] = moved / dt;
     }
+    for (int o = 0; o < k; o++) {
+      int node = _openNode[o];
+      double moved = _openFlow[o] * dt * (_openFlow[o] > 0 ? _scale[node] : 1);
+      _gas[node] -= moved;
+      _openLedger[o] -= moved;
+      OpeningLedgerKg -= moved;
+      _openFlow[o] = moved / dt;
+    }
     for (int i = 0; i < n; i++) {
       double applied = _active[i] * dt * (_active[i] < 0 ? _scale[i] : 1);
       _gas[i] += applied;
       SourceLedgerKg += applied;
     }
+
+    _asleep = AtRest();
+  }
+
+  /// <summary>Copies the settled pressures, flows and opening ledgers of the last step to the values <see cref="PublishedPressurePa"/>, <see cref="PublishedFlowKgPerSecond"/>, <see cref="PublishedOpeningFlowKgPerSecond"/> and <see cref="PublishedOpeningLedger"/> read, so readers see one step's values together whatever order they run in.</summary>
+  public void Publish() {
+    int n = NodeCount;
+    if (_pubPressure.Length != n)
+      _pubPressure = new double[n];
+    if (_pubFlow.Length != EdgeCount)
+      _pubFlow = new double[EdgeCount];
+    if (_pubOpenFlow.Length != OpeningCount) {
+      _pubOpenFlow = new double[OpeningCount];
+      _pubOpenLedger = new double[OpeningCount];
+    }
+    for (int i = 0; i < n; i++)
+      _pubPressure[i] = Pressure(i);
+    Array.Copy(_flow, _pubFlow, EdgeCount);
+    Array.Copy(_openFlow, _pubOpenFlow, OpeningCount);
+    Array.Copy(_openLedger, _pubOpenLedger, OpeningCount);
+  }
+
+  /// <summary>Absolute pressure of <paramref name="node"/> in Pa as of the last <see cref="Publish"/>; zero before the first.</summary>
+  public double PublishedPressurePa(int node) {
+    CheckNode(node);
+    return node < _pubPressure.Length ? _pubPressure[node] : 0;
+  }
+
+  /// <summary>Mean flow along <paramref name="edge"/> in kg/s as of the last <see cref="Publish"/>; zero before the first.</summary>
+  public double PublishedFlowKgPerSecond(int edge) {
+    if ((uint)edge >= (uint)EdgeCount)
+      throw new ArgumentOutOfRangeException(nameof(edge));
+    return edge < _pubFlow.Length ? _pubFlow[edge] : 0;
+  }
+
+  /// <summary>Mean flow out through <paramref name="opening"/> in kg/s as of the last <see cref="Publish"/>; zero before the first.</summary>
+  public double PublishedOpeningFlowKgPerSecond(int opening) {
+    CheckOpening(opening);
+    return opening < _pubOpenFlow.Length ? _pubOpenFlow[opening] : 0;
+  }
+
+  /// <summary>Net mass in kg that <paramref name="opening"/> had passed into the run as of the last <see cref="Publish"/>; zero before the first.</summary>
+  public double PublishedOpeningLedger(int opening) {
+    CheckOpening(opening);
+    return opening < _pubOpenLedger.Length ? _pubOpenLedger[opening] : 0;
+  }
+
+  private void Assemble(double dt, double[] pg) {
+    int n = NodeCount;
+    int m = EdgeCount;
+    _conductanceMoved = false;
+    _solver.Begin();
+    for (int i = 0; i < n; i++) {
+      double capacity = _volume[i] / (_gasConstant[i] * Kelvin(i));
+      _solver.AddDiagonal(i, capacity / dt);
+      _rhs[i] = capacity / dt * _pressure[i] + _active[i];
+    }
+    for (int e = 0; e < m; e++) {
+      int a = _from[e];
+      int b = _to[e];
+      double dp = pg[a] - pg[b];
+      double lift = _density[a] * Gravity * (_height[a] - _height[b]);
+      double rho = dp + lift >= 0 ? _density[a] : _density[b];
+      double drop = dp + rho * Gravity * (_height[a] - _height[b]);
+      double k =
+        Math.PI
+        * _bore[e]
+        * _bore[e]
+        / 4
+        * Math.Sqrt(2 * rho * _bore[e] / (_friction[e] * _length[e]));
+      double unit = Limit(
+        k / Math.Sqrt(Math.Max(Math.Abs(drop), MinDropPa)),
+        _prevUnit[e]
+      );
+      _unit[e] = unit;
+      double g = _share[e] * unit;
+      _conductance[e] = g;
+      _edgeDensity[e] = rho;
+      _solver.AddDiagonal(a, g);
+      _solver.AddDiagonal(b, g);
+      _solver.AddEdge(e, -g, -g);
+      double liftRhs = g * rho * Gravity * (_height[b] - _height[a]);
+      _rhs[a] += liftRhs;
+      _rhs[b] -= liftRhs;
+    }
+    for (int o = 0; o < OpeningCount; o++)
+      AssembleOpening(o, pg[_openNode[o]]);
+  }
+
+  private void AssembleOpening(int o, double p) {
+    int node = _openNode[o];
+    double area = _openArea[o];
+    double outside = _openOutside[o];
+    bool leaving = p >= outside;
+    FlowGas gas = leaving ? _openGas[o] : FlowGas.Air;
+    double upstream = leaving ? p : outside;
+    double downstream = leaving ? outside : p;
+    double kelvin = leaving ? Kelvin(node) : AmbientK;
+    double gasConstant = leaving ? _gasConstant[node] : GasOrifice.AirConstant;
+
+    if (area > 0 && GasOrifice.IsChoked(upstream, downstream)) {
+      double choked = GasOrifice.ChokedCoefficient(gas, kelvin) * area;
+      if (leaving) {
+        _openMode[o] = OpeningMode.ChokedOut;
+        _openCoeff[o] = choked;
+        _solver.AddDiagonal(node, choked);
+      } else {
+        _openMode[o] = OpeningMode.ChokedIn;
+        _openCoeff[o] = choked * outside;
+        _rhs[node] += _openCoeff[o];
+      }
+      return;
+    }
+
+    double span = Math.Max(Math.Abs(p - outside), MinDropPa);
+    double top = Math.Max(p, outside);
+    double flow = GasOrifice.Flow(
+      top,
+      Math.Max(top - span, 0),
+      kelvin,
+      gasConstant,
+      gas,
+      area
+    );
+    double g = area > 0 ? Limit(flow / span, _openPrev[o]) : 0;
+    _openMode[o] = OpeningMode.Linear;
+    _openCoeff[o] = g;
+    _openLimited[o] = g;
+    _solver.AddDiagonal(node, g);
+    _rhs[node] += g * outside;
+  }
+
+  private double Limit(double value, double previous) {
+    if (previous <= 0)
+      return value;
+    double limited = Math.Clamp(
+      value,
+      previous / MaxConductanceStep,
+      previous * MaxConductanceStep
+    );
+    if (limited > previous * PicardRatio || limited < previous / PicardRatio)
+      _conductanceMoved = true;
+    return limited;
+  }
+
+  private bool AtRest() {
+    int n = NodeCount;
+    for (int i = 0; i < n; i++)
+      if (
+        _pending[i] != 0
+        || Math.Abs(Pressure(i) - _pressure[i]) > RestPressureStepPa
+      )
+        return false;
+    for (int e = 0; e < EdgeCount; e++)
+      if (Math.Abs(_flow[e]) >= RestFlow)
+        return false;
+    for (int o = 0; o < OpeningCount; o++)
+      if (Math.Abs(_openFlow[o]) >= RestFlow)
+        return false;
+    return true;
   }
 
   private double Kelvin(int i) => _temperatureC[i] + KelvinOffset;
@@ -293,6 +578,11 @@ internal sealed class PipeFlowStore {
   private void CheckNode(int node) {
     if ((uint)node >= (uint)NodeCount)
       throw new ArgumentOutOfRangeException(nameof(node));
+  }
+
+  private void CheckOpening(int opening) {
+    if ((uint)opening >= (uint)OpeningCount)
+      throw new ArgumentOutOfRangeException(nameof(opening));
   }
 
   private static void CheckShare(double share) {
@@ -310,11 +600,13 @@ internal sealed class PipeFlowStore {
       _rhs = new double[size];
       _scale = new double[size];
       _outgoing = new double[size];
+      _trial = new double[size];
     }
     if (_conductance.Length < m) {
       int size = _from.Length;
       _conductance = new double[size];
       _edgeDensity = new double[size];
+      _unit = new double[size];
     }
     _solver.SetTopology(n, _from, _to, m);
   }
