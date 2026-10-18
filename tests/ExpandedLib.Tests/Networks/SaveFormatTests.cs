@@ -271,4 +271,86 @@ public class SaveFormatTests {
   }
 
   #endregion
+  #region The pipe flow node entry
+
+  private static NodeKey Cell(int x) => NodeKey.Centre(new BlockPos(x, 0, 0));
+
+  private static PipeFlowNetwork RunOf(TestWorld w, int nodes) {
+    var net = new PipeFlowNetwork(w.Networks);
+    for (int i = 0; i < nodes; i++)
+      net.Store.AddNode(Cell(i), 0.02, 0, 0.001 * (i + 1), 20 + i);
+    for (int i = 1; i < nodes; i++)
+      net.Store.AddEdge(i - 1, i, 0.05, 1, FlowPipeClass.Cast);
+    return net;
+  }
+
+  // Fails when Write drops the damage byte.
+  [Fact]
+  public void A_pipe_node_entry_round_trips_every_field_under_pf_and_the_slot() {
+    var host = new TreeAttribute();
+    var saved = new PipeNodeSave(0.5, 0.25, 3, 120, 90, 0.75, 2);
+
+    PipeFlowSave.Write(host, 3, saved);
+
+    Assert.Equal("pf3", PipeFlowSave.Key(3));
+    Assert.NotNull(host.GetTreeAttribute("pf3"));
+    Assert.True(PipeFlowSave.TryRead(host, 3, out var read));
+    Assert.Equal(saved, read);
+    Assert.False(PipeFlowSave.TryRead(host, 4, out _));
+  }
+
+  // Fails when TryRead accepts any format version.
+  [Fact]
+  public void An_entry_of_another_format_version_restores_nothing() {
+    var w = new TestWorld();
+    var net = RunOf(w, 1);
+    var host = new TreeAttribute();
+    net.SaveNode(Cell(0), host);
+    host.GetTreeAttribute("pf0")!.SetInt("v", PipeFlowSave.FormatVersion + 1);
+    var fresh = new PipeFlowNetwork(w.Networks);
+
+    Assert.False(fresh.RestoreNode(Cell(0), host, 0.02, 0));
+    Assert.Equal(0, fresh.Store.NodeCount);
+  }
+
+  // Fails when SaveNode writes something other than the live store (a zeroed gas stands for the threshold-gated display copy), or when RestoreNode overwrites a node the store already holds.
+  [Fact]
+  public void Reload_RestoresEachNodeOnce() {
+    var w = new TestWorld();
+    var live = RunOf(w, 4);
+    live.Store.SetSource(0, 0.0005);
+    live.Store.Step(0.2);
+    live.Store.Publish();
+    live.Store.Step(0.2);
+    live.Store.Step(0.2);
+    Assert.NotEqual(
+      live.Store.GasKg(1),
+      live.Store.PublishedPressurePa(1) * 0.02 / (461.5 * 293.15)
+    );
+    var hosts = new TreeAttribute[4];
+    for (int i = 0; i < 4; i++) {
+      hosts[i] = new TreeAttribute();
+      live.SaveNode(Cell(i), hosts[i]);
+    }
+
+    var rebuilt = new PipeFlowNetwork(w.Networks);
+    for (int i = 0; i < 4; i++) {
+      Assert.True(rebuilt.RestoreNode(Cell(i), hosts[i], 0.02, 0));
+      Assert.False(rebuilt.RestoreNode(Cell(i), hosts[i], 0.02, 0));
+    }
+
+    Assert.Equal(4, rebuilt.Store.NodeCount);
+    for (int i = 0; i < 4; i++) {
+      int node = rebuilt.Store.IndexOf(Cell(i));
+      Assert.Equal(live.Store.GasKg(i), rebuilt.Store.GasKg(node));
+      Assert.Equal(live.Store.TemperatureC(i), rebuilt.Store.TemperatureC(node));
+    }
+
+    live.Store.Step(0.2);
+    double now = live.Store.GasKg(2);
+    Assert.False(live.RestoreNode(Cell(2), hosts[2], 0.02, 0));
+    Assert.Equal(now, live.Store.GasKg(2));
+  }
+
+  #endregion
 }

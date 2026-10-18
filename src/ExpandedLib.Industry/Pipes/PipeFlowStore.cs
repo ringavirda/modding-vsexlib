@@ -29,6 +29,7 @@ internal sealed class PipeFlowStore {
   private double[] _gasConstant = new double[16];
   private double[] _pending = new double[16];
   private double[] _active = new double[16];
+  private bool[] _frozen = new bool[16];
 
   private int[] _from = new int[16];
   private int[] _to = new int[16];
@@ -132,6 +133,7 @@ internal sealed class PipeFlowStore {
       Array.Resize(ref _gasConstant, size);
       Array.Resize(ref _pending, size);
       Array.Resize(ref _active, size);
+      Array.Resize(ref _frozen, size);
     }
     _volume[i] = volumeM3;
     _height[i] = heightM;
@@ -262,6 +264,33 @@ internal sealed class PipeFlowStore {
     return _prevUnit[edge];
   }
 
+  /// <summary>Every node's key with its index.</summary>
+  public IReadOnlyDictionary<NodeKey, int> Nodes => _index;
+
+  /// <summary>Whether <paramref name="node"/> is frozen.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist.</exception>
+  public bool IsFrozen(int node) {
+    CheckNode(node);
+    return _frozen[node];
+  }
+
+  /// <summary>Freezes or thaws <paramref name="node"/>. A frozen node keeps its gas and temperature: its edges carry nothing, its openings pass nothing and its declared source is held back until it thaws.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist.</exception>
+  public void SetFrozen(int node, bool frozen) {
+    CheckNode(node);
+    if (_frozen[node] == frozen)
+      return;
+    _frozen[node] = frozen;
+    Wake();
+  }
+
+  /// <summary>The temperature of <paramref name="node"/> in C.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist.</exception>
+  public double TemperatureC(int node) {
+    CheckNode(node);
+    return _temperatureC[node];
+  }
+
   /// <summary>The index of the node keyed <paramref name="key"/>.</summary>
   /// <exception cref="KeyNotFoundException">No such node.</exception>
   public int IndexOf(NodeKey key) => _index[key];
@@ -328,6 +357,9 @@ internal sealed class PipeFlowStore {
     int m = EdgeCount;
     int k = OpeningCount;
     Array.Copy(_pending, _active, n);
+    for (int i = 0; i < n; i++)
+      if (_frozen[i])
+        _active[i] = 0;
 
     for (int i = 0; i < n; i++) {
       _pressure[i] = Pressure(i);
@@ -483,7 +515,7 @@ internal sealed class PipeFlowStore {
         _prevUnit[e]
       );
       _unit[e] = unit;
-      double g = _share[e] * unit;
+      double g = _frozen[a] || _frozen[b] ? 0 : _share[e] * unit;
       _conductance[e] = g;
       _edgeDensity[e] = rho;
       _solver.AddDiagonal(a, g);
@@ -499,7 +531,7 @@ internal sealed class PipeFlowStore {
 
   private void AssembleOpening(int o, double p) {
     int node = _openNode[o];
-    double area = _openArea[o];
+    double area = _frozen[node] ? 0 : _openArea[o];
     double outside = _openOutside[o];
     bool leaving = p >= outside;
     FlowGas gas = leaving ? _openGas[o] : FlowGas.Air;
@@ -557,7 +589,7 @@ internal sealed class PipeFlowStore {
     int n = NodeCount;
     for (int i = 0; i < n; i++)
       if (
-        _pending[i] != 0
+        (_pending[i] != 0 && !_frozen[i])
         || Math.Abs(Pressure(i) - _pressure[i]) > RestPressureStepPa
       )
         return false;
