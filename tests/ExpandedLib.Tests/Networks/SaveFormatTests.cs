@@ -343,7 +343,10 @@ public class SaveFormatTests {
     for (int i = 0; i < 4; i++) {
       int node = rebuilt.Store.IndexOf(Cell(i));
       Assert.Equal(live.Store.GasKg(i), rebuilt.Store.GasKg(node));
-      Assert.Equal(live.Store.TemperatureC(i), rebuilt.Store.TemperatureC(node));
+      Assert.Equal(
+        live.Store.TemperatureC(i),
+        rebuilt.Store.TemperatureC(node)
+      );
     }
 
     live.Store.Step(0.2);
