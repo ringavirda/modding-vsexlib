@@ -13,7 +13,7 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>Writes the views of a collectible, and every gate's reading of them, as an <c>item-views/1</c> file that
+/// <summary>Writes the views of a collectible, and every gate's and rule's (G4, G9, G11, G14) reading of them, as an <c>item-views/1</c> file that
 /// extools renders. The gates measure the views given, never the collectible's resolved fields.</summary>
 public static class ViewDump {
   /// <summary>The environment variable that names the folder the files go under.</summary>
@@ -168,11 +168,11 @@ public static class ViewDump {
     string folder = Path.Combine(Root(variable)!, directory);
     Directory.CreateDirectory(folder);
     GroupMetrics metrics = ViewGates.Measure(world, group);
-    IReadOnlyList<GateReading> gates = ViewGates.Readings(
-      ViewBands.Embedded,
-      group,
-      metrics
-    );
+    IReadOnlyList<GateReading> gates =
+    [
+      .. ViewGates.Readings(ViewBands.Embedded, group, metrics),
+      .. ViewGates.Rules(world, group),
+    ];
     double[] footprint = ViewGates.Footprint(group);
     double[]? grip = group.IsBlock
       ? null

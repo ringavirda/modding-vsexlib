@@ -205,6 +205,41 @@ public class ViewDumpTests {
     );
   }
 
+  // Fails when the dump drops the rule readings: a tipped item then carries no G14 row, nor G4, G9 or G11.
+  [Fact]
+  public void Dump_carries_the_rule_readings_of_a_tipped_item() {
+    Item tipped = World.World.GetItem(
+      new AssetLocation("viewsfixture:declaredtip")
+    );
+    ItemViewSet views = ItemViews.Compute(World.Api, tipped)!;
+    JObject file = Read(
+      With(
+        Variable,
+        TempDir(),
+        () =>
+          ViewDump.Write(
+            World,
+            "",
+            "viewsfixture:declaredtip",
+            tipped,
+            views,
+            Variable
+          )
+      )
+    );
+    ViewGroup group = ViewGates.Measured(
+      ViewGates.GroupOf(World, tipped)!,
+      views
+    );
+    GateReading expected = ViewGates.Rules(World, group).Single(r => r.Gate == "G14");
+    JToken g14 = file["gates"]!.Single(g => (string?)g["gate"] == "G14");
+    Assert.Equal(expected.Value, (double)g14["value"]!, 0.001);
+    Assert.Equal(expected.Max, (double)g14["max"]!, 0.001);
+    Assert.Equal(expected.Pass, (bool)g14["pass"]!);
+    foreach (string rule in new[] { "G4", "G9", "G11" })
+      Assert.Contains(file["gates"]!, g => (string?)g["gate"] == rule);
+  }
+
   // Fails when the variable check is removed: the unset variable then throws from Path.Combine on a null root.
   [Fact]
   public void Dump_writes_only_on_request() {
