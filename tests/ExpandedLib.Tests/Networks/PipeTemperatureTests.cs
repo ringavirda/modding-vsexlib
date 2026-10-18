@@ -286,7 +286,17 @@ public class PipeTemperatureTests {
   [Fact]
   public void Rest_TickChangingPhaseWakesTheRun() {
     var store = new PipeFlowStore();
-    int node = store.AddNode(Cell(0), Volume, 0, 4e-4, 25, GasConstant, 0, 0, true);
+    int node = store.AddNode(
+      Cell(0),
+      Volume,
+      0,
+      4e-4,
+      25,
+      GasConstant,
+      0,
+      0,
+      true
+    );
     store.SetWall(node, Wall(outerAreaM2: 0.01), 25);
     store.Step(1e-6);
     Assert.True(store.Asleep);
@@ -295,11 +305,7 @@ public class PipeTemperatureTests {
     double pressure = store.PressurePa(node);
     for (int i = 0; i < 40000 && store.Asleep; i++) {
       store.Step(1);
-      Assert.InRange(
-        Math.Abs(store.PressurePa(node) - pressure),
-        0,
-        50
-      );
+      Assert.InRange(Math.Abs(store.PressurePa(node) - pressure), 0, 50);
       pressure = store.PressurePa(node);
     }
 
