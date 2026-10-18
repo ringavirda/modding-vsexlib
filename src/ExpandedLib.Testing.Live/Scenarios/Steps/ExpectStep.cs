@@ -10,7 +10,7 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>expect</c>: the readings the setup model parses (<c>block</c>, <c>member</c>,
-/// <c>tree</c>, <c>network</c>), a footprint, and two cells in one network.</summary>
+/// <c>tree</c>, <c>network</c>), a footprint, two cells in one network, and a hotbar slot.</summary>
 internal sealed class ExpectStep : ScenarioStep {
   public override string Kind => "expect";
 
@@ -41,6 +41,8 @@ internal sealed class ExpectStep : ScenarioStep {
       report.Value = Footprint(ctx, o);
     else if (o["same"] != null)
       report.Value = Same(ctx, step, o);
+    else if (SetupSlotExpect.Is(o))
+      report.Value = Slot(ctx, o);
     else {
       var reading = new ReadingContext(ctx.Setup);
       foreach (ReadingTest test in step.Tests)
@@ -54,6 +56,29 @@ internal sealed class ExpectStep : ScenarioStep {
       );
     }
     yield break;
+  }
+
+  /// <summary>The stack the hotbar holds at the index <c>select</c> takes.</summary>
+  /// <param name="hotbar">The player's hotbar inventory.</param>
+  /// <param name="slot">The index, from 0.</param>
+  public static ItemStack? SlotStack(IInventory hotbar, int slot) =>
+    hotbar[slot].Itemstack;
+
+  private static string Slot(ScenarioContext ctx, JObject o) {
+    ScenarioPlayer player =
+      ctx.Player
+      ?? throw new StepFailure(
+        "\"expect\" of a slot needs the scenario player.",
+        Suspect.Scenario
+      );
+    int slot = SetupSlotExpect.SlotOf(o);
+    ItemStack? stack = SlotStack(
+      player.Player.InventoryManager.GetHotbarInventory(),
+      slot
+    );
+    if (SetupSlotExpect.Mismatch(o, stack) is { } mismatch)
+      throw new StepFailure($"hotbar slot {slot} {mismatch}.");
+    return $"slot {slot}: {SetupSlotExpect.Describe(stack)}";
   }
 
   private static string Drops(ScenarioContext ctx, SetupStep step, JObject o) {

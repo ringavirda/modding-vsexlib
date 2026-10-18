@@ -5,6 +5,7 @@ using ExpandedLib.Blocks;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -25,9 +26,14 @@ public sealed class TestPlayer {
   /// <summary>The live scenario runner's tick, the step of a held interaction, in seconds.</summary>
   public const float InteractStepSeconds = 0.1f;
 
+  private const int OffHandIndex = 11;
+
+  /// <summary>The hotbar slots <see cref="Select"/> chooses among, numbered from 0.</summary>
+  public const int HotbarSlots = 10;
+
   private readonly TestWorld _world;
   private readonly DummySlot _activeSlot;
-  private readonly DummySlot _offhandSlot;
+  private int _activeNumber;
 
   private TestPlayer(
     TestWorld world,
@@ -35,7 +41,6 @@ public sealed class TestPlayer {
     IServerPlayer? serverPlayer,
     EntityPlayer entity,
     DummySlot activeSlot,
-    DummySlot offhandSlot,
     InventoryGeneric hotbar,
     InventoryGeneric mouse
   ) {
@@ -44,7 +49,6 @@ public sealed class TestPlayer {
     ServerPlayer = serverPlayer;
     Entity = entity;
     _activeSlot = activeSlot;
-    _offhandSlot = offhandSlot;
     Hotbar = hotbar;
     Mouse = mouse;
   }
@@ -61,14 +65,16 @@ public sealed class TestPlayer {
   /// <see cref="Hotbar"/>'s slots.</summary>
   public ItemSlot ActiveSlot => _activeSlot;
 
-  /// <summary>The player's off-hand slot - a real <see cref="ItemSlot"/> and the slot
-  /// <see cref="Entity"/>'s <c>LeftHandItemSlot</c> answers. It is not one of <see cref="Hotbar"/>'s
-  /// slots.</summary>
-  public ItemSlot OffhandSlot => _offhandSlot;
+  /// <summary>The stack hotbar slot <paramref name="index"/> holds, numbered as <see cref="Select"/> numbers
+  /// them. The active slot, <see cref="ActiveNumber"/>, reads <see cref="ActiveSlot"/>; the others read
+  /// <see cref="Hotbar"/>'s.</summary>
+  /// <param name="index">The hotbar index, from 0 to 11.</param>
+  /// <returns>The stack, or null for an empty slot.</returns>
+  public ItemStack? StackInSlot(int index) =>
+    index == _activeNumber ? _activeSlot.Itemstack : Hotbar[index].Itemstack;
 
   /// <summary>The inventory <c>InventoryManager.GetHotbarInventory()</c> returns: a real, empty
-  /// 12-slot inventory, as the game's hotbar. Its last slot is not <see cref="OffhandSlot"/>, which
-  /// <c>InventoryManager.OffhandHotbarSlot</c> answers.</summary>
+  /// 12-slot inventory, as the game's hotbar, the last slot the off hand.</summary>
   public InventoryGeneric Hotbar { get; }
 
   /// <summary>The player's mouse cursor: a real, empty 1-slot inventory under the id
@@ -105,8 +111,123 @@ public sealed class TestPlayer {
   /// <summary>Puts <paramref name="stack"/> in the active hotbar slot, or empties it for <c>null</c>.</summary>
   public void Hold(ItemStack? stack) => _activeSlot.Itemstack = stack;
 
-  /// <summary>Puts <paramref name="stack"/> in <see cref="OffhandSlot"/>, or empties it for <c>null</c>.</summary>
-  public void HoldOffhand(ItemStack? stack) => _offhandSlot.Itemstack = stack;
+  /// <summary>The player's off-hand slot, the last slot of <see cref="Hotbar"/> and the slot
+  /// <see cref="Entity"/>'s <c>LeftHandItemSlot</c> answers.</summary>
+  public ItemSlot OffHandSlot => Hotbar[OffHandIndex];
+
+  /// <summary>The number of the active hotbar slot, 0 until <see cref="Select"/> changes it.</summary>
+  public int ActiveNumber => _activeNumber;
+
+  /// <summary>Makes hotbar slot <paramref name="slot"/> the active one, as the player's number keys do, and
+  /// raises the server's <c>AfterActiveSlotChanged</c> once with the old and the new number.</summary>
+  /// <remarks>A <c>BeforeActiveSlotChanged</c> handler answering <see cref="EnumHandling.PreventDefault"/> or
+  /// <see cref="EnumHandling.PreventSubsequent"/> vetoes the change. The stack of the slot left, held in
+  /// <see cref="ActiveSlot"/> or in its <see cref="Hotbar"/> slot, goes back to that slot, and the stack of
+  /// <paramref name="slot"/> moves into <see cref="ActiveSlot"/>. As <c>DropSlotIfHot</c> does, a stack hotter than
+  /// <c>GlobalConstants.TooHotToTouchTemperature</c> is then dropped through <c>InventoryManager.DropItem</c>,
+  /// unless the player is in creative mode, the collectible allows hot crafting or the off hand holds a
+  /// <c>heatResistant</c> item. <c>InventoryManager.ActiveHotbarSlotNumber</c> answers the new number. Nothing
+  /// happens, and no event is raised, when <paramref name="slot"/> is already active or the change is vetoed.</remarks>
+  /// <param name="slot">The hotbar slot, 0 up to <see cref="HotbarSlots"/> exclusive.</param>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="slot"/> is not a hotbar slot.</exception>
+  /// <exception cref="InvalidOperationException">The slot left holds a stack in <see cref="ActiveSlot"/> and another in its <see cref="Hotbar"/> slot.</exception>
+  /// <exception cref="InvalidOperationException">This lane's game assembly cannot proxy <see cref="IServerPlayer"/>, so there is no server event to raise.</exception>
+  public void Select(int slot) {
+    if (slot < 0 || slot >= HotbarSlots)
+      throw new ArgumentOutOfRangeException(
+        nameof(slot),
+        slot,
+        $"a hotbar slot is 0 to {HotbarSlots - 1}"
+      );
+    IServerPlayer server =
+      ServerPlayer
+      ?? throw new InvalidOperationException(
+        "this lane cannot proxy IServerPlayer, so no slot-change event is raised"
+      );
+    int from = _activeNumber;
+    if (slot == from)
+      return;
+    ItemStack? leaving = _activeSlot.Itemstack;
+    if (
+      leaving != null
+      && Hotbar[from].Itemstack is { } kept
+      && kept != leaving
+    )
+      throw new InvalidOperationException(
+        $"hotbar slot {from} and the active slot both hold a stack, so one would be lost"
+      );
+    if (!AllowsChange(server, from, slot))
+      return;
+    Hotbar[from].Itemstack = leaving ?? Hotbar[from].Itemstack;
+    _activeSlot.Itemstack = Hotbar[slot].Itemstack;
+    Hotbar[slot].Itemstack = null;
+    _activeNumber = slot;
+    DropIfTooHot();
+    _world.Api.Event.AfterActiveSlotChanged += Raise.Event<
+      Action<IServerPlayer, ActiveSlotChangeEventArgs>
+    >(server, new ActiveSlotChangeEventArgs(from, slot));
+  }
+
+  private bool AllowsChange(IServerPlayer server, int from, int to) {
+    var handlers =
+      new List<Vintagestory.API.Common.Func<
+        IServerPlayer,
+        ActiveSlotChangeEventArgs,
+        EnumHandling
+      >>();
+    foreach (NSubstitute.Core.ICall call in _world.Api.Event.ReceivedCalls()) {
+      string name = call.GetMethodInfo().Name;
+      if (name == "add_BeforeActiveSlotChanged")
+        handlers.Add(
+          (Vintagestory.API.Common.Func<
+            IServerPlayer,
+            ActiveSlotChangeEventArgs,
+            EnumHandling
+          >)
+            call.GetOriginalArguments()[0]!
+        );
+      else if (name == "remove_BeforeActiveSlotChanged")
+        handlers.Remove(
+          (Vintagestory.API.Common.Func<
+            IServerPlayer,
+            ActiveSlotChangeEventArgs,
+            EnumHandling
+          >)
+            call.GetOriginalArguments()[0]!
+        );
+    }
+    var args = new ActiveSlotChangeEventArgs(from, to);
+    bool allowed = true;
+    foreach (var handler in handlers)
+      switch (handler(server, args)) {
+        case EnumHandling.PreventSubsequent:
+          return false;
+        case EnumHandling.PreventDefault:
+          allowed = false;
+          break;
+      }
+    return allowed;
+  }
+
+  private void DropIfTooHot() {
+    ItemStack? stack = _activeSlot.Itemstack;
+    if (stack == null || GameMode == EnumGameMode.Creative)
+      return;
+    CollectibleObject collectible = stack.Collectible;
+    if (
+      collectible.Attributes?.IsTrue("allowHotCrafting") == true
+      || collectible.GetTemperature(_world.World, stack)
+        <= GlobalConstants.TooHotToTouchTemperature
+      || OffHandSlot.Itemstack?.Collectible.Attributes?.IsTrue("heatResistant")
+        == true
+    )
+      return;
+    Player.InventoryManager.DropItem(_activeSlot, true);
+    _activeSlot.Itemstack = null;
+  }
+
+  /// <summary>Puts <paramref name="stack"/> in <see cref="OffHandSlot"/>, or empties it for <c>null</c>.</summary>
+  public void HoldOffHand(ItemStack? stack) => OffHandSlot.Itemstack = stack;
 
   /// <summary>The window of <paramref name="entity"/> as this player works it; see
   /// <see cref="TestWindow"/>.</summary>
@@ -324,7 +445,6 @@ public sealed class TestPlayer {
     entity.WatchedAttributes.SetString("playerUID", uid);
 
     var activeSlot = new DummySlot();
-    var offhandSlot = new DummySlot();
     IPlayer player;
     IServerPlayer? serverPlayer;
     try {
@@ -337,7 +457,6 @@ public sealed class TestPlayer {
 
     player.Entity.Returns(entity);
     entity.RightHandItemSlot.Returns(activeSlot);
-    entity.LeftHandItemSlot.Returns(offhandSlot);
     player.PlayerUID.Returns(uid);
     player.PlayerName.Returns(name);
     player.WorldData.PlayerUID.Returns(uid);
@@ -345,32 +464,32 @@ public sealed class TestPlayer {
     world.AddPlayer(uid, player);
 
     InventoryGeneric hotbar = TestInventory.Of(world, 12, $"hotbar-{uid}");
+    entity.LeftHandItemSlot.Returns(hotbar[OffHandIndex]);
     InventoryGeneric mouse = TestInventory.Of(world, 1, $"mouse-{uid}");
     IPlayerInventoryManager manager = Inventories(
       player,
       activeSlot,
-      offhandSlot,
       hotbar,
       mouse
     );
     player.InventoryManager.Returns(manager);
 
-    return new TestPlayer(
+    var made = new TestPlayer(
       world,
       player,
       serverPlayer,
       entity,
       activeSlot,
-      offhandSlot,
       hotbar,
       mouse
     );
+    manager.ActiveHotbarSlotNumber.Returns(_ => made._activeNumber);
+    return made;
   }
 
   private static IPlayerInventoryManager Inventories(
     IPlayer player,
     DummySlot activeSlot,
-    DummySlot offhandSlot,
     InventoryGeneric hotbar,
     InventoryGeneric mouse
   ) {
@@ -380,7 +499,10 @@ public sealed class TestPlayer {
     };
     var manager = Substitute.For<IPlayerInventoryManager>();
     manager.ActiveHotbarSlot.Returns(activeSlot);
-    manager.OffhandHotbarSlot.Returns(offhandSlot);
+    manager.OffhandHotbarSlot.Returns(hotbar[OffHandIndex]);
+    manager.OffhandTool.Returns(_ =>
+      hotbar[OffHandIndex].Itemstack?.Collectible.GetTool(hotbar[OffHandIndex])
+    );
     manager.GetHotbarInventory().Returns(hotbar);
     manager.MouseItemSlot.Returns(_ => mouse[0]);
     manager.Inventories.Returns(held);

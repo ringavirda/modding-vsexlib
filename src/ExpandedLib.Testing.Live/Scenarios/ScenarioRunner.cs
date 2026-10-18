@@ -21,7 +21,7 @@ internal delegate ScenarioPlayer? PlayerStart(out string? failure);
 /// <summary>Runs the named scenarios one case at a time on the server's main thread, each on a
 /// plot of its own, and logs the <c>[scenario]</c> lines (scenarios.md, Output).</summary>
 internal sealed class ScenarioRunner {
-  private const int TickMilliseconds = 100;
+  internal const int TickMilliseconds = 100;
   private const double PlotLoadSeconds = 60;
 
   private readonly ICoreServerAPI _api;

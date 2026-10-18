@@ -8,6 +8,7 @@ using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
+using Vintagestory.Common;
 using Vintagestory.GameContent;
 using Vintagestory.ServerMods;
 
@@ -29,6 +30,7 @@ public sealed partial class TestWorld
   > _fastSearchRecipes = new();
 
   private IAssetManager? _loadedAssets;
+  private IAssetOrigin? _gameSurvival;
 
   private static readonly string[] RecipePaths =
   [
@@ -45,15 +47,17 @@ public sealed partial class TestWorld
     _clayFormingRecipes;
 
   /// <summary>Loads the grid, smithing and clay forming recipes of the assets the last
-  /// <c>LoadAssets</c> or <c>LoadAsGame</c> mirrored, through the game's own
-  /// <c>RecipeLoader.LoadRecipe</c>, then runs exlib's recipe-cost pass at each registered
-  /// profile's selected level.</summary>
+  /// <c>LoadAssets</c> or <c>LoadAsGame</c> mirrored, and the game's own grid recipes, through the
+  /// game's own <c>RecipeLoader.LoadRecipe</c>, then runs exlib's recipe-cost pass at each
+  /// registered profile's selected level.</summary>
   /// <remarks>Grid recipes land in <c>World.GridRecipes</c> on the server and client worlds. A
-  /// second call empties the lists and the ingredient index first. Vanilla's recipe files are not
-  /// mirrored, so only the listed mods' recipes load, those a mod's definitions inject included.
-  /// A recipe that fails to resolve is the loader's log line in <see cref="Log"/> and a count, never
-  /// a throw. Every item and block not yet loaded gets its <c>OnLoadedNative</c> first, since a
-  /// recipe's <c>Matches</c> reads the collectible's api.</remarks>
+  /// second call empties the lists and the ingredient index first. The game's smithing and clay
+  /// forming recipes are not mirrored, so only the listed mods' load, those a mod's definitions
+  /// inject included. The game's grid recipes (<c>assets/survival/recipes/grid</c>) load beside the
+  /// mods'. A grid recipe with no output stack or exact-ingredient stack counts as failed,
+  /// never a throw; a mod's is also a warning in <see cref="Log"/>, a game recipe's only a count.
+  /// Every item and block not yet loaded gets its <c>OnLoadedNative</c> first, since a recipe's
+  /// <c>Matches</c> reads the collectible's api.</remarks>
   /// <returns>The recipes kept and the recipes that failed to resolve, over the three
   /// kinds.</returns>
   /// <exception cref="InvalidOperationException">No <c>LoadAssets</c> or <c>LoadAsGame</c> ran on this
@@ -73,6 +77,7 @@ public sealed partial class TestWorld
     )
       if (ReflectionHelpers.GetField(collectible, "api") == null)
         collectible.OnLoadedNative(Api);
+    MirrorGameGridRecipes(assets);
     _gridRecipes.Clear();
     _smithingRecipes.Clear();
     _clayFormingRecipes.Clear();
@@ -84,7 +89,8 @@ public sealed partial class TestWorld
       "grid",
       "recipes/grid",
       classExclusive,
-      r => _gridRecipes.Add((GridRecipe)r)
+      r => _gridRecipes.Add((GridRecipe)r),
+      r => r is GridRecipe g && ResolvedToStacks(g)
     );
     (int Loaded, int Failed) smithing = LoadKind<SmithingRecipe>(
       assets,
@@ -108,17 +114,70 @@ public sealed partial class TestWorld
     );
   }
 
+  private void MirrorGameGridRecipes(IAssetManager assets)
+  {
+    if (_gameSurvival == null || assets is not AssetManager manager)
+      return;
+    foreach (
+      IAsset asset in _gameSurvival.GetAssets(
+        AssetCategory.recipes,
+        shouldLoad: true
+      )
+    )
+      if (
+        asset.Location.Path.StartsWith(
+          "recipes/grid/",
+          StringComparison.Ordinal
+        ) && !manager.AllAssets.ContainsKey(asset.Location)
+      )
+        manager.Add(asset.Location, asset);
+  }
+
+  private static readonly DiscardLogger QuietLogger = new();
+
+  private sealed class DiscardLogger : LoggerBase
+  {
+    protected override void LogImpl(
+      EnumLogType logType,
+      string format,
+      params object[] args
+    ) { }
+  }
+
+  private void SetRecipeLogger(ILogger logger)
+  {
+    Api.Logger.Returns(logger);
+    ((ICoreAPI)Api).Logger.Returns(logger);
+    World.Logger.Returns(logger);
+  }
+
   private (int Loaded, int Failed) LoadKind<T>(
     IAssetManager assets,
     string name,
     string path,
     bool classExclusive,
-    Action<IRecipeBase> keep
+    Action<IRecipeBase> keep,
+    System.Func<IRecipeBase, bool>? accept = null
   )
     where T : IRecipeBase
   {
     int loaded = 0;
     int failed = 0;
+    int rejected = 0;
+    string domain = "";
+    void Keep(IRecipeBase recipe)
+    {
+      if (accept == null || accept(recipe))
+        keep(recipe);
+      else
+      {
+        if (domain != "game")
+          Log.Warning(
+            $"{name} recipe {recipe.Name}: output or an exact ingredient has no stack; not kept."
+          );
+        rejected++;
+      }
+    }
     foreach (
       (AssetLocation location, JToken content) in assets.GetMany<JToken>(
         Log,
@@ -132,27 +191,47 @@ public sealed partial class TestWorld
         JArray a => a,
         _ => [],
       };
-      foreach (JToken token in tokens)
+      domain = location.Domain;
+      bool vanilla = domain == "game";
+      if (vanilla)
+        SetRecipeLogger(QuietLogger);
+      try
       {
-        T? recipe = token.ToObject<T>(location.Domain);
-        if (recipe == null)
+        foreach (JToken token in tokens)
         {
-          Log.Error($"Failed to parse {name} recipe: {location}");
-          continue;
+          T? recipe = token.ToObject<T>(location.Domain);
+          if (recipe == null)
+          {
+            Log.Error($"Failed to parse {name} recipe: {location}");
+            continue;
+          }
+          RecipeLoader.LoadRecipe(
+            Api,
+            location,
+            recipe,
+            classExclusive,
+            Keep,
+            ref loaded,
+            ref failed
+          );
         }
-        RecipeLoader.LoadRecipe(
-          Api,
-          location,
-          recipe,
-          classExclusive,
-          keep,
-          ref loaded,
-          ref failed
-        );
+      }
+      finally
+      {
+        if (vanilla)
+          SetRecipeLogger(Log);
       }
     }
-    return (loaded, failed);
+    return (loaded - rejected, failed + rejected);
   }
+
+  private static bool ResolvedToStacks(GridRecipe recipe) =>
+    recipe.Output?.ResolvedItemStack != null
+    && (recipe.ResolvedIngredients ?? []).All(i =>
+      i is null
+      || i.MatchingType != EnumRecipeMatchType.Exact
+      || i.ResolvedItemStack != null
+    );
 
   /// <summary>The <c>game:</c> codes the grid, smithing and clay forming recipe assets in
   /// <paramref name="assets"/> name, wildcards and placeholders as written; a code with no domain

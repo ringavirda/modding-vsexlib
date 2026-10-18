@@ -236,7 +236,7 @@ public sealed partial class SetupScene
       CraftStep step = sequence.Steps[n];
       string label = $"step {n + 1} of {sequence.Recipe}";
       Player.Hold(Gesture(where, label, step.Tool));
-      Player.HoldOffhand(Gesture(where, label, step.Offhand));
+      Player.HoldOffHand(Gesture(where, label, step.Offhand));
       try
       {
         if (
@@ -256,9 +256,9 @@ public sealed partial class SetupScene
       finally
       {
         Give(Player.ActiveSlot.Itemstack);
-        Give(Player.OffhandSlot.Itemstack);
+        Give(Player.OffHandSlot.Itemstack);
         Player.Hold(null);
-        Player.HoldOffhand(null);
+        Player.HoldOffHand(null);
       }
     }
   }
@@ -316,7 +316,10 @@ public sealed partial class SetupScene
       if (held != null)
         held.Itemstack.StackSize += stack.StackSize;
       else
-        Player.Hotbar.First(s => s.Empty).Itemstack = stack;
+        Player
+          .Hotbar.Where((_, i) => i != Player.ActiveNumber)
+          .First(s => s.Empty)
+          .Itemstack = stack;
     }
   }
 }

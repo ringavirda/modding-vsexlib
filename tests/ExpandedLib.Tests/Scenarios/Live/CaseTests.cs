@@ -77,7 +77,7 @@ public class CaseTests {
           "exlib/case",
           LiveFixture.Text(
             Place,
-            """{ variants: { later: { after: { a: [{ "advance": { "hours": 1 } }] } } } }"""
+            """{ variants: { later: { after: { a: [{ "reload": {} }] } } } }"""
           ),
           "case.json",
           [],
@@ -86,7 +86,7 @@ public class CaseTests {
       )
       .Message;
     Assert.Contains(
-      "\"advance\" is not a step the live runner runs yet",
+      "\"reload\" is not a step the live runner runs yet",
       message
     );
   }
@@ -229,8 +229,24 @@ public class CaseTests {
   [Fact]
   public void A_step_kind_the_live_runner_has_no_step_for_is_refused() =>
     Assert.Contains(
-      "\"advance\" is not a step the live runner runs yet",
-      Refused("""[{ "advance": { "hours": 1 } }]""")
+      "\"reload\" is not a step the live runner runs yet",
+      Refused("""[{ "reload": {} }]""")
+    );
+
+  /// <summary>Fails when a negative advance reaches the runner, which would run the calendar back.</summary>
+  [Fact]
+  public void An_advance_of_negative_hours_is_refused_live() =>
+    Assert.Contains(
+      "hours is negative",
+      Refused("""[{ "advance": { "hours": -1 } }]""")
+    );
+
+  /// <summary>Fails when a select of a slot past the hotbar reaches the runner.</summary>
+  [Fact]
+  public void A_select_of_a_slot_past_the_hotbar_is_refused_live() =>
+    Assert.Contains(
+      "slot 10 is not a hotbar slot",
+      Refused("""[{ "select": { "slot": 10 } }]""")
     );
 
   /// <summary>Fails when a step's own refusal is not asked (V30).</summary>
@@ -247,10 +263,8 @@ public class CaseTests {
   [Fact]
   public void A_step_under_a_repeat_is_refused_too() =>
     Assert.Contains(
-      "\"advance\"",
-      Refused(
-        """[{ "repeat": { "times": 2, "steps": [{ "advance": { "hours": 1 } }] } }]"""
-      )
+      "\"reload\"",
+      Refused("""[{ "repeat": { "times": 2, "steps": [{ "reload": {} }] } }]""")
     );
 
   /// <summary>Fails when a wait for a condition may run without a cap (V32).</summary>

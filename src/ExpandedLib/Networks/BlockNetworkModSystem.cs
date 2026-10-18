@@ -564,7 +564,7 @@ public class BlockNetworkModSystem : ModSystem {
   #endregion
 
   #region Public utilities
-  /// <summary>Returns the connector faces on <paramref name="pos"/> that have no valid network neighbour, as seen by <paramref name="member"/>.</summary>
+  /// <summary>Returns the connector faces on <paramref name="pos"/> that have no valid network neighbour, as seen by <paramref name="member"/>. A face toward an unloaded chunk is not listed: the cell beyond is unseen, not open.</summary>
   public BlockFacing[] GetOpenConnectorFaces(
     IBlockAccessor world,
     BlockPos pos,
@@ -576,6 +576,8 @@ public class BlockNetworkModSystem : ModSystem {
         continue;
 
       BlockPos nPos = pos.AddCopy(face);
+      if (world.GetChunkAtBlockPos(nPos) == null)
+        continue;
       Block nBlock = world.GetBlock(nPos);
 
       bool connected =

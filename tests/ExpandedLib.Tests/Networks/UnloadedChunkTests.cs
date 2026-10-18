@@ -1,4 +1,5 @@
 using System.Linq;
+using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
 using Vintagestory.API.Config;
@@ -278,6 +279,63 @@ public class UnloadedChunkTests {
     BlockNetwork? net = w.NetworkAt(Cell(1));
     Assert.Equal(3, net!.Nodes.Count);
     Assert.Same(net, w.NetworkAt(Cell(-1)));
+  }
+
+  #endregion
+  #region Pipe flow nodes in an unloaded chunk
+
+  // Fails when OnTick steps nodes whose chunk is unloaded (the freeze dropped).
+  [Fact]
+  public void Fog_FrozenNodesKeepTheirStores() {
+    var w = NewWorld();
+    var net = new PipeFlowNetwork(w.Networks);
+    var near = NodeKey.Centre(Cell(-1));
+    var far = NodeKey.Centre(Cell(0));
+    int a = net.Store.AddNode(near, 0.02, 0, 0.004, 20);
+    int b = net.Store.AddNode(far, 0.02, 0, 0.001, 20);
+    int edge = net.Store.AddEdge(a, b, 0.05, 1, FlowPipeClass.Cast);
+    int opening = net.Store.AddOpening(b, 0.0001, 101325, FlowGas.Steam);
+    net.Store.SetSource(b, 0.0002);
+    UnloadFarHalf(w);
+
+    for (int i = 0; i < 20; i++)
+      net.OnTick(w.Accessor, 0.2f, w.Networks);
+
+    Assert.Equal(0.004, net.Store.GasKg(a));
+    Assert.Equal(0.001, net.Store.GasKg(b));
+    Assert.Equal(0, net.Store.FlowKgPerSecond(edge));
+    Assert.Equal(0, net.Store.OpeningLedger(opening));
+
+    w.LoadChunkAt(Cell(0));
+    net.OnTick(w.Accessor, 0.2f, w.Networks);
+
+    Assert.NotEqual(0.004, net.Store.GasKg(a));
+    Assert.NotEqual(0.001, net.Store.GasKg(b));
+  }
+
+  // Fails when GetOpenConnectorFaces lists a face toward a cell whose chunk is not loaded.
+  [Fact]
+  public void Restart_PartlyLoadedRunDoesNotVent() {
+    var w = NewWorld();
+    w.PlaceNode(Cell(-2), "test", "we");
+    w.PlaceNode(Cell(-1), "test", "we");
+    var border = NetworkMembership.Resolve(w.Accessor, Cell(-1), "test")!;
+
+    var whileLoaded = w.Networks.GetOpenConnectorFaces(
+      w.Accessor,
+      Cell(-1),
+      border
+    );
+    Assert.Contains(BlockFacing.EAST, whileLoaded);
+
+    w.UnloadChunkAt(Cell(0));
+
+    var partlyLoaded = w.Networks.GetOpenConnectorFaces(
+      w.Accessor,
+      Cell(-1),
+      border
+    );
+    Assert.DoesNotContain(BlockFacing.EAST, partlyLoaded);
   }
 
   #endregion
