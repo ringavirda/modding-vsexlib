@@ -20,6 +20,10 @@ public class BlockNetworkModSystem : ModSystem {
   #region Graph storage
   private readonly Dictionary<Guid, BlockNetwork> _networks = [];
   private readonly Dictionary<BlockPos, Guid> _posToNetwork = [];
+  private readonly Dictionary<NodeKey, Guid> _nodeToNetwork = [];
+
+  /// <summary>The slots indexed for each claimed position, so a removal or move needs no world read.</summary>
+  private readonly Dictionary<BlockPos, byte[]> _slotsAt = [];
   private readonly Dictionary<string, Func<BlockNetwork>> _factories = [];
 
   /// <summary>Networks whose connectivity could not be decided, mapped to their unreadable node positions.</summary>
@@ -104,6 +108,13 @@ public class BlockNetworkModSystem : ModSystem {
       ? net
       : null;
 
+  /// <summary>Returns the network that owns the node <paramref name="key"/>, or <c>null</c>.</summary>
+  public BlockNetwork? GetNetworkAt(NodeKey key) =>
+    _nodeToNetwork.TryGetValue(key, out Guid id)
+    && _networks.TryGetValue(id, out var net)
+      ? net
+      : null;
+
   /// <summary>Returns the network across <paramref name="connectorFace"/> from <paramref name="connectorPos"/>, or null when the cell there has no reciprocating connector.</summary>
   public BlockNetwork? GetConnectedNetworkAcross(
     IBlockAccessor world,
@@ -176,14 +187,12 @@ public class BlockNetworkModSystem : ModSystem {
         return;
       }
 
-      net.Nodes.Add(pos);
+      Claim(net, pos, SlotsOf(world, pos, networkType));
       _networks[net.Id] = net;
-      _posToNetwork[pos] = net.Id;
       net.OnTopologyChanged();
     } else {
       var primaryNet = adjacentNetworks[0];
-      primaryNet.Nodes.Add(pos);
-      _posToNetwork[pos] = primaryNet.Id;
+      Claim(primaryNet, pos, SlotsOf(world, pos, networkType));
 
       for (int i = 1; i < adjacentNetworks.Count; i++) {
         var netToMerge = adjacentNetworks[i];
@@ -191,8 +200,7 @@ public class BlockNetworkModSystem : ModSystem {
           continue;
 
         foreach (var nPos in netToMerge.Nodes) {
-          primaryNet.Nodes.Add(nPos);
-          _posToNetwork[nPos] = primaryNet.Id;
+          Claim(primaryNet, nPos, SlotsHeldAt(nPos));
         }
 
         // A suspended review carries over to the merged network.
@@ -230,6 +238,7 @@ public class BlockNetworkModSystem : ModSystem {
 
     network.Nodes.Remove(pos);
     _posToNetwork.Remove(pos);
+    Unindex(network, pos);
 
     if (network.Nodes.Count == 0) {
       DissolveNetwork(netId);
@@ -313,8 +322,7 @@ public class BlockNetworkModSystem : ModSystem {
       var bfsQueue = new Queue<BlockPos>();
       bfsQueue.Enqueue(newStart);
       unassigned.Remove(newStart);
-      newNet.Nodes.Add(newStart);
-      _posToNetwork[newStart] = newNet.Id;
+      Claim(newNet, newStart, SlotsHeldAt(newStart));
 
       while (bfsQueue.Count > 0) {
         BlockPos curr = bfsQueue.Dequeue();
@@ -323,14 +331,16 @@ public class BlockNetworkModSystem : ModSystem {
         ) {
           if (unassigned.Contains(adj)) {
             unassigned.Remove(adj);
-            newNet.Nodes.Add(adj);
-            _posToNetwork[adj] = newNet.Id;
+            Claim(newNet, adj, SlotsHeldAt(adj));
             bfsQueue.Enqueue(adj);
           }
         }
       }
 
-      newNet.OnSplitFragment(network, world);
+      if (newNet.SupportsPartialSplit)
+        newNet.OnSplitFragment(network, newNet.NodeKeys);
+      else
+        newNet.OnSplitFragment(network, world);
       newNet.OnTopologyChanged();
 
       if (broadcast)
@@ -347,6 +357,42 @@ public class BlockNetworkModSystem : ModSystem {
     network.OnTopologyChanged();
     if (broadcast)
       network.BroadcastUpdate(world);
+  }
+
+  /// <summary>Adds <paramref name="pos"/> to <paramref name="net"/> with a node at each of <paramref name="slots"/>, replacing the position's earlier index entries.</summary>
+  private void Claim(BlockNetwork net, BlockPos pos, byte[] slots) {
+    net.Nodes.Add(pos);
+    _posToNetwork[pos] = net.Id;
+    _slotsAt[pos] = slots;
+    foreach (byte slot in slots) {
+      var key = new NodeKey(pos, slot);
+      net.NodeKeys.Add(key);
+      _nodeToNetwork[key] = net.Id;
+    }
+  }
+
+  /// <summary>Drops the index entries of <paramref name="pos"/> held for <paramref name="net"/>.</summary>
+  private void Unindex(BlockNetwork net, BlockPos pos) {
+    if (!_slotsAt.Remove(pos, out byte[]? slots))
+      return;
+    foreach (byte slot in slots) {
+      var key = new NodeKey(pos, slot);
+      net.NodeKeys.Remove(key);
+      _nodeToNetwork.Remove(key);
+    }
+  }
+
+  private byte[] SlotsHeldAt(BlockPos pos) =>
+    _slotsAt.TryGetValue(pos, out byte[]? slots) ? slots : [0];
+
+  /// <summary>The slots the member at <paramref name="pos"/> holds nodes at, slot 0 alone when it has none or declares none.</summary>
+  private static byte[] SlotsOf(
+    IBlockAccessor world,
+    BlockPos pos,
+    string networkType
+  ) {
+    var slots = NetworkMembership.Resolve(world, pos, networkType)?.Slots(world, pos);
+    return slots == null || slots.Count == 0 ? [0] : [.. slots.Distinct()];
   }
 
   /// <summary>Drops <paramref name="netId"/> and anything the graph remembers about it.</summary>
@@ -393,8 +439,10 @@ public class BlockNetworkModSystem : ModSystem {
 
     foreach (var id in oldNetIds) {
       if (_networks.TryGetValue(id, out var oldNet)) {
-        foreach (var p in oldNet.Nodes)
+        foreach (var p in oldNet.Nodes) {
           _posToNetwork.Remove(p);
+          Unindex(oldNet, p);
+        }
         DissolveNetwork(id);
       }
     }
@@ -406,8 +454,7 @@ public class BlockNetworkModSystem : ModSystem {
       newNet.InheritStateFrom(rootOldNet);
 
     foreach (var pos in reachable) {
-      newNet.Nodes.Add(pos);
-      _posToNetwork[pos] = newNet.Id;
+      Claim(newNet, pos, SlotsOf(world, pos, networkType));
     }
 
     _networks[newNet.Id] = newNet;
@@ -586,6 +633,8 @@ public class BlockNetworkModSystem : ModSystem {
   public override void Dispose() {
     _networks.Clear();
     _posToNetwork.Clear();
+    _nodeToNetwork.Clear();
+    _slotsAt.Clear();
     _unreadableNodes.Clear();
     base.Dispose();
   }
