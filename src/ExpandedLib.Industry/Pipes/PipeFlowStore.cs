@@ -20,6 +20,10 @@ internal sealed class PipeFlowStore {
   private const double RestFlow = 1e-6;
   private const double RestPressureStepPa = 1;
   private const double KelvinOffset = 273.15;
+  private const double HeatCapacityPerGasConstant = 3.5;
+  private const double DefaultAmbientC = 20;
+  private const double ThermalRestC = 1;
+  private const double MinContentKg = 1e-12;
 
   private readonly Dictionary<NodeKey, int> _index = [];
   private readonly PipeFlowSolver _solver = new();
@@ -32,6 +36,13 @@ internal sealed class PipeFlowStore {
   private double[] _pending = new double[16];
   private double[] _active = new double[16];
   private bool[] _frozen = new bool[16];
+  private double[] _pendingTemperatureC = new double[16];
+  private double[] _activeTemperatureC = new double[16];
+  private double[] _wallC = new double[16];
+  private double[] _wallCapacity = new double[16];
+  private double[] _wallInnerUa = new double[16];
+  private double[] _wallOuterUa = new double[16];
+  private double[] _ambientC = new double[16];
 
   private int[] _from = new int[16];
   private int[] _to = new int[16];
@@ -69,6 +80,7 @@ internal sealed class PipeFlowStore {
   private double[] _edgeDensity = [];
   private double[] _unit = [];
   private double[] _trial = [];
+  private double[] _shift = [];
   private bool _conductanceMoved;
   private bool _asleep;
 
@@ -138,12 +150,26 @@ internal sealed class PipeFlowStore {
       Array.Resize(ref _pending, size);
       Array.Resize(ref _active, size);
       Array.Resize(ref _frozen, size);
+      Array.Resize(ref _pendingTemperatureC, size);
+      Array.Resize(ref _activeTemperatureC, size);
+      Array.Resize(ref _wallC, size);
+      Array.Resize(ref _wallCapacity, size);
+      Array.Resize(ref _wallInnerUa, size);
+      Array.Resize(ref _wallOuterUa, size);
+      Array.Resize(ref _ambientC, size);
     }
     _volume[i] = volumeM3;
     _height[i] = heightM;
     _gas[i] = gasKg;
     _temperatureC[i] = temperatureC;
     _gasConstant[i] = gasConstant;
+    _pendingTemperatureC[i] = double.NaN;
+    _activeTemperatureC[i] = double.NaN;
+    _wallC[i] = temperatureC;
+    _wallCapacity[i] = 0;
+    _wallInnerUa[i] = 0;
+    _wallOuterUa[i] = 0;
+    _ambientC[i] = DefaultAmbientC;
     NodeCount++;
     UpdateTopology();
     Wake();
@@ -310,10 +336,51 @@ internal sealed class PipeFlowStore {
     Wake();
   }
 
+  /// <summary>The wall temperature of <paramref name="node"/> in C; the content's until <see cref="SetWall"/> gives the node a wall.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist.</exception>
+  public double WallTemperatureC(int node) {
+    CheckNode(node);
+    return _wallC[node];
+  }
+
+  /// <summary>Gives <paramref name="node"/> a wall that exchanges heat with its content and with the ambient, replacing an earlier wall. A node without a wall keeps its content temperature except where flows mix it.</summary>
+  /// <param name="node">Index of the node.</param>
+  /// <param name="wall">The wall's capacity and areas.</param>
+  /// <param name="wallTemperatureC">The wall's temperature in C.</param>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist, or the wall's capacity is not above zero or an area is negative.</exception>
+  public void SetWall(int node, PipeWall wall, double wallTemperatureC) {
+    CheckNode(node);
+    if (wall.CapacityJPerK <= 0)
+      throw new ArgumentOutOfRangeException(nameof(wall));
+    if (wall.InnerAreaM2 < 0 || wall.OuterAreaM2 < 0)
+      throw new ArgumentOutOfRangeException(nameof(wall));
+    _wallCapacity[node] = wall.CapacityJPerK;
+    _wallInnerUa[node] = wall.InnerUaWPerK;
+    _wallOuterUa[node] = wall.OuterUaWPerK;
+    _wallC[node] = wallTemperatureC;
+    Wake();
+  }
+
+  /// <summary>Sets the ambient temperature <paramref name="node"/>'s wall loses heat to and its openings draw air in at, in C, from the next step. Nodes start at 20 C.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist.</exception>
+  public void SetAmbient(int node, double temperatureC) {
+    CheckNode(node);
+    _ambientC[node] = temperatureC;
+    Wake();
+  }
+
   /// <summary>Declares a source of <paramref name="kgPerSecond"/> into <paramref name="node"/> (negative draws from it), replacing its earlier declaration. It applies from the next step.</summary>
-  public void SetSource(int node, double kgPerSecond) {
+  /// <param name="node">Index of the node.</param>
+  /// <param name="kgPerSecond">Mass rate in kg/s; negative draws gas at the node's own temperature.</param>
+  /// <param name="temperatureC">Temperature in C of the gas a positive source delivers; NaN delivers it at the node's own temperature.</param>
+  public void SetSource(
+    int node,
+    double kgPerSecond,
+    double temperatureC = double.NaN
+  ) {
     CheckNode(node);
     _pending[node] = kgPerSecond;
+    _pendingTemperatureC[node] = temperatureC;
     if (kgPerSecond != 0)
       Wake();
   }
@@ -378,6 +445,7 @@ internal sealed class PipeFlowStore {
     int m = EdgeCount;
     int k = OpeningCount;
     Array.Copy(_pending, _active, n);
+    Array.Copy(_pendingTemperatureC, _activeTemperatureC, n);
     Array.Clear(_openForce, 0, k);
     for (int i = 0; i < n; i++)
       if (_frozen[i])
@@ -431,10 +499,15 @@ internal sealed class PipeFlowStore {
     Array.Fill(_scale, 1d, 0, n);
     for (int pass = 0; pass < n && Rescale(dt); pass++) { }
 
+    Array.Clear(_shift, 0, n);
     for (int e = 0; e < m; e++) {
       int a = _from[e];
       int b = _to[e];
       double moved = _flow[e] * dt * (_flow[e] > 0 ? _scale[a] : _scale[b]);
+      int to = moved > 0 ? b : a;
+      int from = moved > 0 ? a : b;
+      _shift[to] +=
+        Math.Abs(moved) * (Heat(from) * Kelvin(from) / Heat(to) - Kelvin(to));
       _gas[a] -= moved;
       _gas[b] += moved;
       _flow[e] = moved / dt;
@@ -442,6 +515,8 @@ internal sealed class PipeFlowStore {
     for (int o = 0; o < k; o++) {
       int node = _openNode[o];
       double moved = _openFlow[o] * dt * (_openFlow[o] > 0 ? _scale[node] : 1);
+      if (moved < 0)
+        _shift[node] -= moved * (_ambientC[node] + KelvinOffset - Kelvin(node));
       _gas[node] -= moved;
       _openLedger[o] -= moved;
       OpeningLedgerKg -= moved;
@@ -449,11 +524,17 @@ internal sealed class PipeFlowStore {
     }
     for (int i = 0; i < n; i++) {
       double applied = _active[i] * dt * (_active[i] < 0 ? _scale[i] : 1);
+      if (applied > 0 && !double.IsNaN(_activeTemperatureC[i]))
+        _shift[i] += applied * (_activeTemperatureC[i] - _temperatureC[i]);
       _gas[i] += applied;
       SourceLedgerKg += applied;
       if (_gas[i] < 0)
         _gas[i] = 0;
     }
+    for (int i = 0; i < n; i++)
+      if (_gas[i] > MinContentKg)
+        _temperatureC[i] += _shift[i] / _gas[i];
+    ExchangeWithWalls(dt);
 
     _asleep = AtRest();
   }
@@ -499,6 +580,30 @@ internal sealed class PipeFlowStore {
   public double PublishedOpeningLedger(int opening) {
     CheckOpening(opening);
     return opening < _pubOpenLedger.Length ? _pubOpenLedger[opening] : 0;
+  }
+
+  private void ExchangeWithWalls(double dt) {
+    for (int i = 0; i < NodeCount; i++) {
+      double wallCapacity = _wallCapacity[i];
+      if (wallCapacity <= 0 || _frozen[i])
+        continue;
+      double content = _gas[i] * Heat(i);
+      double inner = _wallInnerUa[i] * dt;
+      double coupled =
+        content > MinContentKg ? inner * content / (content + inner) : 0;
+      double outer = _wallOuterUa[i] * dt;
+      double wall = _wallC[i];
+      double wallNew =
+        (
+          wallCapacity * wall
+          + coupled * _temperatureC[i]
+          + outer * _ambientC[i]
+        ) / (wallCapacity + coupled + outer);
+      if (content > MinContentKg)
+        _temperatureC[i] =
+          (content * _temperatureC[i] + inner * wallNew) / (content + inner);
+      _wallC[i] = wallNew;
+    }
   }
 
   private bool CrossedChoke() {
@@ -669,6 +774,16 @@ internal sealed class PipeFlowStore {
         || Math.Abs(Pressure(i) - _pressure[i]) > RestPressureStepPa
       )
         return false;
+    for (int i = 0; i < n; i++)
+      if (
+        _wallCapacity[i] > 0
+        && !_frozen[i]
+        && (
+          Math.Abs(_temperatureC[i] - _ambientC[i]) > ThermalRestC
+          || Math.Abs(_wallC[i] - _ambientC[i]) > ThermalRestC
+        )
+      )
+        return false;
     for (int e = 0; e < EdgeCount; e++)
       if (Math.Abs(_flow[e]) >= RestFlow)
         return false;
@@ -697,6 +812,13 @@ internal sealed class PipeFlowStore {
       );
       _pending[to] = source._pending[from];
       _active[to] = source._active[from];
+      _pendingTemperatureC[to] = source._pendingTemperatureC[from];
+      _activeTemperatureC[to] = source._activeTemperatureC[from];
+      _wallC[to] = source._wallC[from];
+      _wallCapacity[to] = source._wallCapacity[from];
+      _wallInnerUa[to] = source._wallInnerUa[from];
+      _wallOuterUa[to] = source._wallOuterUa[from];
+      _ambientC[to] = source._ambientC[from];
       _frozen[to] = source._frozen[from];
       map[from] = to;
     }
@@ -737,6 +859,8 @@ internal sealed class PipeFlowStore {
     Wake();
   }
 
+  private double Heat(int i) => HeatCapacityPerGasConstant * _gasConstant[i];
+
   private double Kelvin(int i) => _temperatureC[i] + KelvinOffset;
 
   private double Pressure(int i) =>
@@ -769,6 +893,7 @@ internal sealed class PipeFlowStore {
       _outgoing = new double[size];
       _inflow = new double[size];
       _trial = new double[size];
+      _shift = new double[size];
     }
     if (_conductance.Length < m) {
       int size = _from.Length;
