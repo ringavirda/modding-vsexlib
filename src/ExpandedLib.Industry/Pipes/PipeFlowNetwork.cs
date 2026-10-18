@@ -40,8 +40,8 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
       key.Slot,
       new PipeNodeSave(
         Store.GasKg(node),
-        0,
-        0,
+        Store.AirKg(node),
+        Store.LiquidKg(node),
         Store.TemperatureC(node),
         Store.WallTemperatureC(node),
         0,
@@ -57,6 +57,7 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
   /// <param name="heightM">Height of the node in m.</param>
   /// <param name="gasConstant">Specific gas constant of the run's gas in J/(kg K), above zero; steam's by default.</param>
   /// <param name="wall">The node's wall, restored at its saved temperature; none leaves the node wall-less.</param>
+  /// <param name="water">True for a node of a water run; a saved node holding air is restored as one whatever this says.</param>
   /// <returns>True when the node was added; false when the store holds it or the host has no readable entry for the slot.</returns>
   public bool RestoreNode(
     NodeKey key,
@@ -64,7 +65,8 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
     double volumeM3,
     double heightM,
     double gasConstant = 461.5,
-    PipeWall? wall = null
+    PipeWall? wall = null,
+    bool water = false
   ) {
     if (Store.Nodes.ContainsKey(key))
       return false;
@@ -76,7 +78,10 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
       heightM,
       save.GasKg,
       save.TemperatureC,
-      gasConstant
+      gasConstant,
+      save.LiquidKg,
+      save.AirKg,
+      water || save.AirKg > 0
     );
     if (wall is { } fitted)
       Store.SetWall(node, fitted, save.WallTemperatureC);
