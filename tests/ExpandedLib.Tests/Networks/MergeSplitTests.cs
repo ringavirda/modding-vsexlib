@@ -197,4 +197,27 @@ public class MergeSplitTests {
     Assert.Equal(4, whole.NodeCount);
     Assert.Equal(3, whole.EdgeCount);
   }
+
+  // Fails when Take copies each opening's ledger but not the fragment's total, so the opening ledgers no longer sum to OpeningLedgerKg.
+  [Fact]
+  public void A_split_fragment_ledgers_match_its_total() {
+    var whole = new PipeFlowStore();
+    for (int x = 0; x < 2; x++)
+      whole.AddNode(NodeKey.Centre(Cell(x)), 0.02, 0, 0.01, 20);
+    whole.AddEdge(0, 1, 0.05, 1, FlowPipeClass.Cast);
+    whole.AddOpening(0, 0.0005, 101325, FlowGas.Steam);
+    for (int i = 0; i < 5; i++)
+      whole.Step(0.2);
+
+    var part = new PipeFlowStore();
+    part.Take(
+      whole,
+      new[] { NodeKey.Centre(Cell(0)), NodeKey.Centre(Cell(1)) }.ToHashSet()
+    );
+    for (int i = 0; i < 5; i++)
+      part.Step(0.2);
+
+    Assert.NotEqual(0d, part.OpeningLedgerKg);
+    Assert.Equal(part.OpeningLedgerKg, part.OpeningLedger(0), 12);
+  }
 }

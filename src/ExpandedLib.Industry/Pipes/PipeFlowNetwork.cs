@@ -48,18 +48,27 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
   /// <param name="host">The host block entity's tree.</param>
   /// <param name="volumeM3">Void volume in m3, above zero.</param>
   /// <param name="heightM">Height of the node in m.</param>
+  /// <param name="gasConstant">Specific gas constant of the run's gas in J/(kg K), above zero; steam's by default.</param>
   /// <returns>True when the node was added; false when the store holds it or the host has no readable entry for the slot.</returns>
   public bool RestoreNode(
     NodeKey key,
     ITreeAttribute host,
     double volumeM3,
-    double heightM
+    double heightM,
+    double gasConstant = 461.5
   ) {
     if (Store.Nodes.ContainsKey(key))
       return false;
     if (!PipeFlowSave.TryRead(host, key.Slot, out var save))
       return false;
-    Store.AddNode(key, volumeM3, heightM, save.GasKg, save.TemperatureC);
+    Store.AddNode(
+      key,
+      volumeM3,
+      heightM,
+      save.GasKg,
+      save.TemperatureC,
+      gasConstant
+    );
     return true;
   }
 

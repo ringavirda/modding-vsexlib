@@ -313,6 +313,32 @@ public class SaveFormatTests {
     Assert.Equal(0, fresh.Store.NodeCount);
   }
 
+  // Fails when RestoreNode adds the node with the steam gas constant whatever the run's gas, so an air node saved at 1 atm reloads at 1.61 atm.
+  [Fact]
+  public void Reload_KeepsTheGasConstantOfTheRun() {
+    var w = new TestWorld();
+    var live = new PipeFlowNetwork(w.Networks);
+    live.Store.AddNode(
+      Cell(0),
+      0.02,
+      0,
+      101325 * 0.02 / (287 * 293.15),
+      20,
+      287
+    );
+    var host = new TreeAttribute();
+    live.SaveNode(Cell(0), host);
+
+    var rebuilt = new PipeFlowNetwork(w.Networks);
+    Assert.True(rebuilt.RestoreNode(Cell(0), host, 0.02, 0, 287));
+
+    Assert.Equal(
+      live.Store.PressurePa(0),
+      rebuilt.Store.PressurePa(rebuilt.Store.IndexOf(Cell(0))),
+      3
+    );
+  }
+
   // Fails when SaveNode writes something other than the live store (a zeroed gas stands for the threshold-gated display copy), or when RestoreNode overwrites a node the store already holds.
   [Fact]
   public void Reload_RestoresEachNodeOnce() {

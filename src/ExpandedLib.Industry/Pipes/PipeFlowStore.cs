@@ -14,6 +14,7 @@ internal sealed class PipeFlowStore {
   private const double Gravity = 9.80665;
   private const double MinDropPa = 1;
   private const double MaxConductanceStep = 4;
+  private const double ScaleTolerance = 1e-14;
   private const double PicardRatio = 2;
   private const double AmbientK = 293.15;
   private const double RestFlow = 1e-6;
@@ -51,6 +52,7 @@ internal sealed class PipeFlowStore {
   private OpeningMode[] _openMode = new OpeningMode[4];
   private double[] _openCoeff = new double[4];
   private double[] _openLimited = new double[4];
+  private bool[] _openForce = new bool[4];
 
   private double[] _pubPressure = [];
   private double[] _pubFlow = [];
@@ -62,6 +64,7 @@ internal sealed class PipeFlowStore {
   private double[] _rhs = [];
   private double[] _scale = [];
   private double[] _outgoing = [];
+  private double[] _inflow = [];
   private double[] _conductance = [];
   private double[] _edgeDensity = [];
   private double[] _unit = [];
@@ -222,6 +225,7 @@ internal sealed class PipeFlowStore {
       Array.Resize(ref _openMode, size);
       Array.Resize(ref _openCoeff, size);
       Array.Resize(ref _openLimited, size);
+      Array.Resize(ref _openForce, size);
     }
     _openNode[o] = node;
     _openArea[o] = areaM2;
@@ -343,17 +347,17 @@ internal sealed class PipeFlowStore {
   /// <param name="other">The store to take from.</param>
   /// <exception cref="ArgumentException">A node of <paramref name="other"/> is already in this store.</exception>
   public void Absorb(PipeFlowStore other) {
-    CopyFrom(other, other._index.Keys.ToHashSet());
+    CopyFrom(other, other._index.Keys.ToHashSet(), true);
     OpeningLedgerKg += other.OpeningLedgerKg;
     SourceLedgerKg += other.SourceLedgerKg;
   }
 
-  /// <summary>Copies the nodes keyed in <paramref name="keys"/> from <paramref name="source"/> into this store, with the edges whose two ends are both among them and the openings on them. Edges to other nodes are dropped, with the gas those nodes held. The ledger totals stay with <paramref name="source"/>.</summary>
+  /// <summary>Copies the nodes keyed in <paramref name="keys"/> from <paramref name="source"/> into this store, with the edges whose two ends are both among them and the openings on them. Edges to other nodes are dropped, with the gas those nodes held. The ledger totals stay with <paramref name="source"/>, and the copied openings start with empty ledgers.</summary>
   /// <param name="source">The store to take from; left as it was.</param>
   /// <param name="keys">The nodes to take; keys <paramref name="source"/> does not hold are ignored.</param>
   /// <exception cref="ArgumentException">A node taken is already in this store.</exception>
   public void Take(PipeFlowStore source, IReadOnlySet<NodeKey> keys) =>
-    CopyFrom(source, keys);
+    CopyFrom(source, keys, false);
 
   /// <summary>Sum of the gas in every node, in kg.</summary>
   public double TotalGasKg() {
@@ -363,7 +367,7 @@ internal sealed class PipeFlowStore {
     return sum;
   }
 
-  /// <summary>Advances the run by <paramref name="dt"/> seconds with one linearised backward-Euler solve, repeated once when a conductance moved by more than a factor 2. Stable at any step; the step only sets accuracy. A node cannot be emptied below zero: its outflows and draws are scaled for the step. A resting run does nothing; the step that finds the run at rest puts it to sleep.</summary>
+  /// <summary>Advances the run by <paramref name="dt"/> seconds with one linearised backward-Euler solve, repeated once when a conductance moved by more than a factor 2. Stable at any step; the step only sets accuracy. A node cannot be emptied below zero: its outflows and draws are scaled to what it holds plus what flows into it in the same step. An opening that leaves its choked range during the solve is solved again as a linear nozzle. A resting run does nothing; the step that finds the run at rest puts it to sleep.</summary>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="dt"/> is not above zero.</exception>
   public void Step(double dt) {
     if (dt <= 0)
@@ -374,6 +378,7 @@ internal sealed class PipeFlowStore {
     int m = EdgeCount;
     int k = OpeningCount;
     Array.Copy(_pending, _active, n);
+    Array.Clear(_openForce, 0, k);
     for (int i = 0; i < n; i++)
       if (_frozen[i])
         _active[i] = 0;
@@ -391,6 +396,12 @@ internal sealed class PipeFlowStore {
       Assemble(dt, _trial);
       _solver.Solve(_rhs);
       LastStepPasses = 2;
+    }
+    if (CrossedChoke()) {
+      Array.Copy(_rhs, _trial, n);
+      Assemble(dt, _trial);
+      _solver.Solve(_rhs);
+      LastStepPasses++;
     }
     StepsSolved++;
     Array.Copy(_unit, _prevUnit, m);
@@ -418,23 +429,7 @@ internal sealed class PipeFlowStore {
     }
 
     Array.Fill(_scale, 1d, 0, n);
-    var outgoing = _outgoing;
-    Array.Clear(outgoing, 0, n);
-    for (int e = 0; e < m; e++) {
-      if (_flow[e] > 0)
-        outgoing[_from[e]] += _flow[e] * dt;
-      else
-        outgoing[_to[e]] -= _flow[e] * dt;
-    }
-    for (int o = 0; o < k; o++)
-      if (_openFlow[o] > 0)
-        outgoing[_openNode[o]] += _openFlow[o] * dt;
-    for (int i = 0; i < n; i++) {
-      if (_active[i] < 0)
-        outgoing[i] -= _active[i] * dt;
-      if (outgoing[i] > _gas[i])
-        _scale[i] = _gas[i] / outgoing[i];
-    }
+    for (int pass = 0; pass < n && Rescale(dt); pass++) { }
 
     for (int e = 0; e < m; e++) {
       int a = _from[e];
@@ -456,6 +451,8 @@ internal sealed class PipeFlowStore {
       double applied = _active[i] * dt * (_active[i] < 0 ? _scale[i] : 1);
       _gas[i] += applied;
       SourceLedgerKg += applied;
+      if (_gas[i] < 0)
+        _gas[i] = 0;
     }
 
     _asleep = AtRest();
@@ -502,6 +499,66 @@ internal sealed class PipeFlowStore {
   public double PublishedOpeningLedger(int opening) {
     CheckOpening(opening);
     return opening < _pubOpenLedger.Length ? _pubOpenLedger[opening] : 0;
+  }
+
+  private bool CrossedChoke() {
+    bool crossed = false;
+    for (int o = 0; o < OpeningCount; o++) {
+      double p = _rhs[_openNode[o]];
+      double outside = _openOutside[o];
+      if (
+        _openMode[o] == OpeningMode.ChokedOut
+          && !GasOrifice.IsChoked(p, outside)
+        || _openMode[o] == OpeningMode.ChokedIn
+          && !GasOrifice.IsChoked(outside, p)
+      ) {
+        _openForce[o] = true;
+        crossed = true;
+      }
+    }
+    return crossed;
+  }
+
+  private bool Rescale(double dt) {
+    int n = NodeCount;
+    var outgoing = _outgoing;
+    var inflow = _inflow;
+    Array.Clear(outgoing, 0, n);
+    Array.Clear(inflow, 0, n);
+    for (int e = 0; e < EdgeCount; e++) {
+      int a = _from[e];
+      int b = _to[e];
+      double f = _flow[e] * dt;
+      if (f > 0) {
+        outgoing[a] += f;
+        inflow[b] += f * _scale[a];
+      } else {
+        outgoing[b] -= f;
+        inflow[a] -= f * _scale[b];
+      }
+    }
+    for (int o = 0; o < OpeningCount; o++) {
+      double f = _openFlow[o] * dt;
+      if (f > 0)
+        outgoing[_openNode[o]] += f;
+      else
+        inflow[_openNode[o]] -= f;
+    }
+    bool changed = false;
+    for (int i = 0; i < n; i++) {
+      if (_active[i] < 0)
+        outgoing[i] -= _active[i] * dt;
+      else
+        inflow[i] += _active[i] * dt;
+      double scale =
+        outgoing[i] > _gas[i] + inflow[i]
+          ? (_gas[i] + inflow[i]) / outgoing[i]
+          : 1;
+      if (Math.Abs(scale - _scale[i]) > ScaleTolerance)
+        changed = true;
+      _scale[i] = scale;
+    }
+    return changed;
   }
 
   private void Assemble(double dt, double[] pg) {
@@ -557,7 +614,7 @@ internal sealed class PipeFlowStore {
     double kelvin = leaving ? Kelvin(node) : AmbientK;
     double gasConstant = leaving ? _gasConstant[node] : GasOrifice.AirConstant;
 
-    if (area > 0 && GasOrifice.IsChoked(upstream, downstream)) {
+    if (area > 0 && !_openForce[o] && GasOrifice.IsChoked(upstream, downstream)) {
       double choked = GasOrifice.ChokedCoefficient(gas, kelvin) * area;
       if (leaving) {
         _openMode[o] = OpeningMode.ChokedOut;
@@ -581,7 +638,9 @@ internal sealed class PipeFlowStore {
       gas,
       area
     );
-    double g = area > 0 ? Limit(flow / span, _openPrev[o]) : 0;
+    double g = 0;
+    if (area > 0)
+      g = _openForce[o] ? flow / span : Limit(flow / span, _openPrev[o]);
     _openMode[o] = OpeningMode.Linear;
     _openCoeff[o] = g;
     _openLimited[o] = g;
@@ -619,7 +678,11 @@ internal sealed class PipeFlowStore {
     return true;
   }
 
-  private void CopyFrom(PipeFlowStore source, IReadOnlySet<NodeKey> keys) {
+  private void CopyFrom(
+    PipeFlowStore source,
+    IReadOnlySet<NodeKey> keys,
+    bool carryLedgers
+  ) {
     var map = new Dictionary<int, int>();
     foreach (var (key, from) in source._index) {
       if (!keys.Contains(key))
@@ -665,7 +728,7 @@ internal sealed class PipeFlowStore {
         source._openGas[o]
       );
       _openPrev[opening] = source._openPrev[o];
-      _openLedger[opening] = source._openLedger[o];
+      _openLedger[opening] = carryLedgers ? source._openLedger[o] : 0;
       _openFlow[opening] = source._openFlow[o];
       _openMode[opening] = source._openMode[o];
       _openCoeff[opening] = source._openCoeff[o];
@@ -704,6 +767,7 @@ internal sealed class PipeFlowStore {
       _rhs = new double[size];
       _scale = new double[size];
       _outgoing = new double[size];
+      _inflow = new double[size];
       _trial = new double[size];
     }
     if (_conductance.Length < m) {

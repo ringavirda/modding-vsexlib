@@ -515,6 +515,57 @@ public class PipeFlowTests {
     Assert.Equal(0d, store.OpeningFlowKgPerSecond(openings[0]));
   }
 
+  // Fails when a choked opening on a small cell is not solved again as a linear nozzle once the step has taken the cell across the choke boundary, so the cell falls below the outside pressure and rebounds.
+  [Fact]
+  public void Opening_PipeCellVentsWithoutOvershoot() {
+    var store = new PipeFlowStore();
+    const double area = 0.05 * 0.05 * Math.PI / 4;
+    AddAtPressure(store, 0, 5 * Atm, temperatureC: 152, volume: area * 1);
+    store.AddOpening(0, area, Atm, FlowGas.Steam);
+
+    double low = double.MaxValue;
+    double high = 0;
+    for (int step = 0; step < 40; step++) {
+      store.Step(0.2);
+      low = Math.Min(low, store.PressurePa(0));
+      high = Math.Max(high, store.PressurePa(0));
+    }
+
+    Assert.True(low >= 0.98 * Atm, $"fell to {low / Atm:F3} atm");
+    Assert.True(high <= 5.001 * Atm, $"rose to {high / Atm:F3} atm");
+  }
+
+  // Fails when a node's outflow is limited to its own content without the gas that flows into it in the same step, so a pipe end behind a boiler passes a fraction of Napier's flow and a slug of pressure marches down the pipe.
+  [Fact]
+  public void Napier_PipeEndBehindBoiler() {
+    var store = new PipeFlowStore();
+    const double area = 0.05 * 0.05 * Math.PI / 4;
+    AddAtPressure(store, 0, 5 * Atm, temperatureC: 152, volume: 2);
+    for (int i = 1; i <= 5; i++)
+      AddAtPressure(store, i, 5 * Atm, temperatureC: 152, volume: area * 1);
+    for (int i = 1; i <= 5; i++)
+      store.AddEdge(i - 1, i, 0.05, 1, FlowPipeClass.Cast);
+    int open = store.AddOpening(5, area, Atm, FlowGas.Steam);
+    double pEnd = store.PressurePa(5);
+
+    double highest = 0;
+    for (int step = 0; step < 30; step++) {
+      store.Step(0.2);
+      if (step == 0) {
+        double expected = 1.457e-3 * area * pEnd;
+        Assert.Equal(
+          expected,
+          store.OpeningFlowKgPerSecond(open),
+          expected * 0.1
+        );
+      }
+      for (int i = 0; i <= 5; i++)
+        highest = Math.Max(highest, store.PressurePa(i));
+    }
+
+    Assert.True(highest <= 5.001 * Atm, $"rose to {highest / Atm:F1} atm");
+  }
+
   // Fails when a negative area or outside pressure, or a missing node or opening, is accepted.
   [Fact]
   public void Openings_RejectBadInput() {
