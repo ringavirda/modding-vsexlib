@@ -124,8 +124,10 @@ public sealed partial class TestWorld
       )
     )
       if (
-        asset.Location.Path.StartsWith("recipes/grid/", StringComparison.Ordinal)
-        && !manager.AllAssets.ContainsKey(asset.Location)
+        asset.Location.Path.StartsWith(
+          "recipes/grid/",
+          StringComparison.Ordinal
+        ) && !manager.AllAssets.ContainsKey(asset.Location)
       )
         manager.Add(asset.Location, asset);
   }
