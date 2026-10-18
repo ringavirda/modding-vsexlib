@@ -163,7 +163,8 @@ public sealed class CraftSequenceRun(
     ) && (step.Offhand == null || Matches(step.Offhand, offhand?.Itemstack));
 
   private static bool Matches(string pattern, ItemStack? stack) =>
-    stack != null && WildcardUtil.Match(pattern, stack.Collectible.Code.ToString());
+    stack != null
+    && WildcardUtil.Match(pattern, stack.Collectible.Code.ToString());
 
   private void Wear(ItemSlot? slot)
   {
@@ -171,7 +172,8 @@ public sealed class CraftSequenceRun(
     if (slot == null || stack == null || stack.Collectible.Durability <= 0)
       return;
 
-    float chance = stack.Collectible.Attributes?[StepWearAttribute].AsFloat(1f) ?? 1f;
+    float chance =
+      stack.Collectible.Attributes?[StepWearAttribute].AsFloat(1f) ?? 1f;
     if (random.NextDouble() >= chance)
       return;
 
@@ -219,9 +221,16 @@ public sealed class CraftSequenceRun(
       for (int i = 0; i < after.Length && left > 0; i++)
       {
         ItemStack? held = after[i];
-        if (held == null || !held.Equals(world, stack, GlobalConstants.IgnoredStackAttributes))
+        if (
+          held == null
+          || !held.Equals(world, stack, GlobalConstants.IgnoredStackAttributes)
+        )
           continue;
-        int room = Math.Min(held.Collectible.MaxStackSize, slots[order.OutputSlots[i]].MaxSlotStackSize) - held.StackSize;
+        int room =
+          Math.Min(
+            held.Collectible.MaxStackSize,
+            slots[order.OutputSlots[i]].MaxSlotStackSize
+          ) - held.StackSize;
         int moved = Math.Min(room, left);
         held.StackSize += moved;
         left -= moved;

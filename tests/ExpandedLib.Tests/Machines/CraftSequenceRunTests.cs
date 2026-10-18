@@ -75,7 +75,11 @@ public sealed class CraftSequenceRunTests
       Slots[BillSlot].Itemstack = new ItemStack(Blank, 1);
     }
 
-    public Item Tool(string code, int durability = 120, string? attributes = null)
+    public Item Tool(
+      string code,
+      int durability = 120,
+      string? attributes = null
+    )
     {
       var item = new Item
       {
@@ -112,9 +116,11 @@ public sealed class CraftSequenceRunTests
   [Fact]
   public void A_three_step_sequence_completes_only_in_order()
   {
-    using var bench = new Bench(
-      [Step("test:chisel"), Step("test:file"), Step("test:saw")]
-    );
+    using var bench = new Bench([
+      Step("test:chisel"),
+      Step("test:file"),
+      Step("test:saw"),
+    ]);
     Item chisel = bench.Tool("test:chisel");
     Item file = bench.Tool("test:file");
     Item saw = bench.Tool("test:saw");
@@ -177,9 +183,10 @@ public sealed class CraftSequenceRunTests
   [Fact]
   public void A_finished_step_costs_the_tool_one_durability()
   {
-    using var bench = new Bench(
-      [Step("test:file"), Step("test:file", "test:hammer")]
-    );
+    using var bench = new Bench([
+      Step("test:file"),
+      Step("test:file", "test:hammer"),
+    ]);
     Item file = bench.Tool("test:file", 120);
     Item hammer = bench.Tool("test:hammer", 50);
     bench.Active.Itemstack = new ItemStack(file);
@@ -198,7 +205,11 @@ public sealed class CraftSequenceRunTests
   public void A_tool_with_a_wear_attribute_loses_about_that_share_of_its_steps()
   {
     using var bench = new Bench([Step("test:calipers")], seed: 7);
-    Item calipers = bench.Tool("test:calipers", 100000, """{ "stepWear": 0.1 }""");
+    Item calipers = bench.Tool(
+      "test:calipers",
+      100000,
+      """{ "stepWear": 0.1 }"""
+    );
     bench.Active.Itemstack = new ItemStack(calipers);
 
     for (int i = 0; i < 1000; i++)
