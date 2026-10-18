@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using ExpandedLib.Blocks;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Checks;
 using ExpandedLib.Machines;
@@ -28,6 +29,8 @@ internal sealed class WalkFixtureBench
     [MachineSlotSpec.AnyInput(), MachineSlotSpec.Output()];
 
   public override string InventoryClassName => "walk-fixture-bench";
+
+  private ExRightClickConstructable? _rcc;
 
   public override void Initialize(ICoreAPI api)
   {
@@ -61,7 +64,11 @@ internal sealed class WalkFixtureBench
     byte[] data
   )
   {
-    if (packetid != Press)
+    if (
+      packetid != Press
+      || (_rcc ??= GetBehavior<ExRightClickConstructable>())
+        is { IsComplete: false }
+    )
       return false;
     Laid.Add(Inventory[0].Itemstack.Collectible.Code.ToString());
     string name = Encoding.UTF8.GetString(data);
@@ -132,9 +139,9 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     var world = new TestWorld();
     world
       .RegisterClass("WalkFixtureBench", typeof(WalkFixtureBench))
-      .RegisterBlockEntityFactory(
-        "WalkFixtureBench",
-        () => new WalkFixtureBench()
+      .RegisterClass(
+        "ExRightClickConstructable",
+        typeof(ExRightClickConstructable)
       );
     world.LoadAssets([_files.Root], null, vanilla);
     world.LoadRecipes();
@@ -506,6 +513,37 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.StartsWith("walk:member | station refuses: ", finding);
     Assert.Contains("yielded nothing", finding);
     Assert.Contains("(1 executed, 1 followed)", result.Summary);
+  }
+
+  // Fails when Place skips CompleteConstruction, so a bench that refuses until built is walked unbuilt.
+  [Fact]
+  public void A_station_that_refuses_until_built_is_completed_before_it_is_walked()
+  {
+    _files.Write(
+      "assets/walk/blocktypes/gated.json",
+      """
+      {
+        "code": "gated",
+        "entityClass": "WalkFixtureBench",
+        "entityBehaviors": [
+          {
+            "name": "ExRightClickConstructable",
+            "properties": { "stages": [{}, { "requireStacks": [] }] }
+          }
+        ]
+      }
+      """
+    );
+    using TestWorld world = Planted(
+      ["a", "member"],
+      [Recipe(Stick, "a"), Sized("member", 5, 5)],
+      Stick
+    );
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Empty(result.Findings);
+    Assert.Contains("(2 executed, 0 followed)", result.Summary);
   }
 
   // Fails when the walk counts a recipe the matcher refused as executed.
