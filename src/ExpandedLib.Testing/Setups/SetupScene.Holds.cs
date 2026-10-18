@@ -219,8 +219,12 @@ public sealed partial class SetupScene
       ),
     };
 
+  /// <summary>Game hours one real second makes on the live server at the default calendar (1/120).</summary>
+  private const double GameHoursPerSecond = 1.0 / 120.0;
+
   private void TickSecond()
   {
+    World.AdvanceHours(GameHoursPerSecond);
     if (_ordered)
       World.FireBlockEntityTicks(
         1f,

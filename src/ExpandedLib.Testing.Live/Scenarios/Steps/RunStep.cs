@@ -157,8 +157,8 @@ internal sealed class RunStep : ScenarioStep {
   /// clear.</summary>
   /// <param name="placed">Called with the index of each cell right after its block went down, before the
   /// next is placed; null for none.</param>
-  /// <exception cref="StepFailure">A cell holds a block other than air at or above y 0, the
-  /// player cannot place a block, or <paramref name="placed"/> throws.</exception>
+  /// <exception cref="StepFailure">A cell holds a block other than air at or above y 0, a cell
+  /// lies outside the world, the player cannot place a block, or <paramref name="placed"/> throws.</exception>
   public static void LayCells(
     ScenarioContext ctx,
     PlayerPlace place,
@@ -177,6 +177,7 @@ internal sealed class RunStep : ScenarioStep {
       BlockPos cell = cells[i];
       Block block = blocks[i];
       PackLedger.DrawBlock(ctx, block.Code.ToString(), cell.ToString());
+      ctx.RequireInWorld(cell);
       if (
         !place(block, ctx.Setup.Absolute(cell), faces[i], out string? failure)
       )
