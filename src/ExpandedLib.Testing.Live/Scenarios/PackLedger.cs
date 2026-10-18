@@ -117,6 +117,30 @@ internal static class PackLedger {
     }
   }
 
+  /// <summary>The stack a sequence step's hand holds for the tool pattern <paramref name="pattern"/>,
+  /// drawn from the pack when the case has one.</summary>
+  /// <param name="label">What a failure names: the step and its recipe.</param>
+  /// <exception cref="StepFailure">The pack holds no item that matches, no loaded item matches, or the
+  /// pack holds none of the one it names.</exception>
+  public static ItemStack? Tool(
+    ScenarioContext ctx,
+    string label,
+    string? pattern
+  ) {
+    if (pattern == null)
+      return null;
+    ItemStack tool;
+    string? drawn;
+    try {
+      tool = CraftBills.Tool(ctx.World, pattern, ctx.Pack, out drawn);
+    } catch (InvalidOperationException e) {
+      throw new StepFailure($"{label}: {e.Message}", Suspect.Scenario, e);
+    }
+    if (drawn != null)
+      Draw(ctx, drawn, 1);
+    return tool;
+  }
+
   public static void Give(ScenarioContext ctx, ItemStack? stack) {
     if (stack != null)
       ctx.Pack?.Give(stack.Collectible.Code.ToString(), stack.StackSize);

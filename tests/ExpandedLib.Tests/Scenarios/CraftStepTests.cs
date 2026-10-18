@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ExpandedLib.Catalogues;
 using ExpandedLib.Machines;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
@@ -70,6 +71,32 @@ internal sealed class CraftFixtureBench
         )),
     ];
 
+  private CraftSequenceRun? _run;
+  private float _used;
+
+  public void StartHold() => _used = 0f;
+
+  public bool Work(IWorldAccessor world, IPlayer player, float used)
+  {
+    float dt = used - _used;
+    _used = used;
+    CraftOrder order = Orders(world)
+      .First(o => CraftSequenceRegistry.Shared.Sequence(o.Recipe) != null);
+    _run ??= new CraftSequenceRun(
+      CraftSequenceRegistry.Shared.Sequence(order.Recipe)!,
+      order,
+      [.. Inventory],
+      new Random(1)
+    );
+    return _run.Hold(
+        world,
+        dt,
+        player.Entity.RightHandItemSlot,
+        player.Entity.LeftHandItemSlot,
+        false
+      ) == CraftSequenceProgress.Working;
+  }
+
   protected override bool OnStationPacket(
     IPlayer player,
     int packetid,
@@ -108,6 +135,35 @@ internal sealed class CraftFixtureBench
   }
 }
 
+internal sealed class CraftFixtureBenchBlock : Block
+{
+  public static bool Deaf;
+
+  private static CraftFixtureBench? Bench(
+    IWorldAccessor world,
+    BlockSelection selection
+  ) => world.BlockAccessor.GetBlockEntity(selection.Position) as CraftFixtureBench;
+
+  public override bool OnBlockInteractStart(
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  )
+  {
+    if (Deaf)
+      return false;
+    Bench(world, blockSel)?.StartHold();
+    return true;
+  }
+
+  public override bool OnBlockInteractStep(
+    float secondsUsed,
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  ) => Bench(world, blockSel)?.Work(world, byPlayer, secondsUsed) ?? false;
+}
+
 internal sealed class CraftFixtureChest : BlockEntity { }
 
 /// <summary>The <c>craft</c> step in the harness: the hand grid and a station's window, the
@@ -141,12 +197,16 @@ public class CraftStepTests : IDisposable
     CraftFixtureBench.Refuses = false;
     CraftFixtureBench.MakesWrong = false;
     CraftFixtureBench.Pressed.Clear();
+    CraftFixtureBenchBlock.Deaf = false;
+    CraftSequenceRegistry.Shared.Clear();
   }
 
   public void Dispose()
   {
     CraftFixtureBench.Refuses = false;
     CraftFixtureBench.MakesWrong = false;
+    CraftFixtureBenchBlock.Deaf = false;
+    CraftSequenceRegistry.Shared.Clear();
     SetupPlacers.Clear();
   }
 
@@ -167,6 +227,7 @@ public class CraftStepTests : IDisposable
 
   private static void Register(TestWorld w) =>
     w.RegisterClass("CraftFixtureBench", typeof(CraftFixtureBench))
+      .RegisterClass("CraftFixtureBenchBlock", typeof(CraftFixtureBenchBlock))
       .RegisterBlockEntityFactory(
         "CraftFixtureBench",
         () => new CraftFixtureBench()
@@ -529,6 +590,142 @@ public class CraftStepTests : IDisposable
       .Message;
 
     Assert.Contains("takes a whole number of at least 1", message);
+  }
+
+  private const string Hammered =
+    "{\"machine\": \"bench\", \"sequences\": [{\"recipe\": \"setupcraft:frame\", \"steps\": ["
+    + "{\"tool\": \"setupcraft:mallet\", \"seconds\": 1}, "
+    + "{\"tool\": \"setupcraft:mallet\", \"offhand\": \"setupcraft:stud\", \"seconds\": 1}]}]}";
+
+  private const string SequencedBench =
+    "{\"place\": {\"id\": \"bench\", \"code\": \"setupcraft:seqbench\", \"at\": [0, 0, 0]}}";
+
+  private const string FrameCraft =
+    "{\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \"" + Frame + "\"}}";
+
+  private static string PackOf(string gathered, string ends = "") =>
+    "\"pack\": {\"scope\": \"stacks\", \"gathered\": {"
+    + "\"setupcraft:rod-copper\": 2, \"setupcraft:plate\": 2"
+    + gathered
+    + "}"
+    + (ends == "" ? "" : ", \"ends\": {\"stacks\": {" + ends + "}}")
+    + "}, ";
+
+  private static SetupFile Sequenced(string pack) =>
+    SetupFile.Parse(
+      "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupcraft\"], "
+        + pack
+        + "\"steps\": ["
+        + SequencedBench
+        + ", "
+        + FrameCraft
+        + "], \"seconds\": 10, \"record\": {}}",
+      "t.json"
+    );
+
+  private static SetupScene BuildSequenced(
+    string pack,
+    string sequences = Hammered
+  ) =>
+    SetupScene.Build(
+      Sequenced(pack),
+      [BenchPath],
+      _ =>
+        CraftSequenceLoader.Load([
+          ("setupcraft:config/craftsequences/bench.json", sequences),
+        ]),
+      Register
+    );
+
+  private const string Tools =
+    ", \"setupcraft:mallet\": 1, \"setupcraft:stud\": 1";
+
+  // Fails when the craft presses the order's button instead of holding the sequence's steps.
+  [Fact]
+  public void Craft_of_a_sequenced_recipe_holds_each_step_instead_of_pressing()
+  {
+    using SetupScene scene = BuildSequenced(PackOf(Tools));
+
+    Assert.Empty(CraftFixtureBench.Pressed);
+    Assert.Equal(3, Carried(scene, Frame));
+  }
+
+  // Fails when the tools are made without the pack, or the pack is not asked for them.
+  [Fact]
+  public void Craft_of_a_sequenced_recipe_needs_its_tool_in_the_pack()
+  {
+    string message = Assert
+      .Throws<InvalidOperationException>(() =>
+        BuildSequenced(PackOf(", \"setupcraft:stud\": 1"))
+      )
+      .Message;
+
+    Assert.Contains("step 1 of setupcraft:frame", message);
+    Assert.Contains("the pack holds no setupcraft:mallet", message);
+  }
+
+  // Fails when the off hand is not laid for a step that names it.
+  [Fact]
+  public void Craft_of_a_sequenced_recipe_names_a_missing_offhand_tool()
+  {
+    string message = Assert
+      .Throws<InvalidOperationException>(() =>
+        BuildSequenced(PackOf(", \"setupcraft:mallet\": 1"))
+      )
+      .Message;
+
+    Assert.Contains("step 2 of setupcraft:frame", message);
+    Assert.Contains("the pack holds no setupcraft:stud", message);
+  }
+
+  // Fails when a step's tools are not given back to the pack once the step is held.
+  [Fact]
+  public void Craft_of_a_sequenced_recipe_gives_the_tools_back_to_the_pack()
+  {
+    using SetupScene scene = BuildSequenced(
+      PackOf(Tools, "\"setupcraft:mallet\": 1, \"setupcraft:stud\": 1")
+    );
+
+    Assert.Equal(3, Carried(scene, Frame));
+  }
+
+  // Fails when a case without a pack gets no tool made for the step.
+  [Fact]
+  public void Craft_of_a_sequenced_recipe_makes_its_tools_without_a_pack()
+  {
+    using SetupScene scene = BuildSequenced("");
+
+    Assert.Empty(CraftFixtureBench.Pressed);
+    Assert.Equal(3, Carried(scene, Frame));
+  }
+
+  // Fails when the answer of the block to the first click is ignored.
+  [Fact]
+  public void Craft_of_a_sequenced_recipe_fails_when_the_block_takes_no_hold()
+  {
+    CraftFixtureBenchBlock.Deaf = true;
+
+    string message = Assert
+      .Throws<InvalidOperationException>(() => BuildSequenced(""))
+      .Message;
+
+    Assert.Contains("does not take the hold of step 1 of setupcraft:frame", message);
+  }
+
+  // Fails when a pack key that matches a tool but names nothing loaded is passed over.
+  [Fact]
+  public void Craft_of_a_sequenced_recipe_names_a_pack_tool_the_load_did_not_register()
+  {
+    string message = Assert
+      .Throws<InvalidOperationException>(() =>
+        BuildSequenced(
+          PackOf(", \"setupcraft:ghost\": 1"),
+          Hammered.Replace("setupcraft:mallet", "setupcraft:ghost")
+        )
+      )
+      .Message;
+
+    Assert.Contains("setupcraft:ghost, which the load did not register", message);
   }
 }
 #endif

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Catalogues;
 using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using Newtonsoft.Json.Linq;
@@ -58,7 +59,7 @@ public sealed partial class SetupScene
       made.AddRange(
         entity == null
           ? CraftInHand(step.Path, order, with)
-          : CraftAt(step.Path, entity, station, order, with)
+          : CraftAt(step.Path, entity, station, order, with, true)
       );
     Verify(step.Path, station, made, order, times);
     made.ForEach(Give);
@@ -66,7 +67,8 @@ public sealed partial class SetupScene
   }
 
   /// <summary>Crafts <paramref name="order"/> once at <paramref name="entity"/>, or in the hand
-  /// grid when it is null, and checks what came out against the order's product.</summary>
+  /// grid when it is null, and checks what came out against the order's product. A station crafts
+  /// by its order's button even when the recipe has a craft sequence.</summary>
   /// <param name="where">What a failure message names.</param>
   /// <param name="entity">The placed station, or null for the hand grid.</param>
   /// <param name="order">An order of the hand grid or of <paramref name="entity"/>.</param>
@@ -87,7 +89,7 @@ public sealed partial class SetupScene
     [
       .. entity == null
         ? CraftInHand(where, order, with)
-        : CraftAt(where, entity, station, order, with),
+        : CraftAt(where, entity, station, order, with, false),
     ];
     Verify(where, station, made, order, 1);
     return made;
@@ -164,7 +166,8 @@ public sealed partial class SetupScene
     BlockEntity entity,
     string station,
     CraftOrder order,
-    JObject? with
+    JObject? with,
+    bool bySequence
   )
   {
     TestWindow window = Player.Window(entity);
@@ -193,7 +196,13 @@ public sealed partial class SetupScene
           $"slot {input.Slot} of {station} took {left} of the {laid.StackSize} {laid.Collectible.Code} laid for {input.Name}."
         );
     }
-    Verb(() => window.Press(order.PressId!.Value, order.PressData));
+    if (
+      bySequence
+      && CraftSequenceRegistry.Shared.Sequence(order.Recipe) is { } sequence
+    )
+      WorkSequence(where, entity, station, order, sequence);
+    else
+      Verb(() => window.Press(order.PressId!.Value, order.PressData));
     foreach (CraftInput input in order.Inputs.Where(i => i.Ingredient.IsTool))
     {
       Verb(() => window.Take(input.Slot));
@@ -214,6 +223,65 @@ public sealed partial class SetupScene
         $"the press of {order.Product.Collectible.Code} at {station} yielded nothing: the station refused."
       );
     return taken;
+  }
+
+  private void WorkSequence(
+    string where,
+    BlockEntity entity,
+    string station,
+    CraftOrder order,
+    CraftSequence sequence
+  )
+  {
+    for (int n = 0; n < sequence.Steps.Length; n++)
+    {
+      CraftStep step = sequence.Steps[n];
+      string label = $"step {n + 1} of {sequence.Recipe}";
+      Player.Hold(Gesture(where, label, step.Tool));
+      Player.HoldOffhand(Gesture(where, label, step.Offhand));
+      try
+      {
+        if (
+          !Player.Interact(
+            entity.Pos,
+            null,
+            false,
+            false,
+            false,
+            step.Seconds + TestPlayer.InteractStepSeconds,
+            null,
+            TickSecond
+          )
+        )
+          throw Fail(where, $"{station} does not take the hold of {label}.");
+      }
+      finally
+      {
+        Give(Player.ActiveSlot.Itemstack);
+        Give(Player.OffhandSlot.Itemstack);
+        Player.Hold(null);
+        Player.HoldOffhand(null);
+      }
+    }
+  }
+
+  private ItemStack? Gesture(string where, string label, string? pattern)
+  {
+    if (pattern == null)
+      return null;
+    ItemStack tool;
+    string? drawn;
+    try
+    {
+      tool = CraftBills.Tool(World.World, pattern, _pack, out drawn);
+    }
+    catch (InvalidOperationException e)
+    {
+      throw Fail(where, $"{label}: {e.Message}");
+    }
+    if (drawn != null)
+      Draw(where, drawn, 1);
+    return tool;
   }
 
   private ItemStack Laid(CraftInput input, JObject? with, string where)

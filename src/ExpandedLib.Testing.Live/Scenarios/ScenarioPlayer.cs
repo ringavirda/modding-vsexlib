@@ -555,9 +555,17 @@ internal sealed class ScenarioPlayer {
       : $"{held.Collectible.Code} x {held.StackSize}";
   }
 
-  /// <summary>Empties the active slot, releases the keys and parks the player.</summary>
+  /// <summary>Puts <paramref name="stack"/> in the off-hand slot, or empties it for null.</summary>
+  public void HoldOffhand(ItemStack? stack) =>
+    Player.Entity.LeftHandItemSlot.Itemstack = stack;
+
+  /// <summary>What the off-hand slot holds, or null.</summary>
+  public ItemStack? Offhand => Player.Entity.LeftHandItemSlot.Itemstack;
+
+  /// <summary>Empties the active and off-hand slots, releases the keys and parks the player.</summary>
   public void Release() {
     Player.InventoryManager.ActiveHotbarSlot.Itemstack = null;
+    HoldOffhand(null);
     Hold(Player.Entity.Controls, []);
     Park();
   }

@@ -27,6 +27,7 @@ public sealed class TestPlayer {
 
   private readonly TestWorld _world;
   private readonly DummySlot _activeSlot;
+  private readonly DummySlot _offhandSlot;
 
   private TestPlayer(
     TestWorld world,
@@ -34,6 +35,7 @@ public sealed class TestPlayer {
     IServerPlayer? serverPlayer,
     EntityPlayer entity,
     DummySlot activeSlot,
+    DummySlot offhandSlot,
     InventoryGeneric hotbar,
     InventoryGeneric mouse
   ) {
@@ -42,6 +44,7 @@ public sealed class TestPlayer {
     ServerPlayer = serverPlayer;
     Entity = entity;
     _activeSlot = activeSlot;
+    _offhandSlot = offhandSlot;
     Hotbar = hotbar;
     Mouse = mouse;
   }
@@ -57,6 +60,11 @@ public sealed class TestPlayer {
   /// the slot <see cref="Entity"/>'s <c>RightHandItemSlot</c> answers. It is not one of
   /// <see cref="Hotbar"/>'s slots.</summary>
   public ItemSlot ActiveSlot => _activeSlot;
+
+  /// <summary>The player's off-hand slot - a real <see cref="ItemSlot"/> and the slot
+  /// <see cref="Entity"/>'s <c>LeftHandItemSlot</c> answers. It is not one of <see cref="Hotbar"/>'s
+  /// slots.</summary>
+  public ItemSlot OffhandSlot => _offhandSlot;
 
   /// <summary>The inventory <c>InventoryManager.GetHotbarInventory()</c> returns: a real, empty
   /// 12-slot inventory, as the game's hotbar, the last slot the off hand.</summary>
@@ -95,6 +103,9 @@ public sealed class TestPlayer {
 
   /// <summary>Puts <paramref name="stack"/> in the active hotbar slot, or empties it for <c>null</c>.</summary>
   public void Hold(ItemStack? stack) => _activeSlot.Itemstack = stack;
+
+  /// <summary>Puts <paramref name="stack"/> in <see cref="OffhandSlot"/>, or empties it for <c>null</c>.</summary>
+  public void HoldOffhand(ItemStack? stack) => _offhandSlot.Itemstack = stack;
 
   /// <summary>The window of <paramref name="entity"/> as this player works it; see
   /// <see cref="TestWindow"/>.</summary>
@@ -312,6 +323,7 @@ public sealed class TestPlayer {
     entity.WatchedAttributes.SetString("playerUID", uid);
 
     var activeSlot = new DummySlot();
+    var offhandSlot = new DummySlot();
     IPlayer player;
     IServerPlayer? serverPlayer;
     try {
@@ -324,6 +336,7 @@ public sealed class TestPlayer {
 
     player.Entity.Returns(entity);
     entity.RightHandItemSlot.Returns(activeSlot);
+    entity.LeftHandItemSlot.Returns(offhandSlot);
     player.PlayerUID.Returns(uid);
     player.PlayerName.Returns(name);
     player.WorldData.PlayerUID.Returns(uid);
@@ -346,6 +359,7 @@ public sealed class TestPlayer {
       serverPlayer,
       entity,
       activeSlot,
+      offhandSlot,
       hotbar,
       mouse
     );
