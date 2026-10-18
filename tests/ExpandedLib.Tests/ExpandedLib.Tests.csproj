@@ -72,4 +72,16 @@
       ReferenceOutputAssembly="false"
     />
   </ItemGroup>
+
+  <!-- GeneratorLoader loads the generators dll from this bin, so a run reads nothing another build rewrites. -->
+  <Target Name="CopyGeneratorsDll" AfterTargets="Build">
+    <MSBuild
+      Projects="..\..\src\ExpandedLib.Generators\ExpandedLib.Generators.csproj"
+      Targets="GetTargetPath"
+      Properties="TargetFramework=netstandard2.0"
+    >
+      <Output TaskParameter="TargetOutputs" ItemName="GeneratorsDll" />
+    </MSBuild>
+    <Copy SourceFiles="@(GeneratorsDll)" DestinationFolder="$(OutDir)" />
+  </Target>
 </Project>
