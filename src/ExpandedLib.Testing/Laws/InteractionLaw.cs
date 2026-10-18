@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using NSubstitute;
 using NSubstitute.Core;
@@ -205,6 +206,9 @@ public static class InteractionLaw {
     /// elsewhere.</summary>
     public AssetLocation? On { get; init; }
 
+    /// <summary>The selection the click is aimed with; null for the cell's top face.</summary>
+    public BlockSelection? Aim { get; init; }
+
     /// <summary>What the click is, for a finding.</summary>
     public string Describe() {
       string hand = Item == null ? "an empty hand" : $"{Item.Code}";
@@ -298,6 +302,27 @@ public static class InteractionLaw {
       HitPosition = new Vec3d(0.5, 1, 0.5),
     };
 
+  /// <summary>The selections a help read tries at <paramref name="cell"/>: the top face, then each
+  /// box that carries an id, aimed at the centre of its top side.</summary>
+  internal static BlockSelection[] Aimed(TestWorld world, BlockPos cell) {
+#if GAME_GE_1_22
+    Cuboidf[] boxes =
+      world.GetBlock(cell).GetSelectionBoxes(world.Accessor, cell) ?? [];
+    return
+    [
+      Selection(cell),
+      .. boxes
+        .OfType<CuboidfWithId>()
+        .Select(b => b.Id)
+        .OfType<string>()
+        .Distinct()
+        .Select(id => ControlAim.Selection(world.Accessor, cell, id, null)),
+    ];
+#else
+    return [Selection(cell)];
+#endif
+  }
+
   /// <summary>The clicks <paramref name="probe"/>'s help calls for: an empty hand on each cell, then
   /// each right-click interaction each cell's help lists, once per distinct item it names and with
   /// an empty hand when it names none, keys as listed; duplicates dropped. A line carrying both
@@ -320,13 +345,21 @@ public static class InteractionLaw {
       );
       AssetLocation? on = cells == null ? null : world.GetBlock(cell).Code;
       clicks.Add(new Click(offset, Keys.None, null, 0, null) { On = on });
-      BlockSelection selection = Selection(cell);
-      WorldInteraction[] helps =
-      [
-        .. probe
-          .Help(cell, selection, player)
-          .Where(h => h.MouseButton == EnumMouseButton.Right),
-      ];
+      BlockSelection top = Selection(cell);
+      BlockSelection selection = top;
+      WorldInteraction[] helps = [];
+      foreach (BlockSelection aimed in Aimed(world, cell)) {
+        helps =
+        [
+          .. probe
+            .Help(cell, aimed, player)
+            .Where(h => h.MouseButton == EnumMouseButton.Right),
+        ];
+        if (helps.Length > 0) {
+          selection = aimed;
+          break;
+        }
+      }
       foreach (WorldInteraction help in helps) {
         if (
           findings != null
@@ -340,8 +373,11 @@ public static class InteractionLaw {
           );
         Keys keys = KeysOf(help);
         ItemStack[] named = Named(help, selection);
+        BlockSelection? aim = ReferenceEquals(selection, top) ? null : selection;
         if (named.Length == 0)
-          clicks.Add(new Click(offset, keys, null, 0, null) { On = on });
+          clicks.Add(
+            new Click(offset, keys, null, 0, null) { On = on, Aim = aim }
+          );
         WorldInteraction[] alongside =
         [
           .. helps.Where(h =>
@@ -360,6 +396,7 @@ public static class InteractionLaw {
               help.ActionLangCode
             ) {
               On = on,
+              Aim = aim,
               Carried =
               [
                 .. alongside
@@ -380,7 +417,7 @@ public static class InteractionLaw {
   }
 
   /// <summary>The click on the principal's cell that <paramref name="help"/> advertises: its keys and
-  /// the first item it names, an empty hand for none.</summary>
+  /// the first item it names, an empty hand for none, aimed with <paramref name="selection"/>.</summary>
   internal static Click ClickOf(WorldInteraction help, BlockSelection selection) {
     ItemStack? stack = Named(help, selection).FirstOrDefault();
     return new Click(
@@ -389,7 +426,9 @@ public static class InteractionLaw {
       stack?.Collectible,
       stack == null ? 0 : Math.Max(1, stack.StackSize),
       help.ActionLangCode
-    );
+    ) {
+      Aim = selection,
+    };
   }
 
   /// <summary>The first of <paramref name="named"/> whose variant agrees with
@@ -514,7 +553,7 @@ public static class InteractionLaw {
       click.Offset.Z
     );
     bool? taken = step.Use(
-      Selection(cell),
+      click.Aim ?? Selection(cell),
       player.Player,
       click.Describe(),
       judged
