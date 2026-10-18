@@ -110,6 +110,7 @@ internal static class SetupSteps {
     [
       "at",
       "with",
+      "offHand",
       "keys",
       "face",
       "seconds",

@@ -22,6 +22,11 @@ internal sealed class InteractStep : ScenarioStep {
   public override string What(SetupStep step) =>
     step.Body["at"]?.ToString(Formatting.None) ?? "";
 
+  public override string? Refuse(SetupStep step) =>
+    step.Body["offHand"] != null
+      ? "\"offHand\" is not a key the live runner's interact takes yet."
+      : null;
+
   /// <summary>Whether a hold that has run <paramref name="held"/> seconds goes on for a hold of
   /// <paramref name="seconds"/>.</summary>
   public static bool StillHeld(double held, double seconds) => held < seconds;

@@ -233,6 +233,16 @@ public class CaseTests {
       Refused("""[{ "advance": { "hours": 1 } }]""")
     );
 
+  /// <summary>Fails when the live runner takes an interact's off-hand stack and ignores it.</summary>
+  [Fact]
+  public void An_interact_with_an_off_hand_stack_is_refused_live() =>
+    Assert.Contains(
+      "\"offHand\" is not a key the live runner's interact takes",
+      Refused(
+        """[{ "interact": { "at": [0, 0, 0], "offHand": { "stack": "game:hammer-copper" } } }]"""
+      )
+    );
+
   /// <summary>Fails when a step's own refusal is not asked (V30).</summary>
   [Fact]
   public void A_place_by_player_is_refused_with_its_path() =>

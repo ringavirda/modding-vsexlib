@@ -57,9 +57,14 @@ public class SetupHoldTests
       )
       .RegisterClass("SetupHoldEmber", typeof(SetupHoldEmber))
       .RegisterBlockEntityFactory("SetupHoldEmber", () => new SetupHoldEmber())
+      .RegisterClass("SetupHoldCanalBlock", typeof(SetupHoldCanalBlock))
+      .RegisterClass("SetupHoldCanal", typeof(SetupHoldCanal))
+      .RegisterBlockEntityFactory("SetupHoldCanal", () => new SetupHoldCanal())
       .RegisterClass("SetupHoldBox", typeof(SetupHoldBox))
       .RegisterBlockEntityFactory("SetupHoldBox", () => new SetupHoldBox());
     SetupTickOrderTests.RegisterTick(w, []);
+    w.RegisterItem("game:ingot-iron", 1500f);
+    w.RegisterItem("game:metalbit-iron");
   }
 
   private static string Refused(
@@ -468,6 +473,88 @@ public class SetupHoldTests
 
     Assert.Contains("steps[1]", message);
     Assert.Contains("SetupHoldEntity has no inventory to click", message);
+  }
+
+  private const string Canal =
+    "{\"place\": {\"id\": \"canal\", \"code\": \"setuphold:canal\", \"at\": [0, 0, 0]}}";
+  private const string Plug =
+    "{\"place\": {\"id\": \"plug\", \"code\": \"setuphold:plug\", \"at\": [0, 0, 0]}}";
+  private const string Chisel =
+    "{\"stack\": \"setuphold:chisel\"}";
+  private const string Hammer =
+    "{\"stack\": \"setuphold:hammer\"}";
+
+  private static SetupHoldCanal CanalAt(SetupScene scene, string id) =>
+    Assert.IsType<SetupHoldCanal>(
+      scene.World.GetBlockEntity(scene.PositionOf(id))
+    );
+
+  // Fails when advance leaves the calendar where it was, so a canal cell keeps its pour temperature.
+  [Fact]
+  public void Advance_MovesCalendarAndCoolsCanal()
+  {
+    double before;
+    using (SetupScene still = Build("[" + Canal + "]"))
+      before = still.World.Calendar.TotalHours;
+    using SetupScene scene = Build(
+      "[" + Canal + ", {\"advance\": {\"hours\": 0.5}}]"
+    );
+    SetupHoldCanal canal = CanalAt(scene, "canal");
+    float poured = canal.Cell.CellTemperature;
+
+    canal.Cell.UpdateThermal(scene.World.World);
+
+    Assert.Equal(1600f, poured);
+    Assert.Equal(0.5, scene.World.Calendar.TotalHours - before, 3);
+    Assert.True(
+      canal.Cell.CellTemperature < poured - 10f,
+      $"{canal.Cell.CellTemperature}"
+    );
+  }
+
+  // Fails when advance takes a negative span, which would run the calendar back.
+  [Fact]
+  public void Advance_of_negative_hours_fails_the_step()
+  {
+    string message = Refused("[{\"advance\": {\"hours\": -1}}]");
+
+    Assert.Contains("steps[0]", message);
+    Assert.Contains("hours -1 is negative", message);
+  }
+
+  // Fails when the off-hand slot is not set, so the chisel finds no hammer and the plug stays.
+  [Fact]
+  public void InteractWith_OffHandChiselClearsPlug()
+  {
+    using SetupScene scene = Build(
+      "["
+        + Plug
+        + ", {\"interact\": {\"at\": {\"of\": \"plug\"}, \"with\": "
+        + Chisel
+        + ", \"offHand\": "
+        + Hammer
+        + ", \"returns\": true}}]"
+    );
+
+    SetupHoldCanal plug = CanalAt(scene, "plug");
+    Assert.Equal(0, plug.Cell.CellAmount);
+  }
+
+  // Fails when the off-hand stack is left in the slot after the step, so the next click still holds it.
+  [Fact]
+  public void An_interact_empties_the_off_hand_after_the_click()
+  {
+    using SetupScene scene = Build(
+      "["
+        + Plug
+        + ", {\"interact\": {\"at\": {\"of\": \"plug\"}, \"with\": "
+        + Chisel
+        + ", \"offHand\": "
+        + Hammer
+        + "}}]"
+    );
+
+    Assert.Null(scene.Player.OffHandSlot.Itemstack);
   }
 }
 #endif

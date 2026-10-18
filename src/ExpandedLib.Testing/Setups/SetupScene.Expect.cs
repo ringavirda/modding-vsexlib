@@ -204,6 +204,16 @@ public sealed partial class SetupScene
     }
   }
 
+  private void AdvanceStep(SetupStep step)
+  {
+    double hours = (double)step.Body["hours"]!;
+    if (!(hours >= 0))
+      throw Fail(step.Path, $"hours {hours} is negative.");
+    int seconds = (int)Math.Round(hours / GameHoursPerSecond);
+    for (int i = 0; i < seconds; i++)
+      TickSecond();
+  }
+
   private static string Seconds(double value) =>
     value.ToString("F1", CultureInfo.InvariantCulture);
 

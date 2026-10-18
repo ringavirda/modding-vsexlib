@@ -10,6 +10,55 @@ using Vintagestory.GameContent.Mechanics;
 
 namespace ExpandedLib.Tests.Setups;
 
+internal sealed class SetupHoldCanalBlock : Block
+{
+  public override bool OnBlockInteractStart(
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  ) =>
+    MoltenChisel.TryChisel(
+      world,
+      byPlayer,
+      blockSel.Position,
+      (IChiselableMolten)world.BlockAccessor.GetBlockEntity(blockSel.Position)!,
+      new AssetLocation("game:sounds/block/chisel"),
+      damageChisel: false
+    ) == ChiselOutcome.Chiseled;
+}
+
+internal sealed class SetupHoldCanal : BlockEntity, IChiselableMolten
+{
+  public BEBehaviorMoltenCell Cell { get; private set; } = null!;
+
+  public bool HasChiselableContent => Cell.Solidified && Cell.CellAmount > 0;
+
+  public bool CanChiselOut => Cell.Solidified;
+
+  public string? ChiselBlockedError => null;
+
+  public override void Initialize(ICoreAPI api)
+  {
+    base.Initialize(api);
+    Cell = new BEBehaviorMoltenCell(this);
+    Behaviors.Add(Cell);
+    Cell.PushMetalRaw(
+      40,
+      "game:ingot-iron",
+      Block.Attributes["temperature"].AsFloat(),
+      api.World
+    );
+    Cell.UpdateThermal(api.World);
+  }
+
+  public ItemStack? ChiselOut()
+  {
+    ItemStack? recovered = Cell.GetRecoveryDrop(Api.World);
+    Cell.ClearContents();
+    return recovered;
+  }
+}
+
 internal sealed class SetupHoldBlock : Block, IIgnitable
 {
   public readonly List<string> Calls = [];

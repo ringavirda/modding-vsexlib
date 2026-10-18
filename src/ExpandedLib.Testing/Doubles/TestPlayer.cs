@@ -25,6 +25,8 @@ public sealed class TestPlayer {
   /// <summary>The live scenario runner's tick, the step of a held interaction, in seconds.</summary>
   public const float InteractStepSeconds = 0.1f;
 
+  private const int OffHandIndex = 11;
+
   private readonly TestWorld _world;
   private readonly DummySlot _activeSlot;
 
@@ -95,6 +97,13 @@ public sealed class TestPlayer {
 
   /// <summary>Puts <paramref name="stack"/> in the active hotbar slot, or empties it for <c>null</c>.</summary>
   public void Hold(ItemStack? stack) => _activeSlot.Itemstack = stack;
+
+  /// <summary>The player's off-hand slot, the last slot of <see cref="Hotbar"/> and the slot
+  /// <see cref="Entity"/>'s <c>LeftHandItemSlot</c> answers.</summary>
+  public ItemSlot OffHandSlot => Hotbar[OffHandIndex];
+
+  /// <summary>Puts <paramref name="stack"/> in <see cref="OffHandSlot"/>, or empties it for <c>null</c>.</summary>
+  public void HoldOffHand(ItemStack? stack) => OffHandSlot.Itemstack = stack;
 
   /// <summary>The window of <paramref name="entity"/> as this player works it; see
   /// <see cref="TestWindow"/>.</summary>
@@ -331,6 +340,7 @@ public sealed class TestPlayer {
     world.AddPlayer(uid, player);
 
     InventoryGeneric hotbar = TestInventory.Of(world, 12, $"hotbar-{uid}");
+    entity.LeftHandItemSlot.Returns(hotbar[OffHandIndex]);
     InventoryGeneric mouse = TestInventory.Of(world, 1, $"mouse-{uid}");
     IPlayerInventoryManager manager = Inventories(
       player,
