@@ -164,6 +164,28 @@ public class ScenarioPlayerVerbTests {
     );
   }
 
+  /// <summary>Fails when the keep key is not read, so the hand empties after a kept step.</summary>
+  [Fact]
+  public void An_interact_step_keeps_the_hand_only_when_it_says_keep() {
+    Assert.True(
+      InteractStep.Keeps(JObject.Parse("{\"at\": [0, 0, 0], \"keep\": true}"))
+    );
+    Assert.False(
+      InteractStep.Keeps(JObject.Parse("{\"at\": [0, 0, 0], \"keep\": false}"))
+    );
+    Assert.False(InteractStep.Keeps(JObject.Parse("{\"at\": [0, 0, 0]}")));
+  }
+
+  /// <summary>Fails when a release empties the hand of a kept step, or leaves a stack in the hand of one that
+  /// is not kept.</summary>
+  [Fact]
+  public void A_release_empties_the_hand_unless_the_step_kept_it() {
+    var stack = new ItemStack(new Item(), 2);
+
+    Assert.Same(stack, ScenarioPlayer.HandAfter(stack, keep: true));
+    Assert.Null(ScenarioPlayer.HandAfter(stack, keep: false));
+  }
+
   /// <summary>Fails when a name the player does not hold passes (S30).</summary>
   [Fact]
   public void A_key_the_player_does_not_hold_fails_the_step() {

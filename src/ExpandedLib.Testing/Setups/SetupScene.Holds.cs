@@ -35,12 +35,14 @@ public sealed partial class SetupScene
           step.Path,
           $"\"{(string)letter}\" is not one of n, e, s, w, u, d."
         );
+    bool keep = (bool?)step.Body["keep"] ?? false;
     ItemStack? with = step.Body["with"] is { } held
       ? StackOf(held, step.Path)
       : null;
     if (with != null)
       Draw(step.Path, with);
-    Player.Hold(with);
+    if (with != null || !keep)
+      Player.Hold(with);
     string? control = (string?)step.Body["control"];
     bool answer;
     try
@@ -79,7 +81,8 @@ public sealed partial class SetupScene
         step.Path,
         $"interact answered {answer}, not {(bool)expected}."
       );
-    Player.Hold(null);
+    if (!keep)
+      Player.Hold(null);
   }
 
   private void IgniteStep(SetupStep step)

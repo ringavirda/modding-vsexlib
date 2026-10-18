@@ -566,9 +566,18 @@ internal sealed class ScenarioPlayer {
     return text;
   }
 
-  /// <summary>Empties the active slot, releases the keys and parks the player.</summary>
-  public void Release() {
-    Player.InventoryManager.ActiveHotbarSlot.Itemstack = null;
+  /// <summary>The stack the active slot holds after a step.</summary>
+  /// <param name="held">What the slot holds.</param>
+  /// <param name="keep">Whether the step leaves the hand as it ends.</param>
+  public static ItemStack? HandAfter(ItemStack? held, bool keep) =>
+    keep ? held : null;
+
+  /// <summary>Releases the keys, parks the player and empties the active slot unless
+  /// <paramref name="keep"/>.</summary>
+  /// <param name="keep">Whether the active slot keeps its stack for the steps that follow.</param>
+  public void Release(bool keep = false) {
+    ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
+    slot.Itemstack = HandAfter(slot.Itemstack, keep);
     Hold(Player.Entity.Controls, []);
     Park();
   }
