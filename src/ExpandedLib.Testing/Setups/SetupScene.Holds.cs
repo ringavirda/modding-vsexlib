@@ -43,6 +43,12 @@ public sealed partial class SetupScene
       Draw(step.Path, with);
     if (with != null || !keep)
       Player.Hold(with);
+    ItemStack? offHand = step.Body["offHand"] is { } off
+      ? StackOf(off, step.Path)
+      : null;
+    if (offHand != null)
+      Draw(step.Path, offHand);
+    Player.HoldOffHand(offHand);
     string? control = (string?)step.Body["control"];
     bool answer;
     try
@@ -76,6 +82,7 @@ public sealed partial class SetupScene
       throw Fail(step.Path, e.Message);
     }
     Give(Player.ActiveSlot.Itemstack);
+    Give(Player.OffHandSlot.Itemstack);
     if (step.Body["returns"] is { } expected && (bool)expected != answer)
       throw Fail(
         step.Path,
@@ -83,6 +90,7 @@ public sealed partial class SetupScene
       );
     if (!keep)
       Player.Hold(null);
+    Player.HoldOffHand(null);
   }
 
   private void IgniteStep(SetupStep step)

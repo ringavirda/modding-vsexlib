@@ -13,7 +13,7 @@ namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>interact</c>: the scenario player right-clicks the block as a held mouse button does. The
 /// block is stepped on each runner tick for <c>seconds</c>, then stopped; the hand is cleared once the
-/// report has read what it held, unless the step says <c>keep</c>.</summary>
+/// report has read what it held, unless the step says <c>keep</c>; the off hand is always cleared.</summary>
 internal sealed class InteractStep : ScenarioStep {
   private static readonly string[] Names = ["sneak", "ctrl", "sprint"];
 
@@ -122,6 +122,15 @@ internal sealed class InteractStep : ScenarioStep {
       .Itemstack;
     if (stack != null)
       PackLedger.Draw(ctx, stack.Collectible.Code.ToString(), stack.StackSize);
+    ItemStack? offHand = o["offHand"] is JObject off
+      ? StepValues.Held(ctx, off)
+      : null;
+    if (offHand != null)
+      PackLedger.Draw(
+        ctx,
+        offHand.Collectible.Code.ToString(),
+        offHand.StackSize
+      );
     string? withText = stack == null ? null : ScenarioPlayer.StackText(stack);
     string[] keys = KeyNames(o["keys"]);
     double seconds = (double?)o["seconds"] ?? 0;
@@ -131,7 +140,7 @@ internal sealed class InteractStep : ScenarioStep {
       local
     );
     int uses = player.Uses;
-    bool answered = player.UseStart(at, selection, stack ?? carried, keys);
+    bool answered = player.UseStart(at, selection, stack ?? carried, keys, offHand);
     try {
       if (player.Uses != uses + 1)
         throw new StepFailure(
@@ -149,6 +158,10 @@ internal sealed class InteractStep : ScenarioStep {
       PackLedger.Give(
         ctx,
         player.Player.InventoryManager.ActiveHotbarSlot.Itemstack
+      );
+      PackLedger.Give(
+        ctx,
+        player.Player.InventoryManager.OffhandHotbarSlot.Itemstack
       );
       report.Value = HandLine(withText, player.HandText());
       if (o["returns"] is { } returns && (bool)returns != answered)

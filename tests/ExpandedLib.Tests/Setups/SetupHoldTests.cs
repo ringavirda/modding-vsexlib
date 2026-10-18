@@ -504,6 +504,26 @@ public class SetupHoldTests
     );
   }
 
+  // Fails when an expect by slot reads the hotbar off by one from the index a select takes.
+  [Fact]
+  public void A_kept_stack_left_by_a_select_is_read_at_its_old_index()
+  {
+    using SetupScene scene = Build(
+      "["
+        + Dial
+        + ", {\"interact\": {\"at\": {\"of\": \"dial\"}, \"with\": "
+        + Slab
+        + ", \"keep\": true}}"
+        + ", {\"select\": {\"slot\": 3}}"
+        + ", {\"expect\": {\"slot\": 0, \"code\": \"setuphold:slab\", \"count\": 3}}"
+        + ", {\"expect\": {\"slot\": 3, \"code\": null}}"
+        + ", {\"expect\": {\"slot\": 4, \"code\": null}}]"
+    );
+
+    Assert.Equal(3, scene.Player.StackInSlot(0)!.StackSize);
+    Assert.Null(scene.Player.StackInSlot(3));
+  }
+
   // Fails when an interact without keep leaves its stack in the hand.
   [Fact]
   public void An_interact_without_keep_empties_the_hand_and_an_expect_by_slot_reads_it_empty()
