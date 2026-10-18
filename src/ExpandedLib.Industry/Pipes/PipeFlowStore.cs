@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Networks;
 
 namespace ExpandedLib.Industry.Pipes;
@@ -338,6 +339,22 @@ internal sealed class PipeFlowStore {
     return _flow[edge];
   }
 
+  /// <summary>Moves every node, edge and opening of <paramref name="other"/> into this store, with their gas, temperature, sources, freeze flags, shares and opening ledgers, and adds its ledger totals. <paramref name="other"/> is left as it was and must be discarded.</summary>
+  /// <param name="other">The store to take from.</param>
+  /// <exception cref="ArgumentException">A node of <paramref name="other"/> is already in this store.</exception>
+  public void Absorb(PipeFlowStore other) {
+    CopyFrom(other, other._index.Keys.ToHashSet());
+    OpeningLedgerKg += other.OpeningLedgerKg;
+    SourceLedgerKg += other.SourceLedgerKg;
+  }
+
+  /// <summary>Copies the nodes keyed in <paramref name="keys"/> from <paramref name="source"/> into this store, with the edges whose two ends are both among them and the openings on them. Edges to other nodes are dropped, with the gas those nodes held. The ledger totals stay with <paramref name="source"/>.</summary>
+  /// <param name="source">The store to take from; left as it was.</param>
+  /// <param name="keys">The nodes to take; keys <paramref name="source"/> does not hold are ignored.</param>
+  /// <exception cref="ArgumentException">A node taken is already in this store.</exception>
+  public void Take(PipeFlowStore source, IReadOnlySet<NodeKey> keys) =>
+    CopyFrom(source, keys);
+
   /// <summary>Sum of the gas in every node, in kg.</summary>
   public double TotalGasKg() {
     double sum = 0;
@@ -600,6 +617,61 @@ internal sealed class PipeFlowStore {
       if (Math.Abs(_openFlow[o]) >= RestFlow)
         return false;
     return true;
+  }
+
+  private void CopyFrom(PipeFlowStore source, IReadOnlySet<NodeKey> keys) {
+    var map = new Dictionary<int, int>();
+    foreach (var (key, from) in source._index) {
+      if (!keys.Contains(key))
+        continue;
+      int to = AddNode(
+        key,
+        source._volume[from],
+        source._height[from],
+        source._gas[from],
+        source._temperatureC[from],
+        source._gasConstant[from]
+      );
+      _pending[to] = source._pending[from];
+      _active[to] = source._active[from];
+      _frozen[to] = source._frozen[from];
+      map[from] = to;
+    }
+    for (int e = 0; e < source.EdgeCount; e++) {
+      if (
+        !map.TryGetValue(source._from[e], out int a)
+        || !map.TryGetValue(source._to[e], out int b)
+      )
+        continue;
+      int edge = AddEdge(
+        a,
+        b,
+        source._bore[e],
+        source._length[e],
+        FlowPipeClass.Cast
+      );
+      _friction[edge] = source._friction[e];
+      _share[edge] = source._share[e];
+      _flow[edge] = source._flow[e];
+      _prevUnit[edge] = source._prevUnit[e];
+    }
+    for (int o = 0; o < source.OpeningCount; o++) {
+      if (!map.TryGetValue(source._openNode[o], out int node))
+        continue;
+      int opening = AddOpening(
+        node,
+        source._openArea[o],
+        source._openOutside[o],
+        source._openGas[o]
+      );
+      _openPrev[opening] = source._openPrev[o];
+      _openLedger[opening] = source._openLedger[o];
+      _openFlow[opening] = source._openFlow[o];
+      _openMode[opening] = source._openMode[o];
+      _openCoeff[opening] = source._openCoeff[o];
+      _openLimited[opening] = source._openLimited[o];
+    }
+    Wake();
   }
 
   private double Kelvin(int i) => _temperatureC[i] + KelvinOffset;

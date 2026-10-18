@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ExpandedLib.Networks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -67,11 +68,38 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
     BlockNetworkModSystem manager
   ) => Store.Publish();
 
-  public override void OnMerge(BlockNetwork other, IBlockAccessor world) =>
-    throw new NotSupportedException("A pipeflow run does not merge yet.");
+  /// <summary>What the run carries; <see cref="FlowMedium.Ambient"/> until a source gives it one.</summary>
+  public FlowMedium Medium { get; set; } = FlowMedium.Ambient;
+
+  public override bool SupportsPartialSplit => true;
+
+  /// <summary>Whether the runs carry equal media or either is ambient; any other pair is refused and stays apart.</summary>
+  public override bool CanMerge(BlockNetwork other, IBlockAccessor world) =>
+    other is PipeFlowNetwork run
+    && (
+      Medium == run.Medium
+      || Medium == FlowMedium.Ambient
+      || run.Medium == FlowMedium.Ambient
+    );
+
+  public override void OnMerge(BlockNetwork other, IBlockAccessor world) {
+    var run = (PipeFlowNetwork)other;
+    Store.Absorb(run.Store);
+    if (Medium == FlowMedium.Ambient)
+      Medium = run.Medium;
+  }
 
   public override void OnSplitFragment(
     BlockNetwork original,
     IBlockAccessor world
-  ) => throw new NotSupportedException("A pipeflow run does not split yet.");
+  ) => throw new NotSupportedException("A pipeflow run splits by node keys.");
+
+  public override void OnSplitFragment(
+    BlockNetwork original,
+    IReadOnlySet<NodeKey> fragmentKeys
+  ) {
+    var run = (PipeFlowNetwork)original;
+    Store.Take(run.Store, fragmentKeys);
+    Medium = run.Medium;
+  }
 }
