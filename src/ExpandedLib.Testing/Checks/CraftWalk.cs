@@ -18,7 +18,9 @@ namespace ExpandedLib.Testing;
 /// <para>Each fired grid recipe is then crafted once, with the first wildcard variant reached before
 /// it fired: at the hand grid when it fits 3 x 3, else at the first placed
 /// <see cref="ExpandedLib.Machines.ICraftStation"/> whose orders hold it. The stations are one of
-/// each block of the domain with a block entity; the other edges are followed.</para></remarks>
+/// each block of the domain with a block entity, completed as a setup's <c>complete</c> does when
+/// the entity carries an <see cref="ExpandedLib.Blocks.ExRightClickConstructable"/>, so a
+/// construction-gated station crafts instead of refusing; the other edges are followed.</para></remarks>
 public static class CraftWalk
 {
   /// <summary>The station name <see cref="CraftedEdge.Station"/> carries for a craft in the hand
