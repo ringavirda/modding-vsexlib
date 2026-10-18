@@ -191,6 +191,7 @@ public sealed partial class TestWorld {
       ((ICoreAPI)Api).Assets.Returns(mgr);
 #if GAME_GE_1_22
       _loadedAssets = mgr;
+      _gameSurvival = survival;
 #endif
       if (asGame) {
         foreach (ModSystem system in FinalizeOrder(started))
