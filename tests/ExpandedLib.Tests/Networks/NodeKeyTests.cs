@@ -96,7 +96,10 @@ public class NodeKeyTests {
     Assert.Equal((8, 8), NodeKey.BendOffsets(0));
     Assert.Equal((4, 12), NodeKey.BendOffsets(1));
     Assert.Equal((12, 4), NodeKey.BendOffsets(2));
-    Assert.Equal(new[] { 8, 4, 12 }, new[] { 0, 1, 2 }.Select(NodeKey.LaneOffset));
+    Assert.Equal(
+      new[] { 8, 4, 12 },
+      new[] { 0, 1, 2 }.Select(NodeKey.LaneOffset)
+    );
   }
 
   // Fails when Claim leaves a position's centre key out of NodeKeys.
@@ -205,7 +208,8 @@ public class NodeKeyTests {
   [Fact]
   public void A_partial_type_is_split_by_its_fragment_keys() {
     var w = NewWorld();
-    var positions = new[] {
+    var positions = new[]
+    {
       new BlockPos(0, 0, 0),
       new BlockPos(0, 0, 1),
       new BlockPos(0, 0, 2),
@@ -220,7 +224,10 @@ public class NodeKeyTests {
     Assert.False(left.LegacyCalled);
     Assert.False(right.LegacyCalled);
     Assert.Equal([NodeKey.Centre(positions[0])], Assert.Single(left.Fragments));
-    Assert.Equal([NodeKey.Centre(positions[2])], Assert.Single(right.Fragments));
+    Assert.Equal(
+      [NodeKey.Centre(positions[2])],
+      Assert.Single(right.Fragments)
+    );
   }
 
   // Fails when a type that does not opt in is split through the key overload, which throws for it.
@@ -248,7 +255,9 @@ public class NodeKeyTests {
     var pos = new BlockPos(0, 0, 0);
     w.PlaceNode(pos, "test", "ns");
     var member = (INetworkMember)
-      w.GetBlockEntity(pos)!.Behaviors.OfType<BEBehaviorNetworkMember>().Single();
+      w.GetBlockEntity(pos)!
+        .Behaviors.OfType<BEBehaviorNetworkMember>()
+        .Single();
 
     Assert.Equal([(byte)0], member.Slots(w.Accessor, pos));
   }
@@ -260,10 +269,15 @@ public class NodeKeyTests {
     var pos = new BlockPos(0, 0, 0);
     w.PlaceNode(pos, "test", "ns");
     var member = (INetworkMember)
-      w.GetBlockEntity(pos)!.Behaviors.OfType<BEBehaviorNetworkMember>().Single();
+      w.GetBlockEntity(pos)!
+        .Behaviors.OfType<BEBehaviorNetworkMember>()
+        .Single();
 
     var centre = member.Crossings(w.Accessor, NodeKey.Centre(pos)).ToList();
-    var onFace = member.Crossings(w.Accessor, NodeKey.OnFace(pos, BlockFacing.NORTH));
+    var onFace = member.Crossings(
+      w.Accessor,
+      NodeKey.OnFace(pos, BlockFacing.NORTH)
+    );
 
     Assert.Equal(
       [BlockFacing.NORTH, BlockFacing.SOUTH],

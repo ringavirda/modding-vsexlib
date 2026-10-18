@@ -8,4 +8,7 @@ namespace ExpandedLib.Networks;
 /// </summary>
 /// <param name="Face">The face of the cell the crossing lies on.</param>
 /// <param name="Edge">The edge of that face the spot lies beside, or null for the face centre.</param>
-public readonly record struct NodeCrossing(BlockFacing Face, BlockFacing? Edge = null);
+public readonly record struct NodeCrossing(
+  BlockFacing Face,
+  BlockFacing? Edge = null
+);

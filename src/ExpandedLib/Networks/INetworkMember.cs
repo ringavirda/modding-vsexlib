@@ -28,7 +28,8 @@ public interface INetworkMember {
   bool AcceptsNeighbour(Block neighbour) => true;
 
   /// <summary>The slots that hold a node at <paramref name="pos"/>. Slot 0 alone by default, one node per cell.</summary>
-  IReadOnlyList<byte> Slots(IBlockAccessor world, BlockPos pos) => NodeSlots.CentreOnly;
+  IReadOnlyList<byte> Slots(IBlockAccessor world, BlockPos pos) =>
+    NodeSlots.CentreOnly;
 
   /// <summary>The crossings of the node <paramref name="key"/>. By default the centre slot crosses at the centre of every face with a connector, and any other slot has none.</summary>
   IEnumerable<NodeCrossing> Crossings(IBlockAccessor world, NodeKey key) {

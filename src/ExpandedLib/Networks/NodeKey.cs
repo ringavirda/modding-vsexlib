@@ -29,7 +29,11 @@ public readonly record struct NodeKey(BlockPos Pos, byte Slot) {
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="lane"/> is not 0, 1 or 2.</exception>
   public static NodeKey OnFace(BlockPos pos, BlockFacing face, int lane = 0) {
     if (lane is < 0 or > 2)
-      throw new ArgumentOutOfRangeException(nameof(lane), lane, "Lane is 0..2.");
+      throw new ArgumentOutOfRangeException(
+        nameof(lane),
+        lane,
+        "Lane is 0..2."
+      );
     return new(pos, (byte)((lane << LaneShift) | (1 + face.Index)));
   }
 
@@ -37,7 +41,11 @@ public readonly record struct NodeKey(BlockPos Pos, byte Slot) {
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside 0..127.</exception>
   public static NodeKey Port(BlockPos pos, int index) {
     if (index is < 0 or >= 0x80)
-      throw new ArgumentOutOfRangeException(nameof(index), index, "Port index is 0..127.");
+      throw new ArgumentOutOfRangeException(
+        nameof(index),
+        index,
+        "Port index is 0..127."
+      );
     return new(pos, (byte)(PortBase + index));
   }
 
@@ -66,7 +74,11 @@ public readonly record struct NodeKey(BlockPos Pos, byte Slot) {
       0 => 8,
       1 => 4,
       2 => 12,
-      _ => throw new ArgumentOutOfRangeException(nameof(lane), lane, "Lane is 0..2."),
+      _ => throw new ArgumentOutOfRangeException(
+        nameof(lane),
+        lane,
+        "Lane is 0..2."
+      ),
     };
 
   /// <summary>

@@ -391,7 +391,9 @@ public class BlockNetworkModSystem : ModSystem {
     BlockPos pos,
     string networkType
   ) {
-    var slots = NetworkMembership.Resolve(world, pos, networkType)?.Slots(world, pos);
+    var slots = NetworkMembership
+      .Resolve(world, pos, networkType)
+      ?.Slots(world, pos);
     return slots == null || slots.Count == 0 ? [0] : [.. slots.Distinct()];
   }
 
