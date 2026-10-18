@@ -139,4 +139,23 @@ public class NetworkCadenceTests {
       log
     );
   }
+
+  // Fails when accrued time is kept per network instance, so a rebuild between ticks restarts the interval.
+  [Fact]
+  public void A_rebuilt_network_keeps_its_types_phase() {
+    var (w, _) = NewWorld();
+    var pos = new BlockPos(0, 0, 0);
+    var before = Place(w, "lumped", pos);
+    for (int i = 0; i < 3; i++)
+      w.Networks.ServerTick(w.Accessor, 0.2f);
+
+    var after = (RecordingNetwork)
+      w.Networks.RebuildFromRoot(w.Accessor, pos, "lumped")!;
+    Assert.NotSame(before, after);
+    w.Networks.ServerTick(w.Accessor, 0.2f);
+    Assert.Empty(after.Steps);
+    w.Networks.ServerTick(w.Accessor, 0.2f);
+
+    Assert.Equal([1f], after.Steps);
+  }
 }
