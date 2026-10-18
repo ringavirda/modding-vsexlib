@@ -197,5 +197,5 @@ internal sealed class InteractStep : ScenarioStep {
 internal interface IHandRelease {
   /// <summary>Releases the keys and empties the hands, leaving the active slot's stack when
   /// <paramref name="keep"/>.</summary>
-  void Release(bool keep);
+  void Release(bool keep = false);
 }
