@@ -159,7 +159,7 @@ internal sealed class InteractStep : ScenarioStep {
       offHand
     );
     try {
-      if (player.Uses != uses + 1)
+      if (player.Uses != uses + (player.Placed ? 0 : 1))
         throw new StepFailure(
           $"the server fired {player.Uses - uses} did-use events for one click, not 1."
         );

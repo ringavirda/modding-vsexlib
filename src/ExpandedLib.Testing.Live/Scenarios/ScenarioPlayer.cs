@@ -50,6 +50,10 @@ internal sealed class ScenarioPlayer : IHandRelease {
   /// <summary>How many did-use events the server has fired for any player since the scenario player was built.</summary>
   public int Uses => _uses;
 
+  /// <summary>Whether the last <see cref="UseStart"/> placed the held block, which fires no did-use
+  /// event.</summary>
+  public bool Placed { get; private set; }
+
   private void CountUse(IServerPlayer player, BlockSelection selection) =>
     _uses++;
 
@@ -475,6 +479,12 @@ internal sealed class ScenarioPlayer : IHandRelease {
     Hold(Player.Entity.Controls, keys);
     Player.InventoryManager.ActiveHotbarSlot.Itemstack = stack;
     Player.InventoryManager.OffhandHotbarSlot.Itemstack = offHand;
+    if (ClientClick.PlacesFirst(_server, Player, selection)) {
+      _server.TriggerNeighbourBlocksUpdate(selection.Position);
+      Placed = true;
+      return false;
+    }
+    Placed = false;
     bool answered = _server
       .BlockAccessor.GetBlock(at)
       .OnBlockInteractStart(_server, Player, selection);

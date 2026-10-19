@@ -297,15 +297,19 @@ public sealed class TestPlayer {
   /// seconds held so far, and <see cref="Block.OnBlockInteractStop"/> once, when a step declines
   /// or the hold ends.</summary>
   /// <remarks>A spectator, or a player the claims refuse use of the cell, gets nothing. World
-  /// ticks do not run during the hold; the keys last for the call only. The held collectible's
-  /// interaction, the reach test and the server's use events are not run.</remarks>
+  /// ticks do not run during the hold; the keys last for the call only. With <c>sneak</c> and a block
+  /// in <paramref name="held"/> the block is placed first, as the client does, and the clicked block
+  /// is reached only when the placement fails or the clicked block sets
+  /// <see cref="Block.PlacedPriorityInteract"/>. The held collectible's interaction, the reach test and
+  /// the server's use events are not run.</remarks>
   /// <param name="pos">The cell clicked.</param>
   /// <param name="held">Put in <see cref="ActiveSlot"/> first; null leaves the hand.</param>
   /// <param name="sneak">Holds <c>Sneak</c> and <c>ShiftKey</c>.</param>
   /// <param name="ctrl">Holds <c>CtrlKey</c> and <c>Sprint</c>.</param>
   /// <param name="seconds">The hold in seconds, 0 or more; 0 clicks with no step.</param>
   /// <param name="face">The face clicked, at its centre; null for <c>BlockFacing.UP</c>.</param>
-  /// <returns><see cref="Block.OnBlockInteractStart"/>'s answer; false when not called.</returns>
+  /// <returns><see cref="Block.OnBlockInteractStart"/>'s answer; false when not called, including when the
+  /// held block was placed instead.</returns>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="seconds"/> is negative or NaN.</exception>
   public bool Interact(
     BlockPos pos,
@@ -440,6 +444,8 @@ public sealed class TestPlayer {
     controls.Sprint = ctrl || sprint;
     try {
       Block block = _world.Accessor.GetBlock(pos);
+      if (ClientClick.PlacesFirst(_world.World, Player, selection))
+        return false;
       if (!block.OnBlockInteractStart(_world.World, Player, selection))
         return false;
       float used = HoldSteps(

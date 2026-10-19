@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Testing;
 using NSubstitute;
 using Vintagestory.API.Common;
@@ -148,6 +149,65 @@ public class TestPlayerInteractTests {
     Assert.Same(stack, lever.HeldAtStart);
     Assert.False(player.Sneaking);
     Assert.False(player.CtrlHeld);
+  }
+
+  // Fails when a sneak click with a placeable block in hand reaches the clicked block's interact before
+  // the placement, or places in place of the interact when the clicked block sets PlacedPriorityInteract
+  // or the placement fails.
+  [Theory]
+  [InlineData(true, false, true, false, 0, 0)]
+  [InlineData(false, false, true, true, 1, 1)]
+  [InlineData(true, true, true, true, 1, 1)]
+  [InlineData(true, false, false, true, 1, 1)]
+  public void A_sneak_click_places_a_held_block_before_the_interact(
+    bool sneak,
+    bool priority,
+    bool placeable,
+    bool expectInteract,
+    int calls,
+    int stackLeft
+  ) {
+    var (world, lever, player) = Stand();
+    lever.PlacedPriorityInteract = priority;
+    var brick = TestBlocks.Configure(
+      new Brick { Allows = placeable },
+      "test:brick",
+      2
+    );
+    world.Place(new BlockPos(5, 1, 5), brick);
+    var stack = new ItemStack(brick, 1);
+
+    bool taken = player.Interact(
+      At,
+      held: stack,
+      sneak: sneak,
+      face: BlockFacing.EAST
+    );
+
+    Assert.Equal(expectInteract, taken);
+    Assert.Equal(calls, lever.Calls.Count(c => c == "start"));
+    Assert.Equal(stackLeft, stack.StackSize);
+    Assert.Equal(
+      !expectInteract && sneak && placeable ? brick.Id : 0,
+      world.Accessor.GetBlock(At.EastCopy()).Id
+    );
+  }
+
+  private sealed class Brick : Block {
+    public bool Allows = true;
+
+    public override bool TryPlaceBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      ItemStack itemstack,
+      BlockSelection blockSel,
+      ref string failureCode
+    ) {
+      if (!Allows)
+        return false;
+      world.BlockAccessor.SetBlock(Id, blockSel.Position);
+      return true;
+    }
   }
 
   [Fact]
