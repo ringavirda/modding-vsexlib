@@ -255,7 +255,9 @@ public class TestPlayerSelectTests {
     var (world, player, _) = Stand();
     Item ingot = world.RegisterItem("game:ingot-iron");
     for (int i = 0; i < 10; i++)
-      player.Hotbar[i].Itemstack = new ItemStack(world.RegisterItem("game:stick"));
+      player.Hotbar[i].Itemstack = new ItemStack(
+        world.RegisterItem("game:stick")
+      );
     var stack = new ItemStack(ingot);
 
     bool given = player.Player.InventoryManager.TryGiveItemstack(stack);
