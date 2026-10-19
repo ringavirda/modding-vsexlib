@@ -79,10 +79,7 @@ public class MetalFamilyEmitterTests {
     List<ExItemDef> defs = Emit(Shipped("iiex", "pigiron"));
 
     // A feedstock: the cast target plus the bits a frozen heat sheds, nothing else.
-    Assert.Equal(
-      new[] { "ingot-pigiron", "metalbit-pigiron" },
-      Codes(defs)
-    );
+    Assert.Equal(new[] { "ingot-pigiron", "metalbit-pigiron" }, Codes(defs));
     Assert.All(defs, d => Assert.Equal("iiex", d.Domain));
   }
 
