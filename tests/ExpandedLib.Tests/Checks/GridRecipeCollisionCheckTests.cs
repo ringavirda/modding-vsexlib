@@ -60,6 +60,40 @@ public class GridRecipeCollisionCheckTests {
   private static string Collision(int at, string a, int otherAt, string b) =>
     $"{File}#{at} ({a}) and {File}#{otherAt} ({b}) match the same input";
 
+  #region Diagrams
+
+  private static string Keyed(string name, string diagram) =>
+    Recipe(
+      name,
+      "PP",
+      2,
+      1,
+      $$"""{ "P": {{Oak}} }""",
+      $$"""
+      "attributes": { "diagram": "{{diagram}}" },
+      """
+    );
+
+  // Fails when Crafts stops reading the diagram, so two bills under two diagrams collide.
+  [Fact]
+  public void One_bill_under_two_diagrams_does_not_collide() {
+    Assert.Empty(
+      Findings(Keyed("one", "stub:diagram-a"), Keyed("two", "stub:diagram-b"))
+    );
+    Assert.Empty(
+      Findings(
+        Keyed("one", "stub:diagram-a"),
+        Recipe("two", "OO", 2, 1, $$"""{ "O": {{Oak}} }""")
+      )
+    );
+    Assert.Equal(
+      [Collision(0, "one", 1, "two")],
+      Findings(Keyed("one", "stub:diagram-a"), Keyed("two", "stub:diagram-a"))
+    );
+  }
+
+  #endregion
+
   #region Shaped
 
   // Fails when Run stops comparing two recipes of one domain, or reports a pair twice.

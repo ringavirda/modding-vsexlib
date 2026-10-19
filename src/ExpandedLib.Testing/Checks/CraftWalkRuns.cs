@@ -22,8 +22,8 @@ internal static class CraftWalkRuns
   );
 
   /// <summary>Crafts every fired grid edge once and appends a failure for each craft the matcher
-  /// or the station refuses, for each set member or sequenced recipe the hand grid takes and for each
-  /// station recipe no placed station holds.</summary>
+  /// or the station refuses, for each set member, sequenced recipe or diagram recipe the hand grid
+  /// takes and for each station recipe no placed station holds.</summary>
   /// <param name="world">The loaded world.</param>
   /// <param name="domain">The domain whose blocks are placed as stations.</param>
   /// <param name="edges">The walk's edges.</param>
@@ -56,10 +56,9 @@ internal static class CraftWalkRuns
         continue;
       WalkEdge edge = edges[i];
       bool inHand = hand.Any(o => o.Grid == recipe);
-      if (
-        edge.Sequence != null
-        && hand.FirstOrDefault(o => o.Grid == recipe) is { } handOrder
-      )
+      string? diagram = RecipeDiagram.Of(recipe);
+      bool gated = edge.Sequence != null || diagram != null;
+      if (gated && hand.FirstOrDefault(o => o.Grid == recipe) is { } handOrder)
         try
         {
           scene.CraftOnce(
@@ -71,16 +70,14 @@ internal static class CraftWalkRuns
           found.Add(
             (
               edge.Output,
-              $"{edge.Output} | hand grid takes {edge.Name}, which has a craft sequence"
+              edge.Sequence != null
+                ? $"{edge.Output} | hand grid takes {edge.Name}, which has a craft sequence"
+                : $"{edge.Output} | hand grid takes {edge.Name}, which is keyed to {diagram}"
             )
           );
         }
         catch (InvalidOperationException) { }
-      if (
-        edge.Class == CraftWalkClass.GridStation
-        && inHand
-        && edge.Sequence == null
-      )
+      if (edge.Class == CraftWalkClass.GridStation && inHand && !gated)
         found.Add(
           (
             edge.Output,

@@ -35,7 +35,8 @@ public static class GridRecipeCollisionCheck {
   private static readonly Regex AdvancedHole = new(@"\{[^}]*\}");
 
   /// <summary>Every pair of grid recipes matching the same input, one of them in
-  /// <paramref name="domain"/>.</summary>
+  /// <paramref name="domain"/>. Two recipes are compared only when their <c>attributes.diagram</c>
+  /// are the same or both absent.</summary>
   /// <param name="source">The recipes to read; every domain it covers is held against
   /// <paramref name="domain"/>.</param>
   /// <param name="domain">The domain whose grid recipes are checked.</param>
@@ -93,7 +94,8 @@ public static class GridRecipeCollisionCheck {
       foreach (Craft other in (withinOwn ? own.Skip(i + 1) : []).Concat(others))
         foreach (ExlibChecks.Grid grid in grids)
           if (
-            Fits(own[i], grid.Size)
+            string.Equals(own[i].Diagram, other.Diagram, StringComparison.Ordinal)
+            && Fits(own[i], grid.Size)
             && Fits(other, grid.Size)
             && Collide(own[i], other, grid.Size)
           ) {
@@ -135,7 +137,8 @@ public static class GridRecipeCollisionCheck {
     int Left,
     int Top,
     int BoxWidth,
-    int BoxHeight
+    int BoxHeight,
+    string? Diagram = null
   );
 
   /// <summary>Every grid recipe of <paramref name="domain"/> the game loads and can
@@ -183,7 +186,10 @@ public static class GridRecipeCollisionCheck {
         left,
         top,
         filled.Max(i => i % recipe.Width) - left + 1,
-        filled.Max(i => i / recipe.Width) - top + 1
+        filled.Max(i => i / recipe.Width) - top + 1,
+        Prop(recipe.Json, "attributes") is JObject attributes
+          ? (string?)Prop(attributes, "diagram")
+          : null
       );
     }
   }
