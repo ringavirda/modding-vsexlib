@@ -160,4 +160,22 @@ public class TestPlayerInteractTests {
   }
 
   #endregion
+
+  // Fails when OffhandHotbarSlot is not the slot LeftHandItemSlot and HoldOffHand fill.
+  [Fact]
+  public void The_off_hand_is_the_inventory_managers_off_hand_slot() {
+    var (world, _, player) = Stand();
+    var stack = new ItemStack(world.RegisterItem("game:stick"));
+
+    player.HoldOffHand(stack);
+
+    Assert.Same(
+      player.Player.Entity.LeftHandItemSlot,
+      player.Player.InventoryManager.OffhandHotbarSlot
+    );
+    Assert.Same(
+      stack,
+      player.Player.InventoryManager.OffhandHotbarSlot.Itemstack
+    );
+  }
 }

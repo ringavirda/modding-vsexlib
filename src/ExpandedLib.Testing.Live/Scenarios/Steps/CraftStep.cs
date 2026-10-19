@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Catalogues;
 using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using Newtonsoft.Json;
@@ -14,7 +15,8 @@ namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>craft</c>: makes <c>output</c> the way a player does. At a station it opens the window through
 /// <see cref="WindowStep"/>'s slot clicks, lays the order's bill, presses its button, takes the tools
-/// back and the outputs, and closes. Without <c>at</c> the bill goes into the scenario player's own
+/// back and the outputs, and closes; a recipe with a craft sequence replaces the button with one
+/// held click per step, the step's tool in the active hand and its off-hand tool beside it. Without <c>at</c> the bill goes into the scenario player's own
 /// crafting grid and the product is taken from its output slot; a player with no crafting grid runs the
 /// recipe's matcher on a 3 x 3 of loose slots instead. The product goes to the hotbar.</summary>
 internal sealed class CraftStep : ScenarioStep {
@@ -79,7 +81,27 @@ internal sealed class CraftStep : ScenarioStep {
           player.Survive();
           player.Face(ctx.Setup.Absolute(local!), BlockFacing.SOUTH);
           ctx.Touched.Add(local!.Copy());
-          made.AddRange(CraftAt(ctx, player, entity, station, order, with));
+          if (
+            CraftSequenceRegistry.Shared.Sequence(order.Recipe) is { } sequence
+          ) {
+            var worked = new List<ItemStack>();
+            foreach (
+              bool more in WorkSequence(
+                ctx,
+                player,
+                entity,
+                local!,
+                station,
+                order,
+                sequence,
+                with,
+                worked
+              )
+            )
+              yield return more;
+            made.AddRange(worked);
+          } else
+            made.AddRange(CraftAt(ctx, player, entity, station, order, with));
         } else {
           player.Survive();
           how = CraftInHand(ctx, player, order, with, made);
@@ -90,11 +112,14 @@ internal sealed class CraftStep : ScenarioStep {
     }
 
     int expected = order.Product.StackSize * times;
-    int count = made.Where(s => s.Collectible.Code.Equals(wanted))
-      .Sum(s => s.StackSize);
-    if (count != expected || made.Any(s => !s.Collectible.Code.Equals(wanted)))
+    Dictionary<string, int> yielded = CraftBills.Yield(
+      order,
+      CraftSequenceRegistry.Shared.Sequence(order.Recipe),
+      times
+    );
+    if (!CraftBills.Yielded(made, yielded))
       throw new StepFailure(
-        $"{station} made {string.Join(", ", made.Select(s => $"{s.StackSize} {s.Collectible.Code}"))}, not {expected} {wanted}."
+        $"{station} made {string.Join(", ", made.Select(s => $"{s.StackSize} {s.Collectible.Code}"))}, not {string.Join(", ", yielded.Select(w => $"{w.Value} {w.Key}"))}."
       );
     foreach (ItemStack stack in made)
       PackLedger.Give(ctx, stack);
@@ -147,15 +172,24 @@ internal sealed class CraftStep : ScenarioStep {
     CraftOrder order,
     JObject? with
   ) {
-    ServerPlayer who = player.Player;
+    Lay(ctx, player.Player, entity, station, order, with);
+    entity.OnReceivedClientPacket(
+      player.Player,
+      order.PressId!.Value,
+      order.PressData
+    );
+    return Collect(player.Player, entity, station, order);
+  }
+
+  private static void Lay(
+    ScenarioContext ctx,
+    ServerPlayer who,
+    BlockEntity entity,
+    string station,
+    CraftOrder order,
+    JObject? with
+  ) {
     ItemSlot hand = who.InventoryManager.ActiveHotbarSlot;
-    var inventory = (
-      entity as IBlockEntityContainer
-      ?? throw new StepFailure(
-        $"{entity.GetType().Name} has no inventory to click.",
-        Suspect.Scenario
-      )
-    ).Inventory;
     entity.OnReceivedClientPacket(who, 1000, null);
     foreach (CraftInput input in order.Inputs) {
       ItemStack laid = PackLedger.Laid(ctx, input, with);
@@ -167,7 +201,22 @@ internal sealed class CraftStep : ScenarioStep {
           $"slot {input.Slot} of {station} took {moved} of the {laid.StackSize} {laid.Collectible.Code} laid for {input.Name}."
         );
     }
-    entity.OnReceivedClientPacket(who, order.PressId!.Value, order.PressData);
+  }
+
+  private static List<ItemStack> Collect(
+    ServerPlayer who,
+    BlockEntity entity,
+    string station,
+    CraftOrder order
+  ) {
+    ItemSlot hand = who.InventoryManager.ActiveHotbarSlot;
+    var inventory = (
+      entity as IBlockEntityContainer
+      ?? throw new StepFailure(
+        $"{entity.GetType().Name} has no inventory to click.",
+        Suspect.Scenario
+      )
+    ).Inventory;
     foreach (CraftInput input in order.Inputs.Where(i => i.Ingredient.IsTool)) {
       if (inventory[input.Slot].Empty)
         continue;
@@ -189,6 +238,59 @@ internal sealed class CraftStep : ScenarioStep {
         $"the press of {order.Product.Collectible.Code} at {station} yielded nothing: the station refused."
       );
     return taken;
+  }
+
+  /// <summary>Lays the bill at the station, holds each step of <paramref name="sequence"/> on its block
+  /// with the step's tool in the active hand and its off-hand tool, the block stepped on each runner
+  /// tick for the step's seconds, then collects the outputs into <paramref name="taken"/>.</summary>
+  private static IEnumerable<bool> WorkSequence(
+    ScenarioContext ctx,
+    ScenarioPlayer player,
+    BlockEntity entity,
+    BlockPos local,
+    string station,
+    CraftOrder order,
+    CraftSequence sequence,
+    JObject? with,
+    List<ItemStack> taken
+  ) {
+    ServerPlayer who = player.Player;
+    Lay(ctx, who, entity, station, order, with);
+    BlockPos at = ctx.Setup.Absolute(local);
+    BlockSelection selection = InteractStep.SelectionFor(
+      ctx.World.BlockAccessor,
+      at,
+      null,
+      BlockFacing.SOUTH
+    );
+    ItemSlot hand = who.InventoryManager.ActiveHotbarSlot;
+    for (int n = 0; n < sequence.Steps.Length; n++) {
+      Catalogues.CraftStep step = sequence.Steps[n];
+      string label = $"step {n + 1} of {sequence.Recipe}";
+      ItemStack? tool = PackLedger.Tool(ctx, label, step.Tool);
+      player.HoldOffhand(PackLedger.Tool(ctx, label, step.Offhand));
+      double seconds = step.Seconds + 0.1;
+      bool answered = player.UseStart(at, selection, tool, []);
+      try {
+        if (!answered)
+          throw new StepFailure(
+            $"{station} does not take the hold of {label}."
+          );
+        double started = ctx.Now;
+        bool stepped = true;
+        while (InteractStep.Goes(stepped, ctx.Now - started, seconds)) {
+          yield return true;
+          stepped = player.UseStep(selection, ctx.Now - started);
+        }
+        player.UseStop(selection, ctx.Now - started);
+      } finally {
+        PackLedger.Give(ctx, hand.Itemstack);
+        PackLedger.Give(ctx, player.Offhand);
+        hand.Itemstack = null;
+        player.HoldOffhand(null);
+      }
+    }
+    taken.AddRange(Collect(who, entity, station, order));
   }
 
   private static string CraftInHand(

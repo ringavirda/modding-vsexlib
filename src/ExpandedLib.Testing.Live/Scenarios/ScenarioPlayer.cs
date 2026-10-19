@@ -599,6 +599,13 @@ internal sealed class ScenarioPlayer : IHandRelease {
     return text;
   }
 
+  /// <summary>Puts <paramref name="stack"/> in the off-hand slot, or empties it for null.</summary>
+  public void HoldOffhand(ItemStack? stack) =>
+    Player.Entity.LeftHandItemSlot.Itemstack = stack;
+
+  /// <summary>What the off-hand slot holds, or null.</summary>
+  public ItemStack? Offhand => Player.Entity.LeftHandItemSlot.Itemstack;
+
   /// <summary>The stack the active slot holds after a step.</summary>
   /// <param name="held">What the slot holds.</param>
   /// <param name="keep">Whether the step leaves the hand as it ends.</param>

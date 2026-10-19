@@ -52,7 +52,8 @@ public static class MetalFamilyEmitter {
   public static IEnumerable<string> KnownTools => MetalToolEmitter.KnownTools;
 
   /// <summary>Every resource and tool item def for every opted-in metal in
-  /// <paramref name="metals"/>.</summary>
+  /// <paramref name="metals"/>. A resource def's <c>Code</c> is the form's base code with a one-state
+  /// <c>metal</c> group, and it registers as <c>&lt;domain&gt;:&lt;form&gt;-&lt;metal&gt;</c>.</summary>
   public static IEnumerable<ExItemDef> Emit(IEnumerable<MetalDef> metals) {
     foreach (MetalDef metal in metals) {
       if (
@@ -96,14 +97,22 @@ public static class MetalFamilyEmitter {
   private static string IngotCodeOf(MetalDef m, string domain) =>
     domain + ":ingot-" + m.Code;
 
-  // Code, asset path, and the density/storage/creative-tab surface every form shares.
+  // Anvil tier for the forms the anvil works; a null tier leaves the def without the attribute.
+  private static ExItemDef WithAnvilTier(ExItemDef def, MetalDef m) =>
+    m.RequiresAnvilTier is int tier
+      ? def.Attribute("requiresAnvilTier", tier)
+      : def;
+
+  // Code, asset path, and the density/storage/creative-tab surface every form shares, plus the
+  // one-state "metal" group vanilla's ItemIngot and ItemMetalPlate read as Variant["metal"].
   private static ExItemDef Begin(
     MetalDef m,
     string domain,
     string codePrefix
   ) =>
     ExItemDef
-      .Create(domain, codePrefix + "-" + m.Code, m.Code + "/" + codePrefix)
+      .Create(domain, codePrefix, m.Code + "/" + codePrefix)
+      .VariantGroup("metal", m.Code)
       .MaterialDensity(DensityOf(m))
       .StorageFlags(5)
       .CreativeCommon("*");
@@ -114,120 +123,123 @@ public static class MetalFamilyEmitter {
 
   private static ExItemDef Ingot(MetalDef m, string domain) {
     string texture = TextureOf(m);
-    return Begin(m, domain, "ingot")
-      .Class("ItemIngot")
-      .MaxStackSize(16)
-      .Shape("game:item/ingot")
-      // The ingot shape's texture code is #metal (item/ingot.json), not "all".
-      .Texture("metal", texture)
-      .CombustibleProps(
-        new {
-          meltingPoint = MeltOf(m),
-          meltingDuration = 30,
-          smeltedRatio = 1,
-          smeltedStack = new { type = "item", code = IngotCodeOf(m, domain) },
-        }
-      )
-      // What a shattered ingot mold gives back: the metal's SolidDrop.
-      .Attribute(
-        "shatteredStack",
-        new {
-          type = "item",
-          code = m.SolidDrop ?? domain + ":metalbit-" + m.Code,
-        }
-      )
-      .RootKey(
-        "behaviors",
-        new[]
-        {
-          new
+    return WithAnvilTier(
+      Begin(m, domain, "ingot")
+        .Class("ItemIngot")
+        .MaxStackSize(16)
+        .Shape("game:item/ingot")
+        // The ingot shape's texture code is #metal (item/ingot.json), not "all".
+        .Texture("metal", texture)
+        .CombustibleProps(
+          new {
+            meltingPoint = MeltOf(m),
+            meltingDuration = 30,
+            smeltedRatio = 1,
+            smeltedStack = new { type = "item", code = IngotCodeOf(m, domain) },
+          }
+        )
+        // What a shattered ingot mold gives back: the metal's SolidDrop.
+        .Attribute(
+          "shatteredStack",
+          new {
+            type = "item",
+            code = m.SolidDrop ?? domain + ":metalbit-" + m.Code,
+          }
+        )
+        .RootKey(
+          "behaviors",
+          new[]
           {
-            name = "GroundStorable",
-            properties = new
+            new
             {
-              layout = "Stacking",
-              placeRemoveSound = "game:sounds/block/ingot",
-              stackingModel = "game:block/metal/ingotpile",
-              stackingTextures = new { metal = texture },
-              modelItemsToStackSizeRatio = 1,
-              upSolid = true,
-              stackingCapacity = 64,
-              transferQuantity = 1,
-              bulkTransferQuantity = 4,
-              collisionBox = new
+              name = "GroundStorable",
+              properties = new
               {
-                x1 = 0,
-                y1 = 0,
-                z1 = 0,
-                x2 = 1,
-                y2 = 0.125,
-                z2 = 1,
+                layout = "Stacking",
+                placeRemoveSound = "game:sounds/block/ingot",
+                stackingModel = "game:block/metal/ingotpile",
+                stackingTextures = new { metal = texture },
+                modelItemsToStackSizeRatio = 1,
+                upSolid = true,
+                stackingCapacity = 64,
+                transferQuantity = 1,
+                bulkTransferQuantity = 4,
+                collisionBox = new
+                {
+                  x1 = 0,
+                  y1 = 0,
+                  z1 = 0,
+                  x2 = 1,
+                  y2 = 0.125,
+                  z2 = 1,
+                },
+                cbScaleYByLayer = 0.125,
               },
-              cbScaleYByLayer = 0.125,
             },
-          },
-        }
-      )
-      .GuiTransform(
-        new {
-          translation = new {
-            x = 2,
-            y = 0,
-            z = 0,
-          },
-          rotation = new {
-            x = 149,
-            y = -36,
-            z = 0,
-          },
-          origin = new {
-            x = 0.5,
-            y = 0.1,
-            z = 0.5,
-          },
-          scale = 3.5,
-        }
-      )
-      .TpHandTransform(
-        new {
-          translation = new {
-            x = -0.77,
-            y = -0.15,
-            z = -0.64,
-          },
-          rotation = new {
-            x = 0,
-            y = -71,
-            z = 18,
-          },
-          origin = new {
-            x = 0.5,
-            y = 0.1,
-            z = 0.5,
-          },
-          scale = 0.75,
-        }
-      )
-      .GroundTransform(
-        new {
-          translation = new {
-            x = 0,
-            y = 0,
-            z = 0,
-          },
-          rotation = new {
-            x = 0,
-            y = 0,
-            z = 0,
-          },
-          origin = new {
-            x = 0.5,
-            y = 0,
-            z = 0.5,
-          },
-          scale = 4.8,
-        }
-      );
+          }
+        )
+        .GuiTransform(
+          new {
+            translation = new {
+              x = 2,
+              y = 0,
+              z = 0,
+            },
+            rotation = new {
+              x = 149,
+              y = -36,
+              z = 0,
+            },
+            origin = new {
+              x = 0.5,
+              y = 0.1,
+              z = 0.5,
+            },
+            scale = 3.5,
+          }
+        )
+        .TpHandTransform(
+          new {
+            translation = new {
+              x = -0.77,
+              y = -0.15,
+              z = -0.64,
+            },
+            rotation = new {
+              x = 0,
+              y = -71,
+              z = 18,
+            },
+            origin = new {
+              x = 0.5,
+              y = 0.1,
+              z = 0.5,
+            },
+            scale = 0.75,
+          }
+        )
+        .GroundTransform(
+          new {
+            translation = new {
+              x = 0,
+              y = 0,
+              z = 0,
+            },
+            rotation = new {
+              x = 0,
+              y = 0,
+              z = 0,
+            },
+            origin = new {
+              x = 0.5,
+              y = 0,
+              z = 0.5,
+            },
+            scale = 4.8,
+          }
+        ),
+      m
+    );
   }
 
   private static ExItemDef Bits(MetalDef m, string domain) =>
@@ -334,116 +346,119 @@ public static class MetalFamilyEmitter {
 
   private static ExItemDef Plate(MetalDef m, string domain) {
     string texture = TextureOf(m);
-    return Begin(m, domain, "metalplate")
-      .Class("ItemMetalPlate")
-      .MaxStackSize(8)
-      .Shape("game:item/plate")
-      .Texture("metal", texture)
-      // A plate holds 200 units and smelts back into 2 ingots.
-      .CombustibleProps(
-        new {
-          meltingPoint = MeltOf(m),
-          meltingDuration = 30,
-          smeltedRatio = 1,
-          smeltedStack = new {
-            type = "item",
-            code = IngotCodeOf(m, domain),
-            stacksize = 2,
-          },
-        }
-      )
-      .RootKey(
-        "behaviors",
-        new[]
-        {
-          new
-          {
-            name = "GroundStorable",
-            properties = new
-            {
-              layout = "Stacking",
-              upSolid = true,
-              placeRemoveSound = "game:sounds/block/plate",
-              stackingModel = "game:block/metal/platepile",
-              stackingTextures = new { metal = texture },
-              collisionBox = new
-              {
-                x1 = 0.125,
-                y1 = 0,
-                z1 = 0.125,
-                x2 = 0.875,
-                y2 = 0.0625,
-                z2 = 0.875,
-              },
-              cbScaleYByLayer = 1,
-              modelItemsToStackSizeRatio = 1,
-              stackingCapacity = 16,
-              transferQuantity = 1,
-              bulkTransferQuantity = 4,
+    return WithAnvilTier(
+      Begin(m, domain, "metalplate")
+        .Class("ItemMetalPlate")
+        .MaxStackSize(8)
+        .Shape("game:item/plate")
+        .Texture("metal", texture)
+        // A plate holds 200 units and smelts back into 2 ingots.
+        .CombustibleProps(
+          new {
+            meltingPoint = MeltOf(m),
+            meltingDuration = 30,
+            smeltedRatio = 1,
+            smeltedStack = new {
+              type = "item",
+              code = IngotCodeOf(m, domain),
+              stacksize = 2,
             },
-          },
-        }
-      )
-      .GuiTransform(
-        new {
-          translation = new {
-            x = 3,
-            y = 0,
-            z = 0,
-          },
-          rotation = new {
-            x = -30,
-            y = -44,
-            z = -180,
-          },
-          origin = new {
-            x = 0.5,
-            y = 0.0625,
-            z = 0.5,
-          },
-          scale = 1.85,
-        }
-      )
-      .TpHandTransform(
-        new {
-          translation = new {
-            x = -0.7,
-            y = 0.1,
-            z = -0.53,
-          },
-          rotation = new {
-            x = 94,
-            y = 0,
-            z = 0,
-          },
-          origin = new {
-            x = 0.5,
-            y = 0.1,
-            z = 0.5,
-          },
-          scale = 0.75,
-        }
-      )
-      .GroundTransform(
-        new {
-          translation = new {
-            x = 0,
-            y = 0,
-            z = 0,
-          },
-          rotation = new {
-            x = 0,
-            y = 90,
-            z = 0,
-          },
-          origin = new {
-            x = 0.5,
-            y = 0,
-            z = 0.5,
-          },
-          scale = 3.31,
-        }
-      );
+          }
+        )
+        .RootKey(
+          "behaviors",
+          new[]
+          {
+            new
+            {
+              name = "GroundStorable",
+              properties = new
+              {
+                layout = "Stacking",
+                upSolid = true,
+                placeRemoveSound = "game:sounds/block/plate",
+                stackingModel = "game:block/metal/platepile",
+                stackingTextures = new { metal = texture },
+                collisionBox = new
+                {
+                  x1 = 0.125,
+                  y1 = 0,
+                  z1 = 0.125,
+                  x2 = 0.875,
+                  y2 = 0.0625,
+                  z2 = 0.875,
+                },
+                cbScaleYByLayer = 1,
+                modelItemsToStackSizeRatio = 1,
+                stackingCapacity = 16,
+                transferQuantity = 1,
+                bulkTransferQuantity = 4,
+              },
+            },
+          }
+        )
+        .GuiTransform(
+          new {
+            translation = new {
+              x = 3,
+              y = 0,
+              z = 0,
+            },
+            rotation = new {
+              x = -30,
+              y = -44,
+              z = -180,
+            },
+            origin = new {
+              x = 0.5,
+              y = 0.0625,
+              z = 0.5,
+            },
+            scale = 1.85,
+          }
+        )
+        .TpHandTransform(
+          new {
+            translation = new {
+              x = -0.7,
+              y = 0.1,
+              z = -0.53,
+            },
+            rotation = new {
+              x = 94,
+              y = 0,
+              z = 0,
+            },
+            origin = new {
+              x = 0.5,
+              y = 0.1,
+              z = 0.5,
+            },
+            scale = 0.75,
+          }
+        )
+        .GroundTransform(
+          new {
+            translation = new {
+              x = 0,
+              y = 0,
+              z = 0,
+            },
+            rotation = new {
+              x = 0,
+              y = 90,
+              z = 0,
+            },
+            origin = new {
+              x = 0.5,
+              y = 0,
+              z = 0.5,
+            },
+            scale = 3.31,
+          }
+        ),
+      m
+    );
   }
 
   private static ExItemDef Rod(MetalDef m, string domain) =>

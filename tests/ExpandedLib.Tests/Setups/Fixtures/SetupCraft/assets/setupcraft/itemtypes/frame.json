@@ -1,1 +1,1 @@
-{ "code": "frame" }
+{ "code": "frame", "maxstacksize": 64 }
