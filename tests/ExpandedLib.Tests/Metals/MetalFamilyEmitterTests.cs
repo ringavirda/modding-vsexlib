@@ -36,8 +36,12 @@ public class MetalFamilyEmitterTests {
   private static List<ExItemDef> Emit(params MetalDef[] metals) =>
     MetalFamilyEmitter.Emit(metals).ToList();
 
+  // The codes the defs register: a def's code plus its variant states, without the domain.
+  private static IEnumerable<string> Registered(ExItemDef def) =>
+    DefinitionCodes.Expand(def).Select(r => new AssetLocation(r.Code).Path);
+
   private static string[] Codes(IEnumerable<ExItemDef> defs) =>
-    defs.Select(d => d.Code).OrderBy(c => c).ToArray();
+    defs.SelectMany(Registered).OrderBy(c => c).ToArray();
 
   // A generated def is a tool iff it carries the top-level "tool" key; resource forms never do.
   private static bool IsTool(ExItemDef d) => d.ToJson()["tool"] != null;
@@ -75,10 +79,7 @@ public class MetalFamilyEmitterTests {
     List<ExItemDef> defs = Emit(Shipped("iiex", "pigiron"));
 
     // A feedstock: the cast target plus the bits a frozen heat sheds, nothing else.
-    Assert.Equal(
-      new[] { "ingot-pigiron", "metalbit-pigiron" },
-      defs.Select(d => d.Code).Order()
-    );
+    Assert.Equal(new[] { "ingot-pigiron", "metalbit-pigiron" }, Codes(defs));
     Assert.All(defs, d => Assert.Equal("iiex", d.Domain));
   }
 
@@ -153,7 +154,7 @@ public class MetalFamilyEmitterTests {
     };
 
     ExItemDef only = Assert.Single(Emit(m));
-    Assert.Equal("ingot-foo", only.Code);
+    Assert.Equal(["ingot-foo"], Registered(only));
   }
 
   [Fact]
@@ -286,7 +287,7 @@ public class MetalFamilyEmitterTests {
 
     List<ExItemDef> defs = Emit(m);
     Assert.DoesNotContain(defs, IsTool);
-    Assert.Contains(defs, d => d.Code == "ingot-foo");
+    Assert.Contains(defs, d => Registered(d).Contains("ingot-foo"));
   }
 
   [Fact]
@@ -351,7 +352,7 @@ public class MetalFamilyEmitterTests {
   public void The_ingot_sheds_the_metals_own_scrap_on_shatter() {
     // A shattered mold yields exactly what MoltenChisel recovers: the metal's own bit.
     ExItemDef ingot = Emit(Shipped("iiex", "castiron"))
-      .Single(d => d.Code == "ingot-castiron");
+      .Single(d => Registered(d).Contains("ingot-castiron"));
 
     Assert.Equal(
       "iiex:metalbit-castiron",
@@ -377,11 +378,68 @@ public class MetalFamilyEmitterTests {
   }
 
   [Fact]
+  public void An_anvil_tier_is_written_on_the_ingot_and_the_plate_only() {
+    // Fails when the attribute is dropped from a form the anvil works, or written on a form it does not.
+    MetalDef m = new() {
+      Code = "foo",
+      MoltenItem = "mymod:ingot-foo",
+      GenerateItemFamily = true,
+      ItemForms = ["ingot", "plate", "rod", "nails", "bits"],
+      RequiresAnvilTier = 3,
+    };
+
+    foreach (ExItemDef def in Emit(m)) {
+      JToken? tier = def.ToJson()["attributes"]?["requiresAnvilTier"];
+      if (Registered(def).Single() is "ingot-foo" or "metalplate-foo")
+        Assert.Equal(3, (int)tier!);
+      else
+        Assert.Null(tier);
+    }
+  }
+
+  [Fact]
+  public void Each_resource_form_carries_a_metal_group_its_loaded_item_reads() {
+    // Fails when the metal variant group is dropped: Variant["metal"] is null and vanilla's anvil lookups throw.
+    MetalDef m = new() {
+      Code = "foo",
+      MoltenItem = "mymod:ingot-foo",
+      GenerateItemFamily = true,
+      ItemForms = ["ingot", "plate", "rod", "nails", "bits"],
+    };
+    var world = new TestWorld();
+    world.RegisterVanillaClasses();
+    List<ExItemDef> defs = Emit(m);
+
+    IReadOnlyList<Item> items = world.DefineItems(defs);
+
+    Assert.All(defs, d => Assert.Equal(["foo"], d.VariantStates("metal")));
+    Assert.Equal(defs.Count, items.Count);
+    Assert.All(items, i => Assert.Equal("foo", i.Variant["metal"]));
+    Assert.Contains(items, i => i.Code.Path == "metalplate-foo");
+  }
+
+  [Fact]
+  public void A_metal_without_an_anvil_tier_writes_no_attribute() {
+    // Fails when the attribute is written for a null tier.
+    MetalDef m = new() {
+      Code = "foo",
+      MoltenItem = "mymod:ingot-foo",
+      GenerateItemFamily = true,
+      ItemForms = ["ingot", "plate"],
+    };
+
+    Assert.All(
+      Emit(m),
+      d => Assert.Null(d.ToJson()["attributes"]?["requiresAnvilTier"])
+    );
+  }
+
+  [Fact]
   public void Every_non_ingot_form_smelts_back_to_the_metals_own_ingot() {
     // Plates, rods, nails and bits recover the alloy. Tools carry no combustibleProps.
     foreach (
       ExItemDef def in Resources(Emit(Shipped("iiex", "castiron")))
-        .Where(d => d.Code != "ingot-castiron")
+        .Where(d => !Registered(d).Contains("ingot-castiron"))
     )
       Assert.Equal(
         "iiex:ingot-castiron",
