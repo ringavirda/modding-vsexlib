@@ -337,7 +337,7 @@ public class ExRightClickConstruction {
 
   private WorldInteraction[]? BuildInteractionHelp(ExConstructionStage stage) {
     var list = new List<WorldInteraction>();
-    foreach (var required in stage.RequireStacks ?? Array.Empty<ExConstructionIngredient>()) {
+    foreach (var required in stage.RequireStacks ?? []) {
       var ingredient = required.Clone();
       foreach (var wc in StoredWildCards)
         ingredient.FillPlaceHolder(wc.Key, wc.Value);
