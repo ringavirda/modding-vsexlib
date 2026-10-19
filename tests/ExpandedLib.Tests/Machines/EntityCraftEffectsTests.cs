@@ -50,7 +50,9 @@ public sealed class EntityCraftEffectsTests
     world
       .World.Received(1)
       .PlaySoundAt(
-        Arg.Is<AssetLocation>(l => l.ToString() == "game:sounds/effect/anvilhit"),
+        Arg.Is<AssetLocation>(l =>
+          l.ToString() == "game:sounds/effect/anvilhit"
+        ),
         holder,
         null,
         Arg.Is<float>(p => p >= 0.9f && p <= 1.1f),
