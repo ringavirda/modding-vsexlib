@@ -705,11 +705,10 @@ internal static class ViewGates {
   /// <summary>The side, in voxels, under which a box is a sheet that G15 holds to face the camera.</summary>
   internal const double SheetVoxels = 1;
 
-  /// <summary>The most, in degrees, a held sheet's face may be turned from the camera's line of sight.</summary>
+  /// <summary>The most, in degrees, a held sheet's face may be turned from the line of sight: the seraph's forward in third person, the eye to the sheet in first.</summary>
   internal const double SheetDegrees = 30;
 
-  /// <summary>The most, in degrees, a held block's own up axis may be turned from where the game's default block hold
-  /// carries it in the same clip.</summary>
+  /// <summary>The most, in degrees, a held block's own up axis may be turned from world vertical.</summary>
   internal const double HeldUpDegrees = 20;
 
   /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips, G12 catalogue, G14 hand.tip, G15 hand.sheet and G16 hand.up of <paramref name="group"/>. They hold for every
@@ -844,25 +843,36 @@ internal static class ViewGates {
     return side[thin] < SheetVoxels ? group.Box.Axes[thin] : null;
   }
 
-  // The seraph faces along -x of its shape's frame, and the first-person frame keeps that axis; a face turned either way
-  // along it is seen from the front or the back by the camera.
-  private static double SightAngle(Vec3d direction) =>
-    Math.Acos(Math.Clamp(Math.Abs(direction.X) / direction.Length(), 0, 1))
-    * 180
-    / Math.PI;
-
-  private static Vec3d HeldDirection(
+  // Degrees between a sheet's held normal and the line of sight, either face toward it. Third person looks along the
+  // seraph's -x; first person looks from the eye, (0, EyeHeight, 0) of the hand frame, to the sheet's centre.
+  private static double SightAngle(
     TestWorld world,
     ViewGroup group,
-    bool firstPerson,
-    Vec3d direction
+    Vec3d normal,
+    bool firstPerson
   ) {
     Mat4 m = HeldMatrix(
       group,
       HeldPose(world, group, firstPerson),
       firstPerson
     );
-    return m.Apply(direction) - m.Apply(new Vec3d());
+    Vec3d direction = m.Apply(normal) - m.Apply(new Vec3d());
+    Vec3d sight = new(1, 0, 0);
+    if (firstPerson) {
+      Vec3d centre =
+        Corners(group.Box).Aggregate(new Vec3d(), (sum, v) => sum + v) / 8;
+      sight = m.Apply(centre) - new Vec3d(0, ViewMatrices.EyeHeight, 0);
+    }
+    return Math.Acos(
+        Math.Clamp(
+          Math.Abs(Dot(direction, sight))
+            / (direction.Length() * sight.Length()),
+          0,
+          1
+        )
+      )
+      * 180
+      / Math.PI;
   }
 
   private static GateReading Sheet(
@@ -871,7 +881,7 @@ internal static class ViewGates {
     Vec3d normal,
     bool firstPerson
   ) {
-    double angle = SightAngle(HeldDirection(world, group, firstPerson, normal));
+    double angle = SightAngle(world, group, normal, firstPerson);
     return new GateReading(
       "G15",
       firstPerson ? "hand.sheet.fp" : "hand.sheet",
@@ -881,7 +891,7 @@ internal static class ViewGates {
       SheetDegrees,
       null,
       angle <= SheetDegrees,
-      $"the sheet's face {Fmt(angle)} degrees from the camera above {Fmt(SheetDegrees)}"
+      $"the sheet's face {Fmt(angle)} degrees from the line of sight above {Fmt(SheetDegrees)}"
     );
   }
 
@@ -890,26 +900,14 @@ internal static class ViewGates {
     ViewGroup group,
     bool firstPerson
   ) {
-    var up = new Vec3d(0, 1, 0);
-    Vec3d held = HeldDirection(world, group, firstPerson, up);
-    Vec3d carried = HeldDirection(
-      world,
-      group with {
-        Hand = ViewMatrices.Default(true, ViewTarget.Hand),
-      },
-      firstPerson,
-      up
+    Mat4 m = HeldMatrix(
+      group,
+      HeldPose(world, group, firstPerson),
+      firstPerson
     );
+    Vec3d held = m.Apply(new Vec3d(0, 1, 0)) - m.Apply(new Vec3d());
     double tilt =
-      Math.Acos(
-        Math.Clamp(
-          Dot(held, carried) / (held.Length() * carried.Length()),
-          -1,
-          1
-        )
-      )
-      * 180
-      / Math.PI;
+      Math.Acos(Math.Clamp(held.Y / held.Length(), -1, 1)) * 180 / Math.PI;
     return new GateReading(
       "G16",
       firstPerson ? "hand.up.fp" : "hand.up",
@@ -919,7 +917,7 @@ internal static class ViewGates {
       HeldUpDegrees,
       null,
       tilt <= HeldUpDegrees,
-      $"the block's up axis {Fmt(tilt)} degrees off the default hold's above {Fmt(HeldUpDegrees)}"
+      $"the block's up axis {Fmt(tilt)} degrees off vertical above {Fmt(HeldUpDegrees)}"
     );
   }
 

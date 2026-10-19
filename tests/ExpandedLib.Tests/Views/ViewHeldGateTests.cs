@@ -40,12 +40,21 @@ public class ViewHeldGateTests {
     };
   }
 
-  private static ViewGroup Block(float x) {
-    ViewGroup hay = GroupOf("game", "game:hay-normal-ud");
-    ModelTransform hand = hay.Hand.Clone();
-    hand.Rotation = new FastVec3f(x, hand.Rotation.Y, hand.Rotation.Z);
-    return hay with { Hand = hand };
+  // The vanilla barrel's hold, upright, with its hand z rotation moved by dz degrees.
+  private static ViewGroup Barrel(float dz) {
+    ViewGroup barrel = GroupOf("game", "game:barrel");
+    ModelTransform hand = barrel.Hand.Clone();
+    hand.Rotation = new FastVec3f(
+      hand.Rotation.X,
+      hand.Rotation.Y,
+      hand.Rotation.Z + dz
+    );
+    return barrel with { Hand = hand };
   }
+
+  // Hay held with the game's default block rotation, which carries it on its side.
+  private static ViewGroup DefaultHeldHay() =>
+    GroupOf("game", "game:hay-normal-ud");
 
   private static string[] Failing(ViewGroup group) =>
     [
@@ -58,10 +67,13 @@ public class ViewHeldGateTests {
   private static double Value(ViewGroup group, string name) =>
     ViewGates.Rules(World, group).Single(r => r.Name == name).Value;
 
+  private static bool Passes(ViewGroup group, string name) =>
+    ViewGates.Rules(World, group).Single(r => r.Name == name).Pass;
+
   // Fails when G15 is not read: the sheet turned a quarter about the vertical then passes.
   [Fact]
   public void A_sheet_turned_edge_on_fails_G15() {
-    Assert.Empty(Failing(Sheet(0.5, 270, 210)));
+    Assert.True(Passes(Sheet(0.5, 270, 210), "hand.sheet"));
 
     ViewGroup turned = Sheet(0.5, 270, 120);
 
@@ -70,14 +82,24 @@ public class ViewHeldGateTests {
     Assert.True(Value(turned, "hand.sheet.fp") > ViewGates.SheetDegrees);
   }
 
-  // Fails when G15 measures the wrong axis of the box: the sheet's face, at 13 and 21 degrees from the camera, then reads
-  // as the angle of an edge and the values differ.
+  // Fails when G15 measures the wrong axis of the box, or in first person against the forward axis instead of the line
+  // from the eye to the sheet: the third-person value then reads another angle and the first-person one reads 21.
   [Fact]
-  public void G15_reads_the_angle_of_the_face_to_the_camera() {
+  public void G15_reads_the_angle_of_the_face_to_the_line_of_sight() {
     ViewGroup facing = Sheet(0.5, 270, 210);
 
     Assert.InRange(Value(facing, "hand.sheet"), 13 - 1, 13 + 1);
-    Assert.InRange(Value(facing, "hand.sheet.fp"), 21 - 1, 21 + 1);
+    Assert.InRange(Value(facing, "hand.sheet.fp"), 75.6 - 1, 75.6 + 1);
+  }
+
+  // Fails when SheetDegrees moves off 30: the sheets at 27.8 and 32.8 degrees in third person, and at 28.9 and 31.3 in
+  // first, then pass or fail together.
+  [Fact]
+  public void G15_limit_is_thirty_degrees() {
+    Assert.True(Passes(Sheet(0.5, 270, 15), "hand.sheet"));
+    Assert.False(Passes(Sheet(0.5, 270, 10), "hand.sheet"));
+    Assert.True(Passes(Sheet(0.5, 120, 0), "hand.sheet.fp"));
+    Assert.False(Passes(Sheet(0.5, 115, 0), "hand.sheet.fp"));
   }
 
   // Fails when the sheet bound is inclusive or removed: the 1 voxel fixture then reads G15, and its upright hold
@@ -93,17 +115,27 @@ public class ViewHeldGateTests {
     );
   }
 
-  // Fails when G16 is not read, or reads the world's up for the block's: a hay block tipped a quarter in the hand then
-  // passes.
+  // Fails when G16 is not read, or reads the angle to the default hold's up instead of to world vertical: hay in the
+  // default hold, 69 and 88 degrees off vertical, then reads 0 and passes, and the barrel's upright hold fails.
   [Fact]
   public void A_block_held_on_its_side_fails_G16() {
-    Assert.Empty(Failing(Block(0)));
+    Assert.Empty(Failing(Barrel(0)));
 
-    ViewGroup tipped = Block(90);
+    ViewGroup tipped = DefaultHeldHay();
 
     Assert.Equal(["G16", "G16fp"], Failing(tipped));
-    Assert.InRange(Value(tipped, "hand.up"), 85 - 1, 85 + 1);
-    Assert.InRange(Value(tipped, "hand.up.fp"), 85 - 1, 85 + 1);
+    Assert.InRange(Value(tipped, "hand.up"), 69.2 - 1, 69.2 + 1);
+    Assert.InRange(Value(tipped, "hand.up.fp"), 88 - 1, 88 + 1);
+  }
+
+  // Fails when HeldUpDegrees moves off 20: the barrel at 18.3 and 22.3 degrees in third person, and at 17.7 and 21.7 in
+  // first, then pass or fail together.
+  [Fact]
+  public void G16_limit_is_twenty_degrees() {
+    Assert.True(Passes(Barrel(-14), "hand.up"));
+    Assert.False(Passes(Barrel(-18), "hand.up"));
+    Assert.True(Passes(Barrel(-2), "hand.up.fp"));
+    Assert.False(Passes(Barrel(2), "hand.up.fp"));
   }
 
   // Fails when G16 is read on an item: the fixture sheet then carries a hand.up row.
@@ -114,7 +146,7 @@ public class ViewHeldGateTests {
       r => r.Gate == "G16"
     );
     Assert.DoesNotContain(
-      ViewGates.Rules(World, Block(0)),
+      ViewGates.Rules(World, Barrel(0)),
       r => r.Gate == "G15"
     );
   }
