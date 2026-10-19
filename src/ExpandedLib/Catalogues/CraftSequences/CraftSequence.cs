@@ -9,23 +9,55 @@ namespace ExpandedLib.Catalogues;
 /// <param name="Tool">Item code the active-hand stack must match, wildcards allowed; null for bare hands.</param>
 /// <param name="Offhand">Item code the off-hand stack must match; null when the off hand is not checked.</param>
 /// <param name="Seconds">How long the step is held. Above 0.</param>
-/// <param name="Animation">Hand animation to play; null for the tool's own.</param>
+/// <param name="Animation">Entity animation code played on the holder at each stroke; null for the held
+/// tool's <see cref="CraftToolDefault"/>, and none when it has none.</param>
 /// <param name="Help">Lang key of the interaction-help line shown beside the step's tool; null for none.</param>
 /// <param name="At">Where the step is worked: <see cref="CraftStep.Vice"/>, which waits while the vice is
 /// open, or null for the top.</param>
+/// <param name="Sound">Asset path of the sound played at each stroke; null for the held tool's
+/// <see cref="CraftToolDefault"/>, and none when it has none.</param>
 public sealed record CraftStep(
   string? Tool,
   string? Offhand,
   float Seconds,
   string? Animation,
   string? Help,
-  string? At
+  string? At,
+  string? Sound = null
 ) {
   /// <summary>What a step takes when it declares no time of its own.</summary>
   public const float DefaultSeconds = 1f;
 
   /// <summary>The <see cref="At"/> value of a step worked in the face vice.</summary>
   public const string Vice = "vice";
+}
+
+/// <summary>What a held tool does at each stroke of a step that names no animation or sound of its own.</summary>
+/// <param name="Tool">Item code the held stack must match, wildcards allowed.</param>
+/// <param name="Animation">Entity animation code started on the holder at each stroke; null for none.</param>
+/// <param name="Sound">Asset path of the sound played at each stroke; null for none.</param>
+/// <param name="Stroke">Seconds from one stroke to the next. Above 0.</param>
+/// <param name="Strike">Seconds into a stroke at which the sound plays. From 0 up to <paramref name="Stroke"/>.</param>
+public sealed record CraftToolDefault(
+  string Tool,
+  string? Animation,
+  string? Sound,
+  float Stroke = CraftToolDefault.DefaultStroke,
+  float Strike = CraftToolDefault.DefaultStrike
+) {
+  /// <summary>The stroke of vanilla's anvil swing: its 30 frames at 1.33 times speed end at 0.73 s and
+  /// the clip stays active through its ease-out, and the engine drops a start while the clip is
+  /// active.</summary>
+  public const float DefaultStroke = 1.05f;
+
+  /// <summary>The strike of vanilla's anvil hit: soundAtFrame 16 over the 1.33 speed, frame 12 of 30, as
+  /// ItemHammer reads it.</summary>
+  public const float DefaultStrike = 0.3f;
+
+  /// <summary>The hammer's default, vanilla's anvil swing and hit: the default of every registry before
+  /// any declaration.</summary>
+  public static CraftToolDefault Hammer { get; } =
+    new("game:hammer-*", "hammerhit", "sounds/effect/anvilhit");
 }
 
 /// <summary>A stack a craft sheds beside its product.</summary>
@@ -49,10 +81,12 @@ public sealed record CraftSequence(
 /// <param name="Schema">Schema version of the declaration.</param>
 /// <param name="Machine">The machine these sequences belong to, e.g. <c>workbench</c>.</param>
 /// <param name="Sequences">The sequences, in declaration order.</param>
+/// <param name="Tools">The per-tool stroke defaults the file declares; null for none.</param>
 public sealed record CraftSequenceSet(
   int Schema,
   string Machine,
-  CraftSequence[] Sequences
+  CraftSequence[] Sequences,
+  CraftToolDefault[]? Tools = null
 ) {
   /// <summary>The schema this parser writes and reads up to.</summary>
   public const int CurrentSchema = SpecSchema.First;
@@ -110,7 +144,8 @@ public sealed record CraftSequenceSet(
             seconds,
             Blank(stepNode["animation"].AsString("")),
             Blank(stepNode["help"].AsString("")),
-            at
+            at,
+            Blank(stepNode["sound"].AsString(""))
           )
         );
       }
@@ -140,7 +175,31 @@ public sealed record CraftSequenceSet(
       sequences.Add(new CraftSequence(recipe, [.. steps], [.. byproducts]));
     }
 
-    set = new CraftSequenceSet(schema, machine, [.. sequences]);
+    var tools = new List<CraftToolDefault>();
+    foreach (JsonObject toolNode in node["tools"].AsArray() ?? []) {
+      string tool = toolNode["tool"].AsString("");
+      if (string.IsNullOrWhiteSpace(tool)) {
+        error = $"{machine}: a tool default names no 'tool'";
+        return false;
+      }
+      string? animation = Blank(toolNode["animation"].AsString(""));
+      string? sound = Blank(toolNode["sound"].AsString(""));
+      if (animation == null && sound == null) {
+        error =
+          $"{machine}: the tool default of '{tool}' names no animation or sound";
+        return false;
+      }
+      float stroke = toolNode["stroke"].AsFloat(CraftToolDefault.DefaultStroke);
+      float strike = toolNode["strike"].AsFloat(CraftToolDefault.DefaultStrike);
+      if (stroke <= 0f || strike < 0f || strike >= stroke) {
+        error =
+          $"{machine}: the tool default of '{tool}' strikes at {strike} seconds of a {stroke} second stroke";
+        return false;
+      }
+      tools.Add(new CraftToolDefault(tool, animation, sound, stroke, strike));
+    }
+
+    set = new CraftSequenceSet(schema, machine, [.. sequences], [.. tools]);
     return true;
   }
 

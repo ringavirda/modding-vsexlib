@@ -298,16 +298,14 @@ public class ExRightClickConstruction {
   private readonly Dictionary<string, string> hintWildCards = new();
 
   /// <summary>The build-material hover help for the next stage.</summary>
-  /// <returns>One interaction per required ingredient listing the stacks that satisfy it, or null
-  /// when construction is complete, the stage requires nothing, or an ingredient does not
-  /// resolve. The last answer is kept while the stages, the next stage and the stored variants
+  /// <returns>One interaction per required ingredient listing the stacks that satisfy it, a single
+  /// stack-less interaction when the stage requires nothing, or null when construction is
+  /// complete or an ingredient does not resolve. The last answer is kept while the stages, the next stage and the stored variants
   /// are unchanged, and the world is scanned once per distinct filled ingredient. The arrays are
   /// shared; callers do not mutate them.</returns>
   public WorldInteraction[]? GetInteractionHelp() {
     int next = CurrentCompletedStage + 1;
     if (next >= Stages.Length)
-      return null;
-    if (Stages[next].RequireStacks == null)
       return null;
     if (
       hintStages == Stages
@@ -339,7 +337,7 @@ public class ExRightClickConstruction {
 
   private WorldInteraction[]? BuildInteractionHelp(ExConstructionStage stage) {
     var list = new List<WorldInteraction>();
-    foreach (var required in stage.RequireStacks!) {
+    foreach (var required in stage.RequireStacks ?? []) {
       var ingredient = required.Clone();
       foreach (var wc in StoredWildCards)
         ingredient.FillPlaceHolder(wc.Key, wc.Value);
@@ -364,7 +362,7 @@ public class ExRightClickConstruction {
         }
       );
     }
-    if (stage.RequireStacks.Length == 0)
+    if (list.Count == 0)
       list.Add(
         new WorldInteraction {
           ActionLangCode = stage.ActionLangCode,

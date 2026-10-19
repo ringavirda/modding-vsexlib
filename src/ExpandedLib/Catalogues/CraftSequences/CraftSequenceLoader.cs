@@ -15,12 +15,21 @@ public sealed class CraftSequenceLoader
 
   private static readonly CraftSequenceLoader _instance = new();
 
-  // The root keys CraftSequenceSet.TryParse reads, and the keys each sequence, step and byproduct reads.
+  // The root keys CraftSequenceSet.TryParse reads, and the keys each tool default, sequence, step and byproduct reads.
   private static readonly HashSet<string> RootKeys =
   [
     "schema",
     "machine",
     "sequences",
+    "tools",
+  ];
+  private static readonly HashSet<string> ToolKeys =
+  [
+    "tool",
+    "animation",
+    "sound",
+    "stroke",
+    "strike",
   ];
   private static readonly HashSet<string> SequenceKeys =
   [
@@ -36,6 +45,7 @@ public sealed class CraftSequenceLoader
     "animation",
     "help",
     "at",
+    "sound",
   ];
   private static readonly HashSet<string> ByproductKeys =
   [
@@ -53,6 +63,9 @@ public sealed class CraftSequenceLoader
     [
       .. JsonKeyAudit.UnknownKeys(root, RootKeys),
       .. (root["sequences"].AsArray() ?? []).SelectMany(SequenceUnknownKeys),
+      .. (root["tools"].AsArray() ?? []).SelectMany(tool =>
+        JsonKeyAudit.UnknownKeys(tool, ToolKeys)
+      ),
     ];
 
   private static IEnumerable<string> SequenceUnknownKeys(JsonObject sequence) =>

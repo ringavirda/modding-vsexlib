@@ -1,4 +1,5 @@
 #if GAME_GE_1_22
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Catalogues;
@@ -63,6 +64,114 @@ public sealed class CraftSequenceTests
     Assert.Equal("iiex:craftstep-shaft-hand-1", sequence.Steps[0].Help);
     CraftByproduct byproduct = Assert.Single(sequence.Byproducts);
     Assert.Equal("iiex:metalbit-castiron", byproduct.Code);
+  }
+
+  // Fails when the loader drops a step's sound or a file's tool defaults.
+  [Fact]
+  public void A_step_sound_and_the_tool_defaults_load()
+  {
+    List<CraftSequenceSet> sets = Parse(
+      out List<string> errors,
+      """
+      {
+        "machine": "workbench",
+        "tools": [ { "tool": "iiex:file-*", "animation": "filing", "sound": "sounds/effect/file", "stroke": 1.5, "strike": 0.5 } ],
+        "sequences": [ { "recipe": "iiex:r", "steps": [ { "tool": "game:hammer-*", "sound": "sounds/effect/rivet" } ] } ]
+      }
+      """
+    );
+
+    Assert.Empty(errors);
+    CraftSequenceSet set = Assert.Single(sets);
+    Assert.Equal("sounds/effect/rivet", set.Sequences[0].Steps[0].Sound);
+    Assert.Equal(
+      new CraftToolDefault(
+        "iiex:file-*",
+        "filing",
+        "sounds/effect/file",
+        1.5f,
+        0.5f
+      ),
+      Assert.Single(set.Tools!)
+    );
+  }
+
+  // Fails when the loader accepts a tool default that names nothing to play or strikes outside its stroke.
+  [Theory]
+  [InlineData("""{ "tool": "x" }""", "no animation or sound")]
+  [InlineData("""{ "animation": "a" }""", "no 'tool'")]
+  [InlineData(
+    """{ "tool": "x", "animation": "a", "stroke": 1, "strike": 1 }""",
+    "strikes at"
+  )]
+  [InlineData("""{ "tool": "x", "animation": "a", "sped": 1 }""", "sped")]
+  public void A_malformed_tool_default_is_reported_and_skipped(
+    string tool,
+    string message
+  )
+  {
+    List<CraftSequenceSet> sets = Parse(
+      out List<string> errors,
+      $$"""{ "machine": "workbench", "tools": [ {{tool}} ], "sequences": [] }"""
+    );
+
+    Assert.Empty(sets);
+    Assert.Contains(message, Assert.Single(errors));
+  }
+
+  // Fails when a declared default does not replace the hammer's or the latest pattern does not win,
+  // or Clear drops the built-in hammer.
+  [Fact]
+  public void The_registry_starts_with_the_hammer_and_a_declaration_overrides_it()
+  {
+    var registry = new CraftSequenceRegistry();
+    Assert.Equal(
+      "hammerhit",
+      registry.ToolDefault("game:hammer-steel")?.Animation
+    );
+    Assert.Null(registry.ToolDefault("game:saw-iron"));
+    Assert.Null(registry.ToolDefault(null));
+
+    registry.DefineTool(new CraftToolDefault("game:hammer-*", "slam", null));
+    Assert.Equal("slam", registry.ToolDefault("game:hammer-steel")?.Animation);
+    Assert.Single(registry.Tools);
+
+    registry.DefineTool(new CraftToolDefault("game:*", "swing", null));
+    Assert.Equal("swing", registry.ToolDefault("game:hammer-steel")?.Animation);
+
+    registry.Clear();
+    Assert.Equal(
+      "hammerhit",
+      registry.ToolDefault("game:hammer-steel")?.Animation
+    );
+  }
+
+  // Fails when a tool default of stroke 0 or less is accepted, which hangs the run at its first hold.
+  [Theory]
+  [InlineData(0f)]
+  [InlineData(-1f)]
+  public void A_tool_default_with_no_stroke_is_refused(float stroke)
+  {
+    var tools = new CraftSequenceRegistry();
+
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+      tools.DefineTool(new CraftToolDefault("x", "a", null, stroke, 0f))
+    );
+  }
+
+  // Fails when a tool default that strikes before its stroke starts, or at or after it ends, is accepted.
+  [Theory]
+  [InlineData(-0.1f)]
+  [InlineData(1f)]
+  public void A_tool_default_that_strikes_outside_its_stroke_is_refused(
+    float strike
+  )
+  {
+    var tools = new CraftSequenceRegistry();
+
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+      tools.DefineTool(new CraftToolDefault("x", "a", null, 1f, strike))
+    );
   }
 
   // Fails when the loader accepts a sequence with no steps.
@@ -182,6 +291,31 @@ public sealed class CraftSequenceTests
       using (CraftSequenceGate.At("lathe"))
         Assert.False(Matches(world, sequenced));
       Assert.False(Matches(world, sequenced));
+    }
+    finally
+    {
+      CraftSequenceRegistry.Shared.Clear();
+    }
+  }
+
+  // Fails when the harness asks every handler for a yes, which the game does not: it answers with the last one
+  // subscribed, so a later handler's true overrides the gate.
+  [Fact]
+  public void The_last_subscribed_handler_answers_the_match()
+  {
+    CraftSequenceRegistry.Shared.Clear();
+    try
+    {
+      CraftSequenceLoader.Load([
+        ("iiex:config/craftsequences/w.json", ShaftHand),
+      ]);
+      using var world = new TestWorld();
+      CraftSequenceGate.Register(world.Api.Event);
+      GridRecipe sequenced = Recipe("iiex:shaft hand");
+
+      world.Api.Event.MatchesGridRecipe += (_, _, _, _) => true;
+
+      Assert.True(Matches(world, sequenced));
     }
     finally
     {

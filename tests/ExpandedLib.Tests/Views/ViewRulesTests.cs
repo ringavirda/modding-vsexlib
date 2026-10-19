@@ -28,6 +28,12 @@ public class ViewRulesTests {
   private static ViewGroup GroupOf(string code) =>
     ViewGates.Groups(World, "game").Single(g => g.Codes.Contains(code));
 
+  // Hay in the barrel's upright hold, so that a test of another gate is not also a test of G16.
+  private static ViewGroup UprightHay() =>
+    GroupOf("game:hay-normal-ud") with {
+      Hand = GroupOf("game:barrel").Hand,
+    };
+
   private static string[] Failing(ViewGroup group) =>
     [
       .. ViewGates
@@ -58,7 +64,7 @@ public class ViewRulesTests {
   // ground then passes.
   [Fact]
   public void A_block_off_its_upright_fails_G4() {
-    ViewGroup hay = GroupOf("game:hay-normal-ud");
+    ViewGroup hay = UprightHay();
     Assert.Empty(Failing(hay));
 
     ModelTransform leaning = hay.Ground.Clone();
@@ -83,7 +89,7 @@ public class ViewRulesTests {
   // passes.
   [Fact]
   public void A_thin_block_is_judged_by_its_flat_extent() {
-    ViewGroup hay = GroupOf("game:hay-normal-ud");
+    ViewGroup hay = UprightHay();
     ViewGroup slab = hay with {
       Box = hay.Box with {
         From = new Vec3d(0, 0, 0),
@@ -126,7 +132,7 @@ public class ViewRulesTests {
       0.01
     );
 
-    ViewGroup hay = GroupOf("game:hay-normal-ud");
+    ViewGroup hay = UprightHay();
     Assert.True(ViewGates.HeldFloor(World, hay, true) >= 0);
 
     ModelTransform lowHay = hay.Hand.Clone();
@@ -226,7 +232,7 @@ public class ViewRulesTests {
     Assert.Empty(Failing(plate with { Held = "holdbothhandslarge" }));
     Assert.Equal(["G11"], Failing(plate with { Held = "spearidle" }));
 
-    ViewGroup hay = GroupOf("game:hay-normal-ud");
+    ViewGroup hay = UprightHay();
     CollectibleObject block = hay.Representative;
     string? authored = block.HeldRightTpIdleAnimation;
     try {

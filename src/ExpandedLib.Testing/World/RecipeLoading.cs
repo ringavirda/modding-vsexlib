@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Machines;
 using ExpandedLib.Registries;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
@@ -259,7 +260,17 @@ public sealed partial class TestWorld
     var recipeHandlers = new List<MatchRecipeDelegate>();
     events
       .When(e => e.MatchesGridRecipe += Arg.Any<MatchGridRecipeDelegate>())
-      .Do(ci => gridHandlers.Add(ci.Arg<MatchGridRecipeDelegate>()));
+      .Do(ci =>
+      {
+        // Exlib starts at 0.06, ahead of the survival mod and every consumer, so its gate answers first.
+        MatchGridRecipeDelegate handler = ci.Arg<MatchGridRecipeDelegate>();
+        gridHandlers.Insert(
+          handler.Method.DeclaringType == typeof(CraftSequenceGate)
+            ? 0
+            : gridHandlers.Count,
+          handler
+        );
+      });
     events
       .When(e => e.MatchesRecipe += Arg.Any<MatchRecipeDelegate>())
       .Do(ci => recipeHandlers.Add(ci.Arg<MatchRecipeDelegate>()));
@@ -271,15 +282,18 @@ public sealed partial class TestWorld
         Arg.Any<int>()
       )
       .Returns(ci =>
-        gridHandlers.All(h =>
-          h(
+      {
+        // A multicast delegate answers with its last handler, as the game's trigger does.
+        bool answer = true;
+        foreach (MatchGridRecipeDelegate h in gridHandlers)
+          answer = h(
             ci.Arg<IPlayer>(),
             ci.Arg<GridRecipe>(),
             ci.Arg<ItemSlot[]>(),
             ci.Arg<int>()
-          )
-        )
-      );
+          );
+        return answer;
+      });
     events
       .TriggerMatchesRecipe(
         Arg.Any<IPlayer>(),
@@ -287,10 +301,16 @@ public sealed partial class TestWorld
         Arg.Any<ItemSlot[]>()
       )
       .Returns(ci =>
-        recipeHandlers.All(h =>
-          h(ci.Arg<IPlayer>(), ci.Arg<IRecipeBase>(), ci.Arg<ItemSlot[]>())
-        )
-      );
+      {
+        bool answer = true;
+        foreach (MatchRecipeDelegate h in recipeHandlers)
+          answer = h(
+            ci.Arg<IPlayer>(),
+            ci.Arg<IRecipeBase>(),
+            ci.Arg<ItemSlot[]>()
+          );
+        return answer;
+      });
   }
 }
 #endif
