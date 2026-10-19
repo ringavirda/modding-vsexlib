@@ -63,6 +63,13 @@ public class ExpandedLibModSystem : ModSystem {
       Checks.AssetCheckSource.NoteHeldRecipes(api);
     if (ExWorldState.ResetsOnLoad(api))
       LoadCatalogues(api);
+#if GAME_GE_1_22
+    if (api.Side == EnumAppSide.Server)
+      api.Logger.Notification(
+        "[exlib] {0} station recipes hidden from the handbook's Created by.",
+        Machines.RecipeDiagram.HideStationRecipes(api.World)
+      );
+#endif
     ItemViewsPass.Run(api);
   }
 

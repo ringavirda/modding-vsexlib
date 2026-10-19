@@ -97,5 +97,8 @@
   "pipe-medium-exhaust": "Вихлоп",
   "pipe-medium-steam": "Пара",
   "pipe-medium-unknown": "Газ",
-  "pipe-medium-water": "Вода"
+  "pipe-medium-water": "Вода",
+  "handbook-madeat": "Де виготовляється",
+  "handbook-madeat-line": "{0}: {1}",
+  "handbook-diagram-makes": "Вироби"
 }

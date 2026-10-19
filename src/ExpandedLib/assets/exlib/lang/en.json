@@ -97,5 +97,8 @@
   "pipe-medium-exhaust": "Exhaust",
   "pipe-medium-steam": "Steam",
   "pipe-medium-unknown": "Gas",
-  "pipe-medium-water": "Water"
+  "pipe-medium-water": "Water",
+  "handbook-madeat": "Made at",
+  "handbook-madeat-line": "{0}, from the {1}",
+  "handbook-diagram-makes": "Makes"
 }
