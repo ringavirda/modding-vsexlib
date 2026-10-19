@@ -151,9 +151,7 @@ public class TestPlayerInteractTests {
     Assert.False(player.CtrlHeld);
   }
 
-  // Fails when a sneak click with a placeable block in hand reaches the clicked block's interact before
-  // the placement, or places in place of the interact when the clicked block sets PlacedPriorityInteract
-  // or the placement fails.
+  // Fails when sneak with a placeable block does not place first, or places past PlacedPriorityInteract.
   [Theory]
   [InlineData(true, false, true, false, 0, 0)]
   [InlineData(false, false, true, true, 1, 1)]

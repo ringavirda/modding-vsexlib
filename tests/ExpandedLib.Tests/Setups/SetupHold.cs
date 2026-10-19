@@ -73,6 +73,8 @@ internal sealed class SetupHoldBlock : Block, IIgnitable
   public ItemStack? HeldAtStart;
   public float HeldTemperature;
 
+  public SetupHoldBlock() => PlacedPriorityInteract = true;
+
   public override bool OnBlockInteractStart(
     IWorldAccessor world,
     IPlayer byPlayer,
