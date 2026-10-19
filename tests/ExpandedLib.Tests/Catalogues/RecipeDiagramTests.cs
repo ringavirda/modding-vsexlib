@@ -97,6 +97,15 @@ public sealed class RecipeDiagramTests
     Assert.True((bool)spent["attributes"]!["consumeDiagram"]!);
   }
 
+  // Fails when Consumes drops the Of check: a recipe with no diagram then consumes.
+  [Fact]
+  public void Only_a_keyed_recipe_consumes_its_diagram()
+  {
+    Assert.True(RecipeDiagram.Consumes(Recipe(Canal, consume: true)));
+    Assert.False(RecipeDiagram.Consumes(Recipe(Canal)));
+    Assert.False(RecipeDiagram.Consumes(Recipe(null, consume: true)));
+  }
+
   // Fails when Ingredient marks a spent diagram as a tool, or a kept one as not.
   [Fact]
   public void A_spent_diagram_is_no_tool()
@@ -158,8 +167,8 @@ public sealed class RecipeDiagramTests
     Assert.False(spec.Accepts(null));
   }
 
-  // Fails when MachineStationInventory ranks a typed input no higher than an input taking anything:
-  // a shift-clicked diagram then goes to the first slot, the grid.
+  // Fails when MachineStationInventory ranks a typed input no higher than an input taking anything,
+  // or TypedBonus drops to 1: a shift-clicked diagram then merges into the grid cell holding one.
   [Fact]
   public void A_shift_clicked_diagram_goes_to_the_typed_slot()
   {
@@ -180,6 +189,10 @@ public sealed class RecipeDiagramTests
     Assert.Same(inventory[0], inventory.GetBestSuitedSlot(Held(stick)).slot);
 
     inventory[2].Itemstack = new ItemStack(diagram, 1);
+    Assert.Same(inventory[2], inventory.GetBestSuitedSlot(Held(diagram)).slot);
+
+    inventory[2].Itemstack = null;
+    inventory[0].Itemstack = new ItemStack(diagram, 1);
     Assert.Same(inventory[2], inventory.GetBestSuitedSlot(Held(diagram)).slot);
   }
 }

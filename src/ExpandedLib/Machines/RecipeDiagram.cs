@@ -34,7 +34,8 @@ public static class RecipeDiagram
   /// <returns>True when <c>attributes.consumeDiagram</c> is true; false when it is absent or false,
   /// and for a recipe with no diagram.</returns>
   public static bool Consumes(GridRecipe recipe) =>
-    recipe.Attributes?[ConsumeAttribute].AsBool(false) ?? false;
+    Of(recipe) != null
+    && (recipe.Attributes?[ConsumeAttribute].AsBool(false) ?? false);
 
   /// <summary>Whether <paramref name="collectible"/> is a diagram: its code path starts
   /// <c>diagram-</c>, in any domain.</summary>
