@@ -23,7 +23,8 @@ public static class WindowLayout {
   /// elements with the same parent bounds whose rectangles share more than half a pixel in both
   /// axes; <c>outside</c>, an element whose rectangle leaves the dialog's. Content elements are
   /// every element except dialog backgrounds, insets, clip markers and hover texts, which sit under
-  /// or beside content by design; hover texts are also skipped by the text rules. Buttons size themselves to their text
+  /// or beside content by design, so passive item slots (<see cref="GuiElementPassiveItemSlot"/>),
+  /// scrollbars and custom elements are compared; hover texts are also skipped by the text rules. Buttons size themselves to their text
   /// and are not measured for fit.</remarks>
   /// <param name="composer">A composed composer made on a <see cref="WindowRig"/>; composed here when
   /// it is not.</param>
