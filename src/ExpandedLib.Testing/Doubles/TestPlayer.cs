@@ -209,6 +209,42 @@ public sealed class TestPlayer {
     return allowed;
   }
 
+  private bool GiveToHotbar(ItemStack stack) {
+    if (stack.StackSize == 0)
+      return false;
+    ItemStack? held = _activeSlot.Itemstack;
+    ItemSlot active = Hotbar[_activeNumber];
+    if (held != null && active.Itemstack == null)
+      active.Itemstack = held;
+    try {
+      var source = new DummySlot(stack);
+      var op = new ItemStackMoveOperation(
+        _world.World,
+        EnumMouseButton.Left,
+        0,
+        EnumMergePriority.AutoMerge,
+        stack.StackSize
+      );
+      var skipped = new List<ItemSlot>();
+      bool placed = false;
+      while (source.StackSize > 0) {
+        ItemSlot? target = Hotbar.GetBestSuitedSlot(source, op, skipped).slot;
+        if (target == null)
+          break;
+        skipped.Add(target);
+        placed = true;
+        op.RequestedQuantity = source.StackSize;
+        source.TryPutInto(target, ref op);
+      }
+      if (source.Itemstack == null)
+        stack.StackSize = 0;
+      return placed;
+    } finally {
+      if (held != null && ReferenceEquals(active.Itemstack, held))
+        active.Itemstack = null;
+    }
+  }
+
   private void DropIfTooHot() {
     ItemStack? stack = _activeSlot.Itemstack;
     if (stack == null || GameMode == EnumGameMode.Creative)
@@ -484,6 +520,9 @@ public sealed class TestPlayer {
       mouse
     );
     manager.ActiveHotbarSlotNumber.Returns(_ => made._activeNumber);
+    manager
+      .TryGiveItemstack(Arg.Any<ItemStack>(), Arg.Any<bool>())
+      .Returns(ci => made.GiveToHotbar(ci.Arg<ItemStack>()));
     return made;
   }
 

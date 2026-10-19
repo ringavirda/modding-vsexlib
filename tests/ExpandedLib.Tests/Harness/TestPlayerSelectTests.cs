@@ -195,4 +195,51 @@ public class TestPlayerSelectTests {
     Assert.Same(player.OffHandSlot, manager.OffhandHotbarSlot);
     Assert.Equal(EnumTool.Hammer, manager.OffhandTool);
   }
+
+  // Fails when TryGiveItemstack returns false or leaves the stack out of the hotbar.
+  [Fact]
+  public void TryGiveItemstack_PutsTheStackInTheFirstEmptyHotbarSlot() {
+    var (world, player, _) = Stand();
+    var stack = new ItemStack(world.RegisterItem("game:ingot-iron"));
+
+    bool given = player.Player.InventoryManager.TryGiveItemstack(stack);
+
+    Assert.True(given);
+    Assert.Equal(0, stack.StackSize);
+    Assert.Equal(
+      "game:ingot-iron",
+      player.Hotbar[0].Itemstack?.Collectible.Code.ToString()
+    );
+  }
+
+  // Fails when the stack held in the active slot is passed over for an empty slot instead of merged into.
+  [Fact]
+  public void TryGiveItemstack_MergesIntoTheHeldStack() {
+    var (world, player, _) = Stand();
+    Item ingot = world.RegisterItem("game:ingot-iron");
+    ingot.MaxStackSize = 64;
+    var held = new ItemStack(ingot, 3);
+    player.Hold(held);
+
+    player.Player.InventoryManager.TryGiveItemstack(new ItemStack(ingot, 2));
+
+    Assert.Same(held, player.ActiveSlot.Itemstack);
+    Assert.Equal(5, held.StackSize);
+    Assert.Null(player.Hotbar[0].Itemstack);
+  }
+
+  // Fails when a stack with no slot to take it is reported as given or loses its size.
+  [Fact]
+  public void TryGiveItemstack_OfAFullHotbar_ReturnsFalseAndKeepsTheStack() {
+    var (world, player, _) = Stand();
+    Item ingot = world.RegisterItem("game:ingot-iron");
+    foreach (ItemSlot slot in player.Hotbar)
+      slot.Itemstack = new ItemStack(world.RegisterItem("game:stick"));
+    var stack = new ItemStack(ingot);
+
+    bool given = player.Player.InventoryManager.TryGiveItemstack(stack);
+
+    Assert.False(given);
+    Assert.Equal(1, stack.StackSize);
+  }
 }
