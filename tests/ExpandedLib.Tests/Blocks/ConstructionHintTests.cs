@@ -149,6 +149,55 @@ public class ConstructionHintTests {
     Assert.Equal(0, Scans(world.World));
   }
 
+  // Fails when a stage that requires nothing answers no help line, as the twin-tub blower's
+  // stages 3 to 5 did.
+  [Fact]
+  public void A_stage_that_takes_nothing_shows_its_help_line() {
+    TestWorld world = MetalWorld();
+    ExRightClickConstructable behavior = Construction(
+      world,
+      world.ClientApi,
+      new BlockPos(0, 0, 0, 0)
+    );
+    var rcc = (ExRightClickConstruction)
+      ReflectionHelpers.GetField(behavior, "rcc")!;
+    rcc.CurrentCompletedStage = 2;
+    rcc.Stages[3].ActionLangCode = "stub-assemble";
+
+    WorldInteraction[]? hint = Hint(behavior);
+
+    Assert.NotNull(hint);
+    WorldInteraction line = Assert.Single(hint);
+    Assert.Equal("stub-assemble", line.ActionLangCode);
+    Assert.Null(line.Itemstacks);
+  }
+
+  // Fails when a click on a stage that requires nothing does not advance it.
+  [Fact]
+  public void A_click_on_a_stage_that_takes_nothing_advances_it() {
+    TestWorld world = MetalWorld();
+    ExRightClickConstructable behavior = Construction(
+      world,
+      world.Api,
+      new BlockPos(0, 0, 0, 0)
+    );
+    var rcc = (ExRightClickConstruction)
+      ReflectionHelpers.GetField(behavior, "rcc")!;
+    rcc.CurrentCompletedStage = 2;
+    TestPlayer player = world.Player();
+    player.GameMode = EnumGameMode.Survival;
+
+    EnumHandling handling = EnumHandling.PassThrough;
+    behavior.OnBlockInteractStart(
+      world.World,
+      player.Player,
+      new BlockSelection { Position = behavior.Pos },
+      ref handling
+    );
+
+    Assert.Equal(3, rcc.CurrentCompletedStage);
+  }
+
   // Fails when the cache is per construction instead of per world.
   [Fact]
   public void Two_constructions_in_one_world_share_the_scan() {

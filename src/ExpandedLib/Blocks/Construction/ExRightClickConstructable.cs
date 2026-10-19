@@ -212,7 +212,8 @@ public class ExRightClickConstructable
     rcc.GetDrops(ratio, rand);
 
   /// <summary>The next-stage build-material hover help.</summary>
-  /// <returns>Null when construction is complete or the next stage requires nothing. The
+  /// <returns>Null when construction is complete. A stage that requires nothing answers one
+  /// stack-less interaction. The
   /// interactions are shared; callers do not mutate them.</returns>
   public WorldInteraction[]? GetConstructionInteractionHelp() =>
     rcc.GetInteractionHelp();
@@ -222,7 +223,8 @@ public class ExRightClickConstructable
   /// <param name="selection">The looked-at cell; unused.</param>
   /// <param name="forPlayer">The looking player; unused.</param>
   /// <param name="handling">Left as it came.</param>
-  /// <returns>Null when construction is complete or the next stage requires nothing.</returns>
+  /// <returns>Null when construction is complete; a stage that requires nothing answers one
+  /// stack-less interaction.</returns>
   public WorldInteraction[]? GetPlacedBlockInteractionHelp(
     IWorldAccessor world,
     BlockSelection selection,
