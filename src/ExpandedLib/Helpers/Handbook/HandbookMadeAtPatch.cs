@@ -67,8 +67,8 @@ public static class HandbookMadeAtPatch
     {
       string[] parts = Lang.Get(
           "exlib:handbook-madeat-line",
-          Slot,
-          use.Station.GetPlacedBlockName(capi.World, null)
+          use.Station.GetPlacedBlockName(capi.World, null),
+          Slot
         )
         .Split(Slot, 2);
       var bullet = new RichTextComponent(
