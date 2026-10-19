@@ -1,4 +1,5 @@
 #if GAME_GE_1_22
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Catalogues;
@@ -142,6 +143,34 @@ public sealed class CraftSequenceTests
     Assert.Equal(
       "hammerhit",
       registry.ToolDefault("game:hammer-steel")?.Animation
+    );
+  }
+
+  // Fails when a tool default of stroke 0 or less is accepted, which hangs the run at its first hold.
+  [Theory]
+  [InlineData(0f)]
+  [InlineData(-1f)]
+  public void A_tool_default_with_no_stroke_is_refused(float stroke)
+  {
+    var tools = new CraftSequenceRegistry();
+
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+      tools.DefineTool(new CraftToolDefault("x", "a", null, stroke, 0f))
+    );
+  }
+
+  // Fails when a tool default that strikes before its stroke starts, or at or after it ends, is accepted.
+  [Theory]
+  [InlineData(-0.1f)]
+  [InlineData(1f)]
+  public void A_tool_default_that_strikes_outside_its_stroke_is_refused(
+    float strike
+  )
+  {
+    var tools = new CraftSequenceRegistry();
+
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+      tools.DefineTool(new CraftToolDefault("x", "a", null, 1f, strike))
     );
   }
 

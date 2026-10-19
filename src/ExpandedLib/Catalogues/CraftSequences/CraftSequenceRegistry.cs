@@ -38,7 +38,15 @@ public sealed class CraftSequenceRegistry {
   /// <summary>Sets what a tool does at each stroke of a step that names nothing of its own. A default
   /// for the same <see cref="CraftToolDefault.Tool"/> pattern replaces the earlier one.</summary>
   /// <param name="tool">The default to add.</param>
+  /// <exception cref="ArgumentOutOfRangeException"><see cref="CraftToolDefault.Stroke"/> is 0 or less, or
+  /// <see cref="CraftToolDefault.Strike"/> is outside 0 up to <see cref="CraftToolDefault.Stroke"/>.</exception>
   public void DefineTool(CraftToolDefault tool) {
+    if (tool.Strike < 0f || tool.Strike >= tool.Stroke)
+      throw new ArgumentOutOfRangeException(
+        nameof(tool),
+        tool.Strike,
+        "Strike must be from 0 up to Stroke, which is above 0."
+      );
     _tools.RemoveAll(t =>
       string.Equals(t.Tool, tool.Tool, StringComparison.OrdinalIgnoreCase)
     );

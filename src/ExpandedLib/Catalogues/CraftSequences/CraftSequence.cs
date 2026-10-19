@@ -45,11 +45,14 @@ public sealed record CraftToolDefault(
   float Stroke = CraftToolDefault.DefaultStroke,
   float Strike = CraftToolDefault.DefaultStrike
 ) {
-  /// <summary>The stroke of vanilla's anvil swing, 30 frames at 1.33 times speed.</summary>
-  public const float DefaultStroke = 0.75f;
+  /// <summary>The stroke of vanilla's anvil swing: its 30 frames at 1.33 times speed end at 0.73 s and
+  /// the clip stays active through its ease-out, and the engine drops a start while the clip is
+  /// active.</summary>
+  public const float DefaultStroke = 1.05f;
 
-  /// <summary>The strike of vanilla's anvil swing, frame 16 of 30.</summary>
-  public const float DefaultStrike = 0.4f;
+  /// <summary>The strike of vanilla's anvil hit: soundAtFrame 16 over the 1.33 speed, frame 12 of 30, as
+  /// ItemHammer reads it.</summary>
+  public const float DefaultStrike = 0.3f;
 
   /// <summary>The hammer's default, vanilla's anvil swing and hit: the default of every registry before
   /// any declaration.</summary>

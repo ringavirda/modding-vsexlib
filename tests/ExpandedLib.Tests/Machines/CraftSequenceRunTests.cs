@@ -20,10 +20,28 @@ public sealed class CraftSequenceRunTests
 
   private sealed class Recorder : ICraftEffects
   {
-    public readonly List<string> Log = [];
+    private const float ActiveSpan = 0.98f;
 
-    public void StartAnimation(string animation) =>
+    private readonly Dictionary<string, float> _startedAt = [];
+
+    public readonly List<string> Log = [];
+    public float Now;
+    public int Refused;
+
+    // The engine ignores a start while the same clip is still active.
+    public void StartAnimation(string animation)
+    {
+      if (
+        _startedAt.TryGetValue(animation, out float at)
+        && Now - at < ActiveSpan
+      )
+      {
+        Refused++;
+        return;
+      }
+      _startedAt[animation] = Now;
       Log.Add("start " + animation);
+    }
 
     public void StopAnimation(string animation) => Log.Add("stop " + animation);
 
@@ -110,8 +128,11 @@ public sealed class CraftSequenceRunTests
       return item;
     }
 
-    public CraftSequenceProgress Hold(float dt = 1f) =>
-      Run.Hold(_world.World, dt, Active, Offhand, ViceOpen, Fx);
+    public CraftSequenceProgress Hold(float dt = 1f)
+    {
+      Fx.Now += dt;
+      return Run.Hold(_world.World, dt, Active, Offhand, ViceOpen, Fx);
+    }
 
     public int Durability(ItemSlot slot) =>
       slot.Itemstack!.Collectible.GetRemainingDurability(slot.Itemstack);
@@ -374,10 +395,10 @@ public sealed class CraftSequenceRunTests
     using var bench = new Bench([Step("game:hammer-*", seconds: 2f)]);
     bench.Active.Itemstack = new ItemStack(bench.Tool("game:hammer-steel"));
 
-    bench.Hold(0.3f);
+    bench.Hold(0.25f);
     Assert.Equal(["start hammerhit"], bench.Fx.Log);
 
-    bench.Hold(0.2f);
+    bench.Hold(0.1f);
     Assert.Equal(
       ["start hammerhit", "sound sounds/effect/anvilhit"],
       bench.Fx.Log
@@ -410,12 +431,13 @@ public sealed class CraftSequenceRunTests
     using var bench = new Bench([Step("game:hammer-*", seconds: 2f)]);
     bench.Active.Itemstack = new ItemStack(bench.Tool("game:hammer-steel"));
 
-    for (int i = 0; i < 4; i++)
-      bench.Hold(0.5f);
+    for (int i = 0; i < 64; i++)
+      bench.Hold(1f / 32f);
 
-    Assert.Equal(3, bench.Fx.Log.Count(l => l == "start hammerhit"));
+    Assert.Equal(2, bench.Fx.Log.Count(l => l == "start hammerhit"));
+    Assert.Equal(0, bench.Fx.Refused);
     Assert.Equal(
-      3,
+      2,
       bench.Fx.Log.Count(l => l == "sound sounds/effect/anvilhit")
     );
     Assert.Equal("stop hammerhit", bench.Fx.Log[^1]);
@@ -433,9 +455,12 @@ public sealed class CraftSequenceRunTests
 
     bench.Hold(3f);
 
-    Assert.Equal(3, bench.Fx.Log.Count(l => l == "start hammerhit"));
     Assert.Equal(
-      3,
+      2,
+      bench.Fx.Log.Count(l => l == "start hammerhit") + bench.Fx.Refused
+    );
+    Assert.Equal(
+      2,
       bench.Fx.Log.Count(l => l == "sound sounds/effect/anvilhit")
     );
   }
