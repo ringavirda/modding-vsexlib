@@ -78,7 +78,8 @@ public sealed class GridRecipeBuilder {
   /// the others.</summary>
   /// <param name="code">The diagram's full code, domain included.</param>
   /// <param name="consume">True when each craft spends one diagram.</param>
-  public GridRecipeBuilder Diagram(string code, bool consume = false) {
+  public GridRecipeBuilder Diagram(string code, bool consume = false)
+  {
     if (_root["attributes"] is not JObject attributes)
       _root["attributes"] = attributes = new JObject();
     attributes[Machines.RecipeDiagram.DiagramAttribute] = code;

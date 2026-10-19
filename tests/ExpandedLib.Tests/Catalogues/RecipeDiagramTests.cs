@@ -85,7 +85,9 @@ public sealed class RecipeDiagramTests
     var spent = (JObject)
       ExRecipeDef
         .Create("iiex", "grid", "bins")
-        .GridObject(r => r.Name("b").Pattern("P").Size(1, 1).Diagram(Other, true))
+        .GridObject(r =>
+          r.Name("b").Pattern("P").Size(1, 1).Diagram(Other, true)
+        )
         .ToJson();
 
     Assert.Equal(Canal, (string?)kept["attributes"]!["diagram"]);
@@ -127,7 +129,9 @@ public sealed class RecipeDiagramTests
 
     Assert.True(RecipeDiagram.IsDiagram(world.RegisterItem(Canal)));
     Assert.True(RecipeDiagram.IsDiagram(world.RegisterItem("game:diagram-x")));
-    Assert.False(RecipeDiagram.IsDiagram(world.RegisterItem("iiex:ingot-diagram")));
+    Assert.False(
+      RecipeDiagram.IsDiagram(world.RegisterItem("iiex:ingot-diagram"))
+    );
     Assert.False(RecipeDiagram.IsDiagram(null));
   }
 
@@ -145,8 +149,12 @@ public sealed class RecipeDiagramTests
     Assert.False(spec.TakeOnly);
     Assert.Equal("#112233", spec.HexBackgroundColor);
     Assert.True(spec.Accepts!(new ItemStack(world.RegisterItem(Canal), 1)));
-    Assert.True(spec.Accepts(new ItemStack(world.RegisterItem("game:diagram-x"), 1)));
-    Assert.False(spec.Accepts(new ItemStack(world.RegisterItem("game:stick"), 1)));
+    Assert.True(
+      spec.Accepts(new ItemStack(world.RegisterItem("game:diagram-x"), 1))
+    );
+    Assert.False(
+      spec.Accepts(new ItemStack(world.RegisterItem("game:stick"), 1))
+    );
     Assert.False(spec.Accepts(null));
   }
 
@@ -159,7 +167,11 @@ public sealed class RecipeDiagramTests
     Item diagram = world.RegisterItem(Canal);
     Item stick = world.RegisterItem("game:stick");
     var inventory = new MachineStationInventory(
-      [MachineSlotSpec.AnyInput(), MachineSlotSpec.Output(), MachineSlotSpec.Diagram()],
+      [
+        MachineSlotSpec.AnyInput(),
+        MachineSlotSpec.Output(),
+        MachineSlotSpec.Diagram(),
+      ],
       "test-bench",
       world.Api
     );

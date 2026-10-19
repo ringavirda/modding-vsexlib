@@ -76,8 +76,7 @@ public class GridRecipeCollisionCheckTests {
 
   // Fails when Crafts stops reading the diagram, so two bills under two diagrams collide.
   [Fact]
-  public void One_bill_under_two_diagrams_does_not_collide()
-  {
+  public void One_bill_under_two_diagrams_does_not_collide() {
     Assert.Empty(
       Findings(Keyed("one", "stub:diagram-a"), Keyed("two", "stub:diagram-b"))
     );

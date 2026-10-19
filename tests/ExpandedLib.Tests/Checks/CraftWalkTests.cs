@@ -429,10 +429,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
       CraftWalk.Result result = Walk(unreached);
 
       Assert.Empty(result.Crafted);
-      Assert.StartsWith(
-        "walk:diagram-x | ",
-        Assert.Single(result.Findings)
-      );
+      Assert.StartsWith("walk:diagram-x | ", Assert.Single(result.Findings));
     }
 
     using TestWorld reached = WithBench(

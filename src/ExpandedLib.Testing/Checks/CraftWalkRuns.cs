@@ -58,10 +58,7 @@ internal static class CraftWalkRuns
       bool inHand = hand.Any(o => o.Grid == recipe);
       string? diagram = RecipeDiagram.Of(recipe);
       bool gated = edge.Sequence != null || diagram != null;
-      if (
-        gated
-        && hand.FirstOrDefault(o => o.Grid == recipe) is { } handOrder
-      )
+      if (gated && hand.FirstOrDefault(o => o.Grid == recipe) is { } handOrder)
         try
         {
           scene.CraftOnce(
@@ -80,11 +77,7 @@ internal static class CraftWalkRuns
           );
         }
         catch (InvalidOperationException) { }
-      if (
-        edge.Class == CraftWalkClass.GridStation
-        && inHand
-        && !gated
-      )
+      if (edge.Class == CraftWalkClass.GridStation && inHand && !gated)
         found.Add(
           (
             edge.Output,
