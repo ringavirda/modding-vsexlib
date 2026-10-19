@@ -124,7 +124,10 @@ public sealed class CraftSequenceTests
   public void The_registry_starts_with_the_hammer_and_a_declaration_overrides_it()
   {
     var registry = new CraftSequenceRegistry();
-    Assert.Equal("hammerhit", registry.ToolDefault("game:hammer-steel")?.Animation);
+    Assert.Equal(
+      "hammerhit",
+      registry.ToolDefault("game:hammer-steel")?.Animation
+    );
     Assert.Null(registry.ToolDefault("game:saw-iron"));
     Assert.Null(registry.ToolDefault(null));
 
@@ -136,7 +139,10 @@ public sealed class CraftSequenceTests
     Assert.Equal("swing", registry.ToolDefault("game:hammer-steel")?.Animation);
 
     registry.Clear();
-    Assert.Equal("hammerhit", registry.ToolDefault("game:hammer-steel")?.Animation);
+    Assert.Equal(
+      "hammerhit",
+      registry.ToolDefault("game:hammer-steel")?.Animation
+    );
   }
 
   // Fails when the loader accepts a sequence with no steps.

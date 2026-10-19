@@ -22,7 +22,8 @@ public sealed class CraftSequenceRunTests
   {
     public readonly List<string> Log = [];
 
-    public void StartAnimation(string animation) => Log.Add("start " + animation);
+    public void StartAnimation(string animation) =>
+      Log.Add("start " + animation);
 
     public void StopAnimation(string animation) => Log.Add("stop " + animation);
 

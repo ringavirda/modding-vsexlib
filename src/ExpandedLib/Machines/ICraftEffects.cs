@@ -2,8 +2,7 @@ namespace ExpandedLib.Machines;
 
 /// <summary>Where a <see cref="CraftSequenceRun"/> plays what a held step shows and sounds: the
 /// swing on the holder and the sound at each stroke.</summary>
-public interface ICraftEffects
-{
+public interface ICraftEffects {
   /// <summary>Starts an animation on the holder at the start of a stroke.</summary>
   /// <param name="animation">The entity animation code.</param>
   void StartAnimation(string animation);

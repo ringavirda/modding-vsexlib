@@ -6,8 +6,7 @@ namespace ExpandedLib.Machines;
 /// <summary>The effects of a held step played on an entity: its animation manager and a sound at its
 /// position, heard by every nearby player.</summary>
 /// <param name="holder">The entity holding the tool.</param>
-public sealed class EntityCraftEffects(Entity holder) : ICraftEffects
-{
+public sealed class EntityCraftEffects(Entity holder) : ICraftEffects {
   /// <inheritdoc />
   public void StartAnimation(string animation) =>
     holder.AnimManager?.StartAnimation(animation);

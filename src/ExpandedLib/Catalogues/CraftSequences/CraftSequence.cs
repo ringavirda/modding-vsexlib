@@ -182,7 +182,8 @@ public sealed record CraftSequenceSet(
       string? animation = Blank(toolNode["animation"].AsString(""));
       string? sound = Blank(toolNode["sound"].AsString(""));
       if (animation == null && sound == null) {
-        error = $"{machine}: the tool default of '{tool}' names no animation or sound";
+        error =
+          $"{machine}: the tool default of '{tool}' names no animation or sound";
         return false;
       }
       float stroke = toolNode["stroke"].AsFloat(CraftToolDefault.DefaultStroke);
