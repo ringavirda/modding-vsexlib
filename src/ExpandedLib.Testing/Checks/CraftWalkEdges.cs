@@ -39,6 +39,7 @@ internal sealed record WalkNeed(string Label, IReadOnlyList<string> Codes);
 /// <param name="Output">The code the recipe makes.</param>
 /// <param name="OnTrust">Whether an ingredient carries attributes the walk takes on trust.</param>
 /// <param name="Grid">The grid recipe behind a grid edge; null for the others.</param>
+/// <param name="Sequence">The craft sequence a grid edge's recipe has; null for none.</param>
 internal sealed record WalkEdge(
   string Kind,
   string Name,
@@ -46,17 +47,21 @@ internal sealed record WalkEdge(
   IReadOnlyList<WalkNeed> Needs,
   string Output,
   bool OnTrust,
-  GridRecipe? Grid = null
+  GridRecipe? Grid = null,
+  CraftSequence? Sequence = null
 );
 
 internal static class CraftWalkEdges
 {
   private static readonly char[] Wild = ['*', '@', '{', '('];
 
-  /// <summary>Where <paramref name="recipe"/> is crafted: the hand grid when it fits 3 x 3, else
-  /// a grid station.</summary>
-  internal static CraftWalkClass ClassOf(GridRecipe recipe) =>
-    recipe.Width > HandGrid.Size || recipe.Height > HandGrid.Size
+  /// <summary>Where <paramref name="recipe"/> is crafted: the hand grid when it fits 3 x 3 and has no
+  /// craft sequence, else a grid station.</summary>
+  internal static CraftWalkClass ClassOf(
+    GridRecipe recipe,
+    bool sequenced = false
+  ) =>
+    sequenced || recipe.Width > HandGrid.Size || recipe.Height > HandGrid.Size
       ? CraftWalkClass.GridStation
       : CraftWalkClass.HandGrid;
 
@@ -75,18 +80,24 @@ internal static class CraftWalkEdges
         recipe.Output?.ResolvedItemStack?.Collectible.Code is { } output
         && output.Domain == domain
       )
+      {
+        CraftSequence? sequence = CraftSequenceRegistry.Shared.Sequence(
+          recipe.Name?.ToString()
+        );
         edges.Add(
           Edge(
             "grid",
             recipe,
             recipe.ResolvedIngredients ?? [],
             output,
-            ClassOf(recipe),
+            ClassOf(recipe, sequence != null),
             all,
             cache,
-            recipe
+            recipe,
+            sequence
           )
         );
+      }
     foreach (SmithingRecipe recipe in world.SmithingRecipes)
       if (OutputOf(recipe.Output) is { } output && output.Domain == domain)
         edges.Add(
@@ -286,7 +297,8 @@ internal static class CraftWalkEdges
     CraftWalkClass at,
     IReadOnlyList<CollectibleObject> all,
     Dictionary<string, WalkNeed> cache,
-    GridRecipe? grid
+    GridRecipe? grid,
+    CraftSequence? sequence = null
   )
   {
     CraftingRecipeIngredient[] asked =
@@ -304,7 +316,8 @@ internal static class CraftWalkEdges
       ],
       output.ToString(),
       asked.Any(i => i.Attributes is { Exists: true }),
-      grid
+      grid,
+      sequence
     );
   }
 
