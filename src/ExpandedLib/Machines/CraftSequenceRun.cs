@@ -80,13 +80,20 @@ public sealed class CraftSequenceRun(
     _strikes = 0;
   }
 
-  /// <summary>Ends the animation a hold started and restarts the strokes; call when the player lets go.</summary>
+  /// <summary>Ends the animation a hold started; call when the player lets go. The held time and the strokes
+  /// already played are kept, so a later hold goes on from the same stroke.</summary>
   /// <param name="effects">The effects the holds played on; null for none.</param>
   public void Release(ICraftEffects? effects)
   {
     if (_playing != null)
       effects?.StopAnimation(_playing);
     _playing = null;
+  }
+
+  private void Drop(ICraftEffects? effects)
+  {
+    Release(effects);
+    Held = 0f;
     _swings = 0;
     _strikes = 0;
   }
@@ -123,14 +130,12 @@ public sealed class CraftSequenceRun(
     CraftStep step = Current;
     if (!HandsMatch(step, active, offhand))
     {
-      Release(effects);
-      Held = 0f;
+      Drop(effects);
       return CraftSequenceProgress.Idle;
     }
     if (step.At == CraftStep.Vice && viceOpen)
     {
-      Release(effects);
-      Held = 0f;
+      Drop(effects);
       return CraftSequenceProgress.WaitingForVice;
     }
 
@@ -153,8 +158,7 @@ public sealed class CraftSequenceRun(
 
     Wear(step.Tool != null ? active : null);
     Wear(step.Offhand != null ? offhand : null);
-    Release(effects);
-    Held = 0f;
+    Drop(effects);
 
     if (!last)
     {

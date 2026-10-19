@@ -465,6 +465,22 @@ public sealed class CraftSequenceRunTests
     );
   }
 
+  // Fails when Release restarts the strokes while the held time stays: the next hold swings and strikes again at once.
+  [Fact]
+  public void A_hold_after_a_release_goes_on_from_the_stroke_it_left()
+  {
+    using var bench = new Bench([Step("game:hammer-*", seconds: 2f)]);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("game:hammer-steel"));
+    bench.Hold(1.2f);
+    bench.Run.Release(bench.Fx);
+    int played = bench.Fx.Log.Count;
+
+    bench.Hold(0.25f);
+
+    Assert.Equal(played, bench.Fx.Log.Count);
+    Assert.Equal(1.45f, bench.Run.Held, 3);
+  }
+
   // Fails when a hold with the wrong tool plays, or Release leaves the animation running.
   [Fact]
   public void A_hold_that_does_not_match_plays_nothing_and_release_stops_the_swing()
