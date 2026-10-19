@@ -52,9 +52,17 @@ public class ViewHeldGateTests {
     return barrel with { Hand = hand };
   }
 
-  // Hay held with the game's default block rotation, which carries it on its side.
+  // Hay held with the game's default block hold, which carries it on its side and authors no hold of its own.
   private static ViewGroup DefaultHeldHay() =>
     GroupOf("game", "game:hay-normal-ud");
+
+  // Hay with a hold of its own: the default block hold turned on its side.
+  private static ViewGroup OwnHeldHay() {
+    ViewGroup hay = DefaultHeldHay();
+    ModelTransform hand = hay.Hand.Clone();
+    hand.Rotation = new FastVec3f(0, 0, 70);
+    return hay with { Hand = hand };
+  }
 
   private static string[] Failing(ViewGroup group) =>
     [
@@ -115,17 +123,29 @@ public class ViewHeldGateTests {
     );
   }
 
-  // Fails when G16 is not read, or reads the angle to the default hold's up instead of to world vertical: hay in the
-  // default hold, 69 and 88 degrees off vertical, then reads 0 and passes, and the barrel's upright hold fails.
+  // Fails when G16 is not read, or reads the angle to the hold's up instead of to world vertical: hay with a hold of
+  // its own turned on its side then reads 0 and passes, and the barrel's upright hold fails.
   [Fact]
-  public void A_block_held_on_its_side_fails_G16() {
+  public void A_block_with_its_own_hold_on_its_side_fails_G16() {
     Assert.Empty(Failing(Barrel(0)));
 
-    ViewGroup tipped = DefaultHeldHay();
+    ViewGroup tipped = OwnHeldHay();
 
     Assert.Equal(["G16", "G16fp"], Failing(tipped));
-    Assert.InRange(Value(tipped, "hand.up"), 69.2 - 1, 69.2 + 1);
-    Assert.InRange(Value(tipped, "hand.up.fp"), 88 - 1, 88 + 1);
+    Assert.True(Value(tipped, "hand.up") > ViewGates.HeldUpDegrees);
+    Assert.True(Value(tipped, "hand.up.fp") > ViewGates.HeldUpDegrees);
+  }
+
+  // Fails when the default-hold skip is removed, which reads G16 on hay in vanilla's default block hold (69 and 88
+  // degrees), or widened to every block, which drops the rows of the barrel and of a hold turned on its side.
+  [Fact]
+  public void A_block_in_the_default_hold_reads_no_G16() {
+    Assert.DoesNotContain(
+      ViewGates.Rules(World, DefaultHeldHay()),
+      r => r.Gate == "G16"
+    );
+    Assert.Contains(ViewGates.Rules(World, Barrel(0)), r => r.Gate == "G16");
+    Assert.Contains(ViewGates.Rules(World, OwnHeldHay()), r => r.Gate == "G16");
   }
 
   // Fails when HeldUpDegrees moves off 20: the barrel at 18.3 and 22.3 degrees in third person, and at 17.7 and 21.7 in
