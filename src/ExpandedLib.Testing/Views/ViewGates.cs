@@ -702,13 +702,24 @@ internal static class ViewGates {
 
   private static readonly string[] BlockClips = [BlockHeldClip, "holdunderarm"];
 
-  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips, G12 catalogue and G14 hand.tip of <paramref name="group"/>. They hold for every
+  /// <summary>The side, in voxels, under which a box is a sheet that G15 holds to face the camera.</summary>
+  internal const double SheetVoxels = 1;
+
+  /// <summary>The most, in degrees, a held sheet's face may be turned from the camera's line of sight.</summary>
+  internal const double SheetDegrees = 30;
+
+  /// <summary>The most, in degrees, a held block's own up axis may be turned from where the game's default block hold
+  /// carries it in the same clip.</summary>
+  internal const double HeldUpDegrees = 20;
+
+  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips, G12 catalogue, G14 hand.tip, G15 hand.sheet and G16 hand.up of <paramref name="group"/>. They hold for every
   /// collectible whatever vanilla does and are not banded.</summary>
   /// <param name="world">The world the group comes from.</param>
   /// <param name="group">The group to judge.</param>
   /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
   /// <returns>G4 on the ground, G9 in third and first person, G11, G14 when the group's collectible declares an
-  /// <c>itemViews.tip</c>, and G12 when a row of <paramref name="catalogue"/> names one of the group's codes, each
+  /// <c>itemViews.tip</c>, G15 in third and first person when the group's box is a sheet, G16 in third and first person
+  /// when the group is a block, and G12 when a row of <paramref name="catalogue"/> names one of the group's codes, each
   /// with its pass or failure.</returns>
   internal static IReadOnlyList<GateReading> Rules(
     TestWorld world,
@@ -761,6 +772,14 @@ internal static class ViewGates {
     readings.Add(Clips(world, group));
     if (!group.IsBlock && DeclaredTip(group.Representative) is { } tip)
       readings.Add(TipUp(world, group, tip));
+    if (SheetNormal(group) is { } normal) {
+      readings.Add(Sheet(world, group, normal, false));
+      readings.Add(Sheet(world, group, normal, true));
+    }
+    if (group.IsBlock) {
+      readings.Add(HeldUp(world, group, false));
+      readings.Add(HeldUp(world, group, true));
+    }
     if (catalogue?.Reading(group) is { } sized)
       readings.Add(sized);
     return readings;
@@ -810,6 +829,91 @@ internal static class ViewGates {
         : rise > 0
           ? $"the tip end {Fmt(rise)} degrees above the grip end, below {Fmt(min)}"
         : $"the tip end {Fmt(-rise)} degrees below the grip end"
+    );
+  }
+
+  // The unit normal, in the shape's frame, of the box side under SheetVoxels; null when no side is.
+  private static Vec3d? SheetNormal(ViewGroup group) {
+    double[] side =
+    [
+      group.Box.To.X - group.Box.From.X,
+      group.Box.To.Y - group.Box.From.Y,
+      group.Box.To.Z - group.Box.From.Z,
+    ];
+    int thin = Array.IndexOf(side, side.Min());
+    return side[thin] < SheetVoxels ? group.Box.Axes[thin] : null;
+  }
+
+  // The seraph faces along -x of its shape's frame, and the first-person frame keeps that axis; a face turned either way
+  // along it is seen from the front or the back by the camera.
+  private static double SightAngle(Vec3d direction) =>
+    Math.Acos(Math.Clamp(Math.Abs(direction.X) / direction.Length(), 0, 1))
+    * 180
+    / Math.PI;
+
+  private static Vec3d HeldDirection(
+    TestWorld world,
+    ViewGroup group,
+    bool firstPerson,
+    Vec3d direction
+  ) {
+    Mat4 m = HeldMatrix(
+      group,
+      HeldPose(world, group, firstPerson),
+      firstPerson
+    );
+    return m.Apply(direction) - m.Apply(new Vec3d());
+  }
+
+  private static GateReading Sheet(
+    TestWorld world,
+    ViewGroup group,
+    Vec3d normal,
+    bool firstPerson
+  ) {
+    double angle = SightAngle(HeldDirection(world, group, firstPerson, normal));
+    return new GateReading(
+      "G15",
+      firstPerson ? "hand.sheet.fp" : "hand.sheet",
+      firstPerson ? "fp" : "tp",
+      angle,
+      null,
+      SheetDegrees,
+      null,
+      angle <= SheetDegrees,
+      $"the sheet's face {Fmt(angle)} degrees from the camera above {Fmt(SheetDegrees)}"
+    );
+  }
+
+  private static GateReading HeldUp(
+    TestWorld world,
+    ViewGroup group,
+    bool firstPerson
+  ) {
+    var up = new Vec3d(0, 1, 0);
+    Vec3d held = HeldDirection(world, group, firstPerson, up);
+    Vec3d carried = HeldDirection(
+      world,
+      group with {
+        Hand = ViewMatrices.Default(true, ViewTarget.Hand),
+      },
+      firstPerson,
+      up
+    );
+    double tilt =
+      Math.Acos(Math.Clamp(Dot(held, carried) / (held.Length() * carried.Length()), -1, 1))
+      * 180
+      / Math.PI;
+    return new GateReading(
+      "G16",
+      firstPerson ? "hand.up.fp" : "hand.up",
+      firstPerson ? "fp" : "tp",
+      tilt,
+      null,
+      HeldUpDegrees,
+      null,
+      tilt <= HeldUpDegrees,
+      $"the block's up axis {Fmt(tilt)} degrees off the default hold's above {Fmt(HeldUpDegrees)}"
     );
   }
 
