@@ -3,8 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
+using ExpandedLib.Catalogues;
 using ExpandedLib.Config;
 using ExpandedLib.Helpers;
+using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
@@ -282,7 +284,11 @@ public sealed partial class SetupScene : IDisposable
     bool crafts = EveryStep().Any(s => s.Kind == "craft");
     World.LoadAssets(modPaths, null, VanillaCodes(), crafts);
     if (crafts)
+    {
       World.LoadRecipes();
+      CraftSequenceLoader.Load(World.Api);
+      CraftSequenceGate.Register(World.Api.Event);
+    }
     if (World.Mods.GetModSystem<MechanicalPowerMod>() == null)
     {
       HashSet<long> before = World.TickListenerIds();
