@@ -70,6 +70,24 @@ public sealed class GridRecipeBuilder {
     return this;
   }
 
+#if GAME_GE_1_22
+  /// <summary>Keys the recipe to a diagram: <c>attributes.diagram</c> is <paramref name="code"/> and
+  /// <c>attributes.consumeDiagram</c> is <paramref name="consume"/>, and the recipe is hidden from the
+  /// handbook's Created by (<c>showInCreatedBy</c> false). The recipe then crafts only at a station
+  /// holding that diagram in its slot. Calling it again replaces the attributes' two keys and keeps
+  /// the others.</summary>
+  /// <param name="code">The diagram's full code, domain included.</param>
+  /// <param name="consume">True when each craft spends one diagram.</param>
+  public GridRecipeBuilder Diagram(string code, bool consume = false) {
+    if (_root["attributes"] is not JObject attributes)
+      _root["attributes"] = attributes = new JObject();
+    attributes[Machines.RecipeDiagram.DiagramAttribute] = code;
+    attributes[Machines.RecipeDiagram.ConsumeAttribute] = consume;
+    _root["showInCreatedBy"] = false;
+    return this;
+  }
+#endif
+
   internal JObject Build() {
     _root["ingredients"] = _ingredients;
     return _root;

@@ -26,7 +26,11 @@ internal sealed class WalkFixtureBench
   public static readonly List<string> Laid = [];
 
   protected override MachineSlotSpec[] SlotSpecs =>
-    [MachineSlotSpec.AnyInput(), MachineSlotSpec.Output()];
+    [
+      MachineSlotSpec.AnyInput(),
+      MachineSlotSpec.Output(),
+      MachineSlotSpec.Diagram(),
+    ];
 
   public override string InventoryClassName => "walk-fixture-bench";
 
@@ -46,6 +50,7 @@ internal sealed class WalkFixtureBench
       .. world
         .GridRecipes.Where(r =>
           r.Width > HandGrid.Size
+          || RecipeDiagram.Of(r) != null
           || CraftSequenceRegistry.Shared.Sequence(r.Name.ToString()) != null
         )
         .Select(r => new CraftOrder(
@@ -55,6 +60,9 @@ internal sealed class WalkFixtureBench
               .Select(
                 (ingredient, i) => new CraftInput(0, ingredient.Id, ingredient)
               ),
+            .. RecipeDiagram.Ingredient(r, world) is { } diagram
+              ? [new CraftInput(2, "diagram", diagram)]
+              : Array.Empty<CraftInput>(),
           ],
           Press,
           Encoding.UTF8.GetBytes(r.Name.ToString()),
@@ -401,6 +409,44 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     CraftWalk.CraftedEdge crafted = Assert.Single(result.Crafted);
     Assert.NotEqual(CraftWalk.HandGridName, crafted.Station);
     Assert.Empty(WalkFixtureBench.Laid);
+  }
+
+  private static string Keyed(string input, string output, string diagram) =>
+    Recipe(input, output)
+      .Replace(
+        "\"width\": 1,",
+        $"\"attributes\": {{ \"diagram\": \"{diagram}\" }}, \"width\": 1,"
+      );
+
+  // Fails when the walk drops a keyed recipe's diagram from its edge's needs: the recipe then fires,
+  // and crafts, with no way to reach the diagram; or when it stops counting the recipe station-only.
+  [Fact]
+  public void A_diagram_recipe_fires_once_its_diagram_is_reached()
+  {
+    string keyed = Keyed(Stick, "a", "walk:diagram-x");
+    using (TestWorld unreached = WithBench(["a", "diagram-x"], [keyed]))
+    {
+      CraftWalk.Result result = Walk(unreached);
+
+      Assert.Empty(result.Crafted);
+      Assert.StartsWith(
+        "walk:diagram-x | ",
+        Assert.Single(result.Findings)
+      );
+    }
+
+    using TestWorld reached = WithBench(
+      ["a", "diagram-x"],
+      [keyed, Recipe(Stick, "diagram-x")]
+    );
+
+    CraftWalk.Result walked = Walk(reached);
+
+    Assert.Empty(walked.Findings);
+    Assert.Contains(
+      walked.Crafted,
+      c => c.Output == "walk:a" && c.Station != CraftWalk.HandGridName
+    );
   }
 
   // Fails when the walk presses the sequenced recipe's button instead of holding its steps.

@@ -27,11 +27,19 @@ public readonly record struct MachineSlotSpec(
   /// <summary>A take-only output slot.</summary>
   public static MachineSlotSpec Output(string? hexColor = null) =>
     new(null, true, hexColor);
+
+#if GAME_GE_1_22
+  /// <summary>An input taking only diagrams (<see cref="RecipeDiagram.IsDiagram"/>), of any domain,
+  /// up to the item's stack size.</summary>
+  public static MachineSlotSpec Diagram(string? hexColor = null) =>
+    new(stack => RecipeDiagram.IsDiagram(stack?.Collectible), false, hexColor);
+#endif
 }
 
 /// <summary>
 /// A machine station's inventory, built from the station's <see cref="MachineSlotSpec"/> array via
-/// <see cref="InventoryGeneric"/>'s slot-factory delegate.
+/// <see cref="InventoryGeneric"/>'s slot-factory delegate. A shift-click ranks a typed input that
+/// accepts the stack above an input taking anything, so a diagram goes to its slot before the grid.
 /// </summary>
 public class MachineStationInventory(
   MachineSlotSpec[] specs,
@@ -44,6 +52,20 @@ public class MachineStationInventory(
     api,
     (id, self) => BuildSlot(specs, id, self)
   ) {
+  private const float TypedBonus = 4f;
+
+  public override float GetSuitability(
+    ItemSlot sourceSlot,
+    ItemSlot targetSlot,
+    bool isMerge
+  ) {
+    float weight = base.GetSuitability(sourceSlot, targetSlot, isMerge);
+    int id = GetSlotId(targetSlot);
+    return id >= 0 && id < specs.Length && specs[id].Accepts != null
+      ? weight + TypedBonus
+      : weight;
+  }
+
   private static ItemSlot BuildSlot(
     MachineSlotSpec[] specs,
     int id,

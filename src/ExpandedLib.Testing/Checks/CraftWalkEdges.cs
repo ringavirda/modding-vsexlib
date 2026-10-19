@@ -56,7 +56,7 @@ internal static class CraftWalkEdges
   private static readonly char[] Wild = ['*', '@', '{', '('];
 
   /// <summary>Where <paramref name="recipe"/> is crafted: the hand grid when it fits 3 x 3 and has no
-  /// craft sequence, else a grid station.</summary>
+  /// craft sequence and no diagram, else a grid station.</summary>
   internal static CraftWalkClass ClassOf(
     GridRecipe recipe,
     bool sequenced = false
@@ -84,18 +84,31 @@ internal static class CraftWalkEdges
         CraftSequence? sequence = CraftSequenceRegistry.Shared.Sequence(
           recipe.Name?.ToString()
         );
+        string? diagram = RecipeDiagram.Of(recipe);
+        WalkEdge edge = Edge(
+          "grid",
+          recipe,
+          recipe.ResolvedIngredients ?? [],
+          output,
+          ClassOf(recipe, sequence != null || diagram != null),
+          all,
+          cache,
+          recipe,
+          sequence
+        );
         edges.Add(
-          Edge(
-            "grid",
-            recipe,
-            recipe.ResolvedIngredients ?? [],
-            output,
-            ClassOf(recipe, sequence != null),
-            all,
-            cache,
-            recipe,
-            sequence
-          )
+          diagram == null
+            ? edge
+            : edge with
+            {
+              Needs =
+              [
+                .. edge.Needs,
+                RecipeDiagram.Ingredient(recipe, world.World) is { } ingredient
+                  ? Need(ingredient, all, cache)
+                  : new WalkNeed(diagram, []),
+              ],
+            }
         );
       }
     foreach (SmithingRecipe recipe in world.SmithingRecipes)
