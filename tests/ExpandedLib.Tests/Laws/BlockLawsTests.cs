@@ -38,6 +38,10 @@ public class BlockLawsTests {
 
   private static void Prepare(TestWorld world) {
     world.RegisterClass("test-breakonly", typeof(BreakOnlyCleanup));
+#if GAME_GE_1_22
+    world.RegisterClass("test-controlboxes", typeof(ControlBoxes));
+    world.RegisterClass("test-controlcount", typeof(ControlCount));
+#endif
     world.RegisterClass("test-dropsfiller", typeof(DropsAFiller));
     world.RegisterClass("test-sideframe", typeof(SideFrame));
     world.RegisterClass("test-turnedframe", typeof(TurnedFrame));
@@ -1314,6 +1318,96 @@ public class BlockLawsTests {
     Assert.Empty(law.Findings);
     Assert.Equal(9, law.Cases);
   }
+
+  // Fails when a click aimed at a control box lands on the cell the help was read at instead of the
+  // cell the step is judged on, which leaves the judged block unchanged.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_control_box_click_lands_on_the_judged_step()
+  {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [ExItemDef.Create("test", "token")],
+        ExBlockDef
+          .Create("test", "wheelcounts")
+          .Class("test-controlboxes")
+          .EntityClass("test-controlcount")
+          .Attribute("wheel", "test:token")
+          .Attribute("counts", true)
+      ),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+  }
+
+  // Fails when a help line on the top face hides the lines a control box shows, which leaves the
+  // box's click unmade.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_top_face_line_does_not_hide_a_control_boxs_line()
+  {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [ExItemDef.Create("test", "token")],
+        ExBlockDef
+          .Create("test", "bodyandwheel")
+          .Class("test-controlboxes")
+          .Attribute("top", "test:wrench")
+          .Attribute("wheel", "test:token")
+      ),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(2, law.Cases);
+  }
+
+  // Fails when the search stops at the first box that shows a line, which leaves the other box's
+  // click unmade.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void Every_control_boxs_help_is_read()
+  {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [ExItemDef.Create("test", "token"), ExItemDef.Create("test", "nail")],
+        ExBlockDef
+          .Create("test", "twocontrols")
+          .Class("test-controlboxes")
+          .Attribute("wheel", "test:token")
+          .Attribute("lever", "test:nail")
+      ),
+      "test"
+    );
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(3, law.Cases);
+  }
+
+  // Fails when a click's identity leaves out its control box, which drops the empty-hand click on
+  // the box for the plain empty-hand click on the cell.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void An_empty_hand_line_on_a_control_box_is_clicked_on_the_box()
+  {
+    ControlBoxes.Hits.Clear();
+    InteractionLaw.Run(
+      Hands(
+        [],
+        ExBlockDef
+          .Create("test", "emptywheel")
+          .Class("test-controlboxes")
+          .Attribute("wheel", "")
+      ),
+      "test"
+    );
+
+    Assert.True(
+      ControlBoxes.Hits.TryGetValue("emptywheel:wheel", out int hits)
+        && hits > 0
+    );
+  }
 #endif
 
   // Fails when the law places a block the game never sets, as it does a vessel stored on the
@@ -2481,6 +2575,112 @@ public class BlockLawsTests {
   private sealed class ShedsNothing : Shelf {
     public override void OnBlockBroken(IPlayer? byPlayer = null) { }
   }
+
+#if GAME_GE_1_22
+  private sealed class ControlBoxes : Block
+  {
+    internal static readonly System.Collections.Concurrent.ConcurrentDictionary<
+      string,
+      int
+    > Hits = new();
+
+    public override Cuboidf[] GetSelectionBoxes(
+      IBlockAccessor blockAccessor,
+      BlockPos pos
+    ) =>
+      [
+        new Cuboidf(0f, 0f, 0f, 1f, 0.5f, 1f),
+        new CuboidfWithId(new Cuboidf(0f, 0.5f, 0f, 0.5f, 1f, 0.5f))
+        {
+          Id = "wheel",
+        },
+        new CuboidfWithId(new Cuboidf(0.5f, 0.5f, 0.5f, 1f, 1f, 1f))
+        {
+          Id = "lever",
+        },
+      ];
+
+    public override WorldInteraction[] GetPlacedBlockInteractionHelp(
+      IWorldAccessor world,
+      BlockSelection selection,
+      IPlayer forPlayer
+    )
+    {
+      if (selection.SelectionBoxId == null)
+        return Attributes["top"].AsString() is { } top
+          ?
+          [
+            new WorldInteraction
+            {
+              ActionLangCode = top,
+              MouseButton = EnumMouseButton.Right,
+            },
+          ]
+          : [];
+      string? code = Attributes[selection.SelectionBoxId].AsString();
+      if (code == null)
+        return [];
+      return
+      [
+        new WorldInteraction
+        {
+          ActionLangCode = "test:" + selection.SelectionBoxId,
+          MouseButton = EnumMouseButton.Right,
+          Itemstacks =
+            code == ""
+              ? null
+              : [new ItemStack(world.GetItem(new AssetLocation(code)))],
+        },
+      ];
+    }
+
+    public override bool OnBlockInteractStart(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel
+    )
+    {
+      if (blockSel.SelectionBoxId is not { } id)
+        return false;
+      Hits.AddOrUpdate(Code.Path + ":" + id, 1, (_, n) => n + 1);
+      if (Attributes["counts"].AsBool())
+      {
+        if (
+          world.BlockAccessor.GetBlockEntity(blockSel.Position)
+          is not ControlCount count
+        )
+          return false;
+        count.N++;
+        count.MarkDirty();
+        return true;
+      }
+      ItemSlot hand = byPlayer.InventoryManager.ActiveHotbarSlot;
+      if (!hand.Empty)
+        hand.TakeOut(1);
+      return true;
+    }
+  }
+
+  private sealed class ControlCount : BlockEntity
+  {
+    internal int N;
+
+    public override void ToTreeAttributes(ITreeAttribute tree)
+    {
+      base.ToTreeAttributes(tree);
+      tree.SetInt("n", N);
+    }
+
+    public override void FromTreeAttributes(
+      ITreeAttribute tree,
+      IWorldAccessor worldForResolving
+    )
+    {
+      base.FromTreeAttributes(tree, worldForResolving);
+      N = tree.GetInt("n");
+    }
+  }
+#endif
 
   #endregion
 }

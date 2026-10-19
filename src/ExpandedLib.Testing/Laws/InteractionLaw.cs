@@ -206,8 +206,9 @@ public static class InteractionLaw {
     /// elsewhere.</summary>
     public AssetLocation? On { get; init; }
 
-    /// <summary>The selection the click is aimed with; null for the cell's top face.</summary>
-    public BlockSelection? Aim { get; init; }
+    /// <summary>The id of the selection box the click is aimed at on its cell; null for the cell's
+    /// top face.</summary>
+    public string? Control { get; init; }
 
     /// <summary>What the click is, for a finding.</summary>
     public string Describe() {
@@ -345,21 +346,19 @@ public static class InteractionLaw {
       );
       AssetLocation? on = cells == null ? null : world.GetBlock(cell).Code;
       clicks.Add(new Click(offset, Keys.None, null, 0, null) { On = on });
-      BlockSelection selection = Selection(cell);
-      WorldInteraction[] helps = [];
-      foreach (BlockSelection aimed in Aimed(world, cell)) {
-        helps =
-        [
-          .. probe
+      var helps = new List<(WorldInteraction Help, BlockSelection Selection)>();
+      foreach (BlockSelection aimed in Aimed(world, cell))
+        foreach (
+          WorldInteraction h in probe
             .Help(cell, aimed, player)
-            .Where(h => h.MouseButton == EnumMouseButton.Right),
-        ];
-        if (helps.Length > 0) {
-          selection = aimed;
-          break;
-        }
-      }
-      foreach (WorldInteraction help in helps) {
+            .Where(h => h.MouseButton == EnumMouseButton.Right)
+        )
+          if (
+            aimed.SelectionBoxId == null
+            || !helps.Any(o => o.Help.ActionLangCode == h.ActionLangCode)
+          )
+            helps.Add((h, aimed));
+      foreach ((WorldInteraction help, BlockSelection selection) in helps) {
         if (
           findings != null
           && help.Itemstacks != null
@@ -372,19 +371,22 @@ public static class InteractionLaw {
           );
         Keys keys = KeysOf(help);
         ItemStack[] named = Named(help, selection);
-        BlockSelection? aim = selection.SelectionBoxId == null ? null : selection;
+        string? control = selection.SelectionBoxId;
         if (named.Length == 0)
           clicks.Add(
-            new Click(offset, keys, null, 0, null) { On = on, Aim = aim }
+            new Click(offset, keys, null, 0, null) {
+              On = on,
+              Control = control,
+            }
           );
-        WorldInteraction[] alongside =
-        [
-          .. helps.Where(h =>
-            h != help
-            && h.ActionLangCode == help.ActionLangCode
-            && KeysOf(h) == keys
-          ),
-        ];
+        var alongside = helps
+          .Where(o =>
+            o.Help != help
+            && o.Selection.SelectionBoxId == control
+            && o.Help.ActionLangCode == help.ActionLangCode
+            && KeysOf(o.Help) == keys
+          )
+          .ToArray();
         foreach (ItemStack stack in named)
           clicks.Add(
             new Click(
@@ -395,13 +397,13 @@ public static class InteractionLaw {
               help.ActionLangCode
             ) {
               On = on,
-              Aim = aim,
+              Control = control,
               Carried =
               [
                 .. alongside
-                  .Select(h => Companion(Named(h, selection), stack))
+                  .Select(o => Companion(Named(o.Help, o.Selection), stack))
                   .OfType<ItemStack>()
-                  .Select(s => (s.Collectible, Math.Max(1, s.StackSize))),
+                  .Select(x => (x.Collectible, Math.Max(1, x.StackSize))),
               ],
             }
           );
@@ -410,7 +412,14 @@ public static class InteractionLaw {
     return
     [
       .. clicks.DistinctBy(c =>
-        (c.Offset.X, c.Offset.Y, c.Offset.Z, c.Keys, c.Item?.Code?.ToString())
+        (
+          c.Offset.X,
+          c.Offset.Y,
+          c.Offset.Z,
+          c.Keys,
+          c.Item?.Code?.ToString(),
+          c.Control
+        )
       ),
     ];
   }
@@ -426,7 +435,7 @@ public static class InteractionLaw {
       stack == null ? 0 : Math.Max(1, stack.StackSize),
       help.ActionLangCode
     ) {
-      Aim = selection,
+      Control = selection.SelectionBoxId,
     };
   }
 
@@ -551,12 +560,14 @@ public static class InteractionLaw {
       click.Offset.Y,
       click.Offset.Z
     );
-    bool? taken = step.Use(
-      click.Aim ?? Selection(cell),
-      player.Player,
-      click.Describe(),
-      judged
-    );
+#if GAME_GE_1_22
+    BlockSelection aim = click.Control is { } id
+      ? ControlAim.Selection(world.Accessor, cell, id, null)
+      : Selection(cell);
+#else
+    BlockSelection aim = Selection(cell);
+#endif
+    bool? taken = step.Use(aim, player.Player, click.Describe(), judged);
     Hold(player, Keys.None);
     return taken;
   }
