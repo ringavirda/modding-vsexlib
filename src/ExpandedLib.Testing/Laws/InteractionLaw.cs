@@ -345,8 +345,7 @@ public static class InteractionLaw {
       );
       AssetLocation? on = cells == null ? null : world.GetBlock(cell).Code;
       clicks.Add(new Click(offset, Keys.None, null, 0, null) { On = on });
-      BlockSelection top = Selection(cell);
-      BlockSelection selection = top;
+      BlockSelection selection = Selection(cell);
       WorldInteraction[] helps = [];
       foreach (BlockSelection aimed in Aimed(world, cell)) {
         helps =
@@ -373,7 +372,7 @@ public static class InteractionLaw {
           );
         Keys keys = KeysOf(help);
         ItemStack[] named = Named(help, selection);
-        BlockSelection? aim = ReferenceEquals(selection, top) ? null : selection;
+        BlockSelection? aim = selection.SelectionBoxId == null ? null : selection;
         if (named.Length == 0)
           clicks.Add(
             new Click(offset, keys, null, 0, null) { On = on, Aim = aim }
