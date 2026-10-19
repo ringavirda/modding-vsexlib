@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using Cairo;
+using HarmonyLib;
 using NSubstitute;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -23,12 +24,15 @@ namespace ExpandedLib.Testing;
 /// rectangle given). An item stack is a plain square with its code's path and, where the draw call
 /// asks for a stack size, its count. Scissor clips (<c>PushScissor</c>) cut the frame to the bounds
 /// given; shaders, item meshes, sounds, input and the cursor are
-/// not simulated. <see cref="Api"/> is built for the composer's dialog only: it has no world, no
-/// player and no assets. <see cref="Cairo.Context"/> work needs the system Cairo and fontconfig.
+/// not simulated. Textures the engine reads from assets (a dialog background's soil pattern) are a
+/// flat tile, as the rig has no image decoder. <see cref="Api"/> is built for the composer's dialog
+/// only: it has no world, no player and no assets. <see cref="Cairo.Context"/> work needs the system
+/// Cairo and fontconfig.
 /// <para>The rig sets the process-wide <c>RuntimeEnv.GUIScale</c> for its lifetime and puts the old
 /// value back on <see cref="Dispose"/>, so tests that use it run in one collection.</para></remarks>
 public sealed class WindowRig : IDisposable {
   private readonly float _previousScale;
+  private bool _disposed;
   private readonly Dictionary<int, ImageSurface> _textures = new();
   private readonly List<WindowDraw> _draws = new();
   private int _nextTexture;
@@ -62,6 +66,7 @@ public sealed class WindowRig : IDisposable {
     ScreenHeight = screenHeight;
     _previousScale = RuntimeEnv.GUIScale;
     RuntimeEnv.GUIScale = guiScale;
+    PatchTextures();
     Api = BuildApi();
   }
 
@@ -100,7 +105,7 @@ public sealed class WindowRig : IDisposable {
   /// <summary>Registers the translations of one mod's language file for <c>Lang.Get</c> until
   /// <see cref="Dispose"/>, so labels measure and render as in game instead of echoing their keys.</summary>
   /// <remarks>Replaces the "en" translation service and makes "en" the current locale; both are put
-  /// back on <see cref="Dispose"/>. A key found in no loaded file still echoes itself. Values are
+  /// back on <see cref="Dispose"/>. A key with no exact entry takes the longest wildcard entry (<c>block-x-*</c>) it starts with; a key found in no loaded file still echoes itself. Values are
   /// formatted with <see cref="string.Format(string, object[])"/>. Not thread-safe: tests that use it
   /// share the rig's collection.</remarks>
   /// <param name="domain">The mod domain the file's keys belong to, such as <c>iiex</c>.</param>
@@ -148,6 +153,9 @@ public sealed class WindowRig : IDisposable {
 
   public void Dispose() {
     RuntimeEnv.GUIScale = _previousScale;
+    if (!_disposed)
+      UnpatchTextures();
+    _disposed = true;
     if (_langService != null) {
       if (_previousService != null)
         Lang.AvailableLanguages["en"] = _previousService;
@@ -210,11 +218,70 @@ public sealed class WindowRig : IDisposable {
     return api;
   }
 
+  private static readonly object PatchGate = new();
+  private static int _patched;
+  private static readonly Harmony Patcher = new(
+    "expandedlib.testing.windowrig"
+  );
+
+  /// <summary>Stands in for the engine's PNG-backed surface loader, whose decoder needs a native
+  /// library the rig does not load.</summary>
+  private static bool FlatTile(int mulAlpha, ref ImageSurface __result) {
+    __result = new ImageSurface(Format.Argb32, 16, 16);
+    using var ctx = new Context(__result);
+    ctx.SetSourceRGBA(0.2, 0.15, 0.12, mulAlpha / 255.0);
+    ctx.Paint();
+    return false;
+  }
+
+  private static void PatchTextures() {
+    lock (PatchGate)
+      if (_patched++ == 0)
+        Patcher.Patch(
+          typeof(GuiElement).GetMethod(
+            "getImageSurfaceFromAsset",
+            BindingFlags.Static | BindingFlags.Public,
+            null,
+            [typeof(ICoreClientAPI), typeof(AssetLocation), typeof(int)],
+            null
+          )!,
+          prefix: new HarmonyMethod(
+            typeof(WindowRig).GetMethod(
+              nameof(FlatTile),
+              BindingFlags.Static | BindingFlags.NonPublic
+            )
+          )
+        );
+  }
+
+  private static void UnpatchTextures() {
+    lock (PatchGate)
+      if (--_patched == 0)
+        Patcher.UnpatchAll(Patcher.Id);
+  }
+
+  private string? Lookup(string key) {
+    if (_lang.TryGetValue(key, out string? text))
+      return text;
+    string? best = null;
+    foreach (string entry in _lang.Keys)
+      if (
+        entry.EndsWith('*')
+        && key.StartsWith(
+          entry.AsSpan(0, entry.Length - 1),
+          StringComparison.Ordinal
+        )
+        && (best == null || entry.Length > best.Length)
+      )
+        best = entry;
+    return best == null ? null : _lang[best];
+  }
+
   private ITranslationService BuildLangService() {
     var svc = Substitute.For<ITranslationService>();
     svc.LanguageCode.Returns("en");
     string Translate(string key, object[] args) =>
-      _lang.TryGetValue(key, out string? text)
+      Lookup(key) is { } text
         ? (args.Length == 0 ? text : string.Format(text, args))
         : key;
     svc.Get(Arg.Any<string>(), Arg.Any<object[]>())

@@ -1,14 +1,14 @@
 using System;
 using System.IO;
 using System.Linq;
-using Context = Cairo.Context;
-using Format = Cairo.Format;
-using ImageSurface = Cairo.ImageSurface;
 using ExpandedLib.Testing;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Xunit;
+using Context = Cairo.Context;
+using Format = Cairo.Format;
+using ImageSurface = Cairo.ImageSurface;
 
 namespace ExpandedLib.Tests;
 
@@ -415,6 +415,61 @@ public class WindowTests {
     Assert.True(frame.InkIn(draw.X, draw.Y, draw.Width, draw.Height) > 0);
   }
 
+  // Fails when Assets.Get or BitmapCreateFromPng is not wired: the shaded dialog background cannot load its
+  // texture and the compose throws.
+  [Fact]
+  public void AShadedDialogBackgroundComposesAndDrawsInk() {
+    using var rig = new WindowRig();
+    ElementBounds dialog = ElementBounds.Fixed(100, 100, 320, 120);
+    ElementBounds bg = ElementBounds.Fill.WithFixedPadding(
+      GuiStyle.ElementToDialogPadding
+    );
+    bg.BothSizing = ElementSizing.FitToChildren;
+    GuiComposer composer = rig
+      .Api.Gui.CreateCompo("window-bg", dialog)
+      .AddShadedDialogBG(bg, true)
+      .BeginChildElements(bg)
+      .AddStaticText(
+        "x",
+        CairoFont.WhiteSmallText(),
+        ElementBounds.Fixed(0, 0, 80, 30)
+      )
+      .EndChildElements()
+      .Compose();
+    using WindowFrame frame = rig.Render(composer);
+
+    Assert.True(frame.InkIn(0, 0, frame.Width, frame.Height) > 0);
+  }
+
+  // Fails when the title bar is compared with the dialog's content: its full-width bar overlaps its own title.
+  [Fact]
+  public void GateLeavesTheTitleBarAlone() {
+    using var rig = new WindowRig();
+    ElementBounds bg = ElementBounds.Fill.WithFixedPadding(
+      GuiStyle.ElementToDialogPadding
+    );
+    bg.BothSizing = ElementSizing.FitToChildren;
+    GuiComposer composer = rig
+      .Api.Gui.CreateCompo(
+        "window-titlebar",
+        ElementStdBounds.AutosizedMainDialog.WithAlignment(
+          EnumDialogArea.CenterMiddle
+        )
+      )
+      .AddShadedDialogBG(bg, true)
+      .AddDialogTitleBar("Bench", () => { })
+      .BeginChildElements(bg)
+      .AddStaticText(
+        "x",
+        CairoFont.WhiteSmallText(),
+        ElementBounds.Fixed(0, GuiStyle.TitleBarHeight + 6, 80, 30)
+      )
+      .EndChildElements()
+      .Compose();
+
+    Assert.Empty(WindowLayout.Check(composer));
+  }
+
   // Fails when PushScissor is not wired: the text beyond the 30 px clip then leaves ink to its right.
   [Fact]
   public void ClippedTextLeavesNoInkOutsideTheClip() {
@@ -516,5 +571,27 @@ public class WindowTests {
 
     Assert.Equal("Hello bench", label);
     Assert.Equal("wintest:greeting", Lang.Get("wintest:greeting"));
+  }
+
+  // Fails when a key with no exact entry skips the wildcard entries: the colored name then reads its key.
+  [Fact]
+  public void LoadLangResolvesTheLongestWildcardEntry() {
+    string path = Path.Combine(OutDir, "lang-wild-en.json");
+    Directory.CreateDirectory(OutDir);
+    File.WriteAllText(
+      path,
+      "{ \"block-pipe-*\": \"Pipe\", \"block-pipe-tee-*\": \"Tee\" }"
+    );
+    TestLang.Init();
+    string plain;
+    string tee;
+    using (var rig = new WindowRig()) {
+      rig.LoadLang("wintest", path);
+      plain = Lang.GetMatching("wintest:block-pipe-bend-red");
+      tee = Lang.GetMatching("wintest:block-pipe-tee-red");
+    }
+
+    Assert.Equal("Pipe", plain);
+    Assert.Equal("Tee", tee);
   }
 }
