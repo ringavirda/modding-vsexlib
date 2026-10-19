@@ -188,5 +188,30 @@ public sealed class CraftSequenceTests
       CraftSequenceRegistry.Shared.Clear();
     }
   }
+
+  // Fails when the harness asks every handler for a yes, which the game does not: it answers with the last one
+  // subscribed, so a later handler's true overrides the gate.
+  [Fact]
+  public void The_last_subscribed_handler_answers_the_match()
+  {
+    CraftSequenceRegistry.Shared.Clear();
+    try
+    {
+      CraftSequenceLoader.Load([
+        ("iiex:config/craftsequences/w.json", ShaftHand),
+      ]);
+      using var world = new TestWorld();
+      CraftSequenceGate.Register(world.Api.Event);
+      GridRecipe sequenced = Recipe("iiex:shaft hand");
+
+      world.Api.Event.MatchesGridRecipe += (_, _, _, _) => true;
+
+      Assert.True(Matches(world, sequenced));
+    }
+    finally
+    {
+      CraftSequenceRegistry.Shared.Clear();
+    }
+  }
 }
 #endif

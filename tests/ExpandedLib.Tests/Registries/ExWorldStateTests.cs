@@ -50,6 +50,7 @@ public class ExWorldStateTests {
     ["ExpandedLib.Checks.AssetCheckSource.HeldAtLoad"] = WeakByWorld,
     ["ExpandedLib.Blocks.ConstructionHints.Worlds"] = WeakByWorld,
     ["ExpandedLib.Blocks.BlockControls.Tables"] = WeakByWorld,
+    ["ExpandedLib.Machines.CraftSequenceGate.Registered"] = WeakByWorld,
     ["ExpandedLib.Blocks.ControlBoxes.Tables"] = WeakByWorld,
     ["ExpandedLib.Blocks.ControlBoxes.Principals"] = WeakByWorld,
     ["ExpandedLib.Registries.EntityRegistry._bareKeysIssued"] = WeakByWorld,

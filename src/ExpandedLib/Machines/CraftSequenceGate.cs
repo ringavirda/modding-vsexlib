@@ -1,5 +1,6 @@
 #if GAME_GE_1_22
 using System;
+using System.Runtime.CompilerServices;
 using ExpandedLib.Catalogues;
 using Vintagestory.API.Common;
 
@@ -14,6 +15,10 @@ public static class CraftSequenceGate
 {
   [ThreadStatic]
   private static string? _machine;
+
+  private static readonly ConditionalWeakTable<IEventAPI, object> Registered =
+    new();
+  private static readonly object Marker = new();
 
   /// <summary>Marks the matches the calling thread makes until the scope is disposed as made at
   /// <paramref name="machine"/>. Scopes nest; disposing restores the enclosing mark.</summary>
@@ -39,11 +44,14 @@ public static class CraftSequenceGate
   }
 
   /// <summary>Adds the gate to <paramref name="events"/>' grid-recipe matching, over
-  /// <see cref="CraftSequenceRegistry.Shared"/>. Registering twice on one api is harmless.</summary>
+  /// <see cref="CraftSequenceRegistry.Shared"/>. Registering twice on one api is harmless and keeps the
+  /// gate's place among the handlers.</summary>
   /// <param name="events">The event api whose <c>MatchesGridRecipe</c> the gate joins.</param>
   public static void Register(IEventAPI events)
   {
-    events.MatchesGridRecipe -= Matches;
+    if (Registered.TryGetValue(events, out _))
+      return;
+    Registered.Add(events, Marker);
     events.MatchesGridRecipe += Matches;
   }
 

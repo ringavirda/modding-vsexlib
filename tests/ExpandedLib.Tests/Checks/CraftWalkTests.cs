@@ -810,6 +810,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
       [Recipe(Stick, "a"), Recipe("walk:a", "b")],
       Stick
     );
+    CraftSequenceGate.Register(world.Api.Event);
     world.Api.Event.MatchesGridRecipe += (_, recipe, _, _) =>
       recipe.Name.ToString() != "walk:b";
 

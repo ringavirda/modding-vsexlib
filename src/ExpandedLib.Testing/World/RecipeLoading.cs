@@ -271,15 +271,18 @@ public sealed partial class TestWorld
         Arg.Any<int>()
       )
       .Returns(ci =>
-        gridHandlers.All(h =>
-          h(
+      {
+        // A multicast delegate answers with its last handler, as the game's trigger does.
+        bool answer = true;
+        foreach (MatchGridRecipeDelegate h in gridHandlers)
+          answer = h(
             ci.Arg<IPlayer>(),
             ci.Arg<GridRecipe>(),
             ci.Arg<ItemSlot[]>(),
             ci.Arg<int>()
-          )
-        )
-      );
+          );
+        return answer;
+      });
     events
       .TriggerMatchesRecipe(
         Arg.Any<IPlayer>(),
@@ -287,10 +290,16 @@ public sealed partial class TestWorld
         Arg.Any<ItemSlot[]>()
       )
       .Returns(ci =>
-        recipeHandlers.All(h =>
-          h(ci.Arg<IPlayer>(), ci.Arg<IRecipeBase>(), ci.Arg<ItemSlot[]>())
-        )
-      );
+      {
+        bool answer = true;
+        foreach (MatchRecipeDelegate h in recipeHandlers)
+          answer = h(
+            ci.Arg<IPlayer>(),
+            ci.Arg<IRecipeBase>(),
+            ci.Arg<ItemSlot[]>()
+          );
+        return answer;
+      });
   }
 }
 #endif
