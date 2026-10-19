@@ -1047,11 +1047,9 @@ internal sealed class PipeFlowStore {
     if (_restSeconds < ThermalTickSeconds)
       return;
     int n = NodeCount;
-    var pressure = new double[n];
     var liquid = new bool[n];
     var gas = new bool[n];
     for (int i = 0; i < n; i++) {
-      pressure[i] = Pressure(i);
       liquid[i] = _liquid[i] > MinContentKg;
       gas[i] = _gas[i] > MinContentKg;
       _heatStart[i] = HeatContent(i);
@@ -1062,7 +1060,7 @@ internal sealed class PipeFlowStore {
     ExchangeWithWalls(elapsed);
     for (int i = 0; i < n; i++)
       if (
-        Math.Abs(Pressure(i) - pressure[i]) > ThermalWakePa
+        Math.Abs(Pressure(i) - _pressure[i]) > ThermalWakePa
         || (_liquid[i] > MinContentKg) != liquid[i]
         || (_gas[i] > MinContentKg) != gas[i]
       ) {

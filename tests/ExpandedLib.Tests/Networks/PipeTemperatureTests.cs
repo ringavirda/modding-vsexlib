@@ -159,18 +159,36 @@ public class PipeTemperatureTests {
     Assert.InRange(store.WallTemperatureC(node), 5, 6.001);
   }
 
-  // Fails when a hot walled run stops cooling once it rests.
+  // Fails when a hot walled run stops cooling once it rests (the thermal tick is dropped).
   [Fact]
   public void HotRun_KeepsCoolingWhileItRests() {
     var store = new PipeFlowStore();
     int node = Add(store, 0, AtmosphereKg, 150);
     store.SetWall(node, Wall(capacity: 1e6), 150);
 
-    for (int i = 0; i < 50; i++) {
+    store.Step(0.2);
+    Assert.True(store.Asleep);
+    double content = store.TemperatureC(node);
+    double wall = store.WallTemperatureC(node);
+
+    for (int i = 0; i < 49; i++)
       store.Step(0.2);
-    }
-    Assert.True(store.TemperatureC(node) < 150);
-    Assert.True(store.WallTemperatureC(node) < 150);
+    Assert.True(store.TemperatureC(node) < content);
+    Assert.True(store.WallTemperatureC(node) < wall);
+  }
+
+  // Fails when the wake check compares against the pressure at the start of each tick, so slow cooling drifts an open sleeping run away from its outside without waking.
+  [Fact]
+  public void SleepingOpenRun_DoesNotDriftFromItsOutside() {
+    var store = new PipeFlowStore();
+    int node = Add(store, 0, 101325 * Volume / (GasConstant * 423.15), 150);
+    store.SetWall(node, Wall(capacity: 1e5), 150);
+    store.AddOpening(node, 1e-4, 101325, FlowGas.Steam);
+
+    for (int i = 0; i < 18000; i++)
+      store.Step(0.2);
+
+    Assert.InRange(store.PressurePa(node) - 101325, -60, 60);
   }
 
   // Fails when lagging does not cut the outside coefficient to a fifth, so the lagged wall loses as much heat as the bare one.
