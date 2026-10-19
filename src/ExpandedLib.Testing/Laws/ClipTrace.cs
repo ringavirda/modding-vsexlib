@@ -989,12 +989,16 @@ internal sealed class ClipTrace
 
   private InteractionLaw.Click? ClickFor(BlockLaws.EntityCase step, string line)
   {
-    BlockSelection selection = InteractionLaw.Selection(step.At);
-    WorldInteraction? help = step.Help(step.At, selection, _player.Player)
-      .FirstOrDefault(h =>
-        h.MouseButton == EnumMouseButton.Right && h.ActionLangCode == line
-      );
-    return help == null ? null : InteractionLaw.ClickOf(help, selection);
+    foreach (BlockSelection selection in InteractionLaw.Aimed(_world, step.At))
+    {
+      WorldInteraction? help = step.Help(step.At, selection, _player.Player)
+        .FirstOrDefault(h =>
+          h.MouseButton == EnumMouseButton.Right && h.ActionLangCode == line
+        );
+      if (help != null)
+        return InteractionLaw.ClickOf(help, selection);
+    }
+    return null;
   }
 }
 #endif

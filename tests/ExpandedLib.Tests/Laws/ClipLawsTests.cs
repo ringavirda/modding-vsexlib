@@ -9,6 +9,7 @@ using ExpandedLib.Testing;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 using Xunit;
 using Xunit.Abstractions;
@@ -38,6 +39,7 @@ public class ClipLawsTests(ITestOutputHelper output)
   {
     world.RegisterClass("ClipActions", typeof(BEBehaviorClipActions));
     world.RegisterClass("test-toggleblock", typeof(ToggleBlock));
+    world.RegisterClass("test-wheelblock", typeof(WheelBlock));
     world.RegisterClass("test-stepblock", typeof(StepBlock));
     world.RegisterClass("test-door", typeof(DoorEntity));
     world.RegisterClass("test-hatch", typeof(HatchEntity));
@@ -142,6 +144,24 @@ public class ClipLawsTests(ITestOutputHelper output)
     Assert.Equal(2, result[ClipLaws.ActionName].Cases);
     Assert.Equal(4, result[ClipLaws.TimeName].Cases);
     Assert.Equal(2, result[ClipLaws.KeyName].Cases);
+  }
+
+  // Fails when ClickFor reads the help at the top face only and never tries a box that carries an id.
+  [Fact]
+  public void A_help_shown_only_on_a_control_box_is_clicked_on_that_box()
+  {
+    BlockLaws.Result result = Run(
+      ExBlockDef
+        .Create("cliptrace", "wheeldoor")
+        .Class("test-wheelblock")
+        .Shape("cliptrace:door")
+        .EntityClass("test-door")
+        .EntityBehavior("ClipActions")
+        .ClipAction(Toggle())
+    );
+
+    Assert.All(result.Laws, law => Assert.Empty(law.Findings));
+    Assert.Equal(1, result[ClipLaws.ActionName].Cases);
   }
 
   [Fact]
@@ -1003,6 +1023,53 @@ public class ClipLawsTests(ITestOutputHelper output)
           MouseButton = EnumMouseButton.Right,
         },
       ];
+  }
+
+  private sealed class WheelBlock : Block
+  {
+    public override Cuboidf[] GetSelectionBoxes(
+      IBlockAccessor blockAccessor,
+      BlockPos pos
+    ) =>
+      [
+        new Cuboidf(0f, 0f, 0f, 1f, 0.5f, 1f),
+        new CuboidfWithId(new Cuboidf(0.25f, 0.5f, 0.25f, 0.75f, 1f, 0.75f))
+        {
+          Id = "wheel",
+        },
+      ];
+
+    public override bool OnBlockInteractStart(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel
+    )
+    {
+      if (
+        blockSel.SelectionBoxId != "wheel"
+        || world.BlockAccessor.GetBlockEntity(blockSel.Position)
+          is not DoorEntity door
+      )
+        return false;
+      door.Toggle();
+      return true;
+    }
+
+    public override WorldInteraction[] GetPlacedBlockInteractionHelp(
+      IWorldAccessor world,
+      BlockSelection selection,
+      IPlayer forPlayer
+    ) =>
+      selection.SelectionBoxId != "wheel"
+        ? []
+        :
+        [
+          new WorldInteraction
+          {
+            ActionLangCode = "cliptrace:toggle",
+            MouseButton = EnumMouseButton.Right,
+          },
+        ];
   }
 
   private sealed class StepBlock : Block
