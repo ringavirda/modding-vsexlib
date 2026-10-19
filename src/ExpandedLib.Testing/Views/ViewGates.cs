@@ -901,7 +901,13 @@ internal static class ViewGates {
       up
     );
     double tilt =
-      Math.Acos(Math.Clamp(Dot(held, carried) / (held.Length() * carried.Length()), -1, 1))
+      Math.Acos(
+        Math.Clamp(
+          Dot(held, carried) / (held.Length() * carried.Length()),
+          -1,
+          1
+        )
+      )
       * 180
       / Math.PI;
     return new GateReading(

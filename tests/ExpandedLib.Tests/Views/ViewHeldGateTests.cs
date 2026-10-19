@@ -86,10 +86,7 @@ public class ViewHeldGateTests {
   public void A_box_of_a_voxel_is_not_a_sheet() {
     ViewGroup plate = GroupOf("viewsfixture", "viewsfixture:uprightsheet");
 
-    Assert.DoesNotContain(
-      ViewGates.Rules(World, plate),
-      r => r.Gate == "G15"
-    );
+    Assert.DoesNotContain(ViewGates.Rules(World, plate), r => r.Gate == "G15");
     Assert.Contains(
       ViewGates.Rules(World, Sheet(0.99, 270, 210)),
       r => r.Gate == "G15"
