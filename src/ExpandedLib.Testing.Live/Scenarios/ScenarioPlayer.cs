@@ -17,7 +17,7 @@ namespace ExpandedLib.Testing.Live;
 /// <summary>The server-side player a run's cases act through, built from the engine's own classes
 /// with no connection and marked connected so the engine reads its game mode (scenarios.md, The
 /// scenario player).</summary>
-internal sealed class ScenarioPlayer {
+internal sealed class ScenarioPlayer : IHandRelease {
   public const string Uid = "exlib-scenario";
   private const string Name = "Scenario";
   private const int ParkHeight = 16;
@@ -599,9 +599,25 @@ internal sealed class ScenarioPlayer {
     return text;
   }
 
-  /// <summary>Empties the active slot and the off hand, releases the keys and parks the player.</summary>
-  public void Release() {
-    Player.InventoryManager.ActiveHotbarSlot.Itemstack = null;
+  /// <summary>Puts <paramref name="stack"/> in the off-hand slot, or empties it for null.</summary>
+  public void HoldOffhand(ItemStack? stack) =>
+    Player.Entity.LeftHandItemSlot.Itemstack = stack;
+
+  /// <summary>What the off-hand slot holds, or null.</summary>
+  public ItemStack? Offhand => Player.Entity.LeftHandItemSlot.Itemstack;
+
+  /// <summary>The stack the active slot holds after a step.</summary>
+  /// <param name="held">What the slot holds.</param>
+  /// <param name="keep">Whether the step leaves the hand as it ends.</param>
+  public static ItemStack? HandAfter(ItemStack? held, bool keep) =>
+    keep ? held : null;
+
+  /// <summary>Releases the keys, parks the player, empties the off hand and empties the active slot unless
+  /// <paramref name="keep"/>.</summary>
+  /// <param name="keep">Whether the active slot keeps its stack for the steps that follow.</param>
+  public void Release(bool keep = false) {
+    ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
+    slot.Itemstack = HandAfter(slot.Itemstack, keep);
     Player.InventoryManager.OffhandHotbarSlot.Itemstack = null;
     Hold(Player.Entity.Controls, []);
     Park();

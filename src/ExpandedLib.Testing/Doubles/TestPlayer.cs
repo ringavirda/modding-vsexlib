@@ -65,6 +65,14 @@ public sealed class TestPlayer {
   /// <see cref="Hotbar"/>'s slots.</summary>
   public ItemSlot ActiveSlot => _activeSlot;
 
+  /// <summary>The stack hotbar slot <paramref name="index"/> holds, numbered as <see cref="Select"/> numbers
+  /// them. The active slot, <see cref="ActiveNumber"/>, reads <see cref="ActiveSlot"/>; the others read
+  /// <see cref="Hotbar"/>'s.</summary>
+  /// <param name="index">The hotbar index, from 0 to 11.</param>
+  /// <returns>The stack, or null for an empty slot.</returns>
+  public ItemStack? StackInSlot(int index) =>
+    index == _activeNumber ? _activeSlot.Itemstack : Hotbar[index].Itemstack;
+
   /// <summary>The inventory <c>InventoryManager.GetHotbarInventory()</c> returns: a real, empty
   /// 12-slot inventory, as the game's hotbar, the last slot the off hand.</summary>
   public InventoryGeneric Hotbar { get; }

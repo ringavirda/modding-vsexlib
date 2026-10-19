@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Catalogues;
 using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using Newtonsoft.Json.Linq;
@@ -66,7 +67,9 @@ public sealed partial class SetupScene
   }
 
   /// <summary>Crafts <paramref name="order"/> once at <paramref name="entity"/>, or in the hand
-  /// grid when it is null, and checks what came out against the order's product.</summary>
+  /// grid when it is null, and checks what came out against the order's product and its sequence's
+  /// byproducts. A station holds the steps of a recipe that has a craft sequence, with tools made
+  /// without a pack.</summary>
   /// <param name="where">What a failure message names.</param>
   /// <param name="entity">The placed station, or null for the hand grid.</param>
   /// <param name="order">An order of the hand grid or of <paramref name="entity"/>.</param>
@@ -101,14 +104,15 @@ public sealed partial class SetupScene
     int times
   )
   {
-    AssetLocation wanted = order.Product.Collectible.Code;
-    int expected = order.Product.StackSize * times;
-    int count = made.Where(s => s.Collectible.Code.Equals(wanted))
-      .Sum(s => s.StackSize);
-    if (count != expected || made.Any(s => !s.Collectible.Code.Equals(wanted)))
+    Dictionary<string, int> wanted = CraftBills.Yield(
+      order,
+      CraftSequenceRegistry.Shared.Sequence(order.Recipe),
+      times
+    );
+    if (!CraftBills.Yielded(made, wanted))
       throw Fail(
         where,
-        $"{station} made {string.Join(", ", made.Select(s => $"{s.StackSize} {s.Collectible.Code}"))}, not {expected} {wanted}."
+        $"{station} made {string.Join(", ", made.Select(s => $"{s.StackSize} {s.Collectible.Code}"))}, not {string.Join(", ", wanted.Select(w => $"{w.Value} {w.Key}"))}."
       );
   }
 
@@ -193,7 +197,10 @@ public sealed partial class SetupScene
           $"slot {input.Slot} of {station} took {left} of the {laid.StackSize} {laid.Collectible.Code} laid for {input.Name}."
         );
     }
-    Verb(() => window.Press(order.PressId!.Value, order.PressData));
+    if (CraftSequenceRegistry.Shared.Sequence(order.Recipe) is { } sequence)
+      WorkSequence(where, entity, station, order, sequence);
+    else
+      Verb(() => window.Press(order.PressId!.Value, order.PressData));
     foreach (CraftInput input in order.Inputs.Where(i => i.Ingredient.IsTool))
     {
       Verb(() => window.Take(input.Slot));
@@ -214,6 +221,65 @@ public sealed partial class SetupScene
         $"the press of {order.Product.Collectible.Code} at {station} yielded nothing: the station refused."
       );
     return taken;
+  }
+
+  private void WorkSequence(
+    string where,
+    BlockEntity entity,
+    string station,
+    CraftOrder order,
+    CraftSequence sequence
+  )
+  {
+    for (int n = 0; n < sequence.Steps.Length; n++)
+    {
+      CraftStep step = sequence.Steps[n];
+      string label = $"step {n + 1} of {sequence.Recipe}";
+      Player.Hold(Gesture(where, label, step.Tool));
+      Player.HoldOffHand(Gesture(where, label, step.Offhand));
+      try
+      {
+        if (
+          !Player.Interact(
+            entity.Pos,
+            null,
+            false,
+            false,
+            false,
+            step.Seconds + TestPlayer.InteractStepSeconds,
+            null,
+            TickSecond
+          )
+        )
+          throw Fail(where, $"{station} does not take the hold of {label}.");
+      }
+      finally
+      {
+        Give(Player.ActiveSlot.Itemstack);
+        Give(Player.OffHandSlot.Itemstack);
+        Player.Hold(null);
+        Player.HoldOffHand(null);
+      }
+    }
+  }
+
+  private ItemStack? Gesture(string where, string label, string? pattern)
+  {
+    if (pattern == null)
+      return null;
+    ItemStack tool;
+    string? drawn;
+    try
+    {
+      tool = CraftBills.Tool(World.World, pattern, _pack, out drawn);
+    }
+    catch (InvalidOperationException e)
+    {
+      throw Fail(where, $"{label}: {e.Message}");
+    }
+    if (drawn != null)
+      Draw(where, drawn, 1);
+    return tool;
   }
 
   private ItemStack Laid(CraftInput input, JObject? with, string where)
@@ -250,7 +316,10 @@ public sealed partial class SetupScene
       if (held != null)
         held.Itemstack.StackSize += stack.StackSize;
       else
-        Player.Hotbar.First(s => s.Empty).Itemstack = stack;
+        Player
+          .Hotbar.Where((_, i) => i != Player.ActiveNumber)
+          .First(s => s.Empty)
+          .Itemstack = stack;
     }
   }
 }

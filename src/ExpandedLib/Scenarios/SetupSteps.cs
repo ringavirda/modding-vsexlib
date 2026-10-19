@@ -116,6 +116,7 @@ internal static class SetupSteps {
       "seconds",
       "returns",
       "control",
+      "keep",
     ],
     ["wait"] = ["seconds", "until", "max", "hold"],
     ["advance"] = ["hours"],
@@ -142,6 +143,10 @@ internal static class SetupSteps {
       "matches",
       "min",
       "max",
+      "slot",
+      "code",
+      "count",
+      "attribute",
     ],
     ["fill"] = ["id", "code", "from", "to"],
     ["window"] = ["at", "open", "put", "take", "press", "close"],
@@ -239,6 +244,10 @@ internal static class SetupSteps {
     }
     if (kind == "craft")
       ValidateCraft(o, at);
+    if (kind == "interact" && o["keep"] != null)
+      SetupJson.Bool(o["keep"], at.In("keep"));
+    if (kind == "expect" && SetupSlotExpect.Is(o))
+      SetupSlotExpect.Validate(o, at);
     if (kind == "set" && (o["tree"] == null) == (o["member"] == null))
       throw at.Fail("takes one of \"tree\" and \"member\".");
     if (kind == "complete")
@@ -307,6 +316,7 @@ internal static class SetupSteps {
       && o["same"] == null
       && o["footprint"] == null
       && o["drops"] == null
+      && !SetupSlotExpect.Is(o)
     )
       tests.Add(ReadingTests.Parse(o, at, scope));
     IReadOnlyList<SetupStep> steps =
