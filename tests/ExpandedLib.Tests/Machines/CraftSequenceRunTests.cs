@@ -27,7 +27,7 @@ public sealed class CraftSequenceRunTests
 
     public void StopAnimation(string animation) => Log.Add("stop " + animation);
 
-    public void PlaySound(string sound) => Log.Add("sound " + sound);
+    public void Strike(string sound) => Log.Add("sound " + sound);
   }
 
   private sealed class Bench : IDisposable

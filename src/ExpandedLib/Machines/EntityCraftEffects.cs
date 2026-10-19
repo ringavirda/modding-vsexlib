@@ -16,7 +16,7 @@ public sealed class EntityCraftEffects(Entity holder) : ICraftEffects {
     holder.AnimManager?.StopAnimation(animation);
 
   /// <inheritdoc />
-  public void PlaySound(string sound) =>
+  public void Strike(string sound) =>
     holder.World.PlaySoundAt(
       new AssetLocation(sound),
       holder,

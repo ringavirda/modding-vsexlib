@@ -191,7 +191,7 @@ public sealed class CraftSequenceRun(
     }
     while (sound != null && Due((_strikes * stroke) + strike, step))
     {
-      effects.PlaySound(sound);
+      effects.Strike(sound);
       _strikes++;
     }
   }

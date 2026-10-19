@@ -34,6 +34,7 @@ public class ExWorldStateTests {
     ["ExpandedLib.Catalogues.CraftSequenceLoader.SequenceKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.StepKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.ByproductKeys"] = SchemaKeys,
+    ["ExpandedLib.Catalogues.CraftSequenceLoader.ToolKeys"] = SchemaKeys,
     ["ExpandedLib.Machines.CraftSequenceGate._machine"] =
       "the machine a station's match is marked with, set and restored around that match",
     ["ExpandedLib.Catalogues.ProcessRouteLoader.RootKeys"] = SchemaKeys,

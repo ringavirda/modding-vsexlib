@@ -13,5 +13,5 @@ public interface ICraftEffects {
 
   /// <summary>Plays a sound at the holder at the strike of a stroke.</summary>
   /// <param name="sound">The sound's asset path, such as <c>sounds/effect/anvilhit</c>.</param>
-  void PlaySound(string sound);
+  void Strike(string sound);
 }
