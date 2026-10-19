@@ -718,8 +718,8 @@ internal static class ViewGates {
   /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
   /// <returns>G4 on the ground, G9 in third and first person, G11, G14 when the group's collectible declares an
   /// <c>itemViews.tip</c>, G15 in third and first person when the group's box is a sheet, G16 in third and first person
-  /// when the group is a block with a hand transform of its own (one equal to <see cref="ModelTransform.BlockDefaultTp"/> is the game's hold for a block that
-  /// authors none and is not judged), and G12 when a row of <paramref name="catalogue"/> names one of the group's codes, each
+  /// when the group is a block with a hand transform of its own (one with the rotation of <see cref="ModelTransform.BlockDefaultTp"/> is the game's hold for a block that
+  /// authors none, rescaled and moved by the item views, and is not judged), and G12 when a row of <paramref name="catalogue"/> names one of the group's codes, each
   /// with its pass or failure.</returns>
   internal static IReadOnlyList<GateReading> Rules(
     TestWorld world,
@@ -897,11 +897,7 @@ internal static class ViewGates {
   }
 
   private static bool IsDefaultBlockHold(ModelTransform hand) {
-    ModelTransform d = ModelTransform.BlockDefaultTp();
-    return hand.Translation.Equals(d.Translation)
-      && hand.Rotation.Equals(d.Rotation)
-      && hand.Origin.Equals(d.Origin)
-      && hand.ScaleXYZ.Equals(d.ScaleXYZ);
+    return hand.Rotation.Equals(ModelTransform.BlockDefaultTp().Rotation);
   }
 
   private static GateReading HeldUp(

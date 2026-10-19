@@ -148,6 +148,21 @@ public class ViewHeldGateTests {
     Assert.Contains(ViewGates.Rules(World, OwnHeldHay()), r => r.Gate == "G16");
   }
 
+  // Fails when the skip compares the whole transform: hay in the default block hold's rotation, rescaled and moved as
+  // the item views do, then reads G16.
+  [Fact]
+  public void A_block_in_the_default_rotation_rescaled_reads_no_G16() {
+    ViewGroup hay = DefaultHeldHay();
+    ModelTransform hand = hay.Hand.Clone();
+    hand.Scale = hand.ScaleXYZ.X * 0.5f;
+    hand.Translation = new FastVec3f(0.3f, -0.2f, 0.1f);
+
+    Assert.DoesNotContain(
+      ViewGates.Rules(World, hay with { Hand = hand }),
+      r => r.Gate == "G16"
+    );
+  }
+
   // Fails when HeldUpDegrees moves off 20: the barrel at 18.3 and 22.3 degrees in third person, and at 17.7 and 21.7 in
   // first, then pass or fail together.
   [Fact]
