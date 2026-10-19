@@ -19,7 +19,13 @@ public sealed partial class SetupScene
 
   private TestPlayer? _player;
 
-  internal TestPlayer Player => _player ??= World.Player();
+  internal TestPlayer Player => _player ??= Survivor();
+
+  private TestPlayer Survivor() {
+    TestPlayer player = World.Player();
+    player.GameMode = EnumGameMode.Survival;
+    return player;
+  }
 
   private BlockEntity EntityAt(SetupStep step, out BlockPos at)
   {

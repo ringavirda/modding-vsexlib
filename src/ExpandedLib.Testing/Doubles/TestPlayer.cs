@@ -348,7 +348,8 @@ public sealed class TestPlayer {
   /// <param name="ctrl">Holds <c>CtrlKey</c> and <c>Sprint</c>.</param>
   /// <param name="seconds">The hold in seconds, 0 or more; 0 clicks with no step.</param>
   /// <param name="face">The side of the control's box clicked, at its centre; null for the top.</param>
-  /// <returns><see cref="Block.OnBlockInteractStart"/>'s answer; false when not called.</returns>
+  /// <returns><see cref="Block.OnBlockInteractStart"/>'s answer; false when not called or, with
+  /// <paramref name="sneak"/>, a block in hand was placed first as in <see cref="Interact(BlockPos, ItemStack?, bool, bool, float, BlockFacing?)"/>.</returns>
   /// <exception cref="ArgumentException"><paramref name="control"/> is no box's id of the cell; the message
   /// names the ids the cell has.</exception>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="seconds"/> is negative or NaN.</exception>
@@ -440,7 +441,7 @@ public sealed class TestPlayer {
     controls.Sprint = ctrl || sprint;
     try {
       Block block = _world.Accessor.GetBlock(pos);
-      if (ClientClick.PlacesFirst(_world.World, Player, selection))
+      if (ClientClick.PlacesFirst(_world.World, Player, selection, out _))
         return false;
       if (!block.OnBlockInteractStart(_world.World, Player, selection))
         return false;

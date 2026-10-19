@@ -1155,6 +1155,30 @@ public class BlockLawsTests {
     Assert.Empty(law.Findings);
   }
 
+  // Fails when a help line naming sneak with a block in hand passes although the client places that
+  // block instead of reaching the clicked one.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_sneak_click_with_a_placeable_block_is_refused() {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [],
+        ExBlockDef.Create("test", "stone"),
+        Names("sneaks", "test:stone", takes: true, spends: true)
+          .Attribute("keys", "sneak")
+      ),
+      "test"
+    );
+
+    Assert.Equal(
+      [
+        "test:sneaks clicked on its cell with test:stone and sneak held, which its help names for "
+          + "\"test:use\", and the click was refused",
+      ],
+      law.Findings
+    );
+  }
+
   // Fails when the other items a help lists under the same action are not carried beside the
   // hand.
   [Fact]
@@ -2249,14 +2273,14 @@ public class BlockLawsTests {
           ShouldApply = Attributes["gated"].AsBool()
             ? (wi, bs, es) => true
             : null,
-          Itemstacks =
-          [
-            new ItemStack(
-              world.GetItem(new AssetLocation(Attributes["names"].AsString()))
-            ),
-          ],
+          Itemstacks = [Named(world, Attributes["names"].AsString())],
         },
       ];
+
+    private static ItemStack Named(IWorldAccessor world, string code) =>
+      world.GetItem(new AssetLocation(code)) is { } item
+        ? new ItemStack(item)
+        : new ItemStack(world.GetBlock(new AssetLocation(code)));
 
     public override bool OnBlockInteractStart(
       IWorldAccessor world,

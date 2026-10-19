@@ -8,17 +8,26 @@ namespace ExpandedLib.Blocks;
 internal static class ClientClick {
   /// <summary>Places the block in the active hand on a sneak click, as the client does before the clicked
   /// block's <see cref="Block.OnBlockInteractStart"/>: the held block goes against the clicked face and one
-  /// is taken from the stack.</summary>
+  /// is taken from the stack unless the player is in creative mode. A block clicked
+  /// that <see cref="Block.IsReplacableBy"/> the held one is replaced instead of built against.</summary>
   /// <param name="world">The world the block goes into.</param>
   /// <param name="player">The clicking player; its <c>ShiftKey</c> and active slot are read.</param>
   /// <param name="selection">The clicked selection; not changed.</param>
-  /// <returns>Whether a block was placed. False when the shift key is up, the hand holds no block, the
-  /// clicked block sets <see cref="Block.PlacedPriorityInteract"/>, or the held block refuses the place.</returns>
+  /// <param name="placed">The selection the block went into, at the placed cell; null when nothing was
+  /// placed.</param>
+  /// <returns>Whether a block was placed. False when the player is in neither survival nor creative mode,
+  /// the shift key is up, the hand holds no block, the clicked block sets
+  /// <see cref="Block.PlacedPriorityInteract"/>, or the held block refuses the place.</returns>
   public static bool PlacesFirst(
     IWorldAccessor world,
     IPlayer player,
-    BlockSelection selection
+    BlockSelection selection,
+    out BlockSelection? placed
   ) {
+    placed = null;
+    EnumGameMode mode = player.WorldData.CurrentGameMode;
+    if (mode != EnumGameMode.Survival && mode != EnumGameMode.Creative)
+      return false;
     ItemSlot slot = player.InventoryManager.ActiveHotbarSlot;
     if (
       !player.Entity.Controls.ShiftKey || slot.Itemstack?.Block is not { } held
@@ -27,7 +36,7 @@ internal static class ClientClick {
     Block clicked = world.BlockAccessor.GetBlock(selection.Position);
     if (clicked.PlacedPriorityInteract)
       return false;
-    bool offset = clicked.Replaceable < 6000;
+    bool offset = !clicked.IsReplacableBy(held);
     var target = new BlockSelection {
       Position = offset
         ? selection.Position.AddCopy(selection.Face)
@@ -39,8 +48,11 @@ internal static class ClientClick {
     string failure = "";
     if (!held.TryPlaceBlock(world, player, slot.Itemstack, target, ref failure))
       return false;
-    slot.TakeOut(1);
-    slot.MarkDirty();
+    if (mode != EnumGameMode.Creative) {
+      slot.TakeOut(1);
+      slot.MarkDirty();
+    }
+    placed = target;
     return true;
   }
 }

@@ -55,7 +55,9 @@ public class TestPlayerInteractTests {
     var world = new TestWorld();
     var lever = TestBlocks.Configure(new Lever(), "test:lever", 1);
     world.Place(At, lever);
-    return (world, lever, world.Player());
+    TestPlayer player = world.Player();
+    player.GameMode = EnumGameMode.Survival;
+    return (world, lever, player);
   }
 
   #region Holding
@@ -189,6 +191,52 @@ public class TestPlayerInteractTests {
       !expectInteract && sneak && placeable ? brick.Id : 0,
       world.Accessor.GetBlock(At.EastCopy()).Id
     );
+  }
+
+  // Fails when a clicked block the held one can replace is built against instead of replaced.
+  [Fact]
+  public void A_sneak_click_on_a_replaceable_block_places_into_its_cell() {
+    var (world, lever, player) = Stand();
+    lever.Replaceable = 6000;
+    var brick = TestBlocks.Configure(new Brick(), "test:brick", 2);
+    world.Place(new BlockPos(5, 1, 5), brick);
+    var stack = new ItemStack(brick, 1);
+
+    player.Interact(At, held: stack, sneak: true, face: BlockFacing.EAST);
+
+    Assert.Equal(brick.Id, world.Accessor.GetBlock(At).Id);
+    Assert.Equal(0, world.Accessor.GetBlock(At.EastCopy()).Id);
+  }
+
+  // Fails when a player in neither survival nor creative mode places on a sneak click.
+  [Fact]
+  public void A_guest_sneak_click_places_nothing() {
+    var (world, lever, player) = Stand();
+    player.GameMode = EnumGameMode.Guest;
+    var brick = TestBlocks.Configure(new Brick(), "test:brick", 2);
+    world.Place(new BlockPos(5, 1, 5), brick);
+    var stack = new ItemStack(brick, 1);
+
+    player.Interact(At, held: stack, sneak: true, face: BlockFacing.EAST);
+
+    Assert.Equal(0, world.Accessor.GetBlock(At.EastCopy()).Id);
+    Assert.Equal(1, stack.StackSize);
+    Assert.Equal(1, lever.Calls.Count(c => c == "start"));
+  }
+
+  // Fails when a creative player's sneak placement takes the block from the stack.
+  [Fact]
+  public void A_creative_sneak_click_keeps_the_stack() {
+    var (world, lever, player) = Stand();
+    player.GameMode = EnumGameMode.Creative;
+    var brick = TestBlocks.Configure(new Brick(), "test:brick", 2);
+    world.Place(new BlockPos(5, 1, 5), brick);
+    var stack = new ItemStack(brick, 1);
+
+    player.Interact(At, held: stack, sneak: true, face: BlockFacing.EAST);
+
+    Assert.Equal(brick.Id, world.Accessor.GetBlock(At.EastCopy()).Id);
+    Assert.Equal(1, stack.StackSize);
   }
 
   private sealed class Brick : Block {

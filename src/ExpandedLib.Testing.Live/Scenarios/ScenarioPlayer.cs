@@ -449,14 +449,17 @@ internal sealed class ScenarioPlayer : IHandRelease {
   /// <summary>Holds <paramref name="stack"/> in the active slot and <paramref name="keys"/>, stands the
   /// player facing <paramref name="selection"/>'s hit on the block at <paramref name="at"/>, and
   /// right-clicks it. The did-use event fires right after <c>Block.OnBlockInteractStart</c> whatever it
-  /// answered, as the server does on the start of a block use.</summary>
+  /// answered, as the server does on the start of a block use. With sneak held, a block in hand is placed
+  /// first as the client does: the neighbours and the did-place event are told, and the block is not
+  /// reached.</summary>
   /// <param name="at">The absolute cell of the block used.</param>
   /// <param name="selection">What the click lands on, as <see cref="InteractStep.SelectionFor"/> builds it;
   /// the hold's later calls pass it to the block.</param>
   /// <param name="stack">What the hand holds, or null for an empty hand.</param>
   /// <param name="keys">Names read by <see cref="Hold"/>.</param>
   /// <param name="offHand">What the off hand holds, or null for an empty one.</param>
-  /// <returns>What <c>Block.OnBlockInteractStart</c> answered.</returns>
+  /// <returns>What <c>Block.OnBlockInteractStart</c> answered; false, with <see cref="Placed"/> set, when
+  /// a block was placed instead.</returns>
   public bool UseStart(
     BlockPos at,
     BlockSelection selection,
@@ -479,8 +482,10 @@ internal sealed class ScenarioPlayer : IHandRelease {
     Hold(Player.Entity.Controls, keys);
     Player.InventoryManager.ActiveHotbarSlot.Itemstack = stack;
     Player.InventoryManager.OffhandHotbarSlot.Itemstack = offHand;
-    if (ClientClick.PlacesFirst(_server, Player, selection)) {
-      _server.TriggerNeighbourBlocksUpdate(selection.Position);
+    int before = _server.BlockAccessor.GetBlock(selection.Position).Id;
+    if (ClientClick.PlacesFirst(_server, Player, selection, out var put)) {
+      _server.TriggerNeighbourBlocksUpdate(put!.Position);
+      _server.EventManager.TriggerDidPlaceBlock(Player, before, put, stack);
       Placed = true;
       return false;
     }
