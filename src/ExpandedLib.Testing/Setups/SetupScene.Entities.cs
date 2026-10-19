@@ -21,7 +21,8 @@ public sealed partial class SetupScene
 
   internal TestPlayer Player => _player ??= Survivor();
 
-  private TestPlayer Survivor() {
+  private TestPlayer Survivor()
+  {
     TestPlayer player = World.Player();
     player.GameMode = EnumGameMode.Survival;
     return player;

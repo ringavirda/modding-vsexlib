@@ -518,9 +518,7 @@ public static class BlockLaws {
         what,
         judged,
         () => {
-          if (
-            ClientClick.PlacesFirst(_world.World, player, selection, out _)
-          )
+          if (ClientClick.PlacesFirst(_world.World, player, selection, out _))
             return;
           taken = block.OnBlockInteractStart(_world.World, player, selection);
           if (taken) {
