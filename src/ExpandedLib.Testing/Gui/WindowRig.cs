@@ -1,0 +1,423 @@
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using Cairo;
+using NSubstitute;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
+using Vintagestory.API.Config;
+using Vintagestory.API.MathTools;
+
+namespace ExpandedLib.Testing;
+
+/// <summary>
+/// A client API with no window and no GL, on which a dialog composes its <see cref="GuiComposer"/> and
+/// renders one frame to pixels.
+/// </summary>
+/// <remarks>The engine's own element code runs: layout, Cairo drawing and the text measure are the
+/// game's, with the game's fonts from the provisioned install. What is faked is the texture store
+/// (<c>Gui.LoadCairoTexture</c> and <c>LoadOrUpdateCairoTexture</c> keep each surface's pixels under
+/// an id) and the draw calls (<c>Render.Render2DTexture*</c> paint that surface into the frame at the
+/// rectangle given). An item stack is a plain square with its code's path and, where the draw call
+/// asks for a stack size, its count. Clipping, shaders, item meshes, sounds, input and the cursor are
+/// not simulated. <see cref="Api"/> is built for the composer's dialog only: it has no world, no
+/// player and no assets. <see cref="Cairo.Context"/> work needs the system Cairo and fontconfig.
+/// <para>The rig sets the process-wide <c>RuntimeEnv.GUIScale</c> for its lifetime and puts the old
+/// value back on <see cref="Dispose"/>, so tests that use it run in one collection.</para></remarks>
+public sealed class WindowRig : IDisposable {
+  private readonly float _previousScale;
+  private readonly Dictionary<int, ImageSurface> _textures = new();
+  private readonly List<WindowDraw> _draws = new();
+  private int _nextTexture;
+  private Context? _frame;
+  private double _originX;
+  private double _originY;
+
+  /// <summary>Makes a rig for one GUI scale and screen size.</summary>
+  /// <param name="guiScale">The game's GUI scale setting, above zero; 1.0 is the default.</param>
+  /// <param name="screenWidth">Window width in pixels, above zero.</param>
+  /// <param name="screenHeight">Window height in pixels, above zero.</param>
+  /// <exception cref="ArgumentOutOfRangeException">A size or the scale is zero or less.</exception>
+  /// <exception cref="InvalidOperationException">No game install with a fonts folder is
+  /// provisioned.</exception>
+  public WindowRig(
+    float guiScale = 1f,
+    int screenWidth = 1920,
+    int screenHeight = 1080
+  ) {
+    ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(guiScale, 0f);
+    ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(screenWidth, 0);
+    ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(screenHeight, 0);
+    CairoNative.Ensure();
+    GuiScale = guiScale;
+    ScreenWidth = screenWidth;
+    ScreenHeight = screenHeight;
+    _previousScale = RuntimeEnv.GUIScale;
+    RuntimeEnv.GUIScale = guiScale;
+    Api = BuildApi();
+  }
+
+  /// <summary>The GUI scale the rig runs at.</summary>
+  public float GuiScale { get; }
+
+  /// <summary>The window width in pixels.</summary>
+  public int ScreenWidth { get; }
+
+  /// <summary>The window height in pixels.</summary>
+  public int ScreenHeight { get; }
+
+  /// <summary>The client API a dialog builds its composer against. <c>Gui.CreateCompo</c> makes real
+  /// composers parented to the screen.</summary>
+  public ICoreClientAPI Api { get; }
+
+  /// <summary>Composes <paramref name="composer"/> if it is not composed and draws one frame of it,
+  /// as the composer's render does in the game.</summary>
+  /// <param name="composer">A composer made by <see cref="Api"/>.</param>
+  /// <param name="margin">Pixels of frame kept around the dialog's rectangle on every side, so
+  /// content that overflows it shows; 0 for the dialog's own size.</param>
+  /// <returns>The frame; the caller disposes it.</returns>
+  public WindowFrame Render(GuiComposer composer, int margin = 0) {
+    composer.Compose(false);
+    ElementBounds b = composer.Bounds;
+    int width = (int)Math.Ceiling(b.OuterWidth) + 2 * margin;
+    int height = (int)Math.Ceiling(b.OuterHeight) + 2 * margin;
+    _originX = b.renderX - margin;
+    _originY = b.renderY - margin;
+    _draws.Clear();
+    var surface = new ImageSurface(Format.Argb32, width, height);
+    _frame = new Context(surface);
+    try {
+      composer.Render(0.016f);
+    } finally {
+      _frame.Dispose();
+      _frame = null;
+    }
+    return new WindowFrame(surface, _originX, _originY, [.. _draws]);
+  }
+
+  public void Dispose() {
+    RuntimeEnv.GUIScale = _previousScale;
+    foreach (ImageSurface s in _textures.Values)
+      s.Dispose();
+    _textures.Clear();
+  }
+
+  private ICoreClientAPI BuildApi() {
+    var api = Substitute.For<ICoreClientAPI>();
+    var screen = new ScreenBounds(ScreenWidth, ScreenHeight);
+
+    var gui = Substitute.For<IGuiAPI>();
+    gui.WindowBounds.Returns(screen);
+    gui.Icons.Returns(new IconUtil(api));
+    gui.TextTexture.Returns(new TextTextureUtil(api));
+    gui.Text.Returns(new TextDrawUtil());
+    gui.CreateCompo(Arg.Any<string>(), Arg.Any<ElementBounds>())
+      .Returns(ci =>
+        MakeComposer(api, screen, ci.Arg<string>(), ci.Arg<ElementBounds>())
+      );
+    gui.LoadCairoTexture(Arg.Any<ImageSurface>(), Arg.Any<bool>())
+      .Returns(ci => Store(0, ci.Arg<ImageSurface>()));
+    gui.When(g => {
+      ImageSurface any = Arg.Any<ImageSurface>();
+      bool linear = Arg.Any<bool>();
+      LoadedTexture into = Arg.Any<LoadedTexture>();
+      g.LoadOrUpdateCairoTexture(any, linear, ref into);
+    })
+      .Do(ci => {
+        var into = (LoadedTexture)ci[2];
+        ImageSurface surface = ci.Arg<ImageSurface>();
+        into.TextureId = Store(into.TextureId, surface);
+        into.Width = surface.Width;
+        into.Height = surface.Height;
+      });
+    api.Gui.Returns(gui);
+
+    var render = Substitute.For<IRenderAPI>();
+    render.FrameWidth.Returns(ScreenWidth);
+    render.FrameHeight.Returns(ScreenHeight);
+    WireDraws(render);
+    api.Render.Returns(render);
+
+    var input = Substitute.For<IInputAPI>();
+    input.MouseX.Returns(-1);
+    input.MouseY.Returns(-1);
+    input.KeyboardKeyState.Returns(new bool[512]);
+    api.Input.Returns(input);
+
+    var world = Substitute.For<IClientWorldAccessor>();
+    world.Rand.Returns(new Random(1));
+    api.World.Returns(world);
+    return api;
+  }
+
+  private static GuiComposer MakeComposer(
+    ICoreClientAPI api,
+    ElementBounds screen,
+    string name,
+    ElementBounds bounds
+  ) {
+    const BindingFlags Any = BindingFlags.Instance | BindingFlags.NonPublic;
+    ConstructorInfo ctor =
+      typeof(GuiComposer).GetConstructor(
+        Any,
+        null,
+        [typeof(ICoreClientAPI), typeof(ElementBounds), typeof(string)],
+        null
+      )
+      ?? throw new MissingMethodException(
+        "GuiComposer(ICoreClientAPI, ElementBounds, string)"
+      );
+    var composer = (GuiComposer)ctor.Invoke([api, bounds, name]);
+    bounds.ParentBounds ??= screen;
+    typeof(GuiComposer)
+      .GetField("composerManager", Any)
+      ?.SetValue(composer, Substitute.For<IGuiComposerManager>());
+    return composer;
+  }
+
+  private int Store(int id, ImageSurface source) {
+    if (id == 0 || !_textures.ContainsKey(id))
+      id = ++_nextTexture;
+    else
+      _textures[id].Dispose();
+    var copy = new ImageSurface(Format.Argb32, source.Width, source.Height);
+    using (var ctx = new Context(copy)) {
+      ctx.Operator = Operator.Source;
+      ctx.SetSourceSurface(source, 0, 0);
+      ctx.Paint();
+    }
+    _textures[id] = copy;
+    return id;
+  }
+
+  private void WireDraws(IRenderAPI render) {
+    render
+      .When(r =>
+        r.Render2DTexture(
+          Arg.Any<int>(),
+          Arg.Any<float>(),
+          Arg.Any<float>(),
+          Arg.Any<float>(),
+          Arg.Any<float>(),
+          Arg.Any<float>(),
+          Arg.Any<Vec4f>()
+        )
+      )
+      .Do(ci =>
+        DrawTexture(
+          ci.ArgAt<int>(0),
+          ci.ArgAt<float>(1),
+          ci.ArgAt<float>(2),
+          ci.ArgAt<float>(3),
+          ci.ArgAt<float>(4)
+        )
+      );
+    render
+      .When(r =>
+        r.Render2DTexturePremultipliedAlpha(
+          Arg.Any<int>(),
+          Arg.Any<float>(),
+          Arg.Any<float>(),
+          Arg.Any<float>(),
+          Arg.Any<float>(),
+          Arg.Any<float>(),
+          Arg.Any<Vec4f>()
+        )
+      )
+      .Do(ci =>
+        DrawTexture(
+          ci.ArgAt<int>(0),
+          ci.ArgAt<float>(1),
+          ci.ArgAt<float>(2),
+          ci.ArgAt<float>(3),
+          ci.ArgAt<float>(4)
+        )
+      );
+    render
+      .When(r =>
+        r.Render2DTexturePremultipliedAlpha(
+          Arg.Any<int>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<float>(),
+          Arg.Any<Vec4f>()
+        )
+      )
+      .Do(ci =>
+        DrawTexture(
+          ci.ArgAt<int>(0),
+          ci.ArgAt<double>(1),
+          ci.ArgAt<double>(2),
+          ci.ArgAt<double>(3),
+          ci.ArgAt<double>(4)
+        )
+      );
+    render
+      .When(r =>
+        r.RenderTexture(
+          Arg.Any<int>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<float>(),
+          Arg.Any<Vec4f>()
+        )
+      )
+      .Do(ci =>
+        DrawTexture(
+          ci.ArgAt<int>(0),
+          ci.ArgAt<double>(1),
+          ci.ArgAt<double>(2),
+          ci.ArgAt<double>(3),
+          ci.ArgAt<double>(4)
+        )
+      );
+    render
+      .When(r =>
+        r.Render2DTexturePremultipliedAlpha(
+          Arg.Any<int>(),
+          Arg.Any<ElementBounds>(),
+          Arg.Any<float>(),
+          Arg.Any<Vec4f>()
+        )
+      )
+      .Do(ci => DrawTexture(ci.ArgAt<int>(0), ci.ArgAt<ElementBounds>(1)));
+    render
+      .When(r =>
+        r.Render2DTexture(
+          Arg.Any<int>(),
+          Arg.Any<ElementBounds>(),
+          Arg.Any<float>(),
+          Arg.Any<Vec4f>()
+        )
+      )
+      .Do(ci => DrawTexture(ci.ArgAt<int>(0), ci.ArgAt<ElementBounds>(1)));
+    render
+      .When(r =>
+        r.RenderItemstackToGui(
+          Arg.Any<ItemSlot>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<float>(),
+          Arg.Any<int>(),
+          Arg.Any<bool>(),
+          Arg.Any<bool>(),
+          Arg.Any<bool>()
+        )
+      )
+      .Do(ci =>
+        DrawStack(
+          ci.Arg<ItemSlot>(),
+          ci.ArgAt<double>(1),
+          ci.ArgAt<double>(2),
+          ci.ArgAt<float>(4),
+          ci.ArgAt<bool>(8)
+        )
+      );
+    render
+      .When(r =>
+        r.RenderItemstackToGui(
+          Arg.Any<ItemSlot>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<float>(),
+          Arg.Any<int>(),
+          Arg.Any<float>(),
+          Arg.Any<bool>(),
+          Arg.Any<bool>(),
+          Arg.Any<bool>()
+        )
+      )
+      .Do(ci =>
+        DrawStack(
+          ci.Arg<ItemSlot>(),
+          ci.ArgAt<double>(1),
+          ci.ArgAt<double>(2),
+          ci.ArgAt<float>(4),
+          false
+        )
+      );
+  }
+
+  private void DrawTexture(int id, ElementBounds b) =>
+    DrawTexture(id, b.renderX, b.renderY, b.OuterWidth, b.OuterHeight);
+
+  private void DrawTexture(int id, double x, double y, double w, double h) {
+    if (_frame == null || !_textures.TryGetValue(id, out ImageSurface? tex))
+      return;
+    if (w <= 0 || h <= 0)
+      return;
+    _draws.Add(new WindowDraw("texture", x - _originX, y - _originY, w, h, ""));
+    _frame.Save();
+    _frame.Translate(x - _originX, y - _originY);
+    _frame.Scale(w / tex.Width, h / tex.Height);
+    _frame.SetSourceSurface(tex, 0, 0);
+    _frame.Paint();
+    _frame.Restore();
+  }
+
+  private void DrawStack(
+    ItemSlot slot,
+    double cx,
+    double cy,
+    float size,
+    bool showCount
+  ) {
+    ItemStack? stack = slot.Itemstack;
+    if (_frame == null || stack == null)
+      return;
+    double x = cx - size / 2 - _originX;
+    double y = cy - size / 2 - _originY;
+    string label = stack.Collectible?.Code?.Path ?? "?";
+    if (showCount)
+      label += " x" + stack.StackSize;
+    _draws.Add(new WindowDraw("stack", x, y, size, size, label));
+    _frame.Save();
+    _frame.Rectangle(x, y, size, size);
+    _frame.SetSourceRGBA(0.55, 0.55, 0.62, 1);
+    _frame.FillPreserve();
+    _frame.SetSourceRGBA(0.9, 0.9, 0.95, 1);
+    _frame.LineWidth = 1;
+    _frame.Stroke();
+    _frame.Rectangle(x, y, size, size);
+    _frame.Clip();
+    _frame.SelectFontFace("Montserrat", FontSlant.Normal, FontWeight.Normal);
+    _frame.SetFontSize(Math.Max(6, size / 4));
+    _frame.SetSourceRGBA(0, 0, 0, 1);
+    _frame.MoveTo(x + 1, y + size / 2);
+    _frame.ShowText(label);
+    _frame.Restore();
+  }
+
+  private sealed class ScreenBounds : ElementBounds {
+    public ScreenBounds(int width, int height) {
+      absInnerWidth = width;
+      absInnerHeight = height;
+      IsWindowBounds = true;
+      Initialized = true;
+    }
+
+    public override void CalcWorldBounds() { }
+
+    public override double absX => 0;
+
+    public override double absY => 0;
+
+    public override double renderX => 0;
+
+    public override double renderY => 0;
+
+    public override double drawX => 0;
+
+    public override double drawY => 0;
+
+    public override double bgDrawX => 0;
+
+    public override double bgDrawY => 0;
+  }
+}

@@ -67,6 +67,10 @@
       <HintPath>$(GamePath)/Lib/protobuf-net.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="cairo-sharp">
+      <HintPath>$(GamePath)/Lib/cairo-sharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="0Harmony">
       <HintPath>$(GamePath)/Lib/0Harmony.dll</HintPath>
       <Private>False</Private>
