@@ -21,7 +21,11 @@ namespace ExpandedLib.Testing;
 /// <see cref="Mouse"/> under the engine's ids (<c>hotbar-</c> and <c>mouse-</c> with the uid), and
 /// <c>OpenInventory</c>/<c>CloseInventory</c> add and drop an inventory there and run its own
 /// <c>Open</c>/<c>Close</c>, as the server's does, so the engine's slot protocol finds the cursor
-/// and the opened inventories.</remarks>
+/// and the opened inventories. <c>TryGiveItemstack</c> fills <see cref="Hotbar"/> as the game does:
+/// it merges into the held stack, fills the first empty slot among the first ten (the skill and
+/// off hand slots only for a stack stored there), drops a stack too hot to hold, sets the given
+/// stack's size to 0 once all of it is placed, and returns false for a null or empty stack or when
+/// nothing is placed.</remarks>
 public sealed class TestPlayer {
   /// <summary>The live scenario runner's tick, the step of a held interaction, in seconds.</summary>
   public const float InteractStepSeconds = 0.1f;
@@ -209,11 +213,13 @@ public sealed class TestPlayer {
     return allowed;
   }
 
-  private bool GiveToHotbar(ItemStack stack) {
-    if (stack.StackSize == 0)
+  private bool GiveToHotbar(ItemStack? stack) {
+    if (stack == null || stack.StackSize == 0)
       return false;
     ItemStack? held = _activeSlot.Itemstack;
+    int heldSize = held?.StackSize ?? 0;
     ItemSlot active = Hotbar[_activeNumber];
+    bool handEmpty = held == null && active.Itemstack == null;
     if (held != null && active.Itemstack == null)
       active.Itemstack = held;
     try {
@@ -226,6 +232,11 @@ public sealed class TestPlayer {
         stack.StackSize
       );
       var skipped = new List<ItemSlot>();
+      EnumItemStorageFlags flags = stack.Collectible.GetStorageFlags(stack);
+      if ((flags & EnumItemStorageFlags.Skill) == 0)
+        skipped.Add(Hotbar[10]);
+      if ((flags & EnumItemStorageFlags.Offhand) == 0)
+        skipped.Add(Hotbar[OffHandIndex]);
       bool placed = false;
       while (source.StackSize > 0) {
         ItemSlot? target = Hotbar.GetBestSuitedSlot(source, op, skipped).slot;
@@ -236,8 +247,17 @@ public sealed class TestPlayer {
         op.RequestedQuantity = source.StackSize;
         source.TryPutInto(target, ref op);
       }
+      if (handEmpty && active.Itemstack != null) {
+        _activeSlot.Itemstack = active.Itemstack;
+        active.Itemstack = null;
+      }
       if (source.Itemstack == null)
         stack.StackSize = 0;
+      if (
+        !ReferenceEquals(_activeSlot.Itemstack, held)
+        || (_activeSlot.Itemstack?.StackSize ?? 0) != heldSize
+      )
+        DropIfTooHot();
       return placed;
     } finally {
       if (held != null && ReferenceEquals(active.Itemstack, held))

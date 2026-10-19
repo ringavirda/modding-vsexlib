@@ -208,8 +208,29 @@ public class TestPlayerSelectTests {
     Assert.Equal(0, stack.StackSize);
     Assert.Equal(
       "game:ingot-iron",
-      player.Hotbar[0].Itemstack?.Collectible.Code.ToString()
+      player.ActiveSlot.Itemstack?.Collectible.Code.ToString()
     );
+    Assert.Same(player.ActiveSlot.Itemstack, player.StackInSlot(0));
+  }
+
+  // Fails when a null stack throws instead of returning false.
+  [Fact]
+  public void TryGiveItemstack_OfNull_ReturnsFalse() {
+    var (_, player, _) = Stand();
+
+    Assert.False(player.Player.InventoryManager.TryGiveItemstack(null!));
+  }
+
+  // Fails when a hot stack given into the empty hand is kept.
+  [Fact]
+  public void TryGiveItemstack_OfAHotStack_DropsItFromTheHand() {
+    var (world, player, _) = Stand();
+    ItemStack hot = Heated(world, "game:ingot-iron", 1000);
+
+    player.Player.InventoryManager.TryGiveItemstack(hot);
+
+    player.Player.InventoryManager.Received().DropItem(player.ActiveSlot, true);
+    Assert.Null(player.ActiveSlot.Itemstack);
   }
 
   // Fails when the stack held in the active slot is passed over for an empty slot instead of merged into.
@@ -228,18 +249,20 @@ public class TestPlayerSelectTests {
     Assert.Null(player.Hotbar[0].Itemstack);
   }
 
-  // Fails when a stack with no slot to take it is reported as given or loses its size.
+  // Fails when the skill or off hand slot takes a general stack, or a stack with no slot is reported as given or loses its size.
   [Fact]
   public void TryGiveItemstack_OfAFullHotbar_ReturnsFalseAndKeepsTheStack() {
     var (world, player, _) = Stand();
     Item ingot = world.RegisterItem("game:ingot-iron");
-    foreach (ItemSlot slot in player.Hotbar)
-      slot.Itemstack = new ItemStack(world.RegisterItem("game:stick"));
+    for (int i = 0; i < 10; i++)
+      player.Hotbar[i].Itemstack = new ItemStack(world.RegisterItem("game:stick"));
     var stack = new ItemStack(ingot);
 
     bool given = player.Player.InventoryManager.TryGiveItemstack(stack);
 
     Assert.False(given);
+    Assert.Null(player.Hotbar[10].Itemstack);
+    Assert.Null(player.Hotbar[11].Itemstack);
     Assert.Equal(1, stack.StackSize);
   }
 }
