@@ -291,16 +291,14 @@ public sealed class TestPlayer {
   public TestWindow Window(BlockEntity entity) =>
     new(this, entity ?? throw new ArgumentNullException(nameof(entity)));
 
-  /// <summary>Right-clicks the block at <paramref name="pos"/> as the server handles a block
-  /// use: <see cref="Block.OnBlockInteractStart"/>, then, when it takes the click,
-  /// <see cref="Block.OnBlockInteractStep"/> every <see cref="InteractStepSeconds"/> with the
-  /// seconds held so far, and <see cref="Block.OnBlockInteractStop"/> once, when a step declines
-  /// or the hold ends.</summary>
-  /// <remarks>A spectator, or a player the claims refuse use of the cell, gets nothing. World
-  /// ticks do not run during the hold; the keys last for the call only. With <c>sneak</c> and a block
-  /// in hand the block is placed first, as the client does; the clicked block is reached when that
-  /// fails or it sets <see cref="Block.PlacedPriorityInteract"/>. The held collectible's own
-  /// interaction, the reach test and the use events are not run.</remarks>
+  /// <summary>Right-clicks the block at <paramref name="pos"/> as the server handles a block use:
+  /// <see cref="Block.OnBlockInteractStart"/>, then, when it takes the click, <see cref="Block.OnBlockInteractStep"/>
+  /// every <see cref="InteractStepSeconds"/> with the seconds held, and <see cref="Block.OnBlockInteractStop"/>
+  /// once, when a step declines or the hold ends.</summary>
+  /// <remarks>A spectator, or a player the claims refuse use of the cell, gets nothing. No world ticks
+  /// run during the hold; the keys last for the call only. With <c>sneak</c> a block in hand is placed
+  /// first, as the client does; the clicked block is reached when that fails or it sets
+  /// <see cref="Block.PlacedPriorityInteract"/>. The held item's own use and the reach test are not run.</remarks>
   /// <param name="pos">The cell clicked.</param>
   /// <param name="held">Put in <see cref="ActiveSlot"/> first; null leaves the hand.</param>
   /// <param name="sneak">Holds <c>Sneak</c> and <c>ShiftKey</c>.</param>
