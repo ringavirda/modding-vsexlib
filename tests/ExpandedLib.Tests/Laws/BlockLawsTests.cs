@@ -84,6 +84,7 @@ public class BlockLawsTests {
     world.RegisterClass("test-portedmega", typeof(PortedMega));
     world.RegisterClass("test-initthrows", typeof(ThrowsOnInitialize));
     world.RegisterClass("test-namesanitem", typeof(NamesAnItem));
+    world.RegisterClass("test-places", typeof(PlacesAnywhere));
     world.RegisterClass("test-namestwo", typeof(NamesTwoTogether));
     world.RegisterClass("test-clickthrows", typeof(ThrowsOnAClick));
     world.RegisterClass("test-readsstack", typeof(ReadsItsStack));
@@ -1163,7 +1164,7 @@ public class BlockLawsTests {
     BlockLaws.Law law = InteractionLaw.Run(
       Hands(
         [],
-        ExBlockDef.Create("test", "stone"),
+        ExBlockDef.Create("test", "stone").Class("test-places"),
         Names("sneaks", "test:stone", takes: true, spends: true)
           .Attribute("keys", "sneak")
       ),
@@ -2244,6 +2245,19 @@ public class BlockLawsTests {
 
     public override bool AcceptsNeighbour(Block neighbour) =>
       !_asked.Add(neighbour.BlockId);
+  }
+
+  private sealed class PlacesAnywhere : Block {
+    public override bool TryPlaceBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      ItemStack itemstack,
+      BlockSelection blockSel,
+      ref string failureCode
+    ) {
+      world.BlockAccessor.SetBlock(Id, blockSel.Position);
+      return true;
+    }
   }
 
   private sealed class NeverPlaces : Block {
