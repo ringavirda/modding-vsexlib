@@ -155,6 +155,9 @@ public sealed partial class TestWorld : IDisposable {
 
     Calendar = Substitute.For<IGameCalendar>();
     PushCalendar();
+    Calendar
+      .When(c => c.Add(Arg.Any<float>()))
+      .Do(ci => AdvanceHours(ci.Arg<float>()));
 
     Mods.Add("exlib", "1.0.0").Register(Networks);
 
@@ -626,11 +629,12 @@ public sealed partial class TestWorld : IDisposable {
 
   #region Time
 
-  /// <summary>Advances the simulation by <paramref name="seconds"/> server ticks through
-  /// <see cref="BlockNetworkModSystem.ServerTick"/>.</summary>
+  /// <summary>Advances the simulation by <paramref name="seconds"/> seconds through
+  /// <see cref="BlockNetworkModSystem.ListenerTick"/>, in the server listener's 200 ms fires, five per second.</summary>
   public void Tick(int seconds = 1) {
-    for (int i = 0; i < seconds; i++)
-      Networks.ServerTick(Accessor, 1f);
+    const float fire = BlockNetworkModSystem.ListenerIntervalMs / 1000f;
+    for (int i = 0; i < seconds * 5; i++)
+      Networks.ListenerTick(Accessor, fire);
   }
 
   /// <summary>Fires every server tick listener registered through <see cref="Api"/> or

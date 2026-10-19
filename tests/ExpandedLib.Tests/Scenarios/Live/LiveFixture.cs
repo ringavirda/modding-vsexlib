@@ -4,6 +4,7 @@ using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using Newtonsoft.Json.Linq;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent.Mechanics;
@@ -15,6 +16,10 @@ namespace ExpandedLib.Tests.Scenarios.Live;
 /// blower and the plated pipes.</summary>
 internal sealed class LiveFixture {
   public static readonly BlockPos Origin = new(100, 50, 100);
+
+  public const int MapSize = 1024;
+
+  public const int MapHeight = 256;
 
   public TestWorld Test { get; } = new();
 
@@ -44,6 +49,9 @@ internal sealed class LiveFixture {
       Test.StartModSystem<MechanicalPowerMod>();
     }
     Test.Register(Stone);
+    Test.Accessor.MapSizeX.Returns(MapSize);
+    Test.Accessor.MapSizeY.Returns(MapHeight);
+    Test.Accessor.MapSizeZ.Returns(MapSize);
     Errors = new ScenarioErrors([
       .. System.Linq.Enumerable.Select(
         allowed,

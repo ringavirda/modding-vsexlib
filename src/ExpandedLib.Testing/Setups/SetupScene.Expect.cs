@@ -26,6 +26,8 @@ public sealed partial class SetupScene
       InfoExpect(step);
     else if (step.Body["same"] != null)
       SameExpect(step);
+    else if (SetupSlotExpect.Is((JObject)step.Body))
+      SlotExpect(step);
     else
     {
       var reading = new ReadingContext(View);
@@ -109,6 +111,16 @@ public sealed partial class SetupScene
         step.Path,
         $"no info line of {be.GetType().Name} at {Describe(at)} matches \"{pattern}\"; it reads: {string.Join(" | ", lines)}."
       );
+  }
+
+  private void SlotExpect(SetupStep step)
+  {
+    var body = (JObject)step.Body;
+    int slot = SetupSlotExpect.SlotOf(body);
+    if (
+      SetupSlotExpect.Mismatch(body, Player.StackInSlot(slot)) is { } mismatch
+    )
+      throw Fail(step.Path, $"hotbar slot {slot} {mismatch}.");
   }
 
   private void SameExpect(SetupStep step)
@@ -201,6 +213,29 @@ public sealed partial class SetupScene
         return;
       }
       TickSecond();
+    }
+  }
+
+  private void AdvanceStep(SetupStep step)
+  {
+    double hours = (double)step.Body["hours"]!;
+    if (!(hours >= 0))
+      throw Fail(step.Path, $"hours {hours} is negative.");
+    int seconds = (int)Math.Round(hours / GameHoursPerSecond);
+    for (int i = 0; i < seconds; i++)
+      TickSecond();
+  }
+
+  private void SelectStep(SetupStep step)
+  {
+    int slot = (int)step.Body["slot"]!;
+    try
+    {
+      Player.Select(slot);
+    }
+    catch (ArgumentOutOfRangeException e)
+    {
+      throw Fail(step.Path, e.Message);
     }
   }
 

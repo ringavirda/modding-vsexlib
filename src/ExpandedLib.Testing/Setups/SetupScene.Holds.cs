@@ -35,12 +35,20 @@ public sealed partial class SetupScene
           step.Path,
           $"\"{(string)letter}\" is not one of n, e, s, w, u, d."
         );
+    bool keep = (bool?)step.Body["keep"] ?? false;
     ItemStack? with = step.Body["with"] is { } held
       ? StackOf(held, step.Path)
       : null;
     if (with != null)
       Draw(step.Path, with);
-    Player.Hold(with);
+    if (with != null)
+      Player.Hold(with);
+    ItemStack? offHand = step.Body["offHand"] is { } off
+      ? StackOf(off, step.Path)
+      : null;
+    if (offHand != null)
+      Draw(step.Path, offHand);
+    Player.HoldOffHand(offHand);
     string? control = (string?)step.Body["control"];
     bool answer;
     try
@@ -73,13 +81,17 @@ public sealed partial class SetupScene
     {
       throw Fail(step.Path, e.Message);
     }
-    Give(Player.ActiveSlot.Itemstack);
+    if (!keep)
+      Give(Player.ActiveSlot.Itemstack);
+    Give(Player.OffHandSlot.Itemstack);
     if (step.Body["returns"] is { } expected && (bool)expected != answer)
       throw Fail(
         step.Path,
         $"interact answered {answer}, not {(bool)expected}."
       );
-    Player.Hold(null);
+    if (!keep)
+      Player.Hold(null);
+    Player.HoldOffHand(null);
   }
 
   private void IgniteStep(SetupStep step)
@@ -219,8 +231,12 @@ public sealed partial class SetupScene
       ),
     };
 
+  /// <summary>Game hours one real second makes on the live server at the default calendar (1/120).</summary>
+  private const double GameHoursPerSecond = 1.0 / 120.0;
+
   private void TickSecond()
   {
+    World.AdvanceHours(GameHoursPerSecond);
     if (_ordered)
       World.FireBlockEntityTicks(
         1f,

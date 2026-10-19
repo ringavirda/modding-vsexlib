@@ -48,7 +48,53 @@ public readonly record struct FillerCellSpec(
   IReadOnlyList<Cuboidf>? SelectionBoxes = null,
   IReadOnlyList<ControlBox>? Controls = null,
   IReadOnlyList<DoorLeaf>? Doors = null
-);
+) {
+  /// <summary>The cell without selection boxes, controls or doors, as built before they existed.</summary>
+  public FillerCellSpec(
+    int x,
+    int y,
+    int z,
+    bool allowAttach,
+    IReadOnlyList<FillerBehaviorSpec>? behaviors,
+    IReadOnlyList<Cuboidf>? collisionBoxes,
+    string? portFace,
+    string? portNetworkType
+  )
+    : this(
+      x,
+      y,
+      z,
+      allowAttach,
+      behaviors,
+      collisionBoxes,
+      portFace,
+      portNetworkType,
+      null,
+      null,
+      null
+    ) { }
+
+  /// <summary>Deconstructs the eight members that existed before selection boxes, controls and doors.</summary>
+  public void Deconstruct(
+    out int x,
+    out int y,
+    out int z,
+    out bool allowAttach,
+    out IReadOnlyList<FillerBehaviorSpec>? behaviors,
+    out IReadOnlyList<Cuboidf>? collisionBoxes,
+    out string? portFace,
+    out string? portNetworkType
+  ) {
+    x = X;
+    y = Y;
+    z = Z;
+    allowAttach = AllowAttach;
+    behaviors = Behaviors;
+    collisionBoxes = CollisionBoxes;
+    portFace = PortFace;
+    portNetworkType = PortNetworkType;
+  }
+}
 
 /// <summary>
 /// The half-cell volumes a partially-filled footprint cell can take, named by the face the solid half sits

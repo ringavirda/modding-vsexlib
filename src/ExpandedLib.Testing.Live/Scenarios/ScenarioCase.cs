@@ -34,6 +34,31 @@ internal sealed class ScenarioCase(
 
   public IReadOnlyList<Regex> AllowErrors => allowErrors;
 
+  private static readonly string[] CellKeys = ["at", "from", "to"];
+
+  /// <summary>The lowest plot-local y the file names: a drawn layout cell or a plain
+  /// <c>at</c>, <c>from</c> or <c>to</c> of a step; 0 when none lies below it.</summary>
+  public int LowestY {
+    get {
+      int lowest =
+        model.Drawn?.Cells.Select(c => c.Y).DefaultIfEmpty(0).Min() ?? 0;
+      foreach (SetupStep step in SetupStepWalk.Of(model))
+        foreach (
+          JProperty property in (step.Body as JContainer)
+            ?.Descendants()
+            .OfType<JProperty>()
+            .Where(p => CellKeys.Contains(p.Name))
+            ?? []
+        )
+          if (
+            property.Value is JArray { Count: 3 } triple
+            && triple[1].Type == JTokenType.Integer
+          )
+            lowest = Math.Min(lowest, (int)triple[1]);
+      return lowest;
+    }
+  }
+
   /// <summary>The case timeout in seconds of server clock.</summary>
   public double Timeout => model.Timeout;
 

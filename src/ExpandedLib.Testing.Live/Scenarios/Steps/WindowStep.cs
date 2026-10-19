@@ -117,11 +117,7 @@ internal sealed class WindowStep : ScenarioStep {
     BlockEntity be,
     JObject put
   ) {
-    ItemStack stack = StepValues.Stack(
-      ctx,
-      (string)put["stack"]!,
-      (int?)put["count"] ?? 1
-    );
+    ItemStack stack = StepValues.Held(ctx, put);
     int wanted = stack.StackSize;
     PackLedger.Draw(ctx, stack.Collectible.Code.ToString(), wanted);
     ItemSlot hand = who.InventoryManager.ActiveHotbarSlot;

@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Xunit;
@@ -468,6 +470,183 @@ public class SetupHoldTests
 
     Assert.Contains("steps[1]", message);
     Assert.Contains("SetupHoldEntity has no inventory to click", message);
+  }
+
+  private const string Slab = "{\"stack\": \"setuphold:slab\", \"count\": 3}";
+
+  // Fails when an interact's keep is ignored and the hand empties after the step.
+  [Fact]
+  public void A_kept_interact_leaves_its_stack_in_the_active_slot_for_an_expect_by_slot()
+  {
+    using SetupScene scene = Build(
+      "["
+        + Dial
+        + ", {\"interact\": {\"at\": {\"of\": \"dial\"}, \"with\": "
+        + Slab
+        + ", \"keep\": true}}"
+        + ", {\"expect\": {\"slot\": 0, \"code\": \"setuphold:slab\", \"count\": 3}}"
+        + ", {\"expect\": {\"slot\": 1, \"code\": null}}]"
+    );
+
+    Assert.Equal(3, scene.Player.StackInSlot(0)!.StackSize);
+
+    string message = Refused(
+      "["
+        + Dial
+        + ", {\"interact\": {\"at\": {\"of\": \"dial\"}, \"with\": "
+        + Slab
+        + ", \"keep\": true}}"
+        + ", {\"expect\": {\"slot\": 0, \"code\": null}}]"
+    );
+    Assert.Contains(
+      "hotbar slot 0 holds setuphold:slab x 3, expected it empty.",
+      message
+    );
+  }
+
+  // Fails when an expect by slot reads the hotbar off by one from the index a select takes.
+  [Fact]
+  public void A_kept_stack_left_by_a_select_is_read_at_its_old_index()
+  {
+    using SetupScene scene = Build(
+      "["
+        + Dial
+        + ", {\"interact\": {\"at\": {\"of\": \"dial\"}, \"with\": "
+        + Slab
+        + ", \"keep\": true}}"
+        + ", {\"select\": {\"slot\": 3}}"
+        + ", {\"expect\": {\"slot\": 0, \"code\": \"setuphold:slab\", \"count\": 3}}"
+        + ", {\"expect\": {\"slot\": 3, \"code\": null}}"
+        + ", {\"expect\": {\"slot\": 4, \"code\": null}}]"
+    );
+
+    Assert.Equal(3, scene.Player.StackInSlot(0)!.StackSize);
+    Assert.Null(scene.Player.StackInSlot(3));
+  }
+
+  // Fails when an interact without keep leaves its stack in the hand.
+  [Fact]
+  public void An_interact_without_keep_empties_the_hand_and_an_expect_by_slot_reads_it_empty()
+  {
+    using SetupScene scene = Build(
+      "["
+        + Dial
+        + ", {\"interact\": {\"at\": {\"of\": \"dial\"}, \"with\": "
+        + Slab
+        + "}}"
+        + ", {\"expect\": {\"slot\": 0, \"code\": null}}]"
+    );
+
+    Assert.Null(scene.Player.StackInSlot(0));
+
+    string message = Refused(
+      "["
+        + Dial
+        + ", {\"interact\": {\"at\": {\"of\": \"dial\"}, \"with\": "
+        + Slab
+        + "}}"
+        + ", {\"expect\": {\"slot\": 0, \"code\": \"setuphold:slab\"}}]"
+    );
+    Assert.Contains("steps[2]", message);
+    Assert.Contains(
+      "hotbar slot 0 is empty, expected setuphold:slab.",
+      message
+    );
+  }
+
+  // Fails when a later interact with no stack clears the kept one.
+  [Fact]
+  public void An_interact_with_no_stack_after_a_kept_one_keeps_the_hand()
+  {
+    using SetupScene scene = Build(
+      "["
+        + Dial
+        + ", {\"interact\": {\"at\": {\"of\": \"dial\"}, \"with\": "
+        + Slab
+        + ", \"keep\": true}}"
+        + ", {\"interact\": {\"at\": {\"of\": \"dial\"}, \"keep\": true}}"
+        + ", {\"expect\": {\"slot\": 0, \"count\": 3}}]"
+    );
+
+    Assert.Equal(3, scene.Player.StackInSlot(0)!.StackSize);
+  }
+
+  // Fails when a slot outside the hotbar, or a count of the wrong kind, is let through.
+  [Fact]
+  public void An_expect_of_a_slot_refuses_an_index_outside_the_hotbar_and_a_count_that_is_no_number()
+  {
+    Assert.Contains(
+      "takes a hotbar index from 0 to 11",
+      Refused("[{\"expect\": {\"slot\": 12, \"code\": null}}]")
+    );
+    Assert.Contains(
+      "expected a whole number",
+      Refused("[{\"expect\": {\"slot\": 0, \"count\": \"three\"}}]")
+    );
+  }
+
+  // Fails when a slot reading lets through a key it does not read, or a body that tests nothing.
+  [Fact]
+  public void A_slot_reading_refuses_other_expect_keys_and_a_body_that_checks_nothing()
+  {
+    Assert.Contains(
+      "unknown key \"block\"",
+      Refused(
+        "[{\"expect\": {\"slot\": 0, \"block\": \"setuphold:slab\", \"count\": 1}}]"
+      )
+    );
+    Assert.Contains(
+      "needs code, count or attribute",
+      Refused("[{\"expect\": {\"slot\": 0}}]")
+    );
+  }
+
+  // Fails when the attribute test reads another key, or a value is compared as text.
+  [Fact]
+  public void A_slot_reading_tests_an_attribute_by_key_and_value()
+  {
+    using SetupScene scene = Build("[" + Dial + "]");
+    var stack = new ItemStack(
+      scene.World.World.GetBlock(new AssetLocation("setuphold:slab")),
+      2
+    );
+    stack.Attributes.SetString("metal", "copper");
+    stack.Attributes.SetInt("heat", 3);
+
+    Assert.Null(
+      SetupSlotExpect.Mismatch(
+        JObject.Parse(
+          "{\"slot\": 0, \"attribute\": {\"key\": \"metal\", \"equals\": \"copper\"}}"
+        ),
+        stack
+      )
+    );
+    Assert.Null(
+      SetupSlotExpect.Mismatch(
+        JObject.Parse(
+          "{\"slot\": 0, \"attribute\": {\"key\": \"heat\", \"equals\": 3}}"
+        ),
+        stack
+      )
+    );
+    Assert.Equal(
+      "reads metal as copper, expected tin",
+      SetupSlotExpect.Mismatch(
+        JObject.Parse(
+          "{\"slot\": 0, \"attribute\": {\"key\": \"metal\", \"equals\": \"tin\"}}"
+        ),
+        stack
+      )
+    );
+    Assert.Equal(
+      "reads metal as absent, expected tin",
+      SetupSlotExpect.Mismatch(
+        JObject.Parse(
+          "{\"slot\": 0, \"attribute\": {\"key\": \"metal\", \"equals\": \"tin\"}}"
+        ),
+        null
+      )
+    );
   }
 }
 #endif

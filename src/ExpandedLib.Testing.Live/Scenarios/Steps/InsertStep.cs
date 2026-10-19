@@ -33,12 +33,7 @@ internal sealed class InsertStep : ScenarioStep {
         Suspect.Scenario
       );
     int count = (int?)o["count"] ?? 1;
-    ItemStack stack = StepValues.Stack(
-      ctx,
-      (string)o["stack"]!,
-      count,
-      (float?)o["temperature"]
-    );
+    ItemStack stack = StepValues.Held(ctx, o);
     var source = new DummySlot(stack);
     ItemSlot? target =
       o["slot"] != null

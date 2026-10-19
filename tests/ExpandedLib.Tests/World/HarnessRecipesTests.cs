@@ -67,9 +67,9 @@ public class HarnessRecipesTests
   {
     using TestWorld world = Loaded();
 
-    (int loaded, int failed) = world.LoadRecipes();
+    (int loaded, _) = world.LoadRecipes();
 
-    Assert.Equal(0, failed);
+    Assert.Empty(world.Log.Errors);
     Assert.True(loaded >= 4, $"loaded {loaded}");
     GridRecipe[] recipes = StraightRecipes(world);
     Assert.NotEmpty(recipes);

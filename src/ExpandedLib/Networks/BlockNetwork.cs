@@ -21,6 +21,9 @@ public abstract class BlockNetwork(BlockNetworkModSystem system) {
   /// <summary>Every world position that belongs to this network.</summary>
   public HashSet<BlockPos> Nodes { get; } = [];
 
+  /// <summary>Every node of this network by key. Maintained by <see cref="BlockNetworkModSystem"/> beside <see cref="Nodes"/>; a type whose members keep to slot 0 holds one key per entry of <see cref="Nodes"/>.</summary>
+  public HashSet<NodeKey> NodeKeys { get; } = [];
+
   /// <summary>Root position for root-anchored networks; <c>null</c> for unanchored networks and fragments.</summary>
   public BlockPos? RootPos { get; set; }
 
@@ -84,7 +87,42 @@ public abstract class BlockNetwork(BlockNetworkModSystem system) {
     IBlockAccessor world
   );
 
-  /// <summary>Called once per server tick for each live network of this type.</summary>
+  /// <summary>Whether this type takes its share of a fracture by node keys through <see cref="OnSplitFragment(BlockNetwork, IReadOnlySet{NodeKey})"/> instead of by proportion. False by default.</summary>
+  public virtual bool SupportsPartialSplit => false;
+
+  /// <summary>
+  /// Called instead of <see cref="OnSplitFragment(BlockNetwork, IBlockAccessor)"/> on a fresh fragment when
+  /// <see cref="SupportsPartialSplit"/> is true. Moves exactly the entries of <paramref name="fragmentKeys"/> out
+  /// of <paramref name="original"/>'s stores.
+  /// </summary>
+  /// <param name="original">The fractured network, already dissolved from the graph.</param>
+  /// <param name="fragmentKeys">The keys now in this fragment.</param>
+  /// <exception cref="NotSupportedException">The type does not override this while claiming <see cref="SupportsPartialSplit"/>.</exception>
+  public virtual void OnSplitFragment(
+    BlockNetwork original,
+    IReadOnlySet<NodeKey> fragmentKeys
+  ) =>
+    throw new NotSupportedException(
+      $"{GetType().Name} sets SupportsPartialSplit without overriding OnSplitFragment(original, fragmentKeys)."
+    );
+
+  /// <summary>Milliseconds of server time between <see cref="OnTick"/> calls for this type. The system's listener
+  /// fires every 200 ms and steps the network once this much time has accrued; <c>dt</c> is the time since the type
+  /// last stepped, capped at twice the interval, and the accrued remainder carries to the next step. 1000 by
+  /// default; a value below 200 steps once per listener fire. Every network of a type must return the same value:
+  /// the system reads it once from the type's first live network and ignores what the others return.</summary>
+  public virtual int StepIntervalMs => 1000;
+
+  /// <summary>Called once per listener fire for each network that stepped in that fire, after every network has
+  /// stepped.</summary>
+  /// <param name="world">The block accessor the tick ran with.</param>
+  /// <param name="manager">The owning graph.</param>
+  public virtual void OnTickPublished(
+    IBlockAccessor world,
+    BlockNetworkModSystem manager
+  ) { }
+
+  /// <summary>Called each time <see cref="StepIntervalMs"/> of server time has passed for each live network of this type.</summary>
   public abstract void OnTick(
     IBlockAccessor world,
     float dt,

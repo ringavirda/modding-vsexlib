@@ -250,7 +250,10 @@ public sealed partial class SetupScene
       if (held != null)
         held.Itemstack.StackSize += stack.StackSize;
       else
-        Player.Hotbar.First(s => s.Empty).Itemstack = stack;
+        Player
+          .Hotbar.Where((_, i) => i != Player.ActiveNumber)
+          .First(s => s.Empty)
+          .Itemstack = stack;
     }
   }
 }

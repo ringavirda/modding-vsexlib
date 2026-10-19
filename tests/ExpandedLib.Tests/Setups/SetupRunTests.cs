@@ -160,6 +160,21 @@ public class SetupRunTests : IDisposable
     scene.Run(HoldMods);
   }
 
+  // Fails when TickSecond does not advance the calendar.
+  [Fact]
+  public void Each_harness_second_moves_the_calendar_one_120th_of_a_game_hour()
+  {
+    using SetupScene scene = Build("setuphold", $"[{Dial}]", "[]", DialRecord);
+    double before = scene.World.Calendar.TotalHours;
+    SetupRecording recording = scene.Run(HoldMods);
+    Assert.Equal(6, recording.Seconds);
+    Assert.Equal(
+      before + 6 / 120.0,
+      scene.World.Calendar.TotalHours,
+      precision: 9
+    );
+  }
+
   [Fact]
   public void A_run_samples_each_second_after_that_second_s_ticks()
   {

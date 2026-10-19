@@ -93,12 +93,27 @@ internal sealed class ScenarioPlot(PlotBox box, int[] size) {
     );
 
   /// <summary>Sets <see cref="Origin"/> from the loaded ground; call on the main thread once
-  /// <see cref="Loaded"/>.</summary>
-  public void Locate(IWorldAccessor world) {
-    int ground = world.BlockAccessor.GetTerrainMapheightAt(
+  /// <see cref="Loaded"/>. The origin is one above the terrain top at the plot's centre, or
+  /// higher when <paramref name="lowestY"/>, the lowest plot-local y the file uses, would
+  /// otherwise sit below absolute y 1; the terrain's top block is then laid over the footprint
+  /// from the terrain top up to plot y -1.</summary>
+  public void Locate(IWorldAccessor world, int lowestY = 0) {
+    IBlockAccessor blocks = world.BlockAccessor;
+    int ground = blocks.GetTerrainMapheightAt(
       new BlockPos(box.CenterX, 0, box.CenterZ)
     );
-    Origin = new BlockPos(box.CenterX, ground + 1, box.CenterZ);
+    int originY = Math.Max(ground + 1, 1 - lowestY);
+    Origin = new BlockPos(box.CenterX, originY, box.CenterZ);
+    if (originY == ground + 1)
+      return;
+    Block top = blocks.GetBlock(new BlockPos(box.CenterX, ground, box.CenterZ));
+    var at = new BlockPos(0, 0, 0);
+    for (int x = Origin.X - size[0]; x <= Origin.X + size[0]; x++)
+      for (int z = Origin.Z - size[2]; z <= Origin.Z + size[2]; z++)
+        for (int y = ground + 1; y < originY; y++) {
+          at.Set(x, y, z);
+          blocks.SetBlock(top.BlockId, at);
+        }
   }
 
   /// <summary>The plot's cuboid from <c>y = 0</c> up, absolute: the cells <see cref="Clear"/>
