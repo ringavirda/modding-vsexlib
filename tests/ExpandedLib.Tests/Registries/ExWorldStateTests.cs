@@ -34,6 +34,7 @@ public class ExWorldStateTests {
     ["ExpandedLib.Catalogues.CraftSequenceLoader.SequenceKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.StepKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.ByproductKeys"] = SchemaKeys,
+    ["ExpandedLib.Catalogues.CraftSequenceLoader.ToolKeys"] = SchemaKeys,
     ["ExpandedLib.Machines.CraftSequenceGate._machine"] =
       "the machine a station's match is marked with, set and restored around that match",
     ["ExpandedLib.Catalogues.ProcessRouteLoader.RootKeys"] = SchemaKeys,
@@ -50,6 +51,7 @@ public class ExWorldStateTests {
     ["ExpandedLib.Checks.AssetCheckSource.HeldAtLoad"] = WeakByWorld,
     ["ExpandedLib.Blocks.ConstructionHints.Worlds"] = WeakByWorld,
     ["ExpandedLib.Blocks.BlockControls.Tables"] = WeakByWorld,
+    ["ExpandedLib.Machines.CraftSequenceGate.Registered"] = WeakByWorld,
     ["ExpandedLib.Blocks.ControlBoxes.Tables"] = WeakByWorld,
     ["ExpandedLib.Blocks.ControlBoxes.Principals"] = WeakByWorld,
     ["ExpandedLib.Registries.EntityRegistry._bareKeysIssued"] = WeakByWorld,

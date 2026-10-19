@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Registries;
+using Vintagestory.API.Util;
 
 namespace ExpandedLib.Catalogues;
 
@@ -28,6 +29,39 @@ public sealed class CraftSequenceRegistry {
     StringComparer.OrdinalIgnoreCase
   );
 
+  private readonly List<CraftToolDefault> _tools = [CraftToolDefault.Hammer];
+
+  /// <summary>The per-tool stroke defaults, the built-in hammer first and then each declaration in
+  /// order.</summary>
+  public IReadOnlyList<CraftToolDefault> Tools => _tools;
+
+  /// <summary>Sets what a tool does at each stroke of a step that names nothing of its own. A default
+  /// for the same <see cref="CraftToolDefault.Tool"/> pattern replaces the earlier one.</summary>
+  /// <param name="tool">The default to add.</param>
+  /// <exception cref="ArgumentOutOfRangeException"><see cref="CraftToolDefault.Stroke"/> is 0 or less, or
+  /// <see cref="CraftToolDefault.Strike"/> is outside 0 up to <see cref="CraftToolDefault.Stroke"/>.</exception>
+  public void DefineTool(CraftToolDefault tool) {
+    if (tool.Strike < 0f || tool.Strike >= tool.Stroke)
+      throw new ArgumentOutOfRangeException(
+        nameof(tool),
+        tool.Strike,
+        "Strike must be from 0 up to Stroke, which is above 0."
+      );
+    _tools.RemoveAll(t =>
+      string.Equals(t.Tool, tool.Tool, StringComparison.OrdinalIgnoreCase)
+    );
+    _tools.Add(tool);
+  }
+
+  /// <summary>The default of the tool whose item code is <paramref name="toolCode"/>; the latest
+  /// declared pattern that matches wins.</summary>
+  /// <param name="toolCode">A full item code such as <c>game:hammer-steel</c>; null for bare hands.</param>
+  /// <returns>The default, or null when no pattern matches.</returns>
+  public CraftToolDefault? ToolDefault(string? toolCode) =>
+    toolCode == null
+      ? null
+      : _tools.LastOrDefault(t => WildcardUtil.Match(t.Tool, toolCode));
+
   /// <summary>
   /// Merges <paramref name="set"/> into the machine it names. Returns one human-readable message per
   /// sequence whose recipe the machine already has a sequence for.
@@ -35,6 +69,9 @@ public sealed class CraftSequenceRegistry {
   public IReadOnlyList<string> Contribute(CraftSequenceSet set) {
     if (!_byMachine.TryGetValue(set.Machine, out List<CraftSequence>? held))
       _byMachine[set.Machine] = held = [];
+
+    foreach (CraftToolDefault tool in set.Tools ?? [])
+      DefineTool(tool);
 
     var conflicts = new List<string>();
     foreach (CraftSequence sequence in set.Sequences) {
@@ -84,6 +121,11 @@ public sealed class CraftSequenceRegistry {
   /// <summary>The machines with at least one sequence.</summary>
   public IReadOnlyCollection<string> Machines => _byMachine.Keys;
 
-  /// <summary>Drops every sequence. The loader clears before repopulating on each world load.</summary>
-  public void Clear() => _byMachine.Clear();
+  /// <summary>Drops every sequence and tool default but the built-in hammer's. The loader clears before
+  /// repopulating on each world load.</summary>
+  public void Clear() {
+    _byMachine.Clear();
+    _tools.Clear();
+    _tools.Add(CraftToolDefault.Hammer);
+  }
 }

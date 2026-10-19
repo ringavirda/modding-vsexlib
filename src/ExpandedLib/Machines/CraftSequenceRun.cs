@@ -42,13 +42,22 @@ public enum CraftSequenceProgress
 /// <see cref="CraftOrder.OutputSlots"/> and <see cref="CraftOrder.Product"/> receive the result.</param>
 /// <param name="slots">The station's inventory slots, the indices the order names.</param>
 /// <param name="random">Rolls the wear chance of each finished step.</param>
+/// <param name="tools">Where the held tool's stroke defaults are read; <see cref="CraftSequenceRegistry.Shared"/>
+/// when null.</param>
 public sealed class CraftSequenceRun(
   CraftSequence sequence,
   CraftOrder order,
   IReadOnlyList<ItemSlot> slots,
-  Random random
+  Random random,
+  CraftSequenceRegistry? tools = null
 )
 {
+  private readonly CraftSequenceRegistry _tools =
+    tools ?? CraftSequenceRegistry.Shared;
+  private string? _playing;
+  private int _swings;
+  private int _strikes;
+
   /// <summary>The item attribute holding the chance, from 0 to 1, that a finished step costs the tool
   /// one durability point; a tool without it is worn by every step.</summary>
   public const string StepWearAttribute = "stepWear";
@@ -67,6 +76,26 @@ public sealed class CraftSequenceRun(
   {
     Step = 0;
     Held = 0f;
+    _swings = 0;
+    _strikes = 0;
+  }
+
+  /// <summary>Ends the animation a hold started; call when the player lets go. The held time and the strokes
+  /// already played are kept, so a later hold goes on from the same stroke.</summary>
+  /// <param name="effects">The effects the holds played on; null for none.</param>
+  public void Release(ICraftEffects? effects)
+  {
+    if (_playing != null)
+      effects?.StopAnimation(_playing);
+    _playing = null;
+  }
+
+  private void Drop(ICraftEffects? effects)
+  {
+    Release(effects);
+    Held = 0f;
+    _swings = 0;
+    _strikes = 0;
   }
 
   /// <summary>
@@ -78,17 +107,22 @@ public sealed class CraftSequenceRun(
   /// <param name="active">The player's active-hand slot; null or empty for bare hands.</param>
   /// <param name="offhand">The player's off-hand slot; null or empty for none.</param>
   /// <param name="viceOpen">Whether the station's vice is open.</param>
+  /// <param name="effects">Receives the animation at each stroke of the step and the sound at each strike,
+  /// from the step's own <see cref="CraftStep.Animation"/> and <see cref="CraftStep.Sound"/> or else the
+  /// held tool's <see cref="CraftToolDefault"/>; null plays none.</param>
   /// <returns>What the hold did.</returns>
   public CraftSequenceProgress Hold(
     IWorldAccessor world,
     float dt,
     ItemSlot? active,
     ItemSlot? offhand,
-    bool viceOpen
+    bool viceOpen,
+    ICraftEffects? effects = null
   )
   {
     if (!BillLaid())
     {
+      Release(effects);
       Reset();
       return CraftSequenceProgress.Idle;
     }
@@ -96,16 +130,17 @@ public sealed class CraftSequenceRun(
     CraftStep step = Current;
     if (!HandsMatch(step, active, offhand))
     {
-      Held = 0f;
+      Drop(effects);
       return CraftSequenceProgress.Idle;
     }
     if (step.At == CraftStep.Vice && viceOpen)
     {
-      Held = 0f;
+      Drop(effects);
       return CraftSequenceProgress.WaitingForVice;
     }
 
     Held += dt;
+    Stroke(step, active, effects);
     if (Held < step.Seconds)
       return CraftSequenceProgress.Working;
 
@@ -123,7 +158,7 @@ public sealed class CraftSequenceRun(
 
     Wear(step.Tool != null ? active : null);
     Wear(step.Offhand != null ? offhand : null);
-    Held = 0f;
+    Drop(effects);
 
     if (!last)
     {
@@ -136,6 +171,36 @@ public sealed class CraftSequenceRun(
     Step = 0;
     return CraftSequenceProgress.Crafted;
   }
+
+  // Starts the animation of each stroke and plays the sound of each strike that the held time has
+  // reached, and none past the step's end.
+  private void Stroke(CraftStep step, ItemSlot? active, ICraftEffects? effects)
+  {
+    if (effects == null)
+      return;
+
+    CraftToolDefault? tool = _tools.ToolDefault(
+      active?.Itemstack?.Collectible.Code.ToString()
+    );
+    string? animation = step.Animation ?? tool?.Animation;
+    string? sound = step.Sound ?? tool?.Sound;
+    float stroke = tool?.Stroke ?? CraftToolDefault.DefaultStroke;
+    float strike = tool?.Strike ?? CraftToolDefault.DefaultStrike;
+
+    while (animation != null && Due(_swings * stroke, step))
+    {
+      effects.StartAnimation(animation);
+      _playing = animation;
+      _swings++;
+    }
+    while (sound != null && Due((_strikes * stroke) + strike, step))
+    {
+      effects.Strike(sound);
+      _strikes++;
+    }
+  }
+
+  private bool Due(float at, CraftStep step) => at <= Held && at < step.Seconds;
 
   private bool BillLaid() =>
     order.Inputs.All(input =>
