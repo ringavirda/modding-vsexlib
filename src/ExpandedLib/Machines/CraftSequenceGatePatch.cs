@@ -7,8 +7,9 @@ namespace ExpandedLib.Machines;
 
 /// <summary>Applies <see cref="CraftSequenceGate"/> inside <see cref="GridRecipe.Matches"/>. The game
 /// answers <c>MatchesGridRecipe</c> with the last handler subscribed, and the survival mod's
-/// subscribes after every mod's <c>Start</c> and answers true, so the event alone does not turn a
-/// sequenced recipe away.</summary>
+/// subscribes in its own <c>Start</c>, after exlib's (exlib starts at 0.06, before the default 0.1),
+/// and answers true for any recipe without a trait, so the event alone does not turn a sequenced
+/// recipe away.</summary>
 [HarmonyPatch]
 internal static class CraftSequenceGatePatch
 {

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Machines;
 using ExpandedLib.Registries;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
@@ -259,7 +260,17 @@ public sealed partial class TestWorld
     var recipeHandlers = new List<MatchRecipeDelegate>();
     events
       .When(e => e.MatchesGridRecipe += Arg.Any<MatchGridRecipeDelegate>())
-      .Do(ci => gridHandlers.Add(ci.Arg<MatchGridRecipeDelegate>()));
+      .Do(ci =>
+      {
+        // Exlib starts at 0.06, ahead of the survival mod and every consumer, so its gate answers first.
+        MatchGridRecipeDelegate handler = ci.Arg<MatchGridRecipeDelegate>();
+        gridHandlers.Insert(
+          handler.Method.DeclaringType == typeof(CraftSequenceGate)
+            ? 0
+            : gridHandlers.Count,
+          handler
+        );
+      });
     events
       .When(e => e.MatchesRecipe += Arg.Any<MatchRecipeDelegate>())
       .Do(ci => recipeHandlers.Add(ci.Arg<MatchRecipeDelegate>()));
