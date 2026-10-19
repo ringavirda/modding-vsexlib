@@ -18,6 +18,17 @@ public sealed class CraftSequenceRunTests
 {
   private const int BillSlot = 0;
 
+  private sealed class Recorder : ICraftEffects
+  {
+    public readonly List<string> Log = [];
+
+    public void StartAnimation(string animation) => Log.Add("start " + animation);
+
+    public void StopAnimation(string animation) => Log.Add("stop " + animation);
+
+    public void PlaySound(string sound) => Log.Add("sound " + sound);
+  }
+
   private sealed class Bench : IDisposable
   {
     private readonly TestWorld _world = new();
@@ -35,6 +46,7 @@ public sealed class CraftSequenceRunTests
       new DummySlot(),
     ];
     public bool ViceOpen;
+    public readonly Recorder Fx = new();
 
     public TestWorld World => _world;
     public CraftSequenceRun Run;
@@ -42,7 +54,8 @@ public sealed class CraftSequenceRunTests
     public Bench(
       CraftStep[] steps,
       int seed = 1,
-      CraftByproduct[]? byproducts = null
+      CraftByproduct[]? byproducts = null,
+      CraftSequenceRegistry? tools = null
     )
     {
       Blank = _world.RegisterItem("test:blank");
@@ -72,7 +85,8 @@ public sealed class CraftSequenceRunTests
         new CraftSequence("test:part", steps, byproducts ?? []),
         order,
         Slots,
-        new Random(seed)
+        new Random(seed),
+        tools ?? new CraftSequenceRegistry()
       );
       Slots[BillSlot].Itemstack = new ItemStack(Blank, 1);
     }
@@ -96,7 +110,7 @@ public sealed class CraftSequenceRunTests
     }
 
     public CraftSequenceProgress Hold(float dt = 1f) =>
-      Run.Hold(_world.World, dt, Active, Offhand, ViceOpen);
+      Run.Hold(_world.World, dt, Active, Offhand, ViceOpen, Fx);
 
     public int Durability(ItemSlot slot) =>
       slot.Itemstack!.Collectible.GetRemainingDurability(slot.Itemstack);
@@ -110,8 +124,10 @@ public sealed class CraftSequenceRunTests
     string? tool,
     string? offhand = null,
     string? at = null,
-    float seconds = 1f
-  ) => new(tool, offhand, seconds, null, null, at);
+    float seconds = 1f,
+    string? animation = null,
+    string? sound = null
+  ) => new(tool, offhand, seconds, animation, null, at, sound);
 
   // Fails when a hold with the wrong tool advances the step, or the run does not return to its
   // first step once the last step is done.
@@ -348,6 +364,123 @@ public sealed class CraftSequenceRunTests
 
     Assert.Equal(CraftSequenceProgress.Idle, bench.Hold());
     Assert.Equal(0, bench.Run.Step);
+  }
+
+  // Fails when the run does not look up the held tool's default, or plays it at the wrong time.
+  [Fact]
+  public void A_hammer_step_swings_and_sounds_the_hammers_default()
+  {
+    using var bench = new Bench([Step("game:hammer-*", seconds: 2f)]);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("game:hammer-steel"));
+
+    bench.Hold(0.3f);
+    Assert.Equal(["start hammerhit"], bench.Fx.Log);
+
+    bench.Hold(0.2f);
+    Assert.Equal(
+      ["start hammerhit", "sound sounds/effect/anvilhit"],
+      bench.Fx.Log
+    );
+  }
+
+  // Fails when a step's own animation or sound is ignored for the tool's default.
+  [Fact]
+  public void A_step_override_wins_over_the_tools_default()
+  {
+    using var bench = new Bench([
+      Step(
+        "game:hammer-*",
+        seconds: 2f,
+        animation: "fitting",
+        sound: "sounds/effect/rivet"
+      ),
+    ]);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("game:hammer-steel"));
+
+    bench.Hold(0.5f);
+
+    Assert.Equal(["start fitting", "sound sounds/effect/rivet"], bench.Fx.Log);
+  }
+
+  // Fails when the run plays one swing for the whole hold, or plays past the step's end.
+  [Fact]
+  public void Every_stroke_of_a_held_step_swings_once_and_strikes_once()
+  {
+    using var bench = new Bench([Step("game:hammer-*", seconds: 2f)]);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("game:hammer-steel"));
+
+    for (int i = 0; i < 4; i++)
+      bench.Hold(0.5f);
+
+    Assert.Equal(3, bench.Fx.Log.Count(l => l == "start hammerhit"));
+    Assert.Equal(
+      3,
+      bench.Fx.Log.Count(l => l == "sound sounds/effect/anvilhit")
+    );
+    Assert.Equal("stop hammerhit", bench.Fx.Log[^1]);
+  }
+
+  // Fails when a long frame plays the strokes that fall after the step's end.
+  [Fact]
+  public void A_frame_past_the_end_of_a_step_plays_only_the_strokes_inside_it()
+  {
+    using var bench = new Bench([
+      Step("game:hammer-*", seconds: 2f),
+      Step("game:hammer-*"),
+    ]);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("game:hammer-steel"));
+
+    bench.Hold(3f);
+
+    Assert.Equal(3, bench.Fx.Log.Count(l => l == "start hammerhit"));
+    Assert.Equal(
+      3,
+      bench.Fx.Log.Count(l => l == "sound sounds/effect/anvilhit")
+    );
+  }
+
+  // Fails when a hold with the wrong tool plays, or Release leaves the animation running.
+  [Fact]
+  public void A_hold_that_does_not_match_plays_nothing_and_release_stops_the_swing()
+  {
+    using var bench = new Bench([Step("game:hammer-*", seconds: 2f)]);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("test:saw"));
+    bench.Hold(1f);
+    Assert.Empty(bench.Fx.Log);
+
+    bench.Active.Itemstack = new ItemStack(bench.Tool("game:hammer-iron"));
+    bench.Hold(0.1f);
+    bench.Run.Release(bench.Fx);
+
+    Assert.Equal(["start hammerhit", "stop hammerhit"], bench.Fx.Log);
+  }
+
+  // Fails when a tool with no default and a step with no override still play something.
+  [Fact]
+  public void A_tool_without_a_default_and_a_step_without_an_override_play_nothing()
+  {
+    using var bench = new Bench([Step("test:saw")]);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("test:saw"));
+
+    bench.Hold(0.5f);
+
+    Assert.Empty(bench.Fx.Log);
+  }
+
+  // Fails when a declared tool default is not read for its pattern.
+  [Fact]
+  public void A_declared_tool_default_plays_for_its_pattern()
+  {
+    var tools = new CraftSequenceRegistry();
+    tools.DefineTool(
+      new CraftToolDefault("test:saw", "sawing", "sounds/effect/saw", 1f, 0.5f)
+    );
+    using var bench = new Bench([Step("test:saw", seconds: 2f)], tools: tools);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("test:saw"));
+
+    bench.Hold(0.6f);
+
+    Assert.Equal(["start sawing", "sound sounds/effect/saw"], bench.Fx.Log);
   }
 }
 #endif

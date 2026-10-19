@@ -65,6 +65,80 @@ public sealed class CraftSequenceTests
     Assert.Equal("iiex:metalbit-castiron", byproduct.Code);
   }
 
+  // Fails when the loader drops a step's sound or a file's tool defaults.
+  [Fact]
+  public void A_step_sound_and_the_tool_defaults_load()
+  {
+    List<CraftSequenceSet> sets = Parse(
+      out List<string> errors,
+      """
+      {
+        "machine": "workbench",
+        "tools": [ { "tool": "iiex:file-*", "animation": "filing", "sound": "sounds/effect/file", "stroke": 1.5, "strike": 0.5 } ],
+        "sequences": [ { "recipe": "iiex:r", "steps": [ { "tool": "game:hammer-*", "sound": "sounds/effect/rivet" } ] } ]
+      }
+      """
+    );
+
+    Assert.Empty(errors);
+    CraftSequenceSet set = Assert.Single(sets);
+    Assert.Equal("sounds/effect/rivet", set.Sequences[0].Steps[0].Sound);
+    Assert.Equal(
+      new CraftToolDefault(
+        "iiex:file-*",
+        "filing",
+        "sounds/effect/file",
+        1.5f,
+        0.5f
+      ),
+      Assert.Single(set.Tools!)
+    );
+  }
+
+  // Fails when the loader accepts a tool default that names nothing to play or strikes outside its stroke.
+  [Theory]
+  [InlineData("""{ "tool": "x" }""", "no animation or sound")]
+  [InlineData("""{ "animation": "a" }""", "no 'tool'")]
+  [InlineData(
+    """{ "tool": "x", "animation": "a", "stroke": 1, "strike": 1 }""",
+    "strikes at"
+  )]
+  [InlineData("""{ "tool": "x", "animation": "a", "sped": 1 }""", "sped")]
+  public void A_malformed_tool_default_is_reported_and_skipped(
+    string tool,
+    string message
+  )
+  {
+    List<CraftSequenceSet> sets = Parse(
+      out List<string> errors,
+      $$"""{ "machine": "workbench", "tools": [ {{tool}} ], "sequences": [] }"""
+    );
+
+    Assert.Empty(sets);
+    Assert.Contains(message, Assert.Single(errors));
+  }
+
+  // Fails when a declared default does not replace the hammer's or the latest pattern does not win,
+  // or Clear drops the built-in hammer.
+  [Fact]
+  public void The_registry_starts_with_the_hammer_and_a_declaration_overrides_it()
+  {
+    var registry = new CraftSequenceRegistry();
+    Assert.Equal("hammerhit", registry.ToolDefault("game:hammer-steel")?.Animation);
+    Assert.Null(registry.ToolDefault("game:saw-iron"));
+    Assert.Null(registry.ToolDefault(null));
+
+    registry.DefineTool(new CraftToolDefault("game:hammer-*", "slam", null));
+    Assert.Equal("slam", registry.ToolDefault("game:hammer-steel")?.Animation);
+    Assert.Single(registry.Tools);
+
+    registry.DefineTool(new CraftToolDefault("game:*", "swing", null));
+    Assert.Equal("swing", registry.ToolDefault("game:hammer-steel")?.Animation);
+
+    registry.Clear();
+    Assert.Equal("hammerhit", registry.ToolDefault("game:hammer-steel")?.Animation);
+  }
+
   // Fails when the loader accepts a sequence with no steps.
   [Fact]
   public void A_sequence_with_no_steps_is_reported_and_skipped()
