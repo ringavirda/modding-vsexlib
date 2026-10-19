@@ -1,6 +1,9 @@
 using System;
 using System.IO;
 using System.Linq;
+using Context = Cairo.Context;
+using Format = Cairo.Format;
+using ImageSurface = Cairo.ImageSurface;
 using ExpandedLib.Testing;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -80,6 +83,36 @@ public class WindowTests {
         "label"
       )
       .Compose();
+
+  private sealed class DrawingDialog : GuiDialog {
+    public DrawingDialog(ICoreClientAPI capi)
+      : base(capi) {
+      SingleComposer = capi
+        .Gui.CreateCompo(
+          "window-dialog",
+          ElementBounds.Fixed(100, 100, 320, 120)
+        )
+        .AddStaticText(
+          "x",
+          CairoFont.WhiteSmallText(),
+          ElementBounds.Fixed(10, 10, 50, 30)
+        )
+        .Compose();
+    }
+
+    public override string ToggleKeyCombinationCode => "";
+
+    public override void OnRenderGUI(float deltaTime) {
+      base.OnRenderGUI(deltaTime);
+      using var surface = new ImageSurface(Format.Argb32, 17, 13);
+      using (var ctx = new Context(surface)) {
+        ctx.SetSourceRGBA(1, 0, 0, 1);
+        ctx.Paint();
+      }
+      int id = capi.Gui.LoadCairoTexture(surface, false);
+      capi.Render.Render2DTexture(id, 200f, 160f, 17f, 13f);
+    }
+  }
 
   private static (double Width, double Height) Box(string text, double width) {
     var font = CairoFont.WhiteSmallText();
@@ -320,7 +353,7 @@ public class WindowTests {
   [Fact]
   public void GateComparesOnlyElementsOfOneParent() {
     using var rig = new WindowRig();
-    ElementBounds panel = ElementBounds.Fixed(10, 10, 200, 100);
+    ElementBounds panel = ElementBounds.Fixed(120, 10, 100, 100);
     GuiComposer composer = rig
       .Api.Gui.CreateCompo(
         "window-nested",
@@ -336,7 +369,7 @@ public class WindowTests {
       .AddDynamicText(
         "two",
         CairoFont.WhiteSmallText(),
-        ElementBounds.Fixed(0, 0, 100, 30),
+        ElementBounds.Fixed(-110, 0, 100, 30),
         "b"
       )
       .EndChildElements()
@@ -364,5 +397,124 @@ public class WindowTests {
       .Compose();
 
     Assert.Empty(WindowLayout.Check(composer));
+  }
+
+  // Fails when Render(GuiDialog) calls only the composer's render: the draw the dialog's
+  // OnRenderGUI override makes is then missing from the frame.
+  [Fact]
+  public void RenderRunsTheDialogsOwnRenderOverride() {
+    using var rig = new WindowRig();
+    var dialog = new DrawingDialog(rig.Api);
+    using WindowFrame frame = rig.Render(dialog);
+
+    WindowDraw draw = Assert.Single(
+      frame.Draws,
+      d => d.Kind == "texture" && d.Width == 17 && d.Height == 13
+    );
+    Assert.Equal(100, draw.X, 0.5);
+    Assert.True(frame.InkIn(draw.X, draw.Y, draw.Width, draw.Height) > 0);
+  }
+
+  // Fails when PushScissor is not wired: the text beyond the 30 px clip then leaves ink to its right.
+  [Fact]
+  public void ClippedTextLeavesNoInkOutsideTheClip() {
+    using var rig = new WindowRig();
+    GuiComposer composer = rig
+      .Api.Gui.CreateCompo(
+        "window-clip",
+        ElementBounds.Fixed(100, 100, 320, 120)
+      )
+      .BeginClip(ElementBounds.Fixed(10, 10, 30, 30))
+      .AddDynamicText(
+        "WWWWWWWWWWWWWWWWWWWW",
+        CairoFont.WhiteSmallText(),
+        ElementBounds.Fixed(10, 10, 300, 30),
+        "wide"
+      )
+      .EndClip()
+      .Compose();
+    using WindowFrame frame = rig.Render(composer);
+
+    Assert.True(frame.InkIn(10, 10, 30, 30) > 0);
+    Assert.Equal(0, frame.InkIn(40, 0, 280, 120));
+  }
+
+  // Fails when the width rule keeps a tolerance: a word exactly as wide as its box, which the engine
+  // breaks, is then not reported.
+  [Fact]
+  public void GateFindsAWordExactlyAsWideAsItsBox() {
+    using var rig = new WindowRig();
+    double word = CairoFont.WhiteSmallText().GetTextExtents("Work").Width;
+
+    Assert.Contains(
+      WindowLayout.Check(WithText(rig, "Work", word, 60)),
+      f => f.StartsWith("width ") && f.Contains("Work")
+    );
+    Assert.DoesNotContain(
+      WindowLayout.Check(WithText(rig, "Work", word + 1, 60)),
+      f => f.StartsWith("width ")
+    );
+  }
+
+  // Fails when the overlap rule compares only text, buttons and slot grids: a passive slot laid over a
+  // button is then not reported.
+  [Fact]
+  public void GateFindsAPassiveSlotOverAButton() {
+    using var rig = new WindowRig();
+    var inventory = new DummyInventory(rig.Api, 1);
+    GuiComposer composer = rig
+      .Api.Gui.CreateCompo(
+        "window-passive",
+        ElementBounds.Fixed(100, 100, 320, 120)
+      )
+      .AddSmallButton(
+        "Craft",
+        () => true,
+        ElementBounds.Fixed(10, 10, 100, 30),
+        EnumButtonStyle.Normal,
+        "craft"
+      )
+      .AddPassiveItemSlot(
+        ElementBounds.Fixed(50, 15, 48, 48),
+        inventory,
+        inventory[0],
+        false,
+        "preview"
+      )
+      .Compose();
+
+    string finding = Assert.Single(WindowLayout.Check(composer));
+    Assert.StartsWith("overlap ", finding);
+    Assert.Contains("preview", finding);
+    Assert.Contains("craft", finding);
+  }
+
+  // Fails when LoadLang does not register its service: the label then reads its key.
+  [Fact]
+  public void LoadLangRendersTranslationsAndDisposeRestoresThem() {
+    string path = Path.Combine(OutDir, "lang-test-en.json");
+    Directory.CreateDirectory(OutDir);
+    File.WriteAllText(path, "{ \"greeting\": \"Hello {0}\" }");
+    TestLang.Init();
+    string label;
+    using (var rig = new WindowRig()) {
+      rig.LoadLang("wintest", path);
+      GuiComposer composer = rig
+        .Api.Gui.CreateCompo(
+          "window-lang",
+          ElementBounds.Fixed(100, 100, 320, 120)
+        )
+        .AddDynamicText(
+          Lang.Get("wintest:greeting", "bench"),
+          CairoFont.WhiteSmallText(),
+          ElementBounds.Fixed(10, 10, 200, 30),
+          "label"
+        )
+        .Compose();
+      label = ((GuiElementTextBase)composer["label"]).Text;
+    }
+
+    Assert.Equal("Hello bench", label);
+    Assert.Equal("wintest:greeting", Lang.Get("wintest:greeting"));
   }
 }

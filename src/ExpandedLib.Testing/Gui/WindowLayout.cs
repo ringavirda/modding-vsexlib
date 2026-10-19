@@ -19,10 +19,11 @@ public static class WindowLayout {
   /// <remarks>Rules, each finding starting with its name and the element's key (with its text when
   /// it has some): <c>height</c>, a text element whose wrapped text is taller than its inner box;
   /// <c>width</c>, a text element with a word wider than its inner box, which the engine breaks
-  /// inside the word; <c>overlap</c>, two content elements with the same parent bounds whose
-  /// rectangles share more than half a pixel in both axes; <c>outside</c>, an element whose
-  /// rectangle leaves the dialog's. Content elements are text, text buttons and item slot grids;
-  /// hover texts are skipped by the text and overlap rules. Buttons size themselves to their text
+  /// inside the word, which is any word as wide as its box or wider; <c>overlap</c>, two content
+  /// elements with the same parent bounds whose rectangles share more than half a pixel in both
+  /// axes; <c>outside</c>, an element whose rectangle leaves the dialog's. Content elements are
+  /// every element except dialog backgrounds, insets, clip markers and hover texts, which sit under
+  /// or beside content by design; hover texts are also skipped by the text rules. Buttons size themselves to their text
   /// and are not measured for fit.</remarks>
   /// <param name="composer">A composed composer made on a <see cref="WindowRig"/>; composed here when
   /// it is not.</param>
@@ -58,7 +59,7 @@ public static class WindowLayout {
         )
       ) {
         double wordW = text.Font.GetTextExtents(word).Width;
-        if (wordW > boxW + Tolerance)
+        if (wordW >= boxW)
           findings.Add(
             $"width {label}: the word \"{word}\" is {wordW:0.#} wide, box is {boxW:0.#}"
           );
@@ -107,10 +108,16 @@ public static class WindowLayout {
     return findings;
   }
 
+  private static readonly HashSet<string> Underlays =
+  [
+    nameof(GuiElementDialogBackground),
+    nameof(GuiElementInset),
+    nameof(GuiElementHoverText),
+    "GuiElementClip",
+  ];
+
   private static bool IsContent(GuiElement e) =>
-    e is GuiElementTextButton
-    || e is GuiElementItemSlotGridBase
-    || (e is GuiElementTextBase && e is not GuiElementHoverText);
+    !Underlays.Contains(e.GetType().Name);
 
   private static string Label((string Key, GuiElement Element) e) =>
     Label(e.Key, (e.Element as GuiElementTextBase)?.Text ?? "");

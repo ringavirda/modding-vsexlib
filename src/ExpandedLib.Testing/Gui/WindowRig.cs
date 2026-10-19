@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
+using System.Text.Json;
 using Cairo;
 using NSubstitute;
 using Vintagestory.API.Client;
@@ -19,7 +21,8 @@ namespace ExpandedLib.Testing;
 /// (<c>Gui.LoadCairoTexture</c> and <c>LoadOrUpdateCairoTexture</c> keep each surface's pixels under
 /// an id) and the draw calls (<c>Render.Render2DTexture*</c> paint that surface into the frame at the
 /// rectangle given). An item stack is a plain square with its code's path and, where the draw call
-/// asks for a stack size, its count. Clipping, shaders, item meshes, sounds, input and the cursor are
+/// asks for a stack size, its count. Scissor clips (<c>PushScissor</c>) cut the frame to the bounds
+/// given; shaders, item meshes, sounds, input and the cursor are
 /// not simulated. <see cref="Api"/> is built for the composer's dialog only: it has no world, no
 /// player and no assets. <see cref="Cairo.Context"/> work needs the system Cairo and fontconfig.
 /// <para>The rig sets the process-wide <c>RuntimeEnv.GUIScale</c> for its lifetime and puts the old
@@ -29,7 +32,12 @@ public sealed class WindowRig : IDisposable {
   private readonly Dictionary<int, ImageSurface> _textures = new();
   private readonly List<WindowDraw> _draws = new();
   private int _nextTexture;
+  private readonly Dictionary<string, string> _lang = new();
+  private ITranslationService? _langService;
+  private ITranslationService? _previousService;
+  private string? _previousLocale;
   private Context? _frame;
+  private int _clipDepth;
   private double _originX;
   private double _originY;
 
@@ -76,7 +84,49 @@ public sealed class WindowRig : IDisposable {
   /// <param name="margin">Pixels of frame kept around the dialog's rectangle on every side, so
   /// content that overflows it shows; 0 for the dialog's own size.</param>
   /// <returns>The frame; the caller disposes it.</returns>
-  public WindowFrame Render(GuiComposer composer, int margin = 0) {
+  public WindowFrame Render(GuiComposer composer, int margin = 0) =>
+    Draw(composer, margin, () => composer.Render(0.016f));
+
+  /// <summary>Composes the dialog's <see cref="GuiDialog.SingleComposer"/> if it is not composed and
+  /// draws one frame of the dialog, running its <see cref="GuiDialog.OnRenderGUI"/> so draws the
+  /// override makes beyond the composer's own (shadows, labels) land in the frame.</summary>
+  /// <param name="dialog">A dialog built on <see cref="Api"/> whose <c>SingleComposer</c> is set.</param>
+  /// <param name="margin">Pixels of frame kept around the dialog's rectangle on every side; 0 for the
+  /// dialog's own size.</param>
+  /// <returns>The frame; the caller disposes it.</returns>
+  public WindowFrame Render(GuiDialog dialog, int margin = 0) =>
+    Draw(dialog.SingleComposer, margin, () => dialog.OnRenderGUI(0.016f));
+
+  /// <summary>Registers the translations of one mod's language file for <c>Lang.Get</c> until
+  /// <see cref="Dispose"/>, so labels measure and render as in game instead of echoing their keys.</summary>
+  /// <remarks>Replaces the "en" translation service and makes "en" the current locale; both are put
+  /// back on <see cref="Dispose"/>. A key found in no loaded file still echoes itself. Values are
+  /// formatted with <see cref="string.Format(string, object[])"/>. Not thread-safe: tests that use it
+  /// share the rig's collection.</remarks>
+  /// <param name="domain">The mod domain the file's keys belong to, such as <c>iiex</c>.</param>
+  /// <param name="path">A flat JSON file of key to text, such as <c>assets/iiex/lang/en.json</c>.</param>
+  /// <exception cref="FileNotFoundException"><paramref name="path"/> does not exist.</exception>
+  public void LoadLang(string domain, string path) {
+    using FileStream stream = File.OpenRead(path);
+    using JsonDocument doc = JsonDocument.Parse(
+      stream,
+      new JsonDocumentOptions {
+        CommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+      }
+    );
+    foreach (JsonProperty p in doc.RootElement.EnumerateObject())
+      _lang[domain + ":" + p.Name] = p.Value.GetString() ?? "";
+    if (_langService != null)
+      return;
+    _langService = BuildLangService();
+    Lang.AvailableLanguages.TryGetValue("en", out _previousService);
+    _previousLocale = Lang.CurrentLocale;
+    Lang.AvailableLanguages["en"] = _langService;
+    Lang.ChangeLanguage("en");
+  }
+
+  private WindowFrame Draw(GuiComposer composer, int margin, Action render) {
     composer.Compose(false);
     ElementBounds b = composer.Bounds;
     int width = (int)Math.Ceiling(b.OuterWidth) + 2 * margin;
@@ -84,10 +134,11 @@ public sealed class WindowRig : IDisposable {
     _originX = b.renderX - margin;
     _originY = b.renderY - margin;
     _draws.Clear();
+    _clipDepth = 0;
     var surface = new ImageSurface(Format.Argb32, width, height);
     _frame = new Context(surface);
     try {
-      composer.Render(0.016f);
+      render();
     } finally {
       _frame.Dispose();
       _frame = null;
@@ -97,6 +148,15 @@ public sealed class WindowRig : IDisposable {
 
   public void Dispose() {
     RuntimeEnv.GUIScale = _previousScale;
+    if (_langService != null) {
+      if (_previousService != null)
+        Lang.AvailableLanguages["en"] = _previousService;
+      else
+        Lang.AvailableLanguages.Remove("en");
+      if (_previousLocale != null)
+        Lang.ChangeLanguage(_previousLocale);
+      _langService = null;
+    }
     foreach (ImageSurface s in _textures.Values)
       s.Dispose();
     _textures.Clear();
@@ -150,6 +210,29 @@ public sealed class WindowRig : IDisposable {
     return api;
   }
 
+  private ITranslationService BuildLangService() {
+    var svc = Substitute.For<ITranslationService>();
+    svc.LanguageCode.Returns("en");
+    string Translate(string key, object[] args) =>
+      _lang.TryGetValue(key, out string? text)
+        ? (args.Length == 0 ? text : string.Format(text, args))
+        : key;
+    svc.Get(Arg.Any<string>(), Arg.Any<object[]>())
+      .Returns(ci => Translate(ci.Arg<string>(), ci.Arg<object[]>()));
+    svc.GetIfExists(Arg.Any<string>(), Arg.Any<object[]>())
+      .Returns(ci => Translate(ci.Arg<string>(), ci.Arg<object[]>()));
+    svc.GetUnformatted(Arg.Any<string>())
+      .Returns(ci => Translate(ci.Arg<string>(), []));
+    svc.GetMatching(Arg.Any<string>(), Arg.Any<object[]>())
+      .Returns(ci => Translate(ci.Arg<string>(), ci.Arg<object[]>()));
+    svc.GetMatchingIfExists(Arg.Any<string>(), Arg.Any<object[]>())
+      .Returns(ci => Translate(ci.Arg<string>(), ci.Arg<object[]>()));
+    svc.HasTranslation(Arg.Any<string>(), Arg.Any<bool>()).Returns(true);
+    svc.HasTranslation(Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<bool>())
+      .Returns(true);
+    return svc;
+  }
+
   private static GuiComposer MakeComposer(
     ICoreClientAPI api,
     ElementBounds screen,
@@ -191,6 +274,10 @@ public sealed class WindowRig : IDisposable {
   }
 
   private void WireDraws(IRenderAPI render) {
+    render
+      .When(r => r.PushScissor(Arg.Any<ElementBounds>(), Arg.Any<bool>()))
+      .Do(ci => PushScissor(ci.Arg<ElementBounds>()));
+    render.When(r => r.PopScissor()).Do(_ => PopScissor());
     render
       .When(r =>
         r.Render2DTexture(
@@ -342,6 +429,27 @@ public sealed class WindowRig : IDisposable {
           false
         )
       );
+  }
+
+  private void PushScissor(ElementBounds b) {
+    if (_frame == null)
+      return;
+    _frame.Save();
+    _clipDepth++;
+    _frame.Rectangle(
+      b.renderX - _originX,
+      b.renderY - _originY,
+      b.OuterWidth,
+      b.OuterHeight
+    );
+    _frame.Clip();
+  }
+
+  private void PopScissor() {
+    if (_frame == null || _clipDepth == 0)
+      return;
+    _clipDepth--;
+    _frame.Restore();
   }
 
   private void DrawTexture(int id, ElementBounds b) =>
