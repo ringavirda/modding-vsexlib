@@ -92,14 +92,14 @@ public class ViewHeldGateTests {
     Assert.InRange(Value(facing, "hand.sheet.fp"), 75.6 - 1, 75.6 + 1);
   }
 
-  // Fails when SheetDegrees moves off 30: the sheets at 27.8 and 32.8 degrees in third person, and at 28.9 and 31.3 in
+  // Fails when SheetDegrees moves off 40: the sheets at 38.8 and 40.8 degrees in third person, and at 37.7 and 41.5 in
   // first, then pass or fail together.
   [Fact]
-  public void G15_limit_is_thirty_degrees() {
-    Assert.True(Passes(Sheet(0.5, 270, 15), "hand.sheet"));
-    Assert.False(Passes(Sheet(0.5, 270, 10), "hand.sheet"));
-    Assert.True(Passes(Sheet(0.5, 120, 0), "hand.sheet.fp"));
-    Assert.False(Passes(Sheet(0.5, 115, 0), "hand.sheet.fp"));
+  public void G15_limit_is_forty_degrees() {
+    Assert.True(Passes(Sheet(0.5, 270, 4), "hand.sheet"));
+    Assert.False(Passes(Sheet(0.5, 270, 2), "hand.sheet"));
+    Assert.True(Passes(Sheet(0.5, 105, 0), "hand.sheet.fp"));
+    Assert.False(Passes(Sheet(0.5, 100, 0), "hand.sheet.fp"));
   }
 
   // Fails when the sheet bound is inclusive or removed: the 1 voxel fixture then reads G15, and its upright hold

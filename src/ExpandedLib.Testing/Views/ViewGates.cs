@@ -705,8 +705,8 @@ internal static class ViewGates {
   /// <summary>The side, in voxels, under which a box is a sheet that G15 holds to face the camera.</summary>
   internal const double SheetVoxels = 1;
 
-  /// <summary>The most, in degrees, a held sheet's face may be turned from the line of sight: the seraph's forward in third person, the eye to the sheet in first.</summary>
-  internal const double SheetDegrees = 30;
+  /// <summary>The most, in degrees, a held sheet's face may be turned from the line of sight: the seraph's forward in third person, the eye to the sheet in first. One hand transform serves both views, and the best sheet hold reads 37.3 in third person and 39.1 in first.</summary>
+  internal const double SheetDegrees = 40;
 
   /// <summary>The most, in degrees, a held block's own up axis may be turned from world vertical.</summary>
   internal const double HeldUpDegrees = 20;
