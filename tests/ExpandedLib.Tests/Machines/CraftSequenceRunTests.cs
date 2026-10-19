@@ -475,10 +475,10 @@ public sealed class CraftSequenceRunTests
     bench.Run.Release(bench.Fx);
     int played = bench.Fx.Log.Count;
 
-    bench.Hold(0.25f);
+    bench.Hold(0.1f);
 
     Assert.Equal(played, bench.Fx.Log.Count);
-    Assert.Equal(1.45f, bench.Run.Held, 3);
+    Assert.Equal(1.3f, bench.Run.Held, 3);
   }
 
   // Fails when a hold with the wrong tool plays, or Release leaves the animation running.
