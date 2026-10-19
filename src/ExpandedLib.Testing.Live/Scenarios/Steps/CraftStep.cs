@@ -293,34 +293,6 @@ internal sealed class CraftStep : ScenarioStep {
     taken.AddRange(Collect(who, entity, station, order));
   }
 
-  /// <summary>Presses the station's button on the laid bill of a sequenced recipe and fails when it makes
-  /// anything or takes any of the bill.</summary>
-  private static void PressRefused(
-    ServerPlayer who,
-    BlockEntity entity,
-    string station,
-    CraftOrder order
-  ) {
-    var inventory = ((IBlockEntityContainer)entity).Inventory;
-    int[] before = [.. order.Inputs.Select(i => inventory[i.Slot].StackSize)];
-    entity.OnReceivedClientPacket(who, order.PressId!.Value, order.PressData);
-    ItemSlot? made = order
-      .OutputSlots.Select(n => inventory[n])
-      .FirstOrDefault(s => !s.Empty);
-    if (made != null)
-      throw new StepFailure(
-        $"the button of {station} made {made.StackSize} {made.Itemstack.Collectible.Code} from the sequenced bill of {order.Recipe}."
-      );
-    if (
-      !order
-        .Inputs.Select(i => inventory[i.Slot].StackSize)
-        .SequenceEqual(before)
-    )
-      throw new StepFailure(
-        $"the button of {station} took from the sequenced bill of {order.Recipe}."
-      );
-  }
-
   private static string CraftInHand(
     ScenarioContext ctx,
     ScenarioPlayer player,
