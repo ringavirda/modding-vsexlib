@@ -286,7 +286,7 @@ internal sealed class CraftStep : ScenarioStep {
         label,
         step
       );
-      double seconds = step.Seconds + 0.1;
+      double seconds = CraftBills.Duration(step, tool) + 0.1;
       bool answered = player.UseStart(at, selection, tool, [], offhand);
       try {
         if (!answered)

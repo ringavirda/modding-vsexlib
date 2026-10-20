@@ -695,6 +695,20 @@ public class CraftStepTests : IDisposable
     Assert.Equal(3, Carried(scene, Frame));
   }
 
+  // Fails when the harness holds a hits step for its seconds (none) instead of its swings.
+  [Fact]
+  public void Craft_of_a_sequenced_recipe_holds_a_hits_step_for_its_swings()
+  {
+    using SetupScene scene = BuildSequenced(
+      PackOf(Tools),
+      "{\"machine\": \"bench\", \"sequences\": [{\"recipe\": \"setupcraft:frame\", \"steps\": ["
+        + "{\"tool\": \"setupcraft:mallet\", \"hits\": 2}, "
+        + "{\"tool\": \"setupcraft:mallet\", \"offhand\": \"setupcraft:stud\", \"hits\": 1}]}]}"
+    );
+
+    Assert.Equal(3, Carried(scene, Frame));
+  }
+
   // Fails when the tools are made without the pack, or the pack is not asked for them.
   [Fact]
   public void Craft_of_a_sequenced_recipe_needs_its_tool_in_the_pack()

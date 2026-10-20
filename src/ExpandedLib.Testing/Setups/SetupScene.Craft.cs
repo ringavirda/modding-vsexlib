@@ -248,7 +248,8 @@ public sealed partial class SetupScene
             false,
             false,
             false,
-            step.Seconds + TestPlayer.InteractStepSeconds,
+            CraftBills.Duration(step, Player.ActiveSlot.Itemstack)
+              + TestPlayer.InteractStepSeconds,
             null,
             TickSecond
           )

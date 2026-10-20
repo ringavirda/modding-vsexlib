@@ -66,6 +66,18 @@ internal static class CraftBills
       && wanted.All(w => got.GetValueOrDefault(w.Key) == w.Value);
   }
 
+  /// <summary>How long a runner holds <paramref name="step"/> with <paramref name="tool"/> in hand.</summary>
+  /// <param name="step">The step held.</param>
+  /// <param name="tool">The stack in the active hand; null for bare hands.</param>
+  /// <returns>Seconds: the step's own, or its hits as swings of the tool's stroke.</returns>
+  public static float Duration(CraftStep step, ItemStack? tool) =>
+    step.Duration(
+      CraftSequenceRegistry
+        .Shared.ToolDefault(tool?.Collectible.Code.ToString())
+        ?.Stroke
+        ?? CraftToolDefault.DefaultStroke
+    );
+
   /// <summary>What <paramref name="slots"/> hold now, for <see cref="HandedOver"/> to compare against
   /// after a press.</summary>
   /// <param name="slots">The player's slots: the hotbar, the active slot and the backpack.</param>

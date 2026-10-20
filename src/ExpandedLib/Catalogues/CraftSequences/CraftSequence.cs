@@ -8,7 +8,8 @@ namespace ExpandedLib.Catalogues;
 /// animation plays.</summary>
 /// <param name="Tool">Item code the active-hand stack must match, wildcards allowed; null for bare hands.</param>
 /// <param name="Offhand">Item code the off-hand stack must match; null when the off hand is not checked.</param>
-/// <param name="Seconds">How long the step is held. Above 0.</param>
+/// <param name="Seconds">How long the step is held. Above 0 for a timed step; 0 for a step counted in
+/// <paramref name="Hits"/>.</param>
 /// <param name="Animation">Entity animation code played on the holder at each stroke; null for the held
 /// tool's <see cref="CraftToolDefault"/>, and none when it has none.</param>
 /// <param name="Help">Lang key of the interaction-help line shown beside the step's tool; null for none.</param>
@@ -16,6 +17,8 @@ namespace ExpandedLib.Catalogues;
 /// open, or null for the top.</param>
 /// <param name="Sound">Asset path of the sound played at each stroke; null for the held tool's
 /// <see cref="CraftToolDefault"/>, and none when it has none.</param>
+/// <param name="Hits">Finished tool swings the step takes; 0 for a timed step. A hit counts at the end of
+/// a swing, and the hits counted survive the player letting go.</param>
 public sealed record CraftStep(
   string? Tool,
   string? Offhand,
@@ -23,13 +26,20 @@ public sealed record CraftStep(
   string? Animation,
   string? Help,
   string? At,
-  string? Sound = null
+  string? Sound = null,
+  int Hits = 0
 ) {
   /// <summary>What a step takes when it declares no time of its own.</summary>
   public const float DefaultSeconds = 1f;
 
   /// <summary>The <see cref="At"/> value of a step worked in the face vice.</summary>
   public const string Vice = "vice";
+
+  /// <summary>How long holding the step takes.</summary>
+  /// <param name="stroke">Seconds of one swing of the held tool; above 0.</param>
+  /// <returns><see cref="Seconds"/> for a timed step, <see cref="Hits"/> swings of
+  /// <paramref name="stroke"/> for a counted one.</returns>
+  public float Duration(float stroke) => Hits > 0 ? Hits * stroke : Seconds;
 }
 
 /// <summary>What a held tool does at each stroke of a step that names no animation or sound of its own.</summary>
@@ -125,8 +135,23 @@ public sealed record CraftSequenceSet(
 
       var steps = new List<CraftStep>();
       foreach (JsonObject stepNode in sequenceNode["steps"].AsArray() ?? []) {
-        float seconds = stepNode["seconds"].AsFloat(CraftStep.DefaultSeconds);
-        if (seconds <= 0f) {
+        bool timed = stepNode["seconds"].Exists;
+        bool counted = stepNode["hits"].Exists;
+        if (timed && counted) {
+          error =
+            $"{machine}: a step of '{recipe}' names both 'seconds' and 'hits'";
+          return false;
+        }
+        int hits = counted ? stepNode["hits"].AsInt(0) : 0;
+        if (counted && hits < 1) {
+          error =
+            $"{machine}: a step of '{recipe}' takes {hits} hits, which is not a count";
+          return false;
+        }
+        float seconds = counted
+          ? 0f
+          : stepNode["seconds"].AsFloat(CraftStep.DefaultSeconds);
+        if (!counted && seconds <= 0f) {
           error =
             $"{machine}: a step of '{recipe}' holds for {seconds} seconds, which is not a time";
           return false;
@@ -145,7 +170,8 @@ public sealed record CraftSequenceSet(
             Blank(stepNode["animation"].AsString("")),
             Blank(stepNode["help"].AsString("")),
             at,
-            Blank(stepNode["sound"].AsString(""))
+            Blank(stepNode["sound"].AsString("")),
+            hits
           )
         );
       }
