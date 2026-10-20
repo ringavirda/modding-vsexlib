@@ -37,7 +37,8 @@ public sealed record CraftInput(
 /// protocol's last id. Null for the hand grid, which has no button.</param>
 /// <param name="PressData">The button packet's payload; null for none.</param>
 /// <param name="OutputSlots">The inventory slots the product comes out of; empty for the hand
-/// grid.</param>
+/// grid. A product the station hands to the player is not in them; the craft step counts it from the
+/// player's inventory.</param>
 /// <param name="Product">The stack one press makes, its stack size the quantity.</param>
 /// <param name="Grid">The grid recipe behind the order, which the hand grid's matcher runs; null
 /// for an order that is not a grid recipe.</param>

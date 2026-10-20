@@ -174,6 +174,34 @@ public sealed class CraftSequenceTests
     );
   }
 
+  // Fails when a step's hits are not read, or a step naming both hits and seconds is accepted.
+  [Fact]
+  public void A_step_takes_hits_or_seconds_and_not_both()
+  {
+    List<CraftSequenceSet> sets = Parse(
+      out List<string> errors,
+      """{ "machine": "workbench", "sequences": [ { "recipe": "iiex:r", "steps": [ { "tool": "x", "hits": 2 } ] } ] }"""
+    );
+    Assert.Empty(errors);
+    CraftStep step = Assert.Single(Assert.Single(sets).Sequences[0].Steps);
+    Assert.Equal(2, step.Hits);
+    Assert.Equal(0f, step.Seconds);
+
+    sets = Parse(
+      out errors,
+      """{ "machine": "workbench", "sequences": [ { "recipe": "iiex:r", "steps": [ { "hits": 2, "seconds": 1 } ] } ] }"""
+    );
+    Assert.Empty(sets);
+    Assert.Contains("both", Assert.Single(errors));
+
+    sets = Parse(
+      out errors,
+      """{ "machine": "workbench", "sequences": [ { "recipe": "iiex:r", "steps": [ { "hits": 0 } ] } ] }"""
+    );
+    Assert.Empty(sets);
+    Assert.Contains("not a count", Assert.Single(errors));
+  }
+
   // Fails when the loader accepts a sequence with no steps.
   [Fact]
   public void A_sequence_with_no_steps_is_reported_and_skipped()

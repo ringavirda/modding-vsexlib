@@ -57,6 +57,8 @@ public sealed class CraftSequenceRun(
   private string? _playing;
   private int _swings;
   private int _strikes;
+  private int _hits;
+  private int _done;
 
   /// <summary>The item attribute holding the chance, from 0 to 1, that a finished step costs the tool
   /// one durability point; a tool without it is worn by every step.</summary>
@@ -68,6 +70,10 @@ public sealed class CraftSequenceRun(
   /// <summary>Seconds the current step has been held without a break.</summary>
   public float Held { get; private set; }
 
+  /// <summary>Hits counted on the current step, from 0; they survive the player letting go and drop when
+  /// the step ends or the bill is lifted.</summary>
+  public int Struck => _hits;
+
   /// <summary>The step being worked.</summary>
   public CraftStep Current => sequence.Steps[Step];
 
@@ -78,29 +84,44 @@ public sealed class CraftSequenceRun(
     Held = 0f;
     _swings = 0;
     _strikes = 0;
+    _hits = 0;
+    _done = 0;
   }
 
-  /// <summary>Ends the animation a hold started; call when the player lets go. The held time and the strokes
-  /// already played are kept, so a later hold goes on from the same stroke.</summary>
+  /// <summary>Ends the animation a hold started; call when the player lets go. A timed step keeps its held
+  /// time and strokes already played, so a later hold goes on from the same stroke; a step with
+  /// <see cref="CraftStep.Hits"/> keeps the hits counted and drops the swing left unfinished.</summary>
   /// <param name="effects">The effects the holds played on; null for none.</param>
   public void Release(ICraftEffects? effects)
   {
     if (_playing != null)
       effects?.StopAnimation(_playing);
     _playing = null;
+    if (Step < sequence.Steps.Length && Current.Hits > 0)
+    {
+      Held = 0f;
+      _swings = 0;
+      _strikes = 0;
+      _done = _hits;
+    }
   }
 
-  private void Drop(ICraftEffects? effects)
+  // Ends the hold: the held time and strokes go; the hits counted stay when keepHits.
+  private void Drop(ICraftEffects? effects, bool keepHits = false)
   {
     Release(effects);
     Held = 0f;
     _swings = 0;
     _strikes = 0;
+    if (!keepHits)
+      _hits = 0;
+    _done = _hits;
   }
 
   /// <summary>
   /// Advances the run by <paramref name="dt"/> seconds of the player holding the current step; a hold
-  /// whose bill or hands do not match does nothing, and the last step crafts.
+  /// whose bill or hands do not match does nothing, and the last step crafts. A step with
+  /// <see cref="CraftStep.Hits"/> counts a hit at each finished swing and keeps them when the hold breaks.
   /// </summary>
   /// <param name="world">The world byproduct codes resolve in.</param>
   /// <param name="dt">Seconds held since the last call; 0 or more.</param>
@@ -130,18 +151,29 @@ public sealed class CraftSequenceRun(
     CraftStep step = Current;
     if (!HandsMatch(step, active, offhand))
     {
-      Drop(effects);
+      Drop(effects, true);
       return CraftSequenceProgress.Idle;
     }
     if (step.At == CraftStep.Vice && viceOpen)
     {
-      Drop(effects);
+      Drop(effects, true);
       return CraftSequenceProgress.WaitingForVice;
     }
 
     Held += dt;
-    Stroke(step, active, effects);
-    if (Held < step.Seconds)
+    CraftToolDefault? tool = _tools.ToolDefault(
+      active?.Itemstack?.Collectible.Code.ToString()
+    );
+    Stroke(step, tool, effects);
+    if (step.Hits > 0)
+    {
+      float swing = tool?.Stroke ?? CraftToolDefault.DefaultStroke;
+      while (_hits < step.Hits && Held >= (_hits - _done + 1) * swing)
+        _hits++;
+      if (_hits < step.Hits)
+        return CraftSequenceProgress.Working;
+    }
+    else if (Held < step.Seconds)
       return CraftSequenceProgress.Working;
 
     bool last = Step == sequence.Steps.Length - 1;
@@ -151,7 +183,8 @@ public sealed class CraftSequenceRun(
       deposit = Deposit(world);
       if (deposit == null)
       {
-        Held = step.Seconds;
+        if (step.Hits == 0)
+          Held = step.Seconds;
         return CraftSequenceProgress.WaitingForOutput;
       }
     }
@@ -173,34 +206,46 @@ public sealed class CraftSequenceRun(
   }
 
   // Starts the animation of each stroke and plays the sound of each strike that the held time has
-  // reached, and none past the step's end.
-  private void Stroke(CraftStep step, ItemSlot? active, ICraftEffects? effects)
+  // reached, and none past the step's end: its seconds, or the swings its hits still need.
+  private void Stroke(
+    CraftStep step,
+    CraftToolDefault? tool,
+    ICraftEffects? effects
+  )
   {
     if (effects == null)
       return;
 
-    CraftToolDefault? tool = _tools.ToolDefault(
-      active?.Itemstack?.Collectible.Code.ToString()
-    );
     string? animation = step.Animation ?? tool?.Animation;
     string? sound = step.Sound ?? tool?.Sound;
     float stroke = tool?.Stroke ?? CraftToolDefault.DefaultStroke;
     float strike = tool?.Strike ?? CraftToolDefault.DefaultStrike;
 
-    while (animation != null && Due(_swings * stroke, step))
+    int left = step.Hits - _done;
+
+    while (
+      animation != null
+      && (step.Hits == 0 || _swings < left)
+      && Due(_swings * stroke, step)
+    )
     {
       effects.StartAnimation(animation);
       _playing = animation;
       _swings++;
     }
-    while (sound != null && Due((_strikes * stroke) + strike, step))
+    while (
+      sound != null
+      && (step.Hits == 0 || _strikes < left)
+      && Due((_strikes * stroke) + strike, step)
+    )
     {
       effects.Strike(sound);
       _strikes++;
     }
   }
 
-  private bool Due(float at, CraftStep step) => at <= Held && at < step.Seconds;
+  private bool Due(float at, CraftStep step) =>
+    at <= Held && (step.Hits > 0 || at < step.Seconds);
 
   private bool BillLaid() =>
     order.Inputs.All(input =>

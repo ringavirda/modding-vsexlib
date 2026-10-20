@@ -42,6 +42,7 @@ public sealed class CraftSequenceLoader
     "tool",
     "offhand",
     "seconds",
+    "hits",
     "animation",
     "help",
     "at",

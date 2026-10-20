@@ -148,8 +148,19 @@ public sealed class CraftSequenceRunTests
     string? at = null,
     float seconds = 1f,
     string? animation = null,
-    string? sound = null
-  ) => new(tool, offhand, seconds, animation, null, at, sound);
+    string? sound = null,
+    int hits = 0
+  ) =>
+    new(
+      tool,
+      offhand,
+      hits > 0 ? 0f : seconds,
+      animation,
+      null,
+      at,
+      sound,
+      hits
+    );
 
   // Fails when a hold with the wrong tool advances the step, or the run does not return to its
   // first step once the last step is done.
@@ -200,6 +211,76 @@ public sealed class CraftSequenceRunTests
     bench.Active.Itemstack = new ItemStack(bench.Tool("test:chisel"));
     Assert.Equal(CraftSequenceProgress.Working, bench.Hold(1.5f));
     Assert.Equal(CraftSequenceProgress.Crafted, bench.Hold(1f));
+  }
+
+  // Fails when a hit step ends at its first swing, or counts a hit before the swing is finished.
+  [Fact]
+  public void A_two_hit_step_ends_after_two_swings_and_not_after_one()
+  {
+    using var bench = new Bench([Step("test:hammer", hits: 2)]);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("test:hammer"));
+    float stroke = CraftToolDefault.DefaultStroke;
+
+    Assert.Equal(CraftSequenceProgress.Working, bench.Hold(stroke - 0.1f));
+    Assert.Equal(0, bench.Run.Struck);
+    Assert.Equal(CraftSequenceProgress.Working, bench.Hold(0.1f));
+    Assert.Equal(1, bench.Run.Struck);
+    Assert.Equal(CraftSequenceProgress.Working, bench.Hold(stroke - 0.1f));
+    Assert.Equal(CraftSequenceProgress.Crafted, bench.Hold(0.1f));
+    Assert.Equal(0, bench.Run.Struck);
+  }
+
+  // Fails when letting go drops the hits counted, or the next hold starts the count over.
+  [Fact]
+  public void Letting_go_after_one_swing_keeps_one_hit()
+  {
+    using var bench = new Bench([Step("test:hammer", hits: 2)]);
+    Item hammer = bench.Tool("test:hammer");
+    bench.Active.Itemstack = new ItemStack(hammer);
+    float stroke = CraftToolDefault.DefaultStroke;
+
+    Assert.Equal(CraftSequenceProgress.Working, bench.Hold(stroke * 1.5f));
+    Assert.Equal(1, bench.Run.Struck);
+    bench.Active.Itemstack = null;
+    Assert.Equal(CraftSequenceProgress.Idle, bench.Hold());
+    Assert.Equal(1, bench.Run.Struck);
+    bench.Active.Itemstack = new ItemStack(hammer);
+    Assert.Equal(CraftSequenceProgress.Working, bench.Hold(stroke - 0.1f));
+    Assert.Equal(CraftSequenceProgress.Crafted, bench.Hold(0.1f));
+  }
+
+  // Fails when releasing a hit step keeps the swing left unfinished: the short second hold then counts a hit.
+  [Fact]
+  public void Releasing_a_hit_step_drops_the_unfinished_swing()
+  {
+    using var bench = new Bench([Step("test:hammer", hits: 2)]);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("test:hammer"));
+    float stroke = CraftToolDefault.DefaultStroke;
+
+    bench.Hold(stroke * 1.5f);
+    bench.Run.Release(bench.Fx);
+    Assert.Equal(1, bench.Run.Struck);
+    Assert.Equal(0f, bench.Run.Held);
+    Assert.Equal(CraftSequenceProgress.Working, bench.Hold(stroke * 0.5f));
+    Assert.Equal(1, bench.Run.Struck);
+    bench.Run.Release(bench.Fx);
+    Assert.Equal(CraftSequenceProgress.Crafted, bench.Hold(stroke));
+  }
+
+  // Fails when a hit step starts a swing past its hits, or the sound of a strike is dropped.
+  [Fact]
+  public void A_hit_step_plays_one_swing_and_one_strike_per_hit()
+  {
+    using var bench = new Bench([
+      Step("test:hammer", hits: 2, animation: "hit", sound: "s/hit"),
+    ]);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("test:hammer"));
+
+    for (int i = 0; i < 5; i++)
+      bench.Hold(0.5f);
+
+    Assert.Equal(2, bench.Fx.Log.Count(l => l == "start hit"));
+    Assert.Equal(2, bench.Fx.Log.Count(l => l == "sound s/hit"));
   }
 
   // Fails when the off-hand tool is not checked.
