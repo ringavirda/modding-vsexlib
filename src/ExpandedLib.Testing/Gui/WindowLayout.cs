@@ -113,7 +113,7 @@ public static class WindowLayout {
   [
     nameof(GuiElementDialogBackground),
     nameof(GuiElementDialogTitleBar),
-    nameof(GuiElementInset),
+    "GuiElementInset",
     nameof(GuiElementHoverText),
     "GuiElementClip",
   ];

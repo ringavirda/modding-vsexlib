@@ -18,14 +18,13 @@ namespace ExpandedLib.Testing;
 /// renders one frame to pixels.
 /// </summary>
 /// <remarks>The engine's own element code runs: layout, Cairo drawing and the text measure are the
-/// game's, with the game's fonts from the provisioned install. What is faked is the texture store
+/// game's, with the game's fonts from the provisioned install and Arial (or Liberation Sans) for
+/// <c>sans-serif</c>. What is faked is the texture store
 /// (<c>Gui.LoadCairoTexture</c> and <c>LoadOrUpdateCairoTexture</c> keep each surface's pixels under
 /// an id) and the draw calls (<c>Render.Render2DTexture*</c> paint that surface into the frame at the
 /// rectangle given). An item stack is a plain square with its code's path and, where the draw call
-/// asks for a stack size, its count. Scissor clips (<c>PushScissor</c>) cut the frame to the bounds
-/// given; shaders, item meshes, sounds, input and the cursor are
-/// not simulated. Textures the engine reads from assets (a dialog background's soil pattern) are a
-/// flat tile, as the rig has no image decoder. <see cref="Api"/> is built for the composer's dialog
+/// asks for a stack size, its count. Shaders, item meshes, sounds, input and the cursor are not
+/// simulated. <see cref="Api"/> is built for the composer's dialog
 /// only: it has no world, no player and no assets. <see cref="Cairo.Context"/> work needs the system
 /// Cairo and fontconfig.
 /// <para>The rig sets the process-wide <c>RuntimeEnv.GUIScale</c> for its lifetime and puts the old

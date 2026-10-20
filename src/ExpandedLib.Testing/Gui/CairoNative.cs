@@ -11,12 +11,28 @@ internal static class CairoNative {
   private static readonly object Gate = new();
   private static bool _ready;
 
+  private static readonly string[] SystemFontDirs =
+  [
+    Path.Combine(
+      Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+      ".local",
+      "share",
+      "fonts",
+      "mswin"
+    ),
+    "/usr/share/fonts/liberation",
+    "/usr/share/fonts/truetype/liberation",
+    "/usr/share/fonts/liberation-fonts",
+  ];
+
   [DllImport("libc", EntryPoint = "setenv")]
   private static extern int SetEnv(string name, string value, int overwrite);
 
   /// <summary>Makes the game's Cairo binding load the system Cairo and sets <c>FONTCONFIG_FILE</c> to
-  /// a configuration that lists only the game's <c>assets/game/fonts</c>. A process whose fontconfig
-  /// already started keeps the fonts it found.</summary>
+  /// a configuration that lists the game's <c>assets/game/fonts</c> and the system's Arial or
+  /// Liberation Sans folders, with <c>sans-serif</c> aliased to Arial then Liberation Sans, as the
+  /// game's client resolves its standard font on Windows. A process whose fontconfig already started
+  /// keeps the fonts it found.</summary>
   /// <exception cref="InvalidOperationException">No game install is provisioned, or it has no fonts
   /// folder.</exception>
   internal static void Ensure() {
@@ -40,11 +56,17 @@ internal static class CairoNative {
         );
         Directory.CreateDirectory(dir);
         string conf = Path.Combine(dir, "fonts.conf");
+        string system = "";
+        foreach (string d in SystemFontDirs)
+          if (Directory.Exists(d))
+            system += $"<dir>{d}</dir>";
         File.WriteAllText(
           conf,
           "<?xml version=\"1.0\"?>\n"
             + "<!DOCTYPE fontconfig SYSTEM \"fonts.dtd\">\n"
-            + $"<fontconfig><dir>{fonts}</dir><cachedir>{Path.Combine(dir, "cache")}</cachedir></fontconfig>\n"
+            + $"<fontconfig><dir>{fonts}</dir>{system}<cachedir>{Path.Combine(dir, "cache")}</cachedir>"
+            + "<alias binding=\"same\"><family>sans-serif</family><prefer><family>Arial</family>"
+            + "<family>Liberation Sans</family></prefer></alias></fontconfig>\n"
         );
         SetEnv("FONTCONFIG_FILE", conf, 1);
         NativeLibrary.SetDllImportResolver(
