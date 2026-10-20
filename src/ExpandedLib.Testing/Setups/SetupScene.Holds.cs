@@ -234,9 +234,14 @@ public sealed partial class SetupScene
   /// <summary>Game hours one real second makes on the live server at the default calendar (1/120).</summary>
   private const double GameHoursPerSecond = 1.0 / 120.0;
 
-  private void TickSecond()
+  /// <summary>The most game hours one <c>advance</c> tick moves the calendar by.</summary>
+  private const double AdvanceChunkHours = 1.0;
+
+  private void TickSecond() => TickSecond(GameHoursPerSecond);
+
+  private void TickSecond(double hours)
   {
-    World.AdvanceHours(GameHoursPerSecond);
+    World.AdvanceHours(hours);
     if (_ordered)
       World.FireBlockEntityTicks(
         1f,

@@ -221,9 +221,8 @@ public sealed partial class SetupScene
     double hours = (double)step.Body["hours"]!;
     if (!(hours >= 0))
       throw Fail(step.Path, $"hours {hours} is negative.");
-    int seconds = (int)Math.Round(hours / GameHoursPerSecond);
-    for (int i = 0; i < seconds; i++)
-      TickSecond();
+    for (double left = hours; left > 1e-9; left -= AdvanceChunkHours)
+      TickSecond(Math.Min(AdvanceChunkHours, left));
   }
 
   private void SelectStep(SetupStep step)

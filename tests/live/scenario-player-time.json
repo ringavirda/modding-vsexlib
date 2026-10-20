@@ -1,6 +1,6 @@
 {
   "setup": "scenario-player-time",
-  "description": "The scenario player's active hotbar slot changes with select, and advance moves the server calendar a world second per tick.",
+  "description": "The scenario player's active hotbar slot changes with select, and advance moves the server calendar up to a game hour per tick.",
   "mods": [],
   "steps": [
     { "place": { "code": "game:charcoalpit", "at": [0, 0, 0] } },
