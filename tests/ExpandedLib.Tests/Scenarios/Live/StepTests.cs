@@ -363,18 +363,29 @@ public class StepTests {
   }
 
   /// <summary>Fails when the live runner refuses advance, moves the calendar by other than the span, or
-  /// yields fewer than ten runner ticks per world second of it.</summary>
+  /// takes more than one runner tick per game hour of it.</summary>
   [Fact]
   public void An_advance_moves_the_calendar_by_its_hours_and_prints_it() {
     var fixture = new LiveFixture();
     double before = fixture.Test.Calendar.TotalHours;
     int ticks = fixture.Run(Steps("""[{ "advance": { "hours": 0.1 } }]"""));
     Assert.Equal(0.1, fixture.Test.Calendar.TotalHours - before, 4);
-    Assert.Equal(120, ticks);
+    Assert.Equal(1, ticks);
     Assert.Contains(
       "[scenario]   1 advance 0.10 h ok: calendar 0.00 h to 0.10 h",
       fixture.Lines
     );
+  }
+
+  /// <summary>Fails when two hours of advance take more than three runner ticks (the chunk back at world
+  /// speed) or move the calendar by other than two hours.</summary>
+  [Fact]
+  public void An_advance_of_two_hours_ends_within_three_ticks() {
+    var fixture = new LiveFixture();
+    double before = fixture.Test.Calendar.TotalHours;
+    int ticks = fixture.Run(Steps("""[{ "advance": { "hours": 2 } }]"""));
+    Assert.Equal(2.0, fixture.Test.Calendar.TotalHours - before, 4);
+    Assert.InRange(ticks, 1, 3);
   }
 
   /// <summary>Fails when a select without the scenario player passes.</summary>
