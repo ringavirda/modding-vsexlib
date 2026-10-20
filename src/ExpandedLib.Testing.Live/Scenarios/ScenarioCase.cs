@@ -90,10 +90,6 @@ internal sealed class ScenarioCase(
     foreach (string mod in model.Mods)
       if (!loadedMods.Contains(mod, StringComparer.OrdinalIgnoreCase))
         throw top.In("mods").Fail($"\"{mod}\" is not loaded.");
-    if (model.Pack is { After.Count: > 0 })
-      throw top.In("pack")
-        .In("after")
-        .Fail("is not read by the live runner yet.");
 
     int[] plot = [16, 16, 16];
     if (root["plot"] != null) {

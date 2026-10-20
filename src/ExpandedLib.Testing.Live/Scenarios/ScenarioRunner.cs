@@ -215,9 +215,7 @@ internal sealed class ScenarioRunner {
       Player = _player,
       PlotBounds = plot.Bounds(),
       Pack =
-        scenario.Model.Pack == null
-          ? null
-          : SetupPack.Start(scenario.Model, _ => null),
+        scenario.Model.Pack == null ? null : StartPack(scenario.Model, File),
     };
     _config = new SetupConfig(Path.GetFileName(File(_name)));
     _config.Apply(scenario.Model.Config);
@@ -360,6 +358,36 @@ internal sealed class ScenarioRunner {
       error = e.Message;
       return false;
     }
+  }
+
+  /// <summary>Starts the pack of <paramref name="model"/>, reading each <c>after</c> stage from the
+  /// file <paramref name="fileOf"/> names for its id.</summary>
+  /// <exception cref="InvalidOperationException">An <c>after</c> names no file,
+  /// names a file that is not that stage, or the pack refuses it; the message starts with
+  /// <c>pack</c>.</exception>
+  internal static SetupPack StartPack(
+    SetupFileModel model,
+    System.Func<string, string> fileOf
+  ) {
+    try {
+      return SetupPack.Start(model, id => StageOf(id, fileOf));
+    } catch (InvalidOperationException e) {
+      throw new InvalidOperationException($"pack: {e.Message}", e);
+    }
+  }
+
+  private static SetupFileModel? StageOf(
+    string id,
+    System.Func<string, string> fileOf
+  ) {
+    string path = fileOf(id);
+    if (!System.IO.File.Exists(path))
+      return null;
+    SetupFileModel stage = SetupFileModel.Parse(
+      System.IO.File.ReadAllText(path),
+      Path.GetFileName(path)
+    );
+    return stage.Setup == id[(id.LastIndexOf('/') + 1)..] ? stage : null;
   }
 
   private static string Series() =>

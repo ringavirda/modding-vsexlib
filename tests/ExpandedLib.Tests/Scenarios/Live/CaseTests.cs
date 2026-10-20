@@ -200,16 +200,18 @@ public class CaseTests {
     Assert.Single(scenario.Model.Record.Machines);
   }
 
-  /// <summary>Fails when a pack that starts from another stage is read, since the live runner has
-  /// no stage files to start it from.</summary>
+  /// <summary>Fails when a pack that starts from another stage is refused (the refusal back in
+  /// Load), since the runner reads the stage files.</summary>
   [Fact]
-  public void A_pack_after_another_stage_is_refused() =>
-    Assert.Contains(
-      "not read by the live runner",
-      Refused(
-        Place,
-        """{ pack: { scope: "all", after: { "iiex/setups/play-stations": 1 } } }"""
-      )
+  public void A_pack_after_another_stage_is_read() =>
+    Assert.Equal(
+      1,
+      LiveFixture
+        .Case(
+          Place,
+          """{ pack: { scope: "all", after: { "iiex/setups/play-stations": 1 } } }"""
+        )
+        .Model.Pack!.After.Count
     );
 
   /// <summary>Fails when a pack without an <c>after</c> is refused, since a stage that starts from

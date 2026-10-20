@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using ExpandedLib.Config;
+using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using ExpandedLib.Tests.Setups;
@@ -70,7 +71,7 @@ public class RunnerTests {
           _ticks.Add(call.Arg<Action<float>>());
           return _ticks.Count;
         });
-      Directory.CreateDirectory(Path.Combine(_dir, "exlib"));
+      Directory.CreateDirectory(Path.Combine(_dir, "exlib", "setups"));
     }
 
     public void Write(string name, string text) =>
@@ -311,6 +312,64 @@ public class RunnerTests {
     ScenarioRunner runner = run.Start(["exlib/configured"], keep: true);
     run.Tick(2);
     return runner;
+  }
+
+  private const string StageText = """
+    { "setup": "stage", "description": "a stage", "mods": [], "seconds": 6, "record": {}, "steps": [],
+      "pack": { "scope": "stacks", "gathered": {}, "ends": { "stacks": { "game:flint": 3 } } } }
+    """;
+
+  private const string AfterText = """
+    { "setup": "next", "description": "a case", "mods": [], "seconds": 6, "record": {}, "steps": [],
+      "pack": { "scope": "stacks", "after": { "exlib/setups/stage": 2 } } }
+    """;
+
+  /// <summary>Fails when the pack's resolver reads no file (resolver returns null), so the stage's
+  /// ends.stacks times its runs are missing from the pack.</summary>
+  [Fact]
+  public void A_pack_after_a_stage_file_starts_with_its_ends_times_the_runs() {
+    using var run = new Run();
+    run.Write("exlib/setups/stage", StageText);
+    run.Write("exlib/next", AfterText);
+    string dir = run.Api.GetOrCreateDataPath("Scenarios");
+    SetupFileModel model = SetupFileModel.Parse(AfterText, "next.json");
+    SetupPack pack = ScenarioRunner.StartPack(
+      model,
+      id => Path.Combine(dir, id + ".json")
+    );
+    Assert.Equal(6, pack.Held("game:flint"));
+  }
+
+  /// <summary>Fails when an after naming no file is read as a stage with nothing (a missing file
+  /// returns an empty stage), or the failure does not name the pack.</summary>
+  [Fact]
+  public void A_pack_after_naming_no_file_fails_the_case_naming_the_pack() {
+    using var run = new Run();
+    run.Write("exlib/next", AfterText);
+    Action? onLoaded = null;
+    run.Api.WorldManager.When(m =>
+        m.LoadChunkColumnPriority(
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<int>(),
+          Arg.Any<ChunkLoadOptions>()
+        )
+      )
+      .Do(call => onLoaded = call.Arg<ChunkLoadOptions>().OnLoaded);
+    var runner = run.Start(["exlib/next"], keep: true);
+    run.Tick(2);
+    onLoaded!();
+    run.Tick(2);
+    Assert.False(runner.Active);
+    Assert.Contains(
+      run.Lines,
+      l =>
+        l.StartsWith("[scenario] error exlib/next: ")
+        && l.Contains(
+          "pack: after names \"exlib/setups/stage\", which no file has."
+        )
+    );
   }
 
   /// <summary>Fails when the case's config is not applied before its steps (Apply not called), or
