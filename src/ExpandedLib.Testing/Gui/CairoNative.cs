@@ -65,8 +65,9 @@ internal static class CairoNative {
           "<?xml version=\"1.0\"?>\n"
             + "<!DOCTYPE fontconfig SYSTEM \"fonts.dtd\">\n"
             + $"<fontconfig><dir>{fonts}</dir>{system}<cachedir>{Path.Combine(dir, "cache")}</cachedir>"
-            + "<alias binding=\"same\"><family>sans-serif</family><prefer><family>Arial</family>"
-            + "<family>Liberation Sans</family></prefer></alias></fontconfig>\n"
+            + SansAlias("sans-serif")
+            + SansAlias("sans")
+            + "</fontconfig>\n"
         );
         SetEnv("FONTCONFIG_FILE", conf, 1);
         NativeLibrary.SetDllImportResolver(
@@ -77,6 +78,10 @@ internal static class CairoNative {
       _ready = true;
     }
   }
+
+  private static string SansAlias(string family) =>
+    $"<alias binding=\"same\"><family>{family}</family><prefer><family>Arial</family>"
+    + "<family>Liberation Sans</family></prefer></alias>";
 
   private static IntPtr Resolve(
     string name,
