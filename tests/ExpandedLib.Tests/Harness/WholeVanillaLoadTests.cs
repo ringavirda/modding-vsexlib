@@ -84,6 +84,27 @@ public class WholeVanillaLoadTests(ITestOutputHelper output) {
       output.WriteLine($"skip {file}: {reason}");
   }
 
+  // Fails when the pigment scan is skipped, leaving the caveart blocktype out of a chalk load.
+  [Fact]
+  public void A_pigment_stone_brings_the_cave_art_blocktype() {
+    string survival = Path.Combine(
+      VsAssemblyResolver.InstallPath!,
+      "assets",
+      "survival"
+    );
+
+    List<AssetLocation> added = TestWorld.MirrorVanillaTypes(
+      survival,
+      ["game:stone-chalk"],
+      []
+    );
+
+    Assert.Contains(
+      added,
+      a => a.Path.EndsWith("caveart.json", StringComparison.Ordinal)
+    );
+  }
+
   // Fails when MayDefine's star branch matches nothing.
   [Fact]
   public void The_whole_load_holds_the_reference_items() {
