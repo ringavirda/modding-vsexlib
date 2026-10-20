@@ -141,6 +141,27 @@ internal static class PackLedger {
     return tool;
   }
 
+  /// <summary>The hand and off-hand stacks a sequence step holds, each drawn from the pack as
+  /// <see cref="Tool"/> draws one.</summary>
+  /// <param name="label">What a failure names: the step and its recipe.</param>
+  /// <exception cref="StepFailure">As <see cref="Tool"/>.</exception>
+  public static (ItemStack? Hand, ItemStack? Offhand) Tools(
+    ScenarioContext ctx,
+    string label,
+    Catalogues.CraftStep step
+  ) => (Tool(ctx, label, step.Tool), Tool(ctx, label, step.Offhand));
+
+  /// <summary>Gives the pack back the stacks a sequence step ends holding; a tool the game used up
+  /// is null by then and stays drawn.</summary>
+  public static void GiveTools(
+    ScenarioContext ctx,
+    ItemStack? hand,
+    ItemStack? offhand
+  ) {
+    Give(ctx, hand);
+    Give(ctx, offhand);
+  }
+
   public static void Give(ScenarioContext ctx, ItemStack? stack) {
     if (stack != null)
       ctx.Pack?.Give(stack.Collectible.Code.ToString(), stack.StackSize);
