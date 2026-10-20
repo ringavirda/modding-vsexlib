@@ -173,12 +173,13 @@ internal sealed class CraftStep : ScenarioStep {
     JObject? with
   ) {
     Lay(ctx, player.Player, entity, station, order, with);
+    var before = CraftBills.Carried(Carried(player.Player));
     entity.OnReceivedClientPacket(
       player.Player,
       order.PressId!.Value,
       order.PressData
     );
-    return Collect(player.Player, entity, station, order);
+    return Collect(player.Player, entity, station, order, before);
   }
 
   private static void Lay(
@@ -203,11 +204,23 @@ internal sealed class CraftStep : ScenarioStep {
     }
   }
 
+  private static IEnumerable<ItemSlot> Carried(ServerPlayer who) {
+    IEnumerable<ItemSlot> slots = who.InventoryManager.GetHotbarInventory();
+    if (
+      who.InventoryManager.GetOwnInventory(
+        GlobalConstants.backpackInvClassName
+      ) is { } backpack
+    )
+      slots = slots.Concat(backpack);
+    return slots;
+  }
+
   private static List<ItemStack> Collect(
     ServerPlayer who,
     BlockEntity entity,
     string station,
-    CraftOrder order
+    CraftOrder order,
+    Dictionary<ItemSlot, (CollectibleObject? Collectible, int Size)> before
   ) {
     ItemSlot hand = who.InventoryManager.ActiveHotbarSlot;
     var inventory = (
@@ -223,7 +236,7 @@ internal sealed class CraftStep : ScenarioStep {
       WindowStep.Take(who, entity, input.Slot);
       hand.Itemstack = null;
     }
-    var taken = new List<ItemStack>();
+    List<ItemStack> taken = CraftBills.HandedOver(before, Carried(who));
     foreach (int slot in order.OutputSlots) {
       if (inventory[slot].Empty)
         continue;
@@ -264,6 +277,7 @@ internal sealed class CraftStep : ScenarioStep {
       BlockFacing.SOUTH
     );
     ItemSlot hand = who.InventoryManager.ActiveHotbarSlot;
+    var before = CraftBills.Carried(Carried(who));
     for (int n = 0; n < sequence.Steps.Length; n++) {
       Catalogues.CraftStep step = sequence.Steps[n];
       string label = $"step {n + 1} of {sequence.Recipe}";
@@ -292,7 +306,7 @@ internal sealed class CraftStep : ScenarioStep {
         player.HoldOffhand(null);
       }
     }
-    taken.AddRange(Collect(who, entity, station, order));
+    taken.AddRange(Collect(who, entity, station, order, before));
   }
 
   private static string CraftInHand(

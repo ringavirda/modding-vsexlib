@@ -197,16 +197,18 @@ public sealed partial class SetupScene
           $"slot {input.Slot} of {station} took {left} of the {laid.StackSize} {laid.Collectible.Code} laid for {input.Name}."
         );
     }
+    IEnumerable<ItemSlot> carried = [Player.ActiveSlot, .. Player.Hotbar];
+    var before = CraftBills.Carried(carried);
     if (CraftSequenceRegistry.Shared.Sequence(order.Recipe) is { } sequence)
       WorkSequence(where, entity, station, order, sequence);
     else
       Verb(() => window.Press(order.PressId!.Value, order.PressData));
+    List<ItemStack> taken = CraftBills.HandedOver(before, carried);
     foreach (CraftInput input in order.Inputs.Where(i => i.Ingredient.IsTool))
     {
       Verb(() => window.Take(input.Slot));
       Player.Hold(null);
     }
-    var taken = new List<ItemStack>();
     foreach (int slot in order.OutputSlots)
     {
       Verb(() => window.Take(slot));

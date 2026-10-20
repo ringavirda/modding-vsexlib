@@ -21,6 +21,7 @@ internal sealed class CraftFixtureBench
   public const int ByproductSlot = 5;
 
   public static bool Refuses;
+  public static bool Hands;
   public static bool MakesWrong;
   public static readonly List<string> Pressed = [];
 
@@ -133,6 +134,11 @@ internal sealed class CraftFixtureBench
       return true;
     recipe.GenerateOutputStack(grid, Inventory[OutputSlot]);
     recipe.ConsumeInput(player, grid, 2);
+    if (Hands)
+    {
+      player.InventoryManager.TryGiveItemstack(Inventory[OutputSlot].Itemstack);
+      Inventory[OutputSlot].Itemstack = null;
+    }
     return true;
   }
 }
@@ -199,6 +205,7 @@ public class CraftStepTests : IDisposable
   {
     CraftFixtureBench.Refuses = false;
     CraftFixtureBench.MakesWrong = false;
+    CraftFixtureBench.Hands = false;
     CraftFixtureBench.Pressed.Clear();
     CraftFixtureBenchBlock.Deaf = false;
     CraftSequenceRegistry.Shared.Clear();
@@ -208,6 +215,7 @@ public class CraftStepTests : IDisposable
   {
     CraftFixtureBench.Refuses = false;
     CraftFixtureBench.MakesWrong = false;
+    CraftFixtureBench.Hands = false;
     CraftFixtureBenchBlock.Deaf = false;
     CraftSequenceRegistry.Shared.Clear();
     SetupPlacers.Clear();
@@ -347,6 +355,40 @@ public class CraftStepTests : IDisposable
     );
 
     Assert.Contains("yielded nothing: the station refused", message);
+  }
+
+  // Fails when CraftAt counts only the output slots, not what the station handed the player.
+  [Fact]
+  public void Craft_counts_a_product_the_station_hands_to_the_player()
+  {
+    CraftFixtureBench.Hands = true;
+
+    using SetupScene scene = AtBench(
+      "{\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \""
+        + Frame
+        + "\"}}"
+    );
+
+    Assert.Equal(3, Carried(scene, Frame));
+  }
+
+  // Fails when HandedOver leaves the grown stack in the slot, so the runner's Stow counts it twice.
+  [Fact]
+  public void A_handed_over_stack_leaves_the_slot_and_a_merge_counts_only_its_growth()
+  {
+    using SetupScene scene = Build("setupcraft", BenchPath, "[]");
+    Item frame = scene.World.World.GetItem(new AssetLocation(Frame));
+    var held = new DummySlot(new ItemStack(frame, 2));
+    var fresh = new DummySlot();
+    var before = CraftBills.Carried([held, fresh]);
+
+    held.Itemstack.StackSize = 5;
+    fresh.Itemstack = new ItemStack(frame, 1);
+    List<ItemStack> got = CraftBills.HandedOver(before, [held, fresh]);
+
+    Assert.Equal([3, 1], got.Select(s => s.StackSize));
+    Assert.Equal(2, held.StackSize);
+    Assert.True(fresh.Empty);
   }
 
   // Fails when the failure line drops the names.

@@ -66,6 +66,49 @@ internal static class CraftBills
       && wanted.All(w => got.GetValueOrDefault(w.Key) == w.Value);
   }
 
+  /// <summary>What <paramref name="slots"/> hold now, for <see cref="HandedOver"/> to compare against
+  /// after a press.</summary>
+  /// <param name="slots">The player's slots: the hotbar, the active slot and the backpack.</param>
+  /// <returns>Each slot's collectible and stack size; the collectible is null for an empty slot.</returns>
+  public static Dictionary<
+    ItemSlot,
+    (CollectibleObject? Collectible, int Size)
+  > Carried(IEnumerable<ItemSlot> slots) =>
+    slots
+      .Distinct()
+      .ToDictionary(s => s, s => (s.Itemstack?.Collectible, s.StackSize));
+
+  /// <summary>Takes out of <paramref name="slots"/> what a station handed the player since
+  /// <paramref name="before"/>, so a product that does not wait in an output slot is counted as made.
+  /// Each slot's growth leaves the slot; a slot that holds another collectible than before counts whole.</summary>
+  /// <param name="before">What <see cref="Carried"/> answered before the press.</param>
+  /// <param name="slots">The same slots.</param>
+  /// <returns>The stacks handed over, one per grown slot; empty when nothing grew.</returns>
+  public static List<ItemStack> HandedOver(
+    Dictionary<ItemSlot, (CollectibleObject? Collectible, int Size)> before,
+    IEnumerable<ItemSlot> slots
+  )
+  {
+    var got = new List<ItemStack>();
+    foreach (ItemSlot slot in slots.Distinct())
+    {
+      if (slot.Empty)
+        continue;
+      (CollectibleObject? was, int size) = before.GetValueOrDefault(slot);
+      int grew =
+        slot.StackSize - (was == slot.Itemstack.Collectible ? size : 0);
+      if (grew <= 0)
+        continue;
+      ItemStack stack = slot.Itemstack.Clone();
+      stack.StackSize = grew;
+      got.Add(stack);
+      slot.Itemstack.StackSize -= grew;
+      if (slot.Itemstack.StackSize <= 0)
+        slot.Itemstack = null;
+    }
+    return got;
+  }
+
   /// <summary>The stack that fills <paramref name="input"/>: the collectible
   /// <paramref name="with"/> names under the input's name, else the ingredient's own item when it
   /// is exact, else the first loaded collectible the ingredient takes.</summary>
