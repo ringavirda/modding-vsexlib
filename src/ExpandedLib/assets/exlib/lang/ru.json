@@ -97,5 +97,8 @@
   "pipe-medium-exhaust": "выхлопа",
   "pipe-medium-steam": "пара",
   "pipe-medium-unknown": "газа",
-  "pipe-medium-water": "воды"
+  "pipe-medium-water": "воды",
+  "handbook-madeat": "Где изготавливается",
+  "handbook-madeat-line": "{0}: {1}",
+  "handbook-diagram-makes": "Изделия"
 }
