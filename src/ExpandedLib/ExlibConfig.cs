@@ -71,6 +71,11 @@ public class ExlibConfig : IExVersionedConfig {
   /// none.</summary>
   public float MoltenCooldownDefault { get; set; } = 24f;
 
+  /// <summary>Fraction (0..1) of a spilled charge that a chiselled puddle returns as metal bits; set
+  /// below a mould's full return so a spill never beats a mould.</summary>
+  [ExConfigRange(0, 1)]
+  public float MoltenSpillYield { get; set; } = 0.75f;
+
   /// <summary>Fraction of the melting point above which a metal stack counts as liquid (flows).</summary>
   public float MetalLiquidThreshold { get; set; } = 0.8f;
 
