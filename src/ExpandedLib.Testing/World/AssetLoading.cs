@@ -510,8 +510,8 @@ public sealed partial class TestWorld {
   /// <summary>Passes to <paramref name="add"/> each survival blocktype and itemtype file whose
   /// <c>code</c> can begin one of <paramref name="codes"/>: the code is the file's, or the file's
   /// followed by a <c>-</c>, or a wildcard's literal text before its first <c>*</c> and the file's
-  /// code lead into one another. Which codes the file then defines is left to registration. A file
-  /// that does not parse, or has no string <c>code</c>, is added to <paramref name="skips"/>.</summary>
+  /// code lead into one another. A file with an <c>ArtPigment</c> behaviour also brings the files
+  /// its <c>decorBlockCodes</c> name. A file with no parse or no string <c>code</c> is a skip.</summary>
   /// <returns>The locations passed to <paramref name="add"/>.</returns>
   internal static List<AssetLocation> MirrorVanillaTypes(
     Action<AssetLocation, IAsset> add,
@@ -519,18 +519,42 @@ public sealed partial class TestWorld {
     IReadOnlyCollection<string> codes,
     List<(string File, string Reason)> skips
   ) {
+    List<AssetLocation> added = [];
+    List<IAsset> assets = MirrorTypeFiles(add, survival, codes, skips, added);
+    HashSet<string> decor = [];
+    foreach (IAsset asset in assets)
+      foreach (
+        JToken token in JToken
+          .Parse(asset.ToText())
+          .SelectTokens("$..[?(@.name == 'ArtPigment')]..decorBlockCodes[*]")
+      )
+        if (token is JValue { Value: string decorCode })
+          decor.Add(decorCode);
+    MirrorTypeFiles(add, survival, decor, [], added);
+    return added;
+  }
+
+  private static List<IAsset> MirrorTypeFiles(
+    Action<AssetLocation, IAsset> add,
+    IAssetOrigin survival,
+    IReadOnlyCollection<string> codes,
+    List<(string File, string Reason)> skips,
+    List<AssetLocation> added
+  ) {
     string[] wanted =
     [
       .. codes.Select(c => c.StartsWith("game:") ? c[5..] : c),
     ];
-    List<AssetLocation> added = [];
+    List<IAsset> assets = [];
     if (wanted.Length == 0)
-      return added;
+      return assets;
     foreach (
       AssetCategory category in (AssetCategory[])
         [AssetCategory.blocktypes, AssetCategory.itemtypes]
     )
       foreach (IAsset asset in survival.GetAssets(category, shouldLoad: true)) {
+        if (added.Contains(asset.Location))
+          continue;
         JObject file;
         try {
           file = JObject.Parse(asset.ToText());
@@ -545,9 +569,10 @@ public sealed partial class TestWorld {
         if (wanted.Any(w => MayDefine(code, w))) {
           add(asset.Location, asset);
           added.Add(asset.Location);
+          assets.Add(asset);
         }
       }
-    return added;
+    return assets;
   }
 
   private static bool MayDefine(string code, string wanted) {
