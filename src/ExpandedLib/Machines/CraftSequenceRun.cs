@@ -113,8 +113,7 @@ public sealed class CraftSequenceRun(
   /// <summary>
   /// Advances the run by <paramref name="dt"/> seconds of the player holding the current step; a hold
   /// whose bill or hands do not match does nothing, and the last step crafts. A step with
-  /// <see cref="CraftStep.Hits"/> counts one hit at each finished swing of the held tool, never cuts a
-  /// swing short, keeps the hits counted when the hold breaks, and ends at its count.
+  /// <see cref="CraftStep.Hits"/> counts a hit at each finished swing and keeps them when the hold breaks.
   /// </summary>
   /// <param name="world">The world byproduct codes resolve in.</param>
   /// <param name="dt">Seconds held since the last call; 0 or more.</param>
