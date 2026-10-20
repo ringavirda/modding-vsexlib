@@ -279,6 +279,31 @@ public class MoltenCellBehaviorTests {
   }
 
   [Fact]
+  // Fails when GetSpillRecoveryDrop ignores MoltenSpillYield and returns the whole charge.
+  public void GetSpillRecoveryDrop_returns_the_yield_share_of_the_charge() {
+    var w = NewWorld();
+    var cell = NewCell(w, "{ \"capacity\": 100 }");
+    cell.PushMetalRaw(80, Iron, 300f, w.World);
+
+    ItemStack? drop = cell.GetSpillRecoveryDrop(w.World);
+
+    Assert.NotNull(drop);
+    Assert.Equal("game:metalbit-iron", drop!.Collectible.Code.ToString());
+    Assert.Equal(12, drop.StackSize); // 80 * 0.75 = 60 units, 5 per bit
+  }
+
+  [Fact]
+  // Fails when a share under one bit still drops a bit.
+  public void GetSpillRecoveryDrop_is_null_under_one_bit_and_when_empty() {
+    var w = NewWorld();
+    var cell = NewCell(w, "{ \"capacity\": 100 }");
+    Assert.Null(cell.GetSpillRecoveryDrop(w.World));
+
+    cell.PushMetalRaw(6, Iron, 300f, w.World);
+    Assert.Null(cell.GetSpillRecoveryDrop(w.World));
+  }
+
+  [Fact]
   public void ClearContents_empties_the_cell_and_lifts_the_latch() {
     var w = NewWorld();
     var cell = NewCell(w, "{ \"capacity\": 100 }");
