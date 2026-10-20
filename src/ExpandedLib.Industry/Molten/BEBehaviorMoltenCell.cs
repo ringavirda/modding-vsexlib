@@ -289,6 +289,22 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
     );
   }
 
+  /// <summary>Returns the metal-bit recovery for <see cref="ExlibValues.MoltenSpillYield"/> of this
+  /// cell's contents, or null when the cell is empty or the share is under one bit.</summary>
+  public ItemStack? GetSpillRecoveryDrop(IWorldAccessor world) {
+    if (CellAmount <= 0 || CellMetalType.Length == 0)
+      return null;
+    int units = (int)(CellAmount * ExlibValues.MoltenSpillYield);
+    if (units < 5)
+      return null;
+    return MoltenChisel.BuildRecovery(
+      world,
+      new AssetLocation(CellMetalType),
+      _cellTemperature,
+      units
+    );
+  }
+
   /// <summary>Empties this cell and clears its solidified latch; a no-op off the server.</summary>
   public void ClearContents() {
     if (Blockentity.Api?.Side != EnumAppSide.Server)

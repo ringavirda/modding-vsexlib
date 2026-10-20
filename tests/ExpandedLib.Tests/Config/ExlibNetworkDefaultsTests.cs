@@ -18,5 +18,6 @@ public class ExlibNetworkDefaultsTests {
     Assert.Equal(50, ExlibValues.MoltenFlowRate);
     Assert.Equal(10, ExlibValues.MoltenMinFlowAmount);
     Assert.Equal(3, ExlibValues.MoltenMoldDrawRadius);
+    Assert.Equal(0.75f, ExlibValues.MoltenSpillYield);
   }
 }
