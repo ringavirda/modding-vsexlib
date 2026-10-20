@@ -239,6 +239,12 @@ public sealed partial class SetupScene
     }
   }
 
+  private void StandStep(SetupStep step)
+  {
+    BlockPos at = At(step, "at");
+    Player.Entity.Pos.SetPos(at.X + 0.5, at.Y, at.Z + 0.5);
+  }
+
   private static string Seconds(double value) =>
     value.ToString("F1", CultureInfo.InvariantCulture);
 

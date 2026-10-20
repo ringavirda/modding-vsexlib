@@ -121,6 +121,7 @@ internal static class SetupSteps {
     ["wait"] = ["seconds", "until", "max", "hold"],
     ["advance"] = ["hours"],
     ["select"] = ["slot"],
+    ["stand"] = ["at"],
     ["reload"] = [],
     ["repeat"] = ["times", "until", "max", "steps"],
     ["break"] = ["at", "by", "with"],
@@ -170,6 +171,7 @@ internal static class SetupSteps {
     ["repeat"] = ["steps"],
     ["advance"] = ["hours"],
     ["select"] = ["slot"],
+    ["stand"] = ["at"],
   };
 
   /// <summary>The kinds a step may hold: every kind but those in

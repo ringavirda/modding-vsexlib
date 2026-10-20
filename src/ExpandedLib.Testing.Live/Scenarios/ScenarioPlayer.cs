@@ -221,6 +221,11 @@ internal sealed class ScenarioPlayer : IHandRelease {
     MoveTo(_park);
   }
 
+  /// <summary>Puts the player's feet in the middle of the cell <paramref name="at"/>, where it stays until
+  /// a verb or <see cref="Park"/> moves it.</summary>
+  /// <param name="at">The absolute cell.</param>
+  public void StandAt(BlockPos at) => MoveTo(at);
+
   /// <summary>Puts the player in survival mode without free movement, where it stays until it is parked.</summary>
   public void Survive() {
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
