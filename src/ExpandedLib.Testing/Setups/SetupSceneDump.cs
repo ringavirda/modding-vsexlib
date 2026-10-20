@@ -310,6 +310,11 @@ internal static class SetupSceneDump
             if (!m.Member.HasConnectorAt(world.Accessor, at, f))
               return false;
             BlockPos next = at.AddCopy(f);
+            if (
+              world.GetBlock(at) is BlockNetworkNode node
+              && node.IsValidNonNetworkConnection(world.GetBlock(next), f)
+            )
+              return false;
             return NetworkMembership
                 .Resolve(world.Accessor, next, m.Type)
                 ?.HasConnectorAt(world.Accessor, next, f.Opposite) != true;

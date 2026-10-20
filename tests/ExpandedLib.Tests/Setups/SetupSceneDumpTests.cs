@@ -57,7 +57,11 @@ public class SetupSceneDumpTests : IDisposable
       file,
       [.. file.Mods.Select(ModPath)],
       null,
-      w => w.RegisterClass("SetupGateBlock", typeof(SetupGateBlock))
+      w =>
+      {
+        w.RegisterClass("SetupGateBlock", typeof(SetupGateBlock));
+        w.RegisterClass("SetupSealedGateBlock", typeof(SetupSealedGateBlock));
+      }
     );
   }
 
@@ -332,6 +336,26 @@ public class SetupSceneDumpTests : IDisposable
       ["w"],
       cell.GetProperty("open").EnumerateArray().Select(f => f.GetString())
     );
+  }
+
+  // Fails when a node's IsValidNonNetworkConnection is not asked: the sealed gate's west face is
+  // then listed open although the game counts it connected.
+  [Fact]
+  public void A_node_that_seals_against_its_neighbour_lists_no_open_face()
+  {
+    using SetupScene scene = Build(null);
+    BlockPos at = new(12, 0, 0);
+    scene.World.Accessor.SetBlock(
+      scene
+        .World.World.GetBlock(new AssetLocation("setupgate:gatesealed"))
+        .BlockId,
+      at
+    );
+    using JsonDocument dump = Dump(scene);
+
+    JsonElement cell = CellAt(dump, 12, 0, 0);
+
+    Assert.False(cell.TryGetProperty("open", out _));
   }
 
   // Fails when the cell's memberships are not read: the cell stands on one network, so the
