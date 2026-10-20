@@ -267,10 +267,13 @@ internal sealed class CraftStep : ScenarioStep {
     for (int n = 0; n < sequence.Steps.Length; n++) {
       Catalogues.CraftStep step = sequence.Steps[n];
       string label = $"step {n + 1} of {sequence.Recipe}";
-      ItemStack? tool = PackLedger.Tool(ctx, label, step.Tool);
-      player.HoldOffhand(PackLedger.Tool(ctx, label, step.Offhand));
+      (ItemStack? tool, ItemStack? offhand) = PackLedger.Tools(
+        ctx,
+        label,
+        step
+      );
       double seconds = step.Seconds + 0.1;
-      bool answered = player.UseStart(at, selection, tool, []);
+      bool answered = player.UseStart(at, selection, tool, [], offhand);
       try {
         if (!answered)
           throw new StepFailure(
@@ -284,8 +287,7 @@ internal sealed class CraftStep : ScenarioStep {
         }
         player.UseStop(selection, ctx.Now - started);
       } finally {
-        PackLedger.Give(ctx, hand.Itemstack);
-        PackLedger.Give(ctx, player.Offhand);
+        PackLedger.GiveTools(ctx, hand.Itemstack, player.Offhand);
         hand.Itemstack = null;
         player.HoldOffhand(null);
       }

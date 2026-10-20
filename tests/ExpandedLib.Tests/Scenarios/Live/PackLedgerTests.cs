@@ -157,4 +157,41 @@ public class PackLedgerTests {
 
     Assert.Equal(given, fixture.Context.Pack!.Held("game:flint"));
   }
+
+  /// <summary>Fails when a sequence step's hand or off-hand tool is drawn and not given back, so the
+  /// next step finds the pack without it (mutant: the two gives of <c>GiveTools</c> removed).</summary>
+  [Fact]
+  public void A_sequence_step_gives_back_the_tools_it_drew() {
+    LiveFixture fixture = Started(
+      "[" + Place() + "]",
+      """{ scope: "stacks", gathered: { "game:hammer-iron": 1, "game:chisel-iron": 1 } }""",
+      out _
+    );
+    fixture.Test.RegisterItem("game:hammer-iron");
+    fixture.Test.RegisterItem("game:chisel-iron");
+    var step = new Catalogues.CraftStep(
+      "game:chisel-*",
+      "game:hammer-*",
+      3f,
+      null,
+      null,
+      null
+    );
+
+    (ItemStack? hand, ItemStack? offhand) = PackLedger.Tools(
+      fixture.Context,
+      "step 1 of test",
+      step
+    );
+
+    Assert.Equal("game:chisel-iron", hand!.Collectible.Code.ToString());
+    Assert.Equal("game:hammer-iron", offhand!.Collectible.Code.ToString());
+    Assert.Equal(0, fixture.Context.Pack!.Held("game:hammer-iron"));
+    Assert.Equal(0, fixture.Context.Pack.Held("game:chisel-iron"));
+
+    PackLedger.GiveTools(fixture.Context, hand, offhand);
+
+    Assert.Equal(1, fixture.Context.Pack.Held("game:hammer-iron"));
+    Assert.Equal(1, fixture.Context.Pack.Held("game:chisel-iron"));
+  }
 }
