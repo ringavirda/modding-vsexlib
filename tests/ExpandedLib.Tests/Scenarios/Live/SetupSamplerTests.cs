@@ -124,14 +124,32 @@ public class SetupSamplerTests : IDisposable {
   [Fact]
   public void A_held_action_does_not_stop_the_samples() {
     var rig = new Rig(
-      """[{ "at": 1, "step": { "wait": 100 } }, { "at": 2, "step": { "wait": 100 } }]""",
+      """[{ "at": 1, "step": { "wait": 1.5 } }, { "at": 2, "step": { "wait": 1.5 } }]""",
       _folder
     );
     rig.Begin();
-    rig.Fires(6);
+    for (int i = 0; i < 6; i++) {
+      rig.Fires(1);
+      rig.Fixture.Clock += 1;
+      rig.Sampler.Advance();
+    }
     Assert.True(rig.Sampler.Done);
     Assert.Equal(6, rig.Sampler.Recording!.Samples);
     Assert.Null(rig.Sampler.Failure);
+  }
+
+  /// <summary>Fails when the run's end disposes a still-running <c>during</c> action silently, which
+  /// leaves the failure null or its message without the block, step and seconds.</summary>
+  [Fact]
+  public void A_during_block_still_running_at_the_end_fails_the_case() {
+    var rig = new Rig("""[{ "at": 4, "step": { "wait": 100 } }]""", _folder);
+    rig.Begin();
+    rig.Fires(6);
+    Assert.NotNull(rig.Sampler.Failure);
+    Assert.Equal(
+      "during d1@4.1 (at 4, started at second 4) was still running when the run ended at second 6.",
+      rig.Sampler.Failure.Message
+    );
   }
 
   /// <summary>Fails when an action's ok line reaches the case's output (the actions run on the

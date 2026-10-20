@@ -27,6 +27,8 @@ internal sealed class SetupSampler(
   private SetupRun? _run;
   private ScenarioContext? _actions;
   private IEnumerator<bool>? _acting;
+  private SetupDuring? _actingBlock;
+  private int _actingSecond;
   private long _listener;
   private bool _registered;
   private int _fired;
@@ -99,7 +101,8 @@ internal sealed class SetupSampler(
   /// <summary>Continues the action that ran past its firing, then the ones queued behind it.</summary>
   public void Advance() => Guard(Pump);
 
-  /// <summary>Removes the listener and drops an unfinished action.</summary>
+  /// <summary>Removes the listener and drops an unfinished action. The run's last firing fails the
+  /// case instead when an action is still running.</summary>
   public void Stop() {
     if (_registered) {
       events.UnregisterGameTickListener(_listener);
@@ -130,10 +133,27 @@ internal sealed class SetupSampler(
       _fired++;
       _run!.Sample(_fired - 1);
       if (Done)
-        Stop();
+        Finish();
       else
         Second(_fired);
     });
+  }
+
+  private void Finish() {
+    if (_acting == null) {
+      Stop();
+      return;
+    }
+    SetupDuring block = _actingBlock!;
+    string trigger = block.At is { } at
+      ? $"at {at}"
+      : $"every {block.Period} s from {block.From}, when its tests held";
+    Fail(
+      new StepFailure(
+        $"during {_actions!.Current} ({trigger}, started at second {_actingSecond}) "
+          + $"was still running when the run ended at second {_fired}."
+      )
+    );
   }
 
   private void Second(int second) {
@@ -164,6 +184,7 @@ internal sealed class SetupSampler(
         }
         _acting.Dispose();
         _acting = null;
+        _actingBlock = null;
       }
       if (!TakeNext())
         return;
@@ -181,6 +202,8 @@ internal sealed class SetupSampler(
           + scenario
             .Model.During.TakeWhile(a => !ReferenceEquals(a, action))
             .Count();
+        _actingBlock = action;
+        _actingSecond = second;
         _acting = ScenarioSteps
           .Run(_actions, action.Steps, $"d{index}@{second}.")
           .GetEnumerator();
