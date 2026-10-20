@@ -45,6 +45,21 @@ public static class GatheredSources {
       new(EnumItemClass.Block, "game:log-*", "felled trees, cut with an axe"),
       new(
         EnumItemClass.Block,
+        "game:planks-agedacacia-*",
+        "ruins, broken out where they stand"
+      ),
+      new(
+        EnumItemClass.Block,
+        "game:planks-agedebony-*",
+        "ruins, broken out where they stand"
+      ),
+      new(
+        EnumItemClass.Block,
+        "game:planks-rottenebony-*",
+        "ruins, broken out where they stand"
+      ),
+      new(
+        EnumItemClass.Block,
         "game:water-*",
         "a water source, taken with a bucket"
       ),

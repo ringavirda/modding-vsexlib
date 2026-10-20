@@ -27,6 +27,7 @@ internal static class ScenarioSteps {
       new BreakStep(),
       new AdvanceStep(),
       new SelectStep(),
+      new StandStep(),
     }.ToDictionary(s => s.Kind);
 
   public static IEnumerable<string> Kinds => Table.Keys;

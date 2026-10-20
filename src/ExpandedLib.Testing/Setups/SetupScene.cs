@@ -580,6 +580,9 @@ public sealed partial class SetupScene : IDisposable
         case "select":
           SelectStep(step);
           break;
+        case "stand":
+          StandStep(step);
+          break;
         case "repeat":
           RepeatStep(step);
           break;

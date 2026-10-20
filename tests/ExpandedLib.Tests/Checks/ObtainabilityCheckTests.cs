@@ -424,4 +424,29 @@ public sealed class ObtainabilityCheckTests : IDisposable {
         )
       )
     );
+
+  // Fails when the ruin planks leave GatheredSources.
+  [Fact]
+  [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
+  public void Ruin_planks_are_gathered() =>
+    Assert.Empty(
+      Findings(
+        new LoadedStubGame(
+          Asking(
+            ("block", "game:planks-agedacacia-ud"),
+            ("block", "game:planks-agedebony-ud"),
+            ("block", "game:planks-rottenebony-ud")
+          )
+        )
+      )
+    );
+
+  // Fails when the ruin planks pattern widens to game:planks-*.
+  [Fact]
+  [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
+  public void Craftable_planks_are_judged_by_recipes_only() =>
+    Assert.Equal(
+      [Unmade("game:planks-oak-ud", "block")],
+      Findings(new LoadedStubGame(Asking(("block", "game:planks-oak-ud"))))
+    );
 }
