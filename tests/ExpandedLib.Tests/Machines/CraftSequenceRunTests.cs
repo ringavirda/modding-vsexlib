@@ -249,6 +249,24 @@ public sealed class CraftSequenceRunTests
     Assert.Equal(CraftSequenceProgress.Crafted, bench.Hold(0.1f));
   }
 
+  // Fails when releasing a hit step keeps the swing left unfinished: the short second hold then counts a hit.
+  [Fact]
+  public void Releasing_a_hit_step_drops_the_unfinished_swing()
+  {
+    using var bench = new Bench([Step("test:hammer", hits: 2)]);
+    bench.Active.Itemstack = new ItemStack(bench.Tool("test:hammer"));
+    float stroke = CraftToolDefault.DefaultStroke;
+
+    bench.Hold(stroke * 1.5f);
+    bench.Run.Release(bench.Fx);
+    Assert.Equal(1, bench.Run.Struck);
+    Assert.Equal(0f, bench.Run.Held);
+    Assert.Equal(CraftSequenceProgress.Working, bench.Hold(stroke * 0.5f));
+    Assert.Equal(1, bench.Run.Struck);
+    bench.Run.Release(bench.Fx);
+    Assert.Equal(CraftSequenceProgress.Crafted, bench.Hold(stroke));
+  }
+
   // Fails when a hit step starts a swing past its hits, or the sound of a strike is dropped.
   [Fact]
   public void A_hit_step_plays_one_swing_and_one_strike_per_hit()

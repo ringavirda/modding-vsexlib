@@ -88,14 +88,22 @@ public sealed class CraftSequenceRun(
     _done = 0;
   }
 
-  /// <summary>Ends the animation a hold started; call when the player lets go. The held time, the strokes
-  /// already played and the hits counted are kept, so a later hold goes on from the same stroke.</summary>
+  /// <summary>Ends the animation a hold started; call when the player lets go. A timed step keeps its held
+  /// time and strokes already played, so a later hold goes on from the same stroke; a step with
+  /// <see cref="CraftStep.Hits"/> keeps the hits counted and drops the swing left unfinished.</summary>
   /// <param name="effects">The effects the holds played on; null for none.</param>
   public void Release(ICraftEffects? effects)
   {
     if (_playing != null)
       effects?.StopAnimation(_playing);
     _playing = null;
+    if (Step < sequence.Steps.Length && Current.Hits > 0)
+    {
+      Held = 0f;
+      _swings = 0;
+      _strikes = 0;
+      _done = _hits;
+    }
   }
 
   // Ends the hold: the held time and strokes go; the hits counted stay when keepHits.
