@@ -554,7 +554,11 @@ public class SetupSceneTests : IDisposable
       file,
       [.. file.Mods.Select(ModPath)],
       null,
-      w => w.RegisterClass("SetupGateBlock", typeof(SetupGateBlock))
+      w =>
+      {
+        w.RegisterClass("SetupGateBlock", typeof(SetupGateBlock));
+        w.RegisterClass("SetupSealedGateBlock", typeof(SetupSealedGateBlock));
+      }
     );
 
   private static SetupFile GateBesideARun(string gate, bool gateFirst)
