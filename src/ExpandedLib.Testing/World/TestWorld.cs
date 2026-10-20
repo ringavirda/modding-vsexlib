@@ -438,6 +438,7 @@ public sealed partial class TestWorld : IDisposable {
   /// registration gives them.</summary>
   public TestWorld Register(Block block) {
     block.Sounds ??= new BlockSounds();
+    ReflectionHelpers.SetField(block, "api", Api);
     _blocksById[block.BlockId] = block;
     if (block.Code != null)
       _blocksByCode[block.Code.ToString()] = block;
@@ -446,6 +447,7 @@ public sealed partial class TestWorld : IDisposable {
 
   /// <summary>Registers a real, already-resolved <see cref="Item"/> in the id/code lookup.</summary>
   public TestWorld Register(Item item) {
+    ReflectionHelpers.SetField(item, "api", Api);
     _itemsById[item.ItemId] = item;
     if (item.Code != null)
       _itemsByCode[item.Code.ToString()] = item;

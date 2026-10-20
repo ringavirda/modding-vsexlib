@@ -249,6 +249,54 @@ public class TestPlayerSelectTests {
     Assert.Null(player.Hotbar[0].Itemstack);
   }
 
+  // Fails when a stack given for an item already in another hotbar slot throws or lands in a new slot instead of merging.
+  [Fact]
+  public void TryGiveItemstack_OfOfAHeldElsewhereItem_MergesIntoItsSlot() {
+    var (world, player, _) = Stand();
+    Item bits = world.RegisterItem("game:metalbit-copper");
+    bits.MaxStackSize = 64;
+
+    player.Hold(new ItemStack(world.RegisterItem("game:stick")));
+    player.Hotbar[2].Itemstack = new ItemStack(bits, 3);
+
+    bool given = player.Player.InventoryManager.TryGiveItemstack(
+      new ItemStack(bits, 2)
+    );
+
+    Assert.True(given);
+    Assert.Equal(5, player.Hotbar[2].Itemstack?.StackSize);
+    Assert.Null(player.Hotbar[1].Itemstack);
+  }
+
+  // Fails when a collectible registered through TestWorld.Register has no api and its stacks throw on comparison.
+  [Fact]
+  public void TryGiveItemstack_OfARegisteredBlockAndItem_MergesWithoutThrowing() {
+    var (world, player, _) = Stand();
+    Item bits = new() {
+      Code = new AssetLocation("game:metalbit-tin"),
+      ItemId = 900,
+      MaxStackSize = 64,
+    };
+    Block mould = TestBlocks.Configure(new Block(), "game:mould", 901);
+    mould.MaxStackSize = 64;
+    world.Register(bits).Register(mould);
+    player.Hold(new ItemStack(world.RegisterItem("game:stick")));
+    player.Hotbar[2].Itemstack = new ItemStack(bits, 3);
+    player.Hotbar[3].Itemstack = new ItemStack(mould, 1);
+
+    bool bitsGiven = player.Player.InventoryManager.TryGiveItemstack(
+      new ItemStack(bits, 2)
+    );
+    bool mouldGiven = player.Player.InventoryManager.TryGiveItemstack(
+      new ItemStack(mould, 1)
+    );
+
+    Assert.True(bitsGiven);
+    Assert.True(mouldGiven);
+    Assert.Equal(5, player.Hotbar[2].Itemstack?.StackSize);
+    Assert.Equal(2, player.Hotbar[3].Itemstack?.StackSize);
+  }
+
   // Fails when the skill or off hand slot takes a general stack, or a stack with no slot is reported as given or loses its size.
   [Fact]
   public void TryGiveItemstack_OfAFullHotbar_ReturnsFalseAndKeepsTheStack() {
