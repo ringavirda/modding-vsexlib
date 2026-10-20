@@ -26,6 +26,10 @@
       <Private>false</Private>
     </Reference>
     <!-- ExHarmonyTests and HarmonyFixtureTests patch a test-only class through HarmonyLib directly. -->
+    <Reference Include="cairo-sharp">
+      <HintPath>$(GamePath)/Lib/cairo-sharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="0Harmony">
       <HintPath>$(GamePath)/Lib/0Harmony.dll</HintPath>
       <Private>false</Private>
