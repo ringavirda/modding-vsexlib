@@ -339,6 +339,46 @@ public class SaveFormatTests {
     );
   }
 
+  // Fails when SaveNode writes no damage, or the network drops the saved damage of a restored node, so a reloaded weeping joint is whole.
+  [Fact]
+  public void Reload_KeepsAWeepingJoint() {
+    var w = new TestWorld();
+    var live = new PipeFlowNetwork(w.Networks);
+    var rating = new FlowBore(
+      0.25,
+      5,
+      FlowBore.BurstFor(5),
+      4,
+      0.03,
+      BlockPipe.FlangedJoint
+    );
+    const double gas = 9 * 101325 * 0.1 / (461.5 * 425.15);
+    for (int i = 0; i < 3; i++)
+      live.Store.AddNode(Cell(i), 0.1, 0, i < 2 ? gas : 0.0001, 152);
+    int weeping = live.Store.AddEdge(0, 1, 0.25, 1, FlowPipeClass.Cast);
+    int quiet = live.Store.AddEdge(1, 2, 0.25, 1, FlowPipeClass.Cast);
+    live.Store.SetRating(weeping, rating);
+    for (int i = 0; i < 10; i++)
+      live.Store.Step(0.05);
+    Assert.True(live.Store.IsWeeping(weeping));
+    Assert.False(live.Store.IsWeeping(quiet));
+    var hosts = new TreeAttribute[3];
+    for (int i = 0; i < 3; i++) {
+      hosts[i] = new TreeAttribute();
+      live.SaveNode(Cell(i), hosts[i]);
+    }
+
+    var rebuilt = new PipeFlowNetwork(w.Networks);
+    for (int i = 0; i < 3; i++)
+      Assert.True(rebuilt.RestoreNode(Cell(i), hosts[i], 0.1, 0));
+    int rWeeping = rebuilt.Store.AddEdge(0, 1, 0.25, 1, FlowPipeClass.Cast);
+    int rQuiet = rebuilt.Store.AddEdge(1, 2, 0.25, 1, FlowPipeClass.Cast);
+    rebuilt.OnTick(w.Accessor, 0.05f, w.Networks);
+
+    Assert.True(rebuilt.Store.IsWeeping(rWeeping));
+    Assert.False(rebuilt.Store.IsWeeping(rQuiet));
+  }
+
   // Fails when SaveNode writes something other than the live store (a zeroed gas stands for the threshold-gated display copy), or when RestoreNode overwrites a node the store already holds.
   [Fact]
   public void Reload_RestoresEachNodeOnce() {

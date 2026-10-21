@@ -175,7 +175,7 @@ public class PipeSteamTests {
 
   #region Hammer
 
-  // Fails when a non-cast class takes the crack, or the 10 m/s, 25 % liquid or cold-wall condition is dropped, so a plated run cracks, or a dry or warm node bangs.
+  // Fails when a non-cast class takes the crack, or the 10 m/s, 25 % liquid or saturation condition is dropped, so a plated run cracks, a dry or warm node bangs, a slow entry bangs, or a subcooled node with a wall below its steam's saturation does not.
   [Theory]
   [InlineData(0, true, 0.3, 20, true)]
   [InlineData(1, false, 0.3, 20, true)]
@@ -183,19 +183,24 @@ public class PipeSteamTests {
   [InlineData(3, false, 0.3, 20, true)]
   [InlineData(0, false, 0.1, 20, false)]
   [InlineData(0, false, 0.3, 200, false)]
+  [InlineData(0, false, 0.3, 20, false, 3, 100, 10000)]
+  [InlineData(0, true, 0.3, 100, true, 3, 60)]
   public void Hammer_CracksCastOnly(
     int pipeClass,
     bool cracked,
     double fill,
     double wallC,
-    bool banged
+    bool banged,
+    double headerAtm = 3,
+    double potC = 100,
+    double lengthM = 1
   ) {
     var store = new PipeFlowStore();
     int header = store.AddNode(
       Cell(0),
       1,
       0,
-      3 * Atmosphere / (SteamConstant * 425.15),
+      headerAtm * Atmosphere / (SteamConstant * 425.15),
       152,
       SteamConstant,
       0,
@@ -207,14 +212,20 @@ public class PipeSteamTests {
       0.1,
       0,
       0.0005,
-      100,
+      potC,
       SteamConstant,
       fill * 0.1 * 1000,
       0,
       true
     );
     store.SetWall(pot, new PipeWall(50000, 0.6, 0), wallC);
-    int edge = store.AddEdge(header, pot, 0.05, 1, (FlowPipeClass)pipeClass);
+    int edge = store.AddEdge(
+      header,
+      pot,
+      0.05,
+      lengthM,
+      (FlowPipeClass)pipeClass
+    );
     store.AddOpening(pot, 1e-3, Atmosphere, FlowGas.Steam);
 
     for (int i = 0; i < 50; i++)

@@ -29,6 +29,8 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
   /// <summary>Couplings that deliver into a node of this run.</summary>
   internal List<FlowCoupling> Inbound { get; } = [];
 
+  private readonly Dictionary<NodeKey, byte> _savedDamage = [];
+
   /// <summary>The run's grade, 0..1: heating value relative to rich producer gas, mixed by mass from the sources of a <see cref="FlowMedium.Fuel"/> run; 0 on any other.</summary>
   public double Grade { get; private set; }
 
@@ -41,6 +43,10 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
       return;
     foreach (var (key, index) in Store.Nodes)
       Store.SetFrozen(index, world.GetChunkAtBlockPos(key.Pos) == null);
+    if (_savedDamage.Count > 0) {
+      Store.RestoreDamage(_savedDamage);
+      _savedDamage.Clear();
+    }
     ApplyPorts(dt);
     ApplyInbound(dt);
     DrawCouplings(manager);
@@ -83,8 +89,13 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
   private void ApplyInbound(double dt) {
     var kg = new Dictionary<int, (double Kg, double KgC)>();
     foreach (var coupling in Inbound) {
+      if (
+        !Store.Nodes.TryGetValue(coupling.To, out int node)
+        || Store.IsHeld(node)
+      )
+        continue;
       var (taken, temperatureC) = coupling.Take();
-      if (taken <= 0 || !Store.Nodes.TryGetValue(coupling.To, out int node))
+      if (taken <= 0)
         continue;
       var (sum, sumC) = kg.GetValueOrDefault(node);
       kg[node] = (sum + taken, sumC + taken * temperatureC);
@@ -110,7 +121,11 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
           receiver.Inbound.Add(coupling);
         double downstream = receiver.Store.PublishedPressurePa(target);
         double upstream = Store.PressurePa(node);
-        if (downstream > 0 && upstream > downstream)
+        if (
+          downstream > 0
+          && upstream > downstream
+          && !receiver.Store.IsHeld(target)
+        )
           rate = GasOrifice.Flow(
             upstream,
             downstream,
@@ -140,7 +155,7 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
         Store.TemperatureC(node),
         Store.WallTemperatureC(node),
         0,
-        0
+        Store.DamageOf(node)
       )
     );
   }
@@ -180,6 +195,8 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
     );
     if (wall is { } fitted)
       Store.SetWall(node, fitted, save.WallTemperatureC);
+    if (save.Damage != 0)
+      _savedDamage[key] = save.Damage;
     return true;
   }
 
@@ -213,10 +230,9 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
       Ports[key] = state;
     Couplings.AddRange(run.Couplings);
     Inbound.AddRange(run.Inbound);
-    if (Medium == FlowMedium.Fuel && run.Medium == FlowMedium.Fuel)
-      Grade = MixedGrade(run);
-    else if (Medium == FlowMedium.Ambient)
-      Grade = run.Grade;
+    foreach (var (key, code) in run._savedDamage)
+      _savedDamage[key] = code;
+    Grade = MixedGrade(run);
     if (Medium == FlowMedium.Ambient)
       Medium = run.Medium;
   }
@@ -241,13 +257,16 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
     run.Couplings.RemoveAll(c => fragmentKeys.Contains(c.From));
     Inbound.AddRange(run.Inbound.Where(c => fragmentKeys.Contains(c.To)));
     run.Inbound.RemoveAll(c => fragmentKeys.Contains(c.To));
+    foreach (var key in fragmentKeys)
+      if (run._savedDamage.Remove(key, out byte code))
+        _savedDamage[key] = code;
   }
 
   private double MixedGrade(PipeFlowNetwork other) {
-    double mine = Store.TotalGasKg() - other.Store.TotalGasKg();
+    double total = Store.TotalGasKg();
     double theirs = other.Store.TotalGasKg();
-    return mine + theirs > 0
-      ? (Grade * mine + other.Grade * theirs) / (mine + theirs)
-      : Grade;
+    return total > 0
+      ? (Grade * (total - theirs) + other.Grade * theirs) / total
+      : Math.Max(Grade, other.Grade);
   }
 }

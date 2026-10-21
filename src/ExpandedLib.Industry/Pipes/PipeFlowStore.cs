@@ -40,6 +40,21 @@ internal sealed class PipeFlowStore {
   private const double PhaseLowC = -40;
   private const double PhaseHighC = 370;
   private const double HammerVelocity = 10;
+
+  /// <summary>Bit of <see cref="DamageOf"/>: an edge at the node weeps.</summary>
+  public const byte WeepingBit = 1;
+
+  /// <summary>Bit of <see cref="DamageOf"/>: an edge at the node is cracked.</summary>
+  public const byte CrackedBit = 2;
+
+  /// <summary>Bit of <see cref="DamageOf"/>: an edge at the node is burst.</summary>
+  public const byte BurstBit = 4;
+
+  /// <summary>Bit of <see cref="DamageOf"/>: the node is iced.</summary>
+  public const byte IcedBit = 8;
+
+  /// <summary>Bit of <see cref="DamageOf"/>: the node has dropped.</summary>
+  public const byte DroppedBit = 16;
   private const double HammerFill = 0.25;
   private const double WeepAreaM2 = 1e-5;
   private const double BurstGraceSeconds = 3;
@@ -823,6 +838,57 @@ internal sealed class PipeFlowStore {
     return true;
   }
 
+  /// <summary>The failure state at <paramref name="node"/> as the bits of <see cref="WeepingBit"/>, <see cref="CrackedBit"/>, <see cref="BurstBit"/>, <see cref="IcedBit"/> and <see cref="DroppedBit"/>; an edge's bits are set at both of its ends, a node's own at the node.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist.</exception>
+  public byte DamageOf(int node) {
+    CheckNode(node);
+    byte damage = 0;
+    if (_iced[node])
+      damage |= IcedBit;
+    if (_dropped[node])
+      damage |= DroppedBit;
+    for (int e = 0; e < EdgeCount; e++) {
+      if (_from[e] != node && _to[e] != node)
+        continue;
+      if (_weeping[e])
+        damage |= WeepingBit;
+      if (_cracked[e])
+        damage |= CrackedBit;
+      if (_burst[e])
+        damage |= BurstBit;
+    }
+    return damage;
+  }
+
+  /// <summary>Applies failure state saved by <see cref="DamageOf"/> once the edges are laid: a dropped or iced node is restored as such, and an edge weeps, is cracked or is burst when both its ends carry the bit.</summary>
+  /// <param name="damage">The saved bits by node key; keys the store does not hold are ignored.</param>
+  public void RestoreDamage(IReadOnlyDictionary<NodeKey, byte> damage) {
+    var bits = new byte[NodeCount];
+    foreach (var (key, code) in damage)
+      if (_index.TryGetValue(key, out int node))
+        bits[node] = code;
+    for (int i = 0; i < NodeCount; i++) {
+      if ((bits[i] & IcedBit) != 0 && !_iced[i]) {
+        _iced[i] = true;
+        _frostSeconds[i] = FrostSeconds;
+      }
+      if ((bits[i] & DroppedBit) != 0 && !_dropped[i])
+        Drop(i);
+    }
+    for (int e = 0; e < EdgeCount; e++) {
+      byte shared = (byte)(bits[_from[e]] & bits[_to[e]]);
+      if ((shared & BurstBit) != 0 && !_burst[e])
+        Burst(e);
+      if (_burst[e])
+        continue;
+      if ((shared & CrackedBit) != 0)
+        _cracked[e] = true;
+      if ((shared & (WeepingBit | CrackedBit)) != 0)
+        StartWeep(e);
+    }
+    Wake();
+  }
+
   /// <summary>Replaces a cracked piece with a sound one, closing its crack.</summary>
   /// <returns>False when the piece is not cracked.</returns>
   /// <exception cref="ArgumentOutOfRangeException">The edge does not exist.</exception>
@@ -1002,7 +1068,9 @@ internal sealed class PipeFlowStore {
             applied * _heat[i] * (_activeTemperatureC[i] - _temperatureC[i]);
       }
       _applied[i] = applied;
-      _drawn[i] = _draw[i] * dt * (_active[i] < 0 ? _scale[i] : 1);
+      _drawn[i] = Held(i)
+        ? 0
+        : _draw[i] * dt * (_active[i] < 0 ? _scale[i] : 1);
       _gas[i] += applied;
       SourceLedgerKg += applied;
       if (_gas[i] < 0)
@@ -1080,7 +1148,7 @@ internal sealed class PipeFlowStore {
         !_edgeLiquid[e]
         && _water[into]
         && _wallCapacity[into] > 0
-        && _wallC[into] < _temperatureC[into]
+        && PipeSteam.SaturationPressurePa(_wallC[into]) < SteamPartialPa(into)
         && Fill(into) > HammerFill
         && Math.Abs(_flow[e])
           / (_edgeDensity[e] * Math.PI * _bore[e] * _bore[e] / 4)
@@ -1100,22 +1168,20 @@ internal sealed class PipeFlowStore {
     (Math.Max(Pressure(_from[e]), Pressure(_to[e])) - SeaLevelPa)
     / (_workingPa[e] - SeaLevelPa);
 
-  private int PositionHash(int e) {
-    unchecked {
-      int hash = 0;
-      foreach (int node in new[] { _from[e], _to[e] }) {
-        var key = _key[node];
-        hash =
-          hash * 31
-          + (
-            key.Pos.X * 73856093
-            ^ key.Pos.Y * 19349663
-            ^ key.Pos.Z * 83492791
-            ^ key.Slot
-          );
-      }
-      return hash;
-    }
+  private double SteamPartialPa(int i) =>
+    _gas[i] * _gasConstant[i] * Kelvin(i) / Void(i);
+
+  private int PositionHash(int e) =>
+    unchecked(KeyHash(_from[e]) * 31 + KeyHash(_to[e]));
+
+  private int KeyHash(int node) {
+    var key = _key[node];
+    return unchecked(
+      key.Pos.X * 73856093
+      ^ key.Pos.Y * 19349663
+      ^ key.Pos.Z * 83492791
+      ^ key.Slot
+    );
   }
 
   private bool DetectFailures(double dt) {
@@ -1189,25 +1255,50 @@ internal sealed class PipeFlowStore {
       : q * (_edgeLiquid[e] ? LiquidDensity : _density[_from[e]]);
   }
 
+  /// <summary>Whether <paramref name="node"/> is held: frozen with its chunk, iced or dropped. A held node takes and gives nothing.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist.</exception>
+  public bool IsHeld(int node) {
+    CheckNode(node);
+    return Held(node);
+  }
+
   private bool Held(int node) => _frozen[node] || _iced[node] || _dropped[node];
 
   private bool DetectSpan() {
     int n = NodeCount;
     int m = EdgeCount;
     var limit = new int[n];
-    bool centred = false;
     for (int e = 0; e < m; e++) {
       if (_span[e] <= 0)
         continue;
-      foreach (int node in new[] { _from[e], _to[e] })
-        limit[node] =
-          limit[node] == 0 ? _span[e] : Math.Min(limit[node], _span[e]);
+      limit[_from[e]] =
+        limit[_from[e]] == 0 ? _span[e] : Math.Min(limit[_from[e]], _span[e]);
+      limit[_to[e]] =
+        limit[_to[e]] == 0 ? _span[e] : Math.Min(limit[_to[e]], _span[e]);
     }
+    bool centred = false;
     for (int i = 0; i < n; i++)
       if (!_supported[i] && !_dropped[i] && limit[i] > 0)
         centred = true;
     if (!centred)
       return false;
+
+    var first = new int[n + 1];
+    for (int e = 0; e < m; e++)
+      if (!_burst[e]) {
+        first[_from[e] + 1]++;
+        first[_to[e] + 1]++;
+      }
+    for (int i = 0; i < n; i++)
+      first[i + 1] += first[i];
+    var next = new int[n];
+    Array.Copy(first, next, n);
+    var adjacent = new int[first[n]];
+    for (int e = 0; e < m; e++)
+      if (!_burst[e]) {
+        adjacent[next[_from[e]]++] = _to[e];
+        adjacent[next[_to[e]]++] = _from[e];
+      }
 
     var distance = new int[n];
     Array.Fill(distance, int.MaxValue);
@@ -1219,14 +1310,9 @@ internal sealed class PipeFlowStore {
       }
     while (queue.Count > 0) {
       int at = queue.Dequeue();
-      for (int e = 0; e < m; e++) {
-        if (_burst[e])
-          continue;
-        int other =
-          _from[e] == at ? _to[e]
-          : _to[e] == at ? _from[e]
-          : -1;
-        if (other < 0 || _dropped[other] || distance[other] != int.MaxValue)
+      for (int k = first[at]; k < first[at + 1]; k++) {
+        int other = adjacent[k];
+        if (_dropped[other] || distance[other] != int.MaxValue)
           continue;
         distance[other] = distance[at] + 1;
         queue.Enqueue(other);
@@ -1271,6 +1357,7 @@ internal sealed class PipeFlowStore {
 
   private bool DetectFrost(double dt) {
     bool changed = false;
+    var fresh = new bool[NodeCount];
     for (int i = 0; i < NodeCount; i++) {
       if (_dropped[i] || !_water[i])
         continue;
@@ -1288,17 +1375,18 @@ internal sealed class PipeFlowStore {
         _frostSeconds[i] = 0;
       if (_frostSeconds[i] >= FrostSeconds) {
         _iced[i] = true;
+        fresh[i] = true;
         changed = true;
       }
     }
     if (changed) {
-      CrackIcedStretches();
+      CrackIcedStretches(fresh);
       Wake();
     }
     return changed;
   }
 
-  private void CrackIcedStretches() {
+  private void CrackIcedStretches(bool[] fresh) {
     int n = NodeCount;
     var stretch = new int[n];
     Array.Fill(stretch, -1);
@@ -1310,8 +1398,10 @@ internal sealed class PipeFlowStore {
       stretch[start] = start;
       var edges = new List<int>();
       bool cracked = false;
+      bool hasFresh = false;
       while (stack.Count > 0) {
         int at = stack.Pop();
+        hasFresh |= fresh[at];
         for (int e = 0; e < EdgeCount; e++) {
           if (_from[e] != at && _to[e] != at)
             continue;
@@ -1326,7 +1416,7 @@ internal sealed class PipeFlowStore {
           }
         }
       }
-      if (cracked || edges.Count == 0)
+      if (cracked || !hasFresh || edges.Count == 0)
         continue;
       int weakest = -1;
       foreach (int e in edges) {
@@ -1353,15 +1443,20 @@ internal sealed class PipeFlowStore {
   private void StartWeep(int e) {
     if (_weeping[e])
       return;
-    int node = Pressure(_from[e]) >= Pressure(_to[e]) ? _from[e] : _to[e];
     _weeping[e] = true;
+    int opening = _weepOpening[e];
+    if (opening >= 0) {
+      _openArea[opening] = WeepAreaM2;
+      Wake();
+      return;
+    }
+    int node = Pressure(_from[e]) >= Pressure(_to[e]) ? _from[e] : _to[e];
     _weepOpening[e] = AddAtmosphereOpening(node, WeepAreaM2, GasAt(node));
   }
 
   private void EndWeep(int e) {
     if (_weepOpening[e] >= 0)
       _openArea[_weepOpening[e]] = 0;
-    _weepOpening[e] = -1;
     _weeping[e] = false;
     _overSeconds[e] = 0;
     Wake();

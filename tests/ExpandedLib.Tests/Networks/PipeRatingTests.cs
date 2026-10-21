@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using Vintagestory.API.MathTools;
@@ -164,6 +165,27 @@ public class PipeRatingTests {
     Assert.False(store.IsWeeping(edge));
     Assert.False(store.Remake(edge));
     Assert.False(store.Replace(edge));
+  }
+
+  // Fails when each weep opens a new opening and a wrench only closes it, so weep and wrench cycles pile up dead openings.
+  [Fact]
+  public void Weep_CyclesReuseTheirOpening() {
+    var store = new PipeFlowStore();
+    int a = Chamber(store, 0, 9);
+    int b = Chamber(store, 1, 9);
+    int edge = store.AddEdge(a, b, 0.25, 1, FlowPipeClass.Cast);
+    store.SetRating(edge, Main);
+    Run(store, 0.5);
+    Assert.True(store.Remake(edge));
+    int openings = store.OpeningCount;
+    Run(store, 0.5);
+    Assert.True(store.IsWeeping(edge));
+
+    Assert.True(store.Remake(edge));
+    Run(store, 0.5);
+
+    Assert.True(store.IsWeeping(edge));
+    Assert.Equal(openings, store.OpeningCount);
   }
 
   // Fails when a wrench closes a water hammer crack, or a replacement leaves it open.
@@ -334,6 +356,83 @@ public class PipeRatingTests {
     Assert.False(store.IsCracked(small));
     Assert.False(store.Remake(main));
     Assert.True(store.Replace(main));
+  }
+
+  // Fails when a piece replaced in a stretch that is still iced cracks again as another node of the stretch thaws.
+  [Fact]
+  public void Freeze_ReplacedPieceStaysSoundWhenANodeThaws() {
+    var store = new PipeFlowStore();
+    int a = IceNode(store, 0, 0.95, -5);
+    int b = IceNode(store, 1, 0.95, -5);
+    int c = IceNode(store, 2, 0.95, -5);
+    int main = store.AddEdge(a, b, 0.25, 1, FlowPipeClass.Cast);
+    int small = store.AddEdge(b, c, 0.076, 1, FlowPipeClass.Cast);
+    store.SetRating(main, Main);
+    store.SetRating(small, Small);
+    Seconds(store, 62);
+    Assert.True(store.IsCracked(main));
+    Assert.True(store.Replace(main));
+
+    store.SetAmbient(c, 20);
+    Seconds(store, 600);
+
+    Assert.False(store.IsIced(c));
+    Assert.True(store.IsIced(b));
+    Assert.False(store.IsCracked(main));
+    Assert.False(store.IsCracked(small));
+  }
+
+  // Fails when a piece replaced in an iced stretch cracks again as a node of another stretch freezes.
+  [Fact]
+  public void Freeze_ReplacedPieceStaysSoundWhenAnotherStretchFreezes() {
+    var store = new PipeFlowStore();
+    int a = IceNode(store, 0, 0.95, -5);
+    int b = IceNode(store, 1, 0.95, -5);
+    int main = store.AddEdge(a, b, 0.25, 1, FlowPipeClass.Cast);
+    store.SetRating(main, Main);
+    int late = IceNode(store, 5, 0.95, 8, true);
+    Seconds(store, 62);
+    Assert.True(store.IsCracked(main));
+    Assert.True(store.Replace(main));
+    Assert.False(store.IsIced(late));
+
+    Seconds(store, 600);
+
+    Assert.True(store.IsIced(late));
+    Assert.False(store.IsCracked(main));
+  }
+
+  // Fails when DamageOf or RestoreDamage drops the ice or the crack, so a reloaded frozen stretch is whole.
+  [Fact]
+  public void Freeze_DamageSurvivesARebuild() {
+    var store = new PipeFlowStore();
+    int a = IceNode(store, 0, 0.95, -5);
+    int b = IceNode(store, 1, 0.95, -5);
+    int c = IceNode(store, 2, 0.95, -5);
+    int main = store.AddEdge(a, b, 0.25, 1, FlowPipeClass.Cast);
+    int small = store.AddEdge(b, c, 0.076, 1, FlowPipeClass.Cast);
+    store.SetRating(main, Main);
+    store.SetRating(small, Small);
+    Seconds(store, 62);
+    var saved = new Dictionary<NodeKey, byte>();
+    foreach (var (key, node) in store.Nodes)
+      saved[key] = store.DamageOf(node);
+
+    var rebuilt = new PipeFlowStore();
+    for (int i = 0; i < 3; i++)
+      rebuilt.AddNode(Cell(i), 0.001, 0, 1e-7, -5, SteamConstant);
+    int rMain = rebuilt.AddEdge(0, 1, 0.25, 1, FlowPipeClass.Cast);
+    int rSmall = rebuilt.AddEdge(1, 2, 0.076, 1, FlowPipeClass.Cast);
+    rebuilt.SetRating(rMain, Main);
+    rebuilt.SetRating(rSmall, Small);
+    rebuilt.RestoreDamage(saved);
+
+    Assert.True(rebuilt.IsIced(0));
+    Assert.True(rebuilt.IsIced(2));
+    Assert.True(rebuilt.IsCracked(rMain));
+    Assert.True(rebuilt.IsWeeping(rMain));
+    Assert.False(rebuilt.IsCracked(rSmall));
+    Assert.False(rebuilt.IsWeeping(rSmall));
   }
 
   // Fails when a line that warms above 0 C stays iced.

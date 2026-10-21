@@ -13,6 +13,8 @@ public sealed class FlowPort {
   private readonly BlockNetworkModSystem _system;
 
   /// <summary>Creates the handle on the node <paramref name="key"/>.</summary>
+  /// <param name="system">The network system whose runs the handle finds.</param>
+  /// <param name="key">The port node.</param>
   public FlowPort(BlockNetworkModSystem system, NodeKey key) {
     _system = system;
     Key = key;
@@ -24,10 +26,11 @@ public sealed class FlowPort {
   /// <summary>The handle on port <paramref name="index"/> of the machine <paramref name="machine"/>.</summary>
   /// <param name="machine">The machine's block entity.</param>
   /// <param name="index">Port number, 0..127.</param>
-  /// <returns>The port, or <c>null</c> on a client or before the network system exists.</returns>
+  /// <returns>The port, or <c>null</c> on a client, before the block entity has an API, or before the network system exists.</returns>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside 0..127.</exception>
   public static FlowPort? At(BlockEntity machine, int index) =>
-    machine.Api?.ModLoader.GetModSystem<BlockNetworkModSystem>() is { } system
+    machine.Api is { Side: EnumAppSide.Server } api
+    && api.ModLoader.GetModSystem<BlockNetworkModSystem>() is { } system
       ? new FlowPort(system, NodeKey.Port(machine.Pos, index))
       : null;
 
@@ -67,7 +70,7 @@ public sealed class FlowPort {
   }
 
   /// <summary>The mass and enthalpy the port moved and its mean pressure and temperature since the last call, with its stores now; the next reading starts here.</summary>
-  /// <returns>The reading, or <c>null</c> when the port is in no run or no machine has declared at it.</returns>
+  /// <returns>The reading, or <c>null</c> when the port is in no run or no heat or source has been declared at it; a port that only coupled or linked has none.</returns>
   public PortReading? Take() {
     if (
       Run() is not { } run
@@ -79,6 +82,7 @@ public sealed class FlowPort {
   }
 
   /// <summary>The link between this port's node and <paramref name="other"/>'s, which must be laid in the run's store from this port to the other.</summary>
+  /// <param name="other">The port at the far end.</param>
   /// <returns>The link, or <c>null</c> when the two nodes are in different runs or no edge joins them.</returns>
   public Link? LinkTo(FlowPort other) {
     if (
@@ -98,15 +102,18 @@ public sealed class FlowPort {
   public Coupling? CoupleTo(FlowPort receiver, FlowGas gas) {
     if (Run() is not { } sender)
       return null;
-    if (Find(sender, receiver.Key) == null) {
+    if (Find(sender, Key, receiver.Key) == null) {
       var coupling = new FlowCoupling(Key, receiver.Key, gas);
       sender.Couplings.Add(coupling);
     }
     return new Coupling(this, receiver.Key);
   }
 
-  private static FlowCoupling? Find(PipeFlowNetwork sender, NodeKey to) =>
-    sender.Couplings.Find(c => c.To == to);
+  private static FlowCoupling? Find(
+    PipeFlowNetwork sender,
+    NodeKey from,
+    NodeKey to
+  ) => sender.Couplings.Find(c => c.From == from && c.To == to);
 
   internal PipeFlowNetwork? Run() =>
     _system.GetNetworkAt(Key) as PipeFlowNetwork;
@@ -130,6 +137,7 @@ public sealed class FlowPort {
     }
 
     /// <summary>Sets the open share of the link, 0..1.</summary>
+    /// <param name="share">Open share, 0 closed to 1 open.</param>
     /// <returns>False when the link no longer exists.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="share"/> is outside 0..1.</exception>
     public bool SetShare(double share) {
@@ -191,7 +199,10 @@ public sealed class FlowPort {
     public bool SetArea(double areaM2) {
       if (areaM2 < 0)
         throw new ArgumentOutOfRangeException(nameof(areaM2));
-      if (_from.Run() is not { } run || Find(run, _to) is not { } coupling)
+      if (
+        _from.Run() is not { } run
+        || Find(run, _from.Key, _to) is not { } coupling
+      )
         return false;
       coupling.AreaM2 = areaM2;
       return true;

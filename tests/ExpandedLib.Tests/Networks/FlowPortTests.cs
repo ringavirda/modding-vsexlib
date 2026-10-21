@@ -3,6 +3,8 @@ using System.Linq;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
+using NSubstitute;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -51,21 +53,21 @@ public class FlowPortTests {
     TestWorld World,
     PipeFlowNetwork Main,
     PipeFlowNetwork Furnace
-  ) Plant(out FlowPort feed, out FlowPort furnace) {
+  ) Plant(out FlowPort feed, out FlowPort furnace, int far = 3) {
     var w = NewWorld();
-    Lay(w, 0, 1, 3, 4);
+    Lay(w, 0, 1, far, far + 1);
     var main = RunAt(w, 0);
-    var inside = RunAt(w, 3);
+    var inside = RunAt(w, far);
     main.Medium = FlowMedium.Air;
     inside.Medium = FlowMedium.Air;
     Air(main, 0, 3);
     Air(main, 1, 3);
     main.Store.AddEdge(0, 1, 0.05, 1, FlowPipeClass.Cast);
-    Air(inside, 3, 1);
-    Air(inside, 4, 1);
+    Air(inside, far, 1);
+    Air(inside, far + 1, 1);
     inside.Store.AddEdge(0, 1, 0.05, 1, FlowPipeClass.Cast);
     feed = Port(w, 1);
-    furnace = Port(w, 3);
+    furnace = Port(w, far);
     feed.CoupleTo(furnace, FlowGas.Air)!.SetArea(0.002);
     feed.SetSource(0.02, 20, FlowMedium.Air);
     furnace.SetHeatWatts(500);
@@ -125,6 +127,68 @@ public class FlowPortTests {
     }
 
     Assert.True(inside.Store.TotalGasKg() > 2 * AirAt(1) + 0.01);
+  }
+
+  // Fails when a coupling books the draw of a sender whose chunk is unloaded, so the run publishes gas it never gave up.
+  [Fact]
+  public void Coupling_HeldSender_MakesNoGas() {
+    var (w, main, inside) = Plant(out var feed, out _, 64);
+    feed.SetSource(0, 20, FlowMedium.Air);
+    Tick(w, [main, inside], 3);
+    double before = Total(main, inside);
+
+    w.UnloadChunkAt(Cell(1));
+    Tick(w, [main, inside], 10);
+
+    Assert.Equal(before, Total(main, inside), 9);
+  }
+
+  // Fails when the draw towards a receiver whose chunk is unloaded is still made, so the in-flight mass keeps growing.
+  [Fact]
+  public void Coupling_HeldReceiver_DrawsNothing() {
+    var (w, main, inside) = Plant(out var feed, out _, 64);
+    feed.SetSource(0, 20, FlowMedium.Air);
+    Tick(w, [main, inside], 3);
+
+    w.UnloadChunkAt(Cell(64));
+    Tick(w, [main, inside], 2);
+    double inFlight = main.Couplings.Sum(c => c.PublishedKg);
+    Tick(w, [main, inside], 10);
+
+    Assert.Equal(inFlight, main.Couplings.Sum(c => c.PublishedKg), 9);
+  }
+
+  // Fails when the receiver takes the in-flight mass while held, which its step then discards.
+  [Fact]
+  public void Coupling_HeldReceiver_DestroysNoGas() {
+    var (w, main, inside) = Plant(out var feed, out _, 64);
+    feed.SetSource(0, 20, FlowMedium.Air);
+    Tick(w, [main, inside], 3);
+    double before = Total(main, inside);
+
+    w.UnloadChunkAt(Cell(64));
+    Tick(w, [main, inside], 10);
+
+    Assert.Equal(before, Total(main, inside), 9);
+  }
+
+  private static double Total(PipeFlowNetwork main, PipeFlowNetwork inside) =>
+    main.Store.TotalGasKg()
+    + inside.Store.TotalGasKg()
+    + main.Couplings.Sum(c => c.PublishedKg + c.NextKg);
+
+  // Fails when a coupling is found by its receiver alone, so a second port into the same node takes the first port's coupling and its area.
+  [Fact]
+  public void Coupling_TwoPortsIntoOneReceiver_StayApart() {
+    var (w, main, _) = Plant(out _, out var furnace);
+
+    Port(w, 0).CoupleTo(furnace, FlowGas.Air)!.SetArea(0.004);
+
+    Assert.Equal(2, main.Couplings.Count);
+    Assert.Equal(
+      [0.002, 0.004],
+      main.Couplings.Select(c => c.AreaM2).OrderBy(a => a)
+    );
   }
 
   // Fails when the area setter is dropped, so a coupling closed by area 0 keeps passing gas.
@@ -341,6 +405,32 @@ public class FlowPortTests {
     Assert.True(merged.Ports.ContainsKey(Key(1)));
   }
 
+  // Fails when an ambient run merging with a fuel run takes the fuel grade undiluted, so air mixes in as rich gas.
+  [Fact]
+  public void Merge_FuelWithAmbient_DilutesTheGrade() {
+    var w = NewWorld();
+    Lay(w, 0, 1, 3, 4);
+    var fuel = RunAt(w, 0);
+    fuel.Medium = FlowMedium.Fuel;
+    Air(fuel, 0, 1);
+    Air(fuel, 1, 1);
+    Port(w, 1).SetSource(0.02, 20, FlowMedium.Fuel, 0.8);
+    Tick(w, [fuel], 1);
+    double grade = fuel.Grade;
+    Assert.True(grade > 0);
+    var ambient = RunAt(w, 3);
+    Air(ambient, 3, 1);
+    Air(ambient, 4, 1);
+    double fuelGas = fuel.Store.TotalGasKg();
+    double total = fuelGas + ambient.Store.TotalGasKg();
+
+    Lay(w, 2);
+
+    var merged = RunAt(w, 0);
+    Assert.Same(merged, RunAt(w, 4));
+    Assert.Equal(grade * fuelGas / total, merged.Grade, 9);
+  }
+
   // Fails when a split leaves the fragment's port declarations with the run it left.
   [Fact]
   public void Split_MovesPortDeclarationsToTheirFragment() {
@@ -358,6 +448,22 @@ public class FlowPortTests {
     Assert.True(RunAt(w, 4).Ports.ContainsKey(Key(4)));
     Assert.False(RunAt(w, 0).Ports.ContainsKey(Key(4)));
     Assert.True(RunAt(w, 0).Ports.ContainsKey(Key(0)));
+  }
+
+  private sealed class Machine : BlockEntity;
+
+  // Fails when At hands a client a port, though the run it would join lives on the server.
+  [Theory]
+  [InlineData(EnumAppSide.Client, false)]
+  [InlineData(EnumAppSide.Server, true)]
+  public void At_IsNullOnAClient(EnumAppSide side, bool handed) {
+    var w = NewWorld();
+    var api = Substitute.For<ICoreAPI>();
+    api.Side.Returns(side);
+    api.ModLoader.GetModSystem<BlockNetworkModSystem>().Returns(w.Networks);
+    var machine = new Machine { Pos = Cell(0), Api = api };
+
+    Assert.Equal(handed, FlowPort.At(machine, 0) != null);
   }
 
   #endregion
