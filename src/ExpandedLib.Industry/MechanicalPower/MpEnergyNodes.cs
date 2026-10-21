@@ -1,4 +1,7 @@
+using System.Collections.Generic;
 using ExpandedLib.Networks;
+using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
@@ -129,4 +132,12 @@ public interface IMpEnergyLink {
   /// <summary>Torque (N*m) the link carries while slipping at <paramref name="relativeSpeed"/>
   /// (rad/s, input over output side); 0 by default.</summary>
   float SlipTorque(float relativeSpeed) => 0f;
+}
+
+/// <summary>A block that will own links once placed, so the "mpshaft" network can try their joints before the block entity exists.</summary>
+public interface IMpEnergyLinkSource {
+  /// <summary>The links the block would hold standing at <paramref name="pos"/>, their port keys in that cell.</summary>
+  /// <param name="world">The accessor the placement reads.</param>
+  /// <param name="pos">The cell the block would fill.</param>
+  IEnumerable<IMpEnergyLink> LinksAt(IBlockAccessor world, BlockPos pos);
 }

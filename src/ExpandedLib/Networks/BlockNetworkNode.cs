@@ -149,6 +149,14 @@ public abstract class BlockNetworkNode
     AssetLocation newCode = this.WithVariant("orientation", finalChoices[0]);
     Block? block = world.GetBlock(newCode);
 
+    if (
+      block?.GetBehavior<BlockBehaviorExNetworkPlacement>() is { } placement
+      && !placement.Accepts(world, blockSel.Position, ref failureCode)
+    ) {
+      _tempOrientationsStore.TryRemove(blockSel.Position, out _);
+      return false;
+    }
+
     if (block != null) {
       bool placedVariant = block.DoPlaceBlock(
         world,

@@ -122,6 +122,37 @@ public class BlockNetworkModSystem : ModSystem {
       ? net
       : null;
 
+  /// <summary>Asks each live network of <paramref name="networkType"/> that borders <paramref name="pos"/> whether it would take <paramref name="block"/> there. A network type that does not implement <see cref="INetworkPlacementCheck"/> takes any member.</summary>
+  /// <param name="world">The accessor the placement reads.</param>
+  /// <param name="pos">The cell the block would fill; nothing is placed there yet.</param>
+  /// <param name="block">The variant about to be placed.</param>
+  /// <param name="networkType">The type of the networks to ask.</param>
+  /// <param name="failureCode">Set to the refusing network's code on a refusal; untouched otherwise.</param>
+  /// <returns>False when any asked network refuses the member.</returns>
+  public bool CanPlaceMember(
+    IBlockAccessor world,
+    BlockPos pos,
+    Block block,
+    string networkType,
+    ref string failureCode
+  ) {
+    var asked = new HashSet<Guid>();
+    foreach (BlockFacing face in BlockFacing.ALLFACES) {
+      BlockNetwork? net = GetNetworkAt(pos.AddCopy(face));
+      if (
+        net is not INetworkPlacementCheck check
+        || net.NetworkType != networkType
+        || !asked.Add(net.Id)
+      )
+        continue;
+      if (!check.AcceptsMember(world, pos, block, out string code)) {
+        failureCode = code;
+        return false;
+      }
+    }
+    return true;
+  }
+
   /// <summary>Returns the network across <paramref name="connectorFace"/> from <paramref name="connectorPos"/>, or null when the cell there has no reciprocating connector.</summary>
   public BlockNetwork? GetConnectedNetworkAcross(
     IBlockAccessor world,

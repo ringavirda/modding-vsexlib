@@ -4,6 +4,7 @@ using System.Linq;
 using ExpandedLib.Networks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
@@ -13,7 +14,8 @@ namespace ExpandedLib.Industry.MechanicalPower;
 /// unloaded chunk holds still whole.
 /// </summary>
 internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
-  : BlockNetwork(system) {
+  : BlockNetwork(system),
+    INetworkPlacementCheck {
   public override string NetworkType => "mpshaft";
 
   public override int StepIntervalMs => 200;
@@ -26,6 +28,10 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
   private float _clockS;
   private readonly MpReadingGate _gate = new();
   private double _lastHours = -1d;
+  private bool _jointsStale = true;
+  private readonly HashSet<NodeKey> _fresh = [];
+  private readonly List<(int Edge, IMpEnergyLink Link)> _links = [];
+  private int _edgesSolved;
 
   /// <summary>Overrides <c>MpShaftFailure</c> for this run when set.</summary>
   internal bool? FailureOverride { get; set; }
@@ -66,6 +72,17 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     if (dt <= 0f || NodeKeys.Any(k => world.GetChunkAtBlockPos(k.Pos) == null))
       return;
     Sync(world);
+    if (_jointsStale)
+      BuildJoints(world);
+    foreach (var (edge, link) in _links) {
+      int output = Store.IndexOf(link.To);
+      float ratio = Store.RatioOf(output);
+      float carried =
+        edge < _edgesSolved && ratio != 0f
+          ? Store.EdgeTorque(edge) / ratio
+          : 0f;
+      Store.SetMesh(output, link.Efficiency, carried);
+    }
     foreach (var (key, node) in Store.Nodes) {
       var be = world.GetBlockEntity(key.Pos);
       float inertia = (be as IMpEnergyStorage)?.Inertia ?? 0f;
@@ -97,6 +114,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     }
     Store.Step(dt, float.PositiveInfinity);
     Store.SolveTorquePath();
+    _edgesSolved = Store.EdgeCount;
     AccrueStrain(world, MathF.Max(0f, hours));
     _clockS += dt;
     foreach (var (key, node) in Store.Nodes) {
@@ -173,11 +191,86 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     _pendingInertia = 0f;
     _pendingSpeed = 0f;
     _pending.Clear();
-    foreach (var (key, inertia) in entering)
+    foreach (var (key, inertia) in entering) {
       Store.AddNode(key, 0, inertia, 0f);
+      _fresh.Add(key);
+    }
+  }
+
+  // Joints go in once per topology change; one a placement would have refused stays out.
+  private void BuildJoints(IBlockAccessor world) {
+    var joints = MpShaftJoints.Gather(
+      world,
+      NodeKeys,
+      pos => NetworkMembership.Resolve(world, pos, NetworkType),
+      pos => MpShaftJoints.LinksOf(world, pos)
+    );
+    MpShaftJoints.Apply(Store, joints, _fresh);
+    _fresh.Clear();
+    _links.Clear();
+    foreach (var joint in joints)
+      if (joint.Link != null) {
+        int edge = Store.EdgeIndex(
+          Store.IndexOf(joint.Input),
+          Store.IndexOf(joint.Output)
+        );
+        if (edge >= 0)
+          _links.Add((edge, joint.Link));
+      }
+    _jointsStale = false;
+  }
+
+  /// <summary>Tries the joints <paramref name="block"/> would add at <paramref name="pos"/>, with every joint the run already has, on a copy of the store; the run itself is not touched.</summary>
+  /// <param name="world">The accessor the joints are read through.</param>
+  /// <param name="pos">The cell the block would fill.</param>
+  /// <param name="block">The variant about to be placed; a block that is no network member is accepted.</param>
+  /// <param name="failureCode">Set to <c>exlib-mpshaft-jam</c> when a new joint closes a ring whose ratio or sign product is not 1; empty otherwise.</param>
+  /// <returns>False when a new joint would jam the run.</returns>
+  public bool AcceptsMember(
+    IBlockAccessor world,
+    BlockPos pos,
+    Block block,
+    out string failureCode
+  ) {
+    failureCode = "";
+    if (block is not INetworkMember member)
+      return true;
+    var scratch = Store.Clone();
+    var keys = new HashSet<NodeKey>(NodeKeys);
+    foreach (byte slot in member.Slots(world, pos))
+      keys.Add(new NodeKey(pos, slot));
+    foreach (var key in keys)
+      if (!scratch.Nodes.ContainsKey(key))
+        scratch.AddNode(key, scratch.AddGroup(), 0f, 0f);
+    var links = (block as IMpEnergyLinkSource)?.LinksAt(world, pos) ?? [];
+    var joints = MpShaftJoints.Gather(
+      world,
+      keys,
+      p =>
+        p.Equals(pos)
+          ? member
+          : NetworkMembership.Resolve(world, p, NetworkType),
+      p => p.Equals(pos) ? links : MpShaftJoints.LinksOf(world, p)
+    );
+    bool Touches(MpShaftJoint j) =>
+      j.Input.Pos.Equals(pos) || j.Output.Pos.Equals(pos);
+    MpShaftJoints.Apply(
+      scratch,
+      joints.Where(j => !Touches(j)),
+      new HashSet<NodeKey>()
+    );
+    if (
+      MpShaftJoints
+        .Apply(scratch, joints.Where(Touches), new HashSet<NodeKey>())
+        .Count == 0
+    )
+      return true;
+    failureCode = "exlib-mpshaft-jam";
+    return false;
   }
 
   public override void OnTopologyChanged() {
+    _jointsStale = true;
     _gate.Retain(NodeKeys);
     foreach (
       var key in _pending.Keys.Where(k => !NodeKeys.Contains(k)).ToList()

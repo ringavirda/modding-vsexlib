@@ -119,6 +119,25 @@ internal sealed partial class MpShaftStore {
   /// <summary>Number of shaft joints added with <see cref="TryAddEdge"/> and kept.</summary>
   public int EdgeCount => _edges.Count;
 
+  /// <summary>Index of the joint that joins the two nodes in either direction, or -1 when none does.</summary>
+  public int EdgeIndex(int a, int b) =>
+    _edges.FindIndex(e => (e.A == a && e.B == b) || (e.A == b && e.B == a));
+
+  /// <summary>A copy holding the same nodes, groups with their speeds, and joints in their order, sharing nothing with this store.</summary>
+  public MpShaftStore Clone() {
+    var copy = new MpShaftStore();
+    copy.Take(this, _index.Keys.ToHashSet());
+    return copy;
+  }
+
+  /// <summary>Moves the node into a group of its own at ratio 1, turning at the speed it had, so a joint of any ratio can then join it.</summary>
+  public void Isolate(int node) {
+    int group = AddGroup(NodeSpeed(node));
+    _group[node] = group;
+    _ratio[node] = 1f;
+    _topology++;
+  }
+
   /// <summary>Index of the group the node belongs to.</summary>
   public int GroupOf(int node) => _group[node];
 
@@ -210,6 +229,14 @@ internal sealed partial class MpShaftStore {
     }
     if (reflected > 0f)
       _speed[into] = momentum / reflected;
+  }
+
+  /// <summary>Moves every node of group <paramref name="from"/> into group <paramref name="into"/> at the ratios it had, mixing the two speeds by momentum.</summary>
+  /// <param name="from">Index of the group to empty.</param>
+  /// <param name="into">Index of the group that takes the nodes.</param>
+  public void Fold(int from, int into) {
+    JoinGroups(into, from, 1f);
+    _topology++;
   }
 
   /// <summary>Mixes a body of inertia <paramref name="inertiaKgM2"/> at <paramref name="speed"/> into the group by momentum: the group's speed becomes the mean of the two weighted by reflected inertia.</summary>
