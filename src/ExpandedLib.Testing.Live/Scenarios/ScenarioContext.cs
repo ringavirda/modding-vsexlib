@@ -32,6 +32,9 @@ internal sealed class ScenarioContext(
   /// <summary>The scenario player the steps that act as a player use; null when the run has none.</summary>
   public ScenarioPlayer? Player { get; set; }
 
+  /// <summary>The plot's chunk columns <c>reload</c> unloads; null when the run has no plot.</summary>
+  public IPlotColumns? Columns { get; set; }
+
   /// <summary>What the last <c>break</c> declared and dropped; null before the first.</summary>
   public BreakRecord? LastBreak { get; set; }
 

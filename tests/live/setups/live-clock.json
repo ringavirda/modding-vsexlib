@@ -1,0 +1,13 @@
+{
+  "setup": "live-clock",
+  "description": "One block, the plot reloaded one game hour on, then the calendar run at 600 times speed for five seconds of server clock.",
+  "mods": [],
+  "steps": [
+    { "place": { "code": "game:planks-aged-we", "at": [0, 0, 0] } },
+    { "reload": { "hours": 1 } },
+    { "expect": { "at": [0, 0, 0], "block": "game:planks-aged-we" } },
+    { "timespeed": { "speed": 600, "seconds": 5 } }
+  ],
+  "seconds": 6,
+  "record": {}
+}

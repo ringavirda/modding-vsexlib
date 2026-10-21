@@ -214,6 +214,7 @@ internal sealed class ScenarioRunner {
     ) {
       Player = _player,
       PlotBounds = plot.Bounds(),
+      Columns = new ServerPlotColumns(_api, plot),
       Pack =
         scenario.Model.Pack == null ? null : StartPack(scenario.Model, File),
     };

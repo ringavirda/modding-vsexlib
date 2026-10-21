@@ -204,6 +204,25 @@ public class SetupCasesTests : IDisposable
     );
   }
 
+  // Fails when a file whose steps hold a timespeed yields a runnable row, or one skipped without
+  // naming the verb.
+  [Fact]
+  public void A_setup_with_timespeed_is_live_only()
+  {
+    Write(
+      "clock.json",
+      SetupCaseTests.Cases(
+        "\"low\": {}",
+        steps: $"[{SetupCaseTests.PlaceA}, {SetupCaseTests.PlaceB}, {{\"timespeed\": {{\"speed\": 600, \"seconds\": 5}}}}]"
+      )
+    );
+
+    var rows = Rows().Where(r => r.File.EndsWith("clock.json")).ToList();
+
+    Assert.NotEmpty(rows);
+    Assert.All(rows, r => Assert.Equal("live only: timespeed", r.Skip));
+  }
+
   // Fails when the orders miss the main case or the variants that ask for them, or reach a variant
   // that does not.
   [Fact]
