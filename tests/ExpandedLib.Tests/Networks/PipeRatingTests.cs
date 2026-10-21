@@ -7,7 +7,8 @@ namespace ExpandedLib.Tests;
 
 /// <summary>
 /// Covers the ratings of the physical pipe network: the bore registry, the weep of the most loaded piece, its
-/// wrench and replacement, and the burst of a piece held above its burst pressure, in <see cref="PipeFlowStore"/>.
+/// wrench and replacement, the burst of a piece held above its burst pressure, the drop of a centred piece beyond its
+/// span and the freeze of a standing water line, in <see cref="PipeFlowStore"/>.
 /// </summary>
 public class PipeRatingTests {
   #region Fixtures
@@ -50,6 +51,34 @@ public class PipeRatingTests {
   private static void Run(PipeFlowStore store, double seconds) {
     for (double t = 0; t < seconds; t += 0.05)
       store.Step(0.05);
+  }
+
+  private static int IceNode(
+    PipeFlowStore store,
+    int index,
+    double fill,
+    double temperatureC,
+    bool lagged = false
+  ) {
+    int node = store.AddNode(
+      Cell(index),
+      0.001,
+      0,
+      1e-7,
+      temperatureC,
+      SteamConstant,
+      fill * 0.001 * 1000,
+      0,
+      true
+    );
+    store.SetWall(node, new PipeWall(10, 5, 5, lagged), temperatureC);
+    store.SetAmbient(node, -10);
+    return node;
+  }
+
+  private static void Seconds(PipeFlowStore store, int seconds) {
+    for (int t = 0; t < seconds; t++)
+      store.Step(1);
   }
 
   #endregion
@@ -198,6 +227,142 @@ public class PipeRatingTests {
     Assert.False(store.IsBurst(small));
     Assert.Equal(0, store.FlowKgPerSecond(main));
     Assert.True(store.PressurePa(a) < 6 * Atmosphere);
+  }
+
+  #endregion
+
+  #region Span
+
+  // Fails when a centred piece drops one cell early or late, or the content of a dropped piece stays in the run.
+  [Fact]
+  public void Span_DropsBeyondN() {
+    var store = new PipeFlowStore();
+    var nodes = new int[7];
+    for (int i = 0; i < nodes.Length; i++)
+      nodes[i] = Chamber(store, i, 1);
+    for (int i = 0; i < nodes.Length - 1; i++)
+      store.SetRating(
+        store.AddEdge(nodes[i], nodes[i + 1], 0.25, 1, FlowPipeClass.Cast),
+        Main
+      );
+    for (int i = 1; i < nodes.Length; i++)
+      store.SetSupported(nodes[i], false);
+
+    Run(store, 0.2);
+
+    for (int i = 0; i <= 4; i++)
+      Assert.False(store.IsDropped(nodes[i]));
+    Assert.True(store.IsDropped(nodes[5]));
+    Assert.True(store.IsDropped(nodes[6]));
+    Assert.Equal(0, store.GasKg(nodes[5]));
+    Assert.True(store.OpeningLedgerKg < 0);
+    Assert.True(store.IsBurst(4));
+  }
+
+  // Fails when the span is measured from the first supported cell only, so a piece between two supports drops.
+  [Fact]
+  public void Span_CountsFromTheNearestSupport() {
+    var store = new PipeFlowStore();
+    var nodes = new int[9];
+    for (int i = 0; i < nodes.Length; i++)
+      nodes[i] = Chamber(store, i, 1);
+    for (int i = 0; i < nodes.Length - 1; i++)
+      store.SetRating(
+        store.AddEdge(nodes[i], nodes[i + 1], 0.25, 1, FlowPipeClass.Cast),
+        Main
+      );
+    for (int i = 1; i < nodes.Length - 1; i++)
+      store.SetSupported(nodes[i], false);
+
+    Run(store, 0.2);
+
+    for (int i = 0; i < nodes.Length; i++)
+      Assert.False(store.IsDropped(nodes[i]));
+  }
+
+  // Fails when the span of the smallest class at a piece is not the one that counts: the main's piece 4 cells out also carries a small edge and drops at 3.
+  [Fact]
+  public void Span_TheSmallestClassAtAPieceCounts() {
+    var store = new PipeFlowStore();
+    var nodes = new int[6];
+    for (int i = 0; i < nodes.Length; i++)
+      nodes[i] = Chamber(store, i, 1);
+    for (int i = 0; i < 4; i++)
+      store.SetRating(
+        store.AddEdge(nodes[i], nodes[i + 1], 0.25, 1, FlowPipeClass.Cast),
+        Main
+      );
+    store.SetRating(
+      store.AddEdge(nodes[4], nodes[5], 0.076, 1, FlowPipeClass.Cast),
+      Small
+    );
+    for (int i = 1; i < nodes.Length; i++)
+      store.SetSupported(nodes[i], false);
+
+    Run(store, 0.2);
+
+    Assert.False(store.IsDropped(nodes[3]));
+    Assert.True(store.IsDropped(nodes[4]));
+  }
+
+  #endregion
+
+  #region Frost
+
+  // Fails when the freeze comes before 60 s, ignores the 90 % fill, or does not crack the weakest piece of the frozen stretch.
+  [Fact]
+  public void Freeze_StandingLineBursts() {
+    var store = new PipeFlowStore();
+    int a = IceNode(store, 0, 0.95, -5);
+    int b = IceNode(store, 1, 0.95, -5);
+    int c = IceNode(store, 2, 0.95, -5);
+    int main = store.AddEdge(a, b, 0.25, 1, FlowPipeClass.Cast);
+    int small = store.AddEdge(b, c, 0.076, 1, FlowPipeClass.Cast);
+    store.SetRating(main, Main);
+    store.SetRating(small, Small);
+    int dry = IceNode(store, 3, 0.5, -5);
+
+    Seconds(store, 58);
+    Assert.False(store.IsIced(a));
+    Assert.False(store.IsCracked(main));
+    Seconds(store, 4);
+
+    Assert.True(store.IsIced(a));
+    Assert.True(store.IsIced(c));
+    Assert.False(store.IsIced(dry));
+    Assert.True(store.IsCracked(main));
+    Assert.False(store.IsCracked(small));
+    Assert.False(store.Remake(main));
+    Assert.True(store.Replace(main));
+  }
+
+  // Fails when a line that warms above 0 C stays iced.
+  [Fact]
+  public void Freeze_ThawsAboveZero() {
+    var store = new PipeFlowStore();
+    int a = IceNode(store, 0, 0.95, -5);
+    Seconds(store, 62);
+    Assert.True(store.IsIced(a));
+
+    store.SetAmbient(a, 20);
+    Seconds(store, 600);
+
+    Assert.False(store.IsIced(a));
+  }
+
+  // Fails when lagging does not slow the cooling, so the lagged line freezes with the bare one.
+  [Fact]
+  public void Freeze_LaggingDelaysIt() {
+    var store = new PipeFlowStore();
+    int bare = IceNode(store, 0, 0.95, 8);
+    int lagged = IceNode(store, 1, 0.95, 8, true);
+
+    Seconds(store, 150);
+
+    Assert.True(store.IsIced(bare));
+    Assert.False(store.IsIced(lagged));
+    Seconds(store, 450);
+    Assert.True(store.IsIced(lagged));
   }
 
   #endregion
