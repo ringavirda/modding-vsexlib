@@ -77,6 +77,29 @@ public interface IMpEnergySegment {
   /// <summary>Takes a reading the torque path chose to write; the block entity keeps it in its tree
   /// (<see cref="MpSegmentReading.WriteTo"/>) and marks itself dirty. Does nothing by default.</summary>
   void StoreReading(MpSegmentReading reading) { }
+
+  /// <summary>Torque (N*m) at which the segment parts at once, whatever its strain; zero or less for
+  /// none. 0 by default.</summary>
+  float UltimateNm => 0f;
+
+  /// <summary>Called each step while the segment is at strain 1 or past its
+  /// <see cref="UltimateNm"/> and shaft failure is on; the block entity breaks the shaft. Does nothing
+  /// by default.</summary>
+  void Part() { }
+}
+
+/// <summary>A flywheel whose rim strains when the run turns it past its rim limit.</summary>
+public interface IMpEnergyRim {
+  /// <summary>Speed (rad/s) at which the rim moves at its safe limit; zero or less for no limit.</summary>
+  float RimLimitRadS { get; }
+
+  /// <summary>Accumulated rim strain, 0 to 1; saved with the block. Rises at (speed / limit - 1) per
+  /// in-game hour while the wheel is past its limit and never falls.</summary>
+  float RimStrain { get; set; }
+
+  /// <summary>Called each step while <see cref="RimStrain"/> is 1 and shaft failure is on; the block
+  /// entity drops the wheel as scrap.</summary>
+  void Burst();
 }
 
 /// <summary>A block that joins two runs turning at different speeds without being a node of

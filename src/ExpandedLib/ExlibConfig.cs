@@ -110,6 +110,15 @@ public class ExlibConfig : IExVersionedConfig {
   /// second. 0 is a lossless mesh.</summary>
   [ExConfigRange(0, 1)]
   public float MpGearMeshLoss { get; set; } = 0.02f;
+
+  /// <summary>Whether an mpshaft segment past its strain or ultimate parts and a flywheel past its
+  /// rim strain bursts; off, strain still accrues and nothing breaks.</summary>
+  public bool MpShaftFailure { get; set; } = true;
+
+  /// <summary>Time constant (in-game hours) of strain: a segment at twice its rating strains
+  /// by 1 in this time.</summary>
+  [ExConfigRange(0.01, 1000)]
+  public float MpStrainTauHours { get; set; } = 1f;
   #endregion
 
   #region Diagnostics

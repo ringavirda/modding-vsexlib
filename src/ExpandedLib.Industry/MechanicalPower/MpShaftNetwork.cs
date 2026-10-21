@@ -25,6 +25,10 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
   private readonly Dictionary<NodeKey, MpShaftRunState> _pending = [];
   private float _clockS;
   private readonly MpReadingGate _gate = new();
+  private double _lastHours = -1d;
+
+  /// <summary>Overrides <c>MpShaftFailure</c> for this run when set.</summary>
+  internal bool? FailureOverride { get; set; }
 
   /// <summary>The run's node store and joints.</summary>
   public MpShaftStore Store { get; private set; } = new();
@@ -55,6 +59,10 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     float dt,
     BlockNetworkModSystem manager
   ) {
+    double now = manager.ServerWorld?.Calendar?.TotalHours ?? -1d;
+    float hours =
+      now >= 0d && _lastHours >= 0d ? (float)(now - _lastHours) : 0f;
+    _lastHours = now;
     if (dt <= 0f || NodeKeys.Any(k => world.GetChunkAtBlockPos(k.Pos) == null))
       return;
     Sync(world);
@@ -89,6 +97,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     }
     Store.Step(dt, float.PositiveInfinity);
     Store.SolveTorquePath();
+    AccrueStrain(world, MathF.Max(0f, hours));
     _clockS += dt;
     foreach (var (key, node) in Store.Nodes) {
       if (world.GetBlockEntity(key.Pos) is not IMpEnergySegment segment)
@@ -108,6 +117,35 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
       Store.GroupCount > 0 ? Store.ReflectedInertia(0) : 0f
     );
     BroadcastUpdate(world);
+  }
+
+  private void AccrueStrain(IBlockAccessor world, float hours) {
+    bool failure = FailureOverride ?? ExlibValues.MpShaftFailure;
+    float tau = ExlibValues.MpStrainTauHours;
+    List<Action>? failed = null;
+    foreach (var (key, node) in Store.Nodes) {
+      var be = world.GetBlockEntity(key.Pos);
+      if (be is IMpEnergySegment segment) {
+        float over = Store.NodeLoad(node) - 1f;
+        if (over > 0f)
+          segment.Strain = MathF.Min(1f, segment.Strain + over * hours / tau);
+        float ultimate = segment.UltimateNm;
+        if (ultimate > 0f && Store.NodeTorque(node) >= ultimate)
+          segment.Strain = 1f;
+        if (failure && segment.Strain >= 1f)
+          (failed ??= []).Add(segment.Part);
+      }
+      if (be is IMpEnergyRim { RimLimitRadS: > 0f } rim) {
+        float over = MathF.Abs(Store.NodeSpeed(node)) / rim.RimLimitRadS - 1f;
+        if (over > 0f)
+          rim.RimStrain = MathF.Min(1f, rim.RimStrain + over * hours / tau);
+        if (failure && rim.RimStrain >= 1f)
+          (failed ??= []).Add(rim.Burst);
+      }
+    }
+    if (failed != null)
+      foreach (var fail in failed)
+        fail();
   }
 
   // Nodes entering the run bring their inertia in at rest unless a restore stands for it, and the restored speeds join by momentum, before the nodes do.
