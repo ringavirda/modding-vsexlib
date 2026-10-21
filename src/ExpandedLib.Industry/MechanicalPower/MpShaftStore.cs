@@ -26,6 +26,7 @@ internal sealed partial class MpShaftStore {
   private int[] _group = new int[16];
   private float[] _inertia = new float[16];
   private float[] _standing = new float[16];
+  private float[] _rating = new float[16];
   private float[] _ratio = new float[16];
   private float[] _drive = new float[16];
   private float[] _driveSlope = new float[16];
@@ -90,6 +91,7 @@ internal sealed partial class MpShaftStore {
       Array.Resize(ref _group, size);
       Array.Resize(ref _inertia, size);
       Array.Resize(ref _standing, size);
+      Array.Resize(ref _rating, size);
       Array.Resize(ref _ratio, size);
       Array.Resize(ref _drive, size);
       Array.Resize(ref _driveSlope, size);
@@ -127,6 +129,11 @@ internal sealed partial class MpShaftStore {
   /// <param name="inertiaKgM2">kg*m^2; negative values count as 0.</param>
   public void SetInertia(int node, float inertiaKgM2) =>
     _inertia[node] = MathF.Max(0f, inertiaKgM2);
+
+  /// <summary>Sets the node's working torque at its own speed.</summary>
+  /// <param name="ratingNm">N*m; zero or less marks the node unrated, so it never counts as loaded.</param>
+  public void SetRating(int node, float ratingNm) =>
+    _rating[node] = MathF.Max(0f, ratingNm);
 
   /// <summary>Sets the node's Coulomb standing torque at its own speed.</summary>
   /// <param name="standingNm">N*m; negative values count as 0.</param>
@@ -262,6 +269,7 @@ internal sealed partial class MpShaftStore {
       source._standing[i],
       source._ratio[i]
     );
+    _rating[node] = source._rating[i];
     _drive[node] = source._drive[i];
     _driveSlope[node] = source._driveSlope[i];
     _load[node] = source._load[i];

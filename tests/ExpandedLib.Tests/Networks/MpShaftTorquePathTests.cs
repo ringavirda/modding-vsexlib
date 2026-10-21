@@ -255,6 +255,99 @@ public class MpShaftTorquePathTests(ITestOutputHelper output) {
 
   #endregion
 
+  #region Standing and ratings
+
+  // Fails when a node's standing torque is dropped from the run's resistance or applied per run instead of per node.
+  [Fact]
+  public void Friction_FortyMainCellsHoldUnderThirteenHundred() {
+    var held = Chain(40, 0f, out var n, 1f);
+    for (int i = 0; i < 40; i++)
+      held.SetStanding(n[i], 32.5f);
+    held.SetDrive(n[0], 1299f);
+    held.Step(0.2f, 100f);
+
+    var turning = Chain(40, 0f, out var m, 1f);
+    for (int i = 0; i < 40; i++)
+      turning.SetStanding(m[i], 32.5f);
+    turning.SetDrive(m[0], 1301f);
+    turning.Step(0.2f, 100f);
+
+    Assert.Equal(0f, held.Speed(0));
+    Assert.True(turning.Speed(0) > 0f);
+  }
+
+  // Fails when standing torque is scaled by speed instead of staying constant.
+  [Fact]
+  public void Friction_ConstantWithSpeed() {
+    var slow = Chain(1, 5f, out var a);
+    var fast = Chain(1, 50f, out var b);
+    slow.SetStanding(a[0], 40f);
+    fast.SetStanding(b[0], 40f);
+    slow.SetDrive(a[0], 100f);
+    fast.SetDrive(b[0], 100f);
+
+    slow.Step(0.2f, 100f);
+    slow.SolveTorquePath();
+    fast.Step(0.2f, 100f);
+    fast.SolveTorquePath();
+
+    Assert.Equal(60f, slow.NetTorque(a[0]), 3);
+    Assert.Equal(60f, fast.NetTorque(b[0]), 3);
+  }
+
+  // Fails when a geared joint is rated against the lowest rating at the reference speed instead of each end's torque over its own rating.
+  [Fact]
+  public void Rating_GearedJointGoesByWorstEndRatio() {
+    var store = new MpShaftStore();
+    int a = store.AddNode(Key(0), store.AddGroup(10f), 0f, 0f);
+    int b = store.AddNode(Key(1), store.AddGroup(10f), 0f, 0f);
+    Assert.True(store.TryAddEdge(a, b, 2f, 1));
+    store.SetRating(a, 150f);
+    store.SetRating(b, 250f);
+    store.SetDrive(a, 100f);
+    store.SetLoad(b, 200f);
+
+    store.Step(0.2f, 100f);
+    store.SolveTorquePath();
+
+    Assert.Equal(200f / 250f, store.EdgeLoad(0), 3);
+  }
+
+  // Fails when a node is rated by the weakest rating on its line instead of its own.
+  [Fact]
+  public void Rating_NodeLoadFollowsItsOwnRating() {
+    var store = Chain(3, 10f, out var n);
+    store.SetRating(n[0], 200f);
+    store.SetRating(n[1], 100f);
+    store.SetRating(n[2], 400f);
+    store.SetDrive(n[0], 90f);
+    store.SetLoad(n[2], 90f);
+
+    store.Step(0.2f, 100f);
+    store.SolveTorquePath();
+
+    Assert.Equal(0.45f, store.NodeLoad(n[0]), 3);
+    Assert.Equal(0.9f, store.NodeLoad(n[1]), 3);
+    Assert.Equal(0.225f, store.NodeLoad(n[2]), 3);
+  }
+
+  // Fails when an unrated end counts as rated zero and so reads as infinitely loaded.
+  [Fact]
+  public void Rating_UnratedEndDoesNotCount() {
+    var store = Chain(2, 10f, out var n);
+    store.SetRating(n[1], 200f);
+    store.SetDrive(n[0], 50f);
+    store.SetLoad(n[1], 50f);
+
+    store.Step(0.2f, 100f);
+    store.SolveTorquePath();
+
+    Assert.Equal(0f, store.NodeLoad(n[0]));
+    Assert.Equal(0.25f, store.EdgeLoad(0), 3);
+  }
+
+  #endregion
+
   [Fact]
   public void Bench_5000Cells() {
     const int cells = 5000;

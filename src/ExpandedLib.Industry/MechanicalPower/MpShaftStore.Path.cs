@@ -31,6 +31,7 @@ internal sealed partial class MpShaftStore {
   private float[] _net = new float[16];
   private float[] _edgeTorque = [];
   private float[] _nodeTorque = new float[16];
+  private float[] _nodeLoad = new float[16];
 
   /// <summary>How many times the ring solver's elimination order has been computed; it changes only with the joints.</summary>
   public int PathOrderBuilds => _solver.OrderBuilds;
@@ -44,6 +45,20 @@ internal sealed partial class MpShaftStore {
   /// <summary>The largest torque any joint of the node carried, N*m at the node's own speed.</summary>
   public float NodeTorque(int node) => _nodeTorque[node];
 
+  /// <summary>How far the node's joints load it after the last <see cref="SolveTorquePath"/>: the highest torque over rating among them, each joint's torque taken at the node's own speed. Zero for an unrated node.</summary>
+  public float NodeLoad(int node) => _nodeLoad[node];
+
+  /// <summary>How far joint <paramref name="edge"/> loads its weakest end after the last <see cref="SolveTorquePath"/>: the higher of its two ends' torque over rating, each end's torque taken at that end's own speed, so a geared end overloads at its own speed. Unrated ends do not count; above 1 the joint is past its rating.</summary>
+  public float EdgeLoad(int edge) {
+    var (a, b, _, _, _) = _edges[edge];
+    return MathF.Max(EndLoad(edge, a), EndLoad(edge, b));
+  }
+
+  private float EndLoad(int edge, int node) =>
+    _rating[node] <= 0f || _ratio[node] == 0f
+      ? 0f
+      : MathF.Abs(_edgeTorque[edge] / _ratio[node]) / _rating[node];
+
   /// <summary>Works out where the torque of the last <see cref="Step"/> flowed: subtree sums for a run with no ring, <c>K phi = e</c> by stiffness for a ring, both at the group's reference speed.</summary>
   public void SolveTorquePath() {
     if (_pathTopology != _topology)
@@ -51,6 +66,7 @@ internal sealed partial class MpShaftStore {
     if (_net.Length < _nodes) {
       Array.Resize(ref _net, _nodes);
       Array.Resize(ref _nodeTorque, _nodes);
+      Array.Resize(ref _nodeLoad, _nodes);
     }
     for (int i = 0; i < _nodes; i++)
       _injection[i] = 0d;
@@ -63,6 +79,12 @@ internal sealed partial class MpShaftStore {
       var (a, b, _, _, _) = _edges[e];
       _nodeTorque[a] = MathF.Max(_nodeTorque[a], t);
       _nodeTorque[b] = MathF.Max(_nodeTorque[b], t);
+    }
+    Array.Clear(_nodeLoad, 0, _nodes);
+    for (int e = 0; e < _edges.Count; e++) {
+      var (a, b, _, _, _) = _edges[e];
+      _nodeLoad[a] = MathF.Max(_nodeLoad[a], EndLoad(e, a));
+      _nodeLoad[b] = MathF.Max(_nodeLoad[b], EndLoad(e, b));
     }
     for (int i = 0; i < _nodes; i++)
       _nodeTorque[i] =

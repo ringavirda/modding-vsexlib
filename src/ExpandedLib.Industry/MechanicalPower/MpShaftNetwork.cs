@@ -57,6 +57,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
         ((be as IMpEnergySegment)?.StandingNm ?? 0f)
           + ((be as IMpEnergyConsumer)?.StandingNm ?? 0f)
       );
+      Store.SetRating(node, (be as IMpEnergySegment)?.RatingNm ?? 0f);
       var producer = be as IMpEnergyProducer;
       Store.SetDrive(
         node,
