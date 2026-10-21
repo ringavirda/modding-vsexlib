@@ -363,6 +363,30 @@ public class FastForwardReplayTests {
 
   #endregion
 
+  #region Merging
+
+  // Fails when a merged group replays a member whose own cursor is ahead of the group's, or lowers that cursor.
+  [Fact]
+  public void A_member_ahead_of_its_group_is_not_stepped() {
+    var w = new TestWorld();
+    ReplayMachine behind = Place(w, 0);
+    w.AdvanceHours(10 * OneMachineSecond);
+    ReplayMachine ahead = Place(w, 4);
+    Driver(w).Couple(behind.Pos, ahead.Pos);
+
+    w.Networks.ListenerTick(w.Accessor, 0.2f);
+
+    Assert.True(behind.ProductionTicks > 5);
+    Assert.Equal(0, ahead.ProductionTicks);
+    Assert.Equal(
+      w.Calendar.TotalHours,
+      Driver(w).CursorOf(ahead.Pos)!.Value,
+      9
+    );
+  }
+
+  #endregion
+
   #region Topology
 
   // Fails when the replay runs on past the epoch rise.

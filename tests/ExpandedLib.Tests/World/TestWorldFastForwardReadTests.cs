@@ -26,7 +26,7 @@ public class TestWorldFastForwardReadTests {
     w.Tick();
 
     Assert.Equal([A, B], w.FastForwardGroupOf(A).OrderBy(p => p.X));
-    Assert.InRange(w.ReplayedSteps(A), 1, 119);
+    Assert.Equal(11, w.ReplayedSteps(A));
     Assert.Equal([Alone], w.FastForwardGroupOf(Alone));
     Assert.Empty(w.FastForwardGroupOf(new BlockPos(9, 9, 9)));
     Assert.Equal(0, w.ReplayedSteps(new BlockPos(9, 9, 9)));

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.FastForwarding;
 using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
@@ -120,9 +122,16 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
       intervalMs: ProductionTickMs,
       ticking: () => _productionTickId != 0,
       couplings: _record.Ports,
-      peers: _record.Peers
+      peers: _record.Peers,
+      declared: LayoutCouplings
     );
   }
+
+  // A multiblock's layout cells couple with no code: whatever stands in one shares the machine's group.
+  private IEnumerable<BlockPos> LayoutCouplings() =>
+    Blockentity is BlockEntityMultiblockStructure structure
+      ? structure.LayoutCells.Select(c => c.At)
+      : [];
 
   /// <summary>Writes the machine's coupling positions and group peers into <paramref name="tree"/> as <c>ff_ports</c> and <c>ff_peers</c>; a machine outside a group writes what it last held.</summary>
   internal void SaveFastForward(ITreeAttribute tree) {

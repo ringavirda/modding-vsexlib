@@ -87,6 +87,8 @@ internal sealed class FastForwardMember {
 internal sealed class FastForwardDriver {
   private const float MaxStepSeconds = 2f;
 
+  private const double CursorEpsilonHours = 1e-9;
+
   private readonly BlockNetworkModSystem _networks;
   private readonly Dictionary<BlockPos, FastForwardMember> _members = [];
   private readonly Dictionary<Guid, FastForwardGroup> _networkGroups = [];
@@ -276,10 +278,11 @@ internal sealed class FastForwardDriver {
     Epoch++;
   }
 
-  private static void SetCursor(FastForwardGroup group, double hours) {
+  private void SetCursor(FastForwardGroup group, double hours) {
     group.CursorHours = hours;
+    double now = NowHours();
     foreach (FastForwardMember member in group.Members)
-      member.CursorHours = hours;
+      member.CursorHours = Math.Max(hours, Math.Min(member.CursorHours, now));
   }
 
   private void Replay(IBlockAccessor accessor, double now) {
@@ -329,7 +332,11 @@ internal sealed class FastForwardDriver {
     using (FastForward.Replay(group.CursorHours)) {
       foreach (
         FastForwardMember member in group
-          .Members.Where(m => m.Present && m.Step != null)
+          .Members.Where(m =>
+            m.Present
+            && m.Step != null
+            && m.CursorHours <= group.CursorHours + CursorEpsilonHours
+          )
           .OrderBy(m => m.Pos.X)
           .ThenBy(m => m.Pos.Y)
           .ThenBy(m => m.Pos.Z)

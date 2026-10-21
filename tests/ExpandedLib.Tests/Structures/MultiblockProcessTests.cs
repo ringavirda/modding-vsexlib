@@ -160,6 +160,33 @@ public class MultiblockProcessTests {
     Assert.Equal(3.0, reloaded.LastTickGameHours, 6);
   }
 
+  // Fails when the layout's world cells are not couplings, so a member standing in one is a group of its own.
+  [Fact]
+  public void A_layout_cell_couples_its_machine() {
+    var machine = new TestMegablock { Angle = 0 };
+    TestWorld world = Complete(machine);
+    var tenant = new ReplayMachine();
+    world.Place(
+      new BlockPos(1, 10, 0),
+      TestBlocks.Configure(new Block(), "test:layouttenant", 98),
+      tenant
+    );
+    world.Initialize(tenant);
+    var elsewhere = new ReplayMachine();
+    world.Place(
+      new BlockPos(9, 10, 0),
+      TestBlocks.Configure(new Block(), "test:layoutaway", 99),
+      elsewhere
+    );
+    world.Initialize(elsewhere);
+    world.Networks.FastForward.EnsureBuilt();
+
+    FastForwardGroup? group = world.Networks.FastForward.GroupOf(machine.Pos);
+    Assert.NotNull(group);
+    Assert.Same(group, world.Networks.FastForward.GroupOf(tenant.Pos));
+    Assert.NotSame(group, world.Networks.FastForward.GroupOf(elsewhere.Pos));
+  }
+
   // Fails when the registry takes now as a registering member's cursor in place of its restored stamp.
   [Fact]
   public void A_saved_cursor_replays_its_gap_on_load() {
