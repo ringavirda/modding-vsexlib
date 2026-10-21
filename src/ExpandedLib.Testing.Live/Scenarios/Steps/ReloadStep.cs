@@ -5,12 +5,15 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Testing.Live;
 
-/// <summary><c>reload</c>: unloads the plot's chunk columns, moves the calendar forward by <c>hours</c> of
+/// <summary><c>reload</c>: saves the world, unloads the plot's chunk columns, moves the calendar forward by <c>hours</c> of
 /// game time (default 0) with them away, then loads them back, so every block entity comes back as a new
 /// instance that finds the calendar <c>hours</c> on.</summary>
 internal sealed class ReloadStep : ScenarioStep {
   /// <summary>The server seconds the columns get to unload, and again to load back, before the step fails.</summary>
   public const double LoadSeconds = 30;
+
+  /// <summary>The server seconds the chunk thread gets to write the saved chunks before the columns unload.</summary>
+  public const double SaveSeconds = 3;
 
   public override string Kind => "reload";
 
@@ -34,8 +37,19 @@ internal sealed class ReloadStep : ScenarioStep {
     double hours = Hours(step);
     IGameCalendar calendar = ctx.World.Calendar;
     double before = calendar.TotalHours;
-    columns.Unload();
     double end = ctx.Now + LoadSeconds;
+    while (!columns.Save()) {
+      if (ctx.Now >= end)
+        throw new StepFailure(
+          $"the server did not start a save in {Format(LoadSeconds)} s."
+        );
+      yield return true;
+    }
+    double saved = ctx.Now + SaveSeconds;
+    while (ctx.Now < saved)
+      yield return true;
+    columns.Unload();
+    end = ctx.Now + LoadSeconds;
     while (!columns.Unloaded) {
       if (ctx.Now >= end)
         throw new StepFailure(

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Scenarios;
@@ -409,10 +410,49 @@ public class StepTests {
     double before = fixture.Test.Calendar.TotalHours;
     fixture.Run(Steps("""[{ "reload": { "hours": 3 } }]"""));
     Assert.Equal(3.0, fixture.Test.Calendar.TotalHours - before, 4);
-    Assert.Equal(["unload at 0.00", "load at 3.00"], columns.Calls);
+    Assert.Equal(
+      ["save at 0.00", "unload at 0.00", "load at 3.00"],
+      columns.Calls
+    );
     Assert.Contains(
       "[scenario]   1 reload 3.00 h ok: calendar 0.00 h to 3.00 h",
       fixture.Lines
+    );
+  }
+
+  /// <summary>Fails when reload unloads before a save the server accepted, or gives up on a refused save at
+  /// the first refusal.</summary>
+  [Fact]
+  public void Reload_asks_again_until_the_server_saves() {
+    var fixture = new LiveFixture();
+    var columns = new FakeColumns(fixture.Test.Calendar) { Refusals = 2 };
+    fixture.Context.Columns = columns;
+    fixture.Run(Steps("""[{ "reload": {} }]"""));
+    Assert.Equal(
+      [
+        "save refused",
+        "save refused",
+        "save at 0.00",
+        "unload at 0.00",
+        "load at 0.00",
+      ],
+      columns.Calls
+    );
+  }
+
+  /// <summary>Fails when reload unloads before the chunk thread has had <c>SaveSeconds</c> of server clock
+  /// to write what the save started.</summary>
+  [Fact]
+  public void Reload_waits_for_the_save_to_be_written() {
+    var fixture = new LiveFixture();
+    var columns = new FakeColumns(fixture.Test.Calendar) {
+      Clock = () => fixture.Context.Now,
+    };
+    fixture.Context.Columns = columns;
+    fixture.Run(Steps("""[{ "reload": {} }]"""));
+    Assert.True(
+      columns.UnloadedAt - columns.SavedAt >= ReloadStep.SaveSeconds,
+      $"unloaded {columns.UnloadedAt - columns.SavedAt} s after the save"
     );
   }
 
@@ -443,6 +483,25 @@ public class StepTests {
   private sealed class FakeColumns(IGameCalendar calendar) : IPlotColumns {
     public List<string> Calls { get; } = [];
 
+    public int Refusals { get; set; }
+
+    public Func<double> Clock { get; set; } = () => 0;
+
+    public double SavedAt { get; private set; }
+
+    public double UnloadedAt { get; private set; }
+
+    public bool Save() {
+      if (Refusals > 0) {
+        Refusals--;
+        Calls.Add("save refused");
+        return false;
+      }
+      SavedAt = Clock();
+      Calls.Add($"save at {calendar.TotalHours:0.00}");
+      return true;
+    }
+
     private bool _loading;
 
     private bool _unloading;
@@ -468,6 +527,7 @@ public class StepTests {
     }
 
     public void Unload() {
+      UnloadedAt = Clock();
       Calls.Add($"unload at {calendar.TotalHours:0.00}");
       _loading = true;
       _unloading = true;

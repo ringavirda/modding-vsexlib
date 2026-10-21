@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -92,7 +93,27 @@ internal sealed class ScenarioPlot(PlotBox box, int[] size) {
       }
     );
 
-  /// <summary>Unloads the plot's chunk columns; <see cref="Loaded"/> turns false until
+  /// <summary>Runs the server's <c>autosavenow</c> as the console, which writes every dirty chunk of the
+  /// world to the database on the chunk thread. Returns false when the server declined (not ready, a
+  /// backup running, or a save already under way); the chunks are then not saved.</summary>
+  public bool Save(ICoreServerAPI api) {
+    bool saved = false;
+    api.ChatCommands.ExecuteUnparsed(
+      "/autosavenow",
+      new TextCommandCallingArgs {
+        Caller = new Caller {
+          Type = EnumCallerType.Console,
+          CallerRole = "admin",
+          CallerPrivileges = ["*"],
+          FromChatGroupId = GlobalConstants.ConsoleGroup,
+        },
+      },
+      result => saved = result.StatusMessage == "Autosave completed"
+    );
+    return saved;
+  }
+
+  /// <summary>Unloads the plot's chunk columns, which are not saved; <see cref="Loaded"/> turns false until
   /// <see cref="Load"/> completes again.</summary>
   public void Unload(ICoreServerAPI api) {
     Volatile.Write(ref _loaded, 0);
