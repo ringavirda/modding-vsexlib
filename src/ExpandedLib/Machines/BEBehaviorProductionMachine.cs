@@ -1,5 +1,7 @@
 using System;
+using ExpandedLib.FastForwarding;
 using ExpandedLib.Helpers;
+using ExpandedLib.Networks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -24,8 +26,11 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
 
   public override void Initialize(ICoreAPI api, JsonObject properties) {
     base.Initialize(api, properties);
-    if (api.Side == EnumAppSide.Server && AutoStartProduction)
-      StartProductionTick();
+    if (api.Side == EnumAppSide.Server) {
+      JoinGroup();
+      if (AutoStartProduction)
+        StartProductionTick();
+    }
   }
 
   /// <summary>Registers the production tick (idempotent, server-side only).</summary>
@@ -35,7 +40,7 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
         RunProductionTick,
         ProductionTickMs
       );
-      if (!_pendingCatchup)
+      if (!_stampRestored && _member == null)
         StampNow();
     }
   }
@@ -51,34 +56,46 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
   // Upper bound on a single production dt, as a multiple of the tick interval.
   private const float MaxCatchupTickMultiple = 2f;
 
-  #region Away catch-up (game time)
+  #region Game time
 
-  // Calendar time (game hours) of the last simulated tick; -1 on a fresh machine.
+  // Calendar time (game hours) of the last simulated tick; -1 on a fresh machine. A Replay machine's cursor lives in its fast-forward member once registered.
   private double _lastTickHours = -1;
-  private bool _pendingCatchup;
+  private bool _stampRestored;
+  private FastForwardMember? _member;
+  private FastForwardDriver? _driver;
 
-  /// <summary>Calendar time, in game hours, of the last simulated tick, or -1 before the first one.</summary>
-  public double LastTickHours => _lastTickHours;
+  /// <summary>Calendar time, in game hours, the machine is simulated up to: its group's replay cursor on a <see cref="FastForwardMode.Replay"/> machine, the time of its last tick on an Off machine, or -1 before the first.</summary>
+  public double LastTickHours => _member?.CursorHours ?? _lastTickHours;
 
-  /// <summary>Sets <paramref name="hours"/> as the calendar time of the last simulated tick, as read back from a save.</summary>
+  /// <summary>Sets <paramref name="hours"/> as the calendar time the machine was simulated up to, as read back from a save; a Replay machine starts its cursor there when it initialises. Negative means none.</summary>
   public void RestoreLastTickHours(double hours) {
     _lastTickHours = hours;
-    _pendingCatchup = hours >= 0;
+    _stampRestored = hours >= 0;
   }
 
-  /// <summary>How many bounded sub-ticks a machine replays to catch up the game time it spent unloaded; default 0 disables away-catch-up.</summary>
+  /// <summary>How many bounded sub-ticks a machine replays to catch up the game time it spent unloaded. Read by nothing: the group's fast-forward replays that time.</summary>
+  [Obsolete(
+    "Away catch-up is replaced by the fast-forward replay; this is never read."
+  )]
   protected virtual int MaxAwayCatchupSteps => 0;
 
-  /// <summary>Sub-tick length, in seconds, used while catching up; defaults to one normal tick.</summary>
+  /// <summary>Sub-tick length, in seconds, used while catching up. Read by nothing: the group's fast-forward replays that time.</summary>
+  [Obsolete(
+    "Away catch-up is replaced by the fast-forward replay; this is never read."
+  )]
   protected virtual float AwayCatchupStepSeconds => ProductionTickMs / 1000f;
 
-  /// <summary>Calendar time, in game hours, the tick now running covers: the hours since the previous tick, at most <see cref="MaxGameHoursPerTick"/>. 0 on a machine's first tick, when the calendar moved back, and outside a tick; a tick split by <see cref="GameStepHours"/> shows each call's share.</summary>
+  /// <summary>Whether the machine is a member of its fast-forward group, default the block's <c>fastForward</c> attribute (<c>"replay"</c>, or <c>"off"</c>). A Replay machine's live tick stands aside while its group replays; an Off machine keeps the span of calendar time since its previous tick.</summary>
+  protected virtual FastForwardMode FastForwardMode =>
+    FastForwardModes.Of(Blockentity.Block);
+
+  /// <summary>Calendar time, in game hours, the tick now running covers. On a Replay machine the call's <c>dt</c> over 120, live and in a replay. On an Off machine the hours since the previous tick, at most <see cref="MaxGameHoursPerTick"/>; a tick split by <see cref="GameStepHours"/> shows each call's share. 0 on an Off machine's first tick, when the calendar moved back, and outside a tick.</summary>
   public double TickGameHours { get; private set; }
 
-  /// <summary>Longest slice, in game hours, one <see cref="OnProductionTick"/> call is handed; a longer span runs as several calls. 0, the default, hands the whole span to one call.</summary>
+  /// <summary>Longest slice, in game hours, one <see cref="OnProductionTick"/> call is handed on an Off machine; a longer span runs as several calls. 0, the default, hands the whole span to one call. Not read on a Replay machine.</summary>
   protected virtual double GameStepHours => 0;
 
-  /// <summary>Most game hours one tick hands on, default 24; the rest of a longer span is dropped and the stamp moves to now.</summary>
+  /// <summary>Most game hours one tick hands on an Off machine, default 24; the rest of a longer span is dropped and the stamp moves to now. Not read on a Replay machine.</summary>
   protected virtual double MaxGameHoursPerTick => 24;
 
   private void StampNow() {
@@ -86,17 +103,44 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
       _lastTickHours = GameTime.NowHours(Blockentity.Api.World);
   }
 
+  private void JoinGroup() {
+    if (
+      FastForwardMode != FastForwardMode.Replay
+      || Blockentity.Api?.ModLoader?.GetModSystem<BlockNetworkModSystem>()
+        is not { } networks
+    )
+      return;
+    _driver = networks.FastForward;
+    _member = _driver.Register(
+      Blockentity.Pos,
+      _lastTickHours >= 0 ? _lastTickHours : null,
+      step: RunMemberTick,
+      intervalMs: ProductionTickMs,
+      ticking: () => _productionTickId != 0
+    );
+  }
+
+  private void LeaveGroup(bool removed) {
+    if (_member == null || _driver == null)
+      return;
+    if (removed)
+      _driver.Remove(Blockentity.Pos);
+    else
+      _driver.SetPresent(Blockentity.Pos, false);
+    _member = null;
+    _driver = null;
+  }
+
   private void RunProductionTick(float dt) {
-    double span = SpanSinceStamp();
-
-    // Replays the unloaded game-time gap ahead of this real tick.
-    if (_pendingCatchup) {
-      _pendingCatchup = false;
-      TickGameHours = 0;
-      RunAwayCatchup();
+    _stampRestored = false;
+    if (_member == null || _driver == null) {
+      RunSpan(dt, SpanSinceStamp());
+      return;
     }
-
-    RunSpan(dt, span);
+    if (_driver.IsHeld(Blockentity.Pos))
+      return;
+    using (FastForward.Step(_driver, Blockentity.Pos))
+      RunMemberTick(dt);
   }
 
   private double SpanSinceStamp() =>
@@ -130,28 +174,22 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
     StampNow();
   }
 
-  private void RunAwayCatchup() {
-    if (
-      MaxAwayCatchupSteps <= 0
-      || _lastTickHours < 0
-      || Blockentity.Api?.World == null
-    )
-      return;
-
-    double away = GameTime.SecondsBetween(
-      _lastTickHours,
-      GameTime.NowHours(Blockentity.Api.World)
-    );
-    GameTime.CatchUp(
-      away,
-      AwayCatchupStepSeconds,
-      MaxAwayCatchupSteps,
-      RunOneTick
-    );
+  private void RunMemberTick(float dt) {
+    dt = ClampTick(dt);
+    TickGameHours = dt / GameTime.MachineSecondsPerHour;
+    try {
+      RunGated(dt);
+    } finally {
+      TickGameHours = 0;
+    }
   }
 
-  private void RunOneTick(float dt) {
-    dt = GameMath.Min(dt, ProductionTickMs / 1000f * MaxCatchupTickMultiple);
+  private float ClampTick(float dt) =>
+    GameMath.Min(dt, ProductionTickMs / 1000f * MaxCatchupTickMultiple);
+
+  private void RunOneTick(float dt) => RunGated(ClampTick(dt));
+
+  private void RunGated(float dt) {
     if (CanRunProduction)
       OnProductionTick(dt);
     else
@@ -166,8 +204,13 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
   /// <summary>Runs in place of <see cref="OnProductionTick"/> while the machine is not operational. Default: no-op.</summary>
   protected virtual void OnIdleProductionTick(float dt) { }
 
-  /// <summary>Runs one production tick as the registered listener would, including the game-hour span, its steps, the stamp, the <see cref="CanRunProduction"/> gate and the catch-up <c>dt</c> clamp. Never moves the calendar and runs no pending away replay.</summary>
-  internal void DriveProductionTick(float dt) => RunSpan(dt, SpanSinceStamp());
+  /// <summary>Runs one production tick as the registered listener would, including the game-hour span or the Replay machine's <c>dt</c> hours, the stamp, the <see cref="CanRunProduction"/> gate and the catch-up <c>dt</c> clamp. Never moves the calendar, checks no hold and runs no replay.</summary>
+  internal void DriveProductionTick(float dt) {
+    if (_member != null)
+      RunMemberTick(dt);
+    else
+      RunSpan(dt, SpanSinceStamp());
+  }
 
   /// <summary>Runs <see cref="OnIdleProductionTick"/> directly, bypassing <see cref="CanRunProduction"/>.</summary>
   internal void DriveIdleTick(float dt) => OnIdleProductionTick(dt);
@@ -176,10 +219,12 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
   public override void OnBlockRemoved() {
     base.OnBlockRemoved();
     StopProductionTick();
+    LeaveGroup(removed: true);
   }
 
   public override void OnBlockUnloaded() {
     base.OnBlockUnloaded();
     StopProductionTick();
+    LeaveGroup(removed: false);
   }
 }

@@ -18,6 +18,7 @@ public class FastForwardClockTests {
   private static readonly BlockPos MemberPos = new(0, 5, 0);
 
   private static FastForwardGroup OneGroup(TestWorld w, double? cursor) {
+    w.Networks.FastForward.Replays = false;
     w.Networks.FastForward.Register(MemberPos, cursor);
     w.Networks.ListenerTick(w.Accessor, 0f);
     return Assert.Single(w.Networks.FastForward.Groups);

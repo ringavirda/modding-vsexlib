@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using ExpandedLib.FastForwarding;
+using ExpandedLib.Helpers;
 using ExpandedLib.Machines;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
@@ -45,10 +47,14 @@ public class ProductionProcessTests {
   private const string MachineCode = "test:processmachine";
 
   private static (TestWorld world, TestProductionMachine machine) Placed(
-    bool autoStart = true
+    bool autoStart = true,
+    FastForwardMode mode = FastForwardMode.Off
   ) {
     var world = new TestWorld();
-    var machine = new TestProductionMachine { AutoStart = autoStart };
+    var machine = new TestProductionMachine {
+      AutoStart = autoStart,
+      Mode = mode,
+    };
     world.Place(
       new BlockPos(0, 0, 0),
       TestBlocks.Configure(new Block(), MachineCode, 98),
@@ -215,6 +221,27 @@ public class ProductionProcessTests {
     ProcessOf(machine).DriveProductionTick(1f);
 
     Assert.Equal(3.0, machine.LastTickGameHours, 6);
+  }
+
+  // Fails when the registry takes now as a registering member's cursor in place of its restored stamp.
+  [Fact]
+  public void A_saved_cursor_replays_its_gap_on_load() {
+    var (world, machine) = Placed(autoStart: false, FastForwardMode.Replay);
+    var tree = new TreeAttribute();
+    tree.SetDouble("pm_lastHours", 0.0);
+    world.AdvanceHours(1);
+    machine.FromTreeAttributes(tree, world.World);
+    world.Initialize(machine);
+    machine.StartTicking();
+
+    world.Networks.ListenerTick(world.Accessor, 0.2f);
+
+    Assert.Equal(119, machine.ProductionTicks);
+    Assert.Equal(
+      0.8 / GameTime.MachineSecondsPerHour,
+      world.Calendar.TotalHours - ProcessOf(machine).LastTickHours,
+      6
+    );
   }
 
   #endregion

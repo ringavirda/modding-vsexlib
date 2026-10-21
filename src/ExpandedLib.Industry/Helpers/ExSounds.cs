@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.FastForwarding;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -446,6 +447,8 @@ public static class ExSounds {
     float range,
     float volume
   ) {
+    if (FastForward.Replaying)
+      return;
     double x = pos.X + 0.5,
       y = pos.Y + 0.5,
       z = pos.Z + 0.5;

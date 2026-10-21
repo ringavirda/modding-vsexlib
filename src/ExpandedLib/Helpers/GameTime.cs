@@ -13,9 +13,12 @@ public static class GameTime {
   public static double NowHours(IWorldAccessor world) =>
     FastForward.Replaying ? FastForward.CursorHours : world.Calendar.TotalHours;
 
-  /// <summary>Game-seconds between two <c>Calendar.TotalHours</c> readings; never negative.</summary>
-  public static double SecondsBetween(double fromHours, double toHours) =>
-    Math.Max(0.0, toHours - fromHours) * 3600.0;
+  /// <summary>Retired with the away catch-up.</summary>
+  /// <returns>Always 0.</returns>
+  [Obsolete(
+    "Away catch-up is replaced by the fast-forward replay; this returns 0."
+  )]
+  public static double SecondsBetween(double fromHours, double toHours) => 0.0;
 
   /// <summary>Replays <paramref name="elapsed"/> as sub-steps of at most <paramref name="step"/>, calling <paramref name="action"/> once per sub-step with its length, capped at <paramref name="maxSteps"/>. <paramref name="elapsed"/>, <paramref name="step"/> and the length handed to <paramref name="action"/> share one unit, whatever the caller counts in (seconds, game hours).</summary>
   /// <returns>The number of sub-steps run; 0 when <paramref name="elapsed"/> is 0 or less, or <paramref name="step"/> or <paramref name="maxSteps"/> is not above 0.</returns>

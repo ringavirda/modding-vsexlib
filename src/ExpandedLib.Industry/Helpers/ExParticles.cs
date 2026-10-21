@@ -1,3 +1,4 @@
+using ExpandedLib.FastForwarding;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -50,6 +51,8 @@ public static class ExParticles {
     EvolvingNatFloat? sizeEvolve = null,
     bool shouldDieInLiquid = false
   ) {
+    if (FastForward.Replaying)
+      return;
     var particles = new SimpleParticleProperties(
       minQuantity,
       maxQuantity,

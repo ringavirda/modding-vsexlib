@@ -84,6 +84,7 @@ public class FastForwardGroupTests {
     var w = NewWorld();
     Lay(w, 0, 1);
     w.AdvanceHours(10);
+    Driver(w).Replays = false;
     Driver(w).Register(Member(0), 3.0, [Cell(0)]);
     Driver(w).Register(Member(1), 5.0, [Cell(1)]);
 

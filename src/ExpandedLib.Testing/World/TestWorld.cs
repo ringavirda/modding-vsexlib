@@ -161,6 +161,7 @@ public sealed partial class TestWorld : IDisposable {
       .Do(ci => AdvanceHours(ci.Arg<float>()));
 
     Mods.Add("exlib", "1.0.0").Register(Networks);
+    Networks.FastForward.BudgetMs = 0;
 
     Accessor = BuildAccessor();
     World = BuildWorld();
@@ -633,7 +634,9 @@ public sealed partial class TestWorld : IDisposable {
   #region Time
 
   /// <summary>Advances the simulation by <paramref name="seconds"/> seconds through
-  /// <see cref="BlockNetworkModSystem.ListenerTick"/>, in the server listener's 200 ms fires, five per second.</summary>
+  /// <see cref="BlockNetworkModSystem.ListenerTick"/>, in the server listener's 200 ms fires, five per second.
+  /// Each fire replays the game time the calendar moved past the machines' ticks, with no time budget, so a
+  /// single fire finishes a gap of up to 12 game hours.</summary>
   public void Tick(int seconds = 1) {
     const float fire = BlockNetworkModSystem.ListenerIntervalMs / 1000f;
     for (int i = 0; i < seconds * 5; i++)
@@ -757,7 +760,7 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Game hours one real second makes on the live server at the default calendar.</summary>
   public const double GameHoursPerSecond = 1.0 / GameTime.MachineSecondsPerHour;
 
-  /// <summary>Moves the calendar forward by game hours without ticking (for away-catch-up tests).</summary>
+  /// <summary>Moves the calendar forward by game hours without ticking; the next <see cref="Tick"/> replays the gap on the production machines and networks of its groups.</summary>
   public void AdvanceHours(double hours) => AdvanceDays(hours / 24.0);
 
   private void PushCalendar() {

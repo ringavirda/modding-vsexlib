@@ -1,3 +1,4 @@
+using ExpandedLib.FastForwarding;
 using ExpandedLib.Machines;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
@@ -15,8 +16,11 @@ internal sealed class TestProductionMachine : BlockEntityProductionMachine {
   public float LastProductionDt;
   public float LastIdleDt;
   public double LastTickGameHours;
+  public FastForwardMode Mode = FastForwardMode.Replay;
 
   protected override bool CanRunProduction => Operational;
+
+  protected override FastForwardMode FastForwardMode => Mode;
 
   protected override bool AutoStartProduction => AutoStart;
 

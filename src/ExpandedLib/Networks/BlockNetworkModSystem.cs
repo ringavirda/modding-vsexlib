@@ -113,6 +113,9 @@ public class BlockNetworkModSystem : ModSystem {
     );
   }
 
+  internal BlockNetwork? NetworkById(Guid id) =>
+    _networks.TryGetValue(id, out BlockNetwork? net) ? net : null;
+
   /// <summary>Every live network instance. Server-side only; the client graph is empty.</summary>
   public IEnumerable<BlockNetwork> AllNetworks => _networks.Values;
 
@@ -497,7 +500,7 @@ public class BlockNetworkModSystem : ModSystem {
   /// <see cref="BlockNetwork.StepIntervalMs"/> (read from the type's first live network) has accrued, as the server
   /// listener does every <see cref="ListenerIntervalMs"/>. Time accrues per type and keeps its overshoot. A stepped
   /// network gets <see cref="BlockNetwork.OnTick"/> with the seconds since its type last stepped (at most twice the
-  /// interval), then <see cref="BlockNetwork.OnTickPublished"/> once every due network has stepped.</summary>
+  /// interval), then <see cref="BlockNetwork.OnTickPublished"/> once every due network has stepped. A network in a group that is replaying or frozen is not stepped; after the step the groups' missed game time is replayed.</summary>
   /// <param name="blockAccessor">The accessor the networks read and write through.</param>
   /// <param name="dt">Seconds since the previous call, normally <see cref="ListenerIntervalMs"/> / 1000.</param>
   public void ListenerTick(IBlockAccessor blockAccessor, float dt) {
@@ -527,28 +530,33 @@ public class BlockNetworkModSystem : ModSystem {
       _sinceStepMs[type] = since;
     }
 
-    Step(blockAccessor, due);
-    FastForward.Advance(dt);
+    FastForward.EnsureBuilt();
+    Step(
+      blockAccessor,
+      due.Where(d => !FastForward.IsNetworkHeld(d.Network.Id)).ToList()
+    );
+    FastForward.Advance(blockAccessor, dt);
   }
 
   /// <summary>Steps every live network once with <paramref name="dt"/> seconds, whatever its
   /// <see cref="BlockNetwork.StepIntervalMs"/> and the time accrued, capped at twice the interval; resumes any
   /// suspended connectivity review first and calls <see cref="BlockNetwork.OnTickPublished"/> afterwards. For callers
-  /// that drive the graph themselves; the server listener goes through <see cref="ListenerTick"/>.</summary>
+  /// that drive the graph themselves; the server listener goes through <see cref="ListenerTick"/>. Networks held or frozen by a fast-forward group are skipped, and the groups' missed game time is replayed after the step.</summary>
   /// <param name="blockAccessor">The accessor the networks read and write through.</param>
   /// <param name="dt">Seconds the step covers.</param>
   public void ServerTick(IBlockAccessor blockAccessor, float dt) {
     ResumeSuspendedReviews(blockAccessor);
     int ms = (int)Math.Round(dt * 1000f);
+    FastForward.EnsureBuilt();
     Step(
       blockAccessor,
       [
-        .. _networks.Values.Select(n =>
-          (n, Math.Min(ms, 2 * Math.Max(1, n.StepIntervalMs)))
-        ),
+        .. _networks
+          .Values.Where(n => !FastForward.IsNetworkHeld(n.Id))
+          .Select(n => (n, Math.Min(ms, 2 * Math.Max(1, n.StepIntervalMs)))),
       ]
     );
-    FastForward.Advance(dt);
+    FastForward.Advance(blockAccessor, dt);
   }
 
   private void Step(
