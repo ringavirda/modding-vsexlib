@@ -17,19 +17,21 @@ public readonly record struct MpCamLoad(
 ) {
   private const double Turn = 2 * Math.PI;
 
-  /// <summary>Torque during a lift (N*m): the lift's energy over its arc.</summary>
+  /// <summary>Torque during a lift (N*m): the lift's energy over its arc; 0 when the arc is 0 or less.</summary>
   public float PeakTorque => LiftArc > 0f ? EnergyJ / LiftArc : 0f;
 
-  /// <summary>Torque averaged over a whole turn (N*m): <c>energy * lifts / 2 pi</c>.</summary>
+  /// <summary>Torque averaged over a whole turn (N*m): <c>energy * lifts / 2 pi</c>. Applies no
+  /// guard: a load outside the documented ranges returns the formula's value.</summary>
   public float MeanTorque() => (float)(EnergyJ * LiftsPerTurn / Turn);
 
   /// <summary>Torque averaged over the angle the coming step turns (N*m): the lift radians inside
   /// <c>[phase, phase + speed * dt]</c> times the peak torque, over that angle.</summary>
-  /// <param name="phase">Shaft angle at the step's start (rad), any real; wrapped by turns.</param>
-  /// <param name="speed">Shaft speed (rad/s), unsigned.</param>
-  /// <param name="dt">Step length (s).</param>
-  /// <returns>The step's mean torque; the torque at <paramref name="phase"/> when the step turns no
-  /// angle; 0 when the load has no lifts or arc.</returns>
+  /// <param name="phase">Shaft angle at the step's start (rad), in [0, 2 pi): keep it wrapped, since a float phase far from 0 rounds
+  /// <c>phase + speed * dt</c> and a drop at the step's end is then counted twice or not at all.</param>
+  /// <param name="speed">Shaft speed (rad/s), 0 or more.</param>
+  /// <param name="dt">Step length (s), 0 or more.</param>
+  /// <returns>The step's mean torque; the torque at <paramref name="phase"/> when
+  /// <c>speed * dt</c> is 0 or less; 0 when the load has no lifts or arc.</returns>
   public float StepTorque(float phase, float speed, float dt) {
     if (LiftsPerTurn < 1 || LiftArc <= 0f || EnergyJ <= 0f) {
       return 0f;
@@ -45,7 +47,8 @@ public readonly record struct MpCamLoad(
   }
 
   /// <summary>Drops a phase advance passes: lift ends in <c>(phase, phase + dphase]</c>.</summary>
-  /// <param name="phase">Shaft angle before the advance (rad).</param>
+  /// <param name="phase">Shaft angle before the advance (rad), in [0, 2 pi): keep it
+  /// wrapped, since a float phase far from 0 rounds <c>phase + dphase</c> and a drop at the advance's end is then counted twice or not at all.</param>
   /// <param name="dphase">Angle turned (rad); 0 or less crosses none.</param>
   /// <returns>The count, which exceeds 1 when the advance spans several lifts.</returns>
   public int DropsCrossed(float phase, float dphase) {
