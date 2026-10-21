@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Networks;
 
 namespace ExpandedLib.Industry.MechanicalPower;
@@ -30,6 +31,8 @@ internal sealed class MpShaftStore {
   private float[] _efficiency = new float[16];
   private float[] _carried = new float[16];
   private int _nodes;
+
+  private readonly List<(int A, int B, float Ratio, int Sign)> _edges = [];
 
   public int NodeCount => _nodes;
 
@@ -94,6 +97,164 @@ internal sealed class MpShaftStore {
   }
 
   public int IndexOf(NodeKey key) => _index[key];
+
+  /// <summary>Every node by key.</summary>
+  public IReadOnlyDictionary<NodeKey, int> Nodes => _index;
+
+  /// <summary>Number of shaft joints added with <see cref="TryAddEdge"/> and kept.</summary>
+  public int EdgeCount => _edges.Count;
+
+  /// <summary>Index of the group the node belongs to.</summary>
+  public int GroupOf(int node) => _group[node];
+
+  /// <summary>Signed speed of the node over its group's reference speed.</summary>
+  public float RatioOf(int node) => _ratio[node];
+
+  /// <summary>Sets the node's rotational inertia at its own speed.</summary>
+  /// <param name="inertiaKgM2">kg*m^2; negative values count as 0.</param>
+  public void SetInertia(int node, float inertiaKgM2) =>
+    _inertia[node] = MathF.Max(0f, inertiaKgM2);
+
+  /// <summary>Sets the node's Coulomb standing torque at its own speed.</summary>
+  /// <param name="standingNm">N*m; negative values count as 0.</param>
+  public void SetStanding(int node, float standingNm) =>
+    _standing[node] = MathF.Max(0f, standingNm);
+
+  /// <summary>Inertia of the group reflected to its reference speed in kg*m^2: the sum of each node's inertia times its squared ratio.</summary>
+  public float ReflectedInertia(int group) {
+    float inertia = 0f;
+    for (int i = 0; i < _nodes; i++)
+      if (_group[i] == group)
+        inertia += _inertia[i] * _ratio[i] * _ratio[i];
+    return inertia;
+  }
+
+  /// <summary>
+  /// Joins two nodes by a shaft or gear joint. The output node turns at <c>sign / ratio</c> times the input's
+  /// ratio. Nodes of one group must already agree with the joint; nodes of two groups bring both into the first
+  /// node's group, rescaling the second group and mixing the speeds by momentum.
+  /// </summary>
+  /// <param name="input">Index of the input node.</param>
+  /// <param name="output">Index of the output node, with a ratio other than zero.</param>
+  /// <param name="ratio">Input speed over output speed in magnitude, above zero.</param>
+  /// <param name="sign">+1 when the output turns the same way as the input, -1 against it.</param>
+  /// <returns>False, with the store unchanged, when the joint closes a ring whose ratio or sign product is not 1.</returns>
+  public bool TryAddEdge(int input, int output, float ratio, int sign) {
+    float expected = _ratio[input] * (sign < 0 ? -1f : 1f) / ratio;
+    if (_group[input] == _group[output]) {
+      if (
+        MathF.Abs(_ratio[output] - expected)
+        > 1e-4f * MathF.Max(1f, MathF.Abs(expected))
+      )
+        return false;
+    } else {
+      if (_ratio[output] == 0f)
+        return false;
+      JoinGroups(_group[input], _group[output], expected / _ratio[output]);
+    }
+    _edges.Add((input, output, ratio, sign < 0 ? -1 : 1));
+    return true;
+  }
+
+  /// <summary>
+  /// Moves every node of group <paramref name="from"/> into <paramref name="into"/> with its ratio multiplied by
+  /// <paramref name="factor"/>, and sets the joined group's speed so that the momentum of both is conserved.
+  /// The emptied group stays and steps nothing.
+  /// </summary>
+  private void JoinGroups(int into, int from, float factor) {
+    float momentum = 0f;
+    float reflected = 0f;
+    for (int i = 0; i < _nodes; i++) {
+      if (_group[i] == into) {
+        float n = _ratio[i];
+        momentum += _inertia[i] * n * n * _speed[into];
+        reflected += _inertia[i] * n * n;
+      } else if (_group[i] == from) {
+        float n = _ratio[i] * factor;
+        momentum += _inertia[i] * n * _ratio[i] * _speed[from];
+        reflected += _inertia[i] * n * n;
+        _ratio[i] = n;
+        _group[i] = into;
+      }
+    }
+    if (reflected > 0f)
+      _speed[into] = momentum / reflected;
+  }
+
+  /// <summary>Mixes a body of inertia <paramref name="inertiaKgM2"/> at <paramref name="speed"/> into the group by momentum: the group's speed becomes the mean of the two weighted by reflected inertia.</summary>
+  /// <param name="group">Index from <see cref="AddGroup"/>.</param>
+  /// <param name="inertiaKgM2">Inertia of the other body at the group's reference, kg*m^2, zero or more.</param>
+  /// <param name="speed">Reference speed of the other body in rad/s, signed.</param>
+  public void Mix(int group, float inertiaKgM2, float speed) {
+    float own = ReflectedInertia(group);
+    float other = MathF.Max(0f, inertiaKgM2);
+    if (own + other > 0f)
+      _speed[group] = (own * _speed[group] + other * speed) / (own + other);
+  }
+
+  /// <summary>
+  /// Takes every group, node and joint of <paramref name="other"/> into this store's first group (made when the
+  /// store has none) and sets that group's speed by momentum, <c>w = sum(I n w_node) / sum(I n^2)</c> over both
+  /// stores' nodes, each node's speed taken before the join. The energy difference is lost.
+  /// </summary>
+  /// <exception cref="ArgumentException">Both stores hold the same node.</exception>
+  public void Absorb(MpShaftStore other) {
+    if (_groups == 0)
+      AddGroup();
+    var grouped = new Dictionary<int, int>();
+    var map = new Dictionary<int, int>();
+    foreach (var (key, i) in other._index.OrderBy(e => e.Value)) {
+      int g = other._group[i];
+      if (!grouped.TryGetValue(g, out int mine))
+        grouped[g] = mine = AddGroup(other._speed[g]);
+      map[i] = CopyNode(other, key, i, mine);
+    }
+    CopyEdges(other, map);
+    foreach (int g in grouped.Values)
+      JoinGroups(0, g, 1f);
+  }
+
+  /// <summary>
+  /// Copies into this empty store the nodes of <paramref name="source"/> named in <paramref name="keys"/>, with
+  /// their ratios, the joints between them and one group per source group they came from, each keeping its
+  /// source's speed. Keys the source does not hold are skipped.
+  /// </summary>
+  public void Take(MpShaftStore source, IReadOnlySet<NodeKey> keys) {
+    var grouped = new Dictionary<int, int>();
+    var map = new Dictionary<int, int>();
+    foreach (var (key, i) in source._index.OrderBy(e => e.Value)) {
+      if (!keys.Contains(key))
+        continue;
+      int g = source._group[i];
+      if (!grouped.TryGetValue(g, out int mine))
+        grouped[g] = mine = AddGroup(source._speed[g]);
+      map[i] = CopyNode(source, key, i, mine);
+    }
+    CopyEdges(source, map);
+  }
+
+  private int CopyNode(MpShaftStore source, NodeKey key, int i, int group) {
+    int node = AddNode(
+      key,
+      group,
+      source._inertia[i],
+      source._standing[i],
+      source._ratio[i]
+    );
+    _drive[node] = source._drive[i];
+    _driveSlope[node] = source._driveSlope[i];
+    _load[node] = source._load[i];
+    _loadSlope[node] = source._loadSlope[i];
+    _efficiency[node] = source._efficiency[i];
+    _carried[node] = source._carried[i];
+    return node;
+  }
+
+  private void CopyEdges(MpShaftStore source, Dictionary<int, int> map) {
+    foreach (var (a, b, ratio, sign) in source._edges)
+      if (map.TryGetValue(a, out int na) && map.TryGetValue(b, out int nb))
+        _edges.Add((na, nb, ratio, sign));
+  }
 
   /// <summary>Declares the node's drive for the next step.</summary>
   /// <param name="torqueNm">Drive torque at the node's present speed, N*m; negative values count as 0.</param>

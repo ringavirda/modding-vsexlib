@@ -13,7 +13,7 @@ public class NetworkTypeRegistrationTests {
     var world = new TestWorld();
     IndustryModule.RegisterNetworkTypes(world.Networks);
     Assert.Equal(
-      ["molten", "mpenergy", "pipe"],
+      ["molten", "mpenergy", "mpshaft", "pipe"],
       world.Networks.RegisteredNetworkTypes.Order()
     );
   }
