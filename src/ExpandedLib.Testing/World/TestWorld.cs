@@ -624,6 +624,23 @@ public sealed partial class TestWorld : IDisposable {
     return this;
   }
 
+  /// <summary>The positions of the members in the fast-forward group holding <paramref name="pos"/>, as of the last
+  /// replay pass.</summary>
+  /// <param name="pos">A member's position.</param>
+  /// <returns>Every member position of the group, <paramref name="pos"/> included; empty when it is in none.</returns>
+  public IReadOnlyList<BlockPos> FastForwardGroupOf(BlockPos pos) =>
+    [
+      .. Networks.FastForward.GroupOf(pos)?.Members.Select(m => m.Pos.Copy())
+        ?? [],
+    ];
+
+  /// <summary>How many base replay steps the fast-forward group holding <paramref name="pos"/> has run in the
+  /// replay now under way; a replay that closes its gap resets it.</summary>
+  /// <param name="pos">A member's position.</param>
+  /// <returns>The step count, 0 when the position is in no group.</returns>
+  public int ReplayedSteps(BlockPos pos) =>
+    Networks.FastForward.GroupOf(pos)?.ReplayedSteps ?? 0;
+
   /// <summary>What <see cref="Accessor"/> sees at <paramref name="pos"/> in
   /// <paramref name="layer"/>: the placed block, or <see cref="Air"/> when its chunk is
   /// away.</summary>

@@ -2,6 +2,7 @@ using System.Linq;
 using ExpandedLib.FastForwarding;
 using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Pipes;
+using ExpandedLib.Machines;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
@@ -40,7 +41,60 @@ public class FastForwardFreezeTests {
       face == BlockFacing.EAST || face == BlockFacing.WEST;
   }
 
+  // A plain block entity hosting the behaviour directly, as the bench and the mill do.
+  private sealed class HostedMachine : BlockEntity {
+    public HostedMachine() {
+      Behaviors.Add(new HostedProduction(this));
+    }
+  }
+
+  private sealed class HostedProduction(BlockEntity be)
+    : BEBehaviorProductionMachine(be) {
+    protected override void OnProductionTick(float dt) { }
+  }
+
   #endregion
+
+  // Fails when IsFrozen answers false, so a caller reading it never sees the group away.
+  [Fact]
+  public void IsFrozen_holds_while_a_member_is_away() {
+    TestWorld w = Pair();
+    var inNone = new BlockPos(0, 5, 20);
+    w.UnloadChunkAt(B, unloadEntities: true);
+    w.Tick();
+
+    Assert.True(FastForward.IsFrozen(w.World, A));
+    Assert.False(FastForward.IsFrozen(w.World, inNone));
+
+    w.LoadChunkAt(B);
+    w.Tick();
+
+    Assert.False(FastForward.IsFrozen(w.World, A));
+  }
+
+  // Fails when the behaviour's save skips ff_peers, so a hosted machine reloaded beside an absent peer runs alone.
+  [Fact]
+  public void A_hosted_behaviour_saves_its_peers() {
+    var w = new TestWorld();
+    var host = new HostedMachine();
+    w.Place(
+      A,
+      TestBlocks.Configure(new Block(), "test:hostedmachine", 95),
+      host
+    );
+    w.Initialize(host);
+    FastForwardMemberTests.Place(w, B, A);
+    w.Tick();
+    w.UnloadChunkAt(B, unloadEntities: true);
+    Driver(w).Remove(B);
+
+    w.Reload(A);
+    w.AdvanceHours(1);
+    w.Tick(2);
+
+    Assert.True(Driver(w).Groups.Single().Frozen);
+    Assert.True(FastForward.IsFrozen(w.World, A));
+  }
 
   // Fails when an absent member is ignored, so the loaded member steps through the hour its partner missed.
   [Fact]

@@ -196,6 +196,15 @@ internal sealed class FastForwardDriver {
     && member.Group is { } group
     && Holds(group);
 
+  /// <summary>Whether the member at <paramref name="pos"/> sits in a group with a member away.</summary>
+  internal bool IsFrozen(BlockPos pos) => GroupOf(pos)?.Frozen == true;
+
+  /// <summary>The group holding the member at <paramref name="pos"/> as of the last rebuild, or null when none is registered there or it is in none.</summary>
+  internal FastForwardGroup? GroupOf(BlockPos pos) =>
+    _members.TryGetValue(pos, out FastForwardMember? member)
+      ? member.Group
+      : null;
+
   /// <summary>Whether the network <paramref name="id"/> sits in a group that is held or frozen, so its live step stands aside.</summary>
   internal bool IsNetworkHeld(Guid id) =>
     _networkGroups.TryGetValue(id, out FastForwardGroup? group) && Holds(group);

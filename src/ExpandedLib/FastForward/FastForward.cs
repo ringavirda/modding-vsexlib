@@ -1,4 +1,6 @@
 using System;
+using ExpandedLib.Networks;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.FastForwarding;
@@ -22,6 +24,15 @@ public static class FastForward {
 
   /// <summary>The calendar time, in game hours since the world's start, the running replay step stands at; 0 outside a replay.</summary>
   public static double CursorHours => _replaying ? _cursorHours : 0.0;
+
+  /// <summary>Whether the block entity at <paramref name="pos"/> is a member of a group with a member away, so nothing in the group steps until the last one is back.</summary>
+  /// <param name="world">The world the position is in.</param>
+  /// <param name="pos">The block entity's position.</param>
+  /// <returns>False for a position in no group, and always on the client.</returns>
+  public static bool IsFrozen(IWorldAccessor world, BlockPos pos) =>
+    world.Side == EnumAppSide.Server
+    && world.Api.ModLoader.GetModSystem<BlockNetworkModSystem>() is { } networks
+    && networks.FastForward.IsFrozen(pos);
 
   internal static Frame Replay(double cursorHours) {
     var frame = new Frame(_replaying, _cursorHours, _driver, _member);

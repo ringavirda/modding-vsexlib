@@ -2,6 +2,7 @@ using System;
 using ExpandedLib.FastForwarding;
 using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
+using ExpandedLib.Structures;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -132,6 +133,25 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
 
   /// <summary>Takes <c>ff_ports</c> and <c>ff_peers</c> from <paramref name="tree"/> for the machine to join its group with when it initialises.</summary>
   internal void RestoreFastForward(ITreeAttribute tree) => _record.Read(tree);
+
+  public override void ToTreeAttributes(ITreeAttribute tree) {
+    base.ToTreeAttributes(tree);
+    if (!SavesItsOwnFastForward)
+      SaveFastForward(tree);
+  }
+
+  public override void FromTreeAttributes(
+    ITreeAttribute tree,
+    IWorldAccessor worldForResolving
+  ) {
+    base.FromTreeAttributes(tree, worldForResolving);
+    if (!SavesItsOwnFastForward)
+      RestoreFastForward(tree);
+  }
+
+  // The two machine hosts write the keys beside pm_lastHours; one writer per tree.
+  private bool SavesItsOwnFastForward =>
+    Blockentity is BlockEntityProductionMachine or BlockEntityMultiblockMachine;
 
   private void LeaveGroup(bool removed) {
     if (_member == null || _driver == null)
