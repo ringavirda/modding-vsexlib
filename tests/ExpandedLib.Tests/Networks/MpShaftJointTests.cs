@@ -3,9 +3,11 @@ using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -30,6 +32,10 @@ public class MpShaftJointTests {
     public float DriveTorque(float speed) => Drive;
 
     public float LoadTorque(float speed) => Load;
+  }
+
+  private sealed class HeavyCell : BlockEntity, IMpEnergyStorage {
+    public float Inertia => 100f;
   }
 
   private sealed class FrameEntity : BlockEntity, IMpEnergyLink {
@@ -141,6 +147,8 @@ public class MpShaftJointTests {
   private static readonly BlockPos F = new(1, 0, 0);
   private static readonly BlockPos D = new(1, 0, 1);
   private static readonly BlockPos C = new(0, 0, 1);
+  private static readonly BlockPos H = new(1, 0, 2);
+  private static readonly BlockPos G = new(1, 0, 3);
 
   private static int _ids = 500;
 
@@ -207,12 +215,13 @@ public class MpShaftJointTests {
   private static bool CanPlaceAt(
     TestWorld w,
     Block block,
-    out string failureCode
+    out string failureCode,
+    IPlayer? byPlayer = null
   ) {
     failureCode = "";
     return block.CanPlaceBlock(
       w.World,
-      null!,
+      byPlayer!,
       new BlockSelection { Position = C.Copy() },
       ref failureCode
     );
@@ -286,6 +295,33 @@ public class MpShaftJointTests {
 
     Assert.True(frame < lossless);
     Assert.Equal(lossless - frame, 0.2f * 0.02f * 100f / 2f, 0.05f);
+  }
+
+  // Fails when the loss of a geared frame is taken on the torque at the input side, not on what the output carries.
+  [Fact]
+  public void Frame_RatioAndEfficiency() {
+    float Gain(float efficiency) {
+      var (w, _, _, _) = Line(
+        ratio: 4f,
+        efficiency: efficiency,
+        drive: 110f,
+        load: 400f
+      );
+      Tick(w);
+      Tick(w);
+      var store = Run(w).Store;
+      int node = store.IndexOf(NodeKey.Centre(A));
+      float before = store.NodeSpeed(node);
+      Tick(w);
+      return store.NodeSpeed(node) - before;
+    }
+
+    var (w4, _, _, _) = Line(ratio: 4f);
+    Tick(w4);
+    var geared = Run(w4).Store;
+    Assert.Equal(0.25f, geared.RatioOf(geared.IndexOf(NodeKey.Centre(D))), 3);
+
+    Assert.Equal(Gain(1f) - Gain(0.98f), 0.2f * 0.02f * 100f / 1.0625f, 0.02f);
   }
 
   #endregion
@@ -369,20 +405,65 @@ public class MpShaftJointTests {
     Assert.Equal("exlib-mpshaft-jam", code);
   }
 
-  // Fails when the behaviour ignores its declared network type, or defaults to another.
+  // Fails when the behaviour ignores its declared network type, or asks the type of the block when it declares none.
   [Fact]
-  public void Placement_AsksTheDeclaredNetworkTypeAndDefaultsToMpshaft() {
+  public void Placement_AsksTheDeclaredNetworkTypeAndDefaultsToTheBlocksOwn() {
     var (w, _, _, _) = Line(ratio: 2f);
     Tick(w);
 
-    Assert.Equal(
-      "mpshaft",
-      new BlockBehaviorExNetworkPlacement(new Block()).NetworkType
-    );
+    Assert.Null(new BlockBehaviorExNetworkPlacement(new Block()).NetworkType);
+    Assert.False(CanPlaceAt(w, Closer(), out _));
     Assert.True(
       CanPlaceAt(w, Closer("""{"networkType":"other"}"""), out string code)
     );
     Assert.Equal("", code);
+  }
+
+  // Fails when a block that declares no type and is no network member is refused.
+  [Fact]
+  public void Placement_ABlockWithNoTypeIsAccepted() {
+    var (w, _, _, _) = Line(ratio: 2f);
+    Tick(w);
+    var plain = TestBlocks.Configure(new Block(), "test:plain", 498);
+    var behaviour = new BlockBehaviorExNetworkPlacement(plain);
+    behaviour.Initialize(new JsonObject(JToken.Parse("{}")));
+    plain.BlockBehaviors = [behaviour];
+    plain.CollectibleBehaviors = [behaviour];
+
+    Assert.True(CanPlaceAt(w, plain, out string code));
+    Assert.Equal("", code);
+  }
+
+  // Fails when a refusal is not sent to the placing player with its failure code.
+  [Fact]
+  public void Place_RefusalIsSentToThePlayer() {
+    var (w, _, _, _) = Line(ratio: 2f);
+    Tick(w);
+    var player = Substitute.For<IServerPlayer>();
+
+    Assert.False(CanPlaceAt(w, Closer(), out _, player));
+
+    player
+      .Received(1)
+      .SendIngameError(
+        "exlib-mpshaft-jam",
+        Arg.Any<string>(),
+        Arg.Any<object[]>()
+      );
+  }
+
+  // Fails when an accepted placement sends the player an error.
+  [Fact]
+  public void Place_AcceptanceSendsNothing() {
+    var (w, _, _, _) = Line();
+    Tick(w);
+    var player = Substitute.For<IServerPlayer>();
+
+    Assert.True(CanPlaceAt(w, Closer(), out _, player));
+
+    player
+      .DidNotReceiveWithAnyArgs()
+      .SendIngameError(default!, default, default!);
   }
 
   // Fails when a network bordering the cell on two faces is asked twice.
@@ -462,10 +543,10 @@ public class MpShaftJointTests {
     );
   }
 
-  // Fails when BlockNetworkNode places without asking the placement behaviour.
-  [Fact]
-  public void NetworkNodePlacement_ObeysTheBehavioursRefusal() {
-    var w = NewWorld();
+  private static TestNetworkBlock RefusingFamily(
+    TestWorld w,
+    bool declareBehaviour
+  ) {
     w.RegisterNetwork("counting", sys => new CountingNetwork(sys));
     w.PlaceNode(A, "counting", "we");
     ((CountingNetwork)w.NetworkAt(A)!).Code = "test-refused";
@@ -477,31 +558,171 @@ public class MpShaftJointTests {
       700
     );
     foreach (var variant in family) {
-      var behaviour = new BlockBehaviorExNetworkPlacement(variant);
-      behaviour.Initialize(
-        new JsonObject(JToken.Parse("""{"networkType":"counting"}"""))
-      );
-      variant.BlockBehaviors = [.. variant.BlockBehaviors, behaviour];
-      variant.CollectibleBehaviors =
-      [
-        .. variant.CollectibleBehaviors,
-        behaviour,
-      ];
+      if (declareBehaviour) {
+        var behaviour = new BlockBehaviorExNetworkPlacement(variant);
+        behaviour.Initialize(
+          new JsonObject(JToken.Parse("""{"networkType":"counting"}"""))
+        );
+        variant.BlockBehaviors = [.. variant.BlockBehaviors, behaviour];
+        variant.CollectibleBehaviors =
+        [
+          .. variant.CollectibleBehaviors,
+          behaviour,
+        ];
+      }
       w.Register(variant);
     }
-    var block = family[1];
-    string code = "";
+    return family[1];
+  }
 
-    bool placed = block.TryPlaceBlock(
+  private static bool TryPlace(
+    TestWorld w,
+    Block block,
+    IPlayer? player,
+    out string code
+  ) {
+    code = "";
+    return block.TryPlaceBlock(
       w.World,
-      null!,
+      player!,
       new ItemStack(block),
       new BlockSelection { Position = F.Copy(), Face = BlockFacing.EAST },
       ref code
     );
+  }
+
+  // Fails when BlockNetworkNode places without asking the placement behaviour.
+  [Fact]
+  public void NetworkNodePlacement_ObeysTheBehavioursRefusal() {
+    var w = NewWorld();
+    var block = RefusingFamily(w, declareBehaviour: true);
+
+    bool placed = TryPlace(w, block, null, out string code);
 
     Assert.False(placed);
     Assert.Equal("test-refused", code);
+  }
+
+  // Fails when a node block that declares no placement behaviour is not asked for its own network type.
+  [Fact]
+  public void NetworkNodePlacement_AsksItsOwnTypeWithoutTheBehaviour() {
+    var w = NewWorld();
+    var block = RefusingFamily(w, declareBehaviour: false);
+
+    bool placed = TryPlace(w, block, null, out string code);
+
+    Assert.False(placed);
+    Assert.Equal("test-refused", code);
+  }
+
+  // Fails when a node placement refused by its network is not reported to the player.
+  [Fact]
+  public void NetworkNodePlacement_RefusalIsSentToThePlayer() {
+    var w = NewWorld();
+    var block = RefusingFamily(w, declareBehaviour: false);
+    var player = Substitute.For<IServerPlayer>();
+
+    TryPlace(w, block, player, out _);
+
+    player
+      .Received(1)
+      .SendIngameError("test-refused", Arg.Any<string>(), Arg.Any<object[]>());
+  }
+
+  #endregion
+
+  #region Rebuilding the joints
+
+  // Fails when a run that loses a cell without splitting keeps the solved-edge count of the store it left.
+  [Fact]
+  public void Rebuild_RemovingACellOfARunWithALinkTicks() {
+    var w = NewWorld();
+    var a = new Cell();
+    var f = new FrameEntity();
+    var d = new Cell();
+    Put(w, A, a, new CellMember(a, "e"));
+    Put(w, F, f, new FrameMember(f, "ws"));
+    Put(w, D, d, new CellMember(d, "n"));
+    Tick(w);
+    Tick(w);
+    Assert.Equal(3, Run(w).Store.EdgeCount);
+
+    w.RemoveNode(D);
+
+    Assert.Null(Record.Exception(() => Tick(w)));
+  }
+
+  // Fails when a merge on the geared side of a link leaves the absorbed run at its old ratio and the seam joint out.
+  [Fact]
+  public void Rebuild_MergeOnTheGearedSideKeepsTheSeamJoint() {
+    var w = NewWorld();
+    var a = new Cell();
+    var f = new FrameEntity { Ratio = 2f };
+    var d = new Cell();
+    var g = new Cell();
+    var h = new Cell();
+    Put(w, A, a, new CellMember(a, "e"));
+    Put(w, F, f, new FrameMember(f, "ws"));
+    Put(w, D, d, new CellMember(d, "ns"));
+    Tick(w);
+    Put(w, G, g, new CellMember(g, "n"));
+    ((MpShaftNetwork)w.NetworkAt(G)!).OnTick(w.Accessor, 0.2f, w.Networks);
+    Assert.NotSame(w.NetworkAt(A), w.NetworkAt(G));
+
+    Put(w, H, h, new CellMember(h, "ns"));
+    Assert.Same(w.NetworkAt(A), w.NetworkAt(G));
+    Tick(w);
+
+    var store = Run(w).Store;
+    float rd = store.RatioOf(store.IndexOf(NodeKey.Centre(D)));
+    float rg = store.RatioOf(store.IndexOf(NodeKey.Centre(G)));
+    Assert.Equal(5, store.EdgeCount);
+    Assert.Equal(0.5f, rd, 3);
+    Assert.Equal(rd, rg, 3);
+  }
+
+  // Fails when a joint whose crossing is gone while both its cells stay is kept.
+  [Fact]
+  public void Rebuild_AJointWhoseCrossingIsGoneIsDropped() {
+    var w = NewWorld();
+    var a = new Cell();
+    var b = new Cell();
+    var c = new Cell();
+    var d = new Cell();
+    var mb = new CellMember(b, "ws");
+    Put(w, A, a, new CellMember(a, "es"));
+    Put(w, F, b, mb);
+    Put(w, C, c, new CellMember(c, "ne"));
+    Put(w, D, d, new CellMember(d, "nw"));
+    Tick(w);
+    Assert.Equal(4, Run(w).Store.EdgeCount);
+
+    mb.DeclareConnectors("w");
+    Run(w).OnTopologyChanged();
+    Tick(w);
+
+    Assert.Equal(3, Run(w).Store.EdgeCount);
+  }
+
+  // Fails when a cell entering past a geared link takes the run's speed at ratio 1 instead of joining at rest by momentum.
+  [Fact]
+  public void Rebuild_AHeavyCellPastAGearedLinkEntersAtRest() {
+    var w = NewWorld();
+    var a = new Cell();
+    var f = new FrameEntity { Ratio = 2f };
+    var d = new Cell();
+    var e = new HeavyCell();
+    Put(w, A, a, new CellMember(a, "e"));
+    Put(w, F, f, new FrameMember(f, "ws"));
+    Put(w, D, d, new CellMember(d, "ns"));
+    Tick(w);
+    Run(w).Store.Mix(0, 1e6f, 10f);
+    float w0 = Run(w).Store.Speed(0);
+
+    Put(w, H, e, new CellMember(e, "n"));
+    Tick(w);
+
+    Assert.Equal(w0 * 1.25f / 26.25f, Run(w).Store.Speed(0), 2);
   }
 
   #endregion

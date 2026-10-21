@@ -44,6 +44,8 @@ internal sealed partial class MpShaftStore {
     float Stiffness
   )> _edges = [];
 
+  private readonly Dictionary<(int, int), int> _edgeIndex = [];
+
   public int NodeCount => _nodes;
 
   public int GroupCount => _groups;
@@ -121,21 +123,18 @@ internal sealed partial class MpShaftStore {
 
   /// <summary>Index of the joint that joins the two nodes in either direction, or -1 when none does.</summary>
   public int EdgeIndex(int a, int b) =>
-    _edges.FindIndex(e => (e.A == a && e.B == b) || (e.A == b && e.B == a));
+    _edgeIndex.TryGetValue(a < b ? (a, b) : (b, a), out int edge) ? edge : -1;
+
+  private void AddEdge(int a, int b, float ratio, int sign, float stiffness) {
+    _edgeIndex.TryAdd(a < b ? (a, b) : (b, a), _edges.Count);
+    _edges.Add((a, b, ratio, sign, stiffness));
+  }
 
   /// <summary>A copy holding the same nodes, groups with their speeds, and joints in their order, sharing nothing with this store.</summary>
   public MpShaftStore Clone() {
     var copy = new MpShaftStore();
     copy.Take(this, _index.Keys.ToHashSet());
     return copy;
-  }
-
-  /// <summary>Moves the node into a group of its own at ratio 1, turning at the speed it had, so a joint of any ratio can then join it.</summary>
-  public void Isolate(int node) {
-    int group = AddGroup(NodeSpeed(node));
-    _group[node] = group;
-    _ratio[node] = 1f;
-    _topology++;
   }
 
   /// <summary>Index of the group the node belongs to.</summary>
@@ -201,7 +200,7 @@ internal sealed partial class MpShaftStore {
         return false;
       JoinGroups(_group[input], _group[output], expected / _ratio[output]);
     }
-    _edges.Add((input, output, ratio, sign < 0 ? -1 : 1, stiffness));
+    AddEdge(input, output, ratio, sign < 0 ? -1 : 1, stiffness);
     _topology++;
     return true;
   }
@@ -293,6 +292,57 @@ internal sealed partial class MpShaftStore {
     CopyEdges(source, map);
   }
 
+  /// <summary>
+  /// Copies into this empty store the nodes of <paramref name="source"/> named in <paramref name="keys"/>, each in
+  /// a group of its own at ratio 1 turning at the speed it had, and no joints, so joints of any ratio can join
+  /// them again. Keys the source does not hold are skipped.
+  /// </summary>
+  public void TakeLoose(MpShaftStore source, IReadOnlySet<NodeKey> keys) {
+    foreach (var (key, i) in source._index.OrderBy(e => e.Value)) {
+      if (!keys.Contains(key))
+        continue;
+      int node = CopyNode(source, key, i, AddGroup(source.NodeSpeed(i)));
+      _ratio[node] = 1f;
+    }
+    _topology++;
+  }
+
+  /// <summary>
+  /// Folds every node that is alone in its group into group 0 by momentum, then renumbers the groups in the order
+  /// of their first node, dropping empty ones, so group 0 is the group of the first node.
+  /// </summary>
+  public void Settle() {
+    Compact();
+    var size = new int[_groups];
+    for (int i = 0; i < _nodes; i++)
+      size[_group[i]]++;
+    for (int i = 0; i < _nodes; i++)
+      if (_group[i] != 0 && size[_group[i]] == 1)
+        Fold(_group[i], 0);
+    Compact();
+  }
+
+  private void Compact() {
+    var map = new Dictionary<int, int>();
+    for (int i = 0; i < _nodes; i++)
+      map.TryAdd(_group[i], map.Count);
+    var speed = new float[_speed.Length];
+    var previous = new float[_speed.Length];
+    var rest = new bool[_speed.Length];
+    foreach (var (old, renumbered) in map) {
+      speed[renumbered] = _speed[old];
+      previous[renumbered] = _previous[old];
+      rest[renumbered] = _rest[old];
+    }
+    _speed = speed;
+    _previous = previous;
+    _rest = rest;
+    _groups = map.Count;
+    for (int i = 0; i < _nodes; i++)
+      _group[i] = map[_group[i]];
+    _topology++;
+  }
+
   private int CopyNode(MpShaftStore source, NodeKey key, int i, int group) {
     int node = AddNode(
       key,
@@ -314,7 +364,7 @@ internal sealed partial class MpShaftStore {
   private void CopyEdges(MpShaftStore source, Dictionary<int, int> map) {
     foreach (var (a, b, ratio, sign, stiffness) in source._edges)
       if (map.TryGetValue(a, out int na) && map.TryGetValue(b, out int nb))
-        _edges.Add((na, nb, ratio, sign, stiffness));
+        AddEdge(na, nb, ratio, sign, stiffness);
     _topology++;
   }
 

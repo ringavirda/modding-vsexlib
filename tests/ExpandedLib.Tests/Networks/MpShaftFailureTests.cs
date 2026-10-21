@@ -231,6 +231,27 @@ public class MpShaftFailureTests {
     Assert.True(wheel.Bursts > 0);
   }
 
+  // Fails when a block entity holding two nodes strains once per node instead of once per cell.
+  [Fact]
+  public void Flywheel_TwoNodesStrainTheCellOnce() {
+    var w = new TestWorld();
+    var wheel = new Wheel();
+    var net = Wire(w, (0, wheel));
+    var pos = new BlockPos(0, 0, 0);
+    net.NodeKeys.Clear();
+    int group = net.Store.AddGroup(15f);
+    foreach (int port in new[] { 0, 1 }) {
+      var key = NodeKey.Port(pos, port);
+      net.NodeKeys.Add(key);
+      net.Store.AddNode(key, group, wheel.Inertia, 0f);
+    }
+    Tick(w, net, 0);
+
+    Tick(w, net, 0.5);
+
+    Assert.Equal(0.25f, wheel.RimStrain, 2);
+  }
+
   // Fails when a wheel under its limit strains.
   [Fact]
   public void Flywheel_UnderLimitTakesNoStrain() {

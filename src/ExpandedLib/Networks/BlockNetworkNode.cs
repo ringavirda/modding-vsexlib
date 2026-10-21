@@ -150,8 +150,14 @@ public abstract class BlockNetworkNode
     Block? block = world.GetBlock(newCode);
 
     if (
-      block?.GetBehavior<BlockBehaviorExNetworkPlacement>() is { } placement
-      && !placement.Accepts(world, blockSel.Position, ref failureCode)
+      block != null
+      && !AcceptsPlacement(
+        world,
+        byPlayer,
+        block,
+        blockSel.Position,
+        ref failureCode
+      )
     ) {
       _tempOrientationsStore.TryRemove(blockSel.Position, out _);
       return false;
@@ -181,6 +187,32 @@ public abstract class BlockNetworkNode
     if (!placed)
       _tempOrientationsStore.TryRemove(blockSel.Position, out _);
     return placed;
+  }
+
+  /// <summary>Asks the live networks of this block's <see cref="NetworkType"/> bordering <paramref name="pos"/> whether they take <paramref name="variant"/> there, and sends the refusal to <paramref name="byPlayer"/>. Server side only; true on a client.</summary>
+  private bool AcceptsPlacement(
+    IWorldAccessor world,
+    IPlayer? byPlayer,
+    Block variant,
+    BlockPos pos,
+    ref string failureCode
+  ) {
+    if (world.Side != EnumAppSide.Server)
+      return true;
+    var system = world.Api?.ModLoader.GetModSystem<BlockNetworkModSystem>();
+    if (
+      system == null
+      || system.CanPlaceMember(
+        world.BlockAccessor,
+        pos,
+        variant,
+        NetworkType,
+        ref failureCode
+      )
+    )
+      return true;
+    BlockBehaviorExNetworkPlacement.SendRefusal(byPlayer, failureCode);
+    return false;
   }
 
   /// <summary>Stores the computed orientation choices on the block entity for wrench cycling, or falls back to a full recalculation.</summary>
@@ -394,6 +426,24 @@ public abstract class BlockNetworkNode
 
     // Remove and add with broadcast keeps the graph and the block's connector faces in step during the swap.
     netManager.RemoveNode(world.BlockAccessor, pos);
+
+    string failureCode = "";
+    Block? turned = world.GetBlock(
+      this.WithVariant("orientation", choices[nextIndex])
+    );
+    if (
+      turned != null
+      && !AcceptsPlacement(
+        world,
+        (byEntity as EntityPlayer)?.Player,
+        turned,
+        pos,
+        ref failureCode
+      )
+    ) {
+      netManager.AddNode(world.BlockAccessor, pos, NetworkType);
+      return;
+    }
 
     if (orientable.ApplyOrientation(world, pos, choices[nextIndex])) {
       be?.MarkDirty(true);

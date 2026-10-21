@@ -97,7 +97,7 @@ public interface IMpEnergyRim {
   float RimLimitRadS { get; }
 
   /// <summary>Accumulated rim strain, 0 to 1; saved with the block. Rises at (speed / limit - 1) per
-  /// in-game hour while the wheel is past its limit and never falls.</summary>
+  /// <c>MpStrainTauHours</c> of in-game time while the wheel is past its limit and never falls.</summary>
   float RimStrain { get; set; }
 
   /// <summary>Called each step while <see cref="RimStrain"/> is 1 and shaft failure is on; the block

@@ -115,8 +115,8 @@ public class ExlibConfig : IExVersionedConfig {
   /// rim strain bursts; off, strain still accrues and nothing breaks.</summary>
   public bool MpShaftFailure { get; set; } = true;
 
-  /// <summary>Time constant (in-game hours) of strain: a segment at twice its rating strains
-  /// by 1 in this time.</summary>
+  /// <summary>Time constant (in-game hours) of strain: a segment at twice its rating, or a rim at
+  /// twice its speed limit, strains by 1 in this time.</summary>
   [ExConfigRange(0.01, 1000)]
   public float MpStrainTauHours { get; set; } = 1f;
   #endregion

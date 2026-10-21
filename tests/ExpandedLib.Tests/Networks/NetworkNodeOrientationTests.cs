@@ -95,6 +95,23 @@ public class NetworkNodeOrientationTests {
     Assert.NotSame(scene.NetworkAtCentre, scene.World.NetworkAt(alongZ));
   }
 
+  // Fails when a wrench turn a neighbouring network would refuse is carried out.
+  [Fact]
+  public void A_wrench_turn_the_network_refuses_leaves_the_node_as_it_was() {
+    var scene = Scene.Standing("ns", sys => new RefusingNetwork(sys));
+    BlockPos alongZ = new(0, 0, 1);
+    BlockPos alongX = new(1, 0, 0);
+    scene.World.PlaceNode(alongZ, "test", "ns", id: 50);
+    scene.World.PlaceNode(alongX, "test", "we", id: 51);
+    scene.World.AddNode(Centre, "test");
+
+    scene.Wrench(1);
+
+    Assert.Equal("test:node-ns", scene.CodeAtCentre);
+    Assert.Same(scene.NetworkAtCentre, scene.World.NetworkAt(alongZ));
+    Assert.NotSame(scene.NetworkAtCentre, scene.World.NetworkAt(alongX));
+  }
+
   [Fact]
   public void A_wrenched_node_is_marked_dirty_for_the_client() {
     // The only assertion in the suite for the client mesh update.
@@ -194,6 +211,35 @@ public class NetworkNodeOrientationTests {
 
   #region The scene
 
+  private sealed class RefusingNetwork(BlockNetworkModSystem system)
+    : BlockNetwork(system),
+      INetworkPlacementCheck {
+    public override string NetworkType => "test";
+
+    public bool AcceptsMember(
+      IBlockAccessor world,
+      BlockPos pos,
+      Block block,
+      out string failureCode
+    ) {
+      failureCode = "test-refused";
+      return false;
+    }
+
+    public override void OnMerge(BlockNetwork other, IBlockAccessor world) { }
+
+    public override void OnSplitFragment(
+      BlockNetwork original,
+      IBlockAccessor world
+    ) { }
+
+    public override void OnTick(
+      IBlockAccessor world,
+      float dt,
+      BlockNetworkModSystem manager
+    ) { }
+  }
+
   /// <summary>One node of an <c>Axis</c> family standing at <see cref="Centre"/> on a live graph, with
   /// the block entity the two swap paths both require.</summary>
   private sealed class Scene {
@@ -217,9 +263,12 @@ public class NetworkNodeOrientationTests {
     public ExpandedLib.Networks.BlockNetwork? NetworkAtCentre =>
       World.NetworkAt(Centre);
 
-    public static Scene Standing(string token) {
+    public static Scene Standing(
+      string token,
+      System.Func<BlockNetworkModSystem, BlockNetwork>? network = null
+    ) {
       var world = new TestWorld();
-      world.RegisterNetwork("test", sys => new StubNetwork(sys));
+      world.RegisterNetwork("test", network ?? (sys => new StubNetwork(sys)));
 
       TestNetworkBlock[] family = TestNetworkBlock.Family(
         "test",

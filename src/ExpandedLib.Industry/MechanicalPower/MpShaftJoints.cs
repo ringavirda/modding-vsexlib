@@ -96,25 +96,19 @@ internal static class MpShaftJoints {
   }
 
   /// <summary>Adds <paramref name="joints"/> to <paramref name="store"/> in order, skipping those it already holds.</summary>
-  /// <param name="store">The store to extend; every key of a joint must be a node of it.</param>
+  /// <param name="store">The store to extend; every key of a joint must be a node of it. A node meeting a joint of a ratio other than its group's must be alone in its group.</param>
   /// <param name="joints">The joints to add.</param>
-  /// <param name="fresh">Nodes that joined the store this step and have no joint yet; each is moved to a group of its own before its first joint, so a joint of any ratio can take it, and the run is folded back into group 0 when the isolation emptied it.</param>
   /// <returns>The joints the store refused as closing a jamming ring; none of them was added.</returns>
   public static List<MpShaftJoint> Apply(
     MpShaftStore store,
-    IEnumerable<MpShaftJoint> joints,
-    IReadOnlySet<NodeKey> fresh
+    IEnumerable<MpShaftJoint> joints
   ) {
     var refused = new List<MpShaftJoint>();
-    var isolated = new HashSet<NodeKey>();
     foreach (MpShaftJoint joint in joints) {
       int input = store.IndexOf(joint.Input);
       int output = store.IndexOf(joint.Output);
       if (store.EdgeIndex(input, output) >= 0)
         continue;
-      foreach (NodeKey key in new[] { joint.Input, joint.Output })
-        if (fresh.Contains(key) && isolated.Add(key))
-          store.Isolate(store.IndexOf(key));
       if (
         !store.TryAddEdge(
           input,
@@ -126,17 +120,6 @@ internal static class MpShaftJoints {
       )
         refused.Add(joint);
     }
-    if (
-      isolated.Count > 0
-      && !store.Nodes.Values.Any(i => store.GroupOf(i) == 0)
-    )
-      foreach (
-        int group in isolated
-          .Select(k => store.GroupOf(store.IndexOf(k)))
-          .Distinct()
-      )
-        if (group != 0)
-          store.Fold(group, 0);
     return refused;
   }
 
