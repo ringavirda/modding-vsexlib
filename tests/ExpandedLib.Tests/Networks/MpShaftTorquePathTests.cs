@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Networks;
@@ -115,6 +116,47 @@ public class MpShaftTorquePathTests(ITestOutputHelper output) {
     Assert.Equal(10f, store.NodeTorque(n[1]), 3);
   }
 
+  // Fails when the standing torque of a step that reverses the run is taken in the direction it ended in.
+  [Fact]
+  public void TorquePath_ReversingStepSumsToZero() {
+    var store = new MpShaftStore();
+    int group = store.AddGroup(1f);
+    int a = store.AddNode(Key(0), group, 1f, 10f);
+    int b = store.AddNode(Key(1), group, 0f, 0f, -1f);
+    store.SetDrive(b, 12f);
+
+    store.Step(1f, 100f);
+    store.SolveTorquePath();
+
+    Assert.Equal(-21f, store.Speed(group), 3);
+    Assert.Equal(
+      0f,
+      store.RatioOf(a) * store.NetTorque(a)
+        + store.RatioOf(b) * store.NetTorque(b),
+      3
+    );
+  }
+
+  // Fails when the root of every component is found by scanning every node.
+  [Fact]
+  public void TorquePath_JointlessRunSolvesInLinearTime() {
+    var store = new MpShaftStore();
+    int group = store.AddGroup(1f);
+    for (int i = 0; i < 5000; i++)
+      store.SetDrive(store.AddNode(Key(i), group, 1f, 0f), 1f);
+    var clock = Stopwatch.StartNew();
+
+    for (int i = 0; i < 50; i++) {
+      store.Step(0.2f, 100f);
+      store.SolveTorquePath();
+    }
+
+    Assert.True(
+      clock.ElapsedMilliseconds < 400,
+      $"{clock.ElapsedMilliseconds} ms"
+    );
+  }
+
   // Fails when a ring is walked as a tree, sending all torque down one path instead of splitting by stiffness.
   [Fact]
   public void TorquePath_RingSplitsByStiffness() {
@@ -211,6 +253,20 @@ public class MpShaftTorquePathTests(ITestOutputHelper output) {
     Assert.True(gate.TryAdmit(Key(0), at(0f), 0f));
     Assert.False(gate.TryAdmit(Key(0), at(0.009f), 2f));
     Assert.True(gate.TryAdmit(Key(0), at(0.011f), 2f));
+  }
+
+  // Fails when a segment removed from the run stays remembered by the gate.
+  [Fact]
+  public void Reading_GateForgetsRemovedSegments() {
+    var gate = new MpReadingGate();
+    var reading = new MpSegmentReading(10f, 100f, 0f, 1f, MpShaftSize.Line);
+    Assert.True(gate.TryAdmit(Key(0), reading, 0f));
+    Assert.True(gate.TryAdmit(Key(1), reading, 0f));
+
+    gate.Retain(new HashSet<NodeKey> { Key(1) });
+
+    Assert.True(gate.TryAdmit(Key(0), reading, 0.1f));
+    Assert.False(gate.TryAdmit(Key(1), reading, 0.1f));
   }
 
   [Fact]

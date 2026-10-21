@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Networks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -85,5 +86,11 @@ internal sealed class MpReadingGate {
     }
     _written[key] = (reading, nowS);
     return true;
+  }
+
+  /// <summary>Forgets every segment not in <paramref name="keys"/>, so one placed there again is admitted as never written.</summary>
+  public void Retain(IReadOnlySet<NodeKey> keys) {
+    foreach (var key in _written.Keys.Where(k => !keys.Contains(k)).ToList())
+      _written.Remove(key);
   }
 }

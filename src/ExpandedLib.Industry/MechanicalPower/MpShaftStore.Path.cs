@@ -29,6 +29,10 @@ internal sealed partial class MpShaftStore {
   private double[] _injection = [];
   private double[] _angle = [];
   private float[] _net = new float[16];
+  private float[] _netActive = new float[4];
+  private float[] _netResist = new float[4];
+  private float[] _rootWeight = [];
+  private int[] _rootBest = [];
   private float[] _edgeTorque = [];
   private float[] _nodeTorque = new float[16];
   private float[] _nodeLoad = new float[16];
@@ -96,29 +100,31 @@ internal sealed partial class MpShaftStore {
       Array.Clear(_net, 0, _nodes);
       return;
     }
-    for (int g = 0; g < _groups; g++) {
-      float active = 0f;
-      float resist = 0f;
-      for (int i = 0; i < _nodes; i++) {
-        if (_group[i] != g)
-          continue;
-        float n = _ratio[i];
-        float drive = Effective(i, g);
-        active += n * drive;
-        resist += MathF.Abs(n) * Opposing(i);
-      }
+    if (_netActive.Length < _groups) {
+      _netActive = new float[_groups];
+      _netResist = new float[_groups];
+    }
+    Array.Clear(_netActive, 0, _groups);
+    Array.Clear(_netResist, 0, _groups);
+    for (int i = 0; i < _nodes; i++) {
+      int g = _group[i];
+      float n = _ratio[i];
+      _netActive[g] += n * Effective(i, g);
+      _netResist[g] += MathF.Abs(n) * Opposing(i);
+    }
+    for (int i = 0; i < _nodes; i++) {
+      int g = _group[i];
+      float n = _ratio[i];
+      float active = _netActive[g];
+      float resist = _netResist[g];
       float share =
         resist > 0f ? MathF.Min(1f, MathF.Abs(active) / resist) : 0f;
-      for (int i = 0; i < _nodes; i++) {
-        if (_group[i] != g)
-          continue;
-        float n = _ratio[i];
-        float sign = _rest[g]
-          ? MathF.Sign(n) * MathF.Sign(active) * share
-          : MathF.Sign(n * _speed[g]);
-        _net[i] = Effective(i, g) - sign * Opposing(i);
-        _injection[i] = n * _net[i];
-      }
+      float heading = _previous[g] != 0f ? _previous[g] : _speed[g];
+      float sign = _rest[g]
+        ? MathF.Sign(n) * MathF.Sign(active) * share
+        : MathF.Sign(n * heading);
+      _net[i] = Effective(i, g) - sign * Opposing(i);
+      _injection[i] = n * _net[i];
     }
   }
 
@@ -141,21 +147,24 @@ internal sealed partial class MpShaftStore {
     int comps = _component.Length;
     bool changed = false;
     for (int c = 0; c < comps; c++) {
+      _rootWeight[c] = -1f;
+      _rootBest[c] = c;
+    }
+    for (int i = 0; i < _nodes; i++) {
+      int c = _component[i];
+      if (_componentEdges[c] >= _componentNodes[c])
+        continue;
+      float w = MathF.Abs(_ratio[i] * _drive[i]);
+      if (w > _rootWeight[c]) {
+        _rootWeight[c] = w;
+        _rootBest[c] = i;
+      }
+    }
+    for (int c = 0; c < comps; c++) {
       if (_component[c] != c || _componentEdges[c] >= _componentNodes[c])
         continue;
-      int best = c;
-      float weight = -1f;
-      for (int i = 0; i < _nodes; i++) {
-        if (_component[i] != c)
-          continue;
-        float w = MathF.Abs(_ratio[i] * _drive[i]);
-        if (w > weight) {
-          weight = w;
-          best = i;
-        }
-      }
-      if (_roots[c] != best) {
-        _roots[c] = best;
+      if (_roots[c] != _rootBest[c]) {
+        _roots[c] = _rootBest[c];
         changed = true;
       }
     }
@@ -303,6 +312,8 @@ internal sealed partial class MpShaftStore {
       _solver.SetTopology(n, _loopFrom, _loopTo, _loopEdge.Length);
 
     _roots = new int[n];
+    _rootWeight = new float[n];
+    _rootBest = new int[n];
     Array.Fill(_roots, -1);
     _order = new int[n];
     _parentEdge = new int[n];

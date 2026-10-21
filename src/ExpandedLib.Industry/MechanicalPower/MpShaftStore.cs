@@ -125,6 +125,9 @@ internal sealed partial class MpShaftStore {
   /// <summary>Signed speed of the node over its group's reference speed.</summary>
   public float RatioOf(int node) => _ratio[node];
 
+  /// <summary>The node's rotational inertia at its own speed, kg*m^2.</summary>
+  public float InertiaOf(int node) => _inertia[node];
+
   /// <summary>Sets the node's rotational inertia at its own speed.</summary>
   /// <param name="inertiaKgM2">kg*m^2; negative values count as 0.</param>
   public void SetInertia(int node, float inertiaKgM2) =>
@@ -229,17 +232,19 @@ internal sealed partial class MpShaftStore {
   public void Absorb(MpShaftStore other) {
     if (_groups == 0)
       AddGroup();
-    var grouped = new Dictionary<int, int>();
+    float reflected = ReflectedInertia(0);
+    float momentum = reflected * _speed[0];
     var map = new Dictionary<int, int>();
     foreach (var (key, i) in other._index.OrderBy(e => e.Value)) {
-      int g = other._group[i];
-      if (!grouped.TryGetValue(g, out int mine))
-        grouped[g] = mine = AddGroup(other._speed[g]);
-      map[i] = CopyNode(other, key, i, mine);
+      map[i] = CopyNode(other, key, i, 0);
+      float n = other._ratio[i];
+      float share = other._inertia[i] * n * n;
+      reflected += share;
+      momentum += share * other._speed[other._group[i]];
     }
     CopyEdges(other, map);
-    foreach (int g in grouped.Values)
-      JoinGroups(0, g, 1f);
+    if (reflected > 0f)
+      _speed[0] = momentum / reflected;
   }
 
   /// <summary>

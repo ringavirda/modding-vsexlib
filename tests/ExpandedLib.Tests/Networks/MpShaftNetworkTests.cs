@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Networks;
@@ -41,7 +42,7 @@ public class MpShaftNetworkTests {
   }
 
   private sealed class FlywheelNode : BlockEntity, IMpEnergyStorage {
-    public float Inertia { get; init; }
+    public float Inertia { get; set; }
   }
 
   private sealed class DriveNode : BlockEntity, IMpEnergyProducer {
@@ -122,6 +123,50 @@ public class MpShaftNetworkTests {
     Assert.Equal(momentum / reflected, store.Speed(store.GroupOf(a)), 4);
   }
 
+  // Fails when a node's rising inertia is taken in at the run's speed instead of at rest.
+  [Fact]
+  public void Merge_RisingInertiaTakesMomentumMean() {
+    var w = new TestWorld();
+    var wheel = new FlywheelNode { Inertia = 10f };
+    var net = Wire(w, (Cell(0), wheel));
+    net.RestoreState(new MpShaftRunState(4f, 10f));
+    net.OnTick(w.Accessor, 0.2f, w.Networks);
+    Assert.Equal(4f, net.Speed, 4);
+
+    wheel.Inertia = 20f;
+    net.OnTick(w.Accessor, 0.2f, w.Networks);
+
+    Assert.Equal(2f, net.Speed, 4);
+  }
+
+  // Fails when Absorb opens a group for every group it takes in.
+  [Fact]
+  public void Merge_AbsorbKeepsOneGroup() {
+    var store = new MpShaftStore();
+    store.AddNode(Key(0), store.AddGroup(), 1f, 0f);
+    for (int i = 1; i <= 200; i++) {
+      var other = new MpShaftStore();
+      other.AddNode(Key(i), other.AddGroup(), 1f, 0f);
+      store.Absorb(other);
+    }
+
+    Assert.Equal(1, store.GroupCount);
+    Assert.Equal(201, store.NodeCount);
+  }
+
+  // Fails when a merge drops the restores waiting in the absorbed run.
+  [Fact]
+  public void Merge_PendingRestoresMeetAtTheMomentumMean() {
+    var w = NewWorld();
+    Lay(w, 0, 1, 3, 4);
+    RunAt(w, 0).RestoreState(Key(0), new MpShaftRunState(2f, 10f));
+    RunAt(w, 3).RestoreState(Key(3), new MpShaftRunState(6f, 30f));
+
+    Lay(w, 2);
+
+    Assert.Equal(5f, RunAt(w, 0).Speed, 4);
+  }
+
   #endregion
 
   #region Split
@@ -157,6 +202,47 @@ public class MpShaftNetworkTests {
     Assert.Equal(4f, far.Store.Speed(0), 4);
     Assert.Equal(1, near.Store.EdgeCount);
     Assert.Equal(1, far.Store.EdgeCount);
+  }
+
+  // Fails when a split copies the restore waiting for one flywheel into a fragment that does not hold it.
+  [Fact]
+  public void Split_PendingRestoreTakenOnce() {
+    var w = NewWorld();
+    var original = new MpShaftNetwork(w.Networks);
+    original.RestoreState(Key(1), new MpShaftRunState(4f, 10f));
+    var near = new MpShaftNetwork(w.Networks);
+    var far = new MpShaftNetwork(w.Networks);
+
+    near.OnSplitFragment(original, new HashSet<NodeKey> { Key(0), Key(1) });
+    far.OnSplitFragment(original, new HashSet<NodeKey> { Key(3), Key(4) });
+
+    Assert.Equal(4f, near.Speed, 4);
+    Assert.Equal(0f, far.Speed, 4);
+  }
+
+  // Fails when a split copies a restore that belongs to no node into every fragment.
+  [Fact]
+  public void Split_UnkeyedRestoreTakenOnce() {
+    var w = NewWorld();
+    Lay(w, 0, 1, 2, 3, 4);
+    RunAt(w, 0).RestoreState(new MpShaftRunState(4f, 10f));
+
+    w.RemoveNode(Cell(2));
+
+    Assert.Equal(4f, RunAt(w, 0).Speed + RunAt(w, 3).Speed, 4);
+  }
+
+  // Fails when a restore stays pending after its node is removed.
+  [Fact]
+  public void Split_RemovedNodeDropsItsRestore() {
+    var w = NewWorld();
+    Lay(w, 0, 1, 2);
+    var run = RunAt(w, 0);
+    run.RestoreState(Key(2), new MpShaftRunState(4f, 10f));
+
+    w.RemoveNode(Cell(2));
+
+    Assert.Equal(0f, RunAt(w, 0).Speed);
   }
 
   #endregion
@@ -268,9 +354,9 @@ public class MpShaftNetworkTests {
     Assert.Equal(5f, net.Store.Speed(0), 4);
   }
 
-  // Fails when the restored speed joins after the new flywheel's inertia is already in the run.
+  // Fails when a flywheel placed into a turning run enters at the run's speed instead of at rest.
   [Fact]
-  public void Restore_LateFlywheelMixesWithTheLiveRun() {
+  public void Merge_PlacedStoppedWheelTakesMomentumMean() {
     var w = new TestWorld();
     var net = Wire(w, (Cell(0), new FlywheelNode { Inertia = 10f }));
     net.RestoreState(new MpShaftRunState(4f, 10f));
@@ -283,7 +369,6 @@ public class MpShaftNetworkTests {
     );
     net.Nodes.Add(Cell(1));
     net.NodeKeys.Add(Key(1));
-    net.RestoreState(new MpShaftRunState(0f, 10f));
     net.OnTick(w.Accessor, 0.2f, w.Networks);
 
     Assert.Equal(2f, net.Speed, 4);
@@ -301,13 +386,14 @@ public class MpShaftNetworkTests {
     MpShaftSave.WriteStrain(tree, 0.3f);
 
     var loaded = new MpShaftNetwork(w.Networks);
-    Assert.True(loaded.TryRestoreRun(tree));
+    Assert.True(loaded.TryRestoreRun(Key(0), tree));
     Assert.Equal(3f, loaded.Speed, 4);
+    Assert.Equal(0.3f, tree.GetFloat("mpStrain"), 4);
     Assert.Equal(0.3f, MpShaftSave.ReadStrain(tree), 4);
 
     tree.GetTreeAttribute(MpShaftSave.RunKey).SetInt("v", 99);
     var stale = new MpShaftNetwork(w.Networks);
-    Assert.False(stale.TryRestoreRun(tree));
+    Assert.False(stale.TryRestoreRun(Key(0), tree));
     Assert.Equal(0f, stale.Speed);
   }
 
