@@ -5,10 +5,8 @@ using ExpandedLib.Networks;
 namespace ExpandedLib.Industry.MechanicalPower;
 
 /// <summary>
-/// Node store of the "mpshaft" type as parallel arrays, grouped by rigid run, and the implicit
-/// backward-Euler step that turns each group. A group turns at one signed reference speed
-/// <c>w</c> (rad/s); a node turns at <c>ratio * w</c>. Drives, loads and mesh carry are declared per
-/// node before <see cref="Step"/> and read at the node's own speed.
+/// Node store of the "mpshaft" type as parallel arrays grouped by rigid run, with the implicit step that turns
+/// each group at one signed reference speed (rad/s); a node turns at <c>ratio * w</c>.
 /// </summary>
 internal sealed class MpShaftStore {
   private readonly Dictionary<NodeKey, int> _index = [];
@@ -137,10 +135,9 @@ internal sealed class MpShaftStore {
   }
 
   /// <summary>
-  /// Advances every group by <paramref name="dt"/> with the declared drives, loads and meshes. Loads,
-  /// standing torque and mesh loss only oppose motion: a turning group with them over its drive stops at
-  /// zero, and a group at rest stays there while the drive at rest does not exceed their sum. A group with no
-  /// inertia keeps its speed.
+  /// Advances every group by <paramref name="dt"/> with the declared drives, loads and meshes. Loads, standing
+  /// torque and mesh loss only oppose motion: a turning group stops at zero and a group at rest stays there while
+  /// the drive does not exceed them. A group with no inertia keeps its speed.
   /// </summary>
   /// <param name="dt">Step length in seconds, above zero.</param>
   /// <param name="maxSpeed">Speed limit of every group in rad/s, above zero.</param>
