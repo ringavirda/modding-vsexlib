@@ -187,6 +187,23 @@ public class ScenarioPlayerVerbTests {
     Assert.Null(ScenarioPlayer.HandAfter(stack, keep: false));
   }
 
+  /// <summary>Fails when the case's end leaves a stack in any hotbar slot the active one is not, so the next case's
+  /// lift into slot 1 meets a held item.</summary>
+  [Fact]
+  public void Emptying_the_slots_leaves_none_holding_a_stack() {
+    var item = new Item();
+    ItemSlot[] slots =
+    [
+      new DummySlot(new ItemStack(item, 1)),
+      new DummySlot(),
+      new DummySlot(new ItemStack(item, 8)),
+    ];
+
+    ScenarioPlayer.EmptySlots(slots);
+
+    Assert.All(slots, slot => Assert.True(slot.Empty));
+  }
+
   private sealed class RecordingHand : IHandRelease {
     public bool? Kept;
 

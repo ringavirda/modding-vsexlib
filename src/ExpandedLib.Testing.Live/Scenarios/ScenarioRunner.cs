@@ -263,6 +263,7 @@ internal sealed class ScenarioRunner {
       Emit(ScenarioOutput.Fail(_name, failedStep, suspect, run.Seconds));
     }
     RestoreConfig();
+    _player?.Empty();
     _player?.Park();
     Reset();
   }

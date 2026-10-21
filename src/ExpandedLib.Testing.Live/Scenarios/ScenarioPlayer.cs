@@ -221,6 +221,28 @@ internal sealed class ScenarioPlayer : IHandRelease {
     MoveTo(_park);
   }
 
+  /// <summary>Empties the hotbar, off hand, backpack and mouse slot and makes the first hotbar slot the active
+  /// one, so the next case starts with the hands a new player has.</summary>
+  public void Empty() {
+    IPlayerInventoryManager manager = Player.InventoryManager;
+    IEnumerable<ItemSlot> slots = manager
+      .GetHotbarInventory()
+      .Concat([manager.MouseItemSlot]);
+    if (
+      manager.GetOwnInventory(GlobalConstants.backpackInvClassName) is { } pack
+    )
+      slots = slots.Concat(pack);
+    EmptySlots(slots);
+    Player.ActiveSlot = 0;
+  }
+
+  /// <summary>Takes the stack out of each of <paramref name="slots"/>.</summary>
+  /// <param name="slots">The slots to empty; an empty slot is left as it is.</param>
+  internal static void EmptySlots(IEnumerable<ItemSlot> slots) {
+    foreach (ItemSlot slot in slots)
+      slot.Itemstack = null;
+  }
+
   /// <summary>Puts the player's feet in the middle of the cell <paramref name="at"/>, where it stays until
   /// a verb or <see cref="Park"/> moves it.</summary>
   /// <param name="at">The absolute cell.</param>
