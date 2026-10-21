@@ -117,19 +117,23 @@ public static class MoltenMetal {
     tree.SetFloat("temperature", temperature);
   }
 
+#if GAME_GE_1_22
+  private static float DefaultTemperature =>
+    GlobalConstants.CollectibleDefaultTemperature;
+#else
+  /// <summary>The temperature ( deg C) a stack with none recorded reads as; games before 1.22 fix it at 20.</summary>
+  private static float DefaultTemperature => 20f;
+#endif
+
   /// <summary>Current stack temperature ( deg C). Inside a fast-forward replay step the stack cools only to the step's time, by the game's own formula (a stack frozen in time, or with no temperature, reads as the game reads it).</summary>
   public static float GetTemperature(IWorldAccessor world, ItemStack stack) {
     if (!FastForward.Replaying)
       return stack.Collectible.GetTemperature(world, stack);
 
     if (stack.Attributes["temperature"] is not ITreeAttribute tree)
-      return GlobalConstants.CollectibleDefaultTemperature;
+      return DefaultTemperature;
 
-    float temperature = (float)
-      tree.GetDecimal(
-        "temperature",
-        GlobalConstants.CollectibleDefaultTemperature
-      );
+    float temperature = (float)tree.GetDecimal("temperature", DefaultTemperature);
     if (stack.Attributes.GetBool("timeFrozen"))
       return temperature;
 
