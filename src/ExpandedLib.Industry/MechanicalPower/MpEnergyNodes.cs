@@ -73,6 +73,10 @@ public interface IMpEnergySegment {
 
   /// <summary>Accumulated permanent set as a fraction of failure, 0 to 1; saved with the block.</summary>
   float Strain { get; set; }
+
+  /// <summary>Takes a reading the torque path chose to write; the block entity keeps it in its tree
+  /// (<see cref="MpSegmentReading.WriteTo"/>) and marks itself dirty. Does nothing by default.</summary>
+  void StoreReading(MpSegmentReading reading) { }
 }
 
 /// <summary>A block that joins two runs turning at different speeds without being a node of

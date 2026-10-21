@@ -9,10 +9,13 @@ namespace ExpandedLib.Industry.MechanicalPower;
 /// Node store of the "mpshaft" type as parallel arrays grouped by rigid run, with the implicit step that turns
 /// each group at one signed reference speed (rad/s); a node turns at <c>ratio * w</c>.
 /// </summary>
-internal sealed class MpShaftStore {
+internal sealed partial class MpShaftStore {
   private readonly Dictionary<NodeKey, int> _index = [];
 
   private float[] _speed = new float[4];
+  private float[] _previous = new float[4];
+  private bool[] _rest = new bool[4];
+  private float _stepDt;
   private float[] _inertiaSum = new float[4];
   private float[] _active = new float[4];
   private float[] _activeSlope = new float[4];
@@ -32,7 +35,13 @@ internal sealed class MpShaftStore {
   private float[] _carried = new float[16];
   private int _nodes;
 
-  private readonly List<(int A, int B, float Ratio, int Sign)> _edges = [];
+  private readonly List<(
+    int A,
+    int B,
+    float Ratio,
+    int Sign,
+    float Stiffness
+  )> _edges = [];
 
   public int NodeCount => _nodes;
 
@@ -44,6 +53,8 @@ internal sealed class MpShaftStore {
     if (_groups == _speed.Length) {
       int size = _groups * 2;
       Array.Resize(ref _speed, size);
+      Array.Resize(ref _previous, size);
+      Array.Resize(ref _rest, size);
       Array.Resize(ref _inertiaSum, size);
       Array.Resize(ref _active, size);
       Array.Resize(ref _activeSlope, size);
@@ -51,6 +62,7 @@ internal sealed class MpShaftStore {
       Array.Resize(ref _resistSlope, size);
     }
     _speed[_groups] = speed;
+    _previous[_groups] = speed;
     return _groups++;
   }
 
@@ -87,6 +99,7 @@ internal sealed class MpShaftStore {
       Array.Resize(ref _carried, size);
     }
     int node = _nodes++;
+    _topology++;
     _index[key] = node;
     _group[node] = group;
     _inertia[node] = MathF.Max(0f, inertiaKgM2);
@@ -138,8 +151,15 @@ internal sealed class MpShaftStore {
   /// <param name="output">Index of the output node, with a ratio other than zero.</param>
   /// <param name="ratio">Input speed over output speed in magnitude, above zero.</param>
   /// <param name="sign">+1 when the output turns the same way as the input, -1 against it.</param>
+  /// <param name="stiffness">Torsional stiffness G J / L of the joint in N*m per rad, above zero; only the ratios between the joints of one ring matter.</param>
   /// <returns>False, with the store unchanged, when the joint closes a ring whose ratio or sign product is not 1.</returns>
-  public bool TryAddEdge(int input, int output, float ratio, int sign) {
+  public bool TryAddEdge(
+    int input,
+    int output,
+    float ratio,
+    int sign,
+    float stiffness = 1f
+  ) {
     float expected = _ratio[input] * (sign < 0 ? -1f : 1f) / ratio;
     if (_group[input] == _group[output]) {
       if (
@@ -152,7 +172,8 @@ internal sealed class MpShaftStore {
         return false;
       JoinGroups(_group[input], _group[output], expected / _ratio[output]);
     }
-    _edges.Add((input, output, ratio, sign < 0 ? -1 : 1));
+    _edges.Add((input, output, ratio, sign < 0 ? -1 : 1, stiffness));
+    _topology++;
     return true;
   }
 
@@ -251,9 +272,10 @@ internal sealed class MpShaftStore {
   }
 
   private void CopyEdges(MpShaftStore source, Dictionary<int, int> map) {
-    foreach (var (a, b, ratio, sign) in source._edges)
+    foreach (var (a, b, ratio, sign, stiffness) in source._edges)
       if (map.TryGetValue(a, out int na) && map.TryGetValue(b, out int nb))
-        _edges.Add((na, nb, ratio, sign));
+        _edges.Add((na, nb, ratio, sign, stiffness));
+    _topology++;
   }
 
   /// <summary>Declares the node's drive for the next step.</summary>
@@ -322,7 +344,10 @@ internal sealed class MpShaftStore {
       _resist[g] += MathF.Abs(n) * (_load[i] + _standing[i] + mesh);
       _resistSlope[g] += n * n * _loadSlope[i];
     }
+    _stepDt = dt;
     for (int g = 0; g < _groups; g++) {
+      _previous[g] = _speed[g];
+      _rest[g] = false;
       float inertia = _inertiaSum[g];
       if (inertia <= 0f)
         continue;
@@ -342,6 +367,7 @@ internal sealed class MpShaftStore {
           next = 0f;
       }
       _speed[g] = Math.Clamp(next, -maxSpeed, maxSpeed);
+      _rest[g] = _speed[g] == 0f;
     }
   }
 }

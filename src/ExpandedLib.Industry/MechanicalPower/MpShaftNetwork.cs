@@ -22,6 +22,8 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
 
   private float _pendingInertia;
   private float _pendingSpeed;
+  private float _clockS;
+  private readonly MpReadingGate _gate = new();
 
   /// <summary>The run's node store and joints.</summary>
   public MpShaftStore Store { get; private set; } = new();
@@ -69,6 +71,21 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
       );
     }
     Store.Step(dt, float.PositiveInfinity);
+    Store.SolveTorquePath();
+    _clockS += dt;
+    foreach (var (key, node) in Store.Nodes) {
+      if (world.GetBlockEntity(key.Pos) is not IMpEnergySegment segment)
+        continue;
+      var reading = new MpSegmentReading(
+        Store.NodeTorque(node),
+        segment.RatingNm,
+        segment.Strain,
+        Store.NodeSpeed(node),
+        segment.Size
+      );
+      if (_gate.TryAdmit(key, reading, _clockS))
+        segment.StoreReading(reading);
+    }
     State = new MpShaftRunState(
       Store.GroupCount > 0 ? Store.Speed(0) : 0f,
       Store.GroupCount > 0 ? Store.ReflectedInertia(0) : 0f
