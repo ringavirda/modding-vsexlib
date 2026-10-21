@@ -388,6 +388,34 @@ public class StepTests {
     Assert.InRange(ticks, 1, 3);
   }
 
+  /// <summary>Fails when an advance ends before the fast-forward groups have replayed the hour it moved, which
+  /// leaves the machines a step reads at the time before it, or leaves the replay's per-call budget on, or does not
+  /// restore it.</summary>
+  [Fact]
+  public void An_advance_waits_for_the_groups_to_replay_its_hour() {
+    var fixture = new LiveFixture();
+    TickMember member = FastForwardMemberTests.Place(
+      fixture.Test,
+      new BlockPos(0, 5, 0)
+    );
+    fixture.Test.Networks.FastForward.MaxStepsPerCall = 10;
+    fixture.Test.Networks.FastForward.BudgetMs = 7;
+    var budgets = new HashSet<int?>();
+    foreach (
+      bool _ in ScenarioSteps.Run(
+        fixture.Context,
+        Steps("""[{ "advance": { "hours": 1 } }]"""),
+        ""
+      )
+    ) {
+      budgets.Add(fixture.Test.Networks.FastForward.BudgetMs);
+      fixture.Test.Networks.ListenerTick(fixture.Test.Accessor, 0.2f);
+    }
+    Assert.InRange(member.Ticks, 100, 120);
+    Assert.Equal(new HashSet<int?> { 0 }, budgets);
+    Assert.Equal(7, fixture.Test.Networks.FastForward.BudgetMs);
+  }
+
   /// <summary>Fails when a select without the scenario player passes.</summary>
   [Fact]
   public void A_select_without_the_scenario_player_fails_the_step() {

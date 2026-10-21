@@ -133,7 +133,8 @@ public static class MoltenMetal {
     if (stack.Attributes["temperature"] is not ITreeAttribute tree)
       return DefaultTemperature;
 
-    float temperature = (float)tree.GetDecimal("temperature", DefaultTemperature);
+    float temperature = (float)
+      tree.GetDecimal("temperature", DefaultTemperature);
     if (stack.Attributes.GetBool("timeFrozen"))
       return temperature;
 

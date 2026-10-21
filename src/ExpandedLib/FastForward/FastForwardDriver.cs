@@ -205,6 +205,14 @@ internal sealed class FastForwardDriver {
       ? member.Group
       : null;
 
+  /// <summary>Whether every unfrozen group has replayed up to within one machine second of the present. False while the groups are due a rebuild.</summary>
+  internal bool CaughtUp() {
+    if (_builtEpoch != Epoch)
+      return _members.Count == 0;
+    double now = NowHours();
+    return _groups.All(g => g.Frozen || !g.Due(now));
+  }
+
   /// <summary>Whether the network <paramref name="id"/> sits in a group that is held or frozen, so its live step stands aside.</summary>
   internal bool IsNetworkHeld(Guid id) =>
     _networkGroups.TryGetValue(id, out FastForwardGroup? group) && Holds(group);
