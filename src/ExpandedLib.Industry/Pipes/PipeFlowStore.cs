@@ -39,6 +39,8 @@ internal sealed class PipeFlowStore {
   private const int PhaseIterations = 40;
   private const double PhaseLowC = -40;
   private const double PhaseHighC = 370;
+  private const double HammerVelocity = 10;
+  private const double HammerFill = 0.25;
 
   private readonly Dictionary<NodeKey, int> _index = [];
   private readonly PipeFlowSolver _solver = new();
@@ -68,6 +70,10 @@ internal sealed class PipeFlowStore {
   private double[] _length = new double[16];
   private double[] _friction = new double[16];
   private double[] _share = new double[16];
+  private FlowPipeClass[] _class = new FlowPipeClass[16];
+  private bool[] _hammering = new bool[16];
+  private bool[] _cracked = new bool[16];
+  private int[] _bangs = new int[16];
   private double[] _flow = new double[16];
   private double[] _prevUnit = new double[16];
 
@@ -261,6 +267,10 @@ internal sealed class PipeFlowStore {
       Array.Resize(ref _length, size);
       Array.Resize(ref _friction, size);
       Array.Resize(ref _share, size);
+      Array.Resize(ref _class, size);
+      Array.Resize(ref _hammering, size);
+      Array.Resize(ref _cracked, size);
+      Array.Resize(ref _bangs, size);
       Array.Resize(ref _flow, size);
       Array.Resize(ref _prevUnit, size);
     }
@@ -270,6 +280,10 @@ internal sealed class PipeFlowStore {
     _length[e] = lengthM;
     _friction[e] = pipeClass.Friction();
     _share[e] = share;
+    _class[e] = pipeClass;
+    _hammering[e] = false;
+    _cracked[e] = false;
+    _bangs[e] = 0;
     _prevUnit[e] = 0;
     EdgeCount++;
     UpdateTopology();
@@ -525,6 +539,22 @@ internal sealed class PipeFlowStore {
     return _flow[edge];
   }
 
+  /// <summary>Whether water hammer has cracked the cast piece on <paramref name="edge"/>. A crack stays; only a cast edge takes one.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The edge does not exist.</exception>
+  public bool IsCracked(int edge) {
+    if ((uint)edge >= (uint)EdgeCount)
+      throw new ArgumentOutOfRangeException(nameof(edge));
+    return _cracked[edge];
+  }
+
+  /// <summary>How many times water hammer has banged on <paramref name="edge"/>: gas entering at more than 10 m/s a water node over 25 % full of liquid whose wall is below the content's saturation temperature. Each onset counts once, whatever the pipe class.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The edge does not exist.</exception>
+  public int HammerBangs(int edge) {
+    if ((uint)edge >= (uint)EdgeCount)
+      throw new ArgumentOutOfRangeException(nameof(edge));
+    return _bangs[edge];
+  }
+
   /// <summary>Moves every node, edge and opening of <paramref name="other"/> into this store, with their gas, air, liquid, temperature, sources, freeze flags, shares and opening ledgers, and adds its ledger totals. <paramref name="other"/> is left as it was and must be discarded.</summary>
   /// <param name="other">The store to take from.</param>
   /// <exception cref="ArgumentException">A node of <paramref name="other"/> is already in this store.</exception>
@@ -700,6 +730,7 @@ internal sealed class PipeFlowStore {
         && _heatStart[i] + _heatIn[i] > 0
       )
         _temperatureC[i] += _shift[i] / (_heatStart[i] + _heatIn[i]);
+    DetectHammer();
     ExchangeWithWalls(dt);
 
     _asleep = AtRest();
@@ -746,6 +777,27 @@ internal sealed class PipeFlowStore {
   public double PublishedOpeningLedger(int opening) {
     CheckOpening(opening);
     return opening < _pubOpenLedger.Length ? _pubOpenLedger[opening] : 0;
+  }
+
+  private void DetectHammer() {
+    for (int e = 0; e < EdgeCount; e++) {
+      int into = _flow[e] > 0 ? _to[e] : _from[e];
+      bool hammer =
+        !_edgeLiquid[e]
+        && _water[into]
+        && _wallCapacity[into] > 0
+        && _wallC[into] < _temperatureC[into]
+        && Fill(into) > HammerFill
+        && Math.Abs(_flow[e])
+          / (_edgeDensity[e] * Math.PI * _bore[e] * _bore[e] / 4)
+          > HammerVelocity;
+      if (hammer && !_hammering[e]) {
+        _bangs[e]++;
+        if (_class[e] == FlowPipeClass.Cast)
+          _cracked[e] = true;
+      }
+      _hammering[e] = hammer;
+    }
   }
 
   private void ExchangeWithWalls(double dt) {
@@ -1143,9 +1195,12 @@ internal sealed class PipeFlowStore {
         b,
         source._bore[e],
         source._length[e],
-        FlowPipeClass.Cast
+        source._class[e]
       );
       _friction[edge] = source._friction[e];
+      _hammering[edge] = source._hammering[e];
+      _cracked[edge] = source._cracked[e];
+      _bangs[edge] = source._bangs[e];
       _share[edge] = source._share[e];
       _flow[edge] = source._flow[e];
       _prevUnit[edge] = source._prevUnit[e];

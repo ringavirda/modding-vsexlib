@@ -172,4 +172,57 @@ public class PipeSteamTests {
   }
 
   #endregion
+
+  #region Hammer
+
+  // Fails when a non-cast class takes the crack, or the 10 m/s, 25 % liquid or cold-wall condition is dropped, so a plated run cracks, or a dry or warm node bangs.
+  [Theory]
+  [InlineData(0, true, 0.3, 20, true)]
+  [InlineData(1, false, 0.3, 20, true)]
+  [InlineData(2, false, 0.3, 20, true)]
+  [InlineData(3, false, 0.3, 20, true)]
+  [InlineData(0, false, 0.1, 20, false)]
+  [InlineData(0, false, 0.3, 200, false)]
+  public void Hammer_CracksCastOnly(
+    int pipeClass,
+    bool cracked,
+    double fill,
+    double wallC,
+    bool banged
+  ) {
+    var store = new PipeFlowStore();
+    int header = store.AddNode(
+      Cell(0),
+      1,
+      0,
+      3 * Atmosphere / (SteamConstant * 425.15),
+      152,
+      SteamConstant,
+      0,
+      0,
+      true
+    );
+    int pot = store.AddNode(
+      Cell(1),
+      0.1,
+      0,
+      0.0005,
+      100,
+      SteamConstant,
+      fill * 0.1 * 1000,
+      0,
+      true
+    );
+    store.SetWall(pot, new PipeWall(50000, 0.6, 0), wallC);
+    int edge = store.AddEdge(header, pot, 0.05, 1, (FlowPipeClass)pipeClass);
+    store.AddOpening(pot, 1e-3, Atmosphere, FlowGas.Steam);
+
+    for (int i = 0; i < 50; i++)
+      store.Step(0.05);
+
+    Assert.Equal(cracked, store.IsCracked(edge));
+    Assert.Equal(banged, store.HammerBangs(edge) > 0);
+  }
+
+  #endregion
 }
