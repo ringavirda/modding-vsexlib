@@ -72,6 +72,19 @@ public class FastForwardMemberTests {
     Assert.Equal(3, member.Ticks);
   }
 
+  // Fails when the hold check counts the machine second a live tick covers as gap, so a calendar that moved one second before the tick leaves the machine unticked.
+  [Fact]
+  public void A_registered_tick_runs_when_the_calendar_moved_the_second_it_covers() {
+    var w = new TestWorld();
+    TickMember member = Place(w, new BlockPos(0, 5, 0));
+    w.Tick();
+    w.AdvanceHours(OneMachineSecond);
+
+    w.FireBlockEntityTicks();
+
+    Assert.Equal(1, member.Ticks);
+  }
+
   // Fails when FastForwardCouplings is not read, so two members linked only by a declared position stay apart.
   [Fact]
   public void A_declared_coupling_joins_its_group() {

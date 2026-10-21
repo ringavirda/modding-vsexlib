@@ -190,7 +190,7 @@ internal sealed class FastForwardDriver {
       ? member.CursorHours
       : null;
 
-  /// <summary>Whether the member at <paramref name="pos"/> sits in a group a replay is running or that is frozen, so its live tick stands aside.</summary>
+  /// <summary>Whether the member at <paramref name="pos"/> sits in a group that is frozen or whose gap is more than the one machine second its live tick covers, so its live tick stands aside.</summary>
   internal bool IsHeld(BlockPos pos) =>
     _members.TryGetValue(pos, out FastForwardMember? member)
     && member.Group is { } group
@@ -210,7 +210,7 @@ internal sealed class FastForwardDriver {
     _networkGroups.TryGetValue(id, out FastForwardGroup? group) && Holds(group);
 
   private bool Holds(FastForwardGroup group) =>
-    group.Frozen || group.Due(NowHours());
+    group.Frozen || group.Gap(NowHours()) > FastForwardGroup.StepHours + 1e-9;
 
   /// <summary>Records that the member at <paramref name="member"/> reads through <paramref name="pos"/>; a position it had not recorded raises the epoch.</summary>
   internal void Couple(BlockPos member, BlockPos pos) {
