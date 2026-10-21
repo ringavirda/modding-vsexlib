@@ -41,10 +41,14 @@ internal sealed class PipeFlowStore {
   private const double PhaseHighC = 370;
   private const double HammerVelocity = 10;
   private const double HammerFill = 0.25;
+  private const double WeepAreaM2 = 1e-5;
+  private const double BurstGraceSeconds = 3;
+  private const double LoadTie = 1e-9;
 
   private readonly Dictionary<NodeKey, int> _index = [];
   private readonly PipeFlowSolver _solver = new();
 
+  private NodeKey[] _key = new NodeKey[16];
   private double[] _volume = new double[16];
   private double[] _height = new double[16];
   private double[] _gas = new double[16];
@@ -74,6 +78,12 @@ internal sealed class PipeFlowStore {
   private bool[] _hammering = new bool[16];
   private bool[] _cracked = new bool[16];
   private int[] _bangs = new int[16];
+  private double[] _workingPa = new double[16];
+  private double[] _burstPa = new double[16];
+  private bool[] _weeping = new bool[16];
+  private int[] _weepOpening = new int[16];
+  private double[] _overSeconds = new double[16];
+  private bool[] _burst = new bool[16];
   private double[] _flow = new double[16];
   private double[] _prevUnit = new double[16];
 
@@ -193,6 +203,7 @@ internal sealed class PipeFlowStore {
       throw new ArgumentException("Node already in the store.", nameof(key));
     if (i == _volume.Length) {
       int size = i * 2;
+      Array.Resize(ref _key, size);
       Array.Resize(ref _volume, size);
       Array.Resize(ref _height, size);
       Array.Resize(ref _gas, size);
@@ -212,6 +223,7 @@ internal sealed class PipeFlowStore {
       Array.Resize(ref _wallOuterUa, size);
       Array.Resize(ref _ambientC, size);
     }
+    _key[i] = key;
     _volume[i] = volumeM3;
     _height[i] = heightM;
     _gas[i] = gasKg;
@@ -271,6 +283,12 @@ internal sealed class PipeFlowStore {
       Array.Resize(ref _hammering, size);
       Array.Resize(ref _cracked, size);
       Array.Resize(ref _bangs, size);
+      Array.Resize(ref _workingPa, size);
+      Array.Resize(ref _burstPa, size);
+      Array.Resize(ref _weeping, size);
+      Array.Resize(ref _weepOpening, size);
+      Array.Resize(ref _overSeconds, size);
+      Array.Resize(ref _burst, size);
       Array.Resize(ref _flow, size);
       Array.Resize(ref _prevUnit, size);
     }
@@ -284,6 +302,12 @@ internal sealed class PipeFlowStore {
     _hammering[e] = false;
     _cracked[e] = false;
     _bangs[e] = 0;
+    _workingPa[e] = 0;
+    _burstPa[e] = 0;
+    _weeping[e] = false;
+    _weepOpening[e] = -1;
+    _overSeconds[e] = 0;
+    _burst[e] = false;
     _prevUnit[e] = 0;
     EdgeCount++;
     UpdateTopology();
@@ -555,6 +579,65 @@ internal sealed class PipeFlowStore {
     return _bangs[edge];
   }
 
+  /// <summary>Gives <paramref name="edge"/> the working and burst pressures of <paramref name="bore"/>; an edge with no rating never weeps or bursts.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The edge does not exist.</exception>
+  public void SetRating(int edge, FlowBore bore) {
+    if ((uint)edge >= (uint)EdgeCount)
+      throw new ArgumentOutOfRangeException(nameof(edge));
+    _workingPa[edge] = bore.WorkingAtm * SeaLevelPa;
+    _burstPa[edge] = bore.BurstAtm * SeaLevelPa;
+    Wake();
+  }
+
+  /// <summary>The load of <paramref name="edge"/>: the higher gauge pressure at its ends over its working rating's gauge pressure. 1 is the working rating, 1.25 the burst rating of a bore registered by the 1.25 rule; negative in a vacuum. Zero for an unrated edge.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The edge does not exist.</exception>
+  public double Load(int edge) {
+    if ((uint)edge >= (uint)EdgeCount)
+      throw new ArgumentOutOfRangeException(nameof(edge));
+    return _workingPa[edge] > 0 ? EdgeLoad(edge) : 0;
+  }
+
+  /// <summary>Whether <paramref name="edge"/> weeps: a 10 mm2 crack at one of its ends, from over-pressure until a wrench re-makes the joint, or from a water hammer crack until the piece is replaced.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The edge does not exist.</exception>
+  public bool IsWeeping(int edge) {
+    if ((uint)edge >= (uint)EdgeCount)
+      throw new ArgumentOutOfRangeException(nameof(edge));
+    return _weeping[edge];
+  }
+
+  /// <summary>Whether <paramref name="edge"/> has burst: it carries nothing and both its ends are open to the atmosphere. A burst stays.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The edge does not exist.</exception>
+  public bool IsBurst(int edge) {
+    if ((uint)edge >= (uint)EdgeCount)
+      throw new ArgumentOutOfRangeException(nameof(edge));
+    return _burst[edge];
+  }
+
+  /// <summary>Re-makes the joint of a piece that weeps from over-pressure, closing its crack.</summary>
+  /// <returns>False when the piece does not weep, or is cracked and must be replaced.</returns>
+  /// <exception cref="ArgumentOutOfRangeException">The edge does not exist.</exception>
+  public bool Remake(int edge) {
+    if ((uint)edge >= (uint)EdgeCount)
+      throw new ArgumentOutOfRangeException(nameof(edge));
+    if (!_weeping[edge] || _cracked[edge])
+      return false;
+    EndWeep(edge);
+    return true;
+  }
+
+  /// <summary>Replaces a cracked piece with a sound one, closing its crack.</summary>
+  /// <returns>False when the piece is not cracked.</returns>
+  /// <exception cref="ArgumentOutOfRangeException">The edge does not exist.</exception>
+  public bool Replace(int edge) {
+    if ((uint)edge >= (uint)EdgeCount)
+      throw new ArgumentOutOfRangeException(nameof(edge));
+    if (!_cracked[edge])
+      return false;
+    _cracked[edge] = false;
+    EndWeep(edge);
+    return true;
+  }
+
   /// <summary>Moves every node, edge and opening of <paramref name="other"/> into this store, with their gas, air, liquid, temperature, sources, freeze flags, shares and opening ledgers, and adds its ledger totals. <paramref name="other"/> is left as it was and must be discarded.</summary>
   /// <param name="other">The store to take from.</param>
   /// <exception cref="ArgumentException">A node of <paramref name="other"/> is already in this store.</exception>
@@ -731,9 +814,10 @@ internal sealed class PipeFlowStore {
       )
         _temperatureC[i] += _shift[i] / (_heatStart[i] + _heatIn[i]);
     DetectHammer();
+    bool timing = DetectFailures(dt);
     ExchangeWithWalls(dt);
 
-    _asleep = AtRest();
+    _asleep = AtRest() && !timing;
   }
 
   /// <summary>Copies the settled pressures, flows and opening ledgers of the last step to the values <see cref="PublishedPressurePa"/>, <see cref="PublishedFlowKgPerSecond"/>, <see cref="PublishedOpeningFlowKgPerSecond"/> and <see cref="PublishedOpeningLedger"/> read, so readers see one step's values together whatever order they run in.</summary>
@@ -793,11 +877,101 @@ internal sealed class PipeFlowStore {
           > HammerVelocity;
       if (hammer && !_hammering[e]) {
         _bangs[e]++;
-        if (_class[e] == FlowPipeClass.Cast)
+        if (_class[e] == FlowPipeClass.Cast) {
           _cracked[e] = true;
+          StartWeep(e);
+        }
       }
       _hammering[e] = hammer;
     }
+  }
+
+  private double EdgeLoad(int e) =>
+    (Math.Max(Pressure(_from[e]), Pressure(_to[e])) - SeaLevelPa)
+    / (_workingPa[e] - SeaLevelPa);
+
+  private int PositionHash(int e) {
+    unchecked {
+      int hash = 0;
+      foreach (int node in new[] { _from[e], _to[e] }) {
+        var key = _key[node];
+        hash =
+          hash * 31
+          + (
+            key.Pos.X * 73856093
+            ^ key.Pos.Y * 19349663
+            ^ key.Pos.Z * 83492791
+            ^ key.Slot
+          );
+      }
+      return hash;
+    }
+  }
+
+  private bool DetectFailures(double dt) {
+    int worst = -1;
+    double worstLoad = 0;
+    int worstHash = 0;
+    for (int e = 0; e < EdgeCount; e++) {
+      if (_burst[e] || _workingPa[e] <= 0)
+        continue;
+      double load = EdgeLoad(e);
+      int hash = PositionHash(e);
+      if (
+        worst < 0
+        || load > worstLoad + LoadTie
+        || (load >= worstLoad - LoadTie && hash < worstHash)
+      ) {
+        worst = e;
+        worstLoad = load;
+        worstHash = hash;
+      }
+    }
+    for (int e = 0; e < EdgeCount; e++)
+      if (e != worst)
+        _overSeconds[e] = 0;
+    if (worst < 0)
+      return false;
+    if (worstLoad > 1 && !_weeping[worst])
+      StartWeep(worst);
+    if (
+      Math.Max(Pressure(_from[worst]), Pressure(_to[worst])) <= _burstPa[worst]
+    ) {
+      _overSeconds[worst] = 0;
+      return false;
+    }
+    _overSeconds[worst] += dt;
+    if (_overSeconds[worst] >= BurstGraceSeconds)
+      Burst(worst);
+    return true;
+  }
+
+  private FlowGas GasAt(int node) => _water[node] ? FlowGas.Steam : FlowGas.Air;
+
+  private void StartWeep(int e) {
+    if (_weeping[e])
+      return;
+    int node = Pressure(_from[e]) >= Pressure(_to[e]) ? _from[e] : _to[e];
+    _weeping[e] = true;
+    _weepOpening[e] = AddAtmosphereOpening(node, WeepAreaM2, GasAt(node));
+  }
+
+  private void EndWeep(int e) {
+    if (_weepOpening[e] >= 0)
+      _openArea[_weepOpening[e]] = 0;
+    _weepOpening[e] = -1;
+    _weeping[e] = false;
+    _overSeconds[e] = 0;
+    Wake();
+  }
+
+  private void Burst(int e) {
+    EndWeep(e);
+    _burst[e] = true;
+    _flow[e] = 0;
+    double area = Math.PI * _bore[e] * _bore[e] / 4;
+    AddAtmosphereOpening(_from[e], area, GasAt(_from[e]));
+    AddAtmosphereOpening(_to[e], area, GasAt(_to[e]));
   }
 
   private void ExchangeWithWalls(double dt) {
@@ -1002,7 +1176,7 @@ internal sealed class PipeFlowStore {
         _prevUnit[e]
       );
       _unit[e] = unit;
-      double g = _frozen[a] || _frozen[b] ? 0 : _share[e] * unit;
+      double g = _frozen[a] || _frozen[b] || _burst[e] ? 0 : _share[e] * unit;
       _conductance[e] = g;
       _edgeDensity[e] = rho;
       double weightA = liquid ? _liquidWeight[a] : 1;
@@ -1184,6 +1358,7 @@ internal sealed class PipeFlowStore {
       _frozen[to] = source._frozen[from];
       map[from] = to;
     }
+    var edgeMap = new Dictionary<int, int>();
     for (int e = 0; e < source.EdgeCount; e++) {
       if (
         !map.TryGetValue(source._from[e], out int a)
@@ -1201,10 +1376,17 @@ internal sealed class PipeFlowStore {
       _hammering[edge] = source._hammering[e];
       _cracked[edge] = source._cracked[e];
       _bangs[edge] = source._bangs[e];
+      _workingPa[edge] = source._workingPa[e];
+      _burstPa[edge] = source._burstPa[e];
+      _weeping[edge] = source._weeping[e];
+      _overSeconds[edge] = source._overSeconds[e];
+      _burst[edge] = source._burst[e];
+      edgeMap[e] = edge;
       _share[edge] = source._share[e];
       _flow[edge] = source._flow[e];
       _prevUnit[edge] = source._prevUnit[e];
     }
+    var openMap = new Dictionary<int, int>();
     for (int o = 0; o < source.OpeningCount; o++) {
       if (!map.TryGetValue(source._openNode[o], out int node))
         continue;
@@ -1215,6 +1397,7 @@ internal sealed class PipeFlowStore {
         source._openGas[o],
         source._openLiquid[o]
       );
+      openMap[o] = opening;
       _openLiquidNow[opening] = source._openLiquidNow[o];
       _openPrev[opening] = source._openPrev[o];
       _openLedger[opening] = carryLedgers ? source._openLedger[o] : 0;
@@ -1223,6 +1406,12 @@ internal sealed class PipeFlowStore {
       _openCoeff[opening] = source._openCoeff[o];
       _openLimited[opening] = source._openLimited[o];
     }
+    foreach (var (e, edge) in edgeMap)
+      if (
+        source._weepOpening[e] >= 0
+        && openMap.TryGetValue(source._weepOpening[e], out int weep)
+      )
+        _weepOpening[edge] = weep;
     Wake();
   }
 
