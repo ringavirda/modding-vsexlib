@@ -59,6 +59,10 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
   /// <summary>The registrations <see cref="Start"/> makes, callable without a mod loader.</summary>
   public static void RegisterNetworkTypes(BlockNetworkModSystem networks) {
     networks.RegisterNetworkType("pipe", () => new PipeNetwork(networks));
+    networks.RegisterNetworkType(
+      "pipeflow",
+      () => new PipeFlowNetwork(networks)
+    );
     networks.RegisterNetworkType("molten", () => new MoltenNetwork(networks));
     networks.RegisterNetworkType(
       "mpenergy",

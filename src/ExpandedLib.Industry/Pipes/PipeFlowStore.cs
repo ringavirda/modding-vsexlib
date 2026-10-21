@@ -74,6 +74,12 @@ internal sealed class PipeFlowStore {
   private double[] _wallInnerArea = new double[16];
   private double[] _wallOuterUa = new double[16];
   private double[] _ambientC = new double[16];
+  private double[] _heatWatts = new double[16];
+  private double[] _draw = new double[16];
+  private double[] _drawn = new double[16];
+  private double[] _coupledIn = new double[16];
+  private double[] _coupledInC = new double[16];
+  private double[] _applied = new double[16];
 
   private int[] _from = new int[16];
   private int[] _to = new int[16];
@@ -94,6 +100,9 @@ internal sealed class PipeFlowStore {
   private int[] _span = new int[16];
   private double[] _flow = new double[16];
   private double[] _prevUnit = new double[16];
+  private double[] _swept = new double[16];
+  private double[] _pumpFree = new double[16];
+  private double[] _pumpStall = new double[16];
 
   private int[] _openNode = new int[4];
   private double[] _openArea = new double[4];
@@ -234,6 +243,12 @@ internal sealed class PipeFlowStore {
       Array.Resize(ref _wallInnerArea, size);
       Array.Resize(ref _wallOuterUa, size);
       Array.Resize(ref _ambientC, size);
+      Array.Resize(ref _heatWatts, size);
+      Array.Resize(ref _draw, size);
+      Array.Resize(ref _drawn, size);
+      Array.Resize(ref _coupledIn, size);
+      Array.Resize(ref _coupledInC, size);
+      Array.Resize(ref _applied, size);
     }
     _key[i] = key;
     _volume[i] = volumeM3;
@@ -251,6 +266,12 @@ internal sealed class PipeFlowStore {
     _wallInnerArea[i] = 0;
     _wallOuterUa[i] = 0;
     _ambientC[i] = DefaultAmbientC;
+    _heatWatts[i] = 0;
+    _draw[i] = 0;
+    _drawn[i] = 0;
+    _coupledIn[i] = 0;
+    _coupledInC[i] = double.NaN;
+    _applied[i] = 0;
     _frozen[i] = false;
     _supported[i] = true;
     _dropped[i] = false;
@@ -309,6 +330,9 @@ internal sealed class PipeFlowStore {
       Array.Resize(ref _span, size);
       Array.Resize(ref _flow, size);
       Array.Resize(ref _prevUnit, size);
+      Array.Resize(ref _swept, size);
+      Array.Resize(ref _pumpFree, size);
+      Array.Resize(ref _pumpStall, size);
     }
     _from[e] = a;
     _to[e] = b;
@@ -328,6 +352,9 @@ internal sealed class PipeFlowStore {
     _burst[e] = false;
     _span[e] = 0;
     _prevUnit[e] = 0;
+    _swept[e] = 0;
+    _pumpFree[e] = 0;
+    _pumpStall[e] = 0;
     EdgeCount++;
     UpdateTopology();
     Wake();
@@ -539,6 +566,135 @@ internal sealed class PipeFlowStore {
       Wake();
   }
 
+  /// <summary>Declares heat of <paramref name="watts"/> into <paramref name="node"/>'s content (negative takes it out), replacing its earlier declaration. It applies from the next step and raises the temperature by the heat over the content's heat capacity; a node with no content takes none.</summary>
+  /// <param name="node">Index of the node.</param>
+  /// <param name="watts">Heat in W.</param>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist.</exception>
+  public void SetHeatWatts(int node, double watts) {
+    CheckNode(node);
+    if (_heatWatts[node] == watts)
+      return;
+    _heatWatts[node] = watts;
+    Wake();
+  }
+
+  /// <summary>The heat declared into <paramref name="node"/> in W.</summary>
+  public double HeatWatts(int node) {
+    CheckNode(node);
+    return _heatWatts[node];
+  }
+
+  /// <summary>Declares the gas a coupling draws from <paramref name="node"/>, in kg/s, replacing its earlier declaration; the draw is scaled like any other to what the node holds. It applies from the next step.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist or the rate is negative.</exception>
+  public void SetCoupledDraw(int node, double kgPerSecond) {
+    CheckNode(node);
+    if (kgPerSecond < 0)
+      throw new ArgumentOutOfRangeException(nameof(kgPerSecond));
+    if (_draw[node] == kgPerSecond)
+      return;
+    _draw[node] = kgPerSecond;
+    Wake();
+  }
+
+  /// <summary>Declares the gas a coupling delivers into <paramref name="node"/>, in kg/s, replacing its earlier declaration. It applies from the next step and mixes with the node's own source by mass.</summary>
+  /// <param name="node">Index of the node.</param>
+  /// <param name="kgPerSecond">Mass rate in kg/s, zero or more.</param>
+  /// <param name="temperatureC">Temperature in C of the delivered gas; NaN delivers it at the node's own temperature.</param>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist or the rate is negative.</exception>
+  public void SetCoupledInflow(
+    int node,
+    double kgPerSecond,
+    double temperatureC = double.NaN
+  ) {
+    CheckNode(node);
+    if (kgPerSecond < 0)
+      throw new ArgumentOutOfRangeException(nameof(kgPerSecond));
+    bool same =
+      _coupledIn[node] == kgPerSecond && _coupledInC[node].Equals(temperatureC);
+    _coupledIn[node] = kgPerSecond;
+    _coupledInC[node] = temperatureC;
+    if (!same)
+      Wake();
+  }
+
+  /// <summary>The mass in kg the last step applied to <paramref name="node"/> through its source, coupled draw and coupled inflow together; negative when it drew more than it was given.</summary>
+  public double AppliedSourceKg(int node) {
+    CheckNode(node);
+    return _applied[node];
+  }
+
+  /// <summary>The mass in kg of the coupled draw the last step took from <paramref name="node"/>, after scaling to what the node held.</summary>
+  public double CoupledDrawnKg(int node) {
+    CheckNode(node);
+    return _drawn[node];
+  }
+
+  /// <summary>Specific gas constant of <paramref name="node"/>'s gas in J/(kg K).</summary>
+  public double GasConstant(int node) {
+    CheckNode(node);
+    return GasConstantOf(node);
+  }
+
+  /// <summary>Heat capacity of the gas of <paramref name="node"/> in J/(kg K).</summary>
+  public double GasHeatCapacity(int node) {
+    CheckNode(node);
+    return Heat(node);
+  }
+
+  /// <summary>Makes <paramref name="edge"/> a swept link: it carries <paramref name="m3PerSecond"/> of its upstream content from the first node to the second every step, on top of what its pipe law carries. Zero clears it.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The edge does not exist or the volume is negative.</exception>
+  public void SetSweptVolume(int edge, double m3PerSecond) {
+    CheckEdge(edge);
+    if (m3PerSecond < 0)
+      throw new ArgumentOutOfRangeException(nameof(m3PerSecond));
+    if (_swept[edge] == m3PerSecond)
+      return;
+    _swept[edge] = m3PerSecond;
+    Wake();
+  }
+
+  /// <summary>Makes <paramref name="edge"/> a pump link: from the first node to the second it delivers <paramref name="freeM3PerSecond"/> of its upstream content against no lift, falling linearly to nothing at a lift of <paramref name="stallPa"/>. Zero free delivery clears it.</summary>
+  /// <param name="edge">Index of the edge.</param>
+  /// <param name="freeM3PerSecond">Delivery at zero lift in m3/s, zero or more.</param>
+  /// <param name="stallPa">Lift in Pa at which delivery stops; zero or less leaves the delivery flat.</param>
+  /// <exception cref="ArgumentOutOfRangeException">The edge does not exist or the free delivery is negative.</exception>
+  public void SetPumpCurve(int edge, double freeM3PerSecond, double stallPa) {
+    CheckEdge(edge);
+    if (freeM3PerSecond < 0)
+      throw new ArgumentOutOfRangeException(nameof(freeM3PerSecond));
+    if (_pumpFree[edge] == freeM3PerSecond && _pumpStall[edge] == stallPa)
+      return;
+    _pumpFree[edge] = freeM3PerSecond;
+    _pumpStall[edge] = stallPa;
+    Wake();
+  }
+
+  /// <summary>The edge joining nodes <paramref name="a"/> and <paramref name="b"/> in either direction, or -1 when there is none.</summary>
+  public int EdgeBetween(int a, int b) {
+    for (int e = 0; e < EdgeCount; e++)
+      if ((_from[e] == a && _to[e] == b) || (_from[e] == b && _to[e] == a))
+        return e;
+    return -1;
+  }
+
+  /// <summary>The first node of <paramref name="edge"/>, the one a swept or pump link draws from.</summary>
+  public int EdgeFrom(int edge) {
+    CheckEdge(edge);
+    return _from[edge];
+  }
+
+  /// <summary>The source declared at <paramref name="node"/> in kg/s, whether or not a step has applied it yet.</summary>
+  public double DeclaredSource(int node) {
+    CheckNode(node);
+    return _pending[node];
+  }
+
+  /// <summary>The coupled inflow declared into <paramref name="node"/> in kg/s.</summary>
+  public double CoupledInflowKgPerSecond(int node) {
+    CheckNode(node);
+    return _coupledIn[node];
+  }
+
   /// <summary>The source in force at <paramref name="node"/>, in kg/s: the declaration the last step started with.</summary>
   public double ActiveSource(int node) {
     CheckNode(node);
@@ -718,6 +874,8 @@ internal sealed class PipeFlowStore {
     if (dt <= 0)
       throw new ArgumentOutOfRangeException(nameof(dt));
     if (_asleep) {
+      Array.Clear(_drawn, 0, NodeCount);
+      Array.Clear(_applied, 0, NodeCount);
       ThermalTick(dt);
       return;
     }
@@ -726,6 +884,8 @@ internal sealed class PipeFlowStore {
     int k = OpeningCount;
     Array.Copy(_pending, _active, n);
     Array.Copy(_pendingTemperatureC, _activeTemperatureC, n);
+    for (int i = 0; i < n; i++)
+      MergeCoupled(i);
     Array.Clear(_openForce, 0, k);
     for (int i = 0; i < n; i++)
       if (Held(i))
@@ -762,11 +922,12 @@ internal sealed class PipeFlowStore {
       int b = _to[e];
       _flow[e] =
         _conductance[e]
-        * (
-          _rhs[a]
-          - _rhs[b]
-          + _edgeDensity[e] * Gravity * (_height[a] - _height[b])
-        );
+          * (
+            _rhs[a]
+            - _rhs[b]
+            + _edgeDensity[e] * Gravity * (_height[a] - _height[b])
+          )
+        + PumpFlow(e);
     }
     for (int o = 0; o < k; o++) {
       _openFlow[o] = _openMode[o] switch {
@@ -840,6 +1001,8 @@ internal sealed class PipeFlowStore {
           _shift[i] +=
             applied * _heat[i] * (_activeTemperatureC[i] - _temperatureC[i]);
       }
+      _applied[i] = applied;
+      _drawn[i] = _draw[i] * dt * (_active[i] < 0 ? _scale[i] : 1);
       _gas[i] += applied;
       SourceLedgerKg += applied;
       if (_gas[i] < 0)
@@ -855,6 +1018,9 @@ internal sealed class PipeFlowStore {
         && _heatStart[i] + _heatIn[i] > 0
       )
         _temperatureC[i] += _shift[i] / (_heatStart[i] + _heatIn[i]);
+    for (int i = 0; i < n; i++)
+      if (_heatWatts[i] != 0 && HeatContent(i) > 0)
+        _temperatureC[i] += _heatWatts[i] * dt / HeatContent(i);
     DetectHammer();
     bool timing = DetectFailures(dt);
     timing |= DetectSpan();
@@ -988,6 +1154,39 @@ internal sealed class PipeFlowStore {
     if (_overSeconds[worst] >= BurstGraceSeconds)
       Burst(worst);
     return true;
+  }
+
+  private void MergeCoupled(int i) {
+    _active[i] -= _draw[i];
+    double inflow = _coupledIn[i];
+    if (inflow <= 0)
+      return;
+    double own = _pending[i];
+    if (own > 0) {
+      double ownC = double.IsNaN(_activeTemperatureC[i])
+        ? _temperatureC[i]
+        : _activeTemperatureC[i];
+      double inC = double.IsNaN(_coupledInC[i])
+        ? _temperatureC[i]
+        : _coupledInC[i];
+      _activeTemperatureC[i] = (own * ownC + inflow * inC) / (own + inflow);
+    } else
+      _activeTemperatureC[i] = _coupledInC[i];
+    _active[i] += inflow;
+  }
+
+  private double PumpFlow(int e) {
+    double q = _swept[e];
+    if (_pumpFree[e] > 0) {
+      double lift = _pressure[_to[e]] - _pressure[_from[e]];
+      q +=
+        _pumpStall[e] > 0
+          ? _pumpFree[e] * Math.Clamp(1 - lift / _pumpStall[e], 0, 1)
+          : _pumpFree[e];
+    }
+    return q <= 0
+      ? 0
+      : q * (_edgeLiquid[e] ? LiquidDensity : _density[_from[e]]);
   }
 
   private bool Held(int node) => _frozen[node] || _iced[node] || _dropped[node];
@@ -1530,7 +1729,14 @@ internal sealed class PipeFlowStore {
     int n = NodeCount;
     for (int i = 0; i < n; i++)
       if (
-        (_pending[i] != 0 && !Held(i))
+        (
+          (
+            _pending[i] != 0
+            || _draw[i] != 0
+            || _coupledIn[i] != 0
+            || _heatWatts[i] != 0
+          ) && !Held(i)
+        )
         || Math.Abs(Pressure(i) - _pressure[i]) > RestPressureStepPa
       )
         return false;
@@ -1572,6 +1778,10 @@ internal sealed class PipeFlowStore {
       _wallInnerArea[to] = source._wallInnerArea[from];
       _wallOuterUa[to] = source._wallOuterUa[from];
       _ambientC[to] = source._ambientC[from];
+      _heatWatts[to] = source._heatWatts[from];
+      _draw[to] = source._draw[from];
+      _coupledIn[to] = source._coupledIn[from];
+      _coupledInC[to] = source._coupledInC[from];
       _frozen[to] = source._frozen[from];
       _supported[to] = source._supported[from];
       _dropped[to] = source._dropped[from];
@@ -1607,6 +1817,9 @@ internal sealed class PipeFlowStore {
       _share[edge] = source._share[e];
       _flow[edge] = source._flow[e];
       _prevUnit[edge] = source._prevUnit[e];
+      _swept[edge] = source._swept[e];
+      _pumpFree[edge] = source._pumpFree[e];
+      _pumpStall[edge] = source._pumpStall[e];
     }
     var openMap = new Dictionary<int, int>();
     for (int o = 0; o < source.OpeningCount; o++) {
@@ -1740,6 +1953,11 @@ internal sealed class PipeFlowStore {
   private void CheckNode(int node) {
     if ((uint)node >= (uint)NodeCount)
       throw new ArgumentOutOfRangeException(nameof(node));
+  }
+
+  private void CheckEdge(int edge) {
+    if ((uint)edge >= (uint)EdgeCount)
+      throw new ArgumentOutOfRangeException(nameof(edge));
   }
 
   private void CheckOpening(int opening) {

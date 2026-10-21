@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Networks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -8,7 +9,7 @@ namespace ExpandedLib.Industry.Pipes;
 
 /// <summary>
 /// The physical pipe network, type "pipeflow": a gas run whose nodes, edges and implicit step live in a
-/// <see cref="PipeFlowStore"/>. It is not registered, so no world builds one yet.
+/// <see cref="PipeFlowStore"/>. Machines declare into it and read it back through <see cref="FlowPort"/>.
 /// </summary>
 internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
   : BlockNetwork(system) {
@@ -19,6 +20,18 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
   /// <summary>The run's node store and edges.</summary>
   public PipeFlowStore Store { get; } = new();
 
+  /// <summary>What machines declared at each port node and what has accrued there since the last read.</summary>
+  internal Dictionary<NodeKey, PortState> Ports { get; } = [];
+
+  /// <summary>Couplings that draw from a node of this run.</summary>
+  internal List<FlowCoupling> Couplings { get; } = [];
+
+  /// <summary>Couplings that deliver into a node of this run.</summary>
+  internal List<FlowCoupling> Inbound { get; } = [];
+
+  /// <summary>The run's grade, 0..1: heating value relative to rich producer gas, mixed by mass from the sources of a <see cref="FlowMedium.Fuel"/> run; 0 on any other.</summary>
+  public double Grade { get; private set; }
+
   public override void OnTick(
     IBlockAccessor world,
     float dt,
@@ -28,7 +41,89 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
       return;
     foreach (var (key, index) in Store.Nodes)
       Store.SetFrozen(index, world.GetChunkAtBlockPos(key.Pos) == null);
+    ApplyPorts(dt);
+    ApplyInbound(dt);
+    DrawCouplings(manager);
     Store.Step(dt);
+    foreach (var (key, state) in Ports)
+      if (Store.Nodes.TryGetValue(key, out int node))
+        state.Accrue(Store, node, dt);
+    foreach (var coupling in Couplings)
+      if (Store.Nodes.TryGetValue(coupling.From, out int node))
+        coupling.Book(Store.CoupledDrawnKg(node), Store.TemperatureC(node));
+  }
+
+  private void ApplyPorts(double dt) {
+    foreach (var (key, state) in Ports) {
+      if (!Store.Nodes.TryGetValue(key, out int node))
+        continue;
+      Store.SetHeatWatts(node, state.HeatWatts);
+      double rate = state.SourceKgPerSecond;
+      if (rate > 0 && !Claim(state.SourceMedium))
+        rate = 0;
+      if (rate > 0 && Medium == FlowMedium.Fuel) {
+        double gas = Store.TotalGasKg();
+        double added = rate * dt;
+        Grade = (Grade * gas + state.SourceGrade * added) / (gas + added);
+      }
+      if (rate != Store.DeclaredSource(node) || state.SourceDirty)
+        Store.SetSource(node, rate, state.SourceTemperatureC);
+      state.SourceDirty = false;
+    }
+  }
+
+  private bool Claim(FlowMedium medium) {
+    if (medium == FlowMedium.Ambient)
+      return true;
+    if (Medium == FlowMedium.Ambient)
+      Medium = medium;
+    return Medium == medium;
+  }
+
+  private void ApplyInbound(double dt) {
+    var kg = new Dictionary<int, (double Kg, double KgC)>();
+    foreach (var coupling in Inbound) {
+      var (taken, temperatureC) = coupling.Take();
+      if (taken <= 0 || !Store.Nodes.TryGetValue(coupling.To, out int node))
+        continue;
+      var (sum, sumC) = kg.GetValueOrDefault(node);
+      kg[node] = (sum + taken, sumC + taken * temperatureC);
+    }
+    foreach (var (_, node) in Store.Nodes)
+      if (!kg.ContainsKey(node) && Store.CoupledInflowKgPerSecond(node) != 0)
+        Store.SetCoupledInflow(node, 0);
+    foreach (var (node, (sum, sumC)) in kg)
+      Store.SetCoupledInflow(node, sum / dt, sumC / sum);
+  }
+
+  private void DrawCouplings(BlockNetworkModSystem manager) {
+    var draws = new Dictionary<int, double>();
+    foreach (var coupling in Couplings) {
+      if (!Store.Nodes.TryGetValue(coupling.From, out int node))
+        continue;
+      double rate = 0;
+      if (
+        manager.GetNetworkAt(coupling.To) is PipeFlowNetwork receiver
+        && receiver.Store.Nodes.TryGetValue(coupling.To, out int target)
+      ) {
+        if (!receiver.Inbound.Contains(coupling))
+          receiver.Inbound.Add(coupling);
+        double downstream = receiver.Store.PublishedPressurePa(target);
+        double upstream = Store.PressurePa(node);
+        if (downstream > 0 && upstream > downstream)
+          rate = GasOrifice.Flow(
+            upstream,
+            downstream,
+            Store.TemperatureC(node) + 273.15,
+            Store.GasConstant(node),
+            coupling.Gas,
+            coupling.AreaM2
+          );
+      }
+      draws[node] = draws.GetValueOrDefault(node) + rate;
+    }
+    foreach (var (node, rate) in draws)
+      Store.SetCoupledDraw(node, rate);
   }
 
   /// <summary>Writes the live store's entry for <paramref name="key"/> into <paramref name="host"/>, never the published display values.</summary>
@@ -91,7 +186,11 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
   public override void OnTickPublished(
     IBlockAccessor world,
     BlockNetworkModSystem manager
-  ) => Store.Publish();
+  ) {
+    Store.Publish();
+    foreach (var coupling in Couplings)
+      coupling.Publish();
+  }
 
   /// <summary>What the run carries; <see cref="FlowMedium.Ambient"/> until a source gives it one.</summary>
   public FlowMedium Medium { get; set; } = FlowMedium.Ambient;
@@ -110,6 +209,14 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
   public override void OnMerge(BlockNetwork other, IBlockAccessor world) {
     var run = (PipeFlowNetwork)other;
     Store.Absorb(run.Store);
+    foreach (var (key, state) in run.Ports)
+      Ports[key] = state;
+    Couplings.AddRange(run.Couplings);
+    Inbound.AddRange(run.Inbound);
+    if (Medium == FlowMedium.Fuel && run.Medium == FlowMedium.Fuel)
+      Grade = MixedGrade(run);
+    else if (Medium == FlowMedium.Ambient)
+      Grade = run.Grade;
     if (Medium == FlowMedium.Ambient)
       Medium = run.Medium;
   }
@@ -126,5 +233,21 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
     var run = (PipeFlowNetwork)original;
     Store.Take(run.Store, fragmentKeys);
     Medium = run.Medium;
+    Grade = run.Grade;
+    foreach (var key in fragmentKeys)
+      if (run.Ports.Remove(key, out var state))
+        Ports[key] = state;
+    Couplings.AddRange(run.Couplings.Where(c => fragmentKeys.Contains(c.From)));
+    run.Couplings.RemoveAll(c => fragmentKeys.Contains(c.From));
+    Inbound.AddRange(run.Inbound.Where(c => fragmentKeys.Contains(c.To)));
+    run.Inbound.RemoveAll(c => fragmentKeys.Contains(c.To));
+  }
+
+  private double MixedGrade(PipeFlowNetwork other) {
+    double mine = Store.TotalGasKg() - other.Store.TotalGasKg();
+    double theirs = other.Store.TotalGasKg();
+    return mine + theirs > 0
+      ? (Grade * mine + other.Grade * theirs) / (mine + theirs)
+      : Grade;
   }
 }
