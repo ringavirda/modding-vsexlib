@@ -202,5 +202,20 @@ public class ProductionProcessTests {
     Assert.Equal(7.0, ProcessOf(machine).LastTickHours, 3);
   }
 
+  [Fact]
+  public void The_first_tick_after_a_load_carries_the_away_gap() {
+    var (world, machine) = Placed(autoStart: false);
+    var tree = new TreeAttribute();
+    tree.SetDouble("pm_lastHours", 0.0);
+    machine.FromTreeAttributes(tree, world.World);
+    world.Initialize(machine);
+
+    world.AdvanceHours(3);
+    machine.StartTicking();
+    ProcessOf(machine).DriveProductionTick(1f);
+
+    Assert.Equal(3.0, machine.LastTickGameHours, 6);
+  }
+
   #endregion
 }

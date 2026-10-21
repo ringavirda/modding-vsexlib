@@ -134,6 +134,25 @@ public class MultiblockProcessTests {
     );
   }
 
+  [Fact]
+  public void The_first_tick_after_a_load_carries_the_away_gap() {
+    var machine = new TestMegablock { Angle = 0 };
+    TestWorld world = Complete(machine);
+    var tree = new TreeAttribute();
+    machine.ToTreeAttributes(tree);
+    tree.SetDouble("pm_lastHours", 0.0);
+    machine.OnBlockUnloaded();
+
+    var reloaded = new TestMegablock { Angle = 0, Block = machine.Block };
+    world.Place(new BlockPos(0, 10, 0), machine.Block, reloaded);
+    reloaded.FromTreeAttributes(tree, world.World);
+    world.AdvanceHours(3);
+    world.Initialize(reloaded);
+    ProductionProcess.ProcessesOn(reloaded).Single().DriveProductionTick(1f);
+
+    Assert.Equal(3.0, reloaded.LastTickGameHours, 6);
+  }
+
   #endregion
 
   #region The form still drives every transition

@@ -13,12 +13,16 @@ internal sealed class TestMegablock : BlockEntityMultiblockMachine {
   /// <summary>The rotation the machine reports, standing in for reading a <c>side</c> variant.</summary>
   public int Angle;
   public int ProductionTicks;
+  public double LastTickGameHours;
   public int CompletedCount;
   public int LostCount;
 
   protected override void UpdateStructureRotation() => SetStructureAngle(Angle);
 
-  protected override void OnProductionTick(float dt) => ProductionTicks++;
+  protected override void OnProductionTick(float dt) {
+    ProductionTicks++;
+    LastTickGameHours = TickGameHours;
+  }
 
   protected override void OnStructureCompleted() => CompletedCount++;
 

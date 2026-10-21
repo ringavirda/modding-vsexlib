@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Helpers;
 using ExpandedLib.Machines;
 using ExpandedLib.Testing;
@@ -12,12 +14,23 @@ namespace ExpandedLib.Tests;
 internal sealed class CatchupMachine : BlockEntityProductionMachine {
   public int ProductionTicks;
   public int Steps;
+  public double StepHours;
+  public readonly List<(float Dt, double Hours)> Calls = [];
 
   protected override bool CanRunProduction => true;
 
-  protected override void OnProductionTick(float dt) => ProductionTicks++;
+  protected override void OnProductionTick(float dt) {
+    ProductionTicks++;
+    Calls.Add((dt, TickGameHours));
+  }
 
   protected override int MaxAwayCatchupSteps => Steps;
+
+  protected override double GameStepHours => StepHours;
+
+  public void Drive(float dt) => DriveProductionTick(dt);
+
+  public void Stop() => StopProductionTick();
 
   public void StartTicking() => StartProductionTick();
 }
@@ -139,6 +152,143 @@ public class GameTimeCatchupTests {
     world.FireBlockEntityTicks();
 
     Assert.Equal(1, m.ProductionTicks); // just the one normal tick
+  }
+
+  #endregion
+
+  #region The tick's span
+
+  private static (TestWorld world, CatchupMachine machine) Stamped(
+    double stepHours = 0
+  ) {
+    var world = new TestWorld();
+    var m = new CatchupMachine {
+      Pos = new BlockPos(0, 0, 0),
+      StepHours = stepHours,
+    };
+    world.Attach(m);
+    m.Drive(1f);
+    m.Calls.Clear();
+    return (world, m);
+  }
+
+  [Fact]
+  public void A_tick_hands_on_the_calendar_hours_since_the_last_tick() {
+    var (world, m) = Stamped();
+
+    world.AdvanceHours(0.5);
+    m.Drive(1f);
+
+    Assert.Equal(0.5, Assert.Single(m.Calls).Hours, 6);
+  }
+
+  [Fact]
+  public void A_span_longer_than_the_step_runs_as_steps() {
+    var (world, m) = Stamped(stepHours: 0.25);
+
+    world.AdvanceHours(1);
+    m.Drive(1f);
+
+    Assert.Equal(4, m.Calls.Count);
+    Assert.Equal(1.0, m.Calls.Sum(c => c.Hours), 6);
+  }
+
+  [Fact]
+  public void Only_the_first_step_carries_the_real_dt() {
+    var (world, m) = Stamped(stepHours: 0.25);
+
+    world.AdvanceHours(1);
+    m.Drive(1f);
+
+    Assert.Equal(1f, m.Calls[0].Dt);
+    Assert.All(m.Calls.Skip(1), c => Assert.Equal(0f, c.Dt));
+    Assert.Equal(1f, m.Calls.Sum(c => c.Dt));
+  }
+
+  [Fact]
+  public void A_span_past_the_cap_is_cut_to_the_cap() {
+    var (world, m) = Stamped(stepHours: 0.25);
+
+    world.AdvanceHours(100);
+    m.Drive(1f);
+    Assert.Equal(24.0, m.Calls.Sum(c => c.Hours), 4);
+
+    m.Calls.Clear();
+    world.AdvanceHours(0.5);
+    m.Drive(1f);
+    Assert.Equal(0.5, m.Calls.Sum(c => c.Hours), 4);
+  }
+
+  [Fact]
+  public void A_machine_without_a_step_gets_one_call() {
+    var (world, m) = Stamped();
+
+    world.AdvanceHours(3);
+    m.Drive(1f);
+
+    Assert.Equal(3.0, Assert.Single(m.Calls).Hours, 6);
+  }
+
+  [Fact]
+  public void A_span_of_zero_still_runs_one_call() {
+    var (_, m) = Stamped(stepHours: 0.25);
+
+    m.Drive(0.7f);
+
+    var call = Assert.Single(m.Calls);
+    Assert.Equal(0.7f, call.Dt);
+    Assert.Equal(0.0, call.Hours);
+  }
+
+  [Fact]
+  public void A_start_on_a_running_machine_keeps_the_stamp() {
+    var (world, m) = Stamped();
+    m.StartTicking();
+    m.Drive(1f);
+    m.Calls.Clear();
+
+    world.AdvanceHours(2);
+    m.StartTicking();
+    m.Drive(1f);
+
+    Assert.Equal(2.0, Assert.Single(m.Calls).Hours, 6);
+  }
+
+  [Fact]
+  public void A_restart_while_loaded_starts_a_fresh_span() {
+    var (world, m) = Stamped();
+    m.StartTicking();
+    m.Drive(1f);
+    m.Calls.Clear();
+
+    m.Stop();
+    world.AdvanceHours(5);
+    m.StartTicking();
+    m.Drive(1f);
+
+    Assert.Equal(0.0, Assert.Single(m.Calls).Hours);
+  }
+
+  [Fact]
+  public void Replayed_away_steps_carry_no_game_hours() {
+    CatchupMachine m = Reload(steps: 100, awayHours: 0.001);
+
+    Assert.Equal(5, m.Calls.Count);
+    Assert.All(m.Calls.Take(4), c => Assert.Equal(0.0, c.Hours));
+    Assert.Equal(0.001, m.Calls[4].Hours, 6);
+  }
+
+  [Fact]
+  public void A_calendar_moved_back_gives_no_span() {
+    var (world, m) = Stamped();
+    world.AdvanceHours(5);
+    m.Drive(1f);
+    m.Calls.Clear();
+
+    world.AdvanceHours(-3);
+    m.Drive(1f);
+
+    Assert.Equal(0.0, Assert.Single(m.Calls).Hours);
   }
 
   #endregion

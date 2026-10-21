@@ -1,3 +1,4 @@
+using System;
 using ExpandedLib.Helpers;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -29,11 +30,14 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
 
   /// <summary>Registers the production tick (idempotent, server-side only).</summary>
   public void StartProductionTick() {
-    if (_productionTickId == 0 && Blockentity.Api?.Side == EnumAppSide.Server)
+    if (_productionTickId == 0 && Blockentity.Api?.Side == EnumAppSide.Server) {
       _productionTickId = Blockentity.RegisterGameTickListener(
         RunProductionTick,
         ProductionTickMs
       );
+      if (!_pendingCatchup)
+        StampNow();
+    }
   }
 
   /// <summary>Unregisters the production tick.</summary>
@@ -68,16 +72,62 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
   /// <summary>Sub-tick length, in seconds, used while catching up; defaults to one normal tick.</summary>
   protected virtual float AwayCatchupStepSeconds => ProductionTickMs / 1000f;
 
+  /// <summary>Calendar time, in game hours, the tick now running covers: the hours since the previous tick, at most <see cref="MaxGameHoursPerTick"/>. 0 on a machine's first tick, when the calendar moved back, and outside a tick; a tick split by <see cref="GameStepHours"/> shows each call's share.</summary>
+  public double TickGameHours { get; private set; }
+
+  /// <summary>Longest slice, in game hours, one <see cref="OnProductionTick"/> call is handed; a longer span runs as several calls. 0, the default, hands the whole span to one call.</summary>
+  protected virtual double GameStepHours => 0;
+
+  /// <summary>Most game hours one tick hands on, default 24; the rest of a longer span is dropped and the stamp moves to now.</summary>
+  protected virtual double MaxGameHoursPerTick => 24;
+
+  private void StampNow() {
+    if (Blockentity.Api?.World != null)
+      _lastTickHours = Blockentity.Api.World.Calendar.TotalHours;
+  }
+
   private void RunProductionTick(float dt) {
+    double span = SpanSinceStamp();
+
     // Replays the unloaded game-time gap ahead of this real tick.
     if (_pendingCatchup) {
       _pendingCatchup = false;
+      TickGameHours = 0;
       RunAwayCatchup();
     }
 
-    RunOneTick(dt);
-    if (Blockentity.Api?.World != null)
-      _lastTickHours = Blockentity.Api.World.Calendar.TotalHours;
+    RunSpan(dt, span);
+  }
+
+  private double SpanSinceStamp() =>
+    _lastTickHours < 0 || Blockentity.Api?.World == null
+      ? 0
+      : Math.Max(0, Blockentity.Api.World.Calendar.TotalHours - _lastTickHours);
+
+  private void RunSpan(float dt, double span) {
+    span = Math.Min(span, MaxGameHoursPerTick);
+    double step = GameStepHours;
+    try {
+      if (span > 0 && step > 0) {
+        bool first = true;
+        GameTime.CatchUp(
+          span,
+          (float)step,
+          (int)Math.Min(Math.Ceiling(span / step) + 1, int.MaxValue),
+          hours => {
+            TickGameHours = hours;
+            RunOneTick(first ? dt : 0f);
+            first = false;
+          }
+        );
+      } else {
+        TickGameHours = span;
+        RunOneTick(dt);
+      }
+    } finally {
+      TickGameHours = 0;
+    }
+    StampNow();
   }
 
   private void RunAwayCatchup() {
@@ -116,8 +166,8 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
   /// <summary>Runs in place of <see cref="OnProductionTick"/> while the machine is not operational. Default: no-op.</summary>
   protected virtual void OnIdleProductionTick(float dt) { }
 
-  /// <summary>Runs one production tick exactly as the registered listener would, including the <see cref="CanRunProduction"/> gate and the catch-up <c>dt</c> clamp.</summary>
-  internal void DriveProductionTick(float dt) => RunOneTick(dt);
+  /// <summary>Runs one production tick as the registered listener would, including the game-hour span, its steps, the stamp, the <see cref="CanRunProduction"/> gate and the catch-up <c>dt</c> clamp. Never moves the calendar and runs no pending away replay.</summary>
+  internal void DriveProductionTick(float dt) => RunSpan(dt, SpanSinceStamp());
 
   /// <summary>Runs <see cref="OnIdleProductionTick"/> directly, bypassing <see cref="CanRunProduction"/>.</summary>
   internal void DriveIdleTick(float dt) => OnIdleProductionTick(dt);

@@ -41,6 +41,10 @@ public abstract class BlockEntityProductionMachine
     protected override float AwayCatchupStepSeconds =>
       owner.AwayCatchupStepSeconds;
 
+    protected override double GameStepHours => owner.GameStepHours;
+
+    protected override double MaxGameHoursPerTick => owner.MaxGameHoursPerTick;
+
     protected override void OnProductionTick(float dt) =>
       owner.OnProductionTick(dt);
 
@@ -75,6 +79,19 @@ public abstract class BlockEntityProductionMachine
   protected void StopProductionTick() => _process.StopProductionTick();
 
   #region Away catch-up (game time)
+
+  /// <summary>Longest slice, in game hours, one <see cref="OnProductionTick"/> call is handed; a longer
+  /// span runs as several calls, only the first with the real <c>dt</c>. <c>0</c>, the default, hands
+  /// the whole span to one call.</summary>
+  protected virtual double GameStepHours => 0;
+
+  /// <summary>Most game hours one tick hands on, default <c>24</c>; the rest of a longer span (a long
+  /// absence, a large time jump) is dropped.</summary>
+  protected virtual double MaxGameHoursPerTick => 24;
+
+  /// <summary>Calendar time, in game hours, the running <see cref="OnProductionTick"/> call covers;
+  /// <c>0</c> on a machine's first tick, when the calendar moved back, and outside a tick.</summary>
+  protected double TickGameHours => _process.TickGameHours;
 
   /// <summary>How many bounded sub-ticks a machine replays to catch up game time spent unloaded,
   /// capping the replay at <c>MaxAwayCatchupSteps x AwayCatchupStepSeconds</c> seconds; <c>0</c>

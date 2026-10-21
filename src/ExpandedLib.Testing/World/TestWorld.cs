@@ -753,6 +753,9 @@ public sealed partial class TestWorld : IDisposable {
     PushCalendar();
   }
 
+  /// <summary>Game hours one real second makes on the live server at the default calendar.</summary>
+  public const double GameHoursPerSecond = 1.0 / 120.0;
+
   /// <summary>Moves the calendar forward by game hours without ticking (for away-catch-up tests).</summary>
   public void AdvanceHours(double hours) => AdvanceDays(hours / 24.0);
 

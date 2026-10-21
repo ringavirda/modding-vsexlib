@@ -8,22 +8,23 @@ public static class GameTime {
   public static double SecondsBetween(double fromHours, double toHours) =>
     Math.Max(0.0, toHours - fromHours) * 3600.0;
 
-  /// <summary>Replays <paramref name="elapsedSeconds"/> as sub-steps of at most <paramref name="stepSeconds"/>, calling <paramref name="step"/> once per sub-step, capped at <paramref name="maxSteps"/>.</summary>
+  /// <summary>Replays <paramref name="elapsed"/> as sub-steps of at most <paramref name="step"/>, calling <paramref name="action"/> once per sub-step with its length, capped at <paramref name="maxSteps"/>. <paramref name="elapsed"/>, <paramref name="step"/> and the length handed to <paramref name="action"/> share one unit, whatever the caller counts in (seconds, game hours).</summary>
+  /// <returns>The number of sub-steps run; 0 when <paramref name="elapsed"/> is 0 or less, or <paramref name="step"/> or <paramref name="maxSteps"/> is not above 0.</returns>
   public static int CatchUp(
-    double elapsedSeconds,
-    float stepSeconds,
+    double elapsed,
+    float step,
     int maxSteps,
-    Action<float> step
+    Action<float> action
   ) {
-    if (stepSeconds <= 0f || maxSteps <= 0 || elapsedSeconds <= 0.0)
+    if (step <= 0f || maxSteps <= 0 || elapsed <= 0.0)
       return 0;
 
-    double remaining = Math.Min(elapsedSeconds, (double)stepSeconds * maxSteps);
+    double remaining = Math.Min(elapsed, (double)step * maxSteps);
     int steps = 0;
     while (remaining > 1e-6 && steps < maxSteps) {
-      float dt = (float)Math.Min(remaining, stepSeconds);
-      step(dt);
-      remaining -= dt;
+      float length = (float)Math.Min(remaining, step);
+      action(length);
+      remaining -= length;
       steps++;
     }
     return steps;

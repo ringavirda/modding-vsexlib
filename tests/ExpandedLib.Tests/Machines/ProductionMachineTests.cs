@@ -14,6 +14,7 @@ internal sealed class TestProductionMachine : BlockEntityProductionMachine {
   public int IdleTicks;
   public float LastProductionDt;
   public float LastIdleDt;
+  public double LastTickGameHours;
 
   protected override bool CanRunProduction => Operational;
 
@@ -22,6 +23,7 @@ internal sealed class TestProductionMachine : BlockEntityProductionMachine {
   protected override void OnProductionTick(float dt) {
     ProductionTicks++;
     LastProductionDt = dt;
+    LastTickGameHours = TickGameHours;
   }
 
   protected override void OnIdleProductionTick(float dt) {
