@@ -63,6 +63,7 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
   private bool _stampRestored;
   private FastForwardMember? _member;
   private FastForwardDriver? _driver;
+  private readonly FastForwardRecord _record = new();
 
   /// <summary>Calendar time, in game hours, the machine is simulated up to: its group's replay cursor on a <see cref="FastForwardMode.Replay"/> machine, the time of its last tick on an Off machine, or -1 before the first.</summary>
   public double LastTickHours => _member?.CursorHours ?? _lastTickHours;
@@ -116,17 +117,32 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
       _lastTickHours >= 0 ? _lastTickHours : null,
       step: RunMemberTick,
       intervalMs: ProductionTickMs,
-      ticking: () => _productionTickId != 0
+      ticking: () => _productionTickId != 0,
+      couplings: _record.Ports,
+      peers: _record.Peers
     );
   }
+
+  /// <summary>Writes the machine's coupling positions and group peers into <paramref name="tree"/> as <c>ff_ports</c> and <c>ff_peers</c>; a machine outside a group writes what it last held.</summary>
+  internal void SaveFastForward(ITreeAttribute tree) {
+    if (_driver != null && _member != null)
+      _record.Capture(_driver, _member);
+    _record.Write(tree);
+  }
+
+  /// <summary>Takes <c>ff_ports</c> and <c>ff_peers</c> from <paramref name="tree"/> for the machine to join its group with when it initialises.</summary>
+  internal void RestoreFastForward(ITreeAttribute tree) => _record.Read(tree);
 
   private void LeaveGroup(bool removed) {
     if (_member == null || _driver == null)
       return;
     if (removed)
       _driver.Remove(Blockentity.Pos);
-    else
+    else {
+      _record.Capture(_driver, _member);
+      _lastTickHours = _member.CursorHours;
       _driver.SetPresent(Blockentity.Pos, false);
+    }
     _member = null;
     _driver = null;
   }

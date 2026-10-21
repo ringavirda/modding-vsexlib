@@ -125,6 +125,7 @@ public abstract class BlockEntityProductionMachine
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);
     tree.SetDouble("pm_lastHours", _process.LastTickHours);
+    _process.SaveFastForward(tree);
     Persisted.ToTree(tree);
   }
 
@@ -134,6 +135,7 @@ public abstract class BlockEntityProductionMachine
   ) {
     base.FromTreeAttributes(tree, worldForResolving);
     _process.RestoreLastTickHours(tree.GetDouble("pm_lastHours", -1));
+    _process.RestoreFastForward(tree);
     Persisted.FromTree(tree, worldForResolving);
   }
 

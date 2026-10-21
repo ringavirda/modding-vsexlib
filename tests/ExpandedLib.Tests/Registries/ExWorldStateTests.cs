@@ -105,12 +105,18 @@ public class ExWorldStateTests {
       "weak references to the client's loaded loops; each leaves on its own Dispose",
     ["ExpandedLib.Structures.StructureFillers.<FillerCode>k__BackingField"] =
       "the one filler block exlib's Start names, the same in every world",
+    ["ExpandedLib.FastForwarding.FastForward._replaying"] = FrameState,
+    ["ExpandedLib.FastForwarding.FastForward._cursorHours"] = FrameState,
+    ["ExpandedLib.FastForwarding.FastForward._driver"] = FrameState,
+    ["ExpandedLib.FastForwarding.FastForward._member"] = FrameState,
     ["ExpandedLib.ExlibValues._store._api"] =
       "the api the config is saved through, replaced by every world's Start",
     ["ExpandedLib.ExlibValues._store.<Config>k__BackingField"] =
       "the config values, loaded again from the world's file by every Start",
   };
 
+  private const string FrameState =
+    "thread-static state of the replay step running on the thread, set and restored around the step";
   private const string SchemaKeys = "the catalogue schema's key set, constant";
   private const string WeakByWorld =
     "weak table keyed by a world's own object; the next world brings new keys";

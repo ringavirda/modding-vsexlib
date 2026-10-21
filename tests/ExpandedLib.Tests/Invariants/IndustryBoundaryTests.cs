@@ -90,6 +90,7 @@ public class IndustryBoundaryTests {
     "ExpandedLib.Catalogues",
     "ExpandedLib.Checks",
     "ExpandedLib.Scenarios",
+    "ExpandedLib.FastForwarding",
     "ExpandedLib.Helpers",
     "ExpandedLib.Legacy",
   ];

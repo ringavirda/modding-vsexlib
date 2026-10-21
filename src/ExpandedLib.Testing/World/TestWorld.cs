@@ -558,6 +558,10 @@ public sealed partial class TestWorld : IDisposable {
   #region Chunk loading
 
   private readonly HashSet<Vec3i> _unloadedChunks = new();
+  private readonly Dictionary<
+    BlockPos,
+    (BlockEntity Entity, TreeAttribute Tree)
+  > _unloadedEntities = new();
   private readonly IWorldChunk _loadedChunk = Substitute.For<IWorldChunk>();
 
   /// <summary>The chunk every loaded position resolves to; one instance for the whole
@@ -580,14 +584,43 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Hides every cell in the chunk holding <paramref name="pos"/> from
   /// <see cref="Accessor"/>: its blocks read as <see cref="Air"/>, its block entities and
   /// <c>GetChunkAtBlockPos</c> as <c>null</c>.</summary>
-  public TestWorld UnloadChunkAt(BlockPos pos) {
-    _unloadedChunks.Add(ChunkOf(pos));
+  /// <param name="pos">Any position inside the chunk.</param>
+  /// <param name="unloadEntities">When true the chunk's block entities are also saved to their trees, sent
+  /// <c>OnBlockUnloaded</c> and dropped, as the game does on a real unload; <see cref="LoadChunkAt"/> brings
+  /// each back as a new instance read from its tree. False leaves the instances in place.</param>
+  public TestWorld UnloadChunkAt(BlockPos pos, bool unloadEntities = false) {
+    Vec3i chunk = ChunkOf(pos);
+    if (unloadEntities)
+      foreach (
+        (BlockPos at, BlockEntity entity) in _blockEntities
+          .Where(e => ChunkOf(e.Key) == chunk)
+          .Select(e => (e.Key, e.Value))
+          .ToList()
+      ) {
+        var tree = new TreeAttribute();
+        entity.ToTreeAttributes(tree);
+        entity.OnBlockUnloaded();
+        _blockEntities.Remove(at);
+        _unloadedEntities[at] = (entity, tree);
+      }
+    _unloadedChunks.Add(chunk);
     return this;
   }
 
-  /// <summary>Brings back the chunk holding <paramref name="pos"/>.</summary>
+  /// <summary>Brings back the chunk holding <paramref name="pos"/>, with a new block entity read from the
+  /// saved tree of each one <see cref="UnloadChunkAt"/> unloaded with its entities.</summary>
   public TestWorld LoadChunkAt(BlockPos pos) {
-    _unloadedChunks.Remove(ChunkOf(pos));
+    Vec3i chunk = ChunkOf(pos);
+    _unloadedChunks.Remove(chunk);
+    foreach (
+      BlockPos at in _unloadedEntities
+        .Keys.Where(k => ChunkOf(k) == chunk)
+        .ToList()
+    ) {
+      (BlockEntity old, TreeAttribute tree) = _unloadedEntities[at];
+      _unloadedEntities.Remove(at);
+      Revive(old, at, tree);
+    }
     return this;
   }
 
@@ -780,8 +813,6 @@ public sealed partial class TestWorld : IDisposable {
     if (old == null)
       return null;
 
-    Block block = GetBlock(pos);
-
     var tree = new TreeAttribute();
     old.ToTreeAttributes(tree);
 
@@ -789,6 +820,11 @@ public sealed partial class TestWorld : IDisposable {
     old.OnBlockUnloaded();
     _blockEntities.Remove(pos);
 
+    return Revive(old, pos, tree);
+  }
+
+  private BlockEntity Revive(BlockEntity old, BlockPos pos, TreeAttribute tree) {
+    Block block = GetBlock(pos);
     BlockEntity fresh = NewBlockEntityLike(old, block);
     fresh.Pos = pos.Copy();
     fresh.Block = block;
@@ -1329,6 +1365,7 @@ public sealed partial class TestWorld : IDisposable {
     if (id == 0) {
       _blocks.Remove(pos);
       _blockEntities.Remove(pos);
+      _unloadedEntities.Remove(pos);
       return;
     }
     if (!_blocksById.TryGetValue(id, out var b))

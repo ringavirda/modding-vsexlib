@@ -94,6 +94,7 @@ public abstract class BlockEntityMultiblockMachine
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);
     tree.SetDouble("pm_lastHours", _process.LastTickHours);
+    _process.SaveFastForward(tree);
   }
 
   public override void FromTreeAttributes(
@@ -102,6 +103,7 @@ public abstract class BlockEntityMultiblockMachine
   ) {
     base.FromTreeAttributes(tree, worldForResolving);
     _process.RestoreLastTickHours(tree.GetDouble("pm_lastHours", -1));
+    _process.RestoreFastForward(tree);
   }
 
   #endregion

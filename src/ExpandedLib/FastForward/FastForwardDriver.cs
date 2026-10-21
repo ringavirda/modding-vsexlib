@@ -54,7 +54,21 @@ internal sealed class FastForwardMember {
   internal bool Present { get; set; } = true;
   internal double CursorHours { get; set; }
   internal HashSet<BlockPos> Couplings { get; } = [];
+
+  /// <summary>Positions of the members that shared this member's group when it was last saved; a peer with no member registered there holds the group frozen until its chunk loads.</summary>
+  internal HashSet<BlockPos> Peers { get; } = [];
+
+  /// <summary>Positions the member declares on each rebuild, beside the recorded <see cref="Couplings"/>.</summary>
+  internal Func<IEnumerable<BlockPos>>? Declared { get; init; }
+
+  /// <summary>Whether the entry stands for a saved peer no member has registered at yet.</summary>
+  internal bool Ghost { get; init; }
+
   internal FastForwardGroup? Group { get; set; }
+
+  /// <summary>The recorded and declared coupling positions.</summary>
+  internal IEnumerable<BlockPos> AllCouplings =>
+    Declared == null ? Couplings : Couplings.Concat(Declared()).Distinct();
 
   /// <summary>Runs one live tick of the given seconds; null for a member the replay does not step.</summary>
   internal Action<float>? Step { get; init; }
@@ -108,19 +122,55 @@ internal sealed class FastForwardDriver {
     IEnumerable<BlockPos>? couplings = null,
     Action<float>? step = null,
     int intervalMs = 1000,
-    Func<bool>? ticking = null
+    Func<bool>? ticking = null,
+    IEnumerable<BlockPos>? peers = null,
+    Func<IEnumerable<BlockPos>>? declared = null
   ) {
     var member = new FastForwardMember(pos.Copy(), cursorHours ?? NowHours()) {
       Step = step,
       IntervalMs = Math.Max(1, intervalMs),
       Ticking = ticking,
+      Declared = declared,
     };
     if (couplings != null)
       member.Couplings.UnionWith(couplings.Select(c => c.Copy()));
     _members[member.Pos] = member;
+    if (peers != null)
+      foreach (BlockPos peer in peers) {
+        member.Peers.Add(peer.Copy());
+        if (!_members.ContainsKey(peer))
+          _members[peer.Copy()] = new FastForwardMember(
+            peer.Copy(),
+            member.CursorHours
+          ) {
+            Present = false,
+            Ghost = true,
+          };
+      }
     Epoch++;
     return member;
   }
+
+  /// <summary>The positions to save for <paramref name="member"/>: the coupling positions, and the other members of its group as of the last rebuild, each in X, Y, Z order.</summary>
+  internal (List<BlockPos> Ports, List<BlockPos> Peers) RecordOf(
+    FastForwardMember member
+  ) {
+    IEnumerable<BlockPos> peers =
+      member
+        .Group?.Members.Where(m => !ReferenceEquals(m, member))
+        .Select(m => m.Pos)
+      ?? member.Peers;
+    return (Ordered(member.AllCouplings), Ordered(peers));
+  }
+
+  private static List<BlockPos> Ordered(IEnumerable<BlockPos> positions) =>
+    [
+      .. positions
+        .Select(p => p.Copy())
+        .OrderBy(p => p.X)
+        .ThenBy(p => p.InternalY)
+        .ThenBy(p => p.Z),
+    ];
 
   internal void SetPresent(BlockPos pos, bool present) {
     if (!_members.TryGetValue(pos, out FastForwardMember? member))
@@ -174,6 +224,7 @@ internal sealed class FastForwardDriver {
   internal void Advance(IBlockAccessor accessor, float dt) {
     if (_members.Count == 0 && _groups.Count == 0)
       return;
+    DropEmptyPeers(accessor);
     EnsureBuilt();
 
     double now = NowHours();
@@ -187,6 +238,25 @@ internal sealed class FastForwardDriver {
 
     if (Replays)
       Replay(accessor, now);
+  }
+
+  private void DropEmptyPeers(IBlockAccessor accessor) {
+    List<BlockPos>? empty = null;
+    foreach (FastForwardMember member in _members.Values) {
+      if (!member.Ghost || accessor.GetChunkAtBlockPos(member.Pos) == null)
+        continue;
+      BlockEntity? entity = accessor.GetBlockEntity(member.Pos);
+      if (entity == null || entity.Api != null)
+        (empty ??= []).Add(member.Pos);
+    }
+    if (empty == null)
+      return;
+    foreach (BlockPos pos in empty) {
+      _members.Remove(pos);
+      foreach (FastForwardMember member in _members.Values)
+        member.Peers.Remove(pos);
+    }
+    Epoch++;
   }
 
   private static void SetCursor(FastForwardGroup group, double hours) {
@@ -306,7 +376,7 @@ internal sealed class FastForwardDriver {
   private IEnumerable<Guid> NetworkIdsOf(FastForwardMember member) {
     if (_networks.GetNetworkAt(member.Pos) is { } own)
       yield return own.Id;
-    foreach (BlockPos pos in member.Couplings)
+    foreach (BlockPos pos in member.AllCouplings)
       if (_networks.GetNetworkAt(pos) is { } net)
         yield return net.Id;
   }
@@ -315,7 +385,7 @@ internal sealed class FastForwardDriver {
     yield return member.Pos;
     foreach (Guid id in NetworkIdsOf(member))
       yield return id;
-    foreach (BlockPos pos in member.Couplings)
+    foreach (BlockPos pos in member.AllCouplings.Concat(member.Peers))
       if (_members.ContainsKey(pos))
         yield return pos;
   }
