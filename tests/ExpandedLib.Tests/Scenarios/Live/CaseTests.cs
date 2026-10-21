@@ -77,7 +77,7 @@ public class CaseTests {
           "exlib/case",
           LiveFixture.Text(
             Place,
-            """{ variants: { later: { after: { a: [{ "reload": {} }] } } } }"""
+            """{ variants: { later: { after: { a: [{ "paste": { "file": "x", "at": [0, 0, 0] } }] } } } }"""
           ),
           "case.json",
           [],
@@ -86,7 +86,7 @@ public class CaseTests {
       )
       .Message;
     Assert.Contains(
-      "\"reload\" is not a step the live runner runs yet",
+      "\"paste\" is not a step the live runner runs yet",
       message
     );
   }
@@ -231,8 +231,8 @@ public class CaseTests {
   [Fact]
   public void A_step_kind_the_live_runner_has_no_step_for_is_refused() =>
     Assert.Contains(
-      "\"reload\" is not a step the live runner runs yet",
-      Refused("""[{ "reload": {} }]""")
+      "\"paste\" is not a step the live runner runs yet",
+      Refused("""[{ "paste": { "file": "x", "at": [0, 0, 0] } }]""")
     );
 
   /// <summary>Fails when a negative advance reaches the runner, which would run the calendar back.</summary>
@@ -242,6 +242,24 @@ public class CaseTests {
       "hours is negative",
       Refused("""[{ "advance": { "hours": -1 } }]""")
     );
+
+  /// <summary>Fails when a negative reload or timespeed reaches the runner, which would run the calendar
+  /// back or hold a negative span.</summary>
+  [Fact]
+  public void Timespeed_refuses_a_negative_speed() {
+    Assert.Contains(
+      "speed is negative",
+      Refused("""[{ "timespeed": { "speed": -1, "seconds": 5 } }]""")
+    );
+    Assert.Contains(
+      "seconds is negative",
+      Refused("""[{ "timespeed": { "speed": 1, "seconds": -5 } }]""")
+    );
+    Assert.Contains(
+      "hours is negative",
+      Refused("""[{ "reload": { "hours": -1 } }]""")
+    );
+  }
 
   /// <summary>Fails when a select of a slot past the hotbar reaches the runner.</summary>
   [Fact]
@@ -265,8 +283,10 @@ public class CaseTests {
   [Fact]
   public void A_step_under_a_repeat_is_refused_too() =>
     Assert.Contains(
-      "\"reload\"",
-      Refused("""[{ "repeat": { "times": 2, "steps": [{ "reload": {} }] } }]""")
+      "\"paste\"",
+      Refused(
+        """[{ "repeat": { "times": 2, "steps": [{ "paste": { "file": "x", "at": [0, 0, 0] } }] } }]"""
+      )
     );
 
   /// <summary>Fails when a wait for a condition may run without a cap (V32).</summary>

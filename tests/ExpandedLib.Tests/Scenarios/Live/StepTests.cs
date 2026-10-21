@@ -3,6 +3,7 @@ using System.Linq;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
@@ -396,5 +397,87 @@ public class StepTests {
       fixture.Run(Steps("""[{ "select": { "slot": 2 } }]"""))
     );
     Assert.Contains("needs the scenario player", failure.Message);
+  }
+
+  /// <summary>Fails when reload does not unload before the calendar moves, moves it by other than
+  /// <c>hours</c>, or ends before the columns are loaded back.</summary>
+  [Fact]
+  public void Reload_reads_its_hours() {
+    var fixture = new LiveFixture();
+    var columns = new FakeColumns(fixture.Test.Calendar);
+    fixture.Context.Columns = columns;
+    double before = fixture.Test.Calendar.TotalHours;
+    fixture.Run(Steps("""[{ "reload": { "hours": 3 } }]"""));
+    Assert.Equal(3.0, fixture.Test.Calendar.TotalHours - before, 4);
+    Assert.Equal(["unload at 0.00", "load at 3.00"], columns.Calls);
+    Assert.Contains(
+      "[scenario]   1 reload 3.00 h ok: calendar 0.00 h to 3.00 h",
+      fixture.Lines
+    );
+  }
+
+  /// <summary>Fails when a reload without hours moves the calendar.</summary>
+  [Fact]
+  public void A_reload_without_hours_leaves_the_calendar() {
+    var fixture = new LiveFixture();
+    fixture.Context.Columns = new FakeColumns(fixture.Test.Calendar);
+    double before = fixture.Test.Calendar.TotalHours;
+    fixture.Run(Steps("""[{ "reload": {} }]"""));
+    Assert.Equal(before, fixture.Test.Calendar.TotalHours);
+  }
+
+  /// <summary>Fails when timespeed does not hold its modifier for the seconds or leaves it set after.</summary>
+  [Fact]
+  public void A_timespeed_holds_its_modifier_for_its_seconds_then_removes_it() {
+    var fixture = new LiveFixture();
+    int ticks = fixture.Run(
+      Steps("""[{ "timespeed": { "speed": 600, "seconds": 2 } }]""")
+    );
+    Assert.Equal(4, ticks);
+    fixture
+      .Test.Calendar.Received(1)
+      .SetTimeSpeedModifier("exmod-scenario", 600f);
+    fixture.Test.Calendar.Received(1).RemoveTimeSpeedModifier("exmod-scenario");
+  }
+
+  private sealed class FakeColumns(IGameCalendar calendar) : IPlotColumns {
+    public List<string> Calls { get; } = [];
+
+    private bool _loading;
+
+    private bool _unloading;
+
+    public bool Unloaded {
+      get {
+        if (_unloading && ++_unloadReads >= 2)
+          _unloading = false;
+        return !_unloading;
+      }
+    }
+
+    private int _unloadReads;
+
+    private int _reads;
+
+    public bool Loaded {
+      get {
+        if (_loading && ++_reads >= 2)
+          _loading = false;
+        return !_loading;
+      }
+    }
+
+    public void Unload() {
+      Calls.Add($"unload at {calendar.TotalHours:0.00}");
+      _loading = true;
+      _unloading = true;
+      _unloadReads = 0;
+      _reads = 0;
+    }
+
+    public void Load() {
+      Calls.Add($"load at {calendar.TotalHours:0.00}");
+      _reads = 0;
+    }
   }
 }
