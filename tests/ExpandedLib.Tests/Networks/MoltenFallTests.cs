@@ -24,6 +24,10 @@ public class MoltenFallTests {
     BlockFacing.WEST
   );
 
+  private static readonly CanalNode Down = CanalNode.Make(2, BlockFacing.DOWN);
+
+  private static readonly CanalNode Up = CanalNode.Make(3, BlockFacing.UP);
+
   private static (Cell Start, Cell Next) Pair(
     int startAmount,
     int startFall,
@@ -58,9 +62,58 @@ public class MoltenFallTests {
     return (start, next);
   }
 
+  private static (Cell Upper, Cell Lower) Stack(
+    int upperAmount,
+    int upperFall,
+    int lowerAmount
+  ) {
+    var w = new TestWorld();
+    w.RegisterNetwork("molten", sys => new MoltenNetwork(sys));
+    var low = new BlockPos(0, 0, 0);
+    var high = low.UpCopy();
+    var upper = new Cell {
+      IsFlowSource = true,
+      MaxUnitCapacity = 1000,
+      CellAmount = upperAmount,
+      CellMetalType = Iron,
+      Fall = upperFall,
+    };
+    var lower = new Cell {
+      MaxUnitCapacity = 1000,
+      CellAmount = lowerAmount,
+      CellMetalType = lowerAmount > 0 ? Iron : "",
+    };
+    foreach (
+      var (pos, cell, node) in new[] { (high, upper, Down), (low, lower, Up) }
+    ) {
+      w.Place(pos, node, cell);
+      w.Attach(cell);
+      w.AddNode(pos, "molten");
+    }
+    Assert.Same(w.NetworkAt(low), w.NetworkAt(high));
+    w.Tick();
+    return (upper, lower);
+  }
+
   #endregion
 
   #region Directed edges
+
+  // Fails when the vertical edge moves only the difference: 10 units cross and the upper keeps 30.
+  [Fact]
+  public void A_drop_with_a_fall_hands_over_its_whole_charge_onto_a_backed_up_cell() {
+    var (upper, lower) = Stack(40, 16, 30);
+    Assert.Equal(0, upper.CellAmount);
+    Assert.Equal(70, lower.CellAmount);
+  }
+
+  // Fails when every vertical edge takes the whole charge: the level upper cell empties.
+  [Fact]
+  public void A_level_cell_over_a_fuller_cell_still_gives_only_the_difference() {
+    var (upper, lower) = Stack(40, 0, 30);
+    Assert.Equal(30, upper.CellAmount);
+    Assert.Equal(40, lower.CellAmount);
+  }
 
   // Fails when the edge equalises: the pair settles at 20 and 20.
   [Fact]

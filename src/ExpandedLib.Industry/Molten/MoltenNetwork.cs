@@ -286,7 +286,8 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
   ) => distFromStart.TryGetValue(pos, out int d) ? d : int.MaxValue;
 
   /// <summary>Moves metal across one connection, capped at <paramref name="maxFlow"/> units: from the
-  /// cell of smaller <see cref="IMoltenCell.Fall"/> when the falls differ, else toward the nearer end
+  /// cell of smaller <see cref="IMoltenCell.Fall"/> when the falls differ, and from a downhill edge's
+  /// upper cell of larger fall, handing over its whole charge, else toward the nearer end
   /// in <paramref name="distToMold"/>, else by <paramref name="rules"/> or the defaults;
   /// <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>.</summary>
   private static void FlowEdge(
@@ -308,6 +309,11 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
       var upper = a.Cell.Fall < b.Cell.Fall ? a : b;
       var lower = a.Cell.Fall < b.Cell.Fall ? b : a;
       Transfer(upper, lower, Math.Min(upper.Cell.CellAmount, maxFlow), world);
+      return;
+    }
+
+    if (downhillOnly && a.Cell.Fall > b.Cell.Fall) {
+      Transfer(a, b, Math.Min(a.Cell.CellAmount, maxFlow), world);
       return;
     }
 
