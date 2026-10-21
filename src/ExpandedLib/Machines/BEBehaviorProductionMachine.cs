@@ -83,7 +83,7 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
 
   private void StampNow() {
     if (Blockentity.Api?.World != null)
-      _lastTickHours = Blockentity.Api.World.Calendar.TotalHours;
+      _lastTickHours = GameTime.NowHours(Blockentity.Api.World);
   }
 
   private void RunProductionTick(float dt) {
@@ -102,7 +102,7 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
   private double SpanSinceStamp() =>
     _lastTickHours < 0 || Blockentity.Api?.World == null
       ? 0
-      : Math.Max(0, Blockentity.Api.World.Calendar.TotalHours - _lastTickHours);
+      : Math.Max(0, GameTime.NowHours(Blockentity.Api.World) - _lastTickHours);
 
   private void RunSpan(float dt, double span) {
     span = Math.Min(span, MaxGameHoursPerTick);
@@ -140,7 +140,7 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
 
     double away = GameTime.SecondsBetween(
       _lastTickHours,
-      Blockentity.Api.World.Calendar.TotalHours
+      GameTime.NowHours(Blockentity.Api.World)
     );
     GameTime.CatchUp(
       away,

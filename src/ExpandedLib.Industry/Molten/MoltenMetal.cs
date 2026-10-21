@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using ExpandedLib.FastForwarding;
 using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Metals;
 using Vintagestory.API.Common;
@@ -93,22 +95,58 @@ public static class MoltenMetal {
     SetCooldownSpeed(stack, target);
   }
 
-  /// <summary>Sets the stack temperature without delaying the cooldown (the mod-wide convention).</summary>
+  /// <summary>Sets the stack temperature without delaying the cooldown (the mod-wide convention). Inside a fast-forward replay step the cooldown clock is stamped with the step's time, not the calendar's.</summary>
   public static void SetTemperature(
     IWorldAccessor world,
     ItemStack stack,
     float temperature
-  ) =>
-    stack.Collectible.SetTemperature(
-      world,
-      stack,
-      temperature,
-      delayCooldown: false
-    );
+  ) {
+    if (!FastForward.Replaying) {
+      stack.Collectible.SetTemperature(
+        world,
+        stack,
+        temperature,
+        delayCooldown: false
+      );
+      return;
+    }
 
-  /// <summary>Current stack temperature ( deg C).</summary>
-  public static float GetTemperature(IWorldAccessor world, ItemStack stack) =>
-    stack.Collectible.GetTemperature(world, stack);
+    if (stack.Attributes["temperature"] is not ITreeAttribute tree)
+      stack.Attributes["temperature"] = tree = new TreeAttribute();
+    tree.SetDouble("temperatureLastUpdate", FastForward.CursorHours);
+    tree.SetFloat("temperature", temperature);
+  }
+
+  /// <summary>Current stack temperature ( deg C). Inside a fast-forward replay step the stack cools only to the step's time, by the game's own formula (a stack frozen in time, or with no temperature, reads as the game reads it).</summary>
+  public static float GetTemperature(IWorldAccessor world, ItemStack stack) {
+    if (!FastForward.Replaying)
+      return stack.Collectible.GetTemperature(world, stack);
+
+    if (stack.Attributes["temperature"] is not ITreeAttribute tree)
+      return GlobalConstants.CollectibleDefaultTemperature;
+
+    float temperature = (float)
+      tree.GetDecimal(
+        "temperature",
+        GlobalConstants.CollectibleDefaultTemperature
+      );
+    if (stack.Attributes.GetBool("timeFrozen"))
+      return temperature;
+
+    double now = FastForward.CursorHours;
+    double elapsed = now - tree.GetDecimal("temperatureLastUpdate");
+    if (elapsed >= 1.0 / 150.0 && temperature > 0f) {
+      float velocity =
+        tree.GetFloat("cooldownSpeed", 120f) * Math.Max(1f, temperature / 200f);
+      temperature = Math.Max(
+        0f,
+        temperature - Math.Max(0f, (float)elapsed * velocity)
+      );
+      tree.SetFloat("temperature", temperature);
+      tree.SetDouble("temperatureLastUpdate", now);
+    }
+    return temperature;
+  }
 
   /// <summary>The stack's melting point ( deg C), resolved through a dummy slot.</summary>
   public static float MeltingPointOf(IWorldAccessor world, ItemStack stack) =>

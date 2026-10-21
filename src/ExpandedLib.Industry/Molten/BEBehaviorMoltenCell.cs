@@ -149,7 +149,7 @@ public class BEBehaviorMoltenCell(BlockEntity blockentity)
     PushMetalRaw(
       amount,
       metal.Collectible.Code.ToString(),
-      metal.Collectible.GetTemperature(world, metal),
+      MoltenMetal.GetTemperature(world, metal),
       world
     );
 

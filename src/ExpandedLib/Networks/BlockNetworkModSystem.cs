@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using ExpandedLib.FastForwarding;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
@@ -94,6 +95,13 @@ public class BlockNetworkModSystem : ModSystem {
   /// <summary>Every network type a factory has been registered for.</summary>
   public IReadOnlyCollection<string> RegisteredNetworkTypes => _factories.Keys;
 
+  /// <summary>The registry of fast-forward members and the groups they form with the networks; lookups made while a member's tick runs are recorded as its couplings.</summary>
+  internal FastForwardDriver FastForward { get; }
+
+  public BlockNetworkModSystem() {
+    FastForward = new FastForwardDriver(this);
+  }
+
   /// <summary>Server world accessor, available to network instances during their tick. Null on the client.</summary>
   public IServerWorldAccessor? ServerWorld { get; private set; }
 
@@ -109,18 +117,24 @@ public class BlockNetworkModSystem : ModSystem {
   public IEnumerable<BlockNetwork> AllNetworks => _networks.Values;
 
   /// <summary>Returns the network that owns <paramref name="pos"/>, or <c>null</c>.</summary>
-  public BlockNetwork? GetNetworkAt(BlockPos pos) =>
-    _posToNetwork.TryGetValue(pos, out Guid id)
-    && _networks.TryGetValue(id, out var net)
+  public BlockNetwork? GetNetworkAt(BlockPos pos) {
+    FastForward.Record(pos);
+    return
+      _posToNetwork.TryGetValue(pos, out Guid id)
+      && _networks.TryGetValue(id, out var net)
       ? net
       : null;
+  }
 
   /// <summary>Returns the network that owns the node <paramref name="key"/>, or <c>null</c>.</summary>
-  public BlockNetwork? GetNetworkAt(NodeKey key) =>
-    _nodeToNetwork.TryGetValue(key, out Guid id)
-    && _networks.TryGetValue(id, out var net)
+  public BlockNetwork? GetNetworkAt(NodeKey key) {
+    FastForward.Record(key.Pos);
+    return
+      _nodeToNetwork.TryGetValue(key, out Guid id)
+      && _networks.TryGetValue(id, out var net)
       ? net
       : null;
+  }
 
   /// <summary>Returns the network across <paramref name="connectorFace"/> from <paramref name="connectorPos"/>, or null when the cell there has no reciprocating connector.</summary>
   public BlockNetwork? GetConnectedNetworkAcross(
@@ -169,6 +183,7 @@ public class BlockNetworkModSystem : ModSystem {
     string networkType,
     bool broadcast = true
   ) {
+    FastForward.RaiseEpoch();
     var connectedNeighbors = GetConnectedNeighbors(world, pos, networkType)
       .ToList();
 
@@ -248,6 +263,7 @@ public class BlockNetworkModSystem : ModSystem {
     Unindex(network, pos);
 
     if (network.Nodes.Count == 0) {
+      FastForward.RaiseEpoch();
       DissolveNetwork(netId);
       return;
     }
@@ -318,6 +334,7 @@ public class BlockNetworkModSystem : ModSystem {
     BlockNetwork network,
     bool broadcast
   ) {
+    FastForward.RaiseEpoch();
     var unassigned = new HashSet<BlockPos>(network.Nodes);
     DissolveNetwork(netId);
 
@@ -511,6 +528,7 @@ public class BlockNetworkModSystem : ModSystem {
     }
 
     Step(blockAccessor, due);
+    FastForward.Advance(dt);
   }
 
   /// <summary>Steps every live network once with <paramref name="dt"/> seconds, whatever its
@@ -530,6 +548,7 @@ public class BlockNetworkModSystem : ModSystem {
         ),
       ]
     );
+    FastForward.Advance(dt);
   }
 
   private void Step(

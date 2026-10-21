@@ -1,9 +1,18 @@
 using System;
+using ExpandedLib.FastForwarding;
+using Vintagestory.API.Common;
 
 namespace ExpandedLib.Helpers;
 
 /// <summary>Advances a machine on game time, the world calendar, rather than real time.</summary>
 public static class GameTime {
+  /// <summary>Machine seconds, the unit of every real-time rate in a machine's tick, that make one game hour at the default calendar speed.</summary>
+  public const int MachineSecondsPerHour = 120;
+
+  /// <summary>The calendar time, in game hours since the world's start, a machine reads as now: the cursor of the replay step running on this thread, else <c>Calendar.TotalHours</c>.</summary>
+  public static double NowHours(IWorldAccessor world) =>
+    FastForward.Replaying ? FastForward.CursorHours : world.Calendar.TotalHours;
+
   /// <summary>Game-seconds between two <c>Calendar.TotalHours</c> readings; never negative.</summary>
   public static double SecondsBetween(double fromHours, double toHours) =>
     Math.Max(0.0, toHours - fromHours) * 3600.0;

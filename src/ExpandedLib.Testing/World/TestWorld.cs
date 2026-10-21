@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
@@ -754,7 +755,7 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   /// <summary>Game hours one real second makes on the live server at the default calendar.</summary>
-  public const double GameHoursPerSecond = 1.0 / 120.0;
+  public const double GameHoursPerSecond = 1.0 / GameTime.MachineSecondsPerHour;
 
   /// <summary>Moves the calendar forward by game hours without ticking (for away-catch-up tests).</summary>
   public void AdvanceHours(double hours) => AdvanceDays(hours / 24.0);
