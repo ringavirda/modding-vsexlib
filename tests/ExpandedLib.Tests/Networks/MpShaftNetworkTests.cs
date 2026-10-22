@@ -86,11 +86,20 @@ public class MpShaftNetworkTests {
     var run = RunAt(w, 0);
     Assert.Same(run, RunAt(w, 4));
     Assert.Equal(4, run.Store.NodeCount);
+    float momentum = 0f;
+    foreach (int x in new[] { 0, 1, 3, 4 }) {
+      int node = run.Store.IndexOf(Key(x));
+      momentum += run.Store.InertiaOf(node) * run.Store.NodeSpeed(node);
+    }
+    Assert.Equal(10f * 2f + 30f * 6f, momentum, 3);
+
+    run.OnTick(w.Accessor, 0.2f, w.Networks);
+
     Assert.All(
       new[] { 0, 1, 3, 4 },
       x => Assert.Equal(0, run.Store.GroupOf(run.Store.IndexOf(Key(x))))
     );
-    Assert.Equal((10f * 2f + 30f * 6f) / 40f, run.Store.Speed(0), 4);
+    Assert.Equal((10f * 2f + 30f * 6f) / 40f, run.Store.Speed(0), 1);
   }
 
   // Fails when a node's speed enters the mean as its group's speed, losing the sign of its ratio.

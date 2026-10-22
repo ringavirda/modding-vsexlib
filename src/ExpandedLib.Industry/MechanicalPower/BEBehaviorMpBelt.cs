@@ -7,15 +7,16 @@ using Vintagestory.API.Datastructures;
 namespace ExpandedLib.Industry.MechanicalPower;
 
 /// <summary>
-/// A belt between two pulleys of an "mpshaft" run, held by a block entity on the driving pulley's cell. It
-/// carries up to its cap locked, then slips at <c>MpBeltSlipFraction</c> of it, and the energy it slips wears it
-/// out: its life is the energy it slips at its slip torque and <c>MpBeltRatedRadS</c> over one in-game day.
+/// A belt between two pulleys of an "mpshaft" run: it carries up to its cap, slips at <c>MpBeltSlipFraction</c> of
+/// it, and wears by the energy it slips. Declared, it takes ports 0 and 1 of its cell, <c>fromPulley</c> and
+/// <c>toPulley</c> ("line" or "main", line when absent) and <c>crossed</c>; wear and a snap are saved.
 /// </summary>
 [BlockEntityBehaviorRegister]
 public class BEBehaviorMpBelt(BlockEntity blockentity)
   : BlockEntityBehavior(blockentity),
     IMpEnergyLink {
   private const string WearKey = "mpBeltWear";
+  private const string BrokenKey = "mpBeltBroken";
   private const float DaySeconds = 24f * 3600f;
 
   private NodeKey _from;
@@ -49,6 +50,27 @@ public class BEBehaviorMpBelt(BlockEntity blockentity)
   public float CapNm => CapFor(_fromPulley, _toPulley);
 
   public bool WornOut => Wear >= 1f;
+
+  public override void Initialize(ICoreAPI api, JsonObject properties) {
+    base.Initialize(api, properties);
+    if (_connected)
+      return;
+    var from = MpShaftSize.Line;
+    var to = MpShaftSize.Line;
+    string? named = properties?["fromPulley"].AsString();
+    if (named != null)
+      Enum.TryParse(named, true, out from);
+    named = properties?["toPulley"].AsString();
+    if (named != null)
+      Enum.TryParse(named, true, out to);
+    Connect(
+      NodeKey.Port(Blockentity.Pos, 0),
+      NodeKey.Port(Blockentity.Pos, 1),
+      from,
+      to,
+      properties?["crossed"].AsBool() ?? false
+    );
+  }
 
   /// <summary>Fits the belt between two pulleys.</summary>
   /// <param name="from">Port key of the driving pulley's side.</param>
@@ -124,6 +146,7 @@ public class BEBehaviorMpBelt(BlockEntity blockentity)
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);
     tree.SetFloat(WearKey, Wear);
+    tree.SetBool(BrokenKey, Broken);
   }
 
   public override void FromTreeAttributes(
@@ -132,5 +155,6 @@ public class BEBehaviorMpBelt(BlockEntity blockentity)
   ) {
     base.FromTreeAttributes(tree, worldAccessForResolve);
     Wear = tree.GetFloat(WearKey);
+    Broken = tree.GetBool(BrokenKey);
   }
 }

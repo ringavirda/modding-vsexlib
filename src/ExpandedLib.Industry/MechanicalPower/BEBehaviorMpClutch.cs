@@ -2,13 +2,14 @@ using System;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
 /// <summary>
-/// A friction clutch between two runs of an "mpshaft" network. Engaging brings its clamp on from nothing to its
-/// cap over <c>MpClutchRampS</c> seconds; it carries the clamp's torque while the two sides differ and locks when
-/// they meet. Released, it joins nothing.
+/// A friction clutch between two runs of an "mpshaft" network: its clamp comes on over <c>MpClutchRampS</c> seconds
+/// and carries the clamp's torque while the sides differ. Declared, it takes ports 0 and 1 of its cell and the
+/// shaft size <c>size</c> ("line" or "main", main when absent); engagement and clamp are saved.
 /// </summary>
 [BlockEntityBehaviorRegister]
 public class BEBehaviorMpClutch(BlockEntity blockentity)
@@ -55,6 +56,21 @@ public class BEBehaviorMpClutch(BlockEntity blockentity)
 
   public float SlipTorque(float relativeSpeed) => CapNm;
 
+  public override void Initialize(ICoreAPI api, JsonObject properties) {
+    base.Initialize(api, properties);
+    if (_connected)
+      return;
+    var size = MpShaftSize.Main;
+    string? named = properties?["size"].AsString();
+    if (named != null)
+      Enum.TryParse(named, true, out size);
+    Connect(
+      NodeKey.Port(Blockentity.Pos, 0),
+      NodeKey.Port(Blockentity.Pos, 1),
+      size
+    );
+  }
+
   /// <summary>Fits the clutch between two sides of a shaft, released.</summary>
   /// <param name="from">Port key of the driving side.</param>
   /// <param name="to">Port key of the driven side.</param>
@@ -69,5 +85,20 @@ public class BEBehaviorMpClutch(BlockEntity blockentity)
   public void Advance(float dt, float hours, float slipPowerW) {
     if (Engaged)
       _rampS += dt;
+  }
+
+  public override void ToTreeAttributes(ITreeAttribute tree) {
+    base.ToTreeAttributes(tree);
+    tree.SetBool("mpClutchEngaged", _engaged);
+    tree.SetFloat("mpClutchRampS", _rampS);
+  }
+
+  public override void FromTreeAttributes(
+    ITreeAttribute tree,
+    IWorldAccessor worldAccessForResolve
+  ) {
+    base.FromTreeAttributes(tree, worldAccessForResolve);
+    _engaged = tree.GetBool("mpClutchEngaged");
+    _rampS = tree.GetFloat("mpClutchRampS");
   }
 }

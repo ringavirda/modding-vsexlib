@@ -112,7 +112,8 @@ public class ExlibConfig : IExVersionedConfig {
   public float MpGearMeshLoss { get; set; } = 0.02f;
 
   /// <summary>Whether an mpshaft segment past its strain or ultimate parts and a flywheel past its
-  /// rim strain bursts; off, strain still accrues and nothing breaks.</summary>
+  /// rim strain bursts and a belt worn out snaps; off, strain and wear still accrue and nothing
+  /// breaks, a worn belt running on at wear 1.</summary>
   public bool MpShaftFailure { get; set; } = true;
 
   /// <summary>Time constant (in-game hours) of strain: a segment at twice its rating, or a rim at

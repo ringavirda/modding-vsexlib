@@ -212,8 +212,14 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
           MathF.Abs(Store.NodeSpeed(output) * link.Ratio)
         );
         if (
-          (start != 0f && start * delta <= 0f)
-          || MathF.Abs(delta) <= 0.01f * scale
+          start != 0f
+          && (
+            start * delta <= 0f
+            || (
+              MathF.Abs(delta) < MathF.Abs(start)
+              && MathF.Abs(delta) <= 0.01f * scale
+            )
+          )
         ) {
           _slipping.Remove(link);
           _catching.Add(link);
@@ -336,7 +342,9 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     joints.RemoveAll(j => j.Link != null && _slipping.ContainsKey(j.Link));
     var rebuilt = new MpShaftStore();
     rebuilt.TakeLoose(Store, NodeKeys);
-    MpShaftJoints.Apply(rebuilt, joints);
+    foreach (var refused in MpShaftJoints.Apply(rebuilt, joints))
+      if (refused.Link != null)
+        _slipping[refused.Link] = 1;
     rebuilt.Settle(apart);
     Store = rebuilt;
     _edgesSolved = 0;
@@ -410,7 +418,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
 
   public override void OnMerge(BlockNetwork other, IBlockAccessor world) {
     var run = (MpShaftNetwork)other;
-    Store.Absorb(run.Store);
+    Store.Take(run.Store, run.Store.Nodes.Keys.ToHashSet());
     RestoreState(new MpShaftRunState(run._pendingSpeed, run._pendingInertia));
     foreach (var (key, saved) in run._pending)
       RestoreState(key, saved);
