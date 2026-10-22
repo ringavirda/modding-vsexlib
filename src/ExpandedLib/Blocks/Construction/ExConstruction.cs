@@ -280,7 +280,7 @@ public class ExRightClickConstruction {
   /// server counts a hit at each finished swing of the step's animation and plays its strike sound;
   /// the hit that reaches the step's count wears the tool as a craft step does, and when the step is the
   /// stage's last it takes the materials from the hotbar and builds the stage. A client swings the
-  /// animation alone.</summary>
+  /// animation alone and counts no step; the server's count reaches it with the block entity.</summary>
   /// <param name="secondsUsed">Seconds since the hold began, as the game passes them.</param>
   /// <param name="byEntity">The player's entity.</param>
   /// <returns><see cref="StageHoldProgress.Idle"/> when no hold is in progress for the player, the main
@@ -315,14 +315,13 @@ public class ExRightClickConstruction {
 
     hold.Clear(effects);
     holds.Remove(byEntity.EntityId);
+    if (client)
+      return StageHoldProgress.Idle;
     if (StepsPaid < steps.Length - 1) {
-      if (!client)
-        CraftToolWear.Apply(hand, api.World.Rand);
+      CraftToolWear.Apply(hand, api.World.Rand);
       StepsPaid++;
       return StageHoldProgress.Stepped;
     }
-    if (client)
-      return StageHoldProgress.Idle;
     if (!TryConsumeIngredients(byEntity, hand))
       return StageHoldProgress.Idle;
     CraftToolWear.Apply(hand, api.World.Rand);

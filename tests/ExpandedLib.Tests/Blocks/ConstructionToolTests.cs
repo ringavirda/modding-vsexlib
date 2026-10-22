@@ -353,6 +353,19 @@ public class ConstructionToolTests {
       .PlaySoundAt(default(AssetLocation)!, default(Entity)!, null, 0f, 0f, 0f);
   }
 
+  // Fails when a client counts a finished step before the server's count reaches it, so it asks for
+  // the second step's tool while the server still wants the first.
+  [Fact]
+  public void A_client_counts_no_step_of_its_own() {
+    var site = new Site(TwoSteps, client: true);
+    Assert.True(site.Start());
+
+    Assert.False(site.Step((2 * Stroke) + 0.05f));
+
+    Assert.Equal(0, site.Behavior.Construction.StepsPaid);
+    Assert.True(site.Start());
+  }
+
   // Fails when the help does not offer the stage's tools beside its materials.
   [Fact]
   public void The_interaction_help_names_the_tool() {

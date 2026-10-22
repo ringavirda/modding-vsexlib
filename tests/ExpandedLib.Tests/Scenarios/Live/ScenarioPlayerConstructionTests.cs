@@ -4,6 +4,8 @@ using ExpandedLib.Blocks;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using Newtonsoft.Json.Linq;
+using NSubstitute;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -234,6 +236,107 @@ public class ScenarioPlayerConstructionTests {
     Assert.Equal(
       "\"complete\" of a construction needs the scenario player.",
       e.Message
+    );
+  }
+
+  /// <summary>Fails when the walk of a two-step stage pays the first step only, so the second tool is
+  /// never held and the stage is left unbuilt.</summary>
+  [Fact]
+  public void A_stage_with_two_tool_steps_is_paid_one_click_per_step_each_with_its_own_tool() {
+    var fixture = new LiveFixture();
+    TestWorld world = fixture.Test;
+    Item hammer = world.RegisterItem("game:hammer-iron");
+    Item tongs = world.RegisterItem("test:tongs-iron");
+    Item rod = world.RegisterItem("test:rod");
+    var entity = new StubBlockEntity {
+      Block = TestBlocks.Configure(new Block(), "stub:twosteps", 5102),
+      Pos = new BlockPos(0, 0, 0, 0),
+    };
+    entity.Initialize(world.Api);
+    var behavior = new ExRightClickConstructable(entity);
+    behavior.Initialize(
+      world.Api,
+      new JsonObject(
+        new Definitions.ConstructionStages()
+          .Stage(_ => { })
+          .Stage(t =>
+            t.Tool("game:hammer-*", 2)
+              .Tool("test:tongs-*", 3)
+              .Require("test:rod", 1)
+          )
+          .Build()
+      )
+    );
+    TestPlayer payer = world.Player();
+    payer.GameMode = EnumGameMode.Survival;
+    payer.Entity.AnimManager = Substitute.For<IAnimationManager>();
+    var held = new List<string>();
+    var seconds = new List<double>();
+
+    ConstructionWalk.StageClick Click(
+      List<ItemStack> supply,
+      ItemStack? tool,
+      double used
+    ) {
+      held.Add(tool!.Collectible.Code.ToString());
+      seconds.Add(used);
+      payer.Hold(tool);
+      payer.Hotbar[0].Itemstack = supply[0];
+      EnumHandling handling = EnumHandling.PassThrough;
+      var selection = new BlockSelection {
+        Position = new BlockPos(0, 0, 0, 0),
+      };
+      bool answered = behavior.OnBlockInteractStart(
+        world.World,
+        payer.Player,
+        selection,
+        ref handling
+      );
+      behavior.OnBlockInteractStep(
+        (float)used,
+        world.World,
+        payer.Player,
+        selection,
+        ref handling
+      );
+      behavior.OnBlockInteractStop(
+        (float)used,
+        world.World,
+        payer.Player,
+        selection,
+        ref handling
+      );
+      return new ConstructionWalk.StageClick(
+        answered,
+        "",
+        payer.ActiveSlot.Itemstack
+      );
+    }
+
+    ConstructionWalk.StagePayment paid = ConstructionWalk.Pay(
+      fixture.Context,
+      behavior.Construction,
+      1,
+      "stage 1",
+      [new ItemStack(rod)],
+      Click
+    );
+
+    Assert.Equal(["game:hammer-iron", "test:tongs-iron"], held);
+    Assert.Equal(1, behavior.Construction.CurrentCompletedStage);
+    Assert.Equal(tongs, paid.Tool!.Collectible);
+    Assert.Equal(
+      [
+        ConstructionWalk.HoldSeconds(
+          behavior.Construction.Stages[1].ToolSteps[0],
+          new ItemStack(hammer)
+        ),
+        ConstructionWalk.HoldSeconds(
+          behavior.Construction.Stages[1].ToolSteps[1],
+          new ItemStack(tongs)
+        ),
+      ],
+      seconds
     );
   }
 }

@@ -210,6 +210,10 @@ public static class InteractionLaw {
     /// top face.</summary>
     public string? Control { get; init; }
 
+    /// <summary>The seconds the click is held; <see cref="BlockLaws.EntityCase.UseSeconds"/> unless it
+    /// pays a construction stage by holding its tool.</summary>
+    public float Seconds { get; init; } = BlockLaws.EntityCase.UseSeconds;
+
     /// <summary>What the click is, for a finding.</summary>
     public string Describe() {
       string hand = Item == null ? "an empty hand" : $"{Item.Code}";
@@ -372,6 +376,15 @@ public static class InteractionLaw {
         Keys keys = KeysOf(help);
         ItemStack[] named = Named(help, selection);
         string? control = selection.SelectionBoxId;
+        bool holdsTool = help.ActionLangCode == HoldToBuild;
+        if (
+          !holdsTool
+          && helps.Any(o =>
+            o.Help.ActionLangCode == HoldToBuild
+            && o.Selection.SelectionBoxId == control
+          )
+        )
+          continue;
         if (named.Length == 0)
           clicks.Add(
             new Click(offset, keys, null, 0, null) {
@@ -383,7 +396,11 @@ public static class InteractionLaw {
           .Where(o =>
             o.Help != help
             && o.Selection.SelectionBoxId == control
-            && o.Help.ActionLangCode == help.ActionLangCode
+            && (
+              holdsTool
+                ? o.Help.ActionLangCode != HoldToBuild
+                : o.Help.ActionLangCode == help.ActionLangCode
+            )
             && KeysOf(o.Help) == keys
           )
           .ToArray();
@@ -398,6 +415,9 @@ public static class InteractionLaw {
             ) {
               On = on,
               Control = control,
+              Seconds = holdsTool
+                ? HoldToBuildSeconds
+                : BlockLaws.EntityCase.UseSeconds,
               Carried =
               [
                 .. alongside
@@ -423,6 +443,12 @@ public static class InteractionLaw {
       ),
     ];
   }
+
+  /// <summary>The help line of a construction stage paid by holding its tool.</summary>
+  private const string HoldToBuild = "exlib:rcc-hold-tool";
+
+  /// <summary>Seconds a hold-to-build click lasts: long enough for any tool step to finish its hits.</summary>
+  private const float HoldToBuildSeconds = 30f;
 
   /// <summary>The click on the principal's cell that <paramref name="help"/> advertises: its keys and
   /// the first item it names, an empty hand for none, aimed with <paramref name="selection"/>.</summary>
@@ -567,7 +593,13 @@ public static class InteractionLaw {
 #else
     BlockSelection aim = Selection(cell);
 #endif
-    bool? taken = step.Use(aim, player.Player, click.Describe(), judged);
+    bool? taken = step.Use(
+      aim,
+      player.Player,
+      click.Describe(),
+      judged,
+      click.Seconds
+    );
     Hold(player, Keys.None);
     return taken;
   }
