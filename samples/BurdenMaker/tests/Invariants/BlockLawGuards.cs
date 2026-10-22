@@ -13,7 +13,7 @@ namespace BurdenMaker.Tests;
 
 /// <summary>The burdenmaker blocks under <see cref="BlockLaws"/>: a
 /// <see cref="BlockFilledMegastructure"/> with <c>ExOrientable</c>, a <c>side</c> group and
-/// construction stages, so the placement, break, megablock, info, reload, neighbour, interaction and
+/// construction stages, so the placement, break, megablock, draw, info, reload, neighbour, interaction and
 /// container laws judge exlib's own megastructure class. Each law's counts and findings are printed; none is allowed.</summary>
 [GuardOf(typeof(BlockLaws), nameof(BlockLaws.Run))]
 public class BlockLawGuards(ITestOutputHelper output) {
@@ -40,12 +40,28 @@ public class BlockLawGuards(ITestOutputHelper output) {
     ["placement"] = 1,
     ["break"] = 1,
     ["megablock"] = 1,
+#if GAME_GE_1_22
+    ["draw"] = 1,
+#endif
     ["info"] = 1,
     ["reload"] = 1,
     ["neighbour"] = 1,
     ["interaction"] = 1,
     ["container"] = 1,
   };
+
+  /// <summary>Law, then the variant codes it reports as known defects, each with the defect in
+  /// words.</summary>
+  private static readonly Dictionary<string, Dictionary<string, string>> Known =
+    new() {
+      ["draw"] = new[] { "n", "e", "s", "w" }.ToDictionary(
+        side => $"burdenmaker:burdenmaker-black-{side}",
+        _ =>
+          "ExRightClickConstructable returns true from OnTesselation and the entity pools nothing; "
+          + "the animator draws only while a clip runs and the entity starts none, so the cell "
+          + "draws nothing at placement and at every stage"
+      ),
+    };
 
   private void Judge(string law) {
     BlockLaws.Law result = Laws.Value[law];
@@ -60,7 +76,7 @@ public class BlockLawGuards(ITestOutputHelper output) {
     FindingLists.Assert(
       result.Findings,
       new Dictionary<string, string>(),
-      new Dictionary<string, string>(),
+      Known.GetValueOrDefault(law) ?? new Dictionary<string, string>(),
       BlockLaws.CodeOf
     );
   }
@@ -74,6 +90,13 @@ public class BlockLawGuards(ITestOutputHelper output) {
   [Fact]
   public void The_burdenmaker_breaks_whole_and_refunds_its_stages() =>
     Judge("break");
+#endif
+
+#if GAME_GE_1_22
+  // Fails when the burdenmaker draws nothing or draws outside its footprint, placed, at a stage or formed.
+  [Fact]
+  public void The_burdenmaker_draws_inside_its_footprint_in_every_facing_and_stage() =>
+    Judge("draw");
 #endif
 
   // Fails when BlockFilledMegastructure.OnBlockRemoved skips RemoveFillers.
