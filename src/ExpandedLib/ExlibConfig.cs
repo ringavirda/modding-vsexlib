@@ -55,6 +55,16 @@ public class ExlibConfig : IExVersionedConfig {
   public float PipeAmbientTemperature { get; set; } = 20f;
   #endregion
 
+  #region Fast-forward
+  /// <summary>Milliseconds of real time one network listener call spends replaying the game time a group missed; every due group still gets one step a call. 0 replays the whole gap in one call.</summary>
+  [ExConfigRange(0, 200)]
+  public int FastForwardBudgetMs { get; set; } = 20;
+
+  /// <summary>Machine seconds (120 to a game hour) of a gap a replay steps exactly; the rest of a longer gap is skipped.</summary>
+  [ExConfigRange(1, 86_400)]
+  public int FastForwardExactSeconds { get; set; } = 1440;
+  #endregion
+
   #region Molten network
   /// <summary>Max metal (units) flowing across one canal connection per second.</summary>
   public int MoltenFlowRate { get; set; } = 50;

@@ -1,5 +1,7 @@
 using System.Linq;
 using ExpandedLib.Definitions;
+using ExpandedLib.FastForwarding;
+using ExpandedLib.Helpers;
 using ExpandedLib.Machines;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
@@ -117,20 +119,21 @@ public class MultiblockProcessTests {
     var machine = new TestMegablock { Angle = 0 };
     TestWorld world = Complete(machine);
     world.AdvanceHours(3);
-    world.AdvanceBlockEntityTime(1000);
+    world.Tick();
 
     Assert.True(machine.ProductionTicks > 0);
 
     var tree = new TreeAttribute();
     machine.ToTreeAttributes(tree);
-    Assert.Equal(3.0, tree.GetDouble("pm_lastHours"), 3);
+    double saved = tree.GetDouble("pm_lastHours");
+    Assert.InRange(saved, 3.0 - 1.0 / GameTime.MachineSecondsPerHour, 3.0);
 
     var reloaded = new TestMegablock { Angle = 0, Block = machine.Block };
     reloaded.FromTreeAttributes(tree, world.World);
     Assert.Equal(
-      3.0,
+      saved,
       ProductionProcess.ProcessesOn(reloaded).Single().LastTickHours,
-      3
+      6
     );
   }
 
@@ -143,7 +146,11 @@ public class MultiblockProcessTests {
     tree.SetDouble("pm_lastHours", 0.0);
     machine.OnBlockUnloaded();
 
-    var reloaded = new TestMegablock { Angle = 0, Block = machine.Block };
+    var reloaded = new TestMegablock {
+      Angle = 0,
+      Block = machine.Block,
+      Mode = FastForwardMode.Off,
+    };
     world.Place(new BlockPos(0, 10, 0), machine.Block, reloaded);
     reloaded.FromTreeAttributes(tree, world.World);
     world.AdvanceHours(3);
@@ -151,6 +158,60 @@ public class MultiblockProcessTests {
     ProductionProcess.ProcessesOn(reloaded).Single().DriveProductionTick(1f);
 
     Assert.Equal(3.0, reloaded.LastTickGameHours, 6);
+  }
+
+  // Fails when the layout's world cells are not couplings, so a member standing in one is a group of its own.
+  [Fact]
+  public void A_layout_cell_couples_its_machine() {
+    var machine = new TestMegablock { Angle = 0 };
+    TestWorld world = Complete(machine);
+    var tenant = new ReplayMachine();
+    world.Place(
+      new BlockPos(1, 10, 0),
+      TestBlocks.Configure(new Block(), "test:layouttenant", 98),
+      tenant
+    );
+    world.Initialize(tenant);
+    var elsewhere = new ReplayMachine();
+    world.Place(
+      new BlockPos(9, 10, 0),
+      TestBlocks.Configure(new Block(), "test:layoutaway", 99),
+      elsewhere
+    );
+    world.Initialize(elsewhere);
+    world.Networks.FastForward.EnsureBuilt();
+
+    FastForwardGroup? group = world.Networks.FastForward.GroupOf(machine.Pos);
+    Assert.NotNull(group);
+    Assert.Same(group, world.Networks.FastForward.GroupOf(tenant.Pos));
+    Assert.NotSame(group, world.Networks.FastForward.GroupOf(elsewhere.Pos));
+  }
+
+  // Fails when the registry takes now as a registering member's cursor in place of its restored stamp.
+  [Fact]
+  public void A_saved_cursor_replays_its_gap_on_load() {
+    var machine = new TestMegablock { Angle = 0 };
+    TestWorld world = Complete(machine);
+    var tree = new TreeAttribute();
+    machine.ToTreeAttributes(tree);
+    tree.SetDouble("pm_lastHours", 0.0);
+    machine.OnBlockUnloaded();
+
+    var reloaded = new TestMegablock { Angle = 0, Block = machine.Block };
+    world.Place(new BlockPos(0, 10, 0), machine.Block, reloaded);
+    reloaded.FromTreeAttributes(tree, world.World);
+    world.AdvanceHours(1);
+    world.Initialize(reloaded);
+
+    world.Networks.ListenerTick(world.Accessor, 0.2f);
+
+    Assert.Equal(119, reloaded.ProductionTicks);
+    Assert.Equal(
+      0.8 / GameTime.MachineSecondsPerHour,
+      world.Calendar.TotalHours
+        - ProductionProcess.ProcessesOn(reloaded).Single().LastTickHours,
+      6
+    );
   }
 
   #endregion

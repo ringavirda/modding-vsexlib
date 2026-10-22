@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using ExpandedLib.Blocks;
+using ExpandedLib.FastForwarding;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
@@ -36,10 +38,14 @@ public abstract class BlockEntityProductionMachine
 
     protected override bool AutoStartProduction => owner.AutoStartProduction;
 
+#pragma warning disable CS0618, CS0672
     protected override int MaxAwayCatchupSteps => owner.MaxAwayCatchupSteps;
 
     protected override float AwayCatchupStepSeconds =>
       owner.AwayCatchupStepSeconds;
+#pragma warning restore CS0618, CS0672
+
+    protected override FastForwardMode FastForwardMode => owner.FastForwardMode;
 
     protected override double GameStepHours => owner.GameStepHours;
 
@@ -80,31 +86,46 @@ public abstract class BlockEntityProductionMachine
 
   #region Away catch-up (game time)
 
-  /// <summary>Longest slice, in game hours, one <see cref="OnProductionTick"/> call is handed; a longer
-  /// span runs as several calls, only the first with the real <c>dt</c>. <c>0</c>, the default, hands
-  /// the whole span to one call.</summary>
+  /// <summary>Longest slice, in game hours, one <see cref="OnProductionTick"/> call is handed on an Off machine; a longer
+  /// span runs as several calls, only the first with the real <c>dt</c>. <c>0</c>, the default, hands the whole span to
+  /// one call. Not read on a Replay machine.</summary>
   protected virtual double GameStepHours => 0;
 
-  /// <summary>Most game hours one tick hands on, default <c>24</c>; the rest of a longer span (a long
-  /// absence, a large time jump) is dropped.</summary>
+  /// <summary>Most game hours one tick hands on an Off machine, default <c>24</c>; the rest of a longer span is
+  /// dropped. Not read on a Replay machine.</summary>
   protected virtual double MaxGameHoursPerTick => 24;
 
-  /// <summary>Calendar time, in game hours, the running <see cref="OnProductionTick"/> call covers;
-  /// <c>0</c> on a machine's first tick, when the calendar moved back, and outside a tick.</summary>
+  /// <summary>Whether the machine is a member of its fast-forward group, default the block's <c>fastForward</c>
+  /// attribute (<c>"replay"</c>, or <c>"off"</c>). A Replay machine's tick stands aside while its group replays the
+  /// game time its real ticks did not cover; an Off machine keeps the span of calendar time since its previous
+  /// tick.</summary>
+  protected virtual FastForwardMode FastForwardMode =>
+    FastForwardModes.Of(Block);
+
+  /// <summary>Calendar time, in game hours, the running <see cref="OnProductionTick"/> call covers: the call's
+  /// <c>dt</c> over 120 on a Replay machine, the hours since the previous tick on an Off machine (<c>0</c> on its first
+  /// tick, when the calendar moved back, and outside a tick).</summary>
   protected double TickGameHours => _process.TickGameHours;
 
-  /// <summary>How many bounded sub-ticks a machine replays to catch up game time spent unloaded,
-  /// capping the replay at <c>MaxAwayCatchupSteps x AwayCatchupStepSeconds</c> seconds; <c>0</c>
-  /// disables away-catch-up.</summary>
+  /// <summary>How many bounded sub-ticks a machine replays to catch up game time spent unloaded. Read by
+  /// nothing: the group's fast-forward replays that time.</summary>
+  [Obsolete(
+    "Away catch-up is replaced by the fast-forward replay; this is never read."
+  )]
   protected virtual int MaxAwayCatchupSteps => 0;
 
-  /// <summary>Sub-tick length (seconds) used while catching up; defaults to one normal tick.</summary>
+  /// <summary>Sub-tick length (seconds) used while catching up. Read by nothing: the group's fast-forward
+  /// replays that time.</summary>
+  [Obsolete(
+    "Away catch-up is replaced by the fast-forward replay; this is never read."
+  )]
   protected virtual float AwayCatchupStepSeconds => ProductionTickMs / 1000f;
 
-  // The process holds the last-tick stamp; this class persists it into the shared flat tree.
+  // The process holds the cursor; this class persists it into the shared flat tree.
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);
     tree.SetDouble("pm_lastHours", _process.LastTickHours);
+    _process.SaveFastForward(tree);
     Persisted.ToTree(tree);
   }
 
@@ -114,6 +135,7 @@ public abstract class BlockEntityProductionMachine
   ) {
     base.FromTreeAttributes(tree, worldForResolving);
     _process.RestoreLastTickHours(tree.GetDouble("pm_lastHours", -1));
+    _process.RestoreFastForward(tree);
     Persisted.FromTree(tree, worldForResolving);
   }
 

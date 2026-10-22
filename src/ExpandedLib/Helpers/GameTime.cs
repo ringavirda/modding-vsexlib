@@ -1,12 +1,24 @@
 using System;
+using ExpandedLib.FastForwarding;
+using Vintagestory.API.Common;
 
 namespace ExpandedLib.Helpers;
 
 /// <summary>Advances a machine on game time, the world calendar, rather than real time.</summary>
 public static class GameTime {
-  /// <summary>Game-seconds between two <c>Calendar.TotalHours</c> readings; never negative.</summary>
-  public static double SecondsBetween(double fromHours, double toHours) =>
-    Math.Max(0.0, toHours - fromHours) * 3600.0;
+  /// <summary>Machine seconds, the unit of every real-time rate in a machine's tick, that make one game hour at the default calendar speed.</summary>
+  public const int MachineSecondsPerHour = 120;
+
+  /// <summary>The calendar time, in game hours since the world's start, a machine reads as now: the cursor of the replay step running on this thread, else <c>Calendar.TotalHours</c>.</summary>
+  public static double NowHours(IWorldAccessor world) =>
+    FastForward.Replaying ? FastForward.CursorHours : world.Calendar.TotalHours;
+
+  /// <summary>Retired with the away catch-up.</summary>
+  /// <returns>Always 0.</returns>
+  [Obsolete(
+    "Away catch-up is replaced by the fast-forward replay; this returns 0."
+  )]
+  public static double SecondsBetween(double fromHours, double toHours) => 0.0;
 
   /// <summary>Replays <paramref name="elapsed"/> as sub-steps of at most <paramref name="step"/>, calling <paramref name="action"/> once per sub-step with its length, capped at <paramref name="maxSteps"/>. <paramref name="elapsed"/>, <paramref name="step"/> and the length handed to <paramref name="action"/> share one unit, whatever the caller counts in (seconds, game hours).</summary>
   /// <returns>The number of sub-steps run; 0 when <paramref name="elapsed"/> is 0 or less, or <paramref name="step"/> or <paramref name="maxSteps"/> is not above 0.</returns>

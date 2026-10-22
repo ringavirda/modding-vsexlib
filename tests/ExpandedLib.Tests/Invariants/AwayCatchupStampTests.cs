@@ -9,7 +9,7 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>Repo-wide rule: a block entity hosting a production process must round-trip its
-/// last-tick stamp, or opt out with <c>no away-catch-up:</c> and a reason.</summary>
+/// fast-forward cursor, the <c>pm_lastHours</c> stamp, or opt out with <c>no away-catch-up:</c> and a reason.</summary>
 public class AwayCatchupStampTests {
   #region Corpus
 
@@ -130,7 +130,7 @@ public class AwayCatchupStampTests {
       offenders.Count == 0,
       "These host a production process but neither save nor restore its \""
         + StampKey
-        + "\" stamp, so away-catch-up is dead on them however many steps they allow. Round-trip it "
+        + "\" stamp, the machine's fast-forward cursor, so a reload starts it at the present and replays nothing of its time unloaded. Round-trip it "
         + "in ToTreeAttributes/FromTreeAttributes, or mark the file with \""
         + OptOut
         + " <reason>\":\n    "
