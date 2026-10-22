@@ -68,6 +68,7 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
       "mpenergy",
       () => new MpEnergyNetwork(networks)
     );
+    networks.RegisterNetworkType("mpshaft", () => new MpShaftNetwork(networks));
   }
 
   /// <summary>Emits the generated metal resource item family and registers each with
