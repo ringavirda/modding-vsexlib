@@ -33,6 +33,8 @@ public sealed class ClientTwin {
     Twin = twin;
   }
 
+  internal TestWorld World => _world;
+
   /// <summary>The server entity this twin mirrors, as the server holds it.</summary>
   public BlockEntity Server { get; }
 
@@ -192,6 +194,8 @@ public sealed partial class TestWorld {
     }
   }
 
+  internal BlockEntity? StandingTwin(BlockPos pos) => ClientTwinAt(pos);
+
   internal bool TakeServerDirty(BlockPos pos) => _serverDirty.Remove(pos);
 
   internal bool ClientMarkedDirty(BlockPos pos) => _clientDirty.Contains(pos);
@@ -245,6 +249,8 @@ public sealed partial class TestWorld {
       ));
     a.When(x => x.MarkBlockEntityDirty(Arg.Any<BlockPos>()))
       .Do(ci => _clientDirty.Add(ci.Arg<BlockPos>()));
+    a.When(x => x.MarkBlockDirty(Arg.Any<BlockPos>()))
+      .Do(ci => MarkRedraw(ci.Arg<BlockPos>()));
     return a;
   }
 
@@ -275,7 +281,11 @@ public sealed partial class TestWorld {
         )
       )
       .Do(ci => ci[2] = new MeshData());
+#if GAME_GE_1_22
+    api.Tesselator.Returns(_ => ClientTesselates ? DrawTesselator : tesselator);
+#else
     api.Tesselator.Returns(tesselator);
+#endif
 
     var events = Substitute.For<IClientEventAPI>();
     api.Event.Returns(events);
