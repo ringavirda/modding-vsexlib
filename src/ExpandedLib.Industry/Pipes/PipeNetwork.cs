@@ -723,7 +723,9 @@ public class PipeNetwork : BlockNetwork {
     PipeNetworkState state,
     TickPass pass
   ) {
-    double nowDays = manager.ServerWorld?.Calendar?.TotalDays ?? -1;
+    double nowDays = manager.ServerWorld is { Calendar: not null } world
+      ? GameTime.NowHours(world) / 24.0
+      : -1;
     if (nowDays >= 0) {
       if (pass.Liquid && _lastEvapDays >= 0 && state.Volume > 0f) {
         float evap = (float)(

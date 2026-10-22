@@ -225,6 +225,17 @@ public sealed partial class SetupScene
       TickSecond(Math.Min(AdvanceChunkHours, left));
   }
 
+  private void FillInventoryStep(SetupStep step)
+  {
+    string code = (string)step.Body["code"]!;
+    var location = new AssetLocation(code);
+    CollectibleObject item =
+      (CollectibleObject?)World.World.GetItem(location)
+      ?? World.World.GetBlock(location)
+      ?? throw Fail(step.Path, $"\"{code}\" is not registered by the load.");
+    SetupInventory.Fill(Player.Player, item);
+  }
+
   private void SelectStep(SetupStep step)
   {
     int slot = (int)step.Body["slot"]!;

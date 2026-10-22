@@ -1,6 +1,7 @@
 #if GAME_GE_1_22
 using System;
 using System.Collections.Generic;
+using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
 using Xunit;
 
@@ -74,6 +75,38 @@ public class SetupSelectTests
       .Message;
 
     Assert.Contains("at", message);
+  }
+
+  // Fails when the fillInventory step does not reach SetupInventory.Fill or skips a hotbar slot.
+  [Fact]
+  public void FillInventory_FillsTheHotbar_ThePlayerRefusesAnotherItem()
+  {
+    using SetupScene scene = SetupScene.Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [], \"steps\": "
+          + "[{\"fillInventory\": {\"code\": \"game:plank-oak\"}}]"
+          + ", \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      ),
+      [],
+      null,
+      w =>
+      {
+        w.RegisterItem("game:plank-oak").MaxStackSize = 64;
+        w.RegisterItem("game:ingot-iron").MaxStackSize = 64;
+      }
+    );
+    var more = new Vintagestory.API.Common.ItemStack(
+      scene.World.World.GetItem(
+        new Vintagestory.API.Common.AssetLocation("game:ingot-iron")
+      ),
+      1
+    );
+
+    Assert.False(scene.Player.Player.InventoryManager.TryGiveItemstack(more));
+    Assert.Equal(1, more.StackSize);
+    for (int i = 0; i < SetupInventory.HotbarSlots; i++)
+      Assert.Equal(64, scene.Player.StackInSlot(i)?.StackSize);
   }
 }
 #endif

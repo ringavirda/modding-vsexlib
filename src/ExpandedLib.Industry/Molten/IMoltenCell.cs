@@ -47,6 +47,12 @@ public interface IMoltenCell {
   /// exlib/design/mechanics/molten-network.md, section 3).</summary>
   bool IsOpenMold => false;
 
+  /// <summary>Whole voxels this cell's metal bed lies below a level cell's in the same block row, read
+  /// on every tick; 0 by default. A connection of different fall is directed: the horizontal cell of
+  /// smaller fall, or the vertical cell above of larger fall, hands the other its whole charge at the
+  /// connection's rate (exdocs exlib/design/mechanics/molten-network.md, section 3).</summary>
+  int Fall => 0;
+
   /// <summary>Rebuilds the server temperature carrier after a world load; only type and temperature persist.</summary>
   void EnsureMetalStack(IWorldAccessor world);
 
