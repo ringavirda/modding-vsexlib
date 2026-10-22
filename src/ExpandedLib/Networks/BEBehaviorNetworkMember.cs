@@ -171,12 +171,16 @@ public class BEBehaviorNetworkMember(BlockEntity blockentity)
     // Read first: AddNode's broadcast reaches OnNetworkUpdate, which clears this state.
     object? pendingRestore = SavedNetworkState;
 
-    if (NetworkSystem.GetNetworkAt(Pos) == null)
-      NetworkSystem.AddNode(api.World.BlockAccessor, Pos, NetworkType);
+    BlockNetworkModSystem system = NetworkSystem;
+    if (system.GetNetworkAt(Pos) == null)
+      NetworkMembership.Joining(
+        Blockentity,
+        () => system.AddNode(api.World.BlockAccessor, Pos, NetworkType)
+      );
 
     if (
       pendingRestore != null
-      && NetworkSystem.GetNetworkAt(Pos) is BlockNetwork network
+      && system.GetNetworkAt(Pos) is BlockNetwork network
     ) {
       network.RestoreState(pendingRestore);
       network.BroadcastUpdate(api.World.BlockAccessor);

@@ -172,6 +172,44 @@ public class TestWorldDefaultsTests {
 
   #endregion
 
+  #region Spawn order
+
+  // Fails when DoSpawnBlockEntity ignores SpawnInitializesBeforeRegistering.
+  [Theory]
+  [InlineData(true, false)]
+  [InlineData(false, true)]
+  public void A_spawned_entity_is_answered_during_Initialize_only_when_registered_first(
+    bool initializesFirst,
+    bool answeredDuringInitialize
+  ) {
+    var world = new TestWorld {
+      SpawnInitializesBeforeRegistering = initializesFirst,
+    };
+    var be = new SpawnProbeBe();
+    world.RegisterBlockEntityFactory("probe", () => be);
+    world.Place(Pos, TestBlocks.Configure(new Block(), "test:probe", 9));
+
+    world.Accessor.SpawnBlockEntity("probe", Pos, null);
+
+    Assert.Equal(answeredDuringInitialize, be.AnsweredDuringInitialize);
+    Assert.Same(be, world.GetBlockEntity(Pos));
+  }
+
+  // Fails when SpawnInitializesBeforeRegistering defaults to true.
+  [Fact]
+  public void By_default_a_spawned_entity_is_registered_before_Initialize() {
+    var world = new TestWorld();
+    var be = new SpawnProbeBe();
+    world.RegisterBlockEntityFactory("probe", () => be);
+    world.Place(Pos, TestBlocks.Configure(new Block(), "test:probe", 9));
+
+    world.Accessor.SpawnBlockEntity("probe", Pos, null);
+
+    Assert.True(be.AnsweredDuringInitialize);
+  }
+
+  #endregion
+
   #region Entity class check
 
   private static TestWorld Registered() =>
@@ -256,6 +294,16 @@ public class TestWorldDefaultsTests {
     ) {
       BrokenBy = byPlayer;
       BrokenMultiplier = dropQuantityMultiplier;
+    }
+  }
+
+  private sealed class SpawnProbeBe : BlockEntity {
+    public bool AnsweredDuringInitialize;
+
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      AnsweredDuringInitialize =
+        api.World.BlockAccessor.GetBlockEntity(Pos) == this;
     }
   }
 
