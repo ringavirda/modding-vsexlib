@@ -7,7 +7,8 @@ namespace ExpandedLib.Testing;
 
 /// <summary>An <see cref="ITerrainMeshPool"/> that keeps every mesh it is handed instead of
 /// uploading it.</summary>
-internal sealed class RecordingMeshPool : ITerrainMeshPool {
+internal sealed class RecordingMeshPool : ITerrainMeshPool
+{
   private readonly List<PooledMesh> _meshes = [];
 
   internal IReadOnlyList<PooledMesh> Meshes => _meshes;

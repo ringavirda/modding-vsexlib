@@ -32,14 +32,19 @@ public sealed partial class TestWorld {
   internal DrawTesselator DrawTesselator =>
     _draw ??= new DrawTesselator(DrawShape);
 
-  private UnloadableShape? DrawShape(AssetLocation shape) {
+  private UnloadableShape? DrawShape(AssetLocation shape)
+  {
     if (_drawShapes.TryGetValue(shape, out UnloadableShape? known))
       return known;
     UnloadableShape? loaded = null;
     if (
-      ClientShape(shape.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json"), true)
+      ClientShape(
+        shape.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json"),
+        true
+      )
       is IAsset asset
-    ) {
+    )
+    {
       loaded = asset.ToObject<UnloadableShape>();
       loaded.ResolveReferences(Log, shape.ToString());
       loaded.Loaded = true;

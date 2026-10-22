@@ -15,7 +15,11 @@ namespace ExpandedLib.Testing;
 /// <param name="Mesh">The mesh, in cell-local blocks; a pool call with a transform matrix holds the transformed clone.</param>
 /// <param name="Lod">The level of detail the mesh was added at.</param>
 /// <param name="FromBlock">True for the block's default mesh, false for one an entity or behaviour pooled.</param>
-public readonly record struct PooledMesh(MeshData Mesh, int Lod, bool FromBlock);
+public readonly record struct PooledMesh(
+  MeshData Mesh,
+  int Lod,
+  bool FromBlock
+);
 
 /// <summary>What the game's chunk tesselator keeps for one cell: the meshes the cell's block entity
 /// pools through its <c>OnTesselation</c>, or the block's own mesh when that returns false, read
@@ -27,7 +31,8 @@ public readonly record struct PooledMesh(MeshData Mesh, int Lod, bool FromBlock)
 /// the pooled meshes only, false adds the block's own mesh. Any other draw type never calls the
 /// entity and draws the block's own mesh, empty for <c>Empty</c> and for a block with no
 /// shape. Lengths are blocks, cell-local: the cell's own unit cube spans 0 to 1 on each axis.</remarks>
-public sealed class DrawnCell {
+public sealed class DrawnCell
+{
   /// <summary>How far, in blocks, a vertex may lie outside the footprint and still count inside: one
   /// voxel, which admits the trims and lips shapes carry.</summary>
   public const double Tolerance = 1.0 / 16;
@@ -47,7 +52,8 @@ public sealed class DrawnCell {
     bool animatorDraws,
     bool redrawMarked,
     List<BlockPos> footprint
-  ) {
+  )
+  {
     Pos = pos;
     Block = block;
     SkipsBlockMesh = skipsBlockMesh;
@@ -147,7 +153,8 @@ public sealed class DrawnCell {
   /// <exception cref="InvalidOperationException"><see cref="TestWorld.ClientTesselates"/> is off, or
   /// the first shape read finds no game install.</exception>
   /// <exception cref="RetryTesselationException">The entity's <c>OnTesselation</c> throws it.</exception>
-  public static DrawnCell Of(TestWorld world, BlockPos pos) {
+  public static DrawnCell Of(TestWorld world, BlockPos pos)
+  {
     RequireSwitch(world);
     Block block = world.GetBlock(pos);
     BlockEntity? server = world.GetBlockEntity(pos);
@@ -164,7 +171,8 @@ public sealed class DrawnCell {
     Block block,
     BlockEntity? twin,
     BlockEntity? server
-  ) {
+  )
+  {
     RequireSwitch(world);
     DrawTesselator tess = world.DrawTesselator;
     tess.Textures.Clear();
@@ -172,22 +180,33 @@ public sealed class DrawnCell {
     bool skips = false;
     Exception? threw = null;
     Exception? blockMeshThrew = null;
-    if (twin != null && CallsOnTesselation(block.DrawType)) {
-      try {
+    if (twin != null && CallsOnTesselation(block.DrawType))
+    {
+      try
+      {
         skips = twin.OnTesselation(pool, tess);
-      } catch (RetryTesselationException) {
+      }
+      catch (RetryTesselationException)
+      {
         throw;
-      } catch (Exception e) {
+      }
+      catch (Exception e)
+      {
         threw = e;
       }
     }
-    if (!skips) {
-      try {
-        if (block.DrawType != EnumDrawType.Empty) {
+    if (!skips)
+    {
+      try
+      {
+        if (block.DrawType != EnumDrawType.Empty)
+        {
           tess.TesselateBlock(block, out MeshData own);
           pool.AddBlockMesh(own);
         }
-      } catch (Exception e) {
+      }
+      catch (Exception e)
+      {
         blockMeshThrew = e;
       }
     }
@@ -202,7 +221,12 @@ public sealed class DrawnCell {
           pos.dimension
         ))
     );
-    if (server is BlockEntityMultiblockStructure { StructureComplete: true } anchor)
+    if (
+      server is BlockEntityMultiblockStructure
+      {
+        StructureComplete: true
+      } anchor
+    )
       footprint.AddRange(
         anchor
           .LayoutCells.Select(c => c.At)
@@ -228,7 +252,8 @@ public sealed class DrawnCell {
     );
   }
 
-  private static void RequireSwitch(TestWorld world) {
+  private static void RequireSwitch(TestWorld world)
+  {
     if (!world.ClientTesselates)
       throw new InvalidOperationException(
         "DrawnCell reads the game's tesselation; set TestWorld.ClientTesselates first."
@@ -248,23 +273,27 @@ public sealed class DrawnCell {
       || (util.animator?.ActiveAnimationCount ?? 0) > 0
     );
 
-  private (int, int, Cuboidd?, int, double) Measure() {
+  private (int, int, Cuboidd?, int, double) Measure()
+  {
     int vertices = 0;
     int indices = 0;
     int outside = 0;
     double overshoot = 0;
     Cuboidd? bounds = null;
-    foreach (PooledMesh pooled in _meshes) {
+    foreach (PooledMesh pooled in _meshes)
+    {
       MeshData mesh = pooled.Mesh;
       vertices += mesh.VerticesCount;
       indices += mesh.IndicesCount;
-      for (int i = 0; i < mesh.VerticesCount; i++) {
+      for (int i = 0; i < mesh.VerticesCount; i++)
+      {
         double x = mesh.xyz[i * 3];
         double y = mesh.xyz[i * 3 + 1];
         double z = mesh.xyz[i * 3 + 2];
         if (bounds == null)
           bounds = new Cuboidd(x, y, z, x, y, z);
-        else {
+        else
+        {
           bounds.X1 = Math.Min(bounds.X1, x);
           bounds.Y1 = Math.Min(bounds.Y1, y);
           bounds.Z1 = Math.Min(bounds.Z1, z);
@@ -273,7 +302,8 @@ public sealed class DrawnCell {
           bounds.Z2 = Math.Max(bounds.Z2, z);
         }
         double away = DistanceToFootprint(x, y, z);
-        if (double.IsNaN(away) || away > Tolerance) {
+        if (double.IsNaN(away) || away > Tolerance)
+        {
           outside++;
           overshoot = double.IsNaN(away)
             ? double.PositiveInfinity
@@ -284,11 +314,13 @@ public sealed class DrawnCell {
     return (vertices, indices, bounds, outside, overshoot);
   }
 
-  private double DistanceToFootprint(double x, double y, double z) {
+  private double DistanceToFootprint(double x, double y, double z)
+  {
     if (double.IsNaN(x) || double.IsNaN(y) || double.IsNaN(z))
       return double.NaN;
     double best = double.PositiveInfinity;
-    foreach (BlockPos cell in _footprint) {
+    foreach (BlockPos cell in _footprint)
+    {
       double dx = Math.Max(Math.Max(cell.X - x, x - (cell.X + 1)), 0);
       double dy = Math.Max(Math.Max(cell.Y - y, y - (cell.Y + 1)), 0);
       double dz = Math.Max(Math.Max(cell.Z - z, z - (cell.Z + 1)), 0);

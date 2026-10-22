@@ -12,7 +12,8 @@ namespace ExpandedLib.Testing;
 
 /// <summary>The texture source every draw-layer tesselation reads: it answers each key with the
 /// same rectangle and records the keys asked.</summary>
-internal sealed class DrawTextures : ITexPositionSource {
+internal sealed class DrawTextures : ITexPositionSource
+{
   private readonly List<string> _keys = [];
 
   public Size2i AtlasSize { get; } = new(256, 256);
@@ -21,10 +22,13 @@ internal sealed class DrawTextures : ITexPositionSource {
 
   internal void Clear() => _keys.Clear();
 
-  public TextureAtlasPosition this[string textureCode] {
-    get {
+  public TextureAtlasPosition this[string textureCode]
+  {
+    get
+    {
       _keys.Add(textureCode);
-      return new TextureAtlasPosition {
+      return new TextureAtlasPosition
+      {
         x1 = 0,
         y1 = 0,
         x2 = 1f / 16,
@@ -40,23 +44,19 @@ internal sealed class DrawTextures : ITexPositionSource {
 /// <see cref="ITesselatorAPI"/> a block entity's <c>OnTesselation</c> receives. A call that would
 /// build the game's texture source or voxelize a texture is answered with the draw layer's texture
 /// source or refused with <see cref="NotSupportedException"/>.</summary>
-internal sealed class DrawTesselator : ITesselatorAPI {
+internal sealed class DrawTesselator : ITesselatorAPI
+{
   private readonly ShapeTesselator _inner = new(null!, new(), new(), new());
   private readonly System.Func<AssetLocation, UnloadableShape?> _shapeOf;
 
-  internal DrawTesselator(System.Func<AssetLocation, UnloadableShape?> shapeOf) =>
-    _shapeOf = shapeOf;
+  internal DrawTesselator(
+    System.Func<AssetLocation, UnloadableShape?> shapeOf
+  ) => _shapeOf = shapeOf;
 
   internal DrawTextures Textures { get; } = new();
 
   public void TesselateBlock(Block block, out MeshData modeldata) =>
-    Composite(
-      "block",
-      block.Code,
-      block.Shape,
-      out modeldata,
-      Textures
-    );
+    Composite("block", block.Code, block.Shape, out modeldata, Textures);
 
   public void TesselateItem(Item item, out MeshData modeldata) =>
     Composite("item", item.Code, item.Shape, out modeldata, Textures);
@@ -84,7 +84,8 @@ internal sealed class DrawTesselator : ITesselatorAPI {
     byte seasonColorMapIndex = 0,
     int? quantityElements = null,
     string[]? selectiveElements = null
-  ) {
+  )
+  {
     RefuseNonJson(compositeShape);
     Stock(compositeShape.Base);
     foreach (CompositeShape overlay in compositeShape.Overlays ?? [])
@@ -219,15 +220,18 @@ internal sealed class DrawTesselator : ITesselatorAPI {
     CompositeShape? shape,
     out MeshData modeldata,
     ITexPositionSource texSource
-  ) {
-    if (shape?.Base == null) {
+  )
+  {
+    if (shape?.Base == null)
+    {
       modeldata = new MeshData();
       return;
     }
     TesselateShape(type, name, shape, out modeldata, texSource);
   }
 
-  private void Stock(AssetLocation shape) {
+  private void Stock(AssetLocation shape)
+  {
     if (_inner.shapes.ContainsKey(shape))
       return;
     _inner.shapes[shape] =
@@ -237,7 +241,8 @@ internal sealed class DrawTesselator : ITesselatorAPI {
       );
   }
 
-  private static void RefuseNonJson(CompositeShape shape) {
+  private static void RefuseNonJson(CompositeShape shape)
+  {
     if (shape.Format != EnumShapeFormat.VintageStory)
       throw Refused($"TesselateShape of a {shape.Format} shape ({shape.Base})");
   }
