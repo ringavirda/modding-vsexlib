@@ -29,6 +29,9 @@ public static class NetworkMembership {
     }
   }
 
+  /// <summary>Drops the joining block entity of the calling thread; run when a world starts loading.</summary>
+  internal static void ResetForWorld() => _joining = null;
+
   /// <summary>Every membership on <paramref name="be"/>; empty when it is on no network.</summary>
   public static IEnumerable<BEBehaviorNetworkMember> MembersOf(
     BlockEntity? be
