@@ -132,6 +132,7 @@ internal sealed class PipeFlowStore {
   private bool[] _openForce = new bool[4];
   private bool[] _openLiquid = new bool[4];
   private bool[] _openLiquidNow = new bool[4];
+  private byte[] _openTag = new byte[4];
 
   private double[] _pubPressure = [];
   private double[] _pubFlow = [];
@@ -376,19 +377,44 @@ internal sealed class PipeFlowStore {
     return e;
   }
 
+  /// <summary>Joins nodes <paramref name="a"/> and <paramref name="b"/> as <see cref="AddEdge(int, int, double, double, FlowPipeClass, double)"/> does, with a friction factor of its own.</summary>
+  /// <param name="a">Index of the first node.</param>
+  /// <param name="b">Index of the second node, different from <paramref name="a"/>.</param>
+  /// <param name="boreM">Smaller bore of the two ends in m, above zero.</param>
+  /// <param name="lengthM">Length in m, above zero.</param>
+  /// <param name="friction">Darcy friction factor, above zero.</param>
+  /// <param name="pipeClass">Class of the pipe; sets how it fails.</param>
+  /// <exception cref="ArgumentOutOfRangeException">A node index, the bore, the length or the friction is out of range, or the nodes are the same.</exception>
+  public int AddEdge(
+    int a,
+    int b,
+    double boreM,
+    double lengthM,
+    double friction,
+    FlowPipeClass pipeClass
+  ) {
+    if (friction <= 0)
+      throw new ArgumentOutOfRangeException(nameof(friction));
+    int e = AddEdge(a, b, boreM, lengthM, pipeClass);
+    _friction[e] = friction;
+    return e;
+  }
+
   /// <summary>Opens <paramref name="node"/> to a fixed outside pressure through an orifice and returns the opening index. Gas leaves while the node is above <paramref name="outsidePa"/> and air enters while it is below.</summary>
   /// <param name="node">Index of the node.</param>
   /// <param name="areaM2">Orifice area in m2, zero or more.</param>
   /// <param name="outsidePa">Absolute outside pressure in Pa, zero or more.</param>
   /// <param name="gas">Gas the node holds; picks the choked coefficient and exponent of the outflow.</param>
   /// <param name="liquid">True for a drain: while the node holds liquid and is above <paramref name="outsidePa"/> the opening passes liquid at Cd 0.8 and sqrt(2 rho dp); once the liquid is gone it passes gas like any opening.</param>
+  /// <param name="tag">A label <see cref="FindOpening"/> finds the opening by; the store reads none.</param>
   /// <exception cref="ArgumentOutOfRangeException">The node does not exist, or the area or outside pressure is negative.</exception>
   public int AddOpening(
     int node,
     double areaM2,
     double outsidePa,
     FlowGas gas,
-    bool liquid = false
+    bool liquid = false,
+    byte tag = 0
   ) {
     CheckNode(node);
     if (areaM2 < 0)
@@ -411,6 +437,7 @@ internal sealed class PipeFlowStore {
       Array.Resize(ref _openForce, size);
       Array.Resize(ref _openLiquid, size);
       Array.Resize(ref _openLiquidNow, size);
+      Array.Resize(ref _openTag, size);
     }
     _openNode[o] = node;
     _openArea[o] = areaM2;
@@ -418,6 +445,7 @@ internal sealed class PipeFlowStore {
     _openGas[o] = gas;
     _openLiquid[o] = liquid;
     _openLiquidNow[o] = false;
+    _openTag[o] = tag;
     _openPrev[o] = 0;
     OpeningCount++;
     Wake();
@@ -438,13 +466,15 @@ internal sealed class PipeFlowStore {
   /// <param name="gas">Gas the node holds.</param>
   /// <param name="referenceHeightM">Height in m at which the atmosphere stands at 101,325 Pa.</param>
   /// <param name="liquid">True for a drain; see <see cref="AddOpening"/>.</param>
+  /// <param name="tag">A label <see cref="FindOpening"/> finds the opening by.</param>
   /// <exception cref="ArgumentOutOfRangeException">The node does not exist or the area is negative.</exception>
   public int AddAtmosphereOpening(
     int node,
     double areaM2,
     FlowGas gas,
     double referenceHeightM = 0,
-    bool liquid = false
+    bool liquid = false,
+    byte tag = 0
   ) {
     CheckNode(node);
     return AddOpening(
@@ -452,8 +482,17 @@ internal sealed class PipeFlowStore {
       areaM2,
       AmbientPressurePa(_height[node], referenceHeightM),
       gas,
-      liquid
+      liquid,
+      tag
     );
+  }
+
+  /// <summary>The first opening on <paramref name="node"/> laid with <paramref name="tag"/>, or -1 when there is none.</summary>
+  public int FindOpening(int node, byte tag) {
+    for (int o = 0; o < OpeningCount; o++)
+      if (_openNode[o] == node && _openTag[o] == tag)
+        return o;
+    return -1;
   }
 
   /// <summary>Sets the area of <paramref name="opening"/> in m2 from the next step; 0 closes it.</summary>
@@ -740,6 +779,18 @@ internal sealed class PipeFlowStore {
     return LiquidFull(node);
   }
 
+  /// <summary>Void volume of <paramref name="node"/>, in m3.</summary>
+  public double VolumeM3(int node) {
+    CheckNode(node);
+    return _volume[node];
+  }
+
+  /// <summary>Heat capacity of the wall of <paramref name="node"/>, in J/K; zero for a node without a wall.</summary>
+  public double WallCapacityJPerK(int node) {
+    CheckNode(node);
+    return _wallCapacity[node];
+  }
+
   /// <summary>Absolute pressure of <paramref name="node"/>, in Pa.</summary>
   public double PressurePa(int node) {
     CheckNode(node);
@@ -917,6 +968,26 @@ internal sealed class PipeFlowStore {
   /// <exception cref="ArgumentException">A node taken is already in this store.</exception>
   public void Take(PipeFlowStore source, IReadOnlySet<NodeKey> keys) =>
     CopyFrom(source, keys, false);
+
+  /// <summary>Removes the nodes keyed in <paramref name="keys"/> with their edges and openings. Their gas, air and liquid leave the run and are booked to <see cref="OpeningLedgerKg"/> as vented; every other node, edge and opening keeps its state. Node, edge and opening indices change.</summary>
+  /// <param name="keys">The nodes to remove; keys the store does not hold are ignored.</param>
+  public void Drop(IReadOnlySet<NodeKey> keys) {
+    var keep = new HashSet<NodeKey>();
+    double removed = 0;
+    foreach (var (key, i) in _index)
+      if (keys.Contains(key))
+        removed += _gas[i] + _air[i] + _liquid[i];
+      else
+        keep.Add(key);
+    var kept = new PipeFlowStore();
+    kept.CopyFrom(this, keep, true);
+    _index.Clear();
+    NodeCount = 0;
+    EdgeCount = 0;
+    OpeningCount = 0;
+    CopyFrom(kept, keep, true);
+    OpeningLedgerKg -= removed;
+  }
 
   /// <summary>Sum of the gas and air in every node, in kg.</summary>
   public double TotalGasKg() {
@@ -1925,7 +1996,8 @@ internal sealed class PipeFlowStore {
         source._openArea[o],
         source._openOutside[o],
         source._openGas[o],
-        source._openLiquid[o]
+        source._openLiquid[o],
+        source._openTag[o]
       );
       openMap[o] = opening;
       _openLiquidNow[opening] = source._openLiquidNow[o];

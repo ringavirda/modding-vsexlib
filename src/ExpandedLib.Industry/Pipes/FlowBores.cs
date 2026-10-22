@@ -10,13 +10,17 @@ namespace ExpandedLib.Industry.Pipes;
 /// <param name="Span">Cells a centred piece may stand from a supported cell, 1 or more.</param>
 /// <param name="Friction">Darcy friction factor, above zero.</param>
 /// <param name="Joint">Joint family the class couples with, as <see cref="BlockPipe.FlangedJoint"/>.</param>
+/// <param name="WallKgPerMetre">Mass of the wall per metre of run in kg/m, zero or more; 0 builds a cell without a wall.</param>
+/// <param name="WallMetres">Wall thickness in m, zero or more; widens the wall's outer area.</param>
 public sealed record FlowBore(
   double BoreMetres,
   double WorkingAtm,
   double BurstAtm,
   int Span,
   double Friction,
-  string Joint
+  string Joint,
+  double WallKgPerMetre = 0,
+  double WallMetres = 0
 ) {
   /// <summary>The burst pressure of a bore with working pressure <paramref name="workingAtm"/>, in absolute atm: the gauge working pressure times 1.25, over the atmosphere.</summary>
   /// <param name="workingAtm">Working pressure W in absolute atm, 1 or more.</param>
@@ -40,6 +44,8 @@ public static class FlowBores {
   /// <param name="span">Cells a centred piece may stand from a supported cell, 1 or more.</param>
   /// <param name="friction">Darcy friction factor, above zero.</param>
   /// <param name="joint">Joint family, as <see cref="BlockPipe.FlangedJoint"/>.</param>
+  /// <param name="wallKgPerMetre">Mass of the wall per metre of run in kg/m, zero or more; 0 builds a cell without a wall.</param>
+  /// <param name="wallMetres">Wall thickness in m, zero or more.</param>
   /// <exception cref="ArgumentException">A name is empty.</exception>
   /// <exception cref="ArgumentOutOfRangeException">A number is outside the range its parameter names.</exception>
   public static void Register(
@@ -50,7 +56,9 @@ public static class FlowBores {
     double burstAtm,
     int span,
     double friction,
-    string joint
+    string joint,
+    double wallKgPerMetre = 0,
+    double wallMetres = 0
   ) {
     ArgumentException.ThrowIfNullOrEmpty(tier);
     ArgumentException.ThrowIfNullOrEmpty(boreClass);
@@ -60,13 +68,19 @@ public static class FlowBores {
     ArgumentOutOfRangeException.ThrowIfLessThan(burstAtm, workingAtm);
     ArgumentOutOfRangeException.ThrowIfLessThan(span, 1);
     ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(friction, 0);
+    if (wallKgPerMetre < 0)
+      throw new ArgumentOutOfRangeException(nameof(wallKgPerMetre));
+    if (wallMetres < 0)
+      throw new ArgumentOutOfRangeException(nameof(wallMetres));
     _bores[(tier, boreClass)] = new FlowBore(
       boreMetres,
       workingAtm,
       burstAtm,
       span,
       friction,
-      joint
+      joint,
+      wallKgPerMetre,
+      wallMetres
     );
   }
 

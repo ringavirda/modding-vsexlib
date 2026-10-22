@@ -18,7 +18,9 @@ namespace ExpandedLib.Industry.Pipes;
 /// </summary>
 [BlockEntityRegister]
 public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
-  public sealed override string NetworkType {
+  /// <summary>The network type this cell joins. A subclass answering a type other than "pipe" leaves
+  /// its cell out of every lumped run.</summary>
+  public override string NetworkType {
     get => "pipe";
     set { }
   }

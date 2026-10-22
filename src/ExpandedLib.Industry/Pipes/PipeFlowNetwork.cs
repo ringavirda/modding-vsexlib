@@ -4,6 +4,7 @@ using System.Linq;
 using ExpandedLib.Networks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.Pipes;
 
@@ -14,6 +15,11 @@ namespace ExpandedLib.Industry.Pipes;
 internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
   : BlockNetwork(system) {
   public override string NetworkType => "pipeflow";
+
+  private const double DefaultAmbientC = 20;
+  private const double KelvinOffset = 273.15;
+  private const double SteamConstant = 461.5;
+  private const double WallJPerKgK = 460;
 
   public override int StepIntervalMs => 200;
 
@@ -31,6 +37,10 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
 
   private readonly Dictionary<NodeKey, byte> _savedDamage = [];
 
+  private readonly HashSet<NodeKey> _built = [];
+
+  private bool _dirty;
+
   /// <summary>The run's grade, 0..1: heating value relative to rich producer gas, mixed by mass from the sources of a <see cref="FlowMedium.Fuel"/> run; 0 on any other.</summary>
   public double Grade { get; private set; }
 
@@ -41,6 +51,10 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
   ) {
     if (dt <= 0)
       return;
+    if (_dirty) {
+      _dirty = false;
+      Reconcile(world, manager);
+    }
     foreach (var (key, index) in Store.Nodes)
       Store.SetFrozen(index, world.GetChunkAtBlockPos(key.Pos) == null);
     if (_savedDamage.Count > 0) {
@@ -57,6 +71,154 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
     foreach (var coupling in Couplings)
       if (Store.Nodes.TryGetValue(coupling.From, out int node))
         coupling.Book(Store.CoupledDrawnKg(node), Store.TemperatureC(node));
+  }
+
+  /// <inheritdoc/>
+  public override void OnTopologyChanged() => _dirty = true;
+
+  private void Reconcile(IBlockAccessor world, BlockNetworkModSystem manager) {
+    var gone = _built.Where(key => !Nodes.Contains(key.Pos)).ToHashSet();
+    if (gone.Count > 0) {
+      Store.Drop(gone);
+      _built.ExceptWith(gone);
+    }
+    double reference = manager.ServerWorld?.SeaLevel ?? 0;
+    foreach (var key in NodeKeys)
+      if (
+        key.Slot == 0
+        && !Store.Nodes.ContainsKey(key)
+        && CellAt(world, key.Pos) is { Bore: { } bore } cell
+      ) {
+        BuildNode(world, key, cell, bore, reference);
+        _built.Add(key);
+      }
+    foreach (var key in _built) {
+      if (CellAt(world, key.Pos)?.Bore is not { } bore)
+        continue;
+      LayEdges(world, manager, key, bore);
+      ShapeOpenings(world, manager, key, bore, reference);
+    }
+  }
+
+  private static BEBehaviorPipeFlowCell? CellAt(
+    IBlockAccessor world,
+    BlockPos pos
+  ) => world.GetBlockEntity(pos)?.GetBehavior<BEBehaviorPipeFlowCell>();
+
+  private void BuildNode(
+    IBlockAccessor world,
+    NodeKey key,
+    BEBehaviorPipeFlowCell cell,
+    FlowBore bore,
+    double referenceM
+  ) {
+    double boreM = bore.BoreMetres;
+    double volume = Math.PI / 4 * boreM * boreM;
+    double height = key.Pos.Y + 0.5;
+    double ambient =
+      world.GetClimateAt(key.Pos, EnumGetClimateMode.NowValues)?.Temperature
+      ?? DefaultAmbientC;
+    bool water = Medium == FlowMedium.Water;
+    double constant = water ? SteamConstant : GasOrifice.AirConstant;
+    PipeWall? wall =
+      bore.WallKgPerMetre > 0
+        ? new PipeWall(
+          bore.WallKgPerMetre * WallJPerKgK,
+          Math.PI * boreM,
+          Math.PI * (boreM + 2 * bore.WallMetres)
+        )
+        : null;
+    ITreeAttribute? entry = cell.TakeLoaded();
+    if (
+      entry == null
+      || !RestoreNode(key, entry, volume, height, constant, wall, water)
+    ) {
+      double airKg =
+        PipeFlowStore.AmbientPressurePa(height, referenceM)
+        * volume
+        / (GasOrifice.AirConstant * (ambient + KelvinOffset));
+      int node = water
+        ? Store.AddNode(
+          key,
+          volume,
+          height,
+          0,
+          ambient,
+          constant,
+          0,
+          airKg,
+          true
+        )
+        : Store.AddNode(key, volume, height, airKg, ambient, constant);
+      if (wall is { } fitted)
+        Store.SetWall(node, fitted, ambient);
+    }
+    Store.SetAmbient(Store.IndexOf(key), ambient);
+  }
+
+  private void LayEdges(
+    IBlockAccessor world,
+    BlockNetworkModSystem manager,
+    NodeKey key,
+    FlowBore bore
+  ) {
+    int a = Store.IndexOf(key);
+    foreach (
+      var pos in manager.GetConnectedNeighbors(world, key.Pos, NetworkType)
+    ) {
+      if (
+        !Store.Nodes.TryGetValue(NodeKey.Centre(pos), out int b)
+        || Store.EdgeBetween(a, b) >= 0
+      )
+        continue;
+      FlowBore other = CellAt(world, pos)?.Bore ?? bore;
+      FlowBore weaker = other.WorkingAtm < bore.WorkingAtm ? other : bore;
+      int edge = Store.AddEdge(
+        a,
+        b,
+        Math.Min(bore.BoreMetres, other.BoreMetres),
+        1,
+        weaker.Friction,
+        FlowPipeClass.Cast
+      );
+      Store.SetRating(edge, weaker);
+    }
+  }
+
+  private void ShapeOpenings(
+    IBlockAccessor world,
+    BlockNetworkModSystem manager,
+    NodeKey key,
+    FlowBore bore,
+    double referenceM
+  ) {
+    if (
+      NetworkMembership.Resolve(world, key.Pos, NetworkType) is not { } member
+    )
+      return;
+    int node = Store.IndexOf(key);
+    var gas = Medium == FlowMedium.Water ? FlowGas.Steam : FlowGas.Air;
+    double open = Math.PI / 4 * bore.BoreMetres * bore.BoreMetres;
+    foreach (var face in BlockFacing.ALLFACES) {
+      if (!member.HasConnectorAt(world, key.Pos, face))
+        continue;
+      byte tag = (byte)(1 + face.Index);
+      int opening = Store.FindOpening(node, tag);
+      if (opening < 0)
+        opening = Store.AddAtmosphereOpening(
+          node,
+          0,
+          gas,
+          referenceM,
+          false,
+          tag
+        );
+      BlockPos across = key.Pos.AddCopy(face);
+      bool shut =
+        world.GetChunkAtBlockPos(across) == null
+        || Store.Nodes.ContainsKey(NodeKey.Centre(across));
+      Store.SetOpeningArea(opening, shut ? 0 : open);
+    }
   }
 
   private void ApplyPorts(double dt) {
@@ -232,6 +394,8 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
     Inbound.AddRange(run.Inbound);
     foreach (var (key, code) in run._savedDamage)
       _savedDamage[key] = code;
+    _built.UnionWith(run._built);
+    _dirty = true;
     Grade = MixedGrade(run);
     if (Medium == FlowMedium.Ambient)
       Medium = run.Medium;
@@ -257,6 +421,9 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
     run.Couplings.RemoveAll(c => fragmentKeys.Contains(c.From));
     Inbound.AddRange(run.Inbound.Where(c => fragmentKeys.Contains(c.To)));
     run.Inbound.RemoveAll(c => fragmentKeys.Contains(c.To));
+    foreach (var key in fragmentKeys)
+      if (run._built.Remove(key))
+        _built.Add(key);
     foreach (var key in fragmentKeys)
       if (run._savedDamage.Remove(key, out byte code))
         _savedDamage[key] = code;

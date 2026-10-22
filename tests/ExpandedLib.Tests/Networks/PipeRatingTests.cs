@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
@@ -97,6 +98,27 @@ public class PipeRatingTests {
     Assert.Equal(6, bore.WorkingAtm);
     Assert.False(FlowBores.TryGet("t", "small", out _));
     Assert.Equal(1 + 1.25 * 1.5, FlowBore.BurstFor(2.5), 9);
+  }
+
+  // Fails when Register drops the wall values.
+  [Fact]
+  public void Register_KeepsTheWall() {
+    FlowBores.Register("walled", "main", 0.25, 5, 6, 4, 0.03, "j", 25, 0.004);
+
+    Assert.True(FlowBores.TryGet("walled", "main", out var bore));
+    Assert.Equal(25, bore.WallKgPerMetre);
+    Assert.Equal(0.004, bore.WallMetres);
+  }
+
+  // Fails when Register accepts a negative wall mass, or a negative wall thickness.
+  [Fact]
+  public void Register_RefusesANegativeWall() {
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+      FlowBores.Register("bad", "main", 0.25, 5, 6, 4, 0.03, "j", -1, 0.004)
+    );
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+      FlowBores.Register("bad", "main", 0.25, 5, 6, 4, 0.03, "j", 25, -0.004)
+    );
   }
 
   #endregion

@@ -21,13 +21,14 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
   private bool _openedServerChannel;
 
   /// <summary>When <see cref="ExWorldState.ResetsOnLoad"/> holds, returns the family layer's
-  /// registries (metals, pipe tier ratings, the sound channel, the mold gate, the chisel list, the
+  /// registries (metals, pipe tier ratings and bore classes, the sound channel, the mold gate, the chisel list, the
   /// molten temperature formatter) to their fresh-process state; then registers the refractory
   /// tier variant group before any block's <c>GetHeldItemName</c> can decorate.</summary>
   public void StartPre(ICoreAPI api) {
     if (ExWorldState.ResetsOnLoad(api)) {
       MetalRegistry.ResetForWorld();
       BlockPipe.ResetForWorld();
+      FlowBores.Clear();
       ExSounds.StopServer();
       ExMoldGate.ResetForWorld();
       MoltenChisel.ResetForWorld();
