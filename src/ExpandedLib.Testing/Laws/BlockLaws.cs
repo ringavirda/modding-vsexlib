@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -40,6 +41,9 @@ public static class BlockLaws {
     /// <summary>What <see cref="Blocks"/> counts: <c>blocktypes</c>, or <c>structures</c> for
     /// the formed laws.</summary>
     public string Unit { get; init; } = "blocktypes";
+
+    /// <summary>Wall time the law took to stand its world and run, set by <see cref="Run"/>.</summary>
+    public TimeSpan Elapsed { get; init; }
 
     /// <summary>One line per structure a formed law stood up formed, in the order it ran: the
     /// anchor's variant code, then what the structure gave the law. Empty for the other
@@ -105,34 +109,39 @@ public static class BlockLaws {
     IExDef[] given = [.. defs];
     ExBlockDef[] all = [.. given.OfType<ExBlockDef>()];
     ExItemDef[] items = [.. given.OfType<ExItemDef>()];
-    var laws = new List<Law>
-    {
-      PlacementLaw.Run(Stand(all, assemblies, prepare), domain),
-    };
+    var laws = new List<Law>();
+    void Time(Func<Law> run) {
+      var clock = Stopwatch.StartNew();
+      Law law = run();
+      laws.Add(law with { Elapsed = clock.Elapsed });
+    }
+    Time(() => PlacementLaw.Run(Stand(all, assemblies, prepare), domain));
 #if GAME_GE_1_22
-    laws.Add(
+    Time(() =>
       BreakLaw.Run(all.Where(d => d.Domain == domain), assemblies, prepare)
     );
 #endif
-    laws.Add(MultiblockLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(MegablockLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => MultiblockLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => MegablockLaw.Run(Stand(all, assemblies, prepare), domain));
 #if GAME_GE_1_22
-    laws.Add(DrawLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(ControlLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => DrawLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => ControlLaw.Run(Stand(all, assemblies, prepare), domain));
 #endif
-    laws.Add(InfoLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(ReloadLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(NeighbourLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(NetworkLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain));
-    laws.Add(
+    Time(() => InfoLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => ReloadLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => NeighbourLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => NetworkLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain));
+    Time(() =>
       InteractionLaw.Run(Stand(all, assemblies, prepare, items), domain)
     );
-    laws.Add(ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain));
-    laws.Add(
+    Time(() =>
+      ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain)
+    );
+    Time(() =>
       InteractionLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
     );
-    laws.Add(
+    Time(() =>
       ContainerLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
     );
     return new Result(laws);

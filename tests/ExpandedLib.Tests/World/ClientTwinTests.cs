@@ -230,6 +230,19 @@ public class ClientTwinTests {
   }
 
   [Fact]
+  public void A_twin_reads_the_recipes_the_world_registered() {
+    using var world = DoorWorld();
+    var recipes = new RecipeRegistrySystem();
+    world.Mods.Register(recipes);
+    var door = new ModReadingDoor();
+    Place(world, Here, door);
+
+    var twin = ClientTwin.Stand(world, door)[0];
+
+    Assert.Same(recipes, ((ModReadingDoor)twin.Twin).Recipes);
+  }
+
+  [Fact]
   public void A_twin_sees_the_mods_the_world_lists() {
     using var world = DoorWorld();
     world.Mods.Add("listedmod", "2.3.4");
@@ -256,6 +269,19 @@ public class ClientTwinTests {
   }
 
 #if GAME_GE_1_22
+  [Fact]
+  public void A_drawing_twin_reads_a_shape_by_location()
+  {
+    using var world = DoorWorld();
+    world.ClientTesselates = true;
+    var door = new ModReadingDoor();
+    Place(world, Here, door);
+
+    var twin = ClientTwin.Stand(world, door)[0];
+
+    Assert.NotNull(((ModReadingDoor)twin.Twin).Shape);
+  }
+
   [Fact]
   public void A_drawing_twin_resolves_any_texture_in_the_block_atlas()
   {
@@ -436,6 +462,8 @@ public class ClientTwinTests {
   private sealed class ModReadingDoor : BlockEntity {
     public MechanicalPowerMod? Found { get; private set; }
     public string? ListedVersion { get; private set; }
+    public RecipeRegistrySystem? Recipes { get; private set; }
+    public Shape? Shape { get; private set; }
     public TextureAtlasPosition? Atlas { get; private set; }
 
     public override void Initialize(ICoreAPI api) {
@@ -444,6 +472,10 @@ public class ClientTwinTests {
         return;
       Found = api.ModLoader.GetModSystem<MechanicalPowerMod>();
       ListedVersion = api.ModLoader.GetMod("listedmod")?.Info.Version;
+      Recipes = api.ModLoader.GetModSystem<RecipeRegistrySystem>();
+      Shape = api.Assets.Get<Shape>(
+        new AssetLocation("game:shapes/block/basic/cube.json")
+      );
       Atlas = capi.BlockTextureAtlas[
         new AssetLocation("game:block/stone/rock/granite1")
       ];

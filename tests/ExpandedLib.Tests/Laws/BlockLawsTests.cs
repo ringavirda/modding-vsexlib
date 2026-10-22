@@ -1817,6 +1817,10 @@ public class BlockLawsTests {
       result[MultiblockLaw.Name].Findings,
       f => f.StartsWith("test:turned-n", StringComparison.Ordinal)
     );
+    Assert.All(
+      result.Laws,
+      l => Assert.True(l.Elapsed > TimeSpan.Zero, l.Name)
+    );
 #if GAME_GE_1_22
     Assert.Equal(
       [

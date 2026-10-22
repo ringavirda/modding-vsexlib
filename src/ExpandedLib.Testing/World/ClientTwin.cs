@@ -287,6 +287,13 @@ public sealed partial class TestWorld {
     assets
       .TryGet(Arg.Any<AssetLocation>(), Arg.Any<bool>())
       .Returns(ci => ClientShape(ci.Arg<AssetLocation>(), ci.Arg<bool>()));
+    assets
+      .Get<Shape>(Arg.Any<AssetLocation>())
+      .Returns(ci =>
+        ClientTesselates
+          ? ClientShape(ci.Arg<AssetLocation>(), true)?.ToObject<Shape>()
+          : null
+      );
     api.Assets.Returns(assets);
     coreApi.Assets.Returns(assets);
 
@@ -428,6 +435,10 @@ public sealed partial class TestWorld {
       );
     var power = new MechanicalPowerMod();
     loader.Register(power);
+    foreach (
+      RecipeRegistrySystem recipes in Mods.Systems.OfType<RecipeRegistrySystem>()
+    )
+      loader.Register(recipes);
     power.Start(api);
     _clientRenderers.RemoveAll(r => ReferenceEquals(r.Renderer, power));
     return loader;
