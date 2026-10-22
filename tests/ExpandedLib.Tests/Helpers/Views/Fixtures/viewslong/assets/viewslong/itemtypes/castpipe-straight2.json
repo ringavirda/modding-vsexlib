@@ -1,0 +1,12 @@
+{
+  "code": "castpipe-straight2",
+  "class": "Item",
+  "shape": {
+    "base": "viewslong:block/castpipe-straight2"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "bar"
+    }
+  }
+}

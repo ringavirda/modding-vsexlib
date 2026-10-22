@@ -1,0 +1,7 @@
+{
+  "code": "pipe-cast-straight3",
+  "class": "Block",
+  "shape": {
+    "base": "viewslong:block/pipe-cast-straight3"
+  }
+}
