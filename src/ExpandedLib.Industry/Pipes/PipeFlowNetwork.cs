@@ -55,6 +55,7 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
       _dirty = false;
       Reconcile(world, manager);
     }
+    ShapeAllOpenings(world, manager);
     foreach (var (key, index) in Store.Nodes)
       Store.SetFrozen(index, world.GetChunkAtBlockPos(key.Pos) == null);
     if (_savedDamage.Count > 0) {
@@ -82,7 +83,7 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
       Store.Drop(gone);
       _built.ExceptWith(gone);
     }
-    double reference = manager.ServerWorld?.SeaLevel ?? 0;
+    double reference = ReferenceM(manager);
     foreach (var key in NodeKeys)
       if (
         key.Slot == 0
@@ -92,12 +93,24 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
         BuildNode(world, key, cell, bore, reference);
         _built.Add(key);
       }
-    foreach (var key in _built) {
-      if (CellAt(world, key.Pos)?.Bore is not { } bore)
-        continue;
-      LayEdges(world, manager, key, bore);
-      ShapeOpenings(world, manager, key, bore, reference);
-    }
+    foreach (var key in _built)
+      if (CellAt(world, key.Pos) is { Bore: { } } cell)
+        LayEdges(world, manager, key, cell);
+  }
+
+  private static double ReferenceM(BlockNetworkModSystem manager) =>
+    manager.ServerWorld?.SeaLevel ?? 0;
+
+  private void ShapeAllOpenings(
+    IBlockAccessor world,
+    BlockNetworkModSystem manager
+  ) {
+    if (_built.Count == 0)
+      return;
+    double reference = ReferenceM(manager);
+    foreach (var key in _built)
+      if (CellAt(world, key.Pos)?.Bore is { } bore)
+        ShapeOpenings(world, manager, key, bore, reference);
   }
 
   private static BEBehaviorPipeFlowCell? CellAt(
@@ -160,26 +173,38 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
     IBlockAccessor world,
     BlockNetworkModSystem manager,
     NodeKey key,
-    FlowBore bore
+    BEBehaviorPipeFlowCell cell
   ) {
+    FlowBore bore = cell.Bore!;
     int a = Store.IndexOf(key);
-    foreach (
-      var pos in manager.GetConnectedNeighbors(world, key.Pos, NetworkType)
-    ) {
-      if (
-        !Store.Nodes.TryGetValue(NodeKey.Centre(pos), out int b)
-        || Store.EdgeBetween(a, b) >= 0
-      )
+    var joined = manager
+      .GetConnectedNeighbors(world, key.Pos, NetworkType)
+      .ToHashSet();
+    foreach (var face in BlockFacing.ALLFACES) {
+      BlockPos pos = key.Pos.AddCopy(face);
+      if (!Store.Nodes.TryGetValue(NodeKey.Centre(pos), out int b))
         continue;
-      FlowBore other = CellAt(world, pos)?.Bore ?? bore;
-      FlowBore weaker = other.WorkingAtm < bore.WorkingAtm ? other : bore;
-      int edge = Store.AddEdge(
+      int edge = Store.EdgeBetween(a, b);
+      if (edge >= 0) {
+        Store.SetShare(edge, joined.Contains(pos) ? 1 : 0);
+        continue;
+      }
+      if (!joined.Contains(pos))
+        continue;
+      BEBehaviorPipeFlowCell? otherCell = CellAt(world, pos);
+      FlowBore other = otherCell?.Bore ?? bore;
+      BEBehaviorPipeFlowCell weakerCell =
+        otherCell != null && other.WorkingAtm < bore.WorkingAtm
+          ? otherCell
+          : cell;
+      FlowBore weaker = weakerCell.Bore ?? bore;
+      edge = Store.AddEdge(
         a,
         b,
         Math.Min(bore.BoreMetres, other.BoreMetres),
         1,
         weaker.Friction,
-        FlowPipeClass.Cast
+        weakerCell.PipeClass
       );
       Store.SetRating(edge, weaker);
     }
@@ -200,10 +225,13 @@ internal sealed class PipeFlowNetwork(BlockNetworkModSystem system)
     var gas = Medium == FlowMedium.Water ? FlowGas.Steam : FlowGas.Air;
     double open = Math.PI / 4 * bore.BoreMetres * bore.BoreMetres;
     foreach (var face in BlockFacing.ALLFACES) {
-      if (!member.HasConnectorAt(world, key.Pos, face))
-        continue;
       byte tag = (byte)(1 + face.Index);
       int opening = Store.FindOpening(node, tag);
+      if (!member.HasConnectorAt(world, key.Pos, face)) {
+        if (opening >= 0)
+          Store.SetOpeningArea(opening, 0);
+        continue;
+      }
       if (opening < 0)
         opening = Store.AddAtmosphereOpening(
           node,

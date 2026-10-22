@@ -723,6 +723,13 @@ internal sealed class PipeFlowStore {
     Wake();
   }
 
+  /// <summary>The class <paramref name="edge"/> was laid with.</summary>
+  /// <exception cref="ArgumentOutOfRangeException">The edge does not exist.</exception>
+  internal FlowPipeClass ClassOf(int edge) {
+    CheckEdge(edge);
+    return _class[edge];
+  }
+
   /// <summary>The edge joining nodes <paramref name="a"/> and <paramref name="b"/> in either direction, or -1 when there is none.</summary>
   public int EdgeBetween(int a, int b) {
     for (int e = 0; e < EdgeCount; e++)

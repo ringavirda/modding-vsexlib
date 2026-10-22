@@ -57,6 +57,21 @@ public class FlowCellTests {
     public WeakCellEntity() => Behaviors.Add(new WeakCell(this));
   }
 
+  private sealed class PlatedCell(BlockEntity be) : BEBehaviorPipeFlowCell(be) {
+    public override FlowBore? Bore => WeakMain;
+
+    internal override FlowPipeClass PipeClass => FlowPipeClass.Plated;
+  }
+
+  private sealed class PlatedCellEntity : BlockEntityNetworkNode {
+    public override string NetworkType {
+      get => "pipeflow";
+      set { }
+    }
+
+    public PlatedCellEntity() => Behaviors.Add(new PlatedCell(this));
+  }
+
   private sealed class FlowCellEntity : BlockEntityNetworkNode {
     public override string NetworkType {
       get => "pipeflow";
@@ -120,14 +135,35 @@ public class FlowCellTests {
     TestWorld w,
     int x,
     TreeAttribute? tree = null,
-    BlockEntity? be = null
+    BlockEntity? be = null,
+    string orientation = "we"
+  ) => LayAt(w, Cell(x), tree, be, orientation);
+
+  private static void LayAt(
+    TestWorld w,
+    BlockPos pos,
+    TreeAttribute? tree = null,
+    BlockEntity? be = null,
+    string orientation = "we"
   ) {
     be ??= new FlowCellEntity();
-    w.Place(Cell(x), TestNetworkBlock.Create("pipeflow", "we", 1), be);
+    w.Place(pos, TestNetworkBlock.Create("pipeflow", orientation, 1), be);
     if (tree != null)
       be.GetBehavior<BEBehaviorPipeFlowCell>()
         .FromTreeAttributes(tree, w.World);
     w.Initialize(be);
+  }
+
+  /// <summary>What a wrench turn does to the graph: the cell leaves it, wears another orientation and joins again.</summary>
+  private static void Turn(
+    TestWorld w,
+    BlockPos pos,
+    BlockEntity be,
+    string orientation
+  ) {
+    w.RemoveNode(pos);
+    w.Place(pos, TestNetworkBlock.Create("pipeflow", orientation, 2), be);
+    w.AddNode(pos, "pipeflow");
   }
 
   private static void Tick(TestWorld w, int x, float dt = Tiny) =>
@@ -226,6 +262,118 @@ public class FlowCellTests {
     Assert.True(far >= 0);
     Assert.Equal(0, store.OpeningFlowKgPerSecond(far));
   }
+
+  // Fails when the fog is read at the first reconcile only.
+  [Fact]
+  public void Fog_LiftsWhenTheChunkLoads() {
+    var w = NewWorld();
+    Lay(w, 30, Entry(3));
+    Lay(w, 31, Entry(3));
+    w.UnloadChunkAt(Cell(32));
+    var run = RunAt(w, 30);
+    Tick(w, 30);
+    Assert.Equal(1, FlowingOpenings(run.Store));
+
+    w.LoadChunkAt(Cell(32));
+    Tick(w, 30, 2e-5f);
+
+    Assert.Equal(2, FlowingOpenings(run.Store));
+  }
+
+  // Fails when the fog is read at the first reconcile only.
+  [Fact]
+  public void Fog_FallsWhenTheChunkUnloads() {
+    var w = NewWorld();
+    Lay(w, 30, Entry(3));
+    Lay(w, 31, Entry(3));
+    var run = RunAt(w, 30);
+    Tick(w, 30);
+
+    w.UnloadChunkAt(Cell(32));
+    Tick(w, 30, 2e-5f);
+
+    Assert.Equal(1, FlowingOpenings(run.Store));
+  }
+
+  // Fails when a tagged opening on a face that is no longer a connector keeps its area.
+  [Fact]
+  public void Rotate_ClosesTheFaceItTurnedFrom() {
+    var w = NewWorld();
+    var be = new FlowCellEntity();
+    Lay(w, 30, Entry(3));
+    Lay(w, 31, Entry(3), be);
+    Tick(w, 30);
+
+    Turn(w, Cell(31), be, "wn");
+    Tick(w, 30, 2e-5f);
+
+    var store = RunAt(w, 30).Store;
+    Assert.Equal(2, store.NodeCount);
+    int node = store.IndexOf(Key(31));
+    int east = store.FindOpening(node, (byte)(1 + BlockFacing.EAST.Index));
+    int north = store.FindOpening(node, (byte)(1 + BlockFacing.NORTH.Index));
+    Assert.True(east >= 0 && north >= 0);
+    Assert.Equal(0, store.OpeningFlowKgPerSecond(east));
+    Assert.True(Math.Abs(store.OpeningFlowKgPerSecond(north)) > 1e-6);
+  }
+
+  // Fails when an edge to a neighbour the turned cell no longer faces keeps its share.
+  [Fact]
+  public void Rotate_ClosesTheEdgeToANeighbourItNoLongerFaces() {
+    var w = NewWorld();
+    var be = new FlowCellEntity();
+    var p00 = new BlockPos(40, 0, 0);
+    var p10 = new BlockPos(41, 0, 0);
+    var p01 = new BlockPos(40, 0, 1);
+    var p11 = new BlockPos(41, 0, 1);
+    LayAt(w, p00, Entry(1), null, "es");
+    LayAt(w, p10, Entry(1), null, "sw");
+    LayAt(w, p01, Entry(1), null, "ne");
+    LayAt(w, p11, Entry(3), be, "nw");
+    var run = (PipeFlowNetwork)w.NetworkAt(p00)!;
+    run.OnTick(w.Accessor, Tiny, w.Networks);
+    var store = run.Store;
+    int a = store.IndexOf(NodeKey.Centre(p11));
+    int b = store.IndexOf(NodeKey.Centre(p01));
+    Assert.True(store.EdgeBetween(a, b) >= 0);
+
+    Turn(w, p11, be, "ne");
+    run = (PipeFlowNetwork)w.NetworkAt(p00)!;
+    run.OnTick(w.Accessor, 2e-5f, w.Networks);
+
+    store = run.Store;
+    a = store.IndexOf(NodeKey.Centre(p11));
+    b = store.IndexOf(NodeKey.Centre(p01));
+    int edge = store.EdgeBetween(a, b);
+    Assert.True(edge >= 0);
+    Assert.Equal(0, store.FlowKgPerSecond(edge));
+  }
+
+  // Fails when every reconciled edge is laid as cast.
+  [Fact]
+  public void Edge_TakesThePlatedClass() {
+    var w = NewWorld();
+    Lay(w, 40, Entry(2));
+    Lay(w, 41, Entry(2, WeakMain), new PlatedCellEntity());
+    var store = RunAt(w, 40).Store;
+
+    Tick(w, 40);
+
+    int edge = store.EdgeBetween(
+      store.IndexOf(Key(40)),
+      store.IndexOf(Key(41))
+    );
+    Assert.Equal(FlowPipeClass.Plated, store.ClassOf(edge));
+  }
+
+  // Fails when a tier maps to the wrong class.
+  [Theory]
+  [InlineData(BlockPipe.PlatedTier, "Plated")]
+  [InlineData(BlockPipe.CastTier, "Cast")]
+  [InlineData(BlockPipe.RolledTier, "Rolled")]
+  [InlineData(null, "Cast")]
+  public void Tier_MapsToItsPipeClass(string? tier, string expected) =>
+    Assert.Equal(expected, FlowPipeClasses.OfTier(tier).ToString());
 
   // Fails when Drop does not book the dropped content to the opening ledger.
   [Fact]

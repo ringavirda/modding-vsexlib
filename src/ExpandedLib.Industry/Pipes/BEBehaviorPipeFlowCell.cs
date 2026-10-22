@@ -27,6 +27,10 @@ public class BEBehaviorPipeFlowCell(BlockEntity blockentity)
       ? bore
       : null;
 
+  /// <summary>The class of the edges this cell sets the rating of, from the pipe block's <see cref="BlockPipe.Tier"/>.</summary>
+  internal virtual FlowPipeClass PipeClass =>
+    FlowPipeClasses.OfTier((Blockentity.Block as BlockPipe)?.Tier);
+
   private bool IsFlowCell =>
     NetworkMembership.MemberOf(Blockentity, "pipeflow") != null;
 
