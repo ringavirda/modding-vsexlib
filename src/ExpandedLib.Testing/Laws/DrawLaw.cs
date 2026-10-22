@@ -25,7 +25,7 @@ public static class DrawLaw
   /// <remarks>Turns <see cref="TestWorld.ClientTesselates"/> and
   /// <see cref="TestWorld.SpawnInitializesBeforeRegistering"/> on. Variants sharing block class,
   /// entity, draw type, shape and facing collapse to the first by code; a structure filler is no
-  /// case. A block of a non-JSON draw type is judged for an overridden <c>OnTesselation</c> only.
+  /// case, nor is a structure filler among the formed cells. A block of a non-JSON draw type is judged for an overridden <c>OnTesselation</c> only.
   /// A placement, payment or formation that throws or logs a warning is a finding.</remarks>
   /// <param name="world">A world holding every variant of the blocks judged and of the blocks their
   /// layouts name (<see cref="BlockLaws.Run"/> stands one), able to read the blocks' shapes.</param>
@@ -140,8 +140,11 @@ public static class DrawLaw
               return;
             foreach (BlockPos cell in MultiblockLaw.FormedCells(world, step))
             {
+              Block formedBlock = world.GetBlock(cell);
+              if (formedBlock is BlockStructureFiller)
+                continue;
               cases++;
-              Judge(world, world.GetBlock(cell), cell, "formed", Report);
+              Judge(world, formedBlock, cell, "formed", Report);
             }
           }
         );

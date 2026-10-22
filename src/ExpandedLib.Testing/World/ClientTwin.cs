@@ -78,7 +78,8 @@ public sealed class ClientTwin {
   /// <returns>One twin per server entity, in the order given.</returns>
   /// <exception cref="InvalidOperationException">The first shape read finds no game install.</exception>
   /// <exception cref="Exception">A twin's own <c>FromTreeAttributes</c> or <c>Initialize</c> throws; the
-  /// twins already made are released and the exception passes through unchanged.</exception>
+  /// twins already made are released, an exception from a release is dropped, and the initialiser's
+  /// exception passes through unchanged.</exception>
   public static ClientTwin[] Stand(
     TestWorld world,
     params BlockEntity[] servers
@@ -88,7 +89,9 @@ public sealed class ClientTwin {
       world.InitializeClientTwins(twins);
     } catch {
       foreach (BlockEntity twin in twins)
-        world.ReleaseClientTwin(twin);
+        try {
+          world.ReleaseClientTwin(twin);
+        } catch { }
       throw;
     }
     return servers
@@ -262,6 +265,8 @@ public sealed partial class TestWorld {
 
     api.ObjectCache.Returns(_clientCache);
     coreApi.ObjectCache.Returns(_clientCache);
+    api.ModLoader.Returns(Mods);
+    coreApi.ModLoader.Returns(Mods);
 
     var assets = Substitute.For<IAssetManager>();
     assets
@@ -285,6 +290,29 @@ public sealed partial class TestWorld {
     api.Tesselator.Returns(_ => ClientTesselates ? DrawTesselator : tesselator);
 #else
     api.Tesselator.Returns(tesselator);
+#endif
+
+#if GAME_GE_1_22
+    var plainAtlas = Substitute.For<IBlockTextureAtlasAPI>();
+    var drawAtlas = Substitute.For<IBlockTextureAtlasAPI>();
+    TextureAtlasPosition standIn = new DrawTextures()["atlas"];
+    drawAtlas.Size.Returns(new DrawTextures().AtlasSize);
+    drawAtlas.UnknownTexturePosition.Returns(standIn);
+    drawAtlas[Arg.Any<AssetLocation>()].Returns(standIn);
+    drawAtlas
+      .GetOrInsertTexture(
+        Arg.Any<AssetLocation>(),
+        out Arg.Any<int>(),
+        out Arg.Any<TextureAtlasPosition>(),
+        Arg.Any<CreateTextureDelegate>(),
+        Arg.Any<float>()
+      )
+      .Returns(ci => {
+        ci[1] = 0;
+        ci[2] = standIn;
+        return true;
+      });
+    api.BlockTextureAtlas.Returns(_ => ClientTesselates ? drawAtlas : plainAtlas);
 #endif
 
     var events = Substitute.For<IClientEventAPI>();

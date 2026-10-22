@@ -212,6 +212,33 @@ public class ClientTwinTests {
   }
 
   [Fact]
+  public void A_twin_finds_the_mod_systems_the_world_registered() {
+    using var world = DoorWorld();
+    var system = new ProbeSystem();
+    world.Mods.Register(system);
+    var door = new ModReadingDoor();
+    Place(world, Here, door);
+
+    var twin = ClientTwin.Stand(world, door)[0];
+
+    Assert.Same(system, ((ModReadingDoor)twin.Twin).Found);
+  }
+
+#if GAME_GE_1_22
+  [Fact]
+  public void A_drawing_twin_resolves_any_texture_in_the_block_atlas() {
+    using var world = DoorWorld();
+    world.ClientTesselates = true;
+    var door = new ModReadingDoor();
+    Place(world, Here, door);
+
+    var twin = ClientTwin.Stand(world, door)[0];
+
+    Assert.NotNull(((ModReadingDoor)twin.Twin).Atlas);
+  }
+#endif
+
+  [Fact]
   public void A_twins_frames_fire_exlib_and_animation_renderers_only() {
     using var world = DoorWorld();
     var (_, twin) = Standing(world, Here);
@@ -365,6 +392,27 @@ public class ClientTwinTests {
       base.Initialize(api);
       if (api.Side == EnumAppSide.Client)
         throw new InvalidOperationException("the twin cannot stand");
+    }
+
+    public override void OnBlockRemoved() {
+      base.OnBlockRemoved();
+      if (Api.Side == EnumAppSide.Client)
+        throw new NullReferenceException("a half-initialised twin");
+    }
+  }
+
+  private sealed class ProbeSystem : ModSystem { }
+
+  private sealed class ModReadingDoor : BlockEntity {
+    public ProbeSystem? Found { get; private set; }
+    public TextureAtlasPosition? Atlas { get; private set; }
+
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      if (api is not ICoreClientAPI capi)
+        return;
+      Found = api.ModLoader.GetModSystem<ProbeSystem>();
+      Atlas = capi.BlockTextureAtlas[new AssetLocation("game:block/stone/rock/granite1")];
     }
   }
 

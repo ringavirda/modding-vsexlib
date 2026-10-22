@@ -145,7 +145,8 @@ public sealed class DrawnCell
 
   /// <summary>Draws the cell at <paramref name="pos"/>, standing a client twin for its entity when
   /// none stands there.</summary>
-  /// <remarks>A cell without an entity draws only its block's own mesh. Set
+  /// <remarks>A twin stood here runs three client frames of 1/30 s before the draw, so a pose an
+  /// entity starts from its first tick is running. A cell without an entity draws only its block's own mesh. Set
   /// <see cref="TestWorld.ClientTesselates"/> before this call.</remarks>
   /// <param name="world">The world holding the cell, with its entity initialised.</param>
   /// <param name="pos">The cell.</param>
@@ -158,10 +159,13 @@ public sealed class DrawnCell
     RequireSwitch(world);
     Block block = world.GetBlock(pos);
     BlockEntity? server = world.GetBlockEntity(pos);
-    BlockEntity? twin =
-      server == null
-        ? null
-        : world.StandingTwin(pos) ?? ClientTwin.Stand(world, server)[0].Twin;
+    BlockEntity? twin = server == null ? null : world.StandingTwin(pos);
+    if (twin == null && server != null)
+    {
+      ClientTwin stood = ClientTwin.Stand(world, server)[0];
+      stood.Frames(1f / 30f, 3);
+      twin = stood.Twin;
+    }
     return Draw(world, pos, block, twin, server);
   }
 

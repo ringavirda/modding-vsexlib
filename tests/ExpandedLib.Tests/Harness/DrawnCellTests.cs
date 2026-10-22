@@ -226,6 +226,25 @@ public class DrawnCellTests
   }
 
   [Fact]
+  public void A_pose_started_on_the_first_client_frame_credits_the_cell()
+  {
+    using var world = DrawWorld();
+    var door = new FramedDoor();
+    var block = TestBlocks.Configure(new Block(), "cliptrace:door", 9103);
+    block.DrawType = EnumDrawType.JSON;
+    block.Shape = new CompositeShape
+    {
+      Base = new AssetLocation("cliptrace:door"),
+    };
+    world.Place(Here, block, door);
+    world.Initialize(door);
+
+    DrawnCell cell = Draw(world);
+
+    Assert.True(cell.AnimatorDraws);
+  }
+
+  [Fact]
   public void The_matrix_pool_overload_moves_the_bounds()
   {
     using var world = DrawWorld();
@@ -359,6 +378,34 @@ public class DrawnCellTests
     {
       base.FromTreeAttributes(tree, worldAccessForResolve);
       Mode = tree.GetString("mode", "");
+    }
+  }
+
+  private sealed class FramedDoor : BlockEntity
+  {
+    public FramedDoor() => Behaviors.Add(new BEBehaviorAnimatable(this));
+
+    public override void Initialize(ICoreAPI api)
+    {
+      base.Initialize(api);
+      if (api.Side != EnumAppSide.Client)
+        return;
+      var util = GetBehavior<BEBehaviorAnimatable>()!.animUtil;
+      util.InitializeAnimator("cliptrace-door");
+      RegisterGameTickListener(
+        _ =>
+          util.StartAnimation(
+            new AnimationMetaData
+            {
+              Code = "open",
+              Animation = "open",
+              AnimationSpeed = 1f,
+              EaseInSpeed = 6000f,
+              EaseOutSpeed = 6000f,
+            }
+          ),
+        20
+      );
     }
   }
 

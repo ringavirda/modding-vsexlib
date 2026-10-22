@@ -69,6 +69,17 @@ public class DrawLawTests
           .At(0, 0, 1, 2)
       );
 
+  private static ExBlockDef FramedWithFiller(string code) =>
+    Drawn(code)
+      .SideVariant()
+      .EntityClass("test-plain")
+      .Multiblock(m =>
+        m.Number($"test:{code}-*", 1)
+          .Number("exlib:structurefiller", 2)
+          .At(0, 0, 0, 1)
+          .At(1, 0, 0, 2)
+      );
+
   // Fails when the law stops paying construction stages, pays them in every facing, or stops
   // naming a cell whose entity returns true and pools nothing.
   [Fact]
@@ -152,6 +163,17 @@ public class DrawLawTests
         && f.Contains("outside its footprint")
     );
     Assert.Equal(8, law.Cases);
+  }
+
+  // Fails when a structure filler among a formed structure's cells is judged as a block of its own.
+  [Fact]
+  [PlantedDefect(typeof(DrawLaw), nameof(DrawLaw.Run))]
+  public void A_filler_cell_of_a_formed_structure_is_no_case()
+  {
+    BlockLaws.Law law = Run(Wall, FramedWithFiller("fillframe"));
+
+    Assert.DoesNotContain(law.Findings, f => f.Contains("structurefiller"));
+    Assert.Equal(5, law.Cases);
   }
 
   // Fails when the structure filler is judged as a block of its own.
