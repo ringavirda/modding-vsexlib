@@ -52,6 +52,7 @@ public static class ExWorldState {
     ExRccSettings.ResetForWorld();
     ExBlockNames.ResetForWorld();
     BlockNetworkNode.ResetForWorld();
+    NetworkMembership.ResetForWorld();
     NoSnowCells.Clear();
     StructureFillers.ResetForWorld();
 

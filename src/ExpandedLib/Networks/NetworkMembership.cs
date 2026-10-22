@@ -9,6 +9,29 @@ namespace ExpandedLib.Networks;
 
 /// <summary>Finds which network a cell belongs to; membership is selected by network type, not CLR type.</summary>
 public static class NetworkMembership {
+  [ThreadStatic]
+  private static BlockEntity? _joining;
+
+  /// <summary>The block entity at <paramref name="pos"/>: the world's, else the one whose membership
+  /// is joining the graph there, which the engine does not yet answer.</summary>
+  internal static BlockEntity? EntityAt(IBlockAccessor world, BlockPos pos) =>
+    world.GetBlockEntity(pos)
+    ?? (_joining is { } be && be.Pos.Equals(pos) ? be : null);
+
+  /// <summary>Runs <paramref name="join"/> with <paramref name="be"/> answering for its position.</summary>
+  internal static void Joining(BlockEntity be, Action join) {
+    BlockEntity? outer = _joining;
+    _joining = be;
+    try {
+      join();
+    } finally {
+      _joining = outer;
+    }
+  }
+
+  /// <summary>Drops the joining block entity of the calling thread; run when a world starts loading.</summary>
+  internal static void ResetForWorld() => _joining = null;
+
   /// <summary>Every membership on <paramref name="be"/>; empty when it is on no network.</summary>
   public static IEnumerable<BEBehaviorNetworkMember> MembersOf(
     BlockEntity? be
@@ -30,9 +53,7 @@ public static class NetworkMembership {
     BlockPos pos,
     string networkType
   ) {
-    foreach (
-      BEBehaviorNetworkMember member in MembersOf(world.GetBlockEntity(pos))
-    )
+    foreach (BEBehaviorNetworkMember member in MembersOf(EntityAt(world, pos)))
       if (JoinsAt(member, world, pos, networkType))
         return member;
 
@@ -49,8 +70,7 @@ public static class NetworkMembership {
     BlockPos pos,
     BlockFacing face
   ) =>
-    MembersOf(world.GetBlockEntity(pos))
-      .Any(m => m.HasConnectorAt(world, pos, face))
+    MembersOf(EntityAt(world, pos)).Any(m => m.HasConnectorAt(world, pos, face))
     || (
       world.GetBlock(pos) is INetworkConnector connector
       && connector.HasConnectorAt(world, pos, face)
