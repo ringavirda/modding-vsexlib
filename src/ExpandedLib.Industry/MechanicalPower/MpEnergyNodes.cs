@@ -120,7 +120,7 @@ public interface IMpEnergyLink {
   /// <summary>+1 when the output turns the same way as the input, -1 when it turns against it.</summary>
   int Sign { get; }
 
-  /// <summary>Torque (N*m) the link carries locked before it slips.</summary>
+  /// <summary>Torque (N*m), at the input node's own speed, the link carries locked before it slips; 0 for a link that always slips.</summary>
   float CapNm { get; }
 
   /// <summary>Fraction of the carried torque delivered, 0 to 1.</summary>
@@ -130,8 +130,22 @@ public interface IMpEnergyLink {
   bool Engaged { get; }
 
   /// <summary>Torque (N*m) the link carries while slipping at <paramref name="relativeSpeed"/>
-  /// (rad/s, input over output side); 0 by default.</summary>
-  float SlipTorque(float relativeSpeed) => 0f;
+  /// (rad/s, input side over output side taken to the input's speed), at the input's own speed and
+  /// never negative; 0.8 of <see cref="CapNm"/> by default.</summary>
+  float SlipTorque(float relativeSpeed) => 0.8f * CapNm;
+
+  /// <summary>Called once a step on every link of the run, engaged or not.</summary>
+  /// <param name="dt">Step length in seconds.</param>
+  /// <param name="hours">In-game hours the step spans; 0 when the calendar is unavailable.</param>
+  /// <param name="slipPowerW">Power (W) the link dissipated slipping over the step; 0 while it was locked or open.</param>
+  void Advance(float dt, float hours, float slipPowerW) { }
+
+  /// <summary>True once the link is worn out and breaks when shaft failure is on. False by default.</summary>
+  bool WornOut => false;
+
+  /// <summary>Called when the run finds the link <see cref="WornOut"/> with shaft failure on; the block
+  /// entity opens the link and drops it. Does nothing by default.</summary>
+  void Break() { }
 }
 
 /// <summary>A block that will own links once placed, so the "mpshaft" network can try their joints before the block entity exists.</summary>

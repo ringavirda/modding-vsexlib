@@ -34,6 +34,7 @@ internal sealed partial class MpShaftStore {
   private float[] _loadSlope = new float[16];
   private float[] _efficiency = new float[16];
   private float[] _carried = new float[16];
+  private float[] _slip = new float[16];
   private int _nodes;
 
   private readonly List<(
@@ -101,6 +102,7 @@ internal sealed partial class MpShaftStore {
       Array.Resize(ref _loadSlope, size);
       Array.Resize(ref _efficiency, size);
       Array.Resize(ref _carried, size);
+      Array.Resize(ref _slip, size);
     }
     int node = _nodes++;
     _topology++;
@@ -311,13 +313,18 @@ internal sealed partial class MpShaftStore {
   /// Folds every node that is alone in its group into group 0 by momentum, then renumbers the groups in the order
   /// of their first node, dropping empty ones, so group 0 is the group of the first node.
   /// </summary>
-  public void Settle() {
+  /// <param name="apart">Nodes that keep a group of their own even when alone, the ends of links that may slip or be open.</param>
+  public void Settle(IReadOnlySet<NodeKey>? apart = null) {
     Compact();
     var size = new int[_groups];
     for (int i = 0; i < _nodes; i++)
       size[_group[i]]++;
+    var kept = new HashSet<int>();
+    foreach (var (key, i) in _index)
+      if (apart?.Contains(key) == true)
+        kept.Add(i);
     for (int i = 0; i < _nodes; i++)
-      if (_group[i] != 0 && size[_group[i]] == 1)
+      if (_group[i] != 0 && size[_group[i]] == 1 && !kept.Contains(i))
         Fold(_group[i], 0);
     Compact();
   }
@@ -358,6 +365,7 @@ internal sealed partial class MpShaftStore {
     _loadSlope[node] = source._loadSlope[i];
     _efficiency[node] = source._efficiency[i];
     _carried[node] = source._carried[i];
+    _slip[node] = source._slip[i];
     return node;
   }
 
@@ -391,6 +399,14 @@ internal sealed partial class MpShaftStore {
     _efficiency[node] = Math.Clamp(efficiency, 0f, 1f);
     _carried[node] = carriedNm;
   }
+
+  /// <summary>Sets the torque a slipping link puts on the node for the next step.</summary>
+  /// <param name="torqueNm">N*m at the node's own speed, signed along the node's own sense of turning.</param>
+  public void SetSlip(int node, float torqueNm) => _slip[node] = torqueNm;
+
+  /// <summary>Adds to the torque a slipping link puts on the node for the next step.</summary>
+  /// <param name="torqueNm">N*m at the node's own speed, signed along the node's own sense of turning.</param>
+  public void AddSlip(int node, float torqueNm) => _slip[node] += torqueNm;
 
   /// <summary>Reference speed of the group in rad/s, signed.</summary>
   public float Speed(int group) => _speed[group];
@@ -429,7 +445,7 @@ internal sealed partial class MpShaftStore {
       float n = _ratio[i];
       float mesh = (1f - _efficiency[i]) * MathF.Abs(_carried[i]);
       _inertiaSum[g] += _inertia[i] * n * n;
-      _active[g] += n * _drive[i];
+      _active[g] += n * (_drive[i] + _slip[i]);
       _activeSlope[g] += n * n * _driveSlope[i];
       _resist[g] += MathF.Abs(n) * (_load[i] + _standing[i] + mesh);
       _resistSlope[g] += n * n * _loadSlope[i];
