@@ -9,11 +9,11 @@ namespace ExpandedLib.Tests.Networks;
 
 public class NetworkTypeRegistrationTests {
   [Fact]
-  public void Industry_registers_pipe_molten_and_mpenergy() {
+  public void Industry_registers_pipe_pipeflow_molten_and_mpenergy() {
     var world = new TestWorld();
     IndustryModule.RegisterNetworkTypes(world.Networks);
     Assert.Equal(
-      ["molten", "mpenergy", "mpshaft", "pipe"],
+      ["molten", "mpenergy", "mpshaft", "pipe", "pipeflow"],
       world.Networks.RegisteredNetworkTypes.Order()
     );
   }

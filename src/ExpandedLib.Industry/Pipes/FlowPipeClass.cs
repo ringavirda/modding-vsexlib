@@ -11,6 +11,14 @@ internal enum FlowPipeClass {
 }
 
 internal static class FlowPipeClasses {
+  /// <summary>The class of a pipe block of tier <paramref name="tier"/>: plated for <see cref="BlockPipe.PlatedTier"/>, rolled for <see cref="BlockPipe.RolledTier"/>, cast for any other tier or none.</summary>
+  public static FlowPipeClass OfTier(string? tier) =>
+    tier switch {
+      BlockPipe.PlatedTier => FlowPipeClass.Plated,
+      BlockPipe.RolledTier => FlowPipeClass.Rolled,
+      _ => FlowPipeClass.Cast,
+    };
+
   /// <summary>Darcy friction factor of <paramref name="pipeClass"/>: 0.03 cast, 0.025 plated, 0.02 rolled and wrought.</summary>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="pipeClass"/> is not a defined class.</exception>
   public static double Friction(this FlowPipeClass pipeClass) =>

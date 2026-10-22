@@ -262,7 +262,7 @@ public abstract class BlockNetworkNode
           blockAccessor,
           neighborPos,
           neighborBlock,
-          NetworkType
+          ((INetworkMember)this).NetworkTypeAt(blockAccessor, pos)
         ) && neighborBlock is INetworkConnector neighborNet
       ) {
         if (
@@ -315,7 +315,7 @@ public abstract class BlockNetworkNode
           blockAccessor,
           nPos,
           blockAccessor.GetBlock(nPos),
-          NetworkType
+          ((INetworkMember)this).NetworkTypeAt(blockAccessor, pos)
         );
       });
 
@@ -359,7 +359,11 @@ public abstract class BlockNetworkNode
     if (
       !world
         .Api.ModLoader.GetModSystem<BlockNetworkModSystem>()
-        .GetConnectedNeighbors(world.BlockAccessor, pos, NetworkType)
+        .GetConnectedNeighbors(
+          world.BlockAccessor,
+          pos,
+          ((INetworkMember)this).NetworkTypeAt(world.BlockAccessor, pos)
+        )
         .Any() && !hasSolidSurface
     )
       world.BlockAccessor.BreakBlock(pos, null);
@@ -452,7 +456,11 @@ public abstract class BlockNetworkNode
         RecalculateAndSyncOrientations(world, pos.AddCopy(face));
     }
 
-    netManager.AddNode(world.BlockAccessor, pos, NetworkType);
+    netManager.AddNode(
+      world.BlockAccessor,
+      pos,
+      ((INetworkMember)this).NetworkTypeAt(world.BlockAccessor, pos)
+    );
   }
 
   /// <summary>Returns the orientation cycle a wrench rotates through at <paramref name="pos"/>: recomputed from topology for full cubes, or read from the block entity for thin-profile pipes.</summary>
