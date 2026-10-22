@@ -1,0 +1,20 @@
+{
+  "code": "stand",
+  "class": "Block",
+  "entityClass": "Generic",
+  "drawtype": "json",
+  "shape": { "base": "stand" },
+  "textures": { "all": { "base": "game:block/stone/rock/granite1" } },
+  "entityBehaviors": [
+    {
+      "name": "ExRightClickConstructable",
+      "properties": {
+        "stages": [
+          { "addElements": ["foot"] },
+          { "addElements": ["mid"] },
+          { "addElements": ["top"] }
+        ]
+      }
+    }
+  ]
+}

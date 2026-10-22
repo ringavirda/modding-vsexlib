@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using ExpandedLib.Helpers;
 using ExpandedLib.Machines;
 using ExpandedLib.Registries;
 using Vintagestory.API.Client;
@@ -41,6 +42,10 @@ public class ExRightClickConstructable
   /// <summary>Raised with the new <see cref="shape"/> whenever a stage is built or the state is
   /// saved.</summary>
   public event Action<CompositeShape>? OnShapeChanged;
+
+  /// <summary>Set by a block entity that draws the built elements in its own
+  /// <c>OnTesselation</c>, so this behavior adds no mesh of its own.</summary>
+  public bool EntityDrawsShape { get; set; }
 
   /// <summary>Asked before a stage is paid; a false answer refuses the interaction and takes
   /// nothing. The default refuses a stage paid with one stored wildcard key in two variants,
@@ -163,10 +168,47 @@ public class ExRightClickConstructable
     UpdateShape();
   }
 
+  /// <summary>Adds the mesh of the block's shape with the built stages' elements to the chunk and
+  /// skips the block's own mesh. Adds nothing while <see cref="OnShapeChanged"/> has a subscriber (an
+  /// animator draws the shape) or <see cref="EntityDrawsShape"/> is set; the block's own mesh is
+  /// still skipped. Always returns true.</summary>
   public override bool OnTesselation(
     ITerrainMeshPool mesher,
     ITesselatorAPI tessThreadTesselator
-  ) => true;
+  ) {
+    if (
+      OnShapeChanged != null
+      || EntityDrawsShape
+      || Api is not ICoreClientAPI capi
+    )
+      return true;
+    string[]? built = shape.SelectiveElements;
+    if (
+      ExMeshCache.GetOrCreate(
+        capi,
+        Block,
+        "construction|" + string.Join(",", built ?? []),
+        () => BuildShape(tessThreadTesselator, built)
+      ) is { } mesh
+    )
+      mesher.AddMeshData(mesh);
+    return true;
+  }
+
+  private MeshData? BuildShape(ITesselatorAPI tesselator, string[]? built) {
+    if (
+      ExMeshCache.LoadShape(Api, ExMeshCache.ShapePathOf(Block))
+      is not { } loaded
+    )
+      return null;
+    tesselator.TesselateShape(
+      Block,
+      built == null ? loaded : ExShapeElements.Pruned(loaded, built),
+      out MeshData mesh
+    );
+    ExMesh.RotateByShape(mesh, Block);
+    return mesh;
+  }
 
   public override void GetBlockInfo(
     IPlayer forPlayer,
