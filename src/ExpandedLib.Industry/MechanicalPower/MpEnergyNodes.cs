@@ -1,4 +1,7 @@
+using System.Collections.Generic;
 using ExpandedLib.Networks;
+using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
@@ -77,6 +80,29 @@ public interface IMpEnergySegment {
   /// <summary>Takes a reading the torque path chose to write; the block entity keeps it in its tree
   /// (<see cref="MpSegmentReading.WriteTo"/>) and marks itself dirty. Does nothing by default.</summary>
   void StoreReading(MpSegmentReading reading) { }
+
+  /// <summary>Torque (N*m) at which the segment parts at once, whatever its strain; zero or less for
+  /// none. 0 by default.</summary>
+  float UltimateNm => 0f;
+
+  /// <summary>Called each step while the segment is at strain 1 or past its
+  /// <see cref="UltimateNm"/> and shaft failure is on; the block entity breaks the shaft. Does nothing
+  /// by default.</summary>
+  void Part() { }
+}
+
+/// <summary>A flywheel whose rim strains when the run turns it past its rim limit.</summary>
+public interface IMpEnergyRim {
+  /// <summary>Speed (rad/s) at which the rim moves at its safe limit; zero or less for no limit.</summary>
+  float RimLimitRadS { get; }
+
+  /// <summary>Accumulated rim strain, 0 to 1; saved with the block. Rises at (speed / limit - 1) per
+  /// <c>MpStrainTauHours</c> of in-game time while the wheel is past its limit and never falls.</summary>
+  float RimStrain { get; set; }
+
+  /// <summary>Called each step while <see cref="RimStrain"/> is 1 and shaft failure is on; the block
+  /// entity drops the wheel as scrap.</summary>
+  void Burst();
 }
 
 /// <summary>A block that joins two runs turning at different speeds without being a node of
@@ -94,7 +120,7 @@ public interface IMpEnergyLink {
   /// <summary>+1 when the output turns the same way as the input, -1 when it turns against it.</summary>
   int Sign { get; }
 
-  /// <summary>Torque (N*m) the link carries locked before it slips.</summary>
+  /// <summary>Torque (N*m), at the input node's own speed, the link carries locked before it slips; 0 for a link that always slips.</summary>
   float CapNm { get; }
 
   /// <summary>Fraction of the carried torque delivered, 0 to 1.</summary>
@@ -104,6 +130,28 @@ public interface IMpEnergyLink {
   bool Engaged { get; }
 
   /// <summary>Torque (N*m) the link carries while slipping at <paramref name="relativeSpeed"/>
-  /// (rad/s, input over output side); 0 by default.</summary>
-  float SlipTorque(float relativeSpeed) => 0f;
+  /// (rad/s, input side over output side taken to the input's speed), at the input's own speed and
+  /// never negative; 0.8 of <see cref="CapNm"/> by default.</summary>
+  float SlipTorque(float relativeSpeed) => 0.8f * CapNm;
+
+  /// <summary>Called once a step on every link of the run, engaged or not.</summary>
+  /// <param name="dt">Step length in seconds.</param>
+  /// <param name="hours">In-game hours the step spans; 0 when the calendar is unavailable.</param>
+  /// <param name="slipPowerW">Power (W) the link dissipated slipping over the step; 0 while it was locked or open.</param>
+  void Advance(float dt, float hours, float slipPowerW) { }
+
+  /// <summary>True once the link is worn out and breaks when shaft failure is on. False by default.</summary>
+  bool WornOut => false;
+
+  /// <summary>Called when the run finds the link <see cref="WornOut"/> with shaft failure on; the block
+  /// entity opens the link and drops it. Does nothing by default.</summary>
+  void Break() { }
+}
+
+/// <summary>A block that will own links once placed, so the "mpshaft" network can try their joints before the block entity exists.</summary>
+public interface IMpEnergyLinkSource {
+  /// <summary>The links the block would hold standing at <paramref name="pos"/>, their port keys in that cell.</summary>
+  /// <param name="world">The accessor the placement reads.</param>
+  /// <param name="pos">The cell the block would fill.</param>
+  IEnumerable<IMpEnergyLink> LinksAt(IBlockAccessor world, BlockPos pos);
 }

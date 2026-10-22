@@ -87,6 +87,7 @@
   "command-verify-summary": "{0} check(s) run, {1} error(s) found.",
   "command-verify-more": "... and {0} more (see the server log for the rest).",
   "game:placefailure-exlib-noorientation": "Cannot connect to the neighbouring blocks - no valid orientation here.",
+  "game:placefailure-exlib-mpshaft-jam": "These shafts would jam - the joints close a ring that cannot turn.",
   "pipe-info-empty": "Empty",
   "pipe-info-flow": "Throughput: {0} of {1} at {2}",
   "pipe-info-leaking": "Leaking!",

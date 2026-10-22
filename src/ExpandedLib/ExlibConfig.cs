@@ -120,6 +120,45 @@ public class ExlibConfig : IExVersionedConfig {
   /// second. 0 is a lossless mesh.</summary>
   [ExConfigRange(0, 1)]
   public float MpGearMeshLoss { get; set; } = 0.02f;
+
+  /// <summary>Whether an mpshaft segment past its strain or ultimate parts and a flywheel past its
+  /// rim strain bursts and a belt worn out snaps; off, strain and wear still accrue and nothing
+  /// breaks, a worn belt running on at wear 1.</summary>
+  public bool MpShaftFailure { get; set; } = true;
+
+  /// <summary>Time constant (in-game hours) of strain: a segment at twice its rating, or a rim at
+  /// twice its speed limit, strains by 1 in this time.</summary>
+  [ExConfigRange(0.01, 1000)]
+  public float MpStrainTauHours { get; set; } = 1f;
+
+  /// <summary>Torque (N-m) a belt on a size 1 pulley grips before it slips.</summary>
+  [ExConfigRange(0, 100000)]
+  public float MpBeltCapSize1Nm { get; set; } = 390f;
+
+  /// <summary>Torque (N-m) a belt on a size 2 pulley grips before it slips.</summary>
+  [ExConfigRange(0, 100000)]
+  public float MpBeltCapSize2Nm { get; set; } = 1300f;
+
+  /// <summary>Fraction of its cap a belt carries while it slips.</summary>
+  [ExConfigRange(0.1, 1)]
+  public float MpBeltSlipFraction { get; set; } = 0.8f;
+
+  /// <summary>Shaft speed (rad/s) a belt's wear is rated at: its life is the energy it slips at its
+  /// slip torque and this speed over one in-game day.</summary>
+  [ExConfigRange(0.01, 1000)]
+  public float MpBeltRatedRadS { get; set; } = 2f;
+
+  /// <summary>Torque (N-m) a clutch on a line shaft carries once its clamp is fully on.</summary>
+  [ExConfigRange(0, 100000)]
+  public float MpClutchCapLineNm { get; set; } = 2000f;
+
+  /// <summary>Torque (N-m) a clutch on a main shaft carries once its clamp is fully on.</summary>
+  [ExConfigRange(0, 100000)]
+  public float MpClutchCapMainNm { get; set; } = 5000f;
+
+  /// <summary>Seconds a clutch's clamp takes to come on from nothing to its cap.</summary>
+  [ExConfigRange(0.1, 600)]
+  public float MpClutchRampS { get; set; } = 3f;
   #endregion
 
   #region Diagnostics

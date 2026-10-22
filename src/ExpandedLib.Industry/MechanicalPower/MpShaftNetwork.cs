@@ -4,6 +4,7 @@ using System.Linq;
 using ExpandedLib.Networks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
@@ -13,7 +14,8 @@ namespace ExpandedLib.Industry.MechanicalPower;
 /// unloaded chunk holds still whole.
 /// </summary>
 internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
-  : BlockNetwork(system) {
+  : BlockNetwork(system),
+    INetworkPlacementCheck {
   public override string NetworkType => "mpshaft";
 
   public override int StepIntervalMs => 200;
@@ -25,6 +27,16 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
   private readonly Dictionary<NodeKey, MpShaftRunState> _pending = [];
   private float _clockS;
   private readonly MpReadingGate _gate = new();
+  private double _lastHours = -1d;
+  private bool _jointsStale = true;
+  private readonly List<(int Edge, IMpEnergyLink Link)> _links = [];
+  private readonly Dictionary<IMpEnergyLink, int> _slipping = [];
+  private readonly Dictionary<IMpEnergyLink, bool> _built = [];
+  private readonly HashSet<IMpEnergyLink> _catching = [];
+  private int _edgesSolved;
+
+  /// <summary>Overrides <c>MpShaftFailure</c> for this run when set.</summary>
+  internal bool? FailureOverride { get; set; }
 
   /// <summary>The run's node store and joints.</summary>
   public MpShaftStore Store { get; private set; } = new();
@@ -55,9 +67,59 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     float dt,
     BlockNetworkModSystem manager
   ) {
+    double now = manager.ServerWorld?.Calendar?.TotalHours ?? -1d;
+    float hours =
+      now >= 0d && _lastHours >= 0d ? (float)(now - _lastHours) : 0f;
+    _lastHours = now;
     if (dt <= 0f || NodeKeys.Any(k => world.GetChunkAtBlockPos(k.Pos) == null))
       return;
     Sync(world);
+    if (_built.Any(b => b.Key.Engaged != b.Value))
+      _jointsStale = true;
+    if (_jointsStale)
+      BuildJoints(world);
+    SetNodeData(world);
+    for (int pass = 0; pass < 2 && ReleaseOverCap(dt); pass++) {
+      BuildJoints(world);
+      SetNodeData(world);
+    }
+    var before = SlipSpeeds();
+    Store.Step(dt, float.PositiveInfinity);
+    Store.SolveTorquePath();
+    _edgesSolved = Store.EdgeCount;
+    AdvanceLinks(dt, MathF.Max(0f, hours), before);
+    AccrueStrain(world, MathF.Max(0f, hours));
+    _clockS += dt;
+    foreach (var (key, node) in Store.Nodes) {
+      if (world.GetBlockEntity(key.Pos) is not IMpEnergySegment segment)
+        continue;
+      var reading = new MpSegmentReading(
+        Store.NodeTorque(node),
+        segment.RatingNm,
+        segment.Strain,
+        Store.NodeSpeed(node),
+        segment.Size
+      );
+      if (_gate.TryAdmit(key, reading, _clockS))
+        segment.StoreReading(reading);
+    }
+    State = new MpShaftRunState(
+      Store.GroupCount > 0 ? Store.Speed(0) : 0f,
+      Store.GroupCount > 0 ? Store.ReflectedInertia(0) : 0f
+    );
+    BroadcastUpdate(world);
+  }
+
+  private void SetNodeData(IBlockAccessor world) {
+    foreach (var (edge, link) in _links) {
+      int output = Store.IndexOf(link.To);
+      float ratio = Store.RatioOf(output);
+      float carried =
+        edge < _edgesSolved && ratio != 0f
+          ? Store.EdgeTorque(edge) / ratio
+          : 0f;
+      Store.SetMesh(output, link.Efficiency, carried);
+    }
     foreach (var (key, node) in Store.Nodes) {
       var be = world.GetBlockEntity(key.Pos);
       float inertia = (be as IMpEnergyStorage)?.Inertia ?? 0f;
@@ -86,60 +148,262 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
         consumer?.LoadTorque(w) ?? 0f,
         consumer?.LoadSlope(w) ?? 0f
       );
+      Store.SetSlip(node, 0f);
     }
-    Store.Step(dt, float.PositiveInfinity);
-    Store.SolveTorquePath();
-    _clockS += dt;
-    foreach (var (key, node) in Store.Nodes) {
-      if (world.GetBlockEntity(key.Pos) is not IMpEnergySegment segment)
-        continue;
-      var reading = new MpSegmentReading(
-        Store.NodeTorque(node),
-        segment.RatingNm,
-        segment.Strain,
-        Store.NodeSpeed(node),
-        segment.Size
-      );
-      if (_gate.TryAdmit(key, reading, _clockS))
-        segment.StoreReading(reading);
+    foreach (var (link, heading) in _slipping) {
+      var (input, output, delta) = SlipEnds(link);
+      float direction = delta != 0f ? MathF.Sign(delta) : heading;
+      float torque = MathF.Max(0f, link.SlipTorque(delta));
+      Store.AddSlip(input, -direction * torque);
+      Store.AddSlip(output, direction * torque * link.Ratio * link.Sign);
     }
-    State = new MpShaftRunState(
-      Store.GroupCount > 0 ? Store.Speed(0) : 0f,
-      Store.GroupCount > 0 ? Store.ReflectedInertia(0) : 0f
-    );
-    BroadcastUpdate(world);
   }
 
-  // Nodes entering the run bring their inertia in at rest unless a restore stands for it, and the restored speeds join by momentum, before the nodes do.
+  // Input over output speed taken to the input's side; zero when the sides turn as the link's ratio holds them.
+  private (int Input, int Output, float Delta) SlipEnds(IMpEnergyLink link) {
+    int input = Store.IndexOf(link.From);
+    int output = Store.IndexOf(link.To);
+    float delta =
+      Store.NodeSpeed(input) - Store.NodeSpeed(output) * link.Ratio * link.Sign;
+    return (input, output, delta);
+  }
+
+  // Tries the step with every locked link held; a link that must carry more than its cap starts to slip, in the direction it would have carried. Returns true when any did.
+  private bool ReleaseOverCap(float dt) {
+    if (_links.Count == 0)
+      return false;
+    var trial = Store.Clone();
+    trial.Step(dt, float.PositiveInfinity);
+    trial.SolveTorquePath();
+    bool released = false;
+    foreach (var (edge, link) in _links) {
+      float ratio = trial.RatioOf(trial.IndexOf(link.From));
+      float carried = trial.EdgeTorque(edge);
+      if (ratio == 0f || MathF.Abs(carried / ratio) <= link.CapNm * 1.0001f)
+        continue;
+      _slipping[link] = MathF.Sign(carried) * MathF.Sign(ratio);
+      released = true;
+    }
+    return released;
+  }
+
+  private Dictionary<IMpEnergyLink, float> SlipSpeeds() {
+    var speeds = new Dictionary<IMpEnergyLink, float>();
+    foreach (var link in _slipping.Keys)
+      speeds[link] = SlipEnds(link).Delta;
+    return speeds;
+  }
+
+  // Slipping links wear by the power they dissipate and lock again when their sides meet; worn-out links break.
+  private void AdvanceLinks(
+    float dt,
+    float hours,
+    Dictionary<IMpEnergyLink, float> before
+  ) {
+    bool failure = FailureOverride ?? ExlibValues.MpShaftFailure;
+    foreach (var link in _built.Keys.ToList()) {
+      float power = 0f;
+      if (before.TryGetValue(link, out float start)) {
+        var (input, output, delta) = SlipEnds(link);
+        power =
+          link.SlipTorque(start) * (MathF.Abs(start) + MathF.Abs(delta)) / 2f;
+        float scale = MathF.Max(
+          MathF.Abs(Store.NodeSpeed(input)),
+          MathF.Abs(Store.NodeSpeed(output) * link.Ratio)
+        );
+        if (
+          start != 0f
+          && (
+            start * delta <= 0f
+            || (
+              MathF.Abs(delta) < MathF.Abs(start)
+              && MathF.Abs(delta) <= 0.01f * scale
+            )
+          )
+        ) {
+          _slipping.Remove(link);
+          _catching.Add(link);
+          _jointsStale = true;
+        }
+      }
+      link.Advance(dt, hours, power);
+      if (failure && link.WornOut) {
+        link.Break();
+        _jointsStale = true;
+      }
+    }
+  }
+
+  private void AccrueStrain(IBlockAccessor world, float hours) {
+    bool failure = FailureOverride ?? ExlibValues.MpShaftFailure;
+    float tau = ExlibValues.MpStrainTauHours;
+    List<Action>? failed = null;
+    foreach (var cell in Store.Nodes.GroupBy(n => n.Key.Pos)) {
+      var be = world.GetBlockEntity(cell.Key);
+      float load = cell.Max(n => Store.NodeLoad(n.Value));
+      float torque = cell.Max(n => Store.NodeTorque(n.Value));
+      float speed = cell.Max(n => MathF.Abs(Store.NodeSpeed(n.Value)));
+      if (be is IMpEnergySegment segment) {
+        float over = load - 1f;
+        if (over > 0f)
+          segment.Strain = MathF.Min(1f, segment.Strain + over * hours / tau);
+        float ultimate = segment.UltimateNm;
+        if (ultimate > 0f && torque >= ultimate)
+          segment.Strain = 1f;
+        if (failure && segment.Strain >= 1f)
+          (failed ??= []).Add(segment.Part);
+      }
+      if (be is IMpEnergyRim { RimLimitRadS: > 0f } rim) {
+        float over = speed / rim.RimLimitRadS - 1f;
+        if (over > 0f)
+          rim.RimStrain = MathF.Min(1f, rim.RimStrain + over * hours / tau);
+        if (failure && rim.RimStrain >= 1f)
+          (failed ??= []).Add(rim.Burst);
+      }
+    }
+    if (failed != null)
+      foreach (var fail in failed)
+        fail();
+  }
+
+  // Restored speeds join by momentum before the nodes do; a node enters in a group of its own, at its restored speed or at rest, and the joints built next join it by momentum at their ratio.
   private void Sync(IBlockAccessor world) {
     if (Store.GroupCount == 0)
       Store.AddGroup();
-    var entering = new List<(NodeKey Key, float Inertia)>();
-    float enteringInertia = 0f;
-    float restoredInertia = _pendingInertia;
+    var entering = new List<(NodeKey Key, float Inertia, bool Restored)>();
+    float unkeyedLeft = _pendingInertia;
     foreach (var key in NodeKeys) {
       if (Store.Nodes.ContainsKey(key))
         continue;
       float inertia =
         (world.GetBlockEntity(key.Pos) as IMpEnergyStorage)?.Inertia ?? 0f;
-      entering.Add((key, inertia));
-      enteringInertia += inertia;
-      if (_pending.TryGetValue(key, out var run))
-        restoredInertia += run.Inertia;
+      bool restored = _pending.ContainsKey(key);
+      if (!restored && unkeyedLeft > 0f) {
+        restored = true;
+        unkeyedLeft -= inertia;
+      }
+      entering.Add((key, inertia, restored));
     }
     var (pendingInertia, pendingMomentum) = PendingTotals();
-    float mixed =
-      pendingInertia + MathF.Max(0f, enteringInertia - restoredInertia);
-    if (mixed > 0f)
-      Store.Mix(0, mixed, pendingMomentum / mixed);
+    if (pendingInertia > 0f)
+      Store.Mix(0, pendingInertia, pendingMomentum / pendingInertia);
     _pendingInertia = 0f;
     _pendingSpeed = 0f;
     _pending.Clear();
-    foreach (var (key, inertia) in entering)
-      Store.AddNode(key, 0, inertia, 0f);
+    float restoredSpeed = Store.Speed(0);
+    foreach (var (key, inertia, restored) in entering)
+      Store.AddNode(
+        key,
+        Store.AddGroup(restored ? restoredSpeed : 0f),
+        inertia,
+        0f
+      );
+    if (entering.Count > 0)
+      _jointsStale = true;
+  }
+
+  // The store is rebuilt from the graph, so a joint whose crossing or link is gone is dropped and a merged run's seam joined.
+  private void BuildJoints(IBlockAccessor world) {
+    var joints = MpShaftJoints.Gather(
+      world,
+      NodeKeys,
+      pos => NetworkMembership.Resolve(world, pos, NetworkType),
+      pos => MpShaftJoints.LinksOf(world, pos)
+    );
+    _built.Clear();
+    var apart = new HashSet<NodeKey>();
+    foreach (var cell in NodeKeys.Select(k => k.Pos).Distinct())
+      foreach (var link in MpShaftJoints.LinksOf(world, cell))
+        if (NodeKeys.Contains(link.From) && NodeKeys.Contains(link.To)) {
+          _built[link] = link.Engaged;
+          apart.Add(link.From);
+          apart.Add(link.To);
+        }
+    foreach (var link in _slipping.Keys.ToList())
+      if (!_built.TryGetValue(link, out bool engaged) || !engaged)
+        _slipping.Remove(link);
+    foreach (var (link, engaged) in _built)
+      if (
+        engaged
+        && !_slipping.ContainsKey(link)
+        && !_catching.Contains(link)
+        && Store.Nodes.ContainsKey(link.From)
+        && Store.Nodes.ContainsKey(link.To)
+      ) {
+        var (input, output, delta) = SlipEnds(link);
+        float scale = MathF.Max(
+          MathF.Abs(Store.NodeSpeed(input)),
+          MathF.Abs(Store.NodeSpeed(output) * link.Ratio)
+        );
+        if (MathF.Abs(delta) > 0.01f * scale)
+          _slipping[link] = MathF.Sign(delta);
+      }
+    _catching.Clear();
+    joints.RemoveAll(j => j.Link != null && _slipping.ContainsKey(j.Link));
+    var rebuilt = new MpShaftStore();
+    rebuilt.TakeLoose(Store, NodeKeys);
+    foreach (var refused in MpShaftJoints.Apply(rebuilt, joints))
+      if (refused.Link != null)
+        _slipping[refused.Link] = 1;
+    rebuilt.Settle(apart);
+    Store = rebuilt;
+    _edgesSolved = 0;
+    _links.Clear();
+    foreach (var joint in joints)
+      if (joint.Link != null) {
+        int edge = Store.EdgeIndex(
+          Store.IndexOf(joint.Input),
+          Store.IndexOf(joint.Output)
+        );
+        if (edge >= 0)
+          _links.Add((edge, joint.Link));
+      }
+    _jointsStale = false;
+  }
+
+  /// <summary>Tries the joints <paramref name="block"/> would add at <paramref name="pos"/>, with every joint the run already has, on a copy of the store; the run itself is not touched.</summary>
+  /// <param name="world">The accessor the joints are read through.</param>
+  /// <param name="pos">The cell the block would fill.</param>
+  /// <param name="block">The variant about to be placed; a block that is no network member is accepted.</param>
+  /// <param name="failureCode">Set to <c>exlib-mpshaft-jam</c> when a new joint closes a ring whose ratio or sign product is not 1; empty otherwise.</param>
+  /// <returns>False when a new joint would jam the run.</returns>
+  public bool AcceptsMember(
+    IBlockAccessor world,
+    BlockPos pos,
+    Block block,
+    out string failureCode
+  ) {
+    failureCode = "";
+    if (block is not INetworkMember member)
+      return true;
+    var scratch = Store.Clone();
+    var keys = new HashSet<NodeKey>(NodeKeys);
+    foreach (byte slot in member.Slots(world, pos))
+      keys.Add(new NodeKey(pos, slot));
+    foreach (var key in keys)
+      if (!scratch.Nodes.ContainsKey(key))
+        scratch.AddNode(key, scratch.AddGroup(), 0f, 0f);
+    var links = (block as IMpEnergyLinkSource)?.LinksAt(world, pos) ?? [];
+    var joints = MpShaftJoints.Gather(
+      world,
+      keys,
+      p =>
+        p.Equals(pos)
+          ? member
+          : NetworkMembership.Resolve(world, p, NetworkType),
+      p => p.Equals(pos) ? links : MpShaftJoints.LinksOf(world, p)
+    );
+    bool Touches(MpShaftJoint j) =>
+      j.Input.Pos.Equals(pos) || j.Output.Pos.Equals(pos);
+    MpShaftJoints.Apply(scratch, joints.Where(j => !Touches(j)));
+    if (MpShaftJoints.Apply(scratch, joints.Where(Touches)).Count == 0)
+      return true;
+    failureCode = "exlib-mpshaft-jam";
+    return false;
   }
 
   public override void OnTopologyChanged() {
+    _jointsStale = true;
     _gate.Retain(NodeKeys);
     foreach (
       var key in _pending.Keys.Where(k => !NodeKeys.Contains(k)).ToList()
@@ -154,7 +418,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
 
   public override void OnMerge(BlockNetwork other, IBlockAccessor world) {
     var run = (MpShaftNetwork)other;
-    Store.Absorb(run.Store);
+    Store.Take(run.Store, run.Store.Nodes.Keys.ToHashSet());
     RestoreState(new MpShaftRunState(run._pendingSpeed, run._pendingInertia));
     foreach (var (key, saved) in run._pending)
       RestoreState(key, saved);

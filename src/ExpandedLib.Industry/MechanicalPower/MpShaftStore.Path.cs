@@ -132,6 +132,7 @@ internal sealed partial class MpShaftStore {
     float n = _ratio[node];
     float change = n * (_speed[group] - _previous[group]);
     return _drive[node]
+      + _slip[node]
       + (_driveSlope[node] - _loadSlope[node]) * change
       - _inertia[node] * change / _stepDt;
   }

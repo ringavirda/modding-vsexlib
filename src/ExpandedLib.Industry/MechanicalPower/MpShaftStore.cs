@@ -34,6 +34,7 @@ internal sealed partial class MpShaftStore {
   private float[] _loadSlope = new float[16];
   private float[] _efficiency = new float[16];
   private float[] _carried = new float[16];
+  private float[] _slip = new float[16];
   private int _nodes;
 
   private readonly List<(
@@ -43,6 +44,8 @@ internal sealed partial class MpShaftStore {
     int Sign,
     float Stiffness
   )> _edges = [];
+
+  private readonly Dictionary<(int, int), int> _edgeIndex = [];
 
   public int NodeCount => _nodes;
 
@@ -99,6 +102,7 @@ internal sealed partial class MpShaftStore {
       Array.Resize(ref _loadSlope, size);
       Array.Resize(ref _efficiency, size);
       Array.Resize(ref _carried, size);
+      Array.Resize(ref _slip, size);
     }
     int node = _nodes++;
     _topology++;
@@ -118,6 +122,22 @@ internal sealed partial class MpShaftStore {
 
   /// <summary>Number of shaft joints added with <see cref="TryAddEdge"/> and kept.</summary>
   public int EdgeCount => _edges.Count;
+
+  /// <summary>Index of the joint that joins the two nodes in either direction, or -1 when none does.</summary>
+  public int EdgeIndex(int a, int b) =>
+    _edgeIndex.TryGetValue(a < b ? (a, b) : (b, a), out int edge) ? edge : -1;
+
+  private void AddEdge(int a, int b, float ratio, int sign, float stiffness) {
+    _edgeIndex.TryAdd(a < b ? (a, b) : (b, a), _edges.Count);
+    _edges.Add((a, b, ratio, sign, stiffness));
+  }
+
+  /// <summary>A copy holding the same nodes, groups with their speeds, and joints in their order, sharing nothing with this store.</summary>
+  public MpShaftStore Clone() {
+    var copy = new MpShaftStore();
+    copy.Take(this, _index.Keys.ToHashSet());
+    return copy;
+  }
 
   /// <summary>Index of the group the node belongs to.</summary>
   public int GroupOf(int node) => _group[node];
@@ -182,7 +202,7 @@ internal sealed partial class MpShaftStore {
         return false;
       JoinGroups(_group[input], _group[output], expected / _ratio[output]);
     }
-    _edges.Add((input, output, ratio, sign < 0 ? -1 : 1, stiffness));
+    AddEdge(input, output, ratio, sign < 0 ? -1 : 1, stiffness);
     _topology++;
     return true;
   }
@@ -210,6 +230,14 @@ internal sealed partial class MpShaftStore {
     }
     if (reflected > 0f)
       _speed[into] = momentum / reflected;
+  }
+
+  /// <summary>Moves every node of group <paramref name="from"/> into group <paramref name="into"/> at the ratios it had, mixing the two speeds by momentum.</summary>
+  /// <param name="from">Index of the group to empty.</param>
+  /// <param name="into">Index of the group that takes the nodes.</param>
+  public void Fold(int from, int into) {
+    JoinGroups(into, from, 1f);
+    _topology++;
   }
 
   /// <summary>Mixes a body of inertia <paramref name="inertiaKgM2"/> at <paramref name="speed"/> into the group by momentum: the group's speed becomes the mean of the two weighted by reflected inertia.</summary>
@@ -266,6 +294,62 @@ internal sealed partial class MpShaftStore {
     CopyEdges(source, map);
   }
 
+  /// <summary>
+  /// Copies into this empty store the nodes of <paramref name="source"/> named in <paramref name="keys"/>, each in
+  /// a group of its own at ratio 1 turning at the speed it had, and no joints, so joints of any ratio can join
+  /// them again. Keys the source does not hold are skipped.
+  /// </summary>
+  public void TakeLoose(MpShaftStore source, IReadOnlySet<NodeKey> keys) {
+    foreach (var (key, i) in source._index.OrderBy(e => e.Value)) {
+      if (!keys.Contains(key))
+        continue;
+      int node = CopyNode(source, key, i, AddGroup(source.NodeSpeed(i)));
+      _ratio[node] = 1f;
+    }
+    _topology++;
+  }
+
+  /// <summary>
+  /// Folds every node that is alone in its group into group 0 by momentum, then renumbers the groups in the order
+  /// of their first node, dropping empty ones, so group 0 is the group of the first node.
+  /// </summary>
+  /// <param name="apart">Nodes that keep a group of their own even when alone, the ends of links that may slip or be open.</param>
+  public void Settle(IReadOnlySet<NodeKey>? apart = null) {
+    Compact();
+    var size = new int[_groups];
+    for (int i = 0; i < _nodes; i++)
+      size[_group[i]]++;
+    var kept = new HashSet<int>();
+    foreach (var (key, i) in _index)
+      if (apart?.Contains(key) == true)
+        kept.Add(i);
+    for (int i = 0; i < _nodes; i++)
+      if (_group[i] != 0 && size[_group[i]] == 1 && !kept.Contains(i))
+        Fold(_group[i], 0);
+    Compact();
+  }
+
+  private void Compact() {
+    var map = new Dictionary<int, int>();
+    for (int i = 0; i < _nodes; i++)
+      map.TryAdd(_group[i], map.Count);
+    var speed = new float[_speed.Length];
+    var previous = new float[_speed.Length];
+    var rest = new bool[_speed.Length];
+    foreach (var (old, renumbered) in map) {
+      speed[renumbered] = _speed[old];
+      previous[renumbered] = _previous[old];
+      rest[renumbered] = _rest[old];
+    }
+    _speed = speed;
+    _previous = previous;
+    _rest = rest;
+    _groups = map.Count;
+    for (int i = 0; i < _nodes; i++)
+      _group[i] = map[_group[i]];
+    _topology++;
+  }
+
   private int CopyNode(MpShaftStore source, NodeKey key, int i, int group) {
     int node = AddNode(
       key,
@@ -281,13 +365,14 @@ internal sealed partial class MpShaftStore {
     _loadSlope[node] = source._loadSlope[i];
     _efficiency[node] = source._efficiency[i];
     _carried[node] = source._carried[i];
+    _slip[node] = source._slip[i];
     return node;
   }
 
   private void CopyEdges(MpShaftStore source, Dictionary<int, int> map) {
     foreach (var (a, b, ratio, sign, stiffness) in source._edges)
       if (map.TryGetValue(a, out int na) && map.TryGetValue(b, out int nb))
-        _edges.Add((na, nb, ratio, sign, stiffness));
+        AddEdge(na, nb, ratio, sign, stiffness);
     _topology++;
   }
 
@@ -314,6 +399,14 @@ internal sealed partial class MpShaftStore {
     _efficiency[node] = Math.Clamp(efficiency, 0f, 1f);
     _carried[node] = carriedNm;
   }
+
+  /// <summary>Sets the torque a slipping link puts on the node for the next step.</summary>
+  /// <param name="torqueNm">N*m at the node's own speed, signed along the node's own sense of turning.</param>
+  public void SetSlip(int node, float torqueNm) => _slip[node] = torqueNm;
+
+  /// <summary>Adds to the torque a slipping link puts on the node for the next step.</summary>
+  /// <param name="torqueNm">N*m at the node's own speed, signed along the node's own sense of turning.</param>
+  public void AddSlip(int node, float torqueNm) => _slip[node] += torqueNm;
 
   /// <summary>Reference speed of the group in rad/s, signed.</summary>
   public float Speed(int group) => _speed[group];
@@ -352,7 +445,7 @@ internal sealed partial class MpShaftStore {
       float n = _ratio[i];
       float mesh = (1f - _efficiency[i]) * MathF.Abs(_carried[i]);
       _inertiaSum[g] += _inertia[i] * n * n;
-      _active[g] += n * _drive[i];
+      _active[g] += n * (_drive[i] + _slip[i]);
       _activeSlope[g] += n * n * _driveSlope[i];
       _resist[g] += MathF.Abs(n) * (_load[i] + _standing[i] + mesh);
       _resistSlope[g] += n * n * _loadSlope[i];

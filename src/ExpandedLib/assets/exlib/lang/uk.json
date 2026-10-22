@@ -87,6 +87,7 @@
   "command-verify-summary": "Виконано перевірок: {0}, знайдено помилок: {1}.",
   "command-verify-more": "... і ще {0} (решту дивіться в журналі сервера).",
   "game:placefailure-exlib-noorientation": "Неможливо сформувати з'єднання - немає коректної орієнтації.",
+  "game:placefailure-exlib-mpshaft-jam": "Ці вали заклинить - з'єднання замикають кільце, яке не зможе обертатися.",
   "pipe-info-empty": "Порожньо",
   "pipe-info-flow": "Пропускна здатність: {0} з {1} при {2}",
   "pipe-info-leaking": "Витік!",
