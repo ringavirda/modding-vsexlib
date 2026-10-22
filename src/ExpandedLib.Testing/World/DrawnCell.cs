@@ -118,9 +118,9 @@ public sealed class DrawnCell
   /// footprint cell's unit cube, a vertex with a NaN coordinate included.</summary>
   public int VerticesOutside { get; }
 
-  /// <summary>The farthest any kept vertex lies from its nearest footprint cell's unit cube, in
-  /// blocks along the worst axis; infinite when a coordinate is NaN, 0 when no vertex is
-  /// outside the cubes.</summary>
+  /// <summary>The farthest a vertex counted in <see cref="VerticesOutside"/> lies from its nearest
+  /// footprint cell's unit cube, in blocks along the worst axis; infinite when a coordinate is
+  /// NaN, 0 when none is counted.</summary>
   public double Overshoot { get; }
 
   /// <summary>True when the cell draws nothing the game would show: no kept index and no running
@@ -146,7 +146,9 @@ public sealed class DrawnCell
   /// <summary>Draws the cell at <paramref name="pos"/>, standing a client twin for its entity when
   /// none stands there.</summary>
   /// <remarks>A twin stood here runs three client frames of 1/30 s before the draw, so a pose an
-  /// entity starts from its first tick is running. A cell without an entity draws only its block's own mesh. Set
+  /// entity starts from its first tick is running; only that twin's ticks and renderers run, and the
+  /// world's client clock advances. A twin already standing is drawn as it is, without
+  /// <see cref="ClientTwin.Sync"/>. A cell without an entity draws only its block's own mesh. Set
   /// <see cref="TestWorld.ClientTesselates"/> before this call.</remarks>
   /// <param name="world">The world holding the cell, with its entity initialised.</param>
   /// <param name="pos">The cell.</param>
@@ -162,9 +164,8 @@ public sealed class DrawnCell
     BlockEntity? twin = server == null ? null : world.StandingTwin(pos);
     if (twin == null && server != null)
     {
-      ClientTwin stood = ClientTwin.Stand(world, server)[0];
-      stood.Frames(1f / 30f, 3);
-      twin = stood.Twin;
+      twin = ClientTwin.Stand(world, server)[0].Twin;
+      world.StepClientFrames(1f / 30f, 3, twin);
     }
     return Draw(world, pos, block, twin, server);
   }

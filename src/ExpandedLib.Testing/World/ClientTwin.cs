@@ -12,6 +12,7 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.Common;
 using Vintagestory.GameContent;
+using Vintagestory.GameContent.Mechanics;
 
 namespace ExpandedLib.Testing;
 
@@ -209,27 +210,41 @@ public sealed partial class TestWorld {
 
   internal int ClientTickCount => _clientTicks.Count;
 
-  internal void StepClientFrames(float dt, int n) {
-    for (int i = 0; i < n; i++) {
-      _clientClockMs += dt * 1000.0;
-      foreach (ClientTick tick in _clientTicks.Values.ToList()) {
-        if (_clientClockMs - tick.LastMs < tick.IntervalMs)
-          continue;
-        float elapsed = (float)((_clientClockMs - tick.LastMs) / 1000.0);
-        tick.LastMs = _clientClockMs;
-        try {
-          tick.Callback(elapsed);
-        } catch (Exception e) when (tick.ErrorHandler != null) {
-          tick.ErrorHandler(e);
+  internal void StepClientFrames(float dt, int n, BlockEntity? only = null) {
+    BlockEntity? outer = _initialising;
+    if (only != null)
+      _initialising = only;
+    try {
+      for (int i = 0; i < n; i++) {
+        _clientClockMs += dt * 1000.0;
+        foreach (
+          ClientTick tick in _clientTicks
+            .Values.Where(t => only == null || ReferenceEquals(t.Owner, only))
+            .ToList()
+        ) {
+          if (_clientClockMs - tick.LastMs < tick.IntervalMs)
+            continue;
+          float elapsed = (float)((_clientClockMs - tick.LastMs) / 1000.0);
+          tick.LastMs = _clientClockMs;
+          try {
+            tick.Callback(elapsed);
+          } catch (Exception e) when (tick.ErrorHandler != null) {
+            tick.ErrorHandler(e);
+          }
         }
+        foreach (
+          (EnumRenderStage stage, IRenderer renderer, _) in _clientRenderers
+            .Where(r =>
+              FiresOnClient(r.Renderer)
+              && (only == null || ReferenceEquals(r.Owner, only))
+            )
+            .OrderBy(r => r.Stage)
+            .ToList()
+        )
+          renderer.OnRenderFrame(dt, stage);
       }
-      foreach (
-        (EnumRenderStage stage, IRenderer renderer, _) in _clientRenderers
-          .Where(r => FiresOnClient(r.Renderer))
-          .OrderBy(r => r.Stage)
-          .ToList()
-      )
-        renderer.OnRenderFrame(dt, stage);
+    } finally {
+      _initialising = outer;
     }
   }
 
@@ -265,8 +280,8 @@ public sealed partial class TestWorld {
 
     api.ObjectCache.Returns(_clientCache);
     coreApi.ObjectCache.Returns(_clientCache);
-    api.ModLoader.Returns(Mods);
-    coreApi.ModLoader.Returns(Mods);
+    var clientMods = new Lazy<TestModLoader>(() => StartClientMods(api));
+    api.ModLoader.Returns(_ => clientMods.Value);
 
     var assets = Substitute.For<IAssetManager>();
     assets
@@ -307,12 +322,15 @@ public sealed partial class TestWorld {
         Arg.Any<CreateTextureDelegate>(),
         Arg.Any<float>()
       )
-      .Returns(ci => {
+      .Returns(ci =>
+      {
         ci[1] = 0;
         ci[2] = standIn;
         return true;
       });
-    api.BlockTextureAtlas.Returns(_ => ClientTesselates ? drawAtlas : plainAtlas);
+    api.BlockTextureAtlas.Returns(_ =>
+      ClientTesselates ? drawAtlas : plainAtlas
+    );
 #endif
 
     var events = Substitute.For<IClientEventAPI>();
@@ -397,6 +415,22 @@ public sealed partial class TestWorld {
     events
       .When(x => x.UnregisterGameTickListener(Arg.Any<long>()))
       .Do(ci => _clientTicks.Remove(ci.Arg<long>()));
+  }
+
+  private TestModLoader StartClientMods(ICoreClientAPI api) {
+    var loader = new TestModLoader();
+    foreach (Mod mod in Mods.Mods)
+      loader.Add(
+        mod.Info.ModID,
+        mod.Info.Version,
+        true,
+        [.. mod.Info.Dependencies.Select(d => d.ModID)]
+      );
+    var power = new MechanicalPowerMod();
+    loader.Register(power);
+    power.Start(api);
+    _clientRenderers.RemoveAll(r => ReferenceEquals(r.Renderer, power));
+    return loader;
   }
 
   private long AddClientTick(

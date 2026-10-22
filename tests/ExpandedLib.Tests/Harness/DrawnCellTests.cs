@@ -245,6 +245,39 @@ public class DrawnCellTests
   }
 
   [Fact]
+  public void Drawing_a_second_cell_does_not_tick_the_first()
+  {
+    using var world = DrawWorld();
+    world.ClientTesselates = true;
+    var other = new BlockPos(1, 64, 0);
+    foreach (var (pos, id) in new[] { (Here, 9104), (other, 9105) })
+    {
+      var block = TestBlocks.Configure(new Block(), "cliptrace:door", id);
+      block.DrawType = EnumDrawType.JSON;
+      block.Shape = new CompositeShape
+      {
+        Base = new AssetLocation("cliptrace:door"),
+      };
+      var door = new TickingDoor();
+      world.Place(pos, block, door);
+      world.Initialize(door);
+    }
+
+    DrawnCell.Of(world, Here);
+    int first = TwinTicks(world, Here);
+    DrawnCell.Of(world, other);
+
+    Assert.Equal(3, first);
+    Assert.Equal(first, TwinTicks(world, Here));
+    Assert.Equal(3, TwinTicks(world, other));
+  }
+
+  private static int TwinTicks(TestWorld world, BlockPos pos) =>
+    (
+      (TickingDoor)world.ClientApi.World.BlockAccessor.GetBlockEntity(pos)!
+    ).Ticks;
+
+  [Fact]
   public void The_matrix_pool_overload_moves_the_bounds()
   {
     using var world = DrawWorld();
@@ -378,6 +411,18 @@ public class DrawnCellTests
     {
       base.FromTreeAttributes(tree, worldAccessForResolve);
       Mode = tree.GetString("mode", "");
+    }
+  }
+
+  private sealed class TickingDoor : BlockEntity
+  {
+    public int Ticks { get; private set; }
+
+    public override void Initialize(ICoreAPI api)
+    {
+      base.Initialize(api);
+      if (api.Side == EnumAppSide.Client)
+        RegisterGameTickListener(_ => Ticks++, 20);
     }
   }
 

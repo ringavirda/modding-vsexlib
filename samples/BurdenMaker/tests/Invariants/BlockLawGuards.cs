@@ -50,19 +50,6 @@ public class BlockLawGuards(ITestOutputHelper output) {
     ["container"] = 1,
   };
 
-  /// <summary>Law, then the variant codes it reports as known defects, each with the defect in
-  /// words.</summary>
-  private static readonly Dictionary<string, Dictionary<string, string>> Known =
-    new() {
-      ["draw"] = new[] { "n", "e", "s", "w" }.ToDictionary(
-        side => $"burdenmaker:burdenmaker-black-{side}",
-        _ =>
-          "ExRightClickConstructable returns true from OnTesselation and the entity pools nothing; "
-          + "the animator draws only while a clip runs and the entity starts none, so the cell "
-          + "draws nothing at placement and at every stage"
-      ),
-    };
-
   private void Judge(string law) {
     BlockLaws.Law result = Laws.Value[law];
     output.WriteLine(result.ToString());
@@ -76,7 +63,7 @@ public class BlockLawGuards(ITestOutputHelper output) {
     FindingLists.Assert(
       result.Findings,
       new Dictionary<string, string>(),
-      Known.GetValueOrDefault(law) ?? new Dictionary<string, string>(),
+      new Dictionary<string, string>(),
       BlockLaws.CodeOf
     );
   }

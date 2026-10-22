@@ -8,6 +8,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
+using Vintagestory.GameContent.Mechanics;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -212,21 +213,52 @@ public class ClientTwinTests {
   }
 
   [Fact]
-  public void A_twin_finds_the_mod_systems_the_world_registered() {
+  public void A_twin_finds_its_own_power_mod_and_not_the_servers() {
     using var world = DoorWorld();
-    var system = new ProbeSystem();
-    world.Mods.Register(system);
+    var server = new MechanicalPowerMod();
+    world.Mods.Register(server);
+    var door = new ModReadingDoor();
+    Place(world, Here, door);
+    int renderers = world.ClientRendererCount;
+
+    var twin = ClientTwin.Stand(world, door)[0];
+
+    MechanicalPowerMod? found = ((ModReadingDoor)twin.Twin).Found;
+    Assert.NotNull(found);
+    Assert.NotSame(server, found);
+    Assert.Equal(renderers, world.ClientRendererCount);
+  }
+
+  [Fact]
+  public void A_twin_sees_the_mods_the_world_lists() {
+    using var world = DoorWorld();
+    world.Mods.Add("listedmod", "2.3.4");
     var door = new ModReadingDoor();
     Place(world, Here, door);
 
     var twin = ClientTwin.Stand(world, door)[0];
 
-    Assert.Same(system, ((ModReadingDoor)twin.Twin).Found);
+    Assert.Equal("2.3.4", ((ModReadingDoor)twin.Twin).ListedVersion);
+  }
+
+  [Fact]
+  public void Stepping_one_twin_leaves_the_others_ticks_alone() {
+    using var world = DoorWorld();
+    HandDoor first = PlaceDoor(world, Here);
+    HandDoor second = PlaceDoor(world, new BlockPos(1, 64, 0));
+    var a = ClientTwin.Stand(world, first)[0];
+    var b = ClientTwin.Stand(world, second)[0];
+
+    world.StepClientFrames(1.5f, 1, b.Twin);
+
+    Assert.Equal(0, ((HandDoor)a.Twin).Ticks);
+    Assert.Equal(1, ((HandDoor)b.Twin).Ticks);
   }
 
 #if GAME_GE_1_22
   [Fact]
-  public void A_drawing_twin_resolves_any_texture_in_the_block_atlas() {
+  public void A_drawing_twin_resolves_any_texture_in_the_block_atlas()
+  {
     using var world = DoorWorld();
     world.ClientTesselates = true;
     var door = new ModReadingDoor();
@@ -401,18 +433,20 @@ public class ClientTwinTests {
     }
   }
 
-  private sealed class ProbeSystem : ModSystem { }
-
   private sealed class ModReadingDoor : BlockEntity {
-    public ProbeSystem? Found { get; private set; }
+    public MechanicalPowerMod? Found { get; private set; }
+    public string? ListedVersion { get; private set; }
     public TextureAtlasPosition? Atlas { get; private set; }
 
     public override void Initialize(ICoreAPI api) {
       base.Initialize(api);
       if (api is not ICoreClientAPI capi)
         return;
-      Found = api.ModLoader.GetModSystem<ProbeSystem>();
-      Atlas = capi.BlockTextureAtlas[new AssetLocation("game:block/stone/rock/granite1")];
+      Found = api.ModLoader.GetModSystem<MechanicalPowerMod>();
+      ListedVersion = api.ModLoader.GetMod("listedmod")?.Info.Version;
+      Atlas = capi.BlockTextureAtlas[
+        new AssetLocation("game:block/stone/rock/granite1")
+      ];
     }
   }
 

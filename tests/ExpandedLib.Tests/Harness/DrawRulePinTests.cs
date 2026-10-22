@@ -34,6 +34,19 @@ public class DrawRulePinTests
     Namespace + "BleedingJsonTesselator::Tesselate",
   };
 
+  private static readonly string[] Delegators =
+  {
+    Namespace + "JsonAndLiquidTesselator::Tesselate",
+    Namespace + "JsonAndSnowLayerTesselator::Tesselate",
+  };
+
+  private static readonly string[] Dispatchers =
+  {
+    Namespace + "ChunkTesselator::TesselateBlock",
+  };
+
+  private static string[] Pinned => [.. Callers, .. Delegators, .. Dispatchers];
+
   private static readonly Dictionary<int, string> DrawTypes = new()
   {
     [8] = Namespace + "JsonTesselator",
@@ -80,27 +93,53 @@ public class DrawRulePinTests
   }
 
   [Fact]
-  public void Each_caller_keeps_the_instruction_sequence_the_rule_was_read_from()
+  public void Only_one_chunk_tesselator_method_dispatches_on_CanReceiveBleed()
+  {
+    var found = new SortedSet<string>(StringComparer.Ordinal);
+    foreach (var method in AllMethods())
+    {
+      foreach (var (op, member) in Instructions(method))
+      {
+        if (
+          op == OpCodes.Ldfld
+          && member is FieldInfo { Name: "CanReceiveBleed" }
+          && method.DeclaringType!.FullName == Namespace + "ChunkTesselator"
+        )
+        {
+          found.Add(Label(method));
+        }
+      }
+    }
+
+    Assert.True(
+      found.SequenceEqual(Dispatchers.OrderBy(c => c, StringComparer.Ordinal)),
+      $"Readers of Block.CanReceiveBleed in ChunkTesselator are now [{string.Join(", ", found)}]; "
+        + $"DrawnCell re-encodes the dispatch in [{string.Join(", ", Dispatchers)}]. {Reread(found.FirstOrDefault())}"
+    );
+  }
+
+  [Fact]
+  public void Each_pinned_method_keeps_the_instruction_sequence_the_rule_was_read_from()
   {
     var golden = File.ReadAllLines(Golden)
       .Where(l => l.Length > 0)
       .Select(l => l.Split('\t', 2))
       .ToDictionary(p => p[0], p => p[1]);
 
-    foreach (var caller in Callers)
+    var drifted = new List<string>();
+    foreach (var label in Pinned)
     {
-      var method = AllMethods().Single(m => Label(m) == caller);
-      Assert.True(
-        golden.TryGetValue(caller, out var expected),
-        $"{caller} has no golden line."
-      );
-      var actual = Fingerprint(method);
-      Assert.True(
-        expected == actual,
-        $"{caller} no longer matches draw-rule-pin.txt. {Reread(caller)} Update DrawnCell and the golden "
-          + $"together; the current fingerprint is:\n{actual}"
-      );
+      var method = AllMethods().FirstOrDefault(m => Label(m) == label);
+      var actual = method == null ? "(gone)" : Fingerprint(method);
+      if (!golden.TryGetValue(label, out var expected) || expected != actual)
+        drifted.Add($"{label}\t{actual}");
     }
+
+    Assert.True(
+      drifted.Count == 0,
+      $"{drifted.Count} pinned method(s) no longer match draw-rule-pin.txt. {Reread(drifted.FirstOrDefault()?.Split('\t')[0])} "
+        + $"Update DrawnCell and the golden together; the current lines are:\n{string.Join('\n', drifted)}"
+    );
   }
 
   [Fact]
@@ -192,6 +231,16 @@ public class DrawRulePinTests
       text.Append(op.Name);
       if (member != null)
         text.Append(' ').Append(MemberText(member));
+    }
+    foreach (
+      var clause in method.GetMethodBody()?.ExceptionHandlingClauses
+        ?? Enumerable.Empty<ExceptionHandlingClause>()
+    )
+    {
+      text.Append(" [").Append(clause.Flags);
+      if (clause.Flags == ExceptionHandlingClauseOptions.Clause)
+        text.Append(' ').Append(clause.CatchType?.FullName);
+      text.Append(']');
     }
     return text.ToString();
   }

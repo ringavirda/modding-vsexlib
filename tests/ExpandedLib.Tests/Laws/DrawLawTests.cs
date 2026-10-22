@@ -47,6 +47,7 @@ public class DrawLawTests
     world.RegisterClass("test-logs", typeof(LogsOnInitialize));
     world.RegisterClass("test-nan", typeof(PoolsNaN));
     world.RegisterClass("test-drawsformed", typeof(DrawsFormed));
+    world.RegisterClass("test-formsplain", typeof(FormsPlainly));
   }
 
   private static BlockLaws.Law Run(params ExBlockDef[] defs) =>
@@ -72,7 +73,7 @@ public class DrawLawTests
   private static ExBlockDef FramedWithFiller(string code) =>
     Drawn(code)
       .SideVariant()
-      .EntityClass("test-plain")
+      .EntityClass("test-formsplain")
       .Multiblock(m =>
         m.Number($"test:{code}-*", 1)
           .Number("exlib:structurefiller", 2)
@@ -170,9 +171,9 @@ public class DrawLawTests
   [PlantedDefect(typeof(DrawLaw), nameof(DrawLaw.Run))]
   public void A_filler_cell_of_a_formed_structure_is_no_case()
   {
-    BlockLaws.Law law = Run(Wall, FramedWithFiller("fillframe"));
+    BlockLaws.Law law = Run(FramedWithFiller("fillframe"));
 
-    Assert.DoesNotContain(law.Findings, f => f.Contains("structurefiller"));
+    Assert.Empty(law.Findings);
     Assert.Equal(5, law.Cases);
   }
 
@@ -428,6 +429,20 @@ public class DrawLawTests
       mesher.AddMeshData(mesh);
       return true;
     }
+  }
+
+  private sealed class FormsPlainly : BlockEntityMultiblockStructure
+  {
+    protected override void UpdateStructureRotation()
+    {
+      if (Block != null)
+        SetStructureAngle(ExOrientation.AngleFromSide(Block.Variant["side"]));
+    }
+
+    protected override string GetIncompleteMessage(int missingCount) =>
+      $"missing {missingCount}";
+
+    protected override string GetCompleteMessage() => "complete";
   }
 
   private sealed class DrawsFormed : BlockEntityMultiblockStructure
