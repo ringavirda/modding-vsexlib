@@ -7,6 +7,7 @@ namespace ExpandedLib.Blocks;
 /// the player letting go, and the stroke clock of the hold in progress. Used from one thread.</summary>
 internal sealed class ConstructionHold {
   private int _stage = -1;
+  private int _step = -1;
   private string? _playing;
   private float _held;
   private float _lastUsed;
@@ -18,13 +19,19 @@ internal sealed class ConstructionHold {
   /// <summary>Hits counted on the stage, from 0.</summary>
   public int Struck => _hits;
 
-  /// <summary>Starts a hold on stage <paramref name="stage"/>; the hits counted on the same stage by
-  /// earlier holds stay, those of another stage drop.</summary>
+  /// <summary>Whether a hold begun by <see cref="Begin"/> has neither ended nor been released.</summary>
+  public bool Active { get; private set; }
+
+  /// <summary>Starts a hold on step <paramref name="step"/> of stage <paramref name="stage"/>; the hits
+  /// counted on the same step by earlier holds stay, those of another step or stage drop.</summary>
   /// <param name="stage">The index of the stage being paid.</param>
-  public void Begin(int stage) {
-    if (stage != _stage)
+  /// <param name="step">The index of the stage's tool step being paid, from 0.</param>
+  public void Begin(int stage, int step) {
+    if (stage != _stage || step != _step)
       _hits = 0;
     _stage = stage;
+    _step = step;
+    Active = true;
     _held = 0f;
     _lastUsed = 0f;
     _swings = 0;
@@ -65,6 +72,7 @@ internal sealed class ConstructionHold {
     _swings = 0;
     _strikes = 0;
     _done = _hits;
+    Active = false;
   }
 
   /// <summary>Ends the hold and drops the hits counted.</summary>

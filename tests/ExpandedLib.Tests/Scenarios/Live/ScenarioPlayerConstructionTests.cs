@@ -100,22 +100,21 @@ public class ScenarioPlayerConstructionTests {
     );
   }
 
-  /// <summary>Fails when the hold is shorter than the stage's hits at the default stroke, or a stage with
-  /// no tool is held at all.</summary>
+  /// <summary>Fails when the hold is shorter than the step's hits at the default stroke, or a stage with
+  /// no tool has a step to hold.</summary>
   [Fact]
-  public void A_hold_runs_every_hit_of_the_stage_and_a_plain_stage_none() {
+  public void A_hold_runs_every_hit_of_the_step_and_a_plain_stage_has_none() {
     Assert.Equal(
       (3 * 1.05) + 0.1,
       ConstructionWalk.HoldSeconds(
-        new ExConstructionStage { Tool = "game:hammer-*", Hits = 3 },
+        new ExConstructionStage { Tool = "game:hammer-*", Hits = 3 }.ToolSteps[
+          0
+        ],
         null
       ),
       3
     );
-    Assert.Equal(
-      0,
-      ConstructionWalk.HoldSeconds(new ExConstructionStage(), null)
-    );
+    Assert.Empty(new ExConstructionStage().ToolSteps);
   }
 
   /// <summary>Fails when a variant other than the wanted one is allowed (S46), or a key the materials

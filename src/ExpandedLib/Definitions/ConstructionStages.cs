@@ -82,7 +82,9 @@ public sealed class ConstructionStage {
 
   /// <summary>Makes this stage a tool stage: the player holds <paramref name="tool"/> in the main hand
   /// and right-click, and the stage is built at the last of <paramref name="hits"/> swings, which take
-  /// the materials and wear the tool. Sets <c>tool</c>, <c>hits</c>, <c>animation</c> and <c>sound</c>.</summary>
+  /// the materials; each step wears its tool at its last swing. The first call sets <c>tool</c>,
+  /// <c>hits</c>, <c>animation</c> and <c>sound</c>; each later call appends a step to <c>steps</c>,
+  /// paid after the earlier ones, so the stage is built at the last swing of the last call.</summary>
   /// <param name="tool">Item code the main-hand stack must match, wildcards allowed.</param>
   /// <param name="hits">Finished swings the stage takes, 1 or more.</param>
   /// <param name="animation">Entity animation code played at each swing; null for the tool's default.</param>
@@ -100,12 +102,19 @@ public sealed class ConstructionStage {
         hits,
         "A tool stage takes at least one hit."
       );
-    _stage["tool"] = tool;
-    _stage["hits"] = hits;
+    var step = new JObject { ["tool"] = tool, ["hits"] = hits };
     if (animation != null)
-      _stage["animation"] = animation;
+      step["animation"] = animation;
     if (sound != null)
-      _stage["sound"] = sound;
+      step["sound"] = sound;
+    if (_stage["tool"] == null) {
+      foreach (JProperty property in step.Properties())
+        _stage[property.Name] = property.Value;
+    } else {
+      if (_stage["steps"] is not JArray steps)
+        _stage["steps"] = steps = new JArray();
+      steps.Add(step);
+    }
     return this;
   }
 

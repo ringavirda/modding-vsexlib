@@ -42,6 +42,7 @@ public class ConstructionToolTests {
       Hammer = World.RegisterItem("game:hammer-iron");
       Hammer.Durability = 100;
       Tongs = World.RegisterItem("test:tongs-iron");
+      Tongs.Durability = 100;
       Rod = World.RegisterItem("test:rod");
       ICoreAPI api = client ? World.ClientApi : World.Api;
       var be = new StubBlockEntity {
@@ -79,35 +80,38 @@ public class ConstructionToolTests {
     public int Durability =>
       Hammer.GetRemainingDurability(Payer.ActiveSlot.Itemstack);
 
+    public int TongsDurability =>
+      Tongs.GetRemainingDurability(Payer.ActiveSlot.Itemstack);
+
     public int Rods => Payer.Hotbar[0].Itemstack?.StackSize ?? 0;
 
-    public bool Start() {
+    public bool Start(TestPlayer? by = null) {
       EnumHandling handling = EnumHandling.PassThrough;
       return Behavior.OnBlockInteractStart(
         World.World,
-        Payer.Player,
+        (by ?? Payer).Player,
         new BlockSelection { Position = new BlockPos(0, 0, 0, 0) },
         ref handling
       );
     }
 
-    public bool Step(float seconds) {
+    public bool Step(float seconds, TestPlayer? by = null) {
       EnumHandling handling = EnumHandling.PassThrough;
       return Behavior.OnBlockInteractStep(
         seconds,
         World.World,
-        Payer.Player,
+        (by ?? Payer).Player,
         new BlockSelection { Position = new BlockPos(0, 0, 0, 0) },
         ref handling
       );
     }
 
-    public void Stop(float seconds) {
+    public void Stop(float seconds, TestPlayer? by = null) {
       EnumHandling handling = EnumHandling.PassThrough;
       Behavior.OnBlockInteractStop(
         seconds,
         World.World,
-        Payer.Player,
+        (by ?? Payer).Player,
         new BlockSelection { Position = new BlockPos(0, 0, 0, 0) },
         ref handling
       );
@@ -379,5 +383,222 @@ public class ConstructionToolTests {
     Assert.Throws<ArgumentOutOfRangeException>(() =>
       new Definitions.ConstructionStage().Tool("game:hammer-*", 0)
     );
+  }
+
+  private static Definitions.ConstructionStages TwoSteps(
+    Definitions.ConstructionStages s
+  ) =>
+    s.Stage(_ => { })
+      .Stage(t =>
+        t.Tool("game:hammer-*", 2)
+          .Tool("test:tongs-*", 2)
+          .Require("test:rod", 1)
+      );
+
+  // Fails when the first step's tool alone builds a two-step stage.
+  [Fact]
+  public void A_two_step_stage_is_not_built_by_its_first_tool_alone() {
+    var site = new Site(TwoSteps);
+    site.Start();
+
+    site.Step(Stroke + 0.05f);
+    Assert.False(site.Step((2 * Stroke) + 0.05f));
+
+    Assert.Equal(0, site.Stage);
+    Assert.Equal(2, site.Rods);
+    Assert.False(site.Behavior.Construction.Holding);
+    Assert.Equal(1, site.Behavior.Construction.StepsPaid);
+  }
+
+  // Fails when the second step is asked before the first has its hits, or accepts the first step's tool.
+  [Fact]
+  public void The_second_step_is_asked_only_once_the_first_is_done() {
+    var site = new Site(TwoSteps);
+    site.Payer.Hold(new ItemStack(site.Tongs));
+    Assert.False(site.Start());
+    site.Payer.Hold(new ItemStack(site.Hammer));
+    site.Start();
+    site.Step(Stroke + 0.05f);
+    site.Step((2 * Stroke) + 0.05f);
+
+    Assert.False(site.Start());
+    site.Payer.Hold(new ItemStack(site.Tongs));
+    Assert.True(site.Start());
+    Assert.Equal(0, site.Stage);
+  }
+
+  // Fails when the materials or the stage's elements come at the end of a step that is not the last.
+  [Fact]
+  public void The_materials_are_taken_and_the_stage_built_on_the_last_hit_of_the_last_step() {
+    var site = new Site(TwoSteps);
+    site.Start();
+    site.Step(Stroke + 0.05f);
+    site.Step((2 * Stroke) + 0.05f);
+    Assert.Equal(2, site.Rods);
+    site.Payer.Hold(new ItemStack(site.Tongs));
+    site.Start();
+    Assert.True(site.Step(Stroke + 0.05f));
+    Assert.Equal(2, site.Rods);
+    Assert.Equal(0, site.Stage);
+
+    Assert.False(site.Step((2 * Stroke) + 0.05f));
+
+    Assert.Equal(1, site.Stage);
+    Assert.Equal(1, site.Rods);
+    Assert.Equal(0, site.Behavior.Construction.StepsPaid);
+  }
+
+  // Fails when a step wears no tool, or wears the stage's first tool at the end.
+  [Fact]
+  public void Each_step_wears_its_own_tool_at_its_last_hit() {
+    var site = new Site(TwoSteps);
+    site.Start();
+    site.Step(Stroke + 0.05f);
+    Assert.Equal(100, site.Durability);
+    site.Step((2 * Stroke) + 0.05f);
+    Assert.Equal(99, site.Durability);
+    site.Payer.Hold(new ItemStack(site.Tongs));
+    site.Start();
+    site.Step(Stroke + 0.05f);
+    site.Step((2 * Stroke) + 0.05f);
+
+    Assert.Equal(99, site.TongsDurability);
+  }
+
+  // Fails when a step's hits are dropped at the let-go, or carry into the next step.
+  [Fact]
+  public void The_hits_of_a_step_survive_a_let_go_and_do_not_carry_to_the_next() {
+    var site = new Site(TwoSteps);
+    site.Start();
+    site.Step(Stroke + 0.05f);
+    site.Stop(Stroke + 0.05f);
+    site.Start();
+    Assert.False(site.Step(Stroke + 0.05f));
+    site.Payer.Hold(new ItemStack(site.Tongs));
+    site.Start();
+
+    Assert.True(site.Step(Stroke + 0.05f));
+    Assert.Equal(0, site.Stage);
+  }
+
+  // Fails when two players at one structure share a stroke clock or a let-go.
+  [Fact]
+  public void Two_players_holds_keep_their_own_stroke_clocks() {
+    var site = new Site();
+    site.Payer.Entity.EntityId = 1;
+    TestPlayer other = site.World.Player("other", "Other");
+    other.Entity.EntityId = 2;
+    other.Entity.AnimManager = site.Animations;
+    other.Hold(new ItemStack(site.Hammer));
+    site.Start();
+    site.Step(Stroke + 0.05f);
+
+    other.GameMode = EnumGameMode.Survival;
+    site.Start(other);
+    site.Stop(0.5f, other);
+
+    Assert.True(site.Step((2 * Stroke) + 0.05f));
+    Assert.False(site.Step((3 * Stroke) + 0.05f));
+    Assert.Equal(1, site.Stage);
+  }
+
+  // Fails when the refusal for the wrong tool is not shown to a client player with the tool's name.
+  [Fact]
+  public void A_client_holding_the_wrong_tool_is_told_the_tool_by_name() {
+    var site = new Site(client: true);
+    var clientPlayer = Substitute.For<IClientPlayer>();
+    clientPlayer.PlayerUID.Returns("test");
+    site.World.AddPlayer("test", clientPlayer);
+    site.Payer.Hold(new ItemStack(site.Tongs));
+
+    Assert.False(site.Start());
+
+    site.World.ClientApi.Received(1)
+      .TriggerIngameError(Arg.Any<object>(), "missingtool", Arg.Any<string>());
+    TestLang
+      .Service.Received()
+      .Get(
+        "exlib:ingameerror-construction-missingtool",
+        Arg.Is<object[]>(args =>
+          args.Length == 1 && args[0].ToString()!.Contains("hammer")
+        )
+      );
+  }
+
+  // Fails when the help names the first step's tool after it is done.
+  [Fact]
+  public void The_interaction_help_names_the_current_steps_tool() {
+    var site = new Site(TwoSteps);
+    Assert.Equal(
+      ["game:hammer-iron"],
+      site.Behavior.GetConstructionInteractionHelp()![0]
+        .Itemstacks.Select(s => s.Collectible.Code.ToString())
+    );
+    site.Start();
+    site.Step(Stroke + 0.05f);
+    site.Step((2 * Stroke) + 0.05f);
+
+    WorldInteraction[] help = site.Behavior.GetConstructionInteractionHelp()!;
+
+    Assert.Equal(
+      ["test:tongs-iron"],
+      help[0].Itemstacks.Select(s => s.Collectible.Code.ToString())
+    );
+  }
+
+  // Fails when `steps` in JSON is not read after the stage's own tool, or its hits and tools are lost.
+  [Fact]
+  public void A_stage_in_JSON_lists_its_steps_in_order() {
+    var site = new Site(
+      properties: JObject.Parse(
+        """
+        { "stages": [ {}, { "steps": [
+          { "tool": "game:hammer-*", "hits": 1 },
+          { "tool": "test:tongs-*" } ] } ] }
+        """
+      )
+    );
+    site.Start();
+    Assert.False(site.Step(Stroke + 0.05f));
+    Assert.Equal(1, site.Behavior.Construction.StepsPaid);
+    site.Payer.Hold(new ItemStack(site.Tongs));
+    site.Start();
+    Assert.True(site.Step(Stroke + 0.05f));
+    Assert.False(site.Step((2 * Stroke) + 0.05f));
+    Assert.Equal(1, site.Stage);
+  }
+
+  // Fails when `hits: 0`, or a step without a tool, loads.
+  [Theory]
+  [InlineData("""{ "tool": "game:hammer-*", "hits": 0 }""")]
+  [InlineData("""{ "steps": [ { "tool": "game:hammer-*", "hits": 0 } ] }""")]
+  [InlineData("""{ "steps": [ { "hits": 2 } ] }""")]
+  public void A_tool_step_with_no_hits_or_no_tool_is_refused_at_load(
+    string stage
+  ) {
+    Assert.Throws<InvalidOperationException>(() =>
+      new Site(
+        properties: JObject.Parse($$"""{ "stages": [ {}, {{stage}} ] }""")
+      )
+    );
+  }
+
+  // Fails when a second Tool call replaces the first instead of appending a step.
+  [Fact]
+  public void The_builder_appends_a_step_for_each_later_tool_call() {
+    JObject built = new Definitions.ConstructionStages()
+      .Stage(s =>
+        s.Tool("game:hammer-*", 4).Tool("test:tongs-*", 1, "swing", "sounds/x")
+      )
+      .Build();
+
+    JToken stage = built["stages"]![0]!;
+    Assert.Equal("game:hammer-*", (string?)stage["tool"]);
+    Assert.Equal(4, (int?)stage["hits"]);
+    JToken step = Assert.Single(stage["steps"]!);
+    Assert.Equal("test:tongs-*", (string?)step["tool"]);
+    Assert.Equal(1, (int?)step["hits"]);
+    Assert.Equal("swing", (string?)step["animation"]);
+    Assert.Equal("sounds/x", (string?)step["sound"]);
   }
 }

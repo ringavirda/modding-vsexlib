@@ -17,7 +17,7 @@ using Vintagestory.GameContent;
 namespace ExpandedLib.Blocks;
 
 /// <summary>One construction stage: shape elements it adds/removes and the materials it needs, and
-/// optionally the tool it is worked with.</summary>
+/// optionally the tools it is worked with, one step each, paid in order.</summary>
 public class ExConstructionStage {
   /// <summary>The hits a tool stage takes when it names none.</summary>
   public const int DefaultHits = 2;
@@ -28,12 +28,54 @@ public class ExConstructionStage {
   public string ActionLangCode = "rollers-construct";
 
   /// <summary>Item code the main-hand stack must match, wildcards allowed (<c>game:hammer-*</c>); null
-  /// for a stage paid by a plain right-click.</summary>
+  /// for a stage paid by a plain right-click. The first step of the stage; <see cref="Steps"/> follow
+  /// it.</summary>
   public string? Tool;
 
   /// <summary>Finished swings of <see cref="Tool"/> the stage takes, 1 or more. Ignored without a
   /// tool.</summary>
   public int Hits = DefaultHits;
+
+  /// <summary>Entity animation code played at each swing of <see cref="Tool"/>; null for the tool's
+  /// <see cref="CraftToolDefault"/>.</summary>
+  public string? Animation;
+
+  /// <summary>Asset path of the sound played at each strike of <see cref="Tool"/>; null for the tool's
+  /// <see cref="CraftToolDefault"/>.</summary>
+  public string? Sound;
+
+  /// <summary>The tool steps paid after <see cref="Tool"/>, or all of them when it is null; each is
+  /// held in turn with its own tool, and the stage is built at the last hit of the last. Null or empty
+  /// for none.</summary>
+  public ExConstructionToolStep[]? Steps;
+
+  /// <summary>The steps of the stage in the order they are paid; empty for a stage paid by a plain
+  /// right-click.</summary>
+  internal ExConstructionToolStep[] ToolSteps =>
+    [
+      .. Tool == null
+        ? []
+        : new[]
+        {
+          new ExConstructionToolStep
+          {
+            Tool = Tool,
+            Hits = Hits,
+            Animation = Animation,
+            Sound = Sound,
+          },
+        },
+      .. Steps ?? [],
+    ];
+}
+
+/// <summary>One tool of a construction stage: the tool held, its hits and its swing.</summary>
+public class ExConstructionToolStep {
+  /// <summary>Item code the main-hand stack must match, wildcards allowed (<c>game:hammer-*</c>).</summary>
+  public string? Tool;
+
+  /// <summary>Finished swings the step takes, 1 or more.</summary>
+  public int Hits = ExConstructionStage.DefaultHits;
 
   /// <summary>Entity animation code played at each swing; null for the tool's
   /// <see cref="CraftToolDefault"/>.</summary>
@@ -43,19 +85,8 @@ public class ExConstructionStage {
   /// <see cref="CraftToolDefault"/>.</summary>
   public string? Sound;
 
-  internal CraftStep? Step =>
-    Tool == null
-      ? null
-      : new CraftStep(
-        Tool,
-        null,
-        0f,
-        Animation,
-        null,
-        null,
-        Sound,
-        Math.Max(1, Hits)
-      );
+  internal CraftStep Step =>
+    new(Tool ?? "", null, 0f, Animation, null, null, Sound, Math.Max(1, Hits));
 }
 
 /// <summary>A required material for a stage; <see cref="StoreWildCard"/> records the chosen
@@ -100,6 +131,10 @@ public enum StageHoldProgress {
   /// <summary>The swings continue.</summary>
   Working,
 
+  /// <summary>The last hit of a step that is not the stage's last was counted: the stage now asks for
+  /// the next step's tool.</summary>
+  Stepped,
+
   /// <summary>The last hit paid the stage and it is built.</summary>
   Built,
 }
@@ -142,18 +177,52 @@ public class ExRightClickConstruction {
     this.api = api;
     this.codeForErrorLogging = codeForErrorLogging;
     this.positionForSound = positionForSound;
+    for (int i = 0; i < Stages.Length; i++)
+      foreach (ExConstructionToolStep step in Stages[i].ToolSteps)
+        if (string.IsNullOrEmpty(step.Tool) || step.Hits < 1)
+          throw new InvalidOperationException(
+            $"{codeForErrorLogging}: stage {i} has a tool step with "
+              + (
+                string.IsNullOrEmpty(step.Tool)
+                  ? "no tool"
+                  : $"{step.Hits} hits"
+              )
+              + ", a step names its tool and takes at least one hit."
+          );
   }
 
-  private readonly ConstructionHold hold = new();
-  private bool holding;
+  private readonly Dictionary<long, ConstructionHold> holds = new();
+
+  /// <summary>Tool steps of the next stage already paid, from 0.</summary>
+  public int StepsPaid { get; private set; }
 
   /// <summary>Whether the next stage is paid by holding a tool: it names one and the player is not
   /// a creative player holding Ctrl.</summary>
   /// <param name="byEntity">The player's entity.</param>
   public bool NeedsTool(EntityAgent byEntity) =>
     CurrentCompletedStage < Stages.Length - 1
-    && Stages[CurrentCompletedStage + 1].Tool != null
+    && Stages[CurrentCompletedStage + 1].ToolSteps.Length > 0
     && !CreativeInstant(byEntity);
+
+  private ExConstructionToolStep CurrentStep() {
+    ExConstructionToolStep[] steps = Stages[
+      CurrentCompletedStage + 1
+    ].ToolSteps;
+    return steps[Math.Min(StepsPaid, steps.Length - 1)];
+  }
+
+  private void BuildStage() {
+    CurrentCompletedStage++;
+    StepsPaid = 0;
+    foreach ((long id, ConstructionHold other) in holds) {
+      other.Clear(
+        api.World.GetEntityById(id) is EntityAgent agent
+          ? new EntityCraftEffects(agent)
+          : null
+      );
+    }
+    holds.Clear();
+  }
 
   private static bool CreativeInstant(EntityAgent byEntity) =>
     (byEntity as EntityPlayer)?.Player is { } player
@@ -169,54 +238,71 @@ public class ExRightClickConstruction {
     if (!TryConsumeIngredients(byEntity, handslot))
       return false;
     if (CurrentCompletedStage < Stages.Length - 1)
-      CurrentCompletedStage++;
+      BuildStage();
     return true;
   }
 
-  /// <summary>Whether a hold begun by <see cref="BeginHold"/> is in progress.</summary>
-  public bool Holding => holding;
+  /// <summary>Whether a hold begun by <see cref="BeginHold"/> is in progress for any player.</summary>
+  public bool Holding => holds.Values.Any(h => h.Active);
 
-  /// <summary>Starts paying the next stage with its tool. On a client a refusal shows the player the
+  /// <summary>Whether a hold begun by <see cref="BeginHold"/> is in progress for
+  /// <paramref name="byEntity"/>.</summary>
+  /// <param name="byEntity">The player's entity.</param>
+  public bool IsHolding(EntityAgent byEntity) =>
+    holds.TryGetValue(byEntity.EntityId, out ConstructionHold? hold)
+    && hold.Active;
+
+  /// <summary>Starts paying the next tool step of the next stage. On a client a refusal shows the player the
   /// tool or the material that is missing; on the server it shows nothing.</summary>
-  /// <param name="byEntity">The player's entity; its main hand must hold the stage's tool and its hotbar
-  /// the stage's materials.</param>
+  /// <param name="byEntity">The player's entity; its main hand must hold the current step's tool and its
+  /// hotbar the stage's materials.</param>
   /// <returns>False, and no hold, when the stage names no tool, the main hand holds another stack, or
-  /// the hotbar lacks a material. Hits counted on this stage by an earlier hold stay.</returns>
+  /// the hotbar lacks a material. Hits the same player counted on this step by an earlier hold
+  /// stay.</returns>
   public bool BeginHold(EntityAgent byEntity) {
     if (!NeedsTool(byEntity))
       return false;
-    int index = CurrentCompletedStage + 1;
-    ExConstructionStage stage = Stages[index];
+    ExConstructionToolStep step = CurrentStep();
     ItemSlot hand = byEntity.RightHandItemSlot;
-    if (!HoldsTool(stage, hand)) {
-      RefuseTool(byEntity, stage);
+    if (!HoldsTool(step, hand)) {
+      RefuseTool(byEntity, step);
       return false;
     }
     if (!TryConsumeIngredients(byEntity, hand, commit: false))
       return false;
-    hold.Begin(index);
-    holding = true;
+    if (!holds.TryGetValue(byEntity.EntityId, out ConstructionHold? hold))
+      holds[byEntity.EntityId] = hold = new ConstructionHold();
+    hold.Begin(CurrentCompletedStage + 1, StepsPaid);
     return true;
   }
 
   /// <summary>Carries the hold <see cref="BeginHold"/> began to <paramref name="secondsUsed"/>. The
-  /// server counts a hit at each finished swing of the stage's animation and plays its strike sound;
-  /// the hit that reaches the stage's count takes the materials from the hotbar, wears the tool as a
-  /// craft step does and builds the stage. A client swings the animation alone.</summary>
+  /// server counts a hit at each finished swing of the step's animation and plays its strike sound;
+  /// the hit that reaches the step's count wears the tool as a craft step does, and when the step is the
+  /// stage's last it takes the materials from the hotbar and builds the stage. A client swings the
+  /// animation alone.</summary>
   /// <param name="secondsUsed">Seconds since the hold began, as the game passes them.</param>
   /// <param name="byEntity">The player's entity.</param>
-  /// <returns><see cref="StageHoldProgress.Idle"/> when no hold is in progress, the main hand no longer
-  /// holds the tool or the materials are gone; hits counted stay in the first two cases.</returns>
+  /// <returns><see cref="StageHoldProgress.Idle"/> when no hold is in progress for the player, the main
+  /// hand no longer holds the tool or the materials are gone; hits counted stay in the first two
+  /// cases.</returns>
   public StageHoldProgress StepHold(float secondsUsed, EntityAgent byEntity) {
-    if (!holding || CurrentCompletedStage >= Stages.Length - 1)
+    if (
+      !holds.TryGetValue(byEntity.EntityId, out ConstructionHold? hold)
+      || !hold.Active
+      || CurrentCompletedStage >= Stages.Length - 1
+    )
       return StageHoldProgress.Idle;
-    ExConstructionStage stage = Stages[CurrentCompletedStage + 1];
+    ExConstructionToolStep[] steps = Stages[
+      CurrentCompletedStage + 1
+    ].ToolSteps;
+    ExConstructionToolStep step = CurrentStep();
     ItemSlot hand = byEntity.RightHandItemSlot;
     bool client = api.Side == EnumAppSide.Client;
     ICraftEffects effects = client
       ? new AnimationOnly(new EntityCraftEffects(byEntity))
       : new EntityCraftEffects(byEntity);
-    if (!HoldsTool(stage, hand)) {
+    if (!HoldsTool(step, hand)) {
       StopHold(byEntity);
       return StageHoldProgress.Idle;
     }
@@ -224,33 +310,43 @@ public class ExRightClickConstruction {
     CraftToolDefault? tool = CraftSequenceRegistry.Shared.ToolDefault(
       hand.Itemstack.Collectible.Code.ToString()
     );
-    if (!hold.Advance(secondsUsed, stage.Step!, tool, effects))
+    if (!hold.Advance(secondsUsed, step.Step, tool, effects))
       return StageHoldProgress.Working;
 
-    holding = false;
     hold.Clear(effects);
+    holds.Remove(byEntity.EntityId);
+    if (StepsPaid < steps.Length - 1) {
+      if (!client)
+        CraftToolWear.Apply(hand, api.World.Rand);
+      StepsPaid++;
+      return StageHoldProgress.Stepped;
+    }
     if (client)
       return StageHoldProgress.Idle;
     if (!TryConsumeIngredients(byEntity, hand))
       return StageHoldProgress.Idle;
     CraftToolWear.Apply(hand, api.World.Rand);
-    CurrentCompletedStage++;
+    BuildStage();
     return StageHoldProgress.Built;
   }
 
   /// <summary>Ends the hold the player let go of: the swing in progress stops and the hits counted
-  /// stay. Does nothing when no hold is in progress.</summary>
+  /// stay. Does nothing when no hold is in progress for the player.</summary>
   /// <param name="byEntity">The player's entity.</param>
   public void StopHold(EntityAgent byEntity) {
-    if (!holding)
+    if (
+      !holds.TryGetValue(byEntity.EntityId, out ConstructionHold? hold)
+      || !hold.Active
+    )
       return;
-    holding = false;
     hold.Release(new EntityCraftEffects(byEntity));
+    if (hold.Struck == 0)
+      holds.Remove(byEntity.EntityId);
   }
 
-  private static bool HoldsTool(ExConstructionStage stage, ItemSlot hand) =>
+  private static bool HoldsTool(ExConstructionToolStep step, ItemSlot hand) =>
     hand.Itemstack is { } held
-    && WildcardUtil.Match(stage.Tool, held.Collectible.Code.ToString());
+    && WildcardUtil.Match(step.Tool, held.Collectible.Code.ToString());
 
   private List<CollectibleObject> ToolCollectibles(string pattern) {
     var tools = new List<CollectibleObject>();
@@ -263,16 +359,16 @@ public class ExRightClickConstruction {
     return tools;
   }
 
-  private void RefuseTool(EntityAgent byEntity, ExConstructionStage stage) {
+  private void RefuseTool(EntityAgent byEntity, ExConstructionToolStep step) {
     if (
       (byEntity as EntityPlayer)?.Player is not IClientPlayer
       || api is not ICoreClientAPI capi
     )
       return;
-    List<CollectibleObject> tools = ToolCollectibles(stage.Tool!);
+    List<CollectibleObject> tools = ToolCollectibles(step.Tool!);
     string names =
       tools.Count == 0
-        ? stage.Tool!
+        ? step.Tool!
         : string.Join(
           ", ",
           tools.Take(3).Select(t => new ItemStack(t).GetName())
@@ -477,6 +573,7 @@ public class ExRightClickConstruction {
       wildcards[wc.Key] = new StringAttribute(wc.Value);
     tree["wildcards"] = wildcards;
     tree.SetInt("currentStage", CurrentCompletedStage);
+    tree.SetInt("stepsPaid", StepsPaid);
   }
 
   public void FromTreeAttributes(ITreeAttribute tree) {
@@ -486,11 +583,13 @@ public class ExRightClickConstruction {
         if (entry.Value is StringAttribute s)
           StoredWildCards[entry.Key] = s.value;
     CurrentCompletedStage = tree.GetInt("currentStage", 0);
+    StepsPaid = tree.GetInt("stepsPaid", 0);
   }
 
   private WorldInteraction[]? hint;
   private ExConstructionStage[]? hintStages;
   private int hintNextStage = -1;
+  private int hintStepsPaid = -1;
   private readonly Dictionary<string, string> hintWildCards = new();
 
   /// <summary>The build-material hover help for the next stage.</summary>
@@ -506,6 +605,7 @@ public class ExRightClickConstruction {
     if (
       hintStages == Stages
       && hintNextStage == next
+      && hintStepsPaid == StepsPaid
       && SameWildCards(hintWildCards, StoredWildCards)
     )
       return hint;
@@ -513,6 +613,7 @@ public class ExRightClickConstruction {
     hint = BuildInteractionHelp(Stages[next]);
     hintStages = Stages;
     hintNextStage = next;
+    hintStepsPaid = StepsPaid;
     hintWildCards.Clear();
     foreach (var wc in StoredWildCards)
       hintWildCards[wc.Key] = wc.Value;
@@ -533,8 +634,8 @@ public class ExRightClickConstruction {
 
   private WorldInteraction[]? BuildInteractionHelp(ExConstructionStage stage) {
     var list = new List<WorldInteraction>();
-    if (stage.Tool != null) {
-      var tools = ToolCollectibles(stage.Tool)
+    if (stage.ToolSteps.Length > 0) {
+      var tools = ToolCollectibles(CurrentStep().Tool!)
         .Select(t => new ItemStack(t))
         .ToArray();
       list.Add(

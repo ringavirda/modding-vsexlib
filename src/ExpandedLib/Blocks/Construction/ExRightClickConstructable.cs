@@ -173,14 +173,18 @@ public class ExRightClickConstructable
     BlockSelection blockSel,
     ref EnumHandling handling
   ) {
-    if (!rcc.Holding)
+    if (!rcc.IsHolding(byPlayer.Entity))
       return false;
     handling = EnumHandling.PreventDefault;
     StageHoldProgress progress = rcc.StepHold(secondsUsed, byPlayer.Entity);
     if (progress == StageHoldProgress.Built) {
       UpdateShape();
       Blockentity.MarkDirty(true);
-    }
+    } else if (
+        progress == StageHoldProgress.Stepped
+        && Api.Side == EnumAppSide.Server
+      )
+      Blockentity.MarkDirty();
     return progress == StageHoldProgress.Working;
   }
 
@@ -192,7 +196,7 @@ public class ExRightClickConstructable
     BlockSelection blockSel,
     ref EnumHandling handling
   ) {
-    if (!rcc.Holding)
+    if (!rcc.IsHolding(byPlayer.Entity))
       return;
     handling = EnumHandling.PreventDefault;
     rcc.StopHold(byPlayer.Entity);

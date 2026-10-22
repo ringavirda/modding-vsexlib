@@ -130,20 +130,19 @@ internal static class ConstructionWalk {
     return null;
   }
 
-  /// <summary>The seconds a hold takes to finish every hit of <paramref name="stage"/> with
+  /// <summary>The seconds a hold takes to finish every hit of <paramref name="step"/> with
   /// <paramref name="tool"/>.</summary>
-  /// <param name="stage">The stage being paid.</param>
-  /// <param name="tool">The stack in the main hand; null when the stage names no tool.</param>
-  /// <returns>0 for a stage that names no tool.</returns>
-  public static double HoldSeconds(ExConstructionStage stage, ItemStack? tool) {
-    if (stage.Tool == null)
-      return 0;
+  /// <param name="step">The tool step being paid.</param>
+  /// <param name="tool">The stack in the main hand; null when the step's tool is not held.</param>
+  public static double HoldSeconds(ExConstructionToolStep step, ItemStack? tool) {
     float stroke =
       CraftSequenceRegistry
-        .Shared.ToolDefault(tool?.Collectible.Code.ToString() ?? stage.Tool)
+        .Shared.ToolDefault(
+          tool?.Collectible.Code.ToString() ?? step.Tool ?? ""
+        )
         ?.Stroke
       ?? CraftToolDefault.DefaultStroke;
-    return (Math.Max(1, stage.Hits) * (double)stroke) + 0.1;
+    return (Math.Max(1, step.Hits) * (double)stroke) + 0.1;
   }
 
   private static string HandText(ItemStack? tool) =>
@@ -182,22 +181,30 @@ internal static class ConstructionWalk {
         ", ",
         supply.Select(s => $"{s.Collectible.Code} x {s.StackSize}")
       );
-      ExConstructionStage paid = rcc.Stages[stage];
-      ItemStack? tool = PackLedger.Tool(
-        ctx,
-        $"stage {stage} of {FailureDetail.Cell(cell)}",
-        paid.Tool
-      );
-      bool answered = player.Construct(
-        at,
-        BlockFacing.SOUTH,
-        supply,
-        tool,
-        HoldSeconds(paid, tool),
-        out string left,
-        out ItemStack? toolLeft
-      );
-      PackLedger.Give(ctx, toolLeft);
+      ExConstructionToolStep[] steps = rcc.Stages[stage].ToolSteps;
+      string left = "";
+      ItemStack? tool = null;
+      ItemStack? toolLeft = null;
+      bool answered = false;
+      for (int step = 0; step < Math.Max(1, steps.Length); step++) {
+        tool = PackLedger.Tool(
+          ctx,
+          $"stage {stage} of {FailureDetail.Cell(cell)}",
+          steps.Length == 0 ? null : steps[step].Tool
+        );
+        answered = player.Construct(
+          at,
+          BlockFacing.SOUTH,
+          supply,
+          tool,
+          steps.Length == 0 ? 0 : HoldSeconds(steps[step], tool),
+          out left,
+          out toolLeft
+        );
+        PackLedger.Give(ctx, toolLeft);
+        if (rcc.CurrentCompletedStage == stage)
+          break;
+      }
       if (rcc.CurrentCompletedStage != stage)
         throw new StepFailure(
           $"stage {stage} was not built: OnBlockInteractStart answered {answered} with {given} in the hotbar"

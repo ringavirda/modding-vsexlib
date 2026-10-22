@@ -76,11 +76,12 @@ public sealed partial class SetupScene
       i++
     )
     {
-      if (
-        construction.Stages[i].Tool is { } tool
-        && !_pack.HeldKeys.Any(k => WildcardUtil.Match(tool, k))
-      )
-        throw Fail(where, $"the pack holds no {tool} for stage {i} of {pin}.");
+      foreach (ExConstructionToolStep step in construction.Stages[i].ToolSteps)
+        if (!_pack.HeldKeys.Any(k => WildcardUtil.Match(step.Tool, k)))
+          throw Fail(
+            where,
+            $"the pack holds no {step.Tool} for stage {i} of {pin}."
+          );
       foreach (
         ExConstructionIngredient need in construction.Stages[i].RequireStacks
           ?? []

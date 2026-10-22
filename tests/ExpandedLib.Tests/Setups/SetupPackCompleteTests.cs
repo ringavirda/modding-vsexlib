@@ -64,7 +64,11 @@ public class SetupPackCompleteTests : IDisposable
         "t.json"
       ),
       [ModPath(mod)],
-      w => w.RegisterItem("game:stick"),
+      w =>
+      {
+        w.RegisterItem("game:stick");
+        w.RegisterItem("game:flint");
+      },
       w =>
         w.RegisterClass(
             "ExRightClickConstructable",
@@ -185,6 +189,50 @@ public class SetupPackCompleteTests : IDisposable
       new System.Collections.Generic.Dictionary<string, int>
       {
         ["game:stick"] = 1,
+      },
+      pack.End
+    );
+  }
+
+  // Fails when complete checks only the first tool of a two-step stage against the pack.
+  [Fact]
+  public void A_two_step_stage_without_its_second_tool_in_the_pack_fails_at_complete()
+  {
+    string message = Refused(
+      "setupbuild",
+      Gathered(
+        "all",
+        "{\"setupbuild:toolframe2\": 1, \"game:plank-oak\": 1, \"game:stick\": 1}"
+      ),
+      ToolFrame.Replace("toolframe", "toolframe2")
+    );
+
+    Assert.Equal(
+      "t.json: steps[0]: the pack holds no game:flint for stage 1 of (0, 0, 0).",
+      message
+    );
+  }
+
+  // Fails when a step's tool is drawn from the pack as a material is, so a complete spends it.
+  [Fact]
+  public void A_two_step_stage_completes_with_both_tools_in_the_pack()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered(
+        "all",
+        "{\"setupbuild:toolframe2\": 1, \"game:plank-oak\": 1, \"game:stick\": 1, \"game:flint\": 1}"
+      ),
+      ToolFrame.Replace("toolframe", "toolframe2")
+    );
+
+    SetupPackRecord pack = scene.Run(Mods).Pack!;
+
+    Assert.Equal(
+      new System.Collections.Generic.Dictionary<string, int>
+      {
+        ["game:stick"] = 1,
+        ["game:flint"] = 1,
       },
       pack.End
     );
