@@ -1,0 +1,33 @@
+{
+  "setup": "drawn-shape",
+  "description": "A box whose entity draws a shape of its own by level, beside a slab that draws its block's.",
+  "mods": [
+    "setupbox"
+  ],
+  "steps": [
+    {
+      "place": {
+        "id": "ground",
+        "code": "setupbox:slab",
+        "at": [0, 0, 0]
+      }
+    },
+    {
+      "place": {
+        "id": "box",
+        "code": "setupbox:box",
+        "at": [1, 0, 0]
+      }
+    },
+    {
+      "set": {
+        "at": {"of": "box"},
+        "tree": {
+          "level": 5
+        }
+      }
+    }
+  ],
+  "seconds": 10,
+  "record": {}
+}
