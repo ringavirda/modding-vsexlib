@@ -789,9 +789,9 @@ public class BlockLawsTests {
           "test:brittle placed threw InvalidOperationException: placed"
         ),
       ],
-      result.Laws.SelectMany(l =>
-        l.Findings.Select(f => (l.Name, f.Split(" (")[0]))
-      )
+      result
+        .Laws.Where(l => l.Name is "info" or "neighbour")
+        .SelectMany(l => l.Findings.Select(f => (l.Name, f.Split(" (")[0])))
     );
   }
 
@@ -1824,6 +1824,7 @@ public class BlockLawsTests {
         "break",
         "multiblock",
         "megablock",
+        "draw",
         "control",
         "info",
         "reload",

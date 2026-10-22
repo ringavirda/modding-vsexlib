@@ -399,7 +399,7 @@ public sealed partial class TestWorld {
       Path.Combine(GameInstall(), "assets"),
       EnumAppSide.Client
     );
-    mgr.InitAndLoadBaseAssets(Log);
+    mgr.InitAndLoadBaseAssets(QuietLogger);
     // The manager refuses lookups until every asset is marked loaded, as the game marks them.
     ReflectionHelpers.SetField(mgr, "allAssetsLoaded", true);
     return mgr;

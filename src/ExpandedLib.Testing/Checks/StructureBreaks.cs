@@ -574,7 +574,7 @@ public static class StructureBreaks
   /// <exception cref="InvalidOperationException">A wildcard ingredient names no allowed variant and
   /// the world holds none of it, a stage is not paid, or a stage takes a stored key in two
   /// variants.</exception>
-  private static void Pay(
+  internal static void Pay(
     TestWorld world,
     BlockPos at,
     Block block,

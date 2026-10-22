@@ -28,7 +28,7 @@ public static class BlockLaws {
   /// laws structures, one per variant <c>MultiblockLaw.OneFacing</c> picks.</param>
   /// <param name="Cases">Cases it ran: placements, breaks, structures stood up, block entities
   /// read or reloaded, faces a neighbour came and went on, network pairs joined from both sides,
-  /// port-to-member pairs coupled from both sides, clicks made, on a block or a formed structure, accepted stacks followed, or block definitions read for their controls.</param>
+  /// port-to-member pairs coupled from both sides, clicks made, on a block or a formed structure, accepted stacks followed, block definitions read for their controls, or cells drawn.</param>
   /// <param name="Findings">One line per finding, each starting with the variant code it is
   /// about and a space.</param>
   public sealed record Law(
@@ -91,7 +91,7 @@ public static class BlockLaws {
   /// <param name="prepare">Registers on each world the network types and mod systems the blocks
   /// need, before any is defined.</param>
   /// <returns>In order, the laws <c>placement</c>, <c>break</c> (1.22 on), <c>multiblock</c>,
-  /// <c>megablock</c>, <c>control</c> (1.22 on), <c>info</c>, <c>reload</c>, <c>neighbour</c>, <c>network</c>,
+  /// <c>megablock</c>, <c>draw</c> (1.22 on), <c>control</c> (1.22 on), <c>info</c>, <c>reload</c>, <c>neighbour</c>, <c>network</c>,
   /// <c>network port</c>, <c>interaction</c>, <c>container</c>, <c>formed interaction</c>, <c>formed
   /// container</c>.</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, or a block's entity or
@@ -117,6 +117,7 @@ public static class BlockLaws {
     laws.Add(MultiblockLaw.Run(Stand(all, assemblies, prepare), domain));
     laws.Add(MegablockLaw.Run(Stand(all, assemblies, prepare), domain));
 #if GAME_GE_1_22
+    laws.Add(DrawLaw.Run(Stand(all, assemblies, prepare), domain));
     laws.Add(ControlLaw.Run(Stand(all, assemblies, prepare), domain));
 #endif
     laws.Add(InfoLaw.Run(Stand(all, assemblies, prepare), domain));
