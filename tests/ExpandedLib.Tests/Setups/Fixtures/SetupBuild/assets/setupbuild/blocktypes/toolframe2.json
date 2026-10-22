@@ -1,0 +1,24 @@
+{
+  "code": "toolframe2",
+  "entityClass": "SetupFrame",
+  "behaviors": [ { "name": "BlockEntityInteract" } ],
+  "entityBehaviors": [
+    {
+      "name": "ExRightClickConstructable",
+      "properties": {
+        "stages": [
+          {},
+          {
+            "steps": [
+              { "tool": "game:stick" },
+              { "tool": "game:flint", "hits": 1 }
+            ],
+            "requireStacks": [
+              { "type": "item", "code": "game:plank-{wood}", "quantity": 1 }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

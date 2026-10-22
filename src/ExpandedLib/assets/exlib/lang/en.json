@@ -6,6 +6,8 @@
   "multiblock-incomplete": "Structure is not complete. {0} blocks are missing or incorrect.",
   "multiblock-complete": "Structure is complete!",
   "ingameerror-construction-onematerial": "Build this stage from one material: {0} or {1}, not both.",
+  "ingameerror-construction-missingtool": "This stage is built with {0} in the main hand.",
+  "rcc-hold-tool": "Hold to build",
   "facing-n": "north",
   "facing-e": "east",
   "facing-s": "south",

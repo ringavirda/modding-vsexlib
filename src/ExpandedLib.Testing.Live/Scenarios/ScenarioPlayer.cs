@@ -540,9 +540,28 @@ internal sealed class ScenarioPlayer : IHandRelease {
     BlockFacing face,
     IReadOnlyList<ItemStack> supply,
     out string left
+  ) => Construct(at, face, supply, null, 0, out left, out _);
+
+  /// <summary>As the plain <see cref="Construct(BlockPos, BlockFacing, IReadOnlyList{ItemStack}, out string)"/>,
+  /// with <paramref name="tool"/> in the active slot and the supply in the other slots; when the click
+  /// begins a hold, one step at <paramref name="seconds"/> and the stop follow it.</summary>
+  /// <param name="tool">The stack the main hand holds, or null for an empty hand.</param>
+  /// <param name="seconds">The seconds the hold runs when the click begins one; 0 for a plain click.</param>
+  /// <param name="toolLeft">What the active slot held after the click: the tool as worn, or null when it
+  /// broke or there was none.</param>
+  /// <exception cref="InvalidOperationException">More stacks than hotbar slots besides the active one.</exception>
+  public bool Construct(
+    BlockPos at,
+    BlockFacing face,
+    IReadOnlyList<ItemStack> supply,
+    ItemStack? tool,
+    double seconds,
+    out string left,
+    out ItemStack? toolLeft
   ) {
     IInventory hotbar = Player.InventoryManager.GetHotbarInventory();
-    if (supply.Count > hotbar.Count)
+    ItemSlot hand = Player.InventoryManager.ActiveHotbarSlot;
+    if (supply.Count > hotbar.Count - (tool == null ? 0 : 1))
       throw new InvalidOperationException(
         $"a stage asks for {supply.Count} stacks and the hotbar has {hotbar.Count} slots."
       );
@@ -552,17 +571,24 @@ internal sealed class ScenarioPlayer : IHandRelease {
     Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
     Hold(Player.Entity.Controls, []);
     try {
+      int next = 0;
       for (int i = 0; i < hotbar.Count; i++)
-        hotbar[i].Itemstack = i < supply.Count ? supply[i] : null;
+        hotbar[i].Itemstack =
+          hotbar[i] == hand ? tool
+          : next < supply.Count ? supply[next++]
+          : null;
       var selection = new BlockSelection {
         Position = at.Copy(),
         Face = face,
         HitPosition = hit,
       };
-      bool answered = _server
-        .BlockAccessor.GetBlock(at)
-        .OnBlockInteractStart(_server, Player, selection);
+      Block block = _server.BlockAccessor.GetBlock(at);
+      bool answered = block.OnBlockInteractStart(_server, Player, selection);
       _server.EventManager.TriggerDidUseBlock(Player, selection);
+      if (answered && seconds > 0) {
+        block.OnBlockInteractStep((float)seconds, _server, Player, selection);
+        block.OnBlockInteractStop((float)seconds, _server, Player, selection);
+      }
       string[] held =
       [
         .. hotbar
@@ -570,6 +596,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
           .Select(s => $"{s.Itemstack.Collectible.Code} x {s.StackSize}"),
       ];
       left = held.Length == 0 ? "empty" : string.Join(", ", held);
+      toolLeft = hand.Itemstack;
       return answered;
     } finally {
       foreach (ItemSlot slot in hotbar)

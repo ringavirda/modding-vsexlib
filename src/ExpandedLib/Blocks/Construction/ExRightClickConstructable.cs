@@ -21,6 +21,7 @@ public class ExRightClickConstructable
 #else
     IInteractable,
 #endif
+    ILongInteractable,
     IProductionReadiness,
     IControlStates {
   private readonly ExRightClickConstruction rcc = new();
@@ -125,13 +126,16 @@ public class ExRightClickConstructable
   }
 
   /// <summary>Pays the next stage from the player's hotbar when <see cref="OnAttemptConstruct"/>
-  /// admits it, then updates <see cref="shape"/> and marks the block entity dirty. Always
-  /// prevents the default handling.</summary>
+  /// admits it, then updates <see cref="shape"/> and marks the block entity dirty. A stage that
+  /// names a tool is not paid here: the click starts the hold that
+  /// <see cref="OnBlockInteractStep"/> carries, and takes nothing. Always prevents the default
+  /// handling.</summary>
   /// <param name="world">The world the block is in; unused.</param>
   /// <param name="byPlayer">The player who clicked; pays from their hotbar.</param>
   /// <param name="blockSel">The clicked cell, passed to <see cref="OnAttemptConstruct"/>.</param>
   /// <param name="handling">Set to <see cref="EnumHandling.PreventDefault"/>.</param>
-  /// <returns>False when <see cref="OnAttemptConstruct"/> refused; otherwise true, whether or
+  /// <returns>False when <see cref="OnAttemptConstruct"/> refused, or the stage names a tool the
+  /// main hand does not hold or a material the hotbar lacks; otherwise true, whether or
   /// not a stage was built.</returns>
   public bool OnBlockInteractStart(
     IWorldAccessor world,
@@ -142,10 +146,71 @@ public class ExRightClickConstructable
     handling = EnumHandling.PreventDefault;
     if (OnAttemptConstruct != null && !OnAttemptConstruct(byPlayer, blockSel))
       return false;
+    if (rcc.NeedsTool(byPlayer.Entity))
+      return rcc.BeginHold(byPlayer.Entity);
     if (rcc.OnInteract(byPlayer.Entity, byPlayer.Entity.RightHandItemSlot)) {
       UpdateShape();
       Blockentity.MarkDirty(true);
     }
+    return true;
+  }
+
+  /// <summary>Carries the hold of a tool stage one frame on; see
+  /// <see cref="ExRightClickConstruction.StepHold"/>. On the server the hit that completes the stage
+  /// pays it and updates <see cref="shape"/>.</summary>
+  /// <param name="secondsUsed">Seconds since the click began.</param>
+  /// <param name="world">The world the block is in; unused.</param>
+  /// <param name="byPlayer">The holding player.</param>
+  /// <param name="blockSel">The held cell; unused.</param>
+  /// <param name="handling">Set to <see cref="EnumHandling.PreventDefault"/> while a hold is in
+  /// progress; left as it came otherwise.</param>
+  /// <returns>True while the swings continue; false once the stage is built or the hold cannot go
+  /// on.</returns>
+  public bool OnBlockInteractStep(
+    float secondsUsed,
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel,
+    ref EnumHandling handling
+  ) {
+    if (!rcc.IsHolding(byPlayer.Entity))
+      return false;
+    handling = EnumHandling.PreventDefault;
+    StageHoldProgress progress = rcc.StepHold(secondsUsed, byPlayer.Entity);
+    if (progress == StageHoldProgress.Built) {
+      UpdateShape();
+      Blockentity.MarkDirty(true);
+    } else if (
+        progress == StageHoldProgress.Stepped
+        && Api.Side == EnumAppSide.Server
+      )
+      Blockentity.MarkDirty();
+    return progress == StageHoldProgress.Working;
+  }
+
+  /// <summary>Ends the hold of a tool stage when the player lets go; the hits counted stay.</summary>
+  public void OnBlockInteractStop(
+    float secondsUsed,
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel,
+    ref EnumHandling handling
+  ) {
+    if (!rcc.IsHolding(byPlayer.Entity))
+      return;
+    handling = EnumHandling.PreventDefault;
+    rcc.StopHold(byPlayer.Entity);
+  }
+
+  /// <summary>Ends the hold of a tool stage like <see cref="OnBlockInteractStop"/>.</summary>
+  public bool OnBlockInteractCancel(
+    float secondsUsed,
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel,
+    ref EnumHandling handling
+  ) {
+    OnBlockInteractStop(secondsUsed, world, byPlayer, blockSel, ref handling);
     return true;
   }
 

@@ -62,7 +62,7 @@ public sealed class CraftSequenceRun(
 
   /// <summary>The item attribute holding the chance, from 0 to 1, that a finished step costs the tool
   /// one durability point; a tool without it is worn by every step.</summary>
-  public const string StepWearAttribute = "stepWear";
+  public const string StepWearAttribute = CraftToolWear.StepWearAttribute;
 
   /// <summary>The step the player is on, from 0.</summary>
   public int Step { get; private set; }
@@ -271,24 +271,7 @@ public sealed class CraftSequenceRun(
     stack != null
     && WildcardUtil.Match(pattern, stack.Collectible.Code.ToString());
 
-  private void Wear(ItemSlot? slot)
-  {
-    ItemStack? stack = slot?.Itemstack;
-    if (slot == null || stack == null || stack.Collectible.Durability <= 0)
-      return;
-
-    float chance =
-      stack.Collectible.Attributes?[StepWearAttribute].AsFloat(1f) ?? 1f;
-    if (random.NextDouble() >= chance)
-      return;
-
-    int left = stack.Collectible.GetRemainingDurability(stack) - 1;
-    if (left <= 0)
-      slot.Itemstack = null;
-    else
-      stack.Attributes.SetInt("durability", left);
-    slot.MarkDirty();
-  }
+  private void Wear(ItemSlot? slot) => CraftToolWear.Apply(slot, random);
 
   private void ConsumeBill()
   {

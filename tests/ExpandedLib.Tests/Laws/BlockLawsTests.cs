@@ -1344,6 +1344,33 @@ public class BlockLawsTests {
     Assert.Equal(9, law.Cases);
   }
 
+  // Fails when a hold-to-build click holds the tool with no materials in the hotbar, or a plain click
+  // on a tool stage is judged, which the stage refuses.
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.Run))]
+  public void A_tool_stage_is_paid_by_holding_its_tool_with_its_materials_in_the_hotbar()
+  {
+    BlockLaws.Law law = InteractionLaw.Run(
+      Hands(
+        [ExItemDef.Create("test", "chisel")],
+        ExBlockDef
+          .Create("test", "tooled")
+          .Class("ExFilledMegastructure")
+          .FillerOffsets(TwoCells)
+          .EntityClass("test-plain")
+          .Behavior("BlockEntityInteract")
+          .Construction(c =>
+            c.Stage(s => s.Require("test:peg", 1))
+              .Stage(s => s.Tool("test:chisel", 2).Require("test:peg", 2))
+          )
+      ),
+      "test"
+    );
+
+    Assert.Equal(1, law.Blocks);
+    Assert.Empty(law.Findings);
+  }
+
   // Fails when a click aimed at a control box lands on the cell the help was read at instead of the
   // cell the step is judged on, which leaves the judged block unchanged.
   [Fact]
