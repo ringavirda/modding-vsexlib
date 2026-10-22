@@ -1,5 +1,6 @@
 #if GAME_GE_1_22
 using System.Text;
+using ExpandedLib.Helpers;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.GameContent;
@@ -12,7 +13,7 @@ internal enum BoxState
   Running,
 }
 
-internal sealed class SetupBox : BlockEntityContainer
+internal sealed class SetupBox : BlockEntityContainer, IDrawsShape
 {
   private readonly InventoryGeneric _inventory = new(2, null, null, null);
   private int _count;
@@ -28,6 +29,8 @@ internal sealed class SetupBox : BlockEntityContainer
   public int Dirtied;
   public int CountSeen => _count;
   public BoxState StateSeen => _state;
+
+  public AssetLocation DrawnShape => new("setupbox", $"box-{Level}");
 
   public override InventoryBase Inventory => _inventory;
 

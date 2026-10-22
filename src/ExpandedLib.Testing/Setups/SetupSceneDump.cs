@@ -32,7 +32,8 @@ internal static class SetupSceneDump
     BlockPos? Principal,
     BlockNetwork? Net,
     string? Network,
-    string? Line
+    string? Line,
+    string? Shape
   );
 
   /// <summary>The <c>setup-scene/1</c> text of <paramref name="scene"/>. Cells run by y, then z,
@@ -152,7 +153,8 @@ internal static class SetupSceneDump
           principal,
           net,
           network,
-          line
+          line,
+          (entity as IDrawsShape)?.DrawnShape.ToString()
         )
       );
     }
@@ -176,6 +178,8 @@ internal static class SetupSceneDump
         "\"at\": " + Position(e.Cell.At),
         "\"code\": " + Quote(e.Cell.Block.Code.ToString()),
       ];
+      if (e.Shape != null)
+        parts.Add("\"shape\": " + Quote(e.Shape));
       if (e.Id != null)
         parts.Add("\"id\": " + Quote(e.Id));
       parts.Add("\"role\": " + Quote(e.Role));

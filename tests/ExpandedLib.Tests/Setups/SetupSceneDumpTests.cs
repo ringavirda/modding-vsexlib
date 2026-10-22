@@ -510,6 +510,48 @@ public class SetupSceneDumpTests : IDisposable
     );
   }
 
+  // Fails when the dump leaves out the shape an entity draws, or writes it for a cell whose entity
+  // draws none.
+  [Fact]
+  public void An_entity_that_draws_a_shape_is_written_with_it()
+  {
+    SetupScene scene = SetupScene.Build(
+      SetupFile.Load(
+        Path.Combine(
+          RepoPaths.Root,
+          "tests",
+          "ExpandedLib.Tests",
+          "Setups",
+          "Files",
+          "drawn-shape.json"
+        )
+      ),
+      [
+        Path.Combine(
+          RepoPaths.Root,
+          "tests",
+          "ExpandedLib.Tests",
+          "Setups",
+          "Fixtures",
+          "SetupBox"
+        ),
+      ],
+      null,
+      w =>
+        w.RegisterClass("SetupBox", typeof(BlockEntity))
+          .RegisterBlockEntityFactory("SetupBox", () => new SetupBox())
+    );
+    using JsonDocument dump = JsonDocument.Parse(
+      SetupSceneDump.Of(scene, "drawn-shape", null)
+    );
+
+    Assert.Equal(
+      "setupbox:box-5",
+      CellAt(dump, 1, 0, 0).GetProperty("shape").GetString()
+    );
+    Assert.False(CellAt(dump, 0, 0, 0).TryGetProperty("shape", out _));
+  }
+
   private sealed class TestMember : BEBehaviorNetworkMember
   {
     public TestMember(BlockEntity be, string type, BlockFacing face)
