@@ -78,10 +78,10 @@ public static class MachineTestHooks {
   ) => station.ValidatePickRange = false;
 
   /// <summary>Runs one production tick on <paramref name="behavior"/> as the registered listener would,
-  /// without registering it: the game hours since its last tick (see
-  /// <see cref="BEBehaviorProductionMachine.TickGameHours"/>) run as its steps, and the stamp moves to
-  /// now. Never moves the calendar (use <see cref="TestWorld.AdvanceHours"/>) and runs no pending away
-  /// replay.</summary>
+  /// without registering it: an Off machine runs the game hours since its last tick (see
+  /// <see cref="BEBehaviorProductionMachine.TickGameHours"/>) as its steps and moves its stamp to now; a
+  /// Replay machine runs one tick of <c>dt</c> seconds. Never moves the calendar (use
+  /// <see cref="TestWorld.AdvanceHours"/>), checks no hold and runs no replay.</summary>
   public static void DriveProductionTick(
     this BEBehaviorProductionMachine behavior,
     float dt

@@ -1,5 +1,6 @@
 using System.Linq;
 using ExpandedLib.Definitions;
+using ExpandedLib.FastForwarding;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
@@ -14,8 +15,11 @@ internal sealed class TestMegablock : BlockEntityMultiblockMachine {
   public int Angle;
   public int ProductionTicks;
   public double LastTickGameHours;
+  public FastForwardMode Mode = FastForwardMode.Replay;
   public int CompletedCount;
   public int LostCount;
+
+  protected override FastForwardMode FastForwardMode => Mode;
 
   protected override void UpdateStructureRotation() => SetStructureAngle(Angle);
 

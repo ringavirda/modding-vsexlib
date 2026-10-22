@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
@@ -160,6 +161,7 @@ public sealed partial class TestWorld : IDisposable {
       .Do(ci => AdvanceHours(ci.Arg<float>()));
 
     Mods.Add("exlib", "1.0.0").Register(Networks);
+    Networks.FastForward.BudgetMs = 0;
 
     Accessor = BuildAccessor();
     World = BuildWorld();
@@ -556,6 +558,10 @@ public sealed partial class TestWorld : IDisposable {
   #region Chunk loading
 
   private readonly HashSet<Vec3i> _unloadedChunks = new();
+  private readonly Dictionary<
+    BlockPos,
+    (BlockEntity Entity, TreeAttribute Tree)
+  > _unloadedEntities = new();
   private readonly IWorldChunk _loadedChunk = Substitute.For<IWorldChunk>();
 
   /// <summary>The chunk every loaded position resolves to; one instance for the whole
@@ -578,16 +584,62 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Hides every cell in the chunk holding <paramref name="pos"/> from
   /// <see cref="Accessor"/>: its blocks read as <see cref="Air"/>, its block entities and
   /// <c>GetChunkAtBlockPos</c> as <c>null</c>.</summary>
-  public TestWorld UnloadChunkAt(BlockPos pos) {
-    _unloadedChunks.Add(ChunkOf(pos));
+  /// <param name="pos">Any position inside the chunk.</param>
+  /// <param name="unloadEntities">When true the chunk's block entities are also saved to their trees, sent
+  /// <c>OnBlockUnloaded</c> and dropped, as the game does on a real unload; <see cref="LoadChunkAt"/> brings
+  /// each back as a new instance read from its tree. False leaves the instances in place.</param>
+  public TestWorld UnloadChunkAt(BlockPos pos, bool unloadEntities = false) {
+    Vec3i chunk = ChunkOf(pos);
+    if (unloadEntities)
+      foreach (
+        (BlockPos at, BlockEntity entity) in _blockEntities
+          .Where(e => ChunkOf(e.Key) == chunk)
+          .Select(e => (e.Key, e.Value))
+          .ToList()
+      ) {
+        var tree = new TreeAttribute();
+        entity.ToTreeAttributes(tree);
+        entity.OnBlockUnloaded();
+        _blockEntities.Remove(at);
+        _unloadedEntities[at] = (entity, tree);
+      }
+    _unloadedChunks.Add(chunk);
     return this;
   }
 
-  /// <summary>Brings back the chunk holding <paramref name="pos"/>.</summary>
+  /// <summary>Brings back the chunk holding <paramref name="pos"/>, with a new block entity read from the
+  /// saved tree of each one <see cref="UnloadChunkAt"/> unloaded with its entities.</summary>
   public TestWorld LoadChunkAt(BlockPos pos) {
-    _unloadedChunks.Remove(ChunkOf(pos));
+    Vec3i chunk = ChunkOf(pos);
+    _unloadedChunks.Remove(chunk);
+    foreach (
+      BlockPos at in _unloadedEntities
+        .Keys.Where(k => ChunkOf(k) == chunk)
+        .ToList()
+    ) {
+      (BlockEntity old, TreeAttribute tree) = _unloadedEntities[at];
+      _unloadedEntities.Remove(at);
+      Revive(old, at, tree);
+    }
     return this;
   }
+
+  /// <summary>The positions of the members in the fast-forward group holding <paramref name="pos"/>, as of the last
+  /// replay pass.</summary>
+  /// <param name="pos">A member's position.</param>
+  /// <returns>Every member position of the group, <paramref name="pos"/> included; empty when it is in none.</returns>
+  public IReadOnlyList<BlockPos> FastForwardGroupOf(BlockPos pos) =>
+    [
+      .. Networks.FastForward.GroupOf(pos)?.Members.Select(m => m.Pos.Copy())
+        ?? [],
+    ];
+
+  /// <summary>How many base replay steps the fast-forward group holding <paramref name="pos"/> has run in the
+  /// replay now under way; a replay that closes its gap resets it.</summary>
+  /// <param name="pos">A member's position.</param>
+  /// <returns>The step count, 0 when the position is in no group.</returns>
+  public int ReplayedSteps(BlockPos pos) =>
+    Networks.FastForward.GroupOf(pos)?.ReplayedSteps ?? 0;
 
   /// <summary>What <see cref="Accessor"/> sees at <paramref name="pos"/> in
   /// <paramref name="layer"/>: the placed block, or <see cref="Air"/> when its chunk is
@@ -632,7 +684,9 @@ public sealed partial class TestWorld : IDisposable {
   #region Time
 
   /// <summary>Advances the simulation by <paramref name="seconds"/> seconds through
-  /// <see cref="BlockNetworkModSystem.ListenerTick"/>, in the server listener's 200 ms fires, five per second.</summary>
+  /// <see cref="BlockNetworkModSystem.ListenerTick"/>, in the server listener's 200 ms fires, five per second.
+  /// Each fire replays the game time the calendar moved past the machines' ticks, with no time budget, so a
+  /// single fire finishes a gap of up to 12 game hours.</summary>
   public void Tick(int seconds = 1) {
     const float fire = BlockNetworkModSystem.ListenerIntervalMs / 1000f;
     for (int i = 0; i < seconds * 5; i++)
@@ -754,9 +808,9 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   /// <summary>Game hours one real second makes on the live server at the default calendar.</summary>
-  public const double GameHoursPerSecond = 1.0 / 120.0;
+  public const double GameHoursPerSecond = 1.0 / GameTime.MachineSecondsPerHour;
 
-  /// <summary>Moves the calendar forward by game hours without ticking (for away-catch-up tests).</summary>
+  /// <summary>Moves the calendar forward by game hours without ticking; the next <see cref="Tick"/> replays the gap on the production machines and networks of its groups.</summary>
   public void AdvanceHours(double hours) => AdvanceDays(hours / 24.0);
 
   private void PushCalendar() {
@@ -776,8 +830,6 @@ public sealed partial class TestWorld : IDisposable {
     if (old == null)
       return null;
 
-    Block block = GetBlock(pos);
-
     var tree = new TreeAttribute();
     old.ToTreeAttributes(tree);
 
@@ -785,6 +837,11 @@ public sealed partial class TestWorld : IDisposable {
     old.OnBlockUnloaded();
     _blockEntities.Remove(pos);
 
+    return Revive(old, pos, tree);
+  }
+
+  private BlockEntity Revive(BlockEntity old, BlockPos pos, TreeAttribute tree) {
+    Block block = GetBlock(pos);
     BlockEntity fresh = NewBlockEntityLike(old, block);
     fresh.Pos = pos.Copy();
     fresh.Block = block;
@@ -1325,6 +1382,7 @@ public sealed partial class TestWorld : IDisposable {
     if (id == 0) {
       _blocks.Remove(pos);
       _blockEntities.Remove(pos);
+      _unloadedEntities.Remove(pos);
       return;
     }
     if (!_blocksById.TryGetValue(id, out var b))

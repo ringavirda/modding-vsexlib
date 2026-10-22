@@ -1,3 +1,4 @@
+using ExpandedLib.Machines;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -35,6 +36,13 @@ public sealed class MultiblockAnchorLink<T>
 
   /// <summary>The owning anchor, or null when none is in range; re-scans at most once per <see cref="RescanIntervalMs"/>.</summary>
   public T? Resolve() {
+    T? anchor = FindAnchor();
+    if (anchor != null)
+      _component.NetworkSystem()?.FastForward.Record(anchor.Pos);
+    return anchor;
+  }
+
+  private T? FindAnchor() {
     IWorldAccessor? world = _component.Api?.World;
     if (world == null)
       return null;
