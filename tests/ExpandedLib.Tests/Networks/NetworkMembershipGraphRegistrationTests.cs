@@ -70,6 +70,40 @@ public class NetworkMembershipGraphRegistrationTests {
     Assert.Null(w.NetworkAt(pos));
   }
 
+  [Theory]
+  [InlineData(true, false)]
+  [InlineData(false, true)]
+  public void A_node_spawned_severed_joins_no_run_while_the_world_does_not_yet_answer_it(
+    bool broken,
+    bool joinsRun
+  ) {
+    // The engine initialises a spawned entity before its cell answers it; the severed answer must
+    // come from the joining entity, not from the cell's lookup.
+    var w = NewGraphWorld();
+    w.SpawnInitializesBeforeRegistering = true;
+    w.RegisterBlockEntityFactory(
+      "severable",
+      () => new SeverableNode { Broken = broken }
+    );
+    var run = new BlockPos(0, 0, 0);
+    var spawned = new BlockPos(0, 0, 1);
+    w.Place(
+      run,
+      TestNetworkBlock.Create("test", "ns", id: 921),
+      new SeverableNode()
+    );
+    w.Initialize(w.GetBlockEntity(run)!);
+    w.Place(spawned, TestNetworkBlock.Create("test", "ns", id: 922));
+
+    w.Accessor.SpawnBlockEntity("severable", spawned, null);
+
+    Assert.NotNull(w.NetworkAt(spawned));
+    Assert.Equal(
+      joinsRun,
+      ReferenceEquals(w.NetworkAt(run), w.NetworkAt(spawned))
+    );
+  }
+
   [Fact]
   public void A_membership_naming_no_network_joins_nothing_rather_than_throwing() {
     // A blank network type leaves the cell off the graph and logs an error.

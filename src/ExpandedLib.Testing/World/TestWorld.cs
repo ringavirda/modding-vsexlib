@@ -148,6 +148,13 @@ public sealed partial class TestWorld : IDisposable {
   /// run and <c>RemoveBlockEntity</c> does nothing.</remarks>
   public bool RunsRemovalHooks { get; set; } = true;
 
+  /// <summary>Whether a block entity spawned through <see cref="Accessor"/> is initialised before
+  /// the cell answers it, as the engine's spawn does; false by default.</summary>
+  /// <remarks>When true, <c>GetBlockEntity</c> at the cell answers null while the entity's
+  /// <see cref="BlockEntity.Initialize"/> runs and the entity afterwards. When false, the cell
+  /// answers the entity throughout.</remarks>
+  public bool SpawnInitializesBeforeRegistering { get; set; }
+
   public TestWorld() {
     Air = TestBlocks.Configure(new Block(), "game:air", 0);
     Air.Replaceable = 9999;
@@ -1434,6 +1441,11 @@ public sealed partial class TestWorld : IDisposable {
       return null;
     be.Pos = pos.Copy();
     be.Block = block;
+    if (SpawnInitializesBeforeRegistering) {
+      be.Initialize(Api);
+      _blockEntities[pos] = be;
+      return be;
+    }
     _blockEntities[pos] = be;
     be.Initialize(Api);
     return be;

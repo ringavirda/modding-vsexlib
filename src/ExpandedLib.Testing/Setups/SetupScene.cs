@@ -148,6 +148,7 @@ public sealed partial class SetupScene : IDisposable
         nameof(modPaths)
       );
     var scene = new SetupScene(file);
+    scene.World.SpawnInitializesBeforeRegistering = true;
     try
     {
       scene.Refuse();
