@@ -9,6 +9,7 @@ using ExpandedLib.Scenarios;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace ExpandedLib.Testing;
 
@@ -74,6 +75,12 @@ public sealed partial class SetupScene
       i < construction.Stages.Length;
       i++
     )
+    {
+      if (
+        construction.Stages[i].Tool is { } tool
+        && !_pack.HeldKeys.Any(k => WildcardUtil.Match(tool, k))
+      )
+        throw Fail(where, $"the pack holds no {tool} for stage {i} of {pin}.");
       foreach (
         ExConstructionIngredient need in construction.Stages[i].RequireStacks
           ?? []
@@ -84,6 +91,7 @@ public sealed partial class SetupScene
           need.Quantity,
           pin
         );
+    }
   }
 
   private void GiveSpawns()

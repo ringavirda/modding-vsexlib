@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
+using ExpandedLib.Catalogues;
+using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -127,6 +130,27 @@ internal static class ConstructionWalk {
     return null;
   }
 
+  /// <summary>The seconds a hold takes to finish every hit of <paramref name="stage"/> with
+  /// <paramref name="tool"/>.</summary>
+  /// <param name="stage">The stage being paid.</param>
+  /// <param name="tool">The stack in the main hand; null when the stage names no tool.</param>
+  /// <returns>0 for a stage that names no tool.</returns>
+  public static double HoldSeconds(ExConstructionStage stage, ItemStack? tool) {
+    if (stage.Tool == null)
+      return 0;
+    float stroke =
+      CraftSequenceRegistry
+        .Shared.ToolDefault(tool?.Collectible.Code.ToString() ?? stage.Tool)
+        ?.Stroke
+      ?? CraftToolDefault.DefaultStroke;
+    return (Math.Max(1, stage.Hits) * (double)stroke) + 0.1;
+  }
+
+  private static string HandText(ItemStack? tool) =>
+    tool == null
+      ? "tool broke"
+      : $"{ScenarioPlayer.StackText(tool)}, {tool.Collectible.GetRemainingDurability(tool)} left";
+
   /// <summary>Builds the construction of the block at plot-local <paramref name="cell"/> up to the stage
   /// <paramref name="to"/> names, one right-click per stage, yielding once after each.</summary>
   /// <exception cref="StepFailure">There is no scenario player, a stage cannot be supplied, or a click
@@ -158,17 +182,35 @@ internal static class ConstructionWalk {
         ", ",
         supply.Select(s => $"{s.Collectible.Code} x {s.StackSize}")
       );
+      ExConstructionStage paid = rcc.Stages[stage];
+      ItemStack? tool = PackLedger.Tool(
+        ctx,
+        $"stage {stage} of {FailureDetail.Cell(cell)}",
+        paid.Tool
+      );
       bool answered = player.Construct(
         at,
         BlockFacing.SOUTH,
         supply,
-        out string left
+        tool,
+        HoldSeconds(paid, tool),
+        out string left,
+        out ItemStack? toolLeft
       );
+      PackLedger.Give(ctx, toolLeft);
       if (rcc.CurrentCompletedStage != stage)
         throw new StepFailure(
-          $"stage {stage} was not built: OnBlockInteractStart answered {answered} with {given} in the hotbar."
+          $"stage {stage} was not built: OnBlockInteractStart answered {answered} with {given} in the hotbar"
+            + (
+              tool == null
+                ? "."
+                : $" and {tool.Collectible.Code} in the main hand."
+            )
         );
-      built.Add($"stage {stage} (hotbar after: {left})");
+      built.Add(
+        $"stage {stage} (hotbar after: {left}"
+          + (tool == null ? ")" : $"; {HandText(toolLeft)})")
+      );
       yield return true;
     }
     string text =
