@@ -26,6 +26,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   private readonly ServerWorldPlayerData _data;
   private readonly BlockPos _park;
   private readonly PlayerAntiAbuseMonitor? _abuse;
+  private ItemStack? _filledHand;
   private int _uses;
   private int _breaks;
   private int _slotChanges;
@@ -654,12 +655,20 @@ internal sealed class ScenarioPlayer : IHandRelease {
   public static ItemStack? HandAfter(ItemStack? held, bool keep) =>
     keep ? held : null;
 
+  /// <summary>Marks the stack now in the active slot as part of a filled inventory, so <see cref="Release"/>
+  /// leaves it there.</summary>
+  public void KeepHand() =>
+    _filledHand = Player.InventoryManager.ActiveHotbarSlot.Itemstack;
+
   /// <summary>Releases the keys, parks the player, empties the off hand and empties the active slot unless
-  /// <paramref name="keep"/>.</summary>
+  /// <paramref name="keep"/> or the slot still holds the stack <see cref="KeepHand"/> marked.</summary>
   /// <param name="keep">Whether the active slot keeps its stack for the steps that follow.</param>
   public void Release(bool keep = false) {
     ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
-    slot.Itemstack = HandAfter(slot.Itemstack, keep);
+    slot.Itemstack = HandAfter(
+      slot.Itemstack,
+      keep || ReferenceEquals(slot.Itemstack, _filledHand)
+    );
     Player.InventoryManager.OffhandHotbarSlot.Itemstack = null;
     Hold(Player.Entity.Controls, []);
     Park();
