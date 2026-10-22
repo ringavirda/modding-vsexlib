@@ -26,6 +26,7 @@ internal static class ScenarioSteps {
       new CraftStep(),
       new BreakStep(),
       new AdvanceStep(),
+      new FillInventoryStep(),
       new SelectStep(),
       new StandStep(),
       new ReloadStep(),
