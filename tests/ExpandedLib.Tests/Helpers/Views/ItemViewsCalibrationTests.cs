@@ -217,14 +217,14 @@ public class ItemViewsCalibrationTests {
   [Fact]
   public void The_shape_overload_equals_the_collectible_overload()
   {
-    Item spear = Coll("game:spear-generic-iron");
-    ItemViewSet byItem = Compute(spear);
+    Item ingot = Coll("game:ingot-iron");
+    ItemViewSet byItem = Compute(ingot);
     ItemViewSet byShape = ItemViews.Compute(
       World.Api,
-      spear.Shape,
-      ItemViewKind.Longtool
+      ingot.Shape,
+      byItem.Kind
     );
-    Assert.Equal(ItemViewKind.Longtool, byItem.Kind);
+    Assert.Equal(ItemViewKind.Lump, byItem.Kind);
     Assert.Equal(Numbers(byItem.Gui), Numbers(byShape.Gui));
     Assert.Equal(Numbers(byItem.TpHand), Numbers(byShape.TpHand));
     Assert.Equal(Numbers(byItem.Ground), Numbers(byShape.Ground));

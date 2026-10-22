@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Catalogues;
@@ -215,6 +216,18 @@ internal sealed class CraftStep : ScenarioStep {
     return slots;
   }
 
+  /// <summary>Runs <paramref name="take"/>, which leaves what it took in <paramref name="hand"/>, with the
+  /// hand empty, then empties the hand and puts back the stack it held before.</summary>
+  /// <returns>The stack <paramref name="take"/> left in the hand, or null.</returns>
+  internal static ItemStack? TakeAside(ItemSlot hand, Action take) {
+    ItemStack? held = hand.Itemstack;
+    hand.Itemstack = null;
+    take();
+    ItemStack? got = hand.Itemstack;
+    hand.Itemstack = held;
+    return got;
+  }
+
   private static List<ItemStack> Collect(
     ServerPlayer who,
     BlockEntity entity,
@@ -233,17 +246,14 @@ internal sealed class CraftStep : ScenarioStep {
     foreach (CraftInput input in order.Inputs.Where(i => i.Ingredient.IsTool)) {
       if (inventory[input.Slot].Empty)
         continue;
-      WindowStep.Take(who, entity, input.Slot);
-      hand.Itemstack = null;
+      TakeAside(hand, () => WindowStep.Take(who, entity, input.Slot));
     }
     List<ItemStack> taken = CraftBills.HandedOver(before, Carried(who));
     foreach (int slot in order.OutputSlots) {
       if (inventory[slot].Empty)
         continue;
-      WindowStep.Take(who, entity, slot);
-      if (hand.Itemstack is { } got)
+      if (TakeAside(hand, () => WindowStep.Take(who, entity, slot)) is { } got)
         taken.Add(got.Clone());
-      hand.Itemstack = null;
     }
     entity.OnReceivedClientPacket(who, 1001, null);
     if (taken.Count == 0)

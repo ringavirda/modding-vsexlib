@@ -67,6 +67,22 @@ internal static class ViewReferences {
     4
   );
 
+  /// <summary>The two-handed hold of a long item: the hand rotation that lays the long axis (the lay's first axis, z in
+  /// the reference frame) level along the seraph's left-right at the box centre, at true size.</summary>
+  internal static readonly HandReference LongHold = new(
+    [Z, X, Y],
+    0,
+    new Vec3d(12.69, -165.82, 76.51),
+    1,
+    [0.5, 0.5, 0.5],
+    0,
+    new Vec3d(),
+    1
+  );
+
+  /// <summary>The point between the hands, in voxels in the hand frame, where a long item's box centre lies.</summary>
+  internal static readonly Vec3d LongHoldAt = new(0.53, -0.58, 2.80);
+
   /// <summary>The game item whose hold a declared tip copies for the kinds a handle holds.</summary>
   internal const string TipHoldCode = "game:knife-generic-iron";
 
@@ -120,6 +136,12 @@ internal static class ViewReferences {
 
   internal const double MulticellGroundLong = 0.8629;
   internal const double MulticellHeldLong = 1.200;
+
+  /// <summary>A bar, longtool or multicell block is long when its longest extent is over this many voxels and at least
+  /// <see cref="LongRatio"/> times its middle.</summary>
+  internal const double LongMinimum = 16;
+
+  internal const double LongRatio = 3;
 
   /// <summary>A block lies on its largest face on the ground when its shortest extent is at most this
   /// fraction of its longest.</summary>

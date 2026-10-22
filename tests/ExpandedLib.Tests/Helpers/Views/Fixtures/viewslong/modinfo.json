@@ -1,0 +1,9 @@
+{
+  "type": "content",
+  "modid": "viewslong",
+  "name": "Views long fixture",
+  "version": "1.0.0",
+  "dependencies": {
+    "exlib": "*"
+  }
+}

@@ -60,9 +60,9 @@ public class ItemViewsPassTests {
     Assert.False(
       Same(ModelTransform.ItemDefaultGround(), item.GroundTransform)
     );
-    Assert.Equal("spearidle", item.HeldRightTpIdleAnimation);
-    Assert.Equal("spearidle", item.HeldRightReadyAnimation);
-    Assert.Equal("spearhit", item.HeldTpHitAnimation);
+    Assert.Equal("holdbothhandslarge", item.HeldRightTpIdleAnimation);
+    Assert.Equal("heldblockready", item.HeldRightReadyAnimation);
+    Assert.Equal("twohandplaceblock", item.HeldTpUseAnimation);
   }
 
   // Fails when an absent clip is read as null only: helditemready and interactstatic stay.

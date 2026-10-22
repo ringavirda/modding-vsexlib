@@ -33,6 +33,10 @@ internal sealed record ViewGroup(
   string Held
 ) {
   internal bool IsBlock => Representative is Block;
+
+  internal bool IsLong =>
+    !(Representative is Item && Representative.Code?.Domain == "game")
+    && CollectibleViews.IsLong(Kind, Box.Extents());
 }
 
 /// <summary>G1 slot.span, G2 slot.centre and G3 slot.face of a group.</summary>
@@ -47,7 +51,7 @@ internal sealed record SlotMetrics(double Span, double Centre, double Face);
 internal sealed record GroundMetrics(double Rest, double Size);
 
 /// <summary>G7, G8, G10 and G13 of a group in a hand.</summary>
-/// <param name="Size">The hand scale; a longtool's held length over the seraph's height; a block's longest held side, in blocks.</param>
+/// <param name="Size">The hand scale; a longtool's held length over the seraph's height; a block's or a long item's longest held side, in blocks.</param>
 /// <param name="Grip">The distance from the point of the shape that lands on the hand to the nearest drawn element's box, in voxels; null for a block.</param>
 /// <param name="Axis">The unit vector of the working end's direction in the pose's frame: the longest axis of <c>Lay.Of</c>, oriented to the working end.</param>
 /// <param name="Centre">The distance from the posed box centre to where the block defaults put a cube's centre, in blocks; null for an item.</param>
@@ -432,7 +436,7 @@ internal static class ViewGates {
 
     double scale = tf.ScaleXYZ.X;
     double size =
-      group.IsBlock ? scale * side[longest] / 16
+      group.IsBlock || group.IsLong ? scale * side[longest] / 16
       : group.Kind == ItemViewKind.Longtool
         ? scale * side[longest] / SeraphVoxels
       : scale;
@@ -589,7 +593,12 @@ internal static class ViewGates {
     foreach ((string id, string gate, string name, string target) in Judged) {
       Band? band;
       if (twin == null) {
-        if (!bands.Bands[kind].TryGetValue(id, out band))
+        if (id == "G7" && group.IsLong)
+          band = ViewBands.BandOf(
+            id,
+            [(group.Box.Extents()[0] / 16, "length")]
+          );
+        else if (!bands.Bands[kind].TryGetValue(id, out band))
           continue;
       } else {
         double own = ValueOf(twin.Metrics, id);
@@ -813,8 +822,9 @@ internal static class ViewGates {
     double min = group.Kind is ItemViewKind.Longtool or ItemViewKind.Tool
       ? 0
       : TipElevationDegrees;
-    bool up = rise > min;
-    bool handle = grip <= mid[0];
+    bool held = group.IsLong;
+    bool up = held || rise > min;
+    bool handle = held || grip <= mid[0];
     return new GateReading(
       "G14",
       "hand.tip",
