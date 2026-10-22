@@ -63,11 +63,16 @@ public static class FlowBores {
     ArgumentException.ThrowIfNullOrEmpty(tier);
     ArgumentException.ThrowIfNullOrEmpty(boreClass);
     ArgumentException.ThrowIfNullOrEmpty(joint);
-    ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(boreMetres, 0);
-    ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(workingAtm, 1);
-    ArgumentOutOfRangeException.ThrowIfLessThan(burstAtm, workingAtm);
-    ArgumentOutOfRangeException.ThrowIfLessThan(span, 1);
-    ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(friction, 0);
+    if (boreMetres <= 0)
+      throw new ArgumentOutOfRangeException(nameof(boreMetres));
+    if (workingAtm <= 1)
+      throw new ArgumentOutOfRangeException(nameof(workingAtm));
+    if (burstAtm < workingAtm)
+      throw new ArgumentOutOfRangeException(nameof(burstAtm));
+    if (span < 1)
+      throw new ArgumentOutOfRangeException(nameof(span));
+    if (friction <= 0)
+      throw new ArgumentOutOfRangeException(nameof(friction));
     if (wallKgPerMetre < 0)
       throw new ArgumentOutOfRangeException(nameof(wallKgPerMetre));
     if (wallMetres < 0)
