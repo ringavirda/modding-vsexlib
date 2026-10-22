@@ -6,7 +6,7 @@ namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>fillInventory</c>: fills every hotbar and backpack slot of the scenario player that can hold
 /// the item <c>code</c> with a full stack of it (<see cref="SetupInventory.Fill"/>), so the player takes
-/// no more of another item.</summary>
+/// no more of another item; the active slot's stack stays through the steps that empty the hand.</summary>
 internal sealed class FillInventoryStep : ScenarioStep {
   public override string Kind => "fillInventory";
 
@@ -35,6 +35,7 @@ internal sealed class FillInventoryStep : ScenarioStep {
         Suspect.Scenario
       );
     int filled = SetupInventory.Fill(player.Player, item);
+    player.KeepHand();
     report.Value = $"{filled} slots of {code}";
     yield break;
   }
