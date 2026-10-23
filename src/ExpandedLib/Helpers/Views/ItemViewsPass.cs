@@ -200,6 +200,12 @@ internal static class ItemViewsPass {
     if (views.IdleClip != null && Absent(c.HeldRightTpIdleAnimation, null))
       c.HeldRightTpIdleAnimation = views.IdleClip;
     if (
+      block
+      && string.IsNullOrEmpty(c.HeldRightReadyAnimation)
+      && !string.IsNullOrEmpty(c.HeldRightTpIdleAnimation)
+    )
+      c.HeldRightReadyAnimation = c.HeldRightTpIdleAnimation;
+    else if (
       views.ReadyClip != null
       && Absent(c.HeldRightReadyAnimation, ViewReferences.DefaultReady)
     )

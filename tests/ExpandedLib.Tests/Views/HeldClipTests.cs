@@ -171,6 +171,51 @@ public class HeldClipTests {
     Assert.Null(LeftGrip(bare));
   }
 
+  private static Block BlockOf(string code) =>
+    World.World.GetBlock(new AssetLocation(code));
+
+  private static ViewGroup BlockGroup(string code) =>
+    ViewGates.Groups(World, "clipsfixture").Single(g => g.Codes.Contains(code));
+
+  // Fails when a block is read on holdbothhandslarge unless its idle is a long carry: the ladle block then reads the
+  // block clip, and G11 refuses it as held on its own clip.
+  [Fact]
+  public void A_block_naming_its_idle_clip_is_read_and_passes_G11_on_it() {
+    Assert.Equal(
+      "iiex-ladlehold",
+      ViewGates.HeldCode(BlockOf("clipsfixture:ladleblock"))
+    );
+    ViewGroup group = BlockGroup("clipsfixture:ladleblock");
+    GateReading g = ViewGates.Rules(World, group).Single(r => r.Gate == "G11");
+    Assert.True(g.Pass, g.Detail);
+  }
+
+  // Fails when every block is read on its idle: a block naming no clip then reads the empty idle.
+  [Fact]
+  public void A_block_naming_no_clip_is_read_on_holdbothhandslarge() {
+    Assert.Equal(
+      ViewGates.BlockHeldClip,
+      ViewGates.HeldCode(BlockOf("clipsfixture:barblock"))
+    );
+    Assert.Equal(ViewGates.BlockHeldClip, ViewGates.HeldCode(new Block()));
+  }
+
+  // Fails when the pass leaves a ready the loader nulled for equalling the idle: the block is then held ready on
+  // nothing.
+  [Fact]
+  public void A_block_whose_ready_was_nulled_for_equalling_its_idle_is_held_ready_on_its_idle() {
+    using var world = new TestWorld();
+    world.LoadAsGame([Fixture]);
+    Block block = world.World.GetBlock(
+      new AssetLocation("clipsfixture:ladleblock")
+    );
+    block.HeldRightReadyAnimation = null;
+
+    ItemViewsPass.Run(world.Api);
+
+    Assert.Equal("iiex-ladlehold", block.HeldRightReadyAnimation);
+  }
+
   // Fails when grips that do not parse stop the pass or go unlogged, or a missing clip is logged on the server, goes
   // unlogged on the client, is logged per item, or is logged though the shape or the game names it.
   [Fact]
