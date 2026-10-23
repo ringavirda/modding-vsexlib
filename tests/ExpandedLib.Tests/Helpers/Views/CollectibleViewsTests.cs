@@ -96,6 +96,33 @@ public class CollectibleViewsTests {
     Assert.Equal(ItemViewKind.Multicell, KindOf(block));
   }
 
+  // Fails when IsLong compares the longest side to 16 with no tolerance: the one-block key, drawn
+  // 16.0001 long by a rotated element, is then held as a long item.
+  [Fact]
+  public void A_bar_drawn_float_noise_over_one_block_is_not_long() {
+    double[] extents = ShapeExtents("viewsfixture:item/keybar");
+    Assert.InRange(extents[0], 16.0000001, 16.01);
+    Assert.False(CollectibleViews.IsLong(ItemViewKind.Bar, extents));
+  }
+
+  // Fails when the long band is lost: a bar drawn 16.5 long is then not held as a long item.
+  [Fact]
+  public void A_bar_drawn_half_a_voxel_over_one_block_is_long() {
+    double[] extents = ShapeExtents("viewsfixture:item/bar165");
+    Assert.True(CollectibleViews.IsLong(ItemViewKind.Bar, extents));
+  }
+
+  private static double[] ShapeExtents(string shape) =>
+    CollectibleViews
+      .BoxOf(
+        World.Api,
+        new Item {
+          Code = new AssetLocation("viewsfixture:longprobe"),
+          Shape = Shape(shape),
+        }
+      )!
+      .Extents();
+
   // Fails when the selection is ignored: the whole nugget boxes at 2.5 x 1.5 x 1.5.
   [Fact]
   public void A_selection_boxes_only_the_elements_it_keeps() {
