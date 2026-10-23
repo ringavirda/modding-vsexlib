@@ -119,6 +119,29 @@ public class ScenarioPlayerConstructionTests {
     Assert.Empty(new ExConstructionStage().ToolSteps);
   }
 
+  /// <summary>Fails when a stage with no tool leaves the active slot empty, so a block that reads the
+  /// hand for its ingredient (the bench's vice) is clicked with nothing in it, or when a tool is not
+  /// kept in the active slot.</summary>
+  [Fact]
+  public void A_stage_without_a_tool_puts_its_first_material_in_the_hand() {
+    var vice = new ItemStack(
+      new Item { Code = new AssetLocation("game:vice") }
+    );
+    var plank = new ItemStack(
+      new Item { Code = new AssetLocation("game:plank") }
+    );
+    var hammer = new ItemStack(
+      new Item { Code = new AssetLocation("game:hammer") }
+    );
+    ItemStack?[] bare = ScenarioPlayer.Lay(4, 2, [vice, plank], null);
+    Assert.Same(vice, bare[2]);
+    Assert.Same(plank, bare[0]);
+    ItemStack?[] held = ScenarioPlayer.Lay(4, 2, [vice, plank], hammer);
+    Assert.Same(hammer, held[2]);
+    Assert.Same(vice, held[0]);
+    Assert.Same(plank, held[1]);
+  }
+
   /// <summary>Fails when a variant other than the wanted one is allowed (S46), or a key the materials
   /// leave out is refused (S47).</summary>
   [Fact]
