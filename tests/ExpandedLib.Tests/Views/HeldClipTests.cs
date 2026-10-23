@@ -200,6 +200,22 @@ public class HeldClipTests {
     Assert.Equal(ViewGates.BlockHeldClip, ViewGates.HeldCode(new Block()));
   }
 
+  // Fails when the pass sets a block's ready to its idle only where the loader nulled it: a block naming only its idle
+  // keeps the game's default ready and is then held ready on helditemready.
+  [Fact]
+  public void A_block_naming_only_its_idle_is_held_ready_on_it() {
+    using var world = new TestWorld();
+    world.LoadAsGame([Fixture]);
+    Block block = world.World.GetBlock(
+      new AssetLocation("clipsfixture:ladleblock")
+    );
+    block.HeldRightReadyAnimation = ViewReferences.DefaultReady;
+
+    ItemViewsPass.Run(world.Api);
+
+    Assert.Equal("iiex-ladlehold", block.HeldRightReadyAnimation);
+  }
+
   // Fails when the pass leaves a ready the loader nulled for equalling the idle: the block is then held ready on
   // nothing.
   [Fact]

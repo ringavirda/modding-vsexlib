@@ -197,14 +197,15 @@ internal static class ItemViewsPass {
     )
       c.GroundTransform = views.Ground;
 
+    string? namedIdle = c.HeldRightTpIdleAnimation;
     if (views.IdleClip != null && Absent(c.HeldRightTpIdleAnimation, null))
       c.HeldRightTpIdleAnimation = views.IdleClip;
     if (
       block
-      && string.IsNullOrEmpty(c.HeldRightReadyAnimation)
-      && !string.IsNullOrEmpty(c.HeldRightTpIdleAnimation)
+      && !string.IsNullOrEmpty(namedIdle)
+      && Absent(c.HeldRightReadyAnimation, ViewReferences.DefaultReady)
     )
-      c.HeldRightReadyAnimation = c.HeldRightTpIdleAnimation;
+      c.HeldRightReadyAnimation = namedIdle;
     else if (
       views.ReadyClip != null
       && Absent(c.HeldRightReadyAnimation, ViewReferences.DefaultReady)
