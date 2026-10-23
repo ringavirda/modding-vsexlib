@@ -41,6 +41,7 @@ public class DrawLawTests
     world.RegisterClass("test-plain", typeof(PlainBe));
     world.RegisterClass("test-inside", typeof(PoolsInside));
     world.RegisterClass("test-turned", typeof(PoolsTurned));
+    world.RegisterClass("test-raised", typeof(PoolsRaised));
     world.RegisterClass("test-throws", typeof(ThrowsInTesselation));
     world.RegisterClass("test-overrides", typeof(OverridesTesselation));
     world.RegisterClass("test-initthrows", typeof(ThrowsOnInitialize));
@@ -127,6 +128,45 @@ public class DrawLawTests
     Assert.StartsWith(
       "test:turned placed draws 4 of 4 vertices outside its footprint, up to 1 blocks beyond, bounds ",
       finding
+    );
+  }
+
+  // Fails when the declared reach is ignored or checked against nothing, when an undeclared block above
+  // its cell passes, or when a reach declared upward excuses a drawing beyond the sides.
+  [Fact]
+  [PlantedDefect(typeof(DrawLaw), nameof(DrawLaw.Run))]
+  public void A_declared_reach_admits_the_drawing_it_names_and_nothing_beyond()
+  {
+    BlockLaws.Law law = Run(
+      Drawn("undeclared").EntityClass("test-raised"),
+      Drawn("declared")
+        .EntityClass("test-raised")
+        .Attribute("drawReach", new { up = 1.0 }),
+      Drawn("short")
+        .EntityClass("test-raised")
+        .Attribute("drawReach", new { up = 0.5 }),
+      Drawn("sideways")
+        .EntityClass("test-turned")
+        .Attribute("drawReach", new { up = 1.0 })
+    );
+
+    Assert.Collection(
+      law.Findings.OrderBy(f => f),
+      f =>
+        Assert.StartsWith(
+          "test:short placed draws 4 of 4 vertices outside its footprint, up to 0.25 blocks beyond, bounds ",
+          f
+        ),
+      f =>
+        Assert.StartsWith(
+          "test:sideways placed draws 4 of 4 vertices outside its footprint, up to 1 blocks beyond, bounds ",
+          f
+        ),
+      f =>
+        Assert.StartsWith(
+          "test:undeclared placed draws 4 of 4 vertices outside its footprint, up to 0.75 blocks beyond, bounds ",
+          f
+        )
     );
   }
 
@@ -382,6 +422,20 @@ public class DrawLawTests
         Slab(tessThreadTesselator, 8, 16)
           .Rotate(new Vec3f(0, 0, 0), 0, GameMath.PIHALF, 0)
       );
+      return true;
+    }
+  }
+
+  private sealed class PoolsRaised : BlockEntity
+  {
+    public override bool OnTesselation(
+      ITerrainMeshPool mesher,
+      ITesselatorAPI tessThreadTesselator
+    )
+    {
+      MeshData mesh = Slab(tessThreadTesselator, 0, 16);
+      mesh.Translate(0, 1.5f, 0);
+      mesher.AddMeshData(mesh);
       return true;
     }
   }

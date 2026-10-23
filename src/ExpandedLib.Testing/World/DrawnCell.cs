@@ -5,6 +5,7 @@ using System.Linq;
 using ExpandedLib.Structures;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
@@ -30,7 +31,10 @@ public readonly record struct PooledMesh(
 /// <see cref="Threw"/> and the block's own mesh is added after the meshes already pooled, true keeps
 /// the pooled meshes only, false adds the block's own mesh. Any other draw type never calls the
 /// entity and draws the block's own mesh, empty for <c>Empty</c> and for a block with no
-/// shape. Lengths are blocks, cell-local: the cell's own unit cube spans 0 to 1 on each axis.</remarks>
+/// shape. Lengths are blocks, cell-local: the cell's own unit cube spans 0 to 1 on each axis.
+/// A block may declare how far its drawing reaches beyond its cell in <c>attributes.drawReach</c>, an
+/// object of <c>up</c>, <c>down</c> and <c>sides</c> in blocks (each 0 when absent, <c>sides</c> on
+/// both horizontal axes); every footprint cube grows by it before <see cref="Tolerance"/> applies.</remarks>
 public sealed class DrawnCell
 {
   /// <summary>How far, in blocks, a vertex may lie outside the footprint and still count inside: one
@@ -40,6 +44,9 @@ public sealed class DrawnCell
   private readonly List<PooledMesh> _meshes;
   private readonly List<string> _keys;
   private readonly List<BlockPos> _footprint;
+  private readonly double _reachUp;
+  private readonly double _reachDown;
+  private readonly double _reachSides;
 
   private DrawnCell(
     BlockPos pos,
@@ -64,6 +71,13 @@ public sealed class DrawnCell
     AnimatorDraws = animatorDraws;
     RedrawMarked = redrawMarked;
     _footprint = footprint;
+    JsonObject? reach = block.Attributes?["drawReach"];
+    if (reach?.Exists == true)
+    {
+      _reachUp = Math.Max(0, reach["up"].AsDouble(0));
+      _reachDown = Math.Max(0, reach["down"].AsDouble(0));
+      _reachSides = Math.Max(0, reach["sides"].AsDouble(0));
+    }
     (Vertices, Indices, Bounds, VerticesOutside, Overshoot) = Measure();
   }
 
@@ -115,11 +129,12 @@ public sealed class DrawnCell
   public IReadOnlyList<BlockPos> Footprint => _footprint;
 
   /// <summary>The count of kept vertices lying farther than <see cref="Tolerance"/> from every
-  /// footprint cell's unit cube, a vertex with a NaN coordinate included.</summary>
+  /// footprint cell's unit cube grown by the block's declared reach, a vertex with a NaN coordinate
+  /// included.</summary>
   public int VerticesOutside { get; }
 
   /// <summary>The farthest a vertex counted in <see cref="VerticesOutside"/> lies from its nearest
-  /// footprint cell's unit cube, in blocks along the worst axis; infinite when a coordinate is
+  /// footprint cell's grown cube, in blocks along the worst axis; infinite when a coordinate is
   /// NaN, 0 when none is counted.</summary>
   public double Overshoot { get; }
 
@@ -326,9 +341,18 @@ public sealed class DrawnCell
     double best = double.PositiveInfinity;
     foreach (BlockPos cell in _footprint)
     {
-      double dx = Math.Max(Math.Max(cell.X - x, x - (cell.X + 1)), 0);
-      double dy = Math.Max(Math.Max(cell.Y - y, y - (cell.Y + 1)), 0);
-      double dz = Math.Max(Math.Max(cell.Z - z, z - (cell.Z + 1)), 0);
+      double dx = Math.Max(
+        Math.Max(cell.X - _reachSides - x, x - (cell.X + 1 + _reachSides)),
+        0
+      );
+      double dy = Math.Max(
+        Math.Max(cell.Y - _reachDown - y, y - (cell.Y + 1 + _reachUp)),
+        0
+      );
+      double dz = Math.Max(
+        Math.Max(cell.Z - _reachSides - z, z - (cell.Z + 1 + _reachSides)),
+        0
+      );
       best = Math.Min(best, Math.Max(dx, Math.Max(dy, dz)));
     }
     return best;
