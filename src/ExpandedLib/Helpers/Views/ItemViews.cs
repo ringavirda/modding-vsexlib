@@ -30,6 +30,13 @@ public static class ItemViews {
   public static ItemViewSet? Compute(
     ICoreAPI api,
     CollectibleObject collectible
+  ) => Compute(api, collectible, true);
+
+  // allowLong false keeps an item off the long carries, held on its kind's clips.
+  internal static ItemViewSet? Compute(
+    ICoreAPI api,
+    CollectibleObject collectible,
+    bool allowLong
   ) {
     if (OptedOut(collectible))
       return null;
@@ -54,7 +61,7 @@ public static class ItemViews {
     if (VanillaShape(api, item) is { } twin)
       return Shipped(api, item, twin, box);
 
-    bool allowLong = item.Code.Domain != "game";
+    allowLong &= item.Code.Domain != "game";
     string? tip = item.Attributes?["itemViews"]?["tip"]?.AsString();
     Vec3d? guiRotation = GuiRotationOf(item);
     if (kind == ItemViewKind.Tool) {
@@ -289,7 +296,7 @@ public static class ItemViews {
     bool longHeld = kind is ItemViewKind.Longtool or ItemViewKind.Tool;
     bool isLong = allowLong && IsLong(kind, box.Extents());
     Lay slotLay = Lay.Of(box, longHeld, tip);
-    Lay lay = tip != null ? Lay.Of(box, true, tip) : slotLay;
+    Lay lay = LongLay(kind, box, tip);
     double[,] slotTurn = Turn(slotLay, reference, out _);
     ModelTransform hand;
     Vec3d grip;
@@ -376,6 +383,16 @@ public static class ItemViews {
     );
   }
 
+  /// <summary>The lay a long item's hand is solved on: oriented to its tip when it has one, else to its working end
+  /// for a longtool or tool, else the unoriented lay of a bar, bulk item or block.</summary>
+  /// <param name="kind">The kind of the item; a block's is a block kind.</param>
+  /// <param name="box">The drawn box.</param>
+  /// <param name="tip">The working end as a sign and an axis letter ("+y"), or null.</param>
+  internal static Lay LongLay(ItemViewKind kind, ViewBox box, string? tip) =>
+    tip != null
+      ? Lay.Of(box, true, tip)
+      : Lay.Of(box, kind is ItemViewKind.Longtool or ItemViewKind.Tool, null);
+
   /// <summary>The two-handed hold of a long item: its longest axis level along the seraph's left-right, resting on the
   /// hands of the carry its length picks, its box centre above the hands' midpoint by the height of the centre over the
   /// drawn underside at the two hand stations, at true size.</summary>
@@ -400,11 +417,8 @@ public static class ItemViews {
     Vec3d up = LongUpOf(r);
     double centreHeight = Dot(centre, up);
     double rest = new[] { mid[0] - band.Half, mid[0] + band.Half }
-      .Select(station => Underside(lay, box, up, station))
-      .Where(under => under != null)
-      .Select(under => centreHeight - under!.Value)
-      .DefaultIfEmpty(
-        centreHeight - box.Drawn.SelectMany(p => p).Min(p => Dot(p, up))
+      .Select(station =>
+        centreHeight - UndersideOrLowest(lay, box, up, station)
       )
       .Max();
     double s = LongHold.Scale;
@@ -471,10 +485,7 @@ public static class ItemViews {
       .. new[] { mid[0] - band.Half, mid[0] + band.Half }.Select(station =>
       {
         Vec3d at = lay.Point([station, mid[1], mid[2]]);
-        double height =
-          Underside(lay, box, up, station)
-          ?? box.Drawn.SelectMany(p => p).Min(p => Dot(p, up));
-        double lift = height - Dot(at, up);
+        double lift = UndersideOrLowest(lay, box, up, station) - Dot(at, up);
         return new Vec3d(
           at.X + lift * up.X,
           at.Y + lift * up.Y,
@@ -486,6 +497,16 @@ public static class ItemViews {
 
   private static double Dot(Vec3d a, Vec3d b) =>
     a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+
+  // The underside at the station; the lowest drawn point when no element reaches it.
+  private static double UndersideOrLowest(
+    Lay lay,
+    ViewBox box,
+    Vec3d up,
+    double station
+  ) =>
+    Underside(lay, box, up, station)
+    ?? box.Drawn.SelectMany(p => p).Min(p => Dot(p, up));
 
   // The lowest height along up of the drawn elements' cross-section at the station, a position along the lay's longest
   // axis; null when no element reaches it.

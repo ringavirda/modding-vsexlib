@@ -1,0 +1,12 @@
+{
+  "code": "socketbar-straight2",
+  "class": "Item",
+  "shape": {
+    "base": "viewslong:block/socketbar-straight2"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "bar"
+    }
+  }
+}

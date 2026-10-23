@@ -61,7 +61,15 @@ internal static class ItemViewsPass {
       ItemViewSet? views;
       try {
         CollectibleViews.GripsOf(collectible);
-        views = ItemViews.Compute(api, collectible);
+        views = ItemViews.Compute(
+          api,
+          collectible,
+          collectible is not Item
+            || Equal(
+              collectible.TpHandTransform,
+              ModelTransform.ItemDefaultTp()
+            )
+        );
       } catch (Exception e)
           when (e is InvalidOperationException or ArgumentException) {
         api.Logger.Error(

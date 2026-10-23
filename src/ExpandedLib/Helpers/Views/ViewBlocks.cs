@@ -100,7 +100,7 @@ internal static class ViewBlocks {
       );
       if (IsLong(kind, box.Extents()))
         tp = ItemViews.LongHand(
-          Lay.Of(box, false, null),
+          ItemViews.LongLay(kind, box, null),
           box,
           out _,
           out carry

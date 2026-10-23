@@ -931,7 +931,14 @@ internal static class ViewGates {
     Mat4 m = ViewMatrices.Hand(group.Hand, pose);
     Vec3d left = pose.LeftAnchor.Position - pose.ItemAnchor.Position;
     return ItemViews
-      .LongGrips(Lay.Of(group.Box, true, null), group.Box)
+      .LongGrips(
+        ItemViews.LongLay(
+          group.Kind,
+          group.Box,
+          group.IsBlock ? null : DeclaredTip(group.Representative)
+        ),
+        group.Box
+      )
       .MaxBy(g => Dot(m.Apply(g / 16), left))!;
   }
 

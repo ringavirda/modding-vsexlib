@@ -209,7 +209,7 @@ public class ItemViewsLongHoldTests {
   ) => ItemViews.LongHand(Lay.Of(box, false, null), box, out _, out carry);
 
   // Fails when a band edge falls in the wrong band: a length up to 24 voxels is the 1-cell carry, over 24 up to 40 the
-  // 2-cell, over 40 the 3-cell (the upper edge compared with < instead of <=).
+  // 2-cell, over 40 the 3-cell (the upper edge read without its tolerance).
   [Theory]
   [InlineData(16.5, "exlib-longcarry1")]
   [InlineData(24, "exlib-longcarry1")]
@@ -279,6 +279,22 @@ public class ItemViewsLongHoldTests {
     Assert.Equal("spearhit", item.HeldTpHitAnimation);
     Assert.Equal(-0.3f, item.TpHandTransform.Translation.X);
     Assert.Equal(20f, item.TpHandTransform.Rotation.Y);
+  }
+
+  // Fails when the load pass fills the carry for an item that sets only its hand transform.
+  [Fact]
+  public void An_item_with_only_a_hand_transform_keeps_its_kinds_clips() {
+    Item item = World.World.GetItem(
+      new AssetLocation(Pipes + "ownhand-straight2")
+    );
+    Assert.DoesNotContain(
+      ViewReferences.LongCarries,
+      c =>
+        c.Clip == item.HeldRightTpIdleAnimation
+        || c.Clip == item.HeldRightReadyAnimation
+        || c.Clip == item.HeldTpHitAnimation
+    );
+    Assert.Equal(-0.3f, item.TpHandTransform.Translation.X);
   }
 
   // Fails when the long test drops its three-times-the-middle rule: a door, twice as long as it is wide, is then held level.

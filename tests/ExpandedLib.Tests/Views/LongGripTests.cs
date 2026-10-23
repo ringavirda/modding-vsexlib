@@ -30,7 +30,9 @@ public class LongGripTests {
       .. ViewGates
         .Groups(World, "viewslong")
         .Where(g =>
-          g.IsLong && !g.Codes.Contains("viewslong:ownclips-straight2")
+          g.IsLong
+          && !g.Codes.Contains("viewslong:ownclips-straight2")
+          && !g.Codes.Contains("viewslong:ownhand-straight2")
         ),
     ];
 
@@ -42,11 +44,49 @@ public class LongGripTests {
   public void Every_long_items_left_grip_lies_on_its_left_hand() {
     ViewGroup[] longs = Longs();
     Assert.True(longs.Length >= 8, $"{longs.Length} long groups");
-    foreach (ViewGroup group in longs) {
-      GateReading g = LeftGrip(group);
-      Assert.Equal("hand.left", g.Name);
-      Assert.True(g.Pass, $"{string.Join(",", group.Codes)}: {g.Detail}");
-    }
+    string[] failing =
+    [
+      .. longs
+        .Select(group => (group, g: LeftGrip(group)))
+        .Where(x => x.g.Name != "hand.left" || !x.g.Pass)
+        .Select(x => $"{string.Join(",", x.group.Codes)}: {x.g.Detail}"),
+    ];
+    Assert.True(failing.Length == 0, string.Join("; ", failing));
+  }
+
+  // Fails when G17 reads a bar on the oriented lay: the socketed bar's grips then lie on its top, 8 voxels from the hand.
+  [Fact]
+  public void A_socketed_bars_left_grip_lies_on_its_underside() {
+    ViewGroup socketed = Longs()
+      .Single(g => g.Codes.Contains("viewslong:socketbar-straight2"));
+    GateReading g = LeftGrip(socketed);
+    Assert.True(g.Pass, g.Detail);
+  }
+
+  // Fails when the load pass puts an item with its own hand transform on a carry: its left hand then misses its grip.
+  [Theory]
+  [InlineData("viewsfixture:authoredplain")]
+  [InlineData("viewsfixture:authoredtipped")]
+  public void An_authored_hand_transform_keeps_the_kinds_clips(string code) {
+    TestWorld world = GameWorlds.Get([
+      Path.Combine(
+        RepoPaths.Root,
+        "tests",
+        "ExpandedLib.Tests",
+        "Helpers",
+        "Views",
+        "Fixtures",
+        "viewsfixture"
+      ),
+    ]);
+    ViewGroup group = ViewGates
+      .Groups(world, "viewsfixture")
+      .Single(x => x.Codes.Contains(code));
+    Assert.DoesNotContain(
+      ViewReferences.LongCarries,
+      c => c.Clip == group.Held
+    );
+    Assert.DoesNotContain(ViewGates.Rules(world, group), r => r.Gate == "G17");
   }
 
   // Fails when the limit is not read for long items: a hand moved a voxel then passes.
