@@ -385,12 +385,15 @@ public sealed class ExItemDef : IExDef {
   /// <param name="guiRotation">The slot rotation in degrees about x, y and z, or null for the kind's. The slot
   /// origin and scale are computed for it, as for the kind's own; the hand and ground views are unchanged, and
   /// an authored <see cref="GuiTransform(object)"/> still wins.</param>
+  /// <param name="grips">The points of the item's shape, in voxels, that the right and the left hand hold, or null
+  /// to declare none; the view gate <c>hand.left</c> reads the left one against the held clip.</param>
   /// <exception cref="ArgumentException"><paramref name="kind"/> is a block kind; the load pass would leave the
   /// item at the game's views without a warning.</exception>
   public ExItemDef Views(
     ItemViewKind kind,
     string? tip = null,
-    Vec3d? guiRotation = null
+    Vec3d? guiRotation = null,
+    (Vec3d Right, Vec3d Left)? grips = null
   ) {
     if (
       kind
@@ -411,6 +414,19 @@ public sealed class ExItemDef : IExDef {
         guiRotation.Y,
         guiRotation.Z
       );
+    if (grips != null)
+      views["grips"] = new JObject {
+        ["right"] = new JArray(
+          grips.Value.Right.X,
+          grips.Value.Right.Y,
+          grips.Value.Right.Z
+        ),
+        ["left"] = new JArray(
+          grips.Value.Left.X,
+          grips.Value.Left.Y,
+          grips.Value.Left.Z
+        ),
+      };
     return Attribute("itemViews", views);
   }
 

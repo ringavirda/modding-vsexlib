@@ -5,6 +5,7 @@ using ExpandedLib.Helpers;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -103,6 +104,26 @@ public class ExDefinitionsTests {
     Assert.Equal("longtool", item.Attributes["itemViews"]["kind"].AsString());
     Assert.Equal("+y", item.Attributes["itemViews"]["tip"].AsString());
     Assert.Equal(ItemViewKind.Longtool, CollectibleViews.KindOf(null!, item));
+  }
+
+  // Fails when the grips are not written, or the right and left points are swapped.
+  [Fact]
+  public void Views_writes_the_grips_as_two_arrays() {
+    var item = new Item {
+      Attributes = new JsonObject(
+        ExItemDef
+          .Create("d", "c")
+          .Views(
+            ItemViewKind.Bar,
+            grips: (new Vec3d(1, 2, 3), new Vec3d(4, 5, 6))
+          )
+          .ToJson()["attributes"]!.DeepClone()
+      ),
+    };
+
+    ItemGrips grips = CollectibleViews.GripsOf(item)!;
+    Assert.Equal(new Vec3d(1, 2, 3), grips.Right);
+    Assert.Equal(new Vec3d(4, 5, 6), grips.Left);
   }
 
   // Fails when the kind is written as the enum's name.

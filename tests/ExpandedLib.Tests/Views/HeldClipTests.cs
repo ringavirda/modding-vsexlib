@@ -5,6 +5,7 @@ using ExpandedLib.Helpers;
 using ExpandedLib.Testing;
 using NSubstitute;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -76,12 +77,12 @@ public class HeldClipTests {
     double z
   ) {
     Vec3d p = SeraphPose.At(World.Api, clip, frame).LeftAnchor.Position;
-    Assert.Equal(x, p.X * 16, 0.1);
-    Assert.Equal(y, p.Y * 16, 0.1);
-    Assert.Equal(z, p.Z * 16, 0.1);
+    Assert.Equal(x, p.X * 16, 0.02);
+    Assert.Equal(y, p.Y * 16, 0.02);
+    Assert.Equal(z, p.Z * 16, 0.02);
   }
 
-  // Fails when the frame is left out of the advance: the pour's right hand keeps its hold keys, so only the left moves.
+  // Fails when ItemAnchor is read from the LeftHand attachment point: x is then 5.0, not -3.51.
   [Fact]
   public void The_right_hand_keeps_the_holds_place_through_the_pour() {
     Vec3d hold = SeraphPose.At(World.Api, "iiex-ladlehold").ItemAnchor.Position;
@@ -150,13 +151,15 @@ public class HeldClipTests {
     Assert.True(g.Value < 0.1, g.Detail);
   }
 
-  // Fails when the limit moves off 0.5 voxel: the grip 0.4 off passes and 0.6 off fails.
+  // Fails when the limit moves off 0.5 voxel: the grip 0.49 off passes and 0.51 off fails.
   [Fact]
   public void G17_limit_is_half_a_voxel() {
-    Assert.True(LeftGrip(Moved(Ladle(), 0.4f))!.Pass);
-    GateReading far = LeftGrip(Moved(Ladle(), 0.6f))!;
+    GateReading near = LeftGrip(Moved(Ladle(), 0.49f))!;
+    Assert.True(near.Pass);
+    Assert.Equal(ViewGates.LeftGripVoxels, near.Max);
+    GateReading far = LeftGrip(Moved(Ladle(), 0.51f))!;
     Assert.False(far.Pass);
-    Assert.Equal(0.6, far.Value, 0.1);
+    Assert.Equal(0.51, far.Value, 0.02);
   }
 
   // Fails when G17 is read on an item that declares no grips.
@@ -187,11 +190,83 @@ public class HeldClipTests {
     Assert.Single(
       world.Log.Warnings,
       w =>
-        w.Contains("'clipsfaults-nothere'") && w.Contains("clipsfaults:noclip")
+        w.Contains("'clipsfaults-nothere'")
+        && w.Contains("clipsfaults:noclip,")
+        && w.Contains("clipsfaults:noclip2")
     );
     Assert.DoesNotContain(
       world.Log.Warnings,
       w => w.Contains("iiex-ladlehold") || w.Contains("heldblockready")
     );
+  }
+
+  private static void PlayerEntity(
+    TestWorld world,
+    string? shapeBase,
+    params (string Code, string Animation)[] animations
+  ) =>
+    world
+      .Api.World.GetEntityType(Arg.Any<AssetLocation>())
+      .Returns(
+        new EntityProperties {
+          Client = new EntityClientProperties([], []) {
+            Shape =
+              shapeBase == null
+                ? null
+                : new CompositeShape { Base = new AssetLocation(shapeBase) },
+            Animations = animations
+              .Select(a => new AnimationMetaData {
+                Code = a.Code,
+                Animation = a.Animation,
+              })
+              .ToArray(),
+          },
+        }
+      );
+
+  // Fails when the warning reads a fixed shape instead of the player entity type's own: a player pointed at a shape
+  // without the clip is then not warned.
+  [Fact]
+  public void A_player_shape_that_lacks_a_named_clip_is_warned() {
+    using var world = new TestWorld();
+    world.LoadAsGame([Fixture, Fixtures("clipsfaults")]);
+    world.Log.Expect(EnumLogType.Error, "clipsfaults:badgrips");
+    world.Log.Expect(EnumLogType.Warning, "The player's shape has no clip");
+    PlayerEntity(
+      world,
+      "clipsfixture:item/ladle",
+      ("iiex-ladlehold", "iiex-ladlehold")
+    );
+    world.Api.Side.Returns(EnumAppSide.Client);
+
+    ItemViewsPass.Run(world.Api);
+
+    Assert.Contains(
+      world.Log.Warnings,
+      w => w.Contains("'iiex-ladlehold'") && w.Contains("clipsfixture:ladle")
+    );
+  }
+
+  // Fails when a name is checked against the shape's clips without the player's animation list: interactstatic-beams
+  // is then warned though it maps to interactstatic; or when a name the list does not map is not warned.
+  [Fact]
+  public void A_name_is_checked_through_the_players_animation_list() {
+    using var world = new TestWorld();
+    world.LoadAsGame([Fixture, Fixtures("clipsbeams")]);
+    world.Log.Expect(EnumLogType.Warning, "The player's shape has no clip");
+    PlayerEntity(
+      world,
+      "game:entity/humanoid/seraph-faceless",
+      ("interactstatic-beams", "interactstatic")
+    );
+    world.Api.Side.Returns(EnumAppSide.Client);
+
+    ItemViewsPass.Run(world.Api);
+
+    Assert.DoesNotContain(
+      world.Log.Warnings,
+      w => w.Contains("interactstatic-beams")
+    );
+    Assert.Contains(world.Log.Warnings, w => w.Contains("'iiex-ladlehold'"));
   }
 }
