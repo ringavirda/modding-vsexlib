@@ -208,6 +208,22 @@ public class ItemViewsLongHoldTests {
     out string carry
   ) => ItemViews.LongHand(Lay.Of(box, false, null), box, out _, out carry);
 
+  // Fails when a long block's lay is not turned end for end where the turn onto the carry mirrors it: the block's up
+  // axis then points down in the hand, drawn on x or on z.
+  [Theory]
+  [InlineData(64, 6, 16)]
+  [InlineData(16, 6, 64)]
+  public void A_long_block_is_carried_with_its_up_axis_up(
+    double x,
+    double y,
+    double z
+  ) {
+    CollectibleViews.ViewBox box = Boxed(Cuboid(0, 0, 0, x, y, z));
+    Lay lay = ItemViews.LongLay(ItemViewKind.Multicell, box, null);
+    ModelTransform tp = ItemViews.LongHand(lay, box, out _, out _);
+    Assert.True(HeldDirection(tp, new Vec3d(0, 1, 0)).Y > 0.5);
+  }
+
   // Fails when a band edge falls in the wrong band: a length up to 24 voxels is the 1-cell carry, over 24 up to 40 the
   // 2-cell, over 40 the 3-cell (the upper edge read without its tolerance).
   [Theory]
