@@ -201,6 +201,33 @@ public class StructureBreaksTests
     Assert.Equal(ThreeStageBreaks * (1 + TwoCells.Length), result.Breaks);
   }
 
+  // Fails when a stage that names a tool is paid with an empty hand, which the stage refuses.
+  [Fact]
+  public void A_construction_with_a_tool_stage_is_paid_holding_the_tool()
+  {
+    StructureBreaks.Result result = Run(
+      world =>
+      {
+        world.RegisterItem("game:stick");
+        world.RegisterItem("test:chisel");
+        world.RegisterItem("test:file");
+      },
+      Mega("tooled")
+        .EntityClass("test-plain")
+        .Construction(c =>
+          c.Stage(s => s.Require("game:stick", 1))
+            .Stage(s =>
+              s.Tool("test:chisel", 2)
+                .Tool("test:file", 3)
+                .Require("game:stick", 2)
+            )
+        )
+    );
+
+    Assert.Empty(result.Failures);
+    Assert.Equal(4 * (1 + TwoCells.Length), result.Breaks);
+  }
+
   // Fails when Build expects a later stage's {metal} unfilled: the refund names the stored metal.
   [Fact]
   public void A_later_stage_taking_the_stored_metal_refunds_that_metal()

@@ -26,6 +26,24 @@ public class ExRecipeCostsTests {
     new GridRecipeIngredient { Code = new AssetLocation(code), Quantity = qty };
 #endif
 
+  private static CraftingRecipeIngredient IngReturning(
+    string code,
+    int qty,
+    int returned
+  ) {
+    var ing = Ing(code, qty);
+    ing.ReturnedStack = new JsonItemStack {
+      Code = new AssetLocation(code),
+      Quantity = returned,
+      ResolvedItemstack = new ItemStack { StackSize = returned },
+    };
+    return ing;
+  }
+
+  private static RecipeProfileCost Returning(
+    params (string code, int qty)[] ings
+  ) => new() { ReturnedStacks = ings.ToDictionary(i => i.code, i => i.qty) };
+
   private static GridRecipe GridRecipe(
     string output,
     params CraftingRecipeIngredient[] ings
@@ -131,6 +149,113 @@ public class ExRecipeCostsTests {
 
     Assert.Equal(2, cat["pipe"].Profiles["cheap"].Ingredients!["a"]); // filled from normal
     Assert.Equal(4, cat["pipe"].Profiles["cheap"].Quantity); // pin preserved
+  }
+
+  [Fact]
+  public void A_scaled_profile_scales_returned_stacks_and_floors_each_at_one() {
+    var normal = Grid(("a", 10));
+    normal.ReturnedStacks = new() { ["a"] = 2, ["b"] = 1 };
+    var cat = new Dictionary<string, RecipeCostEntry> {
+      ["x"] = new() {
+        Type = "grid",
+        Match = "m:x",
+        Profiles = new() { ["normal"] = normal },
+      },
+    };
+
+    Assert.True(ExRecipeCosts.EnsureScaledLevel(cat, "cheap", 0.5));
+
+    var cheap = cat["x"].Profiles["cheap"];
+    Assert.Equal(1, cheap.ReturnedStacks!["a"]); // 2 * 0.5
+    Assert.Equal(1, cheap.ReturnedStacks["b"]); // 0.5 -> floored to 1
+  }
+
+  [Fact]
+  public void A_scaled_profile_keeps_a_pinned_returned_count() {
+    var normal = Grid(("a", 10));
+    normal.ReturnedStacks = new() { ["a"] = 4 };
+    var cat = new Dictionary<string, RecipeCostEntry> {
+      ["x"] = new() {
+        Type = "grid",
+        Match = "m:x",
+        Profiles = new() {
+          ["normal"] = normal,
+          ["cheap"] = Returning(("a", 3)), // pinned
+        },
+      },
+    };
+
+    ExRecipeCosts.EnsureScaledLevel(cat, "cheap", 0.5);
+
+    Assert.Equal(3, cat["x"].Profiles["cheap"].ReturnedStacks!["a"]);
+    Assert.Equal(5, cat["x"].Profiles["cheap"].Ingredients!["a"]); // ingredients still filled
+  }
+
+  [Fact]
+  public void A_scaled_profile_with_filled_ingredients_gains_returned_stacks() {
+    var normal = Grid(("a", 10));
+    normal.ReturnedStacks = new() { ["a"] = 2 };
+    var cat = new Dictionary<string, RecipeCostEntry> {
+      ["x"] = new() {
+        Type = "grid",
+        Match = "m:x",
+        Profiles = new() {
+          ["normal"] = normal,
+          ["cheap"] = Grid(("a", 2)), // saved before returned stacks existed
+        },
+      },
+    };
+
+    Assert.True(ExRecipeCosts.EnsureScaledLevel(cat, "cheap", 0.5));
+
+    Assert.Equal(2, cat["x"].Profiles["cheap"].Ingredients!["a"]); // edit kept
+    Assert.Equal(1, cat["x"].Profiles["cheap"].ReturnedStacks!["a"]);
+  }
+
+  [Fact]
+  public void Normal_is_extracted_with_returned_stack_counts() {
+    var world = new TestWorld();
+    world.World.GridRecipes.Returns(
+      new List<GridRecipe>
+      {
+        GridRecipe("iiex:split-n", IngReturning("iiex:casing", 1, 2)),
+      }
+    );
+    var cat = new Dictionary<string, RecipeCostEntry> {
+      ["split"] = new() { Type = "grid", Match = "iiex:split-*" },
+    };
+
+    Assert.True(ExRecipeCosts.EnsureNormalExtracted(world.Api, cat));
+
+    Assert.Equal(
+      2,
+      cat["split"].Profiles["normal"].ReturnedStacks!["iiex:casing"]
+    );
+  }
+
+  [Fact]
+  public void An_extracted_normal_without_returned_stacks_gains_them() {
+    var world = new TestWorld();
+    world.World.GridRecipes.Returns(
+      new List<GridRecipe>
+      {
+        GridRecipe("iiex:split-n", IngReturning("iiex:casing", 1, 2)),
+      }
+    );
+    var cat = new Dictionary<string, RecipeCostEntry> {
+      ["split"] = new() {
+        Type = "grid",
+        Match = "iiex:split-*",
+        Profiles = new() { ["normal"] = Grid(("iiex:casing", 1)) },
+      },
+    };
+
+    Assert.True(ExRecipeCosts.EnsureNormalExtracted(world.Api, cat));
+
+    Assert.Equal(
+      2,
+      cat["split"].Profiles["normal"].ReturnedStacks!["iiex:casing"]
+    );
   }
 
   [Fact]
@@ -242,6 +367,65 @@ public class ExRecipeCostsTests {
 
     Assert.Equal(4, live["pipe-grid"].Profiles["cheap"].Quantity); // restored
     Assert.Equal(1, live["pipe-grid"].Profiles["cheap"].Ingredients!["a"]); // kept
+  }
+
+  [Fact]
+  public void Reconcile_restores_a_deleted_pinned_returned_count() {
+    var defaults = DefaultCat();
+    defaults["pipe-grid"].Profiles["cheap"].ReturnedStacks = new() {
+      ["a"] = 3,
+    };
+    var live = new Dictionary<string, RecipeCostEntry> {
+      ["pipe-grid"] = new() {
+        Type = "grid",
+        Match = "iiex:pipe-straight-*",
+        Profiles = new() { ["cheap"] = Grid(("a", 1)) },
+      },
+    };
+
+    Assert.True(ExRecipeCosts.Reconcile(live, defaults));
+
+    Assert.Equal(3, live["pipe-grid"].Profiles["cheap"].ReturnedStacks!["a"]);
+  }
+
+  [Fact]
+  public void Reconcile_keeps_an_edited_returned_count() {
+    var defaults = DefaultCat();
+    defaults["pipe-grid"].Profiles["cheap"].ReturnedStacks = new() {
+      ["a"] = 3,
+    };
+    var live = new Dictionary<string, RecipeCostEntry> {
+      ["pipe-grid"] = new() {
+        Type = "grid",
+        Match = "iiex:pipe-straight-*",
+        Profiles = new() {
+          ["cheap"] = new() {
+            Quantity = 4,
+            ReturnedStacks = new() { ["a"] = 7 },
+          },
+        },
+      },
+    };
+
+    ExRecipeCosts.Reconcile(live, defaults);
+
+    Assert.Equal(7, live["pipe-grid"].Profiles["cheap"].ReturnedStacks!["a"]);
+  }
+
+  [Fact]
+  public void Reconcile_clamps_a_nonsense_returned_count_to_one() {
+    var live = new Dictionary<string, RecipeCostEntry> {
+      ["watt-grid"] = new() {
+        Type = "grid",
+        Match = "iiex:enginewatt-*",
+        Profiles = new() { ["cheap"] = Returning(("a", 0), ("b", -3)) },
+      },
+    };
+
+    ExRecipeCosts.Reconcile(live, DefaultCat());
+
+    Assert.Equal(1, live["watt-grid"].Profiles["cheap"].ReturnedStacks!["a"]);
+    Assert.Equal(1, live["watt-grid"].Profiles["cheap"].ReturnedStacks!["b"]);
   }
 
   [Fact]
@@ -365,6 +549,30 @@ public class ExRecipeCostsTests {
 
     Assert.Equal(4, rod.Quantity);
     Assert.Equal(4, rod.ResolvedItemStack!.StackSize);
+  }
+
+  [Fact]
+  public void Applying_a_cheap_profile_shrinks_a_returned_stack_and_its_resolved_size() {
+    var world = new TestWorld();
+    var casing = IngReturning("iiex:casing", 2, 2);
+    var other = IngReturning("iiex:plate", 2, 2);
+    world.World.GridRecipes.Returns(
+      new List<GridRecipe> { GridRecipe("iiex:split-n", casing, other) }
+    );
+    var cat = new Dictionary<string, RecipeCostEntry> {
+      ["split"] = new() {
+        Type = "grid",
+        Match = "iiex:split-*",
+        Profiles = new() { ["cheap"] = Returning(("iiex:casing", 1)) },
+      },
+    };
+
+    ExRecipeCosts.Apply(world.Api, cat, "cheap");
+
+    Assert.Equal(1, casing.ReturnedStack!.Quantity);
+    Assert.Equal(1, casing.ReturnedStack.ResolvedItemstack!.StackSize);
+    Assert.Equal(2, other.ReturnedStack!.Quantity); // not in the profile
+    Assert.Equal(2, casing.Quantity); // ingredients untouched without Ingredients
   }
 
   [Fact]

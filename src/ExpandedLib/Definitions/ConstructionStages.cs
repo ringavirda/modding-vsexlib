@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Blocks;
 using Newtonsoft.Json.Linq;
 
 namespace ExpandedLib.Definitions;
@@ -52,7 +53,8 @@ public sealed class ConstructionStages {
   }
 }
 
-/// <summary>One construction stage: the shape elements it adds/removes and the materials it requires.</summary>
+/// <summary>One construction stage: the shape elements it adds/removes, the materials it requires and
+/// optionally the tool it is worked with.</summary>
 public sealed class ConstructionStage {
   private readonly JObject _stage = new();
   private readonly IReadOnlyCollection<string> _stored;
@@ -75,6 +77,44 @@ public sealed class ConstructionStage {
   /// <summary>The shape elements this stage hides again. Sets <c>removeElements</c>.</summary>
   public ConstructionStage RemoveElements(params string[] elements) {
     _stage["removeElements"] = new JArray(elements);
+    return this;
+  }
+
+  /// <summary>Makes this stage a tool stage: the player holds <paramref name="tool"/> in the main hand
+  /// and right-click, and the stage is built at the last of <paramref name="hits"/> swings, which take
+  /// the materials; each step wears its tool at its last swing. The first call sets <c>tool</c>,
+  /// <c>hits</c>, <c>animation</c> and <c>sound</c>; each later call appends a step to <c>steps</c>,
+  /// paid after the earlier ones, so the stage is built at the last swing of the last call.</summary>
+  /// <param name="tool">Item code the main-hand stack must match, wildcards allowed.</param>
+  /// <param name="hits">Finished swings the stage takes, 1 or more.</param>
+  /// <param name="animation">Entity animation code played at each swing; null for the tool's default.</param>
+  /// <param name="sound">Asset path of the sound played at each strike; null for the tool's default.</param>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="hits"/> is below 1.</exception>
+  public ConstructionStage Tool(
+    string tool,
+    int hits = ExConstructionStage.DefaultHits,
+    string? animation = null,
+    string? sound = null
+  ) {
+    if (hits < 1)
+      throw new ArgumentOutOfRangeException(
+        nameof(hits),
+        hits,
+        "A tool stage takes at least one hit."
+      );
+    var step = new JObject { ["tool"] = tool, ["hits"] = hits };
+    if (animation != null)
+      step["animation"] = animation;
+    if (sound != null)
+      step["sound"] = sound;
+    if (_stage["tool"] == null) {
+      foreach (JProperty property in step.Properties())
+        _stage[property.Name] = property.Value;
+    } else {
+      if (_stage["steps"] is not JArray steps)
+        _stage["steps"] = steps = new JArray();
+      steps.Add(step);
+    }
     return this;
   }
 

@@ -105,7 +105,7 @@ public class ItemViewTipTests {
   public void A_declared_tip_is_held_up_in_every_kind(string kind, string tip) {
     GateReading g14 = Tip(GroupOf(kind, tip, tip));
     Assert.True(g14.Pass, g14.Detail);
-    if (kind != "longtool")
+    if (kind is not ("longtool" or "bar"))
       Assert.True(g14.Value > ViewGates.TipElevationDegrees, g14.Detail);
   }
 
@@ -200,7 +200,7 @@ public class ItemViewTipTests {
     Assert.DoesNotContain(ViewGates.Rules(World, twin), r => r.Gate == "G14");
   }
 
-  // Fails when a tipped longtool or carrier tool leaves its kind's own hold, as when it takes the tip grasp.
+  // Fails when a tipped longtool leaves the long hold or a carrier tool leaves its carrier's, as when either takes the tip grasp.
   [Fact]
   public void A_tipped_longtool_and_tool_keep_their_kinds_views() {
     ItemViewSet longtool = ItemViews.Compute(
@@ -211,7 +211,7 @@ public class ItemViewTipTests {
     tool.Tool = EnumTool.Chisel;
     ItemViewSet carried = ItemViews.Compute(World.Api, tool)!;
     Assert.Equal(
-      "-1.2,-0.12,-0.16,90,180,-180,0.96,0.1,0.12,0.8",
+      "-1.22,-0.13,0.08,-31.71,109.48,-42.71,1.25,0.09,0.09,1",
       Show(longtool.TpHand)
     );
     Assert.Equal("0.9,0.91,0,33,0,-127,2.1,0.09,0.09,2.64", Show(longtool.Gui));

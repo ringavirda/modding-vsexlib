@@ -97,6 +97,8 @@ internal static class ViewBlocks {
         (float)((0.5 + carried * t.Y - c[1]) / heldScale),
         (float)((0.5 + carried * t.Z - c[2]) / heldScale)
       );
+      if (IsLong(kind, box.Extents()))
+        tp = ItemViews.LongHand(Lay.Of(box, false, null), out _);
     }
 
     return new ItemViewSet(

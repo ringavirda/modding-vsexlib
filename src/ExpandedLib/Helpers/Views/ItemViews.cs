@@ -54,6 +54,7 @@ public static class ItemViews {
     if (VanillaShape(api, item) is { } twin)
       return Shipped(api, item, twin, box);
 
+    bool allowLong = item.Code.Domain != "game";
     string? tip = item.Attributes?["itemViews"]?["tip"]?.AsString();
     Vec3d? guiRotation = GuiRotationOf(item);
     if (kind == ItemViewKind.Tool) {
@@ -61,13 +62,13 @@ public static class ItemViews {
       HandReference? carried =
         carrier == null ? null : FromCarrier(api, carrier);
       if (carried != null)
-        return Held(api, kind.Value, box, tip, carried, guiRotation);
+        return Held(api, kind.Value, box, tip, carried, guiRotation, allowLong);
       kind = ByBox(box.Extents(), false, false);
     }
     HandReference? reference = ReferenceOf(kind.Value);
     return reference == null
       ? null
-      : Held(api, kind.Value, box, tip, reference, guiRotation);
+      : Held(api, kind.Value, box, tip, reference, guiRotation, allowLong);
   }
 
   /// <summary>Computes the views of an item drawn as <paramref name="shape"/> and laid out as
@@ -100,7 +101,7 @@ public static class ItemViews {
       ?? throw new InvalidOperationException(
         $"shape {shape.Base} does not load or has no drawn face"
       );
-    return Held(api, kind, box, tip, reference, guiRotation);
+    return Held(api, kind, box, tip, reference, guiRotation, true);
   }
 
   private static HandReference? ReferenceOf(ItemViewKind kind) =>
@@ -282,67 +283,76 @@ public static class ItemViews {
     ViewBox box,
     string? tip,
     HandReference reference,
-    Vec3d? guiRotation
+    Vec3d? guiRotation,
+    bool allowLong
   ) {
     bool longHeld = kind is ItemViewKind.Longtool or ItemViewKind.Tool;
+    bool isLong = allowLong && IsLong(kind, box.Extents());
     Lay slotLay = Lay.Of(box, longHeld, tip);
     Lay lay = tip != null ? Lay.Of(box, true, tip) : slotLay;
     double[,] slotTurn = Turn(slotLay, reference, out _);
-    Item? knife = tip != null && !longHeld ? TipCarrier(api) : null;
-    HandReference? hold =
-      knife == null ? null : FromCarrier(api, knife, TipHoldEnd);
-    HandReference grasp =
-      hold == null ? reference : hold with { Scale = reference.Scale };
-    double[,] turn = Turn(lay, grasp, out bool mirrored);
-    double[,] r = Mul(
-      Rotation(
-        new Vec3d(
-          grasp.Rotation.X,
-          grasp.Rotation.Y - HandYaw,
-          grasp.Rotation.Z
-        )
-      ),
-      turn
-    );
-    Vec3d euler = Euler(r);
-    Vec3d grip =
-      kind == ItemViewKind.Bulk && tip == null
-        ? BulkGrip(lay, box)
-        : Grip(lay, box, grasp, mirrored);
-    double s = grasp.Scale;
-    ModelTransform hand = new() {
-      Translation = new FastVec3f(
-        (float)(-grip.X / 16 / s),
-        (float)(-grip.Y / 16 / s),
-        (float)(-grip.Z / 16 / s)
-      ),
-      Rotation = new FastVec3f(
-        (float)Wrap(euler.X),
-        (float)Wrap(euler.Y + HandYaw),
-        (float)Wrap(euler.Z)
-      ),
-      Origin = new FastVec3f(
-        (float)(grip.X / 16),
-        (float)(grip.Y / 16),
-        (float)(grip.Z / 16)
-      ),
-      Scale = (float)s,
-      Rotate = true,
-    };
+    ModelTransform hand;
+    Vec3d grip;
+    Item? knife = null;
+    HandReference? hold = null;
+    if (isLong) {
+      hand = LongHand(lay, out grip);
+    } else {
+      knife = tip != null && !longHeld ? TipCarrier(api) : null;
+      hold = knife == null ? null : FromCarrier(api, knife, TipHoldEnd);
+      HandReference grasp =
+        hold == null ? reference : hold with { Scale = reference.Scale };
+      double[,] turn = Turn(lay, grasp, out bool mirrored);
+      double[,] r = Mul(
+        Rotation(
+          new Vec3d(
+            grasp.Rotation.X,
+            grasp.Rotation.Y - HandYaw,
+            grasp.Rotation.Z
+          )
+        ),
+        turn
+      );
+      Vec3d euler = Euler(r);
+      grip =
+        kind == ItemViewKind.Bulk && tip == null
+          ? BulkGrip(lay, box)
+          : Grip(lay, box, grasp, mirrored);
+      double s = grasp.Scale;
+      hand = new ModelTransform {
+        Translation = new FastVec3f(
+          (float)(-grip.X / 16 / s),
+          (float)(-grip.Y / 16 / s),
+          (float)(-grip.Z / 16 / s)
+        ),
+        Rotation = new FastVec3f(
+          (float)Wrap(euler.X),
+          (float)Wrap(euler.Y + HandYaw),
+          (float)Wrap(euler.Z)
+        ),
+        Origin = new FastVec3f(
+          (float)(grip.X / 16),
+          (float)(grip.Y / 16),
+          (float)(grip.Z / 16)
+        ),
+        Scale = (float)s,
+        Rotate = true,
+      };
+    }
     string? idle =
-      hold != null
-        ? null
-        : kind switch {
-          ItemViewKind.Longtool => SpearIdle,
-          ItemViewKind.Bulk => BulkHold,
-          _ => null,
-        };
+      isLong ? BulkHold
+      : hold != null ? null
+      : kind switch {
+        ItemViewKind.Longtool => SpearIdle,
+        ItemViewKind.Bulk => BulkHold,
+        _ => null,
+      };
     string? ready =
-      hold != null
-        ? knife!.HeldRightReadyAnimation == DefaultReady
-          ? null
+      isLong ? BlockReady
+      : hold != null
+        ? knife!.HeldRightReadyAnimation == DefaultReady ? null
           : knife.HeldRightReadyAnimation
-        : idle;
+      : idle;
     return new ItemViewSet(
       kind,
       Slot(kind, slotLay, reference, slotTurn, guiRotation),
@@ -350,13 +360,52 @@ public static class ItemViews {
       Ground(slotLay, reference),
       idle,
       ready,
-      kind == ItemViewKind.Longtool ? SpearHit : null,
-      null,
+      kind == ItemViewKind.Longtool && !isLong ? SpearHit : null,
+      isLong ? BlockUse : null,
       new Vec3d(lay.Lo[0], lay.Lo[1], lay.Lo[2]),
       new Vec3d(lay.Hi[0], lay.Hi[1], lay.Hi[2]),
       lay.Axes,
       grip
     );
+  }
+
+  /// <summary>The two-handed hold of a long item: its longest axis level along the seraph's left-right, its box centre
+  /// at <see cref="LongHoldAt"/> between the hands, at true size.</summary>
+  /// <param name="lay">The lay of the item's drawn box.</param>
+  /// <param name="centre">The box centre in voxels in the shape's frame, the point the hand transform puts between the hands.</param>
+  internal static ModelTransform LongHand(Lay lay, out Vec3d centre) {
+    double[,] r = Mul(
+      Rotation(
+        new Vec3d(
+          LongHold.Rotation.X,
+          LongHold.Rotation.Y - HandYaw,
+          LongHold.Rotation.Z
+        )
+      ),
+      Turn(lay, LongHold, out _)
+    );
+    Vec3d euler = Euler(r);
+    centre = lay.Point([.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)]);
+    double s = LongHold.Scale;
+    return new ModelTransform {
+      Translation = new FastVec3f(
+        (float)((LongHoldAt.X - centre.X) / 16 / s),
+        (float)((LongHoldAt.Y - centre.Y) / 16 / s),
+        (float)((LongHoldAt.Z - centre.Z) / 16 / s)
+      ),
+      Rotation = new FastVec3f(
+        (float)Wrap(euler.X),
+        (float)Wrap(euler.Y + HandYaw),
+        (float)Wrap(euler.Z)
+      ),
+      Origin = new FastVec3f(
+        (float)(centre.X / 16),
+        (float)(centre.Y / 16),
+        (float)(centre.Z / 16)
+      ),
+      Scale = (float)s,
+      Rotate = true,
+    };
   }
 
   // The matrix that carries the lay's axes onto the reference's, mirrored about the shortest where the two

@@ -510,17 +510,19 @@ public static class BlockLaws {
     /// <summary>Right-clicks <paramref name="selection"/> as the engine does on the server: the
     /// cell's block's <see cref="Block.OnBlockInteractStart"/>, and when that declines, the held
     /// collectible's <see cref="CollectibleObject.OnHeldInteractStart"/>; whichever takes the
-    /// click is stepped and stopped at <see cref="UseSeconds"/>, the held side through whatever
+    /// click is stepped and stopped at <paramref name="seconds"/>, the held side through whatever
     /// the slot holds once the start has run.</summary>
     /// <remarks>With sneak held and a block in hand the client places it first, and the click then
     /// reaches neither.</remarks>
+    /// <param name="seconds">The seconds the click is held, passed to its one step and its stop.</param>
     /// <returns>Whether the block or the held collectible took the click, false when a block was
     /// placed instead; null when a step threw or logged.</returns>
     internal bool? Use(
       BlockSelection selection,
       IPlayer player,
       string what,
-      bool judged
+      bool judged,
+      float seconds = UseSeconds
     ) {
       bool taken = false;
       Block block = _world.GetBlock(selection.Position);
@@ -532,18 +534,8 @@ public static class BlockLaws {
             return;
           taken = block.OnBlockInteractStart(_world.World, player, selection);
           if (taken) {
-            block.OnBlockInteractStep(
-              UseSeconds,
-              _world.World,
-              player,
-              selection
-            );
-            block.OnBlockInteractStop(
-              UseSeconds,
-              _world.World,
-              player,
-              selection
-            );
+            block.OnBlockInteractStep(seconds, _world.World, player, selection);
+            block.OnBlockInteractStop(seconds, _world.World, player, selection);
             return;
           }
           ItemSlot slot = player.InventoryManager.ActiveHotbarSlot;
@@ -561,20 +553,8 @@ public static class BlockLaws {
           taken = handling != EnumHandHandling.NotHandled;
           if (!taken || slot.Itemstack?.Collectible is not { } now)
             return;
-          now.OnHeldInteractStep(
-            UseSeconds,
-            slot,
-            player.Entity,
-            selection,
-            null
-          );
-          now.OnHeldInteractStop(
-            UseSeconds,
-            slot,
-            player.Entity,
-            selection,
-            null
-          );
+          now.OnHeldInteractStep(seconds, slot, player.Entity, selection, null);
+          now.OnHeldInteractStop(seconds, slot, player.Entity, selection, null);
         }
       )
         ? taken

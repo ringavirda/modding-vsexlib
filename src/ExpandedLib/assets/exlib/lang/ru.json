@@ -6,6 +6,8 @@
   "multiblock-incomplete": "Конструкция не завершена. Не хватает или неверно установлено блоков: {0}.",
   "multiblock-complete": "Конструкция завершена!",
   "ingameerror-construction-onematerial": "Этот этап строится из одного материала: {0} или {1}, не вместе.",
+  "ingameerror-construction-missingtool": "Этот этап строится инструментом в основной руке: {0}.",
+  "rcc-hold-tool": "Удерживайте, чтобы строить",
   "facing-n": "север",
   "facing-e": "восток",
   "facing-s": "юг",

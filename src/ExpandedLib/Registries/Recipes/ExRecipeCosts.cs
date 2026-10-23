@@ -7,7 +7,7 @@ using Vintagestory.API.Util;
 
 namespace ExpandedLib.Registries;
 
-/// <summary>Rewrites the ingredient quantities and grid output count of grid crafting recipes and
+/// <summary>Rewrites the ingredient quantities, returned stack counts and grid output count of grid crafting recipes and
 /// right-click-construction blocks to a named cost profile from a catalogue.</summary>
 public static class ExRecipeCosts {
   /// <summary>The profile whose numbers mirror the recipes as authored.</summary>
@@ -16,21 +16,32 @@ public static class ExRecipeCosts {
   private const string RccBehaviorName = "ExRightClickConstructable";
 
   /// <summary>Fills the <see cref="ProfileNormal"/> profile of every catalogue entry that lacks it,
-  /// from the live recipe's current quantities.</summary>
+  /// from the live recipe's current quantities. A grid entry whose normal profile has no
+  /// <see cref="RecipeProfileCost.ReturnedStacks"/> gains the live recipe's returned stack counts.</summary>
   public static bool EnsureNormalExtracted(
     ICoreAPI api,
     IDictionary<string, RecipeCostEntry> catalogue
   ) {
     bool changed = false;
     foreach (var entry in catalogue.Values) {
-      if (
-        string.IsNullOrEmpty(entry.Match)
-        || (
-          entry.Profiles.TryGetValue(ProfileNormal, out var existing)
-          && existing.HasContent
-        )
-      )
+      if (string.IsNullOrEmpty(entry.Match))
         continue;
+
+      if (
+        entry.Profiles.TryGetValue(ProfileNormal, out var existing)
+        && existing.HasContent
+      ) {
+        if (
+          !IsRcc(entry)
+          && existing.ReturnedStacks is not { Count: > 0 }
+          && ReadGrid(api, new AssetLocation(entry.Match)).ReturnedStacks
+            is { } returned
+        ) {
+          existing.ReturnedStacks = returned;
+          changed = true;
+        }
+        continue;
+      }
 
       var normal = IsRcc(entry)
         ? ReadRcc(api, new AssetLocation(entry.Match))
@@ -44,7 +55,10 @@ public static class ExRecipeCosts {
   }
 
   /// <summary>Fills <paramref name="profile"/> for entries lacking costs by scaling their
-  /// <see cref="ProfileNormal"/> quantities by <paramref name="factor"/>, floored at 1.</summary>
+  /// <see cref="ProfileNormal"/> quantities by <paramref name="factor"/>, floored at 1. Ingredients,
+  /// stages and returned stacks are each filled only when that field is empty, so a pinned
+  /// <see cref="RecipeProfileCost.ReturnedStacks"/> count survives and a catalogue saved before the
+  /// field existed gains the scaled returned stacks.</summary>
   public static bool EnsureScaledLevel(
     IDictionary<string, RecipeCostEntry> catalogue,
     string profile,
@@ -56,26 +70,39 @@ public static class ExRecipeCosts {
         continue;
 
       entry.Profiles.TryGetValue(profile, out var target);
-      bool hasCosts =
-        target != null
-        && (
-          (target.Ingredients is { Count: > 0 })
-          || (target.Stages is { Count: > 0 })
-        );
-      if (hasCosts)
-        continue;
-
+      bool created = target == null;
       target ??= new RecipeProfileCost(); // keep any pinned Quantity already here
-      if (normal.Ingredients is { Count: > 0 })
-        target.Ingredients = normal.Ingredients.ToDictionary(
+      bool filled = created;
+
+      bool hasCosts =
+        (target.Ingredients is { Count: > 0 })
+        || (target.Stages is { Count: > 0 });
+      if (!hasCosts) {
+        if (normal.Ingredients is { Count: > 0 })
+          target.Ingredients = normal.Ingredients.ToDictionary(
+            kv => kv.Key,
+            kv => Scale(kv.Value, factor)
+          );
+        if (normal.Stages is { Count: > 0 })
+          target.Stages = normal.Stages.ToDictionary(
+            s => s.Key,
+            s =>
+              s.Value.ToDictionary(kv => kv.Key, kv => Scale(kv.Value, factor))
+          );
+        filled = true;
+      }
+      if (
+        target.ReturnedStacks is not { Count: > 0 }
+        && normal.ReturnedStacks is { Count: > 0 }
+      ) {
+        target.ReturnedStacks = normal.ReturnedStacks.ToDictionary(
           kv => kv.Key,
           kv => Scale(kv.Value, factor)
         );
-      if (normal.Stages is { Count: > 0 })
-        target.Stages = normal.Stages.ToDictionary(
-          s => s.Key,
-          s => s.Value.ToDictionary(kv => kv.Key, kv => Scale(kv.Value, factor))
-        );
+        filled = true;
+      }
+      if (!filled)
+        continue;
 
       entry.Profiles[profile] = target;
       changed = true;
@@ -119,10 +146,20 @@ public static class ExRecipeCosts {
           // A pinned default profile was removed in full.
           cur.Profiles[name] = defProfile;
           changed = true;
-        } else if (defProfile.Quantity.HasValue && !curProfile.Quantity.HasValue) {
-          // Only the pinned output quantity was removed.
-          curProfile.Quantity = defProfile.Quantity;
-          changed = true;
+        } else {
+          if (defProfile.Quantity.HasValue && !curProfile.Quantity.HasValue) {
+            // Only the pinned output quantity was removed.
+            curProfile.Quantity = defProfile.Quantity;
+            changed = true;
+          }
+          if (
+            defProfile.ReturnedStacks is { Count: > 0 }
+            && curProfile.ReturnedStacks is not { Count: > 0 }
+          ) {
+            // Only the pinned returned stacks were removed.
+            curProfile.ReturnedStacks = new(defProfile.ReturnedStacks);
+            changed = true;
+          }
         }
       }
     }
@@ -143,6 +180,12 @@ public static class ExRecipeCosts {
       foreach (var k in profile.Ingredients.Keys.ToList())
         if (profile.Ingredients[k] < 1) {
           profile.Ingredients[k] = 1;
+          changed = true;
+        }
+    if (profile.ReturnedStacks != null)
+      foreach (var k in profile.ReturnedStacks.Keys.ToList())
+        if (profile.ReturnedStacks[k] < 1) {
+          profile.ReturnedStacks[k] = 1;
           changed = true;
         }
     if (profile.Stages != null)
@@ -178,7 +221,13 @@ public static class ExRecipeCosts {
       if (IsRcc(entry))
         ApplyRcc(api, code, costs.Stages);
       else
-        ApplyGrid(api, code, costs.Ingredients, costs.Quantity);
+        ApplyGrid(
+          api,
+          code,
+          costs.Ingredients,
+          costs.Quantity,
+          costs.ReturnedStacks
+        );
     }
   }
 
@@ -200,30 +249,47 @@ public static class ExRecipeCosts {
 
   private static RecipeProfileCost ReadGrid(ICoreAPI api, AssetLocation output) {
     var map = new Dictionary<string, int>();
+    var returned = new Dictionary<string, int>();
 
     foreach (var recipe in GridRecipesFor(api, output)) {
       if (recipe.Ingredients != null)
         foreach (var ing in recipe.Ingredients.Values)
-          if (ing?.Code != null && !ing.IsTool)
-            map[ing.Code.ToString()] = ing.Quantity;
+          ReadIngredient(ing, map, returned);
 
       if (recipe.ResolvedIngredients != null)
         foreach (var ing in recipe.ResolvedIngredients)
-          if (ing?.Code != null && !ing.IsTool)
-            map[ing.Code.ToString()] = ing.Quantity;
+          ReadIngredient(ing, map, returned);
     }
 
-    return new RecipeProfileCost { Ingredients = map };
+    return new RecipeProfileCost {
+      Ingredients = map,
+      ReturnedStacks = returned.Count > 0 ? returned : null,
+    };
+  }
+
+  private static void ReadIngredient(
+    CraftingRecipeIngredient? ing,
+    Dictionary<string, int> quantities,
+    Dictionary<string, int> returned
+  ) {
+    if (ing?.Code == null || ing.IsTool)
+      return;
+    string code = ing.Code.ToString();
+    quantities[code] = ing.Quantity;
+    if (ing.ReturnedStack != null)
+      returned[code] = ing.ReturnedStack.Quantity;
   }
 
   private static void ApplyGrid(
     ICoreAPI api,
     AssetLocation output,
     IReadOnlyDictionary<string, int>? ingredients,
-    int? quantity
+    int? quantity,
+    IReadOnlyDictionary<string, int>? returnedStacks
   ) {
     bool hasIngredients = ingredients is { Count: > 0 };
-    if (!hasIngredients && quantity is not > 0)
+    bool hasReturned = returnedStacks is { Count: > 0 };
+    if (!hasIngredients && !hasReturned && quantity is not > 0)
       return;
 
     foreach (var recipe in GridRecipesFor(api, output)) {
@@ -231,6 +297,11 @@ public static class ExRecipeCosts {
         SetGridIngredients(recipe.ResolvedIngredients, ingredients!);
         if (recipe.Ingredients != null)
           SetGridIngredients(recipe.Ingredients.Values, ingredients!);
+      }
+      if (hasReturned) {
+        SetGridReturnedStacks(recipe.ResolvedIngredients, returnedStacks!);
+        if (recipe.Ingredients != null)
+          SetGridReturnedStacks(recipe.Ingredients.Values, returnedStacks!);
       }
       if (quantity is > 0)
         SetGridOutput(recipe, quantity.Value);
@@ -261,6 +332,27 @@ public static class ExRecipeCosts {
       ) {
         ing.Quantity = q;
         ing.ResolvedItemStack?.StackSize = q;
+      }
+    }
+  }
+
+  /// <summary>Sets each ingredient's returned stack count: both <c>Quantity</c> and the resolved
+  /// stack's <c>StackSize</c>. Ingredients without a returned stack are left alone.</summary>
+  private static void SetGridReturnedStacks(
+    IEnumerable<CraftingRecipeIngredient?>? ingredients,
+    IReadOnlyDictionary<string, int> returnedStacks
+  ) {
+    if (ingredients == null)
+      return;
+
+    foreach (var ing in ingredients) {
+      if (
+        ing?.ReturnedStack is { } returned
+        && ing.Code != null
+        && returnedStacks.TryGetValue(ing.Code.ToString(), out int q)
+      ) {
+        returned.Quantity = q;
+        returned.ResolvedItemstack?.StackSize = q;
       }
     }
   }

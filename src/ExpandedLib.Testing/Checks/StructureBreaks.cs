@@ -5,7 +5,9 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using ExpandedLib.Blocks;
+using ExpandedLib.Catalogues;
 using ExpandedLib.Definitions;
+using ExpandedLib.Machines;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
@@ -854,14 +856,92 @@ public static class StructureBreaks
     BlockPos at
   )
   {
+    ExRightClickConstruction rcc = Rcc(behavior);
+    var selection = new BlockSelection { Position = at.Copy() };
     EnumHandling handling = EnumHandling.PassThrough;
-    behavior.OnBlockInteractStart(
-      world.World,
-      payer.Player,
-      new BlockSelection { Position = at.Copy() },
-      ref handling
-    );
+    if (!rcc.NeedsTool(payer.Entity))
+    {
+      behavior.OnBlockInteractStart(
+        world.World,
+        payer.Player,
+        selection,
+        ref handling
+      );
+      return;
+    }
+
+    int stage = rcc.CurrentCompletedStage + 1;
+    ExConstructionToolStep[] steps = rcc.Stages[stage].ToolSteps;
+    try
+    {
+      for (
+        int step = rcc.StepsPaid;
+        step < steps.Length && rcc.CurrentCompletedStage + 1 == stage;
+        step++
+      )
+      {
+        ItemStack tool = ToolFor(world, steps[step], stage);
+        payer.Hold(tool);
+        if (
+          !behavior.OnBlockInteractStart(
+            world.World,
+            payer.Player,
+            selection,
+            ref handling
+          )
+        )
+          break;
+        float seconds = (Math.Max(1, steps[step].Hits) * StrokeOf(tool)) + 0.1f;
+        float used = TestPlayer.HoldSteps(
+          seconds,
+          s =>
+          {
+            EnumHandling stepping = EnumHandling.PassThrough;
+            return behavior.OnBlockInteractStep(
+              s,
+              world.World,
+              payer.Player,
+              selection,
+              ref stepping
+            );
+          },
+          null
+        );
+        behavior.OnBlockInteractStop(
+          used,
+          world.World,
+          payer.Player,
+          selection,
+          ref handling
+        );
+      }
+    }
+    finally
+    {
+      payer.Hold(null);
+    }
   }
+
+  private static float StrokeOf(ItemStack tool) =>
+    CraftSequenceRegistry
+      .Shared.ToolDefault(tool.Collectible.Code.ToString())
+      ?.Stroke
+    ?? CraftToolDefault.DefaultStroke;
+
+  private static ItemStack ToolFor(
+    TestWorld world,
+    ExConstructionToolStep step,
+    int stage
+  ) =>
+    world
+      .World.Collectibles.Where(c =>
+        c?.Code != null && WildcardUtil.Match(step.Tool, c.Code.ToString())
+      )
+      .Select(c => new ItemStack(c))
+      .FirstOrDefault()
+    ?? throw new InvalidOperationException(
+      $"stage {stage} takes the tool '{step.Tool}' and the world holds none"
+    );
 
   private static string Describe(Payment payment) =>
     payment switch

@@ -69,6 +69,15 @@ internal static class CollectibleViews {
     return l >= 3 * m ? ItemViewKind.Bar : ItemViewKind.Lump;
   }
 
+  /// <summary>Whether a collectible of <paramref name="kind"/> whose box has side lengths <paramref name="extents"/> is held
+  /// as a long item: a bar, longtool or multicell block drawn over 16 voxels long and at least three times as long as it is wide.</summary>
+  /// <param name="kind">The kind the views are laid out as.</param>
+  /// <param name="extents">The longest, middle and shortest side of the box, in voxels.</param>
+  internal static bool IsLong(ItemViewKind kind, double[] extents) =>
+    kind is ItemViewKind.Longtool or ItemViewKind.Bar or ItemViewKind.Multicell
+    && extents[0] > ViewReferences.LongMinimum
+    && extents[0] >= ViewReferences.LongRatio * extents[1];
+
   /// <summary>A box in voxels: <paramref name="From"/> and <paramref name="To"/> are its corners in the frame
   /// whose axes are <paramref name="Axes"/>, unit vectors in the shape's frame. <paramref name="Drawn"/> holds the
   /// eight corners of each drawn element in the shape's frame, corner i high in x, y, z by bits 0, 1, 2 of i.
