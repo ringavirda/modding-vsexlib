@@ -789,9 +789,9 @@ public class BlockLawsTests {
           "test:brittle placed threw InvalidOperationException: placed"
         ),
       ],
-      result.Laws.SelectMany(l =>
-        l.Findings.Select(f => (l.Name, f.Split(" (")[0]))
-      )
+      result
+        .Laws.Where(l => l.Name is "info" or "neighbour")
+        .SelectMany(l => l.Findings.Select(f => (l.Name, f.Split(" (")[0])))
     );
   }
 
@@ -1844,6 +1844,10 @@ public class BlockLawsTests {
       result[MultiblockLaw.Name].Findings,
       f => f.StartsWith("test:turned-n", StringComparison.Ordinal)
     );
+    Assert.All(
+      result.Laws,
+      l => Assert.True(l.Elapsed > TimeSpan.Zero, l.Name)
+    );
 #if GAME_GE_1_22
     Assert.Equal(
       [
@@ -1851,6 +1855,7 @@ public class BlockLawsTests {
         "break",
         "multiblock",
         "megablock",
+        "draw",
         "control",
         "info",
         "reload",

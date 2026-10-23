@@ -961,7 +961,8 @@ public sealed partial class TestWorld : IDisposable {
       );
     a.When(x => x.ExchangeBlock(Arg.Any<int>(), Arg.Any<BlockPos>()))
       .Do(ci => DoExchangeBlock(ci.ArgAt<int>(0), ci.ArgAt<BlockPos>(1)));
-    a.When(x => x.MarkBlockDirty(Arg.Any<BlockPos>())).Do(_ => { });
+    a.When(x => x.MarkBlockDirty(Arg.Any<BlockPos>()))
+      .Do(ci => MarkRedraw(ci.Arg<BlockPos>()));
     a.When(x => x.MarkBlockEntityDirty(Arg.Any<BlockPos>()))
       .Do(ci => _serverDirty.Add(ci.Arg<BlockPos>()));
     a.When(x =>

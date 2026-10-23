@@ -8,6 +8,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
+using Vintagestory.GameContent.Mechanics;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -212,6 +213,90 @@ public class ClientTwinTests {
   }
 
   [Fact]
+  public void A_twin_finds_its_own_power_mod_and_not_the_servers() {
+    using var world = DoorWorld();
+    var server = new MechanicalPowerMod();
+    world.Mods.Register(server);
+    var door = new ModReadingDoor();
+    Place(world, Here, door);
+    int renderers = world.ClientRendererCount;
+
+    var twin = ClientTwin.Stand(world, door)[0];
+
+    MechanicalPowerMod? found = ((ModReadingDoor)twin.Twin).Found;
+    Assert.NotNull(found);
+    Assert.NotSame(server, found);
+    Assert.Equal(renderers, world.ClientRendererCount);
+  }
+
+  [Fact]
+  public void A_twin_reads_the_recipes_the_world_registered() {
+    using var world = DoorWorld();
+    var recipes = new RecipeRegistrySystem();
+    world.Mods.Register(recipes);
+    var door = new ModReadingDoor();
+    Place(world, Here, door);
+
+    var twin = ClientTwin.Stand(world, door)[0];
+
+    Assert.Same(recipes, ((ModReadingDoor)twin.Twin).Recipes);
+  }
+
+  [Fact]
+  public void A_twin_sees_the_mods_the_world_lists() {
+    using var world = DoorWorld();
+    world.Mods.Add("listedmod", "2.3.4");
+    var door = new ModReadingDoor();
+    Place(world, Here, door);
+
+    var twin = ClientTwin.Stand(world, door)[0];
+
+    Assert.Equal("2.3.4", ((ModReadingDoor)twin.Twin).ListedVersion);
+  }
+
+  [Fact]
+  public void Stepping_one_twin_leaves_the_others_ticks_alone() {
+    using var world = DoorWorld();
+    HandDoor first = PlaceDoor(world, Here);
+    HandDoor second = PlaceDoor(world, new BlockPos(1, 64, 0));
+    var a = ClientTwin.Stand(world, first)[0];
+    var b = ClientTwin.Stand(world, second)[0];
+
+    world.StepClientFrames(1.5f, 1, b.Twin);
+
+    Assert.Equal(0, ((HandDoor)a.Twin).Ticks);
+    Assert.Equal(1, ((HandDoor)b.Twin).Ticks);
+  }
+
+#if GAME_GE_1_22
+  [Fact]
+  public void A_drawing_twin_reads_a_shape_by_location()
+  {
+    using var world = DoorWorld();
+    world.ClientTesselates = true;
+    var door = new ModReadingDoor();
+    Place(world, Here, door);
+
+    var twin = ClientTwin.Stand(world, door)[0];
+
+    Assert.NotNull(((ModReadingDoor)twin.Twin).Shape);
+  }
+
+  [Fact]
+  public void A_drawing_twin_resolves_any_texture_in_the_block_atlas()
+  {
+    using var world = DoorWorld();
+    world.ClientTesselates = true;
+    var door = new ModReadingDoor();
+    Place(world, Here, door);
+
+    var twin = ClientTwin.Stand(world, door)[0];
+
+    Assert.NotNull(((ModReadingDoor)twin.Twin).Atlas);
+  }
+#endif
+
+  [Fact]
   public void A_twins_frames_fire_exlib_and_animation_renderers_only() {
     using var world = DoorWorld();
     var (_, twin) = Standing(world, Here);
@@ -365,6 +450,35 @@ public class ClientTwinTests {
       base.Initialize(api);
       if (api.Side == EnumAppSide.Client)
         throw new InvalidOperationException("the twin cannot stand");
+    }
+
+    public override void OnBlockRemoved() {
+      base.OnBlockRemoved();
+      if (Api.Side == EnumAppSide.Client)
+        throw new NullReferenceException("a half-initialised twin");
+    }
+  }
+
+  private sealed class ModReadingDoor : BlockEntity {
+    public MechanicalPowerMod? Found { get; private set; }
+    public string? ListedVersion { get; private set; }
+    public RecipeRegistrySystem? Recipes { get; private set; }
+    public Shape? Shape { get; private set; }
+    public TextureAtlasPosition? Atlas { get; private set; }
+
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      if (api is not ICoreClientAPI capi)
+        return;
+      Found = api.ModLoader.GetModSystem<MechanicalPowerMod>();
+      ListedVersion = api.ModLoader.GetMod("listedmod")?.Info.Version;
+      Recipes = api.ModLoader.GetModSystem<RecipeRegistrySystem>();
+      Shape = api.Assets.Get<Shape>(
+        new AssetLocation("game:shapes/block/basic/cube.json")
+      );
+      Atlas = capi.BlockTextureAtlas[
+        new AssetLocation("game:block/stone/rock/granite1")
+      ];
     }
   }
 
