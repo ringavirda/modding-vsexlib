@@ -1,0 +1,9 @@
+{
+  "type": "content",
+  "modid": "clipsfixture",
+  "name": "Clips fixture",
+  "version": "1.0.0",
+  "dependencies": {
+    "exlib": "*"
+  }
+}

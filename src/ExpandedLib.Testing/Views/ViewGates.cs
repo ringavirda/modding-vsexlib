@@ -720,13 +720,16 @@ internal static class ViewGates {
   /// <summary>The most, in degrees, a held block's own up axis may be turned from world vertical.</summary>
   internal const double HeldUpDegrees = 20;
 
-  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips, G12 catalogue, G14 hand.tip, G15 hand.sheet and G16 hand.up of <paramref name="group"/>. They hold for every
+  /// <summary>The farthest, in voxels, that a left grip may lie from the left anchor (G17).</summary>
+  internal const double LeftGripVoxels = 0.5;
+
+  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips, G12 catalogue, G14 hand.tip, G15 hand.sheet, G16 hand.up and G17 hand.left of <paramref name="group"/>. They hold for every
   /// collectible whatever vanilla does and are not banded.</summary>
   /// <param name="world">The world the group comes from.</param>
   /// <param name="group">The group to judge.</param>
   /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
   /// <returns>G4 on the ground, G9 in third and first person, G11, G14 when the group's collectible declares an
-  /// <c>itemViews.tip</c>, G15 in third and first person when the group's box is a sheet, G16 in third and first person
+  /// <c>itemViews.tip</c>, G17 in third person when the group's collectible declares <c>itemViews.grips</c>, G15 in third and first person when the group's box is a sheet, G16 in third and first person
   /// when the group is a block with a hand transform of its own (one with the rotation of <see cref="ModelTransform.BlockDefaultTp"/> is the game's hold for a block that
   /// authors none, rescaled and moved by the item views, and is not judged), and G12 when a row of <paramref name="catalogue"/> names one of the group's codes, each
   /// with its pass or failure.</returns>
@@ -789,6 +792,8 @@ internal static class ViewGates {
       readings.Add(HeldUp(world, group, false));
       readings.Add(HeldUp(world, group, true));
     }
+    if (CollectibleViews.GripsOf(group.Representative) is { } grips)
+      readings.Add(LeftGrip(world, group, grips.Left));
     if (catalogue?.Reading(group) is { } sized)
       readings.Add(sized);
     return readings;
@@ -908,6 +913,31 @@ internal static class ViewGates {
 
   private static bool IsDefaultBlockHold(ModelTransform hand) {
     return hand.Rotation.Equals(ModelTransform.BlockDefaultTp().Rotation);
+  }
+
+  private static GateReading LeftGrip(
+    TestWorld world,
+    ViewGroup group,
+    Vec3d grip
+  ) {
+    SeraphPose pose = HeldPose(world, group, false);
+    double miss =
+      16
+      * (
+        ViewMatrices.Hand(group.Hand, pose).Apply(grip / 16)
+        - pose.LeftAnchor.Position
+      ).Length();
+    return new GateReading(
+      "G17",
+      "hand.left",
+      "tp",
+      miss,
+      null,
+      LeftGripVoxels,
+      null,
+      miss <= LeftGripVoxels,
+      $"the left grip {Fmt(miss)} voxels from the left hand above {Fmt(LeftGripVoxels)}"
+    );
   }
 
   private static GateReading HeldUp(
@@ -1237,6 +1267,7 @@ internal static class ViewGates {
       c.HeldTpUseAnimation,
       c.Attributes?["itemViews"]?["kind"]?.AsString(),
       c.Attributes?["itemViews"]?["tip"]?.AsString(),
+      c.Attributes?["itemViews"]?["grips"]?.ToString(),
       c.Tool,
       c is ItemWorkItem
     );

@@ -1,0 +1,446 @@
+[
+  {
+    "file": "game:shapes/entity/humanoid/seraph-faceless.json",
+    "op": "add",
+    "path": "/animations/-",
+    "value": {
+      "name": "Shank ladle, held",
+      "code": "iiex-ladlehold",
+      "quantityframes": 30,
+      "onActivityStopped": "EaseOut",
+      "onAnimationEnd": "Repeat",
+      "keyframes": [
+        {
+          "frame": 0,
+          "elements": {
+            "UpperArmR": {
+              "rotationX": -18.3,
+              "rotationY": 17.3,
+              "rotationZ": -62.5,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": 0.4
+            },
+            "LowerArmR": {
+              "rotationX": -1.0,
+              "rotationY": -14.0,
+              "rotationZ": -15.9,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            },
+            "UpperArmL": {
+              "rotationX": -20.4,
+              "rotationY": -5.8,
+              "rotationZ": 19.8,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": -0.2
+            },
+            "LowerArmL": {
+              "rotationX": 51.5,
+              "rotationY": -42.8,
+              "rotationZ": -84.4,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file": "game:shapes/entity/humanoid/seraph-faceless.json",
+    "op": "add",
+    "path": "/animations/-",
+    "value": {
+      "name": "Shank ladle, held-fp",
+      "code": "iiex-ladlehold-fp",
+      "quantityframes": 30,
+      "onActivityStopped": "EaseOut",
+      "onAnimationEnd": "Repeat",
+      "keyframes": [
+        {
+          "frame": 0,
+          "elements": {
+            "UpperArmR": {
+              "rotationX": -18.3,
+              "rotationY": 17.3,
+              "rotationZ": -62.5,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": 0.4
+            },
+            "LowerArmR": {
+              "rotationX": -1.0,
+              "rotationY": -14.0,
+              "rotationZ": -15.9,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            },
+            "UpperArmL": {
+              "rotationX": -20.4,
+              "rotationY": -5.8,
+              "rotationZ": 19.8,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": -0.2
+            },
+            "LowerArmL": {
+              "rotationX": 51.5,
+              "rotationY": -42.8,
+              "rotationZ": -84.4,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file": "game:shapes/entity/humanoid/seraph-faceless.json",
+    "op": "add",
+    "path": "/animations/-",
+    "value": {
+      "name": "Shank ladle, pour",
+      "code": "iiex-ladlepour",
+      "quantityframes": 20,
+      "onActivityStopped": "EaseOut",
+      "onAnimationEnd": "Hold",
+      "keyframes": [
+        {
+          "frame": 0,
+          "elements": {
+            "UpperArmR": {
+              "rotationX": -18.3,
+              "rotationY": 17.3,
+              "rotationZ": -62.5,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": 0.4
+            },
+            "LowerArmR": {
+              "rotationX": -1.0,
+              "rotationY": -14.0,
+              "rotationZ": -15.9,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            },
+            "UpperArmL": {
+              "rotationX": -20.4,
+              "rotationY": -5.8,
+              "rotationZ": 19.8,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": -0.2
+            },
+            "LowerArmL": {
+              "rotationX": 51.5,
+              "rotationY": -42.8,
+              "rotationZ": -84.4,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            }
+          }
+        },
+        {
+          "frame": 10,
+          "elements": {
+            "UpperArmR": {
+              "rotationX": -18.3,
+              "rotationY": 17.3,
+              "rotationZ": -62.5,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": 0.4
+            },
+            "LowerArmR": {
+              "rotationX": -1.0,
+              "rotationY": -14.0,
+              "rotationZ": -15.9,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            },
+            "UpperArmL": {
+              "rotationX": -20.6,
+              "rotationY": -5.7,
+              "rotationZ": 19.9,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": -0.2
+            },
+            "LowerArmL": {
+              "rotationX": 52.9,
+              "rotationY": -45.3,
+              "rotationZ": -86.3,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            }
+          }
+        },
+        {
+          "frame": 19,
+          "elements": {
+            "UpperArmR": {
+              "rotationX": -18.3,
+              "rotationY": 17.3,
+              "rotationZ": -62.5,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": 0.4
+            },
+            "LowerArmR": {
+              "rotationX": -1.0,
+              "rotationY": -14.0,
+              "rotationZ": -15.9,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            },
+            "UpperArmL": {
+              "rotationX": -20.1,
+              "rotationY": -5.6,
+              "rotationZ": 19.0,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": -0.2
+            },
+            "LowerArmL": {
+              "rotationX": 54.0,
+              "rotationY": -47.3,
+              "rotationZ": -87.6,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file": "game:shapes/entity/humanoid/seraph-faceless.json",
+    "op": "add",
+    "path": "/animations/-",
+    "value": {
+      "name": "Shank ladle, pour-fp",
+      "code": "iiex-ladlepour-fp",
+      "quantityframes": 20,
+      "onActivityStopped": "EaseOut",
+      "onAnimationEnd": "Hold",
+      "keyframes": [
+        {
+          "frame": 0,
+          "elements": {
+            "UpperArmR": {
+              "rotationX": -18.3,
+              "rotationY": 17.3,
+              "rotationZ": -62.5,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": 0.4
+            },
+            "LowerArmR": {
+              "rotationX": -1.0,
+              "rotationY": -14.0,
+              "rotationZ": -15.9,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            },
+            "UpperArmL": {
+              "rotationX": -20.4,
+              "rotationY": -5.8,
+              "rotationZ": 19.8,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": -0.2
+            },
+            "LowerArmL": {
+              "rotationX": 51.5,
+              "rotationY": -42.8,
+              "rotationZ": -84.4,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            }
+          }
+        },
+        {
+          "frame": 10,
+          "elements": {
+            "UpperArmR": {
+              "rotationX": -18.3,
+              "rotationY": 17.3,
+              "rotationZ": -62.5,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": 0.4
+            },
+            "LowerArmR": {
+              "rotationX": -1.0,
+              "rotationY": -14.0,
+              "rotationZ": -15.9,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            },
+            "UpperArmL": {
+              "rotationX": -20.6,
+              "rotationY": -5.7,
+              "rotationZ": 19.9,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": -0.2
+            },
+            "LowerArmL": {
+              "rotationX": 52.9,
+              "rotationY": -45.3,
+              "rotationZ": -86.3,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            }
+          }
+        },
+        {
+          "frame": 19,
+          "elements": {
+            "UpperArmR": {
+              "rotationX": -18.3,
+              "rotationY": 17.3,
+              "rotationZ": -62.5,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": 0.4
+            },
+            "LowerArmR": {
+              "rotationX": -1.0,
+              "rotationY": -14.0,
+              "rotationZ": -15.9,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            },
+            "UpperArmL": {
+              "rotationX": -20.1,
+              "rotationY": -5.6,
+              "rotationZ": 19.0,
+              "offsetX": 0.0,
+              "offsetY": -0.4,
+              "offsetZ": -0.2
+            },
+            "LowerArmL": {
+              "rotationX": 54.0,
+              "rotationY": -47.3,
+              "rotationZ": -87.6,
+              "offsetX": 0.4,
+              "offsetY": 0.6,
+              "offsetZ": 0.0
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "file": "game:entities/humanoid/player.json",
+    "op": "add",
+    "path": "/client/animations/-",
+    "value": {
+      "code": "iiex-ladlehold",
+      "animation": "iiex-ladlehold",
+      "blendMode": "Add",
+      "elementWeight": {
+        "UpperArmR": 20,
+        "LowerArmR": 20,
+        "UpperArmL": 20,
+        "LowerArmL": 20
+      },
+      "elementBlendMode": {
+        "UpperArmR": "AddAverage",
+        "LowerArmR": "AddAverage",
+        "UpperArmL": "AddAverage",
+        "LowerArmL": "AddAverage"
+      }
+    }
+  },
+  {
+    "file": "game:entities/humanoid/player.json",
+    "op": "add",
+    "path": "/client/animations/-",
+    "value": {
+      "code": "iiex-ladlehold-fp",
+      "animation": "iiex-ladlehold-fp",
+      "blendMode": "Add",
+      "elementWeight": {
+        "UpperArmR": 100,
+        "LowerArmR": 100,
+        "UpperArmL": 100,
+        "LowerArmL": 100
+      },
+      "elementBlendMode": {
+        "UpperArmR": "AddAverage",
+        "LowerArmR": "AddAverage",
+        "UpperArmL": "AddAverage",
+        "LowerArmL": "AddAverage"
+      }
+    }
+  },
+  {
+    "file": "game:entities/humanoid/player.json",
+    "op": "add",
+    "path": "/client/animations/-",
+    "value": {
+      "code": "iiex-ladlepour",
+      "animation": "iiex-ladlepour",
+      "blendMode": "Add",
+      "elementWeight": {
+        "UpperArmR": 20,
+        "LowerArmR": 20,
+        "UpperArmL": 20,
+        "LowerArmL": 20
+      },
+      "elementBlendMode": {
+        "UpperArmR": "AddAverage",
+        "LowerArmR": "AddAverage",
+        "UpperArmL": "AddAverage",
+        "LowerArmL": "AddAverage"
+      },
+      "easeInSpeed": 3,
+      "easeOutSpeed": 5
+    }
+  },
+  {
+    "file": "game:entities/humanoid/player.json",
+    "op": "add",
+    "path": "/client/animations/-",
+    "value": {
+      "code": "iiex-ladlepour-fp",
+      "animation": "iiex-ladlepour-fp",
+      "blendMode": "Add",
+      "elementWeight": {
+        "UpperArmR": 100,
+        "LowerArmR": 100,
+        "UpperArmL": 100,
+        "LowerArmL": 100
+      },
+      "elementBlendMode": {
+        "UpperArmR": "AddAverage",
+        "LowerArmR": "AddAverage",
+        "UpperArmL": "AddAverage",
+        "LowerArmL": "AddAverage"
+      },
+      "easeInSpeed": 3,
+      "easeOutSpeed": 5
+    }
+  }
+]

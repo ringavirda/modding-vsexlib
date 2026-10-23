@@ -13,7 +13,7 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Testing;
 
-/// <summary>Writes the views of a collectible, and every gate's and rule's (G4, G9, G11, G14, G15, G16) reading of them, as an <c>item-views/1</c> file that
+/// <summary>Writes the views of a collectible, and every gate's and rule's (G4, G9, G11, G14, G15, G16, G17) reading of them, as an <c>item-views/1</c> file that
 /// extools renders. The gates measure the views given, never the collectible's resolved fields.</summary>
 public static class ViewDump {
   /// <summary>The environment variable that names the folder the files go under.</summary>

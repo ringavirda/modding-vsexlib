@@ -14,6 +14,22 @@ namespace ExpandedLib.Helpers;
 internal static class ItemViewsPass {
   private const double Tolerance = 1e-4;
 
+  // The game's own default clips, which its blocks and items name and the player's animation list maps or leaves unmapped.
+  private static readonly HashSet<string> GameClips = new(
+    [
+      ViewReferences.DefaultReady,
+      ViewReferences.DefaultHit,
+      ViewReferences.DefaultUse,
+      ViewReferences.BlockReady,
+      ViewReferences.BlockUse,
+    ],
+    StringComparer.OrdinalIgnoreCase
+  );
+
+  private static readonly AssetLocation PlayerShape = new(
+    "game:shapes/entity/humanoid/seraph-faceless.json"
+  );
+
   /// <summary>Replaces each transform equal to the game's default for its type with the computed one and
   /// fills each absent held clip; an authored transform or clip stays. Collectibles that declare kind
   /// <c>none</c>, texture-only items and other domains are left as they are. A shape that does not load, or a
@@ -44,6 +60,7 @@ internal static class ItemViewsPass {
         continue;
       ItemViewSet? views;
       try {
+        CollectibleViews.GripsOf(collectible);
         views = ItemViews.Compute(api, collectible);
       } catch (Exception e)
           when (e is InvalidOperationException or ArgumentException) {
@@ -60,6 +77,55 @@ internal static class ItemViewsPass {
       }
       Apply(collectible, views);
     }
+    if (api.Side == EnumAppSide.Client)
+      WarnMissingClips(api, domains);
+  }
+
+  private static void WarnMissingClips(ICoreAPI api, HashSet<string> domains) {
+    Shape? shape = Shape.TryGet(api, PlayerShape);
+    if (shape == null)
+      return;
+    HashSet<string> clips = new(
+      shape.Animations.Select(a => a.Code),
+      StringComparer.OrdinalIgnoreCase
+    );
+    SortedDictionary<string, SortedSet<string>> missing = [];
+    foreach (
+      CollectibleObject collectible in api
+        .World.Blocks.Cast<CollectibleObject>()
+        .Concat(api.World.Items)
+    ) {
+      if (
+        collectible?.Code == null
+        || !domains.Contains(collectible.Code.Domain)
+      )
+        continue;
+      foreach (
+        string? named in new[]
+        {
+          collectible.HeldRightTpIdleAnimation,
+          collectible.HeldRightReadyAnimation,
+          collectible.HeldTpHitAnimation,
+          collectible.HeldTpUseAnimation,
+        }
+      ) {
+        if (
+          string.IsNullOrEmpty(named)
+          || clips.Contains(named)
+          || GameClips.Contains(named)
+        )
+          continue;
+        if (!missing.TryGetValue(named, out SortedSet<string>? codes))
+          missing[named] = codes = [];
+        codes.Add(collectible.Code.ToString());
+      }
+    }
+    foreach ((string clip, SortedSet<string> codes) in missing)
+      api.Logger.Warning(
+        "The player's shape has no clip '{0}', which {1} name; the hands stay idle",
+        clip,
+        string.Join(", ", codes)
+      );
   }
 
   private static void WarnUnloadedShape(

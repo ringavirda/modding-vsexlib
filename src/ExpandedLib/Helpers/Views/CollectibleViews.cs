@@ -142,6 +142,31 @@ internal static class CollectibleViews {
     return new Vec3d(v[0], v[1], v[2]);
   }
 
+  /// <summary>The declared <c>attributes.itemViews.grips</c> of <paramref name="collectible"/>: where the right and the
+  /// left hand hold it, as points of its shape in voxels; null when none is declared.</summary>
+  /// <exception cref="ArgumentException">The declaration is not an object whose <c>right</c> and <c>left</c> are each an
+  /// array of three numbers.</exception>
+  internal static ItemGrips? GripsOf(CollectibleObject collectible) {
+    JsonObject? node = collectible.Attributes?["itemViews"]?["grips"];
+    if (node == null || !node.Exists)
+      return null;
+    if (
+      node.Token is not JObject o
+      || Point(o["right"]) is not { } right
+      || Point(o["left"]) is not { } left
+    )
+      throw new ArgumentException(
+        $"{collectible.Code}: attributes.itemViews.grips is not an object with right and left, each an array of three numbers"
+      );
+    return new ItemGrips(right, left);
+  }
+
+  private static Vec3d? Point(JToken? token) =>
+    token is JArray { Count: 3 } a
+    && a.All(t => t.Type is JTokenType.Integer or JTokenType.Float)
+      ? new Vec3d((double)a[0], (double)a[1], (double)a[2])
+      : null;
+
   private static ItemViewKind Declared(CollectibleObject collectible) {
     string? name = collectible.Attributes?["itemViews"]?["kind"]?.AsString();
     if (name == null)
