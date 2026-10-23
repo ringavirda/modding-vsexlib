@@ -38,6 +38,12 @@ public class StructureBreaksTests
   private static StructureBreaks.Result Run(
     Action<TestWorld> prepare,
     params ExBlockDef[] defs
+  ) => Run(1, prepare, defs);
+
+  private static StructureBreaks.Result Run(
+    int threads,
+    Action<TestWorld> prepare,
+    params ExBlockDef[] defs
   ) =>
     StructureBreaks.Run(
       defs,
@@ -51,8 +57,36 @@ public class StructureBreaksTests
         world.RegisterClass("test-addsstick", typeof(AddsAStick));
         world.RegisterClass("test-onlyflint", typeof(OnlyAFlint));
         prepare(world);
-      }
+      },
+      threads
     );
+
+  // Fails when the merged tallies come out in finish order or reversed, or a variant is broken twice
+  // or not at all on the threads.
+  [Fact]
+  public void Breaking_on_four_threads_gives_the_serial_result_in_the_serial_order()
+  {
+    ExBlockDef[] defs =
+    [
+      Mega("ok").VariantGroup("side", "n", "e", "s", "w"),
+      Mega("leaves", "test-leavesfillers"),
+      Mega("throws", "test-throwsonbreak"),
+      Mega("empty", "test-dropsnothing"),
+    ];
+
+    StructureBreaks.Result serial = Run(1, _ => { }, defs);
+    StructureBreaks.Result threaded = Run(4, _ => { }, defs);
+
+    Assert.True(serial.Failures.Count >= 3);
+    Assert.Equal(serial.Failures, threaded.Failures);
+    Assert.Equal(serial.Blocks, threaded.Blocks);
+    Assert.Equal(serial.Variants, threaded.Variants);
+    Assert.Equal(serial.Breaks, threaded.Breaks);
+    Assert.Equal(
+      serial.Spawned.Select(s => s.ToString()),
+      threaded.Spawned.Select(s => s.ToString())
+    );
+  }
 
   /// <summary>Breaks per cell of a three-stage construction: stage 0 once, stages 1 and 2 once per
   /// payment.</summary>
