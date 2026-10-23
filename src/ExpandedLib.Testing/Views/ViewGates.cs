@@ -375,10 +375,15 @@ internal static class ViewGates {
     );
 
   private static string HeldCode(bool block, string? idle, string? ready) =>
-    block ? BlockHeldClip
-    : !string.IsNullOrEmpty(idle) ? idle
-    : !string.IsNullOrEmpty(ready) ? ready
-    : "helditemready";
+    block
+      ? ViewReferences.LongCarries.Any(c => c.Clip == idle)
+        ? idle!
+        : BlockHeldClip
+      : !string.IsNullOrEmpty(idle)
+        ? idle
+        : !string.IsNullOrEmpty(ready)
+          ? ready
+          : "helditemready";
 
   /// <summary>The seraph shape's clip the game plays for <paramref name="code"/>: the player's animation list maps the
   /// code, ignoring case, to a clip, and the first-person hands take that clip's <c>-fp</c> twin.</summary>
@@ -729,7 +734,7 @@ internal static class ViewGates {
   /// <param name="group">The group to judge.</param>
   /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
   /// <returns>G4 on the ground, G9 in third and first person, G11, G14 when the group's collectible declares an
-  /// <c>itemViews.tip</c>, G17 in third person when the group's collectible declares <c>itemViews.grips</c>, G15 in third and first person when the group's box is a sheet, G16 in third and first person
+  /// <c>itemViews.tip</c>, G17 in third person when the group's collectible declares <c>itemViews.grips</c> or is a long item held in one of the long carries, G15 in third and first person when the group's box is a sheet, G16 in third and first person
   /// when the group is a block with a hand transform of its own (one with the rotation of <see cref="ModelTransform.BlockDefaultTp"/> is the game's hold for a block that
   /// authors none, rescaled and moved by the item views, and is not judged), and G12 when a row of <paramref name="catalogue"/> names one of the group's codes, each
   /// with its pass or failure.</returns>
@@ -794,6 +799,10 @@ internal static class ViewGates {
     }
     if (CollectibleViews.GripsOf(group.Representative) is { } grips)
       readings.Add(LeftGrip(world, group, grips.Left));
+    else if (
+      group.IsLong && ViewReferences.LongCarries.Any(c => c.Clip == group.Held)
+    )
+      readings.Add(LeftGrip(world, group, LongLeftGrip(world, group)));
     if (catalogue?.Reading(group) is { } sized)
       readings.Add(sized);
     return readings;
@@ -913,6 +922,17 @@ internal static class ViewGates {
 
   private static bool IsDefaultBlockHold(ModelTransform hand) {
     return hand.Rotation.Equals(ModelTransform.BlockDefaultTp().Rotation);
+  }
+
+  // The long item's grip on the player's left: of the carry's two stations, the one lying farther toward the left anchor
+  // from the right.
+  private static Vec3d LongLeftGrip(TestWorld world, ViewGroup group) {
+    SeraphPose pose = HeldPose(world, group, false);
+    Mat4 m = ViewMatrices.Hand(group.Hand, pose);
+    Vec3d left = pose.LeftAnchor.Position - pose.ItemAnchor.Position;
+    return ItemViews
+      .LongGrips(Lay.Of(group.Box, true, null), group.Box)
+      .MaxBy(g => Dot(m.Apply(g / 16), left))!;
   }
 
   private static GateReading LeftGrip(

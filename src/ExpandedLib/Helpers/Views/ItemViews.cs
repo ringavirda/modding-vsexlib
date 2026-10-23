@@ -389,16 +389,7 @@ public static class ItemViews {
     out Vec3d centre,
     out string carry
   ) {
-    double[,] r = Mul(
-      Rotation(
-        new Vec3d(
-          LongHold.Rotation.X,
-          LongHold.Rotation.Y - HandYaw,
-          LongHold.Rotation.Z
-        )
-      ),
-      Turn(lay, LongHold, out _)
-    );
+    double[,] r = LongTurn(lay);
     Vec3d euler = Euler(r);
     double[] mid = [.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)];
     centre = lay.Point(mid);
@@ -406,11 +397,7 @@ public static class ItemViews {
       lay.Extent(0) <= b.Longest + LongTolerance
     );
     carry = band.Clip;
-    var up = new Vec3d(
-      r[0, 0] * LongUp.X + r[1, 0] * LongUp.Y + r[2, 0] * LongUp.Z,
-      r[0, 1] * LongUp.X + r[1, 1] * LongUp.Y + r[2, 1] * LongUp.Z,
-      r[0, 2] * LongUp.X + r[1, 2] * LongUp.Y + r[2, 2] * LongUp.Z
-    );
+    Vec3d up = LongUpOf(r);
     double centreHeight = Dot(centre, up);
     double rest = new[] { mid[0] - band.Half, mid[0] + band.Half }
       .Select(station => Underside(lay, box, up, station))
@@ -446,6 +433,55 @@ public static class ItemViews {
       Scale = (float)s,
       Rotate = true,
     };
+  }
+
+  private static double[,] LongTurn(Lay lay) =>
+    Mul(
+      Rotation(
+        new Vec3d(
+          LongHold.Rotation.X,
+          LongHold.Rotation.Y - HandYaw,
+          LongHold.Rotation.Z
+        )
+      ),
+      Turn(lay, LongHold, out _)
+    );
+
+  private static Vec3d LongUpOf(double[,] r) =>
+    new(
+      r[0, 0] * LongUp.X + r[1, 0] * LongUp.Y + r[2, 0] * LongUp.Z,
+      r[0, 1] * LongUp.X + r[1, 1] * LongUp.Y + r[2, 1] * LongUp.Z,
+      r[0, 2] * LongUp.X + r[1, 2] * LongUp.Y + r[2, 2] * LongUp.Z
+    );
+
+  /// <summary>The points of a long item that rest on the two hands of its carry: at the carry's two stations, a half
+  /// spread either side of the box centre along the longest axis, on the drawn underside.</summary>
+  /// <param name="lay">The lay of the item's drawn box.</param>
+  /// <param name="box">The drawn box, whose elements give the underside.</param>
+  /// <returns>The points at the lower and the higher station along the longest axis, in voxels in the shape's frame.
+  /// A station no drawn element reaches takes the lowest drawn point.</returns>
+  internal static Vec3d[] LongGrips(Lay lay, ViewBox box) {
+    Vec3d up = LongUpOf(LongTurn(lay));
+    double[] mid = [.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)];
+    LongCarry band = LongCarries.First(b =>
+      lay.Extent(0) <= b.Longest + LongTolerance
+    );
+    return
+    [
+      .. new[] { mid[0] - band.Half, mid[0] + band.Half }.Select(station =>
+      {
+        Vec3d at = lay.Point([station, mid[1], mid[2]]);
+        double height =
+          Underside(lay, box, up, station)
+          ?? box.Drawn.SelectMany(p => p).Min(p => Dot(p, up));
+        double lift = height - Dot(at, up);
+        return new Vec3d(
+          at.X + lift * up.X,
+          at.Y + lift * up.Y,
+          at.Z + lift * up.Z
+        );
+      }),
+    ];
   }
 
   private static double Dot(Vec3d a, Vec3d b) =>

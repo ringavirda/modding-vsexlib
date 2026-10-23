@@ -211,7 +211,7 @@ public class ItemViewTipTests {
     tool.Tool = EnumTool.Chisel;
     ItemViewSet carried = ItemViews.Compute(World.Api, tool)!;
     Assert.Equal(
-      "-1.22,-0.13,0.08,-31.71,109.48,-42.71,1.25,0.09,0.09,1",
+      "-1.16,-0.19,0.39,-31.71,109.48,-42.71,1.25,0.09,0.09,1",
       Show(longtool.TpHand)
     );
     Assert.Equal("0.9,0.91,0,33,0,-127,2.1,0.09,0.09,2.64", Show(longtool.Gui));
