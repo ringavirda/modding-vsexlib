@@ -133,6 +133,7 @@ public sealed partial class TestWorld {
   private readonly HashSet<string> _clientShapeDomains = new();
   private AssetManager? _clientShapes;
   private long _nextClientListenerId;
+  private bool _clientModsStarted;
 
   /// <summary>Points the client twins' shapes of <paramref name="domain"/> at
   /// <paramref name="directory"/>, a folder laid out as a mod's <c>assets/&lt;domain&gt;</c> with
@@ -164,6 +165,11 @@ public sealed partial class TestWorld {
   }
 
   internal void InitializeClientTwins(IReadOnlyList<BlockEntity> twins) {
+    if (!_clientModsStarted) {
+      _clientModsStarted = true;
+      TestModLoader clientMods = StartClientMods(ClientApi);
+      ClientApi.ModLoader.Returns(clientMods);
+    }
     foreach (BlockEntity twin in twins)
       _clientTwins[twin.Pos] = twin;
     foreach (BlockEntity twin in twins) {
@@ -280,8 +286,6 @@ public sealed partial class TestWorld {
 
     api.ObjectCache.Returns(_clientCache);
     coreApi.ObjectCache.Returns(_clientCache);
-    var clientMods = new Lazy<TestModLoader>(() => StartClientMods(api));
-    api.ModLoader.Returns(_ => clientMods.Value);
 
     var assets = Substitute.For<IAssetManager>();
     assets
