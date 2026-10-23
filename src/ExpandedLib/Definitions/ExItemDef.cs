@@ -375,6 +375,15 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
+  /// <summary>Sets <c>attributes.itemViews</c> with no declared grips; the signature mods built before
+  /// <c>grips</c> existed call.</summary>
+  /// <param name="kind">As in <see cref="Views(ItemViewKind, string?, Vec3d?, ValueTuple{Vec3d, Vec3d}?)"/>.</param>
+  /// <param name="tip">As in <see cref="Views(ItemViewKind, string?, Vec3d?, ValueTuple{Vec3d, Vec3d}?)"/>.</param>
+  /// <param name="guiRotation">As in <see cref="Views(ItemViewKind, string?, Vec3d?, ValueTuple{Vec3d, Vec3d}?)"/>.</param>
+  /// <exception cref="ArgumentException"><paramref name="kind"/> is a block kind.</exception>
+  public ExItemDef Views(ItemViewKind kind, string? tip, Vec3d? guiRotation) =>
+    Views(kind, tip, guiRotation, null);
+
   /// <summary>Sets <c>attributes.itemViews</c>, which the load pass and <see cref="ItemViews"/> read: the kind
   /// the item's views are laid out as, and the end that works.</summary>
   /// <param name="kind">Written as its lower-case name; <see cref="ItemViewKind.None"/> keeps the game's defaults.</param>
