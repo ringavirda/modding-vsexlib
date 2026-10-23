@@ -31,6 +31,7 @@ internal static class ViewBlocks {
       (box.From.Z + box.To.Z) / 32,
     ];
     double longest = ext.Max() / 16;
+    string? carry = null;
     double bottom = box.Drawn.SelectMany(p => p).Min(p => p.Y) / 16;
 
     ModelTransform gui = ModelTransform.BlockDefaultGui();
@@ -98,7 +99,12 @@ internal static class ViewBlocks {
         (float)((0.5 + carried * t.Z - c[2]) / heldScale)
       );
       if (IsLong(kind, box.Extents()))
-        tp = ItemViews.LongHand(Lay.Of(box, false, null), out _);
+        tp = ItemViews.LongHand(
+          Lay.Of(box, false, null),
+          box,
+          out _,
+          out carry
+        );
     }
 
     return new ItemViewSet(
@@ -106,9 +112,9 @@ internal static class ViewBlocks {
       gui,
       tp,
       ground,
-      BulkHold,
-      BlockReady,
-      null,
+      carry ?? BulkHold,
+      carry ?? BlockReady,
+      carry,
       BlockUse,
       new Vec3d(box.From.X, box.From.Y, box.From.Z),
       new Vec3d(box.To.X, box.To.Y, box.To.Z),

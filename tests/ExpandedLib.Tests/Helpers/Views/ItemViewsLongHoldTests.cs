@@ -54,7 +54,7 @@ public class ItemViewsLongHoldTests {
     );
 
   private static void Near(double expected, double actual) =>
-    Assert.InRange(actual, expected - 1e-4, expected + 1e-4);
+    Assert.InRange(actual, expected - 5e-4, expected + 5e-4);
 
   private static Vec3d LongAxis(ItemViewSet set) {
     double[] ext =
@@ -66,26 +66,33 @@ public class ItemViewsLongHoldTests {
     return set.BoxAxes![Array.IndexOf(ext, ext.Max())];
   }
 
-  public static TheoryData<string, int, double> Straights =>
+  public static TheoryData<string, int, string, double, double> Straights =>
     new()
     {
-      { "pipe-cast-straight2", 2, -0.825 },
-      { "pipe-castsmall-straight2", 2, -0.825 },
-      { "castpipe-straight2", 2, -0.825 },
-      { "castpipesmall-straight2", 2, -0.825 },
-      { "pipe-cast-straight3", 3, -1.325 },
-      { "pipe-castsmall-straight3", 3, -1.325 },
-      { "castpipe-straight3", 3, -1.325 },
-      { "castpipesmall-straight3", 3, -1.325 },
+      { "pipe-cast-straight2", 2, "exlib-longcarry2", 8, 3.0 },
+      { "pipe-castsmall-straight2", 2, "exlib-longcarry2", 8, 1.0 },
+      { "castpipe-straight2", 2, "exlib-longcarry2", 8, 3.0 },
+      { "castpipesmall-straight2", 2, "exlib-longcarry2", 8, 1.0 },
+      { "pipe-cast-straight3", 3, "exlib-longcarry3", 10, 3.0 },
+      { "pipe-castsmall-straight3", 3, "exlib-longcarry3", 10, 1.0 },
+      { "castpipe-straight3", 3, "exlib-longcarry3", 10, 3.0 },
+      { "castpipesmall-straight3", 3, "exlib-longcarry3", 10, 1.0 },
     };
 
-  // Fails when the long test is dropped: the pipes then take their kind's old hold, a block's 1.2 blocks or a bar's rod hold.
+  // The hands' midpoint (h times the player's left) and the player's up in the hold's anchor frame, to 4 places.
+  private static readonly double[] Left = [0.2449, -0.2129, 0.9459];
+  private static readonly double[] Up = [-0.9428, 0.1752, 0.2835];
+
+  // Fails when the long test is dropped, a band picks another's carry, the offset from the hands is halved, or ready
+  // and hit stay the vanilla clips.
   [Theory]
   [MemberData(nameof(Straights))]
-  public void A_long_pipe_takes_the_approved_hold(
+  public void A_long_pipe_takes_its_bands_carry_resting_on_the_hands(
     string stem,
     int cells,
-    double z
+    string carry,
+    double half,
+    double rest
   ) {
     ItemViewSet set = ItemViews.Compute(World.Api, Pipe(stem))!;
     ModelTransform tp = set.TpHand;
@@ -97,15 +104,15 @@ public class ItemViewsLongHoldTests {
     Assert.Equal(-165.82, tp.Rotation.Y, 2);
     Assert.Equal(76.51, tp.Rotation.Z, 2);
     Assert.Equal(1, tp.ScaleXYZ.X, 4);
-    Near(-0.4669, tp.Translation.X);
-    Near(-0.5363, tp.Translation.Y);
-    Near(z, tp.Translation.Z);
     Assert.Equal(0.5, tp.Origin.X, 4);
     Assert.Equal(0.5, tp.Origin.Y, 4);
     Assert.Equal(cells / 2.0, tp.Origin.Z, 4);
-    Assert.Equal("holdbothhandslarge", set.IdleClip);
-    Assert.Equal("heldblockready", set.ReadyClip);
-    Assert.Null(set.HitClip);
+    Near((half * Left[0] + rest * Up[0]) / 16 - tp.Origin.X, tp.Translation.X);
+    Near((half * Left[1] + rest * Up[1]) / 16 - tp.Origin.Y, tp.Translation.Y);
+    Near((half * Left[2] + rest * Up[2]) / 16 - tp.Origin.Z, tp.Translation.Z);
+    Assert.Equal(carry, set.IdleClip);
+    Assert.Equal(carry, set.ReadyClip);
+    Assert.Equal(carry, set.HitClip);
     Assert.Equal("twohandplaceblock", set.UseClip);
   }
 
@@ -116,9 +123,11 @@ public class ItemViewsLongHoldTests {
   public void A_long_pipe_is_held_at_its_drawn_length(
     string stem,
     int cells,
-    double z
+    string carry,
+    double half,
+    double rest
   ) {
-    _ = z;
+    _ = (carry, half, rest);
     ItemViewSet set = ItemViews.Compute(World.Api, Pipe(stem))!;
     double[] ext = CollectibleViews.BoxOf(World.Api, Pipe(stem))!.Extents();
     Assert.Equal(cells * 16, ext[0], 3);
@@ -132,9 +141,11 @@ public class ItemViewsLongHoldTests {
   public void A_long_pipe_lies_along_the_seraphs_left_right(
     string stem,
     int cells,
-    double z
+    string carry,
+    double half,
+    double rest
   ) {
-    _ = (cells, z);
+    _ = (cells, carry, half, rest);
     ItemViewSet set = ItemViews.Compute(World.Api, Pipe(stem))!;
     Vec3d along = HeldDirection(set.TpHand, LongAxis(set));
     Assert.InRange(Math.Abs(along.Z), Math.Cos(0.05 * Math.PI / 180), 1);
@@ -161,6 +172,113 @@ public class ItemViewsLongHoldTests {
     Vec3d along = HeldDirection(set.TpHand, LongAxis(set));
     Assert.InRange(Math.Abs(along.Z), Math.Cos(0.05 * Math.PI / 180), 1);
     Assert.Equal(1, set.TpHand.ScaleXYZ.X, 4);
+  }
+
+  private static Vec3d[] Cuboid(
+    double x0,
+    double y0,
+    double z0,
+    double x1,
+    double y1,
+    double z1
+  ) =>
+    [
+      .. Enumerable
+        .Range(0, 8)
+        .Select(i => new Vec3d(
+          (i & 1) == 0 ? x0 : x1,
+          (i & 2) == 0 ? y0 : y1,
+          (i & 4) == 0 ? z0 : z1
+        )),
+    ];
+
+  private static CollectibleViews.ViewBox Boxed(params Vec3d[][] elements) {
+    Vec3d[] all = [.. elements.SelectMany(e => e)];
+    return new CollectibleViews.ViewBox(
+      new Vec3d(all.Min(p => p.X), all.Min(p => p.Y), all.Min(p => p.Z)),
+      new Vec3d(all.Max(p => p.X), all.Max(p => p.Y), all.Max(p => p.Z)),
+      [new Vec3d(1, 0, 0), new Vec3d(0, 1, 0), new Vec3d(0, 0, 1)],
+      elements,
+      [.. elements.Select(_ => new bool[6])]
+    );
+  }
+
+  private static ModelTransform HandOf(
+    CollectibleViews.ViewBox box,
+    out string carry
+  ) => ItemViews.LongHand(Lay.Of(box, false, null), box, out _, out carry);
+
+  // Fails when a band edge falls in the wrong band: a length up to 24 voxels is the 1-cell carry, over 24 up to 40 the
+  // 2-cell, over 40 the 3-cell (the upper edge compared with < instead of <=).
+  [Theory]
+  [InlineData(16.5, "exlib-longcarry1")]
+  [InlineData(24, "exlib-longcarry1")]
+  [InlineData(24.5, "exlib-longcarry2")]
+  [InlineData(40, "exlib-longcarry2")]
+  [InlineData(40.5, "exlib-longcarry3")]
+  [InlineData(64, "exlib-longcarry3")]
+  public void A_length_picks_its_carry_at_the_band_edges(
+    double length,
+    string carry
+  ) {
+    HandOf(Boxed(Cuboid(6, 6, 0, 10, 10, length)), out string picked);
+    Assert.Equal(carry, picked);
+  }
+
+  // Fails when the rest height is taken from the whole box instead of the drawn underside at the two hand stations: a
+  // flange at each end of the shaft then lifts the piece off the hands.
+  [Fact]
+  public void A_flange_at_an_end_does_not_lift_the_piece_off_the_hands() {
+    ModelTransform flanged = HandOf(
+      Boxed(
+        Cuboid(6, 6, 0, 10, 10, 32),
+        Cuboid(4, 4, 0, 12, 12, 1),
+        Cuboid(4, 4, 31, 12, 12, 32)
+      ),
+      out _
+    );
+    ModelTransform plain = HandOf(Boxed(Cuboid(6, 6, 0, 10, 10, 32)), out _);
+    Near(plain.Translation.X, flanged.Translation.X);
+    Near(plain.Translation.Y, flanged.Translation.Y);
+    Near(plain.Translation.Z, flanged.Translation.Z);
+  }
+
+  // Fails when the lower of the two undersides is not the one the piece rests on: the higher one then sinks the thick half
+  // into the hand.
+  [Fact]
+  public void A_piece_rests_on_the_lower_of_its_two_undersides() {
+    ModelTransform stepped = HandOf(
+      Boxed(Cuboid(4, 4, 0, 12, 12, 16), Cuboid(6, 6, 16, 10, 10, 32)),
+      out _
+    );
+    ModelTransform thick = HandOf(Boxed(Cuboid(4, 4, 0, 12, 12, 32)), out _);
+    Near(thick.Translation.X, stepped.Translation.X);
+    Near(thick.Translation.Y, stepped.Translation.Y);
+    Near(thick.Translation.Z, stepped.Translation.Z);
+  }
+
+  // Fails when the load pass leaves the carry off the item: its idle, ready or hit clip stays the game's.
+  [Fact]
+  public void The_load_pass_sets_the_carry_on_a_long_item() {
+    Item item = World.World.GetItem(
+      new AssetLocation(Pipes + "castpipe-straight2")
+    );
+    Assert.Equal("exlib-longcarry2", item.HeldRightTpIdleAnimation);
+    Assert.Equal("exlib-longcarry2", item.HeldRightReadyAnimation);
+    Assert.Equal("exlib-longcarry2", item.HeldTpHitAnimation);
+  }
+
+  // Fails when the load pass overwrites what the item names: its idle, ready and hit clips and its hand transform.
+  [Fact]
+  public void An_item_that_names_its_own_clips_and_hand_transform_keeps_them() {
+    Item item = World.World.GetItem(
+      new AssetLocation(Pipes + "ownclips-straight2")
+    );
+    Assert.Equal("holdbothhandslarge", item.HeldRightTpIdleAnimation);
+    Assert.Equal("heldblockready", item.HeldRightReadyAnimation);
+    Assert.Equal("spearhit", item.HeldTpHitAnimation);
+    Assert.Equal(-0.3f, item.TpHandTransform.Translation.X);
+    Assert.Equal(20f, item.TpHandTransform.Rotation.Y);
   }
 
   // Fails when the long test drops its three-times-the-middle rule: a door, twice as long as it is wide, is then held level.

@@ -80,8 +80,38 @@ internal static class ViewReferences {
     1
   );
 
-  /// <summary>The point between the hands, in voxels in the hand frame, where a long item's box centre lies.</summary>
-  internal static readonly Vec3d LongHoldAt = new(0.53, -0.58, 2.80);
+  /// <summary>A long item's carry clip and the length band it serves: <paramref name="Clip"/> holds items up to
+  /// <paramref name="Longest"/> voxels long, with the hands <paramref name="Half"/> voxels either side of the
+  /// centre line.</summary>
+  internal readonly record struct LongCarry(
+    string Clip,
+    double Longest,
+    double Half
+  );
+
+  /// <summary>The carries by band, shortest first: over 16 up to 24 voxels, over 24 up to 40, over 40.</summary>
+  internal static readonly LongCarry[] LongCarries =
+  [
+    new("exlib-longcarry1", 24, 6),
+    new("exlib-longcarry2", 40, 8),
+    new("exlib-longcarry3", double.PositiveInfinity, 10),
+  ];
+
+  /// <summary>The player's left direction in the anchor frame of the long hold, which the hands' midpoint moves along
+  /// by the carry's half spread, in voxels.</summary>
+  internal static readonly Vec3d LongHandsAxis = new(
+    0.2449051073902919,
+    -0.2129157722241732,
+    0.9458796764453361
+  );
+
+  /// <summary>The player's up direction in the anchor frame of the long hold, which a long item's box centre lies above
+  /// the hands' midpoint along.</summary>
+  internal static readonly Vec3d LongUp = new(
+    -0.9428172527290073,
+    0.1752006950152712,
+    0.28354954491709694
+  );
 
   /// <summary>The game item whose hold a declared tip copies for the kinds a handle holds.</summary>
   internal const string TipHoldCode = "game:knife-generic-iron";

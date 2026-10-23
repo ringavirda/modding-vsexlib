@@ -295,8 +295,9 @@ public static class ItemViews {
     Vec3d grip;
     Item? knife = null;
     HandReference? hold = null;
+    string? carry = null;
     if (isLong) {
-      hand = LongHand(lay, out grip);
+      hand = LongHand(lay, box, out grip, out carry);
     } else {
       knife = tip != null && !longHeld ? TipCarrier(api) : null;
       hold = knife == null ? null : FromCarrier(api, knife, TipHoldEnd);
@@ -340,19 +341,25 @@ public static class ItemViews {
       };
     }
     string? idle =
-      isLong ? BulkHold
-      : hold != null ? null
-      : kind switch {
-        ItemViewKind.Longtool => SpearIdle,
-        ItemViewKind.Bulk => BulkHold,
-        _ => null,
-      };
+      carry
+      ?? (
+        hold != null
+          ? null
+          : kind switch {
+            ItemViewKind.Longtool => SpearIdle,
+            ItemViewKind.Bulk => BulkHold,
+            _ => null,
+          }
+      );
     string? ready =
-      isLong ? BlockReady
-      : hold != null
-        ? knife!.HeldRightReadyAnimation == DefaultReady ? null
-          : knife.HeldRightReadyAnimation
-      : idle;
+      carry
+      ?? (
+        hold != null
+          ? knife!.HeldRightReadyAnimation == DefaultReady
+            ? null
+            : knife.HeldRightReadyAnimation
+          : idle
+      );
     return new ItemViewSet(
       kind,
       Slot(kind, slotLay, reference, slotTurn, guiRotation),
@@ -360,7 +367,7 @@ public static class ItemViews {
       Ground(slotLay, reference),
       idle,
       ready,
-      kind == ItemViewKind.Longtool && !isLong ? SpearHit : null,
+      carry ?? (kind == ItemViewKind.Longtool ? SpearHit : null),
       isLong ? BlockUse : null,
       new Vec3d(lay.Lo[0], lay.Lo[1], lay.Lo[2]),
       new Vec3d(lay.Hi[0], lay.Hi[1], lay.Hi[2]),
@@ -369,11 +376,19 @@ public static class ItemViews {
     );
   }
 
-  /// <summary>The two-handed hold of a long item: its longest axis level along the seraph's left-right, its box centre
-  /// at <see cref="LongHoldAt"/> between the hands, at true size.</summary>
+  /// <summary>The two-handed hold of a long item: its longest axis level along the seraph's left-right, resting on the
+  /// hands of the carry its length picks, its box centre above the hands' midpoint by the height of the centre over the
+  /// drawn underside at the two hand stations, at true size.</summary>
   /// <param name="lay">The lay of the item's drawn box.</param>
-  /// <param name="centre">The box centre in voxels in the shape's frame, the point the hand transform puts between the hands.</param>
-  internal static ModelTransform LongHand(Lay lay, out Vec3d centre) {
+  /// <param name="box">The drawn box, whose elements give the underside.</param>
+  /// <param name="centre">The box centre in voxels in the shape's frame, the point the hand transform puts above the hands.</param>
+  /// <param name="carry">The carry clip of the item's length band.</param>
+  internal static ModelTransform LongHand(
+    Lay lay,
+    ViewBox box,
+    out Vec3d centre,
+    out string carry
+  ) {
     double[,] r = Mul(
       Rotation(
         new Vec3d(
@@ -385,13 +400,38 @@ public static class ItemViews {
       Turn(lay, LongHold, out _)
     );
     Vec3d euler = Euler(r);
-    centre = lay.Point([.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)]);
+    double[] mid = [.. lay.Lo.Select((lo, k) => (lo + lay.Hi[k]) / 2)];
+    centre = lay.Point(mid);
+    LongCarry band = LongCarries.First(b =>
+      lay.Extent(0) <= b.Longest + LongTolerance
+    );
+    carry = band.Clip;
+    var up = new Vec3d(
+      r[0, 0] * LongUp.X + r[1, 0] * LongUp.Y + r[2, 0] * LongUp.Z,
+      r[0, 1] * LongUp.X + r[1, 1] * LongUp.Y + r[2, 1] * LongUp.Z,
+      r[0, 2] * LongUp.X + r[1, 2] * LongUp.Y + r[2, 2] * LongUp.Z
+    );
+    double centreHeight = Dot(centre, up);
+    double rest = new[] { mid[0] - band.Half, mid[0] + band.Half }
+      .Select(station => Underside(lay, box, up, station))
+      .Where(under => under != null)
+      .Select(under => centreHeight - under!.Value)
+      .DefaultIfEmpty(
+        centreHeight - box.Drawn.SelectMany(p => p).Min(p => Dot(p, up))
+      )
+      .Max();
     double s = LongHold.Scale;
     return new ModelTransform {
       Translation = new FastVec3f(
-        (float)((LongHoldAt.X - centre.X) / 16 / s),
-        (float)((LongHoldAt.Y - centre.Y) / 16 / s),
-        (float)((LongHoldAt.Z - centre.Z) / 16 / s)
+        (float)(
+          (band.Half * LongHandsAxis.X + rest * LongUp.X - centre.X) / 16 / s
+        ),
+        (float)(
+          (band.Half * LongHandsAxis.Y + rest * LongUp.Y - centre.Y) / 16 / s
+        ),
+        (float)(
+          (band.Half * LongHandsAxis.Z + rest * LongUp.Z - centre.Z) / 16 / s
+        )
       ),
       Rotation = new FastVec3f(
         (float)Wrap(euler.X),
@@ -406,6 +446,45 @@ public static class ItemViews {
       Scale = (float)s,
       Rotate = true,
     };
+  }
+
+  private static double Dot(Vec3d a, Vec3d b) =>
+    a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+
+  // The lowest height along up of the drawn elements' cross-section at the station, a position along the lay's longest
+  // axis; null when no element reaches it.
+  private static double? Underside(
+    Lay lay,
+    ViewBox box,
+    Vec3d up,
+    double station
+  ) {
+    double? lowest = null;
+    foreach (Vec3d[] corners in box.Drawn)
+      for (int i = 0; i < 8; i++)
+        for (int bit = 1; bit < 8; bit <<= 1) {
+          if ((i & bit) != 0)
+            continue;
+          Vec3d a = corners[i];
+          Vec3d b = corners[i | bit];
+          double ua = lay.Coords(a)[0];
+          double ub = lay.Coords(b)[0];
+          if (station < Math.Min(ua, ub) || station > Math.Max(ua, ub))
+            continue;
+          double t = ua == ub ? 0 : (station - ua) / (ub - ua);
+          double height = Dot(
+            new Vec3d(
+              a.X + t * (b.X - a.X),
+              a.Y + t * (b.Y - a.Y),
+              a.Z + t * (b.Z - a.Z)
+            ),
+            up
+          );
+          if (ua == ub)
+            height = Math.Min(height, Dot(b, up));
+          lowest = lowest == null ? height : Math.Min(lowest.Value, height);
+        }
+    return lowest;
   }
 
   // The matrix that carries the lay's axes onto the reference's, mirrored about the shortest where the two

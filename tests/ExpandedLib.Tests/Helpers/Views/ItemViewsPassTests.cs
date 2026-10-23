@@ -60,8 +60,9 @@ public class ItemViewsPassTests {
     Assert.False(
       Same(ModelTransform.ItemDefaultGround(), item.GroundTransform)
     );
-    Assert.Equal("holdbothhandslarge", item.HeldRightTpIdleAnimation);
-    Assert.Equal("heldblockready", item.HeldRightReadyAnimation);
+    Assert.Equal("exlib-longcarry2", item.HeldRightTpIdleAnimation);
+    Assert.Equal("exlib-longcarry2", item.HeldRightReadyAnimation);
+    Assert.Equal("exlib-longcarry2", item.HeldTpHitAnimation);
     Assert.Equal("twohandplaceblock", item.HeldTpUseAnimation);
   }
 
