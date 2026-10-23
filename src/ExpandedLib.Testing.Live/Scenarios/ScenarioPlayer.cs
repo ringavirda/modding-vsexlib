@@ -542,8 +542,29 @@ internal sealed class ScenarioPlayer : IHandRelease {
     out string left
   ) => Construct(at, face, supply, null, 0, out left, out _);
 
+  /// <summary>The stack each hotbar slot holds for a construction click.</summary>
+  /// <param name="slots">The hotbar's slot count.</param>
+  /// <param name="hand">The active slot's index, 0 to <paramref name="slots"/> - 1.</param>
+  /// <param name="supply">The stage's materials, in order.</param>
+  /// <param name="tool">The stack for the active slot; null puts the first supply stack there instead.</param>
+  internal static ItemStack?[] Lay(
+    int slots,
+    int hand,
+    IReadOnlyList<ItemStack> supply,
+    ItemStack? tool
+  ) {
+    var laid = new ItemStack?[slots];
+    int next = 0;
+    laid[hand] = tool ?? (supply.Count > 0 ? supply[next++] : null);
+    for (int i = 0; i < slots; i++)
+      if (i != hand)
+        laid[i] = next < supply.Count ? supply[next++] : null;
+    return laid;
+  }
+
   /// <summary>As the plain <see cref="Construct(BlockPos, BlockFacing, IReadOnlyList{ItemStack}, out string)"/>,
-  /// with <paramref name="tool"/> in the active slot and the supply in the other slots; when the click
+  /// with <paramref name="tool"/> in the active slot and the supply in the other slots, or the first
+  /// supply stack in the active slot when there is no tool; when the click
   /// begins a hold, one step at <paramref name="seconds"/> and the stop follow it.</summary>
   /// <param name="tool">The stack the main hand holds, or null for an empty hand.</param>
   /// <param name="seconds">The seconds the hold runs when the click begins one; 0 for a plain click.</param>
@@ -571,12 +592,13 @@ internal sealed class ScenarioPlayer : IHandRelease {
     Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
     Hold(Player.Entity.Controls, []);
     try {
-      int next = 0;
+      int handIndex = 0;
       for (int i = 0; i < hotbar.Count; i++)
-        hotbar[i].Itemstack =
-          hotbar[i] == hand ? tool
-          : next < supply.Count ? supply[next++]
-          : null;
+        if (hotbar[i] == hand)
+          handIndex = i;
+      ItemStack?[] laid = Lay(hotbar.Count, handIndex, supply, tool);
+      for (int i = 0; i < hotbar.Count; i++)
+        hotbar[i].Itemstack = laid[i];
       var selection = new BlockSelection {
         Position = at.Copy(),
         Face = face,

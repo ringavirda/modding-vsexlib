@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -29,7 +30,7 @@ public static class BlockLaws {
   /// laws structures, one per variant <c>MultiblockLaw.OneFacing</c> picks.</param>
   /// <param name="Cases">Cases it ran: placements, breaks, structures stood up, block entities
   /// read or reloaded, faces a neighbour came and went on, network pairs joined from both sides,
-  /// port-to-member pairs coupled from both sides, clicks made, on a block or a formed structure, accepted stacks followed, or block definitions read for their controls.</param>
+  /// port-to-member pairs coupled from both sides, clicks made, on a block or a formed structure, accepted stacks followed, block definitions read for their controls, or cells drawn.</param>
   /// <param name="Findings">One line per finding, each starting with the variant code it is
   /// about and a space.</param>
   public sealed record Law(
@@ -42,8 +43,8 @@ public static class BlockLaws {
     /// the formed laws.</summary>
     public string Unit { get; init; } = "blocktypes";
 
-    /// <summary>Wall-clock seconds the law took, world stand-up included.</summary>
-    public double Seconds { get; init; }
+    /// <summary>Wall time the law took to stand its world and run, set by <see cref="Run"/>.</summary>
+    public TimeSpan Elapsed { get; init; }
 
     /// <summary>One line per structure a formed law stood up formed, in the order it ran: the
     /// anchor's variant code, then what the structure gave the law. Empty for the other
@@ -65,11 +66,13 @@ public static class BlockLaws {
       Laws.FirstOrDefault(l => l.Name == name)
       ?? throw new KeyNotFoundException($"No law named '{name}' ran.");
 
-    /// <summary>One line per law: its name, <see cref="Law.Seconds"/> and <see cref="Law.Cases"/>.</summary>
+    /// <summary>One line per law: its name, <see cref="Law.Elapsed"/> and <see cref="Law.Cases"/>.</summary>
     public string Timings() =>
       string.Join(
         "\n",
-        Laws.Select(l => $"{l.Name}: {l.Seconds:F1} s, {l.Cases} cases")
+        Laws.Select(l =>
+          $"{l.Name}: {l.Elapsed.TotalSeconds:F1} s, {l.Cases} cases"
+        )
       );
 
     /// <summary>One line per law, then its findings, indented.</summary>
@@ -102,7 +105,7 @@ public static class BlockLaws {
   /// <param name="prepare">Registers on each world the network types and mod systems the blocks
   /// need, before any is defined; may run on several threads at once.</param>
   /// <returns>In order, the laws <c>placement</c>, <c>break</c> (1.22 on), <c>multiblock</c>,
-  /// <c>megablock</c>, <c>control</c> (1.22 on), <c>info</c>, <c>reload</c>, <c>neighbour</c>, <c>network</c>,
+  /// <c>megablock</c>, <c>draw</c> (1.22 on), <c>control</c> (1.22 on), <c>info</c>, <c>reload</c>, <c>neighbour</c>, <c>network</c>,
   /// <c>network port</c>, <c>interaction</c>, <c>container</c>, <c>formed interaction</c>, <c>formed
   /// container</c>.</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, or a block's entity or
@@ -145,72 +148,52 @@ public static class BlockLaws {
     ExItemDef[] items = [.. given.OfType<ExItemDef>()];
     groups = Math.Max(1, groups);
     var laws = new List<Law>();
-    laws.Add(
-      Timed(() => PlacementLaw.Run(Stand(all, assemblies, prepare), domain))
-    );
+    void Time(Func<Law> run) {
+      var clock = Stopwatch.StartNew();
+      Law law = run();
+      laws.Add(law with { Elapsed = clock.Elapsed });
+    }
+    Time(() => PlacementLaw.Run(Stand(all, assemblies, prepare), domain));
 #if GAME_GE_1_22
-    laws.Add(
-      Timed(() =>
-        BreakLaw.Run(
-          all.Where(d => d.Domain == domain),
-          assemblies,
-          prepare,
-          groups
-        )
+    Time(() =>
+      BreakLaw.Run(
+        all.Where(d => d.Domain == domain),
+        assemblies,
+        prepare,
+        groups
       )
     );
 #endif
-    laws.Add(
-      Timed(() => MultiblockLaw.Run(Stand(all, assemblies, prepare), domain))
-    );
-    laws.Add(
-      Timed(() => MegablockLaw.Run(Stand(all, assemblies, prepare), domain))
-    );
+    Time(() => MultiblockLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => MegablockLaw.Run(Stand(all, assemblies, prepare), domain));
 #if GAME_GE_1_22
-    laws.Add(
-      Timed(() => ControlLaw.Run(Stand(all, assemblies, prepare), domain))
-    );
+    Time(() => DrawLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => ControlLaw.Run(Stand(all, assemblies, prepare), domain));
 #endif
-    laws.Add(Timed(() => InfoLaw.Run(Stand(all, assemblies, prepare), domain)));
-    laws.Add(
-      Timed(() => ReloadLaw.Run(Stand(all, assemblies, prepare), domain))
-    );
-    laws.Add(
-      Timed(() => NeighbourLaw.Run(Stand(all, assemblies, prepare), domain))
-    );
-    laws.Add(
-      Timed(() => NetworkLaw.Run(Stand(all, assemblies, prepare), domain))
-    );
-    laws.Add(
-      Timed(() => NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain))
-    );
+    Time(() => InfoLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => ReloadLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => NeighbourLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => NetworkLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain));
     var tags = new SharedTagRegistries();
 #if GAME_GE_1_22
     tags.Bind();
 #endif
-    laws.Add(
-      Timed(() =>
-        InteractionLaw.Run(
-          () => Stand(all, assemblies, prepare, items, tags),
-          domain,
-          groups
-        )
+    Time(() =>
+      InteractionLaw.Run(
+        () => Stand(all, assemblies, prepare, items, tags),
+        domain,
+        groups
       )
     );
-    laws.Add(
-      Timed(() =>
-        ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain)
-      )
+    Time(() =>
+      ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain)
     );
-    laws.Add(
-      Timed(() =>
-        InteractionLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
-      )
+    Time(() =>
+      InteractionLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
     );
-    laws.Add(
-      Timed(() =>
-        ContainerLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
-      )
+    Time(() =>
+      ContainerLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
     );
     return new Result(laws);
   }
@@ -240,12 +223,6 @@ public static class BlockLaws {
   internal static int GroupsFor(int processors, long memoryBytes) =>
     (int)
       Math.Clamp(Math.Min(processors, memoryBytes / GroupBytes), 1, MaxGroups);
-
-  private static Law Timed(Func<Law> run) {
-    var watch = System.Diagnostics.Stopwatch.StartNew();
-    Law law = run();
-    return law with { Seconds = watch.Elapsed.TotalSeconds };
-  }
 
   /// <summary>A world holding the install's vanilla classes, those of
   /// <paramref name="assemblies"/>, a started <see cref="MechanicalPowerMod"/> and

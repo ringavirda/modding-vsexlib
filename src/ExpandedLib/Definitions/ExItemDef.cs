@@ -375,6 +375,15 @@ public sealed class ExItemDef : IExDef {
     return this;
   }
 
+  /// <summary>Sets <c>attributes.itemViews</c> with no declared grips; the signature mods built before
+  /// <c>grips</c> existed call.</summary>
+  /// <param name="kind">As in <see cref="Views(ItemViewKind, string?, Vec3d?, ValueTuple{Vec3d, Vec3d}?)"/>.</param>
+  /// <param name="tip">As in <see cref="Views(ItemViewKind, string?, Vec3d?, ValueTuple{Vec3d, Vec3d}?)"/>.</param>
+  /// <param name="guiRotation">As in <see cref="Views(ItemViewKind, string?, Vec3d?, ValueTuple{Vec3d, Vec3d}?)"/>.</param>
+  /// <exception cref="ArgumentException"><paramref name="kind"/> is a block kind.</exception>
+  public ExItemDef Views(ItemViewKind kind, string? tip, Vec3d? guiRotation) =>
+    Views(kind, tip, guiRotation, null);
+
   /// <summary>Sets <c>attributes.itemViews</c>, which the load pass and <see cref="ItemViews"/> read: the kind
   /// the item's views are laid out as, and the end that works.</summary>
   /// <param name="kind">Written as its lower-case name; <see cref="ItemViewKind.None"/> keeps the game's defaults.</param>
@@ -385,12 +394,15 @@ public sealed class ExItemDef : IExDef {
   /// <param name="guiRotation">The slot rotation in degrees about x, y and z, or null for the kind's. The slot
   /// origin and scale are computed for it, as for the kind's own; the hand and ground views are unchanged, and
   /// an authored <see cref="GuiTransform(object)"/> still wins.</param>
+  /// <param name="grips">The points of the item's shape, in voxels, that the right and the left hand hold, or null
+  /// to declare none; the view gate <c>hand.left</c> reads the left one against the held clip.</param>
   /// <exception cref="ArgumentException"><paramref name="kind"/> is a block kind; the load pass would leave the
   /// item at the game's views without a warning.</exception>
   public ExItemDef Views(
     ItemViewKind kind,
     string? tip = null,
-    Vec3d? guiRotation = null
+    Vec3d? guiRotation = null,
+    (Vec3d Right, Vec3d Left)? grips = null
   ) {
     if (
       kind
@@ -411,6 +423,19 @@ public sealed class ExItemDef : IExDef {
         guiRotation.Y,
         guiRotation.Z
       );
+    if (grips != null)
+      views["grips"] = new JObject {
+        ["right"] = new JArray(
+          grips.Value.Right.X,
+          grips.Value.Right.Y,
+          grips.Value.Right.Z
+        ),
+        ["left"] = new JArray(
+          grips.Value.Left.X,
+          grips.Value.Left.Y,
+          grips.Value.Left.Z
+        ),
+      };
     return Attribute("itemViews", views);
   }
 

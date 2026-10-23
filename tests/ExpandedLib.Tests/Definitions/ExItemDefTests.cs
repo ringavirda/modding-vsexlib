@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using ExpandedLib.Definitions;
+using ExpandedLib.Helpers;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -527,6 +529,8 @@ public class ExItemDefTests {
 
   // Signatures only ExItemDef has.
   private static readonly Dictionary<string, string> ItemOnlySignatures = new() {
+    ["Views(ItemViewKind,String,Vec3d,Nullable<ValueTuple<Vec3d,Vec3d>>)"] =
+      "the tip names a working end; the block builder's Views takes the kind and the rotation only",
     ["Views(ItemViewKind,String,Vec3d)"] =
       "the tip names a working end; the block builder's Views takes the kind and the rotation only",
     ["GrindingProps(Object)"] =
@@ -557,6 +561,17 @@ public class ExItemDefTests {
       missing.Count == 0,
       "ExItemDef is missing a member for: " + string.Join(", ", missing)
     );
+  }
+
+  [Fact]
+  public void Views_keeps_the_signature_without_grips_that_built_mods_call() {
+    var method = typeof(ExItemDef).GetMethod(
+      "Views",
+      [typeof(ItemViewKind), typeof(string), typeof(Vec3d)]
+    );
+    Assert.NotNull(method);
+    Assert.True(method.IsPublic);
+    Assert.Equal(typeof(ExItemDef), method.ReturnType);
   }
 
   [Fact]

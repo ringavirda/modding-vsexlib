@@ -70,12 +70,13 @@ internal static class CollectibleViews {
   }
 
   /// <summary>Whether a collectible of <paramref name="kind"/> whose box has side lengths <paramref name="extents"/> is held
-  /// as a long item: a bar, longtool or multicell block drawn over 16 voxels long and at least three times as long as it is wide.</summary>
+  /// as a long item: a bar, longtool or multicell block drawn over 16 voxels (by more than
+  /// <see cref="ViewReferences.LongTolerance"/>) long and at least three times as long as it is wide.</summary>
   /// <param name="kind">The kind the views are laid out as.</param>
   /// <param name="extents">The longest, middle and shortest side of the box, in voxels.</param>
   internal static bool IsLong(ItemViewKind kind, double[] extents) =>
     kind is ItemViewKind.Longtool or ItemViewKind.Bar or ItemViewKind.Multicell
-    && extents[0] > ViewReferences.LongMinimum
+    && extents[0] > ViewReferences.LongMinimum + ViewReferences.LongTolerance
     && extents[0] >= ViewReferences.LongRatio * extents[1];
 
   /// <summary>A box in voxels: <paramref name="From"/> and <paramref name="To"/> are its corners in the frame
@@ -140,6 +141,31 @@ internal static class CollectibleViews {
     double[] v = a.Select(t => (double)t).ToArray();
     return new Vec3d(v[0], v[1], v[2]);
   }
+
+  /// <summary>The declared <c>attributes.itemViews.grips</c> of <paramref name="collectible"/>: where the right and the
+  /// left hand hold it, as points of its shape in voxels; null when none is declared.</summary>
+  /// <exception cref="ArgumentException">The declaration is not an object whose <c>right</c> and <c>left</c> are each an
+  /// array of three numbers.</exception>
+  internal static ItemGrips? GripsOf(CollectibleObject collectible) {
+    JsonObject? node = collectible.Attributes?["itemViews"]?["grips"];
+    if (node == null || !node.Exists)
+      return null;
+    if (
+      node.Token is not JObject o
+      || Point(o["right"]) is not { } right
+      || Point(o["left"]) is not { } left
+    )
+      throw new ArgumentException(
+        $"{collectible.Code}: attributes.itemViews.grips is not an object with right and left, each an array of three numbers"
+      );
+    return new ItemGrips(right, left);
+  }
+
+  private static Vec3d? Point(JToken? token) =>
+    token is JArray { Count: 3 } a
+    && a.All(t => t.Type is JTokenType.Integer or JTokenType.Float)
+      ? new Vec3d((double)a[0], (double)a[1], (double)a[2])
+      : null;
 
   private static ItemViewKind Declared(CollectibleObject collectible) {
     string? name = collectible.Attributes?["itemViews"]?["kind"]?.AsString();

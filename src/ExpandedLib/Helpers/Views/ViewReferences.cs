@@ -138,8 +138,12 @@ internal static class ViewReferences {
   internal const double MulticellHeldLong = 1.200;
 
   /// <summary>A bar, longtool or multicell block is long when its longest extent is over this many voxels and at least
-  /// <see cref="LongRatio"/> times its middle.</summary>
+  /// <see cref="LongRatio"/> times its middle. A longest extent within <see cref="LongTolerance"/> of the minimum
+  /// is not over it.</summary>
   internal const double LongMinimum = 16;
+
+  /// <summary>Voxels a longest extent must exceed <see cref="LongMinimum"/> by to count as over it, in voxels.</summary>
+  internal const double LongTolerance = 0.01;
 
   internal const double LongRatio = 3;
 

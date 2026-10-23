@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 #if !GAME_GE_1_21
 using FastVec3f = Vintagestory.API.MathTools.Vec3f;
@@ -14,10 +15,25 @@ namespace ExpandedLib.Helpers;
 internal static class ItemViewsPass {
   private const double Tolerance = 1e-4;
 
-  /// <summary>Replaces each transform equal to the game's default for its type with the computed one and
-  /// fills each absent held clip; an authored transform or clip stays. Collectibles that declare kind
-  /// <c>none</c>, texture-only items and other domains are left as they are. A shape that does not load, or a
-  /// declaration that does not parse, leaves its collectible as it is with a warning or an error naming its code.</summary>
+  // The game's own default clips, which its blocks and items name and the player's animation list maps or leaves unmapped.
+  private static readonly HashSet<string> GameClips = new(
+    [
+      ViewReferences.DefaultReady,
+      ViewReferences.DefaultHit,
+      ViewReferences.DefaultUse,
+      ViewReferences.BlockReady,
+      ViewReferences.BlockUse,
+    ],
+    StringComparer.OrdinalIgnoreCase
+  );
+
+  private static readonly AssetLocation DefaultPlayerShape = new(
+    "game:shapes/entity/humanoid/seraph-faceless.json"
+  );
+
+  /// <summary>Replaces each default transform and fills each absent held clip, leaving authored ones, other domains and
+  /// collectibles that cannot be computed as they are, with a warning or error naming the code. On the client it also
+  /// warns once per animation the player's entity type does not map to a clip of its shape.</summary>
   /// <param name="api">The api of either side, after the object loader.</param>
   internal static void Run(ICoreAPI api) {
     HashSet<string> domains =
@@ -44,6 +60,7 @@ internal static class ItemViewsPass {
         continue;
       ItemViewSet? views;
       try {
+        CollectibleViews.GripsOf(collectible);
         views = ItemViews.Compute(api, collectible);
       } catch (Exception e)
           when (e is InvalidOperationException or ArgumentException) {
@@ -60,6 +77,70 @@ internal static class ItemViewsPass {
       }
       Apply(collectible, views);
     }
+    if (api.Side == EnumAppSide.Client)
+      WarnMissingClips(api, domains);
+  }
+
+  private static void WarnMissingClips(ICoreAPI api, HashSet<string> domains) {
+    EntityProperties? player = api.World.GetEntityType(
+      new AssetLocation("game", "player")
+    );
+    AssetLocation shapeLocation = player?.Client?.Shape?.Base is { } shapeBase
+      ? shapeBase.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json")
+      : DefaultPlayerShape;
+    Shape? shape = Shape.TryGet(api, shapeLocation);
+    if (shape == null)
+      return;
+    HashSet<string> clips = new(
+      (shape.Animations ?? []).Select(a => a.Code),
+      StringComparer.OrdinalIgnoreCase
+    );
+    AnimationMetaData[]? mapped = player?.Client?.Animations;
+    bool HasClip(string named) {
+      if (mapped == null)
+        return clips.Contains(named);
+      AnimationMetaData? entry = mapped.FirstOrDefault(a =>
+        string.Equals(a.Code, named, StringComparison.OrdinalIgnoreCase)
+      );
+      return entry != null && clips.Contains(entry.Animation ?? entry.Code);
+    }
+    SortedDictionary<string, SortedSet<string>> missing = [];
+    foreach (
+      CollectibleObject collectible in api
+        .World.Blocks.Cast<CollectibleObject>()
+        .Concat(api.World.Items)
+    ) {
+      if (
+        collectible?.Code == null
+        || !domains.Contains(collectible.Code.Domain)
+      )
+        continue;
+      foreach (
+        string? named in new[]
+        {
+          collectible.HeldRightTpIdleAnimation,
+          collectible.HeldRightReadyAnimation,
+          collectible.HeldTpHitAnimation,
+          collectible.HeldTpUseAnimation,
+        }
+      ) {
+        if (
+          string.IsNullOrEmpty(named)
+          || HasClip(named)
+          || GameClips.Contains(named)
+        )
+          continue;
+        if (!missing.TryGetValue(named, out SortedSet<string>? codes))
+          missing[named] = codes = [];
+        codes.Add(collectible.Code.ToString());
+      }
+    }
+    foreach ((string clip, SortedSet<string> codes) in missing)
+      api.Logger.Warning(
+        "The player's shape has no clip '{0}', which {1} name; the hands stay idle",
+        clip,
+        string.Join(", ", codes)
+      );
   }
 
   private static void WarnUnloadedShape(

@@ -24,6 +24,8 @@ namespace ExpandedLib.Tests;
 public class ExWorldStateTests {
   // Keyed by the static root's full name; each value is why the root is a cache.
   private static readonly Dictionary<string, string> Caches = new() {
+    ["ExpandedLib.Helpers.ItemViewsPass.GameClips"] =
+      "the game's own clip names, constants of the game that no world changes",
     ["ExpandedLib.Blocks.PersistScan._cache"] =
       "per-type binders, a pure function of the loaded types",
     ["ExpandedLib.Catalogues.BayOccupancyLoader.RootKeys"] = SchemaKeys,

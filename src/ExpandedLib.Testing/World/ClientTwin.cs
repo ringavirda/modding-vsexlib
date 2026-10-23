@@ -12,6 +12,7 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.Common;
 using Vintagestory.GameContent;
+using Vintagestory.GameContent.Mechanics;
 
 namespace ExpandedLib.Testing;
 
@@ -32,6 +33,8 @@ public sealed class ClientTwin {
     Server = server;
     Twin = twin;
   }
+
+  internal TestWorld World => _world;
 
   /// <summary>The server entity this twin mirrors, as the server holds it.</summary>
   public BlockEntity Server { get; }
@@ -76,7 +79,8 @@ public sealed class ClientTwin {
   /// <returns>One twin per server entity, in the order given.</returns>
   /// <exception cref="InvalidOperationException">The first shape read finds no game install.</exception>
   /// <exception cref="Exception">A twin's own <c>FromTreeAttributes</c> or <c>Initialize</c> throws; the
-  /// twins already made are released and the exception passes through unchanged.</exception>
+  /// twins already made are released, an exception from a release is dropped, and the initialiser's
+  /// exception passes through unchanged.</exception>
   public static ClientTwin[] Stand(
     TestWorld world,
     params BlockEntity[] servers
@@ -86,7 +90,9 @@ public sealed class ClientTwin {
       world.InitializeClientTwins(twins);
     } catch {
       foreach (BlockEntity twin in twins)
-        world.ReleaseClientTwin(twin);
+        try {
+          world.ReleaseClientTwin(twin);
+        } catch { }
       throw;
     }
     return servers
@@ -127,6 +133,7 @@ public sealed partial class TestWorld {
   private readonly HashSet<string> _clientShapeDomains = new();
   private AssetManager? _clientShapes;
   private long _nextClientListenerId;
+  private bool _clientModsStarted;
 
   /// <summary>Points the client twins' shapes of <paramref name="domain"/> at
   /// <paramref name="directory"/>, a folder laid out as a mod's <c>assets/&lt;domain&gt;</c> with
@@ -158,6 +165,11 @@ public sealed partial class TestWorld {
   }
 
   internal void InitializeClientTwins(IReadOnlyList<BlockEntity> twins) {
+    if (!_clientModsStarted) {
+      _clientModsStarted = true;
+      TestModLoader clientMods = StartClientMods(ClientApi);
+      ClientApi.ModLoader.Returns(clientMods);
+    }
     foreach (BlockEntity twin in twins)
       _clientTwins[twin.Pos] = twin;
     foreach (BlockEntity twin in twins) {
@@ -192,6 +204,8 @@ public sealed partial class TestWorld {
     }
   }
 
+  internal BlockEntity? StandingTwin(BlockPos pos) => ClientTwinAt(pos);
+
   internal bool TakeServerDirty(BlockPos pos) => _serverDirty.Remove(pos);
 
   internal bool ClientMarkedDirty(BlockPos pos) => _clientDirty.Contains(pos);
@@ -202,27 +216,41 @@ public sealed partial class TestWorld {
 
   internal int ClientTickCount => _clientTicks.Count;
 
-  internal void StepClientFrames(float dt, int n) {
-    for (int i = 0; i < n; i++) {
-      _clientClockMs += dt * 1000.0;
-      foreach (ClientTick tick in _clientTicks.Values.ToList()) {
-        if (_clientClockMs - tick.LastMs < tick.IntervalMs)
-          continue;
-        float elapsed = (float)((_clientClockMs - tick.LastMs) / 1000.0);
-        tick.LastMs = _clientClockMs;
-        try {
-          tick.Callback(elapsed);
-        } catch (Exception e) when (tick.ErrorHandler != null) {
-          tick.ErrorHandler(e);
+  internal void StepClientFrames(float dt, int n, BlockEntity? only = null) {
+    BlockEntity? outer = _initialising;
+    if (only != null)
+      _initialising = only;
+    try {
+      for (int i = 0; i < n; i++) {
+        _clientClockMs += dt * 1000.0;
+        foreach (
+          ClientTick tick in _clientTicks
+            .Values.Where(t => only == null || ReferenceEquals(t.Owner, only))
+            .ToList()
+        ) {
+          if (_clientClockMs - tick.LastMs < tick.IntervalMs)
+            continue;
+          float elapsed = (float)((_clientClockMs - tick.LastMs) / 1000.0);
+          tick.LastMs = _clientClockMs;
+          try {
+            tick.Callback(elapsed);
+          } catch (Exception e) when (tick.ErrorHandler != null) {
+            tick.ErrorHandler(e);
+          }
         }
+        foreach (
+          (EnumRenderStage stage, IRenderer renderer, _) in _clientRenderers
+            .Where(r =>
+              FiresOnClient(r.Renderer)
+              && (only == null || ReferenceEquals(r.Owner, only))
+            )
+            .OrderBy(r => r.Stage)
+            .ToList()
+        )
+          renderer.OnRenderFrame(dt, stage);
       }
-      foreach (
-        (EnumRenderStage stage, IRenderer renderer, _) in _clientRenderers
-          .Where(r => FiresOnClient(r.Renderer))
-          .OrderBy(r => r.Stage)
-          .ToList()
-      )
-        renderer.OnRenderFrame(dt, stage);
+    } finally {
+      _initialising = outer;
     }
   }
 
@@ -245,6 +273,8 @@ public sealed partial class TestWorld {
       ));
     a.When(x => x.MarkBlockEntityDirty(Arg.Any<BlockPos>()))
       .Do(ci => _clientDirty.Add(ci.Arg<BlockPos>()));
+    a.When(x => x.MarkBlockDirty(Arg.Any<BlockPos>()))
+      .Do(ci => MarkRedraw(ci.Arg<BlockPos>()));
     return a;
   }
 
@@ -261,6 +291,13 @@ public sealed partial class TestWorld {
     assets
       .TryGet(Arg.Any<AssetLocation>(), Arg.Any<bool>())
       .Returns(ci => ClientShape(ci.Arg<AssetLocation>(), ci.Arg<bool>()));
+    assets
+      .Get<Shape>(Arg.Any<AssetLocation>())
+      .Returns(ci =>
+        ClientTesselates
+          ? ClientShape(ci.Arg<AssetLocation>(), true)?.ToObject<Shape>()
+          : null
+      );
     api.Assets.Returns(assets);
     coreApi.Assets.Returns(assets);
 
@@ -275,7 +312,37 @@ public sealed partial class TestWorld {
         )
       )
       .Do(ci => ci[2] = new MeshData());
+#if GAME_GE_1_22
+    api.Tesselator.Returns(_ => ClientTesselates ? DrawTesselator : tesselator);
+#else
     api.Tesselator.Returns(tesselator);
+#endif
+
+#if GAME_GE_1_22
+    var plainAtlas = Substitute.For<IBlockTextureAtlasAPI>();
+    var drawAtlas = Substitute.For<IBlockTextureAtlasAPI>();
+    TextureAtlasPosition standIn = new DrawTextures()["atlas"];
+    drawAtlas.Size.Returns(new DrawTextures().AtlasSize);
+    drawAtlas.UnknownTexturePosition.Returns(standIn);
+    drawAtlas[Arg.Any<AssetLocation>()].Returns(standIn);
+    drawAtlas
+      .GetOrInsertTexture(
+        Arg.Any<AssetLocation>(),
+        out Arg.Any<int>(),
+        out Arg.Any<TextureAtlasPosition>(),
+        Arg.Any<CreateTextureDelegate>(),
+        Arg.Any<float>()
+      )
+      .Returns(ci =>
+      {
+        ci[1] = 0;
+        ci[2] = standIn;
+        return true;
+      });
+    api.BlockTextureAtlas.Returns(_ =>
+      ClientTesselates ? drawAtlas : plainAtlas
+    );
+#endif
 
     var events = Substitute.For<IClientEventAPI>();
     api.Event.Returns(events);
@@ -361,6 +428,26 @@ public sealed partial class TestWorld {
       .Do(ci => _clientTicks.Remove(ci.Arg<long>()));
   }
 
+  private TestModLoader StartClientMods(ICoreClientAPI api) {
+    var loader = new TestModLoader();
+    foreach (Mod mod in Mods.Mods)
+      loader.Add(
+        mod.Info.ModID,
+        mod.Info.Version,
+        true,
+        [.. mod.Info.Dependencies.Select(d => d.ModID)]
+      );
+    var power = new MechanicalPowerMod();
+    loader.Register(power);
+    foreach (
+      RecipeRegistrySystem recipes in Mods.Systems.OfType<RecipeRegistrySystem>()
+    )
+      loader.Register(recipes);
+    power.Start(api);
+    _clientRenderers.RemoveAll(r => ReferenceEquals(r.Renderer, power));
+    return loader;
+  }
+
   private long AddClientTick(
     Action<float> callback,
     int intervalMs,
@@ -389,7 +476,7 @@ public sealed partial class TestWorld {
       Path.Combine(GameInstall(), "assets"),
       EnumAppSide.Client
     );
-    mgr.InitAndLoadBaseAssets(Log);
+    mgr.InitAndLoadBaseAssets(QuietLogger);
     // The manager refuses lookups until every asset is marked loaded, as the game marks them.
     ReflectionHelpers.SetField(mgr, "allAssetsLoaded", true);
     return mgr;

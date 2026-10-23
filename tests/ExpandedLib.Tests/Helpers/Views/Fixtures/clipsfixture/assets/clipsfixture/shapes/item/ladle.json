@@ -1,0 +1,25 @@
+{
+  "textures": {
+    "tex": "clipsfixture:item/tex"
+  },
+  "elements": [
+    {
+      "name": "shank",
+      "from": [ 7, 5, 13 ],
+      "to": [ 9, 8, 29 ],
+      "faces": {
+        "north": { "texture": "#tex", "uv": [ 0, 0, 2, 3 ] },
+        "up": { "texture": "#tex", "uv": [ 0, 0, 2, 16 ] }
+      }
+    },
+    {
+      "name": "crossbar",
+      "from": [ 4, 5, 28 ],
+      "to": [ 12, 8, 30 ],
+      "faces": {
+        "north": { "texture": "#tex", "uv": [ 0, 0, 8, 3 ] },
+        "up": { "texture": "#tex", "uv": [ 0, 0, 8, 2 ] }
+      }
+    }
+  ]
+}

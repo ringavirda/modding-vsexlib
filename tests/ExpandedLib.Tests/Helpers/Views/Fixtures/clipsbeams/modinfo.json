@@ -1,0 +1,9 @@
+{
+  "type": "content",
+  "modid": "clipsbeams",
+  "name": "Clips beams fixture",
+  "version": "1.0.0",
+  "dependencies": {
+    "exlib": "*"
+  }
+}
