@@ -41,6 +41,9 @@ public static class BlockLaws {
     /// the formed laws.</summary>
     public string Unit { get; init; } = "blocktypes";
 
+    /// <summary>Wall-clock seconds the law took, world stand-up included.</summary>
+    public double Seconds { get; init; }
+
     /// <summary>One line per structure a formed law stood up formed, in the order it ran: the
     /// anchor's variant code, then what the structure gave the law. Empty for the other
     /// laws.</summary>
@@ -60,6 +63,13 @@ public static class BlockLaws {
     public Law this[string name] =>
       Laws.FirstOrDefault(l => l.Name == name)
       ?? throw new KeyNotFoundException($"No law named '{name}' ran.");
+
+    /// <summary>One line per law: its name, <see cref="Law.Seconds"/> and <see cref="Law.Cases"/>.</summary>
+    public string Timings() =>
+      string.Join(
+        "\n",
+        Laws.Select(l => $"{l.Name}: {l.Seconds:F1} s, {l.Cases} cases")
+      );
 
     /// <summary>One line per law, then its findings, indented.</summary>
     public override string ToString() =>
@@ -105,36 +115,68 @@ public static class BlockLaws {
     IExDef[] given = [.. defs];
     ExBlockDef[] all = [.. given.OfType<ExBlockDef>()];
     ExItemDef[] items = [.. given.OfType<ExItemDef>()];
-    var laws = new List<Law>
-    {
-      PlacementLaw.Run(Stand(all, assemblies, prepare), domain),
-    };
+    var laws = new List<Law>();
+    laws.Add(
+      Timed(() => PlacementLaw.Run(Stand(all, assemblies, prepare), domain))
+    );
 #if GAME_GE_1_22
     laws.Add(
-      BreakLaw.Run(all.Where(d => d.Domain == domain), assemblies, prepare)
+      Timed(() =>
+        BreakLaw.Run(all.Where(d => d.Domain == domain), assemblies, prepare)
+      )
     );
 #endif
-    laws.Add(MultiblockLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(MegablockLaw.Run(Stand(all, assemblies, prepare), domain));
+    laws.Add(
+      Timed(() => MultiblockLaw.Run(Stand(all, assemblies, prepare), domain))
+    );
+    laws.Add(
+      Timed(() => MegablockLaw.Run(Stand(all, assemblies, prepare), domain))
+    );
 #if GAME_GE_1_22
-    laws.Add(ControlLaw.Run(Stand(all, assemblies, prepare), domain));
+    laws.Add(
+      Timed(() => ControlLaw.Run(Stand(all, assemblies, prepare), domain))
+    );
 #endif
-    laws.Add(InfoLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(ReloadLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(NeighbourLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(NetworkLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain));
+    laws.Add(Timed(() => InfoLaw.Run(Stand(all, assemblies, prepare), domain)));
     laws.Add(
-      InteractionLaw.Run(Stand(all, assemblies, prepare, items), domain)
-    );
-    laws.Add(ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain));
-    laws.Add(
-      InteractionLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
+      Timed(() => ReloadLaw.Run(Stand(all, assemblies, prepare), domain))
     );
     laws.Add(
-      ContainerLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
+      Timed(() => NeighbourLaw.Run(Stand(all, assemblies, prepare), domain))
+    );
+    laws.Add(
+      Timed(() => NetworkLaw.Run(Stand(all, assemblies, prepare), domain))
+    );
+    laws.Add(
+      Timed(() => NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain))
+    );
+    laws.Add(
+      Timed(() =>
+        InteractionLaw.Run(Stand(all, assemblies, prepare, items), domain)
+      )
+    );
+    laws.Add(
+      Timed(() =>
+        ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain)
+      )
+    );
+    laws.Add(
+      Timed(() =>
+        InteractionLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
+      )
+    );
+    laws.Add(
+      Timed(() =>
+        ContainerLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
+      )
     );
     return new Result(laws);
+  }
+
+  private static Law Timed(Func<Law> run) {
+    var watch = System.Diagnostics.Stopwatch.StartNew();
+    Law law = run();
+    return law with { Seconds = watch.Elapsed.TotalSeconds };
   }
 
   /// <summary>A world holding the install's vanilla classes, those of

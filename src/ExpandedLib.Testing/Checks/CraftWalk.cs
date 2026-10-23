@@ -55,6 +55,18 @@ public static class CraftWalk
     IReadOnlyList<CraftedEdge> Crafted
   )
   {
+    /// <summary>Seconds each stage of <see cref="Run"/> took, in order: <c>read edges</c>,
+    /// <c>reach</c>, <c>execute</c>, <c>check</c>.</summary>
+    public IReadOnlyList<(string Step, double Seconds)> Steps { get; init; } =
+    [];
+
+    /// <summary>One line per stage of <see cref="Steps"/>: its name and seconds.</summary>
+    public string Timings() =>
+      string.Join(
+        Environment.NewLine,
+        Steps.Select(s => $"{s.Step}: {s.Seconds:F1} s")
+      );
+
     /// <summary>The summary line, then each finding indented.</summary>
     public override string ToString() =>
       string.Join(Environment.NewLine + "  ", [Summary, .. Findings]);
@@ -83,6 +95,13 @@ public static class CraftWalk
     string? exceptionsFile
   )
   {
+    var watch = System.Diagnostics.Stopwatch.StartNew();
+    var steps = new List<(string, double)>();
+    void Lap(string step)
+    {
+      steps.Add((step, watch.Elapsed.TotalSeconds));
+      watch.Restart();
+    }
     CollectibleObject[] all =
     [
       .. world
@@ -108,6 +127,7 @@ public static class CraftWalk
       found.Add((row, $"{row} | kit row matches no loaded block or item"));
 
     List<WalkEdge> edges = CraftWalkEdges.Read(world, domain, all);
+    Lap("read edges");
     var fired = new bool[edges.Count];
     var firedIn = new int[edges.Count];
     int rounds = 0;
@@ -130,6 +150,7 @@ public static class CraftWalk
       }
     }
 
+    Lap("reach");
     var crafted = new List<CraftedEdge>();
     bool[] executed = CraftWalkRuns.Execute(
       world,
@@ -141,6 +162,7 @@ public static class CraftWalk
       found,
       crafted
     );
+    Lap("execute");
 
     for (int i = 0; i < edges.Count; i++)
     {
@@ -291,11 +313,15 @@ public static class CraftWalk
     int inputless = ExlibChecks
       .Produced()
       .Count(d => d.Domain == domain && d.At == null);
+    Lap("check");
     return new Result(
       $"craft walk {domain}: {asked.Length} kinds, {count} recipes fired ({ran} executed, {count - ran} followed), {inputless} undeclared, {trust} on trust, {failures.Length} failures",
       failures,
       crafted
-    );
+    )
+    {
+      Steps = steps,
+    };
   }
 
   private static bool Matches(string pattern, CollectibleObject c) =>

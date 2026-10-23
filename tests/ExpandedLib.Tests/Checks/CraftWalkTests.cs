@@ -296,6 +296,22 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     );
   }
 
+  // Fails when Run drops a stage from Steps or leaves its seconds unmeasured.
+  [Fact]
+  public void The_walk_reports_the_seconds_of_each_stage()
+  {
+    using TestWorld world = Planted(["a"], [Recipe(Stick, "a")], Stick);
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Equal(
+      ["read edges", "reach", "execute", "check"],
+      result.Steps.Select(s => s.Step)
+    );
+    Assert.Contains(result.Steps, s => s.Seconds > 0);
+    Assert.Equal(4, result.Timings().Split(Environment.NewLine).Length);
+  }
+
   [Fact]
   [PlantedDefect(typeof(CraftWalk), nameof(CraftWalk.Run))]
   public void Dropping_the_middle_recipe_fails_naming_its_output()

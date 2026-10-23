@@ -763,6 +763,25 @@ public class BlockLawsTests {
     Assert.Equal(4 + 5, law.Cases);
   }
 
+  // Fails when Run leaves a law's Seconds unset or Timings drops a law.
+  [Fact]
+  public void Each_law_reports_the_seconds_it_took() {
+    BlockLaws.Result result = BlockLaws.Run(
+      "test",
+      [Entity("plainbox", "test-plain")],
+      Exlib,
+      Prepare
+    );
+
+    Assert.All(result.Laws, l => Assert.True(l.Seconds > 0, l.Name));
+    string[] lines = result.Timings().Split('\n');
+    Assert.Equal(result.Laws.Count, lines.Length);
+    Assert.All(
+      result.Laws.Zip(lines),
+      p => Assert.StartsWith($"{p.First.Name}: ", p.Second)
+    );
+  }
+
   // Fails when the neighbour law leaves the placement of a block without an entity unjudged, which
   // no other law judges, or judges one with an entity, which the info law names.
   [Fact]
