@@ -302,7 +302,7 @@ public sealed partial class TestWorld {
         Finish(block);
       else {
         ReflectionHelpers.SetField(collectible, "api", Api);
-        collectible.OnLoaded(Api);
+        GameStatics.Load(collectible, Api);
       }
     return loaded;
   }

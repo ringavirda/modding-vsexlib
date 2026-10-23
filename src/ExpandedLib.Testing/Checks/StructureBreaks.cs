@@ -306,7 +306,7 @@ public static class StructureBreaks
       Resolvable(world, drop.Code.ToString(), drop.Type);
       drop.Resolve(world.World, "StructureBreaks", block.Code);
     }
-    block.OnLoaded(world.Api);
+    GameStatics.Load(block, world.Api);
   }
 
   /// <summary>Where one break stands its structure up: the world, the principal's position, and the

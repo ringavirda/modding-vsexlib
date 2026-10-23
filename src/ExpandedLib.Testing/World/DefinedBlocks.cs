@@ -162,7 +162,7 @@ public sealed partial class TestWorld {
       ),
     ];
     foreach (Item item in items)
-      item.OnLoaded(Api);
+      GameStatics.Load(item, Api);
     return items;
   }
 
@@ -272,7 +272,7 @@ public sealed partial class TestWorld {
       drop.Resolve(World, "DefineBlock", block.Code);
     // The engine assigns the api when it registers the block; OnLoaded does not.
     ReflectionHelpers.SetField(block, "api", Api);
-    block.OnLoaded(Api);
+    GameStatics.Load(block, Api);
   }
 
   private static bool IsRegistrable(Type type) =>

@@ -87,6 +87,11 @@ public class BlockLawsTests {
     world.RegisterClass("test-places", typeof(PlacesAnywhere));
     world.RegisterClass("test-namestwo", typeof(NamesTwoTogether));
     world.RegisterClass("test-clickthrows", typeof(ThrowsOnAClick));
+    world.RegisterClass("test-slowload", typeof(LoadsSlowly));
+    world.RegisterClass(
+      "WrenchOrientable",
+      typeof(BlockBehaviorWrenchOrientable)
+    );
     world.RegisterClass("test-readsstack", typeof(ReadsItsStack));
     world.RegisterClass("test-keepscell", typeof(ReadsItsStackInPlace));
     world.RegisterClass("test-lights", typeof(Lights));
@@ -776,6 +781,75 @@ public class BlockLawsTests {
     long memory,
     int expected
   ) => Assert.Equal(expected, BlockLaws.GroupsFor(processors, memory));
+
+  // Fails when the merged findings come out in group order, a group's blocktypes are dropped or run
+  // twice, or a blocktype's findings depend on where its group started.
+  [Fact]
+  public void Clicking_on_four_worlds_gives_the_one_world_findings_in_order() {
+    ExBlockDef[] defs =
+    [
+      .. Enumerable
+        .Range(0, 8)
+        .Select(i =>
+          ExBlockDef.Create("test", $"throws{i}").Class("test-clickthrows")
+        ),
+      Names("namer", "test:token", takes: false),
+      Entity("plainbox", "test-plain"),
+    ];
+    ExItemDef[] items = [Token];
+
+    BlockLaws.Law one = InteractionLaw.Run(() => Hands(items, defs), "test", 1);
+    BlockLaws.Law four = InteractionLaw.Run(
+      () => Hands(items, defs),
+      "test",
+      4
+    );
+
+    Assert.True(one.Findings.Count >= 9);
+    Assert.Equal(one.Findings, four.Findings);
+    Assert.Equal(one.Blocks, four.Blocks);
+    Assert.Equal(one.Cases, four.Cases);
+  }
+
+  // Fails when a click holds the wrench stack another world's help named, which vanilla keeps in a
+  // static, instead of the clicking world's own wrench.
+  [Fact]
+  public void A_wrench_named_by_another_world_still_turns_a_block() {
+    ExBlockDef turner = ExBlockDef
+      .Create("test", "turner")
+      .VariantGroup("rot", "a", "b", "c")
+      .Behavior("WrenchOrientable", new { baseCode = "turner-*" });
+    BlockBehaviorWrenchOrientable.wrenchItems = null;
+    try {
+      TestWorld first = Hands([], turner);
+      BlockBehaviorWrenchOrientable.loadWrenchItems(first.World);
+      TestWorld second = Hands([], turner);
+
+      BlockLaws.Law law = InteractionLaw.Run(second, "test");
+
+      Assert.Empty(law.Findings);
+      Assert.True(law.Cases > 0);
+    } finally {
+      BlockBehaviorWrenchOrientable.wrenchItems = null;
+    }
+  }
+
+  // Fails when two worlds standing up at once run their blocks' OnLoaded side by side.
+  [Fact]
+  public void Worlds_standing_up_on_two_threads_load_their_blocks_one_at_a_time() {
+    LoadsSlowly.Inside = 0;
+    LoadsSlowly.MostInside = 0;
+    ExBlockDef slow = ExBlockDef.Create("test", "slow").Class("test-slowload");
+
+    System.Threading.Tasks.Parallel.For(
+      0,
+      2,
+      new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 2 },
+      _ => Stand(slow)
+    );
+
+    Assert.Equal(1, LoadsSlowly.MostInside);
+  }
 
   // Fails when Run leaves a law's Seconds unset or Timings drops a law.
   [Fact]
@@ -2458,6 +2532,21 @@ public class BlockLawsTests {
         foreach (ItemSlot slot in held)
           slot.TakeOut(1);
       return true;
+    }
+  }
+
+  private sealed class LoadsSlowly : Block {
+    internal static int Inside;
+    internal static int MostInside;
+
+    public override void OnLoaded(ICoreAPI api) {
+      base.OnLoaded(api);
+      int now = System.Threading.Interlocked.Increment(ref Inside);
+      int seen;
+      while ((seen = MostInside) < now)
+        System.Threading.Interlocked.CompareExchange(ref MostInside, now, seen);
+      System.Threading.SpinWait.SpinUntil(() => Inside > 1, 400);
+      System.Threading.Interlocked.Decrement(ref Inside);
     }
   }
 

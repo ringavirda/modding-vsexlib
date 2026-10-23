@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
+using System.Threading.Tasks;
 using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using NSubstitute;
@@ -30,23 +32,74 @@ public static class InteractionLaw {
   /// carrying its tree, less its position. A finding is a throw or log, an entity off its cell after
   /// the placement, a click or the first reload, and a named click both refuse or that changes
   /// nothing, or a right-click help line carrying both items and a <c>ShouldApply</c>, which the
-  /// engine ignores on such a line; a variant stops at its first.
+  /// engine ignores on such a line; a variant stops at its first. Each blocktype is stood at sites
+  /// of its own, so its findings do not depend on the blocktypes before it.
   /// <see cref="BlockBehaviorUnplaceable"/> blocks are skipped.</remarks>
   /// <param name="world">A world holding the blocks judged and the items their help names
   /// (<see cref="BlockLaws.Run"/> stands one).</param>
   /// <param name="domain">The domain whose blocks are judged.</param>
   /// <returns>Blocktypes, clicks made and findings, keyed by variant code.</returns>
-  public static BlockLaws.Law Run(TestWorld world, string domain) {
-    var findings = new List<string>();
-    var sites = new BlockLaws.Sites();
-    int blocks = 0,
-      cases = 0;
+  public static BlockLaws.Law Run(TestWorld world, string domain) =>
+    Join(RunTypes(world, domain, 0, 1));
+
+  /// <summary>Runs <see cref="Run(TestWorld, string)"/> over <paramref name="groups"/> worlds at
+  /// once, each on a thread of its own and judging every <paramref name="groups"/>th blocktype.</summary>
+  /// <remarks>Every world is stood up before any click, so a process-wide table the stand-ups
+  /// fill is complete and still while the clicks read it.</remarks>
+  /// <param name="stand">Stands a world as <see cref="Run(TestWorld, string)"/> takes it; called
+  /// once per group, on a thread of its own.</param>
+  /// <param name="domain">The domain whose blocks are judged.</param>
+  /// <param name="groups">Worlds and threads; below 1 counts as 1. With 1 the calling thread runs
+  /// the one world.</param>
+  /// <returns>The law as the one-world run gives it, findings in the same order whatever
+  /// <paramref name="groups"/> is.</returns>
+  public static BlockLaws.Law Run(
+    Func<TestWorld> stand,
+    string domain,
+    int groups
+  ) {
+    groups = Math.Max(1, groups);
+    var worlds = new TestWorld[groups];
+    var runs = new List<TypeRun>[groups];
+    try {
+      ParallelOptions options = new() { MaxDegreeOfParallelism = groups };
+      Parallel.For(0, groups, options, group => worlds[group] = stand());
+      Parallel.For(
+        0,
+        groups,
+        options,
+        group => runs[group] = RunTypes(worlds[group], domain, group, groups)
+      );
+    } catch (AggregateException e) {
+      ExceptionDispatchInfo.Capture(e.InnerExceptions[0]).Throw();
+    }
+    return Join(runs.SelectMany(r => r));
+  }
+
+  /// <summary>What one blocktype's variants found.</summary>
+  /// <param name="Index">The blocktype's place in <see cref="BlockLaws.Blocktypes"/>.</param>
+  /// <param name="Cases">Clicks made.</param>
+  /// <param name="Findings">The blocktype's findings, in order.</param>
+  private sealed record TypeRun(int Index, int Cases, List<string> Findings);
+
+  private static List<TypeRun> RunTypes(
+    TestWorld world,
+    string domain,
+    int group,
+    int groups
+  ) {
+    var runs = new List<TypeRun>();
     Block solid = BlockLaws.Solid(world);
     TestPlayer player = User(world);
+    int index = -1;
     foreach (
       IGrouping<string, Block> type in BlockLaws.Blocktypes(world, domain)
     ) {
-      blocks++;
+      if (++index % groups != group)
+        continue;
+      var findings = new List<string>();
+      var sites = new BlockLaws.Sites(index * SitesPerType);
+      int cases = 0;
       foreach (Block block in type) {
         if (
           Unplaceable(block)
@@ -80,8 +133,22 @@ public static class InteractionLaw {
             break;
         }
       }
+      runs.Add(new TypeRun(index, cases, findings));
     }
-    return new BlockLaws.Law(Name, blocks, cases, findings);
+    return runs;
+  }
+
+  /// <summary>Sites one blocktype's cases may use before the next blocktype's begin.</summary>
+  private const int SitesPerType = 4096;
+
+  private static BlockLaws.Law Join(IEnumerable<TypeRun> runs) {
+    TypeRun[] ordered = [.. runs.OrderBy(r => r.Index)];
+    return new BlockLaws.Law(
+      Name,
+      ordered.Length,
+      ordered.Sum(r => r.Cases),
+      [.. ordered.SelectMany(r => r.Findings)]
+    );
   }
 
   /// <summary>Stands each structure of <paramref name="domain"/> formed, in one facing, as
@@ -531,6 +598,23 @@ public static class InteractionLaw {
       ? new ItemStack(block, count)
       : new ItemStack((Item)item, count);
 
+  /// <summary>A fresh stack of <paramref name="world"/>'s own collectible of
+  /// <paramref name="item"/>'s code, which a help line may name from another world: vanilla's
+  /// wrench behaviour keeps the wrench stacks of the first world that asked, in a static.</summary>
+  private static ItemStack FreshIn(
+    TestWorld world,
+    CollectibleObject item,
+    int count
+  ) =>
+    Fresh(
+      (
+        item is Block
+          ? (CollectibleObject?)world.World.GetBlock(item.Code)
+          : world.World.GetItem(item.Code)
+      ) ?? item,
+      count
+    );
+
   /// <summary>Makes <paramref name="click"/> on <paramref name="step"/> and judges it.</summary>
   /// <param name="cells">The cells whose codes and trees the click may change.</param>
   /// <param name="who">What a finding starts with.</param>
@@ -572,11 +656,15 @@ public static class InteractionLaw {
     bool judged
   ) {
     Hand(player).Itemstack =
-      click.Item == null ? null : Fresh(click.Item, click.Count);
+      click.Item == null ? null : FreshIn(world, click.Item, click.Count);
     for (int i = 1; i < player.Hotbar.Count; i++)
       player.Hotbar[i].Itemstack =
         i <= click.Carried.Length
-          ? Fresh(click.Carried[i - 1].Item, click.Carried[i - 1].Count)
+          ? FreshIn(
+            world,
+            click.Carried[i - 1].Item,
+            click.Carried[i - 1].Count
+          )
           : null;
     Hold(player, click.Keys);
     foreach (object heard in Listeners(world, player))

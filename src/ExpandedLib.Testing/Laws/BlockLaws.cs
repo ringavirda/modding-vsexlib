@@ -124,15 +124,15 @@ public static class BlockLaws {
     );
 
   /// <summary>As <see cref="Run(string, IEnumerable{IExDef}, IReadOnlyList{Assembly}, Action{TestWorld}?)"/>,
-  /// with the break law's variants broken on up to <paramref name="groups"/> threads, each in a
-  /// world of its own.</summary>
+  /// with the break law's variants broken, and the interaction law's blocktypes clicked, on up to
+  /// <paramref name="groups"/> threads, each in a world of its own.</summary>
   /// <remarks>The result, counts and findings in variant order, is the same whatever the number of
   /// groups. The other laws run on the calling thread.</remarks>
   /// <param name="domain">The domain whose blocks are judged.</param>
   /// <param name="defs">Block and item definitions; others, and exlib's filler, are skipped.</param>
   /// <param name="assemblies">Where the definitions' classes live, exlib's included.</param>
-  /// <param name="prepare">As the overload without groups; the break law may run it on several threads at once.</param>
-  /// <param name="groups">Threads the break law splits over; below 1 counts as 1.</param>
+  /// <param name="prepare">As the overload without groups; the break and interaction laws may run it on several threads at once.</param>
+  /// <param name="groups">Threads the break and interaction laws split over; below 1 counts as 1.</param>
   /// <returns>As the overload without groups.</returns>
   /// <exception cref="InvalidOperationException">As the overload without groups.</exception>
   public static Result Run(
@@ -188,7 +188,11 @@ public static class BlockLaws {
     );
     laws.Add(
       Timed(() =>
-        InteractionLaw.Run(Stand(all, assemblies, prepare, items), domain)
+        InteractionLaw.Run(
+          () => Stand(all, assemblies, prepare, items),
+          domain,
+          groups
+        )
       )
     );
     laws.Add(
@@ -209,7 +213,7 @@ public static class BlockLaws {
     return new Result(laws);
   }
 
-  /// <summary>Most groups the break law splits over.</summary>
+  /// <summary>Most groups the break and interaction laws split over.</summary>
   internal const int MaxGroups = 4;
 
   /// <summary>Memory one group's world holds, in bytes.</summary>
@@ -433,6 +437,11 @@ public static class BlockLaws {
   /// (64, 64, 64).</summary>
   internal sealed class Sites {
     private int _next;
+
+    public Sites() { }
+
+    /// <param name="first">How many sites to skip before the first one handed out.</param>
+    public Sites(int first) => _next = first;
 
     /// <summary>The next unused site.</summary>
     public BlockPos Next() {
