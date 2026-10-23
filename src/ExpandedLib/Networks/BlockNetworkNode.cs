@@ -88,9 +88,9 @@ public abstract class BlockNetworkNode
   }
 
   #region Placement and orientation
-  /// <summary>Passes the computed orientation choices from <see cref="TryPlaceBlock"/> to <see cref="OnBlockPlaced"/> within the same placement call, keyed by world position.</summary>
+  /// <summary>Passes the computed orientation choices from <see cref="TryPlaceBlock"/> to <see cref="OnBlockPlaced"/> within the same placement call, keyed by world and position.</summary>
   private static readonly ConcurrentDictionary<
-    BlockPos,
+    (IWorldAccessor World, BlockPos Pos),
     string[]
   > _tempOrientationsStore = new();
 
@@ -144,7 +144,7 @@ public abstract class BlockNetworkNode
     string[] finalChoices =
       preferredChoices.Length > 0 ? preferredChoices : safeChoices;
 
-    _tempOrientationsStore[blockSel.Position] = finalChoices;
+    _tempOrientationsStore[(world, blockSel.Position)] = finalChoices;
 
     AssetLocation newCode = this.WithVariant("orientation", finalChoices[0]);
     Block? block = world.GetBlock(newCode);
@@ -159,7 +159,7 @@ public abstract class BlockNetworkNode
         ref failureCode
       )
     ) {
-      _tempOrientationsStore.TryRemove(blockSel.Position, out _);
+      _tempOrientationsStore.TryRemove((world, blockSel.Position), out _);
       return false;
     }
 
@@ -172,7 +172,7 @@ public abstract class BlockNetworkNode
       );
       // A refused variant placement never reaches OnBlockPlaced; the store entry is dropped here.
       if (!placedVariant)
-        _tempOrientationsStore.TryRemove(blockSel.Position, out _);
+        _tempOrientationsStore.TryRemove((world, blockSel.Position), out _);
       return placedVariant;
     }
 
@@ -185,7 +185,7 @@ public abstract class BlockNetworkNode
     );
     // The base placement path also skips OnBlockPlaced.
     if (!placed)
-      _tempOrientationsStore.TryRemove(blockSel.Position, out _);
+      _tempOrientationsStore.TryRemove((world, blockSel.Position), out _);
     return placed;
   }
 
@@ -223,7 +223,12 @@ public abstract class BlockNetworkNode
   ) {
     base.OnBlockPlaced(world, blockPos, byItemStack);
 
-    if (_tempOrientationsStore.TryRemove(blockPos, out string[]? finalChoices)) {
+    if (
+      _tempOrientationsStore.TryRemove(
+        (world, blockPos),
+        out string[]? finalChoices
+      )
+    ) {
       if (
         world.BlockAccessor.GetBlockEntity(blockPos)
         is BlockEntityNetworkNode beNet

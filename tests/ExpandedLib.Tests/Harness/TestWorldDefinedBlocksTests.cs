@@ -63,6 +63,23 @@ public class TestWorldDefinedBlocksTests
     Assert.Same(blocks[1], blocks[1].Drops.Single().ResolvedItemstack?.Block);
   }
 
+  // Fails when a world given shared tag registries binds registries of its own.
+  [Fact]
+  public void Worlds_given_shared_tags_read_one_tag_registry_pair()
+  {
+    var tags = new SharedTagRegistries();
+    ExItemDef def = ExItemDef.Create("test", "tagged");
+    var worlds = new[] { new TestWorld(), new TestWorld() };
+    foreach (TestWorld world in worlds)
+    {
+      world.SharedTags = tags;
+      world.RegisterClasses(typeof(BlockStructureFiller).Assembly);
+      world.DefineItems([def]);
+    }
+
+    Assert.All(worlds, w => Assert.True(tags.IsBoundTo(w.Api)));
+  }
+
   // Fails when CreateRegisteredBlockEntity skips CreateBehaviors.
   [Fact]
   public void An_entity_spawned_from_the_registry_carries_its_declared_behaviours()

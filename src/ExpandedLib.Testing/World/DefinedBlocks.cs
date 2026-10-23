@@ -31,6 +31,10 @@ public sealed partial class TestWorld {
   private ClassRegistry? _classes;
   private int _nextDefinedId = FirstDefinedId;
 
+  /// <summary>The tag registries this world binds to when it defines items, in place of ones of
+  /// its own; null for its own.</summary>
+  internal SharedTagRegistries? SharedTags { get; set; }
+
   /// <summary>Principals <see cref="StructureBreaks"/> has placed in this world, each 32 blocks
   /// along X from the last.</summary>
   internal int BreakSites { get; set; }
@@ -158,7 +162,7 @@ public sealed partial class TestWorld {
       ),
     ];
     foreach (Item item in items)
-      item.OnLoaded(Api);
+      GameStatics.Load(item, Api);
     return items;
   }
 
@@ -173,6 +177,14 @@ public sealed partial class TestWorld {
     if (_tagsBound)
       return;
     var coreApi = (ICoreAPI)Api;
+    if (SharedTags is { } shared)
+    {
+      coreApi.CollectibleTagRegistry.Returns(shared.Collectible);
+      coreApi.EntityTagRegistry.Returns(shared.Entity);
+      shared.Bind();
+      _tagsBound = true;
+      return;
+    }
     var collectibleTags = new ConcurrentTagRegistry(Log, "collectible");
     var entityTags = new ConcurrentTagRegistryFast(Log, "entity");
     coreApi.CollectibleTagRegistry.Returns(collectibleTags);
@@ -260,7 +272,7 @@ public sealed partial class TestWorld {
       drop.Resolve(World, "DefineBlock", block.Code);
     // The engine assigns the api when it registers the block; OnLoaded does not.
     ReflectionHelpers.SetField(block, "api", Api);
-    block.OnLoaded(Api);
+    GameStatics.Load(block, Api);
   }
 
   private static bool IsRegistrable(Type type) =>
