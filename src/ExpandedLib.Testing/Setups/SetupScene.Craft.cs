@@ -237,8 +237,10 @@ public sealed partial class SetupScene
     {
       CraftStep step = sequence.Steps[n];
       string label = $"step {n + 1} of {sequence.Recipe}";
-      Player.Hold(Gesture(where, label, step.Tool));
-      Player.HoldOffHand(Gesture(where, label, step.Offhand));
+      ItemStack? tool = Gesture(where, label, step.Tool);
+      ItemStack? offhand = Gesture(where, label, step.Offhand);
+      Player.Hold(tool);
+      Player.HoldOffHand(offhand);
       try
       {
         if (
@@ -258,13 +260,22 @@ public sealed partial class SetupScene
       }
       finally
       {
-        Give(Player.ActiveSlot.Itemstack);
-        Give(Player.OffHandSlot.Itemstack);
-        Player.Hold(null);
-        Player.HoldOffHand(null);
+        if (Holds(Player.ActiveSlot, tool))
+        {
+          Give(tool);
+          Player.Hold(null);
+        }
+        if (Holds(Player.OffHandSlot, offhand))
+        {
+          Give(offhand);
+          Player.HoldOffHand(null);
+        }
       }
     }
   }
+
+  private static bool Holds(ItemSlot slot, ItemStack? tool) =>
+    tool != null && slot.Itemstack?.Collectible == tool.Collectible;
 
   private ItemStack? Gesture(string where, string label, string? pattern)
   {
