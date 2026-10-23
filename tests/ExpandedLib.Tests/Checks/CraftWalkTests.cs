@@ -398,8 +398,10 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.Contains("0 failures", result.Summary);
   }
 
-  // Fails when Run ignores owns and every shard crafts every recipe.
+  // Fails when Run ignores owns and every shard crafts every recipe, or when Shard gives a recipe to two shards or
+  // to none.
   [Fact]
+  [PlantedDefect(typeof(CraftWalk), nameof(CraftWalk.Shard))]
   public void The_shards_of_a_split_craft_every_recipe_once_between_them()
   {
     using TestWorld world = Planted(
