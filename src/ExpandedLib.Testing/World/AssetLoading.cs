@@ -142,12 +142,14 @@ public sealed partial class TestWorld {
 
     // GamePaths.AssetsPath/Lang.Load are process-wide statics the object loader needs primed; safe
     // to set repeatedly.
-    ReflectionHelpers.SetStaticField(
-      typeof(GamePaths),
-      "<AssetsPath>k__BackingField",
-      assetsPath
-    );
-    Lang.Load(Log, mgr, "en");
+    lock (LangGate) {
+      ReflectionHelpers.SetStaticField(
+        typeof(GamePaths),
+        "<AssetsPath>k__BackingField",
+        assetsPath
+      );
+      Lang.Load(Log, mgr, "en");
+    }
 
     ICoreServerAPI loaderApi = BuildLoaderApi(
       mgr,
@@ -213,6 +215,9 @@ public sealed partial class TestWorld {
     IEnumerable<ModSystem> systems
   ) => [.. systems.OrderBy(s => s.ExecuteOrder())];
 
+  // Serialises Lang.Load, which rewrites the game's process-wide language table.
+  private static readonly object LangGate = new();
+
   /// <summary>Loads the install's vanilla survival block and item types named by
   /// <paramref name="blocks"/> and <paramref name="items"/> through the game's own object loader
   /// and registers each variant this world holds nothing of by code, as
@@ -253,12 +258,14 @@ public sealed partial class TestWorld {
           || names.Contains(Path.GetFileNameWithoutExtension(asset.Name))
         )
           mgr.Add(asset.Location, asset);
-    ReflectionHelpers.SetStaticField(
-      typeof(GamePaths),
-      "<AssetsPath>k__BackingField",
-      assetsPath
-    );
-    Lang.Load(Log, mgr, "en");
+    lock (LangGate) {
+      ReflectionHelpers.SetStaticField(
+        typeof(GamePaths),
+        "<AssetsPath>k__BackingField",
+        assetsPath
+      );
+      Lang.Load(Log, mgr, "en");
+    }
 
     ICoreServerAPI loaderApi = BuildLoaderApi(mgr, out _);
     RunVanillaLoader(

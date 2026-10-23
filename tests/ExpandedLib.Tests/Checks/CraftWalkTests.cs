@@ -263,14 +263,16 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
   private CraftWalk.Result Walk(
     TestWorld world,
     string? kit = null,
-    string? known = null
+    string? known = null,
+    System.Func<string, bool>? owns = null
   )
   {
     CraftWalk.Result result = CraftWalk.Run(
       world,
       "walk",
       kit == null ? null : _files.Write("kit.json", kit),
-      known == null ? null : _files.Write("known.json", known)
+      known == null ? null : _files.Write("known.json", known),
+      owns
     );
     output.WriteLine(result.ToString());
     return result;
@@ -394,6 +396,67 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
 
     Assert.Empty(result.Findings);
     Assert.Contains("0 failures", result.Summary);
+  }
+
+  // Fails when Run ignores owns and every shard crafts every recipe.
+  [Fact]
+  public void The_shards_of_a_split_craft_every_recipe_once_between_them()
+  {
+    using TestWorld world = Planted(
+      ["a", "b", "c", "d", "e", "f"],
+      [
+        Recipe(Stick, "a"),
+        Recipe(Stick, "b"),
+        Recipe(Stick, "c"),
+        Recipe(Stick, "d"),
+        Recipe(Stick, "e"),
+        Recipe(Stick, "f"),
+      ],
+      Stick
+    );
+
+    string[] whole = [.. Walk(world).Crafted.Select(c => c.Output).Order()];
+    string[][] shards =
+    [
+      .. Enumerable
+        .Range(0, 3)
+        .Select(k =>
+          Walk(world, owns: CraftWalk.Shard(k, 3))
+            .Crafted.Select(c => c.Output)
+            .Order()
+            .ToArray()
+        ),
+    ];
+
+    Assert.Equal(6, whole.Length);
+    Assert.Equal(whole, shards.SelectMany(s => s).Order());
+    Assert.True(shards.Count(s => s.Length > 0) > 1);
+  }
+
+  // Fails when a shard judges a known row of a product it does not craft: the stale row is then
+  // reported by every shard instead of the one that owns the product.
+  [Fact]
+  public void A_stale_known_row_is_reported_by_the_shard_that_owns_its_product_only()
+  {
+    using TestWorld world = Planted(["a"], [Recipe(Stick, "a")], Stick);
+
+    string[] findings =
+    [
+      .. Enumerable
+        .Range(0, 3)
+        .SelectMany(k =>
+          Walk(
+            world,
+            known: "{ \"walk:a\": { \"why\": \"unreached\", \"task\": \"CC9\" } }",
+            owns: CraftWalk.Shard(k, 3)
+          ).Findings
+        ),
+    ];
+
+    Assert.Equal(
+      ["walk:a | known row matches no failure; remove it"],
+      findings
+    );
   }
 
   private static void Sequence(string recipe, string tool) =>

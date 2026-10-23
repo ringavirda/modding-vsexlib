@@ -93,6 +93,27 @@ public static class CraftWalk
     string domain,
     string? kitFile,
     string? exceptionsFile
+  ) => Run(world, domain, kitFile, exceptionsFile, null);
+
+  /// <summary>As <see cref="Run(TestWorld, string, string?, string?)"/>, crafting only the recipes
+  /// whose product <paramref name="owns"/> accepts.</summary>
+  /// <remarks>Reading the edges, reaching and every check but the crafting run whole, so every
+  /// shard reports the same findings of those. A known row whose key is the product of a recipe
+  /// the shard does not craft is not judged stale by it. The shards of one <see cref="Shard"/> split
+  /// together report the crafting findings of the whole walk, each of them once.</remarks>
+  /// <param name="owns">Whether this walk crafts the recipes making a product code; null crafts
+  /// all.</param>
+  /// <returns>As <see cref="Run(TestWorld, string, string?, string?)"/>, the summary counting the
+  /// recipes this walk crafted as executed.</returns>
+  /// <exception cref="InvalidOperationException">A file is not a JSON object, or a row has no
+  /// route or reason.</exception>
+  /// <exception cref="Newtonsoft.Json.JsonException">A file is not JSON.</exception>
+  public static Result Run(
+    TestWorld world,
+    string domain,
+    string? kitFile,
+    string? exceptionsFile,
+    System.Func<string, bool>? owns
   )
   {
     var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -160,7 +181,8 @@ public static class CraftWalk
       reached,
       all,
       found,
-      crafted
+      crafted,
+      owns
     );
     Lap("execute");
 
@@ -298,11 +320,19 @@ public static class CraftWalk
         );
     found.AddRange(kindFindings);
 
+    HashSet<string> elsewhere =
+    [
+      .. owns == null
+        ? []
+        : edges
+          .Where((e, i) => firedIn[i] > 0 && e.Grid != null && !owns(e.Output))
+          .Select(e => e.Output),
+    ];
     string[] failures =
     [
       .. found.Where(f => !known.ContainsKey(f.Key)).Select(f => f.Line),
       .. known
-        .Keys.Where(k => found.All(f => f.Key != k))
+        .Keys.Where(k => found.All(f => f.Key != k) && !elsewhere.Contains(k))
         .Select(k => $"{k} | known row matches no failure; remove it"),
     ];
     int count = fired.Count(f => f);
@@ -322,6 +352,22 @@ public static class CraftWalk
     {
       Steps = steps,
     };
+  }
+
+  /// <summary>The <paramref name="owns"/> of shard number <paramref name="shard"/> of
+  /// <paramref name="shards"/>: true for the product codes a stable hash of the code puts in that
+  /// shard, so the shards of one split own every code between them and none twice.</summary>
+  /// <param name="shard">The shard, from 0 to <paramref name="shards"/> less 1.</param>
+  /// <param name="shards">How many shards the walk is split into; at least 1.</param>
+  public static System.Func<string, bool> Shard(int shard, int shards) =>
+    output => Hash(output) % shards == shard;
+
+  private static int Hash(string text)
+  {
+    uint hash = 2166136261;
+    foreach (char c in text)
+      hash = (hash ^ c) * 16777619;
+    return (int)(hash & 0x7fffffff);
   }
 
   private static bool Matches(string pattern, CollectibleObject c) =>

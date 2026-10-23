@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Threading;
+using System.Threading.Tasks;
 using ExpandedLib.Blocks;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Definitions;
@@ -91,22 +93,32 @@ public static class StructureBreaks
   /// Breaks each definition in <paramref name="defs"/> that declares <c>fillerOffsets</c> (plain or
   /// by type) or an <c>ExRightClickConstructable</c> behaviour, in every variant it registers.
   /// </summary>
+  /// <remarks>Each variant is stood up in worlds of its own, so variants may be broken side by side;
+  /// the result lists them in the order the serial run would.</remarks>
   /// <param name="assemblies">The assemblies whose registered classes the definitions name, exlib's
   /// own included; exlib's structure filler is taken from them.</param>
   /// <param name="prepare">Runs on each fresh world before the structure is placed, to register the
-  /// network types and mod systems its block entities need.</param>
+  /// network types and mod systems its block entities need; it may run on several threads at once
+  /// when <paramref name="maxDegreeOfParallelism"/> is above 1.</param>
+  /// <param name="maxDegreeOfParallelism">The most variants broken at once; 1 breaks them one after
+  /// the other on the calling thread. Values below 1 count as 1.</param>
   public static Result Run(
     IEnumerable<ExBlockDef> defs,
     IReadOnlyList<Assembly> assemblies,
-    Action<TestWorld>? prepare = null
+    Action<TestWorld>? prepare = null,
+    int maxDegreeOfParallelism = 1
   )
   {
     ExBlockDef fillerDef = ExDefinitions
       .DefinitionsOf(typeof(BlockStructureFiller), "exlib")
       .Single();
-    var tally = new Tally();
-    int blocks = 0,
-      variants = 0;
+    var variants =
+      new List<(
+        ExBlockDef Def,
+        DefinitionCodes.Registered Variant,
+        bool DeclaresStages
+      )>();
+    int blocks = 0;
 
     foreach (ExBlockDef def in defs.Where(InScope))
     {
@@ -115,46 +127,75 @@ public static class StructureBreaks
       foreach (
         DefinitionCodes.Registered variant in DefinitionCodes.Expand(def)
       )
-      {
-        variants++;
-        TestWorld Stand()
-        {
-          var world = new TestWorld();
-          world.RegisterClasses([.. assemblies]);
-          world.RegisterClass("Animatable", typeof(BEBehaviorAnimatable));
-          world.RegisterClass(
-            "BlockEntityInteract",
-            typeof(BlockBehaviorBlockEntityInteract)
-          );
-          var power = new MechanicalPowerMod();
-          world.Mods.Register(power);
-          power.Start(world.Api);
-          prepare?.Invoke(world);
-          world.DefineBlock(
-            fillerDef,
-            DefinitionCodes.Expand(fillerDef).Single()
-          );
-          return world;
-        }
+        variants.Add((def, variant, declaresStages));
+    }
 
-        BreakVariant(
-          variant.Code,
-          declaresStages,
-          () =>
-          {
-            TestWorld world = Stand();
-            return new Site(world, At, () => world.DefineBlock(def, variant));
-          },
-          tally
-        );
-      }
+    var tags = new SharedTagRegistries();
+    tags.Bind();
+    TestWorld Stand()
+    {
+      var world = new TestWorld { SharedTags = tags };
+      world.RegisterClasses([.. assemblies]);
+      world.RegisterClass("Animatable", typeof(BEBehaviorAnimatable));
+      world.RegisterClass(
+        "BlockEntityInteract",
+        typeof(BlockBehaviorBlockEntityInteract)
+      );
+      var power = new MechanicalPowerMod();
+      world.Mods.Register(power);
+      power.Start(world.Api);
+      prepare?.Invoke(world);
+      world.DefineBlock(fillerDef, DefinitionCodes.Expand(fillerDef).Single());
+      return world;
+    }
+
+    var tallies = new Tally[variants.Count];
+    try
+    {
+      Parallel.For(
+        0,
+        variants.Count,
+        new ParallelOptions
+        {
+          MaxDegreeOfParallelism = Math.Max(1, maxDegreeOfParallelism),
+        },
+        at =>
+        {
+          (ExBlockDef def, DefinitionCodes.Registered variant, bool stages) =
+            variants[at];
+          var tally = new Tally();
+          BreakVariant(
+            variant.Code,
+            stages,
+            () =>
+            {
+              TestWorld world = Stand();
+              return new Site(world, At, () => world.DefineBlock(def, variant));
+            },
+            tally
+          );
+          tallies[at] = tally;
+        }
+      );
+    }
+    catch (AggregateException e)
+    {
+      ExceptionDispatchInfo.Capture(e.InnerExceptions[0]).Throw();
+    }
+
+    var merged = new Tally();
+    foreach (Tally tally in tallies)
+    {
+      merged.Breaks += tally.Breaks;
+      merged.Failures.AddRange(tally.Failures);
+      merged.Spawned.AddRange(tally.Spawned);
     }
     return new Result(
       blocks,
-      variants,
-      tally.Breaks,
-      tally.Failures,
-      tally.Spawned
+      variants.Count,
+      merged.Breaks,
+      merged.Failures,
+      merged.Spawned
     );
   }
 

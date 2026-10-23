@@ -93,7 +93,7 @@ public static class BlockLaws {
   /// <summary>Stands every variant of <paramref name="defs"/>' blocks up and runs each law over the
   /// blocks of <paramref name="domain"/>.</summary>
   /// <remarks>Each law but the break law gets a world of its own, holding the item definitions for
-  /// the interaction and container laws, formed or not; the break law stands one per break.</remarks>
+  /// the interaction and container laws, formed or not; the break law stands one per break, threaded.</remarks>
   /// <param name="domain">The domain whose blocks are judged; other domains' definitions stand
   /// beside them, for layouts and help to name.</param>
   /// <param name="defs">Block and item definitions; others, and exlib's filler, are skipped.</param>
@@ -111,10 +111,41 @@ public static class BlockLaws {
     IEnumerable<IExDef> defs,
     IReadOnlyList<Assembly> assemblies,
     Action<TestWorld>? prepare = null
+  ) =>
+    Run(
+      domain,
+      defs,
+      assemblies,
+      prepare,
+      GroupsFor(
+        Environment.ProcessorCount,
+        GC.GetGCMemoryInfo().TotalAvailableMemoryBytes
+      )
+    );
+
+  /// <summary>As <see cref="Run(string, IEnumerable{IExDef}, IReadOnlyList{Assembly}, Action{TestWorld}?)"/>,
+  /// with the break law's variants broken on up to <paramref name="groups"/> threads, each in a
+  /// world of its own.</summary>
+  /// <remarks>The result, counts and findings in variant order, is the same whatever the number of
+  /// groups. The other laws run on the calling thread.</remarks>
+  /// <param name="domain">The domain whose blocks are judged.</param>
+  /// <param name="defs">Block and item definitions; others, and exlib's filler, are skipped.</param>
+  /// <param name="assemblies">Where the definitions' classes live, exlib's included.</param>
+  /// <param name="prepare">As the overload without groups; the break law may run it on several threads at once.</param>
+  /// <param name="groups">Threads the break law splits over; below 1 counts as 1.</param>
+  /// <returns>As the overload without groups.</returns>
+  /// <exception cref="InvalidOperationException">As the overload without groups.</exception>
+  public static Result Run(
+    string domain,
+    IEnumerable<IExDef> defs,
+    IReadOnlyList<Assembly> assemblies,
+    Action<TestWorld>? prepare,
+    int groups
   ) {
     IExDef[] given = [.. defs];
     ExBlockDef[] all = [.. given.OfType<ExBlockDef>()];
     ExItemDef[] items = [.. given.OfType<ExItemDef>()];
+    groups = Math.Max(1, groups);
     var laws = new List<Law>();
     laws.Add(
       Timed(() => PlacementLaw.Run(Stand(all, assemblies, prepare), domain))
@@ -122,7 +153,12 @@ public static class BlockLaws {
 #if GAME_GE_1_22
     laws.Add(
       Timed(() =>
-        BreakLaw.Run(all.Where(d => d.Domain == domain), assemblies, prepare)
+        BreakLaw.Run(
+          all.Where(d => d.Domain == domain),
+          assemblies,
+          prepare,
+          groups
+        )
       )
     );
 #endif
@@ -172,6 +208,18 @@ public static class BlockLaws {
     );
     return new Result(laws);
   }
+
+  /// <summary>Most groups the break law splits over.</summary>
+  internal const int MaxGroups = 4;
+
+  /// <summary>Memory one group's world holds, in bytes.</summary>
+  internal const long GroupBytes = 3L << 30;
+
+  /// <summary>How many groups a machine takes: one per processor and per <see cref="GroupBytes"/> of
+  /// memory, to <see cref="MaxGroups"/>, and at least one.</summary>
+  internal static int GroupsFor(int processors, long memoryBytes) =>
+    (int)
+      Math.Clamp(Math.Min(processors, memoryBytes / GroupBytes), 1, MaxGroups);
 
   private static Law Timed(Func<Law> run) {
     var watch = System.Diagnostics.Stopwatch.StartNew();

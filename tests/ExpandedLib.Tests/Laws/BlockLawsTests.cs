@@ -763,6 +763,20 @@ public class BlockLawsTests {
     Assert.Equal(4 + 5, law.Cases);
   }
 
+  // Fails when the group count ignores the processors, the memory or the cap, or can fall below one.
+  [Theory]
+  [InlineData(8, 64L << 30, 4)]
+  [InlineData(2, 64L << 30, 2)]
+  [InlineData(8, 7L << 30, 2)]
+  [InlineData(8, 1L << 30, 1)]
+  [InlineData(0, 64L << 30, 1)]
+  [InlineData(64, 1L << 40, 4)]
+  public void Groups_follow_the_processors_and_the_memory_to_the_cap(
+    int processors,
+    long memory,
+    int expected
+  ) => Assert.Equal(expected, BlockLaws.GroupsFor(processors, memory));
+
   // Fails when Run leaves a law's Seconds unset or Timings drops a law.
   [Fact]
   public void Each_law_reports_the_seconds_it_took() {
