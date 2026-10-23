@@ -332,16 +332,20 @@ public sealed partial class TestWorld {
   );
 
   /// <summary>Reads <paramref name="modPaths"/> in order, each preceded by the dependencies its
-  /// <c>modinfo.json</c> names that are not listed or read already: the ids other than
-  /// <c>game</c>, <c>survival</c> and <c>creative</c>, in the folder <see cref="RepoPaths.Assets"/>
-  /// finds for the id. exlib is read for its assets alone, its systems being started apart. A dependency
-  /// whose folder cannot be read is skipped.</summary>
+  /// <c>modinfo.json</c> names that are not listed or read already: the ids other than <c>game</c>,
+  /// <c>survival</c> and <c>creative</c>, in the folder <paramref name="assetsOf"/> finds for the id. exlib is read
+  /// for its assets alone; where <paramref name="assetsOf"/> finds none, <see cref="RepoPaths.ExlibSource"/> stands in.
+  /// A dependency whose folder cannot be read is skipped.</summary>
+  /// <param name="modPaths">The listed mod folders, in load order.</param>
+  /// <param name="assetsOf">A domain's asset folder; null for <see cref="RepoPaths.Assets"/>.</param>
   /// <exception cref="InvalidOperationException">No <c>modinfo.json</c> or modid resolves in a
   /// listed folder, or a listed mod that is not a content mod has no compiled dll under
   /// <c>bin/</c>.</exception>
   internal static List<ListedMod> ReadWithDependencies(
-    IReadOnlyList<string> modPaths
+    IReadOnlyList<string> modPaths,
+    System.Func<string, string>? assetsOf = null
   ) {
+    assetsOf ??= RepoPaths.Assets;
     List<ListedMod> listed = [.. modPaths.Select(p => ReadListedMod(p))];
     HashSet<string> known = new(
       listed.Select(m => m.Id),
@@ -353,7 +357,13 @@ public sealed partial class TestWorld {
       foreach (string id in mod.Dependencies) {
         if (id is "game" or "survival" or "creative" || !known.Add(id))
           continue;
-        string assets = RepoPaths.Assets(id);
+        string assets = assetsOf(id);
+        if (
+          id == "exlib"
+          && !Directory.Exists(assets)
+          && RepoPaths.ExlibSource is { } source
+        )
+          assets = Path.Combine(source, "assets", "exlib");
         try {
           Add(
             ReadListedMod(

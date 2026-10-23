@@ -105,6 +105,29 @@ public class LongGripTests {
     }
   }
 
+  // Fails when a long block is judged as a cube hold: G11 refuses its carry clip, or G13 reads its centre against the
+  // cube's and finds it above.
+  [Fact]
+  public void A_long_block_on_its_carry_passes_G11_and_G13() {
+    ViewGroup[] blocks = [.. Longs().Where(g => g.IsBlock)];
+    Assert.Contains(blocks, g => g.Kind == ItemViewKind.Multicell);
+    Assert.All(
+      blocks,
+      g => Assert.Contains(ViewReferences.LongCarries, c => c.Clip == g.Held)
+    );
+    string[] findings =
+    [
+      .. ViewGates
+        .Findings(World, "viewslong")
+        .Select(f => f.Key)
+        .Where(k =>
+          blocks.Any(b => b.Codes.Any(code => k.StartsWith(code + " ")))
+          && (k.EndsWith(" G11 clips") || k.EndsWith(" G13 hand.centre"))
+        ),
+    ];
+    Assert.True(findings.Length == 0, string.Join("; ", findings));
+  }
+
   // Fails when an item that names its own clips is read against the carry's stations: its grip then misses by voxels.
   [Fact]
   public void A_long_item_with_its_own_clips_has_no_G17() {

@@ -61,6 +61,44 @@ public class DependencyLoadingTests
     Assert.Equal(["fxdepbase", "fxdeptop"], mods.Select(m => m.Id));
   }
 
+  // Fails when the metadata names another folder than the exlib mod beside the harness.
+  [Fact]
+  public void The_harness_names_the_exlib_mod_it_was_built_beside()
+  {
+    string expected = Path.GetFullPath(
+      Path.Combine(RepoPaths.Root, "src", "ExpandedLib")
+    );
+
+    Assert.Equal(
+      expected.TrimEnd(Path.DirectorySeparatorChar),
+      RepoPaths.ExlibSource?.TrimEnd(Path.DirectorySeparatorChar)
+    );
+  }
+
+  // Fails when the exlib fallback is removed: a consumer's repository holds no exlib assets and the list lacks exlib.
+  [Fact]
+  public void A_consumer_repository_without_exlib_assets_loads_exlib_from_the_source_tree()
+  {
+    var mods = TestWorld.ReadWithDependencies(
+      [DependsOnExlib],
+      id =>
+        Path.Combine(Path.GetTempPath(), "fxnowhere", "mods", id, "assets", id)
+    );
+
+    string exlibPath = mods.Single(m => m.Id == "exlib").Path;
+    Assert.True(
+      File.Exists(
+        Path.Combine(
+          exlibPath,
+          "assets",
+          "exlib",
+          "patches",
+          "player-clips.json"
+        )
+      )
+    );
+  }
+
   // Fails when a dependency folder that cannot be read throws instead of being skipped.
   [Fact]
   public void A_dependency_folder_without_a_modinfo_is_skipped()

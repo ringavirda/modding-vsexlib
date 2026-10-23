@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 
 namespace ExpandedLib.Testing;
 
@@ -44,6 +45,24 @@ public static class RepoPaths {
     )
       return sample.Path;
     return Path.Combine(Root, "mods", id);
+  }
+
+  /// <summary>The folder of the exlib mod (<c>src/ExpandedLib</c>) of the checkout this harness was built beside;
+  /// null when the harness came from a package or that checkout is gone. A consumer's tests register it as the
+  /// exlib asset root so a world loads the exlib assets of the code under test, not those of a sibling checkout.</summary>
+  internal static string? ExlibSource {
+    get {
+      string? root = typeof(RepoPaths)
+        .Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+        .FirstOrDefault(a => a.Key == "ExlibSource")
+        ?.Value;
+      if (string.IsNullOrEmpty(root))
+        return null;
+      string full = Path.GetFullPath(root);
+      return Directory.Exists(Path.Combine(full, "assets", "exlib"))
+        ? full
+        : null;
+    }
   }
 
   /// <summary>The absolute path to a domain's packaged asset tree,

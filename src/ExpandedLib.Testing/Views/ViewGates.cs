@@ -596,6 +596,8 @@ internal static class ViewGates {
     string kind = group.Kind.ToString().ToLowerInvariant();
 
     foreach ((string id, string gate, string name, string target) in Judged) {
+      if (id == "G13" && group.IsBlock && group.IsLong)
+        continue;
       Band? band;
       if (twin == null) {
         if (id == "G7" && group.IsLong)
@@ -1072,6 +1074,7 @@ internal static class ViewGates {
     if (
       group.IsBlock
       && !BlockClips.Contains(held, StringComparer.OrdinalIgnoreCase)
+      && !(group.IsLong && ViewReferences.LongCarries.Any(c => c.Clip == held))
     )
       problems.Add(
         $"a block is held on {held}, not {string.Join(" or ", BlockClips)}"

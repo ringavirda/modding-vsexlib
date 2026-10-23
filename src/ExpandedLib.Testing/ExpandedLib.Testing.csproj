@@ -27,6 +27,15 @@
     <NoWarn>$(NoWarn);CS1591;CS1573;CS0419</NoWarn>
   </PropertyGroup>
 
+  <!-- The folder of the exlib mod this harness was built beside, read by TestWorld when a consumer's repository
+       holds no exlib assets of its own. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ExlibSource</_Parameter1>
+      <_Parameter2>$(MSBuildThisFileDirectory)../ExpandedLib/</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <!-- NuGet pack metadata. PackageId and Description stay here (IsPackable is already set above) -
        the rest (version, authors, urls, license, readme filename, icon, tags, symbols) is shared
        across the three packable exlib projects and lives in ../../Directory.Build.props. -->
