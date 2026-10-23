@@ -917,7 +917,10 @@ public class BlockLawsTests {
       Prepare
     );
 
-    Assert.All(result.Laws, l => Assert.True(l.Elapsed > TimeSpan.Zero, l.Name));
+    Assert.All(
+      result.Laws,
+      l => Assert.True(l.Elapsed > TimeSpan.Zero, l.Name)
+    );
     string[] lines = result.Timings().Split('\n');
     Assert.Equal(result.Laws.Count, lines.Length);
     Assert.All(
