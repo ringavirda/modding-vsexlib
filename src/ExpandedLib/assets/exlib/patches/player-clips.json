@@ -3,6 +3,7 @@
     "file": "game:shapes/entity/humanoid/seraph-faceless.json",
     "op": "add",
     "path": "/animations/-",
+    "side": "Universal",
     "value": {
       "name": "Long carry 1, held",
       "code": "exlib-longcarry1",
@@ -59,6 +60,7 @@
     "file": "game:shapes/entity/humanoid/seraph-faceless.json",
     "op": "add",
     "path": "/animations/-",
+    "side": "Universal",
     "value": {
       "name": "Long carry 1, held-fp",
       "code": "exlib-longcarry1-fp",
@@ -115,6 +117,7 @@
     "file": "game:shapes/entity/humanoid/seraph-faceless.json",
     "op": "add",
     "path": "/animations/-",
+    "side": "Universal",
     "value": {
       "name": "Long carry 2, held",
       "code": "exlib-longcarry2",
@@ -171,6 +174,7 @@
     "file": "game:shapes/entity/humanoid/seraph-faceless.json",
     "op": "add",
     "path": "/animations/-",
+    "side": "Universal",
     "value": {
       "name": "Long carry 2, held-fp",
       "code": "exlib-longcarry2-fp",
@@ -227,6 +231,7 @@
     "file": "game:shapes/entity/humanoid/seraph-faceless.json",
     "op": "add",
     "path": "/animations/-",
+    "side": "Universal",
     "value": {
       "name": "Long carry 3, held",
       "code": "exlib-longcarry3",
@@ -283,6 +288,7 @@
     "file": "game:shapes/entity/humanoid/seraph-faceless.json",
     "op": "add",
     "path": "/animations/-",
+    "side": "Universal",
     "value": {
       "name": "Long carry 3, held-fp",
       "code": "exlib-longcarry3-fp",
@@ -339,6 +345,7 @@
     "file": "game:entities/humanoid/player.json",
     "op": "add",
     "path": "/client/animations/-",
+    "side": "Universal",
     "value": {
       "code": "exlib-longcarry1",
       "animation": "exlib-longcarry1",
@@ -363,6 +370,7 @@
     "file": "game:entities/humanoid/player.json",
     "op": "add",
     "path": "/client/animations/-",
+    "side": "Universal",
     "value": {
       "code": "exlib-longcarry1-fp",
       "animation": "exlib-longcarry1-fp",
@@ -387,6 +395,7 @@
     "file": "game:entities/humanoid/player.json",
     "op": "add",
     "path": "/client/animations/-",
+    "side": "Universal",
     "value": {
       "code": "exlib-longcarry2",
       "animation": "exlib-longcarry2",
@@ -411,6 +420,7 @@
     "file": "game:entities/humanoid/player.json",
     "op": "add",
     "path": "/client/animations/-",
+    "side": "Universal",
     "value": {
       "code": "exlib-longcarry2-fp",
       "animation": "exlib-longcarry2-fp",
@@ -435,6 +445,7 @@
     "file": "game:entities/humanoid/player.json",
     "op": "add",
     "path": "/client/animations/-",
+    "side": "Universal",
     "value": {
       "code": "exlib-longcarry3",
       "animation": "exlib-longcarry3",
@@ -459,6 +470,7 @@
     "file": "game:entities/humanoid/player.json",
     "op": "add",
     "path": "/client/animations/-",
+    "side": "Universal",
     "value": {
       "code": "exlib-longcarry3-fp",
       "animation": "exlib-longcarry3-fp",
