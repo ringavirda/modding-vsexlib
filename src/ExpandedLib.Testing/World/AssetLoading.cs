@@ -687,13 +687,22 @@ public sealed partial class TestWorld {
 
     // CollectibleTagRegistry/EntityTagRegistry appear only from 1.22 onward.
 #if GAME_GE_1_22
-    var collectibleTags = new ConcurrentTagRegistry(Log, "collectible");
-    var entityTags = new ConcurrentTagRegistryFast(Log, "entity");
-    coreApi.CollectibleTagRegistry.Returns(collectibleTags);
-    coreApi.EntityTagRegistry.Returns(entityTags);
-    GenericComplexConditionConverter.StaticInit(collectibleTags, entityTags);
-    CollectibleTagSetConverter.StaticInit(collectibleTags);
-    EntityTagSetConverter.StaticInit(entityTags);
+    if (SharedTags is { } shared)
+    {
+      coreApi.CollectibleTagRegistry.Returns(shared.Collectible);
+      coreApi.EntityTagRegistry.Returns(shared.Entity);
+      shared.Bind();
+    }
+    else
+    {
+      var collectibleTags = new ConcurrentTagRegistry(Log, "collectible");
+      var entityTags = new ConcurrentTagRegistryFast(Log, "entity");
+      coreApi.CollectibleTagRegistry.Returns(collectibleTags);
+      coreApi.EntityTagRegistry.Returns(entityTags);
+      GenericComplexConditionConverter.StaticInit(collectibleTags, entityTags);
+      CollectibleTagSetConverter.StaticInit(collectibleTags);
+      EntityTagSetConverter.StaticInit(entityTags);
+    }
 #endif
 
     var serverApi = Substitute.For<IServerAPI>();

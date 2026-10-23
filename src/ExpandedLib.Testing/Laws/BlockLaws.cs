@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -92,14 +93,14 @@ public static class BlockLaws {
 
   /// <summary>Stands every variant of <paramref name="defs"/>' blocks up and runs each law over the
   /// blocks of <paramref name="domain"/>.</summary>
-  /// <remarks>Each law but the break law gets a world of its own, holding the item definitions for
-  /// the interaction and container laws, formed or not; the break law stands one per break, threaded.</remarks>
+  /// <remarks>Each law gets a world of its own. The break and interaction laws run on up to
+  /// <see cref="MaxGroups"/> threads, chosen from the processors and the free memory.</remarks>
   /// <param name="domain">The domain whose blocks are judged; other domains' definitions stand
   /// beside them, for layouts and help to name.</param>
   /// <param name="defs">Block and item definitions; others, and exlib's filler, are skipped.</param>
   /// <param name="assemblies">Where the definitions' classes live, exlib's included.</param>
   /// <param name="prepare">Registers on each world the network types and mod systems the blocks
-  /// need, before any is defined.</param>
+  /// need, before any is defined; may run on several threads at once.</param>
   /// <returns>In order, the laws <c>placement</c>, <c>break</c> (1.22 on), <c>multiblock</c>,
   /// <c>megablock</c>, <c>control</c> (1.22 on), <c>info</c>, <c>reload</c>, <c>neighbour</c>, <c>network</c>,
   /// <c>network port</c>, <c>interaction</c>, <c>container</c>, <c>formed interaction</c>, <c>formed
@@ -117,10 +118,7 @@ public static class BlockLaws {
       defs,
       assemblies,
       prepare,
-      GroupsFor(
-        Environment.ProcessorCount,
-        GC.GetGCMemoryInfo().TotalAvailableMemoryBytes
-      )
+      GroupsFor(Environment.ProcessorCount, FreeMemoryBytes())
     );
 
   /// <summary>As <see cref="Run(string, IEnumerable{IExDef}, IReadOnlyList{Assembly}, Action{TestWorld}?)"/>,
@@ -186,10 +184,14 @@ public static class BlockLaws {
     laws.Add(
       Timed(() => NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain))
     );
+    var tags = new SharedTagRegistries();
+#if GAME_GE_1_22
+    tags.Bind();
+#endif
     laws.Add(
       Timed(() =>
         InteractionLaw.Run(
-          () => Stand(all, assemblies, prepare, items),
+          () => Stand(all, assemblies, prepare, items, tags),
           domain,
           groups
         )
@@ -216,6 +218,20 @@ public static class BlockLaws {
   /// <summary>Most groups the break and interaction laws split over.</summary>
   internal const int MaxGroups = 4;
 
+  /// <summary>Bytes the machine has free: <c>MemAvailable</c> of <c>/proc/meminfo</c> where it
+  /// exists, else what the GC may use less the load it last measured.</summary>
+  internal static long FreeMemoryBytes() {
+    try {
+      foreach (string line in File.ReadLines("/proc/meminfo"))
+        if (line.StartsWith("MemAvailable:", StringComparison.Ordinal))
+          return long.Parse(
+              line.Split(' ', StringSplitOptions.RemoveEmptyEntries)[1]
+            ) * 1024;
+    } catch (IOException) { }
+    GCMemoryInfo info = GC.GetGCMemoryInfo();
+    return Math.Max(0, info.TotalAvailableMemoryBytes - info.MemoryLoadBytes);
+  }
+
   /// <summary>Memory one group's world holds, in bytes.</summary>
   internal const long GroupBytes = 3L << 30;
 
@@ -240,9 +256,10 @@ public static class BlockLaws {
     IEnumerable<ExBlockDef> defs,
     IReadOnlyList<Assembly> assemblies,
     Action<TestWorld>? prepare,
-    IEnumerable<ExItemDef>? items = null
+    IEnumerable<ExItemDef>? items = null,
+    SharedTagRegistries? tags = null
   ) {
-    var world = new TestWorld();
+    var world = new TestWorld { SharedTags = tags };
     world.RegisterVanillaClasses();
     world.RegisterClasses([.. assemblies]);
     var power = new MechanicalPowerMod();
@@ -284,8 +301,14 @@ public static class BlockLaws {
     var rooms = new RoomRegistry();
     world.Mods.Register(rooms);
     rooms.Start(world.Api);
+    ClearRoomRegistryAccessor();
+  }
+
+  /// <summary>Clears the calling thread's cached <see cref="RoomRegistry"/> block accessor, which
+  /// the registry keeps per thread and would otherwise read an earlier world's cells through. A
+  /// thread that clicks in a world calls it before its first click.</summary>
+  internal static void ClearRoomRegistryAccessor() {
 #if GAME_GE_1_21
-    // The registry caches its accessor per thread; a later world would read an earlier one's cells.
     ReflectionHelpers.SetStaticField(
       typeof(RoomRegistry),
       "blockAccessor",
@@ -436,12 +459,16 @@ public static class BlockLaws {
   /// <summary>Hands out cells for one case each, 32 blocks apart along X and Z, from
   /// (64, 64, 64).</summary>
   internal sealed class Sites {
+    private readonly int _first;
     private int _next;
 
     public Sites() { }
 
     /// <param name="first">How many sites to skip before the first one handed out.</param>
-    public Sites(int first) => _next = first;
+    public Sites(int first) => _next = _first = first;
+
+    /// <summary>How many sites have been handed out.</summary>
+    public int Used => _next - _first;
 
     /// <summary>The next unused site.</summary>
     public BlockPos Next() {

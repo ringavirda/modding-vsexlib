@@ -35,19 +35,19 @@ public static class InteractionLaw {
   /// engine ignores on such a line; a variant stops at its first. Each blocktype is stood at sites
   /// of its own, so its findings do not depend on the blocktypes before it.
   /// <see cref="BlockBehaviorUnplaceable"/> blocks are skipped.</remarks>
-  /// <param name="world">A world holding the blocks judged and the items their help names
-  /// (<see cref="BlockLaws.Run"/> stands one).</param>
+  /// <param name="world">A world holding the blocks judged and the items their help names.</param>
   /// <param name="domain">The domain whose blocks are judged.</param>
   /// <returns>Blocktypes, clicks made and findings, keyed by variant code.</returns>
+  /// <exception cref="InvalidOperationException">A blocktype uses over 8192 sites.</exception>
   public static BlockLaws.Law Run(TestWorld world, string domain) =>
     Join(RunTypes(world, domain, 0, 1));
 
   /// <summary>Runs <see cref="Run(TestWorld, string)"/> over <paramref name="groups"/> worlds at
-  /// once, each on a thread of its own and judging every <paramref name="groups"/>th blocktype.</summary>
+  /// once, each on a thread of the pool and judging every <paramref name="groups"/>th blocktype.</summary>
   /// <remarks>Every world is stood up before any click, so a process-wide table the stand-ups
   /// fill is complete and still while the clicks read it.</remarks>
   /// <param name="stand">Stands a world as <see cref="Run(TestWorld, string)"/> takes it; called
-  /// once per group, on a thread of its own.</param>
+  /// once per group, on a pool thread, several at once.</param>
   /// <param name="domain">The domain whose blocks are judged.</param>
   /// <param name="groups">Worlds and threads; below 1 counts as 1. With 1 the calling thread runs
   /// the one world.</param>
@@ -89,6 +89,7 @@ public static class InteractionLaw {
     int groups
   ) {
     var runs = new List<TypeRun>();
+    BlockLaws.ClearRoomRegistryAccessor();
     Block solid = BlockLaws.Solid(world);
     TestPlayer player = User(world);
     int index = -1;
@@ -133,13 +134,17 @@ public static class InteractionLaw {
             break;
         }
       }
+      if (sites.Used > SitesPerType)
+        throw new InvalidOperationException(
+          $"The blocktype '{type.Key}' used {sites.Used} sites, over the {SitesPerType} each is given."
+        );
       runs.Add(new TypeRun(index, cases, findings));
     }
     return runs;
   }
 
   /// <summary>Sites one blocktype's cases may use before the next blocktype's begin.</summary>
-  private const int SitesPerType = 4096;
+  private const int SitesPerType = 8192;
 
   private static BlockLaws.Law Join(IEnumerable<TypeRun> runs) {
     TypeRun[] ordered = [.. runs.OrderBy(r => r.Index)];
@@ -824,7 +829,7 @@ public static class InteractionLaw {
       put.Item == null
         ? held == null
         : held != null
-          && held.Collectible == put.Item
+          && held.Collectible.Code.Equals(put.Item.Code)
           && held.StackSize == put.Count
           && held.Attributes.Count == 0;
 

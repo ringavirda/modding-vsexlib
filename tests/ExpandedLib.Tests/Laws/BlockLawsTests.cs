@@ -87,6 +87,7 @@ public class BlockLawsTests {
     world.RegisterClass("test-places", typeof(PlacesAnywhere));
     world.RegisterClass("test-namestwo", typeof(NamesTwoTogether));
     world.RegisterClass("test-clickthrows", typeof(ThrowsOnAClick));
+    world.RegisterClass("test-cachedhelp", typeof(CachesItsHelp));
     world.RegisterClass("test-slowload", typeof(LoadsSlowly));
     world.RegisterClass(
       "WrenchOrientable",
@@ -782,6 +783,15 @@ public class BlockLawsTests {
     int expected
   ) => Assert.Equal(expected, BlockLaws.GroupsFor(processors, memory));
 
+  // Fails when the free memory is read as the memory the GC may use, which a loaded machine
+  // has less of free.
+  [Fact]
+  public void Free_memory_is_below_what_the_process_may_use_and_above_nothing() {
+    long free = BlockLaws.FreeMemoryBytes();
+
+    Assert.InRange(free, 1, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes - 1);
+  }
+
   // Fails when the merged findings come out in group order, a group's blocktypes are dropped or run
   // twice, or a blocktype's findings depend on where its group started.
   [Fact]
@@ -809,6 +819,52 @@ public class BlockLawsTests {
     Assert.Equal(one.Findings, four.Findings);
     Assert.Equal(one.Blocks, four.Blocks);
     Assert.Equal(one.Cases, four.Cases);
+  }
+
+  // Fails when the "changed nothing" judgement compares the held collectible by reference, so that a
+  // help stack another world filled into a static turns every click of a world of its own into a change.
+  [Fact]
+  public void Clicks_naming_a_stack_another_world_cached_are_still_judged() {
+    ExBlockDef[] defs =
+    [
+      .. Enumerable
+        .Range(0, 8)
+        .Select(i =>
+          ExBlockDef.Create("test", $"idle{i}").Class("test-cachedhelp")
+        ),
+    ];
+    ExItemDef[] items = [Token];
+
+    CachesItsHelp.Stacks = null;
+    BlockLaws.Law one = InteractionLaw.Run(() => Hands(items, defs), "test", 1);
+    CachesItsHelp.Stacks = null;
+    BlockLaws.Law four = InteractionLaw.Run(
+      () => Hands(items, defs),
+      "test",
+      4
+    );
+    CachesItsHelp.Stacks = null;
+
+    Assert.Equal(8, one.Findings.Count);
+    Assert.All(one.Findings, f => Assert.Contains("changed nothing", f));
+    Assert.Equal(one.Findings, four.Findings);
+  }
+
+  // Fails when a blocktype that needs more than its sites passes silently into the next one's.
+  [Fact]
+  public void A_blocktype_over_its_sites_is_refused() {
+    ExBlockDef wide = ExBlockDef
+      .Create("test", "wide")
+      .Class("test-namesanitem")
+      .Attribute("names", "test:token")
+      .Attribute("takes", false)
+      .VariantGroup("n", [.. Enumerable.Range(0, 3000).Select(i => $"v{i}")]);
+
+    var thrown = Assert.Throws<InvalidOperationException>(() =>
+      InteractionLaw.Run(Hands([Token], wide), "test")
+    );
+
+    Assert.Contains("test:wide", thrown.Message);
   }
 
   // Fails when a click holds the wrench stack another world's help named, which vanilla keeps in a
@@ -2548,6 +2604,31 @@ public class BlockLawsTests {
       System.Threading.SpinWait.SpinUntil(() => Inside > 1, 400);
       System.Threading.Interlocked.Decrement(ref Inside);
     }
+  }
+
+  private sealed class CachesItsHelp : Block {
+    internal static ItemStack[]? Stacks;
+
+    public override WorldInteraction[] GetPlacedBlockInteractionHelp(
+      IWorldAccessor world,
+      BlockSelection selection,
+      IPlayer forPlayer
+    ) =>
+      [
+        new()
+        {
+          ActionLangCode = "test:use",
+          MouseButton = EnumMouseButton.Right,
+          Itemstacks = Stacks ??=
+            [new ItemStack(world.GetItem(new AssetLocation("test:token")))],
+        },
+      ];
+
+    public override bool OnBlockInteractStart(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel
+    ) => true;
   }
 
   private sealed class ThrowsOnAClick : Block {

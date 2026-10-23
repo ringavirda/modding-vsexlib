@@ -67,7 +67,7 @@ public class PlacementIsolationTests {
   }
 
   // Fails when the store is keyed by position alone: the second placement overwrites the first's
-  // entry and the readers see one entry.
+  // entry and the readers see one entry, or a placement leaves its entry behind.
   [Fact]
   public void Two_worlds_placing_at_one_position_hold_two_entries() {
     var barrier = new Barrier(2);
@@ -105,5 +105,6 @@ public class PlacementIsolationTests {
     Task.WaitAll(tasks);
 
     Assert.Equal(2, Math.Max(readers[0].Seen, readers[1].Seen));
+    Assert.Empty((ICollection)Store.GetValue(null)!);
   }
 }
