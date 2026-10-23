@@ -136,16 +136,19 @@ public static class MultiblockLaw {
   internal static IEnumerable<Block> OneFacing(
     TestWorld world,
     IEnumerable<Block> type
-  ) =>
-    type.Where(b => BlockLaws.Signals(world, b).Layout != null)
-      .DistinctBy(b =>
-        string.Join(
-          ",",
-          (
-            b.Variant?.Where(v => v.Key is not ("side" or "orientation")) ?? []
-          ).Select(v => $"{v.Key}={v.Value}")
-        )
-      );
+  ) => FirstFacing(type.Where(b => BlockLaws.Signals(world, b).Layout != null));
+
+  /// <summary>The first of the variants in <paramref name="variants"/> for each combination of
+  /// their variant groups other than <c>side</c> and <c>orientation</c>.</summary>
+  internal static IEnumerable<Block> FirstFacing(IEnumerable<Block> variants) =>
+    variants.DistinctBy(b =>
+      string.Join(
+        ",",
+        (
+          b.Variant?.Where(v => v.Key is not ("side" or "orientation")) ?? []
+        ).Select(v => $"{v.Key}={v.Value}")
+      )
+    );
 
   /// <summary>Stands the structure <paramref name="block"/> anchors up formed at
   /// <paramref name="at"/>: the anchor placed as <see cref="BlockLaws.EntityCase.Place"/> places a

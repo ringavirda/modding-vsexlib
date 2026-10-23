@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -28,7 +29,7 @@ public static class BlockLaws {
   /// laws structures, one per variant <c>MultiblockLaw.OneFacing</c> picks.</param>
   /// <param name="Cases">Cases it ran: placements, breaks, structures stood up, block entities
   /// read or reloaded, faces a neighbour came and went on, network pairs joined from both sides,
-  /// port-to-member pairs coupled from both sides, clicks made, on a block or a formed structure, accepted stacks followed, or block definitions read for their controls.</param>
+  /// port-to-member pairs coupled from both sides, clicks made, on a block or a formed structure, accepted stacks followed, block definitions read for their controls, or cells drawn.</param>
   /// <param name="Findings">One line per finding, each starting with the variant code it is
   /// about and a space.</param>
   public sealed record Law(
@@ -40,6 +41,9 @@ public static class BlockLaws {
     /// <summary>What <see cref="Blocks"/> counts: <c>blocktypes</c>, or <c>structures</c> for
     /// the formed laws.</summary>
     public string Unit { get; init; } = "blocktypes";
+
+    /// <summary>Wall time the law took to stand its world and run, set by <see cref="Run"/>.</summary>
+    public TimeSpan Elapsed { get; init; }
 
     /// <summary>One line per structure a formed law stood up formed, in the order it ran: the
     /// anchor's variant code, then what the structure gave the law. Empty for the other
@@ -91,7 +95,7 @@ public static class BlockLaws {
   /// <param name="prepare">Registers on each world the network types and mod systems the blocks
   /// need, before any is defined.</param>
   /// <returns>In order, the laws <c>placement</c>, <c>break</c> (1.22 on), <c>multiblock</c>,
-  /// <c>megablock</c>, <c>control</c> (1.22 on), <c>info</c>, <c>reload</c>, <c>neighbour</c>, <c>network</c>,
+  /// <c>megablock</c>, <c>draw</c> (1.22 on), <c>control</c> (1.22 on), <c>info</c>, <c>reload</c>, <c>neighbour</c>, <c>network</c>,
   /// <c>network port</c>, <c>interaction</c>, <c>container</c>, <c>formed interaction</c>, <c>formed
   /// container</c>.</returns>
   /// <exception cref="InvalidOperationException">No game install resolves, or a block's entity or
@@ -105,33 +109,39 @@ public static class BlockLaws {
     IExDef[] given = [.. defs];
     ExBlockDef[] all = [.. given.OfType<ExBlockDef>()];
     ExItemDef[] items = [.. given.OfType<ExItemDef>()];
-    var laws = new List<Law>
-    {
-      PlacementLaw.Run(Stand(all, assemblies, prepare), domain),
-    };
+    var laws = new List<Law>();
+    void Time(Func<Law> run) {
+      var clock = Stopwatch.StartNew();
+      Law law = run();
+      laws.Add(law with { Elapsed = clock.Elapsed });
+    }
+    Time(() => PlacementLaw.Run(Stand(all, assemblies, prepare), domain));
 #if GAME_GE_1_22
-    laws.Add(
+    Time(() =>
       BreakLaw.Run(all.Where(d => d.Domain == domain), assemblies, prepare)
     );
 #endif
-    laws.Add(MultiblockLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(MegablockLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => MultiblockLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => MegablockLaw.Run(Stand(all, assemblies, prepare), domain));
 #if GAME_GE_1_22
-    laws.Add(ControlLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => DrawLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => ControlLaw.Run(Stand(all, assemblies, prepare), domain));
 #endif
-    laws.Add(InfoLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(ReloadLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(NeighbourLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(NetworkLaw.Run(Stand(all, assemblies, prepare), domain));
-    laws.Add(NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain));
-    laws.Add(
+    Time(() => InfoLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => ReloadLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => NeighbourLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => NetworkLaw.Run(Stand(all, assemblies, prepare), domain));
+    Time(() => NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain));
+    Time(() =>
       InteractionLaw.Run(Stand(all, assemblies, prepare, items), domain)
     );
-    laws.Add(ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain));
-    laws.Add(
+    Time(() =>
+      ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain)
+    );
+    Time(() =>
       InteractionLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
     );
-    laws.Add(
+    Time(() =>
       ContainerLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
     );
     return new Result(laws);

@@ -3,6 +3,8 @@ using System.Linq;
 using System.Reflection;
 using ExpandedLib.Definitions;
 using Newtonsoft.Json.Linq;
+using Vintagestory.API.Common;
+using Vintagestory.API.Util;
 
 namespace ExpandedLib.Testing;
 
@@ -25,10 +27,12 @@ public static class DefinitionCodes {
     (string Key, string Value)[] Variants
   );
 
-  /// <summary>Every concrete block <paramref name="def"/> registers, with its variant map.</summary>
+  /// <summary>Every concrete block <paramref name="def"/> registers, with its variant map; a code
+  /// matching one of the definition's <c>skipVariants</c> wildcards is left out, as the loader leaves
+  /// it out.</summary>
   /// <param name="propertyGroupsAsWildcard">
   /// Renders a worldproperty-sourced group as a literal <c>*</c>, for matching a code against the
-  /// pattern, not enumerating concrete states.
+  /// pattern, not enumerating concrete states; <c>skipVariants</c> is not applied then.
   /// </param>
   [CheckHelper("expands a definition into the codes it registers")]
   public static IEnumerable<Registered> Expand(
@@ -75,7 +79,19 @@ public static class DefinitionCodes {
           [.. c.Variants, (name, s)]
         ))
       );
-    return codes;
+    if (
+      propertyGroupsAsWildcard
+      || json["skipVariants"] is not JArray skipped
+      || skipped.Count == 0
+    )
+      return codes;
+    AssetLocation[] skips =
+    [
+      .. skipped.Select(s => new AssetLocation(domain, (string)s!)),
+    ];
+    return codes.Where(c =>
+      !skips.Any(skip => WildcardUtil.Match(skip, new AssetLocation(c.Code)))
+    );
   }
 
   /// <summary>Every concrete block <paramref name="domain"/> registers, from its own assembly.</summary>
