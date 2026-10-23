@@ -527,7 +527,7 @@ public class ExItemDefTests {
 
   // Signatures only ExItemDef has.
   private static readonly Dictionary<string, string> ItemOnlySignatures = new() {
-    ["Views(ItemViewKind,String,Vec3d)"] =
+    ["Views(ItemViewKind,String,Vec3d,Nullable<ValueTuple<Vec3d,Vec3d>>)"] =
       "the tip names a working end; the block builder's Views takes the kind and the rotation only",
     ["GrindingProps(Object)"] =
       "the quern grinding recipe; blocks are never ground",
