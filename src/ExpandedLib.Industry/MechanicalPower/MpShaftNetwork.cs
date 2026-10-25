@@ -34,6 +34,12 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
   private readonly Dictionary<IMpEnergyLink, bool> _built = [];
   private readonly HashSet<IMpEnergyLink> _catching = [];
   private int _edgesSolved;
+  private const int AngleSendTicks = 5;
+  private const float AngleSendMoved = 0.02f;
+  private NodeKey?[] _anchors = [];
+  private float[] _sentSpeed = [];
+  private int _anchorTopology = -1;
+  private int _sendTicks;
 
   /// <summary>Overrides <c>MpShaftFailure</c> for this run when set.</summary>
   internal bool? FailureOverride { get; set; }
@@ -71,8 +77,12 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     float hours =
       now >= 0d && _lastHours >= 0d ? (float)(now - _lastHours) : 0f;
     _lastHours = now;
-    if (dt <= 0f || NodeKeys.Any(k => world.GetChunkAtBlockPos(k.Pos) == null))
+    if (dt <= 0f)
       return;
+    if (NodeKeys.Any(k => world.GetChunkAtBlockPos(k.Pos) == null)) {
+      SendAngles(world, true);
+      return;
+    }
     Sync(world);
     if (_built.Any(b => b.Key.Engaged != b.Value))
       _jointsStale = true;
@@ -108,6 +118,76 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
       Store.GroupCount > 0 ? Store.ReflectedInertia(0) : 0f
     );
     BroadcastUpdate(world);
+    SendAngles(world, false);
+  }
+
+  // Tells every client each run's angle and speed: all runs every AngleSendTicks ticks, and at once when a run's speed has moved by more than AngleSendMoved of it or stopped. A suspended run is sent at speed 0.
+  private void SendAngles(IBlockAccessor world, bool suspended) {
+    if (Store.GroupCount == 0)
+      return;
+    if (_anchorTopology != Store.Topology)
+      RefreshAnchors(world);
+    int[] runs =
+    [
+      .. Enumerable.Range(0, _anchors.Length).Where(g => _anchors[g] != null),
+    ];
+    float[] speeds = [.. runs.Select(g => suspended ? 0f : Store.Speed(g))];
+    bool due = ++_sendTicks >= AngleSendTicks;
+    for (int i = 0; i < runs.Length && !due; i++)
+      due = SpeedMoved(_sentSpeed[runs[i]], speeds[i]);
+    if (!due)
+      return;
+    _sendTicks = 0;
+    for (int i = 0; i < runs.Length; i++)
+      _sentSpeed[runs[i]] = speeds[i];
+    MpRunAngles.Send(
+      new MpRunAnglePacket {
+        X = [.. runs.Select(g => _anchors[g]!.Value.Pos.X)],
+        Y = [.. runs.Select(g => _anchors[g]!.Value.Pos.Y)],
+        Z = [.. runs.Select(g => _anchors[g]!.Value.Pos.Z)],
+        Slot = [.. runs.Select(g => (int)_anchors[g]!.Value.Slot)],
+        Angle = [.. runs.Select(Store.Angle)],
+        Speed = speeds,
+      }
+    );
+  }
+
+  private static bool SpeedMoved(float sent, float speed) =>
+    float.IsNaN(sent)
+    || (speed == 0f && sent != 0f)
+    || MathF.Abs(speed - sent)
+      > AngleSendMoved * MathF.Max(MathF.Abs(sent), 1f);
+
+  // A run is named by its least node key, which survives the renumbering of groups; each cell's turning parts are told theirs.
+  private void RefreshAnchors(IBlockAccessor world) {
+    _anchors = new NodeKey?[Store.GroupCount];
+    _sentSpeed = new float[Store.GroupCount];
+    Array.Fill(_sentSpeed, float.NaN);
+    foreach (var (key, node) in Store.Nodes) {
+      int g = Store.GroupOf(node);
+      if (_anchors[g] is not { } least || AnchorOrder(key, least) < 0)
+        _anchors[g] = key;
+    }
+    foreach (var (key, node) in Store.Nodes)
+      world
+        .GetBlockEntity(key.Pos)
+        ?.GetBehavior<BEBehaviorTurningParts>()
+        ?.SetRun(
+          key.Slot,
+          _anchors[Store.GroupOf(node)]!.Value,
+          Store.RatioOf(node)
+        );
+    _anchorTopology = Store.Topology;
+    _sendTicks = AngleSendTicks;
+  }
+
+  private static int AnchorOrder(NodeKey a, NodeKey b) {
+    int order = a.Pos.X.CompareTo(b.Pos.X);
+    if (order == 0)
+      order = a.Pos.Y.CompareTo(b.Pos.Y);
+    if (order == 0)
+      order = a.Pos.Z.CompareTo(b.Pos.Z);
+    return order != 0 ? order : a.Slot.CompareTo(b.Slot);
   }
 
   private void SetNodeData(IBlockAccessor world) {
