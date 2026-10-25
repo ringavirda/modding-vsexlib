@@ -5,12 +5,14 @@ using ExpandedLib.Structures;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 
 namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>expect</c>: the readings the setup model parses (<c>block</c>, <c>member</c>,
-/// <c>tree</c>, <c>network</c>), a footprint, two cells in one network, and a hotbar slot.</summary>
+/// <c>tree</c>, <c>network</c>), a footprint, two cells in one network, a hotbar slot and the player's health.</summary>
 internal sealed class ExpectStep : ScenarioStep {
   public override string Kind => "expect";
 
@@ -45,6 +47,8 @@ internal sealed class ExpectStep : ScenarioStep {
       report.Value = Same(ctx, step, o);
     else if (SetupSlotExpect.Is(o))
       report.Value = Slot(ctx, o);
+    else if (SetupPlayerExpect.Is(o))
+      report.Value = Health(ctx, o);
     else {
       var reading = new ReadingContext(ctx.Setup);
       foreach (ReadingTest test in step.Tests)
@@ -97,6 +101,24 @@ internal sealed class ExpectStep : ScenarioStep {
     if (SetupSlotExpect.Mismatch(o, stack) is { } mismatch)
       throw new StepFailure($"hotbar slot {slot} {mismatch}.");
     return $"slot {slot}: {SetupSlotExpect.Describe(stack)}";
+  }
+
+  private static string Health(ScenarioContext ctx, JObject o) {
+    ScenarioPlayer player =
+      ctx.Player
+      ?? throw new StepFailure(
+        "\"expect\" of the player needs the scenario player.",
+        Suspect.Scenario
+      );
+    float health =
+      player.Player.Entity.GetBehavior<EntityBehaviorHealth>()?.Health
+      ?? throw new StepFailure(
+        "the scenario player has no health behavior.",
+        Suspect.Scenario
+      );
+    if (SetupPlayerExpect.Mismatch(o, health) is { } mismatch)
+      throw new StepFailure($"{mismatch}.");
+    return $"health {health}";
   }
 
   private static string Drops(ScenarioContext ctx, SetupStep step, JObject o) {
