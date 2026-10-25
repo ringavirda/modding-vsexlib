@@ -284,7 +284,14 @@ public sealed partial class SetupScene : IDisposable
 
   private void Load(IReadOnlyList<string> modPaths)
   {
-    bool crafts = EveryStep().Any(s => s.Kind == "craft");
+    bool crafts = EveryStep()
+      .Any(s =>
+        s.Kind == "craft"
+        || (
+          s.Kind == "interact"
+          && (s.Body["offHand"] != null || s.Body["control"] != null)
+        )
+      );
     World.LoadAssets(modPaths, null, VanillaCodes(), crafts);
     if (crafts)
     {
