@@ -23,6 +23,8 @@ internal sealed class ExpectStep : ScenarioStep {
     var o = (JObject)step.Body;
     if (o["info"] != null)
       return "expect \"info\" needs the scenario player's language.";
+    if (o["drops"] != null && o["attribute"] != null)
+      return DropsAttributeRefusal(o["attribute"]);
     return null;
   }
 
@@ -56,6 +58,22 @@ internal sealed class ExpectStep : ScenarioStep {
       );
     }
     yield break;
+  }
+
+  /// <summary>What is wrong with the <c>attribute</c> of <c>expect drops</c>, or null when it is
+  /// <c>{ key, equals?, same? }</c> with at least one of the two tests.</summary>
+  public static string? DropsAttributeRefusal(JToken? attribute) {
+    if (attribute is not JObject spec)
+      return "a drops attribute is { key, equals?, same? }.";
+    if (spec["key"] is not { Type: JTokenType.String })
+      return "a drops attribute needs a string \"key\".";
+    if (spec.Properties().Any(p => p.Name is not ("key" or "equals" or "same")))
+      return "a drops attribute is { key, equals?, same? }.";
+    if (spec["same"] != null && spec["same"]!.Type != JTokenType.Boolean)
+      return "\"same\" is true or false.";
+    if (spec["equals"] == null && (bool?)spec["same"] != true)
+      return "a drops attribute needs \"equals\" or \"same\": true.";
+    return null;
   }
 
   /// <summary>The stack the hotbar holds at the index <c>select</c> takes.</summary>
@@ -101,6 +119,11 @@ internal sealed class ExpectStep : ScenarioStep {
       );
     if (mismatch != null)
       throw new StepFailure($"dropped {mismatch}.");
+    if (
+      o["attribute"] is JObject spec
+      && BreakStep.AttributeMismatch(spec, last.Dropped) is { } differs
+    )
+      throw new StepFailure($"dropped {differs}.");
     return string.Join(
       ", ",
       BreakStep.Sum(last.Dropped).Select(d => $"{d.Key} x{d.Value}")
