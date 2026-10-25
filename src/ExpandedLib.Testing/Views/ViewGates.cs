@@ -596,7 +596,11 @@ internal static class ViewGates {
     string kind = group.Kind.ToString().ToLowerInvariant();
 
     foreach ((string id, string gate, string name, string target) in Judged) {
-      if (id == "G13" && group.IsBlock && group.IsLong)
+      if (
+        id == "G13"
+        && group.IsBlock
+        && (group.IsLong || group.Held != BlockHeldClip)
+      )
         continue;
       Band? band;
       if (twin == null) {
