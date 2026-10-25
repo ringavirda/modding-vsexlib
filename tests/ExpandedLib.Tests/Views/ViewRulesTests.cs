@@ -222,8 +222,8 @@ public class ViewRulesTests {
   }
 #endif
 
-  // Fails when a bulk item or a block is allowed any resolving clip: a bulk plate or a hay block held on spearidle then
-  // passes.
+  // Fails when a bulk item is allowed any resolving clip, or a block its own idle clip is refused or an unresolved one
+  // allowed: a bulk plate held on spearidle then passes, hay on its own spearidle fails, hay on spearidlee passes.
   [Fact]
   public void A_bulk_item_and_a_block_take_their_own_clips() {
     ViewGroup plate = GroupOf("game:metalplate-iron") with {
@@ -239,6 +239,8 @@ public class ViewRulesTests {
       block.HeldRightTpIdleAnimation = "holdunderarm";
       Assert.Empty(Failing(hay));
       block.HeldRightTpIdleAnimation = "spearidle";
+      Assert.Empty(Failing(hay));
+      block.HeldRightTpIdleAnimation = "spearidlee";
       Assert.Equal(["G11"], Failing(hay));
     } finally {
       block.HeldRightTpIdleAnimation = authored;

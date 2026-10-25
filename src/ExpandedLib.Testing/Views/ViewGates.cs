@@ -365,8 +365,8 @@ internal static class ViewGates {
     );
   }
 
-  /// <summary>The animation code a stack is held with: a block's is <c>holdbothhandslarge</c>, an item's its idle, else
-  /// its ready, else <c>helditemready</c>.</summary>
+  /// <summary>The animation code a stack is held with: a block's is its own idle clip when it names one, else
+  /// <c>holdbothhandslarge</c>; an item's is its idle, else its ready, else <c>helditemready</c>.</summary>
   internal static string HeldCode(CollectibleObject collectible) =>
     HeldCode(
       collectible is Block,
@@ -376,8 +376,8 @@ internal static class ViewGates {
 
   private static string HeldCode(bool block, string? idle, string? ready) =>
     block
-      ? ViewReferences.LongCarries.Any(c => c.Clip == idle)
-        ? idle!
+      ? !string.IsNullOrEmpty(idle)
+        ? idle
         : BlockHeldClip
       : !string.IsNullOrEmpty(idle)
         ? idle
@@ -596,7 +596,11 @@ internal static class ViewGates {
     string kind = group.Kind.ToString().ToLowerInvariant();
 
     foreach ((string id, string gate, string name, string target) in Judged) {
-      if (id == "G13" && group.IsBlock && group.IsLong)
+      if (
+        id == "G13"
+        && group.IsBlock
+        && (group.IsLong || group.Held != BlockHeldClip)
+      )
         continue;
       Band? band;
       if (twin == null) {
@@ -1074,7 +1078,7 @@ internal static class ViewGates {
     if (
       group.IsBlock
       && !BlockClips.Contains(held, StringComparer.OrdinalIgnoreCase)
-      && !(group.IsLong && ViewReferences.LongCarries.Any(c => c.Clip == held))
+      && string.IsNullOrEmpty(c.HeldRightTpIdleAnimation)
     )
       problems.Add(
         $"a block is held on {held}, not {string.Join(" or ", BlockClips)}"
