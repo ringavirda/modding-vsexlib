@@ -336,7 +336,6 @@ internal sealed class ScenarioPlayer : IHandRelease {
       failure = null;
       return true;
     } finally {
-      Hold(Player.Entity.Controls, []);
       slot.Itemstack = null;
       Park();
     }
@@ -438,6 +437,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
       _server.EventManager.TriggerDidBreakBlock(Player, block.Id, selection);
       return true;
     } finally {
+      Hold(Player.Entity.Controls, []);
       slot.Itemstack = null;
       Park();
     }

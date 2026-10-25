@@ -36,8 +36,8 @@ public static class MoltenHolders {
   }
 
   /// <summary>Attaches a <see cref="BlockBehaviorMoltenBurn"/> to every loaded block that
-  /// <see cref="IsHolder"/> accepts and does not carry one. Run once the blocks are registered, before
-  /// <see cref="Block.OnLoaded"/>.</summary>
+  /// <see cref="IsHolder"/> accepts and does not carry one. Run once the blocks are registered, from
+  /// <c>AssetsFinalize</c>.</summary>
   /// <returns>How many blocks gained the behaviour.</returns>
   public static int Attach(ICoreAPI api) {
     int attached = 0;

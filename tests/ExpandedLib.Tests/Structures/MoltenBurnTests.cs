@@ -180,7 +180,7 @@ public class MoltenBurnTests {
     Assert.Equal(1, parked.Hits());
   }
 
-  // Fails when a hot holder's traversal cost is 1 instead of impassable, or a sea creature is steered round it.
+  // Fails when a hot holder's traversal cost is 1 instead of 10000, or a sea creature is steered round it.
   [Fact]
   public void Traversal_HotCell_Avoided() {
     using var fixture = Patched();
@@ -278,6 +278,28 @@ public class MoltenBurnTests {
     Assert.Null(plain.GetBehavior<BlockBehaviorMoltenBurn>());
     Assert.Null(none.GetBehavior<BlockBehaviorMoltenBurn>());
     Assert.Contains(byClass.BlockBehaviors, b => b is BlockBehaviorMoltenBurn);
+  }
+
+  private sealed class OffsetHost : Block, IFillerHost {
+    public JsonObject? FillerOffsets { get; } =
+      new(
+        JToken.Parse(
+          """[{ "x": 1, "y": 0, "z": 0, "behaviors": [{ "code": "MoltenCell" }] }]"""
+        )
+      );
+  }
+
+  // Fails when the scan's footprint clause is false: a block whose only sign is a hosted cell in its offsets.
+  [Fact]
+  public void Attach_FootprintHostedCellAloneGivesTheBehaviour() {
+    var world = ScanWorld();
+    Block block = TestBlocks.Configure(new OffsetHost(), "test:offsets", 106);
+    world.Register(block);
+
+    int attached = MoltenHolders.Attach(world.Api);
+
+    Assert.Equal(1, attached);
+    Assert.NotNull(block.GetBehavior<BlockBehaviorMoltenBurn>());
   }
 
   // Fails when a second scan stacks another behaviour on a block that has one.

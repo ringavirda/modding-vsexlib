@@ -11,7 +11,7 @@ namespace ExpandedLib.Industry.Molten;
 /// second per entity.
 /// </summary>
 public static class MoltenBurn {
-  /// <summary>Traversal cost a hot holder returns for a land creature; over 10000 is impassable.</summary>
+  /// <summary>Traversal cost a hot holder returns for a land creature; 10000 is costly enough that a creature goes round.</summary>
   public const float HotTraversalCost = 10000f;
 
   private const long IntervalMs = 1000;

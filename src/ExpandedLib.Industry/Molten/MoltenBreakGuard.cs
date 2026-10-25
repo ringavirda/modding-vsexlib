@@ -42,7 +42,9 @@ public static class MoltenBreakGuard {
   /// <param name="byPlayer">The breaking player.</param>
   /// <param name="blockSel">The selected block.</param>
   /// <param name="dropQuantityMultiplier">Unused.</param>
-  /// <param name="handling">Set to <see cref="EnumHandling.PreventDefault"/> when the break is refused.</param>
+  /// <param name="handling">Set to <see cref="EnumHandling.PreventDefault"/> when the break is refused; the
+  /// struck cell and every cell of its structure are then marked modified so the client redraws what its local
+  /// break removed.</param>
   public static void OnBreak(
     IServerPlayer byPlayer,
     BlockSelection blockSel,
@@ -61,6 +63,12 @@ public static class MoltenBreakGuard {
       return;
     handling = EnumHandling.PreventDefault;
     byPlayer.SendIngameError(ErrorCode);
+    foreach (
+      BlockPos p in Cells(world, blockSel.Position).Append(blockSel.Position)
+    ) {
+      world.BlockAccessor.MarkBlockModified(p);
+      world.BlockAccessor.MarkBlockEntityDirty(p);
+    }
   }
 
   private static IEnumerable<BlockPos> Cells(IWorldAccessor world, BlockPos pos) {

@@ -196,6 +196,76 @@ public class MoltenBreakGuardTests {
     Assert.Equal(EnumHandling.PreventDefault, rig.Break(filler));
   }
 
+  private sealed class HostBlock : BlockStructureFiller, IFillerHost {
+    public JsonObject? FillerOffsets { get; } =
+      new(
+        JToken.Parse(
+          """[{ "x": 1, "y": 0, "z": 0 }, { "x": 2, "y": 0, "z": 0 }]"""
+        )
+      );
+  }
+
+  // Fails when the footprint loop is removed: liquid in a footprint cell of an IFillerHost principal goes unseen.
+  [Fact]
+  public void Guard_FootprintCellLiquidRefusesPrincipalAndOtherFiller() {
+    var world = new TestWorld();
+    world.RegisterItem(Iron, 1500f);
+    Block block = TestBlocks.Configure(new HostBlock(), "exlib:host", 71);
+    world.Register(block);
+    var burn = new BlockBehaviorMoltenBurn(block);
+    block.BlockBehaviors = [burn];
+    block.CollectibleBehaviors = [burn];
+    world.Place(Pos, block, null);
+    var mould = new BlockEntityStructureFiller { Principal = Pos.Copy() };
+    world.Place(Pos.AddCopy(1, 0, 0), block, mould);
+    world.Attach(mould);
+    var cell = new BEBehaviorMoltenCell(mould);
+    mould.Behaviors.Add(cell);
+    cell.ConfigureFromFiller(
+      null,
+      null,
+      new JsonObject(JToken.Parse("{\"solidifies\":true}"))
+    );
+    cell.PushMetalRaw(50, Iron, 1600f, world.World);
+    cell.UpdateThermal(world.World);
+    var runner = new BlockEntityStructureFiller { Principal = Pos.Copy() };
+    BlockPos runnerPos = Pos.AddCopy(2, 0, 0);
+    world.Place(runnerPos, block, runner);
+    world.Attach(runner);
+    TestPlayer player = world.Player("breaker");
+    player.GameMode = EnumGameMode.Survival;
+
+    foreach (BlockPos at in new[] { Pos, runnerPos }) {
+      var handling = EnumHandling.PassThrough;
+      float drop = 1f;
+      MoltenBreakGuard.OnBreak(
+        player.ServerPlayer!,
+        new BlockSelection { Position = at },
+        ref drop,
+        ref handling
+      );
+      Assert.Equal(EnumHandling.PreventDefault, handling);
+    }
+  }
+
+  // Fails when a refusal marks no cell of the structure for resend: the client keeps a break it ran locally.
+  [Fact]
+  public void Guard_RefusalResendsTheStructure() {
+    var rig = new Rig(Kind.Barrel, liquid: true);
+    BlockPos filler = Pos.AddCopy(1, 0, 0);
+    var be = new BlockEntityStructureFiller { Principal = Pos.Copy() };
+    rig.World.Place(filler, rig.Block, be);
+    rig.World.Attach(be);
+
+    rig.Break(filler);
+
+    IBlockAccessor accessor = rig.World.World.BlockAccessor;
+    accessor.Received().MarkBlockModified(Arg.Is<BlockPos>(p => p.Equals(Pos)));
+    accessor
+      .Received()
+      .MarkBlockModified(Arg.Is<BlockPos>(p => p.Equals(filler)));
+  }
+
   // Fails when Register subscribes nothing, or StartServerSide does not call it.
   [Fact]
   public void Register_SubscribesTheBreakEvent() {
