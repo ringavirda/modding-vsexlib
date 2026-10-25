@@ -32,6 +32,7 @@ public sealed class ProcessJobLoader
     "minTorque",
     "minTier",
     "seconds",
+    "strokes",
   ];
 
   private ProcessJobLoader() { }

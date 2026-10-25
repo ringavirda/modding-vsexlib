@@ -72,6 +72,53 @@ public class ProcessJobTests {
   }
 
   [Fact]
+  public void Strokes_default_to_one() {
+    List<ProcessJobSet> sets = Parse(
+      out _,
+      (
+        "mod:x.json",
+        """
+        { "schema": 1, "machine": "shear", "jobs": [ { "input": "a:b", "output": "a:c" } ] }
+        """
+      )
+    );
+
+    Assert.Equal(1, Assert.Single(Assert.Single(sets).Jobs).Strokes);
+  }
+
+  [Fact]
+  public void Strokes_are_read_from_the_job() {
+    List<ProcessJobSet> sets = Parse(
+      out _,
+      (
+        "mod:x.json",
+        """
+        { "schema": 2, "machine": "riveter", "jobs": [ { "input": "a:b", "output": "a:c", "strokes": 3 } ] }
+        """
+      )
+    );
+
+    Assert.Equal(3, Assert.Single(Assert.Single(sets).Jobs).Strokes);
+  }
+
+  [Fact]
+  public void Strokes_below_one_are_refused() {
+    Parse(
+      out List<string> errors,
+      (
+        "mod:x.json",
+        """
+        { "schema": 2, "machine": "riveter", "jobs": [ { "input": "a:b", "output": "a:c", "strokes": 0 } ] }
+        """
+      )
+    );
+
+    string error = Assert.Single(errors);
+    Assert.Contains("strokes", error);
+    Assert.Contains("a:b", error);
+  }
+
+  [Fact]
   public void A_set_naming_no_machine_is_rejected() {
     Parse(
       out List<string> errors,
