@@ -38,6 +38,9 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     return c != 0 ? c : a.Z.CompareTo(b.Z);
   }
 
+  /// <summary>Drops the cached distance map: a joint closed or opened on a ring changes the order without changing the cells.</summary>
+  public override void OnTopologyChanged() => _cachedDistFromStart = null;
+
   // Cached; the BFS re-runs only when the topology signature changes.
   private Dictionary<BlockPos, int>? _cachedDistFromStart;
   private (int Count, long PosHash, long StartHash) _cachedTopoSig;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ExpandedLib.Industry.Molten;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
@@ -146,10 +147,80 @@ public class MoltenJointTests {
 
   #endregion
 
+  #region Flow order
+
+  // Fails when MoltenNetwork keeps its distance map across a topology change: closing one joint of a ring
+  // leaves the network whole, so the cell count and positions do not change, and the flow order stays that of the ring.
+  [Fact]
+  public void Closing_a_joint_on_a_ring_reorders_the_flow_from_the_source() {
+    var w = NewWorld();
+    List<BlockPos> log = [];
+    var source = Put(
+      w,
+      new BlockPos(0, 0, 0),
+      1,
+      new Cell { IsFlowSource = true, ThermalLog = log },
+      BlockFacing.EAST,
+      BlockFacing.SOUTH
+    );
+    Put(
+      w,
+      new BlockPos(1, 0, 0),
+      2,
+      new Cell { ThermalLog = log },
+      BlockFacing.WEST,
+      BlockFacing.EAST
+    );
+    Put(
+      w,
+      new BlockPos(2, 0, 0),
+      3,
+      new Cell { ThermalLog = log },
+      BlockFacing.WEST,
+      BlockFacing.SOUTH
+    );
+    Put(
+      w,
+      new BlockPos(2, 0, 1),
+      4,
+      new Cell { ThermalLog = log },
+      BlockFacing.NORTH,
+      BlockFacing.WEST
+    );
+    Put(
+      w,
+      new BlockPos(1, 0, 1),
+      5,
+      new Cell { ThermalLog = log },
+      BlockFacing.EAST,
+      BlockFacing.WEST
+    );
+    Put(
+      w,
+      new BlockPos(0, 0, 1),
+      6,
+      new Cell { ThermalLog = log },
+      BlockFacing.EAST,
+      BlockFacing.NORTH
+    );
+    w.Tick();
+    Assert.Equal(new BlockPos(2, 0, 1), log[0]);
+    log.Clear();
+
+    ((CanalNode)w.Accessor.GetBlock(source.Pos)).Faces = [BlockFacing.EAST];
+    w.RemoveNode(source.Pos);
+    w.AddNode(source.Pos, "molten");
+    w.Tick();
+
+    Assert.Equal(new BlockPos(0, 0, 1), log[0]);
+  }
+
+  #endregion
+
   #region Stand-ins
 
   private sealed class CanalNode : BlockNetworkNode {
-    public BlockFacing[] Faces { get; init; } = [];
+    public BlockFacing[] Faces { get; set; } = [];
 
     public override string NetworkType => "molten";
 
@@ -177,7 +248,9 @@ public class MoltenJointTests {
 
     public bool Solidified => false;
 
-    public bool IsFlowSource => false;
+    public bool IsFlowSource { get; init; }
+
+    public List<BlockPos>? ThermalLog { get; init; }
 
     public bool AcceptsSubMinimumFlow { get; init; }
 
@@ -209,7 +282,7 @@ public class MoltenJointTests {
       return drained;
     }
 
-    public void UpdateThermal(IWorldAccessor world) { }
+    public void UpdateThermal(IWorldAccessor world) => ThermalLog?.Add(Pos);
   }
 
   #endregion
