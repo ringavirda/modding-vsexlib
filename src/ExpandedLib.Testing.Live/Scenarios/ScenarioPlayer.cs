@@ -244,10 +244,25 @@ internal sealed class ScenarioPlayer : IHandRelease {
       slot.Itemstack = null;
   }
 
-  /// <summary>Puts the player's feet in the middle of the cell <paramref name="at"/>, where it stays until
-  /// a verb or <see cref="Park"/> moves it.</summary>
+  /// <summary>Puts the player's feet in the middle of the cell <paramref name="at"/> in survival mode, on the
+  /// ground, where it stays until a verb or <see cref="Park"/> moves it. The server runs no physics for it, so
+  /// a block's collision hook never fires; a block entity's own tick that looks for the standing player still reaches it.</summary>
   /// <param name="at">The absolute cell.</param>
-  public void StandAt(BlockPos at) => MoveTo(at);
+  public void StandAt(BlockPos at) {
+    Survive();
+    MoveTo(at);
+    _data.EntityPlayer.OnGround = true;
+  }
+
+  /// <summary>Revives the player if it died and sets its health to its maximum, so the next case starts
+  /// unhurt whatever a hot holder or a fall did to it.</summary>
+  public void Restore() {
+    EntityPlayer entity = _data.EntityPlayer;
+    if (!entity.Alive)
+      entity.Revive();
+    if (entity.GetBehavior<EntityBehaviorHealth>() is { } health)
+      health.Health = health.MaxHealth;
+  }
 
   /// <summary>Puts the player in survival mode without free movement, where it stays until it is parked.</summary>
   public void Survive() {
@@ -377,6 +392,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   /// is emptied and the player parked after.</summary>
   /// <param name="at">The absolute cell of the block.</param>
   /// <param name="stack">What the hand holds, or null for an empty hand.</param>
+  /// <param name="sneak">Whether the player holds sneak for the break; released after it.</param>
   /// <param name="declare">Reads the drops the block declares; called once with the player after it is
   /// in survival mode with <paramref name="stack"/> in hand, before the break.</param>
   /// <param name="declared">What <paramref name="declare"/> returned; empty when the tier check refused.</param>
@@ -385,6 +401,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   public bool Break(
     BlockPos at,
     ItemStack? stack,
+    bool sneak,
     System.Func<IPlayer, List<ItemStack>> declare,
     out List<ItemStack> declared,
     out string? failure
@@ -403,6 +420,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
       if (failure != null)
         return false;
       declared = declare(Player);
+      Hold(Player.Entity.Controls, sneak ? ["sneak"] : []);
       var selection = new BlockSelection {
         Position = at.Copy(),
         Face = face,
@@ -434,6 +452,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
       _server.EventManager.TriggerDidBreakBlock(Player, block.Id, selection);
       return true;
     } finally {
+      Hold(Player.Entity.Controls, []);
       slot.Itemstack = null;
       Park();
     }

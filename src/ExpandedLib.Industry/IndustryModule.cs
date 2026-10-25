@@ -41,9 +41,11 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
   public void Start(ICoreAPI api) =>
     RegisterNetworkTypes(api.ModLoader.GetModSystem<BlockNetworkModSystem>());
 
-  /// <summary>Opens the server end of <see cref="ExSounds"/>' channel.</summary>
+  /// <summary>Opens the server end of <see cref="ExSounds"/>' channel and guards molten holders
+  /// against an ordinary break (<see cref="MoltenBreakGuard"/>).</summary>
   public void StartServerSide(ICoreServerAPI api) {
     ExSounds.StartServer(api);
+    MoltenBreakGuard.Register(api);
     _openedServerChannel = true;
   }
 
@@ -85,9 +87,11 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
 
   /// <summary>Populates <see cref="MetalRegistry"/> from the loaded metal worldproperties and
   /// every domain's <c>config/metals</c>. A singleplayer client loads nothing: it reads the metals its
-  /// own server has just loaded in the same process (<see cref="ExWorldState.ResetsOnLoad"/>).</summary>
+  /// own server has just loaded in the same process (<see cref="ExWorldState.ResetsOnLoad"/>). Either
+  /// side then gives every molten holder block its burn (<see cref="MoltenHolders.Attach"/>).</summary>
   public void AssetsFinalize(ICoreAPI api) {
     if (ExWorldState.ResetsOnLoad(api))
       MetalCatalogueLoader.Load(api).Log(api.Logger);
+    MoltenHolders.Attach(api);
   }
 }

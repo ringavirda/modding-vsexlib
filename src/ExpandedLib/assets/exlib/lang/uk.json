@@ -6,6 +6,7 @@
   "multiblock-incomplete": "Конструкцію не завершено. Бракує або неправильно встановлено блоків: {0}.",
   "multiblock-complete": "Конструкцію завершено!",
   "ingameerror-construction-onematerial": "Цей етап будується з одного матеріалу: {0} або {1}, не разом.",
+  "game:ingameerror-exlib-moltenliquidbreak": "Всередині рідкий метал: щоб зламати й пролити його, присядьте.",
   "ingameerror-construction-missingtool": "Цей етап будується інструментом в основній руці: {0}.",
   "rcc-hold-tool": "Утримуйте, щоб будувати",
   "facing-n": "північ",
