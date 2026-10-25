@@ -34,21 +34,37 @@ public class TestPlayerSelectTests {
     Assert.Equal([(0, 3)], events);
   }
 
-  // Fails when the active stack stays in the active slot, or the number is not answered.
+  // Fails when Select moves a stack between hotbar slots, or the number is not answered.
   [Fact]
-  public void Select_ExchangesTheStacksAndAnswersTheNumber() {
+  public void Select_LeavesEachStackInItsOwnHotbarSlot() {
     var (world, player, _) = Stand();
     var held = new ItemStack(world.RegisterItem("game:stick"));
     var other = new ItemStack(world.RegisterItem("game:flint"));
-    player.ActiveSlot.Itemstack = held;
+    player.Hold(held);
     player.Hotbar[3].Itemstack = other;
 
     player.Select(3);
 
     Assert.Same(held, player.Hotbar[0].Itemstack);
+    Assert.Same(other, player.Hotbar[3].Itemstack);
     Assert.Same(other, player.ActiveSlot.Itemstack);
-    Assert.Null(player.Hotbar[3].Itemstack);
     Assert.Equal(3, player.Player.InventoryManager.ActiveHotbarSlotNumber);
+  }
+
+  // Fails when the stack in hand is missing from the hotbar inventory at the active number.
+  [Fact]
+  public void AStackInHand_IsInTheHotbarInventoryAtTheActiveNumber() {
+    var (world, player, _) = Stand();
+    var held = new ItemStack(world.RegisterItem("game:stick"));
+    player.Select(4);
+
+    player.Hold(held);
+
+    IPlayerInventoryManager manager = player.Player.InventoryManager;
+    Assert.Same(held, manager.GetHotbarInventory()[4].Itemstack);
+    Assert.Same(manager.GetHotbarInventory()[4], manager.ActiveHotbarSlot);
+    Assert.Same(manager.ActiveHotbarSlot, player.Entity.RightHandItemSlot);
+    Assert.Same(held, player.StackInSlot(4));
   }
 
   // Fails when selecting the active slot again raises an event.
@@ -75,30 +91,6 @@ public class TestPlayerSelectTests {
     var stack = new ItemStack(world.RegisterItem(code));
     stack.Collectible.SetTemperature(world.World, stack, degrees);
     return stack;
-  }
-
-  // Fails when Select overwrites the stack of the slot it leaves with the empty active slot.
-  [Fact]
-  public void Select_KeepsAStackStowedInTheActiveHotbarSlot() {
-    var (_, player, _) = Stand();
-    var stowed = new ItemStack();
-    player.Hotbar[0].Itemstack = stowed;
-
-    player.Select(3);
-
-    Assert.Same(stowed, player.Hotbar[0].Itemstack);
-  }
-
-  // Fails when both the active slot and its hotbar slot are full and one stack is silently lost.
-  [Fact]
-  public void Select_WithTwoStacksInTheSlotLeft_Throws() {
-    var (_, player, events) = Stand();
-    player.Hotbar[0].Itemstack = new ItemStack();
-    player.ActiveSlot.Itemstack = new ItemStack();
-
-    Assert.Throws<InvalidOperationException>(() => player.Select(3));
-    Assert.Empty(events);
-    Assert.Equal(0, player.ActiveNumber);
   }
 
   // Fails when a BeforeActiveSlotChanged veto does not stop the change.
@@ -246,7 +238,7 @@ public class TestPlayerSelectTests {
 
     Assert.Same(held, player.ActiveSlot.Itemstack);
     Assert.Equal(5, held.StackSize);
-    Assert.Null(player.Hotbar[0].Itemstack);
+    Assert.Null(player.Hotbar[1].Itemstack);
   }
 
   // Fails when a stack given for an item already in another hotbar slot throws or lands in a new slot instead of merging.

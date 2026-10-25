@@ -71,7 +71,7 @@ public class ConstructionToolTests {
       Payer = World.Player();
       Payer.GameMode = EnumGameMode.Survival;
       Payer.Entity.AnimManager = Animations;
-      Payer.Hotbar[0].Itemstack = new ItemStack(Rod, 2);
+      Payer.Hotbar[1].Itemstack = new ItemStack(Rod, 2);
       Payer.Hold(new ItemStack(Hammer));
     }
 
@@ -83,7 +83,7 @@ public class ConstructionToolTests {
     public int TongsDurability =>
       Tongs.GetRemainingDurability(Payer.ActiveSlot.Itemstack);
 
-    public int Rods => Payer.Hotbar[0].Itemstack?.StackSize ?? 0;
+    public int Rods => Payer.Hotbar[1].Itemstack?.StackSize ?? 0;
 
     public bool Start(TestPlayer? by = null) {
       EnumHandling handling = EnumHandling.PassThrough;
@@ -198,7 +198,7 @@ public class ConstructionToolTests {
   [Fact]
   public void A_stage_without_its_materials_refuses_at_the_click() {
     var site = new Site();
-    site.Payer.Hotbar[0].Itemstack = null;
+    site.Payer.Hotbar[1].Itemstack = null;
 
     Assert.False(site.Start());
 
@@ -265,7 +265,7 @@ public class ConstructionToolTests {
   public void A_hold_whose_materials_are_gone_at_the_last_hit_builds_nothing() {
     var site = new Site();
     site.Start();
-    site.Payer.Hotbar[0].Itemstack = null;
+    site.Payer.Hotbar[1].Itemstack = null;
 
     Assert.False(site.Step((3 * Stroke) + 0.05f));
 
