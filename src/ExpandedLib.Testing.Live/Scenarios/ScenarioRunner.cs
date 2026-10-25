@@ -265,6 +265,7 @@ internal sealed class ScenarioRunner {
     }
     RestoreConfig();
     _player?.Empty();
+    _player?.Restore();
     _player?.Park();
     Reset();
   }

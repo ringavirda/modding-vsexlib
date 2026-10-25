@@ -415,6 +415,25 @@ public class ViewBandsTests {
     Assert.Empty(ViewGates.Judge(Bands, group, metrics));
   }
 
+  // Fails when G13 judges a block on its own idle clip as a cube hold: the bale lifted 1.2 block, held on the ladle's
+  // clip, is then found floating.
+  [Fact]
+  public void A_block_on_its_own_idle_clip_is_not_judged_by_G13() {
+    (ViewGroup group, _) = Reference("G13");
+    ModelTransform raised = group.Hand.Clone();
+    raised.Translation = new FastVec3f(
+      raised.Translation.X,
+      raised.Translation.Y + 6,
+      raised.Translation.Z
+    );
+    ViewGroup lifted = group with { Hand = raised, Held = "iiex-ladlehold" };
+    GroupMetrics floating = ViewGates.Measure(World, lifted);
+    Assert.DoesNotContain(
+      ViewGates.Judge(Bands, lifted, floating),
+      f => f.Key.EndsWith("G13 hand.centre")
+    );
+  }
+
   // Fails when G3's comparison is inverted; the first Assert.Empty on the reference plate catches it.
   [Fact]
   public void An_edge_on_plate_fails_G3() {

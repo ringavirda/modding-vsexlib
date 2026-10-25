@@ -62,6 +62,7 @@ public class ExWorldStateTests {
     ["ExpandedLib.Registries.EntityRegistry._domainByAssembly"] =
       "each registered assembly's modid, the same in every world it loads in",
     ["ExpandedLib.Structures.JsonMultiblockLayout._resolved"] = WeakByWorld,
+    ["ExpandedLib.Industry.Molten.MoltenBurn.LastHit"] = WeakByWorld,
     ["ExpandedLib.Structures.CellRole._single"] = TypeInitializers,
     ["ExpandedLib.Structures.CellRole._owners"] = TypeInitializers,
     ["ExpandedLib.Helpers.ExHighlightSlots._slots"] = TypeInitializers,

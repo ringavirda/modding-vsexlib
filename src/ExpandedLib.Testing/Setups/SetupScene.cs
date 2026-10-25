@@ -237,6 +237,11 @@ public sealed partial class SetupScene : IDisposable
               step.Path,
               "\"expect drops\" is refused: the fake world has no item entities, a spawned drop is a stack in TestWorld.Drops."
             );
+          if (body["player"] != null)
+            throw Fail(
+              step.Path,
+              "\"expect player\" is refused: the fake world's player has no health."
+            );
           break;
         case "complete":
           if (body["to"] != null && (string?)body["to"] != "all")
@@ -284,7 +289,14 @@ public sealed partial class SetupScene : IDisposable
 
   private void Load(IReadOnlyList<string> modPaths)
   {
-    bool crafts = EveryStep().Any(s => s.Kind == "craft");
+    bool crafts = EveryStep()
+      .Any(s =>
+        s.Kind == "craft"
+        || (
+          s.Kind == "interact"
+          && (s.Body["offHand"] != null || s.Body["control"] != null)
+        )
+      );
     World.LoadAssets(modPaths, null, VanillaCodes(), crafts);
     if (crafts)
     {

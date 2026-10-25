@@ -1,6 +1,6 @@
 {
   "setup": "live-break",
-  "description": "Vanilla planks broken by the scenario player with an empty hand and by the world, granite broken by the player with a copper pickaxe, and the gravel above a broken plank leaving its cell, tall grass cut with a copper knife dropping the dry grass only a knife declares, each break dropping what it declares.",
+  "description": "Vanilla planks broken by the scenario player with an empty hand and by the world, granite broken by the player with a copper pickaxe, and the gravel above a broken plank leaving its cell, tall grass cut with a copper knife dropping the dry grass only a knife declares, each break dropping what it declares, and a lantern broken with its stack taken into the player's hand, carrying one lining.",
   "mods": [],
   "steps": [
     { "place": { "code": "game:planks-aged-we", "at": [0, 0, 0] } },
@@ -54,7 +54,23 @@
         "exact": true
       }
     },
-    { "expect": { "drops": "declared" } }
+    { "expect": { "drops": "declared" } },
+    { "place": { "code": "game:lantern-large-up", "at": [10, 0, 0] } },
+    { "break": { "at": [10, 0, 0], "take": true } },
+    {
+      "expect": {
+        "drops": [{ "code": "game:lantern-large-up", "count": 1 }],
+        "exact": true,
+        "attribute": { "key": "lining", "same": true }
+      }
+    },
+    {
+      "expect": {
+        "slot": 0,
+        "code": "game:lantern-large-up",
+        "attribute": { "key": "lining", "equals": "plain" }
+      }
+    }
   ],
   "seconds": 6,
   "record": {}

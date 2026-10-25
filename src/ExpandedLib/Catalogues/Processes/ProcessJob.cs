@@ -17,6 +17,7 @@ namespace ExpandedLib.Catalogues;
 /// <param name="MinTorque">Drive torque the machine needs for this job. 0 when it is not gated.</param>
 /// <param name="MinTier">Temper floor of the tool the job needs. 0 when any will do.</param>
 /// <param name="Seconds">How long one job takes. Never 0.</param>
+/// <param name="Strokes">Strokes the machine makes on a piece before the job completes. At least one.</param>
 public sealed record ProcessJob(
   string Input,
   string Output,
@@ -25,7 +26,8 @@ public sealed record ProcessJob(
   string? Family,
   float MinTorque,
   int MinTier = 0,
-  float Seconds = ProcessJob.DefaultSeconds
+  float Seconds = ProcessJob.DefaultSeconds,
+  int Strokes = 1
 ) {
   /// <summary>What a job takes when it declares no time of its own.</summary>
   public const float DefaultSeconds = 1f;
@@ -53,8 +55,9 @@ public sealed record ProcessJobSet(
   string Machine,
   ProcessJob[] Jobs
 ) {
-  /// <summary>The schema this parser writes and reads up to.</summary>
-  public const int CurrentSchema = SpecSchema.First;
+  /// <summary>The schema this parser writes and reads up to. Schema 2 adds <c>strokes</c>; a schema 1
+  /// file reads with one stroke a job.</summary>
+  public const int CurrentSchema = 2;
 
   /// <summary>Parses and validates one job-set declaration. Returns false with a human-readable
   /// <paramref name="error"/> on any malformed field.</summary>
@@ -100,6 +103,13 @@ public sealed record ProcessJobSet(
         return false;
       }
 
+      int strokes = jobNode["strokes"].AsInt(1);
+      if (strokes < 1) {
+        error =
+          $"{machine}: the job on '{input}' declares 'strokes' of {strokes}, which is less than one";
+        return false;
+      }
+
       float stage = jobNode["stage"].AsFloat(-1f);
       float seconds = jobNode["seconds"].AsFloat(ProcessJob.DefaultSeconds);
       jobs.Add(
@@ -114,7 +124,8 @@ public sealed record ProcessJobSet(
           // An authored 0 reads as "unstated".
           seconds > 0f
             ? seconds
-            : ProcessJob.DefaultSeconds
+            : ProcessJob.DefaultSeconds,
+          strokes
         )
       );
     }

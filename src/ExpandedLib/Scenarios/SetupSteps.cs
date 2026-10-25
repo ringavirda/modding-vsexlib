@@ -126,7 +126,7 @@ internal static class SetupSteps {
     ["reload"] = ["hours"],
     ["timespeed"] = ["speed", "seconds"],
     ["repeat"] = ["times", "until", "max", "steps"],
-    ["break"] = ["at", "by", "with"],
+    ["break"] = ["at", "by", "with", "sneak", "take"],
     ["expect"] =
     [
       "at",
@@ -150,6 +150,7 @@ internal static class SetupSteps {
       "code",
       "count",
       "attribute",
+      "player",
     ],
     ["fill"] = ["id", "code", "from", "to"],
     ["window"] = ["at", "open", "put", "take", "press", "close"],
@@ -252,8 +253,12 @@ internal static class SetupSteps {
       ValidateCraft(o, at);
     if (kind == "interact" && o["keep"] != null)
       SetupJson.Bool(o["keep"], at.In("keep"));
+    if (kind == "break" && o["sneak"] != null)
+      SetupJson.Bool(o["sneak"], at.In("sneak"));
     if (kind == "expect" && SetupSlotExpect.Is(o))
       SetupSlotExpect.Validate(o, at);
+    if (kind == "expect" && SetupPlayerExpect.Is(o))
+      SetupPlayerExpect.Validate(o, at);
     if (kind == "set" && (o["tree"] == null) == (o["member"] == null))
       throw at.Fail("takes one of \"tree\" and \"member\".");
     if (kind == "complete")
@@ -323,6 +328,7 @@ internal static class SetupSteps {
       && o["footprint"] == null
       && o["drops"] == null
       && !SetupSlotExpect.Is(o)
+      && !SetupPlayerExpect.Is(o)
     )
       tests.Add(ReadingTests.Parse(o, at, scope));
     IReadOnlyList<SetupStep> steps =

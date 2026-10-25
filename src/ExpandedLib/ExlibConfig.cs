@@ -86,6 +86,13 @@ public class ExlibConfig : IExVersionedConfig {
   [ExConfigRange(0, 1)]
   public float MoltenSpillYield { get; set; } = 0.75f;
 
+  /// <summary>Temperature (C), at or over which, of the hottest metal in a molten holder burns an entity
+  /// standing on its top face.</summary>
+  public float MoltenBurnMinTemperature { get; set; } = 200f;
+
+  /// <summary>Fire damage one molten-holder burn deals; one hit at most per second per entity.</summary>
+  public float MoltenBurnDamage { get; set; } = 1f;
+
   /// <summary>Fraction of the melting point above which a metal stack counts as liquid (flows).</summary>
   public float MetalLiquidThreshold { get; set; } = 0.8f;
 
@@ -159,6 +166,10 @@ public class ExlibConfig : IExVersionedConfig {
   /// <summary>Seconds a clutch's clamp takes to come on from nothing to its cap.</summary>
   [ExConfigRange(0.1, 600)]
   public float MpClutchRampS { get; set; } = 3f;
+
+  /// <summary>Torque (N-m) an overrunning coupling carries locked before it slips.</summary>
+  [ExConfigRange(0, 1000000)]
+  public float MpOverrunCapNm { get; set; } = 17000f;
   #endregion
 
   #region Diagnostics

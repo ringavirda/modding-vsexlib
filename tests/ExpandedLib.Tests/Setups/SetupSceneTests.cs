@@ -900,6 +900,38 @@ public class SetupSceneTests : IDisposable
     Assert.Contains(reason, message);
   }
 
+  // Fails when the break step's key list drops sneak: the file is refused for the key, not for the missing player.
+  [Fact]
+  public void A_break_step_takes_a_sneak_key()
+  {
+    SetupFile file = Inline(
+      "setupfixture",
+      null,
+      "[{\"break\": {\"at\": [0, 0, 0], \"sneak\": true}}]"
+    );
+
+    Assert.Contains(
+      "the fake world has no player to break with",
+      Refused(file)
+    );
+  }
+
+  // Fails when a break step's sneak is read without checking it is true or false.
+  [Fact]
+  public void A_break_steps_sneak_must_be_true_or_false()
+  {
+    Exception? e = Record.Exception(() =>
+      Inline(
+        "setupfixture",
+        null,
+        "[{\"break\": {\"at\": [0, 0, 0], \"sneak\": \"yes\"}}]"
+      )
+    );
+
+    Assert.IsType<InvalidOperationException>(e);
+    Assert.Contains("expected true or false", e.Message);
+  }
+
   // Fails when the refusal walks steps only, so a paste inside during is built and skipped.
   [Fact]
   public void A_step_kind_the_reader_cannot_run_is_refused_inside_during()

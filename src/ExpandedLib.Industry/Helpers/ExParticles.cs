@@ -25,6 +25,9 @@ public static class ExParticles {
   /// <summary>Warm orange glow spark (cowper stove combustion).</summary>
   public static readonly int GlowSpark = ColorUtil.ToRgba(200, 255, 150, 50);
 
+  /// <summary>Hot orange metal spark (a pour landing).</summary>
+  public static readonly int MetalSpark = ColorUtil.ToRgba(255, 255, 169, 83);
+
   /// <summary>Dark falling dust (hopper bell dumping its charge).</summary>
   public static readonly int Dust = ColorUtil.ToRgba(255, 60, 60, 60);
 
@@ -50,6 +53,48 @@ public static class ExParticles {
     EvolvingNatFloat? opacityEvolve = null,
     EvolvingNatFloat? sizeEvolve = null,
     bool shouldDieInLiquid = false
+  ) =>
+    Spawn(
+      world,
+      color,
+      minPos,
+      maxPos,
+      minVelocity,
+      maxVelocity,
+      minQuantity,
+      maxQuantity,
+      lifeLength,
+      gravityEffect,
+      minSize,
+      maxSize,
+      model,
+      opacityEvolve,
+      sizeEvolve,
+      shouldDieInLiquid,
+      (byte)0
+    );
+
+  /// <summary><see cref="Spawn(IWorldAccessor, int, Vec3d, Vec3d, Vec3f, Vec3f, float, float, float, float, float, float, EnumParticleModel, EvolvingNatFloat?, EvolvingNatFloat?, bool)"/>
+  /// with the particles' shader flags.</summary>
+  /// <param name="vertexFlags">The particle vertex flags; the glow lives in the low bits (0 is unlit, 128 the brightest).</param>
+  public static void Spawn(
+    IWorldAccessor world,
+    int color,
+    Vec3d minPos,
+    Vec3d maxPos,
+    Vec3f minVelocity,
+    Vec3f maxVelocity,
+    float minQuantity,
+    float maxQuantity,
+    float lifeLength,
+    float gravityEffect,
+    float minSize,
+    float maxSize,
+    EnumParticleModel model,
+    EvolvingNatFloat? opacityEvolve,
+    EvolvingNatFloat? sizeEvolve,
+    bool shouldDieInLiquid,
+    byte vertexFlags
   ) {
     if (FastForward.Replaying)
       return;
@@ -68,6 +113,7 @@ public static class ExParticles {
       model
     ) {
       ShouldDieInLiquid = shouldDieInLiquid,
+      VertexFlags = vertexFlags,
     };
     // Set only when supplied; presets without an evolve keep the engine default.
     if (opacityEvolve.HasValue)
@@ -75,6 +121,38 @@ public static class ExParticles {
     if (sizeEvolve.HasValue)
       particles.SizeEvolve = sizeEvolve.Value;
     world.SpawnParticles(particles);
+  }
+
+  /// <summary>Bright orange metal sparks thrown up from a world point where a pour lands, after the
+  /// game's <c>bigMetalSparks</c>: hotter metal throws them faster and glows brighter.</summary>
+  /// <param name="world">The world the particles spawn in.</param>
+  /// <param name="pos">World point of the landing.</param>
+  /// <param name="temperatureC">Metal temperature in C; speed scales from 0.3 up to 440 C to 1 at 1000 C, glow from 48 up to 818 C to 128 from 898 C.</param>
+  public static void MetalSparks(
+    IWorldAccessor world,
+    Vec3d pos,
+    float temperatureC
+  ) {
+    float speed = GameMath.Clamp((temperatureC - 200f) / 800f, 0.3f, 1f);
+    Spawn(
+      world,
+      MetalSpark,
+      pos.AddCopy(-0.25, 0.0, -0.25),
+      pos.AddCopy(0.25, 0.0, 0.25),
+      new Vec3f(-3f * speed, 1f * speed, -3f * speed),
+      new Vec3f(3f * speed, 8f * speed, 3f * speed),
+      1,
+      1,
+      0.5f,
+      1f,
+      0.25f,
+      0.25f,
+      EnumParticleModel.Quad,
+      null,
+      null,
+      false,
+      (byte)GameMath.Clamp((int)temperatureC - 770, 48, 128)
+    );
   }
 
   /// <summary>World-space centre of <paramref name="face"/> on the block at <paramref name="pos"/>.</summary>

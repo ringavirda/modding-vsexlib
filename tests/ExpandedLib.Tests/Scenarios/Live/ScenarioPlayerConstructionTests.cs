@@ -304,7 +304,7 @@ public class ScenarioPlayerConstructionTests {
       held.Add(tool!.Collectible.Code.ToString());
       seconds.Add(used);
       payer.Hold(tool);
-      payer.Hotbar[0].Itemstack = supply[0];
+      payer.Hotbar[1].Itemstack = supply[0];
       EnumHandling handling = EnumHandling.PassThrough;
       var selection = new BlockSelection {
         Position = new BlockPos(0, 0, 0, 0),

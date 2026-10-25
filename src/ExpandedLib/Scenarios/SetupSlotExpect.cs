@@ -78,7 +78,7 @@ internal static class SetupSlotExpect {
     return null;
   }
 
-  private static bool Same(object? actual, object? expected) {
+  internal static bool Same(object? actual, object? expected) {
     if (actual == null || expected == null)
       return actual == expected;
     string a = Text(actual);
@@ -100,7 +100,7 @@ internal static class SetupSlotExpect {
       : a == e;
   }
 
-  private static string Text(object? value) =>
+  internal static string Text(object? value) =>
     value == null
       ? "absent"
       : Convert.ToString(value, CultureInfo.InvariantCulture)!;

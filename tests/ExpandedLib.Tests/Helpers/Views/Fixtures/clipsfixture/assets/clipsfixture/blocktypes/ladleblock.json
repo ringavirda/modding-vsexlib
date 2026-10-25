@@ -1,0 +1,8 @@
+{
+  "code": "ladleblock",
+  "class": "Block",
+  "heldRightTpIdleAnimation": "iiex-ladlehold",
+  "shape": {
+    "base": "clipsfixture:block/bar"
+  }
+}

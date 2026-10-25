@@ -5,12 +5,14 @@ using ExpandedLib.Structures;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 
 namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>expect</c>: the readings the setup model parses (<c>block</c>, <c>member</c>,
-/// <c>tree</c>, <c>network</c>), a footprint, two cells in one network, and a hotbar slot.</summary>
+/// <c>tree</c>, <c>network</c>), a footprint, two cells in one network, a hotbar slot and the player's health.</summary>
 internal sealed class ExpectStep : ScenarioStep {
   public override string Kind => "expect";
 
@@ -23,6 +25,8 @@ internal sealed class ExpectStep : ScenarioStep {
     var o = (JObject)step.Body;
     if (o["info"] != null)
       return "expect \"info\" needs the scenario player's language.";
+    if (o["drops"] != null && o["attribute"] != null)
+      return DropsAttributeRefusal(o["attribute"]);
     return null;
   }
 
@@ -43,6 +47,8 @@ internal sealed class ExpectStep : ScenarioStep {
       report.Value = Same(ctx, step, o);
     else if (SetupSlotExpect.Is(o))
       report.Value = Slot(ctx, o);
+    else if (SetupPlayerExpect.Is(o))
+      report.Value = Health(ctx, o);
     else {
       var reading = new ReadingContext(ctx.Setup);
       foreach (ReadingTest test in step.Tests)
@@ -56,6 +62,22 @@ internal sealed class ExpectStep : ScenarioStep {
       );
     }
     yield break;
+  }
+
+  /// <summary>What is wrong with the <c>attribute</c> of <c>expect drops</c>, or null when it is
+  /// <c>{ key, equals?, same? }</c> with at least one of the two tests.</summary>
+  public static string? DropsAttributeRefusal(JToken? attribute) {
+    if (attribute is not JObject spec)
+      return "a drops attribute is { key, equals?, same? }.";
+    if (spec["key"] is not { Type: JTokenType.String })
+      return "a drops attribute needs a string \"key\".";
+    if (spec.Properties().Any(p => p.Name is not ("key" or "equals" or "same")))
+      return "a drops attribute is { key, equals?, same? }.";
+    if (spec["same"] != null && spec["same"]!.Type != JTokenType.Boolean)
+      return "\"same\" is true or false.";
+    if (spec["equals"] == null && (bool?)spec["same"] != true)
+      return "a drops attribute needs \"equals\" or \"same\": true.";
+    return null;
   }
 
   /// <summary>The stack the hotbar holds at the index <c>select</c> takes.</summary>
@@ -81,6 +103,24 @@ internal sealed class ExpectStep : ScenarioStep {
     return $"slot {slot}: {SetupSlotExpect.Describe(stack)}";
   }
 
+  private static string Health(ScenarioContext ctx, JObject o) {
+    ScenarioPlayer player =
+      ctx.Player
+      ?? throw new StepFailure(
+        "\"expect\" of the player needs the scenario player.",
+        Suspect.Scenario
+      );
+    float health =
+      player.Player.Entity.GetBehavior<EntityBehaviorHealth>()?.Health
+      ?? throw new StepFailure(
+        "the scenario player has no health behavior.",
+        Suspect.Scenario
+      );
+    if (SetupPlayerExpect.Mismatch(o, health) is { } mismatch)
+      throw new StepFailure($"{mismatch}.");
+    return $"health {health}";
+  }
+
   private static string Drops(ScenarioContext ctx, SetupStep step, JObject o) {
     BreakRecord last =
       ctx.LastBreak
@@ -101,6 +141,11 @@ internal sealed class ExpectStep : ScenarioStep {
       );
     if (mismatch != null)
       throw new StepFailure($"dropped {mismatch}.");
+    if (
+      o["attribute"] is JObject spec
+      && BreakStep.AttributeMismatch(spec, last.Dropped) is { } differs
+    )
+      throw new StepFailure($"dropped {differs}.");
     return string.Join(
       ", ",
       BreakStep.Sum(last.Dropped).Select(d => $"{d.Key} x{d.Value}")
