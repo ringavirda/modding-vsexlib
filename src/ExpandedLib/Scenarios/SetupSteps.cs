@@ -126,7 +126,7 @@ internal static class SetupSteps {
     ["reload"] = ["hours"],
     ["timespeed"] = ["speed", "seconds"],
     ["repeat"] = ["times", "until", "max", "steps"],
-    ["break"] = ["at", "by", "with"],
+    ["break"] = ["at", "by", "with", "take"],
     ["expect"] =
     [
       "at",

@@ -22,7 +22,8 @@ internal sealed record BreakRecord(
 /// <c>with</c> (<c>by: "player"</c>, the default) or as the world with no breaker
 /// (<c>by: "world"</c>). The block's declared drops are read just before, and the item entities the
 /// break spawned, within the plot and 2 blocks around it, are collected one tick after it for
-/// <c>expect drops</c>.</summary>
+/// <c>expect drops</c>. With <c>take: true</c> the collected stacks go to the scenario player's
+/// inventory as well as out of the world.</summary>
 internal sealed class BreakStep : ScenarioStep {
   private const int Margin = 2;
 
@@ -38,6 +39,10 @@ internal sealed class BreakStep : ScenarioStep {
       return $"\"by\" is \"player\" or \"world\", not \"{by}\".";
     if (by == "world" && o["with"] != null)
       return "\"with\" is for break by \"player\".";
+    if (o["take"] != null && o["take"]!.Type != JTokenType.Boolean)
+      return "\"take\" is true or false.";
+    if (by == "world" && (bool?)o["take"] == true)
+      return "\"take\" is for break by \"player\".";
     return null;
   }
 
@@ -86,6 +91,54 @@ internal sealed class BreakStep : ScenarioStep {
       );
     }
     return declared;
+  }
+
+  /// <summary>Hands <paramref name="stacks"/> to a player's inventory.</summary>
+  /// <param name="inventory">The inventory manager that receives the stacks.</param>
+  /// <param name="stacks">The collected stacks; each is cloned, the originals are left as they are.</param>
+  /// <returns>What the inventory had no room for, as text, or null when it took everything.</returns>
+  public static string? Take(
+    IPlayerInventoryManager inventory,
+    IEnumerable<ItemStack> stacks
+  ) {
+    List<string> left = [];
+    foreach (ItemStack stack in stacks) {
+      ItemStack given = stack.Clone();
+      if (!inventory.TryGiveItemstack(given, true) || given.StackSize > 0)
+        left.Add($"{given.Collectible.Code} x{given.StackSize}");
+    }
+    return left.Count == 0 ? null : string.Join(", ", left);
+  }
+
+  /// <summary>How the stacks in <paramref name="dropped"/> differ from an attribute expectation, or null
+  /// when every stack satisfies it.</summary>
+  /// <param name="spec">The <c>attribute</c> object of <c>expect drops</c>: <c>key</c>, and <c>equals</c>
+  /// (every stack reads that value) or <c>same: true</c> (every stack carries the key and all read one
+  /// value), or both.</param>
+  /// <param name="dropped">The stacks the last break dropped; an empty list passes.</param>
+  public static string? AttributeMismatch(
+    JObject spec,
+    IEnumerable<ItemStack> dropped
+  ) {
+    string key = (string)spec["key"]!;
+    object? wanted = (spec["equals"] as JValue)?.Value;
+    bool same = (bool?)spec["same"] ?? false;
+    object? first = null;
+    bool seen = false;
+    foreach (ItemStack stack in dropped) {
+      object? value = stack.Attributes?[key]?.GetValue();
+      string at = $"{stack.Collectible.Code} x{stack.StackSize}";
+      if (spec["equals"] != null && !SetupSlotExpect.Same(value, wanted))
+        return $"{at} reads {key} as {SetupSlotExpect.Text(value)}, expected {SetupSlotExpect.Text(wanted)}";
+      if (same && value == null)
+        return $"{at} carries no {key}";
+      if (same && seen && !SetupSlotExpect.Same(value, first))
+        return $"{at} reads {key} as {SetupSlotExpect.Text(value)}, another stack reads {SetupSlotExpect.Text(first)}";
+      if (!seen)
+        first = value;
+      seen = true;
+    }
+    return null;
   }
 
   /// <summary>The stack sizes of <paramref name="stacks"/> summed per collectible code.</summary>
@@ -239,6 +292,11 @@ internal sealed class BreakStep : ScenarioStep {
         dropped.Add(each.Itemstack.Clone());
         each.Die(EnumDespawnReason.Removed);
       }
+    if (
+      (bool?)o["take"] == true
+      && Take(player!.Player.InventoryManager, dropped) is { } left
+    )
+      throw new StepFailure($"the player's inventory has no room for {left}.");
     ctx.LastBreak = new BreakRecord(declared, dropped);
     report.Value =
       $"{block} by {by}, dropped "

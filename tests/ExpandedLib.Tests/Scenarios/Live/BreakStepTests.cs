@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
+using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
@@ -195,6 +196,173 @@ public class BreakStepTests
 
   private static EntityItem Spawned(long id, ItemStack stack) =>
     new() { EntityId = id, Itemstack = stack };
+
+  private static ItemStack Stamped(Item item, int size, string? stamp)
+  {
+    var stack = new ItemStack(item, size);
+    if (stamp != null)
+      stack.Attributes.SetString("stamp", stamp);
+    return stack;
+  }
+
+  /// <summary>Fails when a collected stack is not handed to the inventory, or the stacks the player's
+  /// inventory takes are reported as left.</summary>
+  [Fact]
+  public void Take_hands_every_dropped_stack_to_the_inventory()
+  {
+    var inventory = Substitute.For<IPlayerInventoryManager>();
+    inventory
+      .TryGiveItemstack(Arg.Any<ItemStack>(), true)
+      .Returns(call =>
+      {
+        call.ArgAt<ItemStack>(0).StackSize = 0;
+        return true;
+      });
+
+    string? left = BreakStep.Take(
+      inventory,
+      [new ItemStack(Ore, 2), new ItemStack(Flint, 1)]
+    );
+
+    Assert.Null(left);
+    inventory
+      .Received(1)
+      .TryGiveItemstack(Arg.Is<ItemStack>(s => s.Collectible == Ore), true);
+    inventory
+      .Received(1)
+      .TryGiveItemstack(Arg.Is<ItemStack>(s => s.Collectible == Flint), true);
+  }
+
+  /// <summary>Fails when a stack the inventory has no room for, or only partly takes, passes.</summary>
+  [Fact]
+  public void Take_names_the_stacks_the_inventory_had_no_room_for()
+  {
+    var inventory = Substitute.For<IPlayerInventoryManager>();
+    inventory
+      .TryGiveItemstack(Arg.Is<ItemStack>(s => s.Collectible == Ore), true)
+      .Returns(false);
+    inventory
+      .TryGiveItemstack(Arg.Is<ItemStack>(s => s.Collectible == Flint), true)
+      .Returns(call =>
+      {
+        call.ArgAt<ItemStack>(0).StackSize = 1;
+        return true;
+      });
+
+    string? left = BreakStep.Take(
+      inventory,
+      [new ItemStack(Ore, 2), new ItemStack(Flint, 3)]
+    );
+
+    Assert.Equal("test:ore x2, test:flint x1", left);
+  }
+
+  /// <summary>Fails when <c>equals</c> is ignored, or a stack that reads another value passes.</summary>
+  [Fact]
+  public void A_drops_attribute_equals_is_held_by_every_stack()
+  {
+    var spec = JObject.Parse("""{ "key": "stamp", "equals": "a" }""");
+
+    Assert.Null(
+      BreakStep.AttributeMismatch(
+        spec,
+        [Stamped(Ore, 1, "a"), Stamped(Flint, 1, "a")]
+      )
+    );
+    Assert.Contains(
+      "test:flint x1 reads stamp as b, expected a",
+      BreakStep.AttributeMismatch(
+        spec,
+        [Stamped(Ore, 1, "a"), Stamped(Flint, 1, "b")]
+      )
+    );
+    Assert.NotNull(BreakStep.AttributeMismatch(spec, [Stamped(Ore, 1, null)]));
+  }
+
+  /// <summary>Fails when <c>same</c> passes two stacks that read different values, or a stack that
+  /// carries none, or fails stacks that read one value.</summary>
+  [Fact]
+  public void A_drops_attribute_same_wants_one_value_on_every_stack()
+  {
+    var spec = JObject.Parse("""{ "key": "stamp", "same": true }""");
+
+    Assert.Null(
+      BreakStep.AttributeMismatch(
+        spec,
+        [Stamped(Ore, 1, "a"), Stamped(Flint, 1, "a")]
+      )
+    );
+    Assert.Contains(
+      "another stack reads a",
+      BreakStep.AttributeMismatch(
+        spec,
+        [Stamped(Ore, 1, "a"), Stamped(Flint, 1, "b")]
+      )
+    );
+    Assert.Contains(
+      "carries no stamp",
+      BreakStep.AttributeMismatch(
+        spec,
+        [Stamped(Ore, 1, "a"), Stamped(Flint, 1, null)]
+      )
+    );
+    Assert.Contains(
+      "carries no stamp",
+      BreakStep.AttributeMismatch(spec, [Stamped(Ore, 1, null)])
+    );
+  }
+
+  /// <summary>Fails when <c>take</c> is let through for a break by the world, or a value that is no
+  /// boolean, or a drops attribute that is malformed or tests nothing.</summary>
+  [Fact]
+  public void The_take_and_attribute_forms_are_refused_when_malformed()
+  {
+    string? Break(string body)
+    {
+      try
+      {
+        LiveFixture.Case($$"""[{ "break": {{body}} }]""");
+        return null;
+      }
+      catch (SetupFileException e)
+      {
+        return e.Message;
+      }
+    }
+
+    Assert.Null(Break("""{ "at": [0, 0, 0], "take": true }"""));
+    Assert.NotNull(
+      Break("""{ "at": [0, 0, 0], "by": "world", "take": true }""")
+    );
+    Assert.NotNull(Break("""{ "at": [0, 0, 0], "take": "yes" }"""));
+    Assert.Null(
+      ExpectStep.DropsAttributeRefusal(
+        JObject.Parse("""{ "key": "k", "same": true }""")
+      )
+    );
+    Assert.Null(
+      ExpectStep.DropsAttributeRefusal(
+        JObject.Parse("""{ "key": "k", "equals": 1 }""")
+      )
+    );
+    Assert.NotNull(
+      ExpectStep.DropsAttributeRefusal(JObject.Parse("""{ "key": "k" }"""))
+    );
+    Assert.NotNull(
+      ExpectStep.DropsAttributeRefusal(
+        JObject.Parse("""{ "key": "k", "same": false }""")
+      )
+    );
+    Assert.NotNull(
+      ExpectStep.DropsAttributeRefusal(JObject.Parse("""{ "equals": 1 }"""))
+    );
+    Assert.NotNull(
+      ExpectStep.DropsAttributeRefusal(
+        JObject.Parse("""{ "key": "k", "equals": 1, "other": 2 }""")
+      )
+    );
+    Assert.NotNull(ExpectStep.DropsAttributeRefusal(JValue.CreateString("k")));
+  }
 
   /// <summary>Fails when the listed counts compare the first stack of a code instead of the sum of
   /// every stack of it.</summary>
