@@ -138,8 +138,13 @@ public interface IMpEnergyLink {
   /// leave the input side running ahead of the output side in direction <paramref name="heading"/>. False by
   /// default.</summary>
   /// <param name="heading">+1 or -1, the way the input side would run ahead of the output side, in the
-  /// run's signed speed.</param>
+  /// signed speed of the input port (<see cref="From"/>) itself.</param>
   bool Freewheels(int heading) => false;
+
+  /// <summary>Called each step on every link of the run with whether the link is slipping with its input side
+  /// behind the output side in a direction it <see cref="Freewheels"/>; does nothing by default.</summary>
+  /// <param name="freewheeling">True while the link is overrunning, false when it is locked, open or slipping under load.</param>
+  void SetFreewheeling(bool freewheeling) { }
 
   /// <summary>Called once a step on every link of the run, engaged or not.</summary>
   /// <param name="dt">Step length in seconds.</param>

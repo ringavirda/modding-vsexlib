@@ -235,6 +235,12 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
           _jointsStale = true;
         }
       }
+      bool freewheeling = false;
+      if (_slipping.TryGetValue(link, out int heading)) {
+        float gap = SlipEnds(link).Delta;
+        freewheeling = link.Freewheels(gap != 0f ? MathF.Sign(gap) : heading);
+      }
+      link.SetFreewheeling(freewheeling);
       link.Advance(dt, hours, power);
       if (failure && link.WornOut) {
         link.Break();

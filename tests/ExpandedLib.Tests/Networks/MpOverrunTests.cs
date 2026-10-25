@@ -2,7 +2,10 @@ using System.Collections.Generic;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
+using NSubstitute;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -258,5 +261,54 @@ public class MpOverrunTests {
 
     Assert.True(SpeedAt(mirrored, mirroredDriven) < -5f);
     Assert.Equal(0f, SpeedAt(plain, plainDriven), 1e-3f);
+  }
+
+  // Fails when the thrown flag is not saved: a coupling thrown out reloads engaged.
+  [Fact]
+  public void Overrun_saves_thrown() {
+    var coupling = new BEBehaviorMpOverrun(new Host()) { Thrown = true };
+    var tree = new TreeAttribute();
+    coupling.ToTreeAttributes(tree);
+
+    var loaded = new BEBehaviorMpOverrun(new Host());
+    loaded.FromTreeAttributes(tree, null!);
+
+    Assert.True(loaded.Thrown);
+  }
+
+  // Fails when a declared coupling ignores its sense property: the mirrored coupling is fitted driving the plain way.
+  [Fact]
+  public void Declared_sense_is_read_from_properties() {
+    var w = new TestWorld();
+    w.RegisterNetwork("mpshaft", sys => new MpShaftNetwork(sys));
+    var host = new Host();
+    Put(w, F, host, new LinkMember(host));
+    var coupling = new BEBehaviorMpOverrun(host);
+
+    coupling.Initialize(
+      Substitute.For<ICoreAPI>(),
+      new JsonObject(JToken.Parse("{\"sense\":-1}"))
+    );
+
+    Assert.Equal(-1, coupling.Sense);
+    Assert.Equal(NodeKey.Port(F, 0), coupling.From);
+    Assert.Equal(NodeKey.Port(F, 1), coupling.To);
+  }
+
+  // Fails when Overrunning is not set from the slip state: it stays false while the driven run is ahead, or true once the coupling has caught.
+  [Fact]
+  public void Overrunning_reads_true_when_driven_ahead_and_false_once_caught() {
+    var (w, driver, driven, coupling) = Line();
+    driven.Drive = 300f;
+    Tick(w, 50);
+    driver.Drive = 100f;
+    Tick(w, 5);
+    Assert.True(coupling!.Overrunning);
+
+    driver.Drive = 2000f;
+    Tick(w, 40);
+
+    Assert.Equal(SpeedAt(w, D), SpeedAt(w, A), 0.5f);
+    Assert.False(coupling.Overrunning);
   }
 }

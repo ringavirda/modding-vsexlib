@@ -24,7 +24,7 @@ public class BEBehaviorMpOverrun(BlockEntity blockentity)
   /// <summary>True while the coupling is thrown out and joins nothing.</summary>
   public bool Thrown { get; set; }
 
-  /// <summary>The way the driver side must turn to drive: +1 or -1 in the run's signed speed.</summary>
+  /// <summary>The way the driver side must turn to drive: +1 or -1 in the signed speed of the driver port (<see cref="From"/>) itself.</summary>
   public int Sense => _sense;
 
   public NodeKey From => _from;
@@ -37,6 +37,9 @@ public class BEBehaviorMpOverrun(BlockEntity blockentity)
 
   public float Efficiency => 1f;
 
+  /// <summary>True while the driven side runs ahead of the driver side and the coupling carries nothing; set each step by the network.</summary>
+  public bool Overrunning { get; private set; }
+
   public bool Engaged => _connected && !Thrown;
 
   public float CapNm => ExlibValues.MpOverrunCapNm;
@@ -45,6 +48,8 @@ public class BEBehaviorMpOverrun(BlockEntity blockentity)
     _sense * relativeSpeed < 0f ? 0f : SlipFraction * CapNm;
 
   public bool Freewheels(int heading) => _sense * heading < 0;
+
+  public void SetFreewheeling(bool freewheeling) => Overrunning = freewheeling;
 
   public override void Initialize(ICoreAPI api, JsonObject properties) {
     base.Initialize(api, properties);
