@@ -134,6 +134,13 @@ public interface IMpEnergyLink {
   /// never negative; 0.8 of <see cref="CapNm"/> by default.</summary>
   float SlipTorque(float relativeSpeed) => 0.8f * CapNm;
 
+  /// <summary>True when a locked link must let go rather than carry the torque it is under: the torque would
+  /// leave the input side running ahead of the output side in direction <paramref name="heading"/>. False by
+  /// default.</summary>
+  /// <param name="heading">+1 or -1, the way the input side would run ahead of the output side, in the
+  /// run's signed speed.</param>
+  bool Freewheels(int heading) => false;
+
   /// <summary>Called once a step on every link of the run, engaged or not.</summary>
   /// <param name="dt">Step length in seconds.</param>
   /// <param name="hours">In-game hours the step spans; 0 when the calendar is unavailable.</param>

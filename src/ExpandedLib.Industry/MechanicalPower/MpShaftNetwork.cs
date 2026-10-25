@@ -153,7 +153,10 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     foreach (var (link, heading) in _slipping) {
       var (input, output, delta) = SlipEnds(link);
       float direction = delta != 0f ? MathF.Sign(delta) : heading;
-      float torque = MathF.Max(0f, link.SlipTorque(delta));
+      float torque = MathF.Max(
+        0f,
+        link.SlipTorque(delta != 0f ? delta : direction * 1e-6f)
+      );
       Store.AddSlip(input, -direction * torque);
       Store.AddSlip(output, direction * torque * link.Ratio * link.Sign);
     }
@@ -179,9 +182,15 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     foreach (var (edge, link) in _links) {
       float ratio = trial.RatioOf(trial.IndexOf(link.From));
       float carried = trial.EdgeTorque(edge);
-      if (ratio == 0f || MathF.Abs(carried / ratio) <= link.CapNm * 1.0001f)
+      if (ratio == 0f)
         continue;
-      _slipping[link] = MathF.Sign(carried) * MathF.Sign(ratio);
+      int heading = MathF.Sign(carried) * MathF.Sign(ratio);
+      if (
+        !link.Freewheels(heading)
+        && MathF.Abs(carried / ratio) <= link.CapNm * 1.0001f
+      )
+        continue;
+      _slipping[link] = heading;
       released = true;
     }
     return released;

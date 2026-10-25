@@ -159,6 +159,10 @@ public class ExlibConfig : IExVersionedConfig {
   /// <summary>Seconds a clutch's clamp takes to come on from nothing to its cap.</summary>
   [ExConfigRange(0.1, 600)]
   public float MpClutchRampS { get; set; } = 3f;
+
+  /// <summary>Torque (N-m) an overrunning coupling carries locked before it slips.</summary>
+  [ExConfigRange(0, 1000000)]
+  public float MpOverrunCapNm { get; set; } = 17000f;
   #endregion
 
   #region Diagnostics
