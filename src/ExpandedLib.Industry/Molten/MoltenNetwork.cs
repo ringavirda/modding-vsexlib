@@ -97,9 +97,9 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
         continue;
 
       foreach (var face in BlockFacing.HORIZONTALS) {
-        if (!node.HasConnectorAt(face))
-          continue;
         BlockPos npos = cur.AddCopy(face);
+        if (!JointOpen(blockAccessor, cur, node, face, npos))
+          continue;
         if (!Nodes.Contains(npos) || dist.ContainsKey(npos))
           continue;
         if (blockAccessor.GetBlockEntity(npos) is not IMoltenCell)
@@ -114,7 +114,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
   /// <summary>Multi-source BFS mapping each cell within <paramref name="radius"/> canal hops of an
   /// open mold to its hop distance from the nearest one; open molds map to 0 and every other cell is
   /// absent, so a radius of 0 or less draws nothing. A hop reaches a cell beside or above the nearer
-  /// one, never below it, and never a sealed or solidified cell.</summary>
+  /// one, never below it, and never a sealed or solidified cell and never across a joint either end lacks a connector for.</summary>
   private Dictionary<BlockPos, int> BuildDistanceToOpenMold(
     IBlockAccessor blockAccessor,
     List<(BlockPos Pos, IMoltenCell Cell)> cells,
@@ -140,9 +140,11 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
 
       foreach (var face in BlockFacing.ALLFACES) {
         // Metal from the cell below cannot climb into this one.
-        if (face == BlockFacing.DOWN || !node.HasConnectorAt(face))
+        if (face == BlockFacing.DOWN)
           continue;
         BlockPos npos = cur.AddCopy(face);
+        if (!JointOpen(blockAccessor, cur, node, face, npos))
+          continue;
         if (!Nodes.Contains(npos) || dist.ContainsKey(npos))
           continue;
         if (
@@ -163,6 +165,22 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     }
     return dist;
   }
+
+  /// <summary>Whether <paramref name="face"/> of the node at <paramref name="pos"/> is a joint: the node
+  /// has a connector there and the block at <paramref name="npos"/>, when it is a network node, has
+  /// one facing back. A neighbour that is not a network node does not close the joint.</summary>
+  private static bool JointOpen(
+    IBlockAccessor blockAccessor,
+    BlockPos pos,
+    BlockNetworkNode node,
+    BlockFacing face,
+    BlockPos npos
+  ) =>
+    node.HasConnectorAt(blockAccessor, pos, face)
+    && (
+      blockAccessor.GetBlock(npos) is not BlockNetworkNode far
+      || far.HasConnectorAt(blockAccessor, npos, face.Opposite)
+    );
 
   /// <summary>Orders cells for the flow pass, greater distance from the source first; position breaks
   /// ties, and an unreachable cell counts as farthest.</summary>
@@ -215,12 +233,12 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
       )
         continue;
 
-      // ALLFACES, not HORIZONTALS: vertical neighbours also exchange metal; HasConnectorAt still gates
-      // every face.
+      // ALLFACES, not HORIZONTALS: vertical neighbours also exchange metal; the connector test gates
+      // every face at both ends.
       foreach (var face in BlockFacing.ALLFACES) {
-        if (!aNode.HasConnectorAt(face))
-          continue;
         BlockPos npos = a.Pos.AddCopy(face);
+        if (!JointOpen(blockAccessor, a.Pos, aNode, face, npos))
+          continue;
         if (!Nodes.Contains(npos))
           continue;
         if (blockAccessor.GetBlockEntity(npos) is not IMoltenCell bCell)
