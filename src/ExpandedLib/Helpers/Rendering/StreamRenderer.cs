@@ -2,6 +2,7 @@ using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace ExpandedLib.Helpers;
 
@@ -18,19 +19,25 @@ public abstract class StreamRenderer : IRenderer {
   private readonly float _top;
   private readonly float _bottom;
 
+  /// <summary>The model matrix of the last frame drawn.</summary>
   public Matrixf ModelMat = new();
 
   /// <summary>Whether the column is drawn; pushed by the owning block entity.</summary>
   public bool Visible;
 
+  /// <summary>Render order within the stage.</summary>
   public abstract double RenderOrder { get; }
+
+  /// <summary>Distance in blocks within which the stream is drawn.</summary>
   public virtual int RenderRange => 24;
 
   /// <param name="lip">Centre of the column's top face in 0-16 voxel space of the block's north frame.</param>
   /// <param name="landingY">Voxel height of the column's bottom face.</param>
   /// <param name="width">Voxels along x in the north frame.</param>
   /// <param name="depth">Voxels along z in the north frame.</param>
-  /// <param name="rotationDeg">The block's Y rotation in degrees.</param>
+  /// <param name="rotationY">The block's Y rotation in radians, as <see cref="SurfaceRenderer"/> takes it.</param>
+  /// <param name="pos">The block position the renderer draws at and lights from.</param>
+  /// <param name="api">The client API.</param>
   protected StreamRenderer(
     BlockPos pos,
     ICoreClientAPI api,
@@ -38,12 +45,12 @@ public abstract class StreamRenderer : IRenderer {
     float landingY,
     float width,
     float depth,
-    float rotationDeg
+    float rotationY
   ) {
     Pos = pos;
     Api = api;
 
-    Cuboidf box = StreamBox(lip, landingY, width, depth, rotationDeg);
+    Cuboidf box = StreamBox(lip, landingY, width, depth, rotationY);
     _top = box.Y2 / Voxel;
     _bottom = box.Y1 / Voxel;
     _mesh = BuildMesh(box);
@@ -55,14 +62,14 @@ public abstract class StreamRenderer : IRenderer {
   /// <param name="landingY">Voxel height of the column's bottom face.</param>
   /// <param name="width">Voxels along x in the north frame.</param>
   /// <param name="depth">Voxels along z in the north frame.</param>
-  /// <param name="rotationDeg">The block's Y rotation in degrees; 90 degree steps keep the result exact.</param>
+  /// <param name="rotationY">The block's Y rotation in radians; quarter turns keep the result exact to float precision.</param>
   /// <returns>The axis-aligned box after the rotation.</returns>
   public static Cuboidf StreamBox(
     Vec3f lip,
     float landingY,
     float width,
     float depth,
-    float rotationDeg
+    float rotationY
   ) =>
     new Cuboidf(
       lip.X - width / 2f,
@@ -71,7 +78,7 @@ public abstract class StreamRenderer : IRenderer {
       lip.X + width / 2f,
       lip.Y,
       lip.Z + depth / 2f
-    ).RotatedCopy(0f, rotationDeg, 0f, new Vec3d(8, 8, 8));
+    ).RotatedCopyRad(0f, rotationY, 0f, new Vec3d(8, 8, 8));
 
   // Four side faces; the top and bottom are never seen (the lip and the receiver's metal hide them).
   private static MeshData BuildMesh(Cuboidf box) {
@@ -102,6 +109,7 @@ public abstract class StreamRenderer : IRenderer {
       mesh.AddIndex(start + 2);
       mesh.AddIndex(start + 3);
     }
+    mesh.Rgba.Fill(byte.MaxValue);
     return mesh;
   }
 
@@ -116,6 +124,7 @@ public abstract class StreamRenderer : IRenderer {
     Api.Render.UpdateMesh(_meshRef, _mesh);
   }
 
+  /// <summary>Scrolls the texture and draws the column while <see cref="Visible"/>.</summary>
   public void OnRenderFrame(float deltaTime, EnumRenderStage stage) {
     if (!Visible)
       return;
@@ -174,6 +183,7 @@ public abstract class StreamRenderer : IRenderer {
   /// <summary>Binds the stream texture; returning false skips the draw for this frame.</summary>
   protected abstract bool BindStreamTexture(IRenderAPI render);
 
+  /// <summary>Unregisters from the Opaque stage only, where the owner registers it, and frees the mesh.</summary>
   public virtual void Dispose() {
     Api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
     _meshRef.Dispose();

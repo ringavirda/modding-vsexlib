@@ -52,8 +52,49 @@ public static class ExParticles {
     EnumParticleModel model = EnumParticleModel.Quad,
     EvolvingNatFloat? opacityEvolve = null,
     EvolvingNatFloat? sizeEvolve = null,
-    bool shouldDieInLiquid = false,
-    byte vertexFlags = 0
+    bool shouldDieInLiquid = false
+  ) =>
+    Spawn(
+      world,
+      color,
+      minPos,
+      maxPos,
+      minVelocity,
+      maxVelocity,
+      minQuantity,
+      maxQuantity,
+      lifeLength,
+      gravityEffect,
+      minSize,
+      maxSize,
+      model,
+      opacityEvolve,
+      sizeEvolve,
+      shouldDieInLiquid,
+      (byte)0
+    );
+
+  /// <summary><see cref="Spawn(IWorldAccessor, int, Vec3d, Vec3d, Vec3f, Vec3f, float, float, float, float, float, float, EnumParticleModel, EvolvingNatFloat?, EvolvingNatFloat?, bool)"/>
+  /// with the particles' shader flags.</summary>
+  /// <param name="vertexFlags">The particle vertex flags; the glow lives in the low bits (0 is unlit, 128 the brightest).</param>
+  public static void Spawn(
+    IWorldAccessor world,
+    int color,
+    Vec3d minPos,
+    Vec3d maxPos,
+    Vec3f minVelocity,
+    Vec3f maxVelocity,
+    float minQuantity,
+    float maxQuantity,
+    float lifeLength,
+    float gravityEffect,
+    float minSize,
+    float maxSize,
+    EnumParticleModel model,
+    EvolvingNatFloat? opacityEvolve,
+    EvolvingNatFloat? sizeEvolve,
+    bool shouldDieInLiquid,
+    byte vertexFlags
   ) {
     if (FastForward.Replaying)
       return;
@@ -84,6 +125,7 @@ public static class ExParticles {
 
   /// <summary>Bright orange metal sparks thrown up from a world point where a pour lands, after the
   /// game's <c>bigMetalSparks</c>: hotter metal throws them faster and glows brighter.</summary>
+  /// <param name="world">The world the particles spawn in.</param>
   /// <param name="pos">World point of the landing.</param>
   /// <param name="temperatureC">Metal temperature in C; speed scales from 0.3 up to 440 C to 1 at 1000 C, glow from 48 up to 818 C to 128 from 898 C.</param>
   public static void MetalSparks(
@@ -105,7 +147,11 @@ public static class ExParticles {
       1f,
       0.25f,
       0.25f,
-      vertexFlags: (byte)GameMath.Clamp((int)temperatureC - 770, 48, 128)
+      EnumParticleModel.Quad,
+      null,
+      null,
+      false,
+      (byte)GameMath.Clamp((int)temperatureC - 770, 48, 128)
     );
   }
 
