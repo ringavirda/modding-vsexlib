@@ -691,7 +691,8 @@ public static class StructureBreaks
             : (
               offers[j].Code,
               offers[j].Type,
-              before[j] - payer.Hotbar[j].StackSize
+              before[j + FirstOffered]
+                - payer.Hotbar[j + FirstOffered].StackSize
             )
         );
       Fill(payer.Hotbar, []);
@@ -865,8 +866,10 @@ public static class StructureBreaks
     return code;
   }
 
+  private const int FirstOffered = 1;
+
   /// <summary>Empties <paramref name="hotbar"/> and puts each of <paramref name="stacks"/> in the
-  /// next slot, in order.</summary>
+  /// next slot from <see cref="FirstOffered"/>, in order, leaving the active slot for a tool.</summary>
   /// <exception cref="InvalidOperationException">More stacks than slots.</exception>
   private static void Fill(
     InventoryGeneric hotbar,
@@ -875,12 +878,12 @@ public static class StructureBreaks
   {
     foreach (ItemSlot slot in hotbar)
       slot.Itemstack = null;
-    int next = 0;
+    int next = FirstOffered;
     foreach ((string code, EnumItemClass type, int quantity) in stacks)
     {
       if (next >= hotbar.Count)
         throw new InvalidOperationException(
-          $"a stage asks for more than the {hotbar.Count} hotbar slots"
+          $"a stage asks for more than the {hotbar.Count - FirstOffered} hotbar slots past the hand"
         );
       var location = new AssetLocation(code);
       hotbar[next++].Itemstack =
