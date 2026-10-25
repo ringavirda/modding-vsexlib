@@ -126,7 +126,7 @@ internal static class SetupSteps {
     ["reload"] = ["hours"],
     ["timespeed"] = ["speed", "seconds"],
     ["repeat"] = ["times", "until", "max", "steps"],
-    ["break"] = ["at", "by", "with"],
+    ["break"] = ["at", "by", "with", "sneak"],
     ["expect"] =
     [
       "at",
@@ -252,6 +252,8 @@ internal static class SetupSteps {
       ValidateCraft(o, at);
     if (kind == "interact" && o["keep"] != null)
       SetupJson.Bool(o["keep"], at.In("keep"));
+    if (kind == "break" && o["sneak"] != null)
+      SetupJson.Bool(o["sneak"], at.In("sneak"));
     if (kind == "expect" && SetupSlotExpect.Is(o))
       SetupSlotExpect.Validate(o, at);
     if (kind == "set" && (o["tree"] == null) == (o["member"] == null))

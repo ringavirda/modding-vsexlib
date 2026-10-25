@@ -20,7 +20,7 @@ internal sealed record BreakRecord(
 
 /// <summary><c>break</c>: takes the block at <c>at</c> down as the scenario player in survival holding
 /// <c>with</c> (<c>by: "player"</c>, the default) or as the world with no breaker
-/// (<c>by: "world"</c>). The block's declared drops are read just before, and the item entities the
+/// (<c>by: "world"</c>), sneaking when <c>sneak</c> is true. The block's declared drops are read just before, and the item entities the
 /// break spawned, within the plot and 2 blocks around it, are collected one tick after it for
 /// <c>expect drops</c>.</summary>
 internal sealed class BreakStep : ScenarioStep {
@@ -38,6 +38,8 @@ internal sealed class BreakStep : ScenarioStep {
       return $"\"by\" is \"player\" or \"world\", not \"{by}\".";
     if (by == "world" && o["with"] != null)
       return "\"with\" is for break by \"player\".";
+    if (by == "world" && o["sneak"] != null)
+      return "\"sneak\" is for break by \"player\".";
     return null;
   }
 
@@ -218,6 +220,7 @@ internal sealed class BreakStep : ScenarioStep {
         !player.Break(
           at,
           stack,
+          (bool?)o["sneak"] ?? false,
           p => DeclaredDrops(ctx.World, at, p),
           out declared,
           out string? refused

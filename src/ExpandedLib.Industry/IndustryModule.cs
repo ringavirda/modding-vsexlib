@@ -41,9 +41,11 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
   public void Start(ICoreAPI api) =>
     RegisterNetworkTypes(api.ModLoader.GetModSystem<BlockNetworkModSystem>());
 
-  /// <summary>Opens the server end of <see cref="ExSounds"/>' channel.</summary>
+  /// <summary>Opens the server end of <see cref="ExSounds"/>' channel and guards molten holders
+  /// against an ordinary break (<see cref="MoltenBreakGuard"/>).</summary>
   public void StartServerSide(ICoreServerAPI api) {
     ExSounds.StartServer(api);
+    MoltenBreakGuard.Register(api);
     _openedServerChannel = true;
   }
 

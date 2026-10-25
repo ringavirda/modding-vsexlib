@@ -336,6 +336,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
       failure = null;
       return true;
     } finally {
+      Hold(Player.Entity.Controls, []);
       slot.Itemstack = null;
       Park();
     }
@@ -377,6 +378,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   /// is emptied and the player parked after.</summary>
   /// <param name="at">The absolute cell of the block.</param>
   /// <param name="stack">What the hand holds, or null for an empty hand.</param>
+  /// <param name="sneak">Whether the player holds sneak for the break; released after it.</param>
   /// <param name="declare">Reads the drops the block declares; called once with the player after it is
   /// in survival mode with <paramref name="stack"/> in hand, before the break.</param>
   /// <param name="declared">What <paramref name="declare"/> returned; empty when the tier check refused.</param>
@@ -385,6 +387,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   public bool Break(
     BlockPos at,
     ItemStack? stack,
+    bool sneak,
     System.Func<IPlayer, List<ItemStack>> declare,
     out List<ItemStack> declared,
     out string? failure
@@ -403,6 +406,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
       if (failure != null)
         return false;
       declared = declare(Player);
+      Hold(Player.Entity.Controls, sneak ? ["sneak"] : []);
       var selection = new BlockSelection {
         Position = at.Copy(),
         Face = face,

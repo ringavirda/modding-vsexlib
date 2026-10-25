@@ -8,4 +8,8 @@ namespace ExpandedLib.Industry.Molten;
 public interface IMoltenSurface {
   /// <summary>Temperature (deg C) of the hottest metal held, liquid or set; null when it holds none.</summary>
   float? SurfaceTemperature { get; }
+
+  /// <summary>Whether the content this entity reports beyond its own cells, such as a parked ladle or
+  /// mould, is still liquid; false by default. <see cref="MoltenBreakGuard"/> reads it with the cells.</summary>
+  bool SurfaceLiquid => false;
 }
