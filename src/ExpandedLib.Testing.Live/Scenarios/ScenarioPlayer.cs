@@ -244,10 +244,15 @@ internal sealed class ScenarioPlayer : IHandRelease {
       slot.Itemstack = null;
   }
 
-  /// <summary>Puts the player's feet in the middle of the cell <paramref name="at"/>, where it stays until
-  /// a verb or <see cref="Park"/> moves it.</summary>
+  /// <summary>Puts the player's feet in the middle of the cell <paramref name="at"/> in survival mode, on the
+  /// ground, where it stays until a verb or <see cref="Park"/> moves it. The server runs no physics for it, so
+  /// a block's collision hook never fires; a ticking block entity that reads the standing player does.</summary>
   /// <param name="at">The absolute cell.</param>
-  public void StandAt(BlockPos at) => MoveTo(at);
+  public void StandAt(BlockPos at) {
+    Survive();
+    MoveTo(at);
+    _data.EntityPlayer.OnGround = true;
+  }
 
   /// <summary>Puts the player in survival mode without free movement, where it stays until it is parked.</summary>
   public void Survive() {

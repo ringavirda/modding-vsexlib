@@ -2,7 +2,9 @@
 using System;
 using System.IO;
 using System.Linq;
+using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Xunit;
@@ -577,6 +579,54 @@ public class SetupExpectTests : IDisposable
     Assert.Contains("steps[1]", message);
     Assert.Contains("\"expect drops\" is refused", message);
   }
+
+  // Fails when expect player is run in the fake world, or refused without naming itself.
+  [Fact]
+  public void An_expect_player_is_refused_naming_the_kind()
+  {
+    string message = BoxRefused(
+      "{\"expect\": {\"player\": {\"health\": {\"min\": 1}}}}"
+    );
+
+    Assert.Contains("steps[1]", message);
+    Assert.Contains("\"expect player\" is refused", message);
+  }
+
+  // Fails when a player reading with no bound, a key besides min and max, or min over max is let through.
+  [Theory]
+  [InlineData("{\"player\": {\"health\": {}}}", "takes \"min\" or \"max\"")]
+  [InlineData(
+    "{\"player\": {\"health\": {\"min\": 1, \"exact\": 2}}}",
+    "exact"
+  )]
+  [InlineData("{\"player\": {\"hunger\": {\"min\": 1}}}", "hunger")]
+  [InlineData(
+    "{\"player\": {\"health\": {\"min\": 9, \"max\": 3}}}",
+    "\"min\" is over \"max\""
+  )]
+  public void A_malformed_player_reading_fails_the_file(
+    string body,
+    string expected
+  ) => Assert.Contains(expected, BoxRefused("{\"expect\": " + body + "}"));
+
+  // Fails when a health under min or over max passes, or one on a bound fails.
+  [Theory]
+  [InlineData(11.9f, true)]
+  [InlineData(12f, false)]
+  [InlineData(12.5f, false)]
+  [InlineData(13f, false)]
+  [InlineData(13.1f, true)]
+  public void A_player_reading_tests_health_between_its_bounds(
+    float health,
+    bool differs
+  ) =>
+    Assert.Equal(
+      differs,
+      SetupPlayerExpect.Mismatch(
+        JObject.Parse("{\"player\": {\"health\": {\"min\": 12, \"max\": 13}}}"),
+        health
+      ) != null
+    );
 
   // Fails when a climate key is accepted, or the refusal leaves out what the world lacks.
   [Fact]
