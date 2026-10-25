@@ -78,8 +78,22 @@ public class MoltenJointTests {
         ? [BlockFacing.SOUTH]
         : [BlockFacing.WEST, BlockFacing.SOUTH]
     );
-    var c = Put(w, new BlockPos(1, 0, 1), 3, Holding(0), BlockFacing.NORTH, BlockFacing.WEST);
-    var d = Put(w, new BlockPos(0, 0, 1), 4, Holding(0), BlockFacing.EAST, BlockFacing.NORTH);
+    var c = Put(
+      w,
+      new BlockPos(1, 0, 1),
+      3,
+      Holding(0),
+      BlockFacing.NORTH,
+      BlockFacing.WEST
+    );
+    var d = Put(
+      w,
+      new BlockPos(0, 0, 1),
+      4,
+      Holding(0),
+      BlockFacing.EAST,
+      BlockFacing.NORTH
+    );
     c.MaxUnitCapacity = 0;
     d.MaxUnitCapacity = 0;
     Assert.Same(w.NetworkAt(a.Pos), w.NetworkAt(b.Pos));
@@ -102,15 +116,26 @@ public class MoltenJointTests {
       w,
       new BlockPos(0, 0, 0),
       1,
-      new Cell {
-        IsOpenMold = true,
-        AcceptsSubMinimumFlow = true,
-      },
+      new Cell { IsOpenMold = true, AcceptsSubMinimumFlow = true },
       BlockFacing.EAST,
       BlockFacing.SOUTH
     );
-    Put(w, new BlockPos(0, 0, 1), 2, Holding(0), BlockFacing.NORTH, BlockFacing.EAST);
-    var s = Put(w, new BlockPos(1, 0, 1), 3, Holding(0), BlockFacing.WEST, BlockFacing.NORTH);
+    Put(
+      w,
+      new BlockPos(0, 0, 1),
+      2,
+      Holding(0),
+      BlockFacing.NORTH,
+      BlockFacing.EAST
+    );
+    var s = Put(
+      w,
+      new BlockPos(1, 0, 1),
+      3,
+      Holding(0),
+      BlockFacing.WEST,
+      BlockFacing.NORTH
+    );
     var r = Put(w, new BlockPos(1, 0, 0), 4, Holding(40), BlockFacing.SOUTH);
     Assert.Same(w.NetworkAt(mold.Pos), w.NetworkAt(r.Pos));
 
