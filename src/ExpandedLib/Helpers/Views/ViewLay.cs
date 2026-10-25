@@ -45,7 +45,7 @@ internal sealed record Lay(Vec3d[] Axes, double[] Lo, double[] Hi) {
     return oriented && WorkingEndIsLow(lay, box, tip) ? lay.FlipLongest() : lay;
   }
 
-  private Lay FlipLongest() =>
+  internal Lay FlipLongest() =>
     new(
       [new Vec3d(-Axes[0].X, -Axes[0].Y, -Axes[0].Z), Axes[1], Axes[2]],
       [-Hi[0], Lo[1], Lo[2]],

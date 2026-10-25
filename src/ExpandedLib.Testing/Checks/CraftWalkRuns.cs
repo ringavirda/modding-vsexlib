@@ -32,6 +32,7 @@ internal static class CraftWalkRuns
   /// <param name="all">Every loaded item and block.</param>
   /// <param name="found">The failures, as key and line.</param>
   /// <param name="crafted">Receives each craft that succeeded, with where it was made.</param>
+  /// <param name="owns">Whether to craft the recipes making a product code; null crafts all.</param>
   /// <returns>For each edge, whether it was crafted without a refusal.</returns>
   internal static bool[] Execute(
     TestWorld world,
@@ -41,7 +42,8 @@ internal static class CraftWalkRuns
     Dictionary<string, int> reached,
     IReadOnlyList<CollectibleObject> all,
     List<(string Key, string Line)> found,
-    List<CraftWalk.CraftedEdge> crafted
+    List<CraftWalk.CraftedEdge> crafted,
+    System.Func<string, bool>? owns
   )
   {
     var executed = new bool[edges.Count];
@@ -52,7 +54,11 @@ internal static class CraftWalkRuns
     var cache = new Dictionary<string, WalkNeed>(StringComparer.Ordinal);
     for (int i = 0; i < edges.Count; i++)
     {
-      if (round[i] == 0 || edges[i].Grid is not { } recipe)
+      if (
+        round[i] == 0
+        || edges[i].Grid is not { } recipe
+        || owns?.Invoke(edges[i].Output) == false
+      )
         continue;
       WalkEdge edge = edges[i];
       bool inHand = hand.Any(o => o.Grid == recipe);

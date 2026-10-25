@@ -384,14 +384,23 @@ public static class ItemViews {
   }
 
   /// <summary>The lay a long item's hand is solved on: oriented to its tip when it has one, else to its working end
-  /// for a longtool or tool, else the unoriented lay of a bar, bulk item or block.</summary>
+  /// for a longtool or tool, else the unoriented lay of a bar or bulk item, and a block's with its longest axis turned end for
+  /// end where the turn onto the carry would leave the block's up axis pointing down.</summary>
   /// <param name="kind">The kind of the item; a block's is a block kind.</param>
   /// <param name="box">The drawn box.</param>
   /// <param name="tip">The working end as a sign and an axis letter ("+y"), or null.</param>
-  internal static Lay LongLay(ItemViewKind kind, ViewBox box, string? tip) =>
-    tip != null
-      ? Lay.Of(box, true, tip)
-      : Lay.Of(box, kind is ItemViewKind.Longtool or ItemViewKind.Tool, null);
+  internal static Lay LongLay(ItemViewKind kind, ViewBox box, string? tip) {
+    if (tip != null)
+      return Lay.Of(box, true, tip);
+    Lay lay = Lay.Of(
+      box,
+      kind is ItemViewKind.Longtool or ItemViewKind.Tool,
+      null
+    );
+    return kind == ItemViewKind.Multicell && LongUpOf(LongTurn(lay)).Y < 0
+      ? lay.FlipLongest()
+      : lay;
+  }
 
   /// <summary>The two-handed hold of a long item: its longest axis level along the seraph's left-right, resting on the
   /// hands of the carry its length picks, its box centre above the hands' midpoint by the height of the centre over the

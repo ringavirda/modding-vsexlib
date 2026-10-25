@@ -16,18 +16,21 @@ public static class BreakLaw
 {
   internal const string Name = "break";
 
-  /// <summary>Runs <see cref="StructureBreaks.Run(IEnumerable{ExBlockDef}, IReadOnlyList{Assembly}, Action{TestWorld}?)"/>
+  /// <summary>Runs <see cref="StructureBreaks.Run(IEnumerable{ExBlockDef}, IReadOnlyList{Assembly}, Action{TestWorld}?, int)"/>
   /// over <paramref name="defs"/> and judges what each break spawned.</summary>
   /// <param name="defs">The definitions judged.</param>
   /// <param name="assemblies">The assemblies whose registered classes the definitions name,
   /// exlib's own included.</param>
   /// <param name="prepare">Runs on each fresh world before the structure is placed.</param>
+  /// <param name="maxDegreeOfParallelism">The most variants broken at once; 1 breaks them one after
+  /// the other. The findings come in the same order whatever its value.</param>
   /// <returns>The law's blocktypes, breaks and findings: every <see cref="StructureBreaks"/>
   /// failure, then one line per variant and rule broken, keyed by the variant's code.</returns>
   public static BlockLaws.Law Run(
     IEnumerable<ExBlockDef> defs,
     IReadOnlyList<Assembly> assemblies,
-    Action<TestWorld>? prepare = null
+    Action<TestWorld>? prepare = null,
+    int maxDegreeOfParallelism = 1
   )
   {
     ExBlockDef[] all = [.. defs];
@@ -39,7 +42,8 @@ public static class BreakLaw
     StructureBreaks.Result result = StructureBreaks.Run(
       all,
       assemblies,
-      prepare
+      prepare,
+      maxDegreeOfParallelism
     );
     var findings = new List<string>(result.Failures);
     foreach (
