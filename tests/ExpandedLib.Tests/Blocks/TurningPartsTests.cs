@@ -323,10 +323,10 @@ public class TurningPartsTests {
     );
     var twin = TurningFixtures.Stand(world, block, Here);
 
-    TurningFixtures.NameRun(twin, new BlockPos(4, 5, 6), 2f);
+    TurningFixtures.NameRun(twin, new BlockPos(4, 5, 6), 2f, anchorSlot: 3);
     TurningFixtures
       .Angles(world)
-      .Receive(TurningFixtures.Packet(new BlockPos(4, 5, 6), 1.0, 0f), 0);
+      .Receive(TurningFixtures.Packet(new BlockPos(4, 5, 6), 1.0, 0f, 3), 0);
 
     Assert.Equal(2.0f, TurningFixtures.Behavior(twin).AngleRad(0), 4);
   }

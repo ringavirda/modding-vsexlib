@@ -61,22 +61,28 @@ internal static class TurningFixtures {
     twin.Twin.GetBehavior<BEBehaviorTurningParts>()!;
 
   /// <summary>Names the run of slot 0 on the server entity and carries it to the twin.</summary>
-  public static void NameRun(ClientTwin twin, BlockPos anchor, float ratio = 1f) {
+  public static void NameRun(
+    ClientTwin twin,
+    BlockPos anchor,
+    float ratio = 1f,
+    byte anchorSlot = 0
+  ) {
     twin.Server.GetBehavior<BEBehaviorTurningParts>()!
-      .SetRun(0, new ExpandedLib.Networks.NodeKey(anchor, 0), ratio);
+      .SetRun(0, new ExpandedLib.Networks.NodeKey(anchor, anchorSlot), ratio);
     twin.Sync();
   }
 
   public static MpRunAnglePacket Packet(
     BlockPos anchor,
     double angle,
-    float speed
+    float speed,
+    int anchorSlot = 0
   ) =>
     new() {
       X = [anchor.X],
       Y = [anchor.Y],
       Z = [anchor.Z],
-      Slot = [0],
+      Slot = [anchorSlot],
       Angle = [angle],
       Speed = [speed],
     };
