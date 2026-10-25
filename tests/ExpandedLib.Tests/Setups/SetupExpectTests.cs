@@ -592,7 +592,7 @@ public class SetupExpectTests : IDisposable
     Assert.Contains("\"expect player\" is refused", message);
   }
 
-  // Fails when a player reading with no bound, a key besides min and max, or min over max is let through.
+  // Fails when a player reading with no bound, a key beside player, health or min and max, a bound that is no number, or min over max is let through.
   [Theory]
   [InlineData("{\"player\": {\"health\": {}}}", "takes \"min\" or \"max\"")]
   [InlineData(
@@ -600,6 +600,11 @@ public class SetupExpectTests : IDisposable
     "exact"
   )]
   [InlineData("{\"player\": {\"hunger\": {\"min\": 1}}}", "hunger")]
+  [InlineData(
+    "{\"player\": {\"health\": {\"min\": 1}}, \"at\": [0, 0, 0]}",
+    "\"at\""
+  )]
+  [InlineData("{\"player\": {\"health\": {\"min\": \"x\"}}}", "min")]
   [InlineData(
     "{\"player\": {\"health\": {\"min\": 9, \"max\": 3}}}",
     "\"min\" is over \"max\""
