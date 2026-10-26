@@ -7,6 +7,12 @@ see the git history.
 
 ## [Unreleased]
 
+### Added
+
+- **`/exmod molten <metal> <units> [temperature]`** (ExpandedLib.Industry): a creative or op player fills the vessel in hand
+  (an `IMoltenFillable`) or else the `ILiquidMetalSink` looked at with molten metal, at the melting point plus 100 C
+  unless a temperature is given, capped at what the target holds.
+
 ### Fixed
 
 - **A `[Persist]` member whose key is missing from a saved tree keeps its initializer** instead of loading as
