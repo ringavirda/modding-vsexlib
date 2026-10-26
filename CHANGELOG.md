@@ -17,7 +17,8 @@ see the git history.
 ### Added
 
 - **`EmptyTreeSweep`** (ExpandedLib.Testing): loads every registered block entity type from an empty tree and
-  initialises it on the server and the client side.
+  initialises it on the server and the client side, on a plain block or on a block of the mod's loaded assets
+  (`BlocksOf`), and reports what the world logs.
 
 ## [0.8.4] - 2026-10-05
 

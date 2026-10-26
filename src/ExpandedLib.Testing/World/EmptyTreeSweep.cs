@@ -8,6 +8,8 @@ using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
+using Vintagestory.GameContent.Mechanics;
 
 namespace ExpandedLib.Testing;
 
@@ -41,23 +43,80 @@ public static class EmptyTreeSweep {
         ),
     ];
 
-  /// <summary>Creates <paramref name="type"/> in a fresh <see cref="TestWorld"/> on a plain block,
-  /// loads it from an empty tree and initialises it on the server side, then loads and initialises a
-  /// client twin of it from an empty tree.</summary>
-  /// <remarks>A <see cref="PersistAttribute"/> member is compared with the value a new instance of
-  /// <paramref name="type"/> holds, straight after each load and before any initialiser runs. A type
-  /// that needs a neighbour, a multiblock or a network gets it from <paramref name="prepare"/>, which
-  /// runs once the entity is placed and before the first load.</remarks>
+  /// <summary>The blocks of <paramref name="loaded"/> whose <c>EntityClass</c> resolves to
+  /// <paramref name="type"/>, the key <see cref="EntityRegistry.RegisterAll"/> registers it under.</summary>
+  /// <param name="loaded">A world with the mod's assets loaded, for example by
+  /// <see cref="TestWorld.LoadAsGame"/>.</param>
+  /// <param name="type">A <see cref="BlockEntity"/> type.</param>
+  /// <returns>The blocks in id order; empty when no loaded block names the type.</returns>
+  public static IReadOnlyList<Block> BlocksOf(TestWorld loaded, Type type) {
+    string key = KeyOf(type);
+    return
+    [
+      .. loaded
+        .World.Blocks.Where(b => b?.EntityClass == key)
+        .OrderBy(b => b.Id),
+    ];
+  }
+
+  /// <summary>Creates <paramref name="type"/> in a fresh <see cref="TestWorld"/> on
+  /// <paramref name="block"/> or a plain block, loads it from an empty tree and initialises it on the
+  /// server side, then loads and initialises a client twin of it from an empty tree.</summary>
+  /// <remarks>A <see cref="PersistAttribute"/> member is compared with the value a new instance holds,
+  /// straight after each load and before any initialiser runs. Given a block, the world holds
+  /// vanilla's classes, the exlib assemblies' classes and a started <see cref="MechanicalPowerMod"/>,
+  /// and the behaviours the block declares load from the same empty tree. Each Warning, Error and
+  /// Fatal the world logs is a failure line and is not left for a
+  /// <see cref="FailOnWarningsAttribute"/> check to report again.</remarks>
   /// <param name="type">A <see cref="BlockEntity"/> type with a parameterless constructor.</param>
-  /// <param name="prepare">Sets up what the type cannot stand without; null for nothing.</param>
-  /// <returns>One line per failure, naming the step and the exception or the member; empty when the
-  /// type loads and initialises cleanly on both sides.</returns>
+  /// <param name="prepare">Runs once the entity is placed and before the first load, to set up a
+  /// neighbour, a multiblock or a network; null for nothing.</param>
+  /// <param name="block">A block from <see cref="BlocksOf"/>; null for a plain block.</param>
+  /// <returns>One line per failure; empty when the type is clean on both sides.</returns>
+  /// <exception cref="ArgumentNullException"><paramref name="type"/> is null.</exception>
   public static IReadOnlyList<string> Run(
     Type type,
-    Action<TestWorld, BlockEntity>? prepare = null
+    Action<TestWorld, BlockEntity>? prepare = null,
+    Block? block = null
   ) {
+    ArgumentNullException.ThrowIfNull(type);
     var problems = new List<string>();
     using var world = new TestWorld();
+    RunSteps(world, problems, type, prepare, block);
+    foreach ((EnumLogType kind, string message) in world.Log.Entries.ToList())
+      if (kind is EnumLogType.Warning or EnumLogType.Error or EnumLogType.Fatal) {
+        problems.Add($"log: {kind}: {message}");
+        world.Log.Expect(kind, message);
+      }
+    return problems;
+  }
+
+  private static string KeyOf(Type type) =>
+    EntityRegistry.KeyFor(type.Assembly.GetName().Name ?? "", type);
+
+  private static void RunSteps(
+    TestWorld world,
+    List<string> problems,
+    Type type,
+    Action<TestWorld, BlockEntity>? prepare,
+    Block? shipped
+  ) {
+    if (shipped != null) {
+      world.RegisterVanillaClasses();
+      world.RegisterClass("Animatable", typeof(BEBehaviorAnimatable));
+      var power = new MechanicalPowerMod();
+      world.Mods.Register(power);
+      power.Start(world.Api);
+      world.RegisterClasses([
+        .. type
+          .Assembly.GetReferencedAssemblies()
+          .Where(n =>
+            n.Name?.StartsWith("exlib", StringComparison.OrdinalIgnoreCase)
+            == true
+          )
+          .Select(Assembly.Load),
+      ]);
+    }
     world.RegisterClasses(type.Assembly);
     BlockEntity? reference = Try(
       problems,
@@ -65,25 +124,29 @@ public static class EmptyTreeSweep {
       () => (BlockEntity)Activator.CreateInstance(type)!
     );
     if (reference == null)
-      return problems;
+      return;
 
-    string key = EntityRegistry.KeyFor(
-      EntityRegistry.DomainOf(
-        type.Assembly,
-        type.Assembly.GetName().Name ?? ""
-      ),
-      type
+    Block block;
+    if (shipped != null)
+      block = shipped;
+    else {
+      block = TestBlocks.Configure(
+        new Block(),
+        "sweep:" + type.Name.ToLowerInvariant(),
+        39000
+      );
+      block.EntityClass = KeyOf(type);
+    }
+    BlockEntity? server = Try(
+      problems,
+      "construct",
+      () => world.NewBlockEntityLike(reference, block)
     );
-    Block block = TestBlocks.Configure(
-      new Block(),
-      "sweep:" + type.Name.ToLowerInvariant(),
-      39000
-    );
-    block.EntityClass = key;
-    var server = (BlockEntity)Activator.CreateInstance(type)!;
+    if (server == null)
+      return;
     world.Place(Here, block, server);
     if (Try(problems, "prepare", () => prepare?.Invoke(world, server)) == null)
-      return problems;
+      return;
 
     if (
       Try(
@@ -102,14 +165,13 @@ public static class EmptyTreeSweep {
       () => world.NewClientTwin(server, new TreeAttribute())
     );
     if (twin == null)
-      return problems;
+      return;
     CompareMembers(problems, "client load", type, twin, reference);
     Try(
       problems,
       "client initialize",
       () => world.InitializeClientTwins([twin])
     );
-    return problems;
   }
 
   private static T? Try<T>(List<string> problems, string step, Func<T> act) {

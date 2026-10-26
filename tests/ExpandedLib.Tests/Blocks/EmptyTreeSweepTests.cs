@@ -4,8 +4,10 @@ using System.Linq;
 using ExpandedLib.Blocks;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
+using ExpandedLib.Registries;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -61,6 +63,20 @@ public class EmptyTreeSweepTests {
     }
   }
 
+  private sealed class WarnsOnInitialize : ExBlockEntity {
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      api.Logger.Warning("sweep fixture warns");
+    }
+  }
+
+  private sealed class ReadsBlockAttribute : ExBlockEntity {
+    public override void Initialize(ICoreAPI api) {
+      base.Initialize(api);
+      _ = Block.Attributes["sweepKey"].AsString().Length;
+    }
+  }
+
   private sealed class AutoTypedNode : BlockEntityNetworkNode {
     public override string NetworkType { get; set; } = "autotyped";
   }
@@ -89,7 +105,7 @@ public class EmptyTreeSweepTests {
 
   [Fact]
   public void A_node_loaded_from_an_empty_tree_keeps_its_declared_network_type() {
-    var world = new TestWorld();
+    using var world = new TestWorld();
     var node = new AutoTypedNode();
     world.Place(
       new BlockPos(0, 64, 0),
@@ -139,6 +155,51 @@ public class EmptyTreeSweepTests {
     Assert.Contains(
       problems,
       p => p.StartsWith("client load:") && p.Contains("_count")
+    );
+  }
+
+  [Fact]
+  public void A_warning_the_world_logs_is_reported() {
+    IReadOnlyList<string> problems = EmptyTreeSweep.Run(
+      typeof(WarnsOnInitialize)
+    );
+
+    Assert.Contains(
+      problems,
+      p => p.StartsWith("log: Warning:") && p.Contains("sweep fixture warns")
+    );
+  }
+
+  [Fact]
+  public void A_type_runs_on_the_block_it_is_given() {
+    var block = TestBlocks.Configure(new Block(), "sweep:shipped", 39002);
+    block.Attributes = new JsonObject(JToken.Parse("{\"sweepKey\":\"set\"}"));
+
+    Assert.Empty(EmptyTreeSweep.Run(typeof(ReadsBlockAttribute), null, block));
+    Assert.Contains(
+      EmptyTreeSweep.Run(typeof(ReadsBlockAttribute)),
+      p => p.StartsWith("server initialize:")
+    );
+  }
+
+  [Fact]
+  public void The_blocks_of_a_type_are_those_naming_its_entity_class() {
+    using var world = new TestWorld();
+    string key = EntityRegistry.KeyFor(
+      typeof(ReadsBlockAttribute).Assembly.GetName().Name ?? "",
+      typeof(ReadsBlockAttribute)
+    );
+    Block mine = TestBlocks.Configure(new Block(), "sweep:mine", 39003);
+    mine.EntityClass = key;
+    Block other = TestBlocks.Configure(new Block(), "sweep:other", 39004);
+    other.EntityClass = "exlib.Other";
+    world
+      .Place(new BlockPos(0, 64, 0), mine)
+      .Place(new BlockPos(1, 64, 0), other);
+
+    Assert.Equal(
+      [mine],
+      EmptyTreeSweep.BlocksOf(world, typeof(ReadsBlockAttribute))
     );
   }
 }

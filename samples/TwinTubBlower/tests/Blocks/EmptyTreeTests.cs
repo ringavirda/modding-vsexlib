@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Testing;
 using TwinTubBlower.BlockEntities;
 using Xunit;
@@ -20,7 +21,10 @@ public class EmptyTreeTests {
   public void A_registered_type_loads_and_initialises_from_an_empty_tree(
     Type type
   ) {
-    IReadOnlyList<string> problems = EmptyTreeSweep.Run(type);
+    IReadOnlyList<string> problems = EmptyTreeSweep.Run(
+      type,
+      (world, _) => world.RegisterNetwork("pipe", sys => new PipeNetwork(sys))
+    );
 
     Assert.True(problems.Count == 0, string.Join("\n", problems));
   }
