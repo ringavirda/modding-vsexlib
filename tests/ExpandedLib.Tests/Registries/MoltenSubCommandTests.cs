@@ -1,5 +1,6 @@
 using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Industry.Molten;
+using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using NSubstitute;
 using Vintagestory.API.Common;
@@ -39,21 +40,26 @@ public class MoltenSubCommandTests {
   private sealed class SinkEntity : BlockEntity, ILiquidMetalSink {
     public int Room = 30;
     public bool Stuck;
+    public bool NeedsBeginFill;
+    public bool RefusesAny;
+    public bool RefusesMetal;
     public int Received;
     public float Temperature;
+    public Vec3d? Began;
+    public int Overs;
 
-    public bool CanReceiveAny => Room > 0;
+    public bool CanReceiveAny => Room > 0 && !RefusesAny;
 
-    public bool CanReceive(ItemStack key) => true;
+    public bool CanReceive(ItemStack key) => !RefusesMetal;
 
-    public void BeginFill(Vec3d hitPosition) { }
+    public void BeginFill(Vec3d hitPosition) => Began = hitPosition;
 
     public void ReceiveLiquidMetal(
       ItemStack metal,
       ref int amount,
       float temperature
     ) {
-      if (Stuck)
+      if (Stuck || (NeedsBeginFill && Began == null))
         return;
       int accepted = System.Math.Min(amount, Room);
       Received += accepted;
@@ -61,7 +67,7 @@ public class MoltenSubCommandTests {
       Temperature = temperature;
     }
 
-    public void OnPourOver() { }
+    public void OnPourOver() => Overs++;
   }
 
   private static (TestWorld world, TestPlayer player) Setup(
@@ -88,13 +94,30 @@ public class MoltenSubCommandTests {
     return (block, stack);
   }
 
+  private static readonly Vec3d Hit = new(0.25, 0.5, 0.75);
+
   private static SinkEntity Look(TestWorld world, TestPlayer player) {
     var pos = new BlockPos(2, 3, 4);
     var sink = new SinkEntity();
     world.Place(pos, TestBlocks.Configure(new Block(), "t:sink", 71), sink);
     sink.Api = world.Api;
     player.Player.CurrentBlockSelection.Returns(
-      new BlockSelection { Position = pos }
+      new BlockSelection { Position = pos, HitPosition = Hit }
+    );
+    return sink;
+  }
+
+  // The player looks at a filler cell one block above and east of the sink's own cell.
+  private static SinkEntity LookAtFillerCell(TestWorld world, TestPlayer player) {
+    SinkEntity sink = Look(world, player);
+    var cell = new BlockPos(3, 4, 4);
+    world.Place(
+      cell,
+      TestBlocks.Configure(new Block(), "t:cell", 72),
+      new BlockEntityStructureFiller { Principal = sink.Pos.Copy() }
+    );
+    player.Player.CurrentBlockSelection.Returns(
+      new BlockSelection { Position = cell, HitPosition = Hit }
     );
     return sink;
   }
@@ -154,7 +177,85 @@ public class MoltenSubCommandTests {
     Assert.Equal(30, sink.Received);
   }
 
-  // Fails when a sink that took nothing is still reported as filled.
+  // Fails when BeginFill is not called before the pour: a sink that takes metal only after it takes none.
+  [Fact]
+  public void A_sink_that_takes_metal_only_after_begin_fill_is_filled_at_the_hit() {
+    var (world, player) = Setup();
+    var sink = Look(world, player);
+    sink.NeedsBeginFill = true;
+
+    TextCommandResult result = Run(player, units: 100);
+
+    Assert.Equal(EnumCommandStatus.Success, result.Status);
+    Assert.Equal(30, sink.Received);
+    Assert.Equal(Hit, sink.Began);
+  }
+
+  // Fails when OnPourOver is not called after the pour.
+  [Fact]
+  public void A_pour_into_a_sink_ends_with_one_pour_over() {
+    var (world, player) = Setup();
+    var sink = Look(world, player);
+
+    Run(player);
+
+    Assert.Equal(1, sink.Overs);
+  }
+
+  // Fails when the filler cell is not resolved to its principal, or the hit is not offset into the principal's frame.
+  [Fact]
+  public void A_looked_at_filler_cell_fills_its_principal_with_the_hit_offset() {
+    var (world, player) = Setup();
+    var sink = LookAtFillerCell(world, player);
+
+    TextCommandResult result = Run(player);
+
+    Assert.Equal(EnumCommandStatus.Success, result.Status);
+    Assert.Equal(30, sink.Received);
+    Assert.Equal(new Vec3d(1.25, 1.5, 0.75), sink.Began);
+  }
+
+  // Fails when the CanReceiveAny guard is dropped: a sink that says it takes nothing, but would take the pour, is filled.
+  [Fact]
+  public void A_sink_that_receives_nothing_now_is_refused_unpoured() {
+    var (world, player) = Setup();
+    var sink = Look(world, player);
+    sink.RefusesAny = true;
+
+    TextCommandResult result = Run(player);
+
+    Assert.Equal(EnumCommandStatus.Error, result.Status);
+    Assert.Equal(0, sink.Received);
+  }
+
+  // Fails when the CanReceive guard is dropped: a sink that refuses this metal, but would take the pour, is filled.
+  [Fact]
+  public void A_sink_that_refuses_the_metal_is_refused_unpoured() {
+    var (world, player) = Setup();
+    var sink = Look(world, player);
+    sink.RefusesMetal = true;
+
+    TextCommandResult result = Run(player);
+
+    Assert.Equal(EnumCommandStatus.Error, result.Status);
+    Assert.Equal(0, sink.Received);
+  }
+
+  // Fails when an item with no melting point is accepted as a metal.
+  [Fact]
+  public void An_item_with_no_melting_point_is_not_a_metal() {
+    var (world, player) = Setup();
+    world.RegisterItem("t:stick", 0f);
+    var sink = Look(world, player);
+
+    TextCommandResult result = Run(player, "t:stick");
+
+    Assert.Equal(EnumCommandStatus.Error, result.Status);
+    Assert.Contains("command-molten-unknown", result.StatusMessage);
+    Assert.Equal(0, sink.Received);
+  }
+
+  // Fails when a sink with no room is reported as filled; the guards before it and the units-left check each reject it too, so each has its own test.
   [Fact]
   public void A_full_sink_is_refused() {
     var (world, player) = Setup();
@@ -180,6 +281,7 @@ public class MoltenSubCommandTests {
     Assert.Contains("command-molten-refused", result.StatusMessage);
   }
 
+  // Fails when the look-at path runs with no selection or an unreceptive block: the reply is not the target error.
   [Fact]
   public void Nothing_held_and_nothing_looked_at_is_an_error() {
     var (_, player) = Setup();

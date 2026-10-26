@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Server;
 
 namespace ExpandedLib.Registries;
 
 /// <summary>
 /// A <c>/exmod &lt;name&gt;</c> sub-command over one keyed registry: no argument lists every code, a
-/// code alone shows that entry, and further words go to <see cref="Set"/>.
+/// code alone shows that entry, and further words go to <see cref="Set"/>. On the server it requires
+/// <c>controlserver</c>.
 /// </summary>
 public abstract class RegistrySubCommand<T> : IExSubCommand
   where T : class {
@@ -81,12 +83,14 @@ public abstract class RegistrySubCommand<T> : IExSubCommand
     Api = api;
     var parsers = api.ChatCommands.Parsers;
 
-    parent
+    IChatCommand command = parent
       .BeginSubCommand(Name)
       .WithDescription(Lang.Get(_descriptionKey))
       .WithArgs(parsers.OptionalWord("code"), parsers.OptionalAll("rest"))
-      .HandleWith(OnCommand)
-      .EndSubCommand();
+      .HandleWith(OnCommand);
+    if (api.Side == EnumAppSide.Server)
+      command.RequiresPrivilege(Privilege.controlserver);
+    command.EndSubCommand();
   }
 
   private TextCommandResult OnCommand(TextCommandCallingArgs args) =>

@@ -4,6 +4,7 @@ using System.Linq;
 using ExpandedLib.Checks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Server;
 
 namespace ExpandedLib.Registries;
 
@@ -19,6 +20,7 @@ public sealed class VerifySubCommand : IExSubCommand {
   public void Register(ICoreAPI api, Mod mod, IChatCommand parent) {
     parent
       .BeginSubCommand("verify")
+      .RequiresPrivilege(Privilege.controlserver)
       .WithDescription(Lang.Get("exlib:command-verify-desc"))
       .WithArgs(api.ChatCommands.Parsers.OptionalWord("domain"))
       .HandleWith(args => Dispatch(api, args[0] as string, args.LanguageCode))

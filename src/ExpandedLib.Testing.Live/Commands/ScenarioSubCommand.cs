@@ -22,6 +22,7 @@ public sealed class ScenarioSubCommand : IExSubCommand {
     var server = (ICoreServerAPI)api;
     parent
       .BeginSubCommand("scenario")
+      .RequiresPrivilege(Privilege.controlserver)
       .WithDescription("Runs live scenarios.")
       .BeginSubCommand("run")
       .WithDescription("run <names...> [keep]")

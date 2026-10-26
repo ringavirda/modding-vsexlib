@@ -85,7 +85,7 @@
   "network-hi-off": "Network highlighting disabled.",
   "command-heal-desc": "Recreate orphaned block entities (a placed block whose entity was lost) in loaded chunks",
   "command-heal-result": "Recreated {0} orphaned block entities in loaded chunks.",
-  "command-molten-desc": "Fill the held ladle, or the molten sink you look at, with molten metal (/exmod molten <metal> <units> [temperature])",
+  "command-molten-desc": "Fill the held ladle, or the molten sink you look at, with molten metal (/exmod molten [metal] [units] [temperature])",
   "command-molten-denied": "Only a creative or op player can fill with molten metal.",
   "command-molten-player": "Only a player can fill with molten metal.",
   "command-molten-units": "Units must be above zero.",

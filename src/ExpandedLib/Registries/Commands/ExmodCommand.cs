@@ -8,7 +8,7 @@ namespace ExpandedLib.Registries;
 
 /// <summary>
 /// The shared <c>exmod</c> root command for every Expanded mod; exlib always registers it. On its
-/// own it prints help; dependent mods hang their options off it as <see cref="IExSubCommand"/>s.
+/// own it prints help to any player; dependent mods hang their options off it as <see cref="IExSubCommand"/>s.
 /// </summary>
 [CommandRegister(Side = EnumAppSide.Universal)]
 [EditorBrowsable(EditorBrowsableState.Never)]
@@ -17,10 +17,8 @@ public sealed class ExmodCommand : IExCommand {
     bool isClient = api.Side == EnumAppSide.Client;
 
     // ChatCommands is per-side: client hosts ".exmod", server hosts "/exmod".
-    string privilege = isClient ? Privilege.chat : Privilege.controlserver;
-
     api.ChatCommands.GetOrCreate("exmod")
-      .RequiresPrivilege(privilege)
+      .RequiresPrivilege(Privilege.chat)
       .WithDescription(
         Lang.Get(
           isClient

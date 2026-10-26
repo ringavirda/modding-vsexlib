@@ -4,6 +4,7 @@ using ExpandedLib.Industry.Molten;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
@@ -66,17 +67,17 @@ public sealed class MoltenSubCommand : IExSubCommand {
       player.WorldData.CurrentGameMode != EnumGameMode.Creative
       && !player.HasPrivilege(Privilege.controlserver)
     )
-      return Fail(languageCode, "command-molten-denied");
+      return Fail(languageCode, "exlib:command-molten-denied");
     if (units <= 0)
-      return Fail(languageCode, "command-molten-units");
+      return Fail(languageCode, "exlib:command-molten-units");
 
     IWorldAccessor world = player.Entity.World;
     string code = metalToken.Contains(':')
       ? metalToken
       : MetalRegistry.MoltenItemOf(metalToken).ToString();
     ItemStack? metal = MoltenMetal.CreateStack(world, code, 20f);
-    if (metal == null)
-      return Fail(languageCode, "command-molten-unknown", metalToken);
+    if (metal == null || MoltenMetal.MeltingPointOf(world, metal) <= 0f)
+      return Fail(languageCode, "exlib:command-molten-unknown", metalToken);
     if (temperature <= 0f)
       temperature =
         MoltenMetal.MeltingPointOf(world, metal) + TemperatureMargin;
@@ -88,30 +89,36 @@ public sealed class MoltenSubCommand : IExSubCommand {
     if (slot.Itemstack?.Collectible is IMoltenFillable fillable) {
       int taken = fillable.FillHeld(world, slot.Itemstack, metal, units);
       if (taken <= 0)
-        return Fail(languageCode, "command-molten-refused", name);
+        return Fail(languageCode, "exlib:command-molten-refused", name);
       slot.MarkDirty();
-      return Done(languageCode, "command-molten-held", name, taken, rounded);
+      return Done(
+        languageCode,
+        "exlib:command-molten-held",
+        name,
+        taken,
+        rounded
+      );
     }
 
     BlockSelection? sel = player.CurrentBlockSelection;
     if (
       sel == null
-      || world
-        .BlockAccessor.GetBlock(sel.Position)
-        .GetInterface<ILiquidMetalSink>(world, sel.Position)
+      || MoltenSinks.SinkAt(world, sel.Position, out Vec3i offset)
         is not { } sink
     )
-      return Fail(languageCode, "command-molten-target");
+      return Fail(languageCode, "exlib:command-molten-target");
     if (!sink.CanReceiveAny || !sink.CanReceive(metal))
-      return Fail(languageCode, "command-molten-refused", name);
+      return Fail(languageCode, "exlib:command-molten-refused", name);
 
+    sink.BeginFill(sel.HitPosition.AddCopy(offset.X, offset.Y, offset.Z));
     int left = units;
     sink.ReceiveLiquidMetal(metal, ref left, temperature);
+    sink.OnPourOver();
     if (left >= units)
-      return Fail(languageCode, "command-molten-refused", name);
+      return Fail(languageCode, "exlib:command-molten-refused", name);
     return Done(
       languageCode,
-      "command-molten-sink",
+      "exlib:command-molten-sink",
       name,
       units - left,
       rounded
@@ -122,11 +129,11 @@ public sealed class MoltenSubCommand : IExSubCommand {
     string languageCode,
     string key,
     params object[] args
-  ) => TextCommandResult.Error(Lang.GetL(languageCode, "exlib:" + key, args));
+  ) => TextCommandResult.Error(Lang.GetL(languageCode, key, args));
 
   private static TextCommandResult Done(
     string languageCode,
     string key,
     params object[] args
-  ) => TextCommandResult.Success(Lang.GetL(languageCode, "exlib:" + key, args));
+  ) => TextCommandResult.Success(Lang.GetL(languageCode, key, args));
 }
