@@ -1,3 +1,4 @@
+using System.Linq;
 using ExpandedLib.Helpers;
 using Vintagestory.API.Common;
 using Xunit;
@@ -56,6 +57,51 @@ public class ExShapeElementsTests {
   public void A_longer_name_that_merely_starts_the_same_is_not_a_match(
     string path
   ) => Assert.False(ExShapeElements.Matches(path, Keep));
+
+  #endregion
+
+  #region Without
+
+  private static ShapeElement El(string name, params ShapeElement[] children) =>
+    new() { Name = name, Children = children };
+
+  private static Shape Frame() =>
+    new() {
+      Elements =
+      [
+        El("Base", El("Cube2")),
+        El("Fettle", El("Cube11"), El("Cube13")),
+        El("Items1", El("Slab")),
+      ],
+    };
+
+  // Fails when Without keeps a named element or its children, or drops an ancestor of a named element with its other children, or edits the original.
+  [Fact]
+  public void Without_drops_named_elements_with_their_children_and_keeps_the_rest() {
+    Shape shape = Frame();
+
+    Shape rest = ExShapeElements.Without(shape, ["Base/*", "Fettle/Cube13"]);
+
+    Assert.Equal(
+      ["Fettle", "Fettle/Cube11", "Items1", "Items1/Slab"],
+      ExShapeElements.AllPaths(rest)
+    );
+    Assert.Equal(7, ExShapeElements.AllPaths(shape).Count());
+  }
+
+  // Fails when a lone "*" keeps anything, or a pattern that names nothing drops something.
+  [Fact]
+  public void Without_a_star_drops_everything_and_without_a_stranger_nothing() {
+    Assert.Empty(
+      ExShapeElements.AllPaths(ExShapeElements.Without(Frame(), ["*"]))
+    );
+    Assert.Equal(
+      7,
+      ExShapeElements
+        .AllPaths(ExShapeElements.Without(Frame(), ["Nothing"]))
+        .Count()
+    );
+  }
 
   #endregion
 

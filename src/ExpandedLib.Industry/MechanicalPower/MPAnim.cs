@@ -40,7 +40,8 @@ public static class MPAnim {
   }
 
   /// <summary>Pins the running <paramref name="animCode"/> clip's frame to
-  /// <paramref name="angleRad"/>. Call once per render frame.</summary>
+  /// <paramref name="angleRad"/>. Call once per render frame. A block on an "mpshaft" run reads the angle
+  /// from <see cref="BEBehaviorTurningParts.AngleRad"/>.</summary>
   /// <param name="reverse">Set when the clip's shaft is keyframed turning the opposite way to the
   /// axle.</param>
   public static void LockFrameToAngle(

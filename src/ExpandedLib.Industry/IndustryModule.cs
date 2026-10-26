@@ -30,6 +30,7 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
       BlockPipe.ResetForWorld();
       FlowBores.Clear();
       ExSounds.StopServer();
+      MpRunAngles.StopServer();
       ExMoldGate.ResetForWorld();
       MoltenChisel.ResetForWorld();
       MoltenMetal.ResetForWorld();
@@ -41,22 +42,28 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
   public void Start(ICoreAPI api) =>
     RegisterNetworkTypes(api.ModLoader.GetModSystem<BlockNetworkModSystem>());
 
-  /// <summary>Opens the server end of <see cref="ExSounds"/>' channel and guards molten holders
-  /// against an ordinary break (<see cref="MoltenBreakGuard"/>).</summary>
+  /// <summary>Opens the server end of <see cref="ExSounds"/>' channel and of the mechanical-power run-angle channel, and
+  /// guards molten holders against an ordinary break (<see cref="MoltenBreakGuard"/>).</summary>
   public void StartServerSide(ICoreServerAPI api) {
     ExSounds.StartServer(api);
+    MpRunAngles.StartServer(api);
     MoltenBreakGuard.Register(api);
     _openedServerChannel = true;
   }
 
-  /// <summary>Opens the client end of <see cref="ExSounds"/>' channel.</summary>
-  public void StartClientSide(ICoreClientAPI api) => ExSounds.StartClient(api);
+  /// <summary>Opens the client end of <see cref="ExSounds"/>' channel and of the mechanical-power run-angle channel.</summary>
+  public void StartClientSide(ICoreClientAPI api) {
+    ExSounds.StartClient(api);
+    MpRunAngles.StartClient(api);
+  }
 
-  /// <summary>Closes the server end of <see cref="ExSounds"/>' channel when this instance opened it;
+  /// <summary>Closes the server end of both channels when this instance opened them;
   /// a singleplayer client's instance leaves its server's channel open.</summary>
   public void Dispose() {
-    if (_openedServerChannel)
+    if (_openedServerChannel) {
       ExSounds.StopServer();
+      MpRunAngles.StopServer();
+    }
   }
 
   /// <summary>The registrations <see cref="Start"/> makes, callable without a mod loader.</summary>

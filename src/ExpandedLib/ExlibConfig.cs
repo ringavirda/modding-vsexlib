@@ -93,6 +93,11 @@ public class ExlibConfig : IExVersionedConfig {
   /// <summary>Fire damage one molten-holder burn deals; one hit at most per second per entity.</summary>
   public float MoltenBurnDamage { get; set; } = 1f;
 
+  /// <summary>Most set cells of one metal a single crowbar use breaks out of a run, the struck cell
+  /// included.</summary>
+  [ExConfigRange(1, 64)]
+  public int MoltenBarCells { get; set; } = 8;
+
   /// <summary>Fraction of the melting point above which a metal stack counts as liquid (flows).</summary>
   public float MetalLiquidThreshold { get; set; } = 0.8f;
 
@@ -123,8 +128,8 @@ public class ExlibConfig : IExVersionedConfig {
   [ExConfigRange(0.1, 1000)] // capacity scales with its square - must stay positive
   public float MpMaxSpeed { get; set; } = 2f;
 
-  /// <summary>Gear-mesh loss for a transmission coupling, as a fraction of the coupled energy lost per
-  /// second. 0 is a lossless mesh.</summary>
+  /// <summary>Gear-mesh loss of one geared station, as a fraction of the torque it carries. 0 is a
+  /// lossless mesh.</summary>
   [ExConfigRange(0, 1)]
   public float MpGearMeshLoss { get; set; } = 0.02f;
 

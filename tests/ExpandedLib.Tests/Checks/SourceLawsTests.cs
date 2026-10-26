@@ -249,6 +249,31 @@ public class SourceLawsTests(ITestOutputHelper output) {
       Assert.Single(Scan(SourceLaws.UndrivenRotor, Flywheel + "}"))
     );
 
+  // Fails when UndrivenRotor keys on the vanilla mechanical-power names alone, so an mpenergy or mpshaft block entity's own clock passes.
+  [Fact]
+  public void A_rotor_beside_an_energy_or_shaft_network_is_named() =>
+    Assert.Equal(
+      [
+        "Planted0.cs:3: BevelEntity; animation speed speed * 2f runs on its own clock "
+          + "beside a mechanical network; take the frame from MPAnim.FrameFromAngle",
+        "Planted1.cs:3: GearEntity; animation speed speed * 2f runs on its own clock "
+          + "beside a mechanical network; take the frame from MPAnim.FrameFromAngle",
+        "Planted2.cs:3: LinkEntity; animation speed speed * 2f runs on its own clock "
+          + "beside a mechanical network; take the frame from MPAnim.FrameFromAngle",
+      ],
+      Scan(
+        SourceLaws.UndrivenRotor,
+        EnergyRotor("BevelEntity", "IMpEnergyStorage"),
+        EnergyRotor("GearEntity", "MpEnergyNetworkState state"),
+        EnergyRotor("LinkEntity", "BEBehaviorMpClutch clutch")
+      )
+    );
+
+  private static string EnergyRotor(string name, string reference) =>
+    $"class {name} : BlockEntity, {reference} {{\n"
+    + "  void Spin(float speed) =>\n"
+    + "    Start(new AnimationMetaData { AnimationSpeed = speed * 2f });\n}";
+
   // Fails when UndrivenRotor stops accepting a frame taken from the network angle.
   [Fact]
   public void A_rotor_framed_from_the_network_angle_passes() =>
