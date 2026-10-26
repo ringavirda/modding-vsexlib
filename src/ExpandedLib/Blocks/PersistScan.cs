@@ -153,18 +153,36 @@ public static class PersistScan {
       );
     if (memberType == typeof(BlockPos))
       return (be, state) =>
-        state.Pos(key, () => (BlockPos?)getter(be), v => setter(be, v));
+        state.Pos(
+          key,
+          () => (BlockPos?)getter(be),
+          Initial((BlockPos?)getter(be), p => p.Copy(), v => setter(be, v))
+        );
     if (memberType == typeof(ItemStack))
       return (be, state) =>
-        state.Stack(key, () => (ItemStack?)getter(be), v => setter(be, v));
+        state.Stack(
+          key,
+          () => (ItemStack?)getter(be),
+          Initial((ItemStack?)getter(be), s => s.Clone(), v => setter(be, v))
+        );
     throw new NotSupportedException(
       $"[Persist] on {member.DeclaringType?.Name}.{member.Name} has unsupported type "
         + $"{memberType.Name}."
     );
   }
 
+  /// <summary>Wraps a setter so a null, which a Pos or Stack reads only from an absent key, becomes
+  /// a copy of the value the member held when it was declared.</summary>
+  private static Action<T?> Initial<T>(
+    T? initial,
+    System.Func<T, T> copy,
+    Action<T?> set
+  )
+    where T : class => v => set(v ?? (initial == null ? null : copy(initial)));
+
   /// <summary>Builds a binder for a single-key scalar; a load falls back to
-  /// <paramref name="legacy"/> only when <paramref name="key"/> is absent.</summary>
+  /// <paramref name="legacy"/> only when <paramref name="key"/> is absent, and to the value the
+  /// member held when it was declared when both are.</summary>
   private static Binder Scalar(
     string key,
     string? legacy,
@@ -172,27 +190,22 @@ public static class PersistScan {
     Action<object, object?> setter,
     Action<ITreeAttribute, object?> write,
     System.Func<ITreeAttribute, string, object?> readAt
-  ) {
-    if (legacy == null)
-      return (be, state) =>
-        state.Tree(
-          key,
-          t => write(t, getter(be)),
-          (t, _) => setter(be, readAt(t, key))
-        );
-
-    return (be, state) =>
+  ) =>
+    (be, state) => {
+      object? initial = getter(be);
       state.Tree(
         key,
         t => write(t, getter(be)),
         (t, _) => {
           if (t.HasAttribute(key))
             setter(be, readAt(t, key));
-          else if (t.HasAttribute(legacy))
+          else if (legacy != null && t.HasAttribute(legacy))
             setter(be, readAt(t, legacy));
+          else
+            setter(be, initial);
         }
       );
-  }
+    };
 
   private static string StripLeadingUnderscore(string name) =>
     name.StartsWith('_') ? name[1..] : name;

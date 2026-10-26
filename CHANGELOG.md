@@ -5,6 +5,13 @@ All notable changes to this mod are documented here. The format is based on
 [Semantic Versioning](https://semver.org/). For changes before this file existed,
 see the git history.
 
+## [Unreleased]
+
+### Fixed
+
+- **A `[Persist]` member whose key is missing from a saved tree keeps its initializer** instead of loading as
+  null or zero, so a block entity saved before a member was added still loads.
+
 ## [0.8.4] - 2026-10-05
 
 ### Fixed
