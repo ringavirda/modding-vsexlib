@@ -77,6 +77,14 @@ public class BEBehaviorMPFillerPort(BlockEntity blockentity)
     }
   }
 
+  /// <summary>The network load this port applies; set by the hosting machine to follow a value that is
+  /// not fixed in the declaration. Starts at the declaration's <c>resistance</c> or
+  /// <see cref="DefaultResistance"/>.</summary>
+  public float Resistance {
+    get => _resistance;
+    set => _resistance = value;
+  }
+
   public override float GetResistance() => _resistance;
 
   /// <summary>The faces power leaves this port by: both ends of the axis for a through port,

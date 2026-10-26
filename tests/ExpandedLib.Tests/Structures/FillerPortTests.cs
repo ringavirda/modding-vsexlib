@@ -117,6 +117,21 @@ public class FillerPortTests {
     Assert.Equal(expected, port.Speed, 4);
   }
 
+  // Fails when the setter writes nothing: the port keeps its declared load.
+  [Fact]
+  public void A_load_the_host_sets_replaces_the_declared_resistance() {
+    var be = new BlockEntityStructureFiller();
+    var port = new BEBehaviorMPFillerPort(be);
+    port.ConfigureFromFiller(null, null, Props("{ \"resistance\": 0.75 }"));
+    Assert.Equal(0.75f, port.GetResistance(), 4);
+
+    port.Resistance = 0.2f;
+
+    Assert.Equal(0.2f, port.GetResistance(), 4);
+  }
+
+  private static JsonObject Props(string json) => new(JObject.Parse(json));
+
   private static JsonObject Offsets(string json) => new(JArray.Parse(json));
 
   private sealed class Host(JsonObject? offsets) : IFillerHost {
