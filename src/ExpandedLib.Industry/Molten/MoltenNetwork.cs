@@ -172,7 +172,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
   /// <summary>Whether <paramref name="face"/> of the node at <paramref name="pos"/> is a joint: the node
   /// has a connector there and the block at <paramref name="npos"/>, when it is a network node, has
   /// one facing back. A neighbour that is not a network node does not close the joint.</summary>
-  private static bool JointOpen(
+  internal static bool JointOpen(
     IBlockAccessor blockAccessor,
     BlockPos pos,
     BlockNetworkNode node,
