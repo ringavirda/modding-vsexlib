@@ -6,6 +6,7 @@ using ExpandedLib.Machines;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 
 namespace ExpandedLib.Testing;
 
@@ -49,6 +50,10 @@ internal static class CraftWalkRuns
     var executed = new bool[edges.Count];
     CraftSequenceGate.Register(world.Api.Event);
     using SetupScene scene = SetupScene.Over(world, "craft-walk");
+    // A walk world leaves a vessel's OnLoaded unrun, so its capacity reads null when filled.
+    if (edges.Any(e => CraftBills.Liquid(e.Grid) != null))
+      foreach (var vessel in all.OfType<BlockLiquidContainerTopOpened>())
+        vessel.OnLoaded(world.Api);
     IReadOnlyList<CraftOrder> hand = HandGrid.Orders(world.World);
     List<Station> stations = Place(scene, world, domain, all);
     var cache = new Dictionary<string, WalkNeed>(StringComparer.Ordinal);

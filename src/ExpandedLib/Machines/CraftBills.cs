@@ -6,7 +6,9 @@ using ExpandedLib.Catalogues;
 using ExpandedLib.Scenarios;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
+using Vintagestory.GameContent;
 
 namespace ExpandedLib.Machines;
 
@@ -64,6 +66,94 @@ internal static class CraftBills
       .ToDictionary(g => g.Key, g => g.Sum(s => s.StackSize));
     return got.Count == wanted.Count
       && wanted.All(w => got.GetValueOrDefault(w.Key) == w.Value);
+  }
+
+  /// <summary>The liquid a grid recipe's bill takes from its vessel: the recipe's
+  /// <c>liquidContainerProps</c> attribute.</summary>
+  /// <param name="Content">The liquid item's code.</param>
+  /// <param name="Litres">The litres one craft drains; above 0.</param>
+  public sealed record LiquidBill(AssetLocation Content, float Litres);
+
+  /// <summary>The liquid <paramref name="recipe"/> takes from a vessel in its bill.</summary>
+  /// <param name="recipe">The grid recipe behind an order; null for none.</param>
+  /// <returns>The liquid and litres, or null when the recipe carries no <c>liquidContainerProps</c>
+  /// naming a <c>requiresContent</c> code.</returns>
+  public static LiquidBill? Liquid(GridRecipe? recipe)
+  {
+    JsonObject? props = recipe?.Attributes?["liquidContainerProps"];
+    return
+      props?.Exists == true
+      && props["requiresContent"]["code"].AsString() is { } code
+      ? new LiquidBill(
+        new AssetLocation(code),
+        props["requiresLitres"].AsFloat()
+      )
+      : null;
+  }
+
+  private static bool Vessel(CraftOrder order, ItemStack? stack) =>
+    stack?.Collectible is BlockLiquidContainerBase
+    && Liquid(order.Grid) != null;
+
+  /// <summary>Fills a vessel laid for a bill that pays a liquid with the litres the bill asks for; any
+  /// other stack is returned as it is.</summary>
+  /// <param name="world">The world that resolves the liquid item.</param>
+  /// <param name="order">The order whose bill is laid.</param>
+  /// <param name="laid">The stack laid for one of the order's inputs.</param>
+  /// <returns><paramref name="laid"/>.</returns>
+  /// <exception cref="InvalidOperationException">The vessel refuses the liquid or takes less than
+  /// the litres.</exception>
+  public static ItemStack Filled(
+    IWorldAccessor world,
+    CraftOrder order,
+    ItemStack laid
+  )
+  {
+    if (Vessel(order, laid) && Liquid(order.Grid) is { } bill)
+      if (
+        HeldContent.Fill(world, laid, bill.Content.ToString(), bill.Litres) is
+        { } refusal
+      )
+        throw new InvalidOperationException(refusal);
+    return laid;
+  }
+
+  /// <summary>Whether <paramref name="stack"/> pays <paramref name="input"/> of <paramref name="order"/>:
+  /// the ingredient takes it in the quantity asked, and a vessel under a liquid bill holds its liquid
+  /// in at least the litres.</summary>
+  public static bool Pays(
+    CraftOrder order,
+    CraftInput input,
+    ItemStack stack
+  ) =>
+    stack.StackSize >= input.Ingredient.Quantity
+    && input.Ingredient.SatisfiesAsIngredient(stack)
+    && (
+      !Vessel(order, stack)
+      || stack.Collectible.MatchesForCrafting(
+        stack,
+        order.Grid,
+        input.Ingredient
+      )
+    );
+
+  /// <summary>Takes the bill's share of <paramref name="input"/> out of <paramref name="slot"/>: the
+  /// ingredient's quantity of stack, or, for a vessel under a liquid bill, the litres, the vessel
+  /// staying in the slot.</summary>
+  public static void Take(CraftOrder order, CraftInput input, ItemSlot slot)
+  {
+    if (Vessel(order, slot.Itemstack))
+      slot.Itemstack.Collectible.OnConsumedByCrafting(
+        [slot],
+        slot,
+        order.Grid,
+        input.Ingredient,
+        null!,
+        input.Ingredient.Quantity
+      );
+    else
+      slot.TakeOut(input.Ingredient.Quantity);
+    slot.MarkDirty();
   }
 
   /// <summary>How long a runner holds <paramref name="step"/> with <paramref name="tool"/> in hand.</summary>

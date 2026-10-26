@@ -944,6 +944,65 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.Contains("2 recipes fired (1 executed, 1 followed)", result.Summary);
   }
 
+  private TestWorld Oiled()
+  {
+    _files.Write(
+      "assets/walk/recipes/grid/oiled.json",
+      CraftBillsLiquidTests.Recipe(0.5f)
+    );
+    return Planted(
+      ["part", "made"],
+      [Recipe(Stick, "part")],
+      Stick,
+      "game:woodbucket",
+      "game:oilportion-olive"
+    );
+  }
+
+  private const string BucketKit =
+    "\"game:woodbucket\": { \"route\": \"seven planks\" }";
+
+  private const string OilKit =
+    "\"game:oilportion-olive\": { \"route\": \"pressed olives\" }";
+
+  // Fails when the liquid edge is dropped from the recipe's needs, so the oil need goes unasked.
+  [Fact]
+  public void A_recipe_paying_oil_from_a_vessel_waits_on_the_oil()
+  {
+    using TestWorld world = Oiled();
+
+    CraftWalk.Result result = Walk(world, kit: "{" + BucketKit + "}");
+
+    string finding = Assert.Single(result.Findings);
+    Assert.StartsWith(
+      "game:oilportion-olive | asked for by walk:oiled",
+      finding
+    );
+  }
+
+  // Fails when the walk lays the vessel empty, so the matcher refuses the bill, or runs no OnLoaded on the vessels, so
+  // filling one throws.
+  [Fact]
+  public void A_recipe_paying_oil_from_a_vessel_is_crafted_with_the_vessel_filled()
+  {
+    using TestWorld world = Oiled();
+
+    CraftWalk.Result result = Walk(
+      world,
+      kit: "{" + BucketKit + "," + OilKit + "}"
+    );
+
+    Assert.Empty(result.Findings);
+    Assert.Contains(
+      new CraftWalk.CraftedEdge(
+        "walk:made",
+        "walk:oiled",
+        CraftWalk.HandGridName
+      ),
+      result.Crafted
+    );
+  }
+
   // Fails when the walk lays the first loaded variant of a wildcard, not the first reached one.
   [Fact]
   public void A_wildcard_lays_the_first_variant_the_walk_reached()

@@ -155,7 +155,7 @@ public sealed partial class SetupScene
     foreach (
       var bill in order
         .Inputs.Where(i => !i.Ingredient.IsTool)
-        .Select(i => Laid(i, with, where))
+        .Select(i => Laid(order, i, with, where))
         .GroupBy(s => s.Collectible.Code.ToString())
     )
       Draw(where, bill.Key, bill.Sum(s => s.StackSize) * times);

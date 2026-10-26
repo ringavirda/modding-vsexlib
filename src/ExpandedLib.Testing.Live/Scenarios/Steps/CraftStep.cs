@@ -140,7 +140,7 @@ internal sealed class CraftStep : ScenarioStep {
     foreach (
       var bill in order
         .Inputs.Where(i => !i.Ingredient.IsTool)
-        .Select(i => PackLedger.Laid(ctx, i, with))
+        .Select(i => PackLedger.Laid(ctx, i, with, order))
         .GroupBy(s => s.Collectible.Code.ToString())
     )
       PackLedger.Draw(ctx, bill.Key, bill.Sum(s => s.StackSize) * times);
@@ -194,7 +194,7 @@ internal sealed class CraftStep : ScenarioStep {
     ItemSlot hand = who.InventoryManager.ActiveHotbarSlot;
     entity.OnReceivedClientPacket(who, 1000, null);
     foreach (CraftInput input in order.Inputs) {
-      ItemStack laid = PackLedger.Laid(ctx, input, with);
+      ItemStack laid = PackLedger.Laid(ctx, input, with, order);
       hand.Itemstack = laid;
       int moved = WindowStep.PutOnce(who, entity, input.Slot);
       hand.Itemstack = null;
@@ -336,7 +336,7 @@ internal sealed class CraftStep : ScenarioStep {
       grid[i].Itemstack = null;
     foreach (CraftInput input in order.Inputs) {
       ItemSlot slot = grid[input.Slot];
-      slot.Itemstack = PackLedger.Laid(ctx, input, with);
+      slot.Itemstack = PackLedger.Laid(ctx, input, with, order);
       grid.DidModifyItemSlot(slot);
     }
     int output = HandGrid.Size * HandGrid.Size;
@@ -380,7 +380,7 @@ internal sealed class CraftStep : ScenarioStep {
         .Select(_ => (ItemSlot)new DummySlot()),
     ];
     foreach (CraftInput input in order.Inputs)
-      slots[input.Slot].Itemstack = PackLedger.Laid(ctx, input, with);
+      slots[input.Slot].Itemstack = PackLedger.Laid(ctx, input, with, order);
     if (!recipe.Matches(who, ctx.World, slots, HandGrid.Size))
       throw new StepFailure(
         $"the hand grid's matcher refuses the bill of {order.Recipe}."
