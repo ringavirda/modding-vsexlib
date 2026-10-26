@@ -601,6 +601,47 @@ public class BlockLawsTests {
     );
   }
 
+  // Fails when a cell a megablock's own fillers took is placed again with a plain filler, which
+  // unlinks it from the megablock.
+  [Fact]
+  public void The_fillers_of_a_megablock_in_a_formed_layout_stay_linked_to_it() {
+    ExBlockDef house = ExBlockDef
+      .Create("test", "house")
+      .SideVariant()
+      .EntityClass("test-sideframe")
+      .Multiblock(m =>
+        m.Number("test:house-*", 1)
+          .Number("test:mega-*", 2)
+          .Number(ExCodes.Filler, 3)
+          .At(0, 0, 0, 1)
+          .At(2, 0, 0, 3)
+          .At(3, 0, 0, 2)
+          .At(4, 0, 0, 3)
+      );
+    TestWorld world = Stand(Mega("mega", "test-mega"), house);
+    Block block = world.World.GetBlock(new AssetLocation("test:house-n"));
+    var at = new BlockPos(64, 64, 64);
+
+    BlockLaws.EntityCase? formed = MultiblockLaw.Formed(
+      world,
+      block,
+      at,
+      MultiblockLaw.Registered(world),
+      null
+    );
+
+    Assert.NotNull(formed);
+    BlockPos mega = at.AddCopy(3, 0, 0);
+    Assert.Equal("mega-n", world.GetBlock(mega).Code.Path);
+    foreach (int x in new[] { 2, 4 })
+      Assert.Equal(
+        mega,
+        (
+          (BlockEntityStructureFiller)world.GetBlockEntity(at.AddCopy(x, 0, 0))!
+        ).Principal
+      );
+  }
+
   #endregion
 
 #if GAME_GE_1_22
