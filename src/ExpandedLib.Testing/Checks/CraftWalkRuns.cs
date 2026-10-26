@@ -53,7 +53,7 @@ internal static class CraftWalkRuns
     // A walk world leaves a vessel's OnLoaded unrun, so its capacity reads null when filled.
     if (edges.Any(e => CraftBills.Liquid(e.Grid) != null))
       foreach (var vessel in all.OfType<BlockLiquidContainerTopOpened>())
-        vessel.OnLoaded(world.Api);
+        GameStatics.Load(vessel, world.Api);
     IReadOnlyList<CraftOrder> hand = HandGrid.Orders(world.World);
     List<Station> stations = Place(scene, world, domain, all);
     var cache = new Dictionary<string, WalkNeed>(StringComparer.Ordinal);

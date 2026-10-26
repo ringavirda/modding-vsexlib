@@ -137,13 +137,27 @@ internal sealed class CraftStep : ScenarioStep {
   ) {
     if (ctx.Pack == null)
       return;
-    foreach (
-      var bill in order
+    ItemStack[] laid =
+    [
+      .. order
         .Inputs.Where(i => !i.Ingredient.IsTool)
-        .Select(i => PackLedger.Laid(ctx, i, with, order))
-        .GroupBy(s => s.Collectible.Code.ToString())
+        .Select(i => PackLedger.Laid(ctx, i, with, order)),
+    ];
+    foreach (var bill in laid.GroupBy(s => s.Collectible.Code.ToString()))
+      PackLedger.Draw(
+        ctx,
+        bill.Key,
+        bill.Sum(s => s.StackSize * (CraftBills.Vessel(order, s) ? 1 : times))
+      );
+    if (
+      laid.Any(s => CraftBills.Vessel(order, s))
+      && CraftBills.Liquid(order.Grid) is { } liquid
     )
-      PackLedger.Draw(ctx, bill.Key, bill.Sum(s => s.StackSize) * times);
+      PackLedger.Draw(
+        ctx,
+        liquid.Content.ToString(),
+        CraftBills.Portions(ctx.World, liquid, times)
+      );
   }
 
   private static string StationsMaking(
@@ -245,6 +259,11 @@ internal sealed class CraftStep : ScenarioStep {
     ).Inventory;
     foreach (CraftInput input in order.Inputs.Where(i => i.Ingredient.IsTool)) {
       if (inventory[input.Slot].Empty)
+        continue;
+      TakeAside(hand, () => WindowStep.Take(who, entity, input.Slot));
+    }
+    foreach (CraftInput input in order.Inputs.Where(i => !i.Ingredient.IsTool)) {
+      if (!CraftBills.Vessel(order, inventory[input.Slot].Itemstack))
         continue;
       TakeAside(hand, () => WindowStep.Take(who, entity, input.Slot));
     }

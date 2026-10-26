@@ -209,6 +209,17 @@ public sealed partial class SetupScene
       Verb(() => window.Take(input.Slot));
       Player.Hold(null);
     }
+    foreach (CraftInput input in order.Inputs.Where(i => !i.Ingredient.IsTool))
+    {
+      if (
+        window.Entity is IBlockEntityContainer { Inventory: { } grid }
+        && CraftBills.Vessel(order, grid[input.Slot].Itemstack)
+      )
+      {
+        Verb(() => window.Take(input.Slot));
+        Player.Hold(null);
+      }
+    }
     foreach (int slot in order.OutputSlots)
     {
       Verb(() => window.Take(slot));

@@ -91,9 +91,33 @@ internal static class CraftBills
       : null;
   }
 
-  private static bool Vessel(CraftOrder order, ItemStack? stack) =>
+  /// <summary>Whether <paramref name="stack"/> is a liquid container laid under a bill of
+  /// <paramref name="order"/> that pays a liquid, so the craft drains it and leaves it in its
+  /// slot.</summary>
+  public static bool Vessel(CraftOrder order, ItemStack? stack) =>
     stack?.Collectible is BlockLiquidContainerBase
     && Liquid(order.Grid) != null;
+
+  /// <summary>The items of the liquid <paramref name="bill"/> drains over
+  /// <paramref name="times"/> crafts, at the liquid's <c>ItemsPerLitre</c>.</summary>
+  /// <param name="world">The world that resolves the liquid item.</param>
+  /// <param name="bill">The bill from <see cref="Liquid"/>.</param>
+  /// <param name="times">The crafts; above 0.</param>
+  /// <returns>The items, rounded up; 0 when the liquid is not registered or no container takes
+  /// it.</returns>
+  public static int Portions(IWorldAccessor world, LiquidBill bill, int times)
+  {
+    Item? liquid = world.GetItem(bill.Content);
+    float? perLitre =
+      liquid == null
+        ? null
+        : BlockLiquidContainerBase
+          .GetContainableProps(new ItemStack(liquid))
+          ?.ItemsPerLitre;
+    return perLitre is { } items
+      ? (int)Math.Ceiling(items * bill.Litres * times)
+      : 0;
+  }
 
   /// <summary>Fills a vessel laid for a bill that pays a liquid with the litres the bill asks for; any
   /// other stack is returned as it is.</summary>
