@@ -7,6 +7,7 @@
   "multiblock-complete": "Structure is complete!",
   "ingameerror-construction-onematerial": "Build this stage from one material: {0} or {1}, not both.",
   "game:ingameerror-exlib-moltenliquidbreak": "Liquid metal inside: hold sneak to break it and spill the metal.",
+  "game:ingameerror-exlib-moltenbarliquid": "Still liquid: the crowbar breaks out only metal that has set.",
   "ingameerror-construction-missingtool": "This stage is built with {0} in the main hand.",
   "rcc-hold-tool": "Hold to build",
   "facing-n": "north",

@@ -37,6 +37,8 @@ internal sealed class SetupHoldCanal : BlockEntity, IChiselableMolten
 
   public bool CanChiselOut => Cell.Solidified;
 
+  public bool CanBreakOut => Cell.Solidified && Cell.CellAmount > 0;
+
   public string? ChiselBlockedError => null;
 
   public override void Initialize(ICoreAPI api)
