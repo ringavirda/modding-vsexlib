@@ -104,6 +104,30 @@ public class PersistAttributeTests {
     [Persist]
     private int _value;
   }
+
+  private sealed class Seeded : ExBlockEntity {
+    [Persist]
+    private string? _label = "init";
+
+    [Persist]
+    private int _count = 5;
+
+    [Persist(Legacy = "oldLevel")]
+    private int _level = 3;
+
+    [Persist]
+    private BlockPos? _anchor = new(1, 2, 3);
+
+    public BlockPos? Anchor => _anchor;
+
+    public string? Label {
+      get => _label;
+      set => _label = value;
+    }
+
+    public int Count => _count;
+    public int Level => _level;
+  }
 #pragma warning restore CS0169
 
   // ToTreeAttributes reads Block.IsMissing before it reaches Persisted, and FromTreeAttributes reads it
@@ -183,6 +207,46 @@ public class PersistAttributeTests {
     source.ToTreeAttributes(tree);
 
     Assert.Equal(7, tree.GetInt("mode"));
+  }
+
+  #endregion
+
+  #region Absent keys
+
+  [Fact]
+  public void An_absent_key_keeps_the_initializer() {
+    var world = new TestWorld();
+    var be = new Seeded();
+    Place(be);
+
+    be.FromTreeAttributes(new TreeAttribute(), world.World);
+
+    Assert.Equal("init", be.Label);
+    Assert.Equal(5, be.Count);
+    Assert.Equal(3, be.Level);
+    Assert.Equal(new BlockPos(1, 2, 3), be.Anchor);
+  }
+
+  [Fact]
+  public void A_null_the_sender_left_out_loads_as_the_initializer_not_the_current_value() {
+    var world = new TestWorld();
+    var server = new Seeded();
+    Place(server);
+    server.Label = "poured";
+    var first = new TreeAttribute();
+    server.ToTreeAttributes(first);
+
+    var client = new Seeded();
+    Place(client);
+    client.FromTreeAttributes(first, world.World);
+    Assert.Equal("poured", client.Label);
+
+    server.Label = null;
+    var second = new TreeAttribute();
+    server.ToTreeAttributes(second);
+    client.FromTreeAttributes(second, world.World);
+
+    Assert.Equal("init", client.Label);
   }
 
   #endregion
