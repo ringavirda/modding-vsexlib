@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using ExpandedLib.Helpers;
 using ExpandedLib.Structures;
 using Vintagestory.API.Common;
@@ -70,14 +72,14 @@ public static class MultiblockLaw {
         frame ??= (block, Normal(anchor.LayoutAngle - turned));
         int expected = Normal(turned + frame.Value.Offset);
 
-        var missing = new List<BlockEntityMultiblockStructure.MissingCell>();
-        var unmade = new List<BlockPos>();
-        anchor.IncompleteBlockCount(missing.Add);
-        foreach (BlockEntityMultiblockStructure.MissingCell cell in missing) {
-          if (cell.Wanted.Domain == "game" || world.GetBlock(cell.At).Id != 0)
-            continue;
-          if (FillReal(world, anchor, cell, registered))
-            continue;
+        List<BlockPos> unmade = [];
+        foreach (
+          BlockEntityMultiblockStructure.MissingCell cell in Fill(
+            world,
+            anchor,
+            registered
+          ).Unmade
+        ) {
           unmade.Add(cell.At);
           findings.Add(
             $"{block.Code} wants {cell.Wanted} at {Local(anchor, cell.At)}, which no registered "
@@ -153,7 +155,7 @@ public static class MultiblockLaw {
   /// <summary>Stands the structure <paramref name="block"/> anchors up formed at
   /// <paramref name="at"/>: the anchor placed as <see cref="BlockLaws.EntityCase.Place"/> places a
   /// block, each cell it reports missing filled as <see cref="Run"/> fills it and then placed the
-  /// same way, with its entity, the <c>game</c> cells raised by <see cref="StructureRig"/> at the
+  /// same way unless an earlier placement has replaced it (a megablock's fillers), with its entity, the <c>game</c> cells raised by <see cref="StructureRig"/> at the
   /// angle the anchor turns its layout to, and one monitor tick.</summary>
   /// <param name="registered">The blocks cells are filled from (<see cref="Registered"/>).</param>
   /// <param name="faults">Where a placement's throw or log goes, keyed by the placed block's code;
@@ -174,14 +176,22 @@ public static class MultiblockLaw {
       || step.Entity is not BlockEntityMultiblockStructure anchor
     )
       return null;
-    var missing = new List<BlockEntityMultiblockStructure.MissingCell>();
-    anchor.IncompleteBlockCount(missing.Add);
-    foreach (BlockEntityMultiblockStructure.MissingCell cell in missing) {
-      if (cell.Wanted.Domain == "game" || world.GetBlock(cell.At).Id != 0)
+    (List<BlockEntityMultiblockStructure.MissingCell> filled, var unmade) =
+      Fill(world, anchor, registered);
+    if (unmade.Count > 0)
+      return null;
+    var standing = filled
+      .Select(c => (world.GetBlock(c.At), world.GetBlockEntity(c.At)))
+      .ToList();
+    for (int i = 0; i < filled.Count; i++) {
+      BlockEntityMultiblockStructure.MissingCell cell = filled[i];
+      if (
+        world.GetBlock(cell.At) != standing[i].Item1
+        || world.GetBlockEntity(cell.At) != standing[i].Item2
+      )
         continue;
       if (
-        !FillReal(world, anchor, cell, registered)
-        || !new BlockLaws.EntityCase(
+        !new BlockLaws.EntityCase(
           world,
           world.GetBlock(cell.At),
           cell.At,
@@ -215,20 +225,66 @@ public static class MultiblockLaw {
       ]
       : [step.At.Copy()];
 
-  /// <summary>Places at <paramref name="cell"/> the first block of <paramref name="registered"/>
-  /// its wanted code matches and <paramref name="anchor"/> accepts there; clears the cell and
-  /// returns false when none does.</summary>
-  private static bool FillReal(
+  private static readonly ConditionalWeakTable<
+    Block[],
+    ConcurrentDictionary<string, Block[]>
+  > Matches = new();
+
+  /// <summary>The blocks of <paramref name="registered"/> a layout cell wanting
+  /// <paramref name="wanted"/> accepts, in registration order; looked up once for each distinct
+  /// wanted code and array.</summary>
+  private static Block[] MatchesOf(Block[] registered, AssetLocation wanted) =>
+    Matches
+      .GetValue(registered, _ => new())
+      .GetOrAdd(
+        wanted.ToString(),
+        _ => [.. registered.Where(b => WildcardUtil.Match(wanted, b.Code))]
+      );
+
+  /// <summary>Fills each empty cell outside <c>game</c> that <paramref name="anchor"/> wants with
+  /// the first registered block its wanted code matches, all at once and checked by one scan of
+  /// the layout, so the work does not grow with the codes a glyph accepts; a cell the anchor
+  /// still lacks is tried against the other matching blocks one by one and cleared when none
+  /// satisfies it.</summary>
+  /// <returns>The cells filled, and the cells no registered block satisfies.</returns>
+  internal static (
+    List<BlockEntityMultiblockStructure.MissingCell> Filled,
+    List<BlockEntityMultiblockStructure.MissingCell> Unmade
+  ) Fill(
+    TestWorld world,
+    BlockEntityMultiblockStructure anchor,
+    Block[] registered
+  ) {
+    var empty = new List<BlockEntityMultiblockStructure.MissingCell>();
+    anchor.IncompleteBlockCount(c => {
+      if (c.Wanted.Domain != "game" && world.GetBlock(c.At).Id == 0)
+        empty.Add(c);
+    });
+    foreach (BlockEntityMultiblockStructure.MissingCell cell in empty)
+      if (MatchesOf(registered, cell.Wanted) is { Length: > 0 } matches)
+        world.Place(cell.At, matches[0]);
+
+    var lacking = new HashSet<BlockPos>();
+    anchor.IncompleteBlockCount(c => lacking.Add(c.At));
+    var filled = new List<BlockEntityMultiblockStructure.MissingCell>();
+    var unmade = new List<BlockEntityMultiblockStructure.MissingCell>();
+    foreach (BlockEntityMultiblockStructure.MissingCell cell in empty)
+      if (
+        !lacking.Contains(cell.At) || FillOther(world, anchor, cell, registered)
+      )
+        filled.Add(cell);
+      else
+        unmade.Add(cell);
+    return (filled, unmade);
+  }
+
+  private static bool FillOther(
     TestWorld world,
     BlockEntityMultiblockStructure anchor,
     BlockEntityMultiblockStructure.MissingCell cell,
     Block[] registered
   ) {
-    foreach (
-      Block candidate in registered.Where(b =>
-        WildcardUtil.Match(cell.Wanted, b.Code)
-      )
-    ) {
+    foreach (Block candidate in MatchesOf(registered, cell.Wanted).Skip(1)) {
       world.Place(cell.At, candidate);
       bool still = false;
       anchor.IncompleteBlockCount(m => still |= m.At.Equals(cell.At));
