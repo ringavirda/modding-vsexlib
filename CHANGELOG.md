@@ -11,6 +11,13 @@ see the git history.
 
 - **A `[Persist]` member whose key is missing from a saved tree keeps its initializer** instead of loading as
   null or zero, so a block entity saved before a member was added still loads.
+- **A network node loaded from a tree without `networkType` keeps its declared network type** instead of
+  losing it to null and joining no graph.
+
+### Added
+
+- **`EmptyTreeSweep`** (ExpandedLib.Testing): loads every registered block entity type from an empty tree and
+  initialises it on the server and the client side.
 
 ## [0.8.4] - 2026-10-05
 
