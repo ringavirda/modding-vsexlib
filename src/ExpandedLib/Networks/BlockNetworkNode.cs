@@ -271,7 +271,17 @@ public abstract class BlockNetworkNode
         ) && neighborBlock is INetworkConnector neighborNet
       ) {
         if (
-          neighborNet.HasConnectorAt(blockAccessor, neighborPos, face.Opposite)
+          neighborNet is BlockNetworkNode neighborNode
+            ? neighborNode.ShapeConnectorAt(
+              blockAccessor,
+              neighborPos,
+              face.Opposite
+            )
+            : neighborNet.HasConnectorAt(
+              blockAccessor,
+              neighborPos,
+              face.Opposite
+            )
         )
           requiredChars.Add(face.Code[0]);
         else
@@ -807,6 +817,13 @@ public abstract class BlockNetworkNode
   /// <summary>Returns true if <see cref="Orientation"/> contains the single-char code for <paramref name="face"/>.</summary>
   public virtual bool HasConnectorAt(BlockFacing face) =>
     Orientation != null && Orientation.Contains(face.Code[0]);
+
+  /// <summary>The connector test the orientation pass of a neighbour reads: the block's shape, not a latch a block entity closes at <paramref name="pos"/>. Defaults to the position-aware answer.</summary>
+  protected internal virtual bool ShapeConnectorAt(
+    IBlockAccessor world,
+    BlockPos pos,
+    BlockFacing face
+  ) => HasConnectorAt(world, pos, face);
 
   /// <summary>Position-aware connector test, answering <see cref="INetworkMember.HasConnectorAt"/>. Defaults to the position-less answer.</summary>
   public virtual bool HasConnectorAt(
