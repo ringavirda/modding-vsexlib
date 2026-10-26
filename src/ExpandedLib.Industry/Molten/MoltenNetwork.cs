@@ -309,10 +309,9 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
   /// <summary>Moves metal across one connection, capped at <paramref name="maxFlow"/> units: from the
   /// cell of smaller <see cref="IMoltenCell.Fall"/> when the falls differ, and from a downhill edge's
   /// upper cell of larger fall, handing over its whole charge, else toward the nearer end
-  /// in <paramref name="distToMold"/>, else by <paramref name="rules"/> or the defaults: a level giver
-  /// nearer the flow source hands the farther cell all but <see cref="ExlibConfig.MoltenMinFlowAmount"/>
-  /// units, a farther giver levels by half the difference;
-  /// <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>.</summary>
+  /// in <paramref name="distToMold"/>, else by <paramref name="rules"/> or the defaults (a level giver
+  /// nearer the flow source keeps <see cref="ExlibConfig.MoltenMinFlowAmount"/> units, a farther one
+  /// levels by half); <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>.</summary>
   private static void FlowEdge(
     (BlockPos Pos, IMoltenCell Cell) a,
     (BlockPos Pos, IMoltenCell Cell) b,
@@ -365,9 +364,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     var giver = aIsGiver ? a : b;
     var receiver = aIsGiver ? b : a;
 
-    // A drain fitting and a downhill edge are one-way sinks and take the whole difference. A level
-    // giver nearer the start hands onward all but the skin; one farther back levels by half, and
-    // integer division floors that step to zero on its own.
+    // A drain or downhill edge takes the whole difference; a level giver nearer the start keeps a skin.
     bool drain = receiver.Cell.AcceptsSubMinimumFlow;
     bool whole = drain || downhillOnly;
     if (rules is MoltenFlowRules r) {
