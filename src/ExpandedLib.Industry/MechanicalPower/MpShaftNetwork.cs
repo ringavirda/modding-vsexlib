@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Networks;
+using ExpandedLib.Structures;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -101,7 +102,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     AccrueStrain(world, MathF.Max(0f, hours));
     _clockS += dt;
     foreach (var (key, node) in Store.Nodes) {
-      if (world.GetBlockEntity(key.Pos) is not IMpEnergySegment segment)
+      if (EntityOf(world, key.Pos) is not IMpEnergySegment segment)
         continue;
       var reading = new MpSegmentReading(
         Store.NodeTorque(node),
@@ -169,8 +170,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
         _anchors[g] = key;
     }
     foreach (var (key, node) in Store.Nodes)
-      world
-        .GetBlockEntity(key.Pos)
+      EntityOf(world, key.Pos)
         ?.GetBehavior<BEBehaviorTurningParts>()
         ?.SetRun(
           key.Slot,
@@ -180,6 +180,13 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     _anchorTopology = Store.Topology;
     _sendTicks = AngleSendTicks;
   }
+
+  /// <summary>The block entity that answers for the node at <paramref name="pos"/>: the principal's when the cell is a structure filler hosting the node, otherwise the cell's own.</summary>
+  private static BlockEntity? EntityOf(IBlockAccessor world, BlockPos pos) =>
+    world.GetBlockEntity(pos)
+      is BlockEntityStructureFiller { Principal: { } principal }
+      ? world.GetBlockEntity(principal)
+      : world.GetBlockEntity(pos);
 
   private static int AnchorOrder(NodeKey a, NodeKey b) {
     int order = a.Pos.X.CompareTo(b.Pos.X);
@@ -201,7 +208,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
       Store.SetMesh(output, link.Efficiency, carried);
     }
     foreach (var (key, node) in Store.Nodes) {
-      var be = world.GetBlockEntity(key.Pos);
+      var be = EntityOf(world, key.Pos);
       float inertia = (be as IMpEnergyStorage)?.Inertia ?? 0f;
       float rise = inertia - Store.InertiaOf(node);
       if (rise > 0f) {
@@ -334,7 +341,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     float tau = ExlibValues.MpStrainTauHours;
     List<Action>? failed = null;
     foreach (var cell in Store.Nodes.GroupBy(n => n.Key.Pos)) {
-      var be = world.GetBlockEntity(cell.Key);
+      var be = EntityOf(world, cell.Key);
       float load = cell.Max(n => Store.NodeLoad(n.Value));
       float torque = cell.Max(n => Store.NodeTorque(n.Value));
       float speed = cell.Max(n => MathF.Abs(Store.NodeSpeed(n.Value)));
@@ -371,7 +378,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
       if (Store.Nodes.ContainsKey(key))
         continue;
       float inertia =
-        (world.GetBlockEntity(key.Pos) as IMpEnergyStorage)?.Inertia ?? 0f;
+        (EntityOf(world, key.Pos) as IMpEnergyStorage)?.Inertia ?? 0f;
       bool restored = _pending.ContainsKey(key);
       if (!restored && unkeyedLeft > 0f) {
         restored = true;
