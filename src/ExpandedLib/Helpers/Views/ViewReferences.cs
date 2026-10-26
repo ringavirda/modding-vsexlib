@@ -116,6 +116,9 @@ internal static class ViewReferences {
   /// <summary>The game item whose hold a declared tip copies for the kinds a handle holds.</summary>
   internal const string TipHoldCode = "game:knife-generic-iron";
 
+  /// <summary>The hand scale of a tipped lump, a handled tool: the true size at which the game's hammer, saw and knife are held.</summary>
+  internal const double ToolHeldScale = 1.0;
+
   /// <summary>The working end of <see cref="TipHoldCode"/> as a sign and an axis letter in its shape's frame.</summary>
   internal const string TipHoldEnd = "+x";
 

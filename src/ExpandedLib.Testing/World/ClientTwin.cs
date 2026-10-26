@@ -155,11 +155,15 @@ public sealed partial class TestWorld {
   }
 
   internal BlockEntity NewClientTwin(BlockEntity server) {
+    var tree = new TreeAttribute();
+    server.ToTreeAttributes(tree);
+    return NewClientTwin(server, tree);
+  }
+
+  internal BlockEntity NewClientTwin(BlockEntity server, ITreeAttribute tree) {
     BlockEntity twin = NewBlockEntityLike(server, server.Block);
     twin.Pos = server.Pos.Copy();
     twin.Block = server.Block;
-    var tree = new TreeAttribute();
-    server.ToTreeAttributes(tree);
     twin.FromTreeAttributes(tree, ClientApi.World);
     return twin;
   }

@@ -163,6 +163,51 @@ public class ItemViewTipTests {
     }
   }
 
+  // Fails when a tipped lump keeps the ingot's 0.75: the hand scale then reads 0.75, and the same shape with no tip holds 0.75.
+  [Fact]
+  public void A_tipped_lump_is_held_at_true_size() {
+    Assert.Equal(
+      1.0,
+      ItemViews.Compute(World.Api, Tipped("lump", "+x"))!.TpHand.ScaleXYZ.X,
+      3
+    );
+    Assert.Equal(
+      0.75,
+      ItemViews.Compute(World.Api, Plain("lump"))!.TpHand.ScaleXYZ.X,
+      3
+    );
+  }
+
+  // Fails when the tool scale reaches the other kinds a tip holds: a tipped plate then holds at 1.0 in place of the plain plate's scale.
+  [Theory]
+  [InlineData("plate")]
+  [InlineData("bulk")]
+  public void A_tipped_item_of_another_kind_keeps_its_kinds_scale(string kind) {
+    Assert.Equal(
+      ItemViews.Compute(World.Api, Plain(kind))!.TpHand.ScaleXYZ.X,
+      ItemViews.Compute(World.Api, Tipped(kind, "+x"))!.TpHand.ScaleXYZ.X,
+      3
+    );
+  }
+
+  // Fails when G7 judges a tipped lump against the lump band (the true size then falls outside it) or the tool rule
+  // is dropped (the ingot's 0.75 then passes).
+  [Fact]
+  public void G7_judges_a_tipped_lump_at_true_size() {
+    ViewGroup group = GroupOf("lump", "+x", "+x");
+    GateReading Size(ViewGroup g) =>
+      ViewGates
+        .Readings(ViewBands.Embedded, g, ViewGates.Measure(World, g))
+        .Single(r => r.Gate == "G7");
+    Assert.True(Size(group).Pass, Size(group).Detail);
+
+    ModelTransform small = group.Hand.Clone();
+    small.ScaleXYZ = new FastVec3f(0.75f, 0.75f, 0.75f);
+    GateReading reading = Size(group with { Hand = small });
+    Assert.False(reading.Pass);
+    Assert.Equal(0.75, reading.Value, 2);
+  }
+
   // Fails when the gate's minimum rises past the iron chisel's elevation, which the minimum is measured from.
   [Fact]
   public void The_chisel_and_knife_carry_their_tips_above_the_gate_minimum() {
