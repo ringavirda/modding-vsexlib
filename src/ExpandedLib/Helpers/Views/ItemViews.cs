@@ -16,7 +16,7 @@ namespace ExpandedLib.Helpers;
 public static class ItemViews {
   /// <summary>Computes the views of <paramref name="collectible"/>. The kind is its declared
   /// <c>attributes.itemViews.kind</c> or the one its drawn box gives; <c>attributes.itemViews.tip</c> names
-  /// the working end of an item as a sign and an axis letter ("+y"). The slot and ground views
+  /// the working end of an item as a sign and an axis letter ("+y"); a tipped lump is held at true size, scale 1.0. The slot and ground views
   /// are computed from the box as well. A block takes the game's block rotations with its origins on the drawn box.
   /// A mod item with no <c>attributes.itemViews</c> key that draws a game item's shape takes that item's shipped views.</summary>
   /// <param name="api">The api of the side whose world is loaded.</param>
@@ -309,7 +309,11 @@ public static class ItemViews {
       knife = tip != null && !longHeld ? TipCarrier(api) : null;
       hold = knife == null ? null : FromCarrier(api, knife, TipHoldEnd);
       HandReference grasp =
-        hold == null ? reference : hold with { Scale = reference.Scale };
+        hold == null
+          ? reference
+          : hold with {
+            Scale = kind == ItemViewKind.Lump ? ToolHeldScale : reference.Scale,
+          };
       double[,] turn = Turn(lay, grasp, out bool mirrored);
       double[,] r = Mul(
         Rotation(

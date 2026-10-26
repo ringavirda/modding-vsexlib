@@ -604,7 +604,9 @@ internal static class ViewGates {
         continue;
       Band? band;
       if (twin == null) {
-        if (id == "G7" && group.IsLong)
+        if (id == "G7" && IsHandledTool(group))
+          band = ViewBands.BandOf(id, [(ViewReferences.ToolHeldScale, "tool")]);
+        else if (id == "G7" && group.IsLong)
           band = ViewBands.BandOf(
             id,
             [(group.Box.Extents()[0] / 16, "length")]
@@ -681,6 +683,13 @@ internal static class ViewGates {
       );
     return readings;
   }
+
+  // A tipped lump: the tool rule judges its hand scale in place of the lump band.
+  private static bool IsHandledTool(ViewGroup group) =>
+    !group.IsBlock
+    && !group.IsLong
+    && group.Kind == ItemViewKind.Lump
+    && DeclaredTip(group.Representative) != null;
 
   private static GateReading Grip(
     string name,
