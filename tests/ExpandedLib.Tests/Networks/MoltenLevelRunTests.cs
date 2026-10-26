@@ -24,6 +24,14 @@ public class MoltenLevelRunTests {
     BlockFacing.WEST
   );
 
+  private static readonly CanalNode Cross = CanalNode.Make(
+    2,
+    BlockFacing.NORTH,
+    BlockFacing.EAST,
+    BlockFacing.SOUTH,
+    BlockFacing.WEST
+  );
+
   /// <summary>A run of <paramref name="falls"/>.Length cells, the first a flow source, each of
   /// capacity 100 and the fall given.</summary>
   private static (TestWorld World, Cell[] Cells) Run(params int[] falls) {
@@ -119,6 +127,61 @@ public class MoltenLevelRunTests {
       w.Tick();
       Assert.Equal(settled, cells.Select(c => c.CellAmount));
     }
+  }
+
+  // Fails when a level giver hands all but its skin to a farther cell whatever that cell holds: a
+  // tee beside the start circles its charge with period 4 and never settles.
+  [Fact]
+  public void An_idle_tee_settles_without_swapping_its_charge() {
+    var w = new TestWorld();
+    w.RegisterNetwork("molten", sys => new MoltenNetwork(sys));
+    (BlockPos Pos, Cell Cell)[] cells =
+    [
+      (
+        new BlockPos(0, 0, 0),
+        new Cell { IsFlowSource = true, MaxUnitCapacity = 100 }
+      ),
+      (new BlockPos(1, 0, 0), new Cell { MaxUnitCapacity = 50 }),
+      (new BlockPos(1, 0, -1), new Cell { MaxUnitCapacity = 50 }),
+      (new BlockPos(1, 0, 1), new Cell { MaxUnitCapacity = 50 }),
+    ];
+    foreach (var (pos, cell) in cells) {
+      w.Place(pos, Cross, cell);
+      w.Attach(cell);
+      w.AddNode(pos, "molten");
+    }
+    for (int t = 0; t < 2; t++) {
+      cells[0].Cell.PushMetalRaw(50, Iron, 1500f, null!);
+      w.Tick();
+    }
+    for (int t = 0; t < 60; t++)
+      w.Tick();
+    var settled = cells.Select(c => c.Cell.CellAmount).ToArray();
+    for (int t = 0; t < 6; t++) {
+      w.Tick();
+      Assert.Equal(settled, cells.Select(c => c.Cell.CellAmount));
+    }
+  }
+
+  // Fails when cells at one distance from the start hand over all but the skin in place of half.
+  [Fact]
+  public void Two_cells_at_one_distance_level_by_half() {
+    var w = new TestWorld();
+    w.RegisterNetwork("molten", sys => new MoltenNetwork(sys));
+    var cells = new[]
+    {
+      new Cell { MaxUnitCapacity = 100 },
+      new Cell { MaxUnitCapacity = 100 },
+    };
+    for (int x = 0; x < 2; x++) {
+      var pos = new BlockPos(x, 0, 0);
+      w.Place(pos, Straight, cells[x]);
+      w.Attach(cells[x]);
+      w.AddNode(pos, "molten");
+    }
+    cells[0].PushMetalRaw(60, Iron, 1500f, null!);
+    w.Tick();
+    Assert.Equal([30, 30], cells.Select(c => c.CellAmount));
   }
 
   #endregion
