@@ -309,9 +309,8 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
   /// <summary>Moves metal across one connection, capped at <paramref name="maxFlow"/> units: from the
   /// cell of smaller <see cref="IMoltenCell.Fall"/> when the falls differ, and from a downhill edge's
   /// upper cell of larger fall, handing over its whole charge, else toward the nearer end
-  /// in <paramref name="distToMold"/>, else by <paramref name="rules"/> or the defaults (a level giver
-  /// nearer the flow source keeps <see cref="ExlibConfig.MoltenMinFlowAmount"/> units, a farther one
-  /// levels by half); <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>.</summary>
+  /// in <paramref name="distToMold"/>, else by <paramref name="rules"/> or the defaults;
+  /// <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>.</summary>
   private static void FlowEdge(
     (BlockPos Pos, IMoltenCell Cell) a,
     (BlockPos Pos, IMoltenCell Cell) b,

@@ -10,11 +10,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>
-/// Covers a level run on <see cref="MoltenNetwork"/>: each cell hands onward all but
-/// <c>MoltenMinFlowAmount</c> units to the cell farther from the start, at most
-/// <c>MoltenFlowRate</c> a joint, so a pour crosses a run of any length and leaves a skin; a run
-/// with fall drains clean; cells at one distance, and a cell farther back, level by half. Cells
-/// carry no flow rules. Runs lie along +X from the flow source at the origin.
+/// Covers a level run on <see cref="MoltenNetwork"/>: it hands a pour onward leaving a 10 unit skin,
+/// a run with fall drains clean, and cells at one distance level by half. Runs lie along +X.
 /// </summary>
 public class MoltenLevelRunTests {
   #region Fixtures
