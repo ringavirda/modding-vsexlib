@@ -9,6 +9,7 @@ using ExpandedLib.Registries;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
+using NSubstitute;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -556,6 +557,47 @@ public class BlockLawsTests {
             .Select(c => world.GetBlock(c.At).Code.ToString())
         );
       }
+    );
+  }
+
+  // Fails when the fill checks the layout after each cell it places, or scans the registered
+  // blocks for each cell, instead of placing one representative in each and scanning once.
+  [Fact]
+  public void The_fill_of_a_wide_layout_scans_the_layout_a_fixed_number_of_times() {
+    const int cells = 12;
+    ExBlockDef wide = ExBlockDef
+      .Create("test", "wide")
+      .SideVariant()
+      .EntityClass("test-sideframe")
+      .Multiblock(m => {
+        m.Number("test:wide-*", 1).Number("test:wall*", 2).At(0, 0, 0, 1);
+        for (int i = 1; i <= cells; i++)
+          m.At(i, 0, 0, 2);
+      });
+    TestWorld world = Stand(
+      Wall,
+      ExBlockDef.Create("test", "wallbanded"),
+      ExBlockDef.Create("test", "wallhooped"),
+      wide
+    );
+    Block block = world.World.GetBlock(new AssetLocation("test:wide-n"));
+    var at = new BlockPos(64, 64, 64);
+    world.Accessor.SetBlock(block.BlockId, at);
+    block.OnBlockPlaced(world.World, at, new ItemStack(block));
+    var anchor = (BlockEntityMultiblockStructure)world.GetBlockEntity(at)!;
+    Block[] registered = MultiblockLaw.Registered(world);
+    world.Accessor.ClearReceivedCalls();
+
+    var (filled, unmade) = MultiblockLaw.Fill(world, anchor, registered);
+
+    int reads = world
+      .Accessor.ReceivedCalls()
+      .Count(c => c.GetMethodInfo().Name == nameof(IBlockAccessor.GetBlockRaw));
+    Assert.Equal(cells, filled.Count);
+    Assert.Empty(unmade);
+    Assert.True(
+      reads <= 4 * (cells + 1),
+      $"{reads} block reads to fill {cells} cells"
     );
   }
 
