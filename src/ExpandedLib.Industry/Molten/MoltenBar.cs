@@ -8,12 +8,9 @@ using Vintagestory.API.Server;
 namespace ExpandedLib.Industry.Molten;
 
 /// <summary>
-/// The crowbar interaction shared by every <see cref="IChiselableMolten"/> holder: a one-second hold
-/// breaks out the set metal of the struck cell and of the connected set cells of the same metal along
-/// the run, whatever their temperature, up to <see cref="ExlibValues.MoltenBarCells"/>. The drops spawn
-/// at their cells, still hot, and the bar wears one per cell. A holder's block calls
-/// <see cref="Start"/> from <c>OnBlockInteractStart</c>, and <see cref="Step"/> and <see cref="Stop"/>
-/// from the matching overrides when <see cref="IsHeldBy"/>.
+/// The crowbar interaction of every <see cref="IChiselableMolten"/> holder: a one-second hold breaks out
+/// the struck cell and the connected set cells of its metal, up to <see cref="ExlibValues.MoltenBarCells"/>.
+/// A holder's block calls <see cref="Start"/>, <see cref="Step"/> and <see cref="Stop"/> from its interact overrides.
 /// </summary>
 public static class MoltenBar {
   /// <summary>The in-game error code sent to a player who strikes liquid metal with the bar.</summary>

@@ -4,9 +4,7 @@ namespace ExpandedLib.Industry.Molten;
 
 /// <summary>
 /// A block entity holding molten metal that, once solidified and cooled, can be chipped out with a
-/// chisel and hammer. <see cref="MoltenChisel"/> drives the interaction; an implementer supplies only
-/// the content-specific state and the clear-and-recover step. <see cref="MoltenBar"/> breaks the same
-/// content out hot through <see cref="ChiselOut"/>.
+/// chisel and hammer (<see cref="MoltenChisel"/>) or broken out hot with a crowbar (<see cref="MoltenBar"/>).
 /// </summary>
 public interface IChiselableMolten {
   /// <summary>Whether any solidified content is present; false when empty or still liquid.</summary>
