@@ -55,6 +55,45 @@ public static class ExShapeElements {
     return [.. kept];
   }
 
+  /// <summary>Returns a copy of <paramref name="shape"/> without the elements <paramref name="drop"/> names and everything under them, the complement of <see cref="Pruned"/>; an element above a named one stays with its other children. The original is not modified.</summary>
+  public static Shape Without(Shape shape, IReadOnlyCollection<string> drop) {
+    Shape copy = shape.Clone();
+    copy.Elements = WithoutLevel(copy.Elements, "", drop);
+    return copy;
+  }
+
+  private static ShapeElement[] WithoutLevel(
+    ShapeElement[]? elements,
+    string parentPath,
+    IReadOnlyCollection<string> drop
+  ) {
+    if (elements == null)
+      return [];
+
+    var kept = new List<ShapeElement>();
+    foreach (ShapeElement el in elements) {
+      string path =
+        parentPath.Length == 0 ? el.Name ?? "" : parentPath + "/" + el.Name;
+      if (IsDropped(path, drop))
+        continue;
+      el.Children = WithoutLevel(el.Children, path, drop);
+      kept.Add(el);
+    }
+    return [.. kept];
+  }
+
+  private static bool IsDropped(string path, IReadOnlyCollection<string> drop) {
+    foreach (string raw in drop) {
+      string p =
+        raw == "*" ? ""
+        : raw.EndsWith("/*") ? raw[..^2]
+        : raw;
+      if (p.Length == 0 || IsSegmentPrefix(p, path))
+        return true;
+    }
+    return false;
+  }
+
   /// <summary>Returns a copy of <paramref name="shape"/> with every face pointing at texture key <paramref name="from"/> repointed at <paramref name="to"/>; <paramref name="to"/> must be a key the blocktype declares.</summary>
   public static Shape Retextured(Shape shape, string from, string to) {
     Shape copy = shape.Clone();

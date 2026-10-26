@@ -1,0 +1,26 @@
+{
+  "textureWidth": 16,
+  "textureHeight": 16,
+  "textures": {
+    "all": "block/stone"
+  },
+  "elements": [
+    {
+      "name": "Bearing",
+      "from": [0, 0, 0],
+      "to": [16, 2, 16],
+      "faces": {
+        "up": { "texture": "#all", "uv": [0, 0, 16, 16] }
+      }
+    },
+    {
+      "name": "Shaft",
+      "from": [6, 6, 0],
+      "to": [10, 10, 16],
+      "faces": {
+        "up": { "texture": "#all", "uv": [0, 0, 4, 16] },
+        "down": { "texture": "#all", "uv": [0, 0, 4, 16] }
+      }
+    }
+  ]
+}
