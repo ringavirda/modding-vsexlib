@@ -65,6 +65,9 @@ public class MoltenBarTests {
 
     public BlockPos At(int x) => new(x, 0, 0);
 
+    public BlockSelection Selection(int x) =>
+      new() { Position = At(x), Face = BlockFacing.UP };
+
     public bool Use(int x, ItemStack? held = null, float seconds = 1f) =>
       Player.Interact(At(x), held ?? Bar, seconds: seconds);
 
@@ -98,7 +101,7 @@ public class MoltenBarTests {
       IWorldAccessor world,
       IPlayer byPlayer,
       BlockSelection blockSel
-    ) => MoltenBar.Step(secondsUsed, byPlayer);
+    ) => MoltenBar.Step(secondsUsed, world, byPlayer, blockSel);
 
     public override void OnBlockInteractStop(
       float secondsUsed,
@@ -167,6 +170,14 @@ public class MoltenBarTests {
     }
   }
 
+  private sealed class ChiselOnlyHolder : BlockEntity, IChiselableMolten {
+    public bool HasChiselableContent => true;
+    public bool CanChiselOut => true;
+    public string? ChiselBlockedError => null;
+
+    public ItemStack? ChiselOut() => null;
+  }
+
   #endregion
 
   #region Break-out
@@ -186,18 +197,56 @@ public class MoltenBarTests {
     Assert.Equal(new Vec3d(0.5, 0.5, 0.5), at);
   }
 
-  // Fails when Start drops its CanBreakOut gate: the bar claims a liquid cell and sends no refusal.
+  // Fails when Start drops its liquid claim: the click is dropped and no refusal is sent.
   [Fact]
   public void Bar_RefusesLiquid() {
     var rig = new Rig();
     BarCell cell = rig.Put(0, set: false, temperature: 1450f);
 
-    Assert.False(rig.Use(0));
+    Assert.True(rig.Use(0));
 
     Assert.Equal(12, cell.CellAmount);
     Assert.Empty(rig.World.Spawns);
     Assert.Equal(1, rig.Refusals());
     Assert.Equal(Durability, rig.Remaining);
+  }
+
+  // Fails when IChiselableMolten.CanBreakOut defaults to true: a holder written for the chisel alone is broken out.
+  [Fact]
+  public void Bar_LeavesAChiselOnlyHolderAlone() {
+    Assert.False(((IChiselableMolten)new ChiselOnlyHolder()).CanBreakOut);
+  }
+
+  // Fails when Start claims liquid content only on the server: the client drops the click before the server sees it.
+  [Fact]
+  public void Bar_ClaimsLiquidOnTheClient() {
+    var rig = new Rig();
+    rig.Put(0, set: false, temperature: 1450f);
+    rig.Player.Hold(rig.Bar);
+    var client = Substitute.For<IWorldAccessor>();
+    client.Side.Returns(EnumAppSide.Client);
+    client.BlockAccessor.Returns(rig.World.Accessor);
+    client
+      .Claims.TryAccess(default!, default!, default)
+      .ReturnsForAnyArgs(true);
+
+    Assert.True(MoltenBar.Start(client, rig.Player.Player, rig.Selection(0)));
+    Assert.Equal(0, rig.Refusals());
+  }
+
+  // Fails when Step ignores the holder: a hold on liquid content runs its full second.
+  [Fact]
+  public void Bar_HoldEndsAtOnceOnLiquid() {
+    var rig = new Rig();
+    rig.Put(0, set: false, temperature: 1450f);
+    rig.Put(1);
+
+    Assert.False(
+      MoltenBar.Step(0.1f, rig.World.World, rig.Player.Player, rig.Selection(0))
+    );
+    Assert.True(
+      MoltenBar.Step(0.1f, rig.World.World, rig.Player.Player, rig.Selection(1))
+    );
   }
 
   // Fails when the stretch ignores MoltenBarCells: ten set cells all clear. Struck mid-run, the eight nearest

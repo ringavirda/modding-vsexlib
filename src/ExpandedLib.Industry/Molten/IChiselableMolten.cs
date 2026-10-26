@@ -15,15 +15,16 @@ public interface IChiselableMolten {
   bool CanChiselOut { get; }
 
   /// <summary>Whether set content is present that a crowbar can break out at any temperature: metal
-  /// below its melting point, however hot. False when empty or still liquid.</summary>
-  bool CanBreakOut { get; }
+  /// below its melting point, however hot. False when empty or still liquid; a holder that does not
+  /// override it is never broken out.</summary>
+  bool CanBreakOut => false;
 
   /// <summary>The <c>game:ingameerror-*</c> code to surface when <see cref="HasChiselableContent"/> is
   /// true but <see cref="CanChiselOut"/> is false; <c>null</c> claims the click silently.</summary>
   string? ChiselBlockedError { get; }
 
   /// <summary>Clears the set content and returns the recovered metal-bit drop, or <c>null</c>;
-  /// server-side, called only once <see cref="CanChiselOut"/> or <see cref="CanBreakOut"/> is confirmed, so
-  /// it applies no temperature gate of its own.</summary>
+  /// server-side, called only once <see cref="CanChiselOut"/> or <see cref="CanBreakOut"/> is confirmed;
+  /// a holder whose content is not set returns <c>null</c> and clears nothing.</summary>
   ItemStack? ChiselOut();
 }

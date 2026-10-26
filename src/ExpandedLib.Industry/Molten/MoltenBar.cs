@@ -31,10 +31,11 @@ public static class MoltenBar {
     IsBar(byPlayer.InventoryManager?.ActiveHotbarSlot?.Itemstack);
 
   /// <summary>Claims the click when the player holds a crowbar and the holder at the selection has set
-  /// content to break out; on the server, a holder with only liquid content sends
-  /// <see cref="LiquidError"/> instead and the click falls through.</summary>
-  /// <returns>True to start the hold; false when not a crowbar use, the claims refuse it, or nothing can
-  /// be broken out.</returns>
+  /// content to break out or liquid content; on the server, liquid content also sends
+  /// <see cref="LiquidError"/>. Liquid content is claimed on both sides, as the client drops a click it
+  /// does not claim before the server sees it.</summary>
+  /// <returns>True to start the hold; false when not a crowbar use, the claims refuse it, or the holder
+  /// has neither set nor liquid content.</returns>
   public static bool Start(
     IWorldAccessor world,
     IPlayer byPlayer,
@@ -45,20 +46,29 @@ public static class MoltenBar {
     BlockEntity? be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
     if (be is IChiselableMolten { CanBreakOut: true })
       return true;
-    if (world.Side == EnumAppSide.Server && MoltenBreakGuard.HoldsLiquid(be))
+    if (!MoltenBreakGuard.HoldsLiquid(be))
+      return false;
+    if (world.Side == EnumAppSide.Server)
       (byPlayer as IServerPlayer)?.SendIngameError(LiquidError);
-    return false;
+    return true;
   }
 
   /// <summary>Whether the hold goes on: true until <see cref="HoldSeconds"/> have passed, 0.1 s in
-  /// Creative mode.</summary>
-  public static bool Step(float secondsUsed, IPlayer byPlayer) =>
-    secondsUsed
-    < (
-      byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative
-        ? CreativeHoldSeconds
-        : HoldSeconds
-    );
+  /// Creative mode, and false at once when the holder at the selection has nothing to break out.</summary>
+  public static bool Step(
+    float secondsUsed,
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  ) =>
+    world.BlockAccessor.GetBlockEntity(blockSel.Position)
+      is IChiselableMolten { CanBreakOut: true }
+    && secondsUsed
+      < (
+        byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative
+          ? CreativeHoldSeconds
+          : HoldSeconds
+      );
 
   /// <summary>Ends the hold: after more than half a second, or at once in Creative mode, breaks the
   /// stretch out through <see cref="BreakOut"/>.</summary>
