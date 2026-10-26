@@ -1,0 +1,7 @@
+{
+  "ingredient": { "type": "item", "code": "setupcraft:plate" },
+  "name": "pin",
+  "code": "pin",
+  "pattern": [["#"]],
+  "output": { "type": "item", "code": "setupcraft:pin" }
+}

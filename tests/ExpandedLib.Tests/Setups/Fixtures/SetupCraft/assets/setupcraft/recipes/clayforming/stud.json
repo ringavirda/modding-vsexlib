@@ -1,0 +1,6 @@
+{
+  "ingredient": { "type": "item", "code": "setupcraft:plate" },
+  "name": "stud",
+  "pattern": [["#"]],
+  "output": { "type": "item", "code": "setupcraft:stud" }
+}

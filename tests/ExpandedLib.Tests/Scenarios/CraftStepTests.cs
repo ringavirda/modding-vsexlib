@@ -8,6 +8,7 @@ using ExpandedLib.Machines;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 using Xunit;
 
 namespace ExpandedLib.Tests.Scenarios;
@@ -541,6 +542,58 @@ public class CraftStepTests : IDisposable
     Assert.Contains(
       "\"setupcraft:rod-gold\" is not registered by the load",
       message
+    );
+  }
+
+  // Fails when with takes a key that is no input of the order.
+  [Fact]
+  public void Craft_with_a_key_that_is_no_input_of_the_order_fails()
+  {
+    string message = BenchRefused(
+      "{\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \""
+        + Frame
+        + "\", \"with\": {\"X\": \"setupcraft:rod-iron\"}}}"
+    );
+
+    Assert.Contains("with X is no input of setupcraft:frame", message);
+    Assert.Contains("its inputs are", message);
+  }
+
+  // Fails when the hand grid's craft leaves the key unchecked.
+  [Fact]
+  public void Craft_in_the_hand_grid_with_a_key_that_is_no_input_fails()
+  {
+    string message = Refused(
+      "setupcraft",
+      BenchPath,
+      "[{\"craft\": {\"output\": \""
+        + Frame
+        + "\", \"with\": {\"X\": \"setupcraft:rod-iron\"}}}]"
+    );
+
+    Assert.Contains("with X is no input of setupcraft:frame", message);
+  }
+
+  // Fails when LoadRecipes leaves the RecipeRegistrySystem unregistered or registers nothing in it.
+  [Fact]
+  public void The_game_api_answers_the_smithing_and_clay_forming_recipes_the_load_kept()
+  {
+    using SetupScene scene = AtBench(
+      "{\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \""
+        + Frame
+        + "\"}}"
+    );
+    TestWorld world = scene.World;
+
+    Assert.NotEmpty(world.SmithingRecipes);
+    Assert.Equal(world.SmithingRecipes, world.Api.GetSmithingRecipes());
+    Assert.Equal(
+      "setupcraft:pin",
+      Assert.Single(world.Api.GetSmithingRecipes()).Output.Code.ToString()
+    );
+    Assert.Equal(
+      "setupcraft:stud",
+      Assert.Single(world.Api.GetClayformingRecipes()).Output.Code.ToString()
     );
   }
 

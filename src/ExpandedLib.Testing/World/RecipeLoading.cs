@@ -51,14 +51,13 @@ public sealed partial class TestWorld
   /// <c>LoadAssets</c> or <c>LoadAsGame</c> mirrored, and the game's own grid recipes, through the
   /// game's own <c>RecipeLoader.LoadRecipe</c>, then runs exlib's recipe-cost pass at each
   /// registered profile's selected level.</summary>
-  /// <remarks>Grid recipes land in <c>World.GridRecipes</c> on the server and client worlds. A
-  /// second call empties the lists and the ingredient index first. The game's smithing and clay
-  /// forming recipes are not mirrored, so only the listed mods' load, those a mod's definitions
-  /// inject included. The game's grid recipes (<c>assets/survival/recipes/grid</c>) load beside the
-  /// mods'. A grid recipe with no output stack or exact-ingredient stack counts as failed,
-  /// never a throw; a mod's is also a warning in <see cref="Log"/>, a game recipe's only a count.
-  /// Every item and block not yet loaded gets its <c>OnLoadedNative</c> first, since a recipe's
-  /// <c>Matches</c> reads the collectible's api.</remarks>
+  /// <remarks>Grid recipes land in <c>World.GridRecipes</c>. The smithing and clay forming recipes
+  /// are registered through the <c>RecipeRegistrySystem</c> in <see cref="Mods"/> (added when absent),
+  /// so <c>Api.GetSmithingRecipes()</c> answers them. A second call empties the lists first. Only the
+  /// listed mods' smithing and clay forming recipes load; the game's grid recipes load beside the
+  /// mods'. A grid recipe with no output or exact-ingredient stack counts as failed, never a throw;
+  /// a mod's is also a warning in <see cref="Log"/>. Every item and block not yet loaded gets its
+  /// <c>OnLoadedNative</c> first.</remarks>
   /// <returns>The recipes kept and the recipes that failed to resolve, over the three
   /// kinds.</returns>
   /// <exception cref="InvalidOperationException">No <c>LoadAssets</c> or <c>LoadAsGame</c> ran on this
@@ -108,11 +107,37 @@ public sealed partial class TestWorld
       r => _clayFormingRecipes.Add((ClayFormingRecipe)r)
     );
     RecipeBase.CollectiblePreSearchResultsCache.Clear();
+    RegisterWithRegistry();
     ExRecipeProfiles.ApplyAll(Api);
     return (
       grid.Loaded + smithing.Loaded + clay.Loaded,
       grid.Failed + smithing.Failed + clay.Failed
     );
+  }
+
+  private List<SmithingRecipe> _registeredSmithing = [];
+  private List<ClayFormingRecipe> _registeredClayForming = [];
+
+  private void RegisterWithRegistry()
+  {
+    RecipeRegistrySystem registry =
+      Mods.GetModSystem<RecipeRegistrySystem>() ?? RegisterRecipeRegistry();
+    registry.SmithingRecipes.RemoveAll(_registeredSmithing.Contains);
+    registry.ClayFormingRecipes.RemoveAll(_registeredClayForming.Contains);
+    foreach (SmithingRecipe recipe in _smithingRecipes)
+      registry.RegisterSmithingRecipe(recipe);
+    foreach (ClayFormingRecipe recipe in _clayFormingRecipes)
+      registry.RegisterClayFormingRecipe(recipe);
+    _registeredSmithing = [.. _smithingRecipes];
+    _registeredClayForming = [.. _clayFormingRecipes];
+  }
+
+  private RecipeRegistrySystem RegisterRecipeRegistry()
+  {
+    var registry = new RecipeRegistrySystem();
+    registry.StartPre(Api);
+    Mods.Register(registry);
+    return registry;
   }
 
   private void MirrorGameGridRecipes(IAssetManager assets)
