@@ -64,7 +64,7 @@ public abstract class BlockEntityNetworkNode : BlockEntity, INetworkNode {
     IWorldAccessor worldForResolving
   ) {
     base.FromTreeAttributes(tree, worldForResolving);
-    NetworkType = tree.GetString("networkType", null);
+    NetworkType = tree.GetString("networkType", NetworkType);
     Orientation = tree.GetString("orientation");
     // A legacy save holds this key as JSON text; a null array read falls back to that encoding.
     PossibleOrientations =
