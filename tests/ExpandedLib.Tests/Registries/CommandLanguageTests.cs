@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Checks;
 using ExpandedLib.Config;
+using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Migrations;
 using ExpandedLib.Registries;
 using ExpandedLib.Testing;
@@ -119,6 +120,16 @@ public class CommandLanguageTests : IDisposable {
     TextCommandResult result = Handler(new HealSubCommand())(Called());
 
     Assert.Equal(Uk("exlib:command-heal-result"), result.StatusMessage);
+  }
+
+  // Fails when the no-player line is worded in the server's language.
+  [Fact]
+  public void Molten_answers_a_callerless_run_in_the_callers_language() {
+    TextCommandResult result = Handler(new MoltenSubCommand())(
+      Called("iron", "5")
+    );
+
+    Assert.Equal(Uk("exlib:command-molten-player"), result.StatusMessage);
   }
 
   // Fails when the unknown-domain line is worded in the server's language.

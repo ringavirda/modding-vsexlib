@@ -13,6 +13,7 @@ internal sealed partial class MpShaftStore {
   private readonly Dictionary<NodeKey, int> _index = [];
 
   private float[] _speed = new float[4];
+  private double[] _turn = new double[4];
   private float[] _previous = new float[4];
   private bool[] _rest = new bool[4];
   private float _stepDt;
@@ -51,12 +52,17 @@ internal sealed partial class MpShaftStore {
 
   public int GroupCount => _groups;
 
+  /// <summary>Number of times the node set, a node's group or a joint has changed; a reader that keeps what it derived from the layout compares it.</summary>
+  public int Topology => _topology;
+
   /// <summary>Adds a group at rest or at <paramref name="speed"/> and returns its index.</summary>
   /// <param name="speed">Reference speed in rad/s, signed.</param>
-  public int AddGroup(float speed = 0f) {
+  /// <param name="angle">Reference angle in rad, unwrapped; NaN leaves it unset, so the group takes the angle of the group it joins and starts at 0 when it joins none.</param>
+  public int AddGroup(float speed = 0f, double angle = double.NaN) {
     if (_groups == _speed.Length) {
       int size = _groups * 2;
       Array.Resize(ref _speed, size);
+      Array.Resize(ref _turn, size);
       Array.Resize(ref _previous, size);
       Array.Resize(ref _rest, size);
       Array.Resize(ref _inertiaSum, size);
@@ -66,6 +72,7 @@ internal sealed partial class MpShaftStore {
       Array.Resize(ref _resistSlope, size);
     }
     _speed[_groups] = speed;
+    _turn[_groups] = angle;
     _previous[_groups] = speed;
     return _groups++;
   }
@@ -230,6 +237,8 @@ internal sealed partial class MpShaftStore {
     }
     if (reflected > 0f)
       _speed[into] = momentum / reflected;
+    if (double.IsNaN(_turn[into]))
+      _turn[into] = _turn[from];
   }
 
   /// <summary>Moves every node of group <paramref name="from"/> into group <paramref name="into"/> at the ratios it had, mixing the two speeds by momentum.</summary>
@@ -265,6 +274,8 @@ internal sealed partial class MpShaftStore {
     var map = new Dictionary<int, int>();
     foreach (var (key, i) in other._index.OrderBy(e => e.Value)) {
       map[i] = CopyNode(other, key, i, 0);
+      if (double.IsNaN(_turn[0]))
+        _turn[0] = other._turn[other._group[i]];
       float n = other._ratio[i];
       float share = other._inertia[i] * n * n;
       reflected += share;
@@ -288,7 +299,7 @@ internal sealed partial class MpShaftStore {
         continue;
       int g = source._group[i];
       if (!grouped.TryGetValue(g, out int mine))
-        grouped[g] = mine = AddGroup(source._speed[g]);
+        grouped[g] = mine = AddGroup(source._speed[g], source._turn[g]);
       map[i] = CopyNode(source, key, i, mine);
     }
     CopyEdges(source, map);
@@ -303,7 +314,15 @@ internal sealed partial class MpShaftStore {
     foreach (var (key, i) in source._index.OrderBy(e => e.Value)) {
       if (!keys.Contains(key))
         continue;
-      int node = CopyNode(source, key, i, AddGroup(source.NodeSpeed(i)));
+      int node = CopyNode(
+        source,
+        key,
+        i,
+        AddGroup(
+          source.NodeSpeed(i),
+          source._ratio[i] * source._turn[source._group[i]]
+        )
+      );
       _ratio[node] = 1f;
     }
     _topology++;
@@ -334,14 +353,17 @@ internal sealed partial class MpShaftStore {
     for (int i = 0; i < _nodes; i++)
       map.TryAdd(_group[i], map.Count);
     var speed = new float[_speed.Length];
+    var angle = new double[_speed.Length];
     var previous = new float[_speed.Length];
     var rest = new bool[_speed.Length];
     foreach (var (old, renumbered) in map) {
       speed[renumbered] = _speed[old];
+      angle[renumbered] = _turn[old];
       previous[renumbered] = _previous[old];
       rest[renumbered] = _rest[old];
     }
     _speed = speed;
+    _turn = angle;
     _previous = previous;
     _rest = rest;
     _groups = map.Count;
@@ -414,6 +436,13 @@ internal sealed partial class MpShaftStore {
   /// <summary>Speed of the node in rad/s, signed: its ratio times its group's speed.</summary>
   public float NodeSpeed(int node) => _ratio[node] * _speed[_group[node]];
 
+  /// <summary>Reference angle of the group in rad, signed and unwrapped, 0 when none has been set.</summary>
+  public double Angle(int group) =>
+    double.IsNaN(_turn[group]) ? 0d : _turn[group];
+
+  /// <summary>Angle of the node in rad, signed and unwrapped: its ratio times its group's angle.</summary>
+  public double NodeAngle(int node) => _ratio[node] * Angle(_group[node]);
+
   /// <summary>Kinetic energy of the group in J: half its reflected inertia times the squared speed.</summary>
   public float StoredEnergy(int group) {
     float inertia = 0f;
@@ -426,7 +455,7 @@ internal sealed partial class MpShaftStore {
   /// <summary>
   /// Advances every group by <paramref name="dt"/> with the declared drives, loads and meshes. Loads, standing
   /// torque and mesh loss only oppose motion: a turning group stops at zero and a group at rest stays there while
-  /// the drive does not exceed them. A group with no inertia keeps its speed.
+  /// the drive does not exceed them. A group with no inertia keeps its speed; every group turns by its mean speed.
   /// </summary>
   /// <param name="dt">Step length in seconds, above zero.</param>
   /// <param name="maxSpeed">Speed limit of every group in rad/s, above zero.</param>
@@ -474,6 +503,11 @@ internal sealed partial class MpShaftStore {
       }
       _speed[g] = Math.Clamp(next, -maxSpeed, maxSpeed);
       _rest[g] = _speed[g] == 0f;
+    }
+    for (int g = 0; g < _groups; g++) {
+      if (double.IsNaN(_turn[g]))
+        _turn[g] = 0d;
+      _turn[g] += 0.5 * (_previous[g] + _speed[g]) * dt;
     }
   }
 }

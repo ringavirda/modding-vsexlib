@@ -9,6 +9,7 @@ using NSubstitute;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Server;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -24,6 +25,7 @@ public class ExmodCommandTests {
   private sealed class CommandSpy {
     public string? Description;
     public OnCommandDelegate? Handler;
+    public string? Privilege;
     public readonly Dictionary<string, CommandSpy> SubCommands = new();
   }
 
@@ -33,7 +35,7 @@ public class ExmodCommandTests {
     var cmd = Substitute.For<IChatCommand>();
     cmd.WithDescription(Arg.Do<string>(d => spy.Description = d)).Returns(cmd);
     cmd.WithArgs(Arg.Any<ICommandArgumentParser[]>()).Returns(cmd);
-    cmd.RequiresPrivilege(Arg.Any<string>()).Returns(cmd);
+    cmd.RequiresPrivilege(Arg.Do<string>(p => spy.Privilege = p)).Returns(cmd);
     cmd.HandleWith(Arg.Do<OnCommandDelegate>(h => spy.Handler = h))
       .Returns(cmd);
     cmd.BeginSubCommand(Arg.Any<string>())
@@ -152,6 +154,138 @@ public class ExmodCommandTests {
     Assert.False(exmod.SubCommands.ContainsKey("recipes"));
     Assert.False(exmod.SubCommands.ContainsKey("verify"));
     Assert.False(exmod.SubCommands.ContainsKey("heal"));
+  }
+
+  #endregion
+
+  #region Privileges through the registered tree
+
+  private static Dictionary<string, CommandSpy> RegisteredServerRoots() {
+    var world = new TestWorld();
+    var api = Substitute.For<ICoreServerAPI>();
+    var (chatApi, roots) = FakeChatCommandApi(api);
+    api.Side.Returns(EnumAppSide.Server);
+    api.ChatCommands.Returns(chatApi);
+    ((ICoreAPI)api).ChatCommands.Returns(chatApi);
+    api.Logger.Returns(world.Log);
+    ((ICoreAPI)api).Logger.Returns(world.Log);
+    var modLoader = world.Mods;
+    modLoader.Register(new BlockEntityHealModSystem());
+    api.ModLoader.Returns(modLoader);
+    ((ICoreAPI)api).ModLoader.Returns(modLoader);
+    Mod mod = FakeMod();
+    foreach (
+      Assembly asm in new[]
+      {
+        typeof(ExmodCommand).Assembly,
+        typeof(ExpandedLib.Industry.Helpers.MoltenSubCommand).Assembly,
+        typeof(ExpandedLib.Testing.Live.ScenarioSubCommand).Assembly,
+      }
+    )
+      CommandRegistry.RegisterAll(api, mod, asm);
+    return roots;
+  }
+
+  // The game checks the root's privilege, then the sub-command's; a path is open when the player holds every one set.
+  private static bool Admits(
+    CommandSpy root,
+    CommandSpy sub,
+    IServerPlayer player
+  ) =>
+    (root.Privilege == null || player.HasPrivilege(root.Privilege))
+    && (sub.Privilege == null || player.HasPrivilege(sub.Privilege));
+
+  private static IServerPlayer PlayerHolding(params string[] privileges) {
+    var player = Substitute.For<IServerPlayer>();
+    player.HasPrivilege(Arg.Any<string>()).Returns(false);
+    foreach (string privilege in privileges)
+      player.HasPrivilege(privilege).Returns(true);
+    return player;
+  }
+
+  // Fails when the server root requires controlserver again, or a sub-command drops its own privilege.
+  [Fact]
+  public void A_chat_player_is_admitted_to_molten_and_to_no_other_server_subcommand() {
+    var roots = RegisteredServerRoots();
+    CommandSpy exmod = roots["exmod"];
+    IServerPlayer player = PlayerHolding(Privilege.chat);
+
+    Assert.True(Admits(exmod, exmod.SubCommands["molten"], player));
+    foreach (
+      string name in new[] { "verify", "heal", "config", "recipes", "scenario" }
+    )
+      Assert.False(
+        Admits(exmod, exmod.SubCommands[name], player),
+        $"a chat-only player reached /exmod {name}"
+      );
+  }
+
+  // Fails when a sub-command asks for a privilege an op lacks, or the root shuts an op out.
+  [Fact]
+  public void An_op_is_admitted_to_every_server_subcommand() {
+    var roots = RegisteredServerRoots();
+    CommandSpy exmod = roots["exmod"];
+    IServerPlayer op = PlayerHolding(Privilege.chat, Privilege.controlserver);
+
+    foreach (var (name, sub) in exmod.SubCommands)
+      Assert.True(Admits(exmod, sub, op), $"an op was refused /exmod {name}");
+  }
+
+  // Fails when creative is no longer enough: the tree admits the player and Dispatch must go past its privilege gate to the target step.
+  [Fact]
+  public void A_creative_player_without_controlserver_passes_the_tree_and_is_served_by_molten() {
+    var roots = RegisteredServerRoots();
+    CommandSpy exmod = roots["exmod"];
+    var world = new TestWorld();
+    world.RegisterItem("game:ingot-iron", 1500f);
+    TestPlayer player = world.Player();
+    player.GameMode = EnumGameMode.Creative;
+    player.ServerPlayer!.HasPrivilege(Privilege.chat).Returns(true);
+    player.Entity.World = world.World;
+
+    Assert.True(
+      Admits(exmod, exmod.SubCommands["molten"], player.ServerPlayer)
+    );
+    Assert.False(
+      Admits(exmod, exmod.SubCommands["verify"], player.ServerPlayer)
+    );
+    TextCommandResult result =
+      ExpandedLib.Industry.Helpers.MoltenSubCommand.Dispatch(
+        player.ServerPlayer,
+        "iron",
+        10,
+        0f,
+        "en"
+      );
+    Assert.DoesNotContain("command-molten-denied", result.StatusMessage);
+    Assert.Contains("command-molten-target", result.StatusMessage);
+  }
+
+  // Fails when the creative gate in Dispatch is dropped: the tree admits the survival player, Dispatch must refuse.
+  [Fact]
+  public void A_survival_player_without_controlserver_passes_the_tree_and_is_refused_by_molten() {
+    var roots = RegisteredServerRoots();
+    CommandSpy exmod = roots["exmod"];
+    var world = new TestWorld();
+    world.RegisterItem("game:ingot-iron", 1500f);
+    TestPlayer player = world.Player();
+    player.GameMode = EnumGameMode.Survival;
+    player.ServerPlayer!.HasPrivilege(Privilege.chat).Returns(true);
+    player.Entity.World = world.World;
+
+    Assert.True(
+      Admits(exmod, exmod.SubCommands["molten"], player.ServerPlayer)
+    );
+    TextCommandResult result =
+      ExpandedLib.Industry.Helpers.MoltenSubCommand.Dispatch(
+        player.ServerPlayer,
+        "iron",
+        10,
+        0f,
+        "en"
+      );
+    Assert.Equal(EnumCommandStatus.Error, result.Status);
+    Assert.Contains("command-molten-denied", result.StatusMessage);
   }
 
   #endregion

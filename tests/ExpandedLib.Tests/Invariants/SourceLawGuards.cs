@@ -67,7 +67,7 @@ public class SourceLawGuards(ITestOutputHelper output) {
       + "; iiex BlockEntitySandCastingBed floors its transfers at it",
     ["ExlibConfig.cs: ExlibValues.MpGearMeshLoss"] =
       ConsumerValue
-      + "; iiex BlockEntityTransmission loses it per second of coupling",
+      + "; iiex BlockEntityTransmission pays it per geared station",
   };
 
   [Fact]

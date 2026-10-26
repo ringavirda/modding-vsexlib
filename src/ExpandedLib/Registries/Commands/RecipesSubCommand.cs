@@ -8,7 +8,7 @@ namespace ExpandedLib.Registries;
 
 /// <summary>
 /// Adds <c>/exmod recipes [&lt;mod&gt; [&lt;level&gt;]]</c> over the recipe-cost levels a mod registers
-/// through <see cref="ExRecipeProfiles"/>. Server-side; the <c>/exmod</c> root requires <c>controlserver</c>.
+/// through <see cref="ExRecipeProfiles"/>. Server-side; requires <c>controlserver</c>.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
 [EditorBrowsable(EditorBrowsableState.Never)]

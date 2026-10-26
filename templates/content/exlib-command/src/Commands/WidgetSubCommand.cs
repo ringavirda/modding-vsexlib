@@ -1,6 +1,7 @@
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Server;
 
 namespace WidgetNamespace.Commands;
 
@@ -13,6 +14,7 @@ public sealed class WidgetSubCommand : IExSubCommand {
   public void Register(ICoreAPI api, Mod mod, IChatCommand parent) {
     parent
       .BeginSubCommand("widget")
+      .RequiresPrivilege(Privilege.controlserver)
       .WithDescription(Lang.Get("widgetdomain:command-widget-desc"))
       .HandleWith(args =>
         TextCommandResult.Success(
