@@ -99,6 +99,7 @@ internal sealed class ScenarioWorld(
     int angle =
       (block as BlockFilledMegastructure)?.StructureAngle
       ?? structure?.LayoutAngle
+      ?? (block as IFillerHost)?.StructureAngle
       ?? 0;
     IReadOnlyList<FillerCell> footprint = block is IFillerHost host
       ? Footprint(host, local, angle)

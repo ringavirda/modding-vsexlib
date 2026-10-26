@@ -69,6 +69,24 @@ public class StructureStepTests {
     ) => [];
   }
 
+  private sealed class TurnedHost : Block, IFillerHost {
+    public JsonObject? FillerOffsets => Attributes?["fillerOffsets"];
+  }
+
+  private static TurnedHost EastHost() =>
+    TestBlocks.Configure(
+      new TurnedHost {
+        Attributes = new JsonObject(
+          JToken.Parse(
+            "{ \"fillerOffsets\": [ { \"x\": 0, \"y\": 0, \"z\": -1 } ] }"
+          )
+        ),
+      },
+      "exlib:turnedhost-east",
+      25,
+      ("orientation", "east")
+    );
+
   private sealed class Scene {
     public LiveFixture Fixture { get; } = new();
 
@@ -703,5 +721,44 @@ public class StructureStepTests {
       sub.Id,
       fixture.Context.Setup.BlockAt(new BlockPos(0, 0, 1)).Id
     );
+  }
+
+  // Fails when the place step footprints a host that is not a megablock at angle 0, so a turned
+  // machine reserves the cell north of it instead of the cell its variant turns the offset to.
+  [Fact]
+  public void A_turned_host_that_is_not_a_megablock_is_placed_over_its_turned_footprint() {
+    var scene = new Scene();
+    LiveFixture fixture = scene.Fixture;
+    TurnedHost host = EastHost();
+    fixture.Test.Register(host);
+
+    List<BlockPos> cells = PlaceStep.Put(
+      fixture.Context,
+      host,
+      "exlib:turnedhost-east",
+      new BlockPos(0, 0, 1)
+    );
+
+    Assert.Equal([new BlockPos(0, 0, 1), new BlockPos(1, 0, 1)], cells);
+  }
+
+  // Fails when the frame of a placed host that is not a megablock reads angle 0.
+  [Fact]
+  public void The_frame_of_a_turned_host_that_is_not_a_megablock_carries_its_angle() {
+    var scene = new Scene();
+    LiveFixture fixture = scene.Fixture;
+    TurnedHost host = EastHost();
+    fixture.Test.Register(host);
+    PlaceStep.Put(
+      fixture.Context,
+      host,
+      "exlib:turnedhost-east",
+      new BlockPos(0, 0, 1)
+    );
+
+    SetupFrame? frame = fixture.Context.Setup.FrameAt(new BlockPos(0, 0, 1));
+
+    Assert.Equal(270, frame!.Angle);
+    Assert.Equal(new BlockPos(1, 0, 1), Assert.Single(frame.Footprint).Pos);
   }
 }
