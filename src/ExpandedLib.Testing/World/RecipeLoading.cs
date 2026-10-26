@@ -53,7 +53,8 @@ public sealed partial class TestWorld
   /// registered profile's selected level.</summary>
   /// <remarks>Grid recipes land in <c>World.GridRecipes</c>. The smithing and clay forming recipes
   /// are registered through the <c>RecipeRegistrySystem</c> in <see cref="Mods"/> (added when absent),
-  /// so <c>Api.GetSmithingRecipes()</c> answers them. A second call empties the lists first. Only the
+  /// so <c>Api.GetSmithingRecipes()</c> answers them; the registry's own warnings (a recipe with no
+  /// code) are discarded. A second call empties the lists first. Only the
   /// listed mods' smithing and clay forming recipes load; the game's grid recipes load beside the
   /// mods'. A grid recipe with no output or exact-ingredient stack counts as failed, never a throw;
   /// a mod's is also a warning in <see cref="Log"/>. Every item and block not yet loaded gets its
@@ -124,10 +125,18 @@ public sealed partial class TestWorld
       Mods.GetModSystem<RecipeRegistrySystem>() ?? RegisterRecipeRegistry();
     registry.SmithingRecipes.RemoveAll(_registeredSmithing.Contains);
     registry.ClayFormingRecipes.RemoveAll(_registeredClayForming.Contains);
-    foreach (SmithingRecipe recipe in _smithingRecipes)
-      registry.RegisterSmithingRecipe(recipe);
-    foreach (ClayFormingRecipe recipe in _clayFormingRecipes)
-      registry.RegisterClayFormingRecipe(recipe);
+    SetRecipeLogger(QuietLogger);
+    try
+    {
+      foreach (SmithingRecipe recipe in _smithingRecipes)
+        registry.RegisterSmithingRecipe(recipe);
+      foreach (ClayFormingRecipe recipe in _clayFormingRecipes)
+        registry.RegisterClayFormingRecipe(recipe);
+    }
+    finally
+    {
+      SetRecipeLogger(Log);
+    }
     _registeredSmithing = [.. _smithingRecipes];
     _registeredClayForming = [.. _clayFormingRecipes];
   }

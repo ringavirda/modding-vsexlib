@@ -597,6 +597,22 @@ public class CraftStepTests : IDisposable
     );
   }
 
+  // Fails when the registry's warning about a smithing recipe with no code reaches the world's log.
+  [Fact]
+  public void Registering_a_smithing_recipe_with_no_code_logs_nothing()
+  {
+    using SetupScene scene = AtBench(
+      "{\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \""
+        + Frame
+        + "\"}}"
+    );
+
+    Assert.DoesNotContain(
+      scene.World.Log.Entries,
+      e => e.Message.Contains("unchanging code", StringComparison.Ordinal)
+    );
+  }
+
   // Fails when times is ignored.
   [Fact]
   public void Craft_times_multiplies_the_product()
