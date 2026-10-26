@@ -3,12 +3,13 @@ using ExpandedLib.Migrations;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Server;
 
 namespace ExpandedLib.Registries;
 
 /// <summary>
 /// Adds <c>/exmod heal</c>: sweeps every loaded chunk and recreates any orphaned block entity.
-/// Server-side; the <c>/exmod</c> root requires <c>controlserver</c>.
+/// Server-side; requires <c>controlserver</c>.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
 [EditorBrowsable(EditorBrowsableState.Never)]
@@ -20,6 +21,7 @@ public sealed class HealSubCommand : IExSubCommand {
 
     parent
       .BeginSubCommand("heal")
+      .RequiresPrivilege(Privilege.controlserver)
       .WithDescription(Lang.Get("exlib:command-heal-desc"))
       .HandleWith(args => Dispatch(healer, args.LanguageCode))
       .EndSubCommand();

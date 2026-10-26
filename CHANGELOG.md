@@ -7,10 +7,26 @@ see the git history.
 
 ## [Unreleased]
 
+### Added
+
+- **`/exmod molten <metal> <units> [temperature]`** (ExpandedLib.Industry): a creative or op player fills the vessel in hand
+  (an `IMoltenFillable`) or else the `ILiquidMetalSink` looked at with molten metal, at the melting point plus 100 C
+  unless a temperature is given, capped at what the target holds.
+  The `/exmod` server root now requires only `chat`; `config`, `recipes`, `verify`, `heal` and `scenario` each require
+  `controlserver` themselves, so a creative player who is not an op reaches `molten` and nothing else.
+
 ### Fixed
 
 - **A `[Persist]` member whose key is missing from a saved tree keeps its initializer** instead of loading as
   null or zero, so a block entity saved before a member was added still loads.
+- **A network node loaded from a tree without `networkType` keeps its declared network type** instead of
+  losing it to null and joining no graph.
+
+### Added
+
+- **`EmptyTreeSweep`** (ExpandedLib.Testing): loads every registered block entity type from an empty tree and
+  initialises it on the server and the client side, on a plain block or on a block of the mod's loaded assets
+  (`BlocksOf`), and reports what the world logs.
 
 ## [0.8.4] - 2026-10-05
 

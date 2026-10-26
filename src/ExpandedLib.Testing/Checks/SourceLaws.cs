@@ -61,6 +61,7 @@ public static class SourceLaws {
 
   private static readonly Regex MechanicalReference = new(
     @"\bBEBehaviorMP\w*|\bIMechanicalPowerDevice\b|\bMechanicalNetwork\b"
+      + @"|\bBEBehaviorMp\w*|\bIMpEnergy\w+|\bMpEnergyNetwork\w*|\bMpShaft\w*"
       + @"|\bExpandedLib\s*\.\s*Industry\s*\.\s*MechanicalPower\b"
       + @"|\bVintagestory\s*\.\s*GameContent\s*\.\s*Mechanics\b",
     RegexOptions.Compiled
@@ -294,13 +295,13 @@ public static class SourceLaws {
     return findings;
   }
 
-  /// <summary>Every type in <paramref name="sourceFiles"/> whose file names the mechanical-power
-  /// world (a <c>BEBehaviorMP*</c> type, <c>IMechanicalPowerDevice</c>, <c>MechanicalNetwork</c>,
-  /// or either mechanical-power namespace) and that sets an <c>AnimationSpeed</c> other than a
-  /// number literal, but never names <c>MPAnim.FrameFromAngle</c>, <c>LockFrameToAngle</c>,
-  /// <c>AdvanceFrame</c> or <c>BEBehaviorMPFillerPort.DrivenAngleRad</c>.</summary>
+  /// <summary>Every type in <paramref name="sourceFiles"/> whose file names the mechanical-power or
+  /// mpenergy or mpshaft world (<c>BEBehaviorMP*</c>, <c>BEBehaviorMp*</c>, <c>IMechanicalPowerDevice</c>,
+  /// <c>MechanicalNetwork</c>, <c>IMpEnergy*</c>, <c>MpEnergyNetwork*</c>, <c>MpShaft*</c> or either
+  /// namespace) and that sets a non-literal <c>AnimationSpeed</c> without naming a framing call.</summary>
   /// <remarks>A part turned by its own clock drifts out of phase with the axle beside it; its frame
-  /// comes from the network angle.</remarks>
+  /// comes from the network angle through <c>MPAnim.FrameFromAngle</c>, <c>LockFrameToAngle</c>,
+  /// <c>AdvanceFrame</c> or <c>BEBehaviorMPFillerPort.DrivenAngleRad</c>.</remarks>
   /// <param name="sourceFiles">C# files to read; each is read whole.</param>
   /// <returns>One line per type, <c>file:line: Type; reason</c>; <see cref="Key"/> keys it. Empty
   /// when clean.</returns>

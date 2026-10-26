@@ -128,8 +128,8 @@ public class ExlibConfig : IExVersionedConfig {
   [ExConfigRange(0.1, 1000)] // capacity scales with its square - must stay positive
   public float MpMaxSpeed { get; set; } = 2f;
 
-  /// <summary>Gear-mesh loss for a transmission coupling, as a fraction of the coupled energy lost per
-  /// second. 0 is a lossless mesh.</summary>
+  /// <summary>Gear-mesh loss of one geared station, as a fraction of the torque it carries. 0 is a
+  /// lossless mesh.</summary>
   [ExConfigRange(0, 1)]
   public float MpGearMeshLoss { get; set; } = 0.02f;
 

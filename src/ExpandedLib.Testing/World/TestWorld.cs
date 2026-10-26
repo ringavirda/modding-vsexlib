@@ -868,7 +868,7 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Creates a fresh block entity of the class the engine would instantiate on load: the
   /// placed block's entity class through a registered factory, else through the class registry with
   /// its behaviours, else one of <paramref name="old"/>'s type.</summary>
-  private BlockEntity NewBlockEntityLike(BlockEntity old, Block block) {
+  internal BlockEntity NewBlockEntityLike(BlockEntity old, Block block) {
     string? classname = block?.EntityClass ?? old.Block?.EntityClass;
     if (classname == null)
       return (BlockEntity)Activator.CreateInstance(old.GetType())!;
