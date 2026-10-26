@@ -309,7 +309,9 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
   /// <summary>Moves metal across one connection, capped at <paramref name="maxFlow"/> units: from the
   /// cell of smaller <see cref="IMoltenCell.Fall"/> when the falls differ, and from a downhill edge's
   /// upper cell of larger fall, handing over its whole charge, else toward the nearer end
-  /// in <paramref name="distToMold"/>, else by <paramref name="rules"/> or the defaults;
+  /// in <paramref name="distToMold"/>, else by <paramref name="rules"/> or the defaults: a level giver
+  /// nearer the flow source hands the farther cell all but <see cref="ExlibConfig.MoltenMinFlowAmount"/>
+  /// units, a farther giver levels by half the difference;
   /// <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>.</summary>
   private static void FlowEdge(
     (BlockPos Pos, IMoltenCell Cell) a,
@@ -363,8 +365,9 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     var giver = aIsGiver ? a : b;
     var receiver = aIsGiver ? b : a;
 
-    // A drain fitting and a downhill edge are one-way sinks and take the whole difference; a
-    // levelling pair moves half, and integer division floors the step to zero on its own.
+    // A drain fitting and a downhill edge are one-way sinks and take the whole difference. A level
+    // giver nearer the start hands onward all but the skin; one farther back levels by half, and
+    // integer division floors that step to zero on its own.
     bool drain = receiver.Cell.AcceptsSubMinimumFlow;
     bool whole = drain || downhillOnly;
     if (rules is MoltenFlowRules r) {
@@ -376,7 +379,16 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
         && DistanceOf(distFromStart, receiver.Pos)
           > DistanceOf(distFromStart, giver.Pos);
     }
-    var step = whole ? diff : diff / 2;
+    int step;
+    if (whole)
+      step = diff;
+    else if (
+      DistanceOf(distFromStart, receiver.Pos)
+      > DistanceOf(distFromStart, giver.Pos)
+    )
+      step = giver.Cell.CellAmount - ExlibValues.MoltenMinFlowAmount;
+    else
+      step = diff / 2;
     Transfer(giver, receiver, step > maxFlow ? maxFlow : step, world);
   }
 
