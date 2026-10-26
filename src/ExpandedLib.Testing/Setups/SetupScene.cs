@@ -338,6 +338,7 @@ public sealed partial class SetupScene : IDisposable
         .Select(v => v.Value as string)
         .OfType<string>()
         .Where(v => v.StartsWith("game:"))
+        .Concat(Model.Load)
         .Distinct(),
     ];
   }

@@ -613,6 +613,44 @@ public class CraftStepTests : IDisposable
     );
   }
 
+  private static SetupScene Loading(string load) =>
+    SetupScene.Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupcraft\"], "
+          + load
+          + "\"steps\": [], \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      ),
+      [BenchPath],
+      null,
+      Register
+    );
+
+  // Fails when VanillaCodes leaves the file's load list out of the vanilla files it mirrors.
+  [Fact]
+  public void The_load_list_brings_in_the_vanilla_items_it_names()
+  {
+    const string Knife = "game:knife-generic-iron";
+    using SetupScene bare = Loading("");
+    using SetupScene listed = Loading("\"load\": [\"" + Knife + "\"], ");
+
+    Assert.Null(bare.World.World.GetItem(new AssetLocation(Knife)));
+    Assert.NotNull(listed.World.World.GetItem(new AssetLocation(Knife)));
+  }
+
+  // Fails when the file model takes a load entry that is not a game: code.
+  [Fact]
+  public void The_load_list_refuses_a_code_outside_the_game()
+  {
+    string message = Assert
+      .Throws<InvalidOperationException>(() =>
+        Loading("\"load\": [\"setupcraft:rod-iron\"], ")
+      )
+      .Message;
+
+    Assert.Contains("\"setupcraft:rod-iron\" is not a game: code", message);
+  }
+
   // Fails when times is ignored.
   [Fact]
   public void Craft_times_multiplies_the_product()
