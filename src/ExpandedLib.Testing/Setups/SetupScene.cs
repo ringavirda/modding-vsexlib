@@ -6,6 +6,7 @@ using ExpandedLib.Blocks;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Config;
 using ExpandedLib.Helpers;
+using ExpandedLib.Industry.Metals;
 using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
@@ -298,6 +299,7 @@ public sealed partial class SetupScene : IDisposable
         )
       );
     World.LoadAssets(modPaths, null, VanillaCodes(), crafts);
+    MetalCatalogueLoader.Load(World.Api);
     if (crafts)
     {
       World.LoadRecipes();
