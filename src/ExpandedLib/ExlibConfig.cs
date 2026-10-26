@@ -93,6 +93,11 @@ public class ExlibConfig : IExVersionedConfig {
   /// <summary>Fire damage one molten-holder burn deals; one hit at most per second per entity.</summary>
   public float MoltenBurnDamage { get; set; } = 1f;
 
+  /// <summary>Most set cells of one metal a single crowbar use breaks out of a run, the struck cell
+  /// included.</summary>
+  [ExConfigRange(1, 64)]
+  public int MoltenBarCells { get; set; } = 8;
+
   /// <summary>Fraction of the melting point above which a metal stack counts as liquid (flows).</summary>
   public float MetalLiquidThreshold { get; set; } = 0.8f;
 
