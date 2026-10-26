@@ -9,8 +9,7 @@ namespace ExpandedLib.Registries;
 
 /// <summary>
 /// Adds <c>/exmod config [&lt;mod&gt; [&lt;value&gt; [&lt;new&gt;]]]</c>: the mod-agnostic switch for
-/// gameplay tunables exposed through <see cref="ExConfigProfiles"/>. Server-side; the <c>/exmod</c>
-/// root requires <c>controlserver</c>.
+/// gameplay tunables exposed through <see cref="ExConfigProfiles"/>. Server-side; requires <c>controlserver</c>.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
 [EditorBrowsable(EditorBrowsableState.Never)]
