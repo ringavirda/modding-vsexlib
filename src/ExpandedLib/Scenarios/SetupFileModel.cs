@@ -94,6 +94,7 @@ internal sealed class SetupFileModel {
     "follows",
     "mods",
     "load",
+    "recipes",
     "game",
     "layout",
     "steps",
@@ -147,6 +148,10 @@ internal sealed class SetupFileModel {
   /// <summary>The <c>game:</c> codes, wildcards allowed, the harness loads beside those the
   /// layout and steps name; empty by default.</summary>
   public IReadOnlyList<string> Load { get; private set; } = [];
+
+  /// <summary>Whether the harness loads the recipes as a <c>craft</c> step makes it; false by
+  /// default.</summary>
+  public bool Recipes { get; private set; }
 
   /// <summary>The first game series the file runs on, <c>1.22</c> by default.</summary>
   public string Game { get; private set; } = "1.22";
@@ -290,6 +295,9 @@ internal sealed class SetupFileModel {
       root["load"] == null
         ? []
         : SetupJson.Strings(root["load"], top.In("load"));
+    bool recipes =
+      root["recipes"] != null
+      && SetupJson.Bool(root["recipes"], top.In("recipes"));
     foreach (var (code, i) in load.Select((c, i) => (c, i)))
       if (!code.StartsWith("game:", StringComparison.Ordinal))
         throw top.In("load").At(i).Fail($"\"{code}\" is not a game: code.");
@@ -513,6 +521,7 @@ internal sealed class SetupFileModel {
       ),
       Mods = mods,
       Load = load,
+      Recipes = recipes,
       Game = game,
       Layout = layout,
       Drawn = drawn,

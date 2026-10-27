@@ -638,6 +638,22 @@ public class CraftStepTests : IDisposable
     Assert.NotNull(listed.World.World.GetItem(new AssetLocation(Knife)));
   }
 
+  // Fails when the file's recipes key is not read: a file with no craft step then leaves the registry unregistered.
+  [Fact]
+  public void The_recipes_key_loads_the_registry_with_no_craft_step()
+  {
+    using SetupScene bare = Loading("");
+    using SetupScene listed = Loading("\"recipes\": true, ");
+
+    Assert.Null(bare.World.Mods.GetModSystem<RecipeRegistrySystem>());
+    Assert.Equal(
+      "setupcraft:pin",
+      Assert
+        .Single(listed.World.Api.GetSmithingRecipes())
+        .Output.Code.ToString()
+    );
+  }
+
   // Fails when the file model takes a load entry that is not a game: code.
   [Fact]
   public void The_load_list_refuses_a_code_outside_the_game()
