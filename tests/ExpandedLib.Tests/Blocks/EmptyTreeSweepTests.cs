@@ -17,7 +17,15 @@ namespace ExpandedLib.Tests;
 
 /// <summary>Every block entity type the library registers loads from a tree with none of its keys and
 /// initialises on both sides, and a persisted member then holds its initializer.</summary>
-public class EmptyTreeSweepTests {
+public class EmptyTreeSweepTests : IDisposable {
+  private readonly ILogger? _logger = EntityRegistry.Logger;
+
+  // The fixtures live in this assembly, which declares no domain; a logger left wired by an earlier
+  // test's world would turn the registry's domain fallback warning into a failure here.
+  public EmptyTreeSweepTests() => EntityRegistry.Logger = null;
+
+  public void Dispose() => EntityRegistry.Logger = _logger;
+
   // The least a type needs to initialise, by type; a pipe joins its network on Initialize.
   private static readonly Dictionary<
     Type,
