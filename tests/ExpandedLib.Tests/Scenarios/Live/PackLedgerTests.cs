@@ -76,7 +76,29 @@ public class PackLedgerTests {
 
     fixture.Run(scenario.Model.Steps);
 
-    PackLedger.Finish(fixture.Context);
+    PackLedger.Finish(fixture.Context, false);
+  }
+
+  /// <summary>Fails when the end check is skipped for a case that is not a failing variant, so an
+  /// unmet <c>ends</c> stack passes, or when it is applied to a failing variant, so it fails its
+  /// own end.</summary>
+  [Fact]
+  public void A_failing_variant_skips_the_ends_check_and_any_other_case_keeps_it() {
+    LiveFixture fixture = Started(
+      "[" + Place() + "]",
+      """{ scope: "stacks", gathered: {}, ends: { stacks: { "game:stick": 3 } } }""",
+      out ScenarioCase scenario
+    );
+
+    fixture.Run(scenario.Model.Steps);
+
+    PackLedger.Finish(fixture.Context, true);
+    Assert.Equal(
+      "the stage ends with 0 of game:stick; it declares 3.",
+      Assert
+        .Throws<StepFailure>(() => PackLedger.Finish(fixture.Context, false))
+        .Message
+    );
   }
 
   /// <summary>Fails when an ingredient the pack holds in one variant is laid as the first loaded

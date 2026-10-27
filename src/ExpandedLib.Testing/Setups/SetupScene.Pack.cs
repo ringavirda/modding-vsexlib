@@ -206,7 +206,8 @@ public sealed partial class SetupScene
     try
     {
       _pack.CheckStanding(standing);
-      _pack.CheckEnds();
+      if (Model.Fails == null)
+        _pack.CheckEnds();
     }
     catch (InvalidOperationException e)
     {

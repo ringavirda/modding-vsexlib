@@ -505,6 +505,38 @@ public class SetupCasesTests : IDisposable
     Assert.False(Directory.Exists(Recordings));
   }
 
+  private static string WithEnds(string cases) =>
+    cases.Replace(
+      "\"steps\":",
+      "\"pack\": {\"scope\": \"stacks\", \"gathered\": {}, \"ends\": {\"stacks\": {\"game:stick\": 3}}}, \"steps\":"
+    );
+
+  // Fails when the end check is applied to a variant with fails, so it fails its own pack end, or
+  // skipped for the main case, so an unmet ends stack passes.
+  [Fact]
+  public void A_variant_with_fails_skips_the_pack_end_check_and_the_main_case_keeps_it()
+  {
+    Write(
+      "c.json",
+      WithEnds(
+        SetupCaseTests.Cases(
+          "\"low\": {" + Late + ", \"fails\": \"hold\"}",
+          Pair()
+        )
+      )
+    );
+
+    SetupCases.Run(Row("cases/low"), Options());
+    InvalidOperationException e = Assert.Throws<InvalidOperationException>(() =>
+      SetupCases.Run(Row("cases"), Options())
+    );
+
+    Assert.Contains(
+      "the stage ends with 0 of game:stick; it declares 3.",
+      e.Message
+    );
+  }
+
   // Fails when a failing check does not fail the row, or its message does not name the case.
   [Fact]
   public void A_failing_check_fails_the_row_naming_the_case_and_the_check()

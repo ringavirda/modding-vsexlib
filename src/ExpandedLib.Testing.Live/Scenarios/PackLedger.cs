@@ -171,9 +171,12 @@ internal static class PackLedger {
   }
 
   /// <summary>Checks the end of a case: the metal its molten cells hold is handed on, then the
-  /// standing blocks and the <c>ends</c> stacks are checked.</summary>
+  /// standing blocks and, unless the case is a variant that carries <c>fails</c>, the <c>ends</c>
+  /// stacks are checked.</summary>
+  /// <param name="ctx">The running case.</param>
+  /// <param name="failing">Whether the case is a variant with <c>fails</c>, which hands nothing on.</param>
   /// <exception cref="StepFailure">A declared stack, unit or block is short.</exception>
-  public static void Finish(ScenarioContext ctx) {
+  public static void Finish(ScenarioContext ctx, bool failing) {
     SetupPack? pack = ctx.Pack;
     if (pack == null)
       return;
@@ -188,7 +191,8 @@ internal static class PackLedger {
     ];
     try {
       pack.CheckStanding(standing);
-      pack.CheckEnds();
+      if (!failing)
+        pack.CheckEnds();
     } catch (InvalidOperationException e) {
       throw new StepFailure(e.Message, Suspect.Scenario, e);
     }
