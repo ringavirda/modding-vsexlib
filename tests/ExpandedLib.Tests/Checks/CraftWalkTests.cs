@@ -148,6 +148,75 @@ internal sealed class WalkFixtureBenchBlock : Block
   ) => Bench(world, blockSel)?.Work(world, byPlayer, secondsUsed) ?? false;
 }
 
+// Crafts the 4 x 1 recipes through the game's matcher over four input slots and one output, so a
+// foreign stack left in an input slot refuses the press.
+internal sealed class WalkFixtureTrayBench
+  : BlockEntityMachineStation,
+    ICraftStation
+{
+  public const int Width = 4;
+
+  protected override MachineSlotSpec[] SlotSpecs =>
+    [
+      MachineSlotSpec.AnyInput(),
+      MachineSlotSpec.AnyInput(),
+      MachineSlotSpec.AnyInput(),
+      MachineSlotSpec.AnyInput(),
+      MachineSlotSpec.Output(),
+    ];
+
+  public override string InventoryClassName => "walk-fixture-tray-bench";
+
+  public override void Initialize(ICoreAPI api)
+  {
+    base.Initialize(api);
+    this.DisablePickRangeCheck();
+  }
+
+  public IReadOnlyList<CraftOrder> Orders(IWorldAccessor world) =>
+    [
+      .. world
+        .GridRecipes.Where(r => r.Width == Width)
+        .Select(r => new CraftOrder(
+          r.Name.ToString(),
+          [
+            .. r.ResolvedIngredients!.Select(
+                (ingredient, i) =>
+                  ingredient == null
+                    ? null
+                    : new CraftInput(i, ingredient.Id, ingredient)
+              )
+              .OfType<CraftInput>(),
+          ],
+          WalkFixtureBench.Press,
+          Encoding.UTF8.GetBytes(r.Name.ToString()),
+          [Width],
+          r.Output!.ResolvedItemStack.Clone(),
+          r
+        )),
+    ];
+
+  protected override bool OnStationPacket(
+    IPlayer player,
+    int packetid,
+    byte[] data
+  )
+  {
+    if (packetid != WalkFixtureBench.Press)
+      return false;
+    ItemSlot[] grid = [Inventory[0], Inventory[1], Inventory[2], Inventory[3]];
+    string name = Encoding.UTF8.GetString(data);
+    GridRecipe recipe = Api.World.GridRecipes.First(r =>
+      r.Name.ToString() == name
+    );
+    if (!recipe.Matches(player, Api.World, grid, Width))
+      return true;
+    recipe.GenerateOutputStack(grid, Inventory[Width]);
+    recipe.ConsumeInput(player, grid, Width);
+    return true;
+  }
+}
+
 // A WalkFixtureBench that reads its construction through the behaviour on every press and keeps no
 // _rcc or _animator field.
 internal sealed class WalkFixtureUncachedBench
@@ -247,6 +316,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     world
       .RegisterClass("WalkFixtureBench", typeof(WalkFixtureBench))
       .RegisterClass("WalkFixtureBenchBlock", typeof(WalkFixtureBenchBlock))
+      .RegisterClass("WalkFixtureTrayBench", typeof(WalkFixtureTrayBench))
       .RegisterClass(
         "WalkFixtureUncachedBench",
         typeof(WalkFixtureUncachedBench)
@@ -942,6 +1012,112 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     string finding = Assert.Single(result.Findings);
     Assert.StartsWith("walk:b | does not match: ", finding);
     Assert.Contains("2 recipes fired (1 executed, 1 followed)", result.Summary);
+  }
+
+  private TestWorld Oiled()
+  {
+    _files.Write(
+      "assets/walk/recipes/grid/oiled.json",
+      CraftBillsLiquidTests.Recipe(0.5f)
+    );
+    return Planted(
+      ["part", "made"],
+      [Recipe(Stick, "part")],
+      Stick,
+      "game:woodbucket",
+      "game:oilportion-olive"
+    );
+  }
+
+  private const string BucketKit =
+    "\"game:woodbucket\": { \"route\": \"seven planks\" }";
+
+  private const string OilKit =
+    "\"game:oilportion-olive\": { \"route\": \"pressed olives\" }";
+
+  // Fails when the liquid edge is dropped from the recipe's needs, so the oil need goes unasked.
+  [Fact]
+  public void A_recipe_paying_oil_from_a_vessel_waits_on_the_oil()
+  {
+    using TestWorld world = Oiled();
+
+    CraftWalk.Result result = Walk(world, kit: "{" + BucketKit + "}");
+
+    string finding = Assert.Single(result.Findings);
+    Assert.StartsWith(
+      "game:oilportion-olive | asked for by walk:oiled",
+      finding
+    );
+  }
+
+  // Fails when the walk lays the vessel empty, so the matcher refuses the bill.
+  [Fact]
+  public void A_recipe_paying_oil_from_a_vessel_is_crafted_with_the_vessel_filled()
+  {
+    using TestWorld world = Oiled();
+
+    CraftWalk.Result result = Walk(
+      world,
+      kit: "{" + BucketKit + "," + OilKit + "}"
+    );
+
+    Assert.Empty(result.Findings);
+    Assert.Contains(
+      new CraftWalk.CraftedEdge(
+        "walk:made",
+        "walk:oiled",
+        CraftWalk.HandGridName
+      ),
+      result.Crafted
+    );
+  }
+
+  // Fails when SetupScene.Craft leaves the vessel a liquid bill keeps in its grid slot, so the second recipe
+  // meets the first one's vessel in a slot its pattern leaves empty and the station refuses it.
+  [Fact]
+  public void A_vessel_a_liquid_bill_keeps_is_taken_out_of_the_stations_grid()
+  {
+    _files.Write(
+      "assets/walk/blocktypes/tray.json",
+      """{ "code": "tray", "entityClass": "WalkFixtureTrayBench" }"""
+    );
+    string oiled = CraftBillsLiquidTests
+      .Recipe(0.5f)
+      .Replace("\"width\": 2", "\"width\": 4");
+    _files.Write(
+      "assets/walk/recipes/grid/oiled.json",
+      "["
+        + oiled.Replace("\"PF\"", "\"PF__\"")
+        + ","
+        + oiled
+          .Replace("\"PF\"", "\"P_F_\"")
+          .Replace("walk:oiled", "walk:oiled-apart")
+          .Replace("walk:made", "walk:made-apart")
+        + "]"
+    );
+    _files.Write("assets/walk/itemtypes/made.json", Plain("made"));
+    _files.Write("assets/walk/itemtypes/made-apart.json", Plain("made-apart"));
+    using TestWorld world = Planted(
+      ["part"],
+      [Recipe(Stick, "part")],
+      Stick,
+      "game:woodbucket",
+      "game:oilportion-olive"
+    );
+
+    CraftWalk.Result result = Walk(
+      world,
+      kit: "{" + BucketKit + "," + OilKit + "}"
+    );
+
+    Assert.Empty(result.Findings);
+    Assert.Equal(
+      ["walk:made", "walk:made-apart"],
+      result
+        .Crafted.Where(c => c.Station != CraftWalk.HandGridName)
+        .Select(c => c.Output)
+        .Order()
+    );
   }
 
   // Fails when the walk lays the first loaded variant of a wildcard, not the first reached one.

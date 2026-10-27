@@ -96,20 +96,33 @@ internal static class CraftWalkEdges
           recipe,
           sequence
         );
-        edges.Add(
-          diagram == null
-            ? edge
-            : edge with
-            {
-              Needs =
-              [
-                .. edge.Needs,
-                RecipeDiagram.Ingredient(recipe, world.World) is { } ingredient
-                  ? Need(ingredient, all, cache)
-                  : new WalkNeed(diagram, []),
-              ],
-            }
-        );
+        if (diagram != null)
+          edge = edge with
+          {
+            Needs =
+            [
+              .. edge.Needs,
+              RecipeDiagram.Ingredient(recipe, world.World) is { } ingredient
+                ? Need(ingredient, all, cache)
+                : new WalkNeed(diagram, []),
+            ],
+          };
+        if (CraftBills.Liquid(recipe) is { } liquid)
+          edge = edge with
+          {
+            Needs =
+            [
+              .. edge.Needs,
+              new WalkNeed(
+                liquid.Content.ToString(),
+                [
+                  .. all.Where(c => c.Code.Equals(liquid.Content))
+                    .Select(c => c.Code.ToString()),
+                ]
+              ),
+            ],
+          };
+        edges.Add(edge);
       }
     foreach (SmithingRecipe recipe in world.SmithingRecipes)
       if (OutputOf(recipe.Output) is { } output && output.Domain == domain)

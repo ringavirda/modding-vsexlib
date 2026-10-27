@@ -149,7 +149,7 @@ public sealed partial class SetupScene
     ];
     _handGrid = grid;
     foreach (CraftInput input in order.Inputs)
-      grid[input.Slot].Itemstack = Laid(input, with, where);
+      grid[input.Slot].Itemstack = Laid(order, input, with, where);
     if (!recipe.Matches(Player.Player, World.World, grid, HandGrid.Size))
       throw Fail(
         where,
@@ -187,7 +187,7 @@ public sealed partial class SetupScene
     Verb(window.Open);
     foreach (CraftInput input in order.Inputs)
     {
-      ItemStack laid = Laid(input, with, where);
+      ItemStack laid = Laid(order, input, with, where);
       Player.Hold(laid);
       int left = 0;
       Verb(() => left = window.Put(input.Slot));
@@ -208,6 +208,17 @@ public sealed partial class SetupScene
     {
       Verb(() => window.Take(input.Slot));
       Player.Hold(null);
+    }
+    foreach (CraftInput input in order.Inputs.Where(i => !i.Ingredient.IsTool))
+    {
+      if (
+        window.Entity is IBlockEntityContainer { Inventory: { } grid }
+        && CraftBills.Vessel(order, grid[input.Slot].Itemstack)
+      )
+      {
+        Verb(() => window.Take(input.Slot));
+        Player.Hold(null);
+      }
     }
     foreach (int slot in order.OutputSlots)
     {
@@ -296,17 +307,26 @@ public sealed partial class SetupScene
     return tool;
   }
 
-  private ItemStack Laid(CraftInput input, JObject? with, string where)
+  private ItemStack Laid(
+    CraftOrder order,
+    CraftInput input,
+    JObject? with,
+    string where
+  )
   {
-    if (
-      _pack != null
-      && with?[input.Name] == null
-      && _pack.Laid(World.World, input) is { } held
-    )
-      return held;
     try
     {
-      return CraftBills.Laid(World.World, input, with);
+      if (
+        _pack != null
+        && with?[input.Name] == null
+        && _pack.Laid(World.World, input) is { } held
+      )
+        return CraftBills.Filled(World.World, order, held);
+      return CraftBills.Filled(
+        World.World,
+        order,
+        CraftBills.Laid(World.World, input, with)
+      );
     }
     catch (InvalidOperationException e)
     {

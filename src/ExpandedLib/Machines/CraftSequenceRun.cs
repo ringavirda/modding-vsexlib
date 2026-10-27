@@ -251,9 +251,7 @@ public sealed class CraftSequenceRun(
     order.Inputs.All(input =>
     {
       ItemStack? stack = slots[input.Slot].Itemstack;
-      return stack != null
-        && stack.StackSize >= input.Ingredient.Quantity
-        && input.Ingredient.SatisfiesAsIngredient(stack);
+      return stack != null && CraftBills.Pays(order, input, stack);
     });
 
   private static bool HandsMatch(
@@ -279,9 +277,7 @@ public sealed class CraftSequenceRun(
     {
       if (input.Ingredient.IsTool)
         continue;
-      ItemSlot slot = slots[input.Slot];
-      slot.TakeOut(input.Ingredient.Quantity);
-      slot.MarkDirty();
+      CraftBills.Take(order, input, slots[input.Slot]);
     }
   }
 
