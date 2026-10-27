@@ -11,8 +11,8 @@ namespace ExpandedLib.Helpers;
 /// </summary>
 /// <remarks>An item drives it from its held tick with <see cref="Drive"/>; the cells are recomputed only
 /// when the selected block or the held item changes, and the tint is cleared on deselect, on a switch to
-/// another item and on leaving the world. Create one per item class on the client (in <c>OnLoaded</c> when <c>api</c> is a
-/// <c>ICoreClientAPI</c>); it registers a 100 ms game tick and a leave-world handler that live as long
+/// another item and on leaving the world. Create one per item on the client (<c>OnLoaded</c> runs once per item code,
+/// when <c>api</c> is a <c>ICoreClientAPI</c>), each with a slot key unique to the item, e.g. <c>"yourmod:preview-" + Code</c>; it registers a 100 ms game tick and a leave-world handler that live as long
 /// as the client.</remarks>
 public sealed class ExCoursePreview {
   /// <summary>The default tint of the cells the click would change: green, translucent (ARGB).</summary>
@@ -43,7 +43,7 @@ public sealed class ExCoursePreview {
   /// <summary>Creates the preview and reserves its highlight slot.</summary>
   /// <param name="capi">The client API; its tick and leave-world events carry the clears.</param>
   /// <param name="slotKey">The <see cref="ExHighlightSlots.Reserve"/> key of this preview's slot,
-  /// distinct per feature, e.g. <c>"yourmod:hoop-preview"</c>.</param>
+  /// unique to the item, e.g. <c>"yourmod:preview-" + Code</c>; two previews on one key clear each other's tint.</param>
   /// <param name="changeColor">ARGB tint of the cells the click would change;
   /// <see cref="DefaultChangeColor"/> when null.</param>
   /// <param name="refuseColor">ARGB tint of the cells that refuse the click;
@@ -64,7 +64,8 @@ public sealed class ExCoursePreview {
 
   /// <summary>Shows the preview of <paramref name="held"/> aimed at <paramref name="selection"/>.
   /// Call it every held tick: it does nothing while the selected block and the held item are the ones
-  /// of the last call, and clears the tint when nothing is selected.</summary>
+  /// of the last call, and clears the tint when nothing is selected. An item whose click changes the world
+  /// calls <see cref="Clear"/> after that click, so the next call recomputes against the changed blocks.</summary>
   /// <param name="player">The local player aiming.</param>
   /// <param name="held">The item driving the preview.</param>
   /// <param name="selection">The block looked at; null when none.</param>

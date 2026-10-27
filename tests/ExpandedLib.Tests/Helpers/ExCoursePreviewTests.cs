@@ -23,8 +23,18 @@ public class ExCoursePreviewTests {
     public readonly Item Held;
     public readonly Item Other;
     public int Computes;
+    public Action<float>? Tick;
 
     public Rig(string key) {
+      World
+        .ClientApi.Event.RegisterGameTickListener(
+          Arg.Any<Action<float>>(),
+          Arg.Any<int>()
+        )
+        .Returns(call => {
+          Tick = call.Arg<Action<float>>();
+          return 1L;
+        });
       Player = World.Player();
       Held = World.RegisterItem("hoop-test");
       Other = World.RegisterItem("stick-test");
@@ -35,10 +45,12 @@ public class ExCoursePreviewTests {
     public BlockSelection Aim(int x) =>
       new() { Position = new BlockPos(x, 5, 5) };
 
-    public void Drive(BlockSelection? sel) =>
+    public void Drive(BlockSelection? sel) => Drive(Held, sel);
+
+    public void Drive(CollectibleObject held, BlockSelection? sel) =>
       Preview.Drive(
         Player.Player,
-        Held,
+        held,
         sel,
         s => {
           Computes++;
@@ -89,20 +101,32 @@ public class ExCoursePreviewTests {
     Assert.Equal([Change, Refuse], colors);
   }
 
-  // Fails when the clear on a switch of item is dropped.
+  // Fails when the game tick listener is not registered, so a switch of item never clears the tint.
   [Fact]
   public void Switching_item_clears_the_tint() {
     var rig = new Rig("test:preview-" + Guid.NewGuid());
     rig.Drive(rig.Aim(1));
 
-    rig.Preview.Watch();
+    rig.Tick!(0.1f);
     Assert.Single(rig.Pushes());
 
     rig.Player.Hold(new ItemStack(rig.Other));
-    rig.Preview.Watch();
+    rig.Tick!(0.1f);
 
     var (positions, _) = rig.Pushes().Last();
     Assert.Empty(positions);
+    Assert.Equal(2, rig.Pushes().Count);
+  }
+
+  // Fails when the held item is not compared, so a second item aimed at the same block reuses the first item's tint.
+  [Fact]
+  public void A_second_item_on_the_same_aim_recomputes() {
+    var rig = new Rig("test:preview-" + Guid.NewGuid());
+
+    rig.Drive(rig.Held, rig.Aim(1));
+    rig.Drive(rig.Other, rig.Aim(1));
+
+    Assert.Equal(2, rig.Computes);
     Assert.Equal(2, rig.Pushes().Count);
   }
 
