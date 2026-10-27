@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using ExpandedLib.Scenarios;
@@ -143,16 +144,45 @@ internal sealed class CompleteStep : ScenarioStep {
   private static AssetLocation WantedCode(AssetLocation wanted) =>
     new(wanted.Domain, ExWildcards.FirstAlternative(wanted.Path));
 
-  private static Block Choose(ScenarioContext ctx, AssetLocation wanted) {
+  private static Block Choose(ScenarioContext ctx, AssetLocation wanted) =>
+    Pick(wanted, ctx.World.SearchBlocks, ctx.World.GetBlock, ctx.World.Blocks)
+    ?? throw new StepFailure(
+      $"no registered block matches \"{wanted}\".",
+      Suspect.Scenario
+    );
+
+  /// <summary>The block that fills a wanted cell: the one the first alternative of each group names, or,
+  /// when none is registered, the first registered block the whole pattern matches.</summary>
+  /// <param name="wanted">The layout's wanted code, a wildcard or alternation allowed.</param>
+  /// <param name="search">The registered blocks a wildcard code matches.</param>
+  /// <param name="get">The registered block of a concrete code, or null.</param>
+  /// <param name="all">Every registered block; a wanted path that starts with <c>@</c> is matched as a regex
+  /// over the whole block path.</param>
+  /// <returns>A block with a non-zero id, or null when no registered block matches.</returns>
+  internal static Block? Pick(
+    AssetLocation wanted,
+    System.Func<AssetLocation, IEnumerable<Block>> search,
+    System.Func<AssetLocation, Block?> get,
+    IEnumerable<Block> all
+  ) {
     AssetLocation code = WantedCode(wanted);
     Block? block = code.Path.Contains('*')
-      ? ctx.World.SearchBlocks(code).FirstOrDefault(b => b.Id != 0)
-      : ctx.World.GetBlock(code);
-    return block is { Id: not 0 }
-      ? block
-      : throw new StepFailure(
-        $"no registered block matches \"{wanted}\".",
-        Suspect.Scenario
-      );
+      ? search(code).FirstOrDefault(b => b.Id != 0)
+      : get(code);
+    return block is { Id: not 0 } ? block : MatchingRegex(wanted, all);
+  }
+
+  private static Block? MatchingRegex(
+    AssetLocation wanted,
+    IEnumerable<Block> all
+  ) {
+    if (!wanted.Path.StartsWith('@'))
+      return null;
+    var path = new Regex("^(?:" + wanted.Path[1..] + ")$");
+    return all.FirstOrDefault(b =>
+      b.Id != 0
+      && (wanted.Domain == "*" || wanted.Domain == b.Code.Domain)
+      && path.IsMatch(b.Code.Path)
+    );
   }
 }

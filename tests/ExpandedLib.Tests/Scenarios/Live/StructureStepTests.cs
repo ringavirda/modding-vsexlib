@@ -761,4 +761,27 @@ public class StructureStepTests {
     Assert.Equal(270, frame!.Angle);
     Assert.Equal(new BlockPos(1, 0, 1), Assert.Single(frame.Footprint).Pos);
   }
+
+  // Fails when a cell whose first alternative is no registered block gets no block at all.
+  [Fact]
+  public void A_wanted_cell_falls_back_to_any_registered_alternative_when_the_first_is_missing() {
+    Block brick = TestBlocks.Configure(new Block(), "pickdom:brick-fire", 7);
+    var wanted = new AssetLocation("pickdom:@(brick-missing|brick-f.*)");
+    Block? Get(AssetLocation c) => c.Path == "brick-fire" ? brick : null;
+    Block[] all =
+    [
+      TestBlocks.Configure(new Block(), "pickdom:brick-other", 6),
+      brick,
+    ];
+
+    Assert.Same(brick, CompleteStep.Pick(wanted, _ => [], Get, all));
+    Assert.Null(
+      CompleteStep.Pick(
+        new AssetLocation("pickdom:@(other-a|other-b)"),
+        _ => [],
+        _ => null,
+        all
+      )
+    );
+  }
 }

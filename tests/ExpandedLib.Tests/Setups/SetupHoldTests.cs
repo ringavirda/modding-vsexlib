@@ -554,6 +554,51 @@ public class SetupHoldTests
     );
   }
 
+  // Fails when a code with no slot reads one slot only, or a count that is not the total over the hotbar.
+  [Fact]
+  public void An_expect_of_a_code_with_no_slot_finds_it_in_any_hotbar_slot_and_counts_the_total()
+  {
+    const string Keep =
+      ", {\"interact\": {\"at\": {\"of\": \"dial\"}, \"with\": "
+      + Slab
+      + ", \"keep\": true}}";
+    string held =
+      "["
+      + Dial
+      + Keep
+      + ", {\"select\": {\"slot\": 5}}"
+      + Keep
+      + ", {\"expect\": {\"code\": \"setuphold:slab\"}}"
+      + ", {\"expect\": {\"code\": \"setuphold:slab\", \"count\": 6}}";
+
+    using SetupScene scene = Build(held + "]");
+    Assert.Equal(3, scene.Player.StackInSlot(0)!.StackSize);
+    Assert.Equal(3, scene.Player.StackInSlot(5)!.StackSize);
+
+    Assert.Contains(
+      "the hotbar holds 6 of setuphold:slab in all, expected 3.",
+      Refused(
+        held + ", {\"expect\": {\"code\": \"setuphold:slab\", \"count\": 3}}]"
+      )
+    );
+    Assert.Contains(
+      "the hotbar holds no setuphold:other; it holds setuphold:slab x 3, setuphold:slab x 3.",
+      Refused(held + ", {\"expect\": {\"code\": \"setuphold:other\"}}]")
+    );
+  }
+
+  // Fails when a code with no slot lets through an attribute, which only a slot reading tests.
+  [Fact]
+  public void An_expect_of_a_code_with_no_slot_refuses_an_attribute()
+  {
+    Assert.Contains(
+      "unknown key \"attribute\"",
+      Refused(
+        "[{\"expect\": {\"code\": \"setuphold:slab\", \"attribute\": {\"key\": \"a\", \"equals\": 1}}}]"
+      )
+    );
+  }
+
   // Fails when a later interact with no stack clears the kept one.
   [Fact]
   public void An_interact_with_no_stack_after_a_kept_one_keeps_the_hand()

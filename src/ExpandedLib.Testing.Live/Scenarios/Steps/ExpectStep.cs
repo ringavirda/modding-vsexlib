@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Scenarios;
@@ -93,6 +94,16 @@ internal sealed class ExpectStep : ScenarioStep {
         "\"expect\" of a slot needs the scenario player.",
         Suspect.Scenario
       );
+    if (SetupSlotExpect.IsHotbar(o)) {
+      IInventory hotbar = player.Player.InventoryManager.GetHotbarInventory();
+      var stacks = Enumerable
+        .Range(0, Math.Min(SetupSlotExpect.Slots, hotbar.Count))
+        .Select(i => SlotStack(hotbar, i))
+        .ToList();
+      if (SetupSlotExpect.HotbarMismatch(o, stacks) is { } wide)
+        throw new StepFailure($"the hotbar {wide}.");
+      return $"hotbar: {(string)o["code"]!} x {SetupSlotExpect.HotbarHeld(o, stacks)}";
+    }
     int slot = SetupSlotExpect.SlotOf(o);
     ItemStack? stack = SlotStack(
       player.Player.InventoryManager.GetHotbarInventory(),
