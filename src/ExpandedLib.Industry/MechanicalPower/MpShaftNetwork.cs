@@ -340,8 +340,8 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     bool failure = FailureOverride ?? ExlibValues.MpShaftFailure;
     float tau = ExlibValues.MpStrainTauHours;
     List<Action>? failed = null;
-    foreach (var cell in Store.Nodes.GroupBy(n => n.Key.Pos)) {
-      var be = EntityOf(world, cell.Key);
+    foreach (var cell in Store.Nodes.GroupBy(n => EntityOf(world, n.Key.Pos))) {
+      var be = cell.Key;
       float load = cell.Max(n => Store.NodeLoad(n.Value));
       float torque = cell.Max(n => Store.NodeTorque(n.Value));
       float speed = cell.Max(n => MathF.Abs(Store.NodeSpeed(n.Value)));

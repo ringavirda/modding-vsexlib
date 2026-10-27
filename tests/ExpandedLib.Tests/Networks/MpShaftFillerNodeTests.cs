@@ -29,7 +29,11 @@ public class MpShaftFillerNodeTests {
   private static readonly BlockPos Principal = new(0, 0, 0);
   private static readonly BlockPos Hub = new(0, 1, 0);
 
-  private static (TestWorld World, MpShaftNetwork Net, Wheel Wheel) Hosted() {
+  private static readonly BlockPos SecondHub = new(0, 1, 1);
+
+  private static (TestWorld World, MpShaftNetwork Net, Wheel Wheel) Hosted(
+    bool twoHubs = false
+  ) {
     var w = new TestWorld();
     var wheel = new Wheel();
     w.Place(
@@ -47,6 +51,15 @@ public class MpShaftFillerNodeTests {
     var net = new MpShaftNetwork(w.Networks);
     net.Nodes.Add(Hub);
     net.NodeKeys.Add(NodeKey.Centre(Hub));
+    if (twoHubs) {
+      w.Place(
+        SecondHub,
+        TestBlocks.Configure(new Block(), "test:mpfillerhub2", 303),
+        new BlockEntityStructureFiller { Principal = Principal }
+      );
+      net.Nodes.Add(SecondHub);
+      net.NodeKeys.Add(NodeKey.Centre(SecondHub));
+    }
     return (w, net, wheel);
   }
 
@@ -84,6 +97,29 @@ public class MpShaftFillerNodeTests {
 
       Assert.Equal(1f, wheel.RimStrain);
       Assert.True(wheel.Bursts > 0);
+    }
+  }
+
+  // Fails when the rim of a principal is accrued and burst once per node it hosts instead of once.
+  [Fact]
+  public void A_principal_hosting_two_nodes_strains_and_bursts_its_rim_once() {
+    var (w1, one, wheel1) = Hosted();
+    var (w2, two, wheel2) = Hosted(twoHubs: true);
+    using (w1)
+    using (w2) {
+      foreach (var (w, net, wheel) in new[] { (w1, one, wheel1), (w2, two, wheel2) }) {
+        foreach (var key in net.NodeKeys)
+          net.Store.AddNode(key, net.Store.AddGroup(15f), wheel.Inertia, 0f);
+        net.OnTick(w.Accessor, 0.2f, w.Networks);
+        w.AdvanceHours(1);
+        net.OnTick(w.Accessor, 0.2f, w.Networks);
+        w.AdvanceHours(1);
+        net.OnTick(w.Accessor, 0.2f, w.Networks);
+      }
+
+      Assert.True(wheel1.Bursts > 0);
+      Assert.Equal(wheel1.RimStrain, wheel2.RimStrain, 4);
+      Assert.Equal(wheel1.Bursts, wheel2.Bursts);
     }
   }
 
