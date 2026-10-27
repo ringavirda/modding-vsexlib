@@ -107,7 +107,9 @@ public class MpShaftFillerNodeTests {
     var (w2, two, wheel2) = Hosted(twoHubs: true);
     using (w1)
     using (w2) {
-      foreach (var (w, net, wheel) in new[] { (w1, one, wheel1), (w2, two, wheel2) }) {
+      foreach (
+        var (w, net, wheel) in new[] { (w1, one, wheel1), (w2, two, wheel2) }
+      ) {
         foreach (var key in net.NodeKeys)
           net.Store.AddNode(key, net.Store.AddGroup(15f), wheel.Inertia, 0f);
         net.OnTick(w.Accessor, 0.2f, w.Networks);
