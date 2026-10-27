@@ -46,7 +46,7 @@ internal sealed partial class MpShaftStore {
   /// <summary>Torque joint <paramref name="edge"/> carried from its input node to its output node, in N*m at the group's reference speed; negative when it flows the other way. Joints count in the order <see cref="TryAddEdge"/> kept them.</summary>
   public float EdgeTorque(int edge) => _edgeTorque[edge];
 
-  /// <summary>Torque the node's group can still deliver at the node's own speed after the last <see cref="Step"/>, N*m: the group's drive and slip, less the opposing torque (load, standing, mesh loss) of every other node, taken over the node's ratio. Zero or more, and zero for a node of ratio 0.</summary>
+  /// <summary>Torque the node's group can still deliver at the node's own speed after the last <see cref="Step"/>, N*m: the group's drive at rest, as the last step took it, and slip, less the opposing torque (load, standing, mesh loss) of every other node, taken over the node's ratio. Zero or more, and zero for a node of ratio 0.</summary>
   public float AvailableTorque(int node) {
     float n = MathF.Abs(_ratio[node]);
     if (n == 0f)
@@ -57,7 +57,7 @@ internal sealed partial class MpShaftStore {
     for (int i = 0; i < _nodes; i++) {
       if (_group[i] != g)
         continue;
-      active += _ratio[i] * (_drive[i] + _slip[i]);
+      active += _ratio[i] * (_driveRest[i] + _slip[i]);
       if (i != node)
         resist += MathF.Abs(_ratio[i]) * Opposing(i);
     }

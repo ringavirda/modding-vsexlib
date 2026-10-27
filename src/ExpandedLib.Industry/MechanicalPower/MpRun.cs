@@ -4,7 +4,7 @@ namespace ExpandedLib.Industry.MechanicalPower;
 
 /// <summary>What a machine on an "mpshaft" run reads of the run at its own node.</summary>
 /// <param name="SpeedRadS">Speed of the node in rad/s, signed: positive and negative are the two senses the run can turn, 0 at rest.</param>
-/// <param name="AvailableTorqueNm">Torque in N*m, zero or more, at the node's own speed that the rest of the run can still deliver to it: the run's drive less the opposing torque of every other node, the node's own load excluded.</param>
+/// <param name="AvailableTorqueNm">Torque in N*m, zero or more, at the node's own speed that the rest of the run can still deliver to it: the run's drive at rest, which is what a drive whose torque falls with speed offers a reader once the run has settled, less the opposing torque of every other node, the node's own load excluded.</param>
 public readonly record struct MpRunReading(
   float SpeedRadS,
   float AvailableTorqueNm
@@ -28,11 +28,13 @@ public static class MpRun {
     ?? MpRunReading.None;
 
   /// <summary>Reads the run at the centre node of <paramref name="node"/>'s cell.</summary>
+  /// <param name="node">The block entity holding the machine's node.</param>
   /// <returns><see cref="MpRunReading.None"/> while the block entity is not yet on a run.</returns>
   public static MpRunReading ReadRun(this BlockEntityNetworkNode node) =>
     Read(node.NetworkSystem, NodeKey.Centre(node.Pos));
 
   /// <summary>Reads the run at the centre node of <paramref name="member"/>'s cell.</summary>
+  /// <param name="member">The membership behavior the machine's node is held by.</param>
   /// <returns><see cref="MpRunReading.None"/> while the behavior is not yet on a run.</returns>
   public static MpRunReading ReadRun(this BEBehaviorNetworkMember member) =>
     Read(member.NetworkSystem, NodeKey.Centre(member.Blockentity.Pos));

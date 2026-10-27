@@ -14,6 +14,17 @@ public class MpRunTests {
     public float DriveTorque(float speed) => 1000f;
   }
 
+  private sealed class FallingDrive
+    : BlockEntity,
+      IMpEnergyProducer,
+      IMpEnergyStorage {
+    public float Inertia => 10f;
+
+    public float DriveTorque(float speed) => 1000f * (1f - speed / 10f);
+
+    public float DriveSlope(float speed) => -100f;
+  }
+
   private sealed class LoadNode : BlockEntity, IMpEnergyConsumer {
     public float Load { get; set; }
 
@@ -71,6 +82,26 @@ public class MpRunTests {
     Assert.Equal(1000f - 350f - 120f, net.Read(Key(0)).AvailableTorqueNm, 2);
     Assert.Equal(1000f - 120f, net.Read(Key(1)).AvailableTorqueNm, 2);
     Assert.Equal(1000f - 350f, net.Read(Key(2)).AvailableTorqueNm, 2);
+  }
+
+  // Fails when the drive is read at the run's present speed, which leaves a settled run offering only the reader's own draw.
+  [Fact]
+  public void Read_SettledRunOffersItsDriveHeadroom() {
+    var w = new TestWorld();
+    var net = Wire(
+      w,
+      (0, new FallingDrive()),
+      (1, new LoadNode { Load = 100f }),
+      (2, new LoadNode { Standing = 50f })
+    );
+    Seed(net, 0f);
+
+    for (int i = 0; i < 300; i++)
+      net.OnTick(w.Accessor, 0.2f, w.Networks);
+
+    var reader = net.Read(Key(2));
+    Assert.Equal(8.5f, reader.SpeedRadS, 2);
+    Assert.Equal(1000f - 100f, reader.AvailableTorqueNm, 1);
   }
 
   // Fails when the speed is read unsigned.

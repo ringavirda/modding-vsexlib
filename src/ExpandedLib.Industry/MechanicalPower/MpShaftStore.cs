@@ -31,6 +31,7 @@ internal sealed partial class MpShaftStore {
   private float[] _ratio = new float[16];
   private float[] _drive = new float[16];
   private float[] _driveSlope = new float[16];
+  private float[] _driveRest = new float[16];
   private float[] _load = new float[16];
   private float[] _loadSlope = new float[16];
   private float[] _efficiency = new float[16];
@@ -105,6 +106,7 @@ internal sealed partial class MpShaftStore {
       Array.Resize(ref _ratio, size);
       Array.Resize(ref _drive, size);
       Array.Resize(ref _driveSlope, size);
+      Array.Resize(ref _driveRest, size);
       Array.Resize(ref _load, size);
       Array.Resize(ref _loadSlope, size);
       Array.Resize(ref _efficiency, size);
@@ -383,6 +385,7 @@ internal sealed partial class MpShaftStore {
     _rating[node] = source._rating[i];
     _drive[node] = source._drive[i];
     _driveSlope[node] = source._driveSlope[i];
+    _driveRest[node] = source._driveRest[i];
     _load[node] = source._load[i];
     _loadSlope[node] = source._loadSlope[i];
     _efficiency[node] = source._efficiency[i];
@@ -404,6 +407,7 @@ internal sealed partial class MpShaftStore {
   public void SetDrive(int node, float torqueNm, float slope = 0f) {
     _drive[node] = MathF.Max(0f, torqueNm);
     _driveSlope[node] = MathF.Min(0f, slope);
+    _driveRest[node] = _drive[node] - _driveSlope[node] * NodeSpeed(node);
   }
 
   /// <summary>Declares the node's load for the next step.</summary>
