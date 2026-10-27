@@ -52,6 +52,7 @@ public sealed partial class SetupScene
           + $"; made at: {StationsMaking(wanted, recipe)}."
       );
     CraftOrder order = makes[0];
+    RefuseStrayWith(step.Path, order, with);
 
     DrawBill(step.Path, order, with, times);
     var made = new List<ItemStack>();
@@ -76,8 +77,9 @@ public sealed partial class SetupScene
   /// <param name="with">The collectible to lay for each input, by input name; null for the
   /// ingredient's first loaded variant.</param>
   /// <returns>The stacks the craft made.</returns>
-  /// <exception cref="InvalidOperationException">The matcher refuses the bill, the station takes
-  /// less than it is laid or yields nothing, or the product is not the order's.</exception>
+  /// <exception cref="InvalidOperationException">A <paramref name="with"/> key is no input of the
+  /// order, the matcher refuses the bill, the station takes less than it is laid or yields
+  /// nothing, or the product is not the order's.</exception>
   internal IReadOnlyList<ItemStack> CraftOnce(
     string where,
     BlockEntity? entity,
@@ -86,6 +88,7 @@ public sealed partial class SetupScene
   )
   {
     string station = entity == null ? "the hand grid" : $"{entity.Block.Code}";
+    RefuseStrayWith(where, order, with);
     List<ItemStack> made =
     [
       .. entity == null
@@ -94,6 +97,21 @@ public sealed partial class SetupScene
     ];
     Verify(where, station, made, order, 1);
     return made;
+  }
+
+  private void RefuseStrayWith(string where, CraftOrder order, JObject? with)
+  {
+    if (
+      with
+        ?.Properties()
+        .Select(p => p.Name)
+        .FirstOrDefault(n => order.Inputs.All(i => i.Name != n)) is
+      { } stray
+    )
+      throw Fail(
+        where,
+        $"with {stray} is no input of {order.Recipe}; its inputs are {string.Join(", ", order.Inputs.Select(i => i.Name))}."
+      );
   }
 
   private void Verify(

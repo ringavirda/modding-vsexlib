@@ -8,6 +8,7 @@ using ExpandedLib.Machines;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 using Xunit;
 
 namespace ExpandedLib.Tests.Scenarios;
@@ -542,6 +543,128 @@ public class CraftStepTests : IDisposable
       "\"setupcraft:rod-gold\" is not registered by the load",
       message
     );
+  }
+
+  // Fails when with takes a key that is no input of the order.
+  [Fact]
+  public void Craft_with_a_key_that_is_no_input_of_the_order_fails()
+  {
+    string message = BenchRefused(
+      "{\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \""
+        + Frame
+        + "\", \"with\": {\"X\": \"setupcraft:rod-iron\"}}}"
+    );
+
+    Assert.Contains("with X is no input of setupcraft:frame", message);
+    Assert.Contains("its inputs are", message);
+  }
+
+  // Fails when the hand grid's craft leaves the key unchecked.
+  [Fact]
+  public void Craft_in_the_hand_grid_with_a_key_that_is_no_input_fails()
+  {
+    string message = Refused(
+      "setupcraft",
+      BenchPath,
+      "[{\"craft\": {\"output\": \""
+        + Frame
+        + "\", \"with\": {\"X\": \"setupcraft:rod-iron\"}}}]"
+    );
+
+    Assert.Contains("with X is no input of setupcraft:frame", message);
+  }
+
+  // Fails when LoadRecipes leaves the RecipeRegistrySystem unregistered or registers nothing in it.
+  [Fact]
+  public void The_game_api_answers_the_smithing_and_clay_forming_recipes_the_load_kept()
+  {
+    using SetupScene scene = AtBench(
+      "{\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \""
+        + Frame
+        + "\"}}"
+    );
+    TestWorld world = scene.World;
+
+    Assert.NotEmpty(world.SmithingRecipes);
+    Assert.Equal(world.SmithingRecipes, world.Api.GetSmithingRecipes());
+    Assert.Equal(
+      "setupcraft:pin",
+      Assert.Single(world.Api.GetSmithingRecipes()).Output.Code.ToString()
+    );
+    Assert.Equal(
+      "setupcraft:stud",
+      Assert.Single(world.Api.GetClayformingRecipes()).Output.Code.ToString()
+    );
+  }
+
+  // Fails when the registry's warning about a smithing recipe with no code reaches the world's log.
+  [Fact]
+  public void Registering_a_smithing_recipe_with_no_code_logs_nothing()
+  {
+    using SetupScene scene = AtBench(
+      "{\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \""
+        + Frame
+        + "\"}}"
+    );
+
+    Assert.DoesNotContain(
+      scene.World.Log.Entries,
+      e => e.Message.Contains("unchanging code", StringComparison.Ordinal)
+    );
+  }
+
+  private static SetupScene Loading(string load) =>
+    SetupScene.Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupcraft\"], "
+          + load
+          + "\"steps\": [], \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      ),
+      [BenchPath],
+      null,
+      Register
+    );
+
+  // Fails when VanillaCodes leaves the file's load list out of the vanilla files it mirrors.
+  [Fact]
+  public void The_load_list_brings_in_the_vanilla_items_it_names()
+  {
+    const string Knife = "game:knife-generic-iron";
+    using SetupScene bare = Loading("");
+    using SetupScene listed = Loading("\"load\": [\"" + Knife + "\"], ");
+
+    Assert.Null(bare.World.World.GetItem(new AssetLocation(Knife)));
+    Assert.NotNull(listed.World.World.GetItem(new AssetLocation(Knife)));
+  }
+
+  // Fails when the file's recipes key is not read: a file with no craft step then leaves the registry unregistered.
+  [Fact]
+  public void The_recipes_key_loads_the_registry_with_no_craft_step()
+  {
+    using SetupScene bare = Loading("");
+    using SetupScene listed = Loading("\"recipes\": true, ");
+
+    Assert.Null(bare.World.Mods.GetModSystem<RecipeRegistrySystem>());
+    Assert.Equal(
+      "setupcraft:pin",
+      Assert
+        .Single(listed.World.Api.GetSmithingRecipes())
+        .Output.Code.ToString()
+    );
+  }
+
+  // Fails when the file model takes a load entry that is not a game: code.
+  [Fact]
+  public void The_load_list_refuses_a_code_outside_the_game()
+  {
+    string message = Assert
+      .Throws<InvalidOperationException>(() =>
+        Loading("\"load\": [\"setupcraft:rod-iron\"], ")
+      )
+      .Message;
+
+    Assert.Contains("\"setupcraft:rod-iron\" is not a game: code", message);
   }
 
   // Fails when times is ignored.

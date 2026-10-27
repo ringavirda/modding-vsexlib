@@ -61,15 +61,4 @@ internal sealed class SetupWorldView(
 
   public SetupPlacement? Placed(string id) => placed.GetValueOrDefault(id);
 }
-
-/// <summary>A mechanical line as a setup reads it: the speed without its sign, the torque and the
-/// resistance.</summary>
-internal sealed class MechanicalLine(MechanicalNetwork network)
-{
-  public float Speed => Math.Abs(network.Speed);
-
-  public float TotalAvailableTorque => network.TotalAvailableTorque;
-
-  public float NetworkResistance => network.NetworkResistance;
-}
 #endif

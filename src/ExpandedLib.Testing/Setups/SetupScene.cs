@@ -6,12 +6,14 @@ using ExpandedLib.Blocks;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Config;
 using ExpandedLib.Helpers;
+using ExpandedLib.Industry.Metals;
 using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 using Vintagestory.GameContent.Mechanics;
 
 namespace ExpandedLib.Testing;
@@ -289,15 +291,24 @@ public sealed partial class SetupScene : IDisposable
 
   private void Load(IReadOnlyList<string> modPaths)
   {
-    bool crafts = EveryStep()
-      .Any(s =>
-        s.Kind == "craft"
-        || (
-          s.Kind == "interact"
-          && (s.Body["offHand"] != null || s.Body["control"] != null)
-        )
-      );
+    bool crafts =
+      Model.Recipes
+      || EveryStep()
+        .Any(s =>
+          s.Kind == "craft"
+          || (
+            s.Kind == "interact"
+            && (s.Body["offHand"] != null || s.Body["control"] != null)
+          )
+        );
     World.LoadAssets(modPaths, null, VanillaCodes(), crafts);
+    MetalCatalogueLoader.Load(World.Api);
+    if (World.Mods.GetModSystem<SurvivalCoreSystem>() == null)
+    {
+      var core = new SurvivalCoreSystem();
+      World.Mods.Register(core);
+      core.AssetsLoaded(World.Api);
+    }
     if (crafts)
     {
       World.LoadRecipes();
@@ -338,6 +349,7 @@ public sealed partial class SetupScene : IDisposable
         .Select(v => v.Value as string)
         .OfType<string>()
         .Where(v => v.StartsWith("game:"))
+        .Concat(Model.Load)
         .Distinct(),
     ];
   }

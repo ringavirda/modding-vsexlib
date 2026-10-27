@@ -1,0 +1,6 @@
+{
+  "ingredient": { "type": "item", "code": "game:ingot-iron" },
+  "name": "plug",
+  "pattern": [["##"]],
+  "output": { "type": "item", "code": "setupsmith:plug", "stacksize": 3 }
+}

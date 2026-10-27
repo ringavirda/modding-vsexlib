@@ -5,6 +5,7 @@ using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent.Mechanics;
 using Xunit;
 
 namespace ExpandedLib.Tests.Setups;
@@ -66,6 +67,19 @@ public class SetupWorldViewTests
 
     Assert.Equal(21, reading?.Amount);
     Assert.Equal("game:ingot-iron", reading?.Metal);
+  }
+
+  // Fails when the line reads the network's signed speed, as the live runner did before it wrapped
+  // the network.
+  [Fact]
+  public void A_mechanical_line_reads_its_speed_without_the_sign()
+  {
+    var line = new MechanicalLine(
+      new MechanicalNetwork { Speed = -0.4f, TotalAvailableTorque = 2f }
+    );
+
+    Assert.Equal(0.4f, line.Speed);
+    Assert.Equal(2f, line.TotalAvailableTorque);
   }
 }
 #endif

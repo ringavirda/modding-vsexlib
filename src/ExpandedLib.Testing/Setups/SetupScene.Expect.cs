@@ -116,6 +116,18 @@ public sealed partial class SetupScene
   private void SlotExpect(SetupStep step)
   {
     var body = (JObject)step.Body;
+    if (SetupSlotExpect.IsHotbar(body))
+    {
+      if (
+        SetupSlotExpect.HotbarMismatch(
+          body,
+          Enumerable.Range(0, TestPlayer.HotbarSlots).Select(Player.StackInSlot)
+        ) is
+        { } wide
+      )
+        throw Fail(step.Path, $"the hotbar {wide}.");
+      return;
+    }
     int slot = SetupSlotExpect.SlotOf(body);
     if (
       SetupSlotExpect.Mismatch(body, Player.StackInSlot(slot)) is { } mismatch

@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 
 namespace ExpandedLib.Testing.Live;
 
@@ -33,6 +34,21 @@ internal sealed class CallStep : ScenarioStep {
     );
     string name = path[0];
     JArray args = o["args"] as JArray ?? [];
+    if (SmithingStandIn.Takes(root, name)) {
+      if (args.Count != 1)
+        throw new StepFailure(
+          $"{name} takes the output code of one smithing recipe.",
+          Suspect.Scenario
+        );
+      try {
+        SmithingStandIn.Run((BlockEntityAnvil)root, (string)args[0]!);
+      } catch (InvalidOperationException e) {
+        throw new StepFailure(e.Message, Suspect.Scenario);
+      }
+      ctx.Touched.Add(local.Copy());
+      report.Value = $"stand-in: {SmithingStandIn.Text}";
+      yield break;
+    }
     MethodInfo[] candidates =
     [
       .. root.GetType()

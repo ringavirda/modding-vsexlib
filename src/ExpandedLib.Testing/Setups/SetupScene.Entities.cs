@@ -239,6 +239,26 @@ public sealed partial class SetupScene
         );
     }
     JToken[] args = step.Body["args"] is JArray array ? [.. array] : [];
+    if (SmithingStandIn.Takes(target, method))
+    {
+      if (args.Length != 1)
+        throw Fail(
+          step.Path,
+          $"{method} takes the output code of one smithing recipe."
+        );
+      try
+      {
+        SmithingStandIn.Run((BlockEntityAnvil)target, (string)args[0]!);
+      }
+      catch (InvalidOperationException e)
+      {
+        throw Fail(step.Path, e.Message);
+      }
+      string line = $"stand-in {method}: {SmithingStandIn.Text}";
+      if (!_standIns.Contains(line))
+        _standIns.Add(line);
+      return;
+    }
     MethodInfo info =
       target
         .GetType()

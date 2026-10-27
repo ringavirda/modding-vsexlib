@@ -51,7 +51,10 @@ internal sealed class ScenarioWorld(
 
   public object? NetworkAt(BlockPos pos, string type) {
     if (type == "mechanical")
-      return BlockEntityAt(pos)?.GetBehavior<BEBehaviorMPBase>()?.Network;
+      return
+        BlockEntityAt(pos)?.GetBehavior<BEBehaviorMPBase>()?.Network is { } line
+        ? new MechanicalLine(line)
+        : null;
     BlockNetwork? network = networks?.GetNetworkAt(Absolute(pos));
     return network is { } found && found.NetworkType == type ? found : null;
   }
@@ -96,6 +99,7 @@ internal sealed class ScenarioWorld(
     int angle =
       (block as BlockFilledMegastructure)?.StructureAngle
       ?? structure?.LayoutAngle
+      ?? (block as IFillerHost)?.StructureAngle
       ?? 0;
     IReadOnlyList<FillerCell> footprint = block is IFillerHost host
       ? Footprint(host, local, angle)

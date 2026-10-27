@@ -1,24 +1,42 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 
 namespace ExpandedLib.Scenarios;
 
-/// <summary>The <c>expect</c> form that reads one hotbar slot: <c>{ slot, code?, count?, attribute?: { key,
-/// equals } }</c>. Both layers read the slot and test it here.</summary>
+/// <summary>The <c>expect</c> forms that read the hotbar: <c>{ slot, code?, count?, attribute?: { key,
+/// equals } }</c> for one slot, and <c>{ code, count? }</c> with no <c>slot</c> for an item anywhere in the
+/// hotbar. Both layers read the stacks and test them here.</summary>
 internal static class SetupSlotExpect {
   /// <summary>The number of hotbar slots a <c>slot</c> index may name.</summary>
   public const int Slots = 12;
 
-  /// <summary>Whether the <c>expect</c> body is a slot reading.</summary>
-  public static bool Is(JObject body) => body["slot"] != null;
+  /// <summary>Whether the <c>expect</c> body is a slot reading or a hotbar-wide one.</summary>
+  public static bool Is(JObject body) => IsSlot(body) || IsHotbar(body);
 
-  /// <summary>Checks the keys of a slot reading.</summary>
+  /// <summary>Whether the <c>expect</c> body names one slot.</summary>
+  public static bool IsSlot(JObject body) => body["slot"] != null;
+
+  /// <summary>Whether the <c>expect</c> body has a string <c>code</c> and no <c>slot</c>.</summary>
+  public static bool IsHotbar(JObject body) =>
+    body["slot"] == null && body["code"] is { Type: JTokenType.String };
+
+  /// <summary>Checks the keys of a slot reading or a hotbar-wide one.</summary>
   /// <exception cref="SetupFileException">The body has a key besides those or none of <c>code</c>,
   /// <c>count</c> and <c>attribute</c>, the slot is no hotbar index, <c>code</c> is neither a string nor
-  /// null, <c>count</c> is no whole number, or <c>attribute</c> lacks a <c>key</c> or an <c>equals</c>.</exception>
+  /// null, <c>count</c> is no whole number, <c>attribute</c> lacks a <c>key</c> or an <c>equals</c>, or a
+  /// hotbar-wide reading has an <c>attribute</c>.</exception>
   public static void Validate(JObject body, SetupJson.Where at) {
+    if (IsHotbar(body)) {
+      SetupJson.RefuseUnknown(body, at, "code", "count");
+      if (body["count"] != null)
+        SetupJson.Integer(body["count"], at.In("count"));
+      return;
+    }
     SetupJson.RefuseUnknown(body, at, "slot", "code", "count", "attribute");
     if (
       !body.ContainsKey("code")
@@ -44,6 +62,42 @@ internal static class SetupSlotExpect {
 
   /// <summary>The slot index the reading names.</summary>
   public static int SlotOf(JObject body) => (int)body["slot"]!;
+
+  /// <summary>Tests the whole hotbar against a hotbar-wide reading.</summary>
+  /// <param name="body">The <c>expect</c> body: a string <c>code</c> (domain defaults to <c>game</c>) and an
+  /// optional <c>count</c>.</param>
+  /// <param name="hotbar">The stacks of hotbar slots 0 to <see cref="Slots"/> - 1; null entries are empty.</param>
+  /// <returns>What differs, or null when some slot holds the code and, with a <c>count</c>, the stacks of that
+  /// code add up to it.</returns>
+  public static string? HotbarMismatch(
+    JObject body,
+    IEnumerable<ItemStack?> hotbar
+  ) {
+    string code = (string)body["code"]!;
+    int held = HotbarHeld(body, hotbar);
+    if (held == 0)
+      return $"holds no {code}; it holds {Contents(hotbar)}";
+    if (body["count"] != null && held != (int)body["count"]!)
+      return $"holds {held} of {code} in all, expected {(int)body["count"]!}";
+    return null;
+  }
+
+  /// <summary>The total stack size of the hotbar's stacks of a hotbar-wide reading's <c>code</c>.</summary>
+  public static int HotbarHeld(JObject body, IEnumerable<ItemStack?> hotbar) {
+    var wanted = new AssetLocation((string)body["code"]!);
+    int held = 0;
+    foreach (ItemStack? stack in hotbar)
+      if (stack != null && wanted.Equals(stack.Collectible.Code))
+        held += stack.StackSize;
+    return held;
+  }
+
+  private static string Contents(IEnumerable<ItemStack?> hotbar) =>
+    hotbar
+      .Where(s => s != null)
+      .Select(Describe)
+      .DefaultIfEmpty("nothing")
+      .Aggregate((a, b) => $"{a}, {b}");
 
   /// <summary>What a slot holds, as the step line prints it.</summary>
   /// <param name="stack">The slot's stack, or null for an empty slot.</param>
