@@ -8,21 +8,20 @@ using static ExpandedLib.Checks.GridRecipeShapeCheck;
 
 namespace ExpandedLib.Checks;
 
-/// <summary>
-/// Checks that no two grid recipes of the family match the same input: each grid recipe of the
-/// domain against every other grid recipe of every domain the source covers.
-/// </summary>
+/// <summary>Checks that no two grid recipes of the family match the same input: each grid recipe of
+/// the domain against every other grid recipe of every domain the source covers.</summary>
 /// <remarks>
 /// Follows the game's matcher: a shaped pattern, trimmed, at any offset its grid allows
 /// (<c>GridRecipe.Matches</c>, <c>RecipeBase.MatchesAtPosition</c>), with no mirrored match; a
-/// shapeless recipe's input merged into one stack per item, each taken by one of its ingredients,
-/// exact ones merged alike (<c>RecipeBase.MatchesShapeLess</c>); a named wildcard in one state
-/// across its slots (<c>RecipeBase.GenerateRecipesForAllIngredientCombinations</c>);
-/// <c>allowedVariants</c> narrowing a wildcard (<c>WildcardUtil.Match</c>); a code without a
-/// domain in its file's (<c>RecipeLoader</c>). A tag-only ingredient takes the collectibles
-/// <see cref="ILoadedGame.Tagged"/> answers when the source is a loaded game, and otherwise
-/// overlaps its whole item class, as a regex ingredient does. Attributes and <c>skipVariants</c>
-/// are not read. A recipe the game refuses or never matches is skipped.
+/// shapeless recipe's input merged into one stack per item (<c>RecipeBase.MatchesShapeLess</c>); a
+/// named wildcard in one state across its slots
+/// (<c>RecipeBase.GenerateRecipesForAllIngredientCombinations</c>); <c>allowedVariants</c> narrowing
+/// a wildcard (<c>WildcardUtil.Match</c>); a code without a domain in its file's
+/// (<c>RecipeLoader</c>). A tag-only ingredient takes the collectibles <see cref="ILoadedGame.Tagged"/>
+/// answers when the source is a loaded game, and otherwise overlaps its whole item class. Of the
+/// attributes only <c>liquidContainerProps.requiresContent.code</c> is read, two recipes naming
+/// different liquids being apart (<c>BlockLiquidContainerBase.MatchesForCrafting</c>). A recipe the
+/// game refuses or never matches is skipped.
 /// </remarks>
 public static class GridRecipeCollisionCheck {
   // Above this many combinations of named states, the names are left unbound, which can only add
@@ -36,7 +35,8 @@ public static class GridRecipeCollisionCheck {
 
   /// <summary>Every pair of grid recipes matching the same input, one of them in
   /// <paramref name="domain"/>. Two recipes are compared only when their <c>attributes.diagram</c>
-  /// are the same or both absent.</summary>
+  /// are the same or both absent, and not when both name a different
+  /// <c>attributes.liquidContainerProps.requiresContent.code</c>.</summary>
   /// <param name="source">The recipes to read; every domain it covers is held against
   /// <paramref name="domain"/>.</param>
   /// <param name="domain">The domain whose grid recipes are checked.</param>
@@ -95,6 +95,11 @@ public static class GridRecipeCollisionCheck {
         foreach (ExlibChecks.Grid grid in grids)
           if (
             string.Equals(own[i].Diagram, other.Diagram, StringComparison.Ordinal)
+            && (
+              own[i].Liquid == null
+              || other.Liquid == null
+              || own[i].Liquid == other.Liquid
+            )
             && Fits(own[i], grid.Size)
             && Fits(other, grid.Size)
             && Collide(own[i], other, grid.Size)
@@ -138,7 +143,8 @@ public static class GridRecipeCollisionCheck {
     int Top,
     int BoxWidth,
     int BoxHeight,
-    string? Diagram = null
+    string? Diagram = null,
+    string? Liquid = null
   );
 
   /// <summary>Every grid recipe of <paramref name="domain"/> the game loads and can
@@ -189,6 +195,9 @@ public static class GridRecipeCollisionCheck {
         filled.Max(i => i / recipe.Width) - top + 1,
         Prop(recipe.Json, "attributes") is JObject attributes
           ? (string?)Prop(attributes, "diagram")
+          : null,
+        Prop(recipe.Json, "attributes") is JObject props
+          ? (string?)props["liquidContainerProps"]?["requiresContent"]?["code"]
           : null
       );
     }
