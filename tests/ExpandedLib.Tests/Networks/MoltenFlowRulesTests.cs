@@ -135,11 +135,12 @@ public class MoltenFlowRulesTests {
     );
   }
 
-  // Fails when a connection conveys if either cell conveys, or when a cell's Conveys is ignored.
+  // Fails when a connection conveys if either cell conveys, or when a cell's Conveys is ignored: the
+  // pair would hand over all 60 and keep no skin.
   [Theory]
   [InlineData(false, true)]
   [InlineData(true, false)]
-  public void A_connection_with_a_cell_that_does_not_convey_levels_by_half(
+  public void A_connection_with_a_cell_that_does_not_convey_hands_on_all_but_the_skin(
     bool startConveys,
     bool nextConveys
   ) {
@@ -157,8 +158,8 @@ public class MoltenFlowRulesTests {
 
     w.Tick();
 
-    Assert.Equal(30, start.CellAmount);
-    Assert.Equal(30, next.CellAmount);
+    Assert.Equal(10, start.CellAmount);
+    Assert.Equal(50, next.CellAmount);
   }
 
   // Fails when a conveying edge moves the whole difference whatever the distances: the cell hands
@@ -339,7 +340,7 @@ public class MoltenFlowRulesTests {
   [InlineData(false, false)]
   [InlineData(true, false)]
   [InlineData(false, true)]
-  public void A_connection_with_a_cell_returning_no_rules_levels_by_half(
+  public void A_connection_with_a_cell_returning_no_rules_hands_on_all_but_the_skin(
     bool startRules,
     bool nextRules
   ) {
@@ -353,8 +354,8 @@ public class MoltenFlowRulesTests {
 
     w.Tick();
 
-    Assert.Equal(30, start.CellAmount);
-    Assert.Equal(30, next.CellAmount);
+    Assert.Equal(10, start.CellAmount);
+    Assert.Equal(50, next.CellAmount);
   }
 
   #endregion

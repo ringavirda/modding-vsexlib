@@ -363,8 +363,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     var giver = aIsGiver ? a : b;
     var receiver = aIsGiver ? b : a;
 
-    // A drain fitting and a downhill edge are one-way sinks and take the whole difference; a
-    // levelling pair moves half, and integer division floors the step to zero on its own.
+    // A drain or downhill edge takes the whole difference; a level giver nearer the start keeps a skin, or what the farther cell holds if that is more.
     bool drain = receiver.Cell.AcceptsSubMinimumFlow;
     bool whole = drain || downhillOnly;
     if (rules is MoltenFlowRules r) {
@@ -376,7 +375,18 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
         && DistanceOf(distFromStart, receiver.Pos)
           > DistanceOf(distFromStart, giver.Pos);
     }
-    var step = whole ? diff : diff / 2;
+    int step;
+    if (whole)
+      step = diff;
+    else if (
+      DistanceOf(distFromStart, receiver.Pos)
+      > DistanceOf(distFromStart, giver.Pos)
+    )
+      step =
+        giver.Cell.CellAmount
+        - Math.Max(receiver.Cell.CellAmount, ExlibValues.MoltenMinFlowAmount);
+    else
+      step = diff / 2;
     Transfer(giver, receiver, step > maxFlow ? maxFlow : step, world);
   }
 

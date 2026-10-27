@@ -11,7 +11,8 @@ namespace ExpandedLib.Industry.Molten;
 /// (<see cref="IMoltenCell.AcceptsSubMinimumFlow"/>) is exempt. 1 or less sets no floor.</param>
 /// <param name="Conveys">When true, and both cells return rules, a receiver farther than the giver
 /// from the nearest flow source takes the whole difference. A drain fitting and a downhill edge
-/// take the whole difference whatever this is; any other pair moves half.</param>
+/// take the whole difference whatever this is; any other pair hands onward all but
+/// <c>MoltenMinFlowAmount</c> units when the giver is nearer the source, else moves half.</param>
 /// <param name="HorizontalOnly">When true, and both cells return rules, no metal crosses the
 /// connection through this cell's up and down faces.</param>
 public readonly record struct MoltenFlowRules(

@@ -69,8 +69,8 @@ public class ExlibConfig : IExVersionedConfig {
   /// <summary>Max metal (units) flowing across one canal connection per second.</summary>
   public int MoltenFlowRate { get; set; } = 50;
 
-  /// <summary>Minimum metal (units) a single transfer must move, for callers that apply a floor;
-  /// the molten network's own edges apply none.</summary>
+  /// <summary>Metal (units) a level cell of the molten network keeps when it hands the rest onward;
+  /// also the minimum a single transfer moves, for callers that apply a floor.</summary>
   public int MoltenMinFlowAmount { get; set; } = 10;
 
   /// <summary>Canal hops, counted along the network's connections, within which an open mold
