@@ -92,6 +92,36 @@ public class GridRecipeCollisionCheckTests {
     );
   }
 
+  private static string Oiled(string name, string liquid) =>
+    Recipe(
+      name,
+      "PP",
+      2,
+      1,
+      $$"""{ "P": {{Oak}} }""",
+      $$"""
+      "attributes": { "liquidContainerProps": { "requiresContent": { "code": "{{liquid}}" }, "requiresLitres": 0.5 } },
+      """
+    );
+
+  // Fails when Crafts stops reading the liquid, so two bills paying different liquids collide.
+  [Fact]
+  public void One_bill_paying_two_liquids_does_not_collide() {
+    Assert.Empty(
+      Findings(
+        Oiled("olive", "game:oilportion-olive"),
+        Oiled("flax", "game:oilportion-flax")
+      )
+    );
+    Assert.Equal(
+      [Collision(0, "one", 1, "two")],
+      Findings(
+        Oiled("one", "game:oilportion-olive"),
+        Oiled("two", "game:oilportion-olive")
+      )
+    );
+  }
+
   #endregion
 
   #region Shaped

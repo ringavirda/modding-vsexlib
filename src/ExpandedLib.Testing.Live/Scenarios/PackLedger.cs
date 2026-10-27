@@ -97,21 +97,24 @@ internal static class PackLedger {
   /// <summary>Lays <paramref name="input"/> for a craft: the stack the pack holds when
   /// <paramref name="with"/> names nothing for the input, otherwise the first loaded
   /// variant.</summary>
-  /// <exception cref="StepFailure">The input has no loaded collectible, or <paramref name="with"/>
-  /// names none.</exception>
+  /// <param name="order">The order whose bill is laid; a vessel laid for a bill that pays a liquid is
+  /// filled with its litres. Null fills nothing.</param>
+  /// <exception cref="StepFailure">The input has no loaded collectible, <paramref name="with"/>
+  /// names none, or a vessel cannot be filled.</exception>
   public static ItemStack Laid(
     ScenarioContext ctx,
     CraftInput input,
-    JObject? with
+    JObject? with,
+    CraftOrder? order = null
   ) {
-    if (
-      ctx.Pack != null
-      && with?[input.Name] == null
-      && ctx.Pack.Laid(ctx.World, input) is { } held
-    )
-      return held;
     try {
-      return CraftBills.Laid(ctx.World, input, with);
+      ItemStack laid =
+        ctx.Pack != null
+        && with?[input.Name] == null
+        && ctx.Pack.Laid(ctx.World, input) is { } held
+          ? held
+          : CraftBills.Laid(ctx.World, input, with);
+      return order == null ? laid : CraftBills.Filled(ctx.World, order, laid);
     } catch (InvalidOperationException e) {
       throw new StepFailure(e.Message, Suspect.Scenario, e);
     }
