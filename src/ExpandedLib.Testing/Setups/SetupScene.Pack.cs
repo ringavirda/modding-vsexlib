@@ -152,13 +152,27 @@ public sealed partial class SetupScene
   {
     if (_pack == null)
       return;
-    foreach (
-      var bill in order
+    ItemStack[] laid =
+    [
+      .. order
         .Inputs.Where(i => !i.Ingredient.IsTool)
-        .Select(i => Laid(i, with, where))
-        .GroupBy(s => s.Collectible.Code.ToString())
+        .Select(i => Laid(order, i, with, where)),
+    ];
+    foreach (var bill in laid.GroupBy(s => s.Collectible.Code.ToString()))
+      Draw(
+        where,
+        bill.Key,
+        bill.Sum(s => s.StackSize * (CraftBills.Vessel(order, s) ? 1 : times))
+      );
+    if (
+      laid.Any(s => CraftBills.Vessel(order, s))
+      && CraftBills.Liquid(order.Grid) is { } liquid
     )
-      Draw(where, bill.Key, bill.Sum(s => s.StackSize) * times);
+      Draw(
+        where,
+        liquid.Content.ToString(),
+        CraftBills.Portions(World.World, liquid, times)
+      );
   }
 
   private SetupPackRecord? CheckPack()

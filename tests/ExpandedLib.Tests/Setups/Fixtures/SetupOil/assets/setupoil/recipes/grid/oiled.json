@@ -1,0 +1,31 @@
+[
+  {
+    "name": "setupoil:oiled",
+    "ingredientPattern": "F,P",
+    "width": 1,
+    "height": 2,
+    "ingredients": {
+      "F": {
+        "type": "block",
+        "code": "game:woodbucket",
+        "quantity": 1
+      },
+      "P": {
+        "type": "item",
+        "code": "setupcraft:plate",
+        "quantity": 1
+      }
+    },
+    "attributes": {
+      "liquidContainerProps": {
+        "requiresContent": { "type": "item", "code": "game:oilportion-olive" },
+        "requiresLitres": 0.5
+      }
+    },
+    "output": {
+      "type": "item",
+      "code": "setupcraft:stud",
+      "quantity": 1
+    }
+  }
+]

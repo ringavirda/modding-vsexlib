@@ -11,7 +11,7 @@ namespace ExpandedLib.Tests;
 /// <summary>
 /// Covers <see cref="IMoltenCell.Fall"/> on <see cref="MoltenNetwork"/>: a horizontal connection
 /// between two cells of different fall is directed and conveys all of the upper cell's metal, and a
-/// level pair still levels. Cells carry no flow rules, so 50 units a tick applies.
+/// level pair hands on all but its skin. Cells carry no flow rules, so 50 units a tick applies.
 /// </summary>
 public class MoltenFallTests {
   #region Fixtures
@@ -156,12 +156,12 @@ public class MoltenFallTests {
     Assert.Equal(0, next.CellAmount);
   }
 
-  // Fails when level cells take the directed move: the whole 40 crosses instead of half.
+  // Fails when level cells take the directed move: the whole 40 crosses and no skin stays.
   [Fact]
-  public void A_level_pair_still_levels() {
+  public void A_level_pair_hands_on_all_but_the_skin() {
     var (start, next) = Pair(40, 0, 0, 0);
-    Assert.Equal(20, start.CellAmount);
-    Assert.Equal(20, next.CellAmount);
+    Assert.Equal(10, start.CellAmount);
+    Assert.Equal(30, next.CellAmount);
   }
 
   #endregion

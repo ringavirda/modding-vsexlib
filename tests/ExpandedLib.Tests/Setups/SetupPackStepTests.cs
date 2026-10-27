@@ -89,6 +89,21 @@ public class SetupPackStepTests : IDisposable
       stages
     );
 
+  private static SetupScene BuildOiled(string pack, string steps) =>
+    SetupScene.Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupbox\", \"setupcraft\", \"setupoil\"], \"steps\": "
+          + steps
+          + ", \"seconds\": 10, \"record\": {}, \"pack\": "
+          + pack
+          + "}",
+        "t.json"
+      ),
+      [Fixture("SetupBox"), Fixture("SetupCraft"), Fixture("SetupOil")],
+      null,
+      Register
+    );
+
   private static string Refused(
     string pack,
     string steps,
@@ -141,6 +156,42 @@ public class SetupPackStepTests : IDisposable
     );
     Assert.Contains(
       "the pack holds 1 of setupcraft:plate; the step takes 2.",
+      message
+    );
+  }
+
+  private static string OiledSteps(int times) =>
+    "["
+    + Bench
+    + ", {\"place\": {\"id\": \"box\", \"code\": \"setupbox:box\", \"at\": [2, 0, 0]}}"
+    + ", {\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"game:woodbucket\", \"content\": \"game:oilportion-olive\", \"litres\": 1, \"slot\": 0}}"
+    + ", {\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \"setupcraft:stud\", \"times\": "
+    + times
+    + "}}]";
+
+  private static string OiledPack(int oil) =>
+    Gathered(
+      "stacks",
+      "{\"setupcraft:plate\": 2, \"game:woodbucket\": 2, \"game:oilportion-olive\": "
+        + oil
+        + "}"
+    );
+
+  // Fails when a craft under a liquid bill draws the vessel once per craft or draws no oil, so two
+  // crafts from a bucket of oil are charged two buckets, or the oil is free.
+  [Fact]
+  public void A_craft_under_a_liquid_bill_draws_the_vessel_once_and_the_oil_per_craft()
+  {
+    using SetupScene scene = BuildOiled(OiledPack(100), OiledSteps(2));
+
+    Assert.NotNull(scene);
+    string message = Assert
+      .Throws<InvalidOperationException>(() =>
+        BuildOiled(OiledPack(99), OiledSteps(2))
+      )
+      .Message;
+    Assert.Contains(
+      "the pack holds 99 of game:oilportion-olive; the step takes 100.",
       message
     );
   }
