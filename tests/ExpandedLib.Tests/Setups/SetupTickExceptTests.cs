@@ -25,4 +25,25 @@ public class SetupTickExceptTests {
     Assert.Equal(0, skipped);
     Assert.Equal(2, ticked);
   }
+
+  // Fails when the except skip runs before the networkBefore test: the network then runs last, after the listener.
+  [Fact]
+  public void The_network_runs_at_the_place_of_its_anchor_listener_when_that_listener_is_in_except() {
+    var world = new TestWorld();
+    var order = new List<string>();
+    long anchor = world.World.RegisterGameTickListener(
+      _ => order.Add("anchor"),
+      1000
+    );
+    world.World.RegisterGameTickListener(_ => order.Add("after"), 1000);
+
+    world.FireBlockEntityTicks(
+      1f,
+      new HashSet<long> { anchor },
+      () => order.Add("network"),
+      anchor
+    );
+
+    Assert.Equal(["network", "after"], order);
+  }
 }
