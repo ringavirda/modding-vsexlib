@@ -94,7 +94,10 @@ internal static class ItemViewsPass {
       new AssetLocation("game", "player")
     );
     AssetLocation shapeLocation = player?.Client?.Shape?.Base is { } shapeBase
-      ? shapeBase.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json")
+      ? shapeBase
+        .Clone()
+        .WithPathPrefixOnce("shapes/")
+        .WithPathAppendixOnce(".json")
       : DefaultPlayerShape;
     Shape? shape = Shape.TryGet(api, shapeLocation);
     if (shape == null)
