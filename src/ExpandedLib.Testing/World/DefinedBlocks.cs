@@ -300,6 +300,7 @@ public sealed partial class TestWorld {
       return _classes;
     _classes = new ClassRegistry();
     IClassRegistryAPI registry = BehaviorFactoryCallHandler.Over(
+      this,
       new ClassRegistryAPI(World, _classes),
       _behaviorFactories
     );
