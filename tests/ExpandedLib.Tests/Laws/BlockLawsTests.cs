@@ -889,13 +889,23 @@ public class BlockLawsTests {
     int expected
   ) => Assert.Equal(expected, BlockLaws.GroupsFor(processors, memory));
 
-  // Fails when the free memory is read as the memory the GC may use, which a loaded machine
-  // has less of free.
+  // Fails when the free memory is read as the memory the GC may use, which with no heap limit is
+  // the machine's whole memory; under a heap limit the machine's free memory may exceed the limit.
   [Fact]
-  public void Free_memory_is_below_what_the_process_may_use_and_above_nothing() {
+  public void Free_memory_is_below_the_machine_memory_and_above_nothing() {
     long free = BlockLaws.FreeMemoryBytes();
 
-    Assert.InRange(free, 1, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes - 1);
+    Assert.InRange(free, 1, MachineMemoryBytes() - 1);
+  }
+
+  private static long MachineMemoryBytes() {
+    if (System.IO.File.Exists("/proc/meminfo"))
+      foreach (string line in System.IO.File.ReadLines("/proc/meminfo"))
+        if (line.StartsWith("MemTotal:", StringComparison.Ordinal))
+          return long.Parse(
+              line.Split(' ', StringSplitOptions.RemoveEmptyEntries)[1]
+            ) * 1024;
+    return GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
   }
 
   // Fails when the merged findings come out in group order, a group's blocktypes are dropped or run
