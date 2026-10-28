@@ -175,6 +175,16 @@ public static class SourceLaws {
     RegexOptions.Compiled
   );
 
+  private static readonly Regex PathEdit = new(
+    @"\.\s*WithPath(?:Prefix|Appendix)(?:Once)?\s*\(",
+    RegexOptions.Compiled
+  );
+
+  private static readonly Regex FreshLocation = new(
+    @"^(?:(?:return|else|yield\s+return)\s+)?(?:new\s+AssetLocation\s*\(|AssetLocation\s*\.\s*Create\s*\()|\.\s*(?:Clone\s*\(\s*\)|CopyWith\w*\s*\()",
+    RegexOptions.Compiled
+  );
+
   private const string ParticleHome =
     "ExpandedLib.Industry/Helpers/ExParticles.cs";
 
@@ -787,6 +797,92 @@ public static class SourceLaws {
         );
     }
     return findings;
+  }
+
+  /// <summary>Every <c>WithPathPrefix</c>, <c>WithPathPrefixOnce</c>, <c>WithPathAppendix</c> and
+  /// <c>WithPathAppendixOnce</c> call in <paramref name="sourceFiles"/> whose receiver is not visibly a
+  /// fresh <c>AssetLocation</c>.</summary>
+  /// <remarks>These methods change the location they are called on and return it, so on a location a
+  /// block, item or entity type owns they rewrite that type's shared data. A receiver is fresh when it
+  /// starts with <c>new AssetLocation(</c> or <c>AssetLocation.Create(</c>, holds a <c>.Clone()</c> or
+  /// <c>.CopyWith...(</c> call, or is a local whose nearest earlier declaration in the file is
+  /// initialised from one of those. Only the first call of a chain is judged.</remarks>
+  /// <param name="sourceFiles">C# files to read; each is read whole.</param>
+  /// <returns>One line per call, <c>file:line: receiver; reason</c>; <see cref="Key"/> keys it. Empty
+  /// when clean.</returns>
+  /// <exception cref="IOException">A file cannot be read, or does not exist.</exception>
+  /// <exception cref="UnauthorizedAccessException">A file may not be read.</exception>
+  public static IReadOnlyList<string> SharedPathEdits(
+    IEnumerable<string> sourceFiles
+  ) {
+    var findings = new List<string>();
+    foreach (string file in sourceFiles.OrderBy(f => f, StringComparer.Ordinal)) {
+      string code = HarnessUse.CodeOnly(File.ReadAllText(file));
+      foreach (Match hit in PathEdit.Matches(code)) {
+        int end = hit.Index;
+        while (end > 0 && char.IsWhiteSpace(code[end - 1]))
+          end--;
+        if (end > 0 && code[end - 1] == '?')
+          end--;
+        string receiver = Regex
+          .Replace(code[ReceiverStart(code, end)..end], @"\s+", " ")
+          .Trim();
+        if (
+          PathEdit.IsMatch(receiver) || FreshReceiver(code, hit.Index, receiver)
+        )
+          continue;
+        findings.Add(
+          Finding(
+            file,
+            code,
+            hit.Index,
+            receiver,
+            "changes the location it is called on, which may be shared; call Clone() first"
+          )
+        );
+      }
+    }
+    return findings;
+  }
+
+  private static bool FreshReceiver(string code, int at, string receiver) {
+    if (FreshLocation.IsMatch(receiver))
+      return true;
+    if (!Regex.IsMatch(receiver, @"^[A-Za-z_]\w*$"))
+      return false;
+    Match? declaration = Regex
+      .Matches(
+        code[..at],
+        $@"\b(?:var|AssetLocation\??)\s+{receiver}\s*=\s*([^;]*);"
+      )
+      .LastOrDefault();
+    return declaration != null
+      && FreshLocation.IsMatch(
+        Regex.Replace(declaration.Groups[1].Value, @"\s+", " ").Trim()
+      );
+  }
+
+  // The index where the expression ending at end begins: back over balanced brackets to a statement,
+  // argument, assignment, conditional or coalesce boundary.
+  private static int ReceiverStart(string code, int end) {
+    int depth = 0;
+    for (int i = end - 1; i >= 0; i--) {
+      char c = code[i];
+      if (c is ')' or ']')
+        depth++;
+      else if (c is '(' or '[') {
+        if (--depth < 0)
+          return i + 1;
+      } else if (depth == 0) {
+        if (c is ';' or '{' or '}' or ',' or '=' or ':')
+          return i + 1;
+        if (c == '>' && i > 0 && code[i - 1] == '=')
+          return i + 1;
+        if (c == '?' && (i + 1 >= code.Length || code[i + 1] != '.'))
+          return i + 1;
+      }
+    }
+    return 0;
   }
 
   /// <summary>The key of one finding: its file and subject, <c>{file}: {subject}</c>, without the

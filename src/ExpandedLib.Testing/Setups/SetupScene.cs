@@ -586,6 +586,9 @@ public sealed partial class SetupScene : IDisposable
         case "interact":
           InteractStep(step);
           break;
+        case "use":
+          UseStep(step);
+          break;
         case "window":
           WindowStep(step);
           break;
