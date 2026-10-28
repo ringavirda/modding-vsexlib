@@ -18,6 +18,7 @@
   "facing-d": "низ",
   "block-structurefiller": "Механизм",
   "blockhelp-rotate": "Повернути",
+  "blockhelp-crowbar-breakout": "Вибити застиглий метал",
   "blockhelp-mulblock-struc-show": "Показати багатоблочну конструкцію",
   "blockname-suffixed": "{0} ({1})",
   "blockname-listsep": ", ",
