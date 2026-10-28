@@ -94,6 +94,69 @@ public sealed partial class SetupScene
     Player.HoldOffHand(null);
   }
 
+  private void UseStep(SetupStep step)
+  {
+    BlockPos at = At(step, "at");
+    string[] keys =
+      (step.Body["keys"] as JArray)?.Select(k => (string)k!).ToArray() ?? [];
+    foreach (string key in keys)
+      if (key is not ("sneak" or "ctrl" or "sprint"))
+        throw Fail(
+          step.Path,
+          $"\"{key}\" is not a key the hold holds: sneak, ctrl or sprint."
+        );
+    float seconds = (float)step.Body["seconds"]!;
+    if (!(seconds >= 0f))
+      throw Fail(step.Path, $"seconds {seconds} is negative.");
+    BlockFacing? face = null;
+    if (step.Body["face"] is { } letter)
+      face =
+        SetupLayout.FaceOf((string)letter!)
+        ?? throw Fail(
+          step.Path,
+          $"\"{(string)letter}\" is not one of n, e, s, w, u, d."
+        );
+    Vec3d? hit = step.Body["hit"] is JArray cell
+      ? new Vec3d(
+        (double)cell[0] / 16,
+        (double)cell[1] / 16,
+        (double)cell[2] / 16
+      )
+      : null;
+    bool keep = (bool?)step.Body["keep"] ?? false;
+    ItemStack? with = step.Body["with"] is { } held
+      ? StackOf(held, step.Path)
+      : null;
+    if (with != null)
+    {
+      Draw(step.Path, with);
+      Player.Hold(with);
+    }
+    EnumHandHandling handling = Player.UseHeld(
+      at,
+      null,
+      hit,
+      face,
+      keys.Contains("sneak"),
+      keys.Contains("ctrl"),
+      keys.Contains("sprint"),
+      seconds,
+      TickSecond
+    );
+    string heldCode =
+      Player.ActiveSlot.Itemstack?.Collectible.Code.ToString()
+      ?? "an empty hand";
+    if (!keep)
+      Give(Player.ActiveSlot.Itemstack);
+    if (!keep)
+      Player.Hold(null);
+    if (handling == EnumHandHandling.NotHandled)
+      throw Fail(
+        step.Path,
+        $"{heldCode} did not take the use at {Describe(at)}."
+      );
+  }
+
   private void IgniteStep(SetupStep step)
   {
     BlockPos at = At(step, "at");

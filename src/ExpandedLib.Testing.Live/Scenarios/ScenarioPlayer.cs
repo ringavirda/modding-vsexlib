@@ -27,6 +27,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   private readonly BlockPos _park;
   private readonly PlayerAntiAbuseMonitor? _abuse;
   private ItemStack? _filledHand;
+  private EnumHandInteract? _handUse;
   private int _uses;
   private int _breaks;
   private int _slotChanges;
@@ -544,6 +545,92 @@ internal sealed class ScenarioPlayer : IHandRelease {
     return answered;
   }
 
+  /// <summary>Holds <paramref name="stack"/> in the active slot and <paramref name="keys"/>, stands the
+  /// player facing <paramref name="selection"/>'s hit on the block at <paramref name="at"/>, sets
+  /// <c>Controls.HandUse</c> to <see cref="EnumHandInteract.HeldItemInteract"/> until <see cref="HeldStop"/>
+  /// or <see cref="Release"/>, and starts the held item's use with <c>CollectibleObject.OnHeldUseStart</c>.</summary>
+  /// <param name="at">The absolute cell aimed at.</param>
+  /// <param name="selection">What the use is aimed at; the hold's later calls pass it to the item.</param>
+  /// <param name="stack">What the hand holds, or null for an empty hand.</param>
+  /// <param name="keys">Names read by <see cref="Hold"/>.</param>
+  /// <returns>What the start left in the hand handling; <see cref="EnumHandHandling.NotHandled"/> for an
+  /// empty hand.</returns>
+  public EnumHandHandling HeldStart(
+    BlockPos at,
+    BlockSelection selection,
+    ItemStack? stack,
+    IReadOnlyList<string> keys
+  ) {
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+    Vec3d hit = selection.HitPosition;
+    Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
+    Hold(Player.Entity.Controls, keys);
+    ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
+    slot.Itemstack = stack;
+    EnumHandHandling handling = EnumHandHandling.NotHandled;
+    if (slot.Empty)
+      return handling;
+    _handUse = Player.Entity.Controls.HandUse;
+    Player.Entity.Controls.HandUse = EnumHandInteract.HeldItemInteract;
+    slot.Itemstack.Collectible.OnHeldUseStart(
+      slot,
+      Player.Entity,
+      selection,
+      null,
+      EnumHandInteract.HeldItemInteract,
+      true,
+      ref handling
+    );
+    return handling;
+  }
+
+  /// <summary>One held tick of the held item's use: the player is stood and aimed again, then
+  /// <c>CollectibleObject.OnHeldUseStep</c> runs with the seconds held so far.</summary>
+  /// <returns>Whether the item goes on with the use.</returns>
+  public bool HeldStep(BlockSelection selection, double secondsHeld) {
+    BlockPos at = selection.Position;
+    Aim(
+      at,
+      new Vec3d(
+        at.X + selection.HitPosition.X,
+        at.Y + selection.HitPosition.Y,
+        at.Z + selection.HitPosition.Z
+      )
+    );
+    ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
+    return slot.Itemstack.Collectible.OnHeldUseStep(
+        (float)secondsHeld,
+        slot,
+        Player.Entity,
+        selection,
+        null
+      ) != EnumHandInteract.None;
+  }
+
+  /// <summary>Ends the held item's use with <c>CollectibleObject.OnHeldUseStop</c> and gives
+  /// <c>Controls.HandUse</c> back its earlier value.</summary>
+  /// <param name="secondsHeld">The seconds the use has run.</param>
+  public void HeldStop(BlockSelection selection, double secondsHeld) {
+    ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
+    slot.Itemstack.Collectible.OnHeldUseStop(
+      (float)secondsHeld,
+      slot,
+      Player.Entity,
+      selection,
+      null,
+      EnumHandInteract.HeldItemInteract
+    );
+    RestoreHandUse();
+  }
+
+  private void RestoreHandUse() {
+    if (_handUse is not { } was)
+      return;
+    Player.Entity.Controls.HandUse = was;
+    _handUse = null;
+  }
+
   /// <summary>Fills the hotbar with <paramref name="supply"/>, stands the player facing the
   /// <paramref name="face"/> of the block at <paramref name="at"/> in survival with no key held, and
   /// right-clicks it; the did-use event fires right after <c>Block.OnBlockInteractStart</c>, and the hotbar is
@@ -739,6 +826,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
     );
     Player.InventoryManager.OffhandHotbarSlot.Itemstack = null;
     Hold(Player.Entity.Controls, []);
+    RestoreHandUse();
     Park();
   }
 
