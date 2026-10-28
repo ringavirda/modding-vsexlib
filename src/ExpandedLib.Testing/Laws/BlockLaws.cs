@@ -97,7 +97,7 @@ public static class BlockLaws {
   /// <summary>Stands every variant of <paramref name="defs"/>' blocks up and runs each law over the
   /// blocks of <paramref name="domain"/>.</summary>
   /// <remarks>Each law gets a world of its own. The break and interaction laws run on up to
-  /// <see cref="MaxGroups"/> threads, chosen from the processors and the free memory.</remarks>
+  /// <see cref="MaxGroups"/> threads, chosen from the processors, the free memory and the memory the GC may still grow by.</remarks>
   /// <param name="domain">The domain whose blocks are judged; other domains' definitions stand
   /// beside them, for layouts and help to name.</param>
   /// <param name="defs">Block and item definitions; others, and exlib's filler, are skipped.</param>
