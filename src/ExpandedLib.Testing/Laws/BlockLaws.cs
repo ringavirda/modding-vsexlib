@@ -115,14 +115,7 @@ public static class BlockLaws {
     IEnumerable<IExDef> defs,
     IReadOnlyList<Assembly> assemblies,
     Action<TestWorld>? prepare = null
-  ) =>
-    Run(
-      domain,
-      defs,
-      assemblies,
-      prepare,
-      GroupsFor(Environment.ProcessorCount, UsableMemoryBytes())
-    );
+  ) => Run(domain, defs, assemblies, prepare, DefaultGroups());
 
   /// <summary>As <see cref="Run(string, IEnumerable{IExDef}, IReadOnlyList{Assembly}, Action{TestWorld}?)"/>,
   /// with the break law's variants broken, and the interaction law's blocktypes clicked, on up to
@@ -307,6 +300,11 @@ public static class BlockLaws {
       GC.GetGCMemoryInfo().TotalAvailableMemoryBytes,
       GC.GetTotalMemory(false)
     );
+
+  /// <summary>The group count the overload without groups uses: <see cref="GroupsFor"/> of the
+  /// processors and <see cref="UsableMemoryBytes()"/>.</summary>
+  internal static int DefaultGroups() =>
+    GroupsFor(Environment.ProcessorCount, UsableMemoryBytes());
 
   /// <summary>The smaller of the memory the machine has free and the memory the GC may still grow
   /// by, never below zero.</summary>
