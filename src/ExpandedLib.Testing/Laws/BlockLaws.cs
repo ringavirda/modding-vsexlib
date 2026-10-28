@@ -142,60 +142,191 @@ public static class BlockLaws {
     IReadOnlyList<Assembly> assemblies,
     Action<TestWorld>? prepare,
     int groups
+  ) => Run(domain, defs, assemblies, prepare, groups, null);
+
+  /// <summary>As <see cref="Run(string, IEnumerable{IExDef}, IReadOnlyList{Assembly}, Action{TestWorld}?, int)"/>,
+  /// running only the laws named in <paramref name="only"/>.</summary>
+  /// <remarks>The laws run in their usual order. A law compiled out below 1.22 (<c>break</c>,
+  /// <c>draw</c>, <c>control</c>) is unknown there.</remarks>
+  /// <param name="domain">The domain whose blocks are judged.</param>
+  /// <param name="defs">Block and item definitions; others, and exlib's filler, are skipped.</param>
+  /// <param name="assemblies">Where the definitions' classes live, exlib's included.</param>
+  /// <param name="prepare">As the overload without groups.</param>
+  /// <param name="groups">As the overload with groups.</param>
+  /// <param name="only">The names of the laws to run; <see langword="null"/> runs them all. An
+  /// empty collection runs none.</param>
+  /// <returns>The laws that ran, in order.</returns>
+  /// <exception cref="ArgumentException">A name in <paramref name="only"/> is not a law this build
+  /// has; the message lists the known ones.</exception>
+  /// <exception cref="InvalidOperationException">As the overload without groups.</exception>
+  public static Result Run(
+    string domain,
+    IEnumerable<IExDef> defs,
+    IReadOnlyList<Assembly> assemblies,
+    Action<TestWorld>? prepare,
+    int groups,
+    IReadOnlyCollection<string>? only
   ) {
     IExDef[] given = [.. defs];
     ExBlockDef[] all = [.. given.OfType<ExBlockDef>()];
     ExItemDef[] items = [.. given.OfType<ExItemDef>()];
     groups = Math.Max(1, groups);
+    var tags = new SharedTagRegistries();
+    var known = new List<(string Name, Func<Law> Run)>
+    {
+      (
+        PlacementLaw.Name,
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => PlacementLaw.Run(w, domain)
+          )
+      ),
+#if GAME_GE_1_22
+      (
+        BreakLaw.Name,
+        () =>
+          BreakLaw.Run(
+            all.Where(d => d.Domain == domain),
+            assemblies,
+            prepare,
+            groups
+          )
+      ),
+#endif
+      (
+        MultiblockLaw.Name,
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => MultiblockLaw.Run(w, domain)
+          )
+      ),
+      (
+        MegablockLaw.Name,
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => MegablockLaw.Run(w, domain)
+          )
+      ),
+#if GAME_GE_1_22
+      (
+        DrawLaw.Name,
+        () =>
+          OnStood(Stand(all, assemblies, prepare), w => DrawLaw.Run(w, domain))
+      ),
+      (
+        ControlLaw.Name,
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => ControlLaw.Run(w, domain)
+          )
+      ),
+#endif
+      (
+        InfoLaw.Name,
+        () =>
+          OnStood(Stand(all, assemblies, prepare), w => InfoLaw.Run(w, domain))
+      ),
+      (
+        ReloadLaw.Name,
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => ReloadLaw.Run(w, domain)
+          )
+      ),
+      (
+        NeighbourLaw.Name,
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => NeighbourLaw.Run(w, domain)
+          )
+      ),
+      (
+        NetworkLaw.Name,
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => NetworkLaw.Run(w, domain)
+          )
+      ),
+      (
+        NetworkLaw.PortName,
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => NetworkLaw.RunPorts(w, domain)
+          )
+      ),
+      (
+        InteractionLaw.Name,
+        () =>
+        {
+#if GAME_GE_1_22
+          tags.Bind();
+#endif
+          return InteractionLaw.Run(
+            () => Stand(all, assemblies, prepare, items, tags),
+            domain,
+            groups
+          );
+        }
+      ),
+      (
+        ContainerLaw.Name,
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare, items),
+            w => ContainerLaw.Run(w, domain)
+          )
+      ),
+      (
+        InteractionLaw.FormedName,
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare, items),
+            w => InteractionLaw.RunFormed(w, domain)
+          )
+      ),
+      (
+        ContainerLaw.FormedName,
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare, items),
+            w => ContainerLaw.RunFormed(w, domain)
+          )
+      ),
+    };
+    if (only is not null) {
+      string[] unknown = [.. only.Where(n => known.All(k => k.Name != n))];
+      if (unknown.Length > 0)
+        throw new ArgumentException(
+          $"Unknown block law {string.Join(", ", unknown.Select(n => $"'{n}'"))}; known: "
+            + string.Join(", ", known.Select(k => k.Name)),
+          nameof(only)
+        );
+    }
     var laws = new List<Law>();
-    void Time(Func<Law> run) {
+    foreach ((string name, Func<Law> run) in known) {
+      if (only is not null && !only.Contains(name))
+        continue;
       var clock = Stopwatch.StartNew();
       Law law = run();
       laws.Add(law with { Elapsed = clock.Elapsed });
     }
-    Time(() => PlacementLaw.Run(Stand(all, assemblies, prepare), domain));
-#if GAME_GE_1_22
-    Time(() =>
-      BreakLaw.Run(
-        all.Where(d => d.Domain == domain),
-        assemblies,
-        prepare,
-        groups
-      )
-    );
-#endif
-    Time(() => MultiblockLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => MegablockLaw.Run(Stand(all, assemblies, prepare), domain));
-#if GAME_GE_1_22
-    Time(() => DrawLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => ControlLaw.Run(Stand(all, assemblies, prepare), domain));
-#endif
-    Time(() => InfoLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => ReloadLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => NeighbourLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => NetworkLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain));
-    var tags = new SharedTagRegistries();
-#if GAME_GE_1_22
-    tags.Bind();
-#endif
-    Time(() =>
-      InteractionLaw.Run(
-        () => Stand(all, assemblies, prepare, items, tags),
-        domain,
-        groups
-      )
-    );
-    Time(() =>
-      ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain)
-    );
-    Time(() =>
-      InteractionLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
-    );
-    Time(() =>
-      ContainerLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
-    );
     return new Result(laws);
+  }
+
+  private static Law OnStood(TestWorld world, System.Func<TestWorld, Law> run) {
+    try {
+      return run(world);
+    } finally {
+      world.Dispose();
+    }
   }
 
   /// <summary>Most groups the break and interaction laws split over.</summary>
@@ -463,7 +594,7 @@ public static class BlockLaws {
     internal const int TickMs = 5000;
 
     private readonly TestWorld _world;
-    private readonly HashSet<long> _listenersBefore;
+    private readonly long _listenerMark;
     private readonly List<string>? _faults;
 
     /// <param name="faults">Where the faults of steps run with <c>judged</c> set go; null drops
@@ -478,7 +609,7 @@ public static class BlockLaws {
       Block = block;
       At = at;
       _faults = faults;
-      _listenersBefore = world.TickListenerIds();
+      _listenerMark = world.LastListenerId;
     }
 
     internal Block Block { get; }
@@ -507,7 +638,7 @@ public static class BlockLaws {
     /// <see cref="TickMs"/>.</summary>
     internal bool Tick(bool judged) {
       HashSet<long> own = _world.TickListenerIds();
-      own.ExceptWith(_listenersBefore);
+      own.RemoveWhere(id => id <= _listenerMark);
       return Step(
         "ticked",
         judged,

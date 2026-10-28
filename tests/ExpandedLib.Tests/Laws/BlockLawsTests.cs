@@ -757,6 +757,29 @@ public class BlockLawsTests {
     );
   }
 
+  // Fails when the case's listener mark is one id too high, which skips the first listener
+  // registered after the case starts.
+  [Fact]
+  public void A_case_ticks_the_listener_registered_after_it_starts_and_not_one_before() {
+    TestWorld world = Stand(Wall, Entity("plain", "test-plain"));
+    Block block = world.World.GetBlock(new AssetLocation("test:plain"));
+    int before = 0;
+    int after = 0;
+    world.World.RegisterGameTickListener(_ => before++, 1000);
+
+    var started = new BlockLaws.EntityCase(
+      world,
+      block,
+      new BlockPos(64, 64, 64),
+      null
+    );
+    world.World.RegisterGameTickListener(_ => after++, 1000);
+    started.Tick(false);
+
+    Assert.Equal(0, before);
+    Assert.Equal(BlockLaws.EntityCase.TickMs / 1000, after);
+  }
+
   // Fails when a placement that leaves no block entity passes unread.
   [Fact]
   [PlantedDefect(typeof(InfoLaw), nameof(InfoLaw.Run))]
@@ -866,13 +889,23 @@ public class BlockLawsTests {
     int expected
   ) => Assert.Equal(expected, BlockLaws.GroupsFor(processors, memory));
 
-  // Fails when the free memory is read as the memory the GC may use, which a loaded machine
-  // has less of free.
+  // Fails when the free memory is read as the memory the GC may use, which with no heap limit is
+  // the machine's whole memory; under a heap limit the machine's free memory may exceed the limit.
   [Fact]
-  public void Free_memory_is_below_what_the_process_may_use_and_above_nothing() {
+  public void Free_memory_is_below_the_machine_memory_and_above_nothing() {
     long free = BlockLaws.FreeMemoryBytes();
 
-    Assert.InRange(free, 1, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes - 1);
+    Assert.InRange(free, 1, MachineMemoryBytes() - 1);
+  }
+
+  private static long MachineMemoryBytes() {
+    if (System.IO.File.Exists("/proc/meminfo"))
+      foreach (string line in System.IO.File.ReadLines("/proc/meminfo"))
+        if (line.StartsWith("MemTotal:", StringComparison.Ordinal))
+          return long.Parse(
+              line.Split(' ', StringSplitOptions.RemoveEmptyEntries)[1]
+            ) * 1024;
+    return GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
   }
 
   // Fails when the merged findings come out in group order, a group's blocktypes are dropped or run
@@ -2135,6 +2168,44 @@ public class BlockLawsTests {
         "formed container",
       ],
       result.Laws.Select(l => l.Name)
+    );
+#endif
+  }
+
+  // Fails when Run ignores the names in only and runs every law, or lets an unknown name through.
+  [Fact]
+  [PlantedDefect(typeof(BlockLaws), nameof(BlockLaws.Run))]
+  public void Run_with_only_runs_the_named_laws_and_rejects_an_unknown_one() {
+#if GAME_GE_1_22
+    BlockLaws.Result result = BlockLaws.Run(
+      "test",
+      [Wall],
+      Exlib,
+      Prepare,
+      1,
+      ["control"]
+    );
+
+    Assert.Equal(["control"], result.Laws.Select(l => l.Name));
+
+    ArgumentException thrown = Assert.Throws<ArgumentException>(() =>
+      BlockLaws.Run("test", [Wall], Exlib, Prepare, 1, ["nonesuch"])
+    );
+    Assert.Contains("'nonesuch'", thrown.Message, StringComparison.Ordinal);
+    Assert.Contains("placement", thrown.Message, StringComparison.Ordinal);
+#else
+    BlockLaws.Result result = BlockLaws.Run(
+      "test",
+      [Wall],
+      Exlib,
+      Prepare,
+      1,
+      ["info"]
+    );
+
+    Assert.Equal(["info"], result.Laws.Select(l => l.Name));
+    Assert.Throws<ArgumentException>(() =>
+      BlockLaws.Run("test", [Wall], Exlib, Prepare, 1, ["nonesuch"])
     );
 #endif
   }

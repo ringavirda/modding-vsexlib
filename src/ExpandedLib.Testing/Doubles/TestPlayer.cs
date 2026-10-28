@@ -571,7 +571,7 @@ public sealed class TestPlayer {
     string uid = "test",
     string name = "Tester"
   ) {
-    EntityPlayer entity = Substitute.For<EntityPlayer>();
+    EntityPlayer entity = world.Made<EntityPlayer>();
     entity.World = world.World;
     entity.Api = world.Api;
     entity.WatchedAttributes.SetString("playerUID", uid);
@@ -580,11 +580,11 @@ public sealed class TestPlayer {
     IPlayer player;
     IServerPlayer? serverPlayer;
     try {
-      serverPlayer = Substitute.For<IServerPlayer>();
+      serverPlayer = world.Made<IServerPlayer>();
       player = serverPlayer;
     } catch (TypeLoadException) {
       serverPlayer = null;
-      player = Substitute.For<IPlayer>();
+      player = world.Made<IPlayer>();
     }
 
     player.Entity.Returns(entity);
@@ -599,6 +599,7 @@ public sealed class TestPlayer {
     entity.LeftHandItemSlot.Returns(hotbar[OffHandIndex]);
     InventoryGeneric mouse = TestInventory.Of(world, 1, $"mouse-{uid}");
     IPlayerInventoryManager manager = Inventories(
+      world,
       player,
       () => made!.ActiveSlot,
       hotbar,
@@ -615,6 +616,7 @@ public sealed class TestPlayer {
   }
 
   private static IPlayerInventoryManager Inventories(
+    TestWorld world,
     IPlayer player,
     System.Func<ItemSlot> activeSlot,
     InventoryGeneric hotbar,
@@ -624,7 +626,7 @@ public sealed class TestPlayer {
       [hotbar.InventoryID] = hotbar,
       [mouse.InventoryID] = mouse,
     };
-    var manager = Substitute.For<IPlayerInventoryManager>();
+    var manager = world.Made<IPlayerInventoryManager>();
     manager.ActiveHotbarSlot.Returns(_ => activeSlot());
     manager.OffhandHotbarSlot.Returns(hotbar[OffHandIndex]);
     manager.OffhandTool.Returns(_ =>

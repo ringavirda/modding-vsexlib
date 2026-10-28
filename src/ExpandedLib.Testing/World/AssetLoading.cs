@@ -681,7 +681,7 @@ public sealed partial class TestWorld {
     AssetManager mgr,
     out ClassRegistry rawClassRegistry
   ) {
-    var api = Substitute.For<ICoreServerAPI>();
+    var api = Made<ICoreServerAPI>();
     var coreApi = (ICoreAPI)api;
     coreApi.Assets.Returns(mgr);
     coreApi.Logger.Returns(Log);
@@ -715,7 +715,7 @@ public sealed partial class TestWorld {
     }
 #endif
 
-    var serverApi = Substitute.For<IServerAPI>();
+    var serverApi = Made<IServerAPI>();
     serverApi.Logger.Returns(Log);
     api.Server.Returns(serverApi);
 

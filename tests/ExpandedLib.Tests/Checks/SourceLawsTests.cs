@@ -803,6 +803,62 @@ public class SourceLawsTests(ITestOutputHelper output) {
 
   #endregion
 
+  #region SharedPathEdits
+
+  private const string Shared =
+    "; changes the location it is called on, which may be shared; call Clone() first";
+
+  // Fails when SharedPathEdits rejects a receiver built fresh in the call, or a local initialised from one.
+  [Fact]
+  public void Fresh_receivers_are_accepted() =>
+    Assert.Empty(
+      Scan(
+        SourceLaws.SharedPathEdits,
+        "class A {\n"
+          + "  object P(string s, Block b) {\n"
+          + "    var a = new AssetLocation(s).WithPathPrefixOnce(\"shapes/\");\n"
+          + "    var c = AssetLocation.Create(s, d)\n      .WithPathAppendixOnce(\".json\");\n"
+          + "    var e = b.Shape.Base.Clone().WithPathPrefix(\"shapes/\").WithPathAppendix(\".json\");\n"
+          + "    var f = b.Sound?.Clone().WithPathPrefixOnce(\"sounds/\");\n"
+          + "    var g = b.Shape.Base.CopyWithPath(\"x\").WithPathPrefixOnce(\"shapes/\");\n"
+          + "    AssetLocation loc = new AssetLocation(s);\n"
+          + "    loc.WithPathPrefixOnce(\"shapes/\");\n"
+          + "    var h = b.Shape.Base.Clone();\n"
+          + "    return Use(s, loc.WithPathAppendixOnce(\".json\"), h.WithPathPrefixOnce(\"x/\"));\n"
+          + "  }\n}"
+      )
+    );
+
+  // Fails when SharedPathEdits accepts a pattern variable, an optional member, a parameter or a shared
+  // local, or names one chain twice.
+  [Fact]
+  [PlantedDefect(typeof(SourceLaws), nameof(SourceLaws.SharedPathEdits))]
+  public void Receivers_that_may_be_shared_are_named() =>
+    Assert.Equal(
+      [
+        "Planted0.cs:3: shapeBase" + Shared,
+        "Planted0.cs:6: stack.Collectible.GetBehavior<G>().StorageProps?.PlaceRemoveSound"
+          + Shared,
+        "Planted0.cs:8: loc" + Shared,
+        "Planted0.cs:11: shared" + Shared,
+      ],
+      Scan(
+        SourceLaws.SharedPathEdits,
+        "class A {\n"
+          + "  AssetLocation P(Entity player) =>\n"
+          + "    player?.Client?.Shape?.Base is { } shapeBase ? shapeBase.WithPathPrefixOnce(\"shapes/\").WithPathAppendixOnce(\".json\") : D;\n"
+          + "  AssetLocation Q(ItemStack stack) {\n"
+          + "    return sound\n"
+          + "      ?? stack.Collectible.GetBehavior<G>().StorageProps?.PlaceRemoveSound?.WithPathPrefixOnce(\"sounds/\");\n"
+          + "  }\n"
+          + "  void R(AssetLocation loc) => loc.WithPathAppendix(\".json\");\n"
+          + "  void S(Block b) {\n    var shared = b.Shape.Base;\n    shared.WithPathPrefix(\"a/\");\n  }\n"
+          + "  // x.WithPathPrefix(\"a\")\n  string t = \"x.WithPathPrefix(\";\n}"
+      )
+    );
+
+  #endregion
+
   // Fails when Key returns a key for a line with no subject or no reason instead of throwing.
   [Theory]
   [InlineData("ExOrientation.cs:181 FromCode(side); returns null")]

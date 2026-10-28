@@ -299,19 +299,22 @@ public sealed partial class SetupScene
 
   private void TickSecond() => TickSecond(TestWorld.GameHoursPerSecond);
 
-  private void TickSecond(double hours)
+  private void TickSecond(double hours) => TickSecond(hours, _lineListeners);
+
+  /// <summary>Advances the calendar by <paramref name="hours"/> and runs one second of the world:
+  /// every block entity listener not in <paramref name="except"/> fires once, in tick order when the
+  /// setup names one, and the line listeners are stepped 1000 ms.</summary>
+  /// <param name="hours">Game hours the calendar moves.</param>
+  /// <param name="except">Ids of the listeners that do not fire this second; the line listeners
+  /// belong in it.</param>
+  private void TickSecond(double hours, IReadOnlySet<long> except)
   {
     World.AdvanceHours(hours);
     if (_ordered)
-      World.FireBlockEntityTicks(
-        1f,
-        _lineListeners,
-        NetworkTick,
-        _networkBefore
-      );
+      World.FireBlockEntityTicks(1f, except, NetworkTick, _networkBefore);
     else
     {
-      World.FireBlockEntityTicks(1f, _lineListeners);
+      World.FireBlockEntityTicks(1f, except);
       NetworkTick();
     }
     World.StepListeners(1000, _lineListeners);
