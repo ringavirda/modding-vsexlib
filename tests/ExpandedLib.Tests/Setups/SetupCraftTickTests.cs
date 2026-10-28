@@ -64,9 +64,8 @@ public class SetupCraftTickTests
   private const string Ticker =
     "{\"place\": {\"id\": \"other\", \"code\": \"setupcraft:chest\", \"at\": [3, 0, 0]}}";
 
-  // Fails when a craft hold ticks every placed station instead of only the crafted one (the
-  // other station's listener fires), or ticks nothing (the crafted station's or the world's
-  // listener stays silent).
+  // Fails when a craft hold ticks every placed station instead of only the crafted one, or
+  // ticks nothing (the crafted station's or the world's listener stays silent).
   [Fact]
   public void A_craft_hold_ticks_the_crafted_station_and_the_world_but_not_another_station()
   {

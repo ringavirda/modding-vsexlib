@@ -721,10 +721,9 @@ public sealed partial class TestWorld : IDisposable {
 
   /// <summary>Fires every listener not in <paramref name="except"/> once with
   /// <paramref name="dt"/> in firing order, runs <paramref name="network"/> just before the
-  /// listener <paramref name="networkBefore"/> (at that listener's place even when it is in
-  /// <paramref name="except"/>), advances sim time and fires the delayed callbacks
-  /// that come due, and runs <paramref name="network"/> last when it has not run (it is null or
-  /// fires nowhere).</summary>
+  /// listener <paramref name="networkBefore"/> even when that listener is in except, advances
+  /// sim time and fires the delayed callbacks that come due, and runs <paramref name="network"/>
+  /// last when it has not run (that listener is null or fires nowhere).</summary>
   internal void FireBlockEntityTicks(
     float dt,
     IReadOnlySet<long> except,
