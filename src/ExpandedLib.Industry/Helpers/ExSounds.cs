@@ -214,6 +214,7 @@ public static class ExSounds {
   internal const string ChannelName = "exlibSound";
 
   private static IServerNetworkChannel? _serverChannel;
+  private static IWorldAccessor? _serverWorld;
 
   // Milliseconds each catalogue sound lasts; a variant set (anvilhit1..3) holds its longest file.
   private static readonly Dictionary<AssetLocation, long> ClipLengths = new() {
@@ -392,12 +393,14 @@ public static class ExSounds {
   public static void HissSound(IWorldAccessor world, BlockPos pos) =>
     PlayChance(world, pos, ExtinguishHiss, 0.3, range: 24f, volume: 0.5f);
 
-  /// <summary>Opens the server end of the sound channel; one-shots played on the server go through it
-  /// from then on.</summary>
-  internal static void StartServer(ICoreServerAPI api) =>
+  /// <summary>Opens the server end of the sound channel; one-shots played in <paramref name="api"/>'s
+  /// world go through it from then on, those of any other world use the game's own broadcast.</summary>
+  internal static void StartServer(ICoreServerAPI api) {
+    _serverWorld = api.World;
     _serverChannel = api
       .Network.RegisterChannel(ChannelName)
       .RegisterMessageType<SoundPacket>();
+  }
 
   /// <summary>Opens the client end of the sound channel, playing each packet through
   /// <see cref="MachineVolume"/>.</summary>
@@ -420,7 +423,10 @@ public static class ExSounds {
 
   /// <summary>Closes the server end; later server one-shots fall back to the game's own
   /// broadcast.</summary>
-  internal static void StopServer() => _serverChannel = null;
+  internal static void StopServer() {
+    _serverChannel = null;
+    _serverWorld = null;
+  }
 
   // Advances lastMs and returns true once both the interval and the clip have run out.
   private static bool Due(
@@ -456,7 +462,8 @@ public static class ExSounds {
       PlayOnClient(world, x, y, z, sound, randomizePitch, range, volume);
       return;
     }
-    if (_serverChannel == null) {
+    IServerNetworkChannel? channel = _serverChannel;
+    if (channel == null || !ReferenceEquals(world, _serverWorld)) {
       world.PlaySoundAt(
         sound,
         x,
@@ -479,7 +486,7 @@ public static class ExSounds {
       .ToArray();
     if (listeners.Length == 0)
       return;
-    _serverChannel.SendPacket(
+    channel.SendPacket(
       new SoundPacket {
         Sound = sound.ToString(),
         X = x,
