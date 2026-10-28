@@ -67,7 +67,7 @@ internal sealed class CompleteStep : ScenarioStep {
       PackLedger.DrawStages(
         ctx,
         construction.Construction,
-        cell.ToString(),
+        cell,
         ConstructionWalk.Target(to, construction.Construction.Stages.Length),
         ConstructionWalk.Materials(materials)
       );
@@ -108,11 +108,12 @@ internal sealed class CompleteStep : ScenarioStep {
       )
         continue;
       Block block = Choose(ctx, wanted.Wanted);
-      PackLedger.DrawBlock(
-        ctx,
-        WantedCode(wanted.Wanted).ToString(),
-        local.ToString()
-      );
+      if (!(ctx.Pack?.TookStanding(cell) ?? false))
+        PackLedger.DrawBlock(
+          ctx,
+          WantedCode(wanted.Wanted).ToString(),
+          local.ToString()
+        );
       ctx.SetBlock(block, local);
       chosen.Add(block.Code.ToString());
     }

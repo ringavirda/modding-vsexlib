@@ -176,7 +176,7 @@ internal sealed class RunStep : ScenarioStep {
     for (int i = 0; i < cells.Count; i++) {
       BlockPos cell = cells[i];
       Block block = blocks[i];
-      PackLedger.DrawBlock(ctx, block.Code.ToString(), cell.ToString());
+      PackLedger.DrawBlock(ctx, block.Code.ToString(), cell.ToString(), cell);
       ctx.RequireInWorld(cell);
       if (
         !place(block, ctx.Setup.Absolute(cell), faces[i], out string? failure)

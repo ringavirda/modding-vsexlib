@@ -56,9 +56,13 @@ internal static class PackLedger {
   public static void DrawBlock(
     ScenarioContext ctx,
     string code,
-    string? pin = null
+    string? pin = null,
+    BlockPos? cell = null
   ) {
-    if (ctx.Pack is not { DrawsBlocks: true } || ctx.Pack.TakeStanding(code))
+    if (
+      ctx.Pack is not { DrawsBlocks: true }
+      || ctx.Pack.TakeStanding(code, cell)
+    )
       return;
     Draw(ctx, code, 1, pin);
   }
@@ -66,17 +70,20 @@ internal static class PackLedger {
   /// <summary>Draws the stacks of the stages <paramref name="construction"/> still has to pay up to
   /// <paramref name="target"/>; a <c>{placeholder}</c> in a code reads as the variant
   /// <paramref name="materials"/> names for it, or as <c>*</c>.</summary>
+  /// <param name="cell">The plot-local cell of the construction's block; draws nothing when the pack
+  /// took that block free from its standing list.</param>
   /// <param name="target">The last stage index the walk builds.</param>
   /// <exception cref="StepFailure">The pack holds too few of a stage's stacks.</exception>
   public static void DrawStages(
     ScenarioContext ctx,
     ExRightClickConstruction construction,
-    string pin,
+    BlockPos cell,
     int target,
     IReadOnlyDictionary<string, string> materials
   ) {
-    if (ctx.Pack is not { DrawsBlocks: true })
+    if (ctx.Pack is not { DrawsBlocks: true } || ctx.Pack.TookStanding(cell))
       return;
+    string pin = cell.ToString();
     for (int i = construction.CurrentCompletedStage + 1; i <= target; i++)
       foreach (
         ExConstructionIngredient need in construction.Stages[i].RequireStacks
