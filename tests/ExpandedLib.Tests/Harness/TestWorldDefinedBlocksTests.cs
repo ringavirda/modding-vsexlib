@@ -178,6 +178,101 @@ public class TestWorldDefinedBlocksTests
     );
   }
 
+  // Fails when the per-assembly cache is keyed so the second world registers nothing.
+  [Fact]
+  public void RegisterClasses_gives_a_second_world_the_same_keys_and_types_in_order()
+  {
+    Assembly asm = typeof(TestWorldDefinedBlocksTests).Assembly;
+    string domain = EntityRegistry.DomainOf(asm, asm.GetName().Name ?? "");
+    var first = new TestWorld().RegisterClasses(asm);
+    var second = new TestWorld().RegisterClasses(asm);
+
+    Assert.Equal(
+      typeof(RegisteredBe),
+      first.Api.ClassRegistry.GetBlockEntity(
+        EntityRegistry.KeyFor(domain, typeof(RegisteredBe))
+      )
+    );
+    var firstRegistered = Registered(first, asm, domain);
+    Assert.Equal(firstRegistered, Registered(second, asm, domain));
+    Assert.NotEmpty(firstRegistered);
+    Assert.Equal(RegistrationOrder(first, asm), RegistrationOrder(second, asm));
+    Assert.NotEmpty(RegistrationOrder(second, asm));
+  }
+
+  // Fails when the per-assembly cache is keyed on the assembly alone: the second world then
+  // registers under the first domain.
+  [Fact]
+  public void RegisterClasses_registers_a_world_under_the_domain_recorded_when_it_registers()
+  {
+    Assembly asm = typeof(TestWorldDefinedBlocksTests).Assembly;
+    try
+    {
+      RecordDomain("firstdomain", asm);
+      new TestWorld().RegisterClasses(asm);
+      RecordDomain("seconddomain", asm);
+      var world = new TestWorld().RegisterClasses(asm);
+
+      Assert.Equal(
+        (Now: typeof(RegisteredBe), Stale: (Type?)null),
+        (
+          Now: world.Api.ClassRegistry.GetBlockEntity(
+            "seconddomain.RegisteredBe"
+          ),
+          Stale: world.Api.ClassRegistry.GetBlockEntity(
+            "firstdomain.RegisteredBe"
+          )
+        )
+      );
+    }
+    finally
+    {
+      TestModDomain.Register();
+    }
+  }
+
+  private static void RecordDomain(string id, Assembly asm)
+  {
+    var world = new TestWorld();
+    world.Mods.Add(id, "1.0.0");
+    EntityRegistry.RegisterAll(world.Api, world.Mods.GetMod(id)!, asm);
+  }
+
+  private static Type[] RegistrationOrder(TestWorld world, Assembly asm)
+  {
+    object classes = typeof(TestWorld)
+      .GetField("_classes", BindingFlags.Instance | BindingFlags.NonPublic)!
+      .GetValue(world)!;
+    var byType = (System.Collections.IDictionary)
+      classes
+        .GetType()
+        .GetField(
+          "blockEntityTypeToClassnameMapping",
+          BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+        )!
+        .GetValue(classes)!;
+    return [.. byType.Keys.Cast<Type>().Where(t => t.Assembly == asm)];
+  }
+
+  private static (string Key, Type? Type)[] Registered(
+    TestWorld world,
+    Assembly asm,
+    string domain
+  ) =>
+    [
+      .. asm.GetTypes()
+        .Where(t => t.GetCustomAttributes<RegisterAttribute>().Any())
+        .Select(t => EntityRegistry.KeyFor(domain, t))
+        .Select(k =>
+          (
+            k,
+            world.Api.ClassRegistry.GetBlockEntity(k)
+              ?? world.Api.ClassRegistry.GetItemClass(k)
+              ?? world.Api.ClassRegistry.GetCollectibleBehaviorClass(k)
+          )
+        ),
+    ];
+
   private sealed class PlainBe : BlockEntity { }
 
   private sealed class PlainItem : Item { }

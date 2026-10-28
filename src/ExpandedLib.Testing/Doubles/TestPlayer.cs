@@ -310,6 +310,116 @@ public sealed class TestPlayer {
       eachSecond
     );
 
+  /// <summary>Uses the held item on the cell at <paramref name="pos"/> as the server handles a held use:
+  /// <see cref="CollectibleObject.OnHeldUseStart"/>, then, when it takes the use,
+  /// <see cref="CollectibleObject.OnHeldUseStep"/> every <see cref="InteractStepSeconds"/> while it answers
+  /// other than <see cref="EnumHandInteract.None"/>, and <see cref="CollectibleObject.OnHeldUseStop"/> once.</summary>
+  /// <remarks>A spectator, a player the claims refuse use of the cell, and an empty hand get nothing. No
+  /// world ticks run; the keys last for the call, and <c>Controls.HandUse</c> is
+  /// <see cref="EnumHandInteract.HeldItemInteract"/> for the hold. The block's own interaction is not run.</remarks>
+  /// <param name="pos">The cell the use is aimed at.</param>
+  /// <param name="held">Put in <see cref="ActiveSlot"/> first; null leaves the hand.</param>
+  /// <param name="hit">The point in the cell, each axis 0 to 1; null for the centre of <paramref name="face"/>.</param>
+  /// <param name="face">The face aimed at; null for <c>BlockFacing.UP</c>.</param>
+  /// <param name="sneak">Holds <c>Sneak</c> and <c>ShiftKey</c>.</param>
+  /// <param name="ctrl">Holds <c>CtrlKey</c> and <c>Sprint</c>.</param>
+  /// <param name="seconds">The hold in seconds, 0 or more; 0 starts with no step.</param>
+  /// <returns>What the start left in the hand handling; <c>NotHandled</c> when it was not called.</returns>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="seconds"/> is negative or NaN.</exception>
+  public EnumHandHandling UseHeld(
+    BlockPos pos,
+    ItemStack? held,
+    Vec3d? hit,
+    BlockFacing? face,
+    bool sneak,
+    bool ctrl,
+    float seconds
+  ) => UseHeld(pos, held, hit, face, sneak, ctrl, false, seconds, null);
+
+  internal EnumHandHandling UseHeld(
+    BlockPos pos,
+    ItemStack? held,
+    Vec3d? hit,
+    BlockFacing? face,
+    bool sneak,
+    bool ctrl,
+    bool sprint,
+    float seconds,
+    Action? eachSecond
+  ) {
+    if (!(seconds >= 0f))
+      throw new ArgumentOutOfRangeException(
+        nameof(seconds),
+        seconds,
+        "a hold lasts 0 seconds or more"
+      );
+    if (held != null)
+      Hold(held);
+    ItemSlot slot = ActiveSlot;
+    if (
+      slot.Empty
+      || GameMode == EnumGameMode.Spectator
+      || !_world.World.Claims.TryAccess(Player, pos, EnumBlockAccessFlags.Use)
+    )
+      return EnumHandHandling.NotHandled;
+    BlockSelection selection = FaceSelection(pos, face ?? BlockFacing.UP);
+    if (hit != null)
+      selection.HitPosition = hit;
+    EnumHandInteract handUse = Entity.Controls.HandUse;
+    Action release = PressKeys(sneak, ctrl, sprint);
+    Entity.Controls.HandUse = EnumHandInteract.HeldItemInteract;
+    try {
+      CollectibleObject item = slot.Itemstack.Collectible;
+      EnumHandHandling handling = EnumHandHandling.NotHandled;
+      item.OnHeldUseStart(
+        slot,
+        Entity,
+        selection,
+        null,
+        EnumHandInteract.HeldItemInteract,
+        true,
+        ref handling
+      );
+      if (handling == EnumHandHandling.NotHandled)
+        return handling;
+      float used = HoldSteps(
+        seconds,
+        s =>
+          item.OnHeldUseStep(s, slot, Entity, selection, null)
+          != EnumHandInteract.None,
+        eachSecond
+      );
+      item.OnHeldUseStop(
+        used,
+        slot,
+        Entity,
+        selection,
+        null,
+        EnumHandInteract.HeldItemInteract
+      );
+      return handling;
+    } finally {
+      Entity.Controls.HandUse = handUse;
+      release();
+    }
+  }
+
+  private Action PressKeys(bool sneak, bool ctrl, bool sprint) {
+    EntityControls controls = Entity.Controls;
+    (bool, bool, bool, bool) was = (
+      controls.Sneak,
+      controls.ShiftKey,
+      controls.CtrlKey,
+      controls.Sprint
+    );
+    controls.Sneak = controls.ShiftKey = sneak;
+    controls.CtrlKey = ctrl;
+    controls.Sprint = ctrl || sprint;
+    return () =>
+      (controls.Sneak, controls.ShiftKey, controls.CtrlKey, controls.Sprint) =
+        was;
+  }
+
 #if GAME_GE_1_22
   /// <summary>Right-clicks control <paramref name="control"/> of the block at <paramref name="pos"/>: as
   /// <see cref="Interact(BlockPos, ItemStack?, bool, bool, float, BlockFacing?)"/>, with the selection on the
@@ -402,16 +512,7 @@ public sealed class TestPlayer {
     if (!_world.World.Claims.TryAccess(Player, pos, EnumBlockAccessFlags.Use))
       return false;
 
-    EntityControls controls = Entity.Controls;
-    (bool, bool, bool, bool) was = (
-      controls.Sneak,
-      controls.ShiftKey,
-      controls.CtrlKey,
-      controls.Sprint
-    );
-    controls.Sneak = controls.ShiftKey = sneak;
-    controls.CtrlKey = ctrl;
-    controls.Sprint = ctrl || sprint;
+    Action release = PressKeys(sneak, ctrl, sprint);
     try {
       Block block = _world.Accessor.GetBlock(pos);
       if (ClientClick.PlacesFirst(_world.World, Player, selection, out _))
@@ -426,8 +527,7 @@ public sealed class TestPlayer {
       block.OnBlockInteractStop(used, _world.World, Player, selection);
       return true;
     } finally {
-      (controls.Sneak, controls.ShiftKey, controls.CtrlKey, controls.Sprint) =
-        was;
+      release();
     }
   }
 
@@ -471,7 +571,7 @@ public sealed class TestPlayer {
     string uid = "test",
     string name = "Tester"
   ) {
-    EntityPlayer entity = Substitute.For<EntityPlayer>();
+    EntityPlayer entity = world.Made<EntityPlayer>();
     entity.World = world.World;
     entity.Api = world.Api;
     entity.WatchedAttributes.SetString("playerUID", uid);
@@ -480,11 +580,11 @@ public sealed class TestPlayer {
     IPlayer player;
     IServerPlayer? serverPlayer;
     try {
-      serverPlayer = Substitute.For<IServerPlayer>();
+      serverPlayer = world.Made<IServerPlayer>();
       player = serverPlayer;
     } catch (TypeLoadException) {
       serverPlayer = null;
-      player = Substitute.For<IPlayer>();
+      player = world.Made<IPlayer>();
     }
 
     player.Entity.Returns(entity);
@@ -499,6 +599,7 @@ public sealed class TestPlayer {
     entity.LeftHandItemSlot.Returns(hotbar[OffHandIndex]);
     InventoryGeneric mouse = TestInventory.Of(world, 1, $"mouse-{uid}");
     IPlayerInventoryManager manager = Inventories(
+      world,
       player,
       () => made!.ActiveSlot,
       hotbar,
@@ -515,6 +616,7 @@ public sealed class TestPlayer {
   }
 
   private static IPlayerInventoryManager Inventories(
+    TestWorld world,
     IPlayer player,
     System.Func<ItemSlot> activeSlot,
     InventoryGeneric hotbar,
@@ -524,7 +626,7 @@ public sealed class TestPlayer {
       [hotbar.InventoryID] = hotbar,
       [mouse.InventoryID] = mouse,
     };
-    var manager = Substitute.For<IPlayerInventoryManager>();
+    var manager = world.Made<IPlayerInventoryManager>();
     manager.ActiveHotbarSlot.Returns(_ => activeSlot());
     manager.OffhandHotbarSlot.Returns(hotbar[OffHandIndex]);
     manager.OffhandTool.Returns(_ =>

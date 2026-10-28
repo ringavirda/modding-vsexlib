@@ -10,7 +10,7 @@ using Vintagestory.API.Util;
 namespace ExpandedLib.Industry.MechanicalPower;
 
 /// <summary>
-/// Draws every <see cref="TurningInstance"/> of a client, one instanced draw per shape, part and texture set, at
+/// Draws every <see cref="TurningInstance"/> of a client, one instanced draw per shape, part, texture set and atlas page, at
 /// the angle of its run. The Before stage advances the client's <see cref="MpRunAngles"/>.
 /// </summary>
 internal sealed class TurningPartsRenderer : IRenderer {
@@ -77,11 +77,6 @@ internal sealed class TurningPartsRenderer : IRenderer {
     _capi.Render.GlDisableCullFace();
     _capi.Render.GlToggleBlend(false);
     _program.Use();
-    _program.BindTexture2D(
-      "tex",
-      _capi.BlockTextureAtlas.Positions.FirstOrDefault()?.atlasTextureId ?? 0,
-      0
-    );
     _program.Uniform("rgbaFogIn", _capi.Render.FogColor);
     _program.Uniform("rgbaAmbientIn", _capi.Render.AmbientColor);
     _program.Uniform("fogMinIn", _capi.Render.FogMin);
@@ -92,7 +87,7 @@ internal sealed class TurningPartsRenderer : IRenderer {
     );
     _program.UniformMatrix("modelViewMatrix", _capi.Render.CameraMatrixOriginf);
     foreach (Group group in _groups.Values)
-      group.Draw(_capi, camera);
+      group.Draw(_capi, _program, camera);
     _program.Stop();
     _capi.Render.GlEnableCullFace();
   }
@@ -154,11 +149,11 @@ internal sealed class TurningPartsRenderer : IRenderer {
     return m;
   }
 
-  /// <summary>The instances that share one mesh and so one draw.</summary>
+  /// <summary>The instances that share one mesh, drawn as one instanced call per atlas page the mesh has faces on.</summary>
   internal sealed class Group(string key, TurningInstance template) {
-    private MeshData? _mesh;
-    private MeshRef? _ref;
+    private List<Piece>? _pieces;
     private float[] _values = new float[Floats * StartCapacity];
+    private MeshData? _built;
     private readonly MeshData _update = new();
     private int _lightCursor;
     private bool _failed;
@@ -179,8 +174,13 @@ internal sealed class TurningPartsRenderer : IRenderer {
         EnsureMesh(capi);
     }
 
-    internal void Draw(ICoreClientAPI capi, Vec3d camera) {
-      if (_ref == null || _mesh == null)
+    /// <summary>Writes every instance once, then updates and renders each atlas page's piece with that page bound to "tex".</summary>
+    internal void Draw(
+      ICoreClientAPI capi,
+      IShaderProgram program,
+      Vec3d camera
+    ) {
+      if (_pieces == null)
         return;
       RefreshLights(capi);
       int i = 0;
@@ -209,35 +209,50 @@ internal sealed class TurningPartsRenderer : IRenderer {
         Array.Copy(m, 0, _values, j + 4, 16);
         i++;
       }
-      _mesh.CustomFloats.Values = _values;
-      _mesh.CustomFloats.Count = i * Floats;
-      _update.CustomFloats = _mesh.CustomFloats;
-      capi.Render.UpdateMesh(_ref, _update);
-      capi.Render.RenderMeshInstanced(_ref, i);
+      foreach (Piece piece in _pieces) {
+        piece.Mesh.CustomFloats.Values = _values;
+        piece.Mesh.CustomFloats.Count = i * Floats;
+        _update.CustomFloats = piece.Mesh.CustomFloats;
+        program.BindTexture2D("tex", piece.TextureId, 0);
+        capi.Render.UpdateMesh(piece.Ref, _update);
+        capi.Render.RenderMeshInstanced(piece.Ref, i);
+      }
     }
 
     private bool EnsureMesh(ICoreClientAPI capi) {
       int wanted = CapacityFor(Instances.Count, Capacity);
-      if (_ref != null && wanted == Capacity)
+      if (_pieces != null && wanted == Capacity)
         return true;
       Capacity = wanted;
       _values = new float[Floats * Capacity];
-      _ref?.Dispose();
-      _ref = null;
-      _mesh ??= BuildMesh(capi);
-      if (_mesh == null) {
+      DisposePieces();
+      _built ??= BuildMesh(capi);
+      if (_built == null) {
         _failed = true;
         return false;
       }
-      _mesh.CustomFloats = new CustomMeshDataPartFloat(Floats * Capacity) {
-        Instanced = true,
-        InterleaveOffsets = [0, 16, 32, 48, 64],
-        InterleaveSizes = [4, 4, 4, 4, 4],
-        InterleaveStride = 16 + 4 * 16,
-        StaticDraw = false,
-      };
-      _mesh.CustomFloats.SetAllocationSize(Floats * Capacity);
-      _ref = capi.Render.UploadMesh(_mesh);
+      int fallback =
+        capi.BlockTextureAtlas.Positions.FirstOrDefault()?.atlasTextureId ?? 0;
+      MeshData[] parts = _built.SplitByTextureId();
+      _pieces = [];
+      for (int n = 0; n < parts.Length; n++) {
+        MeshData mesh = parts[n];
+        mesh.CustomFloats = new CustomMeshDataPartFloat(Floats * Capacity) {
+          Instanced = true,
+          InterleaveOffsets = [0, 16, 32, 48, 64],
+          InterleaveSizes = [4, 4, 4, 4, 4],
+          InterleaveStride = 16 + 4 * 16,
+          StaticDraw = false,
+        };
+        mesh.CustomFloats.SetAllocationSize(Floats * Capacity);
+        _pieces.Add(
+          new Piece(
+            mesh,
+            capi.Render.UploadMesh(mesh),
+            _built.TextureIds.Length > n ? _built.TextureIds[n] : fallback
+          )
+        );
+      }
       return true;
     }
 
@@ -278,9 +293,17 @@ internal sealed class TurningPartsRenderer : IRenderer {
       }
     }
 
-    internal void Dispose() {
-      _ref?.Dispose();
-      _ref = null;
+    internal void Dispose() => DisposePieces();
+
+    private void DisposePieces() {
+      if (_pieces == null)
+        return;
+      foreach (Piece piece in _pieces)
+        piece.Ref.Dispose();
+      _pieces = null;
     }
   }
+
+  /// <summary>The part of a group's mesh on one atlas page, with its uploaded instanced buffer.</summary>
+  private sealed record Piece(MeshData Mesh, MeshRef Ref, int TextureId);
 }

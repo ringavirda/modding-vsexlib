@@ -94,6 +94,69 @@ public sealed partial class SetupScene
     Player.HoldOffHand(null);
   }
 
+  private void UseStep(SetupStep step)
+  {
+    BlockPos at = At(step, "at");
+    string[] keys =
+      (step.Body["keys"] as JArray)?.Select(k => (string)k!).ToArray() ?? [];
+    foreach (string key in keys)
+      if (key is not ("sneak" or "ctrl" or "sprint"))
+        throw Fail(
+          step.Path,
+          $"\"{key}\" is not a key the hold holds: sneak, ctrl or sprint."
+        );
+    float seconds = (float)step.Body["seconds"]!;
+    if (!(seconds >= 0f))
+      throw Fail(step.Path, $"seconds {seconds} is negative.");
+    BlockFacing? face = null;
+    if (step.Body["face"] is { } letter)
+      face =
+        SetupLayout.FaceOf((string)letter!)
+        ?? throw Fail(
+          step.Path,
+          $"\"{(string)letter}\" is not one of n, e, s, w, u, d."
+        );
+    Vec3d? hit = step.Body["hit"] is JArray cell
+      ? new Vec3d(
+        (double)cell[0] / 16,
+        (double)cell[1] / 16,
+        (double)cell[2] / 16
+      )
+      : null;
+    bool keep = (bool?)step.Body["keep"] ?? false;
+    ItemStack? with = step.Body["with"] is { } held
+      ? StackOf(held, step.Path)
+      : null;
+    if (with != null)
+    {
+      Draw(step.Path, with);
+      Player.Hold(with);
+    }
+    EnumHandHandling handling = Player.UseHeld(
+      at,
+      null,
+      hit,
+      face,
+      keys.Contains("sneak"),
+      keys.Contains("ctrl"),
+      keys.Contains("sprint"),
+      seconds,
+      TickSecond
+    );
+    string heldCode =
+      Player.ActiveSlot.Itemstack?.Collectible.Code.ToString()
+      ?? "an empty hand";
+    if (!keep)
+      Give(Player.ActiveSlot.Itemstack);
+    if (!keep)
+      Player.Hold(null);
+    if (handling == EnumHandHandling.NotHandled)
+      throw Fail(
+        step.Path,
+        $"{heldCode} did not take the use at {Describe(at)}."
+      );
+  }
+
   private void IgniteStep(SetupStep step)
   {
     BlockPos at = At(step, "at");
@@ -236,19 +299,22 @@ public sealed partial class SetupScene
 
   private void TickSecond() => TickSecond(TestWorld.GameHoursPerSecond);
 
-  private void TickSecond(double hours)
+  private void TickSecond(double hours) => TickSecond(hours, _lineListeners);
+
+  /// <summary>Advances the calendar by <paramref name="hours"/> and runs one second of the world:
+  /// every block entity listener not in <paramref name="except"/> fires once, in tick order when the
+  /// setup names one, and the line listeners are stepped 1000 ms.</summary>
+  /// <param name="hours">Game hours the calendar moves.</param>
+  /// <param name="except">Ids of the listeners that do not fire this second; the line listeners
+  /// belong in it.</param>
+  private void TickSecond(double hours, IReadOnlySet<long> except)
   {
     World.AdvanceHours(hours);
     if (_ordered)
-      World.FireBlockEntityTicks(
-        1f,
-        _lineListeners,
-        NetworkTick,
-        _networkBefore
-      );
+      World.FireBlockEntityTicks(1f, except, NetworkTick, _networkBefore);
     else
     {
-      World.FireBlockEntityTicks(1f, _lineListeners);
+      World.FireBlockEntityTicks(1f, except);
       NetworkTick();
     }
     World.StepListeners(1000, _lineListeners);

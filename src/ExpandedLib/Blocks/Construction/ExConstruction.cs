@@ -563,7 +563,8 @@ public class ExRightClickConstruction {
     return sound
       ?? stack
         .Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()
-        ?.StorageProps?.PlaceRemoveSound?.WithPathPrefixOnce("sounds/");
+        ?.StorageProps?.PlaceRemoveSound?.Clone()
+        .WithPathPrefixOnce("sounds/");
   }
 
   public void ToTreeAttributes(ITreeAttribute tree) {
