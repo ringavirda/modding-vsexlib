@@ -62,16 +62,21 @@ public static class CrowbarHold {
     AssetLocation sound
   ) => ExSounds.Play(world.Api, pos, sound, 0.8f);
 
+  private static ItemStack[]? _crowbarStacks;
+
+  /// <summary>Forgets the resolved crowbar stacks; run when a world starts loading.</summary>
+  internal static void ResetForWorld() => _crowbarStacks = null;
+
   /// <summary>The crowbar interaction hint with the action <paramref name="langCode"/>, advertising every crowbar item.</summary>
   public static WorldInteraction Help(IWorldAccessor world, string langCode) =>
     new() {
       ActionLangCode = langCode,
       MouseButton = EnumMouseButton.Right,
-      Itemstacks =
-      [
-        .. world
-          .Collectibles.Where(c => c.Tool == EnumTool.Crowbar)
-          .Select(c => new ItemStack(c)),
-      ],
+      Itemstacks = _crowbarStacks ??=
+        [
+          .. world
+            .Collectibles.Where(c => c.Tool == EnumTool.Crowbar)
+            .Select(c => new ItemStack(c)),
+        ],
     };
 }

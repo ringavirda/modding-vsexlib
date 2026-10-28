@@ -6,8 +6,10 @@ using NSubstitute;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
-using Vintagestory.GameContent;
 using Xunit;
+#if GAME_GE_1_22
+using Vintagestory.GameContent;
+#endif
 
 namespace ExpandedLib.Tests;
 
@@ -127,6 +129,7 @@ public class CrowbarHoldTests {
   // Fails when Help advertises a chisel or an unnamed tool, drops the right mouse, or loses a crowbar.
   [Fact]
   public void Help_names_every_crowbar_on_the_right_mouse() {
+    CrowbarHold.ResetForWorld();
     var world = new TestWorld();
     world.RegisterItem("game:crowbar-iron").Tool = EnumTool.Crowbar;
     world.RegisterItem("game:crowbar-steel").Tool = EnumTool.Crowbar;
@@ -142,7 +145,22 @@ public class CrowbarHoldTests {
     );
   }
 
-  private sealed class AnimationRig {
+  // Fails when Help rebuilds its stacks on every call instead of resolving them once per world.
+  [Fact]
+  public void Help_resolves_the_crowbar_stacks_once_per_world() {
+    CrowbarHold.ResetForWorld();
+    var world = new TestWorld();
+    world.RegisterItem("game:crowbar-iron").Tool = EnumTool.Crowbar;
+
+    WorldInteraction first = CrowbarHold.Help(world.World, "test:a");
+    WorldInteraction second = CrowbarHold.Help(world.World, "test:b");
+
+    Assert.Same(first.Itemstacks, second.Itemstacks);
+  }
+
+#if GAME_GE_1_22
+  private sealed class AnimationRig
+  {
     public readonly TestWorld World = new();
     public readonly TestPlayer Player;
     public readonly ItemCrowbar Crowbar = new();
@@ -152,7 +170,8 @@ public class CrowbarHoldTests {
       80
     );
 
-    public AnimationRig() {
+    public AnimationRig()
+    {
       Player = World.Player("aimer");
       World.Register(Block);
       World.Place(Pos, Block);
@@ -161,7 +180,9 @@ public class CrowbarHoldTests {
       Player.Entity.World = World.World;
     }
 
-    public string Animation(bool aimed = true) {
+    public string Animation(bool aimed = true, bool pressed = true)
+    {
+      Player.Entity.Controls.RightMouseDown = pressed;
       Player.Entity.BlockSelection = aimed
         ? new BlockSelection { Position = Pos }
         : null;
@@ -174,7 +195,8 @@ public class CrowbarHoldTests {
 
   // Fails when the patch is not applied: the crowbar keeps vanilla's interactstatic off a beam.
   [Fact]
-  public void Animation_is_the_crowbars_own_aimed_at_a_verb_block() {
+  public void Animation_is_the_crowbars_own_aimed_at_a_verb_block()
+  {
     using var fixture = new HarmonyFixture(
       "exlibtest.crowbaranim",
       typeof(CrowbarUseAnimationPatch).Assembly
@@ -184,9 +206,10 @@ public class CrowbarHoldTests {
     Assert.Equal("breakhit", rig.Animation());
   }
 
-  // Fails when the patch ignores CrowbarActs or the selection: a cell that would not act, or no aim, changes the animation.
+  // Fails when the patch ignores CrowbarActs, the selection or the right mouse: a cell that would not act, no aim, or an idle hand changes the animation.
   [Fact]
-  public void Animation_stays_interactstatic_where_the_verb_would_not_act() {
+  public void Animation_stays_interactstatic_where_the_verb_would_not_act()
+  {
     using var fixture = new HarmonyFixture(
       "exlibtest.crowbaranim",
       typeof(CrowbarUseAnimationPatch).Assembly
@@ -197,5 +220,7 @@ public class CrowbarHoldTests {
     Assert.Equal("interactstatic", rig.Animation());
     rig.Block.Acts = true;
     Assert.Equal("interactstatic", rig.Animation(aimed: false));
+    Assert.Equal("interactstatic", rig.Animation(pressed: false));
   }
+#endif
 }
