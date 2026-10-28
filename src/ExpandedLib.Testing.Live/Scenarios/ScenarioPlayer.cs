@@ -571,7 +571,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
     EnumHandHandling handling = EnumHandHandling.NotHandled;
     if (slot.Empty)
       return handling;
-    _handUse = Player.Entity.Controls.HandUse;
+    _handUse ??= Player.Entity.Controls.HandUse;
     Player.Entity.Controls.HandUse = EnumHandInteract.HeldItemInteract;
     slot.Itemstack.Collectible.OnHeldUseStart(
       slot,
@@ -815,7 +815,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   public void KeepHand() =>
     _filledHand = Player.InventoryManager.ActiveHotbarSlot.Itemstack;
 
-  /// <summary>Releases the keys, parks the player, empties the off hand and empties the active slot unless
+  /// <summary>Releases the keys, restores <c>Controls.HandUse</c> after a held use, parks the player, empties the off hand and empties the active slot unless
   /// <paramref name="keep"/> or the slot still holds the stack <see cref="KeepHand"/> marked.</summary>
   /// <param name="keep">Whether the active slot keeps its stack for the steps that follow.</param>
   public void Release(bool keep = false) {

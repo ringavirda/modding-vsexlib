@@ -68,5 +68,39 @@ public class SetupUseTests
 
     Assert.Contains("takes \"at\"", e.Message);
   }
+
+  // Fails when the throw on a start that leaves NotHandled is removed.
+  [Fact]
+  public void A_use_the_item_declines_fails_naming_the_hand_and_the_cell()
+  {
+    InvalidOperationException e = Assert.Throws<InvalidOperationException>(() =>
+      SetupHoldTests.Build(Use("\"seconds\": 1"))
+    );
+
+    Assert.Contains("an empty hand did not take the use at", e.Message);
+    Assert.Contains("(0, 0, 0)", e.Message);
+  }
+
+  private static string HitRefusal(string hit) =>
+    Assert
+      .Throws<InvalidOperationException>(() =>
+        SetupHoldTests.Build(Use("\"hit\": " + hit + ", \"seconds\": 0"))
+      )
+      .Message;
+
+  // Fails when the array check in ValidateHit is dropped.
+  [Fact]
+  public void A_use_hit_that_is_not_an_array_is_refused() =>
+    Assert.Contains("expected an array", HitRefusal("8"));
+
+  // Fails when the count check in ValidateHit is dropped.
+  [Fact]
+  public void A_use_hit_of_two_entries_is_refused() =>
+    Assert.Contains("three sixteenths", HitRefusal("[8, 16]"));
+
+  // Fails when the range check in ValidateHit is dropped.
+  [Fact]
+  public void A_use_hit_entry_outside_the_cell_is_refused() =>
+    Assert.Contains("outside 0 to 16", HitRefusal("[8, 17, 4]"));
 }
 #endif
