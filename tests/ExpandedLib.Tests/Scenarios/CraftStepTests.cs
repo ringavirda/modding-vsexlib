@@ -21,6 +21,7 @@ internal sealed class CraftFixtureBench
   public const int OutputSlot = 4;
   public const int ByproductSlot = 5;
 
+  public static int Ticks;
   public static bool Refuses;
   public static bool Hands;
   public static bool MakesWrong;
@@ -44,6 +45,7 @@ internal sealed class CraftFixtureBench
   {
     base.Initialize(api);
     this.DisablePickRangeCheck();
+    RegisterGameTickListener(_ => Ticks++, 1000);
   }
 
   public IReadOnlyList<CraftOrder> Orders(IWorldAccessor world) =>
@@ -174,7 +176,16 @@ internal sealed class CraftFixtureBenchBlock : Block
   ) => Bench(world, blockSel)?.Work(world, byPlayer, secondsUsed) ?? false;
 }
 
-internal sealed class CraftFixtureChest : BlockEntity { }
+internal sealed class CraftFixtureChest : BlockEntity
+{
+  public static int Ticks;
+
+  public override void Initialize(ICoreAPI api)
+  {
+    base.Initialize(api);
+    RegisterGameTickListener(_ => Ticks++, 1000);
+  }
+}
 
 /// <summary>The <c>craft</c> step in the harness: the hand grid and a station's window, the
 /// recipes the step loads, and what fails it (setups.md, <c>craft</c>).</summary>
@@ -237,7 +248,7 @@ public class CraftStepTests : IDisposable
       Register
     );
 
-  private static void Register(TestWorld w) =>
+  internal static void Register(TestWorld w) =>
     w.RegisterClass("CraftFixtureBench", typeof(CraftFixtureBench))
       .RegisterClass("CraftFixtureBenchBlock", typeof(CraftFixtureBenchBlock))
       .RegisterBlockEntityFactory(

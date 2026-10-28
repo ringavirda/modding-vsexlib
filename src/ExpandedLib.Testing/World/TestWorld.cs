@@ -756,9 +756,9 @@ public sealed partial class TestWorld : IDisposable {
 
   /// <summary>Fires every listener not in <paramref name="except"/> once with
   /// <paramref name="dt"/> in firing order, runs <paramref name="network"/> just before the
-  /// listener <paramref name="networkBefore"/>, advances sim time and fires the delayed callbacks
-  /// that come due, and runs <paramref name="network"/> last when it has not run (it is null or
-  /// fires nowhere).</summary>
+  /// listener <paramref name="networkBefore"/> even when that listener is in except, advances
+  /// sim time and fires the delayed callbacks that come due, and runs <paramref name="network"/>
+  /// last when it has not run (that listener is null or fires nowhere).</summary>
   internal void FireBlockEntityTicks(
     float dt,
     IReadOnlySet<long> except,
@@ -767,12 +767,12 @@ public sealed partial class TestWorld : IDisposable {
   ) {
     bool ran = false;
     foreach (var (id, listener) in _tickListeners.ToList()) {
-      if (except.Contains(id))
-        continue;
       if (!ran && id == networkBefore) {
         network();
         ran = true;
       }
+      if (except.Contains(id))
+        continue;
       listener.Callback(dt);
     }
     AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
@@ -808,6 +808,10 @@ public sealed partial class TestWorld : IDisposable {
   /// fires before the next listener's, then the delayed callbacks that come due.</summary>
   public void AdvanceBlockEntityTime(int totalMs) =>
     AdvanceBlockEntityTime(totalMs, null);
+
+  /// <summary>The last tick listener or delayed callback id issued, 0 before any. Every id issued
+  /// after this read is greater than it.</summary>
+  internal long LastListenerId => _nextListenerId;
 
   /// <summary>The ids of the tick listeners registered and not yet removed, as a copy.</summary>
   internal HashSet<long> TickListenerIds() => [.. _tickListeners.Keys];

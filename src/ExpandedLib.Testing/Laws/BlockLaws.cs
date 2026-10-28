@@ -545,7 +545,7 @@ public static class BlockLaws {
     internal const int TickMs = 5000;
 
     private readonly TestWorld _world;
-    private readonly HashSet<long> _listenersBefore;
+    private readonly long _listenerMark;
     private readonly List<string>? _faults;
 
     /// <param name="faults">Where the faults of steps run with <c>judged</c> set go; null drops
@@ -560,7 +560,7 @@ public static class BlockLaws {
       Block = block;
       At = at;
       _faults = faults;
-      _listenersBefore = world.TickListenerIds();
+      _listenerMark = world.LastListenerId;
     }
 
     internal Block Block { get; }
@@ -589,7 +589,7 @@ public static class BlockLaws {
     /// <see cref="TickMs"/>.</summary>
     internal bool Tick(bool judged) {
       HashSet<long> own = _world.TickListenerIds();
-      own.ExceptWith(_listenersBefore);
+      own.RemoveWhere(id => id <= _listenerMark);
       return Step(
         "ticked",
         judged,

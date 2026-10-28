@@ -254,6 +254,20 @@ public sealed partial class SetupScene
     return taken;
   }
 
+  /// <summary>The listeners a craft hold at <paramref name="crafted"/> leaves silent: those the other
+  /// placed stations registered when they were placed, and the line listeners. A listener that
+  /// belongs to no placed station, or to the crafted one, is not in the set.</summary>
+  /// <param name="crafted">The cell of the station being crafted at.</param>
+  private HashSet<long> ListenersBesides(BlockPos crafted)
+  {
+    HashSet<long> own = _listeners.GetValueOrDefault(crafted) ?? [];
+    HashSet<long> silent = [.. _lineListeners];
+    foreach ((BlockPos at, HashSet<long> ids) in _listeners)
+      if (!at.Equals(crafted))
+        silent.UnionWith(ids.Where(id => !own.Contains(id)));
+    return silent;
+  }
+
   private void WorkSequence(
     string where,
     BlockEntity entity,
@@ -262,6 +276,8 @@ public sealed partial class SetupScene
     CraftSequence sequence
   )
   {
+    HashSet<long> silent = ListenersBesides(entity.Pos);
+    void Second() => TickSecond(TestWorld.GameHoursPerSecond, silent);
     for (int n = 0; n < sequence.Steps.Length; n++)
     {
       CraftStep step = sequence.Steps[n];
@@ -282,7 +298,7 @@ public sealed partial class SetupScene
             CraftBills.Duration(step, Player.ActiveSlot.Itemstack)
               + TestPlayer.InteractStepSeconds,
             null,
-            TickSecond
+            Second
           )
         )
           throw Fail(where, $"{station} does not take the hold of {label}.");
