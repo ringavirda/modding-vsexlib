@@ -2139,6 +2139,44 @@ public class BlockLawsTests {
 #endif
   }
 
+  // Fails when Run ignores the names in only and runs every law, or lets an unknown name through.
+  [Fact]
+  [PlantedDefect(typeof(BlockLaws), nameof(BlockLaws.Run))]
+  public void Run_with_only_runs_the_named_laws_and_rejects_an_unknown_one() {
+#if GAME_GE_1_22
+    BlockLaws.Result result = BlockLaws.Run(
+      "test",
+      [Wall],
+      Exlib,
+      Prepare,
+      1,
+      ["control"]
+    );
+
+    Assert.Equal(["control"], result.Laws.Select(l => l.Name));
+
+    ArgumentException thrown = Assert.Throws<ArgumentException>(() =>
+      BlockLaws.Run("test", [Wall], Exlib, Prepare, 1, ["nonesuch"])
+    );
+    Assert.Contains("'nonesuch'", thrown.Message, StringComparison.Ordinal);
+    Assert.Contains("placement", thrown.Message, StringComparison.Ordinal);
+#else
+    BlockLaws.Result result = BlockLaws.Run(
+      "test",
+      [Wall],
+      Exlib,
+      Prepare,
+      1,
+      ["info"]
+    );
+
+    Assert.Equal(["info"], result.Laws.Select(l => l.Name));
+    Assert.Throws<ArgumentException>(() =>
+      BlockLaws.Run("test", [Wall], Exlib, Prepare, 1, ["nonesuch"])
+    );
+#endif
+  }
+
   #endregion
 
   #region Fixtures

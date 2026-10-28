@@ -142,59 +142,141 @@ public static class BlockLaws {
     IReadOnlyList<Assembly> assemblies,
     Action<TestWorld>? prepare,
     int groups
+  ) => Run(domain, defs, assemblies, prepare, groups, null);
+
+  /// <summary>As <see cref="Run(string, IEnumerable{IExDef}, IReadOnlyList{Assembly}, Action{TestWorld}?, int)"/>,
+  /// running only the laws named in <paramref name="only"/>.</summary>
+  /// <remarks>The laws run in their usual order. A law compiled out below 1.22 (<c>break</c>,
+  /// <c>draw</c>, <c>control</c>) is unknown there.</remarks>
+  /// <param name="domain">The domain whose blocks are judged.</param>
+  /// <param name="defs">Block and item definitions; others, and exlib's filler, are skipped.</param>
+  /// <param name="assemblies">Where the definitions' classes live, exlib's included.</param>
+  /// <param name="prepare">As the overload without groups.</param>
+  /// <param name="groups">As the overload with groups.</param>
+  /// <param name="only">The names of the laws to run; <see langword="null"/> runs them all. An
+  /// empty collection runs none.</param>
+  /// <returns>The laws that ran, in order.</returns>
+  /// <exception cref="ArgumentException">A name in <paramref name="only"/> is not a law this build
+  /// has; the message lists the known ones.</exception>
+  /// <exception cref="InvalidOperationException">As the overload without groups.</exception>
+  public static Result Run(
+    string domain,
+    IEnumerable<IExDef> defs,
+    IReadOnlyList<Assembly> assemblies,
+    Action<TestWorld>? prepare,
+    int groups,
+    IReadOnlyCollection<string>? only
   ) {
     IExDef[] given = [.. defs];
     ExBlockDef[] all = [.. given.OfType<ExBlockDef>()];
     ExItemDef[] items = [.. given.OfType<ExItemDef>()];
     groups = Math.Max(1, groups);
+    var tags = new SharedTagRegistries();
+    var known = new List<(string Name, Func<Law> Run)>
+    {
+      (
+        PlacementLaw.Name,
+        () => PlacementLaw.Run(Stand(all, assemblies, prepare), domain)
+      ),
+#if GAME_GE_1_22
+      (
+        BreakLaw.Name,
+        () =>
+          BreakLaw.Run(
+            all.Where(d => d.Domain == domain),
+            assemblies,
+            prepare,
+            groups
+          )
+      ),
+#endif
+      (
+        MultiblockLaw.Name,
+        () => MultiblockLaw.Run(Stand(all, assemblies, prepare), domain)
+      ),
+      (
+        MegablockLaw.Name,
+        () => MegablockLaw.Run(Stand(all, assemblies, prepare), domain)
+      ),
+#if GAME_GE_1_22
+      (
+        DrawLaw.Name,
+        () => DrawLaw.Run(Stand(all, assemblies, prepare), domain)
+      ),
+      (
+        ControlLaw.Name,
+        () => ControlLaw.Run(Stand(all, assemblies, prepare), domain)
+      ),
+#endif
+      (
+        InfoLaw.Name,
+        () => InfoLaw.Run(Stand(all, assemblies, prepare), domain)
+      ),
+      (
+        ReloadLaw.Name,
+        () => ReloadLaw.Run(Stand(all, assemblies, prepare), domain)
+      ),
+      (
+        NeighbourLaw.Name,
+        () => NeighbourLaw.Run(Stand(all, assemblies, prepare), domain)
+      ),
+      (
+        NetworkLaw.Name,
+        () => NetworkLaw.Run(Stand(all, assemblies, prepare), domain)
+      ),
+      (
+        NetworkLaw.PortName,
+        () => NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain)
+      ),
+      (
+        InteractionLaw.Name,
+        () =>
+        {
+#if GAME_GE_1_22
+          tags.Bind();
+#endif
+          return InteractionLaw.Run(
+            () => Stand(all, assemblies, prepare, items, tags),
+            domain,
+            groups
+          );
+        }
+      ),
+      (
+        ContainerLaw.Name,
+        () => ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain)
+      ),
+      (
+        InteractionLaw.FormedName,
+        () =>
+          InteractionLaw.RunFormed(
+            Stand(all, assemblies, prepare, items),
+            domain
+          )
+      ),
+      (
+        ContainerLaw.FormedName,
+        () =>
+          ContainerLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
+      ),
+    };
+    if (only is not null) {
+      string[] unknown = [.. only.Where(n => known.All(k => k.Name != n))];
+      if (unknown.Length > 0)
+        throw new ArgumentException(
+          $"Unknown block law {string.Join(", ", unknown.Select(n => $"'{n}'"))}; known: "
+            + string.Join(", ", known.Select(k => k.Name)),
+          nameof(only)
+        );
+    }
     var laws = new List<Law>();
-    void Time(Func<Law> run) {
+    foreach ((string name, Func<Law> run) in known) {
+      if (only is not null && !only.Contains(name))
+        continue;
       var clock = Stopwatch.StartNew();
       Law law = run();
       laws.Add(law with { Elapsed = clock.Elapsed });
     }
-    Time(() => PlacementLaw.Run(Stand(all, assemblies, prepare), domain));
-#if GAME_GE_1_22
-    Time(() =>
-      BreakLaw.Run(
-        all.Where(d => d.Domain == domain),
-        assemblies,
-        prepare,
-        groups
-      )
-    );
-#endif
-    Time(() => MultiblockLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => MegablockLaw.Run(Stand(all, assemblies, prepare), domain));
-#if GAME_GE_1_22
-    Time(() => DrawLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => ControlLaw.Run(Stand(all, assemblies, prepare), domain));
-#endif
-    Time(() => InfoLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => ReloadLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => NeighbourLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => NetworkLaw.Run(Stand(all, assemblies, prepare), domain));
-    Time(() => NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain));
-    var tags = new SharedTagRegistries();
-#if GAME_GE_1_22
-    tags.Bind();
-#endif
-    Time(() =>
-      InteractionLaw.Run(
-        () => Stand(all, assemblies, prepare, items, tags),
-        domain,
-        groups
-      )
-    );
-    Time(() =>
-      ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain)
-    );
-    Time(() =>
-      InteractionLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
-    );
-    Time(() =>
-      ContainerLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
-    );
     return new Result(laws);
   }
 
