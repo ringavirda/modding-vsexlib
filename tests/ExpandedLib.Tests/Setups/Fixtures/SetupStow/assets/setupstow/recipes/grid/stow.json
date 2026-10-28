@@ -1,0 +1,236 @@
+[
+  {
+    "name": "setupstow:part-p0",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p0",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:part-p1",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p1",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:part-p2",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p2",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:part-p3",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p3",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:part-p4",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p4",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:part-p5",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p5",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:part-p6",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p6",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:part-p7",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p7",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:part-p8",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p8",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:part-p9",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p9",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:part-p10",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p10",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:part-p11",
+    "ingredientPattern": "O",
+    "width": 1,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:part-p11",
+      "quantity": 1
+    }
+  },
+  {
+    "name": "setupstow:rot",
+    "ingredientPattern": "OO",
+    "width": 2,
+    "height": 1,
+    "ingredients": {
+      "O": {
+        "type": "item",
+        "code": "setupstow:ore",
+        "quantity": 1
+      }
+    },
+    "output": {
+      "type": "block",
+      "code": "setupstow:rot-s",
+      "quantity": 1
+    }
+  }
+]

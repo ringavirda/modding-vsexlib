@@ -1,0 +1,18 @@
+{
+  "code": "fixed",
+  "variantgroups": [
+    {
+      "code": "side",
+      "states": [
+        "n",
+        "s"
+      ]
+    }
+  ],
+  "drops": [
+    {
+      "type": "block",
+      "code": "fixed-s"
+    }
+  ]
+}

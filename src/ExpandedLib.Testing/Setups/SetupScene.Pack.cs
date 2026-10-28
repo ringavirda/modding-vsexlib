@@ -55,11 +55,16 @@ public sealed partial class SetupScene
       _pack?.Give(stack.Collectible.Code.ToString(), stack.StackSize);
   }
 
-  private void DrawBlock(string where, string code, string? pin = null)
+  private void DrawBlock(
+    string where,
+    string code,
+    BlockPos at,
+    string? pin = null
+  )
   {
     if (_pack is not { DrawsBlocks: true } || _pack.TakeStanding(code))
       return;
-    Draw(where, code, 1, pin);
+    Draw(where, _pack.HeldFor(World.World, code, at), 1, pin);
   }
 
   private void DrawStages(
