@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -56,19 +57,40 @@ public sealed partial class TestWorld {
   /// <c>ClassRegistry</c> from it, and creates a block entity the accessor spawns without a
   /// <see cref="RegisterBlockEntityFactory"/> factory from it, with its declared behaviours, as the
   /// engine does, building a behaviour named in <see cref="RegisterBlockEntityBehaviorFactory"/>
-  /// from its factory.</remarks>
+  /// from its factory.
+  /// <para>The (key, type) list an assembly registers is scanned once and kept for the life of the
+  /// process, so every later world registers from it in the same order; an assembly's classes
+  /// and domain are read at the first call and not again.</para></remarks>
   /// <returns>This world.</returns>
   public TestWorld RegisterClasses(params Assembly[] assemblies) {
-    foreach (Assembly asm in assemblies) {
-      string domain = EntityRegistry.DomainOf(asm, asm.GetName().Name ?? "");
-      foreach (Type type in ReflectionScan.GetCandidateTypes(asm))
-        if (
-          IsRegistrable(type)
-          && type.GetCustomAttributes().OfType<RegisterAttribute>().Any()
+    foreach (Assembly asm in assemblies)
+      foreach (
+        (string key, Type type) in RegistrableClasses.GetOrAdd(
+          asm,
+          ScanRegistrable
         )
-          RegisterClass(EntityRegistry.KeyFor(domain, type), type);
-    }
+      )
+        RegisterClass(key, type);
     return this;
+  }
+
+  private static readonly ConcurrentDictionary<
+    Assembly,
+    IReadOnlyList<(string Key, Type Type)>
+  > RegistrableClasses = new();
+
+  private static IReadOnlyList<(string Key, Type Type)> ScanRegistrable(
+    Assembly asm
+  ) {
+    string domain = EntityRegistry.DomainOf(asm, asm.GetName().Name ?? "");
+    var found = new List<(string, Type)>();
+    foreach (Type type in ReflectionScan.GetCandidateTypes(asm))
+      if (
+        IsRegistrable(type)
+        && type.GetCustomAttributes().OfType<RegisterAttribute>().Any()
+      )
+        found.Add((EntityRegistry.KeyFor(domain, type), type));
+    return found;
   }
 
   /// <summary>Registers the classes the install's vanilla mod systems register, in this world's

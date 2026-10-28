@@ -178,6 +178,47 @@ public class TestWorldDefinedBlocksTests
     );
   }
 
+  // Fails when the per-assembly cache is keyed so the second world registers nothing.
+  [Fact]
+  public void RegisterClasses_gives_a_second_world_the_same_keys_and_types_in_order()
+  {
+    Assembly asm = typeof(TestWorldDefinedBlocksTests).Assembly;
+    string domain = EntityRegistry.DomainOf(asm, asm.GetName().Name ?? "");
+    var first = new TestWorld().RegisterClasses(asm);
+    var second = new TestWorld().RegisterClasses(asm);
+
+    Assert.Equal(
+      typeof(RegisteredBe),
+      first.Api.ClassRegistry.GetBlockEntity(
+        EntityRegistry.KeyFor(domain, typeof(RegisteredBe))
+      )
+    );
+    Assert.Equal(
+      Registered(first, asm, domain),
+      Registered(second, asm, domain)
+    );
+    Assert.NotEmpty(Registered(second, asm, domain));
+  }
+
+  private static (string Key, Type? Type)[] Registered(
+    TestWorld world,
+    Assembly asm,
+    string domain
+  ) =>
+    [
+      .. asm.GetTypes()
+        .Where(t => t.GetCustomAttributes<RegisterAttribute>().Any())
+        .Select(t => EntityRegistry.KeyFor(domain, t))
+        .Select(k =>
+          (
+            k,
+            world.Api.ClassRegistry.GetBlockEntity(k)
+              ?? world.Api.ClassRegistry.GetItemClass(k)
+              ?? world.Api.ClassRegistry.GetCollectibleBehaviorClass(k)
+          )
+        ),
+    ];
+
   private sealed class PlainBe : BlockEntity { }
 
   private sealed class PlainItem : Item { }
