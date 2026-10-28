@@ -757,6 +757,29 @@ public class BlockLawsTests {
     );
   }
 
+  // Fails when the case's listener mark is one id too high, which skips the first listener
+  // registered after the case starts.
+  [Fact]
+  public void A_case_ticks_the_listener_registered_after_it_starts_and_not_one_before() {
+    TestWorld world = Stand(Wall, Entity("plain", "test-plain"));
+    Block block = world.World.GetBlock(new AssetLocation("test:plain"));
+    int before = 0;
+    int after = 0;
+    world.World.RegisterGameTickListener(_ => before++, 1000);
+
+    var started = new BlockLaws.EntityCase(
+      world,
+      block,
+      new BlockPos(64, 64, 64),
+      null
+    );
+    world.World.RegisterGameTickListener(_ => after++, 1000);
+    started.Tick(false);
+
+    Assert.Equal(0, before);
+    Assert.Equal(BlockLaws.EntityCase.TickMs / 1000, after);
+  }
+
   // Fails when a placement that leaves no block entity passes unread.
   [Fact]
   [PlantedDefect(typeof(InfoLaw), nameof(InfoLaw.Run))]
