@@ -47,7 +47,7 @@ public static class InteractionLaw {
   /// <remarks>Every world is stood up before any click, so a process-wide table the stand-ups
   /// fill is complete and still while the clicks read it.</remarks>
   /// <param name="stand">Stands a world as <see cref="Run(TestWorld, string)"/> takes it; called
-  /// once per group, on a pool thread, several at once.</param>
+  /// once per group, on a pool thread, several at once. Each world is disposed after the runs.</param>
   /// <param name="domain">The domain whose blocks are judged.</param>
   /// <param name="groups">Worlds and threads; below 1 counts as 1. With 1 the calling thread runs
   /// the one world.</param>
@@ -72,6 +72,9 @@ public static class InteractionLaw {
       );
     } catch (AggregateException e) {
       ExceptionDispatchInfo.Capture(e.InnerExceptions[0]).Throw();
+    } finally {
+      foreach (TestWorld? world in worlds)
+        world?.Dispose();
     }
     return Join(runs.SelectMany(r => r));
   }

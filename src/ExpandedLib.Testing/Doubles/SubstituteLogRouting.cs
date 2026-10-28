@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using NSubstitute.Core;
 using NSubstitute.Core.DependencyInjection;
@@ -70,17 +72,53 @@ internal static class SubstituteLogRouting {
     ISubstituteFactory inner,
     ICallRouterResolver routers
   ) : ISubstituteFactory {
-    public object Create(Type[] typesToProxy, object?[] constructorArguments) =>
-      Route(inner.Create(typesToProxy, constructorArguments!), typesToProxy);
+    public object Create(Type[] typesToProxy, object?[] constructorArguments) {
+      Decoy(typesToProxy, constructorArguments, partial: false);
+      return Route(
+        inner.Create(typesToProxy, constructorArguments!),
+        typesToProxy
+      );
+    }
 
     public object CreatePartial(
       Type[] typesToProxy,
       object?[] constructorArguments
-    ) =>
-      Route(
+    ) {
+      Decoy(typesToProxy, constructorArguments, partial: true);
+      return Route(
         inner.CreatePartial(typesToProxy, constructorArguments!),
         typesToProxy
       );
+    }
+
+    /// <summary>Builds and drops one substitute of <paramref name="types"/> through the same inner
+    /// method the first time this factory sees that key. Castle keeps the first proxy's generation
+    /// options for a type list for the process, with that substitute's call router mixed in; the decoy
+    /// takes that pin in place of a real substitute. A type built with constructor arguments gets no
+    /// decoy; a decoy that throws is swallowed and its key marked done.</summary>
+    private void Decoy(
+      Type[] types,
+      object?[]? constructorArguments,
+      bool partial
+    ) {
+      if (constructorArguments is { Length: > 0 })
+        return;
+      var key = new DecoyKey(inner, partial, types);
+      if (Decoyed.ContainsKey(key))
+        return;
+      lock (DecoyGate) {
+        if (Decoyed.ContainsKey(key))
+          return;
+        try {
+          _ = partial
+            ? inner.CreatePartial(types, [])
+            : inner.Create(types, []);
+        } catch (Exception) {
+          // the real call raises its own error
+        }
+        Decoyed[key] = true;
+      }
+    }
 
     private object Route(object substitute, Type[] types) {
       if (types.Any(t => typeof(ILogger).IsAssignableFrom(t))) {
@@ -90,6 +128,36 @@ internal static class SubstituteLogRouting {
           .RegisterCustomCallHandlerFactory(_ => forward);
       }
       return substitute;
+    }
+  }
+
+  private static readonly object DecoyGate = new();
+  private static readonly ConcurrentDictionary<DecoyKey, bool> Decoyed = new();
+
+  private sealed class DecoyKey(
+    ISubstituteFactory factory,
+    bool partial,
+    Type[] types
+  ) : IEquatable<DecoyKey> {
+    private ISubstituteFactory Factory { get; } = factory;
+    private bool Partial { get; } = partial;
+    private Type[] Types { get; } = types;
+
+    public bool Equals(DecoyKey? other) =>
+      other != null
+      && ReferenceEquals(Factory, other.Factory)
+      && Partial == other.Partial
+      && Types.AsSpan().SequenceEqual(other.Types);
+
+    public override bool Equals(object? obj) => Equals(obj as DecoyKey);
+
+    public override int GetHashCode() {
+      var hash = new HashCode();
+      hash.Add(RuntimeHelpers.GetHashCode(Factory));
+      hash.Add(Partial);
+      foreach (Type t in Types)
+        hash.Add(t);
+      return hash.ToHashCode();
     }
   }
 

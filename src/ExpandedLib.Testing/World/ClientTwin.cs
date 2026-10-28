@@ -266,15 +266,11 @@ public sealed partial class TestWorld {
     );
 
   private IBlockAccessor BuildClientAccessor() {
-    var a = Substitute.For<IBlockAccessor>();
+    var a = Made<IBlockAccessor>();
     StubBlockReads(a);
     a.GetBlockEntity(Arg.Any<BlockPos>())
       .Returns(ci => ClientTwinAt(ci.Arg<BlockPos>()));
-    SubstitutionContext
-      .Current.GetCallRouterFor(a)
-      .RegisterCustomCallHandlerFactory(_ => new TypedBlockEntityCallHandler(
-        ClientTwinAt
-      ));
+    Handled(a, new TypedBlockEntityCallHandler(ClientTwinAt));
     a.When(x => x.MarkBlockEntityDirty(Arg.Any<BlockPos>()))
       .Do(ci => _clientDirty.Add(ci.Arg<BlockPos>()));
     a.When(x => x.MarkBlockDirty(Arg.Any<BlockPos>()))
@@ -291,7 +287,7 @@ public sealed partial class TestWorld {
     api.ObjectCache.Returns(_clientCache);
     coreApi.ObjectCache.Returns(_clientCache);
 
-    var assets = Substitute.For<IAssetManager>();
+    var assets = Made<IAssetManager>();
     assets
       .TryGet(Arg.Any<AssetLocation>(), Arg.Any<bool>())
       .Returns(ci => ClientShape(ci.Arg<AssetLocation>(), ci.Arg<bool>()));
@@ -306,7 +302,7 @@ public sealed partial class TestWorld {
     coreApi.Assets.Returns(assets);
 
     // A minimal mesh: the twin's renderer takes it, and nothing draws it.
-    var tesselator = Substitute.For<ITesselatorAPI>();
+    var tesselator = Made<ITesselatorAPI>();
     tesselator
       .When(x =>
         x.TesselateShape(
@@ -323,8 +319,8 @@ public sealed partial class TestWorld {
 #endif
 
 #if GAME_GE_1_22
-    var plainAtlas = Substitute.For<IBlockTextureAtlasAPI>();
-    var drawAtlas = Substitute.For<IBlockTextureAtlasAPI>();
+    var plainAtlas = Made<IBlockTextureAtlasAPI>();
+    var drawAtlas = Made<IBlockTextureAtlasAPI>();
     TextureAtlasPosition standIn = new DrawTextures()["atlas"];
     drawAtlas.Size.Returns(new DrawTextures().AtlasSize);
     drawAtlas.UnknownTexturePosition.Returns(standIn);
@@ -348,7 +344,7 @@ public sealed partial class TestWorld {
     );
 #endif
 
-    var events = Substitute.For<IClientEventAPI>();
+    var events = Made<IClientEventAPI>();
     api.Event.Returns(events);
     coreApi.Event.Returns(events);
 #if GAME_GE_1_22
