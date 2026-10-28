@@ -176,7 +176,11 @@ public static class BlockLaws {
     {
       (
         PlacementLaw.Name,
-        () => PlacementLaw.Run(Stand(all, assemblies, prepare), domain)
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => PlacementLaw.Run(w, domain)
+          )
       ),
 #if GAME_GE_1_22
       (
@@ -192,41 +196,71 @@ public static class BlockLaws {
 #endif
       (
         MultiblockLaw.Name,
-        () => MultiblockLaw.Run(Stand(all, assemblies, prepare), domain)
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => MultiblockLaw.Run(w, domain)
+          )
       ),
       (
         MegablockLaw.Name,
-        () => MegablockLaw.Run(Stand(all, assemblies, prepare), domain)
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => MegablockLaw.Run(w, domain)
+          )
       ),
 #if GAME_GE_1_22
       (
         DrawLaw.Name,
-        () => DrawLaw.Run(Stand(all, assemblies, prepare), domain)
+        () =>
+          OnStood(Stand(all, assemblies, prepare), w => DrawLaw.Run(w, domain))
       ),
       (
         ControlLaw.Name,
-        () => ControlLaw.Run(Stand(all, assemblies, prepare), domain)
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => ControlLaw.Run(w, domain)
+          )
       ),
 #endif
       (
         InfoLaw.Name,
-        () => InfoLaw.Run(Stand(all, assemblies, prepare), domain)
+        () =>
+          OnStood(Stand(all, assemblies, prepare), w => InfoLaw.Run(w, domain))
       ),
       (
         ReloadLaw.Name,
-        () => ReloadLaw.Run(Stand(all, assemblies, prepare), domain)
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => ReloadLaw.Run(w, domain)
+          )
       ),
       (
         NeighbourLaw.Name,
-        () => NeighbourLaw.Run(Stand(all, assemblies, prepare), domain)
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => NeighbourLaw.Run(w, domain)
+          )
       ),
       (
         NetworkLaw.Name,
-        () => NetworkLaw.Run(Stand(all, assemblies, prepare), domain)
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => NetworkLaw.Run(w, domain)
+          )
       ),
       (
         NetworkLaw.PortName,
-        () => NetworkLaw.RunPorts(Stand(all, assemblies, prepare), domain)
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare),
+            w => NetworkLaw.RunPorts(w, domain)
+          )
       ),
       (
         InteractionLaw.Name,
@@ -244,20 +278,27 @@ public static class BlockLaws {
       ),
       (
         ContainerLaw.Name,
-        () => ContainerLaw.Run(Stand(all, assemblies, prepare, items), domain)
+        () =>
+          OnStood(
+            Stand(all, assemblies, prepare, items),
+            w => ContainerLaw.Run(w, domain)
+          )
       ),
       (
         InteractionLaw.FormedName,
         () =>
-          InteractionLaw.RunFormed(
+          OnStood(
             Stand(all, assemblies, prepare, items),
-            domain
+            w => InteractionLaw.RunFormed(w, domain)
           )
       ),
       (
         ContainerLaw.FormedName,
         () =>
-          ContainerLaw.RunFormed(Stand(all, assemblies, prepare, items), domain)
+          OnStood(
+            Stand(all, assemblies, prepare, items),
+            w => ContainerLaw.RunFormed(w, domain)
+          )
       ),
     };
     if (only is not null) {
@@ -278,6 +319,14 @@ public static class BlockLaws {
       laws.Add(law with { Elapsed = clock.Elapsed });
     }
     return new Result(laws);
+  }
+
+  private static Law OnStood(TestWorld world, System.Func<TestWorld, Law> run) {
+    try {
+      return run(world);
+    } finally {
+      world.Dispose();
+    }
   }
 
   /// <summary>Most groups the break and interaction laws split over.</summary>
