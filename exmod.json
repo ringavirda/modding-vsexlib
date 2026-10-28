@@ -14,6 +14,14 @@
   },
   "tests": ["tests/ExpandedLib.Tests"],
   "packages": ["src/ExpandedLib", "src/ExpandedLib.Industry", "src/ExpandedLib.Testing", "templates"],
+  "testMemory": {
+    "ExpandedLib.Tests":   { "heapGb": 13 },
+    "TwinTubBlower.Tests": { "heapGb": 2 },
+    "BurdenMaker.Tests":   { "heapGb": 2 },
+    "PlatedPipes.Tests":   { "heapGb": 2 },
+    "SmokeStack.Tests":    { "heapGb": 2 }
+  },
+  "serverMemoryGb": 2,
   "coverageFloors": "tests/coverage-floors.json",
   "docs": "../exdocs/exlib",
   "depends": {}
