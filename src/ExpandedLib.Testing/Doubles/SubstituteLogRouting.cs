@@ -91,14 +91,11 @@ internal static class SubstituteLogRouting {
       );
     }
 
-    /// <summary>Builds and drops one substitute of <paramref name="types"/> through the same
-    /// inner method as the real call, the first time this factory sees that key. Castle keeps the
-    /// <c>ProxyGenerationOptions</c> of the first proxy it builds for a type list for the process,
-    /// and NSubstitute mixes that substitute's call router into them, so the first real substitute
-    /// of each type would stay reachable, with everything its received calls and returns hold. The
-    /// decoy takes that pin and leaves only its own empty router. A type built with constructor
-    /// arguments gets no decoy and keeps the pin. A decoy that throws is swallowed and its key
-    /// marked done, so the real call raises its own error.</summary>
+    /// <summary>Builds and drops one substitute of <paramref name="types"/> through the same inner
+    /// method the first time this factory sees that key. Castle keeps the first proxy's generation
+    /// options for a type list for the process, with that substitute's call router mixed in; the decoy
+    /// takes that pin in place of a real substitute. A type built with constructor arguments gets no
+    /// decoy; a decoy that throws is swallowed and its key marked done.</summary>
     private void Decoy(
       Type[] types,
       object?[]? constructorArguments,

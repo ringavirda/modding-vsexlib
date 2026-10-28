@@ -8,10 +8,8 @@ namespace ExpandedLib.Tests;
 
 /// <summary>A disposed <see cref="TestWorld"/> is not kept reachable by the substitutes it created.</summary>
 public class TestWorldDisposeTests {
-  // Fails under the mutation "Dispose without the substitute clearing" (the loop over
-  // _substitutes removed) and under "Dispose without releasing the call handlers": the held
-  // accessor still reaches the world through its Returns closures or its call handler. A world
-  // built first keeps the proxy-type cache pinned, so the result does not depend on test order.
+  // Fails under "Dispose without the substitute clearing" and "Dispose without releasing the call
+  // handlers". The warm world takes the proxy-type cache pin, so test order does not matter.
   [Fact]
   public void Disposed_world_is_collected_while_one_of_its_substitutes_is_held() {
     using var warm = new TestWorld();
