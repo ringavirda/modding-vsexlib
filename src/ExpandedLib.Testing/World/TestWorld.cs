@@ -776,7 +776,7 @@ public sealed partial class TestWorld : IDisposable {
 
   /// <summary>The last tick listener or delayed callback id issued, 0 before any. Every id issued
   /// after this read is greater than it.</summary>
-  internal long NextListenerId => _nextListenerId;
+  internal long LastListenerId => _nextListenerId;
 
   /// <summary>The ids of the tick listeners registered and not yet removed, as a copy.</summary>
   internal HashSet<long> TickListenerIds() => [.. _tickListeners.Keys];

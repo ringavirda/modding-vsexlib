@@ -560,7 +560,7 @@ public static class BlockLaws {
       Block = block;
       At = at;
       _faults = faults;
-      _listenerMark = world.NextListenerId;
+      _listenerMark = world.LastListenerId;
     }
 
     internal Block Block { get; }
