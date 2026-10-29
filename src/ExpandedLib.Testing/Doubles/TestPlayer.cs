@@ -595,6 +595,13 @@ public sealed class TestPlayer {
     entity.RightHandItemSlot.Returns(_ => made!.ActiveSlot);
     player.PlayerUID.Returns(uid);
     player.PlayerName.Returns(name);
+#if GAME_GE_1_22
+#pragma warning disable CS0618 // The member is obsolete ahead of a 1.23 signature change; there is no other entry point yet.
+    player
+      .IsInInteractionRangeOf(Arg.Any<BlockPos>(), Arg.Any<float>())
+      .Returns(true);
+#pragma warning restore CS0618
+#endif
     player.WorldData.PlayerUID.Returns(uid);
     player.WorldData.EntityControls.Returns(entity.Controls);
     world.AddPlayer(uid, player);

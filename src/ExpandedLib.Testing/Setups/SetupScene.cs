@@ -309,6 +309,9 @@ public sealed partial class SetupScene : IDisposable
       World.Mods.Register(core);
       core.AssetsLoaded(World.Api);
     }
+    ResolveSmeltedStacks();
+    if (World.Mods.GetModSystem<WeatherSystemBase>() == null)
+      World.StartModSystem<SetupDryWeather>();
     if (crafts)
     {
       World.LoadRecipes();
@@ -327,6 +330,21 @@ public sealed partial class SetupScene : IDisposable
     foreach (Block block in World.World.Blocks.ToArray())
       if (block is { Id: not 0 } && _file.Mods.Contains(block.Code.Domain))
         Ready(block);
+  }
+
+  private void ResolveSmeltedStacks()
+  {
+    foreach (
+      CollectibleObject collectible in World
+        .World.Items.Where(i => i?.Code != null)
+        .Cast<CollectibleObject>()
+        .Concat(World.World.Blocks.Where(b => b is { Id: not 0 }))
+    )
+      if (
+        collectible.CombustibleProps?.SmeltedStack is
+        { ResolvedItemstack: null } smelted
+      )
+        smelted.Resolve(World.World, $"smelted stack of {collectible.Code}");
   }
 
   private IEnumerable<SetupStep> EveryStep() =>

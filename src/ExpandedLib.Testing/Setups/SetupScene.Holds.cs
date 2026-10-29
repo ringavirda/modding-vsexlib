@@ -238,7 +238,14 @@ public sealed partial class SetupScene
         ItemStack laid = StackOf(put, step.Path);
         Draw(step.Path, laid);
         Player.Hold(laid);
-        Verb(() => window.Put(slot));
+        int count = laid.StackSize;
+        int moved = 0;
+        Verb(() => moved = window.Put(slot));
+        if (moved == 0)
+          throw Fail(
+            step.Path,
+            $"{entity.Block.Code} at {Describe(entity.Pos)} took none of the {count} {laid.Collectible.Code} put in slot {slot}."
+          );
       }
     }
     if (step.Body["take"] is JObject take)
