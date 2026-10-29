@@ -59,10 +59,11 @@ public sealed partial class SetupScene
     string where,
     string code,
     BlockPos at,
-    string? pin = null
+    string? pin = null,
+    BlockPos? cell = null
   )
   {
-    if (_pack is not { DrawsBlocks: true } || _pack.TakeStanding(code))
+    if (_pack is not { DrawsBlocks: true } || _pack.TakeStanding(code, cell))
       return;
     Draw(where, _pack.HeldFor(World.World, code, at), 1, pin);
   }
@@ -70,10 +71,11 @@ public sealed partial class SetupScene
   private void DrawStages(
     string where,
     ExRightClickConstruction construction,
-    string pin
+    string pin,
+    BlockPos cell
   )
   {
-    if (_pack is not { DrawsBlocks: true })
+    if (_pack is not { DrawsBlocks: true } || _pack.TookStanding(cell))
       return;
     for (
       int i = construction.CurrentCompletedStage + 1;
