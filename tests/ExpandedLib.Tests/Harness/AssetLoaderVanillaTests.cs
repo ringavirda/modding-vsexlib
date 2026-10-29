@@ -41,6 +41,52 @@ public class AssetLoaderVanillaTests : IDisposable {
     );
   }
 
+  // Fails when LoadVanilla leaves a registered block's drop unresolved, as when drops resolve
+  // before the blocks they name are all registered.
+  [Fact]
+  public void LoadVanilla_resolves_each_blocks_drops_against_the_loaded_blocks() {
+    using var world = new TestWorld();
+    world.RegisterVanillaClasses();
+
+    world.LoadVanilla(["axle", "angledgears"], []);
+
+    AssertDropsResolve(world);
+  }
+
+  // Fails when LoadAssets registers the vanilla blocks named by code without resolving their
+  // drops, so GetDrops of a laid axle or gear returns nothing.
+  [Fact]
+  public void LoadAssets_resolves_the_drops_of_the_vanilla_blocks_it_loads() {
+    WriteContentMod("vanilladrops");
+    using var world = new TestWorld();
+
+    world.LoadAssets(
+      [_modPath],
+      null,
+      ["game:woodenaxle-*", "game:angledgears-*"]
+    );
+
+    AssertDropsResolve(world);
+  }
+
+  private static void AssertDropsResolve(TestWorld world) {
+    foreach (
+      (string placed, string crafted) in new[]
+      {
+        ("game:woodenaxle-ns", "game:woodenaxle-ud"),
+        ("game:angledgears-su", "game:angledgears-s"),
+      }
+    ) {
+      Block block = world.World.GetBlock(new AssetLocation(placed));
+      BlockDropItemStack drop = Assert.Single(block.Drops);
+      Assert.NotNull(drop.ResolvedItemstack);
+      Assert.Equal(
+        new AssetLocation(crafted),
+        drop.ResolvedItemstack.Collectible.Code
+      );
+    }
+  }
+
   // Fails when a vanilla system starts throwing against the loader's API, or stops: a class it
   // registers below the throw would be lost unseen.
   [Fact]
