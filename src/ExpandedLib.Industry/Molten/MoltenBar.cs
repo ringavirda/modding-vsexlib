@@ -1,3 +1,4 @@
+#if GAME_GE_1_22
 using System.Collections.Generic;
 using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Networks;
@@ -177,3 +178,4 @@ public static class MoltenBar {
     return cleared;
   }
 }
+#endif

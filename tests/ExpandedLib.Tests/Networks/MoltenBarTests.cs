@@ -1,3 +1,4 @@
+#if GAME_GE_1_22
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -414,3 +415,4 @@ public class MoltenBarTests {
 
   #endregion
 }
+#endif

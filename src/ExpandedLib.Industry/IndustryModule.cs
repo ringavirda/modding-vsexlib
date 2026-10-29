@@ -33,7 +33,9 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
       MpRunAngles.StopServer();
       ExMoldGate.ResetForWorld();
       MoltenChisel.ResetForWorld();
+#if GAME_GE_1_22
       CrowbarHold.ResetForWorld();
+#endif
       MoltenMetal.ResetForWorld();
     }
     ExBlockNames.AddVariantQualifier("refractory", "exlib:refractory-");

@@ -433,7 +433,7 @@ public static class InteractionLaw {
             .Where(h => h.MouseButton == EnumMouseButton.Right)
         )
           if (
-            aimed.SelectionBoxId == null
+            ControlOf(aimed) == null
             || !helps.Any(o => o.Help.ActionLangCode == h.ActionLangCode)
           )
             helps.Add((h, aimed));
@@ -450,13 +450,13 @@ public static class InteractionLaw {
           );
         Keys keys = KeysOf(help);
         ItemStack[] named = Named(help, selection);
-        string? control = selection.SelectionBoxId;
+        string? control = ControlOf(selection);
         bool holdsTool = help.ActionLangCode == HoldToBuild;
         if (
           !holdsTool
           && helps.Any(o =>
             o.Help.ActionLangCode == HoldToBuild
-            && o.Selection.SelectionBoxId == control
+            && ControlOf(o.Selection) == control
           )
         )
           continue;
@@ -470,7 +470,7 @@ public static class InteractionLaw {
         var alongside = helps
           .Where(o =>
             o.Help != help
-            && o.Selection.SelectionBoxId == control
+            && ControlOf(o.Selection) == control
             && (
               holdsTool
                 ? o.Help.ActionLangCode != HoldToBuild
@@ -522,6 +522,14 @@ public static class InteractionLaw {
   /// <summary>The help line of a construction stage paid by holding its tool.</summary>
   private const string HoldToBuild = "exlib:rcc-hold-tool";
 
+  /// <summary>The id of the selection box <paramref name="selection"/> aims at; null on games without selection box ids.</summary>
+  private static string? ControlOf(BlockSelection selection) =>
+#if GAME_GE_1_22
+    selection.SelectionBoxId;
+#else
+    null;
+#endif
+
   /// <summary>Seconds a hold-to-build click lasts: long enough for any tool step to finish its hits.</summary>
   private const float HoldToBuildSeconds = 30f;
 
@@ -536,7 +544,7 @@ public static class InteractionLaw {
       stack == null ? 0 : Math.Max(1, stack.StackSize),
       help.ActionLangCode
     ) {
-      Control = selection.SelectionBoxId,
+      Control = ControlOf(selection),
     };
   }
 

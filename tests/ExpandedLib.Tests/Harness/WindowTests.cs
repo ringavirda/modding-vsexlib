@@ -533,8 +533,12 @@ public class WindowTests {
         ElementBounds.Fixed(50, 15, 48, 48),
         inventory,
         inventory[0],
+#if GAME_GE_1_22
         false,
         "preview"
+#else
+        false
+#endif
       )
       .Compose();
 

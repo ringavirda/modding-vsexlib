@@ -1,3 +1,4 @@
+#if GAME_GE_1_22
 using System.Linq;
 using ExpandedLib.Industry.Helpers;
 using Vintagestory.API.Client;
@@ -80,3 +81,4 @@ public static class CrowbarHold {
         ],
     };
 }
+#endif

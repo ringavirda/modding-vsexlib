@@ -179,7 +179,9 @@ public class ExmodCommandTests {
       {
         typeof(ExmodCommand).Assembly,
         typeof(ExpandedLib.Industry.Helpers.MoltenSubCommand).Assembly,
+#if GAME_GE_1_22
         typeof(ExpandedLib.Testing.Live.ScenarioSubCommand).Assembly,
+#endif
       }
     )
       CommandRegistry.RegisterAll(api, mod, asm);

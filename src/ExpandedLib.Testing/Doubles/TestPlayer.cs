@@ -246,7 +246,11 @@ public sealed class TestPlayer {
     if (
       collectible.Attributes?.IsTrue("allowHotCrafting") == true
       || collectible.GetTemperature(_world.World, stack)
+#if GAME_GE_1_22
         <= GlobalConstants.TooHotToTouchTemperature
+#else
+        <= 200f
+#endif
       || OffHandSlot.Itemstack?.Collectible.Attributes?.IsTrue("heatResistant")
         == true
     )
@@ -628,10 +632,16 @@ public sealed class TestPlayer {
     };
     var manager = world.Made<IPlayerInventoryManager>();
     manager.ActiveHotbarSlot.Returns(_ => activeSlot());
+#if GAME_GE_1_21
     manager.OffhandHotbarSlot.Returns(hotbar[OffHandIndex]);
     manager.OffhandTool.Returns(_ =>
+#if GAME_GE_1_22
       hotbar[OffHandIndex].Itemstack?.Collectible.GetTool(hotbar[OffHandIndex])
+#else
+      hotbar[OffHandIndex].Itemstack?.Collectible.Tool
+#endif
     );
+#endif
     manager.GetHotbarInventory().Returns(hotbar);
     manager.MouseItemSlot.Returns(_ => mouse[0]);
     manager.Inventories.Returns(held);

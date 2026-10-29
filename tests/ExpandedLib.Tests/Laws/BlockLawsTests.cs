@@ -983,6 +983,7 @@ public class BlockLawsTests {
     Assert.Contains("test:wide", thrown.Message);
   }
 
+#if GAME_GE_1_22
   // Fails when a click holds the wrench stack another world's help named, which vanilla keeps in a
   // static, instead of the clicking world's own wrench.
   [Fact]
@@ -1005,6 +1006,8 @@ public class BlockLawsTests {
       BlockBehaviorWrenchOrientable.wrenchItems = null;
     }
   }
+
+#endif
 
   // Fails when two worlds standing up at once run their blocks' OnLoaded side by side.
   [Fact]

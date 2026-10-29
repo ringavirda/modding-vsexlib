@@ -174,6 +174,7 @@ public class TestPlayerSelectTests {
     Assert.Same(hot, player.ActiveSlot.Itemstack);
   }
 
+#if GAME_GE_1_21
   // Fails when the inventory manager does not answer the off-hand slot and its tool.
   [Fact]
   public void TheInventoryManager_AnswersTheOffHandSlotAndItsTool() {
@@ -187,6 +188,7 @@ public class TestPlayerSelectTests {
     Assert.Same(player.OffHandSlot, manager.OffhandHotbarSlot);
     Assert.Equal(EnumTool.Hammer, manager.OffhandTool);
   }
+#endif
 
   // Fails when TryGiveItemstack returns false or leaves the stack out of the hotbar.
   [Fact]

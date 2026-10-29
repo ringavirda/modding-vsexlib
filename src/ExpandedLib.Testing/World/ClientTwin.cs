@@ -294,9 +294,13 @@ public sealed partial class TestWorld {
     assets
       .Get<Shape>(Arg.Any<AssetLocation>())
       .Returns(ci =>
+#if GAME_GE_1_22
         ClientTesselates
           ? ClientShape(ci.Arg<AssetLocation>(), true)?.ToObject<Shape>()
           : null
+#else
+        null
+#endif
       );
     api.Assets.Returns(assets);
     coreApi.Assets.Returns(assets);
@@ -476,7 +480,13 @@ public sealed partial class TestWorld {
       Path.Combine(GameInstall(), "assets"),
       EnumAppSide.Client
     );
-    mgr.InitAndLoadBaseAssets(QuietLogger);
+    mgr.InitAndLoadBaseAssets(
+#if GAME_GE_1_22
+      QuietLogger
+#else
+      new NullLogger()
+#endif
+    );
     // The manager refuses lookups until every asset is marked loaded, as the game marks them.
     ReflectionHelpers.SetField(mgr, "allAssetsLoaded", true);
     return mgr;
