@@ -382,7 +382,7 @@ public sealed partial class SetupScene : IDisposable
   {
     string code = block.Code.ToString();
     if (draws)
-      DrawBlock(where, kind ?? code, Describe(pos), pos);
+      DrawBlock(where, kind ?? code, pos, Describe(pos), pos);
     BlockPos at = pos.Copy();
     _laid.Add((at.X, at.Y, at.Z));
     HashSet<long> before = World.TickListenerIds();
@@ -512,7 +512,7 @@ public sealed partial class SetupScene : IDisposable
       {
         _laid.Add((at.X, at.Y, at.Z));
         if (!carried)
-          DrawBlock(where, raised, Describe(pos));
+          DrawBlock(where, raised, at, Describe(pos));
       }
       HashSet<long> own = _listeners.GetValueOrDefault(pos) ?? [];
       for (int i = 0; i < 2 && !multiblock.StructureComplete; i++)

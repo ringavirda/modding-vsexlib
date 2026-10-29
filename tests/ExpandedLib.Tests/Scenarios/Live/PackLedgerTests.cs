@@ -257,7 +257,13 @@ public class PackLedgerTests {
       ],
     };
 
-    PackLedger.DrawBlock(fixture.Context, "game:stone", "(0, 0, 0)", carried);
+    PackLedger.DrawBlock(
+      fixture.Context,
+      "game:stone",
+      carried,
+      "(0, 0, 0)",
+      carried
+    );
     PackLedger.DrawStages(
       fixture.Context,
       construction,

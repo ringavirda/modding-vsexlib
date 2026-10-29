@@ -108,10 +108,11 @@ internal sealed class CompleteStep : ScenarioStep {
       )
         continue;
       Block block = Choose(ctx, wanted.Wanted);
-      if (!(ctx.Pack?.TookStanding(cell) ?? false))
+      if (!(ctx.Pack?.TookStanding(local) ?? false))
         PackLedger.DrawBlock(
           ctx,
           WantedCode(wanted.Wanted).ToString(),
+          local,
           local.ToString()
         );
       ctx.SetBlock(block, local);

@@ -58,13 +58,14 @@ public sealed partial class SetupScene
   private void DrawBlock(
     string where,
     string code,
+    BlockPos at,
     string? pin = null,
     BlockPos? cell = null
   )
   {
     if (_pack is not { DrawsBlocks: true } || _pack.TakeStanding(code, cell))
       return;
-    Draw(where, code, 1, pin);
+    Draw(where, _pack.HeldFor(World.World, code, at), 1, pin);
   }
 
   private void DrawStages(
