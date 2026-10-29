@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using ExpandedLib.Definitions;
 using ExpandedLib.Registries;
+using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
 using Vintagestory.API.Common;
@@ -43,6 +44,14 @@ public sealed partial class TestWorld {
   /// <summary>Every block entity in the store, loaded chunk or not.</summary>
   internal IEnumerable<KeyValuePair<BlockPos, BlockEntity>> BlockEntities =>
     _blockEntities;
+
+  /// <summary>The cells of the structure fillers whose entity names <paramref name="principal"/>,
+  /// in the order they were stored.</summary>
+  internal BlockPos[] FillersOf(BlockPos principal) =>
+    _blockEntities.FillersOf(
+      principal,
+      at => GetBlock(at) is BlockStructureFiller
+    );
 
   /// <summary>Every cell of the solid layer, loaded chunk or not.</summary>
   internal IEnumerable<KeyValuePair<BlockPos, Block>> SolidBlocks => _blocks;
