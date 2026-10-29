@@ -18,6 +18,7 @@
   "facing-d": "bottom",
   "block-structurefiller": "Machine",
   "blockhelp-rotate": "Rotate",
+  "blockhelp-crowbar-breakout": "Break out the set metal",
   "blockhelp-mulblock-struc-show": "Show multiblock structure",
   "blockname-suffixed": "{0} ({1})",
   "blockname-listsep": ", ",
