@@ -50,6 +50,11 @@ public static class ExSounds {
   public static readonly AssetLocation AnvilHitShort = new(
     "game:sounds/effect/anvilhit"
   );
+
+  /// <summary>Iron breaking off its seat - the break sound of the metal machine blocks (anvil1..3).</summary>
+  public static readonly AssetLocation MetalBreak = new(
+    "game:sounds/block/anvil"
+  );
   public static readonly AssetLocation Build = new("game:sounds/player/build");
   public static readonly AssetLocation StoneCrush = new(
     "game:sounds/effect/stonecrush"
@@ -232,6 +237,7 @@ public static class ExSounds {
     [Ingot] = 210,
     [AnvilHit] = 259,
     [AnvilHitShort] = 1003,
+    [MetalBreak] = 622,
     [Build] = 152,
     [StoneCrush] = 369,
     [ToggleSwitch] = 362,

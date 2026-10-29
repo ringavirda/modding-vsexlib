@@ -5,6 +5,7 @@ using ExpandedLib.Industry.Molten;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
 using NSubstitute;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Xunit;
@@ -373,6 +374,27 @@ public class MoltenBarTests {
 
     Assert.False(rig.Use(0));
     Assert.Equal(12, cell.CellAmount);
+  }
+
+  // Fails when Acts answers true for a liquid cell: the help then offers a break-out the bar refuses.
+  [Fact]
+  public void Bar_HelpNamesTheBreakOutOnSetMetalOnly() {
+    var rig = new Rig();
+    rig.Put(0);
+    rig.Put(1, set: false);
+
+    WorldInteraction[] set = MoltenBar.Help(rig.World.World, rig.At(0));
+    WorldInteraction[] liquid = MoltenBar.Help(rig.World.World, rig.At(1));
+
+    Assert.Equal(
+      "exlib:blockhelp-crowbar-breakout",
+      Assert.Single(set).ActionLangCode
+    );
+    Assert.Equal(
+      ["game:crowbar-iron"],
+      set[0].Itemstacks.Select(s => s.Collectible.Code.ToString())
+    );
+    Assert.Empty(liquid);
   }
 
   // Fails when a holder that is no IMoltenCell walks like one: its neighbour (a set canal cell) clears too.

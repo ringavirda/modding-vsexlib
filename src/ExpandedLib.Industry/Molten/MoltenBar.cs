@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Networks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -17,18 +18,26 @@ public static class MoltenBar {
   public const string LiquidError = "exlib-moltenbarliquid";
 
   /// <summary>Seconds a survival player holds the bar before the break-out happens.</summary>
-  public const float HoldSeconds = 1f;
-
-  private const float CreativeHoldSeconds = 0.1f;
-  private const float MinStopSeconds = 0.5f;
+  public const float HoldSeconds = CrowbarHold.HoldSeconds;
 
   /// <summary>True when <paramref name="stack"/> is a crowbar.</summary>
-  public static bool IsBar(ItemStack? stack) =>
-    MoltenChisel.IsTool(stack, EnumTool.Crowbar);
+  public static bool IsBar(ItemStack? stack) => CrowbarHold.IsCrowbar(stack);
 
   /// <summary>True when the player holds a crowbar in the active hand.</summary>
   public static bool IsHeldBy(IPlayer byPlayer) =>
-    IsBar(byPlayer.InventoryManager?.ActiveHotbarSlot?.Itemstack);
+    CrowbarHold.IsHeldBy(byPlayer);
+
+  /// <summary>Whether a crowbar used on the cell at <paramref name="pos"/> would break set metal out or
+  /// refuse liquid metal; the <see cref="ICrowbarVerb.CrowbarActs"/> of a holder block.</summary>
+  public static bool Acts(IBlockAccessor blocks, BlockPos pos) =>
+    blocks.GetBlockEntity(pos) is IChiselableMolten { CanBreakOut: true };
+
+  /// <summary>The crowbar interaction hint of a holder cell.</summary>
+  /// <returns>One interaction naming the break-out when <see cref="Acts"/>; empty otherwise.</returns>
+  public static WorldInteraction[] Help(IWorldAccessor world, BlockPos pos) =>
+    Acts(world.BlockAccessor, pos)
+      ? [CrowbarHold.Help(world, "exlib:blockhelp-crowbar-breakout")]
+      : [];
 
   /// <summary>Claims the click when the player holds a crowbar and the holder at the selection has set
   /// content to break out or liquid content; on the server, liquid content also sends
@@ -41,7 +50,7 @@ public static class MoltenBar {
     IPlayer byPlayer,
     BlockSelection blockSel
   ) {
-    if (!IsHeldBy(byPlayer) || !CanBuildOrBreak(world, byPlayer, blockSel))
+    if (!CrowbarHold.Claim(world, byPlayer, blockSel))
       return false;
     BlockEntity? be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
     if (be is IChiselableMolten { CanBreakOut: true })
@@ -63,12 +72,7 @@ public static class MoltenBar {
   ) =>
     world.BlockAccessor.GetBlockEntity(blockSel.Position)
       is IChiselableMolten { CanBreakOut: true }
-    && secondsUsed
-      < (
-        byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative
-          ? CreativeHoldSeconds
-          : HoldSeconds
-      );
+    && CrowbarHold.Holding(secondsUsed, byPlayer);
 
   /// <summary>Ends the hold: after more than half a second, or at once in Creative mode, breaks the
   /// stretch out through <see cref="BreakOut"/>.</summary>
@@ -79,12 +83,8 @@ public static class MoltenBar {
     BlockSelection blockSel
   ) {
     if (
-      !IsHeldBy(byPlayer)
-      || !CanBuildOrBreak(world, byPlayer, blockSel)
-      || (
-        secondsUsed <= MinStopSeconds
-        && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative
-      )
+      !CrowbarHold.Claim(world, byPlayer, blockSel)
+      || !CrowbarHold.Released(secondsUsed, byPlayer)
     )
       return;
     BreakOut(world, byPlayer, blockSel.Position);
@@ -173,18 +173,7 @@ public static class MoltenBar {
       if (slot.Itemstack == null)
         break;
     }
-    ExSounds.Play(world.Api, pos, ExSounds.AnvilHit, 0.8f);
+    CrowbarHold.PlayBreak(world, pos, ExSounds.AnvilHit);
     return cleared;
   }
-
-  private static bool CanBuildOrBreak(
-    IWorldAccessor world,
-    IPlayer byPlayer,
-    BlockSelection blockSel
-  ) =>
-    world.Claims.TryAccess(
-      byPlayer,
-      blockSel.Position,
-      EnumBlockAccessFlags.BuildOrBreak
-    );
 }
