@@ -9,7 +9,7 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>The fillers a megablock stands, read by principal, and the cost of the laws that read
-/// them over a megablock of about 300 fillers.</summary>
+/// them over a megablock of 79 fillers.</summary>
 public class FillersOfTests {
   private static readonly System.Reflection.Assembly[] Exlib =
   [
@@ -74,7 +74,7 @@ public class FillersOfTests {
     );
   }
 
-  // Fails when stale entries are not pruned after a cell is cleared, or a filler stored after a read is not taken.
+  // Fails when stale entries are not pruned after a cell is cleared, or a filler stored after a read is not taken by the next read.
   [Fact]
   public void A_megablock_removed_and_placed_again_reads_the_fillers_standing() {
     TestWorld world = BlockLaws.Stand(
@@ -95,6 +95,30 @@ public class FillersOfTests {
     Place(world, "small", at);
     Assert.Equal(ScanOf(world, at), world.FillersOf(at));
     Assert.Equal(7, world.FillersOf(at).Length);
+  }
+
+  // Fails when a filler re-pointed in place after a read is not filed again under its new principal.
+  [Fact]
+  public void A_megablock_stood_over_standing_fillers_reads_them_under_the_new_principal() {
+    TestWorld world = BlockLaws.Stand(
+      [Mega("small", Cells(2, 2))],
+      Exlib,
+      null
+    );
+    BlockPos p = new(64, 64, 64),
+      q = new(80, 64, 64);
+    Place(world, "small", p);
+    Assert.Equal(7, world.FillersOf(p).Length);
+
+    foreach (BlockPos at in world.FillersOf(p))
+      (
+        (BlockEntityStructureFiller)
+          world.World.BlockAccessor.GetBlockEntity(at)!
+      ).Principal = q;
+
+    Assert.Equal(7, ScanOf(world, q).Length);
+    Assert.Equal(ScanOf(world, q), world.FillersOf(q));
+    Assert.Empty(world.FillersOf(p));
   }
 
   // Fails when FillersOf scans every stored entity per call: 200 megablocks of 293 fillers store
@@ -139,7 +163,7 @@ public class FillersOfTests {
     Assert.Empty(law.Findings);
     Assert.True(world.FillersReads > 0);
     Assert.True(
-      world.FillersVisited <= world.FillersReads * 79L,
+      world.FillersVisited <= world.FillersReads * 79L + world.FillersQueued,
       $"{world.FillersVisited} entries visited over {world.FillersReads} reads of {law.Cases} cases"
     );
   }
