@@ -587,7 +587,8 @@ internal sealed class ScenarioPlayer : IHandRelease {
 
   /// <summary>One held tick of the held item's use: the player is stood and aimed again, then
   /// <c>CollectibleObject.OnHeldUseStep</c> runs with the seconds held so far.</summary>
-  /// <returns>Whether the item goes on with the use.</returns>
+  /// <returns>Whether the item goes on with the use; false once the use has spent the slot's last item,
+  /// when the item is not stepped.</returns>
   public bool HeldStep(BlockSelection selection, double secondsHeld) {
     BlockPos at = selection.Position;
     Aim(
@@ -598,30 +599,60 @@ internal sealed class ScenarioPlayer : IHandRelease {
         at.Z + selection.HitPosition.Z
       )
     );
-    ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
-    return slot.Itemstack.Collectible.OnHeldUseStep(
-        (float)secondsHeld,
-        slot,
-        Player.Entity,
-        selection,
-        null
-      ) != EnumHandInteract.None;
+    return StepHeld(
+      Player.InventoryManager.ActiveHotbarSlot,
+      Player.Entity,
+      selection,
+      secondsHeld
+    );
   }
 
-  /// <summary>Ends the held item's use with <c>CollectibleObject.OnHeldUseStop</c> and gives
-  /// <c>Controls.HandUse</c> back its earlier value.</summary>
-  /// <param name="secondsHeld">The seconds the use has run.</param>
-  public void HeldStop(BlockSelection selection, double secondsHeld) {
-    ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
-    slot.Itemstack.Collectible.OnHeldUseStop(
+  internal static bool StepHeld(
+    ItemSlot slot,
+    EntityAgent byEntity,
+    BlockSelection selection,
+    double secondsHeld
+  ) =>
+    slot.Itemstack is { } held
+    && held.Collectible.OnHeldUseStep(
       (float)secondsHeld,
       slot,
+      byEntity,
+      selection,
+      null
+    ) != EnumHandInteract.None;
+
+  /// <summary>Ends the held item's use with <c>CollectibleObject.OnHeldUseStop</c> and gives
+  /// <c>Controls.HandUse</c> back its earlier value. A use that has spent the slot's last item ends with no
+  /// stop call, as the game's <c>TryStopHandAction</c> does.</summary>
+  /// <param name="secondsHeld">The seconds the use has run.</param>
+  public void HeldStop(BlockSelection selection, double secondsHeld) {
+    StopHeld(
+      Player.InventoryManager.ActiveHotbarSlot,
       Player.Entity,
+      selection,
+      secondsHeld
+    );
+    RestoreHandUse();
+  }
+
+  internal static bool StopHeld(
+    ItemSlot slot,
+    EntityAgent byEntity,
+    BlockSelection selection,
+    double secondsHeld
+  ) {
+    if (slot.Itemstack is not { } held)
+      return false;
+    held.Collectible.OnHeldUseStop(
+      (float)secondsHeld,
+      slot,
+      byEntity,
       selection,
       null,
       EnumHandInteract.HeldItemInteract
     );
-    RestoreHandUse();
+    return true;
   }
 
   private void RestoreHandUse() {

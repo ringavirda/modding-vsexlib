@@ -114,6 +114,70 @@ public class ScenarioPlayerVerbTests {
     Assert.False(InteractStep.Goes(true, 1, 1));
   }
 
+  private sealed class Spender : Item {
+    public int Steps;
+    public int Stops;
+
+    public override bool OnHeldInteractStep(
+      float secondsUsed,
+      ItemSlot slot,
+      EntityAgent byEntity,
+      BlockSelection blockSel,
+      EntitySelection entitySel
+    ) {
+      Steps++;
+      slot.Itemstack = null;
+      return true;
+    }
+
+    public override void OnHeldInteractStop(
+      float secondsUsed,
+      ItemSlot slot,
+      EntityAgent byEntity,
+      BlockSelection blockSel,
+      EntitySelection entitySel
+    ) => Stops++;
+  }
+
+  private static EntityAgent Agent() {
+    var agent = new EntityAgent();
+    agent.Controls.HandUse = EnumHandInteract.HeldItemInteract;
+    return agent;
+  }
+
+  private static (Spender, ItemSlot) SpenderSlot() {
+    var item = new Spender { Code = new AssetLocation("test:spender") };
+    return (item, new DummySlot(new ItemStack(item, 1)));
+  }
+
+  /// <summary>Fails when a held use that spent the slot's last item still gets its stop call (a
+  /// NullReferenceException on the emptied slot), or a stop on a held stack is skipped.</summary>
+  [Fact]
+  public void A_held_use_that_spent_the_last_item_ends_with_no_stop_call() {
+    var (item, slot) = SpenderSlot();
+    var selection = new BlockSelection();
+
+    Assert.True(ScenarioPlayer.StepHeld(slot, Agent(), selection, 0.5));
+    Assert.Null(slot.Itemstack);
+    Assert.False(ScenarioPlayer.StopHeld(slot, Agent(), selection, 0.5));
+    Assert.Equal(0, item.Stops);
+
+    var (kept, held) = SpenderSlot();
+    Assert.True(ScenarioPlayer.StopHeld(held, Agent(), selection, 0.5));
+    Assert.Equal(1, kept.Stops);
+  }
+
+  /// <summary>Fails when an emptied slot is stepped again.</summary>
+  [Fact]
+  public void An_emptied_slot_is_not_stepped_and_ends_the_use() {
+    var (item, slot) = SpenderSlot();
+    var selection = new BlockSelection();
+    ScenarioPlayer.StepHeld(slot, Agent(), selection, 0.5);
+
+    Assert.False(ScenarioPlayer.StepHeld(slot, Agent(), selection, 1.0));
+    Assert.Equal(1, item.Steps);
+  }
+
   /// <summary>Fails when a use the claims refuse passes (S62), or the refusal drops the cell (S63).</summary>
   [Fact]
   public void A_use_the_claims_refuse_fails_the_step_naming_the_cell() {

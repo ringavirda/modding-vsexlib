@@ -536,15 +536,7 @@ public static class BlockLaws {
   /// <summary>The cells holding a <see cref="BlockStructureFiller"/> whose entity names
   /// <paramref name="principal"/> as its principal.</summary>
   internal static BlockPos[] FillersOf(TestWorld world, BlockPos principal) =>
-    [
-      .. world
-        .BlockEntities.Where(e =>
-          e.Value is BlockEntityStructureFiller { Principal: { } p }
-          && p.Equals(principal)
-          && world.GetBlock(e.Key) is BlockStructureFiller
-        )
-        .Select(e => e.Key.Copy()),
-    ];
+    world.FillersOf(principal);
 
   /// <summary>The full solid block the neighbour law sets against a face and stands a block on:
   /// a stand-in coded <see cref="SolidCode"/>, registered in <paramref name="world"/> on first

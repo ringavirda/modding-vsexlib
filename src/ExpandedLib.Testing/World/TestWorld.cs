@@ -23,7 +23,7 @@ namespace ExpandedLib.Testing;
 public sealed partial class TestWorld : IDisposable {
   private readonly Dictionary<BlockPos, Block> _blocks = new();
   private readonly Dictionary<BlockPos, Block> _fluids = new();
-  private readonly Dictionary<BlockPos, BlockEntity> _blockEntities = new();
+  private readonly EntityStore _blockEntities = new();
   private readonly Dictionary<int, Block> _blocksById = new();
   private readonly Dictionary<string, Block> _blocksByCode = new();
   private readonly Dictionary<string, Item> _itemsByCode = new();
