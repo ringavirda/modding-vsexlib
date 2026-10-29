@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using ExpandedLib.Machines;
 using Vintagestory.API.Util;
 
@@ -280,12 +281,20 @@ internal sealed class SetupPack {
     return key;
   }
 
-  // A key reads as the game reads a wildcard AssetLocation: a * glob, an @ regex path, a * domain.
+  // A key without a domain is a * glob over the whole code; one with a domain reads as the game reads
+  // a wildcard AssetLocation: a * glob, an @ regex path, a * domain.
   private static bool Matches(string key, string code) =>
     key == code
-    || WildcardUtil.Match(
-      new Vintagestory.API.Common.AssetLocation(key),
-      new Vintagestory.API.Common.AssetLocation(code)
+    || (
+      key.Contains(':')
+        ? WildcardUtil.Match(
+          new Vintagestory.API.Common.AssetLocation(key),
+          new Vintagestory.API.Common.AssetLocation(code)
+        )
+        : Regex.IsMatch(
+          code,
+          "^" + Regex.Escape(key).Replace("\\*", ".*") + "$"
+        )
     );
 
   private static void Standing(

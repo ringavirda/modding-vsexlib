@@ -138,6 +138,15 @@ public class SetupPackTests
     Assert.Equal(1, pack.Held("game:plank-oak"));
   }
 
+  // Fails when a key with no domain is read as a game: location, so a bare * draws no other domain.
+  [Fact]
+  public void BareStarKeyDrawsACodeOfAnotherDomain()
+  {
+    SetupPack pack = Gathered("{ \"*\": 10 }");
+    pack.Draw("smokestack:smokestack-intake-tier3-n", 1);
+    Assert.Equal(9, pack.Held("smokestack:smokestack-intake-tier3-n"));
+  }
+
   // Fails when a pattern matches a key of a different code.
   [Fact]
   public void PatternDoesNotDrawADifferentCode()
