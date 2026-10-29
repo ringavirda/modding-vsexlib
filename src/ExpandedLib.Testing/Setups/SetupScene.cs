@@ -382,7 +382,7 @@ public sealed partial class SetupScene : IDisposable
   {
     string code = block.Code.ToString();
     if (draws)
-      DrawBlock(where, kind ?? code, pos, Describe(pos));
+      DrawBlock(where, kind ?? code, pos, Describe(pos), pos);
     BlockPos at = pos.Copy();
     _laid.Add((at.X, at.Y, at.Z));
     HashSet<long> before = World.TickListenerIds();
@@ -477,7 +477,7 @@ public sealed partial class SetupScene : IDisposable
   {
     if (be.GetBehavior<ExRightClickConstructable>() is not { } construction)
       return false;
-    DrawStages(where, construction.Construction, Describe(pos));
+    DrawStages(where, construction.Construction, Describe(pos), pos);
     if (
       ReflectionHelpers.TryGetField(be, "_animator", out _)
       || ReflectionHelpers.TryGetField(be, "_rcc", out _)
@@ -507,10 +507,12 @@ public sealed partial class SetupScene : IDisposable
       StructureRig rig = StructureRig
         .Around(World, multiblock, multiblock.LayoutAngle)
         .Raise();
+      bool carried = _pack?.TookStanding(pos) ?? false;
       foreach (var (at, raised) in rig.Raised)
       {
         _laid.Add((at.X, at.Y, at.Z));
-        DrawBlock(where, raised, at, Describe(pos));
+        if (!carried)
+          DrawBlock(where, raised, at, Describe(pos));
       }
       HashSet<long> own = _listeners.GetValueOrDefault(pos) ?? [];
       for (int i = 0; i < 2 && !multiblock.StructureComplete; i++)

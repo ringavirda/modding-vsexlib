@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ExpandedLib.Machines;
+using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace ExpandedLib.Scenarios;
 
@@ -24,6 +26,7 @@ internal sealed class SetupPack {
   private readonly SetupPackSpec _spec;
   private readonly Dictionary<string, int> _held = [];
   private readonly List<string> _standing = [];
+  private readonly HashSet<(int X, int Y, int Z)> _carried = [];
   private readonly List<(string Where, string Code, int Count)> _draws = [];
   private readonly Dictionary<(string Pin, string Code), string> _pins = [];
   private Dictionary<string, int> _start = [];
@@ -207,15 +210,29 @@ internal sealed class SetupPack {
 
   /// <summary>Takes the first standing block that matches <paramref name="code"/> off the list.</summary>
   /// <param name="code">The block's code.</param>
+  /// <param name="cell">The cell the block is placed at, or null when it is not a principal whose
+  /// structure and construction stages the run may raise; a taken block is recorded against it for
+  /// <see cref="TookStanding"/>.</param>
   /// <returns>True when a standing block was taken, so the place draws nothing; false when none
   /// matches.</returns>
-  public bool TakeStanding(string code) {
+  public bool TakeStanding(string code, BlockPos? cell = null) {
     int index = _standing.FindIndex(p => Matches(p, code));
     if (index < 0)
       return false;
     _standing.RemoveAt(index);
+    if (cell != null)
+      _carried.Add((cell.X, cell.Y, cell.Z));
     return true;
   }
+
+  /// <summary>Whether the block at <paramref name="cell"/> was taken free from the standing list, so
+  /// raising its structure and paying its construction stages draws nothing.</summary>
+  /// <param name="cell">The cell <see cref="TakeStanding"/> was given for the block, in the same
+  /// coordinates.</param>
+  /// <returns>True once that cell has been taken; false for a block built from the pack, and for
+  /// any other cell of the same code.</returns>
+  public bool TookStanding(BlockPos cell) =>
+    _carried.Contains((cell.X, cell.Y, cell.Z));
 
   /// <summary>Checks that the pack holds every stack and metal unit its <c>ends</c> declares, at
   /// least the declared count of each.</summary>
@@ -280,10 +297,21 @@ internal sealed class SetupPack {
     return key;
   }
 
-  // A * in a key stands for any run of characters.
+  // A key without a domain is a * glob over the whole code; one with a domain reads as the game reads
+  // a wildcard AssetLocation: a * glob, an @ regex path, a * domain.
   private static bool Matches(string key, string code) =>
     key == code
-    || Regex.IsMatch(code, "^" + Regex.Escape(key).Replace("\\*", ".*") + "$");
+    || (
+      key.Contains(':')
+        ? WildcardUtil.Match(
+          new Vintagestory.API.Common.AssetLocation(key),
+          new Vintagestory.API.Common.AssetLocation(code)
+        )
+        : Regex.IsMatch(
+          code,
+          "^" + Regex.Escape(key).Replace("\\*", ".*") + "$"
+        )
+    );
 
   private static void Standing(
     SetupPackSpec spec,
