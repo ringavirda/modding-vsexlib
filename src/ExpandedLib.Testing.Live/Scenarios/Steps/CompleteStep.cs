@@ -111,6 +111,7 @@ internal sealed class CompleteStep : ScenarioStep {
       PackLedger.DrawBlock(
         ctx,
         WantedCode(wanted.Wanted).ToString(),
+        local,
         local.ToString()
       );
       ctx.SetBlock(block, local);

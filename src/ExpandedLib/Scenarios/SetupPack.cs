@@ -105,6 +105,40 @@ internal sealed class SetupPack {
     }
     return null;
   }
+
+  /// <summary>The code to draw for a block laid at <paramref name="pos"/>: <paramref name="code"/>
+  /// when the pack holds it, otherwise the first block the game drops for <paramref name="code"/>
+  /// that the pack holds, which is the item a player holds for a rotated or staged variant.</summary>
+  /// <param name="world">Resolves <paramref name="code"/> to its block and asks it for its drops.</param>
+  /// <param name="code">The block's code; one holding a <c>*</c> is returned as it is.</param>
+  /// <param name="pos">The absolute cell the block is laid at, given to <c>Block.GetDrops</c>.</param>
+  /// <returns>The code to draw; <paramref name="code"/> when the pack holds none of the block's
+  /// drops, so the draw fails naming the code laid.</returns>
+  public string HeldFor(
+    Vintagestory.API.Common.IWorldAccessor world,
+    string code,
+    Vintagestory.API.MathTools.BlockPos pos
+  )
+  {
+    if (code.Contains('*') || Held(code) > 0)
+      return code;
+    Vintagestory.API.Common.Block? block = world.GetBlock(
+      new Vintagestory.API.Common.AssetLocation(code)
+    );
+    foreach (
+      Vintagestory.API.Common.ItemStack drop in block?.GetDrops(
+        world,
+        pos,
+        null
+      ) ?? []
+    )
+      if (
+        drop.Collectible is Vintagestory.API.Common.Block dropped
+        && Held(dropped.Code.ToString()) > 0
+      )
+        return dropped.Code.ToString();
+    return code;
+  }
 #endif
 
   /// <summary>The pack code of a molten cell's metal.</summary>

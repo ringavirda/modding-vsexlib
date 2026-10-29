@@ -308,6 +308,31 @@ public class HeldClipTests {
     );
   }
 
+  // Fails when the pass edits the player entity type's shape location in place: its Base then gains the
+  // shapes/ prefix and .json suffix. Removing the Clone before the suffix calls turns it red.
+  [Fact]
+  public void The_player_entity_types_shape_location_is_left_as_it_was() {
+    using var world = new TestWorld();
+    world.LoadAsGame([Fixture, Fixtures("clipsfaults")]);
+    world.Log.Expect(EnumLogType.Error, "clipsfaults:badgrips");
+    world.Log.Expect(EnumLogType.Warning, "The player's shape has no clip");
+    PlayerEntity(
+      world,
+      "clipsfixture:item/ladle",
+      ("iiex-ladlehold", "iiex-ladlehold")
+    );
+    world.Api.Side.Returns(EnumAppSide.Client);
+
+    ItemViewsPass.Run(world.Api);
+
+    Assert.Equal(
+      "clipsfixture:item/ladle",
+      world
+        .Api.World.GetEntityType(new AssetLocation("game", "player"))
+        .Client.Shape.Base.ToString()
+    );
+  }
+
   // Fails when a name is checked against the shape's clips without the player's animation list: interactstatic-beams
   // is then warned though it maps to interactstatic; or when a name the list does not map is not warned.
   [Fact]

@@ -426,21 +426,21 @@ public class SetupPackStepTests : IDisposable
     Assert.Equal(2, box.Inventory[0].Itemstack?.StackSize);
   }
 
-  // Fails when a craft stows its product in the active slot, where no slot index of an expect reads it.
+  // Fails when a craft under a pack stows its product in a hotbar slot, where the ledger alone holds it.
   [Fact]
-  public void A_crafts_product_is_read_by_slot_outside_the_active_one()
+  public void A_crafts_product_under_a_pack_is_in_no_hotbar_slot()
   {
     using SetupScene scene = Build(
       Gathered("stacks", "{\"setupcraft:rod-*\": 2, \"setupcraft:plate\": 2}"),
       "["
         + Bench
         + ", {\"craft\": {\"at\": {\"of\": \"bench\"}, \"output\": \"setupcraft:frame\"}}"
-        + ", {\"expect\": {\"slot\": 1, \"code\": \"setupcraft:frame\"}}"
+        + ", {\"expect\": {\"slot\": 1, \"code\": null}}"
         + ", {\"expect\": {\"slot\": 0, \"code\": null}}"
         + ", {\"select\": {\"slot\": 1}}]"
     );
 
-    Assert.NotNull(scene.Player.StackInSlot(1));
+    Assert.Null(scene.Player.StackInSlot(1));
   }
 
   private static string Spill(int dx, int dy = 0, int dz = 0) =>

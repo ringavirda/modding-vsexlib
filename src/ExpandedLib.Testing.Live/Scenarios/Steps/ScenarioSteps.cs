@@ -21,6 +21,7 @@ internal static class ScenarioSteps {
       new WaitStep(),
       new RepeatStep(),
       new InteractStep(),
+      new UseStep(),
       new WindowStep(),
       new IgniteStep(),
       new CraftStep(),

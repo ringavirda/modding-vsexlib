@@ -56,11 +56,17 @@ internal static class PackLedger {
   public static void DrawBlock(
     ScenarioContext ctx,
     string code,
+    BlockPos local,
     string? pin = null
   ) {
     if (ctx.Pack is not { DrawsBlocks: true } || ctx.Pack.TakeStanding(code))
       return;
-    Draw(ctx, code, 1, pin);
+    Draw(
+      ctx,
+      ctx.Pack.HeldFor(ctx.World, code, ctx.Setup.Absolute(local)),
+      1,
+      pin
+    );
   }
 
   /// <summary>Draws the stacks of the stages <paramref name="construction"/> still has to pay up to
