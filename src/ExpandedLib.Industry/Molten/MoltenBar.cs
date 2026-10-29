@@ -14,7 +14,8 @@ namespace ExpandedLib.Industry.Molten;
 /// the struck cell and the connected set cells of its metal, up to <see cref="ExlibValues.MoltenBarCells"/>.
 /// A holder's block calls <see cref="Start"/>, <see cref="Step"/> and <see cref="Stop"/> from its interact overrides.
 /// </summary>
-public static class MoltenBar {
+public static class MoltenBar
+{
   /// <summary>The in-game error code sent to a player who strikes liquid metal with the bar.</summary>
   public const string LiquidError = "exlib-moltenbarliquid";
 
@@ -50,7 +51,8 @@ public static class MoltenBar {
     IWorldAccessor world,
     IPlayer byPlayer,
     BlockSelection blockSel
-  ) {
+  )
+  {
     if (!CrowbarHold.Claim(world, byPlayer, blockSel))
       return false;
     BlockEntity? be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
@@ -82,7 +84,8 @@ public static class MoltenBar {
     IWorldAccessor world,
     IPlayer byPlayer,
     BlockSelection blockSel
-  ) {
+  )
+  {
     if (
       !CrowbarHold.Claim(world, byPlayer, blockSel)
       || !CrowbarHold.Released(secondsUsed, byPlayer)
@@ -100,7 +103,8 @@ public static class MoltenBar {
     IBlockAccessor accessor,
     BlockPos start,
     int limit
-  ) {
+  )
+  {
     List<BlockPos> found = [start.Copy()];
     if (accessor.GetBlockEntity(start) is not IMoltenCell origin)
       return found;
@@ -108,11 +112,13 @@ public static class MoltenBar {
     HashSet<BlockPos> seen = [start.Copy()];
     Queue<BlockPos> queue = new();
     queue.Enqueue(start.Copy());
-    while (queue.Count > 0 && found.Count < limit) {
+    while (queue.Count > 0 && found.Count < limit)
+    {
       BlockPos cur = queue.Dequeue();
       if (accessor.GetBlock(cur) is not BlockNetworkNode node)
         continue;
-      foreach (BlockFacing face in BlockFacing.ALLFACES) {
+      foreach (BlockFacing face in BlockFacing.ALLFACES)
+      {
         BlockPos npos = cur.AddCopy(face);
         if (
           found.Count >= limit
@@ -142,7 +148,8 @@ public static class MoltenBar {
     IPlayer byPlayer,
     BlockPos pos,
     double yOffset = 0.5
-  ) {
+  )
+  {
     if (
       world.Side != EnumAppSide.Server
       || world.BlockAccessor.GetBlockEntity(pos)
@@ -159,7 +166,8 @@ public static class MoltenBar {
         pos,
         ExlibValues.MoltenBarCells
       )
-    ) {
+    )
+    {
       if (
         world.BlockAccessor.GetBlockEntity(cell)
         is not IChiselableMolten { CanBreakOut: true } target

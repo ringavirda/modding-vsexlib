@@ -11,7 +11,8 @@ namespace ExpandedLib.Industry.Molten;
 /// The hold of every crowbar verb, timed as vanilla's crowbar on a support beam: <see cref="HoldSeconds"/>
 /// (0.1 s in Creative mode), acting on release after half a second. Blocks call it from their interact overrides.
 /// </summary>
-public static class CrowbarHold {
+public static class CrowbarHold
+{
   /// <summary>Seconds a survival player holds the bar before the verb acts.</summary>
   public const float HoldSeconds = 1f;
 
@@ -70,7 +71,8 @@ public static class CrowbarHold {
 
   /// <summary>The crowbar interaction hint with the action <paramref name="langCode"/>, advertising every crowbar item.</summary>
   public static WorldInteraction Help(IWorldAccessor world, string langCode) =>
-    new() {
+    new()
+    {
       ActionLangCode = langCode,
       MouseButton = EnumMouseButton.Right,
       Itemstacks = _crowbarStacks ??=

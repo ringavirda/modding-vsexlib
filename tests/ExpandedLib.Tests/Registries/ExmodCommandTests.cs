@@ -214,7 +214,16 @@ public class ExmodCommandTests {
 
     Assert.True(Admits(exmod, exmod.SubCommands["molten"], player));
     foreach (
-      string name in new[] { "verify", "heal", "config", "recipes", "scenario" }
+      string name in new[]
+      {
+        "verify",
+        "heal",
+        "config",
+        "recipes",
+#if GAME_GE_1_22
+        "scenario",
+#endif
+      }
     )
       Assert.False(
         Admits(exmod, exmod.SubCommands[name], player),

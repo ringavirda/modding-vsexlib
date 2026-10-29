@@ -987,13 +987,15 @@ public class BlockLawsTests {
   // Fails when a click holds the wrench stack another world's help named, which vanilla keeps in a
   // static, instead of the clicking world's own wrench.
   [Fact]
-  public void A_wrench_named_by_another_world_still_turns_a_block() {
+  public void A_wrench_named_by_another_world_still_turns_a_block()
+  {
     ExBlockDef turner = ExBlockDef
       .Create("test", "turner")
       .VariantGroup("rot", "a", "b", "c")
       .Behavior("WrenchOrientable", new { baseCode = "turner-*" });
     BlockBehaviorWrenchOrientable.wrenchItems = null;
-    try {
+    try
+    {
       TestWorld first = Hands([], turner);
       BlockBehaviorWrenchOrientable.loadWrenchItems(first.World);
       TestWorld second = Hands([], turner);
@@ -1002,11 +1004,12 @@ public class BlockLawsTests {
 
       Assert.Empty(law.Findings);
       Assert.True(law.Cases > 0);
-    } finally {
+    }
+    finally
+    {
       BlockBehaviorWrenchOrientable.wrenchItems = null;
     }
   }
-
 #endif
 
   // Fails when two worlds standing up at once run their blocks' OnLoaded side by side.

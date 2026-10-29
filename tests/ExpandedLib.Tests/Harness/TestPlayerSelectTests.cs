@@ -177,7 +177,8 @@ public class TestPlayerSelectTests {
 #if GAME_GE_1_21
   // Fails when the inventory manager does not answer the off-hand slot and its tool.
   [Fact]
-  public void TheInventoryManager_AnswersTheOffHandSlotAndItsTool() {
+  public void TheInventoryManager_AnswersTheOffHandSlotAndItsTool()
+  {
     var (world, player, _) = Stand();
     Item hammer = world.RegisterItem("game:hammer-copper");
     hammer.Tool = EnumTool.Hammer;

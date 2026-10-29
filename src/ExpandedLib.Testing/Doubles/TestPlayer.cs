@@ -249,7 +249,7 @@ public sealed class TestPlayer {
 #if GAME_GE_1_22
         <= GlobalConstants.TooHotToTouchTemperature
 #else
-        <= 200f
+        <= 300f
 #endif
       || OffHandSlot.Itemstack?.Collectible.Attributes?.IsTrue("heatResistant")
         == true

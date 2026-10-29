@@ -299,7 +299,7 @@ public sealed partial class TestWorld {
           ? ClientShape(ci.Arg<AssetLocation>(), true)?.ToObject<Shape>()
           : null
 #else
-        null
+      null
 #endif
       );
     api.Assets.Returns(assets);

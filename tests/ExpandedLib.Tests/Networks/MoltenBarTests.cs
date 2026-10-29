@@ -17,21 +17,24 @@ namespace ExpandedLib.Tests;
 /// Covers <see cref="MoltenBar"/>: a held crowbar breaks the struck cell and the connected set cells of
 /// the same metal out of a run, hot, up to the cell limit, one durability a cell.
 /// </summary>
-public class MoltenBarTests {
+public class MoltenBarTests
+{
   #region Fixtures
 
   private const string Iron = "game:ingot-iron";
   private const string Copper = "game:ingot-copper";
   private const int Durability = 100;
 
-  private sealed class Rig {
+  private sealed class Rig
+  {
     public readonly TestWorld World = new();
     public readonly TestPlayer Player;
     public readonly ItemStack Bar;
     public readonly List<BarCell> Cells = [];
     private int _ids;
 
-    public Rig() {
+    public Rig()
+    {
       World.RegisterItem("game:metalbit-iron");
       World.RegisterItem("game:metalbit-copper");
       Item crowbar = World.RegisterItem("game:crowbar-iron");
@@ -49,8 +52,10 @@ public class MoltenBarTests {
       float temperature = 1000f,
       bool hardened = false,
       params BlockFacing[] faces
-    ) {
-      var cell = new BarCell {
+    )
+    {
+      var cell = new BarCell
+      {
         CellMetalType = metal,
         CellAmount = 12,
         Set = set,
@@ -84,7 +89,8 @@ public class MoltenBarTests {
         );
   }
 
-  private sealed class BarNode : BlockNetworkNode {
+  private sealed class BarNode : BlockNetworkNode
+  {
     public BlockFacing[] Faces { get; set; } = [];
 
     public override string NetworkType => "molten";
@@ -120,7 +126,8 @@ public class MoltenBarTests {
       );
   }
 
-  private sealed class BarCell : BlockEntity, IMoltenCell, IChiselableMolten {
+  private sealed class BarCell : BlockEntity, IMoltenCell, IChiselableMolten
+  {
     public int CellAmount { get; set; }
     public string CellMetalType { get; set; } = "";
     public float CellTemperature { get; set; }
@@ -137,7 +144,8 @@ public class MoltenBarTests {
     public bool CanBreakOut => HasChiselableContent;
     public string? ChiselBlockedError => null;
 
-    public ItemStack? ChiselOut() {
+    public ItemStack? ChiselOut()
+    {
       string bit = CellMetalType.Replace("ingot", "metalbit");
       var drop = new ItemStack(Api.World.GetItem(new AssetLocation(bit)), 2);
       CellAmount = 0;
@@ -159,20 +167,23 @@ public class MoltenBarTests {
     public void UpdateThermal(IWorldAccessor world) { }
   }
 
-  private sealed class LoneHolder : BlockEntity, IChiselableMolten {
+  private sealed class LoneHolder : BlockEntity, IChiselableMolten
+  {
     public bool Cleared;
     public bool HasChiselableContent => !Cleared;
     public bool CanChiselOut => !Cleared;
     public bool CanBreakOut => !Cleared;
     public string? ChiselBlockedError => null;
 
-    public ItemStack? ChiselOut() {
+    public ItemStack? ChiselOut()
+    {
       Cleared = true;
       return null;
     }
   }
 
-  private sealed class ChiselOnlyHolder : BlockEntity, IChiselableMolten {
+  private sealed class ChiselOnlyHolder : BlockEntity, IChiselableMolten
+  {
     public bool HasChiselableContent => true;
     public bool CanChiselOut => true;
     public string? ChiselBlockedError => null;
@@ -187,7 +198,8 @@ public class MoltenBarTests {
   // Fails when Start gates on CanChiselOut: the skull at 1000 C is set but above the hardened threshold,
   // so the use breaks nothing.
   [Fact]
-  public void Bar_BreaksOutSetHotSkull() {
+  public void Bar_BreaksOutSetHotSkull()
+  {
     var rig = new Rig();
     BarCell cell = rig.Put(0, temperature: 1000f, hardened: false);
 
@@ -201,7 +213,8 @@ public class MoltenBarTests {
 
   // Fails when Start drops its liquid claim: the click is dropped and no refusal is sent.
   [Fact]
-  public void Bar_RefusesLiquid() {
+  public void Bar_RefusesLiquid()
+  {
     var rig = new Rig();
     BarCell cell = rig.Put(0, set: false, temperature: 1450f);
 
@@ -215,13 +228,15 @@ public class MoltenBarTests {
 
   // Fails when IChiselableMolten.CanBreakOut defaults to true: a holder written for the chisel alone is broken out.
   [Fact]
-  public void Bar_LeavesAChiselOnlyHolderAlone() {
+  public void Bar_LeavesAChiselOnlyHolderAlone()
+  {
     Assert.False(((IChiselableMolten)new ChiselOnlyHolder()).CanBreakOut);
   }
 
   // Fails when Start claims liquid content only on the server: the client drops the click before the server sees it.
   [Fact]
-  public void Bar_ClaimsLiquidOnTheClient() {
+  public void Bar_ClaimsLiquidOnTheClient()
+  {
     var rig = new Rig();
     rig.Put(0, set: false, temperature: 1450f);
     rig.Player.Hold(rig.Bar);
@@ -238,7 +253,8 @@ public class MoltenBarTests {
 
   // Fails when Step ignores the holder: a hold on liquid content runs its full second.
   [Fact]
-  public void Bar_HoldEndsAtOnceOnLiquid() {
+  public void Bar_HoldEndsAtOnceOnLiquid()
+  {
     var rig = new Rig();
     rig.Put(0, set: false, temperature: 1450f);
     rig.Put(1);
@@ -254,7 +270,8 @@ public class MoltenBarTests {
   // Fails when the stretch ignores MoltenBarCells: ten set cells all clear. Struck mid-run, the eight nearest
   // go, so the two end cells stay.
   [Fact]
-  public void Bar_StopsAtLimit() {
+  public void Bar_StopsAtLimit()
+  {
     var rig = new Rig();
     for (int x = 0; x < 10; x++)
       rig.Put(x);
@@ -269,7 +286,8 @@ public class MoltenBarTests {
 
   // Fails when the stretch drops its metal test: the copper skull and the iron beyond it clear with the run.
   [Fact]
-  public void Bar_StopsAtOtherMetal() {
+  public void Bar_StopsAtOtherMetal()
+  {
     var rig = new Rig();
     rig.Put(0);
     rig.Put(1);
@@ -284,7 +302,8 @@ public class MoltenBarTests {
   // Fails when the stretch drops its set-content test: it walks through the liquid cell and clears the set
   // cell beyond.
   [Fact]
-  public void Bar_StopsAtLiquidCell() {
+  public void Bar_StopsAtLiquidCell()
+  {
     var rig = new Rig();
     rig.Put(0);
     rig.Put(1, set: false, temperature: 1450f);
@@ -297,7 +316,8 @@ public class MoltenBarTests {
 
   // Fails when the stretch drops the connector test: the cell with no connector west of it clears with the run.
   [Fact]
-  public void Bar_StopsAtClosedJoint() {
+  public void Bar_StopsAtClosedJoint()
+  {
     var rig = new Rig();
     rig.Put(0);
     rig.Put(1, faces: [BlockFacing.EAST]);
@@ -310,7 +330,8 @@ public class MoltenBarTests {
 
   // Fails when the wear is once a use: three cells clear and the bar loses 1.
   [Fact]
-  public void Bar_WearsOneACell() {
+  public void Bar_WearsOneACell()
+  {
     var rig = new Rig();
     for (int x = 0; x < 3; x++)
       rig.Put(x);
@@ -322,7 +343,8 @@ public class MoltenBarTests {
 
   // Fails when the wear skips the Creative test: a Creative use still costs the bar durability.
   [Fact]
-  public void Bar_CreativeBreaksOutWithoutWear() {
+  public void Bar_CreativeBreaksOutWithoutWear()
+  {
     var rig = new Rig();
     rig.Player.GameMode = EnumGameMode.Creative;
     rig.Put(0);
@@ -336,7 +358,8 @@ public class MoltenBarTests {
 
   // Fails when Stop acts on any hold: a quarter second breaks the skull out.
   [Fact]
-  public void Bar_ShortHoldBreaksNothing() {
+  public void Bar_ShortHoldBreaksNothing()
+  {
     var rig = new Rig();
     BarCell cell = rig.Put(0);
 
@@ -348,11 +371,13 @@ public class MoltenBarTests {
 
   // Fails when Start skips the tool test: a chisel starts the hold.
   [Fact]
-  public void Bar_IgnoresOtherTools() {
+  public void Bar_IgnoresOtherTools()
+  {
     var rig = new Rig();
     rig.Put(0);
     var chisel = new ItemStack(
-      new Item {
+      new Item
+      {
         Code = new AssetLocation("game:chisel-iron"),
         Tool = EnumTool.Chisel,
       }
@@ -363,7 +388,8 @@ public class MoltenBarTests {
 
   // Fails when the claim test goes: a player the claims refuse breaks the skull out.
   [Fact]
-  public void Bar_RespectsLandClaims() {
+  public void Bar_RespectsLandClaims()
+  {
     var rig = new Rig();
     BarCell cell = rig.Put(0);
     rig.World.World.Claims.TryAccess(
@@ -379,7 +405,8 @@ public class MoltenBarTests {
 
   // Fails when Acts answers true for a liquid cell: the help then offers a break-out the bar refuses.
   [Fact]
-  public void Bar_HelpNamesTheBreakOutOnSetMetalOnly() {
+  public void Bar_HelpNamesTheBreakOutOnSetMetalOnly()
+  {
     var rig = new Rig();
     rig.Put(0);
     rig.Put(1, set: false);
@@ -400,7 +427,8 @@ public class MoltenBarTests {
 
   // Fails when a holder that is no IMoltenCell walks like one: its neighbour (a set canal cell) clears too.
   [Fact]
-  public void Bar_BreaksALoneHolderAlone() {
+  public void Bar_BreaksALoneHolderAlone()
+  {
     var rig = new Rig();
     var lone = new LoneHolder();
     rig.World.Place(rig.At(0), BarNode.Make(90, BlockFacing.EAST), lone);
