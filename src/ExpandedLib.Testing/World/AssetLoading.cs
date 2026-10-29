@@ -450,16 +450,17 @@ public sealed partial class TestWorld {
   }
 
   /// <summary>Gives every block and item registered through <paramref name="loaderApi"/> an id of
-  /// its own and registers it in this world.</summary>
+  /// its own and registers it in this world; then resolves each block's drops that name a block or
+  /// item now registered, leaving the rest unresolved and unlogged.</summary>
   private void RegisterLoaded(ICoreServerAPI loaderApi) {
-    foreach (
-      Block block in loaderApi
-        .ReceivedCalls()
-        .Where(c =>
-          c.GetMethodInfo().Name == nameof(ICoreServerAPI.RegisterBlock)
-        )
-        .Select(c => (Block)c.GetArguments()[0]!)
-    ) {
+    var blocks = loaderApi
+      .ReceivedCalls()
+      .Where(c =>
+        c.GetMethodInfo().Name == nameof(ICoreServerAPI.RegisterBlock)
+      )
+      .Select(c => (Block)c.GetArguments()[0]!)
+      .ToList();
+    foreach (Block block in blocks) {
       block.BlockId = _nextDefinedId++;
       Register(block);
     }
@@ -474,6 +475,14 @@ public sealed partial class TestWorld {
       item.ItemId = _nextItemId++;
       Register(item);
     }
+    foreach (Block block in blocks)
+      foreach (BlockDropItemStack drop in block.Drops ?? [])
+        if (
+          drop.Type == EnumItemClass.Block
+            ? GetByCode(drop.Code) != null
+            : GetItem(drop.Code) != null
+        )
+          drop.Resolve(World, "LoadAssets", block.Code);
   }
 
   /// <summary>Adds to <paramref name="mgr"/> each <c>game:</c> file that a patch of one of
