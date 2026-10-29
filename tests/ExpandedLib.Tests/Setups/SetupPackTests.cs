@@ -111,6 +111,45 @@ public class SetupPackTests
     Assert.Equal(13, pack.Held("game:log-birch"));
   }
 
+  private static SetupPack Gathered(string gathered) =>
+    SetupPack.Start(
+      Inline("{ \"scope\": \"stacks\", \"gathered\": " + gathered + " }"),
+      Resolve
+    );
+
+  // Fails when a pattern in vanilla's @ regex form is escaped as text, so no concrete key is drawn.
+  [Fact]
+  public void RegexPatternDrawsAConcreteKey()
+  {
+    SetupPack pack = Gathered(
+      "{ \"game:refractorybricks-good-tier1\": 4, \"game:hoopedbrick-x\": 2 }"
+    );
+    pack.Draw("*:@(refractorybricks-good-tier.*|hoopedbrick-.*)", 4);
+    Assert.Equal(0, pack.Held("game:refractorybricks-good-tier1"));
+    Assert.Equal(2, pack.Held("game:hoopedbrick-x"));
+  }
+
+  // Fails when a plain * pattern matches no concrete key.
+  [Fact]
+  public void GlobPatternDrawsAConcreteKey()
+  {
+    SetupPack pack = Gathered("{ \"game:plank-oak\": 4 }");
+    pack.Draw("game:plank-*", 3);
+    Assert.Equal(1, pack.Held("game:plank-oak"));
+  }
+
+  // Fails when a pattern matches a key of a different code.
+  [Fact]
+  public void PatternDoesNotDrawADifferentCode()
+  {
+    SetupPack pack = Gathered("{ \"game:plank-oak\": 4 }");
+    Assert.Throws<InvalidOperationException>(() =>
+      pack.Draw("*:@(refractorybricks-good-tier.*)", 1)
+    );
+    Assert.Throws<InvalidOperationException>(() => pack.Draw("game:log-*", 1));
+    Assert.Equal(4, pack.Held("game:plank-oak"));
+  }
+
   // Fails when a draw past what the pack holds is not refused.
   [Fact]
   public void ShortDrawNamesTheCodeAndBothCounts()

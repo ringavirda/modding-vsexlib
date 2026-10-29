@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using ExpandedLib.Machines;
+using Vintagestory.API.Util;
 
 namespace ExpandedLib.Scenarios;
 
@@ -280,10 +280,13 @@ internal sealed class SetupPack {
     return key;
   }
 
-  // A * in a key stands for any run of characters.
+  // A key reads as the game reads a wildcard AssetLocation: a * glob, an @ regex path, a * domain.
   private static bool Matches(string key, string code) =>
     key == code
-    || Regex.IsMatch(code, "^" + Regex.Escape(key).Replace("\\*", ".*") + "$");
+    || WildcardUtil.Match(
+      new Vintagestory.API.Common.AssetLocation(key),
+      new Vintagestory.API.Common.AssetLocation(code)
+    );
 
   private static void Standing(
     SetupPackSpec spec,
