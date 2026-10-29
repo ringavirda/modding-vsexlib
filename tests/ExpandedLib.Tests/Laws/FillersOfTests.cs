@@ -1,5 +1,3 @@
-using System;
-using System.Diagnostics;
 using System.Linq;
 using ExpandedLib.Definitions;
 using ExpandedLib.Structures;
@@ -51,8 +49,7 @@ public class FillersOfTests {
     block.OnBlockPlaced(world.World, at, new ItemStack(block));
   }
 
-  // Fails when the index keys a filler under its own cell, or any principal but the one its entity
-  // names, so a structure beside another reads the wrong fillers.
+  // Fails when the index keys a filler under a cell or principal other than its entity's, so a neighbour reads the wrong fillers.
   [Fact]
   public void A_megablock_beside_another_reads_only_its_own_fillers() {
     TestWorld world = BlockLaws.Stand(
@@ -77,8 +74,7 @@ public class FillersOfTests {
     );
   }
 
-  // Fails when the index keeps a filler after its cell is cleared, or does not take one stored
-  // after an earlier read.
+  // Fails when stale entries are not pruned after a cell is cleared, or a filler stored after a read is not taken.
   [Fact]
   public void A_megablock_removed_and_placed_again_reads_the_fillers_standing() {
     TestWorld world = BlockLaws.Stand(
@@ -92,6 +88,9 @@ public class FillersOfTests {
 
     world.Accessor.SetBlock(0, at);
     Assert.Empty(world.FillersOf(at));
+    long before = world.FillersVisited;
+    Assert.Empty(world.FillersOf(at));
+    Assert.Equal(before, world.FillersVisited);
 
     Place(world, "small", at);
     Assert.Equal(ScanOf(world, at), world.FillersOf(at));
@@ -99,7 +98,7 @@ public class FillersOfTests {
   }
 
   // Fails when FillersOf scans every stored entity per call: 200 megablocks of 293 fillers store
-  // 58,600 entities, and 1,000 reads cost 0.8 s with the scan.
+  // 58,600 entities, and a read must visit only the 293 of its own.
   [Fact]
   public void Reading_the_fillers_of_one_of_200_megablocks_does_not_scan_the_rest() {
     TestWorld world = BlockLaws.Stand([Mega("big", Cells(7, 6))], Exlib, null);
@@ -110,25 +109,19 @@ public class FillersOfTests {
         new BlockPos(64 + 32 * (i % 16), 64, 64 + 32 * (i / 16))
       );
     BlockPos last = new(64 + 32 * (199 % 16), 64, 64 + 32 * (199 / 16));
+    world.FillersOf(last);
+    long first = world.FillersVisited;
 
-    var clock = Stopwatch.StartNew();
-    int found = 0;
-    for (int i = 0; i < 1000; i++)
-      found = world.FillersOf(last).Length;
-    clock.Stop();
+    int found = world.FillersOf(last).Length;
 
     Assert.Equal(293, found);
-    Assert.True(
-      clock.Elapsed < TimeSpan.FromSeconds(DirectBoundSeconds),
-      $"took {clock.Elapsed.TotalSeconds:F2} s"
-    );
+    Assert.Equal(293, world.FillersVisited - first);
+    Assert.True(world.BlockEntities.Count() > 58000);
   }
 
-  // Fails when FillersOf scans every stored entity per call: the interaction law over sixteen
-  // variants of a 79-filler megablock stores about 100,000 entities, and read in the measured time
-  // with the scan.
+  // Fails when FillersOf scans every stored entity per call: about 100,000 are stored over 16 variants.
   [Fact]
-  public void The_interaction_law_over_sixteen_megablock_variants_stays_fast() {
+  public void The_interaction_law_over_sixteen_megablock_variants_reads_only_its_own_fillers() {
     TestWorld world = BlockLaws.Stand(
       [
         Mega("big", Cells(4, 5))
@@ -141,19 +134,15 @@ public class FillersOfTests {
       w => w.RegisterClass("test-plain", typeof(PlainBe))
     );
 
-    var clock = Stopwatch.StartNew();
     BlockLaws.Law law = InteractionLaw.Run(world, "test");
-    clock.Stop();
 
     Assert.Empty(law.Findings);
+    Assert.True(world.FillersReads > 0);
     Assert.True(
-      clock.Elapsed < TimeSpan.FromSeconds(LawBoundSeconds),
-      $"took {clock.Elapsed.TotalSeconds:F1} s over {law.Cases} cases"
+      world.FillersVisited <= world.FillersReads * 79L,
+      $"{world.FillersVisited} entries visited over {world.FillersReads} reads of {law.Cases} cases"
     );
   }
-
-  private const double DirectBoundSeconds = 0.2;
-  private const double LawBoundSeconds = 5;
 
   private sealed class PlainBe : BlockEntity { }
 }

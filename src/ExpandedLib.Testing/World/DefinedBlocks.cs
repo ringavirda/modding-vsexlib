@@ -53,6 +53,12 @@ public sealed partial class TestWorld {
       at => GetBlock(at) is BlockStructureFiller
     );
 
+  /// <summary>The <see cref="FillersOf"/> calls made so far.</summary>
+  internal int FillersReads => _blockEntities.Reads;
+
+  /// <summary>The entries <see cref="FillersOf"/> has visited across all its calls.</summary>
+  internal long FillersVisited => _blockEntities.Visited;
+
   /// <summary>Every cell of the solid layer, loaded chunk or not.</summary>
   internal IEnumerable<KeyValuePair<BlockPos, Block>> SolidBlocks => _blocks;
 

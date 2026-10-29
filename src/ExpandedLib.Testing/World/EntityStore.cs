@@ -21,6 +21,12 @@ internal sealed class EntityStore
   > _byPrincipal = new();
   private readonly List<BlockPos> _unindexed = [];
 
+  /// <summary>The <see cref="FillersOf"/> calls made so far.</summary>
+  public int Reads { get; private set; }
+
+  /// <summary>The entries <see cref="FillersOf"/> has visited across all its calls.</summary>
+  public long Visited { get; private set; }
+
   public BlockEntity this[BlockPos pos] {
     set {
       _all[pos] = value;
@@ -44,12 +50,14 @@ internal sealed class EntityStore
     BlockPos principal,
     System.Func<BlockPos, bool> isFillerBlock
   ) {
+    Reads++;
     Index();
     if (!_byPrincipal.TryGetValue(principal, out var cells))
       return [];
     var found = new List<BlockPos>(cells.Count);
     List<BlockPos>? stale = null;
-    foreach ((BlockPos at, BlockEntity entity) in cells)
+    foreach ((BlockPos at, BlockEntity entity) in cells) {
+      Visited++;
       if (!_all.TryGetValue(at, out BlockEntity? current) || current != entity)
         (stale ??= []).Add(at);
       else if (
@@ -58,6 +66,7 @@ internal sealed class EntityStore
         && isFillerBlock(at)
       )
         found.Add(at.Copy());
+    }
     if (stale != null)
       foreach (BlockPos at in stale)
         cells.Remove(at);
