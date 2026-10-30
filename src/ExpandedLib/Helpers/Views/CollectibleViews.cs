@@ -124,6 +124,23 @@ internal static class CollectibleViews {
   internal static bool OptedOut(CollectibleObject collectible) =>
     collectible.Attributes?["itemViews"]?["kind"]?.AsString() == "none";
 
+  /// <summary>The value of <c>attributes.itemViews.held</c> that shows nothing in the hand.</summary>
+  internal const string HiddenHoldName = "hidden";
+
+  /// <summary>Whether <paramref name="collectible"/> declares <c>attributes.itemViews.held</c> as
+  /// <c>hidden</c>: it shows nothing in the hand and the player's arms take the empty-hand pose.</summary>
+  /// <exception cref="InvalidOperationException">The declared value is not <c>hidden</c>.</exception>
+  internal static bool HiddenHold(CollectibleObject collectible) {
+    string? name = collectible.Attributes?["itemViews"]?["held"]?.AsString();
+    if (name == null)
+      return false;
+    if (name == HiddenHoldName)
+      return true;
+    throw new InvalidOperationException(
+      $"{collectible.Code}: attributes.itemViews.held '{name}' is not a hold; the only one is '{HiddenHoldName}'"
+    );
+  }
+
   /// <summary>The declared <c>attributes.itemViews.guiRotation</c> of <paramref name="collectible"/> in degrees
   /// about x, y and z; null when none is declared.</summary>
   /// <exception cref="ArgumentException">The declared value is not an array of three numbers.</exception>

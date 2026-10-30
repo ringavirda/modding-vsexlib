@@ -22,9 +22,10 @@ public static class ItemViews {
   /// <param name="api">The api of the side whose world is loaded.</param>
   /// <param name="collectible">The collectible to compute.</param>
   /// <returns>The views; null for a collectible that declares kind <c>none</c>, one with no drawn box, an item
-  /// that declares a block kind and a block that declares an item kind.</returns>
-  /// <exception cref="InvalidOperationException">The declared kind is not a kind name in lower case, or a
-  /// workpiece is computed in a world with no vanilla work item.</exception>
+  /// that declares a block kind and a block that declares an item kind. One that declares <c>attributes.itemViews.held</c>
+  /// as <c>hidden</c> gets its kind's slot and ground views, a hand transform of scale 0 and no clips.</returns>
+  /// <exception cref="InvalidOperationException">The declared kind is not a kind name in lower case, the declared
+  /// <c>held</c> is not <c>hidden</c>, or a workpiece is computed in a world with no vanilla work item.</exception>
   /// <exception cref="ArgumentException">The declared tip is not a sign and one of x, y, z, or the declared
   /// <c>guiRotation</c> is not an array of three numbers.</exception>
   public static ItemViewSet? Compute(
@@ -34,6 +35,34 @@ public static class ItemViews {
 
   // allowLong false keeps an item off the long carries, held on its kind's clips.
   internal static ItemViewSet? Compute(
+    ICoreAPI api,
+    CollectibleObject collectible,
+    bool allowLong
+  ) {
+    bool hidden = HiddenHold(collectible);
+    ItemViewSet? views = ComputeHeld(api, collectible, allowLong);
+    return hidden && views != null
+      ? views with {
+        TpHand = HiddenHand,
+        IdleClip = null,
+        ReadyClip = null,
+        HitClip = null,
+        UseClip = null,
+        Hidden = true,
+      }
+      : views;
+  }
+
+  // Scale 0 draws nothing in either hand; the game reads the hand transforms and leaves the pose to the idle clip.
+  internal static ModelTransform HiddenHand {
+    get {
+      ModelTransform hand = new ModelTransform().EnsureDefaultValues();
+      hand.Scale = 0;
+      return hand;
+    }
+  }
+
+  private static ItemViewSet? ComputeHeld(
     ICoreAPI api,
     CollectibleObject collectible,
     bool allowLong

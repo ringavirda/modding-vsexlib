@@ -1,0 +1,12 @@
+{
+  "code": "hiddenblock",
+  "class": "Block",
+  "shape": {
+    "base": "viewsfixture:block/offset"
+  },
+  "attributes": {
+    "itemViews": {
+      "held": "hidden"
+    }
+  }
+}

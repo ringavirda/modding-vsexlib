@@ -136,6 +136,7 @@ public class ItemViewsPassTests {
     world.LoadAsGame([Fixture, FaultFixture]);
     world.Log.Expect(EnumLogType.Error, "viewsfaults:badkind");
     world.Log.Expect(EnumLogType.Error, "viewsfaults:badtip");
+    world.Log.Expect(EnumLogType.Error, "viewsfaults:badheld");
     world.Log.Expect(EnumLogType.Warning, "viewsfaults:missingshape");
 
     Assert.Contains(
@@ -147,6 +148,10 @@ public class ItemViewsPassTests {
       e => e.Contains("viewsfaults:badtip") && e.Contains("'+w'")
     );
     Assert.Contains(
+      world.Log.Errors,
+      e => e.Contains("viewsfaults:badheld") && e.Contains("'visible'")
+    );
+    Assert.Contains(
       world.Log.Warnings,
       w =>
         w.Contains("viewsfaults:missingshape")
@@ -156,7 +161,9 @@ public class ItemViewsPassTests {
       world.Log.Warnings,
       w => w.Contains("viewsfixture:longshaft")
     );
-    foreach (string code in new[] { "badkind", "badtip", "missingshape" })
+    foreach (
+      string code in new[] { "badkind", "badtip", "badheld", "missingshape" }
+    )
       Assert.True(
         Same(
           ModelTransform.ItemDefaultGui(),
