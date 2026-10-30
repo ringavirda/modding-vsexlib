@@ -90,6 +90,30 @@ public class SetupFirepitTests
     );
   }
 
+  // Fails when a smelted stack resolves whose target the setup does not load: the engine logs a warning and FailOnWarnings fails the case.
+  [Fact]
+  public void A_collectible_whose_smelted_target_is_not_loaded_logs_nothing()
+  {
+    using SetupScene scene = SetupScene.Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupmetal\"], \"load\": [\"game:metalplate-bismuth\"], \"steps\": [], \"seconds\": 6, \"record\": {}}",
+        "t.json"
+      ),
+      [
+        Path.Combine(
+          RepoPaths.Root,
+          "tests",
+          "ExpandedLib.Tests",
+          "Setups",
+          "Fixtures",
+          "SetupMetal"
+        ),
+      ],
+      null,
+      _ => { }
+    );
+  }
+
   // Fails when a put into a slot the block lacks, or one the slot refuses, passes without naming the block and slot.
   [Theory]
   [InlineData(9, "game:charcoal", "slot 9 is past the inventory's 7.")]

@@ -341,11 +341,17 @@ public sealed partial class SetupScene : IDisposable
         .Concat(World.World.Blocks.Where(b => b is { Id: not 0 }))
     )
       if (
-        collectible.CombustibleProps?.SmeltedStack is
-        { ResolvedItemstack: null } smelted
+        collectible.CombustibleProps?.SmeltedStack
+          is { ResolvedItemstack: null } smelted
+        && SmeltedTargetLoaded(smelted)
       )
         smelted.Resolve(World.World, $"smelted stack of {collectible.Code}");
   }
+
+  private bool SmeltedTargetLoaded(JsonItemStack smelted) =>
+    smelted.Type == EnumItemClass.Block
+      ? World.World.GetBlock(smelted.Code) is { Id: not 0 }
+      : World.World.GetItem(smelted.Code) != null;
 
   private IEnumerable<SetupStep> EveryStep() =>
     Model
