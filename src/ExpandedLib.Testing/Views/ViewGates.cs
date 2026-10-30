@@ -21,6 +21,7 @@ namespace ExpandedLib.Testing;
 /// <param name="Hand">The third-person hand transform the group is measured on.</param>
 /// <param name="Ground">The ground transform the group is measured on.</param>
 /// <param name="Held">The animation code the group is held with.</param>
+/// <param name="Hidden">Whether the group's collectible declares <c>itemViews.held</c> as <c>hidden</c>: the hand gates give way to G18.</param>
 internal sealed record ViewGroup(
   string Key,
   ItemViewKind Kind,
@@ -30,7 +31,8 @@ internal sealed record ViewGroup(
   ModelTransform Gui,
   ModelTransform Hand,
   ModelTransform Ground,
-  string Held
+  string Held,
+  bool Hidden = false
 ) {
   internal bool IsBlock => Representative is Block;
 
@@ -187,7 +189,8 @@ internal static class ViewGates {
       ViewMatrices.Transform(first, ViewTarget.Gui),
       ViewMatrices.Transform(first, ViewTarget.Hand),
       ViewMatrices.Transform(first, ViewTarget.Ground),
-      HeldCode(first)
+      HeldCode(first),
+      CollectibleViews.HiddenHold(first)
     );
   }
 
@@ -205,6 +208,7 @@ internal static class ViewGates {
         views.IdleClip ?? group.Representative.HeldRightTpIdleAnimation,
         views.ReadyClip ?? group.Representative.HeldRightReadyAnimation
       ),
+      Hidden = views.Hidden,
     };
 
   /// <summary>Writes the file of each of <paramref name="groups"/> under the folder <see cref="ViewDump.DefaultVariable"/> names,
@@ -233,7 +237,8 @@ internal static class ViewGates {
         box.From,
         box.To,
         box.Axes,
-        null
+        null,
+        group.Hidden
       );
       if (
         ViewDump.Write(
@@ -518,17 +523,29 @@ internal static class ViewGates {
       Twin = TwinOf(world, group),
     };
 
+  // A hidden group has no hand to measure: its hand metrics are zero and unjudged.
   private static GroupMetrics MeasureOwn(TestWorld world, ViewGroup group) =>
-    new(
-      Slot(group),
-      Ground(group),
-      Hand(world, group),
-      group.IsBlock ? null : Hand(world, group, true),
-      group.Kind == ItemViewKind.Longtool ? AxisDegrees(world, group) : null,
-      group.Kind == ItemViewKind.Longtool
-        ? AxisDegrees(world, group, true)
-        : null
-    );
+    group.Hidden
+      ? new(
+        Slot(group),
+        Ground(group),
+        NoHand,
+        group.IsBlock ? null : NoHand,
+        null,
+        null
+      )
+      : new(
+        Slot(group),
+        Ground(group),
+        Hand(world, group),
+        group.IsBlock ? null : Hand(world, group, true),
+        group.Kind == ItemViewKind.Longtool ? AxisDegrees(world, group) : null,
+        group.Kind == ItemViewKind.Longtool
+          ? AxisDegrees(world, group, true)
+          : null
+      );
+
+  private static readonly HandMetrics NoHand = new(0, null, new Vec3d(), null);
 
   /// <summary>The value of the banded gate <paramref name="gate"/> in <paramref name="metrics"/>.</summary>
   /// <param name="gate">A gate id of view-bands.json: G1, G2, G3, G5, G6, G7, G10, G10fp or G13.</param>
@@ -596,6 +613,8 @@ internal static class ViewGates {
     string kind = group.Kind.ToString().ToLowerInvariant();
 
     foreach ((string id, string gate, string name, string target) in Judged) {
+      if (group.Hidden && target is "tp" or "fp")
+        continue;
       if (
         id == "G13"
         && group.IsBlock
@@ -663,6 +682,8 @@ internal static class ViewGates {
         );
     }
 
+    if (group.Hidden)
+      return readings;
     double limit = bands.Limits[
       group.Kind == ItemViewKind.Bulk ? "G8Bulk" : "G8"
     ];
@@ -743,7 +764,7 @@ internal static class ViewGates {
   /// <summary>The farthest, in voxels, that a left grip may lie from the left anchor (G17).</summary>
   internal const double LeftGripVoxels = 0.5;
 
-  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips, G12 catalogue, G14 hand.tip, G15 hand.sheet, G16 hand.up and G17 hand.left of <paramref name="group"/>. They hold for every
+  /// <summary>The rules G4 ground.flat, G9 hand.floor, G11 clips, G12 catalogue, G14 hand.tip, G15 hand.sheet, G16 hand.up, G17 hand.left and G18 hand.hidden of <paramref name="group"/>. They hold for every
   /// collectible whatever vanilla does and are not banded.</summary>
   /// <param name="world">The world the group comes from.</param>
   /// <param name="group">The group to judge.</param>
@@ -752,7 +773,8 @@ internal static class ViewGates {
   /// <c>itemViews.tip</c>, G17 in third person when the group's collectible declares <c>itemViews.grips</c> or is a long item held in one of the long carries, G15 in third and first person when the group's box is a sheet, G16 in third and first person
   /// when the group is a block with a hand transform of its own (one with the rotation of <see cref="ModelTransform.BlockDefaultTp"/> is the game's hold for a block that
   /// authors none, rescaled and moved by the item views, and is not judged), and G12 when a row of <paramref name="catalogue"/> names one of the group's codes, each
-  /// with its pass or failure.</returns>
+  /// with its pass or failure. A group that declares <c>itemViews.held: "hidden"</c> is judged on G4, G11, G12 and G18 alone: G18 hand.hidden holds when its
+  /// third-person and first-person hand transforms scale to nothing and its collectible names no held idle or ready clip.</returns>
   internal static IReadOnlyList<GateReading> Rules(
     TestWorld world,
     ViewGroup group,
@@ -799,6 +821,14 @@ internal static class ViewGates {
       );
     }
 
+    if (group.Hidden) {
+      readings.Add(Clips(world, group));
+      readings.Add(Empty(group, false));
+      readings.Add(Empty(group, true));
+      if (catalogue?.Reading(group) is { } listed)
+        readings.Add(listed);
+      return readings;
+    }
     readings.Add(Floor(world, group, false));
     readings.Add(Floor(world, group, true));
     readings.Add(Clips(world, group));
@@ -1005,6 +1035,34 @@ internal static class ViewGates {
       null,
       tilt <= HeldUpDegrees,
       $"the block's up axis {Fmt(tilt)} degrees off vertical above {Fmt(HeldUpDegrees)}"
+    );
+  }
+
+  private static GateReading Empty(ViewGroup group, bool firstPerson) {
+    CollectibleObject c = group.Representative;
+    ModelTransform tf = firstPerson
+      ? c.FpHandTransform
+        ?? ViewMatrices.Default(group.IsBlock, ViewTarget.Hand)
+      : group.Hand;
+    double scale = Math.Max(
+      tf.ScaleXYZ.X,
+      Math.Max(tf.ScaleXYZ.Y, tf.ScaleXYZ.Z)
+    );
+    bool clips =
+      string.IsNullOrEmpty(c.HeldRightTpIdleAnimation)
+      && string.IsNullOrEmpty(c.HeldRightReadyAnimation);
+    return new GateReading(
+      "G18",
+      firstPerson ? "hand.hidden.fp" : "hand.hidden",
+      firstPerson ? "fp" : "tp",
+      scale,
+      null,
+      0,
+      null,
+      scale <= 0 && clips,
+      scale > 0
+        ? $"a hidden hold draws at scale {Fmt(scale)}, not 0"
+        : "a hidden hold keeps a held clip"
     );
   }
 
@@ -1311,6 +1369,7 @@ internal static class ViewGates {
       c.Attributes?["itemViews"]?["kind"]?.AsString(),
       c.Attributes?["itemViews"]?["tip"]?.AsString(),
       c.Attributes?["itemViews"]?["grips"]?.ToString(),
+      c.Attributes?["itemViews"]?["held"]?.AsString(),
       c.Tool,
       c is ItemWorkItem
     );

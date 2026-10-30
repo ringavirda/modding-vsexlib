@@ -1,0 +1,14 @@
+{
+  "code": "hiddenlump",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/declaredtip"
+  },
+  "heldRightTpIdleAnimation": "holdbothhandslarge",
+  "attributes": {
+    "itemViews": {
+      "kind": "lump",
+      "held": "hidden"
+    }
+  }
+}

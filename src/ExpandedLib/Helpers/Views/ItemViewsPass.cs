@@ -174,6 +174,15 @@ internal static class ItemViewsPass {
 
   private static void Apply(CollectibleObject c, ItemViewSet views) {
     bool block = c is Block;
+    if (views.Hidden) {
+      c.TpHandTransform = views.TpHand;
+      c.FpHandTransform = ItemViews.HiddenHand;
+      c.TpOffHandTransform = ItemViews.HiddenHand;
+      c.HeldRightTpIdleAnimation = null;
+      c.HeldRightReadyAnimation = null;
+      c.HeldLeftTpIdleAnimation = null;
+      c.HeldLeftReadyAnimation = null;
+    }
     if (
       Equal(
         c.GuiTransform,
@@ -184,7 +193,8 @@ internal static class ItemViewsPass {
     )
       c.GuiTransform = views.Gui;
     if (
-      Equal(
+      !views.Hidden
+      && Equal(
         c.TpHandTransform,
         block ? ModelTransform.BlockDefaultTp() : ModelTransform.ItemDefaultTp()
       )
@@ -199,6 +209,9 @@ internal static class ItemViewsPass {
       )
     )
       c.GroundTransform = views.Ground;
+
+    if (views.Hidden)
+      return;
 
     string? namedIdle = c.HeldRightTpIdleAnimation;
     if (views.IdleClip != null && Absent(c.HeldRightTpIdleAnimation, null))
