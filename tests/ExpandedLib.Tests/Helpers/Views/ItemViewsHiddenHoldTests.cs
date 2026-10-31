@@ -125,15 +125,45 @@ public class ItemViewsHiddenHoldTests {
       Assert.Equal("bar", (string?)views["kind"]);
       Assert.Equal("+x", (string?)views["tip"]);
     }
-    Assert.Equal(
-      "hidden",
-      (string?)
+    foreach (
+      ExBlockDef block in new[]
+      {
         ExBlockDef
           .Create("viewsfixture", "c", "c")
           .Views(ItemViewKind.Partial)
+          .HiddenInHand(),
+        ExBlockDef
+          .Create("viewsfixture", "d", "d")
           .HiddenInHand()
-          .ToJson()["attributes"]!["itemViews"]!["held"]
+          .Views(ItemViewKind.Partial),
+      }
+    ) {
+      JToken views = block.ToJson()["attributes"]!["itemViews"]!;
+      Assert.Equal("hidden", (string?)views["held"]);
+      Assert.Equal("partial", (string?)views["kind"]);
+    }
+  }
+
+  // Fails when the twin test is the old Exists check: a lone held key then drops the game item's gui and ground views.
+  [Fact]
+  public void A_hidden_item_drawing_a_game_items_shape_keeps_that_items_slot_and_ground() {
+    Item plain = World.World.GetItem(
+      new AssetLocation("viewsfixture:plainbar")
     );
+    Item hidden = new() {
+      Code = new AssetLocation("viewsfixture", "hiddenbar"),
+      Shape = plain.Shape,
+      Attributes = new JsonObject(
+        JToken.Parse("{\"itemViews\":{\"held\":\"hidden\"}}")
+      ),
+    };
+
+    ItemViewSet twin = ItemViews.Compute(World.Api, plain)!;
+    ItemViewSet set = ItemViews.Compute(World.Api, hidden)!;
+
+    Assert.True(set.Hidden);
+    Assert.True(Same(twin.Gui, set.Gui));
+    Assert.True(Same(twin.Ground, set.Ground));
   }
 
   // Fails when G18 always passes: a hand that draws the item at scale 1 raises no finding.
@@ -156,5 +186,44 @@ public class ItemViewsHiddenHoldTests {
       .Single(r => r.Gate == "G18" && r.Target == "tp");
     Assert.False(fail.Pass);
     Assert.True(fail.Value > 0);
+  }
+
+  // Fails when G18 reads only the scale: a hand at scale 0 whose representative still names an idle clip raises a finding.
+  [Fact]
+  public void G18_fails_a_hidden_hand_whose_representative_names_a_held_clip() {
+    ViewGroup group = ViewGates
+      .Groups(World, "viewsfixture")
+      .Single(g => g.Codes.Contains("viewsfixture:hiddenlump"));
+    Item clipped = new() {
+      Code = group.Representative.Code,
+      HeldRightTpIdleAnimation = "holdbothhandslarge",
+    };
+    ModelTransform none = ItemViews.HiddenHand;
+
+    ViewGroup drawn = group with { Representative = clipped, Hand = none };
+    GateReading fail = ViewGates
+      .Rules(World, drawn)
+      .Single(r => r.Gate == "G18" && r.Target == "tp");
+
+    Assert.False(fail.Pass);
+    Assert.Equal(0, fail.Value);
+  }
+
+  // Fails when the Longtool and Bulk kind rules of G11 run on a hidden group: the cleared clips are then reported.
+  [Theory]
+  [InlineData(ItemViewKind.Longtool)]
+  [InlineData(ItemViewKind.Bulk)]
+  public void G11_passes_a_hidden_group_of_a_kind_that_demands_clips(
+    ItemViewKind kind
+  ) {
+    ViewGroup group = ViewGates
+      .Groups(World, "viewsfixture")
+      .Single(g => g.Codes.Contains("viewsfixture:hiddenlump"));
+
+    GateReading clips = ViewGates
+      .Rules(World, group with { Kind = kind })
+      .Single(r => r.Gate == "G11");
+
+    Assert.True(clips.Pass, clips.Detail);
   }
 }

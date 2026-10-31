@@ -1111,7 +1111,7 @@ internal static class ViewGates {
     )
       if (!string.IsNullOrEmpty(set) && !known.Contains(set))
         problems.Add($"{set} is not a player animation");
-    if (group.Kind == ItemViewKind.Longtool) {
+    if (group.Kind == ItemViewKind.Longtool && !group.Hidden) {
       if (
         !string.Equals(held, LongtoolIdle, StringComparison.OrdinalIgnoreCase)
       )
@@ -1139,6 +1139,7 @@ internal static class ViewGates {
     }
     if (
       group.Kind == ItemViewKind.Bulk
+      && !group.Hidden
       && !string.Equals(held, BlockHeldClip, StringComparison.OrdinalIgnoreCase)
     )
       problems.Add($"a bulk item is held on {held}, not {BlockHeldClip}");
