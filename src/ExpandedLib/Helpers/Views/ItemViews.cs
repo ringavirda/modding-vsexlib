@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
@@ -181,13 +182,13 @@ public static class ItemViews {
       .FirstOrDefault();
   }
 
-  // The game item that draws the same shape as a mod item with no declared kind or tip; the first by
+  // The game item that draws the same shape as a mod item with no itemViews key other than held; the first by
   // ordinal code. A game item has none.
   internal static Item? VanillaShape(ICoreAPI api, Item item) {
     if (
       item.Code?.Domain == "game"
       || item.Shape?.Base == null
-      || item.Attributes?["itemViews"].Exists == true
+      || DeclaresViews(item)
     )
       return null;
     string[] keep = item.Shape.SelectiveElements ?? [];
@@ -201,6 +202,10 @@ public static class ItemViews {
       .OrderBy(i => i.Code.ToString(), StringComparer.Ordinal)
       .FirstOrDefault();
   }
+
+  private static bool DeclaresViews(Item item) =>
+    item.Attributes?["itemViews"]?.Token is JObject views
+    && views.Properties().Any(p => p.Name != "held");
 
   // The shipped views of a game item, for a mod item that draws its shape.
   private static ItemViewSet Shipped(
