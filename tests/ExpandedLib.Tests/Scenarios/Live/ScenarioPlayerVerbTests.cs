@@ -286,6 +286,16 @@ public class ScenarioPlayerVerbTests {
     Assert.False(spent.Kept);
   }
 
+  /// <summary>Fails when the window step releases the player without keeping the hand, so a taken stack is
+  /// cleared from the hotbar.</summary>
+  [Fact]
+  public void A_window_step_releases_the_player_keeping_the_hand() {
+    var hand = new RecordingHand();
+    WindowStep.Finish(hand);
+
+    Assert.True(hand.Kept);
+  }
+
   /// <summary>Fails when the click ignores the carried stack for a step with no <c>with</c>, or prefers it
   /// to the step's own.</summary>
   [Fact]

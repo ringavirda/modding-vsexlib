@@ -11,7 +11,8 @@ namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>window</c>: works a block entity's dialog through the entity's own client packet handler, as
 /// the dialog sends it: open, a slot click for each put or take with the stack on the cursor, a button,
-/// then close. The hand is cleared and the player parked when the step ends.</summary>
+/// then close. The player is parked when the step ends and the active slot keeps what a take left in it, as
+/// the harness's <c>window</c> does.</summary>
 internal sealed class WindowStep : ScenarioStep {
   private const int OpenPacketId = 1000;
   private const int ClosePacketId = 1001;
@@ -106,10 +107,13 @@ internal sealed class WindowStep : ScenarioStep {
       }
       report.Value = string.Join("; ", done);
     } finally {
-      player.Release();
+      Finish(player);
     }
     yield break;
   }
+
+  /// <summary>Ends the step's hold on <paramref name="player"/>, leaving the active slot's stack.</summary>
+  public static void Finish(IHandRelease player) => player.Release(keep: true);
 
   private static string Put(
     ScenarioContext ctx,
