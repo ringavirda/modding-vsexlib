@@ -1,0 +1,12 @@
+{
+  "code": "badheld",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/longshaft"
+  },
+  "attributes": {
+    "itemViews": {
+      "held": "visible"
+    }
+  }
+}

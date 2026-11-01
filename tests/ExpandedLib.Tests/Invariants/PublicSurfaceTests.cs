@@ -289,12 +289,14 @@ public class PublicSurfaceTests {
   );
 
   private static IEnumerable<string> LegacyOnlyTypeNames() {
-    string srcDir = RepoPaths.Src("exlib");
+    string[] srcDirs =
+    [
+      RepoPaths.Src("exlib"),
+      Path.Combine(RepoPaths.Root, "src/ExpandedLib.Industry"),
+    ];
     foreach (
-      string file in Directory.EnumerateFiles(
-        srcDir,
-        "*.cs",
-        SearchOption.AllDirectories
+      string file in srcDirs.SelectMany(dir =>
+        Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories)
       )
     ) {
       string text = File.ReadAllText(file);

@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
+using NSubstitute;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -403,4 +405,80 @@ public class TurningPartsTests {
     world.Log.Expect(EnumLogType.Error, "matches no element");
   }
 #endif
+
+  private static MeshData QuadOnPage(int atlasTextureId) {
+    var quad = new MeshData(4, 6, false, true, false, false);
+    quad.SetXyz([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0]);
+    quad.SetUv([0, 0, 1, 0, 1, 1, 0, 1]);
+    quad.SetVerticesCount(4);
+    quad.SetIndices([0, 1, 2, 0, 2, 3]);
+    quad.SetIndicesCount(6);
+    quad.SetTexPos(
+      new TextureAtlasPosition {
+        x1 = 0,
+        y1 = 0,
+        x2 = 1,
+        y2 = 1,
+        atlasTextureId = atlasTextureId,
+      }
+    );
+    quad.TextureIndicesCount = 1;
+    return quad;
+  }
+
+  // Fails when a group binds one atlas page for all its faces, or draws a page's piece with fewer than all instances.
+  [Fact]
+  public void A_group_draws_once_per_atlas_page_with_that_page_bound() {
+    using var world = TurningFixtures.NewWorld();
+    Block block = TurningFixtures.Define(
+      world,
+      "shaft",
+      TurningFixtures.ShaftPart
+    );
+    ICoreClientAPI capi = world.ClientApi;
+    var mesh = new MeshData(8, 12, false, true, false, false);
+    mesh.AddMeshData(QuadOnPage(1));
+    mesh.AddMeshData(QuadOnPage(2));
+    capi.Tesselator.When(x =>
+        x.TesselateShape(
+          Arg.Any<CollectibleObject>(),
+          Arg.Any<Shape>(),
+          out Arg.Any<MeshData>(),
+          Arg.Any<Vec3f>(),
+          Arg.Any<int?>(),
+          Arg.Any<string[]>()
+        )
+      )
+      .Do(ci => ci[2] = mesh);
+    TurningFixtures.Stand(world, block, Here);
+    TurningFixtures.Stand(world, block, Here.AddCopy(1, 0, 0));
+    var refs = new[] { Substitute.For<MeshRef>(), Substitute.For<MeshRef>() };
+    var uploaded = 0;
+    capi.Render.UploadMesh(Arg.Any<MeshData>()).Returns(_ => refs[uploaded++]);
+    var calls = new List<string>();
+    var program = Substitute.For<IShaderProgram>();
+    program
+      .When(x => x.BindTexture2D(Arg.Is("tex"), Arg.Any<int>(), Arg.Is(0)))
+      .Do(ci => calls.Add($"bind {ci.ArgAt<int>(1)}"));
+    capi.Render.When(x =>
+        x.RenderMeshInstanced(Arg.Any<MeshRef>(), Arg.Any<int>())
+      )
+      .Do(ci =>
+        calls.Add(
+          $"draw {System.Array.IndexOf(refs, ci.Arg<MeshRef>())} x{ci.ArgAt<int>(1)}"
+        )
+      );
+    capi.World.BlockAccessor.GetLightRGBs(
+        Arg.Any<int>(),
+        Arg.Any<int>(),
+        Arg.Any<int>()
+      )
+      .Returns(new Vec4f(1, 1, 1, 1));
+    var group = Assert.Single(TurningPartsRenderer.For(capi).Groups);
+
+    group.Prepare(capi);
+    group.Draw(capi, program, new Vec3d());
+
+    Assert.Equal(["bind 1", "draw 0 x2", "bind 2", "draw 1 x2"], calls);
+  }
 }

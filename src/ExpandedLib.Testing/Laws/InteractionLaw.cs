@@ -47,7 +47,7 @@ public static class InteractionLaw {
   /// <remarks>Every world is stood up before any click, so a process-wide table the stand-ups
   /// fill is complete and still while the clicks read it.</remarks>
   /// <param name="stand">Stands a world as <see cref="Run(TestWorld, string)"/> takes it; called
-  /// once per group, on a pool thread, several at once.</param>
+  /// once per group, on a pool thread, several at once. Each world is disposed after the runs.</param>
   /// <param name="domain">The domain whose blocks are judged.</param>
   /// <param name="groups">Worlds and threads; below 1 counts as 1. With 1 the calling thread runs
   /// the one world.</param>
@@ -72,6 +72,9 @@ public static class InteractionLaw {
       );
     } catch (AggregateException e) {
       ExceptionDispatchInfo.Capture(e.InnerExceptions[0]).Throw();
+    } finally {
+      foreach (TestWorld? world in worlds)
+        world?.Dispose();
     }
     return Join(runs.SelectMany(r => r));
   }
@@ -430,7 +433,7 @@ public static class InteractionLaw {
             .Where(h => h.MouseButton == EnumMouseButton.Right)
         )
           if (
-            aimed.SelectionBoxId == null
+            ControlOf(aimed) == null
             || !helps.Any(o => o.Help.ActionLangCode == h.ActionLangCode)
           )
             helps.Add((h, aimed));
@@ -447,13 +450,13 @@ public static class InteractionLaw {
           );
         Keys keys = KeysOf(help);
         ItemStack[] named = Named(help, selection);
-        string? control = selection.SelectionBoxId;
+        string? control = ControlOf(selection);
         bool holdsTool = help.ActionLangCode == HoldToBuild;
         if (
           !holdsTool
           && helps.Any(o =>
             o.Help.ActionLangCode == HoldToBuild
-            && o.Selection.SelectionBoxId == control
+            && ControlOf(o.Selection) == control
           )
         )
           continue;
@@ -467,7 +470,7 @@ public static class InteractionLaw {
         var alongside = helps
           .Where(o =>
             o.Help != help
-            && o.Selection.SelectionBoxId == control
+            && ControlOf(o.Selection) == control
             && (
               holdsTool
                 ? o.Help.ActionLangCode != HoldToBuild
@@ -519,6 +522,14 @@ public static class InteractionLaw {
   /// <summary>The help line of a construction stage paid by holding its tool.</summary>
   private const string HoldToBuild = "exlib:rcc-hold-tool";
 
+  /// <summary>The id of the selection box <paramref name="selection"/> aims at; null on games without selection box ids.</summary>
+  private static string? ControlOf(BlockSelection selection) =>
+#if GAME_GE_1_22
+    selection.SelectionBoxId;
+#else
+    null;
+#endif
+
   /// <summary>Seconds a hold-to-build click lasts: long enough for any tool step to finish its hits.</summary>
   private const float HoldToBuildSeconds = 30f;
 
@@ -533,7 +544,7 @@ public static class InteractionLaw {
       stack == null ? 0 : Math.Max(1, stack.StackSize),
       help.ActionLangCode
     ) {
-      Control = selection.SelectionBoxId,
+      Control = ControlOf(selection),
     };
   }
 

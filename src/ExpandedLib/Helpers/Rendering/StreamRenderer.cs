@@ -78,7 +78,11 @@ public abstract class StreamRenderer : IRenderer {
       lip.X + width / 2f,
       lip.Y,
       lip.Z + depth / 2f
+#if GAME_GE_1_22
     ).RotatedCopyRad(0f, rotationY, 0f, new Vec3d(8, 8, 8));
+#else
+    ).RotatedCopy(0f, rotationY * GameMath.RAD2DEG, 0f, new Vec3d(8, 8, 8));
+#endif
 
   // Four side faces; the top and bottom are never seen (the lip and the receiver's metal hide them).
   private static MeshData BuildMesh(Cuboidf box) {

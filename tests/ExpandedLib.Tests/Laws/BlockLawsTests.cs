@@ -889,13 +889,23 @@ public class BlockLawsTests {
     int expected
   ) => Assert.Equal(expected, BlockLaws.GroupsFor(processors, memory));
 
-  // Fails when the free memory is read as the memory the GC may use, which a loaded machine
-  // has less of free.
+  // Fails when the free memory is read as the memory the GC may use, which with no heap limit is
+  // the machine's whole memory; under a heap limit the machine's free memory may exceed the limit.
   [Fact]
-  public void Free_memory_is_below_what_the_process_may_use_and_above_nothing() {
+  public void Free_memory_is_below_the_machine_memory_and_above_nothing() {
     long free = BlockLaws.FreeMemoryBytes();
 
-    Assert.InRange(free, 1, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes - 1);
+    Assert.InRange(free, 1, MachineMemoryBytes() - 1);
+  }
+
+  private static long MachineMemoryBytes() {
+    if (System.IO.File.Exists("/proc/meminfo"))
+      foreach (string line in System.IO.File.ReadLines("/proc/meminfo"))
+        if (line.StartsWith("MemTotal:", StringComparison.Ordinal))
+          return long.Parse(
+              line.Split(' ', StringSplitOptions.RemoveEmptyEntries)[1]
+            ) * 1024;
+    return GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
   }
 
   // Fails when the usable memory is the machine's free memory alone (a heap cap or a full heap
@@ -999,16 +1009,19 @@ public class BlockLawsTests {
     Assert.Contains("test:wide", thrown.Message);
   }
 
+#if GAME_GE_1_22
   // Fails when a click holds the wrench stack another world's help named, which vanilla keeps in a
   // static, instead of the clicking world's own wrench.
   [Fact]
-  public void A_wrench_named_by_another_world_still_turns_a_block() {
+  public void A_wrench_named_by_another_world_still_turns_a_block()
+  {
     ExBlockDef turner = ExBlockDef
       .Create("test", "turner")
       .VariantGroup("rot", "a", "b", "c")
       .Behavior("WrenchOrientable", new { baseCode = "turner-*" });
     BlockBehaviorWrenchOrientable.wrenchItems = null;
-    try {
+    try
+    {
       TestWorld first = Hands([], turner);
       BlockBehaviorWrenchOrientable.loadWrenchItems(first.World);
       TestWorld second = Hands([], turner);
@@ -1017,10 +1030,13 @@ public class BlockLawsTests {
 
       Assert.Empty(law.Findings);
       Assert.True(law.Cases > 0);
-    } finally {
+    }
+    finally
+    {
       BlockBehaviorWrenchOrientable.wrenchItems = null;
     }
   }
+#endif
 
   // Fails when two worlds standing up at once run their blocks' OnLoaded side by side.
   [Fact]

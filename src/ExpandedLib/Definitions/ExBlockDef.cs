@@ -827,6 +827,17 @@ public sealed class ExBlockDef : IExDef {
         guiRotation.Y,
         guiRotation.Z
       );
+    if (Nested("attributes")["itemViews"]?["held"] is { } held)
+      views["held"] = held;
+    return Attribute("itemViews", views);
+  }
+
+  /// <summary>Sets <c>attributes.itemViews.held</c> to <c>hidden</c>: the block shows nothing in either hand and the
+  /// player's arms take the empty-hand pose, while its slot and ground views stay those of its kind. The other
+  /// <c>itemViews</c> entries are kept, whichever call comes first.</summary>
+  public ExBlockDef HiddenInHand() {
+    var views = Nested("attributes")["itemViews"] as JObject ?? new JObject();
+    views["held"] = CollectibleViews.HiddenHoldName;
     return Attribute("itemViews", views);
   }
 

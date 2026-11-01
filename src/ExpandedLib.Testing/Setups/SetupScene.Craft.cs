@@ -64,7 +64,8 @@ public sealed partial class SetupScene
       );
     Verify(step.Path, station, made, order, times);
     made.ForEach(Give);
-    Stow(made);
+    if (_pack == null)
+      Stow(made);
   }
 
   /// <summary>Crafts <paramref name="order"/> once at <paramref name="entity"/>, or in the hand

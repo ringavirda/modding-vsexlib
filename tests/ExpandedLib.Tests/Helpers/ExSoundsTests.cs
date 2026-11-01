@@ -207,6 +207,31 @@ public class ExSoundsTests : IDisposable {
       );
   }
 
+  // Fails when Emit sends through the channel without comparing the sound's world to the one
+  // the channel was opened for.
+  [Fact]
+  public void A_one_shot_in_another_world_keeps_the_games_broadcast() {
+    var channelWorld = new TestWorld();
+    channelWorld.Channels(ExSounds.ChannelName);
+    ExSounds.StartServer(channelWorld.Api);
+    var other = new TestWorld();
+
+    ExSounds.Play(other.Api, At, ExSounds.Latch, 0.7f);
+
+    other
+      .World.Received(1)
+      .PlaySoundAt(
+        ExSounds.Latch,
+        At.X + 0.5,
+        At.Y + 0.5,
+        At.Z + 0.5,
+        null,
+        true,
+        24f,
+        0.7f
+      );
+  }
+
   // Fails when Play drops its server gate and plays on a client too.
   [Fact]
   public void Play_is_silent_on_a_client() {

@@ -155,7 +155,7 @@ public class LoadAsGameTests
   public void The_cache_rebuilds_after_another_load_and_restores()
   {
     TestWorld first = GameWorlds.Get([PngFixture]);
-    new TestWorld().LoadAssets([]);
+    using TestWorld bump = new TestWorld().LoadAssets([]);
     int restored = 0;
 
     TestWorld again = GameWorlds.Get([PngFixture], restore: _ => restored++);

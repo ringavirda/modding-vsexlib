@@ -1,0 +1,20 @@
+{
+  "code": "rot",
+  "variantgroups": [
+    {
+      "code": "side",
+      "states": [
+        "n",
+        "e",
+        "s",
+        "w"
+      ]
+    }
+  ],
+  "drops": [
+    {
+      "type": "block",
+      "code": "rot-s"
+    }
+  ]
+}

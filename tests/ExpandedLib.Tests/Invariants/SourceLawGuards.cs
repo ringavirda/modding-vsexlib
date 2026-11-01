@@ -21,6 +21,7 @@ namespace ExpandedLib.Tests;
 [GuardOf(typeof(SourceLaws), nameof(SourceLaws.UnreadTunables))]
 [GuardOf(typeof(SourceLaws), nameof(SourceLaws.ContainerDialogPackets))]
 [GuardOf(typeof(SourceLaws), nameof(SourceLaws.InlineParticles))]
+[GuardOf(typeof(SourceLaws), nameof(SourceLaws.SharedPathEdits))]
 public class SourceLawGuards(ITestOutputHelper output) {
   private static readonly Assembly[] Configs = [typeof(ExlibConfig).Assembly];
 
@@ -105,6 +106,10 @@ public class SourceLawGuards(ITestOutputHelper output) {
   [Fact]
   public void Particles_come_from_ExParticles() =>
     Assert(SourceLaws.InlineParticles, new(), new());
+
+  [Fact]
+  public void A_path_edit_is_made_on_a_fresh_location() =>
+    Assert(SourceLaws.SharedPathEdits, new(), new());
 
   private void Assert(
     Func<IEnumerable<string>, IReadOnlyList<string>> law,

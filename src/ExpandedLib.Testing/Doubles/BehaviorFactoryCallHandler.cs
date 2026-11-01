@@ -18,21 +18,21 @@ internal sealed class BehaviorFactoryCallHandler(
   > factories
 ) : ICallHandler {
   /// <summary>A substitute registry answering through this handler; <paramref name="factories"/> is
-  /// read on each call, so a factory added later takes effect.</summary>
+  /// read on each call, so a factory added later takes effect. <paramref name="world"/> clears the
+  /// substitute and releases the handler when it is disposed.</summary>
   public static IClassRegistryAPI Over(
+    TestWorld world,
     IClassRegistryAPI registry,
     IReadOnlyDictionary<
       string,
       System.Func<BlockEntity, BlockEntityBehavior>
     > factories
   ) {
-    var substitute = Substitute.For<IClassRegistryAPI>();
-    SubstitutionContext
-      .Current.GetCallRouterFor(substitute)
-      .RegisterCustomCallHandlerFactory(_ => new BehaviorFactoryCallHandler(
-        registry,
-        factories
-      ));
+    var substitute = world.Made<IClassRegistryAPI>();
+    world.Handled(
+      substitute,
+      new BehaviorFactoryCallHandler(registry, factories)
+    );
     return substitute;
   }
 

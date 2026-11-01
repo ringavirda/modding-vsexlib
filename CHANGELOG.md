@@ -883,13 +883,13 @@ exlib 0.7.2; the new family (Iron Industry Expanded, Steel Industry Expanded) bu
   the right-click-construction wiring, block/item code migrations and removals, the legacy shims, and
   the handbook unit-conversion patch. See [Testing Harness](wiki/Testing-Harness.md) "Examples".
 
-- ⛔ **Breaking (`exlib.testing`, the dev-only harness bundle): `BlockCodeEmitter` no longer writes
+- **Breaking (`exlib.testing`, the dev-only harness bundle): `BlockCodeEmitter` no longer writes
   from inside a test run.** `EXLIB_WRITE_BLOCKCODES=1 dotnet test <project>` is gone; regenerate a
   mod's `{Mod}Blocks.g.cs` with `exmod codes <mod>` instead. `CheckOrWrite` only compares now.
 
 - `ExpandedLib.Testing.TreeKeys`: golden-checks a block entity's `ToTreeAttributes` key set, the
   save-format proof behind converting a hand-written pair to `[Persist]`/`Persisted` (see
-  [Block Entities](wiki/Block-Entities.md) § Converting a hand-written pair).
+  [Block Entities](wiki/Block-Entities.md) section Converting a hand-written pair).
 - `ExpandedLib.Checks`: the seven content guards that used to run only in the xUnit harness
   (dangling recipe/multiblock codes, missing lang coverage, pinned network nodes, a network node or
   membership missing part of its contract, a base-code prefix collision), now runnable against the
@@ -1036,7 +1036,7 @@ exlib 0.7.2; the new family (Iron Industry Expanded, Steel Industry Expanded) bu
   and `SteelIndustryExpanded.Tests` reached directly now go through harness hooks
   (`MachineTestHooks`, `StructureTestHooks`, `NetworkNodeTestHooks` - see
   [Testing API Reference](wiki/Testing-API-Reference.md)) instead.
-- ⛔ **Breaking: `ExpandedLib.Industry` is its own assembly and its own NuGet package.** The
+- **Breaking: `ExpandedLib.Industry` is its own assembly and its own NuGet package.** The
   family's content layer - pipes, molten metal, mechanical power, metals, heat - now builds as
   `exlib.industry.dll` from `mods/exlib/industry/`, and ships beside `exlib.dll` inside the same
   exlib mod folder, so nothing changes for a player: one mod, one modinfo, one download. A mod
@@ -1054,7 +1054,7 @@ exlib 0.7.2; the new family (Iron Industry Expanded, Steel Industry Expanded) bu
   `windows.ps1`); each command registers itself next to its own implementation, so `exmod`
   prints a grouped command list and `exmod help <command>` prints one command in detail.
   `scripts/exmod.sh` is unchanged. See [Contributing](../../CONTRIBUTING.md) "Running things".
-- ⛔ **Breaking: construction now gates production by default.** A machine whose blocktype carries
+- **Breaking: construction now gates production by default.** A machine whose blocktype carries
   `ExRightClickConstructable` and hosts a production tick used to tick through its own unfinished
   construction unless it named the gate itself; the behaviour's new `IProductionReadiness` answer
   now waits for it on every such machine. A machine that must keep ticking while unfinished sets
@@ -1062,11 +1062,11 @@ exlib 0.7.2; the new family (Iron Industry Expanded, Steel Industry Expanded) bu
   `Construction(...)` builder).
 - `FillerLayoutBuilder` no longer refuses a footprint that mixes `Layer`/`Slice`/`Face` grids; the
   grid core tracks every drawn cell regardless of which call drew it, so mixing is simply supported.
-- ⛔ **Breaking: `ExBlockDef.Raw`/`RawByType` and `ExItemDef.Raw` are renamed `RootKey`/`RootKeyByType`.**
+- **Breaking: `ExBlockDef.Raw`/`RawByType` and `ExItemDef.Raw` are renamed `RootKey`/`RootKeyByType`.**
   The old names are kept as `[Obsolete]` forwarders for one release (see
   [Supported API](wiki/Supported-API.md) "Obsolete members"). `Raw` writes a top-level key the
   object loader reads only when it is a real blocktype/itemtype key; the new name says so.
-- ⛔ **Breaking: `ExLiquids.Load(ICoreAPI)` moves to `LiquidCatalogueLoader.Load(ICoreAPI)`.** A
+- **Breaking: `ExLiquids.Load(ICoreAPI)` moves to `LiquidCatalogueLoader.Load(ICoreAPI)`.** A
   registry does not read assets under the catalogue naming law; `ExLiquids.Load` is kept as an
   `[Obsolete]` forwarder for one release (see [Supported API](wiki/Supported-API.md) "Obsolete
   members"). `ProcessRouteRegistry` now stores its families in an `ExKeyedRegistry<ProcessRoute>`
@@ -1074,13 +1074,13 @@ exlib 0.7.2; the new family (Iron Industry Expanded, Steel Industry Expanded) bu
   `BayOccupancyRegistry` and `MaterialRoleRegistry` keep their own dictionaries because each key
   holds a list of entries, which `ExKeyedRegistry<T>`'s one-value-per-key shape does not fit.
 
-- ⛔ **Breaking: an unrecognised JSON key is now a load error, not a silently dropped field.**
+- **Breaking: an unrecognised JSON key is now a load error, not a silently dropped field.**
   Every catalogue asset (`config/metals/*.json`, `config/liquids.json`,
   `config/materialroles.json`, `config/processroutes/*.json`, `config/processjobs/*.json`,
   `config/bayoccupancy/*.json`) is bound strictly: a misspelt or retired key fails that one
   file, named with the file and the key, rather than loading with the field quietly ignored.
   Every warning and error also now names the asset it came from.
-- ⛔ **Breaking: the family half of exlib moved to `ExpandedLib.Industry.*`.** Pipe, molten and
+- **Breaking: the family half of exlib moved to `ExpandedLib.Industry.*`.** Pipe, molten and
   mechanical-power networks, the metal, heat and molten-material catalogues, and their shared
   helpers now live under `ExpandedLib.Industry.Pipes`, `.Molten`, `.MechanicalPower`, `.Metals`,
   `.Heat`, `.Helpers` and `.Materials`. Type names and registered codes are unchanged - only the
@@ -1090,7 +1090,7 @@ exlib 0.7.2; the new family (Iron Industry Expanded, Steel Industry Expanded) bu
 - `CellRole` is now a string-keyed `readonly record struct` (`CellRole.Of(key)`) instead of an
   exlib-declared enum; a machine's roles are declared by the mod that owns it (see iiex's
   `FurnaceCellRoles`). exlib itself declares no roles.
-- ⛔ **Breaking: `mods/exlib/src` is reorganised so one top-level folder is one namespace** (see
+- **Breaking: `mods/exlib/src` is reorganised so one top-level folder is one namespace** (see
   [Supported-API](wiki/Supported-API.md), [conventions](../../docs/design/conventions.md) "How
   exlib is laid out"). Type names, members and registered codes are unchanged - only folders,
   namespaces and `using`s moved:
@@ -1104,7 +1104,7 @@ exlib 0.7.2; the new family (Iron Industry Expanded, Steel Industry Expanded) bu
   `ExpandedLib.Blocks.Machines` -> `ExpandedLib.Machines`;
   `ExpandedLib.Blocks.Networks` -> `ExpandedLib.Networks`; `ExpandedLib.Renderers` and
   `ExpandedLib.Patches` -> `ExpandedLib.Helpers`.
-- ⛔ **Breaking (`exlib.testing`, the dev-only harness bundle): `ExpandedLib.Testing.Doubles` is
+- **Breaking (`exlib.testing`, the dev-only harness bundle): `ExpandedLib.Testing.Doubles` is
   folded into `ExpandedLib.Testing`.** The test doubles (`StubNetwork`, `TestNetworkBlock`,
   `CapturingNode`, `SeverableNode` and the rest) move from `Doubles/` namespace into the harness's
   single namespace; the folder stays, only the `using` goes. `using ExpandedLib.Testing;` is the
@@ -1140,11 +1140,11 @@ exlib 0.7.2; the new family (Iron Industry Expanded, Steel Industry Expanded) bu
   patch alone produced 27 errors for patches that apply correctly. A target missing from a domain
   whose mod ships an assembly is now an informational finding naming why it cannot be checked
   headlessly; a target missing from a JSON-only domain is still an error.
-- ⛔ **Breaking: `AssetCheckSource.Domains` now covers only exlib and the mods that depend on it.**
+- **Breaking: `AssetCheckSource.Domains` now covers only exlib and the mods that depend on it.**
   It used to answer every loaded mod, vanilla's own `game`/`survival`/`creative` included, whose own
   incomplete non-English locales alone produced on the order of 164,000 findings on a full-tree
   smoke run. `/exmod verify <domain>` still checks any domain named explicitly, in or out of scope.
-- ⛔ **Breaking: `LangCoverageCheck` now guards the `en` locale only.** An unresolved `en` key is
+- **Breaking: `LangCoverageCheck` now guards the `en` locale only.** An unresolved `en` key is
   what renders raw on screen; a gap in some other shipped locale falls back to English instead, and
   tracking parity across a mod's other locales moved to `ExpandedLib.Testing.LangCoverage` and each
   mod's own `LangParityTests` (a repository-time concern the running game never needs to fail over).
@@ -1213,14 +1213,14 @@ recorded here together with 0.7.3's own packaging work.
 
 ### Changed
 
-- ⛔ **Breaking: a pipe's tier is a variant, not its domain.** `RegisterBurst`,
+- **Breaking: a pipe's tier is a variant, not its domain.** `RegisterBurst`,
   `RegisterThroughput` and `RegisterJoint` are keyed on the tier name rather than the mod id,
   and `BlockPipe.Segments` takes the tier as a second argument
   (`Segments(domain, tier)`; pass `null` for an untiered family). A mod may now ship several
   tiers under one domain, which one domain per tier made impossible. Callers registering with
   `Mod.Info.ModID` must pass their tier name instead - the registration is otherwise silently
   unused and every segment falls back to the defaults.
-- ⛔ **Breaking: `BlockPipePassthrough.Passthroughs` takes the tier too**
+- **Breaking: `BlockPipePassthrough.Passthroughs` takes the tier too**
   (`Passthroughs(domain, tier)`, `null` for an untiered family). Two tiers shipping a passthrough
   apiece carried one code between them, so under a single domain the later registration replaced
   the earlier with no error; the tier is what keeps both. The sheet texture is now selected by tier

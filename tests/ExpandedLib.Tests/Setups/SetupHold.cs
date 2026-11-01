@@ -10,6 +10,54 @@ using Vintagestory.GameContent.Mechanics;
 
 namespace ExpandedLib.Tests.Setups;
 
+internal sealed class SetupHoldWand : Item
+{
+  public readonly List<string> Calls = [];
+  public readonly List<float> Seconds = [];
+  public readonly List<Vec3d> Hits = [];
+  public readonly List<EnumHandInteract> HandUses = [];
+
+  public override void OnHeldInteractStart(
+    ItemSlot slot,
+    EntityAgent byEntity,
+    BlockSelection blockSel,
+    EntitySelection entitySel,
+    bool firstEvent,
+    ref EnumHandHandling handling
+  )
+  {
+    Calls.Add("start");
+    Hits.Add(blockSel.HitPosition.Clone());
+    HandUses.Add(byEntity.Controls.HandUse);
+    handling = EnumHandHandling.PreventDefault;
+  }
+
+  public override bool OnHeldInteractStep(
+    float secondsUsed,
+    ItemSlot slot,
+    EntityAgent byEntity,
+    BlockSelection blockSel,
+    EntitySelection entitySel
+  )
+  {
+    Calls.Add("step");
+    Seconds.Add(secondsUsed);
+    return true;
+  }
+
+  public override void OnHeldInteractStop(
+    float secondsUsed,
+    ItemSlot slot,
+    EntityAgent byEntity,
+    BlockSelection blockSel,
+    EntitySelection entitySel
+  )
+  {
+    Calls.Add("stop");
+    Seconds.Add(secondsUsed);
+  }
+}
+
 internal sealed class SetupHoldCanalBlock : Block
 {
   public override bool OnBlockInteractStart(

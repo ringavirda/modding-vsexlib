@@ -118,6 +118,7 @@ internal static class SetupSteps {
       "control",
       "keep",
     ],
+    ["use"] = ["at", "with", "hit", "face", "keys", "seconds", "keep"],
     ["wait"] = ["seconds", "until", "max", "hold"],
     ["advance"] = ["hours"],
     ["fillInventory"] = ["code"],
@@ -167,6 +168,7 @@ internal static class SetupSteps {
     ["call"] = ["at", "method"],
     ["insert"] = ["at", "stack"],
     ["interact"] = ["at"],
+    ["use"] = ["at", "seconds"],
     ["window"] = ["at"],
     ["ignite"] = ["at"],
     ["craft"] = ["output"],
@@ -192,6 +194,17 @@ internal static class SetupSteps {
         .Array(token, where)
         .Select((t, i) => Parse(t, where.At(i), references, refused)),
     ];
+
+  private static void ValidateHit(JToken hit, SetupJson.Where at) {
+    JArray cell = SetupJson.Array(hit, at);
+    if (cell.Count != 3)
+      throw at.Fail("is three sixteenths, x, y and z.");
+    for (int i = 0; i < 3; i++) {
+      double v = SetupJson.Number(cell[i], at.At(i));
+      if (!(v >= 0 && v <= 16))
+        throw at.At(i).Fail($"{v} is outside 0 to 16.");
+    }
+  }
 
   /// <exception cref="SetupFileException">The step names no kind or two, a kind it may not
   /// hold, an unknown key, or lacks a key its kind requires.</exception>
@@ -251,8 +264,10 @@ internal static class SetupSteps {
     }
     if (kind == "craft")
       ValidateCraft(o, at);
-    if (kind == "interact" && o["keep"] != null)
+    if (kind is "interact" or "use" && o["keep"] != null)
       SetupJson.Bool(o["keep"], at.In("keep"));
+    if (kind == "use" && o["hit"] != null)
+      ValidateHit(o["hit"]!, at.In("hit"));
     if (kind == "break" && o["sneak"] != null)
       SetupJson.Bool(o["sneak"], at.In("sneak"));
     if (kind == "expect" && SetupSlotExpect.Is(o))

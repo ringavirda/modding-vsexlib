@@ -56,9 +56,12 @@ public sealed class WindowRig : IDisposable {
     int screenWidth = 1920,
     int screenHeight = 1080
   ) {
-    ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(guiScale, 0f);
-    ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(screenWidth, 0);
-    ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(screenHeight, 0);
+    if (guiScale <= 0f)
+      throw new ArgumentOutOfRangeException(nameof(guiScale));
+    if (screenWidth <= 0)
+      throw new ArgumentOutOfRangeException(nameof(screenWidth));
+    if (screenHeight <= 0)
+      throw new ArgumentOutOfRangeException(nameof(screenHeight));
     CairoNative.Ensure();
     GuiScale = guiScale;
     ScreenWidth = screenWidth;

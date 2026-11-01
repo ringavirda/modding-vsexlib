@@ -53,7 +53,7 @@ public static class ClipLaws
     ExBlockDef[] blocks = [.. given.OfType<ExBlockDef>()];
     ExItemDef[] items = [.. given.OfType<ExItemDef>()];
     ClipExceptions exceptions = ClipExceptions.Read(exceptionsFile);
-    TestWorld world = BlockLaws.Stand(blocks, assemblies, prepare, items);
+    using TestWorld world = BlockLaws.Stand(blocks, assemblies, prepare, items);
     if (assetRoot != null)
       foreach (
         string shapes in blocks.Select(d => d.Domain).Append(domain).Distinct()

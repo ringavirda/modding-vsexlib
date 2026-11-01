@@ -170,7 +170,12 @@ public static class StructureBreaks
             () =>
             {
               TestWorld world = Stand();
-              return new Site(world, At, () => world.DefineBlock(def, variant));
+              return new Site(
+                world,
+                At,
+                () => world.DefineBlock(def, variant),
+                Owns: true
+              );
             },
             tally
           );
@@ -311,11 +316,21 @@ public static class StructureBreaks
 
   /// <summary>Where one break stands its structure up: the world, the principal's position, and the
   /// block to place there, built or readied on each call.</summary>
+  /// <param name="Owns">Whether the site's world was stood up for it alone and is disposed once
+  /// the site has been used.</param>
   private sealed record Site(
     TestWorld World,
     BlockPos At,
-    System.Func<Block> Block
-  );
+    System.Func<Block> Block,
+    bool Owns = false
+  )
+  {
+    public void Release()
+    {
+      if (Owns)
+        World.Dispose();
+    }
+  }
 
   private sealed class Tally
   {
@@ -334,7 +349,16 @@ public static class StructureBreaks
     Tally tally
   )
   {
-    int stages = StageCount(stand(), code, declaresStages, tally.Failures);
+    Site first = stand();
+    int stages;
+    try
+    {
+      stages = StageCount(first, code, declaresStages, tally.Failures);
+    }
+    finally
+    {
+      first.Release();
+    }
     if (stages < 0)
       return;
     for (int built = 0; built < Math.Max(stages, 1); built++)
@@ -344,15 +368,25 @@ public static class StructureBreaks
       foreach (Payment? payment in payments)
         for (int cell = -1; ; cell++)
         {
-          string? failure = BreakOnce(
-            stand(),
-            code,
-            stages == 0 ? null : built,
-            payment,
-            cell,
-            tally.Spawned,
-            out bool noMoreCells
-          );
+          Site site = stand();
+          string? failure;
+          bool noMoreCells;
+          try
+          {
+            failure = BreakOnce(
+              site,
+              code,
+              stages == 0 ? null : built,
+              payment,
+              cell,
+              tally.Spawned,
+              out noMoreCells
+            );
+          }
+          finally
+          {
+            site.Release();
+          }
           if (failure == null && noMoreCells)
             break;
           tally.Breaks++;

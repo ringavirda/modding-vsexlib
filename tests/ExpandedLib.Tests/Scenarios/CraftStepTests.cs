@@ -272,6 +272,9 @@ public class CraftStepTests : IDisposable
   private static string BenchRefused(string craft) =>
     Refused("setupcraft", BenchPath, "[" + Bench + ", " + craft + "]");
 
+  private static int Ledger(SetupScene scene, string code) =>
+    scene.Run([("setupcraft", "1.0.0")]).Pack!.End.GetValueOrDefault(code);
+
   private static int Carried(SetupScene scene, string code) =>
     scene
       .Player.Hotbar.Where(s =>
@@ -826,7 +829,7 @@ public class CraftStepTests : IDisposable
     using SetupScene scene = BuildSequenced(PackOf(Tools));
 
     Assert.Empty(CraftFixtureBench.Pressed);
-    Assert.Equal(3, Carried(scene, Frame));
+    Assert.Equal(3, Ledger(scene, Frame));
   }
 
   // Fails when the harness holds a hits step for its seconds (none) instead of its swings.
@@ -840,7 +843,7 @@ public class CraftStepTests : IDisposable
         + "{\"tool\": \"setupcraft:mallet\", \"offhand\": \"setupcraft:stud\", \"hits\": 1}]}]}"
     );
 
-    Assert.Equal(3, Carried(scene, Frame));
+    Assert.Equal(3, Ledger(scene, Frame));
   }
 
   // Fails when the tools are made without the pack, or the pack is not asked for them.
@@ -879,7 +882,7 @@ public class CraftStepTests : IDisposable
       PackOf(Tools, "\"setupcraft:mallet\": 1, \"setupcraft:stud\": 1")
     );
 
-    Assert.Equal(3, Carried(scene, Frame));
+    Assert.Equal(3, Ledger(scene, Frame));
   }
 
   private static string Shedding(string code) =>
@@ -900,8 +903,8 @@ public class CraftStepTests : IDisposable
       Shedding("setupcraft:pin")
     );
 
-    Assert.Equal(3, Carried(scene, Frame));
-    Assert.Equal(1, Carried(scene, "setupcraft:pin"));
+    Assert.Equal(3, Ledger(scene, Frame));
+    Assert.Equal(1, Ledger(scene, "setupcraft:pin"));
   }
 
   // Fails when a step's tool is not drawn from the pack, so one tool serves both hands.

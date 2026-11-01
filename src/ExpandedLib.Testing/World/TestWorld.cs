@@ -6,6 +6,7 @@ using ExpandedLib.Networks;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
+using NSubstitute.ClearExtensions;
 using NSubstitute.Core;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -22,7 +23,7 @@ namespace ExpandedLib.Testing;
 public sealed partial class TestWorld : IDisposable {
   private readonly Dictionary<BlockPos, Block> _blocks = new();
   private readonly Dictionary<BlockPos, Block> _fluids = new();
-  private readonly Dictionary<BlockPos, BlockEntity> _blockEntities = new();
+  private readonly EntityStore _blockEntities = new();
   private readonly Dictionary<int, Block> _blocksById = new();
   private readonly Dictionary<string, Block> _blocksByCode = new();
   private readonly Dictionary<string, Item> _itemsByCode = new();
@@ -31,6 +32,9 @@ public sealed partial class TestWorld : IDisposable {
   private int _nextItemId = 1;
 
   private double _totalDays;
+
+  private readonly List<object> _substitutes = [];
+  private readonly List<ReleasableCallHandler> _handlers = [];
 
   /// <summary>The block returned for any cell that has not been placed (id 0, code "game:air",
   /// <c>Replaceable</c> 9999 as the game's air, so any block may be placed over it).</summary>
@@ -161,7 +165,8 @@ public sealed partial class TestWorld : IDisposable {
     Air.SideSolid = new SmallBoolArray(0);
     _blocksById[0] = Air;
 
-    Calendar = Substitute.For<IGameCalendar>();
+    _loadedChunk = Made<IWorldChunk>();
+    Calendar = Made<IGameCalendar>();
     PushCalendar();
     Calendar
       .When(c => c.Add(Arg.Any<float>()))
@@ -199,8 +204,38 @@ public sealed partial class TestWorld : IDisposable {
   internal void AddPlayer(string uid, IPlayer player) =>
     _playersByUid[uid] = player;
 
-  /// <summary>Deletes <see cref="ConfigFiles"/>'s temp directory.</summary>
-  public void Dispose() => ConfigFiles.Dispose();
+  /// <summary>Creates an NSubstitute substitute of <typeparamref name="T"/> that
+  /// <see cref="Dispose"/> clears.</summary>
+  internal T Made<T>()
+    where T : class {
+    T made = Substitute.For<T>();
+    _substitutes.Add(made);
+    return made;
+  }
+
+  /// <summary>Registers <paramref name="handler"/> as a custom call handler of
+  /// <paramref name="substitute"/>, released by <see cref="Dispose"/>.</summary>
+  internal void Handled(object substitute, ICallHandler handler) {
+    var releasable = new ReleasableCallHandler(handler);
+    SubstitutionContext
+      .Current.GetCallRouterFor(substitute)
+      .RegisterCustomCallHandlerFactory(_ => releasable);
+    _handlers.Add(releasable);
+  }
+
+  /// <summary>Clears the recorded calls, configured returns and callbacks of every substitute this
+  /// world created, releases its custom call handlers, so a proxy type's cached call router no
+  /// longer reaches the world, and deletes <see cref="ConfigFiles"/>'s temp directory.</summary>
+  /// <remarks>A world, and every object taken from it, is not supported after disposal.</remarks>
+  public void Dispose() {
+    foreach (ReleasableCallHandler handler in _handlers)
+      handler.Release();
+    _handlers.Clear();
+    foreach (object made in _substitutes)
+      made.ClearSubstitute(ClearOptions.All);
+    _substitutes.Clear();
+    ConfigFiles.Dispose();
+  }
 
   /// <summary>The client/server channel pair for <paramref name="channelName"/>, built the first
   /// time it is asked for and memoised after.</summary>
@@ -569,7 +604,7 @@ public sealed partial class TestWorld : IDisposable {
     BlockPos,
     (BlockEntity Entity, TreeAttribute Tree)
   > _unloadedEntities = new();
-  private readonly IWorldChunk _loadedChunk = Substitute.For<IWorldChunk>();
+  private readonly IWorldChunk _loadedChunk;
 
   /// <summary>The chunk every loaded position resolves to; one instance for the whole
   /// world.</summary>
@@ -931,17 +966,13 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   private IBlockAccessor BuildAccessor() {
-    var a = Substitute.For<IBlockAccessor>();
+    var a = Made<IBlockAccessor>();
 
     StubBlockReads(a);
     a.GetBlockEntity(Arg.Any<BlockPos>())
       .Returns(ci => ReadBlockEntity(ci.Arg<BlockPos>()));
     // GetBlockEntity<T> is an open generic NSubstitute cannot bind by type.
-    SubstitutionContext
-      .Current.GetCallRouterFor(a)
-      .RegisterCustomCallHandlerFactory(_ => new TypedBlockEntityCallHandler(
-        ReadBlockEntity
-      ));
+    Handled(a, new TypedBlockEntityCallHandler(ReadBlockEntity));
     // Resolve-by-code; orientation behaviours read a null here as an undeclared variant.
     a.GetBlock(Arg.Any<AssetLocation>())
       .Returns(ci => GetByCode(ci.Arg<AssetLocation>()));
@@ -1027,7 +1058,7 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   private ICachingBlockAccessor BuildCachingAccessor() {
-    var a = Substitute.For<ICachingBlockAccessor>();
+    var a = Made<ICachingBlockAccessor>();
     a.GetBlock(Arg.Any<BlockPos>())
       .Returns(ci => ReadBlock(ci.Arg<BlockPos>()));
     a.IsValidPos(Arg.Any<BlockPos>()).Returns(true);
@@ -1036,7 +1067,7 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   private IServerWorldAccessor BuildWorld() {
-    var w = Substitute.For<IServerWorldAccessor>();
+    var w = Made<IServerWorldAccessor>();
     w.Side.Returns(EnumAppSide.Server);
     w.PlayerByUid(Arg.Any<string>())
       .Returns(ci => _playersByUid.GetValueOrDefault(ci.Arg<string>()));
@@ -1142,7 +1173,7 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   private ICoreServerAPI BuildApi() {
-    var api = Substitute.For<ICoreServerAPI>();
+    var api = Made<ICoreServerAPI>();
     // BlockEntity.Api is typed ICoreAPI; ICoreServerAPI re-declares these members with `new`.
     var coreApi = (ICoreAPI)api;
 
@@ -1158,14 +1189,10 @@ public sealed partial class TestWorld : IDisposable {
 
     // LoadModConfig<T>/StoreModConfig<T> are open generics NSubstitute cannot bind by type; a
     // custom call handler dispatches on the raw method info instead.
-    SubstitutionContext
-      .Current.GetCallRouterFor(api)
-      .RegisterCustomCallHandlerFactory(_ => new ModConfigCallHandler(
-        ConfigFiles
-      ));
+    Handled(api, new ModConfigCallHandler(ConfigFiles));
 
     // Empty rather than unconfigured, so a content check reads "nothing shipped" rather than null.
-    var assets = Substitute.For<IAssetManager>();
+    var assets = Made<IAssetManager>();
     assets
       .GetMany(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
       .Returns([]);
@@ -1177,7 +1204,7 @@ public sealed partial class TestWorld : IDisposable {
     api.ObjectCache.Returns(cache);
     coreApi.ObjectCache.Returns(cache);
 
-    var events = Substitute.For<IServerEventAPI>();
+    var events = Made<IServerEventAPI>();
     api.Event.Returns(events);
     coreApi.Event.Returns(events);
 #if GAME_GE_1_22
@@ -1185,7 +1212,7 @@ public sealed partial class TestWorld : IDisposable {
 #endif
 
     // RegisterChannel hands out this world's memoised pair; see Channels.
-    var network = Substitute.For<IServerNetworkAPI>();
+    var network = Made<IServerNetworkAPI>();
     network
       .RegisterChannel(Arg.Any<string>())
       .Returns(ci => Channels(ci.Arg<string>()).Server);
@@ -1243,7 +1270,7 @@ public sealed partial class TestWorld : IDisposable {
   }
 
   private ICoreClientAPI BuildClientApi() {
-    var api = Substitute.For<ICoreClientAPI>();
+    var api = Made<ICoreClientAPI>();
     var coreApi = (ICoreAPI)api;
 
     api.Side.Returns(EnumAppSide.Client);
@@ -1254,7 +1281,7 @@ public sealed partial class TestWorld : IDisposable {
     coreApi.Logger.Returns(Log);
 
     // RegisterChannel hands out this world's memoised pair, same as Api's server side.
-    var network = Substitute.For<IClientNetworkAPI>();
+    var network = Made<IClientNetworkAPI>();
     network
       .RegisterChannel(Arg.Any<string>())
       .Returns(ci => Channels(ci.Arg<string>()).Client);
@@ -1279,7 +1306,7 @@ public sealed partial class TestWorld : IDisposable {
       ));
 
   private IClientWorldAccessor BuildClientWorld(ICoreClientAPI api) {
-    var w = Substitute.For<IClientWorldAccessor>();
+    var w = Made<IClientWorldAccessor>();
     w.Side.Returns(EnumAppSide.Client);
     w.Api.Returns(api);
     IBlockAccessor clientAccessor = BuildClientAccessor();

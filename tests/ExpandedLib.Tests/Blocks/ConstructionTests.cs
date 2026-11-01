@@ -374,6 +374,29 @@ public class ConstructionTests {
       );
   }
 
+  // Fails when the sound lookup edits the ground storable's PlaceRemoveSound in place: it then gains
+  // the sounds/ prefix. Removing the Clone before the prefix call turns it red.
+  [Fact]
+  public void The_place_sound_lookup_leaves_the_storables_location_as_it_was() {
+    var item = new Item { Code = new AssetLocation("test:crate") };
+    var storable = new CollectibleBehaviorGroundStorable(item);
+    storable.Initialize(
+      new JsonObject(JToken.Parse("{ \"placeRemoveSound\": \"player/build\" }"))
+    );
+    item.CollectibleBehaviors = [storable];
+
+    var sound = (AssetLocation?)
+      typeof(ExRightClickConstruction)
+        .GetMethod("PlaceSound", BindingFlags.NonPublic | BindingFlags.Static)!
+        .Invoke(null, [new ItemStack(item, 1)]);
+
+    Assert.Equal("test:sounds/player/build", sound!.ToString());
+    Assert.Equal(
+      "test:player/build",
+      storable.StorageProps.PlaceRemoveSound.ToString()
+    );
+  }
+
   // Fails when GetConstructionDrops loses NoInlining: ppex patches it by name.
   [Fact]
   public void GetConstructionDrops_is_not_inlined() {

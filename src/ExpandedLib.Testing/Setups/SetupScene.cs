@@ -309,6 +309,9 @@ public sealed partial class SetupScene : IDisposable
       World.Mods.Register(core);
       core.AssetsLoaded(World.Api);
     }
+    ResolveSmeltedStacks();
+    if (World.Mods.GetModSystem<WeatherSystemBase>() == null)
+      World.StartModSystem<SetupDryWeather>();
     if (crafts)
     {
       World.LoadRecipes();
@@ -328,6 +331,27 @@ public sealed partial class SetupScene : IDisposable
       if (block is { Id: not 0 } && _file.Mods.Contains(block.Code.Domain))
         Ready(block);
   }
+
+  private void ResolveSmeltedStacks()
+  {
+    foreach (
+      CollectibleObject collectible in World
+        .World.Items.Where(i => i?.Code != null)
+        .Cast<CollectibleObject>()
+        .Concat(World.World.Blocks.Where(b => b is { Id: not 0 }))
+    )
+      if (
+        collectible.CombustibleProps?.SmeltedStack
+          is { ResolvedItemstack: null } smelted
+        && SmeltedTargetLoaded(smelted)
+      )
+        smelted.Resolve(World.World, $"smelted stack of {collectible.Code}");
+  }
+
+  private bool SmeltedTargetLoaded(JsonItemStack smelted) =>
+    smelted.Type == EnumItemClass.Block
+      ? World.World.GetBlock(smelted.Code) is { Id: not 0 }
+      : World.World.GetItem(smelted.Code) != null;
 
   private IEnumerable<SetupStep> EveryStep() =>
     Model
@@ -382,7 +406,7 @@ public sealed partial class SetupScene : IDisposable
   {
     string code = block.Code.ToString();
     if (draws)
-      DrawBlock(where, kind ?? code, Describe(pos));
+      DrawBlock(where, kind ?? code, pos, Describe(pos), pos);
     BlockPos at = pos.Copy();
     _laid.Add((at.X, at.Y, at.Z));
     HashSet<long> before = World.TickListenerIds();
@@ -477,7 +501,7 @@ public sealed partial class SetupScene : IDisposable
   {
     if (be.GetBehavior<ExRightClickConstructable>() is not { } construction)
       return false;
-    DrawStages(where, construction.Construction, Describe(pos));
+    DrawStages(where, construction.Construction, Describe(pos), pos);
     if (
       ReflectionHelpers.TryGetField(be, "_animator", out _)
       || ReflectionHelpers.TryGetField(be, "_rcc", out _)
@@ -507,10 +531,12 @@ public sealed partial class SetupScene : IDisposable
       StructureRig rig = StructureRig
         .Around(World, multiblock, multiblock.LayoutAngle)
         .Raise();
+      bool carried = _pack?.TookStanding(pos) ?? false;
       foreach (var (at, raised) in rig.Raised)
       {
         _laid.Add((at.X, at.Y, at.Z));
-        DrawBlock(where, raised, Describe(pos));
+        if (!carried)
+          DrawBlock(where, raised, at, Describe(pos));
       }
       HashSet<long> own = _listeners.GetValueOrDefault(pos) ?? [];
       for (int i = 0; i < 2 && !multiblock.StructureComplete; i++)
@@ -585,6 +611,9 @@ public sealed partial class SetupScene : IDisposable
           break;
         case "interact":
           InteractStep(step);
+          break;
+        case "use":
+          UseStep(step);
           break;
         case "window":
           WindowStep(step);

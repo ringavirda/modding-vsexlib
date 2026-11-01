@@ -17,6 +17,8 @@ namespace ExpandedLib.Helpers;
 /// <param name="BoxAxes">The box frame as unit vectors in the shape's frame; for an item the longest, middle and
 /// shortest axes, the longest pointing at a longtool's or tool's working end, for a block the shape's x, y and z; null for a workpiece.</param>
 /// <param name="Grip">The held point in voxels in the shape's frame; null for a workpiece and for a block.</param>
+/// <param name="Hidden">Whether the collectible declares <c>attributes.itemViews.held</c> as <c>hidden</c>: <paramref name="TpHand"/>
+/// then scales the drawing to nothing, the clips are null, and the load pass gives the first-person hand the same transform.</param>
 public sealed record ItemViewSet(
   ItemViewKind Kind,
   ModelTransform Gui,
@@ -29,5 +31,6 @@ public sealed record ItemViewSet(
   Vec3d? BoxFrom,
   Vec3d? BoxTo,
   Vec3d[]? BoxAxes,
-  Vec3d? Grip
+  Vec3d? Grip,
+  bool Hidden = false
 );

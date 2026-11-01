@@ -13,7 +13,9 @@ namespace ExpandedLib.Testing;
 /// engine's slot-click protocol does not ask whether the inventory is open, so a put or take sent
 /// without <see cref="Open"/> lands unless the entity refuses it. The game's client-side half of a
 /// put and a take, the hotbar click that moves a stack between the hand and the cursor, is done
-/// directly on <see cref="TestPlayer.ActiveSlot"/> and <see cref="TestPlayer.Mouse"/>.</remarks>
+/// directly on <see cref="TestPlayer.ActiveSlot"/> and <see cref="TestPlayer.Mouse"/>. On 1.22 and
+/// later the player is within reach of every block, so the engine's interaction-range test that
+/// the game's openable containers run on each packet passes.</remarks>
 public sealed class TestWindow {
   /// <summary>The engine's open packet id (<c>EnumBlockEntityPacketId.Open</c>).</summary>
   public const int OpenPacketId = 1000;

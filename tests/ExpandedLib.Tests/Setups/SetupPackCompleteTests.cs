@@ -51,7 +51,12 @@ public class SetupPackCompleteTests : IDisposable
         "SetupBuild"
       );
 
-  private static SetupScene Build(string mod, string pack, string steps) =>
+  private static SetupScene Build(
+    string mod,
+    string pack,
+    string steps,
+    System.Func<string, SetupFileModel?>? stages = null
+  ) =>
     SetupScene.Build(
       SetupFile.Parse(
         "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\""
@@ -78,7 +83,8 @@ public class SetupPackCompleteTests : IDisposable
           .RegisterClass(
             "BlockEntityInteract",
             typeof(Vintagestory.GameContent.BlockBehaviorBlockEntityInteract)
-          )
+          ),
+      stages
     );
 
   private static SetupScene BuildWithBox(string pack, string steps) =>
@@ -112,9 +118,14 @@ public class SetupPackCompleteTests : IDisposable
           .RegisterBlockEntityFactory("SetupBox", () => new SetupBox())
     );
 
-  private static string Refused(string mod, string pack, string steps) =>
+  private static string Refused(
+    string mod,
+    string pack,
+    string steps,
+    System.Func<string, SetupFileModel?>? stages = null
+  ) =>
     Assert
-      .Throws<InvalidOperationException>(() => Build(mod, pack, steps))
+      .Throws<InvalidOperationException>(() => Build(mod, pack, steps, stages))
       .Message;
 
   private static string Gathered(string scope, string gathered) =>
@@ -139,6 +150,68 @@ public class SetupPackCompleteTests : IDisposable
 
     Assert.Equal(
       "t.json: steps[0]: the pack holds 2 of game:plank-*; the step takes 3.",
+      message
+    );
+  }
+
+  private static readonly SetupFileModel FrameStage = SetupFileModel.Parse(
+    "{\"setup\": \"stage\", \"description\": \"d\", \"mods\": [], \"steps\": [], \"seconds\": 10, \"record\": {}, \"pack\": {\"scope\": \"all\", \"ends\": {\"stacks\": {}, \"standing\": [\"setupbuild:frame\"]}}}",
+    "stage.json"
+  );
+
+  private static SetupFileModel? FrameStages(string id) =>
+    id == "exlib/setups/stage" ? FrameStage : null;
+
+  private const string Carried =
+    "{\"scope\": \"all\", \"after\": {\"exlib/setups/stage\": 1}}";
+
+  // Fails when DrawStages ignores the recorded principal, so the carried frame's sticks and planks
+  // are drawn from an empty pack.
+  [Fact]
+  public void A_carried_principal_raises_its_stages_free()
+  {
+    using SetupScene scene = Build("setupbuild", Carried, Frame, FrameStages);
+
+    SetupPackRecord pack = scene.Run(Mods).Pack!;
+
+    Assert.Empty(pack.Draws);
+  }
+
+  // Fails when the free branch is taken for any code, so a frame nobody carried completes from an
+  // empty pack.
+  [Fact]
+  public void An_uncarried_principal_still_pays()
+  {
+    string message = Refused(
+      "setupbuild",
+      Gathered("all", "{\"setupbuild:frame\": 1}"),
+      Frame
+    );
+
+    Assert.Equal(
+      "t.json: steps[0]: the pack holds 0 of game:stick; the step takes 2.",
+      message
+    );
+  }
+
+  private const string TwoFrames =
+    "{\"place\": {\"id\": \"carried\", \"code\": \"setupbuild:frame\", \"at\": [0, 0, 0], \"complete\": \"all\"}},"
+    + "{\"place\": {\"id\": \"built\", \"code\": \"setupbuild:frame\", \"at\": [2, 0, 0], \"complete\": \"all\"}}";
+
+  // Fails when the record is keyed on the code, so a second frame of the carried one's code
+  // completes free too.
+  [Fact]
+  public void A_built_principal_beside_a_carried_one_still_pays()
+  {
+    string message = Refused(
+      "setupbuild",
+      "{\"scope\": \"all\", \"gathered\": {\"setupbuild:frame\": 1}, \"after\": {\"exlib/setups/stage\": 1}}",
+      TwoFrames,
+      FrameStages
+    );
+
+    Assert.Equal(
+      "t.json: steps[1]: the pack holds 0 of game:stick; the step takes 2.",
       message
     );
   }

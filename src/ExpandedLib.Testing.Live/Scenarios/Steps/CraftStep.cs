@@ -124,7 +124,8 @@ internal sealed class CraftStep : ScenarioStep {
       );
     foreach (ItemStack stack in made)
       PackLedger.Give(ctx, stack);
-    Stow(player, made);
+    if (ctx.Pack == null)
+      Stow(player, made);
     report.Value = $"{expected} x {wanted} at {station}{how}";
     yield break;
   }

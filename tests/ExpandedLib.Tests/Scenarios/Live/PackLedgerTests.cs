@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Blocks;
 using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Testing.Live;
@@ -215,5 +216,74 @@ public class PackLedgerTests {
 
     Assert.Equal(1, fixture.Context.Pack.Held("game:hammer-iron"));
     Assert.Equal(1, fixture.Context.Pack.Held("game:chisel-iron"));
+  }
+
+  /// <summary>Fails when the live ledger draws the stages of a construction whose block the pack took
+  /// free from its standing list, or spares a block it did not.</summary>
+  [Fact]
+  public void The_live_ledger_matches_the_harness() {
+    SetupFileModel stage = SetupFileModel.Parse(
+      """{"setup": "stage", "description": "d", "mods": [], "steps": [], "seconds": 10, "record": {}, "pack": {"scope": "all", "ends": {"stacks": {}, "standing": ["game:stone"]}}}""",
+      "stage.json"
+    );
+    var fixture = new LiveFixture();
+    fixture.Context.Pack = SetupPack.Start(
+      LiveFixture
+        .Case(
+          "[" + Place() + "]",
+          """{ pack: { scope: "all", after: { "exlib/setups/stage": 1 } } }"""
+        )
+        .Model,
+      id => id == "exlib/setups/stage" ? stage : null
+    );
+    var carried = new BlockPos(0, 0, 0);
+    var built = new BlockPos(2, 0, 0);
+    var construction = new ExRightClickConstruction {
+      Stages =
+      [
+        new ExConstructionStage(),
+        new ExConstructionStage
+        {
+          RequireStacks =
+          [
+            new ExConstructionIngredient
+            {
+              Code = new AssetLocation("game:stick"),
+              Type = EnumItemClass.Item,
+              Quantity = 2,
+            },
+          ],
+        },
+      ],
+    };
+
+    PackLedger.DrawBlock(
+      fixture.Context,
+      "game:stone",
+      carried,
+      "(0, 0, 0)",
+      carried
+    );
+    PackLedger.DrawStages(
+      fixture.Context,
+      construction,
+      carried,
+      1,
+      new Dictionary<string, string>()
+    );
+    StepFailure failure = Assert.Throws<StepFailure>(() =>
+      PackLedger.DrawStages(
+        fixture.Context,
+        construction,
+        built,
+        1,
+        new Dictionary<string, string>()
+      )
+    );
+
+    Assert.Equal(
+      "the pack holds 0 of game:stick; the step takes 2.",
+      failure.Message
+    );
   }
 }

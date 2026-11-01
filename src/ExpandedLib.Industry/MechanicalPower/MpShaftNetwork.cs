@@ -59,6 +59,13 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     }
   }
 
+  /// <summary>The run's reading at node <paramref name="key"/> after the last tick.</summary>
+  /// <returns><see cref="MpRunReading.None"/> when the run holds no such node.</returns>
+  internal MpRunReading Read(NodeKey key) =>
+    Store.Nodes.TryGetValue(key, out int node)
+      ? new MpRunReading(Store.NodeSpeed(node), Store.AvailableTorque(node))
+      : MpRunReading.None;
+
   private (float Inertia, float Momentum) PendingTotals() {
     float inertia = _pendingInertia;
     float momentum = _pendingInertia * _pendingSpeed;
