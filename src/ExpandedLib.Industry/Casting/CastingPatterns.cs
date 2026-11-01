@@ -11,10 +11,8 @@ public static class CastingPatterns {
     collectible?.Attributes?[MoldSpec.AttributeKey] is { Exists: true };
 
   /// <summary>
-  /// Checks every station entry of every pattern in <paramref name="collectibles"/> against
-  /// <see cref="MoldSpec"/>. Returns one <c>code: error</c> message per malformed pattern, empty when
-  /// all are valid and also empty, without reading <paramref name="collectibles"/>, when no station kind is
-  /// registered.
+  /// Checks every station entry of every pattern against <see cref="MoldSpec"/>: one <c>code: error</c> message
+  /// per malformed pattern; empty when all are valid or no station kind is registered (then nothing is read).
   /// </summary>
   /// <param name="collectibles">The loaded collectibles; null entries are skipped.</param>
   /// <param name="stations">The kinds station entries may name; <see cref="CastingStationRegistry.Shared"/> when null.</param>

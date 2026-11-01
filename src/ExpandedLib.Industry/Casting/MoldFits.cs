@@ -4,11 +4,8 @@ using Vintagestory.GameContent;
 namespace ExpandedLib.Industry.Casting;
 
 /// <summary>
-/// Classifies tool moulds by where they can be cast: small moulds sit on a mould pedestal, oversize moulds
-/// are cast at a station that takes them. A mould's <c>moldFit</c> block attribute decides first
-/// (<c>"oversize"</c> or <c>"pedestal"</c>); without it the mould is oversize when its <c>tooltype</c>
-/// variant is in <see cref="MoldFitRegistry"/>. Only a vanilla <see cref="BlockToolMold"/> qualifies, as
-/// only it carries the pour contract.
+/// Classifies vanilla <see cref="BlockToolMold"/> moulds as pedestal or oversize: the <c>moldFit</c> block
+/// attribute decides first, else a <c>tooltype</c> in <see cref="MoldFitRegistry"/> makes it oversize.
 /// </summary>
 public static class MoldFits {
   /// <summary>The block attribute that states a mould's fit.</summary>
