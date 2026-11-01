@@ -1,0 +1,35 @@
+[
+  {
+    "code": "oolitic-ironstone",
+    "handbookPageCode": "block-iiex:ore-ooliticironstone",
+    "generator": "exlib-seam",
+    "triesPerChunk": 0.0076,
+    "scaleWithWorldheight": false,
+    "withOreMap": true,
+    "oreMapScale": 2,
+    "oreMapContrast": 1,
+    "oreMapSub": -50,
+    "attributes": {
+      "inBlock": { "code": "game:rock-*", "name": "rock",
+                   "allowedVariants": ["claystone", "shale", "sandstone", "conglomerate"] },
+      "footprint": {
+        "run": { "dist": "uniform", "avg": 160, "var": 0 },
+        "strike": { "dist": "uniform", "avg": 96, "var": 0 },
+        "exponent": 4, "taperFull": 0.6, "taperZero": 1.0
+      },
+      "dip": { "dist": "uniform", "avg": 0.3, "var": 0 },
+      "anchor": "sealevel",
+      "yCropRel": { "dist": "uniform", "avg": 1.115, "var": 0.065 },
+      "minCover": 0,
+      "propickDepth": 48,
+      "layers": [
+        { "block": "iiex:ore-ooliticironstone", "offset": 0,
+          "thickness": { "dist": "uniform", "avg": 3, "var": 1 },
+          "surfaceBlock": "iiex:looseooliticironstone-free", "surfaceBlockChance": 0.08, "propick": true,
+          "outcrop": { "block": "game:ore-{grade}-limonite-{rock}", "grades": ["poor", "medium"],
+                       "depth": { "dist": "uniform", "avg": 3, "var": 0 } } }
+      ],
+      "worldScale": { "code": "iiexBulkOre", "values": { "off": 0, "sparse": 0.5, "normal": 1, "rich": 2 } }
+    }
+  }
+]

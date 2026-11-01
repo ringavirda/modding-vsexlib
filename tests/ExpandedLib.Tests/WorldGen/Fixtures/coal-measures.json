@@ -1,0 +1,54 @@
+[
+  {
+    "code": "coal-measures",
+    "handbookPageCode": "block-iiex:ore-bituminouscoal",
+    "generator": "exlib-seam",
+    "triesPerChunk": 0.0114,
+    "scaleWithWorldheight": false,
+    "withOreMap": true,
+    "oreMapScale": 2,
+    "oreMapContrast": 1,
+    "oreMapSub": -50,
+    "attributes": {
+      "inBlock": { "code": "game:rock-*", "name": "rock",
+                   "allowedVariants": ["claystone", "shale", "sandstone", "conglomerate"] },
+      "footprint": {
+        "run": { "dist": "uniform", "avg": 160, "var": 0 },
+        "strike": { "dist": "uniform", "avg": 96, "var": 0 },
+        "exponent": 4, "taperFull": 0.6, "taperZero": 1.0
+      },
+      "dip": { "dist": "uniform", "avg": 0.3, "var": 0 },
+      "anchor": "sealevel",
+      "yCropRel": { "dist": "uniform", "avg": 1.115, "var": 0.065 },
+      "minCover": 0,
+      "propickDepth": 48,
+      "layers": [
+        { "block": "game:rawclay-fire-none", "offset": 0,
+          "thickness": { "dist": "uniform", "avg": 1, "var": 0 }, "propick": false },
+        { "block": "iiex:ore-bituminouscoal", "offset": 0,
+          "thickness": { "dist": "uniform", "avg": 2, "var": 0 },
+          "surfaceBlock": "game:looseores-bituminouscoal-{rock}-free", "surfaceBlockChance": 0.08, "propick": true },
+        { "block": "iiex:nodules-clayironstone", "offset": 1,
+          "thickness": { "dist": "uniform", "avg": 1, "var": 0 },
+          "surfaceBlock": "iiex:looseclayironstone-free", "surfaceBlockChance": 0.08, "propick": true,
+          "outcrop": { "block": "game:ore-{grade}-limonite-{rock}", "grades": ["poor", "medium"],
+                       "depth": { "dist": "uniform", "avg": 3, "var": 0 } } },
+        { "block": "iiex:nodules-clayironstone", "offset": 2,
+          "thickness": { "dist": "uniform", "avg": 1, "var": 0 },
+          "surfaceBlock": "iiex:looseclayironstone-free", "surfaceBlockChance": 0.08, "propick": true,
+          "outcrop": { "block": "game:ore-{grade}-limonite-{rock}", "grades": ["poor", "medium"],
+                       "depth": { "dist": "uniform", "avg": 3, "var": 0 } } },
+        { "block": "game:rawclay-fire-none", "offset": 1,
+          "thickness": { "dist": "uniform", "avg": 1, "var": 0 }, "propick": false },
+        { "block": "iiex:ore-bituminouscoal", "offset": 0,
+          "thickness": { "dist": "uniform", "avg": 2, "var": 0 },
+          "surfaceBlock": "game:looseores-bituminouscoal-{rock}-free", "surfaceBlockChance": 0.08, "propick": true }
+      ],
+      "worldScale": { "code": "iiexBulkOre", "values": { "off": 0, "sparse": 0.5, "normal": 1, "rich": 2 } },
+      "provinceChance": {
+        "basin": 1, "platform": 0.333, "orogen": 0.167, "extendedcrust": 0.167,
+        "largeIgneousprovince": 0.167, "shield": 0
+      }
+    }
+  }
+]

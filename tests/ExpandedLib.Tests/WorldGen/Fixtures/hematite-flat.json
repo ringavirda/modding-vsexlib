@@ -1,0 +1,31 @@
+[
+  {
+    "code": "hematite-flat",
+    "handbookPageCode": "block-iiex:ore-massivehematite",
+    "generator": "exlib-seam",
+    "triesPerChunk": 0.0012,
+    "scaleWithWorldheight": false,
+    "withOreMap": true,
+    "oreMapScale": 2,
+    "oreMapContrast": 1,
+    "oreMapSub": -20,
+    "attributes": {
+      "inBlock": { "code": "game:rock-*", "name": "rock", "allowedVariants": ["limestone"] },
+      "footprint": {
+        "run": { "dist": "uniform", "avg": 64, "var": 0 },
+        "strike": { "dist": "uniform", "avg": 48, "var": 0 },
+        "exponent": 2, "taperFull": 0.4, "taperZero": 0.9
+      },
+      "dip": { "dist": "uniform", "avg": 0.05, "var": 0.05 },
+      "anchor": "surface",
+      "depth": { "dist": "uniform", "avg": 26, "var": 14 },
+      "minCover": 0,
+      "propickDepth": 48,
+      "layers": [
+        { "block": "iiex:ore-massivehematite", "offset": 0,
+          "thickness": { "dist": "uniform", "avg": 3, "var": 0 }, "propick": true }
+      ],
+      "worldScale": { "code": "iiexBulkOre", "values": { "off": 0, "sparse": 0.5, "normal": 1, "rich": 2 } }
+    }
+  }
+]

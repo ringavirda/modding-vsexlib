@@ -48,6 +48,10 @@ public class ExpandedLibModSystem : ModSystem {
 #if GAME_GE_1_22
     // Turns a sequenced recipe away from every grid but its machine's, on both sides.
     Machines.CraftSequenceGate.Register(api.Event);
+
+    Vintagestory.ServerMods.DepositGeneratorRegistry.RegisterDepositGenerator<WorldGen.SeamDepositGenerator>(
+      WorldGen.SeamDepositGenerator.Code
+    );
 #endif
 
     if (api is ICoreServerAPI sapi)

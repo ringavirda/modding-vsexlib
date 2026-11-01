@@ -55,6 +55,13 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None
+      Include="WorldGen/Fixtures/*.json"
+      CopyToOutputDirectory="PreserveNewest"
+    />
+  </ItemGroup>
+
   <!-- The live mod builds an empty assembly outside 1.22. -->
   <ItemGroup Condition="'$(IsCurrentGame)' != 'true'">
     <Compile Remove="Scenarios/Live/**" />

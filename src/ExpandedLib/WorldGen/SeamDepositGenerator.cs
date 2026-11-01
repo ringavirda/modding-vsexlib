@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -9,6 +10,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods;
+using Vintagestory.ServerMods.NoObf;
 
 namespace ExpandedLib.WorldGen;
 
@@ -30,8 +32,21 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
     public Block?[][] Outcrops { get; } = new Block?[layers][];
   }
 
+  private static readonly ConditionalWeakTable<
+    IntDataMap2D,
+    LerpedWeightedIndex2DMap
+  > ProvinceMaps = new();
+
   private SeamSpec? _spec;
+  private float _scale = 1;
+  private double _absAvgQuantity;
   private readonly Dictionary<int, HostPlan> _plans = [];
+
+  /// <summary>The attributes this generator was built from; null when they were rejected.</summary>
+  internal SeamSpec? Spec => _spec;
+
+  /// <summary>Number of host rock blocks the generator replaces.</summary>
+  internal int HostCount => _plans.Count;
 
   /// <summary>Called by the deposit registry with the arguments vanilla passes every generator.</summary>
   public SeamDepositGenerator(
@@ -108,7 +123,32 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
     {
       _plans[id] = PlanFor(rocks, host, spec);
     }
+    _scale = WorldScale.Resolve(
+      spec.WorldScale,
+      Api.World,
+      Api.Logger,
+      variant.fromFile
+    );
+    variant.TriesPerChunk *= _scale;
+    _absAvgQuantity = AbsAvgQuantity(spec, variant.TriesPerChunk);
     _spec = spec;
+  }
+
+  private static double AbsAvgQuantity(SeamSpec spec, float triesPerChunk)
+  {
+    SeamFootprintSpec fp = spec.Footprint;
+    double area = DepositFootprint.Area(
+      Math.Min(fp.Run.avg, DepositFootprint.MaxLength),
+      Math.Min(fp.Strike.avg, DepositFootprint.MaxLength),
+      fp.Exponent
+    );
+    double thickness = spec
+      .Layers.Where(l => l.Propick)
+      .Sum(l => l.Thickness.avg);
+    return area
+      * thickness
+      * DepositFootprint.ExpectedFactor(fp.Exponent, fp.TaperFull, fp.TaperZero)
+      * triesPerChunk;
   }
 
   private HostPlan PlanFor(HostRocks rocks, HostRock host, SeamSpec spec)
@@ -147,7 +187,7 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
     ref Dictionary<BlockPos, DepositVariant> subDepositsToPlace
   )
   {
-    if (_spec is not { } spec)
+    if (_spec is not { } spec || _scale == 0)
     {
       return;
     }
@@ -167,6 +207,11 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
       || pos.Z + reachZ < baseZ
       || pos.Z - reachZ >= baseZ + chunksize
     )
+    {
+      return;
+    }
+
+    if (!KeptByProvince(spec, body, chunks[0], originChunkX, originChunkZ, pos))
     {
       return;
     }
@@ -357,8 +402,69 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
       );
   }
 
+  private bool KeptByProvince(
+    SeamSpec spec,
+    SeamBody body,
+    IServerChunk chunk,
+    int originChunkX,
+    int originChunkZ,
+    BlockPos pos
+  )
+  {
+    IntDataMap2D? map = chunk.MapChunk?.MapRegion?.GeologicProvinceMap;
+    GeologicProvinceVariant[]? provinces = NoiseGeoProvince.provinces?.Variants;
+    if (spec.ProvinceChance == null || map == null || provinces == null)
+    {
+      return true;
+    }
+    int regionSize = Api.WorldManager.RegionSize;
+    int regionOriginX = originChunkX * chunksize / regionSize * regionSize;
+    int regionOriginZ = originChunkZ * chunksize / regionSize * regionSize;
+    LerpedWeightedIndex2DMap lerped = ProvinceMaps.GetValue(
+      map,
+      m => new LerpedWeightedIndex2DMap(
+        m.Data,
+        m.Size,
+        TerraGenConfig.geoProvSmoothingRadius,
+        m.TopLeftPadding,
+        m.BottomRightPadding
+      )
+    );
+    float lo = 0.5f - map.TopLeftPadding;
+    float hi = map.Size - map.TopLeftPadding - 0.5f - 0.001f;
+    var weights = new float[provinces.Length];
+    lerped.WeightsAt(
+      Math.Clamp(
+        (pos.X - regionOriginX) / (float)TerraGenConfig.geoProvMapScale,
+        lo,
+        hi
+      ),
+      Math.Clamp(
+        (pos.Z - regionOriginZ) / (float)TerraGenConfig.geoProvMapScale,
+        lo,
+        hi
+      ),
+      weights
+    );
+    int dominant = Array.IndexOf(weights, weights.Max());
+    float keep = spec.ProvinceChance.GetValueOrDefault(
+      provinces[dominant].Code,
+      1
+    );
+    return PositionHash.Fraction(body.Seed, pos.X, 0, pos.Z, -2) < keep;
+  }
+
   /// <inheritdoc/>
-  public override float GetMaxRadius() => DepositFootprint.MaxLength / 2;
+  public override float GetMaxRadius() =>
+    _spec is { } spec
+      ? Math.Min(
+        Math.Max(
+          spec.Footprint.Run.avg + spec.Footprint.Run.var,
+          spec.Footprint.Strike.avg + spec.Footprint.Strike.var
+        ),
+        DepositFootprint.MaxLength
+      ) / 2
+      : 0;
 
   /// <inheritdoc/>
   public override void GetPropickReading(
@@ -371,6 +477,26 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
   {
     ppt = 0;
     totalFactor = 0;
+    if (_spec is not { } spec || _scale == 0 || pos.Y <= 0)
+    {
+      return;
+    }
+    int top = Math.Min(pos.Y, blockColumn.Length);
+    int from = Math.Max(0, top - spec.PropickDepth);
+    if (top <= from)
+    {
+      return;
+    }
+    int hosts = 0;
+    for (int y = from; y < top; y++)
+    {
+      if (_plans.ContainsKey(blockColumn[y]))
+      {
+        hosts++;
+      }
+    }
+    totalFactor = (oreDist & 0xff) / 255.0 * hosts / (top - from);
+    ppt = totalFactor * _absAvgQuantity / (pos.Y * 1024.0) * 1000;
   }
 
   /// <inheritdoc/>
@@ -382,6 +508,30 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
   {
     miny = 0;
     maxy = 0;
+    if (_spec is not { } spec)
+    {
+      return;
+    }
+    double dipRun =
+      (spec.Dip.avg + spec.Dip.var)
+      * Math.Min(
+        spec.Footprint.Run.avg + spec.Footprint.Run.var,
+        DepositFootprint.MaxLength
+      );
+    double stack = spec.Layers.Sum(l =>
+      l.Offset + Math.Max(0, l.Thickness.avg + l.Thickness.var)
+    );
+    if (spec.Anchor == SeamAnchor.Sealevel)
+    {
+      int seaLevel = Api.World.SeaLevel;
+      miny = (spec.YCropRel.avg - spec.YCropRel.var) * seaLevel - dipRun;
+      maxy = (spec.YCropRel.avg + spec.YCropRel.var) * seaLevel + stack;
+    }
+    else
+    {
+      miny = pos.Y - (spec.Depth.avg + spec.Depth.var) - dipRun;
+      maxy = pos.Y - (spec.Depth.avg - spec.Depth.var) + stack;
+    }
   }
 }
 #endif
