@@ -1,0 +1,37 @@
+ExpandedLib.Industry.Casting.CastingPatterns
+ExpandedLib.Industry.Casting.CastingStationKind
+ExpandedLib.Industry.Casting.CastingStationKind.CastingStationKind(string! Code, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MouldKind>! Moulds, string! SandBase, string! SandHalf) -> void
+ExpandedLib.Industry.Casting.CastingStationKind.Code.get -> string!
+ExpandedLib.Industry.Casting.CastingStationKind.Moulds.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MouldKind>!
+ExpandedLib.Industry.Casting.CastingStationKind.SameAs(ExpandedLib.Industry.Casting.CastingStationKind! other) -> bool
+ExpandedLib.Industry.Casting.CastingStationKind.SandBase.get -> string!
+ExpandedLib.Industry.Casting.CastingStationKind.SandHalf.get -> string!
+ExpandedLib.Industry.Casting.CastingStationKind.Takes(ExpandedLib.Industry.Casting.MouldKind mould) -> bool
+ExpandedLib.Industry.Casting.CastingStationRegistry
+ExpandedLib.Industry.Casting.CastingStationRegistry.All.get -> System.Collections.Generic.IReadOnlyCollection<ExpandedLib.Industry.Casting.CastingStationKind!>!
+ExpandedLib.Industry.Casting.CastingStationRegistry.Clear() -> void
+ExpandedLib.Industry.Casting.CastingStationRegistry.Contribute(ExpandedLib.Industry.Casting.CastingStationSet! set) -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Casting.CastingStationRegistry.Count.get -> int
+ExpandedLib.Industry.Casting.CastingStationRegistry.TryGet(string? code, out ExpandedLib.Industry.Casting.CastingStationKind? kind) -> bool
+ExpandedLib.Industry.Casting.CastingStationSet
+ExpandedLib.Industry.Casting.CastingStationSet.CastingStationSet(int Schema, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.CastingStationKind!>! Stations) -> void
+ExpandedLib.Industry.Casting.CastingStationSet.Schema.get -> int
+ExpandedLib.Industry.Casting.CastingStationSet.Stations.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.CastingStationKind!>!
+ExpandedLib.Industry.Casting.FillOrder
+ExpandedLib.Industry.Casting.FillOrder.Chain = 0 -> ExpandedLib.Industry.Casting.FillOrder
+ExpandedLib.Industry.Casting.FillOrder.Pairs = 1 -> ExpandedLib.Industry.Casting.FillOrder
+ExpandedLib.Industry.Casting.FillOrder.Rows = 2 -> ExpandedLib.Industry.Casting.FillOrder
+ExpandedLib.Industry.Casting.MoldSpec
+ExpandedLib.Industry.Casting.MoldSpec.Station.get -> string!
+ExpandedLib.Industry.Casting.MouldKind
+ExpandedLib.Industry.Casting.MouldKind.Closed = 1 -> ExpandedLib.Industry.Casting.MouldKind
+ExpandedLib.Industry.Casting.MouldKind.Open = 0 -> ExpandedLib.Industry.Casting.MouldKind
+const ExpandedLib.Industry.Casting.CastingStationSet.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.Casting.MoldSpec.AttributeKey = "mold" -> string!
+const ExpandedLib.Industry.Casting.MoldSpec.CurrentSchema = 1 -> int
+static ExpandedLib.Industry.Casting.CastingPatterns.IsPattern(Vintagestory.API.Common.CollectibleObject? collectible) -> bool
+static ExpandedLib.Industry.Casting.CastingPatterns.Validate(System.Collections.Generic.IEnumerable<Vintagestory.API.Common.CollectibleObject?>! collectibles, ExpandedLib.Industry.Casting.CastingStationRegistry? stations = null) -> System.Collections.Generic.List<string!>!
+static ExpandedLib.Industry.Casting.CastingStationRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
+static ExpandedLib.Industry.Casting.CastingStationRegistry.Shared.get -> ExpandedLib.Industry.Casting.CastingStationRegistry!
+static ExpandedLib.Industry.Casting.MoldSpec.TryParse(Vintagestory.API.Datastructures.JsonObject? mold, string! station, out ExpandedLib.Industry.Casting.MoldSpec? spec, out string? error, ExpandedLib.Industry.Casting.CastingStationRegistry? stations = null) -> bool
+static ExpandedLib.Industry.Casting.MoldSpec.TryParseAll(Vintagestory.API.Datastructures.JsonObject? mold, out System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MoldSpec!>! specs, out string? error, ExpandedLib.Industry.Casting.CastingStationRegistry? stations = null) -> bool

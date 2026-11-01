@@ -32,6 +32,10 @@ public class ExWorldStateTests {
     ["ExpandedLib.Catalogues.BayOccupancyLoader.ItemKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.ProcessJobLoader.RootKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.ProcessJobLoader.JobKeys"] = SchemaKeys,
+    ["ExpandedLib.Industry.Casting.CastingStationLoader.RootKeys"] = SchemaKeys,
+    ["ExpandedLib.Industry.Casting.CastingStationLoader.StationKeys"] =
+      SchemaKeys,
+    ["ExpandedLib.Industry.Casting.CastingStationLoader.SandKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.RootKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.SequenceKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.StepKeys"] = SchemaKeys,
