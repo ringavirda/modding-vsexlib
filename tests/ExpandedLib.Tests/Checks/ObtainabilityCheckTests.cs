@@ -168,18 +168,19 @@ public sealed class ObtainabilityCheckTests : IDisposable {
           Asking(("item", "stub:resin"), ("item", "stub:sap"))
         ).Block(
           "stub:log-withresin",
-          log =>
-            log.BlockBehaviors = [
-              Initialized(
-                new BlockBehaviorHarvestable(log),
-                """
-                { "harvestedStacks": [
-                  { "type": "item", "code": "stub:resin" },
-                  { "type": "item", "code": "stub:sap" }
-                ] }
-                """
-              ),
-            ]
+          log => {
+            BlockBehavior harvestable = Initialized(
+              new BlockBehaviorHarvestable(log),
+              """
+              { "harvestedStacks": [
+                { "type": "item", "code": "stub:resin" },
+                { "type": "item", "code": "stub:sap" }
+              ] }
+              """
+            );
+            log.BlockBehaviors = [harvestable];
+            log.CollectibleBehaviors = [harvestable];
+          }
         )
       )
     );
