@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
 using ExpandedLib.Structures;
 using Vintagestory.API.Common;
@@ -28,7 +29,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
   private readonly Dictionary<NodeKey, MpShaftRunState> _pending = [];
   private float _clockS;
   private readonly MpReadingGate _gate = new();
-  private double _lastHours = -1d;
+  private readonly GameClockCursor _clock = new();
   private bool _jointsStale = true;
   private readonly List<(int Edge, IMpEnergyLink Link)> _links = [];
   private readonly Dictionary<IMpEnergyLink, int> _slipping = [];
@@ -82,9 +83,7 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     BlockNetworkModSystem manager
   ) {
     double now = manager.ServerWorld?.Calendar?.TotalHours ?? -1d;
-    float hours =
-      now >= 0d && _lastHours >= 0d ? (float)(now - _lastHours) : 0f;
-    _lastHours = now;
+    float hours = (float)_clock.Advance(now);
     if (dt <= 0f)
       return;
     if (NodeKeys.Any(k => world.GetChunkAtBlockPos(k.Pos) == null)) {
