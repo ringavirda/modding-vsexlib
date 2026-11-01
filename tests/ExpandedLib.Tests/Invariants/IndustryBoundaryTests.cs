@@ -92,6 +92,7 @@ public class IndustryBoundaryTests {
     "ExpandedLib.FastForwarding",
     "ExpandedLib.Helpers",
     "ExpandedLib.Legacy",
+    "ExpandedLib.WorldGen",
   ];
 
   /// <summary>The distinct <c>ExpandedLib*</c> namespaces of <paramref name="types"/> missing

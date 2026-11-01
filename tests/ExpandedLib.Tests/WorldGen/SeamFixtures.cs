@@ -39,7 +39,7 @@ internal static class SeamFixtures
     foreach (
       string code in (string[])
         [
-          "iiex:ore-ooliticironstone",
+          "iiex:seamore-ironstone",
           "iiex:ore-massivehematite",
           "iiex:ore-bituminouscoal",
           "iiex:nodules-clayironstone",
@@ -51,7 +51,7 @@ internal static class SeamFixtures
     }
     foreach (
       string code in (string[])
-        ["iiex:looseooliticironstone-free", "iiex:looseclayironstone-free"]
+        ["iiex:looseore-ironstone-free", "iiex:looseclayironstone-free"]
     )
     {
       rig.Add(code, id++, EnumBlockMaterial.Stone);

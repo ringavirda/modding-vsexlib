@@ -21,7 +21,7 @@ public class SeamDataTests
 {
   // Fails when the mod system's Start does not register the generator code: the variant gets none.
   [Theory]
-  [InlineData("oolitic-ironstone", 160, 0.3f, 1, 4, 80f)]
+  [InlineData("ironstone", 160, 0.3f, 1, 4, 80f)]
   [InlineData("hematite-flat", 64, 0.05f, 1, 1, 32f)]
   [InlineData("coal-measures", 160, 0.3f, 6, 4, 80f)]
   public void A_fixture_builds_its_generator_through_the_registry(
@@ -91,7 +91,7 @@ public class SeamDataTests
     using var rig = new SeamRig();
     SeamFixtures.AddBlocks(rig);
 
-    var (variant, _) = Scaled(rig, "oolitic-ironstone", setting);
+    var (variant, _) = Scaled(rig, "ironstone", setting);
 
     Assert.Equal(expected, variant.TriesPerChunk, 6);
   }
@@ -107,13 +107,13 @@ public class SeamDataTests
   {
     using var rig = new SeamRig();
     SeamFixtures.AddBlocks(rig);
-    var (_, generator) = Scaled(rig, "oolitic-ironstone", setting);
+    var (_, generator) = Scaled(rig, "ironstone", setting);
     var chunks = rig.Chunks();
 
     rig.Generate(generator, chunks, 0, new BlockPos(16, 100, 16));
 
     int ironstone = rig
-      .World.World.GetBlock(new AssetLocation("iiex:ore-ooliticironstone"))
+      .World.World.GetBlock(new AssetLocation("iiex:seamore-ironstone"))
       .BlockId;
     Assert.Equal(writes, SeamRig.Count(chunks, ironstone) > 0);
   }

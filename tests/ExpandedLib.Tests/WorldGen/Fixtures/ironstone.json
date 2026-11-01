@@ -1,7 +1,7 @@
 [
   {
-    "code": "oolitic-ironstone",
-    "handbookPageCode": "block-iiex:ore-ooliticironstone",
+    "code": "ironstone",
+    "handbookPageCode": "block-iiex:ore-ironstone",
     "generator": "exlib-seam",
     "triesPerChunk": 0.0076,
     "scaleWithWorldheight": false,
@@ -23,9 +23,9 @@
       "minCover": 0,
       "propickDepth": 48,
       "layers": [
-        { "block": "iiex:ore-ooliticironstone", "offset": 0,
+        { "block": "iiex:seamore-ironstone", "offset": 0,
           "thickness": { "dist": "uniform", "avg": 3, "var": 1 },
-          "surfaceBlock": "iiex:looseooliticironstone-free", "surfaceBlockChance": 0.08, "propick": true,
+          "surfaceBlock": "iiex:looseore-ironstone-free", "surfaceBlockChance": 0.08, "propick": true,
           "outcrop": { "block": "game:ore-{grade}-limonite-{rock}", "grades": ["poor", "medium"],
                        "depth": { "dist": "uniform", "avg": 3, "var": 0 } } }
       ],

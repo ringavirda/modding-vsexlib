@@ -92,7 +92,7 @@ public class SeamBodyTests
 
   // Fails when a field loses its JsonProperty or the file is read without strict members.
   [Fact]
-  public void The_oolitic_example_loads_strictly_with_its_defaults()
+  public void The_ironstone_example_loads_strictly_with_its_defaults()
   {
     const string json = """
       { "inBlock": { "code": "game:rock-*", "name": "rock", "allowedVariants": ["shale"] },
@@ -103,9 +103,9 @@ public class SeamBodyTests
         "anchor": "sealevel",
         "yCropRel": { "dist": "uniform", "avg": 1.115, "var": 0.065 },
         "propickDepth": 40,
-        "layers": [ { "block": "iiex:ore-ooliticironstone",
+        "layers": [ { "block": "iiex:seamore-ironstone",
                       "thickness": { "dist": "uniform", "avg": 3, "var": 1 },
-                      "surfaceBlock": "iiex:looseooliticironstone-free", "surfaceBlockChance": 0.08,
+                      "surfaceBlock": "iiex:looseore-ironstone-free", "surfaceBlockChance": 0.08,
                       "outcrop": { "block": "game:ore-{grade}-limonite-{rock}", "grades": ["poor", "medium"],
                                    "depth": { "dist": "uniform", "avg": 3, "var": 0 } } } ],
         "worldScale": { "code": "iiexBulkOre", "values": { "off": 0, "rich": 2 } },

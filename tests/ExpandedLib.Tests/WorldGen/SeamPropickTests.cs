@@ -30,7 +30,7 @@ public class SeamPropickTests
     SeamFixtures.AddBlocks(rig);
     var generator = SeamFixtures.Generator(
       rig,
-      SeamFixtures.Variant("oolitic-ironstone")
+      SeamFixtures.Variant("ironstone")
     );
 
     generator.GetPropickReading(
@@ -60,7 +60,7 @@ public class SeamPropickTests
     rig.World.Config.Tree.SetString("iiexBulkOre", "off");
     var generator = SeamFixtures.Generator(
       rig,
-      SeamFixtures.Variant("oolitic-ironstone")
+      SeamFixtures.Variant("ironstone")
     );
 
     generator.GetPropickReading(
@@ -84,7 +84,7 @@ public class SeamPropickTests
     rig.World.World.SeaLevel.Returns(110);
     var generator = SeamFixtures.Generator(
       rig,
-      SeamFixtures.Variant("oolitic-ironstone")
+      SeamFixtures.Variant("ironstone")
     );
 
     generator.GetYMinMax(
