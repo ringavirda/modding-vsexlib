@@ -558,4 +558,14 @@ public class ViewBandsTests {
     ViewGroup group = ViewGates.GroupOf(World, block)!;
     Assert.Null(ViewGates.TwinOf(World, group));
   }
+
+  // Fails when the generic-shape exclusion is removed from the block rule: a cube block then takes a twin.
+  [Fact]
+  public void A_block_drawing_a_generic_game_shape_has_no_twin() {
+    Block block = FixtureBlock("genericcube");
+    Assert.Equal("block/basic/cube", block.Shape.Base.Path);
+    Assert.Null(ItemViews.VanillaShape(World.Api, block));
+    ViewGroup group = ViewGates.GroupOf(World, block)!;
+    Assert.Null(ViewGates.TwinOf(World, group));
+  }
 }

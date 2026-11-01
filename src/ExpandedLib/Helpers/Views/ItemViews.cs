@@ -210,11 +210,16 @@ public static class ItemViews {
   }
 
   // The game block that draws the same shape as a mod block with no itemViews key other than held; the first by
-  // ordinal code. A game block has none.
+  // ordinal code. A game block has none, nor has a block whose shape is a generic game shape under game:block/basic/.
   internal static Block? VanillaShape(ICoreAPI api, Block block) {
     if (
       block.Code?.Domain == "game"
       || block.Shape?.Base == null
+      || block.Shape.Base.Domain == "game"
+        && block.Shape.Base.Path.StartsWith(
+          "block/basic/",
+          StringComparison.Ordinal
+        )
       || DeclaresViews(block)
     )
       return null;
