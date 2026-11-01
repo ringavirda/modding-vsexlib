@@ -235,7 +235,7 @@ internal static class CollectibleViews {
       return cached;
     Shape? shape = ExMeshCache.LoadShape(
       api,
-      new AssetLocation(basePath)
+      FirstOfWildcard(api, new AssetLocation(basePath))
         .WithPathPrefixOnce("shapes/")
         .WithPathAppendixOnce(".json")
     );
@@ -245,6 +245,26 @@ internal static class CollectibleViews {
         : Fit(Drawn(shape, keep), Pose.Turn(rotation), shapeFrame);
     Boxes[key] = box;
     return box;
+  }
+
+  // A base ending in * names the numbered shapes the game expands it to; the first by ordinal path stands for them.
+  private static AssetLocation FirstOfWildcard(
+    ICoreAPI api,
+    AssetLocation location
+  ) {
+    if (!location.Path.EndsWith('*'))
+      return location;
+    string prefix = "shapes/" + location.Path[..^1];
+    AssetLocation? first = api
+      .Assets.GetLocations(prefix, location.Domain)
+      .OrderBy(l => l.Path, StringComparer.Ordinal)
+      .FirstOrDefault();
+    return first == null
+      ? location
+      : new AssetLocation(
+        first.Domain,
+        first.Path["shapes/".Length..^".json".Length]
+      );
   }
 
   // A drawn element has an enabled face with a texture and at least two sides of length. A disabled

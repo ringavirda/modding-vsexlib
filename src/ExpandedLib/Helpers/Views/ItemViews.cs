@@ -209,8 +209,8 @@ public static class ItemViews {
       .FirstOrDefault();
   }
 
-  // The game block that draws the same shape as a mod block with no itemViews key other than held; the first by
-  // ordinal code. A game block has none, nor has a block whose shape is a generic game shape under game:block/basic/.
+  // The game block that draws a mod block's shape, an exact base before one ending in * (see SameShape), then by
+  // ordinal code. A game block has none, nor has one drawing a generic shape under game:block/basic/.
   internal static Block? VanillaShape(ICoreAPI api, Block block) {
     if (
       block.Code?.Domain == "game"
@@ -228,11 +228,23 @@ public static class ItemViews {
       .World.Blocks.Where(b =>
         b?.Code?.Domain == "game"
         && b.Shape?.Base != null
-        && b.Shape.Base.Equals(block.Shape.Base)
+        && SameShape(b.Shape.Base, block.Shape.Base)
         && keep.SequenceEqual(b.Shape.SelectiveElements ?? [])
       )
-      .OrderBy(b => b.Code.ToString(), StringComparer.Ordinal)
+      .OrderBy(b => b.Shape.Base.Equals(block.Shape.Base) ? 0 : 1)
+      .ThenBy(b => b.Code.ToString(), StringComparer.Ordinal)
       .FirstOrDefault();
+  }
+
+  // A game base ending in * matches a mod base in its directory that starts with the text before the star.
+  private static bool SameShape(AssetLocation game, AssetLocation mod) {
+    if (game.Equals(mod))
+      return true;
+    if (game.Domain != mod.Domain || !game.Path.EndsWith('*'))
+      return false;
+    string prefix = game.Path[..^1];
+    return mod.Path.StartsWith(prefix, StringComparison.Ordinal)
+      && mod.Path.IndexOf('/', prefix.Length) < 0;
   }
 
   private static bool DeclaresViews(CollectibleObject item) =>

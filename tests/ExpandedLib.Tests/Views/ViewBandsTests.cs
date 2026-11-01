@@ -534,6 +534,20 @@ public class ViewBandsTests {
     Assert.Equal(twin.TpHandTransform.ScaleXYZ, views.TpHand.ScaleXYZ);
   }
 
+  // Fails when the wildcard branch is removed from the block rule: free2 equals no game block's base, only the star one.
+  [Fact]
+  public void A_game_base_ending_in_a_star_matches_the_numbered_shape() {
+    Block block = FixtureBlock("loosestonenumbered");
+    Block twin = ItemViews.VanillaShape(World.Api, block)!;
+    Assert.Equal("game", twin.Code.Domain);
+    Assert.EndsWith("*", twin.Shape.Base.Path);
+    Assert.NotEqual(block.Shape.Base, twin.Shape.Base);
+    Assert.Equal(
+      twin.Code.Path,
+      ViewGates.TwinOf(World, ViewGates.GroupOf(World, block)!)!.Code
+    );
+  }
+
   // Fails when TwinOf drops the block case: the block is then judged by its kind's band and has no twin.
   [Fact]
   public void A_block_twin_is_judged_against_its_twin() {
