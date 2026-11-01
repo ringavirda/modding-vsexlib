@@ -35,3 +35,19 @@ static ExpandedLib.Industry.Casting.CastingStationRegistry.Contributors.get -> E
 static ExpandedLib.Industry.Casting.CastingStationRegistry.Shared.get -> ExpandedLib.Industry.Casting.CastingStationRegistry!
 static ExpandedLib.Industry.Casting.MoldSpec.TryParse(Vintagestory.API.Datastructures.JsonObject? mold, string! station, out ExpandedLib.Industry.Casting.MoldSpec? spec, out string? error, ExpandedLib.Industry.Casting.CastingStationRegistry? stations = null) -> bool
 static ExpandedLib.Industry.Casting.MoldSpec.TryParseAll(Vintagestory.API.Datastructures.JsonObject? mold, out System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MoldSpec!>! specs, out string? error, ExpandedLib.Industry.Casting.CastingStationRegistry? stations = null) -> bool
+ExpandedLib.Industry.Casting.MoldFitRegistry
+ExpandedLib.Industry.Casting.MoldFitRegistry.Clear() -> void
+ExpandedLib.Industry.Casting.MoldFitRegistry.Contribute(ExpandedLib.Industry.Casting.MoldFitSet! set) -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Casting.MoldFitRegistry.Count.get -> int
+ExpandedLib.Industry.Casting.MoldFitRegistry.IsOversizeType(string? tooltype) -> bool
+ExpandedLib.Industry.Casting.MoldFitSet
+ExpandedLib.Industry.Casting.MoldFitSet.MoldFitSet(int Schema, System.Collections.Generic.IReadOnlyList<string!>! Oversize) -> void
+ExpandedLib.Industry.Casting.MoldFitSet.Oversize.get -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Casting.MoldFitSet.Schema.get -> int
+ExpandedLib.Industry.Casting.MoldFits
+static ExpandedLib.Industry.Casting.MoldFits.IsOversize(Vintagestory.API.Common.Block? block) -> bool
+static ExpandedLib.Industry.Casting.MoldFits.FitsPedestal(Vintagestory.API.Common.Block? block) -> bool
+const ExpandedLib.Industry.Casting.MoldFitSet.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.Casting.MoldFits.AttributeKey = "moldFit" -> string!
+static ExpandedLib.Industry.Casting.MoldFitRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
+static ExpandedLib.Industry.Casting.MoldFitRegistry.Shared.get -> ExpandedLib.Industry.Casting.MoldFitRegistry!

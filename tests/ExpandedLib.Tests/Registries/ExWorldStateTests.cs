@@ -36,6 +36,7 @@ public class ExWorldStateTests {
     ["ExpandedLib.Industry.Casting.CastingStationLoader.StationKeys"] =
       SchemaKeys,
     ["ExpandedLib.Industry.Casting.CastingStationLoader.SandKeys"] = SchemaKeys,
+    ["ExpandedLib.Industry.Casting.MoldFitLoader.RootKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.RootKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.SequenceKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.StepKeys"] = SchemaKeys,
