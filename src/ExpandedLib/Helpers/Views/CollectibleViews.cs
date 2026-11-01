@@ -236,6 +236,7 @@ internal static class CollectibleViews {
     Shape? shape = ExMeshCache.LoadShape(
       api,
       FirstOfWildcard(api, new AssetLocation(basePath))
+        .Clone()
         .WithPathPrefixOnce("shapes/")
         .WithPathAppendixOnce(".json")
     );
