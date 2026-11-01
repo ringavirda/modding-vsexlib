@@ -1,0 +1,12 @@
+{
+  "code": "loosestonedeclared",
+  "class": "Block",
+  "shape": {
+    "base": "game:block/stone/loosestones/free1"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "partial"
+    }
+  }
+}

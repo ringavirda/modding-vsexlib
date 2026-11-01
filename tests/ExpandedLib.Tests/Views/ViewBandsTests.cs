@@ -516,4 +516,46 @@ public class ViewBandsTests {
     );
     Assert.Contains($"({metrics.Twin!.Code} ", finding.Message);
   }
+
+  private static Block FixtureBlock(string path) =>
+    World.World.GetBlock(new AssetLocation("viewsfixture", path));
+
+  // Fails when ComputeHeld skips the block twin: the block then takes the computed partial views, not the game block's.
+  [Fact]
+  public void A_block_drawing_a_game_blocks_shape_ships_its_transforms() {
+    Block block = FixtureBlock("loosestone");
+    Block twin = ItemViews.VanillaShape(World.Api, block)!;
+    Assert.Equal("game", twin.Code.Domain);
+    Assert.Equal(block.Shape.Base, twin.Shape.Base);
+    ItemViewSet views = ItemViews.Compute(World.Api, block)!;
+    Assert.Equal(twin.GuiTransform.ScaleXYZ, views.Gui.ScaleXYZ);
+    Assert.Equal(twin.GuiTransform.Rotation, views.Gui.Rotation);
+    Assert.Equal(twin.GroundTransform.ScaleXYZ, views.Ground.ScaleXYZ);
+    Assert.Equal(twin.TpHandTransform.ScaleXYZ, views.TpHand.ScaleXYZ);
+  }
+
+  // Fails when TwinOf drops the block case: the block is then judged by its kind's band and has no twin.
+  [Fact]
+  public void A_block_twin_is_judged_against_its_twin() {
+    Block block = FixtureBlock("loosestone");
+    ItemViewSet views = ItemViews.Compute(World.Api, block)!;
+    ViewGroup group = ViewGates.Measured(
+      ViewGates.GroupOf(World, block)!,
+      views
+    );
+    GroupMetrics metrics = ViewGates.Measure(World, group);
+    Assert.Equal(
+      ItemViews.VanillaShape(World.Api, block)!.Code.Path,
+      metrics.Twin!.Code
+    );
+  }
+
+  // Fails when the declared-views guard is dropped from the block rule: a block that declares views then gets a twin.
+  [Fact]
+  public void A_block_that_declares_views_has_no_twin() {
+    Block block = FixtureBlock("loosestonedeclared");
+    Assert.Null(ItemViews.VanillaShape(World.Api, block));
+    ViewGroup group = ViewGates.GroupOf(World, block)!;
+    Assert.Null(ViewGates.TwinOf(World, group));
+  }
 }

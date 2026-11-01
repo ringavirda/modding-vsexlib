@@ -582,13 +582,20 @@ internal static class ViewGates {
     ("G13", "G13", "hand.centre", "tp"),
   ];
 
-  /// <summary>The game item whose shipped views <paramref name="group"/> takes, measured on its own views.</summary>
+  /// <summary>The game item or block whose shipped views <paramref name="group"/> takes, measured on its own views.</summary>
   /// <param name="world">The world the group comes from.</param>
-  /// <param name="group">The group; only an item that the vanilla-shape rule matches has a twin.</param>
-  /// <returns>The twin; null when the group is a block, declares its own views, or draws no game item's shape.</returns>
+  /// <param name="group">The group; only an item or block that the vanilla-shape rule matches has a twin.</param>
+  /// <returns>The twin; null when the group declares its own views or draws no game item's or block's shape.</returns>
   internal static ViewTwin? TwinOf(TestWorld world, ViewGroup group) =>
-    group.Representative is Item item
-    && ItemViews.VanillaShape(world.Api, item) is { } twin
+    (
+      group.Representative switch {
+        Item item => ItemViews.VanillaShape(world.Api, item),
+        Block block => (CollectibleObject?)
+          ItemViews.VanillaShape(world.Api, block),
+        _ => null,
+      }
+    )
+      is { } twin
     && GroupOf(world, twin) is { } twinGroup
       ? new ViewTwin(twin.Code.Path, MeasureOwn(world, twinGroup))
       : null;
