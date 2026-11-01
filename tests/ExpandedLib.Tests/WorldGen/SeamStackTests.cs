@@ -47,6 +47,7 @@ public class SeamStackTests
     }
   }
 
+  // Fails when two layers swap places in the stack.
   [Fact]
   public void The_coal_measures_stack_at_full_height_in_order()
   {

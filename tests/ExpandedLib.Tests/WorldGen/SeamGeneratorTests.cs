@@ -360,7 +360,7 @@ public class SeamGeneratorTests
 
   // Fails when the last-layer flag is ignored or applied to every block.
   [Fact]
-  public void The_last_layer_flag_hands_only_the_top_block_of_each_column_to_the_block()
+  public void The_last_layer_flag_hands_only_the_lowest_block_of_each_column_to_the_block()
   {
     using var rig = new SeamRig();
     var ore = new RecordingBlock();
@@ -378,7 +378,7 @@ public class SeamGeneratorTests
     rig.Generate(rig.Generator(attrs, 5), chunks, 0, new BlockPos(16, 100, 16));
 
     Assert.True(ore.Placed.Count > 100);
-    Assert.All(ore.Placed, p => Assert.Equal(SeamRig.RockTop, p.Y));
+    Assert.All(ore.Placed, p => Assert.Equal(SeamRig.RockTop - 2, p.Y));
     Assert.Equal(ore.Placed.Count * 2, SeamRig.Count(chunks, ore.BlockId));
   }
 

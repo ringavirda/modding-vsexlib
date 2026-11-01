@@ -64,6 +64,7 @@ internal sealed class SeamSpec
   [JsonProperty]
   public DepositBlock InBlock { get; set; } = null!;
 
+  /// <summary>Extent and edge taper of the body in plan.</summary>
   [JsonProperty]
   public SeamFootprintSpec Footprint { get; set; } = null!;
 
@@ -71,6 +72,7 @@ internal sealed class SeamSpec
   [JsonProperty]
   public NatFloat Dip { get; set; } = NatFloat.Zero;
 
+  /// <summary>What the body's base height is measured from.</summary>
   [JsonProperty]
   [JsonConverter(typeof(StringEnumConverter))]
   public SeamAnchor Anchor { get; set; } = SeamAnchor.Sealevel;
@@ -88,7 +90,7 @@ internal sealed class SeamSpec
   [JsonProperty]
   public int MinCover { get; set; }
 
-  /// <summary>Whether the topmost block of each column's stack goes through the block's world
+  /// <summary>Whether the lowest block of each column's stack goes through the block's world
   /// generation callback when the variant's own callback flag is off.</summary>
   [JsonProperty]
   public bool WithLastLayerBlockCallback { get; set; }
@@ -101,6 +103,7 @@ internal sealed class SeamSpec
   [JsonProperty]
   public List<SeamLayer> Layers { get; set; } = [];
 
+  /// <summary>World creation setting that multiplies the body's tries per chunk; null leaves them.</summary>
   [JsonProperty]
   public SeamWorldScale? WorldScale { get; set; }
 

@@ -291,7 +291,7 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
           }
           if (
             variant.WithBlockCallback
-            || (spec.WithLastLayerBlockCallback && c == cells.Count - 1)
+            || (spec.WithLastLayerBlockCallback && c == 0)
           )
           {
             target.Set(x, cell.Y, z);
@@ -389,10 +389,11 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
       (float)((double)pos.X / regionSize % 1.0),
       (float)((double)pos.Z / regionSize % 1.0)
     );
-    float rainRel = Climate.GetRainFall((climate >> 8) & 0xff, pos.Y) / 255f;
+    float rainRel =
+      Climate.GetRainFall((climate >> 8) & 0xff, Api.World.SeaLevel) / 255f;
     float temp = Climate.GetScaledAdjustedTemperatureFloat(
       (climate >> 16) & 0xff,
-      pos.Y - Api.World.SeaLevel
+      0
     );
     return (float)
       Math.Clamp(

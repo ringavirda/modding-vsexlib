@@ -14,7 +14,7 @@ namespace ExpandedLib.Tests.WorldGen;
 public class SeamOutcropTests
 {
   private const int Row = 16;
-  private const int PosY = 150;
+  private const int PosY = -99;
 
   private const string OutcropLayer = """
     [ { "block": "test:ore", "thickness": { "dist": "uniform", "avg": 3, "var": 0 },
@@ -45,14 +45,13 @@ public class SeamOutcropTests
     int tempByte = Enumerable
       .Range(0, 256)
       .MinBy(b =>
-        Math.Abs(
-          Climate.GetScaledAdjustedTemperatureFloat(b, PosY - SeamRig.SeaLevel)
-            - temp
-        )
+        Math.Abs(Climate.GetScaledAdjustedTemperatureFloat(b, 0) - temp)
       );
     int rainByte = Enumerable
       .Range(0, 256)
-      .MinBy(b => Math.Abs(Climate.GetRainFall(b, PosY) / 255f - rainRel));
+      .MinBy(b =>
+        Math.Abs(Climate.GetRainFall(b, SeamRig.SeaLevel) / 255f - rainRel)
+      );
     int color = (tempByte << 16) | (rainByte << 8);
     var map = new IntDataMap2D
     {
