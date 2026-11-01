@@ -1,0 +1,309 @@
+#nullable enable
+const ExpandedLib.Industry.MechanicalPower.MpSegmentReading.TreeKey = "mpReading" -> string!
+const ExpandedLib.Industry.Molten.CrowbarHold.HoldSeconds = 1 -> float
+const ExpandedLib.Industry.Molten.MoltenBar.HoldSeconds = 1 -> float
+const ExpandedLib.Industry.Molten.MoltenBar.LiquidError = "exlib-moltenbarliquid" -> string!
+const ExpandedLib.Industry.Molten.MoltenBreakGuard.ErrorCode = "exlib-moltenliquidbreak" -> string!
+const ExpandedLib.Industry.Molten.MoltenBurn.HotTraversalCost = 10000 -> float
+ExpandedLib.Industry.Heat.HeatCooling
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Advance(float dt, float hours, float slipPowerW) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.BEBehaviorMpBelt(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Break() -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Broken.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.CapNm.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Connect(ExpandedLib.Networks.NodeKey from, ExpandedLib.Networks.NodeKey to, ExpandedLib.Industry.MechanicalPower.MpShaftSize fromPulley, ExpandedLib.Industry.MechanicalPower.MpShaftSize toPulley, bool crossed = false) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Efficiency.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Engaged.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.From.get -> ExpandedLib.Networks.NodeKey
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.LifeJ.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Ratio.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Sign.get -> int
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.SlipTorque(float relativeSpeed) -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Snapped -> System.Action?
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.To.get -> ExpandedLib.Networks.NodeKey
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Wear.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Wear.set -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.WornOut.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.Advance(float dt, float hours, float slipPowerW) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.BEBehaviorMpClutch(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.CapNm.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.Clamp.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.Connect(ExpandedLib.Networks.NodeKey from, ExpandedLib.Networks.NodeKey to, ExpandedLib.Industry.MechanicalPower.MpShaftSize size) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.Efficiency.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.Engaged.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.Engaged.set -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.From.get -> ExpandedLib.Networks.NodeKey
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.Ratio.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.Sign.get -> int
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.SlipTorque(float relativeSpeed) -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.To.get -> ExpandedLib.Networks.NodeKey
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.Resistance.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.Resistance.set -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.BEBehaviorMpOverrun(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.CapNm.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Connect(ExpandedLib.Networks.NodeKey from, ExpandedLib.Networks.NodeKey to, int sense = 1) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Efficiency.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Engaged.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Freewheels(int heading) -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.From.get -> ExpandedLib.Networks.NodeKey
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Overrunning.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Ratio.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Sense.get -> int
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.SetFreewheeling(bool freewheeling) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Sign.get -> int
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.SlipTorque(float relativeSpeed) -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Thrown.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Thrown.set -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.To.get -> ExpandedLib.Networks.NodeKey
+ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts
+ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.AngleRad(byte slot) -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.BEBehaviorTurningParts(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.Parts.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.MechanicalPower.TurningPart!>!
+ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.UseParts(System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.MechanicalPower.TurningPart!>! parts) -> void
+ExpandedLib.Industry.MechanicalPower.IMpEnergyConsumer.LoadSlope(float speed) -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyConsumer.StandingNm.get -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.Advance(float dt, float hours, float slipPowerW) -> void
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.Break() -> void
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.CapNm.get -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.Efficiency.get -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.Engaged.get -> bool
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.Freewheels(int heading) -> bool
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.From.get -> ExpandedLib.Networks.NodeKey
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.Ratio.get -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.SetFreewheeling(bool freewheeling) -> void
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.Sign.get -> int
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.SlipTorque(float relativeSpeed) -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.To.get -> ExpandedLib.Networks.NodeKey
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.WornOut.get -> bool
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLinkSource
+ExpandedLib.Industry.MechanicalPower.IMpEnergyLinkSource.LinksAt(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> System.Collections.Generic.IEnumerable<ExpandedLib.Industry.MechanicalPower.IMpEnergyLink!>!
+ExpandedLib.Industry.MechanicalPower.IMpEnergyProducer.DriveSlope(float speed) -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyRim
+ExpandedLib.Industry.MechanicalPower.IMpEnergyRim.Burst() -> void
+ExpandedLib.Industry.MechanicalPower.IMpEnergyRim.RimLimitRadS.get -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyRim.RimStrain.get -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyRim.RimStrain.set -> void
+ExpandedLib.Industry.MechanicalPower.IMpEnergySegment
+ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.Part() -> void
+ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.RatingNm.get -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.Size.get -> ExpandedLib.Industry.MechanicalPower.MpShaftSize
+ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.StandingNm.get -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.StiffnessNmPerRad.get -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.StoreReading(ExpandedLib.Industry.MechanicalPower.MpSegmentReading reading) -> void
+ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.Strain.get -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.Strain.set -> void
+ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.UltimateNm.get -> float
+ExpandedLib.Industry.MechanicalPower.MpCamLoad
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.DropsCrossed(float phase, float dphase) -> int
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.EnergyJ.get -> float
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.EnergyJ.init -> void
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.LiftArc.get -> float
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.LiftArc.init -> void
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.LiftsPerTurn.get -> int
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.LiftsPerTurn.init -> void
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.MeanTorque() -> float
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.MpCamLoad() -> void
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.MpCamLoad(float EnergyJ, int LiftsPerTurn, float LiftArc) -> void
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.PeakTorque.get -> float
+ExpandedLib.Industry.MechanicalPower.MpCamLoad.StepTorque(float phase, float speed, float dt) -> float
+ExpandedLib.Industry.MechanicalPower.MpRun
+ExpandedLib.Industry.MechanicalPower.MpRunAnglePacket
+ExpandedLib.Industry.MechanicalPower.MpRunAnglePacket.Angle -> double[]!
+ExpandedLib.Industry.MechanicalPower.MpRunAnglePacket.MpRunAnglePacket() -> void
+ExpandedLib.Industry.MechanicalPower.MpRunAnglePacket.Slot -> int[]!
+ExpandedLib.Industry.MechanicalPower.MpRunAnglePacket.Speed -> float[]!
+ExpandedLib.Industry.MechanicalPower.MpRunAnglePacket.X -> int[]!
+ExpandedLib.Industry.MechanicalPower.MpRunAnglePacket.Y -> int[]!
+ExpandedLib.Industry.MechanicalPower.MpRunAnglePacket.Z -> int[]!
+ExpandedLib.Industry.MechanicalPower.MpRunReading
+ExpandedLib.Industry.MechanicalPower.MpRunReading.AvailableTorqueNm.get -> float
+ExpandedLib.Industry.MechanicalPower.MpRunReading.AvailableTorqueNm.init -> void
+ExpandedLib.Industry.MechanicalPower.MpRunReading.MpRunReading() -> void
+ExpandedLib.Industry.MechanicalPower.MpRunReading.MpRunReading(float SpeedRadS, float AvailableTorqueNm) -> void
+ExpandedLib.Industry.MechanicalPower.MpRunReading.SpeedRadS.get -> float
+ExpandedLib.Industry.MechanicalPower.MpRunReading.SpeedRadS.init -> void
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.MpSegmentReading() -> void
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.MpSegmentReading(float TorqueNm, float RatingNm, float Strain, float SpeedRadS, ExpandedLib.Industry.MechanicalPower.MpShaftSize Size) -> void
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.RatingNm.get -> float
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.RatingNm.init -> void
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.Size.get -> ExpandedLib.Industry.MechanicalPower.MpShaftSize
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.Size.init -> void
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.SpeedRadS.get -> float
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.SpeedRadS.init -> void
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.Strain.get -> float
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.Strain.init -> void
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.TorqueNm.get -> float
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.TorqueNm.init -> void
+ExpandedLib.Industry.MechanicalPower.MpSegmentReading.WriteTo(Vintagestory.API.Datastructures.ITreeAttribute! host) -> void
+ExpandedLib.Industry.MechanicalPower.MpShaftSize
+ExpandedLib.Industry.MechanicalPower.MpShaftSize.Line = 1 -> ExpandedLib.Industry.MechanicalPower.MpShaftSize
+ExpandedLib.Industry.MechanicalPower.MpShaftSize.Main = 2 -> ExpandedLib.Industry.MechanicalPower.MpShaftSize
+ExpandedLib.Industry.MechanicalPower.MpShaftSize.None = 0 -> ExpandedLib.Industry.MechanicalPower.MpShaftSize
+ExpandedLib.Industry.MechanicalPower.TurningPart
+ExpandedLib.Industry.MechanicalPower.TurningPart.Axis.get -> Vintagestory.API.MathTools.EnumAxis
+ExpandedLib.Industry.MechanicalPower.TurningPart.Axis.init -> void
+ExpandedLib.Industry.MechanicalPower.TurningPart.Elements.get -> string![]!
+ExpandedLib.Industry.MechanicalPower.TurningPart.Elements.init -> void
+ExpandedLib.Industry.MechanicalPower.TurningPart.Pivot.get -> Vintagestory.API.MathTools.Vec3f?
+ExpandedLib.Industry.MechanicalPower.TurningPart.Pivot.init -> void
+ExpandedLib.Industry.MechanicalPower.TurningPart.Ratio.get -> float
+ExpandedLib.Industry.MechanicalPower.TurningPart.Ratio.init -> void
+ExpandedLib.Industry.MechanicalPower.TurningPart.Sign.get -> int
+ExpandedLib.Industry.MechanicalPower.TurningPart.Sign.init -> void
+ExpandedLib.Industry.MechanicalPower.TurningPart.Slot.get -> byte
+ExpandedLib.Industry.MechanicalPower.TurningPart.Slot.init -> void
+ExpandedLib.Industry.MechanicalPower.TurningPart.TurningPart(string![]! Elements, byte Slot = 0, float Ratio = 1, int Sign = 1, Vintagestory.API.MathTools.EnumAxis Axis = Vintagestory.API.MathTools.EnumAxis.Z, Vintagestory.API.MathTools.Vec3f? Pivot = null) -> void
+ExpandedLib.Industry.Metals.MetalDef.RequiresAnvilTier.get -> int?
+ExpandedLib.Industry.Metals.MetalDef.RequiresAnvilTier.set -> void
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.GetSpillRecoveryDrop(Vintagestory.API.Common.IWorldAccessor! world) -> Vintagestory.API.Common.ItemStack?
+ExpandedLib.Industry.Molten.BlockBehaviorMoltenBurn
+ExpandedLib.Industry.Molten.BlockBehaviorMoltenBurn.BlockBehaviorMoltenBurn(Vintagestory.API.Common.Block! block) -> void
+ExpandedLib.Industry.Molten.BlockBehaviorMoltenBurn.Collide(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.Entities.Entity! entity, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockFacing! facing) -> bool
+ExpandedLib.Industry.Molten.CrowbarHold
+ExpandedLib.Industry.Molten.IChiselableMolten.CanBreakOut.get -> bool
+ExpandedLib.Industry.Molten.ICrowbarVerb
+ExpandedLib.Industry.Molten.ICrowbarVerb.CrowbarActs(Vintagestory.API.Common.IBlockAccessor! blocks, Vintagestory.API.MathTools.BlockPos! pos) -> bool
+ExpandedLib.Industry.Molten.IMoltenCell.Fall.get -> int
+ExpandedLib.Industry.Molten.IMoltenFillable
+ExpandedLib.Industry.Molten.IMoltenFillable.FillHeld(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.ItemStack! vessel, Vintagestory.API.Common.ItemStack! metal, int units) -> int
+ExpandedLib.Industry.Molten.IMoltenSurface
+ExpandedLib.Industry.Molten.IMoltenSurface.SurfaceLiquid.get -> bool
+ExpandedLib.Industry.Molten.IMoltenSurface.SurfaceTemperature.get -> float?
+ExpandedLib.Industry.Molten.MoltenBar
+ExpandedLib.Industry.Molten.MoltenBreakGuard
+ExpandedLib.Industry.Molten.MoltenBurn
+ExpandedLib.Industry.Molten.MoltenHolders
+ExpandedLib.Industry.Molten.MoltenSinks
+ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell
+ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.BEBehaviorPipeFlowCell(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.Industry.Pipes.FlowBore
+ExpandedLib.Industry.Pipes.FlowBore.BoreMetres.get -> double
+ExpandedLib.Industry.Pipes.FlowBore.BoreMetres.init -> void
+ExpandedLib.Industry.Pipes.FlowBore.BurstAtm.get -> double
+ExpandedLib.Industry.Pipes.FlowBore.BurstAtm.init -> void
+ExpandedLib.Industry.Pipes.FlowBore.FlowBore(double BoreMetres, double WorkingAtm, double BurstAtm, int Span, double Friction, string! Joint, double WallKgPerMetre = 0, double WallMetres = 0) -> void
+ExpandedLib.Industry.Pipes.FlowBore.Friction.get -> double
+ExpandedLib.Industry.Pipes.FlowBore.Friction.init -> void
+ExpandedLib.Industry.Pipes.FlowBore.Joint.get -> string!
+ExpandedLib.Industry.Pipes.FlowBore.Joint.init -> void
+ExpandedLib.Industry.Pipes.FlowBore.Span.get -> int
+ExpandedLib.Industry.Pipes.FlowBore.Span.init -> void
+ExpandedLib.Industry.Pipes.FlowBore.WallKgPerMetre.get -> double
+ExpandedLib.Industry.Pipes.FlowBore.WallKgPerMetre.init -> void
+ExpandedLib.Industry.Pipes.FlowBore.WallMetres.get -> double
+ExpandedLib.Industry.Pipes.FlowBore.WallMetres.init -> void
+ExpandedLib.Industry.Pipes.FlowBore.WorkingAtm.get -> double
+ExpandedLib.Industry.Pipes.FlowBore.WorkingAtm.init -> void
+ExpandedLib.Industry.Pipes.FlowBores
+ExpandedLib.Industry.Pipes.FlowGas
+ExpandedLib.Industry.Pipes.FlowGas.Air = 1 -> ExpandedLib.Industry.Pipes.FlowGas
+ExpandedLib.Industry.Pipes.FlowGas.Steam = 0 -> ExpandedLib.Industry.Pipes.FlowGas
+ExpandedLib.Industry.Pipes.FlowMedium
+ExpandedLib.Industry.Pipes.FlowMedium.Air = 2 -> ExpandedLib.Industry.Pipes.FlowMedium
+ExpandedLib.Industry.Pipes.FlowMedium.Ambient = 0 -> ExpandedLib.Industry.Pipes.FlowMedium
+ExpandedLib.Industry.Pipes.FlowMedium.Flue = 3 -> ExpandedLib.Industry.Pipes.FlowMedium
+ExpandedLib.Industry.Pipes.FlowMedium.Fuel = 4 -> ExpandedLib.Industry.Pipes.FlowMedium
+ExpandedLib.Industry.Pipes.FlowMedium.Water = 1 -> ExpandedLib.Industry.Pipes.FlowMedium
+ExpandedLib.Industry.Pipes.FlowPort
+ExpandedLib.Industry.Pipes.FlowPort.CoupleTo(ExpandedLib.Industry.Pipes.FlowPort! receiver, ExpandedLib.Industry.Pipes.FlowGas gas) -> ExpandedLib.Industry.Pipes.FlowPort.Coupling?
+ExpandedLib.Industry.Pipes.FlowPort.Coupling
+ExpandedLib.Industry.Pipes.FlowPort.Coupling.SetArea(double areaM2) -> bool
+ExpandedLib.Industry.Pipes.FlowPort.FlowPort(ExpandedLib.Networks.BlockNetworkModSystem! system, ExpandedLib.Networks.NodeKey key) -> void
+ExpandedLib.Industry.Pipes.FlowPort.IsJoined.get -> bool
+ExpandedLib.Industry.Pipes.FlowPort.Key.get -> ExpandedLib.Networks.NodeKey
+ExpandedLib.Industry.Pipes.FlowPort.Link
+ExpandedLib.Industry.Pipes.FlowPort.Link.SetPumpCurve(double freeM3PerSecond, double stallPa) -> bool
+ExpandedLib.Industry.Pipes.FlowPort.Link.SetShare(double share) -> bool
+ExpandedLib.Industry.Pipes.FlowPort.Link.SetSweptVolume(double m3PerSecond) -> bool
+ExpandedLib.Industry.Pipes.FlowPort.LinkTo(ExpandedLib.Industry.Pipes.FlowPort! other) -> ExpandedLib.Industry.Pipes.FlowPort.Link?
+ExpandedLib.Industry.Pipes.FlowPort.SetHeatWatts(double watts) -> bool
+ExpandedLib.Industry.Pipes.FlowPort.SetSource(double kgPerSecond, double temperatureC, ExpandedLib.Industry.Pipes.FlowMedium medium, double grade = 0) -> bool
+ExpandedLib.Industry.Pipes.FlowPort.Take() -> ExpandedLib.Industry.Pipes.PortReading?
+ExpandedLib.Industry.Pipes.PortReading
+ExpandedLib.Industry.Pipes.PortReading.AirKg.get -> double
+ExpandedLib.Industry.Pipes.PortReading.AirKg.init -> void
+ExpandedLib.Industry.Pipes.PortReading.EnthalpyJ.get -> double
+ExpandedLib.Industry.Pipes.PortReading.EnthalpyJ.init -> void
+ExpandedLib.Industry.Pipes.PortReading.GasKg.get -> double
+ExpandedLib.Industry.Pipes.PortReading.GasKg.init -> void
+ExpandedLib.Industry.Pipes.PortReading.LiquidKg.get -> double
+ExpandedLib.Industry.Pipes.PortReading.LiquidKg.init -> void
+ExpandedLib.Industry.Pipes.PortReading.MassKg.get -> double
+ExpandedLib.Industry.Pipes.PortReading.MassKg.init -> void
+ExpandedLib.Industry.Pipes.PortReading.PortReading() -> void
+ExpandedLib.Industry.Pipes.PortReading.PortReading(double MassKg, double EnthalpyJ, double PressureAtm, double TemperatureC, double GasKg, double AirKg, double LiquidKg) -> void
+ExpandedLib.Industry.Pipes.PortReading.PressureAtm.get -> double
+ExpandedLib.Industry.Pipes.PortReading.PressureAtm.init -> void
+ExpandedLib.Industry.Pipes.PortReading.TemperatureC.get -> double
+ExpandedLib.Industry.Pipes.PortReading.TemperatureC.init -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.OnBlockRemoved() -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.OnBlockUnloaded() -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.OnTesselation(Vintagestory.API.Client.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> bool
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+override ExpandedLib.Industry.Molten.MoltenNetwork.OnTopologyChanged() -> void
+override ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldForResolving) -> void
+override ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.NetworkType.get -> string!
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.NetworkType.set -> void
+static ExpandedLib.Industry.Heat.HeatCooling.Cool(float temperature, float ambient, float ratePerHour, double hours) -> float
+static ExpandedLib.Industry.Helpers.ExParticles.MetalSparks(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.Vec3d! pos, float temperatureC) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.Spawn(Vintagestory.API.Common.IWorldAccessor! world, int color, Vintagestory.API.MathTools.Vec3d! minPos, Vintagestory.API.MathTools.Vec3d! maxPos, Vintagestory.API.MathTools.Vec3f! minVelocity, Vintagestory.API.MathTools.Vec3f! maxVelocity, float minQuantity, float maxQuantity, float lifeLength, float gravityEffect, float minSize, float maxSize, Vintagestory.API.Common.EnumParticleModel model, Vintagestory.API.MathTools.EvolvingNatFloat? opacityEvolve, Vintagestory.API.MathTools.EvolvingNatFloat? sizeEvolve, bool shouldDieInLiquid, byte vertexFlags) -> void
+static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.CapFor(ExpandedLib.Industry.MechanicalPower.MpShaftSize fromPulley, ExpandedLib.Industry.MechanicalPower.MpShaftSize toPulley) -> float
+static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.PulleyDiameter(ExpandedLib.Industry.MechanicalPower.MpShaftSize size) -> float
+static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.FullCapNm(ExpandedLib.Industry.MechanicalPower.MpShaftSize size) -> float
+static ExpandedLib.Industry.MechanicalPower.MpRun.Read(ExpandedLib.Networks.BlockNetworkModSystem? system, ExpandedLib.Networks.NodeKey key) -> ExpandedLib.Industry.MechanicalPower.MpRunReading
+static ExpandedLib.Industry.MechanicalPower.MpRun.ReadRun(this ExpandedLib.Networks.BEBehaviorNetworkMember! member) -> ExpandedLib.Industry.MechanicalPower.MpRunReading
+static ExpandedLib.Industry.MechanicalPower.MpRun.ReadRun(this ExpandedLib.Networks.BlockEntityNetworkNode! node) -> ExpandedLib.Industry.MechanicalPower.MpRunReading
+static ExpandedLib.Industry.MechanicalPower.MpRunReading.None.get -> ExpandedLib.Industry.MechanicalPower.MpRunReading
+static ExpandedLib.Industry.MechanicalPower.MpSegmentReading.TryReadFrom(Vintagestory.API.Datastructures.ITreeAttribute! host, out ExpandedLib.Industry.MechanicalPower.MpSegmentReading reading) -> bool
+static ExpandedLib.Industry.Molten.CrowbarHold.Claim(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel) -> bool
+static ExpandedLib.Industry.Molten.CrowbarHold.Help(Vintagestory.API.Common.IWorldAccessor! world, string! langCode) -> Vintagestory.API.Client.WorldInteraction!
+static ExpandedLib.Industry.Molten.CrowbarHold.Holding(float secondsUsed, Vintagestory.API.Common.IPlayer! byPlayer) -> bool
+static ExpandedLib.Industry.Molten.CrowbarHold.IsCrowbar(Vintagestory.API.Common.ItemStack? stack) -> bool
+static ExpandedLib.Industry.Molten.CrowbarHold.IsHeldBy(Vintagestory.API.Common.IPlayer! byPlayer) -> bool
+static ExpandedLib.Industry.Molten.CrowbarHold.PlayBreak(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.AssetLocation! sound) -> void
+static ExpandedLib.Industry.Molten.CrowbarHold.Released(float secondsUsed, Vintagestory.API.Common.IPlayer! byPlayer) -> bool
+static ExpandedLib.Industry.Molten.MoltenBar.Acts(Vintagestory.API.Common.IBlockAccessor! blocks, Vintagestory.API.MathTools.BlockPos! pos) -> bool
+static ExpandedLib.Industry.Molten.MoltenBar.BreakOut(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.MathTools.BlockPos! pos, double yOffset = 0.5) -> int
+static ExpandedLib.Industry.Molten.MoltenBar.Help(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> Vintagestory.API.Client.WorldInteraction![]!
+static ExpandedLib.Industry.Molten.MoltenBar.IsBar(Vintagestory.API.Common.ItemStack? stack) -> bool
+static ExpandedLib.Industry.Molten.MoltenBar.IsHeldBy(Vintagestory.API.Common.IPlayer! byPlayer) -> bool
+static ExpandedLib.Industry.Molten.MoltenBar.Start(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel) -> bool
+static ExpandedLib.Industry.Molten.MoltenBar.Step(float secondsUsed, Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel) -> bool
+static ExpandedLib.Industry.Molten.MoltenBar.Stop(float secondsUsed, Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel) -> void
+static ExpandedLib.Industry.Molten.MoltenBar.Stretch(Vintagestory.API.Common.IBlockAccessor! accessor, Vintagestory.API.MathTools.BlockPos! start, int limit) -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>!
+static ExpandedLib.Industry.Molten.MoltenBreakGuard.HoldsLiquid(Vintagestory.API.Common.BlockEntity? be) -> bool
+static ExpandedLib.Industry.Molten.MoltenBreakGuard.HoldsLiquid(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> bool
+static ExpandedLib.Industry.Molten.MoltenBreakGuard.OnBreak(Vintagestory.API.Server.IServerPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel, ref float dropQuantityMultiplier, ref Vintagestory.API.Common.EnumHandling handling) -> void
+static ExpandedLib.Industry.Molten.MoltenBreakGuard.Register(Vintagestory.API.Server.ICoreServerAPI! api) -> void
+static ExpandedLib.Industry.Molten.MoltenBurn.Apply(Vintagestory.API.Common.Entities.Entity! entity, float temperatureC, Vintagestory.API.MathTools.BlockPos! pos) -> bool
+static ExpandedLib.Industry.Molten.MoltenBurn.HottestTemperature(Vintagestory.API.Common.BlockEntity? be) -> float?
+static ExpandedLib.Industry.Molten.MoltenBurn.IsHot(float? temperatureC) -> bool
+static ExpandedLib.Industry.Molten.MoltenBurn.TraversalCost(Vintagestory.API.Common.BlockEntity? be, Vintagestory.API.Common.EnumAICreatureType creatureType, float baseCost) -> float
+static ExpandedLib.Industry.Molten.MoltenHolders.Attach(Vintagestory.API.Common.ICoreAPI! api) -> int
+static ExpandedLib.Industry.Molten.MoltenHolders.IsHolder(Vintagestory.API.Common.Block! block, Vintagestory.API.Common.IClassRegistryAPI! classes) -> bool
+static ExpandedLib.Industry.Molten.MoltenSinks.SinkAt(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, out Vintagestory.API.MathTools.Vec3i! offset) -> Vintagestory.GameContent.ILiquidMetalSink?
+static ExpandedLib.Industry.Pipes.FlowBore.BurstFor(double workingAtm) -> double
+static ExpandedLib.Industry.Pipes.FlowBores.Register(string! tier, string! boreClass, double boreMetres, double workingAtm, double burstAtm, int span, double friction, string! joint, double wallKgPerMetre = 0, double wallMetres = 0) -> void
+static ExpandedLib.Industry.Pipes.FlowBores.TryGet(string! tier, string! boreClass, out ExpandedLib.Industry.Pipes.FlowBore! bore) -> bool
+static ExpandedLib.Industry.Pipes.FlowPort.At(Vintagestory.API.Common.BlockEntity! machine, int index) -> ExpandedLib.Industry.Pipes.FlowPort?
+static readonly ExpandedLib.Industry.Helpers.ExParticles.MetalSpark -> int
+static readonly ExpandedLib.Industry.Helpers.ExSounds.MetalBreak -> Vintagestory.API.Common.AssetLocation!
+virtual ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.Bore.get -> ExpandedLib.Industry.Pipes.FlowBore?
