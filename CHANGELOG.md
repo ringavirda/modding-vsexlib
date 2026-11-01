@@ -9,6 +9,8 @@ see the git history.
 
 ### Added
 
+- **`samples/SashWeights`**: a casting sample in JSON alone, declaring a station kind and a four-piece sash-weight pattern that load and validate.
+- **`samples/WasherPunch`**: a machine-job sample, a hand fly press whose work comes from a `config/processjobs` row in JSON and one from C#.
 - **`/exmod molten <metal> <units> [temperature]`** (ExpandedLib.Industry): a creative or op player fills the vessel in hand
   (an `IMoltenFillable`) or else the `ILiquidMetalSink` looked at with molten metal, at the melting point plus 100 C
   unless a temperature is given, capped at what the target holds.

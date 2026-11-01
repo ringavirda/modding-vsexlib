@@ -76,7 +76,12 @@ through a five-stage right-click construction and rendered through a permanent p
 throughput (its wall passthroughs are also the example of a block wearing texture variants, and
 of `ExlibChecks.Exempt`: no recipe makes them, and the sample exempts that finding), and
 `samples/SmokeStack` the multiblock example, a 72-cell chimney that draws gas off the
-network it is plumbed into. Each has a full headless test suite, and all four build and boot like any
+network it is plumbed into. `samples/SashWeights` is the casting example, written in JSON alone: a
+flask station kind and a four-piece sash-weight pattern, parsed and validated at load; it pours nothing
+without a station block, which only a mod such as iiex brings. `samples/WasherPunch` is the machine-job
+example, a hand fly press on `BlockEntityMachineStation` whose work comes from a `config/processjobs` table,
+one row from JSON and one added from C#. SashWeights and WasherPunch build on `ExpandedLib.Industry` types, which sit outside the
+stability promise below. Each has a full headless test suite, and all six build and boot like any
 other mod here (`dotnet build ExpandedLib.sln`, `exmod smoke`) - read them alongside the wiki rather
 than typing their snippets by hand.
 
@@ -97,7 +102,7 @@ src/ExpandedLib.Testing/    the headless xUnit harness
 src/ExpandedLib.Generators/ the config/lang source generators, referenced as an analyzer
 tests/ExpandedLib.Tests/    the suite this repo's own gate runs
 build/                      the MSBuild plumbing the package ships (GamePath resolution, provisioning, asset globs)
-samples/                    TwinTubBlower, BurdenMaker, PlatedPipes and SmokeStack, third-party mods written against this library
+samples/                    TwinTubBlower, BurdenMaker, PlatedPipes, SmokeStack, SashWeights and WasherPunch, third-party mods written against this library
 templates/                  the `dotnet new` templates a consumer installs (block, item, recipe, config, tests, ...)
 scripts/                    the exmod launchers this repo checks in
 dist/                       release output (zips, NuGet packages) - not checked in
