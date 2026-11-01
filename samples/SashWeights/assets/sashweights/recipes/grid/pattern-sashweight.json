@@ -1,0 +1,12 @@
+[
+  {
+    "ingredientPattern": "K,P",
+    "ingredients": {
+      "K": { "type": "item", "tags": ["tool-knife"], "isTool": true },
+      "P": { "type": "item", "code": "game:plank-oak" }
+    },
+    "width": 1,
+    "height": 2,
+    "output": { "type": "item", "code": "sashweights:pattern-sashweight" }
+  }
+]

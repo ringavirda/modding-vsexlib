@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "stations": [
+    {
+      "code": "boxflask",
+      "moulds": ["open"],
+      "sand": {
+        "base": "sashweights:block/boxflask/sand-base",
+        "half": "sashweights:block/boxflask/sand-half"
+      }
+    }
+  ]
+}

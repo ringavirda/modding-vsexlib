@@ -1,0 +1,7 @@
+{
+  "code": "sashweight",
+  "class": "Item",
+  "maxstacksize": 16,
+  "shape": { "base": "sashweights:item/sashweight" },
+  "creativeinventory": { "general": ["*"] }
+}
