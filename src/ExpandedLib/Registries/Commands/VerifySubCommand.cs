@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using ExpandedLib.Checks;
 using Vintagestory.API.Common;
@@ -13,8 +12,7 @@ namespace ExpandedLib.Registries;
 /// <see cref="ExlibChecks"/> against the live game state and reports it on demand.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
-[EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class VerifySubCommand : IExSubCommand {
+internal sealed class VerifySubCommand : IExSubCommand {
   public string ParentName => "exmod";
 
   public void Register(ICoreAPI api, Mod mod, IChatCommand parent) {

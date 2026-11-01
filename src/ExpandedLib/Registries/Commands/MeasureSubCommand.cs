@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Linq;
 using ExpandedLib.Helpers;
 using ExpandedLib.Registries;
@@ -13,8 +12,7 @@ namespace ExpandedLib.Registries;
 /// the per-player display unit system, persisted through <see cref="ExPreferences"/>. Client-only.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Client)]
-[EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class MeasureSubCommand : IExSubCommand {
+internal sealed class MeasureSubCommand : IExSubCommand {
   public string ParentName => "exmod";
 
   public void Register(ICoreAPI api, Mod mod, IChatCommand parent) {

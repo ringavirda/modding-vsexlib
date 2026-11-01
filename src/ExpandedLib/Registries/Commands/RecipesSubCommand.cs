@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Linq;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
@@ -11,8 +10,7 @@ namespace ExpandedLib.Registries;
 /// through <see cref="ExRecipeProfiles"/>. Server-side; requires <c>controlserver</c>.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
-[EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class RecipesSubCommand : RegistrySubCommand<RecipeProfile> {
+internal sealed class RecipesSubCommand : RegistrySubCommand<RecipeProfile> {
   public RecipesSubCommand()
     : base(
       "recipes",

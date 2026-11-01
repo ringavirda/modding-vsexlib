@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using ExpandedLib.Registries;
@@ -13,8 +12,7 @@ namespace ExpandedLib.Industry.Helpers;
 /// machine-sound volume, persisted through <see cref="ExPreferences"/>. Client-only.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Client)]
-[EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class SoundSubCommand : IExSubCommand {
+internal sealed class SoundSubCommand : IExSubCommand {
   public string ParentName => "exmod";
 
   public void Register(ICoreAPI api, Mod mod, IChatCommand parent) {

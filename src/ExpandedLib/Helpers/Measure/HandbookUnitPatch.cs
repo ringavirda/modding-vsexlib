@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using ExpandedLib.Helpers;
 using HarmonyLib;
 using Vintagestory.API.Client;
@@ -9,8 +8,7 @@ namespace ExpandedLib.Helpers;
 
 /// <summary>Makes handbook page text follow the active <see cref="ExMeasure.System"/>.</summary>
 [HarmonyPatch(typeof(GuiHandbookTextPage), "Init")]
-[EditorBrowsable(EditorBrowsableState.Never)]
-public static class HandbookUnitPatch {
+internal static class HandbookUnitPatch {
   /// <summary>Rebuilds the survival handbook's pages so their prose re-converts to the current <see cref="ExMeasure.System"/>.</summary>
   public static void Rebuild(ICoreClientAPI capi) {
     try {

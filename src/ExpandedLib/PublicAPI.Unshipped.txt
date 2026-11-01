@@ -1,0 +1,611 @@
+#nullable enable
+abstract ExpandedLib.Helpers.StreamRenderer.BindStreamTexture(Vintagestory.API.Client.IRenderAPI! render) -> bool
+abstract ExpandedLib.Helpers.StreamRenderer.ConfigureShader(Vintagestory.API.Client.IStandardShaderProgram! shader, Vintagestory.API.Client.IRenderAPI! render) -> void
+abstract ExpandedLib.Helpers.StreamRenderer.RenderOrder.get -> double
+const ExpandedLib.Blocks.ExConstructionStage.DefaultHits = 2 -> int
+const ExpandedLib.Catalogues.CraftSequenceLoader.CataloguePath = "config/craftsequences/" -> string!
+const ExpandedLib.Catalogues.CraftSequenceSet.CurrentSchema = 1 -> int
+const ExpandedLib.Catalogues.CraftStep.DefaultSeconds = 1 -> float
+const ExpandedLib.Catalogues.CraftStep.Vice = "vice" -> string!
+const ExpandedLib.Catalogues.CraftToolDefault.DefaultStrike = 0.3 -> float
+const ExpandedLib.Catalogues.CraftToolDefault.DefaultStroke = 1.05 -> float
+const ExpandedLib.Catalogues.ProcessJobSet.CurrentSchema = 2 -> int
+const ExpandedLib.ExlibLang.BlockhelpCrowbarBreakout = "exlib:blockhelp-crowbar-breakout" -> string!
+const ExpandedLib.ExlibLang.CommandMoltenDenied = "exlib:command-molten-denied" -> string!
+const ExpandedLib.ExlibLang.CommandMoltenDesc = "exlib:command-molten-desc" -> string!
+const ExpandedLib.ExlibLang.CommandMoltenHeld = "exlib:command-molten-held" -> string!
+const ExpandedLib.ExlibLang.CommandMoltenPlayer = "exlib:command-molten-player" -> string!
+const ExpandedLib.ExlibLang.CommandMoltenRefused = "exlib:command-molten-refused" -> string!
+const ExpandedLib.ExlibLang.CommandMoltenSink = "exlib:command-molten-sink" -> string!
+const ExpandedLib.ExlibLang.CommandMoltenTarget = "exlib:command-molten-target" -> string!
+const ExpandedLib.ExlibLang.CommandMoltenUnits = "exlib:command-molten-units" -> string!
+const ExpandedLib.ExlibLang.CommandMoltenUnknown = "exlib:command-molten-unknown" -> string!
+const ExpandedLib.ExlibLang.HandbookDiagramMakes = "exlib:handbook-diagram-makes" -> string!
+const ExpandedLib.ExlibLang.HandbookMadeat = "exlib:handbook-madeat" -> string!
+const ExpandedLib.ExlibLang.HandbookMadeatLine = "exlib:handbook-madeat-line" -> string!
+const ExpandedLib.ExlibLang.IngameerrorConstructionMissingtool = "exlib:ingameerror-construction-missingtool" -> string!
+const ExpandedLib.ExlibLang.IngameerrorExlibMoltenbarliquid = "game:ingameerror-exlib-moltenbarliquid" -> string!
+const ExpandedLib.ExlibLang.IngameerrorExlibMoltenliquidbreak = "game:ingameerror-exlib-moltenliquidbreak" -> string!
+const ExpandedLib.ExlibLang.PlacefailureExlibMpshaftJam = "game:placefailure-exlib-mpshaft-jam" -> string!
+const ExpandedLib.ExlibLang.RccHoldTool = "exlib:rcc-hold-tool" -> string!
+const ExpandedLib.Helpers.GameTime.MachineSecondsPerHour = 120 -> int
+const ExpandedLib.Machines.CraftSequenceRun.StepWearAttribute = "stepWear" -> string!
+const ExpandedLib.Machines.HandGrid.Size = 3 -> int
+const ExpandedLib.Machines.RecipeDiagram.ConsumeAttribute = "consumeDiagram" -> string!
+const ExpandedLib.Machines.RecipeDiagram.DiagramAttribute = "diagram" -> string!
+const ExpandedLib.Machines.RecipeDiagram.StationAttribute = "diagramStation" -> string!
+const ExpandedLib.Networks.BlockNetworkModSystem.ListenerIntervalMs = 200 -> int
+const ExpandedLib.Networks.NodeKey.FaceVoxels = 16 -> int
+const ExpandedLib.Networks.NodeKey.PortBase = 128 -> byte
+ExpandedLib.Blocks.AnimatorKeys
+ExpandedLib.Blocks.BEBehaviorClipActions
+ExpandedLib.Blocks.BEBehaviorClipActions.BEBehaviorClipActions(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.Blocks.BEBehaviorClipActions.Claim() -> void
+ExpandedLib.Blocks.BEBehaviorClipActions.Play(string! clip) -> void
+ExpandedLib.Blocks.BEBehaviorClipActions.Run(string! clip, float rate) -> void
+ExpandedLib.Blocks.BEBehaviorClipActions.SetTarget(string! clip, float fraction) -> void
+ExpandedLib.Blocks.BlockControl
+ExpandedLib.Blocks.BlockControl.AlsoIds.get -> string![]!
+ExpandedLib.Blocks.BlockControl.AlsoIds.init -> void
+ExpandedLib.Blocks.BlockControl.BlockControl(string! Id, string! Kind, string![]! AlsoIds, int Stage = 0) -> void
+ExpandedLib.Blocks.BlockControl.Id.get -> string!
+ExpandedLib.Blocks.BlockControl.Id.init -> void
+ExpandedLib.Blocks.BlockControl.Kind.get -> string!
+ExpandedLib.Blocks.BlockControl.Kind.init -> void
+ExpandedLib.Blocks.BlockControl.Stage.get -> int
+ExpandedLib.Blocks.BlockControl.Stage.init -> void
+ExpandedLib.Blocks.BlockControls
+ExpandedLib.Blocks.CellBoxes
+ExpandedLib.Blocks.CellBoxes.CellBoxes(Vintagestory.API.MathTools.Cuboidf![]? Collision = null, Vintagestory.API.MathTools.Cuboidf![]? Selection = null, System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.ControlBox!>? Controls = null, System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.DoorLeaf!>? Doors = null) -> void
+ExpandedLib.Blocks.CellBoxes.Collision.get -> Vintagestory.API.MathTools.Cuboidf![]?
+ExpandedLib.Blocks.CellBoxes.Collision.init -> void
+ExpandedLib.Blocks.CellBoxes.Controls.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.ControlBox!>?
+ExpandedLib.Blocks.CellBoxes.Controls.init -> void
+ExpandedLib.Blocks.CellBoxes.Doors.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.DoorLeaf!>?
+ExpandedLib.Blocks.CellBoxes.Doors.init -> void
+ExpandedLib.Blocks.CellBoxes.Selection.get -> Vintagestory.API.MathTools.Cuboidf![]?
+ExpandedLib.Blocks.CellBoxes.Selection.init -> void
+ExpandedLib.Blocks.CellBoxes.Turned(int angle) -> ExpandedLib.Blocks.CellBoxes!
+ExpandedLib.Blocks.CellBoxes.Turned(System.Func<Vintagestory.API.MathTools.Cuboidf!, Vintagestory.API.MathTools.Cuboidf!>! turn) -> ExpandedLib.Blocks.CellBoxes!
+ExpandedLib.Blocks.CellBoxes.WriteTo(Newtonsoft.Json.Linq.JObject! row) -> void
+ExpandedLib.Blocks.ClipAction
+ExpandedLib.Blocks.ClipAction.By.get -> string![]?
+ExpandedLib.Blocks.ClipAction.By.init -> void
+ExpandedLib.Blocks.ClipAction.Clip.get -> string!
+ExpandedLib.Blocks.ClipAction.Clip.init -> void
+ExpandedLib.Blocks.ClipAction.ClipAction(string! Clip) -> void
+ExpandedLib.Blocks.ClipAction.Parts.get -> string![]?
+ExpandedLib.Blocks.ClipAction.Parts.init -> void
+ExpandedLib.Blocks.ClipAction.Pose.get -> ExpandedLib.Blocks.ClipPose?
+ExpandedLib.Blocks.ClipAction.Pose.init -> void
+ExpandedLib.Blocks.ClipAction.Range.get -> (float Low, float High)?
+ExpandedLib.Blocks.ClipAction.Range.init -> void
+ExpandedLib.Blocks.ClipAction.Seconds.get -> float?
+ExpandedLib.Blocks.ClipAction.Seconds.init -> void
+ExpandedLib.Blocks.ClipAction.State.get -> string?
+ExpandedLib.Blocks.ClipAction.State.init -> void
+ExpandedLib.Blocks.ClipAction.When.get -> float?
+ExpandedLib.Blocks.ClipAction.When.init -> void
+ExpandedLib.Blocks.ClipActions
+ExpandedLib.Blocks.ClipActions.Declared.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.ClipAction!>!
+ExpandedLib.Blocks.ClipActions.Resolve(Vintagestory.API.Common.Shape! shape) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.ClipAction!>!
+ExpandedLib.Blocks.ClipPose
+ExpandedLib.Blocks.ClipPose.Frame = 0 -> ExpandedLib.Blocks.ClipPose
+ExpandedLib.Blocks.ClipPose.Lock = 3 -> ExpandedLib.Blocks.ClipPose
+ExpandedLib.Blocks.ClipPose.Play = 1 -> ExpandedLib.Blocks.ClipPose
+ExpandedLib.Blocks.ClipPose.Run = 2 -> ExpandedLib.Blocks.ClipPose
+ExpandedLib.Blocks.ConstructedAnimator.ConstructedAnimator(Vintagestory.API.Common.BlockEntity! be, System.Func<string!>? cacheKey = null, System.Action<Vintagestory.GameContent.BlockEntityAnimationUtil!, Vintagestory.API.Client.MeshData!>? onAnimatorBuilt = null, System.Func<Vintagestory.API.Client.ITexPositionSource?>? texSource = null, System.Func<string![]?, string![]?>? composeElements = null) -> void
+ExpandedLib.Blocks.ConstructedAnimator.Initialize(System.Action? repose = null) -> void
+ExpandedLib.Blocks.ControlBox
+ExpandedLib.Blocks.ControlBox.Box.get -> Vintagestory.API.MathTools.Cuboidf!
+ExpandedLib.Blocks.ControlBox.Box.init -> void
+ExpandedLib.Blocks.ControlBox.ControlBox(string! Id, Vintagestory.API.MathTools.Cuboidf! Box) -> void
+ExpandedLib.Blocks.ControlBox.Id.get -> string!
+ExpandedLib.Blocks.ControlBox.Id.init -> void
+ExpandedLib.Blocks.ControlBoxes
+ExpandedLib.Blocks.ControlContext
+ExpandedLib.Blocks.ControlContext.ClickedCell.get -> Vintagestory.API.MathTools.BlockPos?
+ExpandedLib.Blocks.ControlContext.ClickedCell.init -> void
+ExpandedLib.Blocks.ControlContext.ControlContext(Vintagestory.API.Common.IWorldAccessor! World, Vintagestory.API.Common.IPlayer! Player, Vintagestory.API.Common.BlockSelection! PrincipalSelection, Vintagestory.API.MathTools.BlockPos? ClickedCell, string? Id, Vintagestory.API.Common.ItemStack? Held) -> void
+ExpandedLib.Blocks.ControlContext.Held.get -> Vintagestory.API.Common.ItemStack?
+ExpandedLib.Blocks.ControlContext.Held.init -> void
+ExpandedLib.Blocks.ControlContext.Id.get -> string?
+ExpandedLib.Blocks.ControlContext.Id.init -> void
+ExpandedLib.Blocks.ControlContext.Player.get -> Vintagestory.API.Common.IPlayer!
+ExpandedLib.Blocks.ControlContext.Player.init -> void
+ExpandedLib.Blocks.ControlContext.PrincipalSelection.get -> Vintagestory.API.Common.BlockSelection!
+ExpandedLib.Blocks.ControlContext.PrincipalSelection.init -> void
+ExpandedLib.Blocks.ControlContext.World.get -> Vintagestory.API.Common.IWorldAccessor!
+ExpandedLib.Blocks.ControlContext.World.init -> void
+ExpandedLib.Blocks.ControlHit
+ExpandedLib.Blocks.ControlHit.ControlHit() -> void
+ExpandedLib.Blocks.ControlHit.ControlHit(string? Id, System.Collections.Generic.IReadOnlyList<string!>! Ids) -> void
+ExpandedLib.Blocks.ControlHit.Id.get -> string?
+ExpandedLib.Blocks.ControlHit.Id.init -> void
+ExpandedLib.Blocks.ControlHit.Ids.get -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Blocks.ControlHit.Ids.init -> void
+ExpandedLib.Blocks.ControlOutline
+ExpandedLib.Blocks.ControlRouter
+ExpandedLib.Blocks.ControlRouter.ControlRouter() -> void
+ExpandedLib.Blocks.ControlRouter.On(string! id, System.Func<ExpandedLib.Blocks.ControlContext!, bool>! handler) -> ExpandedLib.Blocks.ControlRouter!
+ExpandedLib.Blocks.ControlRouter.On(string! id, System.Func<Vintagestory.API.Common.ItemStack?, bool>? held, System.Func<ExpandedLib.Blocks.ControlContext!, bool>! handler) -> ExpandedLib.Blocks.ControlRouter!
+ExpandedLib.Blocks.ControlRouter.OnBody(System.Func<ExpandedLib.Blocks.ControlContext!, bool>! handler) -> ExpandedLib.Blocks.ControlRouter!
+ExpandedLib.Blocks.ControlRouter.Route(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! player, Vintagestory.API.Common.BlockSelection! principalSel, Vintagestory.API.MathTools.BlockPos? clickedCell) -> bool
+ExpandedLib.Blocks.ControlState
+ExpandedLib.Blocks.ControlState.Hidden = 2 -> ExpandedLib.Blocks.ControlState
+ExpandedLib.Blocks.ControlState.Open = 1 -> ExpandedLib.Blocks.ControlState
+ExpandedLib.Blocks.ControlState.Shown = 0 -> ExpandedLib.Blocks.ControlState
+ExpandedLib.Blocks.DoorLeaf
+ExpandedLib.Blocks.DoorLeaf.Control.get -> string!
+ExpandedLib.Blocks.DoorLeaf.Control.init -> void
+ExpandedLib.Blocks.DoorLeaf.DoorLeaf(string! Control, Vintagestory.API.MathTools.Cuboidf![]! Shut, Vintagestory.API.MathTools.Cuboidf![]! Open, Vintagestory.API.MathTools.Cuboidf![]! Opening, bool OpenCollides) -> void
+ExpandedLib.Blocks.DoorLeaf.Open.get -> Vintagestory.API.MathTools.Cuboidf![]!
+ExpandedLib.Blocks.DoorLeaf.Open.init -> void
+ExpandedLib.Blocks.DoorLeaf.OpenCollides.get -> bool
+ExpandedLib.Blocks.DoorLeaf.OpenCollides.init -> void
+ExpandedLib.Blocks.DoorLeaf.Opening.get -> Vintagestory.API.MathTools.Cuboidf![]!
+ExpandedLib.Blocks.DoorLeaf.Opening.init -> void
+ExpandedLib.Blocks.DoorLeaf.Shut.get -> Vintagestory.API.MathTools.Cuboidf![]!
+ExpandedLib.Blocks.DoorLeaf.Shut.init -> void
+ExpandedLib.Blocks.ExConstructionStage.Animation -> string?
+ExpandedLib.Blocks.ExConstructionStage.Hits -> int
+ExpandedLib.Blocks.ExConstructionStage.Sound -> string?
+ExpandedLib.Blocks.ExConstructionStage.Steps -> ExpandedLib.Blocks.ExConstructionToolStep![]?
+ExpandedLib.Blocks.ExConstructionStage.Tool -> string?
+ExpandedLib.Blocks.ExConstructionToolStep
+ExpandedLib.Blocks.ExConstructionToolStep.Animation -> string?
+ExpandedLib.Blocks.ExConstructionToolStep.ExConstructionToolStep() -> void
+ExpandedLib.Blocks.ExConstructionToolStep.Hits -> int
+ExpandedLib.Blocks.ExConstructionToolStep.Sound -> string?
+ExpandedLib.Blocks.ExConstructionToolStep.Tool -> string?
+ExpandedLib.Blocks.ExRightClickConstructable.EntityDrawsShape.get -> bool
+ExpandedLib.Blocks.ExRightClickConstructable.EntityDrawsShape.set -> void
+ExpandedLib.Blocks.ExRightClickConstructable.OnBlockInteractCancel(float secondsUsed, Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel, ref Vintagestory.API.Common.EnumHandling handling) -> bool
+ExpandedLib.Blocks.ExRightClickConstructable.OnBlockInteractStep(float secondsUsed, Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel, ref Vintagestory.API.Common.EnumHandling handling) -> bool
+ExpandedLib.Blocks.ExRightClickConstructable.OnBlockInteractStop(float secondsUsed, Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel, ref Vintagestory.API.Common.EnumHandling handling) -> void
+ExpandedLib.Blocks.ExRightClickConstructable.StateOf(string! controlId) -> ExpandedLib.Blocks.ControlState?
+ExpandedLib.Blocks.ExRightClickConstruction.BeginHold(Vintagestory.API.Common.EntityAgent! byEntity) -> bool
+ExpandedLib.Blocks.ExRightClickConstruction.Holding.get -> bool
+ExpandedLib.Blocks.ExRightClickConstruction.IsHolding(Vintagestory.API.Common.EntityAgent! byEntity) -> bool
+ExpandedLib.Blocks.ExRightClickConstruction.NeedsTool(Vintagestory.API.Common.EntityAgent! byEntity) -> bool
+ExpandedLib.Blocks.ExRightClickConstruction.StepHold(float secondsUsed, Vintagestory.API.Common.EntityAgent! byEntity) -> ExpandedLib.Blocks.StageHoldProgress
+ExpandedLib.Blocks.ExRightClickConstruction.StepsPaid.get -> int
+ExpandedLib.Blocks.ExRightClickConstruction.StopHold(Vintagestory.API.Common.EntityAgent! byEntity) -> void
+ExpandedLib.Blocks.ICellCollision
+ExpandedLib.Blocks.ICellCollision.CollisionAt(Vintagestory.API.MathTools.Vec3i! northOffset, int angle) -> Vintagestory.API.MathTools.Cuboidf![]?
+ExpandedLib.Blocks.IControlStates
+ExpandedLib.Blocks.IControlStates.StateOf(string! controlId) -> ExpandedLib.Blocks.ControlState?
+ExpandedLib.Blocks.StageHoldProgress
+ExpandedLib.Blocks.StageHoldProgress.Built = 3 -> ExpandedLib.Blocks.StageHoldProgress
+ExpandedLib.Blocks.StageHoldProgress.Idle = 0 -> ExpandedLib.Blocks.StageHoldProgress
+ExpandedLib.Blocks.StageHoldProgress.Stepped = 2 -> ExpandedLib.Blocks.StageHoldProgress
+ExpandedLib.Blocks.StageHoldProgress.Working = 1 -> ExpandedLib.Blocks.StageHoldProgress
+ExpandedLib.Catalogues.CraftByproduct
+ExpandedLib.Catalogues.CraftByproduct.Code.get -> string!
+ExpandedLib.Catalogues.CraftByproduct.Code.init -> void
+ExpandedLib.Catalogues.CraftByproduct.CraftByproduct(string! Type, string! Code, int Quantity) -> void
+ExpandedLib.Catalogues.CraftByproduct.Quantity.get -> int
+ExpandedLib.Catalogues.CraftByproduct.Quantity.init -> void
+ExpandedLib.Catalogues.CraftByproduct.Type.get -> string!
+ExpandedLib.Catalogues.CraftByproduct.Type.init -> void
+ExpandedLib.Catalogues.CraftSequence
+ExpandedLib.Catalogues.CraftSequence.Byproducts.get -> ExpandedLib.Catalogues.CraftByproduct![]!
+ExpandedLib.Catalogues.CraftSequence.Byproducts.init -> void
+ExpandedLib.Catalogues.CraftSequence.CraftSequence(string! Recipe, ExpandedLib.Catalogues.CraftStep![]! Steps, ExpandedLib.Catalogues.CraftByproduct![]! Byproducts) -> void
+ExpandedLib.Catalogues.CraftSequence.Recipe.get -> string!
+ExpandedLib.Catalogues.CraftSequence.Recipe.init -> void
+ExpandedLib.Catalogues.CraftSequence.Steps.get -> ExpandedLib.Catalogues.CraftStep![]!
+ExpandedLib.Catalogues.CraftSequence.Steps.init -> void
+ExpandedLib.Catalogues.CraftSequenceLoader
+ExpandedLib.Catalogues.CraftSequenceRegistry
+ExpandedLib.Catalogues.CraftSequenceRegistry.Clear() -> void
+ExpandedLib.Catalogues.CraftSequenceRegistry.Contribute(ExpandedLib.Catalogues.CraftSequenceSet! set) -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Catalogues.CraftSequenceRegistry.CraftSequenceRegistry() -> void
+ExpandedLib.Catalogues.CraftSequenceRegistry.DefineTool(ExpandedLib.Catalogues.CraftToolDefault! tool) -> void
+ExpandedLib.Catalogues.CraftSequenceRegistry.Machines.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
+ExpandedLib.Catalogues.CraftSequenceRegistry.Sequence(string? machine, string? recipe) -> ExpandedLib.Catalogues.CraftSequence?
+ExpandedLib.Catalogues.CraftSequenceRegistry.Sequence(string? recipe) -> ExpandedLib.Catalogues.CraftSequence?
+ExpandedLib.Catalogues.CraftSequenceRegistry.Sequences(string? machine) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Catalogues.CraftSequence!>!
+ExpandedLib.Catalogues.CraftSequenceRegistry.ToolDefault(string? toolCode) -> ExpandedLib.Catalogues.CraftToolDefault?
+ExpandedLib.Catalogues.CraftSequenceRegistry.Tools.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Catalogues.CraftToolDefault!>!
+ExpandedLib.Catalogues.CraftSequenceSet
+ExpandedLib.Catalogues.CraftSequenceSet.CraftSequenceSet(int Schema, string! Machine, ExpandedLib.Catalogues.CraftSequence![]! Sequences, ExpandedLib.Catalogues.CraftToolDefault![]? Tools = null) -> void
+ExpandedLib.Catalogues.CraftSequenceSet.Machine.get -> string!
+ExpandedLib.Catalogues.CraftSequenceSet.Machine.init -> void
+ExpandedLib.Catalogues.CraftSequenceSet.Schema.get -> int
+ExpandedLib.Catalogues.CraftSequenceSet.Schema.init -> void
+ExpandedLib.Catalogues.CraftSequenceSet.Sequences.get -> ExpandedLib.Catalogues.CraftSequence![]!
+ExpandedLib.Catalogues.CraftSequenceSet.Sequences.init -> void
+ExpandedLib.Catalogues.CraftSequenceSet.Tools.get -> ExpandedLib.Catalogues.CraftToolDefault![]?
+ExpandedLib.Catalogues.CraftSequenceSet.Tools.init -> void
+ExpandedLib.Catalogues.CraftStep
+ExpandedLib.Catalogues.CraftStep.Animation.get -> string?
+ExpandedLib.Catalogues.CraftStep.Animation.init -> void
+ExpandedLib.Catalogues.CraftStep.At.get -> string?
+ExpandedLib.Catalogues.CraftStep.At.init -> void
+ExpandedLib.Catalogues.CraftStep.CraftStep(string? Tool, string? Offhand, float Seconds, string? Animation, string? Help, string? At, string? Sound = null, int Hits = 0) -> void
+ExpandedLib.Catalogues.CraftStep.Duration(float stroke) -> float
+ExpandedLib.Catalogues.CraftStep.Help.get -> string?
+ExpandedLib.Catalogues.CraftStep.Help.init -> void
+ExpandedLib.Catalogues.CraftStep.Hits.get -> int
+ExpandedLib.Catalogues.CraftStep.Hits.init -> void
+ExpandedLib.Catalogues.CraftStep.Offhand.get -> string?
+ExpandedLib.Catalogues.CraftStep.Offhand.init -> void
+ExpandedLib.Catalogues.CraftStep.Seconds.get -> float
+ExpandedLib.Catalogues.CraftStep.Seconds.init -> void
+ExpandedLib.Catalogues.CraftStep.Sound.get -> string?
+ExpandedLib.Catalogues.CraftStep.Sound.init -> void
+ExpandedLib.Catalogues.CraftStep.Tool.get -> string?
+ExpandedLib.Catalogues.CraftStep.Tool.init -> void
+ExpandedLib.Catalogues.CraftToolDefault
+ExpandedLib.Catalogues.CraftToolDefault.Animation.get -> string?
+ExpandedLib.Catalogues.CraftToolDefault.Animation.init -> void
+ExpandedLib.Catalogues.CraftToolDefault.CraftToolDefault(string! Tool, string? Animation, string? Sound, float Stroke = 1.05, float Strike = 0.3) -> void
+ExpandedLib.Catalogues.CraftToolDefault.Sound.get -> string?
+ExpandedLib.Catalogues.CraftToolDefault.Sound.init -> void
+ExpandedLib.Catalogues.CraftToolDefault.Strike.get -> float
+ExpandedLib.Catalogues.CraftToolDefault.Strike.init -> void
+ExpandedLib.Catalogues.CraftToolDefault.Stroke.get -> float
+ExpandedLib.Catalogues.CraftToolDefault.Stroke.init -> void
+ExpandedLib.Catalogues.CraftToolDefault.Tool.get -> string!
+ExpandedLib.Catalogues.CraftToolDefault.Tool.init -> void
+ExpandedLib.Catalogues.ProcessJob.ProcessJob(string! Input, string! Output, int Count, float? Stage, string? Family, float MinTorque, int MinTier = 0, float Seconds = 1, int Strokes = 1) -> void
+ExpandedLib.Catalogues.ProcessJob.Strokes.get -> int
+ExpandedLib.Catalogues.ProcessJob.Strokes.init -> void
+ExpandedLib.Checks.GatheredSources
+ExpandedLib.Checks.GatheredSources.Source
+ExpandedLib.Checks.GatheredSources.Source.How.get -> string!
+ExpandedLib.Checks.GatheredSources.Source.How.init -> void
+ExpandedLib.Checks.GatheredSources.Source.Pattern.get -> string!
+ExpandedLib.Checks.GatheredSources.Source.Pattern.init -> void
+ExpandedLib.Checks.GatheredSources.Source.Source(Vintagestory.API.Common.EnumItemClass Type, string! Pattern, string! How) -> void
+ExpandedLib.Checks.GatheredSources.Source.Type.get -> Vintagestory.API.Common.EnumItemClass
+ExpandedLib.Checks.GatheredSources.Source.Type.init -> void
+ExpandedLib.Definitions.ConstructionStage.Tool(string! tool, int hits = 2, string? animation = null, string? sound = null) -> ExpandedLib.Definitions.ConstructionStage!
+ExpandedLib.Definitions.ExBlockDef.ClipAction(ExpandedLib.Blocks.ClipAction! action) -> ExpandedLib.Definitions.ExBlockDef!
+ExpandedLib.Definitions.ExBlockDef.ClipActionByType(string! wildcard, ExpandedLib.Blocks.ClipAction! action) -> ExpandedLib.Definitions.ExBlockDef!
+ExpandedLib.Definitions.ExBlockDef.Controls(params ExpandedLib.Blocks.BlockControl![]! controls) -> ExpandedLib.Definitions.ExBlockDef!
+ExpandedLib.Definitions.ExBlockDef.ControlsByType(string! typeWildcard, params ExpandedLib.Blocks.BlockControl![]! controls) -> ExpandedLib.Definitions.ExBlockDef!
+ExpandedLib.Definitions.ExBlockDef.HiddenInHand() -> ExpandedLib.Definitions.ExBlockDef!
+ExpandedLib.Definitions.ExBlockDef.PrincipalCell(ExpandedLib.Blocks.CellBoxes! boxes) -> ExpandedLib.Definitions.ExBlockDef!
+ExpandedLib.Definitions.ExBlockDef.PrincipalCellByType(string! typeWildcard, ExpandedLib.Blocks.CellBoxes! boxes) -> ExpandedLib.Definitions.ExBlockDef!
+ExpandedLib.Definitions.ExBlockDef.Views(ExpandedLib.Helpers.ItemViewKind kind, Vintagestory.API.MathTools.Vec3d? guiRotation = null) -> ExpandedLib.Definitions.ExBlockDef!
+ExpandedLib.Definitions.ExItemDef.HiddenInHand() -> ExpandedLib.Definitions.ExItemDef!
+ExpandedLib.Definitions.ExItemDef.Views(ExpandedLib.Helpers.ItemViewKind kind, string? tip = null, Vintagestory.API.MathTools.Vec3d? guiRotation = null, (Vintagestory.API.MathTools.Vec3d! Right, Vintagestory.API.MathTools.Vec3d! Left)? grips = null) -> ExpandedLib.Definitions.ExItemDef!
+ExpandedLib.Definitions.ExItemDef.Views(ExpandedLib.Helpers.ItemViewKind kind, string? tip, Vintagestory.API.MathTools.Vec3d? guiRotation) -> ExpandedLib.Definitions.ExItemDef!
+ExpandedLib.Definitions.GridRecipeBuilder.Diagram(string! code, bool consume = false) -> ExpandedLib.Definitions.GridRecipeBuilder!
+ExpandedLib.ExlibConfig.FastForwardBudgetMs.get -> int
+ExpandedLib.ExlibConfig.FastForwardBudgetMs.set -> void
+ExpandedLib.ExlibConfig.FastForwardExactSeconds.get -> int
+ExpandedLib.ExlibConfig.FastForwardExactSeconds.set -> void
+ExpandedLib.ExlibConfig.MoltenBarCells.get -> int
+ExpandedLib.ExlibConfig.MoltenBarCells.set -> void
+ExpandedLib.ExlibConfig.MoltenBurnDamage.get -> float
+ExpandedLib.ExlibConfig.MoltenBurnDamage.set -> void
+ExpandedLib.ExlibConfig.MoltenBurnMinTemperature.get -> float
+ExpandedLib.ExlibConfig.MoltenBurnMinTemperature.set -> void
+ExpandedLib.ExlibConfig.MoltenSpillYield.get -> float
+ExpandedLib.ExlibConfig.MoltenSpillYield.set -> void
+ExpandedLib.ExlibConfig.MpBeltCapSize1Nm.get -> float
+ExpandedLib.ExlibConfig.MpBeltCapSize1Nm.set -> void
+ExpandedLib.ExlibConfig.MpBeltCapSize2Nm.get -> float
+ExpandedLib.ExlibConfig.MpBeltCapSize2Nm.set -> void
+ExpandedLib.ExlibConfig.MpBeltRatedRadS.get -> float
+ExpandedLib.ExlibConfig.MpBeltRatedRadS.set -> void
+ExpandedLib.ExlibConfig.MpBeltSlipFraction.get -> float
+ExpandedLib.ExlibConfig.MpBeltSlipFraction.set -> void
+ExpandedLib.ExlibConfig.MpClutchCapLineNm.get -> float
+ExpandedLib.ExlibConfig.MpClutchCapLineNm.set -> void
+ExpandedLib.ExlibConfig.MpClutchCapMainNm.get -> float
+ExpandedLib.ExlibConfig.MpClutchCapMainNm.set -> void
+ExpandedLib.ExlibConfig.MpClutchRampS.get -> float
+ExpandedLib.ExlibConfig.MpClutchRampS.set -> void
+ExpandedLib.ExlibConfig.MpOverrunCapNm.get -> float
+ExpandedLib.ExlibConfig.MpOverrunCapNm.set -> void
+ExpandedLib.ExlibConfig.MpShaftFailure.get -> bool
+ExpandedLib.ExlibConfig.MpShaftFailure.set -> void
+ExpandedLib.ExlibConfig.MpStrainTauHours.get -> float
+ExpandedLib.ExlibConfig.MpStrainTauHours.set -> void
+ExpandedLib.FastForwarding.BEBehaviorFastForward
+ExpandedLib.FastForwarding.BEBehaviorFastForward.BEBehaviorFastForward(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.FastForwarding.BEBehaviorFastForward.BEBehaviorFastForward(Vintagestory.API.Common.BlockEntity! blockentity, System.Action<float>! tick, int intervalMs) -> void
+ExpandedLib.FastForwarding.FastForward
+ExpandedLib.FastForwarding.FastForwardMode
+ExpandedLib.FastForwarding.FastForwardMode.Off = 1 -> ExpandedLib.FastForwarding.FastForwardMode
+ExpandedLib.FastForwarding.FastForwardMode.Replay = 0 -> ExpandedLib.FastForwarding.FastForwardMode
+ExpandedLib.FastForwarding.IFastForwardMember
+ExpandedLib.FastForwarding.IFastForwardMember.FastForwardCouplings.get -> System.Collections.Generic.IEnumerable<Vintagestory.API.MathTools.BlockPos!>!
+ExpandedLib.FastForwarding.IFastForwardMember.FastForwardIntervalMs.get -> int
+ExpandedLib.FastForwarding.IFastForwardMember.FastForwardSettled.get -> bool
+ExpandedLib.FastForwarding.IFastForwardMember.FastForwardStep(float dt) -> void
+ExpandedLib.Helpers.ExCoursePreview
+ExpandedLib.Helpers.ExCoursePreview.Clear() -> void
+ExpandedLib.Helpers.ExCoursePreview.Drive(Vintagestory.API.Common.IPlayer! player, Vintagestory.API.Common.CollectibleObject! held, Vintagestory.API.Common.BlockSelection? selection, System.Func<Vintagestory.API.Common.BlockSelection!, (System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>! Change, System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>! Refuse)>! course) -> void
+ExpandedLib.Helpers.ExCoursePreview.ExCoursePreview(Vintagestory.API.Client.ICoreClientAPI! capi, string! slotKey, int? changeColor = null, int? refuseColor = null) -> void
+ExpandedLib.Helpers.GameClockCursor
+ExpandedLib.Helpers.GameClockCursor.Advance(double nowHours) -> double
+ExpandedLib.Helpers.GameClockCursor.GameClockCursor() -> void
+ExpandedLib.Helpers.GameClockCursor.LastHours.get -> double
+ExpandedLib.Helpers.GameClockCursor.Load(Vintagestory.API.Datastructures.ITreeAttribute! tree, string! key) -> void
+ExpandedLib.Helpers.GameClockCursor.Reset() -> void
+ExpandedLib.Helpers.GameClockCursor.Save(Vintagestory.API.Datastructures.ITreeAttribute! tree, string! key) -> void
+ExpandedLib.Helpers.IDrawsShape
+ExpandedLib.Helpers.IDrawsShape.DrawnShape.get -> Vintagestory.API.Common.AssetLocation!
+ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.Bar = 6 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.Bulk = 5 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.Cube = 8 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.Longtool = 2 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.Lump = 7 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.Multicell = 9 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.None = 0 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.Partial = 10 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.Plate = 4 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.Tool = 3 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.Workpiece = 1 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViews
+ExpandedLib.Helpers.ItemViewSet
+ExpandedLib.Helpers.ItemViewSet.BoxAxes.get -> Vintagestory.API.MathTools.Vec3d![]?
+ExpandedLib.Helpers.ItemViewSet.BoxAxes.init -> void
+ExpandedLib.Helpers.ItemViewSet.BoxFrom.get -> Vintagestory.API.MathTools.Vec3d?
+ExpandedLib.Helpers.ItemViewSet.BoxFrom.init -> void
+ExpandedLib.Helpers.ItemViewSet.BoxTo.get -> Vintagestory.API.MathTools.Vec3d?
+ExpandedLib.Helpers.ItemViewSet.BoxTo.init -> void
+ExpandedLib.Helpers.ItemViewSet.Grip.get -> Vintagestory.API.MathTools.Vec3d?
+ExpandedLib.Helpers.ItemViewSet.Grip.init -> void
+ExpandedLib.Helpers.ItemViewSet.Ground.get -> Vintagestory.API.Common.ModelTransform!
+ExpandedLib.Helpers.ItemViewSet.Ground.init -> void
+ExpandedLib.Helpers.ItemViewSet.Gui.get -> Vintagestory.API.Common.ModelTransform!
+ExpandedLib.Helpers.ItemViewSet.Gui.init -> void
+ExpandedLib.Helpers.ItemViewSet.Hidden.get -> bool
+ExpandedLib.Helpers.ItemViewSet.Hidden.init -> void
+ExpandedLib.Helpers.ItemViewSet.HitClip.get -> string?
+ExpandedLib.Helpers.ItemViewSet.HitClip.init -> void
+ExpandedLib.Helpers.ItemViewSet.IdleClip.get -> string?
+ExpandedLib.Helpers.ItemViewSet.IdleClip.init -> void
+ExpandedLib.Helpers.ItemViewSet.ItemViewSet(ExpandedLib.Helpers.ItemViewKind Kind, Vintagestory.API.Common.ModelTransform! Gui, Vintagestory.API.Common.ModelTransform! TpHand, Vintagestory.API.Common.ModelTransform! Ground, string? IdleClip, string? ReadyClip, string? HitClip, string? UseClip, Vintagestory.API.MathTools.Vec3d? BoxFrom, Vintagestory.API.MathTools.Vec3d? BoxTo, Vintagestory.API.MathTools.Vec3d![]? BoxAxes, Vintagestory.API.MathTools.Vec3d? Grip, bool Hidden = false) -> void
+ExpandedLib.Helpers.ItemViewSet.Kind.get -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewSet.Kind.init -> void
+ExpandedLib.Helpers.ItemViewSet.ReadyClip.get -> string?
+ExpandedLib.Helpers.ItemViewSet.ReadyClip.init -> void
+ExpandedLib.Helpers.ItemViewSet.TpHand.get -> Vintagestory.API.Common.ModelTransform!
+ExpandedLib.Helpers.ItemViewSet.TpHand.init -> void
+ExpandedLib.Helpers.ItemViewSet.UseClip.get -> string?
+ExpandedLib.Helpers.ItemViewSet.UseClip.init -> void
+ExpandedLib.Helpers.StreamRenderer
+ExpandedLib.Helpers.StreamRenderer.ModelMat -> Vintagestory.API.Client.Matrixf!
+ExpandedLib.Helpers.StreamRenderer.OnRenderFrame(float deltaTime, Vintagestory.API.Client.EnumRenderStage stage) -> void
+ExpandedLib.Helpers.StreamRenderer.StreamRenderer(Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Client.ICoreClientAPI! api, Vintagestory.API.MathTools.Vec3f! lip, float landingY, float width, float depth, float rotationY) -> void
+ExpandedLib.Helpers.StreamRenderer.Visible -> bool
+ExpandedLib.Machines.BEBehaviorProductionMachine.TickGameHours.get -> double
+ExpandedLib.Machines.BlockEntityProductionMachine.TickGameHours.get -> double
+ExpandedLib.Machines.CraftInput
+ExpandedLib.Machines.CraftInput.CraftInput(int Slot, string! Name, Vintagestory.API.Common.CraftingRecipeIngredient! Ingredient) -> void
+ExpandedLib.Machines.CraftInput.Ingredient.get -> Vintagestory.API.Common.CraftingRecipeIngredient!
+ExpandedLib.Machines.CraftInput.Ingredient.init -> void
+ExpandedLib.Machines.CraftInput.Name.get -> string!
+ExpandedLib.Machines.CraftInput.Name.init -> void
+ExpandedLib.Machines.CraftInput.Slot.get -> int
+ExpandedLib.Machines.CraftInput.Slot.init -> void
+ExpandedLib.Machines.CraftOrder
+ExpandedLib.Machines.CraftOrder.CraftOrder(string? Recipe, System.Collections.Generic.IReadOnlyList<ExpandedLib.Machines.CraftInput!>! Inputs, int? PressId, byte[]? PressData, System.Collections.Generic.IReadOnlyList<int>! OutputSlots, Vintagestory.API.Common.ItemStack! Product, Vintagestory.API.Common.GridRecipe? Grid = null) -> void
+ExpandedLib.Machines.CraftOrder.Grid.get -> Vintagestory.API.Common.GridRecipe?
+ExpandedLib.Machines.CraftOrder.Grid.init -> void
+ExpandedLib.Machines.CraftOrder.Inputs.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Machines.CraftInput!>!
+ExpandedLib.Machines.CraftOrder.Inputs.init -> void
+ExpandedLib.Machines.CraftOrder.OutputSlots.get -> System.Collections.Generic.IReadOnlyList<int>!
+ExpandedLib.Machines.CraftOrder.OutputSlots.init -> void
+ExpandedLib.Machines.CraftOrder.PressData.get -> byte[]?
+ExpandedLib.Machines.CraftOrder.PressData.init -> void
+ExpandedLib.Machines.CraftOrder.PressId.get -> int?
+ExpandedLib.Machines.CraftOrder.PressId.init -> void
+ExpandedLib.Machines.CraftOrder.Product.get -> Vintagestory.API.Common.ItemStack!
+ExpandedLib.Machines.CraftOrder.Product.init -> void
+ExpandedLib.Machines.CraftOrder.Recipe.get -> string?
+ExpandedLib.Machines.CraftOrder.Recipe.init -> void
+ExpandedLib.Machines.CraftSequenceGate
+ExpandedLib.Machines.CraftSequenceProgress
+ExpandedLib.Machines.CraftSequenceProgress.Crafted = 5 -> ExpandedLib.Machines.CraftSequenceProgress
+ExpandedLib.Machines.CraftSequenceProgress.Idle = 0 -> ExpandedLib.Machines.CraftSequenceProgress
+ExpandedLib.Machines.CraftSequenceProgress.StepDone = 4 -> ExpandedLib.Machines.CraftSequenceProgress
+ExpandedLib.Machines.CraftSequenceProgress.WaitingForOutput = 3 -> ExpandedLib.Machines.CraftSequenceProgress
+ExpandedLib.Machines.CraftSequenceProgress.WaitingForVice = 2 -> ExpandedLib.Machines.CraftSequenceProgress
+ExpandedLib.Machines.CraftSequenceProgress.Working = 1 -> ExpandedLib.Machines.CraftSequenceProgress
+ExpandedLib.Machines.CraftSequenceRun
+ExpandedLib.Machines.CraftSequenceRun.CraftSequenceRun(ExpandedLib.Catalogues.CraftSequence! sequence, ExpandedLib.Machines.CraftOrder! order, System.Collections.Generic.IReadOnlyList<Vintagestory.API.Common.ItemSlot!>! slots, System.Random! random, ExpandedLib.Catalogues.CraftSequenceRegistry? tools = null) -> void
+ExpandedLib.Machines.CraftSequenceRun.Current.get -> ExpandedLib.Catalogues.CraftStep!
+ExpandedLib.Machines.CraftSequenceRun.Held.get -> float
+ExpandedLib.Machines.CraftSequenceRun.Hold(Vintagestory.API.Common.IWorldAccessor! world, float dt, Vintagestory.API.Common.ItemSlot? active, Vintagestory.API.Common.ItemSlot? offhand, bool viceOpen, ExpandedLib.Machines.ICraftEffects? effects = null) -> ExpandedLib.Machines.CraftSequenceProgress
+ExpandedLib.Machines.CraftSequenceRun.Release(ExpandedLib.Machines.ICraftEffects? effects) -> void
+ExpandedLib.Machines.CraftSequenceRun.Reset() -> void
+ExpandedLib.Machines.CraftSequenceRun.Step.get -> int
+ExpandedLib.Machines.CraftSequenceRun.Struck.get -> int
+ExpandedLib.Machines.DiagramUse
+ExpandedLib.Machines.DiagramUse.Diagram.get -> Vintagestory.API.Common.Item!
+ExpandedLib.Machines.DiagramUse.Diagram.init -> void
+ExpandedLib.Machines.DiagramUse.DiagramUse(Vintagestory.API.Common.Block! Station, Vintagestory.API.Common.Item! Diagram, Vintagestory.API.Common.GridRecipe! Recipe) -> void
+ExpandedLib.Machines.DiagramUse.Recipe.get -> Vintagestory.API.Common.GridRecipe!
+ExpandedLib.Machines.DiagramUse.Recipe.init -> void
+ExpandedLib.Machines.DiagramUse.Station.get -> Vintagestory.API.Common.Block!
+ExpandedLib.Machines.DiagramUse.Station.init -> void
+ExpandedLib.Machines.EntityCraftEffects
+ExpandedLib.Machines.EntityCraftEffects.EntityCraftEffects(Vintagestory.API.Common.Entities.Entity! holder) -> void
+ExpandedLib.Machines.EntityCraftEffects.StartAnimation(string! animation) -> void
+ExpandedLib.Machines.EntityCraftEffects.StopAnimation(string! animation) -> void
+ExpandedLib.Machines.EntityCraftEffects.Strike(string! sound) -> void
+ExpandedLib.Machines.HandGrid
+ExpandedLib.Machines.ICraftEffects
+ExpandedLib.Machines.ICraftEffects.StartAnimation(string! animation) -> void
+ExpandedLib.Machines.ICraftEffects.StopAnimation(string! animation) -> void
+ExpandedLib.Machines.ICraftEffects.Strike(string! sound) -> void
+ExpandedLib.Machines.ICraftStation
+ExpandedLib.Machines.ICraftStation.Orders(Vintagestory.API.Common.IWorldAccessor! world) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Machines.CraftOrder!>!
+ExpandedLib.Machines.RecipeDiagram
+ExpandedLib.Networks.BlockBehaviorExNetworkPlacement
+ExpandedLib.Networks.BlockBehaviorExNetworkPlacement.Accepts(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer? byPlayer, Vintagestory.API.MathTools.BlockPos! pos, ref string! failureCode) -> bool
+ExpandedLib.Networks.BlockBehaviorExNetworkPlacement.BlockBehaviorExNetworkPlacement(Vintagestory.API.Common.Block! block) -> void
+ExpandedLib.Networks.BlockBehaviorExNetworkPlacement.NetworkType.get -> string?
+ExpandedLib.Networks.BlockNetwork.NodeKeys.get -> System.Collections.Generic.HashSet<ExpandedLib.Networks.NodeKey>!
+ExpandedLib.Networks.BlockNetworkModSystem.CanPlaceMember(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.Block! block, string! networkType, ref string! failureCode) -> bool
+ExpandedLib.Networks.BlockNetworkModSystem.GetNetworkAt(ExpandedLib.Networks.NodeKey key) -> ExpandedLib.Networks.BlockNetwork?
+ExpandedLib.Networks.BlockNetworkModSystem.ListenerTick(Vintagestory.API.Common.IBlockAccessor! blockAccessor, float dt) -> void
+ExpandedLib.Networks.BlockNetworkModSystem.ReplaceNetworkType(string! networkType, System.Func<ExpandedLib.Networks.BlockNetwork!>! factory) -> bool
+ExpandedLib.Networks.BlockNetworkNode.RenderSelectionBoxes(Vintagestory.API.Common.BlockSelection! blockSel, Vintagestory.GameContent.RenderBoxDelegate! renderBoxHandler) -> void
+ExpandedLib.Networks.INetworkMember.Crossings(Vintagestory.API.Common.IBlockAccessor! world, ExpandedLib.Networks.NodeKey key) -> System.Collections.Generic.IEnumerable<ExpandedLib.Networks.NodeCrossing>!
+ExpandedLib.Networks.INetworkMember.Slots(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> System.Collections.Generic.IReadOnlyList<byte>!
+ExpandedLib.Networks.INetworkPlacementCheck
+ExpandedLib.Networks.INetworkPlacementCheck.AcceptsMember(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.Block! block, out string! failureCode) -> bool
+ExpandedLib.Networks.NodeCrossing
+ExpandedLib.Networks.NodeCrossing.Edge.get -> Vintagestory.API.MathTools.BlockFacing?
+ExpandedLib.Networks.NodeCrossing.Edge.init -> void
+ExpandedLib.Networks.NodeCrossing.Face.get -> Vintagestory.API.MathTools.BlockFacing!
+ExpandedLib.Networks.NodeCrossing.Face.init -> void
+ExpandedLib.Networks.NodeCrossing.NodeCrossing() -> void
+ExpandedLib.Networks.NodeCrossing.NodeCrossing(Vintagestory.API.MathTools.BlockFacing! Face, Vintagestory.API.MathTools.BlockFacing? Edge = null) -> void
+ExpandedLib.Networks.NodeKey
+ExpandedLib.Networks.NodeKey.Face.get -> Vintagestory.API.MathTools.BlockFacing?
+ExpandedLib.Networks.NodeKey.IsFace.get -> bool
+ExpandedLib.Networks.NodeKey.IsPort.get -> bool
+ExpandedLib.Networks.NodeKey.Lane.get -> int
+ExpandedLib.Networks.NodeKey.NodeKey() -> void
+ExpandedLib.Networks.NodeKey.NodeKey(Vintagestory.API.MathTools.BlockPos! Pos, byte Slot) -> void
+ExpandedLib.Networks.NodeKey.PortIndex.get -> int
+ExpandedLib.Networks.NodeKey.Pos.get -> Vintagestory.API.MathTools.BlockPos!
+ExpandedLib.Networks.NodeKey.Pos.init -> void
+ExpandedLib.Networks.NodeKey.Slot.get -> byte
+ExpandedLib.Networks.NodeKey.Slot.init -> void
+ExpandedLib.Registries.ExKeyedRegistry<T>.ExKeyedRegistry(System.Func<T, string!>! keySelector, string? table = null, System.Func<T, string!>? owner = null) -> void
+ExpandedLib.Registries.RecipeProfileCost.ReturnedStacks.get -> System.Collections.Generic.Dictionary<string!, int>?
+ExpandedLib.Registries.RecipeProfileCost.ReturnedStacks.set -> void
+ExpandedLib.Structures.BlockEntityMultiblockMachine.TickGameHours.get -> double
+ExpandedLib.Structures.BlockFilledMegastructure.RenderSelectionBoxes(Vintagestory.API.Common.BlockSelection! blockSel, Vintagestory.GameContent.RenderBoxDelegate! renderBoxHandler) -> void
+ExpandedLib.Structures.BlockStructureFiller.RenderSelectionBoxes(Vintagestory.API.Common.BlockSelection! blockSel, Vintagestory.GameContent.RenderBoxDelegate! renderBoxHandler) -> void
+ExpandedLib.Structures.FillerCellSpec.Controls.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.ControlBox!>?
+ExpandedLib.Structures.FillerCellSpec.Controls.init -> void
+ExpandedLib.Structures.FillerCellSpec.Deconstruct(out int x, out int y, out int z, out bool allowAttach, out System.Collections.Generic.IReadOnlyList<ExpandedLib.Structures.FillerBehaviorSpec>? behaviors, out System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.Cuboidf!>? collisionBoxes, out string? portFace, out string? portNetworkType) -> void
+ExpandedLib.Structures.FillerCellSpec.Doors.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.DoorLeaf!>?
+ExpandedLib.Structures.FillerCellSpec.Doors.init -> void
+ExpandedLib.Structures.FillerCellSpec.FillerCellSpec(int X, int Y, int Z, bool AllowAttach = false, System.Collections.Generic.IReadOnlyList<ExpandedLib.Structures.FillerBehaviorSpec>? Behaviors = null, System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.Cuboidf!>? CollisionBoxes = null, string? PortFace = null, string? PortNetworkType = null, System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.Cuboidf!>? SelectionBoxes = null, System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.ControlBox!>? Controls = null, System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.DoorLeaf!>? Doors = null) -> void
+ExpandedLib.Structures.FillerCellSpec.FillerCellSpec(int x, int y, int z, bool allowAttach, System.Collections.Generic.IReadOnlyList<ExpandedLib.Structures.FillerBehaviorSpec>? behaviors, System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.Cuboidf!>? collisionBoxes, string? portFace, string? portNetworkType) -> void
+ExpandedLib.Structures.FillerCellSpec.SelectionBoxes.get -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.Cuboidf!>?
+ExpandedLib.Structures.FillerCellSpec.SelectionBoxes.init -> void
+ExpandedLib.Structures.FillerOffset.Boxes.get -> ExpandedLib.Blocks.CellBoxes?
+ExpandedLib.Structures.FillerOffset.Boxes.init -> void
+ExpandedLib.Structures.FillerOffset.Deconstruct(out Vintagestory.API.MathTools.Vec3i! offset, out bool allowAttach, out Vintagestory.API.MathTools.Cuboidf![]? collisionBoxes, out ExpandedLib.Structures.FillerBehavior[]? behaviors, out string? portFace, out string? portNetworkType) -> void
+ExpandedLib.Structures.FillerOffset.FillerOffset(Vintagestory.API.MathTools.Vec3i! Offset, bool AllowAttach, Vintagestory.API.MathTools.Cuboidf![]? CollisionBoxes, ExpandedLib.Structures.FillerBehavior[]? Behaviors = null, string? PortFace = null, string? PortNetworkType = null, ExpandedLib.Blocks.CellBoxes? Boxes = null) -> void
+ExpandedLib.Structures.FillerOffset.FillerOffset(Vintagestory.API.MathTools.Vec3i! offset, bool allowAttach, Vintagestory.API.MathTools.Cuboidf![]? collisionBoxes, ExpandedLib.Structures.FillerBehavior[]? behaviors, string? portFace, string? portNetworkType) -> void
+ExpandedLib.Structures.GridOptions.KeepBlankRows.get -> bool
+ExpandedLib.Structures.GridOptions.KeepBlankRows.init -> void
+ExpandedLib.Structures.IFillerHost.StructureAngle.get -> int
+override ExpandedLib.Blocks.BEBehaviorClipActions.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
+override ExpandedLib.Blocks.BEBehaviorClipActions.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.Blocks.BEBehaviorClipActions.OnBlockBroken(Vintagestory.API.Common.IPlayer? byPlayer = null) -> void
+override ExpandedLib.Blocks.BEBehaviorClipActions.OnBlockRemoved() -> void
+override ExpandedLib.Blocks.BEBehaviorClipActions.OnBlockUnloaded() -> void
+override ExpandedLib.FastForwarding.BEBehaviorFastForward.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
+override ExpandedLib.FastForwarding.BEBehaviorFastForward.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.FastForwarding.BEBehaviorFastForward.OnBlockRemoved() -> void
+override ExpandedLib.FastForwarding.BEBehaviorFastForward.OnBlockUnloaded() -> void
+override ExpandedLib.FastForwarding.BEBehaviorFastForward.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+override ExpandedLib.Machines.BEBehaviorProductionMachine.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldForResolving) -> void
+override ExpandedLib.Machines.BEBehaviorProductionMachine.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+override ExpandedLib.Machines.MachineStationInventory.GetSuitability(Vintagestory.API.Common.ItemSlot! sourceSlot, Vintagestory.API.Common.ItemSlot! targetSlot, bool isMerge) -> float
+override ExpandedLib.Networks.BlockBehaviorExNetworkPlacement.CanPlaceBlock(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel, ref Vintagestory.API.Common.EnumHandling handling, ref string! failureCode) -> bool
+override ExpandedLib.Networks.BlockBehaviorExNetworkPlacement.Initialize(Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.Networks.NodeKey.ToString() -> string!
+override ExpandedLib.Structures.BlockFilledMegastructure.GetCollisionBoxes(Vintagestory.API.Common.IBlockAccessor! blockAccessor, Vintagestory.API.MathTools.BlockPos! pos) -> Vintagestory.API.MathTools.Cuboidf![]!
+override ExpandedLib.Structures.BlockFilledMegastructure.GetSelectionBoxes(Vintagestory.API.Common.IBlockAccessor! blockAccessor, Vintagestory.API.MathTools.BlockPos! pos) -> Vintagestory.API.MathTools.Cuboidf![]!
+readonly ExpandedLib.Helpers.StreamRenderer.Api -> Vintagestory.API.Client.ICoreClientAPI!
+readonly ExpandedLib.Helpers.StreamRenderer.Pos -> Vintagestory.API.MathTools.BlockPos!
+static ExpandedLib.Blocks.AnimatorKeys.Of(Vintagestory.API.Common.Block! block) -> string!
+static ExpandedLib.Blocks.BlockControls.Find(Vintagestory.API.Common.Block! block, string! id) -> ExpandedLib.Blocks.BlockControl?
+static ExpandedLib.Blocks.BlockControls.Of(Vintagestory.API.Common.Block! block) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.BlockControl!>!
+static ExpandedLib.Blocks.CellBoxes.Read(Vintagestory.API.Datastructures.JsonObject! row) -> ExpandedLib.Blocks.CellBoxes?
+static ExpandedLib.Blocks.ClipActions.None.get -> ExpandedLib.Blocks.ClipActions!
+static ExpandedLib.Blocks.ClipActions.Of(Vintagestory.API.Common.Block! block) -> ExpandedLib.Blocks.ClipActions!
+static ExpandedLib.Blocks.ControlBoxes.Collision(Vintagestory.API.Common.Block! block, Vintagestory.API.Common.IBlockAccessor! accessor, Vintagestory.API.MathTools.BlockPos! pos) -> Vintagestory.API.MathTools.Cuboidf![]?
+static ExpandedLib.Blocks.ControlBoxes.Compose(ExpandedLib.Blocks.CellBoxes! turned, System.Func<string!, ExpandedLib.Blocks.ControlState>! state) -> (Vintagestory.API.MathTools.Cuboidf![]! Collision, Vintagestory.API.MathTools.Cuboidf![]! Selection)
+static ExpandedLib.Blocks.ControlBoxes.Selection(Vintagestory.API.Common.Block! block, Vintagestory.API.Common.IBlockAccessor! accessor, Vintagestory.API.MathTools.BlockPos! pos) -> Vintagestory.API.MathTools.Cuboidf![]?
+static ExpandedLib.Blocks.ControlBoxes.StateOf(Vintagestory.API.Common.BlockEntity? principal, string! controlId) -> ExpandedLib.Blocks.ControlState
+static ExpandedLib.Blocks.ControlHit.Body.get -> ExpandedLib.Blocks.ControlHit
+static ExpandedLib.Blocks.ControlHit.LookedAt(Vintagestory.API.Common.Block! principal, Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! principalPos, Vintagestory.API.Common.IPlayer? player) -> ExpandedLib.Blocks.ControlHit
+static ExpandedLib.Blocks.ControlHit.Of(Vintagestory.API.Common.Block! principal, Vintagestory.API.Common.BlockEntity? entity, Vintagestory.API.Common.BlockSelection! sel) -> ExpandedLib.Blocks.ControlHit
+static ExpandedLib.Blocks.ControlOutline.Boxes(Vintagestory.API.Common.IBlockAccessor! accessor, Vintagestory.API.MathTools.BlockPos! hitPos, string? hitId) -> Vintagestory.API.MathTools.Cuboidf![]?
+static ExpandedLib.Blocks.ControlOutline.Render(Vintagestory.API.Common.Block! block, Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Common.BlockSelection! sel, Vintagestory.GameContent.RenderBoxDelegate! render) -> void
+static ExpandedLib.Catalogues.CraftSequenceLoader.Load(System.Collections.Generic.IEnumerable<(string! Source, string! Json)>! files, ExpandedLib.Catalogues.CraftSequenceRegistry? registry = null) -> System.Collections.Generic.List<string!>!
+static ExpandedLib.Catalogues.CraftSequenceLoader.Load(Vintagestory.API.Common.ICoreAPI! api) -> ExpandedLib.Catalogues.CatalogueLoadReport!
+static ExpandedLib.Catalogues.CraftSequenceLoader.Parse(System.Collections.Generic.IEnumerable<(string! Source, string! Json)>! files, out System.Collections.Generic.List<string!>! errors) -> System.Collections.Generic.List<ExpandedLib.Catalogues.CraftSequenceSet!>!
+static ExpandedLib.Catalogues.CraftSequenceLoader.Read(Vintagestory.API.Common.ICoreAPI! api) -> System.Collections.Generic.List<(string! Source, string! Json)>!
+static ExpandedLib.Catalogues.CraftSequenceRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
+static ExpandedLib.Catalogues.CraftSequenceRegistry.Shared.get -> ExpandedLib.Catalogues.CraftSequenceRegistry!
+static ExpandedLib.Catalogues.CraftSequenceSet.TryParse(Vintagestory.API.Datastructures.JsonObject? node, out ExpandedLib.Catalogues.CraftSequenceSet? set, out string? error) -> bool
+static ExpandedLib.Catalogues.CraftToolDefault.Hammer.get -> ExpandedLib.Catalogues.CraftToolDefault!
+static ExpandedLib.Checks.ExlibChecks.CraftingGrid(string! domain, int size, string! station) -> void
+static ExpandedLib.Checks.ExlibChecks.Produces(string! domain, string! code, string! source, string! at, params string![]! from) -> void
+static ExpandedLib.Checks.ExlibChecks.Runs(string! domain, string! machine, string! blockCode) -> void
+static ExpandedLib.Checks.GatheredSources.All.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Checks.GatheredSources.Source!>!
+static ExpandedLib.ExlibValues.FastForwardBudgetMs.get -> int
+static ExpandedLib.ExlibValues.FastForwardExactSeconds.get -> int
+static ExpandedLib.ExlibValues.MoltenBarCells.get -> int
+static ExpandedLib.ExlibValues.MoltenBurnDamage.get -> float
+static ExpandedLib.ExlibValues.MoltenBurnMinTemperature.get -> float
+static ExpandedLib.ExlibValues.MoltenSpillYield.get -> float
+static ExpandedLib.ExlibValues.MpBeltCapSize1Nm.get -> float
+static ExpandedLib.ExlibValues.MpBeltCapSize2Nm.get -> float
+static ExpandedLib.ExlibValues.MpBeltRatedRadS.get -> float
+static ExpandedLib.ExlibValues.MpBeltSlipFraction.get -> float
+static ExpandedLib.ExlibValues.MpClutchCapLineNm.get -> float
+static ExpandedLib.ExlibValues.MpClutchCapMainNm.get -> float
+static ExpandedLib.ExlibValues.MpClutchRampS.get -> float
+static ExpandedLib.ExlibValues.MpOverrunCapNm.get -> float
+static ExpandedLib.ExlibValues.MpShaftFailure.get -> bool
+static ExpandedLib.ExlibValues.MpStrainTauHours.get -> float
+static ExpandedLib.FastForwarding.FastForward.CursorHours.get -> double
+static ExpandedLib.FastForwarding.FastForward.IsFrozen(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> bool
+static ExpandedLib.FastForwarding.FastForward.Replaying.get -> bool
+static ExpandedLib.Helpers.ExShapeElements.Without(Vintagestory.API.Common.Shape! shape, System.Collections.Generic.IReadOnlyCollection<string!>! drop) -> Vintagestory.API.Common.Shape!
+static ExpandedLib.Helpers.GameTime.CatchUp(double elapsed, float step, int maxSteps, System.Action<float>! action) -> int
+static ExpandedLib.Helpers.GameTime.NowHours(Vintagestory.API.Common.IWorldAccessor! world) -> double
+static ExpandedLib.Helpers.ItemViews.Compute(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Common.CollectibleObject! collectible) -> ExpandedLib.Helpers.ItemViewSet?
+static ExpandedLib.Helpers.ItemViews.Compute(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Common.CompositeShape! shape, ExpandedLib.Helpers.ItemViewKind kind, string? tip = null, Vintagestory.API.MathTools.Vec3d? guiRotation = null) -> ExpandedLib.Helpers.ItemViewSet!
+static ExpandedLib.Helpers.StreamRenderer.StreamBox(Vintagestory.API.MathTools.Vec3f! lip, float landingY, float width, float depth, float rotationY) -> Vintagestory.API.MathTools.Cuboidf!
+static ExpandedLib.Machines.CraftSequenceGate.Allows(ExpandedLib.Catalogues.CraftSequenceRegistry! registry, Vintagestory.API.Common.GridRecipe! recipe) -> bool
+static ExpandedLib.Machines.CraftSequenceGate.At(string! machine) -> System.IDisposable!
+static ExpandedLib.Machines.CraftSequenceGate.At(string! machine, string? diagram) -> System.IDisposable!
+static ExpandedLib.Machines.CraftSequenceGate.Register(Vintagestory.API.Common.IEventAPI! events) -> void
+static ExpandedLib.Machines.HandGrid.Orders(Vintagestory.API.Common.IWorldAccessor! world) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Machines.CraftOrder!>!
+static ExpandedLib.Machines.MachinePorts.BlockEntityAt<T>(this Vintagestory.API.Common.BlockEntity! be, Vintagestory.API.MathTools.BlockPos! pos) -> T?
+static ExpandedLib.Machines.MachineSlotSpec.Diagram(string? hexColor = null) -> ExpandedLib.Machines.MachineSlotSpec
+static ExpandedLib.Machines.RecipeDiagram.Consumes(Vintagestory.API.Common.GridRecipe! recipe) -> bool
+static ExpandedLib.Machines.RecipeDiagram.HideStationRecipes(Vintagestory.API.Common.IWorldAccessor! world) -> int
+static ExpandedLib.Machines.RecipeDiagram.Ingredient(Vintagestory.API.Common.GridRecipe! recipe, Vintagestory.API.Common.IWorldAccessor! world) -> Vintagestory.API.Common.CraftingRecipeIngredient?
+static ExpandedLib.Machines.RecipeDiagram.IsDiagram(Vintagestory.API.Common.CollectibleObject? collectible) -> bool
+static ExpandedLib.Machines.RecipeDiagram.MadeAt(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.CollectibleObject! product) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Machines.DiagramUse!>!
+static ExpandedLib.Machines.RecipeDiagram.Makes(Vintagestory.API.Common.IWorldAccessor! world, string! diagram) -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.Common.GridRecipe!>!
+static ExpandedLib.Machines.RecipeDiagram.Of(Vintagestory.API.Common.GridRecipe! recipe) -> string?
+static ExpandedLib.Networks.NodeKey.BendOffsets(int lane) -> (int Low, int High)
+static ExpandedLib.Networks.NodeKey.Centre(Vintagestory.API.MathTools.BlockPos! pos) -> ExpandedLib.Networks.NodeKey
+static ExpandedLib.Networks.NodeKey.LaneOffset(int lane) -> int
+static ExpandedLib.Networks.NodeKey.OnFace(Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockFacing! face, int lane = 0) -> ExpandedLib.Networks.NodeKey
+static ExpandedLib.Networks.NodeKey.Port(Vintagestory.API.MathTools.BlockPos! pos, int index) -> ExpandedLib.Networks.NodeKey
+static ExpandedLib.Structures.StructureFootprint.WithBoxes(this System.Collections.Generic.IReadOnlyList<ExpandedLib.Structures.FillerCellSpec>! cells, System.Collections.Generic.IReadOnlyDictionary<(int X, int Y, int Z), ExpandedLib.Blocks.CellBoxes!>! table) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Structures.FillerCellSpec>!
+static readonly ExpandedLib.Helpers.ExCoursePreview.DefaultChangeColor -> int
+static readonly ExpandedLib.Helpers.ExCoursePreview.DefaultRefuseColor -> int
+virtual ExpandedLib.Helpers.StreamRenderer.Dispose() -> void
+virtual ExpandedLib.Helpers.StreamRenderer.RenderRange.get -> int
+virtual ExpandedLib.Machines.BEBehaviorProductionMachine.FastForwardMode.get -> ExpandedLib.FastForwarding.FastForwardMode
+virtual ExpandedLib.Machines.BEBehaviorProductionMachine.GameStepHours.get -> double
+virtual ExpandedLib.Machines.BEBehaviorProductionMachine.MaxGameHoursPerTick.get -> double
+virtual ExpandedLib.Machines.BlockEntityProductionMachine.FastForwardMode.get -> ExpandedLib.FastForwarding.FastForwardMode
+virtual ExpandedLib.Machines.BlockEntityProductionMachine.GameStepHours.get -> double
+virtual ExpandedLib.Machines.BlockEntityProductionMachine.MaxGameHoursPerTick.get -> double
+virtual ExpandedLib.Networks.BlockNetwork.OnSplitFragment(ExpandedLib.Networks.BlockNetwork! original, System.Collections.Generic.IReadOnlySet<ExpandedLib.Networks.NodeKey>! fragmentKeys) -> void
+virtual ExpandedLib.Networks.BlockNetwork.OnTickPublished(Vintagestory.API.Common.IBlockAccessor! world, ExpandedLib.Networks.BlockNetworkModSystem! manager) -> void
+virtual ExpandedLib.Networks.BlockNetwork.StepIntervalMs.get -> int
+virtual ExpandedLib.Networks.BlockNetwork.SupportsPartialSplit.get -> bool
+virtual ExpandedLib.Networks.BlockNetworkNode.ShapeConnectorAt(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockFacing! face) -> bool
+virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.FastForwardMode.get -> ExpandedLib.FastForwarding.FastForwardMode
+virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.GameStepHours.get -> double
+virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.MaxGameHoursPerTick.get -> double
+~override ExpandedLib.Networks.BlockNetworkNode.GetInterface<T>(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> T
+~override ExpandedLib.Structures.BlockFilledMegastructure.GetInterface<T>(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> T

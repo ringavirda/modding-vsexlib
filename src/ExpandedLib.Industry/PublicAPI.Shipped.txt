@@ -1,0 +1,567 @@
+#nullable enable
+abstract ExpandedLib.Industry.MechanicalPower.BEBehaviorMPSubmachineBase.ResolveDiscoveryFace() -> Vintagestory.API.MathTools.BlockFacing!
+const ExpandedLib.Industry.Materials.Roles.Charge = "charge" -> string!
+const ExpandedLib.Industry.Materials.Roles.Flux = "flux" -> string!
+const ExpandedLib.Industry.Materials.Roles.Fuel = "fuel" -> string!
+const ExpandedLib.Industry.Materials.Roles.IronOre = "ironore" -> string!
+const ExpandedLib.Industry.Materials.Roles.Scrap = "scrap" -> string!
+const ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.DefaultResistance = 0.5 -> float
+const ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.DefaultCapacity = 100 -> int
+const ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.DefaultKeyPrefix = "mc_" -> string!
+const ExpandedLib.Industry.Molten.MoltenContents.BarrelUnitsKey = "currentUnitAmount" -> string!
+const ExpandedLib.Industry.Molten.MoltenContents.MoldUnitsKey = "fillLevel" -> string!
+const ExpandedLib.Industry.Molten.MoltenMetal.VanillaMoldCooldownSpeed = 300 -> float
+const ExpandedLib.Industry.Pipes.BlockPipe.CastTier = "cast" -> string!
+const ExpandedLib.Industry.Pipes.BlockPipe.FlangedJoint = "flanged" -> string!
+const ExpandedLib.Industry.Pipes.BlockPipe.PlatedTier = "plated" -> string!
+const ExpandedLib.Industry.Pipes.BlockPipe.RolledTier = "rolled" -> string!
+const ExpandedLib.Industry.Pipes.BlockPipe.WeldedJoint = "welded" -> string!
+ExpandedLib.Industry.Heat.HeatBalance
+ExpandedLib.Industry.Heat.HeatBalance.AirFactor.get -> float
+ExpandedLib.Industry.Heat.HeatBalance.AirFactor.init -> void
+ExpandedLib.Industry.Heat.HeatBalance.AmbientLoss.get -> float
+ExpandedLib.Industry.Heat.HeatBalance.AmbientLoss.init -> void
+ExpandedLib.Industry.Heat.HeatBalance.BlastSupplied.get -> bool
+ExpandedLib.Industry.Heat.HeatBalance.BlastSupplied.init -> void
+ExpandedLib.Industry.Heat.HeatBalance.BlastTemp.get -> float
+ExpandedLib.Industry.Heat.HeatBalance.BlastTemp.init -> void
+ExpandedLib.Industry.Heat.HeatBalance.ChargeLoss.get -> float
+ExpandedLib.Industry.Heat.HeatBalance.ChargeLoss.init -> void
+ExpandedLib.Industry.Heat.HeatBalance.FuelFactor.get -> float
+ExpandedLib.Industry.Heat.HeatBalance.FuelFactor.init -> void
+ExpandedLib.Industry.Heat.HeatBalance.FuelFrac.get -> float
+ExpandedLib.Industry.Heat.HeatBalance.FuelFrac.init -> void
+ExpandedLib.Industry.Heat.HeatBalance.HeatBalance() -> void
+ExpandedLib.Industry.Heat.HeatBalance.HeatBalance(float TIn, float TLoss, float TProcess, float FuelFrac, float FuelFactor, float AirFactor, bool BlastSupplied, float BlastTemp, float PreheatGain, float ChargeLoss, float AmbientLoss, float TransferLoss = 0) -> void
+ExpandedLib.Industry.Heat.HeatBalance.IsHotBlast.get -> bool
+ExpandedLib.Industry.Heat.HeatBalance.PreheatGain.get -> float
+ExpandedLib.Industry.Heat.HeatBalance.PreheatGain.init -> void
+ExpandedLib.Industry.Heat.HeatBalance.TIn.get -> float
+ExpandedLib.Industry.Heat.HeatBalance.TIn.init -> void
+ExpandedLib.Industry.Heat.HeatBalance.TLoss.get -> float
+ExpandedLib.Industry.Heat.HeatBalance.TLoss.init -> void
+ExpandedLib.Industry.Heat.HeatBalance.TProcess.get -> float
+ExpandedLib.Industry.Heat.HeatBalance.TProcess.init -> void
+ExpandedLib.Industry.Heat.HeatBalance.TransferLoss.get -> float
+ExpandedLib.Industry.Heat.HeatBalance.TransferLoss.init -> void
+ExpandedLib.Industry.Heat.HeatBalanceHud
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.BlastCold.get -> string!
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.BlastCold.init -> void
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.BlastHot.get -> string!
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.BlastHot.init -> void
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.BlastNone.get -> string!
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.BlastNone.init -> void
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.HeatBalanceLedgerKeys() -> void
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.HeatBalanceLedgerKeys(string! Temp, string! HeatOk, string! HeatStall, string! HeatIn, string! HeatLoss, string! BlastNone, string! BlastHot, string! BlastCold) -> void
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.HeatIn.get -> string!
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.HeatIn.init -> void
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.HeatLoss.get -> string!
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.HeatLoss.init -> void
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.HeatOk.get -> string!
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.HeatOk.init -> void
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.HeatStall.get -> string!
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.HeatStall.init -> void
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.Temp.get -> string!
+ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys.Temp.init -> void
+ExpandedLib.Industry.Helpers.ExMoldDrops
+ExpandedLib.Industry.Helpers.ExMoldGate
+ExpandedLib.Industry.Helpers.ExParticles
+ExpandedLib.Industry.Helpers.ExSoundLoop
+ExpandedLib.Industry.Helpers.ExSoundLoop.Dispose() -> void
+ExpandedLib.Industry.Helpers.ExSoundLoop.ExSoundLoop(Vintagestory.API.Common.AssetLocation! sound, float volume = 1, float range = 16, float pitch = 1) -> void
+ExpandedLib.Industry.Helpers.ExSoundLoop.IsDisposed.get -> bool
+ExpandedLib.Industry.Helpers.ExSoundLoop.IsPlaying.get -> bool
+ExpandedLib.Industry.Helpers.ExSoundLoop.Pitch.get -> float
+ExpandedLib.Industry.Helpers.ExSoundLoop.Pitch.set -> void
+ExpandedLib.Industry.Helpers.ExSoundLoop.Update(Vintagestory.API.Common.ICoreAPI? api, Vintagestory.API.MathTools.BlockPos! pos, bool running) -> void
+ExpandedLib.Industry.Helpers.ExSoundLoop.Volume.get -> float
+ExpandedLib.Industry.Helpers.ExSoundLoop.Volume.set -> void
+ExpandedLib.Industry.Helpers.ExSounds
+ExpandedLib.Industry.IndustryModule
+ExpandedLib.Industry.IndustryModule.AssetsFinalize(Vintagestory.API.Common.ICoreAPI! api) -> void
+ExpandedLib.Industry.IndustryModule.Contribute(Vintagestory.API.Common.ICoreAPI! api) -> void
+ExpandedLib.Industry.IndustryModule.Dispose() -> void
+ExpandedLib.Industry.IndustryModule.IndustryModule() -> void
+ExpandedLib.Industry.IndustryModule.Start(Vintagestory.API.Common.ICoreAPI! api) -> void
+ExpandedLib.Industry.IndustryModule.StartClientSide(Vintagestory.API.Client.ICoreClientAPI! api) -> void
+ExpandedLib.Industry.IndustryModule.StartPre(Vintagestory.API.Common.ICoreAPI! api) -> void
+ExpandedLib.Industry.IndustryModule.StartServerSide(Vintagestory.API.Server.ICoreServerAPI! api) -> void
+ExpandedLib.Industry.Materials.Roles
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.BEBehaviorMPFillerPort(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.ConfigureFromFiller(Vintagestory.API.MathTools.BlockPos? principal, Vintagestory.API.MathTools.BlockFacing? connectorFace, Vintagestory.API.Datastructures.JsonObject? properties) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.CurrentAngleRad.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.DrivenAngleRad.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.IsReversed.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.IsTurning.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.PortFacing.get -> Vintagestory.API.MathTools.BlockFacing!
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.Speed.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.Through.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPSubmachineBase
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMPSubmachineBase.BEBehaviorMPSubmachineBase(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.Industry.MechanicalPower.IMpEnergyConsumer
+ExpandedLib.Industry.MechanicalPower.IMpEnergyConsumer.LoadTorque(float speed) -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyDirection
+ExpandedLib.Industry.MechanicalPower.IMpEnergyDirection.IsReversed.get -> bool
+ExpandedLib.Industry.MechanicalPower.IMpEnergyProducer
+ExpandedLib.Industry.MechanicalPower.IMpEnergyProducer.DriveTorque(float speed) -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyStorage
+ExpandedLib.Industry.MechanicalPower.IMpEnergyStorage.Inertia.get -> float
+ExpandedLib.Industry.MechanicalPower.MPAnim
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetwork
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetwork.MpEnergyNetwork(ExpandedLib.Networks.BlockNetworkModSystem! system) -> void
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetwork.State.get -> ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState?
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.DemandPower.get -> float
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.DemandPower.set -> void
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.Inertia.get -> float
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.Inertia.set -> void
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.MpEnergyNetworkState() -> void
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.Reversed.get -> bool
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.Reversed.set -> void
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.Speed.get -> float
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.Speed.set -> void
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.StoredEnergy.get -> float
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.StoredEnergy.set -> void
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.SupplyPower.get -> float
+ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.SupplyPower.set -> void
+ExpandedLib.Industry.Metals.MetalAlloyIngredient
+ExpandedLib.Industry.Metals.MetalAlloyIngredient.Max.get -> float
+ExpandedLib.Industry.Metals.MetalAlloyIngredient.Max.set -> void
+ExpandedLib.Industry.Metals.MetalAlloyIngredient.Metal.get -> string!
+ExpandedLib.Industry.Metals.MetalAlloyIngredient.Metal.set -> void
+ExpandedLib.Industry.Metals.MetalAlloyIngredient.MetalAlloyIngredient() -> void
+ExpandedLib.Industry.Metals.MetalAlloyIngredient.Min.get -> float
+ExpandedLib.Industry.Metals.MetalAlloyIngredient.Min.set -> void
+ExpandedLib.Industry.Metals.MetalAlloySpec
+ExpandedLib.Industry.Metals.MetalAlloySpec.Ingredients.get -> System.Collections.Generic.List<ExpandedLib.Industry.Metals.MetalAlloyIngredient!>!
+ExpandedLib.Industry.Metals.MetalAlloySpec.Ingredients.set -> void
+ExpandedLib.Industry.Metals.MetalAlloySpec.MetalAlloySpec() -> void
+ExpandedLib.Industry.Metals.MetalCatalogueLoader
+ExpandedLib.Industry.Metals.MetalDef
+ExpandedLib.Industry.Metals.MetalDef.Alloy.get -> ExpandedLib.Industry.Metals.MetalAlloySpec?
+ExpandedLib.Industry.Metals.MetalDef.Alloy.set -> void
+ExpandedLib.Industry.Metals.MetalDef.CastDomain.get -> string?
+ExpandedLib.Industry.Metals.MetalDef.CastDomain.set -> void
+ExpandedLib.Industry.Metals.MetalDef.Code.get -> string!
+ExpandedLib.Industry.Metals.MetalDef.Code.set -> void
+ExpandedLib.Industry.Metals.MetalDef.Density.get -> int?
+ExpandedLib.Industry.Metals.MetalDef.Density.set -> void
+ExpandedLib.Industry.Metals.MetalDef.DisplayLangKey.get -> string?
+ExpandedLib.Industry.Metals.MetalDef.DisplayLangKey.set -> void
+ExpandedLib.Industry.Metals.MetalDef.GenerateItemFamily.get -> bool
+ExpandedLib.Industry.Metals.MetalDef.GenerateItemFamily.set -> void
+ExpandedLib.Industry.Metals.MetalDef.GlowMinTemp.get -> float?
+ExpandedLib.Industry.Metals.MetalDef.GlowMinTemp.set -> void
+ExpandedLib.Industry.Metals.MetalDef.HardenedThreshold.get -> float?
+ExpandedLib.Industry.Metals.MetalDef.HardenedThreshold.set -> void
+ExpandedLib.Industry.Metals.MetalDef.IsAlloy.get -> bool
+ExpandedLib.Industry.Metals.MetalDef.IsAlloy.set -> void
+ExpandedLib.Industry.Metals.MetalDef.ItemForms.get -> System.Collections.Generic.List<string!>?
+ExpandedLib.Industry.Metals.MetalDef.ItemForms.set -> void
+ExpandedLib.Industry.Metals.MetalDef.LiquidThreshold.get -> float?
+ExpandedLib.Industry.Metals.MetalDef.LiquidThreshold.set -> void
+ExpandedLib.Industry.Metals.MetalDef.Media.get -> System.Collections.Generic.List<string!>?
+ExpandedLib.Industry.Metals.MetalDef.Media.set -> void
+ExpandedLib.Industry.Metals.MetalDef.MeltingPoint.get -> int?
+ExpandedLib.Industry.Metals.MetalDef.MeltingPoint.set -> void
+ExpandedLib.Industry.Metals.MetalDef.MetalDef() -> void
+ExpandedLib.Industry.Metals.MetalDef.MoltenItem.get -> string!
+ExpandedLib.Industry.Metals.MetalDef.MoltenItem.set -> void
+ExpandedLib.Industry.Metals.MetalDef.RecoveryFallback.get -> string?
+ExpandedLib.Industry.Metals.MetalDef.RecoveryFallback.set -> void
+ExpandedLib.Industry.Metals.MetalDef.SolidDrop.get -> string?
+ExpandedLib.Industry.Metals.MetalDef.SolidDrop.set -> void
+ExpandedLib.Industry.Metals.MetalDef.TexturePath.get -> string?
+ExpandedLib.Industry.Metals.MetalDef.TexturePath.set -> void
+ExpandedLib.Industry.Metals.MetalDef.Tools.get -> ExpandedLib.Industry.Metals.MetalToolSpec?
+ExpandedLib.Industry.Metals.MetalDef.Tools.set -> void
+ExpandedLib.Industry.Metals.MetalDef.UnitsPerBit.get -> int?
+ExpandedLib.Industry.Metals.MetalDef.UnitsPerBit.set -> void
+ExpandedLib.Industry.Metals.MetalFamilyEmitter
+ExpandedLib.Industry.Metals.MetalRegistry
+ExpandedLib.Industry.Metals.MetalToolSpec
+ExpandedLib.Industry.Metals.MetalToolSpec.AttackPower.get -> float?
+ExpandedLib.Industry.Metals.MetalToolSpec.AttackPower.set -> void
+ExpandedLib.Industry.Metals.MetalToolSpec.Durability.get -> int?
+ExpandedLib.Industry.Metals.MetalToolSpec.Durability.set -> void
+ExpandedLib.Industry.Metals.MetalToolSpec.MetalToolSpec() -> void
+ExpandedLib.Industry.Metals.MetalToolSpec.MiningTier.get -> int?
+ExpandedLib.Industry.Metals.MetalToolSpec.MiningTier.set -> void
+ExpandedLib.Industry.Metals.MetalToolSpec.Preset.get -> string?
+ExpandedLib.Industry.Metals.MetalToolSpec.Preset.set -> void
+ExpandedLib.Industry.Metals.MetalToolSpec.ToolTypes.get -> System.Collections.Generic.List<string!>?
+ExpandedLib.Industry.Metals.MetalToolSpec.ToolTypes.set -> void
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.AcceptsSubMinimumFlow.get -> bool
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.BEBehaviorMoltenCell(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.CellAmount.get -> int
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.CellMetalType.get -> string!
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.CellState.get -> ExpandedLib.Industry.Molten.MoltenState
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.CellTemperature.get -> float
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.ClearCapacity() -> void
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.ClearContents() -> void
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.ConfigureFromFiller(Vintagestory.API.MathTools.BlockPos? principal, Vintagestory.API.MathTools.BlockFacing? connectorFace, Vintagestory.API.Datastructures.JsonObject? properties) -> void
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.DrainMetal(int amount) -> int
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.EnsureMetalStack(Vintagestory.API.Common.IWorldAccessor! world) -> void
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.GetRecoveryDrop(Vintagestory.API.Common.IWorldAccessor! world) -> Vintagestory.API.Common.ItemStack?
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.GlowLightLevel.get -> byte
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.HasMoltenMetal.get -> bool
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.IsCellEmpty.get -> bool
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.IsFlowSource.get -> bool
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.IsHardened.get -> bool
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.Key.get -> string!
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.MaxUnitCapacity.get -> int
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.Principal.get -> Vintagestory.API.MathTools.BlockPos?
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.PushMetal(int amount, Vintagestory.API.Common.ItemStack! metal, Vintagestory.API.Common.IWorldAccessor! world) -> int
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.PushMetalRaw(int amount, string! metalType, float temperature, Vintagestory.API.Common.IWorldAccessor! world) -> int
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.Sealed.get -> bool
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.SetCapacity(int capacity) -> void
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.SoakHeat(Vintagestory.API.Common.IWorldAccessor! world, float incomingTemp) -> bool
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.Solidified.get -> bool
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.UpdateThermal(Vintagestory.API.Common.IWorldAccessor! world) -> void
+ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.WouldSpillOnRemoval() -> bool
+ExpandedLib.Industry.Molten.ChiselOutcome
+ExpandedLib.Industry.Molten.ChiselOutcome.Blocked = 1 -> ExpandedLib.Industry.Molten.ChiselOutcome
+ExpandedLib.Industry.Molten.ChiselOutcome.Chiseled = 2 -> ExpandedLib.Industry.Molten.ChiselOutcome
+ExpandedLib.Industry.Molten.ChiselOutcome.NotChiseling = 0 -> ExpandedLib.Industry.Molten.ChiselOutcome
+ExpandedLib.Industry.Molten.IChiselableMolten
+ExpandedLib.Industry.Molten.IChiselableMolten.CanChiselOut.get -> bool
+ExpandedLib.Industry.Molten.IChiselableMolten.ChiselBlockedError.get -> string?
+ExpandedLib.Industry.Molten.IChiselableMolten.ChiselOut() -> Vintagestory.API.Common.ItemStack?
+ExpandedLib.Industry.Molten.IChiselableMolten.HasChiselableContent.get -> bool
+ExpandedLib.Industry.Molten.IMoltenCell
+ExpandedLib.Industry.Molten.IMoltenCell.AcceptsSubMinimumFlow.get -> bool
+ExpandedLib.Industry.Molten.IMoltenCell.CellAmount.get -> int
+ExpandedLib.Industry.Molten.IMoltenCell.CellMetalType.get -> string!
+ExpandedLib.Industry.Molten.IMoltenCell.CellTemperature.get -> float
+ExpandedLib.Industry.Molten.IMoltenCell.DrainMetal(int amount) -> int
+ExpandedLib.Industry.Molten.IMoltenCell.EnsureMetalStack(Vintagestory.API.Common.IWorldAccessor! world) -> void
+ExpandedLib.Industry.Molten.IMoltenCell.FlowRules.get -> ExpandedLib.Industry.Molten.MoltenFlowRules?
+ExpandedLib.Industry.Molten.IMoltenCell.IsFlowSource.get -> bool
+ExpandedLib.Industry.Molten.IMoltenCell.IsOpenMold.get -> bool
+ExpandedLib.Industry.Molten.IMoltenCell.MaxUnitCapacity.get -> int
+ExpandedLib.Industry.Molten.IMoltenCell.PushMetalRaw(int amount, string! metalType, float temperature, Vintagestory.API.Common.IWorldAccessor! world) -> int
+ExpandedLib.Industry.Molten.IMoltenCell.Sealed.get -> bool
+ExpandedLib.Industry.Molten.IMoltenCell.Solidified.get -> bool
+ExpandedLib.Industry.Molten.IMoltenCell.UpdateThermal(Vintagestory.API.Common.IWorldAccessor! world) -> void
+ExpandedLib.Industry.Molten.MoltenCellHost
+ExpandedLib.Industry.Molten.MoltenCharge
+ExpandedLib.Industry.Molten.MoltenCharge.BuildRecovery(Vintagestory.API.Common.IWorldAccessor! world, int units, int unitsPerBit = 5, bool slagFallback = false) -> Vintagestory.API.Common.ItemStack?
+ExpandedLib.Industry.Molten.MoltenCharge.IsBelowMeltingPoint(Vintagestory.API.Common.IWorldAccessor! world) -> bool
+ExpandedLib.Industry.Molten.MoltenCharge.IsHardened(Vintagestory.API.Common.IWorldAccessor! world) -> bool
+ExpandedLib.Industry.Molten.MoltenCharge.IsLiquid(Vintagestory.API.Common.IWorldAccessor! world) -> bool
+ExpandedLib.Industry.Molten.MoltenCharge.MeltingPoint(Vintagestory.API.Common.IWorldAccessor! world) -> float
+ExpandedLib.Industry.Molten.MoltenCharge.MetalCode.get -> Vintagestory.API.Common.AssetLocation!
+ExpandedLib.Industry.Molten.MoltenCharge.RetypeTo(Vintagestory.API.Common.IWorldAccessor! world, string! newItemCode, float? cooldownSpeed = null) -> bool
+ExpandedLib.Industry.Molten.MoltenCharge.SetTemperature(Vintagestory.API.Common.IWorldAccessor! world, float temperature) -> void
+ExpandedLib.Industry.Molten.MoltenCharge.Stack.get -> Vintagestory.API.Common.ItemStack!
+ExpandedLib.Industry.Molten.MoltenCharge.SyncCooldown(Vintagestory.API.Common.IWorldAccessor! world, float cooldownSpeed) -> void
+ExpandedLib.Industry.Molten.MoltenCharge.Temperature(Vintagestory.API.Common.IWorldAccessor! world) -> float
+ExpandedLib.Industry.Molten.MoltenCharge.ToTree(Vintagestory.API.Datastructures.ITreeAttribute! tree, string! stackKey, string! unitsKey) -> void
+ExpandedLib.Industry.Molten.MoltenCharge.Units.get -> int
+ExpandedLib.Industry.Molten.MoltenCharge.Units.set -> void
+ExpandedLib.Industry.Molten.MoltenChisel
+ExpandedLib.Industry.Molten.MoltenContents
+ExpandedLib.Industry.Molten.MoltenFlowRules
+ExpandedLib.Industry.Molten.MoltenFlowRules.Conveys.get -> bool
+ExpandedLib.Industry.Molten.MoltenFlowRules.Conveys.init -> void
+ExpandedLib.Industry.Molten.MoltenFlowRules.FlowRate.get -> int
+ExpandedLib.Industry.Molten.MoltenFlowRules.FlowRate.init -> void
+ExpandedLib.Industry.Molten.MoltenFlowRules.HorizontalOnly.get -> bool
+ExpandedLib.Industry.Molten.MoltenFlowRules.HorizontalOnly.init -> void
+ExpandedLib.Industry.Molten.MoltenFlowRules.MinFlowGap.get -> int
+ExpandedLib.Industry.Molten.MoltenFlowRules.MinFlowGap.init -> void
+ExpandedLib.Industry.Molten.MoltenFlowRules.MoltenFlowRules() -> void
+ExpandedLib.Industry.Molten.MoltenFlowRules.MoltenFlowRules(int FlowRate, int MinFlowGap, bool Conveys, bool HorizontalOnly) -> void
+ExpandedLib.Industry.Molten.MoltenMetal
+ExpandedLib.Industry.Molten.MoltenNetwork
+ExpandedLib.Industry.Molten.MoltenNetwork.MoltenNetwork(ExpandedLib.Networks.BlockNetworkModSystem! system) -> void
+ExpandedLib.Industry.Molten.MoltenState
+ExpandedLib.Industry.Molten.MoltenState.Cooling = 1 -> ExpandedLib.Industry.Molten.MoltenState
+ExpandedLib.Industry.Molten.MoltenState.Hardened = 2 -> ExpandedLib.Industry.Molten.MoltenState
+ExpandedLib.Industry.Molten.MoltenState.Liquid = 0 -> ExpandedLib.Industry.Molten.MoltenState
+ExpandedLib.Industry.Pipes.BlockEntityPipe
+ExpandedLib.Industry.Pipes.BlockEntityPipe.BlockEntityPipe() -> void
+ExpandedLib.Industry.Pipes.BlockEntityPipe.IsLiquid.get -> bool
+ExpandedLib.Industry.Pipes.BlockEntityPipe.MaxVolume.get -> float
+ExpandedLib.Industry.Pipes.BlockEntityPipe.Medium.get -> string!
+ExpandedLib.Industry.Pipes.BlockEntityPipe.Medium.set -> void
+ExpandedLib.Industry.Pipes.BlockEntityPipe.Pressure.get -> float
+ExpandedLib.Industry.Pipes.BlockEntityPipe.Pressure.set -> void
+ExpandedLib.Industry.Pipes.BlockEntityPipe.SpawnGasLeak(Vintagestory.API.MathTools.BlockFacing![]! openFaces, float intensity) -> void
+ExpandedLib.Industry.Pipes.BlockEntityPipe.SpawnLiquidLeak(Vintagestory.API.MathTools.BlockFacing![]! openFaces, float intensity = 1) -> void
+ExpandedLib.Industry.Pipes.BlockEntityPipe.Temperature.get -> float
+ExpandedLib.Industry.Pipes.BlockEntityPipe.Temperature.set -> void
+ExpandedLib.Industry.Pipes.BlockEntityPipe.Volume.get -> float
+ExpandedLib.Industry.Pipes.BlockEntityPipe._clientFlowRate -> float
+ExpandedLib.Industry.Pipes.BlockEntityPipe._clientMaxVolume -> float
+ExpandedLib.Industry.Pipes.BlockEntityPipe._clientVolume -> float
+ExpandedLib.Industry.Pipes.BlockEntityPipe._openingsCount -> int
+ExpandedLib.Industry.Pipes.BlockEntityPipePassthrough
+ExpandedLib.Industry.Pipes.BlockEntityPipePassthrough.BlockEntityPipePassthrough() -> void
+ExpandedLib.Industry.Pipes.BlockPipe
+ExpandedLib.Industry.Pipes.BlockPipe.BlockPipe() -> void
+ExpandedLib.Industry.Pipes.BlockPipePassthrough
+ExpandedLib.Industry.Pipes.BlockPipePassthrough.BlockPipePassthrough() -> void
+ExpandedLib.Industry.Pipes.ChimneyVent
+ExpandedLib.Industry.Pipes.ChimneyVent.ChimneyVent(System.Func<float>! drawRatePerChimney) -> void
+ExpandedLib.Industry.Pipes.ChimneyVent.TryClassifyVent(Vintagestory.API.Common.IBlockAccessor! blockAccessor, ExpandedLib.Networks.BlockNetworkNode! node, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockFacing! face, Vintagestory.API.Common.Block! neighbour, out Vintagestory.API.MathTools.BlockPos! ventPos) -> bool
+ExpandedLib.Industry.Pipes.ChimneyVent.Vent(System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>! vents, ExpandedLib.Industry.Pipes.PipeNetworkState! state, bool liquid, ExpandedLib.Networks.BlockNetworkModSystem! manager) -> float
+ExpandedLib.Industry.Pipes.IBurstablePipe
+ExpandedLib.Industry.Pipes.IBurstablePipe.BurstPressure.get -> float
+ExpandedLib.Industry.Pipes.IBurstablePipe.CanBurst.get -> bool
+ExpandedLib.Industry.Pipes.IChimneyVentable
+ExpandedLib.Industry.Pipes.IPipeDraught
+ExpandedLib.Industry.Pipes.IPipeDraught.GivesDraught.get -> bool
+ExpandedLib.Industry.Pipes.IPipeNode
+ExpandedLib.Industry.Pipes.IPipeNode.IsLiquid.get -> bool
+ExpandedLib.Industry.Pipes.IPipeNode.MaxVolume.get -> float
+ExpandedLib.Industry.Pipes.IPipeNode.Medium.get -> string!
+ExpandedLib.Industry.Pipes.IPipeNode.Pressure.get -> float
+ExpandedLib.Industry.Pipes.IPipeNode.Temperature.get -> float
+ExpandedLib.Industry.Pipes.IPipeNode.TryConsume(float requestedVolume) -> float
+ExpandedLib.Industry.Pipes.IPipeNode.TryProduce(float volume, float temperature, string! gasType = "Air", float maxOutputPressure = 1, bool bypassLeakCap = false) -> bool
+ExpandedLib.Industry.Pipes.IPipeNode.Volume.get -> float
+ExpandedLib.Industry.Pipes.IPipeVentSource
+ExpandedLib.Industry.Pipes.IPipeVentSource.CreateVentStrategy() -> ExpandedLib.Industry.Pipes.IPipeVentStrategy?
+ExpandedLib.Industry.Pipes.IPipeVentStrategy
+ExpandedLib.Industry.Pipes.IPipeVentStrategy.TryClassifyVent(Vintagestory.API.Common.IBlockAccessor! blockAccessor, ExpandedLib.Networks.BlockNetworkNode! node, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockFacing! face, Vintagestory.API.Common.Block! neighbour, out Vintagestory.API.MathTools.BlockPos! ventPos) -> bool
+ExpandedLib.Industry.Pipes.IPipeVentStrategy.Vent(System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>! vents, ExpandedLib.Industry.Pipes.PipeNetworkState! state, bool liquid, ExpandedLib.Networks.BlockNetworkModSystem! manager) -> float
+ExpandedLib.Industry.Pipes.IThroughputLimitedPipe
+ExpandedLib.Industry.Pipes.IThroughputLimitedPipe.MaxThroughput.get -> float
+ExpandedLib.Industry.Pipes.PipeNetwork
+ExpandedLib.Industry.Pipes.PipeNetwork.HasDraught(Vintagestory.API.Common.IBlockAccessor! blockAccessor) -> bool
+ExpandedLib.Industry.Pipes.PipeNetwork.PipeNetwork(ExpandedLib.Networks.BlockNetworkModSystem! system, ExpandedLib.Industry.Pipes.IPipeVentStrategy? vent = null, ExpandedLib.Catalogues.IMediumTaxonomy? taxonomy = null) -> void
+ExpandedLib.Industry.Pipes.PipeNetwork.ProduceGasMeasured(float volume, float temperature, string! gasType, Vintagestory.API.Common.IBlockAccessor! blockAccessor, float maxOutputPressure = 1, bool bypassLeakCap = false) -> float
+ExpandedLib.Industry.Pipes.PipeNetwork.ProduceLiquidMeasured(float volume, float temperature, float setPressure, Vintagestory.API.Common.IBlockAccessor! blockAccessor) -> float
+ExpandedLib.Industry.Pipes.PipeNetwork.State.get -> ExpandedLib.Industry.Pipes.PipeNetworkState?
+ExpandedLib.Industry.Pipes.PipeNetwork.TryConsumeGas(float requestedVolume, Vintagestory.API.Common.IBlockAccessor! blockAccessor) -> float
+ExpandedLib.Industry.Pipes.PipeNetwork.TryConsumeLiquid(float requestedVolume, Vintagestory.API.Common.IBlockAccessor! blockAccessor) -> float
+ExpandedLib.Industry.Pipes.PipeNetwork.TryProduceGas(float volume, float temperature, string! gasType, Vintagestory.API.Common.IBlockAccessor! blockAccessor, float maxOutputPressure = 1, bool bypassLeakCap = false) -> bool
+ExpandedLib.Industry.Pipes.PipeNetwork.TryProduceLiquid(float volume, float temperature, float setPressure, Vintagestory.API.Common.IBlockAccessor! blockAccessor) -> bool
+ExpandedLib.Industry.Pipes.PipeNetworkState
+ExpandedLib.Industry.Pipes.PipeNetworkState.FeedPressure.get -> float
+ExpandedLib.Industry.Pipes.PipeNetworkState.FeedPressure.set -> void
+ExpandedLib.Industry.Pipes.PipeNetworkState.FlowRate.get -> float
+ExpandedLib.Industry.Pipes.PipeNetworkState.FlowRate.set -> void
+ExpandedLib.Industry.Pipes.PipeNetworkState.IsLeaking.get -> bool
+ExpandedLib.Industry.Pipes.PipeNetworkState.IsLiquid.get -> bool
+ExpandedLib.Industry.Pipes.PipeNetworkState.MaxVolume.get -> float
+ExpandedLib.Industry.Pipes.PipeNetworkState.MaxVolume.set -> void
+ExpandedLib.Industry.Pipes.PipeNetworkState.MediumType.get -> string!
+ExpandedLib.Industry.Pipes.PipeNetworkState.MediumType.set -> void
+ExpandedLib.Industry.Pipes.PipeNetworkState.OpeningsCount.get -> int
+ExpandedLib.Industry.Pipes.PipeNetworkState.OpeningsCount.set -> void
+ExpandedLib.Industry.Pipes.PipeNetworkState.PipeNetworkState() -> void
+ExpandedLib.Industry.Pipes.PipeNetworkState.Pressure.get -> float
+ExpandedLib.Industry.Pipes.PipeNetworkState.Pressure.set -> void
+ExpandedLib.Industry.Pipes.PipeNetworkState.SettledPressure.get -> float
+ExpandedLib.Industry.Pipes.PipeNetworkState.SettledPressure.set -> void
+ExpandedLib.Industry.Pipes.PipeNetworkState.Temperature.get -> float
+ExpandedLib.Industry.Pipes.PipeNetworkState.Temperature.set -> void
+ExpandedLib.Industry.Pipes.PipeNetworkState.Volume.get -> float
+ExpandedLib.Industry.Pipes.PipeNetworkState.Volume.set -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.GetMechPowerExits(Vintagestory.GameContent.Mechanics.MechPowerPath! entryDir) -> Vintagestory.GameContent.Mechanics.MechPowerPath![]!
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.GetResistance() -> float
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.OnTesselation(Vintagestory.API.Client.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> bool
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMPFillerPort.SetOrientations() -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMPSubmachineBase.GetShape() -> Vintagestory.API.Common.CompositeShape!
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMPSubmachineBase.OnTesselation(Vintagestory.API.Client.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> bool
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMPSubmachineBase.SetOrientations() -> void
+override ExpandedLib.Industry.MechanicalPower.MpEnergyNetwork.InheritStateFrom(ExpandedLib.Networks.BlockNetwork! source) -> void
+override ExpandedLib.Industry.MechanicalPower.MpEnergyNetwork.NetworkType.get -> string!
+override ExpandedLib.Industry.MechanicalPower.MpEnergyNetwork.OnMerge(ExpandedLib.Networks.BlockNetwork! other, Vintagestory.API.Common.IBlockAccessor! world) -> void
+override ExpandedLib.Industry.MechanicalPower.MpEnergyNetwork.OnSplitFragment(ExpandedLib.Networks.BlockNetwork! original, Vintagestory.API.Common.IBlockAccessor! world) -> void
+override ExpandedLib.Industry.MechanicalPower.MpEnergyNetwork.OnTick(Vintagestory.API.Common.IBlockAccessor! blockAccessor, float dt, ExpandedLib.Networks.BlockNetworkModSystem! manager) -> void
+override ExpandedLib.Industry.MechanicalPower.MpEnergyNetwork.RestoreState(object? state) -> void
+override ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldForResolving) -> void
+override ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.Industry.Molten.BEBehaviorMoltenCell.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+override ExpandedLib.Industry.Molten.MoltenNetwork.CanMerge(ExpandedLib.Networks.BlockNetwork! other, Vintagestory.API.Common.IBlockAccessor! world) -> bool
+override ExpandedLib.Industry.Molten.MoltenNetwork.NetworkType.get -> string!
+override ExpandedLib.Industry.Molten.MoltenNetwork.OnMerge(ExpandedLib.Networks.BlockNetwork! other, Vintagestory.API.Common.IBlockAccessor! world) -> void
+override ExpandedLib.Industry.Molten.MoltenNetwork.OnSplitFragment(ExpandedLib.Networks.BlockNetwork! original, Vintagestory.API.Common.IBlockAccessor! world) -> void
+override ExpandedLib.Industry.Molten.MoltenNetwork.OnTick(Vintagestory.API.Common.IBlockAccessor! blockAccessor, float dt, ExpandedLib.Networks.BlockNetworkModSystem! manager) -> void
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.DeserializeNetworkState(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> object?
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldForResolving) -> void
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.GetBlockInfo(Vintagestory.API.Common.IPlayer! forPlayer, System.Text.StringBuilder! dsc) -> void
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.Initialize(Vintagestory.API.Common.ICoreAPI! api) -> void
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.IsNetworkStateMeaningful(object? state) -> bool
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.OnBlockRemoved() -> void
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.OnBlockUnloaded() -> void
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.OnLeak(Vintagestory.API.MathTools.BlockFacing![]! leakingFaces, bool isLiquid, float intensity) -> void
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.OnNetworkUpdate(object? state) -> void
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.SerializeNetworkState(Vintagestory.API.Datastructures.ITreeAttribute! tree, object? state) -> void
+override ExpandedLib.Industry.Pipes.BlockEntityPipe.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+override ExpandedLib.Industry.Pipes.BlockPipe.AcceptsNeighbour(Vintagestory.API.Common.Block! neighbour) -> bool
+override ExpandedLib.Industry.Pipes.BlockPipe.NetworkType.get -> string!
+override ExpandedLib.Industry.Pipes.BlockPipePassthrough.BurstPressure.get -> float
+override ExpandedLib.Industry.Pipes.BlockPipePassthrough.CanAttachBlockAt(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.Common.Block! block, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockFacing! blockFace, Vintagestory.API.MathTools.Cuboidi! attachmentArea) -> bool
+override ExpandedLib.Industry.Pipes.BlockPipePassthrough.OnNeighbourBlockChange(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockPos! neighbour) -> void
+override ExpandedLib.Industry.Pipes.PipeNetwork.InheritStateFrom(ExpandedLib.Networks.BlockNetwork! source) -> void
+override ExpandedLib.Industry.Pipes.PipeNetwork.NetworkType.get -> string!
+override ExpandedLib.Industry.Pipes.PipeNetwork.OnMerge(ExpandedLib.Networks.BlockNetwork! other, Vintagestory.API.Common.IBlockAccessor! world) -> void
+override ExpandedLib.Industry.Pipes.PipeNetwork.OnSplitFragment(ExpandedLib.Networks.BlockNetwork! original, Vintagestory.API.Common.IBlockAccessor! world) -> void
+override ExpandedLib.Industry.Pipes.PipeNetwork.OnTick(Vintagestory.API.Common.IBlockAccessor! blockAccessor, float dt, ExpandedLib.Networks.BlockNetworkModSystem! manager) -> void
+override ExpandedLib.Industry.Pipes.PipeNetwork.OnTopologyChanged() -> void
+override ExpandedLib.Industry.Pipes.PipeNetwork.RestoreState(object? state) -> void
+static ExpandedLib.Industry.Heat.HeatBalance.Compute(float tIn, float tLoss, float ambient, float fuelFrac, float fuelFactor, float airFactor, bool blastSupplied, float blastTemp, float preheatGain, float chargeLoss, float ambientLoss, float transferLoss = 0) -> ExpandedLib.Industry.Heat.HeatBalance
+static ExpandedLib.Industry.Heat.HeatBalanceHud.AppendLedger(System.Text.StringBuilder! sb, in ExpandedLib.Industry.Heat.HeatBalance hb, float internalTemp, float thresholdTemp, in ExpandedLib.Industry.Heat.HeatBalanceLedgerKeys keys, System.Func<float, string!>! temp) -> void
+static ExpandedLib.Industry.Helpers.ExMoldDrops.Templates(Vintagestory.API.Common.Block? mold) -> System.Collections.Generic.List<Vintagestory.API.Common.JsonItemStack!>!
+static ExpandedLib.Industry.Helpers.ExMoldGate.IsToolMoldDisabled(Vintagestory.API.Common.AssetLocation? code) -> bool
+static ExpandedLib.Industry.Helpers.ExMoldGate.RegisterIsDisabled(System.Func<Vintagestory.API.Common.AssetLocation?, bool>! isDisabled) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.AirInhale(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.Vec3d! mouth, int count) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.ChimneySmoke(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! chimneyPos, string! gasType) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.FaceCenter(Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockFacing! face) -> Vintagestory.API.MathTools.Vec3d!
+static ExpandedLib.Industry.Helpers.ExParticles.FallingDust(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.GasColor(string! gasType, bool ventAir = true) -> int?
+static ExpandedLib.Industry.Helpers.ExParticles.GasLeak(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockFacing! face, float intensity = 1) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.GasVent(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockFacing! face, string! gasType) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.OutVel(Vintagestory.API.MathTools.BlockFacing! face, float speed, float spread) -> Vintagestory.API.MathTools.Vec3f!
+static ExpandedLib.Industry.Helpers.ExParticles.RisingPlume(Vintagestory.API.Common.IWorldAccessor! world, int color, Vintagestory.API.MathTools.Vec3d! minPos, Vintagestory.API.MathTools.Vec3d! maxPos, Vintagestory.API.MathTools.Vec3f! minVelocity, Vintagestory.API.MathTools.Vec3f! maxVelocity, float minQuantity, float maxQuantity, float lifeLength, float gravityEffect, float minSize, float maxSize, Vintagestory.API.MathTools.EvolvingNatFloat? opacityEvolve = null, Vintagestory.API.MathTools.EvolvingNatFloat? sizeEvolve = null) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.SmokeCloud(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.Vec3d! pos, int count) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.Spawn(Vintagestory.API.Common.IWorldAccessor! world, int color, Vintagestory.API.MathTools.Vec3d! minPos, Vintagestory.API.MathTools.Vec3d! maxPos, Vintagestory.API.MathTools.Vec3f! minVelocity, Vintagestory.API.MathTools.Vec3f! maxVelocity, float minQuantity, float maxQuantity, float lifeLength, float gravityEffect, float minSize, float maxSize, Vintagestory.API.Common.EnumParticleModel model = Vintagestory.API.Common.EnumParticleModel.Quad, Vintagestory.API.MathTools.EvolvingNatFloat? opacityEvolve = null, Vintagestory.API.MathTools.EvolvingNatFloat? sizeEvolve = null, bool shouldDieInLiquid = false) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.SteamPlume(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! cell, int count) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.SteamPuff(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.Vec3d! pos, int count) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.WaterJet(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockFacing! face, float intensity = 1) -> void
+static ExpandedLib.Industry.Helpers.ExParticles.WaterSpill(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! cell) -> void
+static ExpandedLib.Industry.Helpers.ExSounds.ClipLengthMs(Vintagestory.API.Common.AssetLocation! sound) -> long
+static ExpandedLib.Industry.Helpers.ExSounds.CreateLoop(Vintagestory.API.Common.ICoreAPI? api, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.AssetLocation! sound, float volume = 1, float range = 16, float pitch = 1) -> Vintagestory.API.Client.ILoadedSound?
+static ExpandedLib.Industry.Helpers.ExSounds.HissSound(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> void
+static ExpandedLib.Industry.Helpers.ExSounds.MachineVolume.get -> float
+static ExpandedLib.Industry.Helpers.ExSounds.MachineVolume.set -> void
+static ExpandedLib.Industry.Helpers.ExSounds.Play(Vintagestory.API.Common.ICoreAPI? api, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.AssetLocation! sound, float volume = 1, float range = 24) -> void
+static ExpandedLib.Industry.Helpers.ExSounds.PlayAt(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.AssetLocation! sound, Vintagestory.API.Common.IPlayer? byPlayer = null, bool randomizePitch = true, float range = 32, float volume = 1) -> void
+static ExpandedLib.Industry.Helpers.ExSounds.PlayChance(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.AssetLocation! sound, double chance, bool randomizePitch = true, float range = 32, float volume = 1) -> void
+static ExpandedLib.Industry.Helpers.ExSounds.PlayLocal(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.AssetLocation! sound, float volume = 1, float range = 16, bool randomizePitch = true) -> void
+static ExpandedLib.Industry.Helpers.ExSounds.PlayLoop(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.AssetLocation! sound, ref long lastMs, long intervalMs, float volume = 1, float range = 16) -> void
+static ExpandedLib.Industry.Helpers.ExSounds.PlayThrottled(Vintagestory.API.Common.ICoreAPI? api, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.AssetLocation! sound, ref long lastMs, long intervalMs, float volume = 1, float range = 24) -> void
+static ExpandedLib.Industry.Helpers.ExSounds.SplashSound(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> void
+static ExpandedLib.Industry.IndustryModule.RegisterNetworkTypes(ExpandedLib.Networks.BlockNetworkModSystem! networks) -> void
+static ExpandedLib.Industry.MechanicalPower.MPAnim.AdvanceFrame(float currentFrame, float lastAngleRad, float angleRad, int totalFrames) -> float
+static ExpandedLib.Industry.MechanicalPower.MPAnim.FrameFromAngle(float angleRad, int totalFrames) -> float
+static ExpandedLib.Industry.MechanicalPower.MPAnim.LockFrameToAngle(Vintagestory.API.Common.AnimationUtil? animUtil, string! animCode, float angleRad, bool reverse = false) -> void
+static ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.CapacityFor(float inertia, float maxSpeed) -> float
+static ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.CoupleRatio(ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState! south, ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState! north, float ratio, float maxSpeed, float retention = 1) -> void
+static ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.DeriveSpeed(float storedEnergy, float inertia) -> float
+static ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.EnergyAtSpeed(float inertia, float speed) -> float
+static ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState.Step(ExpandedLib.Industry.MechanicalPower.MpEnergyNetworkState! s, float dt, float driveTorque, float loadTorque, float frictionCoeff, float idleTorque, float maxSpeed) -> void
+static ExpandedLib.Industry.Metals.MetalCatalogueLoader.Load(Vintagestory.API.Common.ICoreAPI! api) -> ExpandedLib.Catalogues.CatalogueLoadReport!
+static ExpandedLib.Industry.Metals.MetalFamilyEmitter.Emit(System.Collections.Generic.IEnumerable<ExpandedLib.Industry.Metals.MetalDef!>! metals) -> System.Collections.Generic.IEnumerable<ExpandedLib.Definitions.ExItemDef!>!
+static ExpandedLib.Industry.Metals.MetalFamilyEmitter.KnownForms.get -> System.Collections.Generic.IEnumerable<string!>!
+static ExpandedLib.Industry.Metals.MetalFamilyEmitter.KnownTools.get -> System.Collections.Generic.IEnumerable<string!>!
+static ExpandedLib.Industry.Metals.MetalRegistry.All.get -> System.Collections.Generic.IReadOnlyCollection<ExpandedLib.Industry.Metals.MetalDef!>!
+static ExpandedLib.Industry.Metals.MetalRegistry.CastDomainOf(Vintagestory.API.Common.AssetLocation! moltenItem) -> string?
+static ExpandedLib.Industry.Metals.MetalRegistry.CastProductOf(Vintagestory.API.Common.AssetLocation! template, Vintagestory.API.Common.AssetLocation! moltenItem) -> Vintagestory.API.Common.AssetLocation!
+static ExpandedLib.Industry.Metals.MetalRegistry.Clear() -> void
+static ExpandedLib.Industry.Metals.MetalRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
+static ExpandedLib.Industry.Metals.MetalRegistry.DefaultRecoveryFallback.get -> Vintagestory.API.Common.AssetLocation?
+static ExpandedLib.Industry.Metals.MetalRegistry.DefaultRecoveryFallback.set -> void
+static ExpandedLib.Industry.Metals.MetalRegistry.DisplayName(string! moltenItemCode) -> string!
+static ExpandedLib.Industry.Metals.MetalRegistry.FallbackOf(Vintagestory.API.Common.AssetLocation! moltenItem) -> Vintagestory.API.Common.AssetLocation?
+static ExpandedLib.Industry.Metals.MetalRegistry.GlowMinTempOf(Vintagestory.API.Common.AssetLocation! moltenItem) -> float
+static ExpandedLib.Industry.Metals.MetalRegistry.HardenedThresholdOf(Vintagestory.API.Common.AssetLocation! moltenItem) -> float
+static ExpandedLib.Industry.Metals.MetalRegistry.LiquidThresholdOf(Vintagestory.API.Common.AssetLocation! moltenItem) -> float
+static ExpandedLib.Industry.Metals.MetalRegistry.MediaOf(Vintagestory.API.Common.AssetLocation! moltenItem) -> System.Collections.Generic.IReadOnlyList<string!>!
+static ExpandedLib.Industry.Metals.MetalRegistry.MoltenItemOf(string! shortCode) -> Vintagestory.API.Common.AssetLocation!
+static ExpandedLib.Industry.Metals.MetalRegistry.Register(ExpandedLib.Industry.Metals.MetalDef! def) -> void
+static ExpandedLib.Industry.Metals.MetalRegistry.ResolveByCode(string! shortCode) -> ExpandedLib.Industry.Metals.MetalDef!
+static ExpandedLib.Industry.Metals.MetalRegistry.SolidDropOf(Vintagestory.API.Common.AssetLocation! moltenItem) -> Vintagestory.API.Common.AssetLocation!
+static ExpandedLib.Industry.Metals.MetalRegistry.TryGet(string! moltenItemCode, out ExpandedLib.Industry.Metals.MetalDef! def) -> bool
+static ExpandedLib.Industry.Metals.MetalRegistry.TryGet(Vintagestory.API.Common.AssetLocation! moltenItem, out ExpandedLib.Industry.Metals.MetalDef! def) -> bool
+static ExpandedLib.Industry.Metals.MetalRegistry.TryGet(Vintagestory.API.Common.ItemStack! stack, out ExpandedLib.Industry.Metals.MetalDef! def) -> bool
+static ExpandedLib.Industry.Metals.MetalRegistry.UnitsPerBitOf(Vintagestory.API.Common.AssetLocation! moltenItem) -> int
+static ExpandedLib.Industry.Molten.MoltenCellHost.MoltenCell(this Vintagestory.API.Common.BlockEntity? be, string! key) -> ExpandedLib.Industry.Molten.BEBehaviorMoltenCell?
+static ExpandedLib.Industry.Molten.MoltenCellHost.MoltenCells(this Vintagestory.API.Common.BlockEntity? be) -> System.Collections.Generic.IEnumerable<ExpandedLib.Industry.Molten.BEBehaviorMoltenCell!>!
+static ExpandedLib.Industry.Molten.MoltenCharge.Create(Vintagestory.API.Common.IWorldAccessor! world, string! itemCode, float temperature, int units, float? cooldownSpeed = null) -> ExpandedLib.Industry.Molten.MoltenCharge?
+static ExpandedLib.Industry.Molten.MoltenCharge.FromTree(Vintagestory.API.Datastructures.ITreeAttribute! tree, string! stackKey, string! unitsKey, Vintagestory.API.Common.IWorldAccessor! world) -> ExpandedLib.Industry.Molten.MoltenCharge?
+static ExpandedLib.Industry.Molten.MoltenCharge.Of(Vintagestory.API.Common.ItemStack! stack, int units) -> ExpandedLib.Industry.Molten.MoltenCharge!
+static ExpandedLib.Industry.Molten.MoltenChisel.BuildRecovery(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.AssetLocation! metalCode, float temperature, int units, int unitsPerBit = 5, bool slagFallback = false) -> Vintagestory.API.Common.ItemStack?
+static ExpandedLib.Industry.Molten.MoltenChisel.ChiselHelp(Vintagestory.API.Common.IWorldAccessor! world, string! langCode) -> Vintagestory.API.Client.WorldInteraction!
+static ExpandedLib.Industry.Molten.MoltenChisel.HasChiselAndHammer(Vintagestory.API.Common.IPlayer! byPlayer) -> bool
+static ExpandedLib.Industry.Molten.MoltenChisel.IsTool(Vintagestory.API.Common.ItemStack? stack, Vintagestory.API.Common.EnumTool tool) -> bool
+static ExpandedLib.Industry.Molten.MoltenChisel.TryChisel(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.MathTools.BlockPos! pos, ExpandedLib.Industry.Molten.IChiselableMolten! target, Vintagestory.API.Common.AssetLocation! sound, bool damageChisel = true, double yOffset = 0.6) -> ExpandedLib.Industry.Molten.ChiselOutcome
+static ExpandedLib.Industry.Molten.MoltenContents.Read(Vintagestory.API.Common.ItemStack! itemStack, string! unitsKey, Vintagestory.API.Common.IWorldAccessor! worldForResolve) -> (Vintagestory.API.Common.ItemStack? content, int units)
+static ExpandedLib.Industry.Molten.MoltenContents.Write(Vintagestory.API.Common.ItemStack! itemStack, string! unitsKey, Vintagestory.API.Common.ItemStack? content, int units) -> void
+static ExpandedLib.Industry.Molten.MoltenMetal.Classify(float temperature, float meltingPoint, Vintagestory.API.Common.AssetLocation! moltenItem) -> ExpandedLib.Industry.Molten.MoltenState
+static ExpandedLib.Industry.Molten.MoltenMetal.CreateStack(Vintagestory.API.Common.IWorldAccessor! world, string! itemCode, float temperature, float? cooldownSpeed = null) -> Vintagestory.API.Common.ItemStack?
+static ExpandedLib.Industry.Molten.MoltenMetal.DisplayName(string! metalItemCode) -> string!
+static ExpandedLib.Industry.Molten.MoltenMetal.FormatTemperature(float temperature) -> string!
+static ExpandedLib.Industry.Molten.MoltenMetal.GetTemperature(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.ItemStack! stack) -> float
+static ExpandedLib.Industry.Molten.MoltenMetal.GlowLevel(float temperature) -> byte
+static ExpandedLib.Industry.Molten.MoltenMetal.GlowMinTemp.get -> float
+static ExpandedLib.Industry.Molten.MoltenMetal.HardenedThreshold.get -> float
+static ExpandedLib.Industry.Molten.MoltenMetal.IsHardened(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.ItemStack! stack) -> bool
+static ExpandedLib.Industry.Molten.MoltenMetal.IsLiquid(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.ItemStack! stack) -> bool
+static ExpandedLib.Industry.Molten.MoltenMetal.LiquidThreshold.get -> float
+static ExpandedLib.Industry.Molten.MoltenMetal.MeltingPointOf(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.ItemStack! stack) -> float
+static ExpandedLib.Industry.Molten.MoltenMetal.SetCooldownSpeed(Vintagestory.API.Common.ItemStack! stack, float cooldownSpeed) -> void
+static ExpandedLib.Industry.Molten.MoltenMetal.SetTemperature(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.ItemStack! stack, float temperature) -> void
+static ExpandedLib.Industry.Molten.MoltenMetal.SmeltedCrucibleStacks(Vintagestory.API.Common.IWorldAccessor! world) -> Vintagestory.API.Common.ItemStack![]!
+static ExpandedLib.Industry.Molten.MoltenMetal.StateOf(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.ItemStack! stack) -> ExpandedLib.Industry.Molten.MoltenState
+static ExpandedLib.Industry.Molten.MoltenMetal.SyncCooldownSpeed(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.ItemStack! stack, float? cooldownSpeed = null) -> void
+static ExpandedLib.Industry.Molten.MoltenMetal.TemperatureFormatter.get -> System.Func<float, string!>!
+static ExpandedLib.Industry.Molten.MoltenMetal.TemperatureFormatter.set -> void
+static ExpandedLib.Industry.Pipes.BlockPipe.Definitions(string! domain) -> System.Collections.Generic.IEnumerable<ExpandedLib.Definitions.ExBlockDef!>!
+static ExpandedLib.Industry.Pipes.BlockPipe.RegisterBurst(string! tier, System.Func<float>! burstPressure) -> void
+static ExpandedLib.Industry.Pipes.BlockPipe.RegisterJoint(string! tier, string! jointFamily) -> void
+static ExpandedLib.Industry.Pipes.BlockPipe.RegisterThroughput(string! tier, System.Func<float>! throughput) -> void
+static ExpandedLib.Industry.Pipes.BlockPipe.Segments(string! domain, string? tier) -> System.Collections.Generic.IEnumerable<ExpandedLib.Definitions.ExBlockDef!>!
+static ExpandedLib.Industry.Pipes.BlockPipePassthrough.Definitions(string! domain) -> System.Collections.Generic.IEnumerable<ExpandedLib.Definitions.ExBlockDef!>!
+static ExpandedLib.Industry.Pipes.BlockPipePassthrough.Passthroughs(string! domain, string? tier, string? sheet = null) -> System.Collections.Generic.IEnumerable<ExpandedLib.Definitions.ExBlockDef!>!
+static ExpandedLib.Industry.Pipes.ChimneyVent.IsChimney(Vintagestory.API.Common.Block? block) -> bool
+static ExpandedLib.Industry.Pipes.PipeNetworkState.ComputeGasPressure(float currentVolume, float maxVolume) -> float
+static ExpandedLib.Industry.Pipes.PipeNetworkState.ComputeLiquidPressure(float currentVolume, float maxVolume, float feedPressure) -> float
+static readonly ExpandedLib.Industry.Helpers.ExParticles.AirTint -> int
+static readonly ExpandedLib.Industry.Helpers.ExParticles.Dust -> int
+static readonly ExpandedLib.Industry.Helpers.ExParticles.Exhaust -> int
+static readonly ExpandedLib.Industry.Helpers.ExParticles.GasLeakTint -> int
+static readonly ExpandedLib.Industry.Helpers.ExParticles.GlowSpark -> int
+static readonly ExpandedLib.Industry.Helpers.ExParticles.Smoke -> int
+static readonly ExpandedLib.Industry.Helpers.ExParticles.Vapor -> int
+static readonly ExpandedLib.Industry.Helpers.ExParticles.Water -> int
+static readonly ExpandedLib.Industry.Helpers.ExSounds.AnvilHit -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.AnvilHitShort -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.AnvilMergeHit -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Bellows -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Build -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.CeramicBreak -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.CokeOvenDoorClose -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.CokeOvenDoorOpen -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Cooking -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Creek -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Embers -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Extinguish -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.ExtinguishHiss -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Fire -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.GearboxTurn -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.HeavyMetalHit -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Ignite -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Ingot -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.LargeExplosion -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Latch -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Lava -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.MediumExplosion -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.MetalGrinding -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.MoltenMetal -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.PlanetaryGears -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.PourMetal -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Sizzle -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.SmallExplosion -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.SmallSplash -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.StoneCrush -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Swoosh -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.ToggleSwitch -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.TorchUnequip -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.Watering -> Vintagestory.API.Common.AssetLocation!
+static readonly ExpandedLib.Industry.Helpers.ExSounds.WaterPour -> Vintagestory.API.Common.AssetLocation!
+virtual ExpandedLib.Industry.Pipes.BlockEntityPipe.TryConsume(float requestedVolume) -> float
+virtual ExpandedLib.Industry.Pipes.BlockEntityPipe.TryProduce(float volume, float temperature, string! gasType = "Air", float maxOutputPressure = 1, bool bypassLeakCap = false) -> bool
+virtual ExpandedLib.Industry.Pipes.BlockPipe.BurstPressure.get -> float
+virtual ExpandedLib.Industry.Pipes.BlockPipe.CanBurst.get -> bool
+virtual ExpandedLib.Industry.Pipes.BlockPipe.JointFamily.get -> string!
+virtual ExpandedLib.Industry.Pipes.BlockPipe.MaxThroughput.get -> float
+virtual ExpandedLib.Industry.Pipes.BlockPipe.Tier.get -> string?

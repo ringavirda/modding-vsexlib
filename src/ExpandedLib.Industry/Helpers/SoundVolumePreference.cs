@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Globalization;
 using ExpandedLib.Registries;
 
@@ -8,8 +7,7 @@ namespace ExpandedLib.Industry.Helpers;
 /// <summary>The player's machine-sound volume, 0-1 in tenths, applied to
 /// <see cref="ExSounds.MachineVolume"/>.</summary>
 [PreferenceRegister]
-[EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class SoundVolumePreference : IExPreference {
+internal sealed class SoundVolumePreference : IExPreference {
   public string Key => "sound";
 
   public IReadOnlyList<string> Options { get; } =
