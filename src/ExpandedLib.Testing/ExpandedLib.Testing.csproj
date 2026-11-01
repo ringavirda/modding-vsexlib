@@ -48,6 +48,15 @@
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);PackSetupsAssembly</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+  <Target Name="PackSetupsAssembly">
+    <ItemGroup>
+      <BuildOutputInPackage Include="$(OutDir)ExpandedLib.Setups.dll" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <EmbeddedResource Include="Views\view-bands.json" />
   </ItemGroup>
@@ -110,5 +119,10 @@
     <ProjectReference Include="..\ExpandedLib.Industry\ExpandedLib.Industry.csproj">
       <Private>false</Private>
     </ProjectReference>
+    <!-- The setup model ships inside this package's lib folder; no ExpandedLib.Setups package exists. -->
+    <ProjectReference
+      Include="..\ExpandedLib.Setups\ExpandedLib.Setups.csproj"
+      PrivateAssets="all"
+    />
   </ItemGroup>
 </Project>

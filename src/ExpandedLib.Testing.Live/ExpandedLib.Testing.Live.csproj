@@ -54,6 +54,7 @@
     <ProjectReference Include="..\ExpandedLib.Industry\ExpandedLib.Industry.csproj">
       <Private>false</Private>
     </ProjectReference>
+    <ProjectReference Include="..\ExpandedLib.Setups\ExpandedLib.Setups.csproj" />
   </ItemGroup>
 
   <ItemGroup>
