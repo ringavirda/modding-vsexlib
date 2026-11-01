@@ -51,3 +51,37 @@ const ExpandedLib.Industry.Casting.MoldFitSet.CurrentSchema = 1 -> int
 const ExpandedLib.Industry.Casting.MoldFits.AttributeKey = "moldFit" -> string!
 static ExpandedLib.Industry.Casting.MoldFitRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
 static ExpandedLib.Industry.Casting.MoldFitRegistry.Shared.get -> ExpandedLib.Industry.Casting.MoldFitRegistry!
+ExpandedLib.Industry.Forming.FeedstockEntry
+ExpandedLib.Industry.Forming.FeedstockEntry.EntersAs.get -> string!
+ExpandedLib.Industry.Forming.FeedstockEntry.FeedstockEntry(string! Offered, string! EntersAs) -> void
+ExpandedLib.Industry.Forming.FeedstockEntry.Offered.get -> string!
+ExpandedLib.Industry.Forming.StockForm
+ExpandedLib.Industry.Forming.StockForm.BaseElement.get -> string?
+ExpandedLib.Industry.Forming.StockForm.BaseLength.get -> float
+ExpandedLib.Industry.Forming.StockForm.BaseThickness.get -> float
+ExpandedLib.Industry.Forming.StockForm.BaseWidth.get -> float
+ExpandedLib.Industry.Forming.StockForm.FormerNames.get -> string![]!
+ExpandedLib.Industry.Forming.StockForm.FormerNames.init -> void
+ExpandedLib.Industry.Forming.StockForm.MaxWidth.get -> float
+ExpandedLib.Industry.Forming.StockForm.Name.get -> string!
+ExpandedLib.Industry.Forming.StockForm.SameAs(ExpandedLib.Industry.Forming.StockForm! other) -> bool
+ExpandedLib.Industry.Forming.StockForm.Shape.get -> string?
+ExpandedLib.Industry.Forming.StockForm.SpreadExponent.get -> float
+ExpandedLib.Industry.Forming.StockForm.StockForm(string! Name, float BaseWidth, float BaseThickness, float MaxWidth, float BaseLength, float SpreadExponent, string? Shape = null, string? BaseElement = null, string![]? FormerNames = null) -> void
+ExpandedLib.Industry.Forming.StockForm.WidthAt(float thickness) -> float
+ExpandedLib.Industry.Forming.StockFormRegistry
+ExpandedLib.Industry.Forming.StockFormRegistry.All.get -> System.Collections.Generic.IReadOnlyDictionary<string!, ExpandedLib.Industry.Forming.StockForm!>!
+ExpandedLib.Industry.Forming.StockFormRegistry.Clear() -> void
+ExpandedLib.Industry.Forming.StockFormRegistry.Contribute(ExpandedLib.Industry.Forming.StockFormSet! set) -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Forming.StockFormRegistry.EntersAs(string? offered) -> string?
+ExpandedLib.Industry.Forming.StockFormRegistry.Feedstock.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+ExpandedLib.Industry.Forming.StockFormRegistry.TryGet(string? name, out ExpandedLib.Industry.Forming.StockForm? form) -> bool
+ExpandedLib.Industry.Forming.StockFormSet
+ExpandedLib.Industry.Forming.StockFormSet.Feedstock.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.FeedstockEntry!>!
+ExpandedLib.Industry.Forming.StockFormSet.Forms.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.StockForm!>!
+ExpandedLib.Industry.Forming.StockFormSet.Schema.get -> int
+ExpandedLib.Industry.Forming.StockFormSet.StockFormSet(int Schema, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.StockForm!>! Forms, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.FeedstockEntry!>! Feedstock) -> void
+const ExpandedLib.Industry.Forming.StockFormSet.CurrentSchema = 1 -> int
+static ExpandedLib.Industry.Forming.StockForm.SpreadWidth(float startWidth, float startThickness, float thickness, float exponent = 0.5, float maxWidth = 0) -> float
+static ExpandedLib.Industry.Forming.StockFormRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
+static ExpandedLib.Industry.Forming.StockFormRegistry.Shared.get -> ExpandedLib.Industry.Forming.StockFormRegistry!

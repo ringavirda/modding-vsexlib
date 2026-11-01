@@ -2,6 +2,7 @@ using ExpandedLib.Catalogues;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Casting;
+using ExpandedLib.Industry.Forming;
 using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Industry.Metals;
@@ -22,7 +23,7 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
   private bool _openedServerChannel;
 
   /// <summary>When <see cref="ExWorldState.ResetsOnLoad"/> holds, returns the family layer's
-  /// registries (metals, casting station kinds, mould fits, pipe tier ratings and bore classes, the sound channel, the mold gate, the chisel list, the
+  /// registries (metals, casting station kinds, mould fits, stock forms, pipe tier ratings and bore classes, the sound channel, the mold gate, the chisel list, the
   /// molten temperature formatter) to their fresh-process state; then registers the refractory
   /// tier variant group before any block's <c>GetHeldItemName</c> can decorate.</summary>
   public void StartPre(ICoreAPI api) {
@@ -30,6 +31,7 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
       MetalRegistry.ResetForWorld();
       CastingStationRegistry.ResetForWorld();
       MoldFitRegistry.ResetForWorld();
+      StockFormRegistry.ResetForWorld();
       BlockPipe.ResetForWorld();
       FlowBores.Clear();
       ExSounds.StopServer();
@@ -101,13 +103,14 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
   /// <summary>Populates <see cref="MetalRegistry"/> from the loaded metal worldproperties and
   /// every domain's <c>config/metals</c>. A singleplayer client loads nothing: it reads the metals its
   /// own server has just loaded in the same process (<see cref="ExWorldState.ResetsOnLoad"/>). The same
-  /// guard loads the casting station kinds and the mould fits, then logs every mold pattern that fails
+  /// guard loads the casting station kinds, the mould fits and the stock forms, then logs every mold pattern that fails
   /// <see cref="CastingPatterns.Validate"/>. Either side then gives every molten holder block its burn (<see cref="MoltenHolders.Attach"/>).</summary>
   public void AssetsFinalize(ICoreAPI api) {
     if (ExWorldState.ResetsOnLoad(api)) {
       MetalCatalogueLoader.Load(api).Log(api.Logger);
       CastingStationLoader.Load(api).Log(api.Logger);
       MoldFitLoader.Load(api).Log(api.Logger);
+      StockFormLoader.Load(api).Log(api.Logger);
       foreach (string error in CastingPatterns.Validate(api.World.Collectibles))
         api.Logger.Error("[exlib] invalid mold pattern - {0}", error);
     }
