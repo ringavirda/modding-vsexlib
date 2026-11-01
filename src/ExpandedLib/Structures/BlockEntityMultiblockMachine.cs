@@ -11,41 +11,36 @@ namespace ExpandedLib.Structures;
 /// via a <see cref="BEBehaviorProductionMachine"/>.
 /// </summary>
 public abstract class BlockEntityMultiblockMachine
-  : BlockEntityMultiblockStructure {
-  private readonly HostProcess _process;
+  : BlockEntityMultiblockStructure,
+    IProductionHostOwner {
+  private readonly ProductionHost _process;
 
   protected BlockEntityMultiblockMachine() {
     // Must run before FromTreeAttributes and Initialize read it.
-    _process = new HostProcess(this);
+    _process = new ProductionHost(this, this);
     Behaviors.Add(_process);
   }
 
-  /// <summary>The machine's production process; reads its answers from the owning block entity.</summary>
-  private sealed class HostProcess(BlockEntityMultiblockMachine owner)
-    : BEBehaviorProductionMachine(owner) {
-    protected override int ProductionTickMs => owner.ProductionTickMs;
+  int IProductionHostOwner.ProductionTickMs => ProductionTickMs;
 
-    protected override bool AutoStartProduction => owner.AutoStartProduction;
+  bool IProductionHostOwner.AutoStartProduction => AutoStartProduction;
 
-#pragma warning disable CS0618, CS0672
-    protected override int MaxAwayCatchupSteps => owner.MaxAwayCatchupSteps;
+#pragma warning disable CS0618
+  int IProductionHostOwner.MaxAwayCatchupSteps => MaxAwayCatchupSteps;
 
-    protected override float AwayCatchupStepSeconds =>
-      owner.AwayCatchupStepSeconds;
-#pragma warning restore CS0618, CS0672
+  float IProductionHostOwner.AwayCatchupStepSeconds => AwayCatchupStepSeconds;
+#pragma warning restore CS0618
 
-    protected override FastForwardMode FastForwardMode => owner.FastForwardMode;
+  FastForwardMode IProductionHostOwner.FastForwardMode => FastForwardMode;
 
-    protected override double GameStepHours => owner.GameStepHours;
+  double IProductionHostOwner.GameStepHours => GameStepHours;
 
-    protected override double MaxGameHoursPerTick => owner.MaxGameHoursPerTick;
+  double IProductionHostOwner.MaxGameHoursPerTick => MaxGameHoursPerTick;
 
-    protected override void OnProductionTick(float dt) =>
-      owner.OnProductionTick(dt);
+  void IProductionHostOwner.OnProductionTick(float dt) => OnProductionTick(dt);
 
-    protected override void OnIdleProductionTick(float dt) =>
-      owner.OnIdleProductionTick(dt);
-  }
+  void IProductionHostOwner.OnIdleProductionTick(float dt) =>
+    OnIdleProductionTick(dt);
 
   /// <summary>Interval (ms) of the production tick.</summary>
   protected virtual int ProductionTickMs => 1000;
@@ -114,4 +109,8 @@ public abstract class BlockEntityMultiblockMachine
 
   /// <summary>Runs in place of <see cref="OnProductionTick"/> while the machine is not operational. Default: no-op.</summary>
   protected virtual void OnIdleProductionTick(float dt) { }
+
+  /// <summary>Test seam: runs one production tick as the registered listener does, gate included.</summary>
+  internal void DriveProductionTick(float dt) =>
+    _process.DriveProductionTick(dt);
 }
