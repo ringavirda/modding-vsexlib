@@ -70,7 +70,7 @@ public class MpEnergyNetworkTickTests {
       s.StoredEnergy,
       3
     );
-    Assert.Equal(5f * s.Speed, s.SupplyPower, 3); // display power = τ_drive·ω
+    Assert.Equal(5f * s.Speed, s.SupplyPower, 3); // display power = tau_drive*omega
   }
 
   [Fact]

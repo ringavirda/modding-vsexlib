@@ -288,7 +288,7 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
     ITreeAttribute tree,
     IWorldAccessor worldForResolving
   ) {
-    base.FromTreeAttributes(tree, worldForResolving); // calls DeserializeNetworkState → _savedNetworkState
+    base.FromTreeAttributes(tree, worldForResolving); // calls DeserializeNetworkState -> _savedNetworkState
 
     // Populate client display fields from the same tree keys for rendering.
     _clientVolume = tree.GetFloat("vol");

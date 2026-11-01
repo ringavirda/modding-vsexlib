@@ -75,7 +75,7 @@ public class MpEnergyNetworkStateTests {
       MaxSpeed
     );
 
-    Assert.True(s.Speed < 1f, "an undriven spinning shaft should wind down"); // 1 - 0.5·1/10
+    Assert.True(s.Speed < 1f, "an undriven spinning shaft should wind down"); // 1 - 0.5*1/10
   }
 
   [Fact]
@@ -163,7 +163,7 @@ public class MpEnergyNetworkStateTests {
 
     Assert.True(
       5f - heavy.Speed < 5f - light.Speed,
-      $"heavy dω {5f - heavy.Speed} should be far smaller than light dω {5f - light.Speed}"
+      $"heavy domega {5f - heavy.Speed} should be far smaller than light domega {5f - light.Speed}"
     );
   }
 
@@ -189,7 +189,7 @@ public class MpEnergyNetworkStateTests {
     Assert.Equal(south.Speed / 2f, north.Speed, 4);
     Assert.True(
       north.Speed < south.Speed,
-      "S→N is a reduction, so the north side turns slower"
+      "S->N is a reduction, so the north side turns slower"
     );
   }
 
@@ -231,7 +231,7 @@ public class MpEnergyNetworkStateTests {
 
     MpEnergyNetworkState.CoupleRatio(south, north, ratio: 2f, Wide);
 
-    Assert.True(south.Speed > north.Speed, "N→S speeds up");
+    Assert.True(south.Speed > north.Speed, "N->S speeds up");
     Assert.Equal(south.Speed / 2f, north.Speed, 4);
   }
 

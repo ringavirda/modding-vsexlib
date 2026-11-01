@@ -15,7 +15,7 @@ public class MetalRegistryTests {
 
   #region Convention branch (unregistered = today's behaviour)
   [Theory]
-  [InlineData("game:ingot-iron", "game:metalbit-iron")] // ingot-X → metalbit-X, same domain
+  [InlineData("game:ingot-iron", "game:metalbit-iron")] // ingot-X -> metalbit-X, same domain
   [InlineData("game:ingot-steel", "game:metalbit-steel")]
   [InlineData("iiex:slag", "iiex:slag")] // non-ingot carrier drops as itself
   public void SolidDropOf_reproduces_the_shatteredStack_convention(
@@ -104,7 +104,7 @@ public class MetalRegistryTests {
   }
 
   [Theory]
-  [InlineData("iron", "game:ingot-iron")] // converter/blast-furnace token → game ingot
+  [InlineData("iron", "game:ingot-iron")] // converter/blast-furnace token -> game ingot
   [InlineData("steel", "game:ingot-steel")]
   public void ResolveByCode_of_an_unknown_token_builds_the_game_ingot_code(
     string token,
@@ -155,7 +155,7 @@ public class MetalRegistryTests {
       }
     );
     var slag = new AssetLocation("iiex:slag");
-    var iron = new AssetLocation("game:ingot-iron"); // unregistered → global 0.8 / 0.3
+    var iron = new AssetLocation("game:ingot-iron"); // unregistered -> global 0.8 / 0.3
     const float meltPoint = 1000f;
 
     // 850 deg C: above iron's 0.8x1000 liquid line, below slag's 0.9x1000.

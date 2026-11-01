@@ -138,8 +138,8 @@ public static class HandbookSync {
       false,
       $"{page}: shipped text ({have.Length} chars) differs from {relative} ({want.Length} chars)\n"
         + $"  first difference at char {FirstDifference(have, want)}:\n"
-        + $"    shipped: …{Excerpt(have, FirstDifference(have, want))}…\n"
-        + $"    source : …{Excerpt(want, FirstDifference(have, want))}…\n"
+        + $"    shipped: ...{Excerpt(have, FirstDifference(have, want))}...\n"
+        + $"    source : ...{Excerpt(want, FirstDifference(have, want))}...\n"
         + "  Re-run with EXLIB_WRITE_HANDBOOK=1 to adopt the authoring source."
     );
   }
