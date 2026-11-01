@@ -88,6 +88,11 @@ internal sealed class SeamSpec
   [JsonProperty]
   public int MinCover { get; set; }
 
+  /// <summary>Whether the topmost block of each column's stack goes through the block's world
+  /// generation callback when the variant's own callback flag is off.</summary>
+  [JsonProperty]
+  public bool WithLastLayerBlockCallback { get; set; }
+
   /// <summary>Blocks below the pick position the prospecting reading looks through.</summary>
   [JsonProperty]
   public int PropickDepth { get; set; } = 48;
