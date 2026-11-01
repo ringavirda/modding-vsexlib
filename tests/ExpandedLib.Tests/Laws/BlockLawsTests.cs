@@ -908,6 +908,32 @@ public class BlockLawsTests {
     return GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
   }
 
+  // Fails when the usable memory is the machine's free memory alone (a heap cap or a full heap
+  // then leaves the groups at four), or can fall below zero.
+  [Theory]
+  [InlineData(46L << 30, 8L << 30, 1L << 30, 7L << 30)]
+  [InlineData(46L << 30, 64L << 30, 4L << 30, 46L << 30)]
+  [InlineData(5L << 30, 64L << 30, 4L << 30, 5L << 30)]
+  [InlineData(46L << 30, 8L << 30, 9L << 30, 0)]
+  public void Usable_memory_is_the_smaller_of_free_and_what_the_heap_may_grow_by(
+    long free,
+    long available,
+    long heap,
+    long expected
+  ) =>
+    Assert.Equal(expected, BlockLaws.UsableMemoryBytes(free, available, heap));
+
+  // Fails when a cap of 8 GiB leaves four groups.
+  [Fact]
+  public void A_heap_cap_of_8_GiB_gives_two_groups() =>
+    Assert.Equal(
+      2,
+      BlockLaws.GroupsFor(
+        32,
+        BlockLaws.UsableMemoryBytes(46L << 30, 8L << 30, 1L << 30)
+      )
+    );
+
   // Fails when the merged findings come out in group order, a group's blocktypes are dropped or run
   // twice, or a blocktype's findings depend on where its group started.
   [Fact]
