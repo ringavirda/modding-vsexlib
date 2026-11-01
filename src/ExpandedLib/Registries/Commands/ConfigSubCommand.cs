@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Linq;
 using ExpandedLib.Config;
 using ExpandedLib.Registries;
@@ -12,8 +11,7 @@ namespace ExpandedLib.Registries;
 /// gameplay tunables exposed through <see cref="ExConfigProfiles"/>. Server-side; requires <c>controlserver</c>.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
-[EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class ConfigSubCommand : RegistrySubCommand<IExConfigAccess> {
+internal sealed class ConfigSubCommand : RegistrySubCommand<IExConfigAccess> {
   public ConfigSubCommand()
     : base(
       "config",

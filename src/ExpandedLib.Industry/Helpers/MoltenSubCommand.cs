@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using ExpandedLib.Industry.Metals;
 using ExpandedLib.Industry.Molten;
 using ExpandedLib.Registries;
@@ -16,8 +15,7 @@ namespace ExpandedLib.Industry.Helpers;
 /// player looks at, with molten metal. Server-only; a creative or op player.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Server)]
-[EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class MoltenSubCommand : IExSubCommand {
+internal sealed class MoltenSubCommand : IExSubCommand {
   /// <summary>Degrees C above the melting point a fill is poured at when no temperature is given.</summary>
   internal const float TemperatureMargin = 100f;
 

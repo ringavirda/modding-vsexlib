@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using Vintagestory.API.Client;
@@ -12,8 +11,7 @@ namespace ExpandedLib.Registries;
 /// highlight (see <see cref="NetworkHighlightModSystem"/>). Client-side.
 /// </summary>
 [SubCommandRegister(Side = EnumAppSide.Client)]
-[EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class NetworkSubCommand : IExSubCommand {
+internal sealed class NetworkSubCommand : IExSubCommand {
   public string ParentName => "exmod";
 
   public void Register(ICoreAPI api, Mod mod, IChatCommand parent) {

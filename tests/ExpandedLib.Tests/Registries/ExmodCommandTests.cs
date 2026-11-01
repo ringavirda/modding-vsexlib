@@ -156,6 +156,23 @@ public class ExmodCommandTests {
     Assert.False(exmod.SubCommands.ContainsKey("heal"));
   }
 
+  [Fact]
+  public void Industry_assembly_registers_the_sound_subcommand_on_the_client() {
+    ICoreClientAPI api = FakeApi(EnumAppSide.Client, out var roots);
+
+    CommandRegistry.RegisterAll(
+      api,
+      FakeMod(),
+      typeof(ExpandedLib.Industry.Helpers.SoundSubCommand).Assembly
+    );
+
+    Assert.True(roots.TryGetValue("exmod", out var exmod));
+    Assert.True(
+      exmod.SubCommands.TryGetValue("sound", out var sound)
+        && sound.Handler != null
+    );
+  }
+
   #endregion
 
   #region Privileges through the registered tree

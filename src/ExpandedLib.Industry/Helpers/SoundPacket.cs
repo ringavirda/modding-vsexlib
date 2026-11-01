@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using ProtoBuf;
 
 namespace ExpandedLib.Industry.Helpers;
@@ -6,8 +5,7 @@ namespace ExpandedLib.Industry.Helpers;
 /// <summary>One server-played one-shot, carried to each client in range by the <c>exlibSound</c>
 /// channel.</summary>
 [ProtoContract]
-[EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class SoundPacket {
+internal sealed class SoundPacket {
   /// <summary>The sound's asset location, as <c>domain:path</c>.</summary>
   [ProtoMember(1)]
   public string Sound = string.Empty;

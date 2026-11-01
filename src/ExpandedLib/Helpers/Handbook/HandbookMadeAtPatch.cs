@@ -1,6 +1,5 @@
 #if GAME_GE_1_22
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using ExpandedLib.Machines;
 using HarmonyLib;
@@ -17,8 +16,7 @@ namespace ExpandedLib.Helpers;
   typeof(CollectibleBehaviorHandbookTextAndExtraInfo),
   nameof(CollectibleBehaviorHandbookTextAndExtraInfo.GetHandbookInfo)
 )]
-[EditorBrowsable(EditorBrowsableState.Never)]
-public static class HandbookMadeAtPatch
+internal static class HandbookMadeAtPatch
 {
   private const string Slot = "\u0001";
 

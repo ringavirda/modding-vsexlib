@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<Suppressions
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:ExpandedLib.Helpers.HandbookUnitPatch</Target>
+    <Left>lib/net10.0/exlib.dll</Left>
+    <Right>lib/net10.0/exlib.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:ExpandedLib.Registries.ConfigSubCommand</Target>
+    <Left>lib/net10.0/exlib.dll</Left>
+    <Right>lib/net10.0/exlib.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:ExpandedLib.Registries.HealSubCommand</Target>
+    <Left>lib/net10.0/exlib.dll</Left>
+    <Right>lib/net10.0/exlib.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:ExpandedLib.Registries.MeasureSubCommand</Target>
+    <Left>lib/net10.0/exlib.dll</Left>
+    <Right>lib/net10.0/exlib.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:ExpandedLib.Registries.NetworkSubCommand</Target>
+    <Left>lib/net10.0/exlib.dll</Left>
+    <Right>lib/net10.0/exlib.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:ExpandedLib.Registries.RecipesSubCommand</Target>
+    <Left>lib/net10.0/exlib.dll</Left>
+    <Right>lib/net10.0/exlib.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:ExpandedLib.Registries.VerifySubCommand</Target>
+    <Left>lib/net10.0/exlib.dll</Left>
+    <Right>lib/net10.0/exlib.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>
