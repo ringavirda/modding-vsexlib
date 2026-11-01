@@ -1,10 +1,131 @@
 #nullable enable
+const ExpandedLib.Industry.Casting.CastingStationSet.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.Casting.MoldFits.AttributeKey = "moldFit" -> string!
+const ExpandedLib.Industry.Casting.MoldFitSet.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.Casting.MoldSpec.AttributeKey = "mold" -> string!
+const ExpandedLib.Industry.Casting.MoldSpec.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.Forming.StockFormSet.CurrentSchema = 1 -> int
 const ExpandedLib.Industry.MechanicalPower.MpSegmentReading.TreeKey = "mpReading" -> string!
 const ExpandedLib.Industry.Molten.CrowbarHold.HoldSeconds = 1 -> float
 const ExpandedLib.Industry.Molten.MoltenBar.HoldSeconds = 1 -> float
 const ExpandedLib.Industry.Molten.MoltenBar.LiquidError = "exlib-moltenbarliquid" -> string!
 const ExpandedLib.Industry.Molten.MoltenBreakGuard.ErrorCode = "exlib-moltenliquidbreak" -> string!
 const ExpandedLib.Industry.Molten.MoltenBurn.HotTraversalCost = 10000 -> float
+ExpandedLib.Industry.Casting.CastingPatterns
+ExpandedLib.Industry.Casting.CastingStationKind
+ExpandedLib.Industry.Casting.CastingStationKind.CastingStationKind(string! Code, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MouldKind>! Moulds, string! SandBase, string! SandHalf) -> void
+ExpandedLib.Industry.Casting.CastingStationKind.Code.get -> string!
+ExpandedLib.Industry.Casting.CastingStationKind.Code.init -> void
+ExpandedLib.Industry.Casting.CastingStationKind.Moulds.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MouldKind>!
+ExpandedLib.Industry.Casting.CastingStationKind.Moulds.init -> void
+ExpandedLib.Industry.Casting.CastingStationKind.SameAs(ExpandedLib.Industry.Casting.CastingStationKind! other) -> bool
+ExpandedLib.Industry.Casting.CastingStationKind.SandBase.get -> string!
+ExpandedLib.Industry.Casting.CastingStationKind.SandBase.init -> void
+ExpandedLib.Industry.Casting.CastingStationKind.SandHalf.get -> string!
+ExpandedLib.Industry.Casting.CastingStationKind.SandHalf.init -> void
+ExpandedLib.Industry.Casting.CastingStationKind.Takes(ExpandedLib.Industry.Casting.MouldKind mould) -> bool
+ExpandedLib.Industry.Casting.CastingStationRegistry
+ExpandedLib.Industry.Casting.CastingStationRegistry.All.get -> System.Collections.Generic.IReadOnlyCollection<ExpandedLib.Industry.Casting.CastingStationKind!>!
+ExpandedLib.Industry.Casting.CastingStationRegistry.CastingStationRegistry() -> void
+ExpandedLib.Industry.Casting.CastingStationRegistry.Clear() -> void
+ExpandedLib.Industry.Casting.CastingStationRegistry.Contribute(ExpandedLib.Industry.Casting.CastingStationSet! set) -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Casting.CastingStationRegistry.Count.get -> int
+ExpandedLib.Industry.Casting.CastingStationRegistry.TryGet(string? code, out ExpandedLib.Industry.Casting.CastingStationKind? kind) -> bool
+ExpandedLib.Industry.Casting.CastingStationSet
+ExpandedLib.Industry.Casting.CastingStationSet.CastingStationSet(int Schema, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.CastingStationKind!>! Stations) -> void
+ExpandedLib.Industry.Casting.CastingStationSet.Schema.get -> int
+ExpandedLib.Industry.Casting.CastingStationSet.Schema.init -> void
+ExpandedLib.Industry.Casting.CastingStationSet.Stations.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.CastingStationKind!>!
+ExpandedLib.Industry.Casting.CastingStationSet.Stations.init -> void
+ExpandedLib.Industry.Casting.FillOrder
+ExpandedLib.Industry.Casting.FillOrder.Chain = 0 -> ExpandedLib.Industry.Casting.FillOrder
+ExpandedLib.Industry.Casting.FillOrder.Pairs = 1 -> ExpandedLib.Industry.Casting.FillOrder
+ExpandedLib.Industry.Casting.FillOrder.Rows = 2 -> ExpandedLib.Industry.Casting.FillOrder
+ExpandedLib.Industry.Casting.MoldFitRegistry
+ExpandedLib.Industry.Casting.MoldFitRegistry.Clear() -> void
+ExpandedLib.Industry.Casting.MoldFitRegistry.Contribute(ExpandedLib.Industry.Casting.MoldFitSet! set) -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Casting.MoldFitRegistry.Count.get -> int
+ExpandedLib.Industry.Casting.MoldFitRegistry.IsOversizeType(string? tooltype) -> bool
+ExpandedLib.Industry.Casting.MoldFitRegistry.MoldFitRegistry() -> void
+ExpandedLib.Industry.Casting.MoldFits
+ExpandedLib.Industry.Casting.MoldFitSet
+ExpandedLib.Industry.Casting.MoldFitSet.MoldFitSet(int Schema, System.Collections.Generic.IReadOnlyList<string!>! Oversize) -> void
+ExpandedLib.Industry.Casting.MoldFitSet.Oversize.get -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Casting.MoldFitSet.Oversize.init -> void
+ExpandedLib.Industry.Casting.MoldFitSet.Schema.get -> int
+ExpandedLib.Industry.Casting.MoldFitSet.Schema.init -> void
+ExpandedLib.Industry.Casting.MoldSpec
+ExpandedLib.Industry.Casting.MoldSpec.Capacity.get -> int
+ExpandedLib.Industry.Casting.MoldSpec.Capacity.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.Cavity.get -> Vintagestory.API.MathTools.Cuboidf![]!
+ExpandedLib.Industry.Casting.MoldSpec.Cavity.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.Fill.get -> ExpandedLib.Industry.Casting.FillOrder
+ExpandedLib.Industry.Casting.MoldSpec.Fill.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.MinPourTemp.get -> float
+ExpandedLib.Industry.Casting.MoldSpec.MinPourTemp.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.MoldSpec(int Schema, string! Station, string! Shape, int Pieces, int Capacity, Vintagestory.API.MathTools.Cuboidf![]! Cavity, ExpandedLib.Industry.Casting.FillOrder Fill, Vintagestory.API.Common.JsonItemStack! Output, float MinPourTemp, ExpandedLib.Industry.Casting.MouldKind Mould = ExpandedLib.Industry.Casting.MouldKind.Open, int Share = 0) -> void
+ExpandedLib.Industry.Casting.MoldSpec.Mould.get -> ExpandedLib.Industry.Casting.MouldKind
+ExpandedLib.Industry.Casting.MoldSpec.Mould.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.Output.get -> Vintagestory.API.Common.JsonItemStack!
+ExpandedLib.Industry.Casting.MoldSpec.Output.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.Pieces.get -> int
+ExpandedLib.Industry.Casting.MoldSpec.Pieces.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.Schema.get -> int
+ExpandedLib.Industry.Casting.MoldSpec.Schema.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.Shape.get -> string!
+ExpandedLib.Industry.Casting.MoldSpec.Shape.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.Share.get -> int
+ExpandedLib.Industry.Casting.MoldSpec.Share.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.Station.get -> string!
+ExpandedLib.Industry.Casting.MoldSpec.Station.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.UnitsPerPiece.get -> int
+ExpandedLib.Industry.Casting.MouldKind
+ExpandedLib.Industry.Casting.MouldKind.Closed = 1 -> ExpandedLib.Industry.Casting.MouldKind
+ExpandedLib.Industry.Casting.MouldKind.Open = 0 -> ExpandedLib.Industry.Casting.MouldKind
+ExpandedLib.Industry.Forming.FeedstockEntry
+ExpandedLib.Industry.Forming.FeedstockEntry.EntersAs.get -> string!
+ExpandedLib.Industry.Forming.FeedstockEntry.EntersAs.init -> void
+ExpandedLib.Industry.Forming.FeedstockEntry.FeedstockEntry(string! Offered, string! EntersAs) -> void
+ExpandedLib.Industry.Forming.FeedstockEntry.Offered.get -> string!
+ExpandedLib.Industry.Forming.FeedstockEntry.Offered.init -> void
+ExpandedLib.Industry.Forming.StockForm
+ExpandedLib.Industry.Forming.StockForm.BaseElement.get -> string?
+ExpandedLib.Industry.Forming.StockForm.BaseElement.init -> void
+ExpandedLib.Industry.Forming.StockForm.BaseLength.get -> float
+ExpandedLib.Industry.Forming.StockForm.BaseLength.init -> void
+ExpandedLib.Industry.Forming.StockForm.BaseThickness.get -> float
+ExpandedLib.Industry.Forming.StockForm.BaseThickness.init -> void
+ExpandedLib.Industry.Forming.StockForm.BaseWidth.get -> float
+ExpandedLib.Industry.Forming.StockForm.BaseWidth.init -> void
+ExpandedLib.Industry.Forming.StockForm.FormerNames.get -> string![]!
+ExpandedLib.Industry.Forming.StockForm.FormerNames.init -> void
+ExpandedLib.Industry.Forming.StockForm.MaxWidth.get -> float
+ExpandedLib.Industry.Forming.StockForm.MaxWidth.init -> void
+ExpandedLib.Industry.Forming.StockForm.Name.get -> string!
+ExpandedLib.Industry.Forming.StockForm.Name.init -> void
+ExpandedLib.Industry.Forming.StockForm.SameAs(ExpandedLib.Industry.Forming.StockForm! other) -> bool
+ExpandedLib.Industry.Forming.StockForm.Shape.get -> string?
+ExpandedLib.Industry.Forming.StockForm.Shape.init -> void
+ExpandedLib.Industry.Forming.StockForm.SpreadExponent.get -> float
+ExpandedLib.Industry.Forming.StockForm.SpreadExponent.init -> void
+ExpandedLib.Industry.Forming.StockForm.StockForm(string! Name, float BaseWidth, float BaseThickness, float MaxWidth, float BaseLength, float SpreadExponent, string? Shape = null, string? BaseElement = null, string![]? FormerNames = null) -> void
+ExpandedLib.Industry.Forming.StockForm.WidthAt(float thickness) -> float
+ExpandedLib.Industry.Forming.StockFormRegistry
+ExpandedLib.Industry.Forming.StockFormRegistry.All.get -> System.Collections.Generic.IReadOnlyDictionary<string!, ExpandedLib.Industry.Forming.StockForm!>!
+ExpandedLib.Industry.Forming.StockFormRegistry.Clear() -> void
+ExpandedLib.Industry.Forming.StockFormRegistry.Contribute(ExpandedLib.Industry.Forming.StockFormSet! set) -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Forming.StockFormRegistry.EntersAs(string? offered) -> string?
+ExpandedLib.Industry.Forming.StockFormRegistry.Feedstock.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+ExpandedLib.Industry.Forming.StockFormRegistry.StockFormRegistry() -> void
+ExpandedLib.Industry.Forming.StockFormRegistry.TryGet(string? name, out ExpandedLib.Industry.Forming.StockForm? form) -> bool
+ExpandedLib.Industry.Forming.StockFormSet
+ExpandedLib.Industry.Forming.StockFormSet.Feedstock.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.FeedstockEntry!>!
+ExpandedLib.Industry.Forming.StockFormSet.Feedstock.init -> void
+ExpandedLib.Industry.Forming.StockFormSet.Forms.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.StockForm!>!
+ExpandedLib.Industry.Forming.StockFormSet.Forms.init -> void
+ExpandedLib.Industry.Forming.StockFormSet.Schema.get -> int
+ExpandedLib.Industry.Forming.StockFormSet.Schema.init -> void
+ExpandedLib.Industry.Forming.StockFormSet.StockFormSet(int Schema, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.StockForm!>! Forms, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.FeedstockEntry!>! Feedstock) -> void
 ExpandedLib.Industry.Heat.HeatCooling
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Advance(float dt, float hours, float slipPowerW) -> void
@@ -262,6 +383,19 @@ override ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.Initialize(Vintagesto
 override ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
 override ExpandedLib.Industry.Pipes.BlockEntityPipe.NetworkType.get -> string!
 override ExpandedLib.Industry.Pipes.BlockEntityPipe.NetworkType.set -> void
+static ExpandedLib.Industry.Casting.CastingPatterns.IsPattern(Vintagestory.API.Common.CollectibleObject? collectible) -> bool
+static ExpandedLib.Industry.Casting.CastingPatterns.Validate(System.Collections.Generic.IEnumerable<Vintagestory.API.Common.CollectibleObject?>! collectibles, ExpandedLib.Industry.Casting.CastingStationRegistry? stations = null) -> System.Collections.Generic.List<string!>!
+static ExpandedLib.Industry.Casting.CastingStationRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
+static ExpandedLib.Industry.Casting.CastingStationRegistry.Shared.get -> ExpandedLib.Industry.Casting.CastingStationRegistry!
+static ExpandedLib.Industry.Casting.MoldFitRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
+static ExpandedLib.Industry.Casting.MoldFitRegistry.Shared.get -> ExpandedLib.Industry.Casting.MoldFitRegistry!
+static ExpandedLib.Industry.Casting.MoldFits.FitsPedestal(Vintagestory.API.Common.Block? block) -> bool
+static ExpandedLib.Industry.Casting.MoldFits.IsOversize(Vintagestory.API.Common.Block? block) -> bool
+static ExpandedLib.Industry.Casting.MoldSpec.TryParse(Vintagestory.API.Datastructures.JsonObject? mold, string! station, out ExpandedLib.Industry.Casting.MoldSpec? spec, out string? error, ExpandedLib.Industry.Casting.CastingStationRegistry? stations = null) -> bool
+static ExpandedLib.Industry.Casting.MoldSpec.TryParseAll(Vintagestory.API.Datastructures.JsonObject? mold, out System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MoldSpec!>! specs, out string? error, ExpandedLib.Industry.Casting.CastingStationRegistry? stations = null) -> bool
+static ExpandedLib.Industry.Forming.StockForm.SpreadWidth(float startWidth, float startThickness, float thickness, float exponent = 0.5, float maxWidth = 0) -> float
+static ExpandedLib.Industry.Forming.StockFormRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
+static ExpandedLib.Industry.Forming.StockFormRegistry.Shared.get -> ExpandedLib.Industry.Forming.StockFormRegistry!
 static ExpandedLib.Industry.Heat.HeatCooling.Cool(float temperature, float ambient, float ratePerHour, double hours) -> float
 static ExpandedLib.Industry.Helpers.ExParticles.MetalSparks(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.Vec3d! pos, float temperatureC) -> void
 static ExpandedLib.Industry.Helpers.ExParticles.Spawn(Vintagestory.API.Common.IWorldAccessor! world, int color, Vintagestory.API.MathTools.Vec3d! minPos, Vintagestory.API.MathTools.Vec3d! maxPos, Vintagestory.API.MathTools.Vec3f! minVelocity, Vintagestory.API.MathTools.Vec3f! maxVelocity, float minQuantity, float maxQuantity, float lifeLength, float gravityEffect, float minSize, float maxSize, Vintagestory.API.Common.EnumParticleModel model, Vintagestory.API.MathTools.EvolvingNatFloat? opacityEvolve, Vintagestory.API.MathTools.EvolvingNatFloat? sizeEvolve, bool shouldDieInLiquid, byte vertexFlags) -> void
