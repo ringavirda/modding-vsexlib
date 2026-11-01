@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
+using Vintagestory.GameContent;
 using static ExpandedLib.Checks.GameReferencesCheck;
 
 namespace ExpandedLib.Checks;
@@ -10,7 +12,8 @@ namespace ExpandedLib.Checks;
 /// <summary>Checks that a survival player can make what a domain asks of him, one step deep: every
 /// recipe ingredient, construction stage ingredient and block a creative tab lists.</summary>
 /// <remarks>Made means the output of a loaded recipe or of exlib's process catalogues, a smelted,
-/// crushed or ground stack, a beehive kiln's firing, the drop of a block of another type, a world
+/// crushed or ground stack, a beehive kiln's firing, a stack a block's harvestable behavior, a squeezable behavior or a
+/// <c>juiceableProperties</c> attribute (return, pressed and liquid stacks) gives, the drop of a block of another type, a world
 /// source vanilla places, or a code a mod declares its machines make
 /// (<see cref="ExlibChecks.Produces"/>). A wildcard is made when one code it matches is, among the
 /// states its stack's <c>allowedVariants</c> allow and its <c>skipVariants</c> leave. A block a
@@ -126,6 +129,28 @@ public static class ObtainabilityCheck {
               ?? Enumerable.Empty<JsonItemStack?>()
           )
             Add(fired);
+        foreach (
+          BlockBehaviorHarvestable harvest in (
+            (c as Block)?.BlockBehaviors ?? []
+          ).OfType<BlockBehaviorHarvestable>()
+        )
+          foreach (BlockDropItemStack harvested in harvest.harvestedStacks ?? [])
+            Add(harvested?.Type ?? EnumItemClass.Item, harvested?.Code);
+        foreach (
+          CollectibleBehaviorSqueezable squeeze in (
+            c.CollectibleBehaviors ?? []
+          ).OfType<CollectibleBehaviorSqueezable>()
+        )
+          foreach (JsonItemStack? returned in squeeze.ReturnStacks ?? [])
+            Add(returned);
+        if (c.Attributes?["juiceableProperties"] is { Exists: true } juice) {
+          JuiceableProperties? props = juice.AsObject<JuiceableProperties>(
+            null
+          );
+          Add(props?.ReturnStack);
+          Add(props?.PressedStack);
+          Add(props?.LiquidStack);
+        }
         if (c is not Block block || block.Drops == null)
           continue;
         string type = TypeOf(block);
@@ -171,7 +196,9 @@ public static class ObtainabilityCheck {
         Add(stack.Type, stack.Code);
     }
 
-    private void Add(EnumItemClass type, AssetLocation code) {
+    private void Add(EnumItemClass type, AssetLocation? code) {
+      if (code == null)
+        return;
       bool block = type == EnumItemClass.Block;
       if (code.Path.IndexOfAny(Wild) >= 0)
         _patterns[block].Add(code);

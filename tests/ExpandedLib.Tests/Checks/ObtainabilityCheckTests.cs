@@ -158,6 +158,86 @@ public sealed class ObtainabilityCheckTests : IDisposable {
       )
     );
 
+  // Fails when a loaded block's BlockBehaviorHarvestable.harvestedStacks stop counting as made.
+  [Fact]
+  [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
+  public void A_harvestable_blocks_harvested_stacks_are_made() =>
+    Assert.Empty(
+      Findings(
+        new LoadedStubGame(
+          Asking(("item", "stub:resin"), ("item", "stub:sap"))
+        ).Block(
+          "stub:log-withresin",
+          log =>
+            log.BlockBehaviors = [
+              Initialized(
+                new BlockBehaviorHarvestable(log),
+                """
+                { "harvestedStacks": [
+                  { "type": "item", "code": "stub:resin" },
+                  { "type": "item", "code": "stub:sap" }
+                ] }
+                """
+              ),
+            ]
+        )
+      )
+    );
+
+  // Fails when CollectibleBehaviorSqueezable.ReturnStacks stop counting as made.
+  [Fact]
+  [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
+  public void A_squeezable_items_return_stacks_are_made() =>
+    Assert.Empty(
+      Findings(
+        new LoadedStubGame(Asking(("item", "stub:beeswax"))).Item(
+          "stub:honeycomb",
+          comb => {
+            var squeeze = new CollectibleBehaviorSqueezable(comb);
+            squeeze.Initialize(
+              new JsonObject(
+                JObject.Parse(
+                  """{ "returnStacks": [ { "type": "item", "code": "stub:beeswax" } ] }"""
+                )
+              )
+            );
+            comb.CollectibleBehaviors = [squeeze];
+          }
+        )
+      )
+    );
+
+  // Fails when juiceableProperties' returnStack, pressedStack or liquidStack stops counting as
+  // made.
+  [Fact]
+  [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
+  public void A_juiceable_items_return_pressed_and_liquid_stacks_are_made() =>
+    Assert.Empty(
+      Findings(
+        new LoadedStubGame(
+          Asking(
+            ("item", "stub:wax"),
+            ("item", "stub:mash"),
+            ("item", "stub:juice")
+          )
+        ).Item(
+          "stub:honeycomb",
+          comb =>
+            comb.Attributes = new JsonObject(
+              JObject.Parse(
+                """
+                { "juiceableProperties": {
+                  "returnStack": { "type": "item", "code": "stub:wax" },
+                  "pressedStack": { "type": "item", "code": "stub:mash" },
+                  "liquidStack": { "type": "item", "code": "stub:juice" }
+                } }
+                """
+              )
+            )
+        )
+      )
+    );
+
   // Fails when allowedVariants stop narrowing a wildcard, skipVariants stop narrowing a narrowed or
   // a plain one, or a made allowed state stops counting.
   [Fact]
