@@ -66,6 +66,7 @@
          VsAssemblyResolver from the $(VINTAGE_STORY) install. -->
     <ProjectReference Include="..\..\src\ExpandedLib\ExpandedLib.csproj" />
     <ProjectReference Include="..\..\src\ExpandedLib.Industry\ExpandedLib.Industry.csproj" />
+    <ProjectReference Include="..\..\src\ExpandedLib.Setups\ExpandedLib.Setups.csproj" />
     <ProjectReference Include="..\..\src\ExpandedLib.Testing\ExpandedLib.Testing.csproj" />
     <ProjectReference Include="..\..\src\ExpandedLib.Testing.Live\ExpandedLib.Testing.Live.csproj" />
     <!-- ExModSystemTests needs a real [ExConfigRegister] config in THIS assembly so its generated

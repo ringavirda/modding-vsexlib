@@ -51,10 +51,6 @@ public class ExWorldStateTests {
       "the diagram a station's match is marked with, set and restored around that match",
     ["ExpandedLib.Catalogues.ProcessRouteLoader.RootKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.ProcessRouteLoader.StageKeys"] = SchemaKeys,
-    ["ExpandedLib.Scenarios.SetupSteps.Keys"] =
-      "the keys each setup step kind allows, constant",
-    ["ExpandedLib.Scenarios.SetupSteps.Required"] =
-      "the keys each setup step kind requires, constant",
     ["ExpandedLib.Definitions.KnownRootKeys.<Block>k__BackingField"] =
       "the root keys the game's block loader reads, constant",
     ["ExpandedLib.Definitions.KnownRootKeys.<Item>k__BackingField"] =

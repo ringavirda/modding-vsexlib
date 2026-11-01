@@ -97,7 +97,7 @@ public static class BlockLaws {
   /// <summary>Stands every variant of <paramref name="defs"/>' blocks up and runs each law over the
   /// blocks of <paramref name="domain"/>.</summary>
   /// <remarks>Each law gets a world of its own. The break and interaction laws run on up to
-  /// <see cref="MaxGroups"/> threads, chosen from the processors and the free memory.</remarks>
+  /// <see cref="MaxGroups"/> threads, chosen from the processors, the free memory and the memory the GC may still grow by.</remarks>
   /// <param name="domain">The domain whose blocks are judged; other domains' definitions stand
   /// beside them, for layouts and help to name.</param>
   /// <param name="defs">Block and item definitions; others, and exlib's filler, are skipped.</param>
@@ -115,14 +115,7 @@ public static class BlockLaws {
     IEnumerable<IExDef> defs,
     IReadOnlyList<Assembly> assemblies,
     Action<TestWorld>? prepare = null
-  ) =>
-    Run(
-      domain,
-      defs,
-      assemblies,
-      prepare,
-      GroupsFor(Environment.ProcessorCount, FreeMemoryBytes())
-    );
+  ) => Run(domain, defs, assemblies, prepare, DefaultGroups());
 
   /// <summary>As <see cref="Run(string, IEnumerable{IExDef}, IReadOnlyList{Assembly}, Action{TestWorld}?)"/>,
   /// with the break law's variants broken, and the interaction law's blocktypes clicked, on up to
@@ -345,6 +338,34 @@ public static class BlockLaws {
     GCMemoryInfo info = GC.GetGCMemoryInfo();
     return Math.Max(0, info.TotalAvailableMemoryBytes - info.MemoryLoadBytes);
   }
+
+  /// <summary>Bytes the break and interaction laws may add: the smaller of
+  /// <see cref="FreeMemoryBytes"/> and what the GC may still grow by, which is
+  /// <see cref="GCMemoryInfo.TotalAvailableMemoryBytes"/> (the heap hard limit when one is set,
+  /// else the machine or container memory) less the current heap size.</summary>
+  internal static long UsableMemoryBytes() =>
+    UsableMemoryBytes(
+      FreeMemoryBytes(),
+      GC.GetGCMemoryInfo().TotalAvailableMemoryBytes,
+      GC.GetTotalMemory(false)
+    );
+
+  /// <summary>The group count the overload without groups uses: <see cref="GroupsFor"/> of the
+  /// processors and <see cref="UsableMemoryBytes()"/>.</summary>
+  internal static int DefaultGroups() =>
+    GroupsFor(Environment.ProcessorCount, UsableMemoryBytes());
+
+  /// <summary>The smaller of the memory the machine has free and the memory the GC may still grow
+  /// by, never below zero.</summary>
+  /// <param name="freeBytes">Bytes the machine has free.</param>
+  /// <param name="gcAvailableBytes">Bytes the GC may use in all: the heap hard limit or the machine
+  /// memory.</param>
+  /// <param name="heapBytes">Bytes the managed heap holds now.</param>
+  internal static long UsableMemoryBytes(
+    long freeBytes,
+    long gcAvailableBytes,
+    long heapBytes
+  ) => Math.Max(0, Math.Min(freeBytes, gcAvailableBytes - heapBytes));
 
   /// <summary>Memory one group's world holds, in bytes.</summary>
   internal const long GroupBytes = 3L << 30;

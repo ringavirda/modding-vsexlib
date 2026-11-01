@@ -24,8 +24,6 @@ public class HarnessUseGuards {
   private static readonly Dictionary<string, string> PremiseAllowed = new(
     StringComparer.Ordinal
   ) {
-    ["HostProcessParityTests.cs"] =
-      "compares two named files; a missing file or class fails the test",
     ["UnprovenGuardTests.cs"] =
       "PlantedDefects.Unproven throws on a folder with no guard",
     ["VersionPinTests.cs"] =

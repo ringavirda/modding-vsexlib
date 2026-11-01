@@ -130,10 +130,10 @@ public sealed class CraftBillsLiquidTests : IDisposable
   [Fact]
   public void A_vessel_laid_for_a_liquid_bill_is_filled_with_the_litres()
   {
-    ItemStack laid = CraftBills.Filled(_world.World, _order, Vessel(0f));
+    ItemStack laid = SetupTools.Filled(_world.World, _order, Vessel(0f));
 
     Assert.Equal(Asked, Litres(laid), 2);
-    ItemStack part = CraftBills.Filled(
+    ItemStack part = SetupTools.Filled(
       _world.World,
       _order,
       new ItemStack(_part)

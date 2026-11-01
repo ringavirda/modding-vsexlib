@@ -127,7 +127,7 @@ internal static class PackLedger {
         && ctx.Pack.Laid(ctx.World, input) is { } held
           ? held
           : CraftBills.Laid(ctx.World, input, with);
-      return order == null ? laid : CraftBills.Filled(ctx.World, order, laid);
+      return order == null ? laid : SetupTools.Filled(ctx.World, order, laid);
     } catch (InvalidOperationException e) {
       throw new StepFailure(e.Message, Suspect.Scenario, e);
     }
@@ -148,7 +148,7 @@ internal static class PackLedger {
     ItemStack tool;
     string? drawn;
     try {
-      tool = CraftBills.Tool(ctx.World, pattern, ctx.Pack, out drawn);
+      tool = SetupTools.Held(ctx.World, pattern, ctx.Pack, out drawn);
     } catch (InvalidOperationException e) {
       throw new StepFailure($"{label}: {e.Message}", Suspect.Scenario, e);
     }

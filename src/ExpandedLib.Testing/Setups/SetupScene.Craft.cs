@@ -331,7 +331,7 @@ public sealed partial class SetupScene
     string? drawn;
     try
     {
-      tool = CraftBills.Tool(World.World, pattern, _pack, out drawn);
+      tool = SetupTools.Held(World.World, pattern, _pack, out drawn);
     }
     catch (InvalidOperationException e)
     {
@@ -356,8 +356,8 @@ public sealed partial class SetupScene
         && with?[input.Name] == null
         && _pack.Laid(World.World, input) is { } held
       )
-        return CraftBills.Filled(World.World, order, held);
-      return CraftBills.Filled(
+        return SetupTools.Filled(World.World, order, held);
+      return SetupTools.Filled(
         World.World,
         order,
         CraftBills.Laid(World.World, input, with)
