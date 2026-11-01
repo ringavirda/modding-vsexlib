@@ -1,0 +1,10 @@
+{
+  "block-press": "Washer press",
+  "blockdesc-press": "A hand screw fly press. Put plate in through the body's window, then swing the fly to punch washers out of it, one a stroke.",
+  "item-washer-iron": "Iron washer",
+  "item-washer-copper": "Copper washer",
+
+  "washerpunch:press-title": "Washer press",
+  "washerpunch:press-strokes": "Strokes: {0} / {1}",
+  "washerpunch:press-nojob": "The press has no job for {0}."
+}

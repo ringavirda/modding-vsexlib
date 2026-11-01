@@ -1,0 +1,33 @@
+{
+  "code": "washer",
+  "class": "washerpunch.ItemWasher",
+  "maxstacksize": 128,
+  "variantgroups": [
+    {
+      "code": "metal",
+      "states": [
+        "iron",
+        "copper"
+      ]
+    }
+  ],
+  "shape": {
+    "base": "washerpunch:item/washer"
+  },
+  "textures": {
+    "metal": {
+      "base": "game:block/metal/ingot/{metal}"
+    }
+  },
+  "creativeinventory": {
+    "general": [
+      "*"
+    ],
+    "items": [
+      "*"
+    ],
+    "washerpunch": [
+      "*"
+    ]
+  }
+}

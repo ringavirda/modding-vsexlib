@@ -1,0 +1,29 @@
+[
+  {
+    "name": "Washer Press",
+    "ingredientPattern": "_R_,IRI,PPP",
+    "width": 3,
+    "height": 3,
+    "output": {
+      "type": "block",
+      "code": "washerpunch:press"
+    },
+    "ingredients": {
+      "R": {
+        "type": "item",
+        "code": "game:rod-iron",
+        "quantity": 1
+      },
+      "I": {
+        "type": "item",
+        "code": "game:metalplate-iron",
+        "quantity": 1
+      },
+      "P": {
+        "type": "item",
+        "code": "game:plank-*",
+        "quantity": 1
+      }
+    }
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
+  "type": "Code",
+  "modid": "washerpunch",
+  "name": "Washer Punch",
+  "authors": ["fallenstar"],
+  "description": "Sample mod: a hand fly press that punches washers from plate, its job table read from a config/processjobs file and one more row added from C#.",
+  "version": "1.0.0",
+  "dependencies": {
+    "game": "1.22.0",
+    "exlib": "0.8.4"
+  }
+}

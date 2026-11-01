@@ -1,0 +1,13 @@
+{
+  "schema": 2,
+  "machine": "washerpunch",
+  "jobs": [
+    {
+      "input": "game:metalplate-iron",
+      "output": "washerpunch:washer-iron",
+      "count": 40,
+      "strokes": 40,
+      "minTorque": 0
+    }
+  ]
+}
