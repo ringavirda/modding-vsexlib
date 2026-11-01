@@ -25,12 +25,13 @@ public class WikiParityTests {
     "ExStairs",
   ];
 
-  /// <summary>Navigation pages, which link to the others and name no API.</summary>
+  /// <summary>Navigation pages, which link to the others, and data-only pages; none names an API.</summary>
   private static readonly string[] SymbolFree =
   [
     "Home.md",
     "_Footer.md",
     "_Sidebar.md",
+    "Worldgen-Seams.md",
   ];
 
   private static string WikiDirectory => RepoPaths.Wiki;
