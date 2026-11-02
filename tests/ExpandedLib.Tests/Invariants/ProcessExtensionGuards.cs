@@ -16,7 +16,13 @@ public class ProcessExtensionGuards {
 
   // A file is a process machine when it reads a process registry.
   private static readonly Regex ReadsARegistry = new(
-    @"ProcessRouteRegistry|ProcessJobRegistry|ProcessExtensions|MillSchedule|RollSetSpec|MoldSpec",
+    @"ProcessRouteRegistry|ProcessJobRegistry|MachiningJobRegistry|MachineKindRegistry|ProcessExtensions|MillSchedule|RollSetSpec|MoldSpec",
+    RegexOptions.Compiled
+  );
+
+  // A machine host derives from a block entity; the other Machining files are the registries and specs.
+  private static readonly Regex BlockEntityHost = new(
+    @"class\s+\w+\s*:\s*BlockEntity",
     RegexOptions.Compiled
   );
 
@@ -53,6 +59,11 @@ public class ProcessExtensionGuards {
           continue;
 
         string text = File.ReadAllText(path);
+        if (
+          rel.Contains("/Machining/", StringComparison.Ordinal)
+          && !BlockEntityHost.IsMatch(text)
+        )
+          continue;
         if (ReadsARegistry.IsMatch(text))
           files.Add(new SourceFile(rel, text));
       }

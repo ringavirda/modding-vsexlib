@@ -115,5 +115,20 @@
   "pipe-medium-water": "Вода",
   "handbook-madeat": "Де виготовляється",
   "handbook-madeat-line": "{0}: {1}",
-  "handbook-diagram-makes": "Вироби"
+  "handbook-diagram-makes": "Вироби",
+  "machine-tool-info-nojob": "{0}: жоден верстат цього не обробляє",
+  "machine-tool-info-elsewhere": "{0}: обробляється на {1}",
+  "machine-tool-info-notool": "Інструмент не встановлено",
+  "machine-tool-info-wrongtool": "Потрібен інструмент виду {0}",
+  "machine-tool-info-tier": "Потрібен інструмент гартування {0}",
+  "machine-tool-info-nofixture": "Потрібно {0} у слоті оснастки",
+  "machine-tool-info-chips": "Слот стружки повний",
+  "machine-tool-info-nodrive": "Немає приводу",
+  "machine-tool-info-cutting": "Різання, {0}: {1}%",
+  "machine-tool-info-stopped": "Зупинено, {0}: {1}%",
+  "machine-step-turn": "токарна обробка",
+  "machine-step-bore": "розточування",
+  "machine-step-plane": "стругання",
+  "machine-step-slot": "довбання",
+  "machine-step-drill": "свердління"
 }

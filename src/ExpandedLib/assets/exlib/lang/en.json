@@ -115,5 +115,20 @@
   "pipe-medium-water": "Water",
   "handbook-madeat": "Made at",
   "handbook-madeat-line": "{0}, from the {1}",
-  "handbook-diagram-makes": "Makes"
+  "handbook-diagram-makes": "Makes",
+  "machine-tool-info-nojob": "{0}: no machine works it",
+  "machine-tool-info-elsewhere": "{0}: worked at {1}",
+  "machine-tool-info-notool": "No tool fitted",
+  "machine-tool-info-wrongtool": "Needs a {0} tool",
+  "machine-tool-info-tier": "Needs a tool of temper {0}",
+  "machine-tool-info-nofixture": "Needs {0} in the fixture slot",
+  "machine-tool-info-chips": "The chips slot is full",
+  "machine-tool-info-nodrive": "No drive",
+  "machine-tool-info-cutting": "Cutting, {0}: {1}%",
+  "machine-tool-info-stopped": "Stopped, {0}: {1}%",
+  "machine-step-turn": "turning",
+  "machine-step-bore": "boring",
+  "machine-step-plane": "planing",
+  "machine-step-slot": "slotting",
+  "machine-step-drill": "drilling"
 }
