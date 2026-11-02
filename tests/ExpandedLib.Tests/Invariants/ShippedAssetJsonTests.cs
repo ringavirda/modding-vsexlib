@@ -92,8 +92,18 @@ public class ShippedAssetJsonTests {
         if (!domains.Contains(domain))
           continue; // other mods' textures live outside this repo
 
+        string assets = ExpandedLib.Testing.RepoPaths.Assets(domain);
+        string shape = Path.Combine(
+          assets,
+          "shapes",
+          m.Groups["path"].Value.Replace('/', Path.DirectorySeparatorChar)
+            + ".json"
+        );
+        if (File.Exists(shape))
+          continue; // a shape reference, resolved by DefinitionAssets.MissingShapes
+
         string file = Path.Combine(
-          ExpandedLib.Testing.RepoPaths.Assets(domain),
+          assets,
           "textures",
           m.Groups["path"].Value.Replace('/', Path.DirectorySeparatorChar)
             + ".png"
