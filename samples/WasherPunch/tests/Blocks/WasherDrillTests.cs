@@ -189,7 +189,7 @@ public class WasherDrillTests(LoadedWorld loaded) {
   }
 
   [Fact]
-  public void The_block_is_a_cell_of_the_mpshaft_run() {
+  public void The_block_declares_the_mpshaft_network_type() {
     Rig rig = NewRig();
 
     Assert.Equal("mpshaft", rig.Block.NetworkType);

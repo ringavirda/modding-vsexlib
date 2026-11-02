@@ -5,7 +5,7 @@
       "code": "washerpunch:drill",
       "ratedSpeed": 10.7,
       "anchors": {
-        "table": { "origin": [8, 11, 8], "rotation": [0, 0, 0], "scale": 1 }
+        "table": { "origin": [8, 11, 7.5], "rotation": [0, 0, 0], "scale": 1 }
       },
       "steps": {
         "drill": {

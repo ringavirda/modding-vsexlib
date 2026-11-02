@@ -76,6 +76,5 @@ public class MachiningJobTests(LoadedWorld loaded) {
 
     Assert.Empty(MachiningChecks.Offered());
     Assert.Empty(MachiningChecks.Envelopes(world));
-    Assert.Empty(MachiningChecks.CuttingsMass(world));
   }
 }

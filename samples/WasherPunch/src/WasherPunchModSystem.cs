@@ -20,7 +20,7 @@ public class WasherPunchModSystem : ExModSystem {
 
   /// <summary>Mass the drilling machine cuts from one plate, kg: four holes 0.5 voxel across through a
   /// plate 1 voxel thick, 4 x pi/4 x 0.25 x 1 voxel3 at 0.000244 m3 a voxel3 and 7810 kg/m3 of wrought
-  /// iron.</summary>
+  /// iron. The drilledplate shape draws each hole as a 0.5 voxel square, the nearest a voxel shape gets to round.</summary>
   public const float DrilledKg = 1.5f;
 
   /// <summary>Temper the meteoric plate asks of the bit: steel's.</summary>
