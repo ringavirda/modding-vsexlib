@@ -10,9 +10,8 @@ using Vintagestory.API.Common;
 namespace ExpandedLib.Testing;
 
 /// <summary>
-/// Checks over the machining catalogue a world loaded: jobs, machine kinds and the hand routes
-/// that do the same work at the bench. Each check returns one finding per fault and an empty list
-/// when clean. Call them after <see cref="TestWorld.LoadAsGame"/>, with no registry argument, to
+/// Checks over a loaded machining catalogue (jobs, machine kinds, hand routes), one finding per
+/// fault, empty when clean; called with no registry after <see cref="TestWorld.LoadAsGame"/>, they
 /// read the loaded catalogue.
 /// </summary>
 public static class MachiningChecks
