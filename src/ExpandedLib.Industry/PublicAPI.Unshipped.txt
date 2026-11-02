@@ -5,6 +5,11 @@ const ExpandedLib.Industry.Casting.MoldFitSet.CurrentSchema = 1 -> int
 const ExpandedLib.Industry.Casting.MoldSpec.AttributeKey = "mold" -> string!
 const ExpandedLib.Industry.Casting.MoldSpec.CurrentSchema = 1 -> int
 const ExpandedLib.Industry.Forming.StockFormSet.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.Machining.CuttingMaterialSet.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.Machining.MachiningJob.DefaultWear = 1 -> int
+const ExpandedLib.Industry.Machining.MachiningJob.MaterialAttribute = "cuttingMaterial" -> string!
+const ExpandedLib.Industry.Machining.MachiningJob.UnitsAttribute = "materialUnits" -> string!
+const ExpandedLib.Industry.Machining.MachiningJobSet.CurrentSchema = 1 -> int
 const ExpandedLib.Industry.MechanicalPower.MpSegmentReading.TreeKey = "mpReading" -> string!
 const ExpandedLib.Industry.Molten.CrowbarHold.HoldSeconds = 1 -> float
 const ExpandedLib.Industry.Molten.MoltenBar.HoldSeconds = 1 -> float
@@ -127,6 +132,102 @@ ExpandedLib.Industry.Forming.StockFormSet.Schema.get -> int
 ExpandedLib.Industry.Forming.StockFormSet.Schema.init -> void
 ExpandedLib.Industry.Forming.StockFormSet.StockFormSet(int Schema, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.StockForm!>! Forms, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.FeedstockEntry!>! Feedstock) -> void
 ExpandedLib.Industry.Heat.HeatCooling
+ExpandedLib.Industry.Machining.CutMotion
+ExpandedLib.Industry.Machining.CutMotion.Reciprocating = 1 -> ExpandedLib.Industry.Machining.CutMotion
+ExpandedLib.Industry.Machining.CutMotion.Rotary = 0 -> ExpandedLib.Industry.Machining.CutMotion
+ExpandedLib.Industry.Machining.CuttingMaterial
+ExpandedLib.Industry.Machining.CuttingMaterial.Code.get -> string!
+ExpandedLib.Industry.Machining.CuttingMaterial.Code.init -> void
+ExpandedLib.Industry.Machining.CuttingMaterial.CuttingMaterial(string! Code, float Density, float RotaryEnergy, float ReciprocatingEnergy) -> void
+ExpandedLib.Industry.Machining.CuttingMaterial.Density.get -> float
+ExpandedLib.Industry.Machining.CuttingMaterial.Density.init -> void
+ExpandedLib.Industry.Machining.CuttingMaterial.EnergyFor(ExpandedLib.Industry.Machining.CutMotion motion) -> float
+ExpandedLib.Industry.Machining.CuttingMaterial.ReciprocatingEnergy.get -> float
+ExpandedLib.Industry.Machining.CuttingMaterial.ReciprocatingEnergy.init -> void
+ExpandedLib.Industry.Machining.CuttingMaterial.RotaryEnergy.get -> float
+ExpandedLib.Industry.Machining.CuttingMaterial.RotaryEnergy.init -> void
+ExpandedLib.Industry.Machining.CuttingMaterialRegistry
+ExpandedLib.Industry.Machining.CuttingMaterialRegistry.All.get -> System.Collections.Generic.IReadOnlyCollection<ExpandedLib.Industry.Machining.CuttingMaterial!>!
+ExpandedLib.Industry.Machining.CuttingMaterialRegistry.Clear() -> void
+ExpandedLib.Industry.Machining.CuttingMaterialRegistry.Contribute(ExpandedLib.Industry.Machining.CuttingMaterialSet! set) -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Machining.CuttingMaterialRegistry.Count.get -> int
+ExpandedLib.Industry.Machining.CuttingMaterialRegistry.CuttingMaterialRegistry() -> void
+ExpandedLib.Industry.Machining.CuttingMaterialRegistry.HandPower(ExpandedLib.Industry.Machining.CutMotion motion) -> float
+ExpandedLib.Industry.Machining.CuttingMaterialRegistry.TryGet(string? code, out ExpandedLib.Industry.Machining.CuttingMaterial? material) -> bool
+ExpandedLib.Industry.Machining.CuttingMaterialSet
+ExpandedLib.Industry.Machining.CuttingMaterialSet.CuttingMaterialSet(int Schema, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.CuttingMaterial!>! Materials, ExpandedLib.Industry.Machining.HandPower? HandPower = null) -> void
+ExpandedLib.Industry.Machining.CuttingMaterialSet.HandPower.get -> ExpandedLib.Industry.Machining.HandPower?
+ExpandedLib.Industry.Machining.CuttingMaterialSet.HandPower.init -> void
+ExpandedLib.Industry.Machining.CuttingMaterialSet.Materials.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.CuttingMaterial!>!
+ExpandedLib.Industry.Machining.CuttingMaterialSet.Materials.init -> void
+ExpandedLib.Industry.Machining.CuttingMaterialSet.Schema.get -> int
+ExpandedLib.Industry.Machining.CuttingMaterialSet.Schema.init -> void
+ExpandedLib.Industry.Machining.HandPower
+ExpandedLib.Industry.Machining.HandPower.For(ExpandedLib.Industry.Machining.CutMotion motion) -> float
+ExpandedLib.Industry.Machining.HandPower.HandPower(float Rotary, float Reciprocating) -> void
+ExpandedLib.Industry.Machining.HandPower.Reciprocating.get -> float
+ExpandedLib.Industry.Machining.HandPower.Reciprocating.init -> void
+ExpandedLib.Industry.Machining.HandPower.Rotary.get -> float
+ExpandedLib.Industry.Machining.HandPower.Rotary.init -> void
+ExpandedLib.Industry.Machining.MachiningByproduct
+ExpandedLib.Industry.Machining.MachiningByproduct.Code.get -> string!
+ExpandedLib.Industry.Machining.MachiningByproduct.Code.init -> void
+ExpandedLib.Industry.Machining.MachiningByproduct.Count.get -> int
+ExpandedLib.Industry.Machining.MachiningByproduct.Count.init -> void
+ExpandedLib.Industry.Machining.MachiningByproduct.MachiningByproduct(string! Code, int Count) -> void
+ExpandedLib.Industry.Machining.MachiningHand
+ExpandedLib.Industry.Machining.MachiningHand.Machine.get -> string!
+ExpandedLib.Industry.Machining.MachiningHand.Machine.init -> void
+ExpandedLib.Industry.Machining.MachiningHand.MachiningHand(string! Machine, string! Recipe) -> void
+ExpandedLib.Industry.Machining.MachiningHand.Recipe.get -> string!
+ExpandedLib.Industry.Machining.MachiningHand.Recipe.init -> void
+ExpandedLib.Industry.Machining.MachiningJob
+ExpandedLib.Industry.Machining.MachiningJob.Byproducts.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningByproduct!>!
+ExpandedLib.Industry.Machining.MachiningJob.Byproducts.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.Count.get -> int
+ExpandedLib.Industry.Machining.MachiningJob.Count.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.Energy.get -> float?
+ExpandedLib.Industry.Machining.MachiningJob.Energy.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.Fixture.get -> string?
+ExpandedLib.Industry.Machining.MachiningJob.Fixture.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.Hand.get -> ExpandedLib.Industry.Machining.MachiningHand?
+ExpandedLib.Industry.Machining.MachiningJob.Hand.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.Input.get -> string!
+ExpandedLib.Industry.Machining.MachiningJob.Input.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.Machines.get -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Machining.MachiningJob.Machines.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.MachiningJob(string! Step, string! Input, string! Output, int Count, string? Material, float? Removed, float? Energy, int MinTier, int Wear, string? Fixture, System.Collections.Generic.IReadOnlyList<string!>! Machines, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningByproduct!>! Byproducts, ExpandedLib.Industry.Machining.MachiningHand? Hand) -> void
+ExpandedLib.Industry.Machining.MachiningJob.Matches(string! step, string! input) -> bool
+ExpandedLib.Industry.Machining.MachiningJob.Material.get -> string?
+ExpandedLib.Industry.Machining.MachiningJob.Material.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.MinTier.get -> int
+ExpandedLib.Industry.Machining.MachiningJob.MinTier.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.Output.get -> string!
+ExpandedLib.Industry.Machining.MachiningJob.Output.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.Removed.get -> float?
+ExpandedLib.Industry.Machining.MachiningJob.Removed.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.RemovedKg.get -> float
+ExpandedLib.Industry.Machining.MachiningJob.ResolvedMaterial.get -> string?
+ExpandedLib.Industry.Machining.MachiningJob.Step.get -> string!
+ExpandedLib.Industry.Machining.MachiningJob.Step.init -> void
+ExpandedLib.Industry.Machining.MachiningJob.Wear.get -> int
+ExpandedLib.Industry.Machining.MachiningJob.Wear.init -> void
+ExpandedLib.Industry.Machining.MachiningJobRegistry
+ExpandedLib.Industry.Machining.MachiningJobRegistry.All.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningJob!>!
+ExpandedLib.Industry.Machining.MachiningJobRegistry.Clear() -> void
+ExpandedLib.Industry.Machining.MachiningJobRegistry.Contribute(ExpandedLib.Industry.Machining.MachiningJobSet! set) -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Machining.MachiningJobRegistry.Job(string? step, string? input) -> ExpandedLib.Industry.Machining.MachiningJob?
+ExpandedLib.Industry.Machining.MachiningJobRegistry.Jobs(string? step) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningJob!>!
+ExpandedLib.Industry.Machining.MachiningJobRegistry.MachiningJobRegistry() -> void
+ExpandedLib.Industry.Machining.MachiningJobRegistry.Steps.get -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Machining.MachiningJobRegistry.StepsFor(string? input) -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Machining.MachiningJobSet
+ExpandedLib.Industry.Machining.MachiningJobSet.Jobs.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningJob!>!
+ExpandedLib.Industry.Machining.MachiningJobSet.Jobs.init -> void
+ExpandedLib.Industry.Machining.MachiningJobSet.MachiningJobSet(int Schema, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningJob!>! Jobs) -> void
+ExpandedLib.Industry.Machining.MachiningJobSet.Schema.get -> int
+ExpandedLib.Industry.Machining.MachiningJobSet.Schema.init -> void
+ExpandedLib.Industry.Machining.MachiningJobs
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Advance(float dt, float hours, float slipPowerW) -> void
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.BEBehaviorMpBelt(Vintagestory.API.Common.BlockEntity! blockentity) -> void
@@ -399,6 +500,11 @@ static ExpandedLib.Industry.Forming.StockFormRegistry.Shared.get -> ExpandedLib.
 static ExpandedLib.Industry.Heat.HeatCooling.Cool(float temperature, float ambient, float ratePerHour, double hours) -> float
 static ExpandedLib.Industry.Helpers.ExParticles.MetalSparks(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.Vec3d! pos, float temperatureC) -> void
 static ExpandedLib.Industry.Helpers.ExParticles.Spawn(Vintagestory.API.Common.IWorldAccessor! world, int color, Vintagestory.API.MathTools.Vec3d! minPos, Vintagestory.API.MathTools.Vec3d! maxPos, Vintagestory.API.MathTools.Vec3f! minVelocity, Vintagestory.API.MathTools.Vec3f! maxVelocity, float minQuantity, float maxQuantity, float lifeLength, float gravityEffect, float minSize, float maxSize, Vintagestory.API.Common.EnumParticleModel model, Vintagestory.API.MathTools.EvolvingNatFloat? opacityEvolve, Vintagestory.API.MathTools.EvolvingNatFloat? sizeEvolve, bool shouldDieInLiquid, byte vertexFlags) -> void
+static ExpandedLib.Industry.Machining.CuttingMaterialRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
+static ExpandedLib.Industry.Machining.CuttingMaterialRegistry.Shared.get -> ExpandedLib.Industry.Machining.CuttingMaterialRegistry!
+static ExpandedLib.Industry.Machining.MachiningJobRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
+static ExpandedLib.Industry.Machining.MachiningJobRegistry.Shared.get -> ExpandedLib.Industry.Machining.MachiningJobRegistry!
+static ExpandedLib.Industry.Machining.MachiningJobs.Resolve(System.Collections.Generic.IEnumerable<Vintagestory.API.Common.CollectibleObject?>! collectibles, ExpandedLib.Industry.Machining.MachiningJobRegistry? jobs = null, ExpandedLib.Industry.Machining.CuttingMaterialRegistry? materials = null) -> System.Collections.Generic.List<string!>!
 static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.CapFor(ExpandedLib.Industry.MechanicalPower.MpShaftSize fromPulley, ExpandedLib.Industry.MechanicalPower.MpShaftSize toPulley) -> float
 static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.PulleyDiameter(ExpandedLib.Industry.MechanicalPower.MpShaftSize size) -> float
 static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.FullCapNm(ExpandedLib.Industry.MechanicalPower.MpShaftSize size) -> float

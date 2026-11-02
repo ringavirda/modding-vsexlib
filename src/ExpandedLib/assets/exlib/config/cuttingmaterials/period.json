@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "handPower": { "rotary": 61.0, "reciprocating": 44.7 },
+  "materials": [
+    {
+      "code": "castiron",
+      "density": 7200,
+      "energy": { "rotary": 185800, "reciprocating": 295500 }
+    },
+    {
+      "code": "wroughtiron",
+      "density": 7810,
+      "energy": { "rotary": 193500, "reciprocating": 307800 }
+    }
+  ]
+}
