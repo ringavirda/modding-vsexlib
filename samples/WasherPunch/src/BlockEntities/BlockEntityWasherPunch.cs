@@ -21,6 +21,7 @@ public class BlockEntityWasherPunch : BlockEntityMachineStation {
   public const int OutputSlot = 1;
 
   private int _strokes;
+  private string? _strokeCode;
 
   protected override MachineSlotSpec[] SlotSpecs =>
     [MachineSlotSpec.AnyInput(), MachineSlotSpec.Output()];
@@ -35,10 +36,32 @@ public class BlockEntityWasherPunch : BlockEntityMachineStation {
   public ProcessJob? CurrentJob =>
     ProcessJobRegistry.Shared.Job(
       WasherPunchModSystem.Machine,
-      Inventory[InputSlot].Itemstack?.Collectible.Code.ToString(),
+      InputCode(),
       null,
       null
     );
+
+  public override void Initialize(ICoreAPI api) {
+    base.Initialize(api);
+    _strokeCode = InputCode();
+    Inventory.SlotModified += OnSlotModified;
+  }
+
+  private string? InputCode() =>
+    Inventory[InputSlot].Itemstack?.Collectible.Code.ToString();
+
+  private void OnSlotModified(int slotId) {
+    if (slotId != InputSlot)
+      return;
+    string? code = InputCode();
+    if (code == _strokeCode)
+      return;
+    _strokeCode = code;
+    if (_strokes != 0) {
+      _strokes = 0;
+      MarkDirty();
+    }
+  }
 
   protected override void DeclareState(ExBlockState state) =>
     state.Int("strokes", () => _strokes, v => _strokes = v);

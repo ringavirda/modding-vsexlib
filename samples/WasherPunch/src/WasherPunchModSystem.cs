@@ -12,9 +12,9 @@ public class WasherPunchModSystem : ExModSystem {
   /// <summary>The key the press's jobs are filed under in <see cref="ProcessJobRegistry"/>.</summary>
   public const string Machine = "washerpunch";
 
-  /// <summary>Washers one plate gives: the plate's 9 x 9 x 1 voxels over the washer's 2 x 2 x 0.5
-  /// outer box, rounded down. The press makes one a stroke.</summary>
-  public const int WashersPerPlate = 40;
+  /// <summary>Washers one plate gives: a punch cuts through the plate, so the plate's 9 x 9 face over
+  /// the washer's 2 x 2 outer square, rounded down. The press makes one a stroke.</summary>
+  public const int WashersPerPlate = 20;
 
   protected override void OnStart(ICoreAPI api) =>
     ProcessJobRegistry.Contributors.Register(_ =>

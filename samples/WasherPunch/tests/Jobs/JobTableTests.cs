@@ -22,8 +22,8 @@ public class JobTableTests(LoadedWorld loaded) {
     );
 
     Assert.Equal("washerpunch:washer-iron", job.Output);
-    Assert.Equal(40, job.Count);
-    Assert.Equal(40, job.Strokes);
+    Assert.Equal(20, job.Count);
+    Assert.Equal(20, job.Strokes);
   }
 
   [Fact]

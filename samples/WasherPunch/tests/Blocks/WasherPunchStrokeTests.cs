@@ -1,6 +1,9 @@
+using System.Linq;
 using System.Threading;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -74,7 +77,58 @@ public class WasherPunchStrokeTests(LoadedWorld loaded) {
     Assert.Equal(job.Strokes - 1, rig.Press.Strokes);
     Assert.False(Input(rig).Empty);
     Assert.True(Output(rig).Empty);
+    TestLang.Service.ClearReceivedCalls();
     Assert.Equal("washerpunch:press-strokes", rig.Press.InfoLine());
+    TestLang
+      .Service.Received()
+      .Get(
+        "washerpunch:press-strokes",
+        Arg.Is<object[]>(a =>
+          a[0].Equals(job.Strokes - 1) && a[1].Equals(job.Strokes)
+        )
+      );
+  }
+
+  [Fact]
+  public void A_new_plate_in_the_slot_starts_its_own_count() {
+    Rig rig = NewRig();
+    Input(rig).Itemstack = Stack(rig, "game:metalplate-iron");
+    Input(rig).MarkDirty();
+    Strike(rig, Washers - 1);
+
+    Input(rig).Itemstack = Stack(rig, "game:metalplate-copper");
+    Input(rig).MarkDirty();
+    Strike(rig, 1);
+
+    Assert.Equal(1, rig.Press.Strokes);
+    Assert.False(Input(rig).Empty);
+    Assert.True(Output(rig).Empty);
+  }
+
+  [Fact]
+  public void A_plate_taken_out_clears_the_count() {
+    Rig rig = NewRig();
+    Input(rig).Itemstack = Stack(rig, "game:metalplate-iron");
+    Input(rig).MarkDirty();
+    Strike(rig, 5);
+
+    Input(rig).Itemstack = null;
+    Input(rig).MarkDirty();
+
+    Assert.Equal(0, rig.Press.Strokes);
+  }
+
+  [Fact]
+  public void The_fly_box_clears_the_body_box() {
+    var boxes = (JArray)
+      BlockWasherPunch.Definitions("washerpunch").Single().ToJson()[
+        "selectionboxes"
+      ]!;
+
+    double bodyTop = (double)boxes[BlockWasherPunch.BodyBox]["y2"]!;
+    double flyBottom = (double)boxes[BlockWasherPunch.FlyBox]["y1"]!;
+
+    Assert.True(flyBottom >= bodyTop);
   }
 
   [Theory]

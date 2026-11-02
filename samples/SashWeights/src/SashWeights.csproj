@@ -73,10 +73,6 @@
     <ProjectReference Include="$(ExlibRoot)src\ExpandedLib\ExpandedLib.csproj">
       <Private>false</Private>
     </ProjectReference>
-    <!-- The casting station registry and the mold pattern validator. -->
-    <ProjectReference Include="$(ExlibRoot)src\ExpandedLib.Industry\ExpandedLib.Industry.csproj">
-      <Private>false</Private>
-    </ProjectReference>
     <!-- ExLangKeyGenerator emits SashWeightsLang. Compile-time only, ships nothing. -->
     <ProjectReference
       Include="$(ExlibRoot)src\ExpandedLib.Generators\ExpandedLib.Generators.csproj"
@@ -86,7 +82,6 @@
   </ItemGroup>
   <ItemGroup Condition="'$(ExlibRoot)' == ''">
     <PackageReference Include="ExpandedLib" ExcludeAssets="runtime" />
-    <PackageReference Include="ExpandedLib.Industry" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <ItemGroup>

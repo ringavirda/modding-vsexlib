@@ -30,7 +30,7 @@ public partial class BlockWasherPunch : Block, IExBlockDefProvider {
         .CreativeTab("items", "*")
         .CreativeTab(domain, "*")
         .SelectionBox(0.1875f, 0f, 0.1875f, 0.8125f, 0.875f, 0.8125f)
-        .SelectionBox(0f, 0.375f, 0.375f, 1f, 1f, 0.625f)
+        .SelectionBox(0f, 0.875f, 0.375f, 1f, 1f, 0.625f)
         .CollisionBox(0.1875f, 0f, 0.1875f, 0.8125f, 0.875f, 0.8125f)
         .CollisionBox(0f, 0.375f, 0.375f, 1f, 1f, 0.625f)
         .Sound("place", "game:block/anvil")

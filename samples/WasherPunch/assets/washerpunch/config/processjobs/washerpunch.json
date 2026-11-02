@@ -5,8 +5,8 @@
     {
       "input": "game:metalplate-iron",
       "output": "washerpunch:washer-iron",
-      "count": 40,
-      "strokes": 40,
+      "count": 20,
+      "strokes": 20,
       "minTorque": 0
     }
   ]
