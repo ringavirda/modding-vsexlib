@@ -8,6 +8,7 @@ using ExpandedLib.Helpers;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Machines;
 using ExpandedLib.Networks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -145,6 +146,59 @@ public abstract class BlockEntityMachineTool
     Inventory.SlotModified += OnSlotModified;
     if (api.Side == EnumAppSide.Server)
       RegisterGameTickListener(OnCutTick, TickMs);
+  }
+
+  /// <summary>Adds the mounted piece's item mesh at its step's anchor, turned with the block, and leaves the block's own
+  /// mesh to be drawn. The piece after a cut is drawn at the anchor of the step whose job yields it. Adds nothing when
+  /// the work slot is empty or no anchor applies.</summary>
+  /// <returns>Always false.</returns>
+  public override bool OnTesselation(
+    ITerrainMeshPool mesher,
+    ITesselatorAPI tesselator
+  ) {
+    if (
+      Api is ICoreClientAPI capi
+      && Inventory[WorkSlot].Itemstack is { } piece
+      && MountAnchor(piece) is { } anchor
+    ) {
+      CompositeShape? rotation = Block?.Shape;
+      MachineToolRenderer.AddPiece(
+        capi,
+        mesher,
+        tesselator,
+        piece,
+        MachineAnchors.Compose(
+          anchor,
+          new Vec3f(
+            rotation?.rotateX ?? 0f,
+            rotation?.rotateY ?? 0f,
+            rotation?.rotateZ ?? 0f
+          )
+        )
+      );
+    }
+    return false;
+  }
+
+  private MachineAnchor? MountAnchor(ItemStack piece) {
+    if (Kind is not { } kind)
+      return null;
+    string? name = CurrentJob().Step?.Anchor;
+    if (name is null) {
+      string code = piece.Collectible.Code.ToString();
+      foreach (MachiningJob job in Jobs.All)
+        if (
+          string.Equals(job.Output, code, StringComparison.OrdinalIgnoreCase)
+          && kind.StepOf(job.Step)?.Anchor is { } made
+        ) {
+          name = made;
+          break;
+        }
+    }
+    foreach (MachineAnchor anchor in kind.Anchors)
+      if (string.Equals(anchor.Name, name, StringComparison.OrdinalIgnoreCase))
+        return anchor;
+    return null;
   }
 
   /// <summary>Engages the machine: the cut counts game time from now.</summary>

@@ -691,3 +691,6 @@ virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.Kind.get -> Expand
 virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.Kinds.get -> ExpandedLib.Industry.Machining.MachineKindRegistry!
 virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.Materials.get -> ExpandedLib.Industry.Machining.CuttingMaterialRegistry!
 virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.ReadDrive() -> ExpandedLib.Industry.MechanicalPower.MpRunReading
+ExpandedLib.Industry.Machining.MachineAnchors
+override ExpandedLib.Industry.Machining.BlockEntityMachineTool.OnTesselation(Vintagestory.API.Client.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> bool
+static ExpandedLib.Industry.Machining.MachineAnchors.Compose(ExpandedLib.Industry.Machining.MachineAnchor! anchor, Vintagestory.API.MathTools.Vec3f! blockRotationDeg) -> float[]!
