@@ -9,6 +9,7 @@ const ExpandedLib.Catalogues.CraftStep.DefaultSeconds = 1 -> float
 const ExpandedLib.Catalogues.CraftStep.Vice = "vice" -> string!
 const ExpandedLib.Catalogues.CraftToolDefault.DefaultStrike = 0.3 -> float
 const ExpandedLib.Catalogues.CraftToolDefault.DefaultStroke = 1.05 -> float
+const ExpandedLib.Catalogues.MachineTool.KindedSchema = 2 -> int
 const ExpandedLib.Catalogues.ProcessJobSet.CurrentSchema = 2 -> int
 const ExpandedLib.ExlibLang.BlockhelpCrowbarBreakout = "exlib:blockhelp-crowbar-breakout" -> string!
 const ExpandedLib.ExlibLang.CommandMoltenDenied = "exlib:command-molten-denied" -> string!
@@ -249,6 +250,16 @@ ExpandedLib.Catalogues.CraftToolDefault.Stroke.get -> float
 ExpandedLib.Catalogues.CraftToolDefault.Stroke.init -> void
 ExpandedLib.Catalogues.CraftToolDefault.Tool.get -> string!
 ExpandedLib.Catalogues.CraftToolDefault.Tool.init -> void
+ExpandedLib.Catalogues.MachineToolSpec
+ExpandedLib.Catalogues.MachineToolSpec.Kind.get -> string?
+ExpandedLib.Catalogues.MachineToolSpec.Kind.init -> void
+ExpandedLib.Catalogues.MachineToolSpec.MachineToolSpec(int Tier, string? Kind, string? SpentCode, int SpentCount) -> void
+ExpandedLib.Catalogues.MachineToolSpec.SpentCode.get -> string?
+ExpandedLib.Catalogues.MachineToolSpec.SpentCode.init -> void
+ExpandedLib.Catalogues.MachineToolSpec.SpentCount.get -> int
+ExpandedLib.Catalogues.MachineToolSpec.SpentCount.init -> void
+ExpandedLib.Catalogues.MachineToolSpec.Tier.get -> int
+ExpandedLib.Catalogues.MachineToolSpec.Tier.init -> void
 ExpandedLib.Catalogues.ProcessJob.ProcessJob(string! Input, string! Output, int Count, float? Stage, string? Family, float MinTorque, int MinTier = 0, float Seconds = 1, int Strokes = 1) -> void
 ExpandedLib.Catalogues.ProcessJob.Strokes.get -> int
 ExpandedLib.Catalogues.ProcessJob.Strokes.init -> void
@@ -440,6 +451,7 @@ ExpandedLib.Machines.ICraftEffects.StopAnimation(string! animation) -> void
 ExpandedLib.Machines.ICraftEffects.Strike(string! sound) -> void
 ExpandedLib.Machines.ICraftStation
 ExpandedLib.Machines.ICraftStation.Orders(Vintagestory.API.Common.IWorldAccessor! world) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Machines.CraftOrder!>!
+ExpandedLib.Machines.MachineToolWear
 ExpandedLib.Machines.RecipeDiagram
 ExpandedLib.Networks.BlockBehaviorExNetworkPlacement
 ExpandedLib.Networks.BlockBehaviorExNetworkPlacement.Accepts(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer? byPlayer, Vintagestory.API.MathTools.BlockPos! pos, ref string! failureCode) -> bool
@@ -540,6 +552,10 @@ static ExpandedLib.Catalogues.CraftSequenceRegistry.Contributors.get -> Expanded
 static ExpandedLib.Catalogues.CraftSequenceRegistry.Shared.get -> ExpandedLib.Catalogues.CraftSequenceRegistry!
 static ExpandedLib.Catalogues.CraftSequenceSet.TryParse(Vintagestory.API.Datastructures.JsonObject? node, out ExpandedLib.Catalogues.CraftSequenceSet? set, out string? error) -> bool
 static ExpandedLib.Catalogues.CraftToolDefault.Hammer.get -> ExpandedLib.Catalogues.CraftToolDefault!
+static ExpandedLib.Catalogues.MachineTool.Itemtype(string! domain, string! code, string! kind, System.Collections.Generic.IReadOnlyDictionary<string!, int>! tiers, string! shape, string! variantGroup, string? assetName, string? spentCode, int spentCount) -> ExpandedLib.Definitions.ExItemDef!
+static ExpandedLib.Catalogues.MachineTool.KindOf(Vintagestory.API.Common.ItemStack? stack) -> string?
+static ExpandedLib.Catalogues.MachineTool.Tier(int tier, string! kind, string? spentCode = null, int spentCount = 1) -> object!
+static ExpandedLib.Catalogues.MachineTool.TryParse(Vintagestory.API.Datastructures.JsonObject? node, out ExpandedLib.Catalogues.MachineToolSpec! spec, out string? error) -> bool
 static ExpandedLib.Checks.ExlibChecks.CraftingGrid(string! domain, int size, string! station) -> void
 static ExpandedLib.Checks.ExlibChecks.Produces(string! domain, string! code, string! source, string! at, params string![]! from) -> void
 static ExpandedLib.Checks.ExlibChecks.Runs(string! domain, string! machine, string! blockCode) -> void
@@ -576,6 +592,7 @@ static ExpandedLib.Machines.CraftSequenceGate.Register(Vintagestory.API.Common.I
 static ExpandedLib.Machines.HandGrid.Orders(Vintagestory.API.Common.IWorldAccessor! world) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Machines.CraftOrder!>!
 static ExpandedLib.Machines.MachinePorts.BlockEntityAt<T>(this Vintagestory.API.Common.BlockEntity! be, Vintagestory.API.MathTools.BlockPos! pos) -> T?
 static ExpandedLib.Machines.MachineSlotSpec.Diagram(string? hexColor = null) -> ExpandedLib.Machines.MachineSlotSpec
+static ExpandedLib.Machines.MachineToolWear.Apply(Vintagestory.API.Common.ItemSlot? slot, int points) -> Vintagestory.API.Common.ItemStack?
 static ExpandedLib.Machines.RecipeDiagram.Consumes(Vintagestory.API.Common.GridRecipe! recipe) -> bool
 static ExpandedLib.Machines.RecipeDiagram.HideStationRecipes(Vintagestory.API.Common.IWorldAccessor! world) -> int
 static ExpandedLib.Machines.RecipeDiagram.Ingredient(Vintagestory.API.Common.GridRecipe! recipe, Vintagestory.API.Common.IWorldAccessor! world) -> Vintagestory.API.Common.CraftingRecipeIngredient?
