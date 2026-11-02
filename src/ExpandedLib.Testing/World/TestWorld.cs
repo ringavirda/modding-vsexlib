@@ -1072,6 +1072,28 @@ public sealed partial class TestWorld : IDisposable {
     w.PlayerByUid(Arg.Any<string>())
       .Returns(ci => _playersByUid.GetValueOrDefault(ci.Arg<string>()));
     w.BlockAccessor.Returns(Accessor);
+#if GAME_GE_1_22
+    IBulkBlockAccessor bulk = BuildBulkAccessor();
+    w.BulkBlockAccessor.Returns(bulk);
+    w.When(x =>
+        x.CreateExplosion(
+          Arg.Any<BlockPos>(),
+          Arg.Any<EnumBlastType>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<float>(),
+          Arg.Any<string>()
+        )
+      )
+      .Do(ci =>
+        Explode(
+          ci.Arg<BlockPos>(),
+          ci.Arg<EnumBlastType>(),
+          ci.ArgAt<double>(2),
+          ci.ArgAt<double>(3)
+        )
+      );
+#endif
     w.Calendar.Returns(Calendar);
     w.Logger.Returns(Log);
     w.Config.Returns(Config.Tree);
