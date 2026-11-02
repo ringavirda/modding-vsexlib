@@ -52,6 +52,20 @@ public class CuttingMaterialLoaderTests {
     Assert.Equal(7200f, held!.Density);
   }
 
+  // Fails when Clear keeps the hand power.
+  [Fact]
+  public void Clear_drops_the_materials_and_the_hand_power() {
+    CuttingMaterialRegistry registry = MachiningTestData.MaterialRegistry(
+      MachiningTestData.Materials
+    );
+
+    registry.Clear();
+
+    Assert.Equal(0, registry.Count);
+    Assert.Equal(0f, registry.HandPower(CutMotion.Rotary));
+    Assert.Equal(0f, registry.HandPower(CutMotion.Reciprocating));
+  }
+
   // Fails when the shipped file loses a material or a figure.
   [Fact]
   public void The_shipped_period_file_carries_the_period_figures_and_the_hand_power_of_the_digest() {

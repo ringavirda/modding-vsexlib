@@ -40,6 +40,24 @@ public class ExWorldStateTests {
     ["ExpandedLib.Industry.Forming.StockFormLoader.RootKeys"] = SchemaKeys,
     ["ExpandedLib.Industry.Forming.StockFormLoader.FormKeys"] = SchemaKeys,
     ["ExpandedLib.Industry.Forming.StockFormLoader.FeedstockKeys"] = SchemaKeys,
+    ["ExpandedLib.Industry.Machining.CuttingMaterialLoader.RootKeys"] =
+      SchemaKeys,
+    ["ExpandedLib.Industry.Machining.CuttingMaterialLoader.MaterialKeys"] =
+      SchemaKeys,
+    ["ExpandedLib.Industry.Machining.CuttingMaterialLoader.MotionKeys"] =
+      SchemaKeys,
+    ["ExpandedLib.Industry.Machining.MachineKindLoader.RootKeys"] = SchemaKeys,
+    ["ExpandedLib.Industry.Machining.MachineKindLoader.KindKeys"] = SchemaKeys,
+    ["ExpandedLib.Industry.Machining.MachineKindLoader.AnchorKeys"] =
+      SchemaKeys,
+    ["ExpandedLib.Industry.Machining.MachineKindLoader.StepKeys"] = SchemaKeys,
+    ["ExpandedLib.Industry.Machining.MachineKindLoader.EnvelopeKeys"] =
+      SchemaKeys,
+    ["ExpandedLib.Industry.Machining.MachiningJobLoader.RootKeys"] = SchemaKeys,
+    ["ExpandedLib.Industry.Machining.MachiningJobLoader.JobKeys"] = SchemaKeys,
+    ["ExpandedLib.Industry.Machining.MachiningJobLoader.ByproductKeys"] =
+      SchemaKeys,
+    ["ExpandedLib.Industry.Machining.MachiningJobLoader.HandKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.RootKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.SequenceKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.CraftSequenceLoader.StepKeys"] = SchemaKeys,
@@ -117,6 +135,10 @@ public class ExWorldStateTests {
     ["ExpandedLib.FastForwarding.FastForward._cursorHours"] = FrameState,
     ["ExpandedLib.FastForwarding.FastForward._driver"] = FrameState,
     ["ExpandedLib.FastForwarding.FastForward._member"] = FrameState,
+    [
+      "ExpandedLib.Industry.Machining.CuttingMaterialRegistry.<Shared>k__BackingField._handPower"
+    ] =
+      "the declared hand power, set back to null by the Clear that ResetForWorld runs at every load",
     ["ExpandedLib.ExlibValues._store._api"] =
       "the api the config is saved through, replaced by every world's Start",
     ["ExpandedLib.ExlibValues._store.<Config>k__BackingField"] =
