@@ -1,4 +1,7 @@
 #nullable enable
+abstract ExpandedLib.Industry.Benches.BlockEntityMpBench.CompleteStroke() -> void
+abstract ExpandedLib.Industry.Benches.BlockEntityMpBench.LoadTorque(float speed) -> float
+abstract ExpandedLib.Industry.Benches.BlockEntityMpBench.StandingNm.get -> float
 const ExpandedLib.Industry.Casting.CastingStationSet.CurrentSchema = 1 -> int
 const ExpandedLib.Industry.Casting.MoldFits.AttributeKey = "moldFit" -> string!
 const ExpandedLib.Industry.Casting.MoldFitSet.CurrentSchema = 1 -> int
@@ -11,6 +14,36 @@ const ExpandedLib.Industry.Molten.MoltenBar.HoldSeconds = 1 -> float
 const ExpandedLib.Industry.Molten.MoltenBar.LiquidError = "exlib-moltenbarliquid" -> string!
 const ExpandedLib.Industry.Molten.MoltenBreakGuard.ErrorCode = "exlib-moltenliquidbreak" -> string!
 const ExpandedLib.Industry.Molten.MoltenBurn.HotTraversalCost = 10000 -> float
+ExpandedLib.Industry.Benches.BenchDecision
+ExpandedLib.Industry.Benches.BenchDecision.Accepted.get -> bool
+ExpandedLib.Industry.Benches.BenchDecision.BenchDecision() -> void
+ExpandedLib.Industry.Benches.BenchDecision.BenchDecision(ExpandedLib.Industry.Benches.BenchVerdict Verdict, ExpandedLib.Catalogues.ProcessJob? Job) -> void
+ExpandedLib.Industry.Benches.BenchDecision.Job.get -> ExpandedLib.Catalogues.ProcessJob?
+ExpandedLib.Industry.Benches.BenchDecision.Job.init -> void
+ExpandedLib.Industry.Benches.BenchDecision.Verdict.get -> ExpandedLib.Industry.Benches.BenchVerdict
+ExpandedLib.Industry.Benches.BenchDecision.Verdict.init -> void
+ExpandedLib.Industry.Benches.BenchFeed
+ExpandedLib.Industry.Benches.BenchVerdict
+ExpandedLib.Industry.Benches.BenchVerdict.NoDie = 1 -> ExpandedLib.Industry.Benches.BenchVerdict
+ExpandedLib.Industry.Benches.BenchVerdict.NoJob = 2 -> ExpandedLib.Industry.Benches.BenchVerdict
+ExpandedLib.Industry.Benches.BenchVerdict.NotEnoughDrive = 4 -> ExpandedLib.Industry.Benches.BenchVerdict
+ExpandedLib.Industry.Benches.BenchVerdict.NotTurning = 3 -> ExpandedLib.Industry.Benches.BenchVerdict
+ExpandedLib.Industry.Benches.BenchVerdict.Ok = 0 -> ExpandedLib.Industry.Benches.BenchVerdict
+ExpandedLib.Industry.Benches.BlockEntityMpBench
+ExpandedLib.Industry.Benches.BlockEntityMpBench.AbandonStroke() -> void
+ExpandedLib.Industry.Benches.BlockEntityMpBench.AdvanceStroke(float dt) -> bool
+ExpandedLib.Industry.Benches.BlockEntityMpBench.AvailableTorque.get -> float
+ExpandedLib.Industry.Benches.BlockEntityMpBench.BeginStroke(float seconds) -> void
+ExpandedLib.Industry.Benches.BlockEntityMpBench.BlockEntityMpBench() -> void
+ExpandedLib.Industry.Benches.BlockEntityMpBench.Eject(Vintagestory.API.Common.ItemStack? stack) -> void
+ExpandedLib.Industry.Benches.BlockEntityMpBench.IsReadyToProduce.get -> bool
+ExpandedLib.Industry.Benches.BlockEntityMpBench.IsStroking.get -> bool
+ExpandedLib.Industry.Benches.BlockEntityMpBench.NetworkSystem.get -> ExpandedLib.Networks.BlockNetworkModSystem?
+ExpandedLib.Industry.Benches.BlockEntityMpBench.NetworkSystem.set -> void
+ExpandedLib.Industry.Benches.BlockEntityMpBench.Remaining.get -> float
+ExpandedLib.Industry.Benches.BlockEntityMpBench.Resolve(string! code, int quantity) -> Vintagestory.API.Common.ItemStack?
+ExpandedLib.Industry.Benches.BlockEntityMpBench.Speed.get -> float
+ExpandedLib.Industry.Benches.BlockEntityMpBench.StopsProductionWhenNotReady.get -> bool
 ExpandedLib.Industry.Casting.CastingPatterns
 ExpandedLib.Industry.Casting.CastingStationKind
 ExpandedLib.Industry.Casting.CastingStationKind.CastingStationKind(string! Code, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MouldKind>! Moulds, string! SandBase, string! SandHalf) -> void
@@ -383,6 +416,7 @@ override ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.Initialize(Vintagesto
 override ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
 override ExpandedLib.Industry.Pipes.BlockEntityPipe.NetworkType.get -> string!
 override ExpandedLib.Industry.Pipes.BlockEntityPipe.NetworkType.set -> void
+static ExpandedLib.Industry.Benches.BenchFeed.Decide(bool hasDie, ExpandedLib.Catalogues.ProcessJob? job, float availableTorque, float speed) -> ExpandedLib.Industry.Benches.BenchDecision
 static ExpandedLib.Industry.Casting.CastingPatterns.IsPattern(Vintagestory.API.Common.CollectibleObject? collectible) -> bool
 static ExpandedLib.Industry.Casting.CastingPatterns.Validate(System.Collections.Generic.IEnumerable<Vintagestory.API.Common.CollectibleObject?>! collectibles, ExpandedLib.Industry.Casting.CastingStationRegistry? stations = null) -> System.Collections.Generic.List<string!>!
 static ExpandedLib.Industry.Casting.CastingStationRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
@@ -440,4 +474,5 @@ static ExpandedLib.Industry.Pipes.FlowBores.TryGet(string! tier, string! boreCla
 static ExpandedLib.Industry.Pipes.FlowPort.At(Vintagestory.API.Common.BlockEntity! machine, int index) -> ExpandedLib.Industry.Pipes.FlowPort?
 static readonly ExpandedLib.Industry.Helpers.ExParticles.MetalSpark -> int
 static readonly ExpandedLib.Industry.Helpers.ExSounds.MetalBreak -> Vintagestory.API.Common.AssetLocation!
+virtual ExpandedLib.Industry.Benches.BlockEntityMpBench.JobTorqueNm.get -> float
 virtual ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.Bore.get -> ExpandedLib.Industry.Pipes.FlowBore?
