@@ -557,6 +557,7 @@ static ExpandedLib.Catalogues.MachineTool.KindOf(Vintagestory.API.Common.ItemSta
 static ExpandedLib.Catalogues.MachineTool.Tier(int tier, string! kind, string? spentCode = null, int spentCount = 1) -> object!
 static ExpandedLib.Catalogues.MachineTool.TryParse(Vintagestory.API.Datastructures.JsonObject? node, out ExpandedLib.Catalogues.MachineToolSpec! spec, out string? error) -> bool
 static ExpandedLib.Checks.ExlibChecks.CraftingGrid(string! domain, int size, string! station) -> void
+static ExpandedLib.Checks.ExlibChecks.Gathered(string! domain, string! pattern, string! how) -> void
 static ExpandedLib.Checks.ExlibChecks.Produces(string! domain, string! code, string! source, string! at, params string![]! from) -> void
 static ExpandedLib.Checks.ExlibChecks.Runs(string! domain, string! machine, string! blockCode) -> void
 static ExpandedLib.Checks.GatheredSources.All.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Checks.GatheredSources.Source!>!

@@ -15,7 +15,7 @@ namespace ExpandedLib.Checks;
 /// crushed or ground stack, a beehive kiln's firing, a stack a block's harvestable behavior, a squeezable behavior or a
 /// <c>juiceableProperties</c> attribute (return, pressed and liquid stacks) gives, the drop of a block of another type, a world
 /// source vanilla places, or a code a mod declares its machines make
-/// (<see cref="ExlibChecks.Produces"/>). A wildcard is made when one code it matches is, among the
+/// (<see cref="ExlibChecks.Produces"/>) or gathers (<see cref="ExlibChecks.Gathered"/>). A wildcard is made when one code it matches is, among the
 /// states its stack's <c>allowedVariants</c> allow and its <c>skipVariants</c> leave. A block a
 /// creative tab lists is made when a block differing from it only in groups its placement writes
 /// is: the orientation groups <see cref="GridOutputVariantCheck"/> reads, and a network node's
@@ -30,7 +30,8 @@ public static class ObtainabilityCheck {
   /// makes.</param>
   /// <param name="domain">The domain whose ingredients and blocks are checked.</param>
   /// <returns>The check's <see cref="CheckResult"/>, named <c>Obtainability</c>, one error per
-  /// distinct code nothing makes, naming where it is asked for, and one per declaration of
+  /// distinct code nothing makes, naming where it is asked for, and one per
+  /// <see cref="ExlibChecks.Produces"/> or <see cref="ExlibChecks.Gathered"/> declaration of
   /// <paramref name="domain"/> that matches no loaded block or item; no errors when none.</returns>
   public static CheckResult Run(ILoadedGame game, string domain) {
     CollectibleObject[] loaded = [.. game.Collectibles];
@@ -40,6 +41,11 @@ public static class ObtainabilityCheck {
       if (!made.Declare(loaded, declared.Code) && declared.Domain == domain)
         errors.Add(
           $"{declared.Code} (made by {declared.Source}): matches no loaded block or item"
+        );
+    foreach (ExlibChecks.Gather gathered in ExlibChecks.GatheredDeclared())
+      if (!made.Declare(loaded, gathered.Pattern) && gathered.Domain == domain)
+        errors.Add(
+          $"{gathered.Pattern} (gathered: {gathered.How}): matches no loaded block or item"
         );
     foreach (
       Reference r in InRecipes(game, domain)

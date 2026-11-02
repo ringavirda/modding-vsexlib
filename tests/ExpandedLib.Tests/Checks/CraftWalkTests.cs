@@ -799,6 +799,25 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
   }
 
   [Fact]
+  public void A_gathered_declaration_starts_the_walk_from_its_block()
+  {
+    _files.Write("assets/walk/itemtypes/seam.json", Plain("seam"));
+    using TestWorld reached = Planted(["made"], [Recipe("walk:seam", "made")]);
+    ExlibChecks.Gathered("walk", "walk:seam", "worldgen, mined");
+    Assert.Empty(Walk(reached).Findings);
+    ExlibChecks.ClearDeclarations();
+
+    using TestWorld unreached = Planted(
+      ["made"],
+      [Recipe("walk:seam", "made")]
+    );
+    Assert.Contains(
+      Walk(unreached).Findings,
+      f => f.StartsWith("walk:made | ") && f.Contains("waits on walk:seam,")
+    );
+  }
+
+  [Fact]
   public void A_three_argument_declaration_is_undeclared_and_fires_nothing()
   {
     using TestWorld world = Planted(

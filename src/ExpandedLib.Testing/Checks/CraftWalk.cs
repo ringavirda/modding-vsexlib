@@ -12,10 +12,10 @@ namespace ExpandedLib.Testing;
 /// <summary>Walks a mod's whole craft chain from the codes a player takes from the world: every
 /// creative-tab kind of a domain must be reached, and every recipe of the domain must be able to
 /// fire, round by round.</summary>
-/// <remarks>The walk starts from <see cref="GatheredSources"/> and the mod's kit and fires every
-/// edge whose needs are all reached: grid, smithing and clay forming recipes, process jobs and
-/// route stopping points, <c>ExlibChecks.Produces</c> declarations that name a block, and
-/// constructions. Vanilla recipes are not walked.
+/// <remarks>The walk starts from <see cref="GatheredSources"/>, <c>ExlibChecks.Gathered</c> and the
+/// kit and fires every edge whose needs are reached: grid, smithing and clay forming recipes,
+/// process jobs and route stopping points, <c>ExlibChecks.Produces</c> declarations that name a
+/// block, and constructions. Vanilla recipes are not walked.
 /// <para>Each fired grid recipe is then crafted once, with the first wildcard variant reached before
 /// it fired: at the hand grid when it fits 3 x 3, else at the first placed
 /// <see cref="ExpandedLib.Machines.ICraftStation"/> whose orders hold it. A recipe with a
@@ -137,10 +137,12 @@ public static class CraftWalk
     var found = new List<(string Key, string Line)>();
 
     IReadOnlyList<GatheredSources.Source> gathered = GatheredSources.All;
+    IReadOnlyList<ExlibChecks.Gather> declared = ExlibChecks.GatheredDeclared();
     var reached = new Dictionary<string, int>(StringComparer.Ordinal);
     foreach (CollectibleObject c in all)
       if (
         gathered.Any(s => s.Type == c.ItemClass && Matches(s.Pattern, c))
+        || declared.Any(g => Matches(g.Pattern, c))
         || kit.Keys.Any(k => Matches(k, c))
       )
         reached[c.Code.ToString()] = 0;
@@ -257,7 +259,7 @@ public static class CraftWalk
             found.Add(
               (
                 need.Label,
-                $"{need.Label} | asked for by {edges[i].Name}, in neither GatheredSources nor the kit file"
+                $"{need.Label} | asked for by {edges[i].Name}, in none of GatheredSources, a Gathered declaration or the kit file"
               )
             );
 
