@@ -11,6 +11,13 @@ see the git history.
 
 - **`samples/SashWeights`**: a casting sample with its content in JSON alone, declaring a station kind and a four-piece sash-weight pattern that load and validate.
 - **`samples/WasherPunch`**: a machine-job sample, a hand fly press whose work comes from a `config/processjobs` row in JSON and one from C#.
+- **Machining** (ExpandedLib.Industry): `MachiningJobRegistry`, `MachineKindRegistry` and `CuttingMaterialRegistry`, read from
+  `config/machiningjobs`, `config/machinekinds` and `config/cuttingmaterials` or contributed from C#. A job is keyed by step and
+  input and offered at every machine kind that declares the step; its time is the removed mass times the material's specific
+  energy (Hartig's, for cast and wrought iron) over the kind's cut power, and the hand route is timed on a man's sustained power.
+  `BlockEntityMachineTool` is the self-acting host on an mpshaft run, `MachineTool` gains a tool kind and `MachineToolWear.Apply`
+  spends it, and `MachiningChecks` (ExpandedLib.Testing) checks the routes, the envelopes and the cuttings mass.
+- **`samples/WasherPunch`** gains a drilling machine on that host: a bit item, an iron plate job from JSON and a meteoric plate job from C#.
 - **`/exmod molten <metal> <units> [temperature]`** (ExpandedLib.Industry): a creative or op player fills the vessel in hand
   (an `IMoltenFillable`) or else the `ILiquidMetalSink` looked at with molten metal, at the melting point plus 100 C
   unless a temperature is given, capped at what the target holds.
