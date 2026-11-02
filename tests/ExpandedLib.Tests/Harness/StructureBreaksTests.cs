@@ -472,10 +472,11 @@ public class StructureBreaksTests
 
   #region Payments
 
-  // Fails when the payment with Ctrl held is made without Ctrl: the gear is then paid and stored.
+  // Fails when the creative Ctrl build stops seeding the first allowed variant: the key then
+  // stores nothing and the refund leaves the stage's stack out.
   [Fact]
   [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.Run))]
-  public void A_stage_keyed_other_than_wood_or_metal_fails_the_break_paid_with_ctrl_held()
+  public void A_stage_keyed_with_allowed_variants_breaks_clean_paid_with_ctrl_held()
   {
     StructureBreaks.Result result = Run(
       Mega("gear")
@@ -493,20 +494,31 @@ public class StructureBreaksTests
         )
     );
 
-    Assert.Equal(1 + TwoCells.Length, result.Failures.Count);
+    Assert.Empty(result.Failures);
+  }
+
+  // Fails when a keyed stage with no allowedVariants stops being reported as not stood up.
+  [Fact]
+  [PlantedDefect(typeof(StructureBreaks), nameof(StructureBreaks.Run))]
+  public void A_stage_keyed_without_allowed_variants_is_reported_paid_with_ctrl_held()
+  {
+    StructureBreaks.Result result = Run(
+      Mega("gear")
+        .EntityClass("test-plain")
+        .Construction(c =>
+          c.Stage(s => s.Require("game:stick", 1))
+            .Stage(s => s.Require("game:gear-*", 1, storeWildCard: "gear"))
+        )
+    );
+
+    Assert.Equal(3, result.Failures.Count);
     Assert.All(
       result.Failures,
       f =>
-      {
         Assert.Contains(
-          "at stage 1 paid in creative with Ctrl held broken from",
+          "could not be stood up: InvalidOperationException: stage 1 stores wildcard 'gear' for game:gear-* but names no allowed variant",
           f
-        );
-        Assert.Contains(
-          "threw KeyNotFoundException: The given key 'gear' was not present in the dictionary.",
-          f
-        );
-      }
+        )
     );
   }
 

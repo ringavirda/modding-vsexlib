@@ -140,7 +140,10 @@ public enum StageHoldProgress {
 }
 
 /// <summary>The per-block construction state and logic behind <see cref="ExRightClickConstructable"/>:
-/// which stage is built, which variants the paid stages stored, and the stage payment.</summary>
+/// which stage is built, which variants the paid stages stored, and the stage payment. A creative
+/// player holding Ctrl pays nothing and stores <c>wood</c> as oak and <c>metal</c> as iron, and any
+/// other key of an ingredient with <c>allowedVariants</c> as its first allowed variant; a key with
+/// neither stores nothing.</summary>
 public class ExRightClickConstruction {
   public ExConstructionStage[] Stages = Array.Empty<ExConstructionStage>();
   public int CurrentCompletedStage;
@@ -512,6 +515,8 @@ public class ExRightClickConstruction {
         } else if (creativeInstant && ing.StoreWildCard != null) {
           newWildcards["wood"] = "oak";
           newWildcards["metal"] = "iron";
+          if (ing.AllowedVariants is { Length: > 0 })
+            newWildcards.TryAdd(ing.StoreWildCard, ing.AllowedVariants[0]);
         }
       }
     }
