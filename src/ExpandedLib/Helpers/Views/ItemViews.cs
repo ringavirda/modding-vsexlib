@@ -19,7 +19,7 @@ public static class ItemViews {
   /// <c>attributes.itemViews.kind</c> or the one its drawn box gives; <c>attributes.itemViews.tip</c> names
   /// the working end of an item as a sign and an axis letter ("+y"); a tipped lump is held at true size, scale 1.0. The slot and ground views
   /// are computed from the box as well. A block takes the game's block rotations with its origins on the drawn box.
-  /// A mod item with no <c>attributes.itemViews</c> key that draws a game item's shape takes that item's shipped views.</summary>
+  /// A mod item or block with no <c>attributes.itemViews</c> key that draws a game item's or block's shape takes its shipped views.</summary>
   /// <param name="api">The api of the side whose world is loaded.</param>
   /// <param name="collectible">The collectible to compute.</param>
   /// <returns>The views; null for a collectible that declares kind <c>none</c>, one with no drawn box, an item
@@ -72,7 +72,13 @@ public static class ItemViews {
       return null;
     ItemViewKind? kind = KindOf(api, collectible);
     ViewBox? box = BoxOf(api, collectible);
-    if (collectible is Block) {
+    if (collectible is Block block) {
+      if (
+        kind != null
+        && box != null
+        && VanillaShape(api, block) is { } blockTwin
+      )
+        return ShippedBlock(blockTwin, kind.Value, box);
       return
         kind
           is ItemViewKind.Cube
@@ -203,7 +209,45 @@ public static class ItemViews {
       .FirstOrDefault();
   }
 
-  private static bool DeclaresViews(Item item) =>
+  // The game block that draws a mod block's shape, an exact base before one ending in * (see SameShape), then by
+  // ordinal code. A game block has none, nor has one drawing a generic shape under game:block/basic/.
+  internal static Block? VanillaShape(ICoreAPI api, Block block) {
+    if (
+      block.Code?.Domain == "game"
+      || block.Shape?.Base == null
+      || block.Shape.Base.Domain == "game"
+        && block.Shape.Base.Path.StartsWith(
+          "block/basic/",
+          StringComparison.Ordinal
+        )
+      || DeclaresViews(block)
+    )
+      return null;
+    string[] keep = block.Shape.SelectiveElements ?? [];
+    return api
+      .World.Blocks.Where(b =>
+        b?.Code?.Domain == "game"
+        && b.Shape?.Base != null
+        && SameShape(b.Shape.Base, block.Shape.Base)
+        && keep.SequenceEqual(b.Shape.SelectiveElements ?? [])
+      )
+      .OrderBy(b => b.Shape.Base.Equals(block.Shape.Base) ? 0 : 1)
+      .ThenBy(b => b.Code.ToString(), StringComparer.Ordinal)
+      .FirstOrDefault();
+  }
+
+  // A game base ending in * matches a mod base in its directory that starts with the text before the star.
+  private static bool SameShape(AssetLocation game, AssetLocation mod) {
+    if (game.Equals(mod))
+      return true;
+    if (game.Domain != mod.Domain || !game.Path.EndsWith('*'))
+      return false;
+    string prefix = game.Path[..^1];
+    return mod.Path.StartsWith(prefix, StringComparison.Ordinal)
+      && mod.Path.IndexOf('/', prefix.Length) < 0;
+  }
+
+  private static bool DeclaresViews(CollectibleObject item) =>
     item.Attributes?["itemViews"]?.Token is JObject views
     && views.Properties().Any(p => p.Name != "held");
 
@@ -234,6 +278,27 @@ public static class ItemViews {
       HandGrip(hand)
     );
   }
+
+  // The shipped transforms of a game block, for a mod block that draws its shape.
+  private static ItemViewSet ShippedBlock(
+    Block twin,
+    ItemViewKind kind,
+    ViewBox box
+  ) =>
+    new(
+      kind,
+      twin.GuiTransform?.Clone() ?? ModelTransform.BlockDefaultGui(),
+      twin.TpHandTransform?.Clone() ?? ModelTransform.BlockDefaultTp(),
+      twin.GroundTransform?.Clone() ?? ModelTransform.BlockDefaultGround(),
+      null,
+      null,
+      null,
+      null,
+      new Vec3d(box.From.X, box.From.Y, box.From.Z),
+      new Vec3d(box.To.X, box.To.Y, box.To.Z),
+      box.Axes,
+      null
+    );
 
   private static ItemViewSet Workpiece(ICoreAPI api) {
     Item reference = api

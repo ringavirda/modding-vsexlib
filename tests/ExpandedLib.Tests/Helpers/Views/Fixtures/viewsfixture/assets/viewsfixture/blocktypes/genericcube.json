@@ -1,0 +1,7 @@
+{
+  "code": "genericcube",
+  "class": "Block",
+  "shape": {
+    "base": "game:block/basic/cube"
+  }
+}

@@ -78,6 +78,30 @@ public class ViewHeldGateTests {
   private static bool Passes(ViewGroup group, string name) =>
     ViewGates.Rules(World, group).Single(r => r.Name == name).Pass;
 
+  // The fixture block with the game's block hold turned by dz degrees about z, so that it is no longer the default hold.
+  private static ViewGroup Turned(string code, float dz) {
+    ViewGroup block = GroupOf("viewsfixture", code);
+    ModelTransform hand = ModelTransform.BlockDefaultTp();
+    hand.Rotation = new FastVec3f(
+      hand.Rotation.X,
+      hand.Rotation.Y,
+      hand.Rotation.Z + dz
+    );
+    return block with { Hand = hand };
+  }
+
+  // Fails when the twin branch is removed from HeldUp: the twinned block's tilt then reads against the fixed 20 degrees.
+  [Fact]
+  public void A_twinned_block_is_judged_on_G16_against_its_twins_hold() {
+    ViewGroup twinned = Turned("viewsfixture:loosestone", 1);
+    ViewGroup alone = Turned("viewsfixture:loosestonedeclared", 1);
+
+    Assert.True(Value(alone, "hand.up") > ViewGates.HeldUpDegrees);
+    Assert.False(Passes(alone, "hand.up"));
+    Assert.True(Passes(twinned, "hand.up"));
+    Assert.True(Passes(twinned, "hand.up.fp"));
+  }
+
   // Fails when G15 is not read: the sheet turned a quarter about the vertical then passes.
   [Fact]
   public void A_sheet_turned_edge_on_fails_G15() {

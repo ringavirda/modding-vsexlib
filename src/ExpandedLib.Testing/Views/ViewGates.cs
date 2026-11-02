@@ -582,15 +582,26 @@ internal static class ViewGates {
     ("G13", "G13", "hand.centre", "tp"),
   ];
 
-  /// <summary>The game item whose shipped views <paramref name="group"/> takes, measured on its own views.</summary>
+  /// <summary>The game item or block whose shipped views <paramref name="group"/> takes, measured on its own views.</summary>
   /// <param name="world">The world the group comes from.</param>
-  /// <param name="group">The group; only an item that the vanilla-shape rule matches has a twin.</param>
-  /// <returns>The twin; null when the group is a block, declares its own views, or draws no game item's shape.</returns>
+  /// <param name="group">The group; only an item or block that the vanilla-shape rule matches has a twin.</param>
+  /// <returns>The twin; null when the group declares its own views or draws no game item's or block's shape.</returns>
   internal static ViewTwin? TwinOf(TestWorld world, ViewGroup group) =>
-    group.Representative is Item item
-    && ItemViews.VanillaShape(world.Api, item) is { } twin
-    && GroupOf(world, twin) is { } twinGroup
-      ? new ViewTwin(twin.Code.Path, MeasureOwn(world, twinGroup))
+    TwinGroupOf(world, group) is { } twin
+      ? new ViewTwin(twin.Representative.Code.Path, MeasureOwn(world, twin))
+      : null;
+
+  private static ViewGroup? TwinGroupOf(TestWorld world, ViewGroup group) =>
+    (
+      group.Representative switch {
+        Item item => ItemViews.VanillaShape(world.Api, item),
+        Block block => (CollectibleObject?)
+          ItemViews.VanillaShape(world.Api, block),
+        _ => null,
+      }
+    )
+      is { } twin
+      ? GroupOf(world, twin)
       : null;
 
   /// <summary>Every gate <paramref name="group"/> is judged on against <paramref name="bands"/>, as the dump writes it: each
@@ -772,7 +783,7 @@ internal static class ViewGates {
   /// <returns>G4 on the ground, G9 in third and first person, G11, G14 when the group's collectible declares an
   /// <c>itemViews.tip</c>, G17 in third person when the group's collectible declares <c>itemViews.grips</c> or is a long item held in one of the long carries, G15 in third and first person when the group's box is a sheet, G16 in third and first person
   /// when the group is a block with a hand transform of its own (one with the rotation of <see cref="ModelTransform.BlockDefaultTp"/> is the game's hold for a block that
-  /// authors none, rescaled and moved by the item views, and is not judged), and G12 when a row of <paramref name="catalogue"/> names one of the group's codes, each
+  /// authors none, rescaled and moved by the item views, and is not judged; a block with a vanilla twin may tilt as far as the twin's own hold plus 10%), and G12 when a row of <paramref name="catalogue"/> names one of the group's codes, each
   /// with its pass or failure. A group that declares <c>itemViews.held: "hidden"</c> is judged on G4, G11, G12 and G18 alone: G18 hand.hidden holds when its
   /// third-person and first-person hand transforms scale to nothing and its collectible names no held idle or ready clip.</returns>
   internal static IReadOnlyList<GateReading> Rules(
@@ -1017,25 +1028,39 @@ internal static class ViewGates {
     ViewGroup group,
     bool firstPerson
   ) {
-    Mat4 m = HeldMatrix(
-      group,
-      HeldPose(world, group, firstPerson),
-      firstPerson
-    );
-    Vec3d held = m.Apply(new Vec3d(0, 1, 0)) - m.Apply(new Vec3d());
-    double tilt =
-      Math.Acos(Math.Clamp(held.Y / held.Length(), -1, 1)) * 180 / Math.PI;
+    double tilt = UpTilt(world, group, firstPerson);
+    double limit = HeldUpDegrees;
+    string said = "";
+    if (TwinGroupOf(world, group) is { } twin) {
+      double own = UpTilt(world, twin, firstPerson);
+      limit = Math.Max(limit, own * (1 + ViewBands.Share));
+      said = $" ({twin.Representative.Code.Path} {Fmt(own)})";
+    }
     return new GateReading(
       "G16",
       firstPerson ? "hand.up.fp" : "hand.up",
       firstPerson ? "fp" : "tp",
       tilt,
       null,
-      HeldUpDegrees,
+      limit,
       null,
-      tilt <= HeldUpDegrees,
-      $"the block's up axis {Fmt(tilt)} degrees off vertical above {Fmt(HeldUpDegrees)}"
+      tilt <= limit,
+      $"the block's up axis {Fmt(tilt)} degrees off vertical above {Fmt(limit)}{said}"
     );
+  }
+
+  private static double UpTilt(
+    TestWorld world,
+    ViewGroup group,
+    bool firstPerson
+  ) {
+    Mat4 m = HeldMatrix(
+      group,
+      HeldPose(world, group, firstPerson),
+      firstPerson
+    );
+    Vec3d held = m.Apply(new Vec3d(0, 1, 0)) - m.Apply(new Vec3d());
+    return Math.Acos(Math.Clamp(held.Y / held.Length(), -1, 1)) * 180 / Math.PI;
   }
 
   private static GateReading Empty(ViewGroup group, bool firstPerson) {

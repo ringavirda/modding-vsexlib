@@ -1,0 +1,7 @@
+{
+  "code": "loosestone",
+  "class": "Block",
+  "shape": {
+    "base": "game:block/stone/loosestones/free1"
+  }
+}
