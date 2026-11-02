@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
 
 namespace ExpandedLib.Industry.Machining;
@@ -22,7 +23,7 @@ public static class MachiningJobs {
   /// <param name="collectibles">The loaded collectibles; null entries are skipped.</param>
   /// <param name="jobs">The jobs to resolve; <see cref="MachiningJobRegistry.Shared"/> when null.</param>
   /// <param name="materials">The materials jobs may name; <see cref="CuttingMaterialRegistry.Shared"/> when null.</param>
-  /// <returns>One message per job that cannot be resolved: an unknown input, output or material, no
+  /// <returns>One message per job that cannot be resolved: an unknown input, output, fixture, byproduct or material, byproducts of more than one item, no
   /// material where one is needed, no units and no <c>removed</c>, or a removed mass of 0 or less.</returns>
   public static List<string> Resolve(
     IEnumerable<CollectibleObject?> collectibles,
@@ -48,6 +49,27 @@ public static class MachiningJobs {
       }
       if (!byCode.TryGetValue(job.Output, out CollectibleObject? output)) {
         errors.Add($"{name}: no such output item '{job.Output}'");
+        continue;
+      }
+
+      if (job.Fixture is not null && !byCode.ContainsKey(job.Fixture)) {
+        errors.Add($"{name}: no such fixture item '{job.Fixture}'");
+        continue;
+      }
+      string? badByproduct = null;
+      foreach (MachiningByproduct byproduct in job.Byproducts)
+        if (!byCode.ContainsKey(byproduct.Code))
+          badByproduct ??= $"no such byproduct item '{byproduct.Code}'";
+      if (
+        badByproduct is null
+        && job.Byproducts.Select(b => b.Code)
+          .Distinct(StringComparer.OrdinalIgnoreCase)
+          .Count() > 1
+      )
+        badByproduct =
+          "its byproducts name more than one item, and the chips slot holds one";
+      if (badByproduct is not null) {
+        errors.Add($"{name}: {badByproduct}");
         continue;
       }
 

@@ -99,7 +99,7 @@ public class MachineCutTests {
   public void Wrong_tool_kind() =>
     Assert.Equal(
       MachineCutVerdict.WrongTool,
-      Verdict(tool: new MachineToolSpec(2, "drillbit", null, 0))
+      Verdict(Job(minTier: 2), new MachineToolSpec(1, "drillbit", null, 0))
     );
 
   [Fact]
@@ -181,6 +181,6 @@ public class MachineCutTests {
       MachineCut.Energy(Job(), CutMotion.Rotary, materials),
       materials.HandPower(CutMotion.Rotary)
     );
-    Assert.Equal(185800d / 60d / 30d, seconds, 6);
+    Assert.Equal(185800d / 61d / 30d, seconds, 6);
   }
 }

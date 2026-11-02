@@ -125,5 +125,10 @@
   "machine-tool-info-chips": "The chips slot is full",
   "machine-tool-info-nodrive": "No drive",
   "machine-tool-info-cutting": "Cutting, {0}: {1}%",
-  "machine-tool-info-stopped": "Stopped, {0}: {1}%"
+  "machine-tool-info-stopped": "Stopped, {0}: {1}%",
+  "machine-step-turn": "turning",
+  "machine-step-bore": "boring",
+  "machine-step-plane": "planing",
+  "machine-step-slot": "slotting",
+  "machine-step-drill": "drilling"
 }

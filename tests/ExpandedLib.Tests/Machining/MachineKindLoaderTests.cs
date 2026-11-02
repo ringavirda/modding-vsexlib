@@ -109,6 +109,12 @@ public class MachineKindLoaderTests {
     "\"steps\": { \"turn\": { \"motion\": \"7\", \"power\": 1, \"tooling\": \"c\" } }"
   )]
   [InlineData(
+    "\"steps\": { \"turn\": { \"motion\": \"1\", \"power\": 1, \"tooling\": \"c\" } }"
+  )]
+  [InlineData(
+    "\"steps\": { \"turn\": { \"motion\": \"rotary, reciprocating\", \"power\": 1, \"tooling\": \"c\" } }"
+  )]
+  [InlineData(
     "\"steps\": { \"turn\": { \"motion\": \"rotary\", \"power\": 1 } }"
   )]
   public void A_malformed_step_rejects_the_file(string body) {

@@ -16,8 +16,8 @@ public class CuttingMaterialLoaderTests {
     Assert.True(registry.TryGet("wroughtiron", out CuttingMaterial? material));
     Assert.Equal(7810f, material!.Density);
     Assert.Equal(307800f, material.EnergyFor(CutMotion.Reciprocating));
-    Assert.Equal(60f, registry.HandPower(CutMotion.Rotary));
-    Assert.Equal(40f, registry.HandPower(CutMotion.Reciprocating));
+    Assert.Equal(61.0f, registry.HandPower(CutMotion.Rotary));
+    Assert.Equal(44.7f, registry.HandPower(CutMotion.Reciprocating));
   }
 
   [Fact]

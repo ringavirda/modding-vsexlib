@@ -213,11 +213,68 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
 
     Second(2);
 
-    Assert.Equal(["bore (test:borer)"], host.WorkedAt("test:other"));
+    Assert.Equal(
+      ["exlib:machine-step-bore (test:machine-kind-borer)"],
+      host.WorkedAt("test:other")
+    );
     Assert.Equal(0d, host.Progress);
     Assert.Equal("test:other", Piece(host));
     Assert.Contains("machine-tool-info-elsewhere", host.InfoLine());
     Assert.Equal(0f, host.LoadTorque(5f));
+  }
+
+  // Fails when block info names a machine the job's machines list excludes.
+  [Fact]
+  public void Block_info_names_only_the_machines_that_take_the_job() {
+    MachiningJob limited = MachiningTestData.Job(
+      "turn",
+      "test:other",
+      "test:turned"
+    ) with {
+      Machines = ["test:planer"],
+    };
+    Host host = Machine(piece: "test:other", jobs: limited);
+    host.KindSet.Contribute(MachineKindSet(Lathe));
+    host.KindSet.Contribute(
+      MachineKindSet(Lathe with { Code = "test:planer" })
+    );
+
+    Assert.Equal(
+      ["exlib:machine-step-turn (test:machine-kind-planer)"],
+      host.WorkedAt("test:other")
+    );
+  }
+
+  // Fails when a job that never resolved still finishes, or loads the shaft, on a tick that costs nothing.
+  [Fact]
+  public void An_unresolved_job_neither_cuts_nor_loads_the_shaft() {
+    MachiningJob unresolved = Job();
+    unresolved.RemovedKg = 0f;
+    unresolved.ResolvedMaterial = null;
+    Host host = Machine(jobs: unresolved);
+    host.TryStart();
+
+    Second(3);
+
+    Assert.Equal("test:blank", Piece(host));
+    Assert.Equal(0f, host.LoadTorque(5f));
+  }
+
+  // Fails when progress is reset only by a tick, so a piece swapped while the machine stands keeps the old joules.
+  [Fact]
+  public void A_piece_swapped_while_stopped_starts_from_nothing() {
+    Host host = Machine(jobs: [Job(), Job("test:blank2")]);
+    host.TryStart();
+    Second(3);
+    host.Stop();
+    Assert.True(host.Progress > 0d);
+
+    host.Inventory[BlockEntityMachineTool.WorkSlot].Itemstack = new ItemStack(
+      _w.GetItem(new AssetLocation("test:blank2"))!
+    );
+    host.Inventory[BlockEntityMachineTool.WorkSlot].MarkDirty();
+
+    Assert.Equal(0d, host.Progress);
   }
 
   [Fact]

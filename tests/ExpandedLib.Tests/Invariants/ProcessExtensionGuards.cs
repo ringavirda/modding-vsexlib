@@ -20,6 +20,12 @@ public class ProcessExtensionGuards {
     RegexOptions.Compiled
   );
 
+  // A machine host derives from a block entity; the other Machining files are the registries and specs.
+  private static readonly Regex BlockEntityHost = new(
+    @"class\s+\w+\s*:\s*BlockEntity",
+    RegexOptions.Compiled
+  );
+
   // A literal code is banned; an art path is not.
   private static readonly Regex LiteralCode = new(
     """new\s+AssetLocation\s*\(\s*"(?<code>[a-z][a-z0-9]*:[^"]*)"\s*\)""",
@@ -49,17 +55,15 @@ public class ProcessExtensionGuards {
           || path.EndsWith(".g.cs", StringComparison.Ordinal)
           // The registries and spec types name the contract itself.
           || rel.Contains("/Processes/", StringComparison.Ordinal)
-          || (
-            rel.Contains("/Machining/", StringComparison.Ordinal)
-            && !rel.EndsWith(
-              "/BlockEntityMachineTool.cs",
-              StringComparison.Ordinal
-            )
-          )
         )
           continue;
 
         string text = File.ReadAllText(path);
+        if (
+          rel.Contains("/Machining/", StringComparison.Ordinal)
+          && !BlockEntityHost.IsMatch(text)
+        )
+          continue;
         if (ReadsARegistry.IsMatch(text))
           files.Add(new SourceFile(rel, text));
       }

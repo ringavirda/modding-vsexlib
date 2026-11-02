@@ -143,8 +143,9 @@ public abstract class BlockEntityMachineTool
   public override void Initialize(ICoreAPI api) {
     base.Initialize(api);
     Inventory[WorkSlot].MaxSlotStackSize = 1;
+    Inventory.SlotModified += OnSlotModified;
     if (api.Side == EnumAppSide.Server)
-      RegisterGameTickListener(OnTick, TickMs);
+      RegisterGameTickListener(OnCutTick, TickMs);
   }
 
   /// <summary>Engages the machine: the cut counts game time from now.</summary>
@@ -175,8 +176,13 @@ public abstract class BlockEntityMachineTool
     if (!_running || Kind is not { } kind)
       return 0f;
     (MachiningJob? job, MachineKindStep? step) = CurrentJob();
-    return
-      step != null && Evaluate(job, kind, step, 1f) == MachineCutVerdict.Ready
+    if (
+      job is null
+      || step is null
+      || MachineCut.Energy(job, step.Motion, Materials) <= 0f
+    )
+      return 0f;
+    return Evaluate(job, kind, step, 1f) == MachineCutVerdict.Ready
       ? MachineCut.LoadTorque(kind, step, true)
       : 0f;
   }
@@ -250,7 +256,12 @@ public abstract class BlockEntityMachineTool
     return true;
   }
 
-  private void OnTick(float dt) {
+  private void OnSlotModified(int slot) {
+    if (slot == WorkSlot && SyncPiece())
+      MarkDirty();
+  }
+
+  private void OnCutTick(float dt) {
     if (!_running || Kind is not { } kind)
       return;
     bool changed = SyncPiece();
@@ -272,6 +283,11 @@ public abstract class BlockEntityMachineTool
     }
     if (verdict == MachineCutVerdict.Ready) {
       float energy = MachineCut.Energy(job!, step!.Motion, Materials);
+      if (energy <= 0f) {
+        if (changed)
+          MarkDirty();
+        return;
+      }
       double remaining = energy - _joules;
       double credit = MachineCut.Credit(
         MachineCut.LoadTorque(kind, step, true),
@@ -364,10 +380,31 @@ public abstract class BlockEntityMachineTool
   public IReadOnlyList<string> WorkedAt(string code) =>
     [
       .. Jobs.StepsFor(code)
-        .Select(step =>
-          $"{step} ({string.Join(", ", Kinds.Offering(step).Select(k => k.Code))})"
+        .Select(step => (Step: step, Job: Jobs.Job(step, code)))
+        .Where(x => x.Job is not null)
+        .Select(x =>
+          (
+            x.Step,
+            Kinds: Kinds
+              .Offering(x.Step)
+              .Where(k => MachineCut.OffersTo(x.Job!, k))
+              .ToList()
+          )
+        )
+        .Where(x => x.Kinds.Count > 0)
+        .Select(x =>
+          $"{NameOf("exlib:machine-step-", x.Step)} ({string.Join(", ", x.Kinds.Select(k => NameOf(k.Code)))})"
         ),
     ];
+
+  private static string NameOf(string key, string fallback) =>
+    Lang.GetIfExists(key + fallback) ?? fallback;
+
+  private static string NameOf(string kindCode) {
+    var location = new AssetLocation(kindCode);
+    return Lang.GetIfExists($"{location.Domain}:machine-kind-{location.Path}")
+      ?? kindCode;
+  }
 
   /// <summary>The block-info line for the mounted piece: the step and its percent, why the machine will not cut it, or where it is worked.</summary>
   /// <returns>The line, or null when the work slot is empty or the block names no kind.</returns>
@@ -403,7 +440,7 @@ public abstract class BlockEntityMachineTool
       ),
       MachineCutVerdict.NoFixture => Lang.Get(
         "exlib:machine-tool-info-nofixture",
-        job.Fixture
+        Stack(job.Fixture!, 1)?.GetName() ?? job.Fixture
       ),
       MachineCutVerdict.ChipsFull => Lang.Get("exlib:machine-tool-info-chips"),
       MachineCutVerdict.NoDrive => Lang.Get("exlib:machine-tool-info-nodrive"),
@@ -411,7 +448,7 @@ public abstract class BlockEntityMachineTool
         _running
           ? "exlib:machine-tool-info-cutting"
           : "exlib:machine-tool-info-stopped",
-        step.Step,
+        NameOf("exlib:machine-step-", step.Step),
         (int)(Progress * 100d)
       ),
     };

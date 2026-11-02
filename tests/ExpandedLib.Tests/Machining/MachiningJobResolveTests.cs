@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Industry.Machining;
 using Vintagestory.API.Common;
 using Xunit;
@@ -118,6 +120,71 @@ public class MachiningJobResolveTests {
       "wroughtiron",
       jobs.Job("turn", "test:blank")!.ResolvedMaterial
     );
+  }
+
+  private static IReadOnlyList<string> ResolveWith(
+    MachiningJob job,
+    params string[] extraItems
+  ) {
+    var (jobs, materials) = Registries(job);
+    var items = new List<CollectibleObject>(Items(100, 75));
+    foreach (string code in extraItems)
+      items.Add(MachiningTestData.Collectible(code, 1));
+    return MachiningJobs.Resolve(items, jobs, materials);
+  }
+
+  private static MachiningJob WithChips(params string[] codes) =>
+    MachiningTestData.Job(
+      "turn",
+      "test:blank",
+      "test:worked",
+      1,
+      "castiron"
+    ) with {
+      Byproducts = [.. codes.Select(c => new MachiningByproduct(c, 1))],
+    };
+
+  // Fails when a byproduct that names no item passes, which leaves the chips slot to refuse it forever.
+  [Fact]
+  public void A_byproduct_naming_no_item_is_reported() {
+    var errors = ResolveWith(WithChips("test:ghost"));
+
+    Assert.Contains("test:ghost", Assert.Single(errors));
+  }
+
+  // Fails when two byproduct items pass, which the one chips slot cannot hold.
+  [Fact]
+  public void Byproducts_of_two_items_are_reported() {
+    var errors = ResolveWith(
+      WithChips("test:chips", "test:dust"),
+      "test:chips",
+      "test:dust"
+    );
+
+    Assert.Contains("more than one", Assert.Single(errors));
+  }
+
+  [Fact]
+  public void Byproducts_of_one_item_resolve() =>
+    Assert.Empty(
+      ResolveWith(WithChips("test:chips", "test:chips"), "test:chips")
+    );
+
+  // Fails when a fixture that names no item passes.
+  [Fact]
+  public void A_fixture_naming_no_item_is_reported() {
+    MachiningJob job = MachiningTestData.Job(
+      "turn",
+      "test:blank",
+      "test:worked",
+      1,
+      "castiron"
+    ) with {
+      Fixture = "test:template",
+    };
+
+    Assert.Contains("test:template", Assert.Single(ResolveWith(job)));
+    Assert.Empty(ResolveWith(job, "test:template"));
   }
 
   [Fact]

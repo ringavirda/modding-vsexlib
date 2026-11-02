@@ -74,10 +74,24 @@ public sealed record MachineKindSet(
       var steps = new List<MachineKindStep>();
       foreach ((string step, JsonObject stepNode) in Members(kindNode["steps"])) {
         string motionName = stepNode["motion"].AsString("");
+        CutMotion motion = CutMotion.Rotary;
         if (
-          !Enum.TryParse(motionName, true, out CutMotion motion)
-          || !Enum.IsDefined(motion)
-        ) {
+          string.Equals(
+            motionName,
+            "rotary",
+            StringComparison.OrdinalIgnoreCase
+          )
+        )
+          motion = CutMotion.Rotary;
+        else if (
+          string.Equals(
+            motionName,
+            "reciprocating",
+            StringComparison.OrdinalIgnoreCase
+          )
+        )
+          motion = CutMotion.Reciprocating;
+        else {
           error =
             $"machine kind '{code}': step '{step}' has 'motion' '{motionName}', which is not rotary or reciprocating";
           return false;

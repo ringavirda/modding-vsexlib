@@ -125,5 +125,10 @@
   "machine-tool-info-chips": "Слот стружки повний",
   "machine-tool-info-nodrive": "Немає приводу",
   "machine-tool-info-cutting": "Різання, {0}: {1}%",
-  "machine-tool-info-stopped": "Зупинено, {0}: {1}%"
+  "machine-tool-info-stopped": "Зупинено, {0}: {1}%",
+  "machine-step-turn": "токарна обробка",
+  "machine-step-bore": "розточування",
+  "machine-step-plane": "стругання",
+  "machine-step-slot": "довбання",
+  "machine-step-drill": "свердління"
 }

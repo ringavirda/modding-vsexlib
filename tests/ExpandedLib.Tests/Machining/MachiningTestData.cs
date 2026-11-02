@@ -10,7 +10,7 @@ internal static class MachiningTestData {
   public const string Materials = """
     {
       "schema": 1,
-      "handPower": { "rotary": 60, "reciprocating": 40 },
+      "handPower": { "rotary": 61.0, "reciprocating": 44.7 },
       "materials": [
         { "code": "castiron", "density": 7200,
           "energy": { "rotary": 185800, "reciprocating": 295500 } },
