@@ -32,6 +32,8 @@ public class ChecksProveThemselvesTests(ITestOutputHelper output) {
       "the file compiles on 1.22 and later only",
     ["ControlLaw: the file names no type in ExpandedLib.Testing"] =
       "the file compiles on 1.22 and later only",
+    ["MachiningChecks: the file names no type in ExpandedLib.Testing"] =
+      "the file compiles on 1.22 and later only",
 #endif
   };
 
