@@ -628,3 +628,31 @@ static ExpandedLib.Industry.Machining.MachineCut.HandSeconds(double energy, floa
 static ExpandedLib.Industry.Machining.MachineCut.LoadTorque(ExpandedLib.Industry.Machining.MachineKind! kind, ExpandedLib.Industry.Machining.MachineKindStep! step, bool cutting) -> float
 static ExpandedLib.Industry.Machining.MachineCut.OffersTo(ExpandedLib.Industry.Machining.MachiningJob! job, ExpandedLib.Industry.Machining.MachineKind! kind) -> bool
 static ExpandedLib.Industry.Machining.MachineCut.Verdict(ExpandedLib.Industry.Machining.MachiningJob? job, ExpandedLib.Industry.Machining.MachineKind! kind, ExpandedLib.Catalogues.MachineToolSpec? tool, bool fixturePresent, bool chipsFree, float speed) -> ExpandedLib.Industry.Machining.MachineCutVerdict
+ExpandedLib.Industry.Machining.BlockEntityMachineTool
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.BlockEntityMachineTool() -> void
+const ExpandedLib.Industry.Machining.BlockEntityMachineTool.ChipsSlot = 2 -> int
+const ExpandedLib.Industry.Machining.BlockEntityMachineTool.FixtureSlot = 3 -> int
+const ExpandedLib.Industry.Machining.BlockEntityMachineTool.ToolSlot = 1 -> int
+const ExpandedLib.Industry.Machining.BlockEntityMachineTool.WorkSlot = 0 -> int
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.IsRunning.get -> bool
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.LoadTorque(float speed) -> float
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.NetworkSystem.get -> ExpandedLib.Networks.BlockNetworkModSystem?
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.NetworkSystem.set -> void
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.Progress.get -> double
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.StandingNm.get -> float
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.Stop() -> void
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.TryStart() -> bool
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.Verdict.get -> ExpandedLib.Industry.Machining.MachineCutVerdict
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.WorkedAt(string! code) -> System.Collections.Generic.IReadOnlyList<string!>!
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.InfoLine() -> string?
+override ExpandedLib.Industry.Machining.BlockEntityMachineTool.DeclareState(ExpandedLib.Blocks.ExBlockState! state) -> void
+override ExpandedLib.Industry.Machining.BlockEntityMachineTool.GetBlockInfo(Vintagestory.API.Common.IPlayer! forPlayer, System.Text.StringBuilder! dsc) -> void
+override ExpandedLib.Industry.Machining.BlockEntityMachineTool.Initialize(Vintagestory.API.Common.ICoreAPI! api) -> void
+override ExpandedLib.Industry.Machining.BlockEntityMachineTool.InventoryClassName.get -> string!
+override ExpandedLib.Industry.Machining.BlockEntityMachineTool.SlotSpecs.get -> ExpandedLib.Machines.MachineSlotSpec[]!
+virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.DriveCell.get -> Vintagestory.API.MathTools.BlockPos!
+virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.Jobs.get -> ExpandedLib.Industry.Machining.MachiningJobRegistry!
+virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.Kind.get -> ExpandedLib.Industry.Machining.MachineKind?
+virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.Kinds.get -> ExpandedLib.Industry.Machining.MachineKindRegistry!
+virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.Materials.get -> ExpandedLib.Industry.Machining.CuttingMaterialRegistry!
+virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.ReadDrive() -> ExpandedLib.Industry.MechanicalPower.MpRunReading

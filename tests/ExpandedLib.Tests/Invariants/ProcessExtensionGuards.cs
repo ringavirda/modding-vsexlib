@@ -16,7 +16,7 @@ public class ProcessExtensionGuards {
 
   // A file is a process machine when it reads a process registry.
   private static readonly Regex ReadsARegistry = new(
-    @"ProcessRouteRegistry|ProcessJobRegistry|ProcessExtensions|MillSchedule|RollSetSpec|MoldSpec",
+    @"ProcessRouteRegistry|ProcessJobRegistry|MachiningJobRegistry|MachineKindRegistry|ProcessExtensions|MillSchedule|RollSetSpec|MoldSpec",
     RegexOptions.Compiled
   );
 
@@ -49,6 +49,13 @@ public class ProcessExtensionGuards {
           || path.EndsWith(".g.cs", StringComparison.Ordinal)
           // The registries and spec types name the contract itself.
           || rel.Contains("/Processes/", StringComparison.Ordinal)
+          || (
+            rel.Contains("/Machining/", StringComparison.Ordinal)
+            && !rel.EndsWith(
+              "/BlockEntityMachineTool.cs",
+              StringComparison.Ordinal
+            )
+          )
         )
           continue;
 

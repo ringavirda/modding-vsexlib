@@ -626,3 +626,13 @@ virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.GameStepHours.get ->
 virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.MaxGameHoursPerTick.get -> double
 ~override ExpandedLib.Networks.BlockNetworkNode.GetInterface<T>(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> T
 ~override ExpandedLib.Structures.BlockFilledMegastructure.GetInterface<T>(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> T
+const ExpandedLib.ExlibLang.MachineToolInfoChips = "exlib:machine-tool-info-chips" -> string!
+const ExpandedLib.ExlibLang.MachineToolInfoCutting = "exlib:machine-tool-info-cutting" -> string!
+const ExpandedLib.ExlibLang.MachineToolInfoElsewhere = "exlib:machine-tool-info-elsewhere" -> string!
+const ExpandedLib.ExlibLang.MachineToolInfoNodrive = "exlib:machine-tool-info-nodrive" -> string!
+const ExpandedLib.ExlibLang.MachineToolInfoNofixture = "exlib:machine-tool-info-nofixture" -> string!
+const ExpandedLib.ExlibLang.MachineToolInfoNojob = "exlib:machine-tool-info-nojob" -> string!
+const ExpandedLib.ExlibLang.MachineToolInfoNotool = "exlib:machine-tool-info-notool" -> string!
+const ExpandedLib.ExlibLang.MachineToolInfoStopped = "exlib:machine-tool-info-stopped" -> string!
+const ExpandedLib.ExlibLang.MachineToolInfoTier = "exlib:machine-tool-info-tier" -> string!
+const ExpandedLib.ExlibLang.MachineToolInfoWrongtool = "exlib:machine-tool-info-wrongtool" -> string!
