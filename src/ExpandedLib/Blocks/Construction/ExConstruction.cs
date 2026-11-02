@@ -425,11 +425,16 @@ public class ExRightClickConstruction {
         var resolved = ingredient.Clone();
         foreach (var wc in StoredWildCards)
           resolved.FillPlaceHolder(wc.Key, wc.Value);
-        if (resolved.StoreWildCard != null)
-          resolved.Code.Path = resolved.Code.Path.Replace(
-            "*",
-            StoredWildCards[resolved.StoreWildCard]
-          );
+        if (resolved.StoreWildCard != null) {
+          if (
+            !StoredWildCards.TryGetValue(
+              resolved.StoreWildCard,
+              out string? stored
+            )
+          )
+            continue;
+          resolved.Code.Path = resolved.Code.Path.Replace("*", stored);
+        }
 
         if (
           resolved.Resolve(
