@@ -269,6 +269,10 @@ public partial class BlockPipe
   private static readonly Dictionary<string, Func<float>> _throughputByTier =
     new();
 
+  // Throughput for one medium of a tier, keyed "tier/medium"; read before the tier's value.
+  private static readonly Dictionary<string, Func<float>> _throughputByMedium =
+    new();
+
   private const float DefaultThroughput = 120f;
 
   /// <summary>Registers the throughput (L/s) for a <paramref name="tier"/>; a later registration
@@ -277,13 +281,43 @@ public partial class BlockPipe
   public static void RegisterThroughput(string tier, Func<float> throughput) =>
     RegisterTier(_throughputByTier, "BlockPipe throughput", tier, throughput);
 
-  /// <summary>Litres per second this pipe will pass, read from the per-tier registry keyed by this
-  /// block's <see cref="Tier"/>, or <see cref="DefaultThroughput"/> when unregistered; unlimited when
-  /// <see cref="CanBurst"/> is false.</summary>
+  /// <summary>Registers the throughput (L/s) of a <paramref name="tier"/> for one
+  /// <paramref name="medium"/>, the name the network carries (<c>PipeNetworkState.MediumType</c>, such
+  /// as "Air" or "Steam"); a run carrying it reads this in place of the tier's
+  /// <see cref="RegisterThroughput(string, Func{float})"/> value. A later registration for the pair
+  /// replaces the earlier one; one from another assembly logs a Warning naming both.</summary>
+  public static void RegisterThroughput(
+    string tier,
+    string medium,
+    Func<float> throughput
+  ) =>
+    RegisterTier(
+      _throughputByMedium,
+      "BlockPipe medium throughput",
+      $"{tier}/{medium}",
+      throughput
+    );
+
+  /// <summary>Litres per second this pipe will pass whatever it carries, read from the per-tier
+  /// registry keyed by this block's <see cref="Tier"/>, or <see cref="DefaultThroughput"/> when
+  /// unregistered; unlimited when <see cref="CanBurst"/> is false.</summary>
   public virtual float MaxThroughput =>
     !CanBurst ? float.MaxValue
     : Tier != null && _throughputByTier.TryGetValue(Tier, out var f) ? f()
     : DefaultThroughput;
+
+  /// <summary>Litres per second this pipe will pass of <paramref name="medium"/>: the value registered
+  /// for this block's <see cref="Tier"/> and that medium, else <see cref="MaxThroughput"/>; unlimited
+  /// when <see cref="CanBurst"/> is false.</summary>
+  /// <param name="medium">Medium name, or <c>null</c> for none, which reads <see cref="MaxThroughput"/>.</param>
+  /// <returns>L/s.</returns>
+  public virtual float ThroughputFor(string? medium) =>
+    CanBurst
+    && Tier != null
+    && medium != null
+    && _throughputByMedium.TryGetValue($"{Tier}/{medium}", out var f)
+      ? f()
+      : MaxThroughput;
 
   #endregion
 

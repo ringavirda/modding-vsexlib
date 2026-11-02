@@ -116,7 +116,7 @@ public class PipeNetwork : BlockNetwork {
     // Bounded by headroom (pressure ceiling) and throughput (weakest segment, PerCallLimit).
     float actualVolume = Math.Min(
       Math.Min(volume, ceiling - State.Volume),
-      PerCallLimit(blockAccessor)
+      PerCallLimit(blockAccessor, gasType)
     );
 
     if (actualVolume > 0 || State.Volume <= 0) {
@@ -189,7 +189,7 @@ public class PipeNetwork : BlockNetwork {
     // Bounded by pool volume and PerCallLimit.
     float available = Math.Min(
       Math.Min(requestedVolume, State.Volume),
-      PerCallLimit(blockAccessor)
+      PerCallLimit(blockAccessor, State.MediumType)
     );
     if (available > 0) {
       State.Volume -= available;
@@ -227,7 +227,7 @@ public class PipeNetwork : BlockNetwork {
     // Headroom and throughput, the same pair the gas side takes.
     float actual = Math.Min(
       Math.Min(volume, State.MaxVolume - State.Volume),
-      PerCallLimit(blockAccessor)
+      PerCallLimit(blockAccessor, "Water")
     );
     if (actual <= 0f) {
       // Brim-full: pressure still follows the feed pressure.
@@ -279,7 +279,7 @@ public class PipeNetwork : BlockNetwork {
 
     float available = Math.Min(
       Math.Min(requestedVolume, State.Volume),
-      PerCallLimit(blockAccessor)
+      PerCallLimit(blockAccessor, State.MediumType)
     );
     if (available > 0) {
       State.Volume -= available;
@@ -453,7 +453,7 @@ public class PipeNetwork : BlockNetwork {
     _producedAccum = 0f;
     _consumedAccum = 0f;
     _minBurstCache = null;
-    _minThroughputCache = null;
+    _minThroughputCache.Clear();
 
     if (State == null)
       return;
@@ -845,31 +845,36 @@ public class PipeNetwork : BlockNetwork {
   // in OnTick.
   private float? _minBurstCache;
 
-  // Same lifetime and invalidation as the burst cache above.
-  private float? _minThroughputCache;
+  // Same lifetime and invalidation as the burst cache above; keyed by medium, "" for none.
+  private readonly Dictionary<string, float> _minThroughputCache = new();
 
   /// <summary>Drops topology-derived caches when the manager changes the node set.</summary>
   public override void OnTopologyChanged() {
     _minBurstCache = null;
-    _minThroughputCache = null;
+    _minThroughputCache.Clear();
   }
 
-  /// <summary>The smallest throughput (L/s) across the run, the weakest-link rule.
-  /// <see cref="float.MaxValue"/> when the run holds no throughput-limited blocks.</summary>
-  private float MinThroughput(IBlockAccessor world) =>
-    _minThroughputCache ??= ComputeMinThroughput(world);
-
-  private float ComputeMinThroughput(IBlockAccessor world) {
-    float min = float.MaxValue;
-    foreach (var pos in Nodes)
-      if (world.GetBlock(pos) is IThroughputLimitedPipe p)
-        min = Math.Min(min, p.MaxThroughput);
+  /// <summary>The smallest throughput (L/s) across the run for <paramref name="medium"/>, the
+  /// weakest-link rule. <see cref="float.MaxValue"/> when the run holds no throughput-limited blocks.</summary>
+  private float MinThroughput(IBlockAccessor world, string? medium) {
+    string key = medium ?? "";
+    if (!_minThroughputCache.TryGetValue(key, out float min))
+      _minThroughputCache[key] = min = ComputeMinThroughput(world, medium);
     return min;
   }
 
-  /// <summary>The most one call may move, bounded by the run's weakest segment; stateless,
-  /// litres per second at the fixed 1000 ms tick.</summary>
-  private float PerCallLimit(IBlockAccessor world) => MinThroughput(world);
+  private float ComputeMinThroughput(IBlockAccessor world, string? medium) {
+    float min = float.MaxValue;
+    foreach (var pos in Nodes)
+      if (world.GetBlock(pos) is IThroughputLimitedPipe p)
+        min = Math.Min(min, p.ThroughputFor(medium));
+    return min;
+  }
+
+  /// <summary>The most one call may move of <paramref name="medium"/>, bounded by the run's weakest
+  /// segment; stateless, litres per second at the fixed 1000 ms tick.</summary>
+  private float PerCallLimit(IBlockAccessor world, string? medium) =>
+    MinThroughput(world, medium);
 
   /// <summary>The weakest pipe's burst pressure (atm) across the run, capping how far the gas
   /// pool can be pressurised. <see cref="float.MaxValue"/> when the run holds no pipes.</summary>

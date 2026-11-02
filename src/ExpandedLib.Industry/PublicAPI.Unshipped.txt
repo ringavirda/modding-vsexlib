@@ -691,3 +691,6 @@ virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.Kind.get -> Expand
 virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.Kinds.get -> ExpandedLib.Industry.Machining.MachineKindRegistry!
 virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.Materials.get -> ExpandedLib.Industry.Machining.CuttingMaterialRegistry!
 virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.ReadDrive() -> ExpandedLib.Industry.MechanicalPower.MpRunReading
+ExpandedLib.Industry.Pipes.IThroughputLimitedPipe.ThroughputFor(string? medium) -> float
+static ExpandedLib.Industry.Pipes.BlockPipe.RegisterThroughput(string! tier, string! medium, System.Func<float>! throughput) -> void
+virtual ExpandedLib.Industry.Pipes.BlockPipe.ThroughputFor(string? medium) -> float
