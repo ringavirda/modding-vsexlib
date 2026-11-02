@@ -489,6 +489,56 @@ public sealed class ObtainabilityCheckTests : IDisposable {
     Assert.Single(ExlibChecks.Produced());
   }
 
+  // Fails when a Gathered declaration stops counting as made, an undeclared code stops failing,
+  // one matching nothing stops being reported, or another domain's unmatched one is reported here.
+  [Fact]
+  [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
+  public void A_gathered_declaration_makes_its_block_and_one_matching_nothing_is_reported() {
+    ExlibChecks.Gathered("stub", "stub:seamore-*", "worldgen, mined");
+    ExlibChecks.Gathered("stub", "stub:typo-*", "worldgen, mined");
+    ExlibChecks.Gathered("other", "other:typo-*", "worldgen, mined");
+
+    Assert.Equal(
+      [
+        "stub:typo-* (gathered: worldgen, mined): matches no loaded block or item",
+        Unmade("stub:crackedore-iron", "block"),
+      ],
+      Findings(
+        new LoadedStubGame(
+          Asking(
+            ("block", "stub:seamore-iron"),
+            ("block", "stub:crackedore-iron")
+          )
+        )
+          .Block("stub:seamore-iron")
+          .Block("stub:crackedore-iron")
+      )
+    );
+  }
+
+  // Fails when Gathered keeps a declaration missing a part, or keeps a repeated one twice, or
+  // ClearDeclarations leaves one.
+  [Fact]
+  [PlantedDefect(typeof(ExlibChecks), nameof(ExlibChecks.Gathered))]
+  public void Gathered_names_all_three_keeps_a_repeat_once_and_clears() {
+    Assert.Throws<ArgumentException>(() =>
+      ExlibChecks.Gathered("", "stub:ore-*", "mined")
+    );
+    Assert.Throws<ArgumentException>(() =>
+      ExlibChecks.Gathered("stub", "", "mined")
+    );
+    Assert.Throws<ArgumentException>(() =>
+      ExlibChecks.Gathered("stub", "stub:ore-*", null!)
+    );
+    ExlibChecks.Gathered("stub", "stub:ore-*", "mined");
+    ExlibChecks.Gathered("stub", "stub:ore-*", "mined");
+    Assert.Single(ExlibChecks.GatheredDeclared());
+
+    ExlibChecks.ClearDeclarations();
+
+    Assert.Empty(ExlibChecks.GatheredDeclared());
+  }
+
   // Fails when ObtainabilityCheck reads fewer codes than GatheredSources lists.
   [Fact]
   [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]

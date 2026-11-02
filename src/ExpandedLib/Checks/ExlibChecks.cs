@@ -54,6 +54,8 @@ public static class ExlibChecks {
 
   private static readonly List<Declaration> _produced = [];
 
+  private static readonly List<Gather> _gathered = [];
+
   private static readonly List<Runner> _runners = [];
 
   private static readonly List<DeclaredGrid> _grids = [];
@@ -97,6 +99,9 @@ public static class ExlibChecks {
     public override int GetHashCode() =>
       HashCode.Combine(Domain, Code, Source, At);
   }
+
+  /// <summary>One pattern a mod declared with <see cref="Gathered"/>.</summary>
+  internal sealed record Gather(string Domain, string Pattern, string How);
 
   /// <summary>One crafting grid a mod declared with <see cref="CraftingGrid"/>.</summary>
   private sealed record DeclaredGrid(string Domain, int Size, string Station);
@@ -288,6 +293,31 @@ public static class ExlibChecks {
       _produced.Add(declaration);
   }
 
+  /// <summary>Declares that a player takes <paramref name="pattern"/> from the world with no
+  /// recipe, as <see cref="GatheredSources"/> lists vanilla's: a mod's worldgen ore or a loose
+  /// stone it places. <see cref="ObtainabilityCheck"/> counts every loaded block and item it
+  /// matches as made and the craft walk starts from them, in every domain's run. Call it from a
+  /// mod's <c>Start</c>; a world starting to load drops every declaration.</summary>
+  /// <param name="domain">The declaring mod's domain, whose obtainability run reports a
+  /// declaration that matches no loaded block or item.</param>
+  /// <param name="pattern">A domain-qualified code, a <c>*</c> standing for any states, e.g.
+  /// <c>"iiex:seamore-*"</c>.</param>
+  /// <param name="how">Where it comes from and what takes it, named when the declaration is
+  /// reported.</param>
+  /// <exception cref="ArgumentException">An argument is null or empty.</exception>
+  /// <remarks>The same declaration given twice is kept once.</remarks>
+  public static void Gathered(string domain, string pattern, string how) {
+    Require(
+      "a declaration names all three",
+      (domain, nameof(domain)),
+      (pattern, nameof(pattern)),
+      (how, nameof(how))
+    );
+    var gather = new Gather(domain, pattern, how);
+    if (!_gathered.Contains(gather))
+      _gathered.Add(gather);
+  }
+
   /// <summary>Declares that the block <paramref name="blockCode"/> runs the process catalogue
   /// filed under <paramref name="machine"/>: its terminal jobs, and the stopping points of the
   /// routes that machine accepts. The craft walk fires each of those once the block and the input
@@ -370,15 +400,20 @@ public static class ExlibChecks {
   /// order.</summary>
   internal static IReadOnlyList<Declaration> Produced() => _produced;
 
+  /// <summary>Every <see cref="Gathered"/> declaration of the current world, in call
+  /// order.</summary>
+  internal static IReadOnlyList<Gather> GatheredDeclared() => _gathered;
+
   /// <summary>Every <see cref="Runs"/> declaration of the current world, in call order.</summary>
   internal static IReadOnlyList<Runner> Runners() => _runners;
 
-  /// <summary>Drops every exemption and every <see cref="Produces"/>, <see cref="Runs"/> and
-  /// <see cref="CraftingGrid"/> declaration; run when a world starts loading.</summary>
+  /// <summary>Drops every exemption and every <see cref="Produces"/>, <see cref="Gathered"/>,
+  /// <see cref="Runs"/> and <see cref="CraftingGrid"/> declaration; run when a world starts loading.</summary>
   internal static void ClearDeclarations() {
     _grids.Clear();
     _exemptions.Clear();
     _produced.Clear();
+    _gathered.Clear();
     _runners.Clear();
   }
 
