@@ -611,3 +611,20 @@ static ExpandedLib.Industry.Pipes.FlowPort.At(Vintagestory.API.Common.BlockEntit
 static readonly ExpandedLib.Industry.Helpers.ExParticles.MetalSpark -> int
 static readonly ExpandedLib.Industry.Helpers.ExSounds.MetalBreak -> Vintagestory.API.Common.AssetLocation!
 virtual ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.Bore.get -> ExpandedLib.Industry.Pipes.FlowBore?
+const ExpandedLib.Industry.Machining.MachineCut.GameSecondsPerRealSecond = 30 -> double
+ExpandedLib.Industry.Machining.MachineCut
+ExpandedLib.Industry.Machining.MachineCutVerdict
+ExpandedLib.Industry.Machining.MachineCutVerdict.ChipsFull = 6 -> ExpandedLib.Industry.Machining.MachineCutVerdict
+ExpandedLib.Industry.Machining.MachineCutVerdict.NoDrive = 7 -> ExpandedLib.Industry.Machining.MachineCutVerdict
+ExpandedLib.Industry.Machining.MachineCutVerdict.NoFixture = 5 -> ExpandedLib.Industry.Machining.MachineCutVerdict
+ExpandedLib.Industry.Machining.MachineCutVerdict.NoJob = 1 -> ExpandedLib.Industry.Machining.MachineCutVerdict
+ExpandedLib.Industry.Machining.MachineCutVerdict.NoTool = 2 -> ExpandedLib.Industry.Machining.MachineCutVerdict
+ExpandedLib.Industry.Machining.MachineCutVerdict.Ready = 0 -> ExpandedLib.Industry.Machining.MachineCutVerdict
+ExpandedLib.Industry.Machining.MachineCutVerdict.TierShort = 4 -> ExpandedLib.Industry.Machining.MachineCutVerdict
+ExpandedLib.Industry.Machining.MachineCutVerdict.WrongTool = 3 -> ExpandedLib.Industry.Machining.MachineCutVerdict
+static ExpandedLib.Industry.Machining.MachineCut.Credit(float torque, float speed, double gameSeconds, double remaining) -> double
+static ExpandedLib.Industry.Machining.MachineCut.Energy(ExpandedLib.Industry.Machining.MachiningJob! job, ExpandedLib.Industry.Machining.CutMotion motion, ExpandedLib.Industry.Machining.CuttingMaterialRegistry? materials = null) -> float
+static ExpandedLib.Industry.Machining.MachineCut.HandSeconds(double energy, float handPower) -> double
+static ExpandedLib.Industry.Machining.MachineCut.LoadTorque(ExpandedLib.Industry.Machining.MachineKind! kind, ExpandedLib.Industry.Machining.MachineKindStep! step, bool cutting) -> float
+static ExpandedLib.Industry.Machining.MachineCut.OffersTo(ExpandedLib.Industry.Machining.MachiningJob! job, ExpandedLib.Industry.Machining.MachineKind! kind) -> bool
+static ExpandedLib.Industry.Machining.MachineCut.Verdict(ExpandedLib.Industry.Machining.MachiningJob? job, ExpandedLib.Industry.Machining.MachineKind! kind, ExpandedLib.Catalogues.MachineToolSpec? tool, bool fixturePresent, bool chipsFree, float speed) -> ExpandedLib.Industry.Machining.MachineCutVerdict
