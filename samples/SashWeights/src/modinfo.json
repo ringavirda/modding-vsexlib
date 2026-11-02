@@ -1,0 +1,13 @@
+{
+  "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
+  "type": "Code",
+  "modid": "sashweights",
+  "name": "Sash Weights",
+  "authors": ["fallenstar"],
+  "description": "Sample mod: a casting station kind and a pattern declared in JSON alone, validated when the game loads.",
+  "version": "1.0.0",
+  "dependencies": {
+    "game": "1.22.0",
+    "exlib": "0.8.4"
+  }
+}

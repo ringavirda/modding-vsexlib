@@ -115,5 +115,20 @@
   "pipe-medium-water": "воды",
   "handbook-madeat": "Где изготавливается",
   "handbook-madeat-line": "{0}: {1}",
-  "handbook-diagram-makes": "Изделия"
+  "handbook-diagram-makes": "Изделия",
+  "machine-tool-info-nojob": "{0}: ни один станок это не обрабатывает",
+  "machine-tool-info-elsewhere": "{0}: обрабатывается на {1}",
+  "machine-tool-info-notool": "Инструмент не установлен",
+  "machine-tool-info-wrongtool": "Нужен инструмент вида {0}",
+  "machine-tool-info-tier": "Нужен инструмент закалки {0}",
+  "machine-tool-info-nofixture": "Нужно {0} в слоте оснастки",
+  "machine-tool-info-chips": "Слот стружки полон",
+  "machine-tool-info-nodrive": "Нет привода",
+  "machine-tool-info-cutting": "Резка, {0}: {1}%",
+  "machine-tool-info-stopped": "Остановлен, {0}: {1}%",
+  "machine-step-turn": "токарная обработка",
+  "machine-step-bore": "расточка",
+  "machine-step-plane": "строгание",
+  "machine-step-slot": "долбление",
+  "machine-step-drill": "сверление"
 }

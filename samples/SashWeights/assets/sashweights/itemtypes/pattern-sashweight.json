@@ -1,0 +1,30 @@
+{
+  "code": "pattern-sashweight",
+  "class": "Item",
+  "maxstacksize": 1,
+  "shape": { "base": "sashweights:item/sashweight" },
+  "textures": { "metal": { "base": "game:block/wood/planks/oak1" } },
+  "creativeinventory": { "general": ["*"] },
+  "attributes": {
+    "mold": {
+      "schema": 1,
+      "output": { "type": "item", "code": "sashweights:sashweight" },
+      "units": 15,
+      "stations": [
+        {
+          "size": "boxflask",
+          "shape": "sashweights:block/boxflask/impression-sashweight",
+          "pieces": 4,
+          "fill": "rows",
+          "mould": "open",
+          "cavity": [
+            { "x1": 2, "y1": 2, "z1": 5, "x2": 3, "y2": 3, "z2": 11 },
+            { "x1": 5, "y1": 2, "z1": 5, "x2": 6, "y2": 3, "z2": 11 },
+            { "x1": 8, "y1": 2, "z1": 5, "x2": 9, "y2": 3, "z2": 11 },
+            { "x1": 11, "y1": 2, "z1": 5, "x2": 12, "y2": 3, "z2": 11 }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -10,7 +10,9 @@
     "twintubblower": { "path": "samples/TwinTubBlower", "tests": "samples/TwinTubBlower/tests" },
     "burdenmaker":   { "path": "samples/BurdenMaker",   "tests": "samples/BurdenMaker/tests" },
     "platedpipes":   { "path": "samples/PlatedPipes",   "tests": "samples/PlatedPipes/tests" },
-    "smokestack":    { "path": "samples/SmokeStack",    "tests": "samples/SmokeStack/tests" }
+    "smokestack":    { "path": "samples/SmokeStack",    "tests": "samples/SmokeStack/tests" },
+    "sashweights":   { "path": "samples/SashWeights",   "tests": "samples/SashWeights/tests" },
+    "washerpunch":   { "path": "samples/WasherPunch",   "tests": "samples/WasherPunch/tests" }
   },
   "tests": ["tests/ExpandedLib.Tests"],
   "packages": ["src/ExpandedLib", "src/ExpandedLib.Industry", "src/ExpandedLib.Testing", "templates"],
@@ -19,7 +21,9 @@
     "TwinTubBlower.Tests": { "heapGb": 2 },
     "BurdenMaker.Tests":   { "heapGb": 2 },
     "PlatedPipes.Tests":   { "heapGb": 2 },
-    "SmokeStack.Tests":    { "heapGb": 2 }
+    "SmokeStack.Tests":    { "heapGb": 2 },
+    "SashWeights.Tests":   { "heapGb": 2 },
+    "WasherPunch.Tests":   { "heapGb": 2 }
   },
   "serverMemoryGb": 2,
   "coverageFloors": "tests/coverage-floors.json",
