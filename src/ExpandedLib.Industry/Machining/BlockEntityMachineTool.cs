@@ -311,18 +311,19 @@ public abstract class BlockEntityMachineTool
 
   private void OnSlotModified(int slot) {
     if (slot == WorkSlot && SyncPiece())
-      MarkDirty();
+      MarkDirty(true);
   }
 
   private void OnCutTick(float dt) {
     if (!_running || Kind is not { } kind)
       return;
     bool changed = SyncPiece();
+    bool redraw = changed;
 
     MpRunReading reading = ReadDrive();
     if (reading == MpRunReading.None) {
       if (changed)
-        MarkDirty();
+        MarkDirty(redraw);
       return;
     }
     double gameSeconds = _cursor.Advance(GameTime.NowHours(Api.World)) * 3600d;
@@ -338,7 +339,7 @@ public abstract class BlockEntityMachineTool
       float energy = MachineCut.Energy(job!, step!.Motion, Materials);
       if (energy <= 0f) {
         if (changed)
-          MarkDirty();
+          MarkDirty(redraw);
         return;
       }
       double remaining = energy - _joules;
@@ -356,7 +357,7 @@ public abstract class BlockEntityMachineTool
       }
     }
     if (changed)
-      MarkDirty();
+      MarkDirty(redraw);
   }
 
   private void Complete(MachiningJob job) {
