@@ -198,5 +198,12 @@ public class TestWorldExplosionTests
     Assert.Same(probe, probe.SeenAtHook);
     Assert.Equal(0, v.World.GetBlock(at).BlockId);
   }
+
+  // Fails when the world's claim list is left unconfigured: a bomb's permission test then throws on null.
+  [Fact]
+  public void The_world_holds_no_land_claims()
+  {
+    Assert.Empty(new TestWorld().Api.WorldManager.LandClaims);
+  }
 }
 #endif

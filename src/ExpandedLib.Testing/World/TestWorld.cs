@@ -1226,6 +1226,9 @@ public sealed partial class TestWorld : IDisposable {
     api.ObjectCache.Returns(cache);
     coreApi.ObjectCache.Returns(cache);
 
+    // A world with no claims, so claim checks (a bomb's permission test) read an empty list.
+    api.WorldManager.LandClaims.Returns([]);
+
     var events = Made<IServerEventAPI>();
     api.Event.Returns(events);
     coreApi.Event.Returns(events);
