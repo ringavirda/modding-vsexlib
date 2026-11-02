@@ -15,10 +15,9 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Industry.Machining;
 
 /// <summary>
-/// A machine tool on an "mpshaft" run: one piece is mounted in the work slot, a tool is fitted, and while the
-/// machine is engaged and its drive turns the cut is paid in joules, counted in game seconds. The job comes from
-/// <see cref="MachiningJobRegistry"/> by the piece's code and a step the block's <see cref="MachineKind"/> declares.
-/// A finished job puts its result in the work slot, its byproducts in the chips slot, and wears the tool.
+/// A machine tool on an "mpshaft" run: while engaged and driven it pays the mounted piece's cut in joules, counted in
+/// game seconds, for the job <see cref="MachiningJobRegistry"/> gives the piece's code and a step its
+/// <see cref="MachineKind"/> declares; a finished job leaves its result, byproducts and tool wear.
 /// </summary>
 /// <remarks>
 /// Slots: work 0, tool 1, chips 2 (take-only) and, when the kind declares a fixture, fixture 3. The work slot

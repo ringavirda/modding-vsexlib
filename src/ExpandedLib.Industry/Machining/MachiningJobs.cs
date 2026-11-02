@@ -13,13 +13,10 @@ public static class MachiningJobs {
   // Units of metal in one voxel (the density rule).
   private const float UnitsPerVoxel = 2.5f;
 
-  /// <summary>
-  /// Resolves every job in <paramref name="jobs"/> against <paramref name="collectibles"/>: finds its
-  /// input and output, picks its cutting material (the job's, else the input's <c>cuttingMaterial</c>
-  /// attribute) and sets <see cref="MachiningJob.RemovedKg"/> and <see cref="MachiningJob.ResolvedMaterial"/>.
-  /// The removed mass is the job's <c>removed</c>, else (input <c>materialUnits</c> - count x output
-  /// <c>materialUnits</c>) / 2.5 units per voxel x 1/4096 m3 per voxel x the material's density.
-  /// </summary>
+  /// <summary>Resolves every job in <paramref name="jobs"/> against <paramref name="collectibles"/>, setting
+  /// <see cref="MachiningJob.ResolvedMaterial"/> (the job's material, else the input's <c>cuttingMaterial</c>
+  /// attribute) and <see cref="MachiningJob.RemovedKg"/>: the job's <c>removed</c>, else (input <c>materialUnits</c>
+  /// - count x output <c>materialUnits</c>) / 2.5 units per voxel x 1/4096 m3 per voxel x the material's density.</summary>
   /// <param name="collectibles">The loaded collectibles; null entries are skipped.</param>
   /// <param name="jobs">The jobs to resolve; <see cref="MachiningJobRegistry.Shared"/> when null.</param>
   /// <param name="materials">The materials jobs may name; <see cref="CuttingMaterialRegistry.Shared"/> when null.</param>

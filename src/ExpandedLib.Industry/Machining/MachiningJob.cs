@@ -13,10 +13,7 @@ public sealed record MachiningByproduct(string Code, int Count);
 /// <param name="Recipe">Asset name of the grid recipe whose craft sequence is the labour.</param>
 public sealed record MachiningHand(string Machine, string Recipe);
 
-/// <summary>
-/// One cut: a piece goes in, a worked piece comes out, and <see cref="Count"/> of them do. Keyed by
-/// <see cref="Step"/> and <see cref="Input"/>; offered at every machine kind that declares the step.
-/// </summary>
+/// <summary>One cut, keyed by <see cref="Step"/> and <see cref="Input"/>, offered at every machine kind that declares the step.</summary>
 /// <param name="Step">The cutting step, an open string; iiex uses <c>turn</c>, <c>bore</c>, <c>plane</c>, <c>slot</c> and <c>drill</c>.</param>
 /// <param name="Input">Exact item code the machine takes.</param>
 /// <param name="Output">Exact item code it yields.</param>
