@@ -1070,7 +1070,11 @@ public sealed partial class TestWorld : IDisposable {
     var w = Made<IServerWorldAccessor>();
     w.Side.Returns(EnumAppSide.Server);
     w.PlayerByUid(Arg.Any<string>())
-      .Returns(ci => _playersByUid.GetValueOrDefault(ci.Arg<string>()));
+      .Returns(ci =>
+        ci.Arg<string>() is { } uid
+          ? _playersByUid.GetValueOrDefault(uid)
+          : null
+      );
     w.BlockAccessor.Returns(Accessor);
 #if GAME_GE_1_22
     IBulkBlockAccessor bulk = BuildBulkAccessor();
@@ -1090,7 +1094,8 @@ public sealed partial class TestWorld : IDisposable {
           ci.Arg<BlockPos>(),
           ci.Arg<EnumBlastType>(),
           ci.ArgAt<double>(2),
-          ci.ArgAt<double>(3)
+          ci.ArgAt<double>(3),
+          ci.ArgAt<string>(5)
         )
       );
 #endif

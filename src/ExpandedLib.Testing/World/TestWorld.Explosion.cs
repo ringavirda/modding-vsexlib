@@ -34,12 +34,16 @@ public sealed partial class TestWorld
 
   /// <summary>The server's <c>CreateExplosion</c> on blocks, drawing from <c>World.Rand</c>.</summary>
   /// <remarks>Entity injury, sounds, particles and the <c>onexplosion</c> event are not modelled;
-  /// like the engine, the drop-chance multiplier is not read.</remarks>
+  /// like the engine, the drop-chance multiplier is not read. The edge-of-world checks are left
+  /// out: <c>IsValidPos</c>, negative positions and the liquid notify at a broken cell. A broken
+  /// cell is written and its removal hooks run one cell at a time, where the engine's commit
+  /// writes every cell first and runs the hooks in a second pass.</remarks>
   private void Explode(
     BlockPos pos,
     EnumBlastType blastType,
     double destructionRadius,
-    double injureRadius
+    double injureRadius,
+    string? ignitedByPlayerUid
   )
   {
     destructionRadius = GameMath.Clamp(destructionRadius, 1.0, 16.0);
@@ -96,7 +100,7 @@ public sealed partial class TestWorld
 
     foreach (var (cell, block) in broken)
       if (block.BlockMaterial != EnumBlockMaterial.Air)
-        block.OnBlockExploded(World, cell, pos, blastType, null);
+        block.OnBlockExploded(World, cell, pos, blastType, ignitedByPlayerUid!);
     World.BulkBlockAccessor.Commit();
     foreach (BlockPos cell in broken.Keys)
       NotifyNeighbours(cell);

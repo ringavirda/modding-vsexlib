@@ -19,8 +19,7 @@ public class TestWorldExplosionTests
   private const string Lump = "test:lump";
   private static readonly BlockPos Centre = new(32, 32, 32);
 
-  // Seeds 1..40 of blasting.md case (a) gave 144..154 broken (mean 148.4, sd 2.2) against
-  // blast.py's 149, and 126..140 lumps (mean 133.6) against its 134.
+  // Seeds 1..40 gave 144..154 broken in the seam (mean 148.4).
   private const int SeamBrokenMin = 142;
   private const int SeamBrokenMax = 155;
   private static readonly int[] Seeds = [1, 2, 3, 4, 5];
@@ -38,6 +37,19 @@ public class TestWorldExplosionTests
       SeenAtHook = world.BlockAccessor.GetBlock(pos);
       return 1;
     }
+  }
+
+  private sealed class UidProbeBlock : Block
+  {
+    public List<string?> Uids { get; } = [];
+
+    public override void OnBlockExploded(
+      IWorldAccessor world,
+      BlockPos pos,
+      BlockPos explosionCenter,
+      EnumBlastType blastType,
+      string ignitedByPlayerUid
+    ) => Uids.Add(ignitedByPlayerUid);
   }
 
   private sealed class Volume
@@ -59,10 +71,29 @@ public class TestWorldExplosionTests
       World.Accessor.SetBlock(0, Centre);
     }
 
-    /// <summary>A 3-thick ore layer through the centre of a stone cube, as blasting.md case (a).</summary>
+    /// <summary>A 3-thick ore layer through the centre of a stone cube.</summary>
     public static Volume Seam3() => new((_, y, _) => y is >= -1 and <= 1);
 
     public static Volume Rock() => new((_, _, _) => false);
+
+    public (int PosX, int NegX, int PosY, int NegY, int PosZ, int NegZ) Extent()
+    {
+      var cleared = Cells()
+        .Where(c =>
+          World.GetBlock(c.Pos).BlockId == 0
+          && (c.Offset.X, c.Offset.Y, c.Offset.Z) != (0, 0, 0)
+        )
+        .Select(c => c.Offset)
+        .ToList();
+      return (
+        cleared.Max(o => o.X),
+        -cleared.Min(o => o.X),
+        cleared.Max(o => o.Y),
+        -cleared.Min(o => o.Y),
+        cleared.Max(o => o.Z),
+        -cleared.Min(o => o.Z)
+      );
+    }
 
     private Block Define(
       string code,
@@ -81,10 +112,10 @@ public class TestWorldExplosionTests
       return block;
     }
 
-    public void Blast(EnumBlastType type, int seed)
+    public void Blast(EnumBlastType type, int seed, string? uid = null)
     {
       World.World.Rand.Returns(new Random(seed));
-      World.World.CreateExplosion(Centre, type, 4, 10);
+      World.World.CreateExplosion(Centre, type, 4, 10, 1f, uid);
     }
 
     /// <summary>The cells inside the cube that read as air now, less the bomb's own, split by the
@@ -153,8 +184,59 @@ public class TestWorldExplosionTests
     Assert.True(rock.Cleared(_ => true) > 3 * ore.Cleared(_ => true));
   }
 
+  // Fails when the ray rounding or the random source differs from the engine's: the cells broken move.
+  // Expected values are the engine's rays over the doubles of System.Random(seed).
+  [Theory]
+  [InlineData(1, 149, 4, 3, 1, 1, 4, 3)]
+  [InlineData(2, 146, 4, 3, 1, 1, 4, 3)]
+  [InlineData(3, 152, 4, 3, 1, 1, 4, 3)]
+  public void Seam_blast_breaks_the_exact_cells_of_the_engine_model_for_a_seed(
+    int seed,
+    int broken,
+    int posX,
+    int negX,
+    int posY,
+    int negY,
+    int posZ,
+    int negZ
+  )
+  {
+    var v = Volume.Seam3();
+
+    v.Blast(EnumBlastType.OreBlast, seed);
+
+    Assert.Equal(broken, v.Cleared(InSeam));
+    Assert.Equal((posX, negX, posY, negY, posZ, negZ), v.Extent());
+  }
+
+  // Fails when the igniting player's uid is not passed to the block hook (it reads null).
+  [Fact]
+  public void A_blast_passes_the_igniting_uid_to_each_block_hook()
+  {
+    var v = Volume.Rock();
+    UidProbeBlock probe = TestBlocks.Configure(
+      new UidProbeBlock(),
+      "test:uidprobe",
+      3
+    );
+    probe.BlockMaterial = EnumBlockMaterial.Stone;
+    v.World.Register(probe);
+    v.World.Accessor.SetBlock(probe.BlockId, Centre.AddCopy(1, 0, 0));
+
+    v.Blast(EnumBlastType.RockBlast, 1, "igniter");
+
+    Assert.Equal(["igniter"], probe.Uids);
+  }
+
+  // Fails when a null uid reaches the player dictionary (ArgumentNullException, as a bomb set off by a blast).
+  [Fact]
+  public void The_world_finds_no_player_for_a_null_uid()
+  {
+    Assert.Null(new TestWorld().World.PlayerByUid(null!));
+  }
+
   // Fails when a broken block's own OnBlockExploded does not run (no drops) or runs after the
-  // block is already air (the ore's 0.9 drop chance reads as the 0.25 default).
+  // block is already removed (no block it breaks is removed, so the drop count leaves the band).
   [Fact]
   public void Ore_blast_drops_lumps_at_the_ore_drop_chance_and_no_cobble()
   {
