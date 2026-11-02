@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Washer Drill",
+    "ingredientPattern": "_R_,_R_,III",
+    "width": 3,
+    "height": 3,
+    "output": {
+      "type": "block",
+      "code": "washerpunch:machine-drill-ns"
+    },
+    "ingredients": {
+      "R": {
+        "type": "item",
+        "code": "game:rod-iron",
+        "quantity": 1
+      },
+      "I": {
+        "type": "item",
+        "code": "game:metalplate-iron",
+        "quantity": 1
+      }
+    }
+  }
+]

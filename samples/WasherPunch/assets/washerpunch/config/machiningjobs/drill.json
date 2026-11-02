@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "jobs": [
+    {
+      "step": "drill",
+      "input": "game:metalplate-iron",
+      "output": "washerpunch:drilledplate-iron",
+      "material": "wroughtiron",
+      "removed": 1.5
+    }
+  ]
+}
