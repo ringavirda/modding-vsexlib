@@ -73,7 +73,7 @@ public class PipeThroughflowTests {
     Assert.Equal(before, Run(w).OfferedTotalLitres, 3);
   }
 
-  // Fails when the ceiling keeps the last offer's rather than the lowest, or when the tick does not roll it out.
+  // Fails when the ceiling is the last offer's, not the lowest, or still stands two ticks later.
   [Fact]
   public void The_offer_ceiling_is_the_lowest_and_lasts_one_tick_more() {
     var w = NewRun(shut: true);
