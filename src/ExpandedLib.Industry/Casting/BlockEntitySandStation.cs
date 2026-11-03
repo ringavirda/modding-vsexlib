@@ -208,6 +208,16 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     }
   }
 
+  /// <summary>Redraws the metal and feed renderers on the client for the exchanged block's facing; the server keeps its state.</summary>
+  /// <param name="block">The block now at this position.</param>
+  public override void OnExchanged(Block block) {
+    base.OnExchanged(block);
+    if (Api is ICoreClientAPI capi) {
+      RebuildRenderer(capi);
+      RebuildFeedRenderer(capi);
+    }
+  }
+
   /// <inheritdoc/>
   public override void OnBlockRemoved() {
     DisposeRenderers();

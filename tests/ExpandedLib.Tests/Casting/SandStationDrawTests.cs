@@ -277,6 +277,31 @@ public class SandStationDrawTests : IDisposable {
     );
   }
 
+  // Fails when OnExchanged does not rebuild the renderers for the new facing.
+  [Fact]
+  public void An_exchange_rebuilds_the_renderers_for_the_new_facing() {
+    var (scene, client) = Impressed(share: 10, make: () => new FeedStation());
+    scene.Entity.Initialize(client.Api);
+    IRenderer[] drawn = [.. client.Renderers];
+    Assert.Equal(2, drawn.Length);
+
+    var turned = TestBlocks.Configure(
+      new BlockSandStation(),
+      "test:station-turned",
+      141
+    );
+    turned.Shape = new CompositeShape { rotateY = 90 };
+    scene.Entity.OnExchanged(turned);
+
+    Assert.Equal(
+      drawn.Order(new RefOrder()),
+      client.Unregistered.Order(new RefOrder())
+    );
+    IRenderer[] rebuilt = [.. client.Renderers.Skip(drawn.Length)];
+    Assert.Equal(2, rebuilt.Length);
+    Assert.DoesNotContain(rebuilt, r => drawn.Contains(r));
+  }
+
   private sealed class RefOrder : IComparer<IRenderer> {
     public int Compare(IRenderer? a, IRenderer? b) =>
       System
