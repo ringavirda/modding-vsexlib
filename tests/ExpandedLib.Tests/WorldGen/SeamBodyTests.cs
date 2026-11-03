@@ -80,14 +80,14 @@ public class SeamBodyTests
     Assert.Equal(depth, body.Anchor);
   }
 
-  // Fails when the run and strike are not capped at 160.
+  // Fails when the run and strike are not capped at 240.
   [Fact]
   public void A_run_over_the_reach_is_capped()
   {
     var body = SeamBody.Draw(Spec(run: 400), new LCGRandom(5));
 
-    Assert.Equal(160f, body.Run);
-    Assert.Equal(160f, body.Footprint.DistanceDown(0) * 2);
+    Assert.Equal(240f, body.Run);
+    Assert.Equal(240f, body.Footprint.DistanceDown(0) * 2);
   }
 
   // Fails when a field loses its JsonProperty or the file is read without strict members.

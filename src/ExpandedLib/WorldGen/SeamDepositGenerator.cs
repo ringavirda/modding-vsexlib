@@ -132,6 +132,26 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
     variant.TriesPerChunk *= _scale;
     _absAvgQuantity = AbsAvgQuantity(spec, variant.TriesPerChunk);
     _spec = spec;
+    if (_scale > 0)
+    {
+      WidenChunkRange(GetMaxRadius());
+    }
+  }
+
+  /// <summary>Chunks from a body's centre chunk that reach a column <paramref name="radius"/>
+  /// blocks from the centre: a centre may sit at the near edge of its chunk.</summary>
+  internal static int ChunkRangeFor(float radius) =>
+    (int)MathF.Ceiling(radius / GlobalConstants.ChunkSize);
+
+  private void WidenChunkRange(float radius)
+  {
+    if (Api.ModLoader.GetModSystem<GenDeposits>() is { } deposits)
+    {
+      deposits.depositChunkRange = Math.Max(
+        deposits.depositChunkRange,
+        ChunkRangeFor(radius)
+      );
+    }
   }
 
   private static double AbsAvgQuantity(SeamSpec spec, float triesPerChunk)
@@ -458,13 +478,16 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
   /// <inheritdoc/>
   public override float GetMaxRadius() =>
     _spec is { } spec
-      ? Math.Min(
-        Math.Max(
+      ? DepositFootprint.Reach(
+        Math.Min(
           spec.Footprint.Run.avg + spec.Footprint.Run.var,
-          spec.Footprint.Strike.avg + spec.Footprint.Strike.var
+          DepositFootprint.MaxLength
         ),
-        DepositFootprint.MaxLength
-      ) / 2
+        Math.Min(
+          spec.Footprint.Strike.avg + spec.Footprint.Strike.var,
+          DepositFootprint.MaxLength
+        )
+      )
       : 0;
 
   /// <inheritdoc/>

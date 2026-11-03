@@ -22,8 +22,14 @@ internal sealed class DepositFootprint(
   float direction
 )
 {
-  /// <summary>Longest run or strike in blocks, the reach of three chunks.</summary>
-  public const float MaxLength = 160;
+  /// <summary>Longest run or strike in blocks; the generator widens the deposit chunk range to
+  /// reach it.</summary>
+  public const float MaxLength = 240;
+
+  /// <summary>Furthest distance in blocks from the body centre to a column the outline can hold,
+  /// whatever the dip direction: the half diagonal of the run by strike rectangle.</summary>
+  public static float Reach(float run, float strike) =>
+    0.5f * MathF.Sqrt(run * run + strike * strike);
 
   /// <summary>Mean of the edge noise factor, 1 - 0.2 x noise with noise averaging 0.5.</summary>
   public const double EdgeMean = 0.9;

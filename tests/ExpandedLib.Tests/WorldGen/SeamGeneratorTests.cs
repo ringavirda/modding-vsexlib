@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.ServerMods;
 using Xunit;
 
 namespace ExpandedLib.Tests.WorldGen;
@@ -205,12 +206,69 @@ public class SeamGeneratorTests
     using var rig = new SeamRig();
     rig.World.Log.Expect(
       EnumLogType.Warning,
-      "test.json: footprint length up to 200"
+      "test.json: footprint length up to 300"
     );
 
-    rig.Generator(SeamRig.Attributes(run: 200), 5);
+    rig.Generator(SeamRig.Attributes(run: 300), 5);
 
-    Assert.Contains(rig.World.Log.Warnings, w => w.Contains("cut to 160"));
+    Assert.Contains(rig.World.Log.Warnings, w => w.Contains("cut to 240"));
+  }
+
+  // Fails when the reach is not handed to GenDeposits: a 240 x 160 body stays at vanilla's 3 chunks.
+  [Fact]
+  public void A_long_body_widens_the_deposit_chunk_range_to_its_reach()
+  {
+    using var rig = new SeamRig();
+    var deposits = new GenDeposits();
+    rig.World.Mods.Register(deposits);
+
+    rig.Generator(SeamRig.Attributes(run: 160, strike: 240), 5);
+
+    Assert.Equal(5, deposits.depositChunkRange);
+  }
+
+  // Fails when the off world widens the range: a body that places nothing still costs the wider scan.
+  [Fact]
+  public void An_off_world_leaves_the_deposit_chunk_range_alone()
+  {
+    using var rig = new SeamRig();
+    rig.World.Config.Tree.SetString("iiexBulkOre", "off");
+    var deposits = new GenDeposits();
+    rig.World.Mods.Register(deposits);
+
+    rig.Generator(
+      SeamRig.Attributes(
+        run: 160,
+        strike: 240,
+        extra: """, "worldScale": { "code": "iiexBulkOre", "values": { "off": 0, "normal": 1 } }"""
+      ),
+      5
+    );
+
+    Assert.Equal(3, deposits.depositChunkRange);
+  }
+
+  // Fails when the range is set rather than raised: a short body lowers vanilla's 3 to 1.
+  [Fact]
+  public void A_short_body_leaves_the_deposit_chunk_range_alone()
+  {
+    using var rig = new SeamRig();
+    var deposits = new GenDeposits();
+    rig.World.Mods.Register(deposits);
+
+    rig.Generator(SeamRig.Attributes(run: 24, strike: 16), 5);
+
+    Assert.Equal(3, deposits.depositChunkRange);
+  }
+
+  // Fails when the range rounds down: a reach just over a chunk multiple loses its last chunk.
+  [Theory]
+  [InlineData(96f, 3)]
+  [InlineData(96.5f, 4)]
+  [InlineData(144.2f, 5)]
+  public void The_chunk_range_covers_the_reach(float radius, int range)
+  {
+    Assert.Equal(range, SeamDepositGenerator.ChunkRangeFor(radius));
   }
 
   // Fails when the empty-host warning is removed.
