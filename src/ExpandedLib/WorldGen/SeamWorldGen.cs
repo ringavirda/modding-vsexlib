@@ -18,9 +18,9 @@ using Vintagestory.ServerMods.NoObf;
 namespace ExpandedLib.WorldGen;
 
 /// <summary>
-/// The world generation pass that places seams. It runs after vanilla's deposits with its own random
-/// and its own chunk range, so a seam never moves a block vanilla places and vanilla's range stays
-/// at three chunks. Seam files live in <c>worldgen/seams/</c>, which vanilla's deposit pass never reads.
+/// The world generation pass that places seams. It runs after every vanilla pass that reads a column's
+/// blocks, with its own random and its own chunk range, so a seam never moves a block vanilla places
+/// and vanilla's range stays at three chunks. Seam files live in <c>worldgen/seams/</c>, which vanilla's deposit pass never reads.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public sealed class SeamWorldGen : GenPartial
@@ -45,8 +45,13 @@ public sealed class SeamWorldGen : GenPartial
   private long _ticks;
   private int _columns;
 
-  /// <summary>After vanilla's deposits (0.2), so a column's seams are laid over its ore.</summary>
-  public override double ExecuteOrder() => 0.21;
+  /// <summary>The world generation pass the seams are laid in.</summary>
+  internal const EnumWorldGenPass Pass = EnumWorldGenPass.Vegetation;
+
+  /// <summary>In <see cref="Pass"/> after vanilla's rivulets (0.9) and before its sunlight (0.95):
+  /// every vanilla pass that reads a column's blocks (structures, ponds, rivulets) has run, so none of
+  /// them meets a seam block and the column's light counts them.</summary>
+  public override double ExecuteOrder() => 0.92;
 
   /// <summary>Chunks around the generated column that are scanned for bodies.</summary>
   protected override int chunkRange => _range;
@@ -72,7 +77,7 @@ public sealed class SeamWorldGen : GenPartial
     {
       api.Event.ChunkColumnGeneration(
         GenChunkColumn,
-        EnumWorldGenPass.TerrainFeatures,
+        Pass,
         "standard"
       );
       api.Event.GetWorldgenBlockAccessor(provider =>

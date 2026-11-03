@@ -126,6 +126,18 @@ public class SeamWorldGenTests
     );
   }
 
+  // Fails at TerrainFeatures 0.21, where vanilla's structures meet seam blocks and skip a site.
+  // Fails at 0.96, after vanilla's sunlight.
+  [Fact]
+  public void The_pass_runs_after_every_vanilla_pass_that_reads_the_column()
+  {
+    double order = new SeamWorldGen().ExecuteOrder();
+
+    Assert.Equal(EnumWorldGenPass.Vegetation, SeamWorldGen.Pass);
+    Assert.True(order > new GenRivulets().ExecuteOrder());
+    Assert.True(order < new GenLightSurvival().ExecuteOrder());
+  }
+
   // Fails when the timer is not wrapped around the column: a generated column leaves the seconds at zero.
   // Fails when the column count is not incremented: two columns read as none.
   [Fact]
