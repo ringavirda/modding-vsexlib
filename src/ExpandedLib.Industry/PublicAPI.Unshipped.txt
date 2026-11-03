@@ -694,3 +694,4 @@ virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.ReadDrive() -> Exp
 ExpandedLib.Industry.Pipes.IThroughputLimitedPipe.ThroughputFor(string? medium) -> float
 static ExpandedLib.Industry.Pipes.BlockPipe.RegisterThroughput(string! tier, string! medium, System.Func<float>! throughput) -> void
 virtual ExpandedLib.Industry.Pipes.BlockPipe.ThroughputFor(string? medium) -> float
+ExpandedLib.Industry.Pipes.PipeNetwork.ProducedTotalLitres.get -> double

@@ -54,6 +54,11 @@ public class PipeNetwork : BlockNetwork {
       State.SettledPressure = State.Pressure;
   }
 
+  /// <summary>Litres produced into this network since it was created, gas and water together. Two reads
+  /// differ by what producers delivered between them, whatever the order of the ticks; a new network
+  /// starts at 0.</summary>
+  public double ProducedTotalLitres { get; private set; }
+
   // Per-second throughput accumulators (litres), folded into State.FlowRate each tick.
   private float _producedAccum;
   private float _consumedAccum;
@@ -135,6 +140,7 @@ public class PipeNetwork : BlockNetwork {
       if (actualVolume > 0) {
         State.Volume += actualVolume;
         _producedAccum += actualVolume;
+        ProducedTotalLitres += actualVolume;
       }
       State.Pressure = PipeNetworkState.ComputeGasPressure(
         State.Volume,
@@ -252,6 +258,7 @@ public class PipeNetwork : BlockNetwork {
       setPressure
     );
     _producedAccum += actual;
+    ProducedTotalLitres += actual;
     BroadcastUpdate(blockAccessor);
     return true;
   }
