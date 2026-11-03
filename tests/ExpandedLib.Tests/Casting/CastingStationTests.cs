@@ -17,6 +17,66 @@ public class CastingStationTests {
     Assert.Equal([MouldKind.Open], kind!.Moulds);
     Assert.Equal("test:casting/base", kind.SandBase);
     Assert.Equal("test:casting/half", kind.SandHalf);
+    Assert.Equal("test:greensand", kind.SandItem);
+  }
+
+  // Fails when the loader skips the sand item.
+  [Fact]
+  public void A_station_without_a_sand_item_is_refused() {
+    var registry = new CastingStationRegistry();
+
+    List<string> errors = CastingStationLoader.Load(
+      [
+        (
+          "test:config/castingstations/x.json",
+          """{ "stations": [ { "code": "test", "sand": { "base": "a", "half": "b" } } ] }"""
+        ),
+      ],
+      registry
+    );
+
+    Assert.Contains("sand.item", Assert.Single(errors));
+    Assert.Equal(0, registry.Count);
+  }
+
+  // Fails when SameAs leaves the sand item out.
+  [Fact]
+  public void A_kind_redeclared_with_another_sand_item_is_a_conflict() {
+    var registry = new CastingStationRegistry();
+    var first = new CastingStationKind(
+      "testflask",
+      [MouldKind.Open],
+      "a:base",
+      "a:half",
+      "a:sand"
+    );
+    var second = first with { SandItem = "b:sand" };
+
+    Assert.False(first.SameAs(second));
+    Assert.Empty(registry.Contribute(new CastingStationSet(1, [first])));
+    Assert.Single(registry.Contribute(new CastingStationSet(1, [second])));
+  }
+
+  // Fails when the wildcard is compared as a plain string.
+  [Theory]
+  [InlineData("game:sand-granite", true)]
+  [InlineData("game:gravel-granite", false)]
+  [InlineData("othermod:sand-granite", false)]
+  [InlineData("", false)]
+  [InlineData(null, false)]
+  public void A_sand_item_wildcard_matches_the_family_it_names(
+    string? code,
+    bool expected
+  ) {
+    var kind = new CastingStationKind(
+      "testflask",
+      [MouldKind.Open],
+      "a:base",
+      "a:half",
+      "game:sand-*"
+    );
+
+    Assert.Equal(expected, kind.Matches(code));
   }
 
   // Fails when a redeclaration with different sand replaces the held kind.
@@ -27,13 +87,15 @@ public class CastingStationTests {
       "testflask",
       [MouldKind.Open],
       "a:base",
-      "a:half"
+      "a:half",
+      "a:sand"
     );
     var second = new CastingStationKind(
       "testflask",
       [MouldKind.Open],
       "b:base",
-      "b:half"
+      "b:half",
+      "a:sand"
     );
 
     Assert.Empty(registry.Contribute(new CastingStationSet(1, [first])));
@@ -53,13 +115,15 @@ public class CastingStationTests {
       "testflask",
       [MouldKind.Open, MouldKind.Closed],
       "a:base",
-      "a:half"
+      "a:half",
+      "a:sand"
     );
     var same = new CastingStationKind(
       "TestFlask",
       [MouldKind.Closed, MouldKind.Open],
       "a:base",
-      "a:half"
+      "a:half",
+      "a:sand"
     );
 
     registry.Contribute(new CastingStationSet(1, [kind]));
@@ -75,7 +139,7 @@ public class CastingStationTests {
       [
         (
           "test:config/castingstations/bad.json",
-          """{ "stations": [ { "code": "testflask", "mould": ["open"], "sand": { "base": "a", "half": "b" } } ] }"""
+          """{ "stations": [ { "code": "testflask", "mould": ["open"], "sand": { "base": "a", "half": "b", "item": "t:s" } } ] }"""
         ),
       ],
       registry
@@ -89,15 +153,15 @@ public class CastingStationTests {
 
   [Theory]
   [InlineData(
-    """{ "stations": [ { "code": "Test", "sand": { "base": "a", "half": "b" } } ] }""",
+    """{ "stations": [ { "code": "Test", "sand": { "base": "a", "half": "b", "item": "t:s" } } ] }""",
     "bare lowercase"
   )]
   [InlineData(
-    """{ "stations": [ { "code": "test", "moulds": [] , "sand": { "base": "a", "half": "b" } } ] }""",
+    """{ "stations": [ { "code": "test", "moulds": [] , "sand": { "base": "a", "half": "b", "item": "t:s" } } ] }""",
     "no moulds"
   )]
   [InlineData(
-    """{ "stations": [ { "code": "test", "moulds": ["wet"], "sand": { "base": "a", "half": "b" } } ] }""",
+    """{ "stations": [ { "code": "test", "moulds": ["wet"], "sand": { "base": "a", "half": "b", "item": "t:s" } } ] }""",
     "invalid mould 'wet'"
   )]
   [InlineData("""{ "stations": [ { "code": "test" } ] }""", "'sand' pair")]

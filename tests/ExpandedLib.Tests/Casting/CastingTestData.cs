@@ -12,7 +12,7 @@ internal static class CastingTestData {
       "schema": 1,
       "stations": [
         { "code": "testflask", "moulds": ["open"],
-          "sand": { "base": "test:casting/base", "half": "test:casting/half" } }
+          "sand": { "base": "test:casting/base", "half": "test:casting/half", "item": "test:greensand" } }
       ]
     }
     """;
