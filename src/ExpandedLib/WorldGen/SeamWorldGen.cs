@@ -2,7 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -40,6 +42,8 @@ public sealed class SeamWorldGen : GenPartial
   private IBlockAccessor? _blockAccessor;
   private readonly BlockPos _tmpPos = new(Dimensions.NormalWorld);
   private Dictionary<BlockPos, DepositVariant> _unused = [];
+  private long _ticks;
+  private int _columns;
 
   /// <summary>After vanilla's deposits (0.2), so a column's seams are laid over its ore.</summary>
   public override double ExecuteOrder() => 0.21;
@@ -49,6 +53,13 @@ public sealed class SeamWorldGen : GenPartial
 
   /// <summary>Chunks around the column the pass scans; never below vanilla's three.</summary>
   internal int ChunkRange => _range;
+
+  /// <summary>Seconds the pass has spent generating columns, summed over every generating thread.</summary>
+  internal double GenerationSeconds =>
+    (double)Interlocked.Read(ref _ticks) / Stopwatch.Frequency;
+
+  /// <summary>Columns the pass has generated.</summary>
+  internal int ColumnsGenerated => Volatile.Read(ref _columns);
 
   /// <summary>The seam variants the pass places.</summary>
   internal IReadOnlyList<DepositVariant> Variants => _variants;
@@ -69,6 +80,15 @@ public sealed class SeamWorldGen : GenPartial
       );
       api.Event.MapRegionGeneration(OnMapRegionGen, "standard");
     }
+    api.Event.ServerRunPhase(
+      EnumServerRunPhase.Shutdown,
+      () =>
+        api.Logger.Notification(
+          "[seams] pass time {0:F3} s over {1} columns",
+          GenerationSeconds,
+          ColumnsGenerated
+        )
+    );
     api.Event.ServerRunPhase(
       EnumServerRunPhase.RunGame,
       () =>
@@ -206,11 +226,14 @@ public sealed class SeamWorldGen : GenPartial
   /// <inheritdoc/>
   protected override void GenChunkColumn(IChunkColumnGenerateRequest request)
   {
+    long start = Stopwatch.GetTimestamp();
     if (_blockAccessor is IWorldGenBlockAccessor accessor)
     {
       accessor.BeginColumn();
     }
     base.GenChunkColumn(request);
+    Interlocked.Add(ref _ticks, Stopwatch.GetTimestamp() - start);
+    Interlocked.Increment(ref _columns);
   }
 
   /// <inheritdoc/>

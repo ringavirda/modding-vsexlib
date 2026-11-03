@@ -126,6 +126,25 @@ public class SeamWorldGenTests
     );
   }
 
+  // Fails when the timer is not wrapped around the column: a generated column leaves the seconds at zero.
+  // Fails when the column count is not incremented: two columns read as none.
+  [Fact]
+  public void The_pass_times_the_columns_it_generates()
+  {
+    using var rig = new SeamRig();
+    var pass = Pass(
+      rig,
+      Variant(SeamRig.Attributes(run: 120, strike: 120), 3)
+    );
+    Assert.Equal(0, pass.ColumnsGenerated);
+
+    Column(rig, pass);
+    Column(rig, pass);
+
+    Assert.Equal(2, pass.ColumnsGenerated);
+    Assert.True(pass.GenerationSeconds > 0);
+  }
+
   // Fails when the pass seeds from anything but the world seed (a counter, the clock): the second run differs.
   // Fails when the world seed is ignored: seeds 5 and 6 lay the same column.
   [Fact]
