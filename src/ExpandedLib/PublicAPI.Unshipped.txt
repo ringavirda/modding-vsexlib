@@ -642,3 +642,10 @@ const ExpandedLib.ExlibLang.MachineToolInfoNotool = "exlib:machine-tool-info-not
 const ExpandedLib.ExlibLang.MachineToolInfoStopped = "exlib:machine-tool-info-stopped" -> string!
 const ExpandedLib.ExlibLang.MachineToolInfoTier = "exlib:machine-tool-info-tier" -> string!
 const ExpandedLib.ExlibLang.MachineToolInfoWrongtool = "exlib:machine-tool-info-wrongtool" -> string!
+ExpandedLib.WorldGen.SeamWorldGen
+ExpandedLib.WorldGen.SeamWorldGen.SeamWorldGen() -> void
+override ExpandedLib.WorldGen.SeamWorldGen.AssetsFinalize(Vintagestory.API.Common.ICoreAPI! api) -> void
+override ExpandedLib.WorldGen.SeamWorldGen.ExecuteOrder() -> double
+override ExpandedLib.WorldGen.SeamWorldGen.GeneratePartial(Vintagestory.API.Server.IServerChunk![]! chunks, int chunkX, int chunkZ, int chunkdX, int chunkdZ) -> void
+override ExpandedLib.WorldGen.SeamWorldGen.initWorldGen() -> void
+override ExpandedLib.WorldGen.SeamWorldGen.StartServerSide(Vintagestory.API.Server.ICoreServerAPI! api) -> void

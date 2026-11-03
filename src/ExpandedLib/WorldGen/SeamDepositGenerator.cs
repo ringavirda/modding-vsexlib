@@ -132,27 +132,16 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
     variant.TriesPerChunk *= _scale;
     _absAvgQuantity = AbsAvgQuantity(spec, variant.TriesPerChunk);
     _spec = spec;
-    if (_scale > 0)
-    {
-      WidenChunkRange(GetMaxRadius());
-    }
   }
+
+  /// <summary>Blocks from a body's centre that its columns reach; 0 for a rejected spec or a world
+  /// the scale turns off.</summary>
+  internal float ReachRadius => _scale > 0 ? GetMaxRadius() : 0;
 
   /// <summary>Chunks from a body's centre chunk that reach a column <paramref name="radius"/>
   /// blocks from the centre: a centre may sit at the near edge of its chunk.</summary>
   internal static int ChunkRangeFor(float radius) =>
     (int)MathF.Ceiling(radius / GlobalConstants.ChunkSize);
-
-  private void WidenChunkRange(float radius)
-  {
-    if (Api.ModLoader.GetModSystem<GenDeposits>() is { } deposits)
-    {
-      deposits.depositChunkRange = Math.Max(
-        deposits.depositChunkRange,
-        ChunkRangeFor(radius)
-      );
-    }
-  }
 
   private static double AbsAvgQuantity(SeamSpec spec, float triesPerChunk)
   {

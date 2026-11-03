@@ -214,53 +214,6 @@ public class SeamGeneratorTests
     Assert.Contains(rig.World.Log.Warnings, w => w.Contains("cut to 240"));
   }
 
-  // Fails when the reach is not handed to GenDeposits: a 240 x 160 body stays at vanilla's 3 chunks.
-  [Fact]
-  public void A_long_body_widens_the_deposit_chunk_range_to_its_reach()
-  {
-    using var rig = new SeamRig();
-    var deposits = new GenDeposits();
-    rig.World.Mods.Register(deposits);
-
-    rig.Generator(SeamRig.Attributes(run: 160, strike: 240), 5);
-
-    Assert.Equal(5, deposits.depositChunkRange);
-  }
-
-  // Fails when the off world widens the range: a body that places nothing still costs the wider scan.
-  [Fact]
-  public void An_off_world_leaves_the_deposit_chunk_range_alone()
-  {
-    using var rig = new SeamRig();
-    rig.World.Config.Tree.SetString("iiexBulkOre", "off");
-    var deposits = new GenDeposits();
-    rig.World.Mods.Register(deposits);
-
-    rig.Generator(
-      SeamRig.Attributes(
-        run: 160,
-        strike: 240,
-        extra: """, "worldScale": { "code": "iiexBulkOre", "values": { "off": 0, "normal": 1 } }"""
-      ),
-      5
-    );
-
-    Assert.Equal(3, deposits.depositChunkRange);
-  }
-
-  // Fails when the range is set rather than raised: a short body lowers vanilla's 3 to 1.
-  [Fact]
-  public void A_short_body_leaves_the_deposit_chunk_range_alone()
-  {
-    using var rig = new SeamRig();
-    var deposits = new GenDeposits();
-    rig.World.Mods.Register(deposits);
-
-    rig.Generator(SeamRig.Attributes(run: 24, strike: 16), 5);
-
-    Assert.Equal(3, deposits.depositChunkRange);
-  }
-
   // Fails when the range rounds down: a reach just over a chunk multiple loses its last chunk.
   [Theory]
   [InlineData(96f, 3)]
