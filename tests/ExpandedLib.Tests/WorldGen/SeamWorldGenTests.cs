@@ -144,10 +144,7 @@ public class SeamWorldGenTests
   public void The_pass_times_the_columns_it_generates()
   {
     using var rig = new SeamRig();
-    var pass = Pass(
-      rig,
-      Variant(SeamRig.Attributes(run: 120, strike: 120), 3)
-    );
+    var pass = Pass(rig, Variant(SeamRig.Attributes(run: 120, strike: 120), 3));
     Assert.Equal(0, pass.ColumnsGenerated);
 
     Column(rig, pass);

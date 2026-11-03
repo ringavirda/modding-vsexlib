@@ -344,6 +344,28 @@ public class SeamGeneratorTests
     }
   }
 
+  // Fails when the sign reads the rain height map: a canopy over the column lifts the sign's row into air.
+  [Fact]
+  public void A_sign_lands_at_the_terrain_height_under_a_canopy()
+  {
+    using var rig = new SeamRig();
+    string attrs = SeamRig.Attributes(
+      run: 60,
+      strike: 40,
+      dip: 0,
+      anchorY: SeamRig.RockTop - 2,
+      layers: """[ { "block": "test:ore", "thickness": { "dist": "uniform", "avg": 3, "var": 0 }, "surfaceBlock": "test:loose-{rock}", "surfaceBlockChance": 1 } ]"""
+    );
+    var chunks = rig.Chunks(rainTop: SeamRig.RockTop + 12);
+
+    rig.Generate(rig.Generator(attrs, 5), chunks, 0, new BlockPos(16, 100, 16));
+
+    Assert.Equal(
+      rig.SignClaystone.BlockId,
+      SeamRig.Id(chunks, 16, SeamRig.RockTop + 1, 16)
+    );
+  }
+
   // Fails when the variant's block callback flag is ignored: the blocks are written, not handed on.
   [Fact]
   public void The_block_callback_flag_hands_every_block_to_the_block()

@@ -75,11 +75,7 @@ public sealed class SeamWorldGen : GenPartial
     base.StartServerSide(api);
     if (TerraGenConfig.DoDecorationPass)
     {
-      api.Event.ChunkColumnGeneration(
-        GenChunkColumn,
-        Pass,
-        "standard"
-      );
+      api.Event.ChunkColumnGeneration(GenChunkColumn, Pass, "standard");
       api.Event.GetWorldgenBlockAccessor(provider =>
         _blockAccessor = provider.GetBlockAccessor(true)
       );

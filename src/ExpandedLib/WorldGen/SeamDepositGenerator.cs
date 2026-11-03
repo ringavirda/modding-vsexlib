@@ -358,7 +358,7 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
   )
   {
     (int lx, int lz) = local;
-    int surfaceY = ground.RainY(lx, lz);
+    int surfaceY = ground.TerrainY(lx, lz);
     float depth = surfaceY - cell.Y;
     float chance =
       layer.SurfaceBlockChance
