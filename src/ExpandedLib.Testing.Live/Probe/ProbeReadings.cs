@@ -15,10 +15,13 @@ using Vintagestory.GameContent;
 namespace ExpandedLib.Testing.Live;
 
 /// <summary>A probe run of prospecting pick density readings: loads the column under each block
-/// position, asks the game's own pick for its reading there and writes
+/// position (asking again when a load has not answered in 30 s), asks the game's own pick for its
+/// reading there, logs <c>[probe] reading n/m</c> after each position and writes
 /// <c>&lt;dataPath&gt;/probe/readings-&lt;seed&gt;-&lt;time&gt;.json</c>.</summary>
 internal sealed class ProbeReadings {
   private const int ChunkSize = 32;
+  private const int SurfaceChunkY = 4;
+  private const double RetrySeconds = 30;
   private static readonly MethodInfo GenProbeResults =
     typeof(ItemProspectingPick).GetMethod(
       "GenProbeResults",
@@ -32,6 +35,7 @@ internal sealed class ProbeReadings {
   private readonly long _listener;
   private int _next;
   private int _loaded;
+  private readonly System.Diagnostics.Stopwatch _wait = new();
 
   /// <summary>Whether positions are still waiting; false once the file is written.</summary>
   public bool Active { get; private set; } = true;
@@ -90,6 +94,14 @@ internal sealed class ProbeReadings {
   private void LoadNext() {
     (int x, int z) = _positions[_next];
     _loaded = 0;
+    _wait.Restart();
+    if (
+      _api.WorldManager.GetChunk(x / ChunkSize, SurfaceChunkY, z / ChunkSize)
+      != null
+    ) {
+      System.Threading.Volatile.Write(ref _loaded, 1);
+      return;
+    }
     _api.WorldManager.LoadChunkColumnPriority(
       x / ChunkSize,
       z / ChunkSize,
@@ -103,8 +115,18 @@ internal sealed class ProbeReadings {
   }
 
   private void Tick(float dt) {
-    if (!Active || System.Threading.Volatile.Read(ref _loaded) == 0)
+    if (!Active)
       return;
+    if (System.Threading.Volatile.Read(ref _loaded) == 0) {
+      if (_wait.Elapsed.TotalSeconds > RetrySeconds) {
+        _api.Logger.Notification(
+          "[probe] retry {0}: load asked again",
+          _next + 1
+        );
+        LoadNext();
+      }
+      return;
+    }
     System.Threading.Volatile.Write(ref _loaded, 0);
     (int x, int z) = _positions[_next];
     var reading = (PropickReading?)
@@ -128,6 +150,11 @@ internal sealed class ProbeReadings {
     );
     _api.WorldManager.UnloadChunkColumn(x / ChunkSize, z / ChunkSize);
     _next++;
+    _api.Logger.Notification(
+      "[probe] reading {0}/{1}",
+      _next,
+      _positions.Count
+    );
     if (_next < _positions.Count) {
       LoadNext();
       return;
