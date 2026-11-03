@@ -132,6 +132,11 @@ public sealed partial class SetupScene
       Draw(step.Path, with);
       Player.Hold(with);
     }
+    ItemStack? offHand = step.Body["offHand"] is { } off
+      ? StackOf(off, step.Path)
+      : null;
+    if (offHand != null)
+      Draw(step.Path, offHand);
     EnumHandHandling handling = Player.UseHeld(
       at,
       null,
@@ -141,13 +146,16 @@ public sealed partial class SetupScene
       keys.Contains("ctrl"),
       keys.Contains("sprint"),
       seconds,
-      TickSecond
+      TickSecond,
+      offHand
     );
     string heldCode =
       Player.ActiveSlot.Itemstack?.Collectible.Code.ToString()
       ?? "an empty hand";
     if (!keep)
       Give(Player.ActiveSlot.Itemstack);
+    Give(Player.OffHandSlot.Itemstack);
+    Player.HoldOffHand(null);
     if (!keep)
       Player.Hold(null);
     if (handling == EnumHandHandling.NotHandled)

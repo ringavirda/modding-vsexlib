@@ -16,6 +16,7 @@ internal sealed class SetupHoldWand : Item
   public readonly List<float> Seconds = [];
   public readonly List<Vec3d> Hits = [];
   public readonly List<EnumHandInteract> HandUses = [];
+  public readonly List<string?> OffHands = [];
 
   public override void OnHeldInteractStart(
     ItemSlot slot,
@@ -29,6 +30,7 @@ internal sealed class SetupHoldWand : Item
     Calls.Add("start");
     Hits.Add(blockSel.HitPosition.Clone());
     HandUses.Add(byEntity.Controls.HandUse);
+    OffHands.Add(byEntity.LeftHandItemSlot.Itemstack?.Collectible.Code.ToString());
     handling = EnumHandHandling.PreventDefault;
   }
 

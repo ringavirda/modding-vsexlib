@@ -60,6 +60,15 @@ internal sealed class UseStep : ScenarioStep {
     ItemSlot active = player.Player.InventoryManager.ActiveHotbarSlot;
     if (stack != null)
       PackLedger.Draw(ctx, stack.Collectible.Code.ToString(), stack.StackSize);
+    ItemStack? offHand = o["offHand"] is JObject off
+      ? StepValues.Held(ctx, off)
+      : null;
+    if (offHand != null)
+      PackLedger.Draw(
+        ctx,
+        offHand.Collectible.Code.ToString(),
+        offHand.StackSize
+      );
     string? withText = stack == null ? null : ScenarioPlayer.StackText(stack);
     string[] keys = InteractStep.KeyNames(o["keys"]);
     double seconds = (double)o["seconds"]!;
@@ -72,7 +81,8 @@ internal sealed class UseStep : ScenarioStep {
       at,
       selection,
       InteractStep.ClickStack(stack, active),
-      keys
+      keys,
+      offHand
     );
     try {
       if (handling == EnumHandHandling.NotHandled)

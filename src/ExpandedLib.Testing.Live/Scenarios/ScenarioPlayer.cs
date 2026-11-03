@@ -553,13 +553,15 @@ internal sealed class ScenarioPlayer : IHandRelease {
   /// <param name="selection">What the use is aimed at; the hold's later calls pass it to the item.</param>
   /// <param name="stack">What the hand holds, or null for an empty hand.</param>
   /// <param name="keys">Names read by <see cref="Hold"/>.</param>
+  /// <param name="offHand">What the off hand holds, or null for an empty one.</param>
   /// <returns>What the start left in the hand handling; <see cref="EnumHandHandling.NotHandled"/> for an
   /// empty hand.</returns>
   public EnumHandHandling HeldStart(
     BlockPos at,
     BlockSelection selection,
     ItemStack? stack,
-    IReadOnlyList<string> keys
+    IReadOnlyList<string> keys,
+    ItemStack? offHand = null
   ) {
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
     _data.FreeMove = false;
@@ -568,6 +570,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
     Hold(Player.Entity.Controls, keys);
     ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
     slot.Itemstack = stack;
+    Player.InventoryManager.OffhandHotbarSlot.Itemstack = offHand;
     EnumHandHandling handling = EnumHandHandling.NotHandled;
     if (slot.Empty)
       return handling;

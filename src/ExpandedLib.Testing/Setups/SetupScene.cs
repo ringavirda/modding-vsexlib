@@ -300,6 +300,10 @@ public sealed partial class SetupScene : IDisposable
             s.Kind == "interact"
             && (s.Body["offHand"] != null || s.Body["control"] != null)
           )
+          || (
+            s.Kind == "use"
+            && s.Body["offHand"] != null
+          )
         );
     World.LoadAssets(modPaths, null, VanillaCodes(), crafts);
     MetalCatalogueLoader.Load(World.Api);

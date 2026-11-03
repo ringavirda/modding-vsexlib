@@ -44,6 +44,32 @@ public class SetupUseTests
     Assert.Equal(EnumHandInteract.None, scene.Player.Entity.Controls.HandUse);
   }
 
+  // Fails when the offHand is not put in the off-hand slot before the item's start.
+  [Fact]
+  public void Use_puts_the_off_hand_in_the_slot_for_the_start()
+  {
+    using SetupScene scene = SetupHoldTests.Build(
+      Use(
+        "\"with\": {\"stack\": \"setuphold:wand\"}, \"offHand\": {\"stack\": \"game:stick\"}, \"seconds\": 0"
+      )
+    );
+
+    Assert.Equal(["game:stick"], Wand(scene).OffHands);
+  }
+
+  // Fails when the off-hand stack is left in the slot after the step.
+  [Fact]
+  public void A_use_empties_the_off_hand_after_the_click()
+  {
+    using SetupScene scene = SetupHoldTests.Build(
+      Use(
+        "\"with\": {\"stack\": \"setuphold:wand\"}, \"offHand\": {\"stack\": \"game:stick\"}, \"seconds\": 0"
+      )
+    );
+
+    Assert.Null(scene.Player.OffHandSlot.Itemstack);
+  }
+
   // Fails when the hit is handed to the item undivided.
   [Fact]
   public void Use_hit_is_sixteenths_of_the_cell()
