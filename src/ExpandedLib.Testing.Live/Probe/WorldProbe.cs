@@ -6,13 +6,19 @@ using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods;
 
 namespace ExpandedLib.Testing.Live;
 
 /// <summary>A probe run on the server: generates a rectangle of chunk columns tile by tile, counts the
-/// requested blocks per tile from chunk data, unloads each tile and writes the report.</summary>
+/// requested blocks per tile from chunk data, unloads each tile and writes the report. Beside
+/// <c>probe-&lt;seed&gt;-&lt;time&gt;.json</c> it writes, when asked, the <c>.blocks</c> file (records of four little-endian
+/// int32: code index, x, y, z, one per block of a recorded code) and the <c>.terrain</c> file (per column
+/// int32 columnX, columnZ, province index, then 64 little-endian uint16 terrain heights, 8 x 8 samples every
+/// fourth block, rows from the lowest Z).</summary>
 internal sealed class WorldProbe {
   private const int ChunkSize = 32;
 
@@ -24,6 +30,10 @@ internal sealed class WorldProbe {
   private readonly Stopwatch _total = Stopwatch.StartNew();
   private readonly Stopwatch _tileClock = new();
   private readonly long _listener;
+  private readonly string _stem;
+  private readonly BinaryWriter? _blocks;
+  private readonly BinaryWriter? _terrain;
+  private readonly string[] _provinces;
   private int _next;
   private int _loaded;
 
@@ -45,6 +55,18 @@ internal sealed class WorldProbe {
     }
     _tiles = request.Tiles(minX, minZ);
     _patternOf = BlockPatterns(api, request.Codes);
+    string dir = Path.Combine(GamePaths.DataPath, "probe");
+    Directory.CreateDirectory(dir);
+    _stem = Path.Combine(
+      dir,
+      $"probe-{api.WorldManager.Seed}-{DateTime.UtcNow:yyyyMMddHHmmss}"
+    );
+    if (request.Recorded.Any(r => r))
+      _blocks = new BinaryWriter(File.Create(_stem + ".blocks"));
+    _provinces =
+      NoiseGeoProvince.provinces?.Variants.Select(v => v.Code).ToArray() ?? [];
+    if (request.Terrain)
+      _terrain = new BinaryWriter(File.Create(_stem + ".terrain"));
     _listener = api.Event.RegisterGameTickListener(Tick, 20);
     LoadNext();
   }
@@ -95,6 +117,7 @@ internal sealed class WorldProbe {
     for (int x = t.MinColumnX; x <= t.MaxColumnX; x++)
       for (int z = t.MinColumnZ; z <= t.MaxColumnZ; z++) {
         CountColumn(x, z, counts);
+        WriteTerrain(x, z);
         _api.WorldManager.UnloadChunkColumn(x, z);
       }
     _results.Add(
@@ -131,8 +154,16 @@ internal sealed class WorldProbe {
       try {
         for (int i = 0; i < data.Length; i++) {
           int id = data.GetBlockIdUnsafe(i);
-          if (id >= 0 && id < _patternOf.Length && _patternOf[id] >= 0)
-            counts[_patternOf[id]]++;
+          if (id < 0 || id >= _patternOf.Length || _patternOf[id] < 0)
+            continue;
+          int code = _patternOf[id];
+          counts[code]++;
+          if (_blocks != null && _request.Recorded[code]) {
+            _blocks.Write(code);
+            _blocks.Write(cx * ChunkSize + (i & 31));
+            _blocks.Write(cy * ChunkSize + (i >> 10));
+            _blocks.Write(cz * ChunkSize + ((i >> 5) & 31));
+          }
         }
       } finally {
         data.ReleaseBulkReadLock();
@@ -140,16 +171,40 @@ internal sealed class WorldProbe {
     }
   }
 
+  private void WriteTerrain(int cx, int cz) {
+    IServerMapChunk? map =
+      _terrain == null ? null : _api.WorldManager.GetMapChunk(cx, cz);
+    if (_terrain == null || map == null)
+      return;
+    _terrain.Write(cx);
+    _terrain.Write(cz);
+    _terrain.Write(Province(map, cx, cz));
+    for (int z = 0; z < ChunkSize; z += 4)
+      for (int x = 0; x < ChunkSize; x += 4)
+        _terrain.Write(map.WorldGenTerrainHeightMap[z * ChunkSize + x]);
+  }
+
+  /// <summary>The province index of the map cell under the column's centre, -1 without a map.</summary>
+  private int Province(IServerMapChunk map, int cx, int cz) {
+    IntDataMap2D? provinces = map.MapRegion?.GeologicProvinceMap;
+    if (provinces == null)
+      return -1;
+    int region = _api.WorldManager.RegionSize;
+    int x = (cx * ChunkSize + ChunkSize / 2) % region;
+    int z = (cz * ChunkSize + ChunkSize / 2) % region;
+    return provinces.GetUnpaddedInt(
+      (x + region) % region / TerraGenConfig.geoProvMapScale,
+      (z + region) % region / TerraGenConfig.geoProvMapScale
+    );
+  }
+
   private void Finish() {
     Active = false;
     _api.Event.UnregisterGameTickListener(_listener);
+    _blocks?.Dispose();
+    _terrain?.Dispose();
     EntityPos spawn = _api.World.DefaultSpawnPosition;
-    string dir = Path.Combine(GamePaths.DataPath, "probe");
-    Directory.CreateDirectory(dir);
-    string path = Path.Combine(
-      dir,
-      $"probe-{_api.WorldManager.Seed}-{DateTime.UtcNow:yyyyMMddHHmmss}.json"
-    );
+    string path = _stem + ".json";
     File.WriteAllText(
       path,
       ProbeReport.ToJson(
@@ -157,7 +212,13 @@ internal sealed class WorldProbe {
         [(int)spawn.X, (int)spawn.Y, (int)spawn.Z],
         _total.Elapsed.TotalSeconds,
         _request.Codes,
-        _results
+        _results,
+        new ProbeFiles(
+          _request.Codes.Where((c, i) => _request.Recorded[i]).ToArray(),
+          _blocks == null ? null : Path.GetFileName(_stem) + ".blocks",
+          _terrain == null ? null : Path.GetFileName(_stem) + ".terrain",
+          _provinces
+        )
       )
     );
     _api.Logger.Notification("[probe] done: {0}", path);

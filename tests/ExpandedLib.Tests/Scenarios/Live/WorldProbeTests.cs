@@ -83,4 +83,56 @@ public class WorldProbeTests {
     Assert.Equal(7, (long)json["tiles"]![1]!["counts"]!["a*"]!);
     Assert.Equal([10, 120, -4], json["spawn"]!.Select(t => (int)t).ToArray());
   }
+
+  /// <summary>Fails when a plus sign stays in the code, the recorded flag lands on the wrong code or
+  /// @terrain is taken for a code.</summary>
+  [Fact]
+  public void Plus_records_a_code_and_terrain_is_no_code() {
+    ProbeRequest r = ProbeRequest.Parse(
+      "0 0 4 4 2 game:rock-* +iiex:seamore-* @terrain",
+      out _
+    )!;
+    Assert.Equal(["game:rock-*", "iiex:seamore-*"], r.Codes);
+    Assert.Equal([false, true], r.Recorded);
+    Assert.True(r.Terrain);
+    Assert.False(ProbeRequest.Parse("0 0 4 4 2 game:rock-*", out _)!.Terrain);
+  }
+
+  /// <summary>Fails when @terrain alone is accepted as the code list.</summary>
+  [Fact]
+  public void Terrain_without_a_code_is_refused() =>
+    Assert.Null(ProbeRequest.Parse("0 0 4 4 2 @terrain", out _));
+
+  /// <summary>Fails when position pairs are split wrongly or an odd count is accepted.</summary>
+  [Fact]
+  public void Readings_take_coordinate_pairs() {
+    var positions = ProbeReadings.ParsePositions("10 -20 300 400", out _);
+    Assert.Equal([(10, -20), (300, 400)], positions);
+    Assert.Null(ProbeReadings.ParsePositions("10 -20 300", out string error));
+    Assert.Contains("Usage", error);
+    Assert.Null(ProbeReadings.ParsePositions("10 x", out error));
+    Assert.Contains("'x'", error);
+  }
+
+  /// <summary>Fails when the report omits the side files or the recorded codes.</summary>
+  [Fact]
+  public void The_report_names_the_side_files() {
+    JObject json = JObject.Parse(
+      ProbeReport.ToJson(
+        1,
+        null,
+        1,
+        ["a*"],
+        [],
+        new ProbeFiles(["a*"], "p.blocks", "p.terrain", ["platform", "basin"])
+      )
+    );
+    Assert.Equal("p.blocks", (string)json["blocksFile"]!);
+    Assert.Equal("p.terrain", (string)json["terrainFile"]!);
+    Assert.Equal(["a*"], json["recorded"]!.Select(t => (string)t!).ToArray());
+    Assert.Equal(
+      ["platform", "basin"],
+      json["provinces"]!.Select(t => (string)t!).ToArray()
+    );
+  }
 }
