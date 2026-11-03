@@ -373,6 +373,8 @@ public sealed class TestPlayer {
     if (hit != null)
       selection.HitPosition = hit;
     EnumHandInteract handUse = Entity.Controls.HandUse;
+    Vec3d? eye = Entity.LocalEyePos;
+    Entity.LocalEyePos ??= new Vec3d();
     Action release = PressKeys(sneak, ctrl, sprint);
     Entity.Controls.HandUse = EnumHandInteract.HeldItemInteract;
     try {
@@ -407,6 +409,7 @@ public sealed class TestPlayer {
       return handling;
     } finally {
       Entity.Controls.HandUse = handUse;
+      Entity.LocalEyePos = eye;
       release();
     }
   }
@@ -582,7 +585,6 @@ public sealed class TestPlayer {
     entity.World = world.World;
     entity.Api = world.Api;
     entity.WatchedAttributes.SetString("playerUID", uid);
-    entity.LocalEyePos = new Vec3d();
 
     TestPlayer? made = null;
     IPlayer player;

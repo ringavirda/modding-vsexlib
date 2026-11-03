@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -16,24 +15,6 @@ public class DoublesTests {
   }
 
   #region TestPlayer
-
-  // Fails when the player is created without an eye position: reading the facing the player suggests for a block
-  // throws.
-  [Fact]
-  public void A_created_player_has_an_eye_to_suggest_a_facing_from() {
-    using var world = new TestWorld();
-    TestPlayer player = world.Player();
-    player.Entity.Pos.SetPos(0.5, 1, 4.5);
-    var aim = new BlockSelection {
-      Position = new BlockPos(0, 0, 0),
-      Face = BlockFacing.UP,
-      HitPosition = new Vec3d(0.5, 1, 0.5),
-    };
-
-    BlockFacing[] facing = Block.SuggestedHVOrientation(player.Player, aim);
-
-    Assert.Equal(BlockFacing.NORTH, facing[0]);
-  }
 
   [Fact]
   public void Held_stack_reads_back_through_the_players_active_hotbar_slot() {

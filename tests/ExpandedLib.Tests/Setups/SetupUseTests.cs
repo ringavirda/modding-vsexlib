@@ -70,6 +70,29 @@ public class SetupUseTests
     Assert.Null(scene.Player.OffHandSlot.Itemstack);
   }
 
+  // Fails when the player has no eye position during the start: the item's read of the facing the player
+  // suggests throws.
+  [Fact]
+  public void Use_gives_the_start_an_eye_to_read_the_facing_from()
+  {
+    using SetupScene scene = SetupHoldTests.Build(
+      Use("\"with\": {\"stack\": \"setuphold:wand\"}, \"seconds\": 0")
+    );
+
+    Assert.Single(Wand(scene).Facings);
+  }
+
+  // Fails when the eye is left on the player after the step: later steps then see a player that has one.
+  [Fact]
+  public void A_use_leaves_the_players_eye_as_it_found_it()
+  {
+    using SetupScene scene = SetupHoldTests.Build(
+      Use("\"with\": {\"stack\": \"setuphold:wand\"}, \"seconds\": 0")
+    );
+
+    Assert.Null(scene.Player.Entity.LocalEyePos);
+  }
+
   // Fails when the hit is handed to the item undivided.
   [Fact]
   public void Use_hit_is_sixteenths_of_the_cell()
