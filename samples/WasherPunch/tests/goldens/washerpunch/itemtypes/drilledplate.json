@@ -1,0 +1,33 @@
+{
+  "code": "drilledplate",
+  "class": "washerpunch.ItemDrilledPlate",
+  "maxstacksize": 8,
+  "variantgroups": [
+    {
+      "code": "metal",
+      "states": [
+        "iron",
+        "meteoriciron"
+      ]
+    }
+  ],
+  "shape": {
+    "base": "washerpunch:item/drilledplate"
+  },
+  "textures": {
+    "metal": {
+      "base": "game:block/metal/ingot/{metal}"
+    }
+  },
+  "creativeinventory": {
+    "general": [
+      "*"
+    ],
+    "items": [
+      "*"
+    ],
+    "washerpunch": [
+      "*"
+    ]
+  }
+}

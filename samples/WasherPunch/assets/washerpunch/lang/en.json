@@ -3,8 +3,16 @@
   "blockdesc-press": "A hand screw fly press. Put plate in through the body's window, then swing the fly to punch washers out of it, one a stroke.",
   "item-washer-iron": "Iron washer",
   "item-washer-copper": "Copper washer",
+  "block-machine-drill-*": "Washer drill",
+  "blockdesc-machine-drill-*": "A drilling machine on the mechanical shaft line. Put a plate on the table through the body's window, fit a drill bit and throw the lever; it drills while the shaft turns.",
+  "item-drillbit-iron": "Iron drill bit",
+  "item-drillbit-steel": "Steel drill bit",
+  "item-drilledplate-iron": "Drilled iron plate",
+  "item-drilledplate-meteoriciron": "Drilled meteoric iron plate",
 
   "washerpunch:press-title": "Washer press",
   "washerpunch:press-strokes": "Strokes: {0} / {1}",
-  "washerpunch:press-nojob": "The press has no job for {0}."
+  "washerpunch:press-nojob": "The press has no job for {0}.",
+  "washerpunch:drill-title": "Washer drill",
+  "washerpunch:machine-kind-drill": "washer drill"
 }

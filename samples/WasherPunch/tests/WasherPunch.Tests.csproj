@@ -50,10 +50,12 @@
        and ExpandedLib.Testing.dll at test time, unlike the mod project which never ships either. -->
   <ItemGroup Condition="'$(ExlibRoot)' != ''">
     <ProjectReference Include="$(ExlibRoot)src\ExpandedLib\ExpandedLib.csproj" />
+    <ProjectReference Include="$(ExlibRoot)src\ExpandedLib.Industry\ExpandedLib.Industry.csproj" />
     <ProjectReference Include="$(ExlibRoot)src\ExpandedLib.Testing\ExpandedLib.Testing.csproj" />
   </ItemGroup>
   <ItemGroup Condition="'$(ExlibRoot)' == ''">
     <PackageReference Include="ExpandedLib" />
+    <PackageReference Include="ExpandedLib.Industry" />
     <PackageReference Include="ExpandedLib.Testing" />
   </ItemGroup>
 

@@ -80,8 +80,8 @@ network it is plumbed into. `samples/SashWeights` is the casting example, with i
 flask station kind and a four-piece sash-weight pattern, parsed and validated at load; it pours nothing
 without a station block, which only a mod such as iiex brings. `samples/WasherPunch` is the machine-job
 example, a hand fly press on `BlockEntityMachineStation` whose work comes from a `config/processjobs` table,
-one row from JSON and one added from C#. SashWeights builds on `ExpandedLib.Industry` types, which sit outside the
-stability promise below; WasherPunch uses exlib alone. Each has a full headless test suite, and all six build and boot like any
+one row from JSON and one added from C#, and a drilling machine on the Industry machining host. SashWeights and
+WasherPunch build on `ExpandedLib.Industry` types, which sit outside the stability promise below. Each has a full headless test suite, and all six build and boot like any
 other mod here (`dotnet build ExpandedLib.sln`, `exmod smoke`) - read them alongside the wiki rather
 than typing their snippets by hand.
 

@@ -3,8 +3,9 @@ using ExpandedLib.Definitions;
 
 namespace WasherPunch.Recipes;
 
-/// <summary>Code-first grid recipe for the press: an iron screw through two plate cheeks on a plank
-/// bed. The washer has none; only the press makes it.</summary>
+/// <summary>Code-first grid recipes: the press, an iron screw through two plate cheeks on a plank bed
+/// (the washer has none; only the press makes it); the drilling machine, an iron column and spindle
+/// on a plate base; and each drill bit from a rod of its metal.</summary>
 public class WasherPunchRecipeDefinitions : IExRecipeDefProvider {
   public static IEnumerable<ExRecipeDef> Definitions(string domain) =>
     [
@@ -18,6 +19,32 @@ public class WasherPunchRecipeDefinitions : IExRecipeDefProvider {
             .Ingredient("I", i => i.Item("game:metalplate-iron").Quantity(1))
             .Ingredient("P", i => i.Item("game:plank-*").Quantity(1))
             .OutputBlock($"{domain}:press")
+        ),
+      ExRecipeDef
+        .Create(domain, "grid", "drill")
+        .Grid(r =>
+          r.Name("Washer Drill")
+            .Pattern("_R_,_R_,III")
+            .Size(3, 3)
+            .Ingredient("R", i => i.Item("game:rod-iron").Quantity(1))
+            .Ingredient("I", i => i.Item("game:metalplate-iron").Quantity(1))
+            .OutputBlock($"{domain}:machine-drill-ns")
+        ),
+      ExRecipeDef
+        .Create(domain, "grid", "drillbit")
+        .Grid(r =>
+          r.Name("Iron Drill Bit")
+            .Pattern("R,R")
+            .Size(1, 2)
+            .Ingredient("R", i => i.Item("game:rod-iron").Quantity(1))
+            .OutputItem($"{domain}:drillbit-iron")
+        )
+        .Grid(r =>
+          r.Name("Steel Drill Bit")
+            .Pattern("R,R")
+            .Size(1, 2)
+            .Ingredient("R", i => i.Item("game:rod-steel").Quantity(1))
+            .OutputItem($"{domain}:drillbit-steel")
         ),
     ];
 }

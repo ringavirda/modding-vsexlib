@@ -1,0 +1,36 @@
+[
+  {
+    "name": "Iron Drill Bit",
+    "ingredientPattern": "R,R",
+    "width": 1,
+    "height": 2,
+    "output": {
+      "type": "item",
+      "code": "washerpunch:drillbit-iron"
+    },
+    "ingredients": {
+      "R": {
+        "type": "item",
+        "code": "game:rod-iron",
+        "quantity": 1
+      }
+    }
+  },
+  {
+    "name": "Steel Drill Bit",
+    "ingredientPattern": "R,R",
+    "width": 1,
+    "height": 2,
+    "output": {
+      "type": "item",
+      "code": "washerpunch:drillbit-steel"
+    },
+    "ingredients": {
+      "R": {
+        "type": "item",
+        "code": "game:rod-steel",
+        "quantity": 1
+      }
+    }
+  }
+]
