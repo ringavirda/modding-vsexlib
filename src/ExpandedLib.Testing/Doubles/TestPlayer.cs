@@ -582,6 +582,7 @@ public sealed class TestPlayer {
     entity.World = world.World;
     entity.Api = world.Api;
     entity.WatchedAttributes.SetString("playerUID", uid);
+    entity.LocalEyePos = new Vec3d();
 
     TestPlayer? made = null;
     IPlayer player;

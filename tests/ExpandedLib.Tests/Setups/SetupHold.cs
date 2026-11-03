@@ -30,7 +30,9 @@ internal sealed class SetupHoldWand : Item
     Calls.Add("start");
     Hits.Add(blockSel.HitPosition.Clone());
     HandUses.Add(byEntity.Controls.HandUse);
-    OffHands.Add(byEntity.LeftHandItemSlot.Itemstack?.Collectible.Code.ToString());
+    OffHands.Add(
+      byEntity.LeftHandItemSlot.Itemstack?.Collectible.Code.ToString()
+    );
     handling = EnumHandHandling.PreventDefault;
   }
 
