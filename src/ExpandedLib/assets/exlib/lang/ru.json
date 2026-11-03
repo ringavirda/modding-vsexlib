@@ -133,7 +133,7 @@
   "machine-step-drill": "сверление",
   "game:ingameerror-exlib-sandstation-toohot": "Дождитесь застывания отливки, прежде чем вынимать её!",
   "game:ingameerror-exlib-sandstation-badpattern": "У этой модели нет отпечатка для формовки.",
-  "game:ingameerror-exlib-sandstation-pressfull": "Здесь уже отпечатано всё, что она вмещает.",
+  "game:ingameerror-exlib-sandstation-pressfull": "В этой станции уже отпечатано всё, что она вмещает.",
   "game:ingameerror-exlib-sandstation-pressotherpattern": "Эта модель не та, что отпечатана здесь.",
   "game:ingameerror-exlib-sandstation-wrongstation": "Эта модель не подходит для: {0}.",
   "game:ingameerror-exlib-sandstation-bedded": "Здесь нельзя трамбовать: в подрезанном песке уже лежит отливка.",

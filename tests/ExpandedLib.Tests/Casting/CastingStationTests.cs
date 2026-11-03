@@ -79,6 +79,27 @@ public class CastingStationTests {
     Assert.Equal(expected, kind.Matches(code));
   }
 
+  // Fails when the sand item is compared as a raw string: a domainless catalogue item matches no game: item.
+  [Theory]
+  [InlineData("sand-granite", "game:sand-granite", true)]
+  [InlineData("sand-*", "game:sand-granite", true)]
+  [InlineData("sand-*", "othermod:sand-granite", false)]
+  public void A_sand_item_without_a_domain_is_the_game_domain(
+    string sandItem,
+    string code,
+    bool expected
+  ) {
+    var kind = new CastingStationKind(
+      "testflask",
+      [MouldKind.Open],
+      "a:base",
+      "a:half",
+      sandItem
+    );
+
+    Assert.Equal(expected, kind.Matches(code));
+  }
+
   // Fails when a redeclaration with different sand replaces the held kind.
   [Fact]
   public void A_kind_redeclared_with_different_sand_is_reported_and_the_first_stands() {

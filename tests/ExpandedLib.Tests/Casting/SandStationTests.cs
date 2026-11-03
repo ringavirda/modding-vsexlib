@@ -113,21 +113,31 @@ public class SandStationTests : IDisposable {
     Assert.Equal(3, scene.Entity.Pressed);
   }
 
-  // Fails when the cup test always passes.
-  [Fact]
-  public void A_pour_outside_the_cup_takes_nothing_and_inside_fills() {
-    var scene = SandStationScene.Build(cup: "[4, 0, 10, 12, 16, 16]");
+  // Fails when the cup is not turned to the block's facing: e, s and w keep the north cup.
+  [Theory]
+  [InlineData("n", 0.5, 0.9, 0.5, 0.1)]
+  [InlineData("e", 0.1, 0.5, 0.9, 0.5)]
+  [InlineData("s", 0.5, 0.1, 0.5, 0.9)]
+  [InlineData("w", 0.9, 0.5, 0.1, 0.5)]
+  public void A_pour_outside_the_cup_takes_nothing_and_inside_fills(
+    string side,
+    double inX,
+    double inZ,
+    double outX,
+    double outZ
+  ) {
+    var scene = SandStationScene.Build(side, cup: "[4, 0, 10, 12, 16, 16]");
     scene.Interact(scene.PatternStack("row"));
     ItemStack metal = scene.SandStack(SandStationScene.Metal);
     int amount = 40;
 
-    scene.Entity.BeginFill(new Vec3d(0.9, 0.5, 0.1));
+    scene.Entity.BeginFill(new Vec3d(outX, 0.5, outZ));
     scene.Entity.ReceiveLiquidMetal(metal, ref amount, 1200f);
     Assert.Equal(40, amount);
     Assert.Equal(0, scene.Molten.CellAmount);
 
     scene.Entity.OnPourOver();
-    scene.Entity.BeginFill(new Vec3d(0.5, 0.5, 0.9));
+    scene.Entity.BeginFill(new Vec3d(inX, 0.5, inZ));
     scene.Entity.ReceiveLiquidMetal(metal, ref amount, 1200f);
     Assert.Equal(0, amount);
     Assert.Equal(40, scene.Molten.CellAmount);
@@ -253,6 +263,28 @@ public class SandStationTests : IDisposable {
     );
     Assert.Equal(4, part.StackSize);
     Assert.Equal(0, scene.Molten.CellAmount);
+  }
+
+  // Fails when BlockSandStation.OnBlockBroken does not shake the casting out.
+  [Fact]
+  public void Breaking_the_block_spawns_the_set_casting() {
+    var scene = SandStationScene.Build();
+    ItemStack pattern = scene.PatternStack("row", units: 25, pieces: 4);
+    for (int i = 0; i < 4; i++)
+      scene.Interact(pattern);
+    scene.Pour(100, 1300f).CoolToHardened();
+
+    scene.Entity.Block.OnBlockBroken(
+      scene.World.World,
+      scene.Entity.Pos,
+      scene.Player
+    );
+
+    ItemStack part = Assert.Single(
+      scene.Harvested,
+      s => s.Collectible.Code.ToString() == SandStationScene.PartCode
+    );
+    Assert.Equal(4, part.StackSize);
   }
 
   // Fails when IntakeAllowed is not consulted before the launder pull.

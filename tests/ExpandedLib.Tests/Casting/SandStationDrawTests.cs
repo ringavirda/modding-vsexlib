@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Casting;
 using ExpandedLib.Industry.Molten;
 using ExpandedLib.Testing;
+using Newtonsoft.Json;
 using NSubstitute;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -22,6 +24,15 @@ public class SandStationDrawTests : IDisposable {
   private sealed class FeedStation : BlockEntitySandStation {
     protected internal override IReadOnlyList<Cuboidf> FeedSurfaces =>
       [new Cuboidf(6f, 2f, 0f, 10f, 4f, 3f)];
+  }
+
+  private sealed class ForcedFeedStation : BlockEntitySandStation {
+    protected internal override IReadOnlyList<Cuboidf> FeedSurfaces =>
+      [new Cuboidf(6f, 2f, 0f, 10f, 4f, 3f)];
+
+    protected internal override bool FeedShown => true;
+    protected internal override string? FeedMetalCode => SandStationScene.Metal;
+    protected internal override float FeedTemperature => 1100f;
   }
 
   private sealed class Client {
@@ -122,6 +133,82 @@ public class SandStationDrawTests : IDisposable {
 
   private static MoltenSurfaceRenderer Surface(Client client) =>
     Assert.IsType<MoltenSurfaceRenderer>(Assert.Single(client.Renderers));
+
+  // Fails when the feed renderer ignores the FeedShown, FeedMetalCode and FeedTemperature overrides.
+  [Fact]
+  public void A_subclass_drives_the_feed_surface_through_the_feed_state() {
+    var (scene, client) = Impressed(
+      share: 10,
+      make: () => new ForcedFeedStation()
+    );
+
+    scene.Entity.Initialize(client.Api);
+
+    MoltenSurfaceRenderer feed = Assert.IsType<MoltenSurfaceRenderer>(
+      client.Renderers[^1]
+    );
+    Assert.Equal(1f, feed.FillRatio);
+    Assert.Equal(1100f, feed.Temperature);
+    Assert.Equal(
+      SandStationScene.Metal,
+      feed.MetalStack!.Collectible.Code.ToString()
+    );
+  }
+
+  // Fails when BuildFillingMesh hands the tesselator the whole shape instead of the one pruned to the pressed pieces.
+  [Fact]
+  public void An_uncached_impression_is_tesselated_pruned_to_the_pressed_pieces() {
+    var scene = SandStationScene.Build();
+    Assert.True(scene.Interact(scene.PatternStack("plate", pieces: 2)));
+    var client = new Client(scene);
+    scene.Entity.Block.Shape = new CompositeShape();
+    static ShapeElement Group(string name, params ShapeElement[] kids) =>
+      new() { Name = name, Children = kids };
+    var plate = new Shape {
+      Elements =
+      [
+        Group("Piece1", Group("Bedded", new ShapeElement { Name = "Core1" })),
+        Group("Piece2", Group("Bedded", new ShapeElement { Name = "Core2" })),
+      ],
+    };
+    var asset = Substitute.For<IAsset>();
+    asset.ToObject<Shape>(Arg.Any<JsonSerializerSettings?>()).Returns(plate);
+    client
+      .Api.Assets.TryGet(
+        Arg.Is<AssetLocation>(l =>
+          l.ToString() == "test:shapes/casting/plate.json"
+        )
+      )
+      .Returns(asset);
+    Shape? tesselated = null;
+    var tesselator = Substitute.For<ITesselatorAPI>();
+    tesselator
+      .When(t =>
+        t.TesselateShape(
+          Arg.Any<string>(),
+          Arg.Any<Shape>(),
+          out Arg.Any<MeshData>(),
+          Arg.Any<ITexPositionSource>(),
+          Arg.Any<Vec3f>(),
+          Arg.Any<int>(),
+          Arg.Any<byte>(),
+          Arg.Any<byte>(),
+          Arg.Any<int?>(),
+          Arg.Any<string[]>()
+        )
+      )
+      .Do(ci => {
+        tesselated = ci.ArgAt<Shape>(1);
+        ci[2] = new MeshData(4, 6);
+      });
+
+    scene.Entity.OnTesselation(Pool([]), tesselator);
+
+    Assert.NotNull(tesselated);
+    string[] paths = [.. ExShapeElements.AllPaths(tesselated)];
+    Assert.Contains("Piece1/Bedded/Core1", paths);
+    Assert.DoesNotContain("Piece2/Bedded/Core2", paths);
+  }
 
   // Fails when the fill ratio is fixed instead of the cell's amount over its capacity.
   [Fact]

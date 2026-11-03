@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 
 namespace ExpandedLib.Industry.Casting;
@@ -25,7 +26,11 @@ public sealed record CastingStationKind(
   /// <summary>Whether <paramref name="itemCode"/> is the moulding sand this station is rammed with.</summary>
   /// <param name="itemCode">Full item code, domain included; null or empty never matches.</param>
   public bool Matches(string? itemCode) =>
-    !string.IsNullOrEmpty(itemCode) && WildcardUtil.Match(SandItem, itemCode);
+    !string.IsNullOrEmpty(itemCode)
+    && WildcardUtil.Match(
+      new AssetLocation(SandItem),
+      new AssetLocation(itemCode)
+    );
 
   /// <summary>Whether <paramref name="other"/> declares the same station: the same code (ignoring case), the same
   /// sand meshes, the same sand item and the same set of moulds in any order.</summary>

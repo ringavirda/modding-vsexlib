@@ -646,20 +646,33 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
       combine: true
     );
 
-  private ItemStack? CellMetal() =>
-    Cell is { CellMetalType.Length: > 0 } cell
-    && Api.World.GetItem(new AssetLocation(cell.CellMetalType)) is { } item
+  private ItemStack? MetalStack(string? code) =>
+    !string.IsNullOrEmpty(code)
+    && Api.World.GetItem(new AssetLocation(code)) is { } item
       ? new ItemStack(item)
       : null;
+
+  private ItemStack? CellMetal() => MetalStack(Cell?.CellMetalType);
+
+  /// <summary>Whether the feed's metal surface is drawn; the head standing in the runner box by default.</summary>
+  protected internal virtual bool FeedShown =>
+    SandStationLogic.HeadStands(Spec, Pressed, Cell?.CellAmount ?? 0);
+
+  /// <summary>Item code of the metal the feed surface draws; the cell's metal by default, null or empty draws none.</summary>
+  protected internal virtual string? FeedMetalCode => Cell?.CellMetalType;
+
+  /// <summary>Temperature in degrees Celsius the feed surface glows at; the cell's by default.</summary>
+  protected internal virtual float FeedTemperature =>
+    Cell?.CellTemperature ?? 0f;
 
   private void UpdateFeedRenderer() {
     if (_feedRenderer == null)
       return;
     ShowFeed(
       _feedRenderer,
-      SandStationLogic.HeadStands(Spec, Pressed, Cell?.CellAmount ?? 0),
-      CellMetal(),
-      Cell?.CellTemperature ?? 0f
+      FeedShown,
+      MetalStack(FeedMetalCode),
+      FeedTemperature
     );
   }
 

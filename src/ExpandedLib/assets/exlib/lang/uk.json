@@ -133,7 +133,7 @@
   "machine-step-drill": "свердління",
   "game:ingameerror-exlib-sandstation-toohot": "Зачекайте, поки відливка застигне, перш ніж виймати її!",
   "game:ingameerror-exlib-sandstation-badpattern": "Ця модель не має відбитка для формування.",
-  "game:ingameerror-exlib-sandstation-pressfull": "Тут уже відбито все, що вона вміщує.",
+  "game:ingameerror-exlib-sandstation-pressfull": "У цій станції вже відбито все, що вона вміщує.",
   "game:ingameerror-exlib-sandstation-pressotherpattern": "Ця модель не та, що відбита тут.",
   "game:ingameerror-exlib-sandstation-wrongstation": "Ця модель не підходить для: {0}.",
   "game:ingameerror-exlib-sandstation-bedded": "Тут не можна трамбувати: у підрізаному піску вже лежить виливок.",

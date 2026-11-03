@@ -787,3 +787,6 @@ override ExpandedLib.Industry.Casting.BlockEntitySandStation.OnTesselation(Vinta
 ExpandedLib.Industry.Casting.BlockEntitySandStation.BuildFillingMesh(Vintagestory.API.Client.ICoreClientAPI! capi, Vintagestory.API.Client.ITesselatorAPI! tesselator, string! shapeRef, System.Func<Vintagestory.API.Common.Shape!, Vintagestory.API.Common.Shape!>? prune = null, System.Action<Vintagestory.API.Client.MeshData!>? place = null) -> Vintagestory.API.Client.MeshData?
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.AddOverlay(Vintagestory.API.Client.ICoreClientAPI! capi, Vintagestory.API.Client.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> void
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedSurfaces.get -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.Cuboidf!>!
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedMetalCode.get -> string?
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedShown.get -> bool
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedTemperature.get -> float
