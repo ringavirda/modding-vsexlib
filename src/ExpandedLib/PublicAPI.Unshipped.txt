@@ -627,6 +627,9 @@ virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.GameStepHours.get ->
 virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.MaxGameHoursPerTick.get -> double
 ~override ExpandedLib.Networks.BlockNetworkNode.GetInterface<T>(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> T
 ~override ExpandedLib.Structures.BlockFilledMegastructure.GetInterface<T>(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> T
+ExpandedLib.Structures.IFillerNeighbourTarget
+ExpandedLib.Structures.IFillerNeighbourTarget.OnFillerNeighbourChanged(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! principalPos, Vintagestory.API.MathTools.BlockPos! fillerPos, Vintagestory.API.MathTools.BlockPos! neighbourPos) -> void
+override ExpandedLib.Structures.BlockStructureFiller.OnNeighbourBlockChange(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockPos! neibpos) -> void
 const ExpandedLib.ExlibLang.MachineStepBore = "exlib:machine-step-bore" -> string!
 const ExpandedLib.ExlibLang.MachineStepDrill = "exlib:machine-step-drill" -> string!
 const ExpandedLib.ExlibLang.MachineStepPlane = "exlib:machine-step-plane" -> string!

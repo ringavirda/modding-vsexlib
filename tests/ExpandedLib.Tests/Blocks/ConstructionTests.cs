@@ -417,6 +417,59 @@ public class ConstructionTests {
     );
   }
 
+  private static ExRightClickConstruction SandConstruction(TestWorld world) {
+    var construction = new ExRightClickConstruction {
+      CurrentCompletedStage = 1,
+    };
+    construction.LateInit(
+      [
+        new ExConstructionStage(),
+        new ExConstructionStage
+        {
+          RequireStacks =
+          [
+            new ExConstructionIngredient
+            {
+              Type = EnumItemClass.Item,
+              Code = new AssetLocation("game:sand-*"),
+              Quantity = 3,
+              StoreWildCard = "rock",
+            },
+          ],
+        },
+      ],
+      world.Api,
+      "stub:sandbed"
+    );
+    return construction;
+  }
+
+  // Fails when GetDrops indexes StoredWildCards again: a stage built without payment throws.
+  [Fact]
+  public void GetDrops_leaves_out_an_ingredient_whose_wildcard_was_never_stored() {
+    var world = new TestWorld();
+    world.RegisterItem("game:sand-andesite");
+    ExRightClickConstruction construction = SandConstruction(world);
+
+    ItemStack[] drops = construction.GetDrops(1f, new System.Random(1));
+
+    Assert.Empty(drops);
+  }
+
+  [Fact]
+  public void GetDrops_fills_the_stored_wildcard() {
+    var world = new TestWorld();
+    world.RegisterItem("game:sand-andesite");
+    ExRightClickConstruction construction = SandConstruction(world);
+    construction.StoredWildCards["rock"] = "andesite";
+
+    ItemStack[] drops = construction.GetDrops(1f, new System.Random(1));
+
+    ItemStack drop = Assert.Single(drops);
+    Assert.Equal("game:sand-andesite", drop.Collectible.Code.ToString());
+    Assert.Equal(3, drop.StackSize);
+  }
+
   #endregion
 
   #region ConstructedAnimator.IsConstructed
