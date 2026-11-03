@@ -122,6 +122,13 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
         api.Logger.Error("[exlib] invalid mold pattern - {0}", error);
       foreach (string error in MachiningJobs.Resolve(api.World.Collectibles))
         api.Logger.Error("[exlib] invalid machining job - {0}", error);
+      foreach (
+        string error in SandStationCheck.Run(
+          api.World.Blocks,
+          api.ClassRegistry
+        )
+      )
+        api.Logger.Error("[exlib] invalid sand station block {0}", error);
     }
     MoltenHolders.Attach(api);
   }

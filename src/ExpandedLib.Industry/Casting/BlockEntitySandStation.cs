@@ -9,6 +9,7 @@ using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Industry.Molten;
 using ExpandedLib.Machines;
 using ExpandedLib.Registries;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -43,6 +44,8 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
   private float? _fillTemperature;
   private bool _cupHit;
   private MoldSpec? _spec;
+  private MoltenSurfaceRenderer? _renderer;
+  private MoltenSurfaceRenderer? _feedRenderer;
 
   private BEBehaviorMoltenCell? Cell => GetBehavior<BEBehaviorMoltenCell>();
 
@@ -191,6 +194,37 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     base.Initialize(api);
     if (Spec != null)
       Cell?.SetCapacity(PressedCapacity);
+
+    if (api is ICoreClientAPI capi) {
+      RebuildRenderer(capi);
+      RebuildFeedRenderer(capi);
+      RegisterGameTickListener(
+        _ => {
+          UpdateRenderer();
+          UpdateFeedRenderer();
+        },
+        1000
+      );
+    }
+  }
+
+  /// <inheritdoc/>
+  public override void OnBlockRemoved() {
+    DisposeRenderers();
+    base.OnBlockRemoved();
+  }
+
+  /// <inheritdoc/>
+  public override void OnBlockUnloaded() {
+    DisposeRenderers();
+    base.OnBlockUnloaded();
+  }
+
+  private void DisposeRenderers() {
+    _renderer?.Dispose();
+    _renderer = null;
+    _feedRenderer?.Dispose();
+    _feedRenderer = null;
   }
 
   /// <inheritdoc/>
@@ -200,6 +234,11 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
   ) {
     base.FromTreeAttributes(tree, worldForResolving);
     _spec = null;
+    if (Api is ICoreClientAPI capi) {
+      MarkDirty(true);
+      RebuildRenderer(capi);
+      UpdateFeedRenderer();
+    }
   }
 
   /// <inheritdoc/>
@@ -522,6 +561,188 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
       if (scrap != null)
         yield return scrap;
     }
+  }
+
+  #endregion
+
+  #region Rendering
+
+  /// <summary>The shape asset of the sand drawn now, or null when none is.</summary>
+  internal string? FillingShapeRef =>
+    Kind is { } kind
+      ? SandStationLogic.FillingShape(
+        kind,
+        _sand,
+        HasImpression,
+        Spec?.Shape,
+        ClosedImpression
+      )
+      : null;
+
+  /// <summary>The surfaces of the feed (cup, runner notch and launder inlet) in the shape's frame, in voxels, <c>Y1</c> the sand floor under the metal and <c>Y2</c> the top of its bed; empty where the station draws none.</summary>
+  protected internal virtual IReadOnlyList<Cuboidf> FeedSurfaces => [];
+
+  /// <summary>Adds the meshes a station draws over its filling; none by default.</summary>
+  protected internal virtual void AddOverlay(
+    ICoreClientAPI capi,
+    ITerrainMeshPool mesher,
+    ITesselatorAPI tesselator
+  ) { }
+
+  private float RotationY => (Block.Shape?.rotateY ?? 0f) * GameMath.DEG2RAD;
+
+  private void RebuildRenderer(ICoreClientAPI capi) {
+    _renderer?.Dispose();
+    _renderer = null;
+    if (Spec is not { } spec || spec.Cavity.Length == 0)
+      return;
+
+    _renderer = BuildImpressionRenderer(
+      capi,
+      Pos,
+      RotationY,
+      spec.Cavity.Take(Math.Max(1, _pressed)).ToArray(),
+      spec.Cavity[0].Y1 / 16f,
+      spec.Cavity[0].Y2 - spec.Cavity[0].Y1
+    );
+    capi.Event.RegisterRenderer(_renderer, EnumRenderStage.Opaque);
+    UpdateRenderer();
+  }
+
+  /// <summary>Creates the renderer of an impression's metal: every pressed piece's box is drawn at once, so the first piece's metal stays as the fill rises past it.</summary>
+  internal static MoltenSurfaceRenderer BuildImpressionRenderer(
+    ICoreClientAPI capi,
+    BlockPos pos,
+    float rotY,
+    Cuboidf[] pieces,
+    float floorY,
+    float height
+  ) => new(pos, capi, pieces, rotY, floorY, height, combine: true);
+
+  private void RebuildFeedRenderer(ICoreClientAPI capi) {
+    _feedRenderer?.Dispose();
+    _feedRenderer = null;
+    if (FeedSurfaces.Count == 0)
+      return;
+    _feedRenderer = BuildFeedRenderer(capi, Pos, RotationY, FeedSurfaces);
+    capi.Event.RegisterRenderer(_feedRenderer, EnumRenderStage.Opaque);
+    UpdateFeedRenderer();
+  }
+
+  /// <summary>Creates the renderer that draws <paramref name="surfaces"/> as one metal surface across the feed, all at the height of the first.</summary>
+  internal static MoltenSurfaceRenderer BuildFeedRenderer(
+    ICoreClientAPI capi,
+    BlockPos pos,
+    float rotY,
+    IReadOnlyList<Cuboidf> surfaces
+  ) =>
+    new(
+      pos,
+      capi,
+      [.. surfaces],
+      rotY,
+      surfaces[0].Y1 / 16f,
+      surfaces[0].Y2 - surfaces[0].Y1,
+      combine: true
+    );
+
+  private ItemStack? CellMetal() =>
+    Cell is { CellMetalType.Length: > 0 } cell
+    && Api.World.GetItem(new AssetLocation(cell.CellMetalType)) is { } item
+      ? new ItemStack(item)
+      : null;
+
+  private void UpdateFeedRenderer() {
+    if (_feedRenderer == null)
+      return;
+    ShowFeed(
+      _feedRenderer,
+      SandStationLogic.HeadStands(Spec, Pressed, Cell?.CellAmount ?? 0),
+      CellMetal(),
+      Cell?.CellTemperature ?? 0f
+    );
+  }
+
+  /// <summary>Draws the feed's metal surface while <paramref name="shown"/> and hides it otherwise.</summary>
+  internal static void ShowFeed(
+    MoltenSurfaceRenderer feed,
+    bool shown,
+    ItemStack? metal,
+    float temperature
+  ) {
+    shown &= metal != null;
+    feed.FillRatio = shown ? 1f : 0f;
+    feed.MetalStack = shown ? metal : null;
+    feed.Temperature = temperature;
+  }
+
+  private void UpdateRenderer() {
+    if (_renderer == null || Cell is not { } cell)
+      return;
+    _renderer.FillRatio = GameMath.Clamp(
+      cell.CellAmount / (float)Math.Max(1, cell.MaxUnitCapacity),
+      0f,
+      1f
+    );
+    _renderer.Temperature = cell.CellTemperature;
+    _renderer.MetalStack = CellMetal();
+  }
+
+  /// <inheritdoc/>
+  /// <remarks>Filling shapes key their sand texture as <c>andesite</c>, bound to the block's own texture of that name.</remarks>
+  public override bool OnTesselation(
+    ITerrainMeshPool mesher,
+    ITesselatorAPI tesselator
+  ) {
+    if (Api is ICoreClientAPI capi) {
+      if (
+        FillingShapeRef is { } shapeRef
+        && ExMeshCache.GetOrCreate(
+          capi,
+          Block,
+          SandStationLogic.FillingMeshKey(shapeRef, Pressed),
+          () => BuildFillingMesh(capi, tesselator, shapeRef)
+        )
+          is { } mesh
+      )
+        mesher.AddMeshData(mesh);
+      AddOverlay(capi, mesher, tesselator);
+    }
+
+    return base.OnTesselation(mesher, tesselator);
+  }
+
+  /// <summary>Tesselates a filling shape in the block's frame.</summary>
+  /// <param name="shapeRef">The filling shape asset.</param>
+  /// <param name="prune">Narrows the loaded shape; null prunes it to the pressed pieces.</param>
+  /// <param name="place">Moves the finished mesh while it is still in the north frame; null leaves it.</param>
+  /// <returns>The mesh, or null when the shape is not found.</returns>
+  protected MeshData? BuildFillingMesh(
+    ICoreClientAPI capi,
+    ITesselatorAPI tesselator,
+    string shapeRef,
+    System.Func<Shape, Shape>? prune = null,
+    System.Action<MeshData>? place = null
+  ) {
+    var loc = new AssetLocation(shapeRef);
+    if (
+      ExMeshCache.LoadShape(
+        Api,
+        new AssetLocation(loc.Domain, "shapes/" + loc.Path + ".json")
+      )
+      is not { } shape
+    )
+      return null;
+
+    tesselator.TesselateShape(
+      "sandstation-filling",
+      prune?.Invoke(shape) ?? SandStationLogic.PrunedToPressed(shape, Pressed),
+      out MeshData mesh,
+      capi.Tesselator.GetTextureSource(Block)
+    );
+    place?.Invoke(mesh);
+    ExMesh.RotateByShape(mesh, Block);
+    return mesh;
   }
 
   #endregion

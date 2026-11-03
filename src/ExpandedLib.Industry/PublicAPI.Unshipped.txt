@@ -767,3 +767,23 @@ virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.ReadDrive() -> Exp
 ExpandedLib.Industry.Machining.MachineAnchors
 override ExpandedLib.Industry.Machining.BlockEntityMachineTool.OnTesselation(Vintagestory.API.Client.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> bool
 static ExpandedLib.Industry.Machining.MachineAnchors.Compose(ExpandedLib.Industry.Machining.MachineAnchor! anchor, Vintagestory.API.MathTools.Vec3f! blockRotationDeg) -> float[]!
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.FillRatio -> float
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.MetalStack -> Vintagestory.API.Common.ItemStack?
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.MoltenSurfaceRenderer(Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Client.ICoreClientAPI! api, Vintagestory.API.MathTools.Cuboidf![]! footprintBoxes, float rotationY = 0, float fillStartY = 0.125, float fillHeightLevels = 12, bool combine = false) -> void
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.Temperature -> float
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.TextureName -> Vintagestory.API.Common.AssetLocation?
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.BindSurfaceTexture(Vintagestory.API.Client.IRenderAPI! render) -> bool
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.ConfigureShader(Vintagestory.API.Client.IStandardShaderProgram! shader, Vintagestory.API.Client.IRenderAPI! render) -> void
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.RenderOrder.get -> double
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.SelectMeshIndex() -> int
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.ShouldRender.get -> bool
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.SurfaceY.get -> float
+static ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.ApplyGlow(Vintagestory.API.Client.ICoreClientAPI! api, Vintagestory.API.Client.IStandardShaderProgram! shader, Vintagestory.API.Common.ItemStack! metal, float temperature) -> void
+static ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.BindMetalTexture(Vintagestory.API.Client.IRenderAPI! render, Vintagestory.API.Common.ItemStack! metal, ref Vintagestory.API.Common.AssetLocation? textureName) -> bool
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.OnBlockRemoved() -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.OnBlockUnloaded() -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.OnTesselation(Vintagestory.API.Client.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation.BuildFillingMesh(Vintagestory.API.Client.ICoreClientAPI! capi, Vintagestory.API.Client.ITesselatorAPI! tesselator, string! shapeRef, System.Func<Vintagestory.API.Common.Shape!, Vintagestory.API.Common.Shape!>? prune = null, System.Action<Vintagestory.API.Client.MeshData!>? place = null) -> Vintagestory.API.Client.MeshData?
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.AddOverlay(Vintagestory.API.Client.ICoreClientAPI! capi, Vintagestory.API.Client.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> void
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedSurfaces.get -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.Cuboidf!>!

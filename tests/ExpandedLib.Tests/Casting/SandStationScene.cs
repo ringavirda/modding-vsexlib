@@ -152,10 +152,17 @@ internal sealed class SandStationScene {
     params string[] stations
   ) {
     stations = stations.Length == 0 ? [Station] : stations;
+    string cavity = string.Join(
+      ",",
+      Enumerable.Repeat(
+        "{ \"x1\": 3, \"y1\": 1, \"z1\": 3, \"x2\": 13, \"y2\": 4, \"z2\": 13 }",
+        pieces
+      )
+    );
     string stationJson = string.Join(
       ",",
       stations.Select(s =>
-        $$"""{ "size": "{{s}}", "shape": "test:casting/{{type}}", "pieces": {{pieces}}, "mould": "{{mould}}", "share": {{share}}, "cavity": [{ "x1": 3, "y1": 1, "z1": 3, "x2": 13, "y2": 4, "z2": 13 }] }"""
+        $$"""{ "size": "{{s}}", "shape": "test:casting/{{type}}", "pieces": {{pieces}}, "mould": "{{mould}}", "share": {{share}}, "cavity": [{{cavity}}] }"""
       )
     );
     var attributes = JToken.Parse(
