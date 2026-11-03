@@ -130,5 +130,18 @@
   "machine-step-bore": "boring",
   "machine-step-plane": "planing",
   "machine-step-slot": "slotting",
-  "machine-step-drill": "drilling"
+  "machine-step-drill": "drilling",
+  "game:ingameerror-exlib-sandstation-toohot": "Wait for the cast to harden before taking it out!",
+  "game:ingameerror-exlib-sandstation-badpattern": "This pattern carries no mold to press.",
+  "game:ingameerror-exlib-sandstation-pressfull": "All the pieces this station takes are already pressed.",
+  "game:ingameerror-exlib-sandstation-pressotherpattern": "That pattern is not the one pressed in this station.",
+  "game:ingameerror-exlib-sandstation-wrongstation": "That pattern is not for the {0}.",
+  "game:ingameerror-exlib-sandstation-bedded": "Sand cannot be rammed here: a piece is already bedded in the struck sand.",
+  "sandstation-needssand": "Ram moulding sand into the station to begin.",
+  "sandstation-needspattern": "Press a mold pattern into the sand.",
+  "sandstation-ready": "Impression: {0}. Waiting for metal.",
+  "sandstation-readypieces": "Impression: {0}, {1} of {2} pieces pressed. Waiting for metal.",
+  "sandstation-casting": "Casting: {0}/{1} units, {2} ({3})",
+  "metalstate-liquid": "liquid",
+  "metalstate-hardened": "hardened"
 }

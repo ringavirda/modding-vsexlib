@@ -51,6 +51,22 @@ ExpandedLib.Industry.Benches.BlockEntityMpBench.Remaining.get -> float
 ExpandedLib.Industry.Benches.BlockEntityMpBench.Resolve(string! code, int quantity) -> Vintagestory.API.Common.ItemStack?
 ExpandedLib.Industry.Benches.BlockEntityMpBench.Speed.get -> float
 ExpandedLib.Industry.Benches.BlockEntityMpBench.StopsProductionWhenNotReady.get -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation
+ExpandedLib.Industry.Casting.BlockEntitySandStation.BeginFill(Vintagestory.API.MathTools.Vec3d! hitPosition) -> void
+ExpandedLib.Industry.Casting.BlockEntitySandStation.BlockEntitySandStation() -> void
+ExpandedLib.Industry.Casting.BlockEntitySandStation.CanReceive(Vintagestory.API.Common.ItemStack! metal) -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation.CanReceiveAny.get -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation.HasImpression.get -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation.Kind.get -> ExpandedLib.Industry.Casting.CastingStationKind?
+ExpandedLib.Industry.Casting.BlockEntitySandStation.OnInteract(Vintagestory.API.Common.IPlayer! byPlayer) -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation.OnPourOver() -> void
+ExpandedLib.Industry.Casting.BlockEntitySandStation.Pressed.get -> int
+ExpandedLib.Industry.Casting.BlockEntitySandStation.ReceiveLiquidMetal(Vintagestory.API.Common.ItemStack! metal, ref int amount, float temperature) -> void
+ExpandedLib.Industry.Casting.BlockEntitySandStation.Sand.get -> ExpandedLib.Industry.Casting.SandStationLevel
+ExpandedLib.Industry.Casting.BlockEntitySandStation.ShakeOutOnBreak() -> void
+ExpandedLib.Industry.Casting.BlockEntitySandStation.Spec.get -> ExpandedLib.Industry.Casting.MoldSpec?
+ExpandedLib.Industry.Casting.BlockSandStation
+ExpandedLib.Industry.Casting.BlockSandStation.BlockSandStation() -> void
 ExpandedLib.Industry.Casting.CastingPatterns
 ExpandedLib.Industry.Casting.CastingStationKind
 ExpandedLib.Industry.Casting.CastingStationKind.CastingStationKind(string! Code, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MouldKind>! Moulds, string! SandBase, string! SandHalf, string! SandItem) -> void
@@ -139,6 +155,7 @@ ExpandedLib.Industry.Casting.SandStationLevel.Full = 2 -> ExpandedLib.Industry.C
 ExpandedLib.Industry.Casting.SandStationLevel.Half = 1 -> ExpandedLib.Industry.Casting.SandStationLevel
 ExpandedLib.Industry.Casting.SandStationLogic
 const ExpandedLib.Industry.Casting.SandStationLogic.AfterShakeOut = ExpandedLib.Industry.Casting.SandStationLevel.Full -> ExpandedLib.Industry.Casting.SandStationLevel
+static ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFaceOf(Vintagestory.API.Common.Block! block) -> Vintagestory.API.MathTools.BlockFacing?
 static ExpandedLib.Industry.Casting.SandStationLogic.CanIntake(bool hasImpression, bool cavityFull, bool solidified) -> bool
 static ExpandedLib.Industry.Casting.SandStationLogic.Decide(bool holdingSand, bool holdingPattern, bool emptyHand, ExpandedLib.Industry.Casting.SandStationLevel sand, bool hasImpression, bool hasMetal, bool isHardened, bool closedImpression = false) -> ExpandedLib.Industry.Casting.SandStationAction
 static ExpandedLib.Industry.Casting.SandStationLogic.FillBatches(ExpandedLib.Industry.Casting.FillOrder order, int pieces, int pressed) -> System.Collections.Generic.IReadOnlyList<int[]!>!
@@ -597,6 +614,12 @@ ExpandedLib.Industry.Pipes.PortReading.PressureAtm.get -> double
 ExpandedLib.Industry.Pipes.PortReading.PressureAtm.init -> void
 ExpandedLib.Industry.Pipes.PortReading.TemperatureC.get -> double
 ExpandedLib.Industry.Pipes.PortReading.TemperatureC.init -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.DeclareState(ExpandedLib.Blocks.ExBlockState! state) -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldForResolving) -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.GetBlockInfo(Vintagestory.API.Common.IPlayer! forPlayer, System.Text.StringBuilder! dsc) -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.Initialize(Vintagestory.API.Common.ICoreAPI! api) -> void
+override ExpandedLib.Industry.Casting.BlockSandStation.OnBlockBroken(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.IPlayer! byPlayer, float dropQuantityMultiplier = 1) -> void
+override ExpandedLib.Industry.Casting.BlockSandStation.OnBlockInteractStart(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel) -> bool
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
@@ -685,6 +708,16 @@ static ExpandedLib.Industry.Pipes.FlowPort.At(Vintagestory.API.Common.BlockEntit
 static readonly ExpandedLib.Industry.Helpers.ExParticles.MetalSpark -> int
 static readonly ExpandedLib.Industry.Helpers.ExSounds.MetalBreak -> Vintagestory.API.Common.AssetLocation!
 virtual ExpandedLib.Industry.Benches.BlockEntityMpBench.JobTorqueNm.get -> float
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.CupBox.get -> Vintagestory.API.MathTools.Cuboidf?
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.IntakeAllowed() -> bool
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFace.get -> Vintagestory.API.MathTools.BlockFacing?
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnMetalMoved(int units, string! metal, float temperatureC) -> void
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnPulled(int accepted) -> void
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnShakenOut() -> void
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnStationInteract(Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.ItemStack? held) -> bool
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnStationTick(float dt) -> void
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.PourIsScrap.get -> bool
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.StationCode.get -> string?
 virtual ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.Bore.get -> ExpandedLib.Industry.Pipes.FlowBore?
 const ExpandedLib.Industry.Machining.MachineCut.GameSecondsPerRealSecond = 30 -> double
 ExpandedLib.Industry.Machining.MachineCut
