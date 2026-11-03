@@ -2,6 +2,7 @@
   "code": "pattern-sashweight",
   "class": "Item",
   "maxstacksize": 1,
+  "durability": 64,
   "shape": { "base": "sashweights:item/sashweight" },
   "textures": { "metal": { "base": "game:block/wood/planks/oak1" } },
   "creativeinventory": { "general": ["*"] },

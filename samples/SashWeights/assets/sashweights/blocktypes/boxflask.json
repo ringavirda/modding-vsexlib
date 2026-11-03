@@ -1,0 +1,64 @@
+{
+  "code": "boxflask",
+  "class": "exlib.BlockSandStation",
+  "entityClass": "exlib.BlockEntitySandStation",
+  "shape": {
+    "base": "sashweights:block/boxflask/shell"
+  },
+  "drawtype": "json",
+  "textures": {
+    "planks": {
+      "base": "game:block/wood/planks/oak1"
+    }
+  },
+  "creativeinventory": {
+    "general": [
+      "*"
+    ]
+  },
+  "attributes": {
+    "sandStation": {
+      "station": "boxflask"
+    }
+  },
+  "behaviors": [
+    {
+      "name": "MoltenBurn"
+    }
+  ],
+  "entityBehaviors": [
+    {
+      "name": "exlib.BEBehaviorMoltenCell",
+      "properties": {
+        "capacity": 60
+      }
+    }
+  ],
+  "sidesolid": {
+    "all": false
+  },
+  "sideopaque": {
+    "all": false
+  },
+  "selectionbox": {
+    "x1": 0,
+    "y1": 0,
+    "z1": 0,
+    "x2": 1,
+    "y2": 0.375,
+    "z2": 1
+  },
+  "collisionbox": {
+    "x1": 0,
+    "y1": 0,
+    "z1": 0,
+    "x2": 1,
+    "y2": 0.375,
+    "z2": 1
+  },
+  "sounds": {
+    "place": "game:block/planks",
+    "break": "game:block/planks",
+    "walk": "game:walk/wood"
+  }
+}
