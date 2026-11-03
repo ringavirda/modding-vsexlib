@@ -16,8 +16,8 @@ namespace ExpandedLib.Checks;
 /// <remarks>
 /// Rules, each finding prefixed with its letter: (a) a <c>*</c> carries <c>storeWildCard</c>;
 /// (b) the <c>*</c> spans only the key's variant group; (c) the key is a group of every match;
-/// (d) the key is <c>wood</c> or <c>metal</c>, the keys a creative Ctrl build stores; (e) a
-/// <c>{key}</c> names a block variant group or a key an earlier paid stage stores; (f) a stage 0
+/// (d) the key is <c>wood</c> or <c>metal</c>, or its ingredient lists <c>allowedVariants</c>, the
+/// keys a creative Ctrl build stores; (e) a <c>{key}</c> names a block variant group or a key an earlier paid stage stores; (f) a stage 0
 /// key is stored by stage 1; (g) a key is stored by one paid stage, as the refund fills every
 /// storing ingredient with the last state stored, and later stages take it as <c>{key}</c>; one
 /// holding its own <c>{key}</c> stores what it was filled with. (b) and (c) decide block codes in
@@ -25,7 +25,8 @@ namespace ExpandedLib.Checks;
 /// loaded game.
 /// </remarks>
 public static class StageWildcardsCheck {
-  /// <summary>The <c>storeWildCard</c> keys vanilla's creative Ctrl build stores.</summary>
+  /// <summary>The <c>storeWildCard</c> keys the creative Ctrl build stores without
+  /// <c>allowedVariants</c>.</summary>
   private static readonly string[] CreativeKeys = ["wood", "metal"];
 
   private static readonly Regex Placeholder = new(@"\{(\w+)\}");
@@ -139,7 +140,10 @@ public static class StageWildcardsCheck {
 
         if (key == null)
           continue;
-        if (!CreativeKeys.Contains(key))
+        if (
+          !CreativeKeys.Contains(key)
+          && Strings(ing["allowedVariants"]) is not { Length: > 0 }
+        )
           yield return $"{where}: (d) key {key} is not seeded by the creative build";
         if (i == 0 && !stage1Keys.Contains(key))
           yield return $"{where}: (f) stage 0 key {key} is not stored by stage 1";
