@@ -627,6 +627,9 @@ virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.GameStepHours.get ->
 virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.MaxGameHoursPerTick.get -> double
 ~override ExpandedLib.Networks.BlockNetworkNode.GetInterface<T>(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> T
 ~override ExpandedLib.Structures.BlockFilledMegastructure.GetInterface<T>(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> T
+ExpandedLib.Structures.IFillerNeighbourTarget
+ExpandedLib.Structures.IFillerNeighbourTarget.OnFillerNeighbourChanged(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! principalPos, Vintagestory.API.MathTools.BlockPos! fillerPos, Vintagestory.API.MathTools.BlockPos! neighbourPos) -> void
+override ExpandedLib.Structures.BlockStructureFiller.OnNeighbourBlockChange(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.MathTools.BlockPos! neibpos) -> void
 const ExpandedLib.ExlibLang.MachineStepBore = "exlib:machine-step-bore" -> string!
 const ExpandedLib.ExlibLang.MachineStepDrill = "exlib:machine-step-drill" -> string!
 const ExpandedLib.ExlibLang.MachineStepPlane = "exlib:machine-step-plane" -> string!
@@ -649,3 +652,16 @@ override ExpandedLib.WorldGen.SeamWorldGen.ExecuteOrder() -> double
 override ExpandedLib.WorldGen.SeamWorldGen.GeneratePartial(Vintagestory.API.Server.IServerChunk![]! chunks, int chunkX, int chunkZ, int chunkdX, int chunkdZ) -> void
 override ExpandedLib.WorldGen.SeamWorldGen.initWorldGen() -> void
 override ExpandedLib.WorldGen.SeamWorldGen.StartServerSide(Vintagestory.API.Server.ICoreServerAPI! api) -> void
+const ExpandedLib.ExlibLang.IngameerrorExlibSandstationToohot = "game:ingameerror-exlib-sandstation-toohot" -> string!
+const ExpandedLib.ExlibLang.IngameerrorExlibSandstationBadpattern = "game:ingameerror-exlib-sandstation-badpattern" -> string!
+const ExpandedLib.ExlibLang.IngameerrorExlibSandstationPressfull = "game:ingameerror-exlib-sandstation-pressfull" -> string!
+const ExpandedLib.ExlibLang.IngameerrorExlibSandstationPressotherpattern = "game:ingameerror-exlib-sandstation-pressotherpattern" -> string!
+const ExpandedLib.ExlibLang.IngameerrorExlibSandstationWrongstation = "game:ingameerror-exlib-sandstation-wrongstation" -> string!
+const ExpandedLib.ExlibLang.IngameerrorExlibSandstationBedded = "game:ingameerror-exlib-sandstation-bedded" -> string!
+const ExpandedLib.ExlibLang.SandstationNeedssand = "exlib:sandstation-needssand" -> string!
+const ExpandedLib.ExlibLang.SandstationNeedspattern = "exlib:sandstation-needspattern" -> string!
+const ExpandedLib.ExlibLang.SandstationReady = "exlib:sandstation-ready" -> string!
+const ExpandedLib.ExlibLang.SandstationReadypieces = "exlib:sandstation-readypieces" -> string!
+const ExpandedLib.ExlibLang.SandstationCasting = "exlib:sandstation-casting" -> string!
+const ExpandedLib.ExlibLang.MetalstateLiquid = "exlib:metalstate-liquid" -> string!
+const ExpandedLib.ExlibLang.MetalstateHardened = "exlib:metalstate-hardened" -> string!

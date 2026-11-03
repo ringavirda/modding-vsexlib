@@ -77,8 +77,8 @@ throughput (its wall passthroughs are also the example of a block wearing textur
 of `ExlibChecks.Exempt`: no recipe makes them, and the sample exempts that finding), and
 `samples/SmokeStack` the multiblock example, a 72-cell chimney that draws gas off the
 network it is plumbed into. `samples/SashWeights` is the casting example, with its content in JSON alone: a
-flask station kind and a four-piece sash-weight pattern, parsed and validated at load; it pours nothing
-without a station block, which only a mod such as iiex brings. `samples/WasherPunch` is the machine-job
+box-flask station kind, a plank box block on `BlockSandStation` and a four-piece sash-weight pattern, so a player
+rams, presses, pours and shakes out a casting. `samples/WasherPunch` is the machine-job
 example, a hand fly press on `BlockEntityMachineStation` whose work comes from a `config/processjobs` table,
 one row from JSON and one added from C#, and a drilling machine on the Industry machining host. SashWeights and
 WasherPunch build on `ExpandedLib.Industry` types, which sit outside the stability promise below. Each has a full headless test suite, and all six build and boot like any

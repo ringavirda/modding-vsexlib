@@ -21,7 +21,7 @@ internal sealed class CastingStationLoader
     "moulds",
     "sand",
   ];
-  private static readonly HashSet<string> SandKeys = ["base", "half"];
+  private static readonly HashSet<string> SandKeys = ["base", "half", "item"];
 
   private CastingStationLoader() { }
 

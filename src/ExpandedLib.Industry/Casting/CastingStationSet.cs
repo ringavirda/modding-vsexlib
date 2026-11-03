@@ -71,7 +71,15 @@ public sealed record CastingStationSet(
         return false;
       }
 
-      kinds.Add(new CastingStationKind(code, moulds, sandBase, sandHalf));
+      string sandItem = stationNode["sand"]["item"].AsString("");
+      if (string.IsNullOrWhiteSpace(sandItem)) {
+        error = $"station '{code}' needs a 'sand.item'";
+        return false;
+      }
+
+      kinds.Add(
+        new CastingStationKind(code, moulds, sandBase, sandHalf, sandItem)
+      );
     }
 
     error = null;

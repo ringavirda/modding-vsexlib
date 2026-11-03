@@ -1,0 +1,11 @@
+[
+  {
+    "ingredientPattern": "PPP,PPP",
+    "ingredients": {
+      "P": { "type": "item", "code": "game:plank-oak" }
+    },
+    "width": 3,
+    "height": 2,
+    "output": { "type": "block", "code": "sashweights:boxflask" }
+  }
+]

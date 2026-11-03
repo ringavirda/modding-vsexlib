@@ -9,7 +9,8 @@ see the git history.
 
 ### Added
 
-- **`samples/SashWeights`**: a casting sample with its content in JSON alone, declaring a station kind and a four-piece sash-weight pattern that load and validate.
+- **`BlockSandStation` and `BlockEntitySandStation`** (ExpandedLib.Industry): a one-cell sand station declared in JSON alone, named by the block's `sandStation.station` attribute (and an optional `sandStation.cup`). A player rams it with the kind's moulding sand, presses a pattern, pours from a launder or a carried pour, and shakes the casting out; a multi-cell station derives the entity. The station kind gains a required `sand.item`.
+- **`samples/SashWeights`**: a casting sample with its content in JSON alone, declaring a station kind, a plank box-flask block on the sand station and a four-piece sash-weight pattern, with a test that presses, pours and shakes out.
 - **`samples/WasherPunch`**: a machine-job sample, a hand fly press whose work comes from a `config/processjobs` row in JSON and one from C#, and a drilling machine on that host with a bit item, an iron plate job from JSON and a meteoric plate job from C#.
 - **Machining** (ExpandedLib.Industry): `MachiningJobRegistry`, `MachineKindRegistry` and `CuttingMaterialRegistry`, read from
   `config/machiningjobs`, `config/machinekinds` and `config/cuttingmaterials` or contributed from C#. A job is keyed by step and

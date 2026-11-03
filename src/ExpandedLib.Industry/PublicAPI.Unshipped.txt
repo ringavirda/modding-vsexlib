@@ -51,18 +51,37 @@ ExpandedLib.Industry.Benches.BlockEntityMpBench.Remaining.get -> float
 ExpandedLib.Industry.Benches.BlockEntityMpBench.Resolve(string! code, int quantity) -> Vintagestory.API.Common.ItemStack?
 ExpandedLib.Industry.Benches.BlockEntityMpBench.Speed.get -> float
 ExpandedLib.Industry.Benches.BlockEntityMpBench.StopsProductionWhenNotReady.get -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation
+ExpandedLib.Industry.Casting.BlockEntitySandStation.BeginFill(Vintagestory.API.MathTools.Vec3d! hitPosition) -> void
+ExpandedLib.Industry.Casting.BlockEntitySandStation.BlockEntitySandStation() -> void
+ExpandedLib.Industry.Casting.BlockEntitySandStation.CanReceive(Vintagestory.API.Common.ItemStack! metal) -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation.CanReceiveAny.get -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation.HasImpression.get -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation.Kind.get -> ExpandedLib.Industry.Casting.CastingStationKind?
+ExpandedLib.Industry.Casting.BlockEntitySandStation.OnInteract(Vintagestory.API.Common.IPlayer! byPlayer) -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation.OnPourOver() -> void
+ExpandedLib.Industry.Casting.BlockEntitySandStation.Pressed.get -> int
+ExpandedLib.Industry.Casting.BlockEntitySandStation.ReceiveLiquidMetal(Vintagestory.API.Common.ItemStack! metal, ref int amount, float temperature) -> void
+ExpandedLib.Industry.Casting.BlockEntitySandStation.Sand.get -> ExpandedLib.Industry.Casting.SandStationLevel
+ExpandedLib.Industry.Casting.BlockEntitySandStation.ShakeOutOnBreak() -> void
+ExpandedLib.Industry.Casting.BlockEntitySandStation.Spec.get -> ExpandedLib.Industry.Casting.MoldSpec?
+ExpandedLib.Industry.Casting.BlockSandStation
+ExpandedLib.Industry.Casting.BlockSandStation.BlockSandStation() -> void
 ExpandedLib.Industry.Casting.CastingPatterns
 ExpandedLib.Industry.Casting.CastingStationKind
-ExpandedLib.Industry.Casting.CastingStationKind.CastingStationKind(string! Code, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MouldKind>! Moulds, string! SandBase, string! SandHalf) -> void
+ExpandedLib.Industry.Casting.CastingStationKind.CastingStationKind(string! Code, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MouldKind>! Moulds, string! SandBase, string! SandHalf, string! SandItem) -> void
 ExpandedLib.Industry.Casting.CastingStationKind.Code.get -> string!
 ExpandedLib.Industry.Casting.CastingStationKind.Code.init -> void
 ExpandedLib.Industry.Casting.CastingStationKind.Moulds.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MouldKind>!
 ExpandedLib.Industry.Casting.CastingStationKind.Moulds.init -> void
+ExpandedLib.Industry.Casting.CastingStationKind.Matches(string? itemCode) -> bool
 ExpandedLib.Industry.Casting.CastingStationKind.SameAs(ExpandedLib.Industry.Casting.CastingStationKind! other) -> bool
 ExpandedLib.Industry.Casting.CastingStationKind.SandBase.get -> string!
 ExpandedLib.Industry.Casting.CastingStationKind.SandBase.init -> void
 ExpandedLib.Industry.Casting.CastingStationKind.SandHalf.get -> string!
 ExpandedLib.Industry.Casting.CastingStationKind.SandHalf.init -> void
+ExpandedLib.Industry.Casting.CastingStationKind.SandItem.get -> string!
+ExpandedLib.Industry.Casting.CastingStationKind.SandItem.init -> void
 ExpandedLib.Industry.Casting.CastingStationKind.Takes(ExpandedLib.Industry.Casting.MouldKind mould) -> bool
 ExpandedLib.Industry.Casting.CastingStationRegistry
 ExpandedLib.Industry.Casting.CastingStationRegistry.All.get -> System.Collections.Generic.IReadOnlyCollection<ExpandedLib.Industry.Casting.CastingStationKind!>!
@@ -122,6 +141,44 @@ ExpandedLib.Industry.Casting.MoldSpec.UnitsPerPiece.get -> int
 ExpandedLib.Industry.Casting.MouldKind
 ExpandedLib.Industry.Casting.MouldKind.Closed = 1 -> ExpandedLib.Industry.Casting.MouldKind
 ExpandedLib.Industry.Casting.MouldKind.Open = 0 -> ExpandedLib.Industry.Casting.MouldKind
+ExpandedLib.Industry.Casting.SandStationAction
+ExpandedLib.Industry.Casting.SandStationAction.Bedded = 1 -> ExpandedLib.Industry.Casting.SandStationAction
+ExpandedLib.Industry.Casting.SandStationAction.Harvest = 5 -> ExpandedLib.Industry.Casting.SandStationAction
+ExpandedLib.Industry.Casting.SandStationAction.Imprint = 3 -> ExpandedLib.Industry.Casting.SandStationAction
+ExpandedLib.Industry.Casting.SandStationAction.None = 0 -> ExpandedLib.Industry.Casting.SandStationAction
+ExpandedLib.Industry.Casting.SandStationAction.Press = 4 -> ExpandedLib.Industry.Casting.SandStationAction
+ExpandedLib.Industry.Casting.SandStationAction.RamSand = 2 -> ExpandedLib.Industry.Casting.SandStationAction
+ExpandedLib.Industry.Casting.SandStationAction.TooHot = 6 -> ExpandedLib.Industry.Casting.SandStationAction
+ExpandedLib.Industry.Casting.SandStationLevel
+ExpandedLib.Industry.Casting.SandStationLevel.Empty = 0 -> ExpandedLib.Industry.Casting.SandStationLevel
+ExpandedLib.Industry.Casting.SandStationLevel.Full = 2 -> ExpandedLib.Industry.Casting.SandStationLevel
+ExpandedLib.Industry.Casting.SandStationLevel.Half = 1 -> ExpandedLib.Industry.Casting.SandStationLevel
+ExpandedLib.Industry.Casting.SandStationLogic
+const ExpandedLib.Industry.Casting.SandStationLogic.AfterShakeOut = ExpandedLib.Industry.Casting.SandStationLevel.Full -> ExpandedLib.Industry.Casting.SandStationLevel
+static ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFaceOf(Vintagestory.API.Common.Block! block) -> Vintagestory.API.MathTools.BlockFacing?
+static ExpandedLib.Industry.Casting.SandStationLogic.CanIntake(bool hasImpression, bool cavityFull, bool solidified) -> bool
+static ExpandedLib.Industry.Casting.SandStationLogic.Decide(bool holdingSand, bool holdingPattern, bool emptyHand, ExpandedLib.Industry.Casting.SandStationLevel sand, bool hasImpression, bool hasMetal, bool isHardened, bool closedImpression = false) -> ExpandedLib.Industry.Casting.SandStationAction
+static ExpandedLib.Industry.Casting.SandStationLogic.FillBatches(ExpandedLib.Industry.Casting.FillOrder order, int pieces, int pressed) -> System.Collections.Generic.IReadOnlyList<int[]!>!
+static ExpandedLib.Industry.Casting.SandStationLogic.FillingMeshKey(string! shapeRef, int pressed) -> string!
+static ExpandedLib.Industry.Casting.SandStationLogic.FillingShape(ExpandedLib.Industry.Casting.CastingStationKind! kind, ExpandedLib.Industry.Casting.SandStationLevel sand, bool hasImpression, string? impressionShape, bool closedImpression = false) -> string?
+static ExpandedLib.Industry.Casting.SandStationLogic.HeadStands(ExpandedLib.Industry.Casting.MoldSpec? spec, int pressed, float amount) -> bool
+static ExpandedLib.Industry.Casting.SandStationLogic.IsMisrun(float? pourTemp, float minPourTemp) -> bool
+static ExpandedLib.Industry.Casting.SandStationLogic.PieceFills(int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> int[]!
+static ExpandedLib.Industry.Casting.SandStationLogic.Press(string! impressedCode, string! heldCode, int pressed, int pieces) -> ExpandedLib.Industry.Casting.SandStationPressOutcome
+static ExpandedLib.Industry.Casting.SandStationLogic.PrunedToPressed(Vintagestory.API.Common.Shape! shape, int pressed) -> Vintagestory.API.Common.Shape!
+static ExpandedLib.Industry.Casting.SandStationLogic.SandAfterImprint(ExpandedLib.Industry.Casting.SandStationLevel sand, bool closedPattern) -> ExpandedLib.Industry.Casting.SandStationLevel
+static ExpandedLib.Industry.Casting.SandStationLogic.YieldOf(bool misrun, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> ExpandedLib.Industry.Casting.SandStationYield
+ExpandedLib.Industry.Casting.SandStationPressOutcome
+ExpandedLib.Industry.Casting.SandStationPressOutcome.Bed = 0 -> ExpandedLib.Industry.Casting.SandStationPressOutcome
+ExpandedLib.Industry.Casting.SandStationPressOutcome.Full = 1 -> ExpandedLib.Industry.Casting.SandStationPressOutcome
+ExpandedLib.Industry.Casting.SandStationPressOutcome.OtherPattern = 2 -> ExpandedLib.Industry.Casting.SandStationPressOutcome
+ExpandedLib.Industry.Casting.SandStationYield
+ExpandedLib.Industry.Casting.SandStationYield.Parts.get -> int
+ExpandedLib.Industry.Casting.SandStationYield.Parts.init -> void
+ExpandedLib.Industry.Casting.SandStationYield.SandStationYield() -> void
+ExpandedLib.Industry.Casting.SandStationYield.SandStationYield(int Parts, int ScrapUnits) -> void
+ExpandedLib.Industry.Casting.SandStationYield.ScrapUnits.get -> int
+ExpandedLib.Industry.Casting.SandStationYield.ScrapUnits.init -> void
 ExpandedLib.Industry.Forming.FeedstockEntry
 ExpandedLib.Industry.Forming.FeedstockEntry.EntersAs.get -> string!
 ExpandedLib.Industry.Forming.FeedstockEntry.EntersAs.init -> void
@@ -557,6 +614,12 @@ ExpandedLib.Industry.Pipes.PortReading.PressureAtm.get -> double
 ExpandedLib.Industry.Pipes.PortReading.PressureAtm.init -> void
 ExpandedLib.Industry.Pipes.PortReading.TemperatureC.get -> double
 ExpandedLib.Industry.Pipes.PortReading.TemperatureC.init -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.DeclareState(ExpandedLib.Blocks.ExBlockState! state) -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldForResolving) -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.GetBlockInfo(Vintagestory.API.Common.IPlayer! forPlayer, System.Text.StringBuilder! dsc) -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.Initialize(Vintagestory.API.Common.ICoreAPI! api) -> void
+override ExpandedLib.Industry.Casting.BlockSandStation.OnBlockBroken(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.IPlayer! byPlayer, float dropQuantityMultiplier = 1) -> void
+override ExpandedLib.Industry.Casting.BlockSandStation.OnBlockInteractStart(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel) -> bool
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
@@ -645,6 +708,16 @@ static ExpandedLib.Industry.Pipes.FlowPort.At(Vintagestory.API.Common.BlockEntit
 static readonly ExpandedLib.Industry.Helpers.ExParticles.MetalSpark -> int
 static readonly ExpandedLib.Industry.Helpers.ExSounds.MetalBreak -> Vintagestory.API.Common.AssetLocation!
 virtual ExpandedLib.Industry.Benches.BlockEntityMpBench.JobTorqueNm.get -> float
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.CupBox.get -> Vintagestory.API.MathTools.Cuboidf?
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.IntakeAllowed() -> bool
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFace.get -> Vintagestory.API.MathTools.BlockFacing?
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnMetalMoved(int units, string! metal, float temperatureC) -> void
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnPulled(int accepted) -> void
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnShakenOut() -> void
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnStationInteract(Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.ItemStack? held) -> bool
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnStationTick(float dt) -> void
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.PourIsScrap.get -> bool
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.StationCode.get -> string?
 virtual ExpandedLib.Industry.Pipes.BEBehaviorPipeFlowCell.Bore.get -> ExpandedLib.Industry.Pipes.FlowBore?
 const ExpandedLib.Industry.Machining.MachineCut.GameSecondsPerRealSecond = 30 -> double
 ExpandedLib.Industry.Machining.MachineCut
@@ -694,3 +767,26 @@ virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.ReadDrive() -> Exp
 ExpandedLib.Industry.Machining.MachineAnchors
 override ExpandedLib.Industry.Machining.BlockEntityMachineTool.OnTesselation(Vintagestory.API.Client.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> bool
 static ExpandedLib.Industry.Machining.MachineAnchors.Compose(ExpandedLib.Industry.Machining.MachineAnchor! anchor, Vintagestory.API.MathTools.Vec3f! blockRotationDeg) -> float[]!
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.FillRatio -> float
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.MetalStack -> Vintagestory.API.Common.ItemStack?
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.MoltenSurfaceRenderer(Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Client.ICoreClientAPI! api, Vintagestory.API.MathTools.Cuboidf![]! footprintBoxes, float rotationY = 0, float fillStartY = 0.125, float fillHeightLevels = 12, bool combine = false) -> void
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.Temperature -> float
+ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.TextureName -> Vintagestory.API.Common.AssetLocation?
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.BindSurfaceTexture(Vintagestory.API.Client.IRenderAPI! render) -> bool
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.ConfigureShader(Vintagestory.API.Client.IStandardShaderProgram! shader, Vintagestory.API.Client.IRenderAPI! render) -> void
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.RenderOrder.get -> double
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.SelectMeshIndex() -> int
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.ShouldRender.get -> bool
+override ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.SurfaceY.get -> float
+static ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.ApplyGlow(Vintagestory.API.Client.ICoreClientAPI! api, Vintagestory.API.Client.IStandardShaderProgram! shader, Vintagestory.API.Common.ItemStack! metal, float temperature) -> void
+static ExpandedLib.Industry.Molten.MoltenSurfaceRenderer.BindMetalTexture(Vintagestory.API.Client.IRenderAPI! render, Vintagestory.API.Common.ItemStack! metal, ref Vintagestory.API.Common.AssetLocation? textureName) -> bool
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.OnBlockRemoved() -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.OnBlockUnloaded() -> void
+override ExpandedLib.Industry.Casting.BlockEntitySandStation.OnTesselation(Vintagestory.API.Client.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation.BuildFillingMesh(Vintagestory.API.Client.ICoreClientAPI! capi, Vintagestory.API.Client.ITesselatorAPI! tesselator, string! shapeRef, System.Func<Vintagestory.API.Common.Shape!, Vintagestory.API.Common.Shape!>? prune = null, System.Action<Vintagestory.API.Client.MeshData!>? place = null) -> Vintagestory.API.Client.MeshData?
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.AddOverlay(Vintagestory.API.Client.ICoreClientAPI! capi, Vintagestory.API.Client.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> void
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedSurfaces.get -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.Cuboidf!>!
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedMetalCode.get -> string?
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedShown.get -> bool
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedTemperature.get -> float
