@@ -100,6 +100,10 @@ internal sealed class UseStep : ScenarioStep {
         ctx,
         InteractStep.Returned(active, InteractStep.Keeps(o))
       );
+      PackLedger.Give(
+        ctx,
+        player.Player.InventoryManager.OffhandHotbarSlot.Itemstack
+      );
       report.Value = InteractStep.HandLine(withText, player.HandText());
     } finally {
       InteractStep.Finish(player, o);
