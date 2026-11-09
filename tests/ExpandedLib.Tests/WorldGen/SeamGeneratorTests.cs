@@ -88,7 +88,24 @@ public class SeamGeneratorTests
   // Fails when the plane is evaluated at the chunk-local lx, lz: chunk 1 differs from the body's
   // world columns. A second run with the column fraction drawn from DepositRand fails it too.
   [Fact]
-  public void The_same_body_in_two_neighbouring_chunks_gives_the_stack_of_each_world_column()
+  public void The_same_body_in_two_neighbouring_chunks_gives_the_stack_of_each_world_column() =>
+    NeighbouringChunksAgree(extra: "");
+
+  // Fails when the roll or swell noise is keyed on the chunk being generated, not the world column.
+  [Fact]
+  public void A_rolled_and_swollen_body_has_the_same_waves_from_either_chunk()
+  {
+    int total = NeighbouringChunksAgree(
+      extra: """
+      , "roll": { "amplitude": 6, "wavelength": 20 },
+      "swell": { "amplitude": 0.6, "wavelength": 20 }
+      """
+    );
+
+    Assert.True(total > 100);
+  }
+
+  private static int NeighbouringChunksAgree(string extra)
   {
     using var rig = new SeamRig();
     string attrs = SeamRig.Attributes(
@@ -96,7 +113,8 @@ public class SeamGeneratorTests
       strike: 40,
       taperFull: 0.4f,
       taperZero: 0.9f,
-      anchorY: 110
+      anchorY: 110,
+      extra: extra
     );
     var spec = JsonConvert.DeserializeObject<SeamSpec>(attrs)!;
     const int seed = 777;
@@ -124,6 +142,7 @@ public class SeamGeneratorTests
       }
     }
     Assert.True(total > 100);
+    return total;
   }
 
   private static List<int> ExpectedOre(
@@ -144,16 +163,14 @@ public class SeamGeneratorTests
     {
       return [];
     }
-    float baseY = body.Footprint.BaseY(
-      body.Anchor * SeamRig.SeaLevel,
-      body.Dip,
-      u
-    );
+    float baseY =
+      body.Footprint.BaseY(body.Anchor * SeamRig.SeaLevel, body.Dip, u)
+      + body.RollAt(x, z);
     float r = PositionHash.Fraction(body.Seed, x, 0, z, -1);
     return SeamStack
       .Lay(
         spec.Layers,
-        body.Thicknesses,
+        body.ThicknessesAt(x, z),
         baseY,
         body.Footprint.Taper(s, edge),
         r,
@@ -206,12 +223,12 @@ public class SeamGeneratorTests
     using var rig = new SeamRig();
     rig.World.Log.Expect(
       EnumLogType.Warning,
-      "test.json: footprint length up to 300"
+      "test.json: footprint length up to 700"
     );
 
-    rig.Generator(SeamRig.Attributes(run: 300), 5);
+    rig.Generator(SeamRig.Attributes(run: 700), 5);
 
-    Assert.Contains(rig.World.Log.Warnings, w => w.Contains("cut to 240"));
+    Assert.Contains(rig.World.Log.Warnings, w => w.Contains("cut to 640"));
   }
 
   // Fails when the range rounds down: a reach just over a chunk multiple loses its last chunk.

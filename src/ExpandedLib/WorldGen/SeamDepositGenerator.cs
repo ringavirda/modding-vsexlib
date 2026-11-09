@@ -249,14 +249,15 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
           spec.Anchor == SeamAnchor.Sealevel
             ? body.Anchor * seaLevel
             : ground.TerrainY(lx, lz) - body.Anchor;
-        float baseY = fp.BaseY(anchorY, body.Dip, u);
+        float baseY = fp.BaseY(anchorY, body.Dip, u) + body.RollAt(x, z);
+        IReadOnlyList<float> thicknesses = body.ThicknessesAt(x, z);
         float taper = fp.Taper(s, edge);
         float r = PositionHash.Fraction(body.Seed, x, 0, z, -1);
         bool needRock = spec.MinCover > 0 || anyOutcrop;
         int rockTop = needRock ? ground.RockTop(lx, lz) : 0;
         List<SeamCell> cells = SeamStack.Lay(
           spec.Layers,
-          body.Thicknesses,
+          thicknesses,
           baseY,
           taper,
           r,
@@ -265,7 +266,7 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
         );
         SeamSpan[] spans = SeamStack.Spans(
           spec.Layers,
-          body.Thicknesses,
+          thicknesses,
           baseY,
           taper
         );
@@ -531,19 +532,21 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
         spec.Footprint.Run.avg + spec.Footprint.Run.var,
         DepositFootprint.MaxLength
       );
+    double swell = 1 + Math.Clamp(spec.Swell?.Amplitude ?? 0, 0, 1);
     double stack = spec.Layers.Sum(l =>
-      l.Offset + Math.Max(0, l.Thickness.avg + l.Thickness.var)
+      l.Offset + Math.Max(0, l.Thickness.avg + l.Thickness.var) * swell
     );
+    double roll = Math.Abs(spec.Roll?.Amplitude ?? 0);
     if (spec.Anchor == SeamAnchor.Sealevel)
     {
       int seaLevel = Api.World.SeaLevel;
-      miny = (spec.YCropRel.avg - spec.YCropRel.var) * seaLevel - dipRun;
-      maxy = (spec.YCropRel.avg + spec.YCropRel.var) * seaLevel + stack;
+      miny = (spec.YCropRel.avg - spec.YCropRel.var) * seaLevel - dipRun - roll;
+      maxy = (spec.YCropRel.avg + spec.YCropRel.var) * seaLevel + stack + roll;
     }
     else
     {
-      miny = pos.Y - (spec.Depth.avg + spec.Depth.var) - dipRun;
-      maxy = pos.Y - (spec.Depth.avg - spec.Depth.var) + stack;
+      miny = pos.Y - (spec.Depth.avg + spec.Depth.var) - dipRun - roll;
+      maxy = pos.Y - (spec.Depth.avg - spec.Depth.var) + stack + roll;
     }
   }
 }

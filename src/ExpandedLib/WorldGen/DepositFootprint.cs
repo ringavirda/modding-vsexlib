@@ -24,7 +24,7 @@ internal sealed class DepositFootprint(
 {
   /// <summary>Longest run or strike in blocks; the generator widens the deposit chunk range to
   /// reach it.</summary>
-  public const float MaxLength = 240;
+  public const float MaxLength = 640;
 
   /// <summary>Furthest distance in blocks from the body centre to a column the outline can hold,
   /// whatever the dip direction: the half diagonal of the run by strike rectangle.</summary>
