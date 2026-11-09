@@ -106,10 +106,11 @@ public sealed class SeamWorldGen : GenPartial
     {
       return;
     }
-    float chance = sapi
-      .Assets.Get("worldgen/deposits.json")
-      .ToObject<Deposits>()
-      .ChanceMultiplier;
+    float chance =
+      sapi.Assets.TryGet("worldgen/deposits.json")
+        ?.ToObject<Deposits>()
+        .ChanceMultiplier
+      ?? 1f;
     var variants = new List<DepositVariant>();
     foreach (
       var file in sapi

@@ -4,6 +4,7 @@ using System.Linq;
 using ExpandedLib.WorldGen;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -66,6 +67,30 @@ public class SeamWorldGenTests
 
   private const string Wide =
     """, "worldScale": { "code": "iiexBulkOre", "values": { "off": 0, "normal": 1 } }""";
+
+  // Fails when AssetsFinalize reads vanilla's deposits file with Get: a harness world has none and the load throws.
+  [Fact]
+  public void A_world_without_vanillas_deposits_file_still_loads_the_pass()
+  {
+    using var rig = new SeamRig();
+    rig.World.Api.Assets.TryGet("worldgen/deposits.json")
+      .Returns((IAsset?)null);
+    rig.World.Api.Assets.Get("worldgen/deposits.json")
+      .Throws(
+        new System.Exception("Asset worldgen/deposits.json could not be found")
+      );
+    rig.World.Api.Assets.GetMany<DepositVariant[]>(
+        Arg.Any<ILogger>(),
+        Arg.Any<string>(),
+        Arg.Any<string?>()
+      )
+      .Returns(new Dictionary<AssetLocation, DepositVariant[]>());
+    var pass = new SeamWorldGen();
+
+    pass.AssetsFinalize(rig.World.Api);
+
+    Assert.Equal(3, pass.ChunkRange);
+  }
 
   // Fails when the pass ignores the seams' reach: a 240 x 160 body stays at three chunks.
   [Fact]
