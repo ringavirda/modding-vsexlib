@@ -134,6 +134,15 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
     _spec = spec;
   }
 
+  /// <summary>Blocks from a body's centre that its columns reach; 0 for a rejected spec or a world
+  /// the scale turns off.</summary>
+  internal float ReachRadius => _scale > 0 ? GetMaxRadius() : 0;
+
+  /// <summary>Chunks from a body's centre chunk that reach a column <paramref name="radius"/>
+  /// blocks from the centre: a centre may sit at the near edge of its chunk.</summary>
+  internal static int ChunkRangeFor(float radius) =>
+    (int)MathF.Ceiling(radius / GlobalConstants.ChunkSize);
+
   private static double AbsAvgQuantity(SeamSpec spec, float triesPerChunk)
   {
     SeamFootprintSpec fp = spec.Footprint;
@@ -349,7 +358,7 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
   )
   {
     (int lx, int lz) = local;
-    int surfaceY = ground.RainY(lx, lz);
+    int surfaceY = ground.TerrainY(lx, lz);
     float depth = surfaceY - cell.Y;
     float chance =
       layer.SurfaceBlockChance
@@ -458,13 +467,16 @@ internal sealed class SeamDepositGenerator : DepositGeneratorBase
   /// <inheritdoc/>
   public override float GetMaxRadius() =>
     _spec is { } spec
-      ? Math.Min(
-        Math.Max(
+      ? DepositFootprint.Reach(
+        Math.Min(
           spec.Footprint.Run.avg + spec.Footprint.Run.var,
-          spec.Footprint.Strike.avg + spec.Footprint.Strike.var
+          DepositFootprint.MaxLength
         ),
-        DepositFootprint.MaxLength
-      ) / 2
+        Math.Min(
+          spec.Footprint.Strike.avg + spec.Footprint.Strike.var,
+          DepositFootprint.MaxLength
+        )
+      )
       : 0;
 
   /// <inheritdoc/>

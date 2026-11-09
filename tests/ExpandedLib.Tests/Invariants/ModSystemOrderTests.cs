@@ -6,12 +6,13 @@ using ExpandedLib.Industry;
 using ExpandedLib.Registries;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
+using Vintagestory.ServerMods;
 using Xunit;
 
 namespace ExpandedLib.Tests;
 
 /// <summary>No ModSystem in exlib.dll or exlib.industry.dll other than an <see cref="ExModSystem"/>
-/// reads or finalizes assets at the vendored 0.1 default; <see cref="ExpandedLib.ExpandedLibModSystem"/>'s
+/// or a <see cref="GenPartial"/>, whose order places its world generation pass, reads or finalizes assets at the vendored 0.1 default; <see cref="ExpandedLib.ExpandedLibModSystem"/>'s
 /// AssetsFinalize is pinned at 0.06 and runs first.</summary>
 public class ModSystemOrderTests {
   #region Corpus
@@ -50,7 +51,7 @@ public class ModSystemOrderTests {
   #endregion
 
   /// <summary>Each concrete <see cref="ModSystem"/> of <paramref name="types"/>, other than an
-  /// <see cref="ExModSystem"/>, that overrides <c>AssetsLoaded</c> or <c>AssetsFinalize</c> in one of
+  /// <see cref="ExModSystem"/> or a <see cref="GenPartial"/>, that overrides <c>AssetsLoaded</c> or <c>AssetsFinalize</c> in one of
   /// <paramref name="assemblies"/> and whose fresh instance orders at 0.1 or later.</summary>
   /// <returns>The offenders' full names, in input order.</returns>
   /// <exception cref="MissingMethodException">An offender candidate has no parameterless
@@ -65,6 +66,7 @@ public class ModSystemOrderTests {
         typeof(ModSystem).IsAssignableFrom(t)
         && !t.IsAbstract
         && !typeof(ExModSystem).IsAssignableFrom(t)
+        && !typeof(GenPartial).IsAssignableFrom(t)
       )
     ) {
       if (
@@ -126,8 +128,16 @@ public class ModSystemOrderTests {
 
   private sealed class Idle : ModSystem { }
 
-  // Fails when DefaultOrderAssetReaders passes a default-order reader, direct or inherited, or
-  // names a pinned one, an idle one, an abstract one, or an override from outside the assemblies.
+  private sealed class LatePass : GenPartial {
+    protected override int chunkRange => 0;
+
+    public override double ExecuteOrder() => 0.92;
+
+    public override void AssetsFinalize(ICoreAPI api) { }
+  }
+
+  // Fails when DefaultOrderAssetReaders passes a default-order reader, direct or inherited, or names a
+  // pinned, idle or abstract one, a world generation pass, or an override from outside the assemblies.
   [Fact]
   [PlantedDefect(typeof(ModSystemOrderTests), nameof(DefaultOrderAssetReaders))]
   public void A_default_order_asset_reader_is_named() {
@@ -138,6 +148,7 @@ public class ModSystemOrderTests {
       typeof(ReaderBase),
       typeof(InheritedReader),
       typeof(Idle),
+      typeof(LatePass),
     ];
 
     Assert.Equal(

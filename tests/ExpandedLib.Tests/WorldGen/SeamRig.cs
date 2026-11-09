@@ -144,17 +144,21 @@ internal sealed class SeamRig : IDisposable
   }
 
   /// <summary>A chunk column with host rock up to <paramref name="top"/> and air above; the terrain
-  /// and rain height maps read <paramref name="top"/>.</summary>
+  /// map reads <paramref name="top"/> and the rain height map <paramref name="rainTop"/>, or
+  /// <paramref name="top"/> when null.</summary>
   public ProPickWorkSpace.DummyChunk[] Chunks(
     int top = RockTop,
-    System.Func<int, int, int>? hostAt = null
+    System.Func<int, int, int>? hostAt = null,
+    int? rainTop = null
   )
   {
     var map = Substitute.For<IMapChunk>();
     var heights = new ushort[1024];
     Array.Fill(heights, (ushort)top);
     map.WorldGenTerrainHeightMap.Returns(heights);
-    map.RainHeightMap.Returns(heights);
+    var rain = new ushort[1024];
+    Array.Fill(rain, (ushort)(rainTop ?? top));
+    map.RainHeightMap.Returns(rain);
     var chunks = new ProPickWorkSpace.DummyChunk[8];
     for (int i = 0; i < chunks.Length; i++)
     {

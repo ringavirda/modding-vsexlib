@@ -18,6 +18,10 @@ internal readonly record struct ProbeTile(
 
 /// <summary>The arguments of <c>/exmod probe run</c>: a rectangle of chunk columns, a tile size
 /// and the block codes to count.</summary>
+/// <param name="Recorded">Per code, whether every matching block's position is written to the
+/// blocks file as well as counted.</param>
+/// <param name="Terrain">Whether each column's terrain heights and geologic province are written to
+/// the terrain file.</param>
 /// <param name="CenterOnSpawn">The rectangle is centred on the world's default spawn column instead
 /// of starting at <paramref name="MinColumnX"/>, <paramref name="MinColumnZ"/>.</param>
 internal sealed record ProbeRequest(
@@ -27,16 +31,19 @@ internal sealed record ProbeRequest(
   int ColumnsX,
   int ColumnsZ,
   int TileColumns,
-  IReadOnlyList<string> Codes
+  IReadOnlyList<string> Codes,
+  IReadOnlyList<bool> Recorded,
+  bool Terrain
 ) {
   public const string Usage =
-    "run <x|spawn> <z|spawn> <columnsX> <columnsZ> <tileColumns> <code...>";
+    "run <x|spawn> <z|spawn> <columnsX> <columnsZ> <tileColumns> <code...>; +code records positions, @terrain records heights and provinces";
 
   /// <summary>Parses <c>&lt;x|spawn&gt; &lt;z|spawn&gt; &lt;columnsX&gt; &lt;columnsZ&gt; &lt;tileColumns&gt;
   /// &lt;code...&gt;</c>. Columns are chunk columns (32 blocks); both corner words are <c>spawn</c> or
-  /// both numbers; codes may hold <c>*</c> wildcards. Returns null with the reason in
-  /// <paramref name="error"/> when a count is not a positive whole number, a corner is not a number or
-  /// <c>spawn</c>, or no code is given.</summary>
+  /// both numbers; codes may hold <c>*</c> wildcards. A code written <c>+code</c> is recorded by
+  /// position, the word <c>@terrain</c> is no code and turns the terrain file on. Returns null with
+  /// the reason in <paramref name="error"/> when a count is not a positive whole number, a corner is
+  /// not a number or <c>spawn</c>, or no code is given.</summary>
   public static ProbeRequest? Parse(string text, out string error) {
     string[] words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
     error = "";
@@ -69,6 +76,11 @@ internal sealed record ProbeRequest(
         "columnsX, columnsZ and tileColumns must be positive whole numbers.";
       return null;
     }
+    string[] rest = words.Skip(5).Where(w => w != "@terrain").ToArray();
+    if (rest.Length == 0) {
+      error = $"Usage: {Usage}";
+      return null;
+    }
     return new ProbeRequest(
       spawn,
       x,
@@ -76,7 +88,9 @@ internal sealed record ProbeRequest(
       columnsX,
       columnsZ,
       tile,
-      words.Skip(5).ToArray()
+      rest.Select(w => w.TrimStart('+')).ToArray(),
+      rest.Select(w => w.StartsWith('+')).ToArray(),
+      words.Skip(5).Contains("@terrain")
     );
   }
 

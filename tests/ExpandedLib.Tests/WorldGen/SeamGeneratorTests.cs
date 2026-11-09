@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.ServerMods;
 using Xunit;
 
 namespace ExpandedLib.Tests.WorldGen;
@@ -205,12 +206,22 @@ public class SeamGeneratorTests
     using var rig = new SeamRig();
     rig.World.Log.Expect(
       EnumLogType.Warning,
-      "test.json: footprint length up to 200"
+      "test.json: footprint length up to 300"
     );
 
-    rig.Generator(SeamRig.Attributes(run: 200), 5);
+    rig.Generator(SeamRig.Attributes(run: 300), 5);
 
-    Assert.Contains(rig.World.Log.Warnings, w => w.Contains("cut to 160"));
+    Assert.Contains(rig.World.Log.Warnings, w => w.Contains("cut to 240"));
+  }
+
+  // Fails when the range rounds down: a reach just over a chunk multiple loses its last chunk.
+  [Theory]
+  [InlineData(96f, 3)]
+  [InlineData(96.5f, 4)]
+  [InlineData(144.2f, 5)]
+  public void The_chunk_range_covers_the_reach(float radius, int range)
+  {
+    Assert.Equal(range, SeamDepositGenerator.ChunkRangeFor(radius));
   }
 
   // Fails when the empty-host warning is removed.
@@ -331,6 +342,28 @@ public class SeamGeneratorTests
       );
       Assert.Equal(expected, SeamRig.Id(chunks, lx, above, 16));
     }
+  }
+
+  // Fails when the sign reads the rain height map: a canopy over the column lifts the sign's row into air.
+  [Fact]
+  public void A_sign_lands_at_the_terrain_height_under_a_canopy()
+  {
+    using var rig = new SeamRig();
+    string attrs = SeamRig.Attributes(
+      run: 60,
+      strike: 40,
+      dip: 0,
+      anchorY: SeamRig.RockTop - 2,
+      layers: """[ { "block": "test:ore", "thickness": { "dist": "uniform", "avg": 3, "var": 0 }, "surfaceBlock": "test:loose-{rock}", "surfaceBlockChance": 1 } ]"""
+    );
+    var chunks = rig.Chunks(rainTop: SeamRig.RockTop + 12);
+
+    rig.Generate(rig.Generator(attrs, 5), chunks, 0, new BlockPos(16, 100, 16));
+
+    Assert.Equal(
+      rig.SignClaystone.BlockId,
+      SeamRig.Id(chunks, 16, SeamRig.RockTop + 1, 16)
+    );
   }
 
   // Fails when the variant's block callback flag is ignored: the blocks are written, not handed on.

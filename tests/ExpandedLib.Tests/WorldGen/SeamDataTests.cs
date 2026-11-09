@@ -21,9 +21,9 @@ public class SeamDataTests
 {
   // Fails when the mod system's Start does not register the generator code: the variant gets none.
   [Theory]
-  [InlineData("ironstone", 160, 0.3f, 1, 4, 80f)]
-  [InlineData("hematite-flat", 64, 0.05f, 1, 1, 32f)]
-  [InlineData("coal-measures", 160, 0.3f, 6, 4, 80f)]
+  [InlineData("ironstone", 160, 0.3f, 1, 4, 93.2945f)]
+  [InlineData("hematite-flat", 64, 0.05f, 1, 1, 40f)]
+  [InlineData("coal-measures", 160, 0.3f, 6, 4, 93.2945f)]
   public void A_fixture_builds_its_generator_through_the_registry(
     string name,
     float run,
@@ -55,7 +55,7 @@ public class SeamDataTests
       Assert.Equal(dip, generator.Spec.Dip.avg);
       Assert.Equal(layers, generator.Spec.Layers.Count);
       Assert.Equal(hosts, generator.HostCount);
-      Assert.Equal(radius, generator.GetMaxRadius());
+      Assert.Equal(radius, generator.GetMaxRadius(), 3);
     }
     finally
     {

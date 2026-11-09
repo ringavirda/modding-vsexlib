@@ -19,9 +19,6 @@ internal sealed class ColumnGround(IWorldAccessor world, IServerChunk[] chunks)
   public int TerrainY(int lx, int lz) =>
     _map.WorldGenTerrainHeightMap[lz * Size + lx];
 
-  /// <summary>Highest block of the column that stops rain.</summary>
-  public int RainY(int lx, int lz) => _map.RainHeightMap[lz * Size + lx];
-
   /// <summary>The block id at a column position; y is within <see cref="Height"/>.</summary>
   public int BlockId(int lx, int y, int lz) =>
     chunks[y / Size].Data.GetBlockIdUnsafe(Index(lx, y, lz));
