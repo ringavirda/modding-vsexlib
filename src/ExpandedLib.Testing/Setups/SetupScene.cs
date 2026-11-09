@@ -159,6 +159,7 @@ public sealed partial class SetupScene : IDisposable
       afterLoad?.Invoke(scene.World);
       scene._config.Apply(scene.Model.Config);
       scene.StartPack(stages);
+      scene.Preflight(stages);
       scene.PlaceLayout();
       scene.RunSteps();
       scene.JoinLines();

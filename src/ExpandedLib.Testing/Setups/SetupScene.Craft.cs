@@ -135,21 +135,35 @@ public sealed partial class SetupScene
       );
   }
 
-  private string StationsMaking(AssetLocation wanted, string? recipe)
+  private string StationsMaking(AssetLocation wanted, string? recipe) =>
+    MadeAt(
+      wanted,
+      recipe,
+      _placed.Select(p =>
+        (
+          p.Key,
+          World.GetBlock(p.Value.Cell).Code.ToString(),
+          World.GetBlockEntity(p.Value.Cell) is ICraftStation craft
+            ? craft.Orders(World.World)
+            : null
+        )
+      )
+    );
+
+  private string MadeAt(
+    AssetLocation wanted,
+    string? recipe,
+    IEnumerable<(string Id, string Code, IReadOnlyList<CraftOrder>? Orders)> placed
+  )
   {
     var names = new List<string>();
     if (
       HandGrid.Orders(World.World).Any(o => CraftBills.Makes(o, wanted, recipe))
     )
       names.Add("the hand grid");
-    foreach ((string id, SetupPlacement placed) in _placed)
-      if (
-        World.GetBlockEntity(placed.Cell) is ICraftStation craft
-        && craft
-          .Orders(World.World)
-          .Any(o => CraftBills.Makes(o, wanted, recipe))
-      )
-        names.Add($"{id} ({World.GetBlock(placed.Cell).Code})");
+    foreach ((string id, string code, IReadOnlyList<CraftOrder>? orders) in placed)
+      if (orders?.Any(o => CraftBills.Makes(o, wanted, recipe)) == true)
+        names.Add($"{id} ({code})");
     return names.Count == 0 ? "no loaded station" : string.Join(", ", names);
   }
 
