@@ -118,7 +118,17 @@ internal static class SetupSteps {
       "control",
       "keep",
     ],
-    ["use"] = ["at", "with", "hit", "face", "keys", "seconds", "keep"],
+    ["use"] =
+    [
+      "at",
+      "with",
+      "offHand",
+      "hit",
+      "face",
+      "keys",
+      "seconds",
+      "keep",
+    ],
     ["wait"] = ["seconds", "until", "max", "hold"],
     ["advance"] = ["hours"],
     ["fillInventory"] = ["code"],

@@ -338,7 +338,7 @@ public sealed class TestPlayer {
     bool sneak,
     bool ctrl,
     float seconds
-  ) => UseHeld(pos, held, hit, face, sneak, ctrl, false, seconds, null);
+  ) => UseHeld(pos, held, hit, face, sneak, ctrl, false, seconds, null, null);
 
   internal EnumHandHandling UseHeld(
     BlockPos pos,
@@ -349,7 +349,8 @@ public sealed class TestPlayer {
     bool ctrl,
     bool sprint,
     float seconds,
-    Action? eachSecond
+    Action? eachSecond,
+    ItemStack? offHand
   ) {
     if (!(seconds >= 0f))
       throw new ArgumentOutOfRangeException(
@@ -359,6 +360,8 @@ public sealed class TestPlayer {
       );
     if (held != null)
       Hold(held);
+    if (offHand != null)
+      HoldOffHand(offHand);
     ItemSlot slot = ActiveSlot;
     if (
       slot.Empty
@@ -370,6 +373,8 @@ public sealed class TestPlayer {
     if (hit != null)
       selection.HitPosition = hit;
     EnumHandInteract handUse = Entity.Controls.HandUse;
+    Vec3d? eye = Entity.LocalEyePos;
+    Entity.LocalEyePos ??= new Vec3d();
     Action release = PressKeys(sneak, ctrl, sprint);
     Entity.Controls.HandUse = EnumHandInteract.HeldItemInteract;
     try {
@@ -404,6 +409,7 @@ public sealed class TestPlayer {
       return handling;
     } finally {
       Entity.Controls.HandUse = handUse;
+      Entity.LocalEyePos = eye;
       release();
     }
   }
