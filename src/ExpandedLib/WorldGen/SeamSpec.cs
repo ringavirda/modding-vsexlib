@@ -42,6 +42,20 @@ internal sealed class SeamFootprintSpec
   public float TaperZero { get; set; } = 0.9f;
 }
 
+/// <summary>A slow wave over the ground plan, read as a smooth noise of the world position.</summary>
+[JsonObject(MemberSerialization.OptIn)]
+internal sealed class SeamWaveSpec
+{
+  /// <summary>Peak size of the wave: blocks for <see cref="SeamSpec.Roll"/>, a fraction 0..1 of
+  /// the layer thickness for <see cref="SeamSpec.Swell"/>; 0 turns the wave off.</summary>
+  [JsonProperty]
+  public float Amplitude { get; set; }
+
+  /// <summary>Distance in blocks between the noise lattice points, above 0.</summary>
+  [JsonProperty]
+  public float Wavelength { get; set; } = 100;
+}
+
 /// <summary>A world configuration value that scales how many bodies a chunk tries.</summary>
 [JsonObject(MemberSerialization.OptIn)]
 internal sealed class SeamWorldScale
@@ -71,6 +85,15 @@ internal sealed class SeamSpec
   /// <summary>Drop in blocks per block of run down the dip.</summary>
   [JsonProperty]
   public NatFloat Dip { get; set; } = NatFloat.Zero;
+
+  /// <summary>Slow waves added to the base plane height, amplitude in blocks; null keeps the plane flat.</summary>
+  [JsonProperty]
+  public SeamWaveSpec? Roll { get; set; }
+
+  /// <summary>Slow waves in the thickness of every layer, amplitude a fraction of the thickness
+  /// (a layer of at least 1 block never drops under 1); null keeps each layer one thickness a body.</summary>
+  [JsonProperty]
+  public SeamWaveSpec? Swell { get; set; }
 
   /// <summary>What the body's base height is measured from.</summary>
   [JsonProperty]
