@@ -581,6 +581,7 @@ public sealed class TestPlayer {
     string uid = "test",
     string name = "Tester"
   ) {
+    int firstMade = world.MadeCount;
     EntityPlayer entity = world.Made<EntityPlayer>();
     entity.World = world.World;
     entity.Api = world.Api;
@@ -625,6 +626,7 @@ public sealed class TestPlayer {
     player.InventoryManager.Returns(manager);
 
     made = new TestPlayer(world, player, serverPlayer, entity, hotbar, mouse);
+    world.OwnMade(uid, firstMade);
     manager.ActiveHotbarSlotNumber.Returns(_ => made._activeNumber);
     manager
       .TryGiveItemstack(Arg.Any<ItemStack>(), Arg.Any<bool>())

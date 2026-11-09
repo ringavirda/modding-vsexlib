@@ -444,6 +444,26 @@ public static class StructureBreaks
     out bool noMoreCells
   )
   {
+    try
+    {
+      return BreakAs(site, code, built, payment, cell, spawned, out noMoreCells);
+    }
+    finally
+    {
+      site.World.ForgetCalls();
+    }
+  }
+
+  private static string? BreakAs(
+    Site site,
+    string code,
+    int? built,
+    Payment? payment,
+    int cell,
+    List<Spawn> spawned,
+    out bool noMoreCells
+  )
+  {
     noMoreCells = false;
     TestWorld world = site.World;
     BlockPos at = site.At;

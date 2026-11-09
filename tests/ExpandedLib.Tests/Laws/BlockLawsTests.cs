@@ -1903,6 +1903,19 @@ public class BlockLawsTests {
     Assert.Empty(world.BlockEntities);
   }
 
+  // Fails when calls stay recorded on the world's accessor or its player (Free without ForgetCalls).
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.RunFormed))]
+  public void The_formed_pass_leaves_no_call_recorded() {
+    using TestWorld world = Hands([Token], [.. Tiered()]);
+
+    BlockLaws.Law law = InteractionLaw.RunFormed(world, "test");
+
+    Assert.Equal(10, law.Cases);
+    Assert.Empty(world.Accessor.ReceivedCalls());
+    Assert.Empty(world.World.PlayerByUid("user").ReceivedCalls());
+  }
+
   // Fails when the formed pass stands its structure with its placements unjudged, so a filled
   // cell whose placement throws leaves the structure unformed and nothing said.
   [Fact]

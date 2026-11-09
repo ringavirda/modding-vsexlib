@@ -52,6 +52,7 @@ public class StructureBreaksTests
       {
         world.RegisterClass("test-leavesfillers", typeof(LeavesFillers));
         world.RegisterClass("test-recordsplacement", typeof(RecordsPlacement));
+        world.RegisterClass("test-recordsbreakers", typeof(RecordsBreakers));
         world.RegisterClass("test-throwsonbreak", typeof(ThrowsOnBreak));
         world.RegisterClass("test-dropsnothing", typeof(DropsNothing));
         world.RegisterClass("test-plain", typeof(PlainBe));
@@ -824,6 +825,49 @@ public class StructureBreaksTests
     BlockPos[] placed = [.. RecordsPlacement.Placed];
     Assert.Equal(1 + result.Breaks, placed.Length);
     Assert.Equal(placed.Length, placed.Distinct().Count());
+  }
+
+  // Fails when the world keeps an earlier breaker reachable (OwnMade without the hand-over, or
+  // BreakOnce without ForgetCalls).
+  [Fact]
+  public void A_break_leaves_no_earlier_breaker_reachable()
+  {
+    RecordsBreakers.Earlier.Clear();
+    RecordsBreakers.Reachable = 0;
+    RecordsBreakers.Checked = 0;
+
+    StructureBreaks.Result result = Run(
+      Mega("leaver", "test-recordsbreakers")
+    );
+
+    Assert.Empty(result.Failures);
+    Assert.Equal(TwoCells.Length, RecordsBreakers.Checked);
+    Assert.Equal(0, RecordsBreakers.Reachable);
+  }
+
+  private sealed class RecordsBreakers : BlockFilledMegastructure
+  {
+    public static readonly System.Collections.Generic.List<WeakReference> Earlier =
+      [];
+    public static int Checked;
+    public static int Reachable;
+
+    public override void OnBlockBroken(
+      IWorldAccessor world,
+      BlockPos pos,
+      IPlayer byPlayer,
+      float dropQuantityMultiplier = 1f
+    )
+    {
+      GC.Collect();
+      GC.WaitForPendingFinalizers();
+      GC.Collect();
+      if (Earlier.Count > 0)
+        Checked++;
+      Reachable += Earlier.Count(e => e.IsAlive);
+      Earlier.Add(new WeakReference(byPlayer));
+      base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+    }
   }
 
   private sealed class RecordsPlacement : LeavesFillers

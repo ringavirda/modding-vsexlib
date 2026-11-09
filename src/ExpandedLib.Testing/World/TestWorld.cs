@@ -35,6 +35,7 @@ public sealed partial class TestWorld : IDisposable {
 
   private readonly List<object> _substitutes = [];
   private readonly List<ReleasableCallHandler> _handlers = [];
+  private readonly Dictionary<string, List<object>> _playerMade = new();
 
   /// <summary>The block returned for any cell that has not been placed (id 0, code "game:air",
   /// <c>Replaceable</c> 9999 as the game's air, so any block may be placed over it).</summary>
@@ -213,6 +214,27 @@ public sealed partial class TestWorld : IDisposable {
     return made;
   }
 
+  /// <summary>The number of substitutes <see cref="Made{T}"/> has handed out and not been handed on
+  /// by <see cref="OwnMade"/>.</summary>
+  internal int MadeCount => _substitutes.Count;
+
+  /// <summary>Hands the substitutes made from index <paramref name="from"/> on to the player of
+  /// <paramref name="uid"/>, replacing those of that uid's earlier player, so the world keeps the
+  /// substitutes of the latest player per uid and not of every player made.</summary>
+  internal void OwnMade(string uid, int from) {
+    _playerMade[uid] = _substitutes.GetRange(from, _substitutes.Count - from);
+    _substitutes.RemoveRange(from, _substitutes.Count - from);
+  }
+
+  /// <summary>Clears the calls every live substitute of this world, and of the latest player per
+  /// uid, has recorded, keeping what they are configured to return.</summary>
+  internal void ForgetCalls() {
+    foreach (
+      object made in _substitutes.Concat(_playerMade.Values.SelectMany(m => m))
+    )
+      made.ClearSubstitute(ClearOptions.ReceivedCalls);
+  }
+
   /// <summary>Registers <paramref name="handler"/> as a custom call handler of
   /// <paramref name="substitute"/>, released by <see cref="Dispose"/>.</summary>
   internal void Handled(object substitute, ICallHandler handler) {
@@ -234,6 +256,9 @@ public sealed partial class TestWorld : IDisposable {
     foreach (object made in _substitutes)
       made.ClearSubstitute(ClearOptions.All);
     _substitutes.Clear();
+    foreach (object made in _playerMade.Values.SelectMany(m => m))
+      made.ClearSubstitute(ClearOptions.All);
+    _playerMade.Clear();
     ConfigFiles.Dispose();
   }
 
