@@ -153,7 +153,11 @@ public sealed partial class SetupScene
   private string MadeAt(
     AssetLocation wanted,
     string? recipe,
-    IEnumerable<(string Id, string Code, IReadOnlyList<CraftOrder>? Orders)> placed
+    IEnumerable<(
+      string Id,
+      string Code,
+      IReadOnlyList<CraftOrder>? Orders
+    )> placed
   )
   {
     var names = new List<string>();
@@ -161,7 +165,9 @@ public sealed partial class SetupScene
       HandGrid.Orders(World.World).Any(o => CraftBills.Makes(o, wanted, recipe))
     )
       names.Add("the hand grid");
-    foreach ((string id, string code, IReadOnlyList<CraftOrder>? orders) in placed)
+    foreach (
+      (string id, string code, IReadOnlyList<CraftOrder>? orders) in placed
+    )
       if (orders?.Any(o => CraftBills.Makes(o, wanted, recipe)) == true)
         names.Add($"{id} ({code})");
     return names.Count == 0 ? "no loaded station" : string.Join(", ", names);

@@ -37,7 +37,8 @@ public sealed partial class SetupScene
     private readonly List<string> _problems = [];
     private readonly Dictionary<(int X, int Y, int Z), Block> _blocks = [];
     private readonly Dictionary<string, BlockPos> _ids = [];
-    private readonly Dictionary<string, IReadOnlyList<CraftOrder>?> _orders = [];
+    private readonly Dictionary<string, IReadOnlyList<CraftOrder>?> _orders =
+    [];
     private readonly Dictionary<string, SetupPlacement> _placed = [];
     private SetupWorldView? _view;
     private IReadOnlyList<CraftOrder>? _handOrders;
@@ -49,9 +50,10 @@ public sealed partial class SetupScene
     public void Run()
     {
       SetupPack? real = scene._pack;
-      scene._pack = Model.Pack == null
-        ? null
-        : SetupPack.Start(Model, stages ?? (_ => null));
+      scene._pack =
+        Model.Pack == null
+          ? null
+          : SetupPack.Start(Model, stages ?? (_ => null));
       try
       {
         Layout();
@@ -132,7 +134,9 @@ public sealed partial class SetupScene
             if (block == null)
               break;
             Block laid = block;
-            foreach (var cell in layout.Cells.Where(c => c.Symbol == entry.Glyph))
+            foreach (
+              var cell in layout.Cells.Where(c => c.Symbol == entry.Glyph)
+            )
             {
               var pos = new BlockPos(cell.X, cell.Y, cell.Z);
               Note(() => scene.DrawBlock(where, laid.Code.ToString(), pos));
@@ -354,7 +358,9 @@ public sealed partial class SetupScene
         }
         if (orders == null)
         {
-          Note(() => throw scene.Fail(step.Path, $"{station} is not a craft station."));
+          Note(() =>
+            throw scene.Fail(step.Path, $"{station} is not a craft station.")
+          );
           _unknown = true;
           return;
         }
@@ -412,7 +418,11 @@ public sealed partial class SetupScene
       }
     }
 
-    private IEnumerable<(string Id, string Code, IReadOnlyList<CraftOrder>? Orders)> Stations() =>
+    private IEnumerable<(
+      string Id,
+      string Code,
+      IReadOnlyList<CraftOrder>? Orders
+    )> Stations() =>
       _ids.Select(p =>
       {
         Block block = _blocks[(p.Value.X, p.Value.Y, p.Value.Z)];
