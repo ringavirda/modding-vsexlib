@@ -1,0 +1,47 @@
+{
+  "code": "drillbit",
+  "shape": {
+    "base": "washerpunch:item/drillbit"
+  },
+  "variantgroups": [
+    {
+      "code": "metal",
+      "states": [
+        "iron",
+        "steel"
+      ]
+    }
+  ],
+  "maxstacksize": 1,
+  "attributesByType": {
+    "*-iron": {
+      "machinetool": {
+        "schema": 2,
+        "tier": 1,
+        "kind": "bit"
+      }
+    },
+    "*-steel": {
+      "machinetool": {
+        "schema": 2,
+        "tier": 2,
+        "kind": "bit"
+      }
+    }
+  },
+  "creativeinventory": {
+    "general": [
+      "*"
+    ],
+    "washerpunch": [
+      "*"
+    ]
+  },
+  "class": "washerpunch.ItemDrillBit",
+  "textures": {
+    "metal": {
+      "base": "game:block/metal/ingot/{metal}"
+    }
+  },
+  "durability": 40
+}

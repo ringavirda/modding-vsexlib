@@ -6,7 +6,8 @@
       "moulds": ["open"],
       "sand": {
         "base": "sashweights:block/boxflask/sand-base",
-        "half": "sashweights:block/boxflask/sand-half"
+        "half": "sashweights:block/boxflask/sand-half",
+        "item": "game:sand-*"
       }
     }
   ]

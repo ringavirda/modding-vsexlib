@@ -1,0 +1,89 @@
+{
+  "code": "machine",
+  "class": "washerpunch.BlockWasherDrill",
+  "entityClass": "washerpunch.BlockEntityWasherDrill",
+  "behaviors": [
+    {
+      "name": "BlockEntityInteract"
+    },
+    {
+      "name": "ExOrientable",
+      "properties": {
+        "mode": "network",
+        "scheme": "AxisFlat"
+      }
+    }
+  ],
+  "blockmaterial": "Metal",
+  "maxstacksize": 1,
+  "variantgroups": [
+    {
+      "code": "type",
+      "states": [
+        "drill"
+      ]
+    },
+    {
+      "code": "orientation",
+      "states": [
+        "ns",
+        "we"
+      ]
+    }
+  ],
+  "attributes": {
+    "machinekind": "washerpunch:drill"
+  },
+  "shapebytype": {
+    "*-ns": {
+      "base": "washerpunch:block/drill",
+      "rotateY": 0
+    },
+    "*-we": {
+      "base": "washerpunch:block/drill",
+      "rotateY": 90
+    }
+  },
+  "creativeinventory": {
+    "general": [
+      "*-ns"
+    ],
+    "washerpunch": [
+      "*-ns"
+    ]
+  },
+  "selectionboxes": [
+    {
+      "x1": 0.125,
+      "y1": 0.0,
+      "z1": 0.125,
+      "x2": 0.875,
+      "y2": 0.875,
+      "z2": 0.9375
+    },
+    {
+      "x1": 0.6875,
+      "y1": 0.25,
+      "z1": 0.25,
+      "x2": 0.78125,
+      "y2": 0.5625,
+      "z2": 0.34375
+    }
+  ],
+  "collisionboxes": [
+    {
+      "x1": 0.125,
+      "y1": 0.0,
+      "z1": 0.125,
+      "x2": 0.875,
+      "y2": 0.875,
+      "z2": 0.9375
+    }
+  ],
+  "sounds": {
+    "place": "game:block/anvil",
+    "break": "game:block/anvil",
+    "hit": "game:block/anvil",
+    "walk": "game:walk/stone"
+  }
+}

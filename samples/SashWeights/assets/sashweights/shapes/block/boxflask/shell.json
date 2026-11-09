@@ -1,0 +1,354 @@
+{
+  "textureWidth": 16,
+  "textureHeight": 16,
+  "textures": {
+    "planks": "game:block/wood/planks/oak1"
+  },
+  "elements": [
+    {
+      "name": "floor",
+      "from": [
+        0.02,
+        0,
+        0.02
+      ],
+      "to": [
+        15.98,
+        1,
+        15.98
+      ],
+      "faces": {
+        "north": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            15,
+            15.98,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            15,
+            15.98,
+            16
+          ]
+        },
+        "east": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            15,
+            15.98,
+            16
+          ]
+        },
+        "west": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            15,
+            15.98,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            0.02,
+            15.98,
+            15.98
+          ]
+        },
+        "down": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            0.02,
+            15.98,
+            15.98
+          ]
+        }
+      }
+    },
+    {
+      "name": "wallnorth",
+      "from": [
+        0.02,
+        0,
+        0.02
+      ],
+      "to": [
+        15.98,
+        6,
+        1
+      ],
+      "faces": {
+        "north": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            10,
+            15.98,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            10,
+            15.98,
+            16
+          ]
+        },
+        "east": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            10,
+            1,
+            16
+          ]
+        },
+        "west": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            10,
+            1,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            0.02,
+            15.98,
+            1
+          ]
+        },
+        "down": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            0.02,
+            15.98,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "name": "wallsouth",
+      "from": [
+        0.02,
+        0,
+        15
+      ],
+      "to": [
+        15.98,
+        6,
+        15.98
+      ],
+      "faces": {
+        "north": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            10,
+            15.98,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            10,
+            15.98,
+            16
+          ]
+        },
+        "east": {
+          "texture": "#planks",
+          "uv": [
+            15,
+            10,
+            15.98,
+            16
+          ]
+        },
+        "west": {
+          "texture": "#planks",
+          "uv": [
+            15,
+            10,
+            15.98,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            15,
+            15.98,
+            15.98
+          ]
+        },
+        "down": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            15,
+            15.98,
+            15.98
+          ]
+        }
+      }
+    },
+    {
+      "name": "walleast",
+      "from": [
+        15,
+        0,
+        1
+      ],
+      "to": [
+        15.98,
+        6,
+        15
+      ],
+      "faces": {
+        "north": {
+          "texture": "#planks",
+          "uv": [
+            15,
+            10,
+            15.98,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#planks",
+          "uv": [
+            15,
+            10,
+            15.98,
+            16
+          ]
+        },
+        "east": {
+          "texture": "#planks",
+          "uv": [
+            1,
+            10,
+            15,
+            16
+          ]
+        },
+        "west": {
+          "texture": "#planks",
+          "uv": [
+            1,
+            10,
+            15,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#planks",
+          "uv": [
+            15,
+            1,
+            15.98,
+            15
+          ]
+        },
+        "down": {
+          "texture": "#planks",
+          "uv": [
+            15,
+            1,
+            15.98,
+            15
+          ]
+        }
+      }
+    },
+    {
+      "name": "wallwest",
+      "from": [
+        0.02,
+        0,
+        1
+      ],
+      "to": [
+        1,
+        6,
+        15
+      ],
+      "faces": {
+        "north": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            10,
+            1,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            10,
+            1,
+            16
+          ]
+        },
+        "east": {
+          "texture": "#planks",
+          "uv": [
+            1,
+            10,
+            15,
+            16
+          ]
+        },
+        "west": {
+          "texture": "#planks",
+          "uv": [
+            1,
+            10,
+            15,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            1,
+            1,
+            15
+          ]
+        },
+        "down": {
+          "texture": "#planks",
+          "uv": [
+            0.02,
+            1,
+            1,
+            15
+          ]
+        }
+      }
+    }
+  ]
+}

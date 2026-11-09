@@ -37,6 +37,7 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     public MachineKind? KindIs = Lathe;
     public MpRunReading Drive = new(10f, 1000f);
     public bool OnRun;
+    public readonly List<bool> Dirtied = [];
     public readonly MachiningJobRegistry JobSet = new();
     public readonly MachineKindRegistry KindSet = new();
     public readonly CuttingMaterialRegistry MaterialSet =
@@ -52,6 +53,14 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
 
     protected override MpRunReading ReadDrive() =>
       OnRun ? base.ReadDrive() : Drive;
+
+    public override void MarkDirty(
+      bool redrawOnClient = false,
+      IPlayer? skipPlayer = null
+    ) {
+      Dirtied.Add(redrawOnClient);
+      base.MarkDirty(redrawOnClient, skipPlayer);
+    }
 
     public void Join(BlockNetworkModSystem networks) =>
       NetworkSystem = networks;
@@ -178,6 +187,37 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     Second();
     Assert.Equal("test:turned", Piece(host));
     Assert.Equal(0d, host.Progress);
+  }
+
+  // Fails when the work slot's change or the cut's completion syncs without asking the client to redraw, or progress alone asks for one.
+  [Fact]
+  public void The_client_redraws_when_the_drawn_piece_changes_and_not_for_progress() {
+    Host host = Machine();
+    host.Dirtied.Clear();
+    Assert.True(host.TryStart());
+
+    Second(3);
+    Assert.NotEmpty(host.Dirtied);
+    Assert.DoesNotContain(true, host.Dirtied);
+
+    host.Dirtied.Clear();
+    Second(5);
+    Assert.Equal("test:turned", Piece(host));
+    Assert.True(host.Dirtied.Contains(true), "completion");
+
+    host.Dirtied.Clear();
+    host.Inventory[BlockEntityMachineTool.WorkSlot].Itemstack = new ItemStack(
+      _w.GetItem(new AssetLocation("test:blank"))!
+    );
+    host.Inventory[BlockEntityMachineTool.WorkSlot].MarkDirty();
+    Assert.True(host.Dirtied.Contains(true), "slot swap");
+
+    host.Dirtied.Clear();
+    host.Inventory[BlockEntityMachineTool.WorkSlot].Itemstack = new ItemStack(
+      _w.GetItem(new AssetLocation("test:blank2"))!
+    );
+    Second();
+    Assert.True(host.Dirtied.Contains(true), "tick sees the swap");
   }
 
   // Fails when a piece swapped mid-cut keeps the joules the first one was paid.

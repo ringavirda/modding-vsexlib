@@ -166,6 +166,18 @@ public class StageWildcardsTests {
       )
     );
 
+  // Fails when rule (d) ignores allowedVariants: the key is then reported.
+  [Fact]
+  [PlantedDefect(typeof(StageWildcardsCheck), nameof(StageWildcardsCheck.Run))]
+  public void Rule_d_a_key_with_allowed_variants_is_seeded_by_the_creative_build() =>
+    Assert.DoesNotContain(
+      Findings(
+        "[]",
+        """[{ "type": "block", "code": "game:rock-*", "storeWildCard": "rock", "allowedVariants": ["granite"], "quantity": 1 }]"""
+      ),
+      f => f.Contains("(d)")
+    );
+
   [Fact]
   [PlantedDefect(typeof(StageWildcardsCheck), nameof(StageWildcardsCheck.Run))]
   public void Rule_e_a_placeholder_no_earlier_paid_stage_stores_is_reported() =>

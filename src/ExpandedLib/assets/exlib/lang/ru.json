@@ -130,5 +130,18 @@
   "machine-step-bore": "расточка",
   "machine-step-plane": "строгание",
   "machine-step-slot": "долбление",
-  "machine-step-drill": "сверление"
+  "machine-step-drill": "сверление",
+  "game:ingameerror-exlib-sandstation-toohot": "Дождитесь застывания отливки, прежде чем вынимать её!",
+  "game:ingameerror-exlib-sandstation-badpattern": "У этой модели нет отпечатка для формовки.",
+  "game:ingameerror-exlib-sandstation-pressfull": "В этой станции уже отпечатано всё, что она вмещает.",
+  "game:ingameerror-exlib-sandstation-pressotherpattern": "Эта модель не та, что отпечатана здесь.",
+  "game:ingameerror-exlib-sandstation-wrongstation": "Эта модель не подходит для: {0}.",
+  "game:ingameerror-exlib-sandstation-bedded": "Здесь нельзя трамбовать: в подрезанном песке уже лежит отливка.",
+  "sandstation-needssand": "Забейте формовочный песок, чтобы начать.",
+  "sandstation-needspattern": "Отпечатайте в песке литейную модель.",
+  "sandstation-ready": "Отпечаток: {0}. Ожидание металла.",
+  "sandstation-readypieces": "Отпечаток: {0}, отпечатано {1} из {2}. Ожидание металла.",
+  "sandstation-casting": "Отливка: {0}/{1} единиц, {2} ({3})",
+  "metalstate-liquid": "жидкий",
+  "metalstate-hardened": "затвердевший"
 }

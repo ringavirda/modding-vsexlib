@@ -16,6 +16,8 @@ internal sealed class SetupHoldWand : Item
   public readonly List<float> Seconds = [];
   public readonly List<Vec3d> Hits = [];
   public readonly List<EnumHandInteract> HandUses = [];
+  public readonly List<string?> OffHands = [];
+  public readonly List<BlockFacing> Facings = [];
 
   public override void OnHeldInteractStart(
     ItemSlot slot,
@@ -29,6 +31,12 @@ internal sealed class SetupHoldWand : Item
     Calls.Add("start");
     Hits.Add(blockSel.HitPosition.Clone());
     HandUses.Add(byEntity.Controls.HandUse);
+    OffHands.Add(
+      byEntity.LeftHandItemSlot.Itemstack?.Collectible.Code.ToString()
+    );
+    Facings.Add(
+      Block.SuggestedHVOrientation(((EntityPlayer)byEntity).Player, blockSel)[0]
+    );
     handling = EnumHandHandling.PreventDefault;
   }
 

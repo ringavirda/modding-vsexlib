@@ -392,6 +392,22 @@ public partial class BlockStructureFiller
       world.BlockAccessor.SetBlock(0, pos);
   }
 
+  /// <summary>Server side, tells a principal that implements <see cref="IFillerNeighbourTarget"/> that a
+  /// block next to this filler cell changed. Other principals and the client get nothing.</summary>
+  public override void OnNeighbourBlockChange(
+    IWorldAccessor world,
+    BlockPos pos,
+    BlockPos neibpos
+  ) {
+    base.OnNeighbourBlockChange(world, pos, neibpos);
+    if (
+      world.Side == EnumAppSide.Server
+      && TryGetPrincipal(world, pos, out var pp, out var pb)
+      && pb is IFillerNeighbourTarget target
+    )
+      target.OnFillerNeighbourChanged(world, pp, pos, neibpos);
+  }
+
   public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos) {
     if (!TryGetPrincipal(world, pos, out var pp, out var pb))
       return base.OnPickBlock(world, pos);

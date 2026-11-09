@@ -79,7 +79,8 @@ public class CastingPatternTests : IDisposable {
               "csflask",
               [MouldKind.Open],
               "c:base",
-              "c:half"
+              "c:half",
+              "c:sand"
             ),
           ]
         )
@@ -111,7 +112,8 @@ public class CastingPatternTests : IDisposable {
             "leftover",
             [MouldKind.Open],
             "c:base",
-            "c:half"
+            "c:half",
+            "c:sand"
           ),
         ]
       )

@@ -7,7 +7,7 @@ namespace ExpandedLib.Tests.Casting;
 public class MoldSpecTests {
   private const string TwoMouldFlask = """
     { "stations": [ { "code": "shutflask", "moulds": ["open", "closed"],
-      "sand": { "base": "test:b", "half": "test:h" } } ] }
+      "sand": { "base": "test:b", "half": "test:h", "item": "test:sand" } } ] }
     """;
 
   // Fails when the station lookup reads a fixed list of names in place of the registry.

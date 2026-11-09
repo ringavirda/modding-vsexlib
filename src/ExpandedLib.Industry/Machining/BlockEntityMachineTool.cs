@@ -8,6 +8,7 @@ using ExpandedLib.Helpers;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Machines;
 using ExpandedLib.Networks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -147,6 +148,59 @@ public abstract class BlockEntityMachineTool
       RegisterGameTickListener(OnCutTick, TickMs);
   }
 
+  /// <summary>Adds the mounted piece's item mesh at its step's anchor, turned with the block, and leaves the block's own
+  /// mesh to be drawn. The piece after a cut is drawn at the anchor of the step whose job yields it. Adds nothing when
+  /// the work slot is empty or no anchor applies.</summary>
+  /// <returns>Always false.</returns>
+  public override bool OnTesselation(
+    ITerrainMeshPool mesher,
+    ITesselatorAPI tesselator
+  ) {
+    if (
+      Api is ICoreClientAPI capi
+      && Inventory[WorkSlot].Itemstack is { } piece
+      && MountAnchor(piece) is { } anchor
+    ) {
+      CompositeShape? rotation = Block?.Shape;
+      MachineToolRenderer.AddPiece(
+        capi,
+        mesher,
+        tesselator,
+        piece,
+        MachineAnchors.Compose(
+          anchor,
+          new Vec3f(
+            rotation?.rotateX ?? 0f,
+            rotation?.rotateY ?? 0f,
+            rotation?.rotateZ ?? 0f
+          )
+        )
+      );
+    }
+    return false;
+  }
+
+  private MachineAnchor? MountAnchor(ItemStack piece) {
+    if (Kind is not { } kind)
+      return null;
+    string? name = CurrentJob().Step?.Anchor;
+    if (name is null) {
+      string code = piece.Collectible.Code.ToString();
+      foreach (MachiningJob job in Jobs.All)
+        if (
+          string.Equals(job.Output, code, StringComparison.OrdinalIgnoreCase)
+          && kind.StepOf(job.Step)?.Anchor is { } made
+        ) {
+          name = made;
+          break;
+        }
+    }
+    foreach (MachineAnchor anchor in kind.Anchors)
+      if (string.Equals(anchor.Name, name, StringComparison.OrdinalIgnoreCase))
+        return anchor;
+    return null;
+  }
+
   /// <summary>Engages the machine: the cut counts game time from now.</summary>
   /// <returns>False when it is already engaged or its block names no declared kind.</returns>
   public bool TryStart() {
@@ -257,18 +311,19 @@ public abstract class BlockEntityMachineTool
 
   private void OnSlotModified(int slot) {
     if (slot == WorkSlot && SyncPiece())
-      MarkDirty();
+      MarkDirty(true);
   }
 
   private void OnCutTick(float dt) {
     if (!_running || Kind is not { } kind)
       return;
     bool changed = SyncPiece();
+    bool redraw = changed;
 
     MpRunReading reading = ReadDrive();
     if (reading == MpRunReading.None) {
       if (changed)
-        MarkDirty();
+        MarkDirty(redraw);
       return;
     }
     double gameSeconds = _cursor.Advance(GameTime.NowHours(Api.World)) * 3600d;
@@ -284,7 +339,7 @@ public abstract class BlockEntityMachineTool
       float energy = MachineCut.Energy(job!, step!.Motion, Materials);
       if (energy <= 0f) {
         if (changed)
-          MarkDirty();
+          MarkDirty(redraw);
         return;
       }
       double remaining = energy - _joules;
@@ -302,7 +357,7 @@ public abstract class BlockEntityMachineTool
       }
     }
     if (changed)
-      MarkDirty();
+      MarkDirty(redraw);
   }
 
   private void Complete(MachiningJob job) {

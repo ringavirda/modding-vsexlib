@@ -4,7 +4,7 @@
   "modid": "sashweights",
   "name": "Sash Weights",
   "authors": ["fallenstar"],
-  "description": "Sample mod: a casting station kind and a pattern declared in JSON alone, validated when the game loads.",
+  "description": "Sample mod: a casting station block, its station kind and a pattern declared in JSON alone; ram sand, press the pattern, pour and shake out the sash weights.",
   "version": "1.0.0",
   "dependencies": {
     "game": "1.22.0",

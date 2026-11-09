@@ -1070,8 +1070,35 @@ public sealed partial class TestWorld : IDisposable {
     var w = Made<IServerWorldAccessor>();
     w.Side.Returns(EnumAppSide.Server);
     w.PlayerByUid(Arg.Any<string>())
-      .Returns(ci => _playersByUid.GetValueOrDefault(ci.Arg<string>()));
+      .Returns(ci =>
+        ci.Arg<string>() is { } uid
+          ? _playersByUid.GetValueOrDefault(uid)
+          : null
+      );
     w.BlockAccessor.Returns(Accessor);
+#if GAME_GE_1_22
+    IBulkBlockAccessor bulk = BuildBulkAccessor();
+    w.BulkBlockAccessor.Returns(bulk);
+    w.When(x =>
+        x.CreateExplosion(
+          Arg.Any<BlockPos>(),
+          Arg.Any<EnumBlastType>(),
+          Arg.Any<double>(),
+          Arg.Any<double>(),
+          Arg.Any<float>(),
+          Arg.Any<string>()
+        )
+      )
+      .Do(ci =>
+        Explode(
+          ci.Arg<BlockPos>(),
+          ci.Arg<EnumBlastType>(),
+          ci.ArgAt<double>(2),
+          ci.ArgAt<double>(3),
+          ci.ArgAt<string>(5)
+        )
+      );
+#endif
     w.Calendar.Returns(Calendar);
     w.Logger.Returns(Log);
     w.Config.Returns(Config.Tree);
@@ -1203,6 +1230,9 @@ public sealed partial class TestWorld : IDisposable {
     var cache = new Dictionary<string, object>();
     api.ObjectCache.Returns(cache);
     coreApi.ObjectCache.Returns(cache);
+
+    // A world with no claims, so claim checks (a bomb's permission test) read an empty list.
+    api.WorldManager.LandClaims.Returns([]);
 
     var events = Made<IServerEventAPI>();
     api.Event.Returns(events);
