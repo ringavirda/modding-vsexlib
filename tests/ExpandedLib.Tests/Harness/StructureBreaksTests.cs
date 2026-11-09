@@ -27,6 +27,13 @@ public class StructureBreaksTests
     new(1, 0, 0),
   ];
 
+  private static readonly FillerCellSpec[] ThreeCells =
+  [
+    new(-1, 0, 0),
+    new(1, 0, 0),
+    new(2, 0, 0),
+  ];
+
   private static ExBlockDef Mega(
     string code,
     string cls = "ExFilledMegastructure"
@@ -51,6 +58,7 @@ public class StructureBreaksTests
       world =>
       {
         world.RegisterClass("test-leavesfillers", typeof(LeavesFillers));
+        world.RegisterClass("test-growsfillers", typeof(GrowsFillers));
         world.RegisterClass("test-recordsplacement", typeof(RecordsPlacement));
         world.RegisterClass("test-recordsbreakers", typeof(RecordsBreakers));
         world.RegisterClass("test-throwsonbreak", typeof(ThrowsOnBreak));
@@ -827,6 +835,30 @@ public class StructureBreaksTests
     Assert.Equal(placed.Length, placed.Distinct().Count());
   }
 
+  // Fails when the cells broken at a stage come from the first site's filler count (the first
+  // placement reserves one cell, every later one three) instead of the structure each break stands.
+  [Fact]
+  public void Every_cell_of_a_structure_that_reserves_more_cells_later_is_broken()
+  {
+    GrowsFillers.Placements = 0;
+
+    StructureBreaks.Result result = Run(
+      ExBlockDef
+        .Create("test", "grows")
+        .Class("test-growsfillers")
+        .FillerOffsets(ThreeCells)
+        .EntityClass("test-plain")
+        .Construction(c =>
+          c.Stage(s => s.Require("game:stick", 1))
+            .Stage(s => s.RequireMetalPlate("test", 2))
+            .Stage(s => s.Require("game:plank-oak", 3))
+        )
+    );
+
+    Assert.Empty(result.Failures);
+    Assert.Equal(ThreeStageBreaks * (1 + ThreeCells.Length), result.Breaks);
+  }
+
   // Fails when the world keeps an earlier breaker reachable (OwnMade without the hand-over, or
   // BreakOnce without ForgetCalls).
   [Fact]
@@ -836,19 +868,37 @@ public class StructureBreaksTests
     RecordsBreakers.Reachable = 0;
     RecordsBreakers.Checked = 0;
 
-    StructureBreaks.Result result = Run(
-      Mega("leaver", "test-recordsbreakers")
-    );
+    StructureBreaks.Result result = Run(Mega("leaver", "test-recordsbreakers"));
 
     Assert.Empty(result.Failures);
     Assert.Equal(TwoCells.Length, RecordsBreakers.Checked);
     Assert.Equal(0, RecordsBreakers.Reachable);
   }
 
+  private sealed class GrowsFillers : BlockFilledMegastructure
+  {
+    public static int Placements;
+
+    protected override System.Collections.Generic.List<FillerCell> ReservedCells(
+      IWorldAccessor world,
+      BlockPos pos
+    ) => [.. base.ReservedCells(world, pos).Take(Placements <= 1 ? 1 : 3)];
+
+    public override void OnBlockPlaced(
+      IWorldAccessor world,
+      BlockPos blockPos,
+      ItemStack? byItemStack = null
+    )
+    {
+      Placements++;
+      base.OnBlockPlaced(world, blockPos, byItemStack);
+    }
+  }
+
   private sealed class RecordsBreakers : BlockFilledMegastructure
   {
     public static readonly System.Collections.Generic.List<WeakReference> Earlier =
-      [];
+    [];
     public static int Checked;
     public static int Reachable;
 
@@ -873,7 +923,7 @@ public class StructureBreaksTests
   private sealed class RecordsPlacement : LeavesFillers
   {
     public static readonly System.Collections.Concurrent.ConcurrentBag<BlockPos> Placed =
-      [];
+    [];
 
     public override void OnBlockPlaced(
       IWorldAccessor world,

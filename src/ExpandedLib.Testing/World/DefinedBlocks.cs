@@ -68,8 +68,7 @@ public sealed partial class TestWorld {
   /// on the world.</summary>
   /// <remarks>An entity is dropped as <see cref="Unload"/> drops it, not removed: nothing drops and
   /// no removal hook runs.</remarks>
-  internal void Free(BlockPos at, int reach)
-  {
+  internal void Free(BlockPos at, int reach) {
     bool Within(BlockPos p) =>
       Math.Abs(p.X - at.X) <= reach && Math.Abs(p.Z - at.Z) <= reach;
     foreach (

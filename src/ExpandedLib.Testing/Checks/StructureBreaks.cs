@@ -329,9 +329,9 @@ public static class StructureBreaks
   }
 
   /// <summary>Breaks the variant <paramref name="code"/> from every cell at every stage, each stage
-  /// past 0 paid in every <see cref="Payment"/>, the stage count and the filler cells taken from
-  /// the structure stood up at the first <paramref name="stand"/> site and each break at a fresh
-  /// one.</summary>
+  /// past 0 paid in every <see cref="Payment"/>, the stage count taken from the structure
+  /// stood up at the first <paramref name="stand"/> site and each break at a fresh one, whose own
+  /// filler count bounds the cells broken at its stage and payment.</summary>
   private static void BreakVariant(
     string code,
     bool declaresStages,
@@ -339,12 +339,7 @@ public static class StructureBreaks
     Tally tally
   )
   {
-    (int stages, int fillers) = StageCount(
-      stand(),
-      code,
-      declaresStages,
-      tally.Failures
-    );
+    int stages = StageCount(stand(), code, declaresStages, tally.Failures);
     if (stages < 0)
       return;
     for (int built = 0; built < Math.Max(stages, 1); built++)
@@ -352,7 +347,9 @@ public static class StructureBreaks
       Payment?[] payments =
         built == 0 ? [null] : [.. Enum.GetValues<Payment>()];
       foreach (Payment? payment in payments)
-        for (int cell = -1; cell < fillers; cell++)
+      {
+        int cells = 0;
+        for (int cell = -1; cell < cells; cell++)
         {
           string? failure = BreakOnce(
             stand(),
@@ -361,21 +358,24 @@ public static class StructureBreaks
             payment,
             cell,
             tally.Spawned,
-            out bool unstood
+            out bool unstood,
+            out int fillerCount
           );
+          if (cell < 0)
+            cells = fillerCount;
           tally.Breaks++;
           if (failure != null)
             tally.Failures.Add(failure);
           if (unstood)
             break;
         }
+      }
     }
   }
 
   /// <summary>The number of construction stages the variant at <paramref name="site"/> stands up
-  /// with (0 when it declares none) and the filler cells it reserves, or stages -1 after recording
-  /// why it could not be stood up.</summary>
-  private static (int Stages, int Fillers) StageCount(
+  /// with (0 when it declares none), or -1 after recording why it could not be stood up.</summary>
+  private static int StageCount(
     Site site,
     string code,
     bool declaresStages,
@@ -386,20 +386,19 @@ public static class StructureBreaks
     {
       Block block = site.Block();
       Place(site.World, site.At, block);
-      int fillers = FillersAt(site.World, site.At).Length;
       if (Construction(site.World, site.At) is { } behavior)
-        return (Rcc(behavior).Stages.Length, fillers);
+        return Rcc(behavior).Stages.Length;
       if (!declaresStages)
-        return (0, fillers);
+        return 0;
       failures.Add(
         $"{code} declares construction stages but stands up without them"
       );
-      return (-1, 0);
+      return -1;
     }
     catch (Exception e)
     {
       failures.Add($"{code} could not be stood up: {Describe(e)}");
-      return (-1, 0);
+      return -1;
     }
   }
 
@@ -433,6 +432,8 @@ public static class StructureBreaks
   /// filler cell's index) and adds what the break spawned to <paramref name="spawned"/>.</summary>
   /// <param name="noMoreCells">Set when the structure could not be stood up, so no later cell can be
   /// broken.</param>
+  /// <param name="fillerCount">The filler cells the structure stood up with, 0 when it could not be
+  /// stood up.</param>
   /// <returns>Why the break failed, or null when it passed.</returns>
   private static string? BreakOnce(
     Site site,
@@ -441,12 +442,22 @@ public static class StructureBreaks
     Payment? payment,
     int cell,
     List<Spawn> spawned,
-    out bool noMoreCells
+    out bool noMoreCells,
+    out int fillerCount
   )
   {
     try
     {
-      return BreakAs(site, code, built, payment, cell, spawned, out noMoreCells);
+      return BreakAs(
+        site,
+        code,
+        built,
+        payment,
+        cell,
+        spawned,
+        out noMoreCells,
+        out fillerCount
+      );
     }
     finally
     {
@@ -461,10 +472,12 @@ public static class StructureBreaks
     Payment? payment,
     int cell,
     List<Spawn> spawned,
-    out bool noMoreCells
+    out bool noMoreCells,
+    out int fillerCount
   )
   {
     noMoreCells = false;
+    fillerCount = 0;
     TestWorld world = site.World;
     BlockPos at = site.At;
     string where = cell < 0 ? "the principal" : $"filler cell {cell}";
@@ -481,6 +494,7 @@ public static class StructureBreaks
       block = site.Block();
       Place(world, at, block);
       fillers = FillersAt(world, at);
+      fillerCount = fillers.Length;
       if (built is { } k && Construction(world, at) is { } behavior)
         Pay(
           world,
