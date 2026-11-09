@@ -1,5 +1,6 @@
 #if GAME_GE_1_22
 using System;
+using System.Collections.Generic;
 using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.WorldGen;
@@ -35,6 +36,39 @@ internal sealed class SeamBody
 
   /// <summary>Seed of the position hash every column roll uses.</summary>
   public required int Seed { get; init; }
+
+  /// <summary>The spec's base height wave; null for none.</summary>
+  public SeamWaveSpec? Roll { get; init; }
+
+  /// <summary>The spec's thickness wave; null for none.</summary>
+  public SeamWaveSpec? Swell { get; init; }
+
+  /// <summary>Blocks added to the base plane at a world column; 0 without a roll. Depends only on
+  /// the seed and the world position, so every chunk that meets the column gets the same value.</summary>
+  public float RollAt(int x, int z) =>
+    Roll is { Amplitude: not 0 } roll
+      ? roll.Amplitude * SeamNoise.Wave(Seed, 1, x, z, roll.Wavelength)
+      : 0f;
+
+  /// <summary>The layer thicknesses at a world column, each swollen or pinched by one shared
+  /// factor; <see cref="Thicknesses"/> itself without a swell. A layer of at least 1 block stays
+  /// at least 1. Depends only on the seed and the world position.</summary>
+  public IReadOnlyList<float> ThicknessesAt(int x, int z)
+  {
+    if (Swell is not { Amplitude: not 0 } swell)
+    {
+      return Thicknesses;
+    }
+    float amplitude = Math.Clamp(swell.Amplitude, 0f, 1f);
+    float factor =
+      1 + amplitude * SeamNoise.Wave(Seed, 2, x, z, swell.Wavelength);
+    var at = new float[Thicknesses.Length];
+    for (int i = 0; i < at.Length; i++)
+    {
+      at[i] = Math.Max(Thicknesses[i] * factor, Math.Min(Thicknesses[i], 1f));
+    }
+    return at;
+  }
 
   /// <summary>
   /// Draws a body from <paramref name="rand"/> in a fixed order: run, strike, dip direction, dip,
@@ -91,6 +125,8 @@ internal sealed class SeamBody
       Thicknesses = thicknesses,
       OutcropDepths = outcrops,
       Seed = rand.NextInt(),
+      Roll = spec.Roll,
+      Swell = spec.Swell,
     };
   }
 }

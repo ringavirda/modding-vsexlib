@@ -117,5 +117,25 @@ public class SeamPropickTests
     Assert.Equal(100 - 40 - 0.1 * 64, miny, 2);
     Assert.Equal(100 - 12 + 3, maxy, 2);
   }
+
+  // Fails when the roll and swell are left out of the height range: the range stays at the flat bed's.
+  [Fact]
+  public void The_height_range_widens_by_the_roll_and_the_swell()
+  {
+    using var rig = new SeamRig();
+    string Attrs(string extra) => SeamRig.Attributes(dip: 0, extra: extra);
+    var at = new BlockPos(0, PosY, 0);
+
+    rig.Generator(Attrs(""), 1)
+      .GetYMinMax(at, out double flatMin, out double flatMax);
+    rig.Generator(
+        Attrs(""","roll": { "amplitude": 4 }, "swell": { "amplitude": 0.5 }"""),
+        1
+      )
+      .GetYMinMax(at, out double min, out double max);
+
+    Assert.Equal(flatMin - 4, min, 3);
+    Assert.Equal(flatMax + 4 + 3 * 0.5, max, 3);
+  }
 }
 #endif
