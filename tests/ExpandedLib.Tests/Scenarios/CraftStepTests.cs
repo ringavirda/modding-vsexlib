@@ -25,6 +25,7 @@ internal sealed class CraftFixtureBench
   public static bool Refuses;
   public static bool Hands;
   public static bool MakesWrong;
+  public static bool ThrowsOrders;
   public static readonly List<string> Pressed = [];
 
   protected override MachineSlotSpec[] SlotSpecs =>
@@ -49,33 +50,36 @@ internal sealed class CraftFixtureBench
   }
 
   public IReadOnlyList<CraftOrder> Orders(IWorldAccessor world) =>
-    [
-      .. world
-        .GridRecipes.Where(r =>
-          r.Width <= 2 && r.Height <= 2 && r.Output?.ResolvedItemStack != null
-        )
-        .Select(r => new CraftOrder(
-          r.Name?.ToString(),
-          [
-            .. r.ResolvedIngredients!.Select(
-                (ingredient, i) =>
-                  ingredient == null
-                    ? null
-                    : new CraftInput(
-                      (i / r.Width * 2) + (i % r.Width),
-                      ingredient.Id,
-                      ingredient
-                    )
-              )
-              .OfType<CraftInput>(),
-          ],
-          Press,
-          null,
-          [OutputSlot, ByproductSlot],
-          r.Output!.ResolvedItemStack.Clone(),
-          r
-        )),
-    ];
+    ThrowsOrders
+      ? throw new InvalidOperationException("no orders")
+      :
+      [
+        .. world
+          .GridRecipes.Where(r =>
+            r.Width <= 2 && r.Height <= 2 && r.Output?.ResolvedItemStack != null
+          )
+          .Select(r => new CraftOrder(
+            r.Name?.ToString(),
+            [
+              .. r.ResolvedIngredients!.Select(
+                  (ingredient, i) =>
+                    ingredient == null
+                      ? null
+                      : new CraftInput(
+                        (i / r.Width * 2) + (i % r.Width),
+                        ingredient.Id,
+                        ingredient
+                      )
+                )
+                .OfType<CraftInput>(),
+            ],
+            Press,
+            null,
+            [OutputSlot, ByproductSlot],
+            r.Output!.ResolvedItemStack.Clone(),
+            r
+          )),
+      ];
 
   private CraftSequenceRun? _run;
   private float _used;

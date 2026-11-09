@@ -942,6 +942,22 @@ public sealed partial class TestWorld : IDisposable {
       ?? (BlockEntity)Activator.CreateInstance(old.GetType())!;
   }
 
+  /// <summary>A block entity of the class the engine would spawn for <paramref name="block"/>,
+  /// through a registered factory or else the class registry with the block's behaviours; it is not
+  /// placed or initialised.</summary>
+  /// <returns>The entity, or null when the block names no entity class or the world cannot build
+  /// it.</returns>
+  internal BlockEntity? NewBlockEntityFor(Block block) {
+    if (block.EntityClass is not { } classname)
+      return null;
+    BlockEntity? be = _beFactories.TryGetValue(classname, out var factory)
+      ? factory()
+      : CreateRegisteredBlockEntity(classname, block);
+    if (be != null)
+      be.Block = block;
+    return be;
+  }
+
   #endregion
 
   #region Fake wiring
