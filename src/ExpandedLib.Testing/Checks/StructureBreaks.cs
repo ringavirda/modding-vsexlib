@@ -93,8 +93,9 @@ public static class StructureBreaks
   /// Breaks each definition in <paramref name="defs"/> that declares <c>fillerOffsets</c> (plain or
   /// by type) or an <c>ExRightClickConstructable</c> behaviour, in every variant it registers.
   /// </summary>
-  /// <remarks>Each variant is stood up in worlds of its own, so variants may be broken side by side;
-  /// the result lists them in the order the serial run would.</remarks>
+  /// <remarks>Each variant is stood up in a world of its own, every break at a site of its own, so
+  /// variants may be broken side by side; the result lists them in the order the serial run
+  /// would.</remarks>
   /// <param name="assemblies">The assemblies whose registered classes the definitions name, exlib's
   /// own included; exlib's structure filler is taken from them.</param>
   /// <param name="prepare">Runs on each fresh world before the structure is placed, to register the
@@ -164,19 +165,17 @@ public static class StructureBreaks
           (ExBlockDef def, DefinitionCodes.Registered variant, bool stages) =
             variants[at];
           var tally = new Tally();
+          using TestWorld world = Stand();
+          Block? block = null;
           BreakVariant(
             variant.Code,
             stages,
             () =>
-            {
-              TestWorld world = Stand();
-              return new Site(
+              new Site(
                 world,
-                At,
-                () => world.DefineBlock(def, variant),
-                Owns: true
-              );
-            },
+                new BlockPos(At.X + Stride * world.BreakSites++, At.Y, At.Z),
+                () => block ??= world.DefineBlock(def, variant)
+              ),
             tally
           );
           tallies[at] = tally;
@@ -315,22 +314,12 @@ public static class StructureBreaks
   }
 
   /// <summary>Where one break stands its structure up: the world, the principal's position, and the
-  /// block to place there, built or readied on each call.</summary>
-  /// <param name="Owns">Whether the site's world was stood up for it alone and is disposed once
-  /// the site has been used.</param>
+  /// block to place there.</summary>
   private sealed record Site(
     TestWorld World,
     BlockPos At,
-    System.Func<Block> Block,
-    bool Owns = false
-  )
-  {
-    public void Release()
-    {
-      if (Owns)
-        World.Dispose();
-    }
-  }
+    System.Func<Block> Block
+  );
 
   private sealed class Tally
   {
@@ -340,8 +329,9 @@ public static class StructureBreaks
   }
 
   /// <summary>Breaks the variant <paramref name="code"/> from every cell at every stage, each stage
-  /// past 0 paid in every <see cref="Payment"/>, standing it up at a fresh
-  /// <paramref name="stand"/> site for its stage count and for each break.</summary>
+  /// past 0 paid in every <see cref="Payment"/>, the stage count and the filler cells taken from
+  /// the structure stood up at the first <paramref name="stand"/> site and each break at a fresh
+  /// one.</summary>
   private static void BreakVariant(
     string code,
     bool declaresStages,
@@ -349,16 +339,12 @@ public static class StructureBreaks
     Tally tally
   )
   {
-    Site first = stand();
-    int stages;
-    try
-    {
-      stages = StageCount(first, code, declaresStages, tally.Failures);
-    }
-    finally
-    {
-      first.Release();
-    }
+    (int stages, int fillers) = StageCount(
+      stand(),
+      code,
+      declaresStages,
+      tally.Failures
+    );
     if (stages < 0)
       return;
     for (int built = 0; built < Math.Max(stages, 1); built++)
@@ -366,41 +352,30 @@ public static class StructureBreaks
       Payment?[] payments =
         built == 0 ? [null] : [.. Enum.GetValues<Payment>()];
       foreach (Payment? payment in payments)
-        for (int cell = -1; ; cell++)
+        for (int cell = -1; cell < fillers; cell++)
         {
-          Site site = stand();
-          string? failure;
-          bool noMoreCells;
-          try
-          {
-            failure = BreakOnce(
-              site,
-              code,
-              stages == 0 ? null : built,
-              payment,
-              cell,
-              tally.Spawned,
-              out noMoreCells
-            );
-          }
-          finally
-          {
-            site.Release();
-          }
-          if (failure == null && noMoreCells)
-            break;
+          string? failure = BreakOnce(
+            stand(),
+            code,
+            stages == 0 ? null : built,
+            payment,
+            cell,
+            tally.Spawned,
+            out bool unstood
+          );
           tally.Breaks++;
           if (failure != null)
             tally.Failures.Add(failure);
-          if (noMoreCells)
+          if (unstood)
             break;
         }
     }
   }
 
   /// <summary>The number of construction stages the variant at <paramref name="site"/> stands up
-  /// with (0 when it declares none), or -1 after recording why it could not be stood up.</summary>
-  private static int StageCount(
+  /// with (0 when it declares none) and the filler cells it reserves, or stages -1 after recording
+  /// why it could not be stood up.</summary>
+  private static (int Stages, int Fillers) StageCount(
     Site site,
     string code,
     bool declaresStages,
@@ -411,21 +386,31 @@ public static class StructureBreaks
     {
       Block block = site.Block();
       Place(site.World, site.At, block);
+      int fillers = FillersAt(site.World, site.At).Length;
       if (Construction(site.World, site.At) is { } behavior)
-        return Rcc(behavior).Stages.Length;
+        return (Rcc(behavior).Stages.Length, fillers);
       if (!declaresStages)
-        return 0;
+        return (0, fillers);
       failures.Add(
         $"{code} declares construction stages but stands up without them"
       );
-      return -1;
+      return (-1, 0);
     }
     catch (Exception e)
     {
       failures.Add($"{code} could not be stood up: {Describe(e)}");
-      return -1;
+      return (-1, 0);
     }
   }
+
+  private static BlockPos[] FillersAt(TestWorld world, BlockPos at) =>
+    [
+      .. world
+        .FillersOf(at)
+        .OrderBy(p => p.X)
+        .ThenBy(p => p.Y)
+        .ThenBy(p => p.Z),
+    ];
 
   private static void Place(TestWorld world, BlockPos at, Block block)
   {
@@ -442,12 +427,12 @@ public static class StructureBreaks
     ExRightClickConstructable behavior
   ) => (ExRightClickConstruction)ReflectionHelpers.GetField(behavior, "rcc")!;
 
-  /// <summary>Stands the variant <paramref name="code"/> up at <paramref name="site"/>, pays it to
+  /// <summary>Stands the variant <paramref name="code"/> up at <paramref name="site"/>, which no earlier break used, pays it to
   /// stage <paramref name="built"/> (null for a structure without stages) in
   /// <paramref name="payment"/>, breaks it from <paramref name="cell"/> (-1 the principal, else a
   /// filler cell's index) and adds what the break spawned to <paramref name="spawned"/>.</summary>
-  /// <param name="noMoreCells">Set when no later cell can be broken: <paramref name="cell"/> is past
-  /// the last filler (the return is then null), or the structure could not be stood up.</param>
+  /// <param name="noMoreCells">Set when the structure could not be stood up, so no later cell can be
+  /// broken.</param>
   /// <returns>Why the break failed, or null when it passed.</returns>
   private static string? BreakOnce(
     Site site,
@@ -475,23 +460,7 @@ public static class StructureBreaks
     {
       block = site.Block();
       Place(world, at, block);
-      fillers =
-      [
-        .. world
-          .BlockEntities.Where(e =>
-            e.Value is BlockEntityStructureFiller { Principal: { } p }
-            && p.Equals(at)
-          )
-          .Select(e => e.Key.Copy())
-          .OrderBy(p => p.X)
-          .ThenBy(p => p.Y)
-          .ThenBy(p => p.Z),
-      ];
-      if (cell >= fillers.Length)
-      {
-        noMoreCells = true;
-        return null;
-      }
+      fillers = FillersAt(world, at);
       if (built is { } k && Construction(world, at) is { } behavior)
         Pay(
           world,

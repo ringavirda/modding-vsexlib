@@ -62,6 +62,25 @@ public sealed partial class TestWorld {
   /// <summary>The fillers queued for indexing across all <see cref="FillersOf"/> calls.</summary>
   internal long FillersQueued => _blockEntities.Queued;
 
+  /// <summary>Unloads every block entity and clears every cell within <paramref name="reach"/>
+  /// blocks of <paramref name="at"/> along X and Z, at any height, so a site a case is done with no
+  /// longer weighs on the world.</summary>
+  /// <remarks>An entity is dropped as <see cref="Unload"/> drops it, not removed: nothing drops and
+  /// no removal hook runs.</remarks>
+  internal void Free(BlockPos at, int reach)
+  {
+    bool Within(BlockPos p) =>
+      Math.Abs(p.X - at.X) <= reach && Math.Abs(p.Z - at.Z) <= reach;
+    foreach (
+      BlockPos pos in _blockEntities.Select(e => e.Key).Where(Within).ToList()
+    )
+      Unload(pos);
+    foreach (BlockPos pos in _blocks.Keys.Where(Within).ToList())
+      _blocks.Remove(pos);
+    foreach (BlockPos pos in _fluids.Keys.Where(Within).ToList())
+      _fluids.Remove(pos);
+  }
+
   /// <summary>Every cell of the solid layer, loaded chunk or not.</summary>
   internal IEnumerable<KeyValuePair<BlockPos, Block>> SolidBlocks => _blocks;
 

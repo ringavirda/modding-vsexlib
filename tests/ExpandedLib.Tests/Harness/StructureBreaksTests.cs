@@ -51,6 +51,7 @@ public class StructureBreaksTests
       world =>
       {
         world.RegisterClass("test-leavesfillers", typeof(LeavesFillers));
+        world.RegisterClass("test-recordsplacement", typeof(RecordsPlacement));
         world.RegisterClass("test-throwsonbreak", typeof(ThrowsOnBreak));
         world.RegisterClass("test-dropsnothing", typeof(DropsNothing));
         world.RegisterClass("test-plain", typeof(PlainBe));
@@ -808,7 +809,40 @@ public class StructureBreaksTests
     Assert.Equal(ThreeStageBreaks * (1 + TwoCells.Length), second.Breaks);
   }
 
-  private sealed class LeavesFillers : BlockFilledMegastructure
+  // Fails when each break stands its structure at the first site, over what the break before left
+  // standing, in place of a site of its own in the variant's world (Site given At every call).
+  [Fact]
+  public void Each_break_of_a_variant_stands_at_a_site_no_earlier_break_used()
+  {
+    RecordsPlacement.Placed.Clear();
+
+    StructureBreaks.Result result = Run(
+      Mega("leaver", "test-recordsplacement")
+    );
+
+    Assert.Equal(1 + TwoCells.Length, result.Breaks);
+    BlockPos[] placed = [.. RecordsPlacement.Placed];
+    Assert.Equal(1 + result.Breaks, placed.Length);
+    Assert.Equal(placed.Length, placed.Distinct().Count());
+  }
+
+  private sealed class RecordsPlacement : LeavesFillers
+  {
+    public static readonly System.Collections.Concurrent.ConcurrentBag<BlockPos> Placed =
+      [];
+
+    public override void OnBlockPlaced(
+      IWorldAccessor world,
+      BlockPos blockPos,
+      ItemStack? byItemStack = null
+    )
+    {
+      Placed.Add(blockPos.Copy());
+      base.OnBlockPlaced(world, blockPos, byItemStack);
+    }
+  }
+
+  private class LeavesFillers : BlockFilledMegastructure
   {
     public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos) { }
   }

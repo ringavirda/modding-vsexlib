@@ -187,11 +187,18 @@ public static class InteractionLaw {
       IGrouping<string, Block> type in BlockLaws.Blocktypes(world, domain)
     )
       foreach (Block block in MultiblockLaw.OneFacing(world, type)) {
-        if (
-          MultiblockLaw.Formed(world, block, sites.Next(), registered, findings)
-          is not { } probe
-        )
+        BlockPos at = sites.Next();
+        BlockLaws.EntityCase? probe = MultiblockLaw.Formed(
+          world,
+          block,
+          at,
+          registered,
+          findings
+        );
+        if (probe is null) {
+          world.Free(at, SiteReach);
           continue;
+        }
         blocks++;
         int made = cases;
         ClickFormed(
@@ -204,6 +211,7 @@ public static class InteractionLaw {
           findings,
           ref cases
         );
+        world.Free(at, SiteReach);
         structures.Add($"{block.Code} formed, {cases - made} click(s)");
       }
     return new BlockLaws.Law(FormedName, blocks, cases, findings) {
@@ -211,6 +219,10 @@ public static class InteractionLaw {
       Structures = structures,
     };
   }
+
+  /// <summary>Blocks either side of a site along X and Z that a formed structure's cells and its
+  /// block entities stand within; sites are 32 apart.</summary>
+  private const int SiteReach = 15;
 
   /// <summary>Clicks each cell of the structure <paramref name="probe"/> stands, each click on a
   /// fresh structure <paramref name="block"/> anchors, and counts each in
@@ -241,24 +253,29 @@ public static class InteractionLaw {
         continue;
       cases++;
       int earlier = findings.Count;
-      if (
-        MultiblockLaw.Formed(world, block, sites.Next(), registered, findings)
-        is not { } step
-      )
-        return;
-      if (
-        !Make(
-          world,
-          player,
-          step,
-          click,
-          findings,
-          MultiblockLaw.FormedCells(world, step),
-          $"{block.Code} formed"
+      BlockPos at = sites.Next();
+      try {
+        if (
+          MultiblockLaw.Formed(world, block, at, registered, findings)
+          is not { } step
         )
-        || findings.Count > earlier
-      )
-        stopped.Add((click.Offset.X, click.Offset.Y, click.Offset.Z));
+          return;
+        if (
+          !Make(
+            world,
+            player,
+            step,
+            click,
+            findings,
+            MultiblockLaw.FormedCells(world, step),
+            $"{block.Code} formed"
+          )
+          || findings.Count > earlier
+        )
+          stopped.Add((click.Offset.X, click.Offset.Y, click.Offset.Z));
+      } finally {
+        world.Free(at, SiteReach);
+      }
     }
   }
 

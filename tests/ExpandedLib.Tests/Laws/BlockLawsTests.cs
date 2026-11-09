@@ -1889,6 +1889,20 @@ public class BlockLawsTests {
     Assert.Equal(10, law.Cases);
   }
 
+  // Fails when the formed pass leaves a structure's blocks or entities in the world once its clicks
+  // are done (Free removed from RunFormed).
+  [Fact]
+  [PlantedDefect(typeof(InteractionLaw), nameof(InteractionLaw.RunFormed))]
+  public void The_formed_pass_frees_each_structure_it_stood() {
+    using TestWorld world = Hands([Token], [.. Tiered()]);
+
+    BlockLaws.Law law = InteractionLaw.RunFormed(world, "test");
+
+    Assert.Equal(10, law.Cases);
+    Assert.Empty(world.SolidBlocks);
+    Assert.Empty(world.BlockEntities);
+  }
+
   // Fails when the formed pass stands its structure with its placements unjudged, so a filled
   // cell whose placement throws leaves the structure unformed and nothing said.
   [Fact]

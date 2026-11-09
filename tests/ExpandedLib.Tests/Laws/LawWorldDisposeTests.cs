@@ -94,15 +94,14 @@ public class LawWorldDisposeTests
   private static void RunClip(Watch watch) =>
     ClipLaws.Run("test", [], Exlib, null, watch.Record);
 
-  // Fails when StructureBreaks.Run does not dispose an owned site's world, after StageCount or after
-  // each BreakOnce (Site.Release removed from either).
+  // Fails when StructureBreaks.Run does not dispose the world of a variant (the using removed).
   [Fact]
   public void StructureBreaks_disposes_the_world_of_each_stand()
   {
     var watch = new Watch();
     RunBreaks(watch);
     watch.AssertCollected();
-    Assert.True(watch.Worlds.Count > 1);
+    Assert.Single(watch.Worlds);
   }
 
   [MethodImpl(MethodImplOptions.NoInlining)]
