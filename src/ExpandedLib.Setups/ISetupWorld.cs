@@ -15,6 +15,10 @@ internal interface ISetupWorld {
 
   BlockEntity? BlockEntityAt(BlockPos pos);
 
+  /// <summary>The server-world cell of the setup-local cell <paramref name="local"/>; the cell itself
+  /// where setup-local and world cells are one.</summary>
+  BlockPos Absolute(BlockPos local);
+
   /// <summary>The block at the cell; air when nothing is there.</summary>
   Block BlockAt(BlockPos pos);
 
