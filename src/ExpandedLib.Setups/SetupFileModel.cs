@@ -748,7 +748,11 @@ internal sealed class SetupFileModel {
         throw where.Fail(
           $"\"{(step.Draws.Count > 0 ? "draws" : "gives")}\" needs a file-level \"pack\"."
         );
-      if (pack?.Scope == "all" && step.Kind is "power" or "source")
+      if (
+        pack?.Scope == "all"
+        && step.Kind is "power" or "source"
+        && (string?)step.Body["network"] != "mpshaft"
+      )
         throw where.Fail(
           $"\"{step.Kind}\" is a live-only verb, refused under pack scope \"all\": the stage builds what it drives."
         );
