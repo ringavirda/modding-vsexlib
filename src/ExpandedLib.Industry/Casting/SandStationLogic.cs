@@ -216,7 +216,7 @@ public static class SandStationLogic {
   /// <param name="amount">Units in the cavity.</param>
   /// <param name="unitsPerPiece">Units one piece holds.</param>
   /// <param name="batches">The fill order from <see cref="FillBatches"/>.</param>
-  /// <param name="coldShutBatches">Bit <c>i</c> set marks batch <c>i</c> cold-shut (see <see cref="ColdShut"/>); its pieces are scrap though full.</param>
+  /// <param name="coldShutBatches">Bit <c>i</c> set marks batch <c>i</c> cold-shut (see <see cref="ColdShut"/>); its pieces are scrap though full; at most 31 batches.</param>
   public static SandStationYield YieldOf(
     bool misrun,
     int amount,
@@ -239,7 +239,7 @@ public static class SandStationLogic {
     return new SandStationYield(parts, amount - parts * unitsPerPiece);
   }
 
-  /// <summary>Seconds a pour's feed may stop while a piece is part filled before the piece cold-shuts.</summary>
+  /// <summary>Machine seconds (120 per game hour) a pour's feed may stop while a piece is part filled before the piece cold-shuts.</summary>
   public const float ColdShutSeconds = 6f;
 
   /// <summary>The index of the batch the next metal enters: the first one not yet full.</summary>
@@ -263,8 +263,8 @@ public static class SandStationLogic {
   }
 
   /// <summary>The cold-shut batches after a feed resumes: the batch the resumed metal enters is added when the feed stopped for longer than <see cref="ColdShutSeconds"/>.</summary>
-  /// <param name="coldShutBatches">Bit <c>i</c> set for each batch already cold-shut.</param>
-  /// <param name="stoppedSeconds">Seconds the feed stood still before it resumed.</param>
+  /// <param name="coldShutBatches">Bit <c>i</c> set for each batch already cold-shut; at most 31 batches.</param>
+  /// <param name="stoppedSeconds">Machine seconds the feed stood still before it resumed.</param>
   /// <param name="amount">Units in the cavity before the metal resumed.</param>
   /// <param name="unitsPerPiece">Units one piece holds.</param>
   /// <param name="batches">The fill order from <see cref="FillBatches"/>.</param>
