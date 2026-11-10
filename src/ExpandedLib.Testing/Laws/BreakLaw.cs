@@ -16,7 +16,7 @@ public static class BreakLaw
 {
   internal const string Name = "break";
 
-  /// <summary>Runs <see cref="StructureBreaks.Run(IEnumerable{ExBlockDef}, IReadOnlyList{Assembly}, Action{TestWorld}?, int)"/>
+  /// <summary>Runs <see cref="StructureBreaks.Run(IEnumerable{ExBlockDef}, IReadOnlyList{Assembly}, Action{TestWorld}?, int, BreakSample?)"/>
   /// over <paramref name="defs"/> and judges what each break spawned.</summary>
   /// <param name="defs">The definitions judged.</param>
   /// <param name="assemblies">The assemblies whose registered classes the definitions name,
@@ -24,15 +24,19 @@ public static class BreakLaw
   /// <param name="prepare">Runs on each fresh world before the structure is placed.</param>
   /// <param name="maxDegreeOfParallelism">The most variants broken at once; 1 breaks them one after
   /// the other. The findings come in the same order whatever its value.</param>
+  /// <param name="sample">Which blocks and breaks are covered; <see cref="BreakSample.FromEnvironment"/>
+  /// when null.</param>
   /// <returns>The law's blocktypes, breaks and findings: every <see cref="StructureBreaks"/>
   /// failure, then one line per variant and rule broken, keyed by the variant's code.</returns>
   public static BlockLaws.Law Run(
     IEnumerable<ExBlockDef> defs,
     IReadOnlyList<Assembly> assemblies,
     Action<TestWorld>? prepare = null,
-    int maxDegreeOfParallelism = 1
+    int maxDegreeOfParallelism = 1,
+    BreakSample? sample = null
   )
   {
+    sample ??= BreakSample.FromEnvironment();
     ExBlockDef[] all = [.. defs];
     var typeOf = new Dictionary<string, string>(StringComparer.Ordinal);
     foreach (ExBlockDef def in all)
@@ -43,7 +47,8 @@ public static class BreakLaw
       all,
       assemblies,
       prepare,
-      maxDegreeOfParallelism
+      maxDegreeOfParallelism,
+      sample
     );
     var findings = new List<string>(result.Failures);
     foreach (

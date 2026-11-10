@@ -480,6 +480,146 @@ public class StructureBreaksTests
     Assert.Equal(0, result.Breaks);
   }
 
+  #region Sampling
+
+  private static ExBlockDef Sided(string code) =>
+    Mega(code)
+      .EntityClass("test-plain")
+      .VariantGroup("side", "n", "e", "s", "w")
+      .Construction(c =>
+        c.Stage(s => s.Require("game:stick", 1))
+          .Stage(s => s.RequireMetalPlate("test", 2))
+          .Stage(s => s.Require("game:plank-oak", 3))
+      );
+
+  private static StructureBreaks.Result Sampled(
+    BreakSample sample,
+    params ExBlockDef[] defs
+  ) =>
+    StructureBreaks.Run(
+      defs,
+      [typeof(BlockStructureFiller).Assembly],
+      world => world.RegisterClass("test-plain", typeof(PlainBe)),
+      1,
+      sample
+    );
+
+  private static int[] BreaksPerVariant(StructureBreaks.Result result) =>
+    [
+      .. result
+        .Spawned.GroupBy(s => s.Code)
+        .OrderBy(g => g.Key, StringComparer.Ordinal)
+        .Select(g => g.Count()),
+    ];
+
+  // Fails when a variant past the first is given every cell: each of the other three then breaks 13
+  // times, not 2.
+  [Fact]
+  public void The_reduced_sample_breaks_the_first_variant_whole_and_each_other_from_the_principal()
+  {
+    StructureBreaks.Result result = Sampled(
+      BreakSample.Reduced,
+      Sided("sided")
+    );
+
+    Assert.Empty(result.Failures);
+    Assert.Equal(4, result.Variants);
+    Assert.Equal(13 + 3 * 2, result.Breaks);
+    Assert.Equal([2, 2, 2, 13], BreaksPerVariant(result).Order());
+    Assert.Equal(13, result.Spawned.Count(s => s.Code.EndsWith("-n")));
+    foreach (
+      StructureBreaks.Spawn other in result.Spawned.Where(s =>
+        !s.Code.EndsWith("-n")
+      )
+    )
+    {
+      Assert.Equal(-1, other.Cell);
+      Assert.True(other.Stage is 0 or 2);
+      Assert.Equal(
+        other.Stage == 0 ? null : StructureBreaks.Payment.Survival,
+        other.Paid
+      );
+    }
+  }
+
+  // Fails when a payment mode is dropped at the principal of the first variant: stages 1 and 2 are
+  // then broken in survival alone.
+  [Fact]
+  public void The_reduced_sample_pays_the_first_variant_in_every_mode_at_every_stage_from_the_principal()
+  {
+    StructureBreaks.Result result = Sampled(
+      BreakSample.Reduced,
+      Sided("modes")
+    );
+
+    foreach (int stage in new[] { 1, 2 })
+    foreach (
+      StructureBreaks.Payment mode in Enum.GetValues<StructureBreaks.Payment>()
+    )
+      Assert.Contains(
+        result.Spawned,
+        s =>
+          s.Code.EndsWith("-n")
+          && s.Stage == stage
+          && s.Paid == mode
+          && s.Cell == -1
+      );
+    Assert.DoesNotContain(
+      result.Spawned,
+      s =>
+        s.Code.EndsWith("-n")
+        && s.Cell >= 0
+        && s.Paid
+          is StructureBreaks.Payment.Creative
+            or StructureBreaks.Payment.CreativeWithCtrl
+    );
+    Assert.Equal(
+      3,
+      result.Spawned.Count(s =>
+        s.Code.EndsWith("-n")
+        && s.Stage == 2
+        && s.Paid == StructureBreaks.Payment.Survival
+      )
+    );
+  }
+
+  // Fails when the whole switch is ignored: the sample the environment names stays reduced and
+  // breaks 19 times, not 84.
+  [Fact]
+  public void The_full_switch_breaks_every_variant_from_every_cell_in_every_payment()
+  {
+    BreakSample full = BreakSample.Parse("1", null);
+
+    Assert.True(full.Full);
+    Assert.False(BreakSample.Parse(null, null).Full);
+    Assert.False(BreakSample.Parse("0", null).Full);
+    StructureBreaks.Result result = Sampled(full, Sided("whole"));
+    Assert.Empty(result.Failures);
+    Assert.Equal(4 * ThreeStageBreaks * (1 + TwoCells.Length), result.Breaks);
+  }
+
+  // Fails when the block filter is ignored: the unlisted type is then broken too.
+  [Fact]
+  public void The_block_filter_limits_the_run_to_the_listed_types()
+  {
+    BreakSample only = BreakSample.Parse(null, "test:kept, absent");
+
+    Assert.True(only.Filtered);
+    Assert.False(BreakSample.Parse(null, " , ").Filtered);
+    StructureBreaks.Result result = Sampled(
+      only,
+      Sided("kept"),
+      Sided("dropped")
+    );
+    Assert.Equal(1, result.Blocks);
+    Assert.Equal(4, result.Variants);
+    Assert.All(result.Spawned, s => Assert.StartsWith("test:kept-", s.Code));
+    Assert.True(BreakSample.Parse(null, "kept").Takes("test:kept"));
+    Assert.False(BreakSample.Parse(null, "kept").Takes("test:dropped"));
+  }
+
+  #endregion
+
   #region Payments
 
   // Fails when the creative Ctrl build stops seeding the first allowed variant: the key then

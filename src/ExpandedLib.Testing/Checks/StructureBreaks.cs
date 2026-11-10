@@ -1,6 +1,8 @@
 #if GAME_GE_1_22
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
@@ -103,13 +105,20 @@ public static class StructureBreaks
   /// when <paramref name="maxDegreeOfParallelism"/> is above 1.</param>
   /// <param name="maxDegreeOfParallelism">The most variants broken at once; 1 breaks them one after
   /// the other on the calling thread. Values below 1 count as 1.</param>
+  /// <param name="sample">Which definitions and breaks are covered; every break of every
+  /// definition when null.</param>
+  /// <remarks>When the environment variable <see cref="MatrixVariable"/> names a file, the run
+  /// writes it as a table of each definition's variants, filler cells, stages, breaks and seconds,
+  /// replacing the file at the process's first run.</remarks>
   public static Result Run(
     IEnumerable<ExBlockDef> defs,
     IReadOnlyList<Assembly> assemblies,
     Action<TestWorld>? prepare = null,
-    int maxDegreeOfParallelism = 1
+    int maxDegreeOfParallelism = 1,
+    BreakSample? sample = null
   )
   {
+    sample ??= BreakSample.Whole;
     ExBlockDef fillerDef = ExDefinitions
       .DefinitionsOf(typeof(BlockStructureFiller), "exlib")
       .Single();
@@ -117,18 +126,27 @@ public static class StructureBreaks
       new List<(
         ExBlockDef Def,
         DefinitionCodes.Registered Variant,
-        bool DeclaresStages
+        bool DeclaresStages,
+        Coverage Coverage
       )>();
     int blocks = 0;
 
-    foreach (ExBlockDef def in defs.Where(InScope))
+    foreach (
+      ExBlockDef def in defs.Where(d =>
+        InScope(d) && sample.Takes($"{d.Domain}:{d.Code}")
+      )
+    )
     {
       blocks++;
       bool declaresStages = RccProperties(def.ToJson()) != null;
+      bool first = true;
       foreach (
         DefinitionCodes.Registered variant in DefinitionCodes.Expand(def)
       )
-        variants.Add((def, variant, declaresStages));
+      {
+        variants.Add((def, variant, declaresStages, sample.CoverageOf(first)));
+        first = false;
+      }
     }
 
     var tags = new SharedTagRegistries();
@@ -151,6 +169,7 @@ public static class StructureBreaks
     }
 
     var tallies = new Tally[variants.Count];
+    var rows = new MatrixRow[variants.Count];
     try
     {
       Parallel.For(
@@ -162,12 +181,17 @@ public static class StructureBreaks
         },
         at =>
         {
-          (ExBlockDef def, DefinitionCodes.Registered variant, bool stages) =
-            variants[at];
+          (
+            ExBlockDef def,
+            DefinitionCodes.Registered variant,
+            bool stages,
+            Coverage coverage
+          ) = variants[at];
           var tally = new Tally();
+          var watch = Stopwatch.StartNew();
           using TestWorld world = Stand();
           Block? block = null;
-          BreakVariant(
+          Shape shape = BreakVariant(
             variant.Code,
             stages,
             () =>
@@ -176,9 +200,18 @@ public static class StructureBreaks
                 new BlockPos(At.X + Stride * world.BreakSites++, At.Y, At.Z),
                 () => block ??= world.DefineBlock(def, variant)
               ),
-            tally
+            tally,
+            coverage
           );
           tallies[at] = tally;
+          rows[at] = new MatrixRow(
+            $"{def.Domain}:{def.Code}",
+            variant.Code,
+            shape.Cells,
+            shape.Stages,
+            tally.Breaks,
+            watch.Elapsed.TotalSeconds
+          );
         }
       );
     }
@@ -186,6 +219,10 @@ public static class StructureBreaks
     {
       ExceptionDispatchInfo.Capture(e.InnerExceptions[0]).Throw();
     }
+    if (
+      Environment.GetEnvironmentVariable(MatrixVariable) is { Length: > 0 } path
+    )
+      WriteMatrix(path, rows);
 
     var merged = new Tally();
     foreach (Tally tally in tallies)
@@ -215,15 +252,19 @@ public static class StructureBreaks
   /// <param name="world">A world <see cref="TestWorld.LoadAssets"/> loaded, holding the network
   /// types and mod systems the block entities need.</param>
   /// <param name="include">Which in-scope blocks to break; all of them when null.</param>
+  /// <param name="sample">Which blocks and breaks are covered; every break of every block when
+  /// null. A block type's first variant in code order is its first.</param>
   /// <returns>The blocktypes (codes less their variant parts) and variants covered, as on the
   /// code-first path.</returns>
   /// <exception cref="Exception">What a structure filler's <see cref="Block.OnLoaded"/> throws; a
   /// block that cannot be stood up or broken is a failure line.</exception>
   public static Result Run(
     TestWorld world,
-    System.Func<Block, bool>? include = null
+    System.Func<Block, bool>? include = null,
+    BreakSample? sample = null
   )
   {
+    sample ??= BreakSample.Whole;
     if (world.Mods.GetModSystem<MechanicalPowerMod>() == null)
     {
       var power = new MechanicalPowerMod();
@@ -236,10 +277,13 @@ public static class StructureBreaks
     List<Block> scoped =
     [
       .. world
-        .World.Blocks.Where(b => InScope(b) && (include?.Invoke(b) ?? true))
+        .World.Blocks.Where(b =>
+          InScope(b) && (include?.Invoke(b) ?? true) && sample.Takes(TypeOf(b))
+        )
         .OrderBy(b => b.Code.ToString(), StringComparer.Ordinal),
     ];
     var tally = new Tally();
+    var seen = new HashSet<string>();
     foreach (Block block in scoped)
     {
       bool ready = false;
@@ -258,13 +302,11 @@ public static class StructureBreaks
               return block;
             }
           ),
-        tally
+        tally,
+        sample.CoverageOf(seen.Add(TypeOf(block)))
       );
     }
-    int blocks = scoped
-      .Select(b => $"{b.Code.Domain}:{b.CodeWithoutParts(b.Variant.Count)}")
-      .Distinct()
-      .Count();
+    int blocks = scoped.Select(TypeOf).Distinct().Count();
     return new Result(
       blocks,
       scoped.Count,
@@ -273,6 +315,9 @@ public static class StructureBreaks
       tally.Spawned
     );
   }
+
+  private static string TypeOf(Block block) =>
+    $"{block.Code.Domain}:{block.CodeWithoutParts(block.Variant.Count)}";
 
   /// <summary>Whether <paramref name="def"/> reserves filler cells or carries construction
   /// stages.</summary>
@@ -321,6 +366,74 @@ public static class StructureBreaks
     System.Func<Block> Block
   );
 
+  /// <summary>Variable naming the file a run writes its break matrix to.</summary>
+  public const string MatrixVariable = "EXLIB_BREAK_MATRIX";
+
+  /// <summary>How much of one variant's breaks a run covers.</summary>
+  internal enum Coverage
+  {
+    /// <summary>Every cell at every stage in every payment.</summary>
+    Full,
+
+    /// <summary>Every cell at every stage paid in survival, the other payments from the principal.</summary>
+    Cells,
+
+    /// <summary>The principal unpaid and the principal fully paid in survival.</summary>
+    Principal,
+  }
+
+  private readonly record struct Shape(int Stages, int Cells);
+
+  private sealed record MatrixRow(
+    string Type,
+    string Variant,
+    int Cells,
+    int Stages,
+    int Cases,
+    double Seconds
+  );
+
+  private static bool _matrixStarted;
+  private static readonly object MatrixLock = new();
+
+  private static void WriteMatrix(string path, MatrixRow[] rows)
+  {
+    var lines = new List<string>();
+    lock (MatrixLock)
+    {
+      if (!_matrixStarted)
+        lines.Add("type\tvariants\tcells\tstages\tcases\tseconds");
+      foreach (IGrouping<string, MatrixRow> type in rows.GroupBy(r => r.Type))
+        lines.Add(
+          string.Join(
+            "\t",
+            type.Key,
+            type.Count(),
+            string.Join("/", type.Select(r => r.Cells).Distinct().Order()),
+            string.Join("/", type.Select(r => r.Stages).Distinct().Order()),
+            type.Sum(r => r.Cases),
+            type.Sum(r => r.Seconds).ToString("F1")
+          )
+        );
+      lines.Add(
+        string.Join(
+          "\t",
+          "total",
+          rows.Length,
+          "",
+          "",
+          rows.Sum(r => r.Cases),
+          rows.Sum(r => r.Seconds).ToString("F1")
+        )
+      );
+      if (_matrixStarted)
+        File.AppendAllLines(path, lines);
+      else
+        File.WriteAllLines(path, lines);
+      _matrixStarted = true;
+    }
+  }
+
   private sealed class Tally
   {
     public List<string> Failures { get; } = [];
@@ -328,26 +441,40 @@ public static class StructureBreaks
     public int Breaks { get; set; }
   }
 
-  /// <summary>Breaks the variant <paramref name="code"/> from every cell at every stage, each stage
-  /// past 0 paid in every <see cref="Payment"/>, the stage count taken from the structure
+  /// <summary>Breaks the variant <paramref name="code"/> as <paramref name="coverage"/> asks, each
+  /// stage past 0 paid in a <see cref="Payment"/>, the stage count taken from the structure
   /// stood up at the first <paramref name="stand"/> site and each break at a fresh one, whose own
   /// filler count bounds the cells broken at its stage and payment.</summary>
-  private static void BreakVariant(
+  /// <returns>The stage count and the most filler cells a structure stood up with.</returns>
+  private static Shape BreakVariant(
     string code,
     bool declaresStages,
     System.Func<Site> stand,
-    Tally tally
+    Tally tally,
+    Coverage coverage
   )
   {
     int stages = StageCount(stand(), code, declaresStages, tally.Failures);
     if (stages < 0)
-      return;
-    for (int built = 0; built < Math.Max(stages, 1); built++)
+      return default;
+    int top = Math.Max(stages, 1);
+    int mostCells = 0;
+    for (int built = 0; built < top; built++)
     {
+      if (coverage == Coverage.Principal && built != 0 && built != top - 1)
+        continue;
       Payment?[] payments =
-        built == 0 ? [null] : [.. Enum.GetValues<Payment>()];
+        built == 0 ? [null]
+        : coverage == Coverage.Principal ? [Payment.Survival]
+        : [.. Enum.GetValues<Payment>()];
       foreach (Payment? payment in payments)
       {
+        bool principalOnly =
+          coverage == Coverage.Principal
+          || (
+            coverage == Coverage.Cells
+            && payment is not (null or Payment.Survival)
+          );
         int cells = 0;
         for (int cell = -1; cell < cells; cell++)
         {
@@ -362,7 +489,10 @@ public static class StructureBreaks
             out int fillerCount
           );
           if (cell < 0)
-            cells = fillerCount;
+          {
+            cells = principalOnly ? 0 : fillerCount;
+            mostCells = Math.Max(mostCells, fillerCount);
+          }
           tally.Breaks++;
           if (failure != null)
             tally.Failures.Add(failure);
@@ -371,6 +501,7 @@ public static class StructureBreaks
         }
       }
     }
+    return new Shape(stages, mostCells);
   }
 
   /// <summary>The number of construction stages the variant at <paramref name="site"/> stands up
