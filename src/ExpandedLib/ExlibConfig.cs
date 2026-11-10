@@ -67,7 +67,7 @@ public class ExlibConfig : IExVersionedConfig {
 
   #region Molten network
   /// <summary>Max metal (units) flowing across one canal connection per second.</summary>
-  public int MoltenFlowRate { get; set; } = 50;
+  public int MoltenFlowRate { get; set; } = 100;
 
   /// <summary>Metal (units) a level cell of the molten network keeps when it hands the rest onward;
   /// also the minimum a single transfer moves, for callers that apply a floor.</summary>

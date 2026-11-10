@@ -107,12 +107,12 @@ public class MoltenFallTests {
     Assert.Equal(70, lower.CellAmount);
   }
 
-  // Fails when the drop's whole-charge move ignores the flow rate: 120 units cross and the upper keeps none.
+  // Fails when the drop's whole-charge move ignores the flow rate: 220 units cross and the upper keeps none.
   [Fact]
   public void A_drop_with_a_fall_hands_down_no_more_than_the_flow_rate_in_a_tick() {
-    var (upper, lower) = Stack(120, 16, 0);
-    Assert.Equal(70, upper.CellAmount);
-    Assert.Equal(50, lower.CellAmount);
+    var (upper, lower) = Stack(220, 16, 0);
+    Assert.Equal(120, upper.CellAmount);
+    Assert.Equal(100, lower.CellAmount);
   }
 
   // Fails when every vertical edge takes the whole charge: the level upper cell empties.
@@ -140,12 +140,12 @@ public class MoltenFallTests {
     Assert.Equal(100, next.CellAmount);
   }
 
-  // Fails when the edge moves more than the rate: the whole 120 crosses.
+  // Fails when the edge moves more than the rate: the whole 220 crosses.
   [Fact]
   public void A_fall_moves_no_more_than_the_flow_rate_in_a_tick() {
-    var (start, next) = Pair(120, 0, 0, 3);
-    Assert.Equal(70, start.CellAmount);
-    Assert.Equal(50, next.CellAmount);
+    var (start, next) = Pair(220, 0, 0, 3);
+    Assert.Equal(120, start.CellAmount);
+    Assert.Equal(100, next.CellAmount);
   }
 
   // Fails when the larger fall may give: the slope hands its 40 up to the level cell.

@@ -297,7 +297,7 @@ public class MoltenFlowRulesTests {
 
   #region Rate
 
-  // Fails when the rate is ignored: the edge moves ExlibValues.MoltenFlowRate, 50.
+  // Fails when the rate is ignored: the edge moves ExlibValues.MoltenFlowRate, 100.
   [Fact]
   public void An_edge_moves_100_per_tick() {
     var w = NewWorld();
@@ -305,6 +305,19 @@ public class MoltenFlowRulesTests {
 
     w.Tick();
 
+    Assert.Equal(900, start.CellAmount);
+    Assert.Equal(100, next.CellAmount);
+  }
+
+  // Fails when ExlibValues.MoltenFlowRate default is 50: an edge without flow rules moves 50 a tick.
+  [Fact]
+  public void An_edge_without_flow_rules_moves_the_network_default_100_per_tick() {
+    var w = NewWorld();
+    var (start, next) = Pair(w, 1000, null, null);
+
+    w.Tick();
+
+    Assert.Equal(100, ExlibValues.MoltenFlowRate);
     Assert.Equal(900, start.CellAmount);
     Assert.Equal(100, next.CellAmount);
   }
