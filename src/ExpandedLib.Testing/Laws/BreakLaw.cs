@@ -26,6 +26,9 @@ public static class BreakLaw
   /// the other. The findings come in the same order whatever its value.</param>
   /// <param name="sample">Which blocks and breaks are covered; <see cref="BreakSample.FromEnvironment"/>
   /// when null.</param>
+  /// <remarks>A reduced sample breaks a type's variants past the first at their last stage only; the
+  /// stage a self-drop is reported at is then the stage the first variant of its type first showed
+  /// it at, so a finding reads the same in either sample.</remarks>
   /// <returns>The law's blocktypes, breaks and findings: every <see cref="StructureBreaks"/>
   /// failure, then one line per variant and rule broken, keyed by the variant's code.</returns>
   public static BlockLaws.Law Run(
@@ -51,6 +54,7 @@ public static class BreakLaw
       sample
     );
     var findings = new List<string>(result.Failures);
+    var firstStage = new Dictionary<string, int?>(StringComparer.Ordinal);
     foreach (
       IGrouping<string, StructureBreaks.Spawn> broken in result.Spawned.GroupBy(
         s => s.Code
@@ -65,9 +69,13 @@ public static class BreakLaw
           && (code == broken.Key || typeOf.GetValueOrDefault(code) == type)
         )
       );
+      int? stage = itself?.Stage;
+      if (type != null && !firstStage.TryAdd(type, stage))
+        if (!sample.Full && stage != null && firstStage[type] is { } first)
+          stage = first;
       if (itself != null)
         findings.Add(
-          $"{broken.Key} broken at stage {itself.Stage} refunds its paid stages and also drops "
+          $"{broken.Key} broken at stage {stage} refunds its paid stages and also drops "
             + "its own code"
         );
       StructureBreaks.Spawn? filler = broken.FirstOrDefault(s =>
