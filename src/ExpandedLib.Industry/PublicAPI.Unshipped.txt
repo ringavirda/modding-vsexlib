@@ -16,6 +16,10 @@ const ExpandedLib.Industry.Machining.MachiningJob.DefaultWear = 1 -> int
 const ExpandedLib.Industry.Machining.MachiningJob.MaterialAttribute = "cuttingMaterial" -> string!
 const ExpandedLib.Industry.Machining.MachiningJob.UnitsAttribute = "materialUnits" -> string!
 const ExpandedLib.Industry.Machining.MachiningJobSet.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.DefaultRatedNm = 3280f -> float
+const ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.DefaultRatio = 3f -> float
+const ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.NmPerVanillaUnit = 7000f -> float
+const ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.RadSPerVanillaUnit = 5f -> float
 const ExpandedLib.Industry.MechanicalPower.MpSegmentReading.TreeKey = "mpReading" -> string!
 const ExpandedLib.Industry.Molten.CrowbarHold.HoldSeconds = 1 -> float
 const ExpandedLib.Industry.Molten.MoltenBar.HoldSeconds = 1 -> float
@@ -444,6 +448,17 @@ ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.SlipTorque(float relati
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Thrown.get -> bool
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Thrown.set -> void
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.To.get -> ExpandedLib.Networks.NodeKey
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.AtRating.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.BEBehaviorMpTakeoff(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.Configure(float ratio, float ratedNm, params Vintagestory.API.MathTools.BlockFacing![]! facings) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.HeldSpeed.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.LoadTorque(float speed) -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.Overrunning.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.RatedNm.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.RatedUnits.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.Ratio.get -> float
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.TorqueTakenNm.get -> float
 ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts
 ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.AngleRad(byte slot) -> float
 ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.BEBehaviorTurningParts(Vintagestory.API.Common.BlockEntity! blockentity) -> void
@@ -645,6 +660,12 @@ override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.ToTreeAttribute
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.GetBlockInfo(Vintagestory.API.Common.IPlayer! forPlayer, System.Text.StringBuilder! dsc) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.GetResistance() -> float
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.GetTorque(long tick, float speed, out float resistance) -> float
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.OnTesselation(Vintagestory.API.MathTools.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> bool
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.SetOrientations() -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.OnBlockRemoved() -> void

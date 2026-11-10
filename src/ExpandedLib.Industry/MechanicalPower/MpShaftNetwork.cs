@@ -265,7 +265,9 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
         producer?.DriveTorque(w) ?? 0f,
         producer?.DriveSlope(w) ?? 0f
       );
-      var consumer = be as IMpEnergyConsumer;
+      var consumer =
+        be as IMpEnergyConsumer
+        ?? be?.Behaviors?.OfType<IMpEnergyConsumer>().FirstOrDefault();
       Store.SetLoad(
         node,
         consumer?.LoadTorque(w) ?? 0f,
