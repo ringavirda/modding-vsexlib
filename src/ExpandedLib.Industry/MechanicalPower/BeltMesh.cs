@@ -25,7 +25,8 @@ public static class BeltMesh {
   /// <summary>The rim radius of a pulley, in blocks: half <see cref="MpBeltWear.PulleyDiameter"/>.</summary>
   /// <param name="size">The pulley size, 1 or 2.</param>
   /// <exception cref="ArgumentException"><paramref name="size"/> is not 1 or 2.</exception>
-  public static float RimRadius(int size) => MpBeltWear.PulleyDiameter(size) / 2f;
+  public static float RimRadius(int size) =>
+    MpBeltWear.PulleyDiameter(size) / 2f;
 
   /// <summary>The angle the strap wraps round each rim, in radians.</summary>
   /// <param name="driverSize">The driving pulley's size.</param>
