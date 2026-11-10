@@ -271,7 +271,7 @@ public class BEBehaviorClipActions(BlockEntity blockentity)
     float rate = _rates.GetValueOrDefault(clip);
     float seconds = action?.Seconds ?? (animation.QuantityFrames - 1) / 30f;
     float speed =
-      rate > 0f ? rate * animation.QuantityFrames / (30f * seconds) : HoldSpeed;
+      rate > 0f ? rate * animation.QuantityFrames / (30f * seconds) : 0f;
     if (animUtil.activeAnimationsByAnimCode.TryGetValue(clip, out var meta))
       meta.AnimationSpeed = speed;
     else if (rate > 0f)
