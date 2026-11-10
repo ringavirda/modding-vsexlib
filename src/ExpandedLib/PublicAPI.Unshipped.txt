@@ -303,6 +303,8 @@ ExpandedLib.ExlibConfig.MpBeltCapSize2Nm.get -> float
 ExpandedLib.ExlibConfig.MpBeltCapSize2Nm.set -> void
 ExpandedLib.ExlibConfig.MpBeltRatedRadS.get -> float
 ExpandedLib.ExlibConfig.MpBeltRatedRadS.set -> void
+ExpandedLib.ExlibConfig.MpBeltReachBlocks.get -> float
+ExpandedLib.ExlibConfig.MpBeltReachBlocks.set -> void
 ExpandedLib.ExlibConfig.MpBeltSlipFraction.get -> float
 ExpandedLib.ExlibConfig.MpBeltSlipFraction.set -> void
 ExpandedLib.ExlibConfig.MpClutchCapLineNm.get -> float
@@ -573,6 +575,7 @@ static ExpandedLib.ExlibValues.MoltenSpillYield.get -> float
 static ExpandedLib.ExlibValues.MpBeltCapSize1Nm.get -> float
 static ExpandedLib.ExlibValues.MpBeltCapSize2Nm.get -> float
 static ExpandedLib.ExlibValues.MpBeltRatedRadS.get -> float
+static ExpandedLib.ExlibValues.MpBeltReachBlocks.get -> float
 static ExpandedLib.ExlibValues.MpBeltSlipFraction.get -> float
 static ExpandedLib.ExlibValues.MpClutchCapLineNm.get -> float
 static ExpandedLib.ExlibValues.MpClutchCapMainNm.get -> float
