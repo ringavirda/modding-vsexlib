@@ -9,9 +9,8 @@ namespace ExpandedLib.Industry.Creative;
 
 /// <summary>
 /// The creative mpenergy source (<c>exlib:creativempenergy</c>): a connector on every face that joins the
-/// "mpshaft" run of any member whose crossing meets it, driving the run through its
-/// <see cref="BlockEntityCreativeMpEnergy"/>. In no creative tab and no recipe: the scenario <c>power</c> step
-/// places it.
+/// "mpshaft" run of any member whose crossing meets it, driving it through its
+/// <see cref="BlockEntityCreativeMpEnergy"/>. In no creative tab and no recipe; the <c>power</c> step places it.
 /// </summary>
 [BlockRegister]
 [ExDefDomain("exlib")]

@@ -12,7 +12,7 @@ namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>power</c> for an <c>mpshaft</c> run: the creative mpenergy source beside the cell at
 /// <c>at</c>, set to <c>torque</c> (N*m at rest) and <c>speed</c> (rad/s at which it delivers nothing). The
-/// source is placed on <c>face</c>, or on the first face in the order n, e, s, w, u, d where the cell
+/// source is placed on <c>face</c>, which must carry a crossing of the cell, or on the first face in the order n, e, s, w, u, d where the cell
 /// has a crossing and the cell across is air; a source already beside the cell is only set.</summary>
 internal sealed class PowerStep : ScenarioStep {
   public override string Kind => "power";
@@ -51,12 +51,7 @@ internal sealed class PowerStep : ScenarioStep {
     BlockPos? source = Source(ctx, cell, asked);
     bool placed = source == null;
     if (source == null) {
-      BlockFacing face = asked ?? OpenFace(ctx, cell);
-      if (asked != null && !HasCrossing(Member(ctx, cell), ctx, cell, asked))
-        throw new StepFailure(
-          $"{FailureDetail.Cell(cell)} has no crossing on face {asked.Code}.",
-          Suspect.Scenario
-        );
+      BlockFacing face = SourceFace(ctx, cell, asked);
       source = Beside(cell, face);
       if (!ctx.IsAir(source))
         throw new StepFailure(
@@ -121,8 +116,19 @@ internal sealed class PowerStep : ScenarioStep {
       )
       .Contains(new NodeCrossing(face));
 
-  private static BlockFacing OpenFace(ScenarioContext ctx, BlockPos cell) {
+  private static BlockFacing SourceFace(
+    ScenarioContext ctx,
+    BlockPos cell,
+    BlockFacing? asked
+  ) {
     INetworkMember member = Member(ctx, cell);
+    if (asked != null)
+      return HasCrossing(member, ctx, cell, asked)
+        ? asked
+        : throw new StepFailure(
+          $"{FailureDetail.Cell(cell)} has no crossing on face {asked.Code}.",
+          Suspect.Scenario
+        );
     foreach (BlockFacing face in Order)
       if (HasCrossing(member, ctx, cell, face) && ctx.IsAir(Beside(cell, face)))
         return face;
