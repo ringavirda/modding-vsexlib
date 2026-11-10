@@ -356,14 +356,15 @@ public class MpTakeoffTests {
     Assert.True(link.SyncDue());
   }
 
-  // Fails when a suspended iron run is not read as stopped: the link keeps driving the network at the last held speed with no load on the iron.
+  // Fails when the window is a literal that is not two iron intervals of 200 ms in vanilla's 100 ms steps (the old 6), or one step short: the link reads stale
+  // at the fifth step without a load, or not yet at the fourth.
   [Fact]
-  public void An_iron_run_that_has_not_loaded_the_link_for_six_steps_holds_nothing() {
+  public void An_iron_run_that_has_not_loaded_the_link_for_two_intervals_holds_nothing() {
     var network = new MechanicalNetwork();
     var link = Link(network, 4.48f);
     link.SideOverride = EnumAppSide.Server;
     Join(network, 1, resistance: 0.3f);
-    for (int i = 0; i < BEBehaviorMpTakeoff.StaleSteps; i++)
+    for (int i = 0; i < 4; i++)
       link.GetTorque(i, network.Speed, out _);
     Assert.True(link.HeldSpeed > 0f);
     link.GetTorque(0, network.Speed, out _);
@@ -371,12 +372,30 @@ public class MpTakeoffTests {
     link.LoadTorque(4.48f);
     Assert.True(link.HeldSpeed > 0f);
 
-    for (int i = 0; i <= BEBehaviorMpTakeoff.StaleSteps; i++)
+    for (int i = 0; i < 5; i++)
       link.GetTorque(i, network.Speed, out _);
 
     Assert.Equal(0f, link.HeldSpeed);
     Assert.Equal(0f, link.GetTorque(0, network.Speed, out _));
     Assert.Equal(0f, link.TorqueTakenNm);
+  }
+
+  // Fails when the window falls under one iron interval: a run that loads the link every second vanilla step then reads stale and hands no torque.
+  [Fact]
+  public void A_link_loaded_every_iron_interval_never_reads_stale_over_two_seconds() {
+    var network = new MechanicalNetwork();
+    var link = Link(network, 4.48f);
+    link.SideOverride = EnumAppSide.Server;
+    Join(network, 1, resistance: 0.3f);
+
+    for (int i = 0; i < 20; i++) {
+      if (i % 2 == 0)
+        link.LoadTorque(4.48f);
+      float given = link.GetTorque(i, network.Speed, out _);
+      Assert.True(link.HeldSpeed > 0f, $"step {i}");
+      if (i > 5)
+        Assert.True(given > 0f, $"step {i}");
+    }
   }
 
   // Fails when a stopped iron run still gives the vanilla side its resistance as torque or loads the run.

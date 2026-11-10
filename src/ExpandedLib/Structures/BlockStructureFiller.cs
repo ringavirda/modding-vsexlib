@@ -82,8 +82,13 @@ public partial class BlockStructureFiller
     BlockMPBase forBlock
 #endif
   ) {
+    // Vanilla's axle asks from its own neighbour-change handler with its own position, not the asked block's.
+    BlockPos cell =
+      world.BlockAccessor.GetBlock(pos).Id == BlockId
+        ? pos
+        : pos.AddCopy(face.Opposite);
     if (
-      world.BlockAccessor.GetBlockEntity(pos)
+      world.BlockAccessor.GetBlockEntity(cell)
         is not BlockEntityStructureFiller be
       || be.GetBehavior<BEBehaviorMPBase>() == null
       || be.HostedBehaviors == null

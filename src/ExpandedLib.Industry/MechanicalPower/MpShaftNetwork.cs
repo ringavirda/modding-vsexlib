@@ -20,7 +20,10 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     INetworkPlacementCheck {
   public override string NetworkType => "mpshaft";
 
-  public override int StepIntervalMs => 200;
+  /// <summary>Milliseconds between the run's steps.</summary>
+  internal const int IntervalMs = 200;
+
+  public override int StepIntervalMs => IntervalMs;
 
   public override bool SupportsPartialSplit => true;
 

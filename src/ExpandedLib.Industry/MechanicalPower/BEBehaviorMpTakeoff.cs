@@ -98,8 +98,13 @@ public class BEBehaviorMpTakeoff(BlockEntity blockentity)
   /// <summary>True while the link gives the network all the rating carries.</summary>
   public bool AtRating => Network != null && _given >= RatedUnits * 0.999f;
 
-  /// <summary>Vanilla network steps without a <see cref="LoadTorque"/> call after which the iron speed reads as stale.</summary>
-  internal const int StaleSteps = 6;
+  /// <summary>Milliseconds between vanilla network steps: <c>MechanicalNetwork.updateNetwork</c> runs on every fifth of
+  /// the mechanical listener's 20 ms ticks.</summary>
+  internal const int VanillaStepMs = 100;
+
+  /// <summary>Vanilla network steps without a <see cref="LoadTorque"/> call after which the iron speed reads as stale:
+  /// two intervals of the iron run.</summary>
+  internal const int StaleSteps = 2 * MpShaftNetwork.IntervalMs / VanillaStepMs;
 
   /// <summary>The side the link judges itself on; the behaviour's own side when null.</summary>
   internal EnumAppSide? SideOverride { get; set; }
