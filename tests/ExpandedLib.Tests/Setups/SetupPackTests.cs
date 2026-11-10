@@ -383,6 +383,10 @@ public class SetupPackTests
     "{ \"at\": [0, 0, 0], \"face\": \"n\", \"speed\": 1, \"torque\": 1 }"
   )]
   [InlineData(
+    "power",
+    "{ \"at\": [0, 0, 0], \"network\": \"mpshaft\", \"speed\": 1, \"torque\": 1 }"
+  )]
+  [InlineData(
     "source",
     "{ \"at\": [0, 0, 0], \"face\": \"n\", \"medium\": \"steam\" }"
   )]
@@ -405,19 +409,6 @@ public class SetupPackTests
       error.Message
     );
     Assert.Equal(kind, stacks.Steps[0].Kind);
-  }
-
-  // Fails when the refusal catches a power step on an mpshaft run, which both runners run, under scope
-  // "all".
-  [Fact]
-  public void An_mpshaft_power_step_is_read_under_scope_all()
-  {
-    SetupFileModel model = WithSteps(
-      "{ \"scope\": \"all\" }",
-      "[{ \"power\": { \"at\": [0, 0, 0], \"network\": \"mpshaft\", \"speed\": 1, \"torque\": 1 } }]"
-    );
-
-    Assert.Equal("power", model.Steps[0].Kind);
   }
 
   // Fails when the refusal reads only the main steps, so a during step slips through.
