@@ -22,11 +22,8 @@ public readonly record struct BeltPulley(
 public readonly record struct BeltRun(EnumAxis Axis, Vec3d Start, Vec3d End);
 
 /// <summary>
-/// The path of an open belt between two pulleys: its two straight runs, the cells it claims, and the refusal
-/// codes a belt that cannot be strung there is answered with. A strap is <see cref="WidthBlocks"/> wide along the
-/// axis, centred on the pulleys' plane, and has no thickness across it. A belt claims every cell a run crosses and
-/// every cell inside its loop, the closed outline of the two rim circles and the two runs, bar the pulleys' own
-/// cells; a run lying on a cell edge crosses neither cell it borders.
+/// The path of an open belt between two pulleys: its two runs, the cells it claims (those its runs cross and those
+/// inside its loop, bar the pulleys' own) and the refusal codes. A run on a cell edge crosses neither cell it borders.
 /// </summary>
 public static class BeltPath {
   /// <summary>The axes of the two pulleys differ.</summary>
@@ -264,9 +261,7 @@ public static class BeltPath {
     return false;
   }
 
-  // Whether the inside of the rectangle meets the inside of the hull of the two rim circles, which is the union of
-  // the circles centred along the line between the axes with the radius interpolated. The distance from a centre to
-  // the rectangle less the radius is convex along that line, so its minimum is found by ternary search.
+  // Whether the rectangle's inside meets the hull of the rim circles; ternary search on the convex gap to the sweep.
   private static bool InLoop(
     double au,
     double av,

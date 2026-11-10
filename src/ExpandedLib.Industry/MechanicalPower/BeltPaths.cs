@@ -26,10 +26,9 @@ public interface IBeltPathOwner {
 }
 
 /// <summary>
-/// The server's record of every strung belt's cells. A belt owner <see cref="Claim"/>s its path when it is strung
-/// and <see cref="Release"/>s it when it is taken back or unloaded; the owners in a chunk column are claimed again
-/// as the column loads. A block placed in a claimed cell that meets the strap or its loop tells the owner; only a
-/// player's placement is seen, as <c>DidPlaceBlock</c> reports it.
+/// The server's record of every strung belt's cells. An owner <see cref="Claim"/>s its path when strung and
+/// <see cref="Release"/>s it when taken back or unloaded; owners in a loaded chunk column claim again. A block a
+/// player places in a claimed cell that meets the strap or its loop tells the owner.
 /// </summary>
 public sealed class BeltPaths {
   private const string CacheKey = "exlib:beltpaths";
