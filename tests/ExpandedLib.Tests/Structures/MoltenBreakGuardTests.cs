@@ -270,6 +270,7 @@ public class MoltenBreakGuardTests {
   [Fact]
   public void Register_SubscribesTheBreakEvent() {
     var api = Substitute.For<ICoreServerAPI>();
+    api.ObjectCache.Returns([]);
 
     new IndustryModule().StartServerSide(api);
 

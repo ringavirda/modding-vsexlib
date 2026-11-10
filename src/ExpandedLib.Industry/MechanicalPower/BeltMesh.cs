@@ -10,8 +10,8 @@ namespace ExpandedLib.Industry.MechanicalPower;
 public static class BeltMesh {
   private const float Voxel = 1f / 16f;
 
-  /// <summary>Strap width along the shafts, in blocks (4 voxels).</summary>
-  public const float StrapWidth = 4f * Voxel;
+  /// <summary>Strap width along the shafts, in blocks; <see cref="BeltPath.WidthBlocks"/>.</summary>
+  public const float StrapWidth = (float)BeltPath.WidthBlocks;
 
   /// <summary>Strap thickness, in blocks (0.25 voxel).</summary>
   public const float StrapThickness = 0.25f * Voxel;
@@ -22,22 +22,37 @@ public static class BeltMesh {
   /// <summary>Wrap segment count per full turn: the pulleys' 16-gon.</summary>
   public const int SegmentsPerTurn = 16;
 
-  /// <summary>The rim radius of a pulley, in blocks: size 1 is 16 voxels across, size 2 is 32.</summary>
+  /// <summary>The rim radius of a pulley, in blocks: half <see cref="MpBeltWear.PulleyDiameter"/>.</summary>
   /// <param name="size">The pulley size, 1 or 2.</param>
-  public static float RimRadius(int size) => size * 0.5f;
+  /// <exception cref="ArgumentException"><paramref name="size"/> is not 1 or 2.</exception>
+  public static float RimRadius(int size) => MpBeltWear.PulleyDiameter(size) / 2f;
 
   /// <summary>The angle the strap wraps round each rim, in radians.</summary>
   /// <param name="driverSize">The driving pulley's size.</param>
   /// <param name="drivenSize">The driven pulley's size.</param>
-  /// <param name="centreDistance">Axis to axis across the shafts, in blocks; at or under the sum of the radii the wrap is taken as if just clear.</param>
+  /// <param name="centreDistance">Axis to axis across the shafts, in blocks; over the sum of the rim radii.</param>
   /// <returns>The driver's wrap and the driven's, each in (0, 2 pi); equal radii give pi each.</returns>
+  /// <exception cref="ArgumentException">A size is not 1 or 2, or <paramref name="centreDistance"/> is at or under the sum of the rim radii.</exception>
   public static (float Driver, float Driven) WrapAngles(
     int driverSize,
     int drivenSize,
     float centreDistance
   ) {
+    RequireClear(driverSize, drivenSize, centreDistance);
     float phi = TangentAngle(driverSize, drivenSize, centreDistance);
     return (MathF.Tau - 2f * phi, 2f * phi);
+  }
+
+  private static void RequireClear(
+    int driverSize,
+    int drivenSize,
+    float centreDistance
+  ) {
+    if (centreDistance <= RimRadius(driverSize) + RimRadius(drivenSize))
+      throw new ArgumentException(
+        $"Pulleys {centreDistance} blocks apart touch or overlap.",
+        nameof(centreDistance)
+      );
   }
 
   private static float TangentAngle(
@@ -52,9 +67,10 @@ public static class BeltMesh {
 
   /// <summary>Builds the belt: its two straight runs and the wrap round each rim, as boxes of <see cref="StrapWidth"/> by <see cref="StrapThickness"/>.</summary>
   /// <param name="axis">The shafts' axis.</param>
-  /// <param name="offset">The driven pulley's cell minus the driving pulley's; the component along <paramref name="axis"/> is ignored. Must differ from zero across the axis.</param>
+  /// <param name="offset">The driven pulley's cell minus the driving pulley's; the component along <paramref name="axis"/> is ignored. The in-plane distance must exceed the sum of the rim radii.</param>
   /// <param name="driverSize">The driving pulley's size, 1 or 2.</param>
   /// <param name="drivenSize">The driven pulley's size, 1 or 2.</param>
+  /// <exception cref="ArgumentException">A size is not 1 or 2, or the pulleys' in-plane distance is at or under the sum of their rim radii.</exception>
   /// <returns>Vertices in blocks, the driving pulley's cell corner the origin, with texture coordinates 0 to 1 over each quad and white vertex colours.</returns>
   public static MeshData Build(
     EnumAxis axis,

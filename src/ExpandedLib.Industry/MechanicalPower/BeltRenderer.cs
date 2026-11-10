@@ -27,7 +27,7 @@ public class BeltRenderer : IRenderer {
     _texture = texture;
   }
 
-  /// <summary>Uploads <paramref name="mesh"/> in place of the last one; call once per belt change. A <c>null</c> mesh draws nothing.</summary>
+  /// <summary>Uploads <paramref name="mesh"/> in place of the last one; call once per belt change. A <c>null</c> mesh draws nothing. Runs on the client main thread, as it uploads to the GPU.</summary>
   /// <param name="mesh">A mesh from <see cref="BeltMesh.Build"/>; the renderer does not keep it.</param>
   public void SetMesh(MeshData? mesh) {
     _meshRef?.Dispose();

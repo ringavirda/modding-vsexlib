@@ -133,4 +133,29 @@ public class BeltMeshTests {
     Assert.Equal(0.25f, vs.Max(v => v.Z) - vs.Min(v => v.Z), Tolerance);
     Assert.True(vs.Max(v => v.X) > 3.5f);
   }
+
+  [Theory]
+  [InlineData(0, 0, 1, 1)]
+  [InlineData(0, 1, 1, 1)]
+  [InlineData(0, 1, 1, 2)]
+  [InlineData(0, 2, 2, 2)]
+  public void Pulleys_touching_or_overlapping_are_refused(
+    int y,
+    int z,
+    int driver,
+    int driven
+  ) {
+    Assert.Throws<ArgumentException>(() =>
+      BeltMesh.Build(EnumAxis.X, new Vec3i(0, y, z), driver, driven)
+    );
+    Assert.Throws<ArgumentException>(() =>
+      BeltMesh.WrapAngles(driver, driven, MathF.Sqrt(y * y + z * z))
+    );
+  }
+
+  [Fact]
+  public void Pulleys_clear_by_a_hair_are_accepted() {
+    (float driver, float driven) = BeltMesh.WrapAngles(1, 1, 1.001f);
+    Assert.True(float.IsFinite(driver) && float.IsFinite(driven));
+  }
 }
