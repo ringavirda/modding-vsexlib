@@ -26,6 +26,18 @@
     "WasherPunch.Tests":   { "heapGb": 2 }
   },
   "serverMemoryGb": 2,
+  "affectedAlways": [
+    "ExWorldStateTests",
+    "FastForwardReplayTests",
+    "ChecksAtLoadTests",
+    "SingleplayerCatalogueTests",
+    "HarnessUseGuards",
+    "CommentStyleGuards",
+    "WikiParityTests",
+    "SourceLawGuards",
+    "UnprovenGuardTests",
+    "HandbookParityTests"
+  ],
   "coverageFloors": "tests/coverage-floors.json",
   "docs": "../exdocs/exlib",
   "depends": {}
