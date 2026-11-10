@@ -45,7 +45,8 @@ public static class BeltMesh {
     int drivenSize,
     float centreDistance
   ) {
-    float ratio = (RimRadius(driverSize) - RimRadius(drivenSize)) / centreDistance;
+    float ratio =
+      (RimRadius(driverSize) - RimRadius(drivenSize)) / centreDistance;
     return MathF.Acos(Math.Clamp(ratio, -1f, 1f));
   }
 
@@ -98,7 +99,12 @@ public static class BeltMesh {
       path.Add((cu, cv, RimRadius(size), start + wrap * i / segments));
   }
 
-  private static (float, float) InPlane(EnumAxis axis, float x, float y, float z) =>
+  private static (float, float) InPlane(
+    EnumAxis axis,
+    float x,
+    float y,
+    float z
+  ) =>
     axis switch {
       EnumAxis.X => (y, z),
       EnumAxis.Y => (x, z),

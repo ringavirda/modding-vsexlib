@@ -39,10 +39,10 @@ public class BeltMeshTests {
 
     // Two runs leave the driver's rim square to the line between the centres.
     int tangents = vs.Where(v =>
-      MathF.Abs(Radial(v, 0.5f, 0.5f) - rim) < Tolerance
-      && MathF.Abs(v.X - 0.5f + BeltMesh.StrapWidth / 2f) < Tolerance
-      && MathF.Abs((v.Y - 0.5f) * 3f + (v.Z - 0.5f) * 4f) < 1e-3f
-    )
+        MathF.Abs(Radial(v, 0.5f, 0.5f) - rim) < Tolerance
+        && MathF.Abs(v.X - 0.5f + BeltMesh.StrapWidth / 2f) < Tolerance
+        && MathF.Abs((v.Y - 0.5f) * 3f + (v.Z - 0.5f) * 4f) < 1e-3f
+      )
       .Select(v => (MathF.Round(v.Y, 3), MathF.Round(v.Z, 3)))
       .Distinct()
       .Count();
@@ -107,8 +107,22 @@ public class BeltMeshTests {
     Vec3f[] vs = Vertices(mesh);
 
     // The driver's rim, in the driver cell's own frame: centre (0.5, 0.5) and no world offset.
-    Assert.Equal(0.5f - BeltMesh.RimRadius(1) - BeltMesh.CrownLift - BeltMesh.StrapThickness, vs.Min(v => v.Y), Tolerance);
-    Assert.Equal(0.5f + BeltMesh.RimRadius(1) + BeltMesh.CrownLift + BeltMesh.StrapThickness, vs.Max(v => v.Y), Tolerance);
+    Assert.Equal(
+      0.5f
+        - BeltMesh.RimRadius(1)
+        - BeltMesh.CrownLift
+        - BeltMesh.StrapThickness,
+      vs.Min(v => v.Y),
+      Tolerance
+    );
+    Assert.Equal(
+      0.5f
+        + BeltMesh.RimRadius(1)
+        + BeltMesh.CrownLift
+        + BeltMesh.StrapThickness,
+      vs.Max(v => v.Y),
+      Tolerance
+    );
   }
 
   [Fact]

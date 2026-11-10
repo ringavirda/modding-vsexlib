@@ -41,7 +41,10 @@ public class BeltRenderer : IRenderer {
 
     IRenderAPI render = _api.Render;
     int texId = render.GetOrLoadTexture(
-      _texture.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png")
+      _texture
+        .Clone()
+        .WithPathPrefixOnce("textures/")
+        .WithPathAppendixOnce(".png")
     );
     if (texId == 0)
       return;
