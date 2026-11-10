@@ -386,8 +386,11 @@ ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Break() -> void
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Broken.get -> bool
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.CapNm.get -> float
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Connect(ExpandedLib.Networks.NodeKey from, ExpandedLib.Networks.NodeKey to, int fromSize, int toSize, bool crossed = false) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Disconnect() -> void
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Efficiency.get -> float
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Engaged.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.FarCell.get -> Vintagestory.API.MathTools.BlockPos?
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.FarNeighbours.get -> System.Collections.Generic.IEnumerable<Vintagestory.API.MathTools.BlockPos!>!
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.From.get -> ExpandedLib.Networks.NodeKey
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.LifeJ.get -> float
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Ratio.get -> float
