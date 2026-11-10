@@ -7,10 +7,8 @@ using Vintagestory.API.Datastructures;
 namespace ExpandedLib.Industry.MechanicalPower;
 
 /// <summary>
-/// A belt between two pulleys of an "mpshaft" run: it carries up to its cap, slips at <c>MpBeltSlipFraction</c> of
-/// it, and wears by the energy it slips (see <see cref="MpBeltWear"/>). Declared, it takes ports 0 and 1 of its
-/// cell, <c>fromPulley</c> and <c>toPulley</c> (size 1 or 2, 1 when absent) and <c>crossed</c>; wear and a snap
-/// are saved.
+/// A belt between two pulleys of an "mpshaft" run, its law in <see cref="MpBeltWear"/>. Declared, it takes ports 0 and
+/// 1 of its cell, <c>fromPulley</c> and <c>toPulley</c> (size 1 or 2, 1 when absent) and <c>crossed</c>.
 /// </summary>
 [BlockEntityBehaviorRegister]
 public class BEBehaviorMpBelt(BlockEntity blockentity)
