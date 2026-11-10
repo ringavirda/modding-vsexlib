@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
+using ExpandedLib.Industry.Creative;
+using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
@@ -26,17 +28,21 @@ public class EmptyTreeSweepTests : IDisposable {
 
   public void Dispose() => EntityRegistry.Logger = _logger;
 
-  // The least a type needs to initialise, by type; a pipe joins its network on Initialize.
+  // The least a type needs to initialise, by type; a pipe or a shaft node joins its network on Initialize.
   private static readonly Dictionary<
     Type,
     Action<TestWorld, BlockEntity>
   > Setup = new() {
     [typeof(BlockEntityPipe)] = RegisterPipeNetwork,
     [typeof(BlockEntityPipePassthrough)] = RegisterPipeNetwork,
+    [typeof(BlockEntityCreativeMpEnergy)] = RegisterShaftNetwork,
   };
 
   private static void RegisterPipeNetwork(TestWorld world, BlockEntity _) =>
     world.RegisterNetwork("pipe", sys => new PipeNetwork(sys));
+
+  private static void RegisterShaftNetwork(TestWorld world, BlockEntity _) =>
+    world.RegisterNetwork("mpshaft", sys => new MpShaftNetwork(sys));
 
   private sealed class NullLabelInitializer : ExBlockEntity {
     [Persist]
