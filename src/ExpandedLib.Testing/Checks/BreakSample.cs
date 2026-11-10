@@ -18,16 +18,20 @@ public sealed record BreakSample(bool Full, IReadOnlySet<string>? Blocks)
 {
   /// <summary>Variable that, set to <c>1</c>, makes <see cref="FromEnvironment"/> take the whole
   /// matrix.</summary>
+  [CheckHelper("names the variable FromEnvironment reads for the whole matrix")]
   public const string FullVariable = "EXLIB_BREAK_FULL";
 
   /// <summary>Variable listing, comma-separated, the only block types <see cref="FromEnvironment"/>
   /// covers.</summary>
+  [CheckHelper("names the variable FromEnvironment reads for its block types")]
   public const string BlocksVariable = "EXLIB_BREAK_BLOCKS";
 
   /// <summary>Every break of every block type.</summary>
+  [CheckHelper("names the sample a break run takes when handed none")]
   public static BreakSample Whole { get; } = new(true, null);
 
   /// <summary>The reduced sample of every block type.</summary>
+  [CheckHelper("names the sample a run is handed for the reduced matrix")]
   public static BreakSample Reduced { get; } = new(false, null);
 
   /// <summary>Whether the sample covers only some block types.</summary>
@@ -36,6 +40,7 @@ public sealed record BreakSample(bool Full, IReadOnlySet<string>? Blocks)
   /// <summary>The sample the environment asks for: the whole matrix when
   /// <see cref="FullVariable"/> is <c>1</c>, else the reduced one, limited to the block types
   /// <see cref="BlocksVariable"/> lists when it is set and not empty.</summary>
+  [CheckHelper("reads the sample BreakLaw hands a break run")]
   public static BreakSample FromEnvironment() =>
     Parse(
       Environment.GetEnvironmentVariable(FullVariable),

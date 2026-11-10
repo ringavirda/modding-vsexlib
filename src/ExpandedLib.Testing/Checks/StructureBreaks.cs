@@ -362,6 +362,7 @@ public static class StructureBreaks
   );
 
   /// <summary>Variable naming the file a run writes its break matrix to.</summary>
+  [CheckHelper("names the file variable a run writes its matrix to")]
   public const string MatrixVariable = "EXLIB_BREAK_MATRIX";
 
   /// <summary>How much of one variant's breaks a run covers.</summary>
