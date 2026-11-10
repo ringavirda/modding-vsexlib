@@ -16,6 +16,12 @@ internal sealed class SetupTestWorld : ISetupWorld {
 
   public TestWorld Test { get; } = new();
 
+  /// <summary>The world cell of setup-local (0, 0, 0); network readings add it.</summary>
+  public BlockPos Origin { get; set; } = new(0, 0, 0);
+
+  public BlockPos Absolute(BlockPos local) =>
+    new(Origin.X + local.X, Origin.Y + local.Y, Origin.Z + local.Z);
+
   public IWorldAccessor World => Test.World;
 
   public BlockEntity? BlockEntityAt(BlockPos pos) => Test.GetBlockEntity(pos);
@@ -23,7 +29,7 @@ internal sealed class SetupTestWorld : ISetupWorld {
   public Block BlockAt(BlockPos pos) => Test.GetBlock(pos);
 
   public object? NetworkAt(BlockPos pos, string type) =>
-    Test.NetworkAt(pos) is { } network && network.NetworkType == type
+    Test.NetworkAt(Absolute(pos)) is { } network && network.NetworkType == type
       ? network
       : null;
 

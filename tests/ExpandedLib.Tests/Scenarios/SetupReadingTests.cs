@@ -1,3 +1,4 @@
+using ExpandedLib.Networks;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
@@ -80,6 +81,28 @@ public class SetupReadingTests {
       new SetupJson.Where("test.json", "steps[0] (wait).until"),
       new ReadingScope(null, inRecord, InCheck: false, new SetupReferences())
     );
+
+  private sealed class ProbeNetwork(BlockNetworkModSystem system)
+    : BlockNetwork(system) {
+    public override string NetworkType => "probe";
+
+    public int CellX(BlockPos pos) => pos.X;
+
+    public override void OnMerge(BlockNetwork other, IBlockAccessor world) { }
+
+    public override void OnSplitFragment(
+      BlockNetwork original,
+      IBlockAccessor world
+    ) { }
+
+    public override void InheritStateFrom(BlockNetwork source) { }
+
+    public override void OnTick(
+      IBlockAccessor world,
+      float dt,
+      BlockNetworkModSystem manager
+    ) { }
+  }
 
   private static object Read(string json, SetupTestWorld world) =>
     Parse(json).Read(new ReadingContext(world));
@@ -227,6 +250,23 @@ public class SetupReadingTests {
       0f,
       Read(
         """{ "at": [5, 0, 0], "network": "test", "member": "Pressure", "or": 0 }""",
+        world
+      )
+    );
+  }
+
+  // Fails when a network member method is handed the setup-local cell instead of the world cell, as the
+  // live runner's plot offset shows.
+  [Fact]
+  public void A_network_member_method_takes_the_world_cell() {
+    var world = new SetupTestWorld { Origin = new BlockPos(3, 0, 0) };
+    world.Test.RegisterNetwork("probe", s => new ProbeNetwork(s));
+    world.Test.PlaceNode(new BlockPos(3, 0, 0), "probe", "ns");
+
+    Assert.Equal(
+      3f,
+      Read(
+        """{ "at": [0, 0, 0], "network": "probe", "member": "CellX()" }""",
         world
       )
     );

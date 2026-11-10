@@ -587,4 +587,80 @@ public class SandStationLogicTests {
     Assert.Equal(stands, SandStationLogic.HeadStands(spec, pressed, amount));
     Assert.False(SandStationLogic.HeadStands(null, pressed, amount));
   }
+
+  #region Cold shut
+
+  private static IReadOnlyList<int[]> ThreeChain =>
+    SandStationLogic.FillBatches(FillOrder.Chain, 3, 3);
+
+  // Fails when the window is not 6 s: a 60 s window keeps the part, a stop of exactly the window scraps.
+  [Theory]
+  [InlineData(6f, 0)]
+  [InlineData(6.5f, 1)]
+  [InlineData(60f, 1)]
+  public void A_stop_over_the_window_marks_the_batch_being_filled(
+    float stopped,
+    int mask
+  ) {
+    Assert.Equal(
+      mask,
+      SandStationLogic.ColdShut(0, stopped, 50, 100, ThreeChain)
+    );
+  }
+
+  // Fails when the batch is taken from the first batch instead of the one the resumed metal enters.
+  [Theory]
+  [InlineData(0, 1)]
+  [InlineData(99, 1)]
+  [InlineData(100, 2)]
+  [InlineData(250, 4)]
+  public void The_batch_marked_is_the_first_not_yet_full(int amount, int mask) {
+    Assert.Equal(
+      mask,
+      SandStationLogic.ColdShut(0, 60f, amount, 100, ThreeChain)
+    );
+  }
+
+  // Fails when a stop over a full cavity marks a batch.
+  [Fact]
+  public void A_stop_over_a_full_cavity_marks_nothing() {
+    Assert.Equal(0, SandStationLogic.ColdShut(0, 60f, 300, 100, ThreeChain));
+    Assert.Equal(2, SandStationLogic.ColdShut(2, 60f, 300, 100, ThreeChain));
+  }
+
+  // Fails when a new mark replaces the marks already set.
+  [Fact]
+  public void Marks_accumulate_across_stops() {
+    Assert.Equal(5, SandStationLogic.ColdShut(1, 60f, 200, 100, ThreeChain));
+  }
+
+  // Fails when a cold-shut batch yields its part, or its units drop out of the scrap.
+  [Fact]
+  public void A_cold_shut_batch_is_scrap_though_full() {
+    SandStationYield yield = SandStationLogic.YieldOf(
+      false,
+      300,
+      100,
+      ThreeChain,
+      coldShutBatches: 2
+    );
+
+    Assert.Equal(new SandStationYield(2, 100), yield);
+  }
+
+  // Fails when a cold-shut batch stops the count of the full batches after it.
+  [Fact]
+  public void A_cold_shut_batch_does_not_stop_the_batches_after_it() {
+    SandStationYield yield = SandStationLogic.YieldOf(
+      false,
+      250,
+      100,
+      ThreeChain,
+      coldShutBatches: 1
+    );
+
+    Assert.Equal(new SandStationYield(1, 150), yield);
+  }
+
+  #endregion
 }

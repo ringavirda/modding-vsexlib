@@ -663,5 +663,6 @@ const ExpandedLib.ExlibLang.SandstationNeedspattern = "exlib:sandstation-needspa
 const ExpandedLib.ExlibLang.SandstationReady = "exlib:sandstation-ready" -> string!
 const ExpandedLib.ExlibLang.SandstationReadypieces = "exlib:sandstation-readypieces" -> string!
 const ExpandedLib.ExlibLang.SandstationCasting = "exlib:sandstation-casting" -> string!
+const ExpandedLib.ExlibLang.SandstationColdshut = "exlib:sandstation-coldshut" -> string!
 const ExpandedLib.ExlibLang.MetalstateLiquid = "exlib:metalstate-liquid" -> string!
 const ExpandedLib.ExlibLang.MetalstateHardened = "exlib:metalstate-hardened" -> string!
