@@ -54,6 +54,27 @@ public class PipeNetwork : BlockNetwork {
       State.SettledPressure = State.Pressure;
   }
 
+  /// <summary>Litres of gas producers offered this run since it was created: each
+  /// <see cref="TryProduceGas"/> call adds its volume, bounded by the run's throughput, when its ceiling
+  /// after the burst and leak clamps stands over 1 atm, whether or not the pool had headroom for it. Two
+  /// reads differ by what the producers blew between them, whatever the order of the ticks; a new network
+  /// starts at 0, and a leaking run gains nothing.</summary>
+  /// <remarks>A blast main holds a few litres over the atmosphere against hundreds a second of blast, so
+  /// its pool cannot carry the flow; a consumer takes its air from these offers and writes the run's
+  /// operating point with <see cref="SettleThroughflow"/>.</remarks>
+  public double OfferedTotalLitres { get; private set; }
+
+  /// <summary>The lowest ceiling, absolute atm, of the gas offers made this network second and the one
+  /// before; 0 when no producer offered in either.</summary>
+  public float OfferCeiling =>
+    _offerCeilingNow <= 0f ? _offerCeilingLast
+    : _offerCeilingLast <= 0f ? _offerCeilingNow
+    : Math.Min(_offerCeilingNow, _offerCeilingLast);
+
+  // Lowest offer ceiling (atm) since the last network tick, and the one the tick before it rolled.
+  private float _offerCeilingNow;
+  private float _offerCeilingLast;
+
   // Per-second throughput accumulators (litres), folded into State.FlowRate each tick.
   private float _producedAccum;
   private float _consumedAccum;
@@ -113,10 +134,18 @@ public class PipeNetwork : BlockNetwork {
       ceilingPressure = Math.Min(ceilingPressure, 1f);
 
     float ceiling = ceilingPressure * State.MaxVolume;
+    float callLimit = PerCallLimit(blockAccessor, gasType);
+    if (volume > 0f && ceilingPressure > 1f) {
+      OfferedTotalLitres += Math.Min(volume, callLimit);
+      _offerCeilingNow =
+        _offerCeilingNow <= 0f
+          ? ceilingPressure
+          : Math.Min(_offerCeilingNow, ceilingPressure);
+    }
     // Bounded by headroom (pressure ceiling) and throughput (weakest segment, PerCallLimit).
     float actualVolume = Math.Min(
       Math.Min(volume, ceiling - State.Volume),
-      PerCallLimit(blockAccessor)
+      callLimit
     );
 
     if (actualVolume > 0 || State.Volume <= 0) {
@@ -189,7 +218,7 @@ public class PipeNetwork : BlockNetwork {
     // Bounded by pool volume and PerCallLimit.
     float available = Math.Min(
       Math.Min(requestedVolume, State.Volume),
-      PerCallLimit(blockAccessor)
+      PerCallLimit(blockAccessor, State.MediumType)
     );
     if (available > 0) {
       State.Volume -= available;
@@ -201,6 +230,31 @@ public class PipeNetwork : BlockNetwork {
       BroadcastUpdate(blockAccessor);
     }
     return available;
+  }
+
+  /// <summary>Writes a gas run to a throughflow operating point: <paramref name="litres"/> passed through
+  /// it to a consumer this tick, and its pool now reads <paramref name="pressure"/>. The litres count in
+  /// the run's flow readout as consumed; the pool becomes <paramref name="pressure"/> x MaxVolume at its
+  /// temperature and medium.</summary>
+  /// <param name="litres">Litres the consumer took this tick from the offers (<see cref="OfferedTotalLitres"/>); negative counts as 0.</param>
+  /// <param name="pressure">The run's pressure at the operating point, absolute atm; negative counts as 0.</param>
+  /// <param name="blockAccessor">The world the run's pipes are in, for the broadcast.</param>
+  /// <remarks>Does nothing on a water run or a run with no state.</remarks>
+  public void SettleThroughflow(
+    float litres,
+    float pressure,
+    IBlockAccessor blockAccessor
+  ) {
+    if (State == null || State.IsLiquid)
+      return;
+    State.MaxVolume = Nodes.Count * ExlibValues.LitresPerPipe;
+    _consumedAccum += Math.Max(0f, litres);
+    State.Volume = Math.Max(0f, pressure) * State.MaxVolume;
+    State.Pressure = PipeNetworkState.ComputeGasPressure(
+      State.Volume,
+      State.MaxVolume
+    );
+    BroadcastUpdate(blockAccessor);
   }
 
   #endregion
@@ -227,7 +281,7 @@ public class PipeNetwork : BlockNetwork {
     // Headroom and throughput, the same pair the gas side takes.
     float actual = Math.Min(
       Math.Min(volume, State.MaxVolume - State.Volume),
-      PerCallLimit(blockAccessor)
+      PerCallLimit(blockAccessor, "Water")
     );
     if (actual <= 0f) {
       // Brim-full: pressure still follows the feed pressure.
@@ -279,7 +333,7 @@ public class PipeNetwork : BlockNetwork {
 
     float available = Math.Min(
       Math.Min(requestedVolume, State.Volume),
-      PerCallLimit(blockAccessor)
+      PerCallLimit(blockAccessor, State.MediumType)
     );
     if (available > 0) {
       State.Volume -= available;
@@ -453,7 +507,9 @@ public class PipeNetwork : BlockNetwork {
     _producedAccum = 0f;
     _consumedAccum = 0f;
     _minBurstCache = null;
-    _minThroughputCache = null;
+    _minThroughputCache.Clear();
+    _offerCeilingLast = _offerCeilingNow;
+    _offerCeilingNow = 0f;
 
     if (State == null)
       return;
@@ -845,31 +901,36 @@ public class PipeNetwork : BlockNetwork {
   // in OnTick.
   private float? _minBurstCache;
 
-  // Same lifetime and invalidation as the burst cache above.
-  private float? _minThroughputCache;
+  // Same lifetime and invalidation as the burst cache above; keyed by medium, "" for none.
+  private readonly Dictionary<string, float> _minThroughputCache = new();
 
   /// <summary>Drops topology-derived caches when the manager changes the node set.</summary>
   public override void OnTopologyChanged() {
     _minBurstCache = null;
-    _minThroughputCache = null;
+    _minThroughputCache.Clear();
   }
 
-  /// <summary>The smallest throughput (L/s) across the run, the weakest-link rule.
-  /// <see cref="float.MaxValue"/> when the run holds no throughput-limited blocks.</summary>
-  private float MinThroughput(IBlockAccessor world) =>
-    _minThroughputCache ??= ComputeMinThroughput(world);
-
-  private float ComputeMinThroughput(IBlockAccessor world) {
-    float min = float.MaxValue;
-    foreach (var pos in Nodes)
-      if (world.GetBlock(pos) is IThroughputLimitedPipe p)
-        min = Math.Min(min, p.MaxThroughput);
+  /// <summary>The smallest throughput (L/s) across the run for <paramref name="medium"/>, the
+  /// weakest-link rule. <see cref="float.MaxValue"/> when the run holds no throughput-limited blocks.</summary>
+  private float MinThroughput(IBlockAccessor world, string? medium) {
+    string key = medium ?? "";
+    if (!_minThroughputCache.TryGetValue(key, out float min))
+      _minThroughputCache[key] = min = ComputeMinThroughput(world, medium);
     return min;
   }
 
-  /// <summary>The most one call may move, bounded by the run's weakest segment; stateless,
-  /// litres per second at the fixed 1000 ms tick.</summary>
-  private float PerCallLimit(IBlockAccessor world) => MinThroughput(world);
+  private float ComputeMinThroughput(IBlockAccessor world, string? medium) {
+    float min = float.MaxValue;
+    foreach (var pos in Nodes)
+      if (world.GetBlock(pos) is IThroughputLimitedPipe p)
+        min = Math.Min(min, p.ThroughputFor(medium));
+    return min;
+  }
+
+  /// <summary>The most one call may move of <paramref name="medium"/>, bounded by the run's weakest
+  /// segment; stateless, litres per second at the fixed 1000 ms tick.</summary>
+  private float PerCallLimit(IBlockAccessor world, string? medium) =>
+    MinThroughput(world, medium);
 
   /// <summary>The weakest pipe's burst pressure (atm) across the run, capping how far the gas
   /// pool can be pressurised. <see cref="float.MaxValue"/> when the run holds no pipes.</summary>
