@@ -528,6 +528,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
     Vec3d hit = selection.HitPosition;
     Aim(at, new Vec3d(at.X + hit.X, at.Y + hit.Y, at.Z + hit.Z));
     Hold(Player.Entity.Controls, keys);
+    Player.Entity.BlockSelection = selection;
     Player.InventoryManager.ActiveHotbarSlot.Itemstack = stack;
     Player.InventoryManager.OffhandHotbarSlot.Itemstack = offHand;
     int before = _server.BlockAccessor.GetBlock(selection.Position).Id;
