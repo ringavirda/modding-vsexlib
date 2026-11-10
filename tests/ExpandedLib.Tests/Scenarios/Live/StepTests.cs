@@ -314,6 +314,31 @@ public class StepTests {
     Assert.Contains("is not a liquid container", failure.Message);
   }
 
+  /// <summary>Fails when an IPlayer argument other than "player" is let through, or a "player" argument with no
+  /// scenario player is answered with null.</summary>
+  [Fact]
+  public void A_player_argument_is_the_word_player_and_needs_the_scenario_player() {
+    LiveFixture fixture = VesselFixture();
+
+    StepFailure other = Assert.Throws<StepFailure>(() =>
+      StepValues.Convert(
+        fixture.Context,
+        Newtonsoft.Json.Linq.JToken.FromObject("someone"),
+        typeof(IPlayer)
+      )
+    );
+    StepFailure none = Assert.Throws<StepFailure>(() =>
+      StepValues.Convert(
+        fixture.Context,
+        Newtonsoft.Json.Linq.JToken.FromObject("player"),
+        typeof(IPlayer)
+      )
+    );
+
+    Assert.Contains("is \"player\"", other.Message);
+    Assert.Contains("needs the scenario player", none.Message);
+  }
+
   /// <summary>Fails when an interact line drops the stack it was clicked with, so a bucket that poured and
   /// one never filled print alike.</summary>
   [Fact]
