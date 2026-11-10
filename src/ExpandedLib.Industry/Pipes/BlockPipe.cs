@@ -218,11 +218,12 @@ public partial class BlockPipe
 
   private const float DefaultBurstPressure = 5f;
 
-  /// <summary>Drops every tier's burst, throughput and joint registration; run when a world starts
+  /// <summary>Drops every tier's burst, throughput (plain and per medium) and joint registration; run when a world starts
   /// loading, before the tiers' mods register again.</summary>
   internal static void ResetForWorld() {
     _burstByTier.Clear();
     _throughputByTier.Clear();
+    _throughputByMedium.Clear();
     _jointByTier.Clear();
   }
 
