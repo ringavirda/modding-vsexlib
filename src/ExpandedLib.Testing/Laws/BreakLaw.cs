@@ -16,7 +16,7 @@ public static class BreakLaw
 {
   internal const string Name = "break";
 
-  /// <summary>Runs <see cref="StructureBreaks.Run(IEnumerable{ExBlockDef}, IReadOnlyList{Assembly}, Action{TestWorld}?, int)"/>
+  /// <summary>Runs <see cref="StructureBreaks.Run(IEnumerable{ExBlockDef}, IReadOnlyList{Assembly}, Action{TestWorld}?, int, BreakSample?)"/>
   /// over <paramref name="defs"/> and judges what each break spawned.</summary>
   /// <param name="defs">The definitions judged.</param>
   /// <param name="assemblies">The assemblies whose registered classes the definitions name,
