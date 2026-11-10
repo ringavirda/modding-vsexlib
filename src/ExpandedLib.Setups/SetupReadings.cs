@@ -172,9 +172,8 @@ internal static class SetupMembers {
               ?? throw new SetupReadingException(
                 $"{method.Name}() needs the cell of a network reading."
               )
-            : p.ParameterType.IsInstanceOfType(world)
-              ? (object)world
-              : world.BlockAccessor
+          : p.ParameterType.IsInstanceOfType(world) ? (object)world
+          : world.BlockAccessor
         ),
     ];
   }

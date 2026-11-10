@@ -23,7 +23,9 @@ internal sealed class SetupMpMember : BEBehaviorNetworkMember
   }
 }
 
-internal sealed class SetupMpLinkMember : BEBehaviorNetworkMember, INetworkMember
+internal sealed class SetupMpLinkMember
+  : BEBehaviorNetworkMember,
+    INetworkMember
 {
   public SetupMpLinkMember(BlockEntity be)
     : base(be)
@@ -32,8 +34,10 @@ internal sealed class SetupMpLinkMember : BEBehaviorNetworkMember, INetworkMembe
     DeclareConnectors("ws");
   }
 
-  IReadOnlyList<byte> INetworkMember.Slots(IBlockAccessor world, BlockPos pos) =>
-    [NodeKey.PortBase, NodeKey.PortBase + 1];
+  IReadOnlyList<byte> INetworkMember.Slots(
+    IBlockAccessor world,
+    BlockPos pos
+  ) => [NodeKey.PortBase, NodeKey.PortBase + 1];
 
   IEnumerable<NodeCrossing> INetworkMember.Crossings(
     IBlockAccessor world,
@@ -46,7 +50,10 @@ internal sealed class SetupMpLinkMember : BEBehaviorNetworkMember, INetworkMembe
   }
 }
 
-internal sealed class SetupMpNode : BlockEntity, IMpEnergyStorage, IMpEnergyConsumer
+internal sealed class SetupMpNode
+  : BlockEntity,
+    IMpEnergyStorage,
+    IMpEnergyConsumer
 {
   public float Load;
 
@@ -151,7 +158,17 @@ public class SetupMpShaftTests : IDisposable
   public void A_power_step_drives_the_line_at_its_torque_and_speed()
   {
     string line =
-      "[" + Node(0) + ", " + Node(1) + ", " + Node(2) + ", " + Load(2, 0, 40) + ", " + Source + ", {\"wait\": 40}, ";
+      "["
+      + Node(0)
+      + ", "
+      + Node(1)
+      + ", "
+      + Node(2)
+      + ", "
+      + Load(2, 0, 40)
+      + ", "
+      + Source
+      + ", {\"wait\": 40}, ";
 
     using SetupScene scene = Build(
       line
@@ -190,7 +207,19 @@ public class SetupMpShaftTests : IDisposable
   public void A_node_reading_is_the_torque_of_its_own_cell()
   {
     string line =
-      "[" + Node(0) + ", " + Node(1) + ", " + Node(2) + ", " + Load(1, 0, 25) + ", " + Load(2, 0, 40) + ", " + Source + ", {\"wait\": 40}, ";
+      "["
+      + Node(0)
+      + ", "
+      + Node(1)
+      + ", "
+      + Node(2)
+      + ", "
+      + Load(1, 0, 25)
+      + ", "
+      + Load(2, 0, 40)
+      + ", "
+      + Source
+      + ", {\"wait\": 40}, ";
 
     using SetupScene scene = Build(
       line
@@ -245,15 +274,30 @@ public class SetupMpShaftTests : IDisposable
   public static TheoryData<string, string?> Lacked =>
     new()
     {
-      { "{\"power\": {\"at\": [0, 0, 0], \"speed\": 1, \"torque\": 1}}", "power" },
-      { "{\"power\": {\"at\": [0, 0, 0], \"network\": \"pipe\", \"speed\": 1, \"torque\": 1}}", "power" },
+      {
+        "{\"power\": {\"at\": [0, 0, 0], \"speed\": 1, \"torque\": 1}}",
+        "power"
+      },
+      {
+        "{\"power\": {\"at\": [0, 0, 0], \"network\": \"pipe\", \"speed\": 1, \"torque\": 1}}",
+        "power"
+      },
       { Source, null },
       { "{\"break\": {\"at\": [0, 0, 0]}}", "break" },
       { "{\"break\": {\"at\": [0, 0, 0], \"by\": \"player\"}}", "break" },
       { "{\"break\": {\"at\": [0, 0, 0], \"by\": \"world\"}}", null },
-      { "{\"break\": {\"at\": [0, 0, 0], \"by\": \"world\", \"sneak\": true}}", "break" },
-      { "{\"break\": {\"at\": [0, 0, 0], \"by\": \"world\", \"take\": true}}", "break" },
-      { "{\"break\": {\"at\": [0, 0, 0], \"by\": \"world\", \"with\": {\"stack\": \"setupmp:mark\"}}}", "break" },
+      {
+        "{\"break\": {\"at\": [0, 0, 0], \"by\": \"world\", \"sneak\": true}}",
+        "break"
+      },
+      {
+        "{\"break\": {\"at\": [0, 0, 0], \"by\": \"world\", \"take\": true}}",
+        "break"
+      },
+      {
+        "{\"break\": {\"at\": [0, 0, 0], \"by\": \"world\", \"with\": {\"stack\": \"setupmp:mark\"}}}",
+        "break"
+      },
     };
 
   // Fails when the harness runs a power step with no mpshaft network, a break by the player, or a break
@@ -264,14 +308,24 @@ public class SetupMpShaftTests : IDisposable
     string step,
     string? verb
   ) =>
-    Assert.Equal(verb, SetupScene.LackedVerb(SetupFile.Parse(
-      "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupmp\"], \"steps\": [" + step + "], \"seconds\": 10, \"record\": {}}",
-      "t.json"
-    )));
+    Assert.Equal(
+      verb,
+      SetupScene.LackedVerb(
+        SetupFile.Parse(
+          "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupmp\"], \"steps\": ["
+            + step
+            + "], \"seconds\": 10, \"record\": {}}",
+          "t.json"
+        )
+      )
+    );
 
   // Fails when the harness lets a power step with a face through, or a speed or torque that is no number.
   [Theory]
-  [InlineData("\"face\": \"n\", \"speed\": 10, \"torque\": 100", "\"face\" is not built")]
+  [InlineData(
+    "\"face\": \"n\", \"speed\": 10, \"torque\": 100",
+    "\"face\" is not built"
+  )]
   [InlineData("\"speed\": 0, \"torque\": 100", "\"speed\" is above 0")]
   [InlineData("\"speed\": 10, \"torque\": -1", "\"torque\" is a number")]
   [InlineData("\"speed\": 10", "\"torque\" is a number")]
