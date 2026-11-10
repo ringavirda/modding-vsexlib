@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text;
+using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -16,15 +17,12 @@ namespace ExpandedLib.Industry.MechanicalPower;
 /// generator node on the vanilla network, held at the iron speed over <c>ratio</c> and <see cref="RadSPerVanillaUnit"/>.
 /// </summary>
 /// <remarks>
-/// The network's resistance sum loads the iron run with that sum times <see cref="NmPerVanillaUnit"/> over <c>ratio</c> N*m, at
-/// efficiency 1. Iron never takes vanilla torque: while a vanilla producer runs the network faster than the link holds it
-/// the link gives no torque and puts no load on iron, and a stopped iron run gives the vanilla side nothing.
-/// Declared, it reads <c>ratio</c> (iron turns per vanilla-side turn, 3 when absent), <c>ratedNm</c> (torque at the iron
-/// side the link carries, 3280 when absent) and <c>facings</c> (the faces the vanilla axle meets, in the placed
-/// orientation, one axis; north and south when absent). The block also declares a network member on "mpshaft" for the iron node.
-/// The generator holds the speed through its torque: <c>T = R + HoldGain * (held - speed)</c> in vanilla torque units,
-/// R being the network's resistance sum of the last step, held speed in vanilla units, T clamped to 0 and the rating.
-/// Vanilla's step adds <c>T - R</c> to the speed, so the speed closes on the held one geometrically and stays.
+/// It works in its own node's frame (<c>GearedRatio</c> g), gives the network only the torque the rest of it lacks to hold
+/// the speed, and loads the iron run with that torque times <see cref="NmPerVanillaUnit"/> over <c>ratio</c> N*m. Iron never
+/// takes vanilla torque: a producer that carries the load alone leaves it giving nothing, and a stopped, suspended or
+/// backward-turning network costs the iron nothing. Declared, it reads <c>ratio</c> (3 when absent), <c>ratedNm</c> (3280 when
+/// absent) and <c>facings</c> (one axis, the first the discovery face; north and south when absent); the block also declares a
+/// network member on "mpshaft". The iron speed and the torque given are saved and synced.
 /// </remarks>
 [BlockEntityBehaviorRegister]
 public class BEBehaviorMpTakeoff(BlockEntity blockentity)
@@ -45,13 +43,24 @@ public class BEBehaviorMpTakeoff(BlockEntity blockentity)
   // Vanilla torque units per vanilla speed unit of error.
   internal const float HoldGain = 0.5f;
 
-  // Vanilla speed units a network runs over the held speed before a producer counts as running it faster.
-  internal const float OverrunBand = 0.005f;
+  // Share of the gap between the torque given and the torque wanted that one step closes.
+  internal const float TorqueBlend = 0.5f;
+
+  // Vanilla speed units a network may run against the link's sense before the link gives and takes nothing.
+  internal const float BackwardSpeed = 0.001f;
+
+  // Changes in the iron speed (rad/s) and the torque given (vanilla units) that earn a sync.
+  internal const float SyncSpeedStep = 0.05f;
+  internal const float SyncTorqueStep = 0.01f;
 
   private BlockFacing[] _facings = [BlockFacing.NORTH, BlockFacing.SOUTH];
   private float _ratio = DefaultRatio;
   private float _ratedNm = DefaultRatedNm;
   private float _ironSpeed;
+  private float _given;
+  private long _stampMs;
+  private float _sentSpeed;
+  private float _sentGiven;
 
   /// <summary>Iron turns per vanilla-side turn, above zero.</summary>
   public float Ratio => _ratio;
@@ -63,24 +72,46 @@ public class BEBehaviorMpTakeoff(BlockEntity blockentity)
   public float RatedUnits => _ratedNm * _ratio / NmPerVanillaUnit;
 
   /// <summary>Speed (vanilla units) the link holds the network at: the iron speed last read, over the ratio and
-  /// <see cref="RadSPerVanillaUnit"/>.</summary>
-  public float HeldSpeed => _ironSpeed / _ratio / RadSPerVanillaUnit;
+  /// <see cref="RadSPerVanillaUnit"/>; 0 once the iron run has not ticked for two listener intervals.</summary>
+  public float HeldSpeed =>
+    Stale ? 0f : _ironSpeed / _ratio / RadSPerVanillaUnit;
 
-  /// <summary>True while the iron run turns and the vanilla network runs faster than <see cref="HeldSpeed"/>
-  /// by more than the overrun band, or stands over a stopped iron run.</summary>
-  public bool Overrunning => Network != null && OverrunAt(Network.Speed);
+  /// <summary>True while the link gives no torque and the network turns faster than <see cref="HeldSpeed"/> in the
+  /// link's sense.</summary>
+  public bool Overrunning =>
+    Network != null && _given <= 0f && Sense * Network.Speed > HeldSpeed;
 
-  /// <summary>Torque (N*m) at the iron side the link takes now: the network's resistance sum, to the rating, times
-  /// <see cref="NmPerVanillaUnit"/> over the ratio; 0 while overrun, off a network or with the iron run stopped.</summary>
+  /// <summary>Torque (N*m) at the iron side the link takes now: the torque it gave the network last step, to the
+  /// rating, times <see cref="NmPerVanillaUnit"/> over the ratio; 0 while the iron run is stopped or off a network.</summary>
   public float TorqueTakenNm =>
-    Network == null ? 0f : TakenUnits() * NmPerVanillaUnit / _ratio;
+    Network == null || HeldSpeed <= 0f
+      ? 0f
+      : _given * NmPerVanillaUnit / _ratio;
 
-  /// <summary>True while the network's resistance sum is over what <see cref="RatedUnits"/> carries.</summary>
-  public bool AtRating =>
-    Network != null && Network.NetworkResistance > RatedUnits;
+  /// <summary>True while the link gives the network all the rating carries.</summary>
+  public bool AtRating => Network != null && _given >= RatedUnits * 0.999f;
 
+  /// <summary>Reads the clock (ms) the staleness of the iron speed is judged on; the world's elapsed time when null.</summary>
+  internal Func<long>? Clock { get; set; }
+
+  // +1 when the network's positive sense is the one this link drives, -1 when discovery came in from the other end.
+  private float Sense =>
+    propagationDir == OutFacingForNetworkDiscovery ? 1f : -1f;
+
+  private bool Stale =>
+    Api?.Side != EnumAppSide.Client
+    && NowMs() is long now
+    && now - _stampMs > 2 * BlockNetworkModSystem.ListenerIntervalMs;
+
+  private long? NowMs() => Clock?.Invoke() ?? Api?.World?.ElapsedMilliseconds;
+
+  /// <summary>The iron run's load on the link.</summary>
+  /// <param name="speed">The iron node's speed, rad/s, signed.</param>
+  /// <returns>Torque (N*m) the link takes at the iron side.</returns>
   public float LoadTorque(float speed) {
     _ironSpeed = MathF.Abs(speed);
+    _stampMs = NowMs() ?? 0L;
+    SyncIfMoved();
     return TorqueTakenNm;
   }
 
@@ -88,23 +119,64 @@ public class BEBehaviorMpTakeoff(BlockEntity blockentity)
 
   public override float GetTorque(long tick, float speed, out float resistance) {
     resistance = 0f;
-    if (Network == null || HeldSpeed <= 0f || OverrunAt(Network.Speed))
-      return 0f;
-    float error = HeldSpeed - MathF.Abs(Network.Speed);
-    return Math.Clamp(
-      Network.NetworkResistance + HoldGain * error,
-      0f,
-      RatedUnits
-    );
+    float sense = Sense;
+    float held = HeldSpeed;
+    if (Network == null || held <= 0f || sense * speed < -BackwardSpeed)
+      return Give(0f) * sense;
+    float g = MathF.Max(MathF.Abs(GearedRatio), 1e-3f);
+    float others = sense * Network.NetworkTorque - g * _given;
+    float need =
+      (
+        Network.NetworkResistance
+        - others
+        + HoldGain * (held - sense * speed / g)
+      ) / g;
+    float wanted = Math.Clamp(need, 0f, RatedUnits);
+    float blended = _given + TorqueBlend * (wanted - _given);
+    return Give(blended < 1e-4f ? 0f : blended) * sense;
   }
 
-  private bool OverrunAt(float networkSpeed) =>
-    MathF.Abs(networkSpeed) > HeldSpeed + OverrunBand;
+  private float Give(float torque) {
+    _given = torque;
+    SyncIfMoved();
+    return torque;
+  }
 
-  private float TakenUnits() =>
-    HeldSpeed <= 0f || OverrunAt(Network.Speed)
-      ? 0f
-      : MathF.Min(Network.NetworkResistance, RatedUnits);
+  internal bool SyncDue() {
+    if (
+      MathF.Abs(_ironSpeed - _sentSpeed) <= SyncSpeedStep
+      && MathF.Abs(_given - _sentGiven) <= SyncTorqueStep
+    )
+      return false;
+    _sentSpeed = _ironSpeed;
+    _sentGiven = _given;
+    return true;
+  }
+
+  private void SyncIfMoved() {
+    if (SyncDue() && Api?.Side == EnumAppSide.Server)
+      Blockentity.MarkDirty();
+  }
+
+  protected override void updateShape(IWorldAccessor worldForResolve) { }
+
+  public override void ToTreeAttributes(ITreeAttribute tree) {
+    base.ToTreeAttributes(tree);
+    tree.SetFloat("ironSpeed", _ironSpeed);
+    tree.SetFloat("given", _given);
+  }
+
+  public override void FromTreeAttributes(
+    ITreeAttribute tree,
+    IWorldAccessor worldAccessForResolve
+  ) {
+    base.FromTreeAttributes(tree, worldAccessForResolve);
+    _ironSpeed = tree.GetFloat("ironSpeed");
+    _given = tree.GetFloat("given");
+    _sentSpeed = _ironSpeed;
+    _sentGiven = _given;
+    _stampMs = worldAccessForResolve?.ElapsedMilliseconds ?? 0L;
+  }
 
   internal void ReadProperties(JsonObject? properties) {
     _ratio = MathF.Max(

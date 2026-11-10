@@ -128,7 +128,7 @@
   "machine-tool-info-cutting": "Cutting, {0}: {1}%",
   "machine-tool-info-stopped": "Stopped, {0}: {1}%",
   "mp-takeoff-info-taken": "Takes {0} N*m from the iron shaft",
-  "mp-takeoff-info-speed": "Vanilla side held at {0} ({1} rad/s)",
+  "mp-takeoff-info-speed": "The axle side held at {0} ({1} rad/s)",
   "mp-takeoff-info-overrun": "Overrun: a vanilla producer runs the network faster, no torque is given",
   "mp-takeoff-info-rating": "At the rating: at most {0} N*m is taken from the iron shaft",
   "machine-step-turn": "turning",

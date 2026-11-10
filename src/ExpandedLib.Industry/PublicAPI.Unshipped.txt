@@ -661,11 +661,13 @@ override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.FromTreeAttrib
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.GetBlockInfo(Vintagestory.API.Common.IPlayer! forPlayer, System.Text.StringBuilder! dsc) -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.GetResistance() -> float
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.GetTorque(long tick, float speed, out float resistance) -> float
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.OnTesselation(Vintagestory.API.MathTools.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> bool
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.SetOrientations() -> void
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.OnBlockRemoved() -> void
