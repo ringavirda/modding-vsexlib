@@ -38,6 +38,21 @@ public static class MachineCut {
   /// <summary>Game seconds that pass in one real second, the machine's own conversion for held hand time.</summary>
   public const double GameSecondsPerRealSecond = 30d;
 
+  /// <summary>Scale of the square root in the route times: seconds = sqrt(E / P / <see cref="GameSecondsPerRealSecond"/>) times this.</summary>
+  public const double RootScale = 0.1d;
+
+  /// <summary>Fewest real seconds a hand route's cutting steps take together, s.</summary>
+  public const double HandMinSeconds = 2d;
+
+  /// <summary>Most real seconds a hand route's cutting steps take together, s.</summary>
+  public const double HandMaxSeconds = 24d;
+
+  /// <summary>Fewest real seconds a machine job takes at the rated speed, s.</summary>
+  public const double JobMinSeconds = 1d;
+
+  /// <summary>Most real seconds a machine job takes at the rated speed, s.</summary>
+  public const double JobMaxSeconds = 12d;
+
   /// <summary>
   /// Decides whether <paramref name="job"/> can run at <paramref name="kind"/>; the first failing check is returned,
   /// in the order of <see cref="MachineCutVerdict"/>.
@@ -111,6 +126,47 @@ public static class MachineCut {
     return job.RemovedKg * m!.EnergyFor(motion);
   }
 
+  /// <summary>
+  /// Energy a run is credited against, J: the game energy of <see cref="JobSeconds"/> at the step's power, so the
+  /// job takes that many real seconds at the rated speed. <see cref="Energy"/> stays the period energy that wear,
+  /// sheds and the load torque read.
+  /// </summary>
+  /// <returns>0 when <see cref="Energy"/> is 0 or the step has no power.</returns>
+  public static float GameEnergy(
+    MachiningJob job,
+    MachineKindStep step,
+    CuttingMaterialRegistry? materials = null
+  ) =>
+    (float)(
+      GameSecondsPerRealSecond
+      * JobSeconds(Energy(job, step.Motion, materials), step.Power)
+      * step.Power
+    );
+
+  /// <summary>
+  /// Real seconds a machine job takes at the rated speed: sqrt(E / P / <see cref="GameSecondsPerRealSecond"/>) times
+  /// <see cref="RootScale"/>, within <see cref="JobMinSeconds"/> and <see cref="JobMaxSeconds"/>.
+  /// </summary>
+  /// <param name="energy">The job's period energy, J.</param>
+  /// <param name="power">The step's cut power, W; 0 or less returns 0.</param>
+  /// <returns>0 when <paramref name="energy"/> is 0 or less.</returns>
+  public static double JobSeconds(double energy, float power) =>
+    Scaled(energy, power, JobMinSeconds, JobMaxSeconds);
+
+  private static double Scaled(
+    double energy,
+    float power,
+    double min,
+    double max
+  ) =>
+    energy <= 0d || power <= 0f
+      ? 0d
+      : Math.Clamp(
+        Math.Sqrt(energy / power / GameSecondsPerRealSecond) * RootScale,
+        min,
+        max
+      );
+
   /// <summary>Torque a cut puts on the drive, N*m: the step's power over the kind's rated speed while cutting, 0 idle.</summary>
   public static float LoadTorque(
     MachineKind kind,
@@ -137,9 +193,13 @@ public static class MachineCut {
     return Math.Min(torque * (double)speed * gameSeconds, remaining);
   }
 
-  /// <summary>Real seconds the same job takes by hand: its energy over a man's power over <see cref="GameSecondsPerRealSecond"/>.</summary>
-  /// <param name="energy">The job's energy, J.</param>
+  /// <summary>
+  /// Real seconds the cutting steps of the same job take by hand: sqrt(E / P / <see cref="GameSecondsPerRealSecond"/>)
+  /// times <see cref="RootScale"/>, within <see cref="HandMinSeconds"/> and <see cref="HandMaxSeconds"/>.
+  /// </summary>
+  /// <param name="energy">The job's period energy, J.</param>
   /// <param name="handPower">A man's sustained power at the motion, W; 0 or less returns 0.</param>
+  /// <returns>0 when <paramref name="energy"/> is 0 or less.</returns>
   public static double HandSeconds(double energy, float handPower) =>
-    handPower <= 0f ? 0d : energy / handPower / GameSecondsPerRealSecond;
+    Scaled(energy, handPower, HandMinSeconds, HandMaxSeconds);
 }

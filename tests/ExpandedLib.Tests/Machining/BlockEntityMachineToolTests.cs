@@ -15,8 +15,11 @@ namespace ExpandedLib.Tests.Machining;
 
 /// <summary>The machine-tool host: its tick in game seconds, its state, its slots and its place on a real mpshaft run.</summary>
 public sealed class BlockEntityMachineToolTests : System.IDisposable {
-  // 822 W at 10 rad/s is 82.2 N*m; 1.0 kg of cast iron takes 185,800 J.
-  private const double Joules = 185800d;
+  // 822 W at 10 rad/s is 82.2 N*m; the job declares 140 MJ, which takes sqrt(140e6 / 822 / 30) / 10 real seconds
+  // at 30 game seconds each, and the run is credited against that many joules.
+  private const float PeriodJoules = 140_000_000f;
+  private static readonly double Joules =
+    30d * 822d * System.Math.Sqrt(PeriodJoules / 822d / 30d) / 10d;
   private const double SecondsOfGameTime = 30d;
   private const double HoursPerRealSecond = SecondsOfGameTime / 3600d;
   private static readonly MachineKind Lathe = new(
@@ -115,6 +118,7 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
       MinTier = minTier,
       Fixture = fixture,
       Byproducts = byproducts,
+      Energy = PeriodJoules,
     };
     job.RemovedKg = 1f;
     job.ResolvedMaterial = "castiron";
@@ -288,7 +292,7 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
   // Fails when a job that never resolved still finishes, or loads the shaft, on a tick that costs nothing.
   [Fact]
   public void An_unresolved_job_neither_cuts_nor_loads_the_shaft() {
-    MachiningJob unresolved = Job();
+    MachiningJob unresolved = Job() with { Energy = null };
     unresolved.RemovedKg = 0f;
     unresolved.ResolvedMaterial = null;
     Host host = Machine(jobs: unresolved);

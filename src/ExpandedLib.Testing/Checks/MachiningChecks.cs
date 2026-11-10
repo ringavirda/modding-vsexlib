@@ -16,8 +16,17 @@ namespace ExpandedLib.Testing;
 /// </summary>
 public static class MachiningChecks
 {
-  // Held seconds of the hand route may differ from the energy figure by this share.
+  // Held seconds of the hand route's cutting steps may differ from the energy figure by this share.
   private const float HandTolerance = 0.1f;
+
+  // Tool codes, without namespace and wildcard, whose steps cut; any other tool's step is outside the held sum.
+  private static readonly string[] CuttingTools =
+  [
+    "chisel",
+    "file",
+    "scraper",
+    "handdrill",
+  ];
 
   /// <summary>Every job's step is offered by a machine kind, or the job names a hand route.</summary>
   /// <param name="jobs">The jobs read; <see cref="MachiningJobRegistry.Shared"/> when null.</param>
@@ -109,7 +118,12 @@ public static class MachiningChecks
           $"{name}: hand route '{job.Hand.Recipe}' gives {count} x {output}, the job {job.Count} x {job.Output}"
         );
 
-      float held = HeldSeconds(sequence, sequences);
+      foreach (CraftStep step in sequence.Steps.Where(IsCutting))
+        if (step.Hits < 1)
+          findings.Add(
+            $"{name}: hand route '{job.Hand.Recipe}' has a {step.Tool} step of {step.Hits} hits, under one"
+          );
+      float held = CuttingSeconds(sequence, sequences);
       foreach (
         CutMotion motion in OfferedAt(job, kinds)
           .Select(k => k.StepOf(job.Step)!.Motion)
@@ -125,7 +139,7 @@ public static class MachiningChecks
           || expected <= 0d
         )
           findings.Add(
-            $"{name}: hand route '{job.Hand.Recipe}' is held {held:0.##} s, the {motion} energy figure gives {expected:0.##} s"
+            $"{name}: hand route '{job.Hand.Recipe}' cuts for {held:0.##} s, the {motion} energy figure gives {expected:0.##} s"
           );
       }
     }
@@ -140,7 +154,7 @@ public static class MachiningChecks
   /// <param name="materials">The cutting materials read; <see cref="CuttingMaterialRegistry.Shared"/> when null.</param>
   /// <param name="sequences">The craft sequences read; <see cref="CraftSequenceRegistry.Shared"/> when null.</param>
   /// <returns>One finding per job and kind whose wear points are not below the hand sequence's
-  /// steps that hold a tool, or whose real seconds, E / cut power / 30, are not below the sequence's
+  /// steps that hold a tool, or whose real seconds, <see cref="MachineCut.JobSeconds"/>, are not below the sequence's
   /// held seconds; the finding prints both numbers. Jobs whose hand route is missing are left to
   /// <see cref="HandParity"/>.</returns>
   public static IReadOnlyList<string> MachinesFirst(
@@ -171,10 +185,10 @@ public static class MachiningChecks
       foreach (MachineKind kind in OfferedAt(job, kinds))
       {
         MachineKindStep step = kind.StepOf(job.Step)!;
-        double seconds =
-          MachineCut.Energy(job, step.Motion, materials)
-          / step.Power
-          / MachineCut.GameSecondsPerRealSecond;
+        double seconds = MachineCut.JobSeconds(
+          MachineCut.Energy(job, step.Motion, materials),
+          step.Power
+        );
         if (job.Wear >= handWear)
           findings.Add(
             $"{Name(job)} at {kind.Code}: the machine wears its tool {job.Wear} points, the hand route's {handWear} tool steps"
@@ -290,6 +304,30 @@ public static class MachiningChecks
     world.World.GridRecipes.FirstOrDefault(r =>
       Same(r.Name?.ToString() ?? "", name)
     );
+
+  private static bool IsCutting(CraftStep step)
+  {
+    if (step.Tool is null)
+      return false;
+    string code = step.Tool[(step.Tool.IndexOf(':') + 1)..];
+    return CuttingTools.Any(t =>
+      code.Equals(t, StringComparison.OrdinalIgnoreCase)
+      || code.StartsWith(t + "-", StringComparison.OrdinalIgnoreCase)
+    );
+  }
+
+  private static float CuttingSeconds(
+    CraftSequence sequence,
+    CraftSequenceRegistry sequences
+  ) =>
+    sequence
+      .Steps.Where(IsCutting)
+      .Sum(s =>
+        s.Duration(
+          sequences.ToolDefault(s.Tool)?.Stroke
+            ?? CraftToolDefault.DefaultStroke
+        )
+      );
 
   private static float HeldSeconds(
     CraftSequence sequence,

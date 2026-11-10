@@ -62,17 +62,23 @@ public sealed class MachiningChecksTests : IDisposable
       Hand = new MachiningHand("workbench", Recipe),
     };
 
-  private static CraftStep[] HandSteps(float seconds, int steps) =>
+  private static CraftStep[] HandSteps(
+    int hits,
+    int steps,
+    string tool = "test:handdrill"
+  ) =>
     [
       .. Enumerable
         .Range(0, steps)
         .Select(_ => new CraftStep(
-          "test:handdrill",
+          tool,
           null,
-          seconds,
+          0f,
           null,
           null,
-          null
+          null,
+          null,
+          hits
         )),
     ];
 
@@ -85,8 +91,8 @@ public sealed class MachiningChecksTests : IDisposable
     return item;
   }
 
-  // The job removes 0.01 kg of cast iron, 1858 J: the hand route of two 0.5 s steps holds 1.0 s
-  // against 1.02 s, the machine's 0.17 s, and the piece (10 x 10 x 40) fits test:big.
+  // The job removes 0.01 kg of cast iron, 1858 J: the hand route of two one-hit steps of 1.05 s holds 2.1 s
+  // against the floor's 2 s, the machine's 1 s, and the piece (10 x 10 x 40) fits test:big.
   private System.Collections.Generic.List<string> Resolved = [];
 
   private Rig Build(
@@ -154,7 +160,7 @@ public sealed class MachiningChecksTests : IDisposable
       new CraftSequenceSet(
         1,
         "workbench",
-        [new CraftSequence(Recipe, steps ?? HandSteps(0.5f, 2), [])]
+        [new CraftSequence(Recipe, steps ?? HandSteps(1, 2), [])]
       )
     );
     return new Rig(world, jobs, registry, materials, sequences);
@@ -265,11 +271,11 @@ public sealed class MachiningChecksTests : IDisposable
     Assert.Contains("gives 2 x test:other", finding);
   }
 
-  // Fails when the 10 % band is dropped or widened past 3 s: 3 s held against the energy figure's 1.02 s.
+  // Fails when the 10 % band is dropped or widened past 4.2 s: 4.2 s held against the energy figure's 2 s.
   [Fact]
   public void A_hand_route_held_far_off_the_energy_figure_is_found()
   {
-    Rig rig = Build(steps: HandSteps(1.5f, 2));
+    Rig rig = Build(steps: HandSteps(2, 2));
 
     string finding = Assert.Single(
       MachiningChecks.HandParity(
@@ -281,8 +287,94 @@ public sealed class MachiningChecksTests : IDisposable
       )
     );
 
-    Assert.Contains("held 3 s", finding);
-    Assert.Contains("1.02 s", finding);
+    Assert.Contains("cuts for 4.2 s", finding);
+    Assert.Contains("gives 2 s", finding);
+  }
+
+  // Fails when the scale is dropped for the old E / P / 30: 18.3 MJ at 61 W held 10000 s, the old figure, against 10 s.
+  [Fact]
+  public void A_hand_route_held_at_the_old_energy_over_power_over_30_seconds_is_found()
+  {
+    Rig rig = Build(
+      job: j => j with { Energy = 18_300_000f },
+      steps: HandSteps(9524, 1)
+    );
+
+    string finding = Assert.Single(
+      MachiningChecks.HandParity(
+        rig.World,
+        rig.Jobs,
+        rig.Kinds,
+        rig.Materials,
+        rig.Sequences
+      )
+    );
+
+    Assert.Contains("cuts for 10000.2 s", finding);
+    Assert.Contains("gives 10 s", finding);
+  }
+
+  [Fact]
+  public void A_hand_route_held_at_the_scaled_seconds_has_no_findings()
+  {
+    Rig rig = Build(
+      job: j => j with { Energy = 18_300_000f },
+      steps: [.. HandSteps(5, 1), .. HandSteps(5, 1, "test:file-iron")]
+    );
+
+    Assert.Empty(
+      MachiningChecks.HandParity(
+        rig.World,
+        rig.Jobs,
+        rig.Kinds,
+        rig.Materials,
+        rig.Sequences
+      )
+    );
+  }
+
+  // Fails when the calipers step is summed with the cutting steps: 2.1 s of cutting plus 1.05 s of calipers is 3.15 s against 2 s.
+  [Fact]
+  public void A_calipers_step_does_not_count_toward_the_cutting_seconds()
+  {
+    Rig rig = Build(
+      steps: [.. HandSteps(1, 2), .. HandSteps(1, 1, "test:calipers-steel")]
+    );
+
+    Assert.Empty(
+      MachiningChecks.HandParity(
+        rig.World,
+        rig.Jobs,
+        rig.Kinds,
+        rig.Materials,
+        rig.Sequences
+      )
+    );
+  }
+
+  // Fails when the one-hit floor is dropped: a timed 1 s step is held 1 s and cuts, with no hits.
+  [Fact]
+  public void A_cutting_step_with_no_hits_is_found()
+  {
+    Rig rig = Build(
+      steps:
+      [
+        new CraftStep("test:file-iron", null, 1f, null, null, null),
+        .. HandSteps(1, 1),
+      ]
+    );
+
+    string finding = Assert.Single(
+      MachiningChecks.HandParity(
+        rig.World,
+        rig.Jobs,
+        rig.Kinds,
+        rig.Materials,
+        rig.Sequences
+      )
+    );
+
+    Assert.Contains("test:file-iron step of 0 hits", finding);
   }
 
   [Fact]
@@ -324,7 +416,7 @@ public sealed class MachiningChecksTests : IDisposable
     );
   }
 
-  // Fails when the machine's seconds are compared as game seconds: 1858 J at 360 W is 5.2 s, over the hand's 1.0 s.
+  // Fails when the machine's seconds are compared as game seconds: 18580 J at 1 W is 2.49 s scaled, over the hand's 2.1 s.
   [Fact]
   [PlantedDefect(
     typeof(MachiningChecks),
@@ -332,7 +424,10 @@ public sealed class MachiningChecksTests : IDisposable
   )]
   public void A_machine_slower_than_the_hand_route_is_found_with_both_times()
   {
-    Rig rig = Build(kinds: Kinds.Replace("\"power\": 360", "\"power\": 1"));
+    Rig rig = Build(
+      job: j => j with { Removed = 0.1f },
+      kinds: Kinds.Replace("\"power\": 360", "\"power\": 1")
+    );
 
     string[] findings =
     [
@@ -348,7 +443,7 @@ public sealed class MachiningChecksTests : IDisposable
     Assert.Equal(2, findings.Length);
     Assert.All(
       findings,
-      f => Assert.Contains("the machine takes 61.93 s, the hand route 1 s", f)
+      f => Assert.Contains("the machine takes 2.49 s, the hand route 2.1 s", f)
     );
   }
 
