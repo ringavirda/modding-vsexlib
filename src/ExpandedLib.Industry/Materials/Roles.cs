@@ -9,6 +9,10 @@ public static class Roles {
   /// <see cref="ExpandedLib.Catalogues.MaterialRoleDef.Value"/>.</summary>
   public const string Fuel = "fuel";
 
+  /// <summary>Kiln fuel: a fuel the calcining kiln burns, carrying a per-item heat
+  /// <see cref="ExpandedLib.Catalogues.MaterialRoleDef.Value"/> against bituminous coal's 1.0.</summary>
+  public const string KilnFuel = "kilnfuel";
+
   /// <summary>Crushed iron ore: the ore-family primary charge (the <c>crushed-iron</c> prefix plus mod
   /// ores).</summary>
   public const string IronOre = "ironore";
