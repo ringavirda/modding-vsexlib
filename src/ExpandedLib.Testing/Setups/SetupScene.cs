@@ -27,14 +27,36 @@ public sealed partial class SetupScene : IDisposable
   private static readonly Dictionary<string, string> Lacking = new()
   {
     ["paste"] = "the fake world has no structure files to paste",
-    ["power"] = "the fake world has no creative power source",
     ["source"] = "the fake world has no creative medium source",
-    ["break"] = "the fake world has no player to break with",
     ["reload"] = "the fake world has no chunk save and load to reload through",
     ["timespeed"] =
       "the fake world has no calendar speed to run a span of server clock through",
     ["climate"] = "the fake world has no weather to hold a climate with",
   };
+
+  private const string NoPowerSource =
+    "the fake world has no creative power source";
+
+  private const string NoBreaker = "the fake world has no player to break with";
+
+  /// <summary>Why the fake world cannot run <paramref name="step"/>: a <c>power</c> that names no
+  /// <c>mpshaft</c> network, a <c>break</c> that is not <c>by: "world"</c> or carries <c>with</c>,
+  /// <c>sneak</c> or <c>take</c>, or a verb of the <c>Lacking</c> table.</summary>
+  /// <returns>The reason, or null when the harness runs the step.</returns>
+  private static string? LackOf(SetupStep step) =>
+    step.Kind switch
+    {
+      "power" => (string?)step.Body["network"] == "mpshaft"
+        ? null
+        : NoPowerSource,
+      "break" => (string?)step.Body["by"] == "world"
+      && step.Body["with"] == null
+      && step.Body["sneak"] == null
+      && step.Body["take"] == null
+        ? null
+        : NoBreaker,
+      _ => Lacking.GetValueOrDefault(step.Kind),
+    };
 
   /// <summary>The first verb of <paramref name="file"/> that the fake world lacks, which only the live
   /// runner runs.</summary>
@@ -45,8 +67,9 @@ public sealed partial class SetupScene : IDisposable
       ? "climate"
       : SetupStepWalk
         .Of(file.Model)
+        .Where(step => LackOf(step) != null)
         .Select(step => step.Kind)
-        .FirstOrDefault(Lacking.ContainsKey);
+        .FirstOrDefault();
 
   private readonly SetupFile _file;
   private readonly Dictionary<string, SetupPlacement> _placed = [];
@@ -222,10 +245,13 @@ public sealed partial class SetupScene : IDisposable
     foreach (SetupStep step in SetupStepWalk.Of(Model))
     {
       JToken body = step.Body;
-      if (Lacking.TryGetValue(step.Kind, out string? lacks))
+      if (LackOf(step) is { } lacks)
         throw Fail(step.Path, $"\"{step.Kind}\" is refused: {lacks}.");
       switch (step.Kind)
       {
+        case "power":
+          RefuseKeys(step.Path, body, "face");
+          break;
         case "place":
           if ((string?)body["by"] == "player")
             throw Fail(
@@ -610,6 +636,12 @@ public sealed partial class SetupScene : IDisposable
           break;
         case "call":
           CallStep(step);
+          break;
+        case "power":
+          PowerStep(step);
+          break;
+        case "break":
+          BreakStep(step);
           break;
         case "interact":
           InteractStep(step);

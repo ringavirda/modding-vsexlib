@@ -67,6 +67,34 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
       ? new MpRunReading(Store.NodeSpeed(node), Store.AvailableTorque(node))
       : MpRunReading.None;
 
+  /// <summary>The largest torque the joints of the cell at <paramref name="pos"/> carried after the last tick.</summary>
+  /// <param name="pos">The cell; each of its nodes in the run counts.</param>
+  /// <returns>N*m at the node's own speed, zero or more; 0 when the run holds no node of the cell.</returns>
+  public float NodeTorqueNm(BlockPos pos) {
+    float torque = 0f;
+    foreach (var (key, node) in Store.Nodes)
+      if (key.Pos.Equals(pos))
+        torque = MathF.Max(torque, Store.NodeTorque(node));
+    return torque;
+  }
+
+  /// <summary>The torque the link block at <paramref name="pos"/> carried from its input to its output after the last tick; while the link slips, the torque it slips at.</summary>
+  /// <param name="pos">The cell of the link's entity; the first link of the run with a port in it counts.</param>
+  /// <returns>N*m at the output port's own speed, zero or more; 0 when the run holds no link at the cell.</returns>
+  public float CarriedNm(BlockPos pos) {
+    foreach (var (edge, link) in _links)
+      if (link.From.Pos.Equals(pos) || link.To.Pos.Equals(pos)) {
+        float ratio = Store.RatioOf(Store.IndexOf(link.To));
+        return edge < _edgesSolved && ratio != 0f
+          ? MathF.Abs(Store.EdgeTorque(edge) / ratio)
+          : 0f;
+      }
+    foreach (var link in _slipping.Keys)
+      if (link.From.Pos.Equals(pos) || link.To.Pos.Equals(pos))
+        return MathF.Max(0f, link.SlipTorque(SlipEnds(link).Delta));
+    return 0f;
+  }
+
   private (float Inertia, float Momentum) PendingTotals() {
     float inertia = _pendingInertia;
     float momentum = _pendingInertia * _pendingSpeed;
@@ -229,7 +257,9 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
           + ((be as IMpEnergyConsumer)?.StandingNm ?? 0f)
       );
       Store.SetRating(node, (be as IMpEnergySegment)?.RatingNm ?? 0f);
-      var producer = be as IMpEnergyProducer;
+      var producer =
+        be as IMpEnergyProducer
+        ?? be?.Behaviors?.OfType<IMpEnergyProducer>().FirstOrDefault();
       Store.SetDrive(
         node,
         producer?.DriveTorque(w) ?? 0f,

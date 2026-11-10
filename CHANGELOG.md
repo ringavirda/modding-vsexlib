@@ -9,6 +9,7 @@ see the git history.
 
 ### Added
 
+- **`power` and `break` in the setup harness** (ExpandedLib.Testing): a `power` step with `network: "mpshaft"` stands an `MpTestSource` (stall torque in N*m, free speed in rad/s) on a cell of a shaft run, and a `break` step by the world removes a block through `TestWorld.BreakRunsBlockHooks`; a `network` reading calls `NodeTorqueNm()` and `CarriedNm()` of the shaft run at its cell.
 - **`BlockSandStation` and `BlockEntitySandStation`** (ExpandedLib.Industry): a one-cell sand station declared in JSON alone, named by the block's `sandStation.station` attribute (and an optional `sandStation.cup`). A player rams it with the kind's moulding sand, presses a pattern, pours from a launder or a carried pour, and shakes the casting out; a multi-cell station derives the entity. The station kind gains a required `sand.item`.
 - **`samples/SashWeights`**: a casting sample with its content in JSON alone, declaring a station kind, a plank box-flask block on the sand station and a four-piece sash-weight pattern, with a test that presses, pours and shakes out.
 - **`samples/WasherPunch`**: a machine-job sample, a hand fly press whose work comes from a `config/processjobs` row in JSON and one from C#, and a drilling machine on that host with a bit item, an iron plate job from JSON and a meteoric plate job from C#.

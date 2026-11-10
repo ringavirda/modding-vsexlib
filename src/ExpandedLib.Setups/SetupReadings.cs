@@ -131,7 +131,8 @@ internal static class SetupMembers {
   public static object? Walk(
     object root,
     IReadOnlyList<string> path,
-    IWorldAccessor? world
+    IWorldAccessor? world,
+    BlockPos? cell = null
   ) {
     object? at = root;
     for (int i = 0; i < path.Count; i++) {
@@ -147,14 +148,18 @@ internal static class SetupMembers {
       at = member switch {
         FieldInfo f => f.GetValue(at),
         PropertyInfo p => p.GetValue(at),
-        MethodInfo m => m.Invoke(at, Arguments(m, world)),
+        MethodInfo m => m.Invoke(at, Arguments(m, world, cell)),
         _ => null,
       };
     }
     return at;
   }
 
-  private static object?[] Arguments(MethodInfo method, IWorldAccessor? world) {
+  private static object?[] Arguments(
+    MethodInfo method,
+    IWorldAccessor? world,
+    BlockPos? cell
+  ) {
     if (world == null)
       throw new SetupReadingException($"{method.Name}() needs a world.");
     return
@@ -162,9 +167,14 @@ internal static class SetupMembers {
       .. method
         .GetParameters()
         .Select(p =>
-          p.ParameterType.IsInstanceOfType(world)
-            ? (object)world
-            : world.BlockAccessor
+          p.ParameterType == typeof(BlockPos)
+            ? cell
+              ?? throw new SetupReadingException(
+                $"{method.Name}() needs the cell of a network reading."
+              )
+            : p.ParameterType.IsInstanceOfType(world)
+              ? (object)world
+              : world.BlockAccessor
         ),
     ];
   }
@@ -181,6 +191,7 @@ internal static class SetupMembers {
               .All(p =>
                 p.ParameterType == typeof(IWorldAccessor)
                 || p.ParameterType == typeof(IBlockAccessor)
+                || p.ParameterType == typeof(BlockPos)
               )
           );
         if (method != null)
@@ -294,7 +305,7 @@ internal sealed class NetworkReading(
         ? state
         : network;
     return SetupValues.Normalize(
-      SetupMembers.Walk(root, _path, ctx.World.World)
+      SetupMembers.Walk(root, _path, ctx.World.World, pos)
     );
   }
 

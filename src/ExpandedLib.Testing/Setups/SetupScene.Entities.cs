@@ -38,6 +38,31 @@ public sealed partial class SetupScene
       );
   }
 
+  private void PowerStep(SetupStep step)
+  {
+    BlockEntity be = EntityAt(step, out BlockPos at);
+    float stall = PowerValue(step, "torque");
+    float free = PowerValue(step, "speed");
+    if (free <= 0f)
+      throw Fail(step.Path, "\"speed\" is above 0 rad/s.");
+    MpTestSource source =
+      be.Behaviors.OfType<MpTestSource>().FirstOrDefault()
+      ?? new MpTestSource(be);
+    if (!be.Behaviors.Contains(source))
+      be.Behaviors.Add(source);
+    source.StallNm = stall;
+    source.FreeRadS = free;
+  }
+
+  private float PowerValue(SetupStep step, string key) =>
+    step.Body[key] is { Type: JTokenType.Integer or JTokenType.Float } value
+    && (float)value >= 0f
+      ? (float)value
+      : throw Fail(step.Path, $"\"{key}\" is a number, 0 or more.");
+
+  private void BreakStep(SetupStep step) =>
+    World.Accessor.BreakBlock(At(step, "at"), null);
+
   private ItemStack StackOf(JToken body, string where)
   {
     string code =

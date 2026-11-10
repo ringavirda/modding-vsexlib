@@ -92,7 +92,7 @@ internal static class SetupSteps {
     ["complete"] = ["of", "to", "materials"],
     ["run"] = ["id", "code", "from", "via", "to", "family", "open"],
     ["paste"] = ["file", "at", "angle", "origin"],
-    ["power"] = ["at", "face", "speed", "torque"],
+    ["power"] = ["at", "face", "network", "speed", "torque"],
     ["source"] = ["at", "face", "medium", "rate", "pressure", "temperature"],
     ["insert"] =
     [
