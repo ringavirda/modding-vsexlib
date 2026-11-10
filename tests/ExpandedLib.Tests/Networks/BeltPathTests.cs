@@ -109,18 +109,10 @@ public class BeltPathTests {
     );
     Assert.Equal(
       BeltPath.Overlap,
-      Check(
-        world,
-        Pulley(0, 0, 0, size: 2),
-        Pulley(2, 0, 0, size: 2)
-      )
+      Check(world, Pulley(0, 0, 0, size: 2), Pulley(2, 0, 0, size: 2))
     );
     Assert.Null(
-      Check(
-        world,
-        Pulley(0, 0, 0, size: 2),
-        Pulley(3, 0, 0, size: 2)
-      )
+      Check(world, Pulley(0, 0, 0, size: 2), Pulley(3, 0, 0, size: 2))
     );
   }
 
@@ -217,11 +209,7 @@ public class BeltPathTests {
     );
     Assert.Equal(
       BeltPath.Overlap,
-      Check(
-        world,
-        Pulley(0, 0, 0, size: 2),
-        Pulley(1, 1, 0, size: 2)
-      )
+      Check(world, Pulley(0, 0, 0, size: 2), Pulley(1, 1, 0, size: 2))
     );
     Assert.Equal(
       BeltPath.Blocked,
@@ -237,10 +225,7 @@ public class BeltPathTests {
 
   [Fact]
   public void The_runs_are_tangent_to_both_rims_and_the_cells_lie_in_the_plane() {
-    BeltRun[] runs = BeltPath.Runs(
-      Pulley(0, 0, 0, size: 2),
-      Pulley(4, 0, 0)
-    );
+    BeltRun[] runs = BeltPath.Runs(Pulley(0, 0, 0, size: 2), Pulley(4, 0, 0));
 
     Assert.Equal(2, runs.Length);
     foreach (BeltRun run in runs) {

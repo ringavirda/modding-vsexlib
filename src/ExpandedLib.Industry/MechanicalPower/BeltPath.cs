@@ -9,7 +9,11 @@ namespace ExpandedLib.Industry.MechanicalPower;
 /// <param name="Cell">The cell holding the pulley's axis; the axis runs through its centre.</param>
 /// <param name="Axis">The axis the pulley turns about.</param>
 /// <param name="Size">The pulley size, 1 or 2, as <see cref="MpBeltWear.PulleyDiameter"/> reads it.</param>
-public readonly record struct BeltPulley(BlockPos Cell, EnumAxis Axis, int Size);
+public readonly record struct BeltPulley(
+  BlockPos Cell,
+  EnumAxis Axis,
+  int Size
+);
 
 /// <summary>One straight run of a belt: a line between the two rims, in the plane the pulleys turn in.</summary>
 /// <param name="Axis">The axis the pulleys turn about; the run lies in the plane across it.</param>
