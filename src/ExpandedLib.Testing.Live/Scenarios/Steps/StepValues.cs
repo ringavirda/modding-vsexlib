@@ -67,10 +67,16 @@ internal static class StepValues {
     if (token.Type == JTokenType.Null)
       return null;
     if (type == typeof(IPlayer))
-      throw new StepFailure(
-        "a player argument needs the scenario player.",
-        Suspect.Scenario
-      );
+      return (string?)token == "player"
+        ? ctx.Player?.Player
+          ?? throw new StepFailure(
+            "a player argument needs the scenario player.",
+            Suspect.Scenario
+          )
+        : throw new StepFailure(
+          "an IPlayer argument is \"player\".",
+          Suspect.Scenario
+        );
     if (type == typeof(ItemStack) || type == typeof(ItemSlot)) {
       var o =
         token as JObject

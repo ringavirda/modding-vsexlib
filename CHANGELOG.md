@@ -27,6 +27,8 @@ see the git history.
 
 ### Fixed
 
+- **A setup's `interact` leaves its cell as the player's looked-at block** in the harness and the live runner, so a
+  later `call` of a block entity method that reads `CurrentBlockSelection` sees where the player clicked.
 - **A `[Persist]` member whose key is missing from a saved tree keeps its initializer** instead of loading as
   null or zero, so a block entity saved before a member was added still loads.
 - **A network node loaded from a tree without `networkType` keeps its declared network type** instead of

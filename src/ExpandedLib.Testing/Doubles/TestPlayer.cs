@@ -275,7 +275,8 @@ public sealed class TestPlayer {
   /// <remarks>A spectator, or a player the claims refuse use of the cell, gets nothing. No world ticks
   /// run during the hold; the keys last for the call only. With <c>sneak</c> a block in hand is placed
   /// first, as the client does; the clicked block is reached when that fails or it sets
-  /// <see cref="Block.PlacedPriorityInteract"/>. The held item's own use and the reach test are not run.</remarks>
+  /// <see cref="Block.PlacedPriorityInteract"/>. The held item's own use and the reach test are not run. The clicked
+  /// selection stays the player's <c>CurrentBlockSelection</c> after the call.</remarks>
   /// <param name="pos">The cell clicked.</param>
   /// <param name="held">Put in <see cref="ActiveSlot"/> first; null leaves the hand.</param>
   /// <param name="sneak">Holds <c>Sneak</c> and <c>ShiftKey</c>.</param>
@@ -522,6 +523,7 @@ public sealed class TestPlayer {
     if (!_world.World.Claims.TryAccess(Player, pos, EnumBlockAccessFlags.Use))
       return false;
 
+    Player.CurrentBlockSelection.Returns(selection);
     Action release = PressKeys(sneak, ctrl, sprint);
     try {
       Block block = _world.Accessor.GetBlock(pos);

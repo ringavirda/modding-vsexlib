@@ -304,7 +304,7 @@ internal sealed class NetworkReading(
         ? state
         : network;
     return SetupValues.Normalize(
-      SetupMembers.Walk(root, _path, ctx.World.World, pos)
+      SetupMembers.Walk(root, _path, ctx.World.World, ctx.World.Absolute(pos))
     );
   }
 
