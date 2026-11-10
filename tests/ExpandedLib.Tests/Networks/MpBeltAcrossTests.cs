@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -20,6 +21,9 @@ public class MpBeltAcrossTests {
     : BlockEntity,
       IMpEnergyStorage,
       IMpEnergyProducer {
+    public Cell()
+      : this(100f) { }
+
     public float Drive { get; set; }
 
     public float Inertia => inertia;
@@ -108,11 +112,21 @@ public class MpBeltAcrossTests {
     BlockPos pos,
     BlockEntity be,
     params BlockEntityBehavior[] behaviours
+  ) => Put(w, pos, be, null, behaviours);
+
+  private static void Put(
+    TestWorld w,
+    BlockPos pos,
+    BlockEntity be,
+    string? entityClass,
+    params BlockEntityBehavior[] behaviours
   ) {
     foreach (var behaviour in behaviours)
       be.Behaviors.Add(behaviour);
     int id = _ids++;
-    w.Place(pos, TestBlocks.Configure(new Block(), $"test:across{id}", id), be);
+    Block block = TestBlocks.Configure(new Block(), $"test:across{id}", id);
+    block.EntityClass = entityClass;
+    w.Place(pos, block, be);
     w.Initialize(be);
   }
 
@@ -297,7 +311,7 @@ public class MpBeltAcrossTests {
     String(p, A, far);
     Assert.Same(p.World.NetworkAt(A), p.World.NetworkAt(far));
 
-    p.World.UnloadChunkAt(far);
+    p.World.UnloadChunkAt(far, unloadEntities: true);
     p.World.Networks.Relink(p.World.Accessor, A);
 
     Assert.Same(p.World.NetworkAt(A), p.World.NetworkAt(far));
@@ -308,5 +322,78 @@ public class MpBeltAcrossTests {
     for (int i = 0; i < 20; i++)
       Tick(p.World, A);
     Assert.True(SpeedAt(p.World, far) > 10f);
+  }
+
+  // Fails when restringing over a back pointer the far end kept releases the new holder.
+  [Fact]
+  public void Restring_over_a_stale_back_pointer_joins() {
+    var far = new BlockPos(GlobalConstants.ChunkSize * 2, 0, 0);
+    var w = NewWorld();
+    w.RegisterBlockEntityFactory(
+      "acrossFar",
+      () => {
+        var cell = new Cell(100f);
+        cell.Behaviors.Add(new CellMember(cell, ""));
+        cell.Behaviors.Add(new BEBehaviorMpBelt(cell));
+        return cell;
+      }
+    );
+    var a = new Cell(100f);
+    var held = new BEBehaviorMpBelt(a);
+    Put(w, A, a, new CellMember(a, ""), held);
+    var b = new Cell(100f);
+    Put(w, far, b, "acrossFar", new CellMember(b, ""), new BEBehaviorMpBelt(b));
+    held.Connect(NodeKey.Centre(A), NodeKey.Centre(far), 1, 1);
+    w.UnloadChunkAt(far, unloadEntities: true);
+    held.Disconnect();
+    w.LoadChunkAt(far);
+
+    held.Connect(NodeKey.Centre(A), NodeKey.Centre(far), 1, 1);
+
+    Assert.True(held.Engaged);
+    Assert.Same(w.NetworkAt(A), w.NetworkAt(far));
+  }
+
+  // Fails when the back end reads its own unfitted belt instead of the holder's.
+  [Fact]
+  public void Back_end_reads_the_holders_belt() {
+    var p = Cells(A, B);
+    p.Held.Connect(NodeKey.Centre(A), NodeKey.Centre(B), 1, 2);
+    p.Held.Wear = 0.5f;
+
+    Assert.Equal(2f, p.Back.Ratio);
+    Assert.Equal(0.5f, p.Back.Wear);
+    Assert.Equal(p.Held.CapNm, p.Back.CapNm);
+  }
+
+  // Fails when a belt state change is not marked dirty on both ends.
+  [Fact]
+  public void Connect_and_disconnect_mark_both_ends_dirty() {
+    var p = Cells(A, B);
+    var acc = p.World.Accessor;
+    acc.ClearReceivedCalls();
+
+    String(p, A, B);
+    acc.Received().MarkBlockEntityDirty(A);
+    acc.Received().MarkBlockEntityDirty(B);
+    acc.ClearReceivedCalls();
+    p.Held.Disconnect();
+    acc.Received().MarkBlockEntityDirty(A);
+    acc.Received().MarkBlockEntityDirty(B);
+  }
+
+  // Fails when a tree without the far keys leaves the old far cell on the behaviour.
+  [Fact]
+  public void Tree_without_far_keys_clears_the_far_cell() {
+    var p = Cells(A, B);
+    String(p, A, B);
+    var tree = new TreeAttribute();
+    p.Back.Disconnect();
+    p.Held.ToTreeAttributes(tree);
+    String(p, A, B);
+
+    p.Held.FromTreeAttributes(tree, p.World.World);
+
+    Assert.Null(p.Held.FarCell);
   }
 }

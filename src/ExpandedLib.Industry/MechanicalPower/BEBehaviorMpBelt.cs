@@ -33,20 +33,20 @@ public class BEBehaviorMpBelt(BlockEntity blockentity)
   private bool _connected;
   private int _sign = 1;
 
-  /// <summary>Raised once when the belt wears out with shaft failure on; the owner drops the belt as scrap.</summary>
+  /// <summary>Raised once when the belt wears out with shaft failure on; the belt carries nothing from then on. Only the end that holds the link raises it.</summary>
   public event Action? Snapped {
     add => _belt.Snapped += value;
     remove => _belt.Snapped -= value;
   }
 
-  /// <summary>Accumulated wear, 0 to 1; saved with the block. At 1 the belt is worn out.</summary>
+  /// <summary>Accumulated wear, 0 to 1; saved with the block. At 1 the belt is worn out. At the back end of a belt strung across cells it reads and writes the holder's.</summary>
   public float Wear {
-    get => _belt.Wear;
-    set => _belt.Wear = value;
+    get => Wearing.Wear;
+    set => Wearing.Wear = value;
   }
 
-  /// <summary>True once the belt has snapped; it carries nothing from then on.</summary>
-  public bool Broken => _belt.Broken;
+  /// <summary>True once the belt has snapped; it carries nothing from then on. At the back end it reads the holder's.</summary>
+  public bool Broken => Wearing.Broken;
 
   public NodeKey From => _from;
 
@@ -69,9 +69,12 @@ public class BEBehaviorMpBelt(BlockEntity blockentity)
   /// <summary>The far cell, listed so the graph walk joins it when its own belt lists this cell back.</summary>
   public IEnumerable<BlockPos> FarNeighbours => FarCell is { } far ? [far] : [];
 
+  private MpBeltWear Wearing =>
+    _back && _far != null && BeltAt(_far) is { } holder ? holder._belt : _belt;
+
   public float CapNm => MpBeltWear.CapNm(_belt.FromSize, _belt.ToSize);
 
-  public bool WornOut => _belt.WornOut;
+  public bool WornOut => Wearing.WornOut;
 
   public override void Initialize(ICoreAPI api, JsonObject properties) {
     base.Initialize(api, properties);
@@ -115,8 +118,9 @@ public class BEBehaviorMpBelt(BlockEntity blockentity)
     _back = false;
     _far = across ? to.Pos.Copy() : null;
     _connected = true;
+    Blockentity.MarkDirty();
     if (_far != null)
-      BeltAt(_far)?.TakeBack(from, to, Blockentity.Pos);
+      BeltAt(_far)?.TakeBack(from, to, Blockentity.Pos, fromSize, toSize);
     if (_far != null || before != null)
       Relink(_far, before);
   }
@@ -130,16 +134,26 @@ public class BEBehaviorMpBelt(BlockEntity blockentity)
     _far = null;
     _back = false;
     _connected = false;
+    Blockentity.MarkDirty();
     Relink(far, null);
   }
 
-  private void TakeBack(NodeKey from, NodeKey to, BlockPos holder) {
-    ReleaseFar();
+  private void TakeBack(
+    NodeKey from,
+    NodeKey to,
+    BlockPos holder,
+    int fromSize,
+    int toSize
+  ) {
+    if (!holder.Equals(_far))
+      ReleaseFar();
+    _belt.Fit(fromSize, toSize);
     _from = from;
     _to = to;
     _far = holder.Copy();
     _back = true;
     _connected = true;
+    Blockentity.MarkDirty();
   }
 
   // Clears the pointer the far end holds to this cell.
@@ -152,6 +166,7 @@ public class BEBehaviorMpBelt(BlockEntity blockentity)
       other._far = null;
       other._back = false;
       other._connected = false;
+      other.Blockentity.MarkDirty();
     }
   }
 
@@ -200,8 +215,14 @@ public class BEBehaviorMpBelt(BlockEntity blockentity)
   ) {
     base.FromTreeAttributes(tree, worldAccessForResolve);
     _belt.Load(tree);
-    if (!tree.HasAttribute(FarKey + "X"))
+    if (!tree.HasAttribute(FarKey + "X")) {
+      if (_far != null) {
+        _far = null;
+        _back = false;
+        _connected = false;
+      }
       return;
+    }
     _far = GetPos(tree, FarKey);
     _from = GetKey(tree, FromKeyName);
     _to = GetKey(tree, ToKeyName);

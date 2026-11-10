@@ -305,17 +305,12 @@ public class BlockNetworkModSystem : ModSystem {
       .Where(n => n != network)
       .Distinct()
       .ToList();
-    bool merged = false;
     foreach (var other in others) {
       if (!network.CanMerge(other, world))
         continue;
       Absorb(world, network, other);
-      merged = true;
     }
-    if (merged)
-      Settle(world, network, broadcast: true);
-    else
-      ReviewConnectivity(world, netId, network, broadcast: true);
+    ReviewConnectivity(world, netId, network, broadcast: true);
   }
 
   /// <summary>
@@ -719,7 +714,7 @@ public class BlockNetworkModSystem : ModSystem {
       INetworkMember? partner = NetworkMembership.Resolve(
         world,
         far,
-        source.NetworkTypeAt(world, pos)
+        networkType
       );
       if (
         partner != null
