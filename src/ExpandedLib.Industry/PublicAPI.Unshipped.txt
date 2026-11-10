@@ -7,6 +7,7 @@ const ExpandedLib.Industry.Casting.MoldFits.AttributeKey = "moldFit" -> string!
 const ExpandedLib.Industry.Casting.MoldFitSet.CurrentSchema = 1 -> int
 const ExpandedLib.Industry.Casting.MoldSpec.AttributeKey = "mold" -> string!
 const ExpandedLib.Industry.Casting.MoldSpec.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.Creative.BlockCreativeMpEnergy.Code = "exlib:creativempenergy" -> string!
 const ExpandedLib.Industry.Forming.StockFormSet.CurrentSchema = 1 -> int
 const ExpandedLib.Industry.Machining.CuttingMaterialSet.CurrentSchema = 1 -> int
 const ExpandedLib.Industry.Machining.MachineKind.AttributeKey = "machinekind" -> string!
@@ -162,8 +163,11 @@ ExpandedLib.Industry.Casting.SandStationLevel.Full = 2 -> ExpandedLib.Industry.C
 ExpandedLib.Industry.Casting.SandStationLevel.Half = 1 -> ExpandedLib.Industry.Casting.SandStationLevel
 ExpandedLib.Industry.Casting.SandStationLogic
 const ExpandedLib.Industry.Casting.SandStationLogic.AfterShakeOut = ExpandedLib.Industry.Casting.SandStationLevel.Full -> ExpandedLib.Industry.Casting.SandStationLevel
+const ExpandedLib.Industry.Casting.SandStationLogic.ColdShutSeconds = 6 -> float
 static ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFaceOf(Vintagestory.API.Common.Block! block) -> Vintagestory.API.MathTools.BlockFacing?
+static ExpandedLib.Industry.Casting.SandStationLogic.BatchFilling(int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> int
 static ExpandedLib.Industry.Casting.SandStationLogic.CanIntake(bool hasImpression, bool cavityFull, bool solidified) -> bool
+static ExpandedLib.Industry.Casting.SandStationLogic.ColdShut(int coldShutBatches, float stoppedSeconds, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> int
 static ExpandedLib.Industry.Casting.SandStationLogic.Decide(bool holdingSand, bool holdingPattern, bool emptyHand, ExpandedLib.Industry.Casting.SandStationLevel sand, bool hasImpression, bool hasMetal, bool isHardened, bool closedImpression = false) -> ExpandedLib.Industry.Casting.SandStationAction
 static ExpandedLib.Industry.Casting.SandStationLogic.FillBatches(ExpandedLib.Industry.Casting.FillOrder order, int pieces, int pressed) -> System.Collections.Generic.IReadOnlyList<int[]!>!
 static ExpandedLib.Industry.Casting.SandStationLogic.FillingMeshKey(string! shapeRef, int pressed) -> string!
@@ -174,7 +178,7 @@ static ExpandedLib.Industry.Casting.SandStationLogic.PieceFills(int amount, int 
 static ExpandedLib.Industry.Casting.SandStationLogic.Press(string! impressedCode, string! heldCode, int pressed, int pieces) -> ExpandedLib.Industry.Casting.SandStationPressOutcome
 static ExpandedLib.Industry.Casting.SandStationLogic.PrunedToPressed(Vintagestory.API.Common.Shape! shape, int pressed) -> Vintagestory.API.Common.Shape!
 static ExpandedLib.Industry.Casting.SandStationLogic.SandAfterImprint(ExpandedLib.Industry.Casting.SandStationLevel sand, bool closedPattern) -> ExpandedLib.Industry.Casting.SandStationLevel
-static ExpandedLib.Industry.Casting.SandStationLogic.YieldOf(bool misrun, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> ExpandedLib.Industry.Casting.SandStationYield
+static ExpandedLib.Industry.Casting.SandStationLogic.YieldOf(bool misrun, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches, int coldShutBatches = 0) -> ExpandedLib.Industry.Casting.SandStationYield
 ExpandedLib.Industry.Casting.SandStationPressOutcome
 ExpandedLib.Industry.Casting.SandStationPressOutcome.Bed = 0 -> ExpandedLib.Industry.Casting.SandStationPressOutcome
 ExpandedLib.Industry.Casting.SandStationPressOutcome.Full = 1 -> ExpandedLib.Industry.Casting.SandStationPressOutcome
@@ -186,6 +190,18 @@ ExpandedLib.Industry.Casting.SandStationYield.SandStationYield() -> void
 ExpandedLib.Industry.Casting.SandStationYield.SandStationYield(int Parts, int ScrapUnits) -> void
 ExpandedLib.Industry.Casting.SandStationYield.ScrapUnits.get -> int
 ExpandedLib.Industry.Casting.SandStationYield.ScrapUnits.init -> void
+ExpandedLib.Industry.Creative.BlockCreativeMpEnergy
+ExpandedLib.Industry.Creative.BlockCreativeMpEnergy.BlockCreativeMpEnergy() -> void
+ExpandedLib.Industry.Creative.BlockCreativeMpEnergy.HasConnectorAt(Vintagestory.API.MathTools.BlockFacing! face) -> bool
+ExpandedLib.Industry.Creative.BlockCreativeMpEnergy.NetworkType.get -> string!
+ExpandedLib.Industry.Creative.BlockEntityCreativeMpEnergy
+ExpandedLib.Industry.Creative.BlockEntityCreativeMpEnergy.BlockEntityCreativeMpEnergy() -> void
+ExpandedLib.Industry.Creative.BlockEntityCreativeMpEnergy.DriveSlope(float speed) -> float
+ExpandedLib.Industry.Creative.BlockEntityCreativeMpEnergy.DriveTorque(float speed) -> float
+ExpandedLib.Industry.Creative.BlockEntityCreativeMpEnergy.Speed.get -> float
+ExpandedLib.Industry.Creative.BlockEntityCreativeMpEnergy.Speed.set -> void
+ExpandedLib.Industry.Creative.BlockEntityCreativeMpEnergy.Torque.get -> float
+ExpandedLib.Industry.Creative.BlockEntityCreativeMpEnergy.Torque.set -> void
 ExpandedLib.Industry.Forming.FeedstockEntry
 ExpandedLib.Industry.Forming.FeedstockEntry.EntersAs.get -> string!
 ExpandedLib.Industry.Forming.FeedstockEntry.EntersAs.init -> void
@@ -676,6 +692,9 @@ override ExpandedLib.Industry.Casting.BlockEntitySandStation.GetBlockInfo(Vintag
 override ExpandedLib.Industry.Casting.BlockEntitySandStation.Initialize(Vintagestory.API.Common.ICoreAPI! api) -> void
 override ExpandedLib.Industry.Casting.BlockSandStation.OnBlockBroken(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.IPlayer! byPlayer, float dropQuantityMultiplier = 1) -> void
 override ExpandedLib.Industry.Casting.BlockSandStation.OnBlockInteractStart(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel) -> bool
+override ExpandedLib.Industry.Creative.BlockEntityCreativeMpEnergy.HasConnectorAt(Vintagestory.API.MathTools.BlockFacing! face) -> bool
+override ExpandedLib.Industry.Creative.BlockEntityCreativeMpEnergy.NetworkType.get -> string!
+override ExpandedLib.Industry.Creative.BlockEntityCreativeMpEnergy.NetworkType.set -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
@@ -708,6 +727,7 @@ static ExpandedLib.Industry.Casting.MoldFits.FitsPedestal(Vintagestory.API.Commo
 static ExpandedLib.Industry.Casting.MoldFits.IsOversize(Vintagestory.API.Common.Block? block) -> bool
 static ExpandedLib.Industry.Casting.MoldSpec.TryParse(Vintagestory.API.Datastructures.JsonObject? mold, string! station, out ExpandedLib.Industry.Casting.MoldSpec? spec, out string? error, ExpandedLib.Industry.Casting.CastingStationRegistry? stations = null) -> bool
 static ExpandedLib.Industry.Casting.MoldSpec.TryParseAll(Vintagestory.API.Datastructures.JsonObject? mold, out System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.MoldSpec!>! specs, out string? error, ExpandedLib.Industry.Casting.CastingStationRegistry? stations = null) -> bool
+static ExpandedLib.Industry.Creative.BlockCreativeMpEnergy.Definitions(string! domain) -> System.Collections.Generic.IEnumerable<ExpandedLib.Definitions.ExBlockDef!>!
 static ExpandedLib.Industry.Forming.StockForm.SpreadWidth(float startWidth, float startThickness, float thickness, float exponent = 0.5, float maxWidth = 0) -> float
 static ExpandedLib.Industry.Forming.StockFormRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
 static ExpandedLib.Industry.Forming.StockFormRegistry.Shared.get -> ExpandedLib.Industry.Forming.StockFormRegistry!

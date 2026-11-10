@@ -17,6 +17,7 @@
   "facing-u": "верх",
   "facing-d": "низ",
   "block-structurefiller": "Механизм",
+  "block-creativempenergy": "Творче джерело вала",
   "blockhelp-rotate": "Повернути",
   "blockhelp-crowbar-breakout": "Вибити застиглий метал",
   "blockhelp-mulblock-struc-show": "Показати багатоблочну конструкцію",
@@ -148,6 +149,7 @@
   "sandstation-ready": "Відбиток: {0}. Очікування металу.",
   "sandstation-readypieces": "Відбиток: {0}, відбито {1} з {2}. Очікування металу.",
   "sandstation-casting": "Відливка: {0}/{1} одиниць, {2} ({3})",
+  "sandstation-coldshut": "Холодний спай: подача переривалась, частини цієї відливки підуть на брухт.",
   "metalstate-liquid": "рідкий",
   "metalstate-hardened": "затверділий"
 }
