@@ -101,7 +101,7 @@ public class BEBehaviorMpBelt(BlockEntity blockentity)
     int toSize,
     bool crossed = false
   ) {
-    bool across = !to.Pos.Equals(from.Pos);
+    bool across = !Equals(to.Pos, from.Pos);
     if (across && !from.Pos.Equals(Blockentity.Pos))
       throw new ArgumentException(
         "A belt strung across cells holds its driving end in its own cell.",
