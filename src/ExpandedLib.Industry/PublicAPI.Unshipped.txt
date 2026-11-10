@@ -15,6 +15,10 @@ const ExpandedLib.Industry.Machining.MachiningJob.DefaultWear = 1 -> int
 const ExpandedLib.Industry.Machining.MachiningJob.MaterialAttribute = "cuttingMaterial" -> string!
 const ExpandedLib.Industry.Machining.MachiningJob.UnitsAttribute = "materialUnits" -> string!
 const ExpandedLib.Industry.Machining.MachiningJobSet.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.MechanicalPower.BeltMesh.CrownLift = 0.00625 -> float
+const ExpandedLib.Industry.MechanicalPower.BeltMesh.SegmentsPerTurn = 16 -> int
+const ExpandedLib.Industry.MechanicalPower.BeltMesh.StrapThickness = 0.015625 -> float
+const ExpandedLib.Industry.MechanicalPower.BeltMesh.StrapWidth = 0.25 -> float
 const ExpandedLib.Industry.MechanicalPower.MpSegmentReading.TreeKey = "mpReading" -> string!
 const ExpandedLib.Industry.Molten.CrowbarHold.HoldSeconds = 1 -> float
 const ExpandedLib.Industry.Molten.MoltenBar.HoldSeconds = 1 -> float
@@ -398,6 +402,14 @@ ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.To.get -> ExpandedLib.Netw
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Wear.get -> float
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Wear.set -> void
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.WornOut.get -> bool
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.SetMesh(Vintagestory.API.Client.MeshData? mesh) -> void
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.RenderRange.get -> int
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.RenderOrder.get -> double
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.OnRenderFrame(float deltaTime, Vintagestory.API.Client.EnumRenderStage stage) -> void
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.Dispose() -> void
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.BeltRenderer(Vintagestory.API.Client.ICoreClientAPI! api, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.AssetLocation! texture) -> void
+ExpandedLib.Industry.MechanicalPower.BeltRenderer
+ExpandedLib.Industry.MechanicalPower.BeltMesh
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.Advance(float dt, float hours, float slipPowerW) -> void
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.BEBehaviorMpClutch(Vintagestory.API.Common.BlockEntity! blockentity) -> void
@@ -669,6 +681,9 @@ static ExpandedLib.Industry.Machining.MachiningJobs.Resolve(System.Collections.G
 static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.CapFor(ExpandedLib.Industry.MechanicalPower.MpShaftSize fromPulley, ExpandedLib.Industry.MechanicalPower.MpShaftSize toPulley) -> float
 static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.PulleyDiameter(ExpandedLib.Industry.MechanicalPower.MpShaftSize size) -> float
 static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.FullCapNm(ExpandedLib.Industry.MechanicalPower.MpShaftSize size) -> float
+static ExpandedLib.Industry.MechanicalPower.BeltMesh.Build(Vintagestory.API.MathTools.EnumAxis axis, Vintagestory.API.MathTools.Vec3i! offset, int driverSize, int drivenSize) -> Vintagestory.API.Client.MeshData!
+static ExpandedLib.Industry.MechanicalPower.BeltMesh.RimRadius(int size) -> float
+static ExpandedLib.Industry.MechanicalPower.BeltMesh.WrapAngles(int driverSize, int drivenSize, float centreDistance) -> (float Driver, float Driven)
 static ExpandedLib.Industry.MechanicalPower.MpRun.Read(ExpandedLib.Networks.BlockNetworkModSystem? system, ExpandedLib.Networks.NodeKey key) -> ExpandedLib.Industry.MechanicalPower.MpRunReading
 static ExpandedLib.Industry.MechanicalPower.MpRun.ReadRun(this ExpandedLib.Networks.BEBehaviorNetworkMember! member) -> ExpandedLib.Industry.MechanicalPower.MpRunReading
 static ExpandedLib.Industry.MechanicalPower.MpRun.ReadRun(this ExpandedLib.Networks.BlockEntityNetworkNode! node) -> ExpandedLib.Industry.MechanicalPower.MpRunReading
