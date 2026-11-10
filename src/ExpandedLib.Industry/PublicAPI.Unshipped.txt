@@ -663,6 +663,7 @@ override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpOverrun.ToTreeAttribut
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.GetBlockInfo(Vintagestory.API.Common.IPlayer! forPlayer, System.Text.StringBuilder! dsc) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.GetResistance() -> float
+override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.GetShape() -> Vintagestory.API.Common.CompositeShape?
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.GetTorque(long tick, float speed, out float resistance) -> float
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.Initialize(Vintagestory.API.Common.ICoreAPI! api, Vintagestory.API.Datastructures.JsonObject! properties) -> void
 override ExpandedLib.Industry.MechanicalPower.BEBehaviorMpTakeoff.OnTesselation(Vintagestory.API.MathTools.ITerrainMeshPool! mesher, Vintagestory.API.Client.ITesselatorAPI! tesselator) -> bool

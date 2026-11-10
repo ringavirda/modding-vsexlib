@@ -162,9 +162,10 @@ public class MpTakeoffTests {
     Assert.Equal(0f, link.LoadTorque(2.24f));
   }
 
-  // Fails when the link is read at ratio 1 (the held speed or the torque not taken over GearedRatio): the network then turns at 5.5 times the held speed or a fifth of it.
+  // Fails when the hold term is read in the network's frame (speed / g): the link's axle then turns at g times the held speed and the iron pays a different power than vanilla takes.
   [Theory]
   [InlineData(5.5f, 0.3f)]
+  [InlineData(3f, 0.3f)]
   [InlineData(0.18181818f, 0.1f)]
   public void The_link_holds_its_axle_at_the_held_speed_behind_a_large_gear(
     float geared,
@@ -178,7 +179,7 @@ public class MpTakeoffTests {
     float[] late = new float[100];
     for (int i = 0; i < late.Length; i++) {
       network.updateNetwork(1000 + i);
-      late[i] = network.Speed;
+      late[i] = network.Speed * geared;
     }
 
     Assert.InRange(late.Min(), 0.296f, 0.302f);
@@ -188,6 +189,9 @@ public class MpTakeoffTests {
       link.TorqueTakenNm,
       2f
     );
+    float vanillaW =
+      network.NetworkResistance * MathF.Abs(network.Speed) * 7000f * 5f;
+    Assert.Equal(vanillaW, link.TorqueTakenNm * 4.48f, vanillaW * 0.01f);
   }
 
   // Fails when the link's own last torque is not taken out of the network's: it then gives its share twice and the speed passes the held one.
@@ -227,6 +231,51 @@ public class MpTakeoffTests {
     Assert.True(network.Speed > 0.35f);
     Assert.True(link.Overrunning);
     Assert.Equal(0f, link.TorqueTakenNm);
+  }
+
+  // Fails when the lower clamp of the wanted torque is dropped: with 0.5 given and a wanted torque of -0.3 the blend gives 0.10, not 0.25.
+  [Fact]
+  public void A_negative_wanted_torque_is_clamped_to_zero_before_the_blend() {
+    var network = new MechanicalNetwork();
+    var link = Link(network, 4.48f);
+    network.NetworkTorque = 0.8f;
+    ReflectionHelpers.SetField(link, "_given", 0.5f);
+
+    Assert.Equal(0.25f, link.GetTorque(0, link.HeldSpeed, out _), 1e-4f);
+  }
+
+  // Fails when a client compares the signed speed: a link discovered from the other end never reads as overrun on a client.
+  [Fact]
+  public void A_client_reads_an_overrun_on_the_unsigned_network_speed() {
+    var link = Link(MechPower.Network(0.5f, 0.3f), 4.48f);
+    ReflectionHelpers.SetField(link, "propagationDir", BlockFacing.SOUTH);
+    link.SideOverride = EnumAppSide.Client;
+
+    Assert.True(link.Overrunning);
+  }
+
+  // Fails when the overrun is compared in the network's frame: behind a large gear a network at 0.1 puts the axle at 0.55, past the held 0.299.
+  [Fact]
+  public void An_overrun_is_judged_on_the_links_own_axle() {
+    var link = Link(MechPower.Network(0.1f, 0.3f), 4.48f, 5.5f);
+
+    Assert.True(link.Overrunning);
+  }
+
+  // Fails when the block body is left to vanilla's renderer: the megablock is then drawn a second time, turning on the axle.
+  [Fact]
+  public void The_link_gives_vanilla_no_shape_to_render() {
+    var link = new BEBehaviorMpTakeoff(new Host());
+
+    var shape = typeof(BEBehaviorMpTakeoff)
+      .GetMethod(
+        "GetShape",
+        System.Reflection.BindingFlags.NonPublic
+          | System.Reflection.BindingFlags.Instance
+      )!
+      .Invoke(link, []);
+
+    Assert.Null(shape);
   }
 
   // Fails when the link's torque is not signed by its sense: placed against the discovery sense it pushes the network backward.
@@ -309,17 +358,21 @@ public class MpTakeoffTests {
 
   // Fails when a suspended iron run is not read as stopped: the link keeps driving the network at the last held speed with no load on the iron.
   [Fact]
-  public void An_iron_run_that_has_not_ticked_for_two_intervals_holds_nothing() {
-    long now = 1000;
+  public void An_iron_run_that_has_not_loaded_the_link_for_six_steps_holds_nothing() {
     var network = new MechanicalNetwork();
     var link = Link(network, 4.48f);
-    link.Clock = () => now;
-    link.LoadTorque(4.48f);
+    link.SideOverride = EnumAppSide.Server;
     Join(network, 1, resistance: 0.3f);
-    Steps(network, 100);
-    Assert.True(link.TorqueTakenNm > 0f);
+    for (int i = 0; i < BEBehaviorMpTakeoff.StaleSteps; i++)
+      link.GetTorque(i, network.Speed, out _);
+    Assert.True(link.HeldSpeed > 0f);
+    link.GetTorque(0, network.Speed, out _);
+    Assert.Equal(0f, link.HeldSpeed);
+    link.LoadTorque(4.48f);
+    Assert.True(link.HeldSpeed > 0f);
 
-    now += 2 * BlockNetworkModSystem.ListenerIntervalMs + 1;
+    for (int i = 0; i <= BEBehaviorMpTakeoff.StaleSteps; i++)
+      link.GetTorque(i, network.Speed, out _);
 
     Assert.Equal(0f, link.HeldSpeed);
     Assert.Equal(0f, link.GetTorque(0, network.Speed, out _));

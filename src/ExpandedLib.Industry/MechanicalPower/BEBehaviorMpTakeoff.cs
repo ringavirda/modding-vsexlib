@@ -58,7 +58,7 @@ public class BEBehaviorMpTakeoff(BlockEntity blockentity)
   private float _ratedNm = DefaultRatedNm;
   private float _ironSpeed;
   private float _given;
-  private long _stampMs;
+  private int _stepsSinceLoad;
   private float _sentSpeed;
   private float _sentGiven;
 
@@ -71,15 +71,22 @@ public class BEBehaviorMpTakeoff(BlockEntity blockentity)
   /// <summary>Torque (vanilla units) the link gives the network at most.</summary>
   public float RatedUnits => _ratedNm * _ratio / NmPerVanillaUnit;
 
-  /// <summary>Speed (vanilla units) the link holds the network at: the iron speed last read, over the ratio and
-  /// <see cref="RadSPerVanillaUnit"/>; 0 once the iron run has not ticked for two listener intervals.</summary>
+  /// <summary>Speed (vanilla units) the link holds its own axle at: the iron speed last read, over the ratio and
+  /// <see cref="RadSPerVanillaUnit"/>; 0 once the vanilla network has stepped <see cref="StaleSteps"/> times on the
+  /// server without the iron run loading the link.</summary>
   public float HeldSpeed =>
     Stale ? 0f : _ironSpeed / _ratio / RadSPerVanillaUnit;
 
-  /// <summary>True while the link gives no torque and the network turns faster than <see cref="HeldSpeed"/> in the
-  /// link's sense.</summary>
+  /// <summary>True while the link gives no torque and its axle turns faster than <see cref="HeldSpeed"/> in the
+  /// link's sense. A client holds the network's speed unsigned, so it compares the magnitude.</summary>
   public bool Overrunning =>
-    Network != null && _given <= 0f && Sense * Network.Speed > HeldSpeed;
+    Network != null
+    && _given <= 0f
+    && (
+      Side == EnumAppSide.Client
+        ? MathF.Abs(Network.Speed) * MathF.Abs(GearedRatio)
+        : Sense * Network.Speed * GearedRatio
+    ) > HeldSpeed;
 
   /// <summary>Torque (N*m) at the iron side the link takes now: the torque it gave the network last step, to the
   /// rating, times <see cref="NmPerVanillaUnit"/> over the ratio; 0 while the iron run is stopped or off a network.</summary>
@@ -91,26 +98,27 @@ public class BEBehaviorMpTakeoff(BlockEntity blockentity)
   /// <summary>True while the link gives the network all the rating carries.</summary>
   public bool AtRating => Network != null && _given >= RatedUnits * 0.999f;
 
-  /// <summary>Reads the clock (ms) the staleness of the iron speed is judged on; the world's elapsed time when null.</summary>
-  internal Func<long>? Clock { get; set; }
+  /// <summary>Vanilla network steps without a <see cref="LoadTorque"/> call after which the iron speed reads as stale.</summary>
+  internal const int StaleSteps = 6;
+
+  /// <summary>The side the link judges itself on; the behaviour's own side when null.</summary>
+  internal EnumAppSide? SideOverride { get; set; }
+
+  private EnumAppSide? Side => SideOverride ?? Api?.Side;
 
   // +1 when the network's positive sense is the one this link drives, -1 when discovery came in from the other end.
   private float Sense =>
     propagationDir == OutFacingForNetworkDiscovery ? 1f : -1f;
 
   private bool Stale =>
-    Api?.Side != EnumAppSide.Client
-    && NowMs() is long now
-    && now - _stampMs > 2 * BlockNetworkModSystem.ListenerIntervalMs;
-
-  private long? NowMs() => Clock?.Invoke() ?? Api?.World?.ElapsedMilliseconds;
+    Side == EnumAppSide.Server && _stepsSinceLoad > StaleSteps;
 
   /// <summary>The iron run's load on the link.</summary>
   /// <param name="speed">The iron node's speed, rad/s, signed.</param>
   /// <returns>Torque (N*m) the link takes at the iron side.</returns>
   public float LoadTorque(float speed) {
     _ironSpeed = MathF.Abs(speed);
-    _stampMs = NowMs() ?? 0L;
+    _stepsSinceLoad = 0;
     SyncIfMoved();
     return TorqueTakenNm;
   }
@@ -119,6 +127,8 @@ public class BEBehaviorMpTakeoff(BlockEntity blockentity)
 
   public override float GetTorque(long tick, float speed, out float resistance) {
     resistance = 0f;
+    if (_stepsSinceLoad <= StaleSteps)
+      _stepsSinceLoad++;
     float sense = Sense;
     float held = HeldSpeed;
     if (Network == null || held <= 0f || sense * speed < -BackwardSpeed)
@@ -129,7 +139,7 @@ public class BEBehaviorMpTakeoff(BlockEntity blockentity)
       (
         Network.NetworkResistance
         - others
-        + HoldGain * (held - sense * speed / g)
+        + HoldGain * (held - sense * speed) / g
       ) / g;
     float wanted = Math.Clamp(need, 0f, RatedUnits);
     float blended = _given + TorqueBlend * (wanted - _given);
@@ -158,7 +168,7 @@ public class BEBehaviorMpTakeoff(BlockEntity blockentity)
       Blockentity.MarkDirty();
   }
 
-  protected override void updateShape(IWorldAccessor worldForResolve) { }
+  protected override CompositeShape? GetShape() => null;
 
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);
@@ -175,7 +185,7 @@ public class BEBehaviorMpTakeoff(BlockEntity blockentity)
     _given = tree.GetFloat("given");
     _sentSpeed = _ironSpeed;
     _sentGiven = _given;
-    _stampMs = worldAccessForResolve?.ElapsedMilliseconds ?? 0L;
+    _stepsSinceLoad = 0;
   }
 
   internal void ReadProperties(JsonObject? properties) {
