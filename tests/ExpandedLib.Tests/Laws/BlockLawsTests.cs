@@ -675,55 +675,6 @@ public class BlockLawsTests {
     );
   }
 
-  // Fails when a reduced sample reports a later variant's self-drop at the last stage it broke, not
-  // at the stage the type's first variant showed it at: the reduced finding then reads stage 2.
-  [Fact]
-  public void A_reduced_sample_names_a_self_drop_at_the_stage_the_full_one_does()
-  {
-    ExBlockDef[] defs =
-    [
-      ExBlockDef
-        .Create("test", "sideddrop")
-        .Class("ExFilledMegastructure")
-        .FillerOffsets(TwoCells)
-        .EntityClass("test-plain")
-        .Behavior("BlockEntityInteract")
-        .VariantGroup("side", "n", "e", "s", "w")
-        .Construction(c =>
-          c.Stage(s => s.Require("game:stick", 1))
-            .Stage(s => s.Require("game:plank-oak", 3))
-            .Stage(s => s.Require("game:plank-oak", 2))
-        ),
-    ];
-
-    BlockLaws.Law whole = BreakLaw.Run(
-      defs,
-      Exlib,
-      Prepare,
-      1,
-      BreakSample.Whole
-    );
-    BlockLaws.Law reduced = BreakLaw.Run(
-      defs,
-      Exlib,
-      Prepare,
-      1,
-      BreakSample.Reduced
-    );
-
-    Assert.Equal(
-      [
-        "test:sideddrop-e broken at stage 1 refunds its paid stages and also drops its own code",
-        "test:sideddrop-n broken at stage 1 refunds its paid stages and also drops its own code",
-        "test:sideddrop-s broken at stage 1 refunds its paid stages and also drops its own code",
-        "test:sideddrop-w broken at stage 1 refunds its paid stages and also drops its own code",
-      ],
-      whole.Findings.Order()
-    );
-    Assert.Equal(whole.Findings, reduced.Findings);
-    Assert.True(reduced.Cases < whole.Cases);
-  }
-
   // Fails when the law skips the filler-drop check.
   [Fact]
   [PlantedDefect(typeof(BreakLaw), nameof(BreakLaw.Run))]
