@@ -38,13 +38,14 @@ public class PipeThroughflowTests {
     Assert.IsType<PipeNetwork>(w.NetworkAt(West));
 
   private static void Blow(TestWorld w, float litres, float ceiling) =>
-    Run(w).TryProduceGas(
-      litres,
-      20f,
-      "Air",
-      w.Accessor,
-      maxOutputPressure: ceiling
-    );
+    Run(w)
+      .TryProduceGas(
+        litres,
+        20f,
+        "Air",
+        w.Accessor,
+        maxOutputPressure: ceiling
+      );
 
   #endregion
 
