@@ -142,6 +142,7 @@
   "sandstation-ready": "Impression: {0}. Waiting for metal.",
   "sandstation-readypieces": "Impression: {0}, {1} of {2} pieces pressed. Waiting for metal.",
   "sandstation-casting": "Casting: {0}/{1} units, {2} ({3})",
+  "sandstation-coldshut": "Cold shut: the feed stopped part way, so a piece of this cast will be scrap.",
   "metalstate-liquid": "liquid",
   "metalstate-hardened": "hardened"
 }

@@ -41,6 +41,13 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
   [Persist("cc_pressed")]
   private int _pressed;
 
+  [Persist("cc_coldbatches")]
+  private int _coldBatches;
+
+  [Persist("cc_feedgap")]
+  private float _feedGap;
+
+  private bool _fedThisTick;
   private float? _fillTemperature;
   private bool _cupHit;
   private MoldSpec? _spec;
@@ -279,9 +286,32 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     if (IntakeAllowed())
       PullFromLaunder(cell);
 
+    TimeFeed(cell, dt);
     cell.EnsureMetalStack(Api.World);
     cell.UpdateThermal(Api.World);
     OnStationTick(dt);
+  }
+
+  private IReadOnlyList<int[]> Batches(MoldSpec spec) =>
+    SandStationLogic.FillBatches(spec.Fill, spec.Pieces, _pressed);
+
+  private void TimeFeed(BEBehaviorMoltenCell cell, float dt) {
+    if (!_fedThisTick && cell.CellAmount > 0)
+      _feedGap += dt;
+    _fedThisTick = false;
+  }
+
+  private void NoteFeed(int amountBefore) {
+    if (Spec is { } spec)
+      _coldBatches = SandStationLogic.ColdShut(
+        _coldBatches,
+        _feedGap,
+        amountBefore,
+        spec.UnitsPerPiece,
+        Batches(spec)
+      );
+    _feedGap = 0f;
+    _fedThisTick = true;
   }
 
   private void PullFromLaunder(BEBehaviorMoltenCell cell) {
@@ -296,6 +326,7 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
       return;
 
     int want = Math.Min(PullRatePerTick, src.CellAmount);
+    int before = cell.CellAmount;
     int accepted = cell.PushMetalRaw(
       want,
       src.CellMetalType,
@@ -305,6 +336,7 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     if (accepted <= 0)
       return;
     src.DrainMetal(accepted);
+    NoteFeed(before);
     _fillTemperature = cell.CellTemperature;
     OnMetalMoved(accepted, cell.CellMetalType, cell.CellTemperature);
     OnPulled(accepted);
@@ -354,10 +386,12 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     if (!_cupHit || !CanReceive(metal) || Cell is not { } cell)
       return;
     string code = metal.Collectible.Code.ToString();
+    int before = cell.CellAmount;
     int accepted = cell.PushMetalRaw(amount, code, temperature, Api.World);
     if (accepted <= 0)
       return;
     amount -= accepted;
+    NoteFeed(before);
     _fillTemperature = cell.CellTemperature;
     OnMetalMoved(accepted, code, cell.CellTemperature);
   }
@@ -533,6 +567,8 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     _patternCode = null;
     _spec = null;
     _pressed = 0;
+    _coldBatches = 0;
+    _feedGap = 0f;
     _fillTemperature = null;
     _sand = SandStationLogic.AfterShakeOut;
     OnShakenOut();
@@ -550,7 +586,8 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
       misrun || PourIsScrap,
       cell.CellAmount,
       spec.UnitsPerPiece,
-      SandStationLogic.FillBatches(spec.Fill, spec.Pieces, _pressed)
+      Batches(spec),
+      _coldBatches
     );
 
     if (yield.Parts > 0) {
@@ -816,6 +853,8 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
         ExMeasure.Temperature(cell.CellTemperature)
       )
     );
+    if (_coldBatches != 0)
+      dsc.AppendLine(Lang.Get("exlib:sandstation-coldshut"));
   }
 
   #endregion

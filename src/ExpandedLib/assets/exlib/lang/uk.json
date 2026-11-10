@@ -142,6 +142,7 @@
   "sandstation-ready": "Відбиток: {0}. Очікування металу.",
   "sandstation-readypieces": "Відбиток: {0}, відбито {1} з {2}. Очікування металу.",
   "sandstation-casting": "Відливка: {0}/{1} одиниць, {2} ({3})",
+  "sandstation-coldshut": "Холодний спай: подача переривалась, частина цієї відливки піде на брухт.",
   "metalstate-liquid": "рідкий",
   "metalstate-hardened": "затверділий"
 }
