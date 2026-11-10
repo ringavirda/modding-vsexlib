@@ -467,9 +467,10 @@ public sealed partial class SetupScene : IDisposable
               where,
               $"footprint cell {Describe(cell.Pos)} of {code} holds {World.GetBlock(cell.Pos).Code}, not air."
             );
-      World.Accessor.SetBlock(block.BlockId, at);
       if (block is IFillerHost)
-        block.OnBlockPlaced(World.World, at, new ItemStack(block));
+        World.Accessor.SetBlock(block.BlockId, at, new ItemStack(block));
+      else
+        World.Accessor.SetBlock(block.BlockId, at);
     }
     _listeners[at] = [.. World.TickListenerIds().Except(before)];
   }
