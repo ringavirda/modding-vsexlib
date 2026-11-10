@@ -13,7 +13,8 @@ public sealed partial class SetupScene
   private long? _networkBefore;
 
   /// <summary>The network tick a second runs once, after the listeners or in the place a tick
-  /// order gives it.</summary>
+  /// order gives it: the second's five network fires, each followed by 200 ms of the mechanical
+  /// lines.</summary>
   internal Action NetworkTick { get; set; }
 
   /// <summary>Fires the seconds that follow in <paramref name="order"/>: the listeners of the named

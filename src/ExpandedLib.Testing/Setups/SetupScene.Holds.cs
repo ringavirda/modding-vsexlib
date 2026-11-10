@@ -318,7 +318,7 @@ public sealed partial class SetupScene
 
   /// <summary>Advances the calendar by <paramref name="hours"/> and runs one second of the world:
   /// every block entity listener not in <paramref name="except"/> fires once, in tick order when the
-  /// setup names one, and the line listeners are stepped 1000 ms.</summary>
+  /// setup names one, and the network tick steps the line listeners between its fires.</summary>
   /// <param name="hours">Game hours the calendar moves.</param>
   /// <param name="except">Ids of the listeners that do not fire this second; the line listeners
   /// belong in it.</param>
@@ -332,7 +332,6 @@ public sealed partial class SetupScene
       World.FireBlockEntityTicks(1f, except);
       NetworkTick();
     }
-    World.StepListeners(1000, _lineListeners);
   }
 
   private List<int> SlotsOf(JToken slot, string where)
