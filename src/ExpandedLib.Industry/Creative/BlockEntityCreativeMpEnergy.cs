@@ -21,7 +21,12 @@ public class BlockEntityCreativeMpEnergy
 
   /// <summary>Speed in rad/s at which the source delivers nothing; above 0.</summary>
   [Persist("speed")]
-  public float Speed { get; set; } = 1f;
+  public float Speed {
+    get => _speed;
+    set => _speed = value > 0f ? value : 1f;
+  }
+
+  private float _speed = 1f;
 
   /// <summary>Always "mpshaft".</summary>
   public override string NetworkType {

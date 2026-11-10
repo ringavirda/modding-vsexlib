@@ -97,6 +97,38 @@ public class PowerStepTests {
     Assert.Equal(500f, SourceAt(fixture, 0, 0, 1).Torque);
   }
 
+  /// <summary>Fails when an asked face with no crossing (the "ns" shaft's up face), or an asked face on a
+  /// cell off every run, is accepted and an unconnected source placed.</summary>
+  [Theory]
+  [InlineData("u", 0, "has no crossing on face up")]
+  [InlineData("s", 3, "not a member of an mpshaft run")]
+  public void An_asked_face_is_tested_like_a_found_one(
+    string face,
+    int x,
+    string reason
+  ) {
+    LiveFixture fixture = Fixture();
+    fixture.Test.Register(
+      new Block { BlockId = 6, Code = new AssetLocation("game:rock") }
+    );
+    fixture.Run(
+      Steps("""[{ "place": { "code": "game:rock", "at": [3, 0, 0] } }]""")
+    );
+    StepFailure failure = Assert.Throws<StepFailure>(() =>
+      fixture.Run(
+        Steps(
+          $$"""[{ "power": { "at": [{{x}}, 0, 0], "face": "{{face}}", "network": "mpshaft", "speed": 10, "torque": 500 } }]"""
+        )
+      )
+    );
+    Assert.Equal(Suspect.Scenario, failure.Suspect);
+    Assert.Contains(reason, failure.Message);
+    Assert.False(
+      fixture.Test.GetBlockEntity(new BlockPos(100 + x, 51, 100))
+        is BlockEntityCreativeMpEnergy
+    );
+  }
+
   /// <summary>Fails when a power step on a cell that is on no mpshaft run is carried out.</summary>
   [Fact]
   public void A_cell_off_the_run_fails_the_step_and_blames_the_scenario() {
@@ -156,5 +188,13 @@ public class PowerStepTests {
     var source = new BlockEntityCreativeMpEnergy { Torque = 500f, Speed = 10f };
     Assert.Equal(torque, source.DriveTorque(speed), 3);
     Assert.Equal(slope, source.DriveSlope(speed), 3);
+  }
+
+  /// <summary>Fails when a speed of 0 or less is kept, which makes the drive infinite.</summary>
+  [Fact]
+  public void A_speed_of_zero_is_not_kept() {
+    var source = new BlockEntityCreativeMpEnergy { Torque = 500f, Speed = 0f };
+    Assert.True(float.IsFinite(source.DriveTorque(0f)));
+    Assert.True(float.IsFinite(source.DriveSlope(0f)));
   }
 }

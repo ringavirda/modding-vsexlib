@@ -52,6 +52,11 @@ internal sealed class PowerStep : ScenarioStep {
     bool placed = source == null;
     if (source == null) {
       BlockFacing face = asked ?? OpenFace(ctx, cell);
+      if (asked != null && !HasCrossing(Member(ctx, cell), ctx, cell, asked))
+        throw new StepFailure(
+          $"{FailureDetail.Cell(cell)} has no crossing on face {asked.Code}.",
+          Suspect.Scenario
+        );
       source = Beside(cell, face);
       if (!ctx.IsAir(source))
         throw new StepFailure(
@@ -92,21 +97,34 @@ internal sealed class PowerStep : ScenarioStep {
       );
   }
 
-  private static BlockFacing OpenFace(ScenarioContext ctx, BlockPos cell) {
-    BlockPos at = ctx.Setup.Absolute(cell);
-    INetworkMember member =
-      NetworkMembership.Resolve(ctx.World.BlockAccessor, at, "mpshaft")
-      ?? throw new StepFailure(
-        $"{FailureDetail.Cell(cell)} is not a member of an mpshaft run.",
-        Suspect.Scenario
-      );
-    NodeKey key = NodeKey.Centre(at);
-    foreach (BlockFacing face in Order)
-      if (
-        member
-          .Crossings(ctx.World.BlockAccessor, key)
-          .Contains(new NodeCrossing(face)) && ctx.IsAir(Beside(cell, face))
+  private static INetworkMember Member(ScenarioContext ctx, BlockPos cell) =>
+    NetworkMembership.Resolve(
+      ctx.World.BlockAccessor,
+      ctx.Setup.Absolute(cell),
+      "mpshaft"
+    )
+    ?? throw new StepFailure(
+      $"{FailureDetail.Cell(cell)} is not a member of an mpshaft run.",
+      Suspect.Scenario
+    );
+
+  private static bool HasCrossing(
+    INetworkMember member,
+    ScenarioContext ctx,
+    BlockPos cell,
+    BlockFacing face
+  ) =>
+    member
+      .Crossings(
+        ctx.World.BlockAccessor,
+        NodeKey.Centre(ctx.Setup.Absolute(cell))
       )
+      .Contains(new NodeCrossing(face));
+
+  private static BlockFacing OpenFace(ScenarioContext ctx, BlockPos cell) {
+    INetworkMember member = Member(ctx, cell);
+    foreach (BlockFacing face in Order)
+      if (HasCrossing(member, ctx, cell, face) && ctx.IsAir(Beside(cell, face)))
         return face;
     throw new StepFailure(
       $"{FailureDetail.Cell(cell)} has no open face to put the source on.",
