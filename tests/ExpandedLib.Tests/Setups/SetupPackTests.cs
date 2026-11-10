@@ -383,6 +383,10 @@ public class SetupPackTests
     "{ \"at\": [0, 0, 0], \"face\": \"n\", \"speed\": 1, \"torque\": 1 }"
   )]
   [InlineData(
+    "power",
+    "{ \"at\": [0, 0, 0], \"network\": \"mpshaft\", \"speed\": 1, \"torque\": 1 }"
+  )]
+  [InlineData(
     "source",
     "{ \"at\": [0, 0, 0], \"face\": \"n\", \"medium\": \"steam\" }"
   )]

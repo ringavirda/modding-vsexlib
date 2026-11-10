@@ -216,24 +216,70 @@ public static class SandStationLogic {
   /// <param name="amount">Units in the cavity.</param>
   /// <param name="unitsPerPiece">Units one piece holds.</param>
   /// <param name="batches">The fill order from <see cref="FillBatches"/>.</param>
+  /// <param name="coldShutBatches">Bit <c>i</c> set marks batch <c>i</c> cold-shut (see <see cref="ColdShut"/>); its pieces are scrap though full; at most 31 batches.</param>
   public static SandStationYield YieldOf(
     bool misrun,
     int amount,
     int unitsPerPiece,
-    IReadOnlyList<int[]> batches
+    IReadOnlyList<int[]> batches,
+    int coldShutBatches = 0
   ) {
     if (misrun)
       return new SandStationYield(0, amount);
     int parts = 0;
     int left = amount;
-    foreach (int[] batch in batches) {
-      int need = batch.Length * unitsPerPiece;
+    for (int i = 0; i < batches.Count; i++) {
+      int need = batches[i].Length * unitsPerPiece;
       if (left < need)
         break;
-      parts += batch.Length;
+      if ((coldShutBatches & (1 << i)) == 0)
+        parts += batches[i].Length;
       left -= need;
     }
     return new SandStationYield(parts, amount - parts * unitsPerPiece);
+  }
+
+  /// <summary>Machine seconds (120 per game hour) a pour's feed may stop while a piece is part filled before the piece cold-shuts.</summary>
+  public const float ColdShutSeconds = 6f;
+
+  /// <summary>The index of the batch the next metal enters: the first one not yet full.</summary>
+  /// <param name="amount">Units in the cavity.</param>
+  /// <param name="unitsPerPiece">Units one piece holds.</param>
+  /// <param name="batches">The fill order from <see cref="FillBatches"/>.</param>
+  /// <returns>The batch index, or -1 when every batch is full.</returns>
+  public static int BatchFilling(
+    int amount,
+    int unitsPerPiece,
+    IReadOnlyList<int[]> batches
+  ) {
+    int left = amount;
+    for (int i = 0; i < batches.Count; i++) {
+      int need = batches[i].Length * unitsPerPiece;
+      if (left < need)
+        return i;
+      left -= need;
+    }
+    return -1;
+  }
+
+  /// <summary>The cold-shut batches after a feed resumes: the batch the resumed metal enters is added when the feed stopped for longer than <see cref="ColdShutSeconds"/>.</summary>
+  /// <param name="coldShutBatches">Bit <c>i</c> set for each batch already cold-shut; at most 31 batches.</param>
+  /// <param name="stoppedSeconds">Machine seconds the feed stood still before it resumed.</param>
+  /// <param name="amount">Units in the cavity before the metal resumed.</param>
+  /// <param name="unitsPerPiece">Units one piece holds.</param>
+  /// <param name="batches">The fill order from <see cref="FillBatches"/>.</param>
+  /// <returns><paramref name="coldShutBatches"/>, with one more bit when the stop cold-shuts a batch; unchanged for a stop within the window or when every batch is already full.</returns>
+  public static int ColdShut(
+    int coldShutBatches,
+    float stoppedSeconds,
+    int amount,
+    int unitsPerPiece,
+    IReadOnlyList<int[]> batches
+  ) {
+    if (stoppedSeconds <= ColdShutSeconds)
+      return coldShutBatches;
+    int batch = BatchFilling(amount, unitsPerPiece, batches);
+    return batch < 0 ? coldShutBatches : coldShutBatches | (1 << batch);
   }
 
   /// <summary>The sand level a station is at once its casting is shaken out: full again.</summary>
