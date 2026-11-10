@@ -91,13 +91,14 @@ public static class StructureBreaks
   /// <summary>Blocks along X between the principals a run over one world places.</summary>
   private const int Stride = 32;
 
-  /// <summary>
-  /// Breaks each definition in <paramref name="defs"/> that declares <c>fillerOffsets</c> (plain or
-  /// by type) or an <c>ExRightClickConstructable</c> behaviour, in every variant it registers.
-  /// </summary>
+  /// <summary>Breaks each definition in <paramref name="defs"/> that declares <c>fillerOffsets</c>
+  /// (plain or by type) or an <c>ExRightClickConstructable</c> behaviour, in every variant it
+  /// registers.</summary>
   /// <remarks>Each variant is stood up in a world of its own, every break at a site of its own, so
-  /// variants may be broken side by side; the result lists them in the order the serial run
-  /// would.</remarks>
+  /// variants may be broken side by side; the result lists them in the order the serial run would.
+  /// When the environment variable <see cref="MatrixVariable"/> names a file, the run writes it as
+  /// a table of each definition's variants, filler cells, stages, breaks and seconds, replacing
+  /// the file at the process's first run.</remarks>
   /// <param name="assemblies">The assemblies whose registered classes the definitions name, exlib's
   /// own included; exlib's structure filler is taken from them.</param>
   /// <param name="prepare">Runs on each fresh world before the structure is placed, to register the
@@ -105,11 +106,7 @@ public static class StructureBreaks
   /// when <paramref name="maxDegreeOfParallelism"/> is above 1.</param>
   /// <param name="maxDegreeOfParallelism">The most variants broken at once; 1 breaks them one after
   /// the other on the calling thread. Values below 1 count as 1.</param>
-  /// <param name="sample">Which definitions and breaks are covered; every break of every
-  /// definition when null.</param>
-  /// <remarks>When the environment variable <see cref="MatrixVariable"/> names a file, the run
-  /// writes it as a table of each definition's variants, filler cells, stages, breaks and seconds,
-  /// replacing the file at the process's first run.</remarks>
+  /// <param name="sample">Which definitions and breaks are covered; all of them when null.</param>
   public static Result Run(
     IEnumerable<ExBlockDef> defs,
     IReadOnlyList<Assembly> assemblies,
@@ -248,16 +245,14 @@ public static class StructureBreaks
   /// gives each block it breaks, and each <see cref="BlockStructureFiller"/>, the world's api, its
   /// resolved <c>drops</c> and one <see cref="Block.OnLoaded"/>; registers a stand-in for every drop
   /// and material the world lacks; clears <see cref="TestWorld.Drops"/> before each break and keeps
-  /// what a break leaves.</remarks>
+  /// what a break leaves. A block that cannot be stood up or broken is a failure line.</remarks>
   /// <param name="world">A world <see cref="TestWorld.LoadAssets"/> loaded, holding the network
   /// types and mod systems the block entities need.</param>
   /// <param name="include">Which in-scope blocks to break; all of them when null.</param>
   /// <param name="sample">Which blocks and breaks are covered; every break of every block when
   /// null. A block type's first variant in code order is its first.</param>
-  /// <returns>The blocktypes (codes less their variant parts) and variants covered, as on the
-  /// code-first path.</returns>
-  /// <exception cref="Exception">What a structure filler's <see cref="Block.OnLoaded"/> throws; a
-  /// block that cannot be stood up or broken is a failure line.</exception>
+  /// <returns>The blocktypes (codes less their variant parts) and the variants covered.</returns>
+  /// <exception cref="Exception">What a filler's <see cref="Block.OnLoaded"/> throws.</exception>
   public static Result Run(
     TestWorld world,
     System.Func<Block, bool>? include = null,
