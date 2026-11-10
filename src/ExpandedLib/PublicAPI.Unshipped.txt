@@ -463,8 +463,11 @@ ExpandedLib.Networks.BlockNetwork.NodeKeys.get -> System.Collections.Generic.Has
 ExpandedLib.Networks.BlockNetworkModSystem.CanPlaceMember(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.Block! block, string! networkType, ref string! failureCode) -> bool
 ExpandedLib.Networks.BlockNetworkModSystem.GetNetworkAt(ExpandedLib.Networks.NodeKey key) -> ExpandedLib.Networks.BlockNetwork?
 ExpandedLib.Networks.BlockNetworkModSystem.ListenerTick(Vintagestory.API.Common.IBlockAccessor! blockAccessor, float dt) -> void
+ExpandedLib.Networks.BlockNetworkModSystem.Relink(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> void
 ExpandedLib.Networks.BlockNetworkModSystem.ReplaceNetworkType(string! networkType, System.Func<ExpandedLib.Networks.BlockNetwork!>! factory) -> bool
 ExpandedLib.Networks.BlockNetworkNode.RenderSelectionBoxes(Vintagestory.API.Common.BlockSelection! blockSel, Vintagestory.GameContent.RenderBoxDelegate! renderBoxHandler) -> void
+ExpandedLib.Networks.INetworkFarNeighbours
+ExpandedLib.Networks.INetworkFarNeighbours.FarNeighbours.get -> System.Collections.Generic.IEnumerable<Vintagestory.API.MathTools.BlockPos!>!
 ExpandedLib.Networks.INetworkMember.Crossings(Vintagestory.API.Common.IBlockAccessor! world, ExpandedLib.Networks.NodeKey key) -> System.Collections.Generic.IEnumerable<ExpandedLib.Networks.NodeCrossing>!
 ExpandedLib.Networks.INetworkMember.Slots(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> System.Collections.Generic.IReadOnlyList<byte>!
 ExpandedLib.Networks.INetworkPlacementCheck

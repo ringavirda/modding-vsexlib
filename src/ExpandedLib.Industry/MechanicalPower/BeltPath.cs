@@ -8,12 +8,8 @@ namespace ExpandedLib.Industry.MechanicalPower;
 /// <summary>A pulley as a belt sees it: the cell it turns in, the axis it turns about and its size.</summary>
 /// <param name="Cell">The cell holding the pulley's axis; the axis runs through its centre.</param>
 /// <param name="Axis">The axis the pulley turns about.</param>
-/// <param name="Size">The pulley size: <see cref="MpShaftSize.Line"/> is 1 m across, <see cref="MpShaftSize.Main"/> 2 m.</param>
-public readonly record struct BeltPulley(
-  BlockPos Cell,
-  EnumAxis Axis,
-  MpShaftSize Size
-);
+/// <param name="Size">The pulley size, 1 or 2, as <see cref="MpBeltWear.PulleyDiameter"/> reads it.</param>
+public readonly record struct BeltPulley(BlockPos Cell, EnumAxis Axis, int Size);
 
 /// <summary>One straight run of a belt: a line between the two rims, in the plane the pulleys turn in.</summary>
 /// <param name="Axis">The axis the pulleys turn about; the run lies in the plane across it.</param>
@@ -22,9 +18,11 @@ public readonly record struct BeltPulley(
 public readonly record struct BeltRun(EnumAxis Axis, Vec3d Start, Vec3d End);
 
 /// <summary>
-/// The path of an open belt between two pulleys: its two straight runs, the cells they cross, and the refusal
+/// The path of an open belt between two pulleys: its two straight runs, the cells it claims, and the refusal
 /// codes a belt that cannot be strung there is answered with. A strap is <see cref="WidthBlocks"/> wide along the
-/// axis, centred on the pulleys' plane, and has no thickness across it.
+/// axis, centred on the pulleys' plane, and has no thickness across it. A belt claims every cell a run crosses and
+/// every cell inside its loop, the closed outline of the two rim circles and the two runs, bar the pulleys' own
+/// cells; a run lying on a cell edge crosses neither cell it borders.
 /// </summary>
 public static class BeltPath {
   /// <summary>The axes of the two pulleys differ.</summary>
@@ -39,10 +37,10 @@ public static class BeltPath {
   /// <summary>The pulleys overlap or touch: their centres are at or under the sum of their radii apart.</summary>
   public const string Overlap = "exlib-belt-overlap";
 
-  /// <summary>A block in a cell the belt crosses holds collision boxes that meet the strap.</summary>
+  /// <summary>A block in a cell the belt claims holds collision boxes that meet the strap or its loop.</summary>
   public const string Blocked = "exlib-belt-blocked";
 
-  /// <summary>Another belt claims a cell this belt crosses.</summary>
+  /// <summary>Another belt claims a cell this belt claims.</summary>
   public const string CrossBelt = "exlib-belt-crossbelt";
 
   /// <summary>Width (blocks) of the strap along the axis.</summary>
@@ -51,10 +49,10 @@ public static class BeltPath {
   private const double Eps = 1e-9;
 
   /// <summary>Judges whether a belt can be strung between two pulleys, in the order of the codes above.</summary>
-  /// <param name="accessor">Reads the blocks in the cells the belt crosses.</param>
+  /// <param name="accessor">Reads the blocks in the cells the belt claims.</param>
   /// <param name="a">The first pulley.</param>
   /// <param name="b">The second pulley.</param>
-  /// <param name="claimed">Cells the pulleys hold besides their own, which the strap may cross.</param>
+  /// <param name="claimed">Cells the pulleys hold besides their own, which the belt may claim.</param>
   /// <param name="claimedElsewhere">Whether a cell is claimed by another belt; null when no belt claims any.</param>
   /// <returns>The first refusal code that applies, or null when the belt can be strung.</returns>
   public static string? Check(
@@ -74,11 +72,10 @@ public static class BeltPath {
     if (distance <= Radius(a) + Radius(b))
       return Overlap;
 
-    var runs = Runs(a, b);
     var excepted = new HashSet<BlockPos>(claimed) { a.Cell, b.Cell };
-    var cells = CrossedCells(a, b);
+    var cells = Footprint(a, b);
     foreach (BlockPos cell in cells)
-      if (!excepted.Contains(cell) && Meets(accessor, cell, runs))
+      if (!excepted.Contains(cell) && Meets(accessor, cell, a, b))
         return Blocked;
     if (claimedElsewhere != null)
       foreach (BlockPos cell in cells)
@@ -161,15 +158,67 @@ public static class BeltPath {
     return cells;
   }
 
-  /// <summary>Whether the block at a cell holds collision boxes that meet the strap of any of the runs. Boxes that
-  /// only touch it do not.</summary>
+  /// <summary>The cells inside the belt's loop: those whose interior lies inside the closed outline of the two rim
+  /// circles and the two runs, in the pulleys' plane, the pulleys' own cells excepted.</summary>
+  /// <param name="a">The first pulley.</param>
+  /// <param name="b">The second pulley.</param>
+  /// <exception cref="ArgumentException">As <see cref="Runs"/>.</exception>
+  public static IReadOnlyList<BlockPos> LoopCells(BeltPulley a, BeltPulley b) {
+    Runs(a, b);
+    (int iu, int iv) = PlaneAxes(a.Axis);
+    double ra = Radius(a);
+    double rb = Radius(b);
+    double au = Comp(a.Cell, iu) + 0.5;
+    double av = Comp(a.Cell, iv) + 0.5;
+    double bu = Comp(b.Cell, iu) + 0.5;
+    double bv = Comp(b.Cell, iv) + 0.5;
+    var cells = new List<BlockPos>();
+    for (
+      int u = (int)Math.Floor(Math.Min(au - ra, bu - rb));
+      u <= Math.Max(au + ra, bu + rb);
+      u++
+    )
+      for (
+        int v = (int)Math.Floor(Math.Min(av - ra, bv - rb));
+        v <= Math.Max(av + ra, bv + rb);
+        v++
+      ) {
+        BlockPos cell = At(a, u, v);
+        if (
+          !cell.Equals(a.Cell)
+          && !cell.Equals(b.Cell)
+          && InLoop(au, av, ra, bu, bv, rb, u, v, u + 1, v + 1)
+        )
+          cells.Add(cell);
+      }
+    return cells;
+  }
+
+  /// <summary>Every cell the belt claims: the cells its runs cross, then the cells of its loop not among them.</summary>
+  /// <param name="a">The first pulley.</param>
+  /// <param name="b">The second pulley.</param>
+  /// <exception cref="ArgumentException">As <see cref="Runs"/>.</exception>
+  public static IReadOnlyList<BlockPos> Footprint(BeltPulley a, BeltPulley b) {
+    var cells = new List<BlockPos>(CrossedCells(a, b));
+    var seen = new HashSet<BlockPos>(cells);
+    foreach (BlockPos cell in LoopCells(a, b))
+      if (seen.Add(cell))
+        cells.Add(cell);
+    return cells;
+  }
+
+  /// <summary>Whether the block at a cell holds collision boxes that meet the strap or the inside of the loop: a
+  /// box within the strap's width along the axis whose footprint in the plane has area inside the loop. Boxes that
+  /// only touch the loop's outline do not. Only the cell's own block is read.</summary>
   /// <param name="accessor">Reads the block.</param>
   /// <param name="pos">The cell.</param>
-  /// <param name="runs">The belt's runs.</param>
+  /// <param name="a">The first pulley of the belt.</param>
+  /// <param name="b">The second pulley of the belt.</param>
   public static bool Meets(
     IBlockAccessor accessor,
     BlockPos pos,
-    IReadOnlyList<BeltRun> runs
+    BeltPulley a,
+    BeltPulley b
   ) {
     Block block = accessor.GetBlock(pos);
     if (block.Id == 0)
@@ -177,40 +226,77 @@ public static class BeltPath {
     Cuboidf[]? boxes = block.GetCollisionBoxes(accessor, pos);
     if (boxes == null)
       return false;
-    foreach (BeltRun run in runs) {
-      (int iu, int iv) = PlaneAxes(run.Axis);
-      int ia = 3 - iu - iv;
-      double lo = Comp(run.Start, ia) - WidthBlocks / 2;
-      double hi = lo + WidthBlocks;
-      double su = Comp(run.Start, iu);
-      double sv = Comp(run.Start, iv);
-      double eu = Comp(run.End, iu);
-      double ev = Comp(run.End, iv);
-      double cu = Comp(pos, iu);
-      double cv = Comp(pos, iv);
-      double ca = Comp(pos, ia);
-      foreach (Cuboidf box in boxes)
-        if (
-          Comp(box, ia + 3) + ca > lo + Eps
-          && Comp(box, ia) + ca < hi - Eps
-          && Crosses(
-            su,
-            sv,
-            eu,
-            ev,
-            cu + Comp(box, iu),
-            cv + Comp(box, iv),
-            cu + Comp(box, iu + 3),
-            cv + Comp(box, iv + 3)
-          )
+    (int iu, int iv) = PlaneAxes(a.Axis);
+    int ia = 3 - iu - iv;
+    double lo = AxisCoord(a.Cell, a.Axis) + 0.5 - WidthBlocks / 2;
+    double hi = lo + WidthBlocks;
+    double ra = Radius(a);
+    double rb = Radius(b);
+    double au = Comp(a.Cell, iu) + 0.5;
+    double av = Comp(a.Cell, iv) + 0.5;
+    double bu = Comp(b.Cell, iu) + 0.5;
+    double bv = Comp(b.Cell, iv) + 0.5;
+    double cu = Comp(pos, iu);
+    double cv = Comp(pos, iv);
+    double ca = Comp(pos, ia);
+    foreach (Cuboidf box in boxes)
+      if (
+        Comp(box, ia + 3) + ca > lo + Eps
+        && Comp(box, ia) + ca < hi - Eps
+        && InLoop(
+          au,
+          av,
+          ra,
+          bu,
+          bv,
+          rb,
+          cu + Comp(box, iu),
+          cv + Comp(box, iv),
+          cu + Comp(box, iu + 3),
+          cv + Comp(box, iv + 3)
         )
-          return true;
-    }
+      )
+        return true;
     return false;
   }
 
+  // Whether the inside of the rectangle meets the inside of the hull of the two rim circles, which is the union of
+  // the circles centred along the line between the axes with the radius interpolated. The distance from a centre to
+  // the rectangle less the radius is convex along that line, so its minimum is found by ternary search.
+  private static bool InLoop(
+    double au,
+    double av,
+    double ra,
+    double bu,
+    double bv,
+    double rb,
+    double minU,
+    double minV,
+    double maxU,
+    double maxV
+  ) {
+    double Gap(double t) {
+      double pu = au + t * (bu - au);
+      double pv = av + t * (bv - av);
+      double du = Math.Max(Math.Max(minU - pu, pu - maxU), 0);
+      double dv = Math.Max(Math.Max(minV - pv, pv - maxV), 0);
+      return Math.Sqrt(du * du + dv * dv) - (ra + t * (rb - ra));
+    }
+    double lo = 0;
+    double hi = 1;
+    for (int i = 0; i < 80; i++) {
+      double m1 = lo + (hi - lo) / 3;
+      double m2 = hi - (hi - lo) / 3;
+      if (Gap(m1) < Gap(m2))
+        hi = m2;
+      else
+        lo = m1;
+    }
+    return Gap((lo + hi) / 2) < -Eps;
+  }
+
   private static double Radius(BeltPulley p) =>
-    BEBehaviorMpBelt.PulleyDiameter(p.Size) / 2;
+    MpBeltWear.PulleyDiameter(p.Size) / 2;
 
   private static double Distance(BeltPulley a, BeltPulley b) {
     (int iu, int iv) = PlaneAxes(a.Axis);

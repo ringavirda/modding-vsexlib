@@ -29,7 +29,7 @@ public class BeltPathsTests {
   private static readonly BlockPos Crossed = new(2, 1, 0, 0);
 
   private static BeltPulley Pulley(int x, int y, int z) =>
-    new(new BlockPos(x, y, z, 0), EnumAxis.Z, MpShaftSize.Line);
+    new(new BlockPos(x, y, z, 0), EnumAxis.Z, 1);
 
   private class Owner(BeltPulley? from, BeltPulley? to) : IBeltPathOwner {
     public readonly List<BlockPos> Blocked = [];
@@ -87,6 +87,20 @@ public class BeltPathsTests {
       paths.Check(Pulley(1, -1, 0), Pulley(3, 3, 0), [])
     );
     Assert.Null(paths.Check(Pulley(1, -1, 0), Pulley(3, 3, 0), [], first));
+  }
+
+  [Fact]
+  public void Second_belt_through_the_loop_refused() {
+    var world = new TestWorld();
+    var paths = BeltPaths.Start(world.Api);
+    var first = new Owner(Pulley(0, 0, 0), Pulley(4, 0, 0));
+    paths.Claim(first);
+
+    Assert.Same(first, paths.OwnerAt(new BlockPos(2, 0, 0, 0)));
+    Assert.Equal(
+      BeltPath.CrossBelt,
+      paths.Check(Pulley(1, -2, 0), Pulley(3, 2, 0), [])
+    );
   }
 
   [Fact]

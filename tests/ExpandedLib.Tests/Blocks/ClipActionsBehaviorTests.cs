@@ -391,6 +391,26 @@ public class ClipActionsBehaviorTests {
   }
 
   [Fact]
+  public void A_run_clip_at_rate_zero_does_not_advance_over_a_minute() {
+    using var world = NewWorld();
+    var (_, twin) = Stand(world, DoorDef("plainfan", "fan"));
+    twin.Frames(Dt, 1);
+
+    Behavior(twin).Run("spin", 1f);
+    twin.Frames(Dt, 30);
+    Behavior(twin).Run("spin", 0f);
+    twin.Frames(Dt, 2);
+    float held = FrameOf(twin, "spin");
+    twin.Frames(Dt, 3600);
+
+    Assert.Equal(held, FrameOf(twin, "spin"));
+    Assert.Equal(
+      0f,
+      Behavior(twin).animUtil.activeAnimationsByAnimCode["spin"].AnimationSpeed
+    );
+  }
+
+  [Fact]
   public void A_run_clip_picked_by_its_state_replaces_the_one_it_leaves() {
     using var world = NewWorld();
     var (door, twin) = Stand(

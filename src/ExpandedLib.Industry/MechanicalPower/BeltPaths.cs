@@ -5,7 +5,8 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
-/// <summary>A pulley that holds a strung belt: the cells the belt crosses are its to keep clear.</summary>
+/// <summary>A pulley that holds a strung belt: the cells the belt claims are its to keep clear. The owner calls
+/// <see cref="BeltPaths.Release"/> when it unloads or removes the belt.</summary>
 public interface IBeltPathOwner {
   /// <summary>The cell of the pulley that holds the belt; one owner a cell.</summary>
   BlockPos Pos { get; }
@@ -16,10 +17,10 @@ public interface IBeltPathOwner {
   /// <summary>The pulley the belt ends at, or null when no belt is strung.</summary>
   BeltPulley? To { get; }
 
-  /// <summary>Cells the two pulleys hold besides their own, which the strap may cross.</summary>
+  /// <summary>Cells the two pulleys hold besides their own, which the belt may claim.</summary>
   IReadOnlyCollection<BlockPos> ClaimedCells { get; }
 
-  /// <summary>Called on the server when a block that meets the strap is placed in a cell the belt crosses.</summary>
+  /// <summary>Called on the server when a block that meets the strap is placed in a cell the belt claims.</summary>
   /// <param name="pos">The cell the block was placed in.</param>
   void PathBlocked(BlockPos pos);
 }
@@ -27,7 +28,8 @@ public interface IBeltPathOwner {
 /// <summary>
 /// The server's record of every strung belt's cells. A belt owner <see cref="Claim"/>s its path when it is strung
 /// and <see cref="Release"/>s it when it is taken back or unloaded; the owners in a chunk column are claimed again
-/// as the column loads. A block placed in a claimed cell that meets the strap tells the owner.
+/// as the column loads. A block placed in a claimed cell that meets the strap or its loop tells the owner; only a
+/// player's placement is seen, as <c>DidPlaceBlock</c> reports it.
 /// </summary>
 public sealed class BeltPaths {
   private const string CacheKey = "exlib:beltpaths";
@@ -38,7 +40,8 @@ public sealed class BeltPaths {
 
   private sealed record Strung(
     IBeltPathOwner Owner,
-    BeltRun[] Runs,
+    BeltPulley From,
+    BeltPulley To,
     IReadOnlyList<BlockPos> Cells
   );
 
@@ -64,7 +67,7 @@ public sealed class BeltPaths {
       ? paths as BeltPaths
       : null;
 
-  /// <summary>The owner whose belt crosses a cell, or null.</summary>
+  /// <summary>The owner whose belt claims a cell, or null.</summary>
   /// <param name="cell">The cell.</param>
   public IBeltPathOwner? OwnerAt(BlockPos cell) =>
     _cells.TryGetValue(cell, out BlockPos? owner) ? _claims[owner].Owner : null;
@@ -92,7 +95,7 @@ public sealed class BeltPaths {
         && (self == null || !owner.Equals(self.Pos))
     );
 
-  /// <summary>Records the cells the owner's belt crosses, replacing what its cell held before; an owner with no
+  /// <summary>Records the cells the owner's belt claims, replacing what its cell held before; an owner with no
   /// strung belt holds none.</summary>
   /// <param name="owner">The owner, whose <see cref="IBeltPathOwner.From"/> and <see cref="IBeltPathOwner.To"/>
   /// are read now.</param>
@@ -106,11 +109,11 @@ public sealed class BeltPaths {
       to.Cell,
     };
     var cells = new List<BlockPos>();
-    foreach (BlockPos cell in BeltPath.CrossedCells(from, to))
+    foreach (BlockPos cell in BeltPath.Footprint(from, to))
       if (!excepted.Contains(cell))
         cells.Add(cell);
     BlockPos key = owner.Pos.Copy();
-    _claims[key] = new Strung(owner, BeltPath.Runs(from, to), cells);
+    _claims[key] = new Strung(owner, from, to, cells);
     foreach (BlockPos cell in cells)
       _cells[cell] = key;
   }
@@ -134,7 +137,7 @@ public sealed class BeltPaths {
     if (
       _cells.TryGetValue(pos, out BlockPos? key)
       && _claims[key] is { } claim
-      && BeltPath.Meets(_api.World.BlockAccessor, pos, claim.Runs)
+      && BeltPath.Meets(_api.World.BlockAccessor, pos, claim.From, claim.To)
     )
       claim.Owner.PathBlocked(pos.Copy());
   }

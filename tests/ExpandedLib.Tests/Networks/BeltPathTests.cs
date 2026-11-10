@@ -35,12 +35,18 @@ public class BeltPathTests {
     74
   );
 
+  private static readonly Block Full = TestBlocks.Configure(
+    new Block { CollisionBoxes = [new Cuboidf(0f, 0f, 0f, 1f, 1f, 1f)] },
+    "test:full",
+    75
+  );
+
   private static BeltPulley Pulley(
     int x,
     int y,
     int z,
     EnumAxis axis = EnumAxis.Z,
-    MpShaftSize size = MpShaftSize.Line
+    int size = 1
   ) => new(new BlockPos(x, y, z, 0), axis, size);
 
   private static string? Check(
@@ -105,15 +111,15 @@ public class BeltPathTests {
       BeltPath.Overlap,
       Check(
         world,
-        Pulley(0, 0, 0, size: MpShaftSize.Main),
-        Pulley(2, 0, 0, size: MpShaftSize.Main)
+        Pulley(0, 0, 0, size: 2),
+        Pulley(2, 0, 0, size: 2)
       )
     );
     Assert.Null(
       Check(
         world,
-        Pulley(0, 0, 0, size: MpShaftSize.Main),
-        Pulley(3, 0, 0, size: MpShaftSize.Main)
+        Pulley(0, 0, 0, size: 2),
+        Pulley(3, 0, 0, size: 2)
       )
     );
   }
@@ -128,6 +134,39 @@ public class BeltPathTests {
     world.Place(Crossed, FarSlab);
 
     Assert.Null(Check(world, SlantA, SlantB));
+  }
+
+  [Fact]
+  public void Straight_size_1_belt_claims_its_row() {
+    var world = new TestWorld();
+    BeltPulley a = Pulley(0, 0, 0);
+    BeltPulley b = Pulley(4, 0, 0);
+
+    world.Place(new BlockPos(2, 0, 0, 0), Full);
+    Assert.Equal(BeltPath.Blocked, Check(world, a, b));
+
+    world = new TestWorld();
+    world.Place(new BlockPos(2, 1, 0, 0), Full);
+    world.Place(new BlockPos(2, -1, 0, 0), Full);
+    Assert.Null(Check(world, a, b));
+  }
+
+  [Fact]
+  public void Size_2_belt_claims_the_rows_it_crosses() {
+    var world = new TestWorld();
+    BeltPulley a = Pulley(0, 0, 0, size: 2);
+    BeltPulley b = Pulley(5, 0, 0, size: 2);
+
+    foreach (int row in new[] { 1, -1 }) {
+      world = new TestWorld();
+      world.Place(new BlockPos(2, row, 0, 0), Full);
+      Assert.Equal(BeltPath.Blocked, Check(world, a, b));
+    }
+
+    world = new TestWorld();
+    world.Place(new BlockPos(2, 2, 0, 0), Full);
+    world.Place(new BlockPos(2, -2, 0, 0), Full);
+    Assert.Null(Check(world, a, b));
   }
 
   [Fact]
@@ -180,8 +219,8 @@ public class BeltPathTests {
       BeltPath.Overlap,
       Check(
         world,
-        Pulley(0, 0, 0, size: MpShaftSize.Main),
-        Pulley(1, 1, 0, size: MpShaftSize.Main)
+        Pulley(0, 0, 0, size: 2),
+        Pulley(1, 1, 0, size: 2)
       )
     );
     Assert.Equal(
@@ -199,7 +238,7 @@ public class BeltPathTests {
   [Fact]
   public void The_runs_are_tangent_to_both_rims_and_the_cells_lie_in_the_plane() {
     BeltRun[] runs = BeltPath.Runs(
-      Pulley(0, 0, 0, size: MpShaftSize.Main),
+      Pulley(0, 0, 0, size: 2),
       Pulley(4, 0, 0)
     );
 
@@ -223,7 +262,7 @@ public class BeltPathTests {
     }
     foreach (
       BlockPos cell in BeltPath.CrossedCells(
-        Pulley(0, 0, 0, size: MpShaftSize.Main),
+        Pulley(0, 0, 0, size: 2),
         Pulley(4, 0, 0)
       )
     )
