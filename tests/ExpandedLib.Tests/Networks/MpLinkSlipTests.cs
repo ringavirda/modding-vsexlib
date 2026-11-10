@@ -125,12 +125,7 @@ public class MpLinkSlipTests {
     Put(w, F, host, new LinkMember(host));
     Put(w, D, d, new CellMember(d, "wn"));
     var belt = new BEBehaviorMpBelt(host);
-    belt.Connect(
-      NodeKey.Port(F, 0),
-      NodeKey.Port(F, 1),
-      1,
-      1
-    );
+    belt.Connect(NodeKey.Port(F, 0), NodeKey.Port(F, 1), 1, 1);
     host.Behaviors.Add(belt);
     for (int i = 0; i < 200; i++)
       Tick(w);
@@ -162,12 +157,7 @@ public class MpLinkSlipTests {
     Put(w, D, d, new CellMember(d, "wn"));
     Put(w, C, c, new CellMember(c, "ne"));
     var belt = new BEBehaviorMpBelt(host);
-    belt.Connect(
-      NodeKey.Port(F, 0),
-      NodeKey.Port(F, 1),
-      1,
-      2
-    );
+    belt.Connect(NodeKey.Port(F, 0), NodeKey.Port(F, 1), 1, 2);
     host.Behaviors.Add(belt);
 
     for (int i = 0; i < 20; i++)
@@ -249,11 +239,8 @@ public class MpLinkSlipTests {
   [InlineData(1, 2, 390f)]
   [InlineData(2, 1, 780f)]
   [InlineData(2, 2, 1300f)]
-  public void Belt_CapByPulleySize(
-    int from,
-    int to,
-    float cap
-  ) => Assert.Equal(cap, MpBeltWear.CapNm(from, to), 2);
+  public void Belt_CapByPulleySize(int from, int to, float cap) =>
+    Assert.Equal(cap, MpBeltWear.CapNm(from, to), 2);
 
   // Fails when the belt's life is taken from another torque or speed than the slip torque at the rated speed, or from another span than one in-game day.
   [Fact]
@@ -266,12 +253,7 @@ public class MpLinkSlipTests {
     Put(w, F, host, new LinkMember(host));
     Put(w, D, d, new CellMember(d, "wn"));
     var belt = new BEBehaviorMpBelt(host);
-    belt.Connect(
-      NodeKey.Port(F, 0),
-      NodeKey.Port(F, 1),
-      1,
-      1
-    );
+    belt.Connect(NodeKey.Port(F, 0), NodeKey.Port(F, 1), 1, 1);
     host.Behaviors.Add(belt);
     Run(w).FailureOverride = true;
     Run(w)
@@ -318,24 +300,14 @@ public class MpLinkSlipTests {
   [Fact]
   public void Belt_SavesBroken() {
     var belt = new BEBehaviorMpBelt(new Host());
-    belt.Connect(
-      NodeKey.Port(F, 0),
-      NodeKey.Port(F, 1),
-      1,
-      1
-    );
+    belt.Connect(NodeKey.Port(F, 0), NodeKey.Port(F, 1), 1, 1);
     belt.Wear = 1f;
     belt.Break();
     var tree = new TreeAttribute();
     belt.ToTreeAttributes(tree);
 
     var loaded = new BEBehaviorMpBelt(new Host());
-    loaded.Connect(
-      NodeKey.Port(F, 0),
-      NodeKey.Port(F, 1),
-      1,
-      1
-    );
+    loaded.Connect(NodeKey.Port(F, 0), NodeKey.Port(F, 1), 1, 1);
     loaded.FromTreeAttributes(tree, null!);
 
     Assert.True(loaded.Broken);
@@ -358,9 +330,7 @@ public class MpLinkSlipTests {
     belt.Initialize(
       Substitute.For<ICoreAPI>(),
       new JsonObject(
-        JToken.Parse(
-          "{\"fromPulley\":1,\"toPulley\":2,\"crossed\":true}"
-        )
+        JToken.Parse("{\"fromPulley\":1,\"toPulley\":2,\"crossed\":true}")
       )
     );
 

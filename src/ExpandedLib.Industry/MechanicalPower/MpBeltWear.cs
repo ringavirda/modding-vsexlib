@@ -74,9 +74,7 @@ public sealed class MpBeltWear {
   }
 
   private static float GripNm(int size) =>
-    size == 2
-      ? ExlibValues.MpBeltCapSize2Nm
-      : ExlibValues.MpBeltCapSize1Nm;
+    size == 2 ? ExlibValues.MpBeltCapSize2Nm : ExlibValues.MpBeltCapSize1Nm;
 
   /// <summary>Wears the belt by the energy it slipped; does nothing for no slip, no time or a belt with no life.</summary>
   /// <param name="slipPowerW">Power (W) the belt dissipated slipping.</param>
