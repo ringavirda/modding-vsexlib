@@ -1158,6 +1158,7 @@ public sealed partial class TestWorld : IDisposable {
     w.Config.Returns(Config.Tree);
     // Particle/sound helpers read world.Rand.
     w.Rand.Returns(new Random(1));
+    w.ElapsedMilliseconds.Returns(_ => _clockMs);
     // A mod system's own tick (MechanicalPowerMod's 20 ms network step) runs beside the block
     // entities'.
     w.RegisterGameTickListener(
@@ -1401,6 +1402,7 @@ public sealed partial class TestWorld : IDisposable {
     w.Logger.Returns(Log);
     w.Config.Returns(Config.Tree);
     w.Rand.Returns(new Random(1));
+    w.ElapsedMilliseconds.Returns(_ => _clockMs);
     w.GetBlock(Arg.Any<AssetLocation>())
       .Returns(ci => GetByCode(ci.Arg<AssetLocation>()));
     w.GetBlock(Arg.Any<int>())

@@ -160,8 +160,11 @@ ExpandedLib.Industry.Casting.SandStationLevel.Full = 2 -> ExpandedLib.Industry.C
 ExpandedLib.Industry.Casting.SandStationLevel.Half = 1 -> ExpandedLib.Industry.Casting.SandStationLevel
 ExpandedLib.Industry.Casting.SandStationLogic
 const ExpandedLib.Industry.Casting.SandStationLogic.AfterShakeOut = ExpandedLib.Industry.Casting.SandStationLevel.Full -> ExpandedLib.Industry.Casting.SandStationLevel
+const ExpandedLib.Industry.Casting.SandStationLogic.ColdShutSeconds = 6 -> float
 static ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFaceOf(Vintagestory.API.Common.Block! block) -> Vintagestory.API.MathTools.BlockFacing?
+static ExpandedLib.Industry.Casting.SandStationLogic.BatchFilling(int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> int
 static ExpandedLib.Industry.Casting.SandStationLogic.CanIntake(bool hasImpression, bool cavityFull, bool solidified) -> bool
+static ExpandedLib.Industry.Casting.SandStationLogic.ColdShut(int coldShutBatches, float stoppedSeconds, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> int
 static ExpandedLib.Industry.Casting.SandStationLogic.Decide(bool holdingSand, bool holdingPattern, bool emptyHand, ExpandedLib.Industry.Casting.SandStationLevel sand, bool hasImpression, bool hasMetal, bool isHardened, bool closedImpression = false) -> ExpandedLib.Industry.Casting.SandStationAction
 static ExpandedLib.Industry.Casting.SandStationLogic.FillBatches(ExpandedLib.Industry.Casting.FillOrder order, int pieces, int pressed) -> System.Collections.Generic.IReadOnlyList<int[]!>!
 static ExpandedLib.Industry.Casting.SandStationLogic.FillingMeshKey(string! shapeRef, int pressed) -> string!
@@ -172,7 +175,7 @@ static ExpandedLib.Industry.Casting.SandStationLogic.PieceFills(int amount, int 
 static ExpandedLib.Industry.Casting.SandStationLogic.Press(string! impressedCode, string! heldCode, int pressed, int pieces) -> ExpandedLib.Industry.Casting.SandStationPressOutcome
 static ExpandedLib.Industry.Casting.SandStationLogic.PrunedToPressed(Vintagestory.API.Common.Shape! shape, int pressed) -> Vintagestory.API.Common.Shape!
 static ExpandedLib.Industry.Casting.SandStationLogic.SandAfterImprint(ExpandedLib.Industry.Casting.SandStationLevel sand, bool closedPattern) -> ExpandedLib.Industry.Casting.SandStationLevel
-static ExpandedLib.Industry.Casting.SandStationLogic.YieldOf(bool misrun, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> ExpandedLib.Industry.Casting.SandStationYield
+static ExpandedLib.Industry.Casting.SandStationLogic.YieldOf(bool misrun, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches, int coldShutBatches = 0) -> ExpandedLib.Industry.Casting.SandStationYield
 ExpandedLib.Industry.Casting.SandStationPressOutcome
 ExpandedLib.Industry.Casting.SandStationPressOutcome.Bed = 0 -> ExpandedLib.Industry.Casting.SandStationPressOutcome
 ExpandedLib.Industry.Casting.SandStationPressOutcome.Full = 1 -> ExpandedLib.Industry.Casting.SandStationPressOutcome
