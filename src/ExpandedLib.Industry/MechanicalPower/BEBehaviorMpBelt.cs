@@ -10,9 +10,8 @@ namespace ExpandedLib.Industry.MechanicalPower;
 
 /// <summary>
 /// A belt between two pulleys of an "mpshaft" run, its law in <see cref="MpBeltWear"/>. Declared, it takes ports 0 and
-/// 1 of its cell, <c>fromPulley</c> and <c>toPulley</c> (size 1 or 2, 1 when absent) and <c>crossed</c>. Strung with
-/// <see cref="Connect"/> to a key in another cell, it joins the two cells' runs into one: this end holds the link, the
-/// belt of the far cell holds the back pointer, and each lists the other through <see cref="INetworkFarNeighbours"/>.
+/// 1 of its cell, <c>fromPulley</c> and <c>toPulley</c> (size 1 or 2, 1 when absent) and <c>crossed</c>; strung with
+/// <see cref="Connect"/> to another cell, it joins the two cells' runs.
 /// </summary>
 [BlockEntityBehaviorRegister]
 public class BEBehaviorMpBelt(BlockEntity blockentity)
