@@ -26,6 +26,8 @@ internal sealed class SetupWorldView(
 
   public BlockEntity? BlockEntityAt(BlockPos pos) => world.GetBlockEntity(pos);
 
+  public BlockPos Absolute(BlockPos local) => local;
+
   public Block BlockAt(BlockPos pos) => world.GetBlock(pos);
 
   public object? NetworkAt(BlockPos pos, string type) =>

@@ -17,6 +17,7 @@
   "facing-u": "top",
   "facing-d": "bottom",
   "block-structurefiller": "Machine",
+  "block-creativempenergy": "Creative shaft source",
   "blockhelp-rotate": "Rotate",
   "blockhelp-crowbar-breakout": "Break out the set metal",
   "blockhelp-mulblock-struc-show": "Show multiblock structure",

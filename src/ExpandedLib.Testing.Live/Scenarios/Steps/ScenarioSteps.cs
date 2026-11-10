@@ -32,6 +32,7 @@ internal static class ScenarioSteps {
       new StandStep(),
       new ReloadStep(),
       new TimespeedStep(),
+      new PowerStep(),
     }.ToDictionary(s => s.Kind);
 
   public static IEnumerable<string> Kinds => Table.Keys;
