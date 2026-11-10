@@ -160,6 +160,10 @@ public class ExlibConfig : IExVersionedConfig {
   [ExConfigRange(0.01, 1000)]
   public float MpBeltRatedRadS { get; set; } = 2f;
 
+  /// <summary>Furthest (blocks) two pulley axes may stand apart, across the axis, for a belt to string between them.</summary>
+  [ExConfigRange(1, 16)]
+  public float MpBeltReachBlocks { get; set; } = 5f;
+
   /// <summary>Torque (N-m) a clutch on a line shaft carries once its clamp is fully on.</summary>
   [ExConfigRange(0, 100000)]
   public float MpClutchCapLineNm { get; set; } = 2000f;
