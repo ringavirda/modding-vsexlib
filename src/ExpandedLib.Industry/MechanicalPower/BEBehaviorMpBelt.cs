@@ -1,152 +1,212 @@
 using System;
+using System.Collections.Generic;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
 /// <summary>
-/// A belt between two pulleys of an "mpshaft" run: it carries up to its cap, slips at <c>MpBeltSlipFraction</c> of
-/// it, and wears by the energy it slips. Declared, it takes ports 0 and 1 of its cell, <c>fromPulley</c> and
-/// <c>toPulley</c> ("line" or "main", line when absent) and <c>crossed</c>; wear and a snap are saved.
+/// A belt between two pulleys of an "mpshaft" run, its law in <see cref="MpBeltWear"/>. Declared, it takes ports 0 and
+/// 1 of its cell, <c>fromPulley</c> and <c>toPulley</c> (size 1 or 2, 1 when absent) and <c>crossed</c>; strung with
+/// <see cref="Connect"/> to another cell, it joins the two cells' runs.
 /// </summary>
 [BlockEntityBehaviorRegister]
 public class BEBehaviorMpBelt(BlockEntity blockentity)
   : BlockEntityBehavior(blockentity),
-    IMpEnergyLink {
-  private const string WearKey = "mpBeltWear";
-  private const string BrokenKey = "mpBeltBroken";
-  private const float DaySeconds = 24f * 3600f;
+    IMpEnergyLink,
+    INetworkFarNeighbours {
+  private const string FarKey = "mpBeltFar";
+  private const string FromKeyName = "mpBeltFrom";
+  private const string ToKeyName = "mpBeltTo";
+  private const string BackKey = "mpBeltBack";
+  private const string SizesKey = "mpBeltSizes";
+  private const string SignKey = "mpBeltSign";
 
+  private readonly MpBeltWear _belt = new();
+  private BlockPos? _far;
+  private bool _back;
   private NodeKey _from;
   private NodeKey _to;
-  private MpShaftSize _fromPulley = MpShaftSize.Line;
-  private MpShaftSize _toPulley = MpShaftSize.Line;
   private bool _connected;
   private int _sign = 1;
 
-  /// <summary>Raised once when the belt wears out with shaft failure on; the owner drops the belt as scrap.</summary>
-  public event Action? Snapped;
+  /// <summary>Raised once when the belt wears out with shaft failure on; the belt carries nothing from then on. Only the end that holds the link raises it.</summary>
+  public event Action? Snapped {
+    add => _belt.Snapped += value;
+    remove => _belt.Snapped -= value;
+  }
 
-  /// <summary>Accumulated wear, 0 to 1; saved with the block. At 1 the belt is worn out.</summary>
-  public float Wear { get; set; }
+  /// <summary>Accumulated wear, 0 to 1; saved with the block. At 1 the belt is worn out. At the back end of a belt strung across cells it reads and writes the holder's.</summary>
+  public float Wear {
+    get => Wearing.Wear;
+    set => Wearing.Wear = value;
+  }
 
-  /// <summary>True once the belt has snapped; it carries nothing from then on.</summary>
-  public bool Broken { get; private set; }
+  /// <summary>True once the belt has snapped; it carries nothing from then on. At the back end it reads the holder's.</summary>
+  public bool Broken => Wearing.Broken;
 
   public NodeKey From => _from;
 
   public NodeKey To => _to;
 
-  public float Ratio => PulleyDiameter(_toPulley) / PulleyDiameter(_fromPulley);
+  public float Ratio =>
+    MpBeltWear.PulleyDiameter(_belt.ToSize)
+    / MpBeltWear.PulleyDiameter(_belt.FromSize);
 
   public int Sign => _sign;
 
   public float Efficiency => 1f;
 
-  public bool Engaged => _connected && !Broken;
+  /// <summary>False at the back end of a belt strung across cells, which holds only the pointer to the end that holds the link.</summary>
+  public bool Engaged => _connected && !_back && !Broken;
 
-  public float CapNm => CapFor(_fromPulley, _toPulley);
+  /// <summary>The cell at the other end of a belt strung across cells, or null for a belt within one cell or one not fitted.</summary>
+  public BlockPos? FarCell => _connected ? _far : null;
 
-  public bool WornOut => Wear >= 1f;
+  /// <summary>The far cell, listed so the graph walk joins it when its own belt lists this cell back.</summary>
+  public IEnumerable<BlockPos> FarNeighbours => FarCell is { } far ? [far] : [];
+
+  private MpBeltWear Wearing =>
+    _back && _far != null && BeltAt(_far) is { } holder ? holder._belt : _belt;
+
+  public float CapNm => MpBeltWear.CapNm(_belt.FromSize, _belt.ToSize);
+
+  public bool WornOut => Wearing.WornOut;
 
   public override void Initialize(ICoreAPI api, JsonObject properties) {
     base.Initialize(api, properties);
     if (_connected)
       return;
-    var from = MpShaftSize.Line;
-    var to = MpShaftSize.Line;
-    string? named = properties?["fromPulley"].AsString();
-    if (named != null)
-      Enum.TryParse(named, true, out from);
-    named = properties?["toPulley"].AsString();
-    if (named != null)
-      Enum.TryParse(named, true, out to);
     Connect(
       NodeKey.Port(Blockentity.Pos, 0),
       NodeKey.Port(Blockentity.Pos, 1),
-      from,
-      to,
+      properties?["fromPulley"].AsInt(1) ?? 1,
+      properties?["toPulley"].AsInt(1) ?? 1,
       properties?["crossed"].AsBool() ?? false
     );
   }
 
-  /// <summary>Fits the belt between two pulleys.</summary>
-  /// <param name="from">Port key of the driving pulley's side.</param>
-  /// <param name="to">Port key of the driven pulley's side.</param>
-  /// <param name="fromPulley">Size of the pulley at <paramref name="from"/>: <see cref="MpShaftSize.Line"/> for size 1, <see cref="MpShaftSize.Main"/> for size 2.</param>
-  /// <param name="toPulley">Size of the pulley at <paramref name="to"/>, the same two values.</param>
+  /// <summary>Fits the belt between two pulleys. When <paramref name="to"/> lies in another cell the belt is strung across: the belt behaviour of that cell, when it has one, takes the back pointer, and the two runs are joined.</summary>
+  /// <param name="from">Port key of the driving pulley's side, in this cell when the belt is strung across.</param>
+  /// <param name="to">Port key of the driven pulley's side; a key in another cell strings the belt across to it.</param>
+  /// <param name="fromSize">Size of the pulley at <paramref name="from"/>, 1 or 2.</param>
+  /// <param name="toSize">Size of the pulley at <paramref name="to"/>, 1 or 2.</param>
   /// <param name="crossed">True when the belt is crossed, so the driven pulley turns against the driving one.</param>
-  /// <exception cref="ArgumentException">A pulley size is <see cref="MpShaftSize.None"/>.</exception>
+  /// <exception cref="ArgumentException">A pulley size is not 1 or 2, or the belt is strung across and <paramref name="from"/> is not in this cell.</exception>
   public void Connect(
     NodeKey from,
     NodeKey to,
-    MpShaftSize fromPulley,
-    MpShaftSize toPulley,
+    int fromSize,
+    int toSize,
     bool crossed = false
   ) {
-    PulleyDiameter(fromPulley);
-    PulleyDiameter(toPulley);
+    bool across = !Equals(to.Pos, from.Pos);
+    if (across && !from.Pos.Equals(Blockentity.Pos))
+      throw new ArgumentException(
+        "A belt strung across cells holds its driving end in its own cell.",
+        nameof(from)
+      );
+    _belt.Fit(fromSize, toSize);
+    BlockPos? before = _far;
+    ReleaseFar();
     _from = from;
     _to = to;
-    _fromPulley = fromPulley;
-    _toPulley = toPulley;
     _sign = crossed ? -1 : 1;
+    _back = false;
+    _far = across ? to.Pos.Copy() : null;
     _connected = true;
+    Blockentity.MarkDirty();
+    if (_far != null)
+      BeltAt(_far)?.TakeBack(from, to, Blockentity.Pos, fromSize, toSize);
+    if (_far != null || before != null)
+      Relink(_far, before);
   }
 
-  /// <summary>Pulley diameter in metres: 1 for size 1, 2 for size 2.</summary>
-  /// <exception cref="ArgumentException"><paramref name="size"/> is <see cref="MpShaftSize.None"/>.</exception>
-  public static float PulleyDiameter(MpShaftSize size) =>
-    size switch {
-      MpShaftSize.Line => 1f,
-      MpShaftSize.Main => 2f,
-      _ => throw new ArgumentException(
-        "A pulley is size 1 or 2.",
-        nameof(size)
-      ),
-    };
-
-  /// <summary>Torque (N*m), at the driving pulley's shaft, a belt carries before it slips: the tension the smaller grip allows, which the pulley it grips on sets, taken to the driving shaft.</summary>
-  /// <param name="fromPulley">Size of the driving pulley.</param>
-  /// <param name="toPulley">Size of the driven pulley.</param>
-  /// <exception cref="ArgumentException">A pulley size is <see cref="MpShaftSize.None"/>.</exception>
-  public static float CapFor(MpShaftSize fromPulley, MpShaftSize toPulley) {
-    float dFrom = PulleyDiameter(fromPulley);
-    float dTo = PulleyDiameter(toPulley);
-    return MathF.Min(GripNm(fromPulley), GripNm(toPulley) * dFrom / dTo);
+  /// <summary>Takes the belt off: both ends of a belt strung across are cleared and the graph is walked again, splitting the runs it joined. A belt within one cell is left fitted.</summary>
+  public void Disconnect() {
+    BlockPos? far = _far;
+    if (far == null)
+      return;
+    ReleaseFar();
+    _far = null;
+    _back = false;
+    _connected = false;
+    Blockentity.MarkDirty();
+    Relink(far, null);
   }
 
-  private static float GripNm(MpShaftSize pulley) =>
-    pulley == MpShaftSize.Main
-      ? ExlibValues.MpBeltCapSize2Nm
-      : ExlibValues.MpBeltCapSize1Nm;
+  private void TakeBack(
+    NodeKey from,
+    NodeKey to,
+    BlockPos holder,
+    int fromSize,
+    int toSize
+  ) {
+    if (!holder.Equals(_far))
+      ReleaseFar();
+    _belt.Fit(fromSize, toSize);
+    _from = from;
+    _to = to;
+    _far = holder.Copy();
+    _back = true;
+    _connected = true;
+    Blockentity.MarkDirty();
+  }
 
-  public float SlipTorque(float relativeSpeed) =>
-    ExlibValues.MpBeltSlipFraction * CapNm;
+  // Clears the pointer the far end holds to this cell.
+  private void ReleaseFar() {
+    if (
+      _far is { } far
+      && BeltAt(far) is { } other
+      && Blockentity.Pos.Equals(other._far)
+    ) {
+      other._far = null;
+      other._back = false;
+      other._connected = false;
+      other.Blockentity.MarkDirty();
+    }
+  }
+
+  private BEBehaviorMpBelt? BeltAt(BlockPos pos) =>
+    Blockentity
+      .Api?.World.BlockAccessor.GetBlockEntity(pos)
+      ?.GetBehavior<BEBehaviorMpBelt>();
+
+  private void Relink(params BlockPos?[] cells) {
+    if (Blockentity.Api is not { Side: EnumAppSide.Server } api)
+      return;
+    var system = api.ModLoader.GetModSystem<BlockNetworkModSystem>();
+    IBlockAccessor world = api.World.BlockAccessor;
+    system.Relink(world, Blockentity.Pos);
+    foreach (BlockPos? cell in cells)
+      if (cell != null)
+        system.Relink(world, cell);
+  }
+
+  public float SlipTorque(float relativeSpeed) => _belt.SlipTorque;
 
   /// <summary>Energy (J) the belt can slip before it wears out: its slip torque at <c>MpBeltRatedRadS</c> over one in-game day.</summary>
-  public float LifeJ =>
-    SlipTorque(0f) * ExlibValues.MpBeltRatedRadS * DaySeconds;
+  public float LifeJ => _belt.LifeJ;
 
-  public void Advance(float dt, float hours, float slipPowerW) {
-    if (slipPowerW <= 0f || hours <= 0f || LifeJ <= 0f)
-      return;
-    Wear = MathF.Min(1f, Wear + slipPowerW * hours * 3600f / LifeJ);
-  }
+  public void Advance(float dt, float hours, float slipPowerW) =>
+    _belt.Advance(slipPowerW, hours);
 
-  public void Break() {
-    if (Broken)
-      return;
-    Broken = true;
-    Snapped?.Invoke();
-  }
+  public void Break() => _belt.Break();
 
   public override void ToTreeAttributes(ITreeAttribute tree) {
     base.ToTreeAttributes(tree);
-    tree.SetFloat(WearKey, Wear);
-    tree.SetBool(BrokenKey, Broken);
+    _belt.Save(tree);
+    if (_far == null || !_connected)
+      return;
+    SetPos(tree, FarKey, _far);
+    SetKey(tree, FromKeyName, _from);
+    SetKey(tree, ToKeyName, _to);
+    tree.SetBool(BackKey, _back);
+    tree.SetInt(SizesKey, _belt.FromSize * 10 + _belt.ToSize);
+    tree.SetInt(SignKey, _sign);
   }
 
   public override void FromTreeAttributes(
@@ -154,7 +214,43 @@ public class BEBehaviorMpBelt(BlockEntity blockentity)
     IWorldAccessor worldAccessForResolve
   ) {
     base.FromTreeAttributes(tree, worldAccessForResolve);
-    Wear = tree.GetFloat(WearKey);
-    Broken = tree.GetBool(BrokenKey);
+    _belt.Load(tree);
+    if (!tree.HasAttribute(FarKey + "X")) {
+      if (_far != null) {
+        _far = null;
+        _back = false;
+        _connected = false;
+      }
+      return;
+    }
+    _far = GetPos(tree, FarKey);
+    _from = GetKey(tree, FromKeyName);
+    _to = GetKey(tree, ToKeyName);
+    _back = tree.GetBool(BackKey);
+    int sizes = tree.GetInt(SizesKey, 11);
+    _belt.Fit(sizes / 10, sizes % 10);
+    _sign = tree.GetInt(SignKey, 1);
+    _connected = true;
   }
+
+  private static void SetPos(ITreeAttribute tree, string name, BlockPos pos) {
+    tree.SetInt(name + "X", pos.X);
+    tree.SetInt(name + "Y", pos.Y);
+    tree.SetInt(name + "Z", pos.Z);
+  }
+
+  private static BlockPos GetPos(ITreeAttribute tree, string name) =>
+    new(
+      tree.GetInt(name + "X"),
+      tree.GetInt(name + "Y"),
+      tree.GetInt(name + "Z")
+    );
+
+  private static void SetKey(ITreeAttribute tree, string name, NodeKey key) {
+    SetPos(tree, name, key.Pos);
+    tree.SetInt(name + "Slot", key.Slot);
+  }
+
+  private static NodeKey GetKey(ITreeAttribute tree, string name) =>
+    new(GetPos(tree, name), (byte)tree.GetInt(name + "Slot"));
 }

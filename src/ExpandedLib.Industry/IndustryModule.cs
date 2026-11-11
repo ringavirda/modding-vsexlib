@@ -55,11 +55,13 @@ public sealed class IndustryModule : IExModule, IExDefinitionContributor {
     RegisterNetworkTypes(api.ModLoader.GetModSystem<BlockNetworkModSystem>());
 
   /// <summary>Opens the server end of <see cref="ExSounds"/>' channel and of the mechanical-power run-angle channel, and
-  /// guards molten holders against an ordinary break (<see cref="MoltenBreakGuard"/>).</summary>
+  /// guards molten holders against an ordinary break (<see cref="MoltenBreakGuard"/>) and starts the record of strung
+  /// belts' paths (<see cref="BeltPaths"/>).</summary>
   public void StartServerSide(ICoreServerAPI api) {
     ExSounds.StartServer(api);
     MpRunAngles.StartServer(api);
     MoltenBreakGuard.Register(api);
+    BeltPaths.Start(api);
     _openedServerChannel = true;
   }
 

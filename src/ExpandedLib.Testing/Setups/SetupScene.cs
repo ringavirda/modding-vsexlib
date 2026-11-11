@@ -478,10 +478,7 @@ public sealed partial class SetupScene : IDisposable
   private static int AngleOf(Block block) =>
     block switch
     {
-      BlockFilledMegastructure mega => mega.StructureAngle,
-      IFillerHost => ExOrientation.AngleFromSide(
-        block.Variant?["side"] ?? block.Variant?["orientation"]
-      ),
+      IFillerHost host => host.StructureAngle,
       _ => 0,
     };
 

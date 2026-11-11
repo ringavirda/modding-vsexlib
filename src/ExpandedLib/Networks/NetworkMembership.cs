@@ -64,6 +64,23 @@ public static class NetworkMembership {
       : null;
   }
 
+  /// <summary>The far cells listed by the block entity at <paramref name="pos"/> and its behaviours through <see cref="INetworkFarNeighbours"/>; empty when it lists none.</summary>
+  internal static IEnumerable<BlockPos> FarOf(
+    IBlockAccessor world,
+    BlockPos pos
+  ) {
+    BlockEntity? be = EntityAt(world, pos);
+    if (be is INetworkFarNeighbours own)
+      foreach (BlockPos far in own.FarNeighbours)
+        yield return far;
+    foreach (
+      INetworkFarNeighbours holder in be?.Behaviors.OfType<INetworkFarNeighbours>()
+        ?? []
+    )
+      foreach (BlockPos far in holder.FarNeighbours)
+        yield return far;
+  }
+
   /// <summary>Whether the cell at <paramref name="pos"/> exposes a network connector on <paramref name="face"/>, network-type agnostic.</summary>
   public static bool CouplesAt(
     IBlockAccessor world,
