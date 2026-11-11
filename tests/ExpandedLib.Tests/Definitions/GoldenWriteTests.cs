@@ -4,6 +4,8 @@ using System.Linq;
 using System.Reflection;
 using ExpandedLib.Definitions;
 using ExpandedLib.Testing;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -110,5 +112,36 @@ public sealed class GoldenWriteTests : IDisposable {
         .GetFiles(root, "*", SearchOption.AllDirectories)
         .Select(f => Path.GetRelativePath(root, f).Replace('\\', '/'))
     );
+  }
+
+  // Fails when WriteAll rewrites a golden whose parsed content equals its def: here the same JSON
+  // with other indentation, a trailing newline and a changed key order.
+  [Fact]
+  public void A_golden_equal_to_its_def_keeps_its_bytes() {
+    const string fragment = "exlib/blocktypes/structurefiller.json";
+    DefinitionGoldens.WriteAll(Domain, Mod, root, fragment, series: null);
+    string file = Path.Combine(root, fragment);
+    var json = JObject.Parse(File.ReadAllText(file));
+    var reordered = new JObject(json.Properties().Reverse());
+    string noisy = reordered.ToString(Formatting.None) + "\n";
+    File.WriteAllText(file, noisy);
+
+    DefinitionGoldens.WriteAll(Domain, Mod, root, fragment, series: null);
+
+    Assert.Equal(noisy, File.ReadAllText(file));
+  }
+
+  // Fails when WriteAll skips a golden whose content differs from its def.
+  [Fact]
+  public void A_golden_differing_from_its_def_is_rewritten() {
+    const string fragment = "exlib/blocktypes/structurefiller.json";
+    DefinitionGoldens.WriteAll(Domain, Mod, root, fragment, series: null);
+    string file = Path.Combine(root, fragment);
+    string written = File.ReadAllText(file);
+    File.WriteAllText(file, "{\"code\": \"stale\"}");
+
+    DefinitionGoldens.WriteAll(Domain, Mod, root, fragment, series: null);
+
+    Assert.Equal(written, File.ReadAllText(file));
   }
 }
