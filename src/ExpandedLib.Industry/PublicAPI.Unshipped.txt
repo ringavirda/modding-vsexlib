@@ -815,6 +815,13 @@ ExpandedLib.Industry.Machining.MachineCutVerdict.Ready = 0 -> ExpandedLib.Indust
 ExpandedLib.Industry.Machining.MachineCutVerdict.TierShort = 4 -> ExpandedLib.Industry.Machining.MachineCutVerdict
 ExpandedLib.Industry.Machining.MachineCutVerdict.WrongTool = 3 -> ExpandedLib.Industry.Machining.MachineCutVerdict
 static ExpandedLib.Industry.Machining.MachineCut.Credit(float torque, float speed, double gameSeconds, double remaining) -> double
+const ExpandedLib.Industry.Machining.MachineCut.HandMaxSeconds = 24 -> double
+const ExpandedLib.Industry.Machining.MachineCut.HandMinSeconds = 2 -> double
+const ExpandedLib.Industry.Machining.MachineCut.JobMaxSeconds = 12 -> double
+const ExpandedLib.Industry.Machining.MachineCut.JobMinSeconds = 1 -> double
+const ExpandedLib.Industry.Machining.MachineCut.RootScale = 0.1 -> double
+static ExpandedLib.Industry.Machining.MachineCut.GameEnergy(ExpandedLib.Industry.Machining.MachiningJob! job, ExpandedLib.Industry.Machining.MachineKindStep! step, ExpandedLib.Industry.Machining.CuttingMaterialRegistry? materials = null) -> float
+static ExpandedLib.Industry.Machining.MachineCut.JobSeconds(double energy, float power) -> double
 static ExpandedLib.Industry.Machining.MachineCut.Energy(ExpandedLib.Industry.Machining.MachiningJob! job, ExpandedLib.Industry.Machining.CutMotion motion, ExpandedLib.Industry.Machining.CuttingMaterialRegistry? materials = null) -> float
 static ExpandedLib.Industry.Machining.MachineCut.HandSeconds(double energy, float handPower) -> double
 static ExpandedLib.Industry.Machining.MachineCut.LoadTorque(ExpandedLib.Industry.Machining.MachineKind! kind, ExpandedLib.Industry.Machining.MachineKindStep! step, bool cutting) -> float

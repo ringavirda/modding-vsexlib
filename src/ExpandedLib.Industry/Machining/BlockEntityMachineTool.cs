@@ -105,7 +105,7 @@ public abstract class BlockEntityMachineTool
       (MachiningJob? job, MachineKindStep? step) = CurrentJob();
       if (job is null || step is null)
         return 0d;
-      float energy = MachineCut.Energy(job, step.Motion, Materials);
+      float energy = MachineCut.GameEnergy(job, step, Materials);
       return energy <= 0f ? 0d : Math.Clamp(_joules / energy, 0d, 1d);
     }
   }
@@ -336,7 +336,7 @@ public abstract class BlockEntityMachineTool
       changed = true;
     }
     if (verdict == MachineCutVerdict.Ready) {
-      float energy = MachineCut.Energy(job!, step!.Motion, Materials);
+      float energy = MachineCut.GameEnergy(job!, step!, Materials);
       if (energy <= 0f) {
         if (changed)
           MarkDirty(redraw);

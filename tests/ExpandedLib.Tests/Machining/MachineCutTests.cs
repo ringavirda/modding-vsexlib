@@ -127,17 +127,55 @@ public class MachineCutTests {
     Assert.Equal(MachineCutVerdict.NoDrive, Verdict(speed: 0f));
 
   [Fact]
-  public void A_1_kg_cast_iron_job_takes_185800_J_and_226_game_seconds_at_rated_speed() {
+  public void A_1_kg_cast_iron_job_has_185800_J_of_period_energy_and_is_credited_one_second_of_game_energy() {
     float energy = MachineCut.Energy(Job(), CutMotion.Rotary, Materials());
     Assert.Equal(185800f, energy, 1);
     float torque = MachineCut.LoadTorque(Lathe, Lathe.Steps[0], true);
     Assert.Equal(82.2f, torque, 2);
+    float game = MachineCut.GameEnergy(Job(), Lathe.Steps[0], Materials());
+    Assert.Equal(30f * 822f, game, 1);
     Assert.Equal(
-      torque * 10d * 226d,
-      MachineCut.Credit(torque, 10f, 226d, energy),
+      torque * 10d * 30d,
+      MachineCut.Credit(torque, 10f, 30d, game),
       3
     );
-    Assert.Equal(energy, MachineCut.Credit(torque, 10f, 226.1d, energy), 1);
+    Assert.Equal(game, MachineCut.Credit(torque, 10f, 30.1d, game), 1);
+  }
+
+  // Fails when the square root is dropped: the spur gear's drill job would take 1523 s, not 3.9 s.
+  [Fact]
+  public void The_spur_gears_jobs_take_3_9_s_at_the_drill_and_6_2_s_at_the_shaper() {
+    const double Kg = 0.7027d;
+    Assert.Equal(3.9d, MachineCut.JobSeconds(126d * Kg * 185_800d, 360f), 1);
+    Assert.Equal(6.2d, MachineCut.JobSeconds(316d * Kg * 295_500d, 570f), 1);
+  }
+
+  // Fails when the hand cap is removed: 91.8 MJ at 44.7 W is 26.2 s uncapped.
+  [Fact]
+  public void The_spur_gears_hand_route_takes_the_24_s_cap() {
+    const double Kg = 0.7027d;
+    double energy = 316d * Kg * 295_500d + 126d * Kg * 295_500d;
+    Assert.Equal(24d, MachineCut.HandSeconds(energy, 44.7f), 6);
+    Assert.Equal(10d, MachineCut.HandSeconds(10_000d * 44.7d * 30d, 44.7f), 6);
+  }
+
+  // Fails when the floor is removed: 1000 J at 360 W is 0.058 s.
+  [Fact]
+  public void A_job_under_the_floor_takes_1_s_and_a_hand_route_2_s() {
+    Assert.Equal(1d, MachineCut.JobSeconds(1000d, 360f), 6);
+    Assert.Equal(2d, MachineCut.HandSeconds(1000d, 44.7f), 6);
+  }
+
+  // Fails when the cap is removed: 1e12 J at 360 W is 5.2e5 s.
+  [Fact]
+  public void A_job_over_the_cap_takes_12_s() =>
+    Assert.Equal(12d, MachineCut.JobSeconds(1e12d, 360f), 6);
+
+  [Fact]
+  public void A_job_with_no_energy_or_no_power_takes_no_time() {
+    Assert.Equal(0d, MachineCut.JobSeconds(0d, 360f));
+    Assert.Equal(0d, MachineCut.JobSeconds(1e6d, 0f));
+    Assert.Equal(0d, MachineCut.HandSeconds(0d, 44.7f));
   }
 
   [Fact]
@@ -146,7 +184,19 @@ public class MachineCutTests {
     double full = MachineCut.Credit(torque, 10f, 1d, 1e9);
     double half = MachineCut.Credit(torque, 5f, 1d, 1e9);
     Assert.Equal(full / 2d, half, 6);
-    Assert.Equal(2d * 185800d / full, 185800d / half, 6);
+  }
+
+  // Fails when the credited energy is not 30 x T x P: a run at half speed takes twice T real seconds.
+  [Fact]
+  public void A_run_at_half_the_rated_speed_takes_twice_the_job_seconds() {
+    MachiningJob job = Job() with { Energy = 140_000_000f };
+    MachineKindStep step = Lathe.Steps[0];
+    double t = MachineCut.JobSeconds(140_000_000d, step.Power);
+    float torque = MachineCut.LoadTorque(Lathe, step, true);
+    float game = MachineCut.GameEnergy(job, step, Materials());
+    Assert.Equal(7.5d, t, 1);
+    Assert.Equal(t, game / MachineCut.Credit(torque, 10f, 30d, 1e12), 6);
+    Assert.Equal(2d * t, game / MachineCut.Credit(torque, 5f, 30d, 1e12), 4);
   }
 
   [Fact]
@@ -175,12 +225,18 @@ public class MachineCutTests {
     );
 
   [Fact]
-  public void Hand_time_of_the_1_kg_job_is_its_energy_over_the_rotary_hand_power_over_30() {
+  public void Hand_time_of_a_declared_energy_is_the_scaled_root_of_it_over_the_rotary_hand_power_over_30() {
     CuttingMaterialRegistry materials = Materials();
     double seconds = MachineCut.HandSeconds(
-      MachineCut.Energy(Job(), CutMotion.Rotary, materials),
+      MachineCut.Energy(
+        Job() with {
+          Energy = 18_300_000f,
+        },
+        CutMotion.Rotary,
+        materials
+      ),
       materials.HandPower(CutMotion.Rotary)
     );
-    Assert.Equal(185800d / 61d / 30d, seconds, 6);
+    Assert.Equal(10d, seconds, 6);
   }
 }
