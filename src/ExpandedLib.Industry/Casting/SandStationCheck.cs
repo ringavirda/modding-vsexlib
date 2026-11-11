@@ -4,6 +4,7 @@ using System.Linq;
 using ExpandedLib.Industry.Molten;
 using ExpandedLib.Structures;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 namespace ExpandedLib.Industry.Casting;
 
@@ -35,6 +36,29 @@ internal static class SandStationCheck {
 
       if (!HostsCell(block, classes))
         yield return $"{block.Code}: it declares no BEBehaviorMoltenCell";
+
+      foreach (string line in LaunderFaceLines(block))
+        yield return line;
+    }
+  }
+
+  private static IEnumerable<string> LaunderFaceLines(Block block) {
+    var footprint = (
+      block is IFillerHost host
+        ? StructureFillers.ReadOffsets(host.FillerOffsets).Select(o => o.Offset)
+        : []
+    )
+      .Select(o => (o.X, o.Y, o.Z))
+      .Append((0, 0, 0))
+      .ToHashSet();
+    foreach (
+      JsonObject entry in block.Attributes?["sandStation"]?[
+        "launderFaces"
+      ]?.AsArray() ?? []
+    ) {
+      var cell = (entry["x"].AsInt(), entry["y"].AsInt(), entry["z"].AsInt());
+      if (!footprint.Contains(cell))
+        yield return $"{block.Code}: launder face at {cell} is not a cell of its footprint";
     }
   }
 

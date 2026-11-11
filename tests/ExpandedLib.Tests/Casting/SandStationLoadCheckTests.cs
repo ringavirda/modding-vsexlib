@@ -3,6 +3,7 @@ using System.Linq;
 using ExpandedLib.Industry;
 using ExpandedLib.Industry.Casting;
 using ExpandedLib.Industry.Molten;
+using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
@@ -30,19 +31,28 @@ public class SandStationLoadCheckTests : IDisposable {
     return classes;
   }
 
+  private sealed class FootprintBlock : Block, IFillerHost {
+    public JsonObject? FillerOffsets =>
+      new(JToken.Parse("""[{ "x": 0, "y": 0, "z": -4 }]"""));
+  }
+
   private static Block StationBlock(
     string code,
     string? station,
     bool cell = true,
-    string entity = "sandstation"
+    string entity = "sandstation",
+    string? launderFaces = null,
+    Block? on = null
   ) {
-    var block = TestBlocks.Configure(new Block(), code, 200);
+    var block = TestBlocks.Configure(on ?? new Block(), code, 200);
     block.EntityClass = entity;
     block.Attributes = new JsonObject(
       JToken.Parse(
         station == null
           ? "{}"
-          : $$"""{ "sandStation": { "station": "{{station}}" } }"""
+          : $$"""{ "sandStation": { "station": "{{station}}"{{(
+            launderFaces == null ? "" : $", \"launderFaces\": {launderFaces}"
+          )}} } }"""
       )
     );
     block.BlockEntityBehaviors = cell
@@ -116,6 +126,49 @@ public class SandStationLoadCheckTests : IDisposable {
     );
 
     Assert.Contains("BEBehaviorMoltenCell", finding);
+  }
+
+  // Fails when a face on a cell outside the footprint passes the check.
+  [Fact]
+  public void A_launder_face_outside_the_footprint_is_one_finding() {
+    Register();
+
+    string finding = Assert.Single(
+      SandStationCheck.Run(
+        [
+          StationBlock(
+            "test:s",
+            "boxflask",
+            launderFaces: """[{ "z": -3 }]""",
+            on: new FootprintBlock()
+          ),
+        ],
+        Classes()
+      )
+    );
+
+    Assert.Contains("test:s", finding);
+    Assert.Contains("footprint", finding);
+  }
+
+  // Fails when a face on a declared footprint cell is refused.
+  [Fact]
+  public void A_launder_face_on_a_footprint_cell_gives_no_finding() {
+    Register();
+
+    Assert.Empty(
+      SandStationCheck.Run(
+        [
+          StationBlock(
+            "test:s",
+            "boxflask",
+            launderFaces: """[{ "z": -4 }]""",
+            on: new FootprintBlock()
+          ),
+        ],
+        Classes()
+      )
+    );
   }
 
   // Fails when the entity class test is removed: a block on another entity class is judged as a station.

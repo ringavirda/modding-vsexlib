@@ -315,13 +315,17 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
   }
 
   private void PullFromLaunder(BEBehaviorMoltenCell cell) {
-    foreach (BlockFacing face in LaunderFaces)
+    foreach (LaunderFace face in LaunderFaces)
       PullFromFace(cell, face);
   }
 
-  private void PullFromFace(BEBehaviorMoltenCell cell, BlockFacing face) {
+  private void PullFromFace(BEBehaviorMoltenCell cell, LaunderFace face) {
     if (
-      this.BlockEntityAt<BlockEntity>(Pos.AddCopy(face)) is not IMoltenCell src
+      this.BlockEntityAt<BlockEntity>(
+        Pos.AddCopy(face.Offset.X, face.Offset.Y, face.Offset.Z)
+          .Add(face.Facing)
+      )
+        is not IMoltenCell src
       || src.Solidified
       || src.Sealed
       || src.CellAmount <= 0
@@ -345,30 +349,60 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     OnPulled(accepted);
   }
 
-  /// <summary>The horizontal faces the launders sit on, drained in this order each tick; empty when the block has no <c>side</c> variant and takes no launder feed.</summary>
-  public virtual IReadOnlyList<BlockFacing> LaunderFaces =>
+  /// <summary>The launder faces of this placement, drained in this order each tick; empty when the block has no <c>side</c> variant and takes no launder feed.</summary>
+  public virtual IReadOnlyList<LaunderFace> LaunderFaces =>
     LaunderFacesOf(Block);
 
-  /// <summary>The horizontal faces a station block's launders sit on: its <c>side</c> variant's facing turned around, then one face per entry of <c>attributes.sandStation.launderTurns</c> (quarter turns clockwise from above, from that first face).</summary>
+  /// <summary>The launder faces of a station block as placed. The first is the principal's own, on its <c>side</c> variant's facing turned around. Each entry of <c>attributes.sandStation.launderFaces</c> adds one more: <c>x</c>, <c>y</c>, <c>z</c> the footprint cell in the block's north frame (offset from the principal, 0 when absent) and <c>turns</c> the quarter turns clockwise from above that the facing is from the first face. Offsets are rotated by the <c>side</c> variant as <see cref="StructureFillers"/> rotates its cells.</summary>
   /// <param name="block">A station block.</param>
-  /// <returns>The faces, the first being the <c>side</c> variant's opposite; empty when the block has no <c>side</c> variant.</returns>
-  public static IReadOnlyList<BlockFacing> LaunderFacesOf(Block block) {
+  /// <returns>The faces with offsets in world terms for this placement; empty when the block has no <c>side</c> variant.</returns>
+  public static IReadOnlyList<LaunderFace> LaunderFacesOf(Block block) {
     if (
       ExOrientation.FacingFromSide(block.Variant["side"])?.Opposite
       is not { } first
     )
       return [];
 
-    int[] turns =
-      block.Attributes?["sandStation"]?["launderTurns"]?.AsArray<int>() ?? [];
-    return
-    [
-      first,
-      .. turns.Select(t =>
-        Enumerable.Range(0, t & 3).Aggregate(first, (f, _) => f.GetCW())
-      ),
-    ];
+    int angle = ExOrientation.AngleFromSide(block.Variant["side"]);
+    List<LaunderFace> faces = [new(new Vec3i(0, 0, 0), first)];
+    foreach (
+      JsonObject entry in block.Attributes?["sandStation"]?[
+        "launderFaces"
+      ]?.AsArray() ?? []
+    ) {
+      Vec3i offset = ExOrientation.RotateOffset(
+        entry["x"].AsInt(),
+        entry["y"].AsInt(),
+        entry["z"].AsInt(),
+        angle
+      );
+      BlockFacing facing = Enumerable
+        .Range(0, entry["turns"].AsInt() & 3)
+        .Aggregate(first, (f, _) => f.GetCW());
+      faces.Add(new LaunderFace(offset, facing));
+    }
+    return faces;
   }
+
+  /// <summary>The facings a launder can sit on at one cell of a station's footprint.</summary>
+  /// <param name="block">The station block, as placed.</param>
+  /// <param name="principal">The principal's position.</param>
+  /// <param name="cell">A world cell; one outside the footprint takes none.</param>
+  /// <returns>The facings of the faces declared on <paramref name="cell"/>, in declaration order.</returns>
+  public static IReadOnlyList<BlockFacing> LaunderFacingsAt(
+    Block block,
+    BlockPos principal,
+    BlockPos cell
+  ) =>
+    [
+      .. LaunderFacesOf(block)
+        .Where(f =>
+          f.Offset.X == cell.X - principal.X
+          && f.Offset.Y == cell.Y - principal.Y
+          && f.Offset.Z == cell.Z - principal.Z
+        )
+        .Select(f => f.Facing),
+    ];
 
   #endregion
 
@@ -878,3 +912,8 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
 
   #endregion
 }
+
+/// <summary>A cell of a sand station's footprint and the horizontal facing a launder feeds it from there.</summary>
+/// <param name="Offset">The cell's offset from the principal, in world terms for the placement.</param>
+/// <param name="Facing">The side of that cell the launder sits on.</param>
+public readonly record struct LaunderFace(Vec3i Offset, BlockFacing Facing);

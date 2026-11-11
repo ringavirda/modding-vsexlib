@@ -41,7 +41,7 @@ internal sealed class SandStationScene {
 
   private readonly DummySlot _hotbar = new();
   private readonly List<string> _errors = [];
-  private readonly Dictionary<BlockFacing, LaunderCell> _launders = [];
+  private readonly Dictionary<(BlockFacing, Vec3i), LaunderCell> _launders = [];
 
   /// <summary>The launder cell's block entity: holds metal a station drains.</summary>
   public sealed class LaunderCell : BlockEntity, IMoltenCell {
@@ -105,7 +105,7 @@ internal sealed class SandStationScene {
     SandStationLevel sand = SandStationLevel.Full,
     Func<BlockEntitySandStation>? make = null,
     string? cup = null,
-    string? launderTurns = null
+    string? launderFaces = null
   ) {
     CastingStationRegistry.ResetForWorld();
     CastingStationLoader.Load(
@@ -125,7 +125,7 @@ internal sealed class SandStationScene {
         $$"""{ "sandStation": { "station": "{{Station}}"{{(
           cup == null ? "" : $", \"cup\": {cup}"
         )}}{{(
-          launderTurns == null ? "" : $", \"launderTurns\": {launderTurns}"
+          launderFaces == null ? "" : $", \"launderFaces\": {launderFaces}"
         )}} } }"""
       )
     );
@@ -215,15 +215,21 @@ internal sealed class SandStationScene {
     return Tick();
   }
 
-  public LaunderCell Launder(int units, float temp, BlockFacing? face = null) {
+  public LaunderCell Launder(
+    int units,
+    float temp,
+    BlockFacing? face = null,
+    Vec3i? cell = null
+  ) {
     face ??= BlockFacing.SOUTH;
-    if (!_launders.TryGetValue(face, out LaunderCell? launder)) {
-      BlockPos pos = Entity.Pos.AddCopy(face);
+    cell ??= new Vec3i(0, 0, 0);
+    if (!_launders.TryGetValue((face, cell), out LaunderCell? launder)) {
+      BlockPos pos = Entity.Pos.AddCopy(cell.X, cell.Y, cell.Z).Add(face);
       var block = TestBlocks.Configure(new Block(), "test:launder", 150);
       launder = new LaunderCell();
       World.Place(pos, block, launder);
       World.Attach(launder);
-      _launders[face] = launder;
+      _launders[(face, cell)] = launder;
     }
     launder.CellAmount = units;
     launder.CellMetalType = Metal;

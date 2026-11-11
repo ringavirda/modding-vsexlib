@@ -162,14 +162,14 @@ public class SandStationTests : IDisposable {
   // Fails when the second face is never drained.
   [Fact]
   public void A_second_launder_face_is_drained_too() {
-    var scene = SandStationScene.Build(launderTurns: "[1]");
+    var scene = SandStationScene.Build(launderFaces: """[{ "turns": 1 }]""");
     scene.Interact(scene.PatternStack("row"));
     var south = scene.Launder(30, 1300f);
     var west = scene.Launder(40, 1300f, BlockFacing.WEST);
 
     Assert.Equal(
       [BlockFacing.SOUTH, BlockFacing.WEST],
-      scene.Entity.LaunderFaces
+      scene.Entity.LaunderFaces.Select(f => f.Facing)
     );
     scene.Tick();
 
@@ -178,13 +178,80 @@ public class SandStationTests : IDisposable {
     Assert.Equal(0, west.CellAmount);
   }
 
+  // Fails when the face's offset is ignored and the principal's neighbour is read instead.
+  [Fact]
+  public void A_face_four_cells_along_the_body_is_drained_from_its_own_cell() {
+    var scene = SandStationScene.Build(
+      launderFaces: """[{ "z": -4, "turns": 2 }]"""
+    );
+    scene.Interact(scene.PatternStack("row"));
+    var far = scene.Launder(60, 1300f, BlockFacing.NORTH, new Vec3i(0, 0, -4));
+    var near = scene.Launder(50, 1300f, BlockFacing.NORTH);
+
+    scene.Tick();
+
+    Assert.Equal(60, scene.Molten.CellAmount);
+    Assert.Equal(0, far.CellAmount);
+    Assert.Equal(50, near.CellAmount);
+  }
+
+  // Fails when the offset is not rotated with the side.
+  [Fact]
+  public void The_same_block_turned_a_quarter_drains_the_turned_cell() {
+    var scene = SandStationScene.Build(
+      side: "e",
+      launderFaces: """[{ "z": -4, "turns": 2 }]"""
+    );
+    scene.Interact(scene.PatternStack("row"));
+    var far = scene.Launder(60, 1300f, BlockFacing.EAST, new Vec3i(4, 0, 0));
+
+    Assert.Equal(
+      [4],
+      scene.Entity.LaunderFaces.Select(f => f.Offset.X).Skip(1).ToArray()
+    );
+    scene.Tick();
+
+    Assert.Equal(60, scene.Molten.CellAmount);
+    Assert.Equal(0, far.CellAmount);
+  }
+
+  // Fails when the facings are read for the principal's cell whatever cell is asked.
+  [Fact]
+  public void The_facings_a_cell_takes_are_the_faces_declared_on_it() {
+    var scene = SandStationScene.Build(
+      launderFaces: """[{ "z": -4, "turns": 2 }]"""
+    );
+    Block block = scene.Entity.Block;
+    BlockPos principal = scene.Entity.Pos;
+
+    Assert.Equal(
+      [BlockFacing.NORTH],
+      BlockEntitySandStation.LaunderFacingsAt(
+        block,
+        principal,
+        principal.AddCopy(0, 0, -4)
+      )
+    );
+    Assert.Equal(
+      [BlockFacing.SOUTH],
+      BlockEntitySandStation.LaunderFacingsAt(block, principal, principal)
+    );
+    Assert.Empty(
+      BlockEntitySandStation.LaunderFacingsAt(
+        block,
+        principal,
+        principal.AddCopy(0, 0, -2)
+      )
+    );
+  }
+
   // Fails when both feeds are counted on one face instead of once per face.
   [Fact]
   public void Each_launder_face_is_a_feed_of_its_own() {
     var station = new RecordingStation();
     var scene = SandStationScene.Build(
       make: () => station,
-      launderTurns: "[1]"
+      launderFaces: """[{ "turns": 1 }]"""
     );
     scene.Interact(scene.PatternStack("row"));
     scene.Launder(30, 1300f);
