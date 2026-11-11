@@ -15,8 +15,10 @@ namespace WasherPunch.Tests;
 /// the bit and the plate decide, and what the lever and the block's node do.</summary>
 [Collection(WorldCollection.Name)]
 public class WasherDrillTests(LoadedWorld loaded) {
-  // 360 W at the kind's 10.7 rad/s; 1.5 kg of wrought iron at 193,500 J/kg is 290,250 J, 806.25 s.
-  private const double CutSeconds = 806.25;
+  // 360 W at the kind's 10.7 rad/s; 1.5 kg of wrought iron at 193,500 J/kg is 290,250 J, which the
+  // square-root route scale puts under the one-real-second floor of a machine job: 30 game seconds.
+  private const double CutSeconds =
+    MachineCut.JobMinSeconds * MachineCut.GameSecondsPerRealSecond;
 
   private static int _column = 200;
 
