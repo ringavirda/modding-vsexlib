@@ -20,7 +20,10 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     INetworkPlacementCheck {
   public override string NetworkType => "mpshaft";
 
-  public override int StepIntervalMs => 200;
+  /// <summary>Milliseconds between the run's steps.</summary>
+  internal const int IntervalMs = 200;
+
+  public override int StepIntervalMs => IntervalMs;
 
   public override bool SupportsPartialSplit => true;
 
@@ -251,10 +254,13 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
       }
       Store.SetInertia(node, inertia);
       float w = Store.NodeSpeed(node);
+      var consumer =
+        be as IMpEnergyConsumer
+        ?? be?.Behaviors?.OfType<IMpEnergyConsumer>().FirstOrDefault();
       Store.SetStanding(
         node,
         ((be as IMpEnergySegment)?.StandingNm ?? 0f)
-          + ((be as IMpEnergyConsumer)?.StandingNm ?? 0f)
+          + (consumer?.StandingNm ?? 0f)
       );
       Store.SetRating(node, (be as IMpEnergySegment)?.RatingNm ?? 0f);
       var producer =
@@ -265,7 +271,6 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
         producer?.DriveTorque(w) ?? 0f,
         producer?.DriveSlope(w) ?? 0f
       );
-      var consumer = be as IMpEnergyConsumer;
       Store.SetLoad(
         node,
         consumer?.LoadTorque(w) ?? 0f,

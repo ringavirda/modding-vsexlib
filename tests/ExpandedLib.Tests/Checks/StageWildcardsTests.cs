@@ -72,7 +72,29 @@ public class StageWildcardsTests {
     public IEnumerable<(AssetLocation File, JObject Json)> BlockTypes(
       string domain
     ) => domain == Domain ? types : [];
+
+    public IEnumerable<(AssetLocation File, JObject Json)> ItemTypes(
+      string domain
+    ) => domain == Domain ? ItemCatalogue : [];
   }
+
+  /// <summary>A gear grouped by metal alone and a wheel grouped by size and metal, as the
+  /// catalogue item wildcards are decided against.</summary>
+  private static readonly (AssetLocation, JObject)[] ItemCatalogue =
+  [
+    (
+      new AssetLocation(Domain, "itemtypes/gear.json"),
+      JObject.Parse(
+        """{ "code": "gear", "variantgroups": [{ "code": "metal", "states": ["iron", "steel"] }] }"""
+      )
+    ),
+    (
+      new AssetLocation(Domain, "itemtypes/wheel.json"),
+      JObject.Parse(
+        """{ "code": "wheel", "variantgroups": [{ "code": "size", "states": ["big", "small"] }, { "code": "metal", "states": ["iron", "steel"] }] }"""
+      )
+    ),
+  ];
 
   // The findings for a rig of the given stages; each is written to the test output.
   private IReadOnlyList<string> Findings(params string[] stages) {
@@ -139,17 +161,30 @@ public class StageWildcardsTests {
       )
     );
 
+  // Fails when an item wildcard is decided against the block catalogue or not decided: the gear then reports
+  // "matches nothing" or "undecidable" though its metal group is the key.
   [Fact]
-  [PlantedDefect(typeof(StageWildcardsCheck), nameof(StageWildcardsCheck.Run))]
-  public void Rules_b_and_c_report_a_family_item_wildcard_undecidable() =>
-    Assert.Equal(
-      [
-        "plantedstages:rig stage 1 plantedstages:gear-*: (b, c) undecidable: no item "
-          + "variant groups",
-      ],
+  public void Rules_b_and_c_pass_an_item_wildcard_that_spans_only_its_key() =>
+    Assert.Empty(
       Findings(
         "[]",
         """[{ "type": "item", "code": "plantedstages:gear-*", "storeWildCard": "metal", "quantity": 1 }]"""
+      )
+    );
+
+  // Fails when an item wildcard is not read against the item types' variant groups: a * over size and metal then
+  // passes unreported.
+  [Fact]
+  [PlantedDefect(typeof(StageWildcardsCheck), nameof(StageWildcardsCheck.Run))]
+  public void Rule_b_a_star_over_item_groups_beyond_the_key_is_reported() =>
+    Assert.Equal(
+      [
+        "plantedstages:rig stage 1 plantedstages:wheel-*: (b) * spans "
+          + "[metal, size], stores metal",
+      ],
+      Findings(
+        "[]",
+        """[{ "type": "item", "code": "plantedstages:wheel-*", "storeWildCard": "metal", "quantity": 1 }]"""
       )
     );
 

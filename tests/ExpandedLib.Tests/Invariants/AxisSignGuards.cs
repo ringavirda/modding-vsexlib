@@ -25,6 +25,15 @@ public class AxisSignGuards(ITestOutputHelper output) {
         port.ConfigureFromFiller(null, facing, null);
         return port;
       },
+      [typeof(BEBehaviorMpTakeoff)] = facing => {
+        var link = new BEBehaviorMpTakeoff(new BlockEntityStructureFiller());
+        link.Configure(
+          BEBehaviorMpTakeoff.DefaultRatio,
+          BEBehaviorMpTakeoff.DefaultRatedNm,
+          facing
+        );
+        return link;
+      },
     };
 
   [Fact]

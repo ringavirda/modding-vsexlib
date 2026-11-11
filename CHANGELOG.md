@@ -10,6 +10,7 @@ see the git history.
 ### Added
 
 - **Machining route times** (ExpandedLib.Industry, ExpandedLib.Testing): a machine job takes `sqrt(E / P / 30) / 10` real seconds at the rated speed, within `MachineCut.JobMinSeconds` and `JobMaxSeconds` (1 and 12 s), and a hand route's cutting steps take the same scale over a man's power within `HandMinSeconds` and `HandMaxSeconds` (2 and 24 s). `MachineCut.Energy` stays the period energy that wear, sheds and the load torque read, `MachineCut.GameEnergy` is what a run is credited against and `MachineCut.JobSeconds` the time; `HandSeconds` follows the scale. `MachiningChecks.HandParity` holds the chisel, file, scraper and hand drill steps within 10 % of it, each at least one hit, and `MachinesFirst` compares `JobSeconds`.
+- **`BEBehaviorMpTakeoff`** (ExpandedLib.Industry): the one-way iron-to-vanilla link, a consumer on an "mpshaft" run and a generator node on a vanilla network, declared with `ratio`, `ratedNm` and `facings`. It holds the vanilla network at the iron speed over the ratio and 5 rad/s a unit, loads the iron run with the network's resistance sum times 7,000 N*m over the ratio, and gives no torque and takes no load while a vanilla producer runs the network faster. A behaviour that implements `IMpEnergyConsumer` is now read as the consumer of its block entity's node, as a producer behaviour already was.
 - **`power` and `break` in the setup harness** (ExpandedLib.Testing): a `power` step with `network: "mpshaft"` stands an `MpTestSource` (stall torque in N*m, free speed in rad/s) on a cell of a shaft run, and a `break` step by the world removes a block through `TestWorld.BreakRunsBlockHooks`; a `network` reading calls `NodeTorqueNm()` and `CarriedNm()` of the shaft run at its cell.
 - **`BlockSandStation` and `BlockEntitySandStation`** (ExpandedLib.Industry): a one-cell sand station declared in JSON alone, named by the block's `sandStation.station` attribute (and an optional `sandStation.cup`). A player rams it with the kind's moulding sand, presses a pattern, pours from a launder or a carried pour, and shakes the casting out; a multi-cell station derives the entity. The station kind gains a required `sand.item`.
 - **`samples/SashWeights`**: a casting sample with its content in JSON alone, declaring a station kind, a plank box-flask block on the sand station and a four-piece sash-weight pattern, with a test that presses, pours and shakes out.
@@ -34,6 +35,8 @@ see the git history.
   null or zero, so a block entity saved before a member was added still loads.
 - **A network node loaded from a tree without `networkType` keeps its declared network type** instead of
   losing it to null and joining no graph.
+- **A filler cell's MP port answers vanilla's axle neighbour-change query** for the axle's own position, as `BlockAxle` and `BlockMPBase.tryConnect` ask it, so a free-standing axle placed after a filler MP port (a `BEBehaviorMPFillerPort` included) no longer breaks on its next neighbour change.
+- **`StageWildcardsCheck` decides an item wildcard** from the source's item types' variant groups, rules (b) and (c) as for a block, instead of reporting every covered item wildcard undecidable.
 
 ### Added
 

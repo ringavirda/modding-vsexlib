@@ -20,9 +20,9 @@ namespace ExpandedLib.Checks;
 /// keys a creative Ctrl build stores; (e) a <c>{key}</c> names a block variant group or a key an earlier paid stage stores; (f) a stage 0
 /// key is stored by stage 1; (g) a key is stored by one paid stage, as the refund fills every
 /// storing ingredient with the last state stored, and later stages take it as <c>{key}</c>; one
-/// holding its own <c>{key}</c> stores what it was filled with. (b) and (c) decide block codes in
-/// covered domains only; a covered item code is undecidable, and other domains are left to the
-/// loaded game.
+/// holding its own <c>{key}</c> stores what it was filled with. (b) and (c) decide block and item
+/// codes in covered domains only, items from the source's item types; other domains are left to
+/// the loaded game.
 /// </remarks>
 public static class StageWildcardsCheck {
   /// <summary>The <c>storeWildCard</c> keys the creative Ctrl build stores without
@@ -169,17 +169,14 @@ public static class StageWildcardsCheck {
     var pattern = new AssetLocation(code);
     if (!source.Domains.Contains(pattern.Domain))
       yield break;
-    if (((string?)ing["type"])?.ToLowerInvariant() != "block") {
-      yield return "(b, c) undecidable: no item variant groups";
-      yield break;
-    }
+    bool block = ((string?)ing["type"])?.ToLowerInvariant() == "block";
 
     foreach (
       string line in Decide(
         pattern,
         ing,
         key,
-        Catalogue(source, pattern.Domain, catalogue)
+        Catalogue(source, pattern.Domain, block, catalogue)
       )
     )
       yield return line;
@@ -265,14 +262,19 @@ public static class StageWildcardsCheck {
   private static List<Collectible> Catalogue(
     ICheckSource source,
     string domain,
+    bool block,
     Dictionary<string, List<Collectible>> cache
   ) {
-    if (cache.TryGetValue(domain, out List<Collectible>? known))
+    string cacheKey = (block ? "block:" : "item:") + domain;
+    if (cache.TryGetValue(cacheKey, out List<Collectible>? known))
       return known;
     var all = new List<Collectible>();
-    foreach (JObject type in TypesOf(source, domain))
+    IEnumerable<JObject> types = block
+      ? TypesOf(source, domain)
+      : source.ItemTypes(domain).Select(t => t.Json);
+    foreach (JObject type in types)
       all.AddRange(Expand(domain, type));
-    return cache[domain] = all;
+    return cache[cacheKey] = all;
   }
 
   private static IEnumerable<Collectible> Expand(string domain, JObject type) {

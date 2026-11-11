@@ -227,4 +227,35 @@ public class NetworkCadenceTests {
     Assert.Equal([1f], slow.Steps);
     Assert.Equal([1f], other.Steps);
   }
+
+  // Fails when the line listeners are stepped the whole second after the network fires instead of 200 ms after each,
+  // so a 20 ms line runs 50 ticks past the last network step and none between them.
+  [Fact]
+  public void Lines_step_between_the_network_fires() {
+    var (w, log) = NewWorld();
+    Place(w, "fast", new BlockPos(0, 0, 0));
+    long line = w.World.RegisterGameTickListener(_ => log.Add("line"), 20);
+
+    w.Tick(1, new HashSet<long> { line });
+
+    var runs = log.Where(e => e is "tick fast" or "line")
+      .Aggregate(
+        new List<(string Entry, int Count)>(),
+        (acc, e) => {
+          if (acc.Count > 0 && acc[^1].Entry == e)
+            acc[^1] = (e, acc[^1].Count + 1);
+          else
+            acc.Add((e, 1));
+          return acc;
+        }
+      );
+    Assert.Equal(
+      [
+        .. Enumerable
+          .Repeat<(string, int)>(("tick fast", 1), 5)
+          .SelectMany(t => new[] { t, ("line", 10) }),
+      ],
+      runs
+    );
+  }
 }

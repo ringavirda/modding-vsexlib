@@ -760,6 +760,19 @@ public sealed partial class TestWorld : IDisposable {
       Networks.ListenerTick(Accessor, fire);
   }
 
+  /// <summary>Advances the simulation by <paramref name="seconds"/> seconds in the server listener's 200 ms fires, as
+  /// <see cref="Tick(int)"/> does, and steps the listeners in <paramref name="lines"/> 200 ms after each fire, so a
+  /// listener on a shorter interval runs between the network steps as it does on the server.</summary>
+  /// <param name="seconds">Whole seconds to advance.</param>
+  /// <param name="lines">Ids of the listeners stepped between the fires; an empty set steps none.</param>
+  internal void Tick(int seconds, IReadOnlySet<long> lines) {
+    const float fire = BlockNetworkModSystem.ListenerIntervalMs / 1000f;
+    for (int i = 0; i < seconds * 5; i++) {
+      Networks.ListenerTick(Accessor, fire);
+      StepListeners(BlockNetworkModSystem.ListenerIntervalMs, lines);
+    }
+  }
+
   /// <summary>Fires every server tick listener registered through <see cref="Api"/> or
   /// <see cref="World"/>, <paramref name="times"/> times, each with <paramref name="dt"/>; then
   /// advances sim time by <paramref name="dt"/> seconds per time and fires the delayed callbacks

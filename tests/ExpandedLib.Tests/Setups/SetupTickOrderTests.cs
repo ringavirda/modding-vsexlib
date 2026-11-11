@@ -74,7 +74,12 @@ public class SetupTickOrderTests
       Place("c", 2),
       Place("d", 3)
     );
-    scene.NetworkTick = () => log.Add("network");
+    Action network = scene.NetworkTick;
+    scene.NetworkTick = () =>
+    {
+      log.Add("network");
+      network();
+    };
     return scene;
   }
 
