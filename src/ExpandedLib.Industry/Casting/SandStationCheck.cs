@@ -5,6 +5,7 @@ using ExpandedLib.Industry.Molten;
 using ExpandedLib.Structures;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.Casting;
 
@@ -51,14 +52,32 @@ internal static class SandStationCheck {
       .Select(o => (o.X, o.Y, o.Z))
       .Append((0, 0, 0))
       .ToHashSet();
+    var declared = new HashSet<(int, int, int, int)> { (0, 0, 0, 0) };
     foreach (
       JsonObject entry in block.Attributes?["sandStation"]?[
         "launderFaces"
       ]?.AsArray() ?? []
     ) {
       var cell = (entry["x"].AsInt(), entry["y"].AsInt(), entry["z"].AsInt());
+      int turns = entry["turns"].AsInt() & 3;
       if (!footprint.Contains(cell))
         yield return $"{block.Code}: launder face at {cell} is not a cell of its footprint";
+      // In the footprint's own frame the principal's face looks north.
+      BlockFacing facing = Enumerable
+        .Range(0, turns)
+        .Aggregate(BlockFacing.NORTH, (f, _) => f.GetCW());
+      if (
+        footprint.Contains(
+          (
+            cell.Item1 + facing.Normali.X,
+            cell.Item2 + facing.Normali.Y,
+            cell.Item3 + facing.Normali.Z
+          )
+        )
+      )
+        yield return $"{block.Code}: launder face at {cell} faces into its own footprint";
+      if (!declared.Add((cell.Item1, cell.Item2, cell.Item3, turns)))
+        yield return $"{block.Code}: launder face at {cell} turned {turns} is declared twice";
     }
   }
 

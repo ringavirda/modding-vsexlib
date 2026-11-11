@@ -901,7 +901,6 @@ virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedSurfaces.get -> 
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedMetalCode.get -> string?
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedShown.get -> bool
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedTemperature.get -> float
-
 ExpandedLib.Industry.Casting.LaunderFace
 ExpandedLib.Industry.Casting.LaunderFace.Facing.get -> Vintagestory.API.MathTools.BlockFacing!
 ExpandedLib.Industry.Casting.LaunderFace.Facing.init -> void

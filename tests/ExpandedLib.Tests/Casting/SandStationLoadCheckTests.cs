@@ -61,6 +61,11 @@ public class SandStationLoadCheckTests : IDisposable {
     return block;
   }
 
+  private sealed class AdjacentFootprintBlock : Block, IFillerHost {
+    public JsonObject? FillerOffsets =>
+      new(JToken.Parse("""[{ "x": 0, "y": 0, "z": -1 }]"""));
+  }
+
   private static void Register() {
     CastingStationRegistry.ResetForWorld();
     CastingStationLoader.Load(
@@ -139,7 +144,7 @@ public class SandStationLoadCheckTests : IDisposable {
           StationBlock(
             "test:s",
             "boxflask",
-            launderFaces: """[{ "z": -3 }]""",
+            launderFaces: """[{ "z": -3, "turns": 2 }]""",
             on: new FootprintBlock()
           ),
         ],
@@ -169,6 +174,52 @@ public class SandStationLoadCheckTests : IDisposable {
         Classes()
       )
     );
+  }
+
+  // Fails when a face looking at a footprint cell passes the check: the south facing of the cell north of the principal lands on the principal.
+  [Fact]
+  public void A_launder_face_facing_into_the_footprint_is_one_finding() {
+    Register();
+
+    string finding = Assert.Single(
+      SandStationCheck.Run(
+        [
+          StationBlock(
+            "test:s",
+            "boxflask",
+            launderFaces: """[{ "z": -1, "turns": 2 }]""",
+            on: new AdjacentFootprintBlock()
+          ),
+        ],
+        Classes()
+      )
+    );
+
+    Assert.Contains("own footprint", finding);
+  }
+
+  // Fails when a face declared twice, or on the principal's own face, passes the check.
+  [Theory]
+  [InlineData("""[{ "z": -4, "turns": 1 }, { "z": -4, "turns": 1 }]""")]
+  [InlineData("""[{ "turns": 4 }]""")]
+  public void A_launder_face_declared_twice_is_one_finding(string faces) {
+    Register();
+
+    string finding = Assert.Single(
+      SandStationCheck.Run(
+        [
+          StationBlock(
+            "test:s",
+            "boxflask",
+            launderFaces: faces,
+            on: new FootprintBlock()
+          ),
+        ],
+        Classes()
+      )
+    );
+
+    Assert.Contains("declared twice", finding);
   }
 
   // Fails when the entity class test is removed: a block on another entity class is judged as a station.
