@@ -25,6 +25,9 @@ internal sealed class WalkFixtureBench
   public static string? Refused;
   public static readonly List<string> Laid = [];
 
+  // Ends the hold on each hit of a step counted in hits, so the next hit takes the next hold.
+  public static bool HitPerHold;
+
   protected override MachineSlotSpec[] SlotSpecs =>
     [
       MachineSlotSpec.AnyInput(),
@@ -89,13 +92,15 @@ internal sealed class WalkFixtureBench
       [.. Inventory],
       new Random(1)
     );
+    int before = _run.Struck;
     return _run.Hold(
         world,
         dt,
         player.Entity.RightHandItemSlot,
         player.Entity.LeftHandItemSlot,
         false
-      ) == CraftSequenceProgress.Working;
+      ) == CraftSequenceProgress.Working
+      && !(HitPerHold && _run.Struck > before);
   }
 
   protected override bool OnStationPacket(
@@ -266,6 +271,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
   public void Dispose()
   {
     WalkFixtureBench.Refused = null;
+    WalkFixtureBench.HitPerHold = false;
     WalkFixtureBench.Laid.Clear();
     _files.Dispose();
     ExlibChecks.ClearDeclarations();
@@ -593,6 +599,36 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.Empty(walked.Findings);
     Assert.Contains(
       walked.Crafted,
+      c => c.Output == "walk:a" && c.Station != CraftWalk.HandGridName
+    );
+  }
+
+  // Fails when the walk holds a step counted in hits once: the station ends that hold on the first hit, the
+  // step never finishes and the press yields nothing.
+  [Fact]
+  public void A_step_counted_in_hits_is_held_once_for_each_hit()
+  {
+    using TestWorld world = WithBench(["a"], [Recipe(Stick, "a")]);
+    WalkFixtureBench.HitPerHold = true;
+    CraftSequenceLoader.Load([
+      (
+        "walk:config/craftsequences/walk.json",
+        $$"""
+        {
+          "machine": "bench",
+          "sequences": [
+            { "recipe": "walk:a", "steps": [ { "tool": "{{Stick}}", "hits": 3 } ] }
+          ]
+        }
+        """
+      ),
+    ]);
+
+    CraftWalk.Result result = Walk(world);
+
+    Assert.Empty(result.Findings);
+    Assert.Contains(
+      result.Crafted,
       c => c.Output == "walk:a" && c.Station != CraftWalk.HandGridName
     );
   }
