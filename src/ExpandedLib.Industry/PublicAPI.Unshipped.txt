@@ -16,6 +16,10 @@ const ExpandedLib.Industry.Machining.MachiningJob.DefaultWear = 1 -> int
 const ExpandedLib.Industry.Machining.MachiningJob.MaterialAttribute = "cuttingMaterial" -> string!
 const ExpandedLib.Industry.Machining.MachiningJob.UnitsAttribute = "materialUnits" -> string!
 const ExpandedLib.Industry.Machining.MachiningJobSet.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.MechanicalPower.BeltMesh.CrownLift = 0.00625 -> float
+const ExpandedLib.Industry.MechanicalPower.BeltMesh.SegmentsPerTurn = 16 -> int
+const ExpandedLib.Industry.MechanicalPower.BeltMesh.StrapThickness = 0.015625 -> float
+const ExpandedLib.Industry.MechanicalPower.BeltMesh.StrapWidth = 0.25 -> float
 const ExpandedLib.Industry.MechanicalPower.BeltPath.Blocked = "exlib-belt-blocked" -> string!
 const ExpandedLib.Industry.MechanicalPower.BeltPath.CrossBelt = "exlib-belt-crossbelt" -> string!
 const ExpandedLib.Industry.MechanicalPower.BeltPath.NotParallel = "exlib-belt-notparallel" -> string!
@@ -424,6 +428,14 @@ ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.To.get -> ExpandedLib.Netw
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Wear.get -> float
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Wear.set -> void
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.WornOut.get -> bool
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.SetMesh(Vintagestory.API.Client.MeshData? mesh) -> void
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.RenderRange.get -> int
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.RenderOrder.get -> double
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.OnRenderFrame(float deltaTime, Vintagestory.API.Client.EnumRenderStage stage) -> void
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.Dispose() -> void
+ExpandedLib.Industry.MechanicalPower.BeltRenderer.BeltRenderer(Vintagestory.API.Client.ICoreClientAPI! api, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.AssetLocation! texture) -> void
+ExpandedLib.Industry.MechanicalPower.BeltRenderer
+ExpandedLib.Industry.MechanicalPower.BeltMesh
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.Advance(float dt, float hours, float slipPowerW) -> void
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.BEBehaviorMpClutch(Vintagestory.API.Common.BlockEntity! blockentity) -> void
@@ -743,6 +755,9 @@ static ExpandedLib.Industry.Machining.MachiningJobRegistry.Contributors.get -> E
 static ExpandedLib.Industry.Machining.MachiningJobRegistry.Shared.get -> ExpandedLib.Industry.Machining.MachiningJobRegistry!
 static ExpandedLib.Industry.Machining.MachiningJobs.Resolve(System.Collections.Generic.IEnumerable<Vintagestory.API.Common.CollectibleObject?>! collectibles, ExpandedLib.Industry.Machining.MachiningJobRegistry? jobs = null, ExpandedLib.Industry.Machining.CuttingMaterialRegistry? materials = null) -> System.Collections.Generic.List<string!>!
 static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.FullCapNm(ExpandedLib.Industry.MechanicalPower.MpShaftSize size) -> float
+static ExpandedLib.Industry.MechanicalPower.BeltMesh.Build(Vintagestory.API.MathTools.EnumAxis axis, Vintagestory.API.MathTools.Vec3i! offset, int driverSize, int drivenSize) -> Vintagestory.API.Client.MeshData!
+static ExpandedLib.Industry.MechanicalPower.BeltMesh.RimRadius(int size) -> float
+static ExpandedLib.Industry.MechanicalPower.BeltMesh.WrapAngles(int driverSize, int drivenSize, float centreDistance) -> (float Driver, float Driven)
 static ExpandedLib.Industry.MechanicalPower.BeltPath.Check(Vintagestory.API.Common.IBlockAccessor! accessor, ExpandedLib.Industry.MechanicalPower.BeltPulley a, ExpandedLib.Industry.MechanicalPower.BeltPulley b, System.Collections.Generic.IReadOnlyCollection<Vintagestory.API.MathTools.BlockPos!>! claimed, System.Func<Vintagestory.API.MathTools.BlockPos!, bool>? claimedElsewhere = null) -> string?
 static ExpandedLib.Industry.MechanicalPower.BeltPath.CrossedCells(ExpandedLib.Industry.MechanicalPower.BeltPulley a, ExpandedLib.Industry.MechanicalPower.BeltPulley b) -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>!
 static ExpandedLib.Industry.MechanicalPower.BeltPath.Footprint(ExpandedLib.Industry.MechanicalPower.BeltPulley a, ExpandedLib.Industry.MechanicalPower.BeltPulley b) -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>!
