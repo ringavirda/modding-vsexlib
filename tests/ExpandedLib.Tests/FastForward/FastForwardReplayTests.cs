@@ -198,6 +198,85 @@ public class FastForwardReplayTests {
     Assert.Equal(3, machine.ProductionTicks);
   }
 
+  // Fails when the hold reads the gap at the live tick, so a replay that ends 0.9 machine second behind holds the
+  // group on the next 0.2 s of calendar while the next call finds nothing due, and nothing ever steps again.
+  [Fact]
+  public void A_replay_that_ends_behind_by_less_than_a_step_releases_the_live_tick() {
+    var w = new TestWorld();
+    ReplayMachine machine = Place(w, 0);
+    w.AdvanceHours(11.1 * OneMachineSecond);
+    w.Networks.ListenerTick(w.Accessor, 0.2f);
+    int replayed = machine.ProductionTicks;
+
+    for (int i = 0; i < 10; i++) {
+      w.AdvanceHours(OneMachineSecond / 5);
+      w.FireBlockEntityTicks();
+      w.Networks.ListenerTick(w.Accessor, 0.2f);
+    }
+
+    Assert.Equal(10, replayed);
+    Assert.Equal(20, machine.ProductionTicks);
+    Assert.False(Driver(w).IsHeld(machine.Pos));
+  }
+
+  private sealed class CountingNode : BlockNetworkNode {
+    public override string NetworkType => "ffcount";
+
+    public override bool HasConnectorAt(BlockFacing face) =>
+      face == BlockFacing.EAST || face == BlockFacing.WEST;
+  }
+
+  private sealed class CountingNetwork(BlockNetworkModSystem system)
+    : BlockNetwork(system) {
+    public int LiveTicks;
+
+    public override string NetworkType => "ffcount";
+
+    public override int StepIntervalMs => 200;
+
+    public override void OnMerge(BlockNetwork other, IBlockAccessor world) { }
+
+    public override void OnSplitFragment(
+      BlockNetwork original,
+      IBlockAccessor world
+    ) { }
+
+    public override void OnTick(
+      IBlockAccessor world,
+      float dt,
+      BlockNetworkModSystem manager
+    ) {
+      if (!FastForward.Replaying)
+        LiveTicks++;
+    }
+  }
+
+  // Fails when a group rebuilt with a gap is not held until the call's replay, so its network takes a live step at
+  // the present before the time it missed is replayed.
+  [Fact]
+  public void A_group_rebuilt_behind_holds_its_network_on_that_call() {
+    var w = new TestWorld();
+    w.RegisterNetwork("ffcount", sys => new CountingNetwork(sys));
+    w.Place(
+      Cell,
+      TestBlocks.Configure(new CountingNode(), "test:ffcountnode", 89)
+    );
+    w.AddNode(Cell, "ffcount");
+    ReplayMachine machine = Place(w, 0, _ => w.Networks.GetNetworkAt(Cell));
+    w.FireBlockEntityTicks();
+    w.Networks.ListenerTick(w.Accessor, 0.2f);
+    var run = Assert.IsType<CountingNetwork>(w.NetworkAt(Cell));
+    int live = run.LiveTicks;
+
+    w.AdvanceHours(10 * OneMachineSecond);
+    Driver(w).SetPresent(machine.Pos, true);
+    w.Networks.ListenerTick(w.Accessor, 0.2f);
+
+    Assert.True(live > 0);
+    Assert.Equal(live, run.LiveTicks);
+    Assert.True(machine.ProductionTicks > 5);
+  }
+
   #endregion
 
   #region The step

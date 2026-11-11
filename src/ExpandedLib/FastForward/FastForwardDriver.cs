@@ -33,6 +33,9 @@ internal sealed class FastForwardGroup {
   /// <summary>Whether a member is in an unloaded chunk; a frozen group's cursor stands still.</summary>
   internal bool Frozen => Members.Any(m => !m.Present);
 
+  /// <summary>Whether the gap was more than one machine second after the last <see cref="FastForwardDriver.Advance"/>, or at the rebuild that made the group; the live ticks stand aside until a later call's replay closes it.</summary>
+  internal bool Lagging { get; set; }
+
   /// <summary>Game hours between <paramref name="nowHours"/> and the cursor.</summary>
   internal double Gap(double nowHours) => nowHours - CursorHours;
 
@@ -192,7 +195,7 @@ internal sealed class FastForwardDriver {
       ? member.CursorHours
       : null;
 
-  /// <summary>Whether the member at <paramref name="pos"/> sits in a group that is frozen or whose gap is more than the one machine second its live tick covers, so its live tick stands aside.</summary>
+  /// <summary>Whether the member at <paramref name="pos"/> sits in a group that is frozen or <see cref="FastForwardGroup.Lagging"/>, so its live tick stands aside.</summary>
   internal bool IsHeld(BlockPos pos) =>
     _members.TryGetValue(pos, out FastForwardMember? member)
     && member.Group is { } group
@@ -219,8 +222,11 @@ internal sealed class FastForwardDriver {
   internal bool IsNetworkHeld(Guid id) =>
     _networkGroups.TryGetValue(id, out FastForwardGroup? group) && Holds(group);
 
-  private bool Holds(FastForwardGroup group) =>
-    group.Frozen || group.Gap(NowHours()) > FastForwardGroup.StepHours + 1e-9;
+  private static bool Holds(FastForwardGroup group) =>
+    group.Frozen || group.Lagging;
+
+  private static bool Lags(FastForwardGroup group, double nowHours) =>
+    group.Gap(nowHours) > FastForwardGroup.StepHours + 1e-9;
 
   /// <summary>Records that the member at <paramref name="member"/> reads through <paramref name="pos"/>; a position it had not recorded raises the epoch.</summary>
   internal void Couple(BlockPos member, BlockPos pos) {
@@ -237,7 +243,7 @@ internal sealed class FastForwardDriver {
       Rebuild();
   }
 
-  /// <summary>Rebuilds the groups when the epoch rose, moves each unfrozen group's cursor on by <paramref name="dt"/> machine seconds, at most two, and never past the present, then replays what is left of each group's gap within the call's budget.</summary>
+  /// <summary>Rebuilds the groups when the epoch rose, moves each unfrozen group's cursor on by <paramref name="dt"/> machine seconds, at most two, and never past the present, then replays what is left of each group's gap within the call's budget and marks <see cref="FastForwardGroup.Lagging"/> each group whose gap is still more than one machine second.</summary>
   /// <param name="accessor">The accessor the networks step through.</param>
   /// <param name="dt">Seconds since the previous call.</param>
   internal void Advance(IBlockAccessor accessor, float dt) {
@@ -257,6 +263,8 @@ internal sealed class FastForwardDriver {
 
     if (Replays)
       Replay(accessor, now);
+    foreach (FastForwardGroup group in _groups)
+      group.Lagging = Lags(group, now);
   }
 
   private void DropEmptyPeers(IBlockAccessor accessor) {
@@ -386,7 +394,9 @@ internal sealed class FastForwardDriver {
         )),
     ];
     _networkGroups.Clear();
-    foreach (FastForwardGroup group in _groups)
+    double now = NowHours();
+    foreach (FastForwardGroup group in _groups) {
+      group.Lagging = Lags(group, now);
       foreach (FastForwardMember member in group.Members) {
         member.Group = group;
         foreach (Guid id in NetworkIdsOf(member)) {
@@ -394,6 +404,7 @@ internal sealed class FastForwardDriver {
           _networkGroups[id] = group;
         }
       }
+    }
     _builtEpoch = Epoch;
   }
 
