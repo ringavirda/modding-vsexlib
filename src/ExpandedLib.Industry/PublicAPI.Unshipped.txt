@@ -16,6 +16,13 @@ const ExpandedLib.Industry.Machining.MachiningJob.DefaultWear = 1 -> int
 const ExpandedLib.Industry.Machining.MachiningJob.MaterialAttribute = "cuttingMaterial" -> string!
 const ExpandedLib.Industry.Machining.MachiningJob.UnitsAttribute = "materialUnits" -> string!
 const ExpandedLib.Industry.Machining.MachiningJobSet.CurrentSchema = 1 -> int
+const ExpandedLib.Industry.MechanicalPower.BeltPath.Blocked = "exlib-belt-blocked" -> string!
+const ExpandedLib.Industry.MechanicalPower.BeltPath.CrossBelt = "exlib-belt-crossbelt" -> string!
+const ExpandedLib.Industry.MechanicalPower.BeltPath.NotParallel = "exlib-belt-notparallel" -> string!
+const ExpandedLib.Industry.MechanicalPower.BeltPath.Overlap = "exlib-belt-overlap" -> string!
+const ExpandedLib.Industry.MechanicalPower.BeltPath.Plane = "exlib-belt-plane" -> string!
+const ExpandedLib.Industry.MechanicalPower.BeltPath.Reach = "exlib-belt-reach" -> string!
+const ExpandedLib.Industry.MechanicalPower.BeltPath.WidthBlocks = 0.25 -> double
 const ExpandedLib.Industry.MechanicalPower.MpSegmentReading.TreeKey = "mpReading" -> string!
 const ExpandedLib.Industry.Molten.CrowbarHold.HoldSeconds = 1 -> float
 const ExpandedLib.Industry.Molten.MoltenBar.HoldSeconds = 1 -> float
@@ -401,9 +408,12 @@ ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.BEBehaviorMpBelt(Vintagest
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Break() -> void
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Broken.get -> bool
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.CapNm.get -> float
-ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Connect(ExpandedLib.Networks.NodeKey from, ExpandedLib.Networks.NodeKey to, ExpandedLib.Industry.MechanicalPower.MpShaftSize fromPulley, ExpandedLib.Industry.MechanicalPower.MpShaftSize toPulley, bool crossed = false) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Connect(ExpandedLib.Networks.NodeKey from, ExpandedLib.Networks.NodeKey to, int fromSize, int toSize, bool crossed = false) -> void
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Disconnect() -> void
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Efficiency.get -> float
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Engaged.get -> bool
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.FarCell.get -> Vintagestory.API.MathTools.BlockPos?
+ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.FarNeighbours.get -> System.Collections.Generic.IEnumerable<Vintagestory.API.MathTools.BlockPos!>!
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.From.get -> ExpandedLib.Networks.NodeKey
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.LifeJ.get -> float
 ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.Ratio.get -> float
@@ -452,6 +462,36 @@ ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.AngleRad(byte slot) 
 ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.BEBehaviorTurningParts(Vintagestory.API.Common.BlockEntity! blockentity) -> void
 ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.Parts.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.MechanicalPower.TurningPart!>!
 ExpandedLib.Industry.MechanicalPower.BEBehaviorTurningParts.UseParts(System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.MechanicalPower.TurningPart!>! parts) -> void
+ExpandedLib.Industry.MechanicalPower.BeltPath
+ExpandedLib.Industry.MechanicalPower.BeltPaths
+ExpandedLib.Industry.MechanicalPower.BeltPaths.Check(ExpandedLib.Industry.MechanicalPower.BeltPulley a, ExpandedLib.Industry.MechanicalPower.BeltPulley b, System.Collections.Generic.IReadOnlyCollection<Vintagestory.API.MathTools.BlockPos!>! claimed, ExpandedLib.Industry.MechanicalPower.IBeltPathOwner? self = null) -> string?
+ExpandedLib.Industry.MechanicalPower.BeltPaths.Claim(ExpandedLib.Industry.MechanicalPower.IBeltPathOwner! owner) -> void
+ExpandedLib.Industry.MechanicalPower.BeltPaths.OwnerAt(Vintagestory.API.MathTools.BlockPos! cell) -> ExpandedLib.Industry.MechanicalPower.IBeltPathOwner?
+ExpandedLib.Industry.MechanicalPower.BeltPaths.Release(ExpandedLib.Industry.MechanicalPower.IBeltPathOwner! owner) -> void
+ExpandedLib.Industry.MechanicalPower.BeltPulley
+ExpandedLib.Industry.MechanicalPower.BeltPulley.Axis.get -> Vintagestory.API.MathTools.EnumAxis
+ExpandedLib.Industry.MechanicalPower.BeltPulley.Axis.init -> void
+ExpandedLib.Industry.MechanicalPower.BeltPulley.BeltPulley() -> void
+ExpandedLib.Industry.MechanicalPower.BeltPulley.BeltPulley(Vintagestory.API.MathTools.BlockPos! Cell, Vintagestory.API.MathTools.EnumAxis Axis, int Size) -> void
+ExpandedLib.Industry.MechanicalPower.BeltPulley.Cell.get -> Vintagestory.API.MathTools.BlockPos!
+ExpandedLib.Industry.MechanicalPower.BeltPulley.Cell.init -> void
+ExpandedLib.Industry.MechanicalPower.BeltPulley.Size.get -> int
+ExpandedLib.Industry.MechanicalPower.BeltPulley.Size.init -> void
+ExpandedLib.Industry.MechanicalPower.BeltRun
+ExpandedLib.Industry.MechanicalPower.BeltRun.Axis.get -> Vintagestory.API.MathTools.EnumAxis
+ExpandedLib.Industry.MechanicalPower.BeltRun.Axis.init -> void
+ExpandedLib.Industry.MechanicalPower.BeltRun.BeltRun() -> void
+ExpandedLib.Industry.MechanicalPower.BeltRun.BeltRun(Vintagestory.API.MathTools.EnumAxis Axis, Vintagestory.API.MathTools.Vec3d! Start, Vintagestory.API.MathTools.Vec3d! End) -> void
+ExpandedLib.Industry.MechanicalPower.BeltRun.End.get -> Vintagestory.API.MathTools.Vec3d!
+ExpandedLib.Industry.MechanicalPower.BeltRun.End.init -> void
+ExpandedLib.Industry.MechanicalPower.BeltRun.Start.get -> Vintagestory.API.MathTools.Vec3d!
+ExpandedLib.Industry.MechanicalPower.BeltRun.Start.init -> void
+ExpandedLib.Industry.MechanicalPower.IBeltPathOwner
+ExpandedLib.Industry.MechanicalPower.IBeltPathOwner.ClaimedCells.get -> System.Collections.Generic.IReadOnlyCollection<Vintagestory.API.MathTools.BlockPos!>!
+ExpandedLib.Industry.MechanicalPower.IBeltPathOwner.From.get -> ExpandedLib.Industry.MechanicalPower.BeltPulley?
+ExpandedLib.Industry.MechanicalPower.IBeltPathOwner.PathBlocked(Vintagestory.API.MathTools.BlockPos! pos) -> void
+ExpandedLib.Industry.MechanicalPower.IBeltPathOwner.Pos.get -> Vintagestory.API.MathTools.BlockPos!
+ExpandedLib.Industry.MechanicalPower.IBeltPathOwner.To.get -> ExpandedLib.Industry.MechanicalPower.BeltPulley?
 ExpandedLib.Industry.MechanicalPower.IMpEnergyConsumer.LoadSlope(float speed) -> float
 ExpandedLib.Industry.MechanicalPower.IMpEnergyConsumer.StandingNm.get -> float
 ExpandedLib.Industry.MechanicalPower.IMpEnergyLink
@@ -486,6 +526,22 @@ ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.StoreReading(ExpandedLib.I
 ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.Strain.get -> float
 ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.Strain.set -> void
 ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.UltimateNm.get -> float
+ExpandedLib.Industry.MechanicalPower.MpBeltWear
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.Advance(float slipPowerW, float hours) -> void
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.Break() -> void
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.Broken.get -> bool
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.Fit(int fromSize, int toSize) -> void
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.FromSize.get -> int
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.LifeJ.get -> float
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.Load(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.MpBeltWear() -> void
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.Save(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.SlipTorque.get -> float
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.Snapped -> System.Action?
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.ToSize.get -> int
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.Wear.get -> float
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.Wear.set -> void
+ExpandedLib.Industry.MechanicalPower.MpBeltWear.WornOut.get -> bool
 ExpandedLib.Industry.MechanicalPower.MpCamLoad
 ExpandedLib.Industry.MechanicalPower.MpCamLoad.DropsCrossed(float phase, float dphase) -> int
 ExpandedLib.Industry.MechanicalPower.MpCamLoad.EnergyJ.get -> float
@@ -686,9 +742,17 @@ static ExpandedLib.Industry.Machining.MachineKindRegistry.Shared.get -> Expanded
 static ExpandedLib.Industry.Machining.MachiningJobRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
 static ExpandedLib.Industry.Machining.MachiningJobRegistry.Shared.get -> ExpandedLib.Industry.Machining.MachiningJobRegistry!
 static ExpandedLib.Industry.Machining.MachiningJobs.Resolve(System.Collections.Generic.IEnumerable<Vintagestory.API.Common.CollectibleObject?>! collectibles, ExpandedLib.Industry.Machining.MachiningJobRegistry? jobs = null, ExpandedLib.Industry.Machining.CuttingMaterialRegistry? materials = null) -> System.Collections.Generic.List<string!>!
-static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.CapFor(ExpandedLib.Industry.MechanicalPower.MpShaftSize fromPulley, ExpandedLib.Industry.MechanicalPower.MpShaftSize toPulley) -> float
-static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpBelt.PulleyDiameter(ExpandedLib.Industry.MechanicalPower.MpShaftSize size) -> float
 static ExpandedLib.Industry.MechanicalPower.BEBehaviorMpClutch.FullCapNm(ExpandedLib.Industry.MechanicalPower.MpShaftSize size) -> float
+static ExpandedLib.Industry.MechanicalPower.BeltPath.Check(Vintagestory.API.Common.IBlockAccessor! accessor, ExpandedLib.Industry.MechanicalPower.BeltPulley a, ExpandedLib.Industry.MechanicalPower.BeltPulley b, System.Collections.Generic.IReadOnlyCollection<Vintagestory.API.MathTools.BlockPos!>! claimed, System.Func<Vintagestory.API.MathTools.BlockPos!, bool>? claimedElsewhere = null) -> string?
+static ExpandedLib.Industry.MechanicalPower.BeltPath.CrossedCells(ExpandedLib.Industry.MechanicalPower.BeltPulley a, ExpandedLib.Industry.MechanicalPower.BeltPulley b) -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>!
+static ExpandedLib.Industry.MechanicalPower.BeltPath.Footprint(ExpandedLib.Industry.MechanicalPower.BeltPulley a, ExpandedLib.Industry.MechanicalPower.BeltPulley b) -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>!
+static ExpandedLib.Industry.MechanicalPower.BeltPath.LoopCells(ExpandedLib.Industry.MechanicalPower.BeltPulley a, ExpandedLib.Industry.MechanicalPower.BeltPulley b) -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>!
+static ExpandedLib.Industry.MechanicalPower.BeltPath.Meets(Vintagestory.API.Common.IBlockAccessor! accessor, Vintagestory.API.MathTools.BlockPos! pos, ExpandedLib.Industry.MechanicalPower.BeltPulley a, ExpandedLib.Industry.MechanicalPower.BeltPulley b) -> bool
+static ExpandedLib.Industry.MechanicalPower.BeltPath.Runs(ExpandedLib.Industry.MechanicalPower.BeltPulley a, ExpandedLib.Industry.MechanicalPower.BeltPulley b) -> ExpandedLib.Industry.MechanicalPower.BeltRun[]!
+static ExpandedLib.Industry.MechanicalPower.BeltPaths.Of(Vintagestory.API.Common.ICoreAPI! api) -> ExpandedLib.Industry.MechanicalPower.BeltPaths?
+static ExpandedLib.Industry.MechanicalPower.BeltPaths.Start(Vintagestory.API.Server.ICoreServerAPI! api) -> ExpandedLib.Industry.MechanicalPower.BeltPaths!
+static ExpandedLib.Industry.MechanicalPower.MpBeltWear.CapNm(int fromSize, int toSize) -> float
+static ExpandedLib.Industry.MechanicalPower.MpBeltWear.PulleyDiameter(int size) -> float
 static ExpandedLib.Industry.MechanicalPower.MpRun.Read(ExpandedLib.Networks.BlockNetworkModSystem? system, ExpandedLib.Networks.NodeKey key) -> ExpandedLib.Industry.MechanicalPower.MpRunReading
 static ExpandedLib.Industry.MechanicalPower.MpRun.ReadRun(this ExpandedLib.Networks.BEBehaviorNetworkMember! member) -> ExpandedLib.Industry.MechanicalPower.MpRunReading
 static ExpandedLib.Industry.MechanicalPower.MpRun.ReadRun(this ExpandedLib.Networks.BlockEntityNetworkNode! node) -> ExpandedLib.Industry.MechanicalPower.MpRunReading

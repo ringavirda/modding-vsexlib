@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Networks;
@@ -124,12 +125,7 @@ public class MpLinkSlipTests {
     Put(w, F, host, new LinkMember(host));
     Put(w, D, d, new CellMember(d, "wn"));
     var belt = new BEBehaviorMpBelt(host);
-    belt.Connect(
-      NodeKey.Port(F, 0),
-      NodeKey.Port(F, 1),
-      MpShaftSize.Line,
-      MpShaftSize.Line
-    );
+    belt.Connect(NodeKey.Port(F, 0), NodeKey.Port(F, 1), 1, 1);
     host.Behaviors.Add(belt);
     for (int i = 0; i < 200; i++)
       Tick(w);
@@ -161,12 +157,7 @@ public class MpLinkSlipTests {
     Put(w, D, d, new CellMember(d, "wn"));
     Put(w, C, c, new CellMember(c, "ne"));
     var belt = new BEBehaviorMpBelt(host);
-    belt.Connect(
-      NodeKey.Port(F, 0),
-      NodeKey.Port(F, 1),
-      MpShaftSize.Line,
-      MpShaftSize.Main
-    );
+    belt.Connect(NodeKey.Port(F, 0), NodeKey.Port(F, 1), 1, 2);
     host.Behaviors.Add(belt);
 
     for (int i = 0; i < 20; i++)
@@ -205,12 +196,12 @@ public class MpLinkSlipTests {
 
   // Fails when a slipping geared or crossed belt takes the slip torque off the input and puts it on the output without the ratio or the crossed sign.
   [Theory]
-  [InlineData(MpShaftSize.Line, MpShaftSize.Main, false, 5.376f, 1.248f)]
-  [InlineData(MpShaftSize.Line, MpShaftSize.Main, true, 5.376f, -1.248f)]
-  [InlineData(MpShaftSize.Main, MpShaftSize.Line, false, 4.752f, 0.624f)]
+  [InlineData(1, 2, false, 5.376f, 1.248f)]
+  [InlineData(1, 2, true, 5.376f, -1.248f)]
+  [InlineData(2, 1, false, 4.752f, 0.624f)]
   public void Belt_GearedAndCrossedSlipTorques(
-    MpShaftSize from,
-    MpShaftSize to,
+    int from,
+    int to,
     bool crossed,
     float expectA,
     float expectD
@@ -245,14 +236,11 @@ public class MpLinkSlipTests {
 
   // Fails when the cap takes the large pulley's grip, or ignores the pulley the grip is on: the grip of the smaller pulley, taken to the driving shaft.
   [Theory]
-  [InlineData(MpShaftSize.Line, MpShaftSize.Main, 390f)]
-  [InlineData(MpShaftSize.Main, MpShaftSize.Line, 780f)]
-  [InlineData(MpShaftSize.Main, MpShaftSize.Main, 1300f)]
-  public void Belt_CapByPulleySize(
-    MpShaftSize from,
-    MpShaftSize to,
-    float cap
-  ) => Assert.Equal(cap, BEBehaviorMpBelt.CapFor(from, to), 2);
+  [InlineData(1, 2, 390f)]
+  [InlineData(2, 1, 780f)]
+  [InlineData(2, 2, 1300f)]
+  public void Belt_CapByPulleySize(int from, int to, float cap) =>
+    Assert.Equal(cap, MpBeltWear.CapNm(from, to), 2);
 
   // Fails when the belt's life is taken from another torque or speed than the slip torque at the rated speed, or from another span than one in-game day.
   [Fact]
@@ -265,12 +253,7 @@ public class MpLinkSlipTests {
     Put(w, F, host, new LinkMember(host));
     Put(w, D, d, new CellMember(d, "wn"));
     var belt = new BEBehaviorMpBelt(host);
-    belt.Connect(
-      NodeKey.Port(F, 0),
-      NodeKey.Port(F, 1),
-      MpShaftSize.Line,
-      MpShaftSize.Line
-    );
+    belt.Connect(NodeKey.Port(F, 0), NodeKey.Port(F, 1), 1, 1);
     host.Behaviors.Add(belt);
     Run(w).FailureOverride = true;
     Run(w)
@@ -317,24 +300,14 @@ public class MpLinkSlipTests {
   [Fact]
   public void Belt_SavesBroken() {
     var belt = new BEBehaviorMpBelt(new Host());
-    belt.Connect(
-      NodeKey.Port(F, 0),
-      NodeKey.Port(F, 1),
-      MpShaftSize.Line,
-      MpShaftSize.Line
-    );
+    belt.Connect(NodeKey.Port(F, 0), NodeKey.Port(F, 1), 1, 1);
     belt.Wear = 1f;
     belt.Break();
     var tree = new TreeAttribute();
     belt.ToTreeAttributes(tree);
 
     var loaded = new BEBehaviorMpBelt(new Host());
-    loaded.Connect(
-      NodeKey.Port(F, 0),
-      NodeKey.Port(F, 1),
-      MpShaftSize.Line,
-      MpShaftSize.Line
-    );
+    loaded.Connect(NodeKey.Port(F, 0), NodeKey.Port(F, 1), 1, 1);
     loaded.FromTreeAttributes(tree, null!);
 
     Assert.True(loaded.Broken);
@@ -357,9 +330,7 @@ public class MpLinkSlipTests {
     belt.Initialize(
       Substitute.For<ICoreAPI>(),
       new JsonObject(
-        JToken.Parse(
-          "{\"fromPulley\":\"line\",\"toPulley\":\"main\",\"crossed\":true}"
-        )
+        JToken.Parse("{\"fromPulley\":1,\"toPulley\":2,\"crossed\":true}")
       )
     );
 
@@ -372,5 +343,114 @@ public class MpLinkSlipTests {
     Assert.Equal(-1, belt.Sign);
     Assert.Equal(2f, belt.Ratio);
     Assert.True(belt.Engaged);
+  }
+
+  private sealed class ForeignLink : BlockEntity, IMpEnergyLink {
+    public MpBeltWear Part { get; } = new();
+
+    public NodeKey From => NodeKey.Port(Pos, 0);
+
+    public NodeKey To => NodeKey.Port(Pos, 1);
+
+    public float Ratio => 1f;
+
+    public int Sign => 1;
+
+    public float CapNm => MpBeltWear.CapNm(Part.FromSize, Part.ToSize);
+
+    public float Efficiency => 1f;
+
+    public bool Engaged => !Part.Broken;
+
+    public float SlipTorque(float relativeSpeed) => Part.SlipTorque;
+
+    public void Advance(float dt, float hours, float slipPowerW) =>
+      Part.Advance(slipPowerW, hours);
+
+    public bool WornOut => Part.WornOut;
+
+    public void Break() => Part.Break();
+  }
+
+  private static (TestWorld World, ForeignLink Link) SlippingForeignLink() {
+    var w = NewWorld();
+    var a = new Cell(1e6f) { Drive = 312f };
+    var d = new Anchor(400f);
+    var link = new ForeignLink();
+    Put(w, A, a, new CellMember(a, "es"));
+    Put(w, F, link, new LinkMember(link));
+    Put(w, D, d, new CellMember(d, "wn"));
+    Run(w)
+      .RestoreState(
+        NodeKey.Centre(A),
+        new MpShaftRunState(ExlibValues.MpBeltRatedRadS, 1e6f)
+      );
+    Tick(w);
+    Tick(w);
+    return (w, link);
+  }
+
+  // Fails when the part's Advance does not scale the slip power by the hours: half a day at the rated slip wears it by half.
+  [Fact]
+  public void Part_in_a_foreign_link_wears_as_the_belt() {
+    var (w, link) = SlippingForeignLink();
+    Run(w).FailureOverride = true;
+
+    w.AdvanceHours(12);
+    Tick(w);
+
+    Assert.Equal(0.5f, link.Part.Wear, 0.02f);
+    Assert.False(link.Part.Broken);
+  }
+
+  // Fails when a worn-out belt snaps with shaft failure off: it wears to 1 and keeps carrying.
+  [Fact]
+  public void Failure_off_wears_to_one_without_snapping() {
+    var (w, link) = SlippingForeignLink();
+    Run(w).FailureOverride = false;
+    int snaps = 0;
+    link.Part.Snapped += () => snaps++;
+
+    w.AdvanceHours(30);
+    Tick(w);
+
+    Assert.Equal(1f, link.Part.Wear);
+    Assert.True(link.Part.WornOut);
+    Assert.False(link.Part.Broken);
+    Assert.True(link.Engaged);
+    Assert.Equal(0, snaps);
+  }
+
+  // Fails when the broken flag or the wear is not written, so a snapped belt reloads whole.
+  [Fact]
+  public void Part_saves_wear_and_broken() {
+    var part = new MpBeltWear { Wear = 0.4f };
+    part.Break();
+    var tree = new TreeAttribute();
+    part.Save(tree);
+
+    var loaded = new MpBeltWear();
+    loaded.Load(tree);
+
+    Assert.Equal(0.4f, loaded.Wear, 4);
+    Assert.True(loaded.Broken);
+  }
+
+  // Fails when a size 2 pulley reads as size 1, or a size other than 1 and 2 is taken.
+  [Fact]
+  public void Sizes_read_one_and_two() {
+    var host = new Host();
+    var belt = new BEBehaviorMpBelt(host);
+
+    belt.Initialize(
+      Substitute.For<ICoreAPI>(),
+      new JsonObject(JToken.Parse("{\"fromPulley\":2,\"toPulley\":2}"))
+    );
+
+    Assert.Equal(1300f, belt.CapNm, 2);
+    Assert.Equal(390f, MpBeltWear.CapNm(1, 2), 2);
+    Assert.Equal(2f, MpBeltWear.PulleyDiameter(2));
+    Assert.Throws<ArgumentException>(() => MpBeltWear.CapNm(3, 1));
+    Assert.Throws<ArgumentException>(() => MpBeltWear.CapNm(1, 0));
   }
 }
