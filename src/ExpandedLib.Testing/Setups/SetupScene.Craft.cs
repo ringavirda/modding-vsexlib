@@ -289,6 +289,8 @@ public sealed partial class SetupScene
     return silent;
   }
 
+  // A step counted in hits is held once for each hit, one stroke each, as a station that ends the hold on every
+  // hit needs; a timed step is one hold of its seconds.
   private void WorkSequence(
     string where,
     BlockEntity entity,
@@ -309,20 +311,24 @@ public sealed partial class SetupScene
       Player.HoldOffHand(offhand);
       try
       {
-        if (
-          !Player.Interact(
-            entity.Pos,
-            null,
-            false,
-            false,
-            false,
-            CraftBills.Duration(step, Player.ActiveSlot.Itemstack)
-              + TestPlayer.InteractStepSeconds,
-            null,
-            Second
+        int holds = Math.Max(step.Hits, 1);
+        float seconds =
+          (CraftBills.Duration(step, Player.ActiveSlot.Itemstack) / holds)
+          + TestPlayer.InteractStepSeconds;
+        for (int hold = 0; hold < holds; hold++)
+          if (
+            !Player.Interact(
+              entity.Pos,
+              null,
+              false,
+              false,
+              false,
+              seconds,
+              null,
+              Second
+            )
           )
-        )
-          throw Fail(where, $"{station} does not take the hold of {label}.");
+            throw Fail(where, $"{station} does not take the hold of {label}.");
       }
       finally
       {
