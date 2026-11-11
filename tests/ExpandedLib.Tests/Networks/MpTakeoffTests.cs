@@ -311,7 +311,7 @@ public class MpTakeoffTests {
     Assert.Equal(0f, link.GetTorque(0, 0.5f, out _));
   }
 
-  // Fails when the iron speed or the torque given is not saved: a client's block info reads 0 and a chunk load starts the link at 0.
+  // Fails when the iron speed or the torque given is not saved: a client's block info reads 0, and a link on a block entity of its own starts at 0 after a chunk load.
   [Fact]
   public void The_iron_speed_and_the_torque_given_are_saved_and_read_back() {
     var network = new MechanicalNetwork();

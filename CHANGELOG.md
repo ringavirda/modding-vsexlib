@@ -32,6 +32,8 @@ see the git history.
   null or zero, so a block entity saved before a member was added still loads.
 - **A network node loaded from a tree without `networkType` keeps its declared network type** instead of
   losing it to null and joining no graph.
+- **A filler cell's MP port answers vanilla's axle neighbour-change query** for the axle's own position, as `BlockAxle` and `BlockMPBase.tryConnect` ask it, so a free-standing axle placed after a filler MP port (a `BEBehaviorMPFillerPort` included) no longer breaks on its next neighbour change.
+- **`StageWildcardsCheck` decides an item wildcard** from the source's item types' variant groups, rules (b) and (c) as for a block, instead of reporting every covered item wildcard undecidable.
 
 ### Added
 
