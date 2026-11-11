@@ -574,7 +574,8 @@ public sealed class TestPlayer {
   /// Builds a player standing in <paramref name="world"/>, as a substituted
   /// <see cref="IServerPlayer"/> or, failing that, a plain <see cref="IPlayer"/>.
   /// </summary>
-  /// <remarks>Makes <paramref name="world"/> answer <see cref="IWorldAccessor.PlayerByUid"/> for
+  /// <remarks>The entity stands at the origin until a caller moves it, with a zero eye offset, as the
+  /// game's placement reads both. Makes <paramref name="world"/> answer <see cref="IWorldAccessor.PlayerByUid"/> for
   /// <paramref name="uid"/> with the new player, replacing an earlier player of that uid. The
   /// entity's <c>Api</c> is the world's, as a recipe's <c>Matches</c> reads it.</remarks>
   public static TestPlayer Create(
@@ -586,6 +587,7 @@ public sealed class TestPlayer {
     EntityPlayer entity = world.Made<EntityPlayer>();
     entity.World = world.World;
     entity.Api = world.Api;
+    entity.LocalEyePos = new Vec3d();
     entity.WatchedAttributes.SetString("playerUID", uid);
 
     TestPlayer? made = null;
