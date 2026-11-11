@@ -267,6 +267,36 @@ public class TestPlayerInteractTests {
     }
   }
 
+  private sealed class Facer : Block {
+    public BlockFacing[]? Suggested;
+
+    public override bool TryPlaceBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      ItemStack itemstack,
+      BlockSelection blockSel,
+      ref string failureCode
+    ) {
+      Suggested = SuggestedHVOrientation(byPlayer, blockSel);
+      world.BlockAccessor.SetBlock(Id, blockSel.Position);
+      return true;
+    }
+  }
+
+  // Fails when Use does not reach a placement that reads SuggestedHVOrientation, or the block is not placed.
+  [Fact]
+  public void A_placement_reading_the_look_direction_runs() {
+    var (world, _, player) = Stand();
+    var facer = TestBlocks.Configure(new Facer(), "test:facer", 2);
+    world.Place(new BlockPos(5, 1, 5), facer);
+    var stack = new ItemStack(facer, 1);
+
+    player.Interact(At, held: stack, sneak: true, face: BlockFacing.EAST);
+
+    Assert.NotNull(facer.Suggested);
+    Assert.Equal(facer.Id, world.Accessor.GetBlock(At.EastCopy()).Id);
+  }
+
   [Fact]
   public void A_negative_hold_throws() {
     var (world, lever, player) = Stand();

@@ -926,3 +926,4 @@ virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedSurfaces.get -> 
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedMetalCode.get -> string?
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedShown.get -> bool
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedTemperature.get -> float
+const ExpandedLib.Industry.Materials.Roles.KilnFuel = "kilnfuel" -> string!
