@@ -316,20 +316,23 @@ internal sealed class CraftStep : ScenarioStep {
         label,
         step
       );
-      double seconds = CraftBills.Duration(step, tool) + 0.1;
-      bool answered = player.UseStart(at, selection, tool, [], offhand);
+      int holds = Math.Max(step.Hits, 1);
+      double seconds = (CraftBills.Duration(step, tool) / holds) + 0.1;
       try {
-        if (!answered)
-          throw new StepFailure(
-            $"{station} does not take the hold of {label}."
-          );
-        double started = ctx.Now;
-        bool stepped = true;
-        while (InteractStep.Goes(stepped, ctx.Now - started, seconds)) {
-          yield return true;
-          stepped = player.UseStep(selection, ctx.Now - started);
+        for (int hold = 0; hold < holds; hold++) {
+          bool answered = player.UseStart(at, selection, tool, [], offhand);
+          if (!answered)
+            throw new StepFailure(
+              $"{station} does not take the hold of {label}."
+            );
+          double started = ctx.Now;
+          bool stepped = true;
+          while (InteractStep.Goes(stepped, ctx.Now - started, seconds)) {
+            yield return true;
+            stepped = player.UseStep(selection, ctx.Now - started);
+          }
+          player.UseStop(selection, ctx.Now - started);
         }
-        player.UseStop(selection, ctx.Now - started);
       } finally {
         PackLedger.GiveTools(ctx, hand.Itemstack, player.Offhand);
         hand.Itemstack = null;
