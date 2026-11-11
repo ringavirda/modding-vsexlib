@@ -25,7 +25,7 @@ public partial class BlockPipe
   /// flanged.</summary>
   public const string PlatedTier = "plated";
 
-  /// <summary>Tier name of the cast pipe family - the steam-era main, 5 atm and flanged.</summary>
+  /// <summary>Tier name of the cast pipe family - the steam-era main, 4.5 atm and flanged.</summary>
   public const string CastTier = "cast";
 
   /// <summary>Tier name of the rolled pipe family - the HP main, 12 atm and welded.</summary>
