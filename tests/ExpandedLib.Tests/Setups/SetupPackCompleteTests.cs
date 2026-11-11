@@ -13,6 +13,20 @@ internal sealed class SetupFrame : BlockEntity
 {
   private ExpandedLib.Blocks.ExRightClickConstructable? _rcc;
 
+  /// <summary>Whether the frame was marked dirty with its construction already complete.</summary>
+  public bool DirtiedBuilt { get; private set; }
+
+  public override void MarkDirty(
+    bool redrawOnClient = false,
+    IPlayer? skipPlayer = null
+  )
+  {
+    base.MarkDirty(redrawOnClient, skipPlayer);
+    DirtiedBuilt |=
+      GetBehavior<ExpandedLib.Blocks.ExRightClickConstructable>()?.IsComplete
+      == true;
+  }
+
   public void Stock(IPlayer who, int count) =>
     who.InventoryManager.GetHotbarInventory()[0].Itemstack = new ItemStack(
       Api.World.GetItem(new AssetLocation("game:stick")),
@@ -175,6 +189,19 @@ public class SetupPackCompleteTests : IDisposable
     SetupPackRecord pack = scene.Run(Mods).Pack!;
 
     Assert.Empty(pack.Draws);
+  }
+
+  // Fails when complete plants the finished construction without marking the entity dirty, so a
+  // machine that joins its run on a fitted stage never re-walks the cells placed around it.
+  [Fact]
+  public void A_completed_construction_marks_its_entity_dirty_once_built()
+  {
+    using SetupScene scene = Build("setupbuild", Carried, Frame, FrameStages);
+
+    var frame = (SetupFrame)
+      scene.World.GetBlockEntity(scene.PositionOf("frame"))!;
+
+    Assert.True(frame.DirtiedBuilt);
   }
 
   // Fails when the free branch is taken for any code, so a frame nobody carried completes from an

@@ -517,7 +517,9 @@ public sealed partial class SetupScene : IDisposable
   /// <summary>Brings the <see cref="ExRightClickConstructable"/> of the entity at
   /// <paramref name="pos"/> to its last stage, drawing the stages' requirements from the pack, and
   /// plants a completed construction in the entity as <see cref="RccFake.Complete"/> does when the
-  /// entity caches its construction in an <c>_animator</c> or <c>_rcc</c> field.</summary>
+  /// entity caches its construction in an <c>_animator</c> or <c>_rcc</c> field. The entity is then
+  /// marked dirty as a paid stage marks it, so an entity that joins its run on a fitted stage
+  /// re-walks the cells already placed around it.</summary>
   /// <param name="be">The block entity at <paramref name="pos"/>.</param>
   /// <param name="pos">The entity's cell.</param>
   /// <param name="where">The step path a pack shortfall is reported under.</param>
@@ -538,6 +540,7 @@ public sealed partial class SetupScene : IDisposable
       is ExRightClickConstruction built
     )
       built.CurrentCompletedStage = Math.Max(0, built.Stages.Length - 1);
+    be.MarkDirty(true);
     return true;
   }
 
