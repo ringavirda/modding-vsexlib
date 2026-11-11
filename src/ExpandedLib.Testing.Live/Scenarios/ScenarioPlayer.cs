@@ -31,6 +31,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   private int _uses;
   private int _breaks;
   private int _slotChanges;
+  private Vec3d? _stood;
 
   private ScenarioPlayer(
     ServerMain server,
@@ -220,6 +221,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   public void Park() {
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Creative;
     _data.FreeMove = true;
+    _stood = null;
     MoveTo(_park);
   }
 
@@ -252,6 +254,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   public void StandAt(BlockPos at) {
     Survive();
     MoveTo(at);
+    _stood = _data.EntityPlayer.ServerPos.XYZ;
     _data.EntityPlayer.OnGround = true;
   }
 
@@ -274,6 +277,12 @@ internal sealed class ScenarioPlayer : IHandRelease {
   /// <summary>The cell the player stands in to place into <paramref name="at"/>: two blocks south
   /// of it, on its level.</summary>
   public static Vec3d Stand(BlockPos at) => new(at.X + 0.5, at.Y, at.Z + 2.5);
+
+  /// <summary>Where the player stands to act on the block at <paramref name="at"/>: the cell a
+  /// <c>stand</c> step put it in when there is one, else <see cref="Stand"/>.</summary>
+  /// <param name="at">The absolute cell acted on.</param>
+  /// <param name="stood">The feet position a <c>stand</c> step set, or null.</param>
+  public static Vec3d StandFor(BlockPos at, Vec3d? stood) => stood ?? Stand(at);
 
   /// <summary>The point, relative to the clicked block, where a click on its <paramref name="face"/>
   /// lands: the middle of that face.</summary>
@@ -936,7 +945,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   }
 
   private void Aim(BlockPos at, Vec3d target) {
-    Vec3d stand = Stand(at);
+    Vec3d stand = StandFor(at, _stood);
     MoveTo(stand);
     Vec3d eye = stand.AddCopy(_data.EntityPlayer.LocalEyePos);
     (_data.EntityPlayer.ServerPos.Yaw, _data.EntityPlayer.ServerPos.Pitch) =
