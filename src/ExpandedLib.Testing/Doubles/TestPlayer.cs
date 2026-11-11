@@ -273,7 +273,7 @@ public sealed class TestPlayer {
   /// every <see cref="InteractStepSeconds"/> with the seconds held, and <see cref="Block.OnBlockInteractStop"/>
   /// once, when a step declines or the hold ends.</summary>
   /// <remarks>A spectator, or a player the claims refuse use of the cell, gets nothing. No world ticks run during
-  /// the hold; the keys last for the call only. With <c>sneak</c> a block in hand is placed first, as the client
+  /// the hold; the keys last for the call only; a player never moved is stood south of the cell, with a zero eye, for the call. With <c>sneak</c> a block in hand is placed first, as the client
   /// does; the clicked block is reached when that fails or it sets <see cref="Block.PlacedPriorityInteract"/>. The
   /// held item's use and the reach test are not run; the selection stays <c>CurrentBlockSelection</c> after.</remarks>
   /// <param name="pos">The cell clicked.</param>
@@ -373,8 +373,7 @@ public sealed class TestPlayer {
     if (hit != null)
       selection.HitPosition = hit;
     EnumHandInteract handUse = Entity.Controls.HandUse;
-    Vec3d? eye = Entity.LocalEyePos;
-    Entity.LocalEyePos ??= new Vec3d();
+    Action restoreLook = Looking(pos);
     Action release = PressKeys(sneak, ctrl, sprint);
     Entity.Controls.HandUse = EnumHandInteract.HeldItemInteract;
     try {
@@ -409,7 +408,7 @@ public sealed class TestPlayer {
       return handling;
     } finally {
       Entity.Controls.HandUse = handUse;
-      Entity.LocalEyePos = eye;
+      restoreLook();
       release();
     }
   }
@@ -523,8 +522,7 @@ public sealed class TestPlayer {
       return false;
 
     Player.CurrentBlockSelection.Returns(selection);
-    Vec3d? eye = Entity.LocalEyePos;
-    Entity.LocalEyePos ??= new Vec3d();
+    Action restoreLook = Looking(pos);
     Action release = PressKeys(sneak, ctrl, sprint);
     try {
       Block block = _world.Accessor.GetBlock(pos);
@@ -540,9 +538,24 @@ public sealed class TestPlayer {
       block.OnBlockInteractStop(used, _world.World, Player, selection);
       return true;
     } finally {
-      Entity.LocalEyePos = eye;
+      restoreLook();
       release();
     }
+  }
+
+  /// <summary>Gives a player with no eye an eye at its feet, and a player still at the origin a cell south of
+  /// <paramref name="pos"/>, so a block reading the look sees a player facing north at it; returns the undo.</summary>
+  private Action Looking(BlockPos pos) {
+    Vec3d? eye = Entity.LocalEyePos;
+    Entity.LocalEyePos ??= new Vec3d();
+    EntityPos at = Entity.Pos;
+    (double x, double y, double z) = (at.X, at.Y, at.Z);
+    if (x == 0 && y == 0 && z == 0)
+      at.SetPos(pos.X + 0.5, pos.Y, pos.Z + 1.5);
+    return () => {
+      Entity.LocalEyePos = eye;
+      at.SetPos(x, y, z);
+    };
   }
 
   private static BlockSelection FaceSelection(BlockPos pos, BlockFacing side) =>

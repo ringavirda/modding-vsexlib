@@ -299,6 +299,24 @@ public class TestPlayerInteractTests {
     Assert.Null(player.Entity.LocalEyePos);
   }
 
+  // Fails when Use leaves a player at the origin there, where the look reads as facing away from the cell, or leaves it
+  // standing south of the cell after the call.
+  [Fact]
+  public void A_player_never_moved_clicks_facing_north_and_is_back_at_the_origin_after() {
+    var (world, _, player) = Stand();
+    var facer = TestBlocks.Configure(new Facer(), "test:facer", 2);
+    world.Place(new BlockPos(5, 1, 5), facer);
+    var stack = new ItemStack(facer, 1);
+
+    player.Interact(At, held: stack, sneak: true, face: BlockFacing.EAST);
+
+    Assert.Equal(BlockFacing.NORTH, facer.Suggested![0]);
+    Assert.Equal(
+      (0d, 0d, 0d),
+      (player.Entity.Pos.X, player.Entity.Pos.Y, player.Entity.Pos.Z)
+    );
+  }
+
   [Fact]
   public void A_negative_hold_throws() {
     var (world, lever, player) = Stand();
