@@ -97,6 +97,7 @@ internal sealed class FastForwardDriver {
   private readonly Dictionary<Guid, FastForwardGroup> _networkGroups = [];
   private List<FastForwardGroup> _groups = [];
   private int _builtEpoch = -1;
+  private double _advancedHours = -1;
 
   internal FastForwardDriver(BlockNetworkModSystem networks) {
     _networks = networks;
@@ -195,7 +196,7 @@ internal sealed class FastForwardDriver {
       ? member.CursorHours
       : null;
 
-  /// <summary>Whether the member at <paramref name="pos"/> sits in a group that is frozen or <see cref="FastForwardGroup.Lagging"/>, so its live tick stands aside.</summary>
+  /// <summary>Whether the member at <paramref name="pos"/> sits in a group that is frozen or <see cref="FastForwardGroup.Lagging"/>, or the calendar has moved more than one call's cursor share since the last <see cref="Advance"/>, so its live tick stands aside.</summary>
   internal bool IsHeld(BlockPos pos) =>
     _members.TryGetValue(pos, out FastForwardMember? member)
     && member.Group is { } group
@@ -222,8 +223,13 @@ internal sealed class FastForwardDriver {
   internal bool IsNetworkHeld(Guid id) =>
     _networkGroups.TryGetValue(id, out FastForwardGroup? group) && Holds(group);
 
-  private static bool Holds(FastForwardGroup group) =>
-    group.Frozen || group.Lagging;
+  private bool Holds(FastForwardGroup group) =>
+    group.Frozen || group.Lagging || Skipped();
+
+  private bool Skipped() =>
+    _advancedHours >= 0
+    && NowHours() - _advancedHours
+      > MaxStepSeconds / GameTime.MachineSecondsPerHour + CursorEpsilonHours;
 
   private static bool Lags(FastForwardGroup group, double nowHours) =>
     group.Gap(nowHours) > FastForwardGroup.StepHours + 1e-9;
@@ -247,8 +253,10 @@ internal sealed class FastForwardDriver {
   /// <param name="accessor">The accessor the networks step through.</param>
   /// <param name="dt">Seconds since the previous call.</param>
   internal void Advance(IBlockAccessor accessor, float dt) {
-    if (_members.Count == 0 && _groups.Count == 0)
+    if (_members.Count == 0 && _groups.Count == 0) {
+      _advancedHours = NowHours();
       return;
+    }
     DropEmptyPeers(accessor);
     EnsureBuilt();
 
@@ -265,6 +273,7 @@ internal sealed class FastForwardDriver {
       Replay(accessor, now);
     foreach (FastForwardGroup group in _groups)
       group.Lagging = Lags(group, now);
+    _advancedHours = now;
   }
 
   private void DropEmptyPeers(IBlockAccessor accessor) {

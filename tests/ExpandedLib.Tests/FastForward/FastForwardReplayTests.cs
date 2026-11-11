@@ -198,6 +198,28 @@ public class FastForwardReplayTests {
     Assert.Equal(3, machine.ProductionTicks);
   }
 
+  // Fails when a calendar jump since the last listener call does not hold the live tick, so the machine ticks live on
+  // the jumped time before the call that replays it.
+  [Fact]
+  public void A_calendar_jump_holds_the_live_tick_until_the_next_call() {
+    var w = new TestWorld();
+    ReplayMachine machine = Place(w, 0);
+    w.FireBlockEntityTicks();
+    w.Networks.ListenerTick(w.Accessor, 0.2f);
+    int before = machine.ProductionTicks;
+
+    w.AdvanceHours(30 * OneMachineSecond);
+    w.FireBlockEntityTicks();
+
+    Assert.True(Driver(w).IsHeld(machine.Pos));
+    Assert.Equal(before, machine.ProductionTicks);
+
+    w.Networks.ListenerTick(w.Accessor, 0.2f);
+
+    Assert.False(Driver(w).IsHeld(machine.Pos));
+    Assert.InRange(machine.ProductionTicks, before + 29, before + 30);
+  }
+
   // Fails when the hold reads the gap at the live tick, so a replay that ends 0.9 machine second behind holds the
   // group on the next 0.2 s of calendar while the next call finds nothing due, and nothing ever steps again.
   [Fact]
