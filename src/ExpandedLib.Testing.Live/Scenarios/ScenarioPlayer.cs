@@ -26,6 +26,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   private readonly ServerWorldPlayerData _data;
   private readonly BlockPos _park;
   private readonly PlayerAntiAbuseMonitor? _abuse;
+  private Vec3d? _standing;
   private ItemStack? _filledHand;
   private EnumHandInteract? _handUse;
   private int _uses;
@@ -221,6 +222,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Creative;
     _data.FreeMove = true;
     MoveTo(_park);
+    _standing = null;
   }
 
   /// <summary>Empties the hotbar, off hand, backpack and mouse slot and makes the first hotbar slot the active
@@ -246,13 +248,15 @@ internal sealed class ScenarioPlayer : IHandRelease {
   }
 
   /// <summary>Puts the player's feet in the middle of the cell <paramref name="at"/> in survival mode, on the
-  /// ground, where it stays until a verb or <see cref="Park"/> moves it. The server runs no physics for it, so
-  /// a block's collision hook never fires; a block entity's own tick that looks for the standing player still reaches it.</summary>
+  /// ground, where it stays until <see cref="Park"/> moves it, and where a player verb stands it, in place of the
+  /// default cell of <see cref="Stand(BlockPos)"/>. The server runs no physics for it, so a block's collision hook never
+  /// fires; a block entity's own tick that looks for the standing player still reaches it.</summary>
   /// <param name="at">The absolute cell.</param>
   public void StandAt(BlockPos at) {
     Survive();
     MoveTo(at);
     _data.EntityPlayer.OnGround = true;
+    _standing = new Vec3d(at.X + 0.5, at.Y, at.Z + 0.5);
   }
 
   /// <summary>Revives the player if it died and sets its health to its maximum, so the next case starts
@@ -936,7 +940,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   }
 
   private void Aim(BlockPos at, Vec3d target) {
-    Vec3d stand = Stand(at);
+    Vec3d stand = _standing ?? Stand(at);
     MoveTo(stand);
     Vec3d eye = stand.AddCopy(_data.EntityPlayer.LocalEyePos);
     (_data.EntityPlayer.ServerPos.Yaw, _data.EntityPlayer.ServerPos.Pitch) =
