@@ -811,6 +811,18 @@ public abstract class BlockNetworkNode
     BlockFacing face
   ) => false;
 
+  /// <summary>Returns true when a connection to <paramref name="neighborBlock"/> on <paramref name="face"/> is valid even though the neighbour is not a network block, for a node that needs the neighbour's position to tell. By default the answer of <see cref="IsValidNonNetworkConnection(Block, BlockFacing)"/>.</summary>
+  /// <param name="world">Reads the blocks around the node.</param>
+  /// <param name="pos">This node's position; the neighbour is at <c>pos</c> moved one step to <paramref name="face"/>.</param>
+  /// <param name="neighborBlock">The block at the neighbour's position.</param>
+  /// <param name="face">The face of this node the neighbour is on.</param>
+  public virtual bool IsValidNonNetworkConnection(
+    IBlockAccessor world,
+    BlockPos pos,
+    Block neighborBlock,
+    BlockFacing face
+  ) => IsValidNonNetworkConnection(neighborBlock, face);
+
   /// <summary>Whether this node will physically join <paramref name="neighbour"/>, beyond the geometric checks (matching connectors, same network type). The walk asks both nodes of a pair, so a refusal from either keeps them apart.</summary>
   public virtual bool AcceptsNeighbour(Block neighbour) => true;
 

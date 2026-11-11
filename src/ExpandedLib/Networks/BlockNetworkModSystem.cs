@@ -740,7 +740,7 @@ public class BlockNetworkModSystem : ModSystem {
     BlockFacing face
   ) =>
     world.GetBlock(pos) is BlockNetworkNode node
-    && node.IsValidNonNetworkConnection(neighbour, face);
+    && node.IsValidNonNetworkConnection(world, pos, neighbour, face);
 
   /// <summary>Whether the cell across <paramref name="facing"/> joins <paramref name="source"/>.</summary>
   private static bool IsValidNetworkNeighbour(

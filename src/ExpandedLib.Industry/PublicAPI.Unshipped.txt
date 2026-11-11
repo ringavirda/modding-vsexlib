@@ -807,6 +807,7 @@ static readonly ExpandedLib.Industry.Helpers.ExParticles.MetalSpark -> int
 static readonly ExpandedLib.Industry.Helpers.ExSounds.MetalBreak -> Vintagestory.API.Common.AssetLocation!
 virtual ExpandedLib.Industry.Benches.BlockEntityMpBench.JobTorqueNm.get -> float
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.CupBox.get -> Vintagestory.API.MathTools.Cuboidf?
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.ExtraCupBoxes.get -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.Cuboidf!>!
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.IntakeAllowed() -> bool
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnMetalMoved(int units, string! metal, float temperatureC) -> void
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnPulled(int accepted) -> void

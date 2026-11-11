@@ -1,8 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Casting;
+using ExpandedLib.Structures;
 using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -13,6 +18,18 @@ namespace ExpandedLib.Tests.Casting;
 [Collection("WorldState")]
 public class SandStationTests : IDisposable {
   public void Dispose() => CastingStationRegistry.ResetForWorld();
+
+  private sealed class TwoCupStation : BlockEntitySandStation {
+    protected internal override IReadOnlyList<Cuboidf> ExtraCupBoxes =>
+      [new Cuboidf(4f / 16f, 0, 0, 12f / 16f, 1, 6f / 16f)];
+  }
+
+  private sealed class TurnedHost : Block, IFillerHost {
+    public JsonObject? FillerOffsets => null;
+
+    public int StructureAngle =>
+      ExOrientation.AngleFromSide(Variant["side"]) + 180;
+  }
 
   private sealed class RecordingStation : BlockEntitySandStation {
     public bool Intake = true;
@@ -144,6 +161,57 @@ public class SandStationTests : IDisposable {
     scene.Entity.ReceiveLiquidMetal(metal, ref amount, 1200f);
     Assert.Equal(0, amount);
     Assert.Equal(40, scene.Molten.CellAmount);
+  }
+
+  // Fails when ExtraCupBoxes is left out of the cup test: a pour into the second box takes nothing.
+  [Fact]
+  public void A_pour_into_an_extra_cup_box_fills_and_one_between_the_boxes_does_not() {
+    var scene = SandStationScene.Build(
+      make: () => new TwoCupStation(),
+      cup: "[4, 0, 10, 12, 16, 16]"
+    );
+    scene.Interact(scene.PatternStack("row"));
+    ItemStack metal = scene.SandStack(SandStationScene.Metal);
+    int amount = 40;
+
+    scene.Entity.BeginFill(new Vec3d(0.5, 0.5, 0.5));
+    scene.Entity.ReceiveLiquidMetal(metal, ref amount, 1200f);
+    Assert.Equal(40, amount);
+    Assert.Equal(0, scene.Molten.CellAmount);
+
+    scene.Entity.OnPourOver();
+    scene.Entity.BeginFill(new Vec3d(0.5, 0.5, 0.1));
+    scene.Entity.ReceiveLiquidMetal(metal, ref amount, 1200f);
+    Assert.Equal(0, amount);
+    Assert.Equal(40, scene.Molten.CellAmount);
+  }
+
+  // Fails when the offsets are turned by the side alone: a host with a half-turned footprint reads the cell on the wrong end.
+  [Theory]
+  [InlineData("n", 0, -4, "north")]
+  [InlineData("e", 4, 0, "east")]
+  public void A_filler_hosts_launder_offsets_turn_as_its_footprint_turns(
+    string side,
+    int x,
+    int z,
+    string facing
+  ) {
+    var block = TestBlocks.Configure(
+      new TurnedHost(),
+      "test:turned-" + side,
+      141,
+      ("side", side)
+    );
+    block.Attributes = new JsonObject(
+      JToken.Parse(
+        """{ "sandStation": { "launderFaces": [{ "z": 4, "turns": 2 }] } }"""
+      )
+    );
+
+    LaunderFace far = BlockEntitySandStation.LaunderFacesOf(block)[1];
+
+    Assert.Equal((x, z), (far.Offset.X, far.Offset.Z));
+    Assert.Equal(BlockFacing.FromCode(facing), far.Facing);
   }
 
   // Fails when the launder face is not the facing turned around, or the pull is 50 a tick.
