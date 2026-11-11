@@ -160,7 +160,7 @@ public interface IMpEnergyLink {
   void Break() { }
 }
 
-/// <summary>A block that will own links once placed, so the "mpshaft" network can try their joints before the block entity exists.</summary>
+/// <summary>A block that will own links once placed, or a belt about to be strung to a cell, so the "mpshaft" network can try their joints before the block entity exists. A link may end at a key in another cell of the run.</summary>
 public interface IMpEnergyLinkSource {
   /// <summary>The links the block would hold standing at <paramref name="pos"/>, their port keys in that cell.</summary>
   /// <param name="world">The accessor the placement reads.</param>

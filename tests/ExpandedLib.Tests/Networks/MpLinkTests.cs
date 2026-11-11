@@ -109,12 +109,7 @@ public class MpLinkTests {
 
   private static BEBehaviorMpBelt Belt(Host host) {
     var belt = new BEBehaviorMpBelt(host);
-    belt.Connect(
-      NodeKey.Port(F, 0),
-      NodeKey.Port(F, 1),
-      MpShaftSize.Line,
-      MpShaftSize.Line
-    );
+    belt.Connect(NodeKey.Port(F, 0), NodeKey.Port(F, 1), 1, 1);
     host.Behaviors.Add(belt);
     return belt;
   }

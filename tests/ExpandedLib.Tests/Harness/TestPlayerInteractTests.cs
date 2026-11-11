@@ -97,6 +97,17 @@ public class TestPlayerInteractTests {
     Assert.Equal(["start", "stop 0.0"], lever.Calls);
   }
 
+  // Fails when the clicked cell is not left as the player's selection, so a call that reads where the player looks
+  // after a click finds nothing.
+  [Fact]
+  public void A_click_leaves_its_cell_as_the_players_selection() {
+    var (_, _, player) = Stand();
+
+    player.Interact(At);
+
+    Assert.Equal(At, player.Player.CurrentBlockSelection.Position);
+  }
+
   // Fails when a start that declines is still stepped or stopped.
   [Fact]
   public void A_declined_start_is_neither_stepped_nor_stopped() {

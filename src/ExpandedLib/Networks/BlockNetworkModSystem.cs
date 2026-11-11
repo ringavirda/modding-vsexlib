@@ -255,26 +255,62 @@ public class BlockNetworkModSystem : ModSystem {
         if (!primaryNet.CanMerge(netToMerge, world))
           continue;
 
-        foreach (var nPos in netToMerge.Nodes) {
-          Claim(primaryNet, nPos, SlotsHeldAt(nPos));
-        }
-
-        // A suspended review carries over to the merged network.
-        if (_unreadableNodes.TryGetValue(netToMerge.Id, out var pending)) {
-          if (_unreadableNodes.TryGetValue(primaryNet.Id, out var carried))
-            carried.UnionWith(pending);
-          else
-            _unreadableNodes[primaryNet.Id] = pending;
-        }
-
-        primaryNet.OnMerge(netToMerge, world);
-        DissolveNetwork(netToMerge.Id);
+        Absorb(world, primaryNet, netToMerge);
       }
 
       primaryNet.OnTopologyChanged();
       if (broadcast)
         primaryNet.BroadcastUpdate(world);
     }
+  }
+
+  private void Absorb(
+    IBlockAccessor world,
+    BlockNetwork primaryNet,
+    BlockNetwork netToMerge
+  ) {
+    foreach (var nPos in netToMerge.Nodes) {
+      Claim(primaryNet, nPos, SlotsHeldAt(nPos));
+    }
+
+    // A suspended review carries over to the merged network.
+    if (_unreadableNodes.TryGetValue(netToMerge.Id, out var pending)) {
+      if (_unreadableNodes.TryGetValue(primaryNet.Id, out var carried))
+        carried.UnionWith(pending);
+      else
+        _unreadableNodes[primaryNet.Id] = pending;
+    }
+
+    primaryNet.OnMerge(netToMerge, world);
+    DissolveNetwork(netToMerge.Id);
+  }
+
+  /// <summary>
+  /// Re-walks the graph from the cell at <paramref name="pos"/> after the far cells it lists changed: merges the networks
+  /// of the far cells it now shares a listing with, and splits the network when a listing is gone. Does nothing for a
+  /// cell on no network.
+  /// </summary>
+  /// <param name="world">The accessor the walk reads.</param>
+  /// <param name="pos">The cell whose <see cref="INetworkFarNeighbours"/> changed.</param>
+  public void Relink(IBlockAccessor world, BlockPos pos) {
+    if (
+      !_posToNetwork.TryGetValue(pos, out Guid netId)
+      || !_networks.TryGetValue(netId, out BlockNetwork? network)
+    )
+      return;
+    FastForward.RaiseEpoch();
+    var others = GetConnectedNeighbors(world, pos, network.NetworkType)
+      .Where(_posToNetwork.ContainsKey)
+      .Select(p => _networks[_posToNetwork[p]])
+      .Where(n => n != network)
+      .Distinct()
+      .ToList();
+    foreach (var other in others) {
+      if (!network.CanMerge(other, world))
+        continue;
+      Absorb(world, network, other);
+    }
+    ReviewConnectivity(world, netId, network, broadcast: true);
   }
 
   /// <summary>
@@ -647,7 +683,7 @@ public class BlockNetworkModSystem : ModSystem {
     return open.Count == 0 ? [] : open.ToArray();
   }
 
-  /// <summary>Returns positions graph-connected to <paramref name="pos"/> on <paramref name="networkType"/>: matching connector, same network type, not broken.</summary>
+  /// <summary>Returns positions graph-connected to <paramref name="pos"/> on <paramref name="networkType"/>: matching connector, same network type, not broken; then the far cells it and they list each other through <see cref="INetworkFarNeighbours"/>.</summary>
   public IEnumerable<BlockPos> GetConnectedNeighbors(
     IBlockAccessor world,
     BlockPos pos,
@@ -672,6 +708,20 @@ public class BlockNetworkModSystem : ModSystem {
         )
           yield return neighborPos;
       }
+    }
+
+    foreach (BlockPos far in NetworkMembership.FarOf(world, pos)) {
+      INetworkMember? partner = NetworkMembership.Resolve(
+        world,
+        far,
+        networkType
+      );
+      if (
+        partner != null
+        && CouplesFrom(world, far, partner)
+        && NetworkMembership.FarOf(world, far).Contains(pos)
+      )
+        yield return far;
     }
   }
 
