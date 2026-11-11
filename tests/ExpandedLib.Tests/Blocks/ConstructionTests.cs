@@ -219,6 +219,18 @@ public class ConstructionTests {
     Assert.Equal("iron", StoredMetal(site.Behavior));
   }
 
+  // Fails when a stage short of one ingredient takes the others or builds: the plates are then
+  // gone from the hotbar with the stage at 1.
+  [Fact]
+  public void A_short_payment_takes_nothing() {
+    Site site = Metalwork();
+    Offer(site, "game:metalplate-iron 2");
+
+    Assert.Equal(0, Interact(site));
+    Assert.Equal(2, Held(site));
+    Assert.Null(StoredMetal(site.Behavior));
+  }
+
   // Fails when a creative player without Ctrl is let through as one holding it.
   [Fact]
   public void A_creative_player_without_ctrl_is_refused_two_metals() {
