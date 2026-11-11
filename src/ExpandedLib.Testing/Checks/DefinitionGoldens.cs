@@ -250,7 +250,8 @@ public static class DefinitionGoldens {
   /// output: every golden when <c>EXLIB_WRITE_GOLDENS</c> is <c>1</c>, else those whose
   /// <see cref="RelativePath"/> contains one of its comma-separated fragments. Opt-in: call only
   /// when <see cref="WriteRequested"/>.</summary>
-  /// <remarks>On <see cref="OlderSeries"/>, run after the current series' write, the shared goldens
+  /// <remarks>A golden that exists and matches the def under <see cref="DefinitionParity"/> is left
+  /// byte for byte as it is. On <see cref="OlderSeries"/>, run after the current series' write, the shared goldens
   /// stay: a selected def differing from its shared golden, or without one, is written under
   /// <see cref="SeriesRoot"/>, a series golden no longer differing is deleted, a selected shared
   /// golden the series lacks gets its marker and a selected stale marker is deleted. A fragment
@@ -328,8 +329,15 @@ public static class DefinitionGoldens {
           continue;
         }
       }
+      JToken json = def.ToJson();
+      if (
+        series == null
+        && File.Exists(file)
+        && DefinitionParity.Equal(JToken.Parse(File.ReadAllText(file)), json)
+      )
+        continue;
       Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-      File.WriteAllText(file, def.ToJson().ToString());
+      File.WriteAllText(file, json.ToString());
     }
     if (series != null)
       Mark(
