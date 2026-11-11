@@ -523,6 +523,8 @@ public sealed class TestPlayer {
       return false;
 
     Player.CurrentBlockSelection.Returns(selection);
+    Vec3d? eye = Entity.LocalEyePos;
+    Entity.LocalEyePos ??= new Vec3d();
     Action release = PressKeys(sneak, ctrl, sprint);
     try {
       Block block = _world.Accessor.GetBlock(pos);
@@ -538,6 +540,7 @@ public sealed class TestPlayer {
       block.OnBlockInteractStop(used, _world.World, Player, selection);
       return true;
     } finally {
+      Entity.LocalEyePos = eye;
       release();
     }
   }
