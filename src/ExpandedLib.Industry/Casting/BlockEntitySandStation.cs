@@ -315,8 +315,11 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
   }
 
   private void PullFromLaunder(BEBehaviorMoltenCell cell) {
-    if (LaunderFace is not { } face)
-      return;
+    foreach (BlockFacing face in LaunderFaces)
+      PullFromFace(cell, face);
+  }
+
+  private void PullFromFace(BEBehaviorMoltenCell cell, BlockFacing face) {
     if (
       this.BlockEntityAt<BlockEntity>(Pos.AddCopy(face)) is not IMoltenCell src
       || src.Solidified
@@ -342,14 +345,30 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     OnPulled(accepted);
   }
 
-  /// <summary>The horizontal face the launder sits on; null when the block has no <c>side</c> variant and takes no launder feed.</summary>
-  public virtual BlockFacing? LaunderFace => LaunderFaceOf(Block);
+  /// <summary>The horizontal faces the launders sit on, drained in this order each tick; empty when the block has no <c>side</c> variant and takes no launder feed.</summary>
+  public virtual IReadOnlyList<BlockFacing> LaunderFaces =>
+    LaunderFacesOf(Block);
 
-  /// <summary>The horizontal face a station block's launder sits on: its <c>side</c> variant's facing turned around.</summary>
+  /// <summary>The horizontal faces a station block's launders sit on: its <c>side</c> variant's facing turned around, then one face per entry of <c>attributes.sandStation.launderTurns</c> (quarter turns clockwise from above, from that first face).</summary>
   /// <param name="block">A station block.</param>
-  /// <returns>The face, or null when the block has no <c>side</c> variant.</returns>
-  public static BlockFacing? LaunderFaceOf(Block block) =>
-    ExOrientation.FacingFromSide(block.Variant["side"])?.Opposite;
+  /// <returns>The faces, the first being the <c>side</c> variant's opposite; empty when the block has no <c>side</c> variant.</returns>
+  public static IReadOnlyList<BlockFacing> LaunderFacesOf(Block block) {
+    if (
+      ExOrientation.FacingFromSide(block.Variant["side"])?.Opposite
+      is not { } first
+    )
+      return [];
+
+    int[] turns =
+      block.Attributes?["sandStation"]?["launderTurns"]?.AsArray<int>() ?? [];
+    return
+    [
+      first,
+      .. turns.Select(t =>
+        Enumerable.Range(0, t & 3).Aggregate(first, (f, _) => f.GetCW())
+      ),
+    ];
+  }
 
   #endregion
 

@@ -41,7 +41,7 @@ internal sealed class SandStationScene {
 
   private readonly DummySlot _hotbar = new();
   private readonly List<string> _errors = [];
-  private LaunderCell? _launder;
+  private readonly Dictionary<BlockFacing, LaunderCell> _launders = [];
 
   /// <summary>The launder cell's block entity: holds metal a station drains.</summary>
   public sealed class LaunderCell : BlockEntity, IMoltenCell {
@@ -104,7 +104,8 @@ internal sealed class SandStationScene {
     string side = "n",
     SandStationLevel sand = SandStationLevel.Full,
     Func<BlockEntitySandStation>? make = null,
-    string? cup = null
+    string? cup = null,
+    string? launderTurns = null
   ) {
     CastingStationRegistry.ResetForWorld();
     CastingStationLoader.Load(
@@ -123,6 +124,8 @@ internal sealed class SandStationScene {
       JToken.Parse(
         $$"""{ "sandStation": { "station": "{{Station}}"{{(
           cup == null ? "" : $", \"cup\": {cup}"
+        )}}{{(
+          launderTurns == null ? "" : $", \"launderTurns\": {launderTurns}"
         )}} } }"""
       )
     );
@@ -212,18 +215,20 @@ internal sealed class SandStationScene {
     return Tick();
   }
 
-  public LaunderCell Launder(int units, float temp) {
-    if (_launder == null) {
-      BlockPos pos = Entity.Pos.SouthCopy();
+  public LaunderCell Launder(int units, float temp, BlockFacing? face = null) {
+    face ??= BlockFacing.SOUTH;
+    if (!_launders.TryGetValue(face, out LaunderCell? launder)) {
+      BlockPos pos = Entity.Pos.AddCopy(face);
       var block = TestBlocks.Configure(new Block(), "test:launder", 150);
-      _launder = new LaunderCell();
-      World.Place(pos, block, _launder);
-      World.Attach(_launder);
+      launder = new LaunderCell();
+      World.Place(pos, block, launder);
+      World.Attach(launder);
+      _launders[face] = launder;
     }
-    _launder.CellAmount = units;
-    _launder.CellMetalType = Metal;
-    _launder.CellTemperature = temp;
-    return _launder;
+    launder.CellAmount = units;
+    launder.CellMetalType = Metal;
+    launder.CellTemperature = temp;
+    return launder;
   }
 
   private IPlayer BuildPlayer() {

@@ -168,7 +168,7 @@ ExpandedLib.Industry.Casting.SandStationLevel.Half = 1 -> ExpandedLib.Industry.C
 ExpandedLib.Industry.Casting.SandStationLogic
 const ExpandedLib.Industry.Casting.SandStationLogic.AfterShakeOut = ExpandedLib.Industry.Casting.SandStationLevel.Full -> ExpandedLib.Industry.Casting.SandStationLevel
 const ExpandedLib.Industry.Casting.SandStationLogic.ColdShutSeconds = 6 -> float
-static ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFaceOf(Vintagestory.API.Common.Block! block) -> Vintagestory.API.MathTools.BlockFacing?
+static ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFacesOf(Vintagestory.API.Common.Block! block) -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockFacing!>!
 static ExpandedLib.Industry.Casting.SandStationLogic.BatchFilling(int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> int
 static ExpandedLib.Industry.Casting.SandStationLogic.CanIntake(bool hasImpression, bool cavityFull, bool solidified) -> bool
 static ExpandedLib.Industry.Casting.SandStationLogic.ColdShut(int coldShutBatches, float stoppedSeconds, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> int
@@ -809,7 +809,7 @@ static readonly ExpandedLib.Industry.Helpers.ExSounds.MetalBreak -> Vintagestory
 virtual ExpandedLib.Industry.Benches.BlockEntityMpBench.JobTorqueNm.get -> float
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.CupBox.get -> Vintagestory.API.MathTools.Cuboidf?
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.IntakeAllowed() -> bool
-virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFace.get -> Vintagestory.API.MathTools.BlockFacing?
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFaces.get -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockFacing!>!
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnMetalMoved(int units, string! metal, float temperatureC) -> void
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnPulled(int accepted) -> void
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnShakenOut() -> void

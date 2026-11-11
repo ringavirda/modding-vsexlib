@@ -19,6 +19,7 @@ public class SandStationTests : IDisposable {
     public bool Scrap;
     public int Moved;
     public int Pulled;
+    public int Pulls;
     public int Shaken;
     public int Ticks;
 
@@ -33,8 +34,10 @@ public class SandStationTests : IDisposable {
       float temperatureC
     ) => Moved += units;
 
-    protected internal override void OnPulled(int accepted) =>
+    protected internal override void OnPulled(int accepted) {
       Pulled += accepted;
+      Pulls++;
+    }
 
     protected internal override void OnShakenOut() => Shaken++;
 
@@ -156,12 +159,50 @@ public class SandStationTests : IDisposable {
     Assert.Equal(120, launder.CellAmount);
   }
 
+  // Fails when the second face is never drained.
+  [Fact]
+  public void A_second_launder_face_is_drained_too() {
+    var scene = SandStationScene.Build(launderTurns: "[1]");
+    scene.Interact(scene.PatternStack("row"));
+    var south = scene.Launder(30, 1300f);
+    var west = scene.Launder(40, 1300f, BlockFacing.WEST);
+
+    Assert.Equal(
+      [BlockFacing.SOUTH, BlockFacing.WEST],
+      scene.Entity.LaunderFaces
+    );
+    scene.Tick();
+
+    Assert.Equal(70, scene.Molten.CellAmount);
+    Assert.Equal(0, south.CellAmount);
+    Assert.Equal(0, west.CellAmount);
+  }
+
+  // Fails when both feeds are counted on one face instead of once per face.
+  [Fact]
+  public void Each_launder_face_is_a_feed_of_its_own() {
+    var station = new RecordingStation();
+    var scene = SandStationScene.Build(
+      make: () => station,
+      launderTurns: "[1]"
+    );
+    scene.Interact(scene.PatternStack("row"));
+    scene.Launder(30, 1300f);
+    scene.Launder(40, 1300f, BlockFacing.WEST);
+
+    scene.Tick();
+
+    Assert.Equal(2, station.Pulls);
+    Assert.Equal(70, station.Pulled);
+    Assert.Equal(70, station.Moved);
+  }
+
   // Fails when a block without a side variant is given a default launder face.
   [Fact]
   public void A_block_with_no_side_variant_takes_no_launder_feed() {
     var scene = SandStationScene.Build(side: "");
 
-    Assert.Null(scene.Entity.LaunderFace);
+    Assert.Empty(scene.Entity.LaunderFaces);
     scene.Interact(scene.PatternStack("row"));
     scene.Tick();
 
