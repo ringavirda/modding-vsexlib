@@ -498,7 +498,7 @@ public class BlockNetworkModSystem : ModSystem {
   }
   #endregion
 
-  /// <summary>Rebuilds the network rooted at <paramref name="rootPos"/> via BFS, replacing overlapping entries and preserving state from the old root network.</summary>
+  /// <summary>Rebuilds the network rooted at <paramref name="rootPos"/> via BFS, replacing overlapping entries and preserving state from the old root network. Raises the fast-forward epoch, so the groups take the new network in place of those it replaced.</summary>
   public BlockNetwork? RebuildFromRoot(
     IBlockAccessor world,
     BlockPos rootPos,
@@ -508,6 +508,7 @@ public class BlockNetworkModSystem : ModSystem {
     if (NetworkMembership.Resolve(world, rootPos, networkType) == null)
       return null;
 
+    FastForward.RaiseEpoch();
     var reachable = new HashSet<BlockPos>();
     var bfsQueue = new Queue<BlockPos>();
     reachable.Add(rootPos);

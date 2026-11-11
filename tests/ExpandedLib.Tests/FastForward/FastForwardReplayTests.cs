@@ -251,6 +251,7 @@ public class FastForwardReplayTests {
   private sealed class CountingNetwork(BlockNetworkModSystem system)
     : BlockNetwork(system) {
     public int LiveTicks;
+    public int ReplayTicks;
 
     public override string NetworkType => "ffcount";
 
@@ -268,7 +269,9 @@ public class FastForwardReplayTests {
       float dt,
       BlockNetworkModSystem manager
     ) {
-      if (!FastForward.Replaying)
+      if (FastForward.Replaying)
+        ReplayTicks++;
+      else
         LiveTicks++;
     }
   }
@@ -297,6 +300,36 @@ public class FastForwardReplayTests {
     Assert.True(live > 0);
     Assert.Equal(live, run.LiveTicks);
     Assert.True(machine.ProductionTicks > 5);
+  }
+
+  // Fails when RebuildFromRoot leaves the epoch, so the groups keep the id of the run it replaced and a calendar jump
+  // replays nothing of the new run.
+  [Fact]
+  public void A_run_rebuilt_from_its_root_replays_as_the_run_it_replaced() {
+    int Replayed(bool rebuild) {
+      var w = new TestWorld();
+      w.RegisterNetwork("ffcount", sys => new CountingNetwork(sys));
+      w.Place(
+        Cell,
+        TestBlocks.Configure(new CountingNode(), "test:ffcountnode", 89)
+      );
+      w.AddNode(Cell, "ffcount");
+      Place(w, 0, _ => w.Networks.GetNetworkAt(Cell));
+      w.FireBlockEntityTicks();
+      w.Networks.ListenerTick(w.Accessor, 0.2f);
+      if (rebuild)
+        w.Networks.RebuildFromRoot(w.Accessor, Cell, "ffcount");
+
+      w.AdvanceHours(10 * OneMachineSecond);
+      w.Networks.ListenerTick(w.Accessor, 0.2f);
+
+      return Assert.IsType<CountingNetwork>(w.NetworkAt(Cell)).ReplayTicks;
+    }
+
+    int built = Replayed(rebuild: false);
+
+    Assert.True(built > 0);
+    Assert.Equal(built, Replayed(rebuild: true));
   }
 
   #endregion
