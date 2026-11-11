@@ -122,6 +122,20 @@ public class ScenarioPlayerRunTests {
     Assert.Equal((10.5, 64.0, 22.5), (at.X, at.Y, at.Z));
   }
 
+  /// <summary>Fails when a stood cell is ignored and the player is moved two blocks south of the clicked
+  /// block, so it looks north at a block it stood west of.</summary>
+  [Fact]
+  public void The_player_acts_from_the_cell_it_was_stood_in() {
+    var tap = new BlockPos(19, 2, 20);
+    var stood = new Vec3d(14.5, 1, 20.5);
+    Vec3d from = ScenarioPlayer.StandFor(tap, stood);
+    Assert.Equal((14.5, 1.0, 20.5), (from.X, from.Y, from.Z));
+    (float yaw, _) = ScenarioPlayer.Look(from, new Vec3d(19.5, 2.5, 20.5));
+    Assert.Equal(-System.Math.PI / 2, yaw, 4);
+    Vec3d none = ScenarioPlayer.StandFor(tap, null);
+    Assert.Equal((19.5, 2.0, 22.5), (none.X, none.Y, none.Z));
+  }
+
   /// <summary>Fails when yaw takes the wrong sign (S11), or pitch the wrong sign (S12).</summary>
   [Fact]
   public void The_player_looks_from_its_eye_toward_the_hit_point() {
