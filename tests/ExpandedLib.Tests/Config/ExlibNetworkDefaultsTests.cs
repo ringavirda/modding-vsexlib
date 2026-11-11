@@ -15,7 +15,7 @@ public class ExlibNetworkDefaultsTests {
 
   [Fact]
   public void MoltenNetworkDefaults_MatchPreMoveValues() {
-    Assert.Equal(50, ExlibValues.MoltenFlowRate);
+    Assert.Equal(100, ExlibValues.MoltenFlowRate);
     Assert.Equal(10, ExlibValues.MoltenMinFlowAmount);
     Assert.Equal(3, ExlibValues.MoltenMoldDrawRadius);
     Assert.Equal(0.75f, ExlibValues.MoltenSpillYield);

@@ -397,6 +397,39 @@ public class SetupSceneTests : IDisposable
     );
   }
 
+  // Fails when the megablock's entity is spawned twice: the first instance, no longer in its cell,
+  // keeps its tick listener and ticks beside the one the world holds.
+  [Fact]
+  public void A_megablock_ticks_only_as_the_entity_its_cell_holds()
+  {
+    using SetupScene scene = BuildFile("blower-alone.json");
+
+    BlockEntity[] ticking =
+    [
+      .. scene
+        .World.TickCallbacks()
+        .Select(c =>
+          c.Callback.Target switch
+          {
+            BlockEntity be => be,
+            BlockEntityBehavior b => b.Blockentity,
+            _ => null,
+          }
+        )
+        .OfType<BlockEntity>()
+        .Distinct(),
+    ];
+
+    Assert.Contains(
+      scene.World.GetBlockEntity(scene.PositionOf("blower")),
+      ticking
+    );
+    Assert.All(
+      ticking,
+      be => Assert.Same(scene.World.GetBlockEntity(be.Pos), be)
+    );
+  }
+
   // Fails when a layout cell of the structure is left without a glyph and the load does not
   // say so.
   [Fact]

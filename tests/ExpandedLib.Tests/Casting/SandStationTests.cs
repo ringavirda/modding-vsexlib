@@ -143,17 +143,17 @@ public class SandStationTests : IDisposable {
     Assert.Equal(40, scene.Molten.CellAmount);
   }
 
-  // Fails when the launder face is not the facing turned around.
+  // Fails when the launder face is not the facing turned around, or the pull is 50 a tick.
   [Fact]
-  public void A_launder_neighbour_gives_fifty_units_a_tick() {
+  public void A_launder_neighbour_gives_one_hundred_units_a_tick() {
     var scene = SandStationScene.Build();
     scene.Interact(scene.PatternStack("row"));
-    var launder = scene.Launder(120, 1300f);
+    var launder = scene.Launder(220, 1300f);
 
     scene.Tick();
 
-    Assert.Equal(50, scene.Molten.CellAmount);
-    Assert.Equal(70, launder.CellAmount);
+    Assert.Equal(100, scene.Molten.CellAmount);
+    Assert.Equal(120, launder.CellAmount);
   }
 
   // Fails when a block without a side variant is given a default launder face.

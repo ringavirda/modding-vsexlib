@@ -30,7 +30,7 @@ namespace ExpandedLib.Industry.Casting;
 /// a derived class widens the behaviour through the protected internal members.</remarks>
 [BlockEntityRegister]
 public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
-  private const int PullRatePerTick = 50;
+  private const int PullRatePerTick = 100;
 
   [Persist("cc_sand")]
   private SandStationLevel _sand = SandStationLevel.Empty;
