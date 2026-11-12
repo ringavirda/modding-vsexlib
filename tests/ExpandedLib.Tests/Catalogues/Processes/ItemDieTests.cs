@@ -66,11 +66,20 @@ public class ItemDieTests {
     var die = new Item {
       Code = new AssetLocation("iiex", "die-bolt"),
       Attributes = Json(
-        JToken.FromObject(ItemDie.Job("heading", "game:rod-iron", "iiex:bolt", 4, strokes: 3)).ToString()
+        JToken
+          .FromObject(
+            ItemDie.Job("heading", "game:rod-iron", "iiex:bolt", 4, strokes: 3)
+          )
+          .ToString()
       ),
     };
 
-    ProcessJob? job = ItemDie.JobFor(new ItemStack(die), "game:rod-iron", null, null);
+    ProcessJob? job = ItemDie.JobFor(
+      new ItemStack(die),
+      "game:rod-iron",
+      null,
+      null
+    );
 
     Assert.Equal(3, job!.Strokes);
   }
