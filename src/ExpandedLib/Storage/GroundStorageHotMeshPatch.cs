@@ -10,12 +10,10 @@ using Vintagestory.GameContent;
 
 namespace ExpandedLib.Storage;
 
-/// <summary>Makes a hot piece on the ground draw its own state mesh. The game's hot renderer draws
-/// <c>MeshRefs</c> from 500 C, and <c>BlockEntityGroundStorage.getOrCreateMesh</c> fills it with the
-/// item's default mesh, bypassing <see cref="IContainedMeshSource"/>, which the cold path uses. The
-/// postfix replaces the entry with the mesh the base call returned for an item that implements the
-/// interface, in the layouts that fill <c>MeshRefs</c> from the item (not Stacking, not Messy12).
-/// Skipped, with one log line, when the game's method is not found.</summary>
+/// <summary>Makes a hot piece on the ground draw its own state mesh: the postfix replaces the
+/// default-mesh entry in <c>MeshRefs</c> with the <see cref="IContainedMeshSource"/> mesh, in the
+/// layouts that fill it from the item (not Stacking, not Messy12). Skipped, with one log line,
+/// when the game's method is not found.</summary>
 [HarmonyPatch]
 internal static class GroundStorageHotMeshPatch {
   private const string CacheKey = "exlibGroundStorageHotMesh";

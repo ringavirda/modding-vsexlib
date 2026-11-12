@@ -8,9 +8,9 @@ namespace ExpandedLib.Storage;
 
 /// <summary>
 /// Collectible behavior, listed ahead of GroundStorable, that refuses a Shift+right-click placement
-/// of a stack whose <see cref="IStoredSize.PosedLength"/> exceeds <see cref="ExStorage.OneBlock"/>.
-/// The collectible implements <see cref="IStoredSize"/>; a collectible that does not is never refused.
-/// Property <c>langKey</c> names the lang entry shown, default <c>exlib:fitsoneblock-toolong</c>.
+/// of a stack whose <see cref="IStoredSize.PosedLength"/> exceeds <see cref="ExStorage.OneBlock"/>;
+/// a collectible without <see cref="IStoredSize"/> is never refused. Property <c>langKey</c> names
+/// the lang entry shown, default <c>exlib:fitsoneblock-toolong</c>.
 /// </summary>
 [CollectibleBehaviorRegister]
 public class ExFitsOneBlock(CollectibleObject collObj)

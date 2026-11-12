@@ -35,9 +35,8 @@ public class ExStorageTests {
 
   #region Classify
 
-  // Fails when a row of the table moves or its edge shifts: Quadrants past 8, Halves past b 8,
-  // Single past 17, SingleLong past 24, a bar below 2.5, a plate under 0.85 full, a stack under 64,
-  // or a stock code tested after the loose and quadrant rows.
+  // Fails when a row of the table moves or its edge shifts, or a stock code is tested after the
+  // loose and quadrant rows.
   [Fact]
   public void Class_follows_the_table() {
     Assert.Equal(StorageClass.Quadrants, ClassOf(Facts(8, 8)));

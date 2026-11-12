@@ -7,10 +7,9 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Storage;
 
 /// <summary>
-/// The one rule that lays an item down on the ground and on a shelf from its own bounds: its
-/// <see cref="StorageClass"/>, its pile, and the <c>groundStorageTransform</c> and
-/// <c>onshelfTransform</c> that seat its mesh. Every length is in voxels (16 is one block) unless a
-/// member says blocks.
+/// The one rule that lays an item on the ground and on a shelf from its own bounds: its
+/// <see cref="StorageClass"/>, its pile and the transforms that seat its mesh. Every length is in
+/// voxels (16 is one block) unless a member says blocks.
 /// </summary>
 public static class ExStorage {
   /// <summary>Longest posed extent of an item that lies in a cell by itself.</summary>
