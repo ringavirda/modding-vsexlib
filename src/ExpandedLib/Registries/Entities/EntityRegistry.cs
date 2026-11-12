@@ -88,6 +88,7 @@ public static class EntityRegistry {
       }
     }
 
+    ExDefinitions.DiscoverDecorators(asm);
     ExDefinitions.DiscoverAndRegister(domain, asm);
     ExDefinitions.DiscoverAndRegisterItems(domain, asm);
     ExDefinitions.DiscoverAndRegisterRecipes(domain, asm);
