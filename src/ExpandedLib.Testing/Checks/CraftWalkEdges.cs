@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Checks;
+using ExpandedLib.Industry.Machining;
 using ExpandedLib.Machines;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -157,6 +158,7 @@ internal static class CraftWalkEdges
       if (constructions.ContainsKey(edges[i].Output))
         edges[i] = edges[i] with { Output = CoreOf(edges[i].Output) };
     edges.AddRange(Jobs(domain, all));
+    edges.AddRange(MachiningJobs(domain, all));
     edges.AddRange(Routes(domain, all));
     edges.AddRange(Products(domain, all));
     edges.AddRange(Structures(constructions, all));
@@ -224,6 +226,50 @@ internal static class CraftWalkEdges
           job.Output,
           false
         );
+  }
+
+  // One edge for each block whose kind offers the job and each code it makes; the cutter is no need.
+  private static IEnumerable<WalkEdge> MachiningJobs(
+    string domain,
+    IReadOnlyList<CollectibleObject> all
+  )
+  {
+    var machines = new List<(Block Block, MachineKind Kind)>();
+    foreach (Block block in all.OfType<Block>())
+      if (MachineKind.Of(block) is { } kind)
+        machines.Add((block, kind));
+    foreach (MachiningJob job in MachiningJobRegistry.Shared.All)
+    {
+      var made = new List<string>();
+      if (new AssetLocation(job.Output).Domain == domain)
+        made.Add(job.Output);
+      foreach (MachiningByproduct byproduct in job.Byproducts)
+        if (new AssetLocation(byproduct.Code).Domain == domain)
+          made.Add(byproduct.Code);
+      if (made.Count == 0)
+        continue;
+      foreach ((Block block, MachineKind kind) in machines)
+      {
+        if (!MachineCut.OffersTo(job, kind))
+          continue;
+        var needs = new List<WalkNeed>
+        {
+          Pattern(all, job.Input),
+          Pattern(all, block.Code.ToString()),
+        };
+        if (job.Fixture is { } fixture)
+          needs.Add(Pattern(all, fixture));
+        foreach (string output in made)
+          yield return new WalkEdge(
+            "machining job",
+            $"{kind.Code} {job.Step} on {job.Input}",
+            CraftWalkClass.Followed,
+            needs,
+            output,
+            false
+          );
+      }
+    }
   }
 
   // The thickest stopping point of a route has no edge; only its own source makes it.
