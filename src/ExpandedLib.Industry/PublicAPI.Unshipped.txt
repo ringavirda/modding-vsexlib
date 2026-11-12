@@ -318,7 +318,7 @@ ExpandedLib.Industry.Machining.MachineKind.Code.get -> string!
 ExpandedLib.Industry.Machining.MachineKind.Code.init -> void
 ExpandedLib.Industry.Machining.MachineKind.Fixture.get -> bool
 ExpandedLib.Industry.Machining.MachineKind.Fixture.init -> void
-ExpandedLib.Industry.Machining.MachineKind.MachineKind(string! Code, float RatedSpeed, float StandingNm, bool Fixture, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineAnchor!>! Anchors, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineKindStep!>! Steps, ExpandedLib.Industry.Machining.MachineFeed Feed = ExpandedLib.Industry.Machining.MachineFeed.Held, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineMount!>? Mounts = null) -> void
+ExpandedLib.Industry.Machining.MachineKind.MachineKind(string! Code, float RatedSpeed, float StandingNm, bool Fixture, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineAnchor!>! Anchors, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineKindStep!>! Steps, ExpandedLib.Industry.Machining.MachineFeed Feed = ExpandedLib.Industry.Machining.MachineFeed.Held, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineMount!>? Mounts = null, ExpandedLib.Industry.Machining.MachineSpindle? Spindle = null) -> void
 ExpandedLib.Industry.Machining.MachineKind.RatedSpeed.get -> float
 ExpandedLib.Industry.Machining.MachineKind.RatedSpeed.init -> void
 ExpandedLib.Industry.Machining.MachineKind.SameAs(ExpandedLib.Industry.Machining.MachineKind! other) -> bool
@@ -968,3 +968,14 @@ ExpandedLib.Industry.Machining.MachineMount.Item.init -> void
 ExpandedLib.Industry.Machining.MachineMount.MachineMount(string! Item, string! Anchor) -> void
 ExpandedLib.Industry.Machining.MachiningJob.Clip.get -> string?
 ExpandedLib.Industry.Machining.MachiningJob.Clip.init -> void
+ExpandedLib.Industry.Machining.MachineKind.Spindle.get -> ExpandedLib.Industry.Machining.MachineSpindle?
+ExpandedLib.Industry.Machining.MachineKind.Spindle.init -> void
+ExpandedLib.Industry.Machining.MachineSpindle
+ExpandedLib.Industry.Machining.MachineSpindle.Axis.get -> Vintagestory.API.MathTools.EnumAxis
+ExpandedLib.Industry.Machining.MachineSpindle.Axis.init -> void
+ExpandedLib.Industry.Machining.MachineSpindle.DegreesPerSecond.get -> float
+ExpandedLib.Industry.Machining.MachineSpindle.DegreesPerSecond.init -> void
+ExpandedLib.Industry.Machining.MachineSpindle.MachineSpindle(Vintagestory.API.MathTools.EnumAxis Axis, System.Numerics.Vector3 Through, float DegreesPerSecond) -> void
+ExpandedLib.Industry.Machining.MachineSpindle.Through.get -> System.Numerics.Vector3
+ExpandedLib.Industry.Machining.MachineSpindle.Through.init -> void
+static ExpandedLib.Industry.Machining.MachineAnchors.Compose(ExpandedLib.Industry.Machining.MachineAnchor! anchor, Vintagestory.API.MathTools.Vec3f! blockRotationDeg, ExpandedLib.Industry.Machining.MachineSpindle? spindle, float angleRad) -> float[]!

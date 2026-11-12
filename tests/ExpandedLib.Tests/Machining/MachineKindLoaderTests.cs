@@ -4,6 +4,7 @@ using ExpandedLib.Industry.Machining;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests.Machining;
@@ -112,6 +113,52 @@ public class MachineKindLoaderTests {
     Registry(Mounted).TryGet("test:m", out MachineKind? kind);
 
     Assert.False(kind!.SameAs(kind with { Mounts = [] }));
+  }
+
+  private const string Turning = """
+    { "schema": 1, "kinds": [ { "code": "test:m", "ratedSpeed": 4,
+      "spindle": { "axis": "x", "through": [0, 18.5, 8], "degPerSecond": 90 },
+      "steps": { "turn": { "motion": "rotary", "power": 1, "tooling": "cutter" } } } ] }
+    """;
+
+  // Fails when the spindle is not read, or any of its axis, point or rate is.
+  [Fact]
+  public void Spindle_is_read() {
+    Registry(Turning).TryGet("test:m", out MachineKind? kind);
+
+    Assert.Equal(
+      new MachineSpindle(EnumAxis.X, new Vector3(0f, 18.5f, 8f), 90f),
+      kind!.Spindle
+    );
+    Assert.Null(Registry(Lathe).All[0].Spindle);
+  }
+
+  // Fails when two kinds that differ only in spindle compare the same.
+  [Fact]
+  public void Kinds_that_differ_only_in_spindle_are_not_the_same_kind() {
+    Registry(Turning).TryGet("test:m", out MachineKind? kind);
+
+    Assert.False(kind!.SameAs(kind with { Spindle = null }));
+    Assert.False(
+      kind.SameAs(kind with { Spindle = kind.Spindle! with { DegreesPerSecond = 45f } })
+    );
+  }
+
+  // Fails when a spindle with no positive rate or a bad axis is accepted.
+  [Theory]
+  [InlineData("""{ "axis": "x", "through": [0, 1, 2], "degPerSecond": 0 }""")]
+  [InlineData("""{ "axis": "w", "through": [0, 1, 2], "degPerSecond": 9 }""")]
+  [InlineData("""{ "axis": "x", "degPerSecond": 9 }""")]
+  public void A_malformed_spindle_drops_the_file(string spindle) {
+    var registry = new MachineKindRegistry();
+    var files = new[] {
+      ("test:config/machinekinds/f.json", Bad($$""" "spindle": {{spindle}} """)),
+    };
+
+    var errors = MachineKindLoader.Load(files, registry);
+
+    Assert.NotEmpty(errors);
+    Assert.False(registry.TryGet("test:m", out _));
   }
 
   // Fails when the kinds' steps are sorted by name after load: turn, bore, plane is not alphabetical.

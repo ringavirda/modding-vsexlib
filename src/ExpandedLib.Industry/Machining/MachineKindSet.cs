@@ -4,6 +4,7 @@ using System.Numerics;
 using ExpandedLib.Catalogues;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.Machining;
 
@@ -161,6 +162,38 @@ public sealed record MachineKindSet(
           $"machine kind '{code}' has 'feed' '{feedName}', which is not held or self; it is read as held"
         );
 
+      MachineSpindle? spindle = null;
+      if (kindNode["spindle"].Exists) {
+        JsonObject spindleNode = kindNode["spindle"];
+        string axisName = spindleNode["axis"].AsString("");
+        EnumAxis? axis = axisName.ToLowerInvariant() switch {
+          "x" => EnumAxis.X,
+          "y" => EnumAxis.Y,
+          "z" => EnumAxis.Z,
+          _ => null,
+        };
+        if (axis is null) {
+          error =
+            $"machine kind '{code}': 'spindle' has 'axis' '{axisName}', which is not x, y or z";
+          return false;
+        }
+        if (
+          !spindleNode["through"].Exists
+          || !TryVector(spindleNode["through"], 0f, out Vector3 through)
+        ) {
+          error =
+            $"machine kind '{code}': 'spindle' needs 'through' as [x, y, z]";
+          return false;
+        }
+        float rate = spindleNode["degPerSecond"].AsFloat(0f);
+        if (rate <= 0f) {
+          error =
+            $"machine kind '{code}': 'spindle' needs a 'degPerSecond' above 0";
+          return false;
+        }
+        spindle = new MachineSpindle(axis.Value, through, rate);
+      }
+
       kinds.Add(
         new MachineKind(
           code,
@@ -170,7 +203,8 @@ public sealed record MachineKindSet(
           anchors,
           steps,
           feed,
-          mounts
+          mounts,
+          spindle
         )
       );
     }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.Machining;
 
@@ -22,6 +23,16 @@ public sealed record MachineAnchor(
 /// <param name="Item">Domain-qualified item code of the mounted piece.</param>
 /// <param name="Anchor">Name of the <see cref="MachineAnchor"/> the piece is drawn at.</param>
 public sealed record MachineMount(string Item, string Anchor);
+
+/// <summary>The line a machine's mounted piece turns about while it cuts.</summary>
+/// <param name="Axis">The axis the line runs along, in the block's own frame.</param>
+/// <param name="Through">A point on the line, voxels (16 to the metre) from the block origin.</param>
+/// <param name="DegreesPerSecond">The turn rate while the machine cuts, degrees a second. Above 0.</param>
+public sealed record MachineSpindle(
+  EnumAxis Axis,
+  Vector3 Through,
+  float DegreesPerSecond
+);
 
 /// <summary>The envelope a piece must fit to be mounted for a step.</summary>
 /// <param name="Across">Widest the piece may be across the cut axis, voxels. Above 0.</param>
@@ -65,6 +76,7 @@ public enum MachineFeed {
 /// <param name="Steps">The steps it does, in declaration order.</param>
 /// <param name="Feed">Whether a player must hold the feed control for the cut to run. Defaults to <see cref="MachineFeed.Held"/>.</param>
 /// <param name="Mounts">The anchor each named item is drawn at, read before its step's anchor. Null reads as none.</param>
+/// <param name="Spindle">The line the mounted piece turns about while the machine cuts, or null when it stands still. A kind with a spindle draws its piece through a block-entity renderer, not the chunk mesh.</param>
 public sealed record MachineKind(
   string Code,
   float RatedSpeed,
@@ -73,7 +85,8 @@ public sealed record MachineKind(
   IReadOnlyList<MachineAnchor> Anchors,
   IReadOnlyList<MachineKindStep> Steps,
   MachineFeed Feed = MachineFeed.Held,
-  IReadOnlyList<MachineMount>? Mounts = null
+  IReadOnlyList<MachineMount>? Mounts = null,
+  MachineSpindle? Spindle = null
 ) {
   /// <summary>The anchor each named item is drawn at, read before its step's anchor; empty when the kind declares none.</summary>
   public IReadOnlyList<MachineMount> Mounts { get; init; } = Mounts ?? [];
@@ -109,5 +122,6 @@ public sealed record MachineKind(
     && Feed == other.Feed
     && Anchors.SequenceEqual(other.Anchors)
     && Steps.SequenceEqual(other.Steps)
-    && Mounts.SequenceEqual(other.Mounts);
+    && Mounts.SequenceEqual(other.Mounts)
+    && Equals(Spindle, other.Spindle);
 }

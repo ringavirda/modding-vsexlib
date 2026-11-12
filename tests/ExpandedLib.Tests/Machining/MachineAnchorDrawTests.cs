@@ -102,6 +102,12 @@ public sealed class MachineAnchorDrawTests : IDisposable
   private static MachineKind KindWith(
     string? anchor,
     params MachineMount[] mounts
+  ) => KindWith(anchor, null, mounts);
+
+  private static MachineKind KindWith(
+    string? anchor,
+    MachineSpindle? spindle,
+    params MachineMount[] mounts
   ) =>
     new(
       "drawfix:lathe",
@@ -120,7 +126,8 @@ public sealed class MachineAnchorDrawTests : IDisposable
         ),
       ],
       MachineFeed.Held,
-      mounts
+      mounts,
+      spindle
     );
 
   private DrawHost Stand(Item? piece, float rotateY = 0f)
@@ -298,6 +305,30 @@ public sealed class MachineAnchorDrawTests : IDisposable
     int second = DrawnCell.Of(_w, Here).TextureKeys.Count;
 
     Assert.Equal(first - 1, second);
+  }
+
+  // Fails when OnTesselation adds the piece of a kind with a spindle too, so it is drawn twice.
+  [Fact]
+  public void A_spindle_kind_adds_no_piece_to_the_chunk_mesh()
+  {
+    Kind = KindWith(
+      "table",
+      new MachineSpindle(EnumAxis.X, new Vector3(0f, 18.5f, 8f), 90f)
+    );
+    Stand(_blank);
+
+    Assert.Empty(Pooled(DrawnCell.Of(_w, Here)));
+  }
+
+  // Fails when every kind takes the renderer, so a kind with no spindle loses its chunk-mesh piece.
+  [Fact]
+  public void A_kind_without_a_spindle_keeps_the_chunk_mesh_piece()
+  {
+    Kind = KindWith("table");
+    Stand(_blank);
+
+    Assert.Single(Pooled(DrawnCell.Of(_w, Here)));
+    Assert.False(MachineToolRenderer.TakesRenderer(Kind));
   }
 }
 #endif

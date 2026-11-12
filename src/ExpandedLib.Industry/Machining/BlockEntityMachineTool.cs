@@ -58,6 +58,7 @@ public abstract class BlockEntityMachineTool
   private string? _step;
   private string? _fixture;
   private double _joules;
+  private MountedPieceRenderer? _pieceRenderer;
   private MachineCutVerdict _verdict;
 
   /// <summary>The machine tool's place on the mpshaft run; carries no state, reads the live network each tick.</summary>
@@ -168,11 +169,65 @@ public abstract class BlockEntityMachineTool
     Inventory.SlotModified += OnSlotModified;
     if (api.Side == EnumAppSide.Server)
       RegisterGameTickListener(OnCutTick, TickMs);
+    else if (api is ICoreClientAPI capi)
+      AttachRenderer(capi);
+  }
+
+  public override void OnExchanged(Block block) {
+    base.OnExchanged(block);
+    if (Api is ICoreClientAPI capi)
+      AttachRenderer(capi);
+  }
+
+  public override void OnBlockRemoved() {
+    base.OnBlockRemoved();
+    DetachRenderer();
+  }
+
+  public override void OnBlockUnloaded() {
+    base.OnBlockUnloaded();
+    DetachRenderer();
+  }
+
+  private void AttachRenderer(ICoreClientAPI capi) {
+    DetachRenderer();
+    if (!MachineToolRenderer.TakesRenderer(Kind))
+      return;
+    _pieceRenderer = new MountedPieceRenderer(capi, this);
+    capi.Event.RegisterRenderer(_pieceRenderer, EnumRenderStage.Opaque);
+  }
+
+  private void DetachRenderer() {
+    _pieceRenderer?.Dispose();
+    _pieceRenderer = null;
+  }
+
+  /// <summary>The mounted piece, its anchor, its kind's spindle and the block's rotation, for the renderer that turns it.</summary>
+  /// <returns>Null when the work slot is empty, no anchor applies or the kind declares no spindle.</returns>
+  internal (
+    ItemStack Piece,
+    MachineAnchor Anchor,
+    MachineSpindle Spindle,
+    Vec3f Rotation
+  )? MountedDraw() {
+    if (
+      Kind?.Spindle is not { } spindle
+      || Inventory[WorkSlot].Itemstack is not { } piece
+      || MountAnchor(piece) is not { } anchor
+    )
+      return null;
+    CompositeShape? shape = Block?.Shape;
+    return (
+      piece,
+      anchor,
+      spindle,
+      new Vec3f(shape?.rotateX ?? 0f, shape?.rotateY ?? 0f, shape?.rotateZ ?? 0f)
+    );
   }
 
   /// <summary>Adds the mounted piece's item mesh at its step's anchor, turned with the block, and leaves the block's own
   /// mesh to be drawn. The piece after a cut is drawn at the anchor of the step whose job yields it. Adds nothing when
-  /// the work slot is empty or no anchor applies.</summary>
+  /// the work slot is empty, no anchor applies or the kind declares a spindle, whose piece a block-entity renderer draws.</summary>
   /// <returns>Always false.</returns>
   public override bool OnTesselation(
     ITerrainMeshPool mesher,
@@ -180,6 +235,7 @@ public abstract class BlockEntityMachineTool
   ) {
     if (
       Api is ICoreClientAPI capi
+      && MachineToolRenderer.DrawsInChunk(Kind)
       && Inventory[WorkSlot].Itemstack is { } piece
       && MountAnchor(piece) is { } anchor
     ) {
