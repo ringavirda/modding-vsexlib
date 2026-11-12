@@ -13,7 +13,8 @@ public class MachiningJobLoaderTests {
           "material": "wroughtiron", "wear": 2, "minTier": 1, "fixture": "test:template",
           "machines": ["test:radial"],
           "byproducts": [ { "code": "test:chips", "count": 3 } ],
-          "hand": { "machine": "workbench", "recipe": "plate-drilled" } }
+          "hand": { "machine": "workbench", "recipe": "plate-drilled" },
+          "clip": "feed-drill" }
       ]
     }
     """;
@@ -23,7 +24,7 @@ public class MachiningJobLoaderTests {
     MachiningJobRegistry registry = MachiningTestData.JobRegistry(DrillFile);
 
     MachiningJob job = Assert.IsType<MachiningJob>(
-      registry.Job("drill", "test:plate")
+      registry.Job("drill", "test:plate", "test:template")
     );
     Assert.Equal("test:plate-drilled", job.Output);
     Assert.Equal(2, job.Wear);
@@ -35,6 +36,18 @@ public class MachiningJobLoaderTests {
       Assert.Single(job.Byproducts)
     );
     Assert.Equal(new MachiningHand("workbench", "plate-drilled"), job.Hand);
+  }
+
+  // Fails when the job's "clip" is not read.
+  [Fact]
+  public void A_job_reads_its_clip() {
+    MachiningJob job = Assert.IsType<MachiningJob>(
+      MachiningTestData
+        .JobRegistry(DrillFile)
+        .Job("drill", "test:plate", "test:template")
+    );
+
+    Assert.Equal("feed-drill", job.Clip);
   }
 
   [Fact]
@@ -52,6 +65,7 @@ public class MachiningJobLoaderTests {
     Assert.Equal(MachiningJob.DefaultWear, job.Wear);
     Assert.Null(job.Removed);
     Assert.Null(job.Hand);
+    Assert.Null(job.Clip);
     Assert.Empty(job.Machines);
   }
 

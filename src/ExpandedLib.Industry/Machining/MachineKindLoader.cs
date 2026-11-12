@@ -22,8 +22,11 @@ internal sealed class MachineKindLoader
     "ratedSpeed",
     "standing",
     "fixture",
+    "feed",
     "anchors",
     "steps",
+    "mounts",
+    "spindle",
   ];
   private static readonly HashSet<string> AnchorKeys =
   [
@@ -39,6 +42,12 @@ internal sealed class MachineKindLoader
     "anchor",
     "envelope",
   ];
+  private static readonly HashSet<string> SpindleKeys =
+  [
+    "axis",
+    "through",
+    "degPerSecond",
+  ];
   private static readonly HashSet<string> EnvelopeKeys = ["across", "length"];
 
   private MachineKindLoader() { }
@@ -52,6 +61,7 @@ internal sealed class MachineKindLoader
       .. (root["kinds"].AsArray() ?? []).SelectMany(kind =>
         JsonKeyAudit
           .UnknownKeys(kind, KindKeys)
+          .Concat(JsonKeyAudit.UnknownKeys(kind["spindle"], SpindleKeys))
           .Concat(
             Members(kind["anchors"])
               .SelectMany(a => JsonKeyAudit.UnknownKeys(a, AnchorKeys))

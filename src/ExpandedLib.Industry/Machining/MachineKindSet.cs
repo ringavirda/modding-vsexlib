@@ -4,6 +4,7 @@ using System.Numerics;
 using ExpandedLib.Catalogues;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.Machining;
 
@@ -14,6 +15,9 @@ public sealed record MachineKindSet(
   int Schema,
   IReadOnlyList<MachineKind> Kinds
 ) {
+  /// <summary>Messages for fields the parse read leniently; <see cref="MachineKindRegistry.Contribute"/> returns them.</summary>
+  internal IReadOnlyList<string> Notes { get; init; } = [];
+
   /// <summary>The schema this parser writes and reads up to.</summary>
   public const int CurrentSchema = SpecSchema.First;
 
@@ -33,6 +37,7 @@ public sealed record MachineKindSet(
       return false;
 
     var kinds = new List<MachineKind>();
+    var notes = new List<string>();
     foreach (JsonObject kindNode in node["kinds"].AsArray() ?? []) {
       string code = kindNode["code"].AsString("");
       if (string.IsNullOrWhiteSpace(code) || !code.Contains(':')) {
@@ -133,6 +138,62 @@ public sealed record MachineKindSet(
         );
       }
 
+      var mounts = new List<MachineMount>();
+      foreach (
+        (string item, JsonObject mountNode) in Members(kindNode["mounts"])
+      ) {
+        string mountAnchor = mountNode.AsString("");
+        if (!anchors.Exists(a => a.Name == mountAnchor))
+          notes.Add(
+            $"machine kind '{code}': mount of '{item}' names anchor '{mountAnchor}', which the kind does not declare; it is dropped"
+          );
+        else
+          mounts.Add(new MachineMount(item, mountAnchor));
+      }
+
+      string feedName = kindNode["feed"].AsString("held");
+      MachineFeed feed = MachineFeed.Held;
+      if (string.Equals(feedName, "self", StringComparison.OrdinalIgnoreCase))
+        feed = MachineFeed.Self;
+      else if (
+        !string.Equals(feedName, "held", StringComparison.OrdinalIgnoreCase)
+      )
+        notes.Add(
+          $"machine kind '{code}' has 'feed' '{feedName}', which is not held or self; it is read as held"
+        );
+
+      MachineSpindle? spindle = null;
+      if (kindNode["spindle"].Exists) {
+        JsonObject spindleNode = kindNode["spindle"];
+        string axisName = spindleNode["axis"].AsString("");
+        EnumAxis? axis = axisName.ToLowerInvariant() switch {
+          "x" => EnumAxis.X,
+          "y" => EnumAxis.Y,
+          "z" => EnumAxis.Z,
+          _ => null,
+        };
+        if (axis is null) {
+          error =
+            $"machine kind '{code}': 'spindle' has 'axis' '{axisName}', which is not x, y or z";
+          return false;
+        }
+        if (
+          !spindleNode["through"].Exists
+          || !TryVector(spindleNode["through"], 0f, out Vector3 through)
+        ) {
+          error =
+            $"machine kind '{code}': 'spindle' needs 'through' as [x, y, z]";
+          return false;
+        }
+        float rate = spindleNode["degPerSecond"].AsFloat(0f);
+        if (rate <= 0f) {
+          error =
+            $"machine kind '{code}': 'spindle' needs a 'degPerSecond' above 0";
+          return false;
+        }
+        spindle = new MachineSpindle(axis.Value, through, rate);
+      }
+
       kinds.Add(
         new MachineKind(
           code,
@@ -140,13 +201,16 @@ public sealed record MachineKindSet(
           standing,
           kindNode["fixture"].AsBool(false),
           anchors,
-          steps
+          steps,
+          feed,
+          mounts,
+          spindle
         )
       );
     }
 
     error = null;
-    set = new MachineKindSet(schema, kinds);
+    set = new MachineKindSet(schema, kinds) { Notes = notes };
     return true;
   }
 

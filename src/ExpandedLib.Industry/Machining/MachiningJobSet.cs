@@ -129,7 +129,8 @@ public sealed record MachiningJobSet(
           Blank(jobNode["fixture"].AsString("")),
           machines,
           byproducts,
-          hand
+          hand,
+          Blank(jobNode["clip"].AsString(""))
         )
       );
     }

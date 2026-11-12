@@ -30,6 +30,7 @@ internal sealed class MachiningJobLoader
     "machines",
     "byproducts",
     "hand",
+    "clip",
   ];
   private static readonly HashSet<string> ByproductKeys = ["code", "count"];
   private static readonly HashSet<string> HandKeys = ["machine", "recipe"];

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.Machining;
 
@@ -16,6 +17,21 @@ public sealed record MachineAnchor(
   Vector3 Origin,
   Vector3 Rotation,
   float Scale
+);
+
+/// <summary>Where one item is drawn when it is mounted, whichever step it is mounted for.</summary>
+/// <param name="Item">Domain-qualified item code of the mounted piece.</param>
+/// <param name="Anchor">Name of the <see cref="MachineAnchor"/> the piece is drawn at.</param>
+public sealed record MachineMount(string Item, string Anchor);
+
+/// <summary>The line a machine's mounted piece turns about while it cuts.</summary>
+/// <param name="Axis">The axis the line runs along, in the block's own frame.</param>
+/// <param name="Through">A point on the line, voxels (16 to the metre) from the block origin.</param>
+/// <param name="DegreesPerSecond">The turn rate while the machine cuts, degrees a second. Above 0.</param>
+public sealed record MachineSpindle(
+  EnumAxis Axis,
+  Vector3 Through,
+  float DegreesPerSecond
 );
 
 /// <summary>The envelope a piece must fit to be mounted for a step.</summary>
@@ -39,6 +55,15 @@ public sealed record MachineKindStep(
   MachineEnvelope? Envelope
 );
 
+/// <summary>How a machine's cut is fed.</summary>
+public enum MachineFeed {
+  /// <summary>A player holds the machine's feed control while it cuts; <c>"held"</c>.</summary>
+  Held,
+
+  /// <summary>The machine cuts on its own once started; <c>"self"</c>.</summary>
+  Self,
+}
+
 /// <summary>
 /// One kind of machine tool: the steps it does, in the order a host picks between them, and how fast
 /// its port turns. Blocks name their kind in a <see cref="AttributeKey"/> attribute.
@@ -49,14 +74,23 @@ public sealed record MachineKindStep(
 /// <param name="Fixture">Whether the machine has a fixture slot.</param>
 /// <param name="Anchors">The mount points, by name.</param>
 /// <param name="Steps">The steps it does, in declaration order.</param>
+/// <param name="Feed">Whether a player must hold the feed control for the cut to run. Defaults to <see cref="MachineFeed.Held"/>.</param>
+/// <param name="Mounts">The anchor each named item is drawn at, read before its step's anchor. Null reads as none.</param>
+/// <param name="Spindle">The line the mounted piece turns about while the machine cuts, or null when it stands still. A kind with a spindle draws its piece through a block-entity renderer, not the chunk mesh.</param>
 public sealed record MachineKind(
   string Code,
   float RatedSpeed,
   float StandingNm,
   bool Fixture,
   IReadOnlyList<MachineAnchor> Anchors,
-  IReadOnlyList<MachineKindStep> Steps
+  IReadOnlyList<MachineKindStep> Steps,
+  MachineFeed Feed = MachineFeed.Held,
+  IReadOnlyList<MachineMount>? Mounts = null,
+  MachineSpindle? Spindle = null
 ) {
+  /// <summary>The anchor each named item is drawn at, read before its step's anchor; empty when the kind declares none.</summary>
+  public IReadOnlyList<MachineMount> Mounts { get; init; } = Mounts ?? [];
+
   /// <summary>The block attribute that names a block's machine kind.</summary>
   public const string AttributeKey = "machinekind";
 
@@ -85,6 +119,9 @@ public sealed record MachineKind(
     && RatedSpeed == other.RatedSpeed
     && StandingNm == other.StandingNm
     && Fixture == other.Fixture
+    && Feed == other.Feed
     && Anchors.SequenceEqual(other.Anchors)
-    && Steps.SequenceEqual(other.Steps);
+    && Steps.SequenceEqual(other.Steps)
+    && Mounts.SequenceEqual(other.Mounts)
+    && Equals(Spindle, other.Spindle);
 }

@@ -662,5 +662,67 @@ public class SandStationLogicTests {
     Assert.Equal(new SandStationYield(1, 150), yield);
   }
 
+  // Fails when a full piece past the cored ones is counted as a part, or its units drop out of the scrap.
+  [Fact]
+  public void A_full_uncored_piece_is_scrap() {
+    SandStationYield yield = SandStationLogic.YieldOf(
+      false,
+      300,
+      100,
+      ThreeChain,
+      coredPieces: 2
+    );
+
+    Assert.Equal(new SandStationYield(2, 100), yield);
+  }
+
+  // Fails when the uncored pieces are the first ones, not those past the count.
+  [Fact]
+  public void The_cored_pieces_are_the_first_in_pressing_order() {
+    SandStationYield yield = SandStationLogic.YieldOf(
+      false,
+      300,
+      100,
+      ThreeChain,
+      coredPieces: 1
+    );
+
+    Assert.Equal(new SandStationYield(1, 200), yield);
+  }
+
+  // Fails when a core is drawn for a piece that has none, or the key ignores the cores.
+  [Fact]
+  public void An_uncored_pressed_piece_draws_no_core() {
+    var shape = new Shape {
+      Elements =
+      [
+        Group(
+          "Piece1",
+          Group("Bedded", new ShapeElement { Name = "Core1" }),
+          Group("Level", new ShapeElement { Name = "Sand1" })
+        ),
+        Group(
+          "Piece2",
+          Group("Bedded", new ShapeElement { Name = "Core2" }),
+          Group("Level", new ShapeElement { Name = "Sand1" })
+        ),
+      ],
+    };
+
+    string[] paths =
+    [
+      .. ExShapeElements.AllPaths(
+        SandStationLogic.PrunedToPressed(shape, 2, 1)
+      ),
+    ];
+
+    Assert.Contains("Piece1/Bedded/Core1", paths);
+    Assert.DoesNotContain("Piece2/Bedded/Core2", paths);
+    Assert.NotEqual(
+      SandStationLogic.FillingMeshKey("test:casting/x", 2, 1),
+      SandStationLogic.FillingMeshKey("test:casting/x", 2, 2)
+    );
+  }
+
   #endregion
 }

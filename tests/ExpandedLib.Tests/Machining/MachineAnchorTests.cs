@@ -1,3 +1,4 @@
+using System;
 using System.Numerics;
 using ExpandedLib.Industry.Machining;
 using Vintagestory.API.MathTools;
@@ -85,5 +86,60 @@ public sealed class MachineAnchorTests {
     Assert.Equal(x, centre.X, 4);
     Assert.Equal(0.625f, centre.Y, 4);
     Assert.Equal(z, centre.Z, 4);
+  }
+
+  private static readonly MachineSpindle Axle = new(
+    EnumAxis.X,
+    new Vector3(0f, 18.5f, 8f),
+    90f
+  );
+
+  private static readonly MachineAnchor Rod = new(
+    "rod",
+    new Vector3(5f, 12f, 3f),
+    Vector3.Zero,
+    1f
+  );
+
+  // Fails when the turn is made about the anchor's origin instead of the spindle line: the rod's origin is off it.
+  [Theory]
+  [InlineData(0.7f)]
+  [InlineData(2.5f)]
+  public void A_point_on_the_spindle_line_stays_put_as_it_turns(float angle) {
+    float[] still = MachineAnchors.Compose(Rod, NoTurn, Axle, 0f);
+    float[] turned = MachineAnchors.Compose(Rod, NoTurn, Axle, angle);
+    Vec3f onLine = new(0.9f, 18.5f / 16f, 0.5f);
+    Vec3f piece = new(
+      onLine.X - 5f / 16f + 0.5f,
+      onLine.Y - 12f / 16f + 0.5f,
+      0.5f - 3f / 16f + 0.5f
+    );
+
+    Vec3f before = Map(still, piece.X, piece.Y, piece.Z);
+    Vec3f after = Map(turned, piece.X, piece.Y, piece.Z);
+
+    Assert.Equal(onLine.X, before.X, 3);
+    Assert.Equal(onLine.Y, before.Y, 3);
+    Assert.Equal(onLine.Z, before.Z, 3);
+    Assert.Equal(before.X, after.X, 3);
+    Assert.Equal(before.Y, after.Y, 3);
+    Assert.Equal(before.Z, after.Z, 3);
+  }
+
+  // Fails when the angle is read as degrees: a quarter turn is pi/2 rad about X through (y 18.5, z 8) / 16.
+  [Fact]
+  public void A_quarter_turn_carries_a_point_a_quarter_round() {
+    float[] m = MachineAnchors.Compose(
+      Anchor(new(8f, 8f, 8f)),
+      NoTurn,
+      Axle,
+      MathF.PI / 2f
+    );
+
+    Vec3f centre = Map(m, 0.5f, 0.5f, 0.5f);
+
+    Assert.Equal(0.5f, centre.X, 3);
+    Assert.Equal(18.5f / 16f, centre.Y, 3);
+    Assert.Equal(0.5f - (18.5f / 16f - 0.5f), centre.Z, 3);
   }
 }

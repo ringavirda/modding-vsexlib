@@ -206,10 +206,12 @@ public sealed partial class TestWorld : IDisposable {
     _playersByUid[uid] = player;
 
   /// <summary>Creates an NSubstitute substitute of <typeparamref name="T"/> that
-  /// <see cref="Dispose"/> clears.</summary>
+  /// <see cref="Dispose"/> clears and that records only its newest calls
+  /// (<see cref="BoundedCallCollection"/>).</summary>
   internal T Made<T>()
     where T : class {
     T made = Substitute.For<T>();
+    BoundedCallCollection.Install(made);
     _substitutes.Add(made);
     return made;
   }

@@ -102,4 +102,54 @@ public class MoldSpecTests {
     Assert.False(ok);
     Assert.Equal("not cast at shutflask", error);
   }
+
+  private static MoldSpec CoredSpec(string extra) {
+    CastingStationRegistry registry = CastingTestData.Registry(
+      CastingTestData.TestFlaskFile
+    );
+    Assert.True(
+      MoldSpec.TryParse(
+        CastingTestData.Mold("testflask", extra),
+        "testflask",
+        out MoldSpec? spec,
+        out string? error,
+        registry
+      ),
+      error
+    );
+    return spec!;
+  }
+
+  // Fails when a station entry without a core is refused or reads a core from elsewhere.
+  [Fact]
+  public void Absent_core_is_uncored() {
+    Assert.Null(CoredSpec("").Core);
+  }
+
+  // Fails when the core is not read from the station entry.
+  [Fact]
+  public void A_named_core_is_read() {
+    Assert.Equal(
+      "test:drycore",
+      CoredSpec(", \"core\": \"test:drycore\"").Core
+    );
+  }
+
+  // Fails when a blank core is taken as a core.
+  [Fact]
+  public void A_blank_core_is_refused() {
+    CastingStationRegistry registry = CastingTestData.Registry(
+      CastingTestData.TestFlaskFile
+    );
+
+    bool ok = MoldSpec.TryParseAll(
+      CastingTestData.Mold("testflask", ", \"core\": \" \""),
+      out _,
+      out string? error,
+      registry
+    );
+
+    Assert.False(ok);
+    Assert.Contains("'core'", error);
+  }
 }

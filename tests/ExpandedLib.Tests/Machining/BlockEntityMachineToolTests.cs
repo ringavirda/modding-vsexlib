@@ -6,6 +6,7 @@ using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -20,16 +21,20 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
   private const float PeriodJoules = 140_000_000f;
   private static readonly double Joules =
     30d * 822d * System.Math.Sqrt(PeriodJoules / 822d / 30d) / 10d;
-  private const double SecondsOfGameTime = 30d;
-  private const double HoursPerRealSecond = SecondsOfGameTime / 3600d;
   private static readonly MachineKind Lathe = new(
     "test:lathe",
     10f,
     5f,
     false,
     [],
-    [new MachineKindStep("turn", CutMotion.Rotary, 822f, "cutter", null, null)]
+    [new MachineKindStep("turn", CutMotion.Rotary, 822f, "cutter", null, null)],
+    MachineFeed.Self
   );
+
+  private static readonly MachineKind HeldLathe = Lathe with {
+    Code = "test:heldlathe",
+    Feed = MachineFeed.Held,
+  };
 
   private static readonly MachineKind FixtureLathe = Lathe with {
     Code = "test:fixturelathe",
@@ -84,12 +89,15 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
 
   public BlockEntityMachineToolTests() {
     TestLang.Init();
+    _w.Calendar.SpeedOfTime.Returns(60f);
+    _w.Calendar.CalendarSpeedMul.Returns(0.5f);
     _w.RegisterNetwork("mpshaft", sys => new MpShaftNetwork(sys));
     _w.RegisterItem("test:blank");
     _w.RegisterItem("test:blank2");
     _w.RegisterItem("test:turned");
     _w.RegisterItem("test:other");
     _w.RegisterItem("test:fixture");
+    _w.RegisterItem("test:fixture2");
     _w.RegisterItem("test:spent");
     _chips = _w.RegisterItem("test:chips");
     _chips.MaxStackSize = 8;
@@ -163,7 +171,6 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
 
   private void Second(int times = 1) {
     for (int i = 0; i < times; i++) {
-      _w.AdvanceHours(HoursPerRealSecond);
       _w.FireBlockEntityTicks(1f);
     }
   }
@@ -177,6 +184,44 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     host.Inventory[BlockEntityMachineTool.ChipsSlot] is { Itemstack: { } s }
       ? $"{s.Collectible.Code}x{s.StackSize}"
       : "";
+
+  private MachiningJob Clipped() => Job() with { Clip = "feed" };
+
+  // Fails when the fraction of the mounted clip is fixed instead of following the cut's progress.
+  [Fact]
+  public void The_mounted_clip_follows_the_cut() {
+    Host host = Machine(jobs: Clipped());
+    Assert.True(host.TryStart());
+
+    Assert.Equal(("feed", 0f), host.MountClip);
+    Second(3);
+
+    (string Clip, float Fraction)? mounted = host.MountClip;
+    Assert.Equal("feed", mounted!.Value.Clip);
+    Assert.Equal((float)(3 * 24660d / Joules), mounted.Value.Fraction, 3);
+  }
+
+  // Fails when the finished piece's clip is held at the start instead of the end.
+  [Fact]
+  public void A_finished_piece_holds_its_clip_at_the_end() {
+    Host host = Machine(jobs: Clipped());
+    Assert.True(host.TryStart());
+
+    Second(8);
+
+    Assert.Equal("test:turned", Piece(host));
+    Assert.Equal(("feed", 1f), host.MountClip);
+  }
+
+  // Fails when a piece whose jobs name no clip, or an empty work slot, reports one.
+  [Fact]
+  public void A_mount_with_no_clip_reports_none() {
+    Host plain = Machine();
+    Host empty = Machine(piece: "", jobs: Clipped());
+
+    Assert.Null(plain.MountClip);
+    Assert.Null(empty.MountClip);
+  }
 
   // Fails when progress counts the tick's real seconds instead of the game seconds the calendar moved.
   [Fact]
@@ -222,6 +267,140 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     );
     Second();
     Assert.True(host.Dirtied.Contains(true), "tick sees the swap");
+  }
+
+  private double OneSecond => 24660d / Joules;
+
+  // Fails when the cut tick ignores the holds: a lapsed hold goes on cutting.
+  [Fact]
+  public void A_held_kind_cuts_only_while_held() {
+    Host host = Machine(HeldLathe);
+    Second(2);
+    Assert.Equal(0d, host.Progress);
+    Assert.False(host.IsRunning);
+
+    host.Hold("a");
+    host.Hold("b");
+    Second();
+    Assert.Equal(OneSecond, host.Progress, 4);
+
+    host.Hold("b");
+    host.Release("a");
+    Assert.True(host.IsRunning);
+    Second();
+    Assert.Equal(2 * OneSecond, host.Progress, 4);
+
+    Second(2);
+    Assert.Equal(2 * OneSecond, host.Progress, 4);
+    Assert.False(host.IsRunning);
+    Assert.Equal(0f, host.LoadTorque(5f));
+    Assert.Equal(0f, host.StandingNm);
+  }
+
+  // Fails when the lapse check is removed: a hold nobody refreshes holds the cut for good.
+  [Fact]
+  public void A_hold_lapses_after_a_second_without_a_step() {
+    Host host = Machine(HeldLathe);
+    host.Hold("a");
+
+    Second();
+    host.Hold("a");
+    Second();
+    Assert.Equal(2 * OneSecond, host.Progress, 4);
+    Assert.True(host.IsRunning);
+
+    Second(3);
+
+    Assert.Equal(2 * OneSecond, host.Progress, 4);
+    Assert.False(host.IsRunning);
+  }
+
+  // Fails when Release zeroes the joules.
+  [Fact]
+  public void Release_keeps_the_progress() {
+    Host host = Machine(HeldLathe);
+    host.Hold("a");
+    Second();
+    double cut = host.Progress;
+    Assert.True(cut > 0d);
+
+    host.Release("a");
+    Second(2);
+
+    Assert.Equal(cut, host.Progress, 6);
+    Assert.False(host.IsRunning);
+  }
+
+  // Fails when TryStart ignores the feed and a held kind starts itself.
+  [Fact]
+  public void A_held_kind_refuses_TryStart() {
+    Host host = Machine(HeldLathe);
+
+    Assert.False(host.TryStart());
+    Second(2);
+
+    Assert.False(host.IsRunning);
+    Assert.Equal(0d, host.Progress);
+  }
+
+  // Fails when a saved toolRunning credits the first tick after a load.
+  [Fact]
+  public void A_loaded_held_machine_starts_stopped() {
+    Host host = Machine(HeldLathe);
+    host.Hold("a");
+    Second();
+    var tree = new TreeAttribute();
+    host.ToTreeAttributes(tree);
+    Host reloaded = Machine(HeldLathe);
+    reloaded.FromTreeAttributes(tree, _w.World);
+    Assert.True(reloaded.IsRunning);
+    double saved = reloaded.Progress;
+
+    Second();
+
+    Assert.Equal(saved, reloaded.Progress, 6);
+    Assert.False(reloaded.IsRunning);
+  }
+
+  // Fails when IsCutting follows IsRunning: a held machine on a stopped shaft or with no cutter is running and not cutting.
+  [Fact]
+  public void Is_cutting_only_while_credit_flows() {
+    Host host = Machine(HeldLathe);
+    Assert.False(host.IsCutting);
+    host.Hold("a");
+    Second();
+    Assert.True(host.IsCutting);
+
+    host.Hold("a");
+    host.Drive = new MpRunReading(0f, 1000f);
+    Second();
+    Assert.True(host.IsRunning);
+    Assert.False(host.IsCutting);
+
+    host.Hold("a");
+    host.Drive = new MpRunReading(10f, 1000f);
+    Second();
+    Assert.True(host.IsCutting);
+
+    host.Release("a");
+    Assert.False(host.IsCutting);
+  }
+
+  // Fails when a self kind needs a hold, or a hold engages it.
+  [Fact]
+  public void A_self_kind_still_starts_and_stops() {
+    Host host = Machine();
+    host.Hold("a");
+    Assert.False(host.IsRunning);
+
+    Assert.True(host.TryStart());
+    Second();
+    Assert.Equal(OneSecond, host.Progress, 4);
+
+    host.Stop();
+    Second();
+    Assert.Equal(OneSecond, host.Progress, 4);
+    Assert.False(host.IsRunning);
   }
 
   // Fails when a piece swapped mid-cut keeps the joules the first one was paid.
@@ -321,6 +500,45 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     Assert.Equal(0d, host.Progress);
   }
 
+  // Fails when a fixture slot change does not reach the progress reset, so a schematic swapped mid-cut keeps the joules.
+  [Fact]
+  public void A_schematic_swapped_mid_cut_starts_over() {
+    Host host = Machine(
+      FixtureLathe,
+      jobs:
+      [
+        Job(fixture: "test:fixture"),
+        Job(output: "test:other", fixture: "test:fixture2"),
+      ]
+    );
+    Lay(host, "test:fixture");
+    host.TryStart();
+    Second(3);
+    host.Stop();
+    Assert.True(host.Progress > 0d);
+
+    Lay(host, "test:fixture2");
+    host.Inventory[BlockEntityMachineTool.FixtureSlot].MarkDirty();
+
+    Assert.Equal(0d, host.Progress);
+  }
+
+  // Fails when progress is keyed on the laid item, so a schematic the job does not name resets a cut that has none.
+  [Fact]
+  public void A_schematic_laid_on_a_fixtureless_job_keeps_the_cut() {
+    Host host = Machine(FixtureLathe);
+    host.TryStart();
+    Second(3);
+    host.Stop();
+    double progress = host.Progress;
+    Assert.True(progress > 0d);
+
+    Lay(host, "test:fixture");
+    host.Inventory[BlockEntityMachineTool.FixtureSlot].MarkDirty();
+
+    Assert.Equal(progress, host.Progress);
+  }
+
   [Fact]
   public void A_piece_no_machine_works_says_so() {
     Host host = Machine(piece: "test:other");
@@ -329,9 +547,9 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     Assert.Contains("machine-tool-info-nojob", host.InfoLine());
   }
 
-  // Fails when the joules or the clock cursor are left out of the declared state.
+  // Fails when the joules are left out of the declared state.
   [Fact]
-  public void Joules_and_the_cursor_survive_a_tree_round_trip() {
+  public void Joules_survive_a_tree_round_trip() {
     Host host = Machine();
     host.TryStart();
     Second(3);
@@ -343,14 +561,11 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
 
     Assert.True(reloaded.IsRunning);
     Assert.Equal(3 * 24660d / Joules, reloaded.Progress, 4);
-    var cursor = new ExpandedLib.Helpers.GameClockCursor();
-    cursor.Load(tree, "toolCursor");
-    Assert.True(cursor.LastHours > 0d);
   }
 
-  // Fails when the game time a reload missed is not credited, or is credited past the remainder.
+  // Fails when the unloaded span is credited on reload: the calendar moved, no tick ran.
   [Fact]
-  public void A_reload_credits_the_hours_it_missed_clamped_to_the_remainder() {
+  public void A_reload_credits_nothing_for_the_unloaded_span() {
     Host host = Machine();
     host.TryStart();
     Second(1);
@@ -359,22 +574,55 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     Host reloaded = Machine();
     reloaded.FromTreeAttributes(tree, _w.World);
 
-    _w.AdvanceHours(0.001d);
+    _w.AdvanceHours(5d);
+    Assert.Equal(24660d / Joules, reloaded.Progress, 4);
+
     _w.FireBlockEntityTicks(1f);
-    Assert.Equal(
-      (24660d + 0.001d * 3600d * 822d) / Joules,
-      reloaded.Progress,
-      4
-    );
+    Assert.Equal(2 * 24660d / Joules, reloaded.Progress, 4);
+    Assert.Equal("test:blank", Piece(reloaded));
+  }
+
+  // Fails when a calendar jump is credited as the hours it moved instead of the one tick that ran.
+  [Fact]
+  public void A_time_jump_credits_one_tick() {
+    Host host = Machine();
+    host.TryStart();
+    Second(1);
 
     _w.AdvanceHours(5d);
     _w.FireBlockEntityTicks(1f);
-    Assert.Equal("test:turned", Piece(reloaded));
+
+    Assert.Equal(2 * 24660d / Joules, host.Progress, 4);
+    Assert.Equal("test:blank", Piece(host));
   }
 
-  // Fails when a tick on no run advances the cursor, which loses the gap the first live tick should credit.
+  // Fails when the credit is a fixed 30 game seconds a real second and the calendar's speed is not read.
   [Fact]
-  public void A_tick_on_no_run_credits_nothing_and_the_next_live_tick_credits_the_gap() {
+  public void Sleep_speeds_the_cut() {
+    Host host = Machine();
+    host.TryStart();
+    _w.Calendar.SpeedOfTime.Returns(120f);
+
+    Second(1);
+
+    Assert.Equal(2 * 24660d / Joules, host.Progress, 4);
+  }
+
+  // Fails when a world with no calendar is credited at a default speed.
+  [Fact]
+  public void No_calendar_credits_nothing() {
+    Host host = Machine();
+    host.TryStart();
+    _w.World.Calendar.Returns((IGameCalendar)null!);
+
+    Second(2);
+
+    Assert.Equal(0d, host.Progress);
+  }
+
+  // Fails when a tick on no run is credited, or the next live tick is credited more than its own seconds.
+  [Fact]
+  public void A_tick_on_no_run_credits_nothing_and_the_next_live_tick_credits_one_tick() {
     Host host = Machine();
     host.TryStart();
     host.Drive = MpRunReading.None;
@@ -384,7 +632,7 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
 
     host.Drive = new MpRunReading(10f, 1000f);
     Second();
-    Assert.Equal(4 * 24660d / Joules, host.Progress, 4);
+    Assert.Equal(24660d / Joules, host.Progress, 4);
   }
 
   [Fact]
@@ -547,6 +795,59 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     Second();
     Assert.Equal(MachineCutVerdict.Ready, host.Verdict);
     Assert.True(host.Progress > 0d);
+  }
+
+  private void Lay(Host host, string code) =>
+    host.Inventory[BlockEntityMachineTool.FixtureSlot].Itemstack =
+      new ItemStack(_w.GetItem(new AssetLocation(code))!);
+
+  // Fails when a piece whose jobs all need a fixture falls to no job, or runs under a fixture other than the one laid.
+  [Fact]
+  public void No_laid_fixture_reports_NoFixture() {
+    Host host = Machine(
+      FixtureLathe,
+      jobs:
+      [
+        Job(output: "test:turned", fixture: "test:fixture"),
+        Job(output: "test:other", fixture: "test:spent"),
+      ]
+    );
+    host.TryStart();
+
+    Second();
+    Assert.Equal(MachineCutVerdict.NoFixture, host.Verdict);
+    Assert.Contains("machine-tool-info-nofixture", host.InfoLine());
+
+    Lay(host, "test:chips");
+    Second();
+    Assert.Equal(MachineCutVerdict.NoFixture, host.Verdict);
+    Assert.Equal(0d, host.Progress);
+    Assert.Equal("test:blank", Piece(host));
+
+    Lay(host, "test:spent");
+    Second(8);
+    Assert.Equal("test:other", Piece(host));
+  }
+
+  // Fails when a step with several fixtured jobs on one input is listed once per job.
+  [Fact]
+  public void Worked_at_lists_a_step_once() {
+    Host host = Machine(
+      FixtureLathe,
+      piece: "test:other",
+      jobs:
+      [
+        Job(input: "test:other", fixture: "test:fixture"),
+        Job(input: "test:other", output: "test:spent", fixture: "test:chips"),
+        Job(input: "test:other", output: "test:blank2", fixture: "test:cutter"),
+      ]
+    );
+    host.KindSet.Contribute(MachineKindSet(FixtureLathe));
+
+    Assert.Equal(
+      ["exlib:machine-step-turn (test:machine-kind-fixturelathe)"],
+      host.WorkedAt("test:other")
+    );
   }
 
   [Fact]

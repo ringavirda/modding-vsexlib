@@ -6,8 +6,10 @@ using System.Text;
 using ExpandedLib.Blocks;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Checks;
+using ExpandedLib.Industry.Machining;
 using ExpandedLib.Machines;
 using ExpandedLib.Testing;
+using ExpandedLib.Tests.Machining;
 using Vintagestory.API.Common;
 using Xunit;
 using Xunit.Abstractions;
@@ -276,6 +278,8 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     _files.Dispose();
     ExlibChecks.ClearDeclarations();
     ProcessJobRegistry.Shared.Clear();
+    MachiningJobRegistry.Shared.Clear();
+    MachineKindRegistry.Shared.Clear();
     ProcessRouteRegistry.Shared.Clear();
     CraftSequenceRegistry.Shared.Clear();
   }
@@ -899,6 +903,110 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.Contains(
       Walk(unreached).Findings,
       f => f.StartsWith("walk:bar | ") && f.Contains("waits on walk:shear,")
+    );
+  }
+
+  // A lathe block of kind walk:lathe, reached by a recipe unless Lathe is false; the job is registered.
+  private TestWorld Machined(
+    string[] items,
+    string[] recipes,
+    System.Func<MachiningJob, MachiningJob> job,
+    bool lathe = true
+  )
+  {
+    _files.Write(
+      "assets/walk/blocktypes/lathe.json",
+      "{ \"code\": \"lathe\", \"attributes\": { \"machinekind\": \"walk:lathe\" } }"
+    );
+    TestWorld world = Planted(
+      items,
+      lathe ? [.. recipes, Recipe(Stick, "lathe", "block")] : recipes,
+      Stick
+    );
+    MachineKindRegistry.Shared.Contribute(
+      new MachineKindSet(
+        MachineKindSet.CurrentSchema,
+        [new MachineKind("walk:lathe", 4f, 0f, false, [], [])]
+      )
+    );
+    MachiningJobRegistry.Shared.Contribute(
+      new MachiningJobSet(
+        MachiningJobSet.CurrentSchema,
+        [job(MachiningTestData.Job("turn", Stick, "walk:holed"))]
+      )
+    );
+    return world;
+  }
+
+  // Fails when the machining edges are not added to the walk.
+  [Fact]
+  public void A_machining_job_output_is_reached()
+  {
+    using TestWorld reached = Machined(["holed"], [], j => j);
+    Assert.Empty(Walk(reached).Findings);
+
+    using TestWorld unreached = Machined(["holed"], [], j => j, lathe: false);
+    Assert.Contains(
+      Walk(unreached).Findings,
+      f => f.StartsWith("walk:holed | ") && f.Contains("waits on walk:lathe")
+    );
+  }
+
+  // Fails when the byproduct edges are dropped.
+  [Fact]
+  public void A_job_byproduct_is_reached()
+  {
+    using TestWorld world = Machined(
+      ["holed", "chips"],
+      [],
+      j => j with { Byproducts = [new MachiningByproduct("walk:chips", 1)] }
+    );
+
+    Assert.Empty(Walk(world).Findings);
+  }
+
+  // Fails when the fixture is dropped from the edge's needs.
+  [Fact]
+  public void A_fixtured_job_needs_its_fixture()
+  {
+    using TestWorld reached = Machined(
+      ["holed", "jig"],
+      [Recipe(Stick, "jig")],
+      j => j with { Fixture = "walk:jig" }
+    );
+    Assert.Empty(Walk(reached).Findings);
+
+    _files.Write("assets/walk/itemtypes/jig.json", Plain("jig"));
+    using TestWorld unreached = Machined(
+      ["holed"],
+      [],
+      j => j with { Fixture = "walk:jig" }
+    );
+    Assert.Contains(
+      Walk(unreached).Findings,
+      f => f.StartsWith("walk:holed | ") && f.Contains("waits on walk:jig")
+    );
+  }
+
+  // Fails when the OffersTo filter is dropped from the machining edges.
+  [Fact]
+  public void A_job_no_block_offers_is_no_edge()
+  {
+    using TestWorld offered = Machined(
+      ["holed"],
+      [],
+      j => j with { Machines = ["walk:lathe"] }
+    );
+    Assert.Empty(Walk(offered).Findings);
+
+    using TestWorld refused = Machined(
+      ["holed"],
+      [],
+      j => j with { Machines = ["walk:planer"] }
+    );
+    Assert.Contains(
+      Walk(refused).Findings,
+      f => f.StartsWith("walk:holed | ") && f.Contains("no recipe makes it")
     );
   }
 
