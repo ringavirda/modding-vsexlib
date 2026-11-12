@@ -318,7 +318,7 @@ ExpandedLib.Industry.Machining.MachineKind.Code.get -> string!
 ExpandedLib.Industry.Machining.MachineKind.Code.init -> void
 ExpandedLib.Industry.Machining.MachineKind.Fixture.get -> bool
 ExpandedLib.Industry.Machining.MachineKind.Fixture.init -> void
-ExpandedLib.Industry.Machining.MachineKind.MachineKind(string! Code, float RatedSpeed, float StandingNm, bool Fixture, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineAnchor!>! Anchors, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineKindStep!>! Steps, ExpandedLib.Industry.Machining.MachineFeed Feed = ExpandedLib.Industry.Machining.MachineFeed.Held) -> void
+ExpandedLib.Industry.Machining.MachineKind.MachineKind(string! Code, float RatedSpeed, float StandingNm, bool Fixture, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineAnchor!>! Anchors, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineKindStep!>! Steps, ExpandedLib.Industry.Machining.MachineFeed Feed = ExpandedLib.Industry.Machining.MachineFeed.Held, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineMount!>? Mounts = null) -> void
 ExpandedLib.Industry.Machining.MachineKind.RatedSpeed.get -> float
 ExpandedLib.Industry.Machining.MachineKind.RatedSpeed.init -> void
 ExpandedLib.Industry.Machining.MachineKind.SameAs(ExpandedLib.Industry.Machining.MachineKind! other) -> bool
@@ -381,7 +381,7 @@ ExpandedLib.Industry.Machining.MachiningJob.Input.get -> string!
 ExpandedLib.Industry.Machining.MachiningJob.Input.init -> void
 ExpandedLib.Industry.Machining.MachiningJob.Machines.get -> System.Collections.Generic.IReadOnlyList<string!>!
 ExpandedLib.Industry.Machining.MachiningJob.Machines.init -> void
-ExpandedLib.Industry.Machining.MachiningJob.MachiningJob(string! Step, string! Input, string! Output, int Count, string? Material, float? Removed, float? Energy, int MinTier, int Wear, string? Fixture, System.Collections.Generic.IReadOnlyList<string!>! Machines, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningByproduct!>! Byproducts, ExpandedLib.Industry.Machining.MachiningHand? Hand) -> void
+ExpandedLib.Industry.Machining.MachiningJob.MachiningJob(string! Step, string! Input, string! Output, int Count, string? Material, float? Removed, float? Energy, int MinTier, int Wear, string? Fixture, System.Collections.Generic.IReadOnlyList<string!>! Machines, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningByproduct!>! Byproducts, ExpandedLib.Industry.Machining.MachiningHand? Hand, string? Clip = null) -> void
 ExpandedLib.Industry.Machining.MachiningJob.Matches(string! step, string! input) -> bool
 ExpandedLib.Industry.Machining.MachiningJob.Material.get -> string?
 ExpandedLib.Industry.Machining.MachiningJob.Material.init -> void
@@ -957,3 +957,14 @@ ExpandedLib.Industry.Machining.BlockEntityMachineTool.Release(string! playerUid)
 ExpandedLib.Industry.Machining.BlockEntityMachineTool.IsCutting.get -> bool
 override ExpandedLib.Industry.Machining.BlockEntityMachineTool.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldForResolving) -> void
 virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.OnCuttingChanged(bool cutting) -> void
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.MountClip.get -> (string! Clip, float Fraction)?
+ExpandedLib.Industry.Machining.MachineKind.Mounts.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineMount!>!
+ExpandedLib.Industry.Machining.MachineKind.Mounts.init -> void
+ExpandedLib.Industry.Machining.MachineMount
+ExpandedLib.Industry.Machining.MachineMount.Anchor.get -> string!
+ExpandedLib.Industry.Machining.MachineMount.Anchor.init -> void
+ExpandedLib.Industry.Machining.MachineMount.Item.get -> string!
+ExpandedLib.Industry.Machining.MachineMount.Item.init -> void
+ExpandedLib.Industry.Machining.MachineMount.MachineMount(string! Item, string! Anchor) -> void
+ExpandedLib.Industry.Machining.MachiningJob.Clip.get -> string?
+ExpandedLib.Industry.Machining.MachiningJob.Clip.init -> void

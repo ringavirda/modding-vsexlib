@@ -35,6 +35,20 @@ public sealed class MachineAnchorDrawTests : IDisposable
     1f
   );
 
+  private static readonly MachineAnchor Side = new(
+    "side",
+    new Vector3(10f, 4f, 2f),
+    Vector3.Zero,
+    1f
+  );
+
+  private static readonly MachineAnchor End = new(
+    "end",
+    new Vector3(3f, 12f, 9f),
+    Vector3.Zero,
+    1f
+  );
+
   private static MachineKind Kind = null!;
   private static MachiningJobRegistry Registry = null!;
 
@@ -85,13 +99,16 @@ public sealed class MachineAnchorDrawTests : IDisposable
     return item;
   }
 
-  private static MachineKind KindWith(string? anchor) =>
+  private static MachineKind KindWith(
+    string? anchor,
+    params MachineMount[] mounts
+  ) =>
     new(
       "drawfix:lathe",
       10f,
       0f,
       false,
-      [Table],
+      [Table, Side, End],
       [
         new MachineKindStep(
           "turn",
@@ -101,7 +118,9 @@ public sealed class MachineAnchorDrawTests : IDisposable
           anchor,
           null
         ),
-      ]
+      ],
+      MachineFeed.Held,
+      mounts
     );
 
   private DrawHost Stand(Item? piece, float rotateY = 0f)
@@ -141,11 +160,16 @@ public sealed class MachineAnchorDrawTests : IDisposable
   }
 
   // The slab's one face is its top, 0.25 above the cell floor; the anchor puts the cell centre at (6,10,12)/16.
-  private static void AssertSlabAt(MeshData mesh, float rotateY)
+  private static void AssertSlabAt(
+    MeshData mesh,
+    float rotateY,
+    MachineAnchor? at = null
+  )
   {
+    Vector3 origin = (at ?? Table).Origin;
     float[] corners = [-0.5f, 0.5f];
-    float cx = 6f / 16 - 0.5f;
-    float cz = 12f / 16 - 0.5f;
+    float cx = origin.X / 16 - 0.5f;
+    float cz = origin.Z / 16 - 0.5f;
     double turn = rotateY * Math.PI / 180d;
     double sin = Math.Sin(turn);
     double cos = Math.Cos(turn);
@@ -164,8 +188,8 @@ public sealed class MachineAnchorDrawTests : IDisposable
     var (min, max) = Box(mesh);
     Assert.Equal(xs.Min(), min[0], 3);
     Assert.Equal(xs.Max(), max[0], 3);
-    Assert.Equal(10f / 16 - 0.25f, min[1], 3);
-    Assert.Equal(10f / 16 - 0.25f, max[1], 3);
+    Assert.Equal(origin.Y / 16 - 0.25f, min[1], 3);
+    Assert.Equal(origin.Y / 16 - 0.25f, max[1], 3);
     Assert.Equal(zs.Min(), min[2], 3);
     Assert.Equal(zs.Max(), max[2], 3);
   }
@@ -224,6 +248,34 @@ public sealed class MachineAnchorDrawTests : IDisposable
     Assert.Null(cell.Threw);
     Assert.Empty(Pooled(cell));
     Assert.False(cell.SkipsBlockMesh);
+  }
+
+  // Fails when MountAnchor reads the step's anchor before the piece's mount.
+  [Fact]
+  public void A_mount_places_the_piece_before_the_step_anchor()
+  {
+    Kind = KindWith("table", new MachineMount("drawfix:blank", "side"));
+    Stand(_blank);
+
+    PooledMesh mounted = Assert.Single(Pooled(DrawnCell.Of(_w, Here)));
+
+    AssertSlabAt(mounted.Mesh, 0f, Side);
+  }
+
+  // Fails when the finished piece is drawn at the mount of the item it was cut from.
+  [Fact]
+  public void A_finished_piece_takes_its_own_mount()
+  {
+    Kind = KindWith(
+      "table",
+      new MachineMount("drawfix:blank", "side"),
+      new MachineMount("drawfix:turned", "end")
+    );
+    Stand(_turned);
+
+    PooledMesh result = Assert.Single(Pooled(DrawnCell.Of(_w, Here)));
+
+    AssertSlabAt(result.Mesh, 0f, End);
   }
 
   // Fails when a step with no anchor still draws the piece.

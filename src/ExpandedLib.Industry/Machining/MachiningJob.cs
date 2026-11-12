@@ -27,6 +27,7 @@ public sealed record MachiningHand(string Machine, string Recipe);
 /// <param name="Machines">Machine kind codes the job is limited to; empty offers it at every kind with the step.</param>
 /// <param name="Byproducts">What the job leaves besides its output.</param>
 /// <param name="Hand">The bench route that does the same job, or null.</param>
+/// <param name="Clip">Name of the animation clip that shows the cut on the machine, or null.</param>
 public sealed record MachiningJob(
   string Step,
   string Input,
@@ -40,7 +41,8 @@ public sealed record MachiningJob(
   string? Fixture,
   IReadOnlyList<string> Machines,
   IReadOnlyList<MachiningByproduct> Byproducts,
-  MachiningHand? Hand
+  MachiningHand? Hand,
+  string? Clip = null
 ) {
   /// <summary>The item attribute holding an item's metal content in units; read for the removed mass.</summary>
   public const string UnitsAttribute = "materialUnits";

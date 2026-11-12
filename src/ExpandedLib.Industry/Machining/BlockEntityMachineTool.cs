@@ -205,9 +205,14 @@ public abstract class BlockEntityMachineTool
   private MachineAnchor? MountAnchor(ItemStack piece) {
     if (Kind is not { } kind)
       return null;
-    string? name = CurrentJob().Step?.Anchor;
-    if (name is null) {
-      string code = piece.Collectible.Code.ToString();
+    string code = piece.Collectible.Code.ToString();
+    string? name = kind
+      .Mounts.FirstOrDefault(m =>
+        string.Equals(m.Item, code, StringComparison.OrdinalIgnoreCase)
+      )
+      ?.Anchor;
+    name ??= CurrentJob().Step?.Anchor;
+    if (name is null)
       foreach (MachiningJob job in Jobs.All)
         if (
           string.Equals(job.Output, code, StringComparison.OrdinalIgnoreCase)
@@ -216,11 +221,35 @@ public abstract class BlockEntityMachineTool
           name = made;
           break;
         }
-    }
     foreach (MachineAnchor anchor in kind.Anchors)
       if (string.Equals(anchor.Name, name, StringComparison.OrdinalIgnoreCase))
         return anchor;
     return null;
+  }
+
+  /// <summary>The animation clip that shows the mounted piece's cut and how far along it is. Reads synced state and the
+  /// registries only, so it answers the same on the client.</summary>
+  /// <returns>The current job's clip at <see cref="Progress"/> while its input is mounted; the clip of the job whose
+  /// output is mounted at 1; null when the work slot is empty or no such job names a clip.</returns>
+  public (string Clip, float Fraction)? MountClip {
+    get {
+      if (
+        Inventory[WorkSlot].Itemstack?.Collectible?.Code?.ToString()
+          is not { } code
+        || Kind is not { } kind
+      )
+        return null;
+      if (CurrentJob().Job?.Clip is { } clip)
+        return (clip, (float)Progress);
+      foreach (MachiningJob job in Jobs.All)
+        if (
+          job.Clip is { } made
+          && string.Equals(job.Output, code, StringComparison.OrdinalIgnoreCase)
+          && kind.StepOf(job.Step) is not null
+        )
+          return (made, 1f);
+      return null;
+    }
   }
 
   /// <summary>Engages a self-fed machine: the cut counts game time from now, tick by tick while loaded.</summary>

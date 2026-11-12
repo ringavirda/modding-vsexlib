@@ -83,6 +83,34 @@ public class MachineKindLoaderTests {
     Assert.False(self!.SameAs(self with { Feed = MachineFeed.Held }));
   }
 
+  private const string Mounted = """
+    { "schema": 1, "kinds": [ { "code": "test:m", "ratedSpeed": 4,
+      "anchors": { "centres": { "origin": [1, 2, 3], "rotation": [0, 0, 90] } },
+      "mounts": { "test:rod": "centres", "test:ghost": "nowhere" },
+      "steps": { "turn": { "motion": "rotary", "power": 1, "tooling": "cutter" } } } ] }
+    """;
+
+  // Fails when a mount naming no declared anchor is kept, or passes without a message.
+  [Fact]
+  public void A_mount_naming_no_anchor_is_logged_and_dropped() {
+    var registry = new MachineKindRegistry();
+    var files = new[] { ("test:config/machinekinds/f.json", Mounted) };
+
+    var errors = MachineKindLoader.Load(files, registry);
+
+    Assert.True(registry.TryGet("test:m", out MachineKind? kind));
+    Assert.Equal(new MachineMount("test:rod", "centres"), Assert.Single(kind!.Mounts));
+    Assert.Contains("'nowhere'", Assert.Single(errors));
+  }
+
+  // Fails when two kinds that differ only in mounts compare the same.
+  [Fact]
+  public void Kinds_that_differ_only_in_mounts_are_not_the_same_kind() {
+    Registry(Mounted).TryGet("test:m", out MachineKind? kind);
+
+    Assert.False(kind!.SameAs(kind with { Mounts = [] }));
+  }
+
   // Fails when the kinds' steps are sorted by name after load: turn, bore, plane is not alphabetical.
   [Fact]
   public void A_kinds_steps_keep_their_declaration_order() {

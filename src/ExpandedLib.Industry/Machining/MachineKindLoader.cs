@@ -25,6 +25,7 @@ internal sealed class MachineKindLoader
     "feed",
     "anchors",
     "steps",
+    "mounts",
   ];
   private static readonly HashSet<string> AnchorKeys =
   [

@@ -137,6 +137,17 @@ public sealed record MachineKindSet(
         );
       }
 
+      var mounts = new List<MachineMount>();
+      foreach ((string item, JsonObject mountNode) in Members(kindNode["mounts"])) {
+        string mountAnchor = mountNode.AsString("");
+        if (!anchors.Exists(a => a.Name == mountAnchor))
+          notes.Add(
+            $"machine kind '{code}': mount of '{item}' names anchor '{mountAnchor}', which the kind does not declare; it is dropped"
+          );
+        else
+          mounts.Add(new MachineMount(item, mountAnchor));
+      }
+
       string feedName = kindNode["feed"].AsString("held");
       MachineFeed feed = MachineFeed.Held;
       if (string.Equals(feedName, "self", StringComparison.OrdinalIgnoreCase))
@@ -156,7 +167,8 @@ public sealed record MachineKindSet(
           kindNode["fixture"].AsBool(false),
           anchors,
           steps,
-          feed
+          feed,
+          mounts
         )
       );
     }

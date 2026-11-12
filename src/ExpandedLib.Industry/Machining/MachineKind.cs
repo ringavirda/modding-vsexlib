@@ -18,6 +18,11 @@ public sealed record MachineAnchor(
   float Scale
 );
 
+/// <summary>Where one item is drawn when it is mounted, whichever step it is mounted for.</summary>
+/// <param name="Item">Domain-qualified item code of the mounted piece.</param>
+/// <param name="Anchor">Name of the <see cref="MachineAnchor"/> the piece is drawn at.</param>
+public sealed record MachineMount(string Item, string Anchor);
+
 /// <summary>The envelope a piece must fit to be mounted for a step.</summary>
 /// <param name="Across">Widest the piece may be across the cut axis, voxels. Above 0.</param>
 /// <param name="Length">Longest it may be along the cut axis, voxels. Above 0.</param>
@@ -59,6 +64,7 @@ public enum MachineFeed {
 /// <param name="Anchors">The mount points, by name.</param>
 /// <param name="Steps">The steps it does, in declaration order.</param>
 /// <param name="Feed">Whether a player must hold the feed control for the cut to run. Defaults to <see cref="MachineFeed.Held"/>.</param>
+/// <param name="Mounts">The anchor each named item is drawn at, read before its step's anchor. Null reads as none.</param>
 public sealed record MachineKind(
   string Code,
   float RatedSpeed,
@@ -66,8 +72,12 @@ public sealed record MachineKind(
   bool Fixture,
   IReadOnlyList<MachineAnchor> Anchors,
   IReadOnlyList<MachineKindStep> Steps,
-  MachineFeed Feed = MachineFeed.Held
+  MachineFeed Feed = MachineFeed.Held,
+  IReadOnlyList<MachineMount>? Mounts = null
 ) {
+  /// <summary>The anchor each named item is drawn at, read before its step's anchor; empty when the kind declares none.</summary>
+  public IReadOnlyList<MachineMount> Mounts { get; init; } = Mounts ?? [];
+
   /// <summary>The block attribute that names a block's machine kind.</summary>
   public const string AttributeKey = "machinekind";
 
@@ -98,5 +108,6 @@ public sealed record MachineKind(
     && Fixture == other.Fixture
     && Feed == other.Feed
     && Anchors.SequenceEqual(other.Anchors)
-    && Steps.SequenceEqual(other.Steps);
+    && Steps.SequenceEqual(other.Steps)
+    && Mounts.SequenceEqual(other.Mounts);
 }

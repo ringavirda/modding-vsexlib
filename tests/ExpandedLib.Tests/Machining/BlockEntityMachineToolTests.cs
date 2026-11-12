@@ -185,6 +185,44 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
       ? $"{s.Collectible.Code}x{s.StackSize}"
       : "";
 
+  private MachiningJob Clipped() => Job() with { Clip = "feed" };
+
+  // Fails when the fraction of the mounted clip is fixed instead of following the cut's progress.
+  [Fact]
+  public void The_mounted_clip_follows_the_cut() {
+    Host host = Machine(jobs: Clipped());
+    Assert.True(host.TryStart());
+
+    Assert.Equal(("feed", 0f), host.MountClip);
+    Second(3);
+
+    (string Clip, float Fraction)? mounted = host.MountClip;
+    Assert.Equal("feed", mounted!.Value.Clip);
+    Assert.Equal((float)(3 * 24660d / Joules), mounted.Value.Fraction, 3);
+  }
+
+  // Fails when the finished piece's clip is held at the start instead of the end.
+  [Fact]
+  public void A_finished_piece_holds_its_clip_at_the_end() {
+    Host host = Machine(jobs: Clipped());
+    Assert.True(host.TryStart());
+
+    Second(8);
+
+    Assert.Equal("test:turned", Piece(host));
+    Assert.Equal(("feed", 1f), host.MountClip);
+  }
+
+  // Fails when a piece whose jobs name no clip, or an empty work slot, reports one.
+  [Fact]
+  public void A_mount_with_no_clip_reports_none() {
+    Host plain = Machine();
+    Host empty = Machine(piece: "", jobs: Clipped());
+
+    Assert.Null(plain.MountClip);
+    Assert.Null(empty.MountClip);
+  }
+
   // Fails when progress counts the tick's real seconds instead of the game seconds the calendar moved.
   [Fact]
   public void The_cut_counts_game_seconds_and_finishes_on_the_eighth_second() {
