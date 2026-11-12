@@ -322,10 +322,9 @@ public abstract class BlockEntityMachineTool
         MarkDirty(redraw);
       return;
     }
-    double gameSeconds =
-      Api.World.Calendar is { } calendar
-        ? dt * (double)calendar.SpeedOfTime * calendar.CalendarSpeedMul
-        : 0d;
+    double gameSeconds = Api.World.Calendar is { } calendar
+      ? dt * (double)calendar.SpeedOfTime * calendar.CalendarSpeedMul
+      : 0d;
     float speed = MathF.Abs(reading.SpeedRadS);
 
     (MachiningJob? job, MachineKindStep? step) = CurrentJob();
