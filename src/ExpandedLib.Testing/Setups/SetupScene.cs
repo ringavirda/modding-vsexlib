@@ -6,11 +6,13 @@ using ExpandedLib.Blocks;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Config;
 using ExpandedLib.Helpers;
+using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Industry.Metals;
 using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
@@ -354,6 +356,8 @@ public sealed partial class SetupScene : IDisposable
       power.Start(World.Api);
       _lineListeners = [.. World.TickListenerIds().Except(before)];
     }
+    if (BeltPaths.Of(World.Api) == null)
+      BeltPaths.Start(World.Api);
     BlockLaws.StartRooms(World);
     foreach (Block block in World.World.Blocks.ToArray())
       if (block is { Id: not 0 } && _file.Mods.Contains(block.Code.Domain))
@@ -696,6 +700,19 @@ public sealed partial class SetupScene : IDisposable
       Record(step.Id, at, block);
     if ((string?)step.Body["complete"] == "all")
       Complete(at, step.Path);
+    RaisePlacedInBeltPath(at);
+  }
+
+  private void RaisePlacedInBeltPath(BlockPos at)
+  {
+    if (BeltPaths.Of(World.Api)?.OwnerAt(at) == null)
+      return;
+    World.Api.Event.DidPlaceBlock += Raise.Event<BlockPlacedDelegate>(
+      Player.ServerPlayer!,
+      0,
+      new BlockSelection { Position = at.Copy() },
+      null
+    );
   }
 
   private void FillStep(SetupStep step)
