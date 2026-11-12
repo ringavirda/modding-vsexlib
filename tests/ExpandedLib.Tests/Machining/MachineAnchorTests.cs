@@ -105,12 +105,15 @@ public sealed class MachineAnchorTests {
   [Theory]
   [InlineData(0.7f)]
   [InlineData(2.5f)]
-  public void A_point_on_the_spindle_line_stays_put_as_it_turns(float angle)
-  {
+  public void A_point_on_the_spindle_line_stays_put_as_it_turns(float angle) {
     float[] still = MachineAnchors.Compose(Rod, NoTurn, Axle, 0f);
     float[] turned = MachineAnchors.Compose(Rod, NoTurn, Axle, angle);
     Vec3f onLine = new(0.9f, 18.5f / 16f, 0.5f);
-    Vec3f piece = new(onLine.X - 5f / 16f + 0.5f, onLine.Y - 12f / 16f + 0.5f, 0.5f - 3f / 16f + 0.5f);
+    Vec3f piece = new(
+      onLine.X - 5f / 16f + 0.5f,
+      onLine.Y - 12f / 16f + 0.5f,
+      0.5f - 3f / 16f + 0.5f
+    );
 
     Vec3f before = Map(still, piece.X, piece.Y, piece.Z);
     Vec3f after = Map(turned, piece.X, piece.Y, piece.Z);
@@ -125,8 +128,7 @@ public sealed class MachineAnchorTests {
 
   // Fails when the angle is read as degrees: a quarter turn is pi/2 rad about X through (y 18.5, z 8) / 16.
   [Fact]
-  public void A_quarter_turn_carries_a_point_a_quarter_round()
-  {
+  public void A_quarter_turn_carries_a_point_a_quarter_round() {
     float[] m = MachineAnchors.Compose(
       Anchor(new(8f, 8f, 8f)),
       NoTurn,

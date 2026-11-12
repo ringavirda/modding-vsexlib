@@ -221,7 +221,11 @@ public abstract class BlockEntityMachineTool
       piece,
       anchor,
       spindle,
-      new Vec3f(shape?.rotateX ?? 0f, shape?.rotateY ?? 0f, shape?.rotateZ ?? 0f)
+      new Vec3f(
+        shape?.rotateX ?? 0f,
+        shape?.rotateY ?? 0f,
+        shape?.rotateZ ?? 0f
+      )
     );
   }
 

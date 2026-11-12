@@ -140,7 +140,11 @@ public class MachineKindLoaderTests {
 
     Assert.False(kind!.SameAs(kind with { Spindle = null }));
     Assert.False(
-      kind.SameAs(kind with { Spindle = kind.Spindle! with { DegreesPerSecond = 45f } })
+      kind.SameAs(
+        kind with {
+          Spindle = kind.Spindle! with { DegreesPerSecond = 45f },
+        }
+      )
     );
   }
 
@@ -151,8 +155,12 @@ public class MachineKindLoaderTests {
   [InlineData("""{ "axis": "x", "degPerSecond": 9 }""")]
   public void A_malformed_spindle_drops_the_file(string spindle) {
     var registry = new MachineKindRegistry();
-    var files = new[] {
-      ("test:config/machinekinds/f.json", Bad($$""" "spindle": {{spindle}} """)),
+    var files = new[]
+    {
+      (
+        "test:config/machinekinds/f.json",
+        Bad($$""" "spindle": {{spindle}} """)
+      ),
     };
 
     var errors = MachineKindLoader.Load(files, registry);

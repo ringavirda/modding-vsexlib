@@ -19,7 +19,8 @@ internal static class MachineToolRenderer {
 
   /// <summary>Whether a machine of <paramref name="kind"/> draws its mounted piece through a
   /// <see cref="MountedPieceRenderer"/>: its kind declares a spindle.</summary>
-  internal static bool TakesRenderer(MachineKind? kind) => kind?.Spindle is not null;
+  internal static bool TakesRenderer(MachineKind? kind) =>
+    kind?.Spindle is not null;
 
   /// <summary>Whether a machine of <paramref name="kind"/> adds its mounted piece to the chunk mesh.</summary>
   internal static bool DrawsInChunk(MachineKind? kind) => !TakesRenderer(kind);
