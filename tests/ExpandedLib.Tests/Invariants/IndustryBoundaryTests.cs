@@ -88,6 +88,7 @@ public class IndustryBoundaryTests {
     "ExpandedLib.Machines",
     "ExpandedLib.Networks",
     "ExpandedLib.Catalogues",
+    "ExpandedLib.Storage",
     "ExpandedLib.Checks",
     "ExpandedLib.FastForwarding",
     "ExpandedLib.Helpers",
