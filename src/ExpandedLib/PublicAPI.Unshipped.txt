@@ -10,7 +10,7 @@ const ExpandedLib.Catalogues.CraftStep.Vice = "vice" -> string!
 const ExpandedLib.Catalogues.CraftToolDefault.DefaultStrike = 0.3 -> float
 const ExpandedLib.Catalogues.CraftToolDefault.DefaultStroke = 1.05 -> float
 const ExpandedLib.Catalogues.MachineTool.KindedSchema = 2 -> int
-const ExpandedLib.Catalogues.ProcessJobSet.CurrentSchema = 2 -> int
+const ExpandedLib.Catalogues.ProcessJobSet.CurrentSchema = 3 -> int
 const ExpandedLib.ExlibLang.BlockhelpCrowbarBreakout = "exlib:blockhelp-crowbar-breakout" -> string!
 const ExpandedLib.ExlibLang.CommandMoltenDenied = "exlib:command-molten-denied" -> string!
 const ExpandedLib.ExlibLang.CommandMoltenDesc = "exlib:command-molten-desc" -> string!
@@ -260,7 +260,9 @@ ExpandedLib.Catalogues.MachineToolSpec.SpentCount.get -> int
 ExpandedLib.Catalogues.MachineToolSpec.SpentCount.init -> void
 ExpandedLib.Catalogues.MachineToolSpec.Tier.get -> int
 ExpandedLib.Catalogues.MachineToolSpec.Tier.init -> void
-ExpandedLib.Catalogues.ProcessJob.ProcessJob(string! Input, string! Output, int Count, float? Stage, string? Family, float MinTorque, int MinTier = 0, float Seconds = 1, int Strokes = 1) -> void
+ExpandedLib.Catalogues.ProcessJob.ProcessJob(string! Input, string! Output, int Count, float? Stage, string? Family, float MinTorque, int MinTier = 0, float Seconds = 1, int Strokes = 1, int InputCount = 1) -> void
+ExpandedLib.Catalogues.ProcessJob.InputCount.get -> int
+ExpandedLib.Catalogues.ProcessJob.InputCount.init -> void
 ExpandedLib.Catalogues.ProcessJob.Strokes.get -> int
 ExpandedLib.Catalogues.ProcessJob.Strokes.init -> void
 ExpandedLib.Checks.GatheredSources
@@ -572,7 +574,7 @@ static ExpandedLib.Catalogues.CraftSequenceRegistry.Shared.get -> ExpandedLib.Ca
 static ExpandedLib.Catalogues.CraftSequenceSet.TryParse(Vintagestory.API.Datastructures.JsonObject? node, out ExpandedLib.Catalogues.CraftSequenceSet? set, out string? error) -> bool
 static ExpandedLib.Catalogues.CraftToolDefault.Hammer.get -> ExpandedLib.Catalogues.CraftToolDefault!
 *REMOVED*static ExpandedLib.Catalogues.ItemDie.Job(string! machine, string! input, string! output, int count = 1, int minTier = 0, double minTorque = 0, double seconds = 1) -> object!
-static ExpandedLib.Catalogues.ItemDie.Job(string! machine, string! input, string! output, int count = 1, int minTier = 0, double minTorque = 0, double seconds = 1, int strokes = 1) -> object!
+static ExpandedLib.Catalogues.ItemDie.Job(string! machine, string! input, string! output, int count = 1, int minTier = 0, double minTorque = 0, double seconds = 1, int strokes = 1, int inputCount = 1) -> object!
 static ExpandedLib.Catalogues.MachineTool.Itemtype(string! domain, string! code, string! kind, System.Collections.Generic.IReadOnlyDictionary<string!, int>! tiers, string! shape, string! variantGroup, string? assetName, string? spentCode, int spentCount) -> ExpandedLib.Definitions.ExItemDef!
 static ExpandedLib.Catalogues.MachineTool.KindOf(Vintagestory.API.Common.ItemStack? stack) -> string?
 static ExpandedLib.Catalogues.MachineTool.Tier(int tier, string! kind, string? spentCode = null, int spentCount = 1) -> object!

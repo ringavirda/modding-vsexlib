@@ -33,6 +33,7 @@ public sealed class ProcessJobLoader
     "minTier",
     "seconds",
     "strokes",
+    "inputCount",
   ];
 
   private ProcessJobLoader() { }

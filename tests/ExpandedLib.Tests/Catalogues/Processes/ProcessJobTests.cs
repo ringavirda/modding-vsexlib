@@ -119,6 +119,23 @@ public class ProcessJobTests {
   }
 
   [Fact]
+  public void An_input_count_below_one_is_refused() {
+    Parse(
+      out List<string> errors,
+      (
+        "mod:x.json",
+        """
+        { "schema": 3, "machine": "riveter", "jobs": [ { "input": "a:b", "output": "a:c", "inputCount": 0 } ] }
+        """
+      )
+    );
+
+    string error = Assert.Single(errors);
+    Assert.Contains("inputCount", error);
+    Assert.Contains("a:b", error);
+  }
+
+  [Fact]
   public void A_set_naming_no_machine_is_rejected() {
     Parse(
       out List<string> errors,

@@ -85,6 +85,35 @@ public class ItemDieTests {
   }
 
   [Fact]
+  public void Job_writes_its_input_count() {
+    var die = new Item {
+      Code = new AssetLocation("iiex", "die-rivet"),
+      Attributes = Json(
+        JToken
+          .FromObject(
+            ItemDie.Job(
+              "riveter",
+              "iiex:headingrod",
+              "iiex:rivet",
+              strokes: 4,
+              inputCount: 4
+            )
+          )
+          .ToString()
+      ),
+    };
+
+    ProcessJob? job = ItemDie.JobFor(
+      new ItemStack(die),
+      "iiex:headingrod",
+      null,
+      null
+    );
+
+    Assert.Equal(4, job!.InputCount);
+  }
+
+  [Fact]
   public void The_costs_default_so_a_sparse_die_still_works() {
     ProcessJob job = Assert.Single(
       Parse(
