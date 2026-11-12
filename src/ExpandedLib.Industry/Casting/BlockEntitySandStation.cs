@@ -9,6 +9,7 @@ using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Industry.Molten;
 using ExpandedLib.Machines;
 using ExpandedLib.Registries;
+using ExpandedLib.Structures;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -185,12 +186,18 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
       )
       : null;
 
-  /// <summary>Whether <paramref name="hitPosition"/>, in block units, lies in the cup turned to this block's facing.</summary>
+  /// <summary>The boxes beside <see cref="CupBox"/> a carried pour may also land in, in block units facing north; none by default. Read only while <see cref="CupBox"/> is set.</summary>
+  protected internal virtual IReadOnlyList<Cuboidf> ExtraCupBoxes => [];
+
+  /// <summary>Whether <paramref name="hitPosition"/>, in block units, lies in one of the cups turned to this block's facing.</summary>
   internal bool InCup(Vec3d hitPosition) =>
     CupBox is not { } cup
     || ExOrientation
-      .RotateBoxes([cup], ExOrientation.AngleFromSide(Block.Variant["side"]))[0]
-      .Contains(hitPosition.X, hitPosition.Y, hitPosition.Z);
+      .RotateBoxes(
+        [cup, .. ExtraCupBoxes],
+        ExOrientation.AngleFromSide(Block.Variant["side"])
+      )
+      .Any(b => b.Contains(hitPosition.X, hitPosition.Y, hitPosition.Z));
 
   #endregion
 
@@ -315,10 +322,17 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
   }
 
   private void PullFromLaunder(BEBehaviorMoltenCell cell) {
-    if (LaunderFace is not { } face)
-      return;
+    foreach (LaunderFace face in LaunderFaces)
+      PullFromFace(cell, face);
+  }
+
+  private void PullFromFace(BEBehaviorMoltenCell cell, LaunderFace face) {
     if (
-      this.BlockEntityAt<BlockEntity>(Pos.AddCopy(face)) is not IMoltenCell src
+      this.BlockEntityAt<BlockEntity>(
+        Pos.AddCopy(face.Offset.X, face.Offset.Y, face.Offset.Z)
+          .Add(face.Facing)
+      )
+        is not IMoltenCell src
       || src.Solidified
       || src.Sealed
       || src.CellAmount <= 0
@@ -342,14 +356,62 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     OnPulled(accepted);
   }
 
-  /// <summary>The horizontal face the launder sits on; null when the block has no <c>side</c> variant and takes no launder feed.</summary>
-  public virtual BlockFacing? LaunderFace => LaunderFaceOf(Block);
+  /// <summary>The launder faces of this placement, drained in this order each tick; empty when the block has no <c>side</c> variant and takes no launder feed.</summary>
+  public virtual IReadOnlyList<LaunderFace> LaunderFaces =>
+    LaunderFacesOf(Block);
 
-  /// <summary>The horizontal face a station block's launder sits on: its <c>side</c> variant's facing turned around.</summary>
+  /// <summary>The launder faces of a station block as placed. The first is the principal's own, on its <c>side</c> variant's facing turned around. Each entry of <c>attributes.sandStation.launderFaces</c> adds one more: <c>x</c>, <c>y</c>, <c>z</c> the footprint cell in the block's north frame (offset from the principal, 0 when absent) and <c>turns</c> the quarter turns clockwise from above that the facing is from the first face. Offsets are in the frame of the footprint offsets and turned as <see cref="StructureFillers"/> turns them, by <see cref="IFillerHost.StructureAngle"/> or, for a block that hosts no fillers, by the <c>side</c> variant.</summary>
   /// <param name="block">A station block.</param>
-  /// <returns>The face, or null when the block has no <c>side</c> variant.</returns>
-  public static BlockFacing? LaunderFaceOf(Block block) =>
-    ExOrientation.FacingFromSide(block.Variant["side"])?.Opposite;
+  /// <returns>The faces with offsets in world terms for this placement; empty when the block has no <c>side</c> variant.</returns>
+  public static IReadOnlyList<LaunderFace> LaunderFacesOf(Block block) {
+    if (
+      ExOrientation.FacingFromSide(block.Variant["side"])?.Opposite
+      is not { } first
+    )
+      return [];
+
+    int angle = block is IFillerHost host
+      ? host.StructureAngle
+      : ExOrientation.AngleFromSide(block.Variant["side"]);
+    List<LaunderFace> faces = [new(new Vec3i(0, 0, 0), first)];
+    foreach (
+      JsonObject entry in block.Attributes?["sandStation"]?[
+        "launderFaces"
+      ]?.AsArray() ?? []
+    ) {
+      Vec3i offset = ExOrientation.RotateOffset(
+        entry["x"].AsInt(),
+        entry["y"].AsInt(),
+        entry["z"].AsInt(),
+        angle
+      );
+      BlockFacing facing = Enumerable
+        .Range(0, entry["turns"].AsInt() & 3)
+        .Aggregate(first, (f, _) => f.GetCW());
+      faces.Add(new LaunderFace(offset, facing));
+    }
+    return faces;
+  }
+
+  /// <summary>The facings a launder can sit on at one cell of a station's footprint.</summary>
+  /// <param name="block">The station block, as placed.</param>
+  /// <param name="principal">The principal's position.</param>
+  /// <param name="cell">A world cell; one outside the footprint takes none.</param>
+  /// <returns>The facings of the faces declared on <paramref name="cell"/>, in declaration order.</returns>
+  public static IReadOnlyList<BlockFacing> LaunderFacingsAt(
+    Block block,
+    BlockPos principal,
+    BlockPos cell
+  ) =>
+    [
+      .. LaunderFacesOf(block)
+        .Where(f =>
+          f.Offset.X == cell.X - principal.X
+          && f.Offset.Y == cell.Y - principal.Y
+          && f.Offset.Z == cell.Z - principal.Z
+        )
+        .Select(f => f.Facing),
+    ];
 
   #endregion
 
@@ -859,3 +921,8 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
 
   #endregion
 }
+
+/// <summary>A cell of a sand station's footprint and the horizontal facing a launder feeds it from there.</summary>
+/// <param name="Offset">The cell's offset from the principal, in world terms for the placement.</param>
+/// <param name="Facing">The side of that cell the launder sits on.</param>
+public readonly record struct LaunderFace(Vec3i Offset, BlockFacing Facing);

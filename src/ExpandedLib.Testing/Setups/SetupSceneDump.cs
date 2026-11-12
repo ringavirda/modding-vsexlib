@@ -316,7 +316,12 @@ internal static class SetupSceneDump
             BlockPos next = at.AddCopy(f);
             if (
               world.GetBlock(at) is BlockNetworkNode node
-              && node.IsValidNonNetworkConnection(world.GetBlock(next), f)
+              && node.IsValidNonNetworkConnection(
+                world.Accessor,
+                at,
+                world.GetBlock(next),
+                f
+              )
             )
               return false;
             return NetworkMembership

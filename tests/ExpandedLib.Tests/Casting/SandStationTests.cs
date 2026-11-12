@@ -1,8 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Casting;
+using ExpandedLib.Structures;
 using ExpandedLib.Testing;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -14,11 +19,24 @@ namespace ExpandedLib.Tests.Casting;
 public class SandStationTests : IDisposable {
   public void Dispose() => CastingStationRegistry.ResetForWorld();
 
+  private sealed class TwoCupStation : BlockEntitySandStation {
+    protected internal override IReadOnlyList<Cuboidf> ExtraCupBoxes =>
+      [new Cuboidf(4f / 16f, 0, 0, 12f / 16f, 1, 6f / 16f)];
+  }
+
+  private sealed class TurnedHost : Block, IFillerHost {
+    public JsonObject? FillerOffsets => null;
+
+    public int StructureAngle =>
+      ExOrientation.AngleFromSide(Variant["side"]) + 180;
+  }
+
   private sealed class RecordingStation : BlockEntitySandStation {
     public bool Intake = true;
     public bool Scrap;
     public int Moved;
     public int Pulled;
+    public int Pulls;
     public int Shaken;
     public int Ticks;
 
@@ -33,8 +51,10 @@ public class SandStationTests : IDisposable {
       float temperatureC
     ) => Moved += units;
 
-    protected internal override void OnPulled(int accepted) =>
+    protected internal override void OnPulled(int accepted) {
       Pulled += accepted;
+      Pulls++;
+    }
 
     protected internal override void OnShakenOut() => Shaken++;
 
@@ -143,6 +163,57 @@ public class SandStationTests : IDisposable {
     Assert.Equal(40, scene.Molten.CellAmount);
   }
 
+  // Fails when ExtraCupBoxes is left out of the cup test: a pour into the second box takes nothing.
+  [Fact]
+  public void A_pour_into_an_extra_cup_box_fills_and_one_between_the_boxes_does_not() {
+    var scene = SandStationScene.Build(
+      make: () => new TwoCupStation(),
+      cup: "[4, 0, 10, 12, 16, 16]"
+    );
+    scene.Interact(scene.PatternStack("row"));
+    ItemStack metal = scene.SandStack(SandStationScene.Metal);
+    int amount = 40;
+
+    scene.Entity.BeginFill(new Vec3d(0.5, 0.5, 0.5));
+    scene.Entity.ReceiveLiquidMetal(metal, ref amount, 1200f);
+    Assert.Equal(40, amount);
+    Assert.Equal(0, scene.Molten.CellAmount);
+
+    scene.Entity.OnPourOver();
+    scene.Entity.BeginFill(new Vec3d(0.5, 0.5, 0.1));
+    scene.Entity.ReceiveLiquidMetal(metal, ref amount, 1200f);
+    Assert.Equal(0, amount);
+    Assert.Equal(40, scene.Molten.CellAmount);
+  }
+
+  // Fails when the offsets are turned by the side alone: a host with a half-turned footprint reads the cell on the wrong end.
+  [Theory]
+  [InlineData("n", 0, -4, "north")]
+  [InlineData("e", 4, 0, "east")]
+  public void A_filler_hosts_launder_offsets_turn_as_its_footprint_turns(
+    string side,
+    int x,
+    int z,
+    string facing
+  ) {
+    var block = TestBlocks.Configure(
+      new TurnedHost(),
+      "test:turned-" + side,
+      141,
+      ("side", side)
+    );
+    block.Attributes = new JsonObject(
+      JToken.Parse(
+        """{ "sandStation": { "launderFaces": [{ "z": 4, "turns": 2 }] } }"""
+      )
+    );
+
+    LaunderFace far = BlockEntitySandStation.LaunderFacesOf(block)[1];
+
+    Assert.Equal((x, z), (far.Offset.X, far.Offset.Z));
+    Assert.Equal(BlockFacing.FromCode(facing), far.Facing);
+  }
+
   // Fails when the launder face is not the facing turned around, or the pull is 50 a tick.
   [Fact]
   public void A_launder_neighbour_gives_one_hundred_units_a_tick() {
@@ -156,12 +227,117 @@ public class SandStationTests : IDisposable {
     Assert.Equal(120, launder.CellAmount);
   }
 
+  // Fails when the second face is never drained.
+  [Fact]
+  public void A_second_launder_face_is_drained_too() {
+    var scene = SandStationScene.Build(launderFaces: """[{ "turns": 1 }]""");
+    scene.Interact(scene.PatternStack("row"));
+    var south = scene.Launder(30, 1300f);
+    var west = scene.Launder(40, 1300f, BlockFacing.WEST);
+
+    Assert.Equal(
+      [BlockFacing.SOUTH, BlockFacing.WEST],
+      scene.Entity.LaunderFaces.Select(f => f.Facing)
+    );
+    scene.Tick();
+
+    Assert.Equal(70, scene.Molten.CellAmount);
+    Assert.Equal(0, south.CellAmount);
+    Assert.Equal(0, west.CellAmount);
+  }
+
+  // Fails when the face's offset is ignored and the principal's neighbour is read instead.
+  [Fact]
+  public void A_face_four_cells_along_the_body_is_drained_from_its_own_cell() {
+    var scene = SandStationScene.Build(
+      launderFaces: """[{ "z": -4, "turns": 2 }]"""
+    );
+    scene.Interact(scene.PatternStack("row"));
+    var far = scene.Launder(60, 1300f, BlockFacing.NORTH, new Vec3i(0, 0, -4));
+    var near = scene.Launder(50, 1300f, BlockFacing.NORTH);
+
+    scene.Tick();
+
+    Assert.Equal(60, scene.Molten.CellAmount);
+    Assert.Equal(0, far.CellAmount);
+    Assert.Equal(50, near.CellAmount);
+  }
+
+  // Fails when the offset is not rotated with the side.
+  [Fact]
+  public void The_same_block_turned_a_quarter_drains_the_turned_cell() {
+    var scene = SandStationScene.Build(
+      side: "e",
+      launderFaces: """[{ "z": -4, "turns": 2 }]"""
+    );
+    scene.Interact(scene.PatternStack("row"));
+    var far = scene.Launder(60, 1300f, BlockFacing.EAST, new Vec3i(4, 0, 0));
+
+    Assert.Equal(
+      [4],
+      scene.Entity.LaunderFaces.Select(f => f.Offset.X).Skip(1).ToArray()
+    );
+    scene.Tick();
+
+    Assert.Equal(60, scene.Molten.CellAmount);
+    Assert.Equal(0, far.CellAmount);
+  }
+
+  // Fails when the facings are read for the principal's cell whatever cell is asked.
+  [Fact]
+  public void The_facings_a_cell_takes_are_the_faces_declared_on_it() {
+    var scene = SandStationScene.Build(
+      launderFaces: """[{ "z": -4, "turns": 2 }]"""
+    );
+    Block block = scene.Entity.Block;
+    BlockPos principal = scene.Entity.Pos;
+
+    Assert.Equal(
+      [BlockFacing.NORTH],
+      BlockEntitySandStation.LaunderFacingsAt(
+        block,
+        principal,
+        principal.AddCopy(0, 0, -4)
+      )
+    );
+    Assert.Equal(
+      [BlockFacing.SOUTH],
+      BlockEntitySandStation.LaunderFacingsAt(block, principal, principal)
+    );
+    Assert.Empty(
+      BlockEntitySandStation.LaunderFacingsAt(
+        block,
+        principal,
+        principal.AddCopy(0, 0, -2)
+      )
+    );
+  }
+
+  // Fails when both feeds are counted on one face instead of once per face.
+  [Fact]
+  public void Each_launder_face_is_a_feed_of_its_own() {
+    var station = new RecordingStation();
+    var scene = SandStationScene.Build(
+      make: () => station,
+      launderFaces: """[{ "turns": 1 }]"""
+    );
+    scene.Interact(scene.PatternStack("row"));
+    scene.Launder(30, 1300f);
+    scene.Launder(40, 1300f, BlockFacing.WEST);
+
+    scene.Tick();
+
+    Assert.Equal(2, station.Pulls);
+    Assert.Equal(70, station.Pulled);
+    Assert.Equal(70, station.Moved);
+  }
+
   // Fails when a block without a side variant is given a default launder face.
   [Fact]
   public void A_block_with_no_side_variant_takes_no_launder_feed() {
     var scene = SandStationScene.Build(side: "");
 
-    Assert.Null(scene.Entity.LaunderFace);
+    Assert.Empty(scene.Entity.LaunderFaces);
     scene.Interact(scene.PatternStack("row"));
     scene.Tick();
 

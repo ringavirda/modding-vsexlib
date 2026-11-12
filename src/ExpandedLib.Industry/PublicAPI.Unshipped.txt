@@ -172,7 +172,6 @@ ExpandedLib.Industry.Casting.SandStationLevel.Half = 1 -> ExpandedLib.Industry.C
 ExpandedLib.Industry.Casting.SandStationLogic
 const ExpandedLib.Industry.Casting.SandStationLogic.AfterShakeOut = ExpandedLib.Industry.Casting.SandStationLevel.Full -> ExpandedLib.Industry.Casting.SandStationLevel
 const ExpandedLib.Industry.Casting.SandStationLogic.ColdShutSeconds = 6 -> float
-static ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFaceOf(Vintagestory.API.Common.Block! block) -> Vintagestory.API.MathTools.BlockFacing?
 static ExpandedLib.Industry.Casting.SandStationLogic.BatchFilling(int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> int
 static ExpandedLib.Industry.Casting.SandStationLogic.CanIntake(bool hasImpression, bool cavityFull, bool solidified) -> bool
 static ExpandedLib.Industry.Casting.SandStationLogic.ColdShut(int coldShutBatches, float stoppedSeconds, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> int
@@ -832,8 +831,8 @@ static readonly ExpandedLib.Industry.Helpers.ExParticles.MetalSpark -> int
 static readonly ExpandedLib.Industry.Helpers.ExSounds.MetalBreak -> Vintagestory.API.Common.AssetLocation!
 virtual ExpandedLib.Industry.Benches.BlockEntityMpBench.JobTorqueNm.get -> float
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.CupBox.get -> Vintagestory.API.MathTools.Cuboidf?
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.ExtraCupBoxes.get -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.Cuboidf!>!
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.IntakeAllowed() -> bool
-virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFace.get -> Vintagestory.API.MathTools.BlockFacing?
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnMetalMoved(int units, string! metal, float temperatureC) -> void
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnPulled(int accepted) -> void
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnShakenOut() -> void
@@ -927,3 +926,13 @@ virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedMetalCode.get ->
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedShown.get -> bool
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.FeedTemperature.get -> float
 const ExpandedLib.Industry.Materials.Roles.KilnFuel = "kilnfuel" -> string!
+ExpandedLib.Industry.Casting.LaunderFace
+ExpandedLib.Industry.Casting.LaunderFace.Facing.get -> Vintagestory.API.MathTools.BlockFacing!
+ExpandedLib.Industry.Casting.LaunderFace.Facing.init -> void
+ExpandedLib.Industry.Casting.LaunderFace.LaunderFace() -> void
+ExpandedLib.Industry.Casting.LaunderFace.LaunderFace(Vintagestory.API.MathTools.Vec3i! Offset, Vintagestory.API.MathTools.BlockFacing! Facing) -> void
+ExpandedLib.Industry.Casting.LaunderFace.Offset.get -> Vintagestory.API.MathTools.Vec3i!
+ExpandedLib.Industry.Casting.LaunderFace.Offset.init -> void
+static ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFacesOf(Vintagestory.API.Common.Block! block) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.LaunderFace>!
+static ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFacingsAt(Vintagestory.API.Common.Block! block, Vintagestory.API.MathTools.BlockPos! principal, Vintagestory.API.MathTools.BlockPos! cell) -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockFacing!>!
+virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFaces.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.LaunderFace>!
