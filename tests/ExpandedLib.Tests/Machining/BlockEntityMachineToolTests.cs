@@ -549,6 +549,59 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     Assert.True(host.Progress > 0d);
   }
 
+  private void Lay(Host host, string code) =>
+    host.Inventory[BlockEntityMachineTool.FixtureSlot].Itemstack =
+      new ItemStack(_w.GetItem(new AssetLocation(code))!);
+
+  // Fails when a piece whose jobs all need a fixture falls to no job, or runs under a fixture other than the one laid.
+  [Fact]
+  public void No_laid_fixture_reports_NoFixture() {
+    Host host = Machine(
+      FixtureLathe,
+      jobs:
+      [
+        Job(output: "test:turned", fixture: "test:fixture"),
+        Job(output: "test:other", fixture: "test:spent"),
+      ]
+    );
+    host.TryStart();
+
+    Second();
+    Assert.Equal(MachineCutVerdict.NoFixture, host.Verdict);
+    Assert.Contains("machine-tool-info-nofixture", host.InfoLine());
+
+    Lay(host, "test:chips");
+    Second();
+    Assert.Equal(MachineCutVerdict.NoFixture, host.Verdict);
+    Assert.Equal(0d, host.Progress);
+    Assert.Equal("test:blank", Piece(host));
+
+    Lay(host, "test:spent");
+    Second(8);
+    Assert.Equal("test:other", Piece(host));
+  }
+
+  // Fails when a step with several fixtured jobs on one input is listed once per job.
+  [Fact]
+  public void Worked_at_lists_a_step_once() {
+    Host host = Machine(
+      FixtureLathe,
+      piece: "test:other",
+      jobs:
+      [
+        Job(input: "test:other", fixture: "test:fixture"),
+        Job(input: "test:other", output: "test:spent", fixture: "test:chips"),
+        Job(input: "test:other", output: "test:blank2", fixture: "test:cutter"),
+      ]
+    );
+    host.KindSet.Contribute(MachineKindSet(FixtureLathe));
+
+    Assert.Equal(
+      ["exlib:machine-step-turn (test:machine-kind-fixturelathe)"],
+      host.WorkedAt("test:other")
+    );
+  }
+
   [Fact]
   public void The_load_is_the_cut_torque_while_cutting_and_the_standing_torque_only_while_engaged() {
     Host host = Machine();

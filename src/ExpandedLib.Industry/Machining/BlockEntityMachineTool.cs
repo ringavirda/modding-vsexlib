@@ -251,12 +251,16 @@ public abstract class BlockEntityMachineTool
     string? code = Inventory[WorkSlot].Itemstack?.Collectible?.Code?.ToString();
     if (code is null || Kind is not { } kind)
       return (null, null);
-    foreach (MachineKindStep step in kind.Steps)
-      if (
-        Jobs.Job(step.Step, code) is { } job
-        && MachineCut.OffersTo(job, kind)
-      )
+    string? fixture = kind.Fixture
+      ? Inventory[FixtureSlot].Itemstack?.Collectible?.Code?.ToString()
+      : null;
+    foreach (MachineKindStep step in kind.Steps) {
+      MachiningJob? job =
+        Jobs.Job(step.Step, code, fixture)
+        ?? Jobs.JobsFor(step.Step, code).FirstOrDefault();
+      if (job is not null && MachineCut.OffersTo(job, kind))
         return (job, step);
+    }
     return (null, null);
   }
 
@@ -434,14 +438,14 @@ public abstract class BlockEntityMachineTool
   public IReadOnlyList<string> WorkedAt(string code) =>
     [
       .. Jobs.StepsFor(code)
-        .Select(step => (Step: step, Job: Jobs.Job(step, code)))
-        .Where(x => x.Job is not null)
-        .Select(x =>
+        .Select(step =>
           (
-            x.Step,
+            Step: step,
             Kinds: Kinds
-              .Offering(x.Step)
-              .Where(k => MachineCut.OffersTo(x.Job!, k))
+              .Offering(step)
+              .Where(k =>
+                Jobs.JobsFor(step, code).Any(j => MachineCut.OffersTo(j, k))
+              )
               .ToList()
           )
         )

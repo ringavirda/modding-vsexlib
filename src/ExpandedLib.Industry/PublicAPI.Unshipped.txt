@@ -398,8 +398,9 @@ ExpandedLib.Industry.Machining.MachiningJobRegistry
 ExpandedLib.Industry.Machining.MachiningJobRegistry.All.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningJob!>!
 ExpandedLib.Industry.Machining.MachiningJobRegistry.Clear() -> void
 ExpandedLib.Industry.Machining.MachiningJobRegistry.Contribute(ExpandedLib.Industry.Machining.MachiningJobSet! set) -> System.Collections.Generic.IReadOnlyList<string!>!
-ExpandedLib.Industry.Machining.MachiningJobRegistry.Job(string? step, string? input) -> ExpandedLib.Industry.Machining.MachiningJob?
+ExpandedLib.Industry.Machining.MachiningJobRegistry.Job(string? step, string? input, string? fixture = null) -> ExpandedLib.Industry.Machining.MachiningJob?
 ExpandedLib.Industry.Machining.MachiningJobRegistry.Jobs(string? step) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningJob!>!
+ExpandedLib.Industry.Machining.MachiningJobRegistry.JobsFor(string? step, string? input) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningJob!>!
 ExpandedLib.Industry.Machining.MachiningJobRegistry.MachiningJobRegistry() -> void
 ExpandedLib.Industry.Machining.MachiningJobRegistry.Steps.get -> System.Collections.Generic.IReadOnlyList<string!>!
 ExpandedLib.Industry.Machining.MachiningJobRegistry.StepsFor(string? input) -> System.Collections.Generic.IReadOnlyList<string!>!

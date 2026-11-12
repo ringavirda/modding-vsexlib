@@ -23,7 +23,7 @@ public class MachiningJobLoaderTests {
     MachiningJobRegistry registry = MachiningTestData.JobRegistry(DrillFile);
 
     MachiningJob job = Assert.IsType<MachiningJob>(
-      registry.Job("drill", "test:plate")
+      registry.Job("drill", "test:plate", "test:template")
     );
     Assert.Equal("test:plate-drilled", job.Output);
     Assert.Equal(2, job.Wear);

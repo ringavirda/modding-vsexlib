@@ -78,4 +78,102 @@ public class MachiningJobRegistryTests {
     Assert.Empty(registry.Jobs("turn"));
     Assert.Null(registry.Job("turn", "test:a"));
   }
+
+  private static MachiningJob Fixtured(string output, string? fixture) =>
+    MachiningTestData.Job("turn", "test:blank", output) with {
+      Fixture = fixture,
+    };
+
+  // Fails when the lookup ignores the fixture, or the claim check keys on step and input alone.
+  [Fact]
+  public void Jobs_on_one_input_pick_by_their_fixture() {
+    var registry = new MachiningJobRegistry();
+
+    Assert.Empty(
+      registry.Contribute(
+        MachiningTestData.Set(
+          Fixtured("test:flat", "test:set-flat"),
+          Fixtured("test:grooved", "test:set-grooved"),
+          Fixtured("test:wide", "test:set-wide")
+        )
+      )
+    );
+
+    Assert.Equal(
+      "test:grooved",
+      registry.Job("turn", "test:blank", "test:set-grooved")!.Output
+    );
+    Assert.Equal(
+      "test:wide",
+      registry.Job("turn", "test:blank", "test:set-wide")!.Output
+    );
+    Assert.Null(registry.Job("turn", "test:blank", "test:set-other"));
+    Assert.Null(registry.Job("turn", "test:blank"));
+    Assert.Equal(3, registry.JobsFor("turn", "test:blank").Count);
+  }
+
+  [Fact]
+  public void The_fixtureless_job_is_the_fallback_for_any_laid_fixture() {
+    var registry = new MachiningJobRegistry();
+    registry.Contribute(
+      MachiningTestData.Set(Fixtured("test:plain", null))
+    );
+
+    Assert.Equal(
+      "test:plain",
+      registry.Job("turn", "test:blank", "test:set-flat")!.Output
+    );
+    Assert.Equal("test:plain", registry.Job("turn", "test:blank")!.Output);
+  }
+
+  // Fails when a fixture-less job and a fixtured one on one (step, input) stop conflicting, in either order.
+  [Fact]
+  public void A_fixtureless_duplicate_still_conflicts() {
+    var bareFirst = new MachiningJobRegistry();
+    bareFirst.Contribute(MachiningTestData.Set(Fixtured("test:plain", null)));
+    Assert.Contains(
+      "test:flat",
+      Assert.Single(
+        bareFirst.Contribute(
+          MachiningTestData.Set(Fixtured("test:flat", "test:set-flat"))
+        )
+      )
+    );
+    Assert.Single(bareFirst.All);
+
+    var fixturedFirst = new MachiningJobRegistry();
+    fixturedFirst.Contribute(
+      MachiningTestData.Set(Fixtured("test:flat", "test:set-flat"))
+    );
+    Assert.Contains(
+      "test:plain",
+      Assert.Single(
+        fixturedFirst.Contribute(
+          MachiningTestData.Set(Fixtured("test:plain", null))
+        )
+      )
+    );
+    Assert.Single(fixturedFirst.All);
+  }
+
+  [Fact]
+  public void A_second_job_under_one_fixture_with_another_output_is_reported() {
+    var registry = new MachiningJobRegistry();
+    registry.Contribute(
+      MachiningTestData.Set(Fixtured("test:flat", "test:set-flat"))
+    );
+
+    Assert.Contains(
+      "test:other",
+      Assert.Single(
+        registry.Contribute(
+          MachiningTestData.Set(Fixtured("test:other", "test:set-flat"))
+        )
+      )
+    );
+    Assert.Equal(
+      "test:flat",
+      registry.Job("turn", "test:blank", "test:set-flat")!.Output
+    );
+  }
 }
