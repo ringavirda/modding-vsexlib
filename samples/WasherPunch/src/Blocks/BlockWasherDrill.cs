@@ -8,7 +8,7 @@ using WasherPunch.BlockEntities;
 namespace WasherPunch.Blocks;
 
 /// <summary>A drilling machine: a cell of the "mpshaft" run with two selection boxes, the body opening its
-/// window and the lever engaging or disengaging the drive.</summary>
+/// window and the lever feeding the cut while it is held.</summary>
 [BlockRegister]
 public partial class BlockWasherDrill : BlockNetworkNode, IExBlockDefProvider {
   /// <summary>Index of the body among the selection boxes.</summary>
@@ -56,15 +56,69 @@ public partial class BlockWasherDrill : BlockNetworkNode, IExBlockDefProvider {
       return base.OnBlockInteractStart(world, byPlayer, blockSel);
 
     if (blockSel.SelectionBoxIndex == LeverBox) {
-      if (world.Side == EnumAppSide.Server) {
-        if (drill.IsRunning)
-          drill.Stop();
-        else
-          drill.TryStart();
-      }
+      if (world.Side == EnumAppSide.Server)
+        drill.Hold(byPlayer.PlayerUID);
     } else {
       drill.ToggleWindow(byPlayer);
     }
     return true;
+  }
+
+  public override bool OnBlockInteractStep(
+    float secondsUsed,
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  ) {
+    if (
+      blockSel.SelectionBoxIndex != LeverBox
+      || world.BlockAccessor.GetBlockEntity(blockSel.Position)
+        is not BlockEntityWasherDrill drill
+    )
+      return base.OnBlockInteractStep(secondsUsed, world, byPlayer, blockSel);
+
+    if (world.Side == EnumAppSide.Server)
+      drill.Hold(byPlayer.PlayerUID);
+    return true;
+  }
+
+  public override void OnBlockInteractStop(
+    float secondsUsed,
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  ) {
+    Release(world, byPlayer, blockSel);
+    base.OnBlockInteractStop(secondsUsed, world, byPlayer, blockSel);
+  }
+
+  public override bool OnBlockInteractCancel(
+    float secondsUsed,
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel,
+    EnumItemUseCancelReason cancelReason
+  ) {
+    Release(world, byPlayer, blockSel);
+    return base.OnBlockInteractCancel(
+      secondsUsed,
+      world,
+      byPlayer,
+      blockSel,
+      cancelReason
+    );
+  }
+
+  private static void Release(
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  ) {
+    if (
+      world.Side == EnumAppSide.Server
+      && world.BlockAccessor.GetBlockEntity(blockSel.Position)
+        is BlockEntityWasherDrill drill
+    )
+      drill.Release(byPlayer.PlayerUID);
   }
 }

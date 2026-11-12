@@ -27,8 +27,14 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     5f,
     false,
     [],
-    [new MachineKindStep("turn", CutMotion.Rotary, 822f, "cutter", null, null)]
+    [new MachineKindStep("turn", CutMotion.Rotary, 822f, "cutter", null, null)],
+    MachineFeed.Self
   );
+
+  private static readonly MachineKind HeldLathe = Lathe with {
+    Code = "test:heldlathe",
+    Feed = MachineFeed.Held,
+  };
 
   private static readonly MachineKind FixtureLathe = Lathe with {
     Code = "test:fixturelathe",
@@ -222,6 +228,140 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     );
     Second();
     Assert.True(host.Dirtied.Contains(true), "tick sees the swap");
+  }
+
+  private double OneSecond => 24660d / Joules;
+
+  // Fails when the cut tick ignores the holds: a lapsed hold goes on cutting.
+  [Fact]
+  public void A_held_kind_cuts_only_while_held() {
+    Host host = Machine(HeldLathe);
+    Second(2);
+    Assert.Equal(0d, host.Progress);
+    Assert.False(host.IsRunning);
+
+    host.Hold("a");
+    host.Hold("b");
+    Second();
+    Assert.Equal(OneSecond, host.Progress, 4);
+
+    host.Hold("b");
+    host.Release("a");
+    Assert.True(host.IsRunning);
+    Second();
+    Assert.Equal(2 * OneSecond, host.Progress, 4);
+
+    Second(2);
+    Assert.Equal(2 * OneSecond, host.Progress, 4);
+    Assert.False(host.IsRunning);
+    Assert.Equal(0f, host.LoadTorque(5f));
+    Assert.Equal(0f, host.StandingNm);
+  }
+
+  // Fails when the lapse check is removed: a hold nobody refreshes holds the cut for good.
+  [Fact]
+  public void A_hold_lapses_after_a_second_without_a_step() {
+    Host host = Machine(HeldLathe);
+    host.Hold("a");
+
+    Second();
+    host.Hold("a");
+    Second();
+    Assert.Equal(2 * OneSecond, host.Progress, 4);
+    Assert.True(host.IsRunning);
+
+    Second(3);
+
+    Assert.Equal(2 * OneSecond, host.Progress, 4);
+    Assert.False(host.IsRunning);
+  }
+
+  // Fails when Release zeroes the joules.
+  [Fact]
+  public void Release_keeps_the_progress() {
+    Host host = Machine(HeldLathe);
+    host.Hold("a");
+    Second();
+    double cut = host.Progress;
+    Assert.True(cut > 0d);
+
+    host.Release("a");
+    Second(2);
+
+    Assert.Equal(cut, host.Progress, 6);
+    Assert.False(host.IsRunning);
+  }
+
+  // Fails when TryStart ignores the feed and a held kind starts itself.
+  [Fact]
+  public void A_held_kind_refuses_TryStart() {
+    Host host = Machine(HeldLathe);
+
+    Assert.False(host.TryStart());
+    Second(2);
+
+    Assert.False(host.IsRunning);
+    Assert.Equal(0d, host.Progress);
+  }
+
+  // Fails when a saved toolRunning credits the first tick after a load.
+  [Fact]
+  public void A_loaded_held_machine_starts_stopped() {
+    Host host = Machine(HeldLathe);
+    host.Hold("a");
+    Second();
+    var tree = new TreeAttribute();
+    host.ToTreeAttributes(tree);
+    Host reloaded = Machine(HeldLathe);
+    reloaded.FromTreeAttributes(tree, _w.World);
+    Assert.True(reloaded.IsRunning);
+    double saved = reloaded.Progress;
+
+    Second();
+
+    Assert.Equal(saved, reloaded.Progress, 6);
+    Assert.False(reloaded.IsRunning);
+  }
+
+  // Fails when IsCutting follows IsRunning: a held machine on a stopped shaft or with no cutter is running and not cutting.
+  [Fact]
+  public void Is_cutting_only_while_credit_flows() {
+    Host host = Machine(HeldLathe);
+    Assert.False(host.IsCutting);
+    host.Hold("a");
+    Second();
+    Assert.True(host.IsCutting);
+
+    host.Hold("a");
+    host.Drive = new MpRunReading(0f, 1000f);
+    Second();
+    Assert.True(host.IsRunning);
+    Assert.False(host.IsCutting);
+
+    host.Hold("a");
+    host.Drive = new MpRunReading(10f, 1000f);
+    Second();
+    Assert.True(host.IsCutting);
+
+    host.Release("a");
+    Assert.False(host.IsCutting);
+  }
+
+  // Fails when a self kind needs a hold, or a hold engages it.
+  [Fact]
+  public void A_self_kind_still_starts_and_stops() {
+    Host host = Machine();
+    host.Hold("a");
+    Assert.False(host.IsRunning);
+
+    Assert.True(host.TryStart());
+    Second();
+    Assert.Equal(OneSecond, host.Progress, 4);
+
+    host.Stop();
+    Second();
+    Assert.Equal(OneSecond, host.Progress, 4);
+    Assert.False(host.IsRunning);
   }
 
   // Fails when a piece swapped mid-cut keeps the joules the first one was paid.

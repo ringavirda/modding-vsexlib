@@ -22,6 +22,7 @@ internal sealed class MachineKindLoader
     "ratedSpeed",
     "standing",
     "fixture",
+    "feed",
     "anchors",
     "steps",
   ];

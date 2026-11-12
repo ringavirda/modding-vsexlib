@@ -133,6 +133,7 @@
   "machine-tool-info-nodrive": "Немає приводу",
   "machine-tool-info-cutting": "Різання, {0}: {1}%",
   "machine-tool-info-stopped": "Зупинено, {0}: {1}%",
+  "machine-tool-info-held": "Утримуйте подачу, щоб різати, {0}: {1}%",
   "mp-takeoff-info-taken": "Бере {0} Н*м із залізного вала",
   "mp-takeoff-info-speed": "Сторона осі тримається на {0} ({1} рад/с)",
   "mp-takeoff-info-overrun": "Обгін: ванільне джерело обертає мережу швидше, момент не передається",
