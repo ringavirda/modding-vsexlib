@@ -42,7 +42,9 @@ public class MachiningJobLoaderTests {
   [Fact]
   public void A_job_reads_its_clip() {
     MachiningJob job = Assert.IsType<MachiningJob>(
-      MachiningTestData.JobRegistry(DrillFile).Job("drill", "test:plate", "test:template")
+      MachiningTestData
+        .JobRegistry(DrillFile)
+        .Job("drill", "test:plate", "test:template")
     );
 
     Assert.Equal("feed-drill", job.Clip);

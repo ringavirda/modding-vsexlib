@@ -99,7 +99,10 @@ public class MachineKindLoaderTests {
     var errors = MachineKindLoader.Load(files, registry);
 
     Assert.True(registry.TryGet("test:m", out MachineKind? kind));
-    Assert.Equal(new MachineMount("test:rod", "centres"), Assert.Single(kind!.Mounts));
+    Assert.Equal(
+      new MachineMount("test:rod", "centres"),
+      Assert.Single(kind!.Mounts)
+    );
     Assert.Contains("'nowhere'", Assert.Single(errors));
   }
 

@@ -138,7 +138,9 @@ public sealed record MachineKindSet(
       }
 
       var mounts = new List<MachineMount>();
-      foreach ((string item, JsonObject mountNode) in Members(kindNode["mounts"])) {
+      foreach (
+        (string item, JsonObject mountNode) in Members(kindNode["mounts"])
+      ) {
         string mountAnchor = mountNode.AsString("");
         if (!anchors.Exists(a => a.Name == mountAnchor))
           notes.Add(
