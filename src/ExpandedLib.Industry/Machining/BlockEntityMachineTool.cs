@@ -56,6 +56,7 @@ public abstract class BlockEntityMachineTool
   private readonly Dictionary<string, long> _holds = [];
   private string? _piece;
   private string? _step;
+  private string? _fixture;
   private double _joules;
   private MachineCutVerdict _verdict;
 
@@ -143,6 +144,7 @@ public abstract class BlockEntityMachineTool
       .Bool("toolCutting", () => _cutting, v => _cutting = v)
       .String("toolPiece", () => _piece, v => _piece = v)
       .String("toolStep", () => _step, v => _step = v)
+      .String("toolFixture", () => _fixture, v => _fixture = v)
       .Double("toolJoules", () => _joules, v => _joules = v)
       .Enum("toolVerdict", () => _verdict, v => _verdict = v);
 
@@ -364,17 +366,20 @@ public abstract class BlockEntityMachineTool
   private bool SyncPiece() {
     string? piece = Inventory[WorkSlot]
       .Itemstack?.Collectible?.Code?.ToString();
-    string? step = CurrentJob().Step?.Step;
-    if (piece == _piece && step == _step)
+    (MachiningJob? job, MachineKindStep? kindStep) = CurrentJob();
+    string? step = kindStep?.Step;
+    string? fixture = job?.Fixture;
+    if (piece == _piece && step == _step && fixture == _fixture)
       return false;
     _piece = piece;
     _step = step;
+    _fixture = fixture;
     _joules = 0d;
     return true;
   }
 
   private void OnSlotModified(int slot) {
-    if (slot == WorkSlot && SyncPiece())
+    if ((slot == WorkSlot || slot == FixtureSlot) && SyncPiece())
       MarkDirty(true);
   }
 
@@ -463,7 +468,9 @@ public abstract class BlockEntityMachineTool
     if (MachineToolWear.Apply(Inventory[ToolSlot], job.Wear) is { } spent)
       PutInChips(spent);
     _piece = result.Collectible.Code.ToString();
-    _step = CurrentJob().Step?.Step;
+    (MachiningJob? next, MachineKindStep? nextStep) = CurrentJob();
+    _step = nextStep?.Step;
+    _fixture = next?.Fixture;
     _joules = 0d;
   }
 

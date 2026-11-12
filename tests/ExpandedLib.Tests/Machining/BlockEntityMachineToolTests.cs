@@ -97,6 +97,7 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     _w.RegisterItem("test:turned");
     _w.RegisterItem("test:other");
     _w.RegisterItem("test:fixture");
+    _w.RegisterItem("test:fixture2");
     _w.RegisterItem("test:spent");
     _chips = _w.RegisterItem("test:chips");
     _chips.MaxStackSize = 8;
@@ -459,6 +460,45 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     host.Inventory[BlockEntityMachineTool.WorkSlot].MarkDirty();
 
     Assert.Equal(0d, host.Progress);
+  }
+
+  // Fails when a fixture slot change does not reach the progress reset, so a schematic swapped mid-cut keeps the joules.
+  [Fact]
+  public void A_schematic_swapped_mid_cut_starts_over() {
+    Host host = Machine(
+      FixtureLathe,
+      jobs:
+      [
+        Job(fixture: "test:fixture"),
+        Job(output: "test:other", fixture: "test:fixture2"),
+      ]
+    );
+    Lay(host, "test:fixture");
+    host.TryStart();
+    Second(3);
+    host.Stop();
+    Assert.True(host.Progress > 0d);
+
+    Lay(host, "test:fixture2");
+    host.Inventory[BlockEntityMachineTool.FixtureSlot].MarkDirty();
+
+    Assert.Equal(0d, host.Progress);
+  }
+
+  // Fails when progress is keyed on the laid item, so a schematic the job does not name resets a cut that has none.
+  [Fact]
+  public void A_schematic_laid_on_a_fixtureless_job_keeps_the_cut() {
+    Host host = Machine(FixtureLathe);
+    host.TryStart();
+    Second(3);
+    host.Stop();
+    double progress = host.Progress;
+    Assert.True(progress > 0d);
+
+    Lay(host, "test:fixture");
+    host.Inventory[BlockEntityMachineTool.FixtureSlot].MarkDirty();
+
+    Assert.Equal(progress, host.Progress);
   }
 
   [Fact]
