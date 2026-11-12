@@ -6,6 +6,7 @@ using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -20,8 +21,6 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
   private const float PeriodJoules = 140_000_000f;
   private static readonly double Joules =
     30d * 822d * System.Math.Sqrt(PeriodJoules / 822d / 30d) / 10d;
-  private const double SecondsOfGameTime = 30d;
-  private const double HoursPerRealSecond = SecondsOfGameTime / 3600d;
   private static readonly MachineKind Lathe = new(
     "test:lathe",
     10f,
@@ -84,6 +83,8 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
 
   public BlockEntityMachineToolTests() {
     TestLang.Init();
+    _w.Calendar.SpeedOfTime.Returns(60f);
+    _w.Calendar.CalendarSpeedMul.Returns(0.5f);
     _w.RegisterNetwork("mpshaft", sys => new MpShaftNetwork(sys));
     _w.RegisterItem("test:blank");
     _w.RegisterItem("test:blank2");
@@ -163,7 +164,6 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
 
   private void Second(int times = 1) {
     for (int i = 0; i < times; i++) {
-      _w.AdvanceHours(HoursPerRealSecond);
       _w.FireBlockEntityTicks(1f);
     }
   }
@@ -329,9 +329,9 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     Assert.Contains("machine-tool-info-nojob", host.InfoLine());
   }
 
-  // Fails when the joules or the clock cursor are left out of the declared state.
+  // Fails when the joules are left out of the declared state.
   [Fact]
-  public void Joules_and_the_cursor_survive_a_tree_round_trip() {
+  public void Joules_survive_a_tree_round_trip() {
     Host host = Machine();
     host.TryStart();
     Second(3);
@@ -343,14 +343,11 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
 
     Assert.True(reloaded.IsRunning);
     Assert.Equal(3 * 24660d / Joules, reloaded.Progress, 4);
-    var cursor = new ExpandedLib.Helpers.GameClockCursor();
-    cursor.Load(tree, "toolCursor");
-    Assert.True(cursor.LastHours > 0d);
   }
 
-  // Fails when the game time a reload missed is not credited, or is credited past the remainder.
+  // Fails when the unloaded span is credited on reload: the calendar moved, no tick ran.
   [Fact]
-  public void A_reload_credits_the_hours_it_missed_clamped_to_the_remainder() {
+  public void A_reload_credits_nothing_for_the_unloaded_span() {
     Host host = Machine();
     host.TryStart();
     Second(1);
@@ -359,22 +356,55 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
     Host reloaded = Machine();
     reloaded.FromTreeAttributes(tree, _w.World);
 
-    _w.AdvanceHours(0.001d);
+    _w.AdvanceHours(5d);
+    Assert.Equal(24660d / Joules, reloaded.Progress, 4);
+
     _w.FireBlockEntityTicks(1f);
-    Assert.Equal(
-      (24660d + 0.001d * 3600d * 822d) / Joules,
-      reloaded.Progress,
-      4
-    );
+    Assert.Equal(2 * 24660d / Joules, reloaded.Progress, 4);
+    Assert.Equal("test:blank", Piece(reloaded));
+  }
+
+  // Fails when a calendar jump is credited as the hours it moved instead of the one tick that ran.
+  [Fact]
+  public void A_time_jump_credits_one_tick() {
+    Host host = Machine();
+    host.TryStart();
+    Second(1);
 
     _w.AdvanceHours(5d);
     _w.FireBlockEntityTicks(1f);
-    Assert.Equal("test:turned", Piece(reloaded));
+
+    Assert.Equal(2 * 24660d / Joules, host.Progress, 4);
+    Assert.Equal("test:blank", Piece(host));
   }
 
-  // Fails when a tick on no run advances the cursor, which loses the gap the first live tick should credit.
+  // Fails when the credit is a fixed 30 game seconds a real second and the calendar's speed is not read.
   [Fact]
-  public void A_tick_on_no_run_credits_nothing_and_the_next_live_tick_credits_the_gap() {
+  public void Sleep_speeds_the_cut() {
+    Host host = Machine();
+    host.TryStart();
+    _w.Calendar.SpeedOfTime.Returns(120f);
+
+    Second(1);
+
+    Assert.Equal(2 * 24660d / Joules, host.Progress, 4);
+  }
+
+  // Fails when a world with no calendar is credited at a default speed.
+  [Fact]
+  public void No_calendar_credits_nothing() {
+    Host host = Machine();
+    host.TryStart();
+    _w.World.Calendar.Returns((IGameCalendar)null!);
+
+    Second(2);
+
+    Assert.Equal(0d, host.Progress);
+  }
+
+  // Fails when a tick on no run is credited, or the next live tick is credited more than its own seconds.
+  [Fact]
+  public void A_tick_on_no_run_credits_nothing_and_the_next_live_tick_credits_one_tick() {
     Host host = Machine();
     host.TryStart();
     host.Drive = MpRunReading.None;
@@ -384,7 +414,7 @@ public sealed class BlockEntityMachineToolTests : System.IDisposable {
 
     host.Drive = new MpRunReading(10f, 1000f);
     Second();
-    Assert.Equal(4 * 24660d / Joules, host.Progress, 4);
+    Assert.Equal(24660d / Joules, host.Progress, 4);
   }
 
   [Fact]

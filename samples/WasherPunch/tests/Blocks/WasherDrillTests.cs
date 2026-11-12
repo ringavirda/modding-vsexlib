@@ -3,6 +3,7 @@ using ExpandedLib.Catalogues;
 using ExpandedLib.Industry.Machining;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Testing;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using WasherPunch.BlockEntities;
@@ -73,8 +74,11 @@ public class WasherDrillTests(LoadedWorld loaded) {
       .Itemstack?.Collectible.Code.ToString();
 
   private static void Seconds(Rig rig, double seconds) {
-    rig.World.AdvanceHours(seconds / 3600d);
-    rig.World.FireBlockEntityTicks(1f);
+    rig.World.Calendar.SpeedOfTime.Returns(60f);
+    rig.World.Calendar.CalendarSpeedMul.Returns(0.5f);
+    rig.World.FireBlockEntityTicks(
+      (float)(seconds / MachineCut.GameSecondsPerRealSecond)
+    );
   }
 
   private static void Click(Rig rig, int box) =>

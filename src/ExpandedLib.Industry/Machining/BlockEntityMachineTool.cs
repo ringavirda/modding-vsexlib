@@ -23,6 +23,8 @@ namespace ExpandedLib.Industry.Machining;
 /// <remarks>
 /// Slots: work 0, tool 1, chips 2 (take-only) and, when the kind declares a fixture, fixture 3. The work slot
 /// holds one piece. The run is read at <see cref="DriveCell"/> through <see cref="ReadDrive"/>.
+/// Each tick credits its real seconds times the calendar's speed of time and speed multiplier; an unloaded chunk runs no
+/// tick and a calendar jump adds no seconds, so neither credits, and a world with no calendar credits nothing.
 /// </remarks>
 public abstract class BlockEntityMachineTool
   : BlockEntityMachineStation,
@@ -39,13 +41,10 @@ public abstract class BlockEntityMachineTool
   /// <summary>Slot index of the fixture, present only when the kind declares one.</summary>
   public const int FixtureSlot = 3;
 
-  // Real milliseconds between ticks; a tick credits the game time elapsed since the last one.
+  // Real milliseconds between ticks; a tick credits its own real seconds scaled to game seconds.
   private const int TickMs = 250;
 
-  private const string CursorKey = "toolCursor";
-
   private readonly HostMembership _membership;
-  private readonly GameClockCursor _cursor = new();
   private bool _running;
   private string? _piece;
   private string? _step;
@@ -133,12 +132,7 @@ public abstract class BlockEntityMachineTool
       .String("toolPiece", () => _piece, v => _piece = v)
       .String("toolStep", () => _step, v => _step = v)
       .Double("toolJoules", () => _joules, v => _joules = v)
-      .Enum("toolVerdict", () => _verdict, v => _verdict = v)
-      .Tree(
-        CursorKey,
-        t => _cursor.Save(t, CursorKey),
-        (t, _) => _cursor.Load(t, CursorKey)
-      );
+      .Enum("toolVerdict", () => _verdict, v => _verdict = v);
 
   public override void Initialize(ICoreAPI api) {
     base.Initialize(api);
@@ -201,13 +195,12 @@ public abstract class BlockEntityMachineTool
     return null;
   }
 
-  /// <summary>Engages the machine: the cut counts game time from now.</summary>
+  /// <summary>Engages the machine: the cut counts game time from now, tick by tick while loaded.</summary>
   /// <returns>False when it is already engaged or its block names no declared kind.</returns>
   public bool TryStart() {
     if (_running || Kind is null)
       return false;
     _running = true;
-    _cursor.Advance(GameTime.NowHours(Api.World));
     SyncPiece();
     MarkDirty();
     return true;
@@ -218,7 +211,6 @@ public abstract class BlockEntityMachineTool
     if (!_running)
       return;
     _running = false;
-    _cursor.Reset();
     MarkDirty();
   }
 
@@ -330,7 +322,10 @@ public abstract class BlockEntityMachineTool
         MarkDirty(redraw);
       return;
     }
-    double gameSeconds = _cursor.Advance(GameTime.NowHours(Api.World)) * 3600d;
+    double gameSeconds =
+      Api.World.Calendar is { } calendar
+        ? dt * (double)calendar.SpeedOfTime * calendar.CalendarSpeedMul
+        : 0d;
     float speed = MathF.Abs(reading.SpeedRadS);
 
     (MachiningJob? job, MachineKindStep? step) = CurrentJob();
