@@ -14,11 +14,9 @@ public enum ScrollAxis {
 }
 
 /// <summary>
-/// Draws a mesh in a block's cell with the standard shader, its texture scrolling along one texture
-/// axis at <see cref="Speed"/>: a running belt, a moving chain. The texture is its own image, not an
-/// atlas tile, loaded through <see cref="IRenderAPI.GetOrLoadTexture(AssetLocation)"/>, which leaves it
-/// repeating, so the mesh's UVs count texture lengths and may run past 1. Registered and disposed by its
-/// owner, on the client main thread.
+/// Draws a block entity's mesh with the standard shader, its own repeating texture (not an atlas tile, so UVs
+/// count texture lengths and may run past 1) scrolling along one axis at <see cref="Speed"/>: a running belt.
+/// Registered and disposed by its owner, on the client main thread.
 /// </summary>
 public class ScrollingMeshRenderer : IRenderer {
   private readonly ICoreClientAPI _api;
