@@ -385,6 +385,20 @@ ExpandedLib.Helpers.ItemViewSet.TpHand.get -> Vintagestory.API.Common.ModelTrans
 ExpandedLib.Helpers.ItemViewSet.TpHand.init -> void
 ExpandedLib.Helpers.ItemViewSet.UseClip.get -> string?
 ExpandedLib.Helpers.ItemViewSet.UseClip.init -> void
+ExpandedLib.Helpers.ScrollAxis
+ExpandedLib.Helpers.ScrollAxis.U = 0 -> ExpandedLib.Helpers.ScrollAxis
+ExpandedLib.Helpers.ScrollAxis.V = 1 -> ExpandedLib.Helpers.ScrollAxis
+ExpandedLib.Helpers.ScrollingMeshRenderer
+ExpandedLib.Helpers.ScrollingMeshRenderer.Dispose() -> void
+ExpandedLib.Helpers.ScrollingMeshRenderer.OnRenderFrame(float deltaTime, Vintagestory.API.Client.EnumRenderStage stage) -> void
+ExpandedLib.Helpers.ScrollingMeshRenderer.Phase.get -> float
+ExpandedLib.Helpers.ScrollingMeshRenderer.RenderOrder.get -> double
+ExpandedLib.Helpers.ScrollingMeshRenderer.RenderRange.get -> int
+ExpandedLib.Helpers.ScrollingMeshRenderer.ScrollingMeshRenderer(Vintagestory.API.Client.ICoreClientAPI! api, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Client.MeshData! mesh, Vintagestory.API.Common.AssetLocation! texture, ExpandedLib.Helpers.ScrollAxis axis) -> void
+ExpandedLib.Helpers.ScrollingMeshRenderer.Speed -> float
+ExpandedLib.Helpers.ScrollingMeshRenderer.Visible -> bool
+static ExpandedLib.Helpers.ScrollingMeshRenderer.Advance(float phase, float speed, float deltaTime) -> float
+static ExpandedLib.Helpers.ScrollingMeshRenderer.Offset(float[]! baseUv, float[]! uv, int vertexCount, ExpandedLib.Helpers.ScrollAxis axis, float phase) -> void
 ExpandedLib.Helpers.StreamRenderer
 ExpandedLib.Helpers.StreamRenderer.ModelMat -> Vintagestory.API.Client.Matrixf!
 ExpandedLib.Helpers.StreamRenderer.OnRenderFrame(float deltaTime, Vintagestory.API.Client.EnumRenderStage stage) -> void
