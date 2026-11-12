@@ -53,6 +53,8 @@ public class ExWorldStateTests {
     ["ExpandedLib.Industry.Machining.MachineKindLoader.StepKeys"] = SchemaKeys,
     ["ExpandedLib.Industry.Machining.MachineKindLoader.EnvelopeKeys"] =
       SchemaKeys,
+    ["ExpandedLib.Industry.Machining.MachineKindLoader.SpindleKeys"] =
+      SchemaKeys,
     ["ExpandedLib.Industry.Machining.MachiningJobLoader.RootKeys"] = SchemaKeys,
     ["ExpandedLib.Industry.Machining.MachiningJobLoader.JobKeys"] = SchemaKeys,
     ["ExpandedLib.Industry.Machining.MachiningJobLoader.ByproductKeys"] =
