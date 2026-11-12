@@ -151,5 +151,6 @@
   "sandstation-casting": "Відливка: {0}/{1} одиниць, {2} ({3})",
   "sandstation-coldshut": "Холодний спай: подача переривалась, частини цієї відливки підуть на брухт.",
   "metalstate-liquid": "рідкий",
+  "fitsoneblock-toolong": "Довше за один блок.",
   "metalstate-hardened": "затверділий"
 }

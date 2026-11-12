@@ -60,6 +60,7 @@ public static class DefinitionGoldens {
     }
     // Generated metal families have no provider class; emitted from config/metals JSON at runtime.
     defs.AddRange(EmittedFamilies(domain));
+    ExDefinitions.DecorateCollected(defs, asm);
     return defs;
   }
 

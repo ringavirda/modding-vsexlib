@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using ExpandedLib.Registries;
@@ -44,6 +45,9 @@ public static class ExDefinitions {
   // Types, never instances: a contributor is instantiated fresh by RunContributors.
   private static readonly List<Type> _contributors = [];
 
+  // Instances, in discovery order; each is applied once to every item def object.
+  private static readonly List<IExItemDefDecorator> _decorators = [];
+
   // The location of every block, item and recipe def actually injected, recorded by RecordInjected.
   private static readonly HashSet<string> _injected = new(
     StringComparer.Ordinal
@@ -69,6 +73,7 @@ public static class ExDefinitions {
     RegisterItem(def, Assembly.GetCallingAssembly());
 
   internal static void RegisterItem(ExItemDef def, Assembly providerAssembly) {
+    Decorate(def);
     TrackProvider(_itemProviders, def.Location.ToString(), providerAssembly);
     _items.Register(def);
   }
@@ -126,6 +131,7 @@ public static class ExDefinitions {
     _itemProviders.Clear();
     _recipeProviders.Clear();
     _contributors.Clear();
+    _decorators.Clear();
     _injected.Clear();
     InjectionRan = false;
   }
@@ -203,6 +209,50 @@ public static class ExDefinitions {
       if (!_contributors.Contains(type))
         _contributors.Add(type);
     }
+  }
+
+  /// <summary>Scans <paramref name="asm"/> for concrete <see cref="IExItemDefDecorator"/> types with a
+  /// parameterless constructor and keeps one instance of each. A def already registered is decorated
+  /// by each new decorator at once; one registered later is decorated as it registers.</summary>
+  [EditorBrowsable(EditorBrowsableState.Never)]
+  public static void DiscoverDecorators(Assembly asm) {
+    foreach (IExItemDefDecorator decorator in DecoratorsIn(asm)) {
+      if (_decorators.Exists(d => d.GetType() == decorator.GetType()))
+        continue;
+      _decorators.Add(decorator);
+      foreach (ExItemDef def in _items.Values)
+        decorator.Decorate(def);
+    }
+  }
+
+  // A fresh instance of every concrete decorator of asm that has a parameterless constructor.
+  internal static IEnumerable<IExItemDefDecorator> DecoratorsIn(Assembly asm) {
+    foreach (Type type in ReflectionScan.GetCandidateTypes(asm))
+      if (
+        typeof(IExItemDefDecorator).IsAssignableFrom(type)
+        && !type.IsInterface
+        && !type.IsAbstract
+        && type.GetConstructor(Type.EmptyTypes) != null
+      )
+        yield return (IExItemDefDecorator)Activator.CreateInstance(type)!;
+  }
+
+  // Runs every discovered decorator over def, the one point every registered item def passes.
+  private static void Decorate(ExItemDef def) {
+    foreach (IExItemDefDecorator decorator in _decorators)
+      decorator.Decorate(def);
+  }
+
+  /// <summary>Decorates <paramref name="defs"/>' item defs with the registered decorators and any of
+  /// <paramref name="asm"/> not yet registered, for a def set built without registering.</summary>
+  internal static void DecorateCollected(IEnumerable<IExDef> defs, Assembly asm) {
+    var all = new List<IExItemDefDecorator>(_decorators);
+    foreach (IExItemDefDecorator extra in DecoratorsIn(asm))
+      if (!all.Exists(d => d.GetType() == extra.GetType()))
+        all.Add(extra);
+    foreach (ExItemDef def in defs.OfType<ExItemDef>())
+      foreach (IExItemDefDecorator decorator in all)
+        decorator.Decorate(def);
   }
 
   /// <summary>Instantiates and runs every discovered <see cref="IExDefinitionContributor"/>, in
