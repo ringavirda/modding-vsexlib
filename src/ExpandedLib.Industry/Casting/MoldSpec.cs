@@ -41,6 +41,7 @@ public enum FillOrder {
 /// <param name="MinPourTemp">Pour temperature (C) below which a fill is a misrun; 0 disables the check.</param>
 /// <param name="Mould">How the pattern is moulded; <see cref="MouldKind.Open"/> unless declared.</param>
 /// <param name="Share">Units of metal the pour's head holds beyond the pieces, returned as scrap on shake-out; 0 unless declared.</param>
+/// <param name="Core">Item code of the dry core each piece is cast around; null when the pieces cast solid.</param>
 public sealed record MoldSpec(
   int Schema,
   string Station,
@@ -52,7 +53,8 @@ public sealed record MoldSpec(
   JsonItemStack Output,
   float MinPourTemp,
   MouldKind Mould = MouldKind.Open,
-  int Share = 0
+  int Share = 0,
+  string? Core = null
 ) {
   /// <summary>The attribute key a pattern carries its spec under.</summary>
   public const string AttributeKey = "mold";
@@ -262,6 +264,12 @@ public sealed record MoldSpec(
       return false;
     }
 
+    string? core = node["core"].AsString();
+    if (node["core"].Exists && string.IsNullOrWhiteSpace(core)) {
+      error = "'core' must name an item";
+      return false;
+    }
+
     JsonItemStack stationOutput = output.Clone();
     stationOutput.Quantity = pieces;
 
@@ -277,7 +285,8 @@ public sealed record MoldSpec(
       stationOutput,
       minPourTemp,
       mould,
-      share
+      share,
+      core
     );
     return true;
   }
