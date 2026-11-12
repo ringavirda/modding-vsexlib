@@ -62,6 +62,20 @@ public class ItemDieTests {
   }
 
   [Fact]
+  public void Job_writes_its_strokes() {
+    var die = new Item {
+      Code = new AssetLocation("iiex", "die-bolt"),
+      Attributes = Json(
+        JToken.FromObject(ItemDie.Job("heading", "game:rod-iron", "iiex:bolt", 4, strokes: 3)).ToString()
+      ),
+    };
+
+    ProcessJob? job = ItemDie.JobFor(new ItemStack(die), "game:rod-iron", null, null);
+
+    Assert.Equal(3, job!.Strokes);
+  }
+
+  [Fact]
   public void The_costs_default_so_a_sparse_die_still_works() {
     ProcessJob job = Assert.Single(
       Parse(

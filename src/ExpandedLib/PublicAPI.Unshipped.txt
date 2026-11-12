@@ -571,6 +571,8 @@ static ExpandedLib.Catalogues.CraftSequenceRegistry.Contributors.get -> Expanded
 static ExpandedLib.Catalogues.CraftSequenceRegistry.Shared.get -> ExpandedLib.Catalogues.CraftSequenceRegistry!
 static ExpandedLib.Catalogues.CraftSequenceSet.TryParse(Vintagestory.API.Datastructures.JsonObject? node, out ExpandedLib.Catalogues.CraftSequenceSet? set, out string? error) -> bool
 static ExpandedLib.Catalogues.CraftToolDefault.Hammer.get -> ExpandedLib.Catalogues.CraftToolDefault!
+*REMOVED*static ExpandedLib.Catalogues.ItemDie.Job(string! machine, string! input, string! output, int count = 1, int minTier = 0, double minTorque = 0, double seconds = 1) -> object!
+static ExpandedLib.Catalogues.ItemDie.Job(string! machine, string! input, string! output, int count = 1, int minTier = 0, double minTorque = 0, double seconds = 1, int strokes = 1) -> object!
 static ExpandedLib.Catalogues.MachineTool.Itemtype(string! domain, string! code, string! kind, System.Collections.Generic.IReadOnlyDictionary<string!, int>! tiers, string! shape, string! variantGroup, string? assetName, string? spentCode, int spentCount) -> ExpandedLib.Definitions.ExItemDef!
 static ExpandedLib.Catalogues.MachineTool.KindOf(Vintagestory.API.Common.ItemStack? stack) -> string?
 static ExpandedLib.Catalogues.MachineTool.Tier(int tier, string! kind, string? spentCode = null, int spentCount = 1) -> object!
