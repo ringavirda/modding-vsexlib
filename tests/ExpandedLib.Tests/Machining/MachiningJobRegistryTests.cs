@@ -115,9 +115,7 @@ public class MachiningJobRegistryTests {
   [Fact]
   public void The_fixtureless_job_is_the_fallback_for_any_laid_fixture() {
     var registry = new MachiningJobRegistry();
-    registry.Contribute(
-      MachiningTestData.Set(Fixtured("test:plain", null))
-    );
+    registry.Contribute(MachiningTestData.Set(Fixtured("test:plain", null)));
 
     Assert.Equal(
       "test:plain",

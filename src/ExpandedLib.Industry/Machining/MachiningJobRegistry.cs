@@ -92,7 +92,11 @@ public sealed class MachiningJobRegistry {
         bare ??= job;
       else if (
         fixture is not null
-        && string.Equals(job.Fixture, fixture, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(
+          job.Fixture,
+          fixture,
+          StringComparison.OrdinalIgnoreCase
+        )
       )
         return job;
     }
