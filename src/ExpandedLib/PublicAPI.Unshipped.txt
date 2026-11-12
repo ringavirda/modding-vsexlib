@@ -673,3 +673,80 @@ const ExpandedLib.ExlibLang.SandstationColdshut = "exlib:sandstation-coldshut" -
 const ExpandedLib.ExlibLang.MetalstateLiquid = "exlib:metalstate-liquid" -> string!
 const ExpandedLib.ExlibLang.MetalstateHardened = "exlib:metalstate-hardened" -> string!
 virtual ExpandedLib.Networks.BlockNetworkNode.IsValidNonNetworkConnection(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.Block! neighborBlock, Vintagestory.API.MathTools.BlockFacing! face) -> bool
+const ExpandedLib.ExlibLang.FitsoneblockToolong = "exlib:fitsoneblock-toolong" -> string!
+ExpandedLib.Definitions.IExItemDefDecorator
+ExpandedLib.Definitions.IExItemDefDecorator.Decorate(ExpandedLib.Definitions.ExItemDef! def) -> void
+static ExpandedLib.Definitions.ExDefinitions.DiscoverDecorators(System.Reflection.Assembly! asm) -> void
+ExpandedLib.Storage.ExFitsOneBlock
+ExpandedLib.Storage.ExFitsOneBlock.ExFitsOneBlock(Vintagestory.API.Common.CollectibleObject! collObj) -> void
+override ExpandedLib.Storage.ExFitsOneBlock.Initialize(Vintagestory.API.Datastructures.JsonObject! properties) -> void
+override ExpandedLib.Storage.ExFitsOneBlock.OnHeldInteractStart(Vintagestory.API.Common.ItemSlot! slot, Vintagestory.API.Common.EntityAgent! byEntity, Vintagestory.API.Common.BlockSelection! blockSel, Vintagestory.API.Common.EntitySelection! entitySel, bool firstEvent, ref Vintagestory.API.Common.EnumHandHandling handHandling, ref Vintagestory.API.Common.EnumHandling handling) -> void
+ExpandedLib.Storage.IStoredSize
+ExpandedLib.Storage.IStoredSize.PosedLength(Vintagestory.API.Common.ItemStack! stack) -> double
+ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageClass.Kept = 0 -> ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageClass.Lean = 1 -> ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageClass.Piece = 2 -> ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageClass.Loose = 3 -> ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageClass.Pile = 4 -> ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageClass.Quadrants = 5 -> ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageClass.Halves = 6 -> ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageClass.Single = 7 -> ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageClass.SingleLong = 8 -> ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageClass.Exempt = 9 -> ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageFacts
+ExpandedLib.Storage.StorageFacts.A.get -> double
+ExpandedLib.Storage.StorageFacts.A.init -> void
+ExpandedLib.Storage.StorageFacts.B.get -> double
+ExpandedLib.Storage.StorageFacts.B.init -> void
+ExpandedLib.Storage.StorageFacts.C.get -> double
+ExpandedLib.Storage.StorageFacts.C.init -> void
+ExpandedLib.Storage.StorageFacts.Fastener.get -> bool
+ExpandedLib.Storage.StorageFacts.Fastener.init -> void
+ExpandedLib.Storage.StorageFacts.Fill.get -> double
+ExpandedLib.Storage.StorageFacts.Fill.init -> void
+ExpandedLib.Storage.StorageFacts.Kept.get -> bool
+ExpandedLib.Storage.StorageFacts.Kept.init -> void
+ExpandedLib.Storage.StorageFacts.LooseShape.get -> bool
+ExpandedLib.Storage.StorageFacts.LooseShape.init -> void
+ExpandedLib.Storage.StorageFacts.MaxStack.get -> int
+ExpandedLib.Storage.StorageFacts.MaxStack.init -> void
+ExpandedLib.Storage.StorageFacts.StockPiece.get -> bool
+ExpandedLib.Storage.StorageFacts.StockPiece.init -> void
+ExpandedLib.Storage.StorageFacts.UnderTools.get -> bool
+ExpandedLib.Storage.StorageFacts.UnderTools.init -> void
+ExpandedLib.Storage.StorageFacts.Unplaceable.get -> string?
+ExpandedLib.Storage.StorageFacts.Unplaceable.init -> void
+ExpandedLib.Storage.StorageFacts.StorageFacts(double A, double B, double C, double Fill, int MaxStack, bool Kept = false, bool UnderTools = false, bool StockPiece = false, bool LooseShape = false, bool Fastener = false, string? Unplaceable = null) -> void
+ExpandedLib.Storage.StorageSpec
+ExpandedLib.Storage.StorageSpec.Capacity.get -> int
+ExpandedLib.Storage.StorageSpec.Capacity.init -> void
+ExpandedLib.Storage.StorageSpec.CbScaleYByLayer.get -> double
+ExpandedLib.Storage.StorageSpec.CbScaleYByLayer.init -> void
+ExpandedLib.Storage.StorageSpec.Class.get -> ExpandedLib.Storage.StorageClass
+ExpandedLib.Storage.StorageSpec.Class.init -> void
+ExpandedLib.Storage.StorageSpec.CollisionY2.get -> double
+ExpandedLib.Storage.StorageSpec.CollisionY2.init -> void
+ExpandedLib.Storage.StorageSpec.ItemsPerLayer.get -> int
+ExpandedLib.Storage.StorageSpec.ItemsPerLayer.init -> void
+ExpandedLib.Storage.StorageSpec.Layout.get -> string?
+ExpandedLib.Storage.StorageSpec.Layout.init -> void
+ExpandedLib.Storage.StorageSpec.Reason.get -> string?
+ExpandedLib.Storage.StorageSpec.Reason.init -> void
+ExpandedLib.Storage.StorageSpec.StorageSpec(ExpandedLib.Storage.StorageClass Class, string? Layout, int Capacity, double CollisionY2, int ItemsPerLayer = 0, double CbScaleYByLayer = 0, string? Reason = null) -> void
+ExpandedLib.Storage.ExStorage
+const ExpandedLib.Storage.ExStorage.OneBlock = 17 -> double
+const ExpandedLib.Storage.ExStorage.LongestSingle = 24 -> double
+const ExpandedLib.Storage.ExStorage.PileCap = 64 -> int
+const ExpandedLib.Storage.ExStorage.LooseHeap = 12 -> int
+const ExpandedLib.Storage.ExStorage.LeanDegrees = 16 -> float
+const ExpandedLib.Storage.ExStorage.TooLongReason = "longer than 24 voxels, stays in inventories" -> string!
+const ExpandedLib.Storage.ExStorage.RackReason = "longer than one block: the stock rack holds it" -> string!
+static ExpandedLib.Storage.ExStorage.Classify(ExpandedLib.Storage.StorageFacts! facts) -> ExpandedLib.Storage.StorageSpec!
+static ExpandedLib.Storage.ExStorage.HasGroundStorable(ExpandedLib.Definitions.ExItemDef! def) -> bool
+static ExpandedLib.Storage.ExStorage.Pile(double a, double b, double c, bool bar) -> (int PerLayer, int Layers)
+static ExpandedLib.Storage.ExStorage.BoxHeight(ExpandedLib.Storage.StorageSpec! pile, int stackSize) -> double
+static ExpandedLib.Storage.ExStorage.ShelfFor(double a, double b, double c, Vintagestory.API.MathTools.Cuboidf! quadrant, Vintagestory.API.MathTools.Cuboidf! half, Vintagestory.API.MathTools.Cuboidf! single) -> string?
+static ExpandedLib.Storage.ExStorage.Pose(Vintagestory.API.MathTools.Cuboidf! bounds, Vintagestory.API.MathTools.Cuboidf! slot) -> Vintagestory.API.Common.ModelTransform!
+static ExpandedLib.Storage.ExStorage.Lean(Vintagestory.API.MathTools.Cuboidf! bounds) -> Vintagestory.API.Common.ModelTransform!
+static ExpandedLib.Storage.ExStorage.Posed(Vintagestory.API.MathTools.Cuboidf! bounds, Vintagestory.API.Common.ModelTransform! transform) -> Vintagestory.API.MathTools.Cuboidf!

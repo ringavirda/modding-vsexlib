@@ -155,5 +155,6 @@
   "sandstation-casting": "Casting: {0}/{1} units, {2} ({3})",
   "sandstation-coldshut": "Cold shut: the feed stopped part way, so pieces of this cast will be scrap.",
   "metalstate-liquid": "liquid",
+  "fitsoneblock-toolong": "Longer than one block.",
   "metalstate-hardened": "hardened"
 }
