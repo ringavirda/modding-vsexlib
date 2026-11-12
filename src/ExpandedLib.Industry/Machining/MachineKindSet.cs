@@ -141,7 +141,9 @@ public sealed record MachineKindSet(
       MachineFeed feed = MachineFeed.Held;
       if (string.Equals(feedName, "self", StringComparison.OrdinalIgnoreCase))
         feed = MachineFeed.Self;
-      else if (!string.Equals(feedName, "held", StringComparison.OrdinalIgnoreCase))
+      else if (
+        !string.Equals(feedName, "held", StringComparison.OrdinalIgnoreCase)
+      )
         notes.Add(
           $"machine kind '{code}' has 'feed' '{feedName}', which is not held or self; it is read as held"
         );

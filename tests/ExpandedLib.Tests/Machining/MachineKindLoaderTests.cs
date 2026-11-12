@@ -40,9 +40,9 @@ public class MachineKindLoaderTests {
 
   private static string Feeding(string feed) =>
     $$"""
-    { "schema": 1, "kinds": [ { "code": "test:m", "ratedSpeed": 4, "feed": "{{feed}}",
-      "steps": { "turn": { "motion": "rotary", "power": 1, "tooling": "cutter" } } } ] }
-    """;
+      { "schema": 1, "kinds": [ { "code": "test:m", "ratedSpeed": 4, "feed": "{{feed}}",
+        "steps": { "turn": { "motion": "rotary", "power": 1, "tooling": "cutter" } } } ] }
+      """;
 
   // Fails when a kind that names no feed reads as self-fed.
   [Fact]
@@ -55,7 +55,9 @@ public class MachineKindLoaderTests {
   // Fails when the feed word is not read.
   [Fact]
   public void A_feed_of_self_is_read() {
-    Assert.True(Registry(Feeding("self")).TryGet("test:m", out MachineKind? kind));
+    Assert.True(
+      Registry(Feeding("self")).TryGet("test:m", out MachineKind? kind)
+    );
 
     Assert.Equal(MachineFeed.Self, kind!.Feed);
   }

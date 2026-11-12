@@ -584,8 +584,8 @@ public abstract class BlockEntityMachineTool
       MachineCutVerdict.NoDrive => Lang.Get("exlib:machine-tool-info-nodrive"),
       _ => Lang.Get(
         _running ? "exlib:machine-tool-info-cutting"
-        : kind.Feed == MachineFeed.Held ? "exlib:machine-tool-info-held"
-        : "exlib:machine-tool-info-stopped",
+          : kind.Feed == MachineFeed.Held ? "exlib:machine-tool-info-held"
+          : "exlib:machine-tool-info-stopped",
         NameOf("exlib:machine-step-", step.Step),
         (int)(Progress * 100d)
       ),
