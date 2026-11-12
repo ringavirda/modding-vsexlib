@@ -318,7 +318,7 @@ ExpandedLib.Industry.Machining.MachineKind.Code.get -> string!
 ExpandedLib.Industry.Machining.MachineKind.Code.init -> void
 ExpandedLib.Industry.Machining.MachineKind.Fixture.get -> bool
 ExpandedLib.Industry.Machining.MachineKind.Fixture.init -> void
-ExpandedLib.Industry.Machining.MachineKind.MachineKind(string! Code, float RatedSpeed, float StandingNm, bool Fixture, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineAnchor!>! Anchors, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineKindStep!>! Steps) -> void
+ExpandedLib.Industry.Machining.MachineKind.MachineKind(string! Code, float RatedSpeed, float StandingNm, bool Fixture, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineAnchor!>! Anchors, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachineKindStep!>! Steps, ExpandedLib.Industry.Machining.MachineFeed Feed = ExpandedLib.Industry.Machining.MachineFeed.Held) -> void
 ExpandedLib.Industry.Machining.MachineKind.RatedSpeed.get -> float
 ExpandedLib.Industry.Machining.MachineKind.RatedSpeed.init -> void
 ExpandedLib.Industry.Machining.MachineKind.SameAs(ExpandedLib.Industry.Machining.MachineKind! other) -> bool
@@ -401,8 +401,9 @@ ExpandedLib.Industry.Machining.MachiningJobRegistry
 ExpandedLib.Industry.Machining.MachiningJobRegistry.All.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningJob!>!
 ExpandedLib.Industry.Machining.MachiningJobRegistry.Clear() -> void
 ExpandedLib.Industry.Machining.MachiningJobRegistry.Contribute(ExpandedLib.Industry.Machining.MachiningJobSet! set) -> System.Collections.Generic.IReadOnlyList<string!>!
-ExpandedLib.Industry.Machining.MachiningJobRegistry.Job(string? step, string? input) -> ExpandedLib.Industry.Machining.MachiningJob?
+ExpandedLib.Industry.Machining.MachiningJobRegistry.Job(string? step, string? input, string? fixture = null) -> ExpandedLib.Industry.Machining.MachiningJob?
 ExpandedLib.Industry.Machining.MachiningJobRegistry.Jobs(string? step) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningJob!>!
+ExpandedLib.Industry.Machining.MachiningJobRegistry.JobsFor(string? step, string? input) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Machining.MachiningJob!>!
 ExpandedLib.Industry.Machining.MachiningJobRegistry.MachiningJobRegistry() -> void
 ExpandedLib.Industry.Machining.MachiningJobRegistry.Steps.get -> System.Collections.Generic.IReadOnlyList<string!>!
 ExpandedLib.Industry.Machining.MachiningJobRegistry.StepsFor(string? input) -> System.Collections.Generic.IReadOnlyList<string!>!
@@ -945,3 +946,14 @@ ExpandedLib.Industry.Casting.LaunderFace.Offset.init -> void
 static ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFacesOf(Vintagestory.API.Common.Block! block) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.LaunderFace>!
 static ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFacingsAt(Vintagestory.API.Common.Block! block, Vintagestory.API.MathTools.BlockPos! principal, Vintagestory.API.MathTools.BlockPos! cell) -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockFacing!>!
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.LaunderFaces.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Casting.LaunderFace>!
+ExpandedLib.Industry.Machining.MachineFeed
+ExpandedLib.Industry.Machining.MachineFeed.Held = 0 -> ExpandedLib.Industry.Machining.MachineFeed
+ExpandedLib.Industry.Machining.MachineFeed.Self = 1 -> ExpandedLib.Industry.Machining.MachineFeed
+ExpandedLib.Industry.Machining.MachineKind.Feed.get -> ExpandedLib.Industry.Machining.MachineFeed
+ExpandedLib.Industry.Machining.MachineKind.Feed.init -> void
+const ExpandedLib.Industry.Machining.BlockEntityMachineTool.HoldLapseMs = 1000 -> int
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.Hold(string! playerUid) -> void
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.Release(string! playerUid) -> void
+ExpandedLib.Industry.Machining.BlockEntityMachineTool.IsCutting.get -> bool
+override ExpandedLib.Industry.Machining.BlockEntityMachineTool.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldForResolving) -> void
+virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.OnCuttingChanged(bool cutting) -> void

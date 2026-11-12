@@ -29,10 +29,10 @@ public sealed class MachineKindRegistry {
 
   /// <summary>
   /// Merges <paramref name="set"/>. An identical redeclaration is a no-op; a different one is ignored.
-  /// Returns one human-readable message per ignored declaration.
+  /// Returns one human-readable message per ignored declaration and per field read leniently.
   /// </summary>
   public IReadOnlyList<string> Contribute(MachineKindSet set) {
-    var conflicts = new List<string>();
+    var conflicts = new List<string>(set.Notes);
     foreach (MachineKind kind in set.Kinds) {
       MachineKind? held = _kinds.FirstOrDefault(k =>
         string.Equals(k.Code, kind.Code, StringComparison.OrdinalIgnoreCase)

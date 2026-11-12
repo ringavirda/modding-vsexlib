@@ -3,6 +3,7 @@ using ExpandedLib.Catalogues;
 using ExpandedLib.Industry.Machining;
 using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Testing;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using WasherPunch.BlockEntities;
@@ -72,13 +73,26 @@ public class WasherDrillTests(LoadedWorld loaded) {
       .Drill.Inventory[BlockEntityMachineTool.WorkSlot]
       .Itemstack?.Collectible.Code.ToString();
 
-  private static void Seconds(Rig rig, double seconds) {
-    rig.World.AdvanceHours(seconds / 3600d);
-    rig.World.FireBlockEntityTicks(1f);
+  private static void Seconds(Rig rig, double seconds, bool held = true) {
+    if (held)
+      Click(rig, BlockWasherDrill.LeverBox);
+    rig.World.Calendar.SpeedOfTime.Returns(60f);
+    rig.World.Calendar.CalendarSpeedMul.Returns(0.5f);
+    rig.World.FireBlockEntityTicks(
+      (float)(seconds / MachineCut.GameSecondsPerRealSecond)
+    );
   }
 
   private static void Click(Rig rig, int box) =>
     rig.Block.OnBlockInteractStart(
+      rig.World.World,
+      rig.Player.Player,
+      new BlockSelection { Position = rig.Drill.Pos, SelectionBoxIndex = box }
+    );
+
+  private static void LetGo(Rig rig, int box) =>
+    rig.Block.OnBlockInteractStop(
+      1f,
       rig.World.World,
       rig.Player.Player,
       new BlockSelection { Position = rig.Drill.Pos, SelectionBoxIndex = box }
@@ -101,7 +115,8 @@ public class WasherDrillTests(LoadedWorld loaded) {
     int fresh = tool.Itemstack.Collectible.GetRemainingDurability(
       tool.Itemstack
     );
-    Assert.True(rig.Drill.TryStart());
+    Click(rig, BlockWasherDrill.LeverBox);
+    Assert.True(rig.Drill.IsRunning);
 
     Seconds(rig, CutSeconds - 1.25);
     Assert.Equal("game:metalplate-iron", Piece(rig));
@@ -118,7 +133,8 @@ public class WasherDrillTests(LoadedWorld loaded) {
   public void A_meteoric_plate_is_short_of_the_iron_bit_and_drilled_by_the_steel_one() {
     Rig rig = NewRig();
     Load(rig, "game:metalplate-meteoriciron", "washerpunch:drillbit-iron");
-    Assert.True(rig.Drill.TryStart());
+    Click(rig, BlockWasherDrill.LeverBox);
+    Assert.True(rig.Drill.IsRunning);
 
     Seconds(rig, CutSeconds + 1);
     Assert.Equal("game:metalplate-meteoriciron", Piece(rig));
@@ -137,7 +153,8 @@ public class WasherDrillTests(LoadedWorld loaded) {
   public void A_plain_ingot_runs_idle_and_names_that_no_machine_works_it() {
     Rig rig = NewRig();
     Load(rig, "game:ingot-iron", "washerpunch:drillbit-iron");
-    Assert.True(rig.Drill.TryStart());
+    Click(rig, BlockWasherDrill.LeverBox);
+    Assert.True(rig.Drill.IsRunning);
 
     Seconds(rig, CutSeconds + 1);
 
@@ -152,7 +169,8 @@ public class WasherDrillTests(LoadedWorld loaded) {
     Rig rig = NewRig();
     Load(rig, "game:metalplate-iron", "washerpunch:drillbit-iron");
     rig.Drill.Drive = new MpRunReading(0f, 1000f);
-    Assert.True(rig.Drill.TryStart());
+    Click(rig, BlockWasherDrill.LeverBox);
+    Assert.True(rig.Drill.IsRunning);
 
     Seconds(rig, CutSeconds + 1);
 
@@ -166,7 +184,8 @@ public class WasherDrillTests(LoadedWorld loaded) {
     Rig rig = NewRig();
     Load(rig, "game:metalplate-iron", "washerpunch:drillbit-iron");
     rig.Drill.Drive = MpRunReading.None;
-    Assert.True(rig.Drill.TryStart());
+    Click(rig, BlockWasherDrill.LeverBox);
+    Assert.True(rig.Drill.IsRunning);
 
     Seconds(rig, CutSeconds + 1);
     Assert.Equal("game:metalplate-iron", Piece(rig));
@@ -177,7 +196,7 @@ public class WasherDrillTests(LoadedWorld loaded) {
   }
 
   [Fact]
-  public void The_lever_engages_and_disengages_and_the_body_does_not() {
+  public void The_lever_holds_the_drive_and_the_body_does_not() {
     Rig rig = NewRig();
 
     Click(rig, BlockWasherDrill.BodyBox);
@@ -186,8 +205,28 @@ public class WasherDrillTests(LoadedWorld loaded) {
     Click(rig, BlockWasherDrill.LeverBox);
     Assert.True(rig.Drill.IsRunning);
 
-    Click(rig, BlockWasherDrill.LeverBox);
+    LetGo(rig, BlockWasherDrill.LeverBox);
     Assert.False(rig.Drill.IsRunning);
+  }
+
+  // Fails when letting go of the lever does not release the hold, so the drill keeps cutting until the hold lapses.
+  [Fact]
+  public void The_drill_cuts_while_its_lever_is_held() {
+    Rig rig = NewRig();
+    Load(rig, "game:metalplate-iron", "washerpunch:drillbit-iron");
+
+    Seconds(rig, 0.3 * CutSeconds, held: false);
+    Assert.Equal(0d, rig.Drill.Progress);
+
+    Click(rig, BlockWasherDrill.LeverBox);
+    Seconds(rig, 0.3 * CutSeconds, held: false);
+    double held = rig.Drill.Progress;
+    Assert.InRange(held, 0.2, 0.4);
+
+    LetGo(rig, BlockWasherDrill.LeverBox);
+    Seconds(rig, 0.3 * CutSeconds, held: false);
+    Assert.Equal(held, rig.Drill.Progress);
+    Assert.Equal("game:metalplate-iron", Piece(rig));
   }
 
   [Fact]

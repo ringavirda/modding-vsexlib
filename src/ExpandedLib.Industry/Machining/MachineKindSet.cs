@@ -14,6 +14,9 @@ public sealed record MachineKindSet(
   int Schema,
   IReadOnlyList<MachineKind> Kinds
 ) {
+  /// <summary>Messages for fields the parse read leniently; <see cref="MachineKindRegistry.Contribute"/> returns them.</summary>
+  internal IReadOnlyList<string> Notes { get; init; } = [];
+
   /// <summary>The schema this parser writes and reads up to.</summary>
   public const int CurrentSchema = SpecSchema.First;
 
@@ -33,6 +36,7 @@ public sealed record MachineKindSet(
       return false;
 
     var kinds = new List<MachineKind>();
+    var notes = new List<string>();
     foreach (JsonObject kindNode in node["kinds"].AsArray() ?? []) {
       string code = kindNode["code"].AsString("");
       if (string.IsNullOrWhiteSpace(code) || !code.Contains(':')) {
@@ -133,6 +137,17 @@ public sealed record MachineKindSet(
         );
       }
 
+      string feedName = kindNode["feed"].AsString("held");
+      MachineFeed feed = MachineFeed.Held;
+      if (string.Equals(feedName, "self", StringComparison.OrdinalIgnoreCase))
+        feed = MachineFeed.Self;
+      else if (
+        !string.Equals(feedName, "held", StringComparison.OrdinalIgnoreCase)
+      )
+        notes.Add(
+          $"machine kind '{code}' has 'feed' '{feedName}', which is not held or self; it is read as held"
+        );
+
       kinds.Add(
         new MachineKind(
           code,
@@ -140,13 +155,14 @@ public sealed record MachineKindSet(
           standing,
           kindNode["fixture"].AsBool(false),
           anchors,
-          steps
+          steps,
+          feed
         )
       );
     }
 
     error = null;
-    set = new MachineKindSet(schema, kinds);
+    set = new MachineKindSet(schema, kinds) { Notes = notes };
     return true;
   }
 

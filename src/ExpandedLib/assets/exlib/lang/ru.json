@@ -133,6 +133,7 @@
   "machine-tool-info-nodrive": "Нет привода",
   "machine-tool-info-cutting": "Резка, {0}: {1}%",
   "machine-tool-info-stopped": "Остановлен, {0}: {1}%",
+  "machine-tool-info-held": "Удерживайте подачу, чтобы резать, {0}: {1}%",
   "mp-takeoff-info-taken": "Берёт {0} Н*м с железного вала",
   "mp-takeoff-info-speed": "Сторона оси держится на {0} ({1} рад/с)",
   "mp-takeoff-info-overrun": "Обгон: ванильный источник вращает сеть быстрее, момент не передаётся",

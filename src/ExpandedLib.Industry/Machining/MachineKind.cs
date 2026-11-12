@@ -39,6 +39,15 @@ public sealed record MachineKindStep(
   MachineEnvelope? Envelope
 );
 
+/// <summary>How a machine's cut is fed.</summary>
+public enum MachineFeed {
+  /// <summary>A player holds the machine's feed control while it cuts; <c>"held"</c>.</summary>
+  Held,
+
+  /// <summary>The machine cuts on its own once started; <c>"self"</c>.</summary>
+  Self,
+}
+
 /// <summary>
 /// One kind of machine tool: the steps it does, in the order a host picks between them, and how fast
 /// its port turns. Blocks name their kind in a <see cref="AttributeKey"/> attribute.
@@ -49,13 +58,15 @@ public sealed record MachineKindStep(
 /// <param name="Fixture">Whether the machine has a fixture slot.</param>
 /// <param name="Anchors">The mount points, by name.</param>
 /// <param name="Steps">The steps it does, in declaration order.</param>
+/// <param name="Feed">Whether a player must hold the feed control for the cut to run. Defaults to <see cref="MachineFeed.Held"/>.</param>
 public sealed record MachineKind(
   string Code,
   float RatedSpeed,
   float StandingNm,
   bool Fixture,
   IReadOnlyList<MachineAnchor> Anchors,
-  IReadOnlyList<MachineKindStep> Steps
+  IReadOnlyList<MachineKindStep> Steps,
+  MachineFeed Feed = MachineFeed.Held
 ) {
   /// <summary>The block attribute that names a block's machine kind.</summary>
   public const string AttributeKey = "machinekind";
@@ -85,6 +96,7 @@ public sealed record MachineKind(
     && RatedSpeed == other.RatedSpeed
     && StandingNm == other.StandingNm
     && Fixture == other.Fixture
+    && Feed == other.Feed
     && Anchors.SequenceEqual(other.Anchors)
     && Steps.SequenceEqual(other.Steps);
 }

@@ -11,6 +11,7 @@ using ExpandedLib.Networks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.Machining;
@@ -21,8 +22,12 @@ namespace ExpandedLib.Industry.Machining;
 /// <see cref="MachineKind"/> declares; a finished job leaves its result, byproducts and tool wear.
 /// </summary>
 /// <remarks>
+/// A kind that declares <see cref="MachineFeed.Held"/> feed, the default, cuts only while a player holds its feed control
+/// through <see cref="Hold"/>; a <see cref="MachineFeed.Self"/> kind is started and stopped.
 /// Slots: work 0, tool 1, chips 2 (take-only) and, when the kind declares a fixture, fixture 3. The work slot
 /// holds one piece. The run is read at <see cref="DriveCell"/> through <see cref="ReadDrive"/>.
+/// Each tick credits its real seconds times the calendar's speed of time and speed multiplier; an unloaded chunk runs no
+/// tick and a calendar jump adds no seconds, so neither credits, and a world with no calendar credits nothing.
 /// </remarks>
 public abstract class BlockEntityMachineTool
   : BlockEntityMachineStation,
@@ -39,16 +44,19 @@ public abstract class BlockEntityMachineTool
   /// <summary>Slot index of the fixture, present only when the kind declares one.</summary>
   public const int FixtureSlot = 3;
 
-  // Real milliseconds between ticks; a tick credits the game time elapsed since the last one.
+  // Real milliseconds between ticks; a tick credits its own real seconds scaled to game seconds.
   private const int TickMs = 250;
 
-  private const string CursorKey = "toolCursor";
+  /// <summary>Milliseconds of <c>World.ElapsedMilliseconds</c> a hold lasts without a refresh; the cut tick drops a hold older than this.</summary>
+  public const int HoldLapseMs = 1000;
 
   private readonly HostMembership _membership;
-  private readonly GameClockCursor _cursor = new();
   private bool _running;
+  private bool _cutting;
+  private readonly Dictionary<string, long> _holds = [];
   private string? _piece;
   private string? _step;
+  private string? _fixture;
   private double _joules;
   private MachineCutVerdict _verdict;
 
@@ -99,6 +107,9 @@ public abstract class BlockEntityMachineTool
   /// <summary>Whether the machine is engaged.</summary>
   public bool IsRunning => _running;
 
+  /// <summary>Whether the last cut tick credited the cut. Set on the server and synced; false while stopped, undriven, starved or unable to cut.</summary>
+  public bool IsCutting => _cutting;
+
   /// <summary>Fraction of the current job's energy delivered, 0 to 1; 0 when nothing is mounted or no job applies.</summary>
   public double Progress {
     get {
@@ -130,15 +141,26 @@ public abstract class BlockEntityMachineTool
   protected override void DeclareState(ExBlockState state) =>
     state
       .Bool("toolRunning", () => _running, v => _running = v)
+      .Bool("toolCutting", () => _cutting, v => _cutting = v)
       .String("toolPiece", () => _piece, v => _piece = v)
       .String("toolStep", () => _step, v => _step = v)
+      .String("toolFixture", () => _fixture, v => _fixture = v)
       .Double("toolJoules", () => _joules, v => _joules = v)
-      .Enum("toolVerdict", () => _verdict, v => _verdict = v)
-      .Tree(
-        CursorKey,
-        t => _cursor.Save(t, CursorKey),
-        (t, _) => _cursor.Load(t, CursorKey)
-      );
+      .Enum("toolVerdict", () => _verdict, v => _verdict = v);
+
+  public override void FromTreeAttributes(
+    ITreeAttribute tree,
+    IWorldAccessor worldForResolving
+  ) {
+    bool was = _cutting;
+    base.FromTreeAttributes(tree, worldForResolving);
+    if (Api is { Side: EnumAppSide.Client } && was != _cutting)
+      OnCuttingChanged(_cutting);
+  }
+
+  /// <summary>Called on the client when <see cref="IsCutting"/> flips, with its new value.</summary>
+  /// <param name="cutting">Whether the machine is now cutting.</param>
+  protected virtual void OnCuttingChanged(bool cutting) { }
 
   public override void Initialize(ICoreAPI api) {
     base.Initialize(api);
@@ -201,25 +223,65 @@ public abstract class BlockEntityMachineTool
     return null;
   }
 
-  /// <summary>Engages the machine: the cut counts game time from now.</summary>
-  /// <returns>False when it is already engaged or its block names no declared kind.</returns>
+  /// <summary>Engages a self-fed machine: the cut counts game time from now, tick by tick while loaded.</summary>
+  /// <returns>False when it is already engaged, its block names no declared kind or its kind is held.</returns>
   public bool TryStart() {
-    if (_running || Kind is null)
+    if (_running || Kind is not { Feed: MachineFeed.Self })
       return false;
     _running = true;
-    _cursor.Advance(GameTime.NowHours(Api.World));
     SyncPiece();
     MarkDirty();
     return true;
   }
 
-  /// <summary>Disengages the machine; the joules already delivered stay with the piece.</summary>
+  /// <summary>Disengages the machine and, on a held kind, drops every hold; the joules already delivered stay with the piece.</summary>
   public void Stop() {
+    _holds.Clear();
     if (!_running)
       return;
     _running = false;
-    _cursor.Reset();
+    _cutting = false;
     MarkDirty();
+  }
+
+  /// <summary>Begins or refreshes <paramref name="playerUid"/>'s hold on the feed control of a held kind and engages
+  /// the machine. The hold lapses on the cut tick once <see cref="HoldLapseMs"/> pass without a refresh. Holds are not
+  /// saved. Does nothing on a self-fed kind or a block that names no declared kind. Server side.</summary>
+  /// <param name="playerUid">Unique id of the holding player.</param>
+  public void Hold(string playerUid) {
+    if (Kind is not { Feed: MachineFeed.Held } || Api is null)
+      return;
+    _holds[playerUid] = Api.World.ElapsedMilliseconds;
+    if (_running)
+      return;
+    _running = true;
+    SyncPiece();
+    MarkDirty();
+  }
+
+  /// <summary>Ends <paramref name="playerUid"/>'s hold; the machine disengages with the last one and keeps its joules.
+  /// Does nothing for a player who holds nothing.</summary>
+  /// <param name="playerUid">Unique id of the releasing player.</param>
+  public void Release(string playerUid) {
+    if (!_holds.Remove(playerUid) || _holds.Count > 0)
+      return;
+    _running = false;
+    _cutting = false;
+    MarkDirty();
+  }
+
+  private void DropLapsedHolds() {
+    long now = Api.World.ElapsedMilliseconds;
+    foreach (string uid in _holds.Keys.ToList())
+      if (now - _holds[uid] >= HoldLapseMs)
+        _holds.Remove(uid);
+  }
+
+  private bool SetCutting(bool cutting) {
+    if (_cutting == cutting)
+      return false;
+    _cutting = cutting;
+    return true;
   }
 
   #region Network
@@ -251,12 +313,16 @@ public abstract class BlockEntityMachineTool
     string? code = Inventory[WorkSlot].Itemstack?.Collectible?.Code?.ToString();
     if (code is null || Kind is not { } kind)
       return (null, null);
-    foreach (MachineKindStep step in kind.Steps)
-      if (
-        Jobs.Job(step.Step, code) is { } job
-        && MachineCut.OffersTo(job, kind)
-      )
+    string? fixture = kind.Fixture
+      ? Inventory[FixtureSlot].Itemstack?.Collectible?.Code?.ToString()
+      : null;
+    foreach (MachineKindStep step in kind.Steps) {
+      MachiningJob? job =
+        Jobs.Job(step.Step, code, fixture)
+        ?? Jobs.JobsFor(step.Step, code).FirstOrDefault();
+      if (job is not null && MachineCut.OffersTo(job, kind))
         return (job, step);
+    }
     return (null, null);
   }
 
@@ -300,33 +366,52 @@ public abstract class BlockEntityMachineTool
   private bool SyncPiece() {
     string? piece = Inventory[WorkSlot]
       .Itemstack?.Collectible?.Code?.ToString();
-    string? step = CurrentJob().Step?.Step;
-    if (piece == _piece && step == _step)
+    (MachiningJob? job, MachineKindStep? kindStep) = CurrentJob();
+    string? step = kindStep?.Step;
+    string? fixture = job?.Fixture;
+    if (piece == _piece && step == _step && fixture == _fixture)
       return false;
     _piece = piece;
     _step = step;
+    _fixture = fixture;
     _joules = 0d;
     return true;
   }
 
   private void OnSlotModified(int slot) {
-    if (slot == WorkSlot && SyncPiece())
+    if ((slot == WorkSlot || slot == FixtureSlot) && SyncPiece())
       MarkDirty(true);
   }
 
   private void OnCutTick(float dt) {
-    if (!_running || Kind is not { } kind)
+    if (Kind is not { } kind)
+      return;
+    if (kind.Feed == MachineFeed.Held) {
+      DropLapsedHolds();
+      if (_holds.Count == 0) {
+        if (_running || _cutting) {
+          _running = false;
+          _cutting = false;
+          MarkDirty();
+        }
+        return;
+      }
+    }
+    if (!_running)
       return;
     bool changed = SyncPiece();
     bool redraw = changed;
 
     MpRunReading reading = ReadDrive();
     if (reading == MpRunReading.None) {
+      changed |= SetCutting(false);
       if (changed)
         MarkDirty(redraw);
       return;
     }
-    double gameSeconds = _cursor.Advance(GameTime.NowHours(Api.World)) * 3600d;
+    double gameSeconds = Api.World.Calendar is { } calendar
+      ? dt * (double)calendar.SpeedOfTime * calendar.CalendarSpeedMul
+      : 0d;
     float speed = MathF.Abs(reading.SpeedRadS);
 
     (MachiningJob? job, MachineKindStep? step) = CurrentJob();
@@ -335,9 +420,11 @@ public abstract class BlockEntityMachineTool
       _verdict = verdict;
       changed = true;
     }
+    bool cutting = false;
     if (verdict == MachineCutVerdict.Ready) {
       float energy = MachineCut.GameEnergy(job!, step!, Materials);
       if (energy <= 0f) {
+        changed |= SetCutting(false);
         if (changed)
           MarkDirty(redraw);
         return;
@@ -350,12 +437,14 @@ public abstract class BlockEntityMachineTool
         remaining
       );
       _joules += credit;
-      changed |= credit > 0d;
+      cutting = credit > 0d;
+      changed |= cutting;
       if (credit >= remaining) {
         Complete(job!);
         changed = true;
       }
     }
+    changed |= SetCutting(cutting);
     if (changed)
       MarkDirty(redraw);
   }
@@ -379,7 +468,9 @@ public abstract class BlockEntityMachineTool
     if (MachineToolWear.Apply(Inventory[ToolSlot], job.Wear) is { } spent)
       PutInChips(spent);
     _piece = result.Collectible.Code.ToString();
-    _step = CurrentJob().Step?.Step;
+    (MachiningJob? next, MachineKindStep? nextStep) = CurrentJob();
+    _step = nextStep?.Step;
+    _fixture = next?.Fixture;
     _joules = 0d;
   }
 
@@ -434,14 +525,14 @@ public abstract class BlockEntityMachineTool
   public IReadOnlyList<string> WorkedAt(string code) =>
     [
       .. Jobs.StepsFor(code)
-        .Select(step => (Step: step, Job: Jobs.Job(step, code)))
-        .Where(x => x.Job is not null)
-        .Select(x =>
+        .Select(step =>
           (
-            x.Step,
+            Step: step,
             Kinds: Kinds
-              .Offering(x.Step)
-              .Where(k => MachineCut.OffersTo(x.Job!, k))
+              .Offering(step)
+              .Where(k =>
+                Jobs.JobsFor(step, code).Any(j => MachineCut.OffersTo(j, k))
+              )
               .ToList()
           )
         )
@@ -499,8 +590,8 @@ public abstract class BlockEntityMachineTool
       MachineCutVerdict.ChipsFull => Lang.Get("exlib:machine-tool-info-chips"),
       MachineCutVerdict.NoDrive => Lang.Get("exlib:machine-tool-info-nodrive"),
       _ => Lang.Get(
-        _running
-          ? "exlib:machine-tool-info-cutting"
+        _running ? "exlib:machine-tool-info-cutting"
+          : kind.Feed == MachineFeed.Held ? "exlib:machine-tool-info-held"
           : "exlib:machine-tool-info-stopped",
         NameOf("exlib:machine-step-", step.Step),
         (int)(Progress * 100d)

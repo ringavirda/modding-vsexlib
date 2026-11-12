@@ -6,8 +6,9 @@ using ExpandedLib.Catalogues;
 namespace ExpandedLib.Industry.Machining;
 
 /// <summary>
-/// The merged catalogue of machining jobs, keyed by step and input. A second job on one (step, input)
-/// with a different output or count is reported and the first stands. World-free; runs headless.
+/// The merged catalogue of machining jobs, keyed by step, input and fixture. A second job on one (step, input)
+/// that names the same fixture, or when either names none, with a different output or count is reported and the
+/// first stands. World-free; runs headless.
 /// </summary>
 public sealed class MachiningJobRegistry {
   /// <summary>The process-wide catalogue, repopulated at <c>AssetsFinalize</c>.</summary>
@@ -27,14 +28,24 @@ public sealed class MachiningJobRegistry {
   private readonly List<MachiningJob> _jobs = [];
 
   /// <summary>
-  /// Merges <paramref name="set"/>. Returns one human-readable message per job whose (step, input)
-  /// another job already claims with a different output or count; an identical redeclaration is a no-op.
+  /// Merges <paramref name="set"/>. Returns one human-readable message per job whose (step, input) another
+  /// job already claims, with the same fixture or with either fixture-less, and a different output or count;
+  /// an identical redeclaration is a no-op. Jobs on one (step, input) with different fixtures all stand.
   /// </summary>
   public IReadOnlyList<string> Contribute(MachiningJobSet set) {
     var conflicts = new List<string>();
     foreach (MachiningJob job in set.Jobs) {
       MachiningJob? held = _jobs.FirstOrDefault(j =>
         j.Matches(job.Step, job.Input)
+        && (
+          j.Fixture is null
+          || job.Fixture is null
+          || string.Equals(
+            j.Fixture,
+            job.Fixture,
+            StringComparison.OrdinalIgnoreCase
+          )
+        )
       );
       if (held != null) {
         if (
@@ -66,11 +77,39 @@ public sealed class MachiningJobRegistry {
         ),
       ];
 
-  /// <summary>The job for <paramref name="input"/> at <paramref name="step"/>, or null.</summary>
-  public MachiningJob? Job(string? step, string? input) =>
+  /// <summary>The job for <paramref name="input"/> at <paramref name="step"/> under the laid
+  /// <paramref name="fixture"/>: the job whose fixture is that item, else the input's fixture-less job.</summary>
+  /// <param name="step">The step.</param>
+  /// <param name="input">Item code of the piece.</param>
+  /// <param name="fixture">Item code of the laid fixture, or null when none is laid.</param>
+  /// <returns>The job, or null when none fits, including when every job on the input needs a fixture that is not laid.</returns>
+  public MachiningJob? Job(string? step, string? input, string? fixture = null) {
+    if (step is null || input is null)
+      return null;
+    MachiningJob? bare = null;
+    foreach (MachiningJob job in JobsFor(step, input)) {
+      if (job.Fixture is null)
+        bare ??= job;
+      else if (
+        fixture is not null
+        && string.Equals(
+          job.Fixture,
+          fixture,
+          StringComparison.OrdinalIgnoreCase
+        )
+      )
+        return job;
+    }
+    return bare;
+  }
+
+  /// <summary>Every job for <paramref name="input"/> at <paramref name="step"/>, whatever its fixture, in declaration order.</summary>
+  /// <param name="step">The step.</param>
+  /// <param name="input">Item code of the piece.</param>
+  public IReadOnlyList<MachiningJob> JobsFor(string? step, string? input) =>
     step is null || input is null
-      ? null
-      : _jobs.FirstOrDefault(j => j.Matches(step, input));
+      ? []
+      : [.. _jobs.Where(j => j.Matches(step, input))];
 
   /// <summary>The steps that have a job for <paramref name="input"/>, in declaration order.</summary>
   public IReadOnlyList<string> StepsFor(string? input) =>

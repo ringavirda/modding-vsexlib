@@ -38,6 +38,51 @@ public class MachineKindLoaderTests {
   private static string Bad(string kindBody) =>
     $$"""{ "schema": 1, "kinds": [ { "code": "test:m", "ratedSpeed": 4, {{kindBody}} } ] }""";
 
+  private static string Feeding(string feed) =>
+    $$"""
+      { "schema": 1, "kinds": [ { "code": "test:m", "ratedSpeed": 4, "feed": "{{feed}}",
+        "steps": { "turn": { "motion": "rotary", "power": 1, "tooling": "cutter" } } } ] }
+      """;
+
+  // Fails when a kind that names no feed reads as self-fed.
+  [Fact]
+  public void Feed_defaults_to_held() {
+    Assert.True(Registry(Lathe).TryGet("test:lathe", out MachineKind? kind));
+
+    Assert.Equal(MachineFeed.Held, kind!.Feed);
+  }
+
+  // Fails when the feed word is not read.
+  [Fact]
+  public void A_feed_of_self_is_read() {
+    Assert.True(
+      Registry(Feeding("self")).TryGet("test:m", out MachineKind? kind)
+    );
+
+    Assert.Equal(MachineFeed.Self, kind!.Feed);
+  }
+
+  // Fails when an unknown feed word reads as self or passes without a message.
+  [Fact]
+  public void An_unknown_feed_word_reads_as_held_and_is_logged() {
+    var registry = new MachineKindRegistry();
+    var files = new[] { ("test:config/machinekinds/f.json", Feeding("belt")) };
+
+    var errors = MachineKindLoader.Load(files, registry);
+
+    Assert.True(registry.TryGet("test:m", out MachineKind? kind));
+    Assert.Equal(MachineFeed.Held, kind!.Feed);
+    Assert.Contains("'belt'", Assert.Single(errors));
+  }
+
+  // Fails when two kinds that differ only in feed compare the same.
+  [Fact]
+  public void Kinds_that_differ_only_in_feed_are_not_the_same_kind() {
+    Registry(Feeding("self")).TryGet("test:m", out MachineKind? self);
+
+    Assert.False(self!.SameAs(self with { Feed = MachineFeed.Held }));
+  }
+
   // Fails when the kinds' steps are sorted by name after load: turn, bore, plane is not alphabetical.
   [Fact]
   public void A_kinds_steps_keep_their_declaration_order() {
