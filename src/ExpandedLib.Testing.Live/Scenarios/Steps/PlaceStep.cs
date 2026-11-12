@@ -70,6 +70,7 @@ internal sealed class PlaceStep : ScenarioStep {
     Block block = ctx.BlockOf(code);
     BlockPos local = ctx.Position(step, o["at"], "at");
     List<BlockPos> cells = Put(ctx, block, code, local);
+    ctx.Player?.RaisePlacedInBeltPath(ctx.Setup.Absolute(local));
     if (step.Id != null)
       ctx.Setup.Place(
         step.Id,

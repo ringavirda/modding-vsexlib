@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using ExpandedLib.Blocks;
+using ExpandedLib.Industry.MechanicalPower;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -214,6 +215,20 @@ internal sealed class ScenarioPlayer : IHandRelease {
         out failure
       );
     return made;
+  }
+
+  /// <summary>Raises the placed-block event for a block the world set at <paramref name="at"/>, when a strung
+  /// belt claims the cell, as the game does for a block a player places there.</summary>
+  /// <param name="at">The absolute cell.</param>
+  public void RaisePlacedInBeltPath(BlockPos at) {
+    if (BeltPaths.Of(_server.Api)?.OwnerAt(at) == null)
+      return;
+    _server.EventManager.TriggerDidPlaceBlock(
+      Player,
+      0,
+      new BlockSelection { Position = at.Copy() },
+      null
+    );
   }
 
   /// <summary>Puts the player in creative mode with free movement at the park cell, where it neither
