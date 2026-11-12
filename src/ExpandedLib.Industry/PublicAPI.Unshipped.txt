@@ -251,6 +251,7 @@ ExpandedLib.Industry.Forming.StockFormSet.Schema.get -> int
 ExpandedLib.Industry.Forming.StockFormSet.Schema.init -> void
 ExpandedLib.Industry.Forming.StockFormSet.StockFormSet(int Schema, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.StockForm!>! Forms, System.Collections.Generic.IReadOnlyList<ExpandedLib.Industry.Forming.FeedstockEntry!>! Feedstock) -> void
 ExpandedLib.Industry.Heat.HeatCooling
+ExpandedLib.Industry.Heat.HeatFlow
 ExpandedLib.Industry.Machining.CutMotion
 ExpandedLib.Industry.Machining.CutMotion.Reciprocating = 1 -> ExpandedLib.Industry.Machining.CutMotion
 ExpandedLib.Industry.Machining.CutMotion.Rotary = 0 -> ExpandedLib.Industry.Machining.CutMotion
@@ -744,6 +745,10 @@ static ExpandedLib.Industry.Forming.StockForm.SpreadWidth(float startWidth, floa
 static ExpandedLib.Industry.Forming.StockFormRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
 static ExpandedLib.Industry.Forming.StockFormRegistry.Shared.get -> ExpandedLib.Industry.Forming.StockFormRegistry!
 static ExpandedLib.Industry.Heat.HeatCooling.Cool(float temperature, float ambient, float ratePerHour, double hours) -> float
+static ExpandedLib.Industry.Heat.HeatFlow.Approach(double t, double target, double c, double g, double hours) -> double
+static ExpandedLib.Industry.Heat.HeatFlow.BurnUnits(double fireKw, double hours, double burnSeconds, double kjPerBurnSecond) -> double
+static ExpandedLib.Industry.Heat.HeatFlow.CoolingSpeed(double speedAt100, double units) -> double
+static ExpandedLib.Industry.Heat.HeatFlow.FireConductance(double fireKw, double settled, double ambient) -> double
 static ExpandedLib.Industry.Helpers.ExParticles.MetalSparks(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.Vec3d! pos, float temperatureC) -> void
 static ExpandedLib.Industry.Helpers.ExParticles.Spawn(Vintagestory.API.Common.IWorldAccessor! world, int color, Vintagestory.API.MathTools.Vec3d! minPos, Vintagestory.API.MathTools.Vec3d! maxPos, Vintagestory.API.MathTools.Vec3f! minVelocity, Vintagestory.API.MathTools.Vec3f! maxVelocity, float minQuantity, float maxQuantity, float lifeLength, float gravityEffect, float minSize, float maxSize, Vintagestory.API.Common.EnumParticleModel model, Vintagestory.API.MathTools.EvolvingNatFloat? opacityEvolve, Vintagestory.API.MathTools.EvolvingNatFloat? sizeEvolve, bool shouldDieInLiquid, byte vertexFlags) -> void
 static ExpandedLib.Industry.Machining.CuttingMaterialRegistry.Contributors.get -> ExpandedLib.Catalogues.CatalogueContributors!
