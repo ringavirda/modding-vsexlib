@@ -42,6 +42,9 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
   [Persist("cc_pressed")]
   private int _pressed;
 
+  [Persist("cc_cores")]
+  private int _cores;
+
   [Persist("cc_coldbatches")]
   private int _coldBatches;
 
@@ -95,6 +98,27 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
       return _spec;
     }
   }
+
+  /// <summary>Pieces whose core is seated, in pressing order; 0 when the impression's spec names no core.</summary>
+  public int Cores =>
+    Spec is { Core: not null } ? Math.Min(_cores, Pressed) : 0;
+
+  /// <summary>Seats the core of the first bedded piece that has none.</summary>
+  /// <returns>True when a core was seated. False on a client, with no impression, when its spec names no core, or when every bedded piece is cored.</returns>
+  protected internal bool SeatCore() {
+    if (
+      Api?.Side != EnumAppSide.Server
+      || Spec is not { Core: not null }
+      || _cores >= Pressed
+    )
+      return false;
+    _cores++;
+    MarkDirty(true);
+    return true;
+  }
+
+  // The first piece index past the cored ones; no limit when the spec names no core.
+  private int CoredLimit => Spec is { Core: not null } ? _cores : int.MaxValue;
 
   private bool ClosedImpression => Spec?.Mould == MouldKind.Closed;
 
@@ -629,6 +653,7 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     _patternCode = null;
     _spec = null;
     _pressed = 0;
+    _cores = 0;
     _coldBatches = 0;
     _feedGap = 0f;
     _fillTemperature = null;
@@ -649,7 +674,8 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
       cell.CellAmount,
       spec.UnitsPerPiece,
       Batches(spec),
-      _coldBatches
+      _coldBatches,
+      CoredLimit
     );
 
     if (yield.Parts > 0) {
@@ -822,7 +848,7 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
         && ExMeshCache.GetOrCreate(
           capi,
           Block,
-          SandStationLogic.FillingMeshKey(shapeRef, Pressed),
+          SandStationLogic.FillingMeshKey(shapeRef, Pressed, CoredLimit),
           () => BuildFillingMesh(capi, tesselator, shapeRef)
         )
           is { } mesh
@@ -858,7 +884,8 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
 
     tesselator.TesselateShape(
       "sandstation-filling",
-      prune?.Invoke(shape) ?? SandStationLogic.PrunedToPressed(shape, Pressed),
+      prune?.Invoke(shape)
+        ?? SandStationLogic.PrunedToPressed(shape, Pressed, CoredLimit),
       out MeshData mesh,
       capi.Tesselator.GetTextureSource(Block)
     );

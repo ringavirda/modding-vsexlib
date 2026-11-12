@@ -217,12 +217,14 @@ public static class SandStationLogic {
   /// <param name="unitsPerPiece">Units one piece holds.</param>
   /// <param name="batches">The fill order from <see cref="FillBatches"/>.</param>
   /// <param name="coldShutBatches">Bit <c>i</c> set marks batch <c>i</c> cold-shut (see <see cref="ColdShut"/>); its pieces are scrap though full; at most 31 batches.</param>
+  /// <param name="coredPieces">Pieces with index below this are cored; a full piece at or past it casts solid and is scrap. All pieces by default.</param>
   public static SandStationYield YieldOf(
     bool misrun,
     int amount,
     int unitsPerPiece,
     IReadOnlyList<int[]> batches,
-    int coldShutBatches = 0
+    int coldShutBatches = 0,
+    int coredPieces = int.MaxValue
   ) {
     if (misrun)
       return new SandStationYield(0, amount);
@@ -233,7 +235,7 @@ public static class SandStationLogic {
       if (left < need)
         break;
       if ((coldShutBatches & (1 << i)) == 0)
-        parts += batches[i].Length;
+        parts += batches[i].Count(piece => piece < coredPieces);
       left -= need;
     }
     return new SandStationYield(parts, amount - parts * unitsPerPiece);
@@ -330,16 +332,27 @@ public static class SandStationLogic {
       _ => null,
     };
 
-  /// <summary>The mesh-cache key of a filling drawn with <paramref name="pressed"/> pieces bedded.</summary>
-  public static string FillingMeshKey(string shapeRef, int pressed) =>
-    $"{shapeRef}|{pressed}";
+  /// <summary>The mesh-cache key of a filling drawn with <paramref name="pressed"/> pieces bedded and <paramref name="coredPieces"/> of them cored.</summary>
+  public static string FillingMeshKey(
+    string shapeRef,
+    int pressed,
+    int coredPieces = int.MaxValue
+  ) =>
+    coredPieces >= pressed
+      ? $"{shapeRef}|{pressed}"
+      : $"{shapeRef}|{pressed}|{coredPieces}";
 
   private static readonly Regex PieceGroup = new(@"^Piece(\d+)$");
 
   /// <summary>The filling shape showing only the pressed pieces: of each top-level group <c>Piece&lt;k&gt;</c>, the <c>Bedded</c> child when <c>k</c> is at most <paramref name="pressed"/> and every other child (<c>Level</c> with its split parts) when not. Elements outside the groups stay; a shape without groups is returned as it is.</summary>
   /// <param name="shape">The loaded filling shape; not modified.</param>
   /// <param name="pressed">Pieces bedded into the impression so far.</param>
-  public static Shape PrunedToPressed(Shape shape, int pressed) {
+  /// <param name="coredPieces">Pieces with index below this have their core seated; the <c>Core&lt;k&gt;</c> group of the <c>Bedded</c> child of each other pressed piece is left out. All pieces by default.</param>
+  public static Shape PrunedToPressed(
+    Shape shape,
+    int pressed,
+    int coredPieces = int.MaxValue
+  ) {
     var keep = new List<string>();
     bool grouped = false;
     foreach (ShapeElement el in shape.Elements ?? []) {
@@ -355,6 +368,14 @@ public static class SandStationLogic {
         if ((child.Name == "Bedded") == bedded)
           keep.Add(name + "/" + child.Name);
     }
-    return grouped ? ExShapeElements.Pruned(shape, keep) : shape;
+    if (!grouped)
+      return shape;
+    Shape pruned = ExShapeElements.Pruned(shape, keep);
+    if (coredPieces >= pressed)
+      return pruned;
+    var uncored = new List<string>();
+    for (int k = coredPieces + 1; k <= pressed; k++)
+      uncored.Add($"Piece{k}/Bedded/Core{k}");
+    return ExShapeElements.Without(pruned, uncored);
   }
 }

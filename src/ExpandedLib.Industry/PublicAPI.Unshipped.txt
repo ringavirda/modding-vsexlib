@@ -72,6 +72,7 @@ ExpandedLib.Industry.Casting.BlockEntitySandStation.BeginFill(Vintagestory.API.M
 ExpandedLib.Industry.Casting.BlockEntitySandStation.BlockEntitySandStation() -> void
 ExpandedLib.Industry.Casting.BlockEntitySandStation.CanReceive(Vintagestory.API.Common.ItemStack! metal) -> bool
 ExpandedLib.Industry.Casting.BlockEntitySandStation.CanReceiveAny.get -> bool
+ExpandedLib.Industry.Casting.BlockEntitySandStation.Cores.get -> int
 ExpandedLib.Industry.Casting.BlockEntitySandStation.HasImpression.get -> bool
 ExpandedLib.Industry.Casting.BlockEntitySandStation.Kind.get -> ExpandedLib.Industry.Casting.CastingStationKind?
 ExpandedLib.Industry.Casting.BlockEntitySandStation.OnInteract(Vintagestory.API.Common.IPlayer! byPlayer) -> bool
@@ -134,11 +135,13 @@ ExpandedLib.Industry.Casting.MoldSpec.Capacity.get -> int
 ExpandedLib.Industry.Casting.MoldSpec.Capacity.init -> void
 ExpandedLib.Industry.Casting.MoldSpec.Cavity.get -> Vintagestory.API.MathTools.Cuboidf![]!
 ExpandedLib.Industry.Casting.MoldSpec.Cavity.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.Core.get -> string?
+ExpandedLib.Industry.Casting.MoldSpec.Core.init -> void
 ExpandedLib.Industry.Casting.MoldSpec.Fill.get -> ExpandedLib.Industry.Casting.FillOrder
 ExpandedLib.Industry.Casting.MoldSpec.Fill.init -> void
 ExpandedLib.Industry.Casting.MoldSpec.MinPourTemp.get -> float
 ExpandedLib.Industry.Casting.MoldSpec.MinPourTemp.init -> void
-ExpandedLib.Industry.Casting.MoldSpec.MoldSpec(int Schema, string! Station, string! Shape, int Pieces, int Capacity, Vintagestory.API.MathTools.Cuboidf![]! Cavity, ExpandedLib.Industry.Casting.FillOrder Fill, Vintagestory.API.Common.JsonItemStack! Output, float MinPourTemp, ExpandedLib.Industry.Casting.MouldKind Mould = ExpandedLib.Industry.Casting.MouldKind.Open, int Share = 0) -> void
+ExpandedLib.Industry.Casting.MoldSpec.MoldSpec(int Schema, string! Station, string! Shape, int Pieces, int Capacity, Vintagestory.API.MathTools.Cuboidf![]! Cavity, ExpandedLib.Industry.Casting.FillOrder Fill, Vintagestory.API.Common.JsonItemStack! Output, float MinPourTemp, ExpandedLib.Industry.Casting.MouldKind Mould = ExpandedLib.Industry.Casting.MouldKind.Open, int Share = 0, string? Core = null) -> void
 ExpandedLib.Industry.Casting.MoldSpec.Mould.get -> ExpandedLib.Industry.Casting.MouldKind
 ExpandedLib.Industry.Casting.MoldSpec.Mould.init -> void
 ExpandedLib.Industry.Casting.MoldSpec.Output.get -> Vintagestory.API.Common.JsonItemStack!
@@ -177,15 +180,15 @@ static ExpandedLib.Industry.Casting.SandStationLogic.CanIntake(bool hasImpressio
 static ExpandedLib.Industry.Casting.SandStationLogic.ColdShut(int coldShutBatches, float stoppedSeconds, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> int
 static ExpandedLib.Industry.Casting.SandStationLogic.Decide(bool holdingSand, bool holdingPattern, bool emptyHand, ExpandedLib.Industry.Casting.SandStationLevel sand, bool hasImpression, bool hasMetal, bool isHardened, bool closedImpression = false) -> ExpandedLib.Industry.Casting.SandStationAction
 static ExpandedLib.Industry.Casting.SandStationLogic.FillBatches(ExpandedLib.Industry.Casting.FillOrder order, int pieces, int pressed) -> System.Collections.Generic.IReadOnlyList<int[]!>!
-static ExpandedLib.Industry.Casting.SandStationLogic.FillingMeshKey(string! shapeRef, int pressed) -> string!
+static ExpandedLib.Industry.Casting.SandStationLogic.FillingMeshKey(string! shapeRef, int pressed, int coredPieces = 2147483647) -> string!
 static ExpandedLib.Industry.Casting.SandStationLogic.FillingShape(ExpandedLib.Industry.Casting.CastingStationKind! kind, ExpandedLib.Industry.Casting.SandStationLevel sand, bool hasImpression, string? impressionShape, bool closedImpression = false) -> string?
 static ExpandedLib.Industry.Casting.SandStationLogic.HeadStands(ExpandedLib.Industry.Casting.MoldSpec? spec, int pressed, float amount) -> bool
 static ExpandedLib.Industry.Casting.SandStationLogic.IsMisrun(float? pourTemp, float minPourTemp) -> bool
 static ExpandedLib.Industry.Casting.SandStationLogic.PieceFills(int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches) -> int[]!
 static ExpandedLib.Industry.Casting.SandStationLogic.Press(string! impressedCode, string! heldCode, int pressed, int pieces) -> ExpandedLib.Industry.Casting.SandStationPressOutcome
-static ExpandedLib.Industry.Casting.SandStationLogic.PrunedToPressed(Vintagestory.API.Common.Shape! shape, int pressed) -> Vintagestory.API.Common.Shape!
+static ExpandedLib.Industry.Casting.SandStationLogic.PrunedToPressed(Vintagestory.API.Common.Shape! shape, int pressed, int coredPieces = 2147483647) -> Vintagestory.API.Common.Shape!
 static ExpandedLib.Industry.Casting.SandStationLogic.SandAfterImprint(ExpandedLib.Industry.Casting.SandStationLevel sand, bool closedPattern) -> ExpandedLib.Industry.Casting.SandStationLevel
-static ExpandedLib.Industry.Casting.SandStationLogic.YieldOf(bool misrun, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches, int coldShutBatches = 0) -> ExpandedLib.Industry.Casting.SandStationYield
+static ExpandedLib.Industry.Casting.SandStationLogic.YieldOf(bool misrun, int amount, int unitsPerPiece, System.Collections.Generic.IReadOnlyList<int[]!>! batches, int coldShutBatches = 0, int coredPieces = 2147483647) -> ExpandedLib.Industry.Casting.SandStationYield
 ExpandedLib.Industry.Casting.SandStationPressOutcome
 ExpandedLib.Industry.Casting.SandStationPressOutcome.Bed = 0 -> ExpandedLib.Industry.Casting.SandStationPressOutcome
 ExpandedLib.Industry.Casting.SandStationPressOutcome.Full = 1 -> ExpandedLib.Industry.Casting.SandStationPressOutcome
@@ -835,6 +838,7 @@ virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.ExtraCupBoxes.get ->
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.IntakeAllowed() -> bool
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnMetalMoved(int units, string! metal, float temperatureC) -> void
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnPulled(int accepted) -> void
+ExpandedLib.Industry.Casting.BlockEntitySandStation.SeatCore() -> bool
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnShakenOut() -> void
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnStationInteract(Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.ItemStack? held) -> bool
 virtual ExpandedLib.Industry.Casting.BlockEntitySandStation.OnStationTick(float dt) -> void
