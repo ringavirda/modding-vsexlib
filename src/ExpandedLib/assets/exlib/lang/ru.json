@@ -169,5 +169,13 @@
   "sandstation-coldshut": "Спай: подача прерывалась, части этой отливки пойдут в лом.",
   "metalstate-liquid": "жидкий",
   "fitsoneblock-toolong": "Длиннее одного блока.",
-  "metalstate-hardened": "затвердевший"
+  "metalstate-hardened": "затвердевший",
+  "handassembly-hud-head": "{0}/{1} {2}:",
+  "handassembly-hud-joins": "соединяет: {0}",
+  "handassembly-hud-nojoins": "ничего не соединяет",
+  "handassembly-hud-open": "открыто: {0}",
+  "handassembly-hud-cost": "{0} {1}, в наличии {2}",
+  "handassembly-hud-none": "Здесь ничего не подходит.",
+  "blockhelp-handassembly-step": "Следующее положение",
+  "blockhelp-handassembly-fix": "Удерживать, чтобы закрепить деталь"
 }

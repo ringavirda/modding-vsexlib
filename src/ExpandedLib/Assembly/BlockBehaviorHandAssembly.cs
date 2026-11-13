@@ -1,4 +1,5 @@
 using ExpandedLib.Registries;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
 namespace ExpandedLib.Assembling;
@@ -41,4 +42,23 @@ public class BlockBehaviorHandAssembly : BlockBehavior {
     handling = EnumHandling.PreventSubsequent;
     return placed;
   }
+
+  /// <summary>Adds the stepping and fixing gestures to the help of the held part.</summary>
+  public override WorldInteraction[] GetHeldInteractionHelp(
+    ItemSlot inSlot,
+    ref EnumHandling handling
+  ) =>
+    [
+      new WorldInteraction
+      {
+        ActionLangCode = ExlibLang.BlockhelpHandassemblyStep,
+        MouseButton = EnumMouseButton.Right,
+      },
+      new WorldInteraction
+      {
+        ActionLangCode = ExlibLang.BlockhelpHandassemblyFix,
+        MouseButton = EnumMouseButton.Right,
+        HotKeyCode = "shift",
+      },
+    ];
 }

@@ -793,6 +793,7 @@ ExpandedLib.Assembling.BEBehaviorAssembled.SetFastener(Vintagestory.API.MathTool
 ExpandedLib.Assembling.BlockBehaviorHandAssembly
 ExpandedLib.Assembling.BlockBehaviorHandAssembly.BlockBehaviorHandAssembly(Vintagestory.API.Common.Block! block) -> void
 ExpandedLib.Assembling.BlockBehaviorHandAssembly.Spec.get -> ExpandedLib.Assembling.HandAssemblySpec?
+override ExpandedLib.Assembling.BlockBehaviorHandAssembly.GetHeldInteractionHelp(Vintagestory.API.Common.ItemSlot! inSlot, ref Vintagestory.API.Common.EnumHandling handling) -> Vintagestory.API.Client.WorldInteraction![]!
 ExpandedLib.Assembling.BlockEntityAssembled
 ExpandedLib.Assembling.BlockEntityAssembled.BlockEntityAssembled() -> void
 ExpandedLib.Assembling.HandAssemblyCandidates

@@ -296,10 +296,10 @@ internal static class HandAssemblyServer {
     string? langCode = null
   ) => ItemName(world, pattern, langCode).ToLowerInvariant();
 
-  private static string FastenerName(
+  internal static string FastenerName(
     IWorldAccessor world,
     string code,
-    string? langCode
+    string? langCode = null
   ) => ItemName(world, code, langCode);
 
   private static string ItemName(
@@ -325,7 +325,7 @@ internal static class HandAssemblyServer {
       : Lang.GetMatchingL(langCode, key);
   }
 
-  private static bool HoldsTool(ItemSlot slot, string pattern) =>
+  internal static bool HoldsTool(ItemSlot slot, string pattern) =>
     slot.Itemstack?.Collectible.Code is { } code
     && WildcardUtil.Match(pattern, code.ToString());
 
