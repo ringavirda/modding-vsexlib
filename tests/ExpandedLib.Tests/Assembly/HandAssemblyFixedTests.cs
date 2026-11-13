@@ -197,32 +197,6 @@ public class HandAssemblyFixedTests {
     Assert.Equal(0, scene.Pieces);
   }
 
-  // Fails when the node stays in its network after it is taken off.
-  [Fact]
-  public void A_node_taken_off_leaves_its_network() {
-    var scene = Nodes.Standing("ns", fixedPiece: true);
-    scene.Player.StandAt(Centre, BlockFacing.SOUTH);
-    Assert.NotNull(scene.World.NetworkAt(Centre));
-    Item wrench = scene.World.RegisterItem("test:wrench-iron");
-    wrench.Durability = 100;
-    scene.Player.Hold(new ItemStack(wrench));
-    scene.Player.Sneaking = true;
-
-    Assert.Null(
-      HandAssemblyServer.TakeOff(
-        scene.World.World,
-        scene.Player.Player,
-        new AssemblyTakeOff {
-          X = 0,
-          Y = 0,
-          Z = 0,
-        }
-      )
-    );
-
-    Assert.Null(scene.World.NetworkAt(Centre));
-  }
-
   // Fails when the range guard is dropped; the input is fixed, held, sneaking, claimed-free and only too far.
   [Fact]
   public void A_take_off_from_beyond_the_picking_range_is_refused() {

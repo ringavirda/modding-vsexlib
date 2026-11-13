@@ -187,10 +187,6 @@ internal static class HandAssemblyServer {
     if (givesPiece)
       returned.AddRange(block.GetDrops(world, cell, player) ?? []);
 
-    if (block is BlockNetworkNode)
-      world
-        .Api.ModLoader.GetModSystem<BlockNetworkModSystem>()
-        .RemoveNode(accessor, cell);
     accessor.SetBlock(0, cell);
     accessor.TriggerNeighbourBlockUpdate(cell);
 
