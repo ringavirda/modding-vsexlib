@@ -1,3 +1,4 @@
+using System;
 using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Benches;
 using ExpandedLib.Industry.MechanicalPower;
@@ -11,18 +12,15 @@ using Xunit;
 
 namespace ExpandedLib.Tests.Benches;
 
-/// <summary>The mp bench base: its stroke clock against the run, the torque unit a subclass scales, and
+/// <summary>The mp bench base: its stroke counted in shaft angle against the run, the run's torque, and
 /// the persisted stroke with its legacy key.</summary>
 public class MpBenchTests {
   private sealed class TestBench : BlockEntityMpBench {
     public int Completed;
-    public float Unit = 1000f;
 
     protected override MachineSlotSpec[] SlotSpecs => [];
 
     public override string InventoryClassName => "test-mpbench";
-
-    protected override float JobTorqueNm => Unit;
 
     public override float StandingNm => 0f;
 
@@ -30,9 +28,9 @@ public class MpBenchTests {
 
     protected override void CompleteStroke() => Completed++;
 
-    public void Begin(float seconds) => BeginStroke(seconds);
+    public void Begin(float radians) => BeginStroke(radians);
 
-    public float Torque => AvailableTorque;
+    public float Torque => AvailableTorqueNm;
 
     public float Rate => Speed;
 
@@ -98,16 +96,32 @@ public class MpBenchTests {
     Assert.Equal(2f, bench.Rate, 3);
   }
 
-  // Fails when the constant 1000 replaces the JobTorqueNm property in AvailableTorque.
+  // Fails when the dt is not multiplied by the shaft speed: the stroke then takes its radians in seconds.
+  [Theory]
+  [InlineData(2f, 6.283f)]
+  [InlineData(4f, 3.142f)]
+  public void A_stroke_completes_after_its_angle_not_its_seconds(
+    float speed,
+    float seconds
+  ) {
+    var (world, bench, pos) = Bench();
+    Turn(world, pos, speed, driveNm: 0f);
+    bench.Begin(4f * MathF.PI);
+
+    float elapsed = 0f;
+    while (!bench.AdvanceStroke(0.01f))
+      elapsed += 0.01f;
+
+    Assert.InRange(elapsed, seconds - 0.02f, seconds + 0.02f);
+  }
+
+  // Fails when the run's N*m is scaled by a unit instead of read as it stands.
   [Fact]
-  public void Available_torque_is_counted_in_the_overridden_job_unit() {
+  public void Available_torque_is_the_runs_newton_metres() {
     var (world, bench, pos) = Bench();
     Turn(world, pos, speed: 1f, driveNm: 4000f);
 
-    bench.Unit = 1000f;
-    Assert.Equal(4f, bench.Torque, 3);
-    bench.Unit = 500f;
-    Assert.Equal(8f, bench.Torque, 3);
+    Assert.Equal(4000f, bench.Torque, 3);
   }
 
   [Fact]

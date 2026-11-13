@@ -9,8 +9,8 @@ namespace ExpandedLib.Industry.Benches;
 
 /// <summary>
 /// What every mechanical-energy bench has in common: a place on the mpshaft
-/// run, a stroke clock, and reads that turn the live run into a speed and a torque. A stroke is
-/// one bite: something goes under the tooling, the clock runs it down, and the products leave.
+/// run, a stroke counted in shaft angle, and reads that turn the live run into a speed and a torque. A stroke is
+/// one bite: something goes under the tooling, the turning shaft runs it down, and the products leave.
 /// </summary>
 public abstract class BlockEntityMpBench
   : BlockEntityMachineStation,
@@ -65,7 +65,7 @@ public abstract class BlockEntityMpBench
 
   #region The stroke
 
-  // Seconds of stroke left; 0 means idle, persisted across reload.
+  // Radians of input shaft left in the stroke; 0 means idle, persisted across reload.
   // The legacy key is the shear's original field name, kept as a fallback.
   [Persist(RemainingKey, Legacy = LegacyShearKey)]
   private float _remaining;
@@ -73,23 +73,25 @@ public abstract class BlockEntityMpBench
   /// <summary>Whether a stroke is under way.</summary>
   public bool IsStroking => _remaining > 0f;
 
-  /// <summary>Seconds of stroke left, for the block info readout.</summary>
+  /// <summary>Radians of input shaft left in the stroke, zero or more, for the block info readout.</summary>
   public float Remaining => _remaining;
 
-  /// <summary>Starts a stroke of <paramref name="seconds"/>; only arms the clock.</summary>
-  protected void BeginStroke(float seconds) => _remaining = seconds;
+  /// <summary>Starts a stroke of <paramref name="radians"/> of input shaft, above zero; only arms the stroke.</summary>
+  protected void BeginStroke(float radians) => _remaining = radians;
 
   /// <summary>Abandons the stroke without completing it, leaving whatever is under the tooling to the
   /// caller.</summary>
   protected void AbandonStroke() => _remaining = 0f;
 
-  /// <summary>Advances the stroke by <paramref name="dt"/> seconds; a stopped run holds the tooling in place.</summary>
+  /// <summary>Advances the stroke by the shaft's |speed| x <paramref name="dt"/> radians; a stopped run holds the
+  /// tooling in place.</summary>
+  /// <param name="dt">Seconds since the last advance, zero or more.</param>
   /// <returns>True when the stroke completed on this advance.</returns>
   public bool AdvanceStroke(float dt) {
     if (!IsStroking || Speed <= 0f)
       return false;
 
-    _remaining -= dt;
+    _remaining -= Speed * dt;
     if (_remaining > 0f) {
       MarkDirty();
       return false;
@@ -141,13 +143,8 @@ public abstract class BlockEntityMpBench
   /// <summary>Shaft speed of the run (rad/s) this tick, whichever way it turns; zero means at rest.</summary>
   protected float Speed => MathF.Abs(Run.SpeedRadS);
 
-  /// <summary>N*m in one unit of a job's <c>minTorque</c>; override to scale the unit.</summary>
-  protected virtual float JobTorqueNm => 1000f;
-
-  /// <summary>Torque the rest of the run can still deliver to the bench, in the unit of a job's
-  /// <c>minTorque</c> (<see cref="JobTorqueNm"/> N*m); zero when the run is stopped.</summary>
-  protected float AvailableTorque =>
-    Speed > 0f ? Run.AvailableTorqueNm / JobTorqueNm : 0f;
+  /// <summary>Torque in N*m the rest of the run can still deliver to the bench; zero when the run is stopped.</summary>
+  protected float AvailableTorqueNm => Speed > 0f ? Run.AvailableTorqueNm : 0f;
 
   /// <summary>Standing torque (N*m) of the bench's input shaft and fast pulley on the run.</summary>
   public abstract float StandingNm { get; }
