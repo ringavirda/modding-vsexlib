@@ -168,6 +168,8 @@ public sealed partial class TestWorld : IDisposable {
 
     _loadedChunk = Made<IWorldChunk>();
     Calendar = Made<IGameCalendar>();
+    Calendar.SpeedOfTime.Returns(60f);
+    Calendar.CalendarSpeedMul.Returns(0.5f);
     PushCalendar();
     Calendar
       .When(c => c.Add(Arg.Any<float>()))
