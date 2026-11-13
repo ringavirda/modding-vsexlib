@@ -335,6 +335,26 @@ public class HandAssemblyFixedTests {
     Assert.Equal(2, record.FastenerAt(BlockFacing.SOUTH)!.StackSize);
   }
 
+  // Fails when a pasted piece keeps the fastener records it was copied with, or loses its fixed flag.
+  [Fact]
+  public void A_pasted_piece_keeps_its_fixed_flag_and_no_fasteners() {
+    var scene = TwoPieces();
+    Assert.NotNull(scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH));
+
+    scene
+      .RecordAt(North)
+      .Blockentity.OnLoadCollectibleMappings(
+        scene.World.World,
+        [],
+        [],
+        0,
+        true
+      );
+
+    Assert.True(scene.RecordAt(North).Fixed);
+    Assert.Null(scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH));
+  }
+
   #endregion
 
   #region Weeping pipes

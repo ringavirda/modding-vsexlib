@@ -78,6 +78,24 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
     }
   }
 
+  /// <summary>Clears the fastener records of a part a schematic or a paste brings in, and keeps <see cref="Fixed"/>: nothing was spent on its joints.</summary>
+  public override void OnLoadCollectibleMappings(
+    IWorldAccessor worldForNewMappings,
+    Dictionary<int, AssetLocation> oldBlockIdMapping,
+    Dictionary<int, AssetLocation> oldItemIdMapping,
+    int schematicSeed,
+    bool resolveImports
+  ) {
+    base.OnLoadCollectibleMappings(
+      worldForNewMappings,
+      oldBlockIdMapping,
+      oldItemIdMapping,
+      schematicSeed,
+      resolveImports
+    );
+    _fasteners.Clear();
+  }
+
   private static IEnumerable<string> FaceKeys() {
     yield return JointKey;
     foreach (BlockFacing face in BlockFacing.ALLFACES)
