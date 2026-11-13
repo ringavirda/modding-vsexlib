@@ -367,22 +367,20 @@ internal static class HandAssemblyServer {
     if (record == null)
       return;
     record.Fixed = true;
+    if (spent != null) {
+      if (candidate.Block is not BlockNetworkNode)
+        record.Joint = spent;
+      else
+        foreach (
+          BlockFacing arm in candidate.Arms.Where(a =>
+            !candidate.OpenArms.Contains(a)
+          )
+        ) {
+          ItemStack joint = spent.Clone();
+          joint.StackSize = spec.PerJoint;
+          record.SetFastener(arm, joint);
+        }
+    }
     record.Blockentity.MarkDirty();
-    if (spent == null)
-      return;
-
-    if (candidate.Block is not BlockNetworkNode) {
-      record.Joint = spent;
-      return;
-    }
-    foreach (
-      BlockFacing arm in candidate.Arms.Where(a =>
-        !candidate.OpenArms.Contains(a)
-      )
-    ) {
-      ItemStack joint = spent.Clone();
-      joint.StackSize = spec.PerJoint;
-      record.SetFastener(arm, joint);
-    }
   }
 }
