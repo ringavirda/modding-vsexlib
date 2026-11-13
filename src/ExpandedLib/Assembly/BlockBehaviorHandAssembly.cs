@@ -3,7 +3,7 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>Marks a block as placed only by hand assembly; the def's <c>handAssembly</c> attribute carries the tool and fasteners. Declared first among a def's behaviours by <see cref="Definitions.ExBlockDef.HandAssembly"/>.</summary>
+/// <summary>Marks a block as placed only by hand assembly; the def's <c>handAssembly</c> attribute carries the tool and fasteners. Declared first among a def's behaviours by <see cref="Definitions.ExBlockDef.HandAssembly"/>. A block class that overrides <c>TryPlaceBlock</c> calls <see cref="TryPlaceBlock"/> first and returns its result when <c>handling</c> is not <see cref="EnumHandling.PassThrough"/>.</summary>
 [BlockBehaviorRegister("HandAssembly", PrefixModId = false)]
 public class BlockBehaviorHandAssembly : BlockBehavior {
   /// <summary>Creates the behaviour for <paramref name="block"/>.</summary>
