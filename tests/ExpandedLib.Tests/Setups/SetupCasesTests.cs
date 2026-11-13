@@ -541,10 +541,7 @@ public class SetupCasesTests : IDisposable
   [Fact]
   public void A_passing_variant_skips_the_pack_end_check()
   {
-    Write(
-      "c.json",
-      WithEnds(SetupCaseTests.Cases("\"low\": {}", Pair()))
-    );
+    Write("c.json", WithEnds(SetupCaseTests.Cases("\"low\": {}", Pair())));
 
     SetupCases.Run(Row("cases/low"), Options());
   }
