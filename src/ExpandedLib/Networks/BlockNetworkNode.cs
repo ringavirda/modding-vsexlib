@@ -565,6 +565,9 @@ public abstract class BlockNetworkNode
   ) => false;
 
   /// <summary>Whether the piece at <paramref name="pos"/> is cracked beyond re-making, so taking it off returns its fasteners and not the piece; false by default.</summary>
+  /// <param name="world">The server world.</param>
+  /// <param name="pos">The piece's position.</param>
+  /// <returns>True when taking the piece off returns only its fasteners.</returns>
   protected internal virtual bool IsCrackedAt(
     IWorldAccessor world,
     BlockPos pos
