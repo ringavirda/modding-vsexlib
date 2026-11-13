@@ -115,6 +115,76 @@ public class FillerWrenchTests {
     );
   }
 
+#if GAME_GE_1_22
+  // Fails when the filler answers no bellows receiver, or hands the principal another cell or face
+  // than the one the bellows blew on.
+  [Fact]
+  public void A_bellows_on_a_filler_blows_the_principal_with_the_filler_cell_and_face()
+  {
+    var furnace = new Furnace();
+    TestWorld world = NewWorld(furnace);
+
+    world
+      .GetBlock(EastCell)
+      .GetInterface<IBellowsAirReceiver>(world.World, EastCell)!
+      .BlowAirInto(world.World, EastCell, 0.2f, BlockFacing.WEST);
+
+    Assert.Equal(EastCell, furnace.BlownAt);
+    Assert.Equal(BlockFacing.WEST, furnace.BlownFrom);
+  }
+
+  // Fails when a filler of a principal that is no bellows receiver answers one anyway.
+  [Fact]
+  public void A_filler_of_a_principal_that_is_no_receiver_answers_no_bellows()
+  {
+    TestWorld world = NewWorld(new Block());
+
+    Assert.Null(
+      world
+        .GetBlock(EastCell)
+        .GetInterface<IBellowsAirReceiver>(world.World, EastCell)
+    );
+  }
+
+  // Fails when a filler that names no principal, or whose principal is gone, answers a bellows.
+  [Fact]
+  public void An_orphaned_filler_answers_no_bellows()
+  {
+    TestWorld world = NewWorld(new Furnace());
+    BlockPos unlinked = EastCell.EastCopy();
+    world.Place(unlinked, world.Filler, new BlockEntityStructureFiller());
+    world.Accessor.SetBlock(0, PrincipalPos);
+
+    Assert.Null(
+      world
+        .GetBlock(unlinked)
+        .GetInterface<IBellowsAirReceiver>(world.World, unlinked)
+    );
+    Assert.Null(
+      world
+        .GetBlock(EastCell)
+        .GetInterface<IBellowsAirReceiver>(world.World, EastCell)
+    );
+  }
+
+  private sealed class Furnace : Block, IBellowsAirReceiver
+  {
+    public BlockPos? BlownAt;
+    public BlockFacing? BlownFrom;
+
+    public void BlowAirInto(
+      IWorldAccessor world,
+      BlockPos pos,
+      float amount,
+      BlockFacing direction
+    )
+    {
+      BlownAt = pos.Copy();
+      BlownFrom = direction;
+    }
+  }
+#endif
+
   private static TestWorld NewWorld(Block principal) {
     var world = new TestWorld();
     TestBlocks.Configure(principal, "test:principal", 71);

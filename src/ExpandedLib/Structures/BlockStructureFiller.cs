@@ -304,11 +304,10 @@ public partial class BlockStructureFiller
       pb.OnBlockInteractStop(secondsUsed, world, byPlayer, psel);
   }
 
-  /// <summary>Answers a wrench (<see cref="IWrenchOrientable"/>) and a flame (<see cref="IIgnitable"/>)
-  /// with the principal's, run at the principal's cell, so either on any cell acts on the whole
-  /// structure; null for an orphaned cell or a principal without the interface. Every other
-  /// interface is answered as <see cref="Block.GetInterface{T}"/> answers it. On 1.22 the filler
-  /// always answers <see cref="ICustomSelectionBoxRender"/>.</summary>
+  /// <summary>Answers a wrench (<see cref="IWrenchOrientable"/>), a flame (<see cref="IIgnitable"/>) and,
+  /// on 1.22, a bellows (<see cref="IBellowsAirReceiver"/>) with the principal's, null for an orphaned
+  /// cell or a principal without it. Wrench and flame run at the principal's cell; the bellows
+  /// receiver is the principal's own, called with the filler's position and the bellows' facing.</summary>
   public override T GetInterface<T>(IWorldAccessor world, BlockPos pos) {
     if (
       typeof(T) == typeof(IWrenchOrientable)
@@ -324,6 +323,15 @@ public partial class BlockStructureFiller
       && pb.GetInterface<IIgnitable>(world, pp) is { } ignitable
     )
       return (T)(object)new PrincipalIgnitable(ignitable, pp);
+#if GAME_GE_1_22
+    if (
+      typeof(T) == typeof(IBellowsAirReceiver)
+      && pos != null
+      && TryGetPrincipal(world, pos, out pp, out pb)
+      && pb.GetInterface<IBellowsAirReceiver>(world, pp) is { } receiver
+    )
+      return (T)receiver;
+#endif
     return base.GetInterface<T>(world, pos);
   }
 
