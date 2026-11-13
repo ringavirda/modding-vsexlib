@@ -78,7 +78,10 @@ public sealed partial class SetupScene : IDisposable
   private readonly Dictionary<BlockPos, HashSet<long>> _listeners = [];
   private readonly HashSet<int> _ready = [];
   private readonly List<string> _standIns = [];
-  private readonly Dictionary<BlockPos, string> _raised = [];
+  private readonly Dictionary<
+    BlockPos,
+    (string Wanted, string First)
+  > _raised = [];
   private HashSet<long> _lineListeners = [];
   private readonly SetupConfig _config;
   private readonly bool _borrowed;
@@ -142,9 +145,12 @@ public sealed partial class SetupScene : IDisposable
 
   internal IReadOnlyDictionary<string, SetupPlacement> Placements => _placed;
 
-  /// <summary>The code each cell a multiblock's completion filled was wanted under, wildcards
-  /// kept.</summary>
-  internal IReadOnlyDictionary<BlockPos, string> Raised => _raised;
+  /// <summary>For each cell a multiblock's completion filled, the code its layout wants there as
+  /// authored and that code with every alternation reduced to its first branch.</summary>
+  internal IReadOnlyDictionary<
+    BlockPos,
+    (string Wanted, string First)
+  > Raised => _raised;
 
   /// <summary>Builds <paramref name="file"/> into a fresh world.</summary>
   /// <param name="file">The validated file.</param>
@@ -573,7 +579,10 @@ public sealed partial class SetupScene : IDisposable
       foreach (var (at, raised) in rig.Raised)
       {
         _laid.Add((at.X, at.Y, at.Z));
-        _raised[at.Copy()] = raised;
+        _raised[at.Copy()] = (
+          rig.Cells.First(c => c.Pos.Equals(at)).Wanted,
+          raised
+        );
         if (!carried)
           DrawBlock(where, raised, at, Describe(pos));
       }

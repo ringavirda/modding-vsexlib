@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using ExpandedLib.Helpers;
 using ExpandedLib.Industry.MechanicalPower;
@@ -38,22 +39,31 @@ internal static class SetupSceneDump
 
   /// <summary>The code the scene file names for <paramref name="cell"/>. A cell a multiblock's
   /// completion filled from a wildcard legend holds a stand-in whose code no asset has; it is named
-  /// by the lowest real block code the legend matches instead, or by the stand-in's own code when
-  /// none matches.</summary>
+  /// by the real block the legend matches instead: among those, the ones the first branch of an
+  /// alternation matches are preferred, and the lowest code in ordinal order is taken. The
+  /// stand-in's own code stands when no real block matches.</summary>
   private static string CodeOf(SetupScene scene, Cell cell)
   {
     string own = cell.Block.Code.ToString();
-    if (
-      !scene.Raised.TryGetValue(cell.At, out string? wanted)
-      || !wanted.Contains('*')
-    )
+    if (!scene.Raised.TryGetValue(cell.At, out var raised))
       return own;
 
-    return scene
-        .World.Api.World.SearchBlocks(new AssetLocation(wanted))
-        .Where(b => b.Id < StructureRig.FirstStandInId)
+    var wanted = new AssetLocation(raised.Wanted);
+    if (!wanted.Path.Contains('*') && !wanted.Path.Contains('('))
+      return own;
+
+    Block[] real =
+    [
+      .. scene
+        .World.Api.World.SearchBlocks(wanted)
+        .Where(b => b.Id < StructureRig.FirstStandInId),
+    ];
+    Regex? first = wanted.Path.StartsWith('@')
+      ? new Regex("^" + new AssetLocation(raised.First).Path + "$")
+      : null;
+    return real.OrderBy(b => first?.IsMatch(b.Code.Path) == true ? 0 : 1)
+        .ThenBy(b => b.Code.ToString(), StringComparer.Ordinal)
         .Select(b => b.Code.ToString())
-        .OrderBy(c => c, StringComparer.Ordinal)
         .FirstOrDefault()
       ?? own;
   }

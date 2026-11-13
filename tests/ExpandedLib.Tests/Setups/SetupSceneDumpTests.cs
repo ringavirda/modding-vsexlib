@@ -531,6 +531,12 @@ public class SetupSceneDumpTests : IDisposable
       w =>
       {
         w.Register(
+          TestBlocks.Configure(new Block(), "game:brickcourse-plain", 5003)
+        );
+        w.Register(
+          TestBlocks.Configure(new Block(), "game:claybricks-good-fire", 5004)
+        );
+        w.Register(
           TestBlocks.Configure(
             new Block(),
             "game:refractorybricks-good-tier2",
@@ -549,7 +555,7 @@ public class SetupSceneDumpTests : IDisposable
     using JsonDocument dump = Dump(scene);
 
     BlockPos wildcard = scene
-      .Raised.Where(r => r.Value == "game:refractorybricks-good-tier*")
+      .Raised.Where(r => r.Value.Wanted == "game:refractorybricks-good-tier*")
       .Select(r => r.Key)
       .First();
     string code = CellAt(dump, wildcard.X, wildcard.Y, wildcard.Z)
@@ -557,6 +563,17 @@ public class SetupSceneDumpTests : IDisposable
       .GetString()!;
 
     Assert.Equal("game:refractorybricks-good-tier1", code);
+
+    BlockPos alternation = scene
+      .Raised.Where(r => r.Value.Wanted.Contains("@(claybricks"))
+      .Select(r => r.Key)
+      .First();
+    Assert.Equal(
+      "game:claybricks-good-fire",
+      CellAt(dump, alternation.X, alternation.Y, alternation.Z)
+        .GetProperty("code")
+        .GetString()
+    );
   }
 
   // Fails when the dump leaves out the shape an entity draws, or writes it for a cell whose entity
