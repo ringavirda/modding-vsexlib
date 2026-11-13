@@ -128,7 +128,11 @@ internal sealed class AssembleStep : ScenarioStep {
     if (step.Id != null)
       ctx.Setup.Place(
         step.Id,
-        new SetupPlacement(local.Copy(), [local.Copy()], ctx.Setup.FrameAt(local))
+        new SetupPlacement(
+          local.Copy(),
+          [local.Copy()],
+          ctx.Setup.FrameAt(local)
+        )
       );
     report.Value =
       $"{ctx.Setup.BlockAt(local).Code} at plot {FailureDetail.Cell(local)}";

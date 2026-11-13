@@ -172,7 +172,17 @@ internal static class SetupSteps {
     ["window"] = ["at", "open", "put", "take", "press", "close"],
     ["ignite"] = ["at", "seconds"],
     ["craft"] = ["at", "output", "recipe", "times", "with"],
-    ["assemble"] = ["id", "code", "at", "face", "steps", "fails", "arms", "turn"],
+    ["assemble"] =
+    [
+      "id",
+      "code",
+      "at",
+      "face",
+      "steps",
+      "fails",
+      "arms",
+      "turn",
+    ],
     ["takeoff"] = ["at"],
   };
 

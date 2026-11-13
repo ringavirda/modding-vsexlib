@@ -179,7 +179,9 @@ public static class PlacementLaw {
     out string failure
   ) {
     failure = "";
-    Item? tool = world.World.SearchItems(new AssetLocation(spec.Tool))?.FirstOrDefault();
+    Item? tool = world
+      .World.SearchItems(new AssetLocation(spec.Tool))
+      ?.FirstOrDefault();
     Item? fastener = world.World.GetItem(new AssetLocation(spec.Fastener));
     if (tool == null || fastener == null) {
       failure = $"{(tool == null ? spec.Tool : spec.Fastener)} is not loaded";

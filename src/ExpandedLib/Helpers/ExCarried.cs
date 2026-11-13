@@ -52,7 +52,8 @@ internal static class ExCarried {
     var totals = new Dictionary<string, int>();
     foreach (ItemSlot slot in Slots(player))
       if (slot.Itemstack?.Collectible.Code is { } code)
-        totals[code.ToString()] = totals.GetValueOrDefault(code.ToString()) + slot.StackSize;
+        totals[code.ToString()] =
+          totals.GetValueOrDefault(code.ToString()) + slot.StackSize;
     return totals;
   }
 

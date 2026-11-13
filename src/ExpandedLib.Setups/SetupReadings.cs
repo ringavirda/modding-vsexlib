@@ -288,13 +288,13 @@ internal sealed class AsmReading(SetupPosition at, string what) : Reading {
     BlockPos pos = at.Resolve(ctx.World);
     BEBehaviorAssembled record =
       ctx.World.BlockEntityAt(pos)?.GetBehavior<BEBehaviorAssembled>()
-      ?? throw new SetupReadingException(
-        $"No hand assembly record at {pos}."
-      );
+      ?? throw new SetupReadingException($"No hand assembly record at {pos}.");
     return what switch {
       "fixed" => record.Fixed,
       "joint" => (float)(record.Joint?.StackSize ?? 0),
-      _ => (float)(record.FastenerAt(SetupLayout.FaceOf(what)!)?.StackSize ?? 0),
+      _ => (float)(
+        record.FastenerAt(SetupLayout.FaceOf(what)!)?.StackSize ?? 0
+      ),
     };
   }
 
@@ -663,10 +663,15 @@ internal static class SetupReadings {
       case "asm": {
         SetupJson.RefuseUnknown(node, where, "at", "asm");
         string what = SetupJson.String(node["asm"], where.In("asm"));
-        if (what is not ("fixed" or "joint") && SetupLayout.FaceOf(what) == null)
+        if (
+          what is not ("fixed" or "joint")
+          && SetupLayout.FaceOf(what) == null
+        )
           throw where
             .In("asm")
-            .Fail($"\"{what}\" is not fixed, joint or one of n, e, s, w, u, d.");
+            .Fail(
+              $"\"{what}\" is not fixed, joint or one of n, e, s, w, u, d."
+            );
         return new AsmReading(At(node, where, scope), what);
       }
       case "network": {

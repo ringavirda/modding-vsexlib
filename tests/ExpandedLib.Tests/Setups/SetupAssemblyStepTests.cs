@@ -35,7 +35,9 @@ public class SetupAssemblyStepTests {
       )
       .Read(new ReadingContext(world));
 
-  private static Scenarios.SetupTestWorld Assembled(out BEBehaviorAssembled record) {
+  private static Scenarios.SetupTestWorld Assembled(
+    out BEBehaviorAssembled record
+  ) {
     var world = new Scenarios.SetupTestWorld();
     Item bolt = world.Test.RegisterItem("test:bolt");
     var be = new BlockEntityAssembled();
@@ -66,13 +68,19 @@ public class SetupAssemblyStepTests {
       ["place", "assemble", "assemble", "expect", "takeoff"],
       scenario.Model.Steps.Select(s => s.Kind)
     );
-    Assert.All(scenario.Model.Steps, s => Assert.Null(ScenarioSteps.Refusal(s)));
+    Assert.All(
+      scenario.Model.Steps,
+      s => Assert.Null(ScenarioSteps.Refusal(s))
+    );
   }
 
   // Fails when the harness reader runs a step that needs a player, so a file with assemble passes there unseen.
   [Theory]
   [InlineData("assemble", "the fake world has no player to fix a part with")]
-  [InlineData("takeoff", "the fake world has no player to take a piece off with")]
+  [InlineData(
+    "takeoff",
+    "the fake world has no player to take a piece off with"
+  )]
   public void The_harness_reader_refuses_the_steps_that_need_a_player(
     string kind,
     string reason
@@ -137,7 +145,10 @@ public class SetupAssemblyStepTests {
   [Fact]
   public void Asm_refuses_a_word_that_names_nothing() {
     Assert.Throws<SetupFileException>(() =>
-      Read("""{ "at": [0, 0, 0], "asm": "up" }""", new Scenarios.SetupTestWorld())
+      Read(
+        """{ "at": [0, 0, 0], "asm": "up" }""",
+        new Scenarios.SetupTestWorld()
+      )
     );
   }
 }

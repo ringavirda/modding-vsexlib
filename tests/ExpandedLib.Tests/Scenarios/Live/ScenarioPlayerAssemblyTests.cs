@@ -48,15 +48,7 @@ public class ScenarioPlayerAssemblyTests {
     int id,
     string? turn = null,
     params BlockFacing[] arms
-  ) =>
-    new(
-      TestBlocks.Configure(new Block(), code, id),
-      "",
-      turn,
-      arms,
-      [],
-      0
-    );
+  ) => new(TestBlocks.Configure(new Block(), code, id), "", turn, arms, [], 0);
 
   private static HandAssemblyFixTests.Scene Scene() {
     var scene = HandAssemblyFixTests.Scene.Standing(["nes", "nw", "ns"]);
@@ -79,7 +71,10 @@ public class ScenarioPlayerAssemblyTests {
       Cell,
       BlockFacing.UP,
       ScenarioPlayer.Hit(BlockFacing.UP),
-      new AssemblyPick(Block: token == "" ? null : $"test:pipe-{token}", Steps: steps)
+      new AssemblyPick(
+        Block: token == "" ? null : $"test:pipe-{token}",
+        Steps: steps
+      )
     );
 
   // Fails when the arms filter is dropped, so the first candidate wins whatever faces it couples on.
@@ -92,7 +87,9 @@ public class ScenarioPlayerAssemblyTests {
       we,
       HandAssemblyPlay.Choose([ns, we], new AssemblyPick(Arms: "ew"))
     );
-    Assert.Null(HandAssemblyPlay.Choose([ns, we], new AssemblyPick(Arms: "ud")));
+    Assert.Null(
+      HandAssemblyPlay.Choose([ns, we], new AssemblyPick(Arms: "ud"))
+    );
   }
 
   // Fails when the turn filter is dropped, so a fitting's first turn is taken whatever the pick names.
@@ -117,8 +114,14 @@ public class ScenarioPlayerAssemblyTests {
       Candidate("t:c", 3),
     ];
 
-    Assert.Same(list[1], HandAssemblyPlay.Choose(list, new AssemblyPick(Steps: 1)));
-    Assert.Same(list[0], HandAssemblyPlay.Choose(list, new AssemblyPick(Steps: 3)));
+    Assert.Same(
+      list[1],
+      HandAssemblyPlay.Choose(list, new AssemblyPick(Steps: 1))
+    );
+    Assert.Same(
+      list[0],
+      HandAssemblyPlay.Choose(list, new AssemblyPick(Steps: 3))
+    );
   }
 
   // Fails when assemble ignores its steps: the first candidate goes down, not the one stepped to.
@@ -126,12 +129,13 @@ public class ScenarioPlayerAssemblyTests {
   public void Assemble_steps_then_fixes() {
     var scene = Scene();
     var lines = new List<string>();
-    IReadOnlyList<AssemblyCandidate> offered = scene.Offer(Ground, BlockFacing.UP);
+    IReadOnlyList<AssemblyCandidate> offered = scene.Offer(
+      Ground,
+      BlockFacing.UP
+    );
     Assert.True(offered.Count > 1);
 
-    Assert.Null(
-      Place(scene, Context(scene, lines), "", steps: 1)
-    );
+    Assert.Null(Place(scene, Context(scene, lines), "", steps: 1));
 
     Assert.Equal(offered[1].Block.Code, scene.World.GetBlock(Cell).Code);
     Assert.True(scene.RecordAt(Cell).Fixed);
@@ -229,12 +233,22 @@ public class ScenarioPlayerAssemblyTests {
   public void Run_opted_in_goes_through_handler() {
     var scene = Scene();
     var routed = new List<string>();
-    RunStep.PlayerPlace plain = (Block b, BlockPos at, BlockFacing f, out string? failure) => {
+    RunStep.PlayerPlace plain = (
+      Block b,
+      BlockPos at,
+      BlockFacing f,
+      out string? failure
+    ) => {
       routed.Add("plain " + b.Code);
       failure = null;
       return true;
     };
-    RunStep.PlayerPlace assembled = (Block b, BlockPos at, BlockFacing f, out string? failure) => {
+    RunStep.PlayerPlace assembled = (
+      Block b,
+      BlockPos at,
+      BlockFacing f,
+      out string? failure
+    ) => {
       routed.Add("assembled " + b.Code);
       failure = null;
       return true;
@@ -249,10 +263,7 @@ public class ScenarioPlayerAssemblyTests {
       out _
     );
 
-    Assert.Equal(
-      ["assembled test:pipe-nes", "plain test:ordinary"],
-      routed
-    );
+    Assert.Equal(["assembled test:pipe-nes", "plain test:ordinary"], routed);
   }
 
   // Fails when the placement law places an opted-in part with the plain click: the handler is not
@@ -268,7 +279,11 @@ public class ScenarioPlayerAssemblyTests {
       scene.Player,
       part,
       spec,
-      new BlockSelection { Position = Ground.Copy(), Face = BlockFacing.UP, HitPosition = new Vec3d(0.5, 0.5, 0.5) },
+      new BlockSelection {
+        Position = Ground.Copy(),
+        Face = BlockFacing.UP,
+        HitPosition = new Vec3d(0.5, 0.5, 0.5),
+      },
       out string failure
     );
 

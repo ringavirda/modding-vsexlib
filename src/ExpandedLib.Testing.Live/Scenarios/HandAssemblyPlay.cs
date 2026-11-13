@@ -95,8 +95,12 @@ internal static class HandAssemblyPlay {
         Face = face,
         HitPosition = hit,
       };
-      IReadOnlyList<AssemblyCandidate> offered =
-        HandAssemblyCandidates.Of(world, player, part, selection);
+      IReadOnlyList<AssemblyCandidate> offered = HandAssemblyCandidates.Of(
+        world,
+        player,
+        part,
+        selection
+      );
       if (Choose(offered, pick) is not { } chosen)
         return new AssemblyResult {
           Code = NoCandidate,
