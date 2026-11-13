@@ -29,9 +29,10 @@ internal static class HandAssemblyGate {
       return false;
 
     string code = HandAssemblyServer.NeedsTool;
-    string message = Lang.Get(
+    string message = Lang.GetL(
+      player.LanguageCode,
       "game:placefailure-" + code,
-      HandAssemblyServer.ToolName(world, spec.Tool)
+      HandAssemblyServer.ToolName(world, spec.Tool, player.LanguageCode)
     );
     if (player is IServerPlayer serverPlayer)
       serverPlayer.SendIngameError(code, message);

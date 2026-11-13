@@ -72,7 +72,7 @@ internal static class HandAssemblyServer {
     bool creative = HandAssemblyGate.IsCreative(player);
     ItemSlot toolSlot = player.Entity.LeftHandItemSlot;
     if (!creative && !HoldsTool(toolSlot, spec.Tool))
-      return Refusal(NeedsTool, ToolName(world, spec.Tool));
+      return Refusal(NeedsTool, ToolName(world, spec.Tool, player.LanguageCode));
     if (!NeighbourhoodLoaded(world.BlockAccessor, cell))
       return Refusal(Unloaded);
 
@@ -112,7 +112,7 @@ internal static class HandAssemblyServer {
         return Refusal(
           NeedsFasteners,
           cost.ToString(),
-          FastenerName(world, spec.Fastener),
+          FastenerName(world, spec.Fastener, player.LanguageCode),
           carried.ToString()
         );
     }
@@ -163,7 +163,10 @@ internal static class HandAssemblyServer {
     bool creative = HandAssemblyGate.IsCreative(player);
     ItemSlot toolSlot = player.InventoryManager.ActiveHotbarSlot;
     if (!creative && !HoldsTool(toolSlot, spec.Tool))
-      return Refusal(NeedsToolMain, ToolName(world, spec.Tool));
+      return Refusal(
+        NeedsToolMain,
+        ToolName(world, spec.Tool, player.LanguageCode)
+      );
     if (!player.Entity.Controls.Sneak)
       return Refusal(Fixed);
 
@@ -215,7 +218,7 @@ internal static class HandAssemblyServer {
     }
   }
 
-  /// <summary>Shows <paramref name="player"/> the line of a placement failure code.</summary>
+  /// <summary>Shows <paramref name="player"/> the line of a placement failure code, worded in the player's language.</summary>
   /// <param name="world">The world, for naming a tool.</param>
   /// <param name="player">The player to tell.</param>
   /// <param name="code">The failure code; its line is <c>game:placefailure-</c> and the code.</param>
@@ -228,7 +231,11 @@ internal static class HandAssemblyServer {
   ) =>
     player.SendIngameError(
       code,
-      Lang.Get("game:placefailure-" + code, args.Cast<object>().ToArray())
+      Lang.GetL(
+        player.LanguageCode,
+        "game:placefailure-" + code,
+        args.Cast<object>().ToArray()
+      )
     );
 
   /// <summary>Places the first candidate of the aim, fixed and with no fastener recorded; the vanilla creative path.</summary>
@@ -269,20 +276,41 @@ internal static class HandAssemblyServer {
   internal static AssemblyResult Refusal(string code, params string[] args) =>
     new() { Code = code, Args = args };
 
-  /// <summary>The name of the first item matching <paramref name="pattern"/>, or the pattern itself when none is registered.</summary>
-  internal static string ToolName(IWorldAccessor world, string pattern) =>
-    ItemName(world, pattern).ToLowerInvariant();
+  /// <summary>The name of the first item matching <paramref name="pattern"/> in the language <paramref name="langCode"/> (the current one when null), or the pattern itself when none is registered.</summary>
+  internal static string ToolName(
+    IWorldAccessor world,
+    string pattern,
+    string? langCode = null
+  ) => ItemName(world, pattern, langCode).ToLowerInvariant();
 
-  private static string FastenerName(IWorldAccessor world, string code) =>
-    ItemName(world, code);
+  private static string FastenerName(
+    IWorldAccessor world,
+    string code,
+    string? langCode
+  ) => ItemName(world, code, langCode);
 
-  private static string ItemName(IWorldAccessor world, string pattern) =>
+  private static string ItemName(
+    IWorldAccessor world,
+    string pattern,
+    string? langCode
+  ) =>
     world.Items.FirstOrDefault(i =>
       i.Code != null && WildcardUtil.Match(pattern, i.Code.ToString())
     )
-      is { } item
-      ? new ItemStack(item).GetName()
+      is { Code: { } code } item
+      ? NameKey(code, item.ItemClass, langCode)
       : pattern;
+
+  private static string NameKey(
+    AssetLocation code,
+    EnumItemClass itemClass,
+    string? langCode
+  ) {
+    string key = code.Domain + ":" + itemClass.Name() + "-" + code.Path;
+    return langCode == null
+      ? Lang.GetMatching(key)
+      : Lang.GetMatchingL(langCode, key);
+  }
 
   private static bool HoldsTool(ItemSlot slot, string pattern) =>
     slot.Itemstack?.Collectible.Code is { } code
