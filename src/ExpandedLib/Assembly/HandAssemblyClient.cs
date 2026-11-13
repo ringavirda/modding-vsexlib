@@ -17,8 +17,16 @@ internal sealed class HandAssemblyClient : IRenderer {
   private const string TakeOffKey = "takeoff";
 
   private const float BaseAlpha = 0.55f;
-  private static readonly (float R, float G, float B) GhostTint = (0.8f, 1f, 0.8f);
-  private static readonly (float R, float G, float B) ShortTint = (1f, 0.35f, 0.35f);
+  private static readonly (float R, float G, float B) GhostTint = (
+    0.8f,
+    1f,
+    0.8f
+  );
+  private static readonly (float R, float G, float B) ShortTint = (
+    1f,
+    0.35f,
+    0.35f
+  );
   private static readonly int JoinedColor = ColorUtil.ColorFromRgba(
     94,
     215,
@@ -135,7 +143,9 @@ internal sealed class HandAssemblyClient : IRenderer {
 
   private void ShowRefusal(HandAssemblySpec spec) {
     IPlayer player = Player!;
-    if (!HandAssemblyServer.HoldsTool(player.Entity.LeftHandItemSlot, spec.Tool))
+    if (
+      !HandAssemblyServer.HoldsTool(player.Entity.LeftHandItemSlot, spec.Tool)
+    )
       Show(
         HandAssemblyServer.NeedsTool,
         HandAssemblyServer.ToolName(_capi.World, spec.Tool)
@@ -204,11 +214,11 @@ internal sealed class HandAssemblyClient : IRenderer {
         _target = $"{target.Cell}|{target.Anchor.Code}";
       }
     } else if (
-      selection != null
-      && HandAssemblySpec.Of(accessor.GetBlock(selection.Position)) is { } aimed
-      && HandAssemblyServer.HoldsTool(main, aimed.Tool)
-      && IsFixed(accessor, selection.Position)
-    ) {
+        selection != null
+        && HandAssemblySpec.Of(accessor.GetBlock(selection.Position)) is { } aimed
+        && HandAssemblyServer.HoldsTool(main, aimed.Tool)
+        && IsFixed(accessor, selection.Position)
+      ) {
       _takeOff = selection.Position.Copy();
       _target = $"{TakeOffKey}|{_takeOff}";
     }
@@ -238,8 +248,7 @@ internal sealed class HandAssemblyClient : IRenderer {
         player.Entity.LeftHandItemSlot,
         spec.Tool
       )
-      || ExCarried.Count(player, spec.Fastener)
-        < shown.Joints * spec.PerJoint;
+      || ExCarried.Count(player, spec.Fastener) < shown.Joints * spec.PerJoint;
   }
 
   private void Rebuild() {
@@ -251,11 +260,7 @@ internal sealed class HandAssemblyClient : IRenderer {
     }
 
     IBlockAccessor world = _capi.World.BlockAccessor;
-    HandAssemblyTarget target = HandAssemblyTarget.Resolve(
-      world,
-      _aim,
-      _part!
-    );
+    HandAssemblyTarget target = HandAssemblyTarget.Resolve(world, _aim, _part!);
     var joins = new List<(string, BlockFacing)>();
     var positions = new List<BlockPos>();
     var colors = new List<int>();

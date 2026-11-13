@@ -49,11 +49,13 @@ public class BlockBehaviorHandAssembly : BlockBehavior {
     ref EnumHandling handling
   ) =>
     [
-      new WorldInteraction {
+      new WorldInteraction
+      {
         ActionLangCode = ExlibLang.BlockhelpHandassemblyStep,
         MouseButton = EnumMouseButton.Right,
       },
-      new WorldInteraction {
+      new WorldInteraction
+      {
         ActionLangCode = ExlibLang.BlockhelpHandassemblyFix,
         MouseButton = EnumMouseButton.Right,
         HotKeyCode = "shift",

@@ -109,12 +109,7 @@ internal sealed class HandAssemblyHold {
   /// <param name="slot">The active hotbar slot now.</param>
   /// <param name="effects">The effects the hold played on; null for none.</param>
   /// <returns>Whether the hold is still active.</returns>
-  public bool Keep(
-    string target,
-    string what,
-    int slot,
-    ICraftEffects? effects
-  ) {
+  public bool Keep(string target, string what, int slot, ICraftEffects? effects) {
     if (Active && (target != _target || what != _what || slot != _slot))
       Release(effects);
     return Active;

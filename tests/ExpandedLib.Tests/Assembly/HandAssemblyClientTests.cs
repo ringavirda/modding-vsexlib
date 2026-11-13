@@ -20,7 +20,8 @@ public class HandAssemblyClientTests {
   private sealed class Effects : ICraftEffects {
     public List<string> Log { get; } = [];
 
-    public void StartAnimation(string animation) => Log.Add("start " + animation);
+    public void StartAnimation(string animation) =>
+      Log.Add("start " + animation);
 
     public void StopAnimation(string animation) => Log.Add("stop " + animation);
 
